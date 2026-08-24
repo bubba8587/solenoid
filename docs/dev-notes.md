@@ -112,6 +112,40 @@ still references `docs/archive/README.md` — that IS the enforcer of the bounda
 the done-when grep is "nothing but the enforcer" rather than literally empty. `formulajs-vs-native-audit.md`
 had zero code citations (backlog claim was stale); `FAMILY_BACKING` already carries its verdicts.
 
+**B6 — Table popup per-column summary footer + profile (plan 3).** Factored `describeColumn(values,
+type) → ColumnProfile` out of `describeFrame` (byte-identical output, pinned) — the popup and the
+Describe node now share one kernel; `ColumnProfile` adds an `error` count (present = valid + error).
+The frame Table popup gets a sticky two-row `<tfoot>` (mirrors the format-row chrome): a profile row
+with a 3-segment valid/error/empty bar (error = `--sol-error`, empty = transparent + hairline) and
+`n distinct`, and a summary row — number columns show a mono `sum/avg/min/max` stack, others a count.
+Computed over the WHOLE dataset (read-only reads `state.data`, editable reparses `buildFrameColumns`,
+computed columns read their derived cells); skipped for list/vertical popups. `describeColumn` unit
+tests added beside the `describeFrame` corpus. Finding (per plan, not fixed): `colSummaries` recomputes
+per render, and an editable popup re-renders per keystroke — but editable popups are hand-typed (small),
+so no measured lag; memoize only if a large editable frame ever lags. AUTHOR EYEBALL below.
+
+**A6 — shared node drag guard + tap-select on BOTH editing surfaces (plan 6).** The composite
+drill-in had NO drag guard, so a finger press grabbed a card and a finger pan over cards was dead
+(the reported sudoku-solver "flickering"). Canvas's inline `patchDragGuard` is now
+`areaPresets.installNodeDragGuard(area, editor, {groupBand?})` — the lock / touch-transparency /
+non-primary-button / `isPinching` branches port verbatim; the expanded-group edge band stays a
+Canvas `groupBand` callback so `areaPresets` never imports `GroupNode`. Its touch companion (the
+window pointer census + pointerup tap-to-select, without which a drag-transparent card is
+untouchable) is `tapSelect.installTapSelect`, sharing a mutable `TapCensus` the Canvas area pipe
+still reads for its off-canvas / form-control branches. Both surfaces install both; the drill-in
+gets no `groupBand` (no groups in a subgraph). Main-canvas behavior unchanged — the tap-select pipe
+is added BEFORE `selectableNodes` so its swallow still beats the background deselect (in select
+mode that ordering is what preserves an accumulating tap). `surfaceParity.test.ts` pins both
+installers on both surfaces + `installNodeDragGuard…isPinching()` in areaPresets. tsc + full vitest
+(4692) green. Two plan deviations, deliberate: (1) SKIPPED step 5's `scripts/touch-pan-probe.mjs`
+puppeteer probe — standing author rule is no agent browser-automation for UI, author eyeballs in
+person; the touch behavior goes on the author's eyeball list instead. (2) KEPT the drill-in
+lock-class mirror (`CompositeEditorOverlay.tsx`) the plan's step 6 said to delete — the MAIN canvas
+ALSO applies `.solenoid-canvas--locked` (`Canvas.tsx:755`) and that CSS disables field/socket/cable
+pointer input, which the drag guard does NOT cover, so deleting it would leave a locked drill-in
+editable. Author eyeball: on touch emulation open a composite, finger-pan over cards, pinch, tap a
+card to select, toggle the lock pill.
+
 ### SESSION DIGEST (2026-08-24 — author polish pass: Join dropdown, catalog valence, KaTeX arc trig, string-list errors, Aggregate optgroups, scratch-seed Groups)
 
 Six author asks, each landed + committed separately. (1) **Join `how` → arg dropdown**

@@ -615,3 +615,64 @@
   accent-color: var(--node-accent, var(--accent));
 }
 .table-popup__form-box-input[type="date"] { padding: 0; }
+
+/* ── Summary footer (frame popups): per-column profile bar + stats ────────────
+   A sticky two-row tfoot pinned to the bottom, mirroring the format row's chrome
+   (sunken cells, sticky-left corner). Computed over the WHOLE dataset, read-only. */
+.table-popup__sumfoot td,
+.table-popup__sumfoot th {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: var(--surface-sunken);
+  border-right: 1px solid var(--border);
+  border-top: 1px solid var(--border-strong);
+  padding: 3px 6px;
+  vertical-align: top;
+}
+/* The footer's left corner pins on both axes, one rung above the scrolling cells. */
+.table-popup__sumfoot th.table-popup__corner {
+  left: 0;
+  z-index: 3;
+}
+/* Profile row: a three-segment presence bar over `n distinct`. */
+.table-popup__profcell { min-width: 0; }
+.table-popup__profbar {
+  display: flex;
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+  /* the empty segment is transparent, so a hairline shows the bar's full extent */
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.table-popup__profseg { display: block; height: 100%; }
+.table-popup__profseg--valid { background: color-mix(in srgb, var(--text-dim) 55%, transparent); }
+.table-popup__profseg--error { background: var(--sol-error); }
+.table-popup__profseg--empty { background: transparent; }
+.table-popup__profdistinct {
+  display: block;
+  margin-top: 3px;
+  font-size: 10px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+/* Summary row: a compact stat stack for number columns, else a count. */
+.table-popup__sumstack {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.table-popup__sumstack span,
+.table-popup__sumcount {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.table-popup__sumlabel {
+  display: inline-block;
+  width: 26px;
+  font-family: var(--font-sans);
+  font-style: normal;
+  font-size: 10px;
+  color: var(--text-dim);
+}

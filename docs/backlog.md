@@ -26,10 +26,6 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
 - [ ] **A4 (remainder) — retire the XLOOKUP `rawInputs` bypass** (deferrals: with typed
   frame→cube the bypass is unneeded; the frame + cube lookup paths could collapse to one).
 - [ ] **A5 Node-by-node sweep**, per family, value-semantics + description truth (below).
-- [ ] **A6 Editing-surface kernel, bug slice first**: `installNodeDragGuard` from
-  `areaPresets.ts` into BOTH `nodecreated` pipes (the dead drill-in finger pan, below) with its
-  tap-to-select companions; pinned in `surfaceParity.test.ts`; verified by headless CDP touch
-  emulation (agent-run, not author-watched). Phases A–C of the kernel follow as pure refactor.
 
 **B0 — the Python/R gap (author ask 2026-08-23) — Tiers 1 + 2 LANDED; what remains**
 - [ ] `python-r-gap.md` open items: ODE integrate (RK4 over an Expression), 2-D histogram for
@@ -37,9 +33,6 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   out of character.
 
 **B — engine features promoted from deferrals (autonomous-friendly, node+formula+tests)**
-- [ ] **B6 Table-popup per-column summary footer** (sum/avg/min/max/count via `forAggregate`)
-  + **column profiling** (valid/error/empty bar, distinct/min/max/mean) — display over frame
-  data; small UI, no devtools loop.
 - [ ] **B7 Tidy options**: expose direction / density / width-cap (Coffman-Graham layerBound)
   on the Tidy call as a small options pill; ELK runs headless so layout is unit-testable;
   the cable-readability question stays for the author's eye.
@@ -83,27 +76,6 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   decorations. Regression, cause unknown.
 - [ ] **#7 Conduits sometimes unselectable/unmovable except via the Navigator** —
   intermittent, no repro; suspected z-order/hit-area or group-membership sync.
-- [ ] **A finger pan is DEAD inside a drill-in — no node has a drag guard there.**
-  Author-reported as "major flickering" panning/pinching the sudoku solver (44-node
-  subgraph, `runMode: simulation`) on mobile; unpacking the SAME nodes onto the main
-  canvas makes it stop. `patchDragGuard` (`Canvas.tsx:591-631`) is installed per node
-  from Canvas's `nodecreated` pipe, and its touch branch — an unselected node is
-  drag-transparent so the press falls through to a PAN — is what makes finger-panning
-  work at all. The drill-in's editor pipe (`CompositeEditorOverlay.tsx`) installs
-  error guards only, so rete's stock drag captures the pointer and stops propagation:
-  the area never sees the press. MEASURED (headless CDP, touch-emulated, identical
-  gesture on identical content): main canvas pans (cam 358,381 → 258,306, 0 nodes
-  moved); drill-in does nothing at all (cam unchanged, 0 nodes moved). Worst in the
-  mid-zoom band only because that is where cards tile most of the viewport, so nearly
-  every press lands on one. FIX = the first real slice of the editing-surface kernel
-  (`deferrals.md`): extract `installNodeDragGuard(area, editor, opts)` into
-  `areaPresets.ts` and install from both `nodecreated` pipes — lock guard and
-  pen/non-primary-button guard port as-is, the group edge-band branch goes behind an
-  optional predicate (groups don't exist in a drill-in). Must bring the companions or
-  a card becomes unselectable by touch: tap-to-select on `pointerup` plus the
-  `gestureMultiRef` check that stops a pinch from selecting. Pin in
-  `surfaceParity.test.ts`. NOT the choppy-zoom BAND and not raster — see the digest
-  for the eliminated set; don't retread it.
 - [ ] **Pinch-zoom on a real Mac trackpad** — should work via `e.ctrlKey` wheel;
   verify on hardware. NOTE: `rete-area-plugin` 2.2.1 fixed exactly this upstream
   (normalize wheel delta for touchpad pinch, their #31) — but `CappedZoom.wheel`

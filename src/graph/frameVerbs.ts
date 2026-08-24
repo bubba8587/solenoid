@@ -1808,8 +1808,40 @@ export function borderedGridFromFrame(f: FrameValue, start = 1): (number | null)
 }
 
 // ─── Describe (pandas describe / R summary) — one row per column ──────────────
-const presentNums = (c: FrameColumn): number[] =>
-  c.values.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+/** Per-column profile: the three presence counts (present = valid + error, blank),
+ *  distinct (over present non-errors), and for NUMBER/DATE columns the numeric stats
+ *  (PERCENTILE.INC, pandas' linear). `error` is the SolError share of `count`; a
+ *  non-numeric column leaves the stats null. Shared by `describeFrame` (the node) and
+ *  the Table popup's summary footer. */
+export interface ColumnProfile {
+  count: number; blank: number; error: number; distinct: number;
+  mean: number | null; std: number | null; min: number | null;
+  q25: number | null; median: number | null; q75: number | null; max: number | null;
+}
+
+export function describeColumn(values: readonly unknown[], type: FrameColType | undefined): ColumnProfile {
+  const present = values.filter((v) => v != null);
+  const profile: ColumnProfile = {
+    count: present.length,
+    blank: values.length - present.length,
+    error: present.filter((v) => isSolError(v)).length,
+    distinct: new Set(present.filter((v) => !isSolError(v)).map((v) => (typeof v === "number" ? `#${v}` : typeof v === "boolean" ? `b${v}` : `s${v}`))).size,
+    mean: null, std: null, min: null, q25: null, median: null, q75: null, max: null,
+  };
+  if (type === "number" || type === "date") {
+    const nums = values.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+    const stat = (op: "avg" | "stdev" | "min" | "max"): number | null => { const r = aggregate(op, nums); return typeof r === "number" ? r : null; };
+    const pct = (p: number): number | null => { const r = percentile(nums, p, false); return typeof r === "number" ? r : null; };
+    profile.mean = type === "number" ? stat("avg") : null;
+    profile.std = type === "number" ? stat("stdev") : null;
+    profile.min = stat("min");
+    profile.q25 = type === "number" ? pct(0.25) : null;
+    profile.median = type === "number" ? pct(0.5) : null;
+    profile.q75 = type === "number" ? pct(0.75) : null;
+    profile.max = stat("max");
+  }
+  return profile;
+}
 
 /** One row per input column: count (present), blank, distinct, and for NUMBER columns
  *  mean / std (sample) / min / 25% / 50% / 75% / max (PERCENTILE.INC, pandas' linear).
@@ -1821,19 +1853,10 @@ export function describeFrame(f: FrameValue): FrameValue {
     q50: (number | null)[] = [], q75: (number | null)[] = [], max: (number | null)[] = [];
   for (const c of f.columns) {
     names.push(c.name); types.push(c.type);
-    const present = c.values.filter((v) => v != null);
-    count.push(present.length); blank.push(c.values.length - present.length);
-    distinct.push(new Set(present.filter((v) => !isSolError(v)).map((v) => (typeof v === "number" ? `#${v}` : typeof v === "boolean" ? `b${v}` : `s${v}`))).size);
-    if (c.type === "number" || c.type === "date") {
-      const nums = presentNums(c);
-      const stat = (op: "avg" | "stdev" | "min" | "max"): number | null => { const r = aggregate(op, nums); return typeof r === "number" ? r : null; };
-      const pct = (p: number): number | null => { const r = percentile(nums, p, false); return typeof r === "number" ? r : null; };
-      mean.push(c.type === "number" ? stat("avg") : null); std.push(c.type === "number" ? stat("stdev") : null);
-      min.push(stat("min")); q25.push(c.type === "number" ? pct(0.25) : null); q50.push(c.type === "number" ? pct(0.5) : null);
-      q75.push(c.type === "number" ? pct(0.75) : null); max.push(stat("max"));
-    } else {
-      mean.push(null); std.push(null); min.push(null); q25.push(null); q50.push(null); q75.push(null); max.push(null);
-    }
+    const p = describeColumn(c.values, c.type);
+    count.push(p.count); blank.push(p.blank); distinct.push(p.distinct);
+    mean.push(p.mean); std.push(p.std); min.push(p.min);
+    q25.push(p.q25); q50.push(p.median); q75.push(p.q75); max.push(p.max);
   }
   return { __frame: true, columns: [
     { name: "column", type: "string", values: names },

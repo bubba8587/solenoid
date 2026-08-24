@@ -5,8 +5,8 @@ import { EpochNode, DateTruncNode } from "./date";
 import { ntileList, outlierFlags } from "./listOps";
 import { epochToSerial, serialToEpoch, dateTrunc } from "./dateOps";
 import { parseDateToSerial } from "./dateSerial";
-import { isSolError } from "../errorValue";
-import { describeFrame, correlationMatrix, windowFrame } from "../frameVerbs";
+import { isSolError, solError } from "../errorValue";
+import { describeFrame, describeColumn, correlationMatrix, windowFrame } from "../frameVerbs";
 import { WindowNode } from "./frame";
 import { readFrame } from "../frameBackend";
 import { amortizationSchedule } from "./financeOps";
@@ -149,6 +149,55 @@ describe("Describe (pandas describe / R summary)", () => {
     expect(col("50%")).toEqual([2.5, null, null]);
     expect(col("max")).toEqual([4, null, 45004]);
     expect(new DescribeNode().data({ frame: [f] }).frame).toEqual(out);
+  });
+});
+
+describe("describeColumn (the shared kernel behind describeFrame + the popup footer)", () => {
+  it("counts blank as null cells, present as the rest", () => {
+    const p = describeColumn([1, 2, null, 4, null], "number");
+    expect(p.count).toBe(3);
+    expect(p.blank).toBe(2);
+  });
+
+  it("counts errors as their own share of present (present = valid + error)", () => {
+    const p = describeColumn([1, solError("#DIV/0!", "x"), 3, null], "number");
+    expect(p.count).toBe(3); // present includes the error cell
+    expect(p.error).toBe(1);
+    expect(p.blank).toBe(1);
+    // valid = count - error = 2; the number stats ignore the error cell
+    expect(p.min).toBe(1);
+    expect(p.max).toBe(3);
+  });
+
+  it("distinct is over present non-error values", () => {
+    expect(describeColumn(["a", "b", "a", null, "c"], "string").distinct).toBe(3);
+    expect(describeColumn([1, 1, 2, solError("#N/A", "x")], "number").distinct).toBe(2);
+  });
+
+  it("number columns carry mean / min / max / quartiles", () => {
+    const p = describeColumn([1, 2, 3, 4], "number");
+    expect(p.mean).toBe(2.5);
+    expect(p.min).toBe(1);
+    expect(p.max).toBe(4);
+    expect(p.q25).toBe(1.75);
+    expect(p.median).toBe(2.5);
+    expect(p.q75).toBe(3.25);
+  });
+
+  it("a string column gets no numeric stats", () => {
+    const p = describeColumn(["a", "b", "c"], "string");
+    expect(p.mean).toBeNull();
+    expect(p.median).toBeNull();
+    expect(p.min).toBeNull();
+    expect(p.max).toBeNull();
+  });
+
+  it("a date column carries min / max but no mean or quartiles", () => {
+    const p = describeColumn([45000, 45001, null, 45004], "date");
+    expect(p.min).toBe(45000);
+    expect(p.max).toBe(45004);
+    expect(p.mean).toBeNull();
+    expect(p.median).toBeNull();
   });
 });
 

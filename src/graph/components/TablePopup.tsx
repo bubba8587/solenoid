@@ -7,6 +7,8 @@ import { parseCsvRows } from "../csv";
 import { isSolError, ERROR_EXPLANATIONS } from "../errorValue";
 import { formatDateSerial, parseDateToSerial, serialToJsDate, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { coerceFrameCell, formatFrameCell, type FrameSourceColumn } from "../frame";
+import { describeColumn, type ColumnProfile } from "../frameVerbs";
+import { aggregate } from "../nodes/statsOps";
 import { formatNumberWithAnnotation, isDateStyle, applyLogicalStyle, type FormatAnnotation, type FormatStyleId } from "../formatAnnotationStore";
 import { isUnitCell } from "../unitValue";
 import { columnUnitLabel } from "../unitColumn";
@@ -478,6 +480,31 @@ export function TablePopup() {
     });
   }
 
+  // Per-column summary + profile for the footer (frame popups only), over the WHOLE
+  // dataset: read-only reads state.data, editable reparses buildFrameColumns, a computed
+  // column reads its derived cells (B6). Skipped entirely for a plain list/table popup.
+  const colSummaries: { profile: ColumnProfile; sum: number | null }[] | null =
+    isFramePopup && !vertical ? (() => {
+      const frameCols = editable ? buildFrameColumns() : null;
+      const valuesFor = (c: number): unknown[] => {
+        if (hasComputed && isComputedCol(c)) return (computedVals ?? []).map((row) => row?.[c] ?? null);
+        if (frameCols) return frameCols[c]?.values ?? [];
+        return state.data.map((row) => row?.[c] ?? null);
+      };
+      return Array.from({ length: cols }, (_c, c) => {
+        const type = colTypeAt(c);
+        const values = valuesFor(c);
+        const profile = describeColumn(values, type);
+        let sum: number | null = null;
+        if (type === "number") {
+          const r = aggregate("sum", values.filter((v): v is number => typeof v === "number" && Number.isFinite(v)));
+          sum = typeof r === "number" ? r : null;
+        }
+        return { profile, sum };
+      });
+    })() : null;
+  const fmtStat = (n: number | null): string => (n == null ? "—" : formatScalar(n));
+
   const headers = editableHeaders ? headerNames : state.headers;
   // A frame's CSV view prepends a header line (below); a plain table/list doesn't.
   const hasHeaderLine = !state.list && !!(headers && headers.length);
@@ -869,6 +896,52 @@ export function TablePopup() {
                 </tr>
               ); })}
             </tbody>
+            {colSummaries && (
+              <tfoot className="table-popup__sumfoot">
+                <tr className="table-popup__profrow">
+                  <th className="table-popup__corner" />
+                  {Array.from({ length: viewCols }, (_, c) => {
+                    const { profile } = colSummaries[c];
+                    const valid = profile.count - profile.error;
+                    const total = profile.count + profile.blank;
+                    const pct = (n: number) => (total > 0 ? (n / total) * 100 : 0);
+                    return (
+                      <td key={c} className="table-popup__profcell">
+                        <div
+                          className="table-popup__profbar"
+                          title={`${valid} valid · ${profile.error} error · ${profile.blank} empty`}
+                        >
+                          <span className="table-popup__profseg table-popup__profseg--valid" style={{ width: `${pct(valid)}%` }} />
+                          <span className="table-popup__profseg table-popup__profseg--error" style={{ width: `${pct(profile.error)}%` }} />
+                          <span className="table-popup__profseg table-popup__profseg--empty" style={{ width: `${pct(profile.blank)}%` }} />
+                        </div>
+                        <span className="table-popup__profdistinct">{profile.distinct} distinct</span>
+                      </td>
+                    );
+                  })}
+                </tr>
+                <tr className="table-popup__sumrow">
+                  <th className="table-popup__corner" />
+                  {Array.from({ length: viewCols }, (_, c) => {
+                    const { profile, sum } = colSummaries[c];
+                    return (
+                      <td key={c} className="table-popup__sumcell">
+                        {colTypeAt(c) === "number" ? (
+                          <div className="table-popup__sumstack">
+                            <span><i className="table-popup__sumlabel">sum</i>{fmtStat(sum)}</span>
+                            <span><i className="table-popup__sumlabel">avg</i>{fmtStat(profile.mean)}</span>
+                            <span><i className="table-popup__sumlabel">min</i>{fmtStat(profile.min)}</span>
+                            <span><i className="table-popup__sumlabel">max</i>{fmtStat(profile.max)}</span>
+                          </div>
+                        ) : (
+                          <span className="table-popup__sumcount"><i className="table-popup__sumlabel">count</i>{profile.count}</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       ) : view === "form" ? (
