@@ -354,6 +354,19 @@ curve-fitters LINEST + LOGEST + PolyFit + TREND (+ FORECAST.LINEAR) → one "Fit
 a model selector (linear/exponential/polynomial) + predict; ETS + Decompose share seasonal
 decomposition. Otherwise heavily op-merged (HypothesisTest unifies 12 tests). Residue: none.
 
+**A5 Logic + Boolean sweep** (17 leaves) → NO bugs; the family is the reference implementation of the
+value-semantics contract. `pickSlot` is the audited reader for every `autoLiterals` wildcard
+value-selector (IF/IFS/SWITCH/CHOOSE), with `isSet` separating a set slot from unset for the #N/A
+-on-unmatched rule. IfNode: a blank condition → null (no branch pickable). ComparisonNode: comparing
+an unknown is unknown (Kleene null), unit-aware, `=`/`≠` still answer on incommensurable pairs while
+`<`/`>` give `#UNIT!`. IFErrorNode reads by connection-presence so a wired null survives and passes
+through (not an error); IsTestNode distinguishes UNWIRED (nothing to test → blank) from a wired blank
+(ISBLANK → TRUE). BooleanOp/Not are Kleene (already pinned). Pins: `wiredNull.test.ts` "Logic —
+unwired-vs-wired-blank" (ISBLANK, IF, +2). Combine candidates: Comparison + Between + IsClose are all
+numeric boolean predicates → one "Test" node with a mode (compare / between / isclose); IF is a
+special case of IFS (one pair + otherwise) but the fixed 2-branch card earns its Excel familiarity.
+Otherwise heavily op-merged (Boolean unifies 6 ops, IsTest 8, Comparison 6). Residue: none.
+
 ### SESSION DIGEST (2026-08-24 — author polish pass: Join dropdown, catalog valence, KaTeX arc trig, string-list errors, Aggregate optgroups, scratch-seed Groups)
 
 Six author asks, each landed + committed separately. (1) **Join `how` → arg dropdown**

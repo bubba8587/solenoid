@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { TextTransformNode, TextSliceNode, ReptNode, TextSplitNode, TextFilterNode, ConcatNode, RegexNode } from "./text";
 import { DateConstructNode, DateAddNode, WorkdaysNode } from "./date";
-import { BooleanOpNode, NotNode, IfsNode, SwitchNode } from "./logic";
+import { BooleanOpNode, NotNode, IfsNode, SwitchNode, IfNode, IsTestNode } from "./logic";
 import { SliderInputNode, ColorBlendNode } from "./input";
 import { RandBetweenNode } from "./display";
 import { ComplexFromNode, QuadraticRootsNode } from "./complex";
@@ -120,6 +120,23 @@ describe("reducers SKIP a missing rather than propagating it", () => {
     expect(isSolError(sum.data({ list: [[1, err, 3]] }).result)).toBe(true);
     const blanks = new AggregateNode({ op: "countblank" });
     expect(blanks.data({ list: [[1, null, 3, null]] }).result).toBe(2);
+  });
+});
+
+describe("Logic — unwired-vs-wired-blank and blank conditions", () => {
+  // ISBLANK is the sharpest case: an UNWIRED slot has nothing to test (blank result),
+  // while a WIRED blank is a real missing cell (TRUE).
+  it("ISBLANK: unwired is blank (nothing to test); a wired blank is TRUE", () => {
+    const node = new IsTestNode({ op: "isblank" });
+    expect(node.data({}).result).toBeNull();
+    expect(node.data({ value: [null] }).result).toBe(true);
+  });
+
+  // IF cannot pick a branch from an unknown condition.
+  it("IF: a wired blank condition gives a blank result; a real condition selects", () => {
+    const node = new IfNode();
+    expect(node.data({ cond: [null], then: [1], else: [2] }).result).toBeNull();
+    expect(node.data({ cond: [true], then: [1], else: [2] }).result).toBe(1);
   });
 });
 
