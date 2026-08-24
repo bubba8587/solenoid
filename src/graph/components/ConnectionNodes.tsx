@@ -2,8 +2,7 @@ import type React from "react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type {
   WebSourceNode as WebSourceNodeType,
-  CsvConnectionNode as CsvConnectionNodeType,
-  ParquetConnectionNode as ParquetConnectionNodeType,
+  LocalFileNode as LocalFileNodeType,
   ImportHtmlNode as ImportHtmlNodeType,
   ImportXmlNode as ImportXmlNodeType,
   DataFeedNode as DataFeedNodeType,
@@ -11,7 +10,7 @@ import type {
 import { processGraph } from "../process";
 import { connectionStore, refreshConnection, type ConnectionState } from "../connectionStore";
 import { settingsStore } from "../settingsStore";
-import { isDesktop, listCsvFiles, listParquetFiles } from "../fileBridge";
+import { isDesktop, listLocalFiles } from "../fileBridge";
 import { apiKeyStore } from "../apiKeyStore";
 import { PROVIDER_LIST, getProvider, type ProviderId } from "../dataProviders";
 import { FrameDisplay } from "./FrameDisplay";
@@ -240,7 +239,9 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
 // Desktop only (no filesystem in the browser). The native <LazySelect> needs
 // pointerdown/mousedown stopPropagation or the node-drag re-render closes it mid-pick.
 
-export function CsvConnectionComponent({ data, emit }: NodeProps<CsvConnectionNodeType>) {
+// One node for the data folder's files — the file EXTENSION picks the reader (.parquet
+// through the native engine, everything else CSV), so there is no format control.
+export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>) {
   const folder = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("csvFolder"));
   const [files, setFiles] = useState<string[]>([]);
   const [name, setName] = useState(data.fileName);
@@ -250,7 +251,7 @@ export function CsvConnectionComponent({ data, emit }: NodeProps<CsvConnectionNo
 
   useEffect(() => {
     let alive = true;
-    listCsvFiles(folder).then((fs) => { if (alive) setFiles(fs); }).catch(() => { if (alive) setFiles([]); });
+    listLocalFiles(folder).then((fs) => { if (alive) setFiles(fs); }).catch(() => { if (alive) setFiles([]); });
     return () => { alive = false; };
   }, [folder]);
 
@@ -263,12 +264,12 @@ export function CsvConnectionComponent({ data, emit }: NodeProps<CsvConnectionNo
   }
 
   function refresh() {
-    listCsvFiles(folder).then(setFiles).catch(() => setFiles([]));
+    listLocalFiles(folder).then(setFiles).catch(() => setFiles([]));
     void refreshConnection(data.id);
   }
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="CSV File">
+    <NodeShell node={data} emit={emit} labelPlaceholder="Local File">
       <div className="sol-conn">
         {!desktop ? (
           <div className="sol-conn__note">Local files are available in the desktop app only.</div>
@@ -387,57 +388,3 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
   );
 }
 
-// ─── PARQUET CONNECTION (local folder, native engine read) ──────────────────────
-// The read never touches JS, so typed columns arrive intact (no inference step).
-
-export function ParquetConnectionComponent({ data, emit }: NodeProps<ParquetConnectionNodeType>) {
-  const folder = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("csvFolder"));
-  const [files, setFiles] = useState<string[]>([]);
-  const [name, setName] = useState(data.fileName);
-  const desktop = isDesktop();
-
-  useEffect(() => {
-    let alive = true;
-    listParquetFiles(folder).then((fs) => { if (alive) setFiles(fs); }).catch(() => { if (alive) setFiles([]); });
-    return () => { alive = false; };
-  }, [folder]);
-
-  useEffect(() => { setName(data.fileName); }, [data.fileName]);
-
-  function pick(next: string) {
-    setName(next);
-    data.fileName = next;
-    void processGraph();
-  }
-
-  function refresh() {
-    listParquetFiles(folder).then(setFiles).catch(() => setFiles([]));
-    void refreshConnection(data.id);
-  }
-
-  return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Parquet File">
-      <div className="sol-conn">
-        {!desktop ? (
-          <div className="sol-conn__note">Local files are available in the desktop app only.</div>
-        ) : !folder ? (
-          <div className="sol-conn__note">No target folder set. Open Settings ▸ Data to choose one.</div>
-        ) : (
-          <LazySelect
-            className="sol-conn__select"
-            value={name}
-            onChange={(e) => pick(e.target.value)}
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <option value="">Pick a file…</option>
-            {name !== "" && !files.includes(name) && <option value={name}>{name} (missing)</option>}
-            {files.map((f) => <option key={f} value={f}>{f}</option>)}
-          </LazySelect>
-        )}
-        <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
-        <FrameDisplay frame={data.cachedResult} label={data.label} />
-      </div>
-    </NodeShell>
-  );
-}

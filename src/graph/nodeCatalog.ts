@@ -50,7 +50,7 @@ import {
   SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, BindColumnsNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode,
   ReconcileNode,
   BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode,
-  WebSourceNode, CsvConnectionNode, ParquetConnectionNode, ImportHtmlNode, ImportXmlNode, DataFeedNode,
+  WebSourceNode, LocalFileNode, ImportHtmlNode, ImportXmlNode, DataFeedNode,
   WriteFileNode, WriteObsidianNode, ImportObsidianNode,
   GroupNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, SvgPickerNode,
   CompositeNode, CompositeInputNode, CompositeOutputNode,
@@ -214,8 +214,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         children: [
           { type: "web-source",    label: "Web Source",  description: "Loads a Frame from a CSV or JSON URL. Columns are auto-typed. Stores the URL, not the data: refresh to re-pull. Desktop fetches any URL. The browser only fetches CORS-enabled ones.", create: () => new WebSourceNode(), parity: false },
           { type: "data-feed",     label: "Data Feed",   description: "Live economic and market data as a Frame: FRED series with no key, stock history through Alpha Vantage with a free key. Stores the series id or ticker, not the data. Refresh re-pulls. Desktop works with arbitrary URLs. The browser is CORS-limited.", create: () => new DataFeedNode(), parity: false },
-          { type: "csv-connection", label: "CSV File",    description: "Loads a Frame from a .csv in your data folder (Settings ▸ Data). Columns are auto-typed. Stores the file name. Refresh to re-read. Desktop only.", create: () => new CsvConnectionNode(), parity: false },
-          { type: "parquet-connection", label: "Parquet File", description: "Loads a Frame from a .parquet in your data folder (Settings ▸ Data). It reads straight into the native engine, so typed columns arrive intact with no inference step. Stores the file name. Refresh to re-read. Desktop only.", create: () => new ParquetConnectionNode(), parity: false, keywords: "parquet arrow column columnar native engine polars" },
+          { type: "local-file",   label: "Local File",  description: "Loads a Frame from your data folder (Settings ▸ Data). A .parquet reads straight into the native engine — typed columns arrive intact, no inference; anything else is read as CSV with columns auto-typed. Stores the file name. Refresh to re-read. Desktop only.", create: () => new LocalFileNode(), parity: false, keywords: "csv parquet arrow column columnar native engine polars file load import" },
           { type: "import-html",   label: "Import HTML", description: "Grab the Nth HTML table on a page as a Frame, columns auto-typed. Stores the URL. Refresh to re-pull. Desktop any URL, browser CORS-only. Sheets: IMPORTHTML.", create: () => new ImportHtmlNode(), parity: false },
           { type: "import-xml",    label: "Import XML",  description: "Extracts a page's XPath matches (for example //h2/a) as a text list. Stores the URL. Refresh to re-pull. Desktop any URL, browser CORS-only. Sheets: IMPORTXML.", create: () => new ImportXmlNode(), parity: false },
           { type: "import-obsidian", label: "Import from Obsidian", description: "Picks a .md note from your Obsidian vault: it becomes a read-only Note — frontmatter turns into typed output sockets, the body renders inline. Reload re-reads from disk. Set the vault in Settings ▸ Obsidian. Desktop only.", create: () => new ImportObsidianNode(), parity: false, keywords: "obsidian vault markdown md note import read source frontmatter" },

@@ -284,7 +284,7 @@ shared by the voice lint (`uiCopy.test.ts`) and the hand-rewrite tool
 `connectionStore.ts` (cached async fetch + refresh generation),
 `fileBridge.ts` (Tauri fs/dialog behind an `isDesktop()` guard),
 `httpBridge.ts` (proxy-aware fetch), `csv.ts` (parse/serialize),
-`nodes/connection.ts` (Web Source, CSV File, Parquet, Import HTML/XML),
+`nodes/connection.ts` (Web Source, Local File (CSV/Parquet), Import HTML/XML),
 `dataProviders.ts` + `nodes/dataFeed.ts` (the keyed data-feed providers),
 `obsidianMarkdown.ts` + `obsidianWrite.ts` + `nodes/obsidian.ts` (the
 Obsidian vault import/export direction).

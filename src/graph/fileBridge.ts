@@ -21,25 +21,21 @@ export async function pickFolderDialog(): Promise<string | null> {
   return typeof res === "string" ? res : null;
 }
 
-/** File names directly inside `folder` matching `extension` (sorted, case-insensitive). */
-async function listFilesByExt(folder: string, extension: string): Promise<string[]> {
+/** File names directly inside `folder` matching any of `extensions` (sorted, case-insensitive). */
+async function listFilesByExt(folder: string, extensions: string | string[]): Promise<string[]> {
   if (!isDesktop() || !folder) return [];
   const entries = await readDir(folder);
-  const re = new RegExp(`\\.${extension}$`, "i");
+  const re = new RegExp(`\\.(${(Array.isArray(extensions) ? extensions : [extensions]).join("|")})$`, "i");
   return entries
     .filter((e) => e.isFile && re.test(e.name))
     .map((e) => e.name)
     .sort((a, b) => a.localeCompare(b));
 }
 
-/** List the `.csv` file names directly inside `folder`. */
-export function listCsvFiles(folder: string): Promise<string[]> {
-  return listFilesByExt(folder, "csv");
-}
-
-/** List the `.parquet` file names directly inside `folder`. */
-export function listParquetFiles(folder: string): Promise<string[]> {
-  return listFilesByExt(folder, "parquet");
+/** List the `.csv` + `.parquet` file names directly inside `folder` — the Local File node
+ *  reads either, picking the reader by extension. */
+export function listLocalFiles(folder: string): Promise<string[]> {
+  return listFilesByExt(folder, ["csv", "parquet"]);
 }
 
 /** Read one file (by name) from the target folder as text. */

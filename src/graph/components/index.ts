@@ -165,7 +165,7 @@ export { TornadoComponent } from "./TornadoNode";
 export { BuildCubeComponent, NestJoinComponent, CubeColumnsComponent, CubeRollupComponent } from "./CubeNodes";
 
 // ─── External-data connections (Web Source, CSV folder, Parquet folder) ─────────
-export { WebSourceComponent, CsvConnectionComponent, ParquetConnectionComponent, ImportHtmlComponent, ImportXmlComponent, DataFeedComponent } from "./ConnectionNodes";
+export { WebSourceComponent, LocalFileComponent, ImportHtmlComponent, ImportXmlComponent, DataFeedComponent } from "./ConnectionNodes";
 
 // ─── File sinks (Write File — CSV/JSON, Write to Obsidian) ────────────────────────
 export { WriteFileComponent, WriteObsidianComponent } from "./WriteNodes";
