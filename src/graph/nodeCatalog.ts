@@ -98,7 +98,8 @@ const reduceLeaf   = (op: ReduceOp):       NodeCatalogEntry => ({ type: `reduce-
 const combLeaf     = (op: CombinatoricsOp):NodeCatalogEntry => ({ type: `comb-${op}`,      label: COMBINATORICS_OP_META[op].label,  description: COMBINATORICS_OP_META[op].description,  create: () => new CombinatoricsNode({ op }) });
 // One Series node; the leaf types keep their historical spellings (nodeExcel keys).
 const SERIES_LEAF_TYPE: Record<SeriesOp, string> = { range: "list-range", sequence: "list-sequence", linspace: "list-linspace", geometric: "list-geometric", fibonacci: "list-fibonacci", repeat: "list-repeat" };
-const seriesLeaf   = (op: SeriesOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: SERIES_LEAF_TYPE[op], label: SERIES_OP_META[op].label, description: SERIES_OP_META[op].description, create: () => new SeriesNode({ op }), ...overrides });
+// Every op is a leaf of the ONE Series card, so "series" must find all of them in search.
+const seriesLeaf   = (op: SeriesOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: SERIES_LEAF_TYPE[op], label: SERIES_OP_META[op].label, description: SERIES_OP_META[op].description, keywords: "series generate list", create: () => new SeriesNode({ op }), ...overrides });
 
 // One Rank & Percentile node; the leaf types keep their historical spellings (nodeExcel keys).
 const RP_LEAF_TYPE: Partial<Record<RankPercentileOp, string>> = { large: "nth-large", small: "nth-small", "rank-eq": "rank-eq", "rank-avg": "rank-avg", "percentile-inc": "stat-percentile", "quartile-inc": "stat-quartile", "percentrank-inc": "stat-percentrank" };
