@@ -15,6 +15,8 @@ import { BulletNode, KpiNode, HistogramNode } from "./visual";
 import { AlertNode } from "./display";
 import { ExpectNode } from "./quality";
 import { CubeRollupNode, BuildCubeNode } from "./cube";
+import { CastNode } from "./cast";
+import { ConvertNode } from "./convert";
 import { HypothesisTestNode, RankPercentileNode } from "./stats";
 import { DistributionNode } from "./distribution";
 import { SetCellNode } from "./matrix";
@@ -748,6 +750,20 @@ describe("Output family — wired blank by role", () => {
     node.literals.value = 50; node.literals.low = 0; node.literals.high = 100;
     expect(node.data({ value: [null as unknown as number] }).result).toBeNull();
     expect(node.data({}).result).toBe(0);
+  });
+});
+
+describe("Other — Cast and Convert on a wired blank", () => {
+  // Cast is a relay that SEES errors: a blank input stays blank (not a failure), a
+  // genuine parse failure is #VALUE!.
+  it("Cast: a wired blank stays blank; an unparseable value is #VALUE!", () => {
+    expect(new CastNode({ target: "number" }).data({ value: [null] }).result).toBeNull();
+    expect(isSolError(new CastNode({ target: "number" }).data({ value: ["abc"] }).result)).toBe(true);
+  });
+
+  // Convert's input is the value operand: a wired blank propagates.
+  it("Convert: a wired blank value propagates to blank", () => {
+    expect(new ConvertNode().data({ in: [null] }).out).toBeNull();
   });
 });
 

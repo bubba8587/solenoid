@@ -474,6 +474,17 @@ already pinned). Combine candidates: BuildCube (one column) is a special case of
 one "Build Cube" node with a single/multi mode. Residue: none. (Note: no Unnest node lives in cube.ts;
 the catalog's 4 Cube leaves are these four — B8.1's cube-unnest work, if it lands, is elsewhere.)
 
+**A5 Other sweep** (Convert, Cast, Placeholder + structural Group/Conduit/Composite/Equation/FC) →
+NO bugs. Convert (the flagship unit control): the value is an operand, a wired blank propagates to
+null; units are dropdown config, incommensurable → `#N/A`, over-range → `#OVERFLOW!` per cell;
+unitAware. Cast: a wired blank stays blank (relay that SEES errors), a genuine parse failure is
+`#VALUE!` per cell; the source socket's dataType witnesses date-vs-number. The structural nodes
+(Group/Conduit containers, Composite drill-in, Equation acausal solver, FC unit/format author) carry
+no operand→propagate value semantics and are covered by their own subsystem tests (activeGraph,
+unitFlow); Placeholder relays an unknown node's wiring + data unchanged. Pins: `wiredNull.test.ts`
+"Other — Cast and Convert" (+2). Combine candidates: none (each is a unique special/structural node).
+Residue: none.
+
 ### SESSION DIGEST (2026-08-24 — author polish pass: Join dropdown, catalog valence, KaTeX arc trig, string-list errors, Aggregate optgroups, scratch-seed Groups)
 
 Six author asks, each landed + committed separately. (1) **Join `how` → arg dropdown**
