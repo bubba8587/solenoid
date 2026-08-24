@@ -394,6 +394,16 @@ program); the two day-count values above were the only ones spot-checked. Combin
 strong — already maximally op-merged (Depreciation unifies 5, the *disc/*mat/duration families
 paired). Residue: none.
 
+**A5 Distributions sweep** (6 leaves) → NO bugs. DistributionNode is the oneDistributionNode
+flagship: every distribution × form (CDF/PDF/PMF/tail/inverse/sample) reads its x/prob/count and
+params through `readInput`, guarded to null (sample form checks `some(null)`; forward/inverse lean on
+`broadcast`'s null short-circuit), form-scoped so only the active op's params are read; an
+out-of-domain value → blank via the compute→null path (socketDocs holds). BinomDistRange guards all
+four params; FitDistribution takes a sample list. phi/gauss/STANDARDIZE were already swept (MathFn/
+stats). Pins: `wiredNull.test.ts` "Distribution — wired blank parameter" (+1). Combine candidates:
+none strong (DistributionNode is already the model merge; BinomDistRange could fold in as a binomial
+"range" form, minor). Residue: none.
+
 ### SESSION DIGEST (2026-08-24 — author polish pass: Join dropdown, catalog valence, KaTeX arc trig, string-list errors, Aggregate optgroups, scratch-seed Groups)
 
 Six author asks, each landed + committed separately. (1) **Join `how` → arg dropdown**

@@ -16,6 +16,7 @@ import { AlertNode } from "./display";
 import { ExpectNode } from "./quality";
 import { CubeRollupNode } from "./cube";
 import { HypothesisTestNode, RankPercentileNode } from "./stats";
+import { DistributionNode } from "./distribution";
 import { SetCellNode } from "./matrix";
 import { wrapNodeData } from "../coerceInputs";
 import type { FrameValue } from "../frame";
@@ -555,6 +556,17 @@ describe("figure controls never clobber the typed literal", () => {
     node.literals.bins = 10;
     node.data({ values: [[1, 2, 3]], bins: [4] });
     expect(node.literals.bins).toBe(10);
+  });
+});
+
+describe("Distribution — a wired blank parameter propagates", () => {
+  // The oneDistributionNode flagship: every param reads through readInput, so a wired
+  // blank mean blanks the result while an unwired slot uses the seeded literal.
+  it("NORM.DIST: a wired blank mean blanks the result; unwired uses the literals", () => {
+    const node = new DistributionNode({ op: "normal", form: "cdf" });
+    const firstKey = node.spec.xKey;
+    expect(node.data({ [firstKey]: [0], mean: [null] }).result).toBeNull();
+    expect(typeof node.data({}).result).toBe("number");
   });
 });
 
