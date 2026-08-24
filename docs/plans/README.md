@@ -36,7 +36,7 @@ backlog line is deleted; git is the record.
 | 2 | ~~c-archive-evictions~~ | — | landed 2026-08-24 (0cf70611) |
 | 3 | ~~b6-popup-summary-footer~~ | — | landed 2026-08-24 (753c6c6c) |
 | 4 | [b0-python-r-gap-remainder.md](b0-python-r-gap-remainder.md) | M (4 sub-items) | — |
-| 5 | [a4-xlookup-rawinputs.md](a4-xlookup-rawinputs.md) | S–M | — |
+| 5 | ~~a4-xlookup-rawinputs~~ | — | landed 2026-08-24 (ec15cdf2) |
 | 6 | ~~a6-drill-in-drag-guard~~ | — | landed 2026-08-24 (aea271a1 + 6acb5b1c) |
 | 7 | [a3-popup-grid-keyboard.md](a3-popup-grid-keyboard.md) | M | — (unblocked; read the footer cache in TablePopup.tsx first) |
 | 8 | [b8-cube-unnest-timesavers.md](b8-cube-unnest-timesavers.md) | M (3 sub-items) | B8.3 needs A4 |
