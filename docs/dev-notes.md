@@ -136,6 +136,34 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
 ### SESSION DIGEST (2026-08-24b — parallel plan execution from docs/plans/)
 
+- **NOT STARTED / prepped at wrap-up (Agent 4): three stats/distribution node-combining merges,
+  fully scoped, zero code written (author wrapped the session before the shared-file window opened).**
+  Lead-assigned from backlog "Node-combining parked"; Lead's design calls are settled — pick up cold:
+  (1) **TREND ⊂ FORECAST.LINEAR + GROWTH.** Widen `ForecastNode.x` (stats.ts:357) to a numlist COMBO
+  (per-element; x scalar→scalar, x list→list result, mirroring INTERPOLATE) AND add a linear|exponential
+  `op` field (kind:"operation", per selectorNamedOp) so Forecast absorbs BOTH TREND (linear) and GROWTH
+  (exponential) — TrendNode (stats.ts:776) is ALREADY TREND+GROWTH via its `mode`, so fold its `expFit`
+  branch in and delete it. FORECAST.LINEAR / TREND / GROWTH all stay callable as formulas (they're
+  registered independently in `excelFunctions.ts` `registerInternal`, node-agnostic — only the
+  `nodeExcel.ts` node→formula MAP reroutes trend/growth→forecast). (2) **LINEST + LOGEST → one fit card**
+  (stats.ts:947/985) with a linear|exponential `op` (kind:"operation"). NO socket swap: keep ONE output
+  trio m/b/r² for both — for exponential, m/b are LOGEST's `[m,b]` and r² is the fit's r² on the LOG scale
+  (Excel LOGEST stats=TRUE). Both names stay callable. (3) **PHI/GAUSS are OPS in MathFnNode** (scalar.ts
+  MATHFN_OP_META + the compute switch ~348, group "Probability"), NOT nodes — move phi/gauss into
+  `DIST_SPECS` (distributionOps.ts) as single-arg standard-normal forms (φ = normal PDF, GAUSS = Φ−0.5),
+  fx:"PHI"/"GAUSS"; delete them from MathFn; PHI/GAUSS keep working via the new home. Each is ONE atomic
+  tsc-green commit touching stats.ts|distribution.ts|scalar.ts (clean) + nodeCatalog/nodeRegistry/
+  nodeExcel/nodeOps/components-index/kind + seeds. Blocked all session on those shared files being
+  peer-dirty (Gauge+Bullet, Sort merges); window opened at wrap-up, too late to land safely.
+- **Sort node absorbs SORTBY (no-duplicate-nodes).** SortBy folded into Sort as an optional
+  `by` key input. `list` widened to anylist (adoptive out), so a wired `by` reorders ANY element
+  family position-only (old SortBy); unwired, the list self-sorts by its own numeric values (old
+  List Sort). Wired-blank `by` → null (role table); list/by length mismatch → loud `#SHAPE!` (was
+  a silent pad); asc/desc applies to both modes (`sortByKeys` gained `desc`). Both SORT and SORTBY
+  formulas stay callable (registered independently) and node-reachable (the one `list-sort` leaf
+  carries both nodeExcel aliases). Deleted SortByNode + component; new self-sort / wired-blank /
+  #SHAPE! pins in list.test.ts. Landed a9199ac8 (the 3 shared catalog/registry/index files rode in
+  A2's fc0ecd4a via serialized hand-off). Select/Drop Columns merge NOT started (author wrap-up).
 - **Series node absorbs Geometric / Fibonacci / Repeat (no-duplicate-nodes).** All three were
   standalone list-generator nodes doing what the Series op-selector already does; folded in as
   ops (`SERIES_OP_META` + `SERIES_SPECS` rows, `data()` branches). The SeriesComponent is generic
