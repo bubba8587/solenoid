@@ -990,7 +990,7 @@ export function TablePopup() {
                     return (
                       <td key={c} className="table-popup__statcell">
                         <select
-                          className="table-popup__fmtselect table-popup__statselect"
+                          className="table-popup__statselect"
                           value={stat}
                           onChange={(e) => setColStat((m) => ({ ...m, [c]: e.target.value as FooterStat }))}
                         >

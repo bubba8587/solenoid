@@ -636,19 +636,32 @@
   left: 0;
   z-index: 3;
 }
+/* One line per cell: a bare, muted stat picker and the value beside it. The select
+   is borderless and sized to its text, never to the column. */
 .table-popup__statcell {
   min-width: 0;
+  white-space: nowrap;
 }
-.table-popup__statcell .table-popup__statselect {
+.table-popup__statselect {
   width: auto;
   min-width: 0;
-  max-width: 100%;
+  margin: 0 4px 0 -2px;
+  padding: 0 2px;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  outline: none;
+}
+.table-popup__statselect:hover,
+.table-popup__statselect:focus-visible {
+  background: var(--surface);
+  color: var(--text);
 }
 .table-popup__statvalue {
-  display: block;
-  margin-top: 2px;
   font-family: var(--font-mono);
   font-size: 11px;
-  white-space: nowrap;
-  text-align: right;
 }
