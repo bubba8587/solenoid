@@ -583,7 +583,7 @@ export function ValueDisplay({
     if (isEmpty) return "";
     if (isString) return cased(value as string);
     if (isLogical) return applyLogicalStyle(value as boolean, ann?.logicalStyle);
-    if (listIsString) return (value as (string | null)[]).map((v) => (v === null ? "null" : cased(v))).join(", ");
+    if (listIsString) return (value as (string | null | SolError)[]).map((v) => (v === null ? "null" : isSolError(v) ? v.code : cased(v))).join(", ");
     // A Format Controller annotation overrides a node's own custom render.
     // null/error cells aren't FC-formattable, so they take the literal cell form.
     if (isList) return (value as (number | null | SolError)[]).map((v) =>
@@ -650,7 +650,7 @@ export function ValueDisplay({
             )
           )
         : isLogical ? applyLogicalStyle(value as boolean, ann?.logicalStyle)
-        : listIsString ? (listInline ? (value as (string | null)[]).map((v) => (v === null ? "null" : cased(v))).join(", ")
+        : listIsString ? (listInline ? (value as (string | null | SolError)[]).map((v) => (v === null ? "null" : isSolError(v) ? v.code : cased(v))).join(", ")
             // `elem` matters MOST here: dateFormatDisplay turned a date list's
             // serials into STRINGS, so the chip would otherwise sniff "text".
             : <ArrayChip value={value as string[]} elem={elemFam} />)
