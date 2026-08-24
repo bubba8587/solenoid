@@ -5,8 +5,8 @@ import { initPackFormulas } from "./formulaExtensions";
 // ─── The parity RATCHET (formulaNaming) ─────────────────────────────────────────────────
 // The node set and the formula language drifted apart because NOTHING checked one
 // against the other — a node could ship with an Excel name that no formula could
-// call, and Formula.js could drag in a legacy name nobody decided to support. See
-// `docs/archive/formula-node-parity.md`.
+// call, and Formula.js could drag in a legacy name nobody decided to support. The
+// ratchet rules are `docs/rules.md` formulaNaming / uniqueNameMap.
 //
 // This test pins today's gaps and makes them one-way. Both directions assert
 // live ⊆ pinned (a NEW gap fails) AND pinned ⊆ live (a CLOSED gap must be deleted
@@ -56,7 +56,8 @@ describe("formula ↔ node parity ratchet", () => {
         added,
         `These Excel names have a node but are NOT callable in a formula:${fmt(added)}\n` +
           `Register a native impl for each (excelFunctions.ts \`registerInternal\`), sharing the\n` +
-          `node's compute — see docs/archive/formula-node-parity.md "Tier 1". If a name genuinely cannot\n` +
+          `node's compute (the parity ratchet — an Excel-named node MUST be callable in a formula;\n` +
+          `docs/rules.md formulaNaming). If a name genuinely cannot\n` +
           `be registered (2-D shape under the noFramesInFormulas cap, or a lambda meta-function), add it to\n` +
           `EXCEL_NAMED_GAP here WITH a reason in the comment above.`,
       ).toEqual([]);

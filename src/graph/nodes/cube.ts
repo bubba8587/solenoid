@@ -4,8 +4,6 @@ import { cubeFromColumns, relateFramesToCube, relateCubeToFrame, cubeColumnFromV
 import { aggregateGroup, type AggOp } from "../frameVerbs";
 import { solError, type SolError } from "../errorValue";
 
-// Cube nodes — the recursive container. See docs/archive/cube-node-scope.md.
-
 export class BuildCubeNode extends ClassicPreset.Node {
   label: string;
   cachedResult: CubeValue | null = null;

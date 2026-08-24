@@ -133,7 +133,7 @@ describe("lookupCubeRowIndex + cubeRowAt — the whole-row (*) path", () => {
 });
 
 // The cube half: look a key up in a Cube's TOP-LEVEL column, return the matched
-// row's cell WHOLE (a nested frame/cube comes out intact). See docs/archive/cube-node-scope.md.
+// row's cell WHOLE (a nested frame/cube comes out intact).
 const orders1: FrameValue = { __frame: true, columns: [{ name: "sku", type: "string", values: ["a", "b"] }] };
 const orders3: FrameValue = { __frame: true, columns: [{ name: "sku", type: "string", values: ["z"] }] };
 const customers: CubeValue = cubeFromColumns([

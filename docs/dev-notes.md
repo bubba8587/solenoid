@@ -99,6 +99,19 @@ Pinned in `broadcastRules.test.ts` "the matricesInFormulas containment rule" (+3
 meta" was stale → fixed to 377 (actual `EXCEL_IMPL_META` size); its "~445 advertised" is also
 off (`FX_FUNCTION_NAMES` is 880 incl. dotted names) — left for the allowlist-flip follow-on.
 
+**C — evict live material still cited from `docs/archive/` (plan 2).** The four code citations
+of archived docs are gone: `scripts/formula-node-parity.ts` and `formulaNodeParity.test.ts`
+(header + the user-facing failure message) now point at `rules.md` formulaNaming/uniqueNameMap
+and state the ratchet rule inline; `nodes/cube.ts`'s comment deleted (now a routed file — new
+`docs/README.md` routing row → `subsystem-invariants.md` § Socket lattice, the accurate home for
+the recursive-container invariant, not the `rules.md` the plan defaulted to); `frameLookup.test.ts`
+keeps its behavioral sentence, drops the "See archive" clause. Step-3 check: neither archived doc
+holds a still-true rule missing from the live set (the cube socket rules are in `rules.md`/§ Socket
+lattice; the parity ratchet is pinned in the test + formulaNaming), so nothing moved. `docsPointers.test.ts`
+still references `docs/archive/README.md` — that IS the enforcer of the boundary, correct to keep, so
+the done-when grep is "nothing but the enforcer" rather than literally empty. `formulajs-vs-native-audit.md`
+had zero code citations (backlog claim was stale); `FAMILY_BACKING` already carries its verdicts.
+
 ### SESSION DIGEST (2026-08-24 — author polish pass: Join dropdown, catalog valence, KaTeX arc trig, string-list errors, Aggregate optgroups, scratch-seed Groups)
 
 Six author asks, each landed + committed separately. (1) **Join `how` → arg dropdown**

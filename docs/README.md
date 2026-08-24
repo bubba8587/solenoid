@@ -145,6 +145,7 @@ relapse.
 | `persistence.ts` (load gate, literal maps) | `subsystem-invariants.md` § Inline literal maps |
 | `CompositeEditorOverlay.tsx`, drill-in lifecycle | `subsystem-invariants.md` § Composite drill-in |
 | `sockets.ts`, `accepts()`, `trueAnyAdopt.ts` | `subsystem-invariants.md` § Socket lattice; `socket-reference.md`; wildcardLadder |
+| `nodes/cube.ts` | `subsystem-invariants.md` § Socket lattice (the Cube is the recursive lattice supremum) |
 | `excelFunctions.ts`, `excelFormula.ts`, Expression/LAMBDA | `formulajs-divergences.md`; `rules.md` FX rules; tableRefSemantics |
 | `nodes/listOps.ts`, `textOps.ts`, `financeOps.ts`, `matrixOps.ts`, `indexAccess.ts`, `dateSerial.ts`, `convertUnits.ts` — and ANY new shared node↔formula module | `rules.md` shareImpl (one impl, two surfaces), implReteFree (rete-free; what not to extract) |
 | `computedColumnCore.ts` | tableRefSemantics, noPerCellFormulas; `rules.md` rowFormulaRefs |

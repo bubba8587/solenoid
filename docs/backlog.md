@@ -200,13 +200,6 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   selector inputs fall back to the literal on a wired blank, diverging from
   value-semantics' "mode selector propagates" row. Decide; reconcile table or code.
 - [ ] **Settings: Node Packs section** — planned, unbuilt (`Settings.tsx`).
-- [ ] **Finish evicting live material from `docs/archive/`** — the routing table is
-  clean and machine-checked now, but three archived docs are still cited as current
-  by CODE: `formulajs-vs-native-audit.md` (the per-family verdicts `FAMILY_BACKING`
-  encodes), `cube-node-scope.md` (`nodes/cube.ts`, `frameLookup.test.ts`),
-  `formula-node-parity.md` § Tier 1 (quoted in `formulaNodeParity.test.ts`'s failure
-  message). Same split as the divergence catalogue: live half out, finished record
-  stays.
 - [ ] **Formula surface is open-by-default (the systemic follow-up).** The 2-D dead-name
   set is resolved (COLUMNS/ROWS + HSTACK/VSTACK/CHOOSECOLS/CHOOSEROWS owned sharing their
   node kernels; the D* family eliminated like VLOOKUP). What remains is the ROOT cause: the
