@@ -15,7 +15,7 @@ import { BulletNode, KpiNode, HistogramNode } from "./visual";
 import { AlertNode } from "./display";
 import { ExpectNode } from "./quality";
 import { CubeRollupNode } from "./cube";
-import { HypothesisTestNode } from "./stats";
+import { HypothesisTestNode, RankPercentileNode } from "./stats";
 import { wrapNodeData } from "../coerceInputs";
 import type { FrameValue } from "../frame";
 import { solError, isSolError } from "../errorValue";
@@ -513,6 +513,17 @@ describe("figure controls never clobber the typed literal", () => {
     node.literals.bins = 10;
     node.data({ values: [[1, 2, 3]], bins: [4] });
     expect(node.literals.bins).toBe(10);
+  });
+});
+
+describe("Rank & Percentile — active-family param guard", () => {
+  // LARGE reads k: a wired blank k blanks the result, an unwired slot uses the seeded
+  // literal. The list operand skips its own nulls before ranking.
+  it("LARGE: a wired blank k blanks the result; unwired uses the literal", () => {
+    const node = new RankPercentileNode({ op: "large" });
+    expect(node.data({ list: [[3, 1, 2]], k: [null as unknown as number] }).result).toBeNull();
+    expect(node.data({ list: [[3, 1, 2]] }).result).toBe(3); // k defaults to 1 -> largest
+    expect(node.data({ list: [[3, 1, 2]], k: [2] }).result).toBe(2); // 2nd largest
   });
 });
 

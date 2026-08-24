@@ -342,6 +342,18 @@ Correl + Covariance (+ SumProduct's paired sums) share the two-list `forPair` sh
 node with an op selector (correl/spearman/kendall/rsq/cov.p/cov.s); otherwise heavily op-merged
 (Aggregate alone unifies ~24 reduce ops). Residue: none.
 
+**A5 Lists ▸ Rank/Regression/Tests/Stats sweep** (36 leaves) → NO bugs. Uniformly exemplary:
+RankPercentileNode and HypothesisTestNode read each active op-family's params via `readInput` with a
+scoped null-guard (LARGE's k, PERCENTILE's p, QUARTILE's q, Z.TEST's x/σ, proptest/binomtest params)
+and their lists via `forAggregate` (skip null, propagate error) or `forPair` (drop blank pairs). The
+regression nodes (Forecast, Linest, Logest, Polyfit, Trend, ETS, Decompose, Interpolate) guard the
+query operand and use `forPair`; zero-variance → `#DIV/0!`. Documented deviation confirmed: an
+out-of-range INC quartile blanks on the node vs the formula's `#DOMAIN!` (kept from before). Pins:
+`wiredNull.test.ts` "Rank & Percentile — active-family param guard" (+1). Combine candidates: the
+curve-fitters LINEST + LOGEST + PolyFit + TREND (+ FORECAST.LINEAR) → one "Fit/Regression" node with
+a model selector (linear/exponential/polynomial) + predict; ETS + Decompose share seasonal
+decomposition. Otherwise heavily op-merged (HypothesisTest unifies 12 tests). Residue: none.
+
 ### SESSION DIGEST (2026-08-24 — author polish pass: Join dropdown, catalog valence, KaTeX arc trig, string-list errors, Aggregate optgroups, scratch-seed Groups)
 
 Six author asks, each landed + committed separately. (1) **Join `how` → arg dropdown**
