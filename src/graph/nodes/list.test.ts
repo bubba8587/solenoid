@@ -30,12 +30,17 @@ import { solError, isSolError } from "../errorValue";
 import katex from "katex";
 
 describe("Range", () => {
-  it("counts up, stop-exclusive", () => {
-    expect(new SeriesNode({ op: "range" }).data({ start: [0], stop: [5], step: [1] }).list).toEqual([0, 1, 2, 3, 4]);
-    expect(new SeriesNode({ op: "range" }).data({ start: [0], stop: [10], step: [2] }).list).toEqual([0, 2, 4, 6, 8]);
+  it("counts up, stop-INCLUSIVE (ends ON Stop)", () => {
+    expect(new SeriesNode({ op: "range" }).data({ start: [0], stop: [5], step: [1] }).list).toEqual([0, 1, 2, 3, 4, 5]);
+    expect(new SeriesNode({ op: "range" }).data({ start: [0], stop: [10], step: [2] }).list).toEqual([0, 2, 4, 6, 8, 10]);
   });
-  it("counts down with a negative step", () => {
-    expect(new SeriesNode({ op: "range" }).data({ start: [5], stop: [0], step: [-1] }).list).toEqual([5, 4, 3, 2, 1]);
+  it("counts down with a negative step, including Stop", () => {
+    expect(new SeriesNode({ op: "range" }).data({ start: [5], stop: [0], step: [-1] }).list).toEqual([5, 4, 3, 2, 1, 0]);
+  });
+  it("snaps the last value onto Stop exactly — 0→1 by 0.1 ends on 1, not 0.9999999", () => {
+    const r = new SeriesNode({ op: "range" }).data({ start: [0], stop: [1], step: [0.1] }).list as number[];
+    expect(r).toHaveLength(11);
+    expect(r[10]).toBe(1);
   });
   it("is empty when stop is unreachable; step 0 is a LOUD #DOMAIN!", () => {
     expect(new SeriesNode({ op: "range" }).data({ start: [0], stop: [5], step: [-1] }).list).toEqual([]);

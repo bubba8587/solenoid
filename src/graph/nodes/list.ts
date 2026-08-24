@@ -164,7 +164,7 @@ export class ListInputNode extends ClassicPreset.Node {
 export type SeriesOp = "range" | "sequence" | "linspace";
 
 export const SERIES_OP_META = {
-  range:    { label: "Range",    description: "Generates a sequence: start, start+step, …, < stop. Excel: SEQUENCE." },
+  range:    { label: "Range",    description: "Generates a sequence from Start to Stop inclusive, Step apart. Excel: SEQUENCE. numpy arange stops before Stop." },
   sequence: { label: "SEQUENCE", description: "List of N numbers starting at Start with Step between each. Like Range but count-first. Excel: SEQUENCE." },
   linspace: { label: "LinSpace", description: "Generates Count evenly spaced values from Start to End inclusive." },
 } satisfies Record<SeriesOp, { label: string; description: string }>;

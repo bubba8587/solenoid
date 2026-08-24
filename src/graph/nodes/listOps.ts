@@ -722,13 +722,13 @@ export function fillList(
 
 // ─── Range ────────────────────────────────────────────────────────────────────
 
-/** Half-open `[start, stop)`; an UNSET stop means no series yet, not a blank cable. The
- *  returned length is what callers cap on (there is no Count field), and is Infinity when
- *  the walk never terminates. */
+/** INCLUSIVE `[start, stop]`, Step apart (author 2026-08-24 — Range now ends ON Stop, unlike
+ *  numpy arange). An UNSET stop means no series yet, not a blank cable. The returned length is
+ *  what callers cap on (there is no Count field), and is Infinity when the walk never terminates. */
 export function rangeCount(start: number, stop: number | undefined, step: number): number {
   if (stop === undefined) return 0;
-  if (step === 0) return start === stop ? 0 : Infinity;
-  const n = Math.ceil((stop - start) / step);
+  if (step === 0) return start === stop ? 1 : Infinity;
+  const n = Math.floor((stop - start) / step + 1e-9) + 1;
   return n > 0 ? n : 0;
 }
 
@@ -736,8 +736,13 @@ export function rangeList(start: number, stop: number | undefined, step: number)
   const n = rangeCount(start, stop, step);
   if (!Number.isFinite(n)) return [];
   const out: number[] = [];
-  let cur = start;
-  for (let i = 0; i < n; i++) { out.push(cur); cur += step; }
+  for (let i = 0; i < n; i++) {
+    // start + i*step, NOT accumulated (float drift); snap the LAST value onto Stop exactly
+    // so e.g. 0→1 by 0.1 ends on 1, not 0.9999999.
+    let v = start + i * step;
+    if (i === n - 1 && stop !== undefined && step !== 0 && Math.abs(v - stop) < Math.abs(step) * 1e-9) v = stop;
+    out.push(v);
+  }
   return out;
 }
 
