@@ -162,6 +162,23 @@ the profile-bar tooltip lost its dynamic counts — tooltips are structural only
   in-card expand button became the collapsed [Chart] chip — confirm 1-D still reads right, then flip
   to 2-D.
 
+**C2 — the base Chart renders multiple series from a frame (plan 11, author ask). 3 commits.**
+`ChartValue.series` + `ChartNode.data()`: column 0 is ALWAYS the x-axis label at ≥2 columns (a
+numeric col 0 is a real axis — live-market-data feeds are `(date-or-number, value)`; the "label only
+when non-numeric" first cut regressed that, Agent-1 plan fix 273e08fd); the NUMBER columns after it
+are named series; `values` mirrors the first so 1-D consumers are untouched; a legend at ≥2.
+`MultiSeriesView` (chartRender) draws one child per series for column/bar/line/area/scatter/radar
+with a recharts `<Legend>` + a multi-value tooltip, palette-colored (Options `color` stays
+single-series). Step 3 deleted the redundant `Series` (anyTable) socket + `CHART_MATRIX_OPS` +
+`ChartValue.matrix` — every op reads the one `values` frame; Composed reads the columns as
+bar-then-lines, Bubble bypasses the label rule and takes the first three NUMBER columns as x/y/size.
+chart-showcase's `TableInputNode matrix` → a `FrameInputNode [Step, A, B]`. `Legend` is the first in
+`src/`. Pinned in `chartValue.test.ts`; renderer is author-eyeball (node vitest env has no DOM).
+AUTHOR EYEBALL: `getting-started` / `decision-matrix` charts unchanged; a Frame Input `Month, Sales,
+Target` → Chart shows two colored series + a legend (line too); chart-showcase Composed/Bubble look
+as before from the new frame source. Out of scope (one Finding each): stacked, per-series color
+overrides, secondary y-axis, legend toggling.
+
 **A6 — shared node drag guard + tap-select on BOTH editing surfaces (plan 6).** The composite
 drill-in had NO drag guard, so a finger press grabbed a card and a finger pan over cards was dead
 (the reported sudoku-solver "flickering"). Canvas's inline `patchDragGuard` is now
