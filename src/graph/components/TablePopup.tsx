@@ -126,6 +126,8 @@ function colLabel(i: number): string {
  * Mode is set by which save callback the opener passes: `onSave` → numeric matrix,
  * `onSaveFrame`/`onSaveSource`/`onSaveRaw` → frame editor, none → read-only viewer.
  */
+type ColSummary = { profile: ColumnProfile; sum: number | null };
+
 export function TablePopup() {
   const state = useSyncExternalStore(tablePopup.subscribe, tablePopup.get);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
@@ -168,6 +170,7 @@ export function TablePopup() {
   // without a Save/close round trip.
   const [liveComputed, setLiveComputed] = useState<CellValue[][] | null>(null);
   const initedFor = useRef<TablePopupState | null>(null);
+  const summaryCache = useRef<{ deps: unknown[]; value: ColSummary[] | null }>({ deps: [], value: null });
 
   useEffect(() => {
     if (!state) { initedFor.current = null; return; }
@@ -483,8 +486,12 @@ export function TablePopup() {
   // Per-column summary + profile for the footer (frame popups only), over the WHOLE
   // dataset: read-only reads state.data, editable reparses buildFrameColumns, a computed
   // column reads its derived cells (B6). Skipped entirely for a plain list/table popup.
-  const colSummaries: { profile: ColumnProfile; sum: number | null }[] | null =
-    isFramePopup && !vertical ? (() => {
+  // Cached on the identities it reads: a keystroke (bumpDraft) or a sort click re-renders
+  // without rescanning the grid.
+  const summaryDeps = [state, grid, columnTypes, computedVals, colLambdas, colExprs, listVertical, editable];
+  const sameDeps = (a: unknown[], b: unknown[]) => a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
+  if (!sameDeps(summaryCache.current.deps, summaryDeps)) {
+    const value: ColSummary[] | null = isFramePopup && !vertical ? (() => {
       const frameCols = editable ? buildFrameColumns() : null;
       const valuesFor = (c: number): unknown[] => {
         if (hasComputed && isComputedCol(c)) return (computedVals ?? []).map((row) => row?.[c] ?? null);
@@ -503,6 +510,9 @@ export function TablePopup() {
         return { profile, sum };
       });
     })() : null;
+    summaryCache.current = { deps: summaryDeps, value };
+  }
+  const colSummaries = summaryCache.current.value;
   const fmtStat = (n: number | null): string => (n == null ? "—" : formatScalar(n));
 
   const headers = editableHeaders ? headerNames : state.headers;
@@ -909,7 +919,7 @@ export function TablePopup() {
                       <td key={c} className="table-popup__profcell">
                         <div
                           className="table-popup__profbar"
-                          title={`${valid} valid · ${profile.error} error · ${profile.blank} empty`}
+                          title="Valid, error, empty"
                         >
                           <span className="table-popup__profseg table-popup__profseg--valid" style={{ width: `${pct(valid)}%` }} />
                           <span className="table-popup__profseg table-popup__profseg--error" style={{ width: `${pct(profile.error)}%` }} />
