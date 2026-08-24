@@ -1,4 +1,5 @@
 import { useCallback, useState, useRef, type ReactNode, useLayoutEffect, useContext, useSyncExternalStore } from "react";
+import { useNativeEnterLeave } from "./nativeHover";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { copyText } from "../clipboard";
@@ -586,6 +587,10 @@ export function ValueDisplay({
     return toClipboard && !ann ? toClipboard(value as number) : fmtScalar(value as number);
   }
 
+  // Native enter/leave: the pointer arrives from the canvas root (nativeHover.ts).
+  const boxRef = useRef<HTMLDivElement>(null);
+  useNativeEnterLeave(boxRef, () => setHovered(true), () => setHovered(false));
+
   function handleCopy(e: React.MouseEvent) {
     e.stopPropagation();
     const text = getClipboardText();
@@ -616,8 +621,7 @@ export function ValueDisplay({
         cursor: isEmpty ? undefined : "text",
         paddingLeft: isEmpty ? undefined : 26,
       }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      ref={boxRef}
       onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
     >
