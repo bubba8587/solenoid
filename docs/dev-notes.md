@@ -136,6 +136,16 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
 ### SESSION DIGEST (2026-08-24b — parallel plan execution from docs/plans/)
 
+- **Series node absorbs Geometric / Fibonacci / Repeat (no-duplicate-nodes).** All three were
+  standalone list-generator nodes doing what the Series op-selector already does; folded in as
+  ops (`SERIES_OP_META` + `SERIES_SPECS` rows, `data()` branches). The SeriesComponent is generic
+  over the op meta, so the selector + the onePrunePath (`keysDroppedBySwitch`→`dropInputCables`
+  before `setOp`) needed no change. Formula parity holds — REPEAT/GEOMETRIC/FIBONACCI already
+  existed with matching names (label despaces to the fx name, no `fx` override). Repeat/Geometric
+  gained the sequence op's `#OVERFLOW!` MAX_GENERATED guard (the old nodes were unguarded; the
+  formulas already capped). Deleted the 3 classes + 3 one-line component files; catalog leaves
+  keep their `list-repeat/geometric/fibonacci` types (nodeExcel keys). RandArray stays separate.
+  Old saves load as Placeholder. Full suite green. No backlog line existed to delete.
 - **Popup read-only cells → plain text (the cheap popup-perf win).** TablePopup cells with
   `canEdit` false (read-only popups + computed cells) render a `<div class="table-popup__input
   table-popup__input--ro">` instead of `<input readOnly>`; editable cells unchanged. Keyboard

@@ -15,9 +15,9 @@ import {
   CorrelNode, CombinatoricsNode, TwoInputMathNode,
   SumProductNode, ChooseNode, BooleanInputNode, SliderInputNode, ColorPickerNode, ColorBlendNode, IsTestNode,
   SaveTimesNode,
-  AlertNode, NormalizeNode, BinNode, OutliersNode, SmoothNode, FindPeaksNode, SpectrumNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode, BetweenNode, IsCloseNode, RepeatNode,
-  ShuffleNode, NthElementNode, InterleaveNode, PadNode, GeometricNode,
-  FibonacciNode, StandardizeNode, CovarianceNode, FisherNode, BitwiseNode,
+  AlertNode, NormalizeNode, BinNode, OutliersNode, SmoothNode, FindPeaksNode, SpectrumNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode, BetweenNode, IsCloseNode,
+  ShuffleNode, NthElementNode, InterleaveNode, PadNode,
+  StandardizeNode, CovarianceNode, FisherNode, BitwiseNode,
   DepreciationNode,
   TvmNode, IpmtPpmtNode, NpvNode, IrrNode, MirrNode, CumPmtNode, AmortizationNode, ReturnsNode,
   FvScheduleNode, IspmtNode, DollarNode, ProbNode,
@@ -97,7 +97,7 @@ const booleanLeaf  = (op: BooleanOp):      NodeCatalogEntry => ({ type: `bool-${
 const reduceLeaf   = (op: ReduceOp):       NodeCatalogEntry => ({ type: `reduce-${op}`,    label: REDUCE_OP_META[op].label,         description: REDUCE_OP_META[op].description,         create: () => new AggregateNode({ op }), ...((REDUCE_OP_META[op] as { fx?: string }).fx ? { fx: [(REDUCE_OP_META[op] as { fx?: string }).fx!] } : {})     });
 const combLeaf     = (op: CombinatoricsOp):NodeCatalogEntry => ({ type: `comb-${op}`,      label: COMBINATORICS_OP_META[op].label,  description: COMBINATORICS_OP_META[op].description,  create: () => new CombinatoricsNode({ op }) });
 // One Series node; the leaf types keep their historical spellings (nodeExcel keys).
-const SERIES_LEAF_TYPE: Record<SeriesOp, string> = { range: "list-range", sequence: "list-sequence", linspace: "list-linspace" };
+const SERIES_LEAF_TYPE: Record<SeriesOp, string> = { range: "list-range", sequence: "list-sequence", linspace: "list-linspace", geometric: "list-geometric", fibonacci: "list-fibonacci", repeat: "list-repeat" };
 const seriesLeaf   = (op: SeriesOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: SERIES_LEAF_TYPE[op], label: SERIES_OP_META[op].label, description: SERIES_OP_META[op].description, create: () => new SeriesNode({ op }), ...overrides });
 
 // One Rank & Percentile node; the leaf types keep their historical spellings (nodeExcel keys).
@@ -469,10 +469,10 @@ export const NODE_CATALOG: CatalogEntry[] = [
           seriesLeaf("range", { accent: NODE_KIND_ACCENTS.list }),
           seriesLeaf("linspace"),
           { type: "list-concat",   label: "Concat Lists", description: "Joins lists end-to-end, in row order — add rows for more lists. A lone value counts as a 1-element list. Any element type. To stack lists as rows of a table instead, use VSTACK.", create: () => new ConcatListsNode(), keywords: "append join combine concatenate push" },
-          { type: "list-repeat",   label: "Repeat",    description: "An array of one value repeated N times, like ZEROS or ONES.", create: () => new RepeatNode() },
+          seriesLeaf("repeat"),
           { type: "pair", children: [
-            { type: "list-geometric", label: "Geometric", description: "Geometric series: start × ratio^0, start × ratio^1, …", create: () => new GeometricNode() },
-            { type: "list-fibonacci", label: "Fibonacci",  description: "First N Fibonacci numbers: 1, 1, 2, 3, 5, 8, …", create: () => new FibonacciNode() },
+            seriesLeaf("geometric"),
+            seriesLeaf("fibonacci"),
           ]},
           { type: "list-randarray", label: "RANDARRAY", description: "List of N random numbers between Min and Max. Excel: RANDARRAY.", create: () => new RandArrayNode(), parity: false },
           { type: "list-combinations", label: "Combinations", description: "Every way to choose k items from the list — one row each, as combinations (order-independent) or permutations. Python itertools.", create: () => new CombinationsNode(), parity: false, keywords: "combinations permutations itertools choose subsets arrangements nCk nPk pairs tuples pick sample without replacement" },

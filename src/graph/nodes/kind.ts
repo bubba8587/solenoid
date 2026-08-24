@@ -21,9 +21,9 @@ import {
   UniqueNode, ListTakeDropNode, SetOpNode, SetRelationNode, IsInNode, TallyNode,
   ConcatListsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode,
-  NormalizeNode, BinNode, OutliersNode, SmoothNode, FindPeaksNode, SpectrumNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode, RepeatNode,
+  NormalizeNode, BinNode, OutliersNode, SmoothNode, FindPeaksNode, SpectrumNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode,
   ShuffleNode, NthElementNode, InterleaveNode,
-  PadNode, GeometricNode, FibonacciNode,
+  PadNode,
   FillNode,
 } from "./list";
 import {
@@ -104,11 +104,11 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof ConcatListsNode || node instanceof RunningNode || node instanceof DiffNode ||
     node instanceof ArgMinMaxNode || node instanceof ContainsNode ||
     node instanceof NormalizeNode ||
-    node instanceof BinNode || node instanceof OutliersNode || node instanceof SmoothNode || node instanceof FindPeaksNode || node instanceof SpectrumNode || node instanceof ShiftNode || node instanceof CombinationsNode || node instanceof RepeatNode ||
+    node instanceof BinNode || node instanceof OutliersNode || node instanceof SmoothNode || node instanceof FindPeaksNode || node instanceof SpectrumNode || node instanceof ShiftNode || node instanceof CombinationsNode ||
     node instanceof EwmaNode || node instanceof ConvolveNode || node instanceof CrossNode ||
     node instanceof PolyfitNode || node instanceof TrapzNode || node instanceof RleNode ||
     node instanceof ShuffleNode || node instanceof NthElementNode || node instanceof InterleaveNode ||
-    node instanceof PadNode || node instanceof GeometricNode || node instanceof FibonacciNode ||
+    node instanceof PadNode ||
     node instanceof FillNode
   ) return "list";
   if (

@@ -55,9 +55,6 @@ export { IsCloseComponent } from "./IsCloseNode";
 export { ListInputComponent } from "./ListInputNode";
 export { SeriesComponent } from "./SeriesNode";
 export { VStackComponent } from "./VStackNode";
-export { RepeatComponent } from "./RepeatNode";
-export { GeometricComponent } from "./GeometricNode";
-export { FibonacciComponent } from "./FibonacciNode";
 
 // ─── Lists — shape ────────────────────────────────────────────────────────────
 export { SortComponent } from "./SortNode";

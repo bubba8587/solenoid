@@ -4,7 +4,7 @@ import { EXCEL_IMPL_META, listReturningNames, wholeArgNames, resolveExcelFunctio
 import {
   ReverseNode, SliceNode, NthElementNode, InterleaveNode, PadNode, DiffNode, NormalizeNode,
   ListLengthNode, ArgMinMaxNode, ContainsNode, WeightedNode, RunningNode, RUNNING_OP_META,
-  SeriesNode, RepeatNode, GeometricNode, FibonacciNode,
+  SeriesNode,
   SetOpNode, SetRelationNode, FillNode, ConcatListsNode, PAD_OP_META, ARG_MIN_MAX_OP_META, WEIGHTED_OP_META,
   SET_OP_META, SET_RELATION_META, FILL_OP_META,
 } from "./nodes/list";
@@ -128,9 +128,9 @@ describe("every Tier 3 name computes what its node computes", () => {
 
   it("LINSPACE / REPEAT / GEOMETRIC / FIBONACCI", () => {
     expect(ev("LINSPACE(0, 1, 5)")).toEqual(new SeriesNode({ op: "linspace" }).data({ start: [0], end: [1], count: [5] }).list);
-    expect(ev("REPEAT(7, 4)")).toEqual(new RepeatNode().data({ value: [7], count: [4] }).result);
-    expect(ev("GEOMETRIC(1, 3, 5)")).toEqual(new GeometricNode().data({ start: [1], ratio: [3], count: [5] }).result);
-    expect(ev("FIBONACCI(8)")).toEqual(new FibonacciNode().data({ n: [8] }).result);
+    expect(ev("REPEAT(7, 4)")).toEqual(new SeriesNode({ op: "repeat" }).data({ value: [7], count: [4] }).list);
+    expect(ev("GEOMETRIC(1, 3, 5)")).toEqual(new SeriesNode({ op: "geometric" }).data({ start: [1], ratio: [3], count: [5] }).list);
+    expect(ev("FIBONACCI(8)")).toEqual(new SeriesNode({ op: "fibonacci" }).data({ count: [8] }).list);
   });
 });
 

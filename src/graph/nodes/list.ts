@@ -161,18 +161,24 @@ export class ListInputNode extends ClassicPreset.Node {
 // count-first (SEQUENCE), endpoint-count (LinSpace). Start is shared by all
 // three and Step/Count by their pairs, so an op switch keeps those cables.
 
-export type SeriesOp = "range" | "sequence" | "linspace";
+export type SeriesOp = "range" | "sequence" | "linspace" | "geometric" | "fibonacci" | "repeat";
 
 export const SERIES_OP_META = {
   range:    { label: "Range",    description: "Generates a sequence from Start to Stop inclusive, Step apart. Excel: SEQUENCE. numpy arange stops before Stop." },
   sequence: { label: "SEQUENCE", description: "List of N numbers starting at Start with Step between each. Like Range but count-first. Excel: SEQUENCE." },
   linspace: { label: "LinSpace", description: "Generates Count evenly spaced values from Start to End inclusive." },
+  geometric: { label: "Geometric", description: "Geometric series: start × ratio^0, start × ratio^1, …" },
+  fibonacci: { label: "Fibonacci", description: "First N Fibonacci numbers: 1, 1, 2, 3, 5, 8, …" },
+  repeat:    { label: "Repeat",    description: "An array of one value repeated N times, like ZEROS or ONES." },
 } satisfies Record<SeriesOp, { label: string; description: string }>;
 
 const SERIES_SPECS: Record<SeriesOp, ReadonlyArray<{ key: string; label: string; def?: number }>> = {
   range:    [{ key: "start", label: "Start", def: 0 }, { key: "stop", label: "Stop" }, { key: "step", label: "Step", def: 1 }],
   sequence: [{ key: "count", label: "Count", def: 10 }, { key: "start", label: "Start (default 1)" }, { key: "step", label: "Step (default 1)" }],
   linspace: [{ key: "start", label: "Start", def: 0 }, { key: "end", label: "End", def: 1 }, { key: "count", label: "Count", def: 10 }],
+  geometric: [{ key: "start", label: "Start", def: 1 }, { key: "ratio", label: "Ratio", def: 2 }, { key: "count", label: "Count", def: 8 }],
+  fibonacci: [{ key: "count", label: "Count", def: 10 }],
+  repeat:    [{ key: "value", label: "Value", def: 0 }, { key: "count", label: "Count", def: 5 }],
 };
 
 export class SeriesNode extends ClassicPreset.Node {
@@ -220,7 +226,7 @@ export class SeriesNode extends ClassicPreset.Node {
     this.seedLiterals();
   }
 
-  data(inputs: { start?: number[]; stop?: number[]; step?: number[]; end?: number[]; count?: number[] }): { list: number[] | SolError | null } {
+  data(inputs: { start?: number[]; stop?: number[]; step?: number[]; end?: number[]; count?: number[]; ratio?: number[]; value?: number[] }): { list: number[] | SolError | null } {
     let list: number[] | SolError | null;
     if (this.op === "range") {
       const start = readInput(inputs.start, this.literals.start ?? 0);
@@ -248,11 +254,30 @@ export class SeriesNode extends ClassicPreset.Node {
           ? solError("#OVERFLOW!", `SEQUENCE count ${count} exceeds the ${MAX_GENERATED} element limit`)
           : sequenceList(count, start, step);
       }
-    } else {
+    } else if (this.op === "linspace") {
       const start = readInput(inputs.start, this.literals.start ?? 0);
       const end   = readInput(inputs.end, this.literals.end ?? 1);
       const nRaw  = readInput(inputs.count, this.literals.count ?? 10);
       list = start === null || end === null || nRaw === null ? null : linspace(start, end, nRaw);
+    } else if (this.op === "geometric") {
+      const start = readInput(inputs.start, this.literals.start ?? 1);
+      const ratio = readInput(inputs.ratio, this.literals.ratio ?? 2);
+      const nRaw  = readInput(inputs.count, this.literals.count ?? 8);
+      if (start === null || ratio === null || nRaw === null) list = null;
+      else list = Math.max(0, Math.round(nRaw)) > MAX_GENERATED
+        ? solError("#OVERFLOW!", `Geometric count ${Math.round(nRaw)} exceeds the ${MAX_GENERATED} element limit`)
+        : geometric(start, ratio, nRaw);
+    } else if (this.op === "fibonacci") {
+      // The kernel self-caps at 78 terms (F79 loses double precision), so no overflow guard.
+      const nRaw = readInput(inputs.count, this.literals.count ?? 10);
+      list = nRaw === null ? null : fibonacci(nRaw);
+    } else {
+      const v    = readInput(inputs.value, this.literals.value ?? 0);
+      const nRaw = readInput(inputs.count, this.literals.count ?? 5);
+      if (v === null || nRaw === null) list = null;
+      else list = Math.max(0, Math.round(nRaw)) > MAX_GENERATED
+        ? solError("#OVERFLOW!", `Repeat count ${Math.round(nRaw)} exceeds the ${MAX_GENERATED} element limit`)
+        : repeatValue(v, nRaw);
     }
     this.cachedList = list;
     return { list };
@@ -1617,32 +1642,6 @@ export class NormalizeNode extends ClassicPreset.Node {
   }
 }
 
-// ─── LinSpace ─────────────────────────────────────────────────────────────────
-// ─── Repeat ───────────────────────────────────────────────────────────────────
-export class RepeatNode extends ClassicPreset.Node {
-  label: string;
-  cachedList: number[] | null = [];
-  literals: Record<string, number> = { value: 0, count: 5 };
-  width = 180; height = 160;
-
-  constructor(init?: { label?: string }) {
-    super("Repeat");
-    this.label = init?.label ?? "Repeat";
-    this.addInput("value", numIn("Value"));
-    this.addInput("count", numIn("Count"));
-    this.addOutput("result", listOut("List"));
-  }
-
-  data(inputs: { value?: number[]; count?: number[] }) {
-    const v    = readInput(inputs.value, this.literals.value ?? 0);
-    const nRaw = readInput(inputs.count, this.literals.count ?? 5);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
-    if (v === null || nRaw === null) { this.cachedList = null; return { result: null }; }
-    this.cachedList = repeatValue(v, nRaw);
-    return { result: this.cachedList };
-  }
-}
-
 // ─── Shuffle ──────────────────────────────────────────────────────────────────
 export class ShuffleNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -1776,63 +1775,6 @@ export class PadNode extends ClassicPreset.Node {
     return { result: this.cachedList };
   }
 }
-
-// ─── Geometric Sequence ───────────────────────────────────────────────────────
-export class GeometricNode extends ClassicPreset.Node {
-  label: string;
-  cachedList: number[] | null = [];
-  literals: Record<string, number> = { start: 1, ratio: 2, count: 8 };
-  width = 180; height = 220;
-
-  constructor(init?: { label?: string }) {
-    super("Geometric");
-    this.label = init?.label ?? "Geometric";
-    this.addInput("start", numIn("Start"));
-    this.addInput("ratio", numIn("Ratio"));
-    this.addInput("count", numIn("Count"));
-    this.addOutput("result", listOut("Series"));
-  }
-
-  data(inputs: { start?: number[]; ratio?: number[]; count?: number[] }) {
-    const start = readInput(inputs.start, this.literals.start ?? 1);
-    const ratio = readInput(inputs.ratio, this.literals.ratio ?? 2);
-    const nRaw  = readInput(inputs.count, this.literals.count ?? 8);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
-    if (start === null || ratio === null || nRaw === null) { this.cachedList = null; return { result: null }; }
-    const out = geometric(start, ratio, nRaw);
-    this.cachedList = out;
-    return { result: out };
-  }
-}
-
-// ─── Fibonacci ────────────────────────────────────────────────────────────────
-export class FibonacciNode extends ClassicPreset.Node {
-  static socketDocs: Record<string, string> = {
-    n: "Caps at 78 terms. Later terms would lose precision.",
-  };
-
-  label: string;
-  cachedList: number[] | null = [];
-  literals: Record<string, number> = { n: 10 };
-  width = 180; height = 130;
-
-  constructor(init?: { label?: string }) {
-    super("Fibonacci");
-    this.label = init?.label ?? "Fibonacci";
-    this.addInput("n",       numIn("Count"));
-    this.addOutput("result", listOut("Sequence"));
-  }
-
-  data(inputs: { n?: number[] }) {
-    const nRaw = readInput(inputs.n, this.literals.n ?? 10);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
-    if (nRaw === null) { this.cachedList = null; return { result: null }; }
-    const out = fibonacci(nRaw);
-    this.cachedList = out;
-    return { result: out };
-  }
-}
-
 
 // ─── Weighted Statistics ──────────────────────────────────────────────────────
 
