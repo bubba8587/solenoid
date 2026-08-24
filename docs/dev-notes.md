@@ -6,6 +6,47 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### FINDING (2026-08-24 — should we virtualize the table/cube popups? — author's call)
+Decider for the backlog "Virtualize the table/cube popups" item. Measured, not built.
+
+TablePopup already caps at `MAX_VISIBLE_ROWS = 1000` — a 50k-row frame is sorted then sliced
+to 1000, so 1000 rows IS the worst case the popup ever renders. But **every cell is an
+`<input>`** — read-only popups render `<input readOnly>`, not plain text (TablePopup.tsx ~942)
+— and **cells are not memoized**, so a keystroke's `setGrid` re-renders all 1000×N of them.
+
+DOM build + layout cost, median of 7, Edge headless on the real dev page (app CSS applied),
+via `scripts/table-popup-probe.mjs`. `build` = time-to-open floor; `rebuild` = current
+non-memoized keystroke (whole tbody rebuilt); `retouch` = value-only update (the floor a
+per-cell memo would reach). These are DOM-only — React element-creation/reconciliation is
+ON TOP, so the real keystroke is worse than `rebuild`, never better.
+
+| cols | 1000-row cells | open (`<input>`) | open (plain text) | keystroke (current) |
+|-----:|---------------:|-----------------:|------------------:|--------------------:|
+|   3  |          3,000 |          ~38 ms  |          ~19 ms   |            ~43 ms   |
+|  10  |         10,000 |         ~110 ms  |          ~46 ms   |           ~122 ms   |
+|  30  |         30,000 |         ~310 ms  |         ~125 ms   |           ~350 ms   |
+
+Reading:
+- **The `<input>` IS the cost: ~2.5× plain text**, flat across column counts. Read-only
+  `<input readOnly>` costs the same as an editable one (measured within noise) — read-only
+  popups pay the full input tax for nothing.
+- **Cost is linear in cells (rows×cols).** Narrow (3-col) frames are fine everywhere (~40 ms).
+  Wide frames are the problem: at 30 cols a keystroke drops ~350 ms of main-thread work
+  per character (+ React on top) — clearly janky; 10 cols (~120 ms) is already noticeable.
+
+Two independent wins, if the author wants them:
+1. **Virtualize rows** (render only the ~20-30 visible rows, not 1000). The general fix —
+   helps open AND keystroke, editable and read-only, and cuts the numbers ~30× (sub-15 ms
+   even at 30 cols). Biggest lever; also the most work (sort/slice/scroll interplay, the
+   sticky header, the measured column widths at ~406).
+2. **Render read-only cells as plain text**, not `<input readOnly>`. Cheap, local, no scroll
+   machinery — cuts ~60% off every read-only popup for free. Doesn't help editable popups.
+
+Recommendation: (2) is a small, safe standalone patch worth doing regardless; (1) is the real
+answer for wide editable frames but is a proper build. Numbers reproduce with
+`node scripts/table-popup-probe.mjs` (dev server must be up). Cube popup shares the grid
+render path, so it inherits the same profile.
+
 ### OPEN PROBLEM (2026-07-25 — a choppy zoom BAND: interior range of scales, both extremes smooth)
 Zoom chop is **not** monotonic in graph size or zoom depth. There is a specific interior range of
 camera scales that is markedly choppier than BOTH very close zoom AND very far zoom. Observed by
