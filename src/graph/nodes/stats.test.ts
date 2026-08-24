@@ -241,9 +241,9 @@ describe("INTERPOLATE (piecewise-linear lookup)", () => {
 });
 
 describe("INTERPOLATE — Grid mode (fill a Z table; coordinates ride beside it)", () => {
-  // C4 retired the bordered format for the plain (z, xs, ys) convention. These cases were
-  // written against a bordered table, so split the border into xs/ys/z and re-border the
-  // filled Z for comparison — the interior the algorithm produces is unchanged.
+  // C4 moved coordinates BESIDE the Z matrix (the plain z, xs, ys convention). These cases
+  // were written with the coordinates in a border row/column, so split that off into
+  // xs/ys/z and re-form the filled Z for comparison — the interior algorithm is unchanged.
   type Grid = (number | null)[][];
   const unborder = (t: Grid) => ({
     xs: t[0].slice(1) as number[],
