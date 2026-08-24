@@ -1,6 +1,5 @@
 import { type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { getActiveArea } from "../activeGraph";
-import { ResizeGripIcon } from "./ResizeHandle";
 
 // Canvas-px floor, mirroring the `min-height` the field carries in CSS. The drag
 // clamps here rather than leaning on min-height: the browser would keep shrinking
@@ -47,8 +46,6 @@ export function FieldResizeGrip({ targetRef }: { targetRef: RefObject<HTMLElemen
   }
 
   return (
-    <div className="solenoid-field-resize" onPointerDown={onPointerDown}>
-      <ResizeGripIcon />
-    </div>
+    <div className="solenoid-field-resize" onPointerDown={onPointerDown} />
   );
 }

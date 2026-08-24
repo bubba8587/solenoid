@@ -76,18 +76,9 @@ export function ResizeHandle({ nodeId }: { nodeId: string }) {
       data-resize-handle
       className="solenoid-node__resize-handle"
       onPointerDown={onPointerDown}
-    >
-      <ResizeGripIcon />
-    </div>
+    />
   );
 }
 
-/** The corner-grip glyph. Shared so every resize affordance in the app is the
- *  same mark — the card grip here and the text-field grip (FieldResizeGrip). */
-export function ResizeGripIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
-      <path d="M11 5 5 11M11 9l-2 2" />
-    </svg>
-  );
-}
+// The corner-grip glyph is a masked ::before in nodeCard.css, shared with
+// .solenoid-field-resize so every resize affordance stays the same mark.

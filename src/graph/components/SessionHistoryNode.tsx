@@ -4,7 +4,6 @@ import type { SessionHistoryNode as SessionHistoryNodeType } from "../rete-nodes
 import { getEditor, getHistoryPlugin } from "../process";
 import { nodeDisplayNames } from "../nodeNames";
 import { digestHistory, type HistoryDigestRecord } from "../historyDigest";
-import { ClipboardIcon } from "./nodeKit";
 import type { NodeProps } from "./nodeKit";
 import { stopDragStart } from "../coarse";
 import "./SessionHistoryNode.css";
@@ -52,14 +51,12 @@ export function SessionHistoryComponent({ data }: NodeProps<SessionHistoryNodeTy
         <span className="solenoid-history__title">Session History</span>
         <button
           type="button"
-          className="solenoid-history__copy"
+          className="solenoid-history__copy sol-copy-icon"
           title={copied ? "Copied!" : "Copy digest"}
           onClick={handleCopy}
           onPointerDown={stopDragStart}
           onMouseDown={stopDragStart}
-        >
-          <ClipboardIcon />
-        </button>
+        />
       </div>
       <pre className="solenoid-history__log" onPointerDown={stop} onMouseDown={stop}>{digest}</pre>
     </div>

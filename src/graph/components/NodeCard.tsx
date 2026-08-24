@@ -271,11 +271,7 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
           // arm a window-level tap detector that toggles only on a stationary release
           // (robust to rete eating the click on a desktop mouse).
           onPointerDown={armChevronTap}
-        >
-          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-            <path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+        />
       )}
       {children}
     </div>

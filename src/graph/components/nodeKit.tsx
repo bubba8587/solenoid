@@ -435,13 +435,7 @@ export function OpSelect<T extends string>({
   );
 }
 
-export function ClipboardIcon() {
-  return (
-    <svg width="13" height="14" viewBox="0 0 16 17" fill="currentColor" stroke="currentColor" strokeWidth="0.85" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg" style={{ display: "block" }}>
-      <path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6zM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2z"/>
-    </svg>
-  );
-}
+// The copy-value glyph is the `sol-copy-icon` masked ::before in nodeCard.css.
 
 /**
  * The result/display box — null (empty), a list (preview), or a scalar.
@@ -669,6 +663,7 @@ export function ValueDisplay({
         : fmtScalar(value as number)}
       {!isEmpty && (
         <button
+          className="sol-copy-icon"
           onClick={handleCopy}
           onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
@@ -686,9 +681,7 @@ export function ValueDisplay({
             opacity: copied ? 1 : hovered ? 0.9 : 0.45,
             transition: "opacity 0.15s, color 0.15s",
           }}
-        >
-          <ClipboardIcon />
-        </button>
+        />
       )}
     </div>
   );
