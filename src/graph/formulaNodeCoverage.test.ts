@@ -31,8 +31,7 @@ const FORMULA_NODE_ALIAS: Record<string, string> = {
   FILLDROP: "Coalesce / Fill (drop op)",
   // Pad node directions
   PADLEFT: "Pad (left)", PADRIGHT: "Pad (right)",
-  // HYPOT(A,B) = √(A²+B²) is TwoInputMath's hypot op (labelled HYPOT); HYPOTENUSE is its
-  // curated formula spelling (the standalone Hypotenuse node was deleted 2026-08-24).
+  // HYPOTENUSE = √(A²+B²) is TwoInputMath's hypot op.
   HYPOTENUSE: "TwoInputMath (HYPOT op)",
   // stats nodes under their canonical labels
   COVAR: "Covariance node", RANK: "Rank node",
