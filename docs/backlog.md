@@ -59,11 +59,6 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   decorations. Regression, cause unknown.
 - [ ] **#7 Conduits sometimes unselectable/unmovable except via the Navigator** —
   intermittent, no repro; suspected z-order/hit-area or group-membership sync.
-- [ ] **Pinch-zoom on a real Mac trackpad** — should work via `e.ctrlKey` wheel;
-  verify on hardware. NOTE: `rete-area-plugin` 2.2.1 fixed exactly this upstream
-  (normalize wheel delta for touchpad pinch, their #31) — but `CappedZoom.wheel`
-  REPLACES their handler, so the fix cannot reach us while we override it. Either
-  delete our `wheel` and tune `intensity`, or keep our curve and fix it ourselves.
 - [ ] **Settle the OS-dropdown rule** (needs a device/emulated CDP) — the "native
   `<select>` needs a pointerdown swallow" claim has no recorded incident and the
   mobile path suggests it may not hold; 21 sites held on precaution. If false, they
@@ -228,7 +223,7 @@ is blocked here for out-of-scope repos).
   on the first 171-node render (the `flushSync` synchronous-commit tax) — a one-time load cost the
   author accepted for being on latest.
 - [ ] **`rete-area-plugin` 2.1.5 → 2.3.2** — own change, needs a selection-test
-  pass + a trackpad check. Two behaviour changes reach us: 2.3.1 makes
+  pass. Two behaviour changes reach us: 2.3.1 makes
   `Selector.add` unselect everything EXCEPT the re-picked entity instead of
   `unselectAll()`-then-add (less selection churn → fewer re-renders, interacts
   with selection-on-pointerup); 2.2.x normalizes wheel deltas — the same algorithm
