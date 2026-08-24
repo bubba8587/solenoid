@@ -129,6 +129,26 @@ function colLabel(i: number): string {
  * `onSaveFrame`/`onSaveSource`/`onSaveRaw` → frame editor, none → read-only viewer.
  */
 type ColSummary = { profile: ColumnProfile; sum: number | null };
+type FooterStat = "sum" | "avg" | "min" | "max" | "median" | "count" | "distinct" | "blank" | "error";
+const NUMERIC_STATS: ReadonlyArray<FooterStat> = ["sum", "avg", "min", "max", "median"];
+const FOOTER_STAT_LABEL: Record<FooterStat, string> = {
+  sum: "Sum", avg: "Average", min: "Min", max: "Max", median: "Median",
+  count: "Count", distinct: "Distinct", blank: "Empty", error: "Errors",
+};
+function footerStatValue(stat: FooterStat, s: ColSummary): number | null {
+  const p = s.profile;
+  switch (stat) {
+    case "sum": return s.sum;
+    case "avg": return p.mean;
+    case "min": return p.min;
+    case "max": return p.max;
+    case "median": return p.median;
+    case "count": return p.count;
+    case "distinct": return p.distinct;
+    case "blank": return p.blank;
+    case "error": return p.error;
+  }
+}
 
 export function TablePopup() {
   const state = useSyncExternalStore(tablePopup.subscribe, tablePopup.get);
@@ -157,6 +177,8 @@ export function TablePopup() {
   const [, bumpDraft] = useState(0);
   // The grid table, so the keyboard mover can find a target cell by its data-vi/data-c.
   const gridRef = useRef<HTMLTableElement | null>(null);
+  // One stat per column in the summary footer; unset = Sum for a number column, else Count.
+  const [colStat, setColStat] = useState<Record<number, FooterStat>>({});
   const showSummary = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupSummary"));
   // DISPLAY-ONLY list orientation — the value stays the flat row; copy/CSV/Markdown
   // must keep flattening to the same list.
@@ -959,44 +981,22 @@ export function TablePopup() {
             </tbody>
             {colSummaries && (
               <tfoot className="table-popup__sumfoot">
-                <tr className="table-popup__profrow">
+                <tr>
                   <th className="table-popup__corner" />
                   {Array.from({ length: viewCols }, (_, c) => {
-                    const { profile } = colSummaries[c];
-                    const valid = profile.count - profile.error;
-                    const total = profile.count + profile.blank;
-                    const pct = (n: number) => (total > 0 ? (n / total) * 100 : 0);
+                    const numeric = colTypeAt(c) === "number";
+                    const stat: FooterStat = colStat[c] ?? (numeric ? "sum" : "count");
+                    const choices = (Object.keys(FOOTER_STAT_LABEL) as FooterStat[]).filter((k) => numeric || !NUMERIC_STATS.includes(k));
                     return (
-                      <td key={c} className="table-popup__profcell">
-                        <div
-                          className="table-popup__profbar"
-                          title="Valid, error, empty"
+                      <td key={c} className="table-popup__statcell">
+                        <select
+                          className="table-popup__fmtselect table-popup__statselect"
+                          value={stat}
+                          onChange={(e) => setColStat((m) => ({ ...m, [c]: e.target.value as FooterStat }))}
                         >
-                          <span className="table-popup__profseg table-popup__profseg--valid" style={{ width: `${pct(valid)}%` }} />
-                          <span className="table-popup__profseg table-popup__profseg--error" style={{ width: `${pct(profile.error)}%` }} />
-                          <span className="table-popup__profseg table-popup__profseg--empty" style={{ width: `${pct(profile.blank)}%` }} />
-                        </div>
-                        <span className="table-popup__profdistinct">{profile.distinct} distinct</span>
-                      </td>
-                    );
-                  })}
-                </tr>
-                <tr className="table-popup__sumrow">
-                  <th className="table-popup__corner" />
-                  {Array.from({ length: viewCols }, (_, c) => {
-                    const { profile, sum } = colSummaries[c];
-                    return (
-                      <td key={c} className="table-popup__sumcell">
-                        {colTypeAt(c) === "number" ? (
-                          <div className="table-popup__sumstack">
-                            <span><i className="table-popup__sumlabel">sum</i>{fmtStat(sum)}</span>
-                            <span><i className="table-popup__sumlabel">avg</i>{fmtStat(profile.mean)}</span>
-                            <span><i className="table-popup__sumlabel">min</i>{fmtStat(profile.min)}</span>
-                            <span><i className="table-popup__sumlabel">max</i>{fmtStat(profile.max)}</span>
-                          </div>
-                        ) : (
-                          <span className="table-popup__sumcount"><i className="table-popup__sumlabel">count</i>{profile.count}</span>
-                        )}
+                          {choices.map((k) => <option key={k} value={k}>{FOOTER_STAT_LABEL[k]}</option>)}
+                        </select>
+                        <span className="table-popup__statvalue">{fmtStat(footerStatValue(stat, colSummaries[c]))}</span>
                       </td>
                     );
                   })}
