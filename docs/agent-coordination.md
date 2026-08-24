@@ -10,7 +10,7 @@ Agent 1 writes plans (`docs/plans/`), doesn't execute. Executors (Agent 2 soleno
 
 ## Claims
 
-- B0 — Agent 4 (solenoid-f1) — Python/R gap remainder
+- C2 — Agent 4 (solenoid-f1) — multi-series Chart (edits visual.ts). B0.1+B0.2 landed (683cf86d, 2df21a82); B0.3/B0.4 still mine, after C2
 - C3 — Agent 2 (solenoid-18) — Set Cell N-tuples + Replace Values anyIn (A6/A4/A3 landed: aea271a1, 6acb5b1c, ec15cdf2, f66d3281)
 - A5 (per family, top-to-bottom) — Jeff / Agent 5 (solenoid-b2): 9 families landed (…/Lists-Build/Lists-Transform); Lists▸Aggregate next
 
