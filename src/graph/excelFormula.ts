@@ -1,5 +1,5 @@
 import { solError, isSolError, isNaError } from "./errorValue";
-import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, ELIMINATED_FUNCTIONS, LEGACY_ALIASES, FRAME_SURFACE_NAMES, registryGeneration } from "./excelFunctions";
+import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, isInternalFunction, ELIMINATED_FUNCTIONS, LEGACY_ALIASES, FRAME_SURFACE_NAMES, registryGeneration } from "./excelFunctions";
 import { isMissing, guardFinite } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
@@ -876,11 +876,9 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
         }
         if (RANGE_FUNCTIONS.has(name)) {
           argv = argv.map((a) => (isMatrix(a) ? a.flat() : a));
-        } else if (takesWholeArgs(name)) {
-          return solError("#SHAPE!", `${name} works on values and 1-D lists, not a 2-D matrix`);
-        } else if (EXCEL_IMPL_META[name] === undefined && !internalFunctionNames().includes(name)) {
-          // An undeclared FX name would otherwise broadcast a matrix into an array of
-          // per-cell #VALUE!s; one clean #SHAPE! instead (hideMatrixFromVendor).
+        } else if (takesWholeArgs(name) || (EXCEL_IMPL_META[name] === undefined && !isInternalFunction(name))) {
+          // A whole-list native, or an undeclared FX name that would otherwise broadcast
+          // the matrix into per-cell #VALUE!s (hideMatrixFromVendor): one #SHAPE!.
           return solError("#SHAPE!", `${name} works on values and 1-D lists, not a 2-D matrix`);
         }
       }

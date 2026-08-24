@@ -342,6 +342,10 @@ export function internalFunctionNames(): string[] {
   return [...INTERNAL_IMPLS.keys()];
 }
 
+export function isInternalFunction(name: string): boolean {
+  return INTERNAL_IMPLS.has(name.toUpperCase());
+}
+
 /** Declared output ELEMENT type (a SocketDataType subset) — metadata for tests + a
  *  future result-type inference, not yet wired to the result socket. */
 // "any" = type-neutral: the function returns whichever type its arguments carry
