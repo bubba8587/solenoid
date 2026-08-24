@@ -1,6 +1,7 @@
 // Every recharts-using renderer in ONE module so recharts stays a single lazy
 // chunk — nothing here may be imported statically by the app.
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, ZAxis, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart } from "recharts";
+import { useState } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
 import { useChartColors, useSeriesColors, axisTick, type ChartShape } from "./chartCore";
@@ -281,6 +282,9 @@ export function MultiSeriesView({
   const { grid, axis } = useChartColors();
   const colors = useSeriesColors();
   const paint = (j: number) => colors[j % colors.length];
+  // Legend click spotlights one series (the rest dim); clicking it again clears.
+  const [focus, setFocus] = useState<number | null>(null);
+  const dim = (j: number) => (focus !== null && focus !== j ? 0.18 : 1);
   const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
   const AXIS = { fontSize: 9 * fs, fill: axis } as const;
   const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
@@ -307,7 +311,14 @@ export function MultiSeriesView({
   const titleH = title ? Math.ceil(16 * fs) : 0;
   const chartH = height - titleH; // the <Legend height> reserves its own strip within this
   const margin = { top: 6, right: 8, bottom: axes ? 4 : 2, left: 0 };
-  const legend = <Legend verticalAlign="bottom" height={LEGEND_H} iconSize={8} wrapperStyle={{ fontSize: 9 * fs, color: axis }} />;
+  const legend = (
+    <Legend
+      verticalAlign="bottom" height={LEGEND_H} iconSize={8}
+      wrapperStyle={{ fontSize: 9 * fs, color: axis, cursor: "pointer" }}
+      onClick={(e) => { const j = series.findIndex((s) => s.name === e.value); if (j >= 0) setFocus((f) => (f === j ? null : j)); }}
+      formatter={(value, _entry, idx) => <span style={{ opacity: dim(idx) }}>{value}</span>}
+    />
+  );
   const tip = <Tooltip isAnimationActive={false} cursor={{ fill: "rgba(128,128,128,0.12)" }} content={<MultiTooltip tickFmt={tickFmt} />} />;
 
   let chart;
@@ -320,8 +331,8 @@ export function MultiSeriesView({
         {axes && <YAxis tick={AXIS} tickLine={false} width={26} domain={yDomain} />}
         {tip}{legend}
         {series.map((s, j) => op === "area"
-          ? <Area key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} fill={paint(j)} fillOpacity={fillAlpha} strokeWidth={lw} dot={showMarkers ? { r: 2 } : false} isAnimationActive={false} />
-          : <Line key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeWidth={lw} dot={showMarkers ? { r: 2 } : false} isAnimationActive={false} />)}
+          ? <Area key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? { r: 2 } : false} isAnimationActive={false} />
+          : <Line key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} strokeWidth={lw} dot={showMarkers ? { r: 2 } : false} isAnimationActive={false} />)}
       </Container>
     );
   } else if (op === "bar") {
@@ -331,7 +342,7 @@ export function MultiSeriesView({
         {axes && <XAxis type="number" tick={AXIS} tickLine={false} domain={yDomain} />}
         {axes && <YAxis type="category" dataKey="i" tick={AXIS} tickLine={false} width={40} tickFormatter={tickFmt} />}
         {tip}{legend}
-        {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} fill={paint(j)} isAnimationActive={false} />)}
+        {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} fill={paint(j)} fillOpacity={dim(j)} isAnimationActive={false} />)}
       </BarChart>
     );
   } else if (op === "radar") {
@@ -341,7 +352,7 @@ export function MultiSeriesView({
         <PolarAngleAxis dataKey="i" tick={AXIS} tickFormatter={tickFmt} />
         <PolarRadiusAxis tick={AXIS} axisLine={false} tickCount={4} domain={yDomain} />
         {tip}{legend}
-        {series.map((s, j) => <Radar key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} fill={paint(j)} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} />)}
+        {series.map((s, j) => <Radar key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} isAnimationActive={false} />)}
       </RadarChart>
     );
   } else if (op === "scatter") {
@@ -354,7 +365,7 @@ export function MultiSeriesView({
         {axes && <YAxis type="number" dataKey="y" tick={AXIS} tickLine={false} width={26} domain={yDomain} />}
         {tip}{legend}
         {series.map((s, j) => (
-          <Scatter key={j} name={s.name} fill={paint(j)} isAnimationActive={false}
+          <Scatter key={j} name={s.name} fill={paint(j)} fillOpacity={dim(j)} isAnimationActive={false}
             data={data.map((d) => ({ x: numericX ? Number(labels![d.i as number]) : (d.i as number), y: d[`s${j}`] }))} />
         ))}
       </ScatterChart>
@@ -367,7 +378,7 @@ export function MultiSeriesView({
         {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} />}
         {axes && <YAxis tick={AXIS} tickLine={false} width={26} domain={yDomain} />}
         {tip}{legend}
-        {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} fill={paint(j)} isAnimationActive={false} />)}
+        {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} fill={paint(j)} fillOpacity={dim(j)} isAnimationActive={false} />)}
       </BarChart>
     );
   }
