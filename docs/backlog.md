@@ -94,7 +94,7 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   discount securities (TBill 3 + SecurityDisc 3 + PriceDisc 2 + PriceMat 2, all
   settlement/maturity/basis-shaped); BondPrice + OddCoupon (odd variants = extra
   date params per op); ACCRINT + ACCRINTM; CSV File +
-  Parquet File (format from extension) and Write CSV + Write JSON.
+  Parquet File (format from extension).
 
 ## Small builds & calls (still 1.3-sized)
 
@@ -141,7 +141,6 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
 - [ ] **AUTHOR CALL — mode-selector inputs on a wired blank**: `text.ts` / `date.ts`
   selector inputs fall back to the literal on a wired blank, diverging from
   value-semantics' "mode selector propagates" row. Decide; reconcile table or code.
-- [ ] **Settings: Node Packs section** — planned, unbuilt (`Settings.tsx`).
 - [ ] **Formula surface is open-by-default (the systemic follow-up).** The 2-D dead-name
   set is resolved (COLUMNS/ROWS + HSTACK/VSTACK/CHOOSECOLS/CHOOSEROWS owned sharing their
   node kernels; the D* family eliminated like VLOOKUP). What remains is the ROOT cause: the

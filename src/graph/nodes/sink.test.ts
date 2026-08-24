@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { extractInit } from "../copyPaste";
-import { frameToCsvText, frameToJsonText, WriteCsvNode, WriteJsonNode } from "./sink";
+import { frameToCsvText, frameToJsonText, WriteFileNode } from "./sink";
 import type { FrameValue } from "../frame";
 import { solError } from "../errorValue";
 
@@ -61,22 +61,28 @@ describe("frameToCsvText / frameToJsonText", () => {
   });
 });
 
-describe("WriteCsvNode / WriteJsonNode persistence", () => {
-  it("persists path through extractInit, but NEVER persists enabled — a reload always starts disarmed", () => {
-    const n = new WriteCsvNode({ path: "C:/out/data.csv" });
+describe("WriteFileNode persistence", () => {
+  it("persists path + format through extractInit, but NEVER persists enabled — a reload always starts disarmed", () => {
+    const n = new WriteFileNode({ path: "C:/out/data.json", format: "json" });
     n.enabled = true;
     const init = extractInit(n);
-    expect(init.path).toBe("C:/out/data.csv");
+    expect(init.path).toBe("C:/out/data.json");
+    expect(init.format).toBe("json");
     expect(init.enabled).toBeUndefined();
-    const reloaded = new WriteCsvNode(init);
-    expect(reloaded.path).toBe("C:/out/data.csv");
+    const reloaded = new WriteFileNode(init);
+    expect(reloaded.path).toBe("C:/out/data.json");
+    expect(reloaded.format).toBe("json");
     expect(reloaded.enabled).toBe(false);
+  });
+
+  it("defaults format to csv", () => {
+    expect(new WriteFileNode().format).toBe("csv");
   });
 });
 
-describe("WriteCsvNode.run()", () => {
+describe("WriteFileNode.run() — the sink discipline (format defaults to csv)", () => {
   it("data() only caches the incoming frame for the preview — never touches disk", () => {
-    const n = new WriteCsvNode({ path: "C:/out/data.csv" });
+    const n = new WriteFileNode({ path: "C:/out/data.csv" });
     n.enabled = true;
     n.data({ in: [sample] });
     expect(n.cachedFrame).toBe(sample);
@@ -84,7 +90,7 @@ describe("WriteCsvNode.run()", () => {
   });
 
   it("refuses to write when disarmed", async () => {
-    const n = new WriteCsvNode({ path: "C:/out/data.csv" });
+    const n = new WriteFileNode({ path: "C:/out/data.csv" });
     n.data({ in: [sample] });
     await n.run();
     expect(n.status).toBe("error");
@@ -92,7 +98,7 @@ describe("WriteCsvNode.run()", () => {
   });
 
   it("refuses to write with no path set", async () => {
-    const n = new WriteCsvNode();
+    const n = new WriteFileNode();
     n.enabled = true;
     n.data({ in: [sample] });
     await n.run();
@@ -101,7 +107,7 @@ describe("WriteCsvNode.run()", () => {
   });
 
   it("refuses to write with nothing on the input cable", async () => {
-    const n = new WriteCsvNode({ path: "C:/out/data.csv" });
+    const n = new WriteFileNode({ path: "C:/out/data.csv" });
     n.enabled = true;
     await n.run();
     expect(n.status).toBe("error");
@@ -109,7 +115,7 @@ describe("WriteCsvNode.run()", () => {
   });
 
   it("writes ONLY on an explicit, armed run() with a path and a connected frame", async () => {
-    const n = new WriteCsvNode({ path: "C:/out/data.csv" });
+    const n = new WriteFileNode({ path: "C:/out/data.csv" });
     n.enabled = true;
     n.data({ in: [sample] });
     await n.run();
@@ -122,9 +128,9 @@ describe("WriteCsvNode.run()", () => {
   });
 });
 
-describe("WriteJsonNode.run()", () => {
+describe("WriteFileNode.run() — format: json", () => {
   it("writes the JSON serialization only when armed", async () => {
-    const n = new WriteJsonNode({ path: "C:/out/data.json" });
+    const n = new WriteFileNode({ path: "C:/out/data.json", format: "json" });
     n.enabled = true;
     n.data({ in: [sample] });
     await n.run();

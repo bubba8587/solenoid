@@ -46,12 +46,18 @@ export function frameToJsonText(f: FrameValue): string {
   return JSON.stringify(records, null, 2);
 }
 
-abstract class WriteFileNodeBase extends ClassicPreset.Node {
+/** csv/json is a serialization-FORMAT config, not the family's op selector: the card
+ *  is one "write a frame to a file" sink and the format is a parameter of it — so the
+ *  component's toggle carries `arg` (selectorNamedOp) and the node stays a util accent. */
+export type WriteFormat = "csv" | "json";
+
+export class WriteFileNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     in: "Wiring a frame never writes the file. The write runs only from the Run button, and the node loads disarmed.",
   };
   label: string;
   path: string;
+  format: WriteFormat;
   /** Never persisted (see file header) — always false on a fresh construction. */
   enabled = false;
   cachedFrame: FrameValue | SolError | null = null;
@@ -59,10 +65,11 @@ abstract class WriteFileNodeBase extends ClassicPreset.Node {
   statusMessage = "";
   width = 260; height = 230;
 
-  constructor(type: string, defaultLabel: string, init?: { label?: string; path?: string }) {
-    super(type);
-    this.label = init?.label ?? defaultLabel;
+  constructor(init?: { label?: string; path?: string; format?: WriteFormat }) {
+    super("WriteFile");
+    this.label = init?.label ?? "Write File";
     this.path = init?.path ?? "";
+    this.format = init?.format ?? "csv";
     this.addInput("in", frameIn("Frame"));
   }
 
@@ -72,8 +79,12 @@ abstract class WriteFileNodeBase extends ClassicPreset.Node {
     return {};
   }
 
-  protected abstract serialize(f: FrameValue): string;
-  protected abstract defaultExt(): string;
+  private serialize(f: FrameValue): string {
+    return this.format === "json" ? frameToJsonText(f) : frameToCsvText(f);
+  }
+  private defaultExt(): string {
+    return this.format === "json" ? "json" : "csv";
+  }
 
   /** Explicit write — call ONLY from the Run button, desktop only. The
    *  re-entrancy guard is required: the component's disabled state updates only
@@ -104,16 +115,4 @@ abstract class WriteFileNodeBase extends ClassicPreset.Node {
     const picked = await pickSaveFilePath(`${(this.label || "output").trim()}.${this.defaultExt()}`, [this.defaultExt()]);
     if (picked) this.path = picked;
   }
-}
-
-export class WriteCsvNode extends WriteFileNodeBase {
-  constructor(init?: { label?: string; path?: string }) { super("WriteCsv", "Write CSV", init); }
-  protected serialize(f: FrameValue) { return frameToCsvText(f); }
-  protected defaultExt() { return "csv"; }
-}
-
-export class WriteJsonNode extends WriteFileNodeBase {
-  constructor(init?: { label?: string; path?: string }) { super("WriteJson", "Write JSON", init); }
-  protected serialize(f: FrameValue) { return frameToJsonText(f); }
-  protected defaultExt() { return "json"; }
 }

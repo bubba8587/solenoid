@@ -40,7 +40,7 @@ import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColum
 import { BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode } from "./cube";
 import { WebSourceNode, CsvConnectionNode, ParquetConnectionNode, ImportHtmlNode, ImportXmlNode } from "./connection";
 import { DataFeedNode } from "./dataFeed";
-import { WriteCsvNode, WriteJsonNode } from "./sink";
+import { WriteFileNode } from "./sink";
 import { WriteObsidianNode } from "./obsidian";
 import { ExpectNode } from "./quality";
 import { TornadoNode } from "./tornado";
@@ -135,7 +135,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof SwitchNode || node instanceof IfsNode ||
     node instanceof CableSwitchNode || node instanceof NoteNode ||
     node instanceof ImageNode || node instanceof ExpectNode ||
-    node instanceof WriteCsvNode || node instanceof WriteJsonNode ||
+    node instanceof WriteFileNode ||
     node instanceof WriteObsidianNode ||
     node instanceof CompositeNode
   ) return "util";

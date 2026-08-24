@@ -167,8 +167,8 @@ export { BuildCubeComponent, NestJoinComponent, CubeColumnsComponent, CubeRollup
 // ─── External-data connections (Web Source, CSV folder, Parquet folder) ─────────
 export { WebSourceComponent, CsvConnectionComponent, ParquetConnectionComponent, ImportHtmlComponent, ImportXmlComponent, DataFeedComponent } from "./ConnectionNodes";
 
-// ─── File sinks (Write CSV, Write JSON, Write to Obsidian) ────────────────────────
-export { WriteCsvComponent, WriteJsonComponent, WriteObsidianComponent } from "./WriteNodes";
+// ─── File sinks (Write File — CSV/JSON, Write to Obsidian) ────────────────────────
+export { WriteFileComponent, WriteObsidianComponent } from "./WriteNodes";
 
 // ─── Import from Obsidian Vault (read a .md into a read-only Note) ────────────────
 export { ImportObsidianComponent } from "./ImportObsidianNode";

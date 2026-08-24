@@ -160,6 +160,15 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   widest layer W ≤ count ⟹ W/split ≤ cap, never exceeds. Empirically layerSplit=N → N columns on a
   9-fan. Tests re-pinned to the CONTRACT (no row > cap, wrapped, shorter cross-extent) not exact column
   counts. `third-party-licenses.txt` flips MIT → `EPL-2.0 OR GPL-3.0-or-later` (elkjs's license).
+- **Write CSV + Write JSON → ONE "Write File" node (no-duplicates rule).** `WriteCsvNode`/`WriteJsonNode`
+  collapse into `WriteFileNode` with a `format: "csv" | "json"` field; `WriteFileNodeBase` folded in (one
+  concrete class now). csv/json is a serialization CONFIG, not the family op — so the component's toggle is
+  a `<SegToggle arg>` (selectorNamedOp: a `format`-bound picker must carry `arg`) and the node keeps its
+  util accent, NOT `kind: operation` (that'd need an `op`-named field + NODE_OPS machinery, wrong for a
+  sink and fighting the one-leaf intent). `format` rides the existing INIT_FIELD_ORDER slot so persistence
+  is automatic; sink discipline unchanged (Run-only writes, `enabled` never persisted). One catalog leaf
+  `write-file` (keywords keep csv/json findable); old `write-csv`/`write-json` saves load as Placeholder
+  (pre-alpha, no alias). sink.test.ts rewired; full suite green.
 - **Series Range → INCLUSIVE of Stop (author 2026-08-24).** `rangeCount`/`rangeList` (`listOps.ts`)
   end ON Stop: `n = floor((stop−start)/step + 1e-9) + 1`; step 0 → `start===stop ? 1 : Infinity` (still
   the `#DOMAIN!` cap); values are `start + i*step` (not accumulated) with the last snapped exactly onto

@@ -1,11 +1,12 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
-import type { WriteCsvNode as WriteCsvNodeType, WriteJsonNode as WriteJsonNodeType, WriteObsidianNode as WriteObsidianNodeType } from "../rete-nodes";
+import type { WriteFileNode as WriteFileNodeType, WriteObsidianNode as WriteObsidianNodeType, WriteFormat } from "../rete-nodes";
 import { isDesktop, listVaultFolders } from "../fileBridge";
 import { settingsStore } from "../settingsStore";
 import { isDocumentValue } from "../documentValue";
 import { FrameDisplay } from "./FrameDisplay";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
+import { SegToggle } from "./SegToggle";
 import "./ConnectionNodes.css";
 import "./WriteNodes.css";
 import { stopDragStart } from "../coarse";
@@ -13,50 +14,62 @@ import { stopDragStart } from "../coarse";
 // `data.run()` touches disk, so it must fire ONLY from the explicit Run click below —
 // never from a graph recompute.
 
-type WriteNodeData = (WriteCsvNodeType | WriteJsonNodeType) & {
-  path: string; enabled: boolean; status: string; statusMessage: string;
+type WriteNodeData = WriteFileNodeType & {
+  path: string; format: WriteFormat; enabled: boolean; status: string; statusMessage: string;
   browse(): Promise<void>; run(): Promise<void>;
 };
 
-function WriteFileComponent({
-  data, emit, kindLabel, ext,
-}: NodeProps<WriteNodeData> & { kindLabel: string; ext: string }) {
-  const [path, setPath] = useState(data.path);
-  const [armed, setArmed] = useState(data.enabled);
-  const [status, setStatus] = useState(data.status);
-  const [message, setMessage] = useState(data.statusMessage);
-  const desktop = isDesktop();
+const FORMAT_OPTIONS = [
+  { value: "csv" as const, label: "CSV", title: "Comma-separated values (.csv)" },
+  { value: "json" as const, label: "JSON", title: "Array of row records (.json)" },
+];
 
-  useEffect(() => { setPath(data.path); }, [data.path]);
+export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>) {
+  const d = data as unknown as WriteNodeData;
+  const [path, setPath] = useState(d.path);
+  const [format, setFormat] = useState<WriteFormat>(d.format);
+  const [armed, setArmed] = useState(d.enabled);
+  const [status, setStatus] = useState(d.status);
+  const [message, setMessage] = useState(d.statusMessage);
+  const desktop = isDesktop();
+  const ext = format === "json" ? "json" : "csv";
+
+  useEffect(() => { setPath(d.path); }, [d.path]);
+
+  function pickFormat(next: WriteFormat) {
+    d.format = next;
+    setFormat(next);
+  }
 
   function commitPath() {
     const next = path.trim();
-    data.path = next;
+    d.path = next;
     setPath(next);
   }
 
   async function browse() {
-    await data.browse();
-    setPath(data.path);
+    await d.browse();
+    setPath(d.path);
   }
 
   function toggleArmed() {
-    data.enabled = !data.enabled;
-    setArmed(data.enabled);
+    d.enabled = !d.enabled;
+    setArmed(d.enabled);
   }
 
   async function run() {
     // Set "writing" synchronously — awaiting first leaves the button clickable (double-click race).
     setStatus("writing");
-    await data.run();
-    setStatus(data.status);
-    setMessage(data.statusMessage);
+    await d.run();
+    setStatus(d.status);
+    setMessage(d.statusMessage);
   }
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder={kindLabel}>
+    <NodeShell node={data} emit={emit} labelPlaceholder="Write File">
       <InlineInputs node={data} emit={emit} />
       <div className="sol-conn">
+        <SegToggle value={format} onChange={pickFormat} options={FORMAT_OPTIONS} arg />
         {!desktop && <div className="sol-conn__note">Writing files is available in the desktop app only.</div>}
         <div style={{ display: "flex", gap: 4 }}>
           <input
@@ -113,18 +126,10 @@ function WriteFileComponent({
             {message}
           </div>
         )}
-        <FrameDisplay frame={data.cachedFrame} label={data.label} />
+        <FrameDisplay frame={d.cachedFrame} label={d.label} />
       </div>
     </NodeShell>
   );
-}
-
-export function WriteCsvComponent(props: NodeProps<WriteCsvNodeType>) {
-  return <WriteFileComponent {...(props as unknown as NodeProps<WriteNodeData>)} kindLabel="Write CSV" ext="csv" />;
-}
-
-export function WriteJsonComponent(props: NodeProps<WriteJsonNodeType>) {
-  return <WriteFileComponent {...(props as unknown as NodeProps<WriteNodeData>)} kindLabel="Write JSON" ext="json" />;
 }
 
 // Same arm/disarm discipline as the file sinks: Run is the only thing that writes.
