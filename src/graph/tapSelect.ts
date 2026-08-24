@@ -5,12 +5,7 @@ import { canvasLockStore } from "./canvasLock";
 import { resetPointerCensus } from "./pointerGesture";
 import { touchSelectStore } from "./touchSelectStore";
 
-// The other half of the node drag guard (installNodeDragGuard): a touch press on an
-// UNSELECTED node is made drag-transparent so it falls through to a pan, which means the
-// node can only be picked on pointerup, once the gesture is known to be one stationary
-// finger and not the first half of a pinch. This census tracks what that pointerup
-// decision needs. Both editing surfaces install it, or an unselected card is untouchable
-// on touch. Full mechanics: docs/subsystem-invariants.md § Pointer gestures.
+// Tap-to-select on pointerup, the companion of installNodeDragGuard; both surfaces install it.
 
 export type TapCensus = {
   // The node under a single touch press; null for a form-control target, whose owning node

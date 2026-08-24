@@ -177,17 +177,8 @@ export function installPinchTranslateVeto(area: AreaPlugin<Schemes, AreaExtra>):
   });
 }
 
-/** The node drag-handler guard, shared by every editing surface: rete picks a node on
- *  pointerdown because the drag depends on it, so a press that turns out to be the first
- *  half of a pinch would otherwise grab whatever it landed on. Making an unselected node
- *  drag-transparent to TOUCH resolves it structurally — the press falls through to a pan,
- *  and selection lands on pointerup instead (installTapSelect). A locked canvas never
- *  drags; a non-primary mouse/pen button never drags; a second finger mid-gesture is a
- *  pinch. rete stopPropagations only AFTER this guard, so a false guard lets the press
- *  bubble to the area = pan. `groupBand` is the caller's escape hatch for surface-specific
- *  geometry (Canvas's expanded-group edge band) — areaPresets must not import GroupNode.
- *  Returns the per-node patcher to call from a `nodecreated` pipe (next frame, once the
- *  view exists). Full rationale: docs/subsystem-invariants.md § Pointer gestures. */
+/** Per-node drag guard for every editing surface; returns the patcher for a `nodecreated`
+ *  pipe. `groupBand` keeps GroupNode geometry out of this module. */
 export function installNodeDragGuard(
   area: AreaPlugin<Schemes, AreaExtra>,
   editor: NodeEditor<Schemes>,
