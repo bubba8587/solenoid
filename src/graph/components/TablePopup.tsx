@@ -17,6 +17,7 @@ import { formatListCell } from "./valueDisplayFormat";
 import { FormatStyleSelect, DateStyleSelect, UnitSelect, LogicalStyleSelect, TextCaseSelect } from "./fcControls";
 import { applyTextCase } from "../formatAnnotationStore";
 import { PopupShell, popupCardVars } from "./PopupShell";
+import { settingsStore } from "../settingsStore";
 import { gridKeyOf, nextCell } from "./gridKeyboard";
 import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortIndicator, stopSortTrigger } from "./columnSort";
 import { parseRecordLayout } from "../nodes/visual";
@@ -156,6 +157,7 @@ export function TablePopup() {
   const [, bumpDraft] = useState(0);
   // The grid table, so the keyboard mover can find a target cell by its data-vi/data-c.
   const gridRef = useRef<HTMLTableElement | null>(null);
+  const showSummary = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupSummary"));
   // DISPLAY-ONLY list orientation — the value stays the flat row; copy/CSV/Markdown
   // must keep flattening to the same list.
   const [listVertical, setListVertical] = useState(false);
@@ -491,10 +493,10 @@ export function TablePopup() {
   // column reads its derived cells (B6). Skipped entirely for a plain list/table popup.
   // Cached on the identities it reads: a keystroke (bumpDraft) or a sort click re-renders
   // without rescanning the grid.
-  const summaryDeps = [state, grid, columnTypes, computedVals, colLambdas, colExprs, listVertical, editable];
+  const summaryDeps = [state, grid, columnTypes, computedVals, colLambdas, colExprs, listVertical, editable, showSummary];
   const sameDeps = (a: unknown[], b: unknown[]) => a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
   if (!sameDeps(summaryCache.current.deps, summaryDeps)) {
-    const value: ColSummary[] | null = isFramePopup && !vertical ? (() => {
+    const value: ColSummary[] | null = showSummary && isFramePopup && !vertical ? (() => {
       const frameCols = editable ? buildFrameColumns() : null;
       const valuesFor = (c: number): unknown[] => {
         if (hasComputed && isComputedCol(c)) return (computedVals ?? []).map((row) => row?.[c] ?? null);
@@ -653,6 +655,7 @@ export function TablePopup() {
             { label: state.list ? "Copy" : "Copy CSV", onClick: copy },
             { label: "Copy as Markdown", onClick: copyMarkdown },
             { label: "Export CSV…", onClick: exportCsv },
+            ...(isFramePopup ? [{ label: showSummary ? "Hide summary footer" : "Show summary footer", onClick: () => settingsStore.set("tablePopupSummary", !showSummary) }] : []),
           ]}
         />
       }

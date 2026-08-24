@@ -31,6 +31,8 @@ export interface Settings {
   minimapPosition: "bottom" | "top" | "hide";
   /** Hide the canvas background dot grid. */
   hideGridDots: boolean;
+  /** The table popup's per-column summary/profile footer. */
+  tablePopupSummary: boolean;
 
   /** Drop a cable on empty canvas → the Add menu opens filtered to compatible
    *  node types, pre-wired to whichever one gets picked. */
@@ -56,6 +58,7 @@ const DEFAULTS: Settings = {
   obsidianAssetSubfolder: "",
   minimapPosition: "bottom",
   hideGridDots: false,
+  tablePopupSummary: true,
   quickWire: false,
   semanticZoom: false,
   commandPaletteAlwaysOn: false,
@@ -199,6 +202,10 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
       {
         key: "hideGridDots",
         label: "Hide grid dots",
+      },
+      {
+        key: "tablePopupSummary",
+        label: "Table popup summary footer",
       },
       {
         key: "commandPaletteAlwaysOn",
