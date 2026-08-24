@@ -6,11 +6,12 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 
 ## This session (2026-08-24)
 
-Agent 1 writes plans (`docs/plans/`), doesn't execute. Executors: claim a plan from `docs/plans/README.md` below, follow its protocol.
+Agent 1 writes plans (`docs/plans/`), doesn't execute. Executors (Agent 2 solenoid-18, Agent 4 solenoid-f1, Jeff/Agent 5 solenoid-b2): claim a plan from `docs/plans/README.md` below, follow its protocol.
 
 ## Claims
 
 - B0 — Agent 4 (solenoid-f1) — Python/R gap remainder
-- A6 — Agent 2 (solenoid-18)
+- A6 — Agent 2 (solenoid-18); A4 next
+- A5 (per family, Input first) — Jeff / Agent 5 (solenoid-b2)
 
 _B6 landed (753c6c6c) → TablePopup.tsx is free; A3 (plan 7) is now unblocked._
