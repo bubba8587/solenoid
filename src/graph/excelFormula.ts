@@ -452,6 +452,8 @@ const NULLABLE_SCALARS_OK = new Set([
   "SEQUENCE", "WRAPROWS", "WRAPCOLS", "MMULT", "MDETERM", "MINVERSE", "TRANSPOSE", "MUNIT", "TOCOL", "TOROW",
   // Tranche 2, same contract.
   "UNIQUE", "SORT", "SORTBY", "FILTER", "TAKE", "DROP", "MODE.MULT", "FREQUENCY", "RANDARRAY", "RANDDIST",
+  // Grid mode's omitted axes arrive as blanks (INTERPOLATE(table, , , FALSE) = index axes).
+  "INTERPOLATE",
   // The append ladder + grid selection/grow: blanks are dropped (stackers) or mean an
   // omitted arg (EXPAND's Fill/cols), so each registration decides blank-by-blank.
   "HSTACK", "VSTACK", "CHOOSECOLS", "CHOOSEROWS", "EXPAND",

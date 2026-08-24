@@ -1752,7 +1752,9 @@ registerInternal("INTERPOLATE", (ys, xs, newXs, forecast) => {
   // GRID mode — a 2-D first argument. The positional args are (table, xs, ys, forecast);
   // gridAxes handles an omitted (index) or blank (null) axis and validates a given list.
   if (Array.isArray(ys) && ys.some((r) => Array.isArray(r))) {
-    const axes = gridAxes(ys, xs, newXs);
+    // A BLANK positional argument is an omitted axis here (the formula surface has no cables,
+    // so there is no "wired blank" to propagate): it counts 1, 2, 3… like an unwired socket.
+    const axes = gridAxes(ys, xs ?? undefined, newXs ?? undefined);
     if (axes === null) return null;
     if (isSolError(axes)) return axes;
     const fc = forecast === undefined ? true : coerceLogical(forecast) !== false;

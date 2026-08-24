@@ -272,6 +272,10 @@ describe("INTERPOLATE dispatches its two modes on the argument's rank", () => {
   it("omitted axes count 1, 2, 3…, matching the node with unwired axes", () => {
     const node = new InterpolateNode({ mode: "grid" });
     expect(ev("INTERPOLATE(t)", { t: z })).toEqual(node.data({ z: [z] }).result);
+    // A BLANK positional axis is omitted too (a blank arg evaluates to null; the formula
+    // surface has no wired-blank to propagate), so the forecast flag can be reached alone.
+    const off = new InterpolateNode({ mode: "grid", forecast: false });
+    expect(ev("INTERPOLATE(t, , , FALSE)", { t: z })).toEqual(off.data({ z: [z] }).result);
   });
 
   it("a rank-≤1 first argument still runs LIST mode, unchanged", () => {
