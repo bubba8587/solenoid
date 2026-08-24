@@ -11,3 +11,4 @@ Agent 1 writes plans (`docs/plans/`), doesn't execute. Executors: claim a plan f
 ## Claims
 
 - A2 — Agent 4 (solenoid-f1)
+- A6 — Agent 2 (solenoid-18)
