@@ -967,7 +967,12 @@ function numLatex(v: string): string {
   return v;
 }
 
-const TRIG = new Set(["SIN", "COS", "TAN", "SINH", "COSH", "TANH", "ASIN", "ACOS", "ATAN"]);
+// KaTeX's own operator names — the arc functions are \arcsin, never \asin.
+const TRIG_TEX: Record<string, string> = {
+  SIN: "\\sin", COS: "\\cos", TAN: "\\tan",
+  SINH: "\\sinh", COSH: "\\cosh", TANH: "\\tanh",
+  ASIN: "\\arcsin", ACOS: "\\arccos", ATAN: "\\arctan",
+};
 const CMP_TEX: Record<string, string> = { "=": "=", "<>": "\\ne", "<": "<", ">": ">", "<=": "\\le", ">=": "\\ge" };
 
 /** A string literal → KaTeX text mode: `\textquotedbl` is NOT a KaTeX command, so
@@ -1009,7 +1014,7 @@ function tex(n: Ast, parent: number): string {
       if (name === "PI" && a.length === 0) return "\\pi";
       if (name === "LN") return `\\ln\\!\\left(${a.map((x) => tex(x, 0)).join(",\\, ")}\\right)`;
       if ((name === "LOG10" || name === "LOG") && a.length <= 1) return `\\log\\!\\left(${a.map((x) => tex(x, 0)).join("")}\\right)`;
-      const fn = TRIG.has(name) ? `\\${name.toLowerCase()}` : `\\operatorname{${name}}`;
+      const fn = TRIG_TEX[name] ?? `\\operatorname{${name}}`;
       return `${fn}\\!\\left(${a.map((x) => tex(x, 0)).join(",\\, ")}\\right)`;
     }
     case "bin": {

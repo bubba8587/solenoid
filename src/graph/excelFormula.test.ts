@@ -142,6 +142,15 @@ describe("formulaToLatex", () => {
     expect(formulaToLatex("(a + b) * c")).toContain("\\left(");
   });
 
+  it("renders arc trig with KaTeX's own names (\\arcsin, not \\asin)", async () => {
+    const tex = formulaToLatex("ASIN(x) + ACOS(y) + ATAN(z)");
+    expect(tex).toContain("\\arcsin");
+    expect(tex).toContain("\\arccos");
+    expect(tex).toContain("\\arctan");
+    const katex = (await import("katex")).default;
+    expect(() => katex.renderToString(tex!, { throwOnError: true })).not.toThrow();
+  });
+
   it("returns null for unparseable input", () => {
     expect(formulaToLatex("a +")).toBeNull();
   });
@@ -165,7 +174,7 @@ describe("formulaToLatex", () => {
   it("renders trig functions with backslash prefix", () => {
     expect(formulaToLatex("SIN(x)")).toBe("\\sin\\!\\left(x\\right)");
     expect(formulaToLatex("COS(x)")).toBe("\\cos\\!\\left(x\\right)");
-    expect(formulaToLatex("ATAN(x)")).toBe("\\atan\\!\\left(x\\right)");
+    expect(formulaToLatex("ATAN(x)")).toBe("\\arctan\\!\\left(x\\right)");
   });
 
   it("renders POWER(a,b) as exponent", () => {
