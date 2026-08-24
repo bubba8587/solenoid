@@ -1364,8 +1364,10 @@ export function cubeRowAt(c: CubeValue, i: number): CubeValue {
   );
 }
 
-// The source socket is `any` because a cube can't narrow into a frame socket; a bare
-// list/matrix/scalar widens into a frame exactly as a `frame` socket would.
+// Normalize the XLookup node's polymorphic Table/Cube source to a Frame or Cube. Its socket
+// is `cube` and the value arrives un-widened (noWidenInputs), and the node's shape guard has
+// already rejected a scalar / bare 1-D — so in practice a Frame/Cube passes through and a
+// matrix widens into a Frame; the scalar/list arms below stay as defensive fallbacks.
 export function asLookupSource(v: unknown): FrameValue | CubeValue | null {
   if (v == null) return null;
   if (isCubeValue(v)) return v;

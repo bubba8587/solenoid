@@ -162,6 +162,7 @@ describe("everyFieldClassified — every own field is persisted or deliberately 
     sourceColumns: "detected from the input frame per compute",
     defVars: "the definition's variables/params, re-stashed per compute for the binding pickers",
     rawInputs: "the pass's raw wired values (chart/lookup diagnostics)",
+    noWidenInputs: "coercion rank-widening opt-out set (XLOOKUP source); constructed, not persisted",
     shapeError: "per-pass validation state", seenError: "per-pass error latch",
     violations: "per-pass check results", results: "per-pass sweep results",
     cachedHolds: "per-pass hold state", solvedFor: "per-pass solve marker",

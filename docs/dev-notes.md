@@ -164,6 +164,21 @@ green. One deviation kept from the plan: step 6 said delete the drill-in lock-cl
 NOT cover, so deleting it would leave a locked drill-in editable. Author eyeball: on a phone or touch
 emulation open a composite, finger-pan over cards, pinch, tap a card to select, toggle the lock pill.
 
+**A4 — retire the XLOOKUP `rawInputs` bypass (plan 5).** `XLookupNode`'s `frame` input swaps
+`rawInputs` (skip ALL coercion) for `noWidenInputs` (skip only rank widening). The plan's premise
+that "coercion would `toCube` a wired Frame and strip its typed columns" is STALE — `frameToCube`
+carries `type: col.type` now (typed CubeColumns), so nothing strips. But full removal (option 1)
+still fails: `toCube` silently WIDENS a scalar/1-D into a 1×N cube, and the node's shape guard then
+sees a cube and can't reject it, degrading the clean "Build Frame two aligned lists first" `#VALUE!`
+to a `#REF!`. `noWidenInputs` is identity for a `cube`-typed socket (no element family), so a Frame
+stays a typed Frame, a Cube a Cube, and a scalar/1-D reaches the guard un-widened and is rejected
+`#VALUE!` — behavior-preserving, and the frame input no longer bypasses the coercion pipeline
+wholesale. `persistenceSweep` allowlists `noWidenInputs` (transient); the stale `asLookupSource`
+header comment (claimed the socket was `any`) is corrected. Pins: `frameLookup.test.ts` "XLOOKUP
+node coercion — retiring the rawInputs bypass" (typed-date survives coercion; scalar + 1-D rejected,
+driven through `wrapNodeData`). **The chart nodes (`visual.ts`) are now the only `rawInputs` users**
+— feeds B8's "collapse the frame+cube lookup paths." Full suite green (bar Agent 4's in-flight B0).
+
 **A5 Input (direct + Control) sweep** (23 leaves / ~19 classes) → one wired-blank bug: Color
 Blend treated a blank on a color operand as an "isn't a color" `#VALUE!` instead of propagating
 blank; now `readInput` reads the raw value, `null` → blank out (error still outranks blank, and a

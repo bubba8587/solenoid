@@ -23,8 +23,6 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   visual order; the editable CSV view stays source-order because it parses back into the
   grid). AUTHOR EYEBALL: open a >1,000-row frame popup, sort a column, confirm the top rows
   and that Copy CSV carries all rows.
-- [ ] **A4 (remainder) — retire the XLOOKUP `rawInputs` bypass** (deferrals: with typed
-  frame→cube the bypass is unneeded; the frame + cube lookup paths could collapse to one).
 - [ ] **A5 Node-by-node sweep**, per family, value-semantics + description truth (below).
 
 **B0 — the Python/R gap (author ask 2026-08-23) — Tiers 1 + 2 LANDED; what remains**

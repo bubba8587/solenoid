@@ -1941,9 +1941,11 @@ export class XLookupNode extends ClassicPreset.Node {
   searchMode: LookupSearchMode;
   cachedResult: CubeCell | null = null;
   stringLiterals: Record<string, string> = { lookup: "", inColumn: "", returnColumn: "", ifNotFound: "" };
-  // The source is POLYMORPHIC and must arrive UNCOERCED — coercion would toCube a wired
-  // Frame and strip its typed date/logical columns.
-  rawInputs: ReadonlySet<string> = new Set(["frame"]);
+  // The source is POLYMORPHIC: a wired Frame stays a typed Frame and a Cube a Cube, and a
+  // scalar / bare 1-D must reach the shape guard below UN-widened. noWidenInputs (not the old
+  // rawInputs, which skipped ALL coercion) gives exactly that — only rank widening is skipped,
+  // so a scalar can't silently toCube into a 1-row cube that dodges the guard.
+  noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   width = 200; height = 350;
 
   constructor(init?: { label?: string; matchMode?: LookupMatchMode; searchMode?: LookupSearchMode }) {
@@ -1982,7 +1984,7 @@ export class XLookupNode extends ClassicPreset.Node {
     // in matchOne, so only the scalar case short-circuits the whole node here).
     const scalarLookupBlank = !Array.isArray(lookupRaw) && lookupRaw.trim() === "";
     if (raw == null || inCol === "" || retCol === "" || scalarLookupBlank) { this.cachedResult = null; return { value: null }; }
-    // The uncoerced source needs a runtime shape guard: a scalar or bare 1-D list must be
+    // The un-widened source needs a runtime shape guard: a scalar or bare 1-D list must be
     // rejected, not silently widened to a useless 1-row frame.
     const tabular = isFrameValue(raw) || isCubeValue(raw) || (Array.isArray(raw) && Array.isArray((raw as unknown[])[0]));
     if (!tabular) {

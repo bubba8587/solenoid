@@ -6,6 +6,8 @@ import { isSolError } from "./errorValue";
 import { cubeFromColumns, isFrameValue } from "./frame";
 import type { FrameValue, CubeValue } from "./frame";
 import { parseDateToSerial } from "./nodes/date";
+import { XLookupNode } from "./nodes/frame";
+import { wrapNodeData } from "./coerceInputs";
 
 const people: FrameValue = {
   __frame: true,
@@ -235,5 +237,43 @@ describe("cube XLOOKUP on a TYPED date column (typed CubeColumn — frame→cube
   it("cubeRowAt preserves the column type", () => {
     const idx = lookupCubeRowIndex(events, "when", "2025-06-30");
     expect(cubeRowAt(events, idx).columns[0].type).toBe("date");
+  });
+});
+
+// A4: the XLookup node's `frame` input used to carry `rawInputs` (skip ALL coercion) purely
+// to keep a wired Frame typed — coercion would toCube it. It now uses `noWidenInputs` instead:
+// the frame reaches data() at its natural rank (a Frame stays a typed Frame, a Cube a Cube),
+// so a scalar / bare 1-D list still arrives un-widened and the node's shape guard rejects it
+// with the "Build Frame two aligned lists first" #VALUE! rather than a silent widen.
+describe("XLOOKUP node coercion — retiring the rawInputs bypass (A4)", () => {
+  const d1 = parseDateToSerial("2025-01-15");
+  const d2 = parseDateToSerial("2025-06-30");
+  const dated: FrameValue = {
+    __frame: true,
+    columns: [
+      { name: "d", type: "date", values: [d1, d2] },
+      { name: "v", type: "number", values: [10, 20] },
+    ],
+  };
+  const run = (frameInput: unknown, lookup: string) => {
+    const n = new XLookupNode();
+    wrapNodeData(n); // exercise the real coerceInputs pipeline, not a raw data() call
+    n.stringLiterals = { lookup, inColumn: "d", returnColumn: "v", ifNotFound: "" };
+    return (n.data({ frame: [frameInput] }) as { value: unknown }).value;
+  };
+
+  it("keeps a wired frame's DATE typing through coerceInputs (matches an ISO string)", () => {
+    // If coercion stripped the type (toCube → number inference), the ISO string would miss.
+    expect(run(dated, "2025-06-30")).toBe(20);
+  });
+
+  it("rejects a scalar on the Table socket with the Build-Frame guidance, not a silent widen", () => {
+    const r = run(42, "1");
+    expect(isSolError(r) && (r as { code: string }).code).toBe("#VALUE!");
+  });
+
+  it("rejects a bare 1-D list the same way", () => {
+    const r = run(["a", "b", "c"], "a");
+    expect(isSolError(r) && (r as { code: string }).code).toBe("#VALUE!");
   });
 });
