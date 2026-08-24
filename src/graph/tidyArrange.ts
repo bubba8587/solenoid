@@ -41,6 +41,12 @@ export type ArrangeFn = (opts?: { groupId?: string; skipConfirm?: boolean; skipP
 // up — do NOT fall back to the plugin's `classic` preset. A factory over the layout
 // DIRECTION: RIGHT puts inputs WEST / outputs EAST and spaces them down the card's
 // height; DOWN transposes to NORTH / SOUTH, spaced across the card's width.
+// A width cap wraps a fat layer into sublayers via ELK's per-node layerUnzipping.
+// `layerSplit` is the sublayer COUNT and lives per-node; the arrange fn stamps it here
+// from the layout's node count just before `layout()` (the preset factory re-runs per
+// layout, so this closure reads the fresh value). 0 = uncapped.
+let tidyLayerSplit = 0;
+
 export function symmetricPortPreset(direction: TidyDirection) {
   const down = direction === "down";
   return {
@@ -54,6 +60,13 @@ export function symmetricPortPreset(direction: TidyDirection) {
       return down
         ? { x: along, y: 0, width: 15, height: 15, side: data.side === "output" ? "SOUTH" : "NORTH" } as const
         : { x: 0, y: along, width: 15, height: 15, side: data.side === "output" ? "EAST" : "WEST" } as const;
+    },
+    // layerSplit is per-node; stamp the same sublayer count on every card so the fat
+    // layer wraps. Empty when uncapped so ELK keeps one layer per depth.
+    options(_id: string): Record<string, string | number | boolean> {
+      return tidyLayerSplit > 0
+        ? { "elk.layered.layerUnzipping.layerSplit": String(tidyLayerSplit) }
+        : {};
     },
   };
 }
@@ -83,7 +96,8 @@ const TIDY_DENSITY_SPACING: Record<TidyDensity, readonly [number, number]> = {
 /** The ELK layout options for the three Tidy knobs, read at layout time by BOTH call
  *  sites (main canvas + composite drill-in). `elk.algorithm`/`hierarchyHandling`/
  *  `edgeRouting` still come from the arrange plugin's root defaults; this only sets what
- *  the knobs drive. A width cap needs COFFMAN_GRAHAM — `layerBound` is inert otherwise. */
+ *  the knobs drive. A width cap turns ELK's layerUnzipping on (global switch here; the
+ *  per-node sublayer count is stamped by the port preset from the node count). */
 export function tidyLayoutOptions(s: {
   direction: TidyDirection;
   density: TidyDensity;
@@ -96,10 +110,18 @@ export function tidyLayoutOptions(s: {
     "elk.spacing.nodeNode": String(nodeNode),
   };
   if (s.widthCap > 0) {
-    opts["elk.layered.layering.strategy"] = "COFFMAN_GRAHAM";
-    opts["elk.layered.layering.coffmanGraham.layerBound"] = String(s.widthCap);
+    opts["elk.layered.layerUnzipping.strategy"] = "ALTERNATING";
   }
   return opts;
+}
+
+/** Sublayer count for a width cap of "at most `cap` per row": ceil(count / cap), floored
+ *  at 1. `count` is the WHOLE layout's node count — per-layer widths aren't known before
+ *  ELK runs, so a graph with nodes outside the fat layer over-splits slightly. That errs
+ *  SAFE: the widest layer holds W ≤ count, so W / ceil(count/cap) ≤ cap — never exceeds the
+ *  cap. Shared by the arrange fn and the integration test so the two can't drift. */
+export function tidyLayerSplitFor(nodeCount: number, widthCap: TidyWidthCap): number {
+  return widthCap > 0 ? Math.max(1, Math.ceil(nodeCount / widthCap)) : 0;
 }
 
 // ELK is a heavy chunk only Tidy needs — wire it on first arrange, never at init.
@@ -415,6 +437,13 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     // Null only if the area was destroyed mid-import — nothing left to lay out.
     const arrangePlugin = await ensureArrange();
     if (!arrangePlugin) return;
+
+    // widthCap is "at most N per row"; layerUnzipping wants the sublayer COUNT. Read here
+    // (from the layout's node count) so the preset's per-node hook stamps the same value.
+    const capSetting = settingsStore.get("tidyWidthCap");
+    const widthCap = (capSetting === "off" ? 0 : Number(capSetting)) as TidyWidthCap;
+    tidyLayerSplit = tidyLayerSplitFor(proxyNodes.length, widthCap);
+
     await arrangePlugin.layout({
       nodes: proxyNodes as Schemes["Node"][],
       connections: subsetConns,

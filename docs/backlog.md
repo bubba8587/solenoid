@@ -274,25 +274,6 @@ is blocked here for out-of-scope repos).
   NOT blockers (checked): vitest 4.1.8 already allows `vite ^6 || ^7 || ^8`; node
   engines are identical across 7 and 8; every new peer on both packages is optional.
   Downstream: this is the build tool, so the Tauri desktop release rides on it.
-- [ ] **`elkjs` 0.8.2 → 0.12.0 — only worth it WITH the Tidy-options work.**
-  Verified inert on its own: layout output is byte-identical on both a connected
-  and a disconnected graph with our four options, and the full suite passes under
-  0.12. It buys no visible change and costs a standing `npm warn ERESOLVE
-  overriding peer dependency` — `rete-auto-arrange-plugin@2.0.2` (the LATEST; none
-  newer exists) peer-pins `elkjs: ^0.8.2`, i.e. `<0.9.0`, and we reach ELK only
-  through that plugin. What it DOES buy is `layered.layerUnzipping.*`, which lays a
-  9→1 fan out 3×3 at 929×710 where Coffman-Graham (available today) manages
-  929×987 — plus `considerModelOrder.groupModelOrder.*`, `inLayerPredOf/SuccOf`,
-  and `topdownLayout` (ELK's native answer to the super-node trick our group Tidy
-  hand-rolls). Gotcha for whoever builds it: `layerUnzipping.layerSplit` is a
-  PER-NODE option — set on the root it is silently ignored — so Tidy must stamp it
-  onto the wide layer's nodes, ~`ceil(sqrt(count))`; 4 on a 9-fan splits 3/2/2/2
-  and buys no further height. Also note the license moves EPL-2.0 →
-  `EPL-2.0 OR GPL-3.0-or-later`, which changes the shipped
-  `third-party-licenses.txt`. Full option survey + the open cable-routing question:
-  `git show 11709841^:docs/deferrals.md` lines 123-160 (the "Tidy options" entry,
-  since promoted to B7 and landed). The knobs themselves shipped in B7 on elkjs 0.8.2;
-  this bump is the deferred `layerUnzipping` follow-on only.
 - [ ] **The rest of the outdated set, still unwalked** — majors: `marked` 14→18,
   `katex` 0.17→0.18. Plus ~16 in-range patches. Core `rete` 2.0.6 is already current.
   (`@formulajs/formulajs` 4.6.0→4.6.1 LANDED 2026-08-23: the diff is exactly a new `TAKE`

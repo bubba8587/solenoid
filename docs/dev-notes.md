@@ -108,6 +108,17 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   Unpack, Triangle Solver, Quadratic Roots (a one-row frame for a scalar input is the wrong shape).
   Agent 4 owns the stats.ts pair (Decompose landed a9035642, Forecast ETS in flight) + the scratch-seed
   rewire (99d409da). The plan file deletes when all seven land.
+- **elkjs 0.8.2 → 0.12.0; Tidy width cap rebuilt on layerUnzipping.** The old cap used
+  `COFFMAN_GRAHAM` + `coffmanGraham.layerBound`, which ELK dropped. New mechanism: `tidyLayoutOptions`
+  sets the GLOBAL `elk.layered.layerUnzipping.strategy = ALTERNATING` when capped; the port preset's
+  per-node `options(id)` hook stamps `elk.layered.layerUnzipping.layerSplit` (the sublayer COUNT — set
+  on the root it's ignored). Shared `tidyLayerSplitFor(nodeCount, cap) = max(1, ceil(count/cap))`; the
+  arrange fn stashes it in a module var (`tidyLayerSplit`) from `proxyNodes.length` just before
+  `layout()`, and `layoutTidyIntegration.test.ts` calls the same helper (drift-pinned). count is the
+  whole layout's node count (per-layer widths unknown pre-layout) so it can over-split, erring SAFE:
+  widest layer W ≤ count ⟹ W/split ≤ cap, never exceeds. Empirically layerSplit=N → N columns on a
+  9-fan. Tests re-pinned to the CONTRACT (no row > cap, wrapped, shorter cross-extent) not exact column
+  counts. `third-party-licenses.txt` flips MIT → `EPL-2.0 OR GPL-3.0-or-later` (elkjs's license).
 - **Series Range → INCLUSIVE of Stop (author 2026-08-24).** `rangeCount`/`rangeList` (`listOps.ts`)
   end ON Stop: `n = floor((stop−start)/step + 1e-9) + 1`; step 0 → `start===stop ? 1 : Infinity` (still
   the `#DOMAIN!` cap); values are `start + i*step` (not accumulated) with the last snapped exactly onto

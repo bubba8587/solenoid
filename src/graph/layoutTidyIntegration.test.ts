@@ -3,7 +3,7 @@ import ELK from "elkjs";
 import { solveStandoffs } from "./standoffSolver";
 import { separateOverlaps, type PushBox } from "./groupPushCore";
 import { anchorPoint, ANCHOR_DIR, type Box, type Standoff } from "./standoffs";
-import { tidyLayoutOptions, type TidyDirection, type TidyDensity, type TidyWidthCap } from "./tidyArrange";
+import { tidyLayoutOptions, tidyLayerSplitFor, type TidyDirection, type TidyDensity, type TidyWidthCap } from "./tidyArrange";
 
 // ─── ELK Tidy integration guard ─────────────────────────────────────────────────
 // The layout property tests (layoutInvariants.test.ts) exercise the PURE cores in
@@ -50,9 +50,24 @@ async function layout(
   children: ElkNode[],
   edges: ElkEdge[],
   tidy: { direction: TidyDirection; density: TidyDensity; widthCap: TidyWidthCap } = DEFAULT_TIDY,
-): Promise<Rect[]> {
-  const g = await elk.layout({ id: "root", layoutOptions: appOpts(tidy), children, edges });
-  return (g.children ?? []).map((c) => ({ id: c.id, x: c.x ?? 0, y: c.y ?? 0, w: c.width ?? 0, h: c.height ?? 0 }));
+): Promise<{ rects: Rect[]; width: number; height: number }> {
+  // Faithful reproduction: the app stamps the per-node `layerSplit` (the port preset's
+  // `options` hook) from the layout's node count — `tidyLayoutOptions` only carries the
+  // global strategy switch. Mirror that here via the shared formula.
+  const split = tidyLayerSplitFor(children.length, tidy.widthCap);
+  const kids = children.map((c) => ({
+    ...c,
+    ...(split > 0 ? { layoutOptions: { "elk.layered.layerUnzipping.layerSplit": String(split) } } : {}),
+  }));
+  const g = await elk.layout({ id: "root", layoutOptions: appOpts(tidy), children: kids, edges }) as {
+    children?: { id: string; x?: number; y?: number; width?: number; height?: number }[];
+    width?: number; height?: number;
+  };
+  return {
+    rects: (g.children ?? []).map((c) => ({ id: c.id, x: c.x ?? 0, y: c.y ?? 0, w: c.width ?? 0, h: c.height ?? 0 })),
+    width: g.width ?? 0,
+    height: g.height ?? 0,
+  };
 }
 
 // distinct coordinate buckets among a set of rects (1px tolerance), per axis.
@@ -67,7 +82,7 @@ function distinct(rects: Rect[], axis: "x" | "y"): number {
 describe("ELK Tidy integration (elkjs under node + the app's post-layout passes)", () => {
   it("lays out a layered graph with the app's spacing — no node overlaps", async () => {
     // A diamond + a tail, varied heights (a Number vs a Frame), like a real graph.
-    const rects = await layout(
+    const { rects } = await layout(
       [
         { id: "a", width: 180, height: 80 },
         { id: "b", width: 180, height: 120 },
@@ -95,7 +110,7 @@ describe("ELK Tidy integration (elkjs under node + the app's post-layout passes)
     const M = { w: 180, h: 80 };
     const GAP = 38;
     const clusterH = M.h * 2 + GAP; // 198
-    const rects = await layout(
+    const { rects } = await layout(
       [
         { id: "src", width: 180, height: 70 },
         { id: "cluster", width: M.w, height: clusterH }, // the super-node
@@ -170,21 +185,30 @@ describe("tidyLayoutOptions — the three knobs map to ELK options", () => {
     expect(pair("airy")).toEqual(["80", "56"]);
   });
 
-  it("a width cap adds COFFMAN_GRAHAM + layerBound; off omits both", () => {
+  it("a width cap turns layerUnzipping on globally; off omits it", () => {
     const off = tidyLayoutOptions({ direction: "right", density: "normal", widthCap: 0 });
-    expect(off["elk.layered.layering.strategy"]).toBeUndefined();
-    expect(off["elk.layered.layering.coffmanGraham.layerBound"]).toBeUndefined();
+    expect(off["elk.layered.layerUnzipping.strategy"]).toBeUndefined();
     for (const cap of [2, 3, 4] as const) {
       const o = tidyLayoutOptions({ direction: "right", density: "normal", widthCap: cap });
-      expect(o["elk.layered.layering.strategy"]).toBe("COFFMAN_GRAHAM");
-      expect(o["elk.layered.layering.coffmanGraham.layerBound"]).toBe(String(cap));
+      expect(o["elk.layered.layerUnzipping.strategy"]).toBe("ALTERNATING");
     }
+  });
+
+  it("tidyLayerSplitFor: 'at most N per row' → ceil(count/cap), floored at 1; 0 uncapped", () => {
+    expect(tidyLayerSplitFor(10, 0)).toBe(0);
+    // 10 nodes: cap 2 → 5 sublayers, cap 3 → 4, cap 4 → 3 (the per-layer width never exceeds cap).
+    expect(tidyLayerSplitFor(10, 2)).toBe(5);
+    expect(tidyLayerSplitFor(10, 3)).toBe(4);
+    expect(tidyLayerSplitFor(10, 4)).toBe(3);
+    expect(tidyLayerSplitFor(1, 4)).toBe(1); // floored at 1
   });
 });
 
-describe("width cap caps the layer width (Coffman-Graham), no overlaps", () => {
-  // A 9→1 fan: without a cap ELK stacks all 9 sources in ONE layer; with cap 3 they split
-  // across 3 layers. RIGHT layers along x, DOWN along y.
+describe("width cap wraps a fat layer (layerUnzipping), no overlaps", () => {
+  // A 9→1 fan: without a cap ELK stacks all 9 sources in ONE layer (a very tall/wide column);
+  // a cap wraps that layer into sublayers so no row holds more than `cap`. RIGHT wraps along
+  // x, DOWN along y. The fan is 10 nodes total (9 sources + sink), so the shared split formula
+  // gives ceil(10/cap) sublayers: cap 2→5, cap 3→4, cap 4→3 — each keeps the per-row count ≤ cap.
   const fan = () => {
     const children: ElkNode[] = [{ id: "sink", width: 180, height: 80 }];
     const edges: ElkEdge[] = [];
@@ -195,24 +219,45 @@ describe("width cap caps the layer width (Coffman-Graham), no overlaps", () => {
     return { children, edges };
   };
   const sources = (rects: Rect[]) => rects.filter((r) => r.id !== "sink");
+  // Largest count of sources sharing one axis bucket (~2px tolerance) — the widest "row".
+  const maxPerBucket = (rects: Rect[], axis: "x" | "y"): number => {
+    const counts = new Map<number, number>();
+    for (const r of rects) {
+      const key = Math.round(r[axis] / 2);
+      let placed = false;
+      for (const k of counts.keys()) if (Math.abs(k - key) <= 1) { counts.set(k, counts.get(k)! + 1); placed = true; break; }
+      if (!placed) counts.set(key, 1);
+    }
+    return Math.max(...counts.values());
+  };
 
-  it("RIGHT: cap 3 -> 3 x-columns among the 9; cap off -> 1", async () => {
+  it("RIGHT: each cap wraps the 9-fan so no x-column exceeds the cap; shorter than uncapped", async () => {
     const { children, edges } = fan();
-    const capped = await layout(children, edges, { direction: "right", density: "normal", widthCap: 3 });
-    expect(distinct(sources(capped), "x")).toBe(3);
-    expect(firstOverlap(capped)).toBeNull();
     const uncapped = await layout(children, edges, { direction: "right", density: "normal", widthCap: 0 });
-    expect(distinct(sources(uncapped), "x")).toBe(1);
-    expect(firstOverlap(uncapped)).toBeNull();
+    expect(distinct(sources(uncapped.rects), "x")).toBe(1);      // all 9 in one column
+    expect(maxPerBucket(sources(uncapped.rects), "x")).toBe(9);
+    expect(firstOverlap(uncapped.rects)).toBeNull();
+    for (const cap of [2, 3, 4] as const) {
+      const capped = await layout(children, edges, { direction: "right", density: "normal", widthCap: cap });
+      expect(distinct(sources(capped.rects), "x")).toBeGreaterThan(1);       // it wrapped
+      expect(maxPerBucket(sources(capped.rects), "x")).toBeLessThanOrEqual(cap); // no row over cap
+      expect(capped.height).toBeLessThan(uncapped.height);                    // the fat column shrank
+      expect(firstOverlap(capped.rects)).toBeNull();
+    }
   });
 
-  it("DOWN: cap 3 -> 3 y-rows among the 9; cap off -> 1", async () => {
+  it("DOWN: each cap wraps the 9-fan so no y-row exceeds the cap; shorter than uncapped", async () => {
     const { children, edges } = fan();
-    const capped = await layout(children, edges, { direction: "down", density: "normal", widthCap: 3 });
-    expect(distinct(sources(capped), "y")).toBe(3);
-    expect(firstOverlap(capped)).toBeNull();
     const uncapped = await layout(children, edges, { direction: "down", density: "normal", widthCap: 0 });
-    expect(distinct(sources(uncapped), "y")).toBe(1);
-    expect(firstOverlap(uncapped)).toBeNull();
+    expect(distinct(sources(uncapped.rects), "y")).toBe(1);
+    expect(maxPerBucket(sources(uncapped.rects), "y")).toBe(9);
+    expect(firstOverlap(uncapped.rects)).toBeNull();
+    for (const cap of [2, 3, 4] as const) {
+      const capped = await layout(children, edges, { direction: "down", density: "normal", widthCap: cap });
+      expect(distinct(sources(capped.rects), "y")).toBeGreaterThan(1);
+      expect(maxPerBucket(sources(capped.rects), "y")).toBeLessThanOrEqual(cap);
+      expect(capped.width).toBeLessThan(uncapped.width);
+      expect(firstOverlap(capped.rects)).toBeNull();
+    }
   });
 });
