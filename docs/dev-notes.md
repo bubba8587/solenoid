@@ -528,6 +528,22 @@ patch remains. Install now requires `--legacy-peer-deps` — pre-existing elkjs 
 in-flight CSV/Parquet `connection.ts` refactor (CsvConnectionNode exports mid-rename) — re-run once
 that lands.
 
+**Gauge absorbs Bullet — one "value on a scale" card, Dial or Bar (fc0ecd4a; author combine).**
+CONTRACT CHANGE (author eyeball): Gauge no longer forwards its number — it emits a chart VALUE now
+(the same pass-through → chart move 7-Segment made), so a Display/Report downstream sees the figure,
+not the value; old Bullet saves load as Placeholders. The Bullet graph folded into Gauge under an op
+selector (Dial/Bar, `kind:"operation"`, the field is `op` per selectorNamedOp). One unified
+`ScalePayload {style,value,target,min,max}` replaced `BulletPayload`; the chart op `"bullet"` →
+`"scale"`; the chart-card renderer branches on `style` — `ScaleDial` (arc + percent, shared by the
+node card AND the popup/Report so both draw the same dial) or `BulletBar`. Dial reads Value as a
+fraction (fixed 0→100%, square-collapse kept); Bar plots Value on a 0→Max track with a Target tick.
+The Dial/Bar switch prunes the bar-only cables (`dropInputCables`) before `removeInput`; `value`
+carries. NO enumerated nodeOps rows (both are just "Gauge" in the Add menu, and a "bar" op would
+collide with Chart's) — "bullet"/"dial"/"bar" ride the leaf's keywords for search. `BulletNode` +
+component deleted; the `chart-showcase` seed's Bullet became a Gauge/Bar. Pins updated:
+`visual.test` (dial + bar payloads, `op` extractInit round-trip), `wiredNull` (Bar wired-blank),
+node-coverage. Full suite green (4814). No Rust mirror (figures are JS).
+
 **Set Cell extends by SHAPE — scalar cell / list row / matrix block (83c5a339; author ask).** Each
 per-row Value now extends by rank from its (Row, Column) anchor: a scalar fills one cell, a 1-D list
 a rightward row segment, a 2-D matrix a block (numpy `A[r:r+h, c:c+w] = B`). Kernel `setCells`
