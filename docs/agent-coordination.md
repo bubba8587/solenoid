@@ -11,6 +11,6 @@ Agent 1 writes plans (`docs/plans/`), doesn't execute. Executors (Agent 2 soleno
 ## Claims
 
 - C5 (stats.ts pair) — Agent 4 (solenoid-f1): Decompose landed (a9035642); Forecast ETS in progress. B0 COMPLETE (a69a487f).
-- B8 — Agent 2 (solenoid-18) — cube unnest + timesavers. C4 COMPLETE (d01f6d10, 4184d711, 56daabda; nodeCatalog copy in Agent 4's baae4eb4; grep-bordered-empty met). Also landed this session: A6, A4, A3, C3.1, C3.2.
+- B8 — Agent 2 (solenoid-18): B8.1 Unnest cube-peel (5a5b3ab6) + B8.2 SUMIFS all/any + Aggregate First/Last (2567631d, f42b42d0) LANDED. B8.3 (XLOOKUP frame+cube path collapse) DEFERRED — internal-only, whole-row shape edge; plan/backlog/README/digest trimmed to the remainder (5a205565), pick-up-ready. Also landed this session: C4 (d01f6d10, 4184d711, 56daabda; copy in A4's baae4eb4), A6, A4, A3, C3.1, C3.2. A2 lane dry — offered B8.3 or a new stage to Lead.
 - C5 (list/control five) — Jeff / Agent 5 (solenoid-b2): correlated outputs → one frame. DONE (4/5): Point Plotter (1480e40b), Curve (2efdc246), Find Peaks (af78aa1e), Outliers (fd4947d7). HOLDING for A2's B8.2 list.ts window: Group Lists (GroupByNode ~2160) + the Series-Range-inclusive author ask (listOps.ts/list.ts SERIES_OP_META/list.test.ts/excelFunctions RANGE). nodeCatalog C5 copy BATCHED for the end (after A2's "all B8 catalog landed"). Agent 4 keeps Decompose (node 88c8a724, test swept into fd4947d7) + Forecast ETS (stats.ts). (B7 COMPLETE 8bf129c7; A5 COMPLETE f3fa52c5.)
 
