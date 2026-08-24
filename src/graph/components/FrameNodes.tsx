@@ -51,6 +51,7 @@ import type { FilterCondConfig } from "../nodes/frame";
 import { RecordLayoutField } from "./RecordLayoutField";
 import { HEAD_OP_META, HEADER_OP_META, BLANK_ROW_OP_META } from "../nodes/frame";
 import { CubeDisplay } from "./CubeDisplay";
+import { isCubeValue } from "../frame";
 import { parseFrameSource, frameSourceToText, isFrameValue, frameRowCount, type FrameSourceColumn } from "../frame";
 import { processGraph, bumpConnectionVersion } from "../process";
 import { scheduleAutosave } from "../persistence";
@@ -515,10 +516,14 @@ export function NestComponent({ data, emit }: NodeProps<NestNodeType>) {
 }
 
 export function UnnestComponent({ data, emit }: NodeProps<UnnestNodeType>) {
+  const result = data.cachedResult;
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <FrameDisplay frame={data.cachedResult} label={data.label} />
+      {/* Peeling a deeper cube yields a Cube; flattening the last level yields a Frame. */}
+      {isCubeValue(result)
+        ? <CubeDisplay cube={result} label={data.label} />
+        : <FrameDisplay frame={result} label={data.label} />}
     </NodeShell>
   );
 }

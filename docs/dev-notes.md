@@ -340,6 +340,21 @@ along file ownership, flagged in each message. AUTHOR EYEBALL: Table Input (3×3
 Interpolate (nothing on Xs/Ys) fills them; wire a 3-item Xs list and the fill changes; Surface from
 the same table draws with 1,2,3 axes; `INTERPOLATE(table)` in an Expression matches the node.
 
+**B8.1 — Unnest peels ONE cube level (plan 8, sub-item 1).** `unnestCube` (`frameVerbs.ts`) gains a
+branch: it detects the nested column's child kind from the cells — all FRAMES → flatten to a Frame
+(the existing path); all CUBES → peel one level to a shallower Cube (parent columns repeat per
+child row, child columns copied as-is so a child's OWN nested column stays nested); a mix is a
+`#TYPE!`. A depth-2 cube used to yield a silent EMPTY frame — that's the bug it fixes. `UnnestNode`'s
+output is now `staticTrueAnyOut` (the result rank depends on input depth); keyed `frame` still, so
+seeds/`cubesSeed` read `.frame` unchanged. Sanctioned in `catalogRegistry.test.ts`
+`trueanyNeedsPassthrough` (not an input passthrough — a depth-dependent producer). The component
+renders `CubeDisplay` vs `FrameDisplay` on `isCubeValue`. `column` blank still yields empty (NOT the
+first-container default — that would be a second convention next to relateCubeToFrame; Finding, not
+built). Pins: `frameVerbs.test.ts` (depth-2 peel → cube depth 1 + child intact; peel-then-unnest =
+two-step inverse to flat rows; mixed → #TYPE!; depth-1 round-trip unchanged). tsc + full vitest
+(4795) green. B8.2 (SUMIFS all/any + Aggregate First/Last) and B8.3 (XLOOKUP path collapse, A4
+landed) still to come.
+
 **A5 Input (direct + Control) sweep** (23 leaves / ~19 classes) → one wired-blank bug: Color
 Blend treated a blank on a color operand as an "isn't a color" `#VALUE!` instead of propagating
 blank; now `readInput` reads the raw value, `null` → blank out (error still outranks blank, and a

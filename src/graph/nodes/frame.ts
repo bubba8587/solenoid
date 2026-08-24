@@ -838,7 +838,8 @@ export class UnnestNode extends ClassicPreset.Node {
   };
 
   label: string;
-  cachedResult: FrameValue | SolError | null = null;
+  // Polymorphic: a depth-1 cube flattens to a Frame, a depth-≥2 cube peels to a Cube.
+  cachedResult: FrameValue | CubeValue | SolError | null = null;
   stringLiterals: Record<string, string> = { column: "" };
   width = 190; height = 150;
 
@@ -847,7 +848,8 @@ export class UnnestNode extends ClassicPreset.Node {
     this.label = init?.label ?? "Unnest";
     this.addInput("cube", cubeIn("Cube"));
     this.addInput("column", strIn("Nested column"));
-    this.addOutput("frame", frameOut("Flat"));
+    // The result rank depends on the input's nesting depth, so the output is trueany.
+    this.addOutput("frame", staticTrueAnyOut("Flat"));
   }
 
   data(inputs: { cube?: (CubeValue | null)[]; column?: string[] }) {

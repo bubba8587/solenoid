@@ -1011,7 +1011,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
               { type: "unpivot",     label: "Unpivot",     description: "Reshapes wide → long (melt): keep the Id columns, turn each chosen Value column into variable/value rows. Excel's Power Query Unpivot.", create: () => new UnpivotNode(), parity: false },
               { type: "pair", children: [
                 { type: "nest",   label: "Nest",   description: "Groups a flat Frame by key into a Cube. Each key's other columns collapse into a nested table cell. The flat → nested bridge.", create: () => new NestNode(), parity: false },
-                { type: "unnest", label: "Unnest", description: "Expands a Cube's nested-table column back to a flat Frame. Each parent row repeats per nested row. The nested → flat bridge, the inverse of Nest.", create: () => new UnnestNode(), parity: false },
+                { type: "unnest", label: "Unnest", description: "Expands a Cube's nested column one level: nested tables flatten to a Frame, nested cubes peel to a shallower Cube. Each parent row repeats per nested row. The inverse of Nest.", create: () => new UnnestNode(), parity: false },
               ]},
             ],
           },

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { sortByColumn, distinctRows, filterRows, filterRowsMulti, groupByFrame, unpivotFrame, pivotFrame, nestFrame, unnestCube, splitColumn, addIndexColumn, lookupFrameCell, fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows } from "./frameVerbs";
 import { isSolError, solError } from "./errorValue";
-import { isCubeValue, isFrameValue, type FrameValue } from "./frame";
+import { isCubeValue, isFrameValue, cubeFromColumns, cubeDepth, cubeRowCount, type FrameValue } from "./frame";
 
 const f: FrameValue = {
   __frame: true,
@@ -254,8 +254,9 @@ describe("nest / unnest (flat ⟷ cube)", () => {
     const cube = nestFrame(flat, ["cust"], "orders");
     expect(cube.columns[0].type).toBe("string");
   });
-  it("unnest is the inverse: cube → flat recovers the rows", () => {
+  it("unnest is the inverse: a depth-1 cube → flat recovers the rows", () => {
     const back = unnestCube(nestFrame(flat, ["cust"], "orders"), "orders");
+    if (!isFrameValue(back)) throw new Error("depth-1 unnest should be a Frame");
     expect(back.columns.map((c) => c.name)).toEqual(["cust", "item", "qty"]);
     expect(back.columns[0].values).toEqual(["A", "A", "B"]);
     expect(back.columns[1].values).toEqual(["x", "y", "z"]);
@@ -266,6 +267,47 @@ describe("nest / unnest (flat ⟷ cube)", () => {
     try { unnestCube(nestFrame(flat, ["cust"]), "nope"); } catch (e) { err = e; }
     if (!isSolError(err)) throw new Error("expected SolError");
     expect(err.code).toBe("#REF!");
+  });
+
+  // B8.1: a depth-2 cube (nested cells are CUBES) peels ONE level to a depth-1 cube.
+  const orders1: FrameValue = { __frame: true, columns: [{ name: "sku", type: "string", values: ["a", "b"] }] };
+  const orders2: FrameValue = { __frame: true, columns: [{ name: "sku", type: "string", values: ["z"] }] };
+  const repN = cubeFromColumns([{ name: "rep", cells: ["Ann"], type: "string" }, { name: "orders", cells: [orders1] }]);
+  const repS = cubeFromColumns([{ name: "rep", cells: ["Cy"], type: "string" }, { name: "orders", cells: [orders2] }]);
+  const depth2 = cubeFromColumns([{ name: "region", cells: ["N", "S"], type: "string" }, { name: "reps", cells: [repN, repS] }]);
+
+  it("peels a depth-2 cube one level → a depth-1 cube, child column intact", () => {
+    expect(cubeDepth(depth2)).toBe(2);
+    const peeled = unnestCube(depth2, "reps");
+    if (!isCubeValue(peeled)) throw new Error("a nested-cube column should peel to a Cube");
+    expect(cubeDepth(peeled)).toBe(1);
+    expect(peeled.columns.map((c) => c.name)).toEqual(["region", "rep", "orders"]);
+    expect(peeled.columns[0].cells).toEqual(["N", "S"]);       // parent repeats per child row (1 each here)
+    expect(peeled.columns[1].cells).toEqual(["Ann", "Cy"]);
+    expect(isFrameValue(peeled.columns[2].cells[0])).toBe(true); // the child's own nested column stays nested
+    expect(cubeRowCount(peeled)).toBe(2);
+  });
+
+  it("peel then Unnest again is the two-step inverse → the flat leaf rows", () => {
+    const once = unnestCube(depth2, "reps");
+    if (!isCubeValue(once)) throw new Error("first peel should be a Cube");
+    const twice = unnestCube(once, "orders");
+    if (!isFrameValue(twice)) throw new Error("second unnest should flatten to a Frame");
+    expect(twice.columns.map((c) => c.name)).toEqual(["region", "rep", "sku"]);
+    expect(twice.columns[0].values).toEqual(["N", "N", "S"]); // N repeats for orders1's two rows
+    expect(twice.columns[1].values).toEqual(["Ann", "Ann", "Cy"]);
+    expect(twice.columns[2].values).toEqual(["a", "b", "z"]);
+  });
+
+  it("a nested column mixing tables and cubes is a #TYPE!", () => {
+    const mixed = cubeFromColumns([
+      { name: "k", cells: ["a", "b"], type: "string" },
+      { name: "nested", cells: [orders1, repN] }, // one frame, one cube
+    ]);
+    let err: unknown;
+    try { unnestCube(mixed, "nested"); } catch (e) { err = e; }
+    if (!isSolError(err)) throw new Error("expected SolError");
+    expect(err.code).toBe("#TYPE!");
   });
 });
 

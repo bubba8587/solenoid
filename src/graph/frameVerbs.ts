@@ -1179,15 +1179,56 @@ export function nestFrame(f: FrameValue, keyColumns: readonly string[], nestedNa
   return cubeFromColumns([...keyOut, { name: names[keyColumns.length], cells: nestedCells }]);
 }
 
-/** UNNEST: expand a Cube's nested-frame column back to a flat frame — each parent
- *  row repeats once per child row, with the nested frame's columns appended.
- *  Parent rows whose nested frame is empty are dropped (standard unnest). Parent
- *  (flat) column types are re-inferred; nested column types are preserved. */
-export function unnestCube(c: CubeValue, nestedColumn: string): FrameValue {
+/** UNNEST: peel a Cube's nested column ONE level — each parent row repeats once per
+ *  child row, with the child's columns appended. Nested FRAMES flatten to a flat Frame;
+ *  nested CUBES peel to a shallower Cube (a child's own nested column stays nested). A
+ *  column mixing frames and cubes is a `#TYPE!`. Parent rows whose nested value is
+ *  empty/missing are dropped (standard unnest). Parent (flat) column types are re-inferred
+ *  on the frame path; nested column types are preserved. */
+export function unnestCube(c: CubeValue, nestedColumn: string): FrameValue | CubeValue {
   const nestedIdx = c.columns.findIndex((col) => col.name === nestedColumn);
   if (nestedIdx < 0) throw solError("#REF!", `column "${nestedColumn}" not found`);
   const flatCols = c.columns.filter((_, j) => j !== nestedIdx);
   const nested = c.columns[nestedIdx];
+
+  // The child kind decides the output rank: all frames → flat Frame; all cubes → peel one
+  // level to a shallower Cube; a mix is unresolvable.
+  let sawFrame = false, sawCube = false;
+  for (const cell of nested.cells) {
+    if (isFrameValue(cell)) sawFrame = true;
+    else if (isCubeValue(cell)) sawCube = true;
+  }
+  if (sawFrame && sawCube) throw solError("#TYPE!", "nested cells must all be tables or all be cubes");
+
+  if (sawCube) {
+    // ── PEEL: nested cells are cubes → a depth-(n−1) cube. ──
+    const schemaCube = nested.cells.find((cell) => isCubeValue(cell)) as CubeValue | undefined;
+    const childCubeCols = schemaCube?.columns ?? [];
+    const flatValsC: CubeCell[][] = flatCols.map(() => []);
+    const childValsC: CubeCell[][] = childCubeCols.map(() => []);
+    for (let i = 0; i < cubeRowCount(c); i++) {
+      const cell = nested.cells[i];
+      const childCube = isCubeValue(cell) ? cell : null;
+      const childRows = childCube ? cubeRowCount(childCube) : 0;
+      for (let r = 0; r < childRows; r++) {
+        flatCols.forEach((fc, k) => flatValsC[k].push(cubeCellAt(fc, i)));
+        childCubeCols.forEach((cc, k) => {
+          const col = childCube!.columns.find((x) => x.name === cc.name);
+          childValsC[k].push(col ? (col.cells[r] ?? null) : null);
+        });
+      }
+    }
+    const namesC = makeHeaders(
+      [...flatCols.map((c2) => c2.name), ...childCubeCols.map((c2) => c2.name)],
+      flatCols.length + childCubeCols.length,
+    );
+    return cubeFromColumns([
+      ...flatCols.map((fc, k) => ({ name: namesC[k], cells: flatValsC[k], ...(fc.type ? { type: fc.type } : {}) })),
+      ...childCubeCols.map((cc, k) => ({ name: namesC[flatCols.length + k], cells: childValsC[k], ...(cc.type ? { type: cc.type } : {}) })),
+    ]);
+  }
+
+  // ── FLATTEN: nested cells are frames (or none) → the flat-frame path. ──
   const schemaFrame = nested.cells.find((cell) => isFrameValue(cell)) as FrameValue | undefined;
   const childCols = schemaFrame?.columns ?? [];
   const flatVals: CubeCell[][] = flatCols.map(() => []);
