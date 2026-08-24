@@ -157,6 +157,15 @@ pointer input, which the drag guard does NOT cover, so deleting it would leave a
 editable. Author eyeball: on touch emulation open a composite, finger-pan over cards, pinch, tap a
 card to select, toggle the lock pill.
 
+**A5 Input (direct + Control) sweep** (23 leaves / ~19 classes) → one wired-blank bug: Color
+Blend treated a blank on a color operand as an "isn't a color" `#VALUE!` instead of propagating
+blank; now `readInput` reads the raw value, `null` → blank out (error still outranks blank, and a
+typed-empty `""` card still errors). Everything else already correct: Slider's control-bound
+fallback, RAND/COMPLEX shape+operand propagation, Input Switch / Slicer relay-and-frame
+propagation, and the pure sources (Number/Text/Boolean/Date/Table/Frame/Constant/NA/dials/pads).
+No false description claims. Pins: `wiredNull.test.ts` "Input family — wired blank by role" (+4).
+Residue: none. Collapsed-card eyeball list in the final message.
+
 ### SESSION DIGEST (2026-08-24 — author polish pass: Join dropdown, catalog valence, KaTeX arc trig, string-list errors, Aggregate optgroups, scratch-seed Groups)
 
 Six author asks, each landed + committed separately. (1) **Join `how` → arg dropdown**

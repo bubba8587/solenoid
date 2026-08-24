@@ -119,18 +119,27 @@ export class ColorBlendNode extends ClassicPreset.Node {
     this.addOutput("color", strOut("Color"));
   }
 
-  data(inputs: { a?: string[]; b?: string[] }): { color: string | SolError } {
+  data(inputs: { a?: string[]; b?: string[] }): { color: string | SolError | null } {
+    // Colors A and B are operands: a wired blank propagates (blank in, blank out), it is
+    // not an invalid-color error. An untouched empty card ("") is still a #VALUE!.
     const parse = (key: "a" | "b", label: string) => {
-      const s = String(readInput(inputs[key], this.stringLiterals[key] ?? "") ?? "").trim();
+      const raw = readInput(inputs[key], this.stringLiterals[key] ?? "");
+      if (raw === null) return null;
+      const s = String(raw).trim();
       const c = colord(s);
       return c.isValid() ? c : solError("#VALUE!", `${label} isn't a color: "${s}"`);
     };
     const a = parse("a", "Color A");
     const b = parse("b", "Color B");
+    // An error outranks an unknown: the error branch runs before the blank one.
     const err = [a, b].find(isSolError);
     if (err) {
       this.cachedString = err;
       return { color: err };
+    }
+    if (a === null || b === null) {
+      this.cachedString = null;
+      return { color: null };
     }
     const ar = (a as Colord).toRgb();
     const br = (b as Colord).toRgb();

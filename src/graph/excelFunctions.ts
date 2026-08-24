@@ -2159,8 +2159,11 @@ registerInternal("PADTEXT", (t, width, side, fill) => {
   return padText(toStr(t), toNum(width), sd as PadSide, fill == null ? " " : toStr(fill));
 });
 registerInternal("TRUNCATETEXT", (t, width, ellipsis) => (t == null ? null : truncateText(toStr(t), toNum(width), ellipsis == null ? "…" : toStr(ellipsis))));
-// The kernel clamps width to 1; the node surfaces #DOMAIN! for width < 1.
-registerInternal("WRAPTEXT", (t, width) => (t == null ? null : wrapText(toStr(t), toNum(width))));
+registerInternal("WRAPTEXT", (t, width) => {
+  if (t == null) return null;
+  const w = toNum(width);
+  return w < 1 ? solError("#DOMAIN!", "Width must be at least 1") : wrapText(toStr(t), w);
+});
 registerInternal("SPELLNUMBER", (n) => (n == null ? null : spellNumber(Number(n))));
 registerInternal("DECODEURL", (t) => (t == null ? null : urlEncode("decode", toStr(t))));
 registerInternal("ENCODEBASE64", (t) => (t == null ? null : urlEncode("base64", toStr(t))));

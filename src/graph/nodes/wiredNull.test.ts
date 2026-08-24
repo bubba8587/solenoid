@@ -2,7 +2,10 @@ import { describe, it, expect } from "vitest";
 import { TextTransformNode, TextSliceNode, ReptNode, TextSplitNode, TextFilterNode, ConcatNode, RegexNode } from "./text";
 import { DateConstructNode, DateAddNode, WorkdaysNode } from "./date";
 import { BooleanOpNode, NotNode, IfsNode, SwitchNode } from "./logic";
-import { SliderInputNode } from "./input";
+import { SliderInputNode, ColorBlendNode } from "./input";
+import { RandBetweenNode } from "./display";
+import { ComplexFromNode } from "./complex";
+import { CableSwitchNode } from "./control";
 import { ExpressionNode } from "./expression";
 import { ClampNode } from "./scalar";
 import { MirrNode, TBillNode, IrrNode, OddCouponNode } from "./finance";
@@ -496,6 +499,42 @@ describe("Z.TEST", () => {
     expect(node.data({ a: [[1, 2, 3, 4]] }).result).not.toBeNull();
     // A wired blank σ is unknown too — not "use the sample std".
     expect(node.data({ a: [[1, 2, 3, 4]], sigma: [null as unknown as number] }).result).toBeNull();
+  });
+});
+
+describe("Input family — wired blank by role", () => {
+  // Color A/B are operands: a wired blank propagates (blank out), it is NOT the
+  // "isn't a color" #VALUE! that a typed-empty card gives.
+  it("Color Blend: a wired blank color propagates, not a #VALUE! error", () => {
+    const node = new ColorBlendNode({ op: "mix" });
+    expect(node.data({ a: [null as unknown as string] }).color).toBeNull();
+    // Unwired still blends the two card colors.
+    const out = node.data({}).color;
+    expect(typeof out === "string" && out.startsWith("#")).toBe(true);
+  });
+
+  // COMPLEX's parts are operands — a blank real/imag makes the number unknown.
+  it("COMPLEX: a wired blank part propagates; unwired uses the typed parts", () => {
+    const node = new ComplexFromNode();
+    expect(node.data({ re: [null as unknown as number] }).z).toBeNull();
+    expect(node.data({}).z).not.toBeNull();
+  });
+
+  // RandBetween's bounds are the range's shape — a blank bound has no range to draw from.
+  it("RAND: a wired blank bound propagates; unwired draws from the card range", () => {
+    const node = new RandBetweenNode();
+    node.literals.bound1 = 0;
+    node.literals.bound2 = 10;
+    expect(node.data({ bound1: [null as unknown as number] }).result).toBeNull();
+    expect(typeof node.data({}).result).toBe("number");
+  });
+
+  // The Input Switch is a relay with no card literal: a wired blank routes through as blank.
+  it("Input Switch: a blank on the active input routes through as blank", () => {
+    const node = new CableSwitchNode({ activeIndex: 0 });
+    const [v0] = Object.keys(node.inputs);
+    expect(node.data({ [v0]: [null] }).out).toBeNull();
+    expect(node.data({ [v0]: [42] }).out).toBe(42);
   });
 });
 

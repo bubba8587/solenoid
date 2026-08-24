@@ -311,10 +311,12 @@ export function wrapText(t: string, width: number): string[] {
   if (words.length === 0) return [];
   const lines: string[] = [];
   let line = "";
+  let lineLen = 0;
   for (const word of words) {
-    if (line === "") { line = word; continue; }
-    if ([...line].length + 1 + [...word].length <= w) line += " " + word;
-    else { lines.push(line); line = word; }
+    const wordLen = [...word].length;
+    if (line === "") { line = word; lineLen = wordLen; continue; }
+    if (lineLen + 1 + wordLen <= w) { line += " " + word; lineLen += 1 + wordLen; }
+    else { lines.push(line); line = word; lineLen = wordLen; }
   }
   lines.push(line);
   return lines;

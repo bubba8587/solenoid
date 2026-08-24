@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { wrapText } from "./textOps";
+import { compileEvaluator } from "../excelFormula";
+import { isSolError } from "../errorValue";
 
 // R stringr::str_wrap / Python textwrap.wrap references, worked by hand (greedy,
 // whitespace-collapsing, long words unbroken on their own line).
@@ -28,5 +30,14 @@ describe("wrapText (str_wrap / textwrap.wrap)", () => {
   it("counts code points, not UTF-16 units", () => {
     // Two astral emoji (2 code points) fit a width-4 line with a 1-char word between.
     expect(wrapText("😀 x 😀", 3)).toEqual(["😀 x", "😀"]);
+  });
+});
+
+describe("WRAPTEXT formula", () => {
+  it("shares the kernel and matches the node's #DOMAIN! for width < 1", () => {
+    const ev = compileEvaluator('WRAPTEXT("the quick brown fox", 10)')!;
+    expect(ev({})).toEqual(["the quick", "brown fox"]);
+    const bad = compileEvaluator('WRAPTEXT("a b", 0)')!({});
+    expect(isSolError(bad) && bad.code).toBe("#DOMAIN!");
   });
 });
