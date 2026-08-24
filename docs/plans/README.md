@@ -44,6 +44,7 @@ backlog line is deleted; git is the record.
 | 10 | [b7-tidy-options.md](b7-tidy-options.md) | M (engine then chrome) | — (elkjs stays 0.8.2) |
 | 11 | [c2-chart-multi-series.md](c2-chart-multi-series.md) | M | — (author ask 2026-08-24; edits visual.ts — coordinate with B0.2 and the A5 Visuals row, both done) |
 | 12 | ~~c3-set-cell~~ | — | landed 2026-08-24 (af64d772 + 2ebb4a65) |
+| 13 | [c4-grid-axes.md](c4-grid-axes.md) | M (2 commits) | — (author ask; touches stats.ts, mathUtils.ts, visual.ts SurfaceNode, INTERPOLATE/HISTOGRAM2D formulas; coordinate with C2 on visual.ts) |
 
 Not planned here (author-present or needs a device): everything under "Bugs &
 verifications" in `../backlog.md`, the Vite 8 bump, `rete-area-plugin` 2.3.2, lazy handles (B9).
