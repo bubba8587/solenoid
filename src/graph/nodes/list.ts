@@ -2409,15 +2409,14 @@ export class SmoothNode extends ClassicPreset.Node {
 // ─── FIND PEAKS ───────────────────────────────────────────────────────────────
 export class FindPeaksNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    positions: "1-based positions of the local maxima that pass every filter set.",
+    result: "One row per local maximum that passes every filter: Position (1-based) and Height.",
     height: "Leave blank for no minimum.",
     distance: "Minimum spacing between kept peaks (in samples); the higher peak wins.",
     prominence: "Minimum rise above the higher of the two surrounding valleys — the filter that separates peaks from ripples.",
   };
   label: string;
   literals: Record<string, number> = {};
-  cachedPositions: number[] = [];
-  cachedValues: number[] = [];
+  cachedResult: FrameValue | null = null;
   width = 190; height = 230;
 
   constructor(init?: { label?: string }) {
@@ -2427,20 +2426,26 @@ export class FindPeaksNode extends ClassicPreset.Node {
     this.addInput("height", numIn("Min height"));
     this.addInput("distance", numIn("Min distance"));
     this.addInput("prominence", numIn("Min prominence"));
-    this.addOutput("positions", numListOut("Positions"));
-    this.addOutput("values", numListOut("Heights"));
+    // Position + Height are index-aligned, so they leave as ONE frame (C5).
+    this.addOutput("result", frameOut("Peaks"));
   }
 
-  data(inputs: { list?: ListCell[][]; height?: number[]; distance?: number[]; prominence?: number[] }) {
+  data(inputs: { list?: ListCell[][]; height?: number[]; distance?: number[]; prominence?: number[] }): { result: FrameValue | null } {
     const arr = inputs.list?.[0] ?? null;
     const opt = (k: "height" | "distance" | "prominence") => {
       const v = readInput(inputs[k], this.literals[k]);
       return v === null || v === undefined || Number.isNaN(v) ? undefined : v;
     };
-    if (arr === null) { this.cachedPositions = []; this.cachedValues = []; return { positions: null, values: null }; }
+    if (arr === null) { this.cachedResult = null; return { result: null }; }
     const peaks = findPeaks(arr, { height: opt("height"), distance: opt("distance"), prominence: opt("prominence") });
-    this.cachedPositions = peaks.map((p) => p.position);
-    this.cachedValues = peaks.map((p) => p.value);
-    return { positions: this.cachedPositions, values: this.cachedValues };
+    const frame: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "Position", type: "number", values: peaks.map((p) => p.position) },
+        { name: "Height", type: "number", values: peaks.map((p) => p.value) },
+      ],
+    };
+    this.cachedResult = frame;
+    return { result: frame };
   }
 }

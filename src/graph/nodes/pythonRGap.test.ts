@@ -722,12 +722,17 @@ describe("Smooth / Find Peaks cards (kernels pinned against scipy in signalOps.t
     expect(ev("FINDPEAKS(y, 2.5)")).toEqual([6, 8, 10]);
     expect(ev("FINDPEAKS(y, 0, 1, 2)")).toEqual([4, 6, 8, 10]);
   });
-  it("Find Peaks: unwired filters mean none; positions + heights", () => {
+  it("Find Peaks: unwired filters mean none; a Position/Height frame", () => {
     const n = new FindPeaksNode();
-    expect(n.data({ list: [Y] })).toEqual({ positions: [2, 4, 6, 8, 10, 14], values: [1, 2, 3, 3, 5, 1] });
+    const c0 = n.data({ list: [Y] }).result!.columns;
+    expect(c0.map((c) => c.name)).toEqual(["Position", "Height"]);
+    expect(c0[0].values).toEqual([2, 4, 6, 8, 10, 14]);
+    expect(c0[1].values).toEqual([1, 2, 3, 3, 5, 1]);
     n.literals.prominence = 2;
-    expect(n.data({ list: [Y] }).positions).toEqual([4, 6, 8, 10]);
-    expect(n.data({ list: [Y], distance: [3] }).positions).toEqual([6, 10]);
+    expect(n.data({ list: [Y] }).result!.columns[0].values).toEqual([4, 6, 8, 10]);
+    expect(n.data({ list: [Y], distance: [3] }).result!.columns[0].values).toEqual([6, 10]);
+    // A wired blank list → null frame (propagate).
+    expect(new FindPeaksNode().data({ list: [null as unknown as number[]] }).result).toBeNull();
   });
 });
 
