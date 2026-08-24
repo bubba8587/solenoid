@@ -7,7 +7,7 @@ import { gridAxes, fillGrid } from "./mathUtils";
 import { normSInv, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, linearFit, linearFitR2, expFit, interpolateLinear, arrMean, arrSampleVar, tCDF, pairPresent, tTestP, fTestP, probBetween } from "./mathUtils";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { excelRank, excelTrimmean, excelPercentRank } from "../excelFunctions";
-import { fitEts, etsForecast, etsInterval, detectSeason, seasonalDecompose, type DecomposeModel } from "./forecastOps";
+import { fitEts, etsForecast, etsInterval, detectSeason, seasonalDecompose, stlDecompose, type DecomposeModel } from "./forecastOps";
 export type { DecomposeModel } from "./forecastOps";
 import { fitAll, FIT_FAMILIES, type DistFit, type FitFamily } from "./fitOps";
 import type { FrameValue } from "../frame";
@@ -1187,6 +1187,7 @@ export { FIT_FAMILIES };
 export const DECOMPOSE_MODEL_META: Record<DecomposeModel, { label: string; description: string }> = {
   additive:       { label: "Additive",       description: "y = trend + seasonal + residual; the seasonal swing is a fixed amount." },
   multiplicative: { label: "Multiplicative", description: "y = trend × seasonal × residual; the seasonal swing scales with the level (positive data)." },
+  stl:            { label: "STL",            description: "Seasonal-Trend by Loess (R stl, periodic): a loess trend with no blank ends and an exactly-periodic seasonal. Additive." },
 };
 
 export class DecomposeNode extends ClassicPreset.Node {
@@ -1223,7 +1224,8 @@ export class DecomposeNode extends ClassicPreset.Node {
     if (raw === null || period === null) return blank();
     const err = raw.find((v): v is SolError => isSolError(v));
     if (err) return blank(err);
-    const d = seasonalDecompose(raw.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : null)), period, this.model);
+    const nums = raw.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : null));
+    const d = this.model === "stl" ? stlDecompose(nums, period) : seasonalDecompose(nums, period, this.model);
     if (!d) return blank();
     this.cachedTrend = d.trend; this.cachedSeasonal = d.seasonal; this.cachedResidual = d.residual;
     return { trend: d.trend, seasonal: d.seasonal, residual: d.residual };
@@ -1253,11 +1255,13 @@ export class OdeIntegrateNode extends ClassicPreset.Node {
     super("OdeIntegrate");
     this.label = init?.label ?? "ODE Integrate";
     if (init?.expr) this.stringLiterals.formula = init.expr;
-    this.addInput("lambda", lambdaIn("dy/dt"));
     this.addInput("y0", numIn("y0"));
     this.addInput("t0", numIn("t0"));
     this.addInput("t1", numIn("t1"));
     this.addInput("steps", numIn("Steps"));
+    // The λ socket is declared LAST so its cable-only row sits right on the FormulaBox
+    // row (the MAP-family layout); the FormulaBox is the derivative's inline authoring.
+    this.addInput("lambda", lambdaIn("dy/dt"));
     this.addOutput("solution", frameOut("Solution"));
   }
 

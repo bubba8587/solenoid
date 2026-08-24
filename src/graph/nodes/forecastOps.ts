@@ -4,6 +4,7 @@
 // HoltWinters / forecast::ets("AAA"); Excel's FORECAST.ETS is the same model family with
 // Microsoft's own parameter search, so values are close, not bit-identical (parity:false).
 import { stdNormCDF, normSInv } from "./mathUtils";
+import { lowess } from "./signalOps";
 
 export interface EtsFit {
   /** Smoothing parameters the search settled on. */
@@ -128,7 +129,7 @@ export function detectSeason(y: readonly number[]): number {
 export const confidenceOk = (c: number): boolean => c > 0 && c < 1 && Number.isFinite(stdNormCDF(c));
 
 // ─── Classical seasonal decomposition (statsmodels seasonal_decompose, R decompose) ───
-export type DecomposeModel = "additive" | "multiplicative";
+export type DecomposeModel = "additive" | "multiplicative" | "stl";
 export interface Decomposition { trend: (number | null)[]; seasonal: (number | null)[]; residual: (number | null)[] }
 
 /** Trend = centred moving average over `period` (a 2×MA when the period is even — the
@@ -160,5 +161,46 @@ export function seasonalDecompose(y: readonly (number | null)[], period: number,
   const centred = model === "additive" ? pa.map((v) => v - mean) : pa.map((v) => (mean === 0 ? NaN : v / mean));
   const seasonal = Array.from({ length: n }, (_, i) => centred[i % m]);
   const residual = det.map((v, i) => (v === null ? null : model === "additive" ? v - seasonal[i] : seasonal[i] === 0 ? null : v / seasonal[i]));
+  return { trend, seasonal, residual };
+}
+
+/** STL (Seasonal-Trend decomposition by Loess), the R `stl(s.window="periodic")` variant:
+ *  the seasonal component is EXACTLY periodic (each phase the mean of its cycle-subseries,
+ *  centred to zero) and the trend is a LOWESS fit of the deseasonalised series, refined
+ *  over a few inner passes. Reuses `lowess` (local linear, so a smooth trend is recovered
+ *  cleanly and a linear one exactly). Needs a gap-free series and at least two full
+ *  periods; null otherwise. Unlike the classical filter, the trend has NO blank ends. */
+export function stlDecompose(
+  y: readonly (number | null)[], period: number,
+  opts?: { trendFrac?: number; inner?: number },
+): Decomposition | null {
+  const n = y.length;
+  const m = Math.round(period);
+  if (m < 2 || n < 2 * m) return null;
+  if (y.some((v) => v === null || !Number.isFinite(v as number))) return null;
+  const data = y as readonly number[];
+  const trendFrac = opts?.trendFrac ?? Math.min(1, (1.5 * m) / n);
+  // The periodic mean ↔ loess-trend fixed-point iteration converges geometrically;
+  // ~15 inner passes drive a clean signal's residual well below 1e-4.
+  const inner = opts?.inner ?? 15;
+  let trend = new Array<number>(n).fill(0);
+  let seasonal = new Array<number>(n).fill(0);
+  for (let it = 0; it < inner; it++) {
+    const detrended = data.map((v, i) => v - trend[i]);
+    // Periodic seasonal: per-phase mean of the detrended series, centred to zero, tiled.
+    const pa: number[] = [];
+    for (let r = 0; r < m; r++) {
+      let s = 0, c = 0;
+      for (let i = r; i < n; i += m) { s += detrended[i]; c++; }
+      pa.push(s / c);
+    }
+    const mean = pa.reduce((a, b) => a + b, 0) / m;
+    const centred = pa.map((v) => v - mean);
+    seasonal = Array.from({ length: n }, (_, i) => centred[i % m]);
+    const deseason = data.map((v, i) => v - seasonal[i]);
+    const sm = lowess(deseason, trendFrac);
+    trend = sm.map((v, i) => (typeof v === "number" && Number.isFinite(v) ? v : deseason[i]));
+  }
+  const residual = data.map((v, i) => v - trend[i] - seasonal[i]);
   return { trend, seasonal, residual };
 }

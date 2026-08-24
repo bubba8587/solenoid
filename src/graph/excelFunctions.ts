@@ -10,7 +10,7 @@ import { fitAll, fitDistribution, FIT_FAMILIES, type FitFamily } from "./nodes/f
 import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit, epochToSerial, serialToEpoch, dateTrunc, dateTruncUnitFor, type EpochUnit } from "./nodes/dateOps";
 import { hashText, uuidV4, HASH_ALGORITHM_META, type HashAlgorithm } from "./nodes/hashOps";
 import { savgol, gaussianSmooth, lowess, findPeaks } from "./nodes/signalOps";
-import { seasonalDecompose } from "./nodes/forecastOps";
+import { seasonalDecompose, stlDecompose } from "./nodes/forecastOps";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters, type TextFilterOp, type SimilarityMethod, type PadSide } from "./nodes/textOps";
 import { interpolateLinear, gridAxes, fillGrid } from "./nodes/mathUtils";
 import { histogram2d } from "./nodes/visualOps";
@@ -1645,9 +1645,9 @@ registerInternal("DECOMPOSE", (list, period, component, model) => {
   const comp = String(component ?? "").trim().toLowerCase();
   if (comp !== "trend" && comp !== "seasonal" && comp !== "residual") return solError("#DOMAIN!", "DECOMPOSE component must be trend, seasonal or residual");
   const mdl = model == null ? "additive" : String(model).trim().toLowerCase();
-  if (mdl !== "additive" && mdl !== "multiplicative") return solError("#DOMAIN!", "DECOMPOSE model must be additive or multiplicative");
+  if (mdl !== "additive" && mdl !== "multiplicative" && mdl !== "stl") return solError("#DOMAIN!", "DECOMPOSE model must be additive, multiplicative or stl");
   const y = numList(list).map((v) => (typeof v === "number" && Number.isFinite(v) ? v : null));
-  const d = seasonalDecompose(y, toNum(period), mdl);
+  const d = mdl === "stl" ? stlDecompose(y, toNum(period)) : seasonalDecompose(y, toNum(period), mdl);
   return d ? d[comp] : null;
 });
 registerInternal("SAVGOL",      (list, window, order) => savgol(numList(list), toNum(window), toNum(order)));

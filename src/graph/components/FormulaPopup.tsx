@@ -36,7 +36,7 @@ type FormulaHost = {
 
 // Identify hosts by constructor NAME, never instanceof — a Vite hot swap replaces the class
 // objects while rete keeps instances built from the old ones, silently breaking the gate.
-const TABLE_LAMBDA_TYPES = new Set(["MapTableNode", "ByAxisNode", "MakeArrayNode", "ReduceLambdaNode", "ScanLambdaNode"]);
+const TABLE_LAMBDA_TYPES = new Set(["MapTableNode", "ByAxisNode", "MakeArrayNode", "ReduceLambdaNode", "ScanLambdaNode", "OdeIntegrateNode"]);
 
 /** Display-only, so no recompute — just re-render the card for its tooltip. */
 function setVarDesc(node: { id: string; varDescriptions: Record<string, string> }, name: string, desc: string): void {
