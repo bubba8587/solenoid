@@ -6,7 +6,6 @@ import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from 
 // Record<ReduceOp, …> keeps this exhaustive: a new op fails the typecheck here.
 const OP_GROUP: Record<ReduceOp, string> = {
   sum: "Basics", avg: "Basics", min: "Basics", max: "Basics", median: "Basics", product: "Basics",
-  first: "Basics", last: "Basics",
   count: "Counts", countdistinct: "Counts", countblank: "Counts",
   geomean: "Other means", harmean: "Other means",
   stdev: "Spread", stdev_p: "Spread", var_s: "Spread", var_p: "Spread", sem: "Spread",

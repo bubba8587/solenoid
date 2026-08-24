@@ -556,7 +556,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [reduceLeaf("sum"), reduceLeaf("product")] },
           { type: "pair", children: [reduceLeaf("avg"), reduceLeaf("median")] },
           { type: "pair", children: [reduceLeaf("min"), reduceLeaf("max")] },
-          { type: "pair", children: [reduceLeaf("first"), reduceLeaf("last")] },
           { type: "pair", children: [reduceLeaf("count"), reduceLeaf("countdistinct")] },
           reduceLeaf("countblank"),
           { type: "pair", children: [reduceLeaf("geomean"), reduceLeaf("harmean")] },

@@ -136,6 +136,10 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
 ### SESSION DIGEST (2026-08-24b — parallel plan execution from docs/plans/)
 
+- **Aggregate First / Last removed (author, 2026-08-25).** "First / last non-blank" is a pick, not
+  a summary, and did not belong in the reducer dropdown; the author declined INDEX as a home too,
+  so the two ops, their catalog leaves and the FIRSTNONBLANK / LASTNONBLANK names are gone.
+
 - **NOT STARTED / prepped at wrap-up (Agent 4): three stats/distribution node-combining merges,
   fully scoped, zero code written (author wrapped the session before the shared-file window opened).**
   Lead-assigned from backlog "Node-combining parked"; Lead's design calls are settled — pick up cold:

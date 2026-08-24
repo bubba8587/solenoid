@@ -473,15 +473,6 @@ describe("Aggregate — null skipped, errors propagated (array-semantics policy)
     const out = agg("sum", [[1, 2, err, 4]]);
     expect(isSolError(out) && out.code).toBe("#DIV/0!");
   });
-
-  it("FIRST / LAST return the first / last NON-BLANK value (blanks already skipped)", () => {
-    expect(agg("first", [[null, 10, 20, 30]])).toBe(10); // leading blank skipped
-    expect(agg("last", [[10, 20, 30, null]])).toBe(30);  // trailing blank skipped
-    expect(agg("first", [[null, null]])).toBeNull();      // all-blank → null (like avg)
-    expect(agg("last", [[null, null]])).toBeNull();
-    const err = solError("#DIV/0!", "boom");
-    expect(isSolError(agg("first", [[err, 2, 3]]))).toBe(true); // an error cell propagates
-  });
 });
 
 describe("Reduce — variance / stdev (sample vs population)", () => {

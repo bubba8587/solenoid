@@ -1853,8 +1853,6 @@ export const REDUCE_OP_META = {
   var_p:   { label: "VAR.P",   description: "Population variance (n). Excel: VAR.P." },
   geomean: { label: "GEOMEAN", description: "Geometric mean (all values must be > 0). Excel: GEOMEAN." },
   harmean: { label: "HARMEAN", description: "Harmonic mean (all values must be > 0). Excel: HARMEAN." },
-  first:   { label: "First",   description: "The first non-blank value; blanks are skipped. Excel: INDEX(range, MATCH(TRUE, range<>\"\", 0)).", fx: "FIRSTNONBLANK" },
-  last:    { label: "Last",    description: "The last non-blank value; blanks are skipped.", fx: "LASTNONBLANK" },
   sumsq:   { label: "SUMSQ",   description: "Sum of squares Σ(xi²). Excel: SUMSQ." },
   devsq:   { label: "DEVSQ",   description: "Sum of squared deviations from the mean. Excel: DEVSQ." },
   avedev:  { label: "AVEDEV",  description: "Mean absolute deviation from the mean. Excel: AVEDEV." },
@@ -1881,7 +1879,6 @@ export function aggregateResultDim(op: ReduceOp, dim: Dim, n: number): Dim {
     case "sum": case "avg": case "min": case "max": case "median":
     case "geomean": case "harmean": case "stdev": case "stdev_p": case "avedev":
     case "ptp": case "iqr": case "mad": case "sem": case "rms":
-    case "first": case "last": // picking an element keeps its dimension, like min/max
       return dim;
     case "var_s": case "var_p": case "devsq": case "sumsq":
       return dimPow(dim, 2);
