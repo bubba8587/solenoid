@@ -91,17 +91,18 @@ describe("chart value", () => {
     ]);
   });
 
-  it("a number-first Frame has no label column — every numeric column is a series (positional x)", () => {
+  it("column 0 is the label column even when numeric (a Year axis); the rest are series", () => {
     const frame: FrameValue = {
       __frame: true,
       columns: [
+        { name: "Year", type: "number", values: [2020, 2021, 2022] },
         { name: "A", type: "number", values: [1, 2, 3] },
         { name: "B", type: "number", values: [4, 5, 6] },
       ],
     };
     const out = new ChartNode({ op: "line" }).data({ values: [frame] });
-    expect(out.chart.labels).toBeUndefined();
-    expect(out.chart.values).toEqual([1, 2, 3]);
+    expect(out.chart.labels).toEqual([2020, 2021, 2022]); // numeric labels, not a series
+    expect(out.chart.values).toEqual([1, 2, 3]);          // first series after the label
     expect(out.chart.series).toEqual([
       { name: "A", values: [1, 2, 3] },
       { name: "B", values: [4, 5, 6] },

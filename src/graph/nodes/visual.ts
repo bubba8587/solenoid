@@ -140,19 +140,20 @@ export class ChartNode extends ClassicPreset.Node {
     if (isFrameValue(raw) && raw.columns.length > 0) {
       const cols = raw.columns;
       const asNums = (col: FrameColumn) => col.values.map(num);
-      // Column 0 is the x-axis label column ONLY when it isn't numeric; a number-first frame
-      // has no labels and plots every numeric column by position. Non-number columns after
-      // the first are skipped, not errors.
-      const hasLabelCol = cols[0].type !== "number";
-      if (hasLabelCol) {
-        // formatFrameCell already renders errors and date serials as label text.
+      if (cols.length >= 2) {
+        // Column 0 is ALWAYS the x-axis label column at ≥ 2 columns (a numeric col 0 —
+        // Year, an epoch — is a real axis; scatter promotes it to a coordinate x).
+        // formatFrameCell renders errors and date serials as label text.
         this.cachedLabels = cols[0].values.map((c) => formatFrameCell(cols[0].type, c) ?? "");
+        // The series are the NUMBER-typed columns after the label; others are skipped.
+        const series = cols.slice(1).filter((c) => c.type === "number").map((c) => ({ name: c.name, values: asNums(c) }));
+        v = series.length > 0 ? (series[0].values as unknown as number[]) : null;
+        // A legend/multi-series render only when 2+ numeric series survive.
+        this.cachedSeries = series.length >= 2 ? series : null;
+      } else {
+        // A one-column frame plots positionally, like a plain list.
+        v = asNums(cols[0]) as unknown as number[];
       }
-      const numCols = (hasLabelCol ? cols.slice(1) : cols).filter((c) => c.type === "number");
-      const series = numCols.map((c) => ({ name: c.name, values: asNums(c) }));
-      v = series.length > 0 ? (series[0].values as unknown as number[]) : null;
-      // A legend/multi-series render only when 2+ numeric columns survive.
-      this.cachedSeries = series.length >= 2 ? series : null;
     } else if (Array.isArray(raw)) {
       v = raw.map(num) as unknown as number[];
     } else if (typeof raw === "number") {
