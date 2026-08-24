@@ -71,9 +71,8 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
         ) : !collapsed && (
           <>
             <ChartFigure value={cv} width={W} height={H} fontScale={fontScale} />
-            {/* The expand popup renders a single series; composed/bubble open via the chip. */}
             {!noExpand && (
-              <ChartExpandButton title={opts.title || data.label || "Chart"} op={op as ChartShape} axes series={series} opts={opts} labels={data.cachedLabels ?? undefined} />
+              <ChartExpandButton title={opts.title || data.label || "Chart"} op={op as ChartShape} axes series={series} opts={opts} labels={data.cachedLabels ?? undefined} value={cv} />
             )}
           </>
         )}

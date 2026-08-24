@@ -1,3 +1,4 @@
+import type { ChartValue } from "../chartValue";
 import { chartPopup } from "../chartPopupStore";
 import { useHostNodeId } from "./nodeContext";
 import type { ChartShape } from "./chartView";
@@ -6,9 +7,12 @@ import "./ExpressionNode.css"; // for .solenoid-expr__expand (shared expand butt
 import { stopDragStart } from "../coarse";
 
 export function ChartExpandButton({
-  title, op, axes, series, opts, signColors, labels,
+  title, op, axes, series, opts, signColors, labels, value,
 }: {
   title: string;
+  /** The whole chart value (series, legend, labels); when given, the popup renders it
+   *  through the same figure path as the card, so a multi-series chart expands intact. */
+  value?: ChartValue;
   op: ChartShape;
   axes: boolean;
   series: { i: number; v: number }[];
@@ -28,7 +32,8 @@ export function ChartExpandButton({
         e.stopPropagation();
         const accent = (e.currentTarget.closest(".solenoid-node") as HTMLElement | null)
           ?.style.getPropertyValue("--node-accent")?.trim() || undefined;
-        chartPopup.open({ title, op, axes, series, opts, signColors, labels, accent, pinNodeId: hostId ?? undefined });
+        if (value) chartPopup.open({ title, value, accent, pinNodeId: hostId ?? undefined });
+        else chartPopup.open({ title, op, axes, series, opts, signColors, labels, accent, pinNodeId: hostId ?? undefined });
       }}
     >
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
