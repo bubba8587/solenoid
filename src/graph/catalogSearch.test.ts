@@ -5,6 +5,7 @@ import { SolenoidSocket, type SocketDataType } from "./sockets";
 import type { NodeCatalogEntry } from "./AddNodeMenu";
 import { packsStore, BUILTIN_PACKS } from "./packs";
 import type { Pack } from "./packs/packShared";
+import { NODE_OPS } from "./nodeOps";
 
 // Search against the REAL catalog tree (active entries only, as the menu does).
 const leaves = flattenLeaves(buildCatalog(true));
@@ -115,5 +116,37 @@ describe("Add menu — a disabled pack's node leaves leave the tree (packsStore 
     expect(leafTypes()).toContain("__testPackLeaf");
     packsStore.setActive(NODE_FIXTURE.id, false);
     expect(leafTypes()).not.toContain("__testPackLeaf");
+  });
+});
+
+// An op-selector family is ONE card; its ops may be exposed as separate leaves (Range,
+// LinSpace, … for Series). Typing the CARD's name must find every one of them, so each such
+// leaf carries the family name in its label or keywords. (Author 2026-08-25: "series" found
+// nothing — unacceptable; this pins it for every family.)
+describe("op leaves are findable by their family's name", () => {
+  it("every catalog leaf of an op-selector family carries the family name in its label or keywords", () => {
+    const instances = leaves.map(({ leaf }) => { try { return leaf.create(); } catch { return null; } });
+    const broken: string[] = [];
+    for (const decl of NODE_OPS) {
+      let family = "";
+      try { family = String((new (decl.ctor as new () => { label?: string })()).label ?? "").trim(); } catch { continue; }
+      if (!family) continue;
+      const fam = family.toLowerCase();
+      const own = leaves.filter((_, i) => instances[i] instanceof decl.ctor);
+      // A family whose default name IS one of its op labels (a card called "ATAN2" with ops
+      // LOG / DELTA / GESTEP) has no separate name to search for — only a real card name
+      // (Series, Aggregate, Arithmetic…) must find its ops.
+      if (own.some(({ leaf }) => leaf.label.toLowerCase() === fam)) continue;
+      // A hidden-op row deliberately does NOT inherit its host's keywords (so sibling ops
+      // still discriminate); its label starts with the host's, so it is found through the
+      // host leaf — check the host's label + keywords for it.
+      const hostOf = (type: string) => leaves.find((l) => l.leaf.type === type.split("__op-")[0])?.leaf;
+      for (const { leaf } of own) {
+        const host = leaf.type.includes("__op-") ? hostOf(leaf.type) ?? leaf : leaf;
+        const hay = `${leaf.label} ${leaf.keywords ?? ""} ${host.label} ${host.keywords ?? ""}`.toLowerCase();
+        if (!hay.includes(fam)) broken.push(`${leaf.type} "${leaf.label}" — family "${family}"`);
+      }
+    }
+    expect(broken, "Op leaves that the family name would not find (add the family name to keywords):\n" + broken.join("\n")).toEqual([]);
   });
 });

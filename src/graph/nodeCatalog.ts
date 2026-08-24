@@ -91,11 +91,11 @@ import type { NodeCatalogEntry, CatalogEntry } from "./AddNodeMenu";
 
 // Label + description come from OP_META; tree structure and ordering are hand-authored.
 
-const arithLeaf    = (op: ArithmeticOp):   NodeCatalogEntry => ({ type: `arith-${op}`,     label: ARITHMETIC_OP_META[op].label,     description: ARITHMETIC_OP_META[op].description,     create: () => new ArithmeticNode({ op }), ...(op === "pow" ? { parity: false as const } : {}) });
-const mathLeaf     = (op: MathFnOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: `math-${op}`, label: MATH_FN_OP_META[op].label, description: MATH_FN_OP_META[op].description, create: () => new MathFnNode({ op }), ...overrides });
+const arithLeaf    = (op: ArithmeticOp):   NodeCatalogEntry => ({ type: `arith-${op}`,     label: ARITHMETIC_OP_META[op].label,     description: ARITHMETIC_OP_META[op].description,     keywords: "arithmetic", create: () => new ArithmeticNode({ op }), ...(op === "pow" ? { parity: false as const } : {}) });
+const mathLeaf     = (op: MathFnOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: `math-${op}`, label: MATH_FN_OP_META[op].label, description: MATH_FN_OP_META[op].description, create: () => new MathFnNode({ op }), ...overrides, keywords: ["math", overrides?.keywords].filter(Boolean).join(" ") });
 const booleanLeaf  = (op: BooleanOp):      NodeCatalogEntry => ({ type: `bool-${op}`,      label: BOOLEAN_OP_META[op].label,        description: BOOLEAN_OP_META[op].description,        create: () => new BooleanOpNode({ op })     });
-const reduceLeaf   = (op: ReduceOp):       NodeCatalogEntry => ({ type: `reduce-${op}`,    label: REDUCE_OP_META[op].label,         description: REDUCE_OP_META[op].description,         create: () => new AggregateNode({ op }), ...((REDUCE_OP_META[op] as { fx?: string }).fx ? { fx: [(REDUCE_OP_META[op] as { fx?: string }).fx!] } : {})     });
-const combLeaf     = (op: CombinatoricsOp):NodeCatalogEntry => ({ type: `comb-${op}`,      label: COMBINATORICS_OP_META[op].label,  description: COMBINATORICS_OP_META[op].description,  create: () => new CombinatoricsNode({ op }) });
+const reduceLeaf   = (op: ReduceOp):       NodeCatalogEntry => ({ type: `reduce-${op}`,    label: REDUCE_OP_META[op].label,         description: REDUCE_OP_META[op].description,         keywords: "aggregate", create: () => new AggregateNode({ op }), ...((REDUCE_OP_META[op] as { fx?: string }).fx ? { fx: [(REDUCE_OP_META[op] as { fx?: string }).fx!] } : {})     });
+const combLeaf     = (op: CombinatoricsOp):NodeCatalogEntry => ({ type: `comb-${op}`,      label: COMBINATORICS_OP_META[op].label,  description: COMBINATORICS_OP_META[op].description,  keywords: "combinatorics", create: () => new CombinatoricsNode({ op }) });
 // One Series node; the leaf types keep their historical spellings (nodeExcel keys).
 const SERIES_LEAF_TYPE: Record<SeriesOp, string> = { range: "list-range", sequence: "list-sequence", linspace: "list-linspace", geometric: "list-geometric", fibonacci: "list-fibonacci", repeat: "list-repeat" };
 // Every op is a leaf of the ONE Series card, so "series" must find all of them in search.
@@ -103,7 +103,7 @@ const seriesLeaf   = (op: SeriesOp, overrides?: Partial<NodeCatalogEntry>): Node
 
 // One Rank & Percentile node; the leaf types keep their historical spellings (nodeExcel keys).
 const RP_LEAF_TYPE: Partial<Record<RankPercentileOp, string>> = { large: "nth-large", small: "nth-small", "rank-eq": "rank-eq", "rank-avg": "rank-avg", "percentile-inc": "stat-percentile", "quartile-inc": "stat-quartile", "percentrank-inc": "stat-percentrank" };
-const rpLeaf       = (op: RankPercentileOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: RP_LEAF_TYPE[op]!, label: RANK_PERCENTILE_OP_META[op].label, description: RANK_PERCENTILE_OP_META[op].description, create: () => new RankPercentileNode({ op }), ...overrides });
+const rpLeaf       = (op: RankPercentileOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: RP_LEAF_TYPE[op]!, label: RANK_PERCENTILE_OP_META[op].label, description: RANK_PERCENTILE_OP_META[op].description, create: () => new RankPercentileNode({ op }), ...overrides, keywords: ["rank & percentile", overrides?.keywords].filter(Boolean).join(" ") });
 const argLeaf      = (op: ArgMinMaxOp):    NodeCatalogEntry => ({ type: `arg-${op}`,       label: ARG_MIN_MAX_OP_META[op].label,    description: ARG_MIN_MAX_OP_META[op].description,    create: () => new ArgMinMaxNode({ op })     });
 const spLeaf       = (op: SumProductOp):   NodeCatalogEntry => ({ type: `sp-${op}`,        label: SUM_PRODUCT_OP_META[op].label,    description: SUM_PRODUCT_OP_META[op].description,    create: () => new SumProductNode({ op })    });
 const correlLeaf   = (op: CorrelOp):       NodeCatalogEntry => ({ type: `correl-${op}`,    label: CORREL_OP_META[op].label,         description: CORREL_OP_META[op].description,         create: () => new CorrelNode({ op })        });
@@ -114,13 +114,13 @@ const bitwiseLeaf  = (op: BitwiseOp):      NodeCatalogEntry => ({ type: `bitwise
 const deprLeaf     = (op: DepreciationOp): NodeCatalogEntry => ({ type: `depr-${op}`,      label: DEPRECIATION_OP_META[op].label,   description: DEPRECIATION_OP_META[op].description,   create: () => new DepreciationNode({ op })  });
 const ipmtPpmtLeaf = (op: IpmtPpmtOp):    NodeCatalogEntry => ({ type: `ipmt-${op}`,      label: IPMT_PPMT_OP_META[op].label,      description: IPMT_PPMT_OP_META[op].description,      create: () => new IpmtPpmtNode({ op })      });
 const cumPmtLeaf   = (op: CumPmtOp):       NodeCatalogEntry => ({ type: `cumpmt-${op}`,    label: CUM_PMT_OP_META[op].label,        description: CUM_PMT_OP_META[op].description,        create: () => new CumPmtNode({ op })        });
-const regressionLeaf = (op: RegressionOp): NodeCatalogEntry => ({ type: `regression-${op}`,label: REGRESSION_OP_META[op].label,     description: REGRESSION_OP_META[op].description,     create: () => new RegressionNode({ op })    });
+const regressionLeaf = (op: RegressionOp): NodeCatalogEntry => ({ type: `regression-${op}`,label: REGRESSION_OP_META[op].label,     description: REGRESSION_OP_META[op].description,     keywords: "slope", create: () => new RegressionNode({ op })    });
 // One Hypothesis Test node; the leaf types keep their historical spellings (nodeExcel keys).
 const TEST_LEAF_TYPE: Record<HypothesisTestOp, string> = {
   z: "z-test", "t-paired": "t-test-paired", "t-equal": "t-test-equal-var", "t-welch": "t-test-unequal-var", f: "f-test", chisq: "chisq-test",
   anova: "anova-test", mannwhitney: "mannwhitney-test", wilcoxon: "wilcoxon-test", kruskal: "kruskal-test", fisher: "fisher-exact-test", ks: "ks-test", proptest: "proportion-test", binomtest: "binomial-test",
 };
-const testLeaf     = (op: HypothesisTestOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: TEST_LEAF_TYPE[op], label: HYPOTHESIS_TEST_OP_META[op].label, description: HYPOTHESIS_TEST_OP_META[op].description, create: () => new HypothesisTestNode({ op }), ...overrides });
+const testLeaf     = (op: HypothesisTestOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: TEST_LEAF_TYPE[op], label: HYPOTHESIS_TEST_OP_META[op].label, description: HYPOTHESIS_TEST_OP_META[op].description, create: () => new HypothesisTestNode({ op }), ...overrides, keywords: ["hypothesis test", overrides?.keywords].filter(Boolean).join(" ") });
 const dollarLeaf    = (op: DollarOp):      NodeCatalogEntry => ({ type: `dollar-${op}`,     label: DOLLAR_OP_META[op].label,          description: DOLLAR_OP_META[op].description,          create: () => new DollarNode({ op }) });
 const weightedLeaf   = (op: WeightedOp):      NodeCatalogEntry => ({ type: `weighted-${op}`,    label: WEIGHTED_OP_META[op].label,          description: WEIGHTED_OP_META[op].description,          create: () => new WeightedNode({ op }) });
 const DT = NODE_KIND_ACCENTS.date;
@@ -365,8 +365,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "math-mround", label: "MROUND", description: "Rounds to nearest multiple. Excel: MROUND(x, multiple).", create: () => new MRoundNode(), keywords: "mround round nearest multiple ceil floor ceiling" },
           ]},
           { type: "pair", children: [mathLeaf("even"), mathLeaf("odd")] },
-          { type: "roundn-round", label: "ROUND to N digits", description: "Rounds to N decimal places. Excel: ROUND(x,2).", create: () => new RoundNNode({ op: "round" }) },
-          { type: "roundn-dir", label: "ROUNDUP / ROUNDDOWN", description: "Rounds away from zero or toward zero to N decimal places. Pick the direction in the node. Excel: ROUNDUP / ROUNDDOWN.", create: () => new RoundNNode({ op: "roundup" }) },
+          { type: "roundn-round", label: "ROUND to N digits", description: "Rounds to N decimal places. Excel: ROUND(x,2).", keywords: "rounding", create: () => new RoundNNode({ op: "round" }) },
+          { type: "roundn-dir", label: "ROUNDUP / ROUNDDOWN", description: "Rounds away from zero or toward zero to N decimal places. Pick the direction in the node. Excel: ROUNDUP / ROUNDDOWN.", keywords: "rounding", create: () => new RoundNNode({ op: "roundup" }) },
           { type: "clamp", label: "Clamp", description: "Constrain a value to [min, max]. Excel: MIN(MAX(x,min),max).", create: () => new ClampNode() },
         ],
       },
@@ -518,7 +518,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "list-bin",       label: "Bin",           description: "Places each value into a bin: by wired breakpoints (0 below the first — R findInterval / numpy digitize) or into n equal-count quantile buckets 1..n (dplyr ntile / pandas qcut). Pick on the node.", create: () => new BinNode(), parity: false, keywords: "bin cut findinterval digitize bucket histogram interval discretize quantile ntile qcut quartile decile percentile" },
           ]},
           { type: "list-outliers",  label: "Outliers",      description: "Flags the outliers in a list by the z-score, IQR (boxplot whisker) or MAD (modified z) rule, as a frame with the cleaned Value (outliers blanked) and a logical Outlier column. scipy zscore, R boxplot.stats.", create: () => new OutliersNode(), parity: false, keywords: "outlier anomaly zscore z-score iqr mad boxplot whisker robust clean remove extreme" },
-          { type: "list-smooth", label: "Smooth", description: "Smooths a series: Savitzky–Golay (polynomial window), LOWESS (robust local regression) or Gaussian — pick on the card. scipy savgol_filter / gaussian_filter1d, statsmodels lowess, R loess.", create: () => new SmoothNode(), parity: false, keywords: "smooth smoothing savgol savitzky golay lowess loess gaussian filter denoise noise trend signal" },
+          { type: "list-smooth", label: "Smooth", description: "Smooths a series: Savitzky–Golay (polynomial window), LOWESS (robust local regression) or Gaussian — pick on the card. scipy savgol_filter / gaussian_filter1d, statsmodels lowess, R loess.", create: () => new SmoothNode(), parity: false, keywords: "savitzky–golay smooth smoothing savgol savitzky golay lowess loess gaussian filter denoise noise trend signal" },
           { type: "list-peaks", label: "Find Peaks", description: "The local maxima as a frame with Position and Height columns, filtered by minimum height, spacing and prominence. scipy.signal.find_peaks, R pracma::findpeaks.", create: () => new FindPeaksNode(), parity: false, keywords: "peaks find_peaks local maxima maximum prominence spikes signal detect" },
           { type: "pair", children: [
             { type: "list-shift",     label: "Shift",         description: "Slides the list by N places (negative = earlier); vacated slots go blank, or wrap around. pandas shift / numpy roll.", create: () => new ShiftNode(), parity: false, keywords: "shift lag lead roll offset displace slide delay pandas numpy" },
@@ -654,7 +654,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "iferror", label: "IFERROR / IFNA", description: "Returns Fallback when Value is an error (IFNA: only #N/A). A blank is not an error and passes through. Excel: IFERROR or IFNA.", create: () => new IFErrorNode() },
       { type: "is-test", label: "IS.TEST",    description: "Tests whether a value is a number, blank, error, N/A, boolean, text, or non-text. Excel: ISNUMBER / ISBLANK / ISERROR / ISNA / ISLOGICAL / ISTEXT / ISNONTEXT.", create: () => new IsTestNode() },
       { type: "iseven-isodd", label: "ISEVEN / ISODD", description: "TRUE if a number's integer part is even or odd. Pick which in the node. Emits a logical and broadcasts over a list. Excel: ISEVEN / ISODD.", create: () => new IsEvenOddNode() },
-      { type: "comparison", label: "Comparison",  description: "Compares two values (=, ≠, <, >, ≤, ≥) and emits a logical TRUE or FALSE. Broadcasts over a list.", create: () => new ComparisonNode() },
+      { type: "comparison", label: "Comparison",  description: "Compares two values (=, ≠, <, >, ≤, ≥) and emits a logical TRUE or FALSE. Broadcasts over a list.", keywords: "compare", create: () => new ComparisonNode() },
       { type: "pair", children: [
         { type: "between", label: "Between", description: "TRUE when Low ≤ Value ≤ High (inclusive). R between / pandas Series.between.", create: () => new BetweenNode(), parity: false, keywords: "between range within inclusive bounds interval clamp test low high" },
         { type: "isclose", label: "Is Close", description: "TRUE when |A − B| ≤ tolerance — approximate equality for floats. math.isclose / numpy.isclose.", create: () => new IsCloseNode(), parity: false, keywords: "is close approximately equal tolerance almost float rounding epsilon isclose numpy" },
@@ -680,7 +680,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         children: [
           { type: "tvm", label: "Time Value of Money", description: "The loan and annuity family as one relation over rate, nper, pmt, pv, fv. Any four wired and the fifth solves. All five → Check answers TRUE or FALSE. Payment timing (Excel's type argument) is the dropdown. Excel: PMT, PV, FV, NPER, RATE.", create: () => new TvmNode(), keywords: "pmt pv fv nper rate loan annuity payment mortgage present future value" },
           { type: "amortization", label: "Amortization Schedule", description: "The loan table Excel users build by hand: one row per period with Payment, Interest, Principal and the remaining Balance (Excel's PMT / IPMT / PPMT laid out; R amort.table, numpy_financial). Rate is per period; payment timing is the dropdown.", create: () => new AmortizationNode(), parity: false, keywords: "amortization amortisation schedule loan mortgage table payment interest principal balance ipmt ppmt pmt" },
-          { type: "returns", label: "Returns", description: "The return-series one-liners: log / simple returns, cumulative return, drawdown and max drawdown, CAGR, annualized volatility, Sharpe and Sortino — pick on the card. pandas pct_change / cumprod, PerformanceAnalytics, quantmod.", create: () => new ReturnsNode(), parity: false, keywords: "returns log return pct_change cumulative drawdown max drawdown cagr volatility sharpe sortino risk-free annualize annualise quant performance portfolio price series" },
+          { type: "returns", label: "Returns", description: "The return-series one-liners: log / simple returns, cumulative return, drawdown and max drawdown, CAGR, annualized volatility, Sharpe and Sortino — pick on the card. pandas pct_change / cumprod, PerformanceAnalytics, quantmod.", create: () => new ReturnsNode(), parity: false, keywords: "log returns returns log return pct_change cumulative drawdown max drawdown cagr volatility sharpe sortino risk-free annualize annualise quant performance portfolio price series" },
           { type: "fin-compound-growth", label: "Compound Growth", description: "Lump-sum growth fv = pv·(1+rate)^nper — wire three, the fourth solves. Excel: FV or PV (pmt-less), PDURATION (solve nper), RRI (solve rate).", create: () => new EquationNode({ label: "Compound Growth", expr: "fv = pv * (1 + rate)^nper", locked: true }), keywords: "pduration rri compound interest growth doubling lump sum" },
         ],
       },
@@ -819,8 +819,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
         ],
       },
       { type: "pair", children: [
-        { type: "date-workday",     label: "WORKDAY",     description: WORKDAYS_OP_META.workday.description, create: () => new WorkdaysNode({ op: "workday" }),         parity: false },
-        { type: "date-networkdays", label: "NETWORKDAYS", description: WORKDAYS_OP_META.networkdays.description, create: () => new WorkdaysNode({ op: "networkdays" }), parity: false },
+        { type: "date-workday",     label: "WORKDAY",     description: WORKDAYS_OP_META.workday.description, keywords: "workdays", create: () => new WorkdaysNode({ op: "workday" }),         parity: false },
+        { type: "date-networkdays", label: "NETWORKDAYS", description: WORKDAYS_OP_META.networkdays.description, keywords: "workdays", create: () => new WorkdaysNode({ op: "networkdays" }), parity: false },
       ]},
       { type: "date-datedif",     label: "DATEDIF",     description: "Difference between two dates as whole years, months, or days, or the remainder past larger units (months ignoring years, days ignoring months or years). Pick on the node. Excel: DATEDIF.", create: () => new DateDiffNode({ op: "years" }), parity: false },
     ],
@@ -868,7 +868,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [textAfterBeforeLeaf("after"), textAfterBeforeLeaf("before")] },
           { type: "text-substitute", label: "SUBSTITUTE",  description: "Replaces old_text with new_text: every occurrence, or only the nth when Instance is set. Excel: SUBSTITUTE.", create: () => new SubstituteNode(),   parity: true },
           { type: "text-replace",    label: "REPLACE",     description: "Replaces N characters starting at a position. Excel: REPLACE.",          create: () => new TextReplaceNode(), parity: false },
-          { type: "regex",           label: "REGEX",       description: "Tests, extracts, or replaces text using a regular expression. Excel 365: REGEXTEST / REGEXEXTRACT / REGEXREPLACE.", create: () => new RegexNode(), parity: false },
+          { type: "regex",           label: "REGEX",       description: "Tests, extracts, or replaces text using a regular expression. Excel 365: REGEXTEST / REGEXEXTRACT / REGEXREPLACE.", keywords: "regextest", create: () => new RegexNode(), parity: false },
         ],
       },
       {
