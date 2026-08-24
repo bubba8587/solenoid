@@ -128,11 +128,12 @@
     },
     {
       "id": "bullet",
-      "type": "BulletNode",
+      "type": "GaugeNode",
       "x": 853,
       "y": 458,
       "init": {
-        "label": "To target"
+        "label": "To target",
+        "op": "bar"
       },
       "literals": {
         "value": 72,

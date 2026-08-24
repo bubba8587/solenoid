@@ -6,7 +6,7 @@ import type { RenderEmit } from "rete-react-plugin";
 import type { Schemes } from "./schemes";
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, SvgPickerNode,
-  SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, TreemapNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, DateInputNode, DateRangeNode, XYPadNode,
+  SparklineNode, ChartNode, HistogramNode, KpiNode, TreemapNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, DateInputNode, DateRangeNode, XYPadNode,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode, SevenSegNode, RecordNode,
   PointPlotterNode, CurveNode, GridPainterNode,
   FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode, WindowNode,
@@ -42,7 +42,7 @@ import {
   DateTimeValueNode, DatePartNode, WeekInfoNode,
   DateDiffNode, DateAddNode, WorkdaysNode, EpochNode, DateTruncNode,
   RandArrayNode,
-  SortByNode, XMatchNode,
+  XMatchNode,
   TBillNode, SecurityDiscNode, CouponNode, AccrintNode,
   AccrintMNode, PriceDiscNode, PriceMatNode, DurationNode,
   BondPriceNode, OddCouponNode,
@@ -81,7 +81,7 @@ import {
 } from "./rete-nodes";
 import {
   AngleDialComponent, SlicerComponent, CableSwitchComponent, NoteComponent, ReportComponent, SessionHistoryComponent, PresentationComponent, ImageComponent, SvgPickerComponent,
-  SparklineComponent, ChartComponent, HistogramComponent, KpiComponent, BulletComponent, TreemapComponent, SankeyComponent, SurfaceComponent, MermaidComponent, GaugeComponent, HeatmapCellComponent, ChartBuilderComponent, DateInputComponent, DateRangeComponent, XYPadComponent,
+  SparklineComponent, ChartComponent, HistogramComponent, KpiComponent, TreemapComponent, SankeyComponent, SurfaceComponent, MermaidComponent, GaugeComponent, HeatmapCellComponent, ChartBuilderComponent, DateInputComponent, DateRangeComponent, XYPadComponent,
   WaterfallComponent, CandlestickComponent, BoxplotComponent, CalendarHeatmapComponent, WaffleComponent, QuiverComponent, SevenSegComponent, RecordComponent,
   PointPlotterComponent, CurveComponent, GridPainterComponent,
   FillBlanksComponent, ReplaceValuesComponent, MergeColumnsComponent, HeadersComponent, DropBlankRowsComponent,
@@ -121,7 +121,7 @@ import {
   WeekInfoComponent, DateDiffComponent, DateAddComponent,
   WorkdaysComponent,
   RandArrayComponent,
-  SortByComponent, XMatchComponent,
+  XMatchComponent,
   TBillComponent, SecurityDiscComponent, CouponComponent, AccrintComponent,
   AccrintMComponent, PriceDiscComponent, PriceMatComponent, DurationComponent,
   BondPriceComponent, OddCouponComponent,
@@ -185,7 +185,6 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [ChartNode,       comp(ChartComponent)],
   [HistogramNode,   comp(HistogramComponent)],
   [KpiNode,         comp(KpiComponent)],
-  [BulletNode,      comp(BulletComponent)],
   [TreemapNode,     comp(TreemapComponent)],
   [SankeyNode,      comp(SankeyComponent)],
   [SurfaceNode,     comp(SurfaceComponent)],
@@ -374,7 +373,6 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [DateAddNode,           comp(DateAddComponent)],
   [WorkdaysNode,          comp(WorkdaysComponent)],
   [RandArrayNode,         comp(RandArrayComponent)],
-  [SortByNode,            comp(SortByComponent)],
   [XMatchNode,            comp(XMatchComponent)],
   [TBillNode,             comp(TBillComponent)],
   [SecurityDiscNode,      comp(SecurityDiscComponent)],

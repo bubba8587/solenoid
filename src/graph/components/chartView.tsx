@@ -5,10 +5,10 @@ import type { ChartShape } from "./chartCore";
 import { toSeries } from "./chartCore";
 import type { ChartOptions } from "../nodes/chartOptions";
 import type { TornadoBar } from "./chartRender";
-import type { ChartValue } from "../chartValue";
+import type { ChartValue, ScalePayload } from "../chartValue";
 import { KpiCard, BulletBar, RecordCardView } from "./chartCards";
 import { SurfaceView } from "./SurfaceView";
-import { useSeriesColors } from "./chartCore";
+import { useSeriesColors, useChartColors } from "./chartCore";
 import {
   WaterfallView, CandleView, BoxplotView, CalHeatView, WaffleView, QuiverView, ContourView, SevenSegView,
 } from "./chartCanvasViews";
@@ -120,7 +120,10 @@ export function ChartFigure({ value, width, height, axes = true, fontScale, reco
   // Hook BEFORE any early return — a conditional hook here black-screens the app.
   const seriesColors = useSeriesColors();
   if (value.op === "kpi" && value.payload?.kind === "kpi") return <KpiCard payload={value.payload} fscale={fscale} />;
-  if (value.op === "bullet" && value.payload?.kind === "bullet") return <BulletBar payload={value.payload} width={width} fscale={fscale} />;
+  if (value.op === "scale" && value.payload?.kind === "scale")
+    return value.payload.style === "dial"
+      ? <ScaleDial payload={value.payload} width={width} />
+      : <BulletBar payload={value.payload} width={width} fscale={fscale} />;
   if (value.op === "treemap" && value.payload?.kind === "treemap")
     return <TreemapView names={value.payload.names} values={value.payload.values} width={width} height={height} fscale={fscale} />;
   if (value.op === "sankey" && value.payload?.kind === "sankey")
@@ -175,6 +178,26 @@ export function GaugeArc(props: { pct: number; track: string; size: number }) {
     <Suspense fallback={box(props.size, props.size)}>
       <GaugeArcInner {...props} />
     </Suspense>
+  );
+}
+
+/** The DIAL figure — a radial arc (Value read as a fraction of 1, clamped onto the fixed
+ *  0→100% arc) with the true percent below. Shared by the Gauge node's card and the chart
+ *  popup / Report embed, so both draw the same dial. */
+export function ScaleDial({ payload, width, size }: { payload: ScalePayload; width?: number; size?: number }) {
+  const { track } = useChartColors();
+  const v = typeof payload.value === "number" && Number.isFinite(payload.value) ? payload.value : null;
+  const frac = v === null ? 0 : Math.min(1, Math.max(0, v));
+  const dim = size ?? Math.max(120, Math.min(width ?? 160, 200));
+  return (
+    <div style={{ position: "relative", width: dim, height: Math.round(dim * 0.55), margin: "2px auto 0", overflow: "hidden" }}>
+      <GaugeArc pct={frac * 100} track={track} size={dim} />
+      <div style={{ position: "absolute", left: 0, right: 0, top: Math.round(dim * 0.31), textAlign: "center", fontSize: 16, fontWeight: 600, color: "var(--text)" }}>
+        {v === null ? "—" : `${Math.round(v * 1000) / 10}%`}
+      </div>
+      <div style={{ position: "absolute", left: 4, bottom: 0, fontSize: 9, color: "var(--text-dim)" }}>0%</div>
+      <div style={{ position: "absolute", right: 4, bottom: 0, fontSize: 9, color: "var(--text-dim)" }}>100%</div>
+    </div>
   );
 }
 

@@ -149,8 +149,8 @@ function ChartBody({ value, fontScale }: { value: ChartValue; fontScale?: number
     return () => ro.disconnect();
   }, []);
   const width = Math.min(w, 640);
-  // Cards (kpi/bullet) render without a measured width; recharts figures wait for one.
-  const cardOp = value.op === "kpi" || value.op === "bullet";
+  // Cards (kpi/scale) render without a measured width; recharts figures wait for one.
+  const cardOp = value.op === "kpi" || value.op === "scale";
   return (
     <span className="solenoid-ref-chartbody" ref={ref}>
       {cardOp || width > 0

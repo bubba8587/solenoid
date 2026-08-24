@@ -11,7 +11,7 @@ import { ClampNode, ArithmeticNode, MathFnNode, MRoundNode, CombinatoricsNode } 
 import { MirrNode, TBillNode, IrrNode, OddCouponNode, NpvNode, DepreciationNode } from "./finance";
 import { SortFrameNode, JoinNode, HeadNode, SelectColumnsNode, XLookupNode } from "./frame";
 import { ListIndexNode, SliceNode, FilterNode, SeriesNode, AggregateNode } from "./list";
-import { BulletNode, KpiNode, HistogramNode } from "./visual";
+import { GaugeNode, KpiNode, HistogramNode } from "./visual";
 import { AlertNode } from "./display";
 import { ExpectNode } from "./quality";
 import { CubeRollupNode, BuildCubeNode } from "./cube";
@@ -366,8 +366,8 @@ describe("the THIRD state — undefined is omitted, null is unknown", () => {
 });
 
 describe("figure sinks — empty figure for a datum, neutral default for styling", () => {
-  it("Bullet: value and target go blank, but the track's scale keeps the card's bound", () => {
-    const node = new BulletNode();
+  it("Gauge (Bar style): value and target go blank, but the track's scale keeps the card's bound", () => {
+    const node = new GaugeNode({ op: "bar" });
     node.literals.value = 42;
     node.literals.target = 80;
     node.literals.max = 250;

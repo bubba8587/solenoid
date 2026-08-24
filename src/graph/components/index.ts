@@ -265,7 +265,6 @@ export { WeightedComponent } from "./WeightedNode";
 
 // ─── List extras ──────────────────────────────────────────────────────────────
 export { RandArrayComponent } from "./RandArrayNode";
-export { SortByComponent } from "./SortByNode";
 export { XMatchComponent } from "./XMatchNode";
 
 // ─── Convert / output ─────────────────────────────────────────────────────────
@@ -276,7 +275,6 @@ export { SparklineComponent } from "./SparklineNode";
 export { ChartComponent } from "./ChartNode";
 export { HistogramComponent } from "./HistogramNode";
 export { KpiComponent } from "./KpiNode";
-export { BulletComponent } from "./BulletNode";
 export { TreemapComponent } from "./TreemapNode";
 export { SankeyComponent } from "./SankeyNode";
 export { SurfaceComponent } from "./SurfaceNode";

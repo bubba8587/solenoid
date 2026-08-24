@@ -1,7 +1,7 @@
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, DateInputNode, DateRangeNode, XYPadNode,
   PointPlotterNode, CurveNode, GridPainterNode,
-  SparklineNode, ChartNode, HistogramNode, KpiNode, BulletNode, TreemapNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode,
+  SparklineNode, ChartNode, HistogramNode, KpiNode, TreemapNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode, SevenSegNode, RecordNode,
   FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode, WindowNode,
   NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFnNode,
@@ -32,7 +32,7 @@ import {
   DateTimeValueNode, DATE_TIME_VALUE_OP_META, DatePartNode, WeekInfoNode,
   DateDiffNode, DateAddNode, WorkdaysNode, WORKDAYS_OP_META, EpochNode, DateTruncNode,
   RandArrayNode,
-  SortByNode, XMatchNode,
+  XMatchNode,
   TBillNode, SecurityDiscNode, CouponNode, AccrintNode,
   AccrintMNode, PriceDiscNode, PriceMatNode, DurationNode,
   BondPriceNode, OddCouponNode,
@@ -248,10 +248,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "mermaid",   label: "Mermaid",   description: "Draws a diagram from Mermaid.js text: flowchart, sequence, class, state, gantt, or pie. The source is typed on the node or wired in from a Text node. The figure flows out a chart socket, so a Report renders it inline where its =name ref sits.", create: () => new MermaidNode(), parity: false, keywords: "mermaid diagram flowchart flow chart graph sequence class state gantt pie mindmap uml erd tree" },
           { type: "kpi",       label: "KPI card",  description: "A big-number stat card with a ↑/↓ delta vs a prior value, colored green/red.", create: () => new KpiNode(), parity: false, keywords: "kpi stat card metric scorecard delta variance big number" },
           { type: "record",    label: "Record",    description: "One frame row as labeled boxes, or every row as a gallery of cards or a board of lanes grouped by a column. Flip through rows with the pager or wire Row. The shown row flows back out. The Layout text places the boxes: one line per grid row, names split by | marks, and a repeated name merges its cells. A cell holding an image URL shows the picture.", create: () => new RecordNode(), parity: false, keywords: "record card form detail row browse fields layout boxes airtable gallery kanban board lanes" },
-          { type: "pair", children: [
-            { type: "gauge",     label: "Gauge",     description: "Shows a value as a percentage on a speedometer-style radial dial (1 = 100%, 1.5 = 150%). Pass-through.", create: () => new GaugeNode(), parity: false },
-            { type: "bullet",    label: "Bullet",    description: "A bullet graph: a value bar on a min-to-max track with a target tick. A compact gauge alternative.", create: () => new BulletNode(), parity: false, keywords: "bullet graph target progress goal gauge kpi" },
-          ]},
+          { type: "gauge",     label: "Gauge",     description: "Shows a value on a fixed scale: a radial Dial reading the value as a fraction (1 = 100%, 1.5 = 150%), or a horizontal Bar on a zero-to-Max track with a target tick. Excel has no equivalent.", create: () => new GaugeNode(), parity: false, keywords: "gauge dial bullet graph target progress goal percent speedometer meter scale kpi" },
           { type: "seven-seg", label: "7-Segment", description: "A flat seven-segment readout of a number, with a Decimals setting — the meter-face look.", create: () => new SevenSegNode(), parity: false, keywords: "seven segment display digital readout meter lcd led digits retro" },
           {
             type: "category", label: "Distribution", description: "How a sample spreads: binned counts and five-number summaries.",
@@ -485,7 +482,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "list-filter",  label: "List Filter", description: "Keeps list values passing condition rows (op + value, rows AND/OR; text ops ignore case, Match case per row); failures exit Dropped. 'No error' drops error cells. 'Has error' keeps only them. Any element type. For a TABLE's rows, use Frame Filter. Excel: FILTER.", accent: NODE_KIND_ACCENTS.list, create: () => new FilterNode(), keywords: "keep where condition predicate drop errors iserror noterror div0 remove errors clean" },
           { type: "list-fill",  label: "Coalesce / Fill", description: "Handles missing (null) cells: constant, forward/back-fill, mean/median/mode, interpolate, drop, or coalesce lists in priority order (first present wins, like SQL COALESCE). Errors pass through. Stats use present values only. Pairs with ISNULL.", accent: NODE_KIND_ACCENTS.list, create: () => new FillNode() },
           { type: "pair", children: [
-            { type: "list-sort",    label: "List Sort", description: "Sorts ascending or descending. Excel: SORT(range).", create: () => new SortNode() },
+            { type: "list-sort",    label: "List Sort", description: "Sorts a list ascending or descending — by its own values, or by a parallel key list when you wire one (sort names by their scores). Excel: SORT / SORTBY.", create: () => new SortNode() },
             { type: "list-reverse", label: "REVERSE", description: "Reverses the order of the list", create: () => new ReverseNode() },
           ]},
           { type: "pair", children: [
@@ -505,10 +502,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "list-shuffle",    label: "Shuffle",    description: "Randomly reorder the list with a Fisher-Yates shuffle.", create: () => new ShuffleNode() },
             { type: "list-interleave", label: "Interleave", description: "Alternate elements of two lists: A[0], B[0], A[1], B[1], …", create: () => new InterleaveNode() },
           ]},
-          { type: "pair", children: [
-            { type: "list-nthelement", label: "Nth Element", description: "Every N-th element. Step subsampling.", create: () => new NthElementNode() },
-            { type: "list-sortby", label: "SORTBY", description: "Sorts one list by the values in a parallel numeric list. Elements at the same index stay paired. The sorted list can be any element type (sort names by their scores). Excel 365: SORTBY.", create: () => new SortByNode(), parity: false },
-          ]},
+          { type: "list-nthelement", label: "Nth Element", description: "Every N-th element. Step subsampling.", create: () => new NthElementNode() },
         ],
       },
       {

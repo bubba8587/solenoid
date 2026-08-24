@@ -1,7 +1,7 @@
 // Structured-payload figures, so they render as plain CSS/SVG rather than going
 // through the lazy recharts chunk.
 import { useLayoutEffect, useRef, useState } from "react";
-import type { KpiPayload, BulletPayload, RecordPayload } from "../chartValue";
+import type { KpiPayload, ScalePayload, RecordPayload } from "../chartValue";
 import { formatScalar } from "./format";
 import { planColumns, packMasonry } from "./masonryLayout";
 import { stopDragStart } from "../coarse";
@@ -215,7 +215,7 @@ export function RecordCardView({ payload, width, fscale, title, onStep }: {
   );
 }
 
-export function BulletBar({ payload, width, fscale }: { payload: BulletPayload; width?: number; fscale?: number }) {
+export function BulletBar({ payload, width, fscale }: { payload: ScalePayload; width?: number; fscale?: number }) {
   const { value, target } = payload;
   // A non-finite min/max from dirty upstream data makes every frac() NaN — a
   // "NaN%" bar width and "NaN" labels.

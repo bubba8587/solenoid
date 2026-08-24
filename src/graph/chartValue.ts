@@ -14,8 +14,13 @@ export interface KpiPayload {
   /** Whether an increase is "good" (green ↑) — flip for cost-style metrics. */
   goodUp: boolean;
 }
-export interface BulletPayload {
-  kind: "bullet";
+// A value on a fixed scale, drawn one of two ways (the renderer branches on `style`):
+// a radial DIAL (value read as a fraction of 1, so 0.75 → 75% on a fixed 0→100% arc) or a
+// horizontal BAR on a 0→max track with a target tick (the former Bullet graph). Dial leaves
+// `target` null and pins min 0 / max 1; Bar carries the real target and track bound.
+export interface ScalePayload {
+  kind: "scale";
+  style: "dial" | "bar";
   value: number | null;
   target: number | null;
   min: number;
@@ -142,13 +147,13 @@ export interface RecordPayload {
   total: number;
 }
 export type ChartPayload =
-  | KpiPayload | BulletPayload | TreemapPayload | SankeyPayload | SurfacePayload
+  | KpiPayload | ScalePayload | TreemapPayload | SankeyPayload | SurfacePayload
   | ContourPayload | WaterfallPayload | CandlePayload | BoxplotPayload
   | CalHeatPayload | WafflePayload | QuiverPayload | SevenSegPayload | RecordPayload;
 
 /** Every op the `chart` socket can carry. */
 export type ChartValueOp =
-  | ChartOp | "kpi" | "bullet" | "treemap" | "sankey" | "surface"
+  | ChartOp | "kpi" | "scale" | "treemap" | "sankey" | "surface"
   | "contour" | "waterfall" | "candle" | "boxplot" | "calheat" | "waffle" | "quiver" | "sevenseg" | "record";
 
 export interface ChartValue {

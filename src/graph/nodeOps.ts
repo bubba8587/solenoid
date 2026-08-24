@@ -4,7 +4,7 @@
 import type { NodeCatalogEntry } from "./AddNodeMenu";
 import { DIST_SPECS, DistributionNode, type DistKey } from "./nodes/distribution";
 
-import { ChartNode, SparklineNode, SurfaceNode, RecordNode } from "./nodes/visual";
+import { ChartNode, SparklineNode, SurfaceNode, RecordNode, GaugeNode } from "./nodes/visual";
 import { CHART_OP_META, SPARKLINE_OP_META } from "./nodes/visual";
 import {
   FillNode, GroupByNode, SetOpNode, SetRelationNode, SumIfsNode, RunningNode,
@@ -141,6 +141,11 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new ChartNode({ op: op as never }) },
   { type: "sparkline", ctor: SparklineNode, kind: "operation", ops: fromMeta(SPARKLINE_OP_META),
     create: (op) => new SparklineNode({ op: op as never }) },
+  // Gauge draws a value on a scale two ways (Dial / Bar); the Bar style is the former
+  // Bullet graph. The Dial/Bar pick is a SegToggle bound to `op`, but the two aren't
+  // separate Add-menu names (both are just "Gauge") — "bullet"/"dial"/"bar" ride the
+  // leaf's keywords for search, so no op rows here (and "bar" would collide with Chart's).
+  { type: "gauge", ctor: GaugeNode, kind: "operation" },
   // The record VIEW is a presentation parameter of the one figure, not three
   // things you'd call by name (author call) — neutral picker, no op rows;
   // "gallery"/"kanban" ride the host leaf's keywords.

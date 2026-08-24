@@ -1,11 +1,11 @@
 import { ClassicPreset } from "rete";
-import { readInput, numIn, numListIn, numOut, tableIn, tableOut, strIn, strOut, chartOut, frameIn } from "./shared";
+import { readInput, numIn, numListIn, tableIn, tableOut, strIn, strOut, chartOut, frameIn } from "./shared";
 import { parseChartOptions, serializeChartOptions, CHART_BUILDER_TARGETS, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp, iterMin, iterMax, gridAxes } from "./mathUtils";
 import { histogram2d } from "./visualOps";
 export { histogram2d } from "./visualOps";
 import type {
-  ChartValue, KpiPayload, BulletPayload, TreemapPayload, SankeyPayload, SurfacePayload,
+  ChartValue, KpiPayload, ScalePayload, TreemapPayload, SankeyPayload, SurfacePayload,
   ContourPayload, WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, WafflePayload, QuiverPayload, SevenSegPayload,
   RecordPayload, RecordField,
 } from "../chartValue";
@@ -326,31 +326,87 @@ export class MermaidNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Gauge ────────────────────────────────────────────────────────────────────
+// ─── Gauge — a value on a fixed scale (Dial or Bar) ─────────────────────────────
+// One card, a style selector. DIAL reads Value as a fraction of 1 (0.75 → 75% on a
+// fixed 0→100% arc); BAR (the former Bullet graph) plots Value on a 0→Max track with a
+// Target tick. Emits a chart VALUE, not a pass-through — like 7-Segment, so a Report can
+// embed the readout (author call; node-coverage records the contract change).
+export type GaugeStyle = "dial" | "bar";
+export const GAUGE_STYLE_OPTIONS: { value: GaugeStyle; label: string }[] = [
+  { value: "dial", label: "Dial" },
+  { value: "bar", label: "Bar" },
+];
 
 export class GaugeNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    value: "Read as a fraction of one, so 0.75 shows as 75 percent on a dial fixed at 0 to 100 percent.",
+    value: "Dial reads it as a fraction of one, so 0.75 shows as 75 percent on a dial fixed at 0 to 100 percent; Bar plots it on the 0 to Max track.",
+    target: "Bar only: the target tick on the track.",
+    max: "Bar only: the track always starts at zero, so this sets only its upper end.",
   };
 
   label: string;
-  literals: Record<string, number> = { value: 0 };
-  cachedResult: number | null = null;
-  width = 180;
+  // The style is the node's OPERATION (it names the card): `op`, per the operation-kind
+  // convention (selectorNamedOp) — the payload's own `style` field mirrors it.
+  op: GaugeStyle = "dial";
+  literals: Record<string, number> = { value: 0, target: 80, max: 100 };
+  stringLiterals: Record<string, string> = {};
+  chartOptions: ChartOptions = {};
+  cachedPayload: ScalePayload | null = null;
+  width = 200;
   height = 200;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; op?: GaugeStyle }) {
     super("Gauge");
     this.label = init?.label ?? "Gauge";
-    // A fraction of 100% (1 = 100%): the dial scale is fixed 0→100%, with no Min/Max inputs.
+    if (init?.op === "bar") this.op = "bar";
     this.addInput("value", numIn("Value"));
-    this.addOutput("result", numOut("Pass-through"));
+    if (this.op === "bar") this.addBarInputs();
+    this.addOutput("chart", chartOut("Chart"));
   }
 
-  data(inputs: { value?: number[] }) {
-    const v = readInput(inputs.value, this.literals.value ?? null);
-    this.cachedResult = v;
-    return { result: v };
+  private addBarInputs(): void {
+    this.addInput("target", numIn("Target"));
+    this.addInput("max", numIn("Max"));
+    this.addInput("options", strIn("Options"));
+  }
+
+  /** The bar-only input keys a switch to `next` would remove — the component drops
+   *  their cables first (onePrunePath) before calling setOp. */
+  keysDropped(next: GaugeStyle): string[] {
+    return next === "dial" && this.op === "bar" ? ["target", "max", "options"] : [];
+  }
+
+  setOp(next: GaugeStyle): void {
+    if (next === this.op) return;
+    this.op = next;
+    if (next === "dial") {
+      for (const k of ["target", "max", "options"]) if (this.inputs[k]) this.removeInput(k);
+    } else {
+      this.addBarInputs();
+    }
+  }
+
+  data(inputs: { value?: number[]; target?: number[]; max?: number[]; options?: string[] }): { chart: ChartValue } {
+    const value = readInput(inputs.value, this.literals.value ?? null);
+    if (inputs.value?.[0] === undefined) this.literals.value = value ?? 0;
+    let payload: ScalePayload;
+    let title: string;
+    if (this.op === "bar") {
+      const target = readInput(inputs.target, this.literals.target ?? null);
+      // `max` is the track SCALE, so it keeps the card bound like a Slider; value/target are data.
+      const max = readInput(inputs.max, this.literals.max ?? 100) ?? (this.literals.max ?? 100);
+      if (inputs.target?.[0] === undefined) this.literals.target = target ?? 0;
+      if (inputs.max?.[0] === undefined) this.literals.max = max;
+      this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
+      payload = { kind: "scale", style: "bar", value, target, min: 0, max };
+      title = this.chartOptions.title || this.label || "Gauge";
+    } else {
+      this.chartOptions = {};
+      payload = { kind: "scale", style: "dial", value, target: null, min: 0, max: 1 };
+      title = this.label || "Gauge";
+    }
+    this.cachedPayload = payload;
+    return { chart: { __chart: true, op: "scale", values: value, payload, options: this.chartOptions, title } };
   }
 }
 
@@ -431,49 +487,6 @@ export class KpiNode extends ClassicPreset.Node {
     this.cachedPayload = payload;
     return {
       chart: { __chart: true, op: "kpi", values: value, payload, options: this.chartOptions, title: this.chartOptions.title || this.label || "KPI" },
-    };
-  }
-}
-
-// ─── Bullet graph ─────────────────────────────────────────────────────────────
-
-export class BulletNode extends ClassicPreset.Node {
-  static socketDocs: Record<string, string> = {
-    max: "The track always starts at zero, so this sets only its upper end.",
-  };
-
-  label: string;
-  literals: Record<string, number> = { value: 0, target: 80, max: 100 };
-  stringLiterals: Record<string, string> = {};
-  chartOptions: ChartOptions = {};
-  cachedPayload: BulletPayload | null = null;
-  width = 240;
-  height = 130;
-
-  constructor(init?: { label?: string }) {
-    super("Bullet");
-    this.label = init?.label ?? "Bullet";
-    this.addInput("value", numIn("Value"));
-    this.addInput("target", numIn("Target"));
-    this.addInput("max", numIn("Max"));
-    this.addInput("options", strIn("Options"));
-    this.addOutput("chart", chartOut("Chart"));
-  }
-
-  data(inputs: { value?: number[]; target?: number[]; max?: number[]; options?: string[] }): { chart: ChartValue } {
-    const value = readInput(inputs.value, this.literals.value ?? null);
-    const target = readInput(inputs.target, this.literals.target ?? null);
-    // `max` is the track's SCALE, so it keeps the card's bound like a Slider does;
-    // `value` and `target` are data and go blank.
-    const max = readInput(inputs.max, this.literals.max ?? 100) ?? (this.literals.max ?? 100);
-    if (inputs.value?.[0] === undefined) this.literals.value = value ?? 0;
-    if (inputs.target?.[0] === undefined) this.literals.target = target ?? 0;
-    if (inputs.max?.[0] === undefined) this.literals.max = max;
-    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
-    const payload: BulletPayload = { kind: "bullet", value, target, min: 0, max };
-    this.cachedPayload = payload;
-    return {
-      chart: { __chart: true, op: "bullet", values: value, payload, options: this.chartOptions, title: this.chartOptions.title || this.label || "Bullet" },
     };
   }
 }

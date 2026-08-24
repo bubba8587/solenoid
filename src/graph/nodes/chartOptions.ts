@@ -130,7 +130,7 @@ export type ChartBuilderKey =
   | "ymin" | "ymax" | "linewidth" | "alpha" | "fontsize";
 
 export type ChartTargetId =
-  | "chart" | "histogram" | "kpi" | "bullet" | "treemap" | "sankey"
+  | "chart" | "histogram" | "kpi" | "scale" | "treemap" | "sankey"
   | "waterfall" | "candle" | "boxplot" | "calheat" | "waffle";
 
 const ALL_KEYS: readonly ChartBuilderKey[] =
@@ -144,7 +144,7 @@ export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; keys:
   chart:     { label: "Chart",            keys: ALL_KEYS },
   histogram: { label: "Histogram",        keys: AXED_KEYS },
   kpi:       { label: "KPI",              keys: STAT_KEYS },
-  bullet:    { label: "Bullet",           keys: STAT_KEYS },
+  scale:     { label: "Gauge",            keys: STAT_KEYS },
   treemap:   { label: "Treemap",          keys: STAT_KEYS },
   sankey:    { label: "Sankey",           keys: STAT_KEYS },
   waterfall: { label: "Waterfall",        keys: TITLE_ONLY },

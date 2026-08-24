@@ -60,11 +60,19 @@ describe("visual nodes", () => {
     expect(m.cachedSource).toBe("sequenceDiagram; A->>B: hi");
   });
 
-  it("Gauge passes the single value through (read as a percentage by the view)", () => {
+  it("Gauge (Dial) emits a scale chart payload — value read as a fraction of 1", () => {
     const g = new GaugeNode();
-    expect(g.data({ value: [1.5] })).toEqual({ result: 1.5 });
+    const out = g.data({ value: [1.5] }).chart;
+    expect(out.op).toBe("scale");
+    expect(out.payload).toMatchObject({ kind: "scale", style: "dial", value: 1.5, target: null, min: 0, max: 1 });
     // unwired value → literal fallback (0)
-    expect(g.data({})).toEqual({ result: 0 });
+    expect((g.data({}).chart.payload as { value: number }).value).toBe(0);
+  });
+
+  it("Gauge (Bar) emits a bar payload with target and 0→Max track (the former Bullet)", () => {
+    const g = new GaugeNode({ op: "bar" });
+    const out = g.data({ value: [42], target: [80], max: [200] }).chart;
+    expect(out.payload).toMatchObject({ kind: "scale", style: "bar", value: 42, target: 80, min: 0, max: 200 });
   });
 
   it("Heatmap passes a Table straight through", () => {
@@ -78,12 +86,10 @@ describe("visual nodes", () => {
     const sp2 = new SparklineNode(extractInit(sp));
     expect(sp2.op).toBe("column");
 
-    const g = new GaugeNode();
-    g.literals.min = 10;
-    g.literals.max = 20;
+    const g = new GaugeNode({ op: "bar" });
     const init = extractInit(g);
-    expect(init.min).toBe(10);
-    expect(init.max).toBe(20);
+    expect(init.op).toBe("bar");
+    expect(new GaugeNode(init as { op: "bar" }).op).toBe("bar");
   });
 });
 
