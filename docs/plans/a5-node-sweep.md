@@ -82,7 +82,7 @@ under Numbers ▸ Engineering; `RandBetweenNode` is in `display.ts` but under In
 | [x] | Output (direct, Data Quality) (`:232`, `:237`) | 4 | `display.ts`, `quality.ts`, `tornado.ts` | `SEES_ERRORS` `errorValue.ts:129` |
 | [x] | Output ▸ Visuals, all subs (`:245-283`) | 34 | `nodes/visual.ts`, `tornado.ts`, `chartOptions.ts` | `wiredNull.test.ts:289` (figure sinks), `:483` (figure controls) |
 | [x] | Numbers ▸ Arithmetic / Functions / Rounding / Logarithms (`:337-378`) | 32 | `nodes/scalar.ts` | `wiredNull.test.ts:209` (guard placement) |
-| [ ] | Numbers ▸ Trigonometry / Combinatorics / Engineering / Bessel (`:389-425`) | 41 | `nodes/scalar.ts`, `finance.ts` (Bitwise) | — |
+| [x] | Numbers ▸ Trigonometry / Combinatorics / Engineering / Bessel (`:389-425`) | 41 | `nodes/scalar.ts`, `finance.ts` (Bitwise) | — |
 | [ ] | Numbers ▸ Complex (`:434-451`) | 24 | `nodes/complex.ts` | — |
 | [ ] | Lists ▸ Build / Shape (`:470`, `:486`) | 24 | `nodes/list.ts` | `wiredNull.test.ts:429` (column-list ref) |
 | [ ] | Lists ▸ Transform / Find (`:518`, `:544`) | 23 | `nodes/list.ts`, `indexAccess.ts` | `finePrintContract.test.ts:30` (DROP), `:119` (Slice) |

@@ -248,6 +248,18 @@ trunc/int/even/odd (to integer forms) → one "Round" node with a target selecto
 N-digits / integer-form); the family is otherwise already maximally op-merged (MathFn alone unifies
 ~35 single-input functions). Residue: none.
 
+**A5 Numbers ▸ Trigonometry/Combinatorics/Engineering/Bessel sweep** (41 leaves) → NO bugs. Trig
+reuses MathFnNode (already swept); the rest (Combinatorics, Multinomial, SeriesSum, BaseConvert,
+Bitwise, Bessel, Hypotenuse, TwoInputMath's delta/gestep) all guard their operands to null →
+propagate, list inputs `?? null` with no literal to resurrect. CombinatoricsNode is the exemplar of
+the active-op guard: FACT/FACTDOUBLE never read `k`, so a wired-blank `k` doesn't blank them, while
+COMBIN (reads both) blanks — pinned. Domain/overflow are the node's own `#DOMAIN!`/`#OVERFLOW!`.
+Descriptions verified (INT/EVEN/ODD, BaseConvert digit-out-of-base → null, Bessel domain). Pins:
+`wiredNull.test.ts` "Combinatorics — active-op guard" (+1). Combine candidates: none strong (already
+op-merged); one dedup FLAG — `HypotenuseNode` (HYPOT) and `TwoInputMathNode`'s `hypot` op are two
+implementations of √(A²+B²) (the TwoInputMath one isn't a catalogued leaf, likely formula-only), so
+collapse to one. Residue: none.
+
 ### SESSION DIGEST (2026-08-24 — author polish pass: Join dropdown, catalog valence, KaTeX arc trig, string-list errors, Aggregate optgroups, scratch-seed Groups)
 
 Six author asks, each landed + committed separately. (1) **Join `how` → arg dropdown**

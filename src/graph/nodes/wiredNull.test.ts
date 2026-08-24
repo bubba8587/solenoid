@@ -7,7 +7,7 @@ import { RandBetweenNode } from "./display";
 import { ComplexFromNode } from "./complex";
 import { CableSwitchNode } from "./control";
 import { ExpressionNode } from "./expression";
-import { ClampNode, ArithmeticNode, MathFnNode, MRoundNode } from "./scalar";
+import { ClampNode, ArithmeticNode, MathFnNode, MRoundNode, CombinatoricsNode } from "./scalar";
 import { MirrNode, TBillNode, IrrNode, OddCouponNode } from "./finance";
 import { SortFrameNode, JoinNode, HeadNode, SelectColumnsNode } from "./frame";
 import { ListIndexNode, SliceNode } from "./list";
@@ -550,6 +550,21 @@ describe("Input family — wired blank by role", () => {
     const [v0] = Object.keys(node.inputs);
     expect(node.data({ [v0]: [null] }).out).toBeNull();
     expect(node.data({ [v0]: [42] }).out).toBe(42);
+  });
+});
+
+describe("Combinatorics — the active-op guard scopes to the inputs it reads", () => {
+  // FACT/FACTDOUBLE never read k, so a wired blank on k must NOT blank the result;
+  // COMBIN reads both, so a wired blank k there is unknown. Same node, two dispositions.
+  it("FACT ignores a wired blank k; COMBIN blanks on it", () => {
+    const fact = new CombinatoricsNode({ op: "fact" });
+    fact.literals.n = 5;
+    expect(fact.data({ n: [5], k: [null as unknown as number] }).result).toBe(120);
+    const combin = new CombinatoricsNode({ op: "combin" });
+    combin.literals.n = 5; combin.literals.k = 2;
+    expect(combin.data({ n: [5], k: [null as unknown as number] }).result).toBeNull();
+    // A wired blank n blanks either op.
+    expect(fact.data({ n: [null as unknown as number] }).result).toBeNull();
   });
 });
 
