@@ -247,6 +247,11 @@ a place a spec can be contradicted. Concretely:
   assumes engine-driven calls).
 - **A cable drag blurs the focused field first** (Canvas `connectionpick`), so a mid-edit value
   commits before it's wired — rely on this, don't re-implement it.
+- **React `onPointerEnter`/`onMouseEnter` are SILENT when the pointer arrives from another React
+  root** — every rete node is its own root, so anything on a card EDGE (sockets, the hero box)
+  gets its hover straight from the canvas root and React never dispatches the enter. Use
+  `useNativeEnterLeave` (`components/nativeHover.ts`) for enter/leave inside node components;
+  measured 2026-08-24 (the frame-hint socket).
 
 ### Subsystem deep-dives → `docs/subsystem-invariants.md`
 Read the relevant section there IN FULL before touching one of these. The one-line index:

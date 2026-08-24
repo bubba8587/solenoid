@@ -88,6 +88,17 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
 ### SESSION DIGEST (2026-08-24b — parallel plan execution from docs/plans/)
 
+- **Frame-hint hover was dead (author report) → cross-root enter.** React's synthetic
+  `onPointerEnter` never fires when the pointer arrives from a different React root, and rete
+  renders each node in its own root, so a socket on the card edge (hovered straight from the
+  canvas) never opened the hint; native `pointerenter` did (headless mouse probe: native
+  listeners fired, React's did not, the handler raised the layer when called by hand). Fix:
+  `useNativeEnterLeave` (`nativeHover.ts`) on the socket wrapper and the value-box hover; trap
+  recorded in CLAUDE.md. `LazySelect` / `SvgPicker` sit inside the body (pointer crosses the
+  same root first) so they were unaffected. Inspector's inline hint bumped to panel-scale
+  type (11px). Author eyeball: hover a Chart's Data socket → mini-table; Inspector shows the
+  larger one.
+
 **A2 — formula-surface containment, safe slice (plan 1).** An undeclared Formula.js name
 (no `EXCEL_IMPL_META`, not internally registered) that receives a rank-2 matrix now returns
 one clean `#SHAPE!` instead of broadcasting into an array of per-cell `#VALUE!`s: a fourth arm
