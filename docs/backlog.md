@@ -22,9 +22,6 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   out of character.
 
 **B — engine features promoted from deferrals (autonomous-friendly, node+formula+tests)**
-- [ ] **B7 Tidy options**: expose direction / density / width-cap (Coffman-Graham layerBound)
-  on the Tidy call as a small options pill; ELK runs headless so layout is unit-testable;
-  the cable-readability question stays for the author's eye.
 - [ ] **B8 Cube-aware Unnest (peel one level)**; **Timesavers remainder** (Split Name,
   duration trio, list reducers); **XLOOKUP frame+cube path collapse** once A4 lands.
 - [ ] **B9 Lazy-handle-on-cable** (retire the `collect()` bridge) — last, biggest.
@@ -300,7 +297,9 @@ is blocked here for out-of-scope repos).
   and buys no further height. Also note the license moves EPL-2.0 →
   `EPL-2.0 OR GPL-3.0-or-later`, which changes the shipped
   `third-party-licenses.txt`. Full option survey + the open cable-routing question:
-  `deferrals.md` "Tidy options".
+  `git show 11709841^:docs/deferrals.md` lines 123-160 (the "Tidy options" entry,
+  since promoted to B7 and landed). The knobs themselves shipped in B7 on elkjs 0.8.2;
+  this bump is the deferred `layerUnzipping` follow-on only.
 - [ ] **The rest of the outdated set, still unwalked** — majors: `marked` 14→18,
   `katex` 0.17→0.18. Plus ~16 in-range patches. Core `rete` 2.0.6 is already current.
   (`@formulajs/formulajs` 4.6.0→4.6.1 LANDED 2026-08-23: the diff is exactly a new `TAKE`

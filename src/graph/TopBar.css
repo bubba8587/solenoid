@@ -115,6 +115,48 @@
   display: none;
 }
 
+/* ─── Tidy options popover ─────────────────────────────────────────────────────
+   The layout group anchors the popover under the Tidy button; see the z-slot in
+   docs/layout-chrome.md. The header doesn't clip its dropdowns, so it overflows
+   down over the canvas like the menu-bar dropdown. */
+.solenoid-topbar__group--layout {
+  position: relative;
+}
+
+/* A slim chevron opener beside the Tidy button, not a full 28px control. */
+.solenoid-topbar__tidy-opts {
+  width: 18px;
+  min-width: 18px;
+}
+
+.solenoid-tidy-options {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: var(--overlay-bg);
+  border: var(--overlay-border-width) solid var(--overlay-border);
+  border-radius: 8px;
+  box-shadow: var(--overlay-shadow);
+}
+
+.solenoid-tidy-options__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.solenoid-tidy-options__label {
+  font-size: 12px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
 /* ─── Tablet touch actions ────────────────────────────────────────────────────
    A tablet runs the DESKTOP chrome (IS_MOBILE is false there — iPadOS ships a
    desktop UA on purpose), so it never gets the bottom action bar and had no

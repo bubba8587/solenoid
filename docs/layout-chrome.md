@@ -222,7 +222,7 @@ Answers to the questions that keep biting:
 5    nav pill / navigator / webdemo banner
 6    header / statusbar / apptools palette
 7    align pill / isolate endpoints
-20   menubar dropdown (local to header)
+20   menubar dropdown (local to header) / tidy-options popover (`.solenoid-tidy-options`, local to topbar, `top:100%+6px` under the layout group; header doesn't clip so it overflows onto the canvas)
 60   conduit docked toolbar / node-budget modal
 90   docked report panel
 100  minimap / socket legend / mobile bottom bar

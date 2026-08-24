@@ -1,5 +1,6 @@
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore, useState, useEffect, useRef } from "react";
 import wordmark from "../logo/solenoidwordmark.svg";
+import { TidyOptionsPopover } from "./TidyOptionsPopover";
 import { CableShapeSelector } from "./CableShapeSelector";
 import { AppToolbar } from "./AppToolbar";
 import { TabletActions } from "./TabletActions";
@@ -20,6 +21,17 @@ export function TopBar() {
   useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
   const { allCollapsed } = groupCollapseSummary();
   const { snap, toggleSnap } = useGridSnap();
+  const [tidyOptsOpen, setTidyOptsOpen] = useState(false);
+  const layoutGroupRef = useRef<HTMLDivElement>(null);
+  // Clickaway: a pointerdown outside the layout group (opener + popover live inside it) closes.
+  useEffect(() => {
+    if (!tidyOptsOpen) return;
+    const onDown = (e: PointerEvent) => {
+      if (!layoutGroupRef.current?.contains(e.target as Node)) setTidyOptsOpen(false);
+    };
+    window.addEventListener("pointerdown", onDown, true);
+    return () => window.removeEventListener("pointerdown", onDown, true);
+  }, [tidyOptsOpen]);
   return (
     <div
       className="solenoid-topbar"
@@ -86,7 +98,7 @@ export function TopBar() {
         </button>
       </div>
 
-      <div className="solenoid-topbar__group solenoid-topbar__group--layout">
+      <div className="solenoid-topbar__group solenoid-topbar__group--layout" ref={layoutGroupRef}>
         <button className="solenoid-nav__btn" title="Tidy: auto-arrange (T)" aria-label="Tidy" onClick={() => autoArrange()}>
           <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="1.2" y="5.5" width="3.6" height="5" rx="0.8" />
@@ -97,6 +109,19 @@ export function TopBar() {
             <path d="M8 8 V11.6 H11.2" />
           </svg>
         </button>
+        <button
+          className="solenoid-nav__btn solenoid-topbar__tidy-opts"
+          title="Tidy options"
+          aria-label="Tidy options"
+          aria-haspopup="dialog"
+          aria-expanded={tidyOptsOpen}
+          onClick={() => setTidyOptsOpen((o) => !o)}
+        >
+          <svg viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 6 L8 10 L12 6" />
+          </svg>
+        </button>
+        {tidyOptsOpen && <TidyOptionsPopover onClose={() => setTidyOptsOpen(false)} />}
         <button className="solenoid-nav__btn" title="Cleanup: tidy, collapse, and fit (C)" aria-label="Cleanup" onClick={() => cleanup()}>
           {/* Lucide "brush" (ISC). */}
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
