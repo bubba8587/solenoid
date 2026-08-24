@@ -11,7 +11,7 @@ import { iterMin, iterMax, stdNormCDF, fCDF, chiSqCDF, lnCombin } from "./mathUt
 export type AggregateOp =
   | "sum" | "avg" | "min" | "max" | "count" | "countdistinct" | "median" | "product" | "stdev"
   | "geomean" | "harmean" | "sumsq" | "var_s" | "var_p" | "stdev_p" | "devsq" | "avedev" | "skew" | "skew_p" | "kurt"
-  | "ptp" | "iqr" | "mad" | "sem" | "cv" | "rms";
+  | "ptp" | "iqr" | "mad" | "sem" | "cv" | "rms" | "first" | "last";
 
 const sum = (a: readonly number[]) => a.reduce((x, y) => x + y, 0);
 const mean = (a: readonly number[]) => sum(a) / a.length;
@@ -33,6 +33,9 @@ export function aggregate(op: AggregateOp, arr: readonly number[]): number | Sol
     case "max":     return iterMax(arr);
     case "count":   return n;
     case "countdistinct": return new Set(arr).size;
+    // Blanks are already skipped by the caller, so these ARE the first / last non-blank.
+    case "first":   return arr[0];
+    case "last":    return arr[n - 1];
     case "product": return arr.reduce((a, b) => a * b, 1);
     case "median": {
       const s = [...arr].sort((a, b) => a - b);

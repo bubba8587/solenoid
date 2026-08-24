@@ -968,6 +968,8 @@ export class SumIfsNode extends ClassicPreset.Node {
 
   label: string;
   op: CondAggOp;
+  /** Combine the criteria rows: ALL must pass (Excel SUMIFS), or ANY one. */
+  match: "all" | "any" = "all";
   /** Per-pair {op, matchCase}, keyed by the pair id (the `column${id}` suffix). */
   condConfig: Record<string, FilterCondConfig> = {};
   stringLiterals: Record<string, string> = {};
@@ -978,11 +980,12 @@ export class SumIfsNode extends ClassicPreset.Node {
   height = 280;
 
   constructor(init?: {
-    label?: string; op?: CondAggOp;
+    label?: string; op?: CondAggOp; match?: "all" | "any";
     condConfig?: Record<string, FilterCondConfig>; valueKeys?: string[];
   }) {
     super("SumIfs");
     this.op = init?.op ?? "sumifs";
+    if (init?.match === "all" || init?.match === "any") this.match = init.match;
     this.label = init?.label ?? COND_AGG_OP_META[this.op].label;
     this.addInput("frame", frameIn("Frame"));
     this.addInput("values", strIn("Values column"));
@@ -1050,8 +1053,11 @@ export class SumIfsNode extends ClassicPreset.Node {
     }
     if (crits.length === 0) return finish(null);
     const n = frameRowCount(f);
-    const passes = (i: number) => crits.every((c) =>
-      passesFilter((c.col.values[i] ?? null) as FrameCell, c.op, c.value, c.col.type, c.matchCase));
+    const test = (c: Crit, i: number) =>
+      passesFilter((c.col.values[i] ?? null) as FrameCell, c.op, c.value, c.col.type, c.matchCase);
+    // ALL criteria must pass (Excel SUMIFS), or ANY one — the match selector picks.
+    const passes = (i: number) =>
+      this.match === "any" ? crits.some((c) => test(c, i)) : crits.every((c) => test(c, i));
     // COUNTIFS takes no values range (Excel); the others need the column named.
     if (this.op === "countifs") {
       let count = 0;
@@ -1886,6 +1892,8 @@ export const REDUCE_OP_META = {
   var_p:   { label: "VAR.P",   description: "Population variance (n). Excel: VAR.P." },
   geomean: { label: "GEOMEAN", description: "Geometric mean (all values must be > 0). Excel: GEOMEAN." },
   harmean: { label: "HARMEAN", description: "Harmonic mean (all values must be > 0). Excel: HARMEAN." },
+  first:   { label: "First",   description: "The first non-blank value (blanks are skipped). No Excel equivalent; you'd write INDEX(range, MATCH(TRUE, range<>\"\", 0)).", fx: "FIRSTNONBLANK" },
+  last:    { label: "Last",    description: "The last non-blank value (blanks are skipped). No Excel equivalent.", fx: "LASTNONBLANK" },
   sumsq:   { label: "SUMSQ",   description: "Sum of squares Σ(xi²). Excel: SUMSQ." },
   devsq:   { label: "DEVSQ",   description: "Sum of squared deviations from the mean. Excel: DEVSQ." },
   avedev:  { label: "AVEDEV",  description: "Mean absolute deviation from the mean. Excel: AVEDEV." },
@@ -1898,7 +1906,7 @@ export const REDUCE_OP_META = {
   sem:     { label: "SEM",     description: "Standard error of the mean: sample stdev ÷ √n. scipy sem, R sd(x)/sqrt(n)." },
   cv:      { label: "CV",      description: "Coefficient of variation: sample stdev ÷ mean. scipy variation, R sd(x)/mean(x)." },
   rms:     { label: "RMS",     description: "Root mean square: √(Σx² ÷ n)." },
-} satisfies Record<ReduceOp, { label: string; description: string }>;
+} satisfies Record<ReduceOp, { label: string; description: string; fx?: string }>;
 
 // The user-facing identity is "Aggregate", a fixed-op 1-D list aggregator — NOT the
 // table-taking REDUCE lambda. The `reduce` op tokens are never user-visible.
@@ -1912,6 +1920,7 @@ export function aggregateResultDim(op: ReduceOp, dim: Dim, n: number): Dim {
     case "sum": case "avg": case "min": case "max": case "median":
     case "geomean": case "harmean": case "stdev": case "stdev_p": case "avedev":
     case "ptp": case "iqr": case "mad": case "sem": case "rms":
+    case "first": case "last": // picking an element keeps its dimension, like min/max
       return dim;
     case "var_s": case "var_p": case "devsq": case "sumsq":
       return dimPow(dim, 2);

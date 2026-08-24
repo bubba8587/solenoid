@@ -6,6 +6,7 @@ import { processGraph, bumpConnectionVersion } from "../process";
 import { getActiveArea } from "../activeGraph";
 import { useConnectedInputs, InlineInputs, InlineTextField } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { SegToggle } from "./SegToggle";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { pushRowAddUndo, pushRowRemovalUndo } from "./ExtensibleInputs";
 import { FILTER_OP_OPTIONS, TEXT_MATCH_OPS, VALUELESS_OPS } from "./FrameNodes";
@@ -20,6 +21,7 @@ const OPS = (Object.keys(COND_AGG_OP_META) as CondAggOp[]).map((op) => ({
 export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
   const connected = useConnectedInputs(data.id);
   const [op, setOp] = useNodeField(data, "op");
+  const [match, setMatch] = useNodeField(data, "match");
   const [cfg, setCfg] = useState<Record<string, FilterCondConfig>>(() => ({ ...data.condConfig }));
   const strLiterals = (data.stringLiterals ??= {});
   const pairs = data.valuePairKeys();
@@ -122,6 +124,15 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
           </div>
         );
       })}
+      {/* With one criterion All and Any are the same, so the toggle only earns its row past that. */}
+      {pairs.length > 1 && (
+        <SegToggle
+          arg
+          value={match}
+          options={[{ value: "all", label: "Match all" }, { value: "any", label: "Match any" }]}
+          onChange={setMatch}
+        />
+      )}
       <button
         type="button"
         className="solenoid-node__add-input"

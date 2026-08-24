@@ -469,6 +469,15 @@ describe("Aggregate — null skipped, errors propagated (array-semantics policy)
     const out = agg("sum", [[1, 2, err, 4]]);
     expect(isSolError(out) && out.code).toBe("#DIV/0!");
   });
+
+  it("FIRST / LAST return the first / last NON-BLANK value (blanks already skipped)", () => {
+    expect(agg("first", [[null, 10, 20, 30]])).toBe(10); // leading blank skipped
+    expect(agg("last", [[10, 20, 30, null]])).toBe(30);  // trailing blank skipped
+    expect(agg("first", [[null, null]])).toBeNull();      // all-blank → null (like avg)
+    expect(agg("last", [[null, null]])).toBeNull();
+    const err = solError("#DIV/0!", "boom");
+    expect(isSolError(agg("first", [[err, 2, 3]]))).toBe(true); // an error cell propagates
+  });
 });
 
 describe("Reduce — variance / stdev (sample vs population)", () => {
@@ -623,6 +632,29 @@ describe("SUMIFS — conditional aggregation over one frame (filterOneJob, amend
       { column: "sales", op: "gt", value: "100" },
     ]);
     expect(two.data({ frame: [frame()] }).result).toBe(320); // 120+200
+  });
+
+  it("match ANY: a row passing EITHER criterion counts (OR, not AND)", () => {
+    const n = mk("sumifs", [
+      { column: "region", op: "eq", value: "North" }, // rows 0,2,4 → 120,200,90
+      { column: "sales", op: "gt", value: "140" },     // rows 2,3 → 200,150 (East)
+    ]);
+    n.match = "any";
+    // Union of matched rows {0,2,4} ∪ {2,3} = {0,2,3,4} → 120+200+150+90.
+    expect(n.data({ frame: [frame()] }).result).toBe(560);
+    // The default (all) intersects: only row 2 (North AND >140) → 200.
+    const all = mk("sumifs", [
+      { column: "region", op: "eq", value: "North" },
+      { column: "sales", op: "gt", value: "140" },
+    ]);
+    expect(all.data({ frame: [frame()] }).result).toBe(200);
+  });
+
+  it("match ANY with zero completed criteria is null, same as ALL with zero", () => {
+    const anyN = mk("sumifs", []); anyN.match = "any";
+    const allN = mk("sumifs", []);
+    expect(anyN.data({ frame: [frame()] }).result).toBeNull();
+    expect(allN.data({ frame: [frame()] }).result).toBeNull();
   });
 
   it("empty matches follow Excel: AVERAGEIFS → #DIV/0!, MINIFS/MAXIFS → 0", () => {

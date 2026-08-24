@@ -365,6 +365,22 @@ two-step inverse to flat rows; mixed → #TYPE!; depth-1 round-trip unchanged). 
 (4795) green. B8.2 (SUMIFS all/any + Aggregate First/Last) and B8.3 (XLOOKUP path collapse, A4
 landed) still to come.
 
+**B8.2 — Timesavers remainder (plan 8, sub-item 2).** Two ops/toggles on existing families, no
+new nodes. (a) **SUMIFS all/any** — `SumIfsNode` gains a `match: "all" | "any"` field (default all,
+persisted via `INIT_FIELD_ORDER`, a `SegToggle` shown only past one criterion); the criteria fold's
+`crits.every` becomes `every`/`some` on the selector. No Rust mirror (SUMIFS is JS-only — engine.rs
+has no `sumifs`). (b) **Aggregate First / Last** — `AggregateOp` gains `first`/`last`; since the
+caller blank-skips before the fold, they're `arr[0]`/`arr[n-1]` (all-blank → null, an error cell
+propagates). `fx` declared `FIRSTNONBLANK`/`LASTNONBLANK` (no Excel equivalent), grouped under
+"Basics", dim carries like min/max (`aggregateResultDim`). Pins: `list.test.ts` (first/last on
+leading/trailing nulls + all-blank + error; SUMIFS any = union of matched rows vs all = intersection;
+any/all with zero criteria both null). **Held out (Findings, built nothing):** Duration trio wants an
+elapsed `[h]:mm` FC format first (format-model question, `pack-composite-plans.md`); Split Name is a
+new multi-output node with an output-shape call (parked); Multi-Criteria / Lookup-All reopen the
+recorded XLOOKUP-shape decline; Fiscal Quarter / Age / Nth Weekday are author calls (`deferrals.md`).
+B8.2 files green in isolation (208); the full suite has 2 PEER-owned failures in the scratch seed
+(Jeff's Find Peaks output-merge left `d_pk_val` wired), flagged to him — not from B8.2.
+
 **A5 Input (direct + Control) sweep** (23 leaves / ~19 classes) → one wired-blank bug: Color
 Blend treated a blank on a color operand as an "isn't a color" `#VALUE!` instead of propagating
 blank; now `readInput` reads the raw value, `null` → blank out (error still outranks blank, and a
