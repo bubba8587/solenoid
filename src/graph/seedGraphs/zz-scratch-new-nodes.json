@@ -2944,6 +2944,20 @@
    "init": {
     "label": "Wrapped lines"
    }
+  },
+  {
+   "id": "n_hist2d",
+   "type": "HistogramNode",
+   "x": 356,
+   "y": 9880,
+   "init": {
+    "label": "Histogram",
+    "mode": "2d"
+   },
+   "literals": {
+    "bins": 4,
+    "ybins": 4
+   }
   }
  ],
  "connections": [
@@ -4044,6 +4058,18 @@
    "sourceOutput": "result",
    "target": "d_wrap",
    "targetInput": "in"
+  },
+  {
+   "source": "src_va",
+   "sourceOutput": "list",
+   "target": "n_hist2d",
+   "targetInput": "values"
+  },
+  {
+   "source": "src_vb",
+   "sourceOutput": "list",
+   "target": "n_hist2d",
+   "targetInput": "y"
   }
  ]
 }

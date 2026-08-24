@@ -363,6 +363,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   EIGENVALUES: "matrix",
   EIGENVECTORS: "matrix",
   SPECTRUM: "signal, [sample_rate]",
+  HISTOGRAM2D: "xs, ys, x_bins, y_bins",
   ANOVA: "group1, group2, …",
   KRUSKAL: "group1, group2, …",
   MANNWHITNEY: "sample1, sample2",

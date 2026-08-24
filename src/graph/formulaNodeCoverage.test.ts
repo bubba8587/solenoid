@@ -49,6 +49,7 @@ const FORMULA_NODE_ALIAS: Record<string, string> = {
   MAXDRAWDOWN: "Returns node (max drawdown op)", CAGR: "Returns node (CAGR op)", VOLATILITY: "Returns node (volatility op)",
   SHARPE: "Returns node (Sharpe op)", SORTINO: "Returns node (Sortino op)",
   SOLVE: "Solve A·x = b node", EIGENVALUES: "Eigen (symmetric) node", EIGENVECTORS: "Eigen (symmetric) node", SPECTRUM: "Spectrum (FFT) node",
+  HISTOGRAM2D: "Histogram node (2-D mode)",
   // the Hypothesis Test card's non-Excel ops
   KRUSKAL: "Hypothesis Test (Kruskal–Wallis op)", MANNWHITNEY: "Hypothesis Test (Mann–Whitney op)",
   WILCOXON: "Hypothesis Test (Wilcoxon op)", KSTEST: "Hypothesis Test (KS op)",

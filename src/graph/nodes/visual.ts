@@ -2,6 +2,8 @@ import { ClassicPreset } from "rete";
 import { readInput, numIn, numListIn, numOut, tableIn, tableOut, strIn, strOut, chartOut, anyTableIn, frameIn } from "./shared";
 import { parseChartOptions, serializeChartOptions, CHART_BUILDER_TARGETS, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp, iterMin, iterMax } from "./mathUtils";
+import { histogram2d } from "./visualOps";
+export { histogram2d, histogram2dGrid } from "./visualOps";
 import type {
   ChartValue, KpiPayload, BulletPayload, TreemapPayload, SankeyPayload, SurfacePayload,
   ContourPayload, WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, WafflePayload, QuiverPayload, SevenSegPayload,
@@ -192,41 +194,94 @@ export function histogramBins(vals: (number | null)[], k: number): number[] {
   return counts;
 }
 
+export type HistogramMode = "1d" | "2d";
+export const HISTOGRAM_MODE_META = {
+  "1d": { label: "1-D", description: "Bin one list of numbers into equal-width buckets, plotted as columns." },
+  "2d": { label: "2-D", description: "Bin paired X and Y numbers into a grid, drawn as a density plot. numpy histogram2d." },
+} satisfies Record<HistogramMode, { label: string; description: string }>;
+
+const listOf = (raw: number | number[] | null | undefined): (number | null)[] =>
+  Array.isArray(raw) ? raw : raw == null ? [] : [raw];
+
+// One card, two modes (oneRunningNode-style combine): 1-D bins one list into columns;
+// 2-D pairs X/Y into a count grid drawn as a contour density plot. The `mode` selector
+// adds/removes the Y + Y-bins inputs; `bins` carries across as the X-bin count. The
+// bordered-grid matrix is exposed via the WRAPTEXT-style HISTOGRAM2D formula, not a socket.
 export class HistogramNode extends ClassicPreset.Node {
   label: string;
-  literals: Record<string, number> = { bins: 10 };
+  mode: HistogramMode;
+  literals: Record<string, number> = { bins: 10, ybins: 10 };
   chartOptions: ChartOptions = {};
   stringLiterals: Record<string, string> = {};
-  cachedResult: number[] | null = null;
+  cachedResult: number[] | null = null; // 1-D counts (null in 2-D)
+  cachedChart: ChartValue | null = null;
   width = 240;
   height = 240;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; mode?: HistogramMode }) {
     super("Histogram");
     this.label = init?.label ?? "Histogram";
-    this.addInput("values", numListIn("Values"));
-    this.addInput("bins", numIn("Bins"));
+    this.mode = init?.mode === "2d" ? "2d" : "1d";
+    this.addInput("values", numListIn(this.mode === "2d" ? "X" : "Values"));
+    this.addInput("bins", numIn(this.mode === "2d" ? "X bins" : "Bins"));
+    if (this.mode === "2d") {
+      this.addInput("y", numListIn("Y"));
+      this.addInput("ybins", numIn("Y bins"));
+    }
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  data(inputs: { values?: (number | number[])[]; bins?: number[]; options?: string[] }): { chart: ChartValue } {
-    const raw = inputs.values?.[0] ?? null;
-    const list = Array.isArray(raw) ? raw : raw === null ? [] : [raw];
-    const bins = readInput(inputs.bins, this.literals.bins ?? 10);
+  /** Keys a switch to `next` would drop — the component prunes their cables BEFORE
+   *  `setMode` (onePrunePath). */
+  keysDroppedByMode(next: HistogramMode): string[] {
+    return next === "1d" ? ["y", "ybins"] : [];
+  }
+
+  setMode(next: HistogramMode): void {
+    if (next === this.mode) return;
+    this.mode = next;
+    // The `options` input trails the swap set, so drop and re-add it to keep the row order
+    // Values/X · bins · [Y · Y bins] · Options.
+    if (this.inputs.options) this.removeInput("options");
+    if (next === "2d") {
+      if (!this.inputs.y) this.addInput("y", numListIn("Y"));
+      if (!this.inputs.ybins) this.addInput("ybins", numIn("Y bins"));
+    } else {
+      if (this.inputs.y) this.removeInput("y");
+      if (this.inputs.ybins) this.removeInput("ybins");
+    }
+    this.addInput("options", strIn("Options"));
+    this.literals.ybins ??= 10;
+  }
+
+  data(inputs: { values?: (number | number[])[]; bins?: number[]; y?: (number | number[])[]; ybins?: number[]; options?: string[] }): { chart: ChartValue } {
+    const xs = listOf(inputs.values?.[0] ?? null);
     // Bins is a SHAPE, not styling — a wired blank empties the figure. Mirror to the card
     // ONLY when unwired; writing a WIRED value into `literals` would overwrite and persist it.
-    if (inputs.bins?.[0] === undefined && bins !== null) this.literals.bins = bins;
-    const counts = bins === null ? [] : histogramBins(list as (number | null)[], bins);
-    this.cachedResult = counts;
+    const kx = readInput(inputs.bins, this.literals.bins ?? 10);
+    if (inputs.bins?.[0] === undefined && kx !== null) this.literals.bins = kx;
     this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
-    const chart: ChartValue = {
-      __chart: true,
-      op: "column",
-      values: counts,
-      options: this.chartOptions,
-      title: this.chartOptions.title || this.label || "Histogram",
-    };
+    const title = this.chartOptions.title || this.label || "Histogram";
+
+    if (this.mode === "2d") {
+      const ys = listOf(inputs.y?.[0] ?? null);
+      const ky = readInput(inputs.ybins, this.literals.ybins ?? 10);
+      if (inputs.ybins?.[0] === undefined && ky !== null) this.literals.ybins = ky;
+      const h = kx === null || ky === null ? null : histogram2d(xs, ys, kx, ky);
+      this.cachedResult = null;
+      // z[iy][ix] = count in x-bin ix, y-bin iy; edges are the axis coordinates.
+      const z = h ? h.yEdges.map((_, j) => h.counts.map((col) => col[j])) : [];
+      const payload: ContourPayload = { kind: "contour", xs: h?.xEdges ?? [], ys: h?.yEdges ?? [], z, levels: 10 };
+      const chart: ChartValue = { __chart: true, op: "contour", values: null, payload, options: this.chartOptions, title };
+      this.cachedChart = h ? chart : null;
+      return { chart };
+    }
+
+    const counts = kx === null ? [] : histogramBins(xs, kx);
+    this.cachedResult = counts;
+    const chart: ChartValue = { __chart: true, op: "column", values: counts, options: this.chartOptions, title };
+    this.cachedChart = chart;
     return { chart };
   }
 }

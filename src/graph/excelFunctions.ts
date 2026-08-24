@@ -13,6 +13,7 @@ import { savgol, gaussianSmooth, lowess, findPeaks } from "./nodes/signalOps";
 import { seasonalDecompose } from "./nodes/forecastOps";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters, type TextFilterOp, type SimilarityMethod, type PadSide } from "./nodes/textOps";
 import { interpolateLinear, fillBorderedGrid } from "./nodes/mathUtils";
+import { histogram2dGrid } from "./nodes/visualOps";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
 import { indexInto, type IndexAxis } from "./nodes/indexAccess";
 import { matrixShape } from "./nodes/coerce";
@@ -463,6 +464,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   EIGENVALUES: { returns: "number", rank: "list", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   EIGENVECTORS:{ returns: "number", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 1], native: true },
   SPECTRUM:    { returns: "number", rank: "matrix", listArgs: true, arity: [1, 2], native: true },
+  HISTOGRAM2D: { returns: "number", rank: "matrix", listArgs: true, arity: [4, 4], native: true },
   ANOVA:       { returns: "number", arity: [2, 255], native: true },
   KRUSKAL:     { returns: "number", arity: [2, 255], native: true },
   MANNWHITNEY: { returns: "number", arity: [2, 2], native: true },
@@ -1899,6 +1901,9 @@ registerInternal("SOLVE", (m, b) => {
 registerInternal("EIGENVALUES", (m) => { const a = numMat(m); if (isSolError(a)) return a; const e = matEigh(a); return e ? e.values : solError("#SHAPE!", "EIGENVALUES needs a square, symmetric matrix"); });
 registerInternal("EIGENVECTORS", (m) => { const a = numMat(m); if (isSolError(a)) return a; const e = matEigh(a); return e ? e.vectors : solError("#SHAPE!", "EIGENVECTORS needs a square, symmetric matrix"); });
 registerInternal("SPECTRUM", (list, rate) => spectrum(numList(list), rate == null ? 1 : Number(rate)).map((r) => [r.frequency, r.magnitude, r.phase]));
+// The count grid as a bordered lookup table (bin edges on the top row / left column),
+// shared with the Histogram node's 2-D mode; null (no finite pair) → blank.
+registerInternal("HISTOGRAM2D", (xs, ys, kx, ky) => histogram2dGrid(numList(xs), numList(ys), toNum(kx), toNum(ky)) ?? null);
 registerInternal("MDETERM", (v) => {
   const m = numMatrix(v);
   if (m === null || isSolError(m)) return m;

@@ -258,7 +258,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           {
             type: "category", label: "Distribution", description: "How a sample spreads: binned counts and five-number summaries.",
             children: [
-              { type: "histogram", label: "Histogram", description: "Bin a list of numbers into equal-width buckets and plot the counts as columns.", create: () => new HistogramNode(), parity: false, keywords: "histogram bins distribution frequency FREQUENCY buckets" },
+              { type: "histogram", label: "Histogram", description: "Bin a list of numbers into equal-width buckets and plot the counts as columns, or a 2-D X/Y count grid as a density plot. numpy histogram / histogram2d.", create: () => new HistogramNode(), parity: false, keywords: "histogram bins distribution frequency FREQUENCY buckets histogram2d 2d bivariate density joint hexbin heatmap" },
               { type: "boxplot", label: "Boxplot", description: "Five-number summaries as boxes: one per numeric column of a wired Frame (or one for a plain list). Median line, quartile box, Tukey 1.5·IQR whiskers, outlier dots. The visual companion to QUARTILE.", create: () => new BoxplotNode(), parity: false, keywords: "boxplot box whisker quartile median outlier iqr spread distribution violin" },
             ],
           },

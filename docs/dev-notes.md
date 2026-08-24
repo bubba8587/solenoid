@@ -134,6 +134,22 @@ the profile-bar tooltip lost its dynamic counts — tooltips are structural only
   list-arg op, and declaring the rank trips formulaTier3's "list-returning ⟹ takes args whole"
   (the plan's "rank: 1" note was off for this shape). Pinned in `textOps.test.ts`; run-graph on the
   scratch seed wraps the sample sentence at 16.
+- **B0.2 Histogram 2-D — folded into the Histogram node as a MODE (author directive, not a second
+  node — no-duplicate-nodes).** `histogram2d` / `histogram2dGrid` kernels in a NEW rete-free
+  `visualOps.ts` (had to move off `visual.ts` — it imports rete, and `formulaPathIsReteFree` bans
+  that from the formula path, so the formula couldn't import the kernel otherwise). HistogramNode
+  gains `mode: "1d" | "2d"` (SegToggle marked `arg` per selectorNamedOp — a shape pick like Bin's
+  mode, not a NODE_OPS family op); 2-D adds Y + Y-bins inputs (`dropInputCables` before
+  `removeInput`), carries `bins` across as the X count, and draws the count grid as a **contour**
+  density plot (reused the existing chart op — a new discrete-heatmap chart op was rejected as
+  scope creep; contour of a count grid is a valid 2-D density figure). `HISTOGRAM2D(xs, ys, kx, ky)`
+  formula returns the bordered-grid matrix (shared kernel); mapped to the node's 2-D mode in
+  `formulaNodeCoverage`. The `chart` output socket centers on the figure via `.solenoid-node__figure`
+  (author ask). Kernel tests in `visual.test.ts`; scratch seed has a 2-D Histogram over two lists.
+  AUTHOR EYEBALL: the 1-D Histogram component was rebuilt on the Surface-node pattern (SegToggle +
+  InlineInputs + ChartFigure), so its Values input moved from plot-centered to an inline row and the
+  in-card expand button became the collapsed [Chart] chip — confirm 1-D still reads right, then flip
+  to 2-D.
 
 **A6 — shared node drag guard + tap-select on BOTH editing surfaces (plan 6).** The composite
 drill-in had NO drag guard, so a finger press grabbed a card and a finger pan over cards was dead
@@ -314,6 +330,17 @@ Tables ▸ Table verbs sweep to avoid overlapping Agent 2's fresh A4 refactor. C
 (gradient) + Integrate (trapz) are inverse ops → one "Calculus" node with a differentiate/integrate
 mode; the family is otherwise well op-merged (ArgMinMax unifies argmax/argmin/argsort/which; Smooth
 unifies savgol/lowess/gaussian). Residue: none.
+
+**A5 Lists ▸ Aggregate/Spread&Shape/Correlation sweep** (41 leaves) → NO bugs. AggregateNode is the
+reducer exemplar: COUNTBLANK counts missing cells (answers even when all blank); every other op runs
+`forAggregateUnits` — a SolError PROPAGATES, a null is SKIPPED (not zeroed), the socketDocs claim
+holds. WeightedNode guards both lists → null. The Correlation ops (Correl/Covariance/Fisher, plus
+SumProduct) use `forPair`/`readInput`: a blank on either paired list drops the pair or blanks the
+result, per-cell domain errors tag alone. Pins: `wiredNull.test.ts` extended the reducers-skip block
+with AggregateNode (SUM skips null, error propagates, COUNTBLANK counts, +1). Combine candidates:
+Correl + Covariance (+ SumProduct's paired sums) share the two-list `forPair` shape → one "Bivariate"
+node with an op selector (correl/spearman/kendall/rsq/cov.p/cov.s); otherwise heavily op-merged
+(Aggregate alone unifies ~24 reduce ops). Residue: none.
 
 ### SESSION DIGEST (2026-08-24 — author polish pass: Join dropdown, catalog valence, KaTeX arc trig, string-list errors, Aggregate optgroups, scratch-seed Groups)
 

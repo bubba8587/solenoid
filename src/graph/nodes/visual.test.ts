@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, SurfaceNode, parseBorderedGrid, histogramBins,
+  SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, SurfaceNode, parseBorderedGrid, histogramBins, histogram2d, histogram2dGrid,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode,
   SevenSegNode, sevenSegText, boxplotStats, quantileSorted,
   RecordNode, parseRecordLayout, recordImageSrc,
@@ -211,6 +211,43 @@ describe("histogramBins", () => {
     const bins = histogramBins(vals, 10);
     expect(bins).toHaveLength(10);
     expect(bins.reduce((a, b) => a + b, 0)).toBe(N);
+  });
+});
+
+describe("histogram2d (numpy histogram2d)", () => {
+  it("tallies paired samples into an x-bin × y-bin grid; last edge inclusive", () => {
+    // A 2×2 grid over [0,2]×[0,2]: (0,0) low-low, (1,1)+(2,2) hit the closed upper bin.
+    const h = histogram2d([0, 1, 2, 0], [0, 1, 2, 2], 2, 2)!;
+    expect(h.counts).toEqual([[1, 1], [0, 2]]); // counts[xBin][yBin]
+    expect(h.xEdges).toEqual([0, 1]);
+    expect(h.yEdges).toEqual([0, 1]);
+  });
+
+  it("skips a pair when either coordinate is non-finite (numpy drops NaN pairs)", () => {
+    const h = histogram2d([0, null, 2], [0, 5, 2], 2, 2)!;
+    // Only (0,0) and (2,2) survive → one in each diagonal corner.
+    expect(h.counts).toEqual([[1, 0], [0, 1]]);
+  });
+
+  it("an axis whose values are all equal collapses to one bin (single-spike rule)", () => {
+    const h = histogram2d([5, 5, 5], [0, 1, 2], 4, 2)!;
+    expect(h.xEdges).toHaveLength(1); // x collapsed
+    expect(h.counts).toEqual([[1, 2]]); // one x row; y=0 → bin 0, y=1 and y=2 → the closed bin 1
+  });
+
+  it("no finite pair → null", () => {
+    expect(histogram2d([null, null], [1, 2], 2, 2)).toBeNull();
+    expect(histogram2d([], [], 2, 2)).toBeNull();
+  });
+
+  it("the grid helper borders the counts with lower edges", () => {
+    const g = histogram2dGrid([0, 1, 2, 0], [0, 1, 2, 2], 2, 2)!;
+    // Row 0 = [corner, x lower edges]; col 0 = y lower edges; interior[y][x] = counts[x][y].
+    expect(g).toEqual([
+      [null, 0, 1],
+      [0, 1, 0],
+      [1, 1, 2],
+    ]);
   });
 });
 

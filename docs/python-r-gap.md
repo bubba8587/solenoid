@@ -64,8 +64,9 @@ let a refugee filter to what they know. Tests: `pythonRGap.test.ts`, `statsParit
 30. **Bind columns** — LANDED 2026-08-23 (Bind Columns node, Append's sibling for the other
     axis: positional, headers deduped, ragged pads; backend seam `bindColumns` on both
     engines, corpus-pinned).
-31. **Histogram 2-D / heatmap binning** (`histogram2d`, `hexbin`): scatter → counts grid for
-    the Heatmap figure. Cheap.
+31. **Histogram 2-D / heatmap binning** — LANDED 2026-08-24 (`histogram2d` kernel; a 2-D MODE
+    on the Histogram node, not a second node — paired X/Y → count grid drawn as a contour
+    density plot; HISTOGRAM2D(xs, ys, kx, ky) formula returns the bordered-grid matrix).
 32. **Hash / UUID / Base64** — LANDED 2026-08-23 (Hash card: SHA-256 / SHA-1 / MD5 / CRC-32 /
     FNV-1a, pure sync implementations pinned against hashlib; UUID source node (volatile);
     ENCODEBASE64 / DECODEBASE64 on the url-encode card; HASH / UUID formulas).
