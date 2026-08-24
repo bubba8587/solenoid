@@ -52,9 +52,11 @@ the `dataviz` skill is NOT loaded here — the palette is the app's own (`chartC
 - `ChartValue` gains `series?: { name: string; values: (number | null)[] }[]`, set ONLY when
   a frame supplies ≥ 2 numeric columns after the label column (n ≥ 2). `values` stays the
   FIRST series so every existing consumer keeps working unchanged; `labels` unchanged.
-  Column detection: label column = column 0 when its type is not `number` (string/date/
-  logical) — otherwise there is no label column and EVERY numeric column is a series
-  (positional x). Non-numeric columns after the first are skipped, not errors.
+  Column detection (corrected 2026-08-24 after part 1 landed): column 0 is the label
+  column whenever the frame has ≥ 2 columns, regardless of its type (today's rule — a
+  numeric Year column stays the x labels; scatter promotes numeric labels to a real x-axis,
+  `chartRender.tsx:205-206`); a 1-column frame plots positionally. Series = the
+  number-typed columns after the label column; other columns are skipped, not errors.
 - Renderer: when `series` has ≥ 2 entries and the op is column/bar/line/area/scatter/radar,
   build rows `{ i, s0…sN }` (the ComposedView pattern), emit one child per series in the
   op's shape, colors from `useSeriesColors()` (Options `color` applies to single-series
@@ -84,8 +86,8 @@ the `dataviz` skill is NOT loaded here — the palette is the app's own (`chartC
 ## Steps
 
 1. `chartValue.ts` field + `ChartNode.data()` series extraction; tests first in
-   `chartValue.test.ts`: 3-column frame → `values` = col 1, `series` = 2 named entries;
-   number-first frame → no labels, all columns series; a string column in position 2 is
+   `chartValue.test.ts`: 3-column frame → `values` = col 1, `series` = 2 named entries,
+   `labels` = col 0 even when col 0 is numeric; a string column in position 2 is
    skipped; 2-column frame → `series` undefined (fixture `:61-73` unchanged). `visual.test.ts`
    `:19-38` stays green (undefined key).
 2. Renderer multi-series + Legend + tooltip; card mirror `ChartNode.tsx:50-56`. `tsc`.
