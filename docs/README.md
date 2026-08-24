@@ -79,6 +79,9 @@ is parked there.
   Landed items get DELETED (git + digests are the record). Since the 2026-08-07
   pivot: 1.3 ships as-is — the queue is bugs, patches, and polish sweeps; feature
   work lives in `deferrals.md` "Pushed to 1.4/2.0". The release tail lives here.
+- **`plans/`** — per-task execution plans for the backlog's Execution queue, written
+  so a smaller model can do the routine work (index + protocol in `plans/README.md`).
+  A plan is deleted with its backlog line.
 - **`python-r-gap.md`** — the 2026-08-23 survey of numpy/pandas/scipy/R functions with no
   Solenoid node (ranked; Tier 1 = build next). Delete a line when its node lands.
 - **`deferrals.md`** — everything the author has deferred/parked/author-gated,
