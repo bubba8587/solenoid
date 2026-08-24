@@ -4,6 +4,7 @@ import { AutoArrangePlugin } from "rete-auto-arrange-plugin";
 import type { Schemes, AreaExtra } from "./schemes";
 import type { AreaPlugin } from "rete-area-plugin";
 import { makeArrangeFn, makeCleanupFn, symmetricPortPreset } from "./tidyArrange";
+import { settingsStore } from "./settingsStore";
 import { GroupNode } from "./nodes/group";
 import { ArithmeticNode } from "./nodes/scalar";
 import { DisplayNode } from "./nodes/display";
@@ -121,7 +122,7 @@ function makeEnsureArrangeForTest(
   area: AreaPlugin<Schemes, AreaExtra>,
 ) {
   const plugin = new AutoArrangePlugin<Schemes>();
-  plugin.addPreset(symmetricPortPreset);
+  plugin.addPreset(() => symmetricPortPreset(settingsStore.get("tidyDirection")));
   (plugin as unknown as { getArea: () => unknown }).getArea = () => area;
   (plugin as unknown as { getEditor: () => unknown }).getEditor = () => editor;
   return () => Promise.resolve(plugin);
@@ -266,7 +267,7 @@ describe("global Tidy with an expanded group (headless, real ELK + real arrangeF
     expect(after.h).toBeCloseTo(before.h, 6);
   });
 
-  it("a second Tidy is (near-)idempotent — everything stays within 1px", async () => {
+  async function expectSecondTidyIdempotent() {
     const { area, arrangeFn, editor } = await buildScene();
     await arrangeFn({ skipConfirm: true });
     await flushRafs();
@@ -279,6 +280,22 @@ describe("global Tidy with an expanded group (headless, real ELK + real arrangeF
       expect(Math.abs(p.x - f.x), `${n.label} drifted x`).toBeLessThanOrEqual(1);
       expect(Math.abs(p.y - f.y), `${n.label} drifted y`).toBeLessThanOrEqual(1);
     }
+  }
+
+  it("a second Tidy is (near-)idempotent — everything stays within 1px", async () => {
+    await expectSecondTidyIdempotent();
+  });
+
+  it("stays idempotent under DOWN (the anchor transpose is a fixed point too)", async () => {
+    settingsStore.set("tidyDirection", "down");
+    try { await expectSecondTidyIdempotent(); }
+    finally { settingsStore.set("tidyDirection", "right"); }
+  });
+
+  it("stays idempotent with a width cap of 3", async () => {
+    settingsStore.set("tidyWidthCap", "3");
+    try { await expectSecondTidyIdempotent(); }
+    finally { settingsStore.set("tidyWidthCap", "off"); }
   });
 });
 

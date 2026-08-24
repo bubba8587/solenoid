@@ -4,6 +4,7 @@ import { AutoArrangePlugin } from "rete-auto-arrange-plugin";
 import type { Schemes, AreaExtra } from "./schemes";
 import type { AreaPlugin } from "rete-area-plugin";
 import { makeArrangeFn, symmetricPortPreset } from "./tidyArrange";
+import { settingsStore } from "./settingsStore";
 import { ArithmeticNode } from "./nodes/scalar";
 import { DisplayNode } from "./nodes/display";
 import { FormatControllerNode } from "./nodes/formatController";
@@ -106,7 +107,7 @@ function makeEnsureArrangeForTest(
   area: AreaPlugin<Schemes, AreaExtra>,
 ) {
   const plugin = new AutoArrangePlugin<Schemes>();
-  plugin.addPreset(symmetricPortPreset);
+  plugin.addPreset(() => symmetricPortPreset(settingsStore.get("tidyDirection")));
   (plugin as unknown as { getArea: () => unknown }).getArea = () => area;
   (plugin as unknown as { getEditor: () => unknown }).getEditor = () => editor;
   return () => Promise.resolve(plugin);

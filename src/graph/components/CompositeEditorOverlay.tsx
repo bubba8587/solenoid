@@ -14,6 +14,7 @@ import {
 } from "../areaPresets";
 import { createTapCensus, installTapSelect } from "../tapSelect";
 import { settingsStore } from "../settingsStore";
+import { symmetricPortPreset, tidyOptionsFromSettings } from "../tidyArrange";
 import type { Schemes, AreaExtra, SolenoidNode } from "../schemes";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../rete-nodes";
 import { compositeEditorStore, compositePassStore } from "../compositeEditorStore";
@@ -527,19 +528,13 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
     if (!mount.arrange) {
       const { AutoArrangePlugin } = await import("rete-auto-arrange-plugin");
       const plugin = new AutoArrangePlugin<Schemes>();
-      plugin.addPreset(() => ({
-        port(data: { side: "input" | "output"; index: number; ports: number; width: number; height: number }) {
-          const spacing = 16;
-          const y = settingsStore.get("tidyAlign") === "top"
-            ? 20 + data.index * spacing
-            : data.height / 2 + (data.index - (data.ports - 1) / 2) * spacing;
-          return { x: 0, y, width: 15, height: 15, side: data.side === "output" ? "EAST" : "WEST" } as const;
-        },
-      }));
+      // The main canvas's factory, shared so port placement can't drift between surfaces.
+      plugin.addPreset(() => symmetricPortPreset(settingsStore.get("tidyDirection")));
       mount.area.use(plugin);
       mount.arrange = plugin;
     }
-    await mount.arrange.layout();
+    // The drill-in now honours the Tidy knobs' spacing/direction/cap too.
+    await mount.arrange.layout({ options: tidyOptionsFromSettings() });
     const nodes = comp.internalEditor.getNodes();
     if (nodes.length > 0) await AreaExtensions.zoomAt(mount.area, nodes);
     void processGraph(recomputeTarget());

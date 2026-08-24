@@ -38,17 +38,35 @@ export interface TidyDeps {
 export type ArrangeFn = (opts?: { groupId?: string; skipConfirm?: boolean; skipPush?: boolean }) => Promise<void>;
 
 // Ports placed SYMMETRICALLY (same offset for in/out) so two connected nodes line
-// up — do NOT fall back to the plugin's `classic` preset.
-export function symmetricPortPreset() {
+// up — do NOT fall back to the plugin's `classic` preset. A factory over the layout
+// DIRECTION: RIGHT puts inputs WEST / outputs EAST and spaces them down the card's
+// height; DOWN transposes to NORTH / SOUTH, spaced across the card's width.
+export function symmetricPortPreset(direction: TidyDirection) {
+  const down = direction === "down";
   return {
     port(data: { side: "input" | "output"; index: number; ports: number; width: number; height: number }) {
       const spacing = 16;
-      const y = settingsStore.get("tidyAlign") === "top"
+      // The align axis follows the flow: RIGHT levels vertically, DOWN horizontally.
+      const extent = down ? data.width : data.height;
+      const along = settingsStore.get("tidyAlign") === "top"
         ? 20 + data.index * spacing
-        : data.height / 2 + (data.index - (data.ports - 1) / 2) * spacing;
-      return { x: 0, y, width: 15, height: 15, side: data.side === "output" ? "EAST" : "WEST" } as const;
+        : extent / 2 + (data.index - (data.ports - 1) / 2) * spacing;
+      return down
+        ? { x: along, y: 0, width: 15, height: 15, side: data.side === "output" ? "SOUTH" : "NORTH" } as const
+        : { x: 0, y: along, width: 15, height: 15, side: data.side === "output" ? "EAST" : "WEST" } as const;
     },
   };
+}
+
+/** The Tidy knobs read from settings as an ELK option map — the app-facing wrapper over
+ *  `tidyLayoutOptions`, used by both ELK call sites. */
+export function tidyOptionsFromSettings(): Record<string, string> {
+  const cap = settingsStore.get("tidyWidthCap");
+  return tidyLayoutOptions({
+    direction: settingsStore.get("tidyDirection"),
+    density: settingsStore.get("tidyDensity"),
+    widthCap: cap === "off" ? 0 : (Number(cap) as TidyWidthCap),
+  });
 }
 
 export type TidyDirection = "right" | "down";
@@ -99,7 +117,9 @@ export function makeEnsureArrange(
       // A doc switch / unmount can destroy the area during the dynamic import.
       if (isDestroyed()) return null;
       const plugin = new AutoArrangePlugin<Schemes>();
-      plugin.addPreset(symmetricPortPreset);
+      // The plugin re-invokes the preset factory per layout, so reading the direction
+      // here picks up a setting change without re-registering.
+      plugin.addPreset(() => symmetricPortPreset(settingsStore.get("tidyDirection")));
       area.use(plugin);
       arrange = plugin;
       return plugin;
@@ -353,27 +373,33 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
         },
       });
     });
-    // ELK lays out from origin; shift the result back keeping the LEFT edge and the
-    // vertical CENTER (never the top), so a tidy→autofit cycle stays a fixed point.
-    let origMinX = Infinity;
-    let targetCy = 0;
+    // ELK lays out from origin; shift the result back keeping the flow's LEADING EDGE and
+    // the CROSS-AXIS CENTER, so a tidy→autofit cycle stays a fixed point. RIGHT keeps the
+    // LEFT edge + vertical center; DOWN transposes to the TOP edge + horizontal center.
+    const down = settingsStore.get("tidyDirection") === "down";
+    let origMinX = Infinity, origMinY = Infinity;
+    let targetCx = 0, targetCy = 0;
     if (withinGroup) {
       const gv = area.nodeViews.get(withinGroup.id);
       if (gv) {
-        origMinX = gv.position.x + GROUP_PAD;
+        const left = gv.position.x + GROUP_PAD;
+        const right = gv.position.x + withinGroup.width - GROUP_PAD;
         const top = gv.position.y + GROUP_HEADER + GROUP_PAD;
         const bottom = gv.position.y + withinGroup.height - GROUP_PAD;
+        origMinX = left; origMinY = top;
+        targetCx = (left + right) / 2;
         targetCy = (top + bottom) / 2;
       }
     } else {
-      let oldTop = Infinity, oldBottom = -Infinity;
+      let oldLeft = Infinity, oldRight = -Infinity, oldTop = Infinity, oldBottom = -Infinity;
       for (const n of layoutTargets) {
         const b = measuredBox(area, n.id, editor);
         if (!b) continue;
-        origMinX = Math.min(origMinX, b.x);
-        oldTop = Math.min(oldTop, b.y);
-        oldBottom = Math.max(oldBottom, b.y + b.h);
+        oldLeft = Math.min(oldLeft, b.x); oldRight = Math.max(oldRight, b.x + b.w);
+        oldTop = Math.min(oldTop, b.y); oldBottom = Math.max(oldBottom, b.y + b.h);
       }
+      origMinX = oldLeft; origMinY = oldTop;
+      targetCx = (oldLeft + oldRight) / 2;
       targetCy = (oldTop + oldBottom) / 2;
     }
 
@@ -392,11 +418,9 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     await arrangePlugin.layout({
       nodes: proxyNodes as Schemes["Node"][],
       connections: subsetConns,
-      // ELK spacing (the preset's `spacing` is only port placement).
-      options: {
-        "elk.layered.spacing.nodeNodeBetweenLayers": "55",
-        "elk.spacing.nodeNode": "38",
-      },
+      // ELK spacing + direction + width cap from the Tidy knobs (the preset's `spacing`
+      // is only port placement).
+      options: tidyOptionsFromSettings(),
     });
 
     // Place cluster members relative to the leader's new position, BEFORE the anchor
@@ -422,22 +446,34 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       await area.resize(id, sz.w, sz.h);
     }
 
-    let newMinX = Infinity, newTop = Infinity, newBottom = -Infinity;
+    let newLeft = Infinity, newRight = -Infinity, newTop = Infinity, newBottom = -Infinity;
     for (const n of layoutTargets) {
       const b = measuredBox(area, n.id, editor);
       if (!b) continue;
-      newMinX = Math.min(newMinX, b.x);
-      newTop = Math.min(newTop, b.y);
-      newBottom = Math.max(newBottom, b.y + b.h);
+      newLeft = Math.min(newLeft, b.x); newRight = Math.max(newRight, b.x + b.w);
+      newTop = Math.min(newTop, b.y); newBottom = Math.max(newBottom, b.y + b.h);
     }
-    const dx = origMinX - newMinX;
-    let dy = targetCy - (newTop + newBottom) / 2;
-    // Within a group, never let centering lift members above the box header.
+    // DOWN preserves the TOP edge + horizontal center; RIGHT the LEFT edge + vertical center.
+    let dx: number, dy: number;
+    if (down) {
+      dy = origMinY - newTop;
+      dx = targetCx - (newLeft + newRight) / 2;
+    } else {
+      dx = origMinX - newLeft;
+      dy = targetCy - (newTop + newBottom) / 2;
+    }
+    // Within a group, never let centering push members past the box's leading interior
+    // edge — the header (top) under RIGHT, the left pad under DOWN.
     if (withinGroup) {
       const gv = area.nodeViews.get(withinGroup.id);
       if (gv) {
-        const interiorTop = gv.position.y + GROUP_HEADER + GROUP_PAD;
-        if (newTop + dy < interiorTop) dy = interiorTop - newTop;
+        if (down) {
+          const interiorLeft = gv.position.x + GROUP_PAD;
+          if (newLeft + dx < interiorLeft) dx = interiorLeft - newLeft;
+        } else {
+          const interiorTop = gv.position.y + GROUP_HEADER + GROUP_PAD;
+          if (newTop + dy < interiorTop) dy = interiorTop - newTop;
+        }
       }
     }
     if (Number.isFinite(dx) && Number.isFinite(dy) && (dx !== 0 || dy !== 0)) {
