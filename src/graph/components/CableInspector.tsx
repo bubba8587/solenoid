@@ -12,7 +12,9 @@ import { formatAnnotationStore, formatNumberWithAnnotation, applyLogicalStyle } 
 import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { ArrayChip, isArrayValue, arrayAccentFor } from "./ArrayChip";
-import { nodeOutputElemFamily } from "./valueDisplayFormat";
+import { nodeOutputElemFamily, formatListCell } from "./valueDisplayFormat";
+import { isCx } from "../cxValue";
+import { isUnitCell } from "../unitValue";
 import { FrameChip, FrameRefChip } from "./FrameChip";
 import { isFrameRef } from "../frameBackend";
 import { CubeChip } from "./CubeChip";
@@ -50,6 +52,13 @@ function renderWireValue(v: unknown, annNodeId: string, outKey: string) {
   if (typeof v === "number") {
     const ann = formatAnnotationStore.getForNode(annNodeId);
     return <span className="solenoid-cable-inspector__value">{ann ? formatNumberWithAnnotation(v, ann) : formatScalar(v)}</span>;
+  }
+  // Tagged complex and united numbers have a text form — they fell through to
+  // the empty dash before.
+  if (isCx(v) || isUnitCell(v)) {
+    const ann = formatAnnotationStore.getForNode(annNodeId);
+    const one = (n: number) => (ann ? formatNumberWithAnnotation(n, ann) : formatScalar(n));
+    return <span className="solenoid-cable-inspector__value">{formatListCell(v, one)}</span>;
   }
   return <span className="solenoid-cable-inspector__value solenoid-cable-inspector__value--empty">—</span>;
 }

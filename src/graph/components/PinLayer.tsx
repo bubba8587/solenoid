@@ -13,7 +13,9 @@ import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnno
 import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { ArrayChip, isArrayValue, arrayAccentFor } from "./ArrayChip";
-import { nodeOutputElemFamily } from "./valueDisplayFormat";
+import { nodeOutputElemFamily, formatListCell } from "./valueDisplayFormat";
+import { isCx } from "../cxValue";
+import { isUnitCell } from "../unitValue";
 import { FrameChip, FrameRefChip } from "./FrameChip";
 import { isFrameRef } from "../frameBackend";
 import { CubeChip } from "./CubeChip";
@@ -54,6 +56,13 @@ function renderValue(v: unknown, label?: string, annNodeId?: string, outKey?: st
   if (typeof v === "number") {
     const ann = annNodeId ? formatAnnotationStore.getForNode(annNodeId) : undefined;
     return <span className="solenoid-pin__value">{ann ? formatNumberWithAnnotation(v, ann) : formatScalar(v)}</span>;
+  }
+  // Logicals, tagged complex and united numbers all have a text form — they fell
+  // through to the empty dash before.
+  if (typeof v === "boolean" || isCx(v) || isUnitCell(v)) {
+    const ann = annNodeId ? formatAnnotationStore.getForNode(annNodeId) : undefined;
+    const one = (n: number) => (ann ? formatNumberWithAnnotation(n, ann) : formatScalar(n));
+    return <span className="solenoid-pin__value">{formatListCell(v, one)}</span>;
   }
   return <span className="solenoid-pin__value solenoid-pin__value--empty">—</span>;
 }

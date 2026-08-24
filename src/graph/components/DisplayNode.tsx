@@ -7,6 +7,7 @@ import { getOwningEditor } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
 import { NodeShell, PortSockets, ValueDisplay, type NodeProps } from "./nodeKit";
 import { TableDisplay } from "./TableDisplay";
+import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { FrameDisplay } from "./FrameDisplay";
 import { CubeDisplay } from "./CubeDisplay";
 import { ChartFigure } from "./chartView";
@@ -127,7 +128,7 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
       ) : isLambda ? (
         <LambdaValueView value={v} view={ann?.lambdaView} />
       ) : isTable ? (
-        <TableDisplay table={v as number[][]} label={data.label} full={full} />
+        <TableDisplay table={v as number[][]} label={data.label} full={full} elem={nodeOutputElemFamily(data.id)} />
       ) : (
         <ValueDisplay
           value={v as number | number[] | string | string[] | null}

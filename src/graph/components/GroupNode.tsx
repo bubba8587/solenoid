@@ -19,6 +19,7 @@ import { rebuildGroupMembership } from "../groupMembership";
 import { scheduleAutosave } from "../persistence";
 import { ArrayChip, isArrayValue } from "./ArrayChip";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
+import { formatListCell, nodeOutputElemFamily } from "./valueDisplayFormat";
 import { isSolError } from "../errorValue";
 import { ErrorChip } from "./ErrorChip";
 import { formatScalar } from "./format";
@@ -34,10 +35,13 @@ function formatReadout(v: unknown, annNodeId: string): string {
   const ann = formatAnnotationStore.getForNode(annNodeId);
   const one = (x: number) => (ann ? formatNumberWithAnnotation(x, ann) : formatScalar(x));
   if (typeof v === "number") return one(v);
-  if (Array.isArray(v)) return v.map((x) => (typeof x === "number" ? one(x) : String(x))).join(", ");
+  // Per-cell through the shared formatter: Cx, UnitCell, errors, blanks and
+  // logicals all have a text form — String(x) turned them into [object Object].
+  if (Array.isArray(v)) return v.map((x) => formatListCell(x as Parameters<typeof formatListCell>[0], one)).join(", ");
   // Object-valued kinds get a compact label instead of "[object Object]".
   const kind = describeValueKind(v);
   if (kind != null) return kind;
+  if (typeof v === "object") return formatListCell(v as Parameters<typeof formatListCell>[0], one); // scalar Cx / UnitCell
   return String(v);
 }
 
@@ -357,7 +361,14 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
                   {combo ? (
                     <span className="solenoid-group__row-val">{t.lanes} lanes</span>
                   ) : isArrayValue(val) ? (
-                    <ArrayChip value={val} label={t.label} pinNodeId={t.effNodeId} />
+                    <ArrayChip
+                      value={val}
+                      label={t.label}
+                      pinNodeId={t.effNodeId}
+                      elem={t.kind === "display"
+                        ? nodeOutputElemFamily(t.displayId)
+                        : nodeOutputElemFamily(t.effNodeId, t.effSocketKey)}
+                    />
                   ) : (
                     renderReadout(t)
                   )}
