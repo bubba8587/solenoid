@@ -28,12 +28,15 @@ backlog line is deleted; git is the record.
 
 | # | Plan | Size | Depends on |
 |---|------|------|-----------|
-| 1 | [a2-formula-containment.md](a2-formula-containment.md) | S | — |
+| 1 | ~~a2-formula-containment~~ | — | landed 2026-08-24 (fc34ae03) |
 | 2 | [c-archive-evictions.md](c-archive-evictions.md) | S | — |
 | 3 | [b6-popup-summary-footer.md](b6-popup-summary-footer.md) | M | — |
 | 4 | [b0-python-r-gap-remainder.md](b0-python-r-gap-remainder.md) | M (4 sub-items) | — |
 | 5 | [a4-xlookup-rawinputs.md](a4-xlookup-rawinputs.md) | S–M | — |
 | 6 | [a6-drill-in-drag-guard.md](a6-drill-in-drag-guard.md) | M | — (largest model available) |
+| 7 | [a3-popup-grid-keyboard.md](a3-popup-grid-keyboard.md) | M | — (B6 touches the same file; coordinate if both are in flight) |
+| 8 | [b8-cube-unnest-timesavers.md](b8-cube-unnest-timesavers.md) | M (3 sub-items) | B8.3 needs A4 |
+| 9 | [a5-node-sweep.md](a5-node-sweep.md) | L, claimed PER FAMILY | — (skip Cubes while B8.1 is in flight) |
 
 Not planned here (author-present or needs a device): everything under "Bugs &
 verifications" in `../backlog.md`, the Vite 8 bump, `rete-area-plugin` 2.3.2, Tidy
