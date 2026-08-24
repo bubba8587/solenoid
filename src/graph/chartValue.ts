@@ -156,12 +156,10 @@ export interface ChartValue {
   op: ChartValueOp;
   /** The raw values the figure plots; unused by the payload figures. */
   values: number | number[] | null;
-  /** Multi-series / point data for the 2-D chart ops (composed = each COLUMN a
-   *  series; bubble = each ROW an [x, y, size] point). Undefined for 1-D ops. */
-  matrix?: (number | null)[][] | null;
-  /** Named series from a frame's numeric columns — set ONLY when ≥ 2 of them survive
-   *  the label column (a legend then draws). `values` mirrors the FIRST series so every
-   *  1-D consumer keeps working; undefined when a list or a single column drives the figure. */
+  /** Named series from a frame's numeric columns. For most ops it's set only when ≥ 2
+   *  survive the label column (a legend then draws) and `values` mirrors the FIRST series
+   *  so every 1-D consumer keeps working; Composed reads them as bar-then-lines and Bubble
+   *  as x / y / size columns. Undefined when a plain list or a single column drives the figure. */
   series?: { name: string; values: (number | null)[] }[];
   /** X-axis category labels, one per data point, shown instead of the 1,2,3…
    *  index; undefined when a plain `values` list drives the figure. */

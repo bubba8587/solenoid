@@ -52,10 +52,53 @@ describe("chart value", () => {
     expect(out.chart.values).toEqual([1, null, null, null, 5]);
   });
 
-  it("a matrix with error / non-number cells coerces them to null", () => {
-    const ch = new ChartNode({ op: "composed" });
-    const out = ch.data({ series: [[[1, solError("#N/A", "x")], [3, Infinity]]] });
-    expect(out.chart.matrix).toEqual([[1, null], [3, null]]);
+  it("Composed reads the frame's numeric columns as series (col 0 label, rest series)", () => {
+    const frame: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "Q", type: "string", values: ["Q1", "Q2"] },
+        { name: "Rev", type: "number", values: [10, 20] },
+        { name: "Cost", type: "number", values: [4, 9] },
+      ],
+    };
+    const out = new ChartNode({ op: "composed" }).data({ values: [frame] });
+    expect(out.chart.labels).toEqual(["Q1", "Q2"]);
+    expect(out.chart.series).toEqual([
+      { name: "Rev", values: [10, 20] },
+      { name: "Cost", values: [4, 9] },
+    ]);
+  });
+
+  it("Bubble bypasses the label rule: the first three NUMBER columns are x / y / size", () => {
+    const frame: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "x", type: "number", values: [1, 2, 3] },
+        { name: "y", type: "number", values: [4, 5, 6] },
+        { name: "size", type: "number", values: [7, 8, 9] },
+      ],
+    };
+    const out = new ChartNode({ op: "bubble" }).data({ values: [frame] });
+    expect(out.chart.labels).toBeUndefined(); // no category axis
+    expect(out.chart.series).toEqual([
+      { name: "x", values: [1, 2, 3] },
+      { name: "y", values: [4, 5, 6] },
+      { name: "size", values: [7, 8, 9] },
+    ]);
+  });
+
+  it("Bubble skips a string column and takes the next three numbers", () => {
+    const frame: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "label", type: "string", values: ["a", "b"] },
+        { name: "x", type: "number", values: [1, 2] },
+        { name: "y", type: "number", values: [3, 4] },
+        { name: "size", type: "number", values: [5, 6] },
+      ],
+    };
+    const out = new ChartNode({ op: "bubble" }).data({ values: [frame] });
+    expect(out.chart.series?.map((s) => s.name)).toEqual(["x", "y", "size"]);
   });
 
   it("a Frame drives labels (col 0) + values (col 1); error/blank value cells → null, labels aligned", () => {

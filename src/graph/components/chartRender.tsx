@@ -305,7 +305,7 @@ export function MultiSeriesView({
     : undefined;
   const title = opts?.title;
   const titleH = title ? Math.ceil(16 * fs) : 0;
-  const chartH = height - titleH - LEGEND_H;
+  const chartH = height - titleH; // the <Legend height> reserves its own strip within this
   const margin = { top: 6, right: 8, bottom: axes ? 4 : 2, left: 0 };
   const legend = <Legend verticalAlign="bottom" height={LEGEND_H} iconSize={8} wrapperStyle={{ fontSize: 9 * fs, color: axis }} />;
   const tip = <Tooltip isAnimationActive={false} cursor={{ fill: "rgba(128,128,128,0.12)" }} content={<MultiTooltip tickFmt={tickFmt} />} />;
@@ -483,16 +483,19 @@ export function SankeyView({ sources, targets, values, width, height, fscale = 1
 }
 
 // Each COLUMN is a series over the row index: column 0 bars, the rest lines.
-export function ComposedView({ matrix, width, height, fscale = 1 }: {
-  matrix: (number | null)[][]; width: number; height: number; fscale?: number;
+// One BAR series (column 0) plus a LINE per remaining series — the named columns of a
+// frame, the C2 replacement for the old Series matrix socket.
+export function ComposedView({ series, width, height, fscale = 1 }: {
+  series: { name: string; values: (number | null)[] }[]; width: number; height: number; fscale?: number;
 }) {
   const { grid, axis } = useChartColors();
   const colors = useSeriesColors();
   const AXIS = { fontSize: 9 * fscale, fill: axis } as const;
-  const ncols = matrix.reduce((m, r) => Math.max(m, r.length), 0);
-  const data = matrix.map((row, i) => {
+  const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const n = series.reduce((m, s) => Math.max(m, s.values.length), 0);
+  const data = Array.from({ length: n }, (_, i) => {
     const o: Record<string, number | null> = { i };
-    for (let j = 0; j < ncols; j++) o[`c${j}`] = typeof row[j] === "number" ? row[j] : null;
+    series.forEach((s, j) => { o[`s${j}`] = num(s.values[i]); });
     return o;
   });
   return (
@@ -501,29 +504,29 @@ export function ComposedView({ matrix, width, height, fscale = 1 }: {
       <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={(i) => String(Number(i) + 1)} />
       <YAxis tick={AXIS} tickLine={false} width={26} />
       <Tooltip isAnimationActive={false} cursor={{ fill: "rgba(128,128,128,0.12)" }} />
-      {Array.from({ length: ncols }, (_, j) => (
-        j === 0
-          ? <Bar key={j} dataKey={`c${j}`} fill={colors[j % colors.length]} isAnimationActive={false} />
-          : <Line key={j} dataKey={`c${j}`} stroke={colors[j % colors.length]} strokeWidth={1.5} dot={false} isAnimationActive={false} />
-      ))}
+      {series.length > 1 && <Legend verticalAlign="bottom" height={LEGEND_H} iconSize={8} wrapperStyle={{ fontSize: 9 * fscale, color: axis }} />}
+      {series.map((s, j) => j === 0
+        ? <Bar key={j} dataKey={`s${j}`} name={s.name} fill={colors[j % colors.length]} isAnimationActive={false} />
+        : <Line key={j} dataKey={`s${j}`} name={s.name} stroke={colors[j % colors.length]} strokeWidth={1.5} dot={false} isAnimationActive={false} />)}
     </ComposedChart>
   );
 }
 
-// Each ROW is a point: column 0 = x, 1 = y, 2 = bubble size (defaults if absent).
-export function BubbleView({ matrix, width, height, fscale = 1 }: {
-  matrix: (number | null)[][]; width: number; height: number; fscale?: number;
+// The first three NUMBER series are x / y / size columns, one dot per row (a frame's
+// first three number columns; a single column plots against itself).
+export function BubbleView({ series, width, height, fscale = 1 }: {
+  series: { name: string; values: (number | null)[] }[]; width: number; height: number; fscale?: number;
 }) {
   const { grid, axis } = useChartColors();
   const colors = useSeriesColors();
   const AXIS = { fontSize: 9 * fscale, fill: axis } as const;
-  const data = matrix
-    .map((row, i) => ({
-      x: typeof row[0] === "number" ? row[0] : i,
-      y: typeof row[1] === "number" ? row[1] : (typeof row[0] === "number" ? row[0] : null),
-      z: typeof row[2] === "number" ? row[2] : 1,
-    }))
-    .filter((d) => d.y !== null);
+  const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const xs = series[0]?.values ?? [], ys = series[1]?.values ?? [], zs = series[2]?.values ?? [];
+  const n = Math.max(xs.length, ys.length);
+  const data = Array.from({ length: n }, (_, i) => {
+    const x = num(xs[i]);
+    return { x: x ?? i, y: series.length >= 2 ? num(ys[i]) : x, z: num(zs[i]) ?? 1 };
+  }).filter((d) => d.y !== null);
   if (data.length === 0) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
   return (
     <ScatterChart width={width} height={height} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>

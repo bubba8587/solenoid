@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { readInput, numIn, numListIn, numOut, tableIn, tableOut, strIn, strOut, chartOut, anyTableIn, frameIn } from "./shared";
+import { readInput, numIn, numListIn, numOut, tableIn, tableOut, strIn, strOut, chartOut, frameIn } from "./shared";
 import { parseChartOptions, serializeChartOptions, CHART_BUILDER_TARGETS, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp, iterMin, iterMax } from "./mathUtils";
 import { histogram2d } from "./visualOps";
@@ -80,25 +80,21 @@ export const CHART_OP_META = {
   radar:     { label: "Radar",    group: "Categorical" },
   radialbar: { label: "Radial",   group: "Categorical" },
   funnel:    { label: "Funnel",   group: "Categorical" },
-  composed:  { label: "Composed", group: "Multi-series: wire Series" },
-  bubble:    { label: "Bubble",   group: "Multi-series: wire Series" },
+  composed:  { label: "Composed", group: "Multi-series" },
+  bubble:    { label: "Bubble",   group: "Multi-series" },
 } satisfies Record<ChartOp, { label: string; group: string }>;
-
-// The 2-D ops read the `series` matrix input; the 1-D ops read `values`.
-export const CHART_MATRIX_OPS = new Set<ChartOp>(["composed", "bubble"]);
 
 export class ChartNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    values: "A plain list or single column plots by position. From two columns, the first supplies the axis labels and the second the values.",
-    series: "Only the Composed and Bubble types read it. The other types plot the Data input.",
+    values: "A list plots by position. In a frame, column 0 supplies the x-axis labels and every number column after it is a series (Bubble reads three number columns as x, y, and size).",
     options: "Accepts key=value pairs separated by semicolons, using matplotlib names such as title, ylim, and grid. Unknown keys are ignored.",
   };
 
   label: string;
   op: ChartOp;
   cachedResult: number | number[] | null = null;
-  cachedMatrix: (number | null)[][] | null = null;
-  // Named series from a frame's numeric columns; null unless ≥ 2 survive the label column.
+  // Named series from a frame's numeric columns; null unless ≥ 2 survive the label column
+  // (bubble stores its x/y/size columns here too).
   cachedSeries: { name: string; values: (number | null)[] }[] | null = null;
   // X-axis category labels from a wired Frame's FIRST column (dates as dates, etc.).
   cachedLabels: (string | number)[] | null = null;
@@ -113,7 +109,8 @@ export class ChartNode extends ClassicPreset.Node {
   static frameHints: Record<string, FrameHint> = {
     values: { columns: [
       { name: "Label", type: "string", cells: ["Jan", "Feb", "Mar"] },
-      { name: "Value", type: "number", cells: [120, 145, 98] },
+      { name: "Sales", type: "number", cells: [120, 145, 98] },
+      { name: "Target", type: "number", cells: [130, 130, 130] },
     ] },
   };
 
@@ -124,13 +121,12 @@ export class ChartNode extends ClassicPreset.Node {
     // A frame socket kept UNCOERCED by `rawInputs` — coerced, it would widen a wired list
     // into a single ROW instead of leaving it a list.
     this.addInput("values", frameIn("Data"));
-    this.addInput("series", anyTableIn("Series"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  data(inputs: { values?: unknown[]; series?: unknown[][][]; options?: string[] }): { chart: ChartValue } {
-    // A 2+-column FRAME drives a LABELED chart (col 0 → x-axis labels, col 1 → values).
+  data(inputs: { values?: unknown[]; options?: string[] }): { chart: ChartValue } {
+    // A FRAME drives the figure: the numeric columns are named series (a legend at ≥ 2).
     // Every non-finite cell becomes null IN PLACE, so row-indexed labels stay aligned.
     const num = (c: unknown): number | null => (typeof c === "number" && Number.isFinite(c) ? c : null);
     const raw = inputs.values?.[0] ?? null;
@@ -140,7 +136,13 @@ export class ChartNode extends ClassicPreset.Node {
     if (isFrameValue(raw) && raw.columns.length > 0) {
       const cols = raw.columns;
       const asNums = (col: FrameColumn) => col.values.map(num);
-      if (cols.length >= 2) {
+      if (this.op === "bubble") {
+        // A point chart has NO category axis, so it bypasses the label rule: the first three
+        // NUMBER columns (col 0 included) are x / y / size. No labels, no legend.
+        const pts = cols.filter((c) => c.type === "number").slice(0, 3).map((c) => ({ name: c.name, values: asNums(c) }));
+        this.cachedSeries = pts.length > 0 ? pts : null;
+        v = pts.length > 0 ? (pts[0].values as unknown as number[]) : null;
+      } else if (cols.length >= 2) {
         // Column 0 is ALWAYS the x-axis label column at ≥ 2 columns (a numeric col 0 —
         // Year, an epoch — is a real axis; scatter promotes it to a coordinate x).
         // formatFrameCell renders errors and date serials as label text.
@@ -160,11 +162,6 @@ export class ChartNode extends ClassicPreset.Node {
       v = num(raw);
     }
     this.cachedResult = v;
-    // anyTable is element-agnostic, so coerce every cell to number|null.
-    const rawMatrix = inputs.series?.[0] ?? null;
-    this.cachedMatrix = Array.isArray(rawMatrix)
-      ? rawMatrix.map((row) => (Array.isArray(row) ? row : [row]).map(num))
-      : null;
     // Only a real string configures the options — a wired SolError/number falls back to the
     // inline literal, but a wired BLANK means "no styling given" and must not.
     const optIn = readInput(inputs.options, this.stringLiterals.options ?? null);
@@ -174,7 +171,6 @@ export class ChartNode extends ClassicPreset.Node {
       __chart: true,
       op: this.op,
       values: this.cachedResult,
-      matrix: this.cachedMatrix,
       series: this.cachedSeries ?? undefined,
       labels: this.cachedLabels ?? undefined,
       options: this.chartOptions,

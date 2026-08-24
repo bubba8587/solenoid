@@ -75,7 +75,9 @@ export function SankeyView(props: { sources: string[]; targets: string[]; values
   );
 }
 
-export function ComposedView(props: { matrix: (number | null)[][]; width: number; height: number; fscale?: number }) {
+type SeriesArg = { name: string; values: (number | null)[] }[];
+
+export function ComposedView(props: { series: SeriesArg; width: number; height: number; fscale?: number }) {
   return (
     <Suspense fallback={box(props.width, props.height)}>
       <ComposedViewInner {...props} />
@@ -83,7 +85,7 @@ export function ComposedView(props: { matrix: (number | null)[][]; width: number
   );
 }
 
-export function BubbleView(props: { matrix: (number | null)[][]; width: number; height: number; fscale?: number }) {
+export function BubbleView(props: { series: SeriesArg; width: number; height: number; fscale?: number }) {
   return (
     <Suspense fallback={box(props.width, props.height)}>
       <BubbleViewInner {...props} />
@@ -143,14 +145,15 @@ export function ChartFigure({ value, width, height, axes = true, fontScale, reco
     return <SevenSegView text={value.payload.text} width={width} height={height} />;
   if (value.op === "record" && value.payload?.kind === "record")
     return <RecordCardView payload={value.payload} width={width} fscale={fscale} title={value.options?.title} onStep={recordNav} />;
-  // With no matrix wired the 2-D ops fall back to the single `values` series.
-  const hasMatrix = Array.isArray(value.matrix) && value.matrix.length > 0;
+  // Composed/Bubble read the frame's numeric columns as series; a plain list (no series)
+  // falls back to the single-series column/scatter render.
+  const hasSeries = !!value.series && value.series.length > 0;
   if (value.op === "composed") {
-    if (hasMatrix) return <ComposedView matrix={value.matrix!} width={width} height={height} fscale={fscale} />;
+    if (hasSeries) return <ComposedView series={value.series!} width={width} height={height} fscale={fscale} />;
     return renderSeries(value, "column", width, height, axes, fontScale);
   }
   if (value.op === "bubble") {
-    if (hasMatrix) return <BubbleView matrix={value.matrix!} width={width} height={height} fscale={fscale} />;
+    if (hasSeries) return <BubbleView series={value.series!} width={width} height={height} fscale={fscale} />;
     return renderSeries(value, "scatter", width, height, axes, fontScale);
   }
   return renderSeries(value, value.op as ChartShape, width, height, axes, fontScale);
