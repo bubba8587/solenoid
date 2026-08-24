@@ -969,6 +969,3 @@ export class BesselNode extends ClassicPreset.Node {
   }
 }
 
-// HYPOTENUSE was a separate node; deleted in the no-duplicate-nodes sweep (2026-08-24) —
-// it duplicated TwoInputMath's `hypot` op (√(A²+B²)). The catalog HYPOT leaf now creates
-// TwoInputMathNode({ op: "hypot" }); old saves of "Hypotenuse" load as a Placeholder.
