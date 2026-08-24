@@ -635,6 +635,8 @@ export class SurfaceNode extends ClassicPreset.Node {
   op: SurfaceViewOp;
   // View angles (degrees) live in `literals` so they persist and the rotate buttons nudge them.
   literals: Record<string, number> = { yaw: 45, pitch: 45 };
+  // Typeable Xs / Ys: a CSV list on the card (the List Input mechanism), a cable wins.
+  stringLiterals: Record<string, string> = { xs: "", ys: "" };
   cachedChart: ChartValue | null = null;
   width = 240;
   height = 220;
