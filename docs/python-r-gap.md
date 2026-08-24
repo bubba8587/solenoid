@@ -54,8 +54,9 @@ let a refugee filter to what they know. Tests: `pythonRGap.test.ts`, `statsParit
 26. **K-means and PCA** — LANDED 2026-08-23 (K-Means card: k-means++ seeded restarts, a
     cluster per row + a centers frame; PCA card: scores / loadings / explained, centered or
     standardized; both over a frame's number columns, numpy-pinned).
-27. **ODE integrate** (`solve_ivp`, `deSolve`): dy/dt = Expression(t, y) → RK4 frame over a
-    range. The simulation run mode is the discrete sibling. Moderate.
+27. **ODE integrate** — LANDED 2026-08-24 (ODE Integrate card: dy/dt as an expression in t and y
+    → classic fixed-step RK4 over [t0, t1], t and y list outputs; rete-free `rk4` kernel in
+    `odeOps.ts`. Node-only — no formula compiles a text-expression string on the formula surface).
 28. **Roots of a polynomial** — LANDED 2026-08-23 (Polynomial Roots card: coefficient list →
     complex roots + the real ones, Durand–Kerner, numpy.roots-pinned; POLYROOTS formula).
     General root-finding on an Expression (`uniroot` / `fsolve`) stays with the Equation node.

@@ -161,6 +161,17 @@ the profile-bar tooltip lost its dynamic counts — tooltips are structural only
   InlineInputs + ChartFigure), so its Values input moved from plot-centered to an inline row and the
   in-card expand button became the collapsed [Chart] chip — confirm 1-D still reads right, then flip
   to 2-D.
+- **B0.3 ODE integrate — RK4 (plan 4).** Rete-free `rk4(f, y0, t0, t1, steps)` kernel in a new
+  `odeOps.ts` (fixed-step classic RK4; steps clamp 1..100000; a null/non-finite derivative or a
+  blow-up aborts to null). `OdeIntegrateNode` (in `stats.ts`, by Decompose): a `dy/dt` expression
+  in t and y compiled with `compilePositional(expr, ["t","y"])`, y0/t0/t1/steps inputs, t + y list
+  outputs; bad expression → `#NAME?`, divergence → `#DOMAIN!` (the app's code for Excel's #NUM!).
+  NODE-ONLY: there is no precedent for a formula that compiles a text-expression string on the
+  formula surface, so no `ODE(...)` formula (plan allowed this). Pinned in `odeOps.test.ts`;
+  scratch seed integrates dy/dt = y → e^t. The stats.ts commit (ce111e34) also carried Agent 2's
+  C4 InterpolateNode grid-axes rewrite (shared file, coordinated split). Finding (author's call,
+  don't build): the t/y pair as two list outputs needs a Build Frame before a Chart; a single
+  `{t, y}` frame output would plot directly under C2's label rule.
 
 **C2 — the base Chart renders multiple series from a frame (plan 11, author ask). 3 commits.**
 `ChartValue.series` + `ChartNode.data()`: column 0 is ALWAYS the x-axis label at ≥2 columns (a
