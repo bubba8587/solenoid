@@ -17,14 +17,14 @@ import {
   buildFrame, buildFrameTyped, typedColumn, colTypeForSocket,
   splitFrame, getColumn, addColumn, frameRowCount, frameHasTextColumns, makeHeaders,
   frameFromInputText, parseFrameSource, frameSourceToText, deriveFrame,
-  formatFrameCell, isCubeValue, isFrameValue, inferColumn,
+  formatFrameCell, isCubeValue, isFrameValue, inferColumn, frameToCube,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType, type FrameSourceColumn,
 } from "../frame";
 import {
   pivotFrame, nestFrame, unnestCube,
   splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity,
   mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows,
-  lookupFrameCell, lookupCubeCell, lookupFrameRowIndex, lookupCubeRowIndex,
+  lookupCell, lookupRowIndex,
   frameRowAt, cubeRowAt, asLookupSource, reconcileFrames,
   filterRowsMulti, VALUELESS_FILTER_OPS, ERROR_FILTER_OPS,
   type FilterCond, type FilterCombine, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type LookupSearchMode, type ReconcileSummary,
@@ -2006,27 +2006,24 @@ export class XLookupNode extends ClassicPreset.Node {
       return { value: this.cachedResult };
     }
     const src = asLookupSource(raw)!;
+    // One lookup path: a frame is looked up as a cube (frameToCube carries col.type), so
+    // the row-finder + cell-getter never fork. Only the whole-row RETURN keeps its shape —
+    // a frame source yields a Frame row, a cube source a Cube row.
+    const srcCube = isCubeValue(src) ? src : frameToCube(src);
     const wholeRow = retCol === "*"; // return the matched row intact, not one cell
     const fb = fallbackRaw.trim();
     // One matched cell for one lookup value, shared by the scalar and list-spill paths so
-    // they can't drift. A blank element is unknown → null; the frame/cube kernels parse the
-    // lookup text against the In column's type (text ignores case).
+    // they can't drift. A blank element is unknown → null; the kernel parses the lookup
+    // text against the In column's type (text ignores case).
     const matchOne = (lookupValue: unknown): CubeCell | null => {
       const lookup = lookupValue == null ? "" : String(lookupValue).trim();
       if (lookup === "") return null;
       let cell: CubeCell | undefined;
-      if (isCubeValue(src)) {
-        if (wholeRow) {
-          const idx = lookupCubeRowIndex(src, inCol, lookup, this.matchMode, this.searchMode);
-          cell = idx < 0 ? undefined : cubeRowAt(src, idx);
-        } else {
-          cell = lookupCubeCell(src, inCol, retCol, lookup, this.matchMode, this.searchMode);
-        }
-      } else if (wholeRow) {
-        const idx = lookupFrameRowIndex(src, inCol, lookup, this.matchMode, this.searchMode);
-        cell = idx < 0 ? undefined : frameRowAt(src, idx);
+      if (wholeRow) {
+        const idx = lookupRowIndex(srcCube, inCol, lookup, this.matchMode, this.searchMode);
+        cell = idx < 0 ? undefined : (isCubeValue(src) ? cubeRowAt(src, idx) : frameRowAt(src, idx));
       } else {
-        cell = lookupFrameCell(src, inCol, retCol, lookup, this.matchMode, this.searchMode);
+        cell = lookupCell(srcCube, inCol, retCol, lookup, this.matchMode, this.searchMode);
       }
       if (cell !== undefined) return cell;
       if (fb === "") return solError("#N/A", "No row matched the lookup value");

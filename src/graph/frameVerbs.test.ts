@@ -1,7 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { sortByColumn, distinctRows, filterRows, filterRowsMulti, groupByFrame, unpivotFrame, pivotFrame, nestFrame, unnestCube, splitColumn, addIndexColumn, lookupFrameCell, fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows } from "./frameVerbs";
+import { sortByColumn, distinctRows, filterRows, filterRowsMulti, groupByFrame, unpivotFrame, pivotFrame, nestFrame, unnestCube, splitColumn, addIndexColumn, lookupCell, fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows, type LookupMatchMode, type LookupSearchMode } from "./frameVerbs";
 import { isSolError, solError } from "./errorValue";
-import { isCubeValue, isFrameValue, cubeFromColumns, cubeDepth, cubeRowCount, type FrameValue } from "./frame";
+import { isCubeValue, isFrameValue, cubeFromColumns, cubeDepth, cubeRowCount, frameToCube, type FrameValue } from "./frame";
+
+// A frame XLOOKUP is the unified cube path fed frameToCube (which carries col.type).
+const lookupFrameCell = (f: FrameValue, lc: string, rc: string, lookup: string, mm?: LookupMatchMode, sm?: LookupSearchMode) =>
+  lookupCell(frameToCube(f), lc, rc, lookup, mm, sm);
 
 const f: FrameValue = {
   __frame: true,

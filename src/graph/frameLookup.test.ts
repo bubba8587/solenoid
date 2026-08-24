@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { lookupFrameCell, lookupCubeCell, lookupFrameRowIndex, lookupCubeRowIndex, frameRowAt, cubeRowAt } from "./frameVerbs";
+import { lookupCell, lookupRowIndex, frameRowAt, cubeRowAt, type LookupMatchMode, type LookupSearchMode } from "./frameVerbs";
 import { xmatchIndex } from "./nodes/listOps";
 import { isCubeValue } from "./frame";
 import { isSolError } from "./errorValue";
-import { cubeFromColumns, isFrameValue } from "./frame";
+import { cubeFromColumns, isFrameValue, frameToCube } from "./frame";
 import type { FrameValue, CubeValue } from "./frame";
 import { parseDateToSerial } from "./nodes/date";
 import { XLookupNode } from "./nodes/frame";
@@ -18,6 +18,14 @@ const people: FrameValue = {
     { name: "active", type: "logical", values: [true, false, true] },
   ],
 };
+
+// A frame is looked up by converting it to a cube (frameToCube carries col.type) — the
+// unified path. These adapters keep every frame scenario below verbatim while exercising
+// the one lookupCell / lookupRowIndex that both surfaces now share.
+const lookupFrameCell = (f: FrameValue, lc: string, rc: string, lookup: string, mm?: LookupMatchMode, sm?: LookupSearchMode) =>
+  lookupCell(frameToCube(f), lc, rc, lookup, mm, sm);
+const lookupFrameRowIndex = (f: FrameValue, lc: string, lookup: string, mm?: LookupMatchMode, sm?: LookupSearchMode) =>
+  lookupRowIndex(frameToCube(f), lc, lookup, mm, sm);
 
 describe("frame/cube XLOOKUP shares the XMATCH formula kernel (no surface drift)", () => {
   // The node parses its lookup STRING into a typed needle, then delegates the actual
@@ -118,14 +126,14 @@ describe("lookupFrameRowIndex + frameRowAt — the whole-row (*) path", () => {
   });
 });
 
-describe("lookupCubeRowIndex + cubeRowAt — the whole-row (*) path", () => {
+describe("lookupRowIndex + cubeRowAt on a cube — the whole-row (*) path", () => {
   it("returns the matched cube row index", () => {
-    expect(lookupCubeRowIndex(customers, "name", "Bob")).toBe(1);
-    expect(lookupCubeRowIndex(customers, "name", "Zed")).toBe(-1);
+    expect(lookupRowIndex(customers, "name", "Bob")).toBe(1);
+    expect(lookupRowIndex(customers, "name", "Zed")).toBe(-1);
   });
 
   it("cubeRowAt keeps a nested sub-frame cell WHOLE", () => {
-    const idx = lookupCubeRowIndex(customers, "id", "1");
+    const idx = lookupRowIndex(customers, "id", "1");
     const row = cubeRowAt(customers, idx);
     expect(isCubeValue(row)).toBe(true);
     expect(row.columns.map((c) => c.name)).toEqual(["id", "name", "vip", "orders"]);
@@ -145,39 +153,39 @@ const customers: CubeValue = cubeFromColumns([
   { name: "orders", cells: [orders1, null, orders3] }, // a nested sub-frame per row
 ]);
 
-describe("lookupCubeCell — cube XLOOKUP (top-level key, whole-cell return)", () => {
+describe("lookupCell on a cube — cube XLOOKUP (top-level key, whole-cell return)", () => {
   it("looks up a scalar key, returns another top-level column's scalar", () => {
-    expect(lookupCubeCell(customers, "name", "id", "Bob")).toBe(2);
-    expect(lookupCubeCell(customers, "id", "name", "3")).toBe("Cy");
+    expect(lookupCell(customers, "name", "id", "Bob")).toBe(2);
+    expect(lookupCell(customers, "id", "name", "3")).toBe("Cy");
   });
 
   it("returns a NESTED frame cell WHOLE (the cube half's whole point)", () => {
-    const cell = lookupCubeCell(customers, "id", "orders", "1");
+    const cell = lookupCell(customers, "id", "orders", "1");
     expect(isFrameValue(cell)).toBe(true);
     expect(cell).toBe(orders1); // the exact sub-frame, intact — not drilled into
   });
 
   it("a null nested cell comes back as null", () => {
-    expect(lookupCubeCell(customers, "id", "orders", "2")).toBeNull();
+    expect(lookupCell(customers, "id", "orders", "2")).toBeNull();
   });
 
   it("matches a logical key (true/false or 1/0), first match wins", () => {
-    expect(lookupCubeCell(customers, "vip", "name", "false")).toBe("Bob");
-    expect(lookupCubeCell(customers, "vip", "name", "0")).toBe("Bob");
-    expect(lookupCubeCell(customers, "vip", "name", "true")).toBe("Ann");
+    expect(lookupCell(customers, "vip", "name", "false")).toBe("Bob");
+    expect(lookupCell(customers, "vip", "name", "0")).toBe("Bob");
+    expect(lookupCell(customers, "vip", "name", "true")).toBe("Ann");
   });
 
   it("returns undefined when no row matches", () => {
-    expect(lookupCubeCell(customers, "name", "id", "Zed")).toBeUndefined();
+    expect(lookupCell(customers, "name", "id", "Zed")).toBeUndefined();
   });
 
   it("never matches a nested-container or null key cell", () => {
     // keying ON the nested 'orders' column: a frame/null cell can't be a lookup key.
-    expect(lookupCubeCell(customers, "orders", "name", "anything")).toBeUndefined();
+    expect(lookupCell(customers, "orders", "name", "anything")).toBeUndefined();
   });
 
   it("throws a #REF! for a missing column", () => {
-    const err = (() => { try { lookupCubeCell(customers, "nope", "id", "1"); } catch (e) { return e; } })();
+    const err = (() => { try { lookupCell(customers, "nope", "id", "1"); } catch (e) { return e; } })();
     expect(isSolError(err) && err.code).toBe("#REF!");
   });
 
@@ -187,18 +195,18 @@ describe("lookupCubeCell — cube XLOOKUP (top-level key, whole-cell return)", (
       { name: "discount", cells: [0.05, 0.1, 0.15] },
     ]);
     it("exact still wins under an approximate mode", () => {
-      expect(lookupCubeCell(prices, "qty", "discount", "10", "nextSmaller")).toBe(0.05);
+      expect(lookupCell(prices, "qty", "discount", "10", "nextSmaller")).toBe(0.05);
     });
     it("nextSmaller falls back to the closest smaller key", () => {
-      expect(lookupCubeCell(prices, "qty", "discount", "20", "nextSmaller")).toBe(0.05);
-      expect(lookupCubeCell(prices, "qty", "discount", "0", "nextSmaller")).toBeUndefined();
+      expect(lookupCell(prices, "qty", "discount", "20", "nextSmaller")).toBe(0.05);
+      expect(lookupCell(prices, "qty", "discount", "0", "nextSmaller")).toBeUndefined();
     });
     it("nextLarger falls back to the closest larger key", () => {
-      expect(lookupCubeCell(prices, "qty", "discount", "20", "nextLarger")).toBe(0.1);
-      expect(lookupCubeCell(prices, "qty", "discount", "1000", "nextLarger")).toBeUndefined();
+      expect(lookupCell(prices, "qty", "discount", "20", "nextLarger")).toBe(0.1);
+      expect(lookupCell(prices, "qty", "discount", "1000", "nextLarger")).toBeUndefined();
     });
     it("throws #VALUE! for an approximate lookup on a non-numeric key column", () => {
-      const err = (() => { try { lookupCubeCell(customers, "name", "id", "Bob", "nextSmaller"); } catch (e) { return e; } })();
+      const err = (() => { try { lookupCell(customers, "name", "id", "Bob", "nextSmaller"); } catch (e) { return e; } })();
       expect(isSolError(err) && err.code).toBe("#VALUE!");
     });
   });
@@ -216,13 +224,13 @@ describe("cube XLOOKUP on a TYPED date column (typed CubeColumn — frame→cube
   ]);
 
   it("matches an ISO-date string on a date-typed key column", () => {
-    expect(lookupCubeCell(events, "when", "evt", "2025-06-30")).toBe("review");
-    expect(lookupCubeCell(events, "when", "evt", String(d3))).toBe("close"); // raw serial still works
+    expect(lookupCell(events, "when", "evt", "2025-06-30")).toBe("review");
+    expect(lookupCell(events, "when", "evt", String(d3))).toBe("close"); // raw serial still works
   });
 
   it("approximate match works on a date key column (was numeric-only)", () => {
-    expect(lookupCubeCell(events, "when", "evt", "2025-03-01", "nextSmaller")).toBe("launch");
-    expect(lookupCubeCell(events, "when", "evt", "2025-07-01", "nextLarger")).toBe("close");
+    expect(lookupCell(events, "when", "evt", "2025-03-01", "nextSmaller")).toBe("launch");
+    expect(lookupCell(events, "when", "evt", "2025-07-01", "nextLarger")).toBe("close");
   });
 
   it("an UNTYPED cube date column still matches only by serial (inference fallback)", () => {
@@ -230,12 +238,12 @@ describe("cube XLOOKUP on a TYPED date column (typed CubeColumn — frame→cube
       { name: "when", cells: [d1, d2] },
       { name: "evt", cells: ["a", "b"] },
     ]);
-    expect(lookupCubeCell(untyped, "when", "evt", String(d2))).toBe("b");        // serial works
-    expect(lookupCubeCell(untyped, "when", "evt", "2025-06-30")).toBeUndefined(); // date string doesn't
+    expect(lookupCell(untyped, "when", "evt", String(d2))).toBe("b");        // serial works
+    expect(lookupCell(untyped, "when", "evt", "2025-06-30")).toBeUndefined(); // date string doesn't
   });
 
   it("cubeRowAt preserves the column type", () => {
-    const idx = lookupCubeRowIndex(events, "when", "2025-06-30");
+    const idx = lookupRowIndex(events, "when", "2025-06-30");
     expect(cubeRowAt(events, idx).columns[0].type).toBe("date");
   });
 });

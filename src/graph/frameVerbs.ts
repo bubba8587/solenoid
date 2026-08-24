@@ -1293,41 +1293,6 @@ export type LookupMatchMode = "exact" | "nextSmaller" | "nextLarger";
  *  exact matching; an approximate (≤/≥) match already picks the closest key. */
 export type LookupSearchMode = "first" | "last";
 
-/** XLOOKUP over a Frame: the FIRST row whose `lookupColumn` cell equals `lookup`
- *  (type-aware via lookupNeedle + the shared xmatchIndex), returning that row's `returnColumn` cell.
- *  `undefined` when no row matches (the node turns that into If-not-found / #N/A);
- *  a missing column is a #REF! (thrown, surfaced by the caller's guard). A `null`
- *  or error key cell never matches — same rule as a join key. `matchMode` (default
- *  "exact") opts into an approximate fallback — see `LookupMatchMode`. */
-export function lookupFrameCell(
-  f: FrameValue, lookupColumn: string, returnColumn: string, lookup: string,
-  matchMode: LookupMatchMode = "exact", searchMode: LookupSearchMode = "first",
-): FrameCell | undefined {
-  const idx = lookupFrameRowIndex(f, lookupColumn, lookup, matchMode, searchMode);
-  const ret = requireColumn(f, returnColumn); // #REF! if the return column is missing (even on a miss)
-  return idx < 0 ? undefined : cellAt(ret, idx);
-}
-
-/** The row-finding half of the frame XLOOKUP, shared by the single-cell return
- *  (`lookupFrameCell`) and the whole-row `*` return (`frameRowAt`) so both agree on
- *  which row matched. Returns the 0-based row index, or -1 for a miss. Only requires
- *  the KEY column (a missing key column is a #REF!; the return column is checked by
- *  the caller). A null / error key cell never matches — same rule as a join key. */
-export function lookupFrameRowIndex(
-  f: FrameValue, lookupColumn: string, lookup: string,
-  matchMode: LookupMatchMode = "exact", searchMode: LookupSearchMode = "first",
-): number {
-  const key = requireColumn(f, lookupColumn);
-  if (matchMode !== "exact" && !isOrderableKey(key.type)) {
-    throw solError("#VALUE!", "Approximate lookup requires a numeric or date column");
-  }
-  const needle = lookupNeedle(lookup, key.type);
-  // An unparseable approximate needle can't order against numeric keys — a miss, not a throw.
-  if (matchMode !== "exact" && !(typeof needle === "number" && Number.isFinite(needle))) return -1;
-  const idx = xmatchIndex(needle, key.values, NODE_TO_XMATCH_MODE[matchMode], searchMode);
-  return isSolError(idx) ? -1 : idx; // dead-safe: the guards above bar the only error path
-}
-
 /** A cube's top-level column by name, or a #REF! (thrown; the caller's guard
  *  renders it). Mirrors `requireColumn` for frames. */
 function requireCubeColumn(c: CubeValue, name: string): CubeColumn {
@@ -1354,38 +1319,41 @@ function inferCubeKeyType(col: CubeColumn): FrameColType {
   return "string"; // empty / all-null column
 }
 
-/** Matches TOP-LEVEL columns only — never descends into nested cells — and returns the
- *  matched cell WHOLE, so a nested frame/cube comes out intact. `undefined` on no match,
- *  #REF! on a missing column; null/error/container key cells never match. */
-export function lookupCubeCell(
+/** THE XLOOKUP cell-getter (frame + cube). A frame is looked up by `frameToCube` first
+ *  (it carries `col.type`), so this one path serves both surfaces. Matches TOP-LEVEL
+ *  columns only — never descends into nested cells — and returns the matched cell WHOLE,
+ *  so a nested frame/cube comes out intact. `undefined` on no match, #REF! on a missing
+ *  column; null/error/container key cells never match. */
+export function lookupCell(
   c: CubeValue, lookupColumn: string, returnColumn: string, lookup: string,
   matchMode: LookupMatchMode = "exact", searchMode: LookupSearchMode = "first",
 ): CubeCell | undefined {
-  const idx = lookupCubeRowIndex(c, lookupColumn, lookup, matchMode, searchMode);
+  const idx = lookupRowIndex(c, lookupColumn, lookup, matchMode, searchMode);
   const ret = requireCubeColumn(c, returnColumn); // #REF! if the return column is missing
   if (idx < 0) return undefined;
   return idx < ret.cells.length ? ret.cells[idx] ?? null : null;
 }
 
-/** The row-finding half of the cube XLOOKUP — shared by cell return and whole-row
- *  `*` return (`cubeRowAt`). Returns the matched 0-based row index, or -1. Only the
- *  KEY column is required (#REF! if missing). A null / error / nested-container key
- *  cell is never a key (same first-match-wins + join-key rules as the frame path). */
-export function lookupCubeRowIndex(
+/** THE XLOOKUP row-finder (frame + cube) — shared by the cell return and the whole-row
+ *  `*` return (`frameRowAt` / `cubeRowAt`). Returns the matched 0-based row index, or -1.
+ *  Only the KEY column is required (#REF! if missing). A null / error / nested-container
+ *  key cell is never a key (first-match-wins + join-key rules). */
+export function lookupRowIndex(
   c: CubeValue, lookupColumn: string, lookup: string,
   matchMode: LookupMatchMode = "exact", searchMode: LookupSearchMode = "first",
 ): number {
   const key = requireCubeColumn(c, lookupColumn);
-  // Prefer the column's CARRIED type so a date-keyed cube column matches an ISO-date
-  // lookup; fall back to inference only for a hand-built (untyped) cube.
+  // Prefer the column's CARRIED type so a date-keyed column matches an ISO-date lookup
+  // (a frame column and a frame→cube column both carry it); fall back to inference only
+  // for a hand-built (untyped) cube.
   const keyType = key.type ?? inferCubeKeyType(key);
-  if (matchMode !== "exact" && keyType !== "number" && keyType !== "date") {
-    throw solError("#VALUE!", "Approximate lookup requires a numeric or date key column");
+  if (matchMode !== "exact" && !isOrderableKey(keyType)) {
+    throw solError("#VALUE!", "Approximate lookup requires a numeric or date column");
   }
   const needle = lookupNeedle(lookup, keyType);
   if (matchMode !== "exact" && !(typeof needle === "number" && Number.isFinite(needle))) return -1;
-  // Same shared kernel as the frame path; a nested frame/cube/list key cell is never
-  // `===` a scalar and never numeric, so xmatchIndex excludes it as a key on its own.
+  // A nested frame/cube/list key cell is never `===` a scalar and never numeric, so
+  // xmatchIndex excludes it as a key on its own.
   const keys = key.cells.slice(0, cubeRowCount(c));
   const idx = xmatchIndex(needle, keys, NODE_TO_XMATCH_MODE[matchMode], searchMode);
   return isSolError(idx) ? -1 : idx;
