@@ -10,6 +10,13 @@ export interface Settings {
   groupPush: boolean;
   /** Tidy's vertical alignment: "center" levels centers, "top" levels top edges. */
   tidyAlign: "center" | "top";
+  /** Tidy layout direction: "right" flows left→right, "down" top→bottom. */
+  tidyDirection: "right" | "down";
+  /** Tidy spacing density: compact 36/24, normal 55/38, airy 80/56 (between-layers / node). */
+  tidyDensity: "compact" | "normal" | "airy";
+  /** Tidy max nodes per layer (Coffman-Graham): "off" = unbounded, else 2/3/4. String so the
+   *  segment control stores it directly; the call site maps to the numeric cap. */
+  tidyWidthCap: "off" | "2" | "3" | "4";
   /** Absolute path local CSV connections read from; desktop only. */
   csvFolder: string;
   /** Bookmark for the "open in file manager" action; never indexed or scanned. */
@@ -40,6 +47,9 @@ export interface Settings {
 const DEFAULTS: Settings = {
   groupPush: true,
   tidyAlign: "center",
+  tidyDirection: "right",
+  tidyDensity: "normal",
+  tidyWidthCap: "off",
   csvFolder: "",
   docsFolder: "",
   obsidianVault: "",
@@ -88,6 +98,36 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         options: [
           { value: "center", label: "Center" },
           { value: "top", label: "Top" },
+        ],
+      },
+      {
+        key: "tidyDirection",
+        label: "Tidy direction",
+        type: "segment",
+        options: [
+          { value: "right", label: "Right" },
+          { value: "down", label: "Down" },
+        ],
+      },
+      {
+        key: "tidyDensity",
+        label: "Tidy density",
+        type: "segment",
+        options: [
+          { value: "compact", label: "Compact" },
+          { value: "normal", label: "Normal" },
+          { value: "airy", label: "Airy" },
+        ],
+      },
+      {
+        key: "tidyWidthCap",
+        label: "Tidy width cap",
+        type: "segment",
+        options: [
+          { value: "off", label: "Off" },
+          { value: "2", label: "2" },
+          { value: "3", label: "3" },
+          { value: "4", label: "4" },
         ],
       },
       {

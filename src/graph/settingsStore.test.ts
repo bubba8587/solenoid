@@ -39,6 +39,12 @@ describe("settingsStore — defaults", () => {
     expect(settingsStore.get("tidyAlign")).toBe("center");
   });
 
+  it("the three Tidy knobs default to right / normal / off", () => {
+    expect(settingsStore.get("tidyDirection")).toBe("right");
+    expect(settingsStore.get("tidyDensity")).toBe("normal");
+    expect(settingsStore.get("tidyWidthCap")).toBe("off");
+  });
+
   it("csvFolder defaults to empty string", () => {
     expect(settingsStore.get("csvFolder")).toBe("");
   });
