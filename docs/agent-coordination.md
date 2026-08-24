@@ -12,5 +12,5 @@ Agent 1 writes plans (`docs/plans/`), doesn't execute. Executors (Agent 2 soleno
 
 - B0.3/B0.4 — Agent 4 (solenoid-f1) — Python/R gap remainder (ODE/RK4, STL). C2 landed (179ba3a5 + 43a22615); B0.1/B0.2 landed too. visual.ts free.
 - C4 — Agent 2 (solenoid-18) — grid axes / retire bordered-grid (Lead reassigned, C4 before B8). Touches visual.ts SurfaceNode — coordinating with Agent 4 (C2). C3 landed (af64d772, 2ebb4a65); matrix.ts + frame.ts free for Jeff.
-- A5 node-by-node sweep — COMPLETE (Jeff / Agent 5, solenoid-b2). All 23 families swept; 3 bugs fixed (Color Blend, Expect allowed, strScalar comment), ~34 wiredNull pins, findings + combine-candidates in the digest. Plan file + backlog lines deleted. NOTE: full-suite currently red is A2's C4 WIP (mathUtils/stats/excelFunctions), not this.
+- B7 (plan 10, Tidy options) — Jeff / Agent 5 (solenoid-b2). Step 1 DONE (055fd1c9): pure `tidyLayoutOptions` + tests (direction/density/widthCap → ELK, Coffman-Graham fan pinned). LEFT: step 2 settings fields, step 3 wire both ELK call sites (tidyArrange:359 + CompositeEditorOverlay:524 — delete the inline port-preset copy), step 4 DOWN anchor transpose, step 5 popover, step 6 docs. Files mine: tidyArrange.ts, settingsStore/Settings.tsx, TopBar.tsx, CompositeEditorOverlay.tsx (Tidy block). (A5 node sweep COMPLETE f3fa52c5.)
 
