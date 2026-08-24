@@ -8,7 +8,7 @@ import { ComplexFromNode, QuadraticRootsNode } from "./complex";
 import { CableSwitchNode } from "./control";
 import { ExpressionNode } from "./expression";
 import { ClampNode, ArithmeticNode, MathFnNode, MRoundNode, CombinatoricsNode } from "./scalar";
-import { MirrNode, TBillNode, IrrNode, OddCouponNode, NpvNode } from "./finance";
+import { MirrNode, TBillNode, IrrNode, OddCouponNode, NpvNode, DepreciationNode } from "./finance";
 import { SortFrameNode, JoinNode, HeadNode, SelectColumnsNode } from "./frame";
 import { ListIndexNode, SliceNode, FilterNode, SeriesNode, AggregateNode } from "./list";
 import { BulletNode, KpiNode, HistogramNode } from "./visual";
@@ -16,6 +16,7 @@ import { AlertNode } from "./display";
 import { ExpectNode } from "./quality";
 import { CubeRollupNode } from "./cube";
 import { HypothesisTestNode, RankPercentileNode } from "./stats";
+import { SetCellNode } from "./matrix";
 import { wrapNodeData } from "../coerceInputs";
 import type { FrameValue } from "../frame";
 import { solError, isSolError } from "../errorValue";
@@ -245,6 +246,17 @@ describe("NPV — a positional list blanks to zero, the rate operand propagates"
     const withBlank = node.data({ list: [[100, null, 300]] }).result;
     const withZero = node.data({ list: [[100, 0, 300]] }).result;
     expect(withBlank).toBeCloseTo(withZero as number);
+  });
+});
+
+describe("Depreciation — the active-op guard scopes to the inputs the op reads", () => {
+  // SLN never reads `per` (it returns before the per-check), so a wired blank per must
+  // not blank it; SYD reads per and blanks on a wired blank.
+  it("SLN ignores a wired blank per; SYD blanks on it", () => {
+    const sln = new DepreciationNode({ op: "sln" });
+    expect(sln.data({ cost: [1000], salvage: [100], life: [5], per: [null as unknown as number] }).result).toBe(180);
+    const syd = new DepreciationNode({ op: "syd" });
+    expect(syd.data({ cost: [1000], salvage: [100], life: [5], per: [null as unknown as number] }).result).toBeNull();
   });
 });
 
@@ -728,5 +740,31 @@ describe("cube column references — read raw, guard, then trim", () => {
     node.stringLiterals.nested = "items";
     node.stringLiterals.column = "v";
     expect(node.data({ cube: [cube as never], as: [null as unknown as string] }).frame).toBeNull();
+  });
+});
+
+describe("Set Cell — wired blank by role", () => {
+  const M = (): (number | null)[][] => [[1, 2], [3, 4]];
+
+  it("a wired blank ROW (an address) makes the whole result null", () => {
+    const node = new SetCellNode(); // fresh: one row, literals row0=1 col0=1
+    expect(node.data({ matrix: [M()], value0: [9], row0: [null], col0: [1] }).result).toBeNull();
+  });
+
+  it("a wired blank COLUMN makes the whole result null", () => {
+    const node = new SetCellNode();
+    expect(node.data({ matrix: [M()], value0: [9], row0: [1], col0: [null] }).result).toBeNull();
+  });
+
+  it("a wired blank VALUE (an operand) writes null into that cell", () => {
+    const node = new SetCellNode();
+    expect(node.data({ matrix: [M()], value0: [null], row0: [1], col0: [1] }).result)
+      .toEqual([[null, 2], [3, 4]]);
+  });
+
+  it("an UNWIRED row/col/value uses the card literals", () => {
+    const node = new SetCellNode();
+    node.literals = { row0: 2, col0: 2, value0: 99 };
+    expect(node.data({ matrix: [M()] }).result).toEqual([[1, 2], [3, 99]]);
   });
 });

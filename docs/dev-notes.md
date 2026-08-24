@@ -380,6 +380,20 @@ check before trusting it, per documentExcelDeviations. Combine candidates: NPV +
 XIRR already folded as a dates mode) → one "Cash Flow Analysis" node with an op selector. Residue:
 the NPV parity finding above.
 
+**A5 Finance ▸ bonds/depreciation/other/coupon sweep** (35 leaves) → NO wired-blank bugs. Every
+multi-op class (Depreciation, TBill, SecDisc, PriceDisc/Mat, Duration, OddCoupon, Coupon, bond
+Price/Yield) reads params via `readInput` and scopes the null-guard to the ACTIVE op: Depreciation's
+SLN returns before the `per`-check so a blank per doesn't blank it while SYD/DDB/DB gate on `per !==
+null` (pinned); TBILL routes discount vs price by op. Verified against code, not memory: the historical
+TBILLYIELD 365-vs-360 bug is FIXED — tbillyield now uses the 360-day money-market basis, tbilleq the
+365/(360−d·dsm) ≤182-day form, both with inline "verified against real Excel" values. Formulas route
+through `resolveExcelFunction` so node and formula surfaces can't drift. Pins: `wiredNull.test.ts`
+"Depreciation — active-op guard" (+1). Verification note: this was a wired-blank + active-op-guard
+sweep, NOT a full Excel-value parity audit of all 35 bond formulas (that is the separate parity
+program); the two day-count values above were the only ones spot-checked. Combine candidates: none
+strong — already maximally op-merged (Depreciation unifies 5, the *disc/*mat/duration families
+paired). Residue: none.
+
 ### SESSION DIGEST (2026-08-24 — author polish pass: Join dropdown, catalog valence, KaTeX arc trig, string-list errors, Aggregate optgroups, scratch-seed Groups)
 
 Six author asks, each landed + committed separately. (1) **Join `how` → arg dropdown**
