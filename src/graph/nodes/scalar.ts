@@ -760,7 +760,7 @@ export type TwoInputMathOp = "atan2" | "hypot" | "log" | "delta" | "gestep";
 
 export const TWO_INPUT_MATH_OP_META = {
   atan2: { label: "ATAN2", description: "Angle from x,y coordinates: atan2(y, x). Excel: ATAN2(x_num, y_num)." },
-  hypot: { label: "HYPOT", description: "Hypotenuse √(A² + B²)" },
+  hypot: { label: "HYPOTENUSE", description: "Hypotenuse √(A² + B²)" },
   log:     { label: "LOG",     description: "Log of x in any base. Excel: LOG(x, base)." },
   delta:   { label: "DELTA",   description: "1 if A = B (within rounding), else 0. Excel: DELTA(a, b)." },
   gestep:  { label: "GESTEP",  description: "1 if A ≥ B, else 0. Excel: GESTEP(a, step)." },

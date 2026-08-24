@@ -84,9 +84,7 @@ function toDMS(n: number): string {
 }
 
 // Defined once and claimed by BOTH packs — the catalog builder dedupes by `type` and
-// records both owners. HYPOT IS TwoInputMath's `hypot` op (the standalone HypotenuseNode
-// was deleted in the no-duplicate-nodes sweep, 2026-08-24); an old "hypotenuse" save loads
-// as a Placeholder.
+// records both owners. HYPOTENUSE is TwoInputMath's `hypot` op.
 export const HYPOTENUSE_ENTRY: NodeCatalogEntry = {
   type: "twomath-hypot",
   label: TWO_INPUT_MATH_OP_META.hypot.label,

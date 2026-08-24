@@ -394,8 +394,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [mathLeaf("cot"), mathLeaf("acot")] },
           { type: "pair", children: [mathLeaf("csc"), mathLeaf("sec")] },
           twoMathLeaf("atan2"),
-          // HYPOT ships as HYPOTENUSE in the Geometry/Timesavers packs; the catalog
-          // builder inserts it here.
+          // HYPOTENUSE ships in the Geometry/Timesavers packs; the catalog builder inserts it here.
           { type: "pair", children: [mathLeaf("sinh"), mathLeaf("asinh")] },
           { type: "pair", children: [mathLeaf("cosh"), mathLeaf("acosh")] },
           { type: "pair", children: [mathLeaf("tanh"), mathLeaf("atanh")] },
