@@ -83,7 +83,7 @@ under Numbers ▸ Engineering; `RandBetweenNode` is in `display.ts` but under In
 | [x] | Output ▸ Visuals, all subs (`:245-283`) | 34 | `nodes/visual.ts`, `tornado.ts`, `chartOptions.ts` | `wiredNull.test.ts:289` (figure sinks), `:483` (figure controls) |
 | [x] | Numbers ▸ Arithmetic / Functions / Rounding / Logarithms (`:337-378`) | 32 | `nodes/scalar.ts` | `wiredNull.test.ts:209` (guard placement) |
 | [x] | Numbers ▸ Trigonometry / Combinatorics / Engineering / Bessel (`:389-425`) | 41 | `nodes/scalar.ts`, `finance.ts` (Bitwise) | — |
-| [ ] | Numbers ▸ Complex (`:434-451`) | 24 | `nodes/complex.ts` | — |
+| [x] | Numbers ▸ Complex (`:434-451`) | 24 | `nodes/complex.ts` | — |
 | [ ] | Lists ▸ Build / Shape (`:470`, `:486`) | 24 | `nodes/list.ts` | `wiredNull.test.ts:429` (column-list ref) |
 | [ ] | Lists ▸ Transform / Find (`:518`, `:544`) | 23 | `nodes/list.ts`, `indexAccess.ts` | `finePrintContract.test.ts:30` (DROP), `:119` (Slice) |
 | [ ] | Lists ▸ Aggregate + Spread & Shape + Correlation (`:561-587`) | 41 | `nodes/list.ts` (ReduceOp `:1865`), `stats.ts` | `wiredNull.test.ts:99` (reducers skip) |

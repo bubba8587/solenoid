@@ -260,6 +260,17 @@ op-merged); one dedup FLAG — `HypotenuseNode` (HYPOT) and `TwoInputMathNode`'s
 implementations of √(A²+B²) (the TwoInputMath one isn't a catalogued leaf, likely formula-only), so
 collapse to one. Residue: none.
 
+**A5 Numbers ▸ Complex sweep** (24 leaves / 7 classes: ComplexFrom [swept under Input], Unpack,
+Unary×16, Binary×4, Power, PolyRoots, QuadraticRoots) → NO bugs. Every complex op routes operands
+through `cxOp`/`numOp` + `broadcastComplex`, whose per-cell short-circuit propagates a wired blank
+to null; the two classes with card literals (Power `n`, Quadratic `a/b/c`) read them via `readInput`
+so unwired uses the literal, wired blank blanks. Per-cell domain errors (a=0 quadratic, √ branch,
+non-finite) tag `#DOMAIN!` alone. socketDocs verified (arg in radians −π..π, coeffs highest-degree
+first, leading zeros ignored). Pins: `wiredNull.test.ts` "Complex — operands with literals" (Quadratic
+Roots, +1). Combine candidates: none strong (Unary/Binary already op-merged; PolyRoots vs Quadratic
+differ in output shape and purpose — Quadratic is the Equation-companion two-labeled-root form).
+Residue: none.
+
 ### SESSION DIGEST (2026-08-24 — author polish pass: Join dropdown, catalog valence, KaTeX arc trig, string-list errors, Aggregate optgroups, scratch-seed Groups)
 
 Six author asks, each landed + committed separately. (1) **Join `how` → arg dropdown**

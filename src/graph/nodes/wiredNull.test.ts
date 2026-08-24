@@ -4,7 +4,7 @@ import { DateConstructNode, DateAddNode, WorkdaysNode } from "./date";
 import { BooleanOpNode, NotNode, IfsNode, SwitchNode } from "./logic";
 import { SliderInputNode, ColorBlendNode } from "./input";
 import { RandBetweenNode } from "./display";
-import { ComplexFromNode } from "./complex";
+import { ComplexFromNode, QuadraticRootsNode } from "./complex";
 import { CableSwitchNode } from "./control";
 import { ExpressionNode } from "./expression";
 import { ClampNode, ArithmeticNode, MathFnNode, MRoundNode, CombinatoricsNode } from "./scalar";
@@ -550,6 +550,18 @@ describe("Input family — wired blank by role", () => {
     const [v0] = Object.keys(node.inputs);
     expect(node.data({ [v0]: [null] }).out).toBeNull();
     expect(node.data({ [v0]: [42] }).out).toBe(42);
+  });
+});
+
+describe("Complex — operands with literals propagate a wired blank", () => {
+  // Quadratic Roots reads a/b/c through readInput, so a wired blank coefficient blanks
+  // the roots while an unwired slot solves the card's a x^2 + b x + c.
+  it("Quadratic Roots: a wired blank coefficient blanks the roots; unwired solves the card", () => {
+    const node = new QuadraticRootsNode();
+    node.literals.a = 1; node.literals.b = 0; node.literals.c = 1;
+    expect(node.data({ a: [null as unknown as number] }).x1).toBeNull();
+    // Unwired solves x^2 + 1 = 0 -> a complex root, not null.
+    expect(node.data({}).x1).not.toBeNull();
   });
 });
 
