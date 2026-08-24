@@ -146,16 +146,23 @@ untouchable) is `tapSelect.installTapSelect`, sharing a mutable `TapCensus` the 
 still reads for its off-canvas / form-control branches. Both surfaces install both; the drill-in
 gets no `groupBand` (no groups in a subgraph). Main-canvas behavior unchanged — the tap-select pipe
 is added BEFORE `selectableNodes` so its swallow still beats the background deselect (in select
-mode that ordering is what preserves an accumulating tap). `surfaceParity.test.ts` pins both
-installers on both surfaces + `installNodeDragGuard…isPinching()` in areaPresets. tsc + full vitest
-(4692) green. Two plan deviations, deliberate: (1) SKIPPED step 5's `scripts/touch-pan-probe.mjs`
-puppeteer probe — standing author rule is no agent browser-automation for UI, author eyeballs in
-person; the touch behavior goes on the author's eyeball list instead. (2) KEPT the drill-in
-lock-class mirror (`CompositeEditorOverlay.tsx`) the plan's step 6 said to delete — the MAIN canvas
-ALSO applies `.solenoid-canvas--locked` (`Canvas.tsx:755`) and that CSS disables field/socket/cable
-pointer input, which the drag guard does NOT cover, so deleting it would leave a locked drill-in
-editable. Author eyeball: on touch emulation open a composite, finger-pan over cards, pinch, tap a
-card to select, toggle the lock pill.
+mode that ordering is what preserves an accumulating tap). **The pre-exist bug the probe caught:**
+a drill-in's internal nodes are loaded with the doc BEFORE the mount, so the `nodecreated` pipe
+never fires for them — installing the guard only from that pipe left the drill-in doing nothing
+(same dead pan as before). The backfill loop now patches every view it adds
+(`mount.patchDragGuard(n.id)` beside `addNodeView`); the pipe still covers nodes added while
+drilled in. `surfaceParity.test.ts` pins both installers on both surfaces, the
+`installNodeDragGuard…isPinching()` shape in areaPresets, AND the backfill path (guard applied to a
+view, not only on nodecreated). **Probe** (`scripts/touch-pan-probe.mjs`, agent-run per the backlog
+line's "headless CDP touch emulation, not author-watched" — a measured behaviour check, not the
+visual eyeball the no-puppeteer rule covers; mobile-emulated so `IS_MOBILE` is genuinely true):
+MAIN canvas finger-drag on a card → cam Δ(120, 90), 0 nodes moved; DRILL-IN → cam Δ(120, 90), 0
+nodes moved (was: nothing); a stationary tap selects exactly one card. tsc + full vitest (4703)
+green. One deviation kept from the plan: step 6 said delete the drill-in lock-class mirror
+(`CompositeEditorOverlay.tsx`) — but the MAIN canvas ALSO applies `.solenoid-canvas--locked`
+(`Canvas.tsx:755`) and that CSS disables field/socket/cable pointer input, which the drag guard does
+NOT cover, so deleting it would leave a locked drill-in editable. Author eyeball: on a phone or touch
+emulation open a composite, finger-pan over cards, pinch, tap a card to select, toggle the lock pill.
 
 **A5 Input (direct + Control) sweep** (23 leaves / ~19 classes) → one wired-blank bug: Color
 Blend treated a blank on a color operand as an "isn't a color" `#VALUE!` instead of propagating

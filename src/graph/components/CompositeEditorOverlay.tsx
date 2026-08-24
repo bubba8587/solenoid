@@ -45,6 +45,10 @@ type DrillMount = {
   selector: ReturnType<typeof AreaExtensions.selector>;
   selectable: ReturnType<typeof AreaExtensions.selectableNodes>;
   history: HistoryPlugin<Schemes>;
+  // Applies the touch drag guard to one node's view. The internal nodes PRE-EXIST the
+  // mount (loaded with the doc, before the nodecreated pipe), so the pipe never fires for
+  // them — the backfill must patch each view explicitly, or a finger press grabs a card.
+  patchDragGuard: (id: string) => void;
   // The ELK plugin is heavy, so it is dynamically imported on first Tidy and cached here.
   arrange: AutoArrangePlugin<Schemes> | null;
 };
@@ -145,7 +149,7 @@ async function getDrillMount(composite: CompositeNode): Promise<DrillMount> {
     return ctx;
   });
 
-  const mount: DrillMount = { container, area, selector, selectable, history, arrange: null };
+  const mount: DrillMount = { container, area, selector, selectable, history, patchDragGuard, arrange: null };
   holder.__drillMount = mount;
   return mount;
 }
@@ -205,6 +209,10 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
       try {
         for (const n of comp.internalEditor.getNodes()) {
           if (!mount.area.nodeViews.has(n.id)) await mount.area.addNodeView(n);
+          // The view + its drag handler exist now; patch the guard so a finger press on
+          // this pre-existing card falls through to a pan (the nodecreated pipe only
+          // catches nodes ADDED while drilled in).
+          mount.patchDragGuard(n.id);
         }
         for (const c of comp.internalEditor.getConnections()) {
           if (!mount.area.connectionViews.has(c.id)) await mount.area.addConnectionView(c);

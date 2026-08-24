@@ -117,4 +117,13 @@ describe("editing-surface parity", () => {
     expect(read("src/graph/components/CompositeEditorOverlay.tsx"))
       .toContain("installPinchTranslateVeto");
   });
+
+  // The regression the probe caught: a drill-in's internal nodes PRE-EXIST the mount, so the
+  // nodecreated pipe never fires for them. The guard MUST be applied to each view the backfill
+  // adds, or a finger press grabs a card and the pan is dead (exactly the bug A6 fixed). Pin
+  // that the patcher is called next to addNodeView, not only from the nodecreated pipe.
+  it("applies the drag guard to backfilled (pre-existing) drill-in views", () => {
+    expect(read("src/graph/components/CompositeEditorOverlay.tsx"))
+      .toMatch(/addNodeView[\s\S]{0,400}patchDragGuard/);
+  });
 });
