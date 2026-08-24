@@ -539,6 +539,34 @@ Pins: `wiredNull.test.ts` "Tables ▸ Lambda" (MakeArray shape, +1). Combine can
 + FrameFromLists both assemble a frame (matrix+headers vs named lists); GetColumn + GetRow (pull a
 column vs a row). Residue: none.
 
+**A5 Tables ▸ Table verbs sweep** (35 leaves — the LAST family) → NO bugs (frame.ts stable after A2's
+C3; no forbidden `?? this.literals` idiom anywhere in it). The relational verbs (Distinct, Head,
+Sort, Filter, Join, SumIfs, Window, GroupBy, Append, BindColumns, Fill/Replace/DropBlank, the column
+surgery + reshape verbs) read the frame operand `?? null` and column-reference/key params via
+`readInput`/`readFilterValue`, propagating a wired blank to null while an EMPTY literal keeps its
+"not chosen → pass through / all columns" reading (Sort/Join/SelectColumns already pinned). XLOOKUP
+(deferred from Find) reflects A4: `noWidenInputs` keeps a Frame typed, all four column refs propagate,
+`ifNotFound`'s empty literal = "no fallback" vs a wired blank = unknown, and a scalar/1-D source is a
+loud `#VALUE!` not a silent blank — pinned. ReplaceValues (A2's C3.2) uses `readFilterValue` +
+`autoLiterals` with the same empty-vs-blank distinction. Rust mirror (`src-tauri/src/engine.rs`): NO
+semantics change needed — the wired-blank handling is entirely in the node `data()` (JS), the fused
+verb kernels were untouched, so nothing to mirror (cargo not run here). Pins: `wiredNull.test.ts`
+"XLOOKUP — column refs propagate" (+2). Combine candidates: SUMIFS (list.ts) and Window/GroupBy all
+do grouped aggregation — a longer-term "aggregate over a frame" consolidation; Append + BindColumns →
+one "Combine Frames" with a vertical/horizontal mode (the frame analog of VSTACK/HSTACK). Residue:
+none.
+
+**A5 node-by-node sweep — COMPLETE.** All 23 catalog families walked. Bugs fixed (3): Color Blend
+wired-blank color operand (#VALUE! → propagate); Expect `allowed` check-parameter (reverted to card
+→ skip like min/max/pattern); a misleading `strScalar` comment (claimed `?? literal`, body is
+`readInput`). ~34 `wiredNull.test.ts` pins added across the families; `finePrintContract`/`caseContract`
+already covered the description claims. Findings filed (not changed): NPV blank-cell-as-zero vs Excel
+range parity; HYPOT exists twice (HypotenuseNode + TwoInputMath's hypot op). Recorded author call:
+mode-selectors (basis, delimiter, weekend, return_type…) uniformly PROPAGATE a wired blank rather than
+defaulting — a cross-cutting change if the author wants otherwise. Combine candidates fed per family
+to the Lead for the next planning round. Overall verdict: the node layer already honors the
+value-semantics role table; the 3 fixes were the only real defects in ~600 leaves.
+
 **A5 Other sweep** (Convert, Cast, Placeholder + structural Group/Conduit/Composite/Equation/FC) →
 NO bugs. Convert (the flagship unit control): the value is an operand, a wired blank propagates to
 null; units are dropdown config, incommensurable → `#N/A`, over-range → `#OVERFLOW!` per cell;

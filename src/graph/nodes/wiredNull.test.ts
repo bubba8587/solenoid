@@ -9,7 +9,7 @@ import { CableSwitchNode } from "./control";
 import { ExpressionNode } from "./expression";
 import { ClampNode, ArithmeticNode, MathFnNode, MRoundNode, CombinatoricsNode } from "./scalar";
 import { MirrNode, TBillNode, IrrNode, OddCouponNode, NpvNode, DepreciationNode } from "./finance";
-import { SortFrameNode, JoinNode, HeadNode, SelectColumnsNode } from "./frame";
+import { SortFrameNode, JoinNode, HeadNode, SelectColumnsNode, XLookupNode } from "./frame";
 import { ListIndexNode, SliceNode, FilterNode, SeriesNode, AggregateNode } from "./list";
 import { BulletNode, KpiNode, HistogramNode } from "./visual";
 import { AlertNode } from "./display";
@@ -319,6 +319,26 @@ describe("a column REFERENCE — the frame family's dominant shape", () => {
     const unwired = new JoinNode();
     unwired.stringLiterals.leftKey = "id";
     expect((await unwired.data({ left: [l], right: [r] })).frame).not.toBeNull();
+  });
+});
+
+describe("XLOOKUP — column refs propagate, a non-table is #VALUE!", () => {
+  const table: FrameValue = { __frame: true, columns: [
+    { name: "k", type: "string", values: ["a", "b"] },
+    { name: "v", type: "number", values: [1, 2] },
+  ] };
+  it("a wired blank In column blanks the result; unwired uses the literal", () => {
+    const node = new XLookupNode();
+    node.stringLiterals.inColumn = "k";
+    node.stringLiterals.returnColumn = "v";
+    expect(node.data({ frame: [table], lookup: ["a"], inColumn: [null as unknown as string] }).value).toBeNull();
+    expect(node.data({ frame: [table], lookup: ["a"] }).value).toBe(1);
+  });
+  it("a scalar source (not a table) is #VALUE!, never a silent blank", () => {
+    const node = new XLookupNode();
+    node.stringLiterals.inColumn = "k";
+    node.stringLiterals.returnColumn = "v";
+    expect(isSolError(node.data({ frame: [5], lookup: ["a"] }).value)).toBe(true);
   });
 });
 

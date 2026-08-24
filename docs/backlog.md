@@ -16,9 +16,6 @@ needs the author watching browser devtools / a device (those items stay below, u
 Promoted from `deferrals.md` where an entry was engine/logic work that was never really
 parked. Each item: build, pin with tests, one digest line, delete the line here.
 
-**A — correctness & parity (engine/formula, fully test-pinnable)**
-- [ ] **A5 Node-by-node sweep**, per family, value-semantics + description truth (below).
-
 **B0 — the Python/R gap (author ask 2026-08-23) — Tiers 1 + 2 LANDED; what remains**
 - [ ] `python-r-gap.md` open items: ODE integrate (RK4 over an Expression), 2-D histogram for
   the Heatmap, `str_wrap` (text → lines), STL (loess decomposition). Tier 3 stays recorded as
@@ -40,10 +37,6 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   cards + import cables, generator chain, coverage guards) is deleted. The author
   will describe the replacement precisely; build nothing toward it until then.
 
-- [ ] **Node-by-node sweep** — walk the catalog one node at a time: null/error/empty
-  inputs handled per `value-semantics.md`; collapsed card reads right; description
-  matches actual behavior; tooltips/labels per DESIGN §7. Record per-family findings
-  in the session digest; fix small, file anything big.
 - [ ] **Finance absolute-value verification (real Excel needed).** The bond/coupon
   family has NO oracle — Formula.js implements almost none of it. `financeInvariants.test.ts`
   now pins the round-trips/identities (PRICE↔YIELD, PRICEMAT↔YIELDMAT, ODD* pairs,
