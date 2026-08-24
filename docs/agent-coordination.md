@@ -10,8 +10,6 @@ Agent 1 writes plans (`docs/plans/`), doesn't execute. Executors (Agent 2 soleno
 
 ## Claims
 
-- rete-area-plugin 2.1.5 → 2.3.2 — Agent 4 (solenoid-f1), Lead-assigned. Bump + selection-test pass (2.3.1 Selector.add) + CappedZoom.wheel decision (keep our curve, rewrite comment) vs 2.2.x wheel norm. Files: package.json, areaPresets.ts, selection/pointer tests.
-
-- Set Cell writes by the Value's shape (scalar / row / block) — Agent 2 (solenoid-18): kernel+node+tests LANDED (83c5a339); anyIn→anyDataIn, setCells extends by rank, #REF! names the overflow axis, takesAutoLiteral gains anydata. ONE nodeCatalog description line pending — handed to Agent 4 (they own the file). Landed today: A6, A4, A3, C3, C4, B8, Replace Values parity, Node Packs pin, katex 0.18.
-- CSV File + Parquet File → Local File — Agent 4 (solenoid-f1). Landed today: B0 (4 items), C2, C5 stats pair, elkjs 0.12 + layerUnzipping cap, Write File merge.
+- Gauge + Bullet → one "value on a scale" card (Dial/Bar selector) — Agent 2 (solenoid-18). Set Cell FULLY LANDED (code 83c5a339, catalog 367ce1c4; full suite green 4812). Landed today: A6, A4, A3, C3, C4, B8, Replace Values parity, Node Packs pin, katex 0.18, Set Cell.
+- zIndexNodesOrder vs simpleNodesOrder + settle the OS-dropdown-swallow precaution — Agent 4 (solenoid-f1), Lead-assigned. Headless CDP probe of native <select> close-on-mousedown under both orders; adopt zIndexNodesOrder OR delete the ~21 pointerdown swallows per the decider. Files: areaPresets/order install site, node components (swallow sites), 2 backlog items. Prior landed today: Write File (b40f069d), Local File (41743e7d), rete-area 2.3.2 (eb2b4acb).
 - Series absorbs Geometric / Fibonacci / Repeat — Jeff / Agent 5 (solenoid-b2). Landed today: A5 (23 families), B7, C5 five, Range inclusive, HYPOT dedup, popup decider + read-only cells as text.
