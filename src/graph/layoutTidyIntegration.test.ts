@@ -3,6 +3,7 @@ import ELK from "elkjs";
 import { solveStandoffs } from "./standoffSolver";
 import { separateOverlaps, type PushBox } from "./groupPushCore";
 import { anchorPoint, ANCHOR_DIR, type Box, type Standoff } from "./standoffs";
+import { tidyLayoutOptions, type TidyDirection, type TidyDensity, type TidyWidthCap } from "./tidyArrange";
 
 // ─── ELK Tidy integration guard ─────────────────────────────────────────────────
 // The layout property tests (layoutInvariants.test.ts) exercise the PURE cores in
@@ -23,13 +24,14 @@ import { anchorPoint, ANCHOR_DIR, type Box, type Standoff } from "./standoffs";
 
 const elk = new ELK();
 
-// The app's ELK config (Canvas.tsx arrangeFn): layered, rightward, with its spacings.
-const APP_OPTS: Record<string, string> = {
-  "elk.algorithm": "layered",
-  "elk.direction": "RIGHT",
-  "elk.layered.spacing.nodeNodeBetweenLayers": "55",
-  "elk.spacing.nodeNode": "38",
-};
+// The arrange plugin supplies `elk.algorithm` (+ hierarchyHandling/edgeRouting) from its
+// root defaults; the knobs supply the rest via `tidyLayoutOptions`. Driving elkjs directly
+// here, we add the one plugin default and merge the knob options — the faithful reproduction.
+const PLUGIN_DEFAULT = { "elk.algorithm": "layered" } as const;
+function appOpts(s: { direction: TidyDirection; density: TidyDensity; widthCap: TidyWidthCap }): Record<string, string> {
+  return { ...PLUGIN_DEFAULT, ...tidyLayoutOptions(s) };
+}
+const DEFAULT_TIDY = { direction: "right", density: "normal", widthCap: 0 } as const;
 
 type Rect = { id: string; x: number; y: number; w: number; h: number };
 const overlaps = (a: Rect, b: Rect) =>
@@ -44,9 +46,22 @@ function firstOverlap(rects: Rect[]): string | null {
 
 type ElkNode = { id: string; width: number; height: number };
 type ElkEdge = { id: string; sources: string[]; targets: string[] };
-async function layout(children: ElkNode[], edges: ElkEdge[]): Promise<Rect[]> {
-  const g = await elk.layout({ id: "root", layoutOptions: APP_OPTS, children, edges });
+async function layout(
+  children: ElkNode[],
+  edges: ElkEdge[],
+  tidy: { direction: TidyDirection; density: TidyDensity; widthCap: TidyWidthCap } = DEFAULT_TIDY,
+): Promise<Rect[]> {
+  const g = await elk.layout({ id: "root", layoutOptions: appOpts(tidy), children, edges });
   return (g.children ?? []).map((c) => ({ id: c.id, x: c.x ?? 0, y: c.y ?? 0, w: c.width ?? 0, h: c.height ?? 0 }));
+}
+
+// distinct coordinate buckets among a set of rects (1px tolerance), per axis.
+function distinct(rects: Rect[], axis: "x" | "y"): number {
+  const vals = rects.map((r) => r[axis]).sort((a, b) => a - b);
+  let n = 0;
+  let last = Number.NaN;
+  for (const v of vals) { if (Number.isNaN(last) || Math.abs(v - last) > 1) { n++; last = v; } }
+  return n;
 }
 
 describe("ELK Tidy integration (elkjs under node + the app's post-layout passes)", () => {
@@ -136,5 +151,68 @@ describe("ELK Tidy integration (elkjs under node + the app's post-layout passes)
       return { id: b.id, x: b.x + (d?.dx ?? 0), y: b.y + (d?.dy ?? 0), w: b.w, h: b.h };
     });
     expect(firstOverlap(finalRects)).toBeNull();
+  });
+});
+
+describe("tidyLayoutOptions — the three knobs map to ELK options", () => {
+  it("direction sets elk.direction; RIGHT and DOWN", () => {
+    expect(tidyLayoutOptions({ direction: "right", density: "normal", widthCap: 0 })["elk.direction"]).toBe("RIGHT");
+    expect(tidyLayoutOptions({ direction: "down", density: "normal", widthCap: 0 })["elk.direction"]).toBe("DOWN");
+  });
+
+  it("density picks the spacing pair; normal stays today's 55/38", () => {
+    const pair = (d: TidyDensity) => {
+      const o = tidyLayoutOptions({ direction: "right", density: d, widthCap: 0 });
+      return [o["elk.layered.spacing.nodeNodeBetweenLayers"], o["elk.spacing.nodeNode"]];
+    };
+    expect(pair("compact")).toEqual(["36", "24"]);
+    expect(pair("normal")).toEqual(["55", "38"]);
+    expect(pair("airy")).toEqual(["80", "56"]);
+  });
+
+  it("a width cap adds COFFMAN_GRAHAM + layerBound; off omits both", () => {
+    const off = tidyLayoutOptions({ direction: "right", density: "normal", widthCap: 0 });
+    expect(off["elk.layered.layering.strategy"]).toBeUndefined();
+    expect(off["elk.layered.layering.coffmanGraham.layerBound"]).toBeUndefined();
+    for (const cap of [2, 3, 4] as const) {
+      const o = tidyLayoutOptions({ direction: "right", density: "normal", widthCap: cap });
+      expect(o["elk.layered.layering.strategy"]).toBe("COFFMAN_GRAHAM");
+      expect(o["elk.layered.layering.coffmanGraham.layerBound"]).toBe(String(cap));
+    }
+  });
+});
+
+describe("width cap caps the layer width (Coffman-Graham), no overlaps", () => {
+  // A 9→1 fan: without a cap ELK stacks all 9 sources in ONE layer; with cap 3 they split
+  // across 3 layers. RIGHT layers along x, DOWN along y.
+  const fan = () => {
+    const children: ElkNode[] = [{ id: "sink", width: 180, height: 80 }];
+    const edges: ElkEdge[] = [];
+    for (let i = 0; i < 9; i++) {
+      children.push({ id: `s${i}`, width: 180, height: 80 });
+      edges.push({ id: `e${i}`, sources: [`s${i}`], targets: ["sink"] });
+    }
+    return { children, edges };
+  };
+  const sources = (rects: Rect[]) => rects.filter((r) => r.id !== "sink");
+
+  it("RIGHT: cap 3 -> 3 x-columns among the 9; cap off -> 1", async () => {
+    const { children, edges } = fan();
+    const capped = await layout(children, edges, { direction: "right", density: "normal", widthCap: 3 });
+    expect(distinct(sources(capped), "x")).toBe(3);
+    expect(firstOverlap(capped)).toBeNull();
+    const uncapped = await layout(children, edges, { direction: "right", density: "normal", widthCap: 0 });
+    expect(distinct(sources(uncapped), "x")).toBe(1);
+    expect(firstOverlap(uncapped)).toBeNull();
+  });
+
+  it("DOWN: cap 3 -> 3 y-rows among the 9; cap off -> 1", async () => {
+    const { children, edges } = fan();
+    const capped = await layout(children, edges, { direction: "down", density: "normal", widthCap: 3 });
+    expect(distinct(sources(capped), "y")).toBe(3);
+    expect(firstOverlap(capped)).toBeNull();
+    const uncapped = await layout(children, edges, { direction: "down", density: "normal", widthCap: 0 });
+    expect(distinct(sources(uncapped), "y")).toBe(1);
+    expect(firstOverlap(uncapped)).toBeNull();
   });
 });

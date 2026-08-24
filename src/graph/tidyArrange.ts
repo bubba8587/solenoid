@@ -51,6 +51,39 @@ export function symmetricPortPreset() {
   };
 }
 
+export type TidyDirection = "right" | "down";
+export type TidyDensity = "compact" | "normal" | "airy";
+export type TidyWidthCap = 0 | 2 | 3 | 4;
+
+// Between-layers / within-layer node spacing per density. `normal` is today's 55/38.
+const TIDY_DENSITY_SPACING: Record<TidyDensity, readonly [number, number]> = {
+  compact: [36, 24],
+  normal:  [55, 38],
+  airy:    [80, 56],
+};
+
+/** The ELK layout options for the three Tidy knobs, read at layout time by BOTH call
+ *  sites (main canvas + composite drill-in). `elk.algorithm`/`hierarchyHandling`/
+ *  `edgeRouting` still come from the arrange plugin's root defaults; this only sets what
+ *  the knobs drive. A width cap needs COFFMAN_GRAHAM — `layerBound` is inert otherwise. */
+export function tidyLayoutOptions(s: {
+  direction: TidyDirection;
+  density: TidyDensity;
+  widthCap: TidyWidthCap;
+}): Record<string, string> {
+  const [betweenLayers, nodeNode] = TIDY_DENSITY_SPACING[s.density];
+  const opts: Record<string, string> = {
+    "elk.direction": s.direction === "down" ? "DOWN" : "RIGHT",
+    "elk.layered.spacing.nodeNodeBetweenLayers": String(betweenLayers),
+    "elk.spacing.nodeNode": String(nodeNode),
+  };
+  if (s.widthCap > 0) {
+    opts["elk.layered.layering.strategy"] = "COFFMAN_GRAHAM";
+    opts["elk.layered.layering.coffmanGraham.layerBound"] = String(s.widthCap);
+  }
+  return opts;
+}
+
 // ELK is a heavy chunk only Tidy needs — wire it on first arrange, never at init.
 export function makeEnsureArrange(
   area: AreaPlugin<Schemes, AreaExtra>,
