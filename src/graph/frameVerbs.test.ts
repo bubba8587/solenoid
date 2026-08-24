@@ -522,6 +522,25 @@ describe("timesaver verbs", () => {
     expect(replaceValues(f, "", "B", "z", "cell").columns[1].values).toEqual(["a", "b", "c"]);
   });
 
+  it("replaceValues: the shared match rule (parity with Rust lazy_replace_values)", () => {
+    const g: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "n", type: "number", values: [5, 20, null] },
+        { name: "flag", type: "logical", values: [true, false, true] },
+      ],
+    };
+    // Number: numeric equality against the parsed find — "5.0" and "5" both hit 5;
+    // a non-numeric find hits no number cell.
+    expect(replaceValues(g, "n", "5.0", "99", "cell").columns[0].values).toEqual([99, 20, null]);
+    expect(replaceValues(g, "n", "5", "99", "cell").columns[0].values).toEqual([99, 20, null]);
+    expect(replaceValues(g, "n", "five", "99", "cell").columns[0].values).toEqual([5, 20, null]);
+    // Boolean: the words TRUE/FALSE, case-insensitive; "1"/"0" never match a boolean.
+    expect(replaceValues(g, "flag", "true", "false", "cell").columns[1].values).toEqual([false, false, false]);
+    expect(replaceValues(g, "flag", "TRUE", "false", "cell").columns[1].values).toEqual([false, false, false]);
+    expect(replaceValues(g, "flag", "1", "false", "cell").columns[1].values).toEqual([true, false, true]);
+  });
+
   it("replaceValues: substring rewrites inside text cells only", () => {
     const t: FrameValue = {
       __frame: true,

@@ -739,3 +739,32 @@ fn frames_equal(a: &[(String, String, Vec<Json>)], b: &[(String, String, Vec<Jso
                 })
         })
 }
+
+/// Replace Values shares ONE match rule with the JS oracle (`replaceValues`, the "shared
+/// match rule" test): a number matches by numeric equality against the parsed find (a
+/// non-numeric find hits no number cell), a boolean matches the words TRUE/FALSE
+/// case-insensitively (never 1/0), a string matches exact text. Dates are serials → number arm.
+#[test]
+fn replace_values_match_rule_parity() {
+    let f = frame(vec![
+        ("n", SolType::Number, vec![Cell::Num(5.0), Cell::Num(20.0), Cell::Null]),
+        ("flag", SolType::Logical, vec![Cell::Bool(true), Cell::Bool(false), Cell::Bool(true)]),
+        ("s", SolType::Str, strs(&["a", "b", "c"])),
+    ]);
+    let replace = |col: &str, find: &str, rep: &str| {
+        apply_ops(&f, &[WireOp::ReplaceValues {
+            column: col.into(), find: find.into(), replace_with: rep.into(), mode: "cell".into(),
+        }]).unwrap()
+    };
+    // Number: "5.0" and "5" both hit 5 numerically; a non-numeric find hits no number cell.
+    assert_eq!(dump(&replace("n", "5.0", "99"))[0].2, vec![num_to_json(99.0), num_to_json(20.0), Json::Null]);
+    assert_eq!(dump(&replace("n", "5", "99"))[0].2, vec![num_to_json(99.0), num_to_json(20.0), Json::Null]);
+    assert_eq!(dump(&replace("n", "five", "99"))[0].2, vec![num_to_json(5.0), num_to_json(20.0), Json::Null]);
+    // Boolean: TRUE/FALSE case-insensitive; "1"/"0" never match a boolean.
+    assert_eq!(dump(&replace("flag", "true", "false"))[1].2, vec![Json::Bool(false), Json::Bool(false), Json::Bool(false)]);
+    assert_eq!(dump(&replace("flag", "TRUE", "false"))[1].2, vec![Json::Bool(false), Json::Bool(false), Json::Bool(false)]);
+    assert_eq!(dump(&replace("flag", "1", "false"))[1].2, vec![Json::Bool(true), Json::Bool(false), Json::Bool(true)]);
+    // String: exact text, case-sensitive.
+    assert_eq!(dump(&replace("s", "b", "99"))[2].2, vec![Json::String("a".into()), Json::String("99".into()), Json::String("c".into())]);
+    assert_eq!(dump(&replace("s", "B", "99"))[2].2, vec![Json::String("a".into()), Json::String("b".into()), Json::String("c".into())]);
+}

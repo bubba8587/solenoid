@@ -1707,10 +1707,14 @@ export function replaceValues(
       ...col,
       values: col.values.map((v) => {
         if (v == null || isSolError(v)) return v;
+        // ONE match rule, shared with Rust `lazy_replace_values`: a number matches by
+        // numeric equality against the parsed find (a non-numeric find hits no number
+        // cell); a boolean matches the words TRUE/FALSE case-insensitively (not 1/0); a
+        // string matches exact text. Dates are serials, so they fall through the number arm.
         const hit = typeof v === "number"
-          ? (numericFind && v === findNum) || String(v) === find
+          ? numericFind && v === findNum
           : typeof v === "boolean"
-            ? (v ? "TRUE" : "FALSE") === find || String(v) === find.toLowerCase()
+            ? (v ? "TRUE" : "FALSE") === find.toUpperCase()
             : String(v) === find;
         return hit ? replacement : v;
       }),
