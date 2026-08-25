@@ -991,6 +991,9 @@ export class RenameNode extends ClassicPreset.Node {
 // ─── SPLIT COLUMN / ADD INDEX (Power Query column ops) ──────────────────────────
 
 export class SplitColumnNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    into: "Names for the split-out columns.",
+  };
   label: string;
   cachedResult: FrameValue | SolError | null = null;
   stringLiterals: Record<string, string> = { column: "", delimiter: ",", into: "" };
@@ -1002,7 +1005,7 @@ export class SplitColumnNode extends ClassicPreset.Node {
     this.addInput("frame", frameIn("Frame"));
     this.addInput("column", strIn("Column"));
     this.addInput("delimiter", strIn("Delimiter"));
-    this.addInput("into", strListIn("Into (names)"));
+    this.addInput("into", strListIn("Into"));
     this.addOutput("frame", frameOut("Frame"));
   }
 

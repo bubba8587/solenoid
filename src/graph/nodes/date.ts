@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { dateOut, numIn, numOut, strIn, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, broadcast, broadcastErr, readInput, type BroadcastResult } from "./shared";
+import { dateOut, numIn, numOut, strIn, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, broadcast, broadcastErr, readInput, BASIS_DOC, type BroadcastResult } from "./shared";
 import { type SolError } from "../errorValue";
 import { serialToJsDate, jsDateToSerial } from "./dateSerial";
 import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffNeedsBasis, epochToSerial, serialToEpoch, dateTrunc, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
@@ -281,6 +281,9 @@ export const DATE_DIFF_OP_META = {
 } satisfies Record<DateDiffOp, { label: string; description: string }>;
 
 export class DateDiffNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    basis: BASIS_DOC,
+  };
   label: string;
   op: DateDiffOp;
   literals: Record<string, number> = { basis: 0 };
@@ -303,7 +306,7 @@ export class DateDiffNode extends ClassicPreset.Node {
     const needs = dateDiffNeedsBasis(this.op);
     const has = !!this.inputs.basis;
     if (needs === has) return false;
-    if (needs) this.addInput("basis", numIn("Basis (0=30/360)"));
+    if (needs) this.addInput("basis", numIn("Basis"));
     else this.removeInput("basis");
     this.height = needs ? 225 : 195;
     return true;
@@ -383,6 +386,7 @@ export const WORKDAYS_OP_META = {
 export class WorkdaysNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     holidays: "Each holiday covers its whole calendar day. Any time of day in the entry is ignored.",
+    weekend_code: "Excel's WORKDAY.INTL / NETWORKDAYS.INTL codes: 1 = Sat+Sun, 2 = Sun+Mon, … 7 = Fri+Sat; 11–17 = a single day off.",
   };
 
   label: string;
@@ -399,7 +403,7 @@ export class WorkdaysNode extends ClassicPreset.Node {
     this.addInput("start", dateComboIn("Start date"));
     if (this.op === "workday") this.addInput("days", numListIn("Days"));
     else this.addInput("end", dateComboIn("End date"));
-    this.addInput("weekend_code", numIn("Weekend code (1=Sat+Sun)"));
+    this.addInput("weekend_code", numIn("Weekend"));
     // `holidays` is a LIST PARAMETER — the whole set is consulted per result, so it
     // is NOT an element-wise operand and stays a plain datelist.
     this.addInput("holidays",     dateListIn("Holidays"));

@@ -1,5 +1,5 @@
 ﻿import { ClassicPreset } from "rete";
-import { numIn, numOut, listIn, listOut, dateIn, dateListIn, frameOut, readInput } from "./shared";
+import { numIn, numOut, listIn, listOut, dateIn, dateListIn, frameOut, readInput, BASIS_DOC } from "./shared";
 import type { FrameValue } from "../frame";
 import { serialToJsDate } from "./date";
 import { solError, type SolError } from "../errorValue";
@@ -772,6 +772,10 @@ export const TBILL_OP_META = {
 } satisfies Record<TBillOp, { label: string; description: string }>;
 
 export class TBillNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    price: "Per $100 of face value.",
+    discount: "As a decimal, e.g. 0.05 for 5%.",
+  };
   label: string;
   op: TBillOp;
   cachedResult: number | null = null;
@@ -785,9 +789,9 @@ export class TBillNode extends ClassicPreset.Node {
     this.addInput("settle",   dateIn("Settlement date"));
     this.addInput("maturity", dateIn("Maturity date"));
     if (this.op === "tbillyield") {
-      this.addInput("price",    numIn("Price ($100 face)"));
+      this.addInput("price",    numIn("Price"));
     } else {
-      this.addInput("discount", numIn("Discount rate (e.g. 0.05)"));
+      this.addInput("discount", numIn("Discount rate"));
     }
     this.addOutput("result", numOut("Result"));
   }
@@ -845,6 +849,9 @@ export const SECURITY_DISC_OP_META = {
 } satisfies Record<SecurityDiscOp, { label: string; description: string }>;
 
 export class SecurityDiscNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    basis: BASIS_DOC,
+  };
   label: string;
   op: SecurityDiscOp;
   cachedResult: number | null = null;
@@ -858,7 +865,7 @@ export class SecurityDiscNode extends ClassicPreset.Node {
     this.addInput("settle",   dateIn("Settlement date"));
     this.addInput("maturity", dateIn("Maturity date"));
     if (this.op === "disc") {
-      this.addInput("pr",         numIn("Price (pr)"));
+      this.addInput("pr",         numIn("Price"));
       this.addInput("redemption", numIn("Redemption"));
     } else if (this.op === "intrate") {
       this.addInput("investment", numIn("Investment"));
@@ -867,7 +874,7 @@ export class SecurityDiscNode extends ClassicPreset.Node {
       this.addInput("investment", numIn("Investment"));
       this.addInput("discount",   numIn("Discount rate"));
     }
-    this.addInput("basis", numIn("Basis (0=30/360)"));
+    this.addInput("basis", numIn("Basis"));
     this.addOutput("result", numOut("Result"));
   }
 
@@ -906,6 +913,7 @@ export const COUPON_OP_META = {
 export class CouponNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
+    basis: BASIS_DOC,
   };
   label: string;
   op: CouponOp;
@@ -920,7 +928,7 @@ export class CouponNode extends ClassicPreset.Node {
     this.addInput("settle",    dateIn("Settlement date"));
     this.addInput("maturity",  dateIn("Maturity date"));
     this.addInput("frequency", numIn("Frequency"));
-    this.addInput("basis",     numIn("Basis (0=30/360)"));
+    this.addInput("basis",     numIn("Basis"));
     this.addOutput("result", numOut("Result"));
   }
 
@@ -942,6 +950,7 @@ export class CouponNode extends ClassicPreset.Node {
 export class AccrintNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
+    basis: BASIS_DOC,
   };
   label: string;
   cachedResult: number | null = null;
@@ -956,7 +965,7 @@ export class AccrintNode extends ClassicPreset.Node {
     this.addInput("rate",      numIn("Annual coupon rate"));
     this.addInput("par",       numIn("Par value"));
     this.addInput("frequency", numIn("Frequency"));
-    this.addInput("basis",     numIn("Basis (0=30/360)"));
+    this.addInput("basis",     numIn("Basis"));
     this.addOutput("result", numOut("Accrued interest"));
   }
 
@@ -986,6 +995,9 @@ export class AccrintNode extends ClassicPreset.Node {
 // ─── ACCRINTM ─────────────────────────────────────────────────────────────────
 
 export class AccrintMNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    basis: BASIS_DOC,
+  };
   label: string;
   cachedResult: number | null = null;
   literals: Record<string, number> = { rate: 0.06, par: 1000, basis: 0 };
@@ -998,7 +1010,7 @@ export class AccrintMNode extends ClassicPreset.Node {
     this.addInput("settle", dateIn("Settlement date"));
     this.addInput("rate",   numIn("Annual coupon rate"));
     this.addInput("par",    numIn("Par value"));
-    this.addInput("basis",  numIn("Basis (0=30/360)"));
+    this.addInput("basis",  numIn("Basis"));
     this.addOutput("result", numOut("Accrued interest"));
   }
 
@@ -1026,6 +1038,7 @@ export class PriceDiscNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     pr: "Read in YIELDDISC mode: the price to solve the yield from.",
     redemption: "Face value redeemed at maturity. Defaults to 100 (par).",
+    basis: BASIS_DOC,
   };
   label: string;
   op: PriceDiscOp;
@@ -1042,7 +1055,7 @@ export class PriceDiscNode extends ClassicPreset.Node {
     this.addInput("discount",   numIn("Discount rate"));
     this.addInput("pr",         numIn("Price"));
     this.addInput("redemption", numIn("Redemption"));
-    this.addInput("basis",      numIn("Basis (0=30/360)"));
+    this.addInput("basis",      numIn("Basis"));
     this.addOutput("result", numOut("Result"));
   }
 
@@ -1074,6 +1087,7 @@ export class PriceMatNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     yld: "Read in PRICEMAT mode: the yield to price from.",
     pr: "Read in YIELDMAT mode: the price to solve the yield from.",
+    basis: BASIS_DOC,
   };
   label: string;
   op: PriceMatOp;
@@ -1091,7 +1105,7 @@ export class PriceMatNode extends ClassicPreset.Node {
     this.addInput("rate",     numIn("Coupon rate"));
     this.addInput("yld",      numIn("Yield"));
     this.addInput("pr",       numIn("Price"));
-    this.addInput("basis",    numIn("Basis (0=30/360)"));
+    this.addInput("basis",    numIn("Basis"));
     this.addOutput("result", numOut("Result"));
   }
 
@@ -1122,6 +1136,7 @@ export const DURATION_OP_META = {
 export class DurationNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
+    basis: BASIS_DOC,
   };
   label: string;
   op: DurationOp;
@@ -1138,7 +1153,7 @@ export class DurationNode extends ClassicPreset.Node {
     this.addInput("coupon",    numIn("Annual coupon rate"));
     this.addInput("yld",       numIn("Annual yield"));
     this.addInput("frequency", numIn("Frequency"));
-    this.addInput("basis",     numIn("Basis (0=30/360)"));
+    this.addInput("basis",     numIn("Basis"));
     this.addOutput("result", numOut("Years"));
   }
 

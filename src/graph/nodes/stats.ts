@@ -1004,8 +1004,8 @@ export class BinomDistRangeNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("BinomDistRange");
     this.label = init?.label ?? "BINOM.DIST.RANGE";
-    this.addInput("n",  numIn("n (trials)"));
-    this.addInput("p",  numIn("p (probability)"));
+    this.addInput("n",  numIn("Trials"));
+    this.addInput("p",  numIn("Probability"));
     this.addInput("lo", numIn("lower bound"));
     this.addInput("hi", numIn("upper bound"));
     this.addOutput("result", numOut("P(lo ≤ X ≤ hi)"));

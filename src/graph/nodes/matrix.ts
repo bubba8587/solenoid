@@ -211,9 +211,9 @@ export class TableMultNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("TableMult");
     this.label = init?.label ?? "MMULT";
-    this.addInput("a", tableIn("A (m×n)"));
-    this.addInput("b", tableIn("B (n×p)"));
-    this.addOutput("result", tableOut("A × B (m×p)"));
+    this.addInput("a", tableIn("A"));
+    this.addInput("b", tableIn("B"));
+    this.addOutput("result", tableOut("A × B"));
   }
 
   data(inputs: { a?: CellMat[]; b?: CellMat[] }): { result: Mat | SolError | null } {
@@ -582,6 +582,10 @@ export const TAKEDROP_OP_META = {
 } satisfies Record<TakeDropOp, { label: string; description: string }>;
 
 export class TakeDropNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    rows: "Positive counts from the start, negative from the end, 0 keeps all.",
+    cols: "Positive counts from the start, negative from the end, 0 keeps all.",
+  };
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["data"], combine: "single" }];
   label: string;
   op: TakeDropOp;
@@ -595,8 +599,8 @@ export class TakeDropNode extends ClassicPreset.Node {
     this.label = init?.label ?? "";
     // Labels stay op-neutral: the op swaps at runtime, sockets are fixed here.
     this.addInput("data", anyDataIn("List or table"));
-    this.addInput("rows", numIn("Count (± from end)"));
-    this.addInput("cols", numIn("Cols (± from end)"));
+    this.addInput("rows", numIn("Count"));
+    this.addInput("cols", numIn("Cols"));
     this.addOutput("result", adoptiveDataOut("Result"));
   }
 
@@ -639,6 +643,10 @@ export class TakeDropNode extends ClassicPreset.Node {
 // Shrinking is #VALUE! like Excel — TAKE is the shrinker.
 
 export class ExpandNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    rows: "Target row count. 0 keeps the current count.",
+    cols: "Target column count. 0 keeps the current count.",
+  };
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["matrix"], combine: "single" }];
   label: string;
   cachedResult: CellMat | SolError | null = null;
@@ -649,8 +657,8 @@ export class ExpandNode extends ClassicPreset.Node {
     super("Expand");
     this.label = init?.label ?? "EXPAND";
     this.addInput("matrix", adoptiveTableIn("Table"));
-    this.addInput("rows",   numIn("Rows (0 = keep)"));
-    this.addInput("cols",   numIn("Cols (0 = keep)"));
+    this.addInput("rows",   numIn("Rows"));
+    this.addInput("cols",   numIn("Cols"));
     this.addInput("fill",   anyIn("Fill"));
     this.addOutput("result", adoptiveTableOut("Expanded"));
   }

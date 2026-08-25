@@ -202,9 +202,16 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   defaults (Redemption, Min/Max, Decimals, seps, Merge name), "(optional)"/"(blank = all)", bond
   price/yield op-conditions, TextSlice N/Start/Len, Roman 1–3999, Bessel order, rank percentile/
   quartile, Chart Builder "(on/off)" (px/pt kept). Labels only, never socket keys, so cables survive.
-  Deliberately out of scope (not in the reviewed inventory): the day-count "Basis (0=30/360)" legend
-  (~9 finance nodes), the TBill/SecurityDisc price hints, "Into (names)", BinomDistRange n/p — flag
-  for a possible follow-up so basis stays consistent with the frequency change.
+  Follow-up commit (approved) finished the sweep: day-count "Basis (0=30/360)" → **Basis** on all
+  8 finance/date nodes with the legend in ONE shared `BASIS_DOC` (shared.ts, declareOnce, not 8
+  copies); TBill "Price ($100 face)"/"Discount rate (e.g. 0.05)" → Price / Discount rate;
+  SecurityDisc "Price (pr)" → Price; frame "Into (names)" → Into; BinomDistRange n/p → **Trials /
+  Probability** (Excel names); Weekend code → **Weekend**; plus the last inventory pass — TableMult
+  A/B shapes, Expand/TakeDrop 0-keep and ± conventions, XYPad X/Y (0–1), SeriesSum n/m → Start
+  power / Power step, Multinomial Values — hints to socketDocs. Kept as-is: units ("(px)"/"(pt)",
+  "(K)"…), math notation ("arg(z)", "P(lo ≤ X ≤ hi)"), the "(UTC)" timezone qualifier, and the
+  tableLambda λ-table labels ("Values (value)", "value2 (optional)") — those parentheticals are the
+  λ-argument-binding form that `frameLabelGrammar` (sourceInvariants) explicitly sanctions.
 
 ### SESSION DIGEST (2026-08-24b — parallel plan execution from docs/plans/)
 

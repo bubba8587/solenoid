@@ -861,8 +861,8 @@ export class SeriesSumNode extends ClassicPreset.Node {
     super("SeriesSum");
     this.label = init?.label ?? "SERIESSUM";
     this.addInput("x",    numIn("x"));
-    this.addInput("n",    numIn("n (start power)"));
-    this.addInput("m",    numIn("m (power step)"));
+    this.addInput("n",    numIn("Start power"));
+    this.addInput("m",    numIn("Power step"));
     this.addInput("coef", listIn("Coefficients"));
     this.addOutput("result", numOut("Result"));
   }
@@ -887,6 +887,9 @@ export class SeriesSumNode extends ClassicPreset.Node {
 
 // MULTINOMIAL(n1, n2, …, nk) = (n1+n2+…+nk)! / (n1! × n2! × … × nk!)
 export class MultinomialNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    values: "The category counts n₁, n₂, … — the multinomial coefficient of their sum.",
+  };
   label: string;
   cachedResult: number | null = null;
   width = 180;
@@ -895,7 +898,7 @@ export class MultinomialNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("Multinomial");
     this.label = init?.label ?? "MULTINOMIAL";
-    this.addInput("values", listIn("Values (n₁, n₂, …)"));
+    this.addInput("values", listIn("Values"));
     this.addOutput("result", numOut("Result"));
   }
 

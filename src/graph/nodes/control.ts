@@ -225,6 +225,10 @@ export class DateRangeNode extends ClassicPreset.Node {
 // they round-trip through extractInit's spread.
 
 export class XYPadNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    x: "Normalized 0 to 1.",
+    y: "Normalized 0 to 1.",
+  };
   label: string;
   literals: Record<string, number> = { fx: 0.5, fy: 0.5 };
   width  = 180;
@@ -235,8 +239,8 @@ export class XYPadNode extends ClassicPreset.Node {
     this.label = init?.label ?? "XY Pad";
     if (typeof init?.fx === "number") this.literals.fx = init.fx;
     if (typeof init?.fy === "number") this.literals.fy = init.fy;
-    this.addOutput("x", numOut("X (0–1)"));
-    this.addOutput("y", numOut("Y (0–1)"));
+    this.addOutput("x", numOut("X"));
+    this.addOutput("y", numOut("Y"));
   }
 
   data(): { x: number; y: number } {
