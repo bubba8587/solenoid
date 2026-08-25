@@ -213,8 +213,11 @@ a place a spec can be contradicted. Concretely:
   measures row center relative to `__content` in a `useLayoutEffect`). Do NOT reintroduce an
   `INPUT_ROW_TOP`-style constant. The dot straddles the card edge via `left/right:-5` anchored to
   `__content` — do NOT make the io-row or `__body` a positioning context. Default-centered branch
-  reads `var(--out-socket-top, 50%)` + `marginTop:-6` — never `transform: translateY` (offsetTop
-  ignores transforms, rete would misreport the endpoint).
+  reads `var(--out-socket-top, 50%)` + `marginTop:-6` — never `transform: translateY`. The
+  real constraint (verified in rete-render-utils `getElementCenter`, 2026-08-25): the endpoint
+  is the socket's LAYOUT box, summed `offsetTop/Left` up to the node view. Any layout CSS may
+  position a socket (custom properties, flex, inset); only a `transform` on the socket or an
+  ancestor inside `__content` misreports, because offsetTop ignores transforms.
 - **PINCH LISTENS IN CAPTURE, PAN IN BUBBLE** — rete's stock Zoom counts fingers from a
   BUBBLE-phase container pointerdown, so any `stopPropagation` in a node hid a finger and
   killed the gesture. `CappedZoom` re-seats the count into capture (unstoppable); pan/node-drag
