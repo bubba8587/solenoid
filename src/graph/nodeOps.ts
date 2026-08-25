@@ -396,6 +396,20 @@ export function hiddenOps(decl: NodeOpsDecl, host: NodeCatalogEntry): Array<{ op
   return decl.ops.filter((o) => !own.has(o.op));
 }
 
+/** A search-only row for an Excel function a leaf answers to under another name
+ *  ("Table Size: ROWS") — the same "Host: Name" shape as a hidden op's row, so a
+ *  user typing the Excel name sees it on the row they get, not just the host. */
+export function excelEntry(host: NodeCatalogEntry, name: string): NodeCatalogEntry {
+  return {
+    ...host,
+    type: `${host.type}__excel-${name}`,
+    label: opSearchLabel(host.label, name),
+    keywords: undefined,
+    hiddenOps: undefined,
+    hideOpsMark: undefined,
+  };
+}
+
 /** The catalog entry for one op of a family — a generated leaf, or a search-only
  *  row when collapsed. */
 export function opEntry(

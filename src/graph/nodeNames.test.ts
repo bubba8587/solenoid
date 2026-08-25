@@ -1,6 +1,6 @@
+import { nodeTypeName } from "./catalogUtils";
 import { describe, expect, it } from "vitest";
 import {
-  nodeTypeName,
   nodeDisplayNames,
   listEndpoints,
   findEndpoint,

@@ -1,4 +1,5 @@
 import { NODE_CATALOG } from "./nodeCatalog";
+import { nodeTypeName, setNodeNamer } from "./nodeNamer";
 import { packPlacements, packsStore, NODE_PACK_TAGS } from "./packs";
 import { NODE_OPS, hiddenOps, exposureOf, opEntry } from "./nodeOps";
 import { CATALOG_TO_EXCEL } from "./excelToCatalog";
@@ -9,7 +10,6 @@ import { nodeNameStore } from "./nodeNameStore";
 // Cycle-safe: nodeCtorRegistry imports FLAT_CATALOG from here, but neither module
 // touches the other's exports at init time.
 import { ctorRegistry, type NodeCtor } from "./nodeCtorRegistry";
-import { nodeTypeName } from "./nodeNames";
 
 // Pack nodes are INSERTED into the core tree at their target category path, so packs
 // never grow the top level; a type claimed by several packs records every owner.
@@ -289,6 +289,8 @@ export function nodeDisplayName(node: object): string {
   const label = ((node as { label?: string }).label ?? "").trim();
   return label || nodeName(node) || nodeTypeName(node as { constructor: { name: string } });
 }
+setNodeNamer(nodeDisplayName);
+export { nodeTypeName };
 
 export async function addNodeByCatalogType(catalogType: string): Promise<boolean> {
   const entry = FLAT_CATALOG.get(catalogType);

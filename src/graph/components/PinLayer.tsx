@@ -5,7 +5,7 @@ import { registerChrome } from "../chromeToggle";
 import { cableValueStore } from "../cableValueStore";
 import { connectionVersionStore, getEditor } from "../process";
 import { flyToNode } from "../flyToNode";
-import { nodeTypeName } from "../nodeNames";
+import { nodeDisplayName } from "../catalogUtils";
 import { GroupNode } from "../rete-nodes";
 import { groupReadouts, type RetainedTerminal } from "../groupCollapse";
 import { formatScalar } from "./format";
@@ -124,7 +124,7 @@ export function PinLayer() {
   const chips = pins.map((pin) => {
     const node = editor.getNode(pin.nodeId);
     if (!node) return null; // safety — should be dropped on delete
-    const label = (node.label ?? "").trim() || nodeTypeName(node);
+    const label = nodeDisplayName(node);
 
     // A pinned GROUP shows the same readouts a collapsed group would.
     if (node instanceof GroupNode) {

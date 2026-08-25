@@ -135,6 +135,13 @@ holder promotion on plain pan, `--zooming` quality drops on desktop, render-reso
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
 ### SESSION DIGEST (2026-08-25b — post-crash: cards named by their op, NAME-3)
+- **NAME-1, the naming model** (author: "Table Size" in the menu, "Table Info" on hover, a ROWS
+  search that never said ROWS — "design a coherent system"): rules.md NAME-1 is the table of every
+  name a node shows and its ONE home. Two mechanisms landed: an Excel name a leaf answers to is a
+  search row that shows it ("Table Size: ROWS", `excelEntry`, the hidden-op row shape; a generated
+  row ranks by the name after its colon); and the class name is internal — the header hover,
+  Navigator type, status bar, Problems/Pins/Comments/Isolate all read `nodeDisplayName`, with
+  `nodeNamer.ts` late-binding it for modules below catalogUtils. `nameSurfaces.test.ts` pins both.
 - **D7 XSTACK** (author: "give me XSTACK … can just be v and h"): VStackNode + HStackTableNode →
   one `StackNode`, op VSTACK | HSTACK, card titled XSTACK (collapsed family, NAME-3); `XSTACK(axis,
   …)` registered ("v" | "h") so the name is a callable claim (NAME-4); node ≡ formula pinned in

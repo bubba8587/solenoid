@@ -771,6 +771,30 @@ the math-fn `round` op's leaf claimed `ROUND`, a name that dispatches the 2-arg 
 ROUND which REFUSES the leaf's own 1-arg semantics (fixed by deleting the duplicate op —
 RoundN at digits 0 is the same capability).
 
+### NAME-1 — The naming model: every name a node shows has ONE source **[author 2026-08-25]**
+**MUST:** a node carries exactly these user-facing names, each read from its one home and
+nowhere else:
+| Name | Home | Shown on |
+|---|---|---|
+| **Name** | the catalog leaf label (`nodeCatalog.ts`); for an op family the CURRENT op's leaf/op label (NAME-3) | card title (default), header hover, Navigator, Inspector title, Problems / Pins / Comments / Status bar / Isolate / cable inspector / history, popup titles — all via `nodeDisplayName` (own label wins) |
+| **Excel names** | `NODE_EXCEL[type]` | Inspector Excel rows; the description sign-off "Excel: X."; and the Add-menu SEARCH as a row that shows the name — "Table Size: ROWS" (`excelEntry`, the hidden-op row shape) whenever the Excel name is not already the row's own name or one of its ops |
+| **Op names** | the family's `OP_META` label (`nodeOps` reads it, one home) | the dropdown; hidden-op search rows "Host: Op"; the card title when the op has its own leaf |
+| **Formula name** | `fx ?? despace(label)` (`nodeOps`) | the formula surface; casing per NAME-4 |
+| **Socket labels** | `addInput/addOutput` | the card rows; bare nouns, hints in `socketDocs` (`socket-reference.md` §8) |
+| **Description** | the catalog / `OP_META` description | menu row, header hover, Inspector; voice per DESIGN §7 |
+The class name, the rete `super()` name and the registry type key are INTERNAL and never shown:
+`nodeTypeName` (`nodeNamer.ts`) is the last-resort fallback for a node with no catalog entry (a
+Placeholder, a composite boundary); modules below `catalogUtils` in the import graph (errorValue,
+groupCollapse) reach the same derivation through `displayNameOf`, which `catalogUtils` binds at
+load. Nothing else reads `constructor.name` for display (two sanctioned non-display uses are
+listed in the test).
+
+*Why:* 2026-08-25 the node was "Table Size" in the menu, "Table Info" on hover (class-derived),
+and a ROWS search returned a row that never said ROWS — three surfaces, three sources.
+*Enforced by:* `nameSurfaces.test.ts` → every `NODE_EXCEL` name searched lands on a row showing
+it; only `nodeNamer.ts` strips a class name into a display string. `cardTitle.test.ts`
+(NAME-3) and `nameCase.test.ts` (NAME-4) pin the other rows of the table.
+
 ### NAME-2 — A node NAME never coincides with a core Excel function name **[author 2026-08-25]**
 **MUST:** a node's user-facing name (card label, catalog leaf, help/Reference, socket docs) must
 not read as a core Excel function that does something else. A bare "Columns" reads as `COLUMNS()`

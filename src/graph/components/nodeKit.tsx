@@ -209,10 +209,7 @@ export function InlineOutputRows({
 const LABEL_MAX_HEIGHT = 60;
 
 function typeHint(node: ShellNode): string {
-  return (node as unknown as { constructor: { name: string } }).constructor.name
-    .replace(/Node$/, "")
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .toUpperCase();
+  return nodeName(node) ?? "";
 }
 
 // Lucide "message-square" — matches NodeContextMenu's Add-comment icon.

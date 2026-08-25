@@ -4,7 +4,7 @@ import { commentStore, commentAuthorStore, commentsPanelUi, type Comment } from 
 import { registerChrome } from "../chromeToggle";
 import { flyToNodeAndFlash } from "../flyToNode";
 import { getEditor } from "../process";
-import { nodeTypeName } from "../nodeNames";
+import { nodeDisplayName } from "../catalogUtils";
 import "./commentsPanel.css";
 import { CloseIcon } from "./CloseIcon";
 
@@ -86,7 +86,7 @@ export function CommentsPanel() {
   const editor = getEditor();
   const nodeLabel = (nodeId: string) => {
     const node = editor?.getNode(nodeId);
-    return (node?.label ?? "").trim() || (node ? nodeTypeName(node) : "(deleted node)");
+    return node ? nodeDisplayName(node) : "(deleted node)";
   };
 
   const trigger = (

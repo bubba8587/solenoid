@@ -3,7 +3,7 @@
 
 import { CATALOG_TO_EXCEL } from "./excelToCatalog";
 import { fuzzyScore, fieldScore } from "./fuzzy";
-import { opsFor, opEntry } from "./nodeOps";
+import { opsFor, opEntry, excelEntry } from "./nodeOps";
 import { SolenoidSocket, canConnect, type SocketDataType } from "./sockets";
 import type { NodeCatalogEntry, CatalogEntry, CatalogCategory, CatalogPair } from "./AddNodeMenu";
 
@@ -26,8 +26,14 @@ export function flattenLeaves(entries: CatalogEntry[], ancestors: string[] = [])
     const decl = leaf.hiddenOps?.length ? opsFor(leaf.type) : undefined;
     // hiddenOps is only ever populated for a declaration that lists ops, so `create`
     // is present — the guard keeps that guarantee visible to the type checker.
-    if (!decl?.create) continue;
-    for (const op of leaf.hiddenOps!) out.push({ leaf: opEntry(decl, leaf, op), categoryPath });
+    if (decl?.create) for (const op of leaf.hiddenOps!) out.push({ leaf: opEntry(decl, leaf, op), categoryPath });
+    // An Excel name the leaf answers to that is not its own name or one of its ops (NAME-1).
+    // A hidden op has a row of its own; the host's PRIMARY op does not, so an Excel
+    // name that is the primary op (Type Check's ISNUMBER) still gets its alias row.
+    const own = new Set([leaf.label, ...(leaf.hiddenOps ?? []).map((o) => o.label)].map(bareName));
+    for (const name of CATALOG_TO_EXCEL.get(leaf.type) ?? []) {
+      if (!own.has(name.toUpperCase())) out.push({ leaf: excelEntry(leaf, name), categoryPath });
+    }
   }
   return out;
 }
@@ -40,6 +46,12 @@ function flattenTree(entries: CatalogEntry[], ancestors: string[] = []): LeafWit
     else out.push({ leaf: e, categoryPath: ancestors });
   }
   return out;
+}
+
+/** A label's name without a trailing parenthetical hint, upper-cased: "T.TEST (paired)"
+ *  and "DATE (Build)" answer to T.TEST and DATE without a redundant alias row. */
+function bareName(label: string): string {
+  return label.replace(/\s*\([^)]*\)\s*$/, "").trim().toUpperCase();
 }
 
 function typeWords(type: string): string {
@@ -66,6 +78,10 @@ export function scoreLeaf(query: string, { leaf, categoryPath }: LeafWithContext
   const fields = [leaf.label, `${leaf.label} ${category}`, typeWords(leaf.type), keywords];
   const bare = stripGlyphPrefix(leaf.label);
   if (bare && bare !== leaf.label) fields.push(bare);
+  // A generated "Host: Name" row is FOUND by the name after the colon — an exact hit
+  // on it ranks like an exact hit on a leaf's own label.
+  const colon = leaf.label.indexOf(": ");
+  if (colon > 0 && leaf.type.includes("__")) fields.push(leaf.label.slice(colon + 2));
   let bonus = 0;
   for (const f of fields) {
     const fs = f.trim() ? fieldScore(query, f) : null;

@@ -5,7 +5,7 @@ import { boundaryCrossings, type BoundaryCrossing } from "../isolateBoundary";
 import { getEditor, getArea, connectionVersionStore, unselectAllNodes } from "../process";
 import { cableSelectionStore } from "../cableState";
 import { standoffStore, standoffLayoutTick } from "../standoffs";
-import { nodeTypeName } from "../nodeNames";
+import { nodeDisplayName } from "../catalogUtils";
 import { getCablePath, Position } from "../cablePaths";
 import { cableShapeStore } from "../cableShape";
 import "./isolateEndpoints.css";
@@ -35,7 +35,7 @@ function socketCanvasPos(holder: HTMLElement, nodeId: string, key: string, side:
 function externalName(nodeId: string): string {
   const n = getEditor()?.getNode(nodeId);
   if (!n) return nodeId;
-  return (n.label ?? "").trim() || nodeTypeName(n);
+  return nodeDisplayName(n);
 }
 
 export function IsolateEndpoints() {

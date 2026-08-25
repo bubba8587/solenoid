@@ -4,6 +4,7 @@ import type { Schemes, AreaExtra } from "./schemes";
 import { GroupNode, DisplayNode, FormatControllerNode, ConduitNode } from "./rete-nodes";
 import { dockedNodeStore } from "./dockedNodeStore";
 import { createNotifier } from "./storeKit";
+import { displayNameOf } from "./nodeNamer";
 
 type Editor = NodeEditor<Schemes>;
 type Area = AreaPlugin<Schemes, AreaExtra>;
@@ -32,11 +33,8 @@ function extendedMembers(editor: Editor, group: GroupNode): string[] {
   return ext;
 }
 
-// Falls back to constructor.name, which the build's keepNames setting preserves.
-function genericLabel(node: { constructor: { name: string }; label?: string }): string {
-  const l = (node.label ?? "").trim();
-  if (l) return l;
-  return node.constructor.name.replace(/Node$/, "").replace(/([a-z])([A-Z])/g, "$1 $2");
+function genericLabel(node: object): string {
+  return displayNameOf(node);
 }
 
 // Keyed by the SOCKET it stands in for, not a connection, so an in-progress cable

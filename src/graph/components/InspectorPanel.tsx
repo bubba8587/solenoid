@@ -135,7 +135,7 @@ export function InspectorPanel() {
           <>
             <div className="inspector-name">{label}</div>
             <div className="inspector-type">
-              {catalogLabel ?? node.constructor.name.replace(/Node$/, "")}
+              {catalogLabel ?? nodeDisplayName(node)}
             </div>
             {location.length > 0 && (
               <div className="inspector-crumb">

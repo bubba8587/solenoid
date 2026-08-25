@@ -8,7 +8,7 @@ describe("card title", () => {
   // A Conduit is serial-numbered; the composite boundary cards read "Input"/"Output"
   // inside the composite they belong to.
   const DERIVED = new Set(["conduit", "composite-input", "composite-output"]);
-  const leaves = [...FLAT_CATALOG.values()].filter((e) => !e.type.includes("__op-") && !DERIVED.has(e.type));
+  const leaves = [...FLAT_CATALOG.values()].filter((e) => !e.type.includes("__op-") && !e.type.includes("__excel-") && !DERIVED.has(e.type));
   it("every catalog leaf creates a card named like its row", () => {
     const bad: string[] = [];
     for (const leaf of leaves) {

@@ -14,9 +14,6 @@ type AnyNode = {
   constructor: { name: string };
 };
 
-export function nodeTypeName(n: { constructor: { name: string } }): string {
-  return n.constructor.name.replace(/Node$/, "").replace(/([a-z])([A-Z])/g, "$1 $2");
-}
 
 function baseName(n: AnyNode): string {
   return nodeDisplayName(n);

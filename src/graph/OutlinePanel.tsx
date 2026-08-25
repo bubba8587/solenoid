@@ -16,7 +16,7 @@ import { appThemeStore } from "./appTheme";
 import { themeAccent, resolveColor, hexToRgba } from "./palette";
 import "./OutlinePanel.css";
 import { CloseIcon } from "./components/CloseIcon";
-import { nodeDisplayName } from "./catalogUtils";
+import { nodeDisplayName, nodeName } from "./catalogUtils";
 
 /** Left-docked outline / navigator, mirroring canvas group membership and collapse
  *  state; Format Controllers are filtered out entirely. */
@@ -42,11 +42,9 @@ function colorOf(n: unknown, mode: "dark" | "light"): string {
   return themeAccent(base, mode);
 }
 
-// The same type string the node header shows on hover (nodeKit's typeHint).
+// The catalog name, the same string the node header shows on hover.
 function typeOf(n: unknown): string {
-  return (n as { constructor: { name: string } }).constructor.name
-    .replace(/Node$/, "")
-    .replace(/([a-z])([A-Z])/g, "$1 $2");
+  return nodeName(n as object) ?? "";
 }
 
 function catOf(n: unknown, wiredIn: Set<string>, wiredOut: Set<string>): Cat {

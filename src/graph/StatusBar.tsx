@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { getEditor, getArea, requestRecalc } from "./process";
 import { calcModeStore } from "./calcModeStore";
-import { nodeTypeName } from "./nodeNames";
+import { nodeDisplayName } from "./catalogUtils";
 import { isWebDemo } from "../env";
 import { loadRevealStore } from "./loadReveal";
 import { WEB_DEMO_NODE_BUDGET, WEB_DEMO_NODE_WARN_RATIO } from "./nodeBudget";
@@ -27,7 +27,7 @@ function read(): Snapshot {
   let selection: string;
   if (selected.length === 0) selection = "Ready";
   // Node TYPE, not the user-editable header title.
-  else if (selected.length === 1) selection = nodeTypeName(selected[0]);
+  else if (selected.length === 1) selection = nodeDisplayName(selected[0]);
   else selection = `${selected.length} selected`;
 
   return { nodes: all.length, cables, selection, zoom };

@@ -27,6 +27,7 @@
 //
 // IFERROR catches every code; IFNA / ISNA match only #N/A.
 import { perfEnabled, recordNode } from "./perfProbe";
+import { displayNameOf } from "./nodeNamer";
 
 export type SolErrorCode =
   | "#DIV/0!" | "#N/A"
@@ -185,12 +186,8 @@ export function findCellError(v: unknown): SolError | null {
   return null;
 }
 
-// Duplicates nodeNames.ts's baseName rather than importing it — nodeNames pulls in
-// process.ts, which would cycle back into this module.
-function nodeDisplayName(n: { label?: string; constructor: { name: string } }): string {
-  const label = n.label?.trim();
-  return label || n.constructor.name.replace(/Node$/, "").replace(/([a-z])([A-Z])/g, "$1 $2");
-}
+// Late-bound (nodeNamer.ts): catalogUtils would cycle back into this module.
+const nodeDisplayName = (n: object): string => displayNameOf(n);
 
 /** Tags untagged SolErrors with `origin`; already-tagged ones are left alone so
  *  origin points at the FIRST place an error was seen. Returns `v` uncopied when
