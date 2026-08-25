@@ -9,7 +9,7 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 ## Claims (session 2026-08-25b)
 
 ### Agent 1 (Lead)
-- CLAIMED — `anydata` socket glyph: distinct mark (socket.css `[data-glyph="anydata"]`, one masked ::before/::after pair, 12-box), Socket Legend, `docs/socket-reference.md` glyph row, `hicSocketGlyph`. Author eyeballs the result.
+- PARKED — `anydata` socket glyph: five ideas offered 2026-08-25 (author deciding; not claimed). A1 idle pending bump.
 
 ### Agent 2 — staged QUEUE (take top, message A1 when done)
 1. **Merge Plots node** (backlog "Small builds"): ExtensibleInputs of `chart` sockets; planar kinds overlay on one plot, shared axes, legend from source card names; non-planar inputs → #TYPE! naming the input. Chart kind, Options via Chart Builder. Reuse the multi-series path. `add-node` skill; pin with tests; run nodeOps/formulaNodeCoverage/seeds tests.
