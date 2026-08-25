@@ -14,10 +14,11 @@ import { isUnitCell, carryMatrixUnit } from "./unitValue";
 
 // The relational verb nodes are LAZY: their frame inputs must reach data() as the
 // raw FrameRef; every OTHER node gets one collected to a FrameValue first.
-const LAZY_FRAME_NODES: ReadonlySet<string> = new Set([
+export const LAZY_FRAME_NODES: ReadonlySet<string> = new Set([
   "DistinctNode", "HeadNode", "SortFrameNode", "FilterFrameNode", "JoinNode",
   "ColumnsNode", "GroupByFrameNode", "UnpivotNode",
-  "AppendNode", "RenameNode",
+  "AppendNode", "BindColumnsNode", "RenameNode",
+  "FillBlanksNode", "ReplaceValuesNode", "WindowNode",
   // Reads ONE column through the backend's column primitive — materializing here
   // would force a full-frame collect.
   "GetColumnNode",
