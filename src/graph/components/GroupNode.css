@@ -211,12 +211,6 @@ textarea.solenoid-group__label { flex: 1 1 auto; }
 /* Collapsed-group edge pills (socket wrappers + the stadium pill) paint ABOVE
    the selection ring overlay (z-index 6) — selecting a group must not cover
    its connection points. */
-.solenoid-group [data-socket-side],
-.solenoid-group .solenoid-node__input-pill,
-.solenoid-group .solenoid-node__output-pill {
-  z-index: 7;
-}
-
 /* Align the stadium pill EXACTLY with the plain socket pills (a collapsed group can
    show both). The socket sits at left/right:-5 (NodeSocket.tsx); both are 12px wide,
    so the stadium must use the same -5 to share a center. (Base class stays -6 for
