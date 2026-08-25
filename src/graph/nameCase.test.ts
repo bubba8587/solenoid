@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { buildCatalog } from "./catalogUtils";
 import { formulaFunctionNames } from "./excelFormula";
 import { initPackFormulas } from "./formulaExtensions";
-import { FX_FUNCTION_NAMES } from "./excelFunctions";
+import { FX_FUNCTION_NAMES, FRAME_SURFACE_NAMES } from "./excelFunctions";
 import { NODE_OPS } from "./nodeOps";
 import { despace } from "./formulaNodeParity";
 import type { CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry } from "./AddNodeMenu";
@@ -29,7 +29,9 @@ const tokens = (label: string) => label.split(/[/,]/).map((t) => strip(t)).filte
 
 describe("NAME-4 — ALL CAPS ⟺ callable function name", () => {
   initPackFormulas();
-  const callable = new Set(formulaFunctionNames().map((n) => n.toUpperCase())); // Excel + Solenoid dispatch
+  // Excel + Solenoid dispatch, plus the refused frame verbs: a FRAME_SURFACE_NAMES key IS a real
+  // Excel function, and typing it redirects to the node that carries the name (GROUPBY, PIVOTBY).
+  const callable = new Set([...formulaFunctionNames(), ...Object.keys(FRAME_SURFACE_NAMES)].map((n) => n.toUpperCase()));
   const excel = new Set(FX_FUNCTION_NAMES.map((n) => n.toUpperCase())); // real Excel (Formula.js) names
 
   const leafLabels: string[] = [];

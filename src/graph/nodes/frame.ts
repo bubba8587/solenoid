@@ -611,7 +611,7 @@ export class GroupByFrameNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: AggOp; totalDepth?: number }) {
     super("GroupByFrame");
-    this.label = init?.label ?? "Group By";
+    this.label = init?.label ?? "GROUPBY";
     this.op = init?.op ?? "sum";
     this.totalDepth = init?.totalDepth ?? 0;
     this.addInput("frame", frameIn("Frame"));
@@ -691,7 +691,7 @@ export class PivotNode extends ClassicPreset.Node {
     filterExclude?: Record<string, string[]>;
   }) {
     super("Pivot");
-    this.label = init?.label ?? "Pivot";
+    this.label = init?.label ?? "PIVOTBY";
     this.op = init?.op ?? "sum";
     if (init?.funcs) this.funcs = { ...init.funcs };
     if (init?.filterExclude) this.filterExclude = { ...init.filterExclude };

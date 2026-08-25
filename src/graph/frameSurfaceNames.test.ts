@@ -89,7 +89,7 @@ describe("a typed frame verb is recognized and refused, not a typo", () => {
     expect(isSolError(r) && r.code).toBe("#TYPE!");
     expect(isSolError(r) && r.message).toContain("Join node");
     const p = compileEvaluator("PIVOTBY(x)")!({ x: [1, 2] });
-    expect(isSolError(p) && p.message).toContain("Pivot node");
+    expect(isSolError(p) && p.message).toContain("PIVOTBY node");
   });
 
   it("the editor colors it in the frame violet, distinct from the typo red", () => {

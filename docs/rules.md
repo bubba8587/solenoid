@@ -807,7 +807,9 @@ equals the leaf label (Conduit's serial and the composite boundary's "Input"/"Ou
 ### NAME-4 — An ALL-CAPS label claims a callable function name; anything else is Title Case **[author 2026-08-25]**
 **MUST:** a catalog leaf label or a `NODE_OPS` op label written ALL CAPS (incl. dotted, e.g.
 `STDEV.S`; each token of an `X / Y` enumeration counts) MUST be a formula-callable name — present
-in `formulaFunctionNames()` (the Excel + Solenoid dispatch set). Anything else is Title Case. Two
+in `formulaFunctionNames()` (the Excel + Solenoid dispatch set) — or a refused frame verb (a
+`FRAME_SURFACE_NAMES` key: a real Excel function whose typed form redirects to this very node, so
+the frame node that IS Excel's GROUPBY / PIVOTBY carries that spelling). Anything else is Title Case. Two
 allowlisted exceptions: acronym proper-nouns {PCA, BMI, TDEE, SVG, KPI} and the Solenoid-only op ISNULL
 (a sibling of the callable ISxxx checks) may stay all-caps though they don't dispatch; the flagship
 `Convert` leaf may stay Title Case though `CONVERT` dispatches.

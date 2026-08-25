@@ -505,3 +505,11 @@ override a NAME-3 sweep had trimmed to "DATE"): on a canvas next to a Date Input
 stays under NAME-3/NAME-4 (DATE is the callable token; the parenthetical is Title Case).
 Reopens only if Date Input is renamed.
 
+### frameVerbExcelNames — A frame verb that IS an Excel function carries its spelling
+GROUPBY and PIVOTBY are the node names (author 2026-08-25; a NAME-3 sweep had made PIVOTBY
+"Pivot" to match the Title-Case verbs). The verbs are refused on the formula surface
+(`FRAME_SURFACE_NAMES`, frames don't flow through formulas), but the typed name redirects to
+the node, so the all-caps claim holds; NAME-4's test admits the map's keys. Verbs with no Excel
+function (Unpivot, Nest, Rename…) stay Title Case; Append / Bind Columns become VSTACK / HSTACK
+when the stack merge lands. Reopens only if the formula surface starts accepting frames.
+

@@ -261,7 +261,7 @@ export const FRAME_SURFACE_NAMES: Readonly<Record<string, string>> = {
   SPLITCOLUMN: "Split Column", ADDINDEX: "Add Index", MERGECOLUMNS: "Merge Columns",
   HEADERS: "Headers", TABLESIZE: "Table Size",
   // Table verbs › Reshape
-  PIVOTBY: "Pivot", PIVOT: "Pivot", UNPIVOT: "Unpivot", NEST: "Nest", UNNEST: "Unnest",
+  PIVOTBY: "PIVOTBY", UNPIVOT: "Unpivot", NEST: "Nest", UNNEST: "Unnest",
   // Table verbs › Clean
   FILLDOWN: "Fill Down", REPLACEVALUES: "Replace Values", DROPBLANKROWS: "Drop Blank Rows",
   // Table verbs › Analyze
