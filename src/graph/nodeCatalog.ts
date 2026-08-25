@@ -982,7 +982,10 @@ export const NODE_CATALOG: CatalogEntry[] = [
           {
             type: "category", label: "Columns", description: "Column surgery: keep, drop, rename, split, or number columns.",
             children: [
-              { type: "columns", label: "Columns", description: "Keeps only the named columns, or drops them and passes the rest through. Excel: CHOOSECOLS.", keywords: "columns select keep drop remove choosecols", create: () => new ColumnsNode(), parity: false },
+              { type: "pair", children: [
+                { type: "keep-columns", label: "Keep Columns", description: "Keeps only the named columns, in the order given. Excel: CHOOSECOLS.", keywords: "columns select keep choosecols", create: () => new ColumnsNode(), parity: false },
+                { type: "drop-columns", label: "Drop Columns", description: "Removes the named columns; the rest pass through.", keywords: "columns drop remove", create: () => new ColumnsNode({ op: "drop" }), parity: false },
+              ]},
               { type: "rename",      label: "Rename",      description: "Renames columns using two parallel lists zipped by position: From [\"qty\"] → To [\"Quantity\"].", create: () => new RenameNode(), parity: false },
               { type: "split-column", label: "Split Column", description: "Splits one text column into several by a delimiter. The source column is replaced by the parts. Name the new columns or let them auto-number. Power Query: Split Column by Delimiter.", create: () => new SplitColumnNode(), parity: false, keywords: "split delimiter text column separate parse divide power query" },
               { type: "add-index",   label: "Add Index",   description: "Prepends a row-number column from a start value (default 1). Power Query: Add Index Column.", create: () => new AddIndexNode(), parity: false, keywords: "index row number sequence counter rownum power query" },

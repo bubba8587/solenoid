@@ -770,6 +770,21 @@ the math-fn `round` op's leaf claimed `ROUND`, a name that dispatches the 2-arg 
 ROUND which REFUSES the leaf's own 1-arg semantics (fixed by deleting the duplicate op —
 RoundN at digits 0 is the same capability).
 
+### NAME-2 — A node NAME never coincides with a core Excel function name **[author 2026-08-25]**
+**MUST:** a node's user-facing name (card label, catalog leaf, help/Reference, socket docs) must
+not read as a core Excel function that does something else. A bare "Columns" reads as `COLUMNS()`
+(the count), so the keep/drop relational node is named for its op — "Keep Columns" / "Drop
+Columns" — and its card label follows the op.
+
+*Why:* zero-learning-curve-from-Excel means a name IS a claim about behavior; a node that borrows
+a function's spelling for an unrelated operation is a trap, not a shortcut.
+*Enforced by:* `frameSurfaceNames.test.ts` → "no Tables & Frames leaf is named for a bare
+count/structural function" — a denylist ({ROWS, COLUMNS, ROW, COLUMN}) because a general
+"dispatches?" check can't fire here: some labels ARE the node-form of the like-named function
+(Group By ↔ GROUPBY) and legitimately dispatch. The genuine count node is "ROWS / COLUMNS"
+(despaces WITH the slash, so it is not a bare collision).
+*Origin:* ROWS/COLUMNS — the D5 columns merge first shipped as a bare "Columns" node (author 2026-08-25).
+
 ### wholeArrayArgs — Array arguments arrive whole **[INFERRED]**
 **MUST:** a function taking a whole 1-D list is routed past the element-wise broadcaster.
 A function whose arguments are all scalars but whose RESULT is a list is also marked

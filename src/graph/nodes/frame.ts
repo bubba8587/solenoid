@@ -526,7 +526,7 @@ export class JoinNode extends ClassicPreset.Node {
   }
 }
 
-// ─── SELECT / DROP COLUMNS ───────────────────────────────────────────────────
+// ─── COLUMNS (KEEP / DROP) ───────────────────────────────────────────────────
 
 // Read a column-name LIST slot: a cable delivering blank reads as UNKNOWN (null), never
 // as the empty literal's "no columns chosen"; missing entries inside a wired list drop.
@@ -542,6 +542,10 @@ export const COLUMNS_OP_META: Record<ColumnsOp, { label: string; description: st
   drop: { label: "Drop", fx: "DROPCOLS", description: "Remove the named columns; the rest pass through." },
 };
 
+// The op names the card ("Keep Columns" / "Drop Columns") — a bare "Columns" would read as
+// Excel's COLUMNS count function (docs/rules.md NAME-2, author 2026-08-25).
+export const columnsCardLabel = (op: ColumnsOp): string => `${COLUMNS_OP_META[op].label} Columns`;
+
 export class ColumnsNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     columns: "Keep: an empty list passes the frame through unchanged, and a name the frame lacks is a #REF! error. Drop: names the frame lacks are ignored.",
@@ -555,8 +559,8 @@ export class ColumnsNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: ColumnsOp }) {
     super("Columns");
-    this.label = init?.label ?? "Columns";
     this.op = init?.op ?? "keep";
+    this.label = init?.label ?? columnsCardLabel(this.op);
     this.addInput("frame", frameIn("Frame"));
     this.addInput("columns", strListIn("Columns"));
     this.addOutput("frame", frameOut("Frame"));

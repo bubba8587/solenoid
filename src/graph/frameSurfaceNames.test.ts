@@ -67,6 +67,20 @@ describe("FRAME_SURFACE_NAMES ← catalog derivation (both ways)", () => {
     expect(legacy, "a name can't be both a legacy redirect and a frame verb").toEqual([]);
     expect(ghosts.map(([n, l]) => `${n} → "${l}"`), "redirects must point at real catalog leaves").toEqual([]);
   });
+
+  // NAME-2 (docs/rules.md): a node NAME must never coincide with a core Excel function name —
+  // a bare "Columns" reads as COLUMNS() (the count), so the relational leaves are named for the
+  // op: "Keep Columns" / "Drop Columns". A general "dispatches?" check can't run here — some node
+  // labels ARE the node-form of the like-named function (Group By ↔ GROUPBY) and legitimately
+  // dispatch. The misread hazard is a leaf whose label is a bare STRUCTURAL/count function doing
+  // something else, so those are denylisted by name (ROWS/COLUMNS the origin, author 2026-08-25).
+  const COUNT_FNS = new Set(["ROWS", "COLUMNS", "ROW", "COLUMN"]);
+  it("no Tables & Frames leaf is named for a bare count/structural function", () => {
+    const collisions = leaves
+      .filter((l) => COUNT_FNS.has(despace(l.label)))
+      .map((l) => l.label);
+    expect(collisions, "a leaf named ROWS/COLUMNS reads as the count function, not this verb").toEqual([]);
+  });
 });
 
 describe("a typed frame verb is recognized and refused, not a typo", () => {

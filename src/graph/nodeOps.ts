@@ -184,8 +184,11 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new FillNode({ op: op as never }) },
   { type: "head", ctor: HeadNode, kind: "operation", ops: fromMeta(HEAD_OP_META),
     create: (op) => new HeadNode({ op: op as never }) },
-  { type: "columns", ctor: ColumnsNode, kind: "operation", ops: fromMeta(COLUMNS_OP_META),
-    create: (op) => new ColumnsNode({ op: op as never }) },
+  // Both ops have their own bare Add-menu leaf ("Keep Columns" / "Drop Columns"), so
+  // neither becomes a "Keep Columns: Drop" colon row; the decl still carries kind +
+  // op fx names for the accent and uniqueNameMap.
+  { type: "keep-columns", ctor: ColumnsNode, kind: "operation", ops: fromMeta(COLUMNS_OP_META),
+    create: (op) => new ColumnsNode({ op: op as never }), leafOps: ["keep", "drop"] },
   { type: "list-pad", ctor: PadNode, kind: "operation", ops: fromMeta(PAD_OP_META),
     create: (op) => new PadNode({ op: op as never }) },
   { type: "list-set", ctor: SetOpNode, kind: "operation", ops: SET_OPS,

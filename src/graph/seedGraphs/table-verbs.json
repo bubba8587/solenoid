@@ -141,7 +141,7 @@
       "x": 481,
       "y": 496,
       "init": {
-        "label": "Select → Rep, Amount"
+        "label": "Keep → Rep, Amount"
       },
       "stringLiterals": {
         "columns": "Rep, Amount"

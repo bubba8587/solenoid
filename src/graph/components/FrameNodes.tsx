@@ -49,7 +49,7 @@ import { VALUELESS_FILTER_OPS } from "../frameVerbs";
 import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameVerbs";
 import type { FilterCondConfig } from "../nodes/frame";
 import { RecordLayoutField } from "./RecordLayoutField";
-import { HEAD_OP_META, HEADER_OP_META, BLANK_ROW_OP_META, COLUMNS_OP_META } from "../nodes/frame";
+import { HEAD_OP_META, HEADER_OP_META, BLANK_ROW_OP_META, COLUMNS_OP_META, columnsCardLabel } from "../nodes/frame";
 import { CubeDisplay } from "./CubeDisplay";
 import { isCubeValue } from "../frame";
 import { parseFrameSource, frameSourceToText, isFrameValue, frameRowCount, type FrameSourceColumn } from "../frame";
@@ -404,15 +404,21 @@ export function JoinComponent({ data, emit }: NodeProps<JoinNodeType>) {
 
 // ─── COLUMNS (KEEP / DROP) ───────────────────────────────────────────────────
 
-const COLUMNS_OP_OPTIONS = (Object.entries(COLUMNS_OP_META) as [ColumnsOp, { label: string; description: string }][])
+const COLUMNS_OP_OPTIONS = (Object.entries(COLUMNS_OP_META) as [ColumnsOp, { label: string; description: string; fx: string }][])
   .map(([value, m]) => ({ value, label: m.label, title: m.description }));
 
 export function ColumnsComponent({ data, emit }: NodeProps<ColumnsNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
+  // The op names the card ("Keep Columns" / "Drop Columns"); carry the label unless the
+  // user has renamed it to something of their own.
+  const changeOp = (next: ColumnsOp) => {
+    if (data.label === columnsCardLabel(op)) data.label = columnsCardLabel(next);
+    setOp(next);
+  };
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} labelFor={(k) => (k === "columns" ? COLUMNS_OP_META[op].label : (data.inputs[k]?.label ?? k))} />
-      <OpSelect value={op} onChange={setOp} options={COLUMNS_OP_OPTIONS} />
+      <OpSelect value={op} onChange={changeOp} options={COLUMNS_OP_OPTIONS} />
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
   );
