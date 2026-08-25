@@ -26,9 +26,11 @@ export interface ScalePayload {
   min: number;
   max: number;
 }
-// A flat labeled treemap — each name/value pair is a rectangle sized by value.
-export interface TreemapPayload {
-  kind: "treemap";
+// Parts of a whole, laid out two ways: a space-filling treemap (each name/value is a
+// rectangle sized by value) or a 10×10 waffle grid of shares. `layout` picks which.
+export interface ProportionPayload {
+  kind: "proportion";
+  layout: "treemap" | "waffle";
   names: string[];
   values: number[];
 }
@@ -91,12 +93,6 @@ export interface CalHeatPayload {
   days: number[];
   values: number[];
 }
-// Category shares as a 10×10 grid; a single value in [0,1] renders as a fraction.
-export interface WafflePayload {
-  kind: "waffle";
-  names: string[];
-  values: number[];
-}
 // A vector field: u/v are same-shaped matrices of the x/y components; one arrow
 // per cell, colored by magnitude. A null in either component skips the cell.
 export interface QuiverPayload {
@@ -147,14 +143,14 @@ export interface RecordPayload {
   total: number;
 }
 export type ChartPayload =
-  | KpiPayload | ScalePayload | TreemapPayload | SankeyPayload | SurfacePayload
+  | KpiPayload | ScalePayload | ProportionPayload | SankeyPayload | SurfacePayload
   | ContourPayload | WaterfallPayload | CandlePayload | BoxplotPayload
-  | CalHeatPayload | WafflePayload | QuiverPayload | SevenSegPayload | RecordPayload;
+  | CalHeatPayload | QuiverPayload | SevenSegPayload | RecordPayload;
 
 /** Every op the `chart` socket can carry. */
 export type ChartValueOp =
-  | ChartOp | "kpi" | "scale" | "treemap" | "sankey" | "surface"
-  | "contour" | "waterfall" | "candle" | "boxplot" | "calheat" | "waffle" | "quiver" | "sevenseg" | "record";
+  | ChartOp | "kpi" | "scale" | "proportion" | "sankey" | "surface"
+  | "contour" | "waterfall" | "candle" | "boxplot" | "calheat" | "quiver" | "sevenseg" | "record";
 
 export interface ChartValue {
   __chart: true;

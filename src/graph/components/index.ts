@@ -275,12 +275,11 @@ export { SparklineComponent } from "./SparklineNode";
 export { ChartComponent } from "./ChartNode";
 export { HistogramComponent } from "./HistogramNode";
 export { KpiComponent } from "./KpiNode";
-export { TreemapComponent } from "./TreemapNode";
 export { SankeyComponent } from "./SankeyNode";
 export { SurfaceComponent } from "./SurfaceNode";
 export {
   WaterfallComponent, CandlestickComponent, BoxplotComponent,
-  CalendarHeatmapComponent, WaffleComponent, QuiverComponent,
+  CalendarHeatmapComponent, ProportionComponent, QuiverComponent,
 } from "./FigureNodes";
 export { SevenSegComponent } from "./SevenSegNode";
 export { RecordComponent } from "./RecordNode";

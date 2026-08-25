@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
 import {
   SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, SurfaceNode, histogramBins, histogram2d,
-  WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode,
+  WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, ProportionNode, QuiverNode,
   SevenSegNode, sevenSegText, boxplotStats, quantileSorted,
   RecordNode, parseRecordLayout, recordImageSrc,
 } from "./visual";
 import { CHART_BUILDER_FIELDS } from "./visual";
 import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST } from "./chartOptions";
-import type { BoxplotPayload, CandlePayload, ContourPayload, WaterfallPayload, CalHeatPayload, WafflePayload, QuiverPayload, RecordPayload } from "../chartValue";
+import type { BoxplotPayload, CandlePayload, ContourPayload, WaterfallPayload, CalHeatPayload, ProportionPayload, QuiverPayload, RecordPayload } from "../chartValue";
 import type { FrameValue, FrameColumn } from "../frame";
 import { DateInputNode, XYPadNode } from "./control";
 import { extractInit } from "../copyPaste";
@@ -162,9 +162,9 @@ describe("Chart Builder", () => {
   });
 
   it("serialization ignores the target — set fields always emit", () => {
-    const b = new ChartBuilderNode({ target: "waffle" });
+    const b = new ChartBuilderNode({ target: "proportion" });
     b.stringLiterals.title = "T";
-    b.stringLiterals.color = "#123456"; // inert for waffle, still serialized
+    b.stringLiterals.color = "#123456"; // inert for proportion, still serialized
     expect(b.data({})).toEqual({ result: "title=T;color=#123456" });
   });
 
@@ -349,15 +349,28 @@ describe("chart-wave nodes emit their payloads", () => {
     expect(p.values).toEqual([3, 5]);
   });
 
-  it("Waffle carries label/value pairs", async () => {
-    const n = new WaffleNode();
+  it("Proportion carries label/value pairs and defaults to the treemap layout", async () => {
+    const n = new ProportionNode();
     const f = frame([
       { name: "Part", type: "string", values: ["A", "B"] },
       { name: "Share", type: "number", values: [3, 1] },
     ]);
-    const p = (await n.data({ frame: [f] })).chart.payload as WafflePayload;
+    const chart = (await n.data({ frame: [f] })).chart;
+    expect(chart.op).toBe("proportion");
+    const p = chart.payload as ProportionPayload;
+    expect(p.layout).toBe("treemap");
     expect(p.names).toEqual(["A", "B"]);
     expect(p.values).toEqual([3, 1]);
+  });
+
+  it("Proportion emits the waffle layout when its op is waffle, round-tripping through extractInit", async () => {
+    const n = new ProportionNode({ op: "waffle" });
+    const f = frame([{ name: "Part", type: "string", values: ["A"] }, { name: "Share", type: "number", values: [1] }]);
+    expect(((await n.data({ frame: [f] })).chart.payload as ProportionPayload).layout).toBe("waffle");
+    const n2 = new ProportionNode(extractInit(n));
+    expect(n2.op).toBe("waffle");
+    n2.setOp("treemap");
+    expect(((await n2.data({ frame: [f] })).chart.payload as ProportionPayload).layout).toBe("treemap");
   });
 
   it("Vector Field normalizes both component matrices, keeping nulls as holes", () => {

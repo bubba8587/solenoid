@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { nodeDomWeight, nodeAccent, nodeKindOf } from "./kind";
 import { NumberInputNode, BooleanInputNode } from "./input";
-import { ChartNode, HistogramNode, TreemapNode, SankeyNode, MermaidNode, HeatmapCellNode, SparklineNode, GaugeNode, ChartBuilderNode } from "./visual";
+import { ChartNode, HistogramNode, ProportionNode, SankeyNode, MermaidNode, HeatmapCellNode, SparklineNode, GaugeNode, ChartBuilderNode } from "./visual";
 import { TornadoNode } from "./tornado";
 import { SvgPickerNode } from "./annotation";
 import { BuildFrameNode } from "./frame";
@@ -39,7 +39,7 @@ describe("nodeDomWeight", () => {
   });
 
   it("weighs full chart / diagram figures as the heavy tier", () => {
-    for (const n of [new ChartNode(), new HistogramNode(), new TreemapNode(), new SankeyNode(), new MermaidNode()]) {
+    for (const n of [new ChartNode(), new HistogramNode(), new ProportionNode(), new SankeyNode(), new MermaidNode()]) {
       expect(nodeDomWeight(n)).toBeGreaterThan(nodeDomWeight(new SparklineNode()));
     }
     // Grid-of-cells / inline-bar figures sit between the small figures and full charts.

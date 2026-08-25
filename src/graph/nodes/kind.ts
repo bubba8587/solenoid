@@ -46,7 +46,7 @@ import { ExpectNode } from "./quality";
 import { TornadoNode } from "./tornado";
 import { ReconcileNode } from "./frame";
 import { SlicerNode, CableSwitchNode, DateInputNode, XYPadNode, PointPlotterNode, CurveNode, GridPainterNode } from "./control";
-import { SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, TreemapNode, SankeyNode, HistogramNode, SurfaceNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode, SevenSegNode, RecordNode } from "./visual";
+import { SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, ProportionNode, SankeyNode, HistogramNode, SurfaceNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, SevenSegNode, RecordNode } from "./visual";
 import { NoteNode, ImageNode, SvgPickerNode } from "./annotation";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "./composite";
 import {
@@ -79,7 +79,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   if (node instanceof CompositeInputNode || node instanceof CompositeOutputNode) return "boundary";
   if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof PhysicsConstantNode || node instanceof ElementNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof LocalFileNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof DataFeedNode || node instanceof XYPadNode || node instanceof ColorPickerNode || node instanceof SvgPickerNode || node instanceof PointPlotterNode || node instanceof CurveNode || node instanceof GridPainterNode) return "input";
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MermaidNode || node instanceof GaugeNode || node instanceof HeatmapCellNode || node instanceof ChartBuilderNode || node instanceof TornadoNode || node instanceof SurfaceNode) return "display";
-  if (node instanceof WaterfallNode || node instanceof CandlestickNode || node instanceof BoxplotNode || node instanceof CalendarHeatmapNode || node instanceof WaffleNode || node instanceof QuiverNode || node instanceof SevenSegNode || node instanceof RecordNode) return "display";
+  if (node instanceof WaterfallNode || node instanceof CandlestickNode || node instanceof BoxplotNode || node instanceof CalendarHeatmapNode || node instanceof ProportionNode || node instanceof QuiverNode || node instanceof SevenSegNode || node instanceof RecordNode) return "display";
   if (node instanceof ConvertNode || node instanceof CastNode) return "convert";
   if (
     node instanceof ComplexFromNode || node instanceof ComplexUnpackNode ||
@@ -250,7 +250,7 @@ export function nodeDomWeight(node: ClassicPreset.Node): number {
   // Full figures (a recharts subtree, a mermaid diagram): ten ≈ the default threshold.
   if (
     node instanceof ChartNode || node instanceof HistogramNode ||
-    node instanceof TreemapNode || node instanceof SankeyNode ||
+    node instanceof ProportionNode || node instanceof SankeyNode ||
     node instanceof MermaidNode || node instanceof RecordNode
   ) return 10;
   if (node instanceof HeatmapCellNode || node instanceof TornadoNode) return 6;
@@ -281,7 +281,7 @@ export function nodeWide(node: ClassicPreset.Node): boolean {
   // Inline charts and drawing pads need the wide card to fit their fixed-width plot.
   if (node instanceof PointPlotterNode || node instanceof CurveNode) return true;
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MermaidNode || node instanceof TornadoNode) return true;
-  if (node instanceof TreemapNode || node instanceof SankeyNode || node instanceof HistogramNode) return true;
+  if (node instanceof ProportionNode || node instanceof SankeyNode || node instanceof HistogramNode) return true;
   const ports = [...Object.values(node.inputs ?? {}), ...Object.values(node.outputs ?? {})];
   return ports.some((p) => {
     const s = (p as { socket?: ClassicPreset.Socket } | undefined)?.socket;

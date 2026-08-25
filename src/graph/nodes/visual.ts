@@ -5,8 +5,8 @@ import { clamp, iterMin, iterMax, gridAxes } from "./mathUtils";
 import { histogram2d } from "./visualOps";
 export { histogram2d } from "./visualOps";
 import type {
-  ChartValue, KpiPayload, ScalePayload, TreemapPayload, SankeyPayload, SurfacePayload,
-  ContourPayload, WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, WafflePayload, QuiverPayload, SevenSegPayload,
+  ChartValue, KpiPayload, ScalePayload, ProportionPayload, SankeyPayload, SurfacePayload,
+  ContourPayload, WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, QuiverPayload, SevenSegPayload,
   RecordPayload, RecordField,
 } from "../chartValue";
 import { columnUnitLabel } from "../unitColumn";
@@ -516,13 +516,23 @@ function colAsNumbers(col: FrameColumn | undefined): number[] {
   });
 }
 
-// ─── Treemap ──────────────────────────────────────────────────────────────────
+// ─── Proportion ─────────────────────────────────────────────────────────────────
 
-export class TreemapNode extends ClassicPreset.Node {
+// One card, a layout selector: TREEMAP nests each name/value as a rectangle sized by
+// value; WAFFLE fills a 10×10 grid by share. Both read a (label, value) frame — the
+// layout is the node's OPERATION (it names the card), per the operation-kind convention.
+export type ProportionLayout = "treemap" | "waffle";
+export const PROPORTION_LAYOUT_OPTIONS: { value: ProportionLayout; label: string }[] = [
+  { value: "treemap", label: "Treemap" },
+  { value: "waffle", label: "Waffle" },
+];
+
+export class ProportionNode extends ClassicPreset.Node {
   label: string;
+  op: ProportionLayout = "treemap";
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
-  cachedPayload: TreemapPayload | null = null;
+  cachedChart: ChartValue | null = null;
   width = 240;
   height = 220;
 
@@ -533,24 +543,33 @@ export class TreemapNode extends ClassicPreset.Node {
     ] },
   };
 
-  constructor(init?: { label?: string }) {
-    super("Treemap");
-    this.label = init?.label ?? "Treemap";
+  constructor(init?: { label?: string; op?: ProportionLayout }) {
+    super("Proportion");
+    this.label = init?.label ?? "Proportion";
+    if (init?.op === "waffle") this.op = "waffle";
     this.addInput("frame", frameIn("Label + Value"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
 
+  // Sockets are identical for both layouts, so the switch only re-derives the figure.
+  setOp(next: ProportionLayout): void {
+    this.op = next;
+  }
+
   async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue }> {
     const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
     const names = colAsStrings(cols[0]);
-    const values = colAsNumbers(cols[1]);
+    // Waffle's single-column fallback is a harmless superset for the treemap too.
+    const values = colAsNumbers(cols[1] ?? cols[0]);
     this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
-    const payload: TreemapPayload = { kind: "treemap", names, values };
-    this.cachedPayload = payload;
-    return {
-      chart: { __chart: true, op: "treemap", values, payload, options: this.chartOptions, title: this.chartOptions.title || this.label || "Treemap" },
+    const payload: ProportionPayload = { kind: "proportion", layout: this.op, names, values };
+    const chart: ChartValue = {
+      __chart: true, op: "proportion", values, payload,
+      options: this.chartOptions, title: this.chartOptions.title || this.label || "Proportion",
     };
+    this.cachedChart = chart;
+    return { chart };
   }
 }
 
@@ -946,45 +965,6 @@ export class CalendarHeatmapNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Waffle ───────────────────────────────────────────────────────────────────
-
-export class WaffleNode extends ClassicPreset.Node {
-  label: string;
-  stringLiterals: Record<string, string> = {};
-  chartOptions: ChartOptions = {};
-  cachedChart: ChartValue | null = null;
-  width = 220;
-  height = 220;
-
-  static frameHints: Record<string, FrameHint> = {
-    frame: { columns: [
-      { name: "Label", type: "string", cells: ["Wind", "Solar", "Hydro"] },
-      { name: "Value", type: "number", cells: [38, 27, 35] },
-    ] },
-  };
-
-  constructor(init?: { label?: string }) {
-    super("Waffle");
-    this.label = init?.label ?? "Waffle";
-    this.addInput("frame", frameIn("Label + Value"));
-    this.addInput("options", strIn("Options"));
-    this.addOutput("chart", chartOut("Chart"));
-  }
-
-  async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue }> {
-    const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
-    const names = colAsStrings(cols[0]);
-    const values = colAsNumbers(cols[1] ?? cols[0]);
-    this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
-    const payload: WafflePayload = { kind: "waffle", names, values };
-    const chart: ChartValue = {
-      __chart: true, op: "waffle", values, payload,
-      options: this.chartOptions, title: this.chartOptions.title || this.label || "Waffle",
-    };
-    this.cachedChart = chart;
-    return { chart };
-  }
-}
 
 // ─── Record card ──────────────────────────────────────────────────────────────
 

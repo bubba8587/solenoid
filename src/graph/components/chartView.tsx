@@ -124,8 +124,10 @@ export function ChartFigure({ value, width, height, axes = true, fontScale, reco
     return value.payload.style === "dial"
       ? <ScaleDial payload={value.payload} width={width} />
       : <BulletBar payload={value.payload} width={width} fscale={fscale} />;
-  if (value.op === "treemap" && value.payload?.kind === "treemap")
-    return <TreemapView names={value.payload.names} values={value.payload.values} width={width} height={height} fscale={fscale} />;
+  if (value.op === "proportion" && value.payload?.kind === "proportion")
+    return value.payload.layout === "treemap"
+      ? <TreemapView names={value.payload.names} values={value.payload.values} width={width} height={height} fscale={fscale} />
+      : <WaffleView payload={value.payload} width={width} height={height} colors={seriesColors} />;
   if (value.op === "sankey" && value.payload?.kind === "sankey")
     return <SankeyView sources={value.payload.sources} targets={value.payload.targets} values={value.payload.values} width={width} height={height} fscale={fscale} />;
   if (value.op === "surface" && value.payload?.kind === "surface")
@@ -140,8 +142,6 @@ export function ChartFigure({ value, width, height, axes = true, fontScale, reco
     return <BoxplotView payload={value.payload} width={width} height={height} />;
   if (value.op === "calheat" && value.payload?.kind === "calheat")
     return <CalHeatView payload={value.payload} width={width} height={height} />;
-  if (value.op === "waffle" && value.payload?.kind === "waffle")
-    return <WaffleView payload={value.payload} width={width} height={height} colors={seriesColors} />;
   if (value.op === "quiver" && value.payload?.kind === "quiver")
     return <QuiverView payload={value.payload} width={width} height={height} />;
   if (value.op === "sevenseg" && value.payload?.kind === "sevenseg")

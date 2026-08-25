@@ -153,7 +153,7 @@
     },
     {
       "id": "treemap",
-      "type": "TreemapNode",
+      "type": "ProportionNode",
       "x": 313,
       "y": 840,
       "init": {

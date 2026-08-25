@@ -146,6 +146,15 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   the launching tool shell's Ctrl-C from an agent session (`shell:true` + `detached` on Windows) —
   launch `npm run dev` as a background task instead until the script is fixed.
 
+- **D4 Proportion (Treemap + Waffle → one card), landed.** One `ProportionNode` with a Treemap/Waffle
+  `op` SegToggle (`kind:"operation"`, no op rows — layout names ride the leaf keywords). Both layouts read
+  the same (label, value) frame, so no socket swap and no cable prune. `TreemapNode`, `WaffleNode`,
+  `TreemapNode.tsx`, `TreemapPayload`/`WafflePayload` and the `"treemap"`/`"waffle"` chart ops are gone —
+  one `ProportionPayload { layout }` and one `chartView` branch (`layout === "treemap" ? TreemapView : WaffleView`).
+  `makeFigureComponent` gained an optional `controls` slot (a real `ProportionControls` component owns the
+  hook). ChartBuilder target `proportion` replaces the two. Sankey untouched. Old Treemap/Waffle saves load
+  as Placeholders (no alias). `frameHint.test` role-labeled count 6→5 (one node fewer).
+
 - **Aggregate First / Last removed (author, 2026-08-25).** "First / last non-blank" is a pick, not
   a summary, and did not belong in the reducer dropdown; the author declined INDEX as a home too,
   so the two ops, their catalog leaves and the FIRSTNONBLANK / LASTNONBLANK names are gone.

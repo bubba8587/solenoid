@@ -1,8 +1,8 @@
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, DateInputNode, DateRangeNode, XYPadNode,
   PointPlotterNode, CurveNode, GridPainterNode,
-  SparklineNode, ChartNode, HistogramNode, KpiNode, TreemapNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode,
-  WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, WaffleNode, QuiverNode, SevenSegNode, RecordNode,
+  SparklineNode, ChartNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode,
+  WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, SevenSegNode, RecordNode,
   FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode, WindowNode,
   NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFnNode,
   FormatControllerNode, ExpressionNode, EquationNode, RegexNode, GroupByNode,
@@ -244,7 +244,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         type: "category", label: "Visuals", description: "Inline charts and readouts: plot or visualize a value at the end of a chain. All pass-through.",
         children: [
           { type: "chart",     label: "Chart",     description: "Plots a list or a frame as a column, bar, line, area, scatter, pie, radar, radial, or funnel chart; a frame's number columns become named series with a legend, or a composed (bars + lines) or bubble chart. Options takes a Chart Builder for styling.", create: () => new ChartNode(), parity: false, keywords: "chart plot graph column bar line area scatter pie radar radial funnel composed bubble multi-series legend" },
-          { type: "chart-builder", label: "Chart Builder", description: "Style any chart and output an options string for its Options socket. A chart-type dropdown (Chart, Histogram, KPI, Treemap, Waterfall…) shows just the options that type reads — title, axes, color, grid, range, line, markers. Fields follow matplotlib.", create: () => new ChartBuilderNode(), parity: false, keywords: "chart builder options style title axes color grid range markers histogram kpi treemap sankey waterfall" },
+          { type: "chart-builder", label: "Chart Builder", description: "Style any chart and output an options string for its Options socket. A chart-type dropdown (Chart, Histogram, KPI, Proportion, Waterfall…) shows just the options that type reads — title, axes, color, grid, range, line, markers. Fields follow matplotlib.", create: () => new ChartBuilderNode(), parity: false, keywords: "chart builder options style title axes color grid range markers histogram kpi proportion treemap waffle sankey waterfall" },
           { type: "sparkline", label: "Sparkline", description: "A small inline chart of a list: line, column, or win/loss. Collapses to a headerless square. Excel: SPARKLINE.", create: () => new SparklineNode(), parity: false, keywords: "sparkline spark line column win loss winloss" },
           { type: "mermaid",   label: "Mermaid",   description: "Draws a diagram from Mermaid.js text: flowchart, sequence, class, state, gantt, or pie. The source is typed on the node or wired in from a Text node. The figure flows out a chart socket, so a Report renders it inline where its =name ref sits.", create: () => new MermaidNode(), parity: false, keywords: "mermaid diagram flowchart flow chart graph sequence class state gantt pie mindmap uml erd tree" },
           { type: "kpi",       label: "KPI card",  description: "A big-number stat card with a ↑/↓ delta vs a prior value, colored green/red.", create: () => new KpiNode(), parity: false, keywords: "kpi stat card metric scorecard delta variance big number" },
@@ -261,9 +261,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
           {
             type: "category", label: "Proportion", description: "Parts of a whole: shares, flows, and space-filling layouts.",
             children: [
-              { type: "treemap",   label: "Treemap",   description: "Shows labeled values as nested rectangles sized by value, a space-filling alternative to a pie: each row of a 2-column frame (label, value) is one rectangle.", create: () => new TreemapNode(), parity: false, keywords: "treemap tree map rectangles proportion hierarchy area" },
+              { type: "proportion", label: "Proportion", description: "Parts of a whole from a 2-column frame (label, value): a Treemap sizes each label as a nested rectangle, or a Waffle fills a 10×10 grid of squares by share. Pick the layout on the card.", create: () => new ProportionNode(), parity: false, keywords: "treemap tree map rectangles waffle squares dot matrix proportion share percentage pictogram hierarchy area progress" },
               { type: "sankey",    label: "Sankey",    description: "A flow diagram: each row of a 3-column frame (From, To, Value) is an edge, and the band width shows the flow.", create: () => new SankeyNode(), parity: false, keywords: "sankey flow diagram alluvial edges links network flows" },
-              { type: "waffle",    label: "Waffle",    description: "Shares as a 10×10 grid of squares — the honest pie: each row of a 2-column frame (label, value) is one share, or a single value between 0 and 1 fills a plain fraction of the grid.", create: () => new WaffleNode(), parity: false, keywords: "waffle dot matrix squares proportion percentage share progress pictogram" },
             ],
           },
           {

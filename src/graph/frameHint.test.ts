@@ -51,7 +51,7 @@ describe("frame-input example hints", () => {
   const { hinted, roleLabeled } = collect();
 
   it("every role-chain-labeled frame input declares a hint whose columns match the label (frameLabelHint)", () => {
-    expect(roleLabeled.length, "role-chain-labeled inputs in the catalog").toBeGreaterThanOrEqual(6);
+    expect(roleLabeled.length, "role-chain-labeled inputs in the catalog").toBeGreaterThanOrEqual(5);
     for (const { ctor, key, label, hint } of roleLabeled) {
       expect(hint, `${ctor}.${key} ("${label}"): role-labeled input with no frameHints entry`).toBeDefined();
       const roles = label.split(" + ").flatMap((r) => INITIALISMS[r] ?? [r]);
