@@ -2,7 +2,10 @@ import { ClassicPreset } from "rete";
 import { numberSocket, AdoptiveSocket, MutableSocket, type SocketDataType } from "../sockets";
 import { frameIn, frameOut, dateOut, numOut, tableOut } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
-import { isFrameValue, getColumn, frameRowCount, cubeFromColumns, type FrameValue, type FrameColType, type CubeCell } from "../frame";
+import { isFrameValue, getColumn, frameRowCount, cubeFromColumns, type FrameValue, type FrameColumn, type FrameCell, type FrameColType, type CubeCell } from "../frame";
+import { runFrameUnary, collectPreview, isFrameRef, flushRef, materialize, frameBackend, type FrameRef } from "../frameBackend";
+import { beginPass, passFrame, emitFrame } from "./frame";
+import type { FilterCond } from "../frameVerbs";
 import { jsDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./date";
 import { isRelativeDateText } from "./dateSerial";
 import { settingsStore } from "../settingsStore";
@@ -250,6 +253,34 @@ export class XYPadNode extends ClassicPreset.Node {
 
 // `selectedValues` empty = every row passes through.
 
+/** The column's distinct, sorted, non-blank values — the Slicer's buttons. */
+function slicerUniques(values: readonly (FrameCell | null)[]): SlicerCell[] {
+  const uniq = [...new Set(values.filter((v): v is SlicerCell => v !== null && v !== ""))];
+  uniq.sort((a, b) => (typeof a === "number" && typeof b === "number" ? a - b : compareStrings(String(a), String(b))));
+  return uniq;
+}
+
+/** JS-side membership filter (the eager path): keep rows whose `col` value is selected. */
+function filterFrameByMembership(frame: FrameValue, col: FrameColumn, sel: ReadonlySet<SlicerCell>): FrameValue {
+  const rows = frameRowCount(frame);
+  const keep: number[] = [];
+  for (let i = 0; i < rows; i++) {
+    const v = col.values[i];
+    if (v !== null && v !== undefined && sel.has(v as SlicerCell)) keep.push(i);
+  }
+  return {
+    __frame: true,
+    columns: frame.columns.map((c) => ({
+      ...c,
+      values: keep.map((i) => c.values[i] ?? null),
+      raw: c.raw ? keep.map((i) => c.raw![i] ?? "") : undefined, // keep the source for surviving rows
+    })),
+  };
+}
+
+// A FrameVerbNode (see nodes/frame.ts): emits a LAZY frame ref when its upstream is lazy,
+// so the row filter fuses into the chain instead of collecting the whole frame. It reads
+// only the schema (column names) + the one selected column for its buttons.
 export class SlicerNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     result: "An empty selection passes every row through instead of none.",
@@ -262,6 +293,10 @@ export class SlicerNode extends ClassicPreset.Node {
   cachedColumns: string[] = [];
   cachedColumnType: FrameColType = "number";
   cachedUniqueValues: SlicerCell[] = [];
+  // FrameVerbNode lazy-emit state: `_ref` owns the current output handle, `_gen` guards passes.
+  _ref?: FrameRef | null;
+  _gen?: number;
+  cachedResult: FrameValue | SolError | null = null;
   width  = 240;
   height = 240;
 
@@ -275,42 +310,47 @@ export class SlicerNode extends ClassicPreset.Node {
     this.addOutput("result", frameOut("Filtered"));
   }
 
-  data(inputs: { frame?: unknown[] }) {
-    const raw = inputs.frame?.[0];
+  private async emitResult(gen: number, out: FrameRef | FrameValue | SolError | null): Promise<{ result: FrameRef | FrameValue | SolError | null }> {
+    const { frame } = await emitFrame(this, gen, out);
+    return { result: frame };
+  }
+
+  async data(inputs: { frame?: unknown[] }): Promise<{ result: FrameRef | FrameValue | SolError | null }> {
+    const raw = inputs.frame?.[0] ?? null;
+    const gen = beginPass(this);
+
+    // ── Lazy upstream: read the schema + only the selected column, push the filter as a
+    //    verb so the whole frame never collects. ──
+    if (isFrameRef(raw)) {
+      const schema = await collectPreview(raw, 0);
+      const colNames = isFrameValue(schema) ? schema.columns.map((c) => c.name) : [];
+      const colName = this.selectedColumn && colNames.includes(this.selectedColumn) ? this.selectedColumn : colNames[0] ?? "";
+      const col = colName
+        ? await materialize((async () => frameBackend().column(await flushRef(raw), colName))())
+        : null;
+      // Write UI state only if this is still the latest pass (a newer one may have started
+      // during the awaits) — a stale write would flicker the buttons.
+      if (gen === this._gen) {
+        this.cachedColumns = colNames;
+        if (col && !isSolError(col)) { this.cachedColumnType = col.type; this.cachedUniqueValues = slicerUniques(col.values); }
+        else this.cachedUniqueValues = [];
+      }
+      if (col && isSolError(col)) return this.emitResult(gen, col);
+      // No column resolved, or "all" selected → forward the frame unchanged (no-op).
+      if (!colName || this.selectedValues.length === 0) return this.emitResult(gen, await passFrame(raw));
+      const conditions: FilterCond[] = this.selectedValues.map((v) => ({ column: colName, op: "eq", value: String(v), matchCase: false }));
+      return this.emitResult(gen, await runFrameUnary(raw, { kind: "filterMulti", combine: "or", conditions }));
+    }
+
+    // ── Eager path: a materialized frame (a raw Frame Input, or the JS oracle). ──
     const frame: FrameValue | null = isFrameValue(raw) ? raw : null;
     this.cachedColumns = frame ? frame.columns.map((c) => c.name) : [];
-
-    if (!frame || frame.columns.length === 0) {
-      this.cachedUniqueValues = [];
-      return { result: frame };
-    }
-
+    if (!frame || frame.columns.length === 0) { this.cachedUniqueValues = []; return this.emitResult(gen, frame); }
     const col = (this.selectedColumn ? getColumn(frame, this.selectedColumn) : null) ?? frame.columns[0];
     this.cachedColumnType = col.type;
-
-    const uniq = [...new Set(col.values.filter((v): v is SlicerCell => v !== null && v !== ""))];
-    uniq.sort((a, b) =>
-      typeof a === "number" && typeof b === "number" ? a - b : compareStrings(String(a), String(b)),
-    );
-    this.cachedUniqueValues = uniq;
-
-    if (this.selectedValues.length === 0) return { result: frame };
-    const sel = new Set<SlicerCell>(this.selectedValues);
-    const rows = frameRowCount(frame);
-    const keep: number[] = [];
-    for (let i = 0; i < rows; i++) {
-      const v = col.values[i];
-      if (v !== null && v !== undefined && sel.has(v as SlicerCell)) keep.push(i);
-    }
-    const filtered: FrameValue = {
-      __frame: true,
-      columns: frame.columns.map((c) => ({
-        ...c,
-        values: keep.map((i) => c.values[i] ?? null),
-        raw: c.raw ? keep.map((i) => c.raw![i] ?? "") : undefined, // keep the source for surviving rows
-      })),
-    };
-    return { result: filtered };
+    this.cachedUniqueValues = slicerUniques(col.values);
+    if (this.selectedValues.length === 0) return this.emitResult(gen, frame);
+    return this.emitResult(gen, filterFrameByMembership(frame, col, new Set(this.selectedValues)));
   }
 }
 

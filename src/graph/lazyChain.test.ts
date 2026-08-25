@@ -156,3 +156,34 @@ describe("a no-op verb forwards the ref instead of collecting", () => {
     expect(calls("engine_source")).toBe(1);
   });
 });
+
+// The Slicer reads ONLY the selected column (for its buttons) off a lazy upstream and
+// pushes its row filter as a verb — it must never collect the whole frame.
+import { SlicerNode } from "./nodes/control";
+
+describe("Slicer on a lazy upstream reads one column and filters lazily", () => {
+  it("with no selection: reads one column for the buttons, forwards the ref (empty drop)", async () => {
+    const s = new SlicerNode();
+    const out = (await chain([new FrameInputNode(), new DistinctNode(), s], "frame")) as { result: unknown };
+    // The card's buttons cost exactly ONE column read; the frame is never collected.
+    expect(calls("engine_column")).toBe(1);
+    expect(calls("engine_collect")).toBe(0);
+    expect(calls("engine_source")).toBe(1);
+    expect(isFrameRef(out.result)).toBe(true);
+    const ref = out.result as { __plan: readonly { kind: string }[] };
+    expect(ref.__plan.map((o) => o.kind)).toEqual(["distinct", "drop"]);
+    // Schema (all columns) + the first column's uniques, from the stub.
+    expect(s.cachedColumns).toEqual(["A", "B"]);
+    expect(s.cachedUniqueValues).toEqual([1, 2]);
+  });
+
+  it("with a selection: pushes the row filter as a filterMulti verb, still no collect", async () => {
+    const s = new SlicerNode({ selectedColumn: "A", selectedValues: [1] });
+    const out = (await chain([new FrameInputNode(), new DistinctNode(), s], "frame")) as { result: unknown };
+    expect(calls("engine_column")).toBe(1);
+    expect(calls("engine_collect")).toBe(0);
+    expect(isFrameRef(out.result)).toBe(true);
+    const ref = out.result as { __plan: readonly { kind: string }[] };
+    expect(ref.__plan.map((o) => o.kind)).toEqual(["distinct", "filterMulti"]);
+  });
+});

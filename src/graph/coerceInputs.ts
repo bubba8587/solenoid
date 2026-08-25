@@ -22,6 +22,8 @@ export const LAZY_FRAME_NODES: ReadonlySet<string> = new Set([
   // Read through the cheap primitives (column / preview / read-at-Run) instead of a
   // full-frame collect.
   "GetColumnNode", "SumIfsNode", "TableInfoNode", "WriteFileNode",
+  // Slicer (control.ts): reads the schema + one column for its buttons, filters lazily.
+  "SlicerNode",
 ]);
 
 // 1-D non-numeric list sockets typeable in place as CSV. Exported so
