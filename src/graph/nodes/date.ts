@@ -87,7 +87,7 @@ export class DateConstructNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string }) {
     super("DateConstruct");
-    this.label = init?.label ?? "DATE";
+    this.label = init?.label ?? "DATE (Build)";
     this.addInput("year",  numListIn("Year"));
     this.addInput("month", numListIn("Month (1–12)"));
     this.addInput("day",   numListIn("Day (1–31)"));

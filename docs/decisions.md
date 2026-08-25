@@ -498,3 +498,10 @@ ISLOGICAL), so the all-caps label is a true callable claim and `nameCase.test.ts
 allowlist entry; `ISLOGICAL` stays callable for Excel parity and is the Inspector's Excel
 equivalent. Reopens only if the type itself is renamed.
 
+### dateBuildName — The DATE(y, m, d) node is named "DATE (Build)"
+The builder node keeps its "(Build)" tag (author 2026-08-25, restoring an earlier explicit
+override a NAME-3 sweep had trimmed to "DATE"): on a canvas next to a Date Input card, a bare
+"DATE" and "Date Input" differ by case alone. The tag is the distinguisher, not a hint, so it
+stays under NAME-3/NAME-4 (DATE is the callable token; the parenthetical is Title Case).
+Reopens only if Date Input is renamed.
+

@@ -771,7 +771,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
   {
     type: "category", label: "Date & Time", description: "Date serial type (like Excel): sources, extract parts, arithmetic, and working-day calculations.",
     children: [
-      { type: "date-construct", label: "DATE", description: "Builds a date from Year, Month, Day. Handles overflow, so month 13 → Jan next year. Excel: DATE.", create: () => new DateConstructNode(), parity: false, accent: DT },
+      { type: "date-construct", label: "DATE (Build)", description: "Builds a date from Year, Month, Day. Handles overflow, so month 13 → Jan next year. Excel: DATE.", create: () => new DateConstructNode(), parity: false, accent: DT },
       { type: "pair", children: [todayNowLeaf("today"), todayNowLeaf("now")] },
       { type: "save-times",    label: "Save Times",  description: "When this document was last autosaved and when it was last written to a file, as two date values.", create: () => new SaveTimesNode(), parity: false, keywords: "save autosave saved timestamp version document file written when last clock" },
       { type: "date-time",     label: "TIME",      description: "Builds a time fraction 0–1 from Hour, Minute, Second. Add it to a date serial for date+time. Excel: TIME.", create: () => new TimeConstructNode(), parity: false },
