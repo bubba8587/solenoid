@@ -135,6 +135,11 @@ holder promotion on plain pan, `--zooming` quality drops on desktop, render-reso
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
 ### SESSION DIGEST (2026-08-25b — post-crash: cards named by their op, NAME-3)
+- **`anydata` glyph = hollow square (A1 design, A3 landed, 907b7527).** anydata leaves the combo's
+  two-tone split-square for its own outline-only mark (distinct from `trueany`'s hollow ring by fill
+  intent): `socket.css`, `SocketComponent.tsx`, `SocketLegend.tsx` new Any Data row, `hicSocketGlyph`,
+  `sockets.ts`, and the `docs/socket-reference.md` glyph row moved out to its own "any rank ≤ 2" line.
+  `socketReference.test.ts` glyph-row regex widened to admit the new row's `any rank[^|]*` column.
 - **§7 over socketDocs + nodeExcel notes, now pinned (Agent 4).** The last two prose surfaces the
   uiCopy corpus never reached: every `static socketDocs` string (incl. shared BASIS_DOC) and every
   `note` in nodeExcel.ts (NODE_EXCEL + EXCEL_GAP). Swept 38 em dashes → sense punctuation, 33 trailing
