@@ -93,8 +93,6 @@ export function CurveComponent({ data, emit }: NodeProps<CurveNodeType>) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pts, xmin, xmax, ymin, ymax]);
 
-  // NEVER data.data(): the engine wraps it with the coercion boundary, which expects
-  // an inputs record, so calling it bare throws and kills the card.
   const sampled = sampleCurve(data.pointsText, xmin, xmax, data.literals.samples ?? 32);
 
   return (
