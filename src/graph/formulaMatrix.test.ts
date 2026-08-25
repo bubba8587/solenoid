@@ -3,7 +3,7 @@ import { compileEvaluator } from "./excelFormula";
 import { EXCEL_IMPL_META } from "./excelFunctions";
 import {
   MatDetNode, TableMultNode, TableTransposeNode, TableUnitNode, TableDiagNode, TableOuterNode, TableReshapeNode, TableInfoNode,
-  HStackTableNode, VStackNode, TableSelectNode, ExpandNode,
+  StackNode, TableSelectNode, ExpandNode,
 } from "./nodes/matrix";
 import { SeriesNode } from "./nodes/list";
 import { InterpolateNode } from "./nodes/stats";
@@ -142,12 +142,16 @@ describe("ownership displaced the broadcast garbage (hideMatrixFromVendor's poin
 
   it("HSTACK / VSTACK / CHOOSECOLS / CHOOSEROWS / EXPAND compute what their nodes do (shareImpl)", () => {
     const a = [[1, 2], [3, 4]], b = [[5, 6], [7, 8]];
-    expect(ev("HSTACK(a, b)", { a, b })).toEqual(new HStackTableNode().data({ t0: [a], t1: [b] }).result);
-    expect(ev("VSTACK(a, b)", { a, b })).toEqual(new VStackNode().data({ t0: [a], t1: [b] }).result);
+    expect(ev("HSTACK(a, b)", { a, b })).toEqual(new StackNode({ op: "hstack" }).data({ t0: [a], t1: [b] }).result);
+    expect(ev("VSTACK(a, b)", { a, b })).toEqual(new StackNode({ op: "vstack" }).data({ t0: [a], t1: [b] }).result);
+    // XSTACK: the node's op as a first argument; anything but v/h is #VALUE!.
+    expect(ev('XSTACK("h", a, b)', { a, b })).toEqual(ev("HSTACK(a, b)", { a, b }));
+    expect(ev('XSTACK("V", a, b)', { a, b })).toEqual(ev("VSTACK(a, b)", { a, b }));
+    expect(isSolError(ev('XSTACK("x", a, b)', { a, b }))).toBe(true);
     // A bare list is one ROW on both surfaces.
-    expect(ev("VSTACK(u, u)", { u: [1, 2, 3] })).toEqual(new VStackNode().data({ t0: [[1, 2, 3]], t1: [[1, 2, 3]] }).result);
+    expect(ev("VSTACK(u, u)", { u: [1, 2, 3] })).toEqual(new StackNode({ op: "vstack" }).data({ t0: [[1, 2, 3]], t1: [[1, 2, 3]] }).result);
     // Ragged inputs pad with #N/A (shape construction, appendLadder) — identical to the node.
-    expect(ev("HSTACK(a, w)", { a, w: [[9], [8], [7]] })).toEqual(new HStackTableNode().data({ t0: [a], t1: [[[9], [8], [7]]] }).result);
+    expect(ev("HSTACK(a, w)", { a, w: [[9], [8], [7]] })).toEqual(new StackNode({ op: "hstack" }).data({ t0: [a], t1: [[[9], [8], [7]]] }).result);
 
     expect(ev("CHOOSECOLS(a, 2)", { a })).toEqual(new TableSelectNode({ op: "choosecols" }).data({ matrix: [a], indices: [[2]] }).result);
     expect(ev("CHOOSEROWS(a, 1, 2)", { a })).toEqual(new TableSelectNode({ op: "chooserows" }).data({ matrix: [a], indices: [[1, 2]] }).result);

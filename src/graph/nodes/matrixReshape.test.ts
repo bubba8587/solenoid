@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { isSolError } from "../errorValue";
-import { TableTransposeNode, HStackTableNode, TableReshapeNode, TableSelectNode, TakeDropNode, ExpandNode, TableInfoNode, TableMultNode, MatDetNode, TableInputNode, TableUnitNode, tableRawCells, rawCellsToText, deriveTable } from "./matrix";
+import { TableTransposeNode, StackNode, TableReshapeNode, TableSelectNode, TakeDropNode, ExpandNode, TableInfoNode, TableMultNode, MatDetNode, TableInputNode, TableUnitNode, tableRawCells, rawCellsToText, deriveTable } from "./matrix";
 import { SolenoidSocket, MutableSocket, type SocketDataType } from "../sockets";
 import { withMatrixUnit, matrixUnitOf, isUnitCell, type UnitCell } from "../unitValue";
 import { ListIndexNode } from "./list";
@@ -73,7 +73,7 @@ describe("reshapers are element-polymorphic", () => {
   });
 
   it("HSTACK stitches two text matrices side by side", () => {
-    const n = new HStackTableNode();
+    const n = new StackNode({ op: "hstack" });
     expect(n.data({ t0: [[["a"], ["b"]]], t1: [[["x"], ["y"]]] }).result).toEqual([
       ["a", "x"],
       ["b", "y"],

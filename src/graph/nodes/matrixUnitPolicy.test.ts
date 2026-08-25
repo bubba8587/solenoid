@@ -37,8 +37,7 @@ const POLICY: Record<string, Policy> = {
   SetCellNode: "carry",           // overwriting cells by address keeps the grid's unit
   InterpolateNode: "carry",       // grid mode fills blanks in the SAME unit (dynamic
                                   // socket, so the sweep can't see it — kept manually)
-  HStackTableNode: "carry-if-uniform",
-  VStackNode: "carry-if-uniform",
+  StackNode: "carry-if-uniform",
   TableReshapeNode: "convert-to-matrix", // WRAPROWS/WRAPCOLS lift; TOCOL/TOROW drop (both checked below)
   TableMultNode: "strip",         // MMULT — dimensioned matrix products are out of scope (documented-strip)
   MatDetNode: "strip",            // MDETERM (unitⁿ) / MINVERSE (unit⁻¹) / TRACE / RANK / NORM — documented-strip
@@ -122,10 +121,10 @@ describe("matrix-unit policy — behavior matches the declared policy", () => {
   });
 
   it("carry-if-uniform: a stack keeps the unit only when every part shares it", () => {
-    const v = new M.VStackNode({ valueKeys: ["t0", "t1"] });
+    const v = new M.StackNode({ op: "vstack",  valueKeys: ["t0", "t1"] });
     expect(matrixUnitOf(v.data({ t0: [kmGrid()], t1: [kmGrid()] }).result)).toMatchObject({ display: "km" });
     expect(matrixUnitOf(v.data({ t0: [kmGrid()], t1: [plainGrid()] }).result)).toBeUndefined(); // mixed → strip
-    const h = new M.HStackTableNode({ valueKeys: ["t0", "t1"] });
+    const h = new M.StackNode({ op: "hstack",  valueKeys: ["t0", "t1"] });
     expect(matrixUnitOf(h.data({ t0: [kmGrid()], t1: [kmGrid()] }).result)).toMatchObject({ display: "km" });
     expect(matrixUnitOf(h.data({ t0: [kmGrid()], t1: [plainGrid()] }).result)).toBeUndefined();
   });
@@ -137,19 +136,19 @@ describe("matrix-unit policy — behavior matches the declared policy", () => {
     // boundary stripped them and a km list stacked into a plain, unitless grid.
     const km = fcUnitToUnit("km")!, kg = fcUnitToUnit("kg")!;
     const kmList = () => [fromUnit(1, km, "km"), fromUnit(2, km, "km")];
-    const v = new M.VStackNode({ valueKeys: ["t0", "t1"] });
+    const v = new M.StackNode({ op: "vstack",  valueKeys: ["t0", "t1"] });
     wrapNodeData(v);
     const out = (v.data({ t0: [kmList()], t1: [kmList()] }) as { result: unknown }).result;
     expect(matrixUnitOf(out)).toMatchObject({ display: "km" });
     expect((out as number[][])[0][0]).toBe(1);              // as-typed magnitude, never a UnitCell
     expect((out as unknown[][]).flat().some(isUnitCell)).toBe(false);
     // A km list stacked on a km GRID still agrees — both sides reduce to the same tag.
-    const mixedRank = new M.VStackNode({ valueKeys: ["t0", "t1"] });
+    const mixedRank = new M.StackNode({ op: "vstack",  valueKeys: ["t0", "t1"] });
     wrapNodeData(mixedRank);
     expect(matrixUnitOf((mixedRank.data({ t0: [kmList()], t1: [kmGrid()] }) as { result: unknown }).result))
       .toMatchObject({ display: "km" });
     // Disagreeing units strip, same uniform-or-nothing rule as the grid case.
-    const h = new M.HStackTableNode({ valueKeys: ["t0", "t1"] });
+    const h = new M.StackNode({ op: "hstack",  valueKeys: ["t0", "t1"] });
     wrapNodeData(h);
     expect(matrixUnitOf((h.data({ t0: [kmList()], t1: [[fromUnit(3, kg, "kg")]] }) as { result: unknown }).result))
       .toBeUndefined();

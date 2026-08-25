@@ -52,7 +52,7 @@ backlog line is deleted; git is the record.
 | 18 | ~~d4-proportion-treemap-waffle~~ | — | landed (banana-joe/d4; Treemap+Waffle → one ProportionNode) |
 | 19 | ~~d5-select-drop-columns~~ | — | landed 2026-08-25 (Jeff/A5; Columns node keep\|drop) |
 | 20 | ~~d6-take-drop-one-node~~ | — | landed 2026-08-25 (Jeff/D6; one rank-preserving TakeDropNode) |
-| 21 | `d7-xstack-one-node` | S (1 commit) | — (matrix.ts + MatrixNodes.tsx + catalog/registry/nodeExcel/nodeOps + formula XSTACK; own worktree) |
+| 21 | ~~d7-xstack-one-node~~ | — | landed 2026-08-25 (Lead; one StackNode, XSTACK) |
 
 Not planned here (author-present or needs a device): everything under "Bugs &
 verifications" in `../backlog.md`, the Vite 8 bump, `rete-area-plugin` 2.3.2, lazy handles (B9).

@@ -54,7 +54,6 @@ export { IsCloseComponent } from "./IsCloseNode";
 // ─── Lists — build ────────────────────────────────────────────────────────────
 export { ListInputComponent } from "./ListInputNode";
 export { SeriesComponent } from "./SeriesNode";
-export { VStackComponent } from "./VStackNode";
 
 // ─── Lists — shape ────────────────────────────────────────────────────────────
 export { SortComponent } from "./SortNode";
@@ -134,7 +133,7 @@ export { IsEvenOddComponent } from "./IsEvenOddNode";
 export { TableInputComponent } from "./TableInputNode";
 export {
   MatDetComponent, MatSolveComponent, MatEigenComponent, TableMultComponent, TableUnitComponent, TableDiagComponent, TableOuterComponent,
-  TableTransposeComponent, HStackTableComponent,
+  TableTransposeComponent, StackComponent,
   TableReshapeComponent, TableSelectComponent, TakeDropComponent, ExpandTableComponent, TableInfoComponent,
 } from "./MatrixNodes";
 export { SetCellComponent } from "./SetCellNode";

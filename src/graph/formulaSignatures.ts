@@ -564,6 +564,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   EXPAND: "array, rows, [columns], [pad_with]",
   HSTACK: "array1, …",
   VSTACK: "array1, …",
+  XSTACK: "axis, array1, …",
 };
 
 /** A named placeholder signature synthesized from an impl's [min, max] arity, so a

@@ -51,7 +51,7 @@ import { NoteNode, ImageNode, SvgPickerNode } from "./annotation";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "./composite";
 import {
   TableInputNode, MatDetNode, MatSolveNode, MatEigenNode, TableMultNode, TableUnitNode, TableDiagNode, TableOuterNode, TableTransposeNode,
-  HStackTableNode, VStackNode, TableReshapeNode, TableSelectNode, TakeDropNode, ExpandNode, SetCellNode, TableInfoNode,
+  StackNode, TableReshapeNode, TableSelectNode, TakeDropNode, ExpandNode, SetCellNode, TableInfoNode,
 } from "./matrix";
 import { MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode, ScanLambdaNode } from "./tableLambda";
 import { LambdaNode } from "./lambda";
@@ -163,7 +163,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof TableInputNode || node instanceof MatDetNode || node instanceof MatSolveNode || node instanceof MatEigenNode ||
     node instanceof TableMultNode || node instanceof TableUnitNode || node instanceof TableDiagNode ||
     node instanceof TableOuterNode ||
-    node instanceof TableTransposeNode || node instanceof HStackTableNode || node instanceof VStackNode ||
+    node instanceof TableTransposeNode || node instanceof StackNode ||
     node instanceof TableReshapeNode || node instanceof TableSelectNode ||
     node instanceof TakeDropNode || node instanceof ExpandNode || node instanceof SetCellNode ||
     node instanceof TableInfoNode || node instanceof MapTableNode ||

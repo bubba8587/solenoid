@@ -7,7 +7,7 @@ import { ExpectNode } from "./nodes/quality";
 import { CableSwitchNode } from "./nodes/control";
 import { IfNode, IFErrorNode, ChooseNode, SwitchNode, IfsNode, BooleanOpNode, ComparisonNode } from "./nodes/logic";
 import { ListIndexNode, FillNode, ConcatListsNode } from "./nodes/list";
-import { VStackNode, HStackTableNode } from "./nodes/matrix";
+import { StackNode } from "./nodes/matrix";
 import { NumberInputNode } from "./nodes/input";
 
 // The passthrough declaration is the ONE source of truth that trueany TYPE adoption,
@@ -75,13 +75,13 @@ describe("passthrough declarations", () => {
     // Concat Lists (1-D) and VSTACK/HSTACK (2-D) are the same shape: element-preserving
     // combiners whose value branches are ALL their rows, so the row keys must track the
     // extensible set rather than a fixed pair (appendLadder).
-    for (const n of [new ConcatListsNode(), new VStackNode(), new HStackTableNode()]) {
+    for (const n of [new ConcatListsNode(), new StackNode({ op: "vstack" }), new StackNode({ op: "hstack" })]) {
       const spec = getPassthrough(n)[0];
       expect(spec).toMatchObject({ output: "result", combine: "agree" });
       expect(spec.inputs).toEqual((n as { valueInputKeys(): string[] }).valueInputKeys());
       expect(isPurePassthroughNode(n)).toBe(false); // cells are rearranged/padded — never pure
     }
-    const grown = new VStackNode();
+    const grown = new StackNode({ op: "vstack" });
     const added = grown.addValueInput();
     expect(getPassthrough(grown)[0].inputs).toContain(added); // re-read each pass, not snapshotted
   });

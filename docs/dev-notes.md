@@ -135,6 +135,11 @@ holder promotion on plain pan, `--zooming` quality drops on desktop, render-reso
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
 ### SESSION DIGEST (2026-08-25b — post-crash: cards named by their op, NAME-3)
+- **D7 XSTACK** (author: "give me XSTACK … can just be v and h"): VStackNode + HStackTableNode →
+  one `StackNode`, op VSTACK | HSTACK, card titled XSTACK (collapsed family, NAME-3); `XSTACK(axis,
+  …)` registered ("v" | "h") so the name is a callable claim (NAME-4); node ≡ formula pinned in
+  formulaMatrix.test. Append / Bind Columns stay frame verbs (name-matching vs positional padding;
+  the D6 Head line).
 - **NAME-3 (author: "COLUMNS"-style names must go; names distinct, short, Excel where possible).**
   Root cause was a mechanism, not a label: `kind: "operation"` promised "the selector names the
   card" but only Keep/Drop Columns and MROUND did it — ~150 leaves placed a card titled by its

@@ -17,6 +17,7 @@ import { RegexNode, REGEX_OP_META } from "./nodes/text";
 import { DATE_DIFF_OP_META, DateTimeValueNode, WorkdaysNode } from "./nodes/date";
 import { IFErrorNode } from "./nodes/logic";
 import { ByAxisNode, BY_AXIS_OP_META } from "./nodes/tableLambda";
+import { StackNode, STACK_OP_META } from "./nodes/matrix";
 import { NpvNode, IrrNode, NPV_OP_META, IRR_OP_META } from "./nodes/finance";
 import {
   IsEvenOddNode, ComparisonNode, IsTestNode,
@@ -178,6 +179,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // Both ops have their own bare Add-menu leaf ("Keep Columns" / "Drop Columns"), so
   // neither becomes a "Keep Columns: Drop" colon row; the decl still carries kind +
   // op fx names for the accent and uniqueNameMap.
+  { type: "xstack", ctor: StackNode, kind: "operation", ops: fromMeta(STACK_OP_META),
+    create: (op) => new StackNode({ op: op as never }) },
   { type: "by-axis", ctor: ByAxisNode, kind: "operation", ops: fromMeta(BY_AXIS_OP_META),
     create: (op) => new ByAxisNode({ op: op as never }), leafOps: ["row", "col"] },
   { type: "npv", ctor: NpvNode, kind: "operation", ops: fromMeta(NPV_OP_META),

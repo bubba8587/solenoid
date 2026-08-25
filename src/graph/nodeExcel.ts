@@ -196,7 +196,6 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "fvschedule": [{ excel: "FVSCHEDULE", syntax: "=FVSCHEDULE(pv, schedule)" }],
   "gcd-lcm": [{ excel: "GCD", syntax: "=GCD(a, b)", parity: true }],
   "lcm": [{ excel: "LCM", syntax: "=LCM(a, b)", parity: true }],
-  "hstack-table": [{ excel: "HSTACK", syntax: "=HSTACK(array1, array2, ...)", parity: true, note: "N-ary; ragged inputs pad with #N/A like Excel. A bare list counts as ONE ROW" }],
   "iferror": [{ excel: "IFERROR", syntax: "=IFERROR(v, fallback)", parity: true }],
   "ifna": [{ excel: "IFNA", syntax: "=IFNA(v, fallback)", parity: true }],
   "ifs": [{ excel: "IFS", syntax: "=IFS(c1, v1, c2, v2, ...)", parity: false, note: "Fixed 3 conditions; Excel is variadic" }],
@@ -242,7 +241,11 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "SORTBY", syntax: "=SORTBY(array, by_array)", parity: false, note: "Wire the Sort node's `by` input: reorders a 1-D array of ANY element type (position-only) by a parallel NUMERIC key list; text sort keys aren't supported yet" },
   ],
   "list-unique": [{ excel: "UNIQUE", syntax: "=UNIQUE(array)", parity: true }],
-  "vstack-table": [{ excel: "VSTACK", syntax: "=VSTACK(array1, array2, ...)", parity: true, note: "N-ary; ragged inputs pad with #N/A like Excel. A bare list counts as ONE ROW" }],
+  "xstack": [
+    { excel: "VSTACK", syntax: "=VSTACK(array1, array2, ...)", parity: true, note: "N-ary; ragged inputs pad with #N/A like Excel. A bare list counts as ONE ROW" },
+    { excel: "HSTACK", syntax: "=HSTACK(array1, array2, ...)", parity: true, note: "N-ary; ragged inputs pad with #N/A like Excel. A bare list counts as ONE ROW" },
+    { excel: "XSTACK", syntax: "=XSTACK(axis, array1, array2, ...)", parity: false, note: "Solenoid: one function, axis first (\"v\" or \"h\")" },
+  ],
   // Keys MUST track the catalog types; a drift test catches stale ones.
   "bool-and": [{ excel: "AND", syntax: "=AND(a, b, ...)", parity: true }],
   "if": [{ excel: "IF", syntax: "=IF(cond, a, b)", parity: true }],

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { VStackNode, HStackTableNode } from "./matrix";
+import { StackNode } from "./matrix";
 import { ConcatListsNode } from "./list";
 import { FrameFromListsNode, AppendNode, FilterFrameNode } from "./frame";
 import { QuadraticRootsNode, cx } from "./complex";
@@ -10,38 +10,38 @@ import { wrapNodeData } from "../coerceInputs";
 
 describe("VSTACK stacks; Concat appends (the Excel row semantics)", () => {
   it("two lists VSTACK into a 2-row table (a list is one row)", () => {
-    const r = new VStackNode().data({ t0: [[1, 2, 3]], t1: [[4, 5, 6]] }).result;
+    const r = new StackNode({ op: "vstack" }).data({ t0: [[1, 2, 3]], t1: [[4, 5, 6]] }).result;
     expect(r).toEqual([[1, 2, 3], [4, 5, 6]]);
   });
 
   it("two lists HSTACK into one long row", () => {
-    const r = new HStackTableNode().data({ t0: [[1, 2]], t1: [[3, 4, 5]] }).result;
+    const r = new StackNode({ op: "hstack" }).data({ t0: [[1, 2]], t1: [[3, 4, 5]] }).result;
     expect(r).toEqual([[1, 2, 3, 4, 5]]);
   });
 
   it("VSTACK stacks tables and mixes a table with a list row", () => {
     const table = [[1, 2], [3, 4]];
-    expect(new VStackNode().data({ t0: [table], t1: [[5, 6]] }).result)
+    expect(new StackNode({ op: "vstack" }).data({ t0: [table], t1: [[5, 6]] }).result)
       .toEqual([[1, 2], [3, 4], [5, 6]]);
   });
 
   it("a narrower input pads right with #N/A (Excel VSTACK), not #SHAPE!", () => {
-    const r = new VStackNode().data({ t0: [[1, 2]], t1: [[1, 2, 3]] }).result as unknown[][];
+    const r = new StackNode({ op: "vstack" }).data({ t0: [[1, 2]], t1: [[1, 2, 3]] }).result as unknown[][];
     expect(r[0].slice(0, 2)).toEqual([1, 2]);
     expect(isSolError(r[0][2])).toBe(true);
     expect(r[1]).toEqual([1, 2, 3]);
-    expect(new VStackNode().data({ t0: [[1, 2]] }).result).toEqual([[1, 2]]);
+    expect(new StackNode({ op: "vstack" }).data({ t0: [[1, 2]] }).result).toEqual([[1, 2]]);
   });
 
   it("a shorter HSTACK input pads down with #N/A (Excel HSTACK)", () => {
-    const r = new HStackTableNode().data({ t0: [[[1], [2]]], t1: [[[9]]] }).result as unknown[][];
+    const r = new StackNode({ op: "hstack" }).data({ t0: [[[1], [2]]], t1: [[[9]]] }).result as unknown[][];
     expect(r[0]).toEqual([1, 9]);
     expect(r[1][0]).toBe(2);
     expect(isSolError(r[1][1])).toBe(true);
   });
 
   it("stacking is N-ary: a third row joins the stack in row order", () => {
-    const n = new VStackNode();
+    const n = new StackNode({ op: "vstack" });
     n.addValueInput(); // t2
     expect(n.data({ t0: [[1, 2]], t1: [[3, 4]], t2: [[5, 6]] }).result)
       .toEqual([[1, 2], [3, 4], [5, 6]]);
@@ -55,10 +55,10 @@ describe("VSTACK stacks; Concat appends (the Excel row semantics)", () => {
   });
 
   it("stackers round-trip their rows through valueKeys (persistence contract)", () => {
-    const n = new VStackNode();
+    const n = new StackNode({ op: "vstack" });
     n.addValueInput();
     const keys = Object.keys(n.inputs).filter((k) => k.startsWith("t"));
-    const clone = new VStackNode({ valueKeys: keys });
+    const clone = new StackNode({ op: "vstack",  valueKeys: keys });
     expect(clone.valueInputKeys()).toEqual(keys);
   });
 });

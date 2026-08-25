@@ -362,19 +362,29 @@ function demoteUnitCells(m: CellMat): CellMat {
   return withMatrixUnit(bare, unit);
 }
 
-/** Shared extensible-row plumbing for the two stackers. */
-abstract class StackNodeBase extends ClassicPreset.Node {
+export type StackOp = "vstack" | "hstack";
+
+export const STACK_OP_META = {
+  vstack: { label: "VSTACK", description: "Stacks tables top-to-bottom, in row order. A list counts as one row, so two lists make a 2-row table. A narrower table pads right with #N/A. Excel: VSTACK." },
+  hstack: { label: "HSTACK", description: "Concatenates tables side by side, in row order. A list counts as one row, so two lists make one long row. A shorter table pads down with #N/A. Excel: HSTACK." },
+} satisfies Record<StackOp, { label: string; description: string }>;
+
+// XSTACK: one stacker, the axis is the op. VSTACK is also the lists→table path: a bare
+// list widens to ONE ROW, so stacking two lists yields a 2×n table.
+export class StackNode extends ClassicPreset.Node {
   /** Rows keep their `UnitCell` tags at the boundary so `demoteUnitCells` can lift a
    *  dimensioned LIST row to a grid unit — tags riding INTO the matrix break unitGranularity. */
   unitAware = true;
   label: string;
+  op: StackOp;
   cachedResult: CellMat | SolError | null = null;
   nextInputId = 0;
   width = 180; height = 250;
 
-  constructor(name: string, label: string, init?: { label?: string; valueKeys?: string[] }) {
-    super(name);
-    this.label = init?.label ?? label;
+  constructor(init?: { label?: string; op?: StackOp; valueKeys?: string[] }) {
+    super("Stack");
+    this.op = init?.op ?? "vstack";
+    this.label = init?.label ?? "";
     const vKeys = (init?.valueKeys ?? []).filter((k) => k.startsWith("t"));
     if (vKeys.length) for (const k of vKeys) this.addInputWithKey(k);
     else for (let i = 0; i < 2; i++) this.addValueInput();
@@ -408,40 +418,17 @@ abstract class StackNodeBase extends ClassicPreset.Node {
 
   /** Wired inputs as matrices in row order (empties drop out), each reduced to the
    *  unitGranularity matrix shape on the way in. */
-  protected matsOf(inputs: Record<string, unknown[] | undefined>): CellMat[] {
+  private matsOf(inputs: Record<string, unknown[] | undefined>): CellMat[] {
     return this.valueInputKeys()
       .map((k) => toAnyMatrix(inputs[k]?.[0]))
       .filter((m): m is CellMat => !!m && m.length > 0)
       .map(demoteUnitCells);
   }
-}
-
-export class HStackTableNode extends StackNodeBase {
-  constructor(init?: { label?: string; valueKeys?: string[] }) {
-    super("HStackTable", "HSTACK", init);
-  }
 
   data(inputs: Record<string, unknown[] | undefined>): { result: CellMat | SolError | null } {
     const mats = this.matsOf(inputs);
     if (mats.length === 0) { this.cachedResult = null; return { result: null }; }
-    const out = stackH(mats) as CellMat;
-    withMatrixUnit(out, sharedMatrixUnit(mats));
-    this.cachedResult = out;
-    return { result: out };
-  }
-}
-
-// VSTACK is also the lists→table path: a bare list widens to ONE ROW, so stacking
-// two lists yields a 2×n table.
-export class VStackNode extends StackNodeBase {
-  constructor(init?: { label?: string; valueKeys?: string[] }) {
-    super("VStack", "VSTACK", init);
-  }
-
-  data(inputs: Record<string, unknown[] | undefined>): { result: CellMat | SolError | null } {
-    const mats = this.matsOf(inputs);
-    if (mats.length === 0) { this.cachedResult = null; return { result: null }; }
-    const out = stackV(mats) as CellMat;
+    const out = (this.op === "vstack" ? stackV(mats) : stackH(mats)) as CellMat;
     withMatrixUnit(out, sharedMatrixUnit(mats));
     this.cachedResult = out;
     return { result: out };

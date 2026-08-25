@@ -13,4 +13,3 @@ Agent 1 = Lead (solenoid-a6) writes plans, doesn't execute, verifies + fast-forw
 - Lead (solenoid-a6) — naming/UI-string polish program for 1.3 (author mandate 2026-08-25): NAME-3 landed (b035ae8e); deciding the CAPS-vs-Title-Case and op-dropdown renames from the two inventories below, then handing approved renames back.
 - solenoid-22 — worktree `../solenoid-banana-joe`: READ-ONLY inventory, CAPS labels that are not formula-callable (+ the reverse). Report to Lead; no edits.
 - solenoid-dd — worktree `../solenoid-jeff`: READ-ONLY inventory of every op-dropdown / SegToggle option label (prose, casing, non-Excel spellings, glyphs). Report to Lead; no edits.
-- QUEUED (first executor free takes it, tell Lead): D7 XSTACK one stacking node — `docs/plans/d7-xstack-one-node.md`.

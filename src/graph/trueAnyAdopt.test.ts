@@ -5,7 +5,7 @@ import { extractInit } from "./copyPaste";
 import { DisplayNode } from "./nodes/display";
 import { IfNode, NaNode } from "./nodes/logic";
 import { CableSwitchNode } from "./nodes/control";
-import { ListIndexNode, ReverseNode, SortNode, SetOpNode, ConcatListsNode, InterleaveNode, TableReshapeNode, VStackNode, HStackTableNode, FrameInputNode, SortFrameNode, ColumnsNode } from "./rete-nodes";
+import { ListIndexNode, ReverseNode, SortNode, SetOpNode, ConcatListsNode, InterleaveNode, TableReshapeNode, StackNode, FrameInputNode, SortFrameNode, ColumnsNode } from "./rete-nodes";
 import { numberSocket, stringSocket, frameSocket, cubeSocket, dateListSocket, strListSocket, strTableSocket, SolenoidSocket, adoptTypeForBase, canConnect } from "./sockets";
 
 // Same fake-editor surface as conduitTrace.test.ts — the pass only reads
@@ -337,7 +337,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     const tbl = new ClassicPreset.Node("StrTable");
     tbl.addOutput("out", new ClassicPreset.Output(strTableSocket));
 
-    for (const stack of [new VStackNode(), new HStackTableNode()]) {
+    for (const stack of [new StackNode({ op: "vstack" }), new StackNode({ op: "hstack" })]) {
       const [k0, k1] = stack.valueInputKeys();
       reconcileTrueAnyTypes(makeEditor([strs, tbl, stack], [
         { source: strs.id, sourceOutput: "out", target: stack.id, targetInput: k0 },

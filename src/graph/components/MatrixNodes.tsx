@@ -7,7 +7,7 @@ import type {
   MatSolveNode as MatSolveNodeType,
   MatEigenNode as MatEigenNodeType,
   TableTransposeNode as TableTransposeNodeType,
-  HStackTableNode as HStackTableNodeType,
+  StackNode as StackNodeType, StackOp,
   TableReshapeNode as TableReshapeNodeType, TableReshapeOp,
   TableSelectNode as TableSelectNodeType, TableSelectOp,
   TakeDropNode as TakeDropNodeType, TakeDropOp,
@@ -15,7 +15,7 @@ import type {
   TableInfoNode as TableInfoNodeType,
 } from "../rete-nodes";
 import {
-  MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META, TAKEDROP_OP_META,
+  MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META, TAKEDROP_OP_META, STACK_OP_META,
 } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { ExtensibleInputs } from "./ExtensibleInputs";
@@ -128,10 +128,16 @@ export function TableTransposeComponent({ data, emit }: NodeProps<TableTranspose
   );
 }
 
-export function HStackTableComponent({ data, emit }: NodeProps<HStackTableNodeType>) {
+const STACK_OPS = (Object.keys(STACK_OP_META) as StackOp[]).map((op) => ({
+  value: op, label: STACK_OP_META[op].label, title: STACK_OP_META[op].description,
+}));
+
+export function StackComponent({ data, emit }: NodeProps<StackNodeType>) {
+  const [op, setOp] = useNodeField(data, "op");
   return (
     <NodeShell node={data} emit={emit}>
       <ExtensibleInputs node={data} emit={emit} />
+      <OpSelect value={op} onChange={setOp} options={STACK_OPS} />
       <TableDisplay table={data.cachedResult} label={nodeDisplayName(data)} elem="number" />
     </NodeShell>
   );

@@ -739,6 +739,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   // element-preserving ("any"), all take grids whole (matrixArgs), a list is a row.
   HSTACK:     { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 255], native: true },
   VSTACK:     { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [1, 255], native: true },
+  XSTACK:     { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 256], native: true },
   CHOOSECOLS: { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 255], native: true },
   CHOOSEROWS: { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 255], native: true },
   EXPAND:     { returns: "any", rank: "matrix", matrixArgs: true, listArgs: true, arity: [2, 4], native: true },
@@ -1860,6 +1861,12 @@ registerInternal("HSTACK", (...args) => {
 registerInternal("VSTACK", (...args) => {
   const mats = args.map(toMatrix).filter((m): m is unknown[][] => m !== null);
   return mats.length ? stackV(mats) : null;
+});
+registerInternal("XSTACK", (axis, ...args) => {
+  const a = String(axis ?? "").trim().toLowerCase();
+  if (a !== "v" && a !== "h") return VALUE("XSTACK: axis is \"v\" or \"h\"");
+  const mats = args.map(toMatrix).filter((m): m is unknown[][] => m !== null);
+  return mats.length ? (a === "v" ? stackV(mats) : stackH(mats)) : null;
 });
 registerInternal("CHOOSECOLS", (matrix, ...cols) => {
   const m = toMatrix(matrix);
