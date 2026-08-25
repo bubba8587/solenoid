@@ -157,6 +157,18 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   row ranks by the name after its colon); and the class name is internal — the header hover,
   Navigator type, status bar, Problems/Pins/Comments/Isolate all read `nodeDisplayName`, with
   `nodeNamer.ts` late-binding it for modules below catalogUtils. `nameSurfaces.test.ts` pins both.
+- **Excel-sign-off audit (NAME-1 third pin).** A description's "Excel: X." is a second copy of
+  NODE_EXCEL[type]; audited every catalog leaf + OP_META against it. Fixed 12 disagreements: the
+  frame verbs (Frame Sort/Filter, Append, Bind Columns, group-by-frame, Keep Columns) and 1-D
+  nodes (Length, Range, LOG2) claimed a function OWNED by a sibling (SORT→list-sort, FILTER→
+  list-filter, VSTACK/HSTACK→the matrix stackers, SEQUENCE→list-sequence, CHOOSECOLS→tblsel, LOG→
+  twomath-log) — reworded to "Like Excel's X" prose so the one-home rule holds; Sparkline dropped
+  "Excel: SPARKLINE." (not a worksheet function); Pivot dropped its sign-off (the leaf label already
+  IS PIVOTBY). Frame verbs stay OUT of NODE_EXCEL by design (not formula-callable → formulaNodeParity
+  gap A). New pin: `nameSurfaces.test.ts` third describe — every "Excel: NAME." claim (a plain
+  function-name list, not a construction like MIN(MAX(…)) or "X or Y" prose) resolves to that type's
+  NODE_EXCEL names or op fx. Case (b) (a NODE_EXCEL entry with no sign-off) left alone: the Inspector
+  already shows the Excel row, and adding sign-offs to ~200 terse descriptions fights §7.
 - **D7 XSTACK** (author: "give me XSTACK … can just be v and h"): VStackNode + HStackTableNode →
   one `StackNode`, op VSTACK | HSTACK, card titled XSTACK (collapsed family, NAME-3); `XSTACK(axis,
   …)` registered ("v" | "h") so the name is a callable claim (NAME-4); node ≡ formula pinned in
