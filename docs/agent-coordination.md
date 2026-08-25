@@ -18,13 +18,15 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 2. **Per-card CSS conversion — Step 1 census ONLY**: probe script (playwright, dev page) counting elements per card type, split value/handler vs paint-only. Output = a table in dev-notes + the script under `scripts/`. Build nothing in step 2.
 
 ### Agent 3 (solenoid-c7) — QUEUE (FIFO; flush Commit queue first; never push)
-1. **Hygiene C**: evict the three archived docs still cited by code — find `docs/archive/` references in `src/` + `scripts/` (`docsPointers.test.ts` is the guard), repoint to the live doc or delete the pointer per `docs/code-comments.md`.
-2. **OS-dropdown rule, MOBILE half**: rerun `scripts/dropdown-reorder-probe.mjs` under the mobile viewport (`is-mobile`, tapSelect path); record the result in the backlog item + dev-notes digest.
+2. **OS-dropdown rule, MOBILE half** (IN PROGRESS): rerun `scripts/dropdown-reorder-probe.mjs` under the mobile viewport (`is-mobile`, tapSelect path); record the result in the backlog item + dev-notes digest.
 
 ## Commit queue
 (empty)
 
 ## Recently done
+- **Hygiene C — code→archive pointers evicted (A3, 2026-08-25).** `c12b7bf0`: dropped stale `v2.0/`
+  citations of archived specs from 3 code comments (broadcastRules.test, frameVerbCorpus.test,
+  engine/tests.rs). Sweep confirms zero archived-doc citations remain in code. Not pushed.
 - **anydata glyph landed (A1 design → A3, 2026-08-25).** code `907b7527` (8 files), docs `f9b46bb2`
   (backlog item deleted + dev-notes digest). NOTE: A1's uncommitted socketReference.test.ts was
   corrupted (a stray `|chart|document|any rank[^|]*|anything) |` prefix on all 241 lines from a
