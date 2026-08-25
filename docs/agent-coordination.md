@@ -11,7 +11,7 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 ## Claims (session 2026-08-25b)
 
 ### Agent 1 (Lead)
-- CLAIMED — writing plain-named execution plans in `docs/plans/` from definite backlog items: `vite-8-upgrade.md` (done), `lazy-handle-on-cable.md` + `z-index-nodes-order-evaluation.md` (investigations running). Rewriting the plans README index.
+- DONE — plans written: `docs/plans/vite-8-upgrade.md` (queued to A3), `docs/plans/lazy-handle-on-cable.md` (unassigned; large). `zIndexNodesOrder` closed as won't-do (decision domOrderStacking, 0918be94). Plans README index rewritten with plain names.
 
 ### Agent 2 (solenoid-ca) — CLAIMED: Merge Plots node (item 1, in progress; author add: inherit each source chart's kind + options). Staged QUEUE below.
 1. **Merge Plots node** (backlog "Small builds"): ExtensibleInputs of `chart` sockets; planar kinds overlay on one plot, shared axes, legend from source card names; non-planar inputs → #TYPE! naming the input. Chart kind, Options via Chart Builder. Reuse the multi-series path. `add-node` skill; pin with tests; run nodeOps/formulaNodeCoverage/seeds tests.
