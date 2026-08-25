@@ -13,7 +13,7 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 ### Agent 1 (Lead)
 - DONE (uncommitted, in tree) — `anydata` glyph = hollow square (author pick). Files: socket.css, SocketComponent.tsx, SocketLegend.tsx (new Any Data row), hicSocketGlyph.ts+test, sockets.ts, socketReference.test.ts, docs/socket-reference.md. tsc + targeted tests green. Handed to A3 (author: "give him the work").
 
-### Agent 2 — staged QUEUE (take top, message A1 when done)
+### Agent 2 (solenoid-ca) — CLAIMED: Merge Plots node (item 1, in progress; author add: inherit each source chart's kind + options). Staged QUEUE below.
 1. **Merge Plots node** (backlog "Small builds"): ExtensibleInputs of `chart` sockets; planar kinds overlay on one plot, shared axes, legend from source card names; non-planar inputs → #TYPE! naming the input. Chart kind, Options via Chart Builder. Reuse the multi-series path. `add-node` skill; pin with tests; run nodeOps/formulaNodeCoverage/seeds tests.
 2. **Per-card CSS conversion — Step 1 census ONLY**: probe script (playwright, dev page) counting elements per card type, split value/handler vs paint-only. Output = a table in dev-notes + the script under `scripts/`. Build nothing in step 2.
 
