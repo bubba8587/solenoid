@@ -31,15 +31,32 @@ export type FrameInput = FrameValue | FrameRef;
 // while carrying DIFFERENT pending plans, so keying by handle would collapse them.
 let _flushMemo = new Map<FrameRef, Promise<FrameHandle>>();
 let _collectMemo = new Map<FrameRef, Promise<FrameValue | SolError | null>>();
+// Every plan flushed this pass, per base handle, so a longer plan on the same base
+// rebases onto the longest already-materialized prefix instead of re-running it.
+let _flushedPlans = new Map<FrameHandle, { plan: readonly FrameOp[]; p: Promise<FrameHandle> }[]>();
 
 /** Resolve a ref's pending plan to a real handle in ONE `applyMany` round trip —
- *  the fusion entry point, memoized per pass so a fan-out ref flushes once. */
+ *  the fusion entry point, memoized per pass so a fan-out ref flushes once. A chain
+ *  of verb cards flushes once PER CARD (each previews its own output), so the
+ *  flush applies only the ops past the longest prefix a card upstream already
+ *  flushed this pass; each card then costs one op on the previous frame, not the
+ *  whole chain again. A tail holding a groupBy is not rebased: the aggregate
+ *  guard reads its input column off the plan's base handle. */
 export async function flushRef(ref: FrameRef): Promise<FrameHandle> {
   if (ref.__plan.length === 0) return ref.__frameRef;
   let p = _flushMemo.get(ref);
   if (!p) {
-    p = applyPlanWithSketchSampling(ref.__frameRef, ref.__plan);
+    const flushed = _flushedPlans.get(ref.__frameRef) ?? [];
+    const prefix = flushed
+      .filter((f) => f.plan.length < ref.__plan.length && f.plan.every((op, i) => op === ref.__plan[i]))
+      .sort((a, b) => b.plan.length - a.plan.length)[0];
+    const tail = prefix ? ref.__plan.slice(prefix.plan.length) : ref.__plan;
+    p = prefix && !tail.some((op) => op.kind === "groupBy")
+      ? prefix.p.then((h) => applyPlanWithSketchSampling(h, tail))
+      : applyPlanWithSketchSampling(ref.__frameRef, ref.__plan);
     _flushMemo.set(ref, p);
+    flushed.push({ plan: ref.__plan, p });
+    _flushedPlans.set(ref.__frameRef, flushed);
   }
   return p;
 }
@@ -96,6 +113,7 @@ export function clearCollectMemo(): void {
   }
   _flushMemo = new Map();
   _collectMemo = new Map();
+  _flushedPlans = new Map();
 }
 
 /** Collect a cable's frame value back to an eager FrameValue — the materialization

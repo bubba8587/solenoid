@@ -75,11 +75,16 @@ describe("verb chain IPC cost through real node data()", () => {
     expect(calls("engine_source")).toBe(1);
     // Nothing in the chain reads whole rows, so the bridge never collects.
     expect(calls("engine_collect")).toBe(0);
-    // Every verb node still flushes for its own card preview (the non-negotiable):
-    // three verbs → three fused applyMany flushes + three previews. Phase 4 of the
-    // lazy-handle plan is what would lower THIS pair.
-    expect(calls("engine_apply_many")).toBe(3);
+    // Every verb node still flushes for its own card preview (the non-negotiable),
+    // but each flush REBASES onto the card upstream's materialized frame: three
+    // applyMany calls of ONE op each, chained handle to handle — not three
+    // re-runs of a growing prefix.
     expect(calls("engine_preview")).toBe(3);
+    const applies = invokeMock.mock.calls.filter((c) => c[0] === "engine_apply_many").map((c) => c[1] as { handle: string; ops: { kind: string }[] });
+    expect(applies.map((a) => a.ops.map((o) => o.kind))).toEqual([["distinct"], ["fillBlanks"], ["distinct"]]);
+    // The stub numbers handles in creation order: source plf:1, then each flush's
+    // output is the NEXT flush's base.
+    expect(applies.map((a) => a.handle)).toEqual(["plf:1", "plf:2", "plf:3"]);
   });
 });
 
