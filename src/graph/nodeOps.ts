@@ -7,9 +7,9 @@ import { DIST_SPECS, DistributionNode, type DistKey } from "./nodes/distribution
 import { ChartNode, SparklineNode, SurfaceNode, RecordNode, GaugeNode, ProportionNode } from "./nodes/visual";
 import { CHART_OP_META, SPARKLINE_OP_META } from "./nodes/visual";
 import {
-  FillNode, GroupByNode, SetOpNode, SetRelationNode, SumIfsNode, RunningNode,
+  FillNode, GroupByNode, SetNode, SumIfsNode, RunningNode,
   FILL_OP_META, COND_AGG_OP_META,
-  SET_OP_META, SET_RELATION_META, PAD_OP_META, PadNode,
+  SET_META, PAD_OP_META, PadNode,
   SortNode, SeriesNode,
 } from "./nodes/list";
 import { HeadNode, HeadersNode, DropBlankRowsNode, ColumnsNode, HEAD_OP_META, COLUMNS_OP_META } from "./nodes/frame";
@@ -191,10 +191,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new ColumnsNode({ op: op as never }), leafOps: ["keep", "drop"] },
   { type: "list-pad", ctor: PadNode, kind: "operation", ops: fromMeta(PAD_OP_META),
     create: (op) => new PadNode({ op: op as never }) },
-  { type: "list-set", ctor: SetOpNode, kind: "operation", ops: fromMeta(SET_OP_META),
-    create: (op) => new SetOpNode({ op: op as never }) },
-  { type: "list-set-relation", ctor: SetRelationNode, kind: "operation", ops: fromMeta(SET_RELATION_META),
-    create: (op) => new SetRelationNode({ op: op as never }) },
+  { type: "list-set", ctor: SetNode, kind: "operation", ops: fromMeta(SET_META),
+    create: (op) => new SetNode({ op: op as never }) },
   { type: "iferror", ctor: IFErrorNode, kind: "operation",
     ops: [{ op: "iferror", label: "IFERROR" }, { op: "ifna", label: "IFNA" }],
     create: (op) => new IFErrorNode({ op: op as never }), leafOps: ["iferror", "ifna"] },

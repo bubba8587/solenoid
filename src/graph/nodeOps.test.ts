@@ -3,7 +3,7 @@ import { NODE_OPS, opsFor, hiddenOps, exposureOf, opEntry, opKindForNode } from 
 import { buildCatalog } from "./catalogUtils";
 import { flattenLeaves, searchLeaves } from "./catalogSearch";
 import { despace } from "./formulaNodeParity";
-import { SET_OP_META, SET_RELATION_META } from "./nodes/list";
+import { SET_META } from "./nodes/list";
 import type { CatalogEntry, NodeCatalogEntry } from "./AddNodeMenu";
 
 // ─── Multi-op declarations ────────────────────────────────────────────────────
@@ -81,8 +81,7 @@ describe("the ops list is derived, not transcribed", () => {
   // so they use fromMeta too: the meta is the one home.
   it("the derived ops list covers its meta exactly (the Set families included)", () => {
     for (const [type, meta] of [
-      ["list-set", SET_OP_META],
-      ["list-set-relation", SET_RELATION_META],
+      ["list-set", SET_META],
     ] as const) {
       const declared = opsFor(type)!.ops!.map((o) => o.op).sort();
       expect(declared, `${type}: the ops list and its OP_META have drifted`)

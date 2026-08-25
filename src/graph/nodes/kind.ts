@@ -18,7 +18,7 @@ import {
   ListInputNode, SeriesNode, AggregateNode,
   ListLengthNode, ListIndexNode, SortNode, FilterNode, SumIfsNode,
   ReverseNode, SliceNode,
-  UniqueNode, SetOpNode, SetRelationNode, IsInNode, TallyNode,
+  UniqueNode, SetNode, IsInNode, TallyNode,
   ConcatListsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode,
   NormalizeNode, BinNode, OutliersNode, SmoothNode, FindPeaksNode, SpectrumNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode,
@@ -94,7 +94,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof ComparisonNode || node instanceof BooleanOpNode ||
     node instanceof NotNode || node instanceof BetweenNode || node instanceof IsCloseNode ||
     node instanceof BooleanInputNode || node instanceof IsTestNode ||
-    node instanceof IsEvenOddNode || node instanceof SetRelationNode ||
+    node instanceof IsEvenOddNode ||
     node instanceof IsInNode
   ) return "logic";
   if (
@@ -103,7 +103,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof FilterNode ||
     node instanceof ReverseNode || node instanceof SliceNode ||
     node instanceof UniqueNode ||
-    node instanceof SetOpNode || node instanceof TallyNode ||
+    node instanceof SetNode || node instanceof TallyNode ||
     node instanceof ConcatListsNode || node instanceof RunningNode || node instanceof DiffNode ||
     node instanceof ArgMinMaxNode || node instanceof ContainsNode ||
     node instanceof NormalizeNode ||
@@ -226,7 +226,9 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
 // consumer (the card, the minimap, the html-canvas snapshot) MUST read this — reading
 // nodeKindOf directly freezes them on the kind color while the card recolors.
 const SOCKET_DRIVEN_ACCENT = (node: ClassicPreset.Node): boolean =>
-  node instanceof ListInputNode || node instanceof TableInputNode || node instanceof FormatControllerNode;
+  node instanceof ListInputNode || node instanceof TableInputNode || node instanceof FormatControllerNode ||
+  // Set's result socket swaps list↔logical per op, so the accent tracks it.
+  node instanceof SetNode;
 
 /** The final, theme-resolved accent hex for a node. Socket colors are CSS vars a
  *  `<canvas>` can't read, so this resolves them (via socketVarHex) to the same concrete

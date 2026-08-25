@@ -10,7 +10,7 @@ import {
   ListInputNode, AggregateNode, SeriesNode, SERIES_OP_META, type SeriesOp, ListLengthNode, ListIndexNode,
   SortNode, ReverseNode, SliceNode, FilterNode, SumIfsNode, FillNode, XLookupNode,
   GcdNode, IFErrorNode, NaNode, RandBetweenNode, RoundNNode, ConvertNode,
-  UniqueNode, SetOpNode, SetRelationNode, ConcatListsNode, FrameFromListsNode, QuadraticRootsNode, PolyRootsNode, RunningNode, DiffNode,
+  UniqueNode, SetNode, ConcatListsNode, FrameFromListsNode, QuadraticRootsNode, PolyRootsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode, RankPercentileNode, RANK_PERCENTILE_OP_META, type RankPercentileOp,
   CorrelNode, CombinatoricsNode, TwoInputMathNode,
   SumProductNode, ChooseNode, BooleanInputNode, SliderInputNode, ColorPickerNode, ColorBlendNode, IsTestNode,
@@ -493,10 +493,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "list-pad",   label: "Pad", description: "Extends a list to a target length by prepending or appending a fill value. Excel: PADLEFT / PADRIGHT.", create: () => new PadNode() },
           ]},
           { type: "list-unique",  label: "UNIQUE", description: "Removes duplicates, preserving first-occurrence order. Excel: UNIQUE.", create: () => new UniqueNode() },
-          { type: "pair", children: [
-            { type: "list-set",  label: "Set", description: "Set operations on two lists: union keeps what's in A or B, intersection what's in both, difference what's in A but not B, and symmetric difference what's in exactly one. Excel has no direct equivalent.", create: () => new SetOpNode(), parity: false, keywords: "set union intersect intersection difference except minus complement symmetric in A not in B compare two lists distinct dedupe subtract exclude common overlap" },
-            { type: "list-set-relation", label: "Set relation", description: "Tests two lists as sets and gives TRUE or FALSE: equal means the same set, subset means every A is in B, superset means A contains all of B, and disjoint means no overlap. Excel builds these from COUNTIF.", create: () => new SetRelationNode(), parity: false, keywords: "set relation equal same identical subset superset disjoint overlap contains all within compare two lists membership issubset issuperset predicate test boolean" },
-          ]},
+          { type: "list-set",  label: "Set", description: "Set operations and relations on two lists. Union keeps what's in A or B, intersection what's in both, difference what's in A but not B, and symmetric difference what's in exactly one. The relations equal, subset, superset, and disjoint give TRUE or FALSE. Excel builds these from COUNTIF.", create: () => new SetNode(), parity: false, keywords: "set union intersect intersection difference except minus complement symmetric relation equal same identical subset superset disjoint overlap contains all within compare two lists distinct dedupe subtract exclude common membership issubset issuperset predicate test boolean" },
           { type: "pair", children: [
             { type: "list-shuffle",    label: "Shuffle",    description: "Randomly reorder the list with a Fisher-Yates shuffle.", create: () => new ShuffleNode() },
             { type: "list-interleave", label: "Interleave", description: "Alternate elements of two lists: A[0], B[0], A[1], B[1], …", create: () => new InterleaveNode() },

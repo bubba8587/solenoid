@@ -5,7 +5,7 @@ import { extractInit } from "./copyPaste";
 import { DisplayNode } from "./nodes/display";
 import { IfNode, NaNode } from "./nodes/logic";
 import { CableSwitchNode } from "./nodes/control";
-import { ListIndexNode, ReverseNode, SortNode, SetOpNode, ConcatListsNode, InterleaveNode, TableReshapeNode, StackNode, FrameInputNode, SortFrameNode, ColumnsNode } from "./rete-nodes";
+import { ListIndexNode, ReverseNode, SortNode, SetNode, ConcatListsNode, InterleaveNode, TableReshapeNode, StackNode, FrameInputNode, SortFrameNode, ColumnsNode } from "./rete-nodes";
 import { numberSocket, stringSocket, frameSocket, cubeSocket, dateListSocket, strListSocket, strTableSocket, SolenoidSocket, adoptTypeForBase, canConnect } from "./sockets";
 
 // Same fake-editor surface as conduitTrace.test.ts — the pass only reads
@@ -305,7 +305,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
     // (Group Lists no longer has an adoptive `keys` output — it emits one frame now (C5);
     // its Key column carries the type internally, not a trueany output socket.)
 
-    const set = new SetOpNode();
+    const set = new SetNode();
     reconcileTrueAnyTypes(makeEditor([s1, s2, set], [
       { source: s1.id, sourceOutput: "out", target: set.id, targetInput: "a" },
       { source: s2.id, sourceOutput: "out", target: set.id, targetInput: "b" },

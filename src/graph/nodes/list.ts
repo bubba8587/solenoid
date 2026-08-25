@@ -1192,41 +1192,8 @@ export const SET_OP_META: Record<SetOp, { label: string; description: string; fx
   symdiff:    { label: "Symmetric difference", fx: "SETSYMDIFF",    description: "In exactly one",    tex: "A \\mathbin{\\triangle} B", plain: "A △ B" },
 };
 
-// Set operations over two lists, compared by VALUE with first-seen order and UNIQUE's
-// dedupe. Blanks aren't members; an error equals nothing, so it passes through where
-// it sits (union, the A-side of difference) rather than vanishing.
-export class SetOpNode extends ClassicPreset.Node {
-  static socketDocs: Record<string, string> = {
-    result: "Duplicates collapse to the first occurrence, and blank cells are never members.",
-  };
-
-  /** Element-preserving: the result is a subset of A ∪ B, so the output adopts
-   *  the agreed element type (a strlist ∖ strlist stays a strlist). */
-  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["a", "b"], combine: "agree" }];
-  label: string;
-  op: SetOp;
-  cachedList: number[] = [];
-  width = 180;
-  height = 200;
-
-  constructor(init?: { label?: string; op?: SetOp }) {
-    super("Set");
-    this.label = init?.label ?? "";
-    this.op = init?.op ?? "difference";
-    this.addInput("a", anyListIn("A"));
-    this.addInput("b", anyListIn("B"));
-    this.addOutput("result", adoptiveListOut("Result"));
-  }
-
-  data(inputs: { a?: unknown[][]; b?: unknown[][] }) {
-    // Tags survive the passthrough, but membership keys by display magnitude.
-    const a = stripUnitCells((inputs.a?.[0] ?? []) as unknown[]) as unknown[];
-    const b = stripUnitCells((inputs.b?.[0] ?? []) as unknown[]) as unknown[];
-
-    this.cachedList = setOperation(this.op, a, b) as number[];
-    return { result: this.cachedList };
-  }
-}
+// The Set node (operations + relations, merged) lives after SET_RELATION_META below,
+// since its combined SET_META spans both op tables.
 
 // ─── Is In (membership mask) — Set & Relational pack ─────────────────────────
 // A logical list ALIGNED to A. Membership stance matches the Set node: B's blanks and
@@ -1326,34 +1293,66 @@ export const SET_RELATION_META: Record<SetRelation, { label: string; description
   disjoint: { label: "Disjoint", fx: "SETDISJOINT", description: "No overlap",    tex: "A \\cap B = \\varnothing", plain: "A ∩ B = ∅" },
 };
 
-// Set RELATION predicates over each side's distinct members, compared by VALUE;
-// blanks and errors aren't members, both sides unwired → null, and the empty-set
-// cases follow set theory (∅ ⊆ anything, ∅ disjoint with anything, ∅ = ∅).
-export class SetRelationNode extends ClassicPreset.Node {
+export type SetOpAll = SetOp | SetRelation;
+
+export const SET_RELATION_OPS: ReadonlySet<SetOpAll> = new Set<SetOpAll>(["equal", "subset", "superset", "disjoint"]);
+export function isSetRelationOp(op: SetOpAll): op is SetRelation { return SET_RELATION_OPS.has(op); }
+
+// The one dropdown across all eight ops, grouped Operation / Relation. `fx`/`tex`/`plain`
+// ride the two sub-tables (SET_OP_META / SET_RELATION_META), which stay the declared home
+// of the SET* formula names.
+export const SET_META: Record<SetOpAll, { label: string; description: string; fx: string; tex: string; plain: string; group: string }> = {
+  ...(Object.fromEntries((Object.keys(SET_OP_META) as SetOp[]).map((op) => [op, { ...SET_OP_META[op], group: "Operation" }]))),
+  ...(Object.fromEntries((Object.keys(SET_RELATION_META) as SetRelation[]).map((op) => [op, { ...SET_RELATION_META[op], group: "Relation" }]))),
+} as Record<SetOpAll, { label: string; description: string; fx: string; tex: string; plain: string; group: string }>;
+
+// ONE Set card (node-combining, `kind: "operation"`): an operation (union / intersection /
+// difference / symmetric difference → a list) OR a relation (equal / subset / superset /
+// disjoint → TRUE/FALSE). The output socket swaps list↔logical per op (applySetOp, Split
+// Frame precedent). Set semantics are shared: compared by VALUE with first-seen order and
+// UNIQUE's dedupe; blanks and errors aren't members; the empty-set cases follow set theory
+// (∅ ⊆ anything, ∅ disjoint with anything, ∅ = ∅). Both sides unwired → the relation is null.
+export class SetNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "An operation gives a list where duplicates collapse to the first occurrence; a relation gives TRUE or FALSE. Blank cells are never members.",
+  };
+
+  /** Element-preserving ONLY in an operation op — the result is a subset of A ∪ B, so the
+   *  list output adopts the agreed element type. A relation outputs a fixed logical. */
+  passthrough = (): PassthroughSpec[] =>
+    isSetRelationOp(this.op) ? [] : [{ output: "result", inputs: ["a", "b"], combine: "agree" }];
   label: string;
-  op: SetRelation;
-  cachedResult: Tri = null;
+  op: SetOpAll;
+  cachedList: unknown[] = [];   // operation result
+  cachedRelation: Tri = null;   // relation result
   width = 180;
   height = 200;
 
-  constructor(init?: { label?: string; op?: SetRelation }) {
-    super("SetRelation");
+  constructor(init?: { label?: string; op?: SetOpAll }) {
+    super("Set");
     this.label = init?.label ?? "";
-    this.op = init?.op ?? "equal";
+    // Guard a stale op from an old save — fall back rather than crash.
+    this.op = init?.op && init.op in SET_META ? init.op : "difference";
     this.addInput("a", anyListIn("A"));
     this.addInput("b", anyListIn("B"));
-    this.addOutput("result", logicalOut("Result"));
+    this.addOutput("result", isSetRelationOp(this.op) ? logicalOut("Result") : adoptiveListOut("Result"));
   }
 
-  data(inputs: { a?: unknown[][]; b?: unknown[][] }): { result: Tri } {
-    const aRaw = inputs.a?.[0];
-    const bRaw = inputs.b?.[0];
-    // Nothing wired on either side — no sets to compare, so the relation is unknown.
-    if (aRaw === undefined && bRaw === undefined) { this.cachedResult = null; return { result: null }; }
-
-    const result = setRelation(this.op, (aRaw ?? []) as unknown[], (bRaw ?? []) as unknown[]);
-    this.cachedResult = result;
-    return { result };
+  data(inputs: { a?: unknown[][]; b?: unknown[][] }): { result: unknown } {
+    if (isSetRelationOp(this.op)) {
+      const aRaw = inputs.a?.[0];
+      const bRaw = inputs.b?.[0];
+      // Nothing wired on either side — no sets to compare, so the relation is unknown.
+      if (aRaw === undefined && bRaw === undefined) { this.cachedRelation = null; return { result: null }; }
+      const result = setRelation(this.op, (aRaw ?? []) as unknown[], (bRaw ?? []) as unknown[]);
+      this.cachedRelation = result;
+      return { result };
+    }
+    // Tags survive the passthrough, but membership keys by display magnitude.
+    const a = stripUnitCells((inputs.a?.[0] ?? []) as unknown[]) as unknown[];
+    const b = stripUnitCells((inputs.b?.[0] ?? []) as unknown[]) as unknown[];
+    this.cachedList = setOperation(this.op, a, b);
+    return { result: this.cachedList };
   }
 }
 
