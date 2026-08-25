@@ -90,11 +90,6 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
 
 ## Small builds & calls (still 1.3-sized)
 
-- **Merge Plots node (author idea 2026-08-25).** ExtensibleInputs of `chart` sockets; when every
-  input is an x/y-plane chart (line/scatter/area/column/bar), overlay all their series on one
-  plot, axes shared, legend from the source cards' names (NAME-1). Non-planar inputs (pie,
-  radar, gauge, sankey…) refuse with #TYPE! naming the input. Chart kind (green header);
-  Options via Chart Builder like Chart. Reuses the multi-series path c2 landed.
 - [ ] **Virtualize the table/cube popups instead of truncating at 1,000 rows**
   (author-raised 2026-08-22, pointing at `react-window`). `TablePopup.tsx` and
   `CubePopup.tsx` both hard-cap at `MAX_VISIBLE_ROWS = 1000` and label it "· first

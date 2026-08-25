@@ -135,6 +135,15 @@ holder promotion on plain pan, `--zooming` quality drops on desktop, render-reso
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
 ### SESSION DIGEST (2026-08-25b — post-crash: cards named by their op, NAME-3)
+- **Merge Plots node LANDED (A2, 320009d4).** New standalone chart node: variadic `chart`-socket
+  inputs (ExtensibleInputs, keys `p0…`) overlaid on one cartesian plot. New chart op `overlay` +
+  `OverlayPayload`/`OverlaySeries` (`chartValue.ts`); `OverlayView` (`chartRender.tsx`) draws a
+  `ComposedChart` with a PER-SERIES mark, so each source keeps its own kind (line/area/column/bar/
+  scatter) AND inherited styling — color, marker size, line width, fill alpha (author ask). Only the
+  five planar kinds overlay (`PLANAR_CHART_OPS`); any other figure refuses `#TYPE!` naming the input.
+  Kept separate from Chart, not an op: Chart is one frame input + a kind selector, Merge Plots is N
+  chart inputs with kinds INHERITED — disjoint socket topology (the add-node "own shape" rule). `chart`
+  added to ExtensibleInputs' wire-only set. Pinned in `nodes/mergePlots.test.ts` (14).
 - **OS-dropdown rule — MOBILE half settled, precaution is desktop-only (A3).** Added a `--mobile`
   mode to `scripts/dropdown-reorder-probe.mjs` (emulates coarse pointer + `userAgentData.mobile=true`
   before load so `IS_MOBILE` reads true and `html.is-mobile` is set — a UA string alone fails because
