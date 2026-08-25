@@ -222,18 +222,20 @@ html.is-mobile {
 /* Bicolor split square: upper-left scalar, lower-right list — the hard 50%
    stop along the anti-diagonal reproduces the old two-polygon split; the
    rounded-square fill mask reproduces the old clipPath (rx 1.5). */
-.solenoid-socket-dot[data-glyph="combo"],
-.solenoid-socket-dot[data-glyph="anydata"] {
+.solenoid-socket-dot[data-glyph="combo"] {
   --m-fill: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Crect width='12' height='12' rx='1.5'/%3E%3C/svg%3E");
 }
-.solenoid-socket-dot[data-glyph="combo"]::before,
-.solenoid-socket-dot[data-glyph="anydata"]::before {
+.solenoid-socket-dot[data-glyph="combo"]::before {
   background: linear-gradient(to bottom right, var(--sock-fill) 50%, var(--sock-fill2) 50%);
 }
-/* anydata's rank-2 mark: the grid cross in the lower half, where every combo's
-   list-ness already lives. */
+/* anydata (any rank ≤ 2): HOLLOW SQUARE — the trueany treatment on the
+   container shape (author pick 2026-08-25; split fills and cross marks were
+   tried and rejected). Border only, in the type color. */
 .solenoid-socket-dot[data-glyph="anydata"] {
-  --m-deco: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Crect x='1' y='1' width='10' height='10' rx='0.5' fill='none' stroke='%23000' stroke-width='2'/%3E%3Cpath d='M7.9 5.8 V10.2 M5.8 7.9 H10.2' fill='none' stroke='%23000' stroke-width='1.2'/%3E%3C/svg%3E");
+  --m-fill: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Crect x='1.5' y='1.5' width='9' height='9' rx='0.75' fill='none' stroke='%23000' stroke-width='2.5'/%3E%3C/svg%3E");
+}
+.solenoid-socket-dot[data-glyph="anydata"]::after {
+  content: none;
 }
 /* trueany: HOLLOW — border only, in the TYPE color (not the ring shade) — so
    "anything" reads distinct from every filled shape even zoomed out. */

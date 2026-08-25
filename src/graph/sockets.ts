@@ -58,7 +58,7 @@ export const SOCKET_COLORS: Record<SocketDataType, string> = {
   anytable: "var(--sock-any)",      // gray          — grid (any-element 2-D matrix; reshaper output)
   anylist:  "var(--sock-any)",      // gray          — square (any-element 1-D list)
   anycombo: "var(--sock-any)",      // gray          — split square (any scalar | any list)
-  anydata:  "var(--sock-any)",      // gray          — split grid (any value up to a 2-D matrix)
+  anydata:  "var(--sock-any)",      // gray          — hollow square (any value up to a 2-D matrix)
   frame:    "var(--sock-frame)",    // violet        — grid (named-column data table)
   cube:     "var(--sock-cube)",     // violet (frame) — hexagon (recursive any-value container)
   lambda:   "var(--sock-lambda)",   // teal-green    — circle with λ (function value)

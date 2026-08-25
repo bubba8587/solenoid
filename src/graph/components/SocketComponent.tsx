@@ -23,8 +23,6 @@ export const COMBO_COLORS: Record<string, [string, string]> = {
   // The gray wildcard rungs differ by SHAPE, not shade, so the lower half takes the
   // fill's systematic ring shade rather than inventing a hue (DESIGN.md).
   anycombo:     [SOCKET_COLORS.anylist, "var(--sock-any-ring)"],
-  // `anydata` (anydataWildcard) shares anycombo's split square; the legend carries the rank.
-  anydata:      [SOCKET_COLORS.anylist, "var(--sock-any-ring)"],
 };
 
 export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
@@ -47,6 +45,7 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
   const isChart = dataType === "chart";
   const isDocument = dataType === "document";
   const isTrueAny = dataType === "trueany";
+  const isAnyData = dataType === "anydata";
 
   // The cube keeps its inline SVG: its shaded faces need more paint layers than
   // the masked-span scheme (fill + second fill + ring) offers.
@@ -64,7 +63,8 @@ export function SocketComponent({ data }: { data: ClassicPreset.Socket }) {
   // socket.css mask data-URIs (::before = fill, ::after = ring + decoration),
   // cutting the per-socket <svg> subtree. Geometry notes live with the masks.
   const glyph =
-    combo ? (dataType === "anydata" ? "anydata" : "combo")
+    combo ? "combo"
+    : isAnyData ? "anydata"
     : isList ? "list"
     : isTable ? "table"
     : isFrame ? "frame"

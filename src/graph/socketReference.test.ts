@@ -131,7 +131,7 @@ describe("docs/socket-reference.md — the at-a-glance tables match the code", (
   });
 
   it("every variant appears in exactly one glyph row", () => {
-    const rows = [...DOC.matchAll(/^\| [^|]+\| (?:scalar|strict list|combo[^|]*|matrix|frame|cube|function|chart|document|anything) \|([^|]*)\|$/gm)];
+    const rows = [...DOC.matchAll(/^\| [^|]+\| (?:scalar|strict list|combo[^|]*|matrix|frame|cube|function|chart|document|any rank[^|]*|anything) \|([^|]*)\|$/gm)];
     const seen = rows.flatMap((r) => backticked(r[1]));
     expect(seen.sort()).toEqual([...ALL].sort());
   });

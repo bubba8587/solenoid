@@ -174,13 +174,14 @@ family.
 |---|---|---|
 | Filled circle | scalar | `number` `string` `date` `complex` `logical` `any` |
 | Filled rounded square | strict list | `list` `strlist` `datelist` `complexlist` `logicallist` `anylist` |
-| Two-tone split square | combo (scalar or list) | `numlist` `strcombo` `datecombo` `complexcombo` `logicalcombo` `anycombo` `anydata` |
+| Two-tone split square | combo (scalar or list) | `numlist` `strcombo` `datecombo` `complexcombo` `logicalcombo` `anycombo` |
 | Square with a 2×2 grid | matrix | `table` `strtable` `datetable` `complextable` `logicaltable` `anytable` |
 | Square with an "F" | frame | `frame` |
 | Flat hexagon (three rhombi) | cube | `cube` |
 | Circle with a λ | function | `lambda` |
 | Square with three bars | chart | `chart` |
 | Square with two text lines | document | `document` |
+| Hollow square (outline only) | any rank ≤ 2 (scalar, list or matrix) | `anydata` |
 | Hollow ring (outline only) | anything | `trueany` |
 
 Colors by family: number amber, text yellow-green, date pink, complex sky blue,
@@ -197,9 +198,6 @@ visible without inventing a hue.
 
 Every dot's border is the same fixed darkening of its own fill. Hovering a dot
 shows the variant's human label.
-
-One split-square nuance the table can't show: `anydata` paints a small rank-2
-grid mark in its lower half — the one visual difference from `anycombo`.
 
 ---
 

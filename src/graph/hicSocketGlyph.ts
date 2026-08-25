@@ -3,7 +3,7 @@
 // hexagon cube), so GPU sockets read like the DOM ones. Pure (colors are
 // resolved from CSS vars by the snapshot); only the SHAPE decision lives here.
 
-export type GlyphKind = "circle" | "square" | "split" | "grid" | "frame" | "hex" | "ring";
+export type GlyphKind = "circle" | "square" | "split" | "grid" | "frame" | "hex" | "ring" | "hollowSquare";
 
 const LIST_TYPES = new Set(["list", "strlist", "datelist", "complexlist", "logicallist", "anylist"]);
 const TABLE_TYPES = new Set(["table", "strtable", "datetable", "complextable", "logicaltable", "anytable"]);
@@ -26,5 +26,6 @@ export function socketGlyphKind(dataType: string | undefined): GlyphKind {
   if (dataType === "frame") return "frame"; // sheet-with-header (own glyph, 2026-07-16)
   if (dataType === "cube") return "hex";
   if (dataType === "trueany") return "ring"; // hollow: border only, no fill
+  if (dataType === "anydata") return "hollowSquare"; // any rank ≤ 2: hollow square
   return "circle"; // number/string/date/complex/logical/lambda/any
 }
