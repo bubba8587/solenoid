@@ -136,6 +136,16 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
 ### SESSION DIGEST (2026-08-24b — parallel plan execution from docs/plans/)
 
+- **Chart `markersize` / `ms` option (author, 2026-08-25).** recharts' Scatter has no size prop (fixed
+  64 px² Symbols circle, r ≈ 4.5 — too big); the renderer now passes a `shape` and reads `markersize`
+  as a px radius everywhere it draws a dot (scatter default 3, line/area/radar dots stay 2). Chart
+  Builder gains a Marker size row; `chartOptions.test` pins parse.
+- **Dev server broke on a fresh `.vite` cache** — elkjs 0.12 `require('web-worker')` (guarded at
+  runtime, but esbuild fails to bundle it unresolved). `web-worker` is now a direct dependency;
+  executors must `npm install` after rebasing. `scripts/dev-up.mjs`'s detached child still dies with
+  the launching tool shell's Ctrl-C from an agent session (`shell:true` + `detached` on Windows) —
+  launch `npm run dev` as a background task instead until the script is fixed.
+
 - **Aggregate First / Last removed (author, 2026-08-25).** "First / last non-blank" is a pick, not
   a summary, and did not belong in the reducer dropdown; the author declined INDEX as a home too,
   so the two ops, their catalog leaves and the FIRSTNONBLANK / LASTNONBLANK names are gone.

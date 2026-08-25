@@ -23,6 +23,8 @@ describe("parseChartOptions", () => {
     expect(parseChartOptions("ylim=,100")).toEqual({ ymax: 100 });
     expect(parseChartOptions("ylim=5,")).toEqual({ ymin: 5 });
     expect(parseChartOptions("lw=3")).toEqual({ linewidth: 3 });
+    expect(parseChartOptions("ms=4")).toEqual({ markersize: 4 });
+    expect(parseChartOptions("markersize=0")).toEqual({});
   });
 
   it("ignores unknown keys, blank values, and junk", () => {

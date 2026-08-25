@@ -1242,7 +1242,7 @@ export class QuiverNode extends ClassicPreset.Node {
 // ─── Chart Builder ────────────────────────────────────────────────────────────
 
 const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker"] as const;
-const CB_NUM_FIELDS = ["ymin", "ymax", "linewidth", "alpha", "fontsize"] as const;
+const CB_NUM_FIELDS = ["ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"] as const;
 
 export class ChartBuilderNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -1272,6 +1272,7 @@ export class ChartBuilderNode extends ClassicPreset.Node {
     this.addInput("ymin",      numIn("Y min"));
     this.addInput("ymax",      numIn("Y max"));
     this.addInput("linewidth", numIn("Line width"));
+    this.addInput("markersize", numIn("Marker size (px)"));
     this.addInput("alpha",     numIn("Fill alpha"));
     this.addInput("fontsize",  numIn("Font size (pt)"));
     this.addOutput("result", strOut("Options"));
@@ -1292,6 +1293,7 @@ export class ChartBuilderNode extends ClassicPreset.Node {
       ymin:      num("ymin"),
       ymax:      num("ymax"),
       linewidth: num("linewidth"),
+      markersize: num("markersize"),
       alpha:     num("alpha"),
       fontsize:  num("fontsize"),
     });

@@ -1,11 +1,16 @@
 // Every recharts-using renderer in ONE module so recharts stays a single lazy
 // chunk — nothing here may be imported statically by the app.
-import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, ZAxis, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart } from "recharts";
+import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, ZAxis, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart, Symbols, type ScatterShapeProps, type SymbolsProps } from "recharts";
 import { useState, type SyntheticEvent, type ReactElement } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
 import { useChartColors, useSeriesColors, axisTick, type ChartShape } from "./chartCore";
 import type { ChartOptions } from "../nodes/chartOptions";
+
+const LINE_DOT_R = 2;
+const SCATTER_DOT_R = 3;
+// recharts' Scatter has no size prop: its default Symbols circle is a fixed 64 px² (r ≈ 4.5).
+const scatterDot = (r: number) => (p: ScatterShapeProps) => <Symbols {...(p as unknown as SymbolsProps)} type="circle" size={Math.PI * r * r} />;
 
 // formatScalar precision, not recharts' raw full-float. Point index is 1-based.
 function ChartTooltip({ active, payload, label }: {
@@ -107,6 +112,8 @@ export function ChartView({
   const lw = opts?.linewidth ?? 1.5;
   const showGrid = axes && (opts?.grid ?? true);
   const showMarkers = opts?.marker ?? axes; // lines dot by default when axed
+  const dotR = opts?.markersize ?? LINE_DOT_R;
+  const dot = scatterDot(opts?.markersize ?? SCATTER_DOT_R);
   const fillAlpha = opts?.alpha ?? 0.25;
   // recharts wants "auto" for an open bound.
   const yDomain = opts?.ymin !== undefined || opts?.ymax !== undefined
@@ -133,7 +140,7 @@ export function ChartView({
         {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
         {TIP}
-        <Line dataKey="v" stroke={color} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: 2 } : false} />
+        <Line dataKey="v" stroke={color} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: dotR } : false} />
       </LineChart>
     );
   } else if (op === "area") {
@@ -143,7 +150,7 @@ export function ChartView({
         {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
         {TIP}
-        <Area dataKey="v" stroke={color} fill={color} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: 2 } : false} />
+        <Area dataKey="v" stroke={color} fill={color} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: dotR } : false} />
       </AreaChart>
     );
   } else if (op === "bar") {
@@ -178,7 +185,7 @@ export function ChartView({
         <PolarAngleAxis dataKey="i" tick={AXIS} tickFormatter={tickFmt} />
         <PolarRadiusAxis tick={AXIS} axisLine={false} tickCount={4} domain={yDomain} />
         {TIP}
-        <Radar dataKey="v" stroke={color} fill={color} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: 2 } : false} />
+        <Radar dataKey="v" stroke={color} fill={color} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: dotR } : false} />
       </RadarChart>
     );
   } else if (op === "radialbar") {
@@ -212,7 +219,7 @@ export function ChartView({
         {axes && <XAxis type="number" dataKey={numericX ? "x" : "i"} tick={AXIS} tickLine={false} tickFormatter={numericX ? (t) => axisTick(Number(t)) : tickFmt} allowDecimals={numericX ? undefined : false} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis type="number" dataKey="v" tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
         {SCATTER_TIP}
-        <Scatter data={scatterData} fill={color} isAnimationActive={false} />
+        <Scatter data={scatterData} fill={color} shape={dot} isAnimationActive={false} />
       </ScatterChart>
     );
   } else {
@@ -303,6 +310,8 @@ export function MultiSeriesView({
   const lw = opts?.linewidth ?? 1.5;
   const showGrid = axes && (opts?.grid ?? true);
   const showMarkers = opts?.marker ?? false;
+  const dotR = opts?.markersize ?? LINE_DOT_R;
+  const dot = scatterDot(opts?.markersize ?? SCATTER_DOT_R);
   const fillAlpha = opts?.alpha ?? 0.25;
   const yDomain = opts?.ymin !== undefined || opts?.ymax !== undefined
     ? [opts?.ymin ?? "auto", opts?.ymax ?? "auto"] as [number | string, number | string]
@@ -331,8 +340,8 @@ export function MultiSeriesView({
         {axes && <YAxis tick={AXIS} tickLine={false} width={26} domain={yDomain} />}
         {tip}{legend}
         {series.map((s, j) => op === "area"
-          ? <Area key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? { r: 2 } : false} isAnimationActive={false} />
-          : <Line key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} strokeWidth={lw} dot={showMarkers ? { r: 2 } : false} isAnimationActive={false} />)}
+          ? <Area key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? { r: dotR } : false} isAnimationActive={false} />
+          : <Line key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} strokeWidth={lw} dot={showMarkers ? { r: dotR } : false} isAnimationActive={false} />)}
       </Container>
     );
   } else if (op === "bar") {
@@ -365,7 +374,7 @@ export function MultiSeriesView({
         {axes && <YAxis type="number" dataKey="y" tick={AXIS} tickLine={false} width={26} domain={yDomain} />}
         {tip}{legend}
         {series.map((s, j) => (
-          <Scatter key={j} name={s.name} fill={paint(j)} fillOpacity={dim(j)} isAnimationActive={false}
+          <Scatter key={j} name={s.name} fill={paint(j)} fillOpacity={dim(j)} shape={dot} isAnimationActive={false}
             data={data.map((d) => ({ x: numericX ? Number(labels![d.i as number]) : (d.i as number), y: d[`s${j}`] }))} />
         ))}
       </ScatterChart>

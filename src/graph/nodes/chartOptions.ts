@@ -11,6 +11,8 @@ export interface ChartOptions {
   ymin?: number;
   ymax?: number;
   linewidth?: number;
+  // marker radius in px (matplotlib's markersize)
+  markersize?: number;
   alpha?: number;
   // matplotlib's font.size rcParam; render surfaces scale every text size by fontsize/10.
   fontsize?: number;
@@ -53,6 +55,8 @@ export function parseChartOptions(input: string | null | undefined): ChartOption
       case "marker": { const b = toBool(val); if (b !== undefined) opts.marker = b; break; }
       case "linewidth":
       case "lw":     { const n = toNum(val); if (n !== undefined) opts.linewidth = n; break; }
+      case "markersize":
+      case "ms":     { const n = toNum(val); if (n !== undefined && n > 0) opts.markersize = n; break; }
       case "alpha":  { const n = toNum(val); if (n !== undefined) opts.alpha = n; break; }
       case "fontsize": { const n = toNum(val); if (n !== undefined && n > 0) opts.fontsize = n; break; }
       case "ylim": {
@@ -82,6 +86,7 @@ export interface ChartBuilderFields {
   ymin?: number | null;
   ymax?: number | null;
   linewidth?: number | null;
+  markersize?: number | null;
   alpha?: number | null;
   fontsize?: number | null;
 }
@@ -108,6 +113,7 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
     parts.push(`ylim=${lo},${hi}`);
   }
   num("linewidth", f.linewidth);
+  num("markersize", f.markersize);
   num("alpha", f.alpha);
   num("fontsize", f.fontsize);
   return parts.join(";");
@@ -127,14 +133,14 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
 
 export type ChartBuilderKey =
   | "title" | "xlabel" | "ylabel" | "color" | "grid" | "marker"
-  | "ymin" | "ymax" | "linewidth" | "alpha" | "fontsize";
+  | "ymin" | "ymax" | "linewidth" | "markersize" | "alpha" | "fontsize";
 
 export type ChartTargetId =
   | "chart" | "histogram" | "kpi" | "scale" | "treemap" | "sankey"
   | "waterfall" | "candle" | "boxplot" | "calheat" | "waffle";
 
 const ALL_KEYS: readonly ChartBuilderKey[] =
-  ["title", "xlabel", "ylabel", "color", "grid", "marker", "ymin", "ymax", "linewidth", "alpha", "fontsize"];
+  ["title", "xlabel", "ylabel", "color", "grid", "marker", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 const AXED_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "alpha", "fontsize"];
 const STAT_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];
