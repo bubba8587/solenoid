@@ -225,13 +225,6 @@ is blocked here for out-of-scope repos).
   Clean re-measure: crash gone, cascade collapsed to one pass + a cheap rerun. Costs ~100ms more
   on the first 171-node render (the `flushSync` synchronous-commit tax) — a one-time load cost the
   author accepted for being on latest.
-- [ ] **Evaluate `zIndexNodesOrder` (area 2.3.0) for click-handler stability only** — it
-  keeps a picked node's DOM position (z-index instead of `simpleNodesOrder`'s DOM move).
-  NOT pursued for the OS-dropdown rule (settled above without it, and it would delete no
-  swallows). A real cost if ever taken: NOT a drop-in — `Canvas.tsx`'s docked-FC re-append
-  (relies on the pick moving the host to the DOM end), `groupLogic.ts`'s z=−2 "group behind
-  members", and the standoff/group/conduit ladder (−3 < −2 < −1 < nodes) all need reconciling
-  with its nodes-≥1 / connections-0 scheme, with "no overlaps ever" regression risk.
 - [x] **`rete-history-plugin` 2.1.1 → 2.2.0 — DON'T bump (checked 2026-08-23).** The
   `dist/` is byte-identical to 2.1.1; the only delta is a new REQUIRED peerDependency on
   `rete-comment-plugin@^2.2.0` (all 2.2.0 features are comment-plugin undo presets, which
