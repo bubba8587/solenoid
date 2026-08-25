@@ -17,7 +17,7 @@ Promoted from `deferrals.md` where an entry was engine/logic work that was never
 parked. Each item: build, pin with tests, one digest line, delete the line here.
 
 **B — engine features promoted from deferrals (autonomous-friendly, node+formula+tests)**
-- [ ] **Lazy handles, tail** — Slicer goes lazy (A2, in flight, `docs/plans/lazy-handle-on-cable`); then delete the plan. Out of scope there, separate calls: Rust store as `LazyFrame` plans (makes an intermediate flush free; breaks the eager-independent-frames drop rule), `WireOp::pivot`.
+- [ ] **Lazy handles, tail** — Slicer goes lazy: DONE (A2, 7c34d874). Remaining (A1's, then delete `docs/plans/lazy-handle-on-cable`): out-of-scope separate calls — Rust store as `LazyFrame` plans (makes an intermediate flush free; breaks the eager-independent-frames drop rule), `WireOp::pivot`.
 
 **C — hygiene**: deferral review.
 

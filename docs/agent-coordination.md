@@ -11,7 +11,7 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 ## Claims (session 2026-08-25b)
 
 ### Agent 1 (Lead)
-- DONE — awaiting author OK: lazy handles phases 0–4 (fa7fffb1, c20249be, d09917e7, 039dc56d; digest in dev-notes). Slicer → A2.
+- DONE — awaiting author OK: lazy handles, whole plan (A1 fa7fffb1/c20249be/d09917e7/039dc56d + A2 Slicer 7c34d874); plan file deleted.
 
 ### Agent 2 (solenoid-ca) — CLAIMED: Slicer-goes-lazy (from lazy-handle plan). Files: control.ts, coerceInputs.ts (one string in LAZY set), lazyChain.test.ts (append). NOT touching frame.ts/frameBackend.ts (A1 phase 4).
 Staged QUEUE (after Slicer):
