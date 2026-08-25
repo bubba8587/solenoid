@@ -216,6 +216,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "ISERR", syntax: "=ISERR(v)", parity: false, note: "ISERR excludes #N/A; Solenoid's ISERROR catches all non-finite values" },
     { excel: "ISERROR", syntax: "=ISERROR(v)", parity: true },
     { excel: "ISLOGICAL", syntax: "=ISLOGICAL(v)", parity: true, note: "TRUE only for a real boolean (TRUE/FALSE) — not 0/1 or \"TRUE\"; matches Excel's type check." },
+    { excel: "ISBOOLEAN", syntax: "=ISBOOLEAN(v)", parity: false, note: "Solenoid's name for ISLOGICAL — the same test." },
     { excel: "ISNA", syntax: "=ISNA(v)", parity: false, note: "Returns 1 if value is N/A (NaN); use ISNA instead of ISERROR when testing only #N/A" },
     { excel: "ISNONTEXT", syntax: "=ISNONTEXT(v)", parity: false, note: "Returns 1 if value is not a string" },
     { excel: "ISNUMBER", syntax: "=ISNUMBER(v)", parity: true },

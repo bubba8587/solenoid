@@ -174,7 +174,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   PDURATION: "rate, pv, fv",
   RRI: "nper, pv, fv",
   // ── info / error handling ──
-  ISBLANK: "value", ISNUMBER: "value", ISTEXT: "value", ISLOGICAL: "value",
+  ISBLANK: "value", ISNUMBER: "value", ISTEXT: "value", ISLOGICAL: "value", ISBOOLEAN: "value",
   ISERROR: "value", ISERR: "value", ISNA: "value", ISEVEN: "n", ISODD: "n",
   NA: "",
   // ── Solenoid extras ──

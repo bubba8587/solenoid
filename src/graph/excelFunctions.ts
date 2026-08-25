@@ -643,6 +643,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   CROSSPRODUCT:    { returns: "number", rank: "list", listArgs: true, arity: [2, 2] },
   RLE:             { returns: "number", rank: "matrix", listArgs: true, arity: [1, 1] },
   POLYFIT:         { returns: "number", rank: "list", listArgs: true, arity: [3, 3] },
+  ISBOOLEAN:       { returns: "logical", arity: [1, 1] },
   ISCLOSE:         { returns: "logical", arity: [2, 3] },
   NTILE:           { returns: "number", rank: "list", listArgs: true, arity: [2, 2], native: true },
   ISOUTLIER:       { returns: "logical", rank: "list", listArgs: true, arity: [1, 3], native: true },
@@ -1623,6 +1624,7 @@ registerInternal("ISOUTLIER",  (list, method, threshold) => {
   if (!(m in OUTLIER_DEFAULT_THRESHOLD)) return solError("#DOMAIN!", "ISOUTLIER method must be z, iqr or mad");
   return outlierFlags(numList(list), m, threshold == null ? OUTLIER_DEFAULT_THRESHOLD[m] : Number(threshold));
 });
+registerInternal("ISBOOLEAN",  (v) => v === true || v === false);
 registerInternal("ISCLOSE",    (a, b, tol) => (a == null || b == null ? null : Math.abs(Number(a) - Number(b)) <= (tol == null ? 1e-9 : Number(tol))));
 // ONE Running function, aggregator as a string ARGUMENT (aggregatorsAreArguments): a parameter inside a
 // top-level function, so the family gets one name — never seven (the old per-op

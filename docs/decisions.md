@@ -489,3 +489,12 @@ A text with a four-digit year is never relative ("Monday, 16 March 2026" is abso
 DateInputNode, `settingsStore.ts` relativeDates; pinned in `relativeDates.test.ts`.
 **Reopens if:** the author wants DATEVALUE (or a frame column) to follow the setting — then
 the opt-in moves from the node to the parser call sites, the alert story with it.
+
+### isBooleanName — The type-check op is ISBOOLEAN, a callable alias of ISLOGICAL
+Solenoid's first-class Boolean type is called Boolean on every surface, so the Type Check
+op reads ISBOOLEAN (author 2026-08-25; a NAME-4 sweep had flipped it to ISLOGICAL the same
+day). `ISBOOLEAN(v)` is registered as a formula (`excelFunctions.ts`, same test as Formula.js
+ISLOGICAL), so the all-caps label is a true callable claim and `nameCase.test.ts` needs no
+allowlist entry; `ISLOGICAL` stays callable for Excel parity and is the Inspector's Excel
+equivalent. Reopens only if the type itself is renamed.
+

@@ -93,8 +93,8 @@ describe("the ops list is derived, not transcribed", () => {
   it("finds an op by the name its own card shows", () => {
     // Searching for what you just read on a card (the op dropdown label) has to find it —
     // the op labels ARE the searchable names on the Type Check card.
-    const hits = searchLeaves(flattenLeaves(catalog), "ISLOGICAL").map((l) => l.label);
-    expect(hits, "ISLOGICAL is on the Type Check card but not in search").toContain("Type Check: ISLOGICAL");
+    const hits = searchLeaves(flattenLeaves(catalog), "ISBOOLEAN").map((l) => l.label);
+    expect(hits, "ISBOOLEAN is on the Type Check card but not in search").toContain("Type Check: ISBOOLEAN");
   });
 });
 

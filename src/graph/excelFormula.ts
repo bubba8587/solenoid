@@ -720,7 +720,7 @@ function applyCxOp(op: string, a: unknown, b: unknown): unknown {
 // Functions whose result DEPENDS ON a blank operand: `null` flows INTO them
 // (ISBLANK(null) is TRUE) while every other function propagates missing; errors
 // still short-circuit, and IF is listed so an `IF(x,,y)` branch can flow.
-const NULL_INSPECTING = new Set(["ISBLANK", "ISNUMBER", "ISTEXT", "ISNONTEXT", "ISLOGICAL", "ISREF", "N", "T", "TYPE", "IF", "CHOOSE"]);
+const NULL_INSPECTING = new Set(["ISBLANK", "ISNUMBER", "ISTEXT", "ISNONTEXT", "ISLOGICAL", "ISBOOLEAN", "ISREF", "N", "T", "TYPE", "IF", "CHOOSE"]);
 
 /** Broadcast a non-range function element-wise (scalars repeat, ragged args zip to
  *  the LONGEST and pad with `null`): per cell an error propagates first, else a
