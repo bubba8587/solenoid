@@ -438,7 +438,7 @@ export type SortDir = "asc" | "desc";
 
 export class SortNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    by: "Optional. Unwired, the list sorts by its own values. Wired, it sorts by this parallel numeric key list (sort names by their scores) — position-only, so any element type reorders. A blank or error key sends its element to the end; a length mismatch errors the result.",
+    by: "Optional. Unwired, the list sorts by its own values. Wired, it sorts by this parallel numeric key list (sort names by their scores); position-only, so any element type reorders. A blank or error key sends its element to the end; a length mismatch errors the result.",
     result: "Blank and error cells sort to the end in either direction.",
   };
 
@@ -595,7 +595,7 @@ export const OUTLIER_METHOD_META = {
 
 export class OutliersNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    result: "One row per input value: Value (the list with outliers blanked, so aggregates skip them and positions hold) and Outlier (TRUE where the rule flags it; a blank stays blank).",
+    result: "One row per input value: Value (the list with outliers blanked, so aggregates skip them and positions hold) and Outlier, TRUE where the rule flags it, though a blank stays blank.",
     threshold: "Leave unwired for the rule's conventional cutoff: 3 for z, 1.5 for IQR, 3.5 for MAD.",
   };
   label: string;
@@ -731,7 +731,7 @@ export class CrossNode extends ClassicPreset.Node {
 
 export class PolyfitNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    result: "The fitted y value at each input x — the least-squares polynomial of the chosen degree, evaluated back over the data.",
+    result: "The fitted y value at each input x: the least-squares polynomial of the chosen degree, evaluated back over the data.",
   };
   label: string;
   literals: Record<string, number> = { degree: 2 };
@@ -782,7 +782,7 @@ export class TrapzNode extends ClassicPreset.Node {
 
 export class RleNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    result: "Two columns — each consecutive run's value and its length. R rle.",
+    result: "Two columns: each consecutive run's value and its length. R rle.",
   };
   label: string;
   cachedResult: ListCell[][] | null = null;
@@ -1465,7 +1465,7 @@ const DIFF_OUTPUT_LABEL: Record<DiffMode, string> = { delta: "Differences", perc
 
 export class DiffNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    result: "Δ and % are one element shorter (change from the element before); ∇ is the same length (central-difference slope at each point).",
+    result: "Δ and % are one element shorter (change from the element before); ∇ is the same length, the central-difference slope at each point.",
   };
 
   label: string;
@@ -2308,7 +2308,7 @@ export class FindPeaksNode extends ClassicPreset.Node {
     result: "One row per local maximum that passes every filter: Position (1-based) and Height.",
     height: "Leave blank for no minimum.",
     distance: "Minimum spacing between kept peaks (in samples); the higher peak wins.",
-    prominence: "Minimum rise above the higher of the two surrounding valleys — the filter that separates peaks from ripples.",
+    prominence: "Minimum rise above the higher of the two surrounding valleys: the filter that separates peaks from ripples.",
   };
   label: string;
   literals: Record<string, number> = {};

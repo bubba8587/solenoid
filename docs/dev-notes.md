@@ -135,6 +135,13 @@ holder promotion on plain pan, `--zooming` quality drops on desktop, render-reso
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
 ### SESSION DIGEST (2026-08-25b — post-crash: cards named by their op, NAME-3)
+- **§7 over socketDocs + nodeExcel notes, now pinned (Agent 4).** The last two prose surfaces the
+  uiCopy corpus never reached: every `static socketDocs` string (incl. shared BASIS_DOC) and every
+  `note` in nodeExcel.ts (NODE_EXCEL + EXCEL_GAP). Swept 38 em dashes → sense punctuation, 33 trailing
+  parentheticals folded in, 1 British spelling (centre→center); no stale node names or odd Excel forms
+  were present. New `uiCopy.test.ts` pin scans both surfaces (Excel notes via NODE_EXCEL/EXCEL_GAP, each
+  class's socketDocs via one catalog-leaf instance) for the same two rules — no em dash, no trailing "(…)".
+  frameLabelGrammar's λ-binding parens are labels, not docs, so they never reach this scan (no exemption).
 - **Stale-name prose sweep after today's renames (Agent 4).** Updated node names left behind in
   help/*.md, docs/node-coverage.md, docs/glossary.md (socketDocs were already clean): Pivot → PIVOTBY,
   Group By → GROUPBY, Coalesce/Fill → Fill, Binomial Range → BINOM.DIST.RANGE, Import from Obsidian →

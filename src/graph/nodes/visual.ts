@@ -86,7 +86,7 @@ export const CHART_OP_META = {
 
 export class ChartNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    values: "A list plots by position. In a frame, column 0 supplies the x-axis labels and every number column after it is a series (Bubble reads three number columns as x, y, and size).",
+    values: "A list plots by position. In a frame, column 0 supplies the x-axis labels and every number column after it is a series. Bubble reads three number columns as x, y, and size.",
     options: "Accepts key=value pairs separated by semicolons, using matplotlib names such as title, ylim, and grid. Unknown keys are ignored.",
   };
 

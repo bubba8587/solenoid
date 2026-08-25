@@ -191,7 +191,7 @@ export class BetweenNode extends ClassicPreset.Node {
 
 export class IsCloseNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    result: "TRUE when |A − B| ≤ tolerance — approximate equality for floats. Broadcasts element-wise. math.isclose.",
+    result: "TRUE when |A − B| ≤ tolerance: approximate equality for floats. Broadcasts element-wise. math.isclose.",
   };
   label: string;
   cachedResult: Tri | Tri[] = null;

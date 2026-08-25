@@ -888,7 +888,7 @@ export class SeriesSumNode extends ClassicPreset.Node {
 // MULTINOMIAL(n1, n2, …, nk) = (n1+n2+…+nk)! / (n1! × n2! × … × nk!)
 export class MultinomialNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    values: "The category counts n₁, n₂, … — the multinomial coefficient of their sum.",
+    values: "The category counts n₁, n₂, …: the multinomial coefficient of their sum.",
   };
   label: string;
   cachedResult: number | null = null;

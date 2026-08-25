@@ -888,7 +888,7 @@ const TEMPLATE_FORMATTERS: TemplateFormatters = {
 export class TemplateNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     template: "{name} inserts an input of that name, {name:0.00} formats it with an Excel TEXT code; {{ and }} print braces. Each new name grows a socket.",
-    result: "One string, or a list when any placeholder is fed a list (the rest repeat).",
+    result: "One string, or a list when any placeholder is fed a list, with the rest repeating.",
   };
   label: string;
   cachedText: CellResult<string> = null;
@@ -999,7 +999,7 @@ export type RomanArabicOp = "roman" | "arabic";
 
 export class RomanArabicNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    number: "1 to 3999 — Roman numerals cannot express values outside this range.",
+    number: "1 to 3999: Roman numerals cannot express values outside this range.",
   };
   label: string;
   op: RomanArabicOp;
@@ -1324,7 +1324,7 @@ export class TextSimilarityNode extends ClassicPreset.Node {
 export class FuzzyMatchNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     threshold: "0–1. A needle whose best candidate scores below it answers #N/A instead of a bad guess; 0 always picks the closest.",
-    match: "The closest candidate per needle (first on ties) — feed it to XLOOKUP for an exact join.",
+    match: "The closest candidate per needle (first on ties); feed it to XLOOKUP for an exact join.",
     score: "That candidate's similarity, 0–1.",
   };
   label: string;

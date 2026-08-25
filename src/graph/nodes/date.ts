@@ -146,7 +146,7 @@ export const DATE_TIME_VALUE_OP_META = {
 
 export class DateTimeValueNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    text: "A date needs a four-digit year (two-digit years don't parse). ISO, day-first numeric, ordinals and month names all work; a numeric date that could go either way (3/4/2026) is #AMBIGUOUS! — write the month as a name.",
+    text: "A date needs a four-digit year (two-digit years don't parse). ISO, day-first numeric, ordinals and month names all work; a numeric date that could go either way (3/4/2026) is #AMBIGUOUS!; write the month as a name.",
   };
 
   label: string;
@@ -532,7 +532,7 @@ export const DATE_TRUNC_UNIT_META = {
 
 export class DateTruncNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    result: "Floor: the start of the period the date falls in. Ceiling: the start of the next period (a date already on the boundary stays put).",
+    result: "Floor: the start of the period the date falls in. Ceiling: the start of the next period, though a date already on the boundary stays put.",
   };
   label: string;
   unit: DateTruncUnit = "month";

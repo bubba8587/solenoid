@@ -1037,7 +1037,7 @@ export const PRICE_DISC_OP_META = {
 export class PriceDiscNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     pr: "Read in YIELDDISC mode: the price to solve the yield from.",
-    redemption: "Face value redeemed at maturity. Defaults to 100 (par).",
+    redemption: "Face value redeemed at maturity. Defaults to 100, the par value.",
     basis: BASIS_DOC,
   };
   label: string;
@@ -1183,7 +1183,7 @@ export class BondPriceNode extends ClassicPreset.Node {
     frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
     yld: "Read in PRICE mode: the yield to price from.",
     pr: "Read in YIELD mode: the price to solve the yield from.",
-    redemption: "Face value redeemed at maturity. Defaults to 100 (par).",
+    redemption: "Face value redeemed at maturity. Defaults to 100, the par value.",
   };
   label: string;
   op: BondPriceOp;
@@ -1239,7 +1239,7 @@ export class OddCouponNode extends ClassicPreset.Node {
     frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
     yld: "Read by the PRICE ops: the yield to price from.",
     pr: "Read by the YIELD ops: the price to solve the yield from.",
-    redemption: "Face value redeemed at maturity. Defaults to 100 (par).",
+    redemption: "Face value redeemed at maturity. Defaults to 100, the par value.",
   };
 
   label: string;
@@ -1297,8 +1297,8 @@ export class OddCouponNode extends ClassicPreset.Node {
 // ─── AMORTIZATION SCHEDULE ───────────────────────────────────────────────────
 export class AmortizationNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    rate: "The rate PER PERIOD — a 6% annual loan paid monthly is 0.005 here, with nper in months.",
-    frame: "Period · Payment · Interest · Principal · Balance. Payment, interest and principal carry Excel's sign (negative for a loan received).",
+    rate: "The rate PER PERIOD: a 6% annual loan paid monthly is 0.005 here, with nper in months.",
+    frame: "Period · Payment · Interest · Principal · Balance. Payment, interest and principal carry Excel's sign, negative for a loan received.",
   };
   label: string;
   paymentTiming: PaymentTiming = "end";
@@ -1341,7 +1341,7 @@ export class ReturnsNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     list: "Prices for the price-based ops (log / simple returns, drawdown, CAGR); per-period returns for the rest.",
     rf: "Risk-free rate PER PERIOD (an annual 4% on daily data is 0.04 / 252); 0 when unwired.",
-    periods: "Periods per year for annualizing — 252 trading days, 12 months, 1 for none.",
+    periods: "Periods per year for annualizing: 252 trading days, 12 months, 1 for none.",
   };
   label: string;
   op: ReturnsOp;

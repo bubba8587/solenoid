@@ -1070,11 +1070,11 @@ export class ProbNode extends ClassicPreset.Node {
 // ─── FORECAST (ETS) — Holt–Winters ────────────────────────────────────────────
 export class EtsForecastNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    values: "An equally spaced series, oldest first — monthly sales, daily visits. Blanks are dropped.",
+    values: "An equally spaced series, oldest first: monthly sales, daily visits. Blanks are dropped.",
     horizon: "How many steps ahead to forecast.",
     season: "Season length in steps: 1 = detect it, 0 = none, 12 = yearly on monthly data. Needs two full seasons of history.",
-    forecast: "A frame per step ahead: Forecast (the point forecast) and Interval (the 95% prediction half-width, forecast ± this, growing with √h).",
-    detected: "The season length used — what detection found, or what you set.",
+    forecast: "A frame per step ahead: Forecast (the point forecast) and Interval, the 95% prediction half-width (forecast ± this), growing with √h.",
+    detected: "The season length used: what detection found, or what you set.",
   };
   label: string;
   literals: Record<string, number> = { horizon: 6, season: 1 };
@@ -1129,7 +1129,7 @@ export class FitDistributionNode extends ClassicPreset.Node {
     list: "A sample of values. Families whose support the data leaves (a negative value for Lognormal, a non-integer for Poisson) are skipped, not errors.",
     ranking: "Every family the data supports, best AIC first: family, parameters (the Distribution node's own), log-likelihood, AIC, KS distance.",
     best: "The family with the lowest AIC.",
-    params: "That family's parameters, in the Distribution node's order — wire them straight into it.",
+    params: "That family's parameters, in the Distribution node's order; wire them straight into it.",
   };
   label: string;
   cachedRanking: FrameValue | SolError | null = null;
@@ -1181,8 +1181,8 @@ export const DECOMPOSE_MODEL_META: Record<DecomposeModel, { label: string; descr
 export class DecomposeNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     values: "An equally spaced series, oldest first; needs at least two full periods.",
-    period: "Season length in steps — 12 for monthly data with a yearly cycle, 7 for daily with a weekly one.",
-    decomposition: "A frame of three aligned columns — Trend (centered MA, blank half a period at each end for the classical filter; a loess with no blank ends for STL), Seasonal (one repeating pattern, centered), and Residual (what's left).",
+    period: "Season length in steps: 12 for monthly data with a yearly cycle, 7 for daily with a weekly one.",
+    decomposition: "A frame of three aligned columns: Trend (centered MA, blank half a period at each end for the classical filter; a loess with no blank ends for STL), Seasonal (one repeating pattern, centered), and Residual, what's left.",
   };
   label: string;
   model: DecomposeModel = "additive";

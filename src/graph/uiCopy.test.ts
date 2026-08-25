@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { uiStrings, attrStrings, collectCopyRecords, type Unit } from "./copyCorpus";
+import { NODE_EXCEL, EXCEL_GAP } from "./nodeExcel";
+import { FLAT_CATALOG } from "./catalogUtils";
 
 // Machine-checks the mechanically-decidable part of DESIGN.md section 7 (Voice
 // & copy) and CLAUDE.md's "no Captain Obvious UI strings" rule. Those rules were
@@ -211,6 +213,35 @@ describe("UI copy", () => {
     }
     expect(emDash, 'section 7 "no em dashes" — use a period, colon, or restructure').toEqual([]);
     expect(trailingParen, 'section 7 "no trailing parenthetical" — fold the aside into the sentence').toEqual([]);
+  });
+
+  // The other two prose surfaces the corpus lint never reached: a node's socketDocs
+  // (socket-hint tooltips, incl. the shared BASIS_DOC) and nodeExcel.ts's per-name
+  // `note`s (the Inspector's Excel-equivalent rows). Same two section-7 rules.
+  // The λ-binding parentheticals frameLabelGrammar sanctions live on LABELS, not
+  // here, so they don't reach this scan — no exemption needed.
+  it("no socketDoc or Excel note uses an em dash or ends in a trailing parenthetical (section 7)", () => {
+    const strings: { where: string; text: string }[] = [];
+    for (const [type, rows] of Object.entries(NODE_EXCEL)) {
+      for (const r of rows) if (r.note) strings.push({ where: `nodeExcel:${type}`, text: r.note });
+    }
+    for (const r of EXCEL_GAP) if (r.note) strings.push({ where: `excelGap:${r.excel}`, text: r.note });
+    // socketDocs is a static map on each node class; reach it through one instance
+    // of every catalog leaf (packs included), deduped by class.
+    const seenClass = new Set<string>();
+    for (const leaf of FLAT_CATALOG.values()) {
+      let inst: { constructor: { name: string; socketDocs?: Record<string, string> } };
+      try { inst = leaf.create() as typeof inst; } catch { continue; }
+      const cls = inst?.constructor?.name;
+      const docs = inst?.constructor?.socketDocs;
+      if (!cls || !docs || seenClass.has(cls)) continue;
+      seenClass.add(cls);
+      for (const [k, v] of Object.entries(docs)) if (typeof v === "string") strings.push({ where: `socketDocs:${cls}.${k}`, text: v });
+    }
+    const emDash = strings.filter((s) => s.text.includes("—")).map((s) => `${s.where}: ${s.text}`);
+    const trailingParen = strings.filter((s) => /\([^()]*\)\.?\s*$/.test(s.text.trim())).map((s) => `${s.where}: ${s.text}`);
+    expect(emDash, 'section 7 "no em dashes" in socketDocs / Excel notes').toEqual([]);
+    expect(trailingParen, 'section 7 "no trailing parenthetical" in socketDocs / Excel notes').toEqual([]);
   });
 
   // Every rule keeps a specimen of the string that motivated it, so a later

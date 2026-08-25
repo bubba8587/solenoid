@@ -2049,7 +2049,7 @@ export class XLookupNode extends ClassicPreset.Node {
 // ─── DESCRIBE (pandas describe / R summary) ───────────────────────────────────
 export class DescribeNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    frame: "One output row per column: count / blank / distinct for every column; mean, std, min, quartiles, max for the number columns (min and max for dates).",
+    frame: "One output row per column: count / blank / distinct for every column; mean, std, min, quartiles, max for the number columns, with min and max for dates.",
   };
   label: string;
   cachedResult: FrameValue | SolError | null = null;
@@ -2120,10 +2120,10 @@ function numericRows(f: FrameValue): { names: string[]; rows: number[][]; kept: 
 
 export class KMeansNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    frame: "Every number column is a feature; rows with a blank get no cluster. Scale features first when their units differ (Normalize).",
+    frame: "Every number column is a feature; rows with a blank get no cluster. Scale features first when their units differ, with Normalize.",
     k: "How many clusters.",
     labels: "Cluster 1…k per row of the frame, in first-appearance order; blank for a skipped row.",
-    centers: "One row per cluster: its centre on every feature and its size.",
+    centers: "One row per cluster: its center on every feature and its size.",
   };
   label: string;
   literals: Record<string, number> = { k: 3 };
@@ -2165,8 +2165,8 @@ export class KMeansNode extends ClassicPreset.Node {
 export class PcaNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frame: "Every number column is a feature; rows with a blank are left out of the fit and get blank scores.",
-    scores: "The rows in the new axes: PC1, PC2, … (one column per feature, highest variance first).",
-    loadings: "How much each feature contributes to each axis — a row per feature.",
+    scores: "The rows in the new axes: PC1, PC2, …, one column per feature, highest variance first.",
+    loadings: "How much each feature contributes to each axis, a row per feature.",
     explained: "Share of the total variance per component; the first few usually carry almost all of it.",
   };
   label: string;
@@ -2214,7 +2214,7 @@ export class LogisticNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frame: "The target column is 0/1 (or TRUE/FALSE); every other number column is a feature. Rows with a blank are left out.",
     target: "Name of the 0/1 column to predict.",
-    coefficients: "Intercept first, then one row per feature: the log-odds coefficient, its standard error, z and p (Wald).",
+    coefficients: "Intercept first, then one row per feature: the log-odds coefficient, its standard error, z, and the Wald p.",
     probabilities: "Fitted P(target = 1) per row of the frame; blank for a skipped row.",
   };
   label: string;
@@ -2306,7 +2306,7 @@ export class WindowNode extends ClassicPreset.Node {
     column: "The Value column the function reads. Ranks and row numbers don't need one.",
     n: "Lag / lead offset, rolling window length, or N-tile bucket count.",
     name: "The new column's name; an existing column of that name is replaced.",
-    frame: "The input frame with the new column appended — rows stay in their original order (pandas transform).",
+    frame: "The input frame with the new column appended; rows stay in their original order. pandas transform.",
   };
   label: string;
   op: WindowFn = "cumsum";
