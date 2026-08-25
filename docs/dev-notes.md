@@ -97,6 +97,15 @@ Numbers reproduce with `node scripts/table-popup-probe.mjs` (dev server must be 
 profile and win (2).
 
 ### SESSION DIGEST (2026-08-25b — post-crash: cards named by their op, NAME-3)
+- **Set + Set relation merged into one SetNode (A2, 8d77cf7f).** Node-combining. Eight-op
+  selector (union/intersect/difference/symdiff → list; equal/subset/superset/disjoint → logical),
+  grouped Operation/Relation. The `result` socket swaps list↔logical per op via `applySetOp`
+  (SetNode.tsx) — the Split Frame precedent: mutate `out.socket` in place then `retypeOutputCables`,
+  never remove+add. `passthrough` adopts only in an operation op; the accent is socket-driven
+  (added to `SOCKET_DRIVEN_ACCENT`) so it tracks the result type. Kernels (`setOperation`/
+  `setRelation`) unchanged; the eight SET* fx names ride `SET_OP_META`/`SET_RELATION_META` (kept)
+  into the combined `SET_META`, so the formula surface + `formulaNodeCoverage` are untouched.
+  One nodeCatalog entry, one NODE_OPS entry; old `SetOp`/`SetRelation` saves load as Placeholder.
 - **Vite 7 → 8.2.2 + @vitejs/plugin-react 4 → 6.1.0 (A3, `docs/plans/vite-8-upgrade` executed).**
   Vite 8 swaps Rollup→Rolldown and esbuild→Oxc; the gated risk is the Oxc minifier having no
   keepNames, which would mangle `constructor.name` (the persisted node type → unopenable saves).

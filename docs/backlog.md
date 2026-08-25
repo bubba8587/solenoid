@@ -80,10 +80,10 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
 - **Payment breakdown 2×2** (IPMT/PPMT + CUMIPMT/CUMPRINC: op Interest/Principal ×
   window one-period/period-range; CUMIPMT over [k,k] = IPMT) — author unfamiliar
   with the family; explain before deciding.
-- **Smaller pairs**: Set + Set relation
-  (one card, output socket swaps list↔logical per op — Split Frame precedent);
+- **Smaller pairs**: Set + Set relation → ONE SetNode, DONE (A2, 8d77cf7f, output socket
+  swaps list↔logical per op). Remaining:
   discount securities (TBill 3 + SecurityDisc 3 + PriceDisc 2 + PriceMat 2, all
-  settlement/maturity/basis-shaped); BondPrice + OddCoupon (odd variants = extra
+  settlement/maturity/basis-shaped, A2 next); BondPrice + OddCoupon (odd variants = extra
   date params per op); ACCRINT + ACCRINTM.
 
 ## Small builds & calls (still 1.3-sized)
