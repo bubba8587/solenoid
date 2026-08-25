@@ -11,7 +11,7 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 ## Claims (session 2026-08-25b)
 
 ### Agent 1 (Lead)
-- (clear)
+- CLAIMED — writing plain-named execution plans in `docs/plans/` from definite backlog items: `vite-8-upgrade.md` (done), `lazy-handle-on-cable.md` + `z-index-nodes-order-evaluation.md` (investigations running). Rewriting the plans README index.
 
 ### Agent 2 (solenoid-ca) — CLAIMED: Merge Plots node (item 1, in progress; author add: inherit each source chart's kind + options). Staged QUEUE below.
 1. **Merge Plots node** (backlog "Small builds"): ExtensibleInputs of `chart` sockets; planar kinds overlay on one plot, shared axes, legend from source card names; non-planar inputs → #TYPE! naming the input. Chart kind, Options via Chart Builder. Reuse the multi-series path. `add-node` skill; pin with tests; run nodeOps/formulaNodeCoverage/seeds tests.
@@ -19,6 +19,8 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 
 ### Agent 3 (solenoid-c7) — QUEUE (FIFO; flush Commit queue first; never push)
 2. **OS-dropdown rule, MOBILE half** (IN PROGRESS): rerun `scripts/dropdown-reorder-probe.mjs` under the mobile viewport (`is-mobile`, tapSelect path); record the result in the backlog item + dev-notes digest.
+3. **Mermaid description trim + catalog sweep** (author-flagged 2026-08-25): in `nodeCatalog.ts` the Mermaid description narrates plumbing ("flows out a chart socket, so a Report renders it inline where its =name ref sits") and the affordance ("typed on the node or wired in from a Text node"). Cut it to "Draws a diagram from Mermaid text: flowchart, sequence, class, state, gantt, or pie." Then sweep EVERY catalog description for the same sins (names a socket type; explains how a value travels; narrates an input row) and trim likewise. DESIGN.md §7 first; run `uiCopy.test.ts` + `nodeCatalog` tests; log edits via the string-editor copy-edits convention if applicable. One commit.
+4. **Vite 8 upgrade** — follow `docs/plans/vite-8-upgrade.md` exactly (the persisted-type gate is the point; stop and report if class names mangle or the license file goes empty).
 
 ## Commit queue
 (empty)
