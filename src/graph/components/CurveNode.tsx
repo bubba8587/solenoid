@@ -3,6 +3,7 @@ import type { CurveNode as CurveNodeType } from "../rete-nodes";
 import { curvePoints, pointsToText, monotoneCubic, sampleCurve, curveToFrame } from "../nodes/control";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { FrameDisplay } from "./FrameDisplay";
+import { MeasuredSocketRow } from "./NodeSocket";
 import { InlineNumberField } from "./inlineInput";
 import { processGraph } from "../process";
 
@@ -167,7 +168,11 @@ export function CurveComponent({ data, emit }: NodeProps<CurveNodeType>) {
         <InlineNumberField value={data.literals.samples ?? 32} onChange={(v) => setLit("samples")(v ?? 32)} />
       </div>
       <div className="solenoid-node__section-divider" />
-      <FrameDisplay frame={curveToFrame(sampled.xs, sampled.values)} label={data.label} />
+      {data.outputs.result && (
+        <MeasuredSocketRow hero side="output" socketKey="result" nodeId={data.id} emit={emit} payload={data.outputs.result.socket}>
+          <div style={{ width: "100%" }}><FrameDisplay frame={curveToFrame(sampled.xs, sampled.values)} label={data.label} /></div>
+        </MeasuredSocketRow>
+      )}
     </NodeShell>
   );
 }

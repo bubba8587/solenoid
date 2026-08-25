@@ -3,6 +3,7 @@ import type { PointPlotterNode as PointPlotterNodeType } from "../rete-nodes";
 import { parsePoints, pointsToText, pointsToFrame } from "../nodes/control";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { FrameDisplay } from "./FrameDisplay";
+import { MeasuredSocketRow } from "./NodeSocket";
 import { InlineNumberField } from "./inlineInput";
 import { processGraph } from "../process";
 
@@ -142,7 +143,11 @@ export function PointPlotterComponent({ data, emit }: NodeProps<PointPlotterNode
       <RangeRow label="X" lo={xmin} hi={xmax} onLo={setRange("xmin")} onHi={setRange("xmax")} />
       <RangeRow label="Y" lo={ymin} hi={ymax} onLo={setRange("ymin")} onHi={setRange("ymax")} />
       <div className="solenoid-node__section-divider" />
-      <FrameDisplay frame={pointsToFrame(pts)} label={data.label} />
+      {data.outputs.result && (
+        <MeasuredSocketRow hero side="output" socketKey="result" nodeId={data.id} emit={emit} payload={data.outputs.result.socket}>
+          <div style={{ width: "100%" }}><FrameDisplay frame={pointsToFrame(pts)} label={data.label} /></div>
+        </MeasuredSocketRow>
+      )}
     </NodeShell>
   );
 }
