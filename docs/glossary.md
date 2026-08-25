@@ -58,7 +58,7 @@ area. When you coin a new load-bearing term, add it here.
   `socketConnect.test.ts`; see decisions.md socketLattice)
 - **Cast** — the explicit node to change a value's type family (the required bridge the
   lattice won't do automatically). (`nodes/cast.ts`)
-- **Coalesce / Fill** — the opt-in node to treat `null` as a real value.
+- **Fill** — the opt-in node to treat `null` as a real value.
   (`nodes/list.ts` `FillNode`)
 
 ## Format & units
@@ -88,8 +88,8 @@ area. When you coin a new load-bearing term, add it here.
 - **FrameValue** — a fully-materialized frame held in JS memory. (`frame.ts`)
 - **FrameRef** — a *lazy handle* on a cable pointing at a frame living in the engine
   (a query plan), not the data itself. (`frameBackend.ts` `isFrameRef`)
-- **Verb node** — a relational operation node — Filter/Sort/Join/Group By/Append/
-  Distinct/Pivot/Unpivot/Nest/Unnest/Computed Column/Split Column… and the rest of the
+- **Verb node** — a relational operation node — Filter/Sort/Join/GROUPBY/Append/
+  Distinct/PIVOTBY/Unpivot/Nest/Unnest/Computed Column/Split Column… and the rest of the
   catalog's Table group. (`nodes/frame.ts`, `frameVerbs.ts`; inventory in
   `nodeCatalog.ts`)
 - **FrameBackend** — the seam with two implementations: `JsFrameBackend` (web/dev, eager)

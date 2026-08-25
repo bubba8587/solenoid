@@ -135,6 +135,14 @@ holder promotion on plain pan, `--zooming` quality drops on desktop, render-reso
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
 ### SESSION DIGEST (2026-08-25b — post-crash: cards named by their op, NAME-3)
+- **Stale-name prose sweep after today's renames (Agent 4).** Updated node names left behind in
+  help/*.md, docs/node-coverage.md, docs/glossary.md (socketDocs were already clean): Pivot → PIVOTBY,
+  Group By → GROUPBY, Coalesce/Fill → Fill, Binomial Range → BINOM.DIST.RANGE, Import from Obsidian →
+  Obsidian Note, VSTACK/HSTACK nodes → XSTACK, the 1-D GroupBy ref → Group Lists. Formula names (VSTACK/
+  HSTACK, TREND/GROWTH, LOGEST, PHI/GAUSS) kept per NAME-1 — only node references changed. While in the
+  help files (the one place §7's em-dash / trailing-paren rules were still out of scope) applied them too:
+  ~55 em dashes → period/colon/comma by sense, no trailing parens. Voice-sensitive narrative prose, so the
+  author may want to eyeball the Reference tabs. tsc + docsPointers + uiCopy + full suite green.
 - **NAME-1, the naming model** (author: "Table Size" in the menu, "Table Info" on hover, a ROWS
   search that never said ROWS — "design a coherent system"): rules.md NAME-1 is the table of every
   name a node shows and its ONE home. Two mechanisms landed: an Excel name a leaf answers to is a
