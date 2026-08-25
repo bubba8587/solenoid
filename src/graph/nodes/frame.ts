@@ -50,11 +50,11 @@ function runVerb<T>(fn: () => T): T | SolError {
 }
 
 // ─── Lazy verb-node output ──────────────────────────────────────────────────────
-interface FrameVerbNode { _ref?: FrameRef | null; _gen?: number; cachedResult: FrameValue | SolError | null }
+export interface FrameVerbNode { _ref?: FrameRef | null; _gen?: number; cachedResult: FrameValue | SolError | null }
 
 /** Stamp a new compute pass — the out-of-order-pass guard; MUST be evaluated BEFORE
  *  the verb's await, which the `emitFrame(this, beginPass(this), await …)` order gives. */
-function beginPass(node: FrameVerbNode): number {
+export function beginPass(node: FrameVerbNode): number {
   node._gen = (node._gen ?? 0) + 1;
   return node._gen;
 }
@@ -62,11 +62,11 @@ function beginPass(node: FrameVerbNode): number {
 /** A no-op verb forwards a lazy input as a NON-OWNING ref: the empty `drop` keeps the
  *  plan non-empty, which is what `dropFrameRef`'s ownership rule keys on. A value
  *  passes as-is (no upload, `raw` kept). */
-async function passFrame(f: FrameInput): Promise<FrameRef | FrameValue | SolError> {
+export async function passFrame(f: FrameInput): Promise<FrameRef | FrameValue | SolError> {
   return isFrameRef(f) ? runFrameUnary(f, { kind: "drop", columns: [] }) : f;
 }
 
-async function emitFrame(node: FrameVerbNode, gen: number, out: FrameRef | FrameValue | SolError | null): Promise<{ frame: FrameRef | FrameValue | SolError | null }> {
+export async function emitFrame(node: FrameVerbNode, gen: number, out: FrameRef | FrameValue | SolError | null): Promise<{ frame: FrameRef | FrameValue | SolError | null }> {
   // Stale pass: leave the node's live ref/preview alone, free the orphan handle.
   const stale = () => {
     if (isFrameRef(out) && out !== node._ref) dropFrameRef(out);
