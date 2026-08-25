@@ -1023,6 +1023,10 @@ export const PRICE_DISC_OP_META = {
 } satisfies Record<PriceDiscOp, { label: string; description: string }>;
 
 export class PriceDiscNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    pr: "Read in YIELDDISC mode: the price to solve the yield from.",
+    redemption: "Face value redeemed at maturity. Defaults to 100 (par).",
+  };
   label: string;
   op: PriceDiscOp;
   cachedResult: number | null = null;
@@ -1036,8 +1040,8 @@ export class PriceDiscNode extends ClassicPreset.Node {
     this.addInput("settle",     dateIn("Settlement date"));
     this.addInput("maturity",   dateIn("Maturity date"));
     this.addInput("discount",   numIn("Discount rate"));
-    this.addInput("pr",         numIn("Price (YIELDDISC only)"));
-    this.addInput("redemption", numIn("Redemption (default 100)"));
+    this.addInput("pr",         numIn("Price"));
+    this.addInput("redemption", numIn("Redemption"));
     this.addInput("basis",      numIn("Basis (0=30/360)"));
     this.addOutput("result", numOut("Result"));
   }
@@ -1067,6 +1071,10 @@ export const PRICE_MAT_OP_META = {
 } satisfies Record<PriceMatOp, { label: string; description: string }>;
 
 export class PriceMatNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    yld: "Read in PRICEMAT mode: the yield to price from.",
+    pr: "Read in YIELDMAT mode: the price to solve the yield from.",
+  };
   label: string;
   op: PriceMatOp;
   cachedResult: number | null = null;
@@ -1081,8 +1089,8 @@ export class PriceMatNode extends ClassicPreset.Node {
     this.addInput("maturity", dateIn("Maturity date"));
     this.addInput("issue",    dateIn("Issue date"));
     this.addInput("rate",     numIn("Coupon rate"));
-    this.addInput("yld",      numIn("Yield (PRICEMAT only)"));
-    this.addInput("pr",       numIn("Price (YIELDMAT only)"));
+    this.addInput("yld",      numIn("Yield"));
+    this.addInput("pr",       numIn("Price"));
     this.addInput("basis",    numIn("Basis (0=30/360)"));
     this.addOutput("result", numOut("Result"));
   }
@@ -1158,6 +1166,9 @@ export const BOND_PRICE_OP_META = {
 export class BondPriceNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
+    yld: "Read in PRICE mode: the yield to price from.",
+    pr: "Read in YIELD mode: the price to solve the yield from.",
+    redemption: "Face value redeemed at maturity. Defaults to 100 (par).",
   };
   label: string;
   op: BondPriceOp;
@@ -1172,9 +1183,9 @@ export class BondPriceNode extends ClassicPreset.Node {
     this.addInput("settle",     dateIn("Settlement date"));
     this.addInput("maturity",   dateIn("Maturity date"));
     this.addInput("rate",       numIn("Coupon rate"));
-    this.addInput("yld",        numIn("Yield (PRICE only)"));
-    this.addInput("pr",         numIn("Price (YIELD only)"));
-    this.addInput("redemption", numIn("Redemption (default 100)"));
+    this.addInput("yld",        numIn("Yield"));
+    this.addInput("pr",         numIn("Price"));
+    this.addInput("redemption", numIn("Redemption"));
     this.addInput("frequency",  numIn("Frequency"));
     this.addOutput("result", numOut("Result"));
   }
@@ -1211,6 +1222,9 @@ export class OddCouponNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     issue: "Left unwired, the issue date falls back to the settlement date.",
     frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
+    yld: "Read by the PRICE ops: the yield to price from.",
+    pr: "Read by the YIELD ops: the price to solve the yield from.",
+    redemption: "Face value redeemed at maturity. Defaults to 100 (par).",
   };
 
   label: string;
@@ -1233,9 +1247,9 @@ export class OddCouponNode extends ClassicPreset.Node {
       this.addInput("firstlast",  dateIn("Last interest date"));
     }
     this.addInput("rate",       numIn("Coupon rate"));
-    this.addInput("yld",        numIn("Yield (PRICE ops only)"));
-    this.addInput("pr",         numIn("Price (YIELD ops only)"));
-    this.addInput("redemption", numIn("Redemption (default 100)"));
+    this.addInput("yld",        numIn("Yield"));
+    this.addInput("pr",         numIn("Price"));
+    this.addInput("redemption", numIn("Redemption"));
     this.addInput("frequency",  numIn("Frequency"));
     this.addOutput("result", numOut("Result"));
   }

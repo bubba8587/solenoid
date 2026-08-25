@@ -89,8 +89,8 @@ export class DateConstructNode extends ClassicPreset.Node {
     super("DateConstruct");
     this.label = init?.label ?? "DATE (Build)";
     this.addInput("year",  numListIn("Year"));
-    this.addInput("month", numListIn("Month (1–12)"));
-    this.addInput("day",   numListIn("Day (1–31)"));
+    this.addInput("month", numListIn("Month"));
+    this.addInput("day",   numListIn("Day"));
     this.addOutput("result", dateComboOut("Date"));
   }
 
@@ -116,10 +116,10 @@ export class TimeConstructNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("TimeConstruct");
     this.label = init?.label ?? "TIME";
-    this.addInput("hour",   numListIn("Hour (0–23)"));
-    this.addInput("minute", numListIn("Minute (0–59)"));
-    this.addInput("second", numListIn("Second (0–59)"));
-    this.addOutput("result", numListOut("Time fraction (0–1)"));
+    this.addInput("hour",   numListIn("Hour"));
+    this.addInput("minute", numListIn("Minute"));
+    this.addInput("second", numListIn("Second"));
+    this.addOutput("result", numListOut("Time fraction"));
   }
 
   data(inputs: { hour?: (number | number[])[]; minute?: (number | number[])[]; second?: (number | number[])[] }): { result: BroadcastResult } {
@@ -160,7 +160,7 @@ export class DateTimeValueNode extends ClassicPreset.Node {
     this.op    = init?.op    ?? "date";
     this.label = init?.label ?? "";
     this.addInput("text", strIn("Text"));
-    this.addOutput("result", this.op === "date" ? dateOut("Date") : numOut("Time fraction (0–1)"));
+    this.addOutput("result", this.op === "date" ? dateOut("Date") : numOut("Time fraction"));
   }
 
   /** Retypes the output in place (date ↔ number) — the component must call
@@ -170,7 +170,7 @@ export class DateTimeValueNode extends ClassicPreset.Node {
     this.op = next;
     const out = this.outputs.result;
     if (!out) return;
-    const spec = next === "date" ? dateOut("Date") : numOut("Time fraction (0–1)");
+    const spec = next === "date" ? dateOut("Date") : numOut("Time fraction");
     out.socket = spec.socket;
     out.label  = spec.label;
   }
@@ -402,7 +402,7 @@ export class WorkdaysNode extends ClassicPreset.Node {
     this.addInput("weekend_code", numIn("Weekend code (1=Sat+Sun)"));
     // `holidays` is a LIST PARAMETER — the whole set is consulted per result, so it
     // is NOT an element-wise operand and stays a plain datelist.
-    this.addInput("holidays",     dateListIn("Holidays (optional)"));
+    this.addInput("holidays",     dateListIn("Holidays"));
     this.addOutput("result", this.op === "workday" ? dateComboOut("Date") : numListOut("Working days"));
     this.seedLiterals();
   }

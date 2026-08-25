@@ -924,6 +924,9 @@ export const BESSEL_OP_META = {
 } satisfies Record<BesselOp, { label: string; description: string }>;
 
 export class BesselNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    n: "Integer order, 0 or greater.",
+  };
   label: string;
   op: BesselOp;
   cachedResult: number | null = null;
@@ -935,7 +938,7 @@ export class BesselNode extends ClassicPreset.Node {
     this.op    = init?.op    ?? "besselj";
     this.label = init?.label ?? "";
     this.addInput("x", numIn("x"));
-    this.addInput("n", numIn("Order n (integer ≥ 0)"));
+    this.addInput("n", numIn("Order"));
     this.addOutput("result", numOut("Result"));
   }
 

@@ -65,14 +65,16 @@ const RANK_PERCENTILE_SPECS: Record<RankPercentileFamily, {
 }> = {
   nth:         { inputs: [{ key: "k", label: "K", def: 1 }],                                                    outLabel: "Value",      height: 170 },
   rank:        { inputs: [{ key: "value", label: "Value", def: 0 }],                                            outLabel: "Rank",       height: 185 },
-  percentile:  { inputs: [{ key: "p", label: "Percentile (0–1)", def: 0.5 }],                                   outLabel: "Value",      height: 185 },
-  quartile:    { inputs: [{ key: "q", label: "Quartile (0–4)", def: 2 }],                                       outLabel: "Value",      height: 185 },
+  percentile:  { inputs: [{ key: "p", label: "Percentile", def: 0.5 }],                                          outLabel: "Value",      height: 185 },
+  quartile:    { inputs: [{ key: "q", label: "Quartile", def: 2 }],                                              outLabel: "Value",      height: 185 },
   percentrank: { inputs: [{ key: "value", label: "Value", def: 0 }, { key: "significance", label: "Digits", def: 3 }], outLabel: "Rank (0–1)", height: 210 },
 };
 
 export class RankPercentileNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     significance: "The rank truncates to this many digits. It does not round.",
+    p: "A fraction from 0 to 1.",
+    q: "0 to 4: 0 = min, 1 = Q1, 2 = median, 3 = Q3, 4 = max.",
   };
 
   label: string;
@@ -647,7 +649,7 @@ export const HYPOTHESIS_TEST_SPECS: Record<HypothesisTestOp, HypothesisTestSpec>
     inputs: [
       { key: "a", label: "Array" },
       { key: "x", label: "μ₀", num: true },
-      { key: "sigma", label: "σ (optional)", num: true },
+      { key: "sigma", label: "σ", num: true },
     ],
     outLabel: "p-value (upper)",
   },

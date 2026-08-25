@@ -1052,6 +1052,9 @@ export class AddIndexNode extends ClassicPreset.Node {
 export type FillDir = "down" | "up";
 
 export class FillBlanksNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    columns: "Leave blank to fill every column.",
+  };
   label: string;
   dir: FillDir;
   cachedResult: FrameValue | SolError | null = null;
@@ -1063,7 +1066,7 @@ export class FillBlanksNode extends ClassicPreset.Node {
     this.label = init?.label ?? "Fill Down";
     this.dir = init?.dir ?? "down";
     this.addInput("frame", frameIn("Frame"));
-    this.addInput("columns", strListIn("Columns (blank = all)"));
+    this.addInput("columns", strListIn("Columns"));
     this.addOutput("frame", frameOut("Frame"));
   }
 
@@ -1081,6 +1084,9 @@ export class FillBlanksNode extends ClassicPreset.Node {
 export type ReplaceMode = "cell" | "substring";
 
 export class ReplaceValuesNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    column: "Leave blank to replace across every column.",
+  };
   label: string;
   mode: ReplaceMode;
   cachedResult: FrameValue | SolError | null = null;
@@ -1097,7 +1103,7 @@ export class ReplaceValuesNode extends ClassicPreset.Node {
     this.label = init?.label ?? "Replace Values";
     this.mode = init?.mode ?? "cell";
     this.addInput("frame", frameIn("Frame"));
-    this.addInput("column", strIn("Column (blank = all)"));
+    this.addInput("column", strIn("Column"));
     this.addInput("find", anyIn("Find"));
     this.addInput("replace", anyIn("Replace"));
     this.addOutput("frame", frameOut("Frame"));
@@ -1125,6 +1131,9 @@ export class ReplaceValuesNode extends ClassicPreset.Node {
 }
 
 export class MergeColumnsNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    name: "The merged column's name. Defaults to Merged.",
+  };
   label: string;
   cachedResult: FrameValue | SolError | null = null;
   stringLiterals: Record<string, string> = { columns: "", separator: "", name: "" };
@@ -1136,7 +1145,7 @@ export class MergeColumnsNode extends ClassicPreset.Node {
     this.addInput("frame", frameIn("Frame"));
     this.addInput("columns", strListIn("Columns"));
     this.addInput("separator", strIn("Separator"));
-    this.addInput("name", strIn("Name (default Merged)"));
+    this.addInput("name", strIn("Name"));
     this.addOutput("frame", frameOut("Frame"));
   }
 

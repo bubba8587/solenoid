@@ -1247,8 +1247,8 @@ export class ChartBuilderNode extends ClassicPreset.Node {
     this.addInput("xlabel",    strIn("X label"));
     this.addInput("ylabel",    strIn("Y label"));
     this.addInput("color",     strIn("Color"));
-    this.addInput("grid",      strIn("Grid (on/off)"));
-    this.addInput("marker",    strIn("Markers (on/off)"));
+    this.addInput("grid",      strIn("Grid"));
+    this.addInput("marker",    strIn("Markers"));
     this.addInput("ymin",      numIn("Y min"));
     this.addInput("ymax",      numIn("Y max"));
     this.addInput("linewidth", numIn("Line width"));

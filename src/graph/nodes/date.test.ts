@@ -347,7 +347,7 @@ describe("DATEVALUE / TIMEVALUE — one node, op-switch mechanics", () => {
     expect(outType(n)).toBe("date");
     n.setOp("time");
     expect(outType(n)).toBe("number");
-    expect(n.outputs.result!.label).toBe("Time fraction (0–1)");
+    expect(n.outputs.result!.label).toBe("Time fraction");
     n.setOp("date");
     expect(outType(n)).toBe("date");
     expect(n.outputs.result!.label).toBe("Date");

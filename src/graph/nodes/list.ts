@@ -326,8 +326,8 @@ export class ListIndexNode extends ClassicPreset.Node {
     super("ListIndex");
     this.label = init?.label ?? "INDEX";
     this.addInput("list",  trueAnyIn("Array")); // list, matrix, frame, or cube
-    this.addInput("index", numIn("Row (default [all])"));
-    this.addInput("column", numIn("Column (default [all])"));   // 2-D / frame / cube only
+    this.addInput("index", numIn("Row"));
+    this.addInput("column", numIn("Column"));   // 2-D / frame / cube only
     // ADOPTIVE: the extracted value's ELEMENT FAMILY is the container's, so the
     // output adopts it — see the passthrough() note below for what stays unknowable.
     this.addOutput("result", trueAnyOut("Value"));
@@ -1923,8 +1923,8 @@ export class RandArrayNode extends ClassicPreset.Node {
     this.label = init?.label ?? "RANDARRAY";
     if (init?.integer != null) this.integer = init.integer;
     this.addInput("count", numIn("Count"));
-    this.addInput("min",   numIn("Min (default 0)"));
-    this.addInput("max",   numIn("Max (default 1)"));
+    this.addInput("min",   numIn("Min"));
+    this.addInput("max",   numIn("Max"));
     this.addOutput("list", listOut("List"));
   }
 

@@ -178,6 +178,19 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   in nodeOps.ts are gone — both families use `fromMeta(...)` now, so the meta is the one home
   (declareOnce); `fx` stays on the meta (overrideInPlace). Left per author: DateDiff CAPS/prose
   mix, arithmetic glyphs, distribution φ/Gauss parentheticals, cross-family comparator styles.
+- **Socket-label sweep (two commits, approved off the inventory).** (A) Same concept → one label,
+  Excel arg name where it exists: Amortization Periods/Present value/Future value → Nper/PV/FV;
+  coupon "Freq (…)" (three spellings) → **Frequency** with the 1/2/4 legend in socketDocs; Confidence
+  "Std Dev" → "Std dev"; SumProduct "X list"/"Y list" → X/Y. (B) 2-D grid ports: "Matrix" on the
+  linear-algebra nodes, "Table" on the row/column/cell editors — rule written into
+  `socket-reference.md` §8, TableSelect flipped to "Table". (C) Trailing-parenthetical hints stripped
+  to the bare noun with the hint moved to socketDocs (merged, not duplicated): date ranges (Month…),
+  defaults (Redemption, Min/Max, Decimals, seps, Merge name), "(optional)"/"(blank = all)", bond
+  price/yield op-conditions, TextSlice N/Start/Len, Roman 1–3999, Bessel order, rank percentile/
+  quartile, Chart Builder "(on/off)" (px/pt kept). Labels only, never socket keys, so cables survive.
+  Deliberately out of scope (not in the reviewed inventory): the day-count "Basis (0=30/360)" legend
+  (~9 finance nodes), the TBill/SecurityDisc price hints, "Into (names)", BinomDistRange n/p — flag
+  for a possible follow-up so basis stays consistent with the frequency change.
 
 ### SESSION DIGEST (2026-08-24b — parallel plan execution from docs/plans/)
 

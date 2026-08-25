@@ -367,7 +367,9 @@ export const TEXT_SLICE_OP_META = {
 
 export class TextSliceNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    start: "Position 1 is the first character.",
+    n: "Read by LEFT and RIGHT: the number of characters to take.",
+    start: "Read by MID: position 1 is the first character.",
+    len: "Read by MID: the number of characters to take.",
   };
 
   label: string;
@@ -382,9 +384,9 @@ export class TextSliceNode extends ClassicPreset.Node {
     this.label = init?.label ?? "";
     this.op    = init?.op    ?? "left";
     this.addInput("text",  strComboIn("Text"));
-    this.addInput("n",     numListIn("N (LEFT/RIGHT)"));
-    this.addInput("start", numListIn("Start (MID)"));
-    this.addInput("len",   numListIn("Len (MID)"));
+    this.addInput("n",     numListIn("N"));
+    this.addInput("start", numListIn("Start"));
+    this.addInput("len",   numListIn("Len"));
     this.addOutput("result", strComboOut("Result"));
   }
 
@@ -444,7 +446,7 @@ export class TextFindNode extends ClassicPreset.Node {
     this.op    = init?.op    ?? "find";
     this.addInput("needle",   strComboIn("Find text"));
     this.addInput("haystack", strComboIn("Within text"));
-    this.addInput("start",    numListIn("Start (optional)"));
+    this.addInput("start",    numListIn("Start"));
     this.addOutput("result", numListOut("Position"));
   }
 
@@ -792,6 +794,10 @@ export class ExactNode extends ClassicPreset.Node {
 // ─── NUMBERVALUE ─────────────────────────────────────────────────────────────
 
 export class NumberValueNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    decimal_sep: "Defaults to a period.",
+    group_sep: "Defaults to a comma.",
+  };
   label: string;
   cachedResult: BroadcastResult = null;
   // The separators ship EMPTY so the field shows its default as a placeholder;
@@ -804,8 +810,8 @@ export class NumberValueNode extends ClassicPreset.Node {
     this.label = init?.label ?? "NUMBERVALUE";
     this.addInput("text",        strComboIn("Text"));
     // The separators pick a parsing CONVENTION, not an operand, so they stay scalar.
-    this.addInput("decimal_sep", strIn("Decimal sep (default \".\")"));
-    this.addInput("group_sep",   strIn("Group sep (default \",\")"));
+    this.addInput("decimal_sep", strIn("Decimal sep"));
+    this.addInput("group_sep",   strIn("Group sep"));
     this.addOutput("result", numListOut("Number"));
   }
 
@@ -992,6 +998,9 @@ export class UuidNode extends ClassicPreset.Node {
 export type RomanArabicOp = "roman" | "arabic";
 
 export class RomanArabicNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    number: "1 to 3999 — Roman numerals cannot express values outside this range.",
+  };
   label: string;
   op: RomanArabicOp;
   cachedResult: CellResult<string | number> = null;
@@ -1004,7 +1013,7 @@ export class RomanArabicNode extends ClassicPreset.Node {
     this.op    = init?.op ?? "roman";
     this.label = init?.label ?? "";
     if (this.op === "roman") {
-      this.addInput("number", numListIn("Number (1–3999)"));
+      this.addInput("number", numListIn("Number"));
       this.addOutput("result", strComboOut("Roman numeral"));
     } else {
       this.addInput("text", strComboIn("Roman numeral"));
@@ -1065,7 +1074,7 @@ export class FixedNode extends ClassicPreset.Node {
     this.label    = init?.label    ?? "FIXED";
     this.noCommas = init?.noCommas ?? "commas";
     this.addInput("number",   numListIn("Number"));
-    this.addInput("decimals", numListIn("Decimals (default 2)"));
+    this.addInput("decimals", numListIn("Decimals"));
     this.addOutput("result", strComboOut("Text"));
   }
 
@@ -1185,7 +1194,7 @@ export class FormatDollarNode extends ClassicPreset.Node {
     super("FormatDollar");
     this.label = init?.label ?? "DOLLAR";
     this.addInput("number",   numListIn("Number"));
-    this.addInput("decimals", numListIn("Decimals (default 2)"));
+    this.addInput("decimals", numListIn("Decimals"));
     this.addOutput("result", strComboOut("Currency text"));
   }
 
