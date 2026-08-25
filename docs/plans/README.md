@@ -49,6 +49,8 @@ backlog line is deleted; git is the record.
 | 15 | `d1-forecast-absorbs-trend-growth` | S (1 commit) | — (shares stats.ts + the catalog/registry files with 16: rebase, don't run both in one worktree) |
 | 16 | `d2-linest-logest-fit-card` | S (1 commit) | — (same shared files as 15) |
 | 17 | `d3-phi-gauss-to-distribution` | S (1 commit) | — (touches nodeCatalog/nodeExcel/nodeOps.test with 15–16: rebase, own worktree) |
+| 18 | `d4-proportion-treemap-waffle` | S (1 commit) | — (visual.ts + chartValue/chartView + catalog/registry; own worktree) |
+| 19 | `d5-select-drop-columns` | S (1 commit) | — (frame.ts + FrameNodes.tsx + catalog/registry/excelFunctions; own worktree) |
 
 Not planned here (author-present or needs a device): everything under "Bugs &
 verifications" in `../backlog.md`, the Vite 8 bump, `rete-area-plugin` 2.3.2, lazy handles (B9).
