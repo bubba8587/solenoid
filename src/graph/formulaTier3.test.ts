@@ -11,7 +11,6 @@ import {
 import { buildCatalog } from "./catalogUtils";
 import { despace as parityDespace } from "./formulaNodeParity";
 import { NODE_OPS } from "./nodeOps";
-import { TextFilterNode } from "./nodes/text";
 import type { CatalogEntry, NodeCatalogEntry } from "./AddNodeMenu";
 
 // ─── formulaNaming Tier 3: the node surface and the formula surface agree ───────────────
@@ -313,21 +312,13 @@ describe("the formula namespace stays unambiguous", () => {
     }
   });
 
-  it("TEXTFILTER — one name, the condition is an argument (the reclassified family)", () => {
-    // Text Filter went operation → argument (its ops are a filter CONDITION, and
-    // "Contains" despaced onto the list-membership CONTAINS). One registration,
-    // same kernel as the node.
-    const strings = ["alpha", "beta", "alphabet"];
-    for (const op of ["contains", "not_contains", "starts_with", "ends_with"] as const) {
-      const node = new TextFilterNode({ op });
-      node.stringLiterals.pattern = "alp";
-      expect(ev(`TEXTFILTER(x, "alp", "${op}")`, { x: strings }), op)
-        .toEqual(node.data({ strings: [strings] }).result);
-    }
-    expect(ev('TEXTFILTER(x, "alp")', { x: strings })).toEqual(["alpha", "alphabet"]); // default contains
-    expect(ev('TEXTFILTER(x, "alp", "not contains")', { x: strings })).toEqual(["beta"]); // spaced spelling
-    const bad = ev('TEXTFILTER(x, "a", "fuzzy")', { x: strings });
-    expect((bad as { code?: string }).code).toBe("#VALUE!");
+  it("TEXTFILTER is absorbed into List Filter — the formula name redirects to the node", () => {
+    // Text Filter was merged into List Filter (contains/startsWith/endsWith + Match
+    // case; Dropped = not-contains), so the old formula twin is refused with a pointer,
+    // not left as a broken dispatch. Recognized name → #NAME? naming the node.
+    const r = ev('TEXTFILTER(x, "alp")', { x: ["alpha", "beta"] }) as { code?: string; message?: string };
+    expect(r.code).toBe("#NAME?");
+    expect(r.message).toContain("List Filter node");
   });
 
   it("uniqueNameMap full sweep — every operation-kind op name is unique across families and leaves", () => {

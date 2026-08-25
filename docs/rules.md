@@ -764,8 +764,8 @@ Withdrawn (pack-revocable) names may return.
 *Origin:* Fill's `Interpolate` op and the `INTERPOLATE` node in `stats.ts` both despace to
 `INTERPOLATE`. Fill's op now declares `fx: "FILLINTERPOLATE"` per `overrideInPlace`. The full
 sweep's first run (2026-07-28) then caught two live wounds the partial sweep missed:
-Text Filter's `Contains` op claimed the list-membership `CONTAINS` (fixed by
-reclassifying the family operation → argument — the ops are a filter CONDITION), and
+Text Filter's `Contains` op claimed the list-membership `CONTAINS` (Text Filter has
+since been absorbed into List Filter, 2026-08-25, so the collision is moot), and
 the math-fn `round` op's leaf claimed `ROUND`, a name that dispatches the 2-arg Excel
 ROUND which REFUSES the leaf's own 1-arg semantics (fixed by deleting the duplicate op —
 RoundN at digits 0 is the same capability).

@@ -1,5 +1,5 @@
 import { FORMULA_CONSTANTS } from "./excelFormula";
-import { FRAME_SURFACE_NAMES } from "./excelFunctions";
+import { FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES } from "./excelFunctions";
 import { advertisedFunctionNames } from "./formulaExtensions";
 import { signatureFor } from "./formulaSignatures";
 import { fuzzyScore } from "./fuzzy";
@@ -32,7 +32,9 @@ function identClass(word: string, isCall: boolean): string {
   if (isCall) {
     const up = word.toUpperCase();
     if (fnSet().has(up)) return "fx-fn";
-    return FRAME_SURFACE_NAMES[up] ? "fx-frame" : "fx-unknown";
+    // Frame verbs and node-only verbs (Text Filter → List Filter) both read as a
+    // recognized name on the wrong surface — the same violet, never the typo red.
+    return FRAME_SURFACE_NAMES[up] || NODE_SURFACE_NAMES[up] ? "fx-frame" : "fx-unknown";
   }
   if (CONST_SET.has(word.toLowerCase())) return "fx-const";
   return "fx-var";

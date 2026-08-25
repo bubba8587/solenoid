@@ -11,7 +11,7 @@ import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, d
 import { hashText, uuidV4, HASH_ALGORITHM_META, type HashAlgorithm } from "./nodes/hashOps";
 import { savgol, gaussianSmooth, lowess, findPeaks } from "./nodes/signalOps";
 import { seasonalDecompose, stlDecompose } from "./nodes/forecastOps";
-import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, filterTextList, TEXT_FILTER_OPS, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters, type TextFilterOp, type SimilarityMethod, type PadSide } from "./nodes/textOps";
+import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters, type SimilarityMethod, type PadSide } from "./nodes/textOps";
 import { interpolateLinear, gridAxes, fillGrid } from "./nodes/mathUtils";
 import { histogram2d } from "./nodes/visualOps";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
@@ -271,6 +271,17 @@ export const FRAME_SURFACE_NAMES: Readonly<Record<string, string>> = {
   CUBEROLLUP: "Cube Rollup",
   // Shape (a matrix writer with no clean formula signature — recognized, wrong surface)
   SETCELL: "Set Cell",
+};
+
+// Formula names eliminated because the capability is a NODE, not a formula — like
+// FRAME_SURFACE_NAMES, but the replacement is a LIST/scalar node rather than a frame
+// verb, so the refusal doesn't carry the "frames don't flow" reason. The name is
+// recognized (not a typo) and redirected to its node. Text Filter → List Filter
+// (2026-08-25, node-combining): List Filter's FilterOp already has contains/startsWith/
+// endsWith + per-row Match case, and its Dropped output is not-contains, so the old
+// TEXTFILTER twin is absorbed. Value = the node label.
+export const NODE_SURFACE_NAMES: Readonly<Record<string, string>> = {
+  TEXTFILTER: "List Filter",
 };
 
 // currentExcelParity on the formula surface: each key is BLOCKED — #NAME? naming the replacement, and
@@ -816,9 +827,6 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   GROWTH: { returns: "number", rank: "list", listArgs: true, arity: [1, 3], family: "statistics" },
   LINEST: { returns: "number", rank: "list", listArgs: true, arity: [1, 2], family: "statistics" },
   LOGEST: { returns: "number", rank: "list", listArgs: true, arity: [1, 2], family: "statistics" },
-
-  // Text Filter — one name, the condition is an argument (argument-kind family).
-  TEXTFILTER: { returns: "string", rank: "list", listArgs: true, arity: [2, 3], family: "text", native: true },
 };
 
 /** Number → text in STRING contexts: 15 significant digits, trailing zeros stripped, so
@@ -2376,16 +2384,3 @@ registerInternal("LOGEST", (ys, xs) => {
   return fit ? [fit.m, fit.b] : [];
 });
 
-// The condition is an ARGUMENT, so the family takes ONE formula name; spellings are the
-// op keys with spaces/hyphens tolerated ("not contains").
-registerInternal("TEXTFILTER", (strings, pattern, op) => {
-  if (strings == null || pattern == null) return null;
-  const which = String(op ?? "contains").trim().toLowerCase().replace(/[\s-]+/g, "_") as TextFilterOp;
-  if (!TEXT_FILTER_OPS.includes(which)) {
-    return solError("#VALUE!", `TEXTFILTER's condition is one of: ${TEXT_FILTER_OPS.join(", ")}`);
-  }
-  const list = toList(strings);
-  const err = list.find(isSolError);
-  if (err) return err;
-  return filterTextList(list.filter((v) => v != null).map(toStr), toStr(pattern), which);
-});

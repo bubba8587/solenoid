@@ -13,13 +13,13 @@ import { solError, isSolError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
 // The pure ops, shared verbatim with the formula surface; re-exported so the node
 // barrel keeps its shape.
-import { splitText, textAfterBefore, urlEncode, regexApply, replaceNth, safeRegex, reverseText, filterTextList, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters } from "./textOps";
+import { splitText, textAfterBefore, urlEncode, regexApply, replaceNth, safeRegex, reverseText, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters } from "./textOps";
 import { anyDataIn } from "./shared";
 import { dropInputCables } from "../components/cablePrune";
 import { getActiveArea } from "../activeGraph";
 import { SolenoidSocket } from "../sockets";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./date";
-import type { TextAfterBeforeOp, UrlEncodeOp, RegexOp, TextFilterOp, PadSide } from "./textOps";
+import type { TextAfterBeforeOp, UrlEncodeOp, RegexOp, PadSide } from "./textOps";
 export type { PadSide } from "./textOps";
 export { splitText, textAfterBefore, urlEncode, regexApply } from "./textOps";
 export type { TextAfterBeforeOp, UrlEncodeOp, RegexOp } from "./textOps";
@@ -784,48 +784,6 @@ export class ExactNode extends ClassicPreset.Node {
       strVal(inputs.a, this, "a"),
       strVal(inputs.b, this, "b"),
     );
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
-// ─── TEXTFILTER ──────────────────────────────────────────────────────────────
-
-// The op type + kernel live in textOps.ts, so node and formula run the same filter.
-export type { TextFilterOp } from "./textOps";
-
-export const TEXT_FILTER_OP_META = {
-  contains:     { label: "Contains",     description: "Keep strings that contain the pattern. Not case sensitive" },
-  not_contains: { label: "Not contains", description: "Keep strings that do not contain the pattern" },
-  starts_with:  { label: "Starts with",  description: "Keep strings that begin with the pattern" },
-  ends_with:    { label: "Ends with",    description: "Keep strings that end with the pattern" },
-} satisfies Record<TextFilterOp, { label: string; description: string }>;
-
-export class TextFilterNode extends ClassicPreset.Node {
-  static socketDocs: Record<string, string> = {
-    pattern: "Matching is not case sensitive.",
-  };
-
-  label: string;
-  op: TextFilterOp;
-  cachedResult: string[] | null = null;
-  stringLiterals: Record<string, string> = { pattern: "" };
-  width = 180; height = 195;
-
-  constructor(init?: { label?: string; op?: TextFilterOp }) {
-    super("TextFilter");
-    this.op    = init?.op    ?? "contains";
-    this.label = init?.label ?? "Text Filter";
-    this.addInput("strings", strListIn("Strings"));
-    this.addInput("pattern", strIn("Pattern"));
-    this.addOutput("result", strListOut("Filtered"));
-  }
-
-  data(inputs: { strings?: string[][]; pattern?: string[] }): { result: string[] | null } {
-    const strings = inputs.strings?.[0] ?? [];
-    const pattern = readInput(inputs.pattern, this.stringLiterals.pattern ?? "");
-    if (pattern === null) { this.cachedResult = null; return { result: null }; }
-    const result = filterTextList(strings, pattern, this.op);
     this.cachedResult = result;
     return { result };
   }

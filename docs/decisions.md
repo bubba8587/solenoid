@@ -398,9 +398,9 @@ combo count is small — per-op hover descriptions keep working and no new
 persisted field is needed. **Where:** the merged classes sit in their family
 files; mechanics per CLAUDE.md "Node combining". **Parked pending author
 review** (backlog "Node-combining parked"): the paired-list aggregate, the
-payment-breakdown 2×2, the absorptions still open (Text Filter, PHI/GAUSS), and
-the remaining smaller pairs. (Landed since under `docs/plans/`: the
-TREND⊂FORECAST.LINEAR+GROWTH absorption and Select+Drop Columns→Columns.)
+payment-breakdown 2×2, and the remaining smaller pairs. (Landed since under
+`docs/plans/`: TREND⊂FORECAST.LINEAR+GROWTH, LINEST⊂LOGEST, PHI/GAUSS→Distribution,
+Select+Drop Columns→Columns, and Text Filter⊂List Filter.)
 **Reopen if:** a merged family needs per-op behavior the
 spec table can't express, or an op needs its own formula-name treatment.
 

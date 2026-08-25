@@ -195,6 +195,25 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   nodeOps dotted-fx guard was really guarding fx-vs-Math-leaf collisions — loosened the dotted regex to
   bare-allowed and asserted the real invariant (no dist fx equals a `math-*` leaf's despaced label).
   Each of the three is one atomic tsc-green commit; all three rebased clean onto develop as D4/D5 landed.
+- **Text Filter ⊂ List Filter (Agent 4, 2026-08-25, node-combining absorption/delete).** List Filter's
+  `FilterOp` already carries contains/startsWith/endsWith + per-row Match case, and its Dropped output is
+  not-contains, so the whole Text Filter capability was already there. Deleted `TextFilterNode` + component +
+  the `filterTextList`/`TextFilterOp`/`TEXT_FILTER_OPS` kernel (List Filter runs `passesFilter`, a different
+  kernel — the old one was dead once the node/formula went). The `TEXTFILTER` formula name is REFUSED, not
+  left broken: a new `NODE_SURFACE_NAMES` map (excelFunctions.ts) — the sibling of `FRAME_SURFACE_NAMES` but
+  for a LIST/scalar node rather than a frame verb, so no "frames don't flow" reason — redirects it with
+  `#NAME?` "Use the List Filter node", the recognized-verb violet (`fx-frame`), and the hint-bar redirect,
+  and it stays out of autocomplete by construction (never registers). Wired into the same three seams as
+  frame verbs (excelFormula redirect / formulaSignatures hint / formulaSyntax class). Old Text Filter saves
+  load as Placeholders (noBackCompat). Pinned: new `NODE_SURFACE_NAMES` describe in `frameSurfaceNames.test.ts`
+  (refusal / highlight / hint / autocomplete-exclusion / real-leaf-and-no-shadow); formulaTier3's TEXTFILTER
+  test converted to a refusal assertion; caseContract's list-kernel case-fold block dropped (the `passesFilter`
+  block above it already pins the same contract). tsc + full suite green.
+- **Dep bumps (Agent 4, 2026-08-25).** Finished Banana Joe's `dep-bumps` after the crash (which had truncated
+  package.json to a bare `{` — dropped, not finished). 15 rebased + 3 added (react/react-dom@19.2.8,
+  vitest@4.1.11, recharts@3.10.1), each its own tsc+suite-green commit. Skipped: rete-history-plugin 2.2.0
+  (dist byte-identical, adds an unmet rete-comment-plugin peer) and the majors (vite 8, plugin-react 6,
+  anthropic-sdk 0.120). Installs still need `--legacy-peer-deps` (elkjs 0.12 vs the auto-arrange peer).
 - **Sort node absorbs SORTBY (no-duplicate-nodes).** SortBy folded into Sort as an optional
   `by` key input. `list` widened to anylist (adoptive out), so a wired `by` reorders ANY element
   family position-only (old SortBy); unwired, the list self-sorts by its own numeric values (old

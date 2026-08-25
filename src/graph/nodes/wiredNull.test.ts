@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { TextTransformNode, TextSliceNode, ReptNode, TextSplitNode, TextFilterNode, ConcatNode, RegexNode } from "./text";
+import { TextTransformNode, TextSliceNode, ReptNode, TextSplitNode, ConcatNode, RegexNode } from "./text";
 import { DateConstructNode, DateAddNode, WorkdaysNode, DateDiffNode } from "./date";
 import { BooleanOpNode, NotNode, IfsNode, SwitchNode, IfNode, IsTestNode } from "./logic";
 import { SliderInputNode, ColorBlendNode } from "./input";
@@ -89,13 +89,6 @@ describe("mode selectors — the project's model, not Excel's", () => {
     expect(node.data({ text: ["a,b"], delimiter: [null as unknown as string] }).result).toBeNull();
     // Unwired keeps the typed delimiter.
     expect(node.data({ text: ["a,b"] }).result).toEqual(["a", "b"]);
-  });
-
-  it("Text Filter: a wired blank pattern yields blank, not an unfiltered list", () => {
-    const node = new TextFilterNode({ op: "contains" });
-    node.stringLiterals.pattern = "a";
-    expect(node.data({ strings: [["ab", "cd"]], pattern: [null as unknown as string] }).result).toBeNull();
-    expect(node.data({ strings: [["ab", "cd"]] }).result).toEqual(["ab"]);
   });
 
   it("NETWORKDAYS: a wired blank weekend code yields blank, not the default week", () => {

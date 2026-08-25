@@ -86,7 +86,6 @@ export const TIMESAVERS_PACK: Pack = {
     "list-contains", "list-diff", "list-normalize",
     "list-shuffle", "list-interleave", "list-nthelement",
     "list-geometric", "list-fibonacci", "list-repeat",
-    "text-filter",
     "url-decode",
     "logic-xnor", "logic-nand", "logic-nor",
   ],

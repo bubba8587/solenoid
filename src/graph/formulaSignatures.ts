@@ -1,4 +1,4 @@
-import { EXCEL_IMPL_META, FRAME_SURFACE_NAMES } from "./excelFunctions";
+import { EXCEL_IMPL_META, FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES } from "./excelFunctions";
 import { packFormulaSignature } from "./formulaExtensions";
 
 // Display-only parameter hints — arity is NOT enforced here, so a wrong entry only
@@ -416,7 +416,6 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   RANGE: "start, stop, [step]",
   CONCATLISTS: "list1, [list2], …",
   SHUFFLE: "list",
-  TEXTFILTER: "list, pattern, [condition]",
 
   // ── Formula.js-backed names (no native impl — params per the library's own
   //    signature, which is Excel's except where noted) ──
@@ -588,6 +587,9 @@ export function signatureFor(name: string): string | null {
   // A frame verb's "signature" is the redirect to its node.
   const frameNode = FRAME_SURFACE_NAMES[up];
   if (frameNode) return `frame verb — use the ${frameNode} node`;
+  // A node-only verb (Text Filter → List Filter) redirects the same way.
+  const nodeVerb = NODE_SURFACE_NAMES[up];
+  if (nodeVerb) return `use the ${nodeVerb} node`;
   const sig = FORMULA_SIGNATURES[up];
   if (sig !== undefined) return sig;
   const packSig = packFormulaSignature(up);

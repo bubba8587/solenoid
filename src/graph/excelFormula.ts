@@ -1,5 +1,5 @@
 import { solError, isSolError, isNaError } from "./errorValue";
-import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, isInternalFunction, ELIMINATED_FUNCTIONS, LEGACY_ALIASES, FRAME_SURFACE_NAMES, registryGeneration } from "./excelFunctions";
+import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, isInternalFunction, ELIMINATED_FUNCTIONS, LEGACY_ALIASES, FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES, registryGeneration } from "./excelFunctions";
 import { isMissing, guardFinite } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
@@ -461,8 +461,6 @@ const NULLABLE_SCALARS_OK = new Set([
   "MAP", "BYROW", "BYCOL", "REDUCE", "SCAN", "MAKEARRAY", "GROUPBY",
   // The regression quartet: blank xs / new_xs each mean an Excel default.
   "TREND", "GROWTH", "LINEST", "LOGEST",
-  // A blank condition means the default "contains".
-  "TEXTFILTER",
 ]);
 
 // Lambda HOSTS whose fn argument may be a bare function name (eta) — MAKEARRAY is
@@ -856,6 +854,10 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       // naming the node, short-circuited for the same reason as the block above.
       const frameNode = FRAME_SURFACE_NAMES[name];
       if (frameNode) return solError("#TYPE!", `Frames don't flow through formulas — use the ${frameNode} node, or a Computed Column for row math`);
+      // A capability that became a NODE (not a frame verb): recognized, redirected. #NAME?
+      // like a legacy alias — the name simply isn't a formula function, it's a node.
+      const nodeVerb = NODE_SURFACE_NAMES[name];
+      if (nodeVerb) return solError("#NAME?", `Use the ${nodeVerb} node`);
       // A genuinely unknown NAME(...) is a clean #NAME? here, not a per-cell throw
       // that leaks as #ERROR! from broadcastCall's dispatch (A2 containment).
       if (!resolveExcelFunction(name)) return solError("#NAME?", `Unknown function ${name}`);

@@ -26,7 +26,7 @@ import {
   TextFindNode, SubstituteNode, TextReplaceNode,
   ReptNode, PadTextNode, TruncateTextNode, WrapTextNode, ExactNode, TextSimilarityNode, FuzzyMatchNode,
   CharCodeNode, TextJoinNode, TextSplitNode, TextAfterBeforeNode,
-  TextFilterNode, NumberValueNode, RomanArabicNode, FixedNode, UrlEncodeNode, HashNode, UuidNode, TemplateNode,
+  NumberValueNode, RomanArabicNode, FixedNode, UrlEncodeNode, HashNode, UuidNode, TemplateNode,
   PromoNode,
   TodayNowNode, DateConstructNode, TimeConstructNode,
   DateTimeValueNode, DATE_TIME_VALUE_OP_META, DatePartNode, WeekInfoNode,
@@ -837,7 +837,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "text-truncate", label: "Truncate Text", description: "Cuts text to a maximum width, ending in an ellipsis when anything was cut. R str_trunc, textwrap.shorten.", create: () => new TruncateTextNode(), parity: false, keywords: "truncate shorten ellipsis clip cut width max length abbreviate str_trunc" },
           ]},
           { type: "text-wrap", label: "Wrap Text", description: "Wraps text into a list of lines no wider than a set number of characters, breaking on spaces. R str_wrap, Python textwrap.wrap.", create: () => new WrapTextNode(), parity: false, keywords: "wrap wraptext str_wrap textwrap lines width fold" },
-          { type: "text-filter", label: "Text Filter", description: "Keeps strings from a list that contain, start with, or end with a pattern. Ignores case, like every comparison here.", create: () => new TextFilterNode(), parity: false, keywords: "contains not contains starts with begins ends with pattern substring match keep strings" },
         ],
       },
       {

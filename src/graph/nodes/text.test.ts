@@ -4,7 +4,7 @@ import {
   TextSliceNode, SubstituteNode, TextReplaceNode, ReptNode, CharCodeNode,
   TextAfterBeforeNode, UrlEncodeNode, RomanArabicNode, FixedNode,
   FormatDollarNode, ReverseTextNode, SpellNumberNode, TextJoinNode,
-  TextSplitNode, TextFilterNode, ConcatNode,
+  TextSplitNode, ConcatNode,
 } from "./text";
 import { isSolError } from "../errorValue";
 import { SolenoidSocket, canConnect } from "../sockets";
@@ -185,8 +185,6 @@ describe("text nodes broadcast over lists (scalar-or-list combo sockets)", () =>
     expect(dt(nv, "in", "text")).toBe("strcombo");
     expect(dt(nv, "in", "decimal_sep")).toBe("string");
     expect(dt(nv, "in", "group_sep")).toBe("string");
-    // Text Filter's pattern is a predicate over the whole set, so it stays scalar.
-    expect(dt(new TextFilterNode(), "in", "pattern")).toBe("string");
   });
 
   it("the REDUCERS and rank-changers stay as they were", () => {

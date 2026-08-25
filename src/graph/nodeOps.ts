@@ -13,7 +13,7 @@ import {
   SortNode, ListTakeDropNode, SeriesNode,
 } from "./nodes/list";
 import { HeadNode, HeadersNode, DropBlankRowsNode, ColumnsNode, HEAD_OP_META, COLUMNS_OP_META } from "./nodes/frame";
-import { RegexNode, TextFilterNode, REGEX_OP_META } from "./nodes/text";
+import { RegexNode, REGEX_OP_META } from "./nodes/text";
 import { DATE_DIFF_OP_META, DateTimeValueNode, WorkdaysNode } from "./nodes/date";
 import { IFErrorNode } from "./nodes/logic";
 import {
@@ -207,7 +207,6 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // (`contains` despaced onto the real CONTAINS function by coincidence, which is
   // exactly the collision aggregatorsAreArguments warns an argument's op rows cause.) Searched words moved
   // to the host leaf's keywords.
-  { type: "text-filter", ctor: TextFilterNode, kind: "argument" },
   { type: "text-pad", ctor: PadTextNode, kind: "argument" },
   { type: "text-truncate", ctor: TruncateTextNode, kind: "argument" },
   { type: "sumifs", ctor: SumIfsNode, kind: "operation", ops: fromMeta(COND_AGG_OP_META),

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { compileEvaluator } from "./excelFormula";
-import { filterTextList } from "./nodes/textOps";
 import {
   distinctRows, filterRows, groupByFrame, joinFrames, passesFilter, replaceValues,
 } from "./frameVerbs";
@@ -9,8 +8,7 @@ import type { FrameValue } from "./frame";
 // excelComparisons pinned in ONE place: every COMPARISON is case-INsensitive (Excel's `=`;
 // "Match case" / EXACT is the escape hatch), every IDENTITY op (join, group,
 // distinct keys) is case-SENSITIVE. These semantics previously lived only in
-// catalog description strings — the 2026-08-08 fine-print sweep's finding was
-// that nothing failed if a surface drifted off the line (Text Filter had).
+// catalog description strings, where nothing failed if a surface drifted off the line.
 
 const ev = (expr: string, env: Record<string, unknown> = {}) => compileEvaluator(expr)!(env);
 
@@ -40,14 +38,6 @@ describe("comparisons ignore case", () => {
       expect(passesFilter("alpha", op, value, "string", false), op).toBe(hit);
       expect(passesFilter("alpha", op, value, "string", true), `${op} matchCase`).toBe(false);
     }
-  });
-
-  it("Text Filter (list + TEXTFILTER kernel) ignores case", () => {
-    expect(filterTextList(["Alpha", "beta", "ALPHABET"], "alp", "contains"))
-      .toEqual(["Alpha", "ALPHABET"]);
-    expect(filterTextList(["Alpha", "beta"], "ALPHA", "starts_with")).toEqual(["Alpha"]);
-    expect(filterTextList(["Alpha", "beta"], "HA", "ends_with")).toEqual(["Alpha"]);
-    expect(filterTextList(["Alpha", "beta"], "alp", "not_contains")).toEqual(["beta"]);
   });
 
   it("frame filterRows defaults insensitive end to end", () => {
