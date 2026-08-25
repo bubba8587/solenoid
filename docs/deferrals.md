@@ -225,9 +225,12 @@ design-gated, author-present, or UI-eyeball work.
 
 ## Parked bugs (explicitly parked by the author — records in `dev-notes.md`)
 
-- None currently. (The header/body border seam and the note-family selection-ring
-  overhang, formerly parked here, were both SOLVED 2026-08-05 — one-paint SVG
-  `CardFrame` and border-recolor rings; see the dev-notes digest.)
+- **Choppy zoom BAND (parked by the author 2026-08-25: "something we've been chasing
+  our tail on massively").** An interior range of camera scales zooms choppier than both
+  extremes; not pinned to a `k` range. The full record — what is ruled out (gesture-exit
+  settle, element count, the HIC mip curve) and the untried T1–T8 plan — moved verbatim to
+  `archive/dev-notes-history.md` (sweep 2026-08-25). Reopens only on the author's say-so,
+  and then starts at T1/T2 (pin `k`, trace inside vs outside the band), nothing built before.
 
 ## Only if the trigger returns
 

@@ -60,9 +60,6 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   decorations. Regression, cause unknown.
 - [ ] **#7 Conduits sometimes unselectable/unmovable except via the Navigator** —
   intermittent, no repro; suspected z-order/hit-area or group-membership sync.
-- [ ] **Choppy zoom BAND — run the T1–T8 plan** in dev-notes' open problem. T1 (pin
-  the band's `k` via `__solenoidPerf`) and T2 (Performance trace inside vs outside)
-  gate the rest — build nothing before those.
 - [ ] **AI palette verification tail** — first real-key end-to-end (`ANTHROPIC_API_KEY=…
   npm run ai-prompt`), palette on the preview (author eyeball), Tidy on an all-at-0,0
   generated graph, one desktop CSP smoke test. (Known + accepted: Apply drops undo
