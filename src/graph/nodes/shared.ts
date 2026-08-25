@@ -302,7 +302,7 @@ export { dimOf, magnitudeOf };
 // ─── Node kind → header accent ─────────────────────────────────────────────────
 // A kind is the node's FAMILY (what it does), distinct from socket type.
 
-export type NodeKind = "input" | "math" | "convert" | "logic" | "list" | "lambda" | "util" | "display" | "string" | "date" | "complex" | "table" | "frame" | "format" | "boundary";
+export type NodeKind = "input" | "math" | "convert" | "logic" | "list" | "lambda" | "util" | "display" | "string" | "date" | "complex" | "table" | "frame" | "format" | "boundary" | "chart";
 
 // A kind picks a palette SLOT, not a raw hex, so retuning a color in palette.ts
 // moves every use of it together.
@@ -316,6 +316,7 @@ export const NODE_KIND_SLOTS: Record<NodeKind, PaletteSlot> = {
   lambda:  "green",
   util:    "gray",
   display: "gold",
+  chart:   "green",     // the chart socket's green (author 2026-08-25; a card may override via headerAccent)
   string:  "lime",      // text / string nodes (matches string socket)
   date:    "pink",      // date / time nodes (matches date socket)
   complex: "sky",       // complex number nodes (matches complex socket)
@@ -347,6 +348,7 @@ export const NODE_KIND_LABELS: Record<NodeKind, string> = {
   lambda:  "Lambda",
   util:    "Utility",
   display: "Display",
+  chart:   "Chart",
   string:  "Text",
   date:    "Date",
   complex: "Complex",

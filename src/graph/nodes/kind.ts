@@ -78,8 +78,11 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   // The Composite node itself stays neutral gray (util, below).
   if (node instanceof CompositeInputNode || node instanceof CompositeOutputNode) return "boundary";
   if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof PhysicsConstantNode || node instanceof ElementNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof LocalFileNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof DataFeedNode || node instanceof XYPadNode || node instanceof ColorPickerNode || node instanceof SvgPickerNode || node instanceof PointPlotterNode || node instanceof CurveNode || node instanceof GridPainterNode) return "input";
-  if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MermaidNode || node instanceof GaugeNode || node instanceof HeatmapCellNode || node instanceof ChartBuilderNode || node instanceof TornadoNode || node instanceof SurfaceNode) return "display";
-  if (node instanceof WaterfallNode || node instanceof CandlestickNode || node instanceof BoxplotNode || node instanceof CalendarHeatmapNode || node instanceof ProportionNode || node instanceof QuiverNode || node instanceof SevenSegNode || node instanceof RecordNode) return "display";
+  // Charts wear the chart socket's green; the non-chart figures (a diagram, a builder, a
+  // readout, a record card) stay on the display gold.
+  if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof GaugeNode || node instanceof HeatmapCellNode || node instanceof TornadoNode || node instanceof SurfaceNode) return "chart";
+  if (node instanceof WaterfallNode || node instanceof CandlestickNode || node instanceof BoxplotNode || node instanceof CalendarHeatmapNode || node instanceof ProportionNode || node instanceof QuiverNode || node instanceof HistogramNode || node instanceof SankeyNode) return "chart";
+  if (node instanceof MermaidNode || node instanceof ChartBuilderNode || node instanceof SevenSegNode || node instanceof RecordNode) return "display";
   if (node instanceof ConvertNode || node instanceof CastNode) return "convert";
   if (
     node instanceof ComplexFromNode || node instanceof ComplexUnpackNode ||
