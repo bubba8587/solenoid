@@ -46,6 +46,8 @@ backlog line is deleted; git is the record.
 | 12 | ~~c3-set-cell~~ | — | landed 2026-08-24 (af64d772 + 2ebb4a65) |
 | 13 | ~~c4-grid-axes~~ | — | landed 2026-08-24 (d01f6d10 + 4184d711; nodeCatalog copy in baae4eb4; grep-bordered-empty met) |
 | 14 | ~~c5-correlated-outputs~~ | — | COMPLETE 2026-08-24 (7 nodes → one frame each; Series-inclusive + REDUCE copy; ETS dbff6936) |
+| 15 | `d1-forecast-absorbs-trend-growth` | S (1 commit) | — (shares stats.ts + the catalog/registry files with 16: rebase, don't run both in one worktree) |
+| 16 | `d2-linest-logest-fit-card` | S (1 commit) | — (same shared files as 15) |
 
 Not planned here (author-present or needs a device): everything under "Bugs &
 verifications" in `../backlog.md`, the Vite 8 bump, `rete-area-plugin` 2.3.2, lazy handles (B9).
