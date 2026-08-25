@@ -237,7 +237,6 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   ],
   "lambda-make": [{ excel: "LAMBDA", syntax: "=LAMBDA(param, ..., calculation)", parity: false, note: "LAMBDA node emits a function value for MAP/BYROW/REDUCE/MAKEARRAY; non-parameter variables become captured inputs (the LET/closure equivalent). No recursion (a self-reference is a graph cycle) and no lambdas of lambdas" }],
   "list-running": [{ excel: "SCAN", syntax: "=SCAN(init, array, LAMBDA(acc, value, ...))", parity: false, note: "Solenoid's Running covers the fixed ops in both window modes; the SCAN node runs a running fold with an arbitrary formula, and REDUCE gives just the final value. A Last N window in Excel is a dragged range formula like =AVERAGE(A1:A3)" }],
-  "list-drop": [{ excel: "DROP", syntax: "=DROP(list, count)", parity: false, note: "The 1-D list spelling; DROP (table) is the 2-D rows+cols one" }],
   "list-filter": [{ excel: "FILTER", syntax: "=FILTER(array, include)", parity: false, note: "Conditions live on the card (extensible AND/OR rows) instead of an include vector; filtering by a PARALLEL list is the SUMIFS node or Frame from Lists → Frame Filter" }],
   "list-groupby": [{ excel: "GROUPBY", syntax: "=GROUPBY(row_fields, values, function)", parity: false, note: "1D parallel-list version: keys + values lists; 2D range grouping not supported" }],
   "list-index": [{ excel: "INDEX", syntax: "=INDEX(array, row, [col])", parity: true, note: "Row or Column blank/0 = the whole axis, like Excel's INDEX(range, 0, col) whole-column / INDEX(range, row, 0) whole-row form" }],
@@ -247,7 +246,6 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "SORT", syntax: "=SORT(array, sort_index, order)", parity: false, note: "Solenoid sorts 1D lists only; Excel can sort multi-column ranges" },
     { excel: "SORTBY", syntax: "=SORTBY(array, by_array)", parity: false, note: "Wire the Sort node's `by` input: reorders a 1-D array of ANY element type (position-only) by a parallel NUMERIC key list; text sort keys aren't supported yet" },
   ],
-  "list-take": [{ excel: "TAKE", syntax: "=TAKE(list, count)", parity: false, note: "The 1-D list spelling; TAKE (table) is the 2-D rows+cols one" }],
   "list-unique": [{ excel: "UNIQUE", syntax: "=UNIQUE(array)", parity: true }],
   "vstack-table": [{ excel: "VSTACK", syntax: "=VSTACK(array1, array2, ...)", parity: true, note: "N-ary; ragged inputs pad with #N/A like Excel. A bare list counts as ONE ROW" }],
   // Keys MUST track the catalog types; a drift test catches stale ones.
@@ -516,8 +514,8 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "MINIFS", syntax: "=MINIFS(min_range, criteria_range1, criteria1, ...)", parity: true },
     { excel: "MAXIFS", syntax: "=MAXIFS(max_range, criteria_range1, criteria1, ...)", parity: true },
   ],
-  "tbltd-take": [{ excel: "TAKE", syntax: "=TAKE(array, rows, [cols])", parity: true, note: "Negative counts take from the end; 0 stands in for an omitted argument" }],
-  "tbltd-drop": [{ excel: "DROP", syntax: "=DROP(array, rows, [cols])", parity: true, note: "Negative counts drop from the end; 0 stands in for an omitted argument" }],
+  "takedrop": [{ excel: "TAKE", syntax: "=TAKE(array, rows, [cols])", parity: true, note: "One rank-preserving card: a list takes one count, a table takes rows and cols; negative counts from the end; 0 stands in for an omitted argument" }],
+  "takedrop-drop": [{ excel: "DROP", syntax: "=DROP(array, rows, [cols])", parity: true, note: "One rank-preserving card: a list drops one count, a table drops rows and cols; negative counts from the end; 0 stands in for an omitted argument" }],
   "table-expand": [{ excel: "EXPAND", syntax: "=EXPAND(array, rows, [cols], [pad_with])", parity: false, note: "Omitted Fill pads with first-class null, not Excel's #N/A (the author override — wire the NA node for Excel's form)" }],
   "tvm": [
     { excel: "PMT", syntax: "=PMT(rate, nper, pv)", parity: true, note: "One acausal TVM node: leave pmt unwired and it solves" },

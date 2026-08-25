@@ -31,6 +31,9 @@ export const adoptiveListIn   = (label: string) => new ClassicPreset.Input(new A
 // element type, so a reversed date list stays a date list downstream.
 export const adoptiveTableOut = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("anytable"), label);
 export const adoptiveListOut  = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("anylist"), label);
+// Rank-preserving (≤2) adoptive output: adopts the wired input's rank AND element type,
+// so a same-rank op (TAKE/DROP) hands back a list for a list, a matrix for a matrix.
+export const adoptiveDataOut  = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("anydata"), label);
 /** A NON-adoptive `trueany` output for a generative result whose type can't be
  *  derived from any input; an EXTRACTION uses `trueAnyOut` + `passthrough()`. */
 export const staticTrueAnyOut = (label: string) => new ClassicPreset.Output(trueAnySocket, label);

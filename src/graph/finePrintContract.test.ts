@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { TextJoinNode } from "./nodes/text";
-import { ListTakeDropNode, XMatchNode } from "./nodes/list";
+import { XMatchNode } from "./nodes/list";
+import { TakeDropNode } from "./nodes/matrix";
 import { BaseConvertNode } from "./nodes/scalar";
 import { GetRowNode } from "./nodes/frame";
 import { sliceList } from "./nodes/listOps";
@@ -27,11 +28,11 @@ describe("TEXTJOIN — the ignore-empty mode", () => {
   });
 });
 
-describe("DROP — the last-N direction", () => {
+describe("DROP — the last-N direction is a negative count", () => {
   it("removes the last N elements", () => {
-    const node = new ListTakeDropNode({ op: "drop", dir: "last" });
-    node.literals.count = 2;
-    expect(node.data({ list: [[1, 2, 3, 4]] }).result).toEqual([1, 2]);
+    const node = new TakeDropNode({ op: "drop" });
+    node.literals.rows = -2; // sign is the direction: drop the last two
+    expect(node.data({ data: [[1, 2, 3, 4]] }).result).toEqual([1, 2]);
   });
 });
 

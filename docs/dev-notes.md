@@ -167,6 +167,21 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   count/structural function names as node labels. Pinned drop-ignores-unknown, keep-unknown #REF!, and `op`
   round-trip in wiredNull.test.ts.
 
+- **D6: list TAKE/DROP + table TAKE/DROP → one rank-preserving `TakeDropNode` (2026-08-25).** Replaces both
+  `ListTakeDropNode` and `TableTakeDropNode` with one card in 2-D Tables ▸ Select: `data` = `anyDataIn`
+  (list, matrix or scalar, no rank widening), `rows`/`cols` signed counts, output `adoptiveDataOut` +
+  single passthrough over `data`, so the result stays the input's rank AND element type. `op` TAKE|DROP; NO
+  `first/last` dropdown — the SIGN of the count is the direction (Excel's convention, the formula's). The
+  TAKE/DROP formulas are the ORACLE (`formulaMatrix.test`): list, matrix and scalar cases assert node ===
+  formula; a list with a cols arg is `#SHAPE!` (same text). Two bare Add leaves (`takedrop` + `takedrop-drop`,
+  leafOps ["take","drop"], no colon row). Old ListTakeDrop/TableTakeDrop saves load as Placeholders.
+  **Findings, honored:** (1) the plan's "list Take 0 → []" was the OLD list node's divergence — the shared
+  kernel's `takeSlice(arr,0)` is take-ALL, and the oracle enforces it, so the merged node follows the kernel.
+  (2) The plan's `leafOps: ["drop"]` would fail nodeOps.test (both ops have real leaves → class maps to
+  {take,drop}); used `ops: fromMeta + create + leafOps ["take","drop"]`, the ColumnsNode/D5 pattern.
+  The `anydata` input hides the node from matrixUnitPolicy's structural sweep, so its "carry" policy is kept
+  by hand there (like InterpolateNode).
+
 - **Aggregate First / Last removed (author, 2026-08-25).** "First / last non-blank" is a pick, not
   a summary, and did not belong in the reducer dropdown; the author declined INDEX as a home too,
   so the two ops, their catalog leaves and the FIRSTNONBLANK / LASTNONBLANK names are gone.

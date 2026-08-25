@@ -10,7 +10,7 @@ import {
   FillNode, GroupByNode, SetOpNode, SetRelationNode, SumIfsNode, RunningNode,
   FILL_OP_META, COND_AGG_OP_META,
   SET_OP_META, SET_RELATION_META, PAD_OP_META, PadNode,
-  SortNode, ListTakeDropNode, SeriesNode,
+  SortNode, SeriesNode,
 } from "./nodes/list";
 import { HeadNode, HeadersNode, DropBlankRowsNode, ColumnsNode, HEAD_OP_META, COLUMNS_OP_META } from "./nodes/frame";
 import { RegexNode, TextFilterNode, REGEX_OP_META } from "./nodes/text";
@@ -44,7 +44,7 @@ import {
   PriceDiscNode, PriceMatNode,
   RankPercentileNode, RomanArabicNode, SecurityDiscNode,
   SumProductNode, TBillNode, 
-  HypothesisTestNode, TableReshapeNode, TableSelectNode, TableTakeDropNode,
+  HypothesisTestNode, TableReshapeNode, TableSelectNode, TakeDropNode, TAKEDROP_OP_META,
   TextAfterBeforeNode, TextFindNode, TextSliceNode, TextTransformNode, PadTextNode, TruncateTextNode,
   TodayNowNode, UrlEncodeNode, HashNode, TemplateNode, WeekInfoNode, 
   WeightedNode,
@@ -169,8 +169,11 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "list-groupby", ctor: GroupByNode, kind: "argument" },
   // Direction toggles are parameters of ONE operation.
   { type: "list-sort", ctor: SortNode, kind: "argument" },
-  // TAKE/DROP share one class; both ops have leaves, the direction is the argument.
-  { type: "list-take", ctor: ListTakeDropNode, kind: "operation" },
+  // TAKE/DROP are one rank-preserving class (list, matrix or scalar); both ops have
+  // their own bare leaf, so neither becomes a "TAKE: Drop" colon row. The sign of the
+  // count is the direction, an argument.
+  { type: "takedrop", ctor: TakeDropNode, kind: "operation", ops: fromMeta(TAKEDROP_OP_META),
+    create: (op) => new TakeDropNode({ op: op as never }), leafOps: ["take", "drop"] },
   // Which rows count as blank is a parameter of Drop Blank Rows.
   { type: "drop-blank-rows", ctor: DropBlankRowsNode, kind: "argument" },
   // The trigger condition and the blend formula are parameters of their one node.
@@ -329,7 +332,6 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "z-test", ctor: HypothesisTestNode, kind: "operation" },
   { type: "reshape-wraprows", ctor: TableReshapeNode, kind: "operation" },
   { type: "tblsel-chooserows", ctor: TableSelectNode, kind: "operation" },
-  { type: "tbltd-take", ctor: TableTakeDropNode, kind: "operation" },
   { type: "text-after-before-after", ctor: TextAfterBeforeNode, kind: "operation" },
   { type: "text-find-find", ctor: TextFindNode, kind: "operation" },
   { type: "text-left", ctor: TextSliceNode, kind: "operation" },

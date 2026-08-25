@@ -11,4 +11,3 @@ Agent 1 = Lead (solenoid-a6) writes plans, doesn't execute, verifies + fast-forw
 ## Claims
 
 - solenoid-22 — worktree `../solenoid-banana-joe`: (1) finish `banana-joe/dep-bumps` (15 bumps committed; revert the half-applied in-flight bump, rebase onto develop, install, tsc + suite, SHA to Lead); (2) Text Filter ⊂ List Filter absorption on a fresh branch off develop.
-- solenoid-dd — worktree `../solenoid-jeff`, branch `jeff/d6-takedrop`: D6 TAKE/DROP one node (`docs/plans/d6-take-drop-one-node.md`); Jeff's uncommitted `adoptiveDataOut` in shared.ts is step one, keep it.
