@@ -40,7 +40,7 @@ design-gated, author-present, or UI-eyeball work.
     deliberately solves only `=`. Sibling-node-sized, its own author call.
   - **Fusion indicator** (Power Query folding indicators): show which verb chain
     fused into one Polars round trip vs materialized in JS — inspection surface
-    for the engine seam; pairs with the parked lazy-handle-on-cable item.
+    for the engine seam; the lazy-handle engine work landed 2026-08-25.
   - **Dependency-cone hover brush** (marimo reactive highlighting): soft
     highlight of a node's upstream/downstream cone on hover; isolate is the
     heavy version, this is the glance version.
@@ -116,8 +116,8 @@ design-gated, author-present, or UI-eyeball work.
   Record node, 2026-08-18; author: "mostly fine". Standing constraint: every view
   lands ON the one Record node — ops, never a sibling node. The Gallery/Board ops
   and the Table-popup Form view (record-at-a-time entry) landed 2026-08-18; the
-  `picked` row output landed with them and was removed 2026-08-19. Still queued ((1) the summary footer → backlog B6):
-  (2) select/categorical columns — author verdict 2026-08-18: "potential there for
+  `picked` row output landed with them and was removed 2026-08-19. Still queued:
+  (1) select/categorical columns — author verdict 2026-08-18: "potential there for
   sure but needs a larger 1.4 look; backlog with interest". Two halves when that
   look happens: the DISPLAY half (per-value tinted chips for a string column's
   distinct values — opt-in "Chip" entry in the popup's per-column format row so
@@ -127,7 +127,7 @@ design-gated, author-present, or UI-eyeball work.
   and Form-view string inputs — cheap, no color, arguably the better lift). The
   larger question for 1.4: whether these become a real enum column semantic or
   stay display+entry sugar on string columns;
-  (3) a timeline/Gantt figure from Task/Start/End columns — MAJORLY deferred
+  (2) a timeline/Gantt figure from Task/Start/End columns — MAJORLY deferred
   (author 2026-08-18: loves Gantt, not now; Mermaid's gantt text remains the
   interim route). Author 2026-08-18b: probably a MUST eventually for the
   all-in-one feel; deferred on sheer scope. Scope note for the review: what
@@ -171,7 +171,7 @@ design-gated, author-present, or UI-eyeball work.
   instead of a pasted key.
 - **Packs (the whole program)** — Materials & Mechanical (INTERPOLATE gate
   cleared; domain content remains — `pack-composite-plans.md`); Timesavers
-  remainder → backlog B8 (config-carrying date idioms stay an author call, below); composite pack-node shape (packs can't ship subgraphs yet); pack
+  autonomous idioms landed (`packs/timesavers.ts`); the config-carrying date idioms stay an author call (below); composite pack-node shape (packs can't ship subgraphs yet); pack
   distribution + dependency system (saves don't record required packs; owns the
   ABSENT-pack formula diagnosis + `initPackFormulas()` re-run on folder reload).
 - **Distribution accuracy widening** — representative-point validation only
