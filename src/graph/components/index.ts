@@ -220,7 +220,6 @@ export { HypothesisTestComponent } from "./HypothesisTestNode";
 // ─── Regression (extended) ────────────────────────────────────────────────────
 export { InterpolateComponent } from "./InterpolateNode";
 export { LinestComponent } from "./LinestNode";
-export { LogestComponent } from "./LogestNode";
 
 // ─── Text ─────────────────────────────────────────────────────────────────────
 export { TextInputComponent } from "./TextInputNode";

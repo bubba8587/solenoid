@@ -4,7 +4,7 @@ import { rk4 } from "./odeOps";
 import { resolveFn } from "./tableLambda";
 import { lambdaIn } from "./shared";
 import { gridAxes, fillGrid } from "./mathUtils";
-import { normSInv, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, linearFit, linearFitR2, expFit, interpolateLinear, arrMean, arrSampleVar, tCDF, pairPresent, tTestP, fTestP, probBetween } from "./mathUtils";
+import { normSInv, regularizedGamma, stdNormCDF, lnCombin, bisectionInv, linearFit, linearFitR2, expFit, expFitR2, interpolateLinear, arrMean, arrSampleVar, tCDF, pairPresent, tTestP, fTestP, probBetween } from "./mathUtils";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { excelRank, excelTrimmean, excelPercentRank } from "../excelFunctions";
 import { fitEts, etsForecast, etsInterval, detectSeason, seasonalDecompose, stlDecompose, type DecomposeModel } from "./forecastOps";
@@ -923,27 +923,50 @@ export class InterpolateNode extends ClassicPreset.Node {
   }
 }
 
-// ─── LINEST ───────────────────────────────────────────────────────────────────
+// ─── Fit — LINEST | LOGEST (linear | exponential op) ──────────────────────────
+
+export const FIT_OP_META = {
+  linear:      { label: "Linear",      fx: "LINEST" },
+  exponential: { label: "Exponential", fx: "LOGEST" },
+} as const;
+export type FitOp = keyof typeof FIT_OP_META;
+
+export const FIT_OP_OPTIONS: { value: FitOp; label: string; title?: string }[] = [
+  { value: "linear",      label: "linear", title: "Straight-line fit — slope, intercept, R² (Excel LINEST)" },
+  { value: "exponential", label: "exp",    title: "Growth-curve fit y = b·mˣ — m, b, R² on the log scale (Excel LOGEST)" },
+];
 
 export class LinestNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    ys: "Pairs with Known Xs by position. A pair with a blank on either side is dropped, and an unmatched tail is ignored.",
+    ys: "Pairs with Known Xs by position. A pair with a blank on either side is dropped, and an unmatched tail is ignored. Exponential: every Y must be > 0.",
   };
 
   label: string;
+  op: FitOp = "linear";
   cachedSlope:     number | SolError | null = null;
   cachedIntercept: number | SolError | null = null;
   cachedR2:        number | SolError | null = null;
   width = 180; height = 200;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; op?: FitOp }) {
     super("Linest");
     this.label = init?.label ?? "LINEST";
+    if (init?.op) this.op = init.op;
     this.addInput("ys", listIn("Known Ys"));
     this.addInput("xs", listIn("Known Xs"));
-    this.addOutput("slope",     numOut("Slope"));
-    this.addOutput("intercept", numOut("Intercept"));
-    this.addOutput("r2",        numOut("R²"));
+    this.addOutput("slope",     numOut(this.op === "exponential" ? "m" : "Slope"));
+    this.addOutput("intercept", numOut(this.op === "exponential" ? "b" : "Intercept"));
+    this.addOutput("r2",        numOut(this.op === "exponential" ? "R² (log)" : "R²"));
+  }
+
+  // Same three output KEYS both ops, so cables survive the switch; only the labels
+  // retitle (linear = slope/intercept/R², exponential = LOGEST's m/b + log-scale R²).
+  setOp(next: FitOp): void {
+    this.op = next;
+    const exp = next === "exponential";
+    this.outputs.slope!.label     = exp ? "m"        : "Slope";
+    this.outputs.intercept!.label = exp ? "b"        : "Intercept";
+    this.outputs.r2!.label        = exp ? "R² (log)" : "R²";
   }
 
   data(inputs: { ys?: (number | null | SolError)[][]; xs?: (number | null | SolError)[][] }): { slope: number | SolError | null; intercept: number | SolError | null; r2: number | SolError | null } {
@@ -952,44 +975,19 @@ export class LinestNode extends ClassicPreset.Node {
       this.cachedSlope = this.cachedIntercept = this.cachedR2 = error;
       return { slope: error, intercept: error, r2: error };
     }
-    // Shared fitting kernel (mathUtils) — the LINEST registration runs the same one.
-    const fit = linearFitR2(xs, ys);
+    // Shared fitting kernels (mathUtils) — the LINEST / LOGEST registrations run the
+    // same ones. Exponential maps LOGEST's m/b onto the slope/intercept sockets.
+    let fit: { slope: number; intercept: number; r2: number } | null;
+    if (this.op === "exponential") {
+      const e = expFitR2(xs, ys);
+      fit = e ? { slope: e.m, intercept: e.b, r2: e.r2 } : null;
+    } else {
+      fit = linearFitR2(xs, ys);
+    }
     this.cachedSlope     = fit?.slope ?? null;
     this.cachedIntercept = fit?.intercept ?? null;
     this.cachedR2        = fit?.r2 ?? null;
     return { slope: this.cachedSlope, intercept: this.cachedIntercept, r2: this.cachedR2 };
-  }
-}
-
-// ─── LOGEST ───────────────────────────────────────────────────────────────────
-
-export class LogestNode extends ClassicPreset.Node {
-  static socketDocs: Record<string, string> = {
-    ys: "Pairs with Known Xs by position. A pair with a blank on either side is dropped, and an unmatched tail is ignored.",
-  };
-
-  label: string;
-  cachedList: number[] | SolError = [];
-  literals: Record<string, number> = {};
-  width = 180; height = 185;
-
-  constructor(init?: { label?: string }) {
-    super("Logest");
-    this.label = init?.label ?? "LOGEST";
-    this.addInput("ys", listIn("Known Ys (> 0)"));
-    this.addInput("xs", listIn("Known Xs"));
-    this.addOutput("result", listOut("[m, b]  (y = b·mˣ)"));
-  }
-
-  data(inputs: { ys?: (number | null | SolError)[][]; xs?: (number | null | SolError)[][] }) {
-    const { error, xs, ys } = forPair(inputs.xs?.[0] ?? null, inputs.ys?.[0] ?? null);
-    if (error) { this.cachedList = error; return { result: error }; }
-    // ONE implementation with the LOGEST/GROWTH registrations; a degenerate fit stays
-    // the quiet empty list.
-    const fit = expFit(xs, ys);
-    const result: number[] = fit ? [fit.m, fit.b] : [];
-    this.cachedList = result;
-    return { result };
   }
 }
 

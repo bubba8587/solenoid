@@ -231,6 +231,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "LINEST", syntax: "=LINEST(ys, xs)", parity: false, note: "Returns [slope, intercept, r²] as a list; Excel returns a full 2×5 coefficient array" },
     { excel: "RSQ", syntax: "=RSQ(ys, xs)", parity: false, note: "Superseded by LINEST — use the R² output socket" },
     { excel: "SLOPE", syntax: "=SLOPE(ys, xs)", parity: false, note: "Superseded by LINEST — use the Slope output socket" },
+    { excel: "LOGEST", syntax: "=LOGEST(ys, xs)", parity: false, note: "Exponential op — m, b, R² as three sockets; Excel returns a coefficient array" },
   ],
   "lambda-make": [{ excel: "LAMBDA", syntax: "=LAMBDA(param, ..., calculation)", parity: false, note: "LAMBDA node emits a function value for MAP/BYROW/REDUCE/MAKEARRAY; non-parameter variables become captured inputs (the LET/closure equivalent). No recursion (a self-reference is a graph cycle) and no lambdas of lambdas" }],
   "list-running": [{ excel: "SCAN", syntax: "=SCAN(init, array, LAMBDA(acc, value, ...))", parity: false, note: "Solenoid's Running covers the fixed ops in both window modes; the SCAN node runs a running fold with an arbitrary formula, and REDUCE gives just the final value. A Last N window in Excel is a dragged range formula like =AVERAGE(A1:A3)" }],
@@ -247,7 +248,6 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "list-take": [{ excel: "TAKE", syntax: "=TAKE(list, count)", parity: false, note: "The 1-D list spelling; TAKE (table) is the 2-D rows+cols one" }],
   "list-unique": [{ excel: "UNIQUE", syntax: "=UNIQUE(array)", parity: true }],
   "vstack-table": [{ excel: "VSTACK", syntax: "=VSTACK(array1, array2, ...)", parity: true, note: "N-ary; ragged inputs pad with #N/A like Excel. A bare list counts as ONE ROW" }],
-  "logest": [{ excel: "LOGEST", syntax: "=LOGEST(ys, xs)", parity: false, note: "Returns [m, b] as a list; Excel returns a full coefficient array" }],
   // Keys MUST track the catalog types; a drift test catches stale ones.
   "bool-and": [{ excel: "AND", syntax: "=AND(a, b, ...)", parity: true }],
   "if": [{ excel: "IF", syntax: "=IF(cond, a, b)", parity: true }],

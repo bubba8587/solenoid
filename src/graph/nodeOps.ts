@@ -20,7 +20,7 @@ import {
   IsEvenOddNode, ComparisonNode, IsTestNode,
   PARITY_OP_META, COMPARISON_OP_META, IS_TEST_OP_META,
 } from "./nodes/logic";
-import { RegressionNode, CorrelNode, ForecastNode, REGRESSION_OP_META, CORREL_OP_META, FORECAST_OP_META } from "./nodes/stats";
+import { RegressionNode, CorrelNode, ForecastNode, LinestNode, REGRESSION_OP_META, CORREL_OP_META, FORECAST_OP_META, FIT_OP_META } from "./nodes/stats";
 import {
   TwoInputMathNode, GcdNode, RoundNNode,
   TWO_INPUT_MATH_OP_META, GCD_OP_META, ROUNDN_OP_META,
@@ -215,6 +215,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new CorrelNode({ op: op as never }) },
   { type: "forecast", ctor: ForecastNode, kind: "operation", ops: fromMeta(FORECAST_OP_META),
     create: (op) => new ForecastNode({ op: op as never }) },
+  { type: "linest", ctor: LinestNode, kind: "operation", ops: fromMeta(FIT_OP_META),
+    create: (op) => new LinestNode({ op: op as never }) },
   // Label already names both ops.
   { type: "iseven-isodd", ctor: IsEvenOddNode, kind: "operation", ops: fromMeta(PARITY_OP_META), mark: false,
     create: (op) => new IsEvenOddNode({ op: op as never }) },

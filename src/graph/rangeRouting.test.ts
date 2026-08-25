@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator, RANGE_FUNCTIONS } from "./excelFormula";
-import { ForecastNode, LinestNode, LogestNode } from "./nodes/stats";
+import { ForecastNode, LinestNode } from "./nodes/stats";
 
 // ─── Range routing: the SHAPE guard ───────────────────────────────────────────
 // `RANGE_FUNCTIONS` is hand-kept, and a function missing from it fails SILENTLY in the
@@ -143,14 +143,20 @@ describe("the regression quartet — owned, not routed (the last DEFERRED closed
     expect(ev("LINEST(y, x)", { y: YS, x: [2, 2, 2, 2] })).toBeNull();
   });
 
-  it("LOGEST matches the node's [m, b], and y ≤ 0 is the node's quiet empty", () => {
-    const node = new LogestNode();
-    const nodeOut = node.data({ ys: [EXP], xs: [XS] });
+  it("LOGEST is the Fit card's exponential op — m, b on the slope/intercept sockets", () => {
+    const node = new LinestNode({ op: "exponential" });
+    const out = node.data({ ys: [EXP], xs: [XS] });
     const fx = ev("LOGEST(y, x)", { y: EXP, x: XS }) as number[];
-    expect(fx).toEqual(nodeOut.result);
-    expect(fx[0]).toBeCloseTo(2, 10);
-    expect(fx[1]).toBeCloseTo(1, 10);
+    expect(out.slope as number).toBeCloseTo(fx[0], 10);     // m
+    expect(out.intercept as number).toBeCloseTo(fx[1], 10); // b
+    expect(out.slope as number).toBeCloseTo(2, 10);
+    expect(out.intercept as number).toBeCloseTo(1, 10);
+    // An exact exponential fits perfectly → log-scale R² = 1.
+    expect(out.r2 as number).toBeCloseTo(1, 10);
+    // y ≤ 0: the formula keeps Excel's quiet empty; the node yields three nulls.
     expect(ev("LOGEST(y, x)", { y: [1, -1, 2, 3], x: XS })).toEqual([]);
+    const bad = node.data({ ys: [[1, -1, 2, 3]], xs: [XS] });
+    expect([bad.slope, bad.intercept, bad.r2]).toEqual([null, null, null]);
   });
 
   it("the value model rides through: a cell error propagates, a null pair drops", () => {

@@ -8,6 +8,7 @@ import {
   bisectionInv,
   lnFactorial,
   lnCombin,
+  expFitR2,
 } from "./mathUtils";
 
 describe("lnGamma", () => {
@@ -156,5 +157,19 @@ describe("bisectionInv", () => {
   it("clamps to the endpoints outside (0,1)", () => {
     expect(bisectionInv(stdNormCDF, 0, -10, 10)).toBe(-10);
     expect(bisectionInv(stdNormCDF, 1, -10, 10)).toBe(10);
+  });
+});
+
+describe("expFitR2", () => {
+  it("recovers y = b·mˣ with a perfect log-scale R²", () => {
+    const fit = expFitR2([1, 2, 3, 4], [2, 4, 8, 16]); // y = 1·2ˣ
+    expect(fit).not.toBeNull();
+    expect(fit!.m).toBeCloseTo(2, 10);
+    expect(fit!.b).toBeCloseTo(1, 10);
+    expect(fit!.r2).toBeCloseTo(1, 10);
+  });
+
+  it("is null when any y ≤ 0 (the log is undefined)", () => {
+    expect(expFitR2([1, 2, 3], [1, -1, 2])).toBeNull();
   });
 });

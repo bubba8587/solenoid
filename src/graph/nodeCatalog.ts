@@ -62,7 +62,7 @@ import {
   BesselNode,
   SeriesSumNode, MultinomialNode, SwitchNode, IfsNode,
   HypothesisTestNode, HYPOTHESIS_TEST_OP_META, type HypothesisTestOp,
-  EtsForecastNode, DecomposeNode, OdeIntegrateNode, FitDistributionNode, InterpolateNode, LinestNode, LogestNode, BinomDistRangeNode,
+  EtsForecastNode, DecomposeNode, OdeIntegrateNode, FitDistributionNode, InterpolateNode, LinestNode, BinomDistRangeNode,
   NODE_KIND_ACCENTS,
   ARITHMETIC_OP_META, MATH_FN_OP_META, BOOLEAN_OP_META, REDUCE_OP_META,
   COMBINATORICS_OP_META, ARG_MIN_MAX_OP_META,
@@ -600,10 +600,9 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Regression", description: "Fit or interpolate: predict y from known data and measure the fit.",
         children: [
-          { type: "linest",  label: "LINEST",  description: "Linear regression: three separate outputs (slope, intercept, and R²), wired individually. Excel: LINEST. Supersedes SLOPE, INTERCEPT, RSQ.", create: () => new LinestNode(), parity: false },
+          { type: "linest",  label: "LINEST",  description: "Fit a line (LINEST: slope, intercept, R²) or a growth curve y = b·mˣ (LOGEST: m, b, R² on the log scale) through known data. Three outputs, wired individually. Supersedes SLOPE, INTERCEPT, RSQ.", create: () => new LinestNode(), parity: false, keywords: "linest logest slope intercept rsq regression fit linear exponential growth curve least squares" },
           { type: "forecast", label: "FORECAST.LINEAR", description: "Predict Y for one X or a list of them from known data — a straight line (FORECAST.LINEAR / TREND) or a growth curve y = b·mˣ (GROWTH). Pick on the card.", create: () => new ForecastNode(), parity: false, keywords: "forecast trend growth predict linear exponential regression fit extrapolate" },
           regressionLeaf("steyx"),
-          { type: "logest",  label: "LOGEST",  description: "Exponential regression: [m, b] where y = b·mˣ. Requires all Ys > 0. Excel: LOGEST.", create: () => new LogestNode(), parity: false },
           { type: "polyfit", label: "Poly Fit", description: "Least-squares polynomial fit of the chosen degree, evaluated back over the data — degree 1 is a line, 2 a parabola, and so on. numpy.polyfit + polyval.", create: () => new PolyfitNode(), parity: false, keywords: "polynomial fit polyfit polyval regression curve degree quadratic cubic least squares numpy trendline" },
           { type: "ets-forecast", label: "Forecast (ETS)", description: "Holt–Winters exponential smoothing (additive level, trend and season): a forecast N steps ahead with a growing 95% band, season length detected or set. statsmodels ExponentialSmoothing, R HoltWinters / forecast::ets; Excel: FORECAST.ETS / .CONFINT / .SEASONALITY (same model, Microsoft's own parameter search — close, not identical).", create: () => new EtsForecastNode(), parity: false, keywords: "forecast ets exponential smoothing holt winters seasonal time series predict trend season confint seasonality" },
           { type: "decompose", label: "Decompose", description: "Splits a seasonal series into trend, a repeating seasonal pattern and the residual — additive, multiplicative, or STL (loess). statsmodels seasonal_decompose, R decompose / stl.", create: () => new DecomposeNode(), parity: false, keywords: "decompose decomposition seasonal trend residual seasonality time series stl loess classical moving average deseasonalize" },

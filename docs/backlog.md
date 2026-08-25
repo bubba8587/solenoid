@@ -84,8 +84,6 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
 - **Text Filter ⊂ List Filter** — absorption/delete: `FilterOp` already has
   contains/startsWith/endsWith + Match case; Dropped covers not-contains. The
   `TEXTFILTER` formula name needs a call.
-- **LINEST + LOGEST → one Fit card** — they differ only in model → linear/exponential
-  op selector (same three outputs; labels retitle).
 - **PHI / GAUSS → Distribution forms** — both are standard-normal forms already
   living in the Distributions menu.
 - **Smaller pairs**: Set + Set relation

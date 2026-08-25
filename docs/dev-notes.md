@@ -166,17 +166,21 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   a summary, and did not belong in the reducer dropdown; the author declined INDEX as a home too,
   so the two ops, their catalog leaves and the FIRSTNONBLANK / LASTNONBLANK names are gone.
 
-- **Three stats/distribution node-combining merges (Agent 4, plans D1–D3). D1 LANDED; D2/D3 next.**
+- **Three stats/distribution node-combining merges (Agent 4, plans D1–D3). D1 + D2 LANDED; D3 next.**
   Lead-assigned from backlog "Node-combining parked". (1) **TREND ⊂ FORECAST.LINEAR + GROWTH — DONE:**
   `ForecastNode.x` widened to a numlist COMBO (x scalar → scalar, x list → list, mirroring INTERPOLATE)
   with a linear|exponential `op` (kind:"operation"); TrendNode deleted. An unwired X → null (an unwired
   predictor must not silently predict at 0 — Lead call), which is the one behaviour change from TREND's
   "omitted new_xs = fitted at the known xs" (that stays the FORMULA's, unchanged). FORECAST.LINEAR /
   TREND / GROWTH stay callable as formulas; the nodeExcel `forecast` row carries all three aliases, so
-  the GROWTH coverage-alias was dropped. Remaining: (2) **LINEST + LOGEST → one fit card**
-  (stats.ts:947/985) with a linear|exponential `op` (kind:"operation"). NO socket swap: keep ONE output
-  trio m/b/r² for both — for exponential, m/b are LOGEST's `[m,b]` and r² is the fit's r² on the LOG scale
-  (Excel LOGEST stats=TRUE). Both names stay callable. (3) **PHI/GAUSS are OPS in MathFnNode** (scalar.ts
+  the GROWTH coverage-alias was dropped. (2) **LINEST + LOGEST → one Fit card — DONE:** one `LinestNode`
+  with a linear|exponential `op`; NO socket swap — the three output KEYS (slope/intercept/r2) stay so
+  cables survive the switch, only the labels retitle (m / b / R²-log for exponential). Exponential runs
+  the new `expFitR2` kernel (mathUtils) — LOGEST's m/b onto slope/intercept, R² on the log scale (Excel
+  LOGEST stats=TRUE). LogestNode deleted; LOGEST rides the `linest` nodeExcel row. LINEST/LOGEST both
+  stay callable as formulas. Finding: the D2 plan said the op SegToggle carries `arg`, but selectorNamedOp
+  forbids `arg` on a picker bound to the node's own `op` (op-vs-arg is decided once, by `kind`) — dropped
+  it, matching the GaugeNode precedent. Remaining: (3) **PHI/GAUSS are OPS in MathFnNode** (scalar.ts
   MATHFN_OP_META + the compute switch ~348, group "Probability"), NOT nodes — move phi/gauss into
   `DIST_SPECS` (distributionOps.ts) as single-arg standard-normal forms (φ = normal PDF, GAUSS = Φ−0.5),
   fx:"PHI"/"GAUSS"; delete them from MathFn; PHI/GAUSS keep working via the new home. Each is ONE atomic
