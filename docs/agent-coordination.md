@@ -11,7 +11,7 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 ## Claims (session 2026-08-25b)
 
 ### Agent 1 (Lead)
-- CLAIMED — `WireOp::pivot` (author go-ahead on lazy-handle follow-ons 2026-08-25): Pivot runs lazy on both engines. Files: src-tauri/src/engine.rs (+tests.rs), frameVerbs.ts, nodes/frame.ts PivotNode, frameVerbCorpus fixtures.
+- DONE — awaiting author OK: Pivot reads only its field columns on a lazy upstream (+ ipcBridge single import); `WireOp::pivot` ruled won't-do (digest). No claim.
 
 ### Agent 2 (solenoid-ca) — CLAIMED: Set + Set relation → ONE SetNode (node-combining). Files: list.ts (SetOpNode+SetRelationNode → SetNode), Set*Node component(s), nodeRegistry, nodeCatalog, kind.ts, tests. (Slicer-goes-lazy DONE 7c34d874, in Recently-done.)
 Staged QUEUE:

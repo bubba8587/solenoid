@@ -41,8 +41,13 @@ export function toSolError(thrown: unknown): SolError {
   return solError("#ERROR!", "IPC call failed");
 }
 
+// One dynamic import for the session, not one per IPC call; lazy so this module
+// stays Tauri-free at load.
+let _core: Promise<typeof import("@tauri-apps/api/core")> | null = null;
+const tauriCore = () => (_core ??= import("@tauri-apps/api/core"));
+
 /** Call a Rust command; throws `#ERROR!` without the desktop engine, so guard with
- *  `engineAvailable()`. `invoke` is lazy so this module stays Tauri-free at load. */
+ *  `engineAvailable()`. */
 export async function ipcInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   if (!engineAvailable()) {
     throw solError("#ERROR!", `IPC '${command}' called without the desktop engine`);
@@ -50,7 +55,7 @@ export async function ipcInvoke<T>(command: string, args?: Record<string, unknow
   const probe = perfEnabled();
   const t0 = probe ? performance.now() : 0;
   try {
-    const { invoke } = await import("@tauri-apps/api/core");
+    const { invoke } = await tauriCore();
     return await invoke<T>(command, args);
   } catch (e) {
     throw toSolError(e);

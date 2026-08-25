@@ -124,8 +124,17 @@ profile and win (2).
   plan-length rule) instead of collecting. (4) `039dc56d` `flushRef` rebases onto the longest
   prefix flushed this pass, so an n-card chain costs n single-op applies instead of n growing
   prefixes (O(n²) → O(n)); a groupBy tail is not rebased (aggregate guard reads the base handle).
-  Web semantics untouched (`JsFrameBackend.collect` is free). Left: Slicer (A2, in flight); the
-  Rust lazy-store rewrite and a `WireOp::pivot` are flagged out of scope in the plan.
+  Web semantics untouched (`JsFrameBackend.collect` is free). Slicer followed (A2, 7c34d874).
+- **Pivot reads only its field columns (A1).** `PivotNode` on a lazy upstream takes the schema from a
+  zero-row preview and fetches just the row/col/value fields + the Filter-zone fields through
+  `column()` (the editor lists distinct keys for Filter-zone fields only, so unfetched columns keep
+  an empty key list); a values-less config forwards the ref. The pivot itself stays JS on both
+  engines. **`WireOp::pivot` is a won't-do, not a deferral:** ~200 lines of order-sensitive JS
+  (first-seen ranks, subtotal interleaving, `JSON.stringify` keys) against a two-case corpus, for a
+  node that is almost always terminal, would buy one saved collect at the price of desktop pivots
+  diverging from web in plausible-but-wrong ways. Also: `ipcBridge` imports `@tauri-apps/api/core`
+  once per session instead of once per call (a vitest quirk made the second CONCURRENT dynamic
+  import of a mocked module resolve to the real one; the cache is right regardless).
 - **Slicer goes lazy LANDED (A2, 7c34d874).** The lazy-handle tail. On a lazy upstream the Slicer
   reads only the schema (its column dropdown) via `collectPreview(ref, 0)` plus the ONE selected
   column (its value buttons) via `frameBackend.column`, and pushes its row filter as a `filterMulti`

@@ -24,7 +24,7 @@ const columns = [
 /** A dispatching engine stub: every command answers by name, so a test only counts. */
 function stubEngine() {
   let handles = 0;
-  invokeMock.mockImplementation(async (cmd: string) => {
+  invokeMock.mockImplementation(async (cmd: string, args?: { name?: string }) => {
     switch (cmd) {
       case "engine_ping": return { name: "solenoid-engine", version: "0.1.0", backend: "polars" };
       case "engine_source": case "engine_apply": case "engine_apply_many":
@@ -32,7 +32,7 @@ function stubEngine() {
         return `plf:${++handles}`;
       case "engine_preview": return { schema, rows: [[1, "x"], [2, "y"]], rowCount: BIG, truncated: true };
       case "engine_collect": return columns;
-      case "engine_column": return columns[0];
+      case "engine_column": return columns.find((c) => c.name === args?.name) ?? null;
       default: return null;
     }
   });
@@ -185,5 +185,21 @@ describe("Slicer on a lazy upstream reads one column and filters lazily", () => 
     expect(isFrameRef(out.result)).toBe(true);
     const ref = out.result as { __plan: readonly { kind: string }[] };
     expect(ref.__plan.map((o) => o.kind)).toEqual(["distinct", "filterMulti"]);
+  });
+});
+
+import { PivotNode } from "./nodes/frame";
+
+describe("Pivot on a lazy upstream fetches only its field columns", () => {
+  it("row field B, value A: two engine_column calls, no collect", async () => {
+    const p = new PivotNode();
+    p.stringLiterals.rowFields = "B";
+    p.stringLiterals.values = "A";
+    const out = (await chain([new FrameInputNode(), new DistinctNode(), p])) as { frame: { columns: { name: string; values: unknown[] }[] } };
+    expect(out.frame.columns.map((c) => c.name)).toEqual(["B", "A"]);
+    expect(out.frame.columns[1].values).toEqual([1, 2]);
+    expect(calls("engine_column")).toBe(2);
+    expect(calls("engine_collect")).toBe(0);
+    expect(p.sourceColumns.map((c) => c.distinct.length)).toEqual([2, 2]);
   });
 });

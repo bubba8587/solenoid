@@ -714,13 +714,47 @@ export class PivotNode extends ClassicPreset.Node {
   }
 
   data(inputs: {
-    frame?: (FrameValue | null)[];
+    frame?: (FrameInput | null)[];
     rowFields?: string[][]; colFields?: string[][]; values?: string[][];
     filter?: (boolean | null)[][];
   }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; this.sourceColumns = []; return { frame: null }; }
-    this.sourceColumns = f.columns.map((c) => ({ name: c.name, type: c.type, distinct: distinctKeys(c.values) }));
+    if (!isFrameRef(f)) {
+      this.sourceColumns = f.columns.map((c) => ({ name: c.name, type: c.type, distinct: distinctKeys(c.values) }));
+      // A value never takes the async forward branch, so the result is sync.
+      return this.computePivot(f, f, inputs) as { frame: FrameValue | SolError | null };
+    }
+    // A lazy upstream: the schema from a zero-row preview, then ONLY the columns the
+    // pivot reads (its fields + the filter-editor's fields), never the whole frame.
+    // The editor lists distinct keys for Filter-zone fields alone, so unfetched
+    // columns keep an empty key list.
+    return (async () => {
+      const schema = await collectPreview(f, 0);
+      if (schema == null || isSolError(schema)) { this.cachedResult = schema; this.sourceColumns = []; return { frame: schema }; }
+      const have = new Set(schema.columns.map((c) => c.name));
+      const wanted = new Set<string>();
+      for (const raw of [inputs.rowFields, inputs.colFields, inputs.values]) for (const n of readColumnList(raw) ?? []) if (have.has(n)) wanted.add(n);
+      for (const key of ["rowFields", "colFields", "values"] as const) for (const n of (this.stringLiterals[key] ?? "").split(",")) if (have.has(n.trim())) wanted.add(n.trim());
+      for (const n of Object.keys(this.filterExclude)) if (have.has(n)) wanted.add(n);
+      const cols = await materialize((async () => {
+        const h = await flushRef(f);
+        return Promise.all([...wanted].map((n) => frameBackend().column(h, n)));
+      })());
+      if (isSolError(cols)) { this.cachedResult = cols; return { frame: cols }; }
+      const byName = new Map(cols.filter((c): c is FrameColumn => c != null).map((c) => [c.name, c]));
+      this.sourceColumns = schema.columns.map((c) => ({ name: c.name, type: c.type, distinct: byName.has(c.name) ? distinctKeys(byName.get(c.name)!.values) : [] }));
+      const slice: FrameValue = { __frame: true, columns: schema.columns.map((c) => byName.get(c.name) ?? { name: c.name, type: c.type, values: [] }) };
+      return this.computePivot(slice, f, inputs);
+    })() as unknown as { frame: FrameValue | SolError | null };
+  }
+
+  /** The pivot over `f` (the whole frame, or the fetched field columns of a lazy
+   *  upstream); `source` is what a values-less config forwards. */
+  private computePivot(f: FrameValue, source: FrameInput, inputs: {
+    rowFields?: string[][]; colFields?: string[][]; values?: string[][];
+    filter?: (boolean | null)[][];
+  }): { frame: FrameInput | SolError | null } | Promise<{ frame: FrameInput | SolError | null }> {
     // Flush fields the current frame no longer has, so repointing at a new source can't
     // leave a stale name aggregating a missing column or lingering in the editor.
     const valid = new Set(f.columns.map((c) => c.name));
@@ -733,7 +767,10 @@ export class PivotNode extends ClassicPreset.Node {
     const rowFields = rowRaw.filter((n) => valid.has(n));
     const colFields = colRaw.filter((n) => valid.has(n));
     const values = valRaw.filter((n) => valid.has(n));
-    if (values.length === 0) { this.cachedResult = f; return { frame: f }; }
+    if (values.length === 0) {
+      if (isFrameRef(source)) return passFrame(source).then((out) => emitFrame(this, beginPass(this), out));
+      this.cachedResult = f; return { frame: f };
+    }
     const funcs = values.map((name) => this.funcs[name] ?? this.op);
     const spec: PivotSpec = {
       rowFields, colFields, values, funcs,
@@ -741,8 +778,7 @@ export class PivotNode extends ClassicPreset.Node {
       rowSort: this.rowSort, colSort: this.colSort, relativeTo: this.relativeTo,
       filter: this.combineFilter(f, inputs.filter?.[0]),
     };
-    // Stays EAGER: the full PIVOTBY spec exceeds the engine's simple pivot op, so routing
-    // it through the backend would regress desktop to a basic cross-tab.
+    // The pivot itself stays in JS on both engines (the full PIVOTBY spec has no engine op).
     this.cachedResult = runVerb(() => pivotFrame(f, spec));
     return { frame: this.cachedResult };
   }

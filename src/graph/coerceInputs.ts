@@ -21,7 +21,7 @@ export const LAZY_FRAME_NODES: ReadonlySet<string> = new Set([
   "FillBlanksNode", "ReplaceValuesNode", "WindowNode",
   // Read through the cheap primitives (column / preview / read-at-Run) instead of a
   // full-frame collect.
-  "GetColumnNode", "SumIfsNode", "TableInfoNode", "WriteFileNode",
+  "GetColumnNode", "SumIfsNode", "TableInfoNode", "WriteFileNode", "PivotNode",
   // Slicer (control.ts): reads the schema + one column for its buttons, filters lazily.
   "SlicerNode",
 ]);
