@@ -137,3 +137,17 @@ describe("cheap-primitive consumers on a lazy upstream", () => {
     expect(calls("engine_collect")).toBe(1);
   });
 });
+
+import { SortFrameNode } from "./nodes/frame";
+import { isFrameRef } from "./frameBackend";
+
+describe("a no-op verb forwards the ref instead of collecting", () => {
+  it("Frame Sort with no column emits a non-owning ref (plan ends in an empty drop)", async () => {
+    const out = (await chain([new FrameInputNode(), new DistinctNode(), new SortFrameNode()])) as { frame: unknown };
+    expect(isFrameRef(out.frame)).toBe(true);
+    const ref = out.frame as { __plan: readonly { kind: string }[] };
+    expect(ref.__plan.map((o) => o.kind)).toEqual(["distinct", "drop"]);
+    expect(calls("engine_collect")).toBe(0);
+    expect(calls("engine_source")).toBe(1);
+  });
+});

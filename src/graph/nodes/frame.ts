@@ -50,8 +50,6 @@ function runVerb<T>(fn: () => T): T | SolError {
 }
 
 // ─── Lazy verb-node output ──────────────────────────────────────────────────────
-// A passthrough (no-op verb) must emit a VALUE, not the upstream ref it doesn't own —
-// callers do `readFrame(f)` for that case.
 interface FrameVerbNode { _ref?: FrameRef | null; _gen?: number; cachedResult: FrameValue | SolError | null }
 
 /** Stamp a new compute pass — the out-of-order-pass guard; MUST be evaluated BEFORE
@@ -59,6 +57,13 @@ interface FrameVerbNode { _ref?: FrameRef | null; _gen?: number; cachedResult: F
 function beginPass(node: FrameVerbNode): number {
   node._gen = (node._gen ?? 0) + 1;
   return node._gen;
+}
+
+/** A no-op verb forwards a lazy input as a NON-OWNING ref: the empty `drop` keeps the
+ *  plan non-empty, which is what `dropFrameRef`'s ownership rule keys on. A value
+ *  passes as-is (no upload, `raw` kept). */
+async function passFrame(f: FrameInput): Promise<FrameRef | FrameValue | SolError> {
+  return isFrameRef(f) ? runFrameUnary(f, { kind: "drop", columns: [] }) : f;
 }
 
 async function emitFrame(node: FrameVerbNode, gen: number, out: FrameRef | FrameValue | SolError | null): Promise<{ frame: FrameRef | FrameValue | SolError | null }> {
@@ -336,7 +341,7 @@ export class SortFrameNode extends ClassicPreset.Node {
     const col = readInput(inputs.column, this.stringLiterals.column ?? "");
     // A wired blank column names no column — unknown, not "not chosen yet".
     if (f == null || col === null) return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), col.trim() === "" ? await readFrame(f) : await runFrameUnary(f, { kind: "sort", by: col.trim(), dir: this.dir }));
+    return emitFrame(this, beginPass(this), col.trim() === "" ? await passFrame(f) : await runFrameUnary(f, { kind: "sort", by: col.trim(), dir: this.dir }));
   }
 }
 
@@ -448,7 +453,7 @@ export class FilterFrameNode extends ClassicPreset.Node {
     }
     if (conditions.length === 0) {
       // Pass-through ("not written yet"): Kept = everything, Dropped = blank.
-      return { ...(await emitFrame(this, gen, await readFrame(f))), dropped: this.publishDropped(gen, null) };
+      return { ...(await emitFrame(this, gen, await passFrame(f))), dropped: this.publishDropped(gen, null) };
     }
     // An error predicate must run in the JS ORACLE — the native Polars engine degrades
     // a per-cell error to null on upload and couldn't tell an error from a blank.
@@ -573,7 +578,7 @@ export class ColumnsNode extends ClassicPreset.Node {
     if (f == null || cols === null) return emitFrame(this, gen, null);
     if (this.op === "drop") return emitFrame(this, gen, await runFrameUnary(f, { kind: "drop", columns: cols }));
     // Keep with an empty list passes the frame through; the drop op's empty list is already a no-op verb.
-    return emitFrame(this, gen, cols.length ? await runFrameUnary(f, { kind: "select", columns: cols }) : await readFrame(f));
+    return emitFrame(this, gen, cols.length ? await runFrameUnary(f, { kind: "select", columns: cols }) : await passFrame(f));
   }
 }
 
@@ -627,7 +632,7 @@ export class GroupByFrameNode extends ClassicPreset.Node {
     // A wired blank names no column/keys — unknown, not "not chosen yet".
     if (f == null || colRaw === null || keys === null) return emitFrame(this, beginPass(this), null);
     const col = colRaw.trim();
-    if (!(keys.length && col)) return emitFrame(this, beginPass(this), await readFrame(f));
+    if (!(keys.length && col)) return emitFrame(this, beginPass(this), await passFrame(f));
     // Totals re-aggregate the SOURCE, not the grouped output, so this path is EAGER.
     if (this.totalDepth !== 0) {
       const mat = await readFrame(f);
@@ -794,7 +799,7 @@ export class UnpivotNode extends ClassicPreset.Node {
     const ids = readColumnList(inputs.idColumns);
     const vals = readColumnList(inputs.valueColumns);
     if (f == null || ids === null || vals === null) return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), vals.length ? await runFrameUnary(f, { kind: "unpivot", idColumns: ids, valueColumns: vals }) : await readFrame(f));
+    return emitFrame(this, beginPass(this), vals.length ? await runFrameUnary(f, { kind: "unpivot", idColumns: ids, valueColumns: vals }) : await passFrame(f));
   }
 }
 
@@ -901,7 +906,7 @@ export class AppendNode extends ClassicPreset.Node {
       .map((k) => inputs[k]?.[0] ?? null)
       .filter((f): f is FrameInput => f != null);
     if (frames.length === 0) return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), frames.length === 1 ? await readFrame(frames[0]) : await runFrameAppend(frames));
+    return emitFrame(this, beginPass(this), frames.length === 1 ? await passFrame(frames[0]) : await runFrameAppend(frames));
   }
 }
 
@@ -953,7 +958,7 @@ export class BindColumnsNode extends ClassicPreset.Node {
       .map((k) => inputs[k]?.[0] ?? null)
       .filter((f): f is FrameInput => f != null);
     if (frames.length === 0) return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), frames.length === 1 ? await readFrame(frames[0]) : await runFrameBindColumns(frames));
+    return emitFrame(this, beginPass(this), frames.length === 1 ? await passFrame(frames[0]) : await runFrameBindColumns(frames));
   }
 }
 
@@ -984,7 +989,7 @@ export class RenameNode extends ClassicPreset.Node {
     for (let i = 0; i < Math.min(from.length, to.length); i++) {
       if (from[i] && to[i]) map[from[i]] = to[i];
     }
-    return emitFrame(this, beginPass(this), Object.keys(map).length ? await runFrameUnary(f, { kind: "rename", map }) : await readFrame(f));
+    return emitFrame(this, beginPass(this), Object.keys(map).length ? await runFrameUnary(f, { kind: "rename", map }) : await passFrame(f));
   }
 }
 
@@ -2337,7 +2342,7 @@ export class WindowNode extends ClassicPreset.Node {
     const n = readInput(inputs.n, this.literals.n ?? 3);
     if (f == null || keys === null || orderBy === null || column === null || name === null || n === null) return emitFrame(this, beginPass(this), null);
     // A value-reading function with no Value column yet is a passthrough, not an error.
-    if (WINDOW_FN_NEEDS_COLUMN.has(this.op) && !column.trim()) return emitFrame(this, beginPass(this), await readFrame(f));
+    if (WINDOW_FN_NEEDS_COLUMN.has(this.op) && !column.trim()) return emitFrame(this, beginPass(this), await passFrame(f));
     const as = name.trim() || `${WINDOW_FN_META[this.op].label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/_$/, "")}${column.trim() ? "_" + column.trim() : ""}`;
     // Lazy: Polars `.over()` on desktop, the oracle's windowFrame on web (one FrameOp).
     return emitFrame(this, beginPass(this), await runFrameUnary(f, {
