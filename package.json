@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "postbuild": "node scripts/check-dist-classnames.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

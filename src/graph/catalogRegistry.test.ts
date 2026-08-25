@@ -64,6 +64,21 @@ describe("catalog ↔ registry consistency", () => {
     expect(collisions, `class-name collisions — saves of the losing class reload as the winner: ${collisions.join(", ")}`).toEqual([]);
   });
 
+  // classNameIsType, the SHAPE half. A persisted `type` must be a real class name
+  // — a Capitalized identifier of some length — never a minifier's single letter.
+  // This runs UNMINIFIED so it can't see a bad production build directly (that is
+  // scripts/check-dist-classnames.mjs on postbuild); it pins the source invariant
+  // so a class deliberately named `A`, or an accidental non-identifier, fails here.
+  it("every catalog class name is a real identifier, >= 4 chars (classNameIsType)", () => {
+    const bad: string[] = [];
+    for (const entry of FLAT_CATALOG.values()) {
+      let name: string;
+      try { name = (entry.create() as object).constructor.name; } catch { continue; }
+      if (name.length < 4 || !/^[A-Z][A-Za-z0-9]+$/.test(name)) bad.push(name);
+    }
+    expect([...new Set(bad)], `class names that look mangled or malformed: ${[...new Set(bad)].join(", ")}`).toEqual([]);
+  });
+
   // sinkRunButtonOnly's persistence half: an external-effect arm flag must never
   // round-trip — every load (save reopen, paste, placeholder restore) starts
   // disarmed, so opening a shared file can never write to YOUR disk. The two

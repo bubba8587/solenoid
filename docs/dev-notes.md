@@ -97,6 +97,22 @@ Numbers reproduce with `node scripts/table-popup-probe.mjs` (dev server must be 
 profile and win (2).
 
 ### SESSION DIGEST (2026-08-25b — post-crash: cards named by their op, NAME-3)
+- **Vite 7 → 8.2.2 + @vitejs/plugin-react 4 → 6.1.0 (A3, `docs/plans/vite-8-upgrade` executed).**
+  Vite 8 swaps Rollup→Rolldown and esbuild→Oxc; the gated risk is the Oxc minifier having no
+  keepNames, which would mangle `constructor.name` (the persisted node type → unopenable saves).
+  Fix (plan option a): `build.minify: "esbuild"` + keep `esbuild: { keepNames: true }`, esbuild
+  added as a devDep (optional peer now). Verified on the real production bundle: XMatchNode +
+  ListIndexNode survive minification, and a built-app autosave round-trips 15 real class-name
+  types (AggregateNode…TodayNowNode), none mangled, reopened on load. `rollup-plugin-license`
+  runs under Rolldown fine: `dist/third-party-licenses.txt` 3733 lines / 96 entries (Vite-7
+  baseline 3695 / 94; the +2 is the bundler's tree-shaking, not a drop). Durable enforcement:
+  `scripts/check-dist-classnames.mjs` on `postbuild` greps the bundle for the two class names and
+  fails the build if mangled; `catalogRegistry.test.ts` gained a source-level shape check (name is
+  a real identifier ≥4 chars). Rule recorded in `docs/rules.md` classNameIsType. One cosmetic
+  build warning remains: "esbuild options ignored, oxc used" — that is the TRANSFORM pass (oxc),
+  not the minifier; the esbuild minifier honored keepNames (grep-proven). Desktop `tauri build`
+  ride-along NOT run by A3 (needs the native toolchain / author's desktop) — the web build is the
+  gate and it passed; Tauri only copies `dist/`.
 - **Lazy handles, phases 0–4 LANDED (A1; plan `docs/plans/lazy-handle-on-cable`).** Cables already
   carried lazy refs; the item was the eager residue. (1) `fa7fffb1` BindColumns / FillBlanks /
   ReplaceValues / Window emitted refs but were missing from `LAZY_FRAME_NODES`, so a chain

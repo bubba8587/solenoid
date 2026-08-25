@@ -35,7 +35,7 @@ the record.
 
 | Plan | Size | Notes |
 |------|------|-------|
-| `vite-8-upgrade` | small, gated | The persisted node type is `constructor.name`; the two artifact checks are the point. Queued to A3. |
+| _(none open)_ | | |
 
 Not planned here (author-present or needs a device): everything under "Bugs &
 verifications" in `../backlog.md`; the table-popup virtualization (Path A vs B is the

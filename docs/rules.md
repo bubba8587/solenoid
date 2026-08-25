@@ -1400,7 +1400,9 @@ MAIN even while drilled in" (+ the per-node ownership resolvers).
 **MUST:** `constructor.name` is the `type` written into every save and the
 ctor-registry key loads resolve through (plus a dispatch key — `SEES_ERRORS`, group
 collapse, pins). Two consequences:
-- production builds must keep class names (`keepNames`);
+- production builds must keep class names (`keepNames`). Vite 8 defaults to the Oxc
+  minifier, which has no keepNames equivalent, so `vite.config.ts` pins
+  `build.minify: "esbuild"` and keeps `esbuild: { keepNames: true }`;
 - no two catalog classes may share a name — the registry is first-wins, so the losing
   class's saves would silently reconstruct as the winner (different sockets,
   plausible wiring, wrong computation; the Placeholder path only fires for an ABSENT
@@ -1408,7 +1410,10 @@ collapse, pins). Two consequences:
 
 *Enforced by:* `sourceInvariants.test.ts` → "vite.config.ts and vitest.config.ts both
 declare esbuild keepNames"; `catalogRegistry.test.ts` → "no two catalog classes share a
-constructor name".
+constructor name" (uniqueness) + "every catalog class name is a real identifier, >= 4
+chars" (shape); `scripts/check-dist-classnames.mjs` on `postbuild` → greps the real
+production bundle for two known class names and fails the build if the minifier mangled
+them (the only check that sees the actual build output; the tests run unminified).
 
 ### unknownViaPlaceholder — An unknown node type round-trips losslessly through Placeholder **[INFERRED]**
 **MUST:** loading a save with an unregistered type builds a `PlaceholderNode` that

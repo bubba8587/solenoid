@@ -217,37 +217,14 @@ is blocked here for out-of-scope repos).
   we don't use — our own `commentStore`). Bumping buys nothing and either adds a standing
   unmet-peer warning or pulls a plugin we never import into the tree. Net negative; stay at
   2.1.1.
-- [ ] **`vite` 7.3.6 → 8.2.1 WITH `@vitejs/plugin-react` 4.7.0 → 6.0.5** — hard
-  coupled (plugin-react 6 declares `vite: ^8.0.0`, no `^7`). Highest-risk bump left,
-  and BOTH risks are invisible to `tsc` and vitest, so gate it on a trial build that
-  checks two artifacts: (1) `dist/third-party-licenses.txt` present and POPULATED,
-  (2) our class names survive in the bundle (`grep dist` for `XMatchNode`,
-  `ListIndexNode`). Vite 8 swaps Rollup → **Rolldown** (`rolldown: ~1.2.1`) and
-  esbuild → **Oxc** (esbuild demoted to an optional peer; `lightningcss` promoted to
-  a direct dep; `build.minify` now `boolean | "oxc" | "terser" | "esbuild"`).
-  What that lands on in `vite.config.ts`:
-  - **`rollup-plugin-license` runs under Rolldown.** It emits the third-party
-    license file we SHIP — compliance, not cosmetics. A build error is fine
-    (loud); a silently empty/partial file is the bad outcome.
-  - **`esbuild: { keepNames: true }` is deprecated and `keepNames` appears NOWHERE
-    in vite 8's types** (`OxcOptions` extends rolldown's transform options, which
-    don't carry it). That flag is what keeps `constructor.name` intact for the node
-    type hints — so the failure is production-only, silent and user-visible: dev is
-    unminified, tests never build, and `release:desktop` ships it. Expect to set
-    `build.minify` explicitly — `"esbuild"` keeps the old minifier (still a
-    supported optional peer), or `"terser"` + `terserOptions: { keep_classnames:
-    true, keep_fnames: true }`.
-  NOT blockers (checked): vitest 4.1.8 already allows `vite ^6 || ^7 || ^8`; node
-  engines are identical across 7 and 8; every new peer on both packages is optional.
-  Downstream: this is the build tool, so the Tauri desktop release rides on it.
 - [x] **In-range patch tranche — DONE 2026-08-25 (Agent 4).** The walkable in-range set is bumped:
   `react`/`react-dom` 19.2.8, `vitest` 4.1.11, `recharts` 3.10.1, `marked` 18.0.11, `mermaid` 11.17.1,
   `dompurify`, `colord`, `papaparse`, `styled-components`, `puppeteer-core`, the `@tauri-apps/*` set,
   the `@fontsource-variable/*` pair, `@types/react`(`-dom`), `@webgpu/types`. Core `rete` 2.0.6 is current;
-  `katex` 0.18.4 and `@formulajs/formulajs` 4.6.1 landed earlier. Only the GATED majors remain: `vite` 8 /
-  `@vitejs/plugin-react` 6 (above), `@anthropic-ai/sdk` 0.120 (major, skipped), `rete-history-plugin` 2.2.0
-  (don't-bump, above). NOTE: installs still need `--legacy-peer-deps` (pre-existing elkjs 0.12 vs
-  `rete-auto-arrange-plugin` peer `^0.8.2`).
+  `katex` 0.18.4 and `@formulajs/formulajs` 4.6.1 landed earlier. `vite` 8 / `@vitejs/plugin-react` 6
+  landed 2026-08-25 (A3). Remaining majors: `@anthropic-ai/sdk` 0.120 (major, skipped),
+  `rete-history-plugin` 2.2.0 (don't-bump, above). NOTE: installs still need `--legacy-peer-deps`
+  (pre-existing elkjs 0.12 vs `rete-auto-arrange-plugin` peer `^0.8.2`).
 
 ## Architecture spec (`docs/rules.md`)
 
