@@ -10,11 +10,15 @@ export default defineConfig(async () => ({
 
   // Preserve class / function names through minification. Node components
   // derive their human-readable type hint from `constructor.name` (see
-  // typeHint in nodeKit.tsx); without this, esbuild mangles class names to
-  // single letters and the hint shows garbage in production builds.
+  // typeHint in nodeKit.tsx), AND `persistence.ts` writes `constructor.name`
+  // as the persisted node type; without this, the minifier mangles class
+  // names to single letters and a production save reopens as garbage. Vite 8
+  // defaults to the Oxc minifier, which has no keepNames equivalent, so pin
+  // the esbuild minifier explicitly and keep its keepNames option.
   esbuild: { keepNames: true },
 
   build: {
+    minify: "esbuild",
     rollupOptions: {
       // Emit a complete third-party license file alongside the bundle, listing
       // every dependency actually shipped (React, Rete, KaTeX, …) with its
