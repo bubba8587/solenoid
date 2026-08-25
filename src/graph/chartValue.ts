@@ -142,15 +142,39 @@ export interface RecordPayload {
   index: number;
   total: number;
 }
+// One artist in an overlay, carrying its OWN mark kind and the styling it inherited
+// from the source chart (Merge Plots keeps each source's color/marker size/etc.). A
+// null value is a gap. `bar` and `column` both draw as vertical bars here so they
+// share the cartesian x-axis with the line/area/scatter marks.
+export interface OverlaySeries {
+  name: string;
+  kind: "line" | "area" | "column" | "bar" | "scatter";
+  values: (number | null)[];
+  /** Inherited from the source chart's Options; the palette fills in when absent. */
+  color?: string;
+  markersize?: number;
+  linewidth?: number;
+  alpha?: number;
+  /** Whether a line/area dots its points (the source's `marker` option). */
+  marker?: boolean;
+}
+// Several charts overlaid on one plot (the Merge Plots node): every source's series
+// keep their own kind + styling, drawn together over a shared x-axis. `labels` is the
+// first source's category axis, if any.
+export interface OverlayPayload {
+  kind: "overlay";
+  series: OverlaySeries[];
+  labels?: (string | number)[];
+}
 export type ChartPayload =
   | KpiPayload | ScalePayload | ProportionPayload | SankeyPayload | SurfacePayload
   | ContourPayload | WaterfallPayload | CandlePayload | BoxplotPayload
-  | CalHeatPayload | QuiverPayload | SevenSegPayload | RecordPayload;
+  | CalHeatPayload | QuiverPayload | SevenSegPayload | RecordPayload | OverlayPayload;
 
 /** Every op the `chart` socket can carry. */
 export type ChartValueOp =
   | ChartOp | "kpi" | "scale" | "proportion" | "sankey" | "surface"
-  | "contour" | "waterfall" | "candle" | "boxplot" | "calheat" | "quiver" | "sevenseg" | "record";
+  | "contour" | "waterfall" | "candle" | "boxplot" | "calheat" | "quiver" | "sevenseg" | "record" | "overlay";
 
 export interface ChartValue {
   __chart: true;

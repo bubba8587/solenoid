@@ -268,6 +268,7 @@ export { DisplayComponent } from "./DisplayNode";
 export { AlertComponent } from "./AlertNode";
 export { SparklineComponent } from "./SparklineNode";
 export { ChartComponent } from "./ChartNode";
+export { MergePlotsComponent } from "./MergePlotsNode";
 export { HistogramComponent } from "./HistogramNode";
 export { KpiComponent } from "./KpiNode";
 export { SankeyComponent } from "./SankeyNode";

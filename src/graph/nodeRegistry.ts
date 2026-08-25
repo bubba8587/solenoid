@@ -6,7 +6,7 @@ import type { RenderEmit } from "rete-react-plugin";
 import type { Schemes } from "./schemes";
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, SvgPickerNode,
-  SparklineNode, ChartNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, DateInputNode, DateRangeNode, XYPadNode,
+  SparklineNode, ChartNode, MergePlotsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, DateInputNode, DateRangeNode, XYPadNode,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, SevenSegNode, RecordNode,
   PointPlotterNode, CurveNode, GridPainterNode,
   FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode, WindowNode,
@@ -81,7 +81,7 @@ import {
 } from "./rete-nodes";
 import {
   AngleDialComponent, SlicerComponent, CableSwitchComponent, NoteComponent, ReportComponent, SessionHistoryComponent, PresentationComponent, ImageComponent, SvgPickerComponent,
-  SparklineComponent, ChartComponent, HistogramComponent, KpiComponent, ProportionComponent, SankeyComponent, SurfaceComponent, MermaidComponent, GaugeComponent, HeatmapCellComponent, ChartBuilderComponent, DateInputComponent, DateRangeComponent, XYPadComponent,
+  SparklineComponent, ChartComponent, MergePlotsComponent, HistogramComponent, KpiComponent, ProportionComponent, SankeyComponent, SurfaceComponent, MermaidComponent, GaugeComponent, HeatmapCellComponent, ChartBuilderComponent, DateInputComponent, DateRangeComponent, XYPadComponent,
   WaterfallComponent, CandlestickComponent, BoxplotComponent, CalendarHeatmapComponent, QuiverComponent, SevenSegComponent, RecordComponent,
   PointPlotterComponent, CurveComponent, GridPainterComponent,
   FillBlanksComponent, ReplaceValuesComponent, MergeColumnsComponent, HeadersComponent, DropBlankRowsComponent,
@@ -183,6 +183,7 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [SvgPickerNode,   comp(SvgPickerComponent)],
   [SparklineNode,   comp(SparklineComponent)],
   [ChartNode,       comp(ChartComponent)],
+  [MergePlotsNode,  comp(MergePlotsComponent)],
   [HistogramNode,   comp(HistogramComponent)],
   [KpiNode,         comp(KpiComponent)],
   [ProportionNode,  comp(ProportionComponent)],

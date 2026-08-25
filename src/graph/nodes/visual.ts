@@ -1,14 +1,16 @@
 import { ClassicPreset } from "rete";
-import { readInput, numIn, numListIn, tableIn, tableOut, strIn, strOut, chartOut, frameIn } from "./shared";
+import { readInput, numIn, numListIn, tableIn, tableOut, strIn, strOut, chartIn, chartOut, frameIn } from "./shared";
 import { parseChartOptions, serializeChartOptions, CHART_BUILDER_TARGETS, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp, iterMin, iterMax, gridAxes } from "./mathUtils";
 import { histogram2d } from "./visualOps";
 export { histogram2d } from "./visualOps";
+import { isChartValue } from "../chartValue";
 import type {
   ChartValue, KpiPayload, ScalePayload, ProportionPayload, SankeyPayload, SurfacePayload,
   ContourPayload, WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, QuiverPayload, SevenSegPayload,
-  RecordPayload, RecordField,
+  RecordPayload, RecordField, OverlaySeries, OverlayPayload,
 } from "../chartValue";
+import { solError, type SolError } from "../errorValue";
 import { columnUnitLabel } from "../unitColumn";
 import type { MermaidValue } from "../mermaidValue";
 import { readFrame, type FrameInput } from "../frameBackend";
@@ -176,6 +178,110 @@ export class ChartNode extends ClassicPreset.Node {
       options: this.chartOptions,
       title: this.chartOptions.title || this.label || "Chart",
     };
+    return { chart };
+  }
+}
+
+// ─── Merge Plots ──────────────────────────────────────────────────────────────
+// Overlay several charts on one plot. Every wired chart keeps its OWN mark kind and
+// the styling it carried (color, marker size, line width, fill alpha), so the merged
+// figure is a true composite, not a re-plot. Only x/y-plane charts overlay; a polar or
+// payload figure (pie, radar, gauge, sankey…) is refused with a #TYPE! naming the input.
+
+/** The chart ops that share one cartesian x-axis and can therefore overlay. */
+export const PLANAR_CHART_OPS = new Set<ChartValue["op"]>(["line", "area", "column", "bar", "scatter"]);
+
+export class MergePlotsNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    options: "Accepts key=value pairs separated by semicolons, or wire a Chart Builder. Styles the merged plot's axes and title; each series keeps the color and marker size it arrived with.",
+  };
+
+  label: string;
+  // Extensible-row keys are `p0`, `p1`… `nextInputId` keeps them unique across removals.
+  nextInputId = 0;
+  chartOptions: ChartOptions = {};
+  // The inline Options text (used when the Options socket isn't wired).
+  stringLiterals: Record<string, string> = {};
+  // Either a merged figure or the #TYPE! refusal; the component renders whichever.
+  cachedChart: ChartValue | SolError | null = null;
+  width = 240;
+  height = 240;
+
+  constructor(init?: { label?: string; valueKeys?: string[] }) {
+    super("MergePlots");
+    this.label = init?.label ?? "";
+    // Rebuild the EXACT plot rows on load/paste so saved cables realign; `valueKeys`
+    // carries every input key (the `options` string among them), so keep only plot rows.
+    const plots = (init?.valueKeys ?? []).filter((k) => /^p\d+$/.test(k));
+    if (plots.length) {
+      for (const k of plots) this.addPlotWithKey(k);
+    } else {
+      this.addValueInput();
+      this.addValueInput();
+    }
+    this.addInput("options", strIn("Options"));
+    this.addOutput("chart", chartOut("Chart"));
+  }
+
+  private addPlotWithKey(key: string): void {
+    this.addInput(key, chartIn(`Plot ${key.replace(/^p/, "")}`));
+    const n = parseInt(key.replace(/^p/, ""), 10);
+    if (Number.isFinite(n)) this.nextInputId = Math.max(this.nextInputId, n + 1);
+  }
+
+  /** Every plot input key, in insertion order (excludes `options`). */
+  plotKeys(): string[] {
+    return Object.keys(this.inputs).filter((k) => /^p\d+$/.test(k));
+  }
+
+  addValueInput(): string {
+    const key = `p${this.nextInputId}`;
+    this.addPlotWithKey(key);
+    return key;
+  }
+
+  removeValueInput(key: string): void {
+    this.removeInput(key);
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>): { chart: ChartValue | SolError } {
+    const series: OverlaySeries[] = [];
+    let labels: (string | number)[] | undefined;
+    let refusal: SolError | null = null;
+    this.plotKeys().forEach((key, i) => {
+      const cv = inputs[key]?.[0];
+      if (cv == null || !isChartValue(cv)) return; // empty row, or non-chart the socket wouldn't pass
+      if (!PLANAR_CHART_OPS.has(cv.op)) {
+        // The FIRST non-plot input refuses the whole merge, naming which one it is.
+        refusal ??= solError("#TYPE!", `Plot ${i + 1} is a ${cv.op} chart, which has no x/y plane to overlay`);
+        return;
+      }
+      const kind = cv.op as OverlaySeries["kind"];
+      // Styling inherited from the source chart's parsed options.
+      const style = {
+        color: cv.options?.color || undefined,
+        markersize: cv.options?.markersize,
+        linewidth: cv.options?.linewidth,
+        alpha: cv.options?.alpha,
+        marker: cv.options?.marker,
+      };
+      if (cv.series && cv.series.length > 0) {
+        for (const s of cv.series) series.push({ name: s.name, kind, values: s.values, ...style });
+      } else if (Array.isArray(cv.values)) {
+        series.push({ name: cv.title ?? "", kind, values: cv.values, ...style });
+      } else if (typeof cv.values === "number") {
+        series.push({ name: cv.title ?? "", kind, values: [cv.values], ...style });
+      }
+      if (!labels && cv.labels && cv.labels.length > 0) labels = cv.labels;
+    });
+    this.chartOptions = parseChartOptions(readInput(inputs.options as string[] | undefined, this.stringLiterals.options ?? null));
+    if (refusal) { this.cachedChart = refusal; return { chart: refusal }; }
+    const payload: OverlayPayload = { kind: "overlay", series, labels };
+    const chart: ChartValue = {
+      __chart: true, op: "overlay", values: null, payload,
+      options: this.chartOptions, title: this.chartOptions.title || this.label || "Merged Plot",
+    };
+    this.cachedChart = chart;
     return { chart };
   }
 }

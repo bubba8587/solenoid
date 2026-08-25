@@ -46,7 +46,7 @@ import { ExpectNode } from "./quality";
 import { TornadoNode } from "./tornado";
 import { ReconcileNode } from "./frame";
 import { SlicerNode, CableSwitchNode, DateInputNode, XYPadNode, PointPlotterNode, CurveNode, GridPainterNode } from "./control";
-import { SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, ProportionNode, SankeyNode, HistogramNode, SurfaceNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, SevenSegNode, RecordNode } from "./visual";
+import { SparklineNode, ChartNode, MergePlotsNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, ProportionNode, SankeyNode, HistogramNode, SurfaceNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, SevenSegNode, RecordNode } from "./visual";
 import { NoteNode, ImageNode, SvgPickerNode } from "./annotation";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "./composite";
 import {
@@ -80,7 +80,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof PhysicsConstantNode || node instanceof ElementNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof LocalFileNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof DataFeedNode || node instanceof XYPadNode || node instanceof ColorPickerNode || node instanceof SvgPickerNode || node instanceof PointPlotterNode || node instanceof CurveNode || node instanceof GridPainterNode) return "input";
   // Charts wear the chart socket's green; the non-chart figures (a diagram, a builder, a
   // readout, a record card) stay on the display gold.
-  if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof GaugeNode || node instanceof HeatmapCellNode || node instanceof TornadoNode || node instanceof SurfaceNode) return "chart";
+  if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof GaugeNode || node instanceof HeatmapCellNode || node instanceof TornadoNode || node instanceof SurfaceNode) return "chart";
   if (node instanceof WaterfallNode || node instanceof CandlestickNode || node instanceof BoxplotNode || node instanceof CalendarHeatmapNode || node instanceof ProportionNode || node instanceof QuiverNode || node instanceof HistogramNode || node instanceof SankeyNode) return "chart";
   if (node instanceof MermaidNode || node instanceof ChartBuilderNode || node instanceof SevenSegNode || node instanceof RecordNode) return "display";
   if (node instanceof ConvertNode || node instanceof CastNode) return "convert";
@@ -251,7 +251,7 @@ export function nodeDomWeight(node: ClassicPreset.Node): number {
   if (node instanceof SvgPickerNode) return 2;
   // Full figures (a recharts subtree, a mermaid diagram): ten ≈ the default threshold.
   if (
-    node instanceof ChartNode || node instanceof HistogramNode ||
+    node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof HistogramNode ||
     node instanceof ProportionNode || node instanceof SankeyNode ||
     node instanceof MermaidNode || node instanceof RecordNode
   ) return 10;
@@ -282,7 +282,7 @@ export function nodeResizable(node: ClassicPreset.Node): boolean {
 export function nodeWide(node: ClassicPreset.Node): boolean {
   // Inline charts and drawing pads need the wide card to fit their fixed-width plot.
   if (node instanceof PointPlotterNode || node instanceof CurveNode) return true;
-  if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MermaidNode || node instanceof TornadoNode) return true;
+  if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof MermaidNode || node instanceof TornadoNode) return true;
   if (node instanceof ProportionNode || node instanceof SankeyNode || node instanceof HistogramNode) return true;
   const ports = [...Object.values(node.inputs ?? {}), ...Object.values(node.outputs ?? {})];
   return ports.some((p) => {

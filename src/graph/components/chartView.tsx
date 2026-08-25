@@ -5,7 +5,7 @@ import type { ChartShape } from "./chartCore";
 import { toSeries } from "./chartCore";
 import type { ChartOptions } from "../nodes/chartOptions";
 import type { TornadoBar } from "./chartRender";
-import type { ChartValue, ScalePayload } from "../chartValue";
+import type { ChartValue, ScalePayload, OverlayPayload } from "../chartValue";
 import { KpiCard, BulletBar, RecordCardView } from "./chartCards";
 import { SurfaceView } from "./SurfaceView";
 import { useSeriesColors, useChartColors } from "./chartCore";
@@ -25,6 +25,7 @@ const SankeyViewInner = lazy(() => import("./chartRender").then((m) => ({ defaul
 const ComposedViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.ComposedView })));
 const BubbleViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.BubbleView })));
 const MultiSeriesViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.MultiSeriesView })));
+const OverlayViewInner = lazy(() => import("./chartRender").then((m) => ({ default: m.OverlayView })));
 
 // The cartesian ops that draw one child per named series; the rest stay single-series
 // (pie/radialbar/funnel plot the first series, the payload figures ignore `series`).
@@ -105,6 +106,14 @@ export function MultiSeriesView(props: {
   );
 }
 
+export function OverlayView(props: { payload: OverlayPayload; width: number; height: number; opts?: ChartOptions; fontScale?: number }) {
+  return (
+    <Suspense fallback={box(props.width, props.height)}>
+      <OverlayViewInner {...props} />
+    </Suspense>
+  );
+}
+
 /** The ONE place that maps a chart value to a figure (a report embed keeps its own
  *  width-measured wrapper); empty → the muted em-dash box. */
 export function ChartFigure({ value, width, height, axes = true, fontScale, recordNav }: {
@@ -148,6 +157,8 @@ export function ChartFigure({ value, width, height, axes = true, fontScale, reco
     return <SevenSegView text={value.payload.text} width={width} height={height} />;
   if (value.op === "record" && value.payload?.kind === "record")
     return <RecordCardView payload={value.payload} width={width} fscale={fscale} title={value.options?.title} onStep={recordNav} />;
+  if (value.op === "overlay" && value.payload?.kind === "overlay")
+    return <OverlayView payload={value.payload} width={width} height={height} opts={value.options} fontScale={fontScale} />;
   // Composed/Bubble read the frame's numeric columns as series; a plain list (no series)
   // falls back to the single-series column/scatter render.
   const hasSeries = !!value.series && value.series.length > 0;

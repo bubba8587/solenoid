@@ -6,6 +6,7 @@ import "./chartView.css";
 import { formatScalar } from "./format";
 import { useChartColors, useSeriesColors, axisTick, type ChartShape } from "./chartCore";
 import type { ChartOptions } from "../nodes/chartOptions";
+import type { OverlayPayload } from "../chartValue";
 
 const LINE_DOT_R = 2;
 const SCATTER_DOT_R = 3;
@@ -403,6 +404,99 @@ export function MultiSeriesView({
   );
   if (!title) return withLegendGuard(chart);
   return withLegendGuard(
+    <>
+      <div style={{ height: titleH, lineHeight: `${titleH}px`, textAlign: "center", fontSize: 11 * fs, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {title}
+      </div>
+      {chart}
+    </>,
+  );
+}
+
+/** Several charts overlaid on ONE cartesian plane (the Merge Plots node): each series
+ *  draws in its OWN mark kind (line / area / column / bar / scatter) and keeps the color,
+ *  marker size, line width and fill alpha it inherited from its source chart. Legend +
+ *  click-to-spotlight match MultiSeriesView; a series with no inherited color takes the
+ *  palette. */
+export function OverlayView({ payload, width, height, opts, fontScale }: {
+  payload: OverlayPayload;
+  width: number; height: number; opts?: ChartOptions; fontScale?: number;
+}) {
+  const { grid, axis } = useChartColors();
+  const colors = useSeriesColors();
+  const series = payload.series;
+  const labels = payload.labels;
+  const paint = (j: number) => series[j]?.color || colors[j % colors.length];
+  const [focus, setFocus] = useState<number | null>(null);
+  const dim = (j: number) => (focus !== null && focus !== j ? 0.18 : 1);
+  const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
+  const AXIS = { fontSize: 9 * fs, fill: axis } as const;
+  const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const n = series.reduce((m, s) => Math.max(m, s.values.length), 0);
+  const data = Array.from({ length: n }, (_, i) => {
+    const o: Record<string, number | null> = { i };
+    series.forEach((s, j) => { o[`s${j}`] = num(s.values[i]); });
+    return o;
+  });
+  const tickFmt = (i: number | string) => {
+    const idx = Math.round(Number(i));
+    if (!Number.isFinite(idx)) return "";
+    if (labels) { const lab = labels[idx]; return lab == null || typeof lab === "object" ? "" : typeof lab === "number" ? axisTick(lab) : String(lab); }
+    return idx >= 0 ? String(idx + 1) : "";
+  };
+  const showGrid = opts?.grid ?? true;
+  const yDomain = opts?.ymin !== undefined || opts?.ymax !== undefined
+    ? [opts?.ymin ?? "auto", opts?.ymax ?? "auto"] as [number | string, number | string]
+    : undefined;
+  const title = opts?.title;
+  const titleH = title ? Math.ceil(16 * fs) : 0;
+  const chartH = height - titleH;
+  const margin = { top: 6, right: 8, bottom: 4, left: 0 };
+  const legend = (
+    <Legend
+      verticalAlign="bottom" height={LEGEND_H} iconSize={8}
+      wrapperStyle={{ fontSize: 9 * fs, color: axis, cursor: "pointer" }}
+      // Focus by dataKey (`s{j}`), not name — merged series names can collide.
+      onClick={(e) => { const j = Number(String((e as { dataKey?: unknown }).dataKey ?? "").replace(/^s/, "")); if (Number.isInteger(j)) setFocus((f) => (f === j ? null : j)); }}
+      formatter={(value, _entry, idx) => <span style={{ opacity: dim(idx) }}>{value}</span>}
+    />
+  );
+  const tip = <Tooltip isAnimationActive={false} cursor={{ fill: "rgba(128,128,128,0.12)" }} content={<MultiTooltip tickFmt={tickFmt} />} />;
+
+  const chart = (
+    <ComposedChart width={width} height={chartH} data={data} margin={margin}>
+      {showGrid && <CartesianGrid stroke={grid} vertical={false} />}
+      <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} allowDuplicatedCategory={false} />
+      <YAxis tick={AXIS} tickLine={false} width={26} domain={yDomain} />
+      {tip}{legend}
+      {series.map((s, j) => {
+        const c = paint(j);
+        const o = dim(j);
+        const lw = s.linewidth ?? opts?.linewidth ?? 1.5;
+        const fillAlpha = (s.alpha ?? 0.25) * o;
+        const lineDotR = s.markersize ?? LINE_DOT_R;
+        if (s.kind === "line") {
+          return <Line key={j} dataKey={`s${j}`} name={s.name} stroke={c} strokeOpacity={o} strokeWidth={lw} dot={s.marker ? { r: lineDotR } : false} isAnimationActive={false} />;
+        }
+        if (s.kind === "area") {
+          return <Area key={j} dataKey={`s${j}`} name={s.name} stroke={c} strokeOpacity={o} fill={c} fillOpacity={fillAlpha} strokeWidth={lw} dot={s.marker ? { r: lineDotR } : false} isAnimationActive={false} />;
+        }
+        if (s.kind === "scatter") {
+          return <Scatter key={j} dataKey={`s${j}`} name={s.name} fill={c} fillOpacity={o} shape={scatterDot(s.markersize ?? SCATTER_DOT_R)} isAnimationActive={false} />;
+        }
+        // column / bar — both draw as vertical bars so they share the x-axis.
+        return <Bar key={j} dataKey={`s${j}`} name={s.name} fill={c} fillOpacity={(s.alpha ?? 1) * o} isAnimationActive={false} />;
+      })}
+    </ComposedChart>
+  );
+
+  // Same legend-press swallow as MultiSeriesView — rete's drag would otherwise eat the click.
+  const legendPress = (e: SyntheticEvent) => {
+    if ((e.target as Element | null)?.closest?.(".recharts-legend-wrapper")) e.stopPropagation();
+  };
+  const wrap = (el: ReactElement) => <div style={{ width }} onPointerDown={legendPress} onMouseDown={legendPress}>{el}</div>;
+  if (!title) return wrap(chart);
+  return wrap(
     <>
       <div style={{ height: titleH, lineHeight: `${titleH}px`, textAlign: "center", fontSize: 11 * fs, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {title}
