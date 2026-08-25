@@ -85,7 +85,7 @@ export function FormulaError({ msg }: { msg: string | null }) {
 
 export function MapTableComponent({ data, emit }: NodeProps<MapTableNodeType>) {
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="MAP">
+    <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
       <FormulaBox node={data} />
       <ResultTypeToggle node={data} dim="matrix" />
@@ -116,7 +116,7 @@ export function ByAxisComponent({ data, emit }: NodeProps<ByAxisNodeType>) {
 
 export function ReduceLambdaComponent({ data, emit }: NodeProps<ReduceLambdaNodeType>) {
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="REDUCE">
+    <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
       <FormulaBox node={data} />
       <ResultTypeToggle node={data} dim="scalar" />
@@ -128,7 +128,7 @@ export function ReduceLambdaComponent({ data, emit }: NodeProps<ReduceLambdaNode
 
 export function ScanLambdaComponent({ data, emit }: NodeProps<ScanLambdaNodeType>) {
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="SCAN">
+    <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
       <FormulaBox node={data} />
       <ResultTypeToggle node={data} dim="matrix" />
@@ -140,7 +140,7 @@ export function ScanLambdaComponent({ data, emit }: NodeProps<ScanLambdaNodeType
 
 export function MakeArrayComponent({ data, emit }: NodeProps<MakeArrayNodeType>) {
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="MAKEARRAY">
+    <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
       <FormulaBox node={data} />
       <ResultTypeToggle node={data} dim="matrix" />

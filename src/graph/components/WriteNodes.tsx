@@ -66,7 +66,7 @@ export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>)
   }
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Write File">
+    <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <div className="sol-conn">
         <SegToggle value={format} onChange={pickFormat} options={FORMAT_OPTIONS} arg />
@@ -185,7 +185,7 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
     : null;
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Write to Obsidian">
+    <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <div className="sol-conn">
         {!desktop && <div className="sol-conn__note">Writing to a vault is available in the desktop app only.</div>}

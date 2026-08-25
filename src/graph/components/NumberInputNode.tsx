@@ -31,7 +31,7 @@ export function NumberInputComponent({ data, emit }: NodeProps<NumberInputNodeTy
   );
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Number" collapsible={false}>
+    <NodeShell node={data} emit={emit} collapsible={false}>
       <input
         className="solenoid-node__value-input"
         type="number"

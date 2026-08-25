@@ -31,7 +31,7 @@ export function AngleDialComponent({ data, emit }: NodeProps<AngleDialNode>) {
   }, [data]);
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Angle" collapsible={false} className="solenoid-node--angle-dial">
+    <NodeShell node={data} emit={emit} collapsible={false} className="solenoid-node--angle-dial">
       <div className="angle-dial-node">
         <div className="angle-dial-node__dial-row">
           <AngleDial

@@ -16,7 +16,7 @@ export function ColorBlendComponent({ data, emit }: NodeProps<ColorBlendNodeType
   const out = data.cachedString;
   const colorOut = data.outputs.color;
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Blend" hideOutputSockets>
+    <NodeShell node={data} emit={emit} hideOutputSockets>
       <InlineInputs node={data} emit={emit} />
       {/* Direct body child — the top-of-card op-selector hoist (nodeCard.css
           flex order) only reaches unwrapped selects. */}

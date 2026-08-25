@@ -111,7 +111,7 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
   }, [data.id, minSize.w, minSize.h]);
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Display" className={growClass} leading={<PortSockets node={data} emit={emit} side="input" />}>
+    <NodeShell node={data} emit={emit} className={growClass} leading={<PortSockets node={data} emit={emit} side="input" />}>
       {isError ? (
         <ValueDisplay value={v} full={full} />
       ) : isFrame ? (

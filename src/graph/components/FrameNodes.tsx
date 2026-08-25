@@ -125,7 +125,7 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
   const [showLayout, setShowLayout] = useState(false);
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Frame">
+    <NodeShell node={data} emit={emit}>
       {/* Addable λ inputs (column-source model, slice 1): each wired λ can
           define a column — pick it per column in the grid editor. */}
       <ExtensibleInputs node={data} emit={emit} valueKeys={data.lambdaKeys} minRows={0} addLabel="+ Add lambda" />

@@ -30,7 +30,7 @@ export function DateRangeComponent({ data, emit }: NodeProps<DateRangeNodeType>)
   };
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Date Range" collapsible={false} hideOutputSockets>
+    <NodeShell node={data} emit={emit} collapsible={false} hideOutputSockets>
       <MeasuredSocketRow side="output" socketKey="start" nodeId={data.id} emit={emit} payload={data.outputs.start!.socket}>
         <span className="solenoid-node__io-label">Start</span>
         <input

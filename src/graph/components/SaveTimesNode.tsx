@@ -32,7 +32,7 @@ export function SaveTimesComponent({ data, emit }: NodeProps<SaveTimesNodeType>)
   useSyncExternalStore(saveTimeStore.subscribe, saveTimeStore.version);
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Save Times" hideOutputSockets>
+    <NodeShell node={data} emit={emit} hideOutputSockets>
       <span className="solenoid-node__io-label sol-savetimes__label">Autosaved</span>
       <MeasuredSocketRow side="output" socketKey="autosave" nodeId={data.id} emit={emit} payload={data.outputs.autosave!.socket} hero>
         <div className="sol-savetimes__row">

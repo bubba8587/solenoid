@@ -29,7 +29,7 @@ export function DateInputComponent({ data, emit }: NodeProps<DateInputNodeType>)
   const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Date" collapsible={false}>
+    <NodeShell node={data} emit={emit} collapsible={false}>
       <div className="solenoid-date-input" style={{ position: "relative", display: "flex", alignItems: "center", gap: 4 }}>
         <input
           type="text"

@@ -105,7 +105,7 @@ export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>)
   }
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Web Source">
+    <NodeShell node={data} emit={emit}>
       <div className="sol-conn">
         <input
           className="sol-conn__url"
@@ -145,7 +145,7 @@ export function ImportHtmlComponent({ data, emit }: NodeProps<ImportHtmlNodeType
   }
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Import HTML">
+    <NodeShell node={data} emit={emit}>
       <div className="sol-conn">
         <input
           className="sol-conn__url"
@@ -198,7 +198,7 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
 
   const vals = data.cachedResult;
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Import XML">
+    <NodeShell node={data} emit={emit}>
       <div className="sol-conn">
         <input
           className="sol-conn__url"
@@ -270,7 +270,7 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
   }
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Local File">
+    <NodeShell node={data} emit={emit}>
       <div className="sol-conn">
         {!desktop ? (
           <div className="sol-conn__note">Local files are available in the desktop app only.</div>
@@ -343,7 +343,7 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
   }
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Data Feed">
+    <NodeShell node={data} emit={emit}>
       <div className="sol-conn">
         <LazySelect className="sol-conn__select" value={provider} onChange={(e) => pickProvider(e.target.value as ProviderId)} {...stopDrag}>
           {PROVIDER_LIST.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}

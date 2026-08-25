@@ -107,7 +107,7 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
   const colorOut = data.outputs.color;
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Color" hideOutputSockets>
+    <NodeShell node={data} emit={emit} hideOutputSockets>
       <SegToggle arg value={mode} onChange={changeMode} options={MODE_OPTS} />
       {mode === "hex" ? (
         <div style={{ padding: "8px 2px 2px" }} onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}>

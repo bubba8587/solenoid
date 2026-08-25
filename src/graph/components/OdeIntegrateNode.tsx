@@ -7,7 +7,7 @@ import { nodeDisplayName } from "../catalogUtils";
 
 export function OdeIntegrateComponent({ data, emit }: NodeProps<OdeIntegrateNodeType>) {
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="ODE Integrate">
+    <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
       <FormulaBox node={data} />
       <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />

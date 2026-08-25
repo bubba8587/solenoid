@@ -151,10 +151,14 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   ROUNDUP/ROUNDDOWN, BYROW/BYCOL. NPV/IRR's `mode` and BYROW's `axis` became `op` (they ARE
   the op; declared in nodeOps with leafOps). Seed labels that merely repeated a family default
   were stripped (156 nodes) so seeds title by op too.
-- Findings, not done: 33 components still pass a hand-written `labelPlaceholder` that duplicates
-  the catalog name (harmless now, one home would be `nodeDisplayName`); CAPS-vs-Title-Case
-  convention (CAPS ⇔ formula-callable) and the op-dropdown label sweep are inventoried by the
-  executors, renames pending the author.
+- Findings, not done: the op-dropdown label sweep (reviewing every op-selector label for quality,
+  beyond the NAME-4 CAPS rule) is inventoried but not swept.
+- **labelPlaceholder duplication retired (Agent 4).** 31 of the 33 components dropped the hand-written
+  `labelPlaceholder` prop — NodeShell already falls back to `nodeName(node)` (the catalog name NAME-3
+  derives), so the prop only duplicated it; the 8 short-form ones (Frame Input's "Frame", Table Input's
+  "Table"…) now match their full card title instead of diverging from it. The prop STAYS on NodeShell for
+  the 2 composite boundary cards (Input/Output): they have no catalog leaf, so `nodeName` is undefined and
+  the prop backstops the cleared-title placeholder.
 - **NAME-4 landed (Agent 4, author-decided renames).** The CAPS ⇔ formula-callable convention is now a rule:
   IS.TEST → **Type Check** (keywords keep the is* names), REGEX → **Regex**, arithmetic op "Power" → **POWER**
   (it IS the Excel fn; MOD/QUOTIENT are its all-caps precedent), the IS_TEST op ISBOOLEAN → **ISLOGICAL** (op

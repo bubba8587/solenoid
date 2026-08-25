@@ -37,7 +37,6 @@ export function TableInputComponent({ data, emit }: NodeProps<TableInputNodeType
     <NodeShell
       node={data}
       emit={emit}
-      labelPlaceholder="Table"
     >
       <SegToggle arg
         value={dt}

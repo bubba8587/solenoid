@@ -103,7 +103,7 @@ export function SliderInputComponent({ data, emit }: NodeProps<SliderInputNodeTy
   }, [playing, speed]);
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Slider">
+    <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <style>{`
         .solenoid-slider-node-range::-webkit-slider-thumb {

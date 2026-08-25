@@ -552,7 +552,7 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
   const [runMode] = useNodeField(node, "runMode");
 
   return (
-    <NodeShell node={node} emit={emit} labelPlaceholder="Composite" hideOutputSockets>
+    <NodeShell node={node} emit={emit} hideOutputSockets>
       <button
         type="button"
         className="solenoid-node__inline-input"
