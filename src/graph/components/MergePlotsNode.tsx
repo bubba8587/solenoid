@@ -5,6 +5,7 @@ import { ExtensibleInputs } from "./ExtensibleInputs";
 import { InlineInputs } from "./inlineInput";
 import { ChartFigure } from "./chartView";
 import { ChartChip } from "./ChartChip";
+import { ChartExpandButton } from "./ChartExpandButton";
 import { ErrorChip } from "./ErrorChip";
 import { collapseStore } from "../collapseStore";
 import { formatAnnotationStore } from "../formatAnnotationStore";
@@ -39,7 +40,10 @@ export function MergePlotsComponent({ data, emit }: NodeProps<MergePlotsNodeType
         ) : !hasData ? (
           <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>
         ) : !collapsed && cv ? (
-          <ChartFigure value={cv} width={W} height={H} fontScale={fontScale} />
+          <>
+            <ChartFigure value={cv} width={W} height={H} fontScale={fontScale} />
+            <ChartExpandButton title={cv.title ?? nodeDisplayName(data)} value={cv} op="line" axes series={[]} />
+          </>
         ) : null}
       </div>
       <div className="solenoid-node__section-divider" />
