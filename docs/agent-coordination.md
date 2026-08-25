@@ -18,14 +18,17 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 2. **Per-card CSS conversion — Step 1 census ONLY**: probe script (playwright, dev page) counting elements per card type, split value/handler vs paint-only. Output = a table in dev-notes + the script under `scripts/`. Build nothing in step 2.
 
 ### Agent 3 (solenoid-c7) — QUEUE (FIFO; flush Commit queue first; never push)
-2. **OS-dropdown rule, MOBILE half** (IN PROGRESS): rerun `scripts/dropdown-reorder-probe.mjs` under the mobile viewport (`is-mobile`, tapSelect path); record the result in the backlog item + dev-notes digest.
-3. **Mermaid description trim + catalog sweep** (author-flagged 2026-08-25, RULE: a description never mentions sockets, cables, wiring, "typed on the node or wired in", "flows out/in", "wire X" — wiring IS the app; nor socket types, nor how a value travels). Mermaid → "Draws a diagram from Mermaid text: flowchart, sequence, class, state, gantt, or pie." Then sweep EVERY `nodeCatalog.ts` description (Record's "wire Row" / "The shown row flows back out" are the same sin) and `src/graph/help/*.md` for the same and cut it; keep only what the node computes/draws, its modes, and genuine Excel deviations. DESIGN.md §7 first; run `uiCopy.test.ts` + catalog tests. One commit; list every edited node in the message.
+3. **Mermaid description trim + catalog sweep** (IN PROGRESS) (author-flagged 2026-08-25, RULE: a description never mentions sockets, cables, wiring, "typed on the node or wired in", "flows out/in", "wire X" — wiring IS the app; nor socket types, nor how a value travels). Mermaid → "Draws a diagram from Mermaid text: flowchart, sequence, class, state, gantt, or pie." Then sweep EVERY `nodeCatalog.ts` description (Record's "wire Row" / "The shown row flows back out" are the same sin) and `src/graph/help/*.md` for the same and cut it; keep only what the node computes/draws, its modes, and genuine Excel deviations. DESIGN.md §7 first; run `uiCopy.test.ts` + catalog tests. One commit; list every edited node in the message.
 4. **Vite 8 upgrade** — follow `docs/plans/vite-8-upgrade.md` exactly (the persisted-type gate is the point; stop and report if class names mangle or the license file goes empty).
 
 ## Commit queue
 (empty)
 
 ## Recently done
+- **OS-dropdown MOBILE half settled (A3, 2026-08-25).** `577d7d37`: added `--mobile` mode to the
+  reorder probe; desktop pick re-appends the node (precaution REAL), mobile tapSelect selects without
+  a `nodepicked`/re-append → no popup-closer on mobile, precaution is desktop-only. Backlog item
+  closed, dev-notes digest added. Not pushed.
 - **Hygiene C — code→archive pointers evicted (A3, 2026-08-25).** `c12b7bf0`: dropped stale `v2.0/`
   citations of archived specs from 3 code comments (broadcastRules.test, frameVerbCorpus.test,
   engine/tests.rs). Sweep confirms zero archived-doc citations remain in code. Not pushed.
