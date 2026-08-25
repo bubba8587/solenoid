@@ -110,6 +110,15 @@ profile and win (2).
   prefixes (O(n²) → O(n)); a groupBy tail is not rebased (aggregate guard reads the base handle).
   Web semantics untouched (`JsFrameBackend.collect` is free). Left: Slicer (A2, in flight); the
   Rust lazy-store rewrite and a `WireOp::pivot` are flagged out of scope in the plan.
+- **Slicer goes lazy LANDED (A2, 7c34d874).** The lazy-handle tail. On a lazy upstream the Slicer
+  reads only the schema (its column dropdown) via `collectPreview(ref, 0)` plus the ONE selected
+  column (its value buttons) via `frameBackend.column`, and pushes its row filter as a `filterMulti`
+  verb (`combine: "or"` over the selected values), so the whole frame never collects; an empty
+  selection forwards the ref via `passFrame` (empty drop). A materialized frame keeps the eager JS
+  membership filter. `SlicerNode` implements `FrameVerbNode` and uses `beginPass`/`emitFrame`/
+  `passFrame` (A1 exported them from `nodes/frame.ts`, 3b06581b) for the ref lifecycle + pass guard.
+  Added to `LAZY_FRAME_NODES`. `lazyChain.test.ts`: 1 `engine_column`, 0 `engine_collect`, plan
+  ends `distinct→drop` (no selection) or `distinct→filterMulti` (selection).
 - **Merge Plots node LANDED (A2, 320009d4).** New standalone chart node: variadic `chart`-socket
   inputs (ExtensibleInputs, keys `p0…`) overlaid on one cartesian plot. New chart op `overlay` +
   `OverlayPayload`/`OverlaySeries` (`chartValue.ts`); `OverlayView` (`chartRender.tsx`) draws a
