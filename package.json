@@ -62,7 +62,7 @@
     "@types/react-dom": "^19.2.5",
     "@vitejs/plugin-react": "^4.6.0",
     "@webgpu/types": "^0.1.72",
-    "puppeteer-core": "^25.1.0",
+    "puppeteer-core": "^25.9.0",
     "rollup-plugin-license": "^3.7.1",
     "typescript": "~7.0.2",
     "vite": "^7.0.4",
