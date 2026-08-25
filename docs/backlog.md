@@ -24,13 +24,14 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
 ## Polish sweeps (the 1.3 working mode — thorough, small-scope, one seam at a time)
 
 - **Per-card CSS conversion (DOM count is the constrained resource; author 2026-08-25, "for later").**
-  Step 1, a census probe: elements per card type on the dev page, split "carries a value or a
-  handler" vs "paint only". Step 2, paint-only elements → pseudo-elements / backgrounds / masks
-  (socket ring layers, collapsed-pill SVGs, header dividers, corner badges, chip frames,
-  empty-state glyphs); paint-only STATE → custom properties + `:has()` / container queries
-  instead of className branching. Sockets may be CSS-positioned too (CLAUDE.md, verified:
-  only a `transform` inside `__content` misreports an endpoint). Charts/popups won't move
-  (recharts + `<input>` grids); measure before betting.
+  **Step 1 census DONE (A2, 2026-08-25 — `scripts/card-css-census.mjs` + `window.__solenoidCardCensus`;
+  see the dev-notes FINDING).** 687 card types, 59% paint-only, but most of that is structural
+  (io-rows, card skeleton) or the deliberate CardFrame SVG (must stay SVG). The one high-leverage
+  step-2 target is the **socket-dot ring (2,221 elements)**; smaller clean wins are the corner
+  badge/lock and the section divider. Step 2 (author's "for later"), paint-only → pseudo-elements /
+  backgrounds / masks; paint-only STATE → custom properties + `:has()` / container queries instead of
+  className branching. Sockets may be CSS-positioned too (CLAUDE.md, verified: only a `transform`
+  inside `__content` misreports an endpoint). Charts/popups won't move (recharts + `<input>` grids).
 - [ ] **Architecture map v2 — WAIT FOR THE AUTHOR'S SPEC.** The old map (Subsystem
   cards + import cables, generator chain, coverage guards) is deleted. The author
   will describe the replacement precisely; build nothing toward it until then.

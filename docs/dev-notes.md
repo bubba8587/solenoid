@@ -6,6 +6,48 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### FINDING (2026-08-25 — per-card CSS conversion, STEP 1 census — A2)
+Step 1 of the backlog "Per-card CSS conversion" sweep: which paint-only DOM could move to
+CSS. Measured on the live dev page via `window.__solenoidCardCensus()` (`census.ts`), driven
+by `scripts/card-css-census.mjs`. It mounts one card of EVERY catalog type, walks the card
+DOM, and splits each element into "carries a value or a handler" (a form control, a socket, an
+`<a>`/`<img>`, or an element with direct text) vs PAINT-ONLY. Charts/popups mount recharts
+lazily, so figure interiors are under-counted — this is the card-CHROME census, which is the
+conversion surface anyway.
+
+**687 card types · 28,747 elements · 11,781 carry a value/handler · 16,966 paint-only (59%).**
+
+Paint-only by class is the real signal — but "paint-only" here means only "carries no
+value/handler", which splits three ways, and only ONE is a conversion target:
+- **STRUCTURAL layout containers (NOT convertible — they hold the sockets/values):** one per
+  card each — `div.solenoid-node` / `__header` / `__content` / `__body` (677 each), and
+  `div.solenoid-node__io-row` (1,559, the socket/value rows). These are the card skeleton;
+  they stay.
+- **The CardFrame SVG (OFF-LIMITS by design):** `svg.solenoid-node__frame` (1,354) + its
+  `rect.…frame-body`/`-cap`/`-divider` (677 each) ≈ 3,385 elements, ~5/card. This is
+  DELIBERATELY one SVG overlay so the strokes can't subpixel-crack under zoom (CLAUDE.md). Do
+  NOT convert it to CSS borders — that's the exact regression the SVG prevents.
+- **TRUE decoration (the step-2 targets):**
+  - `span.solenoid-socket-dot` — **2,221** (~3.2/card). The socket ring/dot layer; the biggest
+    single win and already named in the backlog. Sockets CSS-position fine (only a `transform`
+    inside `__content` misreads an endpoint — CLAUDE.md), so a masked `::before/::after` ring is
+    viable.
+  - `div.solenoid-node__corner-badge` (152) + `svg.solenoid-node__corner-lock` (152) — one
+    pair per card that has one; a pseudo-element + mask candidate.
+  - `div.solenoid-node__section-divider` (27) — a 1px rule; a `::after` or background.
+  - Smaller per-family: `div.solenoid-seg` (215, seven-seg segments), `span.fx-tokens` (168,
+    the highlighted formula), `span.solenoid-node__quoted`/`-field` (120 each), KaTeX struts.
+
+Biggest single cards (paint-only count): chart-builder 71, grid-painter 63, geo-triangle-solver
+63, seven-seg 56, tvm 54 — all wide multi-input cards, so their bulk is io-rows + socket-dots,
+not decoration unique to them.
+
+**Read:** the one high-leverage, low-risk step-2 target is the **socket-dot ring (2,221
+elements)** — CSS-positionable, no `transform` trap, named in the backlog. The corner
+badge/lock and section divider are small clean wins. Everything else large is either structural
+(stays) or the CardFrame SVG (must stay SVG). Step 2 not started (author's "for later").
+The full per-card JSON prints from the probe; rerun `node scripts/card-css-census.mjs`.
+
 ### FINDING (2026-08-24 — should we virtualize the table/cube popups? — author's call)
 Decider for the backlog "Virtualize the table/cube popups" item. Measured, not built.
 

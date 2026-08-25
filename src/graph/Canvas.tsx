@@ -39,6 +39,7 @@ import { IS_COARSE, IS_MOBILE } from "./coarse";
 import { isPinching } from "./pointerGesture";
 import { installErrorGuards } from "./errorValue";
 import "./seedTune"; // console seed-tune hook (window.__solenoidTuneSeed — scripts/tune-seeds.mjs)
+import "./census"; // console per-card DOM census (window.__solenoidCardCensus — scripts/card-css-census.mjs)
 import { type Pt } from "./lasso";
 import { FormatControllerNode, GroupNode, CompositeNode } from "./rete-nodes";
 import { reconcileFcTypes } from "./fcReconcile";
