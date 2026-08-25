@@ -177,6 +177,19 @@ holder promotion on plain pan, `--zooming` quality drops on desktop, render-reso
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
 ### SESSION DIGEST (2026-08-25b — post-crash: cards named by their op, NAME-3)
+- **Lazy handles, phases 0–4 LANDED (A1; plan `docs/plans/lazy-handle-on-cable`).** Cables already
+  carried lazy refs; the item was the eager residue. (1) `fa7fffb1` BindColumns / FillBlanks /
+  ReplaceValues / Window emitted refs but were missing from `LAZY_FRAME_NODES`, so a chain
+  re-uploaded the frame mid-way — fixed, and `lazyChain.test.ts` now drives chains through real
+  node `data()` and counts IPCs, with a static guard that every `runFrame*` caller in frame.ts is
+  lazy. (2) `c20249be` Table Size (zero-row preview), SUMIFS (named columns only), Write File
+  (reads in full only inside run()) stop collecting the whole frame. (3) `d09917e7` the nine no-op
+  passthroughs forward the ref via an empty `drop` (identity on both engines, non-owning by the
+  plan-length rule) instead of collecting. (4) `039dc56d` `flushRef` rebases onto the longest
+  prefix flushed this pass, so an n-card chain costs n single-op applies instead of n growing
+  prefixes (O(n²) → O(n)); a groupBy tail is not rebased (aggregate guard reads the base handle).
+  Web semantics untouched (`JsFrameBackend.collect` is free). Left: Slicer (A2, in flight); the
+  Rust lazy-store rewrite and a `WireOp::pivot` are flagged out of scope in the plan.
 - **Merge Plots node LANDED (A2, 320009d4).** New standalone chart node: variadic `chart`-socket
   inputs (ExtensibleInputs, keys `p0…`) overlaid on one cartesian plot. New chart op `overlay` +
   `OverlayPayload`/`OverlaySeries` (`chartValue.ts`); `OverlayView` (`chartRender.tsx`) draws a

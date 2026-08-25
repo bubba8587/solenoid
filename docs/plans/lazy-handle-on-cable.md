@@ -37,6 +37,8 @@ nodes (Describe/Corr/KMeans/PCA/Logistic), charts, Build Frame / Add Column / Ge
 XLookup. `JsFrameBackend` (web) has a free `collect`, so every step here must be a NO-OP on
 web semantics — that is what makes it testable headlessly.
 
+## Status (2026-08-25): phases 0–4 LANDED (fa7fffb1, c20249be, d09917e7, 039dc56d). Phase 4 landed as a prefix REBASE in `flushRef` rather than an observability gate on the preview (no consumer changes). Open: step 7 Slicer (A2). Delete this file when Slicer lands.
+
 ## Steps (commit after each; `tsc` + the named tests green)
 
 **Phase 0 — measure before touching**

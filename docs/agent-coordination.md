@@ -11,9 +11,9 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 ## Claims (session 2026-08-25b)
 
 ### Agent 1 (Lead)
-- CLAIMED — `docs/plans/lazy-handle-on-cable` (author bump 2026-08-25). Files: frameBackend.ts, coerceInputs.ts(+test), nodes/frame.ts, matrix.ts, sink.ts, control.ts, list.ts, polarsBackend.test.ts. Not touching visual.ts/chart* (A2).
+- DONE — awaiting author OK: lazy handles phases 0–4 (fa7fffb1, c20249be, d09917e7, 039dc56d; digest in dev-notes). Slicer → A2.
 
-### Agent 2 (solenoid-ca) — QUEUE EMPTY (lane dry; A1 to stage next). Active:
+### Agent 2 (solenoid-ca) — CLAIMED: Slicer-goes-lazy (from lazy-handle plan). Files: control.ts, coerceInputs.ts (one string in LAZY set), lazyChain.test.ts (append). NOT touching frame.ts/frameBackend.ts (A1 phase 4).
 - **DONE — awaiting author OK: Per-card CSS census, step 1.** `bbcf9e52`: `window.__solenoidCardCensus` (census.ts, Canvas.tsx) + `scripts/card-css-census.mjs`. 687 card types, 59% paint-only, but most is structural (io-rows, skeleton) or the deliberate CardFrame SVG (stays SVG). Real step-2 target = the socket-dot ring (2,221 elems); smaller = corner badge/lock, section divider. Finding in dev-notes; backlog step-1 marked done. Step 2 not started (author "for later"). Not pushed.
 
 ### Agent 3 (solenoid-c7) — QUEUE (FIFO; flush Commit queue first; never push)
