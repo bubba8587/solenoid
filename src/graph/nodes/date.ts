@@ -46,8 +46,8 @@ function weekendSet(code: number): Set<number> {
 export type TodayNowOp = "today" | "now";
 
 export const TODAY_NOW_OP_META = {
-  today: { label: "TODAY", description: "Today's date as a serial number. Excel: TODAY()." },
-  now:   { label: "NOW",   description: "Current date + time as a serial. The fractional part encodes time of day. Excel: NOW()." },
+  today: { label: "TODAY", description: "Today's date as a serial number. Excel: TODAY." },
+  now:   { label: "NOW",   description: "Current date + time as a serial. The fractional part encodes time of day. Excel: NOW." },
 } satisfies Record<TodayNowOp, { label: string; description: string }>;
 
 export class TodayNowNode extends ClassicPreset.Node {
@@ -270,7 +270,7 @@ export class WeekInfoNode extends ClassicPreset.Node {
 // surface still dispatches all six unit strings.
 
 export const DATE_DIFF_OP_META = {
-  days:     { label: "DAYS",     description: "Days between dates: end − start, signed. Excel: DAYS(end, start)." },
+  days:     { label: "DAYS",     description: "Days between dates: end − start, signed. Excel: DAYS." },
   days360:  { label: "DAYS360",  description: "Days on a 360-day year. Basis 0: US/NASD, 1: European. Excel: DAYS360." },
   yearfrac: { label: "YEARFRAC", description: "Fraction of year. Basis 0: 30/360US, 1: actual/actual (≈÷365.25), 2: actual/360, 3: actual/365, 4: 30/360EU. Excel: YEARFRAC." },
   years:    { label: "Whole years",  description: "Complete years between dates. Excel: DATEDIF \"Y\"." },

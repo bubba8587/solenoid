@@ -80,10 +80,10 @@ export class BitwiseNode extends ClassicPreset.Node {
 export type DepreciationOp = "sln" | "syd" | "ddb" | "db" | "vdb";
 
 export const DEPRECIATION_OP_META = {
-  sln: { label: "SLN", description: "Straight-line depreciation: the asset loses the same amount every period. Excel: SLN(cost, salvage, life)." },
-  syd: { label: "SYD", description: "Sum-of-years'-digits depreciation, accelerated: writes off more in the early periods, tapering each year. Excel: SYD(cost, salvage, life, per)." },
-  ddb: { label: "DDB", description: "Double-declining-balance depreciation, accelerated: takes twice the straight-line rate off the remaining value each period. Excel: DDB(cost, salvage, life, period, [factor])." },
-  db:  { label: "DB",  description: "Fixed-declining-balance depreciation, accelerated: a constant rate applied to the remaining value each period. Month sets the number of months in the first year (default 12). Excel: DB(cost, salvage, life, period, [month])." },
+  sln: { label: "SLN", description: "Straight-line depreciation: the asset loses the same amount every period. Excel: SLN." },
+  syd: { label: "SYD", description: "Sum-of-years'-digits depreciation, accelerated: writes off more in the early periods, tapering each year. Excel: SYD." },
+  ddb: { label: "DDB", description: "Double-declining-balance depreciation, accelerated: takes twice the straight-line rate off the remaining value each period. Excel: DDB." },
+  db:  { label: "DB",  description: "Fixed-declining-balance depreciation, accelerated: a constant rate applied to the remaining value each period. Month sets the number of months in the first year (default 12). Excel: DB." },
   vdb: { label: "VDB", description: "Variable declining balance depreciation over a period range. Uses DDB and switches to straight-line when SL gives a higher deduction. Excel: VDB." },
 } satisfies Record<DepreciationOp, { label: string; description: string }>;
 
@@ -266,8 +266,8 @@ export class TvmNode extends EquationNode {
 export type IpmtPpmtOp = "ipmt" | "ppmt";
 
 export const IPMT_PPMT_OP_META = {
-  ipmt: { label: "IPMT", description: "Interest portion of a periodic payment. Excel: IPMT(rate, per, nper, pv, [fv], [type])." },
-  ppmt: { label: "PPMT", description: "Principal portion of a periodic payment. Excel: PPMT(rate, per, nper, pv, [fv], [type])." },
+  ipmt: { label: "IPMT", description: "Interest portion of a periodic payment. Excel: IPMT." },
+  ppmt: { label: "PPMT", description: "Principal portion of a periodic payment. Excel: PPMT." },
 } satisfies Record<IpmtPpmtOp, { label: string; description: string }>;
 
 export class IpmtPpmtNode extends ClassicPreset.Node {
@@ -337,7 +337,7 @@ export class IpmtPpmtNode extends ClassicPreset.Node {
 // ─── NPV ──────────────────────────────────────────────────────────────────────
 export const NPV_META = {
   label: "NPV",
-  description: "Net present value of cash flows at a given discount rate (first value = period 1). Excel: NPV(rate, values).",
+  description: "Net present value of cash flows at a given discount rate (first value = period 1). Excel: NPV.",
 };
 
 // ─── Cash-flow schedule mode (NPV/IRR × periodic/dated) ───────────────────────
@@ -503,7 +503,7 @@ export class IrrNode extends ClassicPreset.Node {
 // ─── MIRR ─────────────────────────────────────────────────────────────────────
 export const MIRR_META = {
   label: "MIRR",
-  description: "Modified IRR: accounts for cost of capital and reinvestment rate. Excel: MIRR(values, finance_rate, reinvest_rate).",
+  description: "Modified IRR: accounts for cost of capital and reinvestment rate. Excel: MIRR.",
 };
 
 export class MirrNode extends ClassicPreset.Node {
@@ -544,7 +544,7 @@ export class MirrNode extends ClassicPreset.Node {
 // ─── FVSCHEDULE ───────────────────────────────────────────────────────────────
 export const FVSCHEDULE_META = {
   label: "FVSCHEDULE",
-  description: "Future value of principal after a schedule of compound interest rates. Excel: FVSCHEDULE(principal, schedule).",
+  description: "Future value of principal after a schedule of compound interest rates. Excel: FVSCHEDULE.",
 };
 
 export class FvScheduleNode extends ClassicPreset.Node {
@@ -584,7 +584,7 @@ export class FvScheduleNode extends ClassicPreset.Node {
 // ─── ISPMT ────────────────────────────────────────────────────────────────────
 export const ISPMT_META = {
   label: "ISPMT",
-  description: "Interest paid in a given period of a straight-line-principal loan. Excel: ISPMT(rate, per, nper, pv).",
+  description: "Interest paid in a given period of a straight-line-principal loan. Excel: ISPMT.",
 };
 
 export class IspmtNode extends ClassicPreset.Node {
@@ -681,8 +681,8 @@ export class DollarNode extends ClassicPreset.Node {
 export type CumPmtOp = "cumipmt" | "cumprinc";
 
 export const CUM_PMT_OP_META = {
-  cumipmt:  { label: "CUMIPMT",  description: "Cumulative interest paid between two periods. Excel: CUMIPMT(rate, nper, pv, start_period, end_period, type)." },
-  cumprinc: { label: "CUMPRINC", description: "Cumulative principal paid between two periods. Excel: CUMPRINC(rate, nper, pv, start_period, end_period, type)." },
+  cumipmt:  { label: "CUMIPMT",  description: "Cumulative interest paid between two periods. Excel: CUMIPMT." },
+  cumprinc: { label: "CUMPRINC", description: "Cumulative principal paid between two periods. Excel: CUMPRINC." },
 } satisfies Record<CumPmtOp, { label: string; description: string }>;
 
 export class CumPmtNode extends ClassicPreset.Node {

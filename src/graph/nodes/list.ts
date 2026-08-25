@@ -1506,7 +1506,7 @@ export const ARG_MIN_MAX_OP_META = {
   argmin: { label: "ARGMIN", description: "1-based position of the minimum value" },
   argsort:      { label: "ARGSORT",      description: "1-based positions that would sort the list ascending — reorder a parallel list by them. numpy.argsort, R order." },
   argsort_desc: { label: "ARGSORT DESC", description: "1-based positions that would sort the list descending. numpy.argsort(-x), R order(decreasing = TRUE)." },
-  which:        { label: "WHICH",        description: "1-based positions of the TRUE cells of a logical list. R which, numpy.flatnonzero. Excel 365: FILTER(SEQUENCE(n), cond)." },
+  which:        { label: "WHICH",        description: "1-based positions of the TRUE cells of a logical list. R which, numpy.flatnonzero. Excel: FILTER(SEQUENCE(n), cond)." },
 } satisfies Record<ArgMinMaxOp, { label: string; description: string }>;
 
 export class ArgMinMaxNode extends ClassicPreset.Node {
@@ -1800,7 +1800,7 @@ export const REDUCE_OP_META = {
   min:     { label: "MIN",     description: "Smallest value. Excel: MIN." },
   max:     { label: "MAX",     description: "Largest value. Excel: MAX." },
   count:   { label: "COUNT",   description: "Number of values. Excel: COUNT." },
-  countdistinct: { label: "COUNT DISTINCT", description: "Number of unique values. In Excel you'd write COUNTA(UNIQUE(range))." },
+  countdistinct: { label: "COUNT DISTINCT", description: "Number of unique values. Excel: COUNTA(UNIQUE(range))." },
   countblank: { label: "COUNTBLANK", description: "Number of blank (missing) cells. Excel: COUNTBLANK." },
   median:  { label: "MEDIAN",  description: "Middle value. Excel: MEDIAN." },
   product: { label: "PRODUCT", description: "Multiply all values. Excel: PRODUCT." },
@@ -2125,7 +2125,7 @@ export type FillOp =
 // `fx` is declared, not despaced: despacing would split the FILL* family and collide
 // with the INTERPOLATE node in stats.ts.
 export const FILL_OP_META = {
-  constant:    { label: "Constant",       fx: "FILLVALUE",       description: "Replace each missing (null) cell with a constant. Excel: IF(ISBLANK, …)." },
+  constant:    { label: "Constant",       fx: "FILLVALUE",       description: "Replace each missing (null) cell with a constant. Excel: IF." },
   ffill:       { label: "Forward fill",   fx: "FILLFORWARD",     description: "Carry the last present value forward over gaps. Pandas: ffill." },
   bfill:       { label: "Backward fill",  fx: "FILLBACKWARD",    description: "Carry the next present value back over gaps. Pandas: bfill." },
   mean:        { label: "Mean",           fx: "FILLMEAN",        description: "Impute gaps with the mean of present values" },

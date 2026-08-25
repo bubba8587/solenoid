@@ -33,7 +33,7 @@ export const SETS_PACK: Pack = {
       entry: {
         type: "sets-isin",
         label: "Is In",
-        description: "For each item of Values: TRUE if it appears in Set — a logical mask aligned to Values, ready for Filter. In Excel you'd write =ISNUMBER(MATCH(A1,list,0)).",
+        description: "For each item of Values: TRUE if it appears in Set, a logical mask aligned to Values, ready for Filter. Excel: ISNUMBER(MATCH(A1, list, 0)).",
         keywords: "membership contains mask in list isnumber match",
         create: () => new IsInNode(),
       },

@@ -319,9 +319,9 @@ export class FisherNode extends ClassicPreset.Node {
 export type RegressionOp = "slope" | "intercept" | "steyx";
 
 export const REGRESSION_OP_META = {
-  slope:     { label: "SLOPE",     description: "Slope of linear regression line through known_ys and known_xs. Excel: SLOPE(known_ys, known_xs)." },
-  intercept: { label: "INTERCEPT", description: "Y-intercept of linear regression line. Excel: INTERCEPT(known_ys, known_xs)." },
-  steyx:     { label: "STEYX",     description: "Standard error of predicted y-values in linear regression. Excel: STEYX(known_ys, known_xs)." },
+  slope:     { label: "SLOPE",     description: "Slope of linear regression line through known_ys and known_xs. Excel: SLOPE." },
+  intercept: { label: "INTERCEPT", description: "Y-intercept of linear regression line. Excel: INTERCEPT." },
+  steyx:     { label: "STEYX",     description: "Standard error of predicted y-values in linear regression. Excel: STEYX." },
 } satisfies Record<RegressionOp, { label: string; description: string }>;
 
 export class RegressionNode extends ClassicPreset.Node {
@@ -548,8 +548,8 @@ export class FrequencyNode extends ClassicPreset.Node {
 export type ConfidenceOp = "norm" | "t";
 
 export const CONFIDENCE_OP_META = {
-  norm: { label: "NORM", description: "Confidence interval half-width using normal distribution. Excel: CONFIDENCE.NORM(alpha, stdev, n)." },
-  t:    { label: "T",    description: "Confidence interval half-width using t-distribution. Excel: CONFIDENCE.T(alpha, stdev, n)." },
+  norm: { label: "NORM", description: "Confidence interval half-width using normal distribution. Excel: CONFIDENCE.NORM." },
+  t:    { label: "T",    description: "Confidence interval half-width using t-distribution. Excel: CONFIDENCE.T." },
 } satisfies Record<ConfidenceOp, { label: string; description: string }>;
 
 function tInv(prob: number, df: number): number {

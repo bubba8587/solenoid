@@ -1100,11 +1100,11 @@ export class FixedNode extends ClassicPreset.Node {
 // ─── REGEX (REGEXTEST / REGEXEXTRACT / REGEXREPLACE) ─────────────────────────
 
 export const REGEX_OP_META: Record<RegexOp, { label: string; description: string }> = {
-  test:           { label: "REGEXTEST",           description: "Returns 1 if text matches the pattern, else 0. Wired list input broadcasts element-wise. Excel 365: REGEXTEST." },
-  extract:        { label: "REGEXEXTRACT",        description: "Returns the first match found in text, or empty string if none. Wired list input returns a list of first matches. Excel 365: REGEXEXTRACT." },
-  extract_all:    { label: "REGEXEXTRACT (all)",    description: "Returns all matches found in a single string as a list. Excel 365: REGEXEXTRACT with return_mode=1." },
-  extract_groups: { label: "REGEXEXTRACT (groups)", description: "Returns the first match's capture groups as a list. Excel 365: REGEXEXTRACT with return_mode=2." },
-  replace:        { label: "REGEXREPLACE",        description: "Replaces regex matches with the replacement string — all of them, or only the nth when Occurrence is set. Wired list input broadcasts element-wise. Excel 365: REGEXREPLACE." },
+  test:           { label: "REGEXTEST",           description: "Returns 1 if text matches the pattern, else 0. Wired list input broadcasts element-wise. Excel: REGEXTEST." },
+  extract:        { label: "REGEXEXTRACT",        description: "Returns the first match found in text, or empty string if none. Wired list input returns a list of first matches. Excel: REGEXEXTRACT." },
+  extract_all:    { label: "REGEXEXTRACT (all)",    description: "Returns all matches found in a single string as a list. Excel: REGEXEXTRACT with return_mode=1." },
+  extract_groups: { label: "REGEXEXTRACT (groups)", description: "Returns the first match's capture groups as a list. Excel: REGEXEXTRACT with return_mode=2." },
+  replace:        { label: "REGEXREPLACE",        description: "Replaces regex matches with the replacement string — all of them, or only the nth when Occurrence is set. Wired list input broadcasts element-wise. Excel: REGEXREPLACE." },
 };
 
 

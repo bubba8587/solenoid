@@ -38,7 +38,7 @@ export const ORBIT_FORMULAS: FormulaPackEntry[] = [
     description: "Period in seconds of an orbit with semi-major axis r (m) around mass m (kg)   (T = 2π√(a³/GM))",
     keywords: "kepler third law satellite year" },
   { type: "es-schwarzschild", label: "Schwarzschild Radius", expr: `2*${G}*m/299792458^2`,
-    description: "Event-horizon radius (m) of mass m (kg)   (r = 2GM/c²; the Sun's is ~3 km)",
+    description: "Event-horizon radius r = 2GM/c² of mass m (kg). The Sun's is about 3 km.",
     keywords: "black hole relativity" },
 ];
 

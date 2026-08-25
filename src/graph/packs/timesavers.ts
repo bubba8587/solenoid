@@ -7,7 +7,7 @@ import { placeFormulas, type Pack, type FormulaPackEntry } from "./packShared";
 
 export const TIMESAVER_NUMERIC: FormulaPackEntry[] = [
   { type: "ts-percent-change", label: "Percent Change", expr: "(after-before)/before",
-    description: "Relative change from before to after, as a fraction — format as % with an FC   (in Excel: =(B2-A2)/A2)",
+    description: "Relative change from before to after, as a fraction. Format as % with an FC. Excel: (B2-A2)/A2.",
     keywords: "delta growth relative difference" },
   { type: "ts-cagr", label: "Growth Rate (CAGR)", expr: "(endval/startval)^(1/periods)-1",
     description: "Compound growth rate per period from start/end values over a number of periods   (=(end/start)^(1/n)-1)",
@@ -17,10 +17,10 @@ export const TIMESAVER_NUMERIC: FormulaPackEntry[] = [
 
 export const TIMESAVER_TEXT: FormulaPackEntry[] = [
   { type: "ts-ordinal", label: "Ordinal Suffix", expr: "ORDINAL(n)", resultAs: "text",
-    description: "1 → 1st, 23 → 23rd (with the 11th/12th/13th special case) — no Excel function. The usual formula is a CHOOSE and MOD monster",
+    description: "1 → 1st, 23 → 23rd, handling the 11th/12th/13th case. No single Excel function; the usual formula nests CHOOSE and MOD.",
     keywords: "st nd rd th rank suffix" },
   { type: "ts-clean-whitespace", label: "Clean Whitespace", expr: "TRIM(CLEAN(SUBSTITUTE(t,CHAR(160),\" \")))", resultAs: "text",
-    description: "TRIM + CLEAN + strip non-breaking spaces (CHAR(160)) — the web or PDF-paste fixer Excel needs three functions for",
+    description: "TRIM, CLEAN, and strip non-breaking spaces (CHAR(160)) in one step: the web and PDF paste fixer.",
     keywords: "trim clean nbsp paste sanitize" },
   { type: "ts-mask-last", label: "Mask (Show Last N)", expr: "REPT(\"*\",MAX(LEN(t)-k,0))&RIGHT(t,MIN(k,LEN(t)))", resultAs: "text",
     description: "Redact all but the last k characters: ****1234   (=REPT(\"*\",LEN(A1)-4)&RIGHT(A1,4))",
@@ -35,10 +35,10 @@ export const TIMESAVER_TEXT: FormulaPackEntry[] = [
 
 export const TIMESAVER_DATE: FormulaPackEntry[] = [
   { type: "ts-quarter", label: "Quarter", expr: "ROUNDUP(MONTH(date)/3,0)",
-    description: "Calendar quarter 1–4 of a date. No single Excel function — the usual formula is ROUNDUP(MONTH()/3,0).",
+    description: "Calendar quarter 1–4 of a date. No single Excel function; the usual formula is ROUNDUP(MONTH()/3, 0).",
     keywords: "q1 q2 q3 q4 fiscal period three months" },
   { type: "ts-days-in-month", label: "Days in Month", expr: "DAY(EOMONTH(date,0))",
-    description: "How many days are in a date's month, 28–31. Excel spells it DAY(EOMONTH(date,0)).",
+    description: "How many days are in a date's month, 28–31. Excel: DAY(EOMONTH(date, 0)).",
     keywords: "month length last day eomonth 28 29 30 31" },
 ];
 
@@ -62,7 +62,7 @@ export const TIMESAVERS_PACK: Pack = {
       entry: {
         type: "ts-reverse-text",
         label: "Reverse Text",
-        description: "Reverses a string — famously impossible in an Excel formula (the VBA StrReverse workaround)",
+        description: "Reverses a string. No Excel formula does it; VBA's StrReverse is the workaround.",
         keywords: "backwards mirror strreverse",
         create: () => new ReverseTextNode(),
       },

@@ -274,9 +274,9 @@ export class IfNode extends ClassicPreset.Node {
 export type BooleanOp = "and" | "or" | "xor" | "nand" | "nor" | "xnor";
 
 export const BOOLEAN_OP_META = {
-  and:  { label: "AND",  description: "TRUE if all inputs are true. Excel: AND(…)." },
-  or:   { label: "OR",   description: "TRUE if any input is true. Excel: OR(…)." },
-  xor:  { label: "XOR",  description: "TRUE if an odd number of inputs are true. Excel: XOR(…)." },
+  and:  { label: "AND",  description: "TRUE if all inputs are true. Excel: AND." },
+  or:   { label: "OR",   description: "TRUE if any input is true. Excel: OR." },
+  xor:  { label: "XOR",  description: "TRUE if an odd number of inputs are true. Excel: XOR." },
   nand: { label: "NAND", description: "Negated AND: FALSE only when every input is true. Excel: NOT(AND(…))." },
   nor:  { label: "NOR",  description: "Negated OR: TRUE only when every input is false. Excel: NOT(OR(…))." },
   xnor: { label: "XNOR", description: "TRUE if an even number of inputs are true. The negation of XOR." },
@@ -842,8 +842,8 @@ export class IfsNode extends ClassicPreset.Node {
 export type ParityOp = "iseven" | "isodd";
 
 export const PARITY_OP_META = {
-  iseven: { label: "ISEVEN", description: "TRUE if the integer part is even. Excel: ISEVEN(x)." },
-  isodd:  { label: "ISODD",  description: "TRUE if the integer part is odd. Excel: ISODD(x)." },
+  iseven: { label: "ISEVEN", description: "TRUE if the integer part is even. Excel: ISEVEN." },
+  isodd:  { label: "ISODD",  description: "TRUE if the integer part is odd. Excel: ISODD." },
 } satisfies Record<ParityOp, { label: string; description: string }>;
 
 export class IsEvenOddNode extends ClassicPreset.Node {
