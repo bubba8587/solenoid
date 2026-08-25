@@ -649,7 +649,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         { type: "iferror", label: "IFERROR", description: "Returns Fallback when Value is an error. A blank is not an error and passes through. Excel: IFERROR.", create: () => new IFErrorNode() },
         { type: "ifna", label: "IFNA", description: "Returns Fallback only when Value is #N/A; other errors pass through. Excel: IFNA.", create: () => new IFErrorNode({ op: "ifna" }) },
       ]},
-      { type: "is-test", label: "IS.TEST",    description: "Tests whether a value is a number, blank, error, N/A, boolean, text, or non-text. Excel: ISNUMBER / ISBLANK / ISERROR / ISNA / ISLOGICAL / ISTEXT / ISNONTEXT.", create: () => new IsTestNode() },
+      { type: "is-test", label: "Type Check", description: "Tests whether a value is a number, blank, error, N/A, boolean, text, or non-text. Excel: ISNUMBER / ISBLANK / ISERROR / ISNA / ISLOGICAL / ISTEXT / ISNONTEXT.", keywords: "is isnumber istext isblank iserror isna islogical isnull isnontext number blank error boolean logical text", create: () => new IsTestNode() },
       { type: "pair", children: [
         { type: "iseven-isodd", label: "ISEVEN", description: "TRUE if a number's integer part is even. Emits a logical and broadcasts over a list. Excel: ISEVEN.", create: () => new IsEvenOddNode() },
         { type: "isodd", label: "ISODD", description: "TRUE if a number's integer part is odd. Emits a logical and broadcasts over a list. Excel: ISODD.", create: () => new IsEvenOddNode({ op: "isodd" }) },
@@ -863,7 +863,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [textAfterBeforeLeaf("after"), textAfterBeforeLeaf("before")] },
           { type: "text-substitute", label: "SUBSTITUTE",  description: "Replaces old_text with new_text: every occurrence, or only the nth when Instance is set. Excel: SUBSTITUTE.", create: () => new SubstituteNode(),   parity: true },
           { type: "text-replace",    label: "REPLACE",     description: "Replaces N characters starting at a position. Excel: REPLACE.",          create: () => new TextReplaceNode(), parity: false },
-          { type: "regex",           label: "REGEX",       description: "Tests, extracts, or replaces text using a regular expression. Excel 365: REGEXTEST / REGEXEXTRACT / REGEXREPLACE.", keywords: "regextest", create: () => new RegexNode(), parity: false },
+          { type: "regex",           label: "Regex",       description: "Tests, extracts, or replaces text using a regular expression. Excel 365: REGEXTEST / REGEXEXTRACT / REGEXREPLACE.", keywords: "regex regextest regexextract regexreplace regular expression match extract replace", create: () => new RegexNode(), parity: false },
         ],
       },
       {

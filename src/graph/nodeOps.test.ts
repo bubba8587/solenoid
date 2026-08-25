@@ -94,11 +94,10 @@ describe("the ops list is derived, not transcribed", () => {
   });
 
   it("finds an op by the name its own card shows", () => {
-    // The case that was broken: the card says ISBOOLEAN (Solenoid names the type
-    // logical, but the dropdown says what you are testing FOR), and searching for
-    // what you just read on a card has to find it.
-    const hits = searchLeaves(flattenLeaves(catalog), "ISBOOLEAN").map((l) => l.label);
-    expect(hits, "ISBOOLEAN is on the IS.TEST card but not in search").toContain("IS.TEST: ISBOOLEAN");
+    // Searching for what you just read on a card (the op dropdown label) has to find it —
+    // the op labels ARE the searchable names on the Type Check card.
+    const hits = searchLeaves(flattenLeaves(catalog), "ISLOGICAL").map((l) => l.label);
+    expect(hits, "ISLOGICAL is on the Type Check card but not in search").toContain("Type Check: ISLOGICAL");
   });
 
   it("a name list names its ops — it never repeats the meta's prose", () => {

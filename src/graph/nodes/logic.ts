@@ -437,15 +437,15 @@ function replaceCaught(value: unknown, fallback: unknown, caught: (v: unknown) =
 
 export type IsTestOp = "isnumber" | "isblank" | "isnull" | "iserror" | "isna" | "islogical" | "istext" | "isnontext";
 
-// ISBOOLEAN is the card's name for Excel's ISLOGICAL; the `islogical` op value must
-// stay because saves are keyed on it.
+// The `islogical` op value must stay (saves are keyed on it); the label is ISLOGICAL,
+// the real Excel name (NAME-4 — an all-caps op label claims a callable function name).
 export const IS_TEST_OP_META = {
   isnumber:  { label: "ISNUMBER",  description: "TRUE when the value is a number. Excel: ISNUMBER." },
   isblank:   { label: "ISBLANK",   description: "TRUE when the cell is empty. Excel: ISBLANK." },
   isnull:    { label: "ISNULL",    description: "TRUE when the value is missing (null)." },
   iserror:   { label: "ISERROR",   description: "TRUE when the value is any error. Excel: ISERROR." },
   isna:      { label: "ISNA",      description: "TRUE when the value is #N/A. Excel: ISNA." },
-  islogical: { label: "ISBOOLEAN", description: "TRUE when the value is a logical. Excel: ISLOGICAL." },
+  islogical: { label: "ISLOGICAL", description: "TRUE when the value is a logical. Excel: ISLOGICAL." },
   istext:    { label: "ISTEXT",    description: "TRUE when the value is text. Excel: ISTEXT." },
   isnontext: { label: "ISNONTEXT", description: "TRUE when the value is anything but text. Excel: ISNONTEXT." },
 } satisfies Record<IsTestOp, { label: string; description: string }>;

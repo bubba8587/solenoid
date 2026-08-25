@@ -155,6 +155,13 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   the catalog name (harmless now, one home would be `nodeDisplayName`); CAPS-vs-Title-Case
   convention (CAPS ⇔ formula-callable) and the op-dropdown label sweep are inventoried by the
   executors, renames pending the author.
+- **NAME-4 landed (Agent 4, author-decided renames).** The CAPS ⇔ formula-callable convention is now a rule:
+  IS.TEST → **Type Check** (keywords keep the is* names), REGEX → **Regex**, arithmetic op "Power" → **POWER**
+  (it IS the Excel fn; MOD/QUOTIENT are its all-caps precedent), the IS_TEST op ISBOOLEAN → **ISLOGICAL** (op
+  value `islogical` unchanged for save-compat, now claims the real Excel name). Left by author call: the
+  Solenoid-only ISNULL op, acronyms PCA/BMI/TDEE/SVG/KPI, and the flagship Convert. Pinned by `nameCase.test.ts`
+  (every all-caps leaf/op token callable-or-allowlisted via `formulaFunctionNames()`; no Title-Case leaf
+  despaces to an FX_FUNCTION_NAMES name bar Convert).
 
 ### SESSION DIGEST (2026-08-24b — parallel plan execution from docs/plans/)
 

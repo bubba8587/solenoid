@@ -803,6 +803,19 @@ computes, and the Add menu then names things the canvas never shows.
 *Enforced by:* `cardTitle.test.ts` → every non-generated catalog leaf's `nodeDisplayName(create())`
 equals the leaf label (Conduit's serial and the composite boundary's "Input"/"Output" exempt).
 
+### NAME-4 — An ALL-CAPS label claims a callable function name; anything else is Title Case **[author 2026-08-25]**
+**MUST:** a catalog leaf label or a `NODE_OPS` op label written ALL CAPS (incl. dotted, e.g.
+`STDEV.S`; each token of an `X / Y` enumeration counts) MUST be a formula-callable name — present
+in `formulaFunctionNames()` (the Excel + Solenoid dispatch set). Anything else is Title Case. Two
+allowlisted exceptions: acronym proper-nouns {PCA, BMI, TDEE, SVG, KPI} and the Solenoid-only op ISNULL
+(a sibling of the callable ISxxx checks) may stay all-caps though they don't dispatch; the flagship
+`Convert` leaf may stay Title Case though `CONVERT` dispatches.
+
+*Why:* the label is a card title (NAME-3), so an all-caps `IS.TEST` or `REGEX` reads as a function
+a user can type and can't, and a Title-Case `Transpose` hides one they can — the case IS the signal.
+*Enforced by:* `nameCase.test.ts` → every all-caps leaf/op token is callable or allowlisted, and no
+Title-Case leaf label despaces to a real Excel name (`FX_FUNCTION_NAMES`) outside the Convert allow.
+
 ### wholeArrayArgs — Array arguments arrive whole **[INFERRED]**
 **MUST:** a function taking a whole 1-D list is routed past the element-wise broadcaster.
 A function whose arguments are all scalars but whose RESULT is a list is also marked
