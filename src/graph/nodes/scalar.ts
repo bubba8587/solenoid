@@ -186,7 +186,7 @@ export const MATH_FN_OP_META = {
   odd:     { label: "ODD",     group: "Rounding",     description: "Rounds away from zero to nearest odd integer. Excel: ODD." },
   log:     { label: "LN",      group: "Logarithms",   description: "Natural log (base e). Excel: LN." },
   log10:   { label: "LOG10",   group: "Logarithms",   description: "Log base 10. Excel: LOG10." },
-  log2:    { label: "LOG2",    group: "Logarithms",   description: "Log base 2: log₂(x), for example how many bits represent x. Excel: LOG." },
+  log2:    { label: "LOG2",    group: "Logarithms",   description: "Log base 2: log₂(x), for example how many bits represent x. Like Excel's LOG with base 2." },
   sin:     { label: "SIN",     group: "Trigonometry", description: "Sine. Excel: SIN." },
   cos:     { label: "COS",     group: "Trigonometry", description: "Cosine. Excel: COS." },
   tan:     { label: "TAN",     group: "Trigonometry", description: "Tangent. Excel: TAN." },
