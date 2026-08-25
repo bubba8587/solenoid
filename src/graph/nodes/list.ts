@@ -16,7 +16,7 @@ import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
 import { aggregate, type AggregateOp } from "./statsOps";
-import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, takeSlice, dropSlice, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS } from "./listOps";
+import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS } from "./listOps";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
 
@@ -1334,53 +1334,8 @@ export class SetRelationNode extends ClassicPreset.Node {
   }
 }
 
-export type ListTakeDropOp = "take" | "drop";
-export type TakeDir = "first" | "last";
-
-export const LIST_TAKEDROP_OP_META = {
-  take: { label: "TAKE", description: "Keeps the first or last N elements. Excel: TAKE." },
-  drop: { label: "DROP", description: "Removes the first or last N elements. Excel: DROP." },
-} satisfies Record<ListTakeDropOp, { label: string; description: string }>;
-
-// The 1-D edge cut, both directions of it — the list sibling of TableTakeDropNode.
-export class ListTakeDropNode extends ClassicPreset.Node {
-  /** Element-preserving: the output adopts the input's type (passthrough.ts). */
-  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
-  label: string;
-  op: ListTakeDropOp;
-  dir: TakeDir;
-  cachedList: unknown[] | null = [];
-  literals: Record<string, number> = { count: 1 };
-  width = 180;
-  height = 200;
-
-  constructor(init?: { label?: string; op?: ListTakeDropOp; dir?: TakeDir }) {
-    super("ListTakeDrop");
-    this.op = init?.op ?? "take";
-    this.dir = init?.dir ?? "first";
-    this.label = init?.label ?? LIST_TAKEDROP_OP_META[this.op].label;
-    this.addInput("list",  adoptiveListIn("List"));
-    this.addInput("count", numIn("Count"));
-    this.addOutput("result", adoptiveListOut("Result"));
-  }
-
-  data(inputs: { list?: unknown[][]; count?: number[] }) {
-    const arr = inputs.list?.[0] ?? [];
-    const nRaw = readInput(inputs.count, this.literals.count ?? 1);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
-    if (nRaw === null) { this.cachedList = null; return { result: null }; }
-    const n = Math.round(nRaw);
-    if (this.op === "take") {
-      if (n <= 0) { this.cachedList = []; return { result: [] }; }
-      this.cachedList = takeSlice(arr, this.dir === "first" ? n : -n);
-    } else {
-      if (n <= 0) { this.cachedList = [...arr]; return { result: this.cachedList }; }
-      else if (n >= arr.length) { this.cachedList = []; return { result: [] }; }
-      else this.cachedList = dropSlice(arr, this.dir === "first" ? n : -n);
-    }
-    return { result: this.cachedList };
-  }
-}
+// TAKE / DROP moved to the one rank-preserving TakeDropNode (nodes/matrix.ts):
+// list, matrix or scalar in, same rank out; the sign of the count is the direction.
 
 // The 1-D rung of the append ladder (appendLadder): stays 1-D, VSTACK is the table stacker.
 // Rows are wire-only — a typed literal list belongs to List Input.

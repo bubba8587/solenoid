@@ -60,7 +60,6 @@ export { VStackComponent } from "./VStackNode";
 export { SortComponent } from "./SortNode";
 export { ReverseComponent } from "./ReverseNode";
 export { SliceComponent } from "./SliceNode";
-export { ListTakeDropComponent } from "./ListTakeDropNode";
 export { UniqueComponent } from "./UniqueNode";
 export { SetOpComponent } from "./SetOpNode";
 export { SetRelationComponent } from "./SetRelationNode";
@@ -136,7 +135,7 @@ export { TableInputComponent } from "./TableInputNode";
 export {
   MatDetComponent, MatSolveComponent, MatEigenComponent, TableMultComponent, TableUnitComponent, TableDiagComponent, TableOuterComponent,
   TableTransposeComponent, HStackTableComponent,
-  TableReshapeComponent, TableSelectComponent, TableTakeDropComponent, ExpandTableComponent, TableInfoComponent,
+  TableReshapeComponent, TableSelectComponent, TakeDropComponent, ExpandTableComponent, TableInfoComponent,
 } from "./MatrixNodes";
 export { SetCellComponent } from "./SetCellNode";
 export { MapTableComponent, ByAxisComponent, MakeArrayComponent, ReduceLambdaComponent, ScanLambdaComponent } from "./TableLambdaNodes";

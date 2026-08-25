@@ -18,7 +18,7 @@ import {
   ListInputNode, SeriesNode, AggregateNode,
   ListLengthNode, ListIndexNode, SortNode, FilterNode, SumIfsNode,
   ReverseNode, SliceNode,
-  UniqueNode, ListTakeDropNode, SetOpNode, SetRelationNode, IsInNode, TallyNode,
+  UniqueNode, SetOpNode, SetRelationNode, IsInNode, TallyNode,
   ConcatListsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode,
   NormalizeNode, BinNode, OutliersNode, SmoothNode, FindPeaksNode, SpectrumNode, ShiftNode, CombinationsNode, EwmaNode, ConvolveNode, CrossNode, PolyfitNode, TrapzNode, RleNode,
@@ -51,7 +51,7 @@ import { NoteNode, ImageNode, SvgPickerNode } from "./annotation";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "./composite";
 import {
   TableInputNode, MatDetNode, MatSolveNode, MatEigenNode, TableMultNode, TableUnitNode, TableDiagNode, TableOuterNode, TableTransposeNode,
-  HStackTableNode, VStackNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, SetCellNode, TableInfoNode,
+  HStackTableNode, VStackNode, TableReshapeNode, TableSelectNode, TakeDropNode, ExpandNode, SetCellNode, TableInfoNode,
 } from "./matrix";
 import { MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode, ScanLambdaNode } from "./tableLambda";
 import { LambdaNode } from "./lambda";
@@ -99,7 +99,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof ListLengthNode || node instanceof ListIndexNode || node instanceof SortNode ||
     node instanceof FilterNode ||
     node instanceof ReverseNode || node instanceof SliceNode ||
-    node instanceof UniqueNode || node instanceof ListTakeDropNode ||
+    node instanceof UniqueNode ||
     node instanceof SetOpNode || node instanceof TallyNode ||
     node instanceof ConcatListsNode || node instanceof RunningNode || node instanceof DiffNode ||
     node instanceof ArgMinMaxNode || node instanceof ContainsNode ||
@@ -165,7 +165,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof TableOuterNode ||
     node instanceof TableTransposeNode || node instanceof HStackTableNode || node instanceof VStackNode ||
     node instanceof TableReshapeNode || node instanceof TableSelectNode ||
-    node instanceof TableTakeDropNode || node instanceof ExpandNode || node instanceof SetCellNode ||
+    node instanceof TakeDropNode || node instanceof ExpandNode || node instanceof SetCellNode ||
     node instanceof TableInfoNode || node instanceof MapTableNode ||
     node instanceof ByAxisNode || node instanceof MakeArrayNode ||
     node instanceof ReduceLambdaNode || node instanceof ScanLambdaNode

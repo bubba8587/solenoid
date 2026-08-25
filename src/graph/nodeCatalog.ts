@@ -10,7 +10,7 @@ import {
   ListInputNode, AggregateNode, SeriesNode, SERIES_OP_META, type SeriesOp, ListLengthNode, ListIndexNode,
   SortNode, ReverseNode, SliceNode, FilterNode, SumIfsNode, FillNode, XLookupNode,
   GcdNode, IFErrorNode, NaNode, RandBetweenNode, RoundNNode, ConvertNode,
-  UniqueNode, SetOpNode, SetRelationNode, ListTakeDropNode, VStackNode, ConcatListsNode, FrameFromListsNode, QuadraticRootsNode, PolyRootsNode, RunningNode, DiffNode,
+  UniqueNode, SetOpNode, SetRelationNode, VStackNode, ConcatListsNode, FrameFromListsNode, QuadraticRootsNode, PolyRootsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode, RankPercentileNode, RANK_PERCENTILE_OP_META, type RankPercentileOp,
   CorrelNode, CombinatoricsNode, TwoInputMathNode,
   SumProductNode, ChooseNode, BooleanInputNode, SliderInputNode, ColorPickerNode, ColorBlendNode, IsTestNode,
@@ -43,7 +43,7 @@ import {
   COMPLEX_UNARY_OP_META, COMPLEX_BINARY_OP_META,
   type ComplexUnaryOp, type ComplexBinaryOp,
   TableInputNode, MatDetNode, MatSolveNode, MatEigenNode, TableMultNode, TableUnitNode, TableDiagNode, TableOuterNode, TableTransposeNode,
-  HStackTableNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, SetCellNode, TableInfoNode,
+  HStackTableNode, TableReshapeNode, TableSelectNode, TakeDropNode, ExpandNode, SetCellNode, TableInfoNode,
   MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode, ScanLambdaNode, LambdaNode,
   FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode,
   HeadNode, SortFrameNode, FilterFrameNode, JoinNode,
@@ -54,8 +54,8 @@ import {
   WriteFileNode, WriteObsidianNode, ImportObsidianNode,
   GroupNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, SvgPickerNode,
   CompositeNode, CompositeInputNode, CompositeOutputNode,
-  MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META, TABLE_TAKEDROP_OP_META,
-  type MatDetOp, type TableReshapeOp, type TableSelectOp, type TableTakeDropOp,
+  MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META, TAKEDROP_OP_META,
+  type MatDetOp, type TableReshapeOp, type TableSelectOp,
   IsEvenOddNode, FormatDollarNode,
   DistributionNode,
   RegressionNode, ForecastNode, ModeNode, TrimMeanNode, FrequencyNode, ConfidenceNode,
@@ -150,7 +150,6 @@ const besselLeaf = (op: BesselOp): NodeCatalogEntry => ({ type: `bessel-${op}`, 
 const matDetLeaf    = (op: MatDetOp):      NodeCatalogEntry => ({ type: `matdet-${op}`,    label: MAT_DET_OP_META[op].label,    description: MAT_DET_OP_META[op].description,    create: () => new MatDetNode({ op }),    parity: false });
 const reshapeLeaf   = (op: TableReshapeOp):NodeCatalogEntry => ({ type: `reshape-${op}`,   label: TABLE_RESHAPE_OP_META[op].label, description: TABLE_RESHAPE_OP_META[op].description, create: () => new TableReshapeNode({ op }), parity: false });
 const selectLeaf    = (op: TableSelectOp): NodeCatalogEntry => ({ type: `tblsel-${op}`,    label: TABLE_SELECT_OP_META[op].label, description: TABLE_SELECT_OP_META[op].description, create: () => new TableSelectNode({ op }), parity: false });
-const takeDropLeaf  = (op: TableTakeDropOp): NodeCatalogEntry => ({ type: `tbltd-${op}`,   label: TABLE_TAKEDROP_OP_META[op].label, description: TABLE_TAKEDROP_OP_META[op].description, create: () => new TableTakeDropNode({ op }), parity: false, keywords: "rows columns edge first last head tail" });
 
 const romanArabicLeaf = (op: RomanArabicOp): NodeCatalogEntry => ({
   type: `roman-arabic-${op}`,
@@ -487,10 +486,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [
             { type: "list-slice", label: "SLICE",  description: "Sublist from Start to End, 1-based inclusive. Leave End blank to run to the end.", create: () => new SliceNode() },
             { type: "list-pad",   label: "Pad", description: "Extends a list to a target length by prepending or appending a fill value. Excel: PADLEFT / PADRIGHT.", create: () => new PadNode() },
-          ]},
-          { type: "pair", children: [
-            { type: "list-take",  label: "TAKE",   description: "Keeps the first or last N elements. Excel: TAKE.", create: () => new ListTakeDropNode({ op: "take" }) },
-            { type: "list-drop",  label: "DROP",   description: "Removes the first or last N elements. Excel: DROP.", create: () => new ListTakeDropNode({ op: "drop" }) },
           ]},
           { type: "list-unique",  label: "UNIQUE", description: "Removes duplicates, preserving first-occurrence order. Excel: UNIQUE.", create: () => new UniqueNode() },
           { type: "pair", children: [
@@ -926,7 +921,13 @@ export const NODE_CATALOG: CatalogEntry[] = [
         type: "category", label: "Select", description: "Pick rows or columns — by index, or from the table's edges.",
         children: [
           { type: "pair", children: [selectLeaf("chooserows"), selectLeaf("choosecols")] },
-          { type: "pair", children: [takeDropLeaf("take"), takeDropLeaf("drop")] },
+          // One rank-preserving card (list, matrix or scalar), so both ops get a bare
+          // Add-menu leaf — no "TAKE: Drop" colon row. The family keywords carry the old
+          // "list take" / "table take" spellings onto both.
+          { type: "pair", children: [
+            { type: "takedrop",      label: "TAKE", description: TAKEDROP_OP_META.take.description, create: () => new TakeDropNode({ op: "take" }), parity: true, keywords: "take drop list table rows columns elements edge first last head tail" },
+            { type: "takedrop-drop", label: "DROP", description: TAKEDROP_OP_META.drop.description, create: () => new TakeDropNode({ op: "drop" }), parity: true, keywords: "take drop list table rows columns elements edge first last head tail" },
+          ]},
         ],
       },
       {

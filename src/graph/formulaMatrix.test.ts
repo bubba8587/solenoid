@@ -203,18 +203,27 @@ describe("matricesInFormulas tranche 2 — the array-returning core, node-equals
     expect(code(ev("INDEX(m, 9, 1)", { m: M }))).toBe("#REF!");
   });
 
-  it("TAKE / DROP share the signed kernel with all three nodes", async () => {
-    const { ListTakeDropNode } = await import("./nodes/list");
-    const { TableTakeDropNode } = await import("./nodes/matrix");
+  it("TAKE / DROP — one rank-preserving node equals the formula at every rank", async () => {
+    const { TakeDropNode } = await import("./nodes/matrix");
+    const take = (data: unknown, rows: number, cols = 0) =>
+      new TakeDropNode({ op: "take" }).data({ data: [data], rows: [rows], cols: [cols] }).result;
+    const drop = (data: unknown, rows: number, cols = 0) =>
+      new TakeDropNode({ op: "drop" }).data({ data: [data], rows: [rows], cols: [cols] }).result;
+    // LIST: the signed count is the direction (positive from the start, negative from
+    // the end). take 0 is take-ALL, matching the kernel — NOT the old list node's []-on-0.
     const x = [1, 2, 3, 4];
-    expect(ev("TAKE(x, 2)", { x })).toEqual(new ListTakeDropNode({ op: "take", dir: "first" }).data({ list: [x], count: [2] }).result);
-    expect(ev("TAKE(x, -2)", { x })).toEqual(new ListTakeDropNode({ op: "take", dir: "last" }).data({ list: [x], count: [2] }).result);
-    expect(ev("DROP(x, 1)", { x })).toEqual(new ListTakeDropNode({ op: "drop", dir: "first" }).data({ list: [x], count: [1] }).result);
+    expect(ev("TAKE(x, 2)", { x })).toEqual(take(x, 2));
+    expect(ev("TAKE(x, -2)", { x })).toEqual(take(x, -2));
+    expect(ev("DROP(x, 1)", { x })).toEqual(drop(x, 1));
+    // MATRIX: both axes, negative counts from the end.
     const m = [[1, 2, 3], [4, 5, 6]];
-    expect(ev("TAKE(m, 1, 2)", { m }))
-      .toEqual(new TableTakeDropNode({ op: "take" }).data({ matrix: [m], rows: [1], cols: [2] }).result);
-    expect(ev("DROP(m, 1, -1)", { m }))
-      .toEqual(new TableTakeDropNode({ op: "drop" }).data({ matrix: [m], rows: [1], cols: [-1] }).result);
+    expect(ev("TAKE(m, 1, 2)", { m })).toEqual(take(m, 1, 2));
+    expect(ev("DROP(m, 1, -1)", { m })).toEqual(drop(m, 1, -1));
+    // SCALAR: mirrors the formula's toList — a 1-element list.
+    expect(ev("TAKE(s, 1)", { s: 5 })).toEqual(take(5, 1));
+    // A list (or scalar) with a cols argument is #SHAPE!, the same as the formula.
+    expect(code(ev("TAKE(x, 2, 1)", { x }))).toBe("#SHAPE!");
+    expect(code(take(x, 2, 1))).toBe("#SHAPE!");
   });
 
   it("FILTER by mask — Excel's include-array form", () => {

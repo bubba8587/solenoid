@@ -1,7 +1,7 @@
 import { ClassicPreset } from "rete";
 import { matRows, matCols, matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matTrace, matRank, matNorm, matSolve, matEigh, wrapCells, stackH, stackV, chooseAxis, expandMat, setCells } from "./matrixOps";
 import { takeSlice, dropSlice } from "./listOps";
-import { numIn, numOut, listIn, numListIn, numListOut, anyIn, anyDataIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, tableIn, tableOut, frameIn, readInput } from "./shared";
+import { numIn, numOut, listIn, numListIn, numListOut, anyIn, anyDataIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, adoptiveDataOut, tableIn, tableOut, frameIn, readInput } from "./shared";
 import { pickSlot, pairIdsFromKeys } from "./logic";
 import type { PassthroughSpec } from "./passthrough";
 import { toAnyMatrix, matrixShape, type Cell } from "./coerce";
@@ -580,50 +580,69 @@ export class TableSelectNode extends ClassicPreset.Node {
   }
 }
 
-// ─── TAKE / DROP (2-D) ────────────────────────────────────────────────────────
-// 0 (the default) stands in for Excel's omitted argument: "all" for TAKE, "none"
-// for DROP. The 1-D spellings live in list.ts.
+// ─── TAKE / DROP (rank-preserving: list, matrix or scalar) ────────────────────
+// One card for what were the 1-D and 2-D spellings. The op is TAKE or DROP; the
+// DIRECTION is the SIGN of the count (Excel's convention). 0 (the default) stands
+// in for Excel's omitted argument: "all" for TAKE, "none" for DROP. The result is
+// the SAME rank as the input, through the ONE takeSlice/dropSlice kernel the
+// TAKE/DROP formulas run (shareImpl) — those formulas are the oracle.
 
-export type TableTakeDropOp = "take" | "drop";
+export type TakeDropOp = "take" | "drop";
 
-export const TABLE_TAKEDROP_OP_META = {
-  take: { label: "TAKE (table)", description: "Keeps rows or columns from a table's edges: positive counts take from the start, negative from the end, 0 takes all. A bare list counts as one row — use Cols to take its elements. Excel: TAKE(array, rows, [cols])." },
-  drop: { label: "DROP (table)", description: "Removes rows or columns from a table's edges: positive counts drop from the start, negative from the end, 0 drops none. Excel: DROP(array, rows, [cols])." },
-} satisfies Record<TableTakeDropOp, { label: string; description: string }>;
+export const TAKEDROP_OP_META = {
+  take: { label: "TAKE", description: "Keeps elements, rows or columns from the edges of a list or table: positive counts from the start, negative from the end, 0 keeps all. Excel: TAKE." },
+  drop: { label: "DROP", description: "Removes elements, rows or columns from the edges of a list or table: positive counts from the start, negative from the end, 0 removes none. Excel: DROP." },
+} satisfies Record<TakeDropOp, { label: string; description: string }>;
 
-export class TableTakeDropNode extends ClassicPreset.Node {
-  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["matrix"], combine: "single" }];
+export class TakeDropNode extends ClassicPreset.Node {
+  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["data"], combine: "single" }];
   label: string;
-  op: TableTakeDropOp;
-  cachedResult: CellMat | null = null;
+  op: TakeDropOp;
+  cachedResult: unknown = null;
   literals: Record<string, number> = { rows: 0, cols: 0 };
   width = 190; height = 250;
 
-  constructor(init?: { label?: string; op?: TableTakeDropOp }) {
-    super("TableTakeDrop");
+  constructor(init?: { label?: string; op?: TakeDropOp }) {
+    super("TakeDrop");
     this.op    = init?.op    ?? "take";
-    this.label = init?.label ?? TABLE_TAKEDROP_OP_META[this.op].label;
+    this.label = init?.label ?? TAKEDROP_OP_META[this.op].label;
     // Labels stay op-neutral: the op swaps at runtime, sockets are fixed here.
-    this.addInput("matrix", adoptiveTableIn("Table"));
-    this.addInput("rows",   numIn("Rows (± from end)"));
-    this.addInput("cols",   numIn("Cols (± from end)"));
-    this.addOutput("result", adoptiveTableOut("Result"));
+    this.addInput("data", anyDataIn("List or table"));
+    this.addInput("rows", numIn("Count (± from end)"));
+    this.addInput("cols", numIn("Cols (± from end)"));
+    this.addOutput("result", adoptiveDataOut("Result"));
   }
 
   // 0 = identity for both ops ("take all" / "drop none", Excel's omitted arg).
-  private takeDrop<T>(arr: T[], n: number): T[] {
+  private slice<T>(arr: readonly T[], n: number): T[] {
     return this.op === "take" ? takeSlice(arr, n) : dropSlice(arr, n);
   }
 
-  data(inputs: { matrix?: unknown[]; rows?: number[]; cols?: number[] }) {
-    const m = toAnyMatrix(inputs.matrix?.[0]);
-    if (!m || m.length === 0) { this.cachedResult = null; return { result: null }; }
+  data(inputs: { data?: unknown[]; rows?: number[]; cols?: number[] }): { result: unknown } {
+    const raw = inputs.data?.[0];
+    if (raw == null) { this.cachedResult = null; return { result: null }; }
     const rRaw = readInput(inputs.rows, this.literals.rows ?? 0);
     const cRaw = readInput(inputs.cols, this.literals.cols ?? 0);
     if (rRaw === null || cRaw === null) { this.cachedResult = null; return { result: null }; }
     const nRows = Math.round(rRaw);
     const nCols = Math.round(cRaw);
-    const result = carryMatrixUnit(this.takeDrop(m, nRows).map((r) => [...this.takeDrop(r, nCols)]), m);
+    // MATRIX: a genuine 2-D array — cut both axes, carry the grid's unit.
+    if (Array.isArray(raw) && raw.length > 0 && Array.isArray(raw[0])) {
+      const m = raw as CellMat;
+      const result = carryMatrixUnit(this.slice(m, nRows).map((r) => [...this.slice(r, nCols)]), m);
+      this.cachedResult = result;
+      return { result };
+    }
+    // LIST or SCALAR: a scalar wraps to a 1-element list (mirrors the formula's
+    // toList). A cols argument has no meaning on rank ≤ 1 — #SHAPE!, the same text
+    // the formula raises.
+    if (nCols !== 0) {
+      const err = solError("#SHAPE!", `${this.op === "take" ? "TAKE" : "DROP"} of a list has no columns — pass one count`);
+      this.cachedResult = err;
+      return { result: err };
+    }
+    const arr = Array.isArray(raw) ? (raw as unknown[]) : [raw];
+    const result = this.slice(arr, nRows);
     this.cachedResult = result;
     return { result };
   }

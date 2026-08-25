@@ -31,7 +31,8 @@ type Policy = "carry" | "carry-if-uniform" | "convert-to-list" | "convert-to-mat
 const POLICY: Record<string, Policy> = {
   TableTransposeNode: "carry",
   TableSelectNode: "carry",       // CHOOSEROWS / CHOOSECOLS
-  TableTakeDropNode: "carry",     // TAKE / DROP (table)
+  TakeDropNode: "carry",          // TAKE / DROP — matrix branch; the `anydata` input hides
+                                  // it from the structural sweep, so it is kept here by hand
   ExpandNode: "carry",
   SetCellNode: "carry",           // overwriting cells by address keeps the grid's unit
   InterpolateNode: "carry",       // grid mode fills blanks in the SAME unit (dynamic
@@ -112,7 +113,7 @@ describe("matrix-unit policy — behavior matches the declared policy", () => {
   it("carry: the whole-grid unit rides a structural reshape", () => {
     expect(matrixUnitOf(new M.TableTransposeNode().data({ matrix: [kmGrid()] }).result)).toMatchObject({ display: "km" });
     expect(matrixUnitOf(new M.TableSelectNode({ op: "chooserows" }).data({ matrix: [kmGrid()], indices: [[1]] }).result)).toMatchObject({ display: "km" });
-    expect(matrixUnitOf(new M.TableTakeDropNode({ op: "take" }).data({ matrix: [kmGrid()], rows: [1], cols: [0] }).result)).toMatchObject({ display: "km" });
+    expect(matrixUnitOf(new M.TakeDropNode({ op: "take" }).data({ data: [kmGrid()], rows: [1], cols: [0] }).result)).toMatchObject({ display: "km" });
     expect(matrixUnitOf(new M.ExpandNode().data({ matrix: [kmGrid()], rows: [3], cols: [2], fill: [0] }).result)).toMatchObject({ display: "km" });
     expect(matrixUnitOf(new M.SetCellNode().data({ matrix: [kmGrid()], value0: [9], row0: [1], col0: [1] }).result)).toMatchObject({ display: "km" });
     // The grid unit rides a shaped write too — a list (row segment) or a matrix (block).

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { isSolError } from "../errorValue";
-import { TableTransposeNode, HStackTableNode, TableReshapeNode, TableSelectNode, TableTakeDropNode, ExpandNode, TableInfoNode, TableMultNode, MatDetNode, TableInputNode, TableUnitNode, tableRawCells, rawCellsToText, deriveTable } from "./matrix";
+import { TableTransposeNode, HStackTableNode, TableReshapeNode, TableSelectNode, TakeDropNode, ExpandNode, TableInfoNode, TableMultNode, MatDetNode, TableInputNode, TableUnitNode, tableRawCells, rawCellsToText, deriveTable } from "./matrix";
 import { SolenoidSocket, MutableSocket, type SocketDataType } from "../sockets";
 import { withMatrixUnit, matrixUnitOf, isUnitCell, type UnitCell } from "../unitValue";
 import { ListIndexNode } from "./list";
@@ -82,16 +82,16 @@ describe("reshapers are element-polymorphic", () => {
 
   it("TAKE/DROP (table) cut both axes; negative counts work from the end", () => {
     const m = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
-    expect(new TableTakeDropNode({ op: "take" }).data({ matrix: [m], rows: [2] }).result)
+    expect(new TakeDropNode({ op: "take" }).data({ data: [m], rows: [2] }).result)
       .toEqual([[1, 2, 3], [4, 5, 6]]);
-    expect(new TableTakeDropNode({ op: "take" }).data({ matrix: [m], rows: [-1], cols: [-2] }).result)
+    expect(new TakeDropNode({ op: "take" }).data({ data: [m], rows: [-1], cols: [-2] }).result)
       .toEqual([[8, 9]]);
-    expect(new TableTakeDropNode({ op: "take" }).data({ matrix: [m], rows: [99] }).result)
+    expect(new TakeDropNode({ op: "take" }).data({ data: [m], rows: [99] }).result)
       .toEqual(m); // past the size keeps everything, like Excel
-    expect(new TableTakeDropNode({ op: "drop" }).data({ matrix: [m], rows: [1], cols: [-1] }).result)
+    expect(new TakeDropNode({ op: "drop" }).data({ data: [m], rows: [1], cols: [-1] }).result)
       .toEqual([[4, 5], [7, 8]]);
-    // TAKE cols on a bare list (one row) — the 2-D spelling of "first 2 elements"
-    expect(new TableTakeDropNode({ op: "take" }).data({ matrix: [[9, 8, 7]], cols: [2] }).result)
+    // TAKE cols on a table that is one row — the 2-D spelling of "first 2 columns"
+    expect(new TakeDropNode({ op: "take" }).data({ data: [[[9, 8, 7]]], cols: [2] }).result)
       .toEqual([[9, 8]]);
   });
 
@@ -283,7 +283,7 @@ describe("structural reshapes carry the homogeneous matrix unit (unitGranularity
   });
 
   it("TAKE (table) carries the unit onto the trimmed grid", () => {
-    const r = new TableTakeDropNode({ op: "take" }).data({ matrix: [tagged()], rows: [1], cols: [0] }).result;
+    const r = new TakeDropNode({ op: "take" }).data({ data: [tagged()], rows: [1], cols: [0] }).result;
     expect(r).toEqual([[1, 2]]);
     expect(matrixUnitOf(r)).toMatchObject({ display: "km" });
   });

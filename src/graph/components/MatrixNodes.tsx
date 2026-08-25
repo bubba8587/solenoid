@@ -10,17 +10,18 @@ import type {
   HStackTableNode as HStackTableNodeType,
   TableReshapeNode as TableReshapeNodeType, TableReshapeOp,
   TableSelectNode as TableSelectNodeType, TableSelectOp,
-  TableTakeDropNode as TableTakeDropNodeType, TableTakeDropOp,
+  TakeDropNode as TakeDropNodeType, TakeDropOp,
   ExpandNode as ExpandNodeType,
   TableInfoNode as TableInfoNodeType,
 } from "../rete-nodes";
 import {
-  MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META, TABLE_TAKEDROP_OP_META,
+  MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META, TAKEDROP_OP_META,
 } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { TableDisplay } from "./TableDisplay";
 import { NodeShell, OpSelect, ValueDisplay, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
+import type { DisplayValue } from "./valueDisplayFormat";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { makeToggleNodeComponent } from "./standardNode";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
@@ -170,17 +171,22 @@ export function TableSelectComponent({ data, emit }: NodeProps<TableSelectNodeTy
   );
 }
 
-const TAKEDROP_OPS = (Object.keys(TABLE_TAKEDROP_OP_META) as TableTakeDropOp[]).map(op => ({
-  value: op, label: TABLE_TAKEDROP_OP_META[op].label,
+const TAKEDROP_OPS = (Object.keys(TAKEDROP_OP_META) as TakeDropOp[]).map(op => ({
+  value: op, label: TAKEDROP_OP_META[op].label,
 }));
 
-export function TableTakeDropComponent({ data, emit }: NodeProps<TableTakeDropNodeType>) {
+export function TakeDropComponent({ data, emit }: NodeProps<TakeDropNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
+  const r = data.cachedResult;
+  // Same rank out as in: a matrix draws in the grid, a list or scalar in the value box.
+  const isMatrix = Array.isArray(r) && r.length > 0 && Array.isArray(r[0]);
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} onChange={setOp} options={TAKEDROP_OPS} />
-      <TableDisplay table={data.cachedResult} label={data.label} elem="number" />
+      {isMatrix
+        ? <TableDisplay table={r as (number | string | null)[][]} label={data.label} elem="number" />
+        : <ValueDisplay value={r as DisplayValue} />}
     </NodeShell>
   );
 }

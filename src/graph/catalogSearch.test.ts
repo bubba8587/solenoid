@@ -51,6 +51,22 @@ describe("Add-menu search — category + type + keywords are searchable", () => 
   });
 });
 
+// TAKE / DROP folded onto one rank-preserving card (D6). Both ops keep a bare
+// Add-menu leaf (no "TAKE: Drop" colon row), and the family keywords carry the old
+// "list take" / "table take" spellings so either surface still finds the card.
+describe("TAKE / DROP — one card, two findable bare leaves", () => {
+  it("'take' and 'drop' each surface their own bare leaf", () => {
+    expect(search("take").some((l) => l.type === "takedrop")).toBe(true);
+    expect(search("drop").some((l) => l.type === "takedrop-drop")).toBe(true);
+    // No generated colon row — both ops are real leaves (leafOps).
+    expect(leaves.some((l) => l.leaf.type.includes("takedrop__op-"))).toBe(false);
+  });
+  it("'list take' and 'table take' both still find TAKE via keywords", () => {
+    expect(search("list take").some((l) => l.type === "takedrop")).toBe(true);
+    expect(search("table take").some((l) => l.type === "takedrop")).toBe(true);
+  });
+});
+
 describe("filterByCompatibleSocket — memoized socket signatures", () => {
   // A minimal fake leaf: quick-wire only reads `type` (the memo key) + `create()`.
   const mkLeaf = (type: string, inType: SocketDataType, onCreate: () => void) => ({
