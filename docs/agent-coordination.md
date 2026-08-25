@@ -21,6 +21,7 @@ Staged QUEUE (after Slicer):
 ### Agent 3 (solenoid-c7) — QUEUE (FIFO; flush Commit queue first; never push)
 - DONE (8d5c8f74) — awaiting author eyeball on copy: catalog description sweep (item 3). Per A1's confirmed reading (A): cut socket mentions / how-a-value-travels / affordance narration / "typed or wired"; Mermaid also drops its third-party diagram-kind list; KEPT each node's function + op/mode list + Excel/library notes. 42 descriptions. `help/*.md` reviewed = out (Reference lattice/wiring teaching, sanctioned). uiCopy + full vitest (4855) + tsc green.
 4. **Vite 8 upgrade** (IN PROGRESS) — follow the `docs/plans/vite-8-upgrade` plan exactly (the persisted-type gate is the point; stop and report if class names mangle or the license file goes empty).
+5. **coerceInputs.test.ts: FrameRef bridge cases** (lazy-handle plan step 2, skipped by A1): pin that (a) a class in `LAZY_FRAME_NODES` receives the raw `FrameRef` in `data()`, (b) a non-lazy class receives a collected `FrameValue`, (c) a ref nested inside an input array is collected (`coerceInputs.ts` ~L284). Harness pattern: `lazyChain.test.ts` (dispatching invoke stub + editor/engine). Test-only; one commit.
 
 ## Commit queue
 (empty)
