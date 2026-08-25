@@ -54,10 +54,6 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   2026-08-01, NOT REPRODUCED (headless coarse-pointer sweep over 107+ headers,
   5 seeds, clean). The app now has error boundaries (app + per node) — next
   occurrence prints a copyable message; get that text and this is a 5-minute fix.
-- [ ] **Window min/max/close controls missing (desktop)** — `tauri-plugin-decorum`
-  `create_overlay_titlebar()` not rendering. Ruled out: the accent border. Needs a
-  live devtools look or a decorum/tauri version check; fallback = native OS
-  decorations. Regression, cause unknown.
 - [ ] **#7 Conduits sometimes unselectable/unmovable except via the Navigator** —
   intermittent, no repro; suspected z-order/hit-area or group-membership sync.
 - [ ] **AI palette verification tail** — first real-key end-to-end (`ANTHROPIC_API_KEY=…
