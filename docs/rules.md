@@ -229,8 +229,8 @@ second location is a defect even while the two agree.
 *Why:* two copies have no mechanism keeping them equal, so they are already wrong; you
 just haven't looked yet.
 *Enforced by:* `nodeOps.test.ts` → "the ops list is derived, not transcribed", "the
-hand-written name lists cover their meta exactly", "a name list names its ops — it never
-repeats the meta's prose".
+derived ops list covers its meta exactly (the Set families included)", "finds an op by
+the name its own card shows".
 *Origin:* the IS.TEST card read `ISBOOLEAN` while Add-menu search offered `ISLOGICAL` —
 you could read a name off a card and fail to find it in the menu. Two `OPS` arrays, one
 in the component and one in `nodeOps.ts`.
@@ -242,11 +242,12 @@ as a parallel lookup map keyed by the same identity.
 
 *Why:* a parallel map is declareOnce's failure wearing a different hat — it is a second place
 that must be kept in step, and it is not next to the thing it modifies.
-*Enforced by:* `formulaTier3.test.ts` → "the prose-labelled families — names DECLARED, not
+*Enforced by:* `formulaTier3.test.ts` → "the SET*/FILL* families — names DECLARED, not
 despaced".
 *Origin:* formulaNaming 2(a) derives a formula name by despacing the node label, which works only
-while a label is a name. Three families label themselves in sentences for the dropdown
-("Union: in A or B"). `fx` sits on `SET_OP_META` / `SET_RELATION_META` / `FILL_OP_META`.
+while the label despaces to the function name. A bare SET*/FILL* op label ("Union",
+"Constant") despaces to UNION/CONSTANT, not the family name, so `fx` sits on
+`SET_OP_META` / `SET_RELATION_META` / `FILL_OP_META`.
 
 ### noManualList — No hand-kept list of a derivable property **[INFERRED]**
 **MUST:** membership sets that encode a property of a declaration (routing, exposure,

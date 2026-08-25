@@ -162,6 +162,18 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   Solenoid-only ISNULL op, acronyms PCA/BMI/TDEE/SVG/KPI, and the flagship Convert. Pinned by `nameCase.test.ts`
   (every all-caps leaf/op token callable-or-allowlisted via `formulaFunctionNames()`; no Title-Case leaf
   despaces to an FX_FUNCTION_NAMES name bar Convert).
+- **Op-dropdown label sweep, first batch applied (approved renames off the inventory).** These
+  are COLLAPSED families (titled by their host leaf), so the labels are dropdown + search only —
+  the colon hints didn't vanish, they moved to each op's `description`, which OpSelect now renders
+  as the option tooltip. Set: "Union: in A or B" → **Union** / Intersection / Difference /
+  Symmetric difference; Set relation → **Equal** / Subset / Superset / Disjoint. Fill: "Fill with
+  value/mean/median/mode" → **Constant** / Mean / Median / Mode, "Coalesce (else)" → **Coalesce**
+  (Forward/Backward fill, Interpolate, Drop missing kept). Head: "Rows N–To" → **Rows M–N** (socket
+  docs realigned). Smooth: "Gaussian Smooth" → **Gaussian** (Savitzky–Golay / LOWESS already fixed
+  by NAME-3; param names already on the input rows). The hand-written `SET_OPS`/`SET_RELATION_OPS`
+  in nodeOps.ts are gone — both families use `fromMeta(...)` now, so the meta is the one home
+  (declareOnce); `fx` stays on the meta (overrideInPlace). Left per author: DateDiff CAPS/prose
+  mix, arithmetic glyphs, distribution φ/Gauss parentheticals, cross-family comparator styles.
 
 ### SESSION DIGEST (2026-08-24b — parallel plan execution from docs/plans/)
 

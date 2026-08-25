@@ -1160,13 +1160,15 @@ export type SetOp = "union" | "intersect" | "difference" | "symdiff";
 // Membership must key by VALUE: a complex is a tagged OBJECT, and a JS Set keys
 // objects by REFERENCE, so two equal complexes would never match.
 
-// label / tex / plain = dropdown text, KaTeX notation, Unicode fallback. `fx` is
-// declared per op because formulaNaming's "label despaced" rule only works on NAMES.
-export const SET_OP_META: Record<SetOp, { label: string; fx: string; tex: string; plain: string }> = {
-  union:      { label: "Union: in A or B",             fx: "SETUNION",      tex: "A \\cup B",                plain: "A ∪ B" },
-  intersect:  { label: "Intersection: in both",        fx: "SETINTERSECT",  tex: "A \\cap B",                plain: "A ∩ B" },
-  difference: { label: "Difference: in A, not B",      fx: "SETDIFFERENCE", tex: "A \\setminus B",           plain: "A ∖ B" },
-  symdiff:    { label: "Symmetric difference: in one only", fx: "SETSYMDIFF", tex: "A \\mathbin{\\triangle} B", plain: "A △ B" },
+// label = the op's bare name (a card title / search row); the membership hint rides in
+// `description`, which the dropdown shows as the option tooltip. tex / plain = KaTeX
+// notation + Unicode fallback. `fx` is declared per op because a bare name doesn't
+// despace to the SET* function name (formulaNaming's "label despaced" rule).
+export const SET_OP_META: Record<SetOp, { label: string; description: string; fx: string; tex: string; plain: string }> = {
+  union:      { label: "Union",                fx: "SETUNION",      description: "In A or B",         tex: "A \\cup B",                plain: "A ∪ B" },
+  intersect:  { label: "Intersection",         fx: "SETINTERSECT",  description: "In both",           tex: "A \\cap B",                plain: "A ∩ B" },
+  difference: { label: "Difference",           fx: "SETDIFFERENCE", description: "In A, not B",       tex: "A \\setminus B",           plain: "A ∖ B" },
+  symdiff:    { label: "Symmetric difference", fx: "SETSYMDIFF",    description: "In exactly one",    tex: "A \\mathbin{\\triangle} B", plain: "A △ B" },
 };
 
 // Set operations over two lists, compared by VALUE with first-seen order and UNIQUE's
@@ -1296,11 +1298,11 @@ export function tallyPairs(list: readonly unknown[]): { values: unknown[]; count
 
 export type SetRelation = "equal" | "subset" | "superset" | "disjoint";
 
-export const SET_RELATION_META: Record<SetRelation, { label: string; fx: string; tex: string; plain: string }> = {
-  equal:    { label: "Equal: same set",         fx: "SETEQUAL",    tex: "A = B",                    plain: "A = B" },
-  subset:   { label: "Subset: A within B",      fx: "SETSUBSET",   tex: "A \\subseteq B",           plain: "A ⊆ B" },
-  superset: { label: "Superset: A contains B",  fx: "SETSUPERSET", tex: "A \\supseteq B",           plain: "A ⊇ B" },
-  disjoint: { label: "Disjoint: no overlap",    fx: "SETDISJOINT", tex: "A \\cap B = \\varnothing", plain: "A ∩ B = ∅" },
+export const SET_RELATION_META: Record<SetRelation, { label: string; description: string; fx: string; tex: string; plain: string }> = {
+  equal:    { label: "Equal",    fx: "SETEQUAL",    description: "Same set",      tex: "A = B",                    plain: "A = B" },
+  subset:   { label: "Subset",   fx: "SETSUBSET",   description: "A within B",    tex: "A \\subseteq B",           plain: "A ⊆ B" },
+  superset: { label: "Superset", fx: "SETSUPERSET", description: "A contains B",  tex: "A \\supseteq B",           plain: "A ⊇ B" },
+  disjoint: { label: "Disjoint", fx: "SETDISJOINT", description: "No overlap",    tex: "A \\cap B = \\varnothing", plain: "A ∩ B = ∅" },
 };
 
 // Set RELATION predicates over each side's distinct members, compared by VALUE;
@@ -2123,15 +2125,15 @@ export type FillOp =
 // `fx` is declared, not despaced: despacing would split the FILL* family and collide
 // with the INTERPOLATE node in stats.ts.
 export const FILL_OP_META = {
-  constant:    { label: "Fill with value",  fx: "FILLVALUE",       description: "Replace each missing (null) cell with a constant. Excel: IF(ISBLANK, …)." },
-  ffill:       { label: "Forward fill",     fx: "FILLFORWARD",     description: "Carry the last present value forward over gaps. Pandas: ffill." },
-  bfill:       { label: "Backward fill",    fx: "FILLBACKWARD",    description: "Carry the next present value back over gaps. Pandas: bfill." },
-  mean:        { label: "Fill with mean",   fx: "FILLMEAN",        description: "Impute gaps with the mean of present values" },
-  median:      { label: "Fill with median", fx: "FILLMEDIAN",      description: "Impute gaps with the median of present values" },
-  mode:        { label: "Fill with mode",   fx: "FILLMODE",        description: "Impute gaps with the most common present value" },
-  interpolate: { label: "Interpolate",      fx: "FILLINTERPOLATE", description: "Linearly interpolate interior gaps between bracketing present values" },
-  drop:        { label: "Drop missing",     fx: "FILLDROP",        description: "Remove missing (null) cells, shortening the list. Pandas: dropna." },
-  coalesce:    { label: "Coalesce (else)",  fx: "COALESCE",        description: "First present of List then each Else in order, per position. SQL: COALESCE." },
+  constant:    { label: "Constant",       fx: "FILLVALUE",       description: "Replace each missing (null) cell with a constant. Excel: IF(ISBLANK, …)." },
+  ffill:       { label: "Forward fill",   fx: "FILLFORWARD",     description: "Carry the last present value forward over gaps. Pandas: ffill." },
+  bfill:       { label: "Backward fill",  fx: "FILLBACKWARD",    description: "Carry the next present value back over gaps. Pandas: bfill." },
+  mean:        { label: "Mean",           fx: "FILLMEAN",        description: "Impute gaps with the mean of present values" },
+  median:      { label: "Median",         fx: "FILLMEDIAN",      description: "Impute gaps with the median of present values" },
+  mode:        { label: "Mode",           fx: "FILLMODE",        description: "Impute gaps with the most common present value" },
+  interpolate: { label: "Interpolate",    fx: "FILLINTERPOLATE", description: "Linearly interpolate interior gaps between bracketing present values" },
+  drop:        { label: "Drop missing",   fx: "FILLDROP",        description: "Remove missing (null) cells, shortening the list. Pandas: dropna." },
+  coalesce:    { label: "Coalesce",       fx: "COALESCE",        description: "First present of List then each Else in order, per position. SQL: COALESCE." },
 } satisfies Record<FillOp, { label: string; fx: string; description: string }>;
 
 type Cell = number | null | SolError;
@@ -2252,7 +2254,7 @@ export type SmoothOp = "savgol" | "lowess" | "gaussian";
 export const SMOOTH_OP_META: Record<SmoothOp, { label: string; fx: string; params: { key: string; label: string; def: number }[]; description: string }> = {
   savgol:   { label: "Savitzky–Golay", fx: "SAVGOL", params: [{ key: "window", label: "Window", def: 5 }, { key: "order", label: "Order", def: 2 }], description: "Polynomial least-squares over a sliding window (odd width) — keeps peak shape better than a moving average. scipy savgol_filter, R signal::sgolayfilt." },
   lowess:   { label: "LOWESS",         fx: "LOWESS", params: [{ key: "frac", label: "Fraction", def: 0.67 }], description: "Locally weighted linear regression over the nearest fraction of points, three robust passes. statsmodels lowess, R lowess / loess." },
-  gaussian: { label: "Gaussian Smooth", fx: "GAUSSIANSMOOTH", params: [{ key: "sigma", label: "Sigma", def: 1 }], description: "Gaussian-weighted average, σ in samples, edges reflected. scipy gaussian_filter1d." },
+  gaussian: { label: "Gaussian", fx: "GAUSSIANSMOOTH", params: [{ key: "sigma", label: "Sigma", def: 1 }], description: "Gaussian-weighted average, σ in samples, edges reflected. scipy gaussian_filter1d." },
 };
 
 export class SmoothNode extends ClassicPreset.Node {

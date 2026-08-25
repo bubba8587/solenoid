@@ -115,20 +115,6 @@ const DIST_OPS: OpEntryDecl[] = (Object.keys(DIST_SPECS) as DistKey[]).map((op) 
   keywords: DIST_SPECS[op].excel,
 }));
 
-/** Menu/search names for ops whose OP_META `label` is dropdown PROSE, which would
- *  compose into a mangled sentence matching every sibling equally. */
-const SET_OPS: OpEntryDecl[] = [
-  { op: "union", label: "Union", fx: SET_OP_META.union.fx },
-  { op: "intersect", label: "Intersection", fx: SET_OP_META.intersect.fx },
-  { op: "difference", label: "Difference", fx: SET_OP_META.difference.fx },
-  { op: "symdiff", label: "Symmetric difference", fx: SET_OP_META.symdiff.fx },
-];
-const SET_RELATION_OPS: OpEntryDecl[] = [
-  { op: "equal", label: "Equal", fx: SET_RELATION_META.equal.fx },
-  { op: "subset", label: "Subset", fx: SET_RELATION_META.subset.fx },
-  { op: "superset", label: "Superset", fx: SET_RELATION_META.superset.fx },
-  { op: "disjoint", label: "Disjoint", fx: SET_RELATION_META.disjoint.fx },
-];
 
 /** The Rank & Percentile ops that have their own Add-menu leaf (the .INC forms
  *  and the four bare ops); shared by its three pair declarations below, which
@@ -202,11 +188,10 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new ColumnsNode({ op: op as never }), leafOps: ["keep", "drop"] },
   { type: "list-pad", ctor: PadNode, kind: "operation", ops: fromMeta(PAD_OP_META),
     create: (op) => new PadNode({ op: op as never }) },
-  { type: "list-set", ctor: SetOpNode, kind: "operation", ops: SET_OPS,
+  { type: "list-set", ctor: SetOpNode, kind: "operation", ops: fromMeta(SET_OP_META),
     create: (op) => new SetOpNode({ op: op as never }) },
-  { type: "list-set-relation", ctor: SetRelationNode, kind: "operation", ops: SET_RELATION_OPS,
+  { type: "list-set-relation", ctor: SetRelationNode, kind: "operation", ops: fromMeta(SET_RELATION_META),
     create: (op) => new SetRelationNode({ op: op as never }) },
-  // The meta labels are dropdown prose, so search names are declared here (overrideInPlace).
   { type: "iferror", ctor: IFErrorNode, kind: "operation",
     ops: [{ op: "iferror", label: "IFERROR" }, { op: "ifna", label: "IFNA" }],
     create: (op) => new IFErrorNode({ op: op as never }), leafOps: ["iferror", "ifna"] },

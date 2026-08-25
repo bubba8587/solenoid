@@ -9,6 +9,7 @@ import "./SetOpNode.css";
 const OPS = (Object.keys(SET_OP_META) as SetOp[]).map((op) => ({
   value: op,
   label: SET_OP_META[op].label,
+  title: SET_OP_META[op].description,
 }));
 
 export function SetOpComponent({ data, emit }: NodeProps<SetOpNodeType>) {
@@ -30,7 +31,7 @@ export function SetOpComponent({ data, emit }: NodeProps<SetOpNodeType>) {
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} onChange={setOp} options={OPS} />
-      <div className="solenoid-setop__notation" title={meta.label}>
+      <div className="solenoid-setop__notation" title={meta.description}>
         {html != null ? (
           <span dangerouslySetInnerHTML={{ __html: html }} />
         ) : (

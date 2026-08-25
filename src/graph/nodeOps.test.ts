@@ -71,18 +71,15 @@ describe("declarations line up with the real catalog", () => {
 });
 
 describe("the ops list is derived, not transcribed", () => {
-  // Every family now reads its ops from the ONE OP_META table its card's dropdown
-  // reads, so `satisfies Record<XOp, …>` makes tsc prove the list is complete and the
-  // two surfaces cannot disagree. They did: `islogical` shipped as ISBOOLEAN on the
-  // card and ISLOGICAL in search, because the list here was hand-transcribed.
-  //
-  // Two lists stay hand-written, and only these two: the Set families' meta labels are
-  // dropdown PROSE ("Union: in A or B"), which a search row cannot use — composing it
-  // gives "Set: Union: in A or B", and every sibling then matches a family query
-  // equally well. So they carry names instead. Nothing type-checks that pairing, which
-  // is what this covers: a new set operation must not be able to reach the card while
-  // staying invisible to search.
-  it("the hand-written name lists cover their meta exactly", () => {
+  // Every family reads its ops from the ONE OP_META table its card's dropdown reads,
+  // so `satisfies Record<XOp, …>` makes tsc prove the list is complete and the two
+  // surfaces cannot disagree. They did: `islogical` shipped as ISBOOLEAN on the card
+  // and ISLOGICAL in search, because the list here was hand-transcribed. The Set
+  // families were the last hand-written exception — their labels were dropdown prose
+  // ("Union: in A or B") that a search row can't compose. NAME-3 (2026-08-25) made the
+  // labels bare names with the membership hint in `description` (the option tooltip),
+  // so they use fromMeta too: the meta is the one home.
+  it("the derived ops list covers its meta exactly (the Set families included)", () => {
     for (const [type, meta] of [
       ["list-set", SET_OP_META],
       ["list-set-relation", SET_RELATION_META],
@@ -98,22 +95,6 @@ describe("the ops list is derived, not transcribed", () => {
     // the op labels ARE the searchable names on the Type Check card.
     const hits = searchLeaves(flattenLeaves(catalog), "ISLOGICAL").map((l) => l.label);
     expect(hits, "ISLOGICAL is on the Type Check card but not in search").toContain("Type Check: ISLOGICAL");
-  });
-
-  it("a name list names its ops — it never repeats the meta's prose", () => {
-    // The reason they are separate. If someone "fixes" the duplication by pasting the
-    // meta labels back in, the rows stop discriminating and this catches it.
-    for (const [type, meta] of [
-      ["list-set", SET_OP_META],
-      ["list-set-relation", SET_RELATION_META],
-    ] as const) {
-      for (const { op, label } of opsFor(type)!.ops!) {
-        const prose = (meta as Record<string, { label: string }>)[op].label;
-        if (!prose.includes(":")) continue; // that one is already a bare name
-        expect(label, `${type}/${op} took the dropdown's prose as its search name`)
-          .not.toBe(prose);
-      }
-    }
   });
 });
 

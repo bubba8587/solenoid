@@ -203,11 +203,11 @@ describe("the declarations stay honest", () => {
   });
 });
 
-describe("the prose-labelled families — names DECLARED, not despaced", () => {
-  // formulaNaming 2(a) despaces the label, which works only while the label is a NAME. These
-  // three families label themselves in sentences ("Union: in A or B"), so each op
-  // carries an `fx` beside its label. Same one-table principle, explicit instead of
-  // derived — and the test reads the table, so a rename in one place fails here.
+describe("the SET*/FILL* families — names DECLARED, not despaced", () => {
+  // formulaNaming 2(a) despaces the label to the function name, but a bare op label
+  // ("Union", "Constant") despaces to UNION/CONSTANT, not the SET*/FILL* family name.
+  // So each op carries an explicit `fx` in its OP_META — same one-table principle,
+  // declared instead of derived, and the test reads the table so a rename fails here.
   it("SET* — one name per Set op", () => {
     const a = [1, 2, 3], b = [3, 4];
     for (const [op, meta] of Object.entries(SET_OP_META)) {

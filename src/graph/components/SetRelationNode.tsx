@@ -9,6 +9,7 @@ import "./SetOpNode.css";
 const OPS = (Object.keys(SET_RELATION_META) as SetRelation[]).map((op) => ({
   value: op,
   label: SET_RELATION_META[op].label,
+  title: SET_RELATION_META[op].description,
 }));
 
 export function SetRelationComponent({ data, emit }: NodeProps<SetRelationNodeType>) {
@@ -29,7 +30,7 @@ export function SetRelationComponent({ data, emit }: NodeProps<SetRelationNodeTy
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} onChange={setOp} options={OPS} />
-      <div className="solenoid-setop__notation" title={meta.label}>
+      <div className="solenoid-setop__notation" title={meta.description}>
         {html != null ? (
           <span dangerouslySetInnerHTML={{ __html: html }} />
         ) : (

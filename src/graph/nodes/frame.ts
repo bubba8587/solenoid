@@ -271,13 +271,13 @@ export const HEAD_OP_META: Record<HeadOp, { label: string; description: string }
   first: { label: "First N",      description: "Keep the first N rows." },
   last:  { label: "Last N",       description: "Keep the last N rows." },
   skip:  { label: "Skip first N", description: "Remove the first N rows, keep the rest." },
-  range: { label: "Rows N–To",    description: "Keep rows N through To, 1-based inclusive." },
+  range: { label: "Rows M–N",     description: "Keep rows M through N, 1-based inclusive." },
 };
 
 export class HeadNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    rows: "First, Last, and Skip read this as a row count. Rows N–To reads it as the 1-based start row.",
-    to: "Only the Rows N–To operation reads this, as the last kept row.",
+    rows: "First, Last, and Skip read this as a row count. Rows M–N reads it as the 1-based start row.",
+    to: "Only the Rows M–N operation reads this, as the last kept row.",
   };
 
   label: string;

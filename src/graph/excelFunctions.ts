@@ -682,7 +682,8 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   FIBONACCI:       { returns: "number", rank: "list", listArgs: true, arity: [1, 1], native: true },
 
   // These names are DECLARED on the OP_META tables (SET_OP_META /
-  // SET_RELATION_META / FILL_OP_META) because the node labels are prose.
+  // SET_RELATION_META / FILL_OP_META) because a bare op label ("Union", "Constant")
+  // despaces to UNION/CONSTANT, not to the SET*/FILL* family function name.
   SETUNION:        { returns: "number",  rank: "list", listArgs: true, arity: [2, 2], native: true },
   SETINTERSECT:    { returns: "number",  rank: "list", listArgs: true, arity: [2, 2], native: true },
   SETDIFFERENCE:   { returns: "number",  rank: "list", listArgs: true, arity: [2, 2], native: true },
@@ -1684,8 +1685,8 @@ registerInternal("REPEAT",    (v, n) => capped("REPEAT", Number(n), () => repeat
 registerInternal("GEOMETRIC", (a, r, n) => capped("GEOMETRIC", Number(n), () => geometric(Number(a), Number(r), Number(n))));
 registerInternal("FIBONACCI", (n) => fibonacci(Number(n)));
 
-// The set labels are prose, so these names are DECLARED on SET_OP_META /
-// SET_RELATION_META rather than despaced.
+// A bare set label ("Union") despaces to UNION, not the SET* family name, so these
+// names are DECLARED on SET_OP_META / SET_RELATION_META rather than despaced.
 registerInternal("SETUNION",      (a, b) => setOperation("union",      toList(a), toList(b)));
 registerInternal("SETINTERSECT",  (a, b) => setOperation("intersect",  toList(a), toList(b)));
 registerInternal("SETDIFFERENCE", (a, b) => setOperation("difference", toList(a), toList(b)));
