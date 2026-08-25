@@ -48,7 +48,7 @@ backlog line is deleted; git is the record.
 | 14 | ~~c5-correlated-outputs~~ | — | COMPLETE 2026-08-24 (7 nodes → one frame each; Series-inclusive + REDUCE copy; ETS dbff6936) |
 | 15 | ~~d1-forecast-absorbs-trend-growth~~ | — | LANDED (Agent 4) |
 | 16 | ~~d2-linest-logest-fit-card~~ | — | LANDED (Agent 4) |
-| 17 | `d3-phi-gauss-to-distribution` | S (1 commit) | — (touches nodeCatalog/nodeExcel/nodeOps.test with 15–16: rebase, own worktree) |
+| 17 | ~~d3-phi-gauss-to-distribution~~ | — | LANDED (Agent 4) |
 | 18 | ~~d4-proportion-treemap-waffle~~ | — | landed (banana-joe/d4; Treemap+Waffle → one ProportionNode) |
 | 19 | ~~d5-select-drop-columns~~ | — | landed 2026-08-25 (Jeff/A5; Columns node keep\|drop) |
 | 20 | `d6-take-drop-one-node` | S (1 commit) | — (list.ts + matrix.ts + MatrixNodes.tsx + catalog/registry/nodeExcel; own worktree; after the Keep/Drop Columns rename lands) |

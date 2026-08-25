@@ -171,7 +171,7 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   a summary, and did not belong in the reducer dropdown; the author declined INDEX as a home too,
   so the two ops, their catalog leaves and the FIRSTNONBLANK / LASTNONBLANK names are gone.
 
-- **Three stats/distribution node-combining merges (Agent 4, plans D1–D3). D1 + D2 LANDED; D3 next.**
+- **Three stats/distribution node-combining merges (Agent 4, plans D1–D3). ALL THREE LANDED.**
   Lead-assigned from backlog "Node-combining parked". (1) **TREND ⊂ FORECAST.LINEAR + GROWTH — DONE:**
   `ForecastNode.x` widened to a numlist COMBO (x scalar → scalar, x list → list, mirroring INTERPOLATE)
   with a linear|exponential `op` (kind:"operation"); TrendNode deleted. An unwired X → null (an unwired
@@ -185,13 +185,16 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   LOGEST stats=TRUE). LogestNode deleted; LOGEST rides the `linest` nodeExcel row. LINEST/LOGEST both
   stay callable as formulas. Finding: the D2 plan said the op SegToggle carries `arg`, but selectorNamedOp
   forbids `arg` on a picker bound to the node's own `op` (op-vs-arg is decided once, by `kind`) — dropped
-  it, matching the GaugeNode precedent. Remaining: (3) **PHI/GAUSS are OPS in MathFnNode** (scalar.ts
-  MATHFN_OP_META + the compute switch ~348, group "Probability"), NOT nodes — move phi/gauss into
-  `DIST_SPECS` (distributionOps.ts) as single-arg standard-normal forms (φ = normal PDF, GAUSS = Φ−0.5),
-  fx:"PHI"/"GAUSS"; delete them from MathFn; PHI/GAUSS keep working via the new home. Each is ONE atomic
-  tsc-green commit touching stats.ts|distribution.ts|scalar.ts (clean) + nodeCatalog/nodeRegistry/
-  nodeExcel/nodeOps/components-index/kind + seeds. Blocked all session on those shared files being
-  peer-dirty (Gauge+Bullet, Sort merges); window opened at wrap-up, too late to land safely.
+  it, matching the GaugeNode precedent. (3) **PHI / GAUSS → Distribution forms — DONE:** both were ops of
+  MathFnNode (group "Probability", now empty and gone); they are standard-normal FORMS, so they moved into
+  `DIST_SPECS` (distributionOps.ts) as two single-input rows — `phi` reuses the `pdf` form (φ, the density),
+  `gauss` gets ONE new `half` form labelled "Φ − ½" (GAUSS is not a CDF and must not read as one). Compute
+  uses the file's own double-precision `stdNormCDF`, NOT scalar.ts's erf polynomial (which is now deleted —
+  it had no other user). PHI/GAUSS stay callable as Formula.js fallthroughs (untouched); the standalone Math
+  catalog leaves are gone (they're Distribution ops now, search-reachable via DIST_OPS). Finding: the
+  nodeOps dotted-fx guard was really guarding fx-vs-Math-leaf collisions — loosened the dotted regex to
+  bare-allowed and asserted the real invariant (no dist fx equals a `math-*` leaf's despaced label).
+  Each of the three is one atomic tsc-green commit; all three rebased clean onto develop as D4/D5 landed.
 - **Sort node absorbs SORTBY (no-duplicate-nodes).** SortBy folded into Sort as an optional
   `by` key input. `list` widened to anylist (adoptive out), so a wired `by` reorders ANY element
   family position-only (old SortBy); unwired, the list self-sorts by its own numeric values (old

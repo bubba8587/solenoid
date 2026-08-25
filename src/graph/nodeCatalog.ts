@@ -350,7 +350,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [mathLeaf("gamma"), mathLeaf("gammaln")] },
         ],
       },
-      // PHI/GAUSS/STANDARDIZE live under Distributions ▸ Normal with their NORM.* kin.
       {
         type: "category", label: "Rounding", description: "Round and constrain numbers.",
         children: [
@@ -754,12 +753,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
   {
     type: "category", label: "Distributions", description: "Probability distributions and related helpers.",
     children: [
-      { type: "distribution", label: "Distribution", description: "Every probability distribution in one node: pick the distribution (normal, t, chi-squared, F, beta, gamma, lognormal, Weibull, exponential, binomial, Poisson, hypergeometric, negative binomial), then the form: CDF, PDF or PMF, a tail, or the inverse (quantile). The inverse trades the x input for a probability. Excel: the NORM.DIST / T.INV / BINOM.DIST families.", create: () => new DistributionNode(), keywords: "distribution probability cdf pdf pmf inverse quantile percentile critical value tail gaussian bell curve critbinom" },
+      { type: "distribution", label: "Distribution", description: "Every probability distribution in one node: pick the distribution (normal, t, chi-squared, F, beta, gamma, lognormal, Weibull, exponential, binomial, Poisson, hypergeometric, negative binomial), then the form: CDF, PDF or PMF, a tail, or the inverse (quantile). The inverse trades the x input for a probability. Excel: the NORM.DIST / T.INV / BINOM.DIST families.", create: () => new DistributionNode(), keywords: "distribution probability cdf pdf pmf inverse quantile percentile critical value tail gaussian bell curve critbinom phi gauss standard normal density" },
       { type: "fit-distribution", label: "Fit Distribution", description: "Which distribution fits a sample? Fits Normal, Lognormal, Exponential, Gamma, Weibull, Uniform, Beta and Poisson by maximum likelihood (moments where standard), ranks them by AIC with the KS distance, and hands the winner's parameters back in the Distribution node's own order. scipy.stats.<dist>.fit, R fitdistrplus, @RISK / Crystal Ball fit.", create: () => new FitDistributionNode(), parity: false, keywords: "fit distribution fitdist fitdistr mle maximum likelihood aic goodness of fit ks which distribution normal lognormal gamma weibull exponential beta poisson @risk crystal ball" },
-      { type: "pair", children: [
-        mathLeaf("phi",   { keywords: "probability standard normal density" }),
-        mathLeaf("gauss", { keywords: "probability standard normal" }),
-      ]},
       { type: "pair", children: [
         { type: "stat-standardize", label: "STANDARDIZE", description: "z-score: (value − mean) ÷ std dev. Excel: STANDARDIZE.", create: () => new StandardizeNode(), keywords: "probability z score normalize" },
         { type: "binomdistrng", label: "Binomial Range", description: "P(lo ≤ X ≤ hi): the sum of binomial PMFs over a range. Excel: BINOM.DIST.RANGE.", create: () => new BinomDistRangeNode(), keywords: "binom.dist.range" },

@@ -171,7 +171,6 @@ export type MathFnOp =
   | "acosh" | "asinh" | "atanh"
   | "cot" | "csc" | "sec" | "acot"
   | "coth" | "csch" | "sech" | "acoth"
-  | "phi" | "gauss"
   | "erf" | "erfc"
   | "gamma" | "gammaln";
 
@@ -208,20 +207,11 @@ export const MATH_FN_OP_META = {
   csch:    { label: "CSCH",    group: "Hyperbolic",   description: "Hyperbolic cosecant (1/sinh). Excel: CSCH(x)." },
   sech:    { label: "SECH",    group: "Hyperbolic",   description: "Hyperbolic secant (1/cosh). Excel: SECH(x)." },
   acoth:   { label: "ACOTH",   group: "Hyperbolic",   description: "Inverse hyperbolic cotangent. Domain |x| > 1. Excel: ACOTH(x)." },
-  phi:     { label: "PHI",     group: "Probability",  description: "Standard normal PDF φ(x). Excel: PHI(x)." },
-  gauss:   { label: "GAUSS",   group: "Probability",  description: "Φ(x) − 0.5: the area from 0 to x under the standard normal curve. Excel: GAUSS(x)." },
   erf:     { label: "ERF",     group: "Special",      description: "Error function erf(x) = (2/√π)∫₀ˣ e^(−t²) dt. Excel: ERF(x)." },
   erfc:    { label: "ERFC",    group: "Special",      description: "Complementary error function: 1 − erf(x). Excel: ERFC(x)." },
   gamma:   { label: "GAMMA",   group: "Special",      description: "Gamma function Γ(x): generalizes factorial, Γ(n) = (n−1)! Excel: GAMMA(x)." },
   gammaln: { label: "GAMMALN", group: "Special",      description: "Natural log of the Gamma function ln(Γ(x)). Excel: GAMMALN(x)." },
 } satisfies Record<MathFnOp, { label: string; description: string; group: string }>;
-
-// Abramowitz & Stegun approximation, max error ~1.5e-7.
-function erf(x: number): number {
-  const t = 1 / (1 + 0.3275911 * Math.abs(x));
-  const p = t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
-  return (x < 0 ? -1 : 1) * (1 - p * Math.exp(-x * x));
-}
 
 // Split by which side is the ANGLE; only these show the deg/rad/auto toggle, since
 // hyperbolic ops take and return plain reals.
@@ -345,8 +335,6 @@ export class MathFnNode extends ClassicPreset.Node {
           case "csch":    return Math.sinh(x) === 0 ? null : 1 / Math.sinh(x);
           case "sech":    return 1 / Math.cosh(x);
           case "acoth":   return (x <= -1 || x >= 1) ? (Math.abs(x) === 1 ? null : Math.atanh(1 / x)) : null;
-          case "phi":     return Math.exp(-x * x / 2) / Math.sqrt(2 * Math.PI);
-          case "gauss":   return erf(x / Math.SQRT2) / 2;
           case "erf": {
             const t = 1 / (1 + 0.3275911 * Math.abs(x));
             const p = t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));

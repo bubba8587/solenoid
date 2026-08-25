@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { NODE_OPS, opsFor, hiddenOps, exposureOf, opEntry, opKindForNode } from "./nodeOps";
 import { buildCatalog } from "./catalogUtils";
 import { flattenLeaves, searchLeaves } from "./catalogSearch";
+import { despace } from "./formulaNodeParity";
 import { SET_OP_META, SET_RELATION_META } from "./nodes/list";
 import type { CatalogEntry, NodeCatalogEntry } from "./AddNodeMenu";
 
@@ -285,12 +286,18 @@ describe("the one Distribution node is reachable by search without growing the m
     expect(decl, "distribution has no NODE_OPS declaration").toBeTruthy();
     // The op axis is the distribution; the curve/inverse pick is the arg-tagged
     // `form` field. Each op claims a REAL formula name via fx (NORM.DIST,
-    // GAMMA.DIST, ...) — dotted spellings, so no despaced label ever collides
-    // with a function leaf (the op-Gamma vs GAMMA(x) trap).
+    // GAMMA.DIST, ...). Most are dotted; PHI and GAUSS are legitimately bare (two
+    // standard-normal FORMS that moved here from Math). What the dotted rule really
+    // guarded is a collision with a Math FUNCTION leaf (the op-Gamma vs GAMMA(x)
+    // trap), so assert THAT directly.
     expect(decl!.kind).toBe("operation");
     expect(decl!.ops!.length).toBeGreaterThan(12);
+    const mathFnNames = new Set(
+      leaves.filter((l) => l.leaf.type.startsWith("math-")).map((l) => despace(l.leaf.label).toUpperCase()),
+    );
     for (const o of decl!.ops!) {
-      expect(o.fx, `${o.op} has no fx`).toMatch(/^[A-Z.]+\.[A-Z.]+$/);
+      expect(o.fx, `${o.op} has no fx`).toMatch(/^[A-Z.]+$/);
+      expect(mathFnNames.has(o.fx!), `${o.op}'s fx ${o.fx} collides with a Math function leaf`).toBe(false);
     }
   });
 

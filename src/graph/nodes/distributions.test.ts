@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { DistributionNode, formAfterSwitch } from "./distribution";
+import { DIST_SPECS } from "./distributionOps";
+import { compileEvaluator } from "../excelFormula";
 
 const dist = (op: string, form: string) =>
   new DistributionNode({ op: op as never, form: form as never });
@@ -163,5 +165,26 @@ describe("the one-node mechanics", () => {
     expect(formAfterSwitch("pmf", "normal" as never)).toBe("pdf");    // discrete → continuous
     expect(formAfterSwitch("inv2t", "chisq" as never)).toBe("inv");   // inverse variant → plain inverse
     expect(formAfterSwitch("invrt", "weibull" as never)).toBe("cdf"); // no inverse at all → default
+  });
+});
+
+describe("PHI / GAUSS — standard-normal forms that moved from Math", () => {
+  const ev = (f: string) => compileEvaluator(f)!({}) as number;
+
+  it("PHI is the standard-normal density φ(x)", () => {
+    const peak = 1 / Math.sqrt(2 * Math.PI);
+    expect(DIST_SPECS.phi.compute("pdf", 0, [])).toBeCloseTo(peak, 12);
+    expect(dist("phi", "pdf").data({ x: [0] }).result).toBeCloseTo(peak, 12);
+  });
+
+  it("GAUSS is Φ − ½, the area from 0 to x", () => {
+    expect(DIST_SPECS.gauss.compute("half", 0, [])).toBeCloseTo(0, 12);
+    expect(DIST_SPECS.gauss.compute("half", 1.96, [])).toBeCloseTo(0.475, 4);
+    expect(dist("gauss", "half").data({ x: [1.96] }).result).toBeCloseTo(0.475, 4);
+  });
+
+  it("the node and the formula agree", () => {
+    expect(ev("GAUSS(1.96)")).toBeCloseTo(DIST_SPECS.gauss.compute("half", 1.96, [])!, 12);
+    expect(ev("PHI(0)")).toBeCloseTo(DIST_SPECS.phi.compute("pdf", 0, [])!, 12);
   });
 });

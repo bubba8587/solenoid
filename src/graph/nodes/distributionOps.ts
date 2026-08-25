@@ -25,7 +25,7 @@ const { PI, exp, log, sqrt, abs } = Math;
 // tails) or the inverse (quantile). An inverse form trades the x-style first
 // input for a probability; the parameter inputs are the distribution's own.
 
-export type DistForm = "cdf" | "pdf" | "pmf" | "2t" | "rt" | "inv" | "inv2t" | "invrt" | "sample";
+export type DistForm = "cdf" | "pdf" | "pmf" | "2t" | "rt" | "inv" | "inv2t" | "invrt" | "sample" | "half";
 
 /** An inverse (quantile) form reads a probability; every other form reads an x. */
 export const isInverseForm = (form: string): boolean => form.startsWith("inv");
@@ -40,10 +40,11 @@ export const DIST_FORM_META = {
   inv2t: { label: "Inverse 2T", description: "The positive value with two-tailed probability p" },
   invrt: { label: "Inverse RT", description: "The value at right-tail probability p" },
   sample: { label: "Sample",    description: "N random draws from the distribution, re-rolled on each recalculation (numpy.random / R rnorm, rgamma, …)" },
+  half:   { label: "Φ − ½",     description: "Area under the standard normal curve from 0 to x" },
 } satisfies Record<DistForm, { label: string; description: string }>;
 
 export type DistKey =
-  | "normal" | "normal-s" | "t" | "chisq" | "f" | "beta" | "gamma" | "lognorm"
+  | "normal" | "normal-s" | "phi" | "gauss" | "t" | "chisq" | "f" | "beta" | "gamma" | "lognorm"
   | "weibull" | "expon" | "binom" | "poisson" | "hypgeom" | "negbinom";
 
 export interface DistSpec {
@@ -113,6 +114,20 @@ export const DIST_SPECS: Record<DistKey, DistSpec> = {
       if (form === "inv") return probGuard(v) ? normSInv(v) : null;
       return form === "cdf" ? stdNormCDF(v) : exp(-v * v / 2) / sqrt(2 * PI);
     },
+  },
+  // PHI and GAUSS are standard-normal FORMS (not distributions): PHI reuses the pdf
+  // form; GAUSS is Φ − ½, a half-area, and must not be labelled a CDF.
+  phi: {
+    label: "φ (standard normal density)", group: "Continuous", excel: "PHI",
+    forms: ["pdf"], xKey: "x", xLabel: "X", xDefault: 0,
+    params: [],
+    compute: (_f, v) => exp(-v * v / 2) / sqrt(2 * PI),
+  },
+  gauss: {
+    label: "Gauss (Φ − ½)", group: "Continuous", excel: "GAUSS",
+    forms: ["half"], xKey: "x", xLabel: "X", xDefault: 0,
+    params: [],
+    compute: (_f, v) => stdNormCDF(v) - 0.5,
   },
   t: {
     label: "Student's t", group: "Continuous", excel: "T.DIST / T.DIST.2T / T.DIST.RT / T.INV / T.INV.2T",

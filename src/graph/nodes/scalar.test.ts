@@ -86,9 +86,6 @@ describe("MathFn — selected functions", () => {
   it("SQRTPI(1) = sqrt(pi)", () => {
     expect(fn("sqrtpi", 1)).toBeCloseTo(Math.sqrt(Math.PI), 9);
   });
-  it("PHI(0) is the normal-pdf peak", () => {
-    expect(fn("phi", 0)).toBeCloseTo(1 / Math.sqrt(2 * Math.PI), 9);
-  });
   it("ERF(0) = 0, ERF(large) → 1", () => {
     expect(fn("erf", 0)).toBeCloseTo(0, 6);
     expect(fn("erf", 3)).toBeCloseTo(1, 4);

@@ -84,8 +84,6 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
 - **Text Filter ⊂ List Filter** — absorption/delete: `FilterOp` already has
   contains/startsWith/endsWith + Match case; Dropped covers not-contains. The
   `TEXTFILTER` formula name needs a call.
-- **PHI / GAUSS → Distribution forms** — both are standard-normal forms already
-  living in the Distributions menu.
 - **Smaller pairs**: Set + Set relation
   (one card, output socket swaps list↔logical per op — Split Frame precedent);
   discount securities (TBill 3 + SecurityDisc 3 + PriceDisc 2 + PriceMat 2, all
