@@ -107,7 +107,7 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   split square with a small grid cross (`socket.css` `[data-glyph="anydata"]`), which reads as
   "a combo" rather than "any rank up to 2". Design a distinct mark (an art call — DESIGN.md
   socket palette rules; keep the 12-box, one masked ::before/::after pair like the others),
-  update the Socket Legend, `docs/socket-reference.md`'s glyph row and `hicSocketGlyph`.
+  update the Socket Legend, `docs/socket-reference.md`'s glyph row and `hicSocketGlyph`. REJECTED (tried, looked bad): any bicolor split fill, any cross/grid mark. Candidates: hollow square (trueany treatment), circle-in-square, one-rounded-corner square.
 
 - [ ] **Virtualize the table/cube popups instead of truncating at 1,000 rows**
   (author-raised 2026-08-22, pointing at `react-window`). `TablePopup.tsx` and
