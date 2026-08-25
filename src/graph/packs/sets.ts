@@ -24,7 +24,7 @@ export const SETS_PACK: Pack = {
   formulas: SETS_PACK_FORMULAS,
   id: "sets",
   name: "Sets & Membership",
-  description: "List membership and counting: Is In (per-element membership mask — the ISNUMBER(MATCH()) idiom), Tally (value counts as a table), and the COUNT DISTINCT aggregate. The Join node's semi or anti modes are the table-level counterparts.",
+  description: "List membership and counting: Is In (per-element membership mask, the ISNUMBER(MATCH()) idiom), Tally (value counts as a table), and the COUNT DISTINCT aggregate. The Join node's semi or anti modes are the table-level counterparts.",
   builtin: true,
   defaultActive: false,
   nodes: [

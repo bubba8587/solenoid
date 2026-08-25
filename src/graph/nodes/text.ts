@@ -181,8 +181,8 @@ export class TextTransformNode extends ClassicPreset.Node {
 // ─── Pad Text / Truncate Text (no Excel equivalent; Python ljust/rjust/center, R str_pad / str_trunc) ───
 
 export const PAD_SIDE_META = {
-  left:   { label: "Left",   description: "Padding goes on the left — right-justified text. Python rjust, R str_pad side = left." },
-  right:  { label: "Right",  description: "Padding goes on the right — left-justified text. Python ljust, R str_pad side = right." },
+  left:   { label: "Left",   description: "Padding goes on the left, right-justifying the text. Python rjust, R str_pad side = left." },
+  right:  { label: "Right",  description: "Padding goes on the right, left-justifying the text. Python ljust, R str_pad side = right." },
   center: { label: "Center", description: "Padding splits both sides, the odd character on the right. Python center, R str_pad side = both." },
 } satisfies Record<PadSide, { label: string; description: string }>;
 
@@ -1104,7 +1104,7 @@ export const REGEX_OP_META: Record<RegexOp, { label: string; description: string
   extract:        { label: "REGEXEXTRACT",        description: "Returns the first match found in text, or empty string if none. Wired list input returns a list of first matches. Excel: REGEXEXTRACT." },
   extract_all:    { label: "REGEXEXTRACT (all)",    description: "Returns all matches found in a single string as a list. Excel: REGEXEXTRACT with return_mode=1." },
   extract_groups: { label: "REGEXEXTRACT (groups)", description: "Returns the first match's capture groups as a list. Excel: REGEXEXTRACT with return_mode=2." },
-  replace:        { label: "REGEXREPLACE",        description: "Replaces regex matches with the replacement string — all of them, or only the nth when Occurrence is set. Wired list input broadcasts element-wise. Excel: REGEXREPLACE." },
+  replace:        { label: "REGEXREPLACE",        description: "Replaces regex matches with the replacement string: all of them, or only the nth when Occurrence is set. Wired list input broadcasts element-wise. Excel: REGEXREPLACE." },
 };
 
 
@@ -1291,7 +1291,7 @@ export class SpellNumberNode extends ClassicPreset.Node {
 export const SIMILARITY_METHOD_META = {
   ratio:        { label: "Ratio (Levenshtein)", description: "1 − edit distance ÷ longer length: 0 = nothing shared, 1 = identical. rapidfuzz ratio, R stringsim." },
   damerau:      { label: "Ratio (Damerau)",     description: "The same ratio counting an adjacent swap (teh → the) as one edit." },
-  jaro_winkler: { label: "Jaro–Winkler",        description: "0–1 similarity that rewards a shared prefix — the record-linkage standard for names." },
+  jaro_winkler: { label: "Jaro–Winkler",        description: "0–1 similarity that rewards a shared prefix: the record-linkage standard for names." },
   levenshtein:  { label: "Edit distance",       description: "The raw Levenshtein distance: how many inserts, deletes or substitutions turn one into the other." },
 } satisfies Record<SimilarityMethod, { label: string; description: string }>;
 

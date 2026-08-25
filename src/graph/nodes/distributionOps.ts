@@ -31,15 +31,15 @@ export type DistForm = "cdf" | "pdf" | "pmf" | "2t" | "rt" | "inv" | "inv2t" | "
 export const isInverseForm = (form: string): boolean => form.startsWith("inv");
 
 export const DIST_FORM_META = {
-  cdf:   { label: "CDF",        description: "Cumulative probability P(X ≤ x)" },
+  cdf:   { label: "CDF",        description: "Cumulative probability that X ≤ x" },
   pdf:   { label: "PDF",        description: "Probability density" },
   pmf:   { label: "PMF",        description: "Probability of exactly k" },
   "2t":  { label: "2T",         description: "Two-tailed probability" },
   rt:    { label: "RT",         description: "Right-tail probability" },
-  inv:   { label: "Inverse",    description: "The value at cumulative probability p (the quantile)" },
+  inv:   { label: "Inverse",    description: "The value at cumulative probability p, the quantile" },
   inv2t: { label: "Inverse 2T", description: "The positive value with two-tailed probability p" },
   invrt: { label: "Inverse RT", description: "The value at right-tail probability p" },
-  sample: { label: "Sample",    description: "N random draws from the distribution, re-rolled on each recalculation (numpy.random / R rnorm, rgamma, …)" },
+  sample: { label: "Sample",    description: "N random draws from the distribution, re-rolled on each recalculation. numpy.random, R rnorm / rgamma" },
   half:   { label: "Φ − ½",     description: "Area under the standard normal curve from 0 to x" },
 } satisfies Record<DistForm, { label: string; description: string }>;
 

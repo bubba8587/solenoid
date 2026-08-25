@@ -26,7 +26,7 @@ export const TIMESAVER_TEXT: FormulaPackEntry[] = [
     description: "Redact all but the last k characters: ****1234   (=REPT(\"*\",LEN(A1)-4)&RIGHT(A1,4))",
     keywords: "redact stars hide card ssn" },
   { type: "ts-count-words", label: "Count Words", expr: "IF(LEN(TRIM(t))=0,0,LEN(TRIM(t))-LEN(SUBSTITUTE(TRIM(t),\" \",\"\"))+1)",
-    description: "Number of space-separated words   (the LEN−SUBSTITUTE idiom, empty-safe)",
+    description: "Number of space-separated words. The LEN−SUBSTITUTE idiom, empty-safe.",
     keywords: "word count" },
   { type: "ts-count-occurrences", label: "Count Occurrences", expr: "(LEN(t)-LEN(SUBSTITUTE(t,sub,\"\")))/LEN(sub)",
     description: "How many times substring sub appears in t (case-sensitive)   (=(LEN(A1)-LEN(SUBSTITUTE(A1,\"x\",\"\")))/LEN(\"x\"))",
@@ -72,7 +72,7 @@ export const TIMESAVERS_PACK: Pack = {
       entry: {
         type: "ts-spell-number",
         label: "Spell Number",
-        description: "Number → English words (\"one hundred twenty-three\", up to the trillions) or ordinal (\"123rd\"). Pick on the node. Excel's words need a VBA macro.",
+        description: "Number → English words (\"one hundred twenty-three\", up to the trillions) or ordinal (\"123rd\"). Pick on the node. Excel: none; the words need a VBA macro.",
         keywords: "words written amount cheque check ordinal 1st 2nd 3rd nth suffix rank position",
         create: () => new SpellNumberNode(),
       },

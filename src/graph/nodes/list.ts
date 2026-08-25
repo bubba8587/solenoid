@@ -590,7 +590,7 @@ export type { OutlierMethod } from "./listOps";
 export const OUTLIER_METHOD_META = {
   z:   { label: "z-score", description: "|z| above the threshold (default 3): distance from the mean in sample standard deviations." },
   iqr: { label: "IQR",     description: "Beyond Q1 − k·IQR or Q3 + k·IQR (default k = 1.5): the boxplot whisker rule. R boxplot.stats." },
-  mad: { label: "MAD",     description: "Modified z-score 0.6745·(x − median)/MAD above the threshold (default 3.5): the robust rule (Iglewicz–Hoaglin)." },
+  mad: { label: "MAD",     description: "Modified z-score 0.6745·(x − median)/MAD above the threshold (default 3.5): the robust Iglewicz–Hoaglin rule." },
 } satisfies Record<OutlierMethod, { label: string; description: string }>;
 
 export class OutliersNode extends ClassicPreset.Node {
@@ -1504,8 +1504,8 @@ export type { ArgMinMaxOp } from "./listOps";
 export const ARG_MIN_MAX_OP_META = {
   argmax: { label: "ARGMAX", description: "1-based position of the maximum value" },
   argmin: { label: "ARGMIN", description: "1-based position of the minimum value" },
-  argsort:      { label: "ARGSORT",      description: "1-based positions that would sort the list ascending — reorder a parallel list by them. numpy.argsort, R order." },
-  argsort_desc: { label: "ARGSORT DESC", description: "1-based positions that would sort the list descending. numpy.argsort(-x), R order(decreasing = TRUE)." },
+  argsort:      { label: "ARGSORT",      description: "1-based positions that would sort the list ascending; reorder a parallel list by them. numpy.argsort, R order." },
+  argsort_desc: { label: "ARGSORT DESC", description: "1-based positions that would sort the list descending. numpy.argsort(-x), R order with decreasing = TRUE." },
   which:        { label: "WHICH",        description: "1-based positions of the TRUE cells of a logical list. R which, numpy.flatnonzero. Excel: FILTER(SEQUENCE(n), cond)." },
 } satisfies Record<ArgMinMaxOp, { label: string; description: string }>;
 
@@ -1757,7 +1757,7 @@ export class PadNode extends ClassicPreset.Node {
 export type WeightedOp = "wavg" | "wvar" | "wstdev";
 
 export const WEIGHTED_OP_META = {
-  wavg:   { label: "WAVG",   description: "Weighted average: Σ(x·w) / Σw. Excel: SUMPRODUCT(x,w)/SUM(w)." },
+  wavg:   { label: "WAVG",   description: "Weighted average: Σ(x·w) / Σw, which is SUMPRODUCT(x,w) over SUM(w) in Excel." },
   wvar:   { label: "WVAR",   description: "Weighted sample variance with reliability weights" },
   wstdev: { label: "WSTDEV", description: "Weighted sample standard deviation: √WVAR" },
 } satisfies Record<WeightedOp, { label: string; description: string }>;
@@ -1819,9 +1819,9 @@ export const REDUCE_OP_META = {
   ptp:     { label: "PTP",     description: "Range of the data: max − min. numpy ptp (peak to peak), R diff(range(x)). Excel: MAX − MIN." },
   iqr:     { label: "IQR",     description: "Interquartile range: the 75th minus the 25th percentile (PERCENTILE.INC). scipy iqr, R IQR." },
   mad:     { label: "MAD",     description: "Median absolute deviation from the median, unscaled (scipy median_abs_deviation; R's mad multiplies by 1.4826). The robust spread." },
-  sem:     { label: "SEM",     description: "Standard error of the mean: sample stdev ÷ √n. scipy sem, R sd(x)/sqrt(n)." },
-  cv:      { label: "CV",      description: "Coefficient of variation: sample stdev ÷ mean. scipy variation, R sd(x)/mean(x)." },
-  rms:     { label: "RMS",     description: "Root mean square: √(Σx² ÷ n)." },
+  sem:     { label: "SEM",     description: "Standard error of the mean: sample stdev ÷ √n. scipy sem, or sd(x)/sqrt(n) in R." },
+  cv:      { label: "CV",      description: "Coefficient of variation: sample stdev ÷ mean. scipy variation, or sd(x)/mean(x) in R." },
+  rms:     { label: "RMS",     description: "Root mean square: √ of the mean of the squares." },
 } satisfies Record<ReduceOp, { label: string; description: string; fx?: string }>;
 
 // The user-facing identity is "Aggregate", a fixed-op 1-D list aggregator — NOT the
@@ -2252,7 +2252,7 @@ export class SpectrumNode extends ClassicPreset.Node {
 // ─── SMOOTH (Savitzky–Golay / LOWESS / Gaussian) ──────────────────────────────
 export type SmoothOp = "savgol" | "lowess" | "gaussian";
 export const SMOOTH_OP_META: Record<SmoothOp, { label: string; fx: string; params: { key: string; label: string; def: number }[]; description: string }> = {
-  savgol:   { label: "Savitzky–Golay", fx: "SAVGOL", params: [{ key: "window", label: "Window", def: 5 }, { key: "order", label: "Order", def: 2 }], description: "Polynomial least-squares over a sliding window (odd width) — keeps peak shape better than a moving average. scipy savgol_filter, R signal::sgolayfilt." },
+  savgol:   { label: "Savitzky–Golay", fx: "SAVGOL", params: [{ key: "window", label: "Window", def: 5 }, { key: "order", label: "Order", def: 2 }], description: "Polynomial least-squares over a sliding window (odd width); keeps peak shape better than a moving average. scipy savgol_filter, R signal::sgolayfilt." },
   lowess:   { label: "LOWESS",         fx: "LOWESS", params: [{ key: "frac", label: "Fraction", def: 0.67 }], description: "Locally weighted linear regression over the nearest fraction of points, three robust passes. statsmodels lowess, R lowess / loess." },
   gaussian: { label: "Gaussian", fx: "GAUSSIANSMOOTH", params: [{ key: "sigma", label: "Sigma", def: 1 }], description: "Gaussian-weighted average, σ in samples, edges reflected. scipy gaussian_filter1d." },
 };

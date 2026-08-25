@@ -376,8 +376,8 @@ export class DateAddNode extends ClassicPreset.Node {
 export type WorkdaysOp = "workday" | "networkdays";
 
 export const WORKDAYS_OP_META = {
-  workday:     { label: "WORKDAY",     description: "Date N working days from start, skipping weekends + an optional Holidays list. weekend_code 1=Sat+Sun, 2–7 and 11–17 per Excel. Excel: WORKDAY / WORKDAY.INTL (numeric weekend_code only — the 7-char weekend string isn't supported)." },
-  networkdays: { label: "NETWORKDAYS", description: "Counts working days between start and end, skipping weekends + an optional Holidays list. weekend_code 1=Sat+Sun, 2–7 and 11–17 per Excel. Excel: NETWORKDAYS / NETWORKDAYS.INTL (numeric weekend_code only — the 7-char weekend string isn't supported)." },
+  workday:     { label: "WORKDAY",     description: "Date N working days from start, skipping weekends + an optional Holidays list. weekend_code 1=Sat+Sun, 2–7 and 11–17 per Excel. Excel: WORKDAY / WORKDAY.INTL, numeric weekend_code only; the 7-char weekend string isn't supported." },
+  networkdays: { label: "NETWORKDAYS", description: "Counts working days between start and end, skipping weekends + an optional Holidays list. weekend_code 1=Sat+Sun, 2–7 and 11–17 per Excel. Excel: NETWORKDAYS / NETWORKDAYS.INTL, numeric weekend_code only; the 7-char weekend string isn't supported." },
 } satisfies Record<WorkdaysOp, { label: string; description: string }>;
 
 export class WorkdaysNode extends ClassicPreset.Node {
@@ -483,8 +483,8 @@ export class WorkdaysNode extends ClassicPreset.Node {
 // ─── Epoch (Unix time ↔ date) ─────────────────────────────────────────────────
 export type EpochOp = "from" | "to";
 export const EPOCH_OP_META = {
-  from: { label: "Epoch → Date", description: "Unix time (seconds or milliseconds since 1970-01-01 UTC) → a date. pandas to_datetime(unit=), R as.POSIXct(origin=)." },
-  to:   { label: "Date → Epoch", description: "A date → Unix time in seconds or milliseconds. pandas astype(int64), R as.numeric(POSIXct)." },
+  from: { label: "Epoch → Date", description: "Unix time (seconds or milliseconds since 1970-01-01 UTC) → a date. pandas to_datetime, R as.POSIXct." },
+  to:   { label: "Date → Epoch", description: "A date → Unix time in seconds or milliseconds. pandas astype(int64), R as.numeric." },
 } satisfies Record<EpochOp, { label: string; description: string }>;
 export const EPOCH_UNIT_OPTIONS: ReadonlyArray<{ value: EpochUnit; label: string; title: string }> = [
   { value: "s",  label: "s",  title: "Seconds since 1970-01-01 UTC (the Unix convention; 10 digits today)" },
@@ -519,8 +519,8 @@ export class EpochNode extends ClassicPreset.Node {
 // ─── Truncate date (floor_date / ceiling_date) ───────────────────────────────
 export const DATE_TRUNC_UNIT_META = {
   day:      { label: "Day",         description: "Strip the time of day." },
-  week:     { label: "Week (Mon)",  description: "The Monday that starts the week (ISO)." },
-  week_sun: { label: "Week (Sun)",  description: "The Sunday that starts the week (US)." },
+  week:     { label: "Week (Mon)",  description: "The Monday that starts the week, ISO." },
+  week_sun: { label: "Week (Sun)",  description: "The Sunday that starts the week, US." },
   month:    { label: "Month",       description: "The first of the month." },
   quarter:  { label: "Quarter",     description: "The first day of the quarter." },
   year:     { label: "Year",        description: "January 1st." },

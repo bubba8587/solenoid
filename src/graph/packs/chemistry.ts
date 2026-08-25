@@ -8,7 +8,7 @@ const FARADAY = "96485.33212";
 
 export const CHEM_AMOUNTS: FormulaPackEntry[] = [
   { type: "ch-moles-mass", label: "Moles ↔ Mass", expr: "n = m / mm", equation: true,
-    description: "n = m/mm with any one unknown: moles from mass, mass from moles, or even the molar mass from both — wire a Molar Mass node into mm",
+    description: "n = m/mm with any one unknown: moles from mass, mass from moles, or even the molar mass from both; wire a Molar Mass node into mm",
     keywords: "amount substance stoichiometry grams moles molar" },
   { type: "ch-molarity", label: "Molarity", expr: "n/v",
     description: "Concentration: moles n ÷ volume v (L) → mol/L",
@@ -25,7 +25,7 @@ export const CHEM_EQUILIBRIA: FormulaPackEntry[] = [
     description: "pH = −log₁₀[H⁺], either way around: wire h (mol/L) to get the pH, or ph to get the concentration",
     keywords: "acid base hydrogen concentration" },
   { type: "ch-nernst", label: "Nernst Equation", expr: `e0-${R_GAS}*tk/(z*${FARADAY})*LN(q)`,
-    description: "Cell potential off standard conditions: standard potential e0 (V), temperature tk (K), electrons z, reaction quotient q   (E = E° − RT/zF·lnQ)",
+    description: "Cell potential E = E° − RT/zF·lnQ off standard conditions: standard potential e0 (V), temperature tk (K), electrons z, reaction quotient q.",
     keywords: "electrochemistry cell potential redox",
     varDescriptions: { e0: "Standard potential E° (V)", tk: "Temperature (K)", z: "Electrons transferred", q: "Reaction quotient Q" } },
   { type: "ch-arrhenius", label: "Arrhenius Rate", expr: `a*EXP(-ea/(${R_GAS}*tk))`,
@@ -35,7 +35,7 @@ export const CHEM_EQUILIBRIA: FormulaPackEntry[] = [
     description: "ΔG = ΔH − TΔS from enthalpy dh (J/mol), temperature tk (K), entropy ds (J/mol·K). Negative means spontaneous.",
     keywords: "thermodynamics spontaneous" },
   { type: "ch-beer-lambert", label: "Beer–Lambert Absorbance", expr: "eps*b*conc",
-    description: "Absorbance A = εbc: molar absorptivity eps (L/mol·cm), path b (cm), concentration conc (mol/L).",
+    description: "Absorbance A = εbc: molar absorptivity eps in L/mol·cm, path b in cm, concentration conc in mol/L.",
     keywords: "spectroscopy absorbance cuvette" },
   { type: "ch-half-life", label: "Decay Remaining", expr: "n0*0.5^(t/thalf)",
     description: "Amount left after time t given half-life thalf (same time units)   (N = N₀·(½)^(t/t½))",
@@ -93,7 +93,7 @@ export const CHEMISTRY_PACK: Pack = {
       entry: {
         type: "ch-element",
         label: "Element",
-        description: "Periodic-table lookup: search by symbol, name, or number, or click the table itself → standard atomic weight (g/mol) and atomic number (IUPAC values)",
+        description: "Periodic-table lookup: search by symbol, name, or number, or click the table itself → standard atomic weight in g/mol and atomic number. IUPAC values",
         keywords: "periodic table atomic weight number symbol",
         create: () => new ElementNode(),
       },
@@ -103,7 +103,7 @@ export const CHEMISTRY_PACK: Pack = {
       entry: {
         type: "ch-molar-mass",
         label: "Molar Mass",
-        description: "Molecular weight of a typed formula — handles parentheses and hydrates: Ca(OH)2, CuSO4·5H2O → g/mol",
+        description: "Molecular weight of a typed formula. Handles parentheses and hydrates: Ca(OH)2, CuSO4·5H2O → g/mol",
         keywords: "molecular weight formula weight mw",
         create: () => new MolarMassNode(),
       },

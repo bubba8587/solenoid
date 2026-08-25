@@ -177,8 +177,8 @@ export type CorrelOp = "correl" | "rsq" | "spearman" | "kendall";
 export const CORREL_OP_META = {
   correl: { label: "CORREL", description: "Pearson correlation r between two lists. Excel: CORREL." },
   rsq:    { label: "RSQ",    description: "R², the square of the correlation coefficient. Excel: RSQ." },
-  spearman: { label: "SPEARMAN", description: "Spearman's rank correlation ρ: Pearson over the ranks, so it follows any monotone relation and shrugs off outliers. scipy spearmanr, R cor(method=\"spearman\")." },
-  kendall:  { label: "KENDALL",  description: "Kendall's τ-b: concordant minus discordant pairs, tie-corrected. scipy kendalltau, R cor(method=\"kendall\")." },
+  spearman: { label: "SPEARMAN", description: "Spearman's rank correlation ρ: Pearson over the ranks, so it follows any monotone relation and shrugs off outliers. scipy spearmanr, R cor with method = spearman." },
+  kendall:  { label: "KENDALL",  description: "Kendall's τ-b: concordant minus discordant pairs, tie-corrected. scipy kendalltau, R cor with method = kendall." },
 } satisfies Record<CorrelOp, { label: string; description: string }>;
 
 export class CorrelNode extends ClassicPreset.Node {
@@ -623,11 +623,11 @@ export const HYPOTHESIS_TEST_OP_META = {
   "t-welch":  { label: "T.TEST (Welch)",     description: "Two-sample t-test assuming unequal variances: Welch's t-test, 2-tailed. Excel: T.TEST type 3." },
   f:          { label: "F.TEST",             description: "Two-tailed F-test for equal variances. Excel: F.TEST." },
   chisq:      { label: "CHISQ.TEST",         description: "Chi-square goodness-of-fit test (observed vs. expected). Excel: CHISQ.TEST." },
-  anova:      { label: "ANOVA",              description: "One-way ANOVA: do k groups share a mean? Each table column is a group (blanks skipped); the upper-tail F p-value. scipy f_oneway, R aov. No Excel function (the Data Analysis add-in only)." },
-  mannwhitney:{ label: "Mann–Whitney U",     description: "Rank-sum test for two independent samples, two-sided (the nonparametric t-test). Normal approximation with tie and continuity corrections — R wilcox.test, scipy mannwhitneyu." },
-  wilcoxon:   { label: "Wilcoxon signed-rank", description: "Paired nonparametric test: ranks of the paired differences, zeros dropped, two-sided with continuity correction — R wilcox.test(paired=TRUE)." },
+  anova:      { label: "ANOVA",              description: "One-way ANOVA: do k groups share a mean? Each table column is a group (blanks skipped); the upper-tail F p-value. scipy f_oneway, R aov. No Excel function, only the Data Analysis add-in." },
+  mannwhitney:{ label: "Mann–Whitney U",     description: "Rank-sum test for two independent samples, two-sided (the nonparametric t-test). Normal approximation with tie and continuity corrections. R wilcox.test, scipy mannwhitneyu." },
+  wilcoxon:   { label: "Wilcoxon signed-rank", description: "Paired nonparametric test: ranks of the paired differences, zeros dropped, two-sided with continuity correction. R wilcox.test with paired = TRUE." },
   kruskal:    { label: "Kruskal–Wallis",     description: "Nonparametric one-way ANOVA over k groups (table columns), tie-corrected H against χ². scipy kruskal, R kruskal.test." },
-  fisher:     { label: "Fisher exact",       description: "Fisher's exact test on a 2×2 table of counts, two-sided — the small-sample answer where CHISQ.TEST is unreliable. R fisher.test, scipy fisher_exact." },
+  fisher:     { label: "Fisher exact",       description: "Fisher's exact test on a 2×2 table of counts, two-sided: the small-sample answer where CHISQ.TEST is unreliable. R fisher.test, scipy fisher_exact." },
   ks:         { label: "KS (2-sample)",      description: "Two-sample Kolmogorov–Smirnov: are two samples from the same distribution? Asymptotic two-sided p. scipy ks_2samp, R ks.test." },
   proptest:   { label: "Two-proportion z",   description: "Are two success rates different? x₁ of n₁ vs x₂ of n₂, pooled z, two-sided, no continuity correction (statsmodels proportions_ztest; R prop.test(correct=FALSE))." },
   binomtest:  { label: "Binomial test",      description: "Exact test of k successes in n against a hypothesised rate p₀, two-sided. scipy binomtest, R binom.test." },
@@ -1174,7 +1174,7 @@ export { FIT_FAMILIES };
 // ─── DECOMPOSE (classical seasonal decomposition) ────────────────────────────
 export const DECOMPOSE_MODEL_META: Record<DecomposeModel, { label: string; description: string }> = {
   additive:       { label: "Additive",       description: "y = trend + seasonal + residual; the seasonal swing is a fixed amount." },
-  multiplicative: { label: "Multiplicative", description: "y = trend × seasonal × residual; the seasonal swing scales with the level (positive data)." },
+  multiplicative: { label: "Multiplicative", description: "y = trend × seasonal × residual; the seasonal swing scales with the level. Positive data only." },
   stl:            { label: "STL",            description: "Seasonal-Trend by Loess (R stl, periodic): a loess trend with no blank ends and an exactly-periodic seasonal. Additive." },
 };
 

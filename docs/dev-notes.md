@@ -140,6 +140,15 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   …)` registered ("v" | "h") so the name is a callable claim (NAME-4); node ≡ formula pinned in
   formulaMatrix.test. Append / Bind Columns stay frame verbs (name-matching vs positional padding;
   the D6 Head line).
+- **UI-copy §7 sweep over every node/OP_META description (Agent 4).** Two-commit voice pass:
+  worst-40 rewrites + the full Excel-sign-off pass ("Excel 365:" → "Excel:"; "Excel: NAME(args)." →
+  bare "Excel: NAME." except expression equivalents like COUNTA(UNIQUE(range)); pack formula
+  parens folded into the sentence), then the systematic sweep of every remaining em dash
+  (period/colon/comma by sense) and trailing parenthetical (library refs → trailing sentence, unit
+  glosses inlined). Both unenforced §7 rules now PINNED in `uiCopy.test.ts` over catalog-desc +
+  tsx-opt-desc records: no em dash, no description ending in a trailing "(…)". No merge
+  contradictions found (LINEST/LOGEST, FORECAST/TREND/GROWTH, Distribution, Take/Drop, Columns,
+  Text Filter all read correctly). copy-edits.jsonl isn't in git; §7's before→after examples were the guide.
 - **NAME-3 (author: "COLUMNS"-style names must go; names distinct, short, Excel where possible).**
   Root cause was a mechanism, not a label: `kind: "operation"` promised "the selector names the
   card" but only Keep/Drop Columns and MROUND did it — ~150 leaves placed a card titled by its

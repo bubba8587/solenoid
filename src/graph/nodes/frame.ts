@@ -1196,7 +1196,7 @@ export class HeadersNode extends ClassicPreset.Node {
 export type BlankRowMode = "all" | "any";
 
 export const BLANK_ROW_OP_META: Record<BlankRowMode, { label: string; description: string }> = {
-  all: { label: "All cells blank", description: "Drop only fully-blank rows (spacers)." },
+  all: { label: "All cells blank", description: "Drop only fully-blank rows, the spacers." },
   any: { label: "Any cell blank",  description: "Keep only complete rows." },
 };
 
@@ -2072,7 +2072,7 @@ export const CORR_METHOD_META = {
   pearson:    { label: "Pearson",    description: "Linear correlation r between every pair of number columns." },
   spearman:   { label: "Spearman",   description: "Rank correlation ρ: any monotone relation, robust to outliers." },
   kendall:    { label: "Kendall",    description: "Kendall's τ-b from concordant / discordant pairs." },
-  covariance: { label: "Covariance", description: "Sample covariance between every pair of number columns (df.cov, R cov)." },
+  covariance: { label: "Covariance", description: "Sample covariance between every pair of number columns. df.cov, R cov." },
 } satisfies Record<CorrMethod, { label: string; description: string }>;
 
 export class CorrMatrixNode extends ClassicPreset.Node {
@@ -2274,24 +2274,24 @@ export const WINDOW_FN_META = {
   percent_rank: { label: "Percent rank",      description: "(rank − 1) ÷ (group size − 1): 0 for the first, 1 for the last. SQL PERCENT_RANK." },
   ntile:        { label: "N-tile",            description: "Bucket 1..N by position within the group. SQL NTILE(n), dplyr ntile." },
   cumsum:       { label: "Running sum",       description: "Cumulative sum of the Value column within the group. pandas groupby().cumsum(), SQL SUM() OVER." },
-  cumavg:       { label: "Running average",   description: "Cumulative mean within the group. SQL AVG() OVER (… ROWS UNBOUNDED PRECEDING)." },
+  cumavg:       { label: "Running average",   description: "Cumulative mean within the group. SQL AVG() OVER … ROWS UNBOUNDED PRECEDING." },
   cummin:       { label: "Running min",       description: "Cumulative minimum within the group. pandas cummin." },
   cummax:       { label: "Running max",       description: "Cumulative maximum within the group. pandas cummax." },
   cumcount:     { label: "Running count",     description: "How many rows so far in the group, this one included." },
   lag:          { label: "Lag (previous)",    description: "The Value N rows earlier in the group (blank at the start). SQL LAG, pandas shift(n), dplyr lag." },
   lead:         { label: "Lead (next)",       description: "The Value N rows later in the group (blank at the end). SQL LEAD, pandas shift(−n), dplyr lead." },
-  diff:         { label: "Difference",        description: "Value minus the previous row's Value in the group. pandas groupby().diff()." },
-  pct_change:   { label: "Percent change",    description: "(Value − previous) ÷ previous within the group. pandas groupby().pct_change()." },
-  rolling_sum:  { label: "Rolling sum (N)",   description: "Sum of the last N rows in the group, blank until N rows exist. pandas groupby().rolling(N).sum()." },
-  rolling_avg:  { label: "Rolling average (N)", description: "Mean of the last N rows in the group. pandas groupby().rolling(N).mean()." },
+  diff:         { label: "Difference",        description: "Value minus the previous row's Value in the group. pandas groupby().diff." },
+  pct_change:   { label: "Percent change",    description: "(Value − previous) ÷ previous within the group. pandas groupby().pct_change." },
+  rolling_sum:  { label: "Rolling sum (N)",   description: "Sum of the last N rows in the group, blank until N rows exist. pandas groupby().rolling(N).sum." },
+  rolling_avg:  { label: "Rolling average (N)", description: "Mean of the last N rows in the group. pandas groupby().rolling(N).mean." },
   rolling_min:  { label: "Rolling min (N)",   description: "Minimum of the last N rows in the group." },
   rolling_max:  { label: "Rolling max (N)",   description: "Maximum of the last N rows in the group." },
-  group_sum:    { label: "Group total",       description: "The group's sum of the Value, repeated on every row (a denominator without a join). pandas transform('sum'), SQL SUM() OVER (PARTITION BY)." },
-  group_avg:    { label: "Group average",     description: "The group's mean of the Value on every row. transform('mean')." },
+  group_sum:    { label: "Group total",       description: "The group's sum of the Value, repeated on every row (a denominator without a join). pandas transform('sum'), SQL SUM() OVER PARTITION BY." },
+  group_avg:    { label: "Group average",     description: "The group's mean of the Value on every row. pandas transform, mean." },
   group_min:    { label: "Group min",         description: "The group's minimum on every row." },
   group_max:    { label: "Group max",         description: "The group's maximum on every row." },
-  group_count:  { label: "Group count",       description: "How many non-blank Values the group holds, on every row. transform('count')." },
-  share:        { label: "Share of group",    description: "Value ÷ the group's total: each row's fraction of its group. pandas x / x.groupby(k).transform('sum')." },
+  group_count:  { label: "Group count",       description: "How many non-blank Values the group holds, on every row. pandas transform, count." },
+  share:        { label: "Share of group",    description: "Value ÷ the group's total: each row's fraction of its group. The pandas group-share transform." },
   first:        { label: "First in group",    description: "The group's first Value (in the chosen order) on every row. SQL FIRST_VALUE." },
   last:         { label: "Last in group",     description: "The group's last Value on every row. SQL LAST_VALUE." },
 } satisfies Record<WindowFn, { label: string; description: string }>;

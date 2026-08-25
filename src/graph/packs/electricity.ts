@@ -32,16 +32,16 @@ export const ELECTRICITY_BASE: FormulaPackEntry[] = [
     description: "Series resistor for an LED: supply vs, forward voltage vf, target current i   (R = (Vs−Vf)/I)",
     keywords: "diode current limiting" },
   { type: "elec-wire-resistance", label: "Conductor Resistance", expr: "rho*len/a",
-    description: "Resistance R = ρL/A: resistivity rho (Ω·m, copper 1.724e-8), length len (m), cross-section a (m²).",
+    description: "Resistance R = ρL/A: resistivity rho (Ω·m, copper 1.724e-8), length len in m, cross-section a in m².",
     keywords: "resistivity wire" },
   { type: "elec-battery-life", label: "Battery Life", expr: "mah/ma",
-    description: "Runtime in hours: battery capacity mah (mAh) ÷ load current ma (mA)",
+    description: "Runtime in hours: battery capacity mah (mAh) ÷ load current ma in mA",
     keywords: "capacity runtime" },
   { type: "elec-cap-energy", label: "Capacitor Energy", expr: "c*v^2/2",
-    description: "Energy stored in a capacitor: capacitance c (F), voltage v   (E = ½CV²)",
+    description: "Energy E = ½CV² stored in a capacitor: capacitance c (F), voltage v.",
     keywords: "joules stored" },
   { type: "elec-ind-energy", label: "Inductor Energy", expr: "l*i^2/2",
-    description: "Energy stored in an inductor: inductance l (H), current i   (E = ½LI²)",
+    description: "Energy E = ½LI² stored in an inductor: inductance l (H), current i.",
     keywords: "joules stored" },
 ];
 
@@ -50,7 +50,7 @@ export const ELECTRICITY_AC: FormulaPackEntry[] = [
     description: "Reactance of a capacitor at frequency f   (Xc = 1/(2πfC))",
     keywords: "impedance ac" },
   { type: "elec-ind-reactance", label: "Inductive Reactance", expr: "2*PI()*f*l",
-    description: "Reactance of an inductor at frequency f   (Xl = 2πfL)",
+    description: "Reactance Xl = 2πfL of an inductor at frequency f.",
     keywords: "impedance ac" },
   { type: "elec-rlc-impedance", label: "Series RLC Impedance", expr: "SQRT(r^2+(xl-xc)^2)",
     description: "Impedance magnitude of a series R-L-C: resistance r, reactances xl and xc   (|Z| = √(R²+(Xl−Xc)²))" },
@@ -61,9 +61,9 @@ export const ELECTRICITY_AC: FormulaPackEntry[] = [
 
 export const ELECTRICITY_TRANSIENTS: FormulaPackEntry[] = [
   { type: "elec-rc-tau", label: "RC Time Constant", expr: "r*c",
-    description: "First-order RC time constant: 63% of a step in one τ, ~settled in 5τ   (τ = R·C)" },
+    description: "First-order RC time constant τ = R·C: 63% of a step in one τ, about settled in 5τ." },
   { type: "elec-rl-tau", label: "RL Time Constant", expr: "l/r",
-    description: "First-order RL time constant   (τ = L/R)" },
+    description: "First-order RL time constant τ = L/R." },
   { type: "elec-cap-charge", label: "Capacitor Charging", expr: "v0*(1-EXP(-t/(r*c)))",
     description: "Voltage on a charging capacitor at time t: source v0, through r into c   (V = V₀(1−e^(−t/RC)))",
     keywords: "step response exponential" },
@@ -83,7 +83,7 @@ export const ELECTRICITY_DB: FormulaPackEntry[] = [
     description: "Voltage (amplitude) ratio in dB   (20·log₁₀(V₂/V₁))",
     keywords: "gain attenuation" },
   { type: "elec-dbm-w", label: "dBm ↔ Watts", expr: "dbm = 10*LOG10(w)+30", equation: true,
-    description: "Absolute power both ways: wire dbm to get watts, or w to get dBm (0 dBm = 1 mW)",
+    description: "Absolute power both ways: wire dbm to get watts, or w to get dBm. 0 dBm = 1 mW",
     keywords: "dbm watts milliwatt level convert" },
 ];
 
@@ -181,7 +181,7 @@ export const ELECTRICITY_PACK: Pack = {
       entry: {
         type: "elec-parallel",
         label: "Parallel Combine",
-        description: "Combines a list as reciprocals: 1/Σ(1/xᵢ) — resistors in parallel, capacitors in series, springs in series",
+        description: "Combines a list as reciprocals, 1/Σ(1/xᵢ): resistors in parallel, capacitors in series, springs in series",
         keywords: "parallel resistors reciprocal harmonic",
         create: () => new ParallelCombineNode(),
       },

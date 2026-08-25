@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { uiStrings, attrStrings, type Unit } from "./copyCorpus";
+import { uiStrings, attrStrings, collectCopyRecords, type Unit } from "./copyCorpus";
 
 // Machine-checks the mechanically-decidable part of DESIGN.md section 7 (Voice
 // & copy) and CLAUDE.md's "no Captain Obvious UI strings" rule. Those rules were
@@ -189,6 +189,28 @@ describe("UI copy", () => {
       RULES.filter((r) => (r.where?.(u) ?? true) && (!u.src.startsWith("seed/") || GENRE_FREE.has(r.id)) && r.re.test(u.text)).map((r) => `${u.src} [${r.id}] ${u.text}`),
     );
     expect(offenders).toEqual([]);
+  });
+
+  // The two section-7 rules the corpus once predated (see the header note), now
+  // swept and enforced over the node catalog + OP_META descriptions — the
+  // Add-menu tooltips and the Function Reference. NOT widened to help markdown
+  // or seed prose (a longer-form genre): those stay out of scope this pass.
+  // If a description seems to need a trailing parenthetical, rewrite it (fold the
+  // aside into the sentence) rather than allowlisting here.
+  it("no catalog or op-meta description uses an em dash or ends in a trailing parenthetical (section 7)", () => {
+    const descKinds = new Set(["catalog-desc", "tsx-opt-desc"]);
+    const emDash: string[] = [];
+    const trailingParen: string[] = [];
+    for (const r of collectCopyRecords()) {
+      if (!descKinds.has(r.kind)) continue;
+      if (r.text.includes("—")) emDash.push(`${r.id}: ${r.text}`);
+      // A trailing "(…)" aside — one paren group, no nested parens, at the end
+      // (with or without a final period). An Excel expression sign-off keeps its
+      // nested call parens — DAY(EOMONTH(date, 0)) — and is not flagged.
+      if (/\([^()]*\)\.?\s*$/.test(r.text.trim())) trailingParen.push(`${r.id}: ${r.text}`);
+    }
+    expect(emDash, 'section 7 "no em dashes" — use a period, colon, or restructure').toEqual([]);
+    expect(trailingParen, 'section 7 "no trailing parenthetical" — fold the aside into the sentence').toEqual([]);
   });
 
   // Every rule keeps a specimen of the string that motivated it, so a later

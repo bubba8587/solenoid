@@ -443,7 +443,7 @@ export type IsTestOp = "isnumber" | "isblank" | "isnull" | "iserror" | "isna" | 
 export const IS_TEST_OP_META = {
   isnumber:  { label: "ISNUMBER",  description: "TRUE when the value is a number. Excel: ISNUMBER." },
   isblank:   { label: "ISBLANK",   description: "TRUE when the cell is empty. Excel: ISBLANK." },
-  isnull:    { label: "ISNULL",    description: "TRUE when the value is missing (null)." },
+  isnull:    { label: "ISNULL",    description: "TRUE when the value is missing." },
   iserror:   { label: "ISERROR",   description: "TRUE when the value is any error. Excel: ISERROR." },
   isna:      { label: "ISNA",      description: "TRUE when the value is #N/A. Excel: ISNA." },
   islogical: { label: "ISBOOLEAN", description: "TRUE when the value is a Boolean. Excel: ISLOGICAL." },
