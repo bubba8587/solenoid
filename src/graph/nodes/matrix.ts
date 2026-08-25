@@ -8,7 +8,8 @@ import { toAnyMatrix, matrixShape, type Cell } from "./coerce";
 import { tableSocket, strTableSocket, dateTableSocket, logicalTableSocket } from "../sockets";
 import { parseCsvRows } from "../csv";
 import { solError, isSolError, type SolError } from "../errorValue";
-import { isFrameValue, frameRowCount, coerceFrameCell } from "../frame";
+import { isFrameValue, frameRowCount, coerceFrameCell, type FrameValue } from "../frame";
+import { isFrameRef, collectPreview } from "../frameBackend";
 import { carryMatrixUnit, withMatrixUnit, matrixUnitOf, sharedMatrixUnit, isUnitCell } from "../unitValue";
 import { applyFcUnit } from "../unitBridge";
 import { taggedListFromMatrix, matrixCellsFromList } from "../unitColumn";
@@ -778,12 +779,21 @@ export class TableInfoNode extends ClassicPreset.Node {
 
   data(inputs: { matrix?: unknown[] }) {
     const input = inputs.matrix?.[0];
-    // toAnyMatrix reads a Frame as a scalar (1×1) — report its real shape directly.
-    if (isFrameValue(input)) {
-      this.cachedRows = frameRowCount(input);
-      this.cachedCols = input.columns.length;
+    const ofFrame = (f: FrameValue) => {
+      this.cachedRows = f.__totalRows ?? frameRowCount(f);
+      this.cachedCols = f.columns.length;
       return { rows: this.cachedRows, cols: this.cachedCols };
+    };
+    // A lazy upstream: schema + true row count from a zero-row preview, no collect.
+    if (isFrameRef(input)) {
+      return (async () => {
+        const p = await collectPreview(input, 0);
+        if (!isFrameValue(p)) { this.cachedRows = null; this.cachedCols = null; return { rows: p, cols: p }; }
+        return ofFrame(p);
+      })() as unknown as { rows: number | null; cols: number | null };
     }
+    // toAnyMatrix reads a Frame as a scalar (1×1) — report its real shape directly.
+    if (isFrameValue(input)) return ofFrame(input);
     const { rows, cols } = matrixShape(input);
     this.cachedRows = rows;
     this.cachedCols = cols;

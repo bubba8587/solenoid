@@ -17,6 +17,7 @@ import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../d
 import { iterMin, iterMax } from "./mathUtils";
 import { aggregate, type AggregateOp } from "./statsOps";
 import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS } from "./listOps";
+import { isFrameRef, flushRef, frameBackend, materialize } from "../frameBackend";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
 
@@ -1076,7 +1077,27 @@ export class SumIfsNode extends ClassicPreset.Node {
 
   data(inputs: Record<string, unknown[] | undefined>): { result: number | UnitCell | SolError | null } {
     const finish = (r: number | UnitCell | SolError | null) => { this.cachedResult = r; return { result: r }; };
-    const f = inputs.frame?.[0] as FrameValue | null | undefined;
+    const raw = inputs.frame?.[0];
+    // A lazy upstream: fetch ONLY the named columns, then run on that slice.
+    if (isFrameRef(raw)) {
+      const names = new Set<string>();
+      for (const [colKey] of this.valuePairKeys()) {
+        const n = readInput(inputs[colKey] as string[] | undefined, this.stringLiterals[colKey] ?? "");
+        if (n != null && String(n).trim() !== "") names.add(String(n).trim());
+      }
+      const vn = readInput(inputs.values as string[] | undefined, this.stringLiterals.values ?? "");
+      if (vn != null && String(vn).trim() !== "") names.add(String(vn).trim());
+      return (async () => {
+        const cols = await materialize((async () => {
+          const h = await flushRef(raw);
+          return Promise.all([...names].map((n) => frameBackend().column(h, n)));
+        })());
+        if (isSolError(cols)) return finish(cols);
+        const slice: FrameValue = { __frame: true, columns: cols.filter((c): c is FrameColumn => c != null) };
+        return this.data({ ...inputs, frame: [slice] });
+      })() as unknown as { result: number | UnitCell | SolError | null };
+    }
+    const f = raw as FrameValue | null | undefined;
     if (!isFrameValue(f)) return finish(null);
     interface Crit { col: FrameColumn; op: FilterOp; value: string; matchCase: boolean }
     const crits: Crit[] = [];

@@ -19,9 +19,9 @@ export const LAZY_FRAME_NODES: ReadonlySet<string> = new Set([
   "ColumnsNode", "GroupByFrameNode", "UnpivotNode",
   "AppendNode", "BindColumnsNode", "RenameNode",
   "FillBlanksNode", "ReplaceValuesNode", "WindowNode",
-  // Reads ONE column through the backend's column primitive — materializing here
-  // would force a full-frame collect.
-  "GetColumnNode",
+  // Read through the cheap primitives (column / preview / read-at-Run) instead of a
+  // full-frame collect.
+  "GetColumnNode", "SumIfsNode", "TableInfoNode", "WriteFileNode",
 ]);
 
 // 1-D non-numeric list sockets typeable in place as CSV. Exported so

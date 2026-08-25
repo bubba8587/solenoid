@@ -4,6 +4,7 @@ import { frameIn } from "./shared";
 import { frameRowCount, formatFrameCell, type FrameCell, type FrameColType, type FrameValue } from "../frame";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./date";
 import { isSolError, type SolError } from "../errorValue";
+import { isFrameRef, readFrame, collectPreview, type FrameInput } from "../frameBackend";
 import { isDesktop, writeTextFilePath, pickSaveFilePath } from "../fileBridge";
 
 // A sink must NEVER act on its own: data() only caches, and the write happens in
@@ -61,6 +62,8 @@ export class WriteFileNode extends ClassicPreset.Node {
   /** Never persisted (see file header) — always false on a fresh construction. */
   enabled = false;
   cachedFrame: FrameValue | SolError | null = null;
+  /** The lazy upstream, read in full only inside run(). */
+  private cachedInput: FrameInput | SolError | null = null;
   status: SinkStatus = "idle";
   statusMessage = "";
   width = 260; height = 230;
@@ -74,9 +77,11 @@ export class WriteFileNode extends ClassicPreset.Node {
   }
 
   // Caches only — never touches disk.
-  data(inputs: { in?: (FrameValue | SolError)[] }): Record<string, never> {
-    this.cachedFrame = inputs.in?.[0] ?? null;
-    return {};
+  data(inputs: { in?: (FrameInput | SolError)[] }): Record<string, never> {
+    const raw = inputs.in?.[0] ?? null;
+    this.cachedInput = raw;
+    if (!isFrameRef(raw)) { this.cachedFrame = raw; return {}; }
+    return (async () => { this.cachedFrame = await collectPreview(raw); return {}; })() as unknown as Record<string, never>;
   }
 
   private serialize(f: FrameValue): string {
@@ -95,7 +100,7 @@ export class WriteFileNode extends ClassicPreset.Node {
     if (!isDesktop()) { this.status = "error"; this.statusMessage = "Desktop app only"; return; }
     const path = this.path.trim();
     if (path === "") { this.status = "error"; this.statusMessage = "Choose a file path"; return; }
-    const f = this.cachedFrame;
+    const f = isFrameRef(this.cachedInput) ? await readFrame(this.cachedInput) : this.cachedInput;
     if (isSolError(f)) { this.status = "error"; this.statusMessage = f.code; return; }
     if (!f) { this.status = "error"; this.statusMessage = "Nothing to write. Connect a frame."; return; }
     this.status = "writing";

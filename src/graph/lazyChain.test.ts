@@ -54,7 +54,7 @@ afterEach(() => {
   resetFrameBackendToJs();
 });
 
-async function chain(nodes: ClassicPreset.Node[]) {
+async function chain(nodes: ClassicPreset.Node[], lastKey = "frame") {
   const editor = new NodeEditor<Schemes>();
   installInputCoercion(editor);
   editor.addPipe((ctx) => { if (ctx.type === "nodecreated") installErrorGuards(ctx.data); return ctx; });
@@ -62,7 +62,8 @@ async function chain(nodes: ClassicPreset.Node[]) {
   editor.use(engine);
   for (const n of nodes) await editor.addNode(n as Schemes["Node"]);
   for (let i = 1; i < nodes.length; i++) {
-    await editor.addConnection(new ClassicPreset.Connection(nodes[i - 1], "frame", nodes[i], "frame") as Schemes["Connection"]);
+    const key = i === nodes.length - 1 ? lastKey : "frame";
+    await editor.addConnection(new ClassicPreset.Connection(nodes[i - 1], "frame", nodes[i], key) as Schemes["Connection"]);
   }
   return engine.fetch(nodes[nodes.length - 1].id);
 }
@@ -96,5 +97,43 @@ describe("LAZY_FRAME_NODES covers every ref-emitting verb class", () => {
     expect(emitters.length).toBeGreaterThan(10);
     const missing = emitters.filter((c) => !LAZY_FRAME_NODES.has(c));
     expect(missing).toEqual([]);
+  });
+});
+
+// Consumers that read LESS than the whole frame must not collect it.
+import { TableInfoNode } from "./nodes/matrix";
+import { SumIfsNode } from "./nodes/list";
+import { WriteFileNode } from "./nodes/sink";
+import { readFrame } from "./frameBackend";
+
+describe("cheap-primitive consumers on a lazy upstream", () => {
+  it("Table Size reads rowCount + schema from a zero-row preview", async () => {
+    const info = new TableInfoNode();
+    const out = (await chain([new FrameInputNode(), new DistinctNode(), info], "matrix")) as { rows: number; cols: number };
+    expect(out).toEqual({ rows: BIG, cols: 2 });
+    expect(calls("engine_collect")).toBe(0);
+    expect(calls("engine_source")).toBe(1);
+  });
+
+  it("SUMIFS fetches only the named columns", async () => {
+    const n = new SumIfsNode({ op: "countifs" });
+    n.condConfig["0"] = { op: "notblank" };
+    n.stringLiterals.column0 = "A";
+    const out = (await chain([new FrameInputNode(), new DistinctNode(), n])) as { result: number };
+    expect(out.result).toBe(2);
+    expect(calls("engine_column")).toBe(1);
+    expect(calls("engine_collect")).toBe(0);
+  });
+
+  it("Write File holds the ref through data() and collects only at run()", async () => {
+    const w = new WriteFileNode({ path: "C:/out/x.csv" });
+    await chain([new FrameInputNode(), new DistinctNode(), w], "in");
+    expect(calls("engine_collect")).toBe(0);
+    expect(w.cachedFrame).toMatchObject({ __frame: true, __totalRows: BIG });
+    // run() is desktop-gated and touches disk; the read it would do is readFrame on
+    // the held input — exercise that boundary directly.
+    const full = await readFrame((w as unknown as { cachedInput: Parameters<typeof readFrame>[0] }).cachedInput);
+    expect(full).toMatchObject({ __frame: true });
+    expect(calls("engine_collect")).toBe(1);
   });
 });
