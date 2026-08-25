@@ -1200,6 +1200,13 @@ Two standing rules sit on top of the choice. Aligned parallel columns take **one
 and the frame verbs. And a port whose value the node forwards unchanged should
 declare a passthrough, so its type, format and units travel with it.
 
+A naming convention rides on the 2-D grid types (`table` / `anytable`): label the
+port **Matrix** on the linear-algebra nodes (MMULT, MDETERM, MINVERSE, TRANSPOSE,
+EIGEN, SOLVE) and **Table** on the structural row/column/cell editors (CHOOSEROWS/
+CHOOSECOLS, EXPAND, SET CELL, Table Size). It is the same socket type either way;
+the word tracks intent — "Matrix" is the whole-grid math operand, "Table" is the
+rows and columns you edit.
+
 ### The factory to call
 
 Ports are built by the helpers in `src/graph/nodes/shared.ts`. An asterisk marks an

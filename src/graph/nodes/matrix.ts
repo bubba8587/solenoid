@@ -565,7 +565,7 @@ export class TableSelectNode extends ClassicPreset.Node {
     super("TableSelect");
     this.op    = init?.op    ?? "chooserows";
     this.label = init?.label ?? "";
-    this.addInput("matrix",  adoptiveTableIn("Matrix"));
+    this.addInput("matrix",  adoptiveTableIn("Table"));
     this.addInput("indices", listIn(this.op === "chooserows" ? "Row indices (1-based)" : "Col indices (1-based)"));
     this.addOutput("result", adoptiveTableOut("Result"));
   }

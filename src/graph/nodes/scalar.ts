@@ -820,8 +820,8 @@ export class SumProductNode extends ClassicPreset.Node {
     super("SumProduct");
     this.label = init?.label ?? "";
     this.op = init?.op ?? "sumx2my2";
-    this.addInput("x", listIn("X list"));
-    this.addInput("y", listIn("Y list"));
+    this.addInput("x", listIn("X"));
+    this.addInput("y", listIn("Y"));
     this.addOutput("result", numOut("Result"));
   }
 

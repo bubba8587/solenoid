@@ -567,7 +567,7 @@ export class ConfidenceNode extends ClassicPreset.Node {
     this.label = init?.label ?? "";
     this.op = init?.op ?? "norm";
     this.addInput("alpha", numIn("Alpha"));
-    this.addInput("stdev", numIn("Std Dev"));
+    this.addInput("stdev", numIn("Std dev"));
     this.addInput("n",     numIn("Sample size"));
     this.addOutput("result", numOut("Result"));
   }
