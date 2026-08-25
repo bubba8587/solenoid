@@ -7,6 +7,7 @@ import { rawCellsToText } from "../nodes/matrix";
 import { TableDisplay } from "./TableDisplay";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
+import { nodeDisplayName } from "../catalogUtils";
 
 const TYPE_OPTIONS: ReadonlyArray<{ value: TableElemType; label: string; title: string }> = [
   { value: "number",  label: "Num",  title: "Number table" },
@@ -45,7 +46,7 @@ export function TableInputComponent({ data, emit }: NodeProps<TableInputNodeType
       />
       <TableDisplay
         table={data.cachedResult}
-        label={data.label}
+        label={nodeDisplayName(data)}
         elem={dt}
         kind={dt === "date" ? "date" : dt === "string" ? "text" : undefined}
         popupOverrides={{

@@ -1,5 +1,5 @@
-import { CASHFLOW_MODE_OPTIONS } from "../rete-nodes";
-import type { NpvNode as NpvNodeType, CashflowMode } from "../rete-nodes";
+import { CASHFLOW_OP_OPTIONS } from "../rete-nodes";
+import type { NpvNode as NpvNodeType, CashflowOp } from "../rete-nodes";
 import { useState } from "react";
 import { processGraph } from "../process";
 import { getActiveArea } from "../activeGraph";
@@ -9,20 +9,20 @@ import { SegToggle } from "./SegToggle";
 import { dropInputCables } from "./cablePrune";
 
 export function NpvComponent({ data, emit }: NodeProps<NpvNodeType>) {
-  const [mode, setMode] = useState<CashflowMode>(data.mode);
+  const [op, setOp] = useState<CashflowOp>(data.op);
 
-  async function pickMode(next: CashflowMode) {
-    if (next === data.mode) return;
+  async function pickOp(next: CashflowOp) {
+    if (next === data.op) return;
     if (next === "periods") await dropInputCables(data.id, ["dates"]);
-    data.setMode(next);
-    setMode(next);
+    data.setOp(next);
+    setOp(next);
     await getActiveArea()?.update("node", data.id);
     await processGraph();
   }
 
   return (
     <NodeShell node={data} emit={emit}>
-      <SegToggle arg value={mode} options={CASHFLOW_MODE_OPTIONS} onChange={(m) => void pickMode(m)} />
+      <SegToggle value={op} options={CASHFLOW_OP_OPTIONS} onChange={(m) => void pickOp(m)} />
       <InlineInputs node={data} emit={emit} />
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>

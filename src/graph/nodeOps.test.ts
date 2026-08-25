@@ -184,13 +184,11 @@ describe("collapsed families keep every op reachable", () => {
     }
   });
 
-  it("mark:false hides the glyph but keeps the ops searchable", () => {
-    // The subjective per-node call, for a label that already names its ops.
+  it("a two-op family whose ops are both leaves hides nothing and needs no mark", () => {
     const gcd = byType.get("gcd-lcm")!;
-    expect(gcd.hideOpsMark).toBe(true);
-    expect(gcd.hiddenOps?.map((o) => o.op)).toContain("lcm");
+    expect(gcd.hiddenOps ?? []).toEqual([]);
     const hits = searchLeaves(flattenLeaves(catalog), "LCM").map((l) => l.label);
-    expect(hits.some((l) => /LCM/.test(l))).toBe(true);
+    expect(hits).toContain("LCM");
   });
 
   it("finds a hidden op by its own name, not just its host's", () => {

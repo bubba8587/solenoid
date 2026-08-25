@@ -29,9 +29,9 @@ describe("XIRR zeroes XNPV (dated, actual/365 from the first date)", () => {
   const d = (s: string) => parseDateToSerial(s);
   const dates = [d("2020-01-01"), d("2020-06-01"), d("2021-01-01"), d("2021-06-01"), d("2022-01-01")];
   it("XNPV at the XIRR is ~0", () => {
-    const xirr = new IrrNode({ mode: "dates" }).data({ list: [flows], dates: [dates] }).result as number;
+    const xirr = new IrrNode({ op: "dates" }).data({ list: [flows], dates: [dates] }).result as number;
     expect(typeof xirr).toBe("number");
-    const xnpvAtXirr = new NpvNode({ mode: "dates" }).data({ rate: [xirr], list: [flows], dates: [dates] }).result as number;
+    const xnpvAtXirr = new NpvNode({ op: "dates" }).data({ rate: [xirr], list: [flows], dates: [dates] }).result as number;
     expect(xnpvAtXirr).toBeCloseTo(0, 4);
   });
 });
@@ -87,7 +87,7 @@ describe("the discount-rate solver holds its floor and scales its tolerance", ()
     // An absolute epsilon tight enough for a 5% root refuses this one outright.
     const values = [-444, 852, 696, 152, 52, 1545];
     const dates = [45000, 45023, 45541, 46060, 46503, 46599];
-    const r = new IrrNode({ mode: "dates" }).data({ list: [values], dates: [dates] }).result;
+    const r = new IrrNode({ op: "dates" }).data({ list: [values], dates: [dates] }).result;
     expect(typeof r).toBe("number");
     expect(r as number).toBeGreaterThan(1000);
     const d0 = dates[0];
@@ -131,7 +131,7 @@ describe("IRR / XIRR / NPV / MIRR formulas agree with their nodes", () => {
     expect(ev("IRR(c, 0.2)", { c: cf })).toBeCloseTo(node, 12); // guess accepted, ignored
   });
   it("XIRR formula is the node's dated root", () => {
-    const node = new IrrNode({ mode: "dates" }).data({ list: [flows], dates: [dates] }).result as number;
+    const node = new IrrNode({ op: "dates" }).data({ list: [flows], dates: [dates] }).result as number;
     expect(ev("XIRR(c, d)", { c: flows, d: dates })).toBeCloseTo(node, 12);
   });
   it("a same-sign series is #CONV! on both surfaces; too few points is blank", () => {
@@ -156,6 +156,6 @@ describe("IRR / XIRR / NPV / MIRR formulas agree with their nodes", () => {
   it("a blank DATE makes XIRR blank on both surfaces (the schedule is unknown)", () => {
     const ds = [dates[0], null, dates[2], dates[3], dates[4]];
     expect(ev("XIRR(c, d)", { c: flows, d: ds })).toBeNull();
-    expect(new IrrNode({ mode: "dates" }).data({ list: [flows], dates: [ds as number[]] }).result).toBeNull();
+    expect(new IrrNode({ op: "dates" }).data({ list: [flows], dates: [ds as number[]] }).result).toBeNull();
   });
 });

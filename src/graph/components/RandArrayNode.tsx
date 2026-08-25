@@ -6,6 +6,7 @@ import { InlineInputs } from "./inlineInput";
 import { ResultDisplay } from "./ResultDisplay";
 import { RecalcButton } from "./RecalcButton";
 import { stopDragStart } from "../coarse";
+import { nodeDisplayName } from "../catalogUtils";
 
 export function RandArrayComponent({ data, emit }: NodeProps<RandArrayNodeType>) {
   // Local mirror so the checkbox re-renders immediately (data.integer is the truth).
@@ -28,7 +29,7 @@ export function RandArrayComponent({ data, emit }: NodeProps<RandArrayNodeType>)
         />
         Integer
       </label>
-      <ResultDisplay value={data.cachedList} label={data.label} />
+      <ResultDisplay value={data.cachedList} label={nodeDisplayName(data)} />
       <RecalcButton title="Roll new random values" />
     </NodeShell>
   );

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../excelFormula";
+import { nodeDisplayName } from "../catalogUtils";
 import { BinNode, OutliersNode } from "./list";
 import { EpochNode, DateTruncNode } from "./date";
 import { ntileList, outlierFlags } from "./listOps";
@@ -672,7 +673,7 @@ describe("Hash / UUID / Base64 (hashlib, uuid4, base64 — digests pinned in has
   it("ENCODEBASE64 / DECODEBASE64 ride the url-encode card; bad base64 passes through", () => {
     expect(new UrlEncodeNode({ op: "base64" }).data({ text: ["hello world"] }).result).toBe("aGVsbG8gd29ybGQ=");
     expect(new UrlEncodeNode({ op: "unbase64" }).data({ text: ["aGVsbG8gd29ybGQ="] }).result).toBe("hello world");
-    expect(new UrlEncodeNode({ op: "unbase64" }).label).toBe("DECODEBASE64");
+    expect(nodeDisplayName(new UrlEncodeNode({ op: "unbase64" }))).toBe("DECODEBASE64");
     expect(ev('ENCODEBASE64("abc")')).toBe("YWJj");
     expect(ev('DECODEBASE64("YWJj")')).toBe("abc");
     expect(ev('DECODEBASE64("not base64!")')).toBe("not base64!");

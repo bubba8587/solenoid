@@ -9,6 +9,7 @@ import { nodeNameStore } from "./nodeNameStore";
 // Cycle-safe: nodeCtorRegistry imports FLAT_CATALOG from here, but neither module
 // touches the other's exports at init time.
 import { ctorRegistry, type NodeCtor } from "./nodeCtorRegistry";
+import { nodeTypeName } from "./nodeNames";
 
 // Pack nodes are INSERTED into the core tree at their target category path, so packs
 // never grow the top level; a type claimed by several packs records every owner.
@@ -227,7 +228,7 @@ function nameIndex(): Map<string, string> {
   if (_nameIndex) return _nameIndex;
   _nameIndex = new Map();
   for (const entry of FLAT_CATALOG.values()) {
-    if (!entry.label) continue;
+    if (!entry.label || entry.type.includes("__op-")) continue;
     try {
       const inst = entry.create() as unknown as { constructor: { name: string }; op?: unknown };
       const ctor = inst.constructor.name;
@@ -279,6 +280,14 @@ export function nodeName(node: object): string | null {
     idx.get(`${ctor}::`) ??
     null
   );
+}
+
+/** The name a placed node shows everywhere (card title, Navigator, Inspector, cable
+ *  inspector, popups): the user's own label if typed, else the catalog name of its
+ *  current op — so an op family's card is named by its op (NAME-3). */
+export function nodeDisplayName(node: object): string {
+  const label = ((node as { label?: string }).label ?? "").trim();
+  return label || nodeName(node) || nodeTypeName(node as { constructor: { name: string } });
 }
 
 export async function addNodeByCatalogType(catalogType: string): Promise<boolean> {

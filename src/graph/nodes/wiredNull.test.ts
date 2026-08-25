@@ -563,7 +563,7 @@ describe("per-cell contract in hand-rolled broadcasts", () => {
 
   it("XIRR: an error cell in the cash flows surfaces as ITSELF, not #CONV!", () => {
     const err = solError("#DIV/0!", "upstream");
-    const node = new IrrNode({ mode: "dates" });
+    const node = new IrrNode({ op: "dates" });
     const out = node.data({
       list: [[-1000, err as unknown as number, 600]],
       dates: [[45000, 45180, 45365]],
@@ -572,7 +572,7 @@ describe("per-cell contract in hand-rolled broadcasts", () => {
   });
 
   it("XIRR: a missing DATE leaves the schedule unknown", () => {
-    const node = new IrrNode({ mode: "dates" });
+    const node = new IrrNode({ op: "dates" });
     expect(node.data({ list: [[-1000, 600]], dates: [[45000, null as unknown as number]] }).result).toBeNull();
   });
 });

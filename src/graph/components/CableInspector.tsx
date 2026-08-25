@@ -6,7 +6,7 @@ import { cableValueStore } from "../cableValueStore";
 import { ribbonForConnection } from "../ribbonCable";
 import { flyToNode } from "../flyToNode";
 import { connectionVersionStore, getEditor } from "../process";
-import { nodeTypeName } from "../nodeNames";
+import { nodeDisplayName } from "../catalogUtils";
 import { formatScalar } from "./format";
 import { formatAnnotationStore, formatNumberWithAnnotation, applyLogicalStyle } from "../formatAnnotationStore";
 import { isSolError } from "../errorValue";
@@ -104,7 +104,7 @@ export function CableInspector() {
 
   const titleOf = (nodeId: string) => {
     const n = editor.getNode(nodeId);
-    return n ? (n.label ?? "").trim() || nodeTypeName(n) : nodeId;
+    return n ? nodeDisplayName(n) : nodeId;
   };
   const outPortOf = (e: ConduitPathEnd) => editor.getNode(e.nodeId)?.outputs[e.key]?.label || e.key;
   const inPortOf = (e: ConduitPathEnd) => editor.getNode(e.nodeId)?.inputs[e.key]?.label || e.key;

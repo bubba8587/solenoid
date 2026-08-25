@@ -162,7 +162,7 @@ export class TextTransformNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: TextTransformOp }) {
     super("TextTransform");
-    this.label = init?.label ?? "UPPER";
+    this.label = init?.label ?? "";
     this.op    = init?.op    ?? "upper";
     this.addInput("text", strComboIn("Text"));
     this.addOutput("result", strComboOut("Result"));
@@ -379,7 +379,7 @@ export class TextSliceNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: TextSliceOp }) {
     super("TextSlice");
-    this.label = init?.label ?? "LEFT";
+    this.label = init?.label ?? "";
     this.op    = init?.op    ?? "left";
     this.addInput("text",  strComboIn("Text"));
     this.addInput("n",     numListIn("N (LEFT/RIGHT)"));
@@ -440,7 +440,7 @@ export class TextFindNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: TextFindOp }) {
     super("TextFind");
-    this.label = init?.label ?? "FIND";
+    this.label = init?.label ?? "";
     this.op    = init?.op    ?? "find";
     this.addInput("needle",   strComboIn("Find text"));
     this.addInput("haystack", strComboIn("Within text"));
@@ -632,7 +632,7 @@ export class CharCodeNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: CharCodeOp }) {
     super("CharCode");
     this.op = init?.op ?? "char";
-    this.label = init?.label ?? (this.op === "char" ? "CHAR" : "CODE");
+    this.label = init?.label ?? "";
     if (this.op === "char") {
       this.addInput("code", numListIn("Code point"));
       this.addOutput("result", strComboOut("Character"));
@@ -741,7 +741,7 @@ export class TextAfterBeforeNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: TextAfterBeforeOp }) {
     super("TextAfterBefore");
     this.op    = init?.op    ?? "after";
-    this.label = init?.label ?? TEXT_AFTER_BEFORE_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("text",      strComboIn("Text"));
     this.addInput("delimiter", strComboIn("Delimiter"));
     this.addOutput("result", strComboOut("Result"));
@@ -858,7 +858,7 @@ export class UrlEncodeNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: UrlEncodeOp }) {
     super("UrlEncode");
     this.op    = init?.op ?? "encode";
-    this.label = init?.label ?? URL_ENCODE_LABEL[this.op];
+    this.label = init?.label ?? "";
     this.addInput("text", strComboIn("Text"));
     this.addOutput("result", strComboOut("Result"));
   }
@@ -1002,7 +1002,7 @@ export class RomanArabicNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: RomanArabicOp }) {
     super("RomanArabic");
     this.op    = init?.op ?? "roman";
-    this.label = init?.label ?? (this.op === "roman" ? "ROMAN" : "ARABIC");
+    this.label = init?.label ?? "";
     if (this.op === "roman") {
       this.addInput("number", numListIn("Number (1–3999)"));
       this.addOutput("result", strComboOut("Roman numeral"));
@@ -1116,7 +1116,7 @@ export class RegexNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: RegexOp }) {
     super("Regex");
     this.op    = init?.op    ?? "test";
-    this.label = init?.label ?? REGEX_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("text",        anyListIn("Text"));
     this.addInput("pattern",     strIn("Pattern"));
     this.addInput("replacement", strIn("Replace with"));

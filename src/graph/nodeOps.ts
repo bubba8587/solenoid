@@ -16,6 +16,8 @@ import { HeadNode, HeadersNode, DropBlankRowsNode, ColumnsNode, HEAD_OP_META, CO
 import { RegexNode, REGEX_OP_META } from "./nodes/text";
 import { DATE_DIFF_OP_META, DateTimeValueNode, WorkdaysNode } from "./nodes/date";
 import { IFErrorNode } from "./nodes/logic";
+import { ByAxisNode, BY_AXIS_OP_META } from "./nodes/tableLambda";
+import { NpvNode, IrrNode, NPV_OP_META, IRR_OP_META } from "./nodes/finance";
 import {
   IsEvenOddNode, ComparisonNode, IsTestNode,
   PARITY_OP_META, COMPARISON_OP_META, IS_TEST_OP_META,
@@ -190,6 +192,12 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // Both ops have their own bare Add-menu leaf ("Keep Columns" / "Drop Columns"), so
   // neither becomes a "Keep Columns: Drop" colon row; the decl still carries kind +
   // op fx names for the accent and uniqueNameMap.
+  { type: "by-axis", ctor: ByAxisNode, kind: "operation", ops: fromMeta(BY_AXIS_OP_META),
+    create: (op) => new ByAxisNode({ op: op as never }), leafOps: ["row", "col"] },
+  { type: "npv", ctor: NpvNode, kind: "operation", ops: fromMeta(NPV_OP_META),
+    create: (op) => new NpvNode({ op: op as never }), leafOps: ["periods", "dates"] },
+  { type: "irr", ctor: IrrNode, kind: "operation", ops: fromMeta(IRR_OP_META),
+    create: (op) => new IrrNode({ op: op as never }), leafOps: ["periods", "dates"] },
   { type: "keep-columns", ctor: ColumnsNode, kind: "operation", ops: fromMeta(COLUMNS_OP_META),
     create: (op) => new ColumnsNode({ op: op as never }), leafOps: ["keep", "drop"] },
   { type: "list-pad", ctor: PadNode, kind: "operation", ops: fromMeta(PAD_OP_META),
@@ -201,7 +209,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // The meta labels are dropdown prose, so search names are declared here (overrideInPlace).
   { type: "iferror", ctor: IFErrorNode, kind: "operation",
     ops: [{ op: "iferror", label: "IFERROR" }, { op: "ifna", label: "IFNA" }],
-    create: (op) => new IFErrorNode({ op: op as never }) },
+    create: (op) => new IFErrorNode({ op: op as never }), leafOps: ["iferror", "ifna"] },
   { type: "regex", ctor: RegexNode, kind: "operation", ops: fromMeta(REGEX_OP_META),
     create: (op) => new RegexNode({ op: op as never }) },
   // Text Filter's ops are its CONDITION; as operations they would also claim
@@ -223,8 +231,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "linest", ctor: LinestNode, kind: "operation", ops: fromMeta(FIT_OP_META),
     create: (op) => new LinestNode({ op: op as never }) },
   // Label already names both ops.
-  { type: "iseven-isodd", ctor: IsEvenOddNode, kind: "operation", ops: fromMeta(PARITY_OP_META), mark: false,
-    create: (op) => new IsEvenOddNode({ op: op as never }) },
+  { type: "iseven-isodd", ctor: IsEvenOddNode, kind: "operation", ops: fromMeta(PARITY_OP_META),
+    create: (op) => new IsEvenOddNode({ op: op as never }), leafOps: ["iseven", "isodd"] },
 
   // The aggregator is an ARGUMENT of the windowed scan, like Group By's and Cube
   // Rollup's: neutral picker, no op rows (searched words ride the host leaf's
@@ -237,15 +245,15 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "is-test", ctor: IsTestNode, kind: "operation", ops: fromMeta(IS_TEST_OP_META),
     create: (op) => new IsTestNode({ op: op as never }) },
   // Label already names both ops, so the marker would only echo it.
-  { type: "gcd-lcm", ctor: GcdNode, kind: "operation", ops: fromMeta(GCD_OP_META), mark: false,
-    create: (op) => new GcdNode({ op: op as never }) },
+  { type: "gcd-lcm", ctor: GcdNode, kind: "operation", ops: fromMeta(GCD_OP_META),
+    create: (op) => new GcdNode({ op: op as never }), leafOps: ["gcd", "lcm"] },
 
   // ── Partially exposed: some ops already have leaves, the rest ride in search ──
   { type: "twomath-log", ctor: TwoInputMathNode, kind: "operation", ops: fromMeta(TWO_INPUT_MATH_OP_META),
     leafOps: ["log", "atan2", "delta", "gestep", "hypot"],
     create: (op) => new TwoInputMathNode({ op: op as never }) },
   { type: "roundn-round", ctor: RoundNNode, kind: "operation", ops: fromMeta(ROUNDN_OP_META),
-    leafOps: ["round", "roundup"],
+    leafOps: ["round", "roundup", "rounddown"],
     create: (op) => new RoundNNode({ op: op as never }) },
 
   // ── Kind-only declarations: already listed op-by-op, so nothing to hide or add

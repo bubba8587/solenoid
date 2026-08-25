@@ -1,5 +1,5 @@
 import { Presets as HistoryPresets } from "rete-history-plugin";
-import { nodeTypeName } from "./nodeNames";
+import { nodeDisplayName } from "./catalogUtils";
 
 // Pure human-readable log from rete-history-plugin's raw records. Its action fields are
 // TypeScript-`private` only (not runtime), so they're cast-read; a missing one degrades
@@ -56,7 +56,7 @@ export function describeAction(action: unknown, lookup: DigestLookup): string {
     const node = (action as unknown as {
       node?: { label?: string; constructor: { name: string } };
     }).node;
-    const name = node ? (node.label?.trim() || nodeTypeName(node)) : "a node";
+    const name = node ? nodeDisplayName(node) : "a node";
     return `Removed node: ${name}`;
   }
   if (action instanceof DragNodeAction) {

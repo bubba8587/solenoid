@@ -267,7 +267,7 @@ const km = (n: number) => fromUnit(n, KM, "km") as UnitCell;
 describe("LAMBDA hosts carry units over a 1-D list (FC A4)", () => {
   it("BYROW SUM over a km list carries the length dimension + display", () => {
     const list = [km(1), km(2), km(3)]; // base meters 1000/2000/3000
-    const out = new ByAxisNode({ axis: "row", expr: "SUM(values)" }).data({ table: [list] }).result as UnitCell[];
+    const out = new ByAxisNode({ op: "row", expr: "SUM(values)" }).data({ table: [list] }).result as UnitCell[];
     expect(out.length).toBe(1);
     expect(isUnitCell(out[0])).toBe(true);
     expect(out[0].dim).toEqual({ length: 1 });
@@ -292,12 +292,12 @@ describe("LAMBDA hosts carry units over a 1-D list (FC A4)", () => {
 
   it("a dimensionless-yielding formula (COUNT) strips the unit to a plain number", () => {
     const list = [km(1), km(2), km(3)];
-    expect(new ByAxisNode({ axis: "row", expr: "COUNT(values)" }).data({ table: [list] }).result).toEqual([3]);
+    expect(new ByAxisNode({ op: "row", expr: "COUNT(values)" }).data({ table: [list] }).result).toEqual([3]);
   });
 
   it("mixed units in one list → #UNIT!", () => {
     const mixed = [km(1), fromUnit(2, { dim: { time: 1 }, scale: 1 }, "s")]; // length + time
-    const out = new ByAxisNode({ axis: "row", expr: "SUM(values)" }).data({ table: [mixed] }).result;
+    const out = new ByAxisNode({ op: "row", expr: "SUM(values)" }).data({ table: [mixed] }).result;
     expect(isSolError(out) && (out as SolError).code).toBe("#UNIT!");
     const red = new ReduceLambdaNode({ expr: "acc + value" }).data({ initial: [0], table: [mixed] }).result;
     expect(isSolError(red) && (red as SolError).code).toBe("#UNIT!");
@@ -305,13 +305,13 @@ describe("LAMBDA hosts carry units over a 1-D list (FC A4)", () => {
 
   it("a bare (unitless) list is unchanged — no tagging", () => {
     expect(new ReduceLambdaNode({ expr: "acc + value" }).data({ initial: [0], table: [[1, 2, 3]] }).result).toBe(6);
-    expect(new ByAxisNode({ axis: "row", expr: "SUM(values)" }).data({ table: [[1, 2, 3]] }).result).toEqual([6]);
+    expect(new ByAxisNode({ op: "row", expr: "SUM(values)" }).data({ table: [[1, 2, 3]] }).result).toEqual([6]);
   });
 
   it("a wired LAMBDA's body drives the dimensional interpretation too", () => {
     const lam = new LambdaNode({ params: "values", expr: "SUM(values)" }).data({}).result;
     const list = [km(2), km(3)];
-    const out = new ByAxisNode({ axis: "row" }).data({ table: [list], lambda: [lam] }).result as UnitCell[];
+    const out = new ByAxisNode({ op: "row" }).data({ table: [list], lambda: [lam] }).result as UnitCell[];
     expect(out[0].dim).toEqual({ length: 1 });
     expect(magnitudeOf(out[0])).toBeCloseTo(5000, 6);
   });

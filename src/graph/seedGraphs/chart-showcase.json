@@ -299,9 +299,7 @@
       "type": "GaugeNode",
       "x": 280,
       "y": 2640,
-      "init": {
-        "label": "Gauge"
-      },
+      "init": {},
       "literals": {
         "value": 0
       }

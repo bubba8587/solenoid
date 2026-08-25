@@ -107,7 +107,7 @@ export class ImportObsidianNode extends NoteNode {
     collapsed?: boolean; fieldTypes?: Record<string, FrontmatterFieldType>; fileName?: string;
   }) {
     super({
-      label: init?.label ?? "Imported Note",
+      label: init?.label ?? "Obsidian Note",
       body: init?.body ?? "",
       color: init?.color ?? "violet",
       width: init?.width ?? 345,

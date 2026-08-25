@@ -37,10 +37,8 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "bitwise-bitxor": [{ excel: "BITXOR", syntax: "=BITXOR(a, b)", parity: true }],
   "bondprice-price": [{ excel: "PRICE", syntax: "=PRICE(settle,maturity,rate,yld,redemption,freq)", parity: false, note: "30/360 basis only (no basis argument). Confirmed against Microsoft's worked example." }],
   "bondprice-yield": [{ excel: "YIELD", syntax: "=YIELD(settle,maturity,rate,pr,redemption,freq)", parity: false, note: "30/360 basis only" }],
-  "by-axis": [
-    { excel: "BYROW", syntax: "=BYROW(array, LAMBDA(values, ...))", parity: false, note: "BYROW/BYCOL node reduces each row/column with its own formula of (values), or a wired LAMBDA value" },
-    { excel: "BYCOL", syntax: "=BYCOL(array, LAMBDA(values, ...))", parity: false, note: "BYROW/BYCOL node reduces each row/column with its own formula of (values), or a wired LAMBDA value" },
-  ],
+  "by-axis": [{ excel: "BYROW", syntax: "=BYROW(array, LAMBDA(values, ...))", parity: false, note: "Reduces each row with its own formula of (values), or a wired LAMBDA value" }],
+  "by-col": [{ excel: "BYCOL", syntax: "=BYCOL(array, LAMBDA(values, ...))", parity: false, note: "Reduces each column with its own formula of (values), or a wired LAMBDA value" }],
   "char-code-char": [
     { excel: "CHAR", syntax: "=CHAR(code)", parity: false, note: "Full Unicode (=UNICHAR) — code point 0–1114111" },
     { excel: "UNICHAR", syntax: "=UNICHAR(code)", parity: true, note: "Same as CHAR in Solenoid — full Unicode range" },
@@ -196,15 +194,11 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   ],
   "frequency": [{ excel: "FREQUENCY", syntax: "=FREQUENCY(data, bins)", parity: true }],
   "fvschedule": [{ excel: "FVSCHEDULE", syntax: "=FVSCHEDULE(pv, schedule)" }],
-  "gcd-lcm": [
-    { excel: "GCD", syntax: "=GCD(a, b)", parity: true },
-    { excel: "LCM", syntax: "=LCM(a, b)", parity: true },
-  ],
+  "gcd-lcm": [{ excel: "GCD", syntax: "=GCD(a, b)", parity: true }],
+  "lcm": [{ excel: "LCM", syntax: "=LCM(a, b)", parity: true }],
   "hstack-table": [{ excel: "HSTACK", syntax: "=HSTACK(array1, array2, ...)", parity: true, note: "N-ary; ragged inputs pad with #N/A like Excel. A bare list counts as ONE ROW" }],
-  "iferror": [
-    { excel: "IFERROR", syntax: "=IFERROR(v, fallback)", parity: true },
-    { excel: "IFNA", syntax: "=IFNA(v, fallback)", parity: true },
-  ],
+  "iferror": [{ excel: "IFERROR", syntax: "=IFERROR(v, fallback)", parity: true }],
+  "ifna": [{ excel: "IFNA", syntax: "=IFNA(v, fallback)", parity: true }],
   "ifs": [{ excel: "IFS", syntax: "=IFS(c1, v1, c2, v2, ...)", parity: false, note: "Fixed 3 conditions; Excel is variadic" }],
   "ipmt-ipmt": [{ excel: "IPMT", syntax: "=IPMT(rate, per, nper, pv)", parity: true }],
   "ipmt-ppmt": [{ excel: "PPMT", syntax: "=PPMT(rate, per, nper, pv)", parity: true }],
@@ -299,10 +293,8 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "GAMMALN.PRECISE", syntax: "=GAMMALN.PRECISE(x)" },
   ],
   "math-int": [{ excel: "INT", syntax: "=INT(x)", parity: true }],
-  "iseven-isodd": [
-    { excel: "ISEVEN", syntax: "=ISEVEN(x)", parity: true, note: "Pick ISEVEN/ISODD in the node; emits a logical (TRUE/FALSE), broadcasts over a list" },
-    { excel: "ISODD", syntax: "=ISODD(x)", parity: true, note: "Pick ISEVEN/ISODD in the node; emits a logical (TRUE/FALSE), broadcasts over a list" },
-  ],
+  "iseven-isodd": [{ excel: "ISEVEN", syntax: "=ISEVEN(x)", parity: true, note: "Emits a logical (TRUE/FALSE), broadcasts over a list" }],
+  "isodd": [{ excel: "ISODD", syntax: "=ISODD(x)", parity: true, note: "Emits a logical (TRUE/FALSE), broadcasts over a list" }],
   "math-log": [{ excel: "LN", syntax: "=LN(x)", parity: true }],
   "math-log10": [{ excel: "LOG10", syntax: "=LOG10(x)", parity: true }],
   "math-mround": [{ excel: "MROUND", syntax: "=MROUND(x, multiple)", parity: true }],
@@ -402,10 +394,8 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "reshape-wraprows": [{ excel: "WRAPROWS", syntax: "=WRAPROWS(vector, wrap_count, [pad_with])", parity: true, note: "Unwired Fill pads with #N/A (Excel's default); wire Fill for a custom pad_with" }],
   "roman-arabic-arabic": [{ excel: "ARABIC", syntax: "=ARABIC(text)", parity: false, note: "Roman numeral string → integer" }],
   "roman-arabic-roman": [{ excel: "ROMAN", syntax: "=ROMAN(n)", parity: false, note: "Integer (1–3999) → Roman numeral string" }],
-  "roundn-dir": [
-    { excel: "ROUNDDOWN", syntax: "=ROUNDDOWN(x, digits)", parity: true },
-    { excel: "ROUNDUP", syntax: "=ROUNDUP(x, digits)", parity: true },
-  ],
+  "roundn-dir": [{ excel: "ROUNDUP", syntax: "=ROUNDUP(x, digits)", parity: true }],
+  "roundn-down": [{ excel: "ROUNDDOWN", syntax: "=ROUNDDOWN(x, digits)", parity: true }],
   "roundn-round": [{ excel: "ROUND", syntax: "=ROUND(x, digits)", parity: true }],
 
   "secdesc-disc": [{ excel: "DISC", syntax: "=DISC(settle,maturity,pr,redemption,[basis])", parity: false, note: "basis 1 (actual/actual) is approximated as ÷365.25" }],

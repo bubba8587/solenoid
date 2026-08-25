@@ -123,7 +123,7 @@ export class ComparisonNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: ComparisonOp }) {
     super("Comparison");
-    this.label = init?.label ?? "Compare";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "gt";
     this.addInput("a", numListIn("A"));
     this.addInput("b", numListIn("B"));
@@ -313,7 +313,7 @@ export class BooleanOpNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: BooleanOp; valueKeys?: string[] }) {
     super("BooleanOp");
     this.op = init?.op ?? "and";
-    this.label = init?.label ?? BOOLEAN_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     const vKeys = (init?.valueKeys ?? []).filter((k) => k.startsWith("a"));
     if (vKeys.length) for (const k of vKeys) this.addInputWithKey(k);
     else for (let i = 0; i < 2; i++) this.addValueInput();
@@ -402,7 +402,7 @@ export class IFErrorNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: IFErrorMode }) {
     super("IFError");
-    this.label = init?.label ?? "IFERROR";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "iferror";
     this.addInput("value",    trueAnyIn("Value"));
     this.addInput("fallback", trueAnyIn("Fallback"));
@@ -472,7 +472,7 @@ export class IsTestNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: IsTestOp }) {
     super("IsTest");
-    this.label = init?.label ?? "IS.TEST";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "isnumber";
     this.addInput("value", trueAnyIn("Value"));
     this.addOutput("result", logicalComboOut("Result"));
@@ -857,7 +857,7 @@ export class IsEvenOddNode extends ClassicPreset.Node {
     super("IsEvenOdd");
     const op = init?.op ?? "iseven";
     this.op = op;
-    this.label = init?.label ?? PARITY_OP_META[op].label;
+    this.label = init?.label ?? "";
     this.addInput("in", numListIn("In"));
     this.addOutput("result", logicalComboOut("Result"));
   }

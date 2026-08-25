@@ -134,6 +134,28 @@ its negative results as *unconfirmed inside the band*, not as foreclosed.
 holder promotion on plain pan, `--zooming` quality drops on desktop, render-resolution scaling,
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
+### SESSION DIGEST (2026-08-25b — post-crash: cards named by their op, NAME-3)
+- **NAME-3 (author: "COLUMNS"-style names must go; names distinct, short, Excel where possible).**
+  Root cause was a mechanism, not a label: `kind: "operation"` promised "the selector names the
+  card" but only Keep/Drop Columns and MROUND did it — ~150 leaves placed a card titled by its
+  family (ABS → "Math", SUM → "Aggregate") or a sibling (XIRR → "IRR", LOWER → "UPPER", LOG →
+  "ATAN2"). Now every operation family defaults `label` to "" and one derivation,
+  `nodeDisplayName` (own label → op-aware catalog name → class name), feeds the header,
+  Navigator, Inspector, cable inspector, history digest and popup titles. Pinned by
+  `cardTitle.test.ts` (menu row ≡ card title, all 500+ leaves).
+- Names fixed on the way: ROWS / COLUMNS → **Table Size**; PIVOTBY → **Pivot**; Binomial Range →
+  **BINOM.DIST.RANGE**; KPI card → **KPI**; Import from Obsidian / Imported Note → **Obsidian
+  Note**; Vapor Pressure (Antoine) → **Vapor Pressure**; DATE (Build) → **DATE**; Coalesce / Fill
+  → **Fill**; ROUND to N digits → **ROUND**; arithmetic glyph prefixes dropped (Add, Subtract…).
+  Pair rows that created one op split into real leaves: GCD/LCM, IFERROR/IFNA, ISEVEN/ISODD,
+  ROUNDUP/ROUNDDOWN, BYROW/BYCOL. NPV/IRR's `mode` and BYROW's `axis` became `op` (they ARE
+  the op; declared in nodeOps with leafOps). Seed labels that merely repeated a family default
+  were stripped (156 nodes) so seeds title by op too.
+- Findings, not done: 33 components still pass a hand-written `labelPlaceholder` that duplicates
+  the catalog name (harmless now, one home would be `nodeDisplayName`); CAPS-vs-Title-Case
+  convention (CAPS ⇔ formula-callable) and the op-dropdown label sweep are inventoried by the
+  executors, renames pending the author.
+
 ### SESSION DIGEST (2026-08-24b — parallel plan execution from docs/plans/)
 
 - **Chart `markersize` / `ms` option (author, 2026-08-25).** recharts' Scatter has no size prop (fixed

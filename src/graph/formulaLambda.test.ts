@@ -57,10 +57,10 @@ describe("each host computes what its node computes (shareImpl)", () => {
   });
 
   it("BYROW / BYCOL — the whole row/column reaches the lambda as a LIST", () => {
-    const rowNode = new ByAxisNode({ axis: "row", expr: "SUM(values)" });
+    const rowNode = new ByAxisNode({ op: "row", expr: "SUM(values)" });
     expect(ev("BYROW(m, LAMBDA(values, SUM(values)))", { m: M }))
       .toEqual(rowNode.data({ table: [M] }).result);
-    const colNode = new ByAxisNode({ axis: "col", expr: "MAX(values)" });
+    const colNode = new ByAxisNode({ op: "col", expr: "MAX(values)" });
     expect(ev("BYCOL(m, LAMBDA(values, MAX(values)))", { m: M }))
       .toEqual(colNode.data({ table: [M] }).result);
   });

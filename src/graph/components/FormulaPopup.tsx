@@ -17,6 +17,7 @@ import { useFormulaFit } from "./formulaFit";
 import { formatScalar } from "./format";
 import { PopupShell } from "./PopupShell";
 import "./FormulaPopup.css";
+import { nodeDisplayName } from "../catalogUtils";
 
 // Step-by-step evaluator: built, then shelved; flip to re-enable its intact wiring.
 const SHOW_STEPS = false;
@@ -47,7 +48,7 @@ function setVarDesc(node: { id: string; varDescriptions: Record<string, string> 
 
 function formulaHostOf(node: ClassicPreset.Node | undefined): FormulaHost | null {
   if (!node) return null;
-  const label = (node as { label?: string }).label || "Formula";
+  const label = nodeDisplayName(node);
   const typeName = node.constructor.name;
   if (typeName === "ExpressionNode") {
     const n = node as ExpressionNode;

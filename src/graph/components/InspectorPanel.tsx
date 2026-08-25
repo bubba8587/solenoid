@@ -3,7 +3,7 @@ import { ClassicPreset } from "rete";
 import { inspectorStore } from "../inspectorStore";
 import { reportStore } from "../reportStore";
 import { getActiveEditor } from "../activeGraph";
-import { describeNode, nodeName, catalogTypeOf } from "../catalogUtils";
+import { describeNode, nodeName, nodeDisplayName, catalogTypeOf } from "../catalogUtils";
 import { buildFunctionReference, type FnRefRow } from "../functionReference";
 import { SolenoidSocket, SOCKET_TYPE_LABELS } from "../sockets";
 import { socketDocFor } from "../socketDocs";
@@ -111,7 +111,7 @@ export function InspectorPanel() {
 
   if (!open) return null;
 
-  const label = node ? (node.label || nodeName(node) || node.constructor.name) : null;
+  const label = node ? nodeDisplayName(node) : null;
   const catalogLabel = node ? nodeName(node) : null;
   const description = node ? describeNode(node) : null;
   const catalogType = node ? catalogTypeOf(node) : null;

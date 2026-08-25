@@ -3,6 +3,7 @@ import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { FrameDisplay } from "./FrameDisplay";
+import { nodeDisplayName } from "../catalogUtils";
 
 export function EtsForecastComponent({ data, emit }: NodeProps<EtsForecastNodeType>) {
   const forecastOut = data.outputs.forecast, detectedOut = data.outputs.detected;
@@ -12,7 +13,7 @@ export function EtsForecastComponent({ data, emit }: NodeProps<EtsForecastNodeTy
       <div className="solenoid-node__section-divider" />
       {forecastOut && (
         <MeasuredSocketRow hero side="output" socketKey="forecast" nodeId={data.id} emit={emit} payload={forecastOut.socket}>
-          <div style={{ width: "100%" }}><FrameDisplay frame={data.cachedResult} label={data.label} /></div>
+          <div style={{ width: "100%" }}><FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} /></div>
         </MeasuredSocketRow>
       )}
       {detectedOut && (

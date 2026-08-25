@@ -27,6 +27,7 @@ import { MermaidView } from "./MermaidView";
 import { SvgFigure } from "./SvgFigure";
 import "./CableSwitchNode.css";
 import { dropInputCables } from "./cablePrune";
+import { nodeDisplayName } from "../catalogUtils";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
@@ -203,7 +204,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
             ) : null;
           })
         )}
-        <SwitchValue value={data.cachedValue} label={data.label} nodeId={data.id} />
+        <SwitchValue value={data.cachedValue} label={nodeDisplayName(data)} nodeId={data.id} />
       </NodeShell>
     );
   }
@@ -248,7 +249,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
           </button>
         )}
       </div>
-      <SwitchValue value={data.cachedValue} label={data.label} nodeId={data.id} />
+      <SwitchValue value={data.cachedValue} label={nodeDisplayName(data)} nodeId={data.id} />
     </NodeShell>
   );
 }

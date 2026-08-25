@@ -217,7 +217,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "local-file",   label: "Local File",  description: "Loads a Frame from your data folder (Settings ▸ Data). A .parquet reads straight into the native engine — typed columns arrive intact, no inference; anything else is read as CSV with columns auto-typed. Stores the file name. Refresh to re-read. Desktop only.", create: () => new LocalFileNode(), parity: false, keywords: "csv parquet arrow column columnar native engine polars file load import" },
           { type: "import-html",   label: "Import HTML", description: "Grab the Nth HTML table on a page as a Frame, columns auto-typed. Stores the URL. Refresh to re-pull. Desktop any URL, browser CORS-only. Sheets: IMPORTHTML.", create: () => new ImportHtmlNode(), parity: false },
           { type: "import-xml",    label: "Import XML",  description: "Extracts a page's XPath matches (for example //h2/a) as a text list. Stores the URL. Refresh to re-pull. Desktop any URL, browser CORS-only. Sheets: IMPORTXML.", create: () => new ImportXmlNode(), parity: false },
-          { type: "import-obsidian", label: "Import from Obsidian", description: "Picks a .md note from your Obsidian vault: it becomes a read-only Note — frontmatter turns into typed output sockets, the body renders inline. Reload re-reads from disk. Set the vault in Settings ▸ Obsidian. Desktop only.", create: () => new ImportObsidianNode(), parity: false, keywords: "obsidian vault markdown md note import read source frontmatter" },
+          { type: "import-obsidian", label: "Obsidian Note", description: "Picks a .md note from your Obsidian vault: it becomes a read-only Note — frontmatter turns into typed output sockets, the body renders inline. Reload re-reads from disk. Set the vault in Settings ▸ Obsidian. Desktop only.", create: () => new ImportObsidianNode(), parity: false, keywords: "obsidian vault markdown md note import read source frontmatter" },
           { type: "write-file",    label: "Write File",  description: "Writes a Frame to a file — CSV, or JSON as an array of row records: pick the format, arm it, then press Run. Never writes on its own. A normal recompute only updates the preview. Desktop only.", create: () => new WriteFileNode(), parity: false, keywords: "csv json write export save file sink" },
           { type: "write-obsidian", label: "Write to Obsidian", description: "Writes a Note or Report (its Document output) into your Obsidian vault as portable markdown — frontmatter, tables, mermaid, math, rasterized chart/image assets — under a vault-relative subfolder. Arm, then Run. Never writes on its own. Vault: Settings ▸ Obsidian. Desktop only.", create: () => new WriteObsidianNode(), parity: false, keywords: "obsidian vault markdown md note export sink write document" },
         ],
@@ -246,7 +246,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "chart-builder", label: "Chart Builder", description: "Style any chart and output an options string for its Options socket. A chart-type dropdown (Chart, Histogram, KPI, Proportion, Waterfall…) shows just the options that type reads — title, axes, color, grid, range, line, markers. Fields follow matplotlib.", create: () => new ChartBuilderNode(), parity: false, keywords: "chart builder options style title axes color grid range markers histogram kpi proportion treemap waffle sankey waterfall" },
           { type: "sparkline", label: "Sparkline", description: "A small inline chart of a list: line, column, or win/loss. Collapses to a headerless square. Excel: SPARKLINE.", create: () => new SparklineNode(), parity: false, keywords: "sparkline spark line column win loss winloss" },
           { type: "mermaid",   label: "Mermaid",   description: "Draws a diagram from Mermaid.js text: flowchart, sequence, class, state, gantt, or pie. The source is typed on the node or wired in from a Text node. The figure flows out a chart socket, so a Report renders it inline where its =name ref sits.", create: () => new MermaidNode(), parity: false, keywords: "mermaid diagram flowchart flow chart graph sequence class state gantt pie mindmap uml erd tree" },
-          { type: "kpi",       label: "KPI card",  description: "A big-number stat card with a ↑/↓ delta vs a prior value, colored green/red.", create: () => new KpiNode(), parity: false, keywords: "kpi stat card metric scorecard delta variance big number" },
+          { type: "kpi",       label: "KPI",  description: "A big-number stat card with a ↑/↓ delta vs a prior value, colored green/red.", create: () => new KpiNode(), parity: false, keywords: "kpi stat card metric scorecard delta variance big number" },
           { type: "record",    label: "Record",    description: "One frame row as labeled boxes, or every row as a gallery of cards or a board of lanes grouped by a column. Flip through rows with the pager or wire Row. The shown row flows back out. The Layout text places the boxes: one line per grid row, names split by | marks, and a repeated name merges its cells. A cell holding an image URL shows the picture.", create: () => new RecordNode(), parity: false, keywords: "record card form detail row browse fields layout boxes airtable gallery kanban board lanes" },
           { type: "gauge",     label: "Gauge",     description: "Shows a value on a fixed scale: a radial Dial reading the value as a fraction (1 = 100%, 1.5 = 150%), or a horizontal Bar on a zero-to-Max track with a target tick. Excel has no equivalent.", create: () => new GaugeNode(), parity: false, keywords: "gauge dial bullet graph target progress goal percent speedometer meter scale kpi" },
           { type: "seven-seg", label: "7-Segment", description: "A flat seven-segment readout of a number, with a Decimals setting — the meter-face look.", create: () => new SevenSegNode(), parity: false, keywords: "seven segment display digital readout meter lcd led digits retro" },
@@ -333,9 +333,10 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [arithLeaf("add"), arithLeaf("sub")] },
           { type: "pair", children: [arithLeaf("mul"), arithLeaf("div")] },
           { type: "pair", children: [arithLeaf("mod"), arithLeaf("quotient")] },
+          arithLeaf("pow"),
           { type: "pair", children: [
-            arithLeaf("pow"),
-            { type: "gcd-lcm", label: "GCD / LCM", description: "Greatest common divisor or least common multiple of two integers. Excel: GCD / LCM.", create: () => new GcdNode() },
+            { type: "gcd-lcm", label: "GCD", description: "Greatest common divisor of two integers. Excel: GCD.", create: () => new GcdNode() },
+            { type: "lcm", label: "LCM", description: "Least common multiple of two integers. Excel: LCM.", create: () => new GcdNode({ op: "lcm" }) },
           ]},
         ],
       },
@@ -362,8 +363,11 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "math-mround", label: "MROUND", description: "Rounds to nearest multiple. Excel: MROUND(x, multiple).", create: () => new MRoundNode(), keywords: "mround round nearest multiple ceil floor ceiling" },
           ]},
           { type: "pair", children: [mathLeaf("even"), mathLeaf("odd")] },
-          { type: "roundn-round", label: "ROUND to N digits", description: "Rounds to N decimal places. Excel: ROUND(x,2).", keywords: "rounding", create: () => new RoundNNode({ op: "round" }) },
-          { type: "roundn-dir", label: "ROUNDUP / ROUNDDOWN", description: "Rounds away from zero or toward zero to N decimal places. Pick the direction in the node. Excel: ROUNDUP / ROUNDDOWN.", keywords: "rounding", create: () => new RoundNNode({ op: "roundup" }) },
+          { type: "roundn-round", label: "ROUND", description: "Rounds to N decimal places. Excel: ROUND(x,2).", keywords: "rounding", create: () => new RoundNNode({ op: "round" }) },
+          { type: "pair", children: [
+            { type: "roundn-dir", label: "ROUNDUP", description: "Rounds away from zero to N decimal places. Excel: ROUNDUP.", keywords: "rounding", create: () => new RoundNNode({ op: "roundup" }) },
+            { type: "roundn-down", label: "ROUNDDOWN", description: "Rounds toward zero to N decimal places. Excel: ROUNDDOWN.", keywords: "rounding", create: () => new RoundNNode({ op: "rounddown" }) },
+          ]},
           { type: "clamp", label: "Clamp", description: "Constrain a value to [min, max]. Excel: MIN(MAX(x,min),max).", create: () => new ClampNode() },
         ],
       },
@@ -478,7 +482,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         type: "category", label: "Shape", description: "Reorder, trim, and filter lists.",
         children: [
           { type: "list-filter",  label: "List Filter", description: "Keeps list values passing condition rows (op + value, rows AND/OR; text ops ignore case, Match case per row); failures exit Dropped. 'No error' drops error cells. 'Has error' keeps only them. Any element type. For a TABLE's rows, use Frame Filter. Excel: FILTER.", accent: NODE_KIND_ACCENTS.list, create: () => new FilterNode(), keywords: "keep where condition predicate drop errors iserror noterror div0 remove errors clean" },
-          { type: "list-fill",  label: "Coalesce / Fill", description: "Handles missing (null) cells: constant, forward/back-fill, mean/median/mode, interpolate, drop, or coalesce lists in priority order (first present wins, like SQL COALESCE). Errors pass through. Stats use present values only. Pairs with ISNULL.", accent: NODE_KIND_ACCENTS.list, create: () => new FillNode() },
+          { type: "list-fill",  label: "Fill", keywords: "coalesce fill missing null impute interpolate", description: "Handles missing (null) cells: constant, forward/back-fill, mean/median/mode, interpolate, drop, or coalesce lists in priority order (first present wins, like SQL COALESCE). Errors pass through. Stats use present values only. Pairs with ISNULL.", accent: NODE_KIND_ACCENTS.list, create: () => new FillNode() },
           { type: "pair", children: [
             { type: "list-sort",    label: "List Sort", description: "Sorts a list ascending or descending — by its own values, or by a parallel key list when you wire one (sort names by their scores). Excel: SORT / SORTBY.", create: () => new SortNode() },
             { type: "list-reverse", label: "REVERSE", description: "Reverses the order of the list", create: () => new ReverseNode() },
@@ -641,9 +645,15 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "choose",  label: "CHOOSE",        description: "Returns one of several values by a 1-based index. Add as many values as you need. Excel: CHOOSE(index, val1, val2, …).", create: () => new ChooseNode() },
       { type: "switch",  label: "SWITCH",         description: "Matches a value against as many cases as you add and returns the matching result, or a default. Excel: SWITCH.", create: () => new SwitchNode() },
       { type: "ifs",     label: "IFS",            description: "Returns the first value whose condition is non-zero, like chained IF. Add as many condition/value pairs as you need, plus an Otherwise fallback. Excel: IFS.", create: () => new IfsNode() },
-      { type: "iferror", label: "IFERROR / IFNA", description: "Returns Fallback when Value is an error (IFNA: only #N/A). A blank is not an error and passes through. Excel: IFERROR or IFNA.", create: () => new IFErrorNode() },
+      { type: "pair", children: [
+        { type: "iferror", label: "IFERROR", description: "Returns Fallback when Value is an error. A blank is not an error and passes through. Excel: IFERROR.", create: () => new IFErrorNode() },
+        { type: "ifna", label: "IFNA", description: "Returns Fallback only when Value is #N/A; other errors pass through. Excel: IFNA.", create: () => new IFErrorNode({ op: "ifna" }) },
+      ]},
       { type: "is-test", label: "IS.TEST",    description: "Tests whether a value is a number, blank, error, N/A, boolean, text, or non-text. Excel: ISNUMBER / ISBLANK / ISERROR / ISNA / ISLOGICAL / ISTEXT / ISNONTEXT.", create: () => new IsTestNode() },
-      { type: "iseven-isodd", label: "ISEVEN / ISODD", description: "TRUE if a number's integer part is even or odd. Pick which in the node. Emits a logical and broadcasts over a list. Excel: ISEVEN / ISODD.", create: () => new IsEvenOddNode() },
+      { type: "pair", children: [
+        { type: "iseven-isodd", label: "ISEVEN", description: "TRUE if a number's integer part is even. Emits a logical and broadcasts over a list. Excel: ISEVEN.", create: () => new IsEvenOddNode() },
+        { type: "isodd", label: "ISODD", description: "TRUE if a number's integer part is odd. Emits a logical and broadcasts over a list. Excel: ISODD.", create: () => new IsEvenOddNode({ op: "isodd" }) },
+      ]},
       { type: "comparison", label: "Comparison",  description: "Compares two values (=, ≠, <, >, ≤, ≥) and emits a logical TRUE or FALSE. Broadcasts over a list.", keywords: "compare", create: () => new ComparisonNode() },
       { type: "pair", children: [
         { type: "between", label: "Between", description: "TRUE when Low ≤ Value ≤ High (inclusive). R between / pandas Series.between.", create: () => new BetweenNode(), parity: false, keywords: "between range within inclusive bounds interval clamp test low high" },
@@ -693,8 +703,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "npv",  label: "NPV",  description: "Net present value of cash flows discounted at a given rate. The first flow is period 1. Excel: NPV(rate, values).", create: () => new NpvNode() },
           { type: "irr",  label: "IRR",  description: "Internal rate of return: the rate at which NPV = 0. Excel: IRR(values).", create: () => new IrrNode() },
           { type: "mirr", label: "MIRR", description: "Modified IRR accounting for reinvestment rate and cost of capital. Excel: MIRR(values, finance_rate, reinvest_rate).", create: () => new MirrNode() },
-          { type: "xirr", label: "XIRR", description: "IRR for cash flows at irregular dates, from a list of flows and a parallel list of dates. Excel: XIRR.", create: () => new IrrNode({ mode: "dates" }), parity: false },
-          { type: "xnpv", label: "XNPV", description: "Net present value of cash flows, each with an explicit date. Excel: XNPV.", create: () => new NpvNode({ mode: "dates" }), parity: false },
+          { type: "xirr", label: "XIRR", description: "IRR for cash flows at irregular dates, from a list of flows and a parallel list of dates. Excel: XIRR.", create: () => new IrrNode({ op: "dates" }), parity: false },
+          { type: "xnpv", label: "XNPV", description: "Net present value of cash flows, each with an explicit date. Excel: XNPV.", create: () => new NpvNode({ op: "dates" }), parity: false },
         ],
       },
       {
@@ -752,7 +762,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "fit-distribution", label: "Fit Distribution", description: "Which distribution fits a sample? Fits Normal, Lognormal, Exponential, Gamma, Weibull, Uniform, Beta and Poisson by maximum likelihood (moments where standard), ranks them by AIC with the KS distance, and hands the winner's parameters back in the Distribution node's own order. scipy.stats.<dist>.fit, R fitdistrplus, @RISK / Crystal Ball fit.", create: () => new FitDistributionNode(), parity: false, keywords: "fit distribution fitdist fitdistr mle maximum likelihood aic goodness of fit ks which distribution normal lognormal gamma weibull exponential beta poisson @risk crystal ball" },
       { type: "pair", children: [
         { type: "stat-standardize", label: "STANDARDIZE", description: "z-score: (value − mean) ÷ std dev. Excel: STANDARDIZE.", create: () => new StandardizeNode(), keywords: "probability z score normalize" },
-        { type: "binomdistrng", label: "Binomial Range", description: "P(lo ≤ X ≤ hi): the sum of binomial PMFs over a range. Excel: BINOM.DIST.RANGE.", create: () => new BinomDistRangeNode(), keywords: "binom.dist.range" },
+        { type: "binomdistrng", label: "BINOM.DIST.RANGE", description: "P(lo ≤ X ≤ hi): the sum of binomial PMFs over a range. Excel: BINOM.DIST.RANGE.", create: () => new BinomDistRangeNode(), keywords: "binom.dist.range" },
       ]},
     ],
   },
@@ -761,7 +771,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
   {
     type: "category", label: "Date & Time", description: "Date serial type (like Excel): sources, extract parts, arithmetic, and working-day calculations.",
     children: [
-      { type: "date-construct", label: "DATE (Build)", description: "Builds a date from Year, Month, Day. Handles overflow, so month 13 → Jan next year. Excel: DATE.", create: () => new DateConstructNode(), parity: false, accent: DT },
+      { type: "date-construct", label: "DATE", description: "Builds a date from Year, Month, Day. Handles overflow, so month 13 → Jan next year. Excel: DATE.", create: () => new DateConstructNode(), parity: false, accent: DT },
       { type: "pair", children: [todayNowLeaf("today"), todayNowLeaf("now")] },
       { type: "save-times",    label: "Save Times",  description: "When this document was last autosaved and when it was last written to a file, as two date values.", create: () => new SaveTimesNode(), parity: false, keywords: "save autosave saved timestamp version document file written when last clock" },
       { type: "date-time",     label: "TIME",      description: "Builds a time fraction 0–1 from Hour, Minute, Second. Add it to a date serial for date+time. Excel: TIME.", create: () => new TimeConstructNode(), parity: false },
@@ -887,7 +897,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
   {
     type: "category", label: "Tables & Frames", description: "2D data: numeric tables and matrix math, plus data frames with named columns, reshape, and selection.",
     children: [
-      { type: "table-info",  label: "ROWS / COLUMNS", description: "Number of rows and number of columns in a table. Excel: ROWS / COLUMNS.", create: () => new TableInfoNode(), parity: false },
+      { type: "table-info",  label: "Table Size", description: "Number of rows and number of columns in a table. Excel: ROWS / COLUMNS.", create: () => new TableInfoNode(), parity: false, keywords: "rows columns count size dimensions" },
       {
         type: "category", label: "Matrix math", description: "Linear algebra: multiply, invert, determinant, identity.",
         children: [
@@ -934,7 +944,10 @@ export const NODE_CATALOG: CatalogEntry[] = [
         type: "category", label: "Lambda (per-cell / per-row)", description: "Apply a formula over a table: each cell, each row or column, fold to one value, or generate from indices.",
         children: [
           { type: "map-table",  label: "MAP",       description: "Applies a formula to every cell of up to three same-shaped tables. Variables value, value2, value3 = each table's cell; row, col = 1-based position (a scalar value2 or value3 broadcasts). Result type for text or date. Excel: MAP.", create: () => new MapTableNode(),  parity: false },
-          { type: "by-axis",    label: "BYROW / BYCOL", description: "Reduces each row or column of a table to one value. Variable v = the row or column as a list. Pick the result type for text or date. Excel: BYROW or BYCOL.", create: () => new ByAxisNode(), parity: false },
+          { type: "pair", children: [
+            { type: "by-axis",    label: "BYROW", description: "Reduces each row or column of a table to one value. Variable v = the row or column as a list. Pick the result type for text or date. Excel: BYROW.", create: () => new ByAxisNode(), parity: false },
+            { type: "by-col",    label: "BYCOL", description: "Reduces each row or column of a table to one value. Variable v = the row or column as a list. Pick the result type for text or date. Excel: BYCOL.", create: () => new ByAxisNode({ op: "col" }), parity: false },
+          ]},
           { type: "make-array", label: "MAKEARRAY", description: "Builds a rows×cols table from a formula of its indices. Variables row, col = 1-based row, column. Pick the result type for text or date. Excel: MAKEARRAY.", create: () => new MakeArrayNode(), parity: false },
           { type: "reduce-lambda", label: "REDUCE", description: "Fold a list or table to one value, starting from Initial. Variables acc = running accumulator, value = element at this step, step = 1-based position. Pick the result type for text or date. Excel: REDUCE.", create: () => new ReduceLambdaNode(), parity: false },
           { type: "scan-lambda", label: "SCAN", description: "REDUCE that keeps every running value: folds from Initial and emits the accumulator after each cell, same shape as the input. A running total is acc + value from 0. Variables acc, value, step. Pick the result type for text or date. Excel: SCAN.", create: () => new ScanLambdaNode(), parity: false, keywords: "running total cumulative accumulate prefix sum" },
@@ -991,7 +1004,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           {
             type: "category", label: "Reshape", description: "Change the layout: pivot wide, melt long, nest into a Cube and back.",
             children: [
-              { type: "pivot",       label: "PIVOTBY",     description: "Cross-tab long → wide: Row and Column fields (multi-level headers), per-value aggregate functions (SUM / AVERAGE / COUNT / MEDIAN / STDEV / PRODUCT / PERCENTOF…). Grand totals + subtotals re-aggregate the source. Sort, filter mask, % running totals. Excel: PIVOTBY.", create: () => new PivotNode(), parity: true },
+              { type: "pivot",       label: "Pivot",     description: "Cross-tab long → wide: Row and Column fields (multi-level headers), per-value aggregate functions (SUM / AVERAGE / COUNT / MEDIAN / STDEV / PRODUCT / PERCENTOF…). Grand totals + subtotals re-aggregate the source. Sort, filter mask, % running totals. Excel: PIVOTBY.", create: () => new PivotNode(), parity: true },
               { type: "unpivot",     label: "Unpivot",     description: "Reshapes wide → long (melt): keep the Id columns, turn each chosen Value column into variable/value rows. Excel's Power Query Unpivot.", create: () => new UnpivotNode(), parity: false },
               { type: "pair", children: [
                 { type: "nest",   label: "Nest",   description: "Groups a flat Frame by key into a Cube. Each key's other columns collapse into a nested table cell. The flat → nested bridge.", create: () => new NestNode(), parity: false },

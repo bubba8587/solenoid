@@ -6,6 +6,7 @@ import { FrameDisplay } from "./FrameDisplay";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { InlineNumberField } from "./inlineInput";
 import { processGraph } from "../process";
+import { nodeDisplayName } from "../catalogUtils";
 
 // A curve keeps ≥ 2 control points; the monotone spline through them draws live and
 // the node samples it into a list.
@@ -168,7 +169,7 @@ export function CurveComponent({ data, emit }: NodeProps<CurveNodeType>) {
       <div className="solenoid-node__section-divider" />
       {data.outputs.result && (
         <MeasuredSocketRow hero side="output" socketKey="result" nodeId={data.id} emit={emit} payload={data.outputs.result.socket}>
-          <div style={{ width: "100%" }}><FrameDisplay frame={curveToFrame(sampled.xs, sampled.values)} label={data.label} /></div>
+          <div style={{ width: "100%" }}><FrameDisplay frame={curveToFrame(sampled.xs, sampled.values)} label={nodeDisplayName(data)} /></div>
         </MeasuredSocketRow>
       )}
     </NodeShell>

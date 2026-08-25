@@ -3,6 +3,7 @@ import type { DecomposeNode as DecomposeNodeType, DecomposeModel } from "../rete
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, useNodeField, type NodeProps } from "./nodeKit";
 import { FrameDisplay } from "./FrameDisplay";
+import { nodeDisplayName } from "../catalogUtils";
 
 const MODELS = (Object.keys(DECOMPOSE_MODEL_META) as DecomposeModel[]).map((m) => ({
   value: m, label: DECOMPOSE_MODEL_META[m].label, title: DECOMPOSE_MODEL_META[m].description,
@@ -14,7 +15,7 @@ export function DecomposeComponent({ data, emit }: NodeProps<DecomposeNodeType>)
     <NodeShell node={data} emit={emit}>
       <OpSelect arg value={model} onChange={setModel} options={MODELS} />
       <InlineInputs node={data} emit={emit} />
-      <FrameDisplay frame={data.cachedResult} label={data.label} />
+      <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
   );
 }

@@ -288,7 +288,7 @@ export class HeadNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: HeadOp }) {
     super("Head");
-    this.label = init?.label ?? "Head";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "first";
     this.addInput("frame", frameIn("Frame"));
     this.addInput("rows", numIn("Rows"));
@@ -544,7 +544,6 @@ export const COLUMNS_OP_META: Record<ColumnsOp, { label: string; description: st
 
 // The op names the card ("Keep Columns" / "Drop Columns") — a bare "Columns" would read as
 // Excel's COLUMNS count function (docs/rules.md NAME-2, author 2026-08-25).
-export const columnsCardLabel = (op: ColumnsOp): string => `${COLUMNS_OP_META[op].label} Columns`;
 
 export class ColumnsNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -560,7 +559,7 @@ export class ColumnsNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: ColumnsOp }) {
     super("Columns");
     this.op = init?.op ?? "keep";
-    this.label = init?.label ?? columnsCardLabel(this.op);
+    this.label = init?.label ?? "";
     this.addInput("frame", frameIn("Frame"));
     this.addInput("columns", strListIn("Columns"));
     this.addOutput("frame", frameOut("Frame"));

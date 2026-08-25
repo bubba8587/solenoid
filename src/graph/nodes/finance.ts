@@ -50,7 +50,7 @@ export class BitwiseNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: BitwiseOp }) {
     super("Bitwise");
-    this.label = init?.label ?? "BITAND";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "bitand";
     this.addInput("a", numIn("A"));
     this.addInput("b", numIn("B"));
@@ -117,7 +117,7 @@ export class DepreciationNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: DepreciationOp }) {
     super("Depreciation");
     this.op = init?.op ?? "sln";
-    this.label = init?.label ?? DEPRECIATION_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     for (const i of DEPRECIATION_INPUTS[this.op]) this.addInput(i.key, numIn(i.label));
     this.addOutput("result", numOut("Result"));
     this.seedLiterals();
@@ -285,7 +285,7 @@ export class IpmtPpmtNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: IpmtPpmtOp; paymentTiming?: PaymentTiming }) {
     super("IpmtPpmt");
-    this.label         = init?.label         ?? "IPMT";
+    this.label         = init?.label         ?? "";
     this.op            = init?.op            ?? "ipmt";
     this.paymentTiming = init?.paymentTiming ?? "end";
     this.addInput("rate", numIn("Rate"));
@@ -345,9 +345,11 @@ export const NPV_META = {
 // SegToggle reveals the Dates input instead of a second node (Running's window
 // pattern).
 
-export type CashflowMode = "periods" | "dates";
+export type CashflowOp = "periods" | "dates";
+export const NPV_OP_META: Record<CashflowOp, { label: string }> = { periods: { label: "NPV" }, dates: { label: "XNPV" } };
+export const IRR_OP_META: Record<CashflowOp, { label: string }> = { periods: { label: "IRR" }, dates: { label: "XIRR" } };
 
-export const CASHFLOW_MODE_OPTIONS: { value: CashflowMode; label: string }[] = [
+export const CASHFLOW_OP_OPTIONS: { value: CashflowOp; label: string }[] = [
   { value: "periods", label: "Periodic" },
   { value: "dates", label: "Dated" },
 ];
@@ -359,7 +361,7 @@ export class NpvNode extends ClassicPreset.Node {
   };
 
   label: string;
-  mode: CashflowMode;
+  op: CashflowOp;
   cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { rate: 0.1 };
   // `dates` is a typeable datelist: the CSV the user types is parsed and injected by
@@ -367,22 +369,22 @@ export class NpvNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string> = {};
   width = 180; height = 203;
 
-  constructor(init?: { label?: string; mode?: CashflowMode }) {
+  constructor(init?: { label?: string; op?: CashflowOp }) {
     super("Npv");
-    this.label = init?.label ?? "NPV";
-    this.mode = init?.mode ?? "periods";
+    this.label = init?.label ?? "";
+    this.op = init?.op ?? "periods";
     this.addInput("rate", numIn("Rate"));
     this.addInput("list", listIn("Cash flows"));
-    if (this.mode === "dates") this.addInput("dates", dateListIn("Dates"));
+    if (this.op === "dates") this.addInput("dates", dateListIn("Dates"));
     this.addOutput("result", numOut("Result"));
-    this.height = this.mode === "dates" ? 231 : 203;
+    this.height = this.op === "dates" ? 231 : 203;
   }
 
   /** The mode owns the Dates socket. Callers on a live graph prune its cables
    *  BEFORE switching to Periodic (onePrunePath). */
-  setMode(next: CashflowMode): void {
-    if (next === this.mode) return;
-    this.mode = next;
+  setOp(next: CashflowOp): void {
+    if (next === this.op) return;
+    this.op = next;
     if (next === "dates") { if (!this.inputs.dates) this.addInput("dates", dateListIn("Dates")); }
     else if (this.inputs.dates) this.removeInput("dates");
     this.height = next === "dates" ? 231 : 203;
@@ -390,7 +392,7 @@ export class NpvNode extends ClassicPreset.Node {
 
   data(inputs: { rate?: number[]; list?: (number | null | SolError)[][]; dates?: number[][] }) {
     const rate = readInput(inputs.rate, this.literals.rate ?? 0.1);
-    if (this.mode === "dates") {
+    if (this.op === "dates") {
       if (rate === null) { this.cachedResult = null; return { result: null }; }
       const prep = datedPrep(inputs.list?.[0] ?? null, (inputs.dates?.[0] ?? []) as (number | null | SolError)[]);
       if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
@@ -425,35 +427,35 @@ export class IrrNode extends ClassicPreset.Node {
   };
 
   label: string;
-  mode: CashflowMode;
+  op: CashflowOp;
   cachedResult: number | SolError | null = null;
   // `dates` is a typeable datelist: the CSV the user types is parsed and injected by
   // coerceInputs, and persistence restores it only onto a class that DECLARES the map.
   stringLiterals: Record<string, string> = {};
   width = 180; height = 163;
 
-  constructor(init?: { label?: string; mode?: CashflowMode }) {
+  constructor(init?: { label?: string; op?: CashflowOp }) {
     super("Irr");
-    this.label = init?.label ?? "IRR";
-    this.mode = init?.mode ?? "periods";
+    this.label = init?.label ?? "";
+    this.op = init?.op ?? "periods";
     this.addInput("list", listIn("Cash flows"));
-    if (this.mode === "dates") this.addInput("dates", dateListIn("Dates"));
+    if (this.op === "dates") this.addInput("dates", dateListIn("Dates"));
     this.addOutput("result", numOut("Result"));
-    this.height = this.mode === "dates" ? 191 : 163;
+    this.height = this.op === "dates" ? 191 : 163;
   }
 
   /** The mode owns the Dates socket. Callers on a live graph prune its cables
    *  BEFORE switching to Periodic (onePrunePath). */
-  setMode(next: CashflowMode): void {
-    if (next === this.mode) return;
-    this.mode = next;
+  setOp(next: CashflowOp): void {
+    if (next === this.op) return;
+    this.op = next;
     if (next === "dates") { if (!this.inputs.dates) this.addInput("dates", dateListIn("Dates")); }
     else if (this.inputs.dates) this.removeInput("dates");
     this.height = next === "dates" ? 191 : 163;
   }
 
   data(inputs: { list?: (number | null | SolError)[][]; dates?: number[][] }): { result: number | SolError | null } {
-    if (this.mode === "dates") return this.dataDated(inputs);
+    if (this.op === "dates") return this.dataDated(inputs);
     const { error, nums: cashflows } = cashPrep(inputs.list?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
     if (cashflows.length <= 1) {
@@ -644,7 +646,7 @@ export class DollarNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: DollarOp }) {
     super("Dollar");
-    this.label = init?.label ?? "DOLLARDE";
+    this.label = init?.label ?? "";
     this.op    = init?.op    ?? "dollarde";
     this.addInput("dollar",   numIn("Dollar"));
     this.addInput("fraction", numIn("Fraction"));
@@ -698,7 +700,7 @@ export class CumPmtNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: CumPmtOp; paymentTiming?: PaymentTiming }) {
     super("CumPmt");
-    this.label         = init?.label         ?? "CUMIPMT";
+    this.label         = init?.label         ?? "";
     this.op            = init?.op            ?? "cumipmt";
     this.paymentTiming = init?.paymentTiming ?? "end";
     this.addInput("rate",  numIn("Rate"));
@@ -779,7 +781,7 @@ export class TBillNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: TBillOp }) {
     super("TBill");
     this.op    = init?.op    ?? "tbilleq";
-    this.label = init?.label ?? TBILL_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("settle",   dateIn("Settlement date"));
     this.addInput("maturity", dateIn("Maturity date"));
     if (this.op === "tbillyield") {
@@ -852,7 +854,7 @@ export class SecurityDiscNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: SecurityDiscOp }) {
     super("SecurityDisc");
     this.op    = init?.op    ?? "disc";
-    this.label = init?.label ?? SECURITY_DISC_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("settle",   dateIn("Settlement date"));
     this.addInput("maturity", dateIn("Maturity date"));
     if (this.op === "disc") {
@@ -911,7 +913,7 @@ export class CouponNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: CouponOp }) {
     super("Coupon");
     this.op    = init?.op    ?? "coupdaybs";
-    this.label = init?.label ?? COUPON_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("settle",    dateIn("Settlement date"));
     this.addInput("maturity",  dateIn("Maturity date"));
     this.addInput("frequency", numIn("Freq (1=annual, 2=semi, 4=qtr)"));
@@ -1024,7 +1026,7 @@ export class PriceDiscNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: PriceDiscOp }) {
     super("PriceDisc");
     this.op    = init?.op    ?? "pricedisc";
-    this.label = init?.label ?? PRICE_DISC_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("settle",     dateIn("Settlement date"));
     this.addInput("maturity",   dateIn("Maturity date"));
     this.addInput("discount",   numIn("Discount rate"));
@@ -1068,7 +1070,7 @@ export class PriceMatNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: PriceMatOp }) {
     super("PriceMat");
     this.op    = init?.op    ?? "pricemat";
-    this.label = init?.label ?? PRICE_MAT_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("settle",   dateIn("Settlement date"));
     this.addInput("maturity", dateIn("Maturity date"));
     this.addInput("issue",    dateIn("Issue date"));
@@ -1113,7 +1115,7 @@ export class DurationNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: DurationOp }) {
     super("Duration");
     this.op    = init?.op    ?? "duration";
-    this.label = init?.label ?? DURATION_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("settle",    dateIn("Settlement date"));
     this.addInput("maturity",  dateIn("Maturity date"));
     this.addInput("coupon",    numIn("Annual coupon rate"));
@@ -1154,7 +1156,7 @@ export class BondPriceNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: BondPriceOp }) {
     super("BondPrice");
     this.op    = init?.op    ?? "price";
-    this.label = init?.label ?? BOND_PRICE_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("settle",     dateIn("Settlement date"));
     this.addInput("maturity",   dateIn("Maturity date"));
     this.addInput("rate",       numIn("Coupon rate"));
@@ -1207,7 +1209,7 @@ export class OddCouponNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: OddCouponOp }) {
     super("OddCoupon");
     this.op    = init?.op    ?? "oddfprice";
-    this.label = init?.label ?? ODD_COUPON_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     const isFirst = this.op === "oddfprice" || this.op === "oddfyield";
     this.addInput("settle",     dateIn("Settlement date"));
     this.addInput("maturity",   dateIn("Maturity date"));
@@ -1308,7 +1310,7 @@ export class ReturnsNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: ReturnsOp }) {
     super("Returns");
     this.op = init?.op ?? "log";
-    this.label = init?.label ?? RETURNS_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("list", listIn(ReturnsNode.inputLabel(this.op)));
     for (const k of RETURNS_OP_META[this.op].needs) this.addInput(k, ReturnsNode.extraInput(k));
     this.addOutput("result", ReturnsNode.outputFor(this.op));

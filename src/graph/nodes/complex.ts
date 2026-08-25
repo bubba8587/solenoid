@@ -162,7 +162,7 @@ export class ComplexUnaryNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: ComplexUnaryOp }) {
     super("Complex");
-    this.label = init?.label ?? COMPLEX_UNARY_OP_META[init?.op ?? "conj"].label;
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "conj";
     this.addInput("z", complexComboIn("z"));
     this.addOutput("result", complexComboOut("Result"));
@@ -211,7 +211,7 @@ export class ComplexBinaryNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: ComplexBinaryOp }) {
     super("Complex");
-    this.label = init?.label ?? COMPLEX_BINARY_OP_META[init?.op ?? "sum"].label;
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "sum";
     this.addInput("a", complexComboIn("A"));
     this.addInput("b", complexComboIn("B"));

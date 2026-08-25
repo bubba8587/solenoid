@@ -32,7 +32,7 @@ export class DistributionNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: DistKey; form?: DistForm }) {
     super("Distribution");
-    this.label = init?.label ?? "Distribution";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "normal";
     const spec = DIST_SPECS[this.op];
     this.form = init?.form && spec.forms.includes(init.form) ? init.form : spec.forms[0];

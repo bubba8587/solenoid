@@ -14,6 +14,7 @@ import { FILTER_OP_OPTIONS_WITH_ERROR, TEXT_MATCH_OPS, VALUELESS_OPS, FILTER_COM
 import type { DisplayValue } from "./valueDisplayFormat";
 import { stopDragStart } from "../coarse";
 import { dropInputCables } from "./cablePrune";
+import { nodeDisplayName } from "../catalogUtils";
 
 // The frame Filter's condition rows minus the column picker — a list has no lanes, so a
 // row is just op + value. Kept rides the hero box; Dropped is the complement.
@@ -117,7 +118,7 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
         <span className="solenoid-node__io-label">Dropped</span>
         <span className="solenoid-node__output-value" style={{ display: "flex", justifyContent: "flex-end" }}>
           {Array.isArray(data.cachedDropped) && data.cachedDropped.length > 0
-            ? <ArrayChip value={data.cachedDropped as (number | string | null)[]} label={`${data.label}: Dropped`} size="sm" elem={nodeOutputElemFamily(data.id, "dropped")} />
+            ? <ArrayChip value={data.cachedDropped as (number | string | null)[]} label={`${nodeDisplayName(data)}: Dropped`} size="sm" elem={nodeOutputElemFamily(data.id, "dropped")} />
             : "—"}
         </span>
       </MeasuredSocketRow>

@@ -19,6 +19,7 @@ import { NodeShell, type NodeProps } from "./nodeKit";
 import { RefreshIcon } from "./RefreshIcon";
 import "./ConnectionNodes.css";
 import { stopDragStart } from "../coarse";
+import { nodeDisplayName } from "../catalogUtils";
 
 function statusText(s: ConnectionState): string {
   switch (s.status) {
@@ -120,7 +121,7 @@ export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>)
         />
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
         <RefreshIntervalField minutes={minutes} onCommit={(n) => { data.refreshMinutes = n; setMinutes(n); }} />
-        <FrameDisplay frame={data.cachedResult} label={data.label} />
+        <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
       </div>
     </NodeShell>
   );
@@ -173,7 +174,7 @@ export function ImportHtmlComponent({ data, emit }: NodeProps<ImportHtmlNodeType
           />
         </label>
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
-        <FrameDisplay frame={data.cachedResult} label={data.label} />
+        <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
       </div>
     </NodeShell>
   );
@@ -292,7 +293,7 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
         {desktop && folder && (
           <RefreshIntervalField minutes={minutes} onCommit={(n) => { data.refreshMinutes = n; setMinutes(n); }} />
         )}
-        <FrameDisplay frame={data.cachedResult} label={data.label} />
+        <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
       </div>
     </NodeShell>
   );
@@ -382,7 +383,7 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
         )}
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
         <RefreshIntervalField minutes={minutes} onCommit={(n) => { data.refreshMinutes = n; setMinutes(n); }} />
-        <FrameDisplay frame={data.cachedResult} label={data.label} />
+        <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
       </div>
     </NodeShell>
   );

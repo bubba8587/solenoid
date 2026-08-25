@@ -353,7 +353,6 @@
       "x": -319,
       "y": 282,
       "init": {
-        "label": "TODAY",
         "op": "today",
         "width": 180,
         "height": 177

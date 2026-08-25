@@ -37,7 +37,7 @@ export class SparklineNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: SparklineOp }) {
     super("Sparkline");
-    this.label = init?.label ?? "Sparkline";
+    this.label = init?.label ?? "";
     // Normalize retired ops from old saves: "bar" → column, "area" → line.
     const raw = init?.op as string | undefined;
     this.op = raw === "bar" ? "column" : raw === "area" ? "line" : ((raw as SparklineOp) ?? "line");
@@ -116,7 +116,7 @@ export class ChartNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: ChartOp }) {
     super("Chart");
-    this.label = init?.label ?? "Chart";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "column";
     // A frame socket kept UNCOERCED by `rawInputs` — coerced, it would widen a wired list
     // into a single ROW instead of leaving it a list.
@@ -357,7 +357,7 @@ export class GaugeNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: GaugeStyle }) {
     super("Gauge");
-    this.label = init?.label ?? "Gauge";
+    this.label = init?.label ?? "";
     if (init?.op === "bar") this.op = "bar";
     this.addInput("value", numIn("Value"));
     if (this.op === "bar") this.addBarInputs();
@@ -545,7 +545,7 @@ export class ProportionNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: ProportionLayout }) {
     super("Proportion");
-    this.label = init?.label ?? "Proportion";
+    this.label = init?.label ?? "";
     if (init?.op === "waffle") this.op = "waffle";
     this.addInput("frame", frameIn("Label + Value"));
     this.addInput("options", strIn("Options"));
@@ -676,7 +676,7 @@ export class SurfaceNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: SurfaceViewOp; yaw?: number; pitch?: number; levels?: number }) {
     super("Surface");
     this.op = init?.op ?? "surface";
-    this.label = init?.label ?? (this.op === "surface" ? "Surface" : "Contour");
+    this.label = init?.label ?? "";
     if (init?.yaw != null) this.literals.yaw = init.yaw;
     if (init?.pitch != null) this.literals.pitch = init.pitch;
     if (typeof init?.levels === "number") this.literals.levels = init.levels;

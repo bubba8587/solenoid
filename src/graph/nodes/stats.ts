@@ -84,7 +84,7 @@ export class RankPercentileNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: RankPercentileOp }) {
     super("RankPercentile");
-    this.label = init?.label ?? "Rank & Percentile";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "large";
     this.addInput("list", listIn("List"));
     for (const i of RANK_PERCENTILE_SPECS[this.family].inputs) this.addInput(i.key, numIn(i.label));
@@ -192,7 +192,7 @@ export class CorrelNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: CorrelOp }) {
     super("Correl");
-    this.label = init?.label ?? "CORREL";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "correl";
     this.addInput("x", listIn("X"));
     this.addInput("y", listIn("Y"));
@@ -263,7 +263,7 @@ export class CovarianceNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: CovarianceOp }) {
     super("Covariance");
-    this.label = init?.label ?? "COVARIANCE";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "pop";
     this.addInput("x", listIn("X"));
     this.addInput("y", listIn("Y"));
@@ -296,7 +296,7 @@ export class FisherNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: FisherOp }) {
     super("Fisher");
-    this.label = init?.label ?? "FISHER";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "fisher";
     this.addInput("value",   numListIn("Value"));
     this.addOutput("result", numListOut("Result"));
@@ -336,7 +336,7 @@ export class RegressionNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: RegressionOp }) {
     super("Regression");
-    this.label = init?.label ?? "SLOPE";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "slope";
     this.addInput("ys", listIn("Known Ys"));
     this.addInput("xs", listIn("Known Xs"));
@@ -374,7 +374,7 @@ export class ForecastNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: ForecastOp }) {
     super("Forecast");
-    this.label = init?.label ?? "FORECAST.LINEAR";
+    this.label = init?.label ?? "";
     if (init?.op) this.op = init.op;
     this.addInput("x",  numListIn("X"));
     this.addInput("ys", listIn("Known Ys"));
@@ -564,7 +564,7 @@ export class ConfidenceNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: ConfidenceOp }) {
     super("Confidence");
-    this.label = init?.label ?? "CONFIDENCE.NORM";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "norm";
     this.addInput("alpha", numIn("Alpha"));
     this.addInput("stdev", numIn("Std Dev"));
@@ -697,7 +697,7 @@ export class HypothesisTestNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: HypothesisTestOp }) {
     super("HypothesisTest");
-    this.label = init?.label ?? "Hypothesis Test";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "z";
     for (const i of HYPOTHESIS_TEST_SPECS[this.op].inputs) {
       this.addInput(i.key, i.num ? numIn(i.label) : i.table ? tableIn(i.label) : listIn(i.label));
@@ -950,7 +950,7 @@ export class LinestNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: FitOp }) {
     super("Linest");
-    this.label = init?.label ?? "LINEST";
+    this.label = init?.label ?? "";
     if (init?.op) this.op = init.op;
     this.addInput("ys", listIn("Known Ys"));
     this.addInput("xs", listIn("Known Xs"));

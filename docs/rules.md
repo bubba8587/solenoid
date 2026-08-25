@@ -781,9 +781,27 @@ a function's spelling for an unrelated operation is a trap, not a shortcut.
 *Enforced by:* `frameSurfaceNames.test.ts` → "no Tables & Frames leaf is named for a bare
 count/structural function" — a denylist ({ROWS, COLUMNS, ROW, COLUMN}) because a general
 "dispatches?" check can't fire here: some labels ARE the node-form of the like-named function
-(Group By ↔ GROUPBY) and legitimately dispatch. The genuine count node is "ROWS / COLUMNS"
-(despaces WITH the slash, so it is not a bare collision).
+(Group By ↔ GROUPBY) and legitimately dispatch. The genuine count node is "Table Size"
+(its two outputs are ROWS and COLUMNS).
 *Origin:* ROWS/COLUMNS — the D5 columns merge first shipped as a bare "Columns" node (author 2026-08-25).
+
+### NAME-3 — The Add-menu row and the card it creates share one name; an op family's card is named by its op **[author 2026-08-25]**
+**MUST:** a placed node's default title is the catalog name of what the user clicked — for an op
+family (`kind: "operation"`), the name of its CURRENT op, live: a placed ABS reads "ABS", never
+"Math"; switching XNPV's toggle to Periodic retitles it "NPV". No class hardcodes a family title
+(`this.label = init?.label ?? ""` for every operation family) and no component syncs a label on
+op change; the ONE derivation is `nodeDisplayName` (`catalogUtils.ts`): the user's own label if
+typed, else `nodeName` (the op-aware catalog index, which skips the generated `Host: Op` search
+rows), else the class name. Every surface that names a node (card header, Navigator, Inspector,
+cable inspector, history digest, popup titles) reads it. A leaf name is therefore a card title:
+no glyph prefixes ("+ Add"), no hints ("ROUND to N digits"), and a "X / Y" row that creates only
+X is split into two leaves (`leafOps`).
+
+*Why:* the name on the canvas is the only thing a reader has; a card titled by its family
+("Aggregate", "Arithmetic") or by a sibling op ("IRR" on a dated XIRR) misreports what it
+computes, and the Add menu then names things the canvas never shows.
+*Enforced by:* `cardTitle.test.ts` → every non-generated catalog leaf's `nodeDisplayName(create())`
+equals the leaf label (Conduit's serial and the composite boundary's "Input"/"Output" exempt).
 
 ### wholeArrayArgs — Array arguments arrive whole **[INFERRED]**
 **MUST:** a function taking a whole 1-D list is routed past the element-wise broadcaster.

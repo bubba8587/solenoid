@@ -24,6 +24,7 @@ import { CubeDisplay } from "./CubeDisplay";
 import { ChartFigure } from "./chartView";
 import { MermaidView } from "./MermaidView";
 import { SvgFigure } from "./SvgFigure";
+import { nodeDisplayName } from "../catalogUtils";
 
 /** A boundary value renders by its KIND, never stringified. */
 function CompositeBoundaryValue({ value, label }: { value: unknown; label: string }) {
@@ -625,7 +626,7 @@ export function CompositeInputMarkerComponent({ data, emit }: NodeProps<Composit
     <NodeShell node={data} emit={emit} collapsible={false} labelPlaceholder="Input" className="solenoid-node--composite-marker">
       {data.externallyWired ? (
         // Fed from outside — a number field can't represent a wired list/frame.
-        <CompositeBoundaryValue value={data.value} label={data.label} />
+        <CompositeBoundaryValue value={data.value} label={nodeDisplayName(data)} />
       ) : (
         <input
           className="solenoid-node__value-input"
@@ -661,7 +662,7 @@ export function CompositeOutputMarkerComponent({ data, emit }: NodeProps<Composi
       leading={<PortSockets node={data} emit={emit} side="input" />}
     >
       {isNumericSeries(data.cachedResult) && <MiniSparkline series={data.cachedResult} />}
-      <CompositeBoundaryValue value={data.cachedResult} label={data.label} />
+      <CompositeBoundaryValue value={data.cachedResult} label={nodeDisplayName(data)} />
       {data.goalTarget != null && <MarkerNote tag="target">{formatScalar(data.goalTarget)}</MarkerNote>}
     </NodeShell>
   );

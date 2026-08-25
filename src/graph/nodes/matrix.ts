@@ -136,7 +136,7 @@ export class MatDetNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: MatDetOp }) {
     super("MatDet");
     this.op    = init?.op    ?? "mdeterm";
-    this.label = init?.label ?? MAT_DET_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("matrix", tableIn("Matrix"));
     this.addOutput("result", MAT_DET_SCALAR.has(this.op) ? numOut(MAT_DET_OP_META[this.op].label) : tableOut("Inverse"));
   }
@@ -485,7 +485,7 @@ export class TableReshapeNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: TableReshapeOp }) {
     super("TableReshape");
     this.op    = init?.op    ?? "wraprows";
-    this.label = init?.label ?? TABLE_RESHAPE_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     const wraps = this.op === "wraprows" || this.op === "wrapcols";
     if (wraps) {
       this.addInput("list",      anyListIn("List"));
@@ -564,7 +564,7 @@ export class TableSelectNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: TableSelectOp }) {
     super("TableSelect");
     this.op    = init?.op    ?? "chooserows";
-    this.label = init?.label ?? TABLE_SELECT_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("matrix",  adoptiveTableIn("Matrix"));
     this.addInput("indices", listIn(this.op === "chooserows" ? "Row indices (1-based)" : "Col indices (1-based)"));
     this.addOutput("result", adoptiveTableOut("Result"));
@@ -605,7 +605,7 @@ export class TakeDropNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: TakeDropOp }) {
     super("TakeDrop");
     this.op    = init?.op    ?? "take";
-    this.label = init?.label ?? TAKEDROP_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     // Labels stay op-neutral: the op swaps at runtime, sockets are fixed here.
     this.addInput("data", anyDataIn("List or table"));
     this.addInput("rows", numIn("Count (± from end)"));
@@ -774,7 +774,7 @@ export class TableInfoNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string }) {
     super("TableInfo");
-    this.label = init?.label ?? "Table Info";
+    this.label = init?.label ?? "Table Size";
     // A `frame` input takes both: a raw matrix widens in with default headers.
     this.addInput("matrix", frameIn("Table"));
     this.addOutput("rows", numOut("ROWS"));

@@ -97,13 +97,13 @@ function _besselK(x: number, n: number): number {
 export { arithmeticCell, type ArithmeticOp } from "../unitValue";
 
 export const ARITHMETIC_OP_META = {
-  add:      { label: "+ Add",      description: "A + B" },
-  sub:      { label: "− Subtract", description: "A − B" },
-  mul:      { label: "× Multiply", description: "A × B" },
-  div:      { label: "÷ Divide",   description: "A ÷ B. #DIV/0! when B = 0." },
+  add:      { label: "Add",        description: "A + B" },
+  sub:      { label: "Subtract"  , description: "A − B" },
+  mul:      { label: "Multiply"  , description: "A × B" },
+  div:      { label: "Divide",     description: "A ÷ B. #DIV/0! when B = 0." },
   mod:      { label: "MOD",        description: "Remainder of A ÷ B. Excel: MOD." },
   quotient: { label: "QUOTIENT",   description: "Integer part of A ÷ B, truncated toward zero. Excel: QUOTIENT." },
-  pow:      { label: "xⁿ Power",   description: "A raised to the power B. 0^0 = 1 (JS/Python/Polars convention. Excel gives #NUM!). A finite result too large to represent → #OVERFLOW!. Excel: POWER / A^B." },
+  pow:      { label: "Power",      description: "A raised to the power B. 0^0 = 1 (JS/Python/Polars convention. Excel gives #NUM!). A finite result too large to represent → #OVERFLOW!. Excel: POWER / A^B." },
 } satisfies Record<ArithmeticOp, { label: string; description: string }>;
 
 export class ArithmeticNode extends ClassicPreset.Node {
@@ -119,7 +119,7 @@ export class ArithmeticNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: ArithmeticOp }) {
     super("Arithmetic");
     const op = init?.op ?? "mul";
-    this.label = init?.label ?? "Arithmetic";
+    this.label = init?.label ?? "";
     this.op = op;
     this.addInput("a", numListIn("A"));
     this.addInput("b", numListIn("B"));
@@ -268,7 +268,7 @@ export class MathFnNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: MathFnOp; angleMode?: AngleMode }) {
     super("MathFn");
     const op = init?.op ?? "abs";
-    this.label = init?.label ?? "Math";
+    this.label = init?.label ?? "";
     this.op = op;
     this.angleMode = init?.angleMode ?? "auto";
     this.addInput("in", numListIn("In"));
@@ -518,7 +518,7 @@ export class MRoundNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: MRoundOp }) {
     super("MRound");
     this.op = init?.op ?? "nearest";
-    this.label = init?.label ?? MROUND_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("value",    numListIn("Value"));
     this.addInput("multiple", numListIn("Multiple"));
     this.addOutput("result",  numListOut("Result"));
@@ -566,7 +566,7 @@ export class RoundNNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: RoundNOp }) {
     super("RoundN");
     this.op = init?.op ?? "round";
-    this.label = init?.label ?? "Rounding";
+    this.label = init?.label ?? "";
     this.addInput("value",  numListIn("Value"));
     this.addInput("digits", numListIn("Digits"));
     this.addOutput("result", numListOut("Result"));
@@ -614,7 +614,7 @@ export class GcdNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: GcdOp }) {
     super("Gcd");
-    this.label = init?.label ?? "GCD";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "gcd";
     this.addInput("a", numListIn("A"));
     this.addInput("b", numListIn("B"));
@@ -671,7 +671,7 @@ export class CombinatoricsNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: CombinatoricsOp }) {
     super("Combinatorics");
-    this.label = init?.label ?? "Combinatorics";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "combin";
     this.addInput("n", numIn("N"));
     this.addInput("k", numIn("K"));
@@ -764,7 +764,7 @@ export class TwoInputMathNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: TwoInputMathOp }) {
     super("TwoInputMath");
-    this.label = init?.label ?? "ATAN2";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "atan2";
     this.addInput("a", numListIn("A"));
     this.addInput("b", numListIn("B"));
@@ -818,7 +818,7 @@ export class SumProductNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: SumProductOp }) {
     super("SumProduct");
-    this.label = init?.label ?? "SUMX2MY2";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "sumx2my2";
     this.addInput("x", listIn("X list"));
     this.addInput("y", listIn("Y list"));
@@ -933,7 +933,7 @@ export class BesselNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: BesselOp }) {
     super("Bessel");
     this.op    = init?.op    ?? "besselj";
-    this.label = init?.label ?? BESSEL_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("x", numIn("x"));
     this.addInput("n", numIn("Order n (integer ≥ 0)"));
     this.addOutput("result", numOut("Result"));

@@ -76,7 +76,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   async function applyBody(content: string, sourcePath: string) {
     data.body = content;
     data.fileName = sourcePath;
-    if (sourcePath && (data.label === "Imported Note" || data.label.trim() === "")) {
+    if (sourcePath && (data.label === "Obsidian Note" || data.label.trim() === "")) {
       data.label = baseName(sourcePath);
       setLabel(data.label);
     }
@@ -182,7 +182,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
           <input
             className="solenoid-note__name"
             value={label}
-            placeholder="Imported Note"
+            placeholder="Obsidian Note"
             spellCheck={false}
             autoFocus
             onChange={(e) => setLabel(e.target.value)}
@@ -194,12 +194,12 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
         ) : (
           <div
             className={`solenoid-note__name-display${label.trim() ? "" : " solenoid-note__name-display--empty"}`}
-            title={label || "Imported Note"}
+            title={label || "Obsidian Note"}
             onClick={() => setEditingLabel(true)}
             onPointerDown={stop}
             onMouseDown={stop}
           >
-            {label.trim() || "Imported Note"}
+            {label.trim() || "Obsidian Note"}
           </div>
         )}
         <button

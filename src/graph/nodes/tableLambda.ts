@@ -217,12 +217,13 @@ export class MapTableNode extends ClassicPreset.Node {
 // ─── BYROW / BYCOL ────────────────────────────────────────────────────────────────
 
 export type ByAxis = "row" | "col";
+export const BY_AXIS_OP_META: Record<ByAxis, { label: string }> = { row: { label: "BYROW" }, col: { label: "BYCOL" } };
 
 export class ByAxisNode extends ClassicPreset.Node {
   /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
   unitAware = true;
   label: string;
-  axis: ByAxis;
+  op: ByAxis;
   resultAs: ResultType;
   stringLiterals: Record<string, string>;
   cachedResult: (Cell | UnitCell)[] | SolError | null = null;
@@ -232,15 +233,15 @@ export class ByAxisNode extends ClassicPreset.Node {
   width = 210;
   height = 218;
 
-  constructor(init?: { label?: string; expr?: string; axis?: ByAxis; resultAs?: ResultType }) {
+  constructor(init?: { label?: string; expr?: string; op?: ByAxis; resultAs?: ResultType }) {
     super("ByAxis");
-    this.axis = init?.axis ?? "row";
-    this.label = init?.label ?? (this.axis === "row" ? "BYROW" : "BYCOL");
+    this.op = init?.op ?? "row";
+    this.label = init?.label ?? "";
     this.resultAs = init?.resultAs ?? "number";
     this.stringLiterals = { formula: init?.expr ?? "SUM(values)" };
     this.addInput("table", anyTableIn("Table"));
     this.addInput("lambda", lambdaIn("Lambda"));
-    this.addOutput("result", resultOut("Per-" + this.axis, "combo", this.resultAs));
+    this.addOutput("result", resultOut("Per-" + this.op, "combo", this.resultAs));
   }
 
   data(inputs: { table?: unknown[]; lambda?: unknown[] }): { result: (Cell | UnitCell)[] | SolError | null } {
@@ -256,7 +257,7 @@ export class ByAxisNode extends ClassicPreset.Node {
     if (isSolError(elem)) { this.cachedResult = elem; this.cachedError = null; return { result: elem }; }
     const mm = elem ? stripCells(m) : m;
     try {
-      const vectors = this.axis === "row" ? mm : transpose(mm);
+      const vectors = this.op === "row" ? mm : transpose(mm);
       let out: (Cell | UnitCell)[] = vectors.map((vec) => cell(fn(vec)));
       if (elem) {
         const dr = foldResultDim(foldExpr(inputs.lambda?.[0], this.stringLiterals.formula, "SUM(values)"), ["values"], elem.dim);

@@ -59,7 +59,7 @@ export class TodayNowNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: TodayNowOp }) {
     super("TodayNow");
     this.op    = init?.op    ?? "today";
-    this.label = init?.label ?? TODAY_NOW_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addOutput("result", dateOut("Date"));
   }
 
@@ -87,7 +87,7 @@ export class DateConstructNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string }) {
     super("DateConstruct");
-    this.label = init?.label ?? "DATE (Build)";
+    this.label = init?.label ?? "DATE";
     this.addInput("year",  numListIn("Year"));
     this.addInput("month", numListIn("Month (1–12)"));
     this.addInput("day",   numListIn("Day (1–31)"));
@@ -158,7 +158,7 @@ export class DateTimeValueNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: DateTimeValueOp }) {
     super("DateTimeValue");
     this.op    = init?.op    ?? "date";
-    this.label = init?.label ?? DATE_TIME_VALUE_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("text", strIn("Text"));
     this.addOutput("result", this.op === "date" ? dateOut("Date") : numOut("Time fraction (0–1)"));
   }
@@ -207,7 +207,7 @@ export class DatePartNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: DatePartOp }) {
     super("DatePart");
     this.op    = init?.op    ?? "year";
-    this.label = init?.label ?? DATE_PART_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("date", dateComboIn("Date"));
     this.addOutput("result", numListOut("Number"));
   }
@@ -247,7 +247,7 @@ export class WeekInfoNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: WeekInfoOp }) {
     super("WeekInfo");
     this.op    = init?.op    ?? "weekday";
-    this.label = init?.label ?? WEEK_INFO_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("date",        dateComboIn("Date"));
     // `return_type` is a MODE selector, not an operand — per-element return types
     // are meaningless, so it stays scalar (same for basis / weekend_code).
@@ -290,7 +290,7 @@ export class DateDiffNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: DateDiffOp }) {
     super("DateDiff");
     this.op    = init?.op    ?? "days";
-    this.label = init?.label ?? DATE_DIFF_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("start", dateComboIn("Start date"));
     this.addInput("end",   dateComboIn("End date"));
     this.addOutput("result", numListOut("Result"));
@@ -342,7 +342,7 @@ export class DateAddNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: DateAddOp }) {
     super("DateAdd");
     this.op    = init?.op    ?? "edate";
-    this.label = init?.label ?? DATE_ADD_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("start",  dateComboIn("Start date"));
     this.addInput("months", numListIn("Months"));
     this.addOutput("result", dateComboOut("Date"));
@@ -395,7 +395,7 @@ export class WorkdaysNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: WorkdaysOp }) {
     super("Workdays");
     this.op = init?.op ?? "workday";
-    this.label = init?.label ?? "Workdays";
+    this.label = init?.label ?? "";
     this.addInput("start", dateComboIn("Start date"));
     if (this.op === "workday") this.addInput("days", numListIn("Days"));
     else this.addInput("end", dateComboIn("End date"));
@@ -502,7 +502,7 @@ export class EpochNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: EpochOp; unit?: EpochUnit }) {
     super("Epoch");
     this.op = init?.op ?? "from";
-    this.label = init?.label ?? EPOCH_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     if (init?.unit) this.unit = init.unit;
     if (this.op === "from") { this.addInput("value", numListIn("Epoch")); this.addOutput("result", dateComboOut("Date")); }
     else { this.addInput("value", dateComboIn("Date")); this.addOutput("result", numListOut("Epoch")); }

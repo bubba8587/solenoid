@@ -98,7 +98,7 @@ export class ESeriesNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: ESeriesOp }) {
     super("ESeries");
-    this.label = init?.label ?? "E-Series Value";
+    this.label = init?.label ?? "";
     this.op = init?.op && init.op in E_SERIES ? init.op : "E24";
     this.addInput("value", numIn("Value"));
     this.addOutput("nearest", numOut("Nearest"));

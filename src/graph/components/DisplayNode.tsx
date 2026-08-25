@@ -23,6 +23,7 @@ import { isLambdaValue } from "../nodes/lambda";
 import { LambdaValueView } from "./LambdaView";
 import { isSolError } from "../errorValue";
 import { recordNavTarget, stepRecordRow } from "./recordNav";
+import { nodeDisplayName } from "../catalogUtils";
 
 // Only for a Display with a DEFINITE size — measuring a content-driven card feeds
 // back (chart size → card size → …) and oscillates; overflow stays hidden for it.
@@ -114,9 +115,9 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
       {isError ? (
         <ValueDisplay value={v} full={full} />
       ) : isFrame ? (
-        <FrameDisplay frame={v} label={data.label} full={full} />
+        <FrameDisplay frame={v} label={nodeDisplayName(data)} full={full} />
       ) : isCube ? (
-        <CubeDisplay cube={v} label={data.label} full={full} />
+        <CubeDisplay cube={v} label={nodeDisplayName(data)} full={full} />
       ) : isChart ? (
         !full ? <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}><ChartChip value={v} /></div>
               : sized ? <MeasuredChart value={v} fontScale={ann?.chartFontScale} recordNav={recordStep} />
@@ -128,7 +129,7 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
       ) : isLambda ? (
         <LambdaValueView value={v} view={ann?.lambdaView} />
       ) : isTable ? (
-        <TableDisplay table={v as number[][]} label={data.label} full={full} elem={nodeOutputElemFamily(data.id)} />
+        <TableDisplay table={v as number[][]} label={nodeDisplayName(data)} full={full} elem={nodeOutputElemFamily(data.id)} />
       ) : (
         <ValueDisplay
           value={v as number | number[] | string | string[] | null}

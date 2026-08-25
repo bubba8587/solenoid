@@ -4,6 +4,7 @@ import type { ClassicPreset } from "rete";
 import { getEditor } from "./process";
 import { SolenoidSocket, type SocketDataType } from "./sockets";
 import { GroupNode, FormatControllerNode } from "./rete-nodes";
+import { nodeDisplayName } from "./catalogUtils";
 
 type AnyNode = {
   id: string;
@@ -16,11 +17,9 @@ type AnyNode = {
 export function nodeTypeName(n: { constructor: { name: string } }): string {
   return n.constructor.name.replace(/Node$/, "").replace(/([a-z])([A-Z])/g, "$1 $2");
 }
-const typeName = nodeTypeName as (n: AnyNode) => string;
 
 function baseName(n: AnyNode): string {
-  const label = (n.label ?? "").trim();
-  return label || typeName(n);
+  return nodeDisplayName(n);
 }
 
 export function nodeDisplayNames(nodes: AnyNode[]): Map<string, string> {

@@ -6,6 +6,7 @@ import { FrameDisplay } from "./FrameDisplay";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { InlineNumberField } from "./inlineInput";
 import { processGraph } from "../process";
+import { nodeDisplayName } from "../catalogUtils";
 
 // Live handle, graph recomputes on release — the XY Pad's interaction economy.
 
@@ -145,7 +146,7 @@ export function PointPlotterComponent({ data, emit }: NodeProps<PointPlotterNode
       <div className="solenoid-node__section-divider" />
       {data.outputs.result && (
         <MeasuredSocketRow hero side="output" socketKey="result" nodeId={data.id} emit={emit} payload={data.outputs.result.socket}>
-          <div style={{ width: "100%" }}><FrameDisplay frame={pointsToFrame(pts)} label={data.label} /></div>
+          <div style={{ width: "100%" }}><FrameDisplay frame={pointsToFrame(pts)} label={nodeDisplayName(data)} /></div>
         </MeasuredSocketRow>
       )}
     </NodeShell>

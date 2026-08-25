@@ -191,7 +191,7 @@ export class SeriesNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: SeriesOp }) {
     super("Series");
-    this.label = init?.label ?? "Series";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "range";
     for (const i of SERIES_SPECS[this.op]) this.addInput(i.key, numIn(i.label));
     this.addOutput("list", listOut("List"));
@@ -1030,7 +1030,7 @@ export class SumIfsNode extends ClassicPreset.Node {
     super("SumIfs");
     this.op = init?.op ?? "sumifs";
     if (init?.match === "all" || init?.match === "any") this.match = init.match;
-    this.label = init?.label ?? COND_AGG_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("frame", frameIn("Frame"));
     this.addInput("values", strIn("Values column"));
     const ids = pairIdsFromKeys(init?.valueKeys, "column");
@@ -1188,7 +1188,7 @@ export class SetOpNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: SetOp }) {
     super("Set");
-    this.label = init?.label ?? "Set";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "difference";
     this.addInput("a", anyListIn("A"));
     this.addInput("b", anyListIn("B"));
@@ -1315,7 +1315,7 @@ export class SetRelationNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: SetRelation }) {
     super("SetRelation");
-    this.label = init?.label ?? "Set relation";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "equal";
     this.addInput("a", anyListIn("A"));
     this.addInput("b", anyListIn("B"));
@@ -1521,7 +1521,7 @@ export class ArgMinMaxNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: ArgMinMaxOp }) {
     super("ArgMinMax");
-    this.label = init?.label ?? "ARGMAX";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "argmax";
     this.addInput("list", ArgMinMaxNode.inputFor(this.op));
     this.addOutput("result", ArgMinMaxNode.outputFor(this.op));
@@ -1731,7 +1731,7 @@ export class PadNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: PadDir }) {
     super("Pad");
-    this.label = init?.label ?? "Pad";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "right";
     this.addInput("list", adoptiveListIn("List"));
     this.addInput("n",    numIn("Target length"));
@@ -1772,7 +1772,7 @@ export class WeightedNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: WeightedOp }) {
     super("Weighted");
-    this.label = init?.label ?? "WAVG";
+    this.label = init?.label ?? "";
     this.op    = init?.op    ?? "wavg";
     this.addInput("values",  listIn("Values"));
     this.addInput("weights", listIn("Weights"));
@@ -1859,7 +1859,7 @@ export class AggregateNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: ReduceOp }) {
     super("Aggregate");
-    this.label = init?.label ?? "Aggregate";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "sum";
     this.addInput("list",    listIn("List"));
     this.addOutput("result", numOut("Result"));
@@ -2156,7 +2156,7 @@ export class FillNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: FillOp; valueKeys?: string[] }) {
     super("Fill");
-    this.label = init?.label ?? "Fill";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "constant";
     this.addInput("list",  listIn("List"));
     this.addInput("value", numIn("Fill with")); // shown for the constant mode
@@ -2270,7 +2270,7 @@ export class SmoothNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: SmoothOp }) {
     super("Smooth");
     this.op = init?.op ?? "savgol";
-    this.label = init?.label ?? SMOOTH_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("list", listIn("List"));
     for (const prm of SMOOTH_OP_META[this.op].params) { this.addInput(prm.key, numIn(prm.label)); this.literals[prm.key] = prm.def; }
     this.addOutput("result", listOut("Smoothed"));

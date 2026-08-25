@@ -259,9 +259,9 @@ export const FRAME_SURFACE_NAMES: Readonly<Record<string, string>> = {
   // Table verbs › Columns
   SELECTCOLUMNS: "Keep Columns", KEEPCOLUMNS: "Keep Columns", DROPCOLUMNS: "Drop Columns", RENAME: "Rename",
   SPLITCOLUMN: "Split Column", ADDINDEX: "Add Index", MERGECOLUMNS: "Merge Columns",
-  HEADERS: "Headers",
+  HEADERS: "Headers", TABLESIZE: "Table Size",
   // Table verbs › Reshape
-  PIVOTBY: "PIVOTBY", UNPIVOT: "Unpivot", NEST: "Nest", UNNEST: "Unnest",
+  PIVOTBY: "Pivot", PIVOT: "Pivot", UNPIVOT: "Unpivot", NEST: "Nest", UNNEST: "Unnest",
   // Table verbs › Clean
   FILLDOWN: "Fill Down", REPLACEVALUES: "Replace Values", DROPBLANKROWS: "Drop Blank Rows",
   // Table verbs › Analyze

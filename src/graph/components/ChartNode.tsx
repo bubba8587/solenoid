@@ -11,6 +11,7 @@ import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
 import { formatAnnotationStore } from "../formatAnnotationStore";
 import type { ChartValue } from "../chartValue";
+import { nodeDisplayName } from "../catalogUtils";
 
 // Every op reads the one `values` frame now, so switching op is a plain recompute.
 async function applyChartOp(node: ChartNodeType, newOp: ChartOp): Promise<void> {
@@ -42,7 +43,7 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
     __chart: true, op, values: data.cachedResult,
     series: data.cachedSeries ?? undefined,
     labels: data.cachedLabels ?? undefined,
-    options: opts, title: opts.title || data.label || "Chart",
+    options: opts, title: opts.title || nodeDisplayName(data),
   };
 
   // The data socket is measured against the card so it can't collide with the Options row.
@@ -72,7 +73,7 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
           <>
             <ChartFigure value={cv} width={W} height={H} fontScale={fontScale} />
             {!noExpand && (
-              <ChartExpandButton title={opts.title || data.label || "Chart"} op={op as ChartShape} axes series={series} opts={opts} labels={data.cachedLabels ?? undefined} value={cv} />
+              <ChartExpandButton title={opts.title || nodeDisplayName(data)} op={op as ChartShape} axes series={series} opts={opts} labels={data.cachedLabels ?? undefined} value={cv} />
             )}
           </>
         )}

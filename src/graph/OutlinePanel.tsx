@@ -16,6 +16,7 @@ import { appThemeStore } from "./appTheme";
 import { themeAccent, resolveColor, hexToRgba } from "./palette";
 import "./OutlinePanel.css";
 import { CloseIcon } from "./components/CloseIcon";
+import { nodeDisplayName } from "./catalogUtils";
 
 /** Left-docked outline / navigator, mirroring canvas group membership and collapse
  *  state; Format Controllers are filtered out entirely. */
@@ -77,7 +78,7 @@ function buildState(mode: "dark" | "light", sortMode: SortMode): State {
 
   // Position mode reads top→bottom in loose row bands, then left→right; ROW_BAND is
   // intentionally GENEROUS so the order doesn't react to small y jitter.
-  const labelOf = (n: (typeof nodes)[number]) => (n as { label?: string }).label ?? "";
+  const labelOf = (n: (typeof nodes)[number]) => nodeDisplayName(n);
   const posOf = (n: (typeof nodes)[number]) => area?.nodeViews.get(n.id)?.position ?? { x: 0, y: 0 };
   const ROW_BAND = 120;
   const cmp = sortMode === "alpha"
@@ -99,7 +100,7 @@ function buildState(mode: "dark" | "light", sortMode: SortMode): State {
     const color = colorOf(n, mode);
     return {
       id: n.id,
-      label: (n as { label?: string }).label ?? "Node",
+      label: nodeDisplayName(n),
       type: typeOf(n),
       color,
       selected: !!(n as { selected?: boolean }).selected,

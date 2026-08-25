@@ -182,7 +182,7 @@ export class ConstantNode extends ClassicPreset.Node {
     super("Constant");
     // Guard a stale op from an old save rather than crash data() on CONSTANTS[op].
     this.op = init?.op && init.op in CONSTANTS ? init.op : "pi";
-    this.label = init?.label ?? "Constant";
+    this.label = init?.label ?? "";
     this.addOutput("value", new ClassicPreset.Output(numberSocket));
   }
 

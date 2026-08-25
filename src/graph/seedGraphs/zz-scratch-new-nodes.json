@@ -646,7 +646,6 @@
    "x": 356,
    "y": 1716,
    "init": {
-    "label": "Epoch → Date",
     "op": "from",
     "unit": "s"
    }
@@ -1054,7 +1053,6 @@
    "x": 3275,
    "y": 2585,
    "init": {
-    "label": "TRACE",
     "op": "trace"
    }
   },
@@ -1073,7 +1071,6 @@
    "x": 3275,
    "y": 2798,
    "init": {
-    "label": "MATRIXRANK",
     "op": "rank"
    }
   },
@@ -1092,7 +1089,6 @@
    "x": 3275,
    "y": 3011,
    "init": {
-    "label": "NORM",
     "op": "norm"
    }
   },
@@ -1663,7 +1659,6 @@
    "x": 1450,
    "y": 5510,
    "init": {
-    "label": "Log returns",
     "op": "log"
    }
   },
@@ -1682,7 +1677,6 @@
    "x": 1450,
    "y": 5717,
    "init": {
-    "label": "Drawdown",
     "op": "drawdown"
    }
   },
@@ -1701,7 +1695,6 @@
    "x": 1450,
    "y": 5924,
    "init": {
-    "label": "Max drawdown",
     "op": "maxdrawdown"
    }
   },
@@ -1720,7 +1713,6 @@
    "x": 1450,
    "y": 6137,
    "init": {
-    "label": "Simple returns",
     "op": "simple"
    }
   },
@@ -1730,7 +1722,6 @@
    "x": 1782,
    "y": 6116,
    "init": {
-    "label": "Sharpe ratio",
     "op": "sharpe"
    },
    "literals": {
@@ -1753,7 +1744,6 @@
    "x": 1450,
    "y": 6344,
    "init": {
-    "label": "CAGR",
     "op": "cagr"
    },
    "literals": {
@@ -1887,7 +1877,6 @@
    "x": 3819,
    "y": 5936,
    "init": {
-    "label": "ENCODEBASE64",
     "op": "base64"
    },
    "stringLiterals": {
@@ -1900,7 +1889,6 @@
    "x": 4151,
    "y": 5814,
    "init": {
-    "label": "DECODEBASE64",
     "op": "unbase64"
    }
   },
@@ -1993,7 +1981,6 @@
    "x": 1450,
    "y": 6827,
    "init": {
-    "label": "Savitzky–Golay",
     "op": "savgol"
    },
    "literals": {
@@ -2016,7 +2003,6 @@
    "x": 1450,
    "y": 7090,
    "init": {
-    "label": "LOWESS",
     "op": "lowess"
    },
    "literals": {
@@ -2038,7 +2024,6 @@
    "x": 1450,
    "y": 7325,
    "init": {
-    "label": "Gaussian Smooth",
     "op": "gaussian"
    },
    "literals": {

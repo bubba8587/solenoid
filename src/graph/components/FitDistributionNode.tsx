@@ -3,6 +3,7 @@ import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { FrameDisplay } from "./FrameDisplay";
+import { nodeDisplayName } from "../catalogUtils";
 
 export function FitDistributionComponent({ data, emit }: NodeProps<FitDistributionNodeType>) {
   const rankingOut = data.outputs.ranking, bestOut = data.outputs.best, paramsOut = data.outputs.params;
@@ -11,7 +12,7 @@ export function FitDistributionComponent({ data, emit }: NodeProps<FitDistributi
       <InlineInputs node={data} emit={emit} />
       {rankingOut && (
         <MeasuredSocketRow hero side="output" socketKey="ranking" nodeId={data.id} emit={emit} payload={rankingOut.socket}>
-          <div style={{ width: "100%" }}><FrameDisplay frame={data.cachedRanking} label={data.label} /></div>
+          <div style={{ width: "100%" }}><FrameDisplay frame={data.cachedRanking} label={nodeDisplayName(data)} /></div>
         </MeasuredSocketRow>
       )}
       {bestOut && (

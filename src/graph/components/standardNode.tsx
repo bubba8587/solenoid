@@ -8,6 +8,7 @@ import { TableDisplay } from "./TableDisplay";
 import { RecalcButton } from "./RecalcButton";
 import { SegToggle } from "./SegToggle";
 import { processGraph } from "../process";
+import { nodeDisplayName } from "../catalogUtils";
 
 // Factories for the input-rows-then-one-result-box shape; a node needing more writes its
 // component against NodeShell directly.
@@ -25,7 +26,7 @@ export function makeNodeComponent<N extends ShellNode & InlineNode>(
     return (
       <NodeShell node={data} emit={emit}>
         <InlineInputs node={data} emit={emit} />
-        <ResultDisplay value={value(data)} label={data.label} />
+        <ResultDisplay value={value(data)} label={nodeDisplayName(data)} />
         {opts.recalc != null && <RecalcButton title={opts.recalc} />}
       </NodeShell>
     );
@@ -40,7 +41,7 @@ export function makeExtensibleNodeComponent<N extends ShellNode & ExtensibleNode
     return (
       <NodeShell node={data} emit={emit}>
         <ExtensibleInputs node={data} emit={emit} />
-        <ResultDisplay value={value(data)} label={data.label} />
+        <ResultDisplay value={value(data)} label={nodeDisplayName(data)} />
       </NodeShell>
     );
   };
@@ -70,8 +71,8 @@ export function makeToggleNodeComponent<N extends ShellNode & InlineNode, V exte
         />
         <InlineInputs node={data} emit={emit} />
         {opts.table
-          ? <TableDisplay table={value(data) as Parameters<typeof TableDisplay>[0]["table"]} label={data.label} elem={nodeOutputElemFamily(data.id)} />
-          : <ResultDisplay value={value(data)} label={data.label} />}
+          ? <TableDisplay table={value(data) as Parameters<typeof TableDisplay>[0]["table"]} label={nodeDisplayName(data)} elem={nodeOutputElemFamily(data.id)} />
+          : <ResultDisplay value={value(data)} label={nodeDisplayName(data)} />}
       </NodeShell>
     );
   };

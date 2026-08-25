@@ -60,12 +60,12 @@ describe("nodeDisplayNames", () => {
 
   it("single node with no label → type name", () => {
     const map = nodeDisplayNames([node("n1", "ArithmeticNode")]);
-    expect(map.get("n1")).toBe("Arithmetic");
+    expect(map.get("n1")).toBe("Add");
   });
 
   it("whitespace-only label falls back to type name", () => {
     const map = nodeDisplayNames([node("n1", "ArithmeticNode", "   ")]);
-    expect(map.get("n1")).toBe("Arithmetic");
+    expect(map.get("n1")).toBe("Add");
   });
 
   it("unique labels stay bare (no index appended)", () => {
@@ -102,19 +102,19 @@ describe("nodeDisplayNames", () => {
       node("n1", "ArithmeticNode"),
       node("n2", "ArithmeticNode"),
     ]);
-    expect(map.get("n1")).toBe("Arithmetic 1");
-    expect(map.get("n2")).toBe("Arithmetic 2");
+    expect(map.get("n1")).toBe("Add 1");
+    expect(map.get("n2")).toBe("Add 2");
   });
 
   it("mix of labeled and unlabeled nodes are independent groups", () => {
     const map = nodeDisplayNames([
       node("n1", "ArithmeticNode", "Revenue"),
-      node("n2", "ArithmeticNode"),            // → "Arithmetic"
-      node("n3", "ArithmeticNode"),            // → "Arithmetic"
+      node("n2", "ArithmeticNode"),            // → "Add"
+      node("n3", "ArithmeticNode"),            // → "Add"
     ]);
     expect(map.get("n1")).toBe("Revenue");     // unique label, stays bare
-    expect(map.get("n2")).toBe("Arithmetic 1");
-    expect(map.get("n3")).toBe("Arithmetic 2");
+    expect(map.get("n2")).toBe("Add 1");
+    expect(map.get("n3")).toBe("Add 2");
   });
 
   it("contains exactly one entry per node", () => {

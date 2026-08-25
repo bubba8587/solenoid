@@ -37,7 +37,7 @@ describe("describeAction", () => {
   it("RemoveNodeAction falls back to the type name when unlabeled", () => {
     const removed = { label: "", constructor: { name: "ArithmeticNode" } };
     const a = new RemoveNodeAction(stubEditor, stubArea, removed as never, { x: 0, y: 0 });
-    expect(describeAction(a, lookup)).toBe("Removed node: Arithmetic");
+    expect(describeAction(a, lookup)).toBe("Removed node: Add");
   });
 
   it("describes a DragNodeAction via its public nodeId", () => {

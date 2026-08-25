@@ -26,6 +26,7 @@ import { MeasuredSocketRow } from "./NodeSocket";
 import { makeToggleNodeComponent } from "./standardNode";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
+import { nodeDisplayName } from "../catalogUtils";
 
 const MAT_DET_OPS = (Object.keys(MAT_DET_OP_META) as MatDetOp[]).map(op => ({
   value: op, label: MAT_DET_OP_META[op].label,
@@ -49,7 +50,7 @@ export function MatDetComponent({ data, emit }: NodeProps<MatDetNodeType>) {
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} onChange={(o) => void pickOp(o)} options={MAT_DET_OPS} />
       {op === "minverse"
-        ? <TableDisplay table={data.cachedMatrix} label={data.label} elem="number" />
+        ? <TableDisplay table={data.cachedMatrix} label={nodeDisplayName(data)} elem="number" />
         : <ValueDisplay value={data.cachedScalar} />}
     </NodeShell>
   );
@@ -76,7 +77,7 @@ export function MatEigenComponent({ data, emit }: NodeProps<MatEigenNodeType>) {
       )}
       {vectorsOut && (
         <MeasuredSocketRow hero side="output" socketKey="vectors" nodeId={data.id} emit={emit} payload={vectorsOut.socket}>
-          <div style={{ width: "100%" }}><TableDisplay table={data.cachedVectors} label={data.label} elem="number" /></div>
+          <div style={{ width: "100%" }}><TableDisplay table={data.cachedVectors} label={nodeDisplayName(data)} elem="number" /></div>
         </MeasuredSocketRow>
       )}
     </NodeShell>
@@ -87,7 +88,7 @@ export function TableMultComponent({ data, emit }: NodeProps<TableMultNodeType>)
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <TableDisplay table={data.cachedResult} label={data.label} elem="number" />
+      <TableDisplay table={data.cachedResult} label={nodeDisplayName(data)} elem="number" />
     </NodeShell>
   );
 }
@@ -113,7 +114,7 @@ export function TableOuterComponent({ data, emit }: NodeProps<TableOuterNodeType
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <TableDisplay table={data.cachedResult} label={data.label} elem="number" />
+      <TableDisplay table={data.cachedResult} label={nodeDisplayName(data)} elem="number" />
     </NodeShell>
   );
 }
@@ -122,7 +123,7 @@ export function TableTransposeComponent({ data, emit }: NodeProps<TableTranspose
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <TableDisplay table={data.cachedResult} label={data.label} elem="number" />
+      <TableDisplay table={data.cachedResult} label={nodeDisplayName(data)} elem="number" />
     </NodeShell>
   );
 }
@@ -131,7 +132,7 @@ export function HStackTableComponent({ data, emit }: NodeProps<HStackTableNodeTy
   return (
     <NodeShell node={data} emit={emit}>
       <ExtensibleInputs node={data} emit={emit} />
-      <TableDisplay table={data.cachedResult} label={data.label} elem="number" />
+      <TableDisplay table={data.cachedResult} label={nodeDisplayName(data)} elem="number" />
     </NodeShell>
   );
 }
@@ -148,7 +149,7 @@ export function TableReshapeComponent({ data, emit }: NodeProps<TableReshapeNode
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} onChange={setOp} options={RESHAPE_OPS} />
       {isWrap
-        ? <TableDisplay table={data.cachedMatrix} label={data.label} elem="number" />
+        ? <TableDisplay table={data.cachedMatrix} label={nodeDisplayName(data)} elem="number" />
         : /* flattened list is homogeneous at runtime (matches the input's element
              type); ValueDisplay branches number-vs-text on the first cell. */
           <ValueDisplay value={data.cachedList as number[] | string[] | null} />}
@@ -166,7 +167,7 @@ export function TableSelectComponent({ data, emit }: NodeProps<TableSelectNodeTy
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} onChange={setOp} options={SELECT_OPS} />
-      <TableDisplay table={data.cachedResult} label={data.label} elem="number" />
+      <TableDisplay table={data.cachedResult} label={nodeDisplayName(data)} elem="number" />
     </NodeShell>
   );
 }
@@ -185,7 +186,7 @@ export function TakeDropComponent({ data, emit }: NodeProps<TakeDropNodeType>) {
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} onChange={setOp} options={TAKEDROP_OPS} />
       {isMatrix
-        ? <TableDisplay table={r as (number | string | null)[][]} label={data.label} elem="number" />
+        ? <TableDisplay table={r as (number | string | null)[][]} label={nodeDisplayName(data)} elem="number" />
         : <ValueDisplay value={r as DisplayValue} />}
     </NodeShell>
   );
@@ -195,7 +196,7 @@ export function ExpandTableComponent({ data, emit }: NodeProps<ExpandNodeType>) 
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <TableDisplay table={data.cachedResult} label={data.label} elem="number" />
+      <TableDisplay table={data.cachedResult} label={nodeDisplayName(data)} elem="number" />
     </NodeShell>
   );
 }

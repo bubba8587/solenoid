@@ -10,6 +10,7 @@ import { TableDisplay } from "./TableDisplay";
 import { SegToggle } from "./SegToggle";
 import { isSolError, type SolError } from "../errorValue";
 import { stopDragStart } from "../coarse";
+import { nodeDisplayName } from "../catalogUtils";
 
 const MODE_OPTIONS = (Object.keys(INTERPOLATE_MODE_META) as InterpolateMode[]).map((m) => ({
   value: m,
@@ -70,8 +71,8 @@ export function InterpolateComponent({ data, emit }: NodeProps<InterpolateNodeTy
       )}
       <InlineInputs node={data} emit={emit} />
       {data.mode === "grid"
-        ? <TableDisplay table={isSolError(data.cachedResult) ? (data.cachedResult as SolError) : (data.cachedResult as (number | null)[][] | null)} label={data.label} elem="number" />
-        : <ResultDisplay value={data.cachedResult} label={data.label} />}
+        ? <TableDisplay table={isSolError(data.cachedResult) ? (data.cachedResult as SolError) : (data.cachedResult as (number | null)[][] | null)} label={nodeDisplayName(data)} elem="number" />
+        : <ResultDisplay value={data.cachedResult} label={nodeDisplayName(data)} />}
     </NodeShell>
   );
 }

@@ -129,7 +129,7 @@ export const THERMO_PACK: Pack = {
       path: ["Packs", "Thermo & Heat", "Humid Air"],
       entry: {
         type: "th-antoine",
-        label: "Vapor Pressure (Antoine)",
+        label: "Vapor Pressure",
         fx: ["ANTOINE"],
         description: "Antoine-equation vapor pressure for a chosen solvent (water, alcohols, acetone, benzene…) at T °C, plus its normal boiling point",
         keywords: "antoine volatility solvent evaporation boiling",
