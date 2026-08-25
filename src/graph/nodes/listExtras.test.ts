@@ -139,10 +139,10 @@ describe("COUNTBLANK — Aggregate op that counts missing cells", () => {
 });
 
 describe("closed formula-only gaps — GROWTH and ORDINAL now have nodes", () => {
-  it("GROWTH is TREND's exponential mode; ORDINAL is Spell Number's ordinal mode", async () => {
-    const { TrendNode } = await import("./stats");
+  it("GROWTH is Forecast's exponential op; ORDINAL is Spell Number's ordinal mode", async () => {
+    const { ForecastNode } = await import("./stats");
     const { SpellNumberNode } = await import("./text");
-    const growth = new TrendNode({ mode: "exponential" }).data({ ys: [[2, 4, 8]], xs: [[1, 2, 3]], new_xs: [[4]] }).result as number[];
+    const growth = new ForecastNode({ op: "exponential" }).data({ x: [[4]], ys: [[2, 4, 8]], xs: [[1, 2, 3]] }).result as number[];
     expect(growth[0]).toBeCloseTo(16, 5);
     expect(new SpellNumberNode({ mode: "ordinal" }).data({ value: [22] }).result).toBe("22nd");
     // and the formulas still dispatch to the same result

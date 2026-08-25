@@ -218,7 +218,6 @@ export { BinomDistRangeComponent } from "./BinomDistRangeNode";
 export { HypothesisTestComponent } from "./HypothesisTestNode";
 
 // ─── Regression (extended) ────────────────────────────────────────────────────
-export { TrendComponent } from "./TrendNode";
 export { InterpolateComponent } from "./InterpolateNode";
 export { LinestComponent } from "./LinestNode";
 export { LogestComponent } from "./LogestNode";

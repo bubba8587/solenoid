@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator, RANGE_FUNCTIONS } from "./excelFormula";
-import { TrendNode, LinestNode, LogestNode } from "./nodes/stats";
+import { ForecastNode, LinestNode, LogestNode } from "./nodes/stats";
 
 // ─── Range routing: the SHAPE guard ───────────────────────────────────────────
 // `RANGE_FUNCTIONS` is hand-kept, and a function missing from it fails SILENTLY in the
@@ -112,18 +112,18 @@ describe("the regression quartet — owned, not routed (the last DEFERRED closed
     expect(RANGE_FUNCTIONS.has(name), `${name} entered RANGE_FUNCTIONS — it is owned, not routed`).toBe(false);
   });
 
-  it("TREND matches the node and takes Excel's optional forms", () => {
-    const node = new TrendNode();
-    const nodeOut = node.data({ ys: [YS], xs: [XS], new_xs: [[5, 6]] });
-    expect(ev("TREND(y, x, n)", { y: YS, x: XS, n: [5, 6] })).toEqual(nodeOut.result);
+  it("TREND / GROWTH stay callable as formulas; Forecast is the node", () => {
+    // The formulas are unchanged: an omitted new_xs still defaults to the known xs.
     expect(ev("TREND(y, x, n)", { y: YS, x: XS, n: [5, 6] })).toEqual([11, 13]);
-    // new_xs omitted → predict at the known xs; xs omitted too → 1..n.
     expect(ev("TREND(y, x)", { y: YS, x: XS })).toEqual(YS);
     expect(ev("TREND(y)", { y: YS })).toEqual(YS);
-    // The NODE with New Xs UNWIRED now matches TREND(y, x): fitted at the known xs.
-    expect(new TrendNode().data({ ys: [YS], xs: [XS] }).result).toEqual(YS);
-    expect(new TrendNode().data({ ys: [YS], xs: [XS] }).result)
-      .toEqual(ev("TREND(y, x)", { y: YS, x: XS }));
+    // The NODE mirrors the query's shape; an unwired X predicts nothing (not at 0).
+    expect(new ForecastNode().data({ ys: [YS], xs: [XS] }).result).toBeNull();
+    expect(new ForecastNode().data({ x: [[5, 6]], ys: [YS], xs: [XS] }).result).toEqual([11, 13]);
+    // A scalar X → a scalar prediction; the exponential op fits y = b·mˣ (GROWTH).
+    expect(new ForecastNode().data({ x: [5], ys: [YS], xs: [XS] }).result).toBe(11);
+    expect(new ForecastNode({ op: "exponential" }).data({ x: [5], ys: [EXP], xs: [XS] }).result as number)
+      .toBeCloseTo(32, 10);
   });
 
   it("GROWTH is TREND in log space", () => {

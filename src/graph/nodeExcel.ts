@@ -182,7 +182,11 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "f-test": [{ excel: "F.TEST", syntax: "=F.TEST(a, b)" }],
   "fisher-fisher": [{ excel: "FISHER", syntax: "=FISHER(x)", parity: true }],
   "fisher-fisherinv": [{ excel: "FISHERINV", syntax: "=FISHERINV(y)", parity: true }],
-  "forecast": [{ excel: "FORECAST.LINEAR", syntax: "=FORECAST.LINEAR(x, ys, xs)", parity: true }],
+  "forecast": [
+    { excel: "FORECAST.LINEAR", syntax: "=FORECAST.LINEAR(x, ys, xs)", parity: true, note: "X may be a scalar or a list; the result mirrors its shape." },
+    { excel: "TREND", syntax: "=TREND(ys, xs, [new_xs])", parity: false, note: "Linear op. Simple linear regression; an unwired New Xs defaults to the Known Xs (fitted values), like Excel. Excel's const (force-intercept) and multiple-regression forms aren't modeled." },
+    { excel: "GROWTH", syntax: "=GROWTH(ys, xs, new_xs)", parity: false, note: "Exponential op — the fit y = b·mˣ." },
+  ],
   "ets-forecast": [
     { excel: "FORECAST.ETS", syntax: "=FORECAST.ETS(target_date, values, timeline, [seasonality])", parity: false, note: "Same additive Holt–Winters model; Solenoid fits α/β/γ by its own SSE search, so values are close to Excel's, not identical. Timeline must be equally spaced." },
     { excel: "FORECAST.ETS.CONFINT", syntax: "=FORECAST.ETS.CONFINT(target_date, values, timeline, [confidence_level])", parity: false, note: "z·σ·√h band" },
@@ -502,7 +506,6 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "text-trim": [{ excel: "TRIM", syntax: "=TRIM(text)", parity: false }],
   "text-upper": [{ excel: "UPPER", syntax: "=UPPER(text)", parity: false }],
   "time-value": [{ excel: "TIMEVALUE", syntax: "=TIMEVALUE(time_text)", parity: false, note: "Parses HH:MM:SS format" }],
-  "trend": [{ excel: "TREND", syntax: "=TREND(ys, xs, [new_xs])", parity: false, note: "Simple linear regression; an unwired New Xs defaults to the Known Xs (fitted values), like Excel. Excel's const (force-intercept) and multiple-regression forms aren't modeled." }],
   "trimmean": [{ excel: "TRIMMEAN", syntax: "=TRIMMEAN(range, pct)", parity: true }],
   "sumifs": [
     { excel: "SUMIFS", syntax: "=SUMIFS(sum_range, criteria_range1, criteria1, ...)", parity: true, note: "Takes one frame: ranges are named columns; criteria are op + value rows instead of criteria strings (\">10\")" },
@@ -554,7 +557,6 @@ export const EXCEL_GAP: ExcelGapRow[] = [
   // The *IFS family + singular COUNTIF/AVERAGEIF are node-backed (sumifs node) → NODE_EXCEL.
   // Only SUMIF stays a gap: it is blocked (Formula.js mis-summed a numeric-string range).
   { excel: "SUMIF", syntax: "=SUMIF(range, crit)", category: "Math & Trig", oos: true, note: "Superseded by SUMIFS" },
-  { excel: "GROWTH", syntax: "=GROWTH(ys, xs, new_xs)", category: "Statistics", note: "Exponential counterpart of TREND (which has a node); no node yet" },
   { excel: "ADDRESS", syntax: "=ADDRESS(row, col)", category: "Lookup & Reference", oos: true, note: "Returns a cell reference as text; out of scope" },
   { excel: "AREAS", syntax: "=AREAS(reference)", category: "Lookup & Reference", oos: true, note: "Count areas in reference; out of scope" },
   { excel: "COLUMN", syntax: "=COLUMN(reference)", category: "Lookup & Reference", oos: true, note: "Returns column number; out of scope" },

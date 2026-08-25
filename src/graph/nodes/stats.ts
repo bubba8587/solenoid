@@ -352,7 +352,13 @@ export class RegressionNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Forecast ─────────────────────────────────────────────────────────────────
+// ─── Forecast (linear | exponential — absorbs TREND and GROWTH) ────────────────
+
+export const FORECAST_OP_META = {
+  linear:      { label: "Linear",      fx: "FORECAST.LINEAR" },
+  exponential: { label: "Exponential", fx: "GROWTH" },
+} as const;
+export type ForecastOp = keyof typeof FORECAST_OP_META;
 
 export class ForecastNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -360,37 +366,65 @@ export class ForecastNode extends ClassicPreset.Node {
   };
 
   label: string;
-  cachedResult: number | SolError | null = null;
-  literals: Record<string, number> = { x: 0 };
+  op: ForecastOp = "linear";
+  // A scalar X → one prediction; a list of Xs → the list of predictions.
+  cachedResult: number | (number | null)[] | SolError | null = null;
   width = 180;
   height = 215;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; op?: ForecastOp }) {
     super("Forecast");
     this.label = init?.label ?? "FORECAST.LINEAR";
-    this.addInput("x",  numIn("X"));
+    if (init?.op) this.op = init.op;
+    this.addInput("x",  numListIn("X"));
     this.addInput("ys", listIn("Known Ys"));
     this.addInput("xs", listIn("Known Xs"));
-    this.addOutput("result", numOut("Result"));
+    this.addOutput("result", numListOut("Result"));
   }
 
-  data(inputs: { x?: number[]; ys?: (number | null | SolError)[][]; xs?: (number | null | SolError)[][] }): { result: number | SolError | null } {
-    const x = readInput(inputs.x, this.literals.x ?? 0);
-    if (x === null) { this.cachedResult = null; return { result: null }; }
-    const { error, xs: xsP, ys: ysP } = forPair(inputs.xs?.[0] ?? null, inputs.ys?.[0] ?? null);
+  setOp(next: ForecastOp): void { this.op = next; }
+
+  data(inputs: {
+    x?: (number | (number | null | SolError)[] | null | SolError)[];
+    ys?: (number | null | SolError)[][];
+    xs?: (number | null | SolError)[][];
+  }): { result: number | (number | null)[] | SolError | null } {
+    const { error, xs, ys } = forPair(inputs.xs?.[0] ?? null, inputs.ys?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
-    const ys = ysP, xs = xsP;
-    let result: number | null = null;
-    if (ys.length >= 2 && xs.length >= 2) {
-      const fit = linearFit(xs, ys);
-      // Zero X variance — the linear fit divides by SSxx and is undefined.
-      if (!fit) {
-        const err = solError("#DIV/0!", "Known Xs have zero variance");
-        this.cachedResult = err;
-        return { result: err };
+    // An unwired X predicts nothing (null), never silently at 0.
+    const q = readInput(inputs.x, null);
+    if (isSolError(q)) { this.cachedResult = q; return { result: q }; }
+
+    // Fit once — the model is independent of the query. Enough real data with a null
+    // linear fit means zero X variance (#DIV/0!); too few points or an undefined
+    // exponential fit stays quietly empty, the GROWTH convention.
+    const enough = xs.length >= 2 && ys.length >= 2;
+    let predict: ((x: number) => number) | null = null;
+    if (enough) {
+      if (this.op === "exponential") {
+        const fit = expFit(xs, ys);
+        if (fit) predict = (x) => fit.b * Math.pow(fit.m, x);
+      } else {
+        const fit = linearFit(xs, ys);
+        if (!fit) {
+          const err = solError("#DIV/0!", "Known Xs have zero variance");
+          this.cachedResult = err;
+          return { result: err };
+        }
+        predict = (x) => fit.intercept + fit.slope * x;
       }
-      result = fit.intercept + fit.slope * x;
     }
+
+    if (Array.isArray(q)) {
+      const qErr = q.find(isSolError);
+      if (qErr) { this.cachedResult = qErr as SolError; return { result: qErr as SolError }; }
+      if (predict === null || q.length === 0) { this.cachedResult = []; return { result: [] }; }
+      const result = q.map((v) => (v === null ? null : predict!(v as number)));
+      this.cachedResult = result;
+      return { result };
+    }
+    if (q === null || predict === null) { this.cachedResult = null; return { result: null }; }
+    const result = predict(q);
     this.cachedResult = result;
     return { result };
   }
@@ -767,59 +801,6 @@ export class HypothesisTestNode extends ClassicPreset.Node {
       if (a && b) result = this.op === "f" ? fTestP(a, b) : tTestP(T_KERNEL_OP[this.op], a, b);
     }
     this.cachedResult = result;
-    return { result };
-  }
-}
-
-// ─── TREND ────────────────────────────────────────────────────────────────────
-
-export class TrendNode extends ClassicPreset.Node {
-  static socketDocs: Record<string, string> = {
-    ys: "Pairs with Known Xs by position. A pair with a blank on either side is dropped, and an unmatched tail is ignored.",
-    new_xs: "The Xs to predict Ys for. Leave it unwired to get the fitted Ys at the Known Xs, like Excel's omitted new_x's.",
-  };
-
-  label: string;
-  /** Linear fit (TREND) or exponential fit y = b·mˣ (GROWTH). */
-  mode: "linear" | "exponential" = "linear";
-  cachedList: number[] | SolError = [];
-  literals: Record<string, number> = {};
-  width = 180; height = 245;
-
-  constructor(init?: { label?: string; mode?: "linear" | "exponential" }) {
-    super("Trend");
-    this.label = init?.label ?? "TREND";
-    if (init?.mode) this.mode = init.mode;
-    this.addInput("ys",     listIn("Known Ys"));
-    this.addInput("xs",     listIn("Known Xs"));
-    this.addInput("new_xs", listIn("New Xs"));
-    this.addOutput("result", listOut("Predicted Ys"));
-  }
-
-  data(inputs: { ys?: (number | null | SolError)[][]; xs?: (number | null | SolError)[][]; new_xs?: (number | null | SolError)[][] }) {
-    const { error, xs, ys } = forPair(inputs.xs?.[0] ?? null, inputs.ys?.[0] ?? null);
-    if (error) { this.cachedList = error; return { result: error }; }
-    const newXsRaw = inputs.new_xs?.[0] ?? null;
-    const newXsErr = newXsRaw?.find(isSolError);
-    if (newXsErr) { this.cachedList = newXsErr; return { result: newXsErr }; }
-    // Excel: an omitted New Xs defaults to the Known Xs, so TREND returns the fitted
-    // values at the known points. An unwired socket IS that omission — matches the
-    // formula-surface TREND registration.
-    const newXs = newXsRaw == null
-      ? xs
-      : (newXsRaw.filter((v): v is number => v !== null) as number[]);
-    // Shared fitting kernels (mathUtils) — the TREND / GROWTH registrations run the same ones.
-    let result: number[] = [];
-    if (newXs.length > 0) {
-      if (this.mode === "exponential") {
-        const fit = expFit(xs, ys);
-        result = fit ? newXs.map((x) => fit.b * Math.pow(fit.m, x)) : [];
-      } else {
-        const fit = linearFit(xs, ys);
-        result = fit ? newXs.map((x) => fit.intercept + fit.slope * x) : [];
-      }
-    }
-    this.cachedList = result;
     return { result };
   }
 }

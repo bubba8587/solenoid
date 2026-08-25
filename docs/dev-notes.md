@@ -159,16 +159,14 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   a summary, and did not belong in the reducer dropdown; the author declined INDEX as a home too,
   so the two ops, their catalog leaves and the FIRSTNONBLANK / LASTNONBLANK names are gone.
 
-- **NOT STARTED / prepped at wrap-up (Agent 4): three stats/distribution node-combining merges,
-  fully scoped, zero code written (author wrapped the session before the shared-file window opened).**
-  Lead-assigned from backlog "Node-combining parked"; Lead's design calls are settled — pick up cold:
-  (1) **TREND ⊂ FORECAST.LINEAR + GROWTH.** Widen `ForecastNode.x` (stats.ts:357) to a numlist COMBO
-  (per-element; x scalar→scalar, x list→list result, mirroring INTERPOLATE) AND add a linear|exponential
-  `op` field (kind:"operation", per selectorNamedOp) so Forecast absorbs BOTH TREND (linear) and GROWTH
-  (exponential) — TrendNode (stats.ts:776) is ALREADY TREND+GROWTH via its `mode`, so fold its `expFit`
-  branch in and delete it. FORECAST.LINEAR / TREND / GROWTH all stay callable as formulas (they're
-  registered independently in `excelFunctions.ts` `registerInternal`, node-agnostic — only the
-  `nodeExcel.ts` node→formula MAP reroutes trend/growth→forecast). (2) **LINEST + LOGEST → one fit card**
+- **Three stats/distribution node-combining merges (Agent 4, plans D1–D3). D1 LANDED; D2/D3 next.**
+  Lead-assigned from backlog "Node-combining parked". (1) **TREND ⊂ FORECAST.LINEAR + GROWTH — DONE:**
+  `ForecastNode.x` widened to a numlist COMBO (x scalar → scalar, x list → list, mirroring INTERPOLATE)
+  with a linear|exponential `op` (kind:"operation"); TrendNode deleted. An unwired X → null (an unwired
+  predictor must not silently predict at 0 — Lead call), which is the one behaviour change from TREND's
+  "omitted new_xs = fitted at the known xs" (that stays the FORMULA's, unchanged). FORECAST.LINEAR /
+  TREND / GROWTH stay callable as formulas; the nodeExcel `forecast` row carries all three aliases, so
+  the GROWTH coverage-alias was dropped. Remaining: (2) **LINEST + LOGEST → one fit card**
   (stats.ts:947/985) with a linear|exponential `op` (kind:"operation"). NO socket swap: keep ONE output
   trio m/b/r² for both — for exponential, m/b are LOGEST's `[m,b]` and r² is the fit's r² on the LOG scale
   (Excel LOGEST stats=TRUE). Both names stay callable. (3) **PHI/GAUSS are OPS in MathFnNode** (scalar.ts
