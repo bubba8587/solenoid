@@ -137,7 +137,7 @@
     },
     {
       "id": "select",
-      "type": "SelectColumnsNode",
+      "type": "ColumnsNode",
       "x": 481,
       "y": 496,
       "init": {
@@ -149,11 +149,12 @@
     },
     {
       "id": "drop",
-      "type": "DropColumnsNode",
+      "type": "ColumnsNode",
       "x": 481,
       "y": 709,
       "init": {
-        "label": "Drop → Region"
+        "label": "Drop → Region",
+        "op": "drop"
       },
       "stringLiterals": {
         "columns": "Region"

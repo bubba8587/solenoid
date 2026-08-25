@@ -9,7 +9,7 @@ import { CableSwitchNode } from "./control";
 import { ExpressionNode } from "./expression";
 import { ClampNode, ArithmeticNode, MathFnNode, MRoundNode, CombinatoricsNode } from "./scalar";
 import { MirrNode, TBillNode, IrrNode, OddCouponNode, NpvNode, DepreciationNode } from "./finance";
-import { SortFrameNode, JoinNode, HeadNode, SelectColumnsNode, XLookupNode } from "./frame";
+import { SortFrameNode, JoinNode, HeadNode, ColumnsNode, XLookupNode } from "./frame";
 import { ListIndexNode, SliceNode, FilterNode, SeriesNode, AggregateNode } from "./list";
 import { GaugeNode, KpiNode, HistogramNode } from "./visual";
 import { AlertNode } from "./display";
@@ -23,6 +23,8 @@ import { DistributionNode } from "./distribution";
 import { SetCellNode, TableMultNode } from "./matrix";
 import { MakeArrayNode } from "./tableLambda";
 import { wrapNodeData } from "../coerceInputs";
+import { readFrame } from "../frameBackend";
+import { extractInit } from "../copyPaste";
 import type { FrameValue } from "../frame";
 import { solError, isSolError } from "../errorValue";
 
@@ -535,10 +537,25 @@ describe("the guard is scoped to the ACTIVE op — second pass", () => {
 describe("a column-LIST reference — same rule as the scalar column", () => {
   const f: FrameValue = { __frame: true, columns: [{ name: "a", type: "number", values: [1] }, { name: "b", type: "number", values: [2] }] };
 
-  it("Select Columns: a WIRED blank list blanks the frame; the empty literal passes it through", async () => {
-    const node = new SelectColumnsNode();
+  it("Columns (Keep): a WIRED blank list blanks the frame; the empty literal passes it through", async () => {
+    const node = new ColumnsNode();
     expect((await node.data({ frame: [f], columns: [null as unknown as string[]] })).frame).toBeNull();
-    expect((await new SelectColumnsNode().data({ frame: [f] })).frame).toEqual(f);
+    expect((await new ColumnsNode().data({ frame: [f] })).frame).toEqual(f);
+  });
+
+  it("Columns (Drop): removes the named column and ignores an unknown name", async () => {
+    const res = await new ColumnsNode({ op: "drop" }).data({ frame: [f], columns: [["b", "nope"]] });
+    const out = (await readFrame(res.frame)) as FrameValue;
+    expect(out.columns.map((c) => c.name)).toEqual(["a"]);
+  });
+
+  it("Columns (Keep): a name the frame lacks is a #REF! error", async () => {
+    await expect(new ColumnsNode().data({ frame: [f], columns: [["nope"]] })).rejects.toMatchObject({ code: "#REF!" });
+  });
+
+  it("Columns: op round-trips through extractInit", () => {
+    expect(extractInit(new ColumnsNode({ op: "drop" })).op).toBe("drop");
+    expect(extractInit(new ColumnsNode()).op).toBe("keep");
   });
 });
 

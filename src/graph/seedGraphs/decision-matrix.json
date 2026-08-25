@@ -102,7 +102,7 @@
     },
     {
       "id": "select",
-      "type": "SelectColumnsNode",
+      "type": "ColumnsNode",
       "x": 1190,
       "y": -41,
       "init": {

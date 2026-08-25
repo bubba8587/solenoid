@@ -7,7 +7,7 @@ import {
 } from "./frameShape";
 import {
   FrameInputNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode,
-  SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode,
+  ColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode,
   AppendNode, RenameNode, SplitColumnNode, AddIndexNode, GetRowNode,
 } from "./nodes/frame";
 import { ConduitNode, conduitLaneOf, conduitInKey } from "./nodes/conduit";
@@ -101,16 +101,12 @@ export function makeFrameShapeResolver(editor: AnyEditor): FrameShapeResolver {
       if (n instanceof SortFrameNode) return inputShape(nodeId, "frame");
       if (n instanceof FilterFrameNode) return inputShape(nodeId, "frame");
 
-      if (n instanceof SelectColumnsNode) {
+      if (n instanceof ColumnsNode) {
         const input = inputShape(nodeId, "frame");
         if (!input) return null;
         const cols = csvList(n, "columns");
-        return cols.length ? shapeOf({ kind: "select", columns: cols }, input) : input;
-      }
-      if (n instanceof DropColumnsNode) {
-        const input = inputShape(nodeId, "frame");
-        if (!input) return null;
-        return shapeOf({ kind: "drop", columns: csvList(n, "columns") }, input);
+        if (n.op === "keep") return cols.length ? shapeOf({ kind: "select", columns: cols }, input) : input;
+        return shapeOf({ kind: "drop", columns: cols }, input);
       }
       if (n instanceof RenameNode) {
         const input = inputShape(nodeId, "frame");

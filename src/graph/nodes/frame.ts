@@ -535,50 +535,42 @@ function readColumnList(wired: string[][] | undefined): string[] | null {
   return v === null ? null : v.filter((c): c is string => typeof c === "string");
 }
 
-export class SelectColumnsNode extends ClassicPreset.Node {
+export type ColumnsOp = "keep" | "drop";
+
+export const COLUMNS_OP_META: Record<ColumnsOp, { label: string; description: string; fx: string }> = {
+  keep: { label: "Keep", fx: "KEEPCOLS", description: "Keep only the named columns, in the order given." },
+  drop: { label: "Drop", fx: "DROPCOLS", description: "Remove the named columns; the rest pass through." },
+};
+
+export class ColumnsNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    columns: "An empty list passes the frame through unchanged. A name the frame lacks is a #REF! error.",
+    columns: "Keep: an empty list passes the frame through unchanged, and a name the frame lacks is a #REF! error. Drop: names the frame lacks are ignored.",
   };
 
   label: string;
+  op: ColumnsOp;
   stringLiterals: Record<string, string> = {}; // columns: typeable strlist CSV
   cachedResult: FrameValue | SolError | null = null;
   width = 190; height = 150;
 
-  constructor(init?: { label?: string }) {
-    super("SelectColumns");
-    this.label = init?.label ?? "Select Columns";
+  constructor(init?: { label?: string; op?: ColumnsOp }) {
+    super("Columns");
+    this.label = init?.label ?? "Columns";
+    this.op = init?.op ?? "keep";
     this.addInput("frame", frameIn("Frame"));
-    this.addInput("columns", strListIn("Keep"));
+    this.addInput("columns", strListIn("Columns"));
     this.addOutput("frame", frameOut("Frame"));
   }
 
   async data(inputs: { frame?: (FrameInput | null)[]; columns?: string[][] }) {
     const f = inputs.frame?.[0] ?? null;
     const cols = readColumnList(inputs.columns);
-    if (f == null || cols === null) return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), cols.length ? await runFrameUnary(f, { kind: "select", columns: cols }) : await readFrame(f));
-  }
-}
-
-export class DropColumnsNode extends ClassicPreset.Node {
-  label: string;
-  stringLiterals: Record<string, string> = {}; // columns: typeable strlist CSV
-  cachedResult: FrameValue | SolError | null = null;
-  width = 190; height = 150;
-
-  constructor(init?: { label?: string }) {
-    super("DropColumns");
-    this.label = init?.label ?? "Drop Columns";
-    this.addInput("frame", frameIn("Frame"));
-    this.addInput("columns", strListIn("Drop"));
-    this.addOutput("frame", frameOut("Frame"));
-  }
-
-  async data(inputs: { frame?: (FrameInput | null)[]; columns?: string[][] }) {
-    const f = inputs.frame?.[0] ?? null;
-    const cols = readColumnList(inputs.columns);
-    return emitFrame(this, beginPass(this), f != null && cols !== null ? await runFrameUnary(f, { kind: "drop", columns: cols }) : null);
+    const gen = beginPass(this);
+    // A wired blank column list leaves the result unknown for both ops (value-semantics.md).
+    if (f == null || cols === null) return emitFrame(this, gen, null);
+    if (this.op === "drop") return emitFrame(this, gen, await runFrameUnary(f, { kind: "drop", columns: cols }));
+    // Keep with an empty list passes the frame through; the drop op's empty list is already a no-op verb.
+    return emitFrame(this, gen, cols.length ? await runFrameUnary(f, { kind: "select", columns: cols }) : await readFrame(f));
   }
 }
 

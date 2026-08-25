@@ -12,7 +12,7 @@ import {
   SET_OP_META, SET_RELATION_META, PAD_OP_META, PadNode,
   SortNode, ListTakeDropNode, SeriesNode,
 } from "./nodes/list";
-import { HeadNode, HeadersNode, DropBlankRowsNode, HEAD_OP_META } from "./nodes/frame";
+import { HeadNode, HeadersNode, DropBlankRowsNode, ColumnsNode, HEAD_OP_META, COLUMNS_OP_META } from "./nodes/frame";
 import { RegexNode, TextFilterNode, REGEX_OP_META } from "./nodes/text";
 import { DATE_DIFF_OP_META, DateTimeValueNode, WorkdaysNode } from "./nodes/date";
 import { IFErrorNode } from "./nodes/logic";
@@ -184,6 +184,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new FillNode({ op: op as never }) },
   { type: "head", ctor: HeadNode, kind: "operation", ops: fromMeta(HEAD_OP_META),
     create: (op) => new HeadNode({ op: op as never }) },
+  { type: "columns", ctor: ColumnsNode, kind: "operation", ops: fromMeta(COLUMNS_OP_META),
+    create: (op) => new ColumnsNode({ op: op as never }) },
   { type: "list-pad", ctor: PadNode, kind: "operation", ops: fromMeta(PAD_OP_META),
     create: (op) => new PadNode({ op: op as never }) },
   { type: "list-set", ctor: SetOpNode, kind: "operation", ops: SET_OPS,

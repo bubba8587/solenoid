@@ -16,7 +16,7 @@ import { isUnitCell, carryMatrixUnit } from "./unitValue";
 // raw FrameRef; every OTHER node gets one collected to a FrameValue first.
 const LAZY_FRAME_NODES: ReadonlySet<string> = new Set([
   "DistinctNode", "HeadNode", "SortFrameNode", "FilterFrameNode", "JoinNode",
-  "SelectColumnsNode", "DropColumnsNode", "GroupByFrameNode", "UnpivotNode",
+  "ColumnsNode", "GroupByFrameNode", "UnpivotNode",
   "AppendNode", "RenameNode",
   // Reads ONE column through the backend's column primitive — materializing here
   // would force a full-frame collect.

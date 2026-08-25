@@ -5,7 +5,7 @@ import { extractInit } from "./copyPaste";
 import { DisplayNode } from "./nodes/display";
 import { IfNode, NaNode } from "./nodes/logic";
 import { CableSwitchNode } from "./nodes/control";
-import { ListIndexNode, ReverseNode, SortNode, SetOpNode, ConcatListsNode, InterleaveNode, TableReshapeNode, VStackNode, HStackTableNode, FrameInputNode, SortFrameNode, SelectColumnsNode } from "./rete-nodes";
+import { ListIndexNode, ReverseNode, SortNode, SetOpNode, ConcatListsNode, InterleaveNode, TableReshapeNode, VStackNode, HStackTableNode, FrameInputNode, SortFrameNode, ColumnsNode } from "./rete-nodes";
 import { numberSocket, stringSocket, frameSocket, cubeSocket, dateListSocket, strListSocket, strTableSocket, SolenoidSocket, adoptTypeForBase, canConnect } from "./sockets";
 
 // Same fake-editor surface as conduitTrace.test.ts — the pass only reads
@@ -217,7 +217,7 @@ describe("trueany adoption — placeholder sockets take the wired cable's type (
       { name: "Item", type: "string", cells: ["nut"] },
       { name: "Due", type: "date", cells: ["2026-03-20"] },
     ]) });
-    const sel = new SelectColumnsNode();
+    const sel = new ColumnsNode();
     (sel as unknown as { stringLiterals: Record<string, string> }).stringLiterals = { columns: "Due, Item" };
     const idx = new ListIndexNode();
     const ed = makeEditor([src, sel, idx], [

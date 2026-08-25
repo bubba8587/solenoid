@@ -47,7 +47,7 @@ import {
   MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode, ScanLambdaNode, LambdaNode,
   FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode,
   HeadNode, SortFrameNode, FilterFrameNode, JoinNode,
-  SelectColumnsNode, DropColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, BindColumnsNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode,
+  ColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, BindColumnsNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode,
   ReconcileNode,
   BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode,
   WebSourceNode, LocalFileNode, ImportHtmlNode, ImportXmlNode, DataFeedNode,
@@ -983,10 +983,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           {
             type: "category", label: "Columns", description: "Column surgery: keep, drop, rename, split, or number columns.",
             children: [
-              { type: "pair", children: [
-                { type: "select-cols", label: "Select Columns", description: "Keeps only the named columns, in the order given. Excel: CHOOSECOLS.", create: () => new SelectColumnsNode(), parity: false },
-                { type: "drop-cols",   label: "Drop Columns",   description: "Removes the named columns from a Frame. The rest pass through.", create: () => new DropColumnsNode(), parity: false },
-              ]},
+              { type: "columns", label: "Columns", description: "Keeps only the named columns, or drops them and passes the rest through. Excel: CHOOSECOLS.", keywords: "columns select keep drop remove choosecols", create: () => new ColumnsNode(), parity: false },
               { type: "rename",      label: "Rename",      description: "Renames columns using two parallel lists zipped by position: From [\"qty\"] → To [\"Quantity\"].", create: () => new RenameNode(), parity: false },
               { type: "split-column", label: "Split Column", description: "Splits one text column into several by a delimiter. The source column is replaced by the parts. Name the new columns or let them auto-number. Power Query: Split Column by Delimiter.", create: () => new SplitColumnNode(), parity: false, keywords: "split delimiter text column separate parse divide power query" },
               { type: "add-index",   label: "Add Index",   description: "Prepends a row-number column from a start value (default 1). Power Query: Add Index Column.", create: () => new AddIndexNode(), parity: false, keywords: "index row number sequence counter rownum power query" },

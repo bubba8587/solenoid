@@ -155,6 +155,13 @@ mobile holder promotion. Add to that list: the long zoom settle (1 above).
   hook). ChartBuilder target `proportion` replaces the two. Sankey untouched. Old Treemap/Waffle saves load
   as Placeholders (no alias). `frameHint.test` role-labeled count 6→5 (one node fewer).
 
+- **D5: Select Columns + Drop Columns → one `Columns` node (Jeff/A5, 2026-08-25).** One card, Head-style
+  `keep | drop` op selector; same sockets, the column-row label follows the op. JS-only (the `select`/`drop`
+  lazy verbs and their Polars mirrors were untouched). Old SelectColumns/DropColumns saves load as Placeholders.
+  Op fx names KEEPCOLS/DROPCOLS declared to dodge the list-drop `DROP` uniqueNameMap clash; SELECTCOLUMNS/
+  DROPCOLUMNS still refuse on the formula surface with a #TYPE! naming the Columns node. Pinned drop-ignores-unknown,
+  keep-unknown #REF!, and `op` round-trip in wiredNull.test.ts.
+
 - **Aggregate First / Last removed (author, 2026-08-25).** "First / last non-blank" is a pick, not
   a summary, and did not belong in the reducer dropdown; the author declined INDEX as a home too,
   so the two ops, their catalog leaves and the FIRSTNONBLANK / LASTNONBLANK names are gone.

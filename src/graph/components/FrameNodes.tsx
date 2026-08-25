@@ -13,8 +13,7 @@ import type {
   SortFrameNode as SortFrameNodeType,
   FilterFrameNode as FilterFrameNodeType,
   JoinNode as JoinNodeType,
-  SelectColumnsNode as SelectColumnsNodeType,
-  DropColumnsNode as DropColumnsNodeType,
+  ColumnsNode as ColumnsNodeType,
   GroupByFrameNode as GroupByFrameNodeType,
   PivotNode as PivotNodeType,
   UnpivotNode as UnpivotNodeType,
@@ -38,6 +37,7 @@ import type {
   SplitColType,
   ComputedColumnAs,
   HeadOp,
+  ColumnsOp,
   FillDir,
   ReplaceMode,
   HeaderOp,
@@ -49,7 +49,7 @@ import { VALUELESS_FILTER_OPS } from "../frameVerbs";
 import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameVerbs";
 import type { FilterCondConfig } from "../nodes/frame";
 import { RecordLayoutField } from "./RecordLayoutField";
-import { HEAD_OP_META, HEADER_OP_META, BLANK_ROW_OP_META } from "../nodes/frame";
+import { HEAD_OP_META, HEADER_OP_META, BLANK_ROW_OP_META, COLUMNS_OP_META } from "../nodes/frame";
 import { CubeDisplay } from "./CubeDisplay";
 import { isCubeValue } from "../frame";
 import { parseFrameSource, frameSourceToText, isFrameValue, frameRowCount, type FrameSourceColumn } from "../frame";
@@ -402,21 +402,17 @@ export function JoinComponent({ data, emit }: NodeProps<JoinNodeType>) {
   );
 }
 
-// ─── SELECT / DROP COLUMNS ───────────────────────────────────────────────────
+// ─── COLUMNS (KEEP / DROP) ───────────────────────────────────────────────────
 
-export function SelectColumnsComponent({ data, emit }: NodeProps<SelectColumnsNodeType>) {
+const COLUMNS_OP_OPTIONS = (Object.entries(COLUMNS_OP_META) as [ColumnsOp, { label: string; description: string }][])
+  .map(([value, m]) => ({ value, label: m.label, title: m.description }));
+
+export function ColumnsComponent({ data, emit }: NodeProps<ColumnsNodeType>) {
+  const [op, setOp] = useNodeField(data, "op");
   return (
     <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
-      <FrameDisplay frame={data.cachedResult} label={data.label} />
-    </NodeShell>
-  );
-}
-
-export function DropColumnsComponent({ data, emit }: NodeProps<DropColumnsNodeType>) {
-  return (
-    <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
+      <InlineInputs node={data} emit={emit} labelFor={(k) => (k === "columns" ? COLUMNS_OP_META[op].label : (data.inputs[k]?.label ?? k))} />
+      <OpSelect value={op} onChange={setOp} options={COLUMNS_OP_OPTIONS} />
       <FrameDisplay frame={data.cachedResult} label={data.label} />
     </NodeShell>
   );
