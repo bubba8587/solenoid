@@ -255,16 +255,14 @@ is blocked here for out-of-scope repos).
   NOT blockers (checked): vitest 4.1.8 already allows `vite ^6 || ^7 || ^8`; node
   engines are identical across 7 and 8; every new peer on both packages is optional.
   Downstream: this is the build tool, so the Tauri desktop release rides on it.
-- [ ] **The rest of the outdated set, still unwalked** — both majors now DONE: `marked` 14→18
-  landed earlier; `katex` 0.17→0.18.4 landed 2026-08-24 (9d9c220d — 0.18 prefixed generic internal
-  CSS classes but kept the public `.katex`/`.katex-display` we override, so no selector changes).
-  Remaining: ~16 in-range patches (incl. `marked` 18.0.9→18.0.11). Core `rete` 2.0.6 is already current.
-  NOTE: installs now need `--legacy-peer-deps` (pre-existing elkjs 0.12 vs `rete-auto-arrange-plugin`
-  peer `^0.8.2`, from the elkjs bump — not katex).
-  (`@formulajs/formulajs` 4.6.0→4.6.1 LANDED 2026-08-23: the diff is exactly a new `TAKE`
-  — which we already own via `registerInternal`, so upstream's buggy one never runs — and a
-  real `SUMIFS` fix that coerces text-formatted sum-range numbers, correct-and-inert against
-  our typed columns. Full suite green.)
+- [x] **In-range patch tranche — DONE 2026-08-25 (Agent 4).** The walkable in-range set is bumped:
+  `react`/`react-dom` 19.2.8, `vitest` 4.1.11, `recharts` 3.10.1, `marked` 18.0.11, `mermaid` 11.17.1,
+  `dompurify`, `colord`, `papaparse`, `styled-components`, `puppeteer-core`, the `@tauri-apps/*` set,
+  the `@fontsource-variable/*` pair, `@types/react`(`-dom`), `@webgpu/types`. Core `rete` 2.0.6 is current;
+  `katex` 0.18.4 and `@formulajs/formulajs` 4.6.1 landed earlier. Only the GATED majors remain: `vite` 8 /
+  `@vitejs/plugin-react` 6 (above), `@anthropic-ai/sdk` 0.120 (major, skipped), `rete-history-plugin` 2.2.0
+  (don't-bump, above). NOTE: installs still need `--legacy-peer-deps` (pre-existing elkjs 0.12 vs
+  `rete-auto-arrange-plugin` peer `^0.8.2`).
 
 ## Architecture spec (`docs/rules.md`)
 
