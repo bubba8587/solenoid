@@ -135,6 +135,16 @@ holder promotion on plain pan, `--zooming` quality drops on desktop, render-reso
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
 ### SESSION DIGEST (2026-08-25b — post-crash: cards named by their op, NAME-3)
+- **OS-dropdown rule — MOBILE half settled, precaution is desktop-only (A3).** Added a `--mobile`
+  mode to `scripts/dropdown-reorder-probe.mjs` (emulates coarse pointer + `userAgentData.mobile=true`
+  before load so `IS_MOBILE` reads true and `html.is-mobile` is set — a UA string alone fails because
+  `IS_MOBILE_UA` reads `userAgentData?.mobile ?? regex` and Chromium exposes `.mobile=false`, a boolean
+  that shortcuts the `??`). Same seed/node/session, desktop as control: DESKTOP pick re-appends the node
+  to the DOM end (5→22, reparents the `<select>`) → precaution REAL; MOBILE tap SELECTS the node but does
+  NOT re-append (stays at 5), `<select>` preserved → neither popup-closer fires. Cause: `installTapSelect`
+  calls `selectable.select(id)` programmatically on pointerup, which never emits the `nodepicked` event
+  `simpleNodesOrder` re-appends on. So the swallow precaution has nothing to guard on mobile — no
+  mobile-specific closer exists, no code change needed.
 - **Hygiene C — code→archive doc pointers evicted (A3).** Three code comments cited archived
   specs at stale `v2.0/` paths (the docs moved to `docs/archive/`): `broadcastRules.test.ts`
   (17-matrix-formulas), `frameVerbCorpus.test.ts` + `src-tauri/.../engine/tests.rs` (18-parity-corpus).

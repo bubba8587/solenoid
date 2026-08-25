@@ -59,13 +59,6 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   decorations. Regression, cause unknown.
 - [ ] **#7 Conduits sometimes unselectable/unmovable except via the Navigator** —
   intermittent, no repro; suspected z-order/hit-area or group-membership sync.
-- [ ] **OS-dropdown rule — DESKTOP settled 2026-08-24 (precaution REAL), MOBILE still open.**
-  Measured (`scripts/dropdown-reorder-probe.mjs`): on desktop a card-body pick re-appends the
-  node to the DOM end (`simpleNodesOrder`), reparenting an open `<select>`; the selection
-  re-render PRESERVES the element, so the re-append is the sole reparent → the swallow is
-  load-bearing (see dev-notes digest). Open: the mobile/touch path (tapSelect, `is-mobile`
-  model) was NOT probed — the "may not hold on mobile" question stands; settle it the same way
-  under the mobile viewport.
 - [ ] **Choppy zoom BAND — run the T1–T8 plan** in dev-notes' open problem. T1 (pin
   the band's `k` via `__solenoidPerf`) and T2 (Performance trace inside vs outside)
   gate the rest — build nothing before those.
