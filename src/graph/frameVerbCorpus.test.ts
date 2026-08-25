@@ -5,7 +5,7 @@ import { applyVerb, joinFrames, appendFrames, bindColumns, FRAME_OP_KINDS, type 
 import type { FrameValue, FrameColumn, FrameCell } from "./frame";
 import { isSolError } from "./errorValue";
 
-// ─── The backend parity corpus, JS side (v2.0/18-parity-corpus.md) ────────────
+// ─── The backend parity corpus, JS side ───────────────────────────────────────
 // One fixture set, both engines: every case here also runs through the Polars
 // engine (src-tauri/src/engine/tests.rs `corpus_cases`), reading the SAME files
 // with the PRODUCTION wire deserializers — the corpus format IS the wire format,

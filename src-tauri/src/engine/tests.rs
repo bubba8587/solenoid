@@ -513,7 +513,7 @@ fn engine_read_csv_infers_dates_end_to_end() {
     assert_eq!(cols[2].ty, "number"); // Polars-native numeric untouched
 }
 
-// ─── The parity corpus (v2.0/18-parity-corpus.md) ─────────────────────────────
+// ─── The parity corpus ────────────────────────────────────────────────────────
 // One fixture set, both engines: every case in fixtures/frame-verbs also runs
 // through the JS oracle (frameVerbCorpus.test.ts). The fixtures ARE wire
 // payloads, so this runner deserializes them with the PRODUCTION types

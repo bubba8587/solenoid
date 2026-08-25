@@ -19,7 +19,7 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
 **B — engine features promoted from deferrals (autonomous-friendly, node+formula+tests)**
 - [ ] **B9 Lazy-handle-on-cable** (retire the `collect()` bridge) — last, biggest.
 
-**C — hygiene**: evict the three archived docs still cited by code (below); deferral review.
+**C — hygiene**: deferral review.
 
 ## Polish sweeps (the 1.3 working mode — thorough, small-scope, one seam at a time)
 

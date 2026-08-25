@@ -4,7 +4,7 @@ import { EXCEL_IMPL_META } from "./excelFunctions";
 import { isSolError } from "./errorValue";
 
 // ─── matricesInFormulas: the broadcast-rules table, transcribed ──────────────────────────────
-// v2.0/17-matrix-formulas.md Part 2, row by row. The table IS this test (oneMetricImpl):
+// The table IS this test (oneMetricImpl):
 // a change to either without the other fails here. PAD follows the standing
 // rulings — element-wise ragged operands pad `null` (P3), never `#N/A`; shape
 // CONSTRUCTION functions own their #N/A padding inside their registered impls

@@ -135,6 +135,13 @@ holder promotion on plain pan, `--zooming` quality drops on desktop, render-reso
 mobile holder promotion. Add to that list: the long zoom settle (1 above).
 
 ### SESSION DIGEST (2026-08-25b — post-crash: cards named by their op, NAME-3)
+- **Hygiene C — code→archive doc pointers evicted (A3).** Three code comments cited archived
+  specs at stale `v2.0/` paths (the docs moved to `docs/archive/`): `broadcastRules.test.ts`
+  (17-matrix-formulas), `frameVerbCorpus.test.ts` + `src-tauri/.../engine/tests.rs` (18-parity-corpus).
+  Each comment already says "the table IS this test" — the test is the SSOT and the archived spec is
+  frozen history, so the pointer was deleted (not repointed), descriptive prose kept. Comprehensive
+  sweep of all `docs/archive/` basenames across ts/tsx/mjs/rs now finds zero code citations.
+  (docsPointers.test.ts guards the .md side only; code comments aren't scanned.)
 - **`anydata` glyph = hollow square (A1 design, A3 landed, 907b7527).** anydata leaves the combo's
   two-tone split-square for its own outline-only mark (distinct from `trueany`'s hollow ring by fill
   intent): `socket.css`, `SocketComponent.tsx`, `SocketLegend.tsx` new Any Data row, `hicSocketGlyph`,
