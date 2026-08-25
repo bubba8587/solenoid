@@ -35,8 +35,10 @@ the record.
 
 | Plan | Size | Notes |
 |------|------|-------|
-| _(none open)_ | | |
+| `formula-surface-allowlist.md` | S (Option A) / L (Option B) | **AUTHOR-GATED PROPOSAL — do not start.** Carries the Option A vs B decision the author owns; the doc is the artifact for raising it with them. |
 
 Not planned here (author-present or needs a device): everything under "Bugs &
 verifications" in `../backlog.md`; the table-popup virtualization (Path A vs B is the
-author's call); the formula-surface allowlist (raise with the author first).
+author's call). The formula-surface allowlist now has a written PROPOSAL
+(`formula-surface-allowlist.md`) for the author's decision — still "raise with the author
+first"; do not execute until greenlit.
