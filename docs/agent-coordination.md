@@ -11,7 +11,7 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 ## Claims (session 2026-08-25b)
 
 ### Agent 1 (Lead)
-- DONE — awaiting author OK: lazy handles, whole plan (A1 fa7fffb1/c20249be/d09917e7/039dc56d + A2 Slicer 7c34d874); plan file deleted.
+- CLAIMED — `WireOp::pivot` (author go-ahead on lazy-handle follow-ons 2026-08-25): Pivot runs lazy on both engines. Files: src-tauri/src/engine.rs (+tests.rs), frameVerbs.ts, nodes/frame.ts PivotNode, frameVerbCorpus fixtures.
 
 ### Agent 2 (solenoid-ca) — CLAIMED: Slicer-goes-lazy (from lazy-handle plan). Files: control.ts, coerceInputs.ts (one string in LAZY set), lazyChain.test.ts (append). NOT touching frame.ts/frameBackend.ts (A1 phase 4).
 Staged QUEUE (after Slicer):
@@ -27,6 +27,7 @@ Staged QUEUE (after Slicer):
 (empty)
 
 ## Recently done
+- **Lazy handles, whole plan (A1 + A2 Slicer, author OK 2026-08-25).** fa7fffb1 / c20249be / d09917e7 / 039dc56d / 7c34d874; plan file deleted 3e0a9d0b. Not pushed.
 - **Merge Plots node landed (A2, 2026-08-25).** `320009d4`: MergePlotsNode + "overlay" chart op, per-series inherited kind/style, non-plot inputs #TYPE!. 14 tests. Author eyeball the merged figure. Not pushed.
 - **OS-dropdown MOBILE half settled (A3, 2026-08-25).** `577d7d37`: added `--mobile` mode to the
   reorder probe; desktop pick re-appends the node (precaution REAL), mobile tapSelect selects without
