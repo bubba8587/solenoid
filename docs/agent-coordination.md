@@ -10,4 +10,6 @@ Agent 1 = Lead (solenoid-a6) writes plans, doesn't execute, verifies + fast-forw
 
 ## Claims
 
-- solenoid-22 — worktree `../solenoid-banana-joe`: (1) finish `banana-joe/dep-bumps` (15 bumps committed; revert the half-applied in-flight bump, rebase onto develop, install, tsc + suite, SHA to Lead); (2) Text Filter ⊂ List Filter absorption on a fresh branch off develop.
+- Lead (solenoid-a6) — naming/UI-string polish program for 1.3 (author mandate 2026-08-25): NAME-3 landed (b035ae8e); deciding the CAPS-vs-Title-Case and op-dropdown renames from the two inventories below, then handing approved renames back.
+- solenoid-22 — worktree `../solenoid-banana-joe`: READ-ONLY inventory, CAPS labels that are not formula-callable (+ the reverse). Report to Lead; no edits.
+- solenoid-dd — worktree `../solenoid-jeff`: READ-ONLY inventory of every op-dropdown / SegToggle option label (prose, casing, non-Excel spellings, glyphs). Report to Lead; no edits.
