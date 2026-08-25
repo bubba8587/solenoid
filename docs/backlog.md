@@ -97,6 +97,11 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
 
 ## Small builds & calls (still 1.3-sized)
 
+- **Merge Plots node (author idea 2026-08-25).** ExtensibleInputs of `chart` sockets; when every
+  input is an x/y-plane chart (line/scatter/area/column/bar), overlay all their series on one
+  plot, axes shared, legend from the source cards' names (NAME-1). Non-planar inputs (pie,
+  radar, gauge, sankey…) refuse with #TYPE! naming the input. Chart kind (green header);
+  Options via Chart Builder like Chart. Reuses the multi-series path c2 landed.
 - [ ] **A proper glyph for the `anydata` socket (any scalar / list / matrix).** Author-noticed
   2026-08-24 now that Set Cell's Value is `anydata`: today it borrows the combo's bicolor
   split square with a small grid cross (`socket.css` `[data-glyph="anydata"]`), which reads as
