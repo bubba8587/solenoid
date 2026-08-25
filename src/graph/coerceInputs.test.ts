@@ -1,5 +1,16 @@
-import { describe, it, expect } from "vitest";
-import { parseListLiteral, wrapNodeData, TYPEABLE_LIST } from "./coerceInputs";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { parseListLiteral, wrapNodeData, TYPEABLE_LIST, LAZY_FRAME_NODES } from "./coerceInputs";
+
+// The FrameRef bridge in wrapNodeData reads readFrame from frameBackend. Stub it to a
+// sentinel so the tests observe the collect-vs-forward DISPATCH, not the backend; every
+// other export (isFrameRef, the runners) stays real. vi.hoisted supplies the sentinel to
+// the hoisted factory.
+const { COLLECTED } = vi.hoisted(() => ({ COLLECTED: { __frame: true, __collected: true } }));
+vi.mock("./frameBackend", async (orig) => {
+  const actual = await orig<typeof import("./frameBackend")>();
+  return { ...actual, readFrame: vi.fn(async () => COLLECTED) };
+});
+import { readFrame, isFrameRef } from "./frameBackend";
 import { SolenoidSocket, AdoptiveSocket, canConnect } from "./sockets";
 import { ExpressionNode } from "./nodes/expression";
 import { FLAT_CATALOG } from "./catalogUtils";
@@ -302,5 +313,69 @@ describe("coerceInputs — an adoptive port coerces on its BASE, never its adopt
     // Adoption changes the DISPLAY type, never the coercion type.
     (idx.inputs.list!.socket as AdoptiveSocket).setType("frame");
     expect((idx.inputs.list!.socket as AdoptiveSocket).base).toBe("trueany");
+  });
+});
+
+// The lazy-handle bridge in wrapNodeData: the relational verbs (LAZY_FRAME_NODES) must
+// receive their frame input as the raw FrameRef — collecting it mid-chain re-sources and
+// defeats the fusion — while every OTHER node's frame inputs are materialized first, so a
+// plain consumer's data() never has to know a handle exists. lazyChain.test.ts proves the
+// forward side end-to-end (output stays a ref, no engine_collect); this pins the collect
+// side of the same fork at the unit boundary.
+describe("wrapNodeData's FrameRef bridge (lazy forwards the ref, everyone else collects)", () => {
+  // A minimal node with no sockets: coerceAll passes the inputs through untouched, so the
+  // test observes exactly what the bridge handed data(). The class name drives the fork.
+  function bridgeProbe(className: string) {
+    let received: Record<string, unknown[]> | undefined;
+    const node = {
+      __coerced: false,
+      constructor: { name: className },
+      data(inputs: Record<string, unknown[]>) { received = inputs; return inputs; },
+    };
+    wrapNodeData(node as never);
+    return {
+      data: (i: Record<string, unknown[]>) => (node.data as (i: unknown) => unknown)(i),
+      received: () => received,
+    };
+  }
+  const fakeRef = { __frameRef: "h1", __plan: [] as never[] };
+
+  beforeEach(() => (readFrame as unknown as { mockClear: () => void }).mockClear());
+
+  it("the fixture is a recognized ref and the probe names sit on the right sides of the set", () => {
+    expect(isFrameRef(fakeRef)).toBe(true);
+    expect(LAZY_FRAME_NODES.has("DistinctNode")).toBe(true);   // a relational verb: lazy
+    expect(LAZY_FRAME_NODES.has("DisplayNode")).toBe(false);   // a plain consumer: collects
+  });
+
+  it("a LAZY class receives the raw FrameRef, uncollected (a)", () => {
+    const p = bridgeProbe("DistinctNode");
+    const out = p.data({ frame: [fakeRef] });
+    expect(p.received()!.frame[0]).toBe(fakeRef);      // the same object, not a value
+    expect(readFrame).not.toHaveBeenCalled();
+    expect(out).toBe(p.received());                    // synchronous passthrough, no Promise
+  });
+
+  it("a NON-lazy class receives a collected value, never the ref (b)", async () => {
+    const p = bridgeProbe("DisplayNode");
+    await p.data({ frame: [fakeRef] });                // a ref present -> async collect path
+    expect(readFrame).toHaveBeenCalledTimes(1);
+    expect(p.received()!.frame[0]).toBe(COLLECTED);
+    expect(isFrameRef(p.received()!.frame[0])).toBe(false);
+  });
+
+  it("collects only the ref sitting among plain values in an input array (c)", async () => {
+    const p = bridgeProbe("DisplayNode");
+    await p.data({ frame: ["scalar", fakeRef] });
+    expect(readFrame).toHaveBeenCalledTimes(1);        // the plain value is not read
+    expect(p.received()!.frame).toEqual(["scalar", COLLECTED]);
+  });
+
+  it("a NON-lazy class with no ref present stays synchronous (no needless collect)", () => {
+    const p = bridgeProbe("DisplayNode");
+    const out = p.data({ frame: [42] });
+    expect(out).not.toBeInstanceOf(Promise);
+    expect(readFrame).not.toHaveBeenCalled();
+    expect(p.received()!.frame).toEqual([42]);
   });
 });
