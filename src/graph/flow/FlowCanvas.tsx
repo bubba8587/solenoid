@@ -187,8 +187,21 @@ function getStack(): Stack {
     getContainer: () => handlers.getContainer(),
   });
   // Topology changes from ANY writer (loadGraph, components' own drops,
-  // canvas verbs) reach RF state through one coalesced editor watch.
+  // canvas verbs) reach RF state through one coalesced editor watch. A REBUILD
+  // (load, undo) yields the microtask queue between every addNode, so a
+  // per-microtask sync would commit the whole canvas once PER NODE — O(n²)
+  // React work (measured: 113s for one undo on a 241-node doc). While the
+  // rebuild gate is held the queued sync just re-arms until the gate drops,
+  // so a load settles in ONE commit.
   let queued = false;
+  const trySync = () => {
+    if (isGraphRebuilding()) {
+      setTimeout(trySync, 0);
+      return;
+    }
+    queued = false;
+    handlers.syncTopology();
+  };
   editor.addPipe((ctx) => {
     const t = (ctx as { type?: string }).type;
     if (
@@ -201,10 +214,7 @@ function getStack(): Stack {
       }
       if (!queued) {
         queued = true;
-        queueMicrotask(() => {
-          queued = false;
-          handlers.syncTopology();
-        });
+        queueMicrotask(trySync);
       }
     }
     return ctx;
@@ -258,16 +268,31 @@ function FlowCanvasInner() {
 
   const syncTopology = useCallback(() => {
     s.area.syncViews();
+    // Survivors keep their OBJECT IDENTITY — RF's memo skips them, so adding
+    // one node re-renders one card, not the whole canvas.
     setNodes((prev) => {
-      const version = new Map(prev.map((n) => [n.id, (n.data.version as number) ?? 0]));
-      const selected = new Map(prev.map((n) => [n.id, n.selected]));
-      return toFlowNodes(s).map((n) => ({
-        ...n,
-        selected: selected.get(n.id) ?? false,
-        data: { ...n.data, version: version.get(n.id) ?? 0 },
-      })) as unknown as Node[];
+      const prevById = new Map(prev.map((n) => [n.id, n]));
+      return toFlowNodes(s).map((n) => {
+        const old = prevById.get(n.id);
+        if (
+          old &&
+          old.position.x === n.position.x &&
+          old.position.y === n.position.y &&
+          old.zIndex === n.zIndex
+        ) {
+          return old;
+        }
+        return {
+          ...n,
+          selected: old?.selected ?? false,
+          data: { ...n.data, version: (old?.data.version as number) ?? 0 },
+        };
+      }) as unknown as Node[];
     });
-    setEdges(toFlowEdges(s) as unknown as Edge[]);
+    setEdges((prev) => {
+      const prevById = new Map(prev.map((e) => [e.id, e]));
+      return toFlowEdges(s).map((e) => prevById.get(e.id) ?? e) as unknown as Edge[];
+    });
   }, [s]);
 
   // Bind the late-bound handlers for this mount.

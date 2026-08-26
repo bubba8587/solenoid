@@ -102,8 +102,11 @@ until the port completes. No standalone harness — new work integrates with the
       CappedZoom in areaPresets, applied by `flowWheel.ts` (capture on the
       wrapper, cursor-pinned, minimap/panels excluded; RF `zoomOnScroll`
       off so there is one wheel path).
-- [ ] Value refresh polish: per-node version bump renders the whole cone (processGraph
-      already early-cutoffs); measure on a 280-node seed before optimizing.
+- [x] Value refresh measured on the 241-node scratch doc (2026-08-26): a
+      committed in-card edit runs compute≈25-30ms, render≈400ms on the flow
+      surface vs render≈760-1060ms on rete for the identical pass — the flow
+      surface is ~2x faster at render; no optimization owed. (Both surfaces
+      ran the same FULL pass for this edit path — targeting parity holds.)
 - [ ] Kill list opened: which storeKit singletons become context on the RF surface
       (execute at C9, list now).
 - Discovered / not yet wired on ?rf: group MEMBER containment + group drag moving
@@ -297,8 +300,15 @@ until the port completes. No standalone harness — new work integrates with the
       teardown); pinned by live verification for now.
 - [x] Undo labels: derived from the snapshot diff (see C8's undo-labels entry;
       `flowHistoryDigest.ts`).
-- [ ] Undo depth/perf on a ~280-node doc (full rebuild per step) — measure, and if
-      slow, apply snapshots as DIFFS through the editor instead of loadGraph.
+- [x] Undo perf MEASURED AND FIXED (2026-08-26): one undo on the 241-node
+      scratch doc took 113.7s — loadGraph yields the microtask queue between
+      addNodes, so the topology pipe committed the whole canvas once PER NODE
+      (O(n²) React work), and every sync handed RF fresh object identities so
+      ALL cards re-rendered each commit. Fix: the queued sync re-arms while
+      `isGraphRebuilding()` (a load settles in ONE commit), and syncTopology
+      keeps survivors' object identities so RF's memo skips them. Undo now
+      761ms / redo 560ms at 241 nodes (28-node doc: 3.4s → 261ms). Diff-apply
+      undo not needed at this scale.
 
 ### C6 — Groups, standoffs, conduits
 - [ ] `groupPushCore`/`standoffSolver` (pure) applied via `setNodes`; collapse pills;
