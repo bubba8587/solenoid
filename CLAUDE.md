@@ -131,7 +131,7 @@ Geometry (offsets, z-index, reflow) is in `docs/layout-chrome.md`; this is term 
   both bars source handlers/glyphs from `touchActions.tsx` (drift-pinned).
 - **Zoom pill** (desktop) / **Lock pill** (mobile) — upper-right canvas controls. `NavMenu.tsx`.
 - **Align bar** — top-center align/distribute pill (≥2 selected). `SelectionActionsBar.tsx`.
-- **Minimap** — bottom-right. RF `<MiniMap>` in `flow/FlowCanvas.tsx` wearing the
+- **Minimap** — bottom-right. RF `<MiniMap>` in `flow/FlowSurface.tsx` wearing the
   `.solenoid-minimap` window; accent policy in `components/Minimap.tsx` (hidden on mobile).
 - **Cable inspector** — selected-cable panel. `CableInspector.tsx`.
 - **Conduit popup** — floating toolbar on a Conduit. `ConduitComponent.tsx` ·
@@ -203,6 +203,17 @@ a place a spec can be contradicted. Concretely:
 - **One React tree now** (react-port cutover): the module-singleton stores
   (`storeKit.ts` + `useSyncExternalStore`) STAY — they are app-wide state, not a
   separate-root workaround — but plain React context/props/handlers work everywhere.
+- **ONE surface component for both canvases** (`flow/FlowSurface.tsx`): the main canvas
+  (`FlowCanvas`) and the composite drill-in (`FlowCompositeOverlay`) render the SAME
+  component over a `SurfaceStack`; hosts differ only through `SurfaceHooks` (what settles a
+  move, which history answers undo, what Delete removes). Anything surface-level — a
+  gesture, a menu, a key, a layer — goes in FlowSurface, never in one host (author
+  2026-08-26: the two must be equivalent). Verbs the chrome calls through `process.ts`
+  slots (select, Tidy/Cleanup) swap to the drill-in while it is open (`swapSelectionSlots`,
+  `swapArrangeSlots`). Node-scoped code resolves its graph with `getOwningEditor/Area`,
+  chrome with `getActiveEditor/Area`; bare `getEditor()/getArea()` are for persistence and
+  the main-only lifecycle. Two mounted flows MUST carry different RF `id`s (every internal
+  pattern/marker/aria id derives from it).
 - `process.ts` — module singletons `_editor/_engine/_area`; `processGraph()` recomputes.
   `_area` is the flowArea adapter (`flow/flowArea.ts`, typed `surface.ts` `Surface`) —
   `area.*` verbs become RF state. The composite drill-in substitutes surfaces via the

@@ -93,7 +93,8 @@ src/
 | `docMetaStore.ts` | Per-document metadata (F-2): author + tags → `SavedGraph.meta`, sidecar-carried; the Document Properties modal open flag (`docPropertiesPanel`). Title stays the documentStore name |
 | `seeds.ts` + `seedGraphs/*.json` (+`seedTune.ts`) | Example graphs in Export format, globbed into a registry; `seedTune.ts` is the console-only live group-fit tuner `scripts/tune-seeds.mjs` drives |
 | `flow/flowModel.ts` (+`.test.ts`) | The headless graph model builder (real NodeEditor + DataflowEngine + coercion + guards, no view) + the RF projections `toFlowNodes`/`toFlowEdges` (plain RF-shaped objects, no @xyflow import — node-vitest-testable) and `nodeZIndex` (groups −2 < conduits −1 < nodes 0) |
-| `flow/FlowCanvas.tsx` | THE main canvas: module-singleton stack (editor + engine + flowArea + rebuild-aware topology pipe), identity-preserving `syncTopology`, selection/lasso/context-menus/keyboard wiring, gesture installers, RF `<MiniMap>` in the shared window, `StandoffLayer`. The separable subsystems live in the `canvas*`/`tidyArrange`/`fcDocking` modules below and are wired here |
+| `flow/FlowSurface.tsx` | THE surface, shared by the main canvas and the drill-in: the RF element + identity-preserving `syncTopology`, handler binding, gesture installers, lasso, the socket/cable/node context menus, canvas keyboard, add menu (quick-wire), FC docking on drop, group-member and standoff tow, isolate, touch select, RF `<MiniMap>`, `StandoffLayer` (hosts opting in), `HtmlCanvasLayer`, `CableInspector`. Takes a `SurfaceStack` + `SurfaceHooks` |
+| `flow/FlowCanvas.tsx` | The main host: app-lifetime stack (editor + engine + flowArea + rebuild-aware topology pipe), the process.ts slot registrations, cable-change pipe, document restore, autosave + snapshot history hooks, and the app chrome rendered BESIDE the surface (palette, toasts, dialogs, legend, load/compute overlays) so it stays visible under a drill-in |
 | `flow/flowArea.ts` | `makeFlowArea` — the ONE `Surface` implementation: rete-shaped verbs (update/translate/zoom) become RF state via late-bound callbacks; node/conn views resolve to the live RF DOM |
 | `flow/SolNodeAdapter.tsx` + `flow/SolFlowNode.tsx` | The RF node type: adapts a rete node instance to the registered card component (version-bumped re-renders, ErrorBoundary per card) |
 | `flow/FlowCableEdge.tsx` | The cable renderer (RF edge type; paths from `cablePaths.ts`, ribbons, run selection, hit path `.solenoid-cable-hit`) |
@@ -102,7 +103,7 @@ src/
 | `flowSurface.ts` | The socket-injection seam: node components ask for the RF `Handle` via `useFlowSocket`; the flow chunk injects it (`registerFlowSocket`) so shared component code never imports @xyflow/react |
 | `flow/flowPinch.ts`, `flow/flowTouchPan.ts`, `flow/flowWheel.ts` | The gesture installers both surfaces wire (see subsystem-invariants § Pointer gestures) |
 | `flow/flowHistory.ts` + `flow/flowHistoryDigest.ts` (+tests) | Snapshot undo — THE undo: debounced full-graph snapshots + `describeGraphDelta` labels |
-| `flow/FlowCompositeOverlay.tsx` (+`components/DrillNodeMenu.tsx`) | The composite drill-in surface (see subsystem-invariants § Composite drill-in mount lifecycle) |
+| `flow/FlowCompositeOverlay.tsx` | The drill-in host: a `FlowSurface` over the composite internal editor plus the breadcrumb strip, port promotion, run controls and the per-composite snapshot history; registers the active graph and swaps the select / arrange slots while open (see subsystem-invariants § Composite drill-in mount lifecycle) |
 | `flow/StaticFlowStage.tsx` | Non-interactive RF stage (landing demo, node showcase): `makeStaticStack` + controlled viewport |
 | `flow/flowSeeds.ts`, `flow/preview.ts` | Own seed glob (no persistence import — headless-harness-safe); generic-card value previews |
 | `canvasKeyboard.ts` | `installCanvasKeyboard(deps)` — the whole keyboard map (single-key graph actions, Ctrl chords, F9, arrows/nudge, rotate, Tab chrome toggle) + its helpers (resolveGroupTargets, rotateSelection, nudgeSelection) |
@@ -204,7 +205,7 @@ and the 2026-08-26 cutover; git has it). Do not rebuild a third path.
 | `renderMode.ts` | Render-mode store `dom`\|`html` (default `dom`; only `html` persists) + `useRenderMode` hook |
 | `htmlCanvasSupport.ts` | Gates the `html` option on `supportsHtmlInCanvas()` |
 | `htmlCanvasRenderer.ts` | The HTML-in-Canvas renderer: captures the real node DOM via `drawElementImage` into mip pyramids; pan/zoom draws the canvas, idle shows the DOM |
-| `components/HtmlCanvasLayer.tsx` | Mounts it when mode is `html` ≥100 weighted nodes: gesture swap (RF viewport hidden ↔ canvas), targeted re-capture per changed node id (flowArea's `render` pipe), DOM-only escape hatch (conduits) |
+| `components/HtmlCanvasLayer.tsx` | Mounted by FlowSurface (both canvases) over the editor/area it renders; engages when mode is `html` ≥100 weighted nodes: gesture swap (RF viewport hidden ↔ canvas), held on at rest below 40% zoom (DOM muted, selected/focused cards live), targeted re-capture per changed node id (the flowArea `render` pipe), DOM-only escape hatch (conduits) |
 | `hicCamera.ts` (+`.test.ts`) | world↔screen camera math (pan, anchored zoom, pinch, fit-to-bounds) |
 | `hicCableGeom.ts` (+`.test.ts`) | `cablePolyline` — the app's REAL router (`getCablePath`) flattened via `pathPoints.ts`, so canvas cables match DOM cables |
 | `hicGraphSnapshot.ts` | snapshots the live graph (node rects, kind colors, socket world-positions, connections) for capture |

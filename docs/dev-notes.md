@@ -60,6 +60,34 @@ section, glossary, renderer-performance restored, CLAUDE.md).
   "system" = OS pref), and `<Background>` reads `--canvas-dot`/`--canvas-bg` (was RF's fixed
   gray), so theme AND palette coloration reach pane + dots. Verified light-mode screenshot.
 
+**Follow-up 3 (same day, local session): HIC fidelity, zoom snap, the drill-in made EQUIVALENT.**
+- **HIC on RF**: cards never hid during a gesture (RF stamps inline `visibility:visible` on
+  every node wrapper; the viewport hidden never reached them) → class-driven rule; cable
+  stroke scaled by zoom (was constant screen px); cable ends anchored where RF anchors the
+  edge (handle outer edge, not socket center); dragged node mirrored into its view per frame
+  (group body stayed parked while members moved); **held on at rest below 40% zoom** (DOM muted
+  with opacity so it still hit-tests; selected/focused cards live via `solenoid-hic-live`,
+  skipped by the engine).
+- **Zoom snaps to 10%** (`clampZoom` rounds, fits floor, wheel keeps an unsnapped accumulator;
+  `MIN_ZOOM` 0.1). `areaPresets.test.ts`.
+- **Drill-in equivalence (author: "they need to be equivalent")**: piecemeal ports (lasso,
+  group tow, hover, collapse class, inspector, keyboard, Tidy/Cleanup, RF `id="drill"` for the
+  dot grid) ended in ONE shared `flow/FlowSurface.tsx`; hosts keep only their lifecycle. Root
+  causes fixed on the way: the select / arrange verbs were main-bound process.ts slots
+  (`swapSelectionSlots` / `swapArrangeSlots`); node-scoped code called `getEditor()/getArea()`
+  (swept to `getOwningEditor/Area`, chrome to `getActiveEditor/Area`); `groupMembershipStore`
+  rebuilds wiped the other graph (now per-editor) and `createGroupFromSelection` never rebuilt
+  (members tinted only on the next unrelated rebuild, both surfaces); both flows shared RF
+  instance id "1" (drill-in dot pattern resolved to the hidden main one); the app chrome
+  (palette, toasts, dialogs) lived inside the main wrapper, hidden under a drill-in.
+- **Lasso lost its selection on release on BOTH surfaces**: the RF pane clears selection on the
+  click the browser synthesizes after the stopped pointerdown → one swallowed click.
+- **Load curtain never painted on RF** (rebuild yielded only to microtasks) → rAF+task yields.
+- Collapsed-group readout values ellipsize (long codec strings ran past the summary).
+- Backlog: high memory use (author, longstanding, pre-RF).
+Probe scripts (puppeteer + Edge, `node_modules/.drill-probe.mjs` etc., untracked) drove seed
+load → drill-in → lasso / Enter / G / chevron on both surfaces; suite 4846 green.
+
 ### FINDING (2026-08-25 — per-card CSS conversion, STEP 1 census — A2)
 Step 1 of the backlog "Per-card CSS conversion" sweep: which paint-only DOM could move to
 CSS. Measured on the live dev page via `window.__solenoidCardCensus()` (`census.ts`), driven
