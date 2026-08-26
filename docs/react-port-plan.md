@@ -192,9 +192,14 @@ until the port completes. No standalone harness — new work integrates with the
 - [x] Standoffs: `settleStandoffNetwork` rebuilt on the flow stack (pure solver +
       measuredBox + translateEntityBy through the adapter), registered as the
       settle slot, driven per-frame during drags (rAF) + exact settle on drop;
-      StandoffLayer mounts in FlowCanvas (renders on power-features). Drag-tow
-      not yet exercised in automation (context-menu Link needs two ungrouped
-      nodes; probes kept hitting grouped seeds) — verify in the C9 sweep.
+      StandoffLayer mounts in FlowCanvas (renders on power-features; all 6
+      bars). Drag-settle PARITY verified (2026-08-26): the identical 300px
+      drag of Sensor B on power-features ends with the same outcome on both
+      surfaces — B at the drop point, Monitoring unmoved (the seed's band max
+      isn't exceeded), zero errors. The solver is the shared pure module;
+      the wiring was the risk and it matches. (Probe lore: the collapsed
+      Monitoring group and the SENSOR-B display card both text-match
+      "Sensor B" — pin rete-side lookups to the Number Input card.)
 - [x] Collapsed-group cables (2026-08-26): FlowCableEdge now hides intra-group
       cables and redirects hidden-member endpoints to the group's edge pills
       (same pillPoint rule as ConnectionComponent) — verified: the collapsed
