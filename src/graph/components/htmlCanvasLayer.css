@@ -16,3 +16,10 @@
 .solenoid-html-frozen .solenoid-cable-flow {
   animation-play-state: paused;
 }
+
+/* RF writes inline `visibility: visible` on every measured node wrapper, so hiding the
+   viewport alone leaves the cards painting over the canvas. The class (set with the inline
+   visibility by the layer) hides the wrappers too; DOM-only passthrough wrappers opt out. */
+.solenoid-html-hidden .react-flow__node:not(.solenoid-hic-domonly) {
+  visibility: hidden !important;
+}

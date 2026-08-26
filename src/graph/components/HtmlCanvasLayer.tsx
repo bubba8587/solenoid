@@ -93,6 +93,14 @@ export function HtmlCanvasLayer() {
     // DOM-only elements punch through with inline `visibility: visible`.
     const holder = (area.container.querySelector<HTMLElement>(".react-flow__viewport") ??
       (area.area.content.holder as HTMLElement));
+    // RF stamps inline `visibility: visible` on every measured node wrapper, so the viewport's
+    // own visibility never reaches the cards; the class carries a rule that beats the inline
+    // style (htmlCanvasLayer.css). DOM-only elements opt out of it via `solenoid-hic-domonly`.
+    const setHolderHidden = (h: boolean) => {
+      holder.style.visibility = h ? "hidden" : "";
+      holder.classList.toggle("solenoid-html-hidden", h);
+    };
+    const holderHidden = () => holder.classList.contains("solenoid-html-hidden");
 
     const engine = new HtmlCanvasRenderer(host);
     // Read at PAINT time, since a paint can land a frame after the rAF that scheduled it.
@@ -109,8 +117,8 @@ export function HtmlCanvasLayer() {
     let domOnlyEls: HTMLElement[] = [];
     // Override-aware, because group collapse stamps inline visibility on the SAME elements:
     // never override an element something else hid, and only clear a "visible" WE stamped.
-    const showDomOnly = () => { for (const el of domOnlyEls) if (el.style.visibility !== "hidden") el.style.visibility = "visible"; };
-    const hideDomOnly = (els: HTMLElement[] = domOnlyEls) => { for (const el of els) if (el.style.visibility === "visible") el.style.visibility = ""; };
+    const showDomOnly = () => { for (const el of domOnlyEls) if (el.style.visibility !== "hidden") { el.style.visibility = "visible"; el.classList.add("solenoid-hic-domonly"); } };
+    const hideDomOnly = (els: HTMLElement[] = domOnlyEls) => { for (const el of els) { if (el.style.visibility === "visible") el.style.visibility = ""; el.classList.remove("solenoid-hic-domonly"); } };
     // Per-ELEMENT promotion on coarse pointers, where the holder-wide promotion is disabled.
     // Size-capped: a graph-spanning element must never get a giant layer.
     const PROMOTE_MAX = 1024; // CSS px — under mobile texture limits even at dpr 3
@@ -172,8 +180,8 @@ export function HtmlCanvasLayer() {
     // The holder may be visibility:hidden mid-gesture, which the snapshot reads as absent, so
     // un-hide synchronously and re-hide before yielding — no paint mid-tick, no flash.
     const doBuild = (): boolean => {
-      const hidden = holder.style.visibility === "hidden";
-      if (hidden) holder.style.visibility = "";
+      const hidden = holderHidden();
+      if (hidden) setHolderHidden(false);
       const specs = collectSpecs();
       const snap = snapshotGraph();
       // Drawable = snapshot-resolvable AND not touching a DOM-only node; the id set lets
@@ -184,7 +192,7 @@ export function HtmlCanvasLayer() {
       // "visible" forever.
       const prevEls = domOnlyEls;
       domOnlyEls = collectDomOnlyEls(canvasCableIds);
-      if (hidden) holder.style.visibility = "hidden";
+      if (hidden) setHolderHidden(true);
       hideDomOnly(prevEls);
       if (gesturing) { showDomOnly(); promoteDomOnly(); } // a rebuild mid-gesture must re-show (and re-promote) the possibly-new set
       if (!specs.length) return false;
@@ -213,7 +221,7 @@ export function HtmlCanvasLayer() {
       if (!gesturing) {
         gesturing = true;
         readSelection();
-        holder.style.visibility = "hidden"; // keeps layout + the in-flight drag alive (unlike display:none)
+        setHolderHidden(true); // visibility keeps layout + the in-flight drag alive (unlike display:none)
         holder.classList.add("solenoid-html-frozen"); // freeze DOM-only cable flow to match the static canvas
         // Gesture-scoped compositor layer so DOM-only content doesn't repaint per frame — but
         // NEVER on coarse pointers, where a layer this size fails mobile tile allocation.
@@ -228,7 +236,7 @@ export function HtmlCanvasLayer() {
     const exitGesture = () => {
       gesturing = false;
       gestureZoomed = false;
-      holder.style.visibility = "";
+      setHolderHidden(false);
       holder.classList.remove("solenoid-html-frozen"); // resume cable flow
       holder.style.willChange = "";
       hideDomOnly(); // drop the per-element override; the holder is fully visible again
@@ -240,7 +248,7 @@ export function HtmlCanvasLayer() {
     };
 
     // Start in the gesture state so there's no DOM+canvas double-image while capturing.
-    holder.style.visibility = "hidden";
+    setHolderHidden(true);
     engine.setActive(true);
     gesturing = true;
     const tryBuild = () => {
@@ -402,7 +410,7 @@ export function HtmlCanvasLayer() {
           holder.style.transform = holderTransform(t);
           holderSynced = false;
         }
-        if (overlay) { engine.setActive(true); holder.style.visibility = ""; } // both shown, overlaid
+        if (overlay) { engine.setActive(true); setHolderHidden(false); } // both shown, overlaid
         // Hold the gesture while the pointer stays down, or a slow pan (speed momentarily 0)
         // settles back to the DOM and flickers. A LASSO deliberately never enters: it moves no
         // transform, so the swap only shows a stale mip-scaled snapshot.
@@ -441,7 +449,7 @@ export function HtmlCanvasLayer() {
       window.removeEventListener("pointerup", onPointerUp, true);
       window.removeEventListener("pointercancel", onPointerUp, true);
       window.removeEventListener("resize", onResize);
-      holder.style.visibility = ""; // restore the DOM
+      setHolderHidden(false); // restore the DOM
       holder.classList.remove("solenoid-html-frozen");
       hideDomOnly(); // clear the per-element visibility overrides
       demoteDomOnly();
