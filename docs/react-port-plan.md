@@ -352,8 +352,9 @@ until the port completes. No standalone harness — new work integrates with the
       closes + outer settles; `?rete` drill-in still healthy. Zero console
       errors; suite 4891 green.
 - [ ] Flow drill-in follow-ups: nested composite drill (drillInto path is wired
-      but unexercised — no nested seed), drill minimap (rete overlay had one),
-      `surfaceParity.test.ts` retarget/retire at C9.
+      but unexercised — no nested seed), `surfaceParity.test.ts`
+      retarget/retire at C9. (Drill minimap landed — same enclosed RF MiniMap
+      as the main canvas, showing the subgraph.)
 
 ### C8 — Touch/tablet pass — core DONE 2026-08-26
 - [x] `?rete`-parity #VALUE! flag CLEARED: power-features "Scaled List" shows

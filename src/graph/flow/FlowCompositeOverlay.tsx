@@ -10,6 +10,7 @@ import {
   ReactFlowProvider,
   Background,
   BackgroundVariant,
+  MiniMap,
   applyNodeChanges,
   applyEdgeChanges,
   useReactFlow,
@@ -51,6 +52,8 @@ import { AddNodeMenu, type NodeCatalogEntry } from "../AddNodeMenu";
 import { MIN_ZOOM, MAX_ZOOM } from "../areaPresets";
 import { makeEnsureArrange, tidyOptionsFromSettings } from "../tidyArrange";
 import { CompositeRunControls, RUN_MODE_OPTIONS } from "../components/CompositeNode";
+import { minimapFillForNode } from "../components/Minimap";
+import { appThemeStore } from "../appTheme";
 import { DrillNodeMenu } from "../components/CompositeEditorOverlay";
 import { IS_MOBILE } from "../coarse";
 import "../components/compositeEditor.css";
@@ -191,6 +194,8 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
   const cursorRef = useRef({ x: 0, y: 0 });
   const pendingFitRef = useRef(false);
   const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
+  useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
+  const themeMode = appThemeStore.getMode();
   useSyncExternalStore(compositePassStore.subscribe, compositePassStore.version);
   useSyncExternalStore(compositeEditorStore.subscribe, compositeEditorStore.version);
   const { setViewport, getViewport, screenToFlowPosition, fitView } = useReactFlow();
@@ -673,6 +678,16 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
           proOptions={{ hideAttribution: false }}
         >
           <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} />
+          <MiniMap
+            className="solenoid-minimap"
+            style={{ width: 182, height: 105 }}
+            pannable
+            zoomable
+            nodeBorderRadius={3}
+            nodeColor={(n) => minimapFillForNode((n.data as { node: SolenoidNode }).node, themeMode).background}
+            nodeStrokeColor={(n) => minimapFillForNode((n.data as { node: SolenoidNode }).node, themeMode).borderColor}
+            nodeStrokeWidth={1}
+          />
         </ReactFlow>
       </div>
       <div className="solenoid-composite-editor__strip" onPointerDown={(e) => e.stopPropagation()}>
