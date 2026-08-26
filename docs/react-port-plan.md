@@ -136,9 +136,21 @@ until the port completes. No standalone harness — new work integrates with the
       pick splices with `firstCompatibleSocketKey` (verified: +1 node +1 cable);
       cable drag blurs the focused field first (the connectionpick invariant) and
       lights the origin socket.
+- [x] Context menus (2026-08-26): `installCanvasContextMenu` ports UNCHANGED — it
+      targets data-socket attrs, `path.solenoid-cable-hit[data-conn-id]` (now
+      rendered by FlowCableEdge; RF's own interaction path disabled per edge and
+      visible strokes pointer-events:none, mirroring the rete discipline), and
+      nodeViews element containment (live RF DOM). All three menus verified live:
+      node (isolate/chain/where-used/pin/comment), cable (Insert Conduit — model
+      correct, undo restores; Delete), socket (Attach Format Controller — created
+      and docked a real FC). Pane fallback opens the Add menu; RF's
+      onPaneContextMenu removed in favor of the one native handler.
+- [ ] KNOWN RENDER GAP: cables into/out of a Conduit's lane sockets don't draw on
+      the flow surface (the conduit card doesn't register lane Handles yet) —
+      part of the ribbon work; the model and undo are correct.
 - [ ] Chrome verbs still unwired (register or port): `setAutoArrange` (Tidy),
-      `setCleanup`, `setBulkSettle` (copy/paste bulk settle), history (C5), lasso,
-      isolate snapshot/restore, socket/cable/node CONTEXT menus (pane menu works),
+      `setCleanup`, `setBulkSettle` (copy/paste bulk settle), lasso,
+      isolate snapshot/restore (isolate MENU works; camera snapshot path untested),
       lock mode gating, touch-select mode, Minimap accent parity (RF placeholder),
       presenter, standoffs/group-push application, HtmlCanvasLayer decision.
 

@@ -76,12 +76,23 @@ export function FlowCableEdge(props: EdgeProps) {
 
   return (
     <g style={isoDim ? { opacity: 0.15 } : undefined}>
+      {/* The named hit path: context-menu targeting and press-clearing logic
+          find cables via `path.solenoid-cable-hit[data-conn-id]`. */}
+      <path
+        className="solenoid-cable-hit"
+        data-conn-id={id}
+        d={d}
+        fill="none"
+        stroke="transparent"
+        strokeWidth={18}
+      />
       <path
         d={d}
         fill="none"
         stroke={stroke}
         strokeWidth={isSelected ? 2.6 : 1.8}
         strokeLinecap="round"
+        pointerEvents="none"
       />
       {flow && (
         <path

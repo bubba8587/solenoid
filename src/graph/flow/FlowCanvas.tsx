@@ -66,7 +66,29 @@ import { MIN_ZOOM, MAX_ZOOM } from "../areaPresets";
 import { isolateStore } from "../isolateStore";
 import { paletteStore } from "../paletteStore";
 import { CommandPalette } from "../CommandPalette";
-import { SocketLegend, ConfirmDialog, NoticeToasts } from "../components";
+import {
+  SocketLegend,
+  ConfirmDialog,
+  NoticeToasts,
+  SocketContextMenu,
+  CableContextMenu,
+  NodeContextMenu,
+  type SocketContextTarget,
+  type CableContextTarget,
+  type NodeContextTarget,
+} from "../components";
+import { installCanvasContextMenu } from "../canvasContextMenu";
+import {
+  insertConduitForCables,
+  linkStandoffBetween,
+  deleteCables,
+  attachFormatController,
+} from "../canvasActions";
+import { isolateNodes, isolateChainOf, isolateWhereUsed } from "../isolate";
+import { commentsPanelUi } from "../commentStore";
+import { pinNodeValue } from "../pinStore";
+import { unpackComposite } from "../compositeLogic";
+import { compositeEditorStore } from "../compositeEditorStore";
 import { LoadOverlay } from "../components/LoadOverlay";
 import { ComputeOverlay } from "../components/ComputeOverlay";
 import { IsolatePill } from "../components/IsolatePill";
@@ -161,6 +183,9 @@ function FlowCanvasInner() {
   } | null>(null);
   const menuRef = useRef<typeof menu>(null);
   menuRef.current = menu;
+  const [socketCtx, setSocketCtx] = useState<SocketContextTarget | null>(null);
+  const [cableCtx, setCableCtx] = useState<CableContextTarget | null>(null);
+  const [nodeCtx, setNodeCtx] = useState<NodeContextTarget | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const screenMouseRef = useRef({ x: 0, y: 0 });
   const { setViewport, screenToFlowPosition } = useReactFlow();
@@ -257,6 +282,24 @@ function FlowCanvasInner() {
     () => addMenuRequest.register((screenX, screenY) => setMenu({ screenX, screenY })),
     [],
   );
+
+  // Native contextmenu targeting (sockets → cables → nodes → pane), unchanged
+  // from the rete surface: it resolves through data-socket attrs, the
+  // .solenoid-cable-hit path, and nodeViews element containment — all of which
+  // the flow surface provides.
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    return installCanvasContextMenu({
+      el,
+      editorRef: { current: s.editor },
+      areaRef: { current: s.area },
+      setSocketCtx,
+      setCableCtx,
+      setNodeCtx,
+      openAddMenu: (screenX, screenY) => setMenu({ screenX, screenY }),
+    });
+  }, [s]);
 
   // The full canvas keyboard (F9, palette, nudge, copy/paste, group verbs,
   // Ctrl+S/O…). History ref stays null until C5 — undo/redo simply no-op.
@@ -411,12 +454,6 @@ function FlowCanvasInner() {
     [s],
   );
 
-  const onPaneContextMenu = useCallback((e: MouseEvent | React.MouseEvent) => {
-    e.preventDefault();
-    const ev = e as MouseEvent;
-    setMenu({ screenX: ev.clientX, screenY: ev.clientY });
-  }, []);
-
   const handleMenuSelect = useCallback(
     async (entry: NodeCatalogEntry) => {
       if (!menu || isolateStore.isActive()) return;
@@ -492,7 +529,6 @@ function FlowCanvasInner() {
         onConnectEnd={onConnectEnd}
         onNodeDragStop={onNodeDragStop}
         onMove={onMove}
-        onPaneContextMenu={onPaneContextMenu}
         isValidConnection={isValidConnection}
         deleteKeyCode={null}
         elevateNodesOnSelect={false}
@@ -517,6 +553,48 @@ function FlowCanvasInner() {
       )}
       {(paletteOpen || paletteAlwaysOn) && (
         <CommandPalette persistent={paletteAlwaysOn} onClose={() => paletteStore.close()} />
+      )}
+      {socketCtx && (
+        <SocketContextMenu
+          target={socketCtx}
+          onAttachFormat={(t) =>
+            void (async () => {
+              const el = wrapperRef.current;
+              if (el) await attachFormatController(s.editor, s.area, el, t);
+            })()
+          }
+          onClose={() => setSocketCtx(null)}
+        />
+      )}
+      {cableCtx && (
+        <CableContextMenu
+          target={cableCtx}
+          onInsertConduit={(t) =>
+            void (async () => {
+              const el = wrapperRef.current;
+              if (el) await insertConduitForCables(s.editor, s.area, el, t);
+            })()
+          }
+          onDelete={(t) => void deleteCables(s.editor, t)}
+          onClose={() => setCableCtx(null)}
+        />
+      )}
+      {nodeCtx && (
+        <NodeContextMenu
+          target={nodeCtx}
+          onIsolate={(ids) => isolateNodes(ids)}
+          onIsolateChain={(ids) => isolateChainOf(ids)}
+          onWhereUsed={(id) => isolateWhereUsed(id)}
+          onPin={(id) => pinNodeValue(id)}
+          onLinkStandoff={(t) => linkStandoffBetween(s.editor, s.area, t)}
+          onAddComment={(id) => commentsPanelUi.openFor(id)}
+          onEditComposite={(id) => {
+            const n = s.editor.getNode(id);
+            if (n instanceof CompositeNode) compositeEditorStore.open(n);
+          }}
+          onUnpackComposite={(id) => void unpackComposite(s.editor, s.area, id)}
+          onClose={() => setNodeCtx(null)}
+        />
       )}
       <SocketLegend />
       <IsolatePill />

@@ -113,6 +113,7 @@ export type RFEdgeLite = {
   sourceHandle: string;
   target: string;
   targetHandle: string;
+  interactionWidth: number;
 };
 
 export function toFlowNodes(m: FlowModel): RFNodeLite[] {
@@ -133,5 +134,8 @@ export function toFlowEdges(m: FlowModel): RFEdgeLite[] {
     sourceHandle: c.sourceOutput,
     target: c.target,
     targetHandle: c.targetInput,
+    // The cable renders its own named hit path (.solenoid-cable-hit) — RF's
+    // interaction path would sit on top of it and eat context-menu targeting.
+    interactionWidth: 0,
   }));
 }
