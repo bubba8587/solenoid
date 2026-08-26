@@ -29,7 +29,9 @@ duplicate them, just names them for the review).
   `reactflow-edge-routing` wrapper (hooks + Web Worker). Unlike libavoid-js it's not WASM, so it
   fits the bundle. Where it goes: ONE more entry in the cable-shape selector ("routed"), fed
   node boxes from `Surface.measured`; never a replacement for `cablePaths.ts` (the walk router is
-  what ribbons, conduit faces and socket angles are built on). Feature-shaped → 1.4.
+  what ribbons, conduit faces and socket angles are built on). License gate: `obstacle-router`
+  is LGPL-2.1 (libavoid's) — dynamic-linking terms don't map cleanly onto a bundled web/Tauri
+  build; the wrapper is MIT. Author call before adopting. Feature-shaped → 1.4.
 
 Feature-shaped backlog items moved here wholesale. **2026-08-23: the author reopened the
 scope** — the engine/logic entries that were never really parked (distribution fitting,
