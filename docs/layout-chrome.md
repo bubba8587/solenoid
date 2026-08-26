@@ -185,12 +185,15 @@ Answers to the questions that keep biting:
   Nothing else keys off the
   minimap. On mobile the minimap is always hidden, so the legend already sits low.
 
+- **Report undocked** (desktop) → the modal backdrop starts at `--chrome-top`, so the menu +
+  top bar stay visible and usable above it (`ReportOverlay.css`); mobile is full-screen.
 - **Report docked** (desktop) → `html.sol-report-docked` (`reportStore.ts`). This is a real
   **push**: it defines `--report-dock-w:440px`, `--report-dock-top:66px`, `--report-dock-bottom:19px`
   and then (`ReportOverlay.css`):
   - shrinks the main canvas (`.sol-rf-appcanvas`) width by `--report-dock-w` (carrying
-    minimap/legend/add-menu, which live inside it);
-  - shifts `.solenoid-nav` and `.solenoid-hud-stack` `right` by `12px + --report-dock-w`.
+    minimap/add-menu, which live inside it);
+  - shifts `.solenoid-nav`, `.solenoid-hud-stack` and `.solenoid-legend` (app-fixed, NOT
+    inside the canvas wrapper) `right` by their gutter + `--report-dock-w`.
   The header, status bar, and left navigator are full-width/left-anchored and untouched. Its
   `--report-dock-top`/`--report-dock-bottom` now derive from the measured
   `--chrome-top`/`--chrome-bottom`, so a bar change flows through on its own.

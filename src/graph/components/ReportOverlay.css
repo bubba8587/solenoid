@@ -8,6 +8,11 @@
   justify-content: center;
 }
 
+/* Desktop: the overlay lives UNDER the app bar (menu + top bar stay visible and
+   usable, as the docked column already does); the panel fits the remaining height. */
+html:not(.is-mobile) .report-backdrop { top: var(--chrome-top, 66px); }
+html:not(.is-mobile) .report-panel { max-height: calc(100% - 24px); }
+
 .report-panel {
   background: var(--surface);
   border: 1px solid var(--border-strong);
@@ -360,9 +365,10 @@ html.sol-report-docked {
 .report-panel--docked .report-preview { margin: 0; max-width: none; align-self: stretch; }
 
 /* Shift the canvas area left so nothing hides behind the docked panel. The wrapper
-   carries the canvas, minimap, socket legend and add-menu (all positioned inside
-   it); the nav pill and HUD column are app/viewport-fixed, so offset their right.
+   carries the canvas, minimap and add-menu (all positioned inside it); the nav pill,
+   HUD column and socket legend are app/viewport-fixed, so offset their right.
    The top header, bottom StatusBar and the LEFT navigator are untouched. */
 html.sol-report-docked .sol-rf-appcanvas:not(.solenoid-composite-editor__host) { width: calc(100% - var(--report-dock-w)); }
 html.sol-report-docked .solenoid-nav { right: calc(12px + var(--report-dock-w)); }
 html.sol-report-docked .solenoid-hud-stack { right: calc(12px + var(--report-dock-w)); }
+html.sol-report-docked .solenoid-legend { right: calc(16px + var(--report-dock-w)); }
