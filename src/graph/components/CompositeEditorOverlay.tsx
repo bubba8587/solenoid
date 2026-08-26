@@ -688,8 +688,9 @@ function CompositeEditorInner({ composite }: { composite: CompositeNode }) {
 }
 
 // The main canvas's node menu is isolate/pin/standoff — main-graph concepts that don't apply
-// in a subgraph — so the drill-in gets its own set.
-function DrillNodeMenu({
+// in a subgraph — so the drill-in gets its own set. Exported: the flow surface's
+// drill-in (FlowCompositeOverlay) uses the same menu.
+export function DrillNodeMenu({
   menu, onEdit, onDuplicate, onDelete, onClose,
 }: {
   menu: { nodeId: string; screenX: number; screenY: number; isComposite: boolean };

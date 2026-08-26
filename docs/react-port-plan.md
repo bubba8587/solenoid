@@ -331,9 +331,29 @@ until the port completes. No standalone harness — new work integrates with the
       1000→1200, Escape closes. Inner Composite Input cards are outer-driven (no
       fields) — deeper inner interaction (wiring inside the drill-in) not yet
       exercised in automation.
-- [ ] The full payoff (later): drill-in = the SAME FlowCanvas component with the
-      composite's editor/engine — no second rete stack, no `Scope.use` cache, no
-      parity drift; `surfaceParity.test.ts` retargeted or retired.
+- [x] THE FULL PAYOFF LANDED (2026-08-26): `flow/FlowCompositeOverlay.tsx` — the
+      drill-in as a FLOW surface. Same machinery as the main canvas
+      (SolNodeAdapter cards, FlowCableEdge cables, makeFlowArea registered as
+      the ACTIVE graph, flowPinch/flowWheel/flowTouchPan, identity-preserving
+      syncTopology with the rebuild-aware pipe), per-composite stack cached on
+      the node; strip/run-controls/DrillNodeMenu reused (menu exported from the
+      rete overlay, which stays behind `?rete` until C9 deletes it — App.tsx
+      switches on IS_RETE). Undo = per-composite snapshot stack over
+      `snapshotInternal()` + new `CompositeNode.restoreInternal` (sanctioned in
+      sourceInvariants — a full clear, not an input-key prune); component-driven
+      edits record off the composite's runSeq pass tick. FlowCableEdge now
+      resolves through getOwningEditor/getOwningArea, so cables render against
+      whichever surface owns them. Framing waits for RF's first `dimensions`
+      change (fitView before measurement frames a zero-size set — probe lore).
+      Verified live on composite-workbench: open (4 cards, 3 cables, 0
+      boundaries, breadcrumbs), op change 1000→254, Ctrl+Z restores mul/1000,
+      node delete/undo 4→3→4 with cables back, in-drill cable delete +
+      socket-drag rewire (Total blanks → 1000), add-node inside 4→5, Escape
+      closes + outer settles; `?rete` drill-in still healthy. Zero console
+      errors; suite 4891 green.
+- [ ] Flow drill-in follow-ups: nested composite drill (drillInto path is wired
+      but unexercised — no nested seed), drill minimap (rete overlay had one),
+      `surfaceParity.test.ts` retarget/retire at C9.
 
 ### C8 — Touch/tablet pass — core DONE 2026-08-26
 - [x] `?rete`-parity #VALUE! flag CLEARED: power-features "Scaled List" shows

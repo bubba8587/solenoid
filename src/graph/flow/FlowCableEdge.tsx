@@ -18,7 +18,8 @@ import { isolateStore } from "../isolateStore";
 import { resolveTypedSource, conduitPath } from "../conduitTrace";
 import { ribbonForConnection, ribbonHoverStore, conduitFacePoint, conduitLayoutStore, pinRibbonSeparation } from "../ribbonCable";
 import { SOCKET_COLORS, SolenoidSocket } from "../sockets";
-import { getEditor, getArea, unselectAllNodes } from "../process";
+import { unselectAllNodes } from "../process";
+import { getOwningEditor, getOwningArea } from "../activeGraph";
 import { groupCollapseStore, COLLAPSE_LAYOUT, pillY } from "../groupCollapse";
 import { touchSelectStore } from "../touchSelectStore";
 import { standoffStore } from "../standoffs";
@@ -92,7 +93,7 @@ function typeColorFor(
   target: string,
   targetHandle: string,
 ): string {
-  const editor = getEditor();
+  const editor = getOwningEditor(source);
   if (!editor) return DEFAULT_COLOR;
   const typed = resolveTypedSource(editor, source, sourceHandle);
   const activeSocket = typed?.socket ?? editor.getNode(target)?.inputs[targetHandle]?.socket;
@@ -142,7 +143,9 @@ export function FlowCableEdge(props: EdgeProps) {
   // Evict on unmount so the path cache can't grow across create/delete churn.
   useLayoutEffect(() => () => { _pathCache.delete(id); }, [id]);
 
-  const editor = getEditor();
+  // Owning, not main: inside the flow drill-in this edge belongs to the
+  // composite's internal editor.
+  const editor = getOwningEditor(source);
   const conn = {
     id,
     source,
@@ -161,7 +164,7 @@ export function FlowCableEdge(props: EdgeProps) {
   // edge pill, keyed by socket.
   const pillPoint = (p: { groupId: string; side: "left" | "right"; index: number } | undefined) => {
     if (!p) return undefined;
-    const g = getArea()?.nodeViews.get(p.groupId)?.position;
+    const g = getOwningArea(p.groupId)?.nodeViews.get(p.groupId)?.position;
     if (!g) return undefined;
     return { x: p.side === "left" ? g.x : g.x + COLLAPSE_LAYOUT.width, y: g.y + pillY(p.index) };
   };

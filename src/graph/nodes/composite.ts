@@ -415,6 +415,22 @@ export class CompositeNode extends ClassicPreset.Node {
     this.settleInternalTypes();
   }
 
+  /** Undo support (flow drill-in): rebuild the internal graph from an earlier
+   *  snapshot. Ids remint through hydrate's `built` remap, ports included; a
+   *  port whose marker isn't in the snapshot dangles until leaveLevel prunes it
+   *  (the same window the rete overlay's history left open). */
+  async restoreInternal(snap: CompositeInternalSnapshot, reg: Map<string, NodeCtor>): Promise<void> {
+    for (const c of [...this.internalEditor.getConnections()]) {
+      await this.internalEditor.removeConnection(c.id);
+    }
+    for (const n of [...this.internalEditor.getNodes()]) {
+      await this.internalEditor.removeNode(n.id);
+    }
+    this.internalPositions = {};
+    this._pending = { nodes: [...snap.nodes], connections: [...snap.connections] };
+    await this.hydrate(reg);
+  }
+
   /** Snapshot the internal graph as plain JSON (the `internal` constructor arg), wired
    *  in via extractInit so persistence.ts needn't know about composites. */
   snapshotInternal(): CompositeInternalSnapshot {

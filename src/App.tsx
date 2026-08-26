@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from "react";
 import { Canvas } from "./graph/Canvas";
 import { FlowCanvas } from "./graph/flow/FlowCanvas";
+import { FlowCompositeOverlay } from "./graph/flow/FlowCompositeOverlay";
 import { HelpDialogs } from "./graph/components/HelpDialogs";
 import { autoShowWhatsNewOnce } from "./graph/helpDialogStore";
 import { Header } from "./graph/Header";
@@ -81,7 +82,7 @@ function MainApp() {
       <FunctionReference />
       <ReportOverlay />
       <InspectorPanel />
-      <CompositeEditorOverlay />
+      {IS_RETE ? <CompositeEditorOverlay /> : <FlowCompositeOverlay />}
       <PresentationOverlay />
       <ConnectionDialog />
       <FormulaPopup />
