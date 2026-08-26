@@ -107,8 +107,29 @@ until the port completes. No standalone harness — new work integrates with the
       surface vs render≈760-1060ms on rete for the identical pass — the flow
       surface is ~2x faster at render; no optimization owed. (Both surfaces
       ran the same FULL pass for this edit path — targeting parity holds.)
-- [ ] Kill list opened: which storeKit singletons become context on the RF surface
-      (execute at C9, list now).
+- [x] KILL LIST for the C9 cutover (opened 2026-08-26; execute when the rete
+      surface is deleted). Resolution on the original framing: the storeKit
+      stores are app-global STATE, not separate-root artifacts — they stay
+      stores; what dies is the workaround layer:
+      1. rete render packages + styled-components; their consumers to delete or
+         port: Canvas.tsx, CompositeEditorOverlay.tsx, ConnectionComponent.tsx,
+         the rete half of areaPresets.ts (CappedZoom/presets — `wheelZoomDelta`
+         and MIN/MAX_ZOOM survive), tapSelect.ts. rete-auto-arrange goes when
+         Tidy calls ELK directly (the fake `use()`/prototype shims drop too).
+      2. `components/nativeHover.ts` (2 users) — cross-root enter/leave
+         workaround; plain React handlers on one tree.
+      3. `loadReveal.ts` — rete's load choreography (persistence/overlays
+         reference it); flow skipped the animation. Port or delete (author).
+      4. HIC set (`renderMode.ts`, `htmlCanvasRenderer.ts`, `HtmlCanvasLayer`,
+         `htmlCanvasSupport.ts`) — rides the rete surface; C9 author call.
+      5. `flow/flowArea.ts` transitional adapter — dissolves when process.ts /
+         persistence speak a flow-native surface API (~69 `area.*` call sites).
+      6. `flowSurface.ts` injection seam — NodeSocket imports FlowSocketHandle
+         directly once @xyflow no longer needs fencing out of a rete bundle.
+      7. Rete-rendered side pages to port or park: `landing/LandingGraph.tsx`,
+         `showcase/NodeShowcase.tsx`.
+      8. Tests to retarget/retire: `surfaceParity.test.ts`, `activeGraph.test.ts`
+         (+ the ~45 rete-coupled fixtures, C9's own item).
 - Discovered / not yet wired on ?rf: group MEMBER containment + group drag moving
   members (groupPush machinery inert — needs C6), collapse pills, conduit ribbons,
   Note/Report editing untested, composite drill-in (C7), real cable paths (C3).
