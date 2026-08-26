@@ -438,8 +438,10 @@ export function snapshotGraph(): GraphSnapshot | null {
         const key = se.getAttribute("data-socket-key");
         const sideAttr = se.getAttribute("data-socket-side");
         if (!key || (sideAttr !== "input" && sideAttr !== "output")) continue;
-        const r = se.getBoundingClientRect();
-        const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        // React Flow anchors an edge at the HANDLE box's outer edge (right for a source,
+        // left for a target), not its center; measure the handle so the routed ends match.
+        const r = (se.querySelector<HTMLElement>(".react-flow__handle") ?? se).getBoundingClientRect();
+        const cx = sideAttr === "output" ? r.right : r.left, cy = r.top + r.height / 2;
         const dataType = (sideAttr === "input" ? inputs[key]?.socket : outputs[key]?.socket)?.dataType;
         const kind = socketGlyphKind(dataType);
         let color = resolveSockColor(dataType), color2: number | null = null;
