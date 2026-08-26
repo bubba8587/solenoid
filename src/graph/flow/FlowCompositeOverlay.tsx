@@ -38,6 +38,7 @@ type DrillStack = {
   /** True through hydrate/restore — the topology pipe waits it out (the same
    *  O(n²) trap the main canvas hit on loads). */
   rebuilding: boolean;
+  isRebuilding: () => boolean;
   history: { stack: string[]; index: number; timer: ReturnType<typeof setTimeout> | null };
 };
 
@@ -64,6 +65,7 @@ function getDrillStack(comp: CompositeNode): DrillStack {
     area,
     handlers,
     rebuilding: true,
+    isRebuilding: () => s.rebuilding,
     history: { stack: [], index: -1, timer: null },
   };
   let queued = false;

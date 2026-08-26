@@ -31,6 +31,7 @@ import { registerFlowSocket } from "../flowSurface";
 import { FlowSocketHandle } from "./FlowSocketHandle";
 import { SolNodeAdapter } from "./SolNodeAdapter";
 import { FlowCableEdge } from "./FlowCableEdge";
+import { FlowConnectionLine } from "./FlowConnectionLine";
 import { cableSelectionStore, socketHighlightStore, dragSocketKey } from "../cableState";
 import { toFlowNodes, toFlowEdges, nodeClassName, type FlowModel } from "./flowModel";
 import { canConnect, connect, moveNode } from "./flowController";
@@ -71,7 +72,10 @@ import { commentsPanelUi } from "../commentStore";
 import { pinNodeValue } from "../pinStore";
 import { unpackComposite } from "../compositeLogic";
 import { compositeEditorStore } from "../compositeEditorStore";
-import { moveGroupMembers } from "../groupLogic";
+import { moveGroupMembers, reconcileGroupMembership, absorbIntoContainingGroup } from "../groupLogic";
+import { rebuildGroupMembership } from "../groupMembership";
+import { syncGroupCollapse } from "../groupCollapse";
+import { isGraphRebuilding } from "../process";
 import { canvasLockStore } from "../canvasLock";
 import { installLassoSelection, type LassoState } from "../canvasLasso";
 import { installFlowPinch } from "./flowPinch";
@@ -88,7 +92,7 @@ import { groupPushStore } from "../groupPush";
 import { CableInspector } from "../components/CableInspector";
 import { paletteStore } from "../paletteStore";
 import { frStore } from "../frStore";
-import { settingsPanel } from "../settingsStore";
+import { settingsPanel, settingsStore } from "../settingsStore";
 import { IS_COARSE } from "../coarse";
 import { touchSelectStore } from "../touchSelectStore";
 import "../canvas.css";
@@ -130,6 +134,9 @@ export type SurfaceStack = FlowModel & {
   area: FlowArea;
   handlers: SurfaceHandlers;
   standoffSettle?: (pinned?: Set<string>, opts?: SettleOpts) => void;
+  /** A host-level rebuild in progress (drill-in hydrate/restore) — no live-creation behaviors. */
+  isRebuilding?: () => boolean;
+  absorbPipeInstalled?: boolean;
 };
 
 export type SurfaceHooks = {
@@ -258,6 +265,27 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       );
     syncTopology();
   }, [s, setViewport, syncTopology]);
+
+  // A node created LIVE (Add menu, paste) inside an expanded group's box joins it — once
+  // the card has rendered, since containment needs its size. Loads/restores restore
+  // membership from the saved list instead. editor.addPipe cannot be removed: once per stack.
+  useEffect(() => {
+    if (s.absorbPipeInstalled) return;
+    s.absorbPipeInstalled = true;
+    s.editor.addPipe((ctx) => {
+      if ((ctx as { type?: string }).type === "nodecreated" && !isGraphRebuilding() && !s.isRebuilding?.()) {
+        const newId = (ctx as unknown as { data: { id: string } }).data.id;
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          if (absorbIntoContainingGroup(s.editor, s.area, newId)) {
+            rebuildGroupMembership(s.editor);
+            syncGroupCollapse(s.editor, s.area);
+            scheduleAutosave();
+          }
+        }));
+      }
+      return ctx;
+    });
+  }, [s]);
 
   // The chrome's "open the add menu here" request (command palette, top bar +, A).
   // Registration nests: the drill-in's replaces main's while open and restores it.
@@ -458,10 +486,10 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     (event, state) => {
       setCableDragging(false);
       socketHighlightStore.setDrag([]);
-      // A cable dropped on the pane opens the Add menu pre-filtered to what the
-      // origin socket can take, and wires the pick (quick-wire).
+      // Quick-wire (a Setting, off by default): a cable dropped on the pane opens the
+      // Add menu pre-filtered to what the origin socket can take, and wires the pick.
       const handleId = state.fromHandle?.id ?? null;
-      if (state.isValid === null && state.fromNode && handleId && !canvasLockStore.get()) {
+      if (settingsStore.get("quickWire") && state.isValid === null && state.fromNode && handleId && !canvasLockStore.get()) {
         const side = state.fromHandle?.type === "source" ? "output" : "input";
         const pt = "changedTouches" in event ? event.changedTouches[0] : (event as MouseEvent);
         const originNode = s.editor.getNode(state.fromNode.id);
@@ -545,6 +573,18 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       s.area.syncViews();
       // The exact settle on drop (the per-frame solves converge toward it).
       if (s.standoffSettle && !standoffStore.isEmpty()) s.standoffSettle(new Set(dragged.map((n) => n.id)));
+      // A node dropped with its center inside an expanded group joins it; dragged out,
+      // it leaves (exclusive + stable, see reconcileGroupMembership).
+      let membershipTouched = false;
+      for (const n of dragged) {
+        if (s.editor.getNode(n.id) instanceof GroupNode) continue;
+        reconcileGroupMembership(s.editor, s.area, n.id);
+        membershipTouched = true;
+      }
+      if (membershipTouched) {
+        rebuildGroupMembership(s.editor);
+        syncGroupCollapse(s.editor, s.area);
+      }
       for (const n of dragged) {
         // A manual move invalidates any expand-time push record (a click never
         // starts an RF drag, so every dragStop is a real move).
@@ -666,6 +706,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         edges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        connectionLineComponent={FlowConnectionLine}
         nodesDraggable={!locked}
         elementsSelectable={!locked}
         panOnDrag={!(IS_COARSE && touchSelect)}
@@ -695,7 +736,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         <Background
           variant={BackgroundVariant.Dots}
           gap={24}
-          size={1.5}
+          size={2}
           color="var(--canvas-dot)"
           bgColor="var(--canvas-bg)"
         />
