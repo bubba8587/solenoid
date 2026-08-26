@@ -276,11 +276,20 @@ until the port completes. No standalone harness — new work integrates with the
 - [x] Verified: one-finger pane pan, tap-select (works cleanly after a pinch),
       tablet chrome mounts (`is-tablet`). CDP gotchas recorded: single-message
       multi-point touchStart and id reuse break synthesis — stage the starts.
-- [ ] Remaining touch items: one-finger drag on an UNSELECTED node — RF drags it,
-      rete pans (tap-then-drag was an accepted regression there; author call
-      which behavior the port keeps); group-body press falls through to pan on
-      rete (groupBand) but drags the group on RF; touch cable drag from a
-      12px dot; touch-select mode (mobile lasso pill); real-device pass.
+- [x] **AUTHOR RULING (2026-08-26): touch drag on an UNSELECTED card or group
+      PANS** — a busy canvas leaves no blank pixels otherwise; selected nodes
+      drag (tap-then-drag). `flow/flowTouchPan.ts`: wrapper-capture claim of the
+      qualifying pointerdown (RF's node drag never starts, tap-click survives so
+      tap-select works), camera driven directly, second finger hands off to
+      flowPinch, selection read from RF's `.selected` DOM stamp (the only
+      synchronously-true source). Only discrete controls (buttons, selects,
+      sockets) veto — text fields pan on drag, focus on tap. Verified all five
+      cases: group-body pan, unselected-card pan, tap-then-drag moves, pinch
+      over card, zero errors. (Probe lore: CDP touchEnd must LIST lifted points
+      or the pointer stream strands; press points must dodge chrome overlap and
+      the socket-dot overhang in card bounding boxes.)
+- [ ] Remaining touch items: touch cable drag from a 12px dot; touch-select
+      mode (mobile lasso pill); real-device pass.
 
 ### C9 — Parity sweep + cutover decision
 - [ ] Every seed opened side-by-side (rete vs RF), diffs listed and burned down.

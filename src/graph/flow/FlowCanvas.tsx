@@ -95,6 +95,7 @@ import { GroupNode } from "../rete-nodes";
 import { canvasLockStore } from "../canvasLock";
 import { installLassoSelection, type LassoState } from "../canvasLasso";
 import { installFlowPinch } from "./flowPinch";
+import { installTouchCardPan } from "./flowTouchPan";
 import {
   setAutoArrange,
   setCleanup,
@@ -227,18 +228,23 @@ function FlowCanvasInner() {
   const screenMouseRef = useRef({ x: 0, y: 0 });
   const { setViewport, getViewport, screenToFlowPosition } = useReactFlow();
 
-  // Two fingers zoom, whatever they land on (flowPinch.ts).
+  // Two fingers zoom, whatever they land on (flowPinch.ts); one touch finger
+  // on an UNSELECTED card pans (flowTouchPan.ts — author ruling: tap-then-drag
+  // on touch, because a busy canvas leaves no blank pixels to pan from).
   useEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
-    return installFlowPinch(el, {
-      getViewport,
-      setViewport: (v) => {
-        void setViewport(v);
-        s.area.setTransform({ x: v.x, y: v.y, k: v.zoom });
-        syncSemanticZoomFor(v.zoom);
-      },
-    });
+    const drive = (v: { x: number; y: number; zoom: number }) => {
+      void setViewport(v);
+      s.area.setTransform({ x: v.x, y: v.y, k: v.zoom });
+      syncSemanticZoomFor(v.zoom);
+    };
+    const unPinch = installFlowPinch(el, { getViewport, setViewport: drive });
+    const unPan = installTouchCardPan(el, { getViewport, setViewport: drive });
+    return () => {
+      unPinch();
+      unPan();
+    };
   }, [s, getViewport, setViewport]);
 
   const syncTopology = useCallback(() => {
