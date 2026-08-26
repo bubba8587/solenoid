@@ -280,34 +280,28 @@ async function rebuildGraph(
   const oldWork = editor.getNodes().length + editor.getConnections().length;
   const newWork = (g.nodes?.length ?? 0) + (g.connections?.length ?? 0);
   const curtain = oldWork + newWork > SWITCH_CURTAIN_MIN_WORK;
-  if (curtain) loadRevealStore.begin();
+  // A paint boundary (rAF, then a task after it): the build below yields only to
+  // microtasks, so without this the curtain never shows and the bar never moves.
+  const paint = () => new Promise<void>((r) => requestAnimationFrame(() => setTimeout(r, 0)));
+  if (curtain) { loadRevealStore.begin(); await paint(); }
   // The curtain also counts teardown, which dominates when leaving a big doc.
   const buildTotal = Math.max(1, curtain ? oldWork + newWork : newWork);
   let buildDone = 0;
   const bump = () => { if (curtain) loadRevealStore.setProgress((buildDone += 1) / buildTotal); };
   // removeNode fires `noderemoved`, which undocks any FC, so no extra cleanup here.
-  // Teardown detaches the content holder in ONE DOM op and removes in yielding
-  // chunks — unmounting hundreds of React roots in place froze the main thread.
-  const holder = (area as unknown as { area?: { content?: { holder?: HTMLElement } } })
-    .area?.content?.holder;
-  const holderParent = holder?.parentElement ?? null;
-  const detach = Boolean(holder && holderParent && editor.getNodes().length > 0);
-  if (detach && holder) holder.remove();
-  try {
-    let n = 0;
-    const yieldEvery = 24;
-    for (const c of [...editor.getConnections()]) {
-      await editor.removeConnection(c.id);
-      if (curtain) bump();
-      if (detach && ++n % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
-    }
-    for (const node of [...editor.getNodes()]) {
-      await editor.removeNode(node.id);
-      if (curtain) bump();
-      if (detach && ++n % yieldEvery === 0) await new Promise((r) => setTimeout(r, 0));
-    }
-  } finally {
-    if (detach && holder && holderParent && !holder.parentElement) holderParent.appendChild(holder);
+  // Under the curtain teardown and build yield in chunks so the bar repaints.
+  const yieldEvery = 24;
+  let n = 0;
+  const chunkYield = async () => { if (curtain && ++n % yieldEvery === 0) await paint(); };
+  for (const c of [...editor.getConnections()]) {
+    await editor.removeConnection(c.id);
+    if (curtain) bump();
+    await chunkYield();
+  }
+  for (const node of [...editor.getNodes()]) {
+    await editor.removeNode(node.id);
+    if (curtain) bump();
+    await chunkYield();
   }
   // The per-node `noderemoved` handler skips `forgetNode` while rebuilding: some
   // stores scan their whole map per forget, which is O(nodes × entries).
@@ -367,11 +361,14 @@ async function rebuildGraph(
     created.push(node);
     toBuild.push({ node, x: sn.x ?? 0, y: sn.y ?? 0 });
   }
-  await Promise.all(toBuild.map(async ({ node, x, y }) => {
-    await editor.addNode(node as SolenoidNode);
-    await area.translate(node.id, { x, y });
-    bump();
-  }));
+  for (let i = 0; i < toBuild.length; i += yieldEvery) {
+    await Promise.all(toBuild.slice(i, i + yieldEvery).map(async ({ node, x, y }) => {
+      await editor.addNode(node as SolenoidNode);
+      await area.translate(node.id, { x, y });
+      bump();
+    }));
+    if (curtain) await paint();
+  }
 
   // Rewrite node-id references through the remap: FC hosts and Group member lists.
   for (const node of created) {
