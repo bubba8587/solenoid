@@ -6,11 +6,16 @@
 import { serializeGraph, loadGraph, scheduleAutosave } from "../persistence";
 import type { SavedGraph } from "../persistence";
 import { getArea, isGraphRebuilding } from "../process";
+import { describeGraphDelta } from "./flowHistoryDigest";
 
 const MAX_DEPTH = 80;
 const COALESCE_MS = 400;
 
-let _stack: string[] = []; // JSON — also the cheap no-op-change comparison
+// json doubles as the cheap no-op-change comparison; label describes the
+// transition from the previous entry (Session History reads it).
+type Entry = { json: string; time: number; label: string };
+
+let _stack: Entry[] = [];
 let _index = -1;
 let _restoring = false;
 let _timer: ReturnType<typeof setTimeout> | null = null;
@@ -49,7 +54,7 @@ export const flowHistory = {
       _timer = null;
     }
     const s = capture();
-    _stack = s ? [s] : [];
+    _stack = s ? [{ json: s, time: Date.now(), label: "Opened" }] : [];
     _index = _stack.length - 1;
   },
 
@@ -70,9 +75,19 @@ export const flowHistory = {
       _timer = null;
     }
     const s = capture();
-    if (!s || s === _stack[_index]) return;
+    const top = _stack[_index];
+    if (!s || s === top?.json) return;
+    let label = "Edited document";
+    if (top) {
+      try {
+        label = describeGraphDelta(
+          JSON.parse(top.json) as SavedGraph,
+          JSON.parse(s) as SavedGraph,
+        );
+      } catch { /* a label is cosmetic — never block the record */ }
+    }
     _stack = _stack.slice(0, _index + 1);
-    _stack.push(s);
+    _stack.push({ json: s, time: Date.now(), label });
     if (_stack.length > MAX_DEPTH) _stack.shift();
     _index = _stack.length - 1;
   },
@@ -85,16 +100,27 @@ export const flowHistory = {
     if (_timer) flowHistory.recordNow(); // flush the pending edit first
     if (_index <= 0) return;
     _index--;
-    await restore(_stack[_index]);
+    await restore(_stack[_index].json);
   },
 
   async redo(): Promise<void> {
     if (_restoring) return;
     if (_index >= _stack.length - 1) return;
     _index++;
-    await restore(_stack[_index]);
+    await restore(_stack[_index].json);
   },
+
+  /** The applied transitions, oldest first (the baseline entry carries no
+   *  transition and is skipped) — Session History's feed. */
+  records: (): Array<{ time: number; label: string }> =>
+    _stack.slice(1, _index + 1).map(({ time, label }) => ({ time, label })),
 
   /** Test hook. */
   _state: () => ({ depth: _stack.length, index: _index }),
+  /** Debug hook (dev probes). */
+  _stack: () => _stack,
 };
+
+if (typeof window !== "undefined" && import.meta.env?.DEV) {
+  (window as unknown as { __flowHistory?: typeof flowHistory }).__flowHistory = flowHistory;
+}

@@ -67,9 +67,10 @@ export function describeAction(action: unknown, lookup: DigestLookup): string {
   return "Other action";
 }
 
-/** One line per record under a date header; records can span days, since
- *  rete-history-plugin clears only on document load. */
-export function digestHistory(records: HistoryDigestRecord[], lookup: DigestLookup): string {
+/** One line per already-labeled record under a date header — the shared
+ *  formatter for both history sources (rete actions here, the flow surface's
+ *  snapshot-diff labels via `flowHistory.records()`). */
+export function digestLabeled(records: Array<{ time: number; label: string }>): string {
   if (records.length === 0) return "No actions yet this session.";
   const lines: string[] = [];
   let lastDate = "";
@@ -79,7 +80,15 @@ export function digestHistory(records: HistoryDigestRecord[], lookup: DigestLook
       lines.push(`— ${d} —`);
       lastDate = d;
     }
-    lines.push(`${fmtTime(r.time)}  ${describeAction(r.action, lookup)}`);
+    lines.push(`${fmtTime(r.time)}  ${r.label}`);
   }
   return lines.join("\n");
+}
+
+/** One line per record under a date header; records can span days, since
+ *  rete-history-plugin clears only on document load. */
+export function digestHistory(records: HistoryDigestRecord[], lookup: DigestLookup): string {
+  return digestLabeled(
+    records.map((r) => ({ time: r.time, label: describeAction(r.action, lookup) })),
+  );
 }

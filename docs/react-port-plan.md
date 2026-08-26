@@ -218,8 +218,15 @@ until the port completes. No standalone harness — new work integrates with the
       dead because the 1:1 pan cancelled its flow-space delta (drag-start
       side effects like selectNodesOnDrag still ran). flowTouchPan now claims
       the touchstart too, so unselected-card gestures truly never start a drag.
-- [ ] Still open: HtmlCanvasLayer decision, undo labels. (Conduit ribbons
-      landed — see C3.)
+- [x] Undo labels (2026-08-26): flowHistory entries carry a diff-derived label
+      (`flowHistoryDigest.describeGraphDelta` — added/removed/connected/
+      disconnected/renamed/edited/moved, compound parts joined; measured
+      init.width/height excluded or every record reads "Edited N nodes").
+      Session History node falls back to `flowHistory.records()` +
+      `digestLabeled` when the rete plugin is absent (i.e. on the flow
+      surface); verified live ("Moved node: NumberInput_1"). Dev probes:
+      `window.__flowHistory`.
+- [ ] Still open: HtmlCanvasLayer decision. (Conduit ribbons landed — see C3.)
 - [ ] C7 probe pending: couldn't reach the seed template menu in automation to
       load composite-workbench; test whether the rete-based drill-in overlay
       works over the flow surface when C7 starts.
