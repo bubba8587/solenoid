@@ -3,7 +3,10 @@ import { useRenderMode } from "../renderMode";
 import { zoomSettleMs } from "../zoomSettle";
 import { IS_COARSE } from "../coarse";
 import { HtmlCanvasRenderer, type EngineNodeSpec } from "../htmlCanvasRenderer";
-import { getEditor, getArea, connectionVersionStore } from "../process";
+import { connectionVersionStore } from "../process";
+import type { NodeEditor } from "rete";
+import type { Schemes } from "../schemes";
+import type { Surface } from "../surface";
 import { nodeDomWeight } from "../nodes/kind";
 import { snapshotGraph } from "../hicGraphSnapshot";
 import { cableShapeStore } from "../cableShape";
@@ -27,9 +30,7 @@ const RENDERER_MIN_NODES = 100;
 // with the selected / focused cards kept live on top.
 const HOLD_ZOOM = 0.4;
 
-const graphDomWeight = (): number => {
-  const ed = getEditor();
-  if (!ed) return 0;
+const graphDomWeight = (ed: NodeEditor<Schemes>): number => {
   let w = 0;
   for (const n of ed.getNodes()) w += nodeDomWeight(n);
   return w;
@@ -38,26 +39,14 @@ const graphDomWeight = (): number => {
 /** The fast PAN/ZOOM layer, not a DOM replacement: idle draws nothing so every interaction
  *  stays native; a gesture hides the holder with `visibility:hidden` (which keeps layout, so
  *  the DOM stays measurable) and the canvas draws the captured graph. */
-export function HtmlCanvasLayer() {
+export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>; area: Surface }) {
   const mode = useRenderMode();
   const hostRef = useRef<HTMLDivElement>(null);
   // Seeded synchronously so toggling render mode on over an already-loaded big graph engages
   // on the next render, not only after the first add/remove.
-  const [domWeight, setDomWeight] = useState(graphDomWeight);
+  const [domWeight, setDomWeight] = useState(() => graphDomWeight(editor));
   const minNodes = (window as unknown as { __hcMinNodes?: number }).__hcMinNodes ?? RENDERER_MIN_NODES;
   const active = mode === "html" && domWeight >= minNodes;
-
-  // On a fresh load this effect can run before canvas init fills the process.ts
-  // singletons; poll for them or the setup effect bails and never re-runs.
-  const [ready, setReady] = useState(() => !!getEditor() && !!getArea());
-  useEffect(() => {
-    if (!active || ready) return;
-    if (getEditor() && getArea()) { setReady(true); return; }
-    const t = window.setInterval(() => {
-      if (getEditor() && getArea()) { setReady(true); clearInterval(t); }
-    }, 120);
-    return () => clearInterval(t);
-  }, [active, ready]);
 
   // Recount on BIND and on node add/remove, and run whenever mode is "html" (NOT gated on
   // `active`) — below the threshold `active` is false yet the crossing must still be noticed.
@@ -65,34 +54,23 @@ export function HtmlCanvasLayer() {
   useEffect(() => {
     if (mode !== "html") return;
     let live = true;
-    let bound = false;
-    const recount = () => setDomWeight(graphDomWeight());
-    const bind = (): boolean => {
-      if (bound) return true;
-      const editor = getEditor();
-      if (!editor || !getArea()) return false;
-      bound = true;
-      recount();
-      // editor.addPipe can't be removed — `live` neutralises it on cleanup; `bound` keeps it to one.
-      editor.addPipe((ctx) => {
-        if (live && ctx && typeof ctx === "object" && "type" in ctx) {
-          const t = (ctx as { type: string }).type;
-          if (t === "nodecreated" || t === "noderemoved") recount();
-        }
-        return ctx;
-      });
-      return true;
-    };
-    const iv = bind() ? 0 : window.setInterval(() => { if (bind()) clearInterval(iv); }, 120);
-    return () => { live = false; if (iv) clearInterval(iv); };
-  }, [mode]);
+    const recount = () => setDomWeight(graphDomWeight(editor));
+    recount();
+    // editor.addPipe can't be removed — `live` neutralises it on cleanup.
+    editor.addPipe((ctx) => {
+      if (live && ctx && typeof ctx === "object" && "type" in ctx) {
+        const t = (ctx as { type: string }).type;
+        if (t === "nodecreated" || t === "noderemoved") recount();
+      }
+      return ctx;
+    });
+    return () => { live = false; };
+  }, [mode, editor]);
 
   useEffect(() => {
-    if (!active || !ready) return;
+    if (!active) return;
     const host = hostRef.current;
-    const editor = getEditor();
-    const area = getArea();
-    if (!host || !editor || !area) return;
+    if (!host) return;
     // The transformed content element: React Flow's viewport (the flow area's
     // `content.holder` is a detached placeholder). Hiding it hides nodes+edges;
     // DOM-only elements punch through with inline `visibility: visible`.
@@ -190,7 +168,7 @@ export function HtmlCanvasLayer() {
       const hidden = holderHidden();
       if (hidden) setHolderHidden(false);
       const specs = collectSpecs();
-      const snap = snapshotGraph();
+      const snap = snapshotGraph(editor, area);
       // Drawable = snapshot-resolvable AND not touching a DOM-only node; the id set lets
       // collectDomOnlyEls keep the rest.
       const canvasCables = snap ? snap.cables.filter((c) => !domOnlyIds.has(c.source) && !domOnlyIds.has(c.target)) : [];
@@ -512,7 +490,7 @@ export function HtmlCanvasLayer() {
       if (holderSynced) holder.style.transform = holderTransform(area.area.transform); // hand the transform back
       engine.dispose();
     };
-  }, [active, ready]);
+  }, [active, editor, area]);
 
   if (!active) return null;
   return <div ref={hostRef} className="solenoid-html-layer" />;

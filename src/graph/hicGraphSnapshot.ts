@@ -5,7 +5,9 @@
 // every read is guarded so a half-built graph yields a partial snapshot, never a
 // throw (the Pixi overlay must never crash the app beneath it).
 
-import { getArea, getEditor } from "./process";
+import type { NodeEditor } from "rete";
+import type { Schemes } from "./schemes";
+import type { Surface } from "./surface";
 import { nodeAccent } from "./nodes/kind";
 import { appThemeStore } from "./appTheme";
 import { parseColor, mixSrgb, type RGBA } from "./cssColor";
@@ -331,10 +333,8 @@ export function readThemeColors(): { body: number; title: number; value: number 
   return { body: FALLBACK_BODY, title: 0xf3f5f8, value: 0xcfd6e4 };
 }
 
-/** Read the current graph + transform, or null if the editor/area aren't ready. */
-export function snapshotGraph(): GraphSnapshot | null {
-  const area = getArea();
-  const editor = getEditor();
+/** Read the given graph + transform, or null if the editor/area aren't ready. */
+export function snapshotGraph(editor: NodeEditor<Schemes> | null, area: Surface | null): GraphSnapshot | null {
   if (!area || !editor) return null;
   const t = area.area?.transform ?? { k: 1, x: 0, y: 0 };
   const k = t.k > 0 ? t.k : 1;

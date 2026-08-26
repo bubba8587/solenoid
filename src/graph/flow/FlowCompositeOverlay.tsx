@@ -1,89 +1,40 @@
-// The composite drill-in — the same RF machinery the main canvas runs:
-// SolNodeAdapter cards, FlowCableEdge cables, the flowArea adapter registered
-// as the ACTIVE graph, and a per-composite snapshot history over
-// snapshotInternal().
+// The composite drill-in: a full-viewport FlowSurface over the composite's
+// INTERNAL editor (the same surface as the main canvas), plus the one piece of
+// drill-in-specific chrome (breadcrumb strip, port promotion, run controls) and
+// a per-composite snapshot history. The level registers as the ACTIVE graph and
+// takes over the selection / arrange verbs while open.
 import type { Surface } from "../surface";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import {
-  ReactFlow,
-  ReactFlowProvider,
-  Background,
-  BackgroundVariant,
-  MiniMap,
-  applyNodeChanges,
-  applyEdgeChanges,
-  useReactFlow,
-  type Node,
-  type Edge,
-  type NodeChange,
-  type EdgeChange,
-  type Connection,
-  type IsValidConnection,
-  type Viewport,
-} from "@xyflow/react";
+import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import { FlowSurfaceContext } from "../flowSurface";
-import { SolNodeAdapter } from "./SolNodeAdapter";
-import { FlowCableEdge } from "./FlowCableEdge";
-import { toFlowNodes, toFlowEdges, nodeClassName, type FlowModel } from "./flowModel";
-import { installLassoSelection, type LassoState } from "../canvasLasso";
-import { moveGroupMembers } from "../groupLogic";
-import { groupCollapseStore } from "../groupCollapse";
-import { socketHighlightStore, dragSocketKey } from "../cableState";
-import { touchSelectStore } from "../touchSelectStore";
-import { CableInspector } from "../components/CableInspector";
-import { canConnect, connect } from "./flowController";
 import { makeFlowArea, type FlowArea } from "./flowArea";
-import { installFlowPinch } from "./flowPinch";
-import { installTouchCardPan } from "./flowTouchPan";
-import { installWheelZoom } from "./flowWheel";
-import { CompositeNode, CompositeInputNode, CompositeOutputNode, GroupNode } from "../rete-nodes";
+import { FlowSurface, idleHandlers, type SurfaceHandlers, type SurfaceHooks } from "./FlowSurface";
+import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../rete-nodes";
 import type { SolenoidNode } from "../schemes";
 import { compositeEditorStore, compositePassStore } from "../compositeEditorStore";
-import { getEditor, getArea, processGraph, setCableDragging, swapSelectionSlots, swapArrangeSlots } from "../process";
+import { getEditor, getArea, processGraph, swapSelectionSlots, swapArrangeSlots } from "../process";
 import { setActiveGraph } from "../activeGraph";
 import { syncSemanticZoomFor } from "../semanticZoomStore";
-import { copySelected, pasteClipboard } from "../copyPaste";
 import { scheduleAutosave } from "../persistence";
 import { installErrorGuards } from "../errorValue";
 import { ctorRegistry } from "../nodeCtorRegistry";
 import { cableSelectionStore } from "../cableState";
-import { canvasLockStore } from "../canvasLock";
 import { isolateStore } from "../isolateStore";
 import { pushNotice } from "../noticeStore";
-import { buildCatalog } from "../catalogUtils";
-import { AddNodeMenu, type NodeCatalogEntry } from "../AddNodeMenu";
-import { installCanvasKeyboard } from "../canvasKeyboard";
-import { addMenuRequest } from "../addMenuStore";
-import { paletteStore } from "../paletteStore";
-import { frStore } from "../frStore";
-import { settingsPanel } from "../settingsStore";
-import { MIN_ZOOM, MAX_ZOOM } from "../areaPresets";
 import { makeEnsureElk, elkTidyLayout, tidyOptionsFromSettings, type Elk } from "../tidyArrange";
 import { CompositeRunControls, RUN_MODE_OPTIONS } from "../components/CompositeNode";
-import { minimapFillForNode } from "../components/Minimap";
-import { appThemeStore } from "../appTheme";
-import { DrillNodeMenu } from "../components/DrillNodeMenu";
-import { IS_MOBILE, IS_COARSE } from "../coarse";
+import { IS_MOBILE } from "../coarse";
 import "../components/compositeEditor.css";
-
-const nodeTypes = { sol: SolNodeAdapter };
-const edgeTypes = { cable: FlowCableEdge };
 
 const HISTORY_DEPTH = 50;
 const HISTORY_COALESCE_MS = 400;
 
-type DrillHandlers = {
-  bumpNode(id: string): void;
-  bumpConnections(): void;
-  moveNode(id: string, pos: { x: number; y: number }): void;
-  setViewport(v: Viewport): void;
-  getContainer(): HTMLElement | null;
-  syncTopology(): void;
-};
-
-type DrillStack = FlowModel & {
+type DrillStack = {
+  editor: CompositeNode["internalEditor"];
+  engine: CompositeNode["internalEngine"];
+  positions: Map<string, { x: number; y: number }>;
   area: FlowArea;
-  handlers: DrillHandlers;
+  handlers: SurfaceHandlers;
   /** True through hydrate/restore — the topology pipe waits it out (the same
    *  O(n²) trap the main canvas hit on loads). */
   rebuilding: boolean;
@@ -92,21 +43,13 @@ type DrillStack = FlowModel & {
 
 type DrillHolder = { __flowDrill?: DrillStack };
 
-/** One stack per composite, cached on the node (like the rete overlay's mount):
- *  the editor pipe can only install once, and the undo stack survives
- *  close/reopen. */
+/** One stack per composite, cached on the node: the editor pipe can only
+ *  install once, and the undo stack survives close/reopen. */
 function getDrillStack(comp: CompositeNode): DrillStack {
   const holder = comp as unknown as DrillHolder;
   if (holder.__flowDrill) return holder.__flowDrill;
   const positions = new Map<string, { x: number; y: number }>();
-  const handlers: DrillHandlers = {
-    bumpNode: () => {},
-    bumpConnections: () => {},
-    moveNode: () => {},
-    setViewport: () => {},
-    getContainer: () => null,
-    syncTopology: () => {},
-  };
+  const handlers = idleHandlers();
   const area = makeFlowArea(comp.internalEditor, positions, {
     bumpNode: (id) => handlers.bumpNode(id),
     bumpConnections: () => handlers.bumpConnections(),
@@ -131,8 +74,8 @@ function getDrillStack(comp: CompositeNode): DrillStack {
     }
     queued = false;
     handlers.syncTopology();
-    // Component-driven topology changes settle like the rete overlay's pipe:
-    // retarget the breadcrumb root and persist.
+    // Component-driven topology changes settle here: retarget the breadcrumb
+    // root and persist.
     void processGraph(compositeEditorStore.stack()[0]?.id ?? comp.id);
     scheduleAutosave();
     scheduleRecord(comp, s);
@@ -190,27 +133,13 @@ function scheduleRecord(comp: CompositeNode, s: DrillStack) {
 
 function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
   const s = useMemo(() => getDrillStack(comp), [comp]);
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [edges, setEdges] = useState<Edge[]>([]);
   const [ready, setReady] = useState(false);
-  const [menu, setMenu] = useState<{ screenX: number; screenY: number } | null>(null);
-  const [nodeMenu, setNodeMenu] = useState<
-    { nodeId: string; screenX: number; screenY: number; isComposite: boolean } | null
-  >(null);
   const [controlsOpen, setControlsOpen] = useState(!IS_MOBILE);
-  const [lasso, setLasso] = useState<LassoState>(null);
-  // The top bar's Tidy / Cleanup reach this level through the arrange slots.
-  const tidyRef = useRef<() => Promise<void>>(async () => {});
-  const touchSelect = useSyncExternalStore(touchSelectStore.subscribe, touchSelectStore.get);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const cursorRef = useRef({ x: 0, y: 0 });
   const pendingFitRef = useRef(false);
-  const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
-  useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
-  const themeMode = appThemeStore.getMode();
   useSyncExternalStore(compositePassStore.subscribe, compositePassStore.version);
   useSyncExternalStore(compositeEditorStore.subscribe, compositeEditorStore.version);
-  const { setViewport, getViewport, screenToFlowPosition, fitView } = useReactFlow();
+  const { fitView, screenToFlowPosition } = useReactFlow();
 
   const recomputeTarget = useCallback(
     () => compositeEditorStore.stack()[0]?.id ?? comp.id,
@@ -222,74 +151,11 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     return i > 0 ? st[i - 1].internalEditor : getEditor();
   })();
 
-  const syncTopology = useCallback(() => {
-    s.area.syncViews();
-    setNodes((prev) => {
-      const prevById = new Map(prev.map((n) => [n.id, n]));
-      return toFlowNodes(s).map((n) => {
-        const old = prevById.get(n.id);
-        if (
-          old &&
-          old.position.x === n.position.x &&
-          old.position.y === n.position.y &&
-          old.className === n.className
-        ) {
-          return old;
-        }
-        return {
-          ...n,
-          selected: old?.selected ?? false,
-          data: { ...n.data, version: (old?.data.version as number) ?? 0 },
-        };
-      }) as unknown as Node[];
-    });
-    setEdges((prev) => {
-      const prevById = new Map(prev.map((e) => [e.id, e]));
-      return toFlowEdges(s).map((e) => prevById.get(e.id) ?? e) as unknown as Edge[];
-    });
-  }, [s]);
+  // The top bar's Tidy / Cleanup reach this level through the arrange slots.
+  const tidyRef = useRef<() => Promise<void>>(async () => {});
 
-  // Member hiding follows the collapse store LIVE (same channel as the main canvas).
-  useEffect(
-    () =>
-      groupCollapseStore.subscribe(() => {
-        setNodes((ns) => {
-          let changed = false;
-          const next = ns.map((n) => {
-            const cls = nodeClassName(n.id);
-            if ((n.className ?? undefined) === cls) return n;
-            changed = true;
-            return { ...n, className: cls };
-          });
-          return changed ? next : ns;
-        });
-      }),
-    [],
-  );
-
-  // Late-bind the adapter handlers to this mount.
-  useEffect(() => {
-    s.handlers.bumpNode = (id) =>
-      setNodes((ns) =>
-        ns.map((n) =>
-          n.id === id ? { ...n, data: { ...n.data, version: (n.data.version as number) + 1 } } : n,
-        ),
-      );
-    s.handlers.bumpConnections = () => setEdges(toFlowEdges(s) as unknown as Edge[]);
-    s.handlers.moveNode = (id, pos) => {
-      setNodes((ns) => ns.map((n) => (n.id === id ? { ...n, position: { ...pos } } : n)));
-      scheduleRecord(comp, s);
-    };
-    s.handlers.setViewport = (v) => {
-      void setViewport(v);
-      syncSemanticZoomFor(v.zoom);
-    };
-    s.handlers.getContainer = () => wrapperRef.current;
-    s.handlers.syncTopology = syncTopology;
-  }, [comp, s, setViewport, syncTopology]);
-
-  // Open: hydrate, seed positions, publish as the ACTIVE graph. The selection verbs
-  // (lasso, align bar, keyboard) point here while open.
+  // Open: hydrate, seed positions, publish as the ACTIVE graph; the selection
+  // and arrange verbs point here while open.
   useEffect(() => {
     let canceled = false;
     let restoreSelection: (() => void) | null = null;
@@ -307,7 +173,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
       }
       s.rebuilding = false;
       pendingFitRef.current = true;
-      syncTopology();
+      s.handlers.syncTopology();
       setReady(true);
       setActiveGraph({
         editor: comp.internalEditor,
@@ -316,19 +182,14 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
       restoreSelection = swapSelectionSlots({
         unselectAllNodes: () => {
           for (const n of comp.internalEditor.getNodes()) (n as { selected?: boolean }).selected = false;
-          setNodes((ns) => ns.map((n) => (n.selected ? { ...n, selected: false } : n)));
+          s.handlers.syncSelection();
         },
         selectNode: (id, accumulate) => {
           for (const n of comp.internalEditor.getNodes()) {
             const sel = n.id === id || (accumulate && (n as { selected?: boolean }).selected === true);
             (n as { selected?: boolean }).selected = sel;
           }
-          setNodes((ns) =>
-            ns.map((n) => {
-              const sel = n.id === id || (accumulate && n.selected === true);
-              return sel === (n.selected ?? false) ? n : { ...n, selected: sel };
-            }),
-          );
+          s.handlers.syncSelection();
         },
       });
       restoreArrange = swapArrangeSlots({
@@ -359,9 +220,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     return compositePassStore.subscribe(() => {
       if (comp.runSeq === lastRunSeq) return;
       lastRunSeq = comp.runSeq;
-      setNodes((ns) =>
-        ns.map((n) => ({ ...n, data: { ...n.data, version: (n.data.version as number) + 1 } })),
-      );
+      s.handlers.bumpAllNodes();
       scheduleRecord(comp, s);
     });
   }, [comp, s]);
@@ -480,34 +339,12 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
       } finally {
         s.rebuilding = false;
       }
-      syncTopology();
+      s.handlers.syncTopology();
       void processGraph(recomputeTarget());
       scheduleAutosave();
     },
-    [comp, s, syncTopology, recomputeTarget],
+    [comp, s, recomputeTarget],
   );
-
-  async function duplicateNode(nodeId: string) {
-    const editor = comp.internalEditor;
-    if (!editor.getNode(nodeId)) return;
-    const snap = editor.getNodes().map((n) => [n, (n as { selected?: boolean }).selected] as const);
-    for (const [n] of snap) (n as { selected?: boolean }).selected = n.id === nodeId;
-    copySelected();
-    for (const [n, sel] of snap) (n as { selected?: boolean }).selected = sel;
-    const base = s.area.nodeViews.get(nodeId)?.position ?? { x: 0, y: 0 };
-    await pasteClipboard(base.x, base.y);
-    scheduleAutosave();
-  }
-
-  async function deleteNode(nodeId: string) {
-    const editor = comp.internalEditor;
-    const node = editor.getNode(nodeId);
-    if (!node || node instanceof CompositeInputNode || node instanceof CompositeOutputNode) return;
-    for (const c of editor.getConnections().filter((c) => c.source === nodeId || c.target === nodeId)) {
-      await editor.removeConnection(c.id);
-    }
-    await editor.removeNode(nodeId);
-  }
 
   const ensureElkRef = useRef<(() => Promise<Elk | null>) | null>(null);
   const tidyDrill = useCallback(async () => {
@@ -527,279 +364,24 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
   }, [comp, s, fitView, recomputeTarget]);
   tidyRef.current = tidyDrill;
 
-  // The full canvas keyboard over THIS level's refs (the main instance stands down);
-  // the drill-in adds only Escape (close menu / leave isolate / drill up).
-  const menuRef = useRef(menu);
-  menuRef.current = menu;
-  useEffect(() => {
-    const unKeys = installCanvasKeyboard({
-      editorRef: { current: comp.internalEditor },
-      areaRef: { current: s.area as unknown as Surface },
-      historyRef: { current: { undo: () => historyStep(false), redo: () => historyStep(true) } },
-      containerRef: wrapperRef,
-      screenMouseRef: cursorRef,
-      isAddMenuOpen: () => menuRef.current !== null,
-      deleteSelected: deleteSelection,
-    });
-    const unMenu = addMenuRequest.register((screenX, screenY) => setMenu({ screenX, screenY }));
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key !== "Escape") return;
-      const target = e.target as HTMLElement | null;
-      const tag = target?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!target?.isContentEditable) return;
-      // An open overlay (palette, reference, settings) takes the Escape itself.
-      if (paletteStore.get() || frStore.get() || settingsPanel.get()) return;
-      if (menuRef.current) setMenu(null);
-      else if (isolateStore.isActive()) isolateStore.exit();
-      else void drillTo(compositeEditorStore.stack().length - 2);
-    }
-    const onMouseMove = (e: MouseEvent) => { cursorRef.current = { x: e.clientX, y: e.clientY }; };
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("mousemove", onMouseMove);
-    return () => {
-      unKeys();
-      unMenu();
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("mousemove", onMouseMove);
-    };
-  }, [comp, s, historyStep, deleteSelection, drillTo]);
-
-  // Pinch/pan/wheel: the same installers as the main flow canvas.
-  useEffect(() => {
-    const el = wrapperRef.current;
-    if (!el) return;
-    const drive = (v: Viewport) => {
-      void setViewport(v);
-      s.area.setTransform({ x: v.x, y: v.y, k: v.zoom });
-      syncSemanticZoomFor(v.zoom);
-    };
-    const unPinch = installFlowPinch(el, { getViewport, setViewport: drive });
-    const unPan = installTouchCardPan(el, { getViewport, setViewport: drive });
-    const unWheel = installWheelZoom(el, { getViewport, setViewport: drive });
-    return () => { unPinch(); unPan(); unWheel(); };
-  }, [s, getViewport, setViewport]);
-
-  // Shift-drag lasso, capture-phase on the wrapper (as on the main canvas).
-  useEffect(() => {
-    const el = wrapperRef.current;
-    if (!el) return;
-    return installLassoSelection({
-      container: el,
-      editorRef: { current: s.editor },
-      areaRef: { current: s.area },
-      setLasso,
-    });
-  }, [s]);
-
-  const onNodesChange = useCallback(
-    (changes: NodeChange[]) => {
-      for (const ch of changes) {
-        if (ch.type === "select") {
-          const n = s.editor.getNode(ch.id);
-          if (n) (n as { selected?: boolean }).selected = ch.selected;
-        }
-      }
-      // Frame the subgraph once the freshly-opened cards have MEASURED —
-      // fitView before dimensions land frames a zero-size set.
-      if (pendingFitRef.current && changes.some((ch) => ch.type === "dimensions")) {
-        pendingFitRef.current = false;
-        requestAnimationFrame(() => void fitView({ padding: 0.15 }));
-      }
-      setNodes((ns) => applyNodeChanges(changes, ns));
-    },
-    [s, fitView],
-  );
-  const onEdgesChange = useCallback((changes: EdgeChange[]) => {
-    setEdges((es) => {
-      const next = applyEdgeChanges(changes, es);
-      if (changes.some((ch) => ch.type === "select")) {
-        const ids = next.filter((e) => e.selected).map((e) => e.id);
-        queueMicrotask(() => cableSelectionStore.replaceAll(ids));
-      }
-      return next;
-    });
-  }, []);
-  const onConnect = useCallback(
-    (c: Connection) => {
-      void connect(s, c.source, c.sourceHandle ?? "", c.target, c.targetHandle ?? "");
-    },
-    [s],
-  );
-  const isValidConnection: IsValidConnection = useCallback(
-    (c) => canConnect(s, c.source ?? "", c.sourceHandle ?? "", c.target ?? "", c.targetHandle ?? ""),
-    [s],
-  );
-  const onConnectStart = useCallback(() => {
-    (document.activeElement as HTMLElement | null)?.blur?.();
-    setCableDragging(true);
-  }, []);
-  const onConnectEnd = useCallback(() => setCableDragging(false), []);
-  const onEdgeMouseEnter = useCallback((_e: unknown, edge: Edge) => {
-    socketHighlightStore.setCableHover([
-      dragSocketKey(edge.source, edge.sourceHandle ?? ""),
-      dragSocketKey(edge.target, edge.targetHandle ?? ""),
-    ]);
-  }, []);
-  const onEdgeMouseLeave = useCallback(() => socketHighlightStore.setCableHover([]), []);
-  // An expanded group tows its unselected members per drag frame (RF moves the
-  // selection itself); the view mirror follows so live readers see the drag.
-  const dragLastPos = useRef<Map<string, { x: number; y: number }>>(new Map());
-  const onNodeDragStart = useCallback((_e: unknown, _node: Node, dragged: Node[]) => {
-    dragLastPos.current = new Map(dragged.map((n) => [n.id, { ...n.position }]));
-  }, []);
-  const onNodeDrag = useCallback(
-    (_e: unknown, _node: Node, dragged: Node[]) => {
-      for (const n of dragged) {
-        const model = s.editor.getNode(n.id);
-        if (!(model instanceof GroupNode) || model.collapsed) continue;
-        const last = dragLastPos.current.get(n.id);
-        if (!last) continue;
-        const dx = n.position.x - last.x;
-        const dy = n.position.y - last.y;
-        if (dx !== 0 || dy !== 0) void moveGroupMembers(s.editor, s.area, model, dx, dy, true);
-      }
-      for (const n of dragged) {
-        dragLastPos.current.set(n.id, { ...n.position });
-        s.positions.set(n.id, { ...n.position });
-        const view = s.area.nodeViews.get(n.id);
-        if (view) view.position = { x: n.position.x, y: n.position.y };
-      }
-    },
-    [s],
-  );
-  const onNodeDragStop = useCallback(
-    (_e: unknown, _node: Node, dragged: Node[]) => {
-      for (const n of dragged) {
-        s.positions.set(n.id, { ...n.position });
-        const view = s.area.nodeViews.get(n.id);
-        if (view) view.position = { ...n.position };
-      }
-      s.area.syncViews();
-      dragLastPos.current.clear();
-      scheduleRecord(comp, s);
-      scheduleAutosave();
-    },
-    [comp, s],
-  );
-  const onMove = useCallback(
-    (_e: unknown, viewport: Viewport) => {
-      s.area.setTransform({ x: viewport.x, y: viewport.y, k: viewport.zoom });
-      syncSemanticZoomFor(viewport.zoom);
-    },
-    [s],
-  );
-  const onPointerMove = useCallback(
-    (e: React.PointerEvent) => {
-      s.area.setPointer(screenToFlowPosition({ x: e.clientX, y: e.clientY }));
-    },
-    [s, screenToFlowPosition],
-  );
-  const onPaneClick = useCallback(() => cableSelectionStore.set(null), []);
-
-  async function handleMenuSelect(entry: NodeCatalogEntry) {
-    if (!menu) return;
-    const node = entry.create() as SolenoidNode;
-    if (node instanceof CompositeNode) await node.hydrate(ctorRegistry());
-    await comp.internalEditor.addNode(node);
-    const pos = screenToFlowPosition({ x: menu.screenX, y: menu.screenY });
-    await s.area.translate(node.id, pos);
-    setMenu(null);
-  }
+  const hooks: SurfaceHooks = {
+    rfId: "drill",
+    className: "solenoid-composite-editor__host",
+    history: { undo: () => historyStep(false), redo: () => historyStep(true) },
+    deleteSelected: deleteSelection,
+    afterMove: () => { scheduleRecord(comp, s); scheduleAutosave(); },
+    afterProgrammaticMove: () => scheduleRecord(comp, s),
+    // The level's editor pipe already recomputes + persists a topology change.
+    afterNodeAdded: () => scheduleAutosave(),
+    fitOnMeasure: pendingFitRef,
+    onEscape: () => void drillTo(compositeEditorStore.stack().length - 2),
+  };
 
   return (
-    <div className="solenoid-composite-editor__backdrop">
-      <div
-        ref={wrapperRef}
-        className={`solenoid-composite-editor__host sol-rf-appcanvas${locked ? " solenoid-canvas--locked" : ""}`}
-        onPointerMove={onPointerMove}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const target = e.target as Element | null;
-          const nodeEl = target?.closest?.(".react-flow__node");
-          const hitId = nodeEl?.getAttribute("data-id") ?? null;
-          const hit = hitId ? comp.internalEditor.getNode(hitId) : null;
-          if (hit && !(hit instanceof CompositeInputNode) && !(hit instanceof CompositeOutputNode)) {
-            setMenu(null);
-            setNodeMenu({
-              nodeId: hit.id,
-              screenX: e.clientX,
-              screenY: e.clientY,
-              isComposite: hit instanceof CompositeNode,
-            });
-          } else {
-            setNodeMenu(null);
-            setMenu({ screenX: e.clientX, screenY: e.clientY });
-          }
-        }}
-      >
+    <div className="solenoid-composite-editor__backdrop" ref={wrapperRef}>
+      <FlowSurface stack={s} hooks={hooks}>
         {!ready && <div className="solenoid-composite-editor__loading" />}
-        <ReactFlow
-          id="drill"
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          nodesDraggable={!locked}
-          elementsSelectable={!locked}
-          panOnDrag={!(IS_COARSE && touchSelect)}
-          onNodeDragStart={onNodeDragStart}
-          onNodeDrag={onNodeDrag}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onEdgeMouseEnter={onEdgeMouseEnter}
-          onEdgeMouseLeave={onEdgeMouseLeave}
-          onConnect={onConnect}
-          onConnectStart={onConnectStart}
-          onConnectEnd={onConnectEnd}
-          onNodeDragStop={onNodeDragStop}
-          onPaneClick={onPaneClick}
-          onMove={onMove}
-          isValidConnection={isValidConnection}
-          deleteKeyCode={null}
-          selectionKeyCode={null}
-          elevateNodesOnSelect={false}
-          zoomOnDoubleClick={false}
-          zoomOnScroll={false}
-          minZoom={MIN_ZOOM}
-          maxZoom={MAX_ZOOM}
-          colorMode={themeMode}
-          proOptions={{ hideAttribution: false }}
-        >
-          <Background
-            variant={BackgroundVariant.Dots}
-            gap={24}
-            size={1.5}
-            color="var(--canvas-dot)"
-            bgColor="var(--canvas-bg)"
-          />
-          <MiniMap
-            className="solenoid-minimap"
-            style={{ width: 182, height: 105 }}
-            pannable
-            zoomable
-            nodeBorderRadius={3}
-            nodeColor={(n) => minimapFillForNode((n.data as { node: SolenoidNode }).node, themeMode).background}
-            nodeStrokeColor={(n) => minimapFillForNode((n.data as { node: SolenoidNode }).node, themeMode).borderColor}
-            nodeStrokeWidth={1}
-          />
-        </ReactFlow>
-        {lasso && (
-          <svg
-            className="solenoid-lasso"
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 50 }}
-          >
-            <polygon
-              points={lasso.points.map((p) => `${p.x},${p.y}`).join(" ")}
-              fill={lasso.mode === "enclose" ? "rgba(86, 180, 233, 0.10)" : "rgba(255, 220, 0, 0.10)"}
-              stroke={lasso.mode === "enclose" ? "rgba(86, 180, 233, 0.9)" : "rgba(255, 220, 0, 0.95)"}
-              strokeWidth={1.4}
-              strokeDasharray={lasso.mode === "touch" ? "5 4" : undefined}
-            />
-          </svg>
-        )}
-        <CableInspector />
-      </div>
+      </FlowSurface>
       <div className="solenoid-composite-editor__strip" onPointerDown={(e) => e.stopPropagation()}>
         <div className="solenoid-composite-editor__crumbs">
           <button
@@ -865,27 +447,6 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
             </div>
           )}
         </div>
-      )}
-      {menu && (
-        <AddNodeMenu
-          screenX={menu.screenX}
-          screenY={menu.screenY}
-          entries={buildCatalog(true)}
-          onSelect={(entry) => void handleMenuSelect(entry)}
-          onClose={() => setMenu(null)}
-        />
-      )}
-      {nodeMenu && (
-        <DrillNodeMenu
-          menu={nodeMenu}
-          onEdit={() => {
-            const n = comp.internalEditor.getNode(nodeMenu.nodeId);
-            if (n instanceof CompositeNode) compositeEditorStore.drillInto(n);
-          }}
-          onDuplicate={() => void duplicateNode(nodeMenu.nodeId)}
-          onDelete={() => void deleteNode(nodeMenu.nodeId)}
-          onClose={() => setNodeMenu(null)}
-        />
       )}
     </div>
   );
