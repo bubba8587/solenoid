@@ -8,9 +8,10 @@ import { cableSelectionStore } from "./cableState";
 import { rebuildGroupMembership } from "./groupMembership";
 import { syncGroupCollapse, groupCollapseStore } from "./groupCollapse";
 import { scheduleAutosave } from "./persistence";
-import { getEditor } from "./process";
+
 import { settleStandoffs } from "./standoffs";
 import { measuredBox } from "./nodeSize";
+import { getOwningEditor } from "./activeGraph";
 
 export const GROUP_DEFAULT_COLOR = "gray"; // palette slot — neutral gray when there's no clear majority
 
@@ -44,7 +45,7 @@ export const GROUP_MIN_H = 90;
 function nodeBox(area: Area, id: string): { x: number; y: number; w: number; h: number } | null {
   // measuredBox guarantees a non-zero size: an unpainted member reading
   // offsetWidth/Height = 0 collapses the wrapped bbox to that member's corner.
-  return measuredBox(area, id, getEditor() ?? undefined);
+  return measuredBox(area, id, getOwningEditor(id) ?? undefined);
 }
 
 /** Pin a group's view element behind its members (simpleNodesOrder stacks by DOM order). */
@@ -87,6 +88,7 @@ export async function createGroupFromSelection(editor: Editor, area: Area): Prom
     height: Math.round((maxY - minY) + GROUP_PAD * 2 + GROUP_HEADER),
   });
   await editor.addNode(group);
+  rebuildGroupMembership(editor); // members tint now, not on the next unrelated rebuild
   await area.translate(group.id, { x: minX - GROUP_PAD, y: minY - GROUP_PAD - GROUP_HEADER });
   sendGroupToBack(area, group.id);
   return group.id;

@@ -1,10 +1,11 @@
 import { zoomAt, type ZoomSurface } from "./zoomAt";
 import type { NodeEditor } from "rete";
-import { getEditor, getArea } from "./process";
+
 import { getOwningEditor, getOwningArea } from "./activeGraph";
 import { groupCollapseStore } from "./groupCollapse";
 import { GroupNode } from "./rete-nodes";
 import type { Schemes } from "./schemes";
+import { getActiveArea, getActiveEditor } from "./activeGraph";
 
 // A node hidden inside a COLLAPSED group has no visible element, so zoomAt would
 // target a stale (~0,0) position — fly to the nearest VISIBLE ancestor instead.
@@ -46,8 +47,8 @@ export function flyToNode(nodeId: string): void {
 /** Fits a bounding box over every node; unknown/removed ids are skipped and an empty
  *  result is a no-op. */
 export function flyToNodes(nodeIds: string[]): void {
-  const editor = getEditor();
-  const area = getArea();
+  const editor = getActiveEditor();
+  const area = getActiveArea();
   if (!editor || !area || nodeIds.length === 0) return;
   const refs = nodeIds
     .map((id) => visibleRef(editor, id))

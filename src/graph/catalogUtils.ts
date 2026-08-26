@@ -4,12 +4,13 @@ import { packPlacements, packsStore, NODE_PACK_TAGS } from "./packs";
 import { NODE_OPS, hiddenOps, exposureOf, opEntry } from "./nodeOps";
 import { CATALOG_TO_EXCEL } from "./excelToCatalog";
 import { NODE_EXCEL } from "./nodeExcel";
-import { getEditor, getArea, processGraph, unselectAllNodes, selectNode } from "./process";
+import { processGraph, unselectAllNodes, selectNode } from "./process";
 import type { NodeCatalogEntry, CatalogCategory, CatalogPair, CatalogEntry } from "./AddNodeMenu";
 import { nodeNameStore } from "./nodeNameStore";
 // Cycle-safe: nodeCtorRegistry imports FLAT_CATALOG from here, but neither module
 // touches the other's exports at init time.
 import { ctorRegistry, type NodeCtor } from "./nodeCtorRegistry";
+import { getActiveArea, getActiveEditor } from "./activeGraph";
 
 // Pack nodes are INSERTED into the core tree at their target category path, so packs
 // never grow the top level; a type claimed by several packs records every owner.
@@ -295,8 +296,8 @@ export { nodeTypeName };
 export async function addNodeByCatalogType(catalogType: string): Promise<boolean> {
   const entry = FLAT_CATALOG.get(catalogType);
   if (!entry) return false;
-  const editor = getEditor();
-  const area = getArea();
+  const editor = getActiveEditor();
+  const area = getActiveArea();
   if (!editor || !area) return false;
 
   // Cast through unknown: this file deliberately imports no node classes.

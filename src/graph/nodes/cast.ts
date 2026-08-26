@@ -5,8 +5,9 @@ import { coerceLogical } from "../valueKinds";
 import { formatDateSerial, parseDateToSerial, DEFAULT_DATE_FORMAT } from "./date";
 import { formatCx, cx, isCx, type Cx } from "./complex";
 import { formatNumberPattern } from "./text";
-import { getEditor } from "../process";
+
 import { solError, isSolError, type SolError } from "../errorValue";
+import { getOwningEditor } from "../activeGraph";
 
 // Cast — coerces a scalar or list to the chosen target type, element-wise. The output
 // socket is swapped in place by applyCastTarget so downstream type checking stays honest.
@@ -152,7 +153,7 @@ export class CastNode extends ClassicPreset.Node {
   // The source socket's dataType — the only witness distinguishing a date serial from
   // a plain number.
   private sourceKind(): SocketDataType | null {
-    const editor = getEditor();
+    const editor = getOwningEditor(this.id);
     if (!editor) return null;
     const conn = editor.getConnections().find(
       (c) => c.target === this.id && c.targetInput === "value",

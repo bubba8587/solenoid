@@ -2,9 +2,10 @@
 // and the tablet top bar; the bars differ only in placement and sizing.
 
 import { useEffect, useState } from "react";
-import { getEditor } from "./process";
+
 import { cableSelectionStore } from "./cableState";
 import { IS_COARSE } from "./coarse";
+import { getActiveEditor } from "./activeGraph";
 
 // Synthetic Ctrl+Z through Canvas's key handler, keeping undo single-sourced.
 export function fireUndo(redo: boolean) {
@@ -28,7 +29,7 @@ export function useHasSelection(enabled = IS_COARSE): boolean {
   useEffect(() => {
     if (!enabled) return;
     const tick = () => {
-      const editor = getEditor();
+      const editor = getActiveEditor();
       const nodeSelected = !!editor?.getNodes().some((n) => (n as { selected?: boolean }).selected);
       setHasSelection(nodeSelected || cableSelectionStore.count() > 0);
     };

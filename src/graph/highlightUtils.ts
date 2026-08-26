@@ -3,8 +3,8 @@
 //   hover destination → that cable + the origin only.
 //   a Conduit lane is transparent (one logical wire), followed through ONCE.
 
-import { getEditor } from "./process";
 import { dragSocketKey } from "./cableState";
+import { getOwningEditor } from "./activeGraph";
 
 type Side = "input" | "output";
 
@@ -31,7 +31,7 @@ export function resolveSocketHighlights(
   startNodeId: string,
   startSocketKey: string,
 ): { socketKeys: string[]; cableIds: string[] } {
-  const editor = getEditor();
+  const editor = getOwningEditor(startNodeId);
   if (!editor) return { socketKeys: [], cableIds: [] };
 
   const startNode = editor.getNode(startNodeId);

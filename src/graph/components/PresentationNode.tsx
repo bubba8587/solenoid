@@ -4,7 +4,7 @@ import { hexToRgba, themeAccent, resolveColor } from "../palette";
 import { appThemeStore } from "../appTheme";
 import { SwatchGrid } from "./SwatchGrid";
 import { useDismissOnOutside } from "./useDismissOnOutside";
-import { getEditor } from "../process";
+
 import { flyToNodes } from "../flyToNode";
 import { presentationStore } from "../presentationStore";
 import { scheduleAutosave } from "../persistence";
@@ -12,6 +12,7 @@ import { nodeDisplayNames } from "../nodeNames";
 import type { NodeProps } from "./nodeKit";
 import { stopDragStart } from "../coarse";
 import "./PresentationNode.css";
+import { getActiveEditor } from "../activeGraph";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
@@ -39,7 +40,7 @@ export function PresentationComponent({ data }: NodeProps<PresentationNodeType>)
   function refresh() { bump((v) => v + 1); scheduleAutosave(); }
 
   function addStep() {
-    const selected = (getEditor()?.getNodes() ?? []).filter((n) => n.selected && n.id !== data.id);
+    const selected = (getActiveEditor()?.getNodes() ?? []).filter((n) => n.selected && n.id !== data.id);
     const n = data.steps.length + 1;
     data.addStep(`Step ${n}`, selected.map((s) => s.id));
     refresh();
@@ -56,7 +57,7 @@ export function PresentationComponent({ data }: NodeProps<PresentationNodeType>)
   function next() { goTo(data.activeIndex + 1); }
   function prev() { goTo(data.activeIndex - 1); }
 
-  const editor = getEditor();
+  const editor = getActiveEditor();
   const names = editor ? nodeDisplayNames(editor.getNodes()) : new Map<string, string>();
   const mode = appThemeStore.getMode();
   const themed = themeAccent(resolveColor(color), mode);

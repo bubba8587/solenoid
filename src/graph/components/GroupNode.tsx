@@ -4,7 +4,7 @@ import { hexToRgba, contrastInk, themeAccent, darkenAccent, resolveColor } from 
 import { appThemeStore } from "../appTheme";
 import { SwatchGrid } from "./SwatchGrid";
 import { useDismissOnOutside } from "./useDismissOnOutside";
-import { getArea, getEditor, autoArrange } from "../process";
+import { autoArrange } from "../process";
 import { cableValueStore } from "../cableValueStore";
 import { describeValueKind } from "../valueKindLabel";
 import { valueChipFor } from "./ValueChip";
@@ -27,6 +27,7 @@ import { NodeSocket } from "./NodeSocket";
 import type { NodeProps } from "./nodeKit";
 import "./GroupNode.css";
 import { stopDragStart } from "../coarse";
+import { getOwningArea, getOwningEditor } from "../activeGraph";
 
 // Honors the FC annotation keyed by `annNodeId`.
 function formatReadout(v: unknown, annNodeId: string): string {
@@ -49,12 +50,12 @@ function formatReadout(v: unknown, annNodeId: string): string {
 // be in the cable store yet.
 function readoutValue(t: RetainedTerminal): unknown {
   if (t.kind === "display") {
-    const n = getEditor()?.getNode(t.displayId) as { cachedValue?: unknown } | undefined;
+    const n = getOwningEditor(t.displayId)?.getNode(t.displayId) as { cachedValue?: unknown } | undefined;
     return n?.cachedValue;
   }
   const v = cableValueStore.get(t.effNodeId, t.effSocketKey);
   if (v !== undefined && v !== null) return v;
-  const n = getEditor()?.getNode(t.effNodeId) as { cachedResult?: unknown } | undefined;
+  const n = getOwningEditor(t.effNodeId)?.getNode(t.effNodeId) as { cachedResult?: unknown } | undefined;
   return n?.cachedResult ?? v;
 }
 
@@ -75,7 +76,6 @@ function renderReadout(t: RetainedTerminal) {
   if (chip) return chip;
   return <span className="solenoid-group__row-val">{readoutText(t)}</span>;
 }
-
 
 export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   const node = data;
@@ -100,7 +100,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   const fillAlpha = mode === "light" ? 0.14 : 0.08;
 
   useLayoutEffect(() => {
-    const el = getArea()?.nodeViews.get(node.id)?.element;
+    const el = getOwningArea(node.id)?.nodeViews.get(node.id)?.element;
     // Expanded sits BEHIND members (standoffs −3 < group −2 < conduit −1 < nodes 0)
     // so a member Conduit stays clickable; collapsed must sit ABOVE the cables or
     // they draw over the edge pill sockets.
@@ -117,7 +117,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
     const next = label;
     if (next !== prev) {
       node.label = next;
-      void getArea()?.update("node", node.id);
+      void getOwningArea(node.id)?.update("node", node.id);
     }
     setEditingLabel(false);
   }
@@ -138,7 +138,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
     lastGripDown.current = now;
     const startX = e.clientX, startY = e.clientY;
     const startW = node.width, startH = node.height;
-    const area = getArea();
+    const area = getOwningArea(node.id);
     const k = area?.area.transform.k ?? 1;
     const handle = e.currentTarget as HTMLElement;
     handle.setPointerCapture(e.pointerId);
@@ -162,7 +162,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
           void area?.update("node", node.id);
         }
       }
-      const editor = getEditor();
+      const editor = getOwningEditor(node.id);
       if (editor && area) {
         // A MANUAL resize DOES re-evaluate membership; autofit is the exception —
         // it wraps existing members and must not absorb bystanders.
@@ -182,8 +182,8 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   }
 
   async function autofitToMembers() {
-    const editor = getEditor();
-    const area = getArea();
+    const editor = getOwningEditor(node.id);
+    const area = getOwningArea(node.id);
     if (!editor || !area) return;
     await autofitGroupWithHistory(editor, area, node);
   }
@@ -198,8 +198,8 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
 
   function pickColor(c: string) {
     node.color = c;
-    const ed = getEditor();
-    void getArea()?.update("node", node.id);
+    const ed = getOwningEditor(node.id);
+    void getOwningArea(node.id)?.update("node", node.id);
     if (ed) rebuildGroupMembership(ed); // member dots follow the group color
     scheduleAutosave();
   }
@@ -208,8 +208,8 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
 
   function toggleCollapse(e: React.MouseEvent) {
     e.stopPropagation();
-    const editor = getEditor();
-    const area = getArea();
+    const editor = getOwningEditor(node.id);
+    const area = getOwningArea(node.id);
     if (!editor || !area) return;
     void setGroupsCollapsed(editor, area, [node], !node.collapsed);
   }
@@ -359,7 +359,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
         {/* Edge pills are REAL sockets, so outputs stay draggable; a lanes > 1 pill
             is a Conduit ribbon trunk's terminus, functional socket under a stadium. */}
         {inputPills.map((ip) => {
-          const sock = getEditor()?.getNode(ip.nodeId)?.inputs[ip.socketKey]?.socket;
+          const sock = getOwningEditor(ip.nodeId)?.getNode(ip.nodeId)?.inputs[ip.socketKey]?.socket;
           if (!sock) return null;
           const lanes = ip.lanes ?? 1;
           if (lanes < 2) {
@@ -386,7 +386,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
           );
         })}
         {retained.map((t, i) => {
-          const sock = getEditor()?.getNode(t.effNodeId)?.outputs[t.effSocketKey]?.socket;
+          const sock = getOwningEditor(t.effNodeId)?.getNode(t.effNodeId)?.outputs[t.effSocketKey]?.socket;
           if (!sock) return null;
           // Mirrors the combined INPUT pill's stadium to the right edge.
           if ((t.lanes ?? 0) > 1) {

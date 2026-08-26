@@ -2,13 +2,14 @@ import { useSyncExternalStore, useState, useRef, useEffect } from "react";
 import { CardFrame } from "./NodeCard";
 import { isolateStore, isoEndpointSelect } from "../isolateStore";
 import { boundaryCrossings, type BoundaryCrossing } from "../isolateBoundary";
-import { getEditor, getArea, connectionVersionStore, unselectAllNodes } from "../process";
+import { connectionVersionStore, unselectAllNodes } from "../process";
 import { cableSelectionStore } from "../cableState";
 import { standoffStore, standoffLayoutTick } from "../standoffs";
 import { nodeDisplayName } from "../catalogUtils";
 import { getCablePath, Position } from "../cablePaths";
 import { cableShapeStore } from "../cableShape";
 import "./isolateEndpoints.css";
+import { getActiveArea, getActiveEditor, getOwningEditor } from "../activeGraph";
 
 // Boundary terminals for the Isolate overlay, rendered in the area's transformed plane
 // (canvas coords) so they pan/zoom with the graph.
@@ -28,12 +29,12 @@ function socketCanvasPos(holder: HTMLElement, nodeId: string, key: string, side:
   if (!el) return null;
   const r = el.getBoundingClientRect();
   const hr = holder.getBoundingClientRect();
-  const k = getArea()?.area.transform.k || 1;
+  const k = getActiveArea()?.area.transform.k || 1;
   return { x: (r.left + r.width / 2 - hr.left) / k, y: (r.top + r.height / 2 - hr.top) / k };
 }
 
 function externalName(nodeId: string): string {
-  const n = getEditor()?.getNode(nodeId);
+  const n = getOwningEditor(nodeId)?.getNode(nodeId);
   if (!n) return nodeId;
   return nodeDisplayName(n);
 }
@@ -47,8 +48,8 @@ export function IsolateEndpoints() {
   const selected = isoEndpointSelect.get();
 
   const focus = isolateStore.get();
-  const editor = getEditor();
-  const area = getArea();
+  const editor = getActiveEditor();
+  const area = getActiveArea();
 
   // Drag offsets are ephemeral and in canvas coords, applied over the auto-centered position.
   const [override, setOverride] = useState<{ entry: Pt; exit: Pt }>({ entry: { x: 0, y: 0 }, exit: { x: 0, y: 0 } });

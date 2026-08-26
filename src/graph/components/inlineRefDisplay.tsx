@@ -2,7 +2,7 @@ import type { Emit } from "./nodeKit";
 import { useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { ClassicPreset } from "rete";
-import { getEditor } from "../process";
+
 import { cableValueStore } from "../cableValueStore";
 import { formatAnnotationStore, formatNumberWithAnnotation, applyLogicalStyle, type FormatAnnotation, type LambdaView } from "../formatAnnotationStore";
 import { highlightFormula } from "../formulaSyntax";
@@ -25,6 +25,7 @@ import { ChartFigure } from "./chartView";
 import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { NodeSocket } from "./NodeSocket";
+import { getOwningEditor } from "../activeGraph";
 
 // The ONE rendering path for a `` `=name` `` inline ref: Note cards and the Report
 // overlay both go through InlineRefBody so a ref renders identically everywhere.
@@ -42,7 +43,7 @@ const INLINE_REF_TEXT_RE = /^=([A-Za-z_][A-Za-z0-9_]*)(!?)$/;
  *  (no `downstreamAnnotation` — a ref is a terminal consumer); a plain function, not
  *  a hook, so the static HTML export can freeze the same formatting. */
 export function resolveRefAnnotation(nodeId: string, refKey: string): FormatAnnotation | undefined {
-  const editor = getEditor();
+  const editor = getOwningEditor(nodeId);
   const resolver = editor ? sharedAnnotationResolver(editor) : undefined;
   return formatAnnotationStore.get(nodeId, refKey) ?? resolver?.inAnnotation(nodeId, refKey);
 }
@@ -255,7 +256,7 @@ export function InlineRefValue({ nodeId, refKey, collapsible, highlight }: { nod
   // Re-render after every recompute pass (processGraph bumps this), so a newly-wired
   // or changed ref value refreshes without an unrelated edit.
   useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
-  const editor = getEditor();
+  const editor = getOwningEditor(nodeId);
   const node = editor?.getNode(nodeId) as unknown as RefValueHost | undefined;
   const value = node?.refValue(refKey);
   const ann = useRefAnnotation(nodeId, refKey);

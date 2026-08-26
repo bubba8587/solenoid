@@ -3,7 +3,8 @@
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
-import { getEditor } from "./process";
+
+import { getOwningEditor } from "./activeGraph";
 
 export interface Pin {
   nodeId: string;
@@ -51,7 +52,7 @@ export const pinStore = {
  *  output and pins with an empty key. Tests the constructor NAME, not `instanceof`,
  *  so a Vite hot-swap can't silently stop matching live instances. */
 export function pinNodeValue(nodeId: string): void {
-  const node = getEditor()?.getNode(nodeId);
+  const node = getOwningEditor(nodeId)?.getNode(nodeId);
   if (!node) return;
   if (node.constructor.name === "GroupNode") { pinStore.toggle(nodeId, ""); return; }
   const outputKey = Object.keys((node as { outputs?: Record<string, unknown> }).outputs ?? {})[0];

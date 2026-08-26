@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { getEditor, getArea, requestRecalc } from "./process";
+import { requestRecalc } from "./process";
 import { calcModeStore } from "./calcModeStore";
 import { nodeDisplayName } from "./catalogUtils";
 import { isWebDemo } from "../env";
@@ -7,6 +7,7 @@ import { loadRevealStore } from "./loadReveal";
 import { WEB_DEMO_NODE_BUDGET, WEB_DEMO_NODE_WARN_RATIO } from "./nodeBudget";
 import { problemsStore, problemsPanelUi } from "./problemsStore";
 import { useBottomChrome } from "./chromeBottom";
+import { getActiveArea, getActiveEditor } from "./activeGraph";
 
 /** Bottom status strip, polled a few times a second rather than wired to stores.
  *  The node-budget meter is WEB-DEMO only — the limit is the webview's, not the
@@ -15,8 +16,8 @@ import { useBottomChrome } from "./chromeBottom";
 type Snapshot = { nodes: number; cables: number; selection: string; zoom: number };
 
 function read(): Snapshot {
-  const editor = getEditor();
-  const area = getArea();
+  const editor = getActiveEditor();
+  const area = getActiveArea();
   const zoom = area ? Math.round(area.area.transform.k * 100) : 100;
   if (!editor) return { nodes: 0, cables: 0, selection: "Ready", zoom };
 

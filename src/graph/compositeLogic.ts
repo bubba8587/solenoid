@@ -6,9 +6,10 @@ import { GroupNode, CompositeNode, CompositeInputNode, CompositeOutputNode } fro
 import { installErrorGuards } from "./errorValue";
 import { groupCollapseStore } from "./groupCollapse";
 import { cableSelectionStore } from "./cableState";
-import { beginGraphRebuild, endGraphRebuild, bulkSettle, getEditor } from "./process";
+import { beginGraphRebuild, endGraphRebuild, bulkSettle } from "./process";
 import { ctorRegistry } from "./nodeCtorRegistry";
 import { measuredBox } from "./nodeSize";
+import { getOwningEditor } from "./activeGraph";
 
 // Composite make/unpack PHYSICALLY RELOCATE node instances between the outer editor and a
 // composite's private internal one; every crossing cable becomes a declared boundary port.
@@ -17,7 +18,7 @@ type Editor = NodeEditor<Schemes>;
 type Area = Surface;
 
 function nodeBox(area: Area, id: string): { x: number; y: number; w: number; h: number } | null {
-  return measuredBox(area, id, getEditor() ?? undefined);
+  return measuredBox(area, id, getOwningEditor(id) ?? undefined);
 }
 
 /** Create a composite wrapping the current selection. Returns the new

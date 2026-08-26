@@ -3,7 +3,7 @@ import { IS_MOBILE } from "../coarse";
 import { pinStore } from "../pinStore";
 import { registerChrome } from "../chromeToggle";
 import { cableValueStore } from "../cableValueStore";
-import { connectionVersionStore, getEditor } from "../process";
+import { connectionVersionStore } from "../process";
 import { flyToNode } from "../flyToNode";
 import { nodeDisplayName } from "../catalogUtils";
 import { GroupNode } from "../rete-nodes";
@@ -22,16 +22,17 @@ import { CubeChip } from "./CubeChip";
 import { isFrameValue, isCubeValue } from "../frame";
 import "./pinLayer.css";
 import { CloseIcon } from "./CloseIcon";
+import { getActiveEditor, getOwningEditor } from "../activeGraph";
 
 // Must mirror GroupNode's readout: a Display reads cachedValue, a generic member its
 // live output, falling back to cachedResult for LAMBDA-style nodes that cache there.
 function readoutValue(t: RetainedTerminal): unknown {
   if (t.kind === "display") {
-    return (getEditor()?.getNode(t.displayId) as { cachedValue?: unknown } | undefined)?.cachedValue;
+    return (getOwningEditor(t.displayId)?.getNode(t.displayId) as { cachedValue?: unknown } | undefined)?.cachedValue;
   }
   const v = cableValueStore.get(t.effNodeId, t.effSocketKey);
   if (v !== undefined && v !== null) return v;
-  return (getEditor()?.getNode(t.effNodeId) as { cachedResult?: unknown } | undefined)?.cachedResult ?? v;
+  return (getOwningEditor(t.effNodeId)?.getNode(t.effNodeId) as { cachedResult?: unknown } | undefined)?.cachedResult ?? v;
 }
 
 // Mirrors ValueDisplay but standalone (no node/FC context); `label` titles the popup
@@ -106,7 +107,7 @@ export function PinLayer() {
   }, [collapsed, pins.length]);
   if (pins.length === 0) return null;
 
-  const editor = getEditor();
+  const editor = getActiveEditor();
   if (!editor) return null;
 
   const removeBtn = (label: string, nodeId: string) => (

@@ -6,7 +6,8 @@ import { isDocumentValue, type DocumentValue } from "../documentValue";
 import { isSolError, type SolError } from "../errorValue";
 import { isDesktop } from "../fileBridge";
 import { settingsStore } from "../settingsStore";
-import { getEditor } from "../process";
+
+import { getOwningEditor } from "../activeGraph";
 // obsidianWrite is imported lazily INSIDE run(): pulling its subtree eagerly through
 // the rete-nodes barrel creates an init cycle (…→ documentStore → persistence →
 // nodeCatalog → rete-nodes) that leaves catalog metadata undefined at eval time.
@@ -50,7 +51,7 @@ export class WriteObsidianNode extends ClassicPreset.Node {
    *  ref inputs. Used only to rasterize a chart ref, which needs its live SVG. */
   private refSources(): Map<string, string> {
     const out = new Map<string, string>();
-    const ed = getEditor();
+    const ed = getOwningEditor(this.id);
     if (!ed) return out;
     const conns = ed.getConnections();
     const toMe = conns.find((c) => c.target === this.id && c.targetInput === "in");
