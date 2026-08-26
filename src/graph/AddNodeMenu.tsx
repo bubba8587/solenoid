@@ -316,11 +316,18 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    const t = window.setTimeout(() => window.addEventListener("mousedown", onClose), 0);
+    // Capture phase: RF's d3 handlers stop a canvas mousedown at the target, so a bubble
+    // listener never hears the click that should dismiss the menu.
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Element | null;
+      if (t?.closest?.(".solenoid-add-menu, .solenoid-add-menu__panel--submenu")) return;
+      onClose();
+    };
+    const t = window.setTimeout(() => window.addEventListener("pointerdown", onDown, true), 0);
     window.addEventListener("keydown", onKey);
     return () => {
       clearTimeout(t);
-      window.removeEventListener("mousedown", onClose);
+      window.removeEventListener("pointerdown", onDown, true);
       window.removeEventListener("keydown", onKey);
     };
   }, [onClose]);
