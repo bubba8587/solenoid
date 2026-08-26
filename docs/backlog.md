@@ -50,6 +50,10 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
 
 ## Bugs & verifications
 
+- [ ] **High memory use (Chrome tab estimate) for a light app** — author 2026-08-26,
+  longstanding, predates the RF port; not investigated yet. Start with a heap snapshot
+  on the getting-started seed vs. a blank doc (retained node clones? HIC pyramids? popup
+  caches?), then per-doc tab growth.
 - [ ] **Editing a node header blacks out the app (tablet)** — author-reported
   2026-08-01, NOT REPRODUCED (headless coarse-pointer sweep over 107+ headers,
   5 seeds, clean). The app now has error boundaries (app + per node) — next
