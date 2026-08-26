@@ -9,7 +9,6 @@
   background: var(--pres-bg);
   border: 2px solid var(--pres-color);
   border-radius: 8px;
-  box-shadow: var(--shadow-card);
   cursor: grab;
 }
 .solenoid-pres * { box-sizing: border-box; }

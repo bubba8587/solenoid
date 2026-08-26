@@ -9,6 +9,7 @@ import {
   Background,
   BackgroundVariant,
   MiniMap,
+  ViewportPortal,
   applyNodeChanges,
   applyEdgeChanges,
   useReactFlow,
@@ -30,7 +31,7 @@ import { FlowSocketHandle } from "./FlowSocketHandle";
 import { SolNodeAdapter } from "./SolNodeAdapter";
 import { FlowCableEdge } from "./FlowCableEdge";
 import { cableSelectionStore, socketHighlightStore, dragSocketKey } from "../cableState";
-import { toFlowNodes, toFlowEdges, type FlowModel } from "./flowModel";
+import { toFlowNodes, toFlowEdges, nodeClassName, type FlowModel } from "./flowModel";
 import { canConnect, connect, disconnect, removeNodes, moveNode } from "./flowController";
 import { makeFlowArea, type FlowArea } from "./flowArea";
 import {
@@ -109,7 +110,7 @@ import {
   isGraphRebuilding,
 } from "../process";
 import { reconcileFcTypes } from "../fcReconcile";
-import { syncGroupCollapse } from "../groupCollapse";
+import { syncGroupCollapse, groupCollapseStore } from "../groupCollapse";
 import { FormatControllerNode } from "../rete-nodes";
 import { formatAnnotationStore, formatMismatchStore, unitsCompatible } from "../formatAnnotationStore";
 import { StandoffLayer } from "../components";
@@ -279,7 +280,8 @@ function FlowCanvasInner() {
           old &&
           old.position.x === n.position.x &&
           old.position.y === n.position.y &&
-          old.zIndex === n.zIndex
+          old.zIndex === n.zIndex &&
+          old.className === n.className
         ) {
           return old;
         }
@@ -295,6 +297,26 @@ function FlowCanvasInner() {
       return toFlowEdges(s).map((e) => prevById.get(e.id) ?? e) as unknown as Edge[];
     });
   }, [s]);
+
+  // Member hiding follows the collapse store LIVE (a toggle changes no
+  // topology, so syncTopology never runs for it) — remap RF classNames,
+  // identity-preserving so untouched cards skip re-render.
+  useEffect(
+    () =>
+      groupCollapseStore.subscribe(() => {
+        setNodes((ns) => {
+          let changed = false;
+          const next = ns.map((n) => {
+            const cls = nodeClassName(n.id);
+            if ((n.className ?? undefined) === cls) return n;
+            changed = true;
+            return { ...n, className: cls };
+          });
+          return changed ? next : ns;
+        });
+      }),
+    [],
+  );
 
   // Bind the late-bound handlers for this mount.
   useEffect(() => {
@@ -902,14 +924,24 @@ function FlowCanvasInner() {
         onMove={onMove}
         isValidConnection={isValidConnection}
         deleteKeyCode={null}
+        selectionKeyCode={null}
         elevateNodesOnSelect={false}
         zoomOnDoubleClick={false}
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
-        colorMode="system"
+        colorMode={themeMode}
         proOptions={{ hideAttribution: false }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} />
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={24}
+          size={1.5}
+          color="var(--canvas-dot)"
+          bgColor="var(--canvas-bg)"
+        />
+        <ViewportPortal>
+          <StandoffLayer />
+        </ViewportPortal>
         <MiniMap
           className="solenoid-minimap"
           style={{ width: 182, height: 105 }}
@@ -921,7 +953,6 @@ function FlowCanvasInner() {
           nodeStrokeWidth={1}
         />
       </ReactFlow>
-      <StandoffLayer />
       <HtmlCanvasLayer />
       {menu && (
         <AddNodeMenu

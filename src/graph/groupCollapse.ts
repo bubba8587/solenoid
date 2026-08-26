@@ -341,16 +341,11 @@ export function settleCollapse(
   });
 }
 
-/** Recompute, then hide/show member node elements to match (cables hide reactively). */
-export function syncGroupCollapse(editor: Editor, area: Area): void {
+/** Recompute; hiding rides RF node `className` off the store notify (flowModel
+ *  `nodeClassName` + FlowCanvas's subscription). Never stamp the wrapper's
+ *  inline visibility — RF owns it and overwrites with `visible` post-measure,
+ *  which is how the old imperative element sweep silently lost the load-time
+ *  hide. */
+export function syncGroupCollapse(editor: Editor, _area: Area): void {
   recomputeGroupCollapse(editor);
-  for (const n of editor.getNodes()) {
-    const el = area.nodeViews.get(n.id)?.element;
-    if (!el) continue;
-    const shouldHide = _hiddenNodes.has(n.id);
-    // Hide with `visibility`, never `display: none` — the element must stay laid out or its
-    // measured size and socket positions collapse to 0 and cables re-anchor at the origin.
-    el.style.visibility = shouldHide ? "hidden" : "";
-    el.style.pointerEvents = shouldHide ? "none" : "";
-  }
 }

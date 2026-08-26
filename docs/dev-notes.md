@@ -43,6 +43,23 @@ zero errors. Real-capture verification stays an author task (flagged Chrome; the
 the container Chromium — same as pre-cutover). Docs re-reconciled (architecture Renderers
 section, glossary, renderer-performance restored, CLAUDE.md).
 
+**Follow-up 2 (same day): the author's eyeball list, all fixed + probe-verified.**
+- **Collapsed groups loaded with members exposed** (pf seed; toggling fixed it). ROOT CAUSE: RF
+  owns the node wrapper's inline `visibility` — it stamps `visible` after measuring — so the
+  imperative member-hide sweep (and any inline stamp) was silently overwritten. Hiding now rides
+  RF node `className` (`nodeClassName` → `.sol-member-hidden` with `!important`; FlowCanvas
+  re-stamps identity-preservingly off the collapse-store notify). pf loads with 89 members
+  hidden; expand/collapse live-verified. The "missing cables/groups" was the same bug.
+- **Standoffs painted off-canvas**: StandoffLayer rendered as a ReactFlow SIBLING, so its
+  world-coordinate svg drew in screen space. Moved inside RF's `<ViewportPortal>` (rides the
+  camera; paints under cables/cards).
+- **RF box-select fought the lasso**: `selectionKeyCode={null}` — shift-drag is the lasso's.
+- **Card shadow ditched** (author: imperceptible): `--shadow-card` removed from all card roots
+  (node/note/image/history/presentation/report/svgpicker); the var stays for floating panels.
+- **Light mode + palettes on the canvas**: RF `colorMode` now follows `appThemeStore` (was
+  "system" = OS pref), and `<Background>` reads `--canvas-dot`/`--canvas-bg` (was RF's fixed
+  gray), so theme AND palette coloration reach pane + dots. Verified light-mode screenshot.
+
 ### FINDING (2026-08-25 — per-card CSS conversion, STEP 1 census — A2)
 Step 1 of the backlog "Per-card CSS conversion" sweep: which paint-only DOM could move to
 CSS. Measured on the live dev page via `window.__solenoidCardCensus()` (`census.ts`), driven

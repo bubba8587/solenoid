@@ -676,10 +676,16 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
           zoomOnScroll={false}
           minZoom={MIN_ZOOM}
           maxZoom={MAX_ZOOM}
-          colorMode="system"
+          colorMode={themeMode}
           proOptions={{ hideAttribution: false }}
         >
-          <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} />
+          <Background
+            variant={BackgroundVariant.Dots}
+            gap={24}
+            size={1.5}
+            color="var(--canvas-dot)"
+            bgColor="var(--canvas-bg)"
+          />
           <MiniMap
             className="solenoid-minimap"
             style={{ width: 182, height: 105 }}
