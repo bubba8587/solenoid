@@ -17,10 +17,12 @@ export type FlowNodeData = {
   version: number;
   [key: string]: unknown;
 };
+/** THE node type of both surfaces (RF generics: `<ReactFlow<SolFlowNode, SolFlowEdge>>`). */
+export type SolFlowNode = Node<FlowNodeData, "sol">;
 
 const stubEmit = (() => {}) as unknown as Emit;
 
-function SolNodeAdapterBase(props: NodeProps<Node<FlowNodeData, "sol">>) {
+function SolNodeAdapterBase(props: NodeProps<SolFlowNode>) {
   const { id, data, selected } = props;
   // Components read selection off the payload (rete convention).
   (data.node as unknown as { selected?: boolean }).selected = !!selected;

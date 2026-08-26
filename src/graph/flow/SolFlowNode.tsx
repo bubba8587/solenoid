@@ -3,12 +3,12 @@
 // cableValueStore, which processGraph fills on every pass.
 import { memo, useSyncExternalStore } from "react";
 import { Handle, Position } from "@xyflow/react";
-import type { NodeProps, Node } from "@xyflow/react";
+import type { NodeProps } from "@xyflow/react";
 import { ClassicPreset } from "rete";
 import { SolenoidSocket, SOCKET_COLORS, SOCKET_TYPE_LABELS } from "../sockets";
 import { cableValueStore } from "../cableValueStore";
 import { previewValue } from "./preview";
-import type { FlowNodeData } from "./SolNodeAdapter";
+import type { SolFlowNode as SolFlowNodeType } from "./SolNodeAdapter";
 
 type Port = { socket?: ClassicPreset.Socket; label?: string; index?: number };
 
@@ -28,7 +28,7 @@ function dotTitle(p: Port): string | undefined {
   return dt ? SOCKET_TYPE_LABELS[dt] : undefined;
 }
 
-function SolFlowNodeBase({ data, selected }: NodeProps<Node<FlowNodeData, "sol">>) {
+function SolFlowNodeBase({ data, selected }: NodeProps<SolFlowNodeType>) {
   useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
   const node = data.node as unknown as {
     id: string;

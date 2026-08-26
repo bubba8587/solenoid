@@ -10,6 +10,9 @@ export type FlowSocketProps = {
   side: "input" | "output";
   socketKey: string;
   payload: ClassicPreset.Socket;
+  shape: "circle" | "square" | "cube";
+  /** Already lit by the app's own highlight store (no second ring). */
+  lit: boolean;
 };
 
 let _socket: ComponentType<FlowSocketProps> | null = null;

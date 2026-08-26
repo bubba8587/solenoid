@@ -17,23 +17,22 @@ import {
   useReactFlow,
   useStoreApi,
   useNodesInitialized,
-  type Node,
-  type Edge,
   type NodeChange,
   type EdgeChange,
   type Connection,
   type IsValidConnection,
   type OnConnectEnd,
+  type OnNodeDrag,
   type Viewport,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { ClassicPreset } from "rete";
-import type { Schemes, SolenoidNode } from "../schemes";
+import type { Schemes } from "../schemes";
 import type { Surface } from "../surface";
 import { registerFlowSocket } from "../flowSurface";
 import { FlowSocketHandle } from "./FlowSocketHandle";
-import { SolNodeAdapter } from "./SolNodeAdapter";
-import { FlowCableEdge } from "./FlowCableEdge";
+import { SolNodeAdapter, type SolFlowNode } from "./SolNodeAdapter";
+import { FlowCableEdge, type SolFlowEdge } from "./FlowCableEdge";
 import { FlowConnectionLine } from "./FlowConnectionLine";
 import { cableSelectionStore, socketHighlightStore, dragSocketKey } from "../cableState";
 import { toFlowNodes, toFlowEdges, nodeClassName, type FlowModel } from "./flowModel";
@@ -183,8 +182,8 @@ export type SurfaceHooks = {
 export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack; hooks: SurfaceHooks; children?: ReactNode }) {
   const hooksRef = useRef(hooks);
   hooksRef.current = hooks;
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [edges, setEdges] = useState<Edge[]>([]);
+  const [nodes, setNodes] = useState<SolFlowNode[]>([]);
+  const [edges, setEdges] = useState<SolFlowEdge[]>([]);
   const [menu, setMenu] = useState<{
     screenX: number;
     screenY: number;
@@ -236,13 +235,13 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         return {
           ...n,
           selected: old?.selected ?? false,
-          data: { ...n.data, version: (old?.data.version as number) ?? 0 },
+          data: { ...n.data, version: old?.data.version ?? 0 },
         };
-      }) as unknown as Node[];
+      });
     });
     setEdges((prev) => {
       const prevById = new Map(prev.map((e) => [e.id, e]));
-      return toFlowEdges(s).map((e) => prevById.get(e.id) ?? e) as unknown as Edge[];
+      return toFlowEdges(s).map((e) => prevById.get(e.id) ?? e);
     });
   }, [s]);
 
@@ -271,12 +270,12 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     s.handlers.bumpNode = (id) =>
       setNodes((ns) =>
         ns.map((n) =>
-          n.id === id ? { ...n, data: { ...n.data, version: (n.data.version as number) + 1 } } : n,
+          n.id === id ? { ...n, data: { ...n.data, version: n.data.version + 1 } } : n,
         ),
       );
-    s.handlers.bumpConnections = () => setEdges(toFlowEdges(s) as unknown as Edge[]);
+    s.handlers.bumpConnections = () => setEdges(toFlowEdges(s));
     s.handlers.bumpAllNodes = () =>
-      setNodes((ns) => ns.map((n) => ({ ...n, data: { ...n.data, version: (n.data.version as number) + 1 } })));
+      setNodes((ns) => ns.map((n) => ({ ...n, data: { ...n.data, version: n.data.version + 1 } })));
     s.handlers.moveNode = (id, pos) => {
       setNodes((ns) => ns.map((n) => (n.id === id ? { ...n, position: { ...pos } } : n)));
       hooksRef.current.afterProgrammaticMove();
@@ -446,7 +445,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   }, [s]);
 
   const onNodesChange = useCallback(
-    (changes: NodeChange[]) => {
+    (changes: NodeChange<SolFlowNode>[]) => {
       // Mirror RF selection into the editor payloads (chrome + components read it).
       for (const ch of changes) {
         if (ch.type === "select") {
@@ -458,7 +457,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     },
     [s],
   );
-  const onEdgesChange = useCallback((changes: EdgeChange[]) => {
+  const onEdgesChange = useCallback((changes: EdgeChange<SolFlowEdge>[]) => {
     setEdges((es) => {
       const next = applyEdgeChanges(changes, es);
       // Mirror RF edge selection into the cable store (CableInspector, delete
@@ -471,7 +470,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       return next;
     });
   }, []);
-  const onEdgeMouseEnter = useCallback((_e: unknown, edge: Edge) => {
+  const onEdgeMouseEnter = useCallback((_e: unknown, edge: SolFlowEdge) => {
     socketHighlightStore.setCableHover([
       dragSocketKey(edge.source, edge.sourceHandle ?? ""),
       dragSocketKey(edge.target, edge.targetHandle ?? ""),
@@ -531,7 +530,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     [s],
   );
 
-  const isValidConnection: IsValidConnection = useCallback(
+  const isValidConnection: IsValidConnection<SolFlowEdge> = useCallback(
     (c) => {
       if (canvasLockStore.get()) return false; // view-only when locked
       if (!c.source || !c.target || !c.sourceHandle || !c.targetHandle) return false;
@@ -556,12 +555,12 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   // must not). Delta comes from the previous drag frame; selected members are
   // skipped (RF already moves the selection).
   const dragLastPos = useRef<Map<string, { x: number; y: number }>>(new Map());
-  const onNodeDragStart = useCallback((_e: unknown, _node: Node, dragged: Node[]) => {
+  const onNodeDragStart: OnNodeDrag<SolFlowNode> = useCallback((_e, _node, dragged) => {
     dragLastPos.current = new Map(dragged.map((n) => [n.id, { ...n.position }]));
   }, []);
   const standoffRaf = useRef(0);
-  const onNodeDrag = useCallback(
-    (_e: unknown, _node: Node, dragged: Node[]) => {
+  const onNodeDrag: OnNodeDrag<SolFlowNode> = useCallback(
+    (_e, _node, dragged) => {
       for (const n of dragged) {
         const model = s.editor.getNode(n.id);
         if (!(model instanceof GroupNode) || model.collapsed) continue;
@@ -591,8 +590,8 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     },
     [s],
   );
-  const onNodeDragStop = useCallback(
-    (_e: unknown, _node: Node, dragged: Node[]) => {
+  const onNodeDragStop: OnNodeDrag<SolFlowNode> = useCallback(
+    (_e, _node, dragged) => {
       for (const n of dragged) moveNode(s, n.id, n.position);
       s.area.syncViews();
       // The exact settle on drop (the per-frame solves converge toward it).
@@ -717,11 +716,11 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   const themeMode = appThemeStore.getMode();
   const gridSnap = useSyncExternalStore(gridSnapStore.subscribe, gridSnapStore.get);
   const minimapNodeColor = useCallback(
-    (n: Node) => minimapFillForNode((n.data as { node: SolenoidNode }).node, themeMode).background,
+    (n: SolFlowNode) => minimapFillForNode(n.data.node, themeMode).background,
     [themeMode],
   );
   const minimapNodeStrokeColor = useCallback(
-    (n: Node) => minimapFillForNode((n.data as { node: SolenoidNode }).node, themeMode).borderColor,
+    (n: SolFlowNode) => minimapFillForNode(n.data.node, themeMode).borderColor,
     [themeMode],
   );
   const packsVersion = useSyncExternalStore(packsStore.subscribe, packsStore.version);
@@ -733,7 +732,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       className={`sol-rf-appcanvas${hooks.className ? ` ${hooks.className}` : ""}${locked ? " solenoid-canvas--locked" : ""}`}
       onPointerMove={onPointerMove}
     >
-      <ReactFlow
+      <ReactFlow<SolFlowNode, SolFlowEdge>
         id={hooks.rfId}
         nodes={nodes}
         edges={edges}
@@ -781,7 +780,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
             <StandoffLayer />
           </ViewportPortal>
         )}
-        <MiniMap
+        <MiniMap<SolFlowNode>
           className="solenoid-minimap"
           style={MINIMAP_STYLE}
           pannable

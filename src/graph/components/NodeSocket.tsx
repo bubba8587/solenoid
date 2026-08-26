@@ -101,6 +101,40 @@ export function MeasuredSocketRow({
   );
 }
 
+/** The highlight flash over a socket dot — the same geometry as the glyph. */
+export function SocketLitRing({ shape }: { shape: "circle" | "square" | "cube" }) {
+  return (
+    <svg
+      aria-hidden="true"
+      // Class lets pill contexts hide this dot-shaped flash and draw a pill instead.
+      className="solenoid-socket-lit"
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: "var(--socket-size, 12px)",
+        height: "var(--socket-size, 12px)",
+        pointerEvents: "none",
+        overflow: "visible",
+      }}
+      viewBox="0 0 12 12"
+    >
+      {shape === "cube"
+        ? (
+          // Group opacity (never per-element), or the fill/stroke overlap doubles
+          // into a dark rim.
+          <g transform={cubeTransform(1)} opacity="0.35" style={{ mixBlendMode: "overlay" }}>
+            <path d={CUBE_FILL_PATH} fill="white" stroke="white" strokeWidth="16" strokeLinejoin="round" strokeLinecap="round" />
+          </g>
+        )
+        : shape === "square"
+        ? <rect x="0" y="0" width="12" height="12" rx="1.5" fill="white" fillOpacity="0.35" style={{ mixBlendMode: "overlay" }} />
+        : <circle cx="6" cy="6" r="6" fill="white" fillOpacity="0.35" style={{ mixBlendMode: "overlay" }} />
+      }
+    </svg>
+  );
+}
+
 export function NodeSocket({ side, socketKey, nodeId, payload, top, className }: Props) {
   const FlowSocket = useFlowSocket();
   // The 12px dot straddles the card edge: -5 for card/group-anchored sockets, while
@@ -121,6 +155,7 @@ export function NodeSocket({ side, socketKey, nodeId, payload, top, className }:
   const lit = socketHighlightStore.isHighlighted(myKey);
   const isSquare = payload instanceof SolenoidSocket && SQUARE_TYPES.has(payload.dataType);
   const isCube = payload instanceof SolenoidSocket && payload.dataType === "cube";
+  const shape = isCube ? "cube" : isSquare ? "square" : "circle";
   const typeLabel = payload instanceof SolenoidSocket ? SOCKET_TYPE_LABELS[payload.dataType] : undefined;
 
   // Frame-input example hint (frameHint.ts) — the MOUSE half: hover-intent on
@@ -167,40 +202,11 @@ export function NodeSocket({ side, socketKey, nodeId, payload, top, className }:
         // Inside the RF tree the dot is an RF Handle (injected — no @xyflow
         // import here). Outside it (a static render with no provider) the bare
         // glyph draws with no wiring affordance.
-        <FlowSocket side={side} socketKey={socketKey} payload={payload} />
+        <FlowSocket side={side} socketKey={socketKey} payload={payload} shape={shape} lit={lit} />
       ) : (
         <SocketComponent data={payload} />
       )}
-      {lit && (
-        <svg
-          aria-hidden="true"
-          // Class lets pill contexts hide this dot-shaped flash and draw a pill instead.
-          className="solenoid-socket-lit"
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "var(--socket-size, 12px)",
-            height: "var(--socket-size, 12px)",
-            pointerEvents: "none",
-            overflow: "visible",
-          }}
-          viewBox="0 0 12 12"
-        >
-          {isCube
-            ? (
-              // Group opacity (never per-element), or the fill/stroke overlap doubles
-              // into a dark rim.
-              <g transform={cubeTransform(1)} opacity="0.35" style={{ mixBlendMode: "overlay" }}>
-                <path d={CUBE_FILL_PATH} fill="white" stroke="white" strokeWidth="16" strokeLinejoin="round" strokeLinecap="round" />
-              </g>
-            )
-            : isSquare
-            ? <rect x="0" y="0" width="12" height="12" rx="1.5" fill="white" fillOpacity="0.35" style={{ mixBlendMode: "overlay" }} />
-            : <circle cx="6" cy="6" r="6" fill="white" fillOpacity="0.35" style={{ mixBlendMode: "overlay" }} />
-          }
-        </svg>
-      )}
+      {lit && <SocketLitRing shape={shape} />}
     </div>
   );
 }

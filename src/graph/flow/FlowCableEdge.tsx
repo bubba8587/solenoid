@@ -7,7 +7,7 @@
 // Selection is cableSelectionStore-driven (RF's own edge selection stays off).
 // Not ported: the load-reveal draw-on animation (rete-holder based — ledger).
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { EdgeProps } from "@xyflow/react";
+import type { Edge, EdgeProps } from "@xyflow/react";
 import { getCablePath, Position as CablePosition } from "../cablePaths";
 import { cableShapeStore, type CableShape } from "../cableShape";
 import { cableAngleStore } from "../cableAngleStore";
@@ -26,6 +26,9 @@ import { standoffStore } from "../standoffs";
 import { settingsStore } from "../settingsStore";
 import { ConduitNode } from "../rete-nodes";
 import { IS_COARSE, stopDragStart } from "../coarse";
+
+/** THE edge type of both surfaces. */
+export type SolFlowEdge = Edge<Record<string, unknown>, "cable">;
 
 const DEFAULT_COLOR = SOCKET_COLORS.number;
 const SELECTED_COLOR = "var(--cable-selected)";
@@ -115,7 +118,7 @@ function typeColorFor(
   return SOCKET_COLORS[dt] ?? DEFAULT_COLOR;
 }
 
-export function FlowCableEdge(props: EdgeProps) {
+export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
   const {
     id, source, target, sourceHandleId, targetHandleId,
     sourceX, sourceY, targetX, targetY,

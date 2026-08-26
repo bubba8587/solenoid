@@ -252,7 +252,7 @@ export function ConduitComponent({ data }: Props) {
         // or edges into the lanes have no endpoints.
         const payload = (side === "input" ? node.inputs[key]! : node.outputs[key]!).socket;
         return FlowSocket ? (
-          <FlowSocket side={side} socketKey={key} payload={payload} />
+          <FlowSocket side={side} socketKey={key} payload={payload} shape="square" lit={false} />
         ) : (
           <SocketComponent data={payload}
           />

@@ -7,8 +7,6 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
-  type Node,
-  type Edge,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { NodeEditor } from "rete";
@@ -16,8 +14,8 @@ import { DataflowEngine } from "rete-engine";
 import type { Schemes } from "../schemes";
 import { FlowSurfaceContext, registerFlowSocket } from "../flowSurface";
 import { FlowSocketHandle } from "./FlowSocketHandle";
-import { SolNodeAdapter } from "./SolNodeAdapter";
-import { FlowCableEdge } from "./FlowCableEdge";
+import { SolNodeAdapter, type SolFlowNode } from "./SolNodeAdapter";
+import { FlowCableEdge, type SolFlowEdge } from "./FlowCableEdge";
 import { toFlowNodes, toFlowEdges, type FlowModel } from "./flowModel";
 import { makeFlowArea, type FlowArea } from "./flowArea";
 import { installInputCoercion } from "../coerceInputs";
@@ -86,8 +84,8 @@ export function makeStaticStack(): StaticStack {
 }
 
 function StageInner({ stack: s, zoom }: { stack: StaticStack; zoom: number }) {
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [edges, setEdges] = useState<Edge[]>([]);
+  const [nodes, setNodes] = useState<SolFlowNode[]>([]);
+  const [edges, setEdges] = useState<SolFlowEdge[]>([]);
   const { setViewport } = useReactFlow();
 
   const syncTopology = useCallback(() => {
@@ -98,9 +96,9 @@ function StageInner({ stack: s, zoom }: { stack: StaticStack; zoom: number }) {
         const old = prevById.get(n.id);
         if (old && old.position.x === n.position.x && old.position.y === n.position.y) return old;
         return { ...n, data: { ...n.data, version: (old?.data.version as number) ?? 0 } };
-      }) as unknown as Node[];
+      });
     });
-    setEdges(toFlowEdges(s) as unknown as Edge[]);
+    setEdges(toFlowEdges(s));
   }, [s]);
 
   useEffect(() => {
@@ -110,7 +108,7 @@ function StageInner({ stack: s, zoom }: { stack: StaticStack; zoom: number }) {
           n.id === id ? { ...n, data: { ...n.data, version: (n.data.version as number) + 1 } } : n,
         ),
       );
-    s.handlers.bumpConnections = () => setEdges(toFlowEdges(s) as unknown as Edge[]);
+    s.handlers.bumpConnections = () => setEdges(toFlowEdges(s));
     s.handlers.moveNode = (id, pos) =>
       setNodes((ns) => ns.map((n) => (n.id === id ? { ...n, position: { ...pos } } : n)));
     s.handlers.syncTopology = syncTopology;
@@ -123,7 +121,7 @@ function StageInner({ stack: s, zoom }: { stack: StaticStack; zoom: number }) {
   }, [s, zoom, setViewport]);
 
   return (
-    <ReactFlow
+    <ReactFlow<SolFlowNode, SolFlowEdge>
       nodes={nodes}
       edges={edges}
       nodeTypes={nodeTypes}
