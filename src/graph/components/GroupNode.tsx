@@ -4,7 +4,7 @@ import { hexToRgba, contrastInk, themeAccent, darkenAccent, resolveColor } from 
 import { appThemeStore } from "../appTheme";
 import { SwatchGrid } from "./SwatchGrid";
 import { useDismissOnOutside } from "./useDismissOnOutside";
-import { getArea, getEditor, pushHistory, autoArrange } from "../process";
+import { getArea, getEditor, autoArrange } from "../process";
 import { cableValueStore } from "../cableValueStore";
 import { describeValueKind } from "../valueKindLabel";
 import { valueChipFor } from "./ValueChip";
@@ -118,10 +118,6 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
     if (next !== prev) {
       node.label = next;
       void getArea()?.update("node", node.id);
-      pushHistory(
-        () => { node.label = prev; void getArea()?.update("node", node.id); },
-        () => { node.label = next; void getArea()?.update("node", node.id); },
-      );
     }
     setEditingLabel(false);
   }
@@ -142,22 +138,10 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
     lastGripDown.current = now;
     const startX = e.clientX, startY = e.clientY;
     const startW = node.width, startH = node.height;
-    const before = { width: startW, height: startH, members: [...node.members] };
     const area = getArea();
     const k = area?.area.transform.k ?? 1;
     const handle = e.currentTarget as HTMLElement;
     handle.setPointerCapture(e.pointerId);
-
-    const applySnapshot = (s: { width: number; height: number; members: string[] }) => {
-      node.width = s.width;
-      node.height = s.height;
-      node.members = [...s.members];
-      const ed = getEditor();
-      const ar = getArea();
-      void ar?.update("node", node.id);
-      if (ed && ar) { rebuildGroupMembership(ed); syncGroupCollapse(ed, ar); }
-      scheduleAutosave();
-    };
 
     const move = (ev: PointerEvent) => {
       node.width = Math.round(Math.max(GROUP_MIN_W, startW + (ev.clientX - startX) / k));
@@ -191,11 +175,6 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
       // paint; pinning this group makes its partner re-align to it.
       if (!standoffStore.isEmpty()) {
         requestAnimationFrame(() => settleStandoffs(new Set([node.id])));
-      }
-      const after = { width: node.width, height: node.height, members: [...node.members] };
-      if (after.width !== before.width || after.height !== before.height ||
-          after.members.length !== before.members.length) {
-        pushHistory(() => applySnapshot(before), () => applySnapshot(after));
       }
     };
     window.addEventListener("pointermove", move);

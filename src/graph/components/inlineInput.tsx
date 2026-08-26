@@ -3,7 +3,7 @@ import { useKatexRender } from "./katexLoader";
 import type { ClassicPreset } from "rete";
 import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import { SolenoidSocket } from "../sockets";
-import { connectionVersionStore, processGraph, pushHistory } from "../process";
+import { connectionVersionStore, processGraph } from "../process";
 import { getOwningEditor, getOwningArea } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { nodeName } from "../catalogUtils";
@@ -76,7 +76,6 @@ export function useDraftCommit<T>(
       return;
     }
     apply(next);
-    pushHistory(() => apply(committed), () => apply(next));
   };
   const onKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
     if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
@@ -200,7 +199,6 @@ export function InlineNumberField({
     (v) => field.setDraft(numToText(v)),
     (next) => {
       onChange(next);
-      pushHistory(() => onChange(value), () => onChange(next));
     },
   );
 
@@ -283,7 +281,6 @@ function QuotedValueTextarea({ value, onChange, autoFocus }: { value: string; on
     if (canceled.current) { canceled.current = false; setDraft(value); return; }
     if (draft === value) return;
     onChange(draft);
-    pushHistory(() => onChange(value), () => onChange(draft));
   };
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Escape") { canceled.current = true; e.currentTarget.blur(); }
@@ -357,7 +354,6 @@ export function InlineAutoField({
     (v) => field.setDraft(autoToText(v)),
     (next) => {
       onChange(next);
-      pushHistory(() => onChange(num), () => onChange(next));
     },
   );
   // Kept `type="text"`: a number input refuses a non-numeric draft outright, which is

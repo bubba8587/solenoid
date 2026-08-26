@@ -2,7 +2,6 @@ import type { NodeEditor } from "rete";
 import type { AreaPlugin } from "rete-area-plugin";
 import type { DataflowEngine } from "rete-engine";
 import { Cancelled } from "rete-engine";
-import type { HistoryPlugin } from "rete-history-plugin";
 import { cableValueStore } from "./cableValueStore";
 import { solError } from "./errorValue";
 import { perfEnabled, beginPass, passTopNodes, ipcSnapshot } from "./perfProbe";
@@ -16,15 +15,6 @@ import type { Schemes, AreaExtra } from "./schemes";
 let _editor: NodeEditor<Schemes> | null = null;
 let _engine: DataflowEngine<Schemes> | null = null;
 let _area: AreaPlugin<Schemes, AreaExtra> | null = null;
-let _history: HistoryPlugin<Schemes> | null = null;
-
-export function setHistoryPlugin(h: HistoryPlugin<Schemes>) {
-  _history = h;
-}
-
-export function getHistoryPlugin() {
-  return _history;
-}
 
 export function setEditorRefs(
   editor: NodeEditor<Schemes>,
@@ -244,15 +234,6 @@ export async function requestRecalc() {
 }
 
 // For changes the classic preset doesn't track — e.g. a group resize.
-let _pushHistory: (action: { undo: () => void; redo: () => void }) => void = () => {};
-
-export function setPushHistory(fn: (action: { undo: () => void; redo: () => void }) => void) {
-  _pushHistory = fn;
-}
-
-export function pushHistory(undo: () => void, redo: () => void) {
-  _pushHistory({ undo, redo });
-}
 
 // MUST be called after every document load/rebuild: the classic preset records
 // rebuildGraph's adds, so an uncleared history lets Ctrl+Z unwind the LOAD itself.

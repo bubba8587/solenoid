@@ -272,7 +272,6 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
       setActiveGraph({
         editor: comp.internalEditor,
         area: s.area as unknown as AreaPlugin<Schemes, AreaExtra>,
-        history: null,
       });
       if (s.history.stack.length === 0) recordNow(comp, s);
     })();

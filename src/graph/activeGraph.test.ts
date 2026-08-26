@@ -43,25 +43,25 @@ describe("activeGraph resolver", () => {
   });
 
   it("routes the ACTION layer to the subgraph while drilled in", () => {
-    setActiveGraph({ editor: sub, area: fakeArea, history: null });
+    setActiveGraph({ editor: sub, area: fakeArea });
     expect(isSubgraphActive()).toBe(true);
     expect(getActiveEditor()).toBe(sub);
   });
 
   it("CARDINAL: getEditor() (persistence source) stays MAIN even while drilled in", () => {
-    setActiveGraph({ editor: sub, area: fakeArea, history: null });
+    setActiveGraph({ editor: sub, area: fakeArea });
     expect(getEditor()).toBe(main); // an autosave here must serialize the document, not the subgraph
   });
 
   it("getOwningEditor returns the graph that actually HOLDS the node", () => {
-    setActiveGraph({ editor: sub, area: fakeArea, history: null });
+    setActiveGraph({ editor: sub, area: fakeArea });
     expect(getOwningEditor("s1")).toBe(sub); // internal node → internal editor
     expect(getOwningEditor("m1")).toBe(main); // a MAIN node is never routed to the override
   });
 
   it("getOwningArea mirrors getOwningEditor (per-node, not per-surface)", () => {
     expect(getOwningArea("m1")).toBe(fakeArea); // no drill-in → main area
-    setActiveGraph({ editor: sub, area: subArea, history: null });
+    setActiveGraph({ editor: sub, area: subArea });
     expect(getOwningArea("s1")).toBe(subArea); // internal node → drill-in area
     // A MAIN node re-rendering BEHIND an open drill-in must still hit the main
     // area (getActiveArea() would wrongly return the drill-in here).
@@ -71,7 +71,7 @@ describe("activeGraph resolver", () => {
   });
 
   it("clears back to main on close", () => {
-    setActiveGraph({ editor: sub, area: fakeArea, history: null });
+    setActiveGraph({ editor: sub, area: fakeArea });
     setActiveGraph(null);
     expect(isSubgraphActive()).toBe(false);
     expect(getActiveEditor()).toBe(main);

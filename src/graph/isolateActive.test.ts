@@ -44,7 +44,7 @@ describe("isolate resolves through the active graph", () => {
   });
 
   it("isolates the SUBGRAPH selection while drilled in", () => {
-    setActiveGraph({ editor: sub, area: fakeArea, history: null });
+    setActiveGraph({ editor: sub, area: fakeArea });
     expect(isolateSelection()).toBe(true);
     const focus = isolateStore.get()!;
     expect(focus.has("s1")).toBe(true);
@@ -54,7 +54,7 @@ describe("isolate resolves through the active graph", () => {
   });
 
   it("isolateNodes targets the active editor's nodes", () => {
-    setActiveGraph({ editor: sub, area: fakeArea, history: null });
+    setActiveGraph({ editor: sub, area: fakeArea });
     expect(isolateNodes(["s3"])).toBe(true);
     expect([...(isolateStore.get() ?? [])]).toEqual(["s3"]);
   });

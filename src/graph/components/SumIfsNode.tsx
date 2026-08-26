@@ -8,7 +8,6 @@ import { useConnectedInputs, InlineInputs, InlineTextField } from "./inlineInput
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { MeasuredSocketRow } from "./NodeSocket";
-import { pushRowAddUndo, pushRowRemovalUndo } from "./ExtensibleInputs";
 import { FILTER_OP_OPTIONS, TEXT_MATCH_OPS, VALUELESS_OPS } from "./FrameNodes";
 import { stopDragStart } from "../coarse";
 import { dropInputCables } from "./cablePrune";
@@ -39,18 +38,13 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
   };
 
   async function addPair() {
-    const before = new Set(Object.keys(data.inputs));
     data.addValuePair();
-    const added = Object.keys(data.inputs).filter((k) => !before.has(k));
-    const colKey = added[0];
-    if (colKey) pushRowAddUndo(data, added, () => data.removeValuePair(colKey));
     await getActiveArea()?.update("node", data.id);
     await processGraph();
   }
 
   async function removePair(colKey: string, valKey: string) {
     await dropInputCables(data.id, [colKey, valKey]);
-    pushRowRemovalUndo(data, [colKey, valKey], () => data.removeValuePair(colKey));
     data.removeValuePair(colKey);
     await getActiveArea()?.update("node", data.id);
     bumpConnectionVersion();

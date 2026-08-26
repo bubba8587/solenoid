@@ -3,11 +3,10 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CableSwitchNode as CableSwitchNodeType } from "../rete-nodes";
 // getActiveEditor/getActiveArea, NOT getEditor/getArea: a drill-in Input Switch
 // must retype/prune/refresh on its OWN graph.
-import { processGraph, bumpConnectionVersion, pushHistory } from "../process";
+import { processGraph, bumpConnectionVersion } from "../process";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { collapseStore } from "../collapseStore";
-import { pushRowRemovalUndo, pushRowAddUndo } from "./ExtensibleInputs";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import { NodeSocket } from "./NodeSocket";
 import { isFrameValue, isCubeValue } from "../frame";
@@ -164,28 +163,15 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     void processGraph();
   }
   async function addRow() {
-    const key = data.addValueInput();
-    pushRowAddUndo(data, [key], () => data.removeValueInput(key));
+    data.addValueInput();
     await getActiveArea()?.update("node", data.id);
     await processGraph();
   }
   async function removeRow(key: string) {
     await dropInputCables(data.id, [key]);
-    // AFTER the connection removals, BEFORE the removal (see ExtensibleInputs).
-    pushRowRemovalUndo(data, [key], () => data.removeValueInput(key));
-    const prevActive = data.activeIndex;
     data.removeValueInput(key); // re-points activeIndex at the same slot it named
     setSelKeys(data.selectedKeys); // removeValueInput drops the key from the selection
     setSelected(data.activeIndex);
-    if (data.activeIndex !== prevActive) {
-      const nextActive = data.activeIndex;
-      // Its own history entry, pushed AFTER the row entry so undo restores the
-      // index LAST (the row comes back first).
-      pushHistory(
-        () => { data.activeIndex = prevActive; void getActiveArea()?.update("node", data.id); void processGraph(); },
-        () => { data.activeIndex = nextActive; void getActiveArea()?.update("node", data.id); void processGraph(); },
-      );
-    }
     await getActiveArea()?.update("node", data.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up
     await processGraph();

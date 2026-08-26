@@ -10,7 +10,7 @@ import { NodeSocket } from "./NodeSocket";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 // getActiveEditor/getActiveArea, NOT getEditor/getArea: a Note inside a composite
 // drill-in must prune/reconcile/refresh on its OWN graph.
-import { processGraph, bumpConnectionVersion, pushHistory } from "../process";
+import { processGraph, bumpConnectionVersion } from "../process";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { reconcileFcTypes } from "../fcReconcile";
 import { scheduleAutosave } from "../persistence";
@@ -57,17 +57,6 @@ function previewValue(value: FrontmatterValue, t: FrontmatterFieldType): string 
 }
 
 // The body edit gets its OWN undo entry, pushed AFTER the cable removals: syncFields
-// drops the output socket untracked while removeConnection IS tracked, so undo must
-// restore the body and re-derive the socket before the cable re-add lands on it.
-type NoteSyncHost = { body: string; syncFields: () => unknown };
-export function pushNoteFieldRemovalUndo(
-  node: NoteSyncHost, prevBody: string, newBody: string, refresh: () => void,
-): void {
-  pushHistory(
-    () => { node.body = prevBody; node.syncFields(); refresh(); }, // undo → body + socket back
-    () => { node.body = newBody; node.syncFields(); refresh(); },  // redo → re-apply the edit
-  );
-}
 
 // Resize floors, no ceiling. The height floor GROWS by the fields strip (22px per
 // socket row + 6px strip padding) so a note can never shrink below its sockets.
@@ -115,26 +104,11 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   // the override path, which mutates fieldTypes rather than the body.
   async function commitFields(force = false) {
     if (!force && data.body === lastSyncRef.current) return;
-    const prevBody = lastSyncRef.current; // body BEFORE this commit (still has the removed key)
-    const newBody = data.body;
     lastSyncRef.current = data.body;
     const { removed, retyped } = data.syncFields();
     const editor = getActiveEditor();
     const area = getActiveArea();
-    const strandedByRemoval = await dropStrandedFrontmatterCables(data.id, removed, retyped);
-    // Body-path only (`!force`): a type-override drop mutates fieldTypes, not the
-    // body. See pushNoteFieldRemovalUndo for the ordering this depends on.
-    if (!force && strandedByRemoval && prevBody !== newBody) {
-      pushNoteFieldRemovalUndo(data, prevBody, newBody, () => {
-        setBody(data.body);
-        setFieldsVersion((v) => v + 1);
-        const ed = getActiveEditor(); const ar = getActiveArea();
-        void ar?.update("node", data.id);
-        if (ed && ar) reconcileFcTypes(ed, ar);
-        bumpConnectionVersion();
-        void processGraph();
-      });
-    }
+    await dropStrandedFrontmatterCables(data.id, removed, retyped);
     setFieldsVersion((v) => v + 1);
     await area?.update("node", data.id);
     // A pure retype fires no connection event, so re-adapt downstream FCs by hand or
@@ -234,10 +208,6 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     if (next !== prev) {
       data.label = next;
       scheduleAutosave();
-      pushHistory(
-        () => { data.label = prev; void getActiveArea()?.update("node", data.id); scheduleAutosave(); },
-        () => { data.label = next; void getActiveArea()?.update("node", data.id); scheduleAutosave(); },
-      );
     }
     setEditingLabel(false);
   }

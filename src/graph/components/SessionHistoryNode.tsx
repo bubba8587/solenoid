@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { copyText } from "../clipboard";
 import type { SessionHistoryNode as SessionHistoryNodeType } from "../rete-nodes";
-import { getEditor, getHistoryPlugin } from "../process";
-import { nodeDisplayNames } from "../nodeNames";
-import { digestHistory, digestLabeled, type HistoryDigestRecord } from "../historyDigest";
+import { digestLabeled } from "../historyDigest";
 import { flowHistory } from "../flow/flowHistory";
 import type { NodeProps } from "./nodeKit";
 import { stopDragStart } from "../coarse";
@@ -11,19 +9,12 @@ import "./SessionHistoryNode.css";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
-// rete-history-plugin exposes no change event to subscribe to, so the digest is
+// The snapshot history has no change event to subscribe to, so the digest is
 // recomputed on an interval while the node is mounted.
 const POLL_MS = 1000;
 
 function buildDigest(): string {
-  const history = getHistoryPlugin();
-  const editor = getEditor();
-  // The flow surface has no rete history plugin — its snapshot stack carries
-  // its own diff-derived labels.
-  if (!history) return digestLabeled(flowHistory.records());
-  const records = history.getHistorySnapshot() as unknown as HistoryDigestRecord[];
-  const names = editor ? nodeDisplayNames(editor.getNodes()) : new Map<string, string>();
-  return digestHistory(records, { nodeName: (id) => names.get(id) });
+  return digestLabeled(flowHistory.records());
 }
 
 /** A live readout of the session's undo/redo stack — no sockets and no persisted

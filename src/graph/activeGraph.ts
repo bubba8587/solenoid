@@ -1,8 +1,7 @@
 import type { NodeEditor } from "rete";
 import type { AreaPlugin } from "rete-area-plugin";
-import type { HistoryPlugin } from "rete-history-plugin";
 import type { Schemes, AreaExtra } from "./schemes";
-import { getEditor, getArea, getHistoryPlugin } from "./process";
+import { getEditor, getArea } from "./process";
 
 // The graph the app CHROME acts on, and the seam any canvas-substituting surface registers
 // with. Deliberately NOT `getEditor()/getArea()`, which stay MAIN-only forever because
@@ -12,7 +11,6 @@ import { getEditor, getArea, getHistoryPlugin } from "./process";
 export interface ActiveGraph {
   editor: NodeEditor<Schemes>;
   area: AreaPlugin<Schemes, AreaExtra>;
-  history: HistoryPlugin<Schemes> | null;
 }
 
 let _override: ActiveGraph | null = null;
@@ -58,6 +56,3 @@ export function getOwningArea(nodeId: string): AreaPlugin<Schemes, AreaExtra> | 
   return getArea();
 }
 
-export function getActiveHistory(): HistoryPlugin<Schemes> | null {
-  return _override ? _override.history : getHistoryPlugin();
-}

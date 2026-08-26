@@ -9,7 +9,6 @@ import { SegToggle } from "./SegToggle";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { ArrayChip } from "./ArrayChip";
-import { pushRowAddUndo, pushRowRemovalUndo } from "./ExtensibleInputs";
 import { FILTER_OP_OPTIONS_WITH_ERROR, TEXT_MATCH_OPS, VALUELESS_OPS, FILTER_COMBINE_OPTIONS } from "./FrameNodes";
 import type { DisplayValue } from "./valueDisplayFormat";
 import { stopDragStart } from "../coarse";
@@ -38,15 +37,13 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
   };
 
   async function addRow() {
-    const key = data.addValueInput();
-    pushRowAddUndo(data, [key], () => data.removeValueInput(key));
+    data.addValueInput();
     await getActiveArea()?.update("node", data.id);
     await processGraph();
   }
 
   async function removeRow(key: string) {
     await dropInputCables(data.id, [key]);
-    pushRowRemovalUndo(data, [key], () => data.removeValueInput(key));
     data.removeValueInput(key);
     await getActiveArea()?.update("node", data.id);
     bumpConnectionVersion();

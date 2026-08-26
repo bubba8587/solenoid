@@ -17,7 +17,6 @@ import {
 const dataTypeOf = (s: ClassicPreset.Socket): string | undefined => (s as { dataType?: string }).dataType;
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
-import { pushRowRemovalUndo, pushRowAddUndo } from "./ExtensibleInputs";
 import "./nodeCard.css";
 import { dropInputCables } from "./cablePrune";
 
@@ -84,12 +83,7 @@ export function PairedExtensibleInputs({
   }
 
   async function addPair() {
-    const before = new Set(Object.keys(node.inputs));
     node.addValuePair();
-    // Diff the key set so the whole pair is ONE undo entry.
-    const added = Object.keys(node.inputs).filter((k) => !before.has(k));
-    const aKey = added[0];
-    if (aKey) pushRowAddUndo(node, added, () => node.removeValuePair(aKey));
     await getActiveArea()?.update("node", node.id);
     await processGraph();
   }
@@ -97,7 +91,6 @@ export function PairedExtensibleInputs({
   async function removePair(keys: string[]) {
     await dropInputCables(node.id, keys);
     // AFTER the connection removals, BEFORE the removal (see ExtensibleInputs).
-    pushRowRemovalUndo(node, keys, () => node.removeValuePair(keys[0]));
     node.removeValuePair(keys[0]);
     await getActiveArea()?.update("node", node.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up

@@ -8,7 +8,7 @@ import { cableSelectionStore } from "./cableState";
 import { rebuildGroupMembership } from "./groupMembership";
 import { syncGroupCollapse, groupCollapseStore } from "./groupCollapse";
 import { scheduleAutosave } from "./persistence";
-import { pushHistory, getEditor } from "./process";
+import { getEditor } from "./process";
 import { settleStandoffs } from "./standoffs";
 import { measuredBox } from "./nodeSize";
 
@@ -142,18 +142,6 @@ export async function autofitGroupWithHistory(editor: Editor, area: Area, group:
   // (or its members) as a rigid block, pinning the just-fitted group.
   settleStandoffs(new Set([group.id]), { forceLock: true });
   scheduleAutosave();
-  const apply = (g: GroupGeom) => {
-    group.width = g.width;
-    group.height = g.height;
-    void area.translate(group.id, { x: g.x, y: g.y });
-    void area.update("node", group.id);
-    syncGroupCollapse(editor, area);
-    scheduleAutosave();
-  };
-  pushHistory(
-    () => apply(res.before),
-    () => apply(res.after),
-  );
 }
 
 /** Move every member of a group by (dx, dy) — called as the group is dragged. */

@@ -1,6 +1,6 @@
 import type { ChangeEvent } from "react";
 import type { NumberInputNode as NumberInputNodeType } from "../rete-nodes";
-import { processGraph, pushHistory } from "../process";
+import { processGraph } from "../process";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { useDraftCommit, useNumberScrub, INVALID_DRAFT } from "./inlineInput";
 
@@ -23,11 +23,7 @@ export function NumberInputComponent({ data, emit }: NodeProps<NumberInputNodeTy
   const scrub = useNumberScrub(
     data.value,
     (v) => field.setDraft(v == null ? "" : String(v)),
-    (next) => {
-      const prev = data.value;
-      apply(next);
-      pushHistory(() => apply(prev), () => apply(next));
-    },
+    (next) => apply(next),
   );
 
   return (

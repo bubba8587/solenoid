@@ -61,7 +61,7 @@ import { collapseStore } from "../collapseStore";
 import { pivotEditor } from "../pivotEditorStore";
 import { InlineInputs, InlineNumberField, InlineTextField, useConnectedInputs } from "./inlineInput";
 import { CollapsedInputPill } from "./CollapsedInputPill";
-import { ExtensibleInputs, pushRowAddUndo, pushRowRemovalUndo } from "./ExtensibleInputs";
+import { ExtensibleInputs } from "./ExtensibleInputs";
 import { FrameDisplay } from "./FrameDisplay";
 import { FormulaField } from "./FormulaField";
 import { formulaPopup } from "../formulaPopupStore";
@@ -267,18 +267,13 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
   };
 
   async function addPair() {
-    const before = new Set(Object.keys(data.inputs));
     data.addValuePair();
-    const added = Object.keys(data.inputs).filter((k) => !before.has(k));
-    const aKey = added[0];
-    if (aKey) pushRowAddUndo(data, added, () => data.removeValuePair(aKey));
     await getActiveArea()?.update("node", data.id);
     await processGraph();
   }
 
   async function removePair(aKey: string, bKey: string) {
     await dropInputCables(data.id, [aKey, bKey]);
-    pushRowRemovalUndo(data, [aKey, bKey], () => data.removeValuePair(aKey));
     data.removeValuePair(aKey);
     await getActiveArea()?.update("node", data.id);
     bumpConnectionVersion();
