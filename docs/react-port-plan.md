@@ -430,7 +430,18 @@ until the port completes. No standalone harness — new work integrates with the
       steps → ▶ Present overlay → camera flies per step via the zoomAt bridge
       → Escape exits). All zero-console-error. Remaining: the real-device
       touch pass (C8's own item).
-- [ ] Re-harness the ~45 rete-coupled test files' fixtures; keep the ~228 pure ones.
+- [ ] Re-harness the rete-coupled tests — SCOPED 2026-08-26, far smaller than
+      the old "~45" (that counted imports of rete CORE, which stays forever as
+      the model spine — 43 such files are untouched). Files importing a
+      RENDER package: 11. The work: (a) 6 files import only
+      `type { AreaPlugin }` — swap to a local surface type
+      (activeGraph, circularReset, compositeLogic, groupLogic,
+      groupPushRecords, isolateActive, processReentrancy, surfaceParity);
+      (b) tidyArrangeGroups + tidyDisplayFcWidth construct AutoArrangePlugin —
+      retarget when Tidy goes ELK-direct; (c) historyDigest.test.ts splits
+      (digestLabeled half stays; describeAction half retires with
+      rete-history-plugin); (d) surfaceParity retires or goes flow-only.
+      domSync/sourceInvariants only MENTION rete packages in prose.
 - [ ] HIC renderer: port, keep rete-only, or drop (author call).
 - [ ] Remove replaced rete packages + styled-components; storeKit kill list executed;
       docs reconciled (subsystem-invariants rete sections, CLAUDE.md traps).
