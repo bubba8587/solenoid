@@ -260,11 +260,20 @@ until the port completes. No standalone harness — new work integrates with the
 - [ ] Cable-drag blurs focused field (rete `connectionpick` behavior re-created —
       RF `onConnectStart`).
 
-### C4 — Chrome integration
-- [ ] Mount real Header/NavMenu/Outline/StatusBar/HUD against the flow surface; port
-      `canvasActions`/`canvasKeyboard`/lasso/fly-to/semantic zoom.
-- [ ] Minimap: custom RF `<MiniMap>` (accent colors, border-box rects).
-- [ ] Context menus, add-menu quick-wire, align bar, isolate, presenter mode.
+### C4 — Chrome integration — DONE 2026-08-26 (landed across the full-port sessions)
+- [x] Real chrome IS the app frame since the full-port pivot (MainApp + shared
+      App overlays: SelectionActionsBar, MobileControls, HUD); canvasKeyboard,
+      lasso, context menus, quick-wire, isolate, presenter all ported and
+      verified in their chunk notes; fly-to rides the flowArea bridge;
+      semantic zoom synced on every viewport move.
+- [x] Minimap re-enclosed in the Solenoid minimap WINDOW (author ask,
+      2026-08-26): RF `<MiniMap className="solenoid-minimap">` wears the
+      shared window class — overlay chrome, right 16 / bottom
+      `--chrome-bottom + 11`, 182×105, z 100 — so the `minimap-top` /
+      `minimap-hidden` / mobile rules apply for free; flow.css overrides the
+      RF panel's margin/z/background and unclips the svg (content-box,
+      padding 0). Accent-tinted rects were already shared
+      (`minimapFillForNode`).
 
 ### C5 — Undo/redo + copy/paste — core DONE 2026-08-26
 - [x] `flow/flowHistory.ts`: SNAPSHOT history replacing rete-history-plugin — every
@@ -339,7 +348,18 @@ until the port completes. No standalone harness — new work integrates with the
       mode (mobile lasso pill); real-device pass.
 
 ### C9 — Parity sweep + cutover decision
-- [ ] Every seed opened side-by-side (rete vs RF), diffs listed and burned down.
+- [x] STRUCTURAL sweep (2026-08-26): all 23 seeds opened on both surfaces
+      (`rf-sweep.mjs` — template-picker automation), counting cards, groups,
+      conduits, notes, cable hit-paths, error chips, boundary degradations,
+      console errors. **Every seed identical, zero errors on either side**
+      (incl. personal-finance 141n/92c and zz-scratch 216n/181c; their
+      template picks need a detach-tolerant click — the menu unmounts
+      mid-click). Screenshots spot-checked (chart-showcase, personal-finance)
+      — pixel-close; the one visible diff WAS the unframed minimap, fixed
+      under C4.
+- [ ] INTERACTION sweep still owed: side-by-side behavior pass per seed
+      (drag/tow, standoffs live-drag, presenter steps, popups) — beyond
+      structure.
 - [ ] Re-harness the ~45 rete-coupled test files' fixtures; keep the ~228 pure ones.
 - [ ] HIC renderer: port, keep rete-only, or drop (author call).
 - [ ] Remove replaced rete packages + styled-components; storeKit kill list executed;

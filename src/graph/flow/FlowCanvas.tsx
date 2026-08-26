@@ -881,6 +881,8 @@ function FlowCanvasInner() {
       >
         <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} />
         <MiniMap
+          className="solenoid-minimap"
+          style={{ width: 182, height: 105 }}
           pannable
           zoomable
           nodeBorderRadius={3}
