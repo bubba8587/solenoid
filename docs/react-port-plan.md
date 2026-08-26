@@ -261,10 +261,26 @@ until the port completes. No standalone harness — new work integrates with the
       composite's editor/engine — no second rete stack, no `Scope.use` cache, no
       parity drift; `surfaceParity.test.ts` retargeted or retired.
 
-### C8 — Touch/tablet pass
-- [ ] Pinch/pan/tap-select/palm on emulated touch (Playwright CDP, sanctioned);
-      mobile/tablet bars wired; the `?rf` surface must not regress the gesture inventory
-      (`docs/touch-gestures.md`).
+### C8 — Touch/tablet pass — core DONE 2026-08-26
+- [x] `?rete`-parity #VALUE! flag CLEARED: power-features "Scaled List" shows
+      #VALUE! identically on both surfaces — the seed's own state.
+- [x] `touch-action: none` on the app-canvas wrapper (the .solenoid-canvas rule;
+      without it the browser eats touch as page scroll).
+- [x] **`flow/flowPinch.ts` — the pinch-priority rule on RF** (~90 lines vs the
+      CappedZoom saga): TOUCH events in CAPTURE on the wrapper (multi-finger is
+      only reliably enumerable there — d3 and rete's Zoom listen the same way);
+      two fingers arm, moves are consumed before RF's bubble-phase drag/pan see
+      them, centroid-pinned zoom drives setViewport + the camera mirror, and the
+      post-pinch click is suppressed (rete's "pinch also selected" bug class).
+      Verified on emulated touch: pinch OVER A CARD 0.48→2.20, no selection.
+- [x] Verified: one-finger pane pan, tap-select (works cleanly after a pinch),
+      tablet chrome mounts (`is-tablet`). CDP gotchas recorded: single-message
+      multi-point touchStart and id reuse break synthesis — stage the starts.
+- [ ] Remaining touch items: one-finger drag on an UNSELECTED node — RF drags it,
+      rete pans (tap-then-drag was an accepted regression there; author call
+      which behavior the port keeps); group-body press falls through to pan on
+      rete (groupBand) but drags the group on RF; touch cable drag from a
+      12px dot; touch-select mode (mobile lasso pill); real-device pass.
 
 ### C9 — Parity sweep + cutover decision
 - [ ] Every seed opened side-by-side (rete vs RF), diffs listed and burned down.

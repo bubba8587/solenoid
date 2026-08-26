@@ -94,6 +94,7 @@ import { moveGroupMembers } from "../groupLogic";
 import { GroupNode } from "../rete-nodes";
 import { canvasLockStore } from "../canvasLock";
 import { installLassoSelection, type LassoState } from "../canvasLasso";
+import { installFlowPinch } from "./flowPinch";
 import {
   setAutoArrange,
   setCleanup,
@@ -224,7 +225,21 @@ function FlowCanvasInner() {
   const [nodeCtx, setNodeCtx] = useState<NodeContextTarget | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const screenMouseRef = useRef({ x: 0, y: 0 });
-  const { setViewport, screenToFlowPosition } = useReactFlow();
+  const { setViewport, getViewport, screenToFlowPosition } = useReactFlow();
+
+  // Two fingers zoom, whatever they land on (flowPinch.ts).
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    return installFlowPinch(el, {
+      getViewport,
+      setViewport: (v) => {
+        void setViewport(v);
+        s.area.setTransform({ x: v.x, y: v.y, k: v.zoom });
+        syncSemanticZoomFor(v.zoom);
+      },
+    });
+  }, [s, getViewport, setViewport]);
 
   const syncTopology = useCallback(() => {
     s.area.syncViews();

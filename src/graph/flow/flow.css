@@ -7,6 +7,11 @@
   height: 100%;
   user-select: none;
   -webkit-user-select: none;
+  /* Hand ALL touch gestures to the canvas (one finger pans, two pinch) — the
+     same rule .solenoid-canvas carries; without it the browser eats touch
+     moves as page scroll/zoom. Field taps/focus still work. */
+  touch-action: none;
+  -webkit-touch-callout: none;
 }
 .sol-rf-appcanvas .react-flow {
   background-color: var(--canvas-bg);
