@@ -17,7 +17,6 @@
   min-width: 180px;
   color: var(--text);
   font-size: 12px;
-  box-shadow: var(--shadow-card);
   transition: border-color 80ms ease, box-shadow 80ms ease;
   /* The card body is the drag handle (rete's per-node pointerdown moves it), so
      show the grab affordance; interactive children (inputs, selects, value text)
@@ -252,10 +251,6 @@
   height: calc(100% - 2px);
   rx: 5px;
   stroke-width: 2px;
-}
-.solenoid-node--grouped:not(.solenoid-node--selected),
-.solenoid-node--grouped:not(.solenoid-node--selected):hover {
-  box-shadow: none;
 }
 .solenoid-node--grouped:not(.solenoid-node--selected) .solenoid-node__frame-body,
 .solenoid-node--grouped:not(.solenoid-node--selected):hover .solenoid-node__frame-body {

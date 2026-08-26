@@ -18,6 +18,15 @@
   background-color: var(--canvas-bg);
 }
 
+/* Collapsed-group members: RF owns the wrapper's inline visibility (it stamps
+   `visible` after measuring), so the hide must out-rank the inline style. Kept
+   as visibility, never display — the member must stay laid out or its measured
+   size and socket positions collapse to 0 and cables re-anchor at the origin. */
+.react-flow__node.sol-member-hidden {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 /* The real-card socket dot: an RF Handle inside NodeSocket's absolutely
    positioned wrapper. Strip RF's default dot styling; SocketComponent draws. */
 .react-flow__handle.sol-rf-handle-reset {

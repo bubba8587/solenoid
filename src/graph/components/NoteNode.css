@@ -15,7 +15,6 @@
   background: var(--note-bg);
   border: 2px solid var(--note-color);
   border-radius: 8px;
-  box-shadow: var(--shadow-card);
   cursor: grab;
 }
 .solenoid-note * { box-sizing: border-box; }

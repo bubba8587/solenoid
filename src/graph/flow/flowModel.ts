@@ -11,6 +11,7 @@ import { installErrorGuards } from "../errorValue";
 import * as Nodes from "../rete-nodes";
 import { ctorRegistry, type NodeCtor } from "../nodeCtorRegistry";
 import { nodeNameStore } from "../nodeNameStore";
+import { groupCollapseStore } from "../groupCollapse";
 
 export type SolNode = Schemes["Node"];
 
@@ -95,8 +96,17 @@ export type RFNodeLite = {
   type: "sol";
   position: { x: number; y: number };
   zIndex: number;
+  className?: string;
   data: { node: SolNode; version: number };
 };
+
+/** Collapsed-group member hiding rides RF's own `className` — the wrapper's
+ *  inline `visibility` belongs to RF (it stamps `visible` after measuring), so
+ *  any imperative stamp gets overwritten; the class + `!important` rule
+ *  (flow.css) is the one channel RF preserves. */
+export function nodeClassName(id: string): string | undefined {
+  return groupCollapseStore.isNodeHidden(id) ? "sol-member-hidden" : undefined;
+}
 
 /** The rete surface's area-plane z-order (groups −2 < conduits −1 < nodes 0);
  *  without it a group's body sits level with its members and eats their
@@ -122,6 +132,7 @@ export function toFlowNodes(m: FlowModel): RFNodeLite[] {
     type: "sol",
     position: m.positions.get(node.id) ?? { x: 0, y: 0 },
     zIndex: nodeZIndex(node),
+    className: nodeClassName(node.id),
     data: { node, version: 0 },
   }));
 }

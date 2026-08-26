@@ -15,7 +15,6 @@
   background: var(--report-bg);
   border: 2px solid var(--report-color);
   border-radius: 8px;
-  box-shadow: var(--shadow-card);
   cursor: grab;
 }
 .solenoid-report * { box-sizing: border-box; }

@@ -226,6 +226,12 @@ a place a spec can be contradicted. Concretely:
   contacts — is the only definition; never count raw pointers. On touch, a one-finger drag
   on an UNSELECTED card/group PANS (`flow/flowTouchPan.ts`, author ruling) — it claims BOTH
   the pointerdown and the touchstart (d3-drag starts node drags from touchstart).
+- **RF owns a node wrapper's inline `visibility`** (stamps `visible` after measuring), so
+  imperative visibility writes on `.react-flow__node` get silently overwritten. Per-node
+  hide/show state rides RF's `className` (flowModel `nodeClassName` + a `!important` rule
+  in flow.css) — collapsed-group member hiding is the standing example.
+- **World-coordinate overlays render inside RF's `<ViewportPortal>`** (StandoffLayer) —
+  a sibling of `<ReactFlow>` paints in screen space and detaches from the camera.
 - **Native form popups inside a node keep their pointer/mouse-down stopPropagation** — it
   doubles as drag prevention; the rete-era reparent-closes-the-popup mechanism died with the
   DOM-order stacking (`docs/subsystem-invariants.md` § Pointer gestures).
