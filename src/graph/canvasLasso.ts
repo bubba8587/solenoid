@@ -132,6 +132,11 @@ export function installLassoSelection(deps: LassoDeps): () => void {
     if (lassoRaf) { cancelAnimationFrame(lassoRaf); lassoRaf = 0; }
     if (points.length >= 3) applyLasso(points, latestMode, true);
     setLasso(null);
+    // The stopped pointerdown still yields a `click` on release, and React Flow's pane
+    // clears the selection on click: swallow that ONE click (the same task), no more.
+    const swallow = (ev: Event) => { ev.stopPropagation(); ev.preventDefault(); };
+    container.addEventListener("click", swallow, true);
+    setTimeout(() => container.removeEventListener("click", swallow, true), 0);
   }
   // Aborts WITHOUT applying, leaving the current selection untouched.
   function cancelLasso() {
