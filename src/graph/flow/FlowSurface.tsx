@@ -36,7 +36,7 @@ import { SolNodeAdapter, type SolFlowNode } from "./SolNodeAdapter";
 import { FlowCableEdge, type SolFlowEdge } from "./FlowCableEdge";
 import { FlowConnectionLine } from "./FlowConnectionLine";
 import { cableSelectionStore, socketHighlightStore, dragSocketKey } from "../cableState";
-import { toFlowNodes, toFlowEdges, nodeClassName, type FlowModel } from "./flowModel";
+import { toFlowNodes, toFlowEdges, nodeClassName, toFlowPosition, fromFlowPosition, type FlowModel } from "./flowModel";
 import { canConnect, connect, moveNode } from "./flowController";
 import type { FlowArea } from "./flowArea";
 import { setCableDragging, processGraph } from "../process";
@@ -77,7 +77,7 @@ import { pinNodeValue } from "../pinStore";
 import { unpackComposite } from "../compositeLogic";
 import { compositeEditorStore } from "../compositeEditorStore";
 import { moveGroupMembers, reconcileGroupMembership, absorbIntoContainingGroup } from "../groupLogic";
-import { rebuildGroupMembership } from "../groupMembership";
+import { rebuildGroupMembership, groupMembershipStore } from "../groupMembership";
 import { syncGroupCollapse } from "../groupCollapse";
 import { isGraphRebuilding } from "../process";
 import { canvasLockStore } from "../canvasLock";
@@ -186,6 +186,8 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   hooksRef.current = hooks;
   const [nodes, setNodes] = useState<SolFlowNode[]>([]);
   const [edges, setEdges] = useState<SolFlowEdge[]>([]);
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
   const [menu, setMenu] = useState<{
     screenX: number;
     screenY: number;
@@ -201,6 +203,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   const wrapperRef = useRef<HTMLDivElement>(null);
   const screenMouseRef = useRef({ x: 0, y: 0 });
   const { setViewport, getViewport, screenToFlowPosition, getNodes } = useReactFlow();
+  const storeApi = useStoreApi();
   // RF's `fitView` prop resolves on the first setNodes, and this surface mounts EMPTY and
   // fills after the host hydrates — so frame on the measured-nodes signal instead. The
   // zoom floors to the snap step (fitView's own would land between steps).
@@ -210,12 +213,12 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     const el = wrapperRef.current;
     if (!nodesInitialized || fitDoneRef.current || !hooksRef.current.fitViewOnInit || !el) return;
     fitDoneRef.current = true;
-    const b = getNodesBounds(getNodes());
+    const b = getNodesBounds(getNodes(), { nodeLookup: storeApi.getState().nodeLookup });
     const w = el.clientWidth;
     const h = el.clientHeight;
     const zoom = floorZoom(getViewportForBounds(b, w, h, MIN_ZOOM, MAX_ZOOM, FIT_PADDING).zoom);
     void setViewport({ x: w / 2 - (b.x + b.width / 2) * zoom, y: h / 2 - (b.y + b.height / 2) * zoom, zoom });
-  }, [nodesInitialized, getNodes, setViewport]);
+  }, [nodesInitialized, getNodes, setViewport, storeApi]);
 
   const syncTopology = useCallback(() => {
     s.area.syncViews();
@@ -229,6 +232,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           old &&
           old.position.x === n.position.x &&
           old.position.y === n.position.y &&
+          old.parentId === n.parentId &&
           old.zIndex === n.zIndex &&
           old.className === n.className
         ) {
@@ -246,6 +250,10 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       return toFlowEdges(s).map((e) => prevById.get(e.id) ?? e);
     });
   }, [s]);
+
+  // Membership is RF's parentId: a rebuild (drop into / out of a group, resize,
+  // create) re-projects — identity-preserving, so only the re-parented cards re-render.
+  useEffect(() => groupMembershipStore.subscribe(syncTopology), [syncTopology]);
 
   // Member hiding follows the collapse store LIVE (a toggle changes no
   // topology, so syncTopology never runs for it) — remap RF classNames,
@@ -278,8 +286,26 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     s.handlers.bumpConnections = () => setEdges(toFlowEdges(s));
     s.handlers.bumpAllNodes = () =>
       setNodes((ns) => ns.map((n) => ({ ...n, data: { ...n.data, version: n.data.version + 1 } })));
+    // A programmatic move lands in ABSOLUTE canvas units; a member's RF position is
+    // relative to its group, and a moved group re-bases every member (so a Tidy that
+    // translates members before their group still ends consistent).
     s.handlers.moveNode = (id, pos) => {
-      setNodes((ns) => ns.map((n) => (n.id === id ? { ...n, position: { ...pos } } : n)));
+      const isGroup = s.editor.getNode(id) instanceof GroupNode;
+      setNodes((ns) => {
+        let changed = false;
+        const next = ns.map((n) => {
+          let rel: { x: number; y: number } | null = null;
+          if (n.id === id) rel = toFlowPosition(s, id, pos);
+          else if (isGroup && n.parentId === id) {
+            const abs = s.positions.get(n.id);
+            if (abs) rel = { x: abs.x - pos.x, y: abs.y - pos.y };
+          }
+          if (!rel || (rel.x === n.position.x && rel.y === n.position.y)) return n;
+          changed = true;
+          return { ...n, position: rel };
+        });
+        return changed ? next : ns;
+      });
       hooksRef.current.afterProgrammaticMove();
     };
     s.handlers.setViewport = (v) => {
@@ -448,7 +474,22 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
 
   const onNodesChange = useCallback(
     (changes: NodeChange<SolFlowNode>[]) => {
-      // Mirror RF selection into the editor payloads (chrome + components read it).
+      // Mirror RF selection into the editor payloads (chrome + components read it), and
+      // RF-driven moves (drags) into the model's ABSOLUTE positions — a group first, so a
+      // member's absolute resolves against its group's new spot.
+      const moved = changes
+        .filter((ch): ch is Extract<NodeChange<SolFlowNode>, { type: "position" }> => ch.type === "position" && !!ch.position)
+        .sort((a, b) => Number(!(s.editor.getNode(a.id) instanceof GroupNode)) - Number(!(s.editor.getNode(b.id) instanceof GroupNode)));
+      for (const ch of moved) {
+        if (!s.editor.getNode(ch.id)) continue;
+        const parentId = s.positions.has(ch.id) ? nodesRef.current.find((n) => n.id === ch.id)?.parentId : undefined;
+        const abs = ch.positionAbsolute ?? fromFlowPosition(s, ch.position!, parentId);
+        moveNode(s, ch.id, abs);
+        // The view mirror too, or a live reader (the HIC layer's per-frame position
+        // sync) sees the dragged node parked until dragStop's syncViews.
+        const view = s.area.nodeViews.get(ch.id);
+        if (view) view.position = { x: abs.x, y: abs.y };
+      }
       for (const ch of changes) {
         if (ch.type === "select") {
           const n = s.editor.getNode(ch.id);
@@ -556,9 +597,9 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     [s],
   );
 
-  // A REAL header drag on a group tows its members (programmatic translates
-  // must not). Delta comes from the previous drag frame; selected members are
-  // skipped (RF already moves the selection).
+  // RF tows a group's members itself (they are its RF children); the MODEL's
+  // absolute member positions follow by the group's per-frame delta. Selected
+  // members are skipped (RF already moves the selection).
   const dragLastPos = useRef<Map<string, { x: number; y: number }>>(new Map());
   const onNodeDragStart: OnNodeDrag<SolFlowNode> = useCallback((_e, _node, dragged) => {
     dragLastPos.current = new Map(dragged.map((n) => [n.id, { ...n.position }]));
@@ -575,14 +616,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         const dy = n.position.y - last.y;
         if (dx !== 0 || dy !== 0) void moveGroupMembers(s.editor, s.area, model, dx, dy, true);
       }
-      for (const n of dragged) {
-        dragLastPos.current.set(n.id, { ...n.position });
-        moveNode(s, n.id, n.position);
-        // The view mirror too, or a live reader (the HIC layer's per-frame position
-        // sync) sees the dragged node parked until dragStop's syncViews.
-        const view = s.area.nodeViews.get(n.id);
-        if (view) view.position = { x: n.position.x, y: n.position.y };
-      }
+      for (const n of dragged) dragLastPos.current.set(n.id, { ...n.position });
       // Tow standoff-tied neighbors live, one solve per frame.
       if (s.standoffSettle && !standoffStore.isEmpty() && !standoffRaf.current) {
         const pinned = new Set(dragged.map((n) => n.id));
@@ -597,7 +631,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   );
   const onNodeDragStop: OnNodeDrag<SolFlowNode> = useCallback(
     (_e, _node, dragged) => {
-      for (const n of dragged) moveNode(s, n.id, n.position);
       s.area.syncViews();
       // The exact settle on drop (the per-frame solves converge toward it).
       if (s.standoffSettle && !standoffStore.isEmpty()) s.standoffSettle(new Set(dragged.map((n) => n.id)));
@@ -710,7 +743,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   // keep the selection. RF's store flag carries exactly those semantics, and
   // pane-drag panning yields to the lasso (canvasLasso arms without Shift while
   // the pill is on; flowTouchPan stands down likewise).
-  const storeApi = useStoreApi();
   const touchSelect = useSyncExternalStore(touchSelectStore.subscribe, touchSelectStore.get);
   useEffect(() => {
     if (!IS_COARSE) return;
@@ -763,6 +795,9 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         isValidConnection={isValidConnection}
         deleteKeyCode={null}
         selectionKeyCode={null}
+        // The canvas keyboard nudges the SELECTION on the dot grid (RF's own arrow
+        // move needs a focused card and steps 5px) — one arrow handler, not two.
+        disableKeyboardA11y
         zIndexMode="manual"
         zoomOnDoubleClick={false}
         minZoom={MIN_ZOOM}

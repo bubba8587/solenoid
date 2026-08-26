@@ -17,7 +17,7 @@ import { FlowSocketHandle } from "./FlowSocketHandle";
 import { FlowResizeGrip } from "./FlowResizeGrip";
 import { SolNodeAdapter, type SolFlowNode } from "./SolNodeAdapter";
 import { FlowCableEdge, type SolFlowEdge } from "./FlowCableEdge";
-import { toFlowNodes, toFlowEdges, type FlowModel } from "./flowModel";
+import { toFlowNodes, toFlowEdges, toFlowPosition, type FlowModel } from "./flowModel";
 import { makeFlowArea, type FlowArea } from "./flowArea";
 import { installInputCoercion } from "../coerceInputs";
 import { installErrorGuards } from "../errorValue";
@@ -96,7 +96,7 @@ function StageInner({ stack: s, zoom }: { stack: StaticStack; zoom: number }) {
       const prevById = new Map(prev.map((n) => [n.id, n]));
       return toFlowNodes(s).map((n) => {
         const old = prevById.get(n.id);
-        if (old && old.position.x === n.position.x && old.position.y === n.position.y) return old;
+        if (old && old.position.x === n.position.x && old.position.y === n.position.y && old.parentId === n.parentId) return old;
         return { ...n, data: { ...n.data, version: (old?.data.version as number) ?? 0 } };
       });
     });
@@ -112,7 +112,7 @@ function StageInner({ stack: s, zoom }: { stack: StaticStack; zoom: number }) {
       );
     s.handlers.bumpConnections = () => setEdges(toFlowEdges(s));
     s.handlers.moveNode = (id, pos) =>
-      setNodes((ns) => ns.map((n) => (n.id === id ? { ...n, position: { ...pos } } : n)));
+      setNodes((ns) => ns.map((n) => (n.id === id ? { ...n, position: toFlowPosition(s, id, pos) } : n)));
     s.handlers.syncTopology = syncTopology;
     syncTopology();
   }, [s, syncTopology]);

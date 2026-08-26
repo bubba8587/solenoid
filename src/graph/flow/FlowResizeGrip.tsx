@@ -23,7 +23,9 @@ export function FlowResizeGrip({
       onResize={(_e, p) => onResize(round(p))}
       onResizeEnd={onResizeEnd ? (_e, p) => onResizeEnd(round(p)) : undefined}
     >
-      <div className="sol-rf-grip__mark" onDoubleClick={onDoubleClick}>{children}</div>
+      {/* The card grip draws its mark as a ::before on the control itself — no child box
+          beside it in the 16px flex row. */}
+      {children !== undefined && <div className="sol-rf-grip__mark" onDoubleClick={onDoubleClick}>{children}</div>}
     </NodeResizeControl>
   );
 }

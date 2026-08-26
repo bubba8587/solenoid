@@ -94,11 +94,38 @@ export async function buildModel(g: SavedGraphLite): Promise<FlowModel> {
 export type RFNodeLite = {
   id: string;
   type: "sol";
+  /** Relative to the group box for a member (RF sub-flow), else absolute. */
   position: { x: number; y: number };
+  parentId?: string;
   zIndex: number;
   className?: string;
   data: { node: SolNode; version: number };
 };
+
+/** The group a node belongs to (groups don't nest). */
+export function parentGroupOf(m: FlowModel, id: string): Nodes.GroupNode | undefined {
+  for (const g of m.editor.getNodes()) {
+    if (g instanceof Nodes.GroupNode && g.members.includes(id)) return g;
+  }
+  return undefined;
+}
+
+/** The MODEL keeps absolute positions; RF positions a member relative to its group
+ *  (`parentId`), so the group's own drag tows it. Convert at the boundary only. */
+export function toFlowPosition(m: FlowModel, id: string, abs: { x: number; y: number }): { x: number; y: number } {
+  const g = parentGroupOf(m, id);
+  const gp = g ? m.positions.get(g.id) : undefined;
+  return gp ? { x: abs.x - gp.x, y: abs.y - gp.y } : { x: abs.x, y: abs.y };
+}
+
+export function fromFlowPosition(
+  m: FlowModel,
+  rel: { x: number; y: number },
+  parentId: string | undefined,
+): { x: number; y: number } {
+  const gp = parentId ? m.positions.get(parentId) : undefined;
+  return gp ? { x: rel.x + gp.x, y: rel.y + gp.y } : { x: rel.x, y: rel.y };
+}
 
 /** Collapsed-group member hiding rides RF's own `className` — the wrapper's
  *  inline `visibility` belongs to RF (it stamps `visible` after measuring), so
@@ -127,14 +154,30 @@ export type RFEdgeLite = {
 };
 
 export function toFlowNodes(m: FlowModel): RFNodeLite[] {
-  return m.editor.getNodes().map((node) => ({
-    id: node.id,
-    type: "sol",
-    position: m.positions.get(node.id) ?? { x: 0, y: 0 },
-    zIndex: nodeZIndex(node),
-    className: nodeClassName(node.id),
-    data: { node, version: 0 },
-  }));
+  const nodes = m.editor.getNodes();
+  const groupOf = new Map<string, string>();
+  for (const g of nodes) {
+    if (g instanceof Nodes.GroupNode) for (const member of g.members) groupOf.set(member, g.id);
+  }
+  // RF requires a parent before its children in the array.
+  const ordered = [
+    ...nodes.filter((n) => n instanceof Nodes.GroupNode),
+    ...nodes.filter((n) => !(n instanceof Nodes.GroupNode)),
+  ];
+  return ordered.map((node) => {
+    const abs = m.positions.get(node.id) ?? { x: 0, y: 0 };
+    const parentId = groupOf.get(node.id);
+    const parentPos = parentId ? m.positions.get(parentId) : undefined;
+    return {
+      id: node.id,
+      type: "sol",
+      position: parentPos ? { x: abs.x - parentPos.x, y: abs.y - parentPos.y } : { x: abs.x, y: abs.y },
+      parentId: parentPos ? parentId : undefined,
+      zIndex: nodeZIndex(node),
+      className: nodeClassName(node.id),
+      data: { node, version: 0 },
+    };
+  });
 }
 
 export function toFlowEdges(m: FlowModel): RFEdgeLite[] {
