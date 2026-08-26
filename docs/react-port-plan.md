@@ -166,10 +166,27 @@ until the port completes. No standalone harness — new work integrates with the
 - [ ] Minimap: custom RF `<MiniMap>` (accent colors, border-box rects).
 - [ ] Context menus, add-menu quick-wire, align bar, isolate, presenter mode.
 
-### C5 — Undo/redo + copy/paste
-- [ ] Command layer replacing `rete-history-plugin` (snapshot on the textForm/immutable
-      stores); `historyDigest` labels preserved.
-- [ ] Copy/paste parity.
+### C5 — Undo/redo + copy/paste — core DONE 2026-08-26
+- [x] `flow/flowHistory.ts`: SNAPSHOT history replacing rete-history-plugin — every
+      settled mutation records `serializeGraph()` (400ms coalesce, 80 deep, no-op
+      dedupe by JSON identity); undo/redo = `loadGraph` with the camera held
+      (transform captured and re-applied through the area bridge) + autosave of the
+      restored state. Baseline seeding rides the existing `setClearHistory` slot
+      (loadGraph clears history at end-of-load → that IS the new baseline); the
+      history's own restores are guarded out of both reset and record.
+- [x] Recording hooks: `graphChanged` (all component-internal edits), the area
+      adapter's moveNode (nudge/push/standoffs — no processGraph on those), drag
+      stop. Every undo entry point already funnels through Ctrl+Z (Edit menu +
+      mobile/tablet bars synthesize the key), so the keyboard historyRef duck is
+      the single integration point.
+- [x] Live-verified: value edit undo/redo (50↔99, camera held), add-node undo
+      (29→28), drag undo (135px restored). Copy/paste itself landed with the
+      keyboard round. No unit test — the restore path needs DOM (loadGraph
+      teardown); pinned by live verification for now.
+- [ ] `historyDigest` labels (Edit-menu "Undo <what>") — snapshot steps carry no
+      label yet; derive from the diff or record a label at schedule() call sites.
+- [ ] Undo depth/perf on a ~280-node doc (full rebuild per step) — measure, and if
+      slow, apply snapshots as DIFFS through the editor instead of loadGraph.
 
 ### C6 — Groups, standoffs, conduits
 - [ ] `groupPushCore`/`standoffSolver` (pure) applied via `setNodes`; collapse pills;

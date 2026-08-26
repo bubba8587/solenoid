@@ -40,9 +40,12 @@ import {
   setSelectNode,
   setDeleteSelected,
   setCableDragging,
+  setClearHistory,
   processGraph,
   markGraphCustom,
 } from "../process";
+import { flowHistory } from "./flowHistory";
+import type { HistoryPlugin } from "rete-history-plugin";
 import { installCanvasKeyboard } from "../canvasKeyboard";
 import { flattenLeaves, filterByCompatibleSocket, firstCompatibleSocketKey } from "../catalogSearch";
 import { SolenoidSocket } from "../sockets";
@@ -185,8 +188,12 @@ function FlowCanvasInner() {
         ),
       );
     s.handlers.bumpConnections = () => setEdges(toFlowEdges(s) as unknown as Edge[]);
-    s.handlers.moveNode = (id, pos) =>
+    s.handlers.moveNode = (id, pos) => {
       setNodes((ns) => ns.map((n) => (n.id === id ? { ...n, position: { ...pos } } : n)));
+      // Position-only changes (nudge, group push, standoffs) never run
+      // processGraph, so they record here; load/undo rebuilds are guarded out.
+      flowHistory.schedule();
+    };
     s.handlers.setViewport = (v) => {
       void setViewport(v);
       syncSemanticZoomFor(v.zoom);
@@ -230,7 +237,15 @@ function FlowCanvasInner() {
 
     if (!s.docInit) {
       s.docInit = true;
-      setGraphChanged(() => scheduleAutosave());
+      // Component-internal edits reach us here (processGraph's graphChanged);
+      // each settled change autosaves AND records an undo step.
+      setGraphChanged(() => {
+        scheduleAutosave();
+        flowHistory.schedule();
+      });
+      // loadGraph clears history at the end of every document load — for the
+      // snapshot history that IS the new document's baseline.
+      setClearHistory(() => flowHistory.reset());
       void (async () => {
         if (!(await documentStore.restore())) await ensureFirstDocument();
       })();
@@ -249,7 +264,12 @@ function FlowCanvasInner() {
     return installCanvasKeyboard({
       editorRef: { current: s.editor },
       areaRef: { current: s.area },
-      historyRef: { current: null },
+      historyRef: {
+        current: {
+          undo: () => flowHistory.undo(),
+          redo: () => flowHistory.redo(),
+        } as unknown as HistoryPlugin<Schemes>,
+      },
       containerRef: wrapperRef,
       screenMouseRef,
       isAddMenuOpen: () => menuRef.current !== null,
@@ -386,6 +406,7 @@ function FlowCanvasInner() {
       s.area.syncViews();
       markGraphCustom();
       scheduleAutosave();
+      flowHistory.schedule();
     },
     [s],
   );
