@@ -27,6 +27,8 @@ export type FlowArea = Surface & {
   setTransform(t: { x: number; y: number; k: number }): void;
   /** Track the pointer in canvas coords (paste-at-cursor and friends). */
   setPointer(p: { x: number; y: number }): void;
+  /** RF measured a card (onNodesChange `dimensions`) — the DOM-free size source. */
+  setSize(id: string, size: { w: number; h: number }): void;
 };
 
 /** A node view whose element resolves to the LIVE React Flow node wrapper, so
@@ -75,6 +77,7 @@ export function makeFlowArea(
 ): FlowArea {
   const nodeViews = new Map<string, FlowNodeView>();
   const connectionViews = new Map<string, FlowConnView>();
+  const sizes = new Map<string, { w: number; h: number }>();
   const transform = { x: 0, y: 0, k: 1 };
   const pointer = { x: 0, y: 0 };
   const detachedHolder = document.createElement("div");
@@ -94,7 +97,7 @@ export function makeFlowArea(
 
   const syncViews = () => {
     const live = new Set(editor.getNodes().map((n) => n.id));
-    for (const id of [...nodeViews.keys()]) if (!live.has(id)) nodeViews.delete(id);
+    for (const id of [...nodeViews.keys()]) if (!live.has(id)) { nodeViews.delete(id); sizes.delete(id); }
     for (const id of live) {
       const pos = positions.get(id) ?? { x: 0, y: 0 };
       const view = nodeViews.get(id);
@@ -165,6 +168,12 @@ export function makeFlowArea(
     setPointer(p: { x: number; y: number }) {
       pointer.x = p.x;
       pointer.y = p.y;
+    },
+    setSize(id: string, size: { w: number; h: number }) {
+      sizes.set(id, size);
+    },
+    measured(id: string) {
+      return sizes.get(id);
     },
   };
   return fake as unknown as FlowArea;

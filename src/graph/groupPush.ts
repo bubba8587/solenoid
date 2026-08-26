@@ -1,3 +1,4 @@
+import { measuredSize } from "./nodeSize";
 import type { Surface } from "./surface";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
@@ -88,8 +89,9 @@ function buildWorld(editor: Editor, area: Area, expandedIds: Set<string>): World
     if (!view) continue;
     const p = view.position;
     if (n instanceof GroupNode) {
-      const w = expandedIds.has(n.id) ? n.width : view.element.offsetWidth || n.width;
-      const h = expandedIds.has(n.id) ? n.height : view.element.offsetHeight || n.height;
+      const m = expandedIds.has(n.id) ? null : measuredSize(area, n.id);
+      const w = expandedIds.has(n.id) ? n.width : m?.w ?? (view.element.offsetWidth || n.width);
+      const h = expandedIds.has(n.id) ? n.height : m?.h ?? (view.element.offsetHeight || n.height);
       boxes.set(n.id, { id: n.id, x: p.x, y: p.y, w, h });
     } else {
       if (grouped.has(n.id) || dockedNodeStore.get(n.id)) continue;
@@ -197,6 +199,8 @@ function buildAnchors(
 
 // Must be measured BEFORE the expand flips the element; layout formula as fallback.
 function collapsedCardSize(area: Area, g: GroupNode): { w: number; h: number } {
+  const m = measuredSize(area, g.id);
+  if (m) return m;
   const el = area.nodeViews.get(g.id)?.element;
   if (el && el.offsetWidth > 0) return { w: el.offsetWidth, h: el.offsetHeight };
   const rows = Math.max(

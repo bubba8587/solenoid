@@ -30,6 +30,9 @@ export type Surface = {
     setDragHandler(h: unknown): void;
     setZoomHandler(h: unknown): void;
   };
+  /** A mounted card's size WITHOUT a DOM read (React Flow's post-layout measure);
+   *  undefined until measured. Prefer over offsetWidth/Height in layout math. */
+  measured?(id: string): { w: number; h: number } | undefined;
   /** Re-render one node card / re-derive the edge list. */
   update(type: "node" | "connection", id: string): Promise<void>;
   /** Move a node in the model + RF state. */

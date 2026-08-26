@@ -8,6 +8,7 @@ type NodeLike = { id: string; width?: number; height?: number };
 
 export type ZoomSurface = {
   nodeViews: Map<string, { position: { x: number; y: number }; element: HTMLElement }>;
+  measured?(id: string): { w: number; h: number } | undefined;
   container: HTMLElement;
   area: {
     transform: { x: number; y: number; k: number };
@@ -30,8 +31,8 @@ export async function zoomAt(
       id: node.id,
       position: { x: view.position.x, y: view.position.y },
       measured: {
-        width: node.width ?? view.element.offsetWidth,
-        height: node.height ?? view.element.offsetHeight,
+        width: node.width ?? surface.measured?.(node.id)?.w ?? view.element.offsetWidth,
+        height: node.height ?? surface.measured?.(node.id)?.h ?? view.element.offsetHeight,
       },
       data: {},
     }));

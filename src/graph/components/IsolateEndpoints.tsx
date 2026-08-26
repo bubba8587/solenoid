@@ -1,3 +1,4 @@
+import { measuredSize } from "../nodeSize";
 import { useSyncExternalStore, useState, useRef, useEffect } from "react";
 import { CardFrame } from "./NodeCard";
 import { isolateStore, isoEndpointSelect } from "../isolateStore";
@@ -94,7 +95,8 @@ export function IsolateEndpoints() {
   for (const id of focus) {
     const view = area.nodeViews.get(id);
     if (!view) continue;
-    const w = view.element.offsetWidth || 120, h = view.element.offsetHeight || 60;
+    const m = measuredSize(area, id);
+    const w = m?.w ?? (view.element.offsetWidth || 120), h = m?.h ?? (view.element.offsetHeight || 60);
     minX = Math.min(minX, view.position.x); minY = Math.min(minY, view.position.y);
     maxX = Math.max(maxX, view.position.x + w); maxY = Math.max(maxY, view.position.y + h);
   }

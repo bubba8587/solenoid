@@ -8,6 +8,14 @@ until that review promotes it. Ruled-out-forever ideas stay in
 duplicate them, just names them for the review).
 
 ## Pushed to 1.4 / 2.0 (the 2026-08-07 pivot — 1.3 ships as-is)
+- **Headless card metrics (author 2026-08-27, via pretextjs.dev)** — every layout consumer
+  (Tidy, docking, standoffs, lasso, minimap, HIC) sizes cards from mounted elements, which is
+  what blocks RF `onlyRenderVisibleElements` (virtualization; the memory lever). A DOM-free card
+  metric — `NodeCard`'s fixed row geometry as arithmetic, Pretext (pure-JS text layout, zero DOM
+  reads) for the wrapped value/text boxes — would size unmounted cards and unlock virtualization,
+  fit-before-paint and HIC painting labels itself. 2.0-shaped. First step landed 2026-08-27:
+  `Surface.measured` (RF's post-layout measure) is the first tier of `measuredBox`, so layout
+  math no longer forces reflows for mounted cards.
 
 Feature-shaped backlog items moved here wholesale. **2026-08-23: the author reopened the
 scope** — the engine/logic entries that were never really parked (distribution fitting,

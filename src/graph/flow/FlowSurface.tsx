@@ -528,6 +528,12 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         const view = s.area.nodeViews.get(ch.id);
         if (view) view.position = { x: abs.x, y: abs.y };
       }
+      // RF's own measures (post-layout, free) feed the surface's DOM-free size source.
+      for (const ch of changes) {
+        if (ch.type === "dimensions" && ch.dimensions && ch.resizing === undefined) {
+          s.area.setSize(ch.id, { w: ch.dimensions.width, h: ch.dimensions.height });
+        }
+      }
       // A resize grip's own dimension changes (`resizing` set) stay out of RF state: the
       // model sizes the card, RF measures it (FlowResizeGrip).
       const applied = changes.filter((ch) => !(ch.type === "dimensions" && ch.resizing !== undefined));

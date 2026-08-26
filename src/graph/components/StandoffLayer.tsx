@@ -1,3 +1,4 @@
+import { measuredSize } from "../nodeSize";
 import { useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -53,8 +54,9 @@ function liveBox(id: string): Box | null {
   const view = area?.nodeViews.get(id);
   const node = editor?.getNode(id);
   if (!view || !node) return null;
-  const w = view.element.offsetWidth || (node as { width?: number }).width || 100;
-  const h = view.element.offsetHeight || (node as { height?: number }).height || 50;
+  const m = area ? measuredSize(area, id) : null;
+  const w = m?.w ?? (view.element.offsetWidth || (node as { width?: number }).width || 100);
+  const h = m?.h ?? (view.element.offsetHeight || (node as { height?: number }).height || 50);
   return { x: view.position.x, y: view.position.y, w, h };
 }
 
