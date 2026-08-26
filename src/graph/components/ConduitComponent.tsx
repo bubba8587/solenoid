@@ -1,8 +1,8 @@
+import { SocketComponent } from "./SocketComponent";
+import type { Emit } from "./nodeKit";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { ClassicPreset } from "rete";
-import { Presets } from "rete-react-plugin";
-import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import {
   ConduitNode as ConduitNodeType,
   CONDUIT_MAX_LANES,
@@ -33,11 +33,9 @@ import { useDraftCommit, INVALID_DRAFT } from "./inlineInput";
 import "../AngleDial.css";
 import "./conduit.css";
 
-const { RefSocket } = Presets.classic;
-
 type Props = {
   data: ConduitNodeType & { width?: number; height?: number };
-  emit: RenderEmit<ClassicScheme>;
+  emit?: Emit;
 };
 
 // Fixed hit-area / pivot box: the connector grows around the pivot and overflows it, so
@@ -86,7 +84,7 @@ function countUsedLanes(nodeId: string): number {
   return max + 1;
 }
 
-export function ConduitComponent({ data, emit }: Props) {
+export function ConduitComponent({ data }: Props) {
   const node = data;
   const FlowSocket = useFlowSocket();
 
@@ -251,19 +249,12 @@ export function ConduitComponent({ data, emit }: Props) {
     >
       {(() => {
         // In the RF tree, lane dots are RF Handles (injected — flowSurface.ts),
-        // or edges into the lanes have no endpoints; a drill-in's rete roots
-        // keep RefSocket.
+        // or edges into the lanes have no endpoints.
         const payload = (side === "input" ? node.inputs[key]! : node.outputs[key]!).socket;
         return FlowSocket ? (
           <FlowSocket side={side} socketKey={key} payload={payload} />
         ) : (
-          <RefSocket
-            name={`${side}-socket`}
-            side={side}
-            socketKey={key}
-            nodeId={node.id}
-            emit={emit}
-            payload={payload}
+          <SocketComponent data={payload}
           />
         );
       })()}

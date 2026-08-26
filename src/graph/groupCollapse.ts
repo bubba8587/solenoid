@@ -1,13 +1,13 @@
+import type { Surface } from "./surface";
 import type { NodeEditor } from "rete";
-import type { AreaPlugin } from "rete-area-plugin";
-import type { Schemes, AreaExtra } from "./schemes";
+import type { Schemes } from "./schemes";
 import { GroupNode, DisplayNode, FormatControllerNode, ConduitNode } from "./rete-nodes";
 import { dockedNodeStore } from "./dockedNodeStore";
 import { createNotifier } from "./storeKit";
 import { displayNameOf } from "./nodeNamer";
 
 type Editor = NodeEditor<Schemes>;
-type Area = AreaPlugin<Schemes, AreaExtra>;
+type Area = Surface;
 
 export interface RetainedTerminal {
   kind: "display" | "node"; // "display" → read cachedValue; "node" → read cableValueStore

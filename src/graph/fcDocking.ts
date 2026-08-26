@@ -1,15 +1,15 @@
 // Format Controller docking — snap detection, dock positioning, and the inline
 // splice/unsplice into the host's data path; all pure over (editor, area, container, fc).
+import type { Surface } from "./surface";
 import { ClassicPreset, type NodeEditor } from "rete";
-import type { AreaPlugin } from "rete-area-plugin";
-import type { Schemes, AreaExtra } from "./schemes";
+import type { Schemes } from "./schemes";
 import { FormatControllerNode } from "./rete-nodes";
 import { getSocketScreenCenter, screenToCanvas } from "./canvasGeometry";
 
 type SolenoidConnection = import("./schemes").SolenoidConnection;
 
 export function computeDockedCanvasPos(
-  area: AreaPlugin<Schemes, AreaExtra>,
+  area: Surface,
   container: HTMLElement,
   hostNodeId: string,
   socketKey: string,
@@ -33,7 +33,7 @@ export function computeDockedCanvasPos(
 // Measured size, not the node's stored estimate — the dock math centers the FC on the
 // host socket by height, so a stale estimate drops it several px low.
 export function dockedRenderedDims(
-  area: AreaPlugin<Schemes, AreaExtra>,
+  area: Surface,
   nodeId: string,
   fallbackW: number,
   fallbackH: number,
@@ -49,7 +49,7 @@ const DOCK_SNAP_CANVAS_PX = 34;
 // The nearest host socket whose pairing edge (host output ↔ FC input, host input ↔ FC
 // output) is within snap range; null if nothing is close enough.
 export function findDockTarget(
-  area: AreaPlugin<Schemes, AreaExtra>,
+  area: Surface,
   editor: NodeEditor<Schemes>,
   fc: FormatControllerNode,
 ): { hostNodeId: string; socketKey: string; side: "input" | "output" } | null {

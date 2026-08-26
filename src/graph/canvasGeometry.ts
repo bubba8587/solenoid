@@ -1,8 +1,7 @@
-import type { AreaPlugin } from "rete-area-plugin";
-import type { Schemes, AreaExtra } from "./schemes";
+import type { Surface } from "./surface";
 
 export function getSocketScreenCenter(
-  area: AreaPlugin<Schemes, AreaExtra>,
+  area: Surface,
   nodeId: string,
   socketKey: string,
   side: "input" | "output",
@@ -18,7 +17,7 @@ export function getSocketScreenCenter(
 }
 
 export function screenToCanvas(
-  area: AreaPlugin<Schemes, AreaExtra>,
+  area: Surface,
   container: HTMLElement,
   sx: number,
   sy: number,

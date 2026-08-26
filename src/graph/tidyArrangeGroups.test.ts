@@ -1,9 +1,8 @@
+import type { Surface } from "./surface";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
-import { AutoArrangePlugin } from "rete-auto-arrange-plugin";
-import type { Schemes, AreaExtra } from "./schemes";
-import type { AreaPlugin } from "rete-area-plugin";
-import { makeArrangeFn, makeCleanupFn, symmetricPortPreset } from "./tidyArrange";
+import type { Schemes } from "./schemes";
+import { makeArrangeFn, makeCleanupFn, makeEnsureElk } from "./tidyArrange";
 import { settingsStore } from "./settingsStore";
 import { GroupNode } from "./nodes/group";
 import { ArithmeticNode } from "./nodes/scalar";
@@ -112,21 +111,10 @@ function makeFakeArea() {
     async update() { /* re-render — nothing to do headless */ },
     area: { transform: { k: 1, x: 0, y: 0 } },
   };
-  return { area: area as unknown as AreaPlugin<Schemes, AreaExtra>, addView };
+  return { area: area as unknown as Surface, addView };
 }
 
-// A real AutoArrangePlugin, parent scopes stubbed to the fake area/editor
-// (area.use() needs a real AreaPlugin, which needs a DOM container).
-function makeEnsureArrangeForTest(
-  editor: NodeEditor<Schemes>,
-  area: AreaPlugin<Schemes, AreaExtra>,
-) {
-  const plugin = new AutoArrangePlugin<Schemes>();
-  plugin.addPreset(() => symmetricPortPreset(settingsStore.get("tidyDirection")));
-  (plugin as unknown as { getArea: () => unknown }).getArea = () => area;
-  (plugin as unknown as { getEditor: () => unknown }).getEditor = () => editor;
-  return () => Promise.resolve(plugin);
-}
+
 
 function connect(
   editor: NodeEditor<Schemes>,
@@ -210,18 +198,18 @@ async function buildScene() {
   addView(src.id, 60, 380, 180, 100);
   addView(sink.id, 980, 380, 180, 80);
 
-  const ensureArrange = makeEnsureArrangeForTest(editor, area);
+  const ensureElk = makeEnsureElk(() => false);
   const arrangeFn = makeArrangeFn({
     editor, area,
     container: {} as HTMLElement,
-    ensureArrange,
+    ensureElk,
     repositionDockedTo: () => {},
     isDestroyed: () => false,
   });
   return { editor, area, arrangeFn, src, m1, m2, sink, group };
 }
 
-function boxOf(area: AreaPlugin<Schemes, AreaExtra>, id: string): Box {
+function boxOf(area: Surface, id: string): Box {
   const v = area.nodeViews.get(id) as unknown as FakeView;
   return { id, x: v.position.x, y: v.position.y, w: v.element.offsetWidth, h: v.element.offsetHeight };
 }
@@ -348,11 +336,11 @@ describe("global Tidy — two expanded groups + docked FC on a member", () => {
     addView(src.id, -160, 380, 180, 100);
     addView(loose.id, 400, 800, 160, 90);
 
-    const ensureArrange = makeEnsureArrangeForTest(editor, area);
+    const ensureElk = makeEnsureElk(() => false);
     const arrangeFn = makeArrangeFn({
       editor, area,
       container: {} as HTMLElement,
-      ensureArrange,
+      ensureElk,
       repositionDockedTo: () => {},
       isDestroyed: () => false,
     });
@@ -434,11 +422,11 @@ describe("within-group Tidy (group Tidy button): grow → push → autofit", () 
     // Neighbor sits just past the box's right edge — the grown box must push it.
     addView(neighbor.id, 380, 140, 180, 80);
 
-    const ensureArrange = makeEnsureArrangeForTest(editor, area);
+    const ensureElk = makeEnsureElk(() => false);
     const arrangeFn = makeArrangeFn({
       editor, area,
       container: {} as HTMLElement,
-      ensureArrange,
+      ensureElk,
       repositionDockedTo: () => {},
       isDestroyed: () => false,
     });

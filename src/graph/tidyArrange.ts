@@ -1,7 +1,7 @@
-import { AreaExtensions, AreaPlugin } from "rete-area-plugin";
+import type { Surface } from "./surface";
+import { zoomAt, type ZoomSurface } from "./zoomAt";
 import type { NodeEditor } from "rete";
-import type { AutoArrangePlugin } from "rete-auto-arrange-plugin";
-import type { Schemes, AreaExtra } from "./schemes";
+import type { Schemes } from "./schemes";
 import { requestConfirm } from "./confirmStore";
 import { settingsStore } from "./settingsStore";
 import { cableSelectionStore } from "./cableState";
@@ -26,9 +26,9 @@ const TIDY_CONFIRM_THRESHOLD = 12;
 
 export interface TidyDeps {
   editor: NodeEditor<Schemes>;
-  area: AreaPlugin<Schemes, AreaExtra>;
+  area: Surface;
   container: HTMLElement;
-  ensureArrange: () => Promise<AutoArrangePlugin<Schemes> | null>;
+  ensureElk: () => Promise<Elk | null>;
   /** Snap every FC docked to `hostId` back onto its socket (defined in the init effect). */
   repositionDockedTo: (hostId: string) => void;
   /** The mount's destroyed flag — deferred rAF work must bail after unmount. */
@@ -124,36 +124,98 @@ export function tidyLayerSplitFor(nodeCount: number, widthCap: TidyWidthCap): nu
   return widthCap > 0 ? Math.max(1, Math.ceil(nodeCount / widthCap)) : 0;
 }
 
-// ELK is a heavy chunk only Tidy needs — wire it on first arrange, never at init.
-export function makeEnsureArrange(
-  area: AreaPlugin<Schemes, AreaExtra>,
-  isDestroyed: () => boolean,
-): () => Promise<AutoArrangePlugin<Schemes> | null> {
-  let arrange: AutoArrangePlugin<Schemes> | null = null;
-  let arrangeLoading: Promise<AutoArrangePlugin<Schemes> | null> | null = null;
+// The layout engine, called DIRECTLY (rete-auto-arrange died with the rete
+// surface; its ELK graph construction lives on in elkTidyLayout below).
+export type Elk = { layout(graph: unknown): Promise<ElkResult> };
+type ElkResult = { children?: Array<{ id?: string; x?: number; y?: number }> };
+
+// ELK is a heavy chunk only Tidy needs — load it on first arrange, never at init.
+export function makeEnsureElk(isDestroyed: () => boolean): () => Promise<Elk | null> {
+  let elk: Elk | null = null;
+  let loading: Promise<Elk | null> | null = null;
   return () => {
-    if (arrange) return Promise.resolve(arrange);
-    if (arrangeLoading) return arrangeLoading;
-    arrangeLoading = (async () => {
-      const { AutoArrangePlugin } = await import("rete-auto-arrange-plugin");
-      // A doc switch / unmount can destroy the area during the dynamic import.
+    if (elk) return Promise.resolve(elk);
+    if (loading) return loading;
+    loading = (async () => {
+      const { default: ELK } = await import("elkjs");
+      // A doc switch / unmount can destroy the surface during the dynamic import.
       if (isDestroyed()) return null;
-      const plugin = new AutoArrangePlugin<Schemes>();
-      // The plugin re-invokes the preset factory per layout, so reading the direction
-      // here picks up a setting change without re-registering.
-      plugin.addPreset(() => symmetricPortPreset(settingsStore.get("tidyDirection")));
-      area.use(plugin);
-      arrange = plugin;
-      return plugin;
+      elk = new ELK() as unknown as Elk;
+      return elk;
     })();
-    return arrangeLoading;
+    return loading;
   };
+}
+
+/** The exact ELK graph rete-auto-arrange built (root layered/INCLUDE_CHILDREN/
+ *  POLYLINE defaults, sorted FIXED_POS ports from symmetricPortPreset, port-id
+ *  edges), run directly and applied through the given translate. */
+export async function elkTidyLayout(
+  elk: Elk,
+  args: {
+    nodes: ReadonlyArray<Schemes["Node"]>;
+    connections: ReadonlyArray<{
+      id: string; source: string; sourceOutput: string; target: string; targetInput: string;
+    }>;
+    options: Record<string, string>;
+    translate: (id: string, x: number, y: number) => Promise<unknown> | unknown;
+  },
+): Promise<void> {
+  const preset = symmetricPortPreset(settingsStore.get("tidyDirection"));
+  const portId = (id: string, key: string, side: string) => [id, key, side].join("_");
+  const byIndex = (rec: Record<string, { index?: number } | undefined>) =>
+    Object.entries(rec).sort((a, b) => (a[1]?.index ?? 0) - (b[1]?.index ?? 0));
+  const children = args.nodes.map((n) => {
+    const node = n as unknown as {
+      id: string; width: number; height: number;
+      inputs?: Record<string, { index?: number } | undefined>;
+      outputs?: Record<string, { index?: number } | undefined>;
+    };
+    const mk = (side: "input" | "output", entries: Array<[string, unknown]>) =>
+      entries.map(([key], index) => {
+        const p = preset.port({
+          side, index, ports: entries.length, width: node.width, height: node.height,
+        });
+        return {
+          id: portId(node.id, key, side),
+          width: p.width, height: p.height, x: p.x, y: p.y,
+          properties: { side: p.side },
+        };
+      });
+    return {
+      id: node.id,
+      width: node.width,
+      height: node.height,
+      ports: [...mk("input", byIndex(node.inputs ?? {})), ...mk("output", byIndex(node.outputs ?? {}))],
+      layoutOptions: { ...preset.options(node.id), portConstraints: "FIXED_POS" },
+    };
+  });
+  const edges = args.connections.map((c) => ({
+    id: c.id,
+    sources: [c.sourceOutput ? portId(c.source, c.sourceOutput, "output") : c.source],
+    targets: [c.targetInput ? portId(c.target, c.targetInput, "input") : c.target],
+  }));
+  const result = await elk.layout({
+    id: "root",
+    layoutOptions: {
+      "elk.algorithm": "layered",
+      "elk.hierarchyHandling": "INCLUDE_CHILDREN",
+      "elk.edgeRouting": "POLYLINE",
+      ...args.options,
+    },
+    children,
+    edges,
+  });
+  for (const c of result.children ?? []) {
+    if (!c.id || typeof c.x === "undefined" || typeof c.y === "undefined") continue;
+    await args.translate(c.id, c.x, c.y);
+  }
 }
 
 // Nodes are handed to ELK as Proxies; a Proxy preserves `id`, so the applier
 // still translates the real node.
 export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
-  const { editor, area, container, ensureArrange, repositionDockedTo, isDestroyed } = deps;
+  const { editor, area, container, ensureElk, repositionDockedTo, isDestroyed } = deps;
   return async (opts?: { groupId?: string; skipConfirm?: boolean; skipPush?: boolean }) => {
     const all = editor.getNodes();
     const selected = all.filter((n) => (n as { selected?: boolean }).selected);
@@ -434,9 +496,9 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       }
     }
 
-    // Null only if the area was destroyed mid-import — nothing left to lay out.
-    const arrangePlugin = await ensureArrange();
-    if (!arrangePlugin) return;
+    // Null only if the surface was destroyed mid-import — nothing left to lay out.
+    const elk = await ensureElk();
+    if (!elk) return;
 
     // widthCap is "at most N per row"; layerUnzipping wants the sublayer COUNT. Read here
     // (from the layout's node count) so the preset's per-node hook stamps the same value.
@@ -444,12 +506,13 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     const widthCap = (capSetting === "off" ? 0 : Number(capSetting)) as TidyWidthCap;
     tidyLayerSplit = tidyLayerSplitFor(proxyNodes.length, widthCap);
 
-    await arrangePlugin.layout({
+    await elkTidyLayout(elk, {
       nodes: proxyNodes as Schemes["Node"][],
       connections: subsetConns,
       // ELK spacing + direction + width cap from the Tidy knobs (the preset's `spacing`
       // is only port placement).
       options: tidyOptionsFromSettings(),
+      translate: (id, x, y) => area.nodeViews.get(id)?.translate(x, y),
     });
 
     // Place cluster members relative to the leader's new position, BEFORE the anchor
@@ -573,7 +636,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
 
     selectedIds.forEach((id, i) => selectNodeFromProcess(id, i > 0));
 
-    if (!withinGroup && selectedIds.length > 0) await AreaExtensions.zoomAt(area, targets);
+    if (!withinGroup && selectedIds.length > 0) await zoomAt(area as unknown as ZoomSurface, targets);
 
     // Snap docked FCs back onto their hosts, deferred a frame so the sockets render
     // at the new host positions before we measure them.
@@ -601,7 +664,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
 // nodes are arranged as units, so nothing is tidied twice.
 export function makeCleanupFn(
   editor: NodeEditor<Schemes>,
-  area: AreaPlugin<Schemes, AreaExtra>,
+  area: Surface,
   arrangeFn: ArrangeFn,
 ): () => Promise<void> {
   return async () => {

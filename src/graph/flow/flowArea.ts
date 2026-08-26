@@ -2,10 +2,9 @@
 // process.ts, persistence's rebuildGraph, fcReconcile, AreaExtensions.zoomAt,
 // NavMenu's zoom pill, flyToNode, and ~69 node components all speak rete's area
 // API; on the flow surface those verbs land here and become React Flow state.
-import { BaseAreaPlugin } from "rete-area-plugin";
-import type { AreaPlugin } from "rete-area-plugin";
 import type { NodeEditor } from "rete";
-import type { Schemes, AreaExtra } from "../schemes";
+import type { Schemes } from "../schemes";
+import type { Surface } from "../surface";
 import { clampZoom } from "../areaPresets";
 
 export type FlowAreaCallbacks = {
@@ -21,7 +20,7 @@ export type FlowAreaCallbacks = {
   getContainer(): HTMLElement | null;
 };
 
-export type FlowArea = AreaPlugin<Schemes, AreaExtra> & {
+export type FlowArea = Surface & {
   /** Keep nodeViews mirroring the editor's node set + model positions. */
   syncViews(): void;
   /** RF viewport → rete-shaped transform (called from onMove). */
@@ -113,10 +112,6 @@ export function makeFlowArea(
     get container(): HTMLElement {
       return cb.getContainer() ?? detachedContainer;
     },
-    // zoomAt resolves the editor through the plugin scope chain.
-    parentScope() {
-      return editor;
-    },
     area: {
       transform,
       pointer,
@@ -148,11 +143,7 @@ export function makeFlowArea(
     async resize() {},
     addPipe() {},
     removePipe() {},
-    // A used plugin (rete-auto-arrange) resolves the area/editor through the
-    // scope chain — wire its parent so parentScope() walks land here.
-    use(scope: unknown) {
-      (scope as { setParent?: (p: unknown) => void }).setParent?.(fake);
-    },
+    use() {},
     async emit(ctx: unknown) {
       return ctx;
     },
@@ -168,11 +159,5 @@ export function makeFlowArea(
       pointer.y = p.y;
     },
   };
-  // `parentScope(BaseAreaPlugin)` walks use instanceof checks; adopting the
-  // base prototype satisfies them while the fake's OWN properties keep
-  // shadowing every method it implements. Un-shadowed base methods would touch
-  // missing internals — acceptable: any such call is a bug to surface, not
-  // silently no-op.
-  Object.setPrototypeOf(fake, BaseAreaPlugin.prototype);
   return fake as unknown as FlowArea;
 }

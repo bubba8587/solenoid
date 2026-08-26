@@ -1,8 +1,8 @@
+import type { Surface } from "./surface";
 import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
-import type { AreaPlugin } from "rete-area-plugin";
-import type { Schemes, AreaExtra } from "./schemes";
+import type { Schemes } from "./schemes";
 import { processGraph, setEditorRefs } from "./process";
 import { calcModeStore } from "./calcModeStore";
 
@@ -46,7 +46,7 @@ describe("processGraph is single-flight (a mid-pass recompute coalesces, never n
         await processGraph();               // the re-entrant recompute
         resetSeenByReentrantCall = resetCount - before;
       },
-    } as unknown as AreaPlugin<Schemes, AreaExtra>;
+    } as unknown as Surface;
 
     setEditorRefs(editor, engine, area);
     await expect(processGraph()).resolves.toBeUndefined(); // no throw, no unhandled rejection
@@ -72,7 +72,7 @@ describe("processGraph is single-flight (a mid-pass recompute coalesces, never n
         reentered = true;
         await processGraph(undefined, undefined, { force: true }); // a second F9 mid-pass
       },
-    } as unknown as AreaPlugin<Schemes, AreaExtra>;
+    } as unknown as Surface;
     setEditorRefs(editor, engine, area);
     calcModeStore.setMode("manual");
     try {

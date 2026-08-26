@@ -1,6 +1,6 @@
+import type { Surface } from "./surface";
 import type { NodeEditor } from "rete";
-import type { AreaPlugin } from "rete-area-plugin";
-import type { Schemes, AreaExtra } from "./schemes";
+import type { Schemes } from "./schemes";
 import { getEditor, getArea } from "./process";
 
 // The graph the app CHROME acts on, and the seam any canvas-substituting surface registers
@@ -10,7 +10,7 @@ import { getEditor, getArea } from "./process";
 
 export interface ActiveGraph {
   editor: NodeEditor<Schemes>;
-  area: AreaPlugin<Schemes, AreaExtra>;
+  area: Surface;
 }
 
 let _override: ActiveGraph | null = null;
@@ -45,13 +45,13 @@ export function getOwningEditor(nodeId: string): NodeEditor<Schemes> | null {
   return getEditor();
 }
 
-export function getActiveArea(): AreaPlugin<Schemes, AreaExtra> | null {
+export function getActiveArea(): Surface | null {
   return _override?.area ?? getArea();
 }
 
 /** getOwningEditor's area twin, for code running per rendered node: `getArea()` no-ops
  *  inside a drill-in, and `getActiveArea()` wrongly returns the drill-in for a MAIN node. */
-export function getOwningArea(nodeId: string): AreaPlugin<Schemes, AreaExtra> | null {
+export function getOwningArea(nodeId: string): Surface | null {
   if (_override && _override.editor.getNode(nodeId)) return _override.area;
   return getArea();
 }

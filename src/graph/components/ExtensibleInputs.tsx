@@ -1,6 +1,6 @@
+import type { Emit } from "./nodeKit";
 import { useSyncExternalStore } from "react";
 import type { ClassicPreset } from "rete";
-import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import { processGraph, bumpConnectionVersion } from "../process";
 import { getActiveArea } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
@@ -39,7 +39,7 @@ export function ExtensibleInputs({
   node, emit, leadingKeys, valueKeys, minRows = 1, addLabel = "+ Add",
 }: {
   node: ExtensibleNode;
-  emit: RenderEmit<ClassicScheme>;
+  emit: Emit;
   // Fixed inputs (no remove) rendered ABOVE the extensible rows — e.g. CHOOSE's `index`.
   leadingKeys?: string[];
   // The removable value rows. Default: all inputs (List/Concat, where every input is one).

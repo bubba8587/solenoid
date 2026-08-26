@@ -1,9 +1,8 @@
 // Canvas keyboard shortcuts, skipped while focus is in an editable form element.
+import type { Surface } from "./surface";
 import type { MutableRefObject } from "react";
 import type { NodeEditor } from "rete";
-import type { AreaPlugin } from "rete-area-plugin";
-import type { HistoryPlugin } from "rete-history-plugin";
-import type { Schemes, AreaExtra } from "./schemes";
+import type { Schemes } from "./schemes";
 import {
   processGraph, bumpConduitAngle, repositionDockedNodes,
   unselectAllNodes as unselectAllNodesFromProcess,
@@ -38,8 +37,8 @@ import { documentStore } from "./documentStore";
 
 export interface CanvasKeyboardDeps {
   editorRef: MutableRefObject<NodeEditor<Schemes> | null>;
-  areaRef: MutableRefObject<AreaPlugin<Schemes, AreaExtra> | null>;
-  historyRef: MutableRefObject<HistoryPlugin<Schemes> | null>;
+  areaRef: MutableRefObject<Surface | null>;
+  historyRef: MutableRefObject<{ undo(): Promise<unknown>; redo(): Promise<unknown> } | null>;
   containerRef: MutableRefObject<HTMLDivElement | null>;
   screenMouseRef: MutableRefObject<{ x: number; y: number }>;
   /** Live "is the Add/quick-wire menu open" check for the bare-Enter palette guard. */

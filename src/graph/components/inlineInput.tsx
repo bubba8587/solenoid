@@ -1,7 +1,7 @@
+import type { Emit } from "./nodeKit";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
 import { useKatexRender } from "./katexLoader";
 import type { ClassicPreset } from "rete";
-import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import { SolenoidSocket } from "../sockets";
 import { connectionVersionStore, processGraph } from "../process";
 import { getOwningEditor, getOwningArea } from "../activeGraph";
@@ -446,7 +446,7 @@ export type InlineNode = {
 
 type Props = {
   node: InlineNode;
-  emit: RenderEmit<ClassicScheme>;
+  emit: Emit;
   /** Restrict / reorder which input keys render. Defaults to all inputs. */
   keys?: string[];
   /** Override the row label for a key (e.g. Logical's per-op labels). */

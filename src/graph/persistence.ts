@@ -1,5 +1,4 @@
 import { ClassicPreset } from "rete";
-import { AreaExtensions } from "rete-area-plugin";
 import type { SolenoidNode, SolenoidConnection } from "./schemes";
 import { getEditor, getArea, processGraph, repositionDockedNodes, beginGraphRebuild, endGraphRebuild, getCurrentSeedId, clearHistory } from "./process";
 import type { SeedSelection } from "./process";
@@ -28,6 +27,7 @@ import { frameFormatStore, type FrameColumnFormat } from "./frameFormatStore";
 import { paletteStore, reportPaletteStore } from "./palette";
 import { docMetaStore } from "./docMetaStore";
 import { loadRevealStore } from "./loadReveal";
+import { zoomAt, type ZoomSurface } from "./zoomAt";
 
 
 /** Curtain threshold in nodes+connections across BOTH sides, so a small doc swaps
@@ -464,7 +464,7 @@ async function rebuildGraph(
 
   await processGraph();
   // zoomAt over an empty node set produces a NaN transform.
-  if (editor.getNodes().length > 0) await AreaExtensions.zoomAt(area, editor.getNodes());
+  if (editor.getNodes().length > 0) await zoomAt(area as unknown as ZoomSurface, editor.getNodes());
   syncGroupCollapse(editor, area); // restore any collapsed groups' hidden members
 
   // Two RAFs: docked FCs can only snap once heights settle (a Decimal chip lays

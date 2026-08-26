@@ -1,5 +1,5 @@
+import type { Surface } from "./surface";
 import type { NodeEditor } from "rete";
-import type { AreaPlugin } from "rete-area-plugin";
 import type { DataflowEngine } from "rete-engine";
 import { Cancelled } from "rete-engine";
 import { cableValueStore } from "./cableValueStore";
@@ -10,16 +10,16 @@ import { calcModeStore } from "./calcModeStore";
 import { compositePassStore } from "./compositeEditorStore";
 import { clearCollectMemo } from "./frameBackend";
 import { resolveTrigModes } from "./trigMode";
-import type { Schemes, AreaExtra } from "./schemes";
+import type { Schemes } from "./schemes";
 
 let _editor: NodeEditor<Schemes> | null = null;
 let _engine: DataflowEngine<Schemes> | null = null;
-let _area: AreaPlugin<Schemes, AreaExtra> | null = null;
+let _area: Surface | null = null;
 
 export function setEditorRefs(
   editor: NodeEditor<Schemes>,
   engine: DataflowEngine<Schemes>,
-  area: AreaPlugin<Schemes, AreaExtra>,
+  area: Surface,
 ) {
   _editor = editor;
   _engine = engine;

@@ -1,10 +1,8 @@
+import type { Surface } from "./surface";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
-import { AutoArrangePlugin } from "rete-auto-arrange-plugin";
-import type { Schemes, AreaExtra } from "./schemes";
-import type { AreaPlugin } from "rete-area-plugin";
-import { makeArrangeFn, symmetricPortPreset } from "./tidyArrange";
-import { settingsStore } from "./settingsStore";
+import type { Schemes } from "./schemes";
+import { makeArrangeFn, makeEnsureElk } from "./tidyArrange";
 import { ArithmeticNode } from "./nodes/scalar";
 import { DisplayNode } from "./nodes/display";
 import { FormatControllerNode } from "./nodes/formatController";
@@ -99,18 +97,7 @@ function makeFakeArea() {
     async update() { /* no-op headless */ },
     area: { transform: { k: 1, x: 0, y: 0 } },
   };
-  return { area: area as unknown as AreaPlugin<Schemes, AreaExtra>, add };
-}
-
-function makeEnsureArrangeForTest(
-  editor: NodeEditor<Schemes>,
-  area: AreaPlugin<Schemes, AreaExtra>,
-) {
-  const plugin = new AutoArrangePlugin<Schemes>();
-  plugin.addPreset(() => symmetricPortPreset(settingsStore.get("tidyDirection")));
-  (plugin as unknown as { getArea: () => unknown }).getArea = () => area;
-  (plugin as unknown as { getEditor: () => unknown }).getEditor = () => editor;
-  return () => Promise.resolve(plugin);
+  return { area: area as unknown as Surface, add };
 }
 
 let rafQueue: FrameRequestCallback[] = [];
@@ -166,7 +153,7 @@ async function buildScene() {
   const arrangeFn = makeArrangeFn({
     editor, area,
     container: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 700 }) } as unknown as HTMLElement,
-    ensureArrange: makeEnsureArrangeForTest(editor, area),
+    ensureElk: makeEnsureElk(() => false),
     repositionDockedTo: () => {},
     isDestroyed: () => false,
   });

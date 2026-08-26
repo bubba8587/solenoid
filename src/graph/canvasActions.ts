@@ -1,6 +1,6 @@
+import type { Surface } from "./surface";
 import { ClassicPreset, type NodeEditor } from "rete";
-import type { AreaPlugin } from "rete-area-plugin";
-import type { Schemes, AreaExtra, SolenoidNode } from "./schemes";
+import type { Schemes, SolenoidNode } from "./schemes";
 import type { SocketContextTarget, CableContextTarget } from "./components";
 import type { Pt } from "./lasso";
 import {
@@ -37,7 +37,7 @@ type SolenoidConnection = import("./schemes").SolenoidConnection;
 // mean flow direction.
 export async function insertConduitForCables(
   editor: NodeEditor<Schemes>,
-  area: AreaPlugin<Schemes, AreaExtra>,
+  area: Surface,
   container: HTMLElement,
   target: CableContextTarget,
 ): Promise<void> {
@@ -168,7 +168,7 @@ export async function insertConduitForCables(
 // [gap, current distance] — "never closer than a gap, never farther than I placed it".
 export function linkStandoffBetween(
   editor: NodeEditor<Schemes>,
-  area: AreaPlugin<Schemes, AreaExtra>,
+  area: Surface,
   t: { aId: string; bId: string },
 ): void {
   // The same size read the standoff SOLVER uses, so the band matches its boxes.
@@ -203,7 +203,7 @@ export function linkStandoffBetween(
 // Node deletion splices a ghost cable when a node has exactly one in + one out.
 export async function deleteSelection(
   editor: NodeEditor<Schemes>,
-  area: AreaPlugin<Schemes, AreaExtra> | null,
+  area: Surface | null,
 ): Promise<void> {
   // A selected standoff is its own deletion target (exclusive selection).
   const standoffSel = standoffStore.selected();
@@ -329,7 +329,7 @@ export async function deleteCables(
 
 export async function attachFormatController(
   editor: NodeEditor<Schemes>,
-  area: AreaPlugin<Schemes, AreaExtra>,
+  area: Surface,
   container: HTMLElement,
   target: SocketContextTarget,
 ): Promise<void> {

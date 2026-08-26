@@ -1,6 +1,6 @@
+import type { Surface } from "./surface";
 import type { NodeEditor } from "rete";
-import type { AreaPlugin } from "rete-area-plugin";
-import type { Schemes, AreaExtra } from "./schemes";
+import type { Schemes } from "./schemes";
 import { FormatControllerNode, ConvertNode, ConduitNode } from "./rete-nodes";
 import { SolenoidSocket, canConnect } from "./sockets";
 import { settleWildcardTypes } from "./trueAnyAdopt";
@@ -9,7 +9,7 @@ import { settleWildcardTypes } from "./trueAnyAdopt";
  *  the new type can no longer feed. The caller owns the re-render + recompute. */
 export async function retypeOutputCables(
   editor: NodeEditor<Schemes>,
-  area: AreaPlugin<Schemes, AreaExtra>,
+  area: Surface,
   nodeId: string,
   outKey: string,
 ): Promise<void> {
@@ -27,7 +27,7 @@ export async function retypeOutputCables(
 /** Does NOT call processGraph / bumpConnectionVersion — the caller owns the recompute. */
 export function reconcileFcTypes(
   editor: NodeEditor<Schemes>,
-  area: AreaPlugin<Schemes, AreaExtra>,
+  area: Surface,
 ): void {
   // Derived socket types FIRST, so the FCs below resolve against them.
   const settled = settleWildcardTypes(editor);
@@ -74,7 +74,7 @@ export function reconcileFcTypes(
  *  can derive from static CONFIG; the full reconcile is paid only when a type moved. */
 export function reconcileTypesAfterEdit(
   editor: NodeEditor<Schemes>,
-  area: AreaPlugin<Schemes, AreaExtra>,
+  area: Surface,
 ): void {
   const settled = settleWildcardTypes(editor);
   if (!settled.conduitChanged && settled.adopted.size === 0) return;

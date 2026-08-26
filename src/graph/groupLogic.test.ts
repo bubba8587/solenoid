@@ -1,9 +1,9 @@
+import type { Surface } from "./surface";
 import { describe, it, expect } from "vitest";
 import { moveGroupMembers, reconcileGroupMembership, absorbIntoContainingGroup } from "./groupLogic";
 import { GroupNode } from "./rete-nodes";
 import type { NodeEditor } from "rete";
-import type { AreaPlugin } from "rete-area-plugin";
-import type { Schemes, AreaExtra } from "./schemes";
+import type { Schemes } from "./schemes";
 
 // Regression: dragging a group whose members are ALSO selected moved the members
 // twice (once by rete's selector, once by moveGroupMembers) — they "outran" the
@@ -11,7 +11,7 @@ import type { Schemes, AreaExtra } from "./schemes";
 // carried by the selector, isn't moved again; a programmatic push leaves it off.
 
 type Editor = NodeEditor<Schemes>;
-type Area = AreaPlugin<Schemes, AreaExtra>;
+type Area = Surface;
 
 function harness(selected: Set<string>) {
   const start: Record<string, { x: number; y: number }> = {

@@ -6,7 +6,6 @@ import { isPassthroughNode } from "../nodes/passthrough";
 import { commentStore, commentsPanelUi } from "../commentStore";
 import { settingsStore } from "../settingsStore";
 import type { ClassicPreset } from "rete";
-import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import { processGraph } from "../process";
 import { getOwningEditor, getOwningArea } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
@@ -73,10 +72,12 @@ export type ShellNode = {
 /** Standard props every node component receives from the Rete preset. */
 export type NodeProps<N> = {
   data: N & { width?: number; height?: number };
-  emit: RenderEmit<ClassicScheme>;
+  emit: Emit;
 };
 
-export type Emit = RenderEmit<ClassicScheme>;
+// The render-pipe emit rete's preset used to require. On the flow surface the
+// socket seam never calls it — a stub satisfies every component's contract.
+export type Emit = (ctx: unknown) => void;
 
 /** Controlled local state mirrored onto `node[key]`, recomputing the graph on
  *  change — the `useState` is what React tracks for controlled inputs/selects. */

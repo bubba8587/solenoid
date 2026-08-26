@@ -46,7 +46,6 @@ import {
   markGraphCustom,
 } from "../process";
 import { flowHistory } from "./flowHistory";
-import type { HistoryPlugin } from "rete-history-plugin";
 import { installCanvasKeyboard } from "../canvasKeyboard";
 import { flattenLeaves, filterByCompatibleSocket, firstCompatibleSocketKey } from "../catalogSearch";
 import { SolenoidSocket } from "../sockets";
@@ -91,7 +90,7 @@ import { commentsPanelUi } from "../commentStore";
 import { pinNodeValue } from "../pinStore";
 import { unpackComposite } from "../compositeLogic";
 import { compositeEditorStore } from "../compositeEditorStore";
-import { makeEnsureArrange, makeArrangeFn, makeCleanupFn } from "../tidyArrange";
+import { makeEnsureElk, makeArrangeFn, makeCleanupFn } from "../tidyArrange";
 import { moveGroupMembers } from "../groupLogic";
 import { GroupNode } from "../rete-nodes";
 import { canvasLockStore } from "../canvasLock";
@@ -99,6 +98,7 @@ import { installLassoSelection, type LassoState } from "../canvasLasso";
 import { installFlowPinch } from "./flowPinch";
 import { installTouchCardPan } from "./flowTouchPan";
 import { installWheelZoom } from "./flowWheel";
+import { zoomAt, type ZoomSurface } from "../zoomAt";
 import {
   setAutoArrange,
   setCleanup,
@@ -110,7 +110,6 @@ import {
 } from "../process";
 import { reconcileFcTypes } from "../fcReconcile";
 import { syncGroupCollapse } from "../groupCollapse";
-import { AreaExtensions } from "rete-area-plugin";
 import { FormatControllerNode } from "../rete-nodes";
 import { formatAnnotationStore, formatMismatchStore, unitsCompatible } from "../formatAnnotationStore";
 import { StandoffLayer } from "../components";
@@ -370,12 +369,12 @@ function FlowCanvasInner() {
     // Tidy + Cleanup: the SAME arrange factory as the rete surface; the
     // auto-arrange plugin resolves area/editor through the adapter's scope
     // shims (see flowArea.ts).
-    const ensureArrange = makeEnsureArrange(s.area, () => false);
+    const ensureElk = makeEnsureElk(() => false);
     const arrangeFn = makeArrangeFn({
       editor: s.editor,
       area: s.area,
       container: wrapperRef.current ?? document.body,
-      ensureArrange,
+      ensureElk,
       repositionDockedTo,
       isDestroyed: () => false,
     });
@@ -524,7 +523,7 @@ function FlowCanvasInner() {
           if (n) focus.push(n);
         }
         if (focus.length) {
-          void AreaExtensions.zoomAt(s.area as unknown as Parameters<typeof AreaExtensions.zoomAt>[0], focus);
+          void zoomAt(s.area as unknown as ZoomSurface, focus);
         }
       } else if (!active && wasActive) {
         for (const [id, pos] of snapshot) {
@@ -581,7 +580,7 @@ function FlowCanvasInner() {
         current: {
           undo: () => flowHistory.undo(),
           redo: () => flowHistory.redo(),
-        } as unknown as HistoryPlugin<Schemes>,
+        },
       },
       containerRef: wrapperRef,
       screenMouseRef,

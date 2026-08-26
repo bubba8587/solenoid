@@ -1,4 +1,4 @@
-import { AreaExtensions } from "rete-area-plugin";
+import { zoomAt, type ZoomSurface } from "./zoomAt";
 import type { NodeEditor } from "rete";
 import { getEditor, getArea } from "./process";
 import { getOwningEditor, getOwningArea } from "./activeGraph";
@@ -40,7 +40,7 @@ export function flyToNode(nodeId: string): void {
   if (!editor || !area) return;
   const ref = visibleRef(editor, nodeId);
   if (!ref) return;
-  void AreaExtensions.zoomAt(area, [ref]);
+  void zoomAt(area as unknown as ZoomSurface, [ref]);
 }
 
 /** Fits a bounding box over every node; unknown/removed ids are skipped and an empty
@@ -53,7 +53,7 @@ export function flyToNodes(nodeIds: string[]): void {
     .map((id) => visibleRef(editor, id))
     .filter((r): r is Schemes["Node"] => r !== null);
   if (refs.length === 0) return;
-  void AreaExtensions.zoomAt(area, refs);
+  void zoomAt(area as unknown as ZoomSurface, refs);
 }
 
 const FLASH_CLASS = "solenoid-node-flash";

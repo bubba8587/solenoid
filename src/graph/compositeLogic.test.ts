@@ -1,8 +1,8 @@
+import type { Surface } from "./surface";
 import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
-import type { AreaPlugin } from "rete-area-plugin";
 import { DataflowEngine } from "rete-engine";
-import type { Schemes, AreaExtra } from "./schemes";
+import type { Schemes } from "./schemes";
 import { installInputCoercion } from "./coerceInputs";
 import { installErrorGuards } from "./errorValue";
 import { createCompositeFromSelection, unpackComposite } from "./compositeLogic";
@@ -43,7 +43,7 @@ function makeFakeArea(positions: Map<string, { x: number; y: number }>) {
       positions.set(id, pos); // keep the view in sync, like the real area
     },
   };
-  return { area: area as unknown as AreaPlugin<Schemes, AreaExtra>, translated };
+  return { area: area as unknown as Surface, translated };
 }
 
 function connect(

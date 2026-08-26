@@ -1,8 +1,8 @@
+import type { Surface } from "./surface";
 import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
-import type { AreaPlugin } from "rete-area-plugin";
-import type { Schemes, AreaExtra } from "./schemes";
+import type { Schemes } from "./schemes";
 import { installInputCoercion } from "./coerceInputs";
 import { installErrorGuards, isSolError, type SolError } from "./errorValue";
 import { setEditorRefs, processGraph } from "./process";
@@ -44,7 +44,7 @@ function makeGraph() {
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
   // runGraphPass touches the area only via `area.update("node", id)` — stub it.
-  const area = { update: async () => {} } as unknown as AreaPlugin<Schemes, AreaExtra>;
+  const area = { update: async () => {} } as unknown as Surface;
   setEditorRefs(editor, engine, area);
   return { editor, engine };
 }

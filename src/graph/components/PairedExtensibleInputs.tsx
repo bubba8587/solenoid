@@ -1,6 +1,6 @@
+import type { Emit } from "./nodeKit";
 import { useSyncExternalStore } from "react";
 import type { ClassicPreset } from "rete";
-import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import { processGraph, bumpConnectionVersion } from "../process";
 import { getActiveArea } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
@@ -46,7 +46,7 @@ export function PairedExtensibleInputs({
   node, emit, leadingKeys, trailingKeys, rowNoun = "pair",
 }: {
   node: PairedExtensibleNode;
-  emit: RenderEmit<ClassicScheme>;
+  emit: Emit;
   leadingKeys?: string[];
   trailingKeys?: string[];
   /** The user-facing noun for a tuple in the add/remove controls ("pair", "row"). */

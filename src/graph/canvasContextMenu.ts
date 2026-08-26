@@ -1,9 +1,9 @@
 // A NATIVE contextmenu listener, not rete's synthetic React handler — that one doesn't
 // reliably resolve `e.target` into the node DOM.
+import type { Surface } from "./surface";
 import type { MutableRefObject } from "react";
 import type { NodeEditor } from "rete";
-import type { AreaPlugin } from "rete-area-plugin";
-import type { Schemes, AreaExtra, SolenoidNode } from "./schemes";
+import type { Schemes, SolenoidNode } from "./schemes";
 import type { SocketContextTarget, CableContextTarget, NodeContextTarget } from "./components";
 import { ConduitNode, FormatControllerNode, GroupNode, CompositeNode } from "./rete-nodes";
 import { cableSelectionStore, cableGhostStore } from "./cableState";
@@ -16,7 +16,7 @@ import { unselectAllNodes as unselectAllNodesFromProcess } from "./process";
 export interface ContextMenuDeps {
   el: HTMLElement;
   editorRef: MutableRefObject<NodeEditor<Schemes> | null>;
-  areaRef: MutableRefObject<AreaPlugin<Schemes, AreaExtra> | null>;
+  areaRef: MutableRefObject<Surface | null>;
   setSocketCtx: (t: SocketContextTarget) => void;
   setCableCtx: (t: CableContextTarget) => void;
   setNodeCtx: (t: NodeContextTarget) => void;

@@ -46,15 +46,7 @@
     "react-is": "^19.2.8",
     "recharts": "^3.10.1",
     "rete": "^2.0.6",
-    "rete-area-plugin": "^2.3.2",
-    "rete-auto-arrange-plugin": "^2.0.2",
-    "rete-connection-plugin": "^2.0.5",
     "rete-engine": "^2.1.1",
-    "rete-history-plugin": "^2.1.1",
-    "rete-minimap-plugin": "^2.0.3",
-    "rete-react-plugin": "^2.1.2",
-    "rete-render-utils": "^2.0.3",
-    "styled-components": "^6.5.3",
     "web-worker": "^1.5.0"
   },
   "devDependencies": {

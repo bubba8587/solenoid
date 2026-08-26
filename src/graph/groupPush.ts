@@ -1,6 +1,6 @@
+import type { Surface } from "./surface";
 import type { NodeEditor } from "rete";
-import type { AreaPlugin } from "rete-area-plugin";
-import type { Schemes, AreaExtra } from "./schemes";
+import type { Schemes } from "./schemes";
 import { GroupNode } from "./rete-nodes";
 import { moveGroupMembers } from "./groupLogic";
 import { COLLAPSE_LAYOUT, groupCollapseStore, syncGroupCollapse, settleCollapse } from "./groupCollapse";
@@ -15,7 +15,7 @@ import { measuredBox } from "./nodeSize";
 // Push records are in-memory only: a reload keeps everything where it is.
 
 type Editor = NodeEditor<Schemes>;
-type Area = AreaPlugin<Schemes, AreaExtra>;
+type Area = Surface;
 
 interface PushRecord {
   pushed: string;        // the entity that was moved (group or loose node)

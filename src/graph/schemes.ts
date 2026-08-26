@@ -1,9 +1,7 @@
 import type { ClassicPreset, GetSchemes } from "rete";
-import type { ReactArea2D } from "rete-react-plugin";
-import type { MinimapExtra } from "rete-minimap-plugin";
 import type { DataflowNode } from "rete-engine";
 
-// width/height are read by the minimap plugin, so every node class must default them.
+// width/height feed the minimap + framing math, so every node class defaults them.
 export type SolenoidNode = ClassicPreset.Node & DataflowNode & {
   width: number;
   height: number;
@@ -12,4 +10,6 @@ export type SolenoidNode = ClassicPreset.Node & DataflowNode & {
 export type SolenoidConnection = ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node>;
 
 export type Schemes = GetSchemes<SolenoidNode, SolenoidConnection>;
-export type AreaExtra = ReactArea2D<Schemes> | MinimapExtra;
+// A phantom render-signal parameter left over from rete's AreaPlugin generics;
+// dissolves with the AreaPlugin type itself when the surface type replaces it.
+export type AreaExtra = never;

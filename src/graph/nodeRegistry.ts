@@ -1,9 +1,8 @@
 // Maps every node class to its React component — one row per node.
 
+import type { Emit } from "./components/nodeKit";
 import { ClassicPreset } from "rete";
 import type { JSXElementConstructor } from "react";
-import type { RenderEmit } from "rete-react-plugin";
-import type { Schemes } from "./schemes";
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, SvgPickerNode,
   SparklineNode, ChartNode, MergePlotsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, DateInputNode, DateRangeNode, XYPadNode,
@@ -163,7 +162,7 @@ import { EmSpectrumComponent, HrZonesComponent, PipeRoughnessComponent, Triangle
 
 export type AnyNodeComponent = JSXElementConstructor<{
   data: ClassicPreset.Node & { width?: number; height?: number };
-  emit: RenderEmit<Schemes>;
+  emit: Emit;
 }>;
 
 type NodeCtor = abstract new (...args: never[]) => ClassicPreset.Node;

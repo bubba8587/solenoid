@@ -4,6 +4,7 @@
 // the flowArea adapter registered as the ACTIVE graph, and a per-composite
 // snapshot history over snapshotInternal(). The rete overlay remains behind
 // `?rete` until C9 removes it.
+import type { Surface } from "../surface";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   ReactFlow,
@@ -22,7 +23,6 @@ import {
   type IsValidConnection,
   type Viewport,
 } from "@xyflow/react";
-import type { AreaPlugin } from "rete-area-plugin";
 import { FlowSurfaceContext } from "../flowSurface";
 import { SolNodeAdapter } from "./SolNodeAdapter";
 import { FlowCableEdge } from "./FlowCableEdge";
@@ -33,7 +33,7 @@ import { installFlowPinch } from "./flowPinch";
 import { installTouchCardPan } from "./flowTouchPan";
 import { installWheelZoom } from "./flowWheel";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../rete-nodes";
-import type { SolenoidNode, Schemes, AreaExtra } from "../schemes";
+import type { SolenoidNode } from "../schemes";
 import { compositeEditorStore, compositePassStore } from "../compositeEditorStore";
 import { getEditor, getArea, processGraph, setCableDragging } from "../process";
 import { setActiveGraph } from "../activeGraph";
@@ -50,7 +50,7 @@ import { pushNotice } from "../noticeStore";
 import { buildCatalog } from "../catalogUtils";
 import { AddNodeMenu, type NodeCatalogEntry } from "../AddNodeMenu";
 import { MIN_ZOOM, MAX_ZOOM } from "../areaPresets";
-import { makeEnsureArrange, tidyOptionsFromSettings } from "../tidyArrange";
+import { makeEnsureElk, elkTidyLayout, tidyOptionsFromSettings, type Elk } from "../tidyArrange";
 import { CompositeRunControls, RUN_MODE_OPTIONS } from "../components/CompositeNode";
 import { minimapFillForNode } from "../components/Minimap";
 import { appThemeStore } from "../appTheme";
@@ -271,7 +271,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
       setReady(true);
       setActiveGraph({
         editor: comp.internalEditor,
-        area: s.area as unknown as AreaPlugin<Schemes, AreaExtra>,
+        area: s.area as unknown as Surface,
       });
       if (s.history.stack.length === 0) recordNow(comp, s);
     })();
@@ -445,12 +445,17 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     await editor.removeNode(nodeId);
   }
 
-  const ensureArrangeRef = useRef<ReturnType<typeof makeEnsureArrange> | null>(null);
+  const ensureElkRef = useRef<(() => Promise<Elk | null>) | null>(null);
   const tidyDrill = useCallback(async () => {
-    if (!ensureArrangeRef.current) ensureArrangeRef.current = makeEnsureArrange(s.area, () => false);
-    const arrange = await ensureArrangeRef.current();
-    if (!arrange) return;
-    await arrange.layout({ options: tidyOptionsFromSettings() });
+    if (!ensureElkRef.current) ensureElkRef.current = makeEnsureElk(() => false);
+    const elk = await ensureElkRef.current();
+    if (!elk) return;
+    await elkTidyLayout(elk, {
+      nodes: comp.internalEditor.getNodes(),
+      connections: comp.internalEditor.getConnections(),
+      options: tidyOptionsFromSettings(),
+      translate: (id, x, y) => s.area.translate(id, { x, y }),
+    });
     void fitView({ padding: 0.15, duration: 0 });
     void processGraph(recomputeTarget());
     scheduleAutosave();

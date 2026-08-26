@@ -1,7 +1,7 @@
+import type { Surface } from "./surface";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type { NodeEditor } from "rete";
-import type { Schemes, AreaExtra } from "./schemes";
-import type { AreaPlugin } from "rete-area-plugin";
+import type { Schemes } from "./schemes";
 import { setEditorRefs } from "./process";
 import { setActiveGraph } from "./activeGraph";
 import { isolateStore } from "./isolateStore";
@@ -22,7 +22,7 @@ function fakeEditor(nodes: FakeNode[]): NodeEditor<Schemes> {
     getConnections: () => [],
   } as unknown as NodeEditor<Schemes>;
 }
-const fakeArea = {} as unknown as AreaPlugin<Schemes, AreaExtra>;
+const fakeArea = {} as unknown as Surface;
 
 const main = fakeEditor([{ id: "m1", selected: true }, { id: "m2" }]);
 const sub = fakeEditor([{ id: "s1", selected: true }, { id: "s2", selected: true }, { id: "s3" }]);

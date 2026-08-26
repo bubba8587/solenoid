@@ -1,7 +1,7 @@
+import type { Emit } from "./nodeKit";
 import { useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { ClassicPreset } from "rete";
-import type { RenderEmit, ClassicScheme } from "rete-react-plugin";
 import { getEditor } from "../process";
 import { cableValueStore } from "../cableValueStore";
 import { formatAnnotationStore, formatNumberWithAnnotation, applyLogicalStyle, type FormatAnnotation, type LambdaView } from "../formatAnnotationStore";
@@ -293,7 +293,7 @@ export function RefInputRow({
   nodeId, emit, refKey, value, socket, rowClassName, keyClassName, valClassName,
 }: {
   nodeId: string;
-  emit: RenderEmit<ClassicScheme>;
+  emit: Emit;
   refKey: string;
   value: unknown;
   socket: ClassicPreset.Socket;

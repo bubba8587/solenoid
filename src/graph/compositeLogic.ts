@@ -1,7 +1,7 @@
+import type { Surface } from "./surface";
 import { ClassicPreset } from "rete";
 import type { NodeEditor } from "rete";
-import type { AreaPlugin } from "rete-area-plugin";
-import type { Schemes, AreaExtra, SolenoidNode, SolenoidConnection } from "./schemes";
+import type { Schemes, SolenoidNode, SolenoidConnection } from "./schemes";
 import { GroupNode, CompositeNode, CompositeInputNode, CompositeOutputNode } from "./rete-nodes";
 import { installErrorGuards } from "./errorValue";
 import { groupCollapseStore } from "./groupCollapse";
@@ -14,7 +14,7 @@ import { measuredBox } from "./nodeSize";
 // composite's private internal one; every crossing cable becomes a declared boundary port.
 
 type Editor = NodeEditor<Schemes>;
-type Area = AreaPlugin<Schemes, AreaExtra>;
+type Area = Surface;
 
 function nodeBox(area: Area, id: string): { x: number; y: number; w: number; h: number } | null {
   return measuredBox(area, id, getEditor() ?? undefined);

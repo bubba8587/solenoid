@@ -1,7 +1,7 @@
+import type { Surface } from "./surface";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { NodeEditor } from "rete";
-import type { Schemes, AreaExtra } from "./schemes";
-import type { AreaPlugin } from "rete-area-plugin";
+import type { Schemes } from "./schemes";
 import { GroupNode } from "./nodes/group";
 import { DisplayNode } from "./nodes/display";
 import { setGroupsCollapsed } from "./groupPush";
@@ -54,7 +54,7 @@ function makeFakeArea() {
     async update() {},
     area: { transform: { k: 1, x: 0, y: 0 } },
   };
-  return { area: area as unknown as AreaPlugin<Schemes, AreaExtra>, addView };
+  return { area: area as unknown as Surface, addView };
 }
 
 let rafQueue: FrameRequestCallback[] = [];

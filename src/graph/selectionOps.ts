@@ -1,18 +1,18 @@
 // Align / distribute / batch collapse over the selection. Uses the process.ts
 // singletons rather than Canvas-local refs, so it is callable from anywhere.
 
+import type { Surface } from "./surface";
 import { GroupNode } from "./rete-nodes";
 import { getEditor, getArea, repositionDockedNodes, unselectAllNodes, selectNode } from "./process";
 import { standoffStore, standoffClusters, settleStandoffs } from "./standoffs";
 import { collapseStore } from "./collapseStore";
 import { scheduleAutosave } from "./persistence";
 import { measuredBox, type NodeBox } from "./nodeSize";
-import type { Schemes, AreaExtra } from "./schemes";
+import type { Schemes } from "./schemes";
 import type { NodeEditor } from "rete";
-import type { AreaPlugin } from "rete-area-plugin";
 
 type Editor = NodeEditor<Schemes>;
-type Area = AreaPlugin<Schemes, AreaExtra>;
+type Area = Surface;
 type Box = NodeBox;
 
 function selectedNodeIds(editor: Editor): string[] {

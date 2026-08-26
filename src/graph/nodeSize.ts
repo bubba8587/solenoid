@@ -1,13 +1,13 @@
 // The ONE size read for layout math — never read offsetWidth directly, or a
 // zero-size unpainted node collapses the bounding box.
 
+import type { Surface } from "./surface";
 import { collapseStore } from "./collapseStore";
-import type { Schemes, AreaExtra } from "./schemes";
+import type { Schemes } from "./schemes";
 import type { NodeEditor } from "rete";
-import type { AreaPlugin } from "rete-area-plugin";
 
 type Editor = NodeEditor<Schemes>;
-type Area = AreaPlugin<Schemes, AreaExtra>;
+type Area = Surface;
 
 export type NodeBox = { x: number; y: number; w: number; h: number };
 

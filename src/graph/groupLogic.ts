@@ -1,7 +1,7 @@
+import type { Surface } from "./surface";
 import type { NodeEditor } from "rete";
-import type { AreaPlugin } from "rete-area-plugin";
 import type { ClassicPreset } from "rete";
-import type { Schemes, AreaExtra } from "./schemes";
+import type { Schemes } from "./schemes";
 import { GroupNode, nodeKindOf, NODE_KIND_SLOTS } from "./rete-nodes";
 import { dockedNodeStore } from "./dockedNodeStore";
 import { cableSelectionStore } from "./cableState";
@@ -31,7 +31,7 @@ function majorityColor(nodes: ClassicPreset.Node[]): string {
 }
 
 type Editor = NodeEditor<Schemes>;
-type Area = AreaPlugin<Schemes, AreaExtra>;
+type Area = Surface;
 
 // Shared by creation, the within-group tidy AND autofit — they MUST agree or a
 // tidy-then-autofit cycle (Cleanup) drifts the box a few px each run.
