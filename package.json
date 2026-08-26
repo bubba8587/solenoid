@@ -32,6 +32,7 @@
     "@tauri-apps/plugin-opener": "^2",
     "@types/katex": "^0.16.8",
     "@types/papaparse": "^5.5.2",
+    "@xyflow/react": "^12.11.5",
     "chrono-node": "^2.10.1",
     "colord": "^2.10.0",
     "dompurify": "^3.4.14",

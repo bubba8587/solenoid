@@ -40,7 +40,19 @@ const NodeShowcase = lazy(() => import("./graph/showcase/NodeShowcase"));
 const IS_LANDING = new URLSearchParams(window.location.search).has("landing");
 const LandingPage = lazy(() => import("./graph/landing/LandingPage"));
 
+// ?rf swaps in the React Flow port surface (docs/react-port-plan.md), lazy so
+// @xyflow/react stays out of the main bundle.
+const IS_RF = new URLSearchParams(window.location.search).has("rf");
+const FlowApp = lazy(() => import("./graph/flow/FlowApp"));
+
 function App() {
+  if (IS_RF) {
+    return (
+      <Suspense fallback={null}>
+        <FlowApp />
+      </Suspense>
+    );
+  }
   if (IS_LANDING) {
     return (
       <Suspense fallback={null}>

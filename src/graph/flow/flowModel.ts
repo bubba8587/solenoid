@@ -1,0 +1,143 @@
+// React Flow port (C0) — the headless graph model.
+// Same compute spine as scripts/run-graph.ts: real NodeEditor + DataflowEngine
+// with coercion + error guards, NO area/react plugins. React Flow is the view;
+// this module is the seam it reads. Projections return plain RF-shaped objects
+// (no @xyflow import) so they stay testable in the node vitest env.
+import { ClassicPreset, NodeEditor } from "rete";
+import { DataflowEngine } from "rete-engine";
+import type { Schemes } from "../schemes";
+import { installInputCoercion } from "../coerceInputs";
+import { installErrorGuards } from "../errorValue";
+import * as Nodes from "../rete-nodes";
+import { ctorRegistry, type NodeCtor } from "../nodeCtorRegistry";
+
+export type SolNode = Schemes["Node"];
+
+export type SavedNodeLite = {
+  id: string;
+  type: string;
+  name?: string;
+  x: number;
+  y: number;
+  init?: Record<string, unknown>;
+  literals?: Record<string, number>;
+  stringLiterals?: Record<string, string>;
+};
+export type SavedConnectionLite = {
+  source: string;
+  sourceOutput: string;
+  target: string;
+  targetInput: string;
+};
+export type SavedGraphLite = {
+  v?: number;
+  nodes: SavedNodeLite[];
+  connections: SavedConnectionLite[];
+};
+
+export type FlowModel = {
+  editor: NodeEditor<Schemes>;
+  engine: DataflowEngine<Schemes>;
+  /** live node id → canvas position from the save */
+  positions: Map<string, { x: number; y: number }>;
+};
+
+function resolveCtor(type: string): NodeCtor | undefined {
+  const fromBarrel = (Nodes as unknown as Record<string, unknown>)[type];
+  if (typeof fromBarrel === "function") return fromBarrel as NodeCtor;
+  return ctorRegistry().get(type);
+}
+
+export async function buildModel(g: SavedGraphLite): Promise<FlowModel> {
+  const editor = new NodeEditor<Schemes>();
+  installInputCoercion(editor);
+  editor.addPipe((ctx) => {
+    if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
+    return ctx;
+  });
+  const engine = new DataflowEngine<Schemes>();
+  editor.use(engine);
+
+  const byId = new Map<string, SolNode>();
+  const positions = new Map<string, { x: number; y: number }>();
+  for (const sn of g.nodes) {
+    const Ctor = resolveCtor(sn.type);
+    if (!Ctor) throw new Error(`Unknown node type "${sn.type}" (id ${sn.id}).`);
+    const node = new Ctor({ ...sn.init }) as SolNode;
+    const anyNode = node as unknown as Record<string, unknown>;
+    // Inline literal maps restore ONLY onto declaring classes (persistence rule).
+    if (sn.literals && "literals" in anyNode) anyNode.literals = { ...sn.literals };
+    if (sn.stringLiterals && "stringLiterals" in anyNode) {
+      anyNode.stringLiterals = { ...sn.stringLiterals };
+    }
+    if (sn.name && "name" in anyNode) anyNode.name = sn.name;
+    byId.set(sn.id, node);
+    await editor.addNode(node);
+    positions.set(node.id, { x: sn.x ?? 0, y: sn.y ?? 0 });
+  }
+  for (const c of g.connections) {
+    const source = byId.get(c.source);
+    const target = byId.get(c.target);
+    if (!source || !target) continue;
+    await editor.addConnection(
+      new ClassicPreset.Connection(source, c.sourceOutput, target, c.targetInput) as Schemes["Connection"],
+    );
+  }
+  return { editor, engine, positions };
+}
+
+/** Fetch every node's outputs once (memoized by the engine's cache). A node
+ *  whose fetch rejects (superseded/cancelled) contributes null, not a throw. */
+export async function computeAll(m: FlowModel): Promise<Map<string, Record<string, unknown> | null>> {
+  const out = new Map<string, Record<string, unknown> | null>();
+  for (const n of m.editor.getNodes()) {
+    try {
+      out.set(n.id, await m.engine.fetch(n.id));
+    } catch {
+      out.set(n.id, null);
+    }
+  }
+  return out;
+}
+
+// RF-shaped without the RF dependency; FlowApp hands these to <ReactFlow> as-is.
+export type FlowNodeData = {
+  node: SolNode;
+  outputs: Record<string, unknown> | null;
+  [key: string]: unknown;
+};
+export type RFNodeLite = {
+  id: string;
+  type: "sol";
+  position: { x: number; y: number };
+  data: FlowNodeData;
+};
+export type RFEdgeLite = {
+  id: string;
+  source: string;
+  sourceHandle: string;
+  target: string;
+  targetHandle: string;
+};
+
+export function toFlowNodes(
+  m: FlowModel,
+  values: Map<string, Record<string, unknown> | null>,
+): RFNodeLite[] {
+  return m.editor.getNodes().map((node) => ({
+    id: node.id,
+    type: "sol",
+    position: m.positions.get(node.id) ?? { x: 0, y: 0 },
+    data: { node, outputs: values.get(node.id) ?? null },
+  }));
+}
+
+export function toFlowEdges(m: FlowModel): RFEdgeLite[] {
+  return m.editor.getConnections().map((c) => ({
+    id: c.id,
+    source: c.source,
+    sourceHandle: c.sourceOutput,
+    target: c.target,
+    targetHandle: c.targetInput,
+  }));
+}

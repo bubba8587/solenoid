@@ -79,6 +79,9 @@ is parked there.
   Landed items get DELETED (git + digests are the record). Since the 2026-08-07
   pivot: 1.3 ships as-is — the queue is bugs, patches, and polish sweeps; feature
   work lives in `deferrals.md` "Pushed to 1.4/2.0". The release tail lives here.
+- **`react-port-plan.md`** — the React Flow port: chunk plan + status ledger for the
+  parallel `react-port-develop` branch (author-ordered 2026-08-26). Port sessions
+  digest THERE, not in `dev-notes.md`, so the track merges cleanly.
 - **`plans/`** — per-task execution plans for the backlog's Execution queue, written
   so a smaller model can do the routine work (index + protocol in `plans/README.md`).
   A plan is deleted with its backlog line.

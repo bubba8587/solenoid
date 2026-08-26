@@ -1,0 +1,74 @@
+/* React Flow port (C0) — harness styling. THROWAWAY: real cards arrive in C2. */
+
+.sol-rf-app {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: light-dark(#fafaf8, #16181d);
+  color: light-dark(#1c1e22, #e8e8e4);
+  font-size: 13px;
+}
+
+.sol-rf-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  border-bottom: 1px solid light-dark(#d8d8d4, #2c2f36);
+  flex: 0 0 auto;
+}
+.sol-rf-bar__brand { font-weight: 600; }
+.sol-rf-bar__stats { opacity: 0.65; }
+
+.sol-rf-canvas { flex: 1 1 auto; min-height: 0; }
+
+.sol-rf-card {
+  min-width: 140px;
+  border: 1px solid light-dark(#c9c9c4, #3a3e47);
+  border-radius: 8px;
+  background: light-dark(#ffffff, #1e2128);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+.sol-rf-card--selected { outline: 2px solid light-dark(#4a90d9, #6aa8e8); }
+
+.sol-rf-card__header {
+  padding: 5px 10px;
+  border-bottom: 1px solid light-dark(#e3e3df, #2c2f36);
+  font-weight: 600;
+}
+
+.sol-rf-card__body { padding: 4px 0 6px; }
+
+.sol-rf-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  min-height: 20px;
+}
+.sol-rf-row--out { justify-content: flex-end; }
+.sol-rf-row__label { opacity: 0.8; }
+.sol-rf-row__value {
+  font-family: "Atkinson Hyperlegible Mono Variable", ui-monospace, monospace;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Per-row handles: the row is the positioning context; the dot straddles the
+   card edge. 12×12 kept from the rete surface's socket sizing. */
+.sol-rf-handle.sol-rf-handle--in,
+.sol-rf-handle.sol-rf-handle--out {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translateY(-50%);
+  border: 1px solid light-dark(#00000055, #ffffff66);
+  border-radius: 3px;
+}
+.sol-rf-handle--in { left: -6px; }
+.sol-rf-handle--out { right: -6px; left: auto; }
