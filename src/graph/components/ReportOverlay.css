@@ -375,3 +375,9 @@ html.sol-report-docked .sol-rf-appcanvas:not(.solenoid-composite-editor__host) {
 html.sol-report-docked .solenoid-nav { right: calc(12px + var(--report-dock-w)); }
 html.sol-report-docked .solenoid-hud-stack { right: calc(12px + var(--report-dock-w)); }
 html.sol-report-docked .solenoid-legend { right: calc(16px + var(--report-dock-w)); }
+/* The command palette centers on the CANVAS, and its width follows the canvas width a
+   little (never below 340px, never above its 480px default). */
+html.sol-report-docked .solenoid-cmdpalette {
+  left: calc((100vw - var(--report-dock-w)) / 2);
+  width: clamp(340px, calc((100vw - var(--report-dock-w)) * 0.42), 480px);
+}

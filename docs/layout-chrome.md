@@ -193,7 +193,8 @@ Answers to the questions that keep biting:
   - shrinks the main canvas (`.sol-rf-appcanvas`) width by `--report-dock-w` (carrying
     minimap/add-menu, which live inside it);
   - shifts `.solenoid-nav`, `.solenoid-hud-stack` and `.solenoid-legend` (app-fixed, NOT
-    inside the canvas wrapper) `right` by their gutter + `--report-dock-w`.
+    inside the canvas wrapper) `right` by their gutter + `--report-dock-w`;
+  - re-centers `.solenoid-cmdpalette` on the canvas, width `clamp(340px, 42% of canvas, 480px)`.
   The header, status bar, and left navigator are full-width/left-anchored and untouched. Its
   `--report-dock-top`/`--report-dock-bottom` now derive from the measured
   `--chrome-top`/`--chrome-bottom`, so a bar change flows through on its own.
