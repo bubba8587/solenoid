@@ -775,7 +775,9 @@ export class HtmlCanvasRenderer {
   private drawCables(vp: { minX: number; minY: number; maxX: number; maxY: number }): void {
     const { ctx, cam, bsx, bsy } = this;
     ctx.setTransform(bsx, 0, 0, bsy, 0, 0); // CSS-screen → backing (exact ratio, matches the DOM)
-    ctx.lineWidth = 1.8; // matches the DOM cable's default visible stroke
+    // The DOM cable is a 1.8-unit stroke inside the scaled viewport, so its screen width is
+    // 1.8·zoom; a constant screen width reads far heavier once zoomed out.
+    ctx.lineWidth = 1.8 * cam.scale;
     ctx.lineJoin = "round";
     // Bucket visible cables by type color into one Path2D each — a handful of strokes rather
     // than one per cable.
