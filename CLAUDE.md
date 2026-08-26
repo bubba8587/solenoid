@@ -49,7 +49,10 @@ modern CSS (jsdom chokes on nesting `&`).
 ## Project: Solenoid
 
 Visual computation graph tool — a node-based "Excel alternative" for data tables. React 19 + Vite
-+ Tauri (desktop shell), Rete v2 graph engine, push-based recompute via `DataflowEngine`
++ Tauri (desktop shell). View layer: React Flow (`@xyflow/react`) over a HEADLESS rete-core
+model (`NodeEditor` + `ClassicPreset`), push-based recompute via `DataflowEngine`
+(`node.data()` methods) — the react-port cutover (2026-08-26) deleted every rete RENDER
+package; only rete core + rete-engine remain, as the model/compute spine.
 (`node.data()` methods). Relational verbs run on native Polars (Rust) on desktop, an identical JS
 oracle on web, behind the `FrameBackend` seam.
 
@@ -128,7 +131,8 @@ Geometry (offsets, z-index, reflow) is in `docs/layout-chrome.md`; this is term 
   both bars source handlers/glyphs from `touchActions.tsx` (drift-pinned).
 - **Zoom pill** (desktop) / **Lock pill** (mobile) — upper-right canvas controls. `NavMenu.tsx`.
 - **Align bar** — top-center align/distribute pill (≥2 selected). `SelectionActionsBar.tsx`.
-- **Minimap** — bottom-right. `Minimap.tsx` (hidden on mobile).
+- **Minimap** — bottom-right. RF `<MiniMap>` in `flow/FlowCanvas.tsx` wearing the
+  `.solenoid-minimap` window; accent policy in `components/Minimap.tsx` (hidden on mobile).
 - **Cable inspector** — selected-cable panel. `CableInspector.tsx`.
 - **Conduit popup** — floating toolbar on a Conduit. `ConduitComponent.tsx` ·
   `.solenoid-conduit-toolbar`.
@@ -143,8 +147,8 @@ Geometry (offsets, z-index, reflow) is in `docs/layout-chrome.md`; this is term 
   event → node via `area.nodeViews` containment, never a class.
 - **Sockets** — typed dots on node edges. `NodeSocket.tsx` (`MeasuredSocketRow`);
   `.input-socket` / `.output-socket`, locked 12×12.
-- **Cables** — `ConnectionComponent.tsx` (owns its `<svg>`); paths from `cablePaths.ts`, ribbons
-  from `ribbonCable.ts`.
+- **Cables** — `flow/FlowCableEdge.tsx` (a `<g>` in RF's shared edge svg); paths from
+  `cablePaths.ts`, ribbons from `ribbonCable.ts`.
 - **Hero box** — the large result box at a node's bottom. `.solenoid-node__io-row--hero`; value
   renders as `.solenoid-node__display-value`.
 - **Pills** — (1) button-group pills (radius-999 clusters, segmented toggles); (2) merged-socket
@@ -191,43 +195,39 @@ a place a spec can be contradicted. Concretely:
   act correctly right now?" — if not, cut it.
 
 ### Architecture notes (the traps)
-- **Exactly TWO renderers exist: the DOM default and the experimental html-in-canvas mode
-  (a shipped Setting, gated on `supportsHtmlInCanvas()`).** Every other renderer direction —
-  the pixi spike, the WGSL/`canvas` cable+node layers — was DELETED 2026-08-09 (author
-  order; git has it). Do not rebuild a third path.
-- Rete renders node components in a **separate React root** — no app React context. Use
-  module-level singleton stores (`storeKit.ts`), read via `useSyncExternalStore`.
-- `process.ts` — module singletons `_editor/_engine/_area`; `processGraph()` recomputes. The
-  composite drill-in substitutes surfaces via the `activeGraph.ts` seam (`getActive*`);
-  `getEditor()`/persistence stay MAIN (locked by `activeGraph.test.ts`).
+- **Exactly ONE renderer exists: the React Flow DOM surface.** Every other direction —
+  the pixi spike, the WGSL/`canvas` layers (2026-08-09), the html-in-canvas GPU mode
+  (react-port cutover) — was DELETED by author order; git has them. Do not rebuild a
+  second path.
+- **One React tree now** (react-port cutover): the module-singleton stores
+  (`storeKit.ts` + `useSyncExternalStore`) STAY — they are app-wide state, not a
+  separate-root workaround — but plain React context/props/handlers work everywhere.
+- `process.ts` — module singletons `_editor/_engine/_area`; `processGraph()` recomputes.
+  `_area` is the flowArea adapter (`flow/flowArea.ts`, typed `surface.ts` `Surface`) —
+  `area.*` verbs become RF state. The composite drill-in substitutes surfaces via the
+  `activeGraph.ts` seam (`getActive*`); `getEditor()`/persistence stay MAIN (locked by
+  `activeGraph.test.ts`).
 - `SolenoidConnection` must use `ClassicPreset.Node` as its type parameter (variance).
-- `ConnectionComponent` must own its `<svg overflow:visible position:absolute>` wrapper — Rete
-  renders connections into a div.
-- **Socket box must be a deterministic 12×12** (`display:block; line-height:0` — global rule in
-  `nodeCard.css`); rete-render-utils measures the span's offset box for cable endpoints. Pass
-  `getDOMSocketPosition({ offset: p => p })` — the default offset shoves endpoints 12px outward.
+- **Cables render as `<g>` inside RF's shared edge svg** (`flow/FlowCableEdge.tsx`):
+  visible strokes are `pointer-events:none`; the named `.solenoid-cable-hit` path (with
+  `data-conn-id`) is the ONE hit target — RF's own interaction path stays disabled
+  (`interactionWidth: 0`) or it eats `closest()` targeting.
+- **Socket box must be a deterministic 12×12** (`display:block; line-height:0` — global rule
+  in `nodeCard.css`); the RF Handle wraps the glyph (`flow/FlowSocketHandle.tsx`, reset by
+  `.sol-rf-handle-reset`) and RF measures the HANDLE's box for cable endpoints.
 - **All sockets anchor to `.solenoid-node__content`** (excludes the header), so socket positions
-  are header-independent: header grows/shrinks → wrapper slides, no re-measure. Keep header,
-  chevron, corner badge OUTSIDE the wrapper.
-- **Socket vertical placement is measured per-row, never a fixed constant** (`MeasuredSocketRow`
-  measures row center relative to `__content` in a `useLayoutEffect`). Do NOT reintroduce an
-  `INPUT_ROW_TOP`-style constant. The dot straddles the card edge via `left/right:-5` anchored to
-  `__content` — do NOT make the io-row or `__body` a positioning context. Default-centered branch
-  reads `var(--out-socket-top, 50%)` + `marginTop:-6` — never `transform: translateY`. The
-  real constraint (verified in rete-render-utils `getElementCenter`, 2026-08-25): the endpoint
-  is the socket's LAYOUT box, summed `offsetTop/Left` up to the node view. Any layout CSS may
-  position a socket (custom properties, flex, inset); only a `transform` on the socket or an
-  ancestor inside `__content` misreports, because offsetTop ignores transforms.
-- **PINCH LISTENS IN CAPTURE, PAN IN BUBBLE** — rete's stock Zoom counts fingers from a
-  BUBBLE-phase container pointerdown, so any `stopPropagation` in a node hid a finger and
-  killed the gesture. `CappedZoom` re-seats the count into capture (unstoppable); pan/node-drag
-  stay bubble (vetoable, deliberately). Never flip either. `isPinching()`
-  (`pointerGesture.ts`) — ≥2 TOUCH contacts — is the only definition; never count raw pointers
-  (a mouse or a stylus in contact is not half a pinch).
-- **Native form popups inside a node need pointer/mouse-down stopPropagation** — settled real on
-  desktop 2026-08-24 (mechanism + probe in `docs/subsystem-invariants.md` § Pointer gestures).
-- **`Scope.use(child)` forwards events DOWN only** — to see a plugin's own events
-  (`connectionpick`/`connectiondrop`), `plugin.addPipe(...)` on the instance directly.
+  are header-independent. Socket vertical placement is measured per-row (`MeasuredSocketRow`),
+  never a fixed constant; the dot straddles the card edge via `left/right:-5` anchored to
+  `__content` — do NOT make the io-row or `__body` a positioning context.
+- **PINCH LISTENS IN CAPTURE (TOUCH events), PAN IN BUBBLE** — `flow/flowPinch.ts` owns
+  two-finger moves on the wrapper before RF's bubble-phase handlers see them; pan/node-drag
+  stay vetoable. Never flip either. `isPinching()` (`pointerGesture.ts`) — ≥2 TOUCH
+  contacts — is the only definition; never count raw pointers. On touch, a one-finger drag
+  on an UNSELECTED card/group PANS (`flow/flowTouchPan.ts`, author ruling) — it claims BOTH
+  the pointerdown and the touchstart (d3-drag starts node drags from touchstart).
+- **Native form popups inside a node keep their pointer/mouse-down stopPropagation** — it
+  doubles as drag prevention; the rete-era reparent-closes-the-popup mechanism died with the
+  DOM-order stacking (`docs/subsystem-invariants.md` § Pointer gestures).
 - **Don't use `useReducer` forceUpdate to refresh a controlled `<select>`** — drive the value
   from `useState` and mirror to the node in the change handler.
 - **`area.translate(nodeId, …)` is async** — it won't share a paint with your React commit. If a
@@ -239,17 +239,14 @@ a place a spec can be contradicted. Concretely:
   `components/CloseIcon.tsx`. Genuinely asymmetric glyphs get fixed in the path by ink centroid
   (an art call, not the parity rule).
 - **Every render is boundaried now** (`components/ErrorBoundary.tsx`): the app root and
-  EACH rete node. A throw no longer blacks out the app — the app panel prints the message +
+  EACH node card. A throw no longer blacks out the app — the app panel prints the message +
   component stack with a Copy button, and a single bad card degrades to a small red box
   while the rest of the canvas keeps working. When a black screen IS reported, ask for the
   copied text first; don't go hunting blind.
 - **Components NEVER call `node.data()`** — extract a pure helper (the coerceInputs wrapper
   assumes engine-driven calls).
-- **A cable drag blurs the focused field first** (Canvas `connectionpick`), so a mid-edit value
+- **A cable drag blurs the focused field first** (RF `onConnectStart`), so a mid-edit value
   commits before it's wired — rely on this, don't re-implement it.
-- **React enter/leave props are silent across rete's per-node React roots** — use
-  `useNativeEnterLeave` (`components/nativeHover.ts`) inside node components; why in
-  `docs/subsystem-invariants.md` § Pointer gestures.
 
 ### Subsystem deep-dives → `docs/subsystem-invariants.md`
 Read the relevant section there IN FULL before touching one of these. The one-line index:
@@ -289,8 +286,8 @@ Read the relevant section there IN FULL before touching one of these. The one-li
   onto declaring classes (a save can't hardcode a value the user can't see).
 - **Sink nodes**: disk writes fire ONLY from the Run button; the arm flag is excluded from
   persistence so every load starts disarmed.
-- **Composite drill-in** (`CompositeEditorOverlay.tsx`): rete stack cached ONCE per composite;
-  views are per-OPEN (close unmounts, open backfills idempotently).
+- **Composite drill-in** (`flow/FlowCompositeOverlay.tsx`): one flow stack cached per
+  composite (undo stack included); the level registers as the ACTIVE graph while open.
 - **Socket lattice** (`sockets.ts`): TYPE separation (families never auto-cross; Cast required;
   sole bridge logical↔number), DIMENSIONAL flow up (a list widens into 2-D as a ROW). Wildcard
   ladder (wildcardLadder): `any` → `anycombo` → `anylist`/`anytable` → `anydata` (rank ≤ 2) → `trueany`
@@ -346,7 +343,7 @@ Read the relevant section there IN FULL before touching one of these. The one-li
 - **Canvas**: cables/ribbons, groups, standoffs, Conduits, Tidy (ELK), isolate, minimap,
   lasso, undo/copy/paste, single-key shortcuts (F9 calculate), command palette, presenter
   mode, per-doc autosave + multi-doc tabs, Navigator, HUD stack, semantic zoom,
-  html-in-canvas GPU mode (DOM stays the permanent default); AI palette (aiInScope/aiWholeDocRewrite:
+  AI palette (aiInScope/aiWholeDocRewrite:
   validator-gated whole-doc rewrite with diff approval; Anthropic key in Settings ▸ AI).
 - **Value model**: frames / cubes (recursive) / matrices / lists / scalars; first-class
   null/logical/SolError; units by dimensionality with `#UNIT!` algebra; the FC (unit author

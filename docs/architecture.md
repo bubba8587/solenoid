@@ -38,13 +38,16 @@ Deep behavioral notes and gotchas live in `CLAUDE.md` (agent-facing) and
 
 ## Stack
 
-- **Graph engine**: Rete v2 (`rete`, `rete-area-plugin`, `rete-react-plugin`,
-  `rete-connection-plugin`, `rete-engine` DataflowEngine, history, minimap,
-  auto-arrange/ELK).
+- **View layer**: React Flow (`@xyflow/react`) — the ONE renderer. Cards, cables,
+  minimap, viewport all render in the app's single React tree.
+- **Model/compute spine**: rete core (`rete` — NodeEditor + ClassicPreset, headless)
+  + `rete-engine` (DataflowEngine, push-based recompute). No rete render/area
+  plugins exist; `elkjs` is called directly for Tidy.
 - **UI**: React + Vite, desktop shell via Tauri. Math helpers: formulajs,
   KaTeX (formula popup), marked (help panel).
-- Rete renders node components in a **separate React root** — cross-root state
-  is module-level singleton stores (`storeKit.ts` pattern), never React context.
+- Cross-surface state stays in module-level singleton stores (`storeKit.ts`
+  pattern) read via `useSyncExternalStore` — they predate the single tree and
+  remain the app-state convention.
 
 ---
 
@@ -66,18 +69,19 @@ src/
 
 | Module | Role |
 |---|---|
-| `process.ts` | Module singleton `_editor/_engine/_area`; `processGraph()` recompute + re-render; recalc generation (volatile nodes); graph-rebuild guard; history hook. **STAYS MAIN-ONLY** (persistence/serialize read it) |
+| `process.ts` | Module singleton `_editor/_engine/_area`; `processGraph()` recompute + re-render; recalc generation (volatile nodes); graph-rebuild guard; `setClearHistory` (flowHistory reset on load). **STAYS MAIN-ONLY** (persistence/serialize read it) |
 | `activeGraph.ts` (+`.test.ts`) | The canvas-substitution SEAM: `setActiveGraph(ctx\|null)` registers a substituting surface (composite drill-in), `getActive*`/`getOwningEditor` resolve override-else-main. Chrome/actions read these so a drill-in is first-class; `getEditor()`/persistence stay MAIN (locked by the test). Register on mount / clear on unmount; nested surfaces REPLACE (breadcrumb stack lives in compositeEditorStore) |
-| `areaPresets.ts` | Shared rete config for EVERY editing surface (main canvas + drill-in), so they can't drift: `solenoidClassicRenderSetup` (node/socket/connection components + socket-position watcher), `makeSolenoidConnectionFlow` (compat + self-loop + lock veto), `CappedZoom` + `installSurfacePointer` (proportional wheel + double-click-zoom suppression + capture-seated `area.pointer`), `installSurfaceBackground` (camera-tracked dot grid), `installSurfaceSemanticZoom`, `installPinchTranslateVeto`. Drift-pinned by `surfaceParity.test.ts`; the behaviors still stranded in `Canvas.tsx`'s init closure are the 1.4 kernel bundle in `deferrals.md` |
+| `areaPresets.ts` | The pure zoom module both surfaces share: `MIN_ZOOM`/`MAX_ZOOM`, `clampZoom`, `wheelZoomDelta` (the proportional wheel curve — px slope, step cap, line/page normalization) |
+| `surface.ts` | THE `Surface` type — what every consumer of the old rete `AreaPlugin` actually uses, stated structurally (nodeViews/connectionViews, `area.transform/zoom/translate`, `update`/`translate`); `flow/flowArea.ts` is the one implementation |
+| `zoomAt.ts` | Frame-a-node-set camera math (rete's `AreaExtensions.zoomAt`, kept verbatim: 0.9 margin, never zooms IN past 1) over a structural `ZoomSurface` |
 | `schemes.ts` | Rete scheme types (`SolenoidConnection` must use `ClassicPreset.Node` — variance) |
 | `rete-nodes.ts` | Node class re-exports for the editor |
 | `nodeRegistry.ts` | `NODE_COMPONENTS`: `[Ctor, Component]` rows — the one place a node binds its React component |
 | `coerceInputs.ts` | `nodecreated` pipe wrapping every `data()` — normalizes incoming shapes to the socket's declared type (`#SHAPE!` on coercion failure); widens scalar/list/matrix → `frame` (list = ROW), bridges logical↔number. Per-input policy: a node lists `rawInputs` (a `ReadonlySet<string>`) to receive an input UNCOERCED and branch on the runtime shape itself (XLOOKUP's `frame` — a polymorphic frame-or-cube source); ACCEPTANCE stays lattice-driven, COERCION is the node's call |
-| `persistence.ts` (+`persistenceCore.ts`) | JSON save/load (format v2), localStorage autosave, export/import; ctor lookup derived from the catalog; `rebuildGraph(…, animate)` cinematic load reveal. ORDER MATTERS in the rebuild tail: `settleWildcardTypes` runs BEFORE the FC dock loop (waitForTypeSettle, pinned by `fcDockReload.test.ts`). `persistenceCore` holds the pure validate/version helpers (`validateSavedGraph`, `CURRENT_SAVE_VERSION`) |
-| `loadReveal.ts`, `components/LoadOverlay.tsx` | Load-reveal store (phase/progress/revealed conns) + `revealWaves` layering; the build-phase progress overlay |
+| `persistence.ts` (+`persistenceCore.ts`) | JSON save/load (format v2), localStorage autosave, export/import; ctor lookup derived from the catalog; `rebuildGraph` one-commit rebuild behind the load curtain. ORDER MATTERS in the rebuild tail: `settleWildcardTypes` runs BEFORE the FC dock loop (waitForTypeSettle, pinned by `fcDockReload.test.ts`). `persistenceCore` holds the pure validate/version helpers (`validateSavedGraph`, `CURRENT_SAVE_VERSION`) |
+| `loadReveal.ts`, `components/LoadOverlay.tsx` | The load-curtain store (idle/building + progress) + the build-phase progress overlay |
 | `copyPaste.ts` (+`clipboard.ts`) | Ctrl+C/V with topology, id remap (own `cloneNode`/`pasteClipboard` path); ALSO the home of `extractInit`/`INIT_FIELD_ORDER` — imported by persistence/aiGrounding/composite; `clipboard.ts` is the execCommand-fallback text copy |
 | `nodeCtorRegistry.ts` | The ctor lookup, DERIVED from the catalog (calls every `FLAT_CATALOG` factory, keys by `ctor.name`) — what persistence resolves types through |
-| `guardedSocketPosition.ts` | The socket-position watcher `areaPresets` installs (orphan-record eviction — see subsystem-invariants) |
 | `documentStore.ts` (+`documentStoreCore.ts`) | Multi-document library: current doc + open tabs; per-doc autosave as ONE two-slot pair per doc id (`solenoid.docs.doc.<id>.a/.b`) plus a light two-slot index, object-identity change-detection so an unchanged doc costs zero serialization (`documentStorePersist.test.ts`); `documentStoreCore` holds the pure validate/transform helpers |
 | `textForm.ts` | The addressable model's text projection: pure `SavedGraph ↔ text` (one node per line, topological + alphabetical-tie order, name-addressed connections); `serializeGraph`'s JSON is generated by round-tripping through it, not hand-maintained; robustness fuzzed in `textFormFuzz.test.ts` (clean rejection or round-trip closure, never a hang) |
 | `graphValidate.ts` | The STRICT validating reader (aiInScope/aiWholeDocRewrite pre-apply gate): every silently-repaired load condition is a repair-grade, line-anchored issue; op values checked against `opVocab.ts`; recurses into composite internals; cycles are warnings. False-positive guards: the seeds + whole-catalog sweeps in its test |
@@ -88,17 +92,29 @@ src/
 | `nodeNameStore.ts`, `nodeNaming.ts`, `nodeNames.ts` | The addressable model's other half: every node's stable, user-editable, unique `name` (separate from rete's regenerated-on-load `id`); `nodeNames.ts` derives live display names + endpoints for the connection dialog |
 | `docMetaStore.ts` | Per-document metadata (F-2): author + tags → `SavedGraph.meta`, sidecar-carried; the Document Properties modal open flag (`docPropertiesPanel`). Title stays the documentStore name |
 | `seeds.ts` + `seedGraphs/*.json` (+`seedTune.ts`) | Example graphs in Export format, globbed into a registry; `seedTune.ts` is the console-only live group-fit tuner `scripts/tune-seeds.mjs` drives |
-| `Canvas.tsx` | Rete bootstrap: plugin construction + the event pipes (selection semantics, drag bookkeeping, group reconcile, FC dock/undock) and the component JSX. The separable subsystems live in the `canvas*`/`tidyArrange`/`fcDocking` modules below and are wired here |
+| `flow/flowModel.ts` (+`.test.ts`) | The headless graph model builder (real NodeEditor + DataflowEngine + coercion + guards, no view) + the RF projections `toFlowNodes`/`toFlowEdges` (plain RF-shaped objects, no @xyflow import — node-vitest-testable) and `nodeZIndex` (groups −2 < conduits −1 < nodes 0) |
+| `flow/FlowCanvas.tsx` | THE main canvas: module-singleton stack (editor + engine + flowArea + rebuild-aware topology pipe), identity-preserving `syncTopology`, selection/lasso/context-menus/keyboard wiring, gesture installers, RF `<MiniMap>` in the shared window, `StandoffLayer`. The separable subsystems live in the `canvas*`/`tidyArrange`/`fcDocking` modules below and are wired here |
+| `flow/flowArea.ts` | `makeFlowArea` — the ONE `Surface` implementation: rete-shaped verbs (update/translate/zoom) become RF state via late-bound callbacks; node/conn views resolve to the live RF DOM |
+| `flow/SolNodeAdapter.tsx` + `flow/SolFlowNode.tsx` | The RF node type: adapts a rete node instance to the registered card component (version-bumped re-renders, ErrorBoundary per card) |
+| `flow/FlowCableEdge.tsx` | The cable renderer (RF edge type; paths from `cablePaths.ts`, ribbons, run selection, hit path `.solenoid-cable-hit`) |
+| `flow/FlowSocketHandle.tsx` | The RF `<Handle>` each socket renders through (measurement + cable anchoring) |
+| `flow/flowController.ts` (+`.test.ts`) | Editing + recompute verbs over a FlowModel — mirrors `process.ts`'s pass shape (targeted cache-cone invalidation, `#CIRC!` seeding) without the view half; the headless-harness spine |
+| `flowSurface.ts` | The socket-injection seam: node components ask for the RF `Handle` via `useFlowSocket`; the flow chunk injects it (`registerFlowSocket`) so shared component code never imports @xyflow/react |
+| `flow/flowPinch.ts`, `flow/flowTouchPan.ts`, `flow/flowWheel.ts` | The gesture installers both surfaces wire (see subsystem-invariants § Pointer gestures) |
+| `flow/flowHistory.ts` + `flow/flowHistoryDigest.ts` (+tests) | Snapshot undo — THE undo: debounced full-graph snapshots + `describeGraphDelta` labels |
+| `flow/FlowCompositeOverlay.tsx` (+`components/DrillNodeMenu.tsx`) | The composite drill-in surface (see subsystem-invariants § Composite drill-in mount lifecycle) |
+| `flow/StaticFlowStage.tsx` | Non-interactive RF stage (landing demo, node showcase): `makeStaticStack` + controlled viewport |
+| `flow/flowSeeds.ts`, `flow/preview.ts` | Own seed glob (no persistence import — headless-harness-safe); generic-card value previews |
 | `canvasKeyboard.ts` | `installCanvasKeyboard(deps)` — the whole keyboard map (single-key graph actions, Ctrl chords, F9, arrows/nudge, rotate, Tab chrome toggle) + its helpers (resolveGroupTargets, rotateSelection, nudgeSelection) |
 | `canvasLasso.ts` | `installLassoSelection(deps)` — shift-drag / touch-select lasso: winding-direction touch vs enclose modes, cached node rects, frame-coalesced live apply, release-time cable path sampling |
 | `canvasContextMenu.ts` | `installCanvasContextMenu(deps)` — native right-click routing: socket (with near-miss radius) → cable (ribbon/selection expansion) → node body (pin/standoff offers) → blank canvas Add menu |
 | `canvasActions.ts` | The graph actions those menus/keys invoke: `deleteSelection` (ghost-splicing bulk delete), `insertConduitForCables` (lane-bundled Conduit splice), `linkStandoffBetween`, `deleteCables`, `attachFormatController` |
 | `canvasGeometry.ts` | Screen ↔ canvas coordinate helpers (`getSocketScreenCenter`, `screenToCanvas`) shared by FC docking + quick-wire placement |
 | `fcDocking.ts` | FC docking: `findDockTarget` (canvas-unit snap), `computeDockedCanvasPos`/`dockedRenderedDims`, and the inline splice/unsplice (`insertFcInline`/`removeFcInline`) |
-| `tidyArrange.ts` | Tidy + Cleanup: `makeEnsureArrange` (lazy ELK), `makeArrangeFn` (the group/standoff/docked-FC-aware ELK layout — see subsystem-invariants "Auto-arrange / Tidy"), `makeCleanupFn` |
+| `tidyArrange.ts` | Tidy + Cleanup: `makeEnsureElk` (lazy elkjs), `elkTidyLayout` (the direct ELK call — symmetric FIXED_POS ports, port-id edges), `makeArrangeFn` (the group/standoff/docked-FC-aware layout — see subsystem-invariants "Auto-arrange / Tidy"), `makeCleanupFn` |
 | `storeKit.ts` | The module-singleton store kit (`createNotifier` / `createToggleStore` / `createValueStore`) every cross-root store builds on (see Conventions) |
 | `pointerGesture.ts` | THE two-finger gesture definition: window-capture contact census, `isPinching()` (≥2 fingers) — what the pinch-priority rule stands on |
-| `historyDigest.ts` | Human-readable undo/redo labels over rete-history entries |
+| `historyDigest.ts` | Human-readable session-history text (`digestLabeled` over flowHistory's labeled records) |
 | `modelFuzz.ts` | Model fuzzing: valid-shaped inputs per typed leaf source, driven through targeted recompute; findings land in the Problems panel (origin "fuzz") |
 | `imageAssets.ts` | Desktop image persistence: a node's session `dataUrl` becomes a plain file in `images/` beside the doc (`assetPath`), so saves never carry base64 |
 | `fileSession.ts` | Disk save/open: native dialogs on desktop, download / file-input on web; a path-bound doc saves through documentStore |
@@ -140,7 +156,7 @@ src/
 | `chartValue.ts` / `mermaidValue.ts` | First-class FIGURE values (`__chart` / `__mermaid`) riding the green `chart` "Special" socket; a node output, embedded in Reports |
 | `nodes/visual.ts` + `components/{ChartNode,MermaidNode,MermaidView}.tsx` | Visual nodes (Sparkline/Chart/Gauge/Heatmap/**Mermaid**); `MermaidView` dynamically imports mermaid.js (heavy) only when a diagram is on screen |
 | `components/inlineRefDisplay.tsx` | The ONE render path for a Report/Note inline `` `=name` `` ref → live value by kind (scalar/frame/chart/mermaid/lambda-KaTeX); `CollapsibleFigure` (Report embeds fold); `InlineRefBody` swaps `=name` code spans + `![[note]]` embeds via imperative innerHTML + portals |
-| `compositeEditorStore.ts` + `components/CompositeEditorOverlay.tsx` + `compositeLogic.ts` | Composite drill-in, now a FIRST-CLASS canvas: a breadcrumb STACK of composite instances (multi-layer, `Canvas ▸ A ▸ B`); the subgraph canvas sits IN the canvas region (`z-index:4`, `html.sol-drilled-in`) so the app chrome stays and drives it via `activeGraph.ts`; own minimap + `installSurfacePointer` + `CompositeRunControls` panel; recompute retargets `stack[0]`; `compositeLogic.ts` = create/unpack |
+| `compositeEditorStore.ts` + `flow/FlowCompositeOverlay.tsx` + `compositeLogic.ts` | Composite drill-in, a FIRST-CLASS canvas: a breadcrumb STACK of composite instances (multi-layer, `Canvas ▸ A ▸ B`); the subgraph canvas sits IN the canvas region (`html.sol-drilled-in`) so the app chrome stays and drives it via `activeGraph.ts`; own minimap + `CompositeRunControls` panel; recompute retargets `stack[0]`; `compositeLogic.ts` = create/unpack |
 | `compositeStaleStore.ts` | Which composites are STALE (a heavy run mode — goal-seek/scenarios/data-table/simulation — whose inputs/config changed since the last Solve). Drives the arm-and-run status dot; a module store because a HELD composite's output doesn't change, so processGraph's re-render pruning would skip the card |
 | `presentationStore.ts` + `components/PresentationOverlay.tsx` | Presenter mode: full-screen slideshow, hides chrome (`html.solenoid-presenting`), flies the camera per step (click/Space/→/←/Esc) |
 | `cxValue.ts` | Tagged complex values (tagSpecialScalars), rete-free (implReteFree) — kernels shared with the IM* formulas |
@@ -170,34 +186,20 @@ src/
 | `cableState.ts`, `cableValueStore.ts` | Hover/selection state; live per-connection values |
 | `cableFlowStore.ts`, `cableFlourishStore.ts` | Flow-bead animation toggle; decorative flourish |
 | `ribbonCable.ts` | Ribbon (bundled trunk + fans) membership/geometry — derived fresh per render |
-| `components/ConnectionComponent.tsx` | The cable renderer (owns its SVG wrapper, hit strokes, ribbon/pill rerouting, flow overlay) |
+| `flow/FlowCableEdge.tsx` | The cable renderer (RF edge type: hit strokes, ribbon/pill rerouting, flow-bead overlay, run selection) |
 | `highlightUtils.ts` | Hover-highlight traversal, deliberately asymmetric and depth-limited: an origin lights its whole fan, a destination lights one cable |
 
-### Renderers — exactly TWO (author 2026-08-09)
+### Renderer — exactly ONE (author 2026-08-26)
 
-The DOM renderer (default, universal) and the experimental **HTML-in-Canvas**
-mode (a shipped Setting, gated on `supportsHtmlInCanvas()`). Every other
-renderer direction — the pixi spike, the WGSL/`canvas` cable+node layers, the
-hit-index groundwork — was DELETED 2026-08-09 (git has it). Do not rebuild a
-third path.
+React Flow renders everything: cards, cables, minimap, viewport. Every other
+renderer direction — the rete DOM surface, the HTML-in-Canvas mode, the pixi
+spike, the WGSL/`canvas` layers — was DELETED (2026-08-09 and the 2026-08-26
+cutover; git has all of it). Do not rebuild a second path.
 
 | File | Responsibility |
 |---|---|
-| `renderMode.ts` | Render-mode store `dom`\|`html` (default `dom`; only `html` persists) + `useRenderMode` hook |
-| `htmlCanvasSupport.ts` | Gates the `html` option on `supportsHtmlInCanvas()` |
-| `htmlCanvasRenderer.ts` | The HTML-in-Canvas renderer: captures the real node DOM via `drawElementImage` into mip pyramids; pan/zoom draws the canvas, idle shows the DOM |
-| `components/HtmlCanvasLayer.tsx` | Mounts it when mode is `html` ≥100 nodes: gesture swap (DOM hidden ↔ canvas), targeted re-capture per changed node id, DOM-only escape hatch (conduits) |
-| `hicCamera.ts` (+`.test.ts`) | world↔screen camera math (pan, anchored zoom, pinch, fit-to-bounds) |
-| `hicCableGeom.ts` (+`.test.ts`) | `cablePolyline` — the app's REAL router (`getCablePath`) flattened via `pathPoints.ts`, so canvas cables match DOM cables |
-| `hicGraphSnapshot.ts` | snapshots the live rete graph (node rects, kind colors, socket world-positions, connections) for capture |
-| `hicColors.ts`, `hicSocketGlyph.ts` (+tests) | color helpers + socket-glyph classification the snapshot uses |
-| `pathPoints.ts` (+`.test.ts`) | pure M/L/C/Q path → polyline flattening (`parsePathPoints`) |
-| `rasterAtlas.ts` | the capture atlas (`packAtlas`) |
-| `cssColor.ts` (+`.test.ts`) | Pure CSS color parse (hex/rgb) + sRGB mixing — a canvas can't evaluate `color-mix`/`var()` |
-| `domSync.ts` | DOM↔canvas transform sync (`camFromDrawMatrix`, holder transforms) |
-| `canvasCapture.ts` | Static-export capture, deliberately separate from the live HTML-in-Canvas capture |
+| `canvasCapture.ts` | Static-export capture (Report export, Obsidian write) |
 | `devHarness.ts` | DEV-only screenshot-comparison hooks (tree-shaken from production) |
-| `zoomSettle.ts` | The gesture-exit settle window (default 420 ms; `window.__zoomSettle` override) |
 
 ### Groups / layout / standoffs
 
@@ -238,9 +240,10 @@ third path.
 
 `TopBar`, `MenuBar`, `NavMenu` (seeds, export/import, tidy, fit), `StatusBar`,
 `Header`, `AppToolbar` (accent + light/dark via `appTheme.ts`), `OutlinePanel`,
-`Settings` (+`settingsStore`), `ShortcutsOverlay`, `Minimap` (every surface builds
-its map through `createSolenoidMinimap` — collapse-aware geometry + the rAF
-coalescing the plugin's synchronous per-translate render needs),
+`Settings` (+`settingsStore`), `ShortcutsOverlay`, `Minimap.tsx` (the minimap
+accent policy `minimapFillForNode` shared by both RF `<MiniMap>`s + the
+collapse-aware `collapsedAwareNodesRect` behind NavMenu's fit-all; the
+`.solenoid-minimap` window CSS both minimaps wear),
 `MobileControls` (+`mobileMenuStore`, `touchSelectStore`),
 `WebDemoBanner`, `CommandPalette.tsx` (+ `palette.ts`, the app palette engine
 behind `PaletteEditor`/`paletteStore`), plus dialog/popup stores
@@ -389,7 +392,7 @@ rationale, point-in-time research, the dev-notes history) is indexed in
 | `subsystem-invariants.md` | living | the "don't break this" deep-dives — cable routing, group push, standoffs, tidy, error values, unit flow, addressable model, autosave, drill-in |
 | `layout-chrome.md` | living | on-screen chrome map — bar/overlay geometry, offset sync map, z-index ladder; read before adding/moving chrome |
 | `touch-gestures.md` | living | the pointer/touch gesture inventory per device config |
-| `renderer-performance.md` | living | settled renderer-perf policies (zoom settle, GPU promotion, semantic-zoom gate, HIC capture) |
+| `renderer-performance.md` | living | settled renderer-perf policies (semantic-zoom gate, covered-canvas GPU budget) |
 | `code-comments.md` | living | the commentMinimalism comment policy — cut rules, blast-radius test |
 | `dev-notes.md` | living log | open problems + the latest session digests only (history in `archive/dev-notes-history.md`) |
 | `backlog.md` | living | OPEN items only — the 1.3 polish/patch queue (landed items are deleted) |

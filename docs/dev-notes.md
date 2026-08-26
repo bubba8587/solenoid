@@ -6,6 +6,34 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-08-26 — react-port-develop: THE CUTOVER — React Flow only, no rete surface)
+Author ruling mid-session: "this branch is for GOING ALL OUT ON REACT FLOW NO RETE." Executed in
+four commits (Cutover A–D; the ledger `docs/react-port-plan.md` carries the full per-item record):
+- **A** deleted the rete app surface (Canvas.tsx, CompositeEditorOverlay, ConnectionComponent,
+  `?rete`, HIC set, tapSelect/nativeHover/guardedSocketPosition/renderMode/zoomSettle/domSync/
+  rasterAtlas, loadReveal animation → curtain-only); landing/showcase ported to StaticFlowStage.
+- **B** removed rete-history plumbing — snapshot undo (flowHistory + per-composite drill stacks)
+  is THE undo; historyDigest reduced to digestLabeled.
+- **C** removed the rete render packages + styled-components from package.json; Tidy calls elkjs
+  DIRECTLY (`makeEnsureElk` + `elkTidyLayout` rebuilding the exact plugin ELK graph); own
+  `zoomAt`; `surface.ts` states the structural `Surface` type flowArea implements. tsc + 4817
+  vitest + prod build + live smoke (main/drill/showcase/landing) all green.
+- **D** docs reconcile (this digest): subsystem-invariants rewritten where mechanisms died
+  (§ Pointer gestures → flowPinch/flowTouchPan, § load/teardown → one-commit rebuild + identity-
+  preserving syncTopology, § drill-in → FlowCompositeOverlay DrillStack, § Tidy → elkjs-direct;
+  § Socket position bookkeeping deleted), architecture.md map + glossary + touch-gestures +
+  layout-chrome + renderer-performance (lean: semantic-zoom gate + covered-canvas budget) +
+  decisions.md domOrderStacking (superseded → RF zIndex) redone. Swept the orphaned hic-math
+  cluster (7 modules + tests) and `.npmrc` legacy-peer-deps (peer conflict left with the plugin).
+  Four regressions found by the sweep and FIXED (probe-verified live, zero console errors):
+  report/inspector dock squeeze and the drilled-in paint-stop targeted `.solenoid-canvas-wrapper`
+  (gone) → retargeted to `.sol-rf-appcanvas:not(.solenoid-composite-editor__host)`;
+  `perf-no-grid-dots` → `.react-flow__background`; CableFlourish's canvas query →
+  `.sol-rf-appcanvas .react-flow`; and **`canvas.css` was ORPHANED** (its importer was the deleted
+  Canvas.tsx — lock CSS, flow-bead animation, minimap position settings, isolate dim all dead) →
+  FlowCanvas imports it.
+Open (author): merge timing to develop; real-device touch pass.
+
 ### FINDING (2026-08-25 — per-card CSS conversion, STEP 1 census — A2)
 Step 1 of the backlog "Per-card CSS conversion" sweep: which paint-only DOM could move to
 CSS. Measured on the live dev page via `window.__solenoidCardCensus()` (`census.ts`), driven

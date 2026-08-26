@@ -1,7 +1,7 @@
-// React Flow port — a TRANSITIONAL area-shaped adapter (dissolves at C9).
-// process.ts, persistence's rebuildGraph, fcReconcile, AreaExtensions.zoomAt,
-// NavMenu's zoom pill, flyToNode, and ~69 node components all speak rete's area
-// API; on the flow surface those verbs land here and become React Flow state.
+// THE Surface implementation (see ../surface.ts). process.ts, persistence's
+// rebuildGraph, fcReconcile, zoomAt, NavMenu's zoom pill, flyToNode, and the
+// node components all speak the area-shaped Surface API; those verbs land here
+// and become React Flow state.
 import type { NodeEditor } from "rete";
 import type { Schemes } from "../schemes";
 import type { Surface } from "../surface";

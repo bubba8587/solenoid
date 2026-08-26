@@ -188,8 +188,8 @@ Answers to the questions that keep biting:
 - **Report docked** (desktop) → `html.sol-report-docked` (`reportStore.ts`). This is a real
   **push**: it defines `--report-dock-w:440px`, `--report-dock-top:66px`, `--report-dock-bottom:19px`
   and then (`ReportOverlay.css`):
-  - shrinks `.solenoid-canvas-wrapper` width by `--report-dock-w` (carrying minimap/legend/
-    add-menu, which live inside it);
+  - shrinks the main canvas (`.sol-rf-appcanvas`) width by `--report-dock-w` (carrying
+    minimap/legend/add-menu, which live inside it);
   - shifts `.solenoid-nav` and `.solenoid-hud-stack` `right` by `12px + --report-dock-w`.
   The header, status bar, and left navigator are full-width/left-anchored and untouched. Its
   `--report-dock-top`/`--report-dock-bottom` now derive from the measured
@@ -204,7 +204,7 @@ Answers to the questions that keep biting:
   chrome: header, nav pill, status bar, navigator + open-pill, legend, minimap, mobile bar, HUD
   (`PresentationOverlay.css`). The canvas is the slide.
 
-- **Drilled into a composite** → `html.sol-drilled-in` (`CompositeEditorOverlay.tsx`). The app
+- **Drilled into a composite** → `html.sol-drilled-in` (`flow/FlowCompositeOverlay.tsx`). The app
   frame stays; it hides the *main* minimap (the drill-in host renders its own) and hides the
   navigator + open-pill (`compositeEditor.css`). The drill-in adds a top-left breadcrumb
   strip (`.solenoid-composite-editor__strip`, desktop `top:74px`, mobile `88px + safe-area`) with
@@ -217,7 +217,7 @@ Answers to the questions that keep biting:
 
 ```
 1    .solenoid-topbar (local, inside header)
-2    .solenoid-menubar (local; 8 on mobile), htmlCanvasLayer
+2    .solenoid-menubar (local; 8 on mobile)
 4    composite drill-in backdrop
 5    nav pill / navigator / webdemo banner
 6    header / statusbar / apptools palette

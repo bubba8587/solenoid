@@ -95,7 +95,7 @@ const TIDY_DENSITY_SPACING: Record<TidyDensity, readonly [number, number]> = {
 
 /** The ELK layout options for the three Tidy knobs, read at layout time by BOTH call
  *  sites (main canvas + composite drill-in). `elk.algorithm`/`hierarchyHandling`/
- *  `edgeRouting` still come from the arrange plugin's root defaults; this only sets what
+ *  `edgeRouting` come from `elkTidyLayout`'s root options; this only sets what
  *  the knobs drive. A width cap turns ELK's layerUnzipping on (global switch here; the
  *  per-node sublayer count is stamped by the port preset from the node count). */
 export function tidyLayoutOptions(s: {
@@ -338,7 +338,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       }
     }
     // Remap any cable touching a member to the group, with an EMPTY socket key so
-    // the plugin makes it a node-level edge (no port to match).
+    // elkTidyLayout makes it a node-level edge (no port to match).
     if (!withinGroup) {
       for (const c of conns) {
         const sg = memberOf.get(c.source);

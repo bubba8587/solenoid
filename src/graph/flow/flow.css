@@ -1,5 +1,6 @@
-/* React Flow port — the app-canvas layer (chrome overlays it, like
-   .solenoid-canvas-wrapper) plus the RF-specific resets. */
+/* The app-canvas layer (chrome overlays it; the dock/drill rules in
+   ReportOverlay.css / InspectorPanel.css / compositeEditor.css size and hide
+   it by this class) plus the RF-specific resets. */
 
 .sol-rf-appcanvas {
   position: relative;

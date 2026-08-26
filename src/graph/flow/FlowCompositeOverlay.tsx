@@ -1,9 +1,7 @@
-// React Flow port (C7 payoff) — the composite drill-in AS A FLOW SURFACE.
-// Replaces the rete overlay's per-composite plugin stack with the same RF
-// machinery the main canvas runs: SolNodeAdapter cards, FlowCableEdge cables,
-// the flowArea adapter registered as the ACTIVE graph, and a per-composite
-// snapshot history over snapshotInternal(). The rete overlay remains behind
-// `?rete` until C9 removes it.
+// The composite drill-in — the same RF machinery the main canvas runs:
+// SolNodeAdapter cards, FlowCableEdge cables, the flowArea adapter registered
+// as the ACTIVE graph, and a per-composite snapshot history over
+// snapshotInternal().
 import type { Surface } from "../surface";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {

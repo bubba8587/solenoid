@@ -19,7 +19,7 @@ html.sol-inspector-docked {
   flex-direction: column;
 }
 
-html.sol-inspector-docked:not(.is-mobile) .solenoid-canvas-wrapper { width: calc(100% - var(--inspector-w)); }
+html.sol-inspector-docked:not(.is-mobile) .sol-rf-appcanvas:not(.solenoid-composite-editor__host) { width: calc(100% - var(--inspector-w)); }
 html.sol-inspector-docked:not(.is-mobile) .solenoid-nav { right: calc(12px + var(--inspector-w)); }
 html.sol-inspector-docked:not(.is-mobile) .solenoid-hud-stack { right: calc(12px + var(--inspector-w)); }
 

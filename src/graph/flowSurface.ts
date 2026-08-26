@@ -1,10 +1,8 @@
-// TRANSITIONAL seam for the React Flow port (docs/react-port-plan.md; dissolves
-// at C9): shared node-component code asks this module whether it is rendering
-// INSIDE the React Flow tree, where sockets are RF Handles. Detection is a
-// React CONTEXT, not a global flag — the rete-based drill-in overlay renders
-// node components in its own React roots on top of the flow surface, and those
-// must keep the rete socket path. The Handle component is INJECTED by the flow
-// chunk so nothing on the rete surface ever imports @xyflow/react.
+// The socket-injection seam: node components render sockets as RF Handles,
+// but the Handle component is INJECTED by the flow chunk (registerFlowSocket)
+// so shared component code never imports @xyflow/react — the flow chunk stays
+// the only owner of that dependency. The context gates rendering outside an
+// RF tree (a bare component render falls back to the plain SocketComponent).
 import { createContext, useContext, type ComponentType } from "react";
 import type { ClassicPreset } from "rete";
 

@@ -513,17 +513,17 @@ the node, so the all-caps claim holds; NAME-4's test admits the map's keys. Verb
 function (Unpivot, Nest, Rename…) stay Title Case; Append / Bind Columns become VSTACK / HSTACK
 when the stack merge lands. Reopens only if the formula surface starts accepting frames.
 
-### domOrderStacking — Node stacking is DOM order (`simpleNodesOrder`); `zIndexNodesOrder` is won't-do
-A pick moves the card to the holder's DOM end; the −3/−2/−1/nodes ladder (standoffs,
-expanded groups, conduits) and the fixed lifts (isolate endpoints 3, open group picker
-20, selected cable 100) are explicit `style.zIndex` writes on top of that. **Where:**
-`Canvas.tsx` (install + docked-FC re-append), `groupLogic.ts`, `GroupNode.tsx`,
-`ConduitComponent.tsx`, `ConnectionComponent.tsx`; no test pins it (eyeball only).
-**Why not `zIndexNodesOrder` (area 2.3.x, read 2026-08-25):** it is a second WRITER on
-`element.style.zIndex` against four sites that rewrite it every render, and its counter is
-module-private, unbounded and never reset, so the fixed lifts are beaten after 2/19/99
-picks in a session. Adopting it means re-implementing it locally to own the counter, and
-the backlog already conceded it deletes no swallows (the OS-dropdown rule is settled
-without it). **Reopen if:** the plugin exposes/reset its counter AND a z-order test net
-exists — or a real click-handler bug is traced to the DOM move itself.
+### domOrderStacking — Node stacking is per-node `zIndex` (`nodeZIndex`, flowModel.ts)
+SUPERSEDED MECHANISM, SAME LADDER: the rete-era DOM-order stacking (`simpleNodesOrder`
+re-appending the picked card) died with the rete surface. React Flow stacks by the node's
+`zIndex`, stamped by `nodeZIndex` — the area-plane ladder (standoffs −3 < expanded groups
+−2 < conduits −1 < nodes 0) is now data, not DOM order; the fixed lifts (isolate
+endpoints, open group picker, selected cable) stay explicit z-index writes. **Where:**
+`flow/flowModel.ts` (`nodeZIndex`), `StandoffLayer.tsx`, `GroupNode.tsx`,
+`ConduitComponent.tsx`, `flow/FlowCableEdge.tsx`; no test pins it (eyeball only). A side
+effect of the old mechanism is gone with it: selecting a node no longer reparents its DOM
+element, so the reparent-closes-native-popup constraint (the settled 2026-08-24 probe) no
+longer applies — the form-control pointerdown swallow survives on drag-prevention grounds
+alone. **Reopen if:** cards visibly stack wrongly after selection, or a control needs
+last-selected-on-top semantics RF's `zIndex` model doesn't give.
 

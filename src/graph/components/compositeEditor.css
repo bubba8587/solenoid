@@ -221,15 +221,8 @@ html.sol-drilled-in .solenoid-outline__open-pill { display: none; }
    re-measure a card while drilled in (the +Input/+Output path updates the owning
    composite's card), and MeasuredSocketRow needs a real layout box to place sockets —
    `visibility` keeps layout and only drops paint, `display: none` would zero every
-   measurement. The overlay is a SIBLING of the wrapper (App.tsx), so this can't reach
-   the drill-in itself. */
-html.sol-drilled-in .solenoid-canvas-wrapper { visibility: hidden; }
-
-/* The cached rete container is re-parented in here on every open. */
-.solenoid-composite-editor__canvas {
-  position: absolute;
-  inset: 0;
-}
+   measurement. The drill-in host also carries .sol-rf-appcanvas, hence the :not(). */
+html.sol-drilled-in .sol-rf-appcanvas:not(.solenoid-composite-editor__host) { visibility: hidden; }
 
 .solenoid-composite-editor__loading {
   position: absolute;

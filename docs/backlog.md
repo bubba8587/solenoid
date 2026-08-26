@@ -188,39 +188,13 @@ and `nodeExcel.ts`'s note lists only the mode limits. Three separable defects:
 
 ## Dependency updates (walking them one at a time; TypeScript 7 landed 2026-08-11a)
 
-Changelogs ship INSIDE the rete packages — `npm pack <pkg>@<old>` and `@<new>`,
-untar, diff the bundled changelog. Read those, not the GitHub releases (that API
-is blocked here for out-of-scope repos).
-
-- [x] **`rete-react-plugin` 2.1.0 → 2.1.2 — LANDED 2026-08-23 (author call: on latest + working
-  = fine).** 2.1.2 is exactly `root.render(el)` → `flushSync(() => root.render(el))` in the
-  plugin's `mount`, so a node's root is layout-ready when the mount returns (2.1.1 only colors
-  rete's stock `<input>`, which we never render — inert). The synchronous flush surfaced a latent
-  bug: it runs a mounting component's effects mid-rebuild, and the ONE mount effect that recomputes
-  — `ConduitComponent.tsx:209` `useEffect(processGraph, [realLanes])` (audited: every other of the
-  ~60 `processGraph` call sites is a user-action handler, never a mount effect) — fired
-  `processGraph()` during `addNode`, before the graph was built → `Dataflow2.fetch` threw
-  `node is not initialized`. Fixed with a TWO-layer guard, both kept regardless of the plugin:
-  (1) `processGraph` single-flight (`_passActive`/`_rerunQueued`, `processReentrancy.test.ts`) —
-  a recompute fired mid-pass coalesces into one trailing pass instead of nesting; (2) the Conduit
-  mount effect early-returns while `isGraphRebuilding()` (the terminal pass recomputes anyway).
-  Clean re-measure: crash gone, cascade collapsed to one pass + a cheap rerun. Costs ~100ms more
-  on the first 171-node render (the `flushSync` synchronous-commit tax) — a one-time load cost the
-  author accepted for being on latest.
-- [x] **`rete-history-plugin` 2.1.1 → 2.2.0 — DON'T bump (checked 2026-08-23).** The
-  `dist/` is byte-identical to 2.1.1; the only delta is a new REQUIRED peerDependency on
-  `rete-comment-plugin@^2.2.0` (all 2.2.0 features are comment-plugin undo presets, which
-  we don't use — our own `commentStore`). Bumping buys nothing and either adds a standing
-  unmet-peer warning or pulls a plugin we never import into the tree. Net negative; stay at
-  2.1.1.
-- [x] **In-range patch tranche — DONE 2026-08-25 (Agent 4).** The walkable in-range set is bumped:
-  `react`/`react-dom` 19.2.8, `vitest` 4.1.11, `recharts` 3.10.1, `marked` 18.0.11, `mermaid` 11.17.1,
-  `dompurify`, `colord`, `papaparse`, `styled-components`, `puppeteer-core`, the `@tauri-apps/*` set,
-  the `@fontsource-variable/*` pair, `@types/react`(`-dom`), `@webgpu/types`. Core `rete` 2.0.6 is current;
-  `katex` 0.18.4 and `@formulajs/formulajs` 4.6.1 landed earlier. `vite` 8 / `@vitejs/plugin-react` 6
-  landed 2026-08-25 (A3). Remaining majors: `@anthropic-ai/sdk` 0.120 (major, skipped),
-  `rete-history-plugin` 2.2.0 (don't-bump, above). NOTE: installs still need `--legacy-peer-deps`
-  (pre-existing elkjs 0.12 vs `rete-auto-arrange-plugin` peer `^0.8.2`).
+Current state (2026-08-26): the walkable set is on latest in-range (`react` 19.2.8,
+`vitest` 4.1.11, `vite` 8, etc. — git has the walk); the rete RENDER packages and
+`styled-components` were removed outright by the React Flow cutover (rete core
+2.0.6 + rete-engine + elkjs 0.12 + `@xyflow/react` remain). Remaining major:
+`@anthropic-ai/sdk` 0.120 (skipped). The `.npmrc` `legacy-peer-deps` workaround is
+REMOVED — the old elkjs-vs-rete-auto-arrange peer conflict left with the plugin
+(clean `npm install` dry-run verified).
 
 ## Architecture spec (`docs/rules.md`)
 

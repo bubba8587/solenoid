@@ -11,7 +11,7 @@ area. When you coin a new load-bearing term, add it here.
 - **Node** — one computation unit; a card on the canvas. Its `data()` method is a pure
   function of its inputs. (`nodes/*.ts`, `components/nodeKit.tsx`)
 - **Cable / connection** — a wire carrying a value from one node's output socket to
-  another's input. The dependency edges of the graph. (`ConnectionComponent.tsx`,
+  another's input. The dependency edges of the graph. (`flow/FlowCableEdge.tsx`,
   `cablePaths.ts`)
 - **Socket** — the typed plug where a cable attaches; shape = dimensionality, color =
   type. Locked to a deterministic 12×12 box for cable-endpoint math. (`sockets.ts`,
@@ -26,7 +26,7 @@ area. When you coin a new load-bearing term, add it here.
 - **Group** — a container box around member nodes; expand/collapse pushes surrounding
   nodes out of the way. (`groupPushCore.ts`, `GroupNode.tsx`)
 - **Tidy / auto-arrange** — ELK-based layout with a custom symmetric port preset.
-  (`rete-auto-arrange-plugin` usage, `arrangeFn`)
+  (elkjs via `elkTidyLayout`, `arrangeFn` — `tidyArrange.ts`)
 - **Isolate** — a focus mode showing only a scoped sub-region of the graph.
   (`isolate.ts`, `isolateStore.ts`)
 - **Pin** — a value lifted out of the graph onto a persistent HUD overlay.
@@ -161,10 +161,6 @@ area. When you coin a new load-bearing term, add it here.
   (`calcModeStore.ts`; see decisions.md calcModes)
 - **Compute overlay** — the deferred "Computing…" curtain that blocks interaction during a
   heavy pass. (`computeOverlayStore.ts`, `ComputeOverlay.tsx`)
-- **Render mode** — `dom` (default/fallback) vs. `html` (HTML-in-canvas). (`renderMode.ts`;
-  see decisions.md htmlInCanvasRenderer)
-- **HTML-in-Canvas renderer** — draws the real DOM cards into a canvas via a mip-pyramid of
-  bitmaps; crisp at any zoom. (`htmlCanvasRenderer.ts`, `HtmlCanvasLayer.tsx`)
 - **perfProbe** — the runtime instrumentation (`window.__solenoidPerf` / `__solenoidStats`)
   logging per-pass node `data()` + engine IPC. (`perfProbe.ts`)
 - **Alert / HUD** — the Alert node fires on status *change* (edge-detect) → a toast + the

@@ -108,9 +108,9 @@ export function CableFlourish() {
   const runsRef = useRef(runs);
   runsRef.current = runs;
 
-  // Portal into the rete canvas so it paints behind nodes/cables but above the grid.
+  // Portal into the canvas pane so it paints behind nodes/cables but above the grid.
   useEffect(() => {
-    setCanvasEl(document.querySelector<HTMLElement>(".solenoid-canvas"));
+    setCanvasEl(document.querySelector<HTMLElement>(".sol-rf-appcanvas .react-flow"));
   }, []);
 
   const trigger = () => {

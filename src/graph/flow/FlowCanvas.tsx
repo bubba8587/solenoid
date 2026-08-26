@@ -132,6 +132,7 @@ import { CableInspector } from "../components/CableInspector";
 import { settingsStore } from "../settingsStore";
 import { IS_MOBILE, IS_COARSE } from "../coarse";
 import { touchSelectStore } from "../touchSelectStore";
+import "../canvas.css";
 import "./flow.css";
 
 registerFlowSocket(FlowSocketHandle);

@@ -107,8 +107,14 @@ until the port completes. No standalone harness — new work integrates with the
       surface vs render≈760-1060ms on rete for the identical pass — the flow
       surface is ~2x faster at render; no optimization owed. (Both surfaces
       ran the same FULL pass for this edit path — targeting parity holds.)
-- [x] KILL LIST for the C9 cutover (opened 2026-08-26; execute when the rete
-      surface is deleted). Resolution on the original framing: the storeKit
+- [x] KILL LIST for the C9 cutover — opened AND EXECUTED 2026-08-26 (author's
+      all-out ruling: "GOING ALL OUT ON REACT FLOW NO RETE"). Outcomes: items
+      1–4, 7, 8 deleted/ported as listed (loadReveal kept curtain-only, its
+      animation dropped; HIC dropped, the orphaned hic-math cluster swept in
+      the docs-reconcile pass; landing/showcase ported to StaticFlowStage);
+      items 5–6 resolved KEEP — flowArea is THE `Surface` implementation
+      (surface.ts states the type) and flowSurface stays as the chunk-fencing
+      injection seam. Resolution on the original framing: the storeKit
       stores are app-global STATE, not separate-root artifacts — they stay
       stores; what dies is the workaround layer:
       1. rete render packages + styled-components; their consumers to delete or
@@ -378,7 +384,8 @@ until the port completes. No standalone harness — new work integrates with the
       boundaries), + Input adds a marker there, Escape pops ONE level then
       closes; zero errors. Drill minimap landed (same enclosed RF MiniMap,
       mapping the subgraph).
-- [ ] Flow drill-in follow-up: `surfaceParity.test.ts` retarget/retire at C9.
+- [x] Flow drill-in follow-up: `surfaceParity.test.ts` RETIRED at the cutover
+      (its subject — two surfaces sharing rete installers — no longer exists).
 
 ### C8 — Touch/tablet pass — core DONE 2026-08-26
 - [x] `?rete`-parity #VALUE! flag CLEARED: power-features "Scaled List" shows
@@ -430,7 +437,12 @@ until the port completes. No standalone harness — new work integrates with the
       steps → ▶ Present overlay → camera flies per step via the zoomAt bridge
       → Escape exits). All zero-console-error. Remaining: the real-device
       touch pass (C8's own item).
-- [ ] Re-harness the rete-coupled tests — SCOPED 2026-08-26, far smaller than
+- [x] Re-harness the rete-coupled tests — DONE 2026-08-26 (Cutover A–C): the
+      type-only imports moved to `surface.ts`'s structural types, the two Tidy
+      tests drive `elkTidyLayout` with real elkjs, historyDigest kept its
+      digestLabeled half, surfaceParity retired with the second surface.
+      Original scoping kept below.
+      SCOPED 2026-08-26, far smaller than
       the old "~45" (that counted imports of rete CORE, which stays forever as
       the model spine — 43 such files are untouched). Files importing a
       RENDER package: 11. The work: (a) 6 files import only
@@ -442,7 +454,17 @@ until the port completes. No standalone harness — new work integrates with the
       (digestLabeled half stays; describeAction half retires with
       rete-history-plugin); (d) surfaceParity retires or goes flow-only.
       domSync/sourceInvariants only MENTION rete packages in prose.
-- [ ] HIC renderer: port, keep rete-only, or drop (author call).
-- [ ] Remove replaced rete packages + styled-components; storeKit kill list executed;
-      docs reconciled (subsystem-invariants rete sections, CLAUDE.md traps).
+- [x] HIC renderer: DROPPED (author all-out ruling 2026-08-26); the orphaned
+      hic math cluster (hicCamera/hicCableGeom/hicGraphSnapshot/hicColors/
+      hicSocketGlyph/pathPoints/cssColor + tests) deleted in Cutover D.
+- [x] Removed replaced rete packages + styled-components (Cutover C); docs
+      reconciled (Cutover D: subsystem-invariants pointer-gestures/tidy/
+      load-teardown/drill-in sections, architecture.md map, glossary,
+      touch-gestures, renderer-performance, decisions.md domOrderStacking,
+      CLAUDE.md traps). Cutover D also fixed four regressions the sweep
+      surfaced: report/inspector dock squeeze + drilled-in paint-stop
+      retargeted from `.solenoid-canvas-wrapper` to `.sol-rf-appcanvas`,
+      hide-grid-dots to `.react-flow__background`, CableFlourish's canvas
+      query, and orphaned `canvas.css` (lock/beads/minimap-position rules)
+      re-imported by FlowCanvas. All probe-verified live.
 - [ ] Merge plan back to `develop` (author decides timing).

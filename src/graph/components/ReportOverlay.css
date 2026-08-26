@@ -363,6 +363,6 @@ html.sol-report-docked {
    carries the canvas, minimap, socket legend and add-menu (all positioned inside
    it); the nav pill and HUD column are app/viewport-fixed, so offset their right.
    The top header, bottom StatusBar and the LEFT navigator are untouched. */
-html.sol-report-docked .solenoid-canvas-wrapper { width: calc(100% - var(--report-dock-w)); }
+html.sol-report-docked .sol-rf-appcanvas:not(.solenoid-composite-editor__host) { width: calc(100% - var(--report-dock-w)); }
 html.sol-report-docked .solenoid-nav { right: calc(12px + var(--report-dock-w)); }
 html.sol-report-docked .solenoid-hud-stack { right: calc(12px + var(--report-dock-w)); }
