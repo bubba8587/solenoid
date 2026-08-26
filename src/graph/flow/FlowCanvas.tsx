@@ -98,6 +98,7 @@ import { canvasLockStore } from "../canvasLock";
 import { installLassoSelection, type LassoState } from "../canvasLasso";
 import { installFlowPinch } from "./flowPinch";
 import { installTouchCardPan } from "./flowTouchPan";
+import { installWheelZoom } from "./flowWheel";
 import {
   setAutoArrange,
   setCleanup,
@@ -247,9 +248,11 @@ function FlowCanvasInner() {
     };
     const unPinch = installFlowPinch(el, { getViewport, setViewport: drive });
     const unPan = installTouchCardPan(el, { getViewport, setViewport: drive });
+    const unWheel = installWheelZoom(el, { getViewport, setViewport: drive });
     return () => {
       unPinch();
       unPan();
+      unWheel();
     };
   }, [s, getViewport, setViewport]);
 
@@ -858,6 +861,7 @@ function FlowCanvasInner() {
         nodesDraggable={!locked}
         elementsSelectable={!locked}
         panOnDrag={!(IS_COARSE && touchSelect)}
+        zoomOnScroll={false}
         onNodeDragStart={onNodeDragStart}
         onNodeDrag={onNodeDrag}
         onNodesChange={onNodesChange}

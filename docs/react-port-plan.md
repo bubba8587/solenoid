@@ -60,8 +60,8 @@ until the port completes. No standalone harness — new work integrates with the
 
 ### C1 — Interaction + persistence baseline — DONE 2026-08-26
 - [x] Zoom clamps from `areaPresets` (MIN/MAX_ZOOM), double-click zoom off. The custom
-      WHEEL CURVE (0.0028/px, cap 0.24) is NOT ported — RF default d3-zoom feel for now;
-      revisit with chrome polish in C4.
+      WHEEL CURVE landed later (2026-08-26, see C2's discipline sweep —
+      `flowWheel.ts` shares `wheelZoomDelta` with CappedZoom).
 - [x] `flow/flowController.ts`: connect/disconnect through the lattice
       (`canConnectTo` + self-loop + single-input eviction), targeted recompute
       (`downstreamClosure` cone + `#CIRC!` seeding reused from `process.ts` — never
@@ -94,9 +94,14 @@ until the port completes. No standalone harness — new work integrates with the
 - [x] **Churn spike (the go/no-go) PASSED**: Distribution Normal→Binomial→Poisson→
       Normal→Standard Normal — socket set tracks (4→2 handles), dropInputCables path
       runs through the adapter, `useUpdateNodeInternals` on version bump, zero errors.
-- [ ] Interaction discipline sweep: existing `stopDragStart` sites appear to block RF
-      drags correctly (fields were editable in place) — still needs a deliberate pass
-      (wheel-in-card, nowheel on scrollable popups, IS_COARSE paths).
+- [x] Interaction discipline sweep (2026-08-26): `stopDragStart` sites block RF
+      drags (fields editable in place, verified across chunk probes);
+      IS_COARSE paths covered by C8. WHEEL: both surfaces zoom over cards,
+      popups, and canvas alike (probed 42→81→154 on each) — and the flow
+      surface now runs the SAME curve: `wheelZoomDelta` extracted from
+      CappedZoom in areaPresets, applied by `flowWheel.ts` (capture on the
+      wrapper, cursor-pinned, minimap/panels excluded; RF `zoomOnScroll`
+      off so there is one wheel path).
 - [ ] Value refresh polish: per-node version bump renders the whole cone (processGraph
       already early-cutoffs); measure on a 280-node seed before optimizing.
 - [ ] Kill list opened: which storeKit singletons become context on the RF surface

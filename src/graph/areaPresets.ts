@@ -31,6 +31,20 @@ const ZOOM_STEP_CAP = 0.24;
 const WHEEL_LINE_PX = 16; // deltaMode 1 (lines) → px
 const WHEEL_PAGE_PX = 400; // deltaMode 2 (pages) → px
 
+/** The wheel curve as a pure step: normalized px → clamped zoom delta
+ *  (new k = k × (1 + delta)). Shared by CappedZoom and the flow surface's
+ *  wheel handler so the feel can't drift between them. */
+export function wheelZoomDelta(e: WheelEvent): number {
+  const px =
+    e.deltaMode === 1 ? e.deltaY * WHEEL_LINE_PX
+    : e.deltaMode === 2 ? e.deltaY * WHEEL_PAGE_PX
+    : e.deltaY;
+  let delta = -px * ZOOM_SCALE; // scroll up / pinch out → zoom in
+  if (delta > ZOOM_STEP_CAP) delta = ZOOM_STEP_CAP;
+  else if (delta < -ZOOM_STEP_CAP) delta = -ZOOM_STEP_CAP;
+  return delta;
+}
+
 // The scale floor/ceiling. Clamped in the area's `zoom` guard (below) so wheel, pinch,
 // double-tap AND programmatic zoomAt all land inside the range — past the floor the dot
 // grid is long gone and cards are specks; past the ceiling a card fills the viewport.
@@ -70,13 +84,7 @@ export class CappedZoom extends Zoom {
 
   protected wheel = (e: WheelEvent) => {
     e.preventDefault();
-    const px =
-      e.deltaMode === 1 ? e.deltaY * WHEEL_LINE_PX
-      : e.deltaMode === 2 ? e.deltaY * WHEEL_PAGE_PX
-      : e.deltaY;
-    let delta = -px * ZOOM_SCALE; // scroll up / pinch out → zoom in
-    if (delta > ZOOM_STEP_CAP) delta = ZOOM_STEP_CAP;
-    else if (delta < -ZOOM_STEP_CAP) delta = -ZOOM_STEP_CAP;
+    const delta = wheelZoomDelta(e);
     const el = (this as unknown as { element: HTMLElement }).element;
     const { left, top } = el.getBoundingClientRect();
     const ox = (left - e.clientX) * delta;
