@@ -1,5 +1,4 @@
 import { lazy, Suspense, useEffect } from "react";
-import { Canvas } from "./graph/Canvas";
 import { FlowCanvas } from "./graph/flow/FlowCanvas";
 import { FlowCompositeOverlay } from "./graph/flow/FlowCompositeOverlay";
 import { HelpDialogs } from "./graph/components/HelpDialogs";
@@ -12,7 +11,6 @@ import { MobileControls } from "./graph/MobileControls";
 import { FunctionReference } from "./graph/components/FunctionReference";
 import { ReportOverlay } from "./graph/components/ReportOverlay";
 import { InspectorPanel } from "./graph/components/InspectorPanel";
-import { CompositeEditorOverlay } from "./graph/components/CompositeEditorOverlay";
 import { PresentationOverlay } from "./graph/components/PresentationOverlay";
 import { ConnectionDialog } from "./graph/components/ConnectionDialog";
 import { FormulaPopup } from "./graph/components/FormulaPopup";
@@ -42,11 +40,6 @@ const NodeShowcase = lazy(() => import("./graph/showcase/NodeShowcase"));
 const IS_LANDING = new URLSearchParams(window.location.search).has("landing");
 const LandingPage = lazy(() => import("./graph/landing/LandingPage"));
 
-// THE PORT BRANCH RULE (docs/react-port-plan.md): React Flow is this branch's
-// canvas; ?rete keeps the old stack reachable for side-by-side comparison
-// until the port is complete.
-const IS_RETE = new URLSearchParams(window.location.search).has("rete");
-
 function App() {
   if (IS_LANDING) {
     return (
@@ -74,7 +67,7 @@ function MainApp() {
 
   return (
     <div className="solenoid-app">
-      {IS_RETE ? <Canvas /> : <FlowCanvas />}
+      <FlowCanvas />
       <Header />
       <NavMenu />
       <OutlinePanel />
@@ -82,7 +75,7 @@ function MainApp() {
       <FunctionReference />
       <ReportOverlay />
       <InspectorPanel />
-      {IS_RETE ? <CompositeEditorOverlay /> : <FlowCompositeOverlay />}
+      <FlowCompositeOverlay />
       <PresentationOverlay />
       <ConnectionDialog />
       <FormulaPopup />

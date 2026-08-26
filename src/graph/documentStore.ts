@@ -178,16 +178,16 @@ function makeDoc(name: string, graph: SavedGraph): SolDoc {
   return { id: newId(), name: uniqueName(_lib, name), graph, updatedAt: Date.now() };
 }
 
-async function showCurrent(animate = false): Promise<boolean> {
+async function showCurrent(): Promise<boolean> {
   const cur = getCurrent(_lib);
   if (!cur) return false;
-  return loadGraph(cur.graph, { animate });
+  return loadGraph(cur.graph);
 }
 
 /** Show the current doc; on a refused load `currentId` must NOT stay pointing at the doc
  *  that never loaded, or autosave writes doc A's graph into doc B one edit later. */
-async function showCurrentSafe(animate = false, revertTo?: string | null): Promise<void> {
-  if (await showCurrent(animate)) return;
+async function showCurrentSafe(revertTo?: string | null): Promise<void> {
+  if (await showCurrent()) return;
   if (revertTo && _lib.documents.some((d) => d.id === revertTo)) {
     _lib = setCurrent(_lib, revertTo);
     persist();
@@ -252,7 +252,7 @@ export const documentStore = {
     _lib = lib;
     persist(); // settle the restored library into the current write slot
     notify();
-    await showCurrentSafe(true); // startup → play the cinematic reveal
+    await showCurrentSafe();
     return getCurrent(_lib) !== null;
   },
 
@@ -272,7 +272,7 @@ export const documentStore = {
   async reloadCurrent(): Promise<void> {
     if (loadRevealStore.isActive()) return; // a load/reveal is already running
     this.captureCurrent();
-    await showCurrent(true);
+    await showCurrent();
   },
 
   /** New empty document, made current and shown. */
@@ -285,9 +285,8 @@ export const documentStore = {
     await loadGraph({ ...EMPTY_GRAPH });
   },
 
-  /** New document from a seed template, made current and shown; `animate` only for the
-   *  fresh-user first run — the in-app "New from template" action snaps. */
-  async newFromTemplate(seedId: SeedId, animate = false): Promise<void> {
+  /** New document from a seed template, made current and shown. */
+  async newFromTemplate(seedId: SeedId): Promise<void> {
     const seed = SEEDS[seedId];
     if (!seed) return;
     if (isGraphRebuilding()) return;
@@ -295,7 +294,7 @@ export const documentStore = {
     _lib = addDocument(_lib, makeDoc(seed.label, seed.graph));
     persist();
     notify();
-    await loadGraph(seed.graph, { animate });
+    await loadGraph(seed.graph);
   },
 
   async open(id: string): Promise<void> {
@@ -306,7 +305,7 @@ export const documentStore = {
     _lib = setCurrent(_lib, id);
     persist();
     notify();
-    await showCurrentSafe(false, prevId);
+    await showCurrentSafe(prevId);
   },
 
   /** Fork the live graph into a new named document, made current. */
@@ -339,7 +338,7 @@ export const documentStore = {
     _lib = duplicateDocument(_lib, id, newId(), uniqueName(_lib, `${src.name} copy`));
     persist();
     notify();
-    await showCurrentSafe(false, prevId);
+    await showCurrentSafe(prevId);
   },
 
   /** Delete a document. If it was current, the next one is shown (or a fresh
@@ -383,7 +382,7 @@ export const documentStore = {
     persist();
     notify();
     // A refused import (newer save version) reverts to the doc the canvas still shows.
-    if (!(await loadGraph(graph, { animate: true })) && prevId) {
+    if (!(await loadGraph(graph)) && prevId) {
       _lib = setCurrent(_lib, prevId);
       persist();
       notify();
@@ -402,5 +401,5 @@ subscribe(saveTimeStore.bump);
 
 // Seed the first document so a fresh user's canvas is never empty on first run.
 export async function ensureFirstDocument(): Promise<void> {
-  await documentStore.newFromTemplate(DEFAULT_SEED_ID, true); // first run is "startup"
+  await documentStore.newFromTemplate(DEFAULT_SEED_ID);
 }

@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   installPointerCensus, resetPointerCensus, isPinching, touchCount,
 } from "./pointerGesture";
-import { CappedZoom } from "./areaPresets";
 
 // The pointer census + the pinch-priority rule it feeds. The vitest env is `node`,
 // so there's no DOM — these drive the census through a fake event target and the
@@ -93,88 +92,5 @@ describe("pointer census — what gesture is in flight", () => {
     resetPointerCensus();
     expect(touchCount()).toBe(0);
     expect(isPinching()).toBe(false);
-  });
-});
-
-describe("CappedZoom — the pinch-priority rule", () => {
-  // rete's base `initialize` binds its move/up pair to `window`, which the node test
-  // env doesn't have. Only the CONTAINER registrations are under test here, so a
-  // no-op window is enough to let the base constructor run.
-  beforeEach(() => {
-    (globalThis as { window?: unknown }).window = {
-      addEventListener() {}, removeEventListener() {},
-    };
-    return () => { delete (globalThis as { window?: unknown }).window; };
-  });
-
-  /** A container that records the phase each listener registered in, so the test can
-   *  assert on position rather than on behavior we'd need a real DOM to observe. */
-  function fakeContainer() {
-    const on: Array<{ type: string; fn: EventListener; capture: boolean }> = [];
-    return {
-      on,
-      addEventListener(type: string, fn: EventListener, capture?: boolean) {
-        on.push({ type, fn, capture: !!capture });
-      },
-      removeEventListener(type: string, fn: EventListener, capture?: boolean) {
-        const i = on.findIndex((l) => l.type === type && l.fn === fn && l.capture === !!capture);
-        if (i >= 0) on.splice(i, 1);
-      },
-      getBoundingClientRect: () => ({ left: 0, top: 0 }),
-    };
-  }
-
-  function mount() {
-    const container = fakeContainer();
-    const zoom = new CappedZoom(0.1);
-    zoom.initialize(container as unknown as HTMLElement, container as unknown as HTMLElement, () => {});
-    return { container, zoom };
-  }
-
-  const downs = (c: ReturnType<typeof fakeContainer>) => c.on.filter((l) => l.type === "pointerdown");
-
-  it("counts fingers in CAPTURE phase — the whole reason a node can't kill a pinch", () => {
-    // Stock rete registers this in bubble, below ~180 stopPropagation sites. If this
-    // ever flips back to capture:false, pinch dies across most of the node surface.
-    const { container } = mount();
-    expect(downs(container)).toHaveLength(1);
-    expect(downs(container)[0].capture).toBe(true);
-  });
-
-  it("leaves PAN vetoable — it registers no bubble-phase pointerdown of its own", () => {
-    // The other half of the rule: a control that wants the pointer must still be able
-    // to suppress a pan/node-drag by stopping the event. Only the zoom is unstoppable.
-    const { container } = mount();
-    expect(downs(container).filter((l) => !l.capture)).toHaveLength(0);
-  });
-
-  it("removes the capture listener on destroy — stock destroy would leak it", () => {
-    // Base `destroy` removes pointerdown WITHOUT the capture flag, which doesn't match
-    // a capture registration; every composite drill-in open/close would stack another.
-    const { container, zoom } = mount();
-    zoom.destroy();
-    expect(downs(container)).toHaveLength(0);
-  });
-
-  it("only real fingers reach the zoom's pointer list — not a mouse, not a stylus", () => {
-    resetPointerCensus();
-    const t = fakeTarget();
-    const uninstall = installPointerCensus(t as unknown as Window);
-    const { container, zoom } = mount();
-    const fire = (e: { pointerId: number; pointerType: string }) => {
-      t.fire("pointerdown", e);                                   // census first (window capture)
-      downs(container)[0].fn(e as unknown as Event);              // then the container's capture
-    };
-    const pointers = () => (zoom as unknown as { pointers: unknown[] }).pointers;
-
-    fire(pointer(1, "mouse"));
-    expect(pointers()).toHaveLength(0);
-    fire(pointer(2, "pen"));
-    expect(pointers()).toHaveLength(0);
-
-    fire(pointer(4, "touch"));
-    fire(pointer(5, "touch"));
-    expect(pointers()).toHaveLength(2);
-    uninstall();
   });
 });

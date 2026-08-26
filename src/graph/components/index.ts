@@ -2,7 +2,6 @@
 
 // ─── Canvas infrastructure ────────────────────────────────────────────────────
 export { SocketComponent } from "./SocketComponent";
-export { ConnectionComponent } from "./ConnectionComponent";
 export { ConduitComponent } from "./ConduitComponent";
 export { SocketLegend } from "./SocketLegend";
 export { ConfirmDialog } from "./ConfirmDialog";

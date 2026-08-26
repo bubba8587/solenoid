@@ -6,7 +6,6 @@ import { socketHighlightStore, dragSocketKey } from "../cableState";
 import { useFlowSocket } from "../flowSurface";
 import { SolenoidSocket, SOCKET_TYPE_LABELS } from "../sockets";
 import { frameHintFor, frameHintStore, type FrameHint } from "../frameHint";
-import { useNativeEnterLeave } from "./nativeHover";
 import { getActiveEditor } from "../activeGraph";
 import { cubeTransform, CUBE_FILL_PATH } from "./cubeGlyph";
 import { LIST_TYPES, TABLE_TYPES, COMBO_COLORS } from "./SocketComponent";
@@ -139,11 +138,8 @@ export function NodeSocket({ side, socketKey, nodeId, emit, payload, top, classN
     frameHintStore.close();
   };
   useEffect(() => cancelHint, []);
-  // Native listeners, not React props: the pointer arrives from the canvas (another
-  // React root), where React's synthetic enter never fires (nativeHover.ts).
-  const wrapRef = useRef<HTMLDivElement>(null);
   const hintEnter = hint
-    ? (e: PointerEvent) => {
+    ? (e: React.PointerEvent) => {
         if (e.pointerType !== "mouse") return;
         const el = e.currentTarget as HTMLElement;
         if (hintTimer.current !== null) clearTimeout(hintTimer.current);
@@ -154,11 +150,11 @@ export function NodeSocket({ side, socketKey, nodeId, emit, payload, top, classN
         }, HINT_DELAY_MS);
       }
     : undefined;
-  useNativeEnterLeave(wrapRef, hintEnter, hint ? cancelHint : undefined);
 
   return (
     <div
-      ref={wrapRef}
+      onPointerEnter={hintEnter}
+      onPointerLeave={hint ? cancelHint : undefined}
       className={(className ?? "") + (lit ? " solenoid-socket--lit" : "")}
       style={{ position: "absolute", ...horizontal, ...vertical }}
       // The hint replaces the native type tooltip (both at once would overlap).

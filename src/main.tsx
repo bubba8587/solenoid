@@ -4,7 +4,6 @@ import { initAppTheme } from "./graph/appTheme";
 import { initCableFlow } from "./graph/cableFlowStore";
 import { initGridSnap } from "./graph/gridSnapStore";
 import { initCableShape } from "./graph/cableShape";
-import { initRenderMode } from "./graph/renderMode";
 import { initSettings } from "./graph/settingsStore";
 import { initPacks } from "./graph/packs";
 import { initPackFcExtensions } from "./graph/fcExtensions";
@@ -78,7 +77,6 @@ initAppTheme();
 initCableFlow();
 initGridSnap();
 initCableShape();
-initRenderMode();
 initSettings();
 
 initPacks();

@@ -654,7 +654,6 @@ describe("SSOT — input-cable pruning goes through dropInputCables", () => {
     "components/cablePrune.ts": "the helper itself",
     "nodes/composite.ts": "restoreInternal tears down the WHOLE internal graph before re-hydrating (undo restore) — a full clear, not an input-key prune",
     "components/ConnectionDialog.tsx": "deletes ONE user-selected cable (and its edit-replace predecessor) — not an input-key prune",
-    "components/CompositeEditorOverlay.tsx": "port-sync prunes span the PARENT editor and the internal editor (cross-graph), and sever by port identity with a user-facing tally",
     "components/InterpolateNode.tsx": "the List↔Grid variant switch swaps the ENTIRE socket set — prunes both directions (inputs AND outputs)",
     "components/ListInputNode.tsx": "type-compatibility prune: keeps cables the new element type still accepts (canConnect), drops the rest — a filter, not a key set",
     "components/ReportOverlay.tsx": "targets the MAIN editor explicitly (getEditor) — a Report edits main-graph refs even while a drill-in is active",

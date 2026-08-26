@@ -54,7 +54,7 @@ import { makeEnsureArrange, tidyOptionsFromSettings } from "../tidyArrange";
 import { CompositeRunControls, RUN_MODE_OPTIONS } from "../components/CompositeNode";
 import { minimapFillForNode } from "../components/Minimap";
 import { appThemeStore } from "../appTheme";
-import { DrillNodeMenu } from "../components/CompositeEditorOverlay";
+import { DrillNodeMenu } from "../components/DrillNodeMenu";
 import { IS_MOBILE } from "../coarse";
 import "../components/compositeEditor.css";
 

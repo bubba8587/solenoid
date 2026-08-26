@@ -116,18 +116,14 @@ relapse.
 
 | Code | Governing docs |
 |---|---|
-| `zoomSettle.ts`, `Canvas.tsx` gesture/layer handling | `renderer-performance.md`; `dev-notes.md` § choppy zoom BAND (open) |
 | `groupCollapse.ts` | `subsystem-invariants.md` § Group collapse — the retain rule |
 | `AddNodeMenu.tsx`, `catalogSearch.ts`, `nodeOps.ts` | `subsystem-invariants.md` § Add menu; `rules.md` searchWiderThanLabel, opRowDerivesFromHost |
 | `equationSolve.ts` | `subsystem-invariants.md` § Equation solver |
 | `semanticZoomStore.ts` | `renderer-performance.md` § Semantic zoom gate |
-| `domSync.ts` | `renderer-performance.md` § DOM↔canvas transform sync |
-| `pointerGesture.ts`, `areaPresets.ts` | `subsystem-invariants.md` § Pointer gestures |
+| `pointerGesture.ts`, `flow/flowPinch.ts`, `flow/flowTouchPan.ts` | `subsystem-invariants.md` § Pointer gestures |
 | `connectionStore.ts`, `httpBridge.ts`, live-source fetch | `subsystem-invariants.md` § Live connections |
-| `guardedSocketPosition.ts` | `subsystem-invariants.md` § Socket position bookkeeping |
 | `flyToNode.ts`, any camera `zoomAt` caller | `subsystem-invariants.md` § Group collapse (camera targets) |
 | `activeGraph.ts` | `subsystem-invariants.md` § Composite drill-in (canvas-substitution seam) |
-| `rasterAtlas.ts`, `htmlCanvasRenderer.ts` (clone/read-back paths) | `renderer-performance.md` § HTML-in-Canvas capture pipeline |
 | `mathUtils.ts` `fillBorderedGrid` | `subsystem-invariants.md` § Bordered-grid fill |
 | `excelFunctions.ts` overrides / dispatch walk | `formulajs-divergences.md` (why each override exists) |
 | `applyOp` scalar operators (`excelFormula.ts`) | `value-semantics.md` § Scalar operators (P6) |
@@ -146,7 +142,7 @@ relapse.
 | `nodeNameStore.ts`, `textForm.ts` | `subsystem-invariants.md` § Addressable model |
 | `documentStore.ts`, `documentStoreCore.ts` | `subsystem-invariants.md` § Per-doc autosave |
 | `persistence.ts` (load gate, literal maps) | `subsystem-invariants.md` § Inline literal maps |
-| `CompositeEditorOverlay.tsx`, drill-in lifecycle | `subsystem-invariants.md` § Composite drill-in |
+| `flow/FlowCompositeOverlay.tsx`, drill-in lifecycle | `subsystem-invariants.md` § Composite drill-in |
 | `sockets.ts`, `accepts()`, `trueAnyAdopt.ts` | `subsystem-invariants.md` § Socket lattice; `socket-reference.md`; wildcardLadder |
 | `nodes/cube.ts` | `subsystem-invariants.md` § Socket lattice (the Cube is the recursive lattice supremum) |
 | `excelFunctions.ts`, `excelFormula.ts`, Expression/LAMBDA | `formulajs-divergences.md`; `rules.md` FX rules; tableRefSemantics |

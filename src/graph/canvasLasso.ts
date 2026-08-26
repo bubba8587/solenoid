@@ -4,7 +4,7 @@ import type { MutableRefObject } from "react";
 import type { NodeEditor } from "rete";
 import type { AreaPlugin } from "rete-area-plugin";
 import type { Schemes, AreaExtra } from "./schemes";
-import { pointInPolygon, polygonIntersectsBBox, signedArea, lassoActiveStore, type Pt } from "./lasso";
+import { pointInPolygon, polygonIntersectsBBox, signedArea, type Pt } from "./lasso";
 import { groupCollapseStore } from "./groupCollapse";
 import { isolateStore } from "./isolateStore";
 import { touchSelectStore } from "./touchSelectStore";
@@ -106,7 +106,6 @@ export function installLassoSelection(deps: LassoDeps): () => void {
     lastNodeSig = "";
     cacheNodeRects();
     setLasso({ points: [...points], mode: "touch" });
-    lassoActiveStore.set(true); // let the canvas renderer take over for the lasso
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
   }
@@ -125,7 +124,6 @@ export function installLassoSelection(deps: LassoDeps): () => void {
   function onUp() {
     if (!active) return;
     active = false;
-    lassoActiveStore.set(false); // hand back to the DOM (after the canvas settle)
     window.removeEventListener("pointermove", onMove);
     window.removeEventListener("pointerup", onUp);
     // Flush a final apply — a coalesced frame may still be pending.
@@ -137,7 +135,6 @@ export function installLassoSelection(deps: LassoDeps): () => void {
   function cancelLasso() {
     if (!active) return;
     active = false;
-    lassoActiveStore.set(false);
     window.removeEventListener("pointermove", onMove);
     window.removeEventListener("pointerup", onUp);
     if (lassoRaf) { cancelAnimationFrame(lassoRaf); lassoRaf = 0; }

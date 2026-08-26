@@ -244,7 +244,7 @@ export function nodeAccent(node: ClassicPreset.Node, mode: "dark" | "light"): st
   return kindAccent;
 }
 
-// COARSE weights summed off HtmlCanvasLayer's existing nodecreated/noderemoved
+// COARSE weights summed off nodecreated/noderemoved
 // recount — never a live DOM element count. Baseline 1 == one scalar card, tiers
 // calibrated so ~10 full charts ≈ the 100-unit default threshold.
 export function nodeDomWeight(node: ClassicPreset.Node): number {

@@ -27,10 +27,8 @@ import { commentStore, type SavedCommentData } from "./commentStore";
 import { frameFormatStore, type FrameColumnFormat } from "./frameFormatStore";
 import { paletteStore, reportPaletteStore } from "./palette";
 import { docMetaStore } from "./docMetaStore";
-import { loadRevealStore, revealWaves } from "./loadReveal";
-import { prefersReducedMotion } from "./coarse";
+import { loadRevealStore } from "./loadReveal";
 
-const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /** Curtain threshold in nodes+connections across BOTH sides, so a small doc swaps
  *  with no flash. */
@@ -195,13 +193,11 @@ export function getLastLoadIdMap(): ReadonlyMap<string, string> {
   return _lastLoadIdMap;
 }
 
-/** False = refused or rolled back, with the existing graph left intact. `animate`
- *  plays the cinematic reveal (startup + File → Open only). */
-export async function loadGraph(g: SavedGraph, opts?: { animate?: boolean }): Promise<boolean> {
+/** False = refused or rolled back, with the existing graph left intact. */
+export async function loadGraph(g: SavedGraph): Promise<boolean> {
   const editor = getEditor();
   const area = getArea();
   if (!editor || !area) return false;
-  const animate = Boolean(opts?.animate) && (g.nodes?.length ?? 0) > 0 && !prefersReducedMotion();
 
   // Structural gate BEFORE the destructive clear — a malformed file would otherwise
   // throw partway through the rebuild, after the user's graph was gone.
@@ -231,7 +227,7 @@ export async function loadGraph(g: SavedGraph, opts?: { animate?: boolean }): Pr
   suspendAutosave();
   beginGraphRebuild(); // suppress live-creation behaviors (group absorb) while loading
   try {
-    const { placeholdered } = await rebuildGraph(g, editor, area, animate);
+    const { placeholdered } = await rebuildGraph(g, editor, area);
     if (placeholdered.length > 0) {
       const types = [...new Set(placeholdered)].join(", ");
       pushNotice(
@@ -278,18 +274,17 @@ async function rebuildGraph(
   g: SavedGraph,
   editor: NonNullable<ReturnType<typeof getEditor>>,
   area: NonNullable<ReturnType<typeof getArea>>,
-  animate = false,
 ): Promise<{ placeholdered: string[] }> {
   // Build mode must be entered FIRST so the node-by-node construction is never seen;
   // a doc switch gets the same overlay as a plain curtain over teardown + rebuild.
   const oldWork = editor.getNodes().length + editor.getConnections().length;
   const newWork = (g.nodes?.length ?? 0) + (g.connections?.length ?? 0);
-  const curtain = !animate && oldWork + newWork > SWITCH_CURTAIN_MIN_WORK;
-  if (animate || curtain) loadRevealStore.begin();
+  const curtain = oldWork + newWork > SWITCH_CURTAIN_MIN_WORK;
+  if (curtain) loadRevealStore.begin();
   // The curtain also counts teardown, which dominates when leaving a big doc.
   const buildTotal = Math.max(1, curtain ? oldWork + newWork : newWork);
   let buildDone = 0;
-  const bump = () => { if (animate || curtain) loadRevealStore.setProgress((buildDone += 1) / buildTotal * (animate ? 0.9 : 1)); };
+  const bump = () => { if (curtain) loadRevealStore.setProgress((buildDone += 1) / buildTotal); };
   // removeNode fires `noderemoved`, which undocks any FC, so no extra cleanup here.
   // Teardown detaches the content holder in ONE DOM op and removes in yielding
   // chunks — unmounting hundreds of React roots in place froze the main thread.
@@ -467,19 +462,10 @@ async function rebuildGraph(
 
   rebuildGroupMembership(editor);
 
-  if (animate) {
-    // Frame and settle while still hidden, and defer processGraph to the end so no
-    // value box shows a result before everything is drawn.
-    if (editor.getNodes().length > 0) await AreaExtensions.zoomAt(area, editor.getNodes());
-    syncGroupCollapse(editor, area);
-    await runReveal(editor, area);
-    await processGraph();
-  } else {
-    await processGraph();
-    // zoomAt over an empty node set produces a NaN transform.
-    if (editor.getNodes().length > 0) await AreaExtensions.zoomAt(area, editor.getNodes());
-    syncGroupCollapse(editor, area); // restore any collapsed groups' hidden members
-  }
+  await processGraph();
+  // zoomAt over an empty node set produces a NaN transform.
+  if (editor.getNodes().length > 0) await AreaExtensions.zoomAt(area, editor.getNodes());
+  syncGroupCollapse(editor, area); // restore any collapsed groups' hidden members
 
   // Two RAFs: docked FCs can only snap once heights settle (a Decimal chip lays
   // out a frame late).
@@ -493,63 +479,6 @@ async function rebuildGraph(
   }));
 
   return { placeholdered };
-}
-
-// The staged reveal: waves of nodes fade in over the lifting overlay. Reveal via
-// opacity ONLY — a transform would clobber rete's position translate.
-async function runReveal(
-  editor: NonNullable<ReturnType<typeof getEditor>>,
-  area: NonNullable<ReturnType<typeof getArea>>,
-): Promise<void> {
-  const nodeIds = editor.getNodes().map((n) => n.id);
-  const elOf = (id: string) => area.nodeViews.get(id)?.element;
-  // prefers-reduced-motion skips the staged waves; the overlay's own one-shot fade
-  // is not the repeating motion the setting targets.
-  if (typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    loadRevealStore.startReveal();
-    for (const c of editor.getConnections()) loadRevealStore.revealConn(c.id);
-    for (const id of nodeIds) { const el = elOf(id); if (el) el.style.opacity = "1"; }
-    return;
-  }
-  try {
-    for (const id of nodeIds) {
-      const el = elOf(id);
-      if (el) { el.style.transition = "none"; el.style.opacity = "0"; }
-    }
-    // Commit the hidden state before transitioning opacity back in.
-    if (nodeIds.length > 0) void elOf(nodeIds[0])?.offsetHeight;
-    for (const id of nodeIds) { const el = elOf(id); if (el) el.style.transition = "opacity 360ms ease"; }
-
-    loadRevealStore.startReveal(); // overlay fades out
-    await sleep(80);               // frame boundary + let the curtain begin lifting
-
-    const conns = editor.getConnections();
-    const incoming = new Map<string, string[]>();
-    for (const c of conns) {
-      const arr = incoming.get(c.target) ?? [];
-      arr.push(c.id);
-      incoming.set(c.target, arr);
-    }
-    const waves = revealWaves(nodeIds, conns.map((c) => ({ source: c.source, target: c.target })));
-    const totalMs = Math.min(1500, Math.max(450, nodeIds.length * 26));
-    const perWave = waves.length > 1 ? totalMs / waves.length : 0;
-
-    for (const wave of waves) {
-      for (const id of wave) {
-        const el = elOf(id);
-        if (el) el.style.opacity = "1";
-        for (const cid of incoming.get(id) ?? []) loadRevealStore.revealConn(cid);
-      }
-      if (perWave > 0) await sleep(perWave);
-    }
-    await sleep(460); // let the last cables finish drawing before results appear
-  } finally {
-    // Cables follow when the store flips back to idle in loadGraph's finally.
-    for (const id of nodeIds) {
-      const el = elOf(id);
-      if (el) { el.style.opacity = ""; el.style.transition = ""; }
-    }
-  }
 }
 
 // Autosave keeps only the debounce + suspend gate; the storage itself (slots,
