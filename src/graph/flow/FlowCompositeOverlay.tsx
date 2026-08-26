@@ -39,7 +39,7 @@ import { installWheelZoom } from "./flowWheel";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode, GroupNode } from "../rete-nodes";
 import type { SolenoidNode } from "../schemes";
 import { compositeEditorStore, compositePassStore } from "../compositeEditorStore";
-import { getEditor, getArea, processGraph, setCableDragging, swapSelectionSlots } from "../process";
+import { getEditor, getArea, processGraph, setCableDragging, swapSelectionSlots, swapArrangeSlots } from "../process";
 import { setActiveGraph } from "../activeGraph";
 import { syncSemanticZoomFor } from "../semanticZoomStore";
 import { copySelected, pasteClipboard } from "../copyPaste";
@@ -195,6 +195,8 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
   >(null);
   const [controlsOpen, setControlsOpen] = useState(!IS_MOBILE);
   const [lasso, setLasso] = useState<LassoState>(null);
+  // The top bar's Tidy / Cleanup reach this level through the arrange slots.
+  const tidyRef = useRef<() => Promise<void>>(async () => {});
   const touchSelect = useSyncExternalStore(touchSelectStore.subscribe, touchSelectStore.get);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const cursorRef = useRef({ x: 0, y: 0 });
@@ -287,6 +289,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
   useEffect(() => {
     let canceled = false;
     let restoreSelection: (() => void) | null = null;
+    let restoreArrange: (() => void) | null = null;
     s.rebuilding = true;
     void (async () => {
       await comp.hydrate(ctorRegistry());
@@ -324,11 +327,16 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
           );
         },
       });
+      restoreArrange = swapArrangeSlots({
+        autoArrange: () => tidyRef.current(),
+        cleanup: () => tidyRef.current(),
+      });
       if (s.history.stack.length === 0) recordNow(comp, s);
     })();
     return () => {
       canceled = true;
       restoreSelection?.();
+      restoreArrange?.();
       isolateStore.exit();
       setActiveGraph(null);
       syncPositionsToComp(comp, s);
@@ -513,6 +521,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     scheduleAutosave();
     scheduleRecord(comp, s);
   }, [comp, s, fitView, recomputeTarget]);
+  tidyRef.current = tidyDrill;
 
   const nudgeSelection = useCallback(
     async (key: string, big: boolean) => {
@@ -758,6 +767,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
       >
         {!ready && <div className="solenoid-composite-editor__loading" />}
         <ReactFlow
+          id="drill"
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}

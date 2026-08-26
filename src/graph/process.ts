@@ -149,6 +149,19 @@ export function selectNode(id: string, accumulate: boolean) {
   _selectNode(id, accumulate);
 }
 
+/** Point Tidy / Cleanup at a substitute surface (the composite drill-in) while it is
+ *  open; the returned restorer hands them back. */
+export function swapArrangeSlots(fns: { autoArrange: () => Promise<void>; cleanup: () => Promise<void> }): () => void {
+  const prevArrange = _autoArrange;
+  const prevCleanup = _cleanup;
+  _autoArrange = fns.autoArrange;
+  _cleanup = fns.cleanup;
+  return () => {
+    _autoArrange = prevArrange;
+    _cleanup = prevCleanup;
+  };
+}
+
 /** Point the selection verbs at a substitute surface (the composite drill-in) while it is
  *  open; the returned restorer hands them back to the main canvas. */
 export function swapSelectionSlots(fns: {
