@@ -3,7 +3,7 @@
 // gentle per-px slope, higher cap) is what the author tuned for trackpads.
 // Owned in CAPTURE on the wrapper (RF's bubble-phase d3 handler never sees the
 // wheel); zoomOnScroll stays off so there is exactly one wheel path.
-import { clampZoom, wheelZoomDelta } from "../areaPresets";
+import { clampZoom, wheelZoomDelta, MIN_ZOOM, MAX_ZOOM } from "../areaPresets";
 
 type Viewport = { x: number; y: number; zoom: number };
 
@@ -14,6 +14,11 @@ export function installWheelZoom(
     setViewport(v: Viewport): void;
   },
 ): () => void {
+  // Unsnapped zoom carried across wheel events, so a trackpad glide of tiny deltas
+  // still climbs to the next snap step instead of rounding back to the current one.
+  // Reset whenever the viewport zoom moved by another path (pill, fit, pinch).
+  let virtualZoom = NaN;
+  let lastSetZoom = NaN;
   const wheel = (e: WheelEvent) => {
     const target = e.target as HTMLElement | null;
     // Only the canvas proper: the minimap zooms itself, and overlays (panels,
@@ -23,7 +28,10 @@ export function installWheelZoom(
     e.preventDefault();
     e.stopPropagation();
     const vp = opts.getViewport();
-    const zoom = clampZoom(vp.zoom * (1 + wheelZoomDelta(e)));
+    if (vp.zoom !== lastSetZoom) virtualZoom = vp.zoom;
+    virtualZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, virtualZoom * (1 + wheelZoomDelta(e))));
+    const zoom = clampZoom(virtualZoom);
+    lastSetZoom = zoom;
     if (zoom === vp.zoom) return;
     // The world point under the cursor stays pinned.
     const rect = el.getBoundingClientRect();

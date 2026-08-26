@@ -1,3 +1,4 @@
+import { floorZoom } from "./areaPresets";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { getActiveArea, getActiveEditor } from "./activeGraph";
 import { collapsedAwareNodesRect } from "./components/Minimap";
@@ -94,7 +95,7 @@ export async function fitAll() {
   const availH = Math.max(60, c.height - ins.top - ins.bottom);
 
   // Fit the box into the free region, with a little slack, clamped.
-  const k = Math.max(0.1, Math.min(availW / bw, availH / bh, 1.5) * 0.92);
+  const k = floorZoom(Math.min(availW / bw, availH / bh, 1.5) * 0.92);
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2;
   const ax = ins.left + availW / 2;   // free-region center, container coords

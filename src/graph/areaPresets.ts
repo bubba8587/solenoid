@@ -24,6 +24,14 @@ export function wheelZoomDelta(e: WheelEvent): number {
 
 // The scale floor/ceiling: past the floor the dot grid is long gone and cards
 // are specks; past the ceiling a card fills the viewport.
-export const MIN_ZOOM = 0.05;
+export const MIN_ZOOM = 0.1;
 export const MAX_ZOOM = 2.5;
-export const clampZoom = (k: number): number => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, k));
+// The camera only ever RESTS on a multiple of this (author 2026-08-26): every zoom
+// writer routes through clampZoom, which snaps to the nearest step.
+export const ZOOM_SNAP = 0.1;
+const snap = (k: number, round: (v: number) => number): number => round(k / ZOOM_SNAP + 1e-9) * ZOOM_SNAP;
+const bound = (k: number): number => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, k));
+/** Clamp to [MIN_ZOOM, MAX_ZOOM] and snap to the nearest ZOOM_SNAP step. */
+export const clampZoom = (k: number): number => bound(snap(bound(k), Math.round));
+/** Clamp and snap DOWN — for fits, so the framed content still fits after snapping. */
+export const floorZoom = (k: number): number => bound(snap(bound(k), Math.floor));

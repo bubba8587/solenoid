@@ -1,3 +1,4 @@
+import { floorZoom } from "./areaPresets";
 // Frame a set of nodes: rete's AreaExtensions.zoomAt math, kept verbatim after
 // the rete surface died (0.9 margin, never zooms IN past 1, center-on-bounds).
 // Structural surface type so any area-shaped adapter satisfies it.
@@ -38,7 +39,7 @@ export async function zoomAt(
   const center = { x: (left + right) / 2, y: (top + bottom) / 2 };
   const w = surface.container.clientWidth;
   const h = surface.container.clientHeight;
-  const k = Math.min((h / height) * scale, (w / width) * scale, 1);
+  const k = floorZoom(Math.min((h / height) * scale, (w / width) * scale, 1));
   surface.area.transform.x = w / 2 - center.x * k;
   surface.area.transform.y = h / 2 - center.y * k;
   await surface.area.zoom(k, 0, 0);
