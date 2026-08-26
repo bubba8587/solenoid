@@ -4,10 +4,11 @@
 // ghost cables, conduit RIBBONS (trunk + rank-ordered fans, all three kinds),
 // ribbon-wide hover/selection, double-click run selection, separation pinning,
 // hit-stroke trims near conduit blocks, flow beads with cross-assembly phase.
-// Selection is cableSelectionStore-driven (RF's own edge selection stays off).
+// Visible strokes are RF BaseEdges styled inline (RF's edge CSS would otherwise
+// recolor a selected path); the named hit path stays the ONE pointer target.
 // Not ported: the load-reveal draw-on animation (rete-holder based — ledger).
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { Edge, EdgeProps } from "@xyflow/react";
+import { BaseEdge, type Edge, type EdgeProps } from "@xyflow/react";
 import { getCablePath, Position as CablePosition } from "../cablePaths";
 import { cableShapeStore, type CableShape } from "../cableShape";
 import { cableAngleStore } from "../cableAngleStore";
@@ -288,12 +289,12 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
         return (
           <g style={dimStyle}>
             {showTrunk && (
-              <path d={trunkD!} fill="none" stroke={trunkStroke} strokeWidth={trunkW}
-                    strokeLinecap="butt" opacity={active ? 0.95 : 0.85} pointerEvents="none" />
+              <BaseEdge path={trunkD!} interactionWidth={0}
+                        style={{ stroke: trunkStroke, strokeWidth: trunkW, strokeLinecap: "butt", opacity: active ? 0.95 : 0.85, pointerEvents: "none" }} />
             )}
             {tgtFanD && (
-              <path d={tgtFanD} fill="none" stroke={fanStroke} strokeWidth={fanW}
-                    opacity={active ? 0.9 : 0.78} pointerEvents="none" />
+              <BaseEdge path={tgtFanD} interactionWidth={0}
+                        style={{ stroke: fanStroke, strokeWidth: fanW, opacity: active ? 0.9 : 0.78, pointerEvents: "none" }} />
             )}
             {flow && showTrunk && (
               <path className="solenoid-cable-flow" d={trunkD!} fill="none"
@@ -367,12 +368,12 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
         return (
           <g style={dimStyle}>
             {showTrunk && (
-              <path d={trunkD!} fill="none" stroke={trunkStroke} strokeWidth={trunkW}
-                    strokeLinecap="butt" opacity={active ? 0.95 : 0.85} pointerEvents="none" />
+              <BaseEdge path={trunkD!} interactionWidth={0}
+                        style={{ stroke: trunkStroke, strokeWidth: trunkW, strokeLinecap: "butt", opacity: active ? 0.95 : 0.85, pointerEvents: "none" }} />
             )}
             {fans.map((d, i) => (
-              <path key={`fan${i}`} d={d} fill="none" stroke={fanStroke} strokeWidth={fanW}
-                    opacity={active ? 0.9 : 0.78} pointerEvents="none" />
+              <BaseEdge key={`fan${i}`} path={d} interactionWidth={0}
+                        style={{ stroke: fanStroke, strokeWidth: fanW, opacity: active ? 0.9 : 0.78, pointerEvents: "none" }} />
             ))}
             {flow && showTrunk && (
               <path className="solenoid-cable-flow" d={trunkD!} fill="none"
@@ -442,14 +443,16 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
 
   return (
     <g style={dimStyle}>
-      <path
-        d={pathD}
-        fill="none"
-        stroke={stroke}
-        strokeWidth={baseWidth}
-        strokeDasharray={ghost ? "6 5" : undefined}
-        opacity={cableOpacity}
-        pointerEvents="none"
+      <BaseEdge
+        path={pathD}
+        interactionWidth={0}
+        style={{
+          stroke,
+          strokeWidth: baseWidth,
+          strokeDasharray: ghost ? "6 5" : undefined,
+          opacity: cableOpacity,
+          pointerEvents: "none",
+        }}
       />
       {flow && !ghost && (
         <path

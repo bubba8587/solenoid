@@ -825,6 +825,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         edgeTypes={edgeTypes}
         connectionLineComponent={FlowConnectionLine}
         nodesDraggable={!locked}
+        nodesConnectable={!locked}
         elementsSelectable={!locked}
         panOnDrag={!(IS_COARSE && touchSelect)}
         zoomOnScroll={false}
