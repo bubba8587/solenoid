@@ -372,10 +372,13 @@ until the port completes. No standalone harness — new work integrates with the
       socket-drag rewire (Total blanks → 1000), add-node inside 4→5, Escape
       closes + outer settles; `?rete` drill-in still healthy. Zero console
       errors; suite 4891 green.
-- [ ] Flow drill-in follow-ups: nested composite drill (drillInto path is wired
-      but unexercised — no nested seed), `surfaceParity.test.ts`
-      retarget/retire at C9. (Drill minimap landed — same enclosed RF MiniMap
-      as the main canvas, showing the subgraph.)
+- [x] Nested drill exercised (2026-08-26, no seed needed — added a Composite
+      INSIDE the drill via the add menu): DrillNodeMenu → Edit contents opens
+      level 2 (crumbs Canvas ▸ Line total ▸ Composite, empty subgraph, 0
+      boundaries), + Input adds a marker there, Escape pops ONE level then
+      closes; zero errors. Drill minimap landed (same enclosed RF MiniMap,
+      mapping the subgraph).
+- [ ] Flow drill-in follow-up: `surfaceParity.test.ts` retarget/retire at C9.
 
 ### C8 — Touch/tablet pass — core DONE 2026-08-26
 - [x] `?rete`-parity #VALUE! flag CLEARED: power-features "Scaled List" shows
