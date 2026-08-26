@@ -90,17 +90,22 @@ export async function buildModel(g: SavedGraphLite): Promise<FlowModel> {
 }
 
 // RF-shaped without the RF dependency; FlowApp hands these to <ReactFlow> as-is.
-export type FlowNodeData = {
-  node: SolNode;
-  outputs: Record<string, unknown> | null;
-  [key: string]: unknown;
-};
 export type RFNodeLite = {
   id: string;
   type: "sol";
   position: { x: number; y: number };
-  data: FlowNodeData;
+  zIndex: number;
+  data: { node: SolNode; version: number };
 };
+
+/** The rete surface's area-plane z-order (groups −2 < conduits −1 < nodes 0);
+ *  without it a group's body sits level with its members and eats their
+ *  pointer events. */
+export function nodeZIndex(node: SolNode): number {
+  if (node instanceof Nodes.GroupNode) return -2;
+  if (node instanceof Nodes.ConduitNode) return -1;
+  return 0;
+}
 export type RFEdgeLite = {
   id: string;
   source: string;
@@ -109,15 +114,13 @@ export type RFEdgeLite = {
   targetHandle: string;
 };
 
-export function toFlowNodes(
-  m: FlowModel,
-  values: Map<string, Record<string, unknown> | null>,
-): RFNodeLite[] {
+export function toFlowNodes(m: FlowModel): RFNodeLite[] {
   return m.editor.getNodes().map((node) => ({
     id: node.id,
     type: "sol",
     position: m.positions.get(node.id) ?? { x: 0, y: 0 },
-    data: { node, outputs: values.get(node.id) ?? null },
+    zIndex: nodeZIndex(node),
+    data: { node, version: 0 },
   }));
 }
 

@@ -32,8 +32,7 @@ describe("flow model (React Flow port C0)", () => {
   it("projects RF nodes/edges with positions and handle ids", async () => {
     const g = FLOW_SEEDS[DEFAULT_SEED_ID].graph;
     const m = await buildModel(g);
-    const values = await recompute(m);
-    const nodes = toFlowNodes(m, values);
+    const nodes = toFlowNodes(m);
     const edges = toFlowEdges(m);
 
     expect(nodes.length).toBe(g.nodes.length);

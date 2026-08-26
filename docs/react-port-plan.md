@@ -4,6 +4,11 @@
 rule for THIS track). Runs in parallel with rete development on `develop`; merged in
 eventually. Multi-session: each session picks up the next unchecked chunk item below.
 
+**AUTHOR RULING (2026-08-26): this is a FULL PORT, not a spike.** React Flow is this
+branch's app canvas (`FlowCanvas` in MainApp, real chrome, real documents, real
+autosave); the rete stack stays reachable at `?rete` for side-by-side comparison only
+until the port completes. No standalone harness — new work integrates with the app.
+
 ## The ruling architecture (decided at C0; revisit only at C9)
 - **View layer → React Flow (`@xyflow/react` ^12.11.5).** Replaces `rete-area-plugin`,
   `rete-react-plugin`, `rete-connection-plugin`, `rete-render-utils`,
@@ -75,17 +80,56 @@ eventually. Multi-session: each session picks up the next unchecked chunk item b
   pass; real Add menu tree/quick-wire is C4.
 
 ### C2 — Real node components (the big one — split across sessions as needed)
-- [ ] Adapter: render existing `components/*` node components inside RF nodes — shim
-      `{ data, emit }` props; socket rendering swapped to a Handle-based
-      `MeasuredSocketRow` twin (ONE shared component, not 311 edits).
-- [ ] Dynamic sockets: bridge retype/`fcReconcile`/`ExtensibleInputs` paths to
-      `useUpdateNodeInternals`; **measure churn** on the distribution/Running/FC nodes.
-- [ ] Interaction discipline: `nodrag`/`nowheel`/`nopan` sweep replacing
-      `stopDragStart`-for-RF; draft-commit fields (`useDraftCommit`) verified.
-- [ ] Value refresh: replace `area.update("node", id)` call sites on this surface with
-      state-driven re-render (RF node `data` versioning).
+- [x] Adapter shipped 2026-08-26: `SolNodeAdapter` renders the REAL components inside RF
+      nodes (stub emit; per-ctor ErrorBoundary reused). Socket seam = ONE branch in
+      `NodeSocket.tsx` → injected `FlowSocketHandle` (RF Handle wrapping the real
+      `SocketComponent` glyphs; `flowSurface.ts` injection keeps @xyflow out of the main
+      bundle). `flowArea.ts` = TRANSITIONAL area-shaped adapter; `setEditorRefs` binds
+      process.ts to the flow model, autosave SUSPENDED on ?rf (never clobber main docs).
+      Editor pipe syncs RF state for topology changes components make themselves.
+      Live-verified: 28/28 real cards on getting-started (0 fallbacks, 0 boundaries),
+      in-card edit → processGraph → 600→840 incl. downstream; cable drag on REAL dots
+      rewires with eviction (2500); area-plane z-order restored via RF zIndex
+      (groups −2 < conduits −1 < nodes 0, elevateNodesOnSelect off).
+- [x] **Churn spike (the go/no-go) PASSED**: Distribution Normal→Binomial→Poisson→
+      Normal→Standard Normal — socket set tracks (4→2 handles), dropInputCables path
+      runs through the adapter, `useUpdateNodeInternals` on version bump, zero errors.
+- [ ] Interaction discipline sweep: existing `stopDragStart` sites appear to block RF
+      drags correctly (fields were editable in place) — still needs a deliberate pass
+      (wheel-in-card, nowheel on scrollable popups, IS_COARSE paths).
+- [ ] Value refresh polish: per-node version bump renders the whole cone (processGraph
+      already early-cutoffs); measure on a 280-node seed before optimizing.
 - [ ] Kill list opened: which storeKit singletons become context on the RF surface
       (execute at C9, list now).
+- Discovered / not yet wired on ?rf: group MEMBER containment + group drag moving
+  members (groupPush machinery inert — needs C6), collapse pills, conduit ribbons,
+  Note/Report editing untested, composite drill-in (C7), real cable paths (C3).
+
+### C2.5 — App integration (pulled forward by the full-port ruling) — core DONE 2026-08-26
+- [x] `FlowCanvas` replaces `Canvas` in MainApp (rete behind `?rete`); the `?rf`
+      harness page is DELETED. One app-lifetime editor/engine/`FlowArea` stack;
+      `setEditorRefs`/`setCtorRegistryProvider` bound at creation.
+- [x] REAL document lifecycle: `documentStore.restore()`/`ensureFirstDocument` →
+      `loadGraph` runs against the flow area (rebuildGraph, placeholders, wildcard
+      settle, FC dock, `zoomAt` framing all through the adapter). Autosave LIVE
+      (`setGraphChanged→scheduleAutosave` + explicit schedules on canvas edits) —
+      verified: in-card edit survives a full page reload.
+- [x] Camera bridge: `area.area.zoom/translate` → RF `setViewport` — NavMenu zoom
+      pill, `AreaExtensions.zoomAt`, fly-to all drive the RF viewport; RF `onMove`
+      mirrors back into `area.area.transform`; `area.area.pointer` tracked in flow
+      coords. `nodeViews.element` resolves to the LIVE `.react-flow__node` DOM
+      (flash/containment readers see real elements).
+- [x] Chrome slots registered: `setSelectNode`/`setUnselectAllNodes` (RF selection
+      mirrored onto editor payloads), `setDeleteSelected`. REAL `AddNodeMenu` on pane
+      context-menu + `addMenuRequest` (palette / top-bar +); composite hydrate on add.
+- [x] Verified live with full chrome: menu/top/status bars, File menu, doc load,
+      zoom pill, add menu — zero console errors.
+- [ ] Chrome verbs still unwired (register or port): `setAutoArrange` (Tidy),
+      `setCleanup`, `setBulkSettle` (copy/paste bulk), history (C5), lasso,
+      isolate snapshot/restore, socket/cable/node context menus, canvasKeyboard
+      (only RF delete keys work), quick-wire from a socket drag, lock mode gating,
+      touch-select mode, Minimap accent parity (RF MiniMap placeholder), presenter,
+      standoffs/group-push application, HtmlCanvasLayer decision.
 
 ### C3 — Cables
 - [ ] Custom edge: `cablePaths.ts` walk router as the RF edge path (pure code ports).

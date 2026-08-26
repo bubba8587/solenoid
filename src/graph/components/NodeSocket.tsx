@@ -3,6 +3,7 @@ import { Presets } from "rete-react-plugin";
 import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import type { ClassicPreset } from "rete";
 import { socketHighlightStore, dragSocketKey } from "../cableState";
+import { isFlowSurface, getFlowSocket } from "../flowSurface";
 import { SolenoidSocket, SOCKET_TYPE_LABELS } from "../sockets";
 import { frameHintFor, frameHintStore, type FrameHint } from "../frameHint";
 import { useNativeEnterLeave } from "./nativeHover";
@@ -167,14 +168,24 @@ export function NodeSocket({ side, socketKey, nodeId, emit, payload, top, classN
       data-node-id={nodeId}
       data-socket-shape={isSquare ? "square" : "circle"}
     >
-      <RefSocket
-        name={`${side}-socket`}
-        side={side}
-        socketKey={socketKey}
-        nodeId={nodeId}
-        emit={emit}
-        payload={payload}
-      />
+      {(() => {
+        // Flow surface: the dot is an RF Handle (injected — no @xyflow import
+        // here) instead of rete's RefSocket render pipe. Same wrapper, same
+        // measurement, same glyphs.
+        const FlowSocket = isFlowSurface() ? getFlowSocket() : null;
+        return FlowSocket ? (
+          <FlowSocket side={side} socketKey={socketKey} payload={payload} />
+        ) : (
+          <RefSocket
+            name={`${side}-socket`}
+            side={side}
+            socketKey={socketKey}
+            nodeId={nodeId}
+            emit={emit}
+            payload={payload}
+          />
+        );
+      })()}
       {lit && (
         <svg
           aria-hidden="true"

@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from "react";
 import { Canvas } from "./graph/Canvas";
+import { FlowCanvas } from "./graph/flow/FlowCanvas";
 import { HelpDialogs } from "./graph/components/HelpDialogs";
 import { autoShowWhatsNewOnce } from "./graph/helpDialogStore";
 import { Header } from "./graph/Header";
@@ -40,19 +41,12 @@ const NodeShowcase = lazy(() => import("./graph/showcase/NodeShowcase"));
 const IS_LANDING = new URLSearchParams(window.location.search).has("landing");
 const LandingPage = lazy(() => import("./graph/landing/LandingPage"));
 
-// ?rf swaps in the React Flow port surface (docs/react-port-plan.md), lazy so
-// @xyflow/react stays out of the main bundle.
-const IS_RF = new URLSearchParams(window.location.search).has("rf");
-const FlowApp = lazy(() => import("./graph/flow/FlowApp"));
+// THE PORT BRANCH RULE (docs/react-port-plan.md): React Flow is this branch's
+// canvas; ?rete keeps the old stack reachable for side-by-side comparison
+// until the port is complete.
+const IS_RETE = new URLSearchParams(window.location.search).has("rete");
 
 function App() {
-  if (IS_RF) {
-    return (
-      <Suspense fallback={null}>
-        <FlowApp />
-      </Suspense>
-    );
-  }
   if (IS_LANDING) {
     return (
       <Suspense fallback={null}>
@@ -79,7 +73,7 @@ function MainApp() {
 
   return (
     <div className="solenoid-app">
-      <Canvas />
+      {IS_RETE ? <Canvas /> : <FlowCanvas />}
       <Header />
       <NavMenu />
       <OutlinePanel />
