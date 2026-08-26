@@ -124,12 +124,23 @@ until the port completes. No standalone harness — new work integrates with the
       context-menu + `addMenuRequest` (palette / top-bar +); composite hydrate on add.
 - [x] Verified live with full chrome: menu/top/status bars, File menu, doc load,
       zoom pill, add menu — zero console errors.
+- [x] `installCanvasKeyboard` runs against the flow stack unchanged (it already
+      spoke editorRef/areaRef/process slots): F9, Enter→palette, Ctrl+A (34/34),
+      Ctrl+C/V (copy/paste 28→56 through the real copyPaste machinery), arrow
+      nudge (+DOT_SPACING; correctly skipped while a field has focus), group/tidy
+      keys registered (verbs still no-op until wired), Ctrl+S/O, Delete via ONE
+      path — the registered delete verb now covers nodes + selected cables and
+      RF's own deleteKeyCode is OFF.
+- [x] Quick-wire: RF `onConnectStart/End` — drag-to-empty-canvas opens the real
+      AddNodeMenu (compatibility-filtered via `filterByCompatibleSocket`), the
+      pick splices with `firstCompatibleSocketKey` (verified: +1 node +1 cable);
+      cable drag blurs the focused field first (the connectionpick invariant) and
+      lights the origin socket.
 - [ ] Chrome verbs still unwired (register or port): `setAutoArrange` (Tidy),
-      `setCleanup`, `setBulkSettle` (copy/paste bulk), history (C5), lasso,
-      isolate snapshot/restore, socket/cable/node context menus, canvasKeyboard
-      (only RF delete keys work), quick-wire from a socket drag, lock mode gating,
-      touch-select mode, Minimap accent parity (RF MiniMap placeholder), presenter,
-      standoffs/group-push application, HtmlCanvasLayer decision.
+      `setCleanup`, `setBulkSettle` (copy/paste bulk settle), history (C5), lasso,
+      isolate snapshot/restore, socket/cable/node CONTEXT menus (pane menu works),
+      lock mode gating, touch-select mode, Minimap accent parity (RF placeholder),
+      presenter, standoffs/group-push application, HtmlCanvasLayer decision.
 
 ### C3 — Cables — core DONE 2026-08-26
 - [x] `FlowCableEdge`: the walk router (`getCablePath` — PathArgs maps 1:1 onto RF
