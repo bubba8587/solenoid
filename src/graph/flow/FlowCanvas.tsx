@@ -12,6 +12,7 @@ import {
   applyNodeChanges,
   applyEdgeChanges,
   useReactFlow,
+  useStoreApi,
   type Node,
   type Edge,
   type NodeChange,
@@ -129,7 +130,8 @@ import { ComputeOverlay } from "../components/ComputeOverlay";
 import { IsolatePill } from "../components/IsolatePill";
 import { CableInspector } from "../components/CableInspector";
 import { settingsStore } from "../settingsStore";
-import { IS_MOBILE } from "../coarse";
+import { IS_MOBILE, IS_COARSE } from "../coarse";
+import { touchSelectStore } from "../touchSelectStore";
 import "./flow.css";
 
 registerFlowSocket(FlowSocketHandle);
@@ -820,6 +822,17 @@ function FlowCanvasInner() {
   );
 
   const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
+  // SELECT mode (the mobile pill): rete treated it as Ctrl held — taps toggle nodes
+  // in and out, background taps keep the selection. RF's store flag carries exactly
+  // those semantics, and pane-drag panning yields to the lasso (canvasLasso arms
+  // without Shift while the pill is on; flowTouchPan stands down likewise).
+  const storeApi = useStoreApi();
+  const touchSelect = useSyncExternalStore(touchSelectStore.subscribe, touchSelectStore.get);
+  useEffect(() => {
+    if (!IS_COARSE) return;
+    storeApi.setState({ multiSelectionActive: touchSelect });
+    return () => storeApi.setState({ multiSelectionActive: false });
+  }, [storeApi, touchSelect]);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const themeMode = appThemeStore.getMode();
   const packsVersion = useSyncExternalStore(packsStore.subscribe, packsStore.version);
@@ -844,6 +857,7 @@ function FlowCanvasInner() {
         edgeTypes={edgeTypes}
         nodesDraggable={!locked}
         elementsSelectable={!locked}
+        panOnDrag={!(IS_COARSE && touchSelect)}
         onNodeDragStart={onNodeDragStart}
         onNodeDrag={onNodeDrag}
         onNodesChange={onNodesChange}

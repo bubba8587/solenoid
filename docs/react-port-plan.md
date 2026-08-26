@@ -204,8 +204,22 @@ until the port completes. No standalone harness — new work integrates with the
       no chrome gap; camera steps ride the zoomAt bridge). Sweep in C9.
 - [x] Group collapse/expand via the card chevron verified (28→25→28 visible);
       push displacement lives inside shared setGroupsCollapsed (adapter-driven).
-- [ ] Still open: touch-select mode (mobile pill), HtmlCanvasLayer decision,
-      undo labels. (Conduit ribbons landed — see C3.)
+- [x] Touch-select mode (2026-08-26): the mobile pill drives RF's store-level
+      `multiSelectionActive` (useStoreApi; exactly rete's "select mode = Ctrl
+      held" semantics — taps toggle in/out, background taps keep the set) and
+      drops `panOnDrag` so a one-finger background drag lassoes (canvasLasso
+      already armed without Shift in select mode); flowTouchPan stands down on
+      unselected cards (dead gesture, rete parity). Probe: lasso selected 3
+      without panning, tap accumulate 3→4, tap toggle-out 4→3, dead card drag,
+      pill off → pan restored.
+- [x] Touch drag-fidelity fix (found by the select-mode probe): d3-drag starts
+      RF node drags from TOUCHSTART bound on the node — pointerdown
+      stopPropagation never reached it, and in pan mode the drag only LOOKED
+      dead because the 1:1 pan cancelled its flow-space delta (drag-start
+      side effects like selectNodesOnDrag still ran). flowTouchPan now claims
+      the touchstart too, so unselected-card gestures truly never start a drag.
+- [ ] Still open: HtmlCanvasLayer decision, undo labels. (Conduit ribbons
+      landed — see C3.)
 - [ ] C7 probe pending: couldn't reach the seed template menu in automation to
       load composite-workbench; test whether the rete-based drill-in overlay
       works over the flow surface when C7 starts.
