@@ -82,7 +82,7 @@ describe("group members as RF children", () => {
       ],
       connections: [],
     });
-    const group = m.editor.getNodes().find((n) => n.constructor.name === "GroupNode") as { id: string; members: string[] };
+    const group = m.editor.getNodes().find((n) => n.constructor.name === "GroupNode") as unknown as { id: string; members: string[] };
     const member = m.editor.getNodes().find((n) => n.constructor.name !== "GroupNode")!;
     group.members = [member.id];
     return { m, g: group.id, m1: member.id };

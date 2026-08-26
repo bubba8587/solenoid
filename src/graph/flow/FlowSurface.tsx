@@ -17,12 +17,16 @@ import {
   useReactFlow,
   useStoreApi,
   useNodesInitialized,
+  useOnSelectionChange,
   type NodeChange,
   type EdgeChange,
   type Connection,
   type IsValidConnection,
   type OnConnectEnd,
   type OnNodeDrag,
+  type OnBeforeDelete,
+  type NodeMouseHandler,
+  type EdgeMouseHandler,
   type Viewport,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -64,7 +68,9 @@ import {
   type CableContextTarget,
   type NodeContextTarget,
 } from "../components";
-import { installCanvasContextMenu } from "../canvasContextMenu";
+import { keepsNativeMenu, socketTargetAt, cableTargetFor, nodeTargetFor } from "../canvasContextMenu";
+import { computeOverlayStore } from "../computeOverlayStore";
+import { presentationStore } from "../presentationStore";
 import {
   insertConduitForCables,
   linkStandoffBetween,
@@ -113,6 +119,10 @@ const SNAP_GRID: [number, number] = [DOT_SPACING, DOT_SPACING];
 const FIT_PADDING = 0.15;
 const PRO_OPTIONS = { hideAttribution: false };
 const MINIMAP_STYLE = { width: 182, height: 105 };
+const DELETE_KEYS = ["Backspace", "Delete"];
+// The cable renders its own named hit path (.solenoid-cable-hit) — RF's interaction
+// path would sit on top of it and eat context-menu targeting.
+const DEFAULT_EDGE_OPTIONS = { type: "cable" as const, interactionWidth: 0 };
 const MINIMAP_MASK = "color-mix(in srgb, var(--overlay-bg) 72%, transparent)";
 // RF paints a dot at (gap/2 − size/2) into each tile; this offset slides the pattern so
 // a dot sits on every multiple of DOT_SPACING — the lattice snapToGrid and the arrow
@@ -421,22 +431,39 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     });
   }, [s]);
 
-  // Native contextmenu targeting (sockets → cables → nodes → pane): resolves
-  // through data-socket attrs, the .solenoid-cable-hit path, and nodeViews
-  // element containment.
-  useEffect(() => {
+  // Context menus: RF says node / edge / pane; a socket (the dot straddles the card
+  // edge, so it can sit on either) resolves first on nodes and the pane.
+  const onNodeContextMenu: NodeMouseHandler<SolFlowNode> = useCallback(
+    (e, node) => {
+      if (keepsNativeMenu(e)) return;
+      e.preventDefault();
+      const el = wrapperRef.current;
+      const sock = el ? socketTargetAt(el, e) : null;
+      if (sock) { setSocketCtx(sock); return; }
+      const t = nodeTargetFor(s.editor, node.id, e);
+      if (t) setNodeCtx(t);
+    },
+    [s],
+  );
+  const onEdgeContextMenu: EdgeMouseHandler<SolFlowEdge> = useCallback(
+    (e, edge) => {
+      if (keepsNativeMenu(e)) return;
+      e.preventDefault();
+      const t = cableTargetFor(s.editor, edge.id, e);
+      if (t) setCableCtx(t);
+    },
+    [s],
+  );
+  const onPaneContextMenu = useCallback((e: React.MouseEvent | MouseEvent) => {
+    if (keepsNativeMenu(e)) return;
+    e.preventDefault();
     const el = wrapperRef.current;
-    if (!el) return;
-    return installCanvasContextMenu({
-      el,
-      editorRef: { current: s.editor },
-      areaRef: { current: s.area as unknown as Surface },
-      setSocketCtx,
-      setCableCtx,
-      setNodeCtx,
-      openAddMenu: (screenX, screenY) => setMenu({ screenX, screenY }),
-    });
-  }, [s]);
+    const sock = el ? socketTargetAt(el, e) : null;
+    if (sock) { setSocketCtx(sock); return; }
+    // Suppressed while isolating — no new nodes there.
+    if (isolateStore.isActive()) return;
+    setMenu({ screenX: e.clientX, screenY: e.clientY });
+  }, []);
 
   // The full canvas keyboard (F9, palette, nudge, copy/paste, group verbs,
   // Ctrl+S/O…) over this surface's refs; Escape falls through to the host.
@@ -453,7 +480,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       containerRef: wrapperRef,
       screenMouseRef,
       isAddMenuOpen: () => menuRef.current !== null,
-      deleteSelected: () => hooksRef.current.deleteSelected(),
       standsDownWhenDrilled: hooksRef.current.standsDownWhenDrilled,
     });
     const onKeyDown = (e: KeyboardEvent) => {
@@ -474,9 +500,8 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
 
   const onNodesChange = useCallback(
     (changes: NodeChange<SolFlowNode>[]) => {
-      // Mirror RF selection into the editor payloads (chrome + components read it), and
-      // RF-driven moves (drags) into the model's ABSOLUTE positions — a group first, so a
-      // member's absolute resolves against its group's new spot.
+      // RF-driven moves (drags) land in the model's ABSOLUTE positions — a group first,
+      // so a member's absolute resolves against its group's new spot.
       const moved = changes
         .filter((ch): ch is Extract<NodeChange<SolFlowNode>, { type: "position" }> => ch.type === "position" && !!ch.position)
         .sort((a, b) => Number(!(s.editor.getNode(a.id) instanceof GroupNode)) - Number(!(s.editor.getNode(b.id) instanceof GroupNode)));
@@ -490,12 +515,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         const view = s.area.nodeViews.get(ch.id);
         if (view) view.position = { x: abs.x, y: abs.y };
       }
-      for (const ch of changes) {
-        if (ch.type === "select") {
-          const n = s.editor.getNode(ch.id);
-          if (n) (n as { selected?: boolean }).selected = ch.selected;
-        }
-      }
       // A resize grip's own dimension changes (`resizing` set) stay out of RF state: the
       // model sizes the card, RF measures it (FlowResizeGrip).
       const applied = changes.filter((ch) => !(ch.type === "dimensions" && ch.resizing !== undefined));
@@ -504,17 +523,46 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     [s],
   );
   const onEdgesChange = useCallback((changes: EdgeChange<SolFlowEdge>[]) => {
-    setEdges((es) => {
-      const next = applyEdgeChanges(changes, es);
-      // Mirror RF edge selection into the cable store (CableInspector, delete
-      // verbs, and the edge's selected color all read it). Deferred — a store
-      // notify must not fire inside a state updater.
-      if (changes.some((ch) => ch.type === "select")) {
-        const ids = next.filter((e) => e.selected).map((e) => e.id);
-        queueMicrotask(() => cableSelectionStore.replaceAll(ids));
-      }
-      return next;
-    });
+    setEdges((es) => applyEdgeChanges(changes, es));
+  }, []);
+  // RF's selection is THE selection: the editor payloads (chrome + components read
+  // `selected`) and the cable store (CableInspector, delete verbs, the edge's selected
+  // color) mirror it.
+  const onSelectionChange = useCallback(
+    ({ nodes: sel, edges: selEdges }: { nodes: SolFlowNode[]; edges: SolFlowEdge[] }) => {
+      const ids = new Set(sel.map((n) => n.id));
+      for (const n of s.editor.getNodes()) (n as { selected?: boolean }).selected = ids.has(n.id);
+      cableSelectionStore.replaceAll(selEdges.map((e) => e.id));
+    },
+    [s],
+  );
+  useOnSelectionChange({ onChange: onSelectionChange });
+  // …and a cable selected on the app side (its hit path, run selection) is selected
+  // in RF too. Identity-preserving, so untouched edges skip re-render.
+  useEffect(
+    () =>
+      cableSelectionStore.subscribe(() => {
+        setEdges((es) => {
+          let changed = false;
+          const next = es.map((e) => {
+            const sel = cableSelectionStore.has(e.id);
+            if ((e.selected ?? false) === sel) return e;
+            changed = true;
+            return { ...e, selected: sel };
+          });
+          return changed ? next : es;
+        });
+      }),
+    [],
+  );
+  // Delete/Backspace is RF's key (input-gated there); the app's own delete removes the
+  // selection from the MODEL and RF state follows the topology pipe — so RF is told
+  // to remove nothing itself (it would also take a deleted group's members).
+  const onBeforeDelete: OnBeforeDelete<SolFlowNode, SolFlowEdge> = useCallback(async () => {
+    if (computeOverlayStore.visible() || presentationStore.isActive()) return false;
+    if (hooksRef.current.standsDownWhenDrilled && compositeEditorStore.isOpen()) return false;
+    await hooksRef.current.deleteSelected();
+    return false;
   }, []);
   const onEdgeMouseEnter = useCallback((_e: unknown, edge: SolFlowEdge) => {
     socketHighlightStore.setCableHover([
@@ -787,13 +835,18 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         onEdgeMouseEnter={onEdgeMouseEnter}
         onEdgeMouseLeave={onEdgeMouseLeave}
         onPaneClick={onPaneClick}
+        onNodeContextMenu={onNodeContextMenu}
+        onEdgeContextMenu={onEdgeContextMenu}
+        onPaneContextMenu={onPaneContextMenu}
+        onBeforeDelete={onBeforeDelete}
+        defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
         onConnect={onConnect}
         onConnectStart={onConnectStart}
         onConnectEnd={onConnectEnd}
         onNodeDragStop={onNodeDragStop}
         onMove={onMove}
         isValidConnection={isValidConnection}
-        deleteKeyCode={null}
+        deleteKeyCode={DELETE_KEYS}
         selectionKeyCode={null}
         // The canvas keyboard nudges the SELECTION on the dot grid (RF's own arrow
         // move needs a focused card and steps 5px) — one arrow handler, not two.

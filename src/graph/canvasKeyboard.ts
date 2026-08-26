@@ -43,14 +43,13 @@ export interface CanvasKeyboardDeps {
   screenMouseRef: MutableRefObject<{ x: number; y: number }>;
   /** Live "is the Add/quick-wire menu open" check for the bare-Enter palette guard. */
   isAddMenuOpen: () => boolean;
-  deleteSelected: () => Promise<void>;
   /** The MAIN canvas stands down while the composite drill-in owns the keyboard
    *  (the drill-in installs its own instance over its refs). */
   standsDownWhenDrilled?: boolean;
 }
 
 export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
-  const { editorRef, areaRef, historyRef, containerRef, screenMouseRef, isAddMenuOpen, deleteSelected, standsDownWhenDrilled } = deps;
+  const { editorRef, areaRef, historyRef, containerRef, screenMouseRef, isAddMenuOpen, standsDownWhenDrilled } = deps;
 
   // Selected groups + the group of any selected member; all groups when none.
   function resolveGroupTargets(): GroupNode[] {
@@ -291,10 +290,6 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       if (e.code === "KeyY")                { void withGraphRebuild(() => history.redo()); e.preventDefault(); return; }
       return;
     }
-
-    if (e.key !== "Delete" && e.key !== "Backspace") return;
-    if (editable) return;
-    await deleteSelected();
   }
   window.addEventListener("keydown", onKeyDown);
   return () => window.removeEventListener("keydown", onKeyDown);
