@@ -151,7 +151,7 @@ export function selectNode(id: string, accumulate: boolean) {
 
 /** Point Tidy / Cleanup at a substitute surface (the composite drill-in) while it is
  *  open; the returned restorer hands them back. */
-export function swapArrangeSlots(fns: { autoArrange: () => Promise<void>; cleanup: () => Promise<void> }): () => void {
+export function swapArrangeSlots(fns: { autoArrange: (opts?: { groupId?: string }) => Promise<void>; cleanup: () => Promise<void> }): () => void {
   const prevArrange = _autoArrange;
   const prevCleanup = _cleanup;
   _autoArrange = fns.autoArrange;

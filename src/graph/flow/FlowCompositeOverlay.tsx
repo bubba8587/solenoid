@@ -154,7 +154,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
   })();
 
   // The top bar's Tidy / Cleanup reach this level through the arrange slots.
-  const tidyRef = useRef<() => Promise<void>>(async () => {});
+  const tidyRef = useRef<(opts?: { groupId?: string }) => Promise<void>>(async () => {});
 
   // Open: hydrate, seed positions, publish as the ACTIVE graph; the selection
   // and arrange verbs point here while open.
@@ -195,7 +195,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
         },
       });
       restoreArrange = swapArrangeSlots({
-        autoArrange: () => tidyRef.current(),
+        autoArrange: (opts) => tidyRef.current(opts),
         cleanup: () => cleanupRef.current(),
       });
       if (s.history.stack.length === 0) recordNow(comp, s);
@@ -363,13 +363,14 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     });
     return { tidy: arrangeFn, cleanup: makeCleanupFn(comp.internalEditor, s.area as unknown as Surface, arrangeFn) };
   }, [comp, s]);
-  const settleArrange = useCallback(() => {
-    void fitView({ padding: 0.15, duration: 0 });
+  const settleArrange = useCallback((fit = true) => {
+    if (fit) void fitView({ padding: 0.15, duration: 0 });
     void processGraph(recomputeTarget());
     scheduleAutosave();
     scheduleRecord(comp, s);
   }, [comp, s, fitView, recomputeTarget]);
-  const tidyDrill = useCallback(async () => { await arrange.tidy(); settleArrange(); }, [arrange, settleArrange]);
+  // A group-scoped tidy (the group header's Tidy) lays out just its members, no refit.
+  const tidyDrill = useCallback(async (opts?: { groupId?: string }) => { await arrange.tidy(opts); settleArrange(!opts?.groupId); }, [arrange, settleArrange]);
   const cleanupDrill = useCallback(async () => { await arrange.cleanup(); settleArrange(); }, [arrange, settleArrange]);
   tidyRef.current = tidyDrill;
   const cleanupRef = useRef<() => Promise<void>>(async () => {});
