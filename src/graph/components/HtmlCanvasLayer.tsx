@@ -21,6 +21,11 @@ import "./htmlCanvasLayer.css";
 // Below this the native DOM pans fine and the capture/swap cost isn't worth it, so the layer
 // stays inert. The unit is KIND-WEIGHTED DOM (nodeDomWeight), not a raw node count.
 const RENDERER_MIN_NODES = 100;
+// Below this zoom the canvas stays on between gestures too: DOM text is unreadable there
+// anyway, every card is in view so the settle repaint is at its most expensive, and the
+// swap pop at gesture end goes away. The DOM is muted (opacity, so it still hit-tests),
+// with the selected / focused cards kept live on top.
+const HOLD_ZOOM = 0.4;
 
 const graphDomWeight = (): number => {
   const ed = getEditor();
@@ -101,6 +106,8 @@ export function HtmlCanvasLayer() {
       holder.classList.toggle("solenoid-html-hidden", h);
     };
     const holderHidden = () => holder.classList.contains("solenoid-html-hidden");
+    const setHolderMuted = (m: boolean) => holder.classList.toggle("solenoid-html-muted", m);
+    const holdZoom = () => (window as unknown as { __hcHoldZoom?: number }).__hcHoldZoom ?? HOLD_ZOOM;
 
     const engine = new HtmlCanvasRenderer(host);
     // Read at PAINT time, since a paint can land a frame after the rAF that scheduled it.
@@ -194,7 +201,9 @@ export function HtmlCanvasLayer() {
       domOnlyEls = collectDomOnlyEls(canvasCableIds);
       if (hidden) setHolderHidden(true);
       hideDomOnly(prevEls);
-      if (gesturing) { showDomOnly(); promoteDomOnly(); } // a rebuild mid-gesture must re-show (and re-promote) the possibly-new set
+      // A rebuild mid-gesture (or held) must re-show the possibly-new set; promotion is gesture-only.
+      if (gesturing || held) showDomOnly();
+      if (gesturing) promoteDomOnly();
       if (!specs.length) return false;
       engine.setNodes(specs);
       if (snap) engine.setCables(canvasCables, cableShapeStore.get());
@@ -220,6 +229,7 @@ export function HtmlCanvasLayer() {
     const enterGesture = () => {
       if (!gesturing) {
         gesturing = true;
+        if (held) exitHeld();
         readSelection();
         setHolderHidden(true); // visibility keeps layout + the in-flight drag alive (unlike display:none)
         holder.classList.add("solenoid-html-frozen"); // freeze DOM-only cable flow to match the static canvas
@@ -233,17 +243,60 @@ export function HtmlCanvasLayer() {
       clearTimeout(gestureTimer);
       gestureTimer = window.setTimeout(exitGesture, gestureZoomed ? zoomSettleMs() : PAN_SETTLE_MS);
     };
+    // Held = at rest below holdZoom(): the canvas keeps drawing, the DOM is muted rather than
+    // hidden, and the interaction set (selected / focused cards) shows as live DOM.
+    let held = false;
+    let liveEls: HTMLElement[] = [];
+    const clearLive = () => {
+      for (const el of liveEls) el.classList.remove("solenoid-hic-live");
+      liveEls = [];
+      engine.setDomLive(new Set());
+    };
+    const syncLive = () => {
+      const next: HTMLElement[] = [];
+      const ids = new Set<string>();
+      const focused = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>(".react-flow__node") ?? null;
+      for (const node of editor.getNodes()) {
+        if (domOnlyIds.has(node.id)) continue;
+        const el = area.nodeViews.get(node.id)?.element;
+        if (!el) continue;
+        if (el.classList.contains("selected") || el === focused) { next.push(el); ids.add(node.id); }
+      }
+      let same = next.length === liveEls.length;
+      if (same) for (let i = 0; i < next.length; i++) if (next[i] !== liveEls[i]) { same = false; break; }
+      if (same) return;
+      for (const el of liveEls) el.classList.remove("solenoid-hic-live");
+      for (const el of next) el.classList.add("solenoid-hic-live");
+      liveEls = next;
+      engine.setDomLive(ids);
+    };
+    const enterHeld = () => {
+      held = true;
+      setHolderHidden(false);
+      setHolderMuted(true);
+      holder.style.willChange = "";
+      demoteDomOnly();
+      syncLive();
+    };
+    const exitHeld = () => {
+      held = false;
+      setHolderMuted(false);
+      clearLive();
+    };
     const exitGesture = () => {
       gesturing = false;
       gestureZoomed = false;
+      if (holderSynced) { holder.style.transform = holderTransform(area.area.transform); holderSynced = false; }
+      if (area.area.transform.k < holdZoom()) {
+        // Stay on the canvas at rest; DOM-only elements and the frozen flow stay as they are.
+        enterHeld();
+        return;
+      }
       setHolderHidden(false);
       holder.classList.remove("solenoid-html-frozen"); // resume cable flow
       holder.style.willChange = "";
       hideDomOnly(); // drop the per-element override; the holder is fully visible again
       demoteDomOnly();
-      // Re-serialize the live camera if the frame sync steered it; RF's next viewport
-      // commit overwrites with its own equivalent.
-      if (holderSynced) { holder.style.transform = holderTransform(area.area.transform); holderSynced = false; }
       engine.setActive(false);
     };
 
@@ -410,6 +463,7 @@ export function HtmlCanvasLayer() {
           holder.style.transform = holderTransform(t);
           holderSynced = false;
         }
+        if (held && !moved) syncLive();
         if (overlay) { engine.setActive(true); setHolderHidden(false); } // both shown, overlaid
         // Hold the gesture while the pointer stays down, or a slow pan (speed momentarily 0)
         // settles back to the DOM and flickers. A LASSO deliberately never enters: it moves no
@@ -450,6 +504,8 @@ export function HtmlCanvasLayer() {
       window.removeEventListener("pointercancel", onPointerUp, true);
       window.removeEventListener("resize", onResize);
       setHolderHidden(false); // restore the DOM
+      setHolderMuted(false);
+      clearLive();
       holder.classList.remove("solenoid-html-frozen");
       hideDomOnly(); // clear the per-element visibility overrides
       demoteDomOnly();
