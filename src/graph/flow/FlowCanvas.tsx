@@ -613,6 +613,7 @@ function FlowCanvasInner() {
         const { deleteSelected } = await import("../process");
         await deleteSelected();
       },
+      standsDownWhenDrilled: true,
     });
   }, [s]);
 

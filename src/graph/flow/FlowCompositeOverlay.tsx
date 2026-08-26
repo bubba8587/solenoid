@@ -49,10 +49,14 @@ import { ctorRegistry } from "../nodeCtorRegistry";
 import { cableSelectionStore } from "../cableState";
 import { canvasLockStore } from "../canvasLock";
 import { isolateStore } from "../isolateStore";
-import { isolateSelection } from "../isolate";
 import { pushNotice } from "../noticeStore";
 import { buildCatalog } from "../catalogUtils";
 import { AddNodeMenu, type NodeCatalogEntry } from "../AddNodeMenu";
+import { installCanvasKeyboard } from "../canvasKeyboard";
+import { addMenuRequest } from "../addMenuStore";
+import { paletteStore } from "../paletteStore";
+import { frStore } from "../frStore";
+import { settingsPanel } from "../settingsStore";
 import { MIN_ZOOM, MAX_ZOOM } from "../areaPresets";
 import { makeEnsureElk, elkTidyLayout, tidyOptionsFromSettings, type Elk } from "../tidyArrange";
 import { CompositeRunControls, RUN_MODE_OPTIONS } from "../components/CompositeNode";
@@ -523,78 +527,42 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
   }, [comp, s, fitView, recomputeTarget]);
   tidyRef.current = tidyDrill;
 
-  const nudgeSelection = useCallback(
-    async (key: string, big: boolean) => {
-      const step = big ? 40 : 8;
-      const dx = key === "ArrowLeft" ? -step : key === "ArrowRight" ? step : 0;
-      const dy = key === "ArrowUp" ? -step : key === "ArrowDown" ? step : 0;
-      for (const n of comp.internalEditor.getNodes()) {
-        if (!(n as { selected?: boolean }).selected) continue;
-        const pos = s.area.nodeViews.get(n.id)?.position ?? { x: 0, y: 0 };
-        await s.area.translate(n.id, { x: pos.x + dx, y: pos.y + dy });
-      }
-    },
-    [comp, s],
-  );
-
-  // The drill-in owns the keyboard while open (canvasKeyboard stands down).
+  // The full canvas keyboard over THIS level's refs (the main instance stands down);
+  // the drill-in adds only Escape (close menu / leave isolate / drill up).
+  const menuRef = useRef(menu);
+  menuRef.current = menu;
   useEffect(() => {
+    const unKeys = installCanvasKeyboard({
+      editorRef: { current: comp.internalEditor },
+      areaRef: { current: s.area as unknown as Surface },
+      historyRef: { current: { undo: () => historyStep(false), redo: () => historyStep(true) } },
+      containerRef: wrapperRef,
+      screenMouseRef: cursorRef,
+      isAddMenuOpen: () => menuRef.current !== null,
+      deleteSelected: deleteSelection,
+    });
+    const unMenu = addMenuRequest.register((screenX, screenY) => setMenu({ screenX, screenY }));
     function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
-      const editable = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!target?.isContentEditable;
-      if (editable) return;
-      if ((e.ctrlKey || e.metaKey) && !e.altKey) {
-        if (e.code === "KeyZ" && !e.shiftKey) { e.preventDefault(); void historyStep(false); }
-        if ((e.code === "KeyZ" && e.shiftKey) || e.code === "KeyY") { e.preventDefault(); void historyStep(true); }
-        if (e.code === "KeyA") {
-          e.preventDefault();
-          cableSelectionStore.set(null);
-          for (const n of comp.internalEditor.getNodes()) (n as { selected?: boolean }).selected = true;
-          setNodes((ns) => ns.map((n) => ({ ...n, selected: true })));
-        }
-        if (e.code === "KeyC" && !e.shiftKey) { e.preventDefault(); copySelected(); }
-        if (e.code === "KeyV" && !e.shiftKey) {
-          e.preventDefault();
-          const pos = screenToFlowPosition({ x: cursorRef.current.x, y: cursorRef.current.y });
-          void pasteClipboard(pos.x, pos.y);
-        }
-        return;
-      }
-      if (e.key === "Delete" || e.key === "Backspace") {
-        e.preventDefault();
-        void deleteSelection();
-      }
-      if (e.code === "KeyA") {
-        e.preventDefault();
-        setMenu({ screenX: cursorRef.current.x, screenY: cursorRef.current.y });
-      }
-      if (e.code === "KeyT") {
-        e.preventDefault();
-        void tidyDrill();
-      }
-      if (e.code === "KeyI") {
-        e.preventDefault();
-        if (isolateStore.isActive()) isolateStore.exit(); else isolateSelection();
-      }
-      if (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "ArrowDown") {
-        e.preventDefault();
-        void nudgeSelection(e.key, e.shiftKey);
-      }
-      if (e.key === "Escape") {
-        if (menu) setMenu(null);
-        else if (isolateStore.isActive()) isolateStore.exit();
-        else void drillTo(compositeEditorStore.stack().length - 2);
-      }
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!target?.isContentEditable) return;
+      // An open overlay (palette, reference, settings) takes the Escape itself.
+      if (paletteStore.get() || frStore.get() || settingsPanel.get()) return;
+      if (menuRef.current) setMenu(null);
+      else if (isolateStore.isActive()) isolateStore.exit();
+      else void drillTo(compositeEditorStore.stack().length - 2);
     }
     const onMouseMove = (e: MouseEvent) => { cursorRef.current = { x: e.clientX, y: e.clientY }; };
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("mousemove", onMouseMove);
     return () => {
+      unKeys();
+      unMenu();
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("mousemove", onMouseMove);
     };
-  });
+  }, [comp, s, historyStep, deleteSelection, drillTo]);
 
   // Pinch/pan/wheel: the same installers as the main flow canvas.
   useEffect(() => {

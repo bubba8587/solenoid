@@ -44,10 +44,13 @@ export interface CanvasKeyboardDeps {
   /** Live "is the Add/quick-wire menu open" check for the bare-Enter palette guard. */
   isAddMenuOpen: () => boolean;
   deleteSelected: () => Promise<void>;
+  /** The MAIN canvas stands down while the composite drill-in owns the keyboard
+   *  (the drill-in installs its own instance over its refs). */
+  standsDownWhenDrilled?: boolean;
 }
 
 export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
-  const { editorRef, areaRef, historyRef, containerRef, screenMouseRef, isAddMenuOpen, deleteSelected } = deps;
+  const { editorRef, areaRef, historyRef, containerRef, screenMouseRef, isAddMenuOpen, deleteSelected, standsDownWhenDrilled } = deps;
 
   // Selected groups + the group of any selected member; all groups when none.
   function resolveGroupTargets(): GroupNode[] {
@@ -146,7 +149,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
 
     // The drill-in overlay owns the keyboard — shortcuts must not reach the OUTER
     // graph underneath it.
-    if (compositeEditorStore.isOpen() && e.key !== "F9") return;
+    if (standsDownWhenDrilled && compositeEditorStore.isOpen() && e.key !== "F9") return;
 
     // Presenter mode owns the keyboard; without this gate the arrow keys also nudge
     // the still-selected node on the hidden canvas.
