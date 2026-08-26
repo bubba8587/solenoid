@@ -420,9 +420,16 @@ until the port completes. No standalone harness — new work integrates with the
       mid-click). Screenshots spot-checked (chart-showcase, personal-finance)
       — pixel-close; the one visible diff WAS the unframed minimap, fixed
       under C4.
-- [ ] INTERACTION sweep still owed: side-by-side behavior pass per seed
-      (drag/tow, standoffs live-drag, presenter steps, popups) — beyond
-      structure.
+- [x] INTERACTION sweep (2026-08-26): standoff drag-settle parity (C6 note),
+      Table popup opens from the array chip (cell-edit probe behaves
+      IDENTICALLY on ?rete — parity; the probe-level commit question is not a
+      port issue), Chart popup opens via its expand button, Note editing
+      (click → textarea → type → clickaway commits), Report panel opens from
+      "Open the report" with the full editor (Draft/Preview/embed/export) and
+      Escape closes, Presenter end-to-end (add node → capture two selection
+      steps → ▶ Present overlay → camera flies per step via the zoomAt bridge
+      → Escape exits). All zero-console-error. Remaining: the real-device
+      touch pass (C8's own item).
 - [ ] Re-harness the ~45 rete-coupled test files' fixtures; keep the ~228 pure ones.
 - [ ] HIC renderer: port, keep rete-only, or drop (author call).
 - [ ] Remove replaced rete packages + styled-components; storeKit kill list executed;
