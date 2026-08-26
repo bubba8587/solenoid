@@ -181,8 +181,7 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
     : node ? nodeAccent(node as unknown as ClassicPreset.Node, mode) : undefined;
   // The "inside a group" indicator: the color is published as a CSS var and the
   // grouped class applies the treatment (yielding to selection).
-  useSyncExternalStore(groupMembershipStore.subscribe, groupMembershipStore.version);
-  const groupColor = node ? groupMembershipStore.color(node.id) : undefined;
+  const groupColor = useSyncExternalStore(groupMembershipStore.subscribe, () => (node ? groupMembershipStore.color(node.id) : undefined));
 
   // A persisted user size overrides the CSS width/height as an inline style; the
   // drag itself lives in ResizeHandle.

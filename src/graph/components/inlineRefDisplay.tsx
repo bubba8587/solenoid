@@ -253,12 +253,10 @@ function figureFor(
 }
 
 export function InlineRefValue({ nodeId, refKey, collapsible, highlight }: { nodeId: string; refKey: string; collapsible?: boolean; highlight?: boolean }) {
-  // Re-render after every recompute pass (processGraph bumps this), so a newly-wired
-  // or changed ref value refreshes without an unrelated edit.
-  useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
+  // Re-render after a recompute pass only when THIS ref's value moved.
   const editor = getOwningEditor(nodeId);
   const node = editor?.getNode(nodeId) as unknown as RefValueHost | undefined;
-  const value = node?.refValue(refKey);
+  const value = useSyncExternalStore(cableValueStore.subscribe, () => node?.refValue(refKey));
   const ann = useRefAnnotation(nodeId, refKey);
 
   // The node feeding this ref, so an embedded frame reads the per-column format set

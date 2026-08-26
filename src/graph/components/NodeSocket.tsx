@@ -149,10 +149,9 @@ export function NodeSocket({ side, socketKey, nodeId, payload, top, className }:
       : { top };
 
   const myKey = dragSocketKey(nodeId, socketKey);
-  const version = useSyncExternalStore(socketHighlightStore.subscribe, socketHighlightStore.version);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  void version;
-  const lit = socketHighlightStore.isHighlighted(myKey);
+  // Own flag only: a hover/drag highlight change re-renders the sockets it touches,
+  // not every socket on the canvas.
+  const lit = useSyncExternalStore(socketHighlightStore.subscribe, () => socketHighlightStore.isHighlighted(myKey));
   const isSquare = payload instanceof SolenoidSocket && SQUARE_TYPES.has(payload.dataType);
   const isCube = payload instanceof SolenoidSocket && payload.dataType === "cube";
   const shape = isCube ? "cube" : isSquare ? "square" : "circle";

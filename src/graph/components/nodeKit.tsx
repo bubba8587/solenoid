@@ -147,19 +147,18 @@ function MeasuredOutputRow({
   node: ShellNode;
   emit: Emit;
 }) {
-  // Re-render when an FC docks/undocks or edits its format (same subscription
-  // ValueDisplay holds); must run before the early return below.
-  useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
-  const port = node.outputs[rowKey];
-  if (!port) return null;
   // Per-SOCKET annotation, exactly like a socketKey'd ValueDisplay: a docked FC's
   // direct write first, else the node's own per-output declaration (Triangle
-  // Solver's deg, Element's g/mol) through the shared resolver.
-  let ann = formatAnnotationStore.get(node.id, rowKey);
-  if (!ann && typeof (node as unknown as { annotationFor?: unknown }).annotationFor === "function") {
+  // Solver's deg, Element's g/mol) through the shared resolver. Selected per row, so
+  // an FC edit re-renders the rows it formats; must run before the early return below.
+  const ann = useSyncExternalStore(formatAnnotationStore.subscribe, () => {
+    const direct = formatAnnotationStore.get(node.id, rowKey);
+    if (direct || typeof (node as unknown as { annotationFor?: unknown }).annotationFor !== "function") return direct;
     const editor = getOwningEditor(node.id);
-    if (editor) ann = sharedAnnotationResolver(editor).outAnnotation(node.id, rowKey);
-  }
+    return editor ? sharedAnnotationResolver(editor).outAnnotation(node.id, rowKey) : undefined;
+  });
+  const port = node.outputs[rowKey];
+  if (!port) return null;
   return (
     <MeasuredSocketRow side="output" socketKey={rowKey} nodeId={node.id} emit={emit} payload={port.socket}>
       <span className="solenoid-node__io-label">{label}</span>

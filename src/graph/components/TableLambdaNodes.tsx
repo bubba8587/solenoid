@@ -31,9 +31,12 @@ type FormulaNode = { id: string; label?: string; stringLiterals: Record<string, 
  *  supersedes the inline text. */
 export function FormulaBox({ node }: { node: FormulaNode }) {
   const incoming = useIncomingSources(node.id);
-  // The wired lambda's signature can change without a topology change.
-  useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
   const lambdaSrc = incoming.get("lambda");
+  // The wired lambda's signature can change without a topology change.
+  const live = useSyncExternalStore(
+    cableValueStore.subscribe,
+    () => (lambdaSrc ? cableValueStore.get(lambdaSrc.sourceId, lambdaSrc.sourceOutput) : undefined),
+  );
   const [val, setVal] = useState(node.stringLiterals.formula ?? "");
 
   useEffect(() => {
@@ -48,7 +51,6 @@ export function FormulaBox({ node }: { node: FormulaNode }) {
   }
 
   if (lambdaSrc) {
-    const live = cableValueStore.get(lambdaSrc.sourceId, lambdaSrc.sourceOutput);
     const sig = isLambdaValue(live) ? formatLambda(live) : "λ";
     // Params bind BY NAME (lambdaBindsByName), so a body variable that is one of this node's variables
     // but isn't declared a param silently reads as a captured constant rather than binding.
