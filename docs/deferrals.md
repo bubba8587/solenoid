@@ -23,6 +23,13 @@ duplicate them, just names them for the review).
   keeping the main thread free during gestures. A contained HtmlCanvasLayer change, NOT a third
   render path (CLAUDE.md). Pairs with headless card metrics above — both are "draw cards you
   never mount". 2.0.
+- **Obstacle-avoiding cable shape (author 2026-08-27, via github.com/awaisshah228/avoid-edge-routing)**
+  — `obstacle-router`: a pure-TypeScript, zero-dependency port of libavoid (orthogonal / polyline /
+  bezier, pin-based handle attachment, nudging of parallel segments, corner rounding), with a
+  `reactflow-edge-routing` wrapper (hooks + Web Worker). Unlike libavoid-js it's not WASM, so it
+  fits the bundle. Where it goes: ONE more entry in the cable-shape selector ("routed"), fed
+  node boxes from `Surface.measured`; never a replacement for `cablePaths.ts` (the walk router is
+  what ribbons, conduit faces and socket angles are built on). Feature-shaped → 1.4.
 
 Feature-shaped backlog items moved here wholesale. **2026-08-23: the author reopened the
 scope** — the engine/logic entries that were never really parked (distribution fitting,
