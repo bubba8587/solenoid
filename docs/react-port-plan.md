@@ -189,8 +189,23 @@ until the port completes. No standalone harness — new work integrates with the
       nodes; probes kept hitting grouped seeds) — verify in the C9 sweep.
 - [ ] PARITY-SWEEP FLAG: power-features "Scaled List" shows #VALUE! on the flow
       surface — compare against ?rete before assuming it's the seed's intent.
-- [ ] Chrome verbs still unwired: touch-select mode, presenter, group-push
-      (expand displacement), HtmlCanvasLayer decision, undo labels, ribbons.
+- [x] Collapsed-group cables (2026-08-26): FlowCableEdge now hides intra-group
+      cables and redirects hidden-member endpoints to the group's edge pills
+      (same pillPoint rule as ConnectionComponent) — verified: the collapsed
+      BUDGET pill's cable runs from its output pill row, no dangling stubs.
+- [x] Touch cable drag verified: socket-to-socket touch drag wires + recomputes.
+- [x] Live-delete settle ported (noderemoved pipe): forgetNode store fan-out,
+      rebuildGroupMembership, syncGroupCollapse, restoreSettledPushes for a
+      deleted expanded group.
+- [x] Drag-stop parity ported: manual moves invalidate expand-push records;
+      a dragged FC re-homes to the nearest socket (verified: snaps flush to the
+      host's edge), keeps its dock on a same-place drop, or releases it.
+- [x] Presenter: launched from the Presentation NODE card (component-driven —
+      no chrome gap; camera steps ride the zoomAt bridge). Sweep in C9.
+- [x] Group collapse/expand via the card chevron verified (28→25→28 visible);
+      push displacement lives inside shared setGroupsCollapsed (adapter-driven).
+- [ ] Still open: touch-select mode (mobile pill), HtmlCanvasLayer decision,
+      undo labels, conduit ribbons (trunk+fans).
 - [ ] C7 probe pending: couldn't reach the seed template menu in automation to
       load composite-workbench; test whether the rete-based drill-in overlay
       works over the flow surface when C7 starts.

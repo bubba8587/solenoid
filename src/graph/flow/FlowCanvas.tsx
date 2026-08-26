@@ -118,7 +118,10 @@ import { translateEntityBy } from "../groupPush";
 import { appThemeStore } from "../appTheme";
 import { minimapFillForNode } from "../components/Minimap";
 import type { SolenoidNode } from "../schemes";
-import { computeDockedCanvasPos, dockedRenderedDims } from "../fcDocking";
+import { computeDockedCanvasPos, dockedRenderedDims, findDockTarget, insertFcInline, removeFcInline } from "../fcDocking";
+import { forgetNode } from "../nodeStoreRegistry";
+import { rebuildGroupMembership } from "../groupMembership";
+import { groupPushStore, restoreSettledPushes } from "../groupPush";
 import { dockedNodeStore } from "../dockedNodeStore";
 import { LoadOverlay } from "../components/LoadOverlay";
 import { ComputeOverlay } from "../components/ComputeOverlay";
@@ -415,6 +418,16 @@ function FlowCanvasInner() {
       s.cablePipeInstalled = true;
       s.editor.addPipe((ctx) => {
         const t = (ctx as { type?: string }).type;
+        if (t === "noderemoved" && !isGraphRebuilding()) {
+          // Live deletion: per-node store state must go (a rebuild runs
+          // forgetAllNodes once instead), membership/collapse re-derive, and
+          // deleting an expanded group settles the pushes it caused.
+          const n = (ctx as unknown as { data: SolenoidNode }).data;
+          forgetNode(n.id);
+          rebuildGroupMembership(s.editor);
+          syncGroupCollapse(s.editor, s.area);
+          if (n instanceof GroupNode) restoreSettledPushes(s.editor, s.area);
+        }
         if (t === "connectioncreated" || t === "connectionremoved") {
           if (!isGraphRebuilding()) {
             reconcileFcTypes(s.editor, s.area);
@@ -709,6 +722,45 @@ function FlowCanvasInner() {
       s.area.syncViews();
       // The exact settle on drop (the per-frame solves converge toward it).
       if (!standoffStore.isEmpty()) s.standoffSettle?.(new Set(dragged.map((n) => n.id)));
+      for (const n of dragged) {
+        // A manual move invalidates any expand-time push record (a click never
+        // starts an RF drag, so every dragStop is a real move).
+        groupPushStore.invalidateGroup(n.id);
+        // A dragged FC re-homes to the nearest socket, or releases its dock.
+        const model = s.editor.getNode(n.id);
+        if (model instanceof FormatControllerNode) {
+          const el = wrapperRef.current;
+          if (!el) continue;
+          const fc = model;
+          const target = findDockTarget(s.area, s.editor, fc);
+          const reHome = !!target && (
+            target.hostNodeId !== fc.hostNodeId ||
+            target.socketKey !== fc.socketKey ||
+            target.side !== fc.side
+          );
+          if (reHome && target) {
+            void (async () => {
+              await removeFcInline(s.editor, fc);
+              fc.hostNodeId = target.hostNodeId;
+              fc.socketKey = target.socketKey;
+              fc.side = target.side;
+              fc.dockSelf(s.editor);
+              const dims = dockedRenderedDims(s.area, fc.id, fc.width, fc.height);
+              const pos = computeDockedCanvasPos(s.area, el, fc.hostNodeId, fc.socketKey, fc.side, dims.w, dims.h);
+              if (pos) await s.area.translate(fc.id, pos);
+              await insertFcInline(s.editor, fc);
+              await processGraph();
+            })();
+          } else if (target) {
+            fc.dockSelf(s.editor);
+            const dims = dockedRenderedDims(s.area, fc.id, fc.width, fc.height);
+            const pos = computeDockedCanvasPos(s.area, el, fc.hostNodeId, fc.socketKey, fc.side, dims.w, dims.h);
+            if (pos) void s.area.translate(fc.id, pos);
+          } else {
+            fc.releaseDock();
+          }
+        }
+      }
       dragLastPos.current.clear();
       markGraphCustom();
       scheduleAutosave();

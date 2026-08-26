@@ -14,7 +14,8 @@ import { cableFlowStore } from "../cableFlowStore";
 import { isolateStore } from "../isolateStore";
 import { resolveTypedSource } from "../conduitTrace";
 import { SOCKET_COLORS, SolenoidSocket } from "../sockets";
-import { getEditor } from "../process";
+import { getEditor, getArea } from "../process";
+import { groupCollapseStore, COLLAPSE_LAYOUT, pillY } from "../groupCollapse";
 
 const DEFAULT_COLOR = SOCKET_COLORS.number;
 const SELECTED_COLOR = "var(--cable-selected)";
@@ -60,12 +61,32 @@ export function FlowCableEdge(props: EdgeProps) {
   useSyncExternalStore(cableSelectionStore.subscribe, cableSelectionStore.version);
   const flow = useSyncExternalStore(cableFlowStore.subscribe, cableFlowStore.get);
   useSyncExternalStore(isolateStore.subscribe, isolateStore.version);
+  useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
+
+  // Cables between two hidden members of a collapsed group disappear; an
+  // endpoint on a hidden member redirects to the group's edge pill (same rule
+  // as the rete surface's ConnectionComponent).
+  if (groupCollapseStore.isConnHidden(id)) return null;
+  const pillPoint = (p: { groupId: string; side: "left" | "right"; index: number } | undefined) => {
+    if (!p) return undefined;
+    const g = getArea()?.nodeViews.get(p.groupId)?.position;
+    if (!g) return undefined;
+    return { x: p.side === "left" ? g.x : g.x + COLLAPSE_LAYOUT.width, y: g.y + pillY(p.index) };
+  };
+  const outP = pillPoint(groupCollapseStore.outPillFor(source, sourceHandleId ?? ""));
+  const inP = pillPoint(groupCollapseStore.inPillFor(target, targetHandleId ?? ""));
 
   const sourceAngleDeg = cableAngleStore.get(source, sourceHandleId ?? "");
   const targetAngleDeg = cableAngleStore.get(target, targetHandleId ?? "");
   const d = getCablePath(shape, {
-    sourceX, sourceY, sourcePosition: CablePosition.Right, sourceAngleDeg,
-    targetX, targetY, targetPosition: CablePosition.Left, targetAngleDeg,
+    sourceX: outP?.x ?? sourceX,
+    sourceY: outP?.y ?? sourceY,
+    sourcePosition: CablePosition.Right,
+    sourceAngleDeg,
+    targetX: inP?.x ?? targetX,
+    targetY: inP?.y ?? targetY,
+    targetPosition: CablePosition.Left,
+    targetAngleDeg,
   });
 
   const isSelected = selected || cableSelectionStore.has(id);
