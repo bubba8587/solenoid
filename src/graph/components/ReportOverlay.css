@@ -212,6 +212,9 @@ html:not(.is-mobile) .report-panel { max-height: calc(100% - 24px); }
   padding: 10px 14px;
   font-size: 12.5px;
 }
+/* A frame embed never scrolls vertically (its row/col chip must stay in view);
+   a wide one scrolls sideways inside FrameDisplay. */
+.report-embed__body:has(.solenoid-table-display) { max-height: none; overflow: visible; }
 
 /* ── Narrow screens: Draft/Preview become TABS (one pane at a time), instead of
       a side-by-side split that would push the preview into the right half.

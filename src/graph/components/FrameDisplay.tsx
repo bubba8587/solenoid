@@ -55,7 +55,7 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
   previewRows?: number;
   /** Override the compact column cap (default 3). */
   previewCols?: number;
-  /** Cap the table height and scroll past it; keeps the chip. */
+  /** A wide table scrolls sideways; never vertically, so the chip stays in view. */
   scroll?: boolean;
   /** The host's λ input keys — forwarded so the popup can offer the source select. */
   lambdaOptions?: string[];
@@ -94,7 +94,7 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
   return (
     <div
       className="solenoid-node__display-value solenoid-table-display"
-      style={{ padding: "4px 8px", userSelect: "text", ...(scroll ? { maxHeight: 260, overflow: "auto" } : null) }}
+      style={{ padding: "4px 8px", userSelect: "text", ...(scroll ? { overflowX: "auto" } : null) }}
     >
       <table className="solenoid-table-display__grid" style={{ borderCollapse: "collapse", width: "100%", tableLayout: full ? "auto" : "fixed" }}>
         <thead>
