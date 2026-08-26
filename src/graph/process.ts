@@ -149,6 +149,22 @@ export function selectNode(id: string, accumulate: boolean) {
   _selectNode(id, accumulate);
 }
 
+/** Point the selection verbs at a substitute surface (the composite drill-in) while it is
+ *  open; the returned restorer hands them back to the main canvas. */
+export function swapSelectionSlots(fns: {
+  selectNode: (id: string, accumulate: boolean) => void;
+  unselectAllNodes: () => void;
+}): () => void {
+  const prevSelect = _selectNode;
+  const prevUnselect = _unselectAllNodes;
+  _selectNode = fns.selectNode;
+  _unselectAllNodes = fns.unselectAllNodes;
+  return () => {
+    _selectNode = prevSelect;
+    _unselectAllNodes = prevUnselect;
+  };
+}
+
 // Class-name → constructor registry: copyPaste.ts can't import nodeCtorRegistry
 // directly (catalogUtils → nodeCatalog → rete-nodes → composite → copyPaste cycle).
 let _ctorRegistryProvider: () => Map<string, new (init?: Record<string, unknown>) => object> = () => new Map();

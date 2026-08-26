@@ -1,6 +1,5 @@
 import { useEffect, useState, useSyncExternalStore, type ReactElement } from "react";
-import { getEditor, getArea } from "../process";
-import { subscribeActiveGraph, isSubgraphActive } from "../activeGraph";
+import { getActiveEditor as getEditor, getActiveArea as getArea, subscribeActiveGraph } from "../activeGraph";
 import { canvasLockStore } from "../canvasLock";
 import { alignSelection, distributeSelection, type AlignKind } from "../selectionOps";
 import "./selectionActions.css";
@@ -95,9 +94,8 @@ const ALIGN_BTNS: AlignBtn[] = [
 export function SelectionActionsBar() {
   const [count, setCount] = useState(0);
   const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
-  // The ops read the MAIN graph's selection, so showing this over a drill-in would
-  // align invisible main-canvas nodes behind the subgraph.
-  const drilled = useSyncExternalStore(subscribeActiveGraph, isSubgraphActive);
+  // The ops act on the ACTIVE graph (a drill-in included); re-render on the swap.
+  useSyncExternalStore(subscribeActiveGraph, () => 0);
 
   useEffect(() => {
     let prev = -1;
@@ -110,7 +108,7 @@ export function SelectionActionsBar() {
     return () => window.clearInterval(id);
   }, []);
 
-  if (drilled || locked || count < 2) return null;
+  if (locked || count < 2) return null;
   const canDistribute = count >= 3;
 
   return (

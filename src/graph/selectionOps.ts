@@ -3,7 +3,8 @@
 
 import type { Surface } from "./surface";
 import { GroupNode } from "./rete-nodes";
-import { getEditor, getArea, repositionDockedNodes, unselectAllNodes, selectNode } from "./process";
+import { repositionDockedNodes, unselectAllNodes, selectNode } from "./process";
+import { getActiveEditor as getEditor, getActiveArea as getArea } from "./activeGraph";
 import { standoffStore, standoffClusters, settleStandoffs } from "./standoffs";
 import { collapseStore } from "./collapseStore";
 import { scheduleAutosave } from "./persistence";

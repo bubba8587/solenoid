@@ -24,16 +24,22 @@ import {
 import { FlowSurfaceContext } from "../flowSurface";
 import { SolNodeAdapter } from "./SolNodeAdapter";
 import { FlowCableEdge } from "./FlowCableEdge";
-import { toFlowNodes, toFlowEdges, type FlowModel } from "./flowModel";
+import { toFlowNodes, toFlowEdges, nodeClassName, type FlowModel } from "./flowModel";
+import { installLassoSelection, type LassoState } from "../canvasLasso";
+import { moveGroupMembers } from "../groupLogic";
+import { groupCollapseStore } from "../groupCollapse";
+import { socketHighlightStore, dragSocketKey } from "../cableState";
+import { touchSelectStore } from "../touchSelectStore";
+import { CableInspector } from "../components/CableInspector";
 import { canConnect, connect } from "./flowController";
 import { makeFlowArea, type FlowArea } from "./flowArea";
 import { installFlowPinch } from "./flowPinch";
 import { installTouchCardPan } from "./flowTouchPan";
 import { installWheelZoom } from "./flowWheel";
-import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../rete-nodes";
+import { CompositeNode, CompositeInputNode, CompositeOutputNode, GroupNode } from "../rete-nodes";
 import type { SolenoidNode } from "../schemes";
 import { compositeEditorStore, compositePassStore } from "../compositeEditorStore";
-import { getEditor, getArea, processGraph, setCableDragging } from "../process";
+import { getEditor, getArea, processGraph, setCableDragging, swapSelectionSlots } from "../process";
 import { setActiveGraph } from "../activeGraph";
 import { syncSemanticZoomFor } from "../semanticZoomStore";
 import { copySelected, pasteClipboard } from "../copyPaste";
@@ -53,7 +59,7 @@ import { CompositeRunControls, RUN_MODE_OPTIONS } from "../components/CompositeN
 import { minimapFillForNode } from "../components/Minimap";
 import { appThemeStore } from "../appTheme";
 import { DrillNodeMenu } from "../components/DrillNodeMenu";
-import { IS_MOBILE } from "../coarse";
+import { IS_MOBILE, IS_COARSE } from "../coarse";
 import "../components/compositeEditor.css";
 
 const nodeTypes = { sol: SolNodeAdapter };
@@ -188,6 +194,8 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     { nodeId: string; screenX: number; screenY: number; isComposite: boolean } | null
   >(null);
   const [controlsOpen, setControlsOpen] = useState(!IS_MOBILE);
+  const [lasso, setLasso] = useState<LassoState>(null);
+  const touchSelect = useSyncExternalStore(touchSelectStore.subscribe, touchSelectStore.get);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const cursorRef = useRef({ x: 0, y: 0 });
   const pendingFitRef = useRef(false);
@@ -214,7 +222,14 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
       const prevById = new Map(prev.map((n) => [n.id, n]));
       return toFlowNodes(s).map((n) => {
         const old = prevById.get(n.id);
-        if (old && old.position.x === n.position.x && old.position.y === n.position.y) return old;
+        if (
+          old &&
+          old.position.x === n.position.x &&
+          old.position.y === n.position.y &&
+          old.className === n.className
+        ) {
+          return old;
+        }
         return {
           ...n,
           selected: old?.selected ?? false,
@@ -227,6 +242,24 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
       return toFlowEdges(s).map((e) => prevById.get(e.id) ?? e) as unknown as Edge[];
     });
   }, [s]);
+
+  // Member hiding follows the collapse store LIVE (same channel as the main canvas).
+  useEffect(
+    () =>
+      groupCollapseStore.subscribe(() => {
+        setNodes((ns) => {
+          let changed = false;
+          const next = ns.map((n) => {
+            const cls = nodeClassName(n.id);
+            if ((n.className ?? undefined) === cls) return n;
+            changed = true;
+            return { ...n, className: cls };
+          });
+          return changed ? next : ns;
+        });
+      }),
+    [],
+  );
 
   // Late-bind the adapter handlers to this mount.
   useEffect(() => {
@@ -249,9 +282,11 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     s.handlers.syncTopology = syncTopology;
   }, [comp, s, setViewport, syncTopology]);
 
-  // Open: hydrate, seed positions, publish as the ACTIVE graph.
+  // Open: hydrate, seed positions, publish as the ACTIVE graph. The selection verbs
+  // (lasso, align bar, keyboard) point here while open.
   useEffect(() => {
     let canceled = false;
+    let restoreSelection: (() => void) | null = null;
     s.rebuilding = true;
     void (async () => {
       await comp.hydrate(ctorRegistry());
@@ -271,10 +306,29 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
         editor: comp.internalEditor,
         area: s.area as unknown as Surface,
       });
+      restoreSelection = swapSelectionSlots({
+        unselectAllNodes: () => {
+          for (const n of comp.internalEditor.getNodes()) (n as { selected?: boolean }).selected = false;
+          setNodes((ns) => ns.map((n) => (n.selected ? { ...n, selected: false } : n)));
+        },
+        selectNode: (id, accumulate) => {
+          for (const n of comp.internalEditor.getNodes()) {
+            const sel = n.id === id || (accumulate && (n as { selected?: boolean }).selected === true);
+            (n as { selected?: boolean }).selected = sel;
+          }
+          setNodes((ns) =>
+            ns.map((n) => {
+              const sel = n.id === id || (accumulate && n.selected === true);
+              return sel === (n.selected ?? false) ? n : { ...n, selected: sel };
+            }),
+          );
+        },
+      });
       if (s.history.stack.length === 0) recordNow(comp, s);
     })();
     return () => {
       canceled = true;
+      restoreSelection?.();
       isolateStore.exit();
       setActiveGraph(null);
       syncPositionsToComp(comp, s);
@@ -548,6 +602,18 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     return () => { unPinch(); unPan(); unWheel(); };
   }, [s, getViewport, setViewport]);
 
+  // Shift-drag lasso, capture-phase on the wrapper (as on the main canvas).
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    return installLassoSelection({
+      container: el,
+      editorRef: { current: s.editor },
+      areaRef: { current: s.area },
+      setLasso,
+    });
+  }, [s]);
+
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
       for (const ch of changes) {
@@ -591,11 +657,48 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     setCableDragging(true);
   }, []);
   const onConnectEnd = useCallback(() => setCableDragging(false), []);
+  const onEdgeMouseEnter = useCallback((_e: unknown, edge: Edge) => {
+    socketHighlightStore.setCableHover([
+      dragSocketKey(edge.source, edge.sourceHandle ?? ""),
+      dragSocketKey(edge.target, edge.targetHandle ?? ""),
+    ]);
+  }, []);
+  const onEdgeMouseLeave = useCallback(() => socketHighlightStore.setCableHover([]), []);
+  // An expanded group tows its unselected members per drag frame (RF moves the
+  // selection itself); the view mirror follows so live readers see the drag.
+  const dragLastPos = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const onNodeDragStart = useCallback((_e: unknown, _node: Node, dragged: Node[]) => {
+    dragLastPos.current = new Map(dragged.map((n) => [n.id, { ...n.position }]));
+  }, []);
+  const onNodeDrag = useCallback(
+    (_e: unknown, _node: Node, dragged: Node[]) => {
+      for (const n of dragged) {
+        const model = s.editor.getNode(n.id);
+        if (!(model instanceof GroupNode) || model.collapsed) continue;
+        const last = dragLastPos.current.get(n.id);
+        if (!last) continue;
+        const dx = n.position.x - last.x;
+        const dy = n.position.y - last.y;
+        if (dx !== 0 || dy !== 0) void moveGroupMembers(s.editor, s.area, model, dx, dy, true);
+      }
+      for (const n of dragged) {
+        dragLastPos.current.set(n.id, { ...n.position });
+        s.positions.set(n.id, { ...n.position });
+        const view = s.area.nodeViews.get(n.id);
+        if (view) view.position = { x: n.position.x, y: n.position.y };
+      }
+    },
+    [s],
+  );
   const onNodeDragStop = useCallback(
-    (_e: unknown, node: Node) => {
-      s.positions.set(node.id, { ...node.position });
-      const view = s.area.nodeViews.get(node.id);
-      if (view) view.position = { ...node.position };
+    (_e: unknown, _node: Node, dragged: Node[]) => {
+      for (const n of dragged) {
+        s.positions.set(n.id, { ...n.position });
+        const view = s.area.nodeViews.get(n.id);
+        if (view) view.position = { ...n.position };
+      }
+      s.area.syncViews();
+      dragLastPos.current.clear();
       scheduleRecord(comp, s);
       scheduleAutosave();
     },
@@ -661,8 +764,13 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
           edgeTypes={edgeTypes}
           nodesDraggable={!locked}
           elementsSelectable={!locked}
+          panOnDrag={!(IS_COARSE && touchSelect)}
+          onNodeDragStart={onNodeDragStart}
+          onNodeDrag={onNodeDrag}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
+          onEdgeMouseEnter={onEdgeMouseEnter}
+          onEdgeMouseLeave={onEdgeMouseLeave}
           onConnect={onConnect}
           onConnectStart={onConnectStart}
           onConnectEnd={onConnectEnd}
@@ -671,6 +779,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
           onMove={onMove}
           isValidConnection={isValidConnection}
           deleteKeyCode={null}
+          selectionKeyCode={null}
           elevateNodesOnSelect={false}
           zoomOnDoubleClick={false}
           zoomOnScroll={false}
@@ -697,6 +806,21 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
             nodeStrokeWidth={1}
           />
         </ReactFlow>
+        {lasso && (
+          <svg
+            className="solenoid-lasso"
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 50 }}
+          >
+            <polygon
+              points={lasso.points.map((p) => `${p.x},${p.y}`).join(" ")}
+              fill={lasso.mode === "enclose" ? "rgba(86, 180, 233, 0.10)" : "rgba(255, 220, 0, 0.10)"}
+              stroke={lasso.mode === "enclose" ? "rgba(86, 180, 233, 0.9)" : "rgba(255, 220, 0, 0.95)"}
+              strokeWidth={1.4}
+              strokeDasharray={lasso.mode === "touch" ? "5 4" : undefined}
+            />
+          </svg>
+        )}
+        <CableInspector />
       </div>
       <div className="solenoid-composite-editor__strip" onPointerDown={(e) => e.stopPropagation()}>
         <div className="solenoid-composite-editor__crumbs">
