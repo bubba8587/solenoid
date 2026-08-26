@@ -1,10 +1,12 @@
 // Lasso geometry — all in screen (container-relative) coords, Y-down.
 
+import { createToggleStore } from "./storeKit";
 
 export type Pt = { x: number; y: number };
 
 /** True while a lasso drag is in flight — the HTML-canvas renderer needs it because a
  *  lasso moves nothing, so its motion path never activates the cheap layer. */
+export const lassoActiveStore = createToggleStore();
 
 // Positive = the path winds CLOCKWISE visually, since screen Y is flipped from math Y.
 export function signedArea(pts: Pt[]): number {

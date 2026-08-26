@@ -109,9 +109,10 @@ until the port completes. No standalone harness — new work integrates with the
       ran the same FULL pass for this edit path — targeting parity holds.)
 - [x] KILL LIST for the C9 cutover — opened AND EXECUTED 2026-08-26 (author's
       all-out ruling: "GOING ALL OUT ON REACT FLOW NO RETE"). Outcomes: items
-      1–4, 7, 8 deleted/ported as listed (loadReveal kept curtain-only, its
-      animation dropped; HIC dropped, the orphaned hic-math cluster swept in
-      the docs-reconcile pass; landing/showcase ported to StaticFlowStage);
+      1–3, 7, 8 deleted/ported as listed (loadReveal kept curtain-only, its
+      animation dropped; landing/showcase ported to StaticFlowStage);
+      item 4 (HIC) briefly dropped, then RESTORED + PORTED same day by author
+      order ("HIC renderer is in not out") — see the C9 entry below;
       items 5–6 resolved KEEP — flowArea is THE `Surface` implementation
       (surface.ts states the type) and flowSurface stays as the chunk-fencing
       injection seam. Resolution on the original framing: the storeKit
@@ -454,9 +455,19 @@ until the port completes. No standalone harness — new work integrates with the
       (digestLabeled half stays; describeAction half retires with
       rete-history-plugin); (d) surfaceParity retires or goes flow-only.
       domSync/sourceInvariants only MENTION rete packages in prose.
-- [x] HIC renderer: DROPPED (author all-out ruling 2026-08-26); the orphaned
-      hic math cluster (hicCamera/hicCableGeom/hicGraphSnapshot/hicColors/
-      hicSocketGlyph/pathPoints/cssColor + tests) deleted in Cutover D.
+- [x] HIC renderer: KEPT — author ruling 2026-08-26 "HIC renderer is in not
+      out" (reversing the same-day drop). Restored from git and PORTED to the
+      RF surface: the layer's holder is `.react-flow__viewport` (hide/steer),
+      flowArea grew a real pipe channel relaying `render` events from
+      `update("node", id)` (the per-card re-capture signal), the add/remove
+      recount moved to the editor pipe, `lassoActiveStore` re-landed in
+      lasso.ts (set by canvasLasso), snapshot background reads the RF pane,
+      Settings row + `initRenderMode` restored. Verified: 4843 vitest green,
+      prod build green, and a stubbed-`drawElementImage` live probe — layer
+      engages, wheel zoom hides+freezes the viewport, settle restores it,
+      74 render-pipe re-capture events, zero console errors. The REAL
+      capture path needs the author's flagged Chrome (origin-trial API;
+      not in the container Chromium — same as pre-cutover).
 - [x] Removed replaced rete packages + styled-components (Cutover C); docs
       reconciled (Cutover D: subsystem-invariants pointer-gestures/tidy/
       load-teardown/drill-in sections, architecture.md map, glossary,

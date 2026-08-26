@@ -79,6 +79,9 @@ export function makeFlowArea(
   const pointer = { x: 0, y: 0 };
   const detachedHolder = document.createElement("div");
   const detachedContainer = document.createElement("div");
+  // Rete-shaped `render` events for per-card re-renders — the one channel the
+  // HTML-in-Canvas layer needs (it re-captures just the re-rendered card).
+  const pipes = new Set<(ctx: unknown) => unknown>();
 
   const pushViewport = () => cb.setViewport({ x: transform.x, y: transform.y, zoom: transform.k });
 
@@ -135,14 +138,19 @@ export function makeFlowArea(
     async update(type: string, id: string) {
       if (type === "node") cb.bumpNode(id);
       else if (type === "connection") cb.bumpConnections();
+      for (const p of pipes) p({ type: "render", data: { type, payload: { id } } });
     },
     async translate(id: string, pos: { x: number; y: number }) {
       if (!nodeViews.has(id)) nodeViews.set(id, new FlowNodeView(id, { ...pos }, translateNode));
       await translateNode(id, pos);
     },
     async resize() {},
-    addPipe() {},
-    removePipe() {},
+    addPipe(fn: (ctx: unknown) => unknown) {
+      pipes.add(fn);
+    },
+    removePipe(fn: (ctx: unknown) => unknown) {
+      pipes.delete(fn);
+    },
     use() {},
     async emit(ctx: unknown) {
       return ctx;

@@ -8,6 +8,8 @@ import { IS_MOBILE } from "./coarse";
 import { packsStore, allPacks, loadCustomPacks, customPacksFolder } from "./packs";
 import { isDesktop, pickFolderDialog, openInFileManager } from "./fileBridge";
 import { paletteStore, paletteEditorPanel, type PaletteChoice } from "./palette";
+import { useRenderMode, renderModeStore } from "./renderMode";
+import { supportsHtmlInCanvas } from "./htmlCanvasSupport";
 import { getEditor } from "./process";
 import { rebuildGroupMembership } from "./groupMembership";
 import { SwatchGrid } from "./components/SwatchGrid";
@@ -197,6 +199,30 @@ function PaletteSection() {
   );
 }
 // HTML-in-Canvas vs the permanent DOM renderer, gated on the Chrome flag.
+function RendererSection() {
+  const mode = useRenderMode();
+  const [supported] = useState(supportsHtmlInCanvas);
+  const on = mode === "html";
+  return (
+    <div className="solenoid-settings__section">
+      <div className="solenoid-settings__section-title">Renderer</div>
+      <Row
+        label="HTML-in-Canvas GPU renderer"
+        help={
+          supported
+            ? "Faster zoom and pan on big graphs. Experimental. The DOM renderer is the fallback."
+            : "Requires Chrome with chrome://flags/#canvas-draw-element. Unavailable in this browser."
+        }
+        on={on && supported}
+        onToggle={() => { if (supported) renderModeStore.set(on ? "dom" : "html"); }}
+      />
+      {!supported && (
+        <div className="solenoid-settings__note">Enable the flag and reload to use the canvas renderer.</div>
+      )}
+    </div>
+  );
+}
+
 function PacksSection() {
   useSyncExternalStore(packsStore.subscribe, packsStore.version);
   const builtin = allPacks().filter((p) => p.builtin);
@@ -329,6 +355,7 @@ export function Settings() {
             </div>
           ))}
           <PaletteSection />
+          <RendererSection />
           <AiSection />
           <ApiKeysSection />
           <PacksSection />

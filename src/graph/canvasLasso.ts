@@ -4,7 +4,7 @@ import type { Surface } from "./surface";
 import type { MutableRefObject } from "react";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
-import { pointInPolygon, polygonIntersectsBBox, signedArea, type Pt } from "./lasso";
+import { pointInPolygon, polygonIntersectsBBox, signedArea, lassoActiveStore, type Pt } from "./lasso";
 import { groupCollapseStore } from "./groupCollapse";
 import { isolateStore } from "./isolateStore";
 import { touchSelectStore } from "./touchSelectStore";
@@ -101,6 +101,7 @@ export function installLassoSelection(deps: LassoDeps): () => void {
     // Mobile select mode must NOT — the zoom handler has to see finger 1 for a pinch.
     if (!selectMode) e.stopPropagation();
     active = true;
+    lassoActiveStore.set(true);
     points.length = 0;
     points.push(relPoint(e));
     lastNodeSig = "";
@@ -124,6 +125,7 @@ export function installLassoSelection(deps: LassoDeps): () => void {
   function onUp() {
     if (!active) return;
     active = false;
+    lassoActiveStore.set(false);
     window.removeEventListener("pointermove", onMove);
     window.removeEventListener("pointerup", onUp);
     // Flush a final apply — a coalesced frame may still be pending.
@@ -135,6 +137,7 @@ export function installLassoSelection(deps: LassoDeps): () => void {
   function cancelLasso() {
     if (!active) return;
     active = false;
+    lassoActiveStore.set(false);
     window.removeEventListener("pointermove", onMove);
     window.removeEventListener("pointerup", onUp);
     if (lassoRaf) { cancelAnimationFrame(lassoRaf); lassoRaf = 0; }

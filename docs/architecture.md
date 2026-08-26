@@ -189,16 +189,32 @@ src/
 | `flow/FlowCableEdge.tsx` | The cable renderer (RF edge type: hit strokes, ribbon/pill rerouting, flow-bead overlay, run selection) |
 | `highlightUtils.ts` | Hover-highlight traversal, deliberately asymmetric and depth-limited: an origin lights its whole fan, a destination lights one cable |
 
-### Renderer — exactly ONE (author 2026-08-26)
+### Renderers — the RF DOM surface + the HTML-in-Canvas gesture layer
 
-React Flow renders everything: cards, cables, minimap, viewport. Every other
-renderer direction — the rete DOM surface, the HTML-in-Canvas mode, the pixi
-spike, the WGSL/`canvas` layers — was DELETED (2026-08-09 and the 2026-08-26
-cutover; git has all of it). Do not rebuild a second path.
+React Flow renders everything: cards, cables, minimap, viewport. On top of it
+the experimental **HTML-in-Canvas** mode (a shipped Setting, gated on
+`supportsHtmlInCanvas()` — author ruling 2026-08-26: HIC is IN) draws the
+captured graph to a canvas during pan/zoom gestures, hiding the RF viewport;
+idle is always the real DOM. Every other renderer direction — the rete DOM
+surface, the pixi spike, the WGSL/`canvas` layers — was DELETED (2026-08-09
+and the 2026-08-26 cutover; git has it). Do not rebuild a third path.
 
 | File | Responsibility |
 |---|---|
-| `canvasCapture.ts` | Static-export capture (Report export, Obsidian write) |
+| `renderMode.ts` | Render-mode store `dom`\|`html` (default `dom`; only `html` persists) + `useRenderMode` hook |
+| `htmlCanvasSupport.ts` | Gates the `html` option on `supportsHtmlInCanvas()` |
+| `htmlCanvasRenderer.ts` | The HTML-in-Canvas renderer: captures the real node DOM via `drawElementImage` into mip pyramids; pan/zoom draws the canvas, idle shows the DOM |
+| `components/HtmlCanvasLayer.tsx` | Mounts it when mode is `html` ≥100 weighted nodes: gesture swap (RF viewport hidden ↔ canvas), targeted re-capture per changed node id (flowArea's `render` pipe), DOM-only escape hatch (conduits) |
+| `hicCamera.ts` (+`.test.ts`) | world↔screen camera math (pan, anchored zoom, pinch, fit-to-bounds) |
+| `hicCableGeom.ts` (+`.test.ts`) | `cablePolyline` — the app's REAL router (`getCablePath`) flattened via `pathPoints.ts`, so canvas cables match DOM cables |
+| `hicGraphSnapshot.ts` | snapshots the live graph (node rects, kind colors, socket world-positions, connections) for capture |
+| `hicColors.ts`, `hicSocketGlyph.ts` (+tests) | color helpers + socket-glyph classification the snapshot uses |
+| `pathPoints.ts` (+`.test.ts`) | pure M/L/C/Q path → polyline flattening (`parsePathPoints`) |
+| `rasterAtlas.ts` (+`.test.ts`) | the capture atlas (`packAtlas`) — one canvas read-back per paint |
+| `cssColor.ts` (+`.test.ts`) | Pure CSS color parse (hex/rgb) + sRGB mixing — a canvas can't evaluate `color-mix`/`var()` |
+| `domSync.ts` (+`.test.ts`) | DOM↔canvas transform sync (`camFromDrawMatrix`, viewport steering) |
+| `zoomSettle.ts` (+`.test.ts`) | The gesture-exit settle window (default 420 ms; `window.__zoomSettle` override) |
+| `canvasCapture.ts` | Static-export capture, deliberately separate from the live HTML-in-Canvas capture |
 | `devHarness.ts` | DEV-only screenshot-comparison hooks (tree-shaken from production) |
 
 ### Groups / layout / standoffs
@@ -392,7 +408,7 @@ rationale, point-in-time research, the dev-notes history) is indexed in
 | `subsystem-invariants.md` | living | the "don't break this" deep-dives — cable routing, group push, standoffs, tidy, error values, unit flow, addressable model, autosave, drill-in |
 | `layout-chrome.md` | living | on-screen chrome map — bar/overlay geometry, offset sync map, z-index ladder; read before adding/moving chrome |
 | `touch-gestures.md` | living | the pointer/touch gesture inventory per device config |
-| `renderer-performance.md` | living | settled renderer-perf policies (semantic-zoom gate, covered-canvas GPU budget) |
+| `renderer-performance.md` | living | settled renderer-perf policies (zoom settle, semantic-zoom gate, GPU budget, HIC capture) |
 | `code-comments.md` | living | the commentMinimalism comment policy — cut rules, blast-radius test |
 | `dev-notes.md` | living log | open problems + the latest session digests only (history in `archive/dev-notes-history.md`) |
 | `backlog.md` | living | OPEN items only — the 1.3 polish/patch queue (landed items are deleted) |

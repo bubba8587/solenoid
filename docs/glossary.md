@@ -161,6 +161,10 @@ area. When you coin a new load-bearing term, add it here.
   (`calcModeStore.ts`; see decisions.md calcModes)
 - **Compute overlay** — the deferred "Computing…" curtain that blocks interaction during a
   heavy pass. (`computeOverlayStore.ts`, `ComputeOverlay.tsx`)
+- **Render mode** — `dom` (default/fallback) vs. `html` (HTML-in-canvas). (`renderMode.ts`)
+- **HTML-in-Canvas renderer** — draws the real DOM cards into a canvas via a mip-pyramid of
+  bitmaps during pan/zoom gestures; idle is the real DOM. (`htmlCanvasRenderer.ts`,
+  `HtmlCanvasLayer.tsx`)
 - **perfProbe** — the runtime instrumentation (`window.__solenoidPerf` / `__solenoidStats`)
   logging per-pass node `data()` + engine IPC. (`perfProbe.ts`)
 - **Alert / HUD** — the Alert node fires on status *change* (edge-detect) → a toast + the

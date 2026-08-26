@@ -113,6 +113,7 @@ import { syncGroupCollapse } from "../groupCollapse";
 import { FormatControllerNode } from "../rete-nodes";
 import { formatAnnotationStore, formatMismatchStore, unitsCompatible } from "../formatAnnotationStore";
 import { StandoffLayer } from "../components";
+import { HtmlCanvasLayer } from "../components/HtmlCanvasLayer";
 import { standoffStore, setStandoffSettle, type SettleOpts } from "../standoffs";
 import { solveStandoffs } from "../standoffSolver";
 import { measuredBox } from "../nodeSize";
@@ -921,6 +922,7 @@ function FlowCanvasInner() {
         />
       </ReactFlow>
       <StandoffLayer />
+      <HtmlCanvasLayer />
       {menu && (
         <AddNodeMenu
           screenX={menu.screenX}

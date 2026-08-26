@@ -99,5 +99,6 @@ Other add paths (not gestures): mobile bar ➕ FAB, the `A` key, Insert ▸ Add 
 ## Enforcement
 
 `pointerGesture.test.ts` (census + isPinching), `touchActions.test.ts` (mobile/tablet
-action drift-pin), `frameHint.test.ts` (hint contract). The inventory itself is UNENFORCED — it is a map, kept true by the
+action drift-pin), `zoomSettle.test.ts` (gesture-exit settle), `frameHint.test.ts`
+(hint contract). The inventory itself is UNENFORCED — it is a map, kept true by the
 update-in-the-same-change rule above.

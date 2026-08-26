@@ -34,6 +34,15 @@ four commits (Cutover A–D; the ledger `docs/react-port-plan.md` carries the fu
   FlowCanvas imports it.
 Open (author): merge timing to develop; real-device touch pass.
 
+**Follow-up (same day): HIC RESTORED + PORTED — author: "HIC renderer is in not out."** The
+Cutover-A/D HIC deletions reverted from git and the layer ported to the RF surface (details in
+the ledger's C9 HIC entry: viewport-as-holder, flowArea `render` pipe, editor-pipe recount,
+lassoActiveStore back, Settings row + init). Suite 4843 green, prod build green; a
+stubbed-`drawElementImage` probe verified the full engage→gesture-swap→settle cycle on RF with
+zero errors. Real-capture verification stays an author task (flagged Chrome; the API isn't in
+the container Chromium — same as pre-cutover). Docs re-reconciled (architecture Renderers
+section, glossary, renderer-performance restored, CLAUDE.md).
+
 ### FINDING (2026-08-25 — per-card CSS conversion, STEP 1 census — A2)
 Step 1 of the backlog "Per-card CSS conversion" sweep: which paint-only DOM could move to
 CSS. Measured on the live dev page via `window.__solenoidCardCensus()` (`census.ts`), driven

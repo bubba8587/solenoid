@@ -195,10 +195,11 @@ a place a spec can be contradicted. Concretely:
   act correctly right now?" — if not, cut it.
 
 ### Architecture notes (the traps)
-- **Exactly ONE renderer exists: the React Flow DOM surface.** Every other direction —
-  the pixi spike, the WGSL/`canvas` layers (2026-08-09), the html-in-canvas GPU mode
-  (react-port cutover) — was DELETED by author order; git has them. Do not rebuild a
-  second path.
+- **Renderers: the React Flow DOM surface + the experimental HTML-in-Canvas gesture
+  layer over it** (`HtmlCanvasLayer.tsx`, a Setting gated on `supportsHtmlInCanvas()`;
+  author 2026-08-26: HIC is IN — it survived the cutover, ported to RF). Every other
+  direction — the rete surface, the pixi spike, the WGSL/`canvas` layers — was DELETED
+  by author order; git has them. Do not rebuild a third path.
 - **One React tree now** (react-port cutover): the module-singleton stores
   (`storeKit.ts` + `useSyncExternalStore`) STAY — they are app-wide state, not a
   separate-root workaround — but plain React context/props/handlers work everywhere.
@@ -343,7 +344,7 @@ Read the relevant section there IN FULL before touching one of these. The one-li
 - **Canvas**: cables/ribbons, groups, standoffs, Conduits, Tidy (ELK), isolate, minimap,
   lasso, undo/copy/paste, single-key shortcuts (F9 calculate), command palette, presenter
   mode, per-doc autosave + multi-doc tabs, Navigator, HUD stack, semantic zoom,
-  AI palette (aiInScope/aiWholeDocRewrite:
+  html-in-canvas GPU mode (DOM stays the permanent default); AI palette (aiInScope/aiWholeDocRewrite:
   validator-gated whole-doc rewrite with diff approval; Anthropic key in Settings ▸ AI).
 - **Value model**: frames / cubes (recursive) / matrices / lists / scalars; first-class
   null/logical/SolError; units by dimensionality with `#UNIT!` algebra; the FC (unit author
