@@ -21,7 +21,7 @@ import { ctorRegistry } from "../nodeCtorRegistry";
 import { cableSelectionStore } from "../cableState";
 import { isolateStore } from "../isolateStore";
 import { pushNotice } from "../noticeStore";
-import { makeEnsureElk, elkTidyLayout, tidyOptionsFromSettings, type Elk } from "../tidyArrange";
+import { makeEnsureElk, makeArrangeFn, makeCleanupFn } from "../tidyArrange";
 import { CompositeRunControls, RUN_MODE_OPTIONS } from "../components/CompositeNode";
 import { IS_MOBILE } from "../coarse";
 import "../components/compositeEditor.css";
@@ -196,7 +196,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
       });
       restoreArrange = swapArrangeSlots({
         autoArrange: () => tidyRef.current(),
-        cleanup: () => tidyRef.current(),
+        cleanup: () => cleanupRef.current(),
       });
       if (s.history.stack.length === 0) recordNow(comp, s);
     })();
@@ -348,23 +348,32 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     [comp, s, recomputeTarget],
   );
 
-  const ensureElkRef = useRef<(() => Promise<Elk | null>) | null>(null);
-  const tidyDrill = useCallback(async () => {
-    if (!ensureElkRef.current) ensureElkRef.current = makeEnsureElk(() => false);
-    const elk = await ensureElkRef.current();
-    if (!elk) return;
-    await elkTidyLayout(elk, {
-      nodes: comp.internalEditor.getNodes(),
-      connections: comp.internalEditor.getConnections(),
-      options: tidyOptionsFromSettings(),
-      translate: (id, x, y) => s.area.translate(id, { x, y }),
+  // The SAME arrange factory as the main canvas (groups as blocks, members re-placed,
+  // docked FCs re-homed) over this level; a bare ELK pass moved group bodies without
+  // their members.
+  const arrange = useMemo(() => {
+    const ensureElk = makeEnsureElk(() => false);
+    const arrangeFn = makeArrangeFn({
+      editor: comp.internalEditor,
+      area: s.area as unknown as Surface,
+      container: s.handlers.getContainer() ?? document.body,
+      ensureElk,
+      repositionDockedTo: () => {},
+      isDestroyed: () => false,
     });
+    return { tidy: arrangeFn, cleanup: makeCleanupFn(comp.internalEditor, s.area as unknown as Surface, arrangeFn) };
+  }, [comp, s]);
+  const settleArrange = useCallback(() => {
     void fitView({ padding: 0.15, duration: 0 });
     void processGraph(recomputeTarget());
     scheduleAutosave();
     scheduleRecord(comp, s);
   }, [comp, s, fitView, recomputeTarget]);
+  const tidyDrill = useCallback(async () => { await arrange.tidy(); settleArrange(); }, [arrange, settleArrange]);
+  const cleanupDrill = useCallback(async () => { await arrange.cleanup(); settleArrange(); }, [arrange, settleArrange]);
   tidyRef.current = tidyDrill;
+  const cleanupRef = useRef<() => Promise<void>>(async () => {});
+  cleanupRef.current = cleanupDrill;
 
   const hooks: SurfaceHooks = {
     rfId: "drill",
