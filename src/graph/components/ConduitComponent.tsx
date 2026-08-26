@@ -27,7 +27,7 @@ import {
   isGraphRebuilding,
 } from "../process";
 import { getOwningEditor, getOwningArea } from "../activeGraph";
-import { isFlowSurface, getFlowSocket } from "../flowSurface";
+import { useFlowSocket } from "../flowSurface";
 import { AngleDial } from "../AngleDial";
 import { useDraftCommit, INVALID_DRAFT } from "./inlineInput";
 import "../AngleDial.css";
@@ -88,6 +88,7 @@ function countUsedLanes(nodeId: string): number {
 
 export function ConduitComponent({ data, emit }: Props) {
   const node = data;
+  const FlowSocket = useFlowSocket();
 
   // Angle is DERIVED from node.angle (never local state) so a rotate from OUTSIDE
   // this React root — Canvas's `[` / `]` keys — re-renders the block too.
@@ -249,9 +250,9 @@ export function ConduitComponent({ data, emit }: Props) {
       }}
     >
       {(() => {
-        // Flow surface: lane dots are RF Handles (injected — see flowSurface.ts),
-        // or edges into the lanes have no endpoints to attach to.
-        const FlowSocket = isFlowSurface() ? getFlowSocket() : null;
+        // In the RF tree, lane dots are RF Handles (injected — flowSurface.ts),
+        // or edges into the lanes have no endpoints; a drill-in's rete roots
+        // keep RefSocket.
         const payload = (side === "input" ? node.inputs[key]! : node.outputs[key]!).socket;
         return FlowSocket ? (
           <FlowSocket side={side} socketKey={key} payload={payload} />

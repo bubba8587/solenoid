@@ -24,7 +24,7 @@ import "@xyflow/react/dist/style.css";
 import { NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
 import type { Schemes } from "../schemes";
-import { setFlowSurface } from "../flowSurface";
+import { registerFlowSocket, FlowSurfaceContext } from "../flowSurface";
 import { FlowSocketHandle } from "./FlowSocketHandle";
 import { SolNodeAdapter } from "./SolNodeAdapter";
 import { FlowCableEdge } from "./FlowCableEdge";
@@ -108,7 +108,7 @@ import { settingsStore } from "../settingsStore";
 import { IS_MOBILE } from "../coarse";
 import "./flow.css";
 
-setFlowSurface(FlowSocketHandle);
+registerFlowSocket(FlowSocketHandle);
 
 const nodeTypes = { sol: SolNodeAdapter };
 const edgeTypes = { cable: FlowCableEdge };
@@ -758,7 +758,11 @@ function FlowCanvasInner() {
 export function FlowCanvas() {
   return (
     <ReactFlowProvider>
-      <FlowCanvasInner />
+      {/* Node components under this provider render RF Handles; React roots
+          OUTSIDE it (the rete drill-in overlay) keep the RefSocket path. */}
+      <FlowSurfaceContext.Provider value={true}>
+        <FlowCanvasInner />
+      </FlowSurfaceContext.Provider>
     </ReactFlowProvider>
   );
 }

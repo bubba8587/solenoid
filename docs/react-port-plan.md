@@ -230,9 +230,20 @@ until the port completes. No standalone harness — new work integrates with the
       conduit popup; area-plane z-order.
 
 ### C7 — Composite drill-in
-- [ ] The payoff: drill-in = the SAME FlowCanvas component with the composite's
-      editor/engine — no second stack, no `Scope.use` cache, no parity drift.
-      `surfaceParity.test.ts` retargeted or retired.
+- [x] WORKS over the flow surface via the EXISTING rete overlay (2026-08-26): the
+      probe surfaced one real bug — the flow-socket branch was a GLOBAL flag, so
+      the drill-in's rete React roots rendered RF Handles and threw. Fixed by
+      making the seam a REACT CONTEXT (`FlowSurfaceContext`, provided by
+      FlowCanvas inside its ReactFlowProvider) — the very capability the port
+      buys; rete-rendered roots keep RefSocket. Verified on composite-workbench:
+      drill-in opens (breadcrumb, run modes, +Input/+Output), all internal cards
+      render (0 boundaries), outer edit → inner recompute → outer Order total
+      1000→1200, Escape closes. Inner Composite Input cards are outer-driven (no
+      fields) — deeper inner interaction (wiring inside the drill-in) not yet
+      exercised in automation.
+- [ ] The full payoff (later): drill-in = the SAME FlowCanvas component with the
+      composite's editor/engine — no second rete stack, no `Scope.use` cache, no
+      parity drift; `surfaceParity.test.ts` retargeted or retired.
 
 ### C8 — Touch/tablet pass
 - [ ] Pinch/pan/tap-select/palm on emulated touch (Playwright CDP, sanctioned);

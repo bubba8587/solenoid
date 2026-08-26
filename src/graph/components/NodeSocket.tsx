@@ -3,7 +3,7 @@ import { Presets } from "rete-react-plugin";
 import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import type { ClassicPreset } from "rete";
 import { socketHighlightStore, dragSocketKey } from "../cableState";
-import { isFlowSurface, getFlowSocket } from "../flowSurface";
+import { useFlowSocket } from "../flowSurface";
 import { SolenoidSocket, SOCKET_TYPE_LABELS } from "../sockets";
 import { frameHintFor, frameHintStore, type FrameHint } from "../frameHint";
 import { useNativeEnterLeave } from "./nativeHover";
@@ -105,6 +105,7 @@ export function MeasuredSocketRow({
 }
 
 export function NodeSocket({ side, socketKey, nodeId, emit, payload, top, className }: Props) {
+  const FlowSocket = useFlowSocket();
   // The 12px dot straddles the card edge: -5 for card/group-anchored sockets, while
   // .solenoid-node__content sits 1px inside the border and sets --node-socket-x: -6px.
   const x = "var(--node-socket-x, -5px)";
@@ -168,24 +169,22 @@ export function NodeSocket({ side, socketKey, nodeId, emit, payload, top, classN
       data-node-id={nodeId}
       data-socket-shape={isSquare ? "square" : "circle"}
     >
-      {(() => {
-        // Flow surface: the dot is an RF Handle (injected — no @xyflow import
-        // here) instead of rete's RefSocket render pipe. Same wrapper, same
-        // measurement, same glyphs.
-        const FlowSocket = isFlowSurface() ? getFlowSocket() : null;
-        return FlowSocket ? (
-          <FlowSocket side={side} socketKey={socketKey} payload={payload} />
-        ) : (
-          <RefSocket
-            name={`${side}-socket`}
-            side={side}
-            socketKey={socketKey}
-            nodeId={nodeId}
-            emit={emit}
-            payload={payload}
-          />
-        );
-      })()}
+      {FlowSocket ? (
+        // Inside the RF tree the dot is an RF Handle (injected — no @xyflow
+        // import here) instead of rete's RefSocket render pipe. Same wrapper,
+        // same measurement, same glyphs. A rete-rendered root (the drill-in
+        // overlay) has no FlowSurfaceContext and keeps RefSocket.
+        <FlowSocket side={side} socketKey={socketKey} payload={payload} />
+      ) : (
+        <RefSocket
+          name={`${side}-socket`}
+          side={side}
+          socketKey={socketKey}
+          nodeId={nodeId}
+          emit={emit}
+          payload={payload}
+        />
+      )}
       {lit && (
         <svg
           aria-hidden="true"
