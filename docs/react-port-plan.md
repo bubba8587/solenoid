@@ -131,10 +131,23 @@ until the port completes. No standalone harness — new work integrates with the
       touch-select mode, Minimap accent parity (RF MiniMap placeholder), presenter,
       standoffs/group-push application, HtmlCanvasLayer decision.
 
-### C3 — Cables
-- [ ] Custom edge: `cablePaths.ts` walk router as the RF edge path (pure code ports).
-- [ ] Ribbons/conduit trunks, ghost cable, selection + cable inspector, value chips.
-- [ ] Cable-drag blurs focused field (rete `connectionpick` behavior re-created).
+### C3 — Cables — core DONE 2026-08-26
+- [x] `FlowCableEdge`: the walk router (`getCablePath` — PathArgs maps 1:1 onto RF
+      EdgeProps) with conduit angle hints, type coloring incl. combo-vs-live-value and
+      `resolveTypedSource` conduit tracing, selection color/width, flow beads overlay,
+      isolate dim. RF's own 20px interaction path gives hit-targets; RF edge selection
+      mirrors into `cableSelectionStore` (deferred out of the state updater).
+- [x] Shape switching live from the top-bar segmented control (all edges re-route).
+- [x] Cable Inspector works on selection; **the Canvas-hosted overlay set is now
+      mounted by FlowCanvas too** (CommandPalette, SocketLegend, IsolatePill,
+      CableInspector, ConfirmDialog, NoticeToasts, LoadOverlay, ComputeOverlay) —
+      they lived inside Canvas.tsx's JSX, not MainApp.
+- [ ] Ribbons/conduit trunks + fans, ghost cables, load-reveal draw, value chips on
+      cables, double-click run selection, per-edge z-lift when selected, hover width
+      bump, socket-hover cable highlight (store wiring exists; verify), touch hit
+      widths, CableFlourish.
+- [ ] Cable-drag blurs focused field (rete `connectionpick` behavior re-created —
+      RF `onConnectStart`).
 
 ### C4 — Chrome integration
 - [ ] Mount real Header/NavMenu/Outline/StatusBar/HUD against the flow surface; port

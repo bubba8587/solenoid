@@ -108,6 +108,7 @@ export function nodeZIndex(node: SolNode): number {
 }
 export type RFEdgeLite = {
   id: string;
+  type: "cable";
   source: string;
   sourceHandle: string;
   target: string;
@@ -127,6 +128,7 @@ export function toFlowNodes(m: FlowModel): RFNodeLite[] {
 export function toFlowEdges(m: FlowModel): RFEdgeLite[] {
   return m.editor.getConnections().map((c) => ({
     id: c.id,
+    type: "cable",
     source: c.source,
     sourceHandle: c.sourceOutput,
     target: c.target,

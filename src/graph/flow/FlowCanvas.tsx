@@ -27,6 +27,8 @@ import type { Schemes } from "../schemes";
 import { setFlowSurface } from "../flowSurface";
 import { FlowSocketHandle } from "./FlowSocketHandle";
 import { SolNodeAdapter } from "./SolNodeAdapter";
+import { FlowCableEdge } from "./FlowCableEdge";
+import { cableSelectionStore, socketHighlightStore, dragSocketKey } from "../cableState";
 import { toFlowNodes, toFlowEdges, type FlowModel } from "./flowModel";
 import { canConnect, connect, disconnect, removeNodes, moveNode } from "./flowController";
 import { makeFlowArea, type FlowArea } from "./flowArea";
@@ -54,11 +56,21 @@ import { packsStore } from "../packs";
 import { CompositeNode } from "../rete-nodes";
 import { MIN_ZOOM, MAX_ZOOM } from "../areaPresets";
 import { isolateStore } from "../isolateStore";
+import { paletteStore } from "../paletteStore";
+import { CommandPalette } from "../CommandPalette";
+import { SocketLegend, ConfirmDialog, NoticeToasts } from "../components";
+import { LoadOverlay } from "../components/LoadOverlay";
+import { ComputeOverlay } from "../components/ComputeOverlay";
+import { IsolatePill } from "../components/IsolatePill";
+import { CableInspector } from "../components/CableInspector";
+import { settingsStore } from "../settingsStore";
+import { IS_MOBILE } from "../coarse";
 import "./flow.css";
 
 setFlowSurface(FlowSocketHandle);
 
 const nodeTypes = { sol: SolNodeAdapter };
+const edgeTypes = { cable: FlowCableEdge };
 const DELETE_KEYS = ["Backspace", "Delete"];
 
 // Late-bound component handlers, so the app-lifetime stack (below) can exist
@@ -226,10 +238,27 @@ function FlowCanvasInner() {
     },
     [s],
   );
-  const onEdgesChange = useCallback(
-    (changes: EdgeChange[]) => setEdges((es) => applyEdgeChanges(changes, es)),
-    [],
-  );
+  const onEdgesChange = useCallback((changes: EdgeChange[]) => {
+    setEdges((es) => {
+      const next = applyEdgeChanges(changes, es);
+      // Mirror RF edge selection into the cable store (CableInspector, delete
+      // verbs, and the edge's selected color all read it). Deferred — a store
+      // notify must not fire inside a state updater.
+      if (changes.some((ch) => ch.type === "select")) {
+        const ids = next.filter((e) => e.selected).map((e) => e.id);
+        queueMicrotask(() => cableSelectionStore.replaceAll(ids));
+      }
+      return next;
+    });
+  }, []);
+  const onEdgeMouseEnter = useCallback((_e: unknown, edge: Edge) => {
+    socketHighlightStore.setCableHover([
+      dragSocketKey(edge.source, edge.sourceHandle ?? ""),
+      dragSocketKey(edge.target, edge.targetHandle ?? ""),
+    ]);
+  }, []);
+  const onEdgeMouseLeave = useCallback(() => socketHighlightStore.setCableHover([]), []);
+  const onPaneClick = useCallback(() => cableSelectionStore.set(null), []);
   const onMove = useCallback(
     (_e: unknown, viewport: Viewport) => {
       s.area.setTransform({ x: viewport.x, y: viewport.y, k: viewport.zoom });
@@ -326,6 +355,12 @@ function FlowCanvasInner() {
 
   const packsVersion = useSyncExternalStore(packsStore.subscribe, packsStore.version);
   const visibleCatalog = useMemo(() => buildCatalog(true), [packsVersion]);
+  const paletteOpen = useSyncExternalStore(paletteStore.subscribe, paletteStore.get);
+  const paletteAlwaysOnSetting = useSyncExternalStore(
+    settingsStore.subscribe,
+    () => settingsStore.get("commandPaletteAlwaysOn"),
+  );
+  const paletteAlwaysOn = Boolean(paletteAlwaysOnSetting) && !IS_MOBILE;
 
   return (
     <div ref={wrapperRef} className="sol-rf-appcanvas" onPointerMove={onPointerMove}>
@@ -333,8 +368,12 @@ function FlowCanvasInner() {
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onEdgeMouseEnter={onEdgeMouseEnter}
+        onEdgeMouseLeave={onEdgeMouseLeave}
+        onPaneClick={onPaneClick}
         onConnect={onConnect}
         onEdgesDelete={onEdgesDelete}
         onNodesDelete={onNodesDelete}
@@ -362,6 +401,16 @@ function FlowCanvasInner() {
           onClose={() => setMenu(null)}
         />
       )}
+      {(paletteOpen || paletteAlwaysOn) && (
+        <CommandPalette persistent={paletteAlwaysOn} onClose={() => paletteStore.close()} />
+      )}
+      <SocketLegend />
+      <IsolatePill />
+      <CableInspector />
+      <ConfirmDialog />
+      <NoticeToasts />
+      <LoadOverlay />
+      <ComputeOverlay />
     </div>
   );
 }
