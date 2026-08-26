@@ -10,6 +10,7 @@ import { installInputCoercion } from "../coerceInputs";
 import { installErrorGuards } from "../errorValue";
 import * as Nodes from "../rete-nodes";
 import { ctorRegistry, type NodeCtor } from "../nodeCtorRegistry";
+import { nodeNameStore } from "../nodeNameStore";
 
 export type SolNode = Schemes["Node"];
 
@@ -42,7 +43,7 @@ export type FlowModel = {
   positions: Map<string, { x: number; y: number }>;
 };
 
-function resolveCtor(type: string): NodeCtor | undefined {
+export function resolveCtor(type: string): NodeCtor | undefined {
   const fromBarrel = (Nodes as unknown as Record<string, unknown>)[type];
   if (typeof fromBarrel === "function") return fromBarrel as NodeCtor;
   return ctorRegistry().get(type);
@@ -58,6 +59,8 @@ export async function buildModel(g: SavedGraphLite): Promise<FlowModel> {
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
 
+  // One document at a time: a fresh build owns the addressable-name space.
+  nodeNameStore.clear();
   const byId = new Map<string, SolNode>();
   const positions = new Map<string, { x: number; y: number }>();
   for (const sn of g.nodes) {
@@ -70,9 +73,9 @@ export async function buildModel(g: SavedGraphLite): Promise<FlowModel> {
     if (sn.stringLiterals && "stringLiterals" in anyNode) {
       anyNode.stringLiterals = { ...sn.stringLiterals };
     }
-    if (sn.name && "name" in anyNode) anyNode.name = sn.name;
     byId.set(sn.id, node);
     await editor.addNode(node);
+    nodeNameStore.claim(node.id, sn.name, sn.type);
     positions.set(node.id, { x: sn.x ?? 0, y: sn.y ?? 0 });
   }
   for (const c of g.connections) {
@@ -84,20 +87,6 @@ export async function buildModel(g: SavedGraphLite): Promise<FlowModel> {
     );
   }
   return { editor, engine, positions };
-}
-
-/** Fetch every node's outputs once (memoized by the engine's cache). A node
- *  whose fetch rejects (superseded/cancelled) contributes null, not a throw. */
-export async function computeAll(m: FlowModel): Promise<Map<string, Record<string, unknown> | null>> {
-  const out = new Map<string, Record<string, unknown> | null>();
-  for (const n of m.editor.getNodes()) {
-    try {
-      out.set(n.id, await m.engine.fetch(n.id));
-    } catch {
-      out.set(n.id, null);
-    }
-  }
-  return out;
 }
 
 // RF-shaped without the RF dependency; FlowApp hands these to <ReactFlow> as-is.

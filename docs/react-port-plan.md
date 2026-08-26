@@ -53,17 +53,26 @@ eventually. Multi-session: each session picks up the next unchecked chunk item b
 - [x] `flowModel.test.ts` — model build + compute + projection pinned on real seeds.
 - [x] `tsc` green; suite green; pushed.
 
-### C1 — Interaction + persistence baseline
-- [ ] Zoom/pan parity: wheel curve + clamp from `areaPresets` (`clampZoom` values), no
-      double-click zoom, `panOnDrag`/`selectionOnDrag` matching rete feel.
-- [ ] Connect/disconnect: `isValidConnection` from `SolenoidSocket.canConnect` (the
-      lattice's `accepts()`), writes through `editor.addConnection/removeConnection`,
-      recompute + value refresh on change (targeted `cache.delete` cone like
-      `process.ts`, not full rebuild).
-- [ ] Node drag writes back to model positions; delete (nodes + cables) through editor.
-- [ ] Save/load round-trip from the flow surface (serialize via textForm path; prove a
-      graph edited in RF reloads identically in the rete surface).
-- [ ] Add-node: minimal add menu from `nodeCatalog` (flat search list is enough here).
+### C1 — Interaction + persistence baseline — DONE 2026-08-26
+- [x] Zoom clamps from `areaPresets` (MIN/MAX_ZOOM), double-click zoom off. The custom
+      WHEEL CURVE (0.0028/px, cap 0.24) is NOT ported — RF default d3-zoom feel for now;
+      revisit with chrome polish in C4.
+- [x] `flow/flowController.ts`: connect/disconnect through the lattice
+      (`canConnectTo` + self-loop + single-input eviction), targeted recompute
+      (`downstreamClosure` cone + `#CIRC!` seeding reused from `process.ts` — never
+      `engine.reset(id)`), delete (cables first), addNode from `FLAT_CATALOG`, moveNode.
+- [x] `isValidConnection` wired in RF (invalid drags refused at hover time);
+      values/edges refresh from the editor after every model edit.
+- [x] Serialize via `extractInit` → textForm round-trip; names via `nodeNameStore`
+      (claim on load, ensure on save). Verified: a browser-edited ?rf save runs
+      through `scripts/run-graph.ts` (validator + headless engine) clean.
+- [x] Minimal add menu (filter box over `FLAT_CATALOG`); Save button downloads the doc.
+- [x] Live-verified via Playwright: add (34→35 nodes), edge delete (21→20), rewire with
+      eviction (Annual total 600→2500, downstream Format followed, cable count constant),
+      zero console errors. `flowController.test.ts` pins all verbs (11 tests green).
+- Follow-ups discovered: recompute renders ALL nodes' data (no early-cutoff pruning yet —
+  fine at ≤300 nodes, note for C2's value-refresh work); multi-edge delete does a full
+  pass; real Add menu tree/quick-wire is C4.
 
 ### C2 — Real node components (the big one — split across sessions as needed)
 - [ ] Adapter: render existing `components/*` node components inside RF nodes — shim

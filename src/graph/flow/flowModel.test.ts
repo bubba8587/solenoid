@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { buildModel, computeAll, toFlowNodes, toFlowEdges } from "./flowModel";
+import { buildModel, toFlowNodes, toFlowEdges } from "./flowModel";
+import { recompute } from "./flowController";
 import { FLOW_SEEDS, DEFAULT_SEED_ID } from "./flowSeeds";
 import { isSolError } from "../errorValue";
 
@@ -18,7 +19,7 @@ describe("flow model (React Flow port C0)", () => {
     expect(m.editor.getNodes().length).toBe(g.nodes.length);
     expect(m.editor.getConnections().length).toBe(g.connections.length);
 
-    const values = await computeAll(m);
+    const values = await recompute(m);
     expect(values.size).toBe(g.nodes.length);
     // The seed is a healthy graph: at least one node yields a real (non-error)
     // output value.
@@ -31,7 +32,7 @@ describe("flow model (React Flow port C0)", () => {
   it("projects RF nodes/edges with positions and handle ids", async () => {
     const g = FLOW_SEEDS[DEFAULT_SEED_ID].graph;
     const m = await buildModel(g);
-    const values = await computeAll(m);
+    const values = await recompute(m);
     const nodes = toFlowNodes(m, values);
     const edges = toFlowEdges(m);
 
