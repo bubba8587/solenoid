@@ -161,11 +161,23 @@ until the port completes. No standalone harness — new work integrates with the
       Verified: node drag blocked, the press falls through to a LIVE pan.
 - [x] Docked FCs: `setRepositionDocked` registered (same repositioner, adapter-
       driven).
-- [ ] Chrome verbs still unwired (register or port): `setBulkSettle` (copy/paste
-      bulk settle), lasso, isolate camera snapshot/restore path, touch-select
-      mode, Minimap accent parity (RF placeholder), presenter, standoff solver
-      application on drag (settle runs only via keyboard rotate now),
-      group-push (expand displacement), HtmlCanvasLayer decision.
+- [x] Lasso: `installLassoSelection` ports unchanged — it already listened in
+      CAPTURE on the container, so RF's pane (pan/box-select) never sees a
+      shift-press; cable hit-testing works via new LIVE `connectionViews`
+      (resolve to `.react-flow__edge[data-id]`). Verified: shift-drag selected
+      10 nodes, no pan.
+- [x] Isolate camera path: Canvas's snapshot/dim/zoomAt/restore effect ported
+      (live elements take the dim class). Verified: I-key → 18 receded nodes
+      dimmed + camera framed the focus; Escape restores and un-dims.
+- [x] `setBulkSettle` registered (reconcileFcTypes + connection bump +
+      processGraph + syncGroupCollapse — the rete shape minus its
+      format-mismatch rescan, which stays unported).
+- [ ] Chrome verbs still unwired: touch-select mode, Minimap accent parity (RF
+      placeholder), presenter, standoff solver application on drag, group-push
+      (expand displacement), format-mismatch rescan, HtmlCanvasLayer decision.
+- [ ] C7 probe pending: couldn't reach the seed template menu in automation to
+      load composite-workbench; test whether the rete-based drill-in overlay
+      works over the flow surface when C7 starts.
 
 ### C3 — Cables — core DONE 2026-08-26
 - [x] `FlowCableEdge`: the walk router (`getCablePath` — PathArgs maps 1:1 onto RF

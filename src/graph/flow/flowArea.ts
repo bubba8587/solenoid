@@ -57,12 +57,25 @@ class FlowNodeView {
   }
 }
 
+/** Connection views resolve to the live RF edge group (lasso cable hit-testing,
+ *  selected-cable z work). */
+class FlowConnView {
+  constructor(private id: string) {}
+  get element(): HTMLElement {
+    return (
+      document.querySelector<HTMLElement>(`.react-flow__edge[data-id="${CSS.escape(this.id)}"]`) ??
+      document.createElement("div")
+    );
+  }
+}
+
 export function makeFlowArea(
   editor: NodeEditor<Schemes>,
   positions: Map<string, { x: number; y: number }>,
   cb: FlowAreaCallbacks,
 ): FlowArea {
   const nodeViews = new Map<string, FlowNodeView>();
+  const connectionViews = new Map<string, FlowConnView>();
   const transform = { x: 0, y: 0, k: 1 };
   const pointer = { x: 0, y: 0 };
   const detachedHolder = document.createElement("div");
@@ -86,12 +99,17 @@ export function makeFlowArea(
       if (view) view.position = pos;
       else nodeViews.set(id, new FlowNodeView(id, pos, translateNode));
     }
+    const liveConns = new Set(editor.getConnections().map((c) => c.id));
+    for (const id of [...connectionViews.keys()]) if (!liveConns.has(id)) connectionViews.delete(id);
+    for (const id of liveConns) {
+      if (!connectionViews.has(id)) connectionViews.set(id, new FlowConnView(id));
+    }
   };
   syncViews();
 
   const fake = {
     nodeViews,
-    connectionViews: new Map(),
+    connectionViews,
     get container(): HTMLElement {
       return cb.getContainer() ?? detachedContainer;
     },

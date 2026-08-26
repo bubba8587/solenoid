@@ -93,7 +93,11 @@ import { makeEnsureArrange, makeArrangeFn, makeCleanupFn } from "../tidyArrange"
 import { moveGroupMembers } from "../groupLogic";
 import { GroupNode } from "../rete-nodes";
 import { canvasLockStore } from "../canvasLock";
-import { setAutoArrange, setCleanup, setRepositionDocked } from "../process";
+import { installLassoSelection, type LassoState } from "../canvasLasso";
+import { setAutoArrange, setCleanup, setRepositionDocked, setBulkSettle, bumpConnectionVersion } from "../process";
+import { reconcileFcTypes } from "../fcReconcile";
+import { syncGroupCollapse } from "../groupCollapse";
+import { AreaExtensions } from "rete-area-plugin";
 import { computeDockedCanvasPos, dockedRenderedDims } from "../fcDocking";
 import { dockedNodeStore } from "../dockedNodeStore";
 import { LoadOverlay } from "../components/LoadOverlay";
@@ -190,6 +194,7 @@ function FlowCanvasInner() {
   } | null>(null);
   const menuRef = useRef<typeof menu>(null);
   menuRef.current = menu;
+  const [lasso, setLasso] = useState<LassoState>(null);
   const [socketCtx, setSocketCtx] = useState<SocketContextTarget | null>(null);
   const [cableCtx, setCableCtx] = useState<CableContextTarget | null>(null);
   const [nodeCtx, setNodeCtx] = useState<NodeContextTarget | null>(null);
@@ -298,6 +303,15 @@ function FlowCanvasInner() {
     setAutoArrange(arrangeFn);
     setCleanup(makeCleanupFn(s.editor, s.area, arrangeFn));
 
+    // The ONE settle after a bulk topology change (paste, unpack, load-adjacent
+    // sweeps) — same shape as the rete surface minus its format-mismatch scan.
+    setBulkSettle(async (renderOnly?: Set<string>) => {
+      reconcileFcTypes(s.editor, s.area);
+      bumpConnectionVersion();
+      await processGraph(undefined, renderOnly);
+      syncGroupCollapse(s.editor, s.area);
+    });
+
     if (!s.docInit) {
       s.docInit = true;
       // Component-internal edits reach us here (processGraph's graphChanged);
@@ -320,6 +334,55 @@ function FlowCanvasInner() {
     () => addMenuRequest.register((screenX, screenY) => setMenu({ screenX, screenY })),
     [],
   );
+
+  // Isolate: view-only focus — positions snapshot on enter, restored on exit;
+  // receded nodes dim via the live RF elements.
+  useEffect(() => {
+    let wasActive = false;
+    const snapshot = new Map<string, { x: number; y: number }>();
+    const apply = () => {
+      const active = isolateStore.isActive();
+      for (const [id, view] of s.area.nodeViews) {
+        view.element.classList.toggle("solenoid-isolate-dim", active && !isolateStore.isVisible(id));
+      }
+      if (active && !wasActive) {
+        snapshot.clear();
+        const focus: Schemes["Node"][] = [];
+        for (const [id, view] of s.area.nodeViews) {
+          if (!isolateStore.isVisible(id)) continue;
+          snapshot.set(id, { ...view.position });
+          const n = s.editor.getNode(id);
+          if (n) focus.push(n);
+        }
+        if (focus.length) {
+          void AreaExtensions.zoomAt(s.area as unknown as Parameters<typeof AreaExtensions.zoomAt>[0], focus);
+        }
+      } else if (!active && wasActive) {
+        for (const [id, pos] of snapshot) {
+          if (s.area.nodeViews.has(id)) void s.area.translate(id, pos);
+        }
+        snapshot.clear();
+        scheduleAutosave();
+      }
+      wasActive = active;
+    };
+    apply();
+    return isolateStore.subscribe(apply);
+  }, [s]);
+
+  // Shift-drag lasso — capture-phase on the wrapper, so RF's pane (pan, box
+  // selection) never sees the press; cable hits resolve through the live
+  // connectionViews.
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    return installLassoSelection({
+      container: el,
+      editorRef: { current: s.editor },
+      areaRef: { current: s.area },
+      setLasso,
+    });
+  }, [s]);
 
   // Native contextmenu targeting (sockets → cables → nodes → pane), unchanged
   // from the rete surface: it resolves through data-socket attrs, the
@@ -666,6 +729,20 @@ function FlowCanvasInner() {
           onUnpackComposite={(id) => void unpackComposite(s.editor, s.area, id)}
           onClose={() => setNodeCtx(null)}
         />
+      )}
+      {lasso && (
+        <svg
+          className="solenoid-lasso"
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 50 }}
+        >
+          <polygon
+            points={lasso.points.map((p) => `${p.x},${p.y}`).join(" ")}
+            fill={lasso.mode === "enclose" ? "rgba(86, 180, 233, 0.10)" : "rgba(255, 220, 0, 0.10)"}
+            stroke={lasso.mode === "enclose" ? "rgba(86, 180, 233, 0.9)" : "rgba(255, 220, 0, 0.95)"}
+            strokeWidth={1.4}
+            strokeDasharray={lasso.mode === "touch" ? "5 4" : undefined}
+          />
+        </svg>
       )}
       <SocketLegend />
       <IsolatePill />
