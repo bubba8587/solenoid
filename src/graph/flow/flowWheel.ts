@@ -24,7 +24,7 @@ export function installWheelZoom(
     // Only the canvas proper: the minimap zooms itself, and overlays (panels,
     // inspectors) sit outside the pane on the rete surface too — no zoom there.
     if (!target?.closest?.(".react-flow")) return;
-    if (target.closest(".react-flow__minimap, .react-flow__panel")) return;
+    if (target.closest(".react-flow__minimap, .react-flow__panel, .nowheel")) return;
     e.preventDefault();
     e.stopPropagation();
     const vp = opts.getViewport();

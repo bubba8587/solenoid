@@ -328,7 +328,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
         <div ref={noteBodyRef} className="solenoid-note__content">
           {editing ? (
             <textarea
-              className="solenoid-note__body"
+              className="solenoid-note__body nowheel"
               value={body}
               placeholder="Markdown note…"
               spellCheck={false}
@@ -344,7 +344,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
             // Plain markdown — a Note is output-only, so a `` `=name` `` span stays
             // literal inline code (no ref swap). bodyHtml is already sanitized.
             <div
-              className="solenoid-note__rendered sol-md"
+              className="solenoid-note__rendered sol-md nowheel"
               onClick={startEdit}
               onPointerDown={stopDragStart}
               onMouseDown={stopDragStart}

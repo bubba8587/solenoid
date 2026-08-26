@@ -52,7 +52,7 @@ export function SessionHistoryComponent({ data }: NodeProps<SessionHistoryNodeTy
           onMouseDown={stopDragStart}
         />
       </div>
-      <pre className="solenoid-history__log" onPointerDown={stop} onMouseDown={stop}>{digest}</pre>
+      <pre className="solenoid-history__log nowheel" onPointerDown={stop} onMouseDown={stop}>{digest}</pre>
     </div>
   );
 }

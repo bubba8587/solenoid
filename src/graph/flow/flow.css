@@ -55,7 +55,6 @@
   left: auto;
   bottom: calc(var(--chrome-bottom, 19px) + 11px);
   top: auto;
-  background: var(--overlay-bg);
   z-index: 100;
   /* The svg is sized to the panel's style width/height — content-box + no
      padding keeps it unclipped (RF's own bounds offset provides the inset). */
@@ -70,10 +69,6 @@ html.minimap-top .sol-rf-appcanvas .react-flow__minimap.solenoid-minimap {
   top: 126px;
   bottom: auto;
 }
-.sol-rf-appcanvas .react-flow__minimap-mask {
-  fill: color-mix(in srgb, var(--overlay-bg) 72%, transparent);
-}
-
 /* Real cards size themselves (NodeCard sets width); RF's wrapper must not add
    a visible box of its own. */
 .react-flow__node-sol {

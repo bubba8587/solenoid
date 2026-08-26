@@ -123,7 +123,7 @@ export function SlicerComponent({ data, emit }: NodeProps<SlicerNode>) {
           </div>
         )}
         <div
-          className="slicer-node__values"
+          className="slicer-node__values nowheel"
           onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
         >

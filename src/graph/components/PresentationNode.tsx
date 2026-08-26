@@ -113,7 +113,7 @@ export function PresentationComponent({ data }: NodeProps<PresentationNodeType>)
         )}
       </div>
 
-      <div className="solenoid-pres__steps" onPointerDown={stop} onMouseDown={stop}>
+      <div className="solenoid-pres__steps nowheel" onPointerDown={stop} onMouseDown={stop}>
         {data.steps.length === 0 ? (
           <div className="solenoid-pres__empty">Select nodes, then add a step</div>
         ) : (

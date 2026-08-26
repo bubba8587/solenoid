@@ -20,6 +20,7 @@ import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { flyToNode } from "../flyToNode";
 import { ResizeHandle } from "./ResizeHandle";
+import { nodeSizeStore } from "../nodeSizeStore";
 import { nodeResizable } from "../rete-nodes";
 import { formatScalar } from "./format";
 import { ArrayChip } from "./ArrayChip";
@@ -291,6 +292,7 @@ export function NodeShell({
   // The SETTING, not the zoom state — changes only on a Settings click, so the
   // full-graph re-render it triggers is fine; see the semantic div below.
   const semanticZoomSetting = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("semanticZoom"));
+  const sized = useSyncExternalStore(nodeSizeStore.subscribe, () => nodeSizeStore.get(node.id) !== undefined);
 
   // useLayoutEffect (not useEffect): the height must settle BEFORE paint, in the
   // same frame NodeCard measures --out-socket-top.
@@ -358,7 +360,7 @@ export function NodeShell({
         <div className="solenoid-node__content">
           {leading}
           {!hideOutputSockets && <PortSockets node={node} emit={emit} side="output" />}
-          <div className="solenoid-node__body">{children}</div>
+          <div className={sized ? "solenoid-node__body nowheel" : "solenoid-node__body"}>{children}</div>
           {/* One universal resizer per resizable node — drags the card width and
               the body height (--box-h); the body's content fills/scrolls. */}
           {nodeResizable(node as unknown as ClassicPreset.Node) && <ResizeHandle nodeId={node.id} />}

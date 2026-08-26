@@ -79,7 +79,7 @@ export function FormulaField({
         ) : (
           <div
             ref={renderRef}
-            className="solenoid-expr__rendered"
+            className="solenoid-expr__rendered nowheel"
             title={onOpen ? (locked ? `${LOCK_TITLE} View.` : "Open the formula.") : locked ? LOCK_TITLE : disabled ? disabledTitle : "Edit."}
             onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}

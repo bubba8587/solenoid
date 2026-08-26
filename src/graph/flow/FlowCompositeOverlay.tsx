@@ -138,7 +138,6 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
   const [ready, setReady] = useState(false);
   const [controlsOpen, setControlsOpen] = useState(!IS_MOBILE);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const pendingFitRef = useRef(false);
   useSyncExternalStore(compositePassStore.subscribe, compositePassStore.version);
   useSyncExternalStore(compositeEditorStore.subscribe, compositeEditorStore.version);
   const { fitView, screenToFlowPosition } = useReactFlow();
@@ -174,7 +173,6 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
         s.positions.set(n.id, { ...pos });
       }
       s.rebuilding = false;
-      pendingFitRef.current = true;
       s.handlers.syncTopology();
       setReady(true);
       setActiveGraph({
@@ -385,7 +383,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     afterProgrammaticMove: () => scheduleRecord(comp, s),
     // The level's editor pipe already recomputes + persists a topology change.
     afterNodeAdded: () => scheduleAutosave(),
-    fitOnMeasure: pendingFitRef,
+    fitViewOnInit: true,
     onEscape: () => void drillTo(compositeEditorStore.stack().length - 2),
   };
 

@@ -1,20 +1,20 @@
 import { describe, it, expect } from "vitest";
 import { snapCoord, DOT_SPACING } from "./gridSnapStore";
 
-// Dots live at world `DOT_PHASE + DOT_SPACING * n` = 12 + 24·n.
-// snapCoord must always land on one of these.
+// Dots live at world `DOT_SPACING * n` = 24·n (FlowSurface offsets RF's dot pattern onto
+// the snapToGrid lattice). snapCoord must always land on one of these.
 
 function isOnDot(v: number): boolean {
-  return (v - 12) % 24 === 0;
+  return v % DOT_SPACING === 0;
 }
 
 describe("snapCoord", () => {
   it("already-on-dot values are unchanged", () => {
-    expect(snapCoord(12)).toBe(12);
-    expect(snapCoord(36)).toBe(36);
-    expect(snapCoord(60)).toBe(60);
-    expect(snapCoord(-12)).toBe(-12);
-    expect(snapCoord(-36)).toBe(-36);
+    expect(snapCoord(0)).toBe(0);
+    expect(snapCoord(24)).toBe(24);
+    expect(snapCoord(48)).toBe(48);
+    expect(snapCoord(-24)).toBe(-24);
+    expect(snapCoord(-48)).toBe(-48);
   });
 
   it("lands on a dot for a spread of inputs", () => {
@@ -24,10 +24,8 @@ describe("snapCoord", () => {
     }
   });
 
-  it("snaps 24 (a square center between dots) to 36, not 24 — regression guard", () => {
-    // 24 is midway between dots 12 and 36; tie goes up, so must be 36.
-    expect(snapCoord(24)).toBe(36);
-    expect(snapCoord(24)).not.toBe(24);
+  it("snaps 12 (midway between dots) up to 24 — regression guard", () => {
+    expect(snapCoord(12)).toBe(24);
   });
 
   it("nearest-dot: output is within half a grid step of input", () => {
@@ -46,22 +44,16 @@ describe("snapCoord", () => {
     }
   });
 
-  it("works for negative values", () => {
-    expect(snapCoord(-12)).toBe(-12);
-    expect(snapCoord(-24)).toBe(-12); // closer to -12 than -36
-    expect(snapCoord(-36)).toBe(-36);
-    expect(snapCoord(-48)).toBe(-36); // closer to -36
+  it("works for negative values and never returns -0", () => {
+    expect(snapCoord(-24)).toBe(-24);
+    expect(snapCoord(-11)).toBe(0);
+    expect(Object.is(snapCoord(-11), -0)).toBe(false);
+    expect(snapCoord(-36)).toBe(-24); // tie goes toward +∞
+    expect(snapCoord(-47)).toBe(-48);
   });
 
-  it("works for large values", () => {
-    // 996 = 12 + 24*41 → already on dot
-    expect(snapCoord(996)).toBe(996);
-    // 1000 → nearest dot: (1000-12)/24 = 41.17 → round to 41 → 41*24+12 = 996
-    expect(snapCoord(1000)).toBe(996);
-    expect(isOnDot(snapCoord(1000))).toBe(true);
-  });
-
-  it("works for decimal inputs", () => {
+  it("works for large and decimal values", () => {
+    expect(snapCoord(1000)).toBe(1008);
     expect(isOnDot(snapCoord(12.7))).toBe(true);
     expect(isOnDot(snapCoord(35.1))).toBe(true);
     expect(isOnDot(snapCoord(-0.5))).toBe(true);

@@ -290,7 +290,7 @@ function QuotedValueTextarea({ value, onChange, autoFocus }: { value: string; on
       <span className="solenoid-node__quoted-field">
         <textarea
           ref={ref}
-          className="solenoid-node__quoted-input solenoid-node__quoted-textarea"
+          className="solenoid-node__quoted-input solenoid-node__quoted-textarea nowheel"
           value={draft}
           rows={1}
           onChange={(e) => setDraft(e.target.value)}

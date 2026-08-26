@@ -121,5 +121,5 @@ export function MermaidView({ source, className }: { source: string; className?:
   if (error) {
     return <div className="solenoid-mermaid solenoid-mermaid--error" title={error}>Diagram error</div>;
   }
-  return <div ref={hostRef} className={className ? `solenoid-mermaid ${className}` : "solenoid-mermaid"} />;
+  return <div ref={hostRef} className={className ? `solenoid-mermaid nowheel ${className}` : "solenoid-mermaid nowheel"} />;
 }

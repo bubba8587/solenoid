@@ -252,7 +252,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
                 autoFocus
                 onChange={(e) => setSearch(e.target.value)}
               />
-              <div className="sol-import__list">
+              <div className="sol-import__list nowheel">
                 {filtered.length === 0 ? (
                   <div className="sol-import__empty">No .md files</div>
                 ) : (
@@ -308,7 +308,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
         <div ref={bodyRef} className="solenoid-note__content">
           {data.renderBody.trim() ? (
             <div
-              className="solenoid-note__rendered sol-md"
+              className="solenoid-note__rendered sol-md nowheel"
               onPointerDown={stopDragStart}
               onMouseDown={stopDragStart}
               dangerouslySetInnerHTML={{ __html: bodyHtml }}

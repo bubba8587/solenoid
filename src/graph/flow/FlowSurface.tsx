@@ -3,7 +3,7 @@
 // lasso, context menus, keyboard, add menu, HTML-in-Canvas layer and inspector over a
 // SurfaceStack. The hosts differ only through SurfaceHooks (what settles an edit,
 // which history answers undo, what Delete removes) and their own chrome.
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type MutableRefObject, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   ReactFlow,
   Background,
@@ -12,8 +12,11 @@ import {
   ViewportPortal,
   applyNodeChanges,
   applyEdgeChanges,
+  getNodesBounds,
+  getViewportForBounds,
   useReactFlow,
   useStoreApi,
+  useNodesInitialized,
   type Node,
   type Edge,
   type NodeChange,
@@ -49,7 +52,8 @@ import { AddNodeMenu, type NodeCatalogEntry } from "../AddNodeMenu";
 import { addMenuRequest } from "../addMenuStore";
 import { packsStore } from "../packs";
 import { CompositeNode, GroupNode, FormatControllerNode } from "../rete-nodes";
-import { MIN_ZOOM, MAX_ZOOM } from "../areaPresets";
+import { MIN_ZOOM, MAX_ZOOM, floorZoom } from "../areaPresets";
+import { gridSnapStore, DOT_SPACING } from "../gridSnapStore";
 import { isolateStore } from "../isolateStore";
 import {
   SocketContextMenu,
@@ -102,6 +106,18 @@ registerFlowSocket(FlowSocketHandle);
 
 const nodeTypes = { sol: SolNodeAdapter };
 const edgeTypes = { cable: FlowCableEdge };
+// Objects handed to <ReactFlow> live at module scope (RF's performance rule: a fresh
+// reference per render re-renders the flow).
+const SNAP_GRID: [number, number] = [DOT_SPACING, DOT_SPACING];
+const FIT_PADDING = 0.15;
+const PRO_OPTIONS = { hideAttribution: false };
+const MINIMAP_STYLE = { width: 182, height: 105 };
+const MINIMAP_MASK = "color-mix(in srgb, var(--overlay-bg) 72%, transparent)";
+// RF paints a dot at (gap/2 − size/2) into each tile; this offset slides the pattern so
+// a dot sits on every multiple of DOT_SPACING — the lattice snapToGrid and the arrow
+// nudge use.
+const DOT_SIZE = 2;
+const DOT_OFFSET = DOT_SIZE / 2 - DOT_SPACING / 2;
 
 /** Late-bound component handlers, so a stack can exist before (and across) mounts. */
 export type SurfaceHandlers = {
@@ -158,8 +174,8 @@ export type SurfaceHooks = {
   standoffs?: boolean;
   /** The main canvas stands down while the drill-in owns the keyboard. */
   standsDownWhenDrilled?: boolean;
-  /** Frame the graph once the freshly-mounted cards have measured. */
-  fitOnMeasure?: MutableRefObject<boolean>;
+  /** Frame the graph once the first mounted cards have measured. */
+  fitViewOnInit?: boolean;
   /** Escape with nothing of the surface's own open (menu, isolate). */
   onEscape?: () => void;
 };
@@ -183,7 +199,22 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   const [nodeCtx, setNodeCtx] = useState<NodeContextTarget | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const screenMouseRef = useRef({ x: 0, y: 0 });
-  const { setViewport, getViewport, screenToFlowPosition, fitView } = useReactFlow();
+  const { setViewport, getViewport, screenToFlowPosition, getNodes } = useReactFlow();
+  // RF's `fitView` prop resolves on the first setNodes, and this surface mounts EMPTY and
+  // fills after the host hydrates — so frame on the measured-nodes signal instead. The
+  // zoom floors to the snap step (fitView's own would land between steps).
+  const nodesInitialized = useNodesInitialized();
+  const fitDoneRef = useRef(false);
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!nodesInitialized || fitDoneRef.current || !hooksRef.current.fitViewOnInit || !el) return;
+    fitDoneRef.current = true;
+    const b = getNodesBounds(getNodes());
+    const w = el.clientWidth;
+    const h = el.clientHeight;
+    const zoom = floorZoom(getViewportForBounds(b, w, h, MIN_ZOOM, MAX_ZOOM, FIT_PADDING).zoom);
+    void setViewport({ x: w / 2 - (b.x + b.width / 2) * zoom, y: h / 2 - (b.y + b.height / 2) * zoom, zoom });
+  }, [nodesInitialized, getNodes, setViewport]);
 
   const syncTopology = useCallback(() => {
     s.area.syncViews();
@@ -423,16 +454,9 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           if (n) (n as { selected?: boolean }).selected = ch.selected;
         }
       }
-      // Frame the graph once the freshly-mounted cards have MEASURED —
-      // fitView before dimensions land frames a zero-size set.
-      const fit = hooksRef.current.fitOnMeasure;
-      if (fit?.current && changes.some((ch) => ch.type === "dimensions")) {
-        fit.current = false;
-        requestAnimationFrame(() => void fitView({ padding: 0.15 }));
-      }
       setNodes((ns) => applyNodeChanges(changes, ns));
     },
-    [s, fitView],
+    [s],
   );
   const onEdgesChange = useCallback((changes: EdgeChange[]) => {
     setEdges((es) => {
@@ -691,6 +715,15 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   }, [storeApi, touchSelect]);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const themeMode = appThemeStore.getMode();
+  const gridSnap = useSyncExternalStore(gridSnapStore.subscribe, gridSnapStore.get);
+  const minimapNodeColor = useCallback(
+    (n: Node) => minimapFillForNode((n.data as { node: SolenoidNode }).node, themeMode).background,
+    [themeMode],
+  );
+  const minimapNodeStrokeColor = useCallback(
+    (n: Node) => minimapFillForNode((n.data as { node: SolenoidNode }).node, themeMode).borderColor,
+    [themeMode],
+  );
   const packsVersion = useSyncExternalStore(packsStore.subscribe, packsStore.version);
   const visibleCatalog = useMemo(() => buildCatalog(true), [packsVersion]);
 
@@ -726,17 +759,20 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         isValidConnection={isValidConnection}
         deleteKeyCode={null}
         selectionKeyCode={null}
-        elevateNodesOnSelect={false}
+        zIndexMode="manual"
         zoomOnDoubleClick={false}
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
+        snapToGrid={gridSnap}
+        snapGrid={SNAP_GRID}
         colorMode={themeMode}
-        proOptions={{ hideAttribution: false }}
+        proOptions={PRO_OPTIONS}
       >
         <Background
           variant={BackgroundVariant.Dots}
-          gap={24}
-          size={2}
+          gap={DOT_SPACING}
+          size={DOT_SIZE}
+          offset={DOT_OFFSET}
           color="var(--canvas-dot)"
           bgColor="var(--canvas-bg)"
         />
@@ -747,12 +783,14 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         )}
         <MiniMap
           className="solenoid-minimap"
-          style={{ width: 182, height: 105 }}
+          style={MINIMAP_STYLE}
           pannable
           zoomable
+          bgColor="var(--overlay-bg)"
+          maskColor={MINIMAP_MASK}
           nodeBorderRadius={3}
-          nodeColor={(n) => minimapFillForNode((n.data as { node: SolenoidNode }).node, themeMode).background}
-          nodeStrokeColor={(n) => minimapFillForNode((n.data as { node: SolenoidNode }).node, themeMode).borderColor}
+          nodeColor={minimapNodeColor}
+          nodeStrokeColor={minimapNodeStrokeColor}
           nodeStrokeWidth={1}
         />
       </ReactFlow>
