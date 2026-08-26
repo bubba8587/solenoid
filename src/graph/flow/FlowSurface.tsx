@@ -372,10 +372,23 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       s.area.setTransform({ x: v.x, y: v.y, k: v.zoom });
       syncSemanticZoomFor(v.zoom);
     };
+    // Every editable is `nodrag`: RF's d3 drag listens on the node wrapper and its
+    // filter only knows the class, so a press-drag in a field (selecting text) would
+    // drag the card. Stopped in CAPTURE above the wrapper — focus and native text
+    // selection are default actions and still happen.
+    const EDITABLE = "input, textarea, select, [contenteditable='true'], [contenteditable='']";
+    const guardEditable = (e: Event) => {
+      const t = e.target as HTMLElement | null;
+      if (t?.closest?.(EDITABLE)) e.stopPropagation();
+    };
+    el.addEventListener("mousedown", guardEditable, true);
+    el.addEventListener("touchstart", guardEditable, { capture: true, passive: true });
     const unPinch = installFlowPinch(el, { getViewport, setViewport: drive });
     const unPan = installTouchCardPan(el, { getViewport, setViewport: drive });
     const unWheel = installWheelZoom(el, { getViewport, setViewport: drive });
     return () => {
+      el.removeEventListener("mousedown", guardEditable, true);
+      el.removeEventListener("touchstart", guardEditable, true);
       unPinch();
       unPan();
       unWheel();
