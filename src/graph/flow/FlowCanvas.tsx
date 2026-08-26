@@ -94,10 +94,28 @@ import { moveGroupMembers } from "../groupLogic";
 import { GroupNode } from "../rete-nodes";
 import { canvasLockStore } from "../canvasLock";
 import { installLassoSelection, type LassoState } from "../canvasLasso";
-import { setAutoArrange, setCleanup, setRepositionDocked, setBulkSettle, bumpConnectionVersion } from "../process";
+import {
+  setAutoArrange,
+  setCleanup,
+  setRepositionDocked,
+  setBulkSettle,
+  bumpConnectionVersion,
+  markBulkTopoDirty,
+  isGraphRebuilding,
+} from "../process";
 import { reconcileFcTypes } from "../fcReconcile";
 import { syncGroupCollapse } from "../groupCollapse";
 import { AreaExtensions } from "rete-area-plugin";
+import { FormatControllerNode } from "../rete-nodes";
+import { formatAnnotationStore, formatMismatchStore, unitsCompatible } from "../formatAnnotationStore";
+import { StandoffLayer } from "../components";
+import { standoffStore, setStandoffSettle, type SettleOpts } from "../standoffs";
+import { solveStandoffs } from "../standoffSolver";
+import { measuredBox } from "../nodeSize";
+import { translateEntityBy } from "../groupPush";
+import { appThemeStore } from "../appTheme";
+import { minimapFillForNode } from "../components/Minimap";
+import type { SolenoidNode } from "../schemes";
 import { computeDockedCanvasPos, dockedRenderedDims } from "../fcDocking";
 import { dockedNodeStore } from "../dockedNodeStore";
 import { LoadOverlay } from "../components/LoadOverlay";
@@ -124,7 +142,13 @@ type Handlers = {
   syncTopology(): void;
 };
 
-type Stack = FlowModel & { area: FlowArea; handlers: Handlers; docInit: boolean };
+type Stack = FlowModel & {
+  area: FlowArea;
+  handlers: Handlers;
+  docInit: boolean;
+  cablePipeInstalled?: boolean;
+  standoffSettle?: (pinned?: Set<string>, opts?: SettleOpts) => void;
+};
 
 let _stack: Stack | null = null;
 function getStack(): Stack {
@@ -303,14 +327,93 @@ function FlowCanvasInner() {
     setAutoArrange(arrangeFn);
     setCleanup(makeCleanupFn(s.editor, s.area, arrangeFn));
 
+    // FC ↔ neighbor unit-mismatch badges — rescanned on every cable change and
+    // annotation edit, same as the rete surface.
+    const rescanMismatches = () => {
+      for (const n of s.editor.getNodes()) {
+        if (!(n instanceof FormatControllerNode)) continue;
+        const mine = n.annotatedSocket();
+        if (!mine) { formatMismatchStore.setMismatch(n.id, false); continue; }
+        const myAnn = formatAnnotationStore.get(mine.nodeId, mine.socketKey);
+        if (!myAnn || myAnn.unit === "none") { formatMismatchStore.setMismatch(n.id, false); continue; }
+        let hasMismatch = false;
+        for (const conn of s.editor.getConnections()) {
+          const srcKey = `${conn.source}::${conn.sourceOutput}`;
+          const tgtKey = `${conn.target}::${conn.targetInput}`;
+          const myKey = `${mine.nodeId}::${mine.socketKey}`;
+          const other = srcKey === myKey ? tgtKey : tgtKey === myKey ? srcKey : null;
+          if (!other) continue;
+          const sep = other.lastIndexOf("::");
+          const otherAnn = formatAnnotationStore.get(other.slice(0, sep), other.slice(sep + 2));
+          if (otherAnn && !unitsCompatible(myAnn.unit, otherAnn.unit)) { hasMismatch = true; break; }
+        }
+        formatMismatchStore.setMismatch(n.id, hasMismatch);
+      }
+    };
+    const unsubFmt = formatAnnotationStore.subscribe(rescanMismatches);
+
     // The ONE settle after a bulk topology change (paste, unpack, load-adjacent
-    // sweeps) — same shape as the rete surface minus its format-mismatch scan.
+    // sweeps) — same shape as the rete surface.
     setBulkSettle(async (renderOnly?: Set<string>) => {
       reconcileFcTypes(s.editor, s.area);
       bumpConnectionVersion();
+      rescanMismatches();
       await processGraph(undefined, renderOnly);
       syncGroupCollapse(s.editor, s.area);
     });
+
+    // Standoff network: the pure solver applied through the adapter. Registered
+    // as the settle slot (keyboard rotate, canvasActions) and driven on drags.
+    let standoffSolving = false;
+    const settleStandoffNetwork = (pinned: Set<string> = new Set(), opts?: SettleOpts) => {
+      if (standoffSolving || standoffStore.isEmpty()) return;
+      const boxes = new Map<string, { x: number; y: number; w: number; h: number }>();
+      for (const st of standoffStore.all()) {
+        for (const end of [st.a, st.b]) {
+          if (boxes.has(end.nodeId)) continue;
+          const b = measuredBox(s.area, end.nodeId, s.editor);
+          if (b) boxes.set(end.nodeId, { x: b.x, y: b.y, w: b.w, h: b.h });
+        }
+      }
+      const disp = solveStandoffs(boxes, standoffStore.all(), pinned, opts);
+      if (disp.size === 0) return;
+      standoffSolving = true;
+      try {
+        for (const [id, d] of disp) translateEntityBy(s.editor, s.area, id, d.dx, d.dy);
+      } finally {
+        standoffSolving = false;
+      }
+    };
+    setStandoffSettle(settleStandoffNetwork);
+    s.standoffSettle = settleStandoffNetwork;
+
+    // Every LIVE cable change — including ones components make themselves —
+    // settles like the rete surface: FC retype reconcile, mismatch rescan,
+    // targeted recompute. Installed once for the app-lifetime stack.
+    if (!s.cablePipeInstalled) {
+      s.cablePipeInstalled = true;
+      s.editor.addPipe((ctx) => {
+        const t = (ctx as { type?: string }).type;
+        if (t === "connectioncreated" || t === "connectionremoved") {
+          if (!isGraphRebuilding()) {
+            reconcileFcTypes(s.editor, s.area);
+            bumpConnectionVersion();
+            rescanMismatches();
+            const cable = (ctx as unknown as { data: { source?: string; target?: string } }).data;
+            if (cable.target && s.editor.getNode(cable.target)) {
+              void processGraph(cable.target, undefined, { topology: true });
+              if (cable.source && s.editor.getNode(cable.source)) void s.area.update("node", cable.source);
+            } else {
+              void processGraph(undefined, undefined, { topology: true });
+            }
+            syncGroupCollapse(s.editor, s.area);
+          } else {
+            markBulkTopoDirty();
+          }
+        }
+        return ctx;
+      });
+    }
 
     if (!s.docInit) {
       s.docInit = true;
@@ -327,6 +430,7 @@ function FlowCanvasInner() {
         if (!(await documentStore.restore())) await ensureFirstDocument();
       })();
     }
+    return () => unsubFmt();
   }, [s]);
 
   // The chrome's "open the add menu here" request (command palette, top bar +).
@@ -531,16 +635,14 @@ function FlowCanvasInner() {
     },
     [s],
   );
+  // The cable-change pipe (reconcile + rescan + targeted recompute) settles
+  // this, exactly as it settles component-driven cable changes.
   const onConnect = useCallback(
     (c: Connection) => {
       if (!c.sourceHandle || !c.targetHandle) return;
       void (async () => {
         const ok = await connect(s, c.source, c.sourceHandle!, c.target, c.targetHandle!);
-        if (ok) {
-          await processGraph(c.target, undefined, { topology: true });
-          markGraphCustom();
-          scheduleAutosave();
-        }
+        if (ok) markGraphCustom();
       })();
     },
     [s],
@@ -552,6 +654,7 @@ function FlowCanvasInner() {
   const onNodeDragStart = useCallback((_e: unknown, _node: Node, dragged: Node[]) => {
     dragLastPos.current = new Map(dragged.map((n) => [n.id, { ...n.position }]));
   }, []);
+  const standoffRaf = useRef(0);
   const onNodeDrag = useCallback(
     (_e: unknown, _node: Node, dragged: Node[]) => {
       for (const n of dragged) {
@@ -563,7 +666,19 @@ function FlowCanvasInner() {
         const dy = n.position.y - last.y;
         if (dx !== 0 || dy !== 0) void moveGroupMembers(s.editor, s.area, model, dx, dy, true);
       }
-      for (const n of dragged) dragLastPos.current.set(n.id, { ...n.position });
+      for (const n of dragged) {
+        dragLastPos.current.set(n.id, { ...n.position });
+        moveNode(s, n.id, n.position);
+      }
+      // Tow standoff-tied neighbors live, one solve per frame.
+      if (!standoffStore.isEmpty() && !standoffRaf.current) {
+        const pinned = new Set(dragged.map((n) => n.id));
+        standoffRaf.current = requestAnimationFrame(() => {
+          standoffRaf.current = 0;
+          s.area.syncViews();
+          s.standoffSettle?.(pinned);
+        });
+      }
     },
     [s],
   );
@@ -571,6 +686,8 @@ function FlowCanvasInner() {
     (_e: unknown, _node: Node, dragged: Node[]) => {
       for (const n of dragged) moveNode(s, n.id, n.position);
       s.area.syncViews();
+      // The exact settle on drop (the per-frame solves converge toward it).
+      if (!standoffStore.isEmpty()) s.standoffSettle?.(new Set(dragged.map((n) => n.id)));
       dragLastPos.current.clear();
       markGraphCustom();
       scheduleAutosave();
@@ -629,6 +746,8 @@ function FlowCanvasInner() {
   );
 
   const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
+  useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
+  const themeMode = appThemeStore.getMode();
   const packsVersion = useSyncExternalStore(packsStore.subscribe, packsStore.version);
   const visibleCatalog = useMemo(() => buildCatalog(true), [packsVersion]);
   const paletteOpen = useSyncExternalStore(paletteStore.subscribe, paletteStore.get);
@@ -673,8 +792,16 @@ function FlowCanvasInner() {
         proOptions={{ hideAttribution: false }}
       >
         <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} />
-        <MiniMap pannable zoomable />
+        <MiniMap
+          pannable
+          zoomable
+          nodeBorderRadius={3}
+          nodeColor={(n) => minimapFillForNode((n.data as { node: SolenoidNode }).node, themeMode).background}
+          nodeStrokeColor={(n) => minimapFillForNode((n.data as { node: SolenoidNode }).node, themeMode).borderColor}
+          nodeStrokeWidth={1}
+        />
       </ReactFlow>
+      <StandoffLayer />
       {menu && (
         <AddNodeMenu
           screenX={menu.screenX}

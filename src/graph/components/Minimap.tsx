@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { MinimapPlugin } from "rete-minimap-plugin";
 import { getActiveArea, getActiveEditor } from "../activeGraph";
-import type { Schemes } from "../schemes";
+import type { Schemes, SolenoidNode } from "../schemes";
 import { GroupNode, NoteNode, nodeAccent } from "../rete-nodes";
 import { groupCollapseStore } from "../groupCollapse";
 import { appThemeStore } from "../appTheme";
@@ -65,21 +65,25 @@ export function collapsedAwareNodesRect() {
   });
 }
 
+/** One node's minimap fill — shared with the flow surface's RF MiniMap so the
+ *  two minimaps can't drift on accent policy. */
+export function minimapFillForNode(n: SolenoidNode, mode: "dark" | "light"): Fill {
+  if (n instanceof GroupNode) {
+    const c = themeAccent(resolveColor(n.color), mode);
+    return { background: hexToRgba(c, 0.2), borderColor: hexToRgba(c, 0.75) };
+  }
+  if (n instanceof NoteNode) {
+    // Notes read more solid than a group's wash on canvas.
+    const c = themeAccent(resolveColor(n.color), mode);
+    return { background: hexToRgba(c, 0.35), borderColor: hexToRgba(c, 0.9) };
+  }
+  const accent = nodeAccent(n, mode);
+  return { background: hexToRgba(accent, 0.85), borderColor: hexToRgba(accent, 0.95) };
+}
+
 // Index-aligned to the geometry array — same filtered list, same order.
 function nodeFills(mode: "dark" | "light"): Fill[] {
-  return minimapNodes().nodes.map((n) => {
-    if (n instanceof GroupNode) {
-      const c = themeAccent(resolveColor(n.color), mode);
-      return { background: hexToRgba(c, 0.2), borderColor: hexToRgba(c, 0.75) };
-    }
-    if (n instanceof NoteNode) {
-      // Notes read more solid than a group's wash on canvas.
-      const c = themeAccent(resolveColor(n.color), mode);
-      return { background: hexToRgba(c, 0.35), borderColor: hexToRgba(c, 0.9) };
-    }
-    const accent = nodeAccent(n, mode);
-    return { background: hexToRgba(accent, 0.85), borderColor: hexToRgba(accent, 0.95) };
-  });
+  return minimapNodes().nodes.map((n) => minimapFillForNode(n, mode));
 }
 
 // Node rects live in GRAPH coordinates, so a pan moves only the viewport box: the

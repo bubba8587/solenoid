@@ -172,9 +172,25 @@ until the port completes. No standalone harness — new work integrates with the
 - [x] `setBulkSettle` registered (reconcileFcTypes + connection bump +
       processGraph + syncGroupCollapse — the rete shape minus its
       format-mismatch rescan, which stays unported).
-- [ ] Chrome verbs still unwired: touch-select mode, Minimap accent parity (RF
-      placeholder), presenter, standoff solver application on drag, group-push
-      (expand displacement), format-mismatch rescan, HtmlCanvasLayer decision.
+- [x] Live cable-change pipe (2026-08-26): Canvas's connectioncreated/removed
+      settle (reconcileFcTypes + connection bump + mismatch rescan + TARGETED
+      processGraph + syncGroupCollapse; markBulkTopoDirty inside rebuilds) now
+      runs on the flow stack — component-driven cable changes reconcile FCs like
+      the rete surface, and onConnect no longer double-computes.
+- [x] Format-mismatch rescan ported (subscribed to formatAnnotationStore).
+- [x] Minimap accent parity: `minimapFillForNode` extracted from Minimap.tsx and
+      fed to RF MiniMap nodeColor/nodeStrokeColor with the live theme mode —
+      verified visually on power-features.
+- [x] Standoffs: `settleStandoffNetwork` rebuilt on the flow stack (pure solver +
+      measuredBox + translateEntityBy through the adapter), registered as the
+      settle slot, driven per-frame during drags (rAF) + exact settle on drop;
+      StandoffLayer mounts in FlowCanvas (renders on power-features). Drag-tow
+      not yet exercised in automation (context-menu Link needs two ungrouped
+      nodes; probes kept hitting grouped seeds) — verify in the C9 sweep.
+- [ ] PARITY-SWEEP FLAG: power-features "Scaled List" shows #VALUE! on the flow
+      surface — compare against ?rete before assuming it's the seed's intent.
+- [ ] Chrome verbs still unwired: touch-select mode, presenter, group-push
+      (expand displacement), HtmlCanvasLayer decision, undo labels, ribbons.
 - [ ] C7 probe pending: couldn't reach the seed template menu in automation to
       load composite-workbench; test whether the rete-based drill-in overlay
       works over the flow surface when C7 starts.
