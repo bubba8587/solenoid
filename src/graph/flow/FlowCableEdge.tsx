@@ -7,7 +7,7 @@
 // Visible strokes are RF BaseEdges styled inline (RF's edge CSS would otherwise
 // recolor a selected path); the named hit path stays the ONE pointer target.
 // Not ported: the load-reveal draw-on animation (rete-holder based — ledger).
-import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useLayoutEffect, useState, useSyncExternalStore } from "react";
 import { BaseEdge, type Edge, type EdgeProps } from "@xyflow/react";
 import { getCablePath, Position as CablePosition } from "../cablePaths";
 import { cableShapeStore, type CableShape } from "../cableShape";
@@ -125,28 +125,6 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
     sourceX, sourceY, targetX, targetY,
   } = props;
   const [hovered, setHovered] = useState(false);
-  const shape = useSyncExternalStore(cableShapeStore.subscribe, cableShapeStore.get);
-  useSyncExternalStore(settingsStore.subscribe, settingsStore.version);
-  useSyncExternalStore(cableAngleStore.subscribe, () => 0);
-  useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
-  useSyncExternalStore(cableSelectionStore.subscribe, cableSelectionStore.version);
-  useSyncExternalStore(cableGhostStore.subscribe, cableGhostStore.version);
-  const flow = useSyncExternalStore(cableFlowStore.subscribe, cableFlowStore.get);
-  useSyncExternalStore(isolateStore.subscribe, isolateStore.version);
-  useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
-  useSyncExternalStore(conduitLayoutStore.subscribe, conduitLayoutStore.version);
-  const hoveredRibbonKey = useSyncExternalStore(ribbonHoverStore.subscribe, ribbonHoverStore.get);
-  // A standalone cable watches only its OWN hover flag; ribbon members share
-  // appearance, so they stay on the global version (kills the all-cables fan-out).
-  const ribbonRef = useRef(false);
-  useSyncExternalStore(
-    socketHoverCableStore.subscribe,
-    () => (ribbonRef.current ? socketHoverCableStore.version() : socketHoverCableStore.isHovered(id)),
-  );
-  const socketHovered = socketHoverCableStore.isHovered(id);
-  // Evict on unmount so the path cache can't grow across create/delete churn.
-  useLayoutEffect(() => () => { _pathCache.delete(id); }, [id]);
-
   // Owning, not main: inside the flow drill-in this edge belongs to the
   // composite's internal editor.
   const editor = getOwningEditor(source);
@@ -158,9 +136,41 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
     targetInput: targetHandleId ?? "",
   };
   const ribbon = editor ? ribbonForConnection(editor, conn) : null;
-  const ribbonSelected = ribbon !== null && ribbon.members.some((m) => cableSelectionStore.has(m.id));
-  const selected = cableSelectionStore.has(id);
-  ribbonRef.current = ribbon !== null;
+
+  // Every store subscription is a PER-EDGE selector: a notify re-renders this edge
+  // only when its own derived value moved (a compute pass bumps cableValueStore
+  // for every cable; only a combo cable whose COLOR changes needs to repaint).
+  const shape = useSyncExternalStore(cableShapeStore.subscribe, cableShapeStore.get);
+  useSyncExternalStore(settingsStore.subscribe, settingsStore.version);
+  const typeColor = useSyncExternalStore(
+    cableValueStore.subscribe,
+    () => typeColorFor(source, conn.sourceOutput, target, conn.targetInput),
+  );
+  const selected = useSyncExternalStore(cableSelectionStore.subscribe, () => cableSelectionStore.has(id));
+  const ribbonSelected = useSyncExternalStore(
+    cableSelectionStore.subscribe,
+    () => ribbon !== null && ribbon.members.some((m) => cableSelectionStore.has(m.id)),
+  );
+  const ghost = useSyncExternalStore(cableGhostStore.subscribe, () => cableGhostStore.isGhost(id));
+  const flow = useSyncExternalStore(cableFlowStore.subscribe, cableFlowStore.get);
+  const isoDim = useSyncExternalStore(
+    isolateStore.subscribe,
+    () => isolateStore.isActive() && (!isolateStore.isVisible(source) || !isolateStore.isVisible(target)),
+  );
+  useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
+  // Conduit face points move only ribbons.
+  useSyncExternalStore(conduitLayoutStore.subscribe, () => (ribbon ? conduitLayoutStore.version() : 0));
+  const ribbonHovered = useSyncExternalStore(
+    ribbonHoverStore.subscribe,
+    () => ribbon !== null && ribbonHoverStore.get() === ribbon.key,
+  );
+  // A standalone cable watches only its OWN hover flag; ribbon members share appearance.
+  const socketHovered = useSyncExternalStore(
+    socketHoverCableStore.subscribe,
+    () => (ribbon ? ribbon.members.some((m) => socketHoverCableStore.isHovered(m.id)) : socketHoverCableStore.isHovered(id)),
+  );
+  // Evict on unmount so the path cache can't grow across create/delete churn.
+  useLayoutEffect(() => () => { _pathCache.delete(id); }, [id]);
 
   if (groupCollapseStore.isConnHidden(id)) return null;
 
@@ -175,13 +185,9 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
   const cs = pillPoint(groupCollapseStore.outPillFor(source, conn.sourceOutput)) ?? { x: sourceX, y: sourceY };
   const ce = pillPoint(groupCollapseStore.inPillFor(target, conn.targetInput)) ?? { x: targetX, y: targetY };
 
-  const ghost = cableGhostStore.isGhost(id);
-  const typeColor = typeColorFor(source, conn.sourceOutput, target, conn.targetInput);
   const stroke = selected ? SELECTED_COLOR : typeColor;
   const activeHover = hovered || socketHovered;
   const baseWidth = selected ? 2.6 : activeHover ? 2.5 : 1.8;
-  const isoDim = isolateStore.isActive()
-    && (!isolateStore.isVisible(source) || !isolateStore.isVisible(target));
   const dimStyle = isoDim ? { opacity: 0.15 } : undefined;
 
   const accumulating = (e: React.MouseEvent) => e.ctrlKey || e.metaKey || touchSelectStore.get();
@@ -205,8 +211,9 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
     }
   };
 
-  const sourceAngleDeg = cableAngleStore.get(source, conn.sourceOutput);
-  const targetAngleDeg = cableAngleStore.get(target, conn.targetInput);
+  // Own endpoints only (a Conduit rotation re-angles just its lanes).
+  const sourceAngleDeg = useSyncExternalStore(cableAngleStore.subscribe, () => cableAngleStore.get(source, conn.sourceOutput));
+  const targetAngleDeg = useSyncExternalStore(cableAngleStore.subscribe, () => cableAngleStore.get(target, conn.targetInput));
 
   // ── Ribbons: rep draws the trunk, every member its own rank-ordered fans ──
   if (ribbon) {
@@ -214,8 +221,7 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
     const lane = (key: string) => Number(key.slice(key.indexOf("_") + 1));
     const slot = (rank: number) => ((rank + 0.5) / n - 0.5) * RIBBON_WIDTH;
     const isRep = ribbon.repId === id;
-    const ribbonHover = hovered || hoveredRibbonKey === ribbon.key
-      || ribbon.members.some((m) => socketHoverCableStore.isHovered(m.id));
+    const ribbonHover = hovered || ribbonHovered || socketHovered;
     const active = ribbonHover || ribbonSelected;
     const trunkStroke = ribbonSelected ? SELECTED_COLOR : RIBBON_COLOR;
     const trunkW = ribbonSelected ? RIBBON_WIDTH + 1.2 : ribbonHover ? RIBBON_WIDTH + 0.8 : RIBBON_WIDTH;
