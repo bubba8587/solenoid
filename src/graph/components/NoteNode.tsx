@@ -1,3 +1,4 @@
+import { useFlowResizeGrip } from "../flowSurface";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
@@ -14,7 +15,6 @@ import { processGraph, bumpConnectionVersion } from "../process";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { reconcileFcTypes } from "../fcReconcile";
 import { scheduleAutosave } from "../persistence";
-import { gridSnapStore, snapCoord } from "../gridSnapStore";
 import { standoffStore, settleStandoffs } from "../standoffs";
 import { SOCKET_COLORS } from "../sockets";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
@@ -147,44 +147,19 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
 
   // Manual width + height, like a Group: a fixed box the body fills and scrolls in.
   // No history entry — just an autosave on release.
-  function onResizeDown(e: React.PointerEvent) {
-    e.stopPropagation();
-    e.preventDefault();
-    const startX = e.clientX, startY = e.clientY;
-    const startW = data.width, startH = data.height;
-    const area = getActiveArea();
-    const k = area?.area.transform.k ?? 1;
-    const handle = e.currentTarget as HTMLElement;
-    handle.setPointerCapture(e.pointerId);
-    const move = (ev: PointerEvent) => {
-      // Integer dims — a fractional size renders the inset:-2px selection ring 0.5px off.
-      data.width = Math.round(Math.max(NOTE_MIN_W, startW + (ev.clientX - startX) / k));
-      data.height = Math.round(Math.max(minNoteH, startH + (ev.clientY - startY) / k));
-      void area?.update("node", data.id);
-    };
-    const up = () => {
-      handle.releasePointerCapture(e.pointerId);
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      // Snap-to-grid (on release): land the bottom-right corner on the grid by
-      // adjusting w/h (the top-left is fixed during a resize) — same as Groups.
-      if (gridSnapStore.get()) {
-        const pos = area?.nodeViews.get(data.id)?.position;
-        if (pos) {
-          data.width = Math.round(Math.max(NOTE_MIN_W, snapCoord(pos.x + data.width) - pos.x));
-          data.height = Math.round(Math.max(minNoteH, snapCoord(pos.y + data.height) - pos.y));
-        }
-      }
-      void area?.update("node", data.id);
-      scheduleAutosave();
-      // The standoff solver MEASURES offsetWidth/Height, so defer a frame for the paint;
-      // pinning this note makes its partner re-align, not the reverse.
-      if (!standoffStore.isEmpty()) {
-        requestAnimationFrame(() => settleStandoffs(new Set([data.id])));
-      }
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
+  const Grip = useFlowResizeGrip();
+  function onResize(size: { width: number; height: number }) {
+    data.width = Math.max(NOTE_MIN_W, size.width);
+    data.height = Math.max(minNoteH, size.height);
+    void getActiveArea()?.update("node", data.id);
+  }
+  function onResizeEnd() {
+    scheduleAutosave();
+    // The standoff solver MEASURES offsetWidth/Height, so defer a frame for the paint;
+    // pinning this note makes its partner re-align, not the reverse.
+    if (!standoffStore.isEmpty()) {
+      requestAnimationFrame(() => settleStandoffs(new Set([data.id])));
+    }
   }
 
   // Derived LIVE from `body`, not `data.renderBody` — the RENDER is deliberately
@@ -362,16 +337,12 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
           )}
         </div>
       )}
-      {!collapsed && (
-        <div
-          className="solenoid-note__resize"
-          onPointerDown={onResizeDown}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
+      {!collapsed && Grip && (
+        <Grip className="solenoid-note__resize" minWidth={NOTE_MIN_W} minHeight={minNoteH} onResize={onResize} onResizeEnd={onResizeEnd}>
           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
             <path d="M11 5 5 11M11 9l-2 2" />
           </svg>
-        </div>
+        </Grip>
       )}
     </div>
   );

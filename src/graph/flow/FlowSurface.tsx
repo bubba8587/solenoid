@@ -29,8 +29,9 @@ import "@xyflow/react/dist/style.css";
 import { ClassicPreset } from "rete";
 import type { Schemes } from "../schemes";
 import type { Surface } from "../surface";
-import { registerFlowSocket } from "../flowSurface";
+import { registerFlowSocket, registerFlowResizeGrip } from "../flowSurface";
 import { FlowSocketHandle } from "./FlowSocketHandle";
+import { FlowResizeGrip } from "./FlowResizeGrip";
 import { SolNodeAdapter, type SolFlowNode } from "./SolNodeAdapter";
 import { FlowCableEdge, type SolFlowEdge } from "./FlowCableEdge";
 import { FlowConnectionLine } from "./FlowConnectionLine";
@@ -102,6 +103,7 @@ import "../canvas.css";
 import "./flow.css";
 
 registerFlowSocket(FlowSocketHandle);
+registerFlowResizeGrip(FlowResizeGrip);
 
 const nodeTypes = { sol: SolNodeAdapter };
 const edgeTypes = { cable: FlowCableEdge };
@@ -453,7 +455,10 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           if (n) (n as { selected?: boolean }).selected = ch.selected;
         }
       }
-      setNodes((ns) => applyNodeChanges(changes, ns));
+      // A resize grip's own dimension changes (`resizing` set) stay out of RF state: the
+      // model sizes the card, RF measures it (FlowResizeGrip).
+      const applied = changes.filter((ch) => !(ch.type === "dimensions" && ch.resizing !== undefined));
+      setNodes((ns) => applyNodeChanges(applied, ns));
     },
     [s],
   );

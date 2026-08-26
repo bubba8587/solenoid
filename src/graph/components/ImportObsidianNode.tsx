@@ -1,3 +1,4 @@
+import { useFlowResizeGrip } from "../flowSurface";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
@@ -138,25 +139,11 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   const themed = themeAccent(resolveColor(color), mode);
   const vars = { "--note-color": themed, "--note-bg": hexToRgba(themed, 0.3) } as React.CSSProperties;
 
-  function onResizeDown(e: React.PointerEvent) {
-    e.stopPropagation();
-    e.preventDefault();
-    const area = getActiveArea();
-    const startX = e.clientX, startY = e.clientY;
-    const zoom = area?.area.transform.k ?? 1;
-    const startW = data.width, startH = Math.max(data.height, minH);
-    const move = (ev: PointerEvent) => {
-      data.width = Math.round(Math.max(MIN_W, startW + (ev.clientX - startX) / zoom));
-      data.height = Math.round(Math.max(minH, startH + (ev.clientY - startY) / zoom));
-      void area?.update("node", data.id);
-    };
-    const up = () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      scheduleAutosave();
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
+  const Grip = useFlowResizeGrip();
+  function onResize(size: { width: number; height: number }) {
+    data.width = Math.max(MIN_W, size.width);
+    data.height = Math.max(minH, size.height);
+    void getActiveArea()?.update("node", data.id);
   }
 
   return (
@@ -325,12 +312,12 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
         </div>
       )}
 
-      {!collapsed && (
-        <div className="solenoid-note__resize" onPointerDown={onResizeDown} onMouseDown={(e) => e.stopPropagation()}>
+      {!collapsed && Grip && (
+        <Grip className="solenoid-note__resize" minWidth={MIN_W} minHeight={minH} onResize={onResize} onResizeEnd={() => scheduleAutosave()}>
           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
             <path d="M11 5 5 11M11 9l-2 2" />
           </svg>
-        </div>
+        </Grip>
       )}
     </div>
   );

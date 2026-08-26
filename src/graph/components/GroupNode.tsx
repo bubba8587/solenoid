@@ -1,3 +1,4 @@
+import { useFlowResizeGrip } from "../flowSurface";
 import { Fragment, useState, useRef, useEffect, useLayoutEffect, useSyncExternalStore, type CSSProperties } from "react";
 import type { GroupNode as GroupNodeType } from "../rete-nodes";
 import { hexToRgba, contrastInk, themeAccent, darkenAccent, resolveColor } from "../palette";
@@ -12,7 +13,6 @@ import { groupCollapseStore, syncGroupCollapse, COLLAPSE_LAYOUT, pillY, type Ret
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
 import { socketHighlightStore, dragSocketKey } from "../cableState";
 import { reconcileGroupBox, autofitGroupWithHistory, GROUP_MIN_W, GROUP_MIN_H } from "../groupLogic";
-import { gridSnapStore, snapCoord } from "../gridSnapStore";
 import { standoffStore, settleStandoffs } from "../standoffs";
 import { setGroupsCollapsed } from "../groupPush";
 import { rebuildGroupMembership } from "../groupMembership";
@@ -88,7 +88,6 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   const taRef = useRef<HTMLTextAreaElement>(null);
   // The grip's setPointerCapture + preventDefault suppress the native dblclick, so
   // the double-press is timed by hand.
-  const lastGripDown = useRef(0);
 
   useEffect(() => { setLabel(node.label); }, [node.label]);
   useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
@@ -126,59 +125,28 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
     else if (e.key === "Escape") { labelCancelled.current = true; e.currentTarget.blur(); }
   }
 
-  function onResizeDown(e: React.PointerEvent) {
-    e.stopPropagation();
-    e.preventDefault();
-    const now = Date.now();
-    if (now - lastGripDown.current < 350) {
-      lastGripDown.current = 0;
-      void autofitToMembers();
-      return;
-    }
-    lastGripDown.current = now;
-    const startX = e.clientX, startY = e.clientY;
-    const startW = node.width, startH = node.height;
+  const Grip = useFlowResizeGrip();
+  function onResize(size: { width: number; height: number }) {
+    node.width = Math.max(GROUP_MIN_W, size.width);
+    node.height = Math.max(GROUP_MIN_H, size.height);
+    void getOwningArea(node.id)?.update("node", node.id);
+  }
+  function onResizeEnd() {
+    const editor = getOwningEditor(node.id);
     const area = getOwningArea(node.id);
-    const k = area?.area.transform.k ?? 1;
-    const handle = e.currentTarget as HTMLElement;
-    handle.setPointerCapture(e.pointerId);
-
-    const move = (ev: PointerEvent) => {
-      node.width = Math.round(Math.max(GROUP_MIN_W, startW + (ev.clientX - startX) / k));
-      node.height = Math.round(Math.max(GROUP_MIN_H, startH + (ev.clientY - startY) / k));
-      void area?.update("node", node.id);
-    };
-    const up = () => {
-      handle.releasePointerCapture(e.pointerId);
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      // The top-left stays fixed during a BR resize, so snap the corner's WORLD
-      // position and derive width/height from it.
-      if (gridSnapStore.get()) {
-        const pos = area?.nodeViews.get(node.id)?.position;
-        if (pos) {
-          node.width = Math.round(Math.max(GROUP_MIN_W, snapCoord(pos.x + node.width) - pos.x));
-          node.height = Math.round(Math.max(GROUP_MIN_H, snapCoord(pos.y + node.height) - pos.y));
-          void area?.update("node", node.id);
-        }
-      }
-      const editor = getOwningEditor(node.id);
-      if (editor && area) {
-        // A MANUAL resize DOES re-evaluate membership; autofit is the exception —
-        // it wraps existing members and must not absorb bystanders.
-        reconcileGroupBox(editor, area, node);
-        rebuildGroupMembership(editor);
-        syncGroupCollapse(editor, area);
-      }
-      scheduleAutosave();
-      // The solver MEASURES offsetWidth/Height, so defer a frame to let the resize
-      // paint; pinning this group makes its partner re-align to it.
-      if (!standoffStore.isEmpty()) {
-        requestAnimationFrame(() => settleStandoffs(new Set([node.id])));
-      }
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
+    if (editor && area) {
+      // A MANUAL resize DOES re-evaluate membership; autofit is the exception —
+      // it wraps existing members and must not absorb bystanders.
+      reconcileGroupBox(editor, area, node);
+      rebuildGroupMembership(editor);
+      syncGroupCollapse(editor, area);
+    }
+    scheduleAutosave();
+    // The solver MEASURES offsetWidth/Height, so defer a frame to let the resize
+    // paint; pinning this group makes its partner re-align to it.
+    if (!standoffStore.isEmpty()) {
+      requestAnimationFrame(() => settleStandoffs(new Set([node.id])));
+    }
   }
 
   async function autofitToMembers() {
@@ -415,16 +383,21 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
         </>
       ) : (
         <div className="solenoid-group__body" style={{ borderColor: borderCol, background: hexToRgba(color, fillAlpha) }}>
-          <div
-            className="solenoid-group__resize"
-            style={{ color }}
-            onPointerDown={onResizeDown}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
-              <path d="M11 5 5 11M11 9l-2 2" />
-            </svg>
-          </div>
+          {Grip && (
+            <Grip
+              className="solenoid-group__resize"
+              style={{ color }}
+              minWidth={GROUP_MIN_W}
+              minHeight={GROUP_MIN_H}
+              onResize={onResize}
+              onResizeEnd={onResizeEnd}
+              onDoubleClick={() => void autofitToMembers()}
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+                <path d="M11 5 5 11M11 9l-2 2" />
+              </svg>
+            </Grip>
+          )}
         </div>
       )}
     </div>

@@ -12,8 +12,9 @@ import "@xyflow/react/dist/style.css";
 import { NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
 import type { Schemes } from "../schemes";
-import { FlowSurfaceContext, registerFlowSocket } from "../flowSurface";
+import { FlowSurfaceContext, registerFlowSocket, registerFlowResizeGrip } from "../flowSurface";
 import { FlowSocketHandle } from "./FlowSocketHandle";
+import { FlowResizeGrip } from "./FlowResizeGrip";
 import { SolNodeAdapter, type SolFlowNode } from "./SolNodeAdapter";
 import { FlowCableEdge, type SolFlowEdge } from "./FlowCableEdge";
 import { toFlowNodes, toFlowEdges, type FlowModel } from "./flowModel";
@@ -23,6 +24,7 @@ import { installErrorGuards } from "../errorValue";
 import "./flow.css";
 
 registerFlowSocket(FlowSocketHandle);
+registerFlowResizeGrip(FlowResizeGrip);
 
 const nodeTypes = { sol: SolNodeAdapter };
 const edgeTypes = { cable: FlowCableEdge };
