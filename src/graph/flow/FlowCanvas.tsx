@@ -66,6 +66,7 @@ import { MIN_ZOOM, MAX_ZOOM } from "../areaPresets";
 import { isolateStore } from "../isolateStore";
 import { paletteStore } from "../paletteStore";
 import { CommandPalette } from "../CommandPalette";
+import { CableFlourish } from "../components/CableFlourish";
 import {
   SocketLegend,
   ConfirmDialog,
@@ -947,6 +948,7 @@ function FlowCanvasInner() {
       <SocketLegend />
       <IsolatePill />
       <CableInspector />
+      <CableFlourish />
       <ConfirmDialog />
       <NoticeToasts />
       <LoadOverlay />

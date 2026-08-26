@@ -205,7 +205,7 @@ until the port completes. No standalone harness — new work integrates with the
 - [x] Group collapse/expand via the card chevron verified (28→25→28 visible);
       push displacement lives inside shared setGroupsCollapsed (adapter-driven).
 - [ ] Still open: touch-select mode (mobile pill), HtmlCanvasLayer decision,
-      undo labels, conduit ribbons (trunk+fans).
+      undo labels. (Conduit ribbons landed — see C3.)
 - [ ] C7 probe pending: couldn't reach the seed template menu in automation to
       load composite-workbench; test whether the rete-based drill-in overlay
       works over the flow surface when C7 starts.
@@ -221,10 +221,21 @@ until the port completes. No standalone harness — new work integrates with the
       mounted by FlowCanvas too** (CommandPalette, SocketLegend, IsolatePill,
       CableInspector, ConfirmDialog, NoticeToasts, LoadOverlay, ComputeOverlay) —
       they lived inside Canvas.tsx's JSX, not MainApp.
-- [ ] Ribbons/conduit trunks + fans, ghost cables, load-reveal draw, value chips on
-      cables, double-click run selection, per-edge z-lift when selected, hover width
-      bump, socket-hover cable highlight (store wiring exists; verify), touch hit
-      widths, CableFlourish.
+- [x] Full ConnectionComponent port (2026-08-26): FlowCableEdge now carries ALL
+      three ribbon kinds (conduit→conduit/group, collapsed-group source) with
+      rep-drawn trunk + rank-ordered lane fans, ribbon-wide hover/selection
+      (ribbonHoverStore/socketHoverCableStore), double-click run selection via
+      conduitPath, ghost cables (click commits), hit-stroke trims near blocks
+      (hitTrimDash), flow-bead phase alignment, per-connection path cache with
+      settings-subscribed clear, own `.solenoid-cable-hit` click handling
+      (hover width bump + socket highlight), touch hit widths (IS_COARSE),
+      separation pinning. Verified live on power-features: trunk+fans into the
+      collapsed MONITORING pill, plain-cable click → inspector, ribbon click →
+      selected trunk + inspector correctly null (ribbon rule), dblclick → run
+      selected + FROM/VIA Conduit/TO inspector. CableFlourish mounted (it's a
+      self-contained viewport overlay).
+- [ ] NOT ported (deliberate): load-reveal draw animation (rete kept a
+      first-mount dash sweep; revisit at C9 if missed).
 - [ ] Cable-drag blurs focused field (rete `connectionpick` behavior re-created —
       RF `onConnectStart`).
 
