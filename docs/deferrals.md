@@ -16,6 +16,13 @@ duplicate them, just names them for the review).
   fit-before-paint and HIC painting labels itself. 2.0-shaped. First step landed 2026-08-27:
   `Surface.measured` (RF's post-layout measure) is the first tier of `measuredBox`, so layout
   math no longer forces reflows for mounted cards.
+- **HIC paints from a worker (author 2026-08-27, via github.com/awaisshah228/infinit-canvas)** —
+  that library is the RF API over OffscreenCanvas + a Web Worker, DOM only as an overlay; its
+  5000-nodes figure is for built-in nodes (custom nodeTypes go hybrid, i.e. our DOM anyway).
+  The one piece to take: HIC's held layer painted from a worker (`transferControlToOffscreen`),
+  keeping the main thread free during gestures. A contained HtmlCanvasLayer change, NOT a third
+  render path (CLAUDE.md). Pairs with headless card metrics above — both are "draw cards you
+  never mount". 2.0.
 
 Feature-shaped backlog items moved here wholesale. **2026-08-23: the author reopened the
 scope** — the engine/logic entries that were never really parked (distribution fitting,
