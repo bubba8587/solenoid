@@ -89,6 +89,13 @@ import { commentsPanelUi } from "../commentStore";
 import { pinNodeValue } from "../pinStore";
 import { unpackComposite } from "../compositeLogic";
 import { compositeEditorStore } from "../compositeEditorStore";
+import { makeEnsureArrange, makeArrangeFn, makeCleanupFn } from "../tidyArrange";
+import { moveGroupMembers } from "../groupLogic";
+import { GroupNode } from "../rete-nodes";
+import { canvasLockStore } from "../canvasLock";
+import { setAutoArrange, setCleanup, setRepositionDocked } from "../process";
+import { computeDockedCanvasPos, dockedRenderedDims } from "../fcDocking";
+import { dockedNodeStore } from "../dockedNodeStore";
 import { LoadOverlay } from "../components/LoadOverlay";
 import { ComputeOverlay } from "../components/ComputeOverlay";
 import { IsolatePill } from "../components/IsolatePill";
@@ -260,6 +267,37 @@ function FlowCanvasInner() {
       scheduleAutosave();
     });
 
+    // Docked FCs ride their host: same repositioner as the rete surface,
+    // driven through the area adapter (live elements, translate).
+    const repositionDockedTo = (hostId: string) => {
+      const el = wrapperRef.current;
+      if (!el) return;
+      for (const rel of dockedNodeStore.getDockedTo(hostId)) {
+        const dockedNode = s.editor.getNode(rel.id);
+        if (!dockedNode) continue;
+        if ((dockedNode as { selected?: boolean }).selected) continue;
+        const { w, h } = dockedRenderedDims(s.area, rel.id, dockedNode.width, dockedNode.height);
+        const pos = computeDockedCanvasPos(s.area, el, rel.hostNodeId, rel.socketKey, rel.side, w, h);
+        if (pos) void s.area.translate(rel.id, pos);
+      }
+    };
+    setRepositionDocked(repositionDockedTo);
+
+    // Tidy + Cleanup: the SAME arrange factory as the rete surface; the
+    // auto-arrange plugin resolves area/editor through the adapter's scope
+    // shims (see flowArea.ts).
+    const ensureArrange = makeEnsureArrange(s.area, () => false);
+    const arrangeFn = makeArrangeFn({
+      editor: s.editor,
+      area: s.area,
+      container: wrapperRef.current ?? document.body,
+      ensureArrange,
+      repositionDockedTo,
+      isDestroyed: () => false,
+    });
+    setAutoArrange(arrangeFn);
+    setCleanup(makeCleanupFn(s.editor, s.area, arrangeFn));
+
     if (!s.docInit) {
       s.docInit = true;
       // Component-internal edits reach us here (processGraph's graphChanged);
@@ -424,6 +462,7 @@ function FlowCanvasInner() {
 
   const isValidConnection: IsValidConnection = useCallback(
     (c) => {
+      if (canvasLockStore.get()) return false; // view-only when locked
       if (!c.source || !c.target || !c.sourceHandle || !c.targetHandle) return false;
       return canConnect(s, c.source, c.sourceHandle, c.target, c.targetHandle);
     },
@@ -443,10 +482,33 @@ function FlowCanvasInner() {
     },
     [s],
   );
+  // A REAL header drag on a group tows its members (programmatic translates
+  // must not — same rule as the rete surface). Delta comes from the previous
+  // drag frame; selected members are skipped (RF already moves the selection).
+  const dragLastPos = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const onNodeDragStart = useCallback((_e: unknown, _node: Node, dragged: Node[]) => {
+    dragLastPos.current = new Map(dragged.map((n) => [n.id, { ...n.position }]));
+  }, []);
+  const onNodeDrag = useCallback(
+    (_e: unknown, _node: Node, dragged: Node[]) => {
+      for (const n of dragged) {
+        const model = s.editor.getNode(n.id);
+        if (!(model instanceof GroupNode) || model.collapsed) continue;
+        const last = dragLastPos.current.get(n.id);
+        if (!last) continue;
+        const dx = n.position.x - last.x;
+        const dy = n.position.y - last.y;
+        if (dx !== 0 || dy !== 0) void moveGroupMembers(s.editor, s.area, model, dx, dy, true);
+      }
+      for (const n of dragged) dragLastPos.current.set(n.id, { ...n.position });
+    },
+    [s],
+  );
   const onNodeDragStop = useCallback(
     (_e: unknown, _node: Node, dragged: Node[]) => {
       for (const n of dragged) moveNode(s, n.id, n.position);
       s.area.syncViews();
+      dragLastPos.current.clear();
       markGraphCustom();
       scheduleAutosave();
       flowHistory.schedule();
@@ -503,6 +565,7 @@ function FlowCanvasInner() {
     [menu, s, screenToFlowPosition],
   );
 
+  const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
   const packsVersion = useSyncExternalStore(packsStore.subscribe, packsStore.version);
   const visibleCatalog = useMemo(() => buildCatalog(true), [packsVersion]);
   const paletteOpen = useSyncExternalStore(paletteStore.subscribe, paletteStore.get);
@@ -513,12 +576,20 @@ function FlowCanvasInner() {
   const paletteAlwaysOn = Boolean(paletteAlwaysOnSetting) && !IS_MOBILE;
 
   return (
-    <div ref={wrapperRef} className="sol-rf-appcanvas" onPointerMove={onPointerMove}>
+    <div
+      ref={wrapperRef}
+      className={`sol-rf-appcanvas${locked ? " solenoid-canvas--locked" : ""}`}
+      onPointerMove={onPointerMove}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
+        nodesDraggable={!locked}
+        elementsSelectable={!locked}
+        onNodeDragStart={onNodeDragStart}
+        onNodeDrag={onNodeDrag}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onEdgeMouseEnter={onEdgeMouseEnter}

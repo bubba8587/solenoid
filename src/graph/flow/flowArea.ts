@@ -2,6 +2,7 @@
 // process.ts, persistence's rebuildGraph, fcReconcile, AreaExtensions.zoomAt,
 // NavMenu's zoom pill, flyToNode, and ~69 node components all speak rete's area
 // API; on the flow surface those verbs land here and become React Flow state.
+import { BaseAreaPlugin } from "rete-area-plugin";
 import type { AreaPlugin } from "rete-area-plugin";
 import type { NodeEditor } from "rete";
 import type { Schemes, AreaExtra } from "../schemes";
@@ -30,12 +31,21 @@ export type FlowArea = AreaPlugin<Schemes, AreaExtra> & {
 };
 
 /** A node view whose element resolves to the LIVE React Flow node wrapper, so
- *  element-reading code (flash, containment, width measures) sees real DOM. */
+ *  element-reading code (flash, containment, width measures) sees real DOM.
+ *  `translate` matches rete's NodeView — the auto-arrange applier calls it
+ *  per node. */
 class FlowNodeView {
   position: { x: number; y: number };
   private dummy: HTMLElement | null = null;
-  constructor(private id: string, pos: { x: number; y: number }) {
+  constructor(
+    private id: string,
+    pos: { x: number; y: number },
+    private onTranslate: (id: string, pos: { x: number; y: number }) => Promise<void>,
+  ) {
     this.position = pos;
+  }
+  async translate(x: number, y: number): Promise<void> {
+    await this.onTranslate(this.id, { x, y });
   }
   get element(): HTMLElement {
     const live = document.querySelector<HTMLElement>(
@@ -60,6 +70,13 @@ export function makeFlowArea(
 
   const pushViewport = () => cb.setViewport({ x: transform.x, y: transform.y, zoom: transform.k });
 
+  const translateNode = async (id: string, pos: { x: number; y: number }) => {
+    positions.set(id, { x: pos.x, y: pos.y });
+    const view = nodeViews.get(id);
+    if (view) view.position = { x: pos.x, y: pos.y };
+    cb.moveNode(id, pos);
+  };
+
   const syncViews = () => {
     const live = new Set(editor.getNodes().map((n) => n.id));
     for (const id of [...nodeViews.keys()]) if (!live.has(id)) nodeViews.delete(id);
@@ -67,7 +84,7 @@ export function makeFlowArea(
       const pos = positions.get(id) ?? { x: 0, y: 0 };
       const view = nodeViews.get(id);
       if (view) view.position = pos;
-      else nodeViews.set(id, new FlowNodeView(id, pos));
+      else nodeViews.set(id, new FlowNodeView(id, pos, translateNode));
     }
   };
   syncViews();
@@ -107,16 +124,17 @@ export function makeFlowArea(
       else if (type === "connection") cb.bumpConnections();
     },
     async translate(id: string, pos: { x: number; y: number }) {
-      positions.set(id, { x: pos.x, y: pos.y });
-      const view = nodeViews.get(id);
-      if (view) view.position = { x: pos.x, y: pos.y };
-      else nodeViews.set(id, new FlowNodeView(id, { x: pos.x, y: pos.y }));
-      cb.moveNode(id, pos);
+      if (!nodeViews.has(id)) nodeViews.set(id, new FlowNodeView(id, { ...pos }, translateNode));
+      await translateNode(id, pos);
     },
     async resize() {},
     addPipe() {},
     removePipe() {},
-    use() {},
+    // A used plugin (rete-auto-arrange) resolves the area/editor through the
+    // scope chain — wire its parent so parentScope() walks land here.
+    use(scope: unknown) {
+      (scope as { setParent?: (p: unknown) => void }).setParent?.(fake);
+    },
     async emit(ctx: unknown) {
       return ctx;
     },
@@ -132,5 +150,11 @@ export function makeFlowArea(
       pointer.y = p.y;
     },
   };
+  // `parentScope(BaseAreaPlugin)` walks use instanceof checks; adopting the
+  // base prototype satisfies them while the fake's OWN properties keep
+  // shadowing every method it implements. Un-shadowed base methods would touch
+  // missing internals — acceptable: any such call is a bug to surface, not
+  // silently no-op.
+  Object.setPrototypeOf(fake, BaseAreaPlugin.prototype);
   return fake as unknown as FlowArea;
 }

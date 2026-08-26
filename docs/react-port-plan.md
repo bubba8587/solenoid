@@ -145,14 +145,27 @@ until the port completes. No standalone harness — new work integrates with the
       correct, undo restores; Delete), socket (Attach Format Controller — created
       and docked a real FC). Pane fallback opens the Add menu; RF's
       onPaneContextMenu removed in favor of the one native handler.
-- [ ] KNOWN RENDER GAP: cables into/out of a Conduit's lane sockets don't draw on
-      the flow surface (the conduit card doesn't register lane Handles yet) —
-      part of the ribbon work; the model and undo are correct.
-- [ ] Chrome verbs still unwired (register or port): `setAutoArrange` (Tidy),
-      `setCleanup`, `setBulkSettle` (copy/paste bulk settle), lasso,
-      isolate snapshot/restore (isolate MENU works; camera snapshot path untested),
-      lock mode gating, touch-select mode, Minimap accent parity (RF placeholder),
-      presenter, standoffs/group-push application, HtmlCanvasLayer decision.
+- [x] Conduit lane cables render (2026-08-26): ConduitComponent was the ONE other
+      direct `RefSocket` user — same flow-surface branch as NodeSocket (injected
+      Handle wrapping the glyph). Insert Conduit now draws all 22 edges.
+- [x] Tidy + Cleanup wired: `makeEnsureArrange/makeArrangeFn/makeCleanupFn`
+      unchanged. Two adapter shims made the auto-arrange plugin work: fake
+      `use()` wires `setParent` (parentScope walks land on the adapter, whose
+      prototype is `BaseAreaPlugin.prototype` for the instanceof checks — both
+      dissolve at C9 with ELK-direct), and `FlowNodeView.translate` (the ELK
+      applier translates VIEWS, not the plugin). T-key Tidy re-layouts live.
+- [x] Group drag tows members: RF `onNodeDrag` deltas → `moveGroupMembers`
+      (skipSelected, expanded groups only) — verified 108px/108px.
+- [x] Lock mode: `canvasLockStore` → `nodesDraggable/elementsSelectable` off +
+      the `--locked` CSS modifier (cards pointer-transparent) + connection gate.
+      Verified: node drag blocked, the press falls through to a LIVE pan.
+- [x] Docked FCs: `setRepositionDocked` registered (same repositioner, adapter-
+      driven).
+- [ ] Chrome verbs still unwired (register or port): `setBulkSettle` (copy/paste
+      bulk settle), lasso, isolate camera snapshot/restore path, touch-select
+      mode, Minimap accent parity (RF placeholder), presenter, standoff solver
+      application on drag (settle runs only via keyboard rotate now),
+      group-push (expand displacement), HtmlCanvasLayer decision.
 
 ### C3 — Cables — core DONE 2026-08-26
 - [x] `FlowCableEdge`: the walk router (`getCablePath` — PathArgs maps 1:1 onto RF

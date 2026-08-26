@@ -27,6 +27,7 @@ import {
   isGraphRebuilding,
 } from "../process";
 import { getOwningEditor, getOwningArea } from "../activeGraph";
+import { isFlowSurface, getFlowSocket } from "../flowSurface";
 import { AngleDial } from "../AngleDial";
 import { useDraftCommit, INVALID_DRAFT } from "./inlineInput";
 import "../AngleDial.css";
@@ -247,14 +248,24 @@ export function ConduitComponent({ data, emit }: Props) {
         pointerEvents: expanded ? undefined : "none",
       }}
     >
-      <RefSocket
-        name={`${side}-socket`}
-        side={side}
-        socketKey={key}
-        nodeId={node.id}
-        emit={emit}
-        payload={(side === "input" ? node.inputs[key]! : node.outputs[key]!).socket}
-      />
+      {(() => {
+        // Flow surface: lane dots are RF Handles (injected — see flowSurface.ts),
+        // or edges into the lanes have no endpoints to attach to.
+        const FlowSocket = isFlowSurface() ? getFlowSocket() : null;
+        const payload = (side === "input" ? node.inputs[key]! : node.outputs[key]!).socket;
+        return FlowSocket ? (
+          <FlowSocket side={side} socketKey={key} payload={payload} />
+        ) : (
+          <RefSocket
+            name={`${side}-socket`}
+            side={side}
+            socketKey={key}
+            nodeId={node.id}
+            emit={emit}
+            payload={payload}
+          />
+        );
+      })()}
     </div>
   );
 
