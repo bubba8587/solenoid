@@ -107,6 +107,14 @@ over the old resolvers; **zoomAt** on RF's bounds utilities; **defaultEdgeOption
 it). Verified with puppeteer probes per batch; suite 4847 green.
 Gotcha: two saves of one file inside Vite's watcher debounce leave the SECOND untransformed
 (the BaseEdge batch served the old JSX until the file was touched) — one write per file per run.
+After the walk (author eyeball list): context menus dismissed on a bubble-phase document
+mousedown that RF's d3 handlers stop at the target → capture-phase pointerdown with containment,
+all four menus; a press-drag in a field dragged the card (d3's filter only knows `nodrag`) →
+one capture guard on the surface wrapper treats every editable as nodrag; store subscriptions
+became per-instance selectors on the hot paths (cables, sockets, cards, refs, lambda boxes,
+output rows — a compute pass or a hover no longer repaints the whole layer); report dock now
+pushes the socket legend and re-centers/scales the command palette, the desktop overlay sits
+under the app bar, frame embeds in a report never scroll vertically (chip stays in view).
 NOT ported, each because RF's model can't express the app's behavior: `<Controls>` (every
 handler would be overridden — snapped zoom steps, chrome-aware `fitAll` — and the pill is placed
 by layout-chrome, not an RF Panel); RF box selection (the lasso is a polygon with enclose/touch
