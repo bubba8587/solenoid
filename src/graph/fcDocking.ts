@@ -17,9 +17,25 @@ export function computeDockedCanvasPos(
   dockedWidth: number,
   dockedHeight: number,
 ): { x: number; y: number } | null {
-  const sc = getSocketScreenCenter(area, hostNodeId, socketKey, side);
-  if (!sc) return null;
-  const { x: cx, y: cy } = screenToCanvas(area, container, sc.x, sc.y);
+  // Anchor on the host's MODEL position plus the socket's offset inside the host wrapper:
+  // both rects come from the same DOM frame, so the offset holds even when the wrapper
+  // has not been re-committed at the host's new position yet (the post-Tidy snap runs a
+  // frame after the translates; reading the socket's screen point there placed the FC
+  // relative to the host's OLD spot). Screen conversion stays as the fallback.
+  const view = area.nodeViews.get(hostNodeId);
+  const sockEl = view?.element.querySelector<HTMLElement>(`[data-socket-key="${socketKey}"][data-socket-side="${side}"]`);
+  let cx: number, cy: number;
+  if (view && sockEl) {
+    const k = area.area.transform.k || 1;
+    const host = view.element.getBoundingClientRect();
+    const r = sockEl.getBoundingClientRect();
+    cx = view.position.x + (r.left + r.width / 2 - host.left) / k;
+    cy = view.position.y + (r.top + r.height / 2 - host.top) / k;
+  } else {
+    const sc = getSocketScreenCenter(area, hostNodeId, socketKey, side);
+    if (!sc) return null;
+    ({ x: cx, y: cy } = screenToCanvas(area, container, sc.x, sc.y));
+  }
   // Host INPUT  → FC output (right edge) meets it → FC goes LEFT.
   // Host OUTPUT → FC input  (left edge) meets it → FC goes RIGHT.
   // ROUND to whole canvas px — a fractional dock edge (the screen round-trip lands on
