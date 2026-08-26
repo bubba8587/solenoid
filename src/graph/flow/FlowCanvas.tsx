@@ -735,6 +735,10 @@ function FlowCanvasInner() {
       for (const n of dragged) {
         dragLastPos.current.set(n.id, { ...n.position });
         moveNode(s, n.id, n.position);
+        // The view mirror too, or a live reader (the HIC layer's per-frame position
+        // sync) sees the dragged node parked until dragStop's syncViews.
+        const view = s.area.nodeViews.get(n.id);
+        if (view) view.position = { x: n.position.x, y: n.position.y };
       }
       // Tow standoff-tied neighbors live, one solve per frame.
       if (!standoffStore.isEmpty() && !standoffRaf.current) {
