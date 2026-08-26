@@ -187,8 +187,6 @@ until the port completes. No standalone harness — new work integrates with the
       StandoffLayer mounts in FlowCanvas (renders on power-features). Drag-tow
       not yet exercised in automation (context-menu Link needs two ungrouped
       nodes; probes kept hitting grouped seeds) — verify in the C9 sweep.
-- [ ] PARITY-SWEEP FLAG: power-features "Scaled List" shows #VALUE! on the flow
-      surface — compare against ?rete before assuming it's the seed's intent.
 - [x] Collapsed-group cables (2026-08-26): FlowCableEdge now hides intra-group
       cables and redirects hidden-member endpoints to the group's edge pills
       (same pillPoint rule as ConnectionComponent) — verified: the collapsed
@@ -227,9 +225,9 @@ until the port completes. No standalone harness — new work integrates with the
       surface); verified live ("Moved node: NumberInput_1"). Dev probes:
       `window.__flowHistory`.
 - [ ] Still open: HtmlCanvasLayer decision. (Conduit ribbons landed — see C3.)
-- [ ] C7 probe pending: couldn't reach the seed template menu in automation to
-      load composite-workbench; test whether the rete-based drill-in overlay
-      works over the flow surface when C7 starts.
+- [x] C7 probe done — drill-in verified over the flow surface (see C7); the
+      template menu is reachable in automation (doctitle caret; use a
+      detach-tolerant click for below-the-fold entries).
 
 ### C3 — Cables — core DONE 2026-08-26
 - [x] `FlowCableEdge`: the walk router (`getCablePath` — PathArgs maps 1:1 onto RF
@@ -257,8 +255,8 @@ until the port completes. No standalone harness — new work integrates with the
       self-contained viewport overlay).
 - [ ] NOT ported (deliberate): load-reveal draw animation (rete kept a
       first-mount dash sweep; revisit at C9 if missed).
-- [ ] Cable-drag blurs focused field (rete `connectionpick` behavior re-created —
-      RF `onConnectStart`).
+- [x] Cable-drag blurs the focused field (rete `connectionpick` behavior —
+      RF `onConnectStart` blurs + sets cableDragging + socket highlight).
 
 ### C4 — Chrome integration — DONE 2026-08-26 (landed across the full-port sessions)
 - [x] Real chrome IS the app frame since the full-port pivot (MainApp + shared
@@ -292,8 +290,8 @@ until the port completes. No standalone harness — new work integrates with the
       (29→28), drag undo (135px restored). Copy/paste itself landed with the
       keyboard round. No unit test — the restore path needs DOM (loadGraph
       teardown); pinned by live verification for now.
-- [ ] `historyDigest` labels (Edit-menu "Undo <what>") — snapshot steps carry no
-      label yet; derive from the diff or record a label at schedule() call sites.
+- [x] Undo labels: derived from the snapshot diff (see C8's undo-labels entry;
+      `flowHistoryDigest.ts`).
 - [ ] Undo depth/perf on a ~280-node doc (full rebuild per step) — measure, and if
       slow, apply snapshots as DIFFS through the editor instead of loadGraph.
 
@@ -344,8 +342,8 @@ until the port completes. No standalone harness — new work integrates with the
       over card, zero errors. (Probe lore: CDP touchEnd must LIST lifted points
       or the pointer stream strands; press points must dodge chrome overlap and
       the socket-dot overhang in card bounding boxes.)
-- [ ] Remaining touch items: touch cable drag from a 12px dot; touch-select
-      mode (mobile lasso pill); real-device pass.
+- [ ] Remaining touch items: real-device pass. (Touch cable drag verified in
+      C3; touch-select mode landed — see C8.)
 
 ### C9 — Parity sweep + cutover decision
 - [x] STRUCTURAL sweep (2026-08-26): all 23 seeds opened on both surfaces
