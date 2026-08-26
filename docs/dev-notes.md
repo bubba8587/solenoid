@@ -88,6 +88,35 @@ section, glossary, renderer-performance restored, CLAUDE.md).
 Probe scripts (puppeteer + Edge, `node_modules/.drill-probe.mjs` etc., untracked) drove seed
 load → drill-in → lasso / Enter / G / chevron on both surfaces; suite 4846 green.
 
+**Follow-up 4 (same day, local session): the React Flow docs walk — every page, RF's version wins.**
+Every Learn / API-reference / UI page (from `llms-full.txt`, no WebFetch) plus the 68 example
+descriptions, diffed against the port. Landed, in order: **snapToGrid/snapGrid** (the drag snap
+had been lost in the port; RF's Background is offset so a dot sits on every multiple of
+DOT_SPACING and `snapCoord` uses the same lattice); **nowheel** on every scrollable card region;
+the drill-in frames off **useNodesInitialized** + `getNodesBounds`/`getViewportForBounds` (the
+`fitView` prop resolves on the first setNodes and the surface mounts empty), zoom floored to the
+snap step; **zIndexMode=manual**; MiniMap `bgColor`/`maskColor`; module-scoped/memoized RF props;
+**typed unions** `SolFlowNode`/`SolFlowEdge`; **useConnection** lights the socket a dragged cable
+would land on; **NodeResizeControl** behind every corner grip (`FlowResizeGrip` over the seam);
+**groups as sub-flows** (`parentId`, model absolute / RF relative, boundary conversion);
+**deleteKeyCode + onBeforeDelete** (RF's key, the app's delete); **useOnSelectionChange** as the
+one selection mirror (cable selection mirrored into RF too); **onNode/Edge/PaneContextMenu**
+over the old resolvers; **zoomAt** on RF's bounds utilities; **defaultEdgeOptions**;
+**BaseEdge** for every visible cable stroke; `nodesConnectable` on lock; `disableKeyboardA11y`
+(the canvas keyboard nudges the selection on the dot grid; RF's 5px focused-card move doubled
+it). Verified with puppeteer probes per batch; suite 4847 green.
+Gotcha: two saves of one file inside Vite's watcher debounce leave the SECOND untransformed
+(the BaseEdge batch served the old JSX until the file was touched) — one write per file per run.
+NOT ported, each because RF's model can't express the app's behavior: `<Controls>` (every
+handler would be overridden — snapped zoom steps, chrome-aware `fitAll` — and the pill is placed
+by layout-chrome, not an RF Panel); RF box selection (the lasso is a polygon with enclose/touch
+modes and selects cables); `getIntersectingNodes` for membership (the rule is center-inside);
+edge reconnect anchors (they sit under the socket handles); `hidden` for collapsed members (RF
+drops the edges of hidden nodes, which the group pills redirect); `animated` edges (the bead
+flourish is the authored look); `onlyRenderVisibleElements` (DOM readers: HIC snapshot,
+docking, standoff measures) — noted on the memory backlog item; `nodrag` (probe: a press-drag
+inside a field does not move the card today).
+
 ### FINDING (2026-08-25 — per-card CSS conversion, STEP 1 census — A2)
 Step 1 of the backlog "Per-card CSS conversion" sweep: which paint-only DOM could move to
 CSS. Measured on the live dev page via `window.__solenoidCardCensus()` (`census.ts`), driven

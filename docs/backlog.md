@@ -51,7 +51,9 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
 ## Bugs & verifications
 
 - [ ] **High memory use (Chrome tab estimate) for a light app** — author 2026-08-26,
-  longstanding, predates the RF port; not investigated yet. Start with a heap snapshot
+  longstanding, predates the RF port; not investigated yet. RF's `onlyRenderVisibleElements`
+  (virtualization) is the obvious lever but every DOM reader (HIC snapshot, docked-FC placement,
+  standoff `offsetWidth` measures, `nodeViews.element`) assumes off-screen cards exist. Start with a heap snapshot
   on the getting-started seed vs. a blank doc (retained node clones? HIC pyramids? popup
   caches?), then per-doc tab growth.
 - [ ] **Editing a node header blacks out the app (tablet)** — author-reported

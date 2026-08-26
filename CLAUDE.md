@@ -220,6 +220,15 @@ a place a spec can be contradicted. Concretely:
   `activeGraph.ts` seam (`getActive*`); `getEditor()`/persistence stay MAIN (locked by
   `activeGraph.test.ts`).
 - `SolenoidConnection` must use `ClassicPreset.Node` as its type parameter (variance).
+- **Groups are RF sub-flows** (`parentId`): the MODEL keeps absolute positions; RF holds a
+  member's position RELATIVE to its group, so RF tows members itself. Convert ONLY at the
+  boundary (`flowModel.toFlowPosition/fromFlowPosition`, `handlers.moveNode`,
+  `onNodesChange`) — never write a member's RF position from absolute coordinates.
+- **React Flow owns Delete/Backspace, selection and right-click routing**
+  (`deleteKeyCode` + `onBeforeDelete`, `useOnSelectionChange`, `onNode/Edge/PaneContextMenu`
+  in FlowSurface): the app's verbs run FROM those callbacks. Don't add a second window
+  listener for any of them; RF's own arrow move is off (`disableKeyboardA11y`) because the
+  canvas keyboard nudges the selection on the dot grid.
 - **Cables render as `<g>` inside RF's shared edge svg** (`flow/FlowCableEdge.tsx`):
   visible strokes are `pointer-events:none`; the named `.solenoid-cable-hit` path (with
   `data-conn-id`) is the ONE hit target — RF's own interaction path stays disabled
