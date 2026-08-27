@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { NoteNode } from "./annotation";
+import { toggleTaskMarker } from "../noteFrontmatter";
 import { SolenoidSocket } from "../sockets";
 import { parseDateToSerial } from "./date";
 import { installErrorGuards } from "../errorValue";
@@ -111,5 +112,31 @@ describe("NoteNode is output-only (no inline-ref inputs)", () => {
     expect(n.fieldKeys()).toEqual(["revenue"]);
     expect(typeOf(n, "revenue")).toBe("number");
     expect(Object.keys(n.inputs)).toEqual([]);
+  });
+});
+
+describe("toggleTaskMarker — checkable task-list boxes", () => {
+  it("flips the Nth marker both ways, leaving the rest untouched", () => {
+    const body = "- [ ] one\n- [x] two\n- [ ] three";
+    expect(toggleTaskMarker(body, 0)).toBe("- [x] one\n- [x] two\n- [ ] three");
+    expect(toggleTaskMarker(body, 1)).toBe("- [ ] one\n- [ ] two\n- [ ] three");
+    expect(toggleTaskMarker(body, 2)).toBe("- [ ] one\n- [x] two\n- [x] three");
+  });
+
+  it("counts markers in document order across nesting and preserves item text", () => {
+    const body = "- [ ] top\n  - [x] nested has [brackets]\n- [ ] last";
+    expect(toggleTaskMarker(body, 1)).toBe("- [ ] top\n  - [ ] nested has [brackets]\n- [ ] last");
+  });
+
+  it("indexes past a frontmatter block so a YAML `- [x]` line never counts", () => {
+    // The index arrives from the rendered body (frontmatter stripped), so marker 0
+    // is the first task BELOW the fence — the YAML line above it must not shift it.
+    const body = "---\ntags:\n  - [x]\n---\n- [ ] real task";
+    expect(toggleTaskMarker(body, 0)).toBe("---\ntags:\n  - [x]\n---\n- [x] real task");
+  });
+
+  it("leaves the body unchanged when the index is out of range", () => {
+    const body = "- [ ] only";
+    expect(toggleTaskMarker(body, 5)).toBe(body);
   });
 });

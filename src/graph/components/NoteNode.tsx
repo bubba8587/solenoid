@@ -21,7 +21,7 @@ import { SOCKET_COLORS } from "../sockets";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
-import { parseNoteFrontmatter, type FrontmatterFieldType, type FrontmatterValue } from "../noteFrontmatter";
+import { parseNoteFrontmatter, toggleTaskMarker, type FrontmatterFieldType, type FrontmatterValue } from "../noteFrontmatter";
 import type { NodeProps, Emit } from "./nodeKit";
 import type { ClassicPreset } from "rete";
 import { stopDragStart } from "../coarse";
@@ -69,6 +69,17 @@ const fieldsStripHeight = (n: number) => (n > 0 ? n * FIELD_ROW_H + 6 : 0);
 // Unconditional stop, for surfaces where a touch press must place the cursor rather
 // than start a drag; the READ body keeps coarse-aware stopDragStart so it can drag.
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
+
+/** Marked renders a GFM task-list item as a DISABLED checkbox, and a disabled input
+ *  fires no click. Strip `disabled` from the checkbox inputs — the only `<input>`
+ *  marked emits — so the read view's boxes are tickable. Runs on already-sanitized
+ *  HTML (post-DOMPurify), so it only ever sees marked's own markup. */
+function enableTaskCheckboxes(html: string): string {
+  return html.replace(/<input\b[^>]*\btype="checkbox"[^>]*>/g, (tag) =>
+    tag.replace(/\s+disabled(="[^"]*")?/g, ""),
+  );
+}
+
 
 /** A `---`-fenced YAML block at the top of the body turns each key into a typed OUTPUT
  *  socket; those reconcile on BLUR, never per keystroke, so typing can't churn cables. */
@@ -169,9 +180,35 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   // NOT trusted content — a body arrives in shared .solenoid files and marked does no
   // sanitizing, so sanitize EVERY render (the CSP is only the second layer).
   const bodyHtml = useMemo(
-    () => DOMPurify.sanitize(marked.parse(renderBody || "", { async: false, gfm: true, breaks: true }) as string),
+    () => enableTaskCheckboxes(DOMPurify.sanitize(marked.parse(renderBody || "", { async: false, gfm: true, breaks: true }) as string)),
     [renderBody],
   );
+  // The read body's task-list checkboxes index into it in document order (= source
+  // order, since a nested item's box still comes after its parent's).
+  const renderedRef = useRef<HTMLDivElement>(null);
+  function onRenderedClick(e: React.MouseEvent<HTMLDivElement>) {
+    const target = e.target;
+    // A tick on a task checkbox toggles its source marker; it must NOT fall through
+    // to startEdit (which would swap in the textarea and drop the tap). The box is a
+    // native input, like the Boolean Input node's.
+    if (target instanceof HTMLInputElement && target.type === "checkbox") {
+      const boxes = renderedRef.current?.querySelectorAll('input[type="checkbox"]');
+      const idx = boxes ? Array.prototype.indexOf.call(boxes, target) : -1;
+      if (idx >= 0) {
+        const next = toggleTaskMarker(body, idx);
+        setBody(next);
+        data.body = next;
+        scheduleAutosave();
+        // area.update re-captures the note for the canvas renderer (a bare setBody
+        // leaves the OLD text showing there, same reason `pick` does it); processGraph
+        // refreshes the `document` output for any downstream sink.
+        void getActiveArea()?.rerenderNode(data.id);
+        void processGraph(data.id);
+      }
+      return;
+    }
+    startEdit();
+  }
 
   // Draft-only while typing (project-wide rule: commit on Enter/blur, never per
   // keystroke). Escape reverts to the last committed label without writing.
@@ -320,8 +357,9 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
             // Plain markdown — a Note is output-only, so a `` `=name` `` span stays
             // literal inline code (no ref swap). bodyHtml is already sanitized.
             <div
+              ref={renderedRef}
               className="solenoid-note__rendered sol-md nowheel"
-              onClick={startEdit}
+              onClick={onRenderedClick}
               onPointerDown={stopDragStart}
               onMouseDown={stopDragStart}
               dangerouslySetInnerHTML={{ __html: bodyHtml }}

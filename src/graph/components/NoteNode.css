@@ -396,6 +396,20 @@
 .solenoid-note__rendered.sol-md kbd {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--note-color, var(--accent)) var(--mix-hairline), var(--border-strong));
 }
+/* GFM task lists are interactive in the read view — the box toggles its source
+   `- [ ]`/`- [x]` marker (NoteComponent onRenderedClick). Drop the list bullet on
+   task items so the checkbox stands in for it, and tint the tick with the note's
+   own color (Quiet Accent — accent-color on the control, not a stripe). */
+.solenoid-note__rendered.sol-md li:has(> input[type="checkbox"]) {
+  list-style: none;
+}
+.solenoid-note__rendered.sol-md input[type="checkbox"] {
+  margin: 0 6px 0 0;
+  vertical-align: baseline;
+  cursor: pointer;
+  accent-color: var(--note-color);
+}
+
 /* A fenced block is a BLOCK — it owns its margins, so it keeps the real border
    and padding above; only the inline chips fought the line box. Its inner <code>
    resets to bare: the chip selectors are two classes deep and out-specify
