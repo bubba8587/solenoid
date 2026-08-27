@@ -75,6 +75,13 @@
   border-radius: 2px;
   cursor: crosshair;
 }
+/* Compressed: the bunched squares cover the whole block, so leaving them live means
+   every press starts a cable drag and the block can never be grabbed. Same specificity
+   as the rule above, so it MUST stay below it — never split the pair across files,
+   where the bundler's chunk order would decide the winner. */
+.solenoid-conduit__lane--inert {
+  pointer-events: none;
+}
 .solenoid-conduit__lane--phantom {
   opacity: 0.35;
 }

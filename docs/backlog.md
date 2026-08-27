@@ -67,13 +67,6 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   each one, so a press on the block started a cable instead of selecting or moving it.
   Lanes now go `--inert` when compressed and the block carries a grab handle. Confirm
   against the author's repro before deleting this line.
-- [ ] **Disable clamped zoom steps on touch devices (tablet and phone)** — author
-  2026-08-27. `clampZoom` (`areaPresets.ts`) snaps every zoom writer to `ZOOM_SNAP`
-  0.1 (author 2026-08-26, "the camera only ever RESTS on a multiple"); a pinch reads
-  as notchy under it. Gate the SNAP off for touch (`flowPinch.ts` is the pinch writer;
-  `IS_COARSE`/`coarse.ts` is the device test) while keeping the MIN/MAX bound, and
-  decide whether a pinch that ends off-step re-snaps or rests where it lands. Desktop
-  wheel/keys keep the steps.
 - [ ] **AI palette verification tail** — first real-key end-to-end (`ANTHROPIC_API_KEY=…
   npm run ai-prompt`), palette on the preview (author eyeball), Tidy on an all-at-0,0
   generated graph, one desktop CSP smoke test. (Known + accepted: Apply drops undo

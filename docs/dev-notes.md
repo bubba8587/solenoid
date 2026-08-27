@@ -47,6 +47,15 @@ keep for the lane rows — the handle is the reliable grab target, so it is a tu
 load-bearing. Also unshrunk: `CONDUIT_BODY_SIZE`, since the pivot derives from it and shrinking it
 would shift every existing Conduit; it no longer acts as a hit area but RF box-select still uses it.
 
+**Pinch zoom is continuous now** (author: "disable clamped zoom steps on touch devices"). Every zoom
+writer routed through `clampZoom`, which snaps to `ZOOM_SNAP` 0.1 — right for a DISCRETE step (wheel
+notch, zoom pill, key, fit) and wrong for a gesture: the canvas walked under the fingers in 10%
+leaps. `boundZoom` bounds without snapping and `flowPinch` uses it. Measured on a simulated tablet,
+same gesture: 6 distinct zoom values (all on steps) → 18. No device gate — two touch contacts ARE
+the gate, so a touchscreen laptop gets it too, and gating on `IS_COARSE` would have EXCLUDED that
+case. The 2026-08-26 "camera only rests on a multiple" ruling still holds for discrete steps: the
+next pill press or wheel notch rounds an off-lattice pinch back on.
+
 ### SESSION DIGEST (2026-08-26 — react-port-develop: THE CUTOVER — React Flow only, no rete surface)
 Author ruling mid-session: "this branch is for GOING ALL OUT ON REACT FLOW NO RETE." Executed in
 four commits (Cutover A–D; the ledger `docs/react-port-plan.md` carries the full per-item record):

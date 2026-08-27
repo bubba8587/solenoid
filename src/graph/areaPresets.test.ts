@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { clampZoom, floorZoom, MIN_ZOOM, MAX_ZOOM, ZOOM_SNAP } from "./areaPresets";
+import { boundZoom, clampZoom, floorZoom, MIN_ZOOM, MAX_ZOOM, ZOOM_SNAP } from "./areaPresets";
 
 // The camera rests only on multiples of ZOOM_SNAP; fits snap down so content still fits.
 describe("zoom snap", () => {
@@ -10,6 +10,13 @@ describe("zoom snap", () => {
     expect(clampZoom(0.01)).toBeCloseTo(MIN_ZOOM, 10);
     expect(clampZoom(9)).toBeCloseTo(MAX_ZOOM, 10);
   });
+  it("boundZoom bounds WITHOUT snapping — a pinch rests where the fingers left it", () => {
+    expect(boundZoom(0.74)).toBeCloseTo(0.74, 10);
+    expect(boundZoom(1.037)).toBeCloseTo(1.037, 10);
+    expect(boundZoom(0.01)).toBeCloseTo(MIN_ZOOM, 10);
+    expect(boundZoom(9)).toBeCloseTo(MAX_ZOOM, 10);
+  });
+
   it("floorZoom snaps down", () => {
     expect(floorZoom(0.79)).toBeCloseTo(0.7, 10);
     expect(floorZoom(0.8)).toBeCloseTo(0.8, 10);

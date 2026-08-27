@@ -36,7 +36,8 @@ function carries(el: Element): boolean {
   const tag = el.tagName.toLowerCase();
   if (tag === "input" || tag === "select" || tag === "textarea" || tag === "button" || tag === "a" || tag === "img") return true;
   if (el.hasAttribute("contenteditable")) return true;
-  if (el.hasAttribute("data-socket-side")) return true;
+  // A Conduit's lane square IS its socket, without NodeSocket's wrapper attributes.
+  if (el.hasAttribute("data-socket-side") || el.classList.contains("solenoid-conduit__lane")) return true;
   // A DIRECT non-whitespace text node = a label / value / glyph character.
   for (const n of el.childNodes) {
     if (n.nodeType === Node.TEXT_NODE && (n.textContent ?? "").trim() !== "") return true;

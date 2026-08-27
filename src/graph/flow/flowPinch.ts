@@ -4,7 +4,7 @@
 // out-prioritize them — the capture-vs-bubble split rete's CappedZoom fought
 // for. TOUCH events, not pointer events: multi-finger input is only reliably
 // enumerable there (d3 and rete's stock Zoom listen the same way).
-import { clampZoom } from "../areaPresets";
+import { boundZoom } from "../areaPresets";
 
 type Viewport = { x: number; y: number; zoom: number };
 
@@ -51,7 +51,11 @@ export function installFlowPinch(
     e.stopImmediatePropagation();
     const m = measure(e);
     const rect = el.getBoundingClientRect();
-    const zoom = clampZoom(start.vp.zoom * (m.dist / start.dist));
+    // Bound, never snapped: the scale tracks the fingers continuously. Snapping here
+    // walks the canvas in 10% jumps mid-pinch, and there is no device test to gate on
+    // — two touch contacts ARE the gate, so a touchscreen laptop pinches smoothly too.
+    // The next discrete step (pill, wheel notch, fit) rounds back onto the lattice.
+    const zoom = boundZoom(start.vp.zoom * (m.dist / start.dist));
     const eff = zoom / start.vp.zoom;
     // The world point under the start centroid stays pinned; the pan follows
     // the centroid.

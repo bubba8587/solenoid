@@ -36,10 +36,8 @@
      has to out-rank an inline style — the same reason sol-member-hidden shouts. */
   pointer-events: none !important;
 }
-/* A COMPRESSED Conduit's lane squares bunch over the whole block, so leaving them live
-   means every press on it starts a cable drag and the block can never be grabbed. RF's
-   own connectable rules re-arm the Handle inside, so the lane has to reach it. */
-.solenoid-conduit__lane--inert,
+/* RF's own connectable rules re-arm the Handle inside a lane, so a COMPRESSED lane
+   (pointer-transparent — conduit.css) has to reach in and turn it off too. */
 .solenoid-conduit__lane--inert .react-flow__handle.sol-rf-handle-reset {
   pointer-events: none;
 }
