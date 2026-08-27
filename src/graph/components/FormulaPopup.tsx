@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { useKatexRender, getKatexRenderer } from "./katexLoader";
-import { ClassicPreset } from "rete";
+import type { ClassicPreset } from "rete";
 import { formulaPopup } from "../formulaPopupStore";
 import { processGraph } from "../process";
 import { getOwningEditor, getOwningArea } from "../activeGraph";

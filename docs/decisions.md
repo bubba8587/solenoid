@@ -52,29 +52,37 @@ flag stalls → DOM stays default, no crisis. The Pixi/WGSL groundwork was DELET
 2026-08-09 (author order — exactly two render paths exist: the RF DOM surface + the
 HIC gesture layer; git has the code). Do not rebuild a third path (reactFlowView).
 
-### reactFlowView — The view layer is React Flow; rete core survives ONLY as an unratified scoping
-**What the author ruled (2026-08-26): "going all out on React Flow, no rete."** That is
-the whole ruling. React Flow (`@xyflow/react`) renders every card, cable, the minimap
-and the viewport in the app's ONE React tree; every rete RENDER package
-(area/react/connection/render-utils/minimap/history/auto-arrange) and
-`styled-components` are deleted; Tidy calls elkjs directly; undo is the snapshot
-history (`flow/flowHistory.ts`). The module-singleton stores (`storeKit.ts`) stay as
-app-wide state; the save format was already rete-independent (saveViaTextForm).
+### reactFlowView — The view is React Flow; the model + engine are rete core + rete-engine, on purpose
+**View (author, 2026-08-26: "going all out on React Flow, no rete"):** React Flow
+(`@xyflow/react`) renders every card, cable, the minimap and the viewport in the app's
+ONE React tree; every rete RENDER package (area/react/connection/render-utils/minimap/
+history/auto-arrange) and `styled-components` are deleted; Tidy calls elkjs directly;
+undo is the snapshot history (`flow/flowHistory.ts`). The module-singleton stores
+(`storeKit.ts`) stay as app-wide state; the save format was already rete-independent
+(saveViaTextForm). Do not rebuild a third render path (htmlInCanvasRenderer).
 
-**What was NOT ruled — an agent's C0 scoping the author never agreed to (flagged
-2026-08-27):** `rete` core (`NodeEditor` + `ClassicPreset`) and `rete-engine`
-(`DataflowEngine`) were kept as the headless model + compute spine because React Flow
-has no graph model, typed sockets or dataflow engine of its own, and replacing them is
-a model rewrite touching every node class and graph walker, not a view port. The
-author found this out after the merge and did not sign off. Its removal is OPEN:
-`deferrals.md` "Own graph model (drop rete core + rete-engine)". Until then, no NEW
-code may deepen the dependency — reach rete only through the seams that already exist
-(`flow/flowModel.ts`, `process.ts`, `coerceInputs`/`installErrorGuards` on the
-`nodecreated` pipe), never import a rete type into a component.
+**Model + engine (author-ratified 2026-08-27, after the port's C0 scoping was surfaced
+as never agreed to):** `rete` core and `rete-engine` stay as the headless graph model
+and dataflow engine. The surface used is small and already minimal — `ClassicPreset.Node
+/ Input / Output / Socket / Connection` (plain data classes; every node class extends
+`Node`), `NodeEditor` (add/remove/get nodes + connections, `addPipe` for the
+`nodecreated`/`connectioncreated`/`noderemoved` events that `coerceInputs`, the error
+guards, FC reconcile and the RF topology sync hang off), and `DataflowEngine`
+(`fetch`/`reset`/`cache` — the pull-with-cache that calls `data(inputs)`, whose public
+`cache` is pre-seeded for `#CIRC!`). ~1,500 lines of vendored ESM, one dep, MIT. React
+Flow is only a renderer — it has no graph model, typed ports or engine — and no
+third-party alternative fits better (graphology has no ports/dataflow; Flume/nodl
+bundle renderers; baklava core is the same shape under another name); hand-rolling
+would replace ~1,500 maintained lines with ~400 of ours for no functional gain across
+151 files. Dependence here is fine. Components may import rete TYPES (`import type`)
+and construct `ClassicPreset.Connection` when they wire a cable — that is the app's
+own model type, not a render coupling.
 **Where:** `architecture.md` § Stack, `subsystem-invariants.md` § React Flow surface
-contract, `flow/*`. **Reopen if:** the author schedules the model replacement (then
-this entry becomes the record of the port only). Merged to `develop` 2026-08-27; build
-record in `archive/react-port-plan.md`.
+contract, `flow/flowModel.ts` (the model ↔ RF projection seam), `process.ts`.
+**Reopen if:** rete core goes unmaintained in a way that bites (a React/TS major it
+can't follow), or a genuinely headless typed-dataflow library appears that would delete
+code rather than rename it. Merged to `develop` 2026-08-27; build record in
+`archive/react-port-plan.md`.
 
 ### oneFlowSurface — Both canvases are ONE surface component
 **What stands (author, 2026-08-26: the main canvas and the drill-in must be

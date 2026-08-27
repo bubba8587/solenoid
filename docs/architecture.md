@@ -43,8 +43,8 @@ This file is the map.
   minimap, viewport all render in the app's single React tree.
 - **Model/compute spine**: rete core (`rete` — NodeEditor + ClassicPreset, headless)
   + `rete-engine` (DataflowEngine, pull-based recompute). No rete render/area
-  plugins exist; `elkjs` is called directly for Tidy. Keeping the core was an
-  unratified port scoping — its replacement is open (decisions reactFlowView).
+  plugins exist; `elkjs` is called directly for Tidy. The core stays on purpose
+  (decisions reactFlowView — author-ratified 2026-08-27).
 - **UI**: React + Vite, desktop shell via Tauri. Math helpers: formulajs,
   KaTeX (formula popup), marked (help panel).
 - Cross-surface state stays in module-level singleton stores (`storeKit.ts`

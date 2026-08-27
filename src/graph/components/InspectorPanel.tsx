@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { ClassicPreset } from "rete";
+import type { ClassicPreset } from "rete";
 import { inspectorStore } from "../inspectorStore";
 import { reportStore } from "../reportStore";
 import { getActiveEditor } from "../activeGraph";
