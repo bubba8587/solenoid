@@ -3,7 +3,8 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CableSwitchNode as CableSwitchNodeType } from "../rete-nodes";
 // getActiveEditor/getActiveArea, NOT getEditor/getArea: a drill-in Input Switch
 // must retype/prune/refresh on its OWN graph.
-import { processGraph, bumpConnectionVersion } from "../process";
+import { processGraph } from "../process";
+import { bumpConnectionVersion } from "../graphSignals";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { collapseStore } from "../collapseStore";

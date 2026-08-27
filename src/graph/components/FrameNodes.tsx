@@ -53,7 +53,8 @@ import { HEAD_OP_META, HEADER_OP_META, BLANK_ROW_OP_META, COLUMNS_OP_META } from
 import { CubeDisplay } from "./CubeDisplay";
 import { isCubeValue } from "../frame";
 import { parseFrameSource, frameSourceToText, isFrameValue, frameRowCount, type FrameSourceColumn } from "../frame";
-import { processGraph, bumpConnectionVersion } from "../process";
+import { processGraph } from "../process";
+import { bumpConnectionVersion } from "../graphSignals";
 import { scheduleAutosave } from "../persistence";
 import { getActiveArea, getOwningEditor, getOwningArea } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";

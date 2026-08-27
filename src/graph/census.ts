@@ -12,7 +12,6 @@
 // step-2 conversion surface, not the plotted figure.
 import { FLAT_CATALOG } from "./catalogUtils";
 import { getEditor, getArea } from "./process";
-
 const frames = (n: number) =>
   new Promise<void>((r) => {
     const step = (left: number) => (left <= 0 ? r() : requestAnimationFrame(() => step(left - 1)));

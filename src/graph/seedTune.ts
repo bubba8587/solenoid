@@ -2,7 +2,8 @@
 // painted DOM. scripts/tune-seeds.mjs patches the returned geometry back in place —
 // deliberately NOT a re-export, which would rewrite every hand-authored id.
 import { SEEDS, clearAndLoadSeed } from "./seeds";
-import { getEditor, getArea, autoArrange } from "./process";
+import { getEditor, getArea } from "./process";
+import { autoArrange } from "./canvasCommands";
 import { GroupNode } from "./rete-nodes";
 import { autofitGroupWithHistory } from "./groupLogic";
 import { setGroupsCollapsed } from "./groupPush";

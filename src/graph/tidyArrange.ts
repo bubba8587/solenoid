@@ -17,11 +17,7 @@ import { fitAll } from "./NavMenu";
 import { dockedNodeStore } from "./dockedNodeStore";
 import { getSocketScreenCenter, screenToCanvas } from "./canvasGeometry";
 import { scheduleAutosave } from "./persistence";
-import {
-  unselectAllNodes as unselectAllNodesFromProcess,
-  selectNode as selectNodeFromProcess,
-} from "./process";
-
+import { unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess } from "./canvasCommands";
 const TIDY_CONFIRM_THRESHOLD = 12;
 
 export interface TidyDeps {

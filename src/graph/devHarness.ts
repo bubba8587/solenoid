@@ -3,7 +3,6 @@
 import { documentStore } from "./documentStore";
 import { loadRevealStore } from "./loadReveal";
 import { getEditor, getArea } from "./process";
-
 if (import.meta.env.DEV) {
   (window as unknown as { __spike: unknown }).__spike = {
     seed: (id: string) => documentStore.newFromTemplate(id),

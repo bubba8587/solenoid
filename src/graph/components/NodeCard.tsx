@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type ReactNode, type CSSProperties, type RefObject } from "react";
 import type { ClassicPreset } from "rete";
-import { repositionDockedNodes } from "../process";
+import { repositionDockedNodes } from "../canvasCommands";
 import { getOwningArea } from "../activeGraph";
 import { nodeAccent, nodeResizable, nodeWide } from "../rete-nodes";
 import { nodeSizeStore } from "../nodeSizeStore";

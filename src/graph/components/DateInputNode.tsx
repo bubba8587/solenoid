@@ -4,7 +4,6 @@ import { jsDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from
 import { isSolError } from "../errorValue";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { processGraph } from "../process";
-
 const isoOf = (serial: number) => new Date((serial - 25569) * 86400000).toISOString().slice(0, 10);
 
 // The raw source text is the truth (the Frame/Table date model). We render the app's

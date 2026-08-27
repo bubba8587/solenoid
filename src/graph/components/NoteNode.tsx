@@ -11,7 +11,8 @@ import { NodeSocket } from "./NodeSocket";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 // getActiveEditor/getActiveArea, NOT getEditor/getArea: a Note inside a composite
 // drill-in must prune/reconcile/refresh on its OWN graph.
-import { processGraph, bumpConnectionVersion } from "../process";
+import { processGraph } from "../process";
+import { bumpConnectionVersion } from "../graphSignals";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { reconcileFcTypes } from "../fcReconcile";
 import { scheduleAutosave } from "../persistence";

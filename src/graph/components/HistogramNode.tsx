@@ -10,7 +10,6 @@ import { dropInputCables } from "./cablePrune";
 import { getActiveArea } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
-
 const MODE_OPTIONS = (Object.keys(HISTOGRAM_MODE_META) as HistogramMode[]).map((m) => ({
   value: m, label: HISTOGRAM_MODE_META[m].label, title: HISTOGRAM_MODE_META[m].description,
 }));

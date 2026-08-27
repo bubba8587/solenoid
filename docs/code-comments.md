@@ -76,7 +76,7 @@ that's a spec, and the sweep promotes it.
   order-sensitive (join preserves array order), so a Position-mode re-sort changes
   it → the list re-renders within a poll."
 - A contract the types can't say: "/** Documents, most-recent first, for menus. */"
-- A trap invisible in the code: "`area.translate` is async — it won't share a paint
+- A trap invisible in the code: "`area.moveNode` is async — it won't share a paint
   with your React commit."
 
 When unsure whether a comment's knowledge exists in a doc: check the routing table

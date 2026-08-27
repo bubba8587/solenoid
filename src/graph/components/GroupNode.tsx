@@ -5,7 +5,7 @@ import { hexToRgba, contrastInk, themeAccent, darkenAccent, resolveColor } from 
 import { appThemeStore } from "../appTheme";
 import { SwatchGrid } from "./SwatchGrid";
 import { useDismissOnOutside } from "./useDismissOnOutside";
-import { autoArrange } from "../process";
+import { autoArrange } from "../canvasCommands";
 import { cableValueStore } from "../cableValueStore";
 import { describeValueKind } from "../valueKindLabel";
 import { valueChipFor } from "./ValueChip";

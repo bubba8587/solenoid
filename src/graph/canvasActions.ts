@@ -24,12 +24,8 @@ import {
 import { PUSH_GAP } from "./groupPushCore";
 import { measuredBox } from "./nodeSize";
 import { scheduleAutosave } from "./persistence";
-import {
-  processGraph, beginGraphRebuild, endGraphRebuild, bulkSettle,
-  unselectAllNodes as unselectAllNodesFromProcess,
-  selectNode as selectNodeFromProcess,
-} from "./process";
-
+import { processGraph, beginGraphRebuild, endGraphRebuild, bulkSettle } from "./process";
+import { unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess } from "./canvasCommands";
 type SolenoidConnection = import("./schemes").SolenoidConnection;
 
 // One Conduit takes up to CONDUIT_MAX_LANES cables; a bigger selection is chunked

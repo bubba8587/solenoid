@@ -5,7 +5,6 @@ import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 import { registerErrorSink, type SolError, type SolErrorCode } from "./errorValue";
 import { isGraphRebuilding } from "./process";
-
 export type ProblemOrigin = "compute" | "fuzz";
 
 export interface ProblemEntry {

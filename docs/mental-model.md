@@ -14,8 +14,10 @@ oneFlowSurface). **rete core** (`NodeEditor` + `ClassicPreset`) plus
 `rete-engine` (`DataflowEngine`) is the headless MODEL and compute spine — kept
 on purpose; no rete render package exists (decisions reactFlowView). `flow/SolNodeAdapter.tsx`
 binds a rete node instance to its registered card component; `flow/flowArea.ts`
-is the one `Surface` implementation, turning the model's `area.*` verbs into RF
-state. Cross-surface state lives in module-singleton stores (`storeKit.ts`, read
+is the one implementation of the `Area` seam (`area.ts`), turning the model's
+camera/move/re-render verbs into RF state. The model-level compute pass is
+`graphCompute.ts`, one definition shared by the app, the composite engine, the CLI
+and the tests. Cross-surface state lives in module-singleton stores (`storeKit.ts`, read
 via `useSyncExternalStore`) — app-wide state, not a workaround; plain React
 context/props work everywhere too.
 

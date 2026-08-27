@@ -15,7 +15,8 @@ import {
 } from "../formatModel";
 import { SOCKET_COLORS } from "../sockets";
 import { clamp } from "../nodes/mathUtils";
-import { processGraph, repositionDockedNodes } from "../process";
+import { processGraph } from "../process";
+import { repositionDockedNodes } from "../canvasCommands";
 import { getOwningEditor } from "../activeGraph";
 import { NodeCard } from "./NodeCard";
 import { LazySelect } from "./LazySelect";

@@ -3,7 +3,7 @@ import { useRenderMode } from "../renderMode";
 import { zoomSettleMs } from "../zoomSettle";
 import { IS_COARSE } from "../coarse";
 import { HtmlCanvasRenderer, type EngineNodeSpec } from "../htmlCanvasRenderer";
-import { connectionVersionStore } from "../process";
+import { connectionVersionStore } from "../graphSignals";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "../schemes";
 import type { Area } from "../area";

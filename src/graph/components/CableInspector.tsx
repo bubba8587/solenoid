@@ -5,7 +5,7 @@ import { CableShapeIcon } from "../CableShapeSelector";
 import { cableValueStore } from "../cableValueStore";
 import { ribbonForConnection } from "../ribbonCable";
 import { flyToNode } from "../flyToNode";
-import { connectionVersionStore } from "../process";
+import { connectionVersionStore } from "../graphSignals";
 import { getActiveEditor as getEditor } from "../activeGraph";
 import { nodeDisplayName } from "../catalogUtils";
 import { formatScalar } from "./format";

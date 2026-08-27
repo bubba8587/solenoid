@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { FilterNode as FilterNodeType } from "../rete-nodes";
 import type { FilterCondConfig } from "../frameVerbs";
-import { processGraph, bumpConnectionVersion } from "../process";
+import { processGraph } from "../process";
+import { bumpConnectionVersion } from "../graphSignals";
 import { getActiveArea } from "../activeGraph";
 import { useConnectedInputs, InlineInputs, InlineTextField } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";

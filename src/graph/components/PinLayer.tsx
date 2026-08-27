@@ -3,7 +3,7 @@ import { IS_MOBILE } from "../coarse";
 import { pinStore } from "../pinStore";
 import { registerChrome } from "../chromeToggle";
 import { cableValueStore } from "../cableValueStore";
-import { connectionVersionStore } from "../process";
+import { connectionVersionStore } from "../graphSignals";
 import { flyToNode } from "../flyToNode";
 import { nodeDisplayName } from "../catalogUtils";
 import { GroupNode } from "../rete-nodes";

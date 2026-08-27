@@ -12,7 +12,8 @@ import { FlowSurface, idleHandlers, type SurfaceHandlers, type SurfaceHooks } fr
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../rete-nodes";
 import type { SolenoidNode } from "../schemes";
 import { compositeEditorStore, compositePassStore } from "../compositeEditorStore";
-import { getEditor, getArea, processGraph, swapSelectionSlots, swapArrangeSlots } from "../process";
+import { getEditor, getArea, processGraph } from "../process";
+import { swapSelectionSlots, swapArrangeSlots } from "../canvasCommands";
 import { setActiveGraph } from "../activeGraph";
 import { syncSemanticZoomFor } from "../semanticZoomStore";
 import { scheduleAutosave } from "../persistence";

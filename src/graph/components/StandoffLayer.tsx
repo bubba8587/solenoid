@@ -33,7 +33,8 @@ function BandField({ value, onCommit }: { value: number; onCommit: (v: number) =
     />
   );
 }
-import { getEditor, getArea, unselectAllNodes } from "../process";
+import { getEditor, getArea } from "../process";
+import { unselectAllNodes } from "../canvasCommands";
 import { cableSelectionStore } from "../cableState";
 import { groupCollapseStore } from "../groupCollapse";
 import { scheduleAutosave } from "../persistence";

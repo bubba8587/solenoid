@@ -4,7 +4,6 @@ import { serialToJsDate, jsDateToSerial } from "../nodes/date";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { processGraph } from "../process";
-
 function serialToISO(serial: number): string {
   if (!(serial > 0)) return "";
   return serialToJsDate(serial).toISOString().slice(0, 10);

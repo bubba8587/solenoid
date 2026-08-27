@@ -3,7 +3,7 @@
 
 import type { Area } from "./area";
 import { GroupNode } from "./rete-nodes";
-import { repositionDockedNodes, unselectAllNodes, selectNode } from "./process";
+import { repositionDockedNodes, unselectAllNodes, selectNode } from "./canvasCommands";
 import { getActiveEditor as getEditor, getActiveArea as getArea } from "./activeGraph";
 import { standoffStore, standoffClusters, settleStandoffs } from "./standoffs";
 import { collapseStore } from "./collapseStore";

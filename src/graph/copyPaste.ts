@@ -1,6 +1,9 @@
 import { ClassicPreset } from "rete";
 import type { SolenoidNode, SolenoidConnection } from "./schemes";
-import { selectNode, unselectAllNodes, beginGraphRebuild, endGraphRebuild, bulkSettle, markGraphCustom, getCtorRegistry, processGraph } from "./process";
+import { beginGraphRebuild, endGraphRebuild, bulkSettle, processGraph } from "./process";
+import { selectNode, unselectAllNodes } from "./canvasCommands";
+import { markGraphCustom } from "./seedStore";
+import { getCtorRegistry } from "./ctorProvider";
 import { getActiveEditor, getActiveArea, isSubgraphActive } from "./activeGraph";
 import { collapseStore } from "./collapseStore";
 import { nodeNameStore } from "./nodeNameStore";

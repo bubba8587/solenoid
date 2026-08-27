@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { deleteSelected } from "./process";
+import { deleteSelected } from "./canvasCommands";
 import { touchSelectStore } from "./touchSelectStore";
 import { paletteStore } from "./paletteStore";
 import { IS_TABLET } from "./coarse";

@@ -1,5 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type MouseEvent } from "react";
-import { getEditor, getArea, selectNode, unselectAllNodes, connectionVersionStore } from "./process";
+import { getEditor, getArea } from "./process";
+import { selectNode, unselectAllNodes } from "./canvasCommands";
+import { connectionVersionStore } from "./graphSignals";
 import { outlineSearch } from "./outlineStore";
 import { registerChrome } from "./chromeToggle";
 import { touchSelectStore } from "./touchSelectStore";

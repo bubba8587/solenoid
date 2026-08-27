@@ -10,10 +10,7 @@ import { isolateStore } from "./isolateStore";
 import { touchSelectStore } from "./touchSelectStore";
 import { cableSelectionStore, cableGhostStore } from "./cableState";
 import { ribbonForConnection } from "./ribbonCable";
-import {
-  unselectAllNodes as unselectAllNodesFromProcess,
-  selectNode as selectNodeFromProcess,
-} from "./process";
+import { unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess } from "./canvasCommands";
 import { isPinching } from "./pointerGesture";
 
 export type LassoState = { points: Pt[]; mode: "touch" | "enclose" } | null;

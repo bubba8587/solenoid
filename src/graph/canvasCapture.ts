@@ -1,5 +1,4 @@
 import { getArea } from "./process";
-
 // Capture for STATIC EXPORT, deliberately separate from the live HTML-in-Canvas
 // renderer, whose `drawElementImage` needs a Chrome flag a recipient won't have.
 

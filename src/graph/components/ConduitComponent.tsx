@@ -19,14 +19,8 @@ import {
   conduitLaneOffset,
   conduitLayoutStore,
 } from "../ribbonCable";
-import {
-  cableDragStore,
-  connectionVersionStore,
-  conduitAngleStore,
-  bumpConduitAngle,
-  processGraph,
-  isGraphRebuilding,
-} from "../process";
+import { processGraph, isGraphRebuilding } from "../process";
+import { cableDragStore, connectionVersionStore, conduitAngleStore, bumpConduitAngle } from "../graphSignals";
 import { getOwningEditor, getOwningArea } from "../activeGraph";
 import { useFlowSocket } from "../flowSurface";
 import { AngleDial } from "../AngleDial";

@@ -3,13 +3,9 @@ import type { Area } from "./area";
 import type { MutableRefObject } from "react";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
-import {
-  processGraph, bumpConduitAngle, repositionDockedNodes,
-  unselectAllNodes as unselectAllNodesFromProcess,
-  selectNode as selectNodeFromProcess,
-  cleanup as cleanupGraph, autoArrange as tidyGraph, requestRecalc,
-  withGraphRebuild,
-} from "./process";
+import { processGraph, requestRecalc, withGraphRebuild } from "./process";
+import { repositionDockedNodes, unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess, cleanup as cleanupGraph, autoArrange as tidyGraph } from "./canvasCommands";
+import { bumpConduitAngle } from "./graphSignals";
 import { copySelected, pasteClipboard } from "./copyPaste";
 import { createCompositeFromSelection } from "./compositeLogic";
 import { compositeEditorStore } from "./compositeEditorStore";

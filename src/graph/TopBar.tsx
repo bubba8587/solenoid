@@ -4,7 +4,7 @@ import { TidyOptionsPopover } from "./TidyOptionsPopover";
 import { CableShapeSelector } from "./CableShapeSelector";
 import { AppToolbar } from "./AppToolbar";
 import { TabletActions } from "./TabletActions";
-import { autoArrange, cleanup } from "./process";
+import { autoArrange, cleanup } from "./canvasCommands";
 import { saveToDisk, openFromDisk } from "./fileSession";
 import { frStore } from "./frStore";
 import { mobileMenuStore } from "./mobileMenuStore";

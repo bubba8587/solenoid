@@ -12,24 +12,11 @@ import { cableSelectionStore } from "../cableState";
 import { disconnect, removeNodes } from "./flowModel";
 import { makeFlowArea, type FlowArea } from "./flowArea";
 import { FlowSurface, idleHandlers, type SurfaceHandlers, type SurfaceHooks } from "./FlowSurface";
-import {
-  setEditorRefs,
-  setCtorRegistryProvider,
-  setGraphChanged,
-  setUnselectAllNodes,
-  setSelectNode,
-  setDeleteSelected,
-  setClearHistory,
-  processGraph,
-  markGraphCustom,
-  setAutoArrange,
-  setCleanup,
-  setRepositionDocked,
-  setBulkSettle,
-  bumpConnectionVersion,
-  markBulkTopoDirty,
-  isGraphRebuilding,
-} from "../process";
+import { setEditorRefs, setGraphChanged, processGraph, setBulkSettle, markBulkTopoDirty, isGraphRebuilding } from "../process";
+import { setUnselectAllNodes, setSelectNode, setDeleteSelected, setClearHistory, setAutoArrange, setCleanup, setRepositionDocked } from "../canvasCommands";
+import { markGraphCustom } from "../seedStore";
+import { bumpConnectionVersion } from "../graphSignals";
+import { setCtorRegistryProvider } from "../ctorProvider";
 import { flowHistory } from "./flowHistory";
 import { installInputCoercion } from "../coerceInputs";
 import { installErrorGuards } from "../errorValue";
@@ -134,7 +121,7 @@ const MAIN_HOOKS: SurfaceHooks = {
   rfId: "main",
   history: { undo: () => flowHistory.undo(), redo: () => flowHistory.redo() },
   deleteSelected: async () => {
-    const { deleteSelected } = await import("../process");
+    const { deleteSelected } = await import("../canvasCommands");
     await deleteSelected();
   },
   afterMove: () => {

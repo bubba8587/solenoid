@@ -5,7 +5,6 @@ import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from 
 import { dropInputCables } from "./cablePrune";
 import { getActiveArea } from "../activeGraph";
 import { processGraph } from "../process";
-
 const OPS = (Object.keys(SMOOTH_OP_META) as SmoothOp[]).map((op) => ({
   value: op, label: SMOOTH_OP_META[op].label, title: SMOOTH_OP_META[op].description,
 }));

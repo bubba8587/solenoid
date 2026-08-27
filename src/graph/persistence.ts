@@ -1,7 +1,9 @@
 import { ClassicPreset } from "rete";
 import type { SolenoidNode, SolenoidConnection } from "./schemes";
-import { getEditor, getArea, processGraph, repositionDockedNodes, beginGraphRebuild, endGraphRebuild, getCurrentSeedId, clearHistory } from "./process";
-import type { SeedSelection } from "./process";
+import { getEditor, getArea, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
+import { repositionDockedNodes, clearHistory } from "./canvasCommands";
+import { getCurrentSeedId } from "./seedStore";
+import type { SeedSelection } from "./seedStore";
 import { extractInit } from "./copyPaste";
 import { ctorRegistry } from "./nodeCtorRegistry";
 import { FormatControllerNode, ConvertNode, PlaceholderNode, CompositeNode } from "./rete-nodes";

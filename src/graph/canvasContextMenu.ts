@@ -10,8 +10,7 @@ import { cableSelectionStore, cableGhostStore } from "./cableState";
 import { ribbonForConnection } from "./ribbonCable";
 import { standoffStore } from "./standoffs";
 import { dockedNodeStore } from "./dockedNodeStore";
-import { unselectAllNodes as unselectAllNodesFromProcess } from "./process";
-
+import { unselectAllNodes as unselectAllNodesFromProcess } from "./canvasCommands";
 type Point = { clientX: number; clientY: number; target: EventTarget | null };
 
 /** An actively-edited field keeps the browser's own menu. */

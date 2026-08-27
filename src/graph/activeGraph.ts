@@ -2,7 +2,6 @@ import type { Area } from "./area";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import { getEditor, getArea } from "./process";
-
 // The graph the app CHROME acts on, and the seam any canvas-substituting surface registers
 // with. Deliberately NOT `getEditor()/getArea()`, which stay MAIN-only forever because
 // persistence reads them — the override would autosave the substituted surface over the

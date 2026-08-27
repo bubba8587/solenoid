@@ -43,7 +43,8 @@ import { cableSelectionStore, socketHighlightStore, dragSocketKey } from "../cab
 import { toFlowNodes, toFlowEdges, nodeClassName, toFlowPosition, fromFlowPosition, type FlowModel } from "./flowModel";
 import { canConnect, connect, moveNode } from "./flowModel";
 import type { FlowArea } from "./flowArea";
-import { cableDragStore, setCableDragging, processGraph } from "../process";
+import { processGraph } from "../process";
+import { cableDragStore, setCableDragging } from "../graphSignals";
 import { installCanvasKeyboard } from "../canvasKeyboard";
 import { firstCompatibleSocketKey } from "../catalogSearch";
 import { SolenoidSocket } from "../sockets";

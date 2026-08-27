@@ -6,7 +6,6 @@ import { dropInputCables } from "./cablePrune";
 import { retypeOutputCables } from "../fcReconcile";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { processGraph } from "../process";
-
 const OPS = (Object.keys(ARG_MIN_MAX_OP_META) as ArgMinMaxOp[]).map((op) => ({
   value: op,
   label: ARG_MIN_MAX_OP_META[op].label,

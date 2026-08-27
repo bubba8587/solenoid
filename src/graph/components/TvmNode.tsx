@@ -4,7 +4,6 @@ import type { TvmNode as TvmNodeType, PaymentTiming } from "../rete-nodes";
 import { OpSelect, type NodeProps } from "./nodeKit";
 import { EquationComponent } from "./EquationNode";
 import { processGraph } from "../process";
-
 const TIMING_OPTS = (Object.keys(PAYMENT_TIMING_META) as PaymentTiming[]).map((t) => ({
   value: t,
   label: PAYMENT_TIMING_META[t],

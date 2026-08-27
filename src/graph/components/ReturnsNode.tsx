@@ -6,7 +6,6 @@ import { dropInputCables } from "./cablePrune";
 import { retypeOutputCables } from "../fcReconcile";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { processGraph } from "../process";
-
 const OPS = (Object.keys(RETURNS_OP_META) as ReturnsOp[]).map((op) => ({
   value: op, label: RETURNS_OP_META[op].label, title: RETURNS_OP_META[op].description,
 }));

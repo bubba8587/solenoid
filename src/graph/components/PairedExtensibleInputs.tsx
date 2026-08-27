@@ -1,7 +1,8 @@
 import type { Emit } from "./nodeKit";
 import { useSyncExternalStore } from "react";
 import type { ClassicPreset } from "rete";
-import { processGraph, bumpConnectionVersion } from "../process";
+import { processGraph } from "../process";
+import { bumpConnectionVersion } from "../graphSignals";
 import { getActiveArea } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
 import {

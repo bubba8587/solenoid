@@ -170,9 +170,10 @@ area. When you coin a new load-bearing term, add it here.
   logging per-pass node `data()` + engine IPC. (`perfProbe.ts`)
 - **Alert / HUD** — the Alert node fires on status *change* (edge-detect) → a toast + the
   HUD log. (`alertStore.ts`, `HudStack.tsx`)
-- **Surface** — the structural type every consumer of the canvas uses (`surface.ts`:
-  nodeViews/connectionViews, `area.transform/zoom/translate`); `flow/flowArea.ts` is
-  the one implementation. **FlowSurface** is the one React component both canvases
+- **Area** — the canvas-view seam (`area.ts`): node views (absolute positions + live
+  elements), the camera (`transform`/`zoom`/`pan`), `moveNode`, `rerenderNode`/
+  `rerenderCables`; `flow/flowArea.ts` is the one implementation and `area` is its
+  variable name everywhere. **FlowSurface** is the one React component both canvases
   render (decisions oneFlowSurface).
 
 ## The author's UI vocabulary (chrome name → code handle)

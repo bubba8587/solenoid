@@ -3,7 +3,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalS
 import { useKatexRender } from "./katexLoader";
 import type { ClassicPreset } from "rete";
 import { SolenoidSocket } from "../sockets";
-import { connectionVersionStore, processGraph } from "../process";
+import { processGraph } from "../process";
+import { connectionVersionStore } from "../graphSignals";
 import { getOwningEditor, getOwningArea } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { nodeName } from "../catalogUtils";

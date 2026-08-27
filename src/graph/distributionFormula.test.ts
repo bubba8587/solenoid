@@ -8,7 +8,6 @@ import { compileEvaluator } from "./excelFormula";
 import { DistributionNode } from "./nodes/distribution";
 import { sampleQuantile } from "./nodes/distributionOps";
 import { requestRecalc } from "./process";
-
 const dist = (op: string, form: string) =>
   new DistributionNode({ op: op as never, form: form as never });
 describe("registered gap distributions match the NODES", () => {

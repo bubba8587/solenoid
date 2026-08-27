@@ -19,7 +19,7 @@ import { isolateStore } from "../isolateStore";
 import { resolveTypedSource, conduitPath } from "../conduitTrace";
 import { ribbonForConnection, ribbonHoverStore, conduitFacePoint, conduitLanePoint, conduitLayoutStore, pinRibbonSeparation } from "../ribbonCable";
 import { SOCKET_COLORS, SolenoidSocket } from "../sockets";
-import { unselectAllNodes } from "../process";
+import { unselectAllNodes } from "../canvasCommands";
 import { getOwningEditor, getOwningArea } from "../activeGraph";
 import { groupCollapseStore, COLLAPSE_LAYOUT, pillY } from "../groupCollapse";
 import { touchSelectStore } from "../touchSelectStore";

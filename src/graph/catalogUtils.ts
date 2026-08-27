@@ -4,7 +4,8 @@ import { packPlacements, packsStore, NODE_PACK_TAGS } from "./packs";
 import { NODE_OPS, hiddenOps, exposureOf, opEntry } from "./nodeOps";
 import { CATALOG_TO_EXCEL } from "./excelToCatalog";
 import { NODE_EXCEL } from "./nodeExcel";
-import { processGraph, unselectAllNodes, selectNode } from "./process";
+import { processGraph } from "./process";
+import { unselectAllNodes, selectNode } from "./canvasCommands";
 import type { NodeCatalogEntry, CatalogCategory, CatalogPair, CatalogEntry } from "./AddNodeMenu";
 import { nodeNameStore } from "./nodeNameStore";
 // Cycle-safe: nodeCtorRegistry imports FLAT_CATALOG from here, but neither module
