@@ -16,6 +16,7 @@ import {
   CONDUIT_SQ,
   CONDUIT_COL_GAP,
   CONDUIT_ROW_GAP,
+  conduitLaneOffset,
   conduitLayoutStore,
 } from "../ribbonCable";
 import {
@@ -52,10 +53,15 @@ const COL_GAP = CONDUIT_COL_GAP;  // gap between the input and output columns
 const ROW_GAP = CONDUIT_ROW_GAP;  // gap between lane rows
 const SHELL_PAD = 2;     // small housing padding so the squares read as a tight grid
 const BORDER_WIDTH = 1.25;
-// Red pin-1 stripe, its own row just above the grid (inside the housing).
+// Grab handle: the connector's keyed top band, and the ONE part of the block no cable
+// ever crosses — so it is what you aim at to select or drag. Its height deliberately
+// does NOT take the collapse scale: the target must not shrink away in the very state
+// (resting, compressed) you reach for it in.
+const HANDLE_H = 12;
+const HANDLE_GAP = 1;    // hairline between the handle and the socket grid
+// Red pin-1 marker, a thin inset inside the handle band.
 const STRIPE_H = 3;
-const STRIPE_GAP = 2;
-const STRIPE_INSET = 1;
+const STRIPE_INSET = 2.5;
 // Rotation snaps to 45°: the cable leads exit along the connector angle, and off-45°
 // angles make the diagonal cable shape look bad.
 const ANGLE_STEP = 45;
@@ -64,6 +70,13 @@ const ANGLE_STEP = 45;
 const normaliseAngle = (deg: number): number => { const m = deg % 360; return m < 0 ? m + 360 : m; };
 
 const snap45 = (deg: number) => normaliseAngle(Math.round(deg / 45) * 45);
+
+/** A rect whose TOP corners are rounded to r — the handle band shares the shell's
+ *  top corners and butts flat against the socket grid below it. */
+function topBand(x: number, y: number, w: number, h: number, r: number): string {
+  const c = Math.max(0, Math.min(r, w / 2, h));
+  return `M ${x} ${y + c} A ${c} ${c} 0 0 1 ${x + c} ${y} H ${x + w - c} A ${c} ${c} 0 0 1 ${x + w} ${y + c} V ${y + h} H ${x} Z`;
+}
 
 // How many lanes are currently wired (max used in_/out_ index + 1).
 function countUsedLanes(nodeId: string): number {
@@ -150,37 +163,46 @@ export function ConduitComponent({ data }: Props) {
   const rad = (angle * Math.PI) / 180;
   const c = Math.cos(rad);
   const s = Math.sin(rad);
-  const laneY = (i: number) => (i - (lanes - 1) / 2) * rowStep;
-  const place = (faceSign: number, i: number) => {
-    const lx = faceSign * halfW;
-    const ly = laneY(i);
-    return { x: lx * c - ly * s, y: lx * s + ly * c };
-  };
-  const inputHandles  = Array.from({ length: lanes }, (_, i) => place(-1, i));
-  const outputHandles = Array.from({ length: lanes }, (_, i) => place(1, i));
+  // Squares and cable tips read the SAME lane geometry, so a tip can never sit off
+  // the pin hole it plugs into (ribbonCable.conduitLanePoint is the other caller).
+  const place = (side: "in" | "out", i: number) => conduitLaneOffset({ angle, scale, lanes }, side, i);
+  const inputHandles  = Array.from({ length: lanes }, (_, i) => place("in", i));
+  const outputHandles = Array.from({ length: lanes }, (_, i) => place("out", i));
 
-  // The grid stays centered on the pivot; the housing pokes up for the stripe row.
+  // The grid stays centered on the pivot; the housing pokes up for the handle band.
   const gridHalfW = halfW + sq / 2;
   const gridHalfH = ((lanes - 1) * rowStep) / 2 + sq / 2;
   const shellPad = SHELL_PAD * scale;
-  const stripeH = STRIPE_H * scale;
   const gridTop = PIVOT - gridHalfH;
-  const stripeY = gridTop - STRIPE_GAP * scale - stripeH;
-  const stripeX = PIVOT - gridHalfW + STRIPE_INSET * scale;
-  const stripeW = 2 * gridHalfW - 2 * STRIPE_INSET * scale;
   const rectX = PIVOT - gridHalfW - shellPad;
   const rectW = 2 * (gridHalfW + shellPad);
-  const rectY = stripeY - shellPad;
+  const rectY = gridTop - HANDLE_GAP * scale - HANDLE_H;
   const rectH = PIVOT + gridHalfH + shellPad - rectY;
   const radius = Math.min(rectW / 2, 6 * scale);
+  // The handle IS the housing's top slice, full width, top corners following the shell.
+  const handleH = HANDLE_H;
+  const stripeH = STRIPE_H;
+  const stripeY = rectY + (handleH - stripeH) / 2;
+  const stripeX = rectX + STRIPE_INSET;
+  const stripeW = rectW - 2 * STRIPE_INSET;
   const rot = `rotate(${angle} ${PIVOT} ${PIVOT})`;
 
-  // Publish live layout for ribbon-trunk geometry; `selected` rides along so ribbons
-  // touching a selected Conduit separate into individual cables.
+  // Publish live layout: ribbon-trunk geometry AND every lane's cable endpoint are
+  // derived from it (ribbonCable.conduitLanePoint), so `lanes` and `scale` must ride
+  // along or endpoints stall on the previous shape. `selected` rides along too, so
+  // ribbons touching a selected Conduit separate into individual cables.
   useEffect(() => {
-    conduitLayoutStore.set(node.id, { angle, scale, selected });
-  }, [node.id, angle, scale, selected]);
+    conduitLayoutStore.set(node.id, { angle, scale, selected, lanes });
+  }, [node.id, angle, scale, selected, lanes]);
   useEffect(() => () => conduitLayoutStore.clear(node.id), [node.id]);
+
+  // React Flow measures a node's socket boxes once and re-measures only on a version
+  // bump, so without this the lane squares stay drop targets at their COLLAPSED spots
+  // — and the block expands exactly when a cable is being aimed at it. The area's
+  // re-render verb is what carries the bump (SolNodeAdapter → updateNodeInternals).
+  useEffect(() => {
+    void getOwningArea(node.id)?.update("node", node.id);
+  }, [node.id, angle, scale, lanes]);
 
   // Per-socket cable leads: inputs arrive into the −x face, outputs leave the +x face,
   // so both resolve to `angle`.
@@ -235,16 +257,20 @@ export function ConduitComponent({ data }: Props) {
   const renderSocket = (side: "input" | "output", key: string, p: { x: number; y: number }, isPhantom: boolean) => (
     <div
       key={key}
-      className={`solenoid-conduit__lane${isPhantom ? " solenoid-conduit__lane--phantom" : ""}`}
-      // The rotate is visual-only around the square's center, so rete still measures the
-      // endpoint at p (offsetLeft/Top ignore transforms). COMPRESSED sockets are
-      // pointer-transparent — the bunched squares cover the whole pill, so otherwise every
-      // click starts a cable drag and the block can never be re-selected.
+      className={
+        "solenoid-conduit__lane"
+        + (isPhantom ? " solenoid-conduit__lane--phantom" : "")
+        // Compressed: pointer-transparent, RF's Handle included (flow.css) — the bunched
+        // squares cover the whole block, so otherwise every press starts a cable drag and
+        // the block can never be grabbed.
+        + (expanded ? "" : " solenoid-conduit__lane--inert")
+      }
+      // The rotate is visual-only around the square's center; cable tips come from the
+      // published layout, not from this box.
       style={{
         left: PIVOT + p.x - socketSize / 2,
         top: PIVOT + p.y - socketSize / 2,
         transform: angle ? `rotate(${angle}deg)` : undefined,
-        pointerEvents: expanded ? undefined : "none",
       }}
     >
       {(() => {
@@ -278,6 +304,10 @@ export function ConduitComponent({ data }: Props) {
           <rect
             className="solenoid-conduit__block"
             x={rectX} y={rectY} width={rectW} height={rectH} rx={radius}
+          />
+          <path
+            className="solenoid-conduit__handle"
+            d={topBand(rectX, rectY, rectW, handleH, radius)}
           />
           <rect
             className="solenoid-conduit__stripe"

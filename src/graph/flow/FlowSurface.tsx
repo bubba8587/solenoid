@@ -43,7 +43,7 @@ import { cableSelectionStore, socketHighlightStore, dragSocketKey } from "../cab
 import { toFlowNodes, toFlowEdges, nodeClassName, toFlowPosition, fromFlowPosition, type FlowModel } from "./flowModel";
 import { canConnect, connect, moveNode } from "./flowController";
 import type { FlowArea } from "./flowArea";
-import { setCableDragging, processGraph } from "../process";
+import { cableDragStore, setCableDragging, processGraph } from "../process";
 import { installCanvasKeyboard } from "../canvasKeyboard";
 import { firstCompatibleSocketKey } from "../catalogSearch";
 import { SolenoidSocket } from "../sockets";
@@ -274,7 +274,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         setNodes((ns) => {
           let changed = false;
           const next = ns.map((n) => {
-            const cls = nodeClassName(n.id);
+            const cls = nodeClassName(n.data.node);
             if ((n.className ?? undefined) === cls) return n;
             changed = true;
             return { ...n, className: cls };
@@ -806,6 +806,10 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   );
 
   const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
+  // Cabling mode on the canvas root: socket.css grows every socket's catch zone and
+  // re-arms mobile's drop targets off this class, so the surface must wear it for the
+  // pickup → drop window (the rete connection plugin used to set it).
+  const cabling = useSyncExternalStore(cableDragStore.subscribe, cableDragStore.get);
   // SELECT mode (the mobile pill): taps toggle nodes in and out, background taps
   // keep the selection. RF's store flag carries exactly those semantics, and
   // pane-drag panning yields to the lasso (canvasLasso arms without Shift while
@@ -833,7 +837,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   return (
     <div
       ref={wrapperRef}
-      className={`sol-rf-appcanvas${hooks.className ? ` ${hooks.className}` : ""}${locked ? " solenoid-canvas--locked" : ""}`}
+      className={`sol-rf-appcanvas${hooks.className ? ` ${hooks.className}` : ""}${locked ? " solenoid-canvas--locked" : ""}${cabling ? " solenoid-canvas--cabling" : ""}`}
       onPointerMove={onPointerMove}
     >
       <ReactFlow<SolFlowNode, SolFlowEdge>

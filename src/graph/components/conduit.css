@@ -3,10 +3,16 @@
    top-left never shifts between the compressed and expanded states.
    Sized by the component; styling + theming here. */
 
+/* The node box is a fixed 92 square so the top-left never moves between states, but
+   the block inside it is tiny — so the box must NOT be the hit target: an invisible
+   92-square would out-rank the cables, standoffs and canvas underneath it. Pointers
+   land on what is PAINTED (the shell shapes and the lane squares), nothing else.
+   pointer-events inherits, so every live descendant says `auto` for itself. */
 .solenoid-conduit {
   position: relative;
   box-sizing: border-box;
   overflow: visible;
+  pointer-events: none;
 }
 
 .solenoid-conduit__svg {
@@ -14,26 +20,36 @@
   inset: 0;
   display: block;
   overflow: visible;
-  /* Decorative — pointer events fall through to the socket dots and the rete
-     node wrapper (for drag). */
-  pointer-events: none;
 }
 
 /* IDC-connector housing: a darker-gray shell with a lighter-gray border, hugging
-   the 2×N grid of square sockets (small padding so they read as a tight grid). */
+   the 2×N grid of square sockets (small padding so they read as a tight grid).
+   The shell is the block's grab surface — drag or click it to move or select. */
 .solenoid-conduit__block,
-.solenoid-conduit__block-border {
+.solenoid-conduit__block-border,
+.solenoid-conduit__handle {
+  pointer-events: auto;
+  cursor: grab;
   transition: fill 80ms ease;
 }
+.solenoid-conduit:active .solenoid-conduit__block,
+.solenoid-conduit:active .solenoid-conduit__block-border,
+.solenoid-conduit:active .solenoid-conduit__handle { cursor: grabbing; }
 .solenoid-conduit__block        { fill: #464b54; }
 .solenoid-conduit__block-border { fill: #8a909c; }
 
-/* Pin-1 stripe: the red edge marker of a conduit cable. Stays red regardless of
-   selection so orientation reads at a glance. */
-.solenoid-conduit__stripe { fill: #e0473a; }
+/* Handle: the shell's top band, the one strip no cable crosses, so it is the
+   reliable place to grab a block this small. A step lighter than the shell so it
+   reads as the graspable edge rather than more housing. */
+.solenoid-conduit__handle { fill: #5b616c; }
+
+/* Pin-1 stripe: the red edge marker of a conduit cable, inset in the handle band.
+   Stays red regardless of selection so orientation reads at a glance. */
+.solenoid-conduit__stripe { fill: #e0473a; pointer-events: auto; }
 
 .solenoid-conduit:not(.solenoid-conduit--selected):hover .solenoid-conduit__block        { fill: #515761; }
 .solenoid-conduit:not(.solenoid-conduit--selected):hover .solenoid-conduit__block-border { fill: #9aa1ad; }
+.solenoid-conduit:not(.solenoid-conduit--selected):hover .solenoid-conduit__handle       { fill: #6a7180; }
 
 /* Selected keeps the connector grays (the size change communicates selection);
    the border picks up the accent and the shell gets a soft accent glow. */
@@ -42,29 +58,30 @@
   filter: drop-shadow(0 0 6px var(--accent-mid));
 }
 
-/* Lane wrapper — positioned at the socket-square center. */
+/* Lane wrapper — positioned at the socket-square center, and it IS the socket:
+   the squares ARE the sockets, so the type glyph is hidden and this box paints
+   the dark-gray pin hole. Sized to --socket-size, the same box the RF Handle it
+   wraps takes, so the painted square and the measured cable endpoint coincide.
+   The rim is an inset ring, never a border — a layout border would push the
+   handle 1px off the square's center. */
 .solenoid-conduit__lane {
   position: absolute;
+  /* Explicit: the root is pointer-transparent and pointer-events INHERITS. */
+  pointer-events: auto;
+  width: var(--socket-size, 9px);
+  height: var(--socket-size, 9px);
+  background: #2e323a;
+  box-shadow: inset 0 0 0 1px #565b65;
+  border-radius: 2px;
+  cursor: crosshair;
 }
 .solenoid-conduit__lane--phantom {
   opacity: 0.35;
 }
-
-/* The squares ARE the sockets: hide the default round dot, and render each
-   socket span as a dark-gray grid square (sized to --socket-size). */
 .solenoid-conduit .solenoid-socket-dot { display: none; }
-.solenoid-conduit .input-socket,
-.solenoid-conduit .output-socket {
-  background: #2e323a;
-  border: 1px solid #565b65;
-  border-radius: 2px;
-  box-sizing: border-box;
-  cursor: crosshair;
-}
-.solenoid-conduit .input-socket:hover,
-.solenoid-conduit .output-socket:hover {
+.solenoid-conduit__lane:hover {
   background: #3b414b;
-  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 
 /* ── Light mode ──────────────────────────────────────────────────────────────
@@ -78,15 +95,15 @@
 :root[data-theme="light"] .solenoid-conduit__block-border { fill: #969db0; }
 :root[data-theme="light"] .solenoid-conduit:not(.solenoid-conduit--selected):hover .solenoid-conduit__block        { fill: #b5bbc7; }
 :root[data-theme="light"] .solenoid-conduit:not(.solenoid-conduit--selected):hover .solenoid-conduit__block-border { fill: #828a9c; }
-:root[data-theme="light"] .solenoid-conduit .input-socket,
-:root[data-theme="light"] .solenoid-conduit .output-socket {
+:root[data-theme="light"] .solenoid-conduit__handle { fill: #aeb5c1; }
+:root[data-theme="light"] .solenoid-conduit:not(.solenoid-conduit--selected):hover .solenoid-conduit__handle { fill: #9ea6b4; }
+:root[data-theme="light"] .solenoid-conduit__lane {
   background: #6a717c;
-  border-color: #4d535c;
+  box-shadow: inset 0 0 0 1px #4d535c;
 }
-:root[data-theme="light"] .solenoid-conduit .input-socket:hover,
-:root[data-theme="light"] .solenoid-conduit .output-socket:hover {
+:root[data-theme="light"] .solenoid-conduit__lane:hover {
   background: #5a616b;
-  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 
 /* Inspector toolbar — visible when selected. Docked variant pins it to the

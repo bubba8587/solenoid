@@ -131,8 +131,13 @@ export function fromFlowPosition(
  *  inline `visibility` belongs to RF (it stamps `visible` after measuring), so
  *  any imperative stamp gets overwritten; the class + `!important` rule
  *  (flow.css) is the one channel RF preserves. */
-export function nodeClassName(id: string): string | undefined {
-  return groupCollapseStore.isNodeHidden(id) ? "sol-member-hidden" : undefined;
+export function nodeClassName(node: SolNode): string | undefined {
+  const cls = [];
+  if (groupCollapseStore.isNodeHidden(node.id)) cls.push("sol-member-hidden");
+  // A Conduit's node box is a fixed 92 square around a much smaller block, so the box
+  // itself must not take pointers — the painted shell and lane squares do (conduit.css).
+  if (node instanceof Nodes.ConduitNode) cls.push("sol-conduit-node");
+  return cls.length ? cls.join(" ") : undefined;
 }
 
 /** The rete surface's area-plane z-order (groups −2 < conduits −1 < nodes 0);
@@ -173,7 +178,7 @@ export function toFlowNodes(m: FlowModel): RFNodeLite[] {
       position: parentPos ? { x: abs.x - parentPos.x, y: abs.y - parentPos.y } : { x: abs.x, y: abs.y },
       parentId: parentPos ? parentId : undefined,
       zIndex: nodeZIndex(node),
-      className: nodeClassName(node.id),
+      className: nodeClassName(node),
       data: { node, version: 0 },
     };
   });

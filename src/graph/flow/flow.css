@@ -27,6 +27,23 @@
   pointer-events: none !important;
 }
 
+/* A Conduit's node box is a fixed 92 square wrapped around a much smaller block, so
+   an invisible box that took pointers would out-rank the cables, standoffs and canvas
+   under it. Pointers land on what is painted instead — the shell shapes and the lane
+   squares each claim `auto` for themselves (conduit.css). */
+.react-flow__node.sol-conduit-node {
+  /* RF stamps `pointer-events: all` inline on every selectable node wrapper, so this
+     has to out-rank an inline style — the same reason sol-member-hidden shouts. */
+  pointer-events: none !important;
+}
+/* A COMPRESSED Conduit's lane squares bunch over the whole block, so leaving them live
+   means every press on it starts a cable drag and the block can never be grabbed. RF's
+   own connectable rules re-arm the Handle inside, so the lane has to reach it. */
+.solenoid-conduit__lane--inert,
+.solenoid-conduit__lane--inert .react-flow__handle.sol-rf-handle-reset {
+  pointer-events: none;
+}
+
 /* The real-card socket dot: an RF Handle inside NodeSocket's absolutely
    positioned wrapper. Strip RF's default dot styling; SocketComponent draws. */
 .react-flow__handle.sol-rf-handle-reset {

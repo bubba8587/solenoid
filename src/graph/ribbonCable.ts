@@ -1,4 +1,4 @@
-import { ConduitNode } from "./rete-nodes";
+import { ConduitNode, conduitLaneOf } from "./rete-nodes";
 import { groupCollapseStore } from "./groupCollapse";
 import { cableGhostStore, cableSelectionStore } from "./cableState";
 
@@ -15,7 +15,7 @@ export const CONDUIT_ROW_GAP = 1.5;
 // ConduitComponent publishes its live angle + scale here; connections subscribe so
 // the trunk tracks expansion.
 
-type ConduitLayout = { angle: number; scale: number; selected: boolean };
+export type ConduitLayout = { angle: number; scale: number; selected: boolean; lanes: number };
 
 const _layouts = new Map<string, ConduitLayout>();
 let _layoutVersion = 0;
@@ -25,7 +25,8 @@ function notifyLayout() { _layoutVersion++; for (const l of _layoutListeners) l(
 export const conduitLayoutStore = {
   set(nodeId: string, layout: ConduitLayout) {
     const cur = _layouts.get(nodeId);
-    if (cur && cur.angle === layout.angle && cur.scale === layout.scale && cur.selected === layout.selected) return;
+    if (cur && cur.angle === layout.angle && cur.scale === layout.scale && cur.selected === layout.selected
+        && cur.lanes === layout.lanes) return;
     _layouts.set(nodeId, layout);
     notifyLayout();
   },
@@ -38,6 +39,10 @@ export const conduitLayoutStore = {
   subscribe(l: () => void) { _layoutListeners.add(l); return () => { _layoutListeners.delete(l); }; },
 };
 
+// Distance from the pivot to a lane column's centre — the same halfW
+// ConduitComponent lays the squares out on.
+const columnHalf = (scale: number) => ((CONDUIT_SQ + CONDUIT_COL_GAP) * scale) / 2;
+
 // Where the ribbon trunk attaches, in canvas coords. Null until the Conduit has
 // mounted and published its layout.
 export function conduitFacePoint(
@@ -47,14 +52,55 @@ export function conduitFacePoint(
   const lay = _layouts.get(nodeId);
   const pos = getOwningArea(nodeId)?.nodeViews.get(nodeId)?.position;
   if (!lay || !pos) return null;
-  const halfW = ((CONDUIT_SQ + CONDUIT_COL_GAP) * lay.scale) / 2;
   const sign = side === "out" ? 1 : -1;
   const rad = (lay.angle * Math.PI) / 180;
   return {
-    x: pos.x + CONDUIT_PIVOT + sign * halfW * Math.cos(rad),
-    y: pos.y + CONDUIT_PIVOT + sign * halfW * Math.sin(rad),
+    x: pos.x + CONDUIT_PIVOT + sign * columnHalf(lay.scale) * Math.cos(rad),
+    y: pos.y + CONDUIT_PIVOT + sign * columnHalf(lay.scale) * Math.sin(rad),
     angle: lay.angle,
   };
+}
+
+/** One lane square's CENTRE, as an offset from the pivot. THE lane geometry:
+ *  ConduitComponent places the painted square on it and cable tips land on it, so
+ *  the two cannot drift. Local frame is out along ±x to the lane column, then the
+ *  lane's row offset along +y, the whole thing rotated by the block's angle. */
+export function conduitLaneOffset(
+  lay: Pick<ConduitLayout, "angle" | "scale" | "lanes">,
+  side: "in" | "out",
+  laneIdx: number,
+): { x: number; y: number } {
+  const sq = CONDUIT_SQ * lay.scale;
+  const lx = (side === "out" ? 1 : -1) * columnHalf(lay.scale);
+  const ly = (laneIdx - (lay.lanes - 1) / 2) * (sq + CONDUIT_ROW_GAP * lay.scale);
+  const rad = (lay.angle * Math.PI) / 180;
+  const c = Math.cos(rad);
+  const s = Math.sin(rad);
+  return { x: lx * c - ly * s, y: lx * s + ly * c };
+}
+
+/** Where a cable plugs into ONE lane: the CENTRE of that lane's socket square, in
+ *  canvas coords (authorRuled — the tip seats in the pin hole, not on its rim).
+ *  Null when the node is not a laid-out Conduit lane.
+ *
+ *  Computed, never measured. React Flow stores a handle's bounding box, which for
+ *  a Conduit is wrong twice over: it re-measures only on a node version bump, so
+ *  the expand/collapse scale change leaves every endpoint on the old geometry, and
+ *  the box is the AABB of the ROTATED square, which inflates by √2 off-axis. Both
+ *  errors put the tip off the square's centre; this puts it exactly there. */
+export function conduitLanePoint(
+  nodeId: string,
+  side: "in" | "out",
+  socketKey: string,
+): { x: number; y: number } | null {
+  const lay = _layouts.get(nodeId);
+  const pos = getOwningArea(nodeId)?.nodeViews.get(nodeId)?.position;
+  if (!lay || !pos) return null;
+  const i = conduitLaneOf(socketKey, side);
+  if (i < 0) return null;
+  // A cable can land a frame ahead of the component republishing its lane count.
+  const off = conduitLaneOffset(lay, side, Math.min(i, lay.lanes - 1));
+  return { x: pos.x + CONDUIT_PIVOT + off.x, y: pos.y + CONDUIT_PIVOT + off.y };
 }
 
 // Trunk and fan branches are separate ConnectionComponents, so hover must be shared

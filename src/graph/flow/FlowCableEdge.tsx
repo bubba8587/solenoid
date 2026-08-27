@@ -17,7 +17,7 @@ import { cableValueStore } from "../cableValueStore";
 import { cableFlowStore } from "../cableFlowStore";
 import { isolateStore } from "../isolateStore";
 import { resolveTypedSource, conduitPath } from "../conduitTrace";
-import { ribbonForConnection, ribbonHoverStore, conduitFacePoint, conduitLayoutStore, pinRibbonSeparation } from "../ribbonCable";
+import { ribbonForConnection, ribbonHoverStore, conduitFacePoint, conduitLanePoint, conduitLayoutStore, pinRibbonSeparation } from "../ribbonCable";
 import { SOCKET_COLORS, SolenoidSocket } from "../sockets";
 import { unselectAllNodes } from "../process";
 import { getOwningEditor, getOwningArea } from "../activeGraph";
@@ -158,8 +158,14 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
     () => isolateStore.isActive() && (!isolateStore.isVisible(source) || !isolateStore.isVisible(target)),
   );
   useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
-  // Conduit face points move only ribbons.
-  useSyncExternalStore(conduitLayoutStore.subscribe, () => (ribbon ? conduitLayoutStore.version() : 0));
+  const srcBlock = editor?.getNode(source) instanceof ConduitNode;
+  const tgtBlock = editor?.getNode(target) instanceof ConduitNode;
+  // Conduit geometry moves ribbons AND the lane endpoints of a plain cable into a
+  // Conduit — an unribboned lane still re-anchors when the block expands.
+  useSyncExternalStore(
+    conduitLayoutStore.subscribe,
+    () => (ribbon || srcBlock || tgtBlock ? conduitLayoutStore.version() : 0),
+  );
   const ribbonHovered = useSyncExternalStore(
     ribbonHoverStore.subscribe,
     () => ribbon !== null && ribbonHoverStore.get() === ribbon.key,
@@ -182,8 +188,12 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
     if (!g) return undefined;
     return { x: p.side === "left" ? g.x : g.x + COLLAPSE_LAYOUT.width, y: g.y + pillY(p.index) };
   };
-  const cs = pillPoint(groupCollapseStore.outPillFor(source, conn.sourceOutput)) ?? { x: sourceX, y: sourceY };
-  const ce = pillPoint(groupCollapseStore.inPillFor(target, conn.targetInput)) ?? { x: targetX, y: targetY };
+  const cs = pillPoint(groupCollapseStore.outPillFor(source, conn.sourceOutput))
+    ?? conduitLanePoint(source, "out", conn.sourceOutput)
+    ?? { x: sourceX, y: sourceY };
+  const ce = pillPoint(groupCollapseStore.inPillFor(target, conn.targetInput))
+    ?? conduitLanePoint(target, "in", conn.targetInput)
+    ?? { x: targetX, y: targetY };
 
   const stroke = selected ? SELECTED_COLOR : typeColor;
   const activeHover = hovered || socketHovered;
@@ -439,8 +449,6 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
     }
   }
 
-  const srcBlock = editor?.getNode(source) instanceof ConduitNode;
-  const tgtBlock = editor?.getNode(target) instanceof ConduitNode;
   const hitDash = srcBlock || tgtBlock
     ? hitTrimDash(pathLength(pathD, cs, ce), srcBlock ? BLOCK_HIT_CLEAR : 0, tgtBlock ? BLOCK_HIT_CLEAR : 0)
     : undefined;

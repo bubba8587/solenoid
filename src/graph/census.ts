@@ -36,8 +36,7 @@ function carries(el: Element): boolean {
   const tag = el.tagName.toLowerCase();
   if (tag === "input" || tag === "select" || tag === "textarea" || tag === "button" || tag === "a" || tag === "img") return true;
   if (el.hasAttribute("contenteditable")) return true;
-  const cls = el.classList;
-  if (cls.contains("input-socket") || cls.contains("output-socket")) return true;
+  if (el.hasAttribute("data-socket-side")) return true;
   // A DIRECT non-whitespace text node = a label / value / glyph character.
   for (const n of el.childNodes) {
     if (n.nodeType === Node.TEXT_NODE && (n.textContent ?? "").trim() !== "") return true;

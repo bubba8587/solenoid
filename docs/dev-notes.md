@@ -6,6 +6,47 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-08-27 — react-port-develop: the Conduit's sockets, its cable tips, its hit area)
+
+**The Conduit rendered no sockets at all.** Rete's classic preset wrapped every socket in a
+`<span class="input-socket">`; the cutover removed the render packages and those class names went
+with them. `conduit.css` painted the lane squares on `.input-socket`/`.output-socket` and hid the
+type glyph underneath — so the squares stopped being painted in silence and the housing came up
+blank. The lane square is now the LANE WRAPPER itself, sized to `--socket-size` with an inset ring
+(never a layout border, which would push the wrapped RF Handle 1px off centre).
+
+**Same dead-class family, swept mechanically** (`scripts/dead-css-classes.mjs`, new — three
+buckets: never emitted / mentioned only by files that READ classes / composed at runtime).
+It found `.solenoid-canvas--cabling` un-set by anything since the cutover, which had silently
+un-armed every socket catch zone (the touch blowout and the cabling halo both key off it) and
+mobile's drop-target escape hatch. FlowSurface sets it again for the pickup → drop window, and
+the halo rules moved onto the port's own wrappers (`[data-socket-side]`, `.solenoid-conduit__lane`).
+`census.ts` was reading the same dead classes, so it scored every socket as paint-only.
+
+**Cable tips (author: "supposed to be centre of the Conduit sockets").** They came from React
+Flow's measured handle box, which is wrong for a Conduit twice over: re-measured only on a node
+version bump, so expanding left every tip on the collapsed geometry; and stored as the AABB of the
+ROTATED square, which inflates by √2 off-axis. `conduitLaneOffset` (ribbonCable) is now THE lane
+geometry — ConduitComponent centres the painted square on it and FlowCableEdge lands the tip on it,
+so they cannot drift; `conduitLaneGeometry.test.ts` pins pitch, symmetry, the in/out mirror and
+rigid rotation. Measured live: every tip exactly on its square's centre, collapsed / expanded / 45°.
+
+**Hit area follows the paint now** (author: enlarge the handle, clean up the hitboxes). The fixed
+92-square body is a pivot box wrapped around a block a fraction of its size, and it was taking
+pointers — out-ranking the cables, standoffs and canvas beneath it. The RF wrapper goes
+pointer-transparent (`sol-conduit-node`, `!important` over RF's inline `all`) and the painted shell
+and lane squares claim pointers for themselves. The shell grew a **handle** — its top slice, height
+deliberately NOT scaled by the collapse scale, the one strip no cable crosses. Compressed lanes go
+`--inert` (reaching RF's Handle inside, which its connectable rules re-arm), which is very likely
+backlog #7 "Conduits sometimes unselectable/unmovable": a press on a compressed block was landing
+on a lane and starting a cable. Verified live: click-handle selects, drag-handle moves,
+press-drag on a compressed block moves it with no stray cable, an expanded lane still picks up.
+
+Left alone deliberately: `BLOCK_HIT_CLEAR` (the 14px cable-hit trim near a block) still earns its
+keep for the lane rows — the handle is the reliable grab target, so it is a tuning knob now, not
+load-bearing. Also unshrunk: `CONDUIT_BODY_SIZE`, since the pivot derives from it and shrinking it
+would shift every existing Conduit; it no longer acts as a hit area but RF box-select still uses it.
+
 ### SESSION DIGEST (2026-08-26 — react-port-develop: THE CUTOVER — React Flow only, no rete surface)
 Author ruling mid-session: "this branch is for GOING ALL OUT ON REACT FLOW NO RETE." Executed in
 four commits (Cutover A–D; the ledger `docs/react-port-plan.md` carries the full per-item record):
