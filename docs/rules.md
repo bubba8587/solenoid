@@ -1496,7 +1496,11 @@ recompute differently — the start node and every transitive dependent, across 
 and joins, terminating on cycles. No more (wasted work is the cheap half) and no less —
 a node outside the cone keeps displaying its previous answer with no error. Cycle
 handling matches too: the targeted path seeds `#CIRC!` on exactly the SCC members,
-like the full pass, instead of recursing to a RangeError.
+like the full pass, instead of recursing to a RangeError. The pass has ONE definition:
+`graphCompute.ts` (`loopMembers`, `downstreamClosure`, `invalidate`, `seedLoopErrors`,
+`fetchAll`, `computeAll`) — `processGraph`, the composite's internal engine, the
+headless runner and the seed tests all call it; no second copy of the walk or the
+seeding may exist.
 
 *Enforced by:* `processTargeted.test.ts` → "downstreamClosure (targeted recompute
 cone)" (the closure across branches/joins/cycles); `circularReset.test.ts` →

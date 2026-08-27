@@ -22,6 +22,32 @@ design + combining rules → node-coverage + decisions **maximalMerge**, the UX/
 icon parity + CardFrame + commit-on-Enter → DESIGN.md, the capability map → mental-model.
 Every remaining CLAUDE.md line is a standing order or a pointer with the rule's name.
 
+**Rete core ratified, then the model layer made purposeful (author: "all yours").** The
+reactFlowView entry had quoted the "no rete" ruling as if it covered keeping rete core +
+rete-engine; that was an agent's C0 scoping. Surfaced, measured (908 + 606 lines of ESM, one
+dep; RF has no model/ports/engine; no better-fitting headless library; hand-rolling replaces
+~1,500 maintained lines with ~400 of ours across 151 files), and the author ratified keeping
+it. Then four cuts at the layer around it, all behavior-preserving (4881 tests green after
+each): (1) **one compute pass** — `graphCompute.ts` is the single home for
+invalidate/seed-`#CIRC!`/fetch-all; `flowController.recompute` (a whole second engine kept
+from the `?rf` harness), the composite's own seeding loop and the tests' copies are gone, and
+`run-graph` gains the loop seeding it lacked (a cyclic document deadlocked the CLI).
+(2) **the canvas-view seam is `Area`** (`area.ts`), named for what it does — `transform`/
+`zoom`/`pan`, `moveNode`, `rerenderNode`/`rerenderCables`, `onRender` with an unsubscribe,
+`viewport` — replacing `Surface`, whose shape was the intersection of what old rete
+`AreaPlugin` call sites happened to touch (`area.area.transform`, an empty `resize()` Tidy
+awaited, `addPipe` with no removal). Two bugs fell out: IsolateEndpoints queried sockets
+inside a DETACHED placeholder div (its endpoints could never resolve), and every
+per-connection `update("connection")` loop was a whole `setEdges(toFlowEdges)` per cable on
+RF — fcReconcile ×3 and groupCollapse now re-derive once. (3) **`process.ts` owns compute**:
+the twelve chrome slots → `canvasCommands.ts`, seed selection → `seedStore.ts`, the notifier
+stores → `graphSignals.ts`, the ctor cycle-breaker → `ctorProvider.ts`. (4) a node's position
+has ONE source (views read the model map; no mirror to re-sync), ONE way to move it
+(`Area.moveNode`), ONE node type name (`SolenoidNode`). Left as-is on purpose: the
+`flowSurface.ts` injection seam (its stated bundle-fencing reason died with the port, but it
+still breaks a NodeSocket ↔ FlowSocketHandle cycle and gates non-RF renders — the comment
+now says so).
+
 ### SESSION DIGEST (2026-08-27 — react-port-develop: the Conduit's sockets, its cable tips, its hit area)
 
 **The Conduit rendered no sockets at all.** Rete's classic preset wrapped every socket in a

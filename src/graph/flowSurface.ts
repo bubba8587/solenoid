@@ -1,8 +1,9 @@
-// The socket-injection seam: node components render sockets as RF Handles,
-// but the Handle component is INJECTED by the flow chunk (registerFlowSocket)
-// so shared component code never imports @xyflow/react — the flow chunk stays
-// the only owner of that dependency. The context gates rendering outside an
-// RF tree (a bare component render falls back to the plain SocketComponent).
+// The socket / resize-grip injection seam. Node components render sockets as RF
+// Handles and grips as RF NodeResizeControls, both of which only work INSIDE a
+// ReactFlow tree; the context gates that (a bare card render falls back to the plain
+// SocketComponent and no grip). The components are registered rather than imported
+// because FlowSocketHandle draws NodeSocket's own glyphs — a direct import would be
+// a NodeSocket ↔ FlowSocketHandle cycle.
 import { createContext, useContext, type ComponentType, type CSSProperties, type ReactNode } from "react";
 import type { ClassicPreset } from "rete";
 

@@ -50,6 +50,13 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
 
 ## Bugs & verifications
 
+- [ ] **Undo of a nudge leaves one node 1px off** (found 2026-08-27 by a headless smoke:
+  getting-started seed, Ctrl+A, ArrowRight, Ctrl+Z → every card back except one at
+  y 678 → 679; identical on the pre-refactor code, so a snapshot-restore rounding issue,
+  not the Area rework). Suspect: a fractional model position (a group member's absolute
+  = group + RF-relative) rounded by `serializeGraph` on the way into the snapshot.
+  Pin with a test on `flowHistory` restore ≡ pre-edit positions.
+
 - [ ] **High memory use (Chrome tab estimate) for a light app** — author 2026-08-26,
   longstanding, predates the RF port; not investigated yet. RF's `onlyRenderVisibleElements`
   (virtualization) is the obvious lever but every DOM reader (HIC snapshot, docked-FC placement,
