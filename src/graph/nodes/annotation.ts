@@ -234,6 +234,12 @@ export class FileLinkNode extends ClassicPreset.Node {
     this.collapsed = init?.collapsed ?? false;
     // No addInput/addOutput: a link is not a value in the dataflow.
   }
+
+  // No outputs, but the dataflow engine still calls data() on every node — return
+  // nothing (the Presentation / Session History pattern for a sockets-less node).
+  data(): Record<string, never> {
+    return {};
+  }
 }
 
 // A visual slicer: clicking a shape emits that layer's NAME on `Layer`, and the

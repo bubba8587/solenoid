@@ -11,8 +11,8 @@ describe("FileLinkNode", () => {
     // No sockets — a link carries nothing into the graph.
     expect(Object.keys(n.inputs)).toEqual([]);
     expect(Object.keys(n.outputs)).toEqual([]);
-    // Nothing to compute: a link has no data() to wrap.
-    expect((n as unknown as { data?: unknown }).data).toBeUndefined();
+    // The engine calls data() on every node; a link emits nothing.
+    expect(n.data()).toEqual({});
   });
 
   it("round-trips label, path, fileName and collapsed through extractInit", () => {
