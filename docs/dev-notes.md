@@ -47,6 +47,24 @@ keep for the lane rows — the handle is the reliable grab target, so it is a tu
 load-bearing. Also unshrunk: `CONDUIT_BODY_SIZE`, since the pivot derives from it and shrinking it
 would shift every existing Conduit; it no longer acts as a hit area but RF box-select still uses it.
 
+**power-features computed `#VALUE!`** (author-spotted). Its MAP had a wired LAMBDA declaring param
+`x`, and MAP binds by name — its variables are `value/value2/value3/row/col`, and an unknown param
+is `#VALUE!` (lambdaBindsByName). The engine was right; the SEED was wrong. Param renamed to
+`value`, so "Scaled list" reads 3·6·9·12·15·18·21 again. (Unrelated nit left alone: that Series is
+labelled "1 to 6" but Range is inclusive of Stop=7, so it yields seven values — label or literal is
+off by one, and which one is the author's call.)
+
+**Why nothing caught it:** `seeds.test.ts` checks a seed's SHAPE — types construct, literals land on
+declaring classes, connections land on compatible sockets — all of which a red seed passes.
+`seedsCompute.test.ts` (new) runs EVERY seed through a real editor + DataflowEngine and asserts the
+set of erroring nodes exactly equals a declared list. Exemptions are per NODE, never per seed: a
+blanket pass would hide the next accidental error beside a deliberate one, and exact matching also
+fails when a demo STOPS erroring. That assertion immediately paid: `trust-data-quality` was on the
+first draft's error-demo list and computes none. Two seeds are skipped with reasons — null-and-logical
+(the `#CIRC!` tour; errorSeed.test.ts runs it with the cycle cache-seeding a plain fetch loop lacks)
+and composite-workbench (goal-seek / 500-sample Monte Carlo run modes a bare constructor never
+hydrates). 21 seeds, 2.7s. Verified it catches the real thing by reverting the seed fix.
+
 **Pinch zoom is continuous now** (author: "disable clamped zoom steps on touch devices"). Every zoom
 writer routed through `clampZoom`, which snaps to `ZOOM_SNAP` 0.1 — right for a DISCRETE step (wheel
 notch, zoom pill, key, fit) and wrong for a gesture: the canvas walked under the fingers in 10%
