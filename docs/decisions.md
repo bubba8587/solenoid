@@ -52,21 +52,28 @@ flag stalls → DOM stays default, no crisis. The Pixi/WGSL groundwork was DELET
 2026-08-09 (author order — exactly two render paths exist: the RF DOM surface + the
 HIC gesture layer; git has the code). Do not rebuild a third path (reactFlowView).
 
-### reactFlowView — The view layer is React Flow over a headless rete model
-**What stands (author, 2026-08-26: "going all out on React Flow, no rete"):** React
-Flow (`@xyflow/react`) renders every card, cable, the minimap and the viewport in the
-app's ONE React tree; rete core (`NodeEditor` + `ClassicPreset`) and `rete-engine`
-(`DataflowEngine`) stay as the renderer-free model + compute spine carrying the node
-classes, `coerceInputs`, the error guards and persistence untouched. Every rete RENDER
-package (area/react/connection/render-utils/minimap/history/auto-arrange) and
+### reactFlowView — The view layer is React Flow; rete core survives ONLY as an unratified scoping
+**What the author ruled (2026-08-26): "going all out on React Flow, no rete."** That is
+the whole ruling. React Flow (`@xyflow/react`) renders every card, cable, the minimap
+and the viewport in the app's ONE React tree; every rete RENDER package
+(area/react/connection/render-utils/minimap/history/auto-arrange) and
 `styled-components` are deleted; Tidy calls elkjs directly; undo is the snapshot
-history (`flow/flowHistory.ts`). The module-singleton stores (`storeKit.ts`) STAY —
-they are app-wide state, not a separate-root workaround; plain React context/props
-work everywhere. The save format was already rete-independent (saveViaTextForm).
+history (`flow/flowHistory.ts`). The module-singleton stores (`storeKit.ts`) stay as
+app-wide state; the save format was already rete-independent (saveViaTextForm).
+
+**What was NOT ruled — an agent's C0 scoping the author never agreed to (flagged
+2026-08-27):** `rete` core (`NodeEditor` + `ClassicPreset`) and `rete-engine`
+(`DataflowEngine`) were kept as the headless model + compute spine because React Flow
+has no graph model, typed sockets or dataflow engine of its own, and replacing them is
+a model rewrite touching every node class and graph walker, not a view port. The
+author found this out after the merge and did not sign off. Its removal is OPEN:
+`deferrals.md` "Own graph model (drop rete core + rete-engine)". Until then, no NEW
+code may deepen the dependency — reach rete only through the seams that already exist
+(`flow/flowModel.ts`, `process.ts`, `coerceInputs`/`installErrorGuards` on the
+`nodecreated` pipe), never import a rete type into a component.
 **Where:** `architecture.md` § Stack, `subsystem-invariants.md` § React Flow surface
-contract, `flow/*`. **Reopen if:** RF's DOM compositing floor blocks the ~300-node
-target (the same floor rete had — xyflow #4711/#5117); the HIC layer is the
-sanctioned lever, never a third render path. Merged to `develop` 2026-08-27; build
+contract, `flow/*`. **Reopen if:** the author schedules the model replacement (then
+this entry becomes the record of the port only). Merged to `develop` 2026-08-27; build
 record in `archive/react-port-plan.md`.
 
 ### oneFlowSurface — Both canvases are ONE surface component

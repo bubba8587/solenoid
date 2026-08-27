@@ -39,9 +39,10 @@ author still eyeballs the final result. Component render TESTS stay out (the vit
 
 ## Project: Solenoid
 Visual computation graph — a node-based "Excel alternative" for data tables. React 19 + Vite +
-Tauri. The view is **React Flow** over a **headless rete model** (`NodeEditor` + `ClassicPreset`
-+ `DataflowEngine`; decisions reactFlowView — every rete render package is deleted, do not
-rebuild a third render path). Relational verbs run on native Polars on desktop and an identical
+Tauri. The view is **React Flow**; every rete render package is deleted (decisions
+reactFlowView; do not rebuild a third render path). The graph model + dataflow engine are still
+`rete` core + `rete-engine` — an agent scoping the author never ratified; its removal is open in
+`docs/deferrals.md`, and no new code may deepen that dependency. Relational verbs run on native Polars on desktop and an identical
 JS oracle on web behind the `FrameBackend` seam (decisions polarsEngine).
 
 ### Current phase — 1.3 polish (author pivot, 2026-08-07)

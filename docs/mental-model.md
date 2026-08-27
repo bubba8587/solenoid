@@ -11,8 +11,9 @@ The app is ONE React tree. **React Flow** (`@xyflow/react`) is the view: it
 renders every card, cable, the minimap and the viewport (`flow/FlowSurface.tsx`
 is THE surface, shared by the main canvas and the composite drill-in — decisions
 oneFlowSurface). **rete core** (`NodeEditor` + `ClassicPreset`) plus
-`rete-engine` (`DataflowEngine`) is the headless MODEL and compute spine — no
-rete render package exists (decisions reactFlowView). `flow/SolNodeAdapter.tsx`
+`rete-engine` (`DataflowEngine`) is, for now, the headless MODEL and compute
+spine — no rete render package exists, and keeping the core was never
+author-ratified; its replacement is open (decisions reactFlowView). `flow/SolNodeAdapter.tsx`
 binds a rete node instance to its registered card component; `flow/flowArea.ts`
 is the one `Surface` implementation, turning the model's `area.*` verbs into RF
 state. Cross-surface state lives in module-singleton stores (`storeKit.ts`, read

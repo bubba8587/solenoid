@@ -42,8 +42,9 @@ This file is the map.
 - **View layer**: React Flow (`@xyflow/react`) — the ONE renderer. Cards, cables,
   minimap, viewport all render in the app's single React tree.
 - **Model/compute spine**: rete core (`rete` — NodeEditor + ClassicPreset, headless)
-  + `rete-engine` (DataflowEngine, push-based recompute). No rete render/area
-  plugins exist; `elkjs` is called directly for Tidy.
+  + `rete-engine` (DataflowEngine, pull-based recompute). No rete render/area
+  plugins exist; `elkjs` is called directly for Tidy. Keeping the core was an
+  unratified port scoping — its replacement is open (decisions reactFlowView).
 - **UI**: React + Vite, desktop shell via Tauri. Math helpers: formulajs,
   KaTeX (formula popup), marked (help panel).
 - Cross-surface state stays in module-level singleton stores (`storeKit.ts`

@@ -203,6 +203,17 @@ design-gated, author-present, or UI-eyeball work.
 
 ## Needs an author decision before any build
 
+- **Own graph model (drop `rete` core + `rete-engine`)** — the React Flow port's C0
+  scoping kept rete's headless model (`NodeEditor` + `ClassicPreset`) and `DataflowEngine`;
+  the author's ruling was "no rete" and this half was never agreed to (2026-08-27, decisions
+  reactFlowView). Removal = an in-repo `Node/Socket/Connection/Editor` with the same pipe
+  events plus a pull-based engine with the `#CIRC!` cache seeding and targeted invalidation,
+  behind the existing seams. Footprint at flag time: 151 files import `rete`/`rete-engine`
+  (19 of them components — those are the seam violations to close first regardless).
+  Tests are the oracle (`processTargeted`, `flowModel`, `flowController`, `errorSeed`,
+  `seedsCompute`). Author decides whether and when; until then no new rete imports outside
+  the existing seams.
+
 - **Everyday widget nodes (v2.0 bundle 16)** — Weather / Geocode / FX / Holidays /
   TZ Convert / QR. Tier 1 is autonomous-friendly and could be 1.3, but 4 gate
   calls come first: `v2.0/16-widget-nodes.md`.
