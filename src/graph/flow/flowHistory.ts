@@ -9,6 +9,9 @@ import { getArea, isGraphRebuilding } from "../process";
 import { describeGraphDelta } from "./flowHistoryDigest";
 
 const MAX_DEPTH = 80;
+// Snapshots are whole documents; on a large doc the depth cap alone lets the stack
+// sit at tens of MB. Oldest entries go first, but the current one always stays.
+const MAX_BYTES = 16 * 1024 * 1024;
 const COALESCE_MS = 400;
 
 // json doubles as the cheap no-op-change comparison; label describes the
@@ -89,6 +92,8 @@ export const flowHistory = {
     _stack = _stack.slice(0, _index + 1);
     _stack.push({ json: s, time: Date.now(), label });
     if (_stack.length > MAX_DEPTH) _stack.shift();
+    let bytes = _stack.reduce((n, e) => n + e.json.length * 2, 0);
+    while (_stack.length > 1 && bytes > MAX_BYTES) bytes -= _stack.shift()!.json.length * 2;
     _index = _stack.length - 1;
   },
 
