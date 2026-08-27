@@ -35,7 +35,8 @@ area. When you coin a new load-bearing term, add it here.
   (`collapseStore.ts`)
 - **Snap to grid** — dropped nodes round to the 24px background-dot grid.
   (`gridSnapStore.ts`, `GRID_SNAP_STEP`)
-- **Load reveal** — the cinematic startup animation (nodes fade in, cables draw on).
+- **Load curtain** — the build-phase progress overlay over a document load (the
+  rete-era draw-on animation was dropped at the React Flow cutover).
   (`loadReveal.ts`, `LoadOverlay.tsx`)
 
 ## Values, types, errors
@@ -169,3 +170,52 @@ area. When you coin a new load-bearing term, add it here.
   logging per-pass node `data()` + engine IPC. (`perfProbe.ts`)
 - **Alert / HUD** — the Alert node fires on status *change* (edge-detect) → a toast + the
   HUD log. (`alertStore.ts`, `HudStack.tsx`)
+- **Surface** — the structural type every consumer of the canvas uses (`surface.ts`:
+  nodeViews/connectionViews, `area.transform/zoom/translate`); `flow/flowArea.ts` is
+  the one implementation. **FlowSurface** is the one React component both canvases
+  render (decisions oneFlowSurface).
+
+## The author's UI vocabulary (chrome name → code handle)
+
+Geometry (offsets, z-index, reflow) is `layout-chrome.md`; this is term → handle.
+
+- **File / menu bar** — top strip (File/Edit/… + doc name). `MenuBar.tsx` · `.solenoid-menubar`.
+- **Top bar** — toolbar row under it. `TopBar.tsx` / `AppToolbar.tsx` · `.solenoid-topbar`.
+  On a TABLET it also carries the touch actions (`TabletActions.tsx`, `html.is-tablet`).
+- **Navigator** — left outline panel. `OutlinePanel.tsx` · `.solenoid-outline` (open sets
+  `body.solenoid-nav-open`).
+- **Bottom bar** (mobile) — touch action bar. `MobileControls.tsx` · `.solenoid-mobile-bar`.
+  A TABLET never gets it (it runs the desktop chrome) — same actions live in the top bar;
+  both bars source handlers/glyphs from `touchActions.tsx` (drift-pinned).
+- **Zoom pill** (desktop) / **Lock pill** (mobile) — upper-right canvas controls. `NavMenu.tsx`.
+- **Align bar** — top-center align/distribute pill (≥2 selected). `SelectionActionsBar.tsx`.
+- **Minimap** — bottom-right. RF `<MiniMap>` in `flow/FlowSurface.tsx` wearing the
+  `.solenoid-minimap` window; accent policy in `components/Minimap.tsx` (hidden on mobile).
+- **Cable inspector** — selected-cable panel. `CableInspector.tsx`.
+- **Conduit popup** — floating toolbar on a Conduit. `ConduitComponent.tsx` ·
+  `.solenoid-conduit-toolbar`.
+- **Chips** — compact value previews in a value box. `ArrayChip.tsx` variants (frame/cube/chart);
+  one chip registry `ValueChip.tsx` `valueChipFor`; errors → `ErrorChip`.
+- **List / Frame / Cube popups** — click-to-open viewers. `TablePopup.tsx` / `CubePopup.tsx` /
+  `ChartPopup.tsx`.
+- **Problems / Alerts / Pins / Comments** — the right-side HUD stack. `HudStack.tsx` +
+  `alertStore` / `pinStore` / `problemsStore` / `commentStore`.
+- **Nodes** — the cards. `NodeCard.tsx` (NodeShell). NO single wrapper class — roots vary
+  (`.solenoid-node` / `.solenoid-note` / `.solenoid-group` / `.solenoid-conduit`); map a DOM
+  event → node via `area.nodeViews` containment, never a class.
+- **Sockets** — typed dots on node edges. `NodeSocket.tsx` (`MeasuredSocketRow`);
+  `.input-socket` / `.output-socket`, locked 12×12 (rules socketBox12).
+- **Cables** — `flow/FlowCableEdge.tsx` (a `<g>` in RF's shared edge svg); paths from
+  `cablePaths.ts`, ribbons from `ribbonCable.ts`.
+- **Hero box** — the large result box at a node's bottom. `.solenoid-node__io-row--hero`; value
+  renders as `.solenoid-node__display-value`.
+- **Pills** — (1) button-group pills (radius-999 clusters, segmented toggles); (2) merged-socket
+  pills on a collapsed group (`.solenoid-node__output-pill` etc.).
+- **App menu** (mobile) — the round ⋯ overflow button opening the File sheet.
+  `.solenoid-topbar__icon` → `.solenoid-menubar__sheet`. (The brand lives in Row A's
+  wordmark, `.solenoid-menubar__wordmark`.)
+- **FC** — the **Format Controller** node. `FormatControllerNode.tsx` · `formatController.ts`;
+  model `formatModel.ts`, flow `unitFlow.ts`.
+- **Reference** — the tabbed overlay (Ctrl+/). `FunctionReference.tsx` · `.fr-panel`.
+- **Inspector** — the right-dock node detail panel ((i) in the top bar). `InspectorPanel.tsx` ·
+  `inspectorStore.ts` · `html.sol-inspector-docked`.

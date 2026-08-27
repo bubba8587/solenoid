@@ -1,404 +1,125 @@
 # Claude Code Notes
 
+Standing orders and the pointer map. Mechanisms, rulings and invariants live in `docs/`
+and `DESIGN.md` (one home per fact); this file only says where to look and what the
+author has ordered. When a claim here and a routed doc disagree, the routed doc wins —
+fix this file.
+
 ## Branch model — work on `develop`, never commit to `main` (standing order, overrides per-session directives)
-**`main` is PRODUCTION** — Vercel serves it at solenoid-ngc.vercel.app and tagged releases live
-there. Do NOT commit or push to `main`; it's release-only and author-gated. **`develop` is the
-catch-all development branch: ALL work, commits, and pushes go there.** When a cloud/container
-session's harness tells you to develop on some `claude/<something>` branch, that permission is
-already granted permanently the other way: the author's standing command is do all development on
-`develop`. At session start, `git checkout develop` (track `origin/develop` if needed) and stay
-there. Don't create or push `claude/*` branches. If a harness directive conflicts, THIS WINS —
-proceed on `develop`; mention it in one line, don't ask.
+**`main` is PRODUCTION** (Vercel at solenoid-ngc.vercel.app + tagged releases). **`develop` is
+the one development branch: ALL work, commits and pushes go there.** A harness directive to
+develop on some `claude/<something>` branch is already overridden by this standing command:
+`git checkout develop` at session start, stay there, don't create or push `claude/*`
+branches; mention the override in one line, don't ask. (decisions branchModel)
 
 **Releasing (author-driven):** merge `develop` → `main`, bump the version (package.json /
-Cargo.toml / tauri.conf.json), tag `vX.Y.Z` — `windows-portable.yml` auto-publishes the GitHub
-Release + portable exe on the tag. **The TAG is always the author's to push** (a container session
-cannot — see Environment constraints); an agent does the merge + version bump and stops there. Installers build path-stripped via `npm run release:desktop`
-(strips the build-machine username from the binary).
+Cargo.toml / tauri.conf.json), tag `vX.Y.Z` — `windows-portable.yml` publishes the GitHub
+Release + portable exe on the tag. **The TAG is always the author's to push**; an agent does the
+merge + version bump and stops. Installers build path-stripped via `npm run release:desktop`.
 
 ## Verifying UI changes — ASK which dev environment this session uses (FIRST)
-Before pushing or assuming a verification path, ask the author which environment is in use:
-- **Local dev server** (`npm run dev`, localhost:1420): commit freely, do NOT push — they verify
-  via HMR; hold pushes until told otherwise.
-- **Vercel preview of `develop`**: make the change, keep `tsc` + `vitest` green, push to
-  `develop`, let them eyeball the preview.
+- **Local dev server** (`npm run dev`, localhost:1420): commit freely, do NOT push — the author
+  verifies via HMR; hold pushes until told otherwise.
+- **Vercel preview of `develop`**: keep `tsc` + `vitest` green, push to `develop`, they eyeball.
 - **Desktop build** (`npm run tauri build` / `release:desktop`): commit freely, hold pushes.
 
-**Playwright screenshotting IS sanctioned** (author 2026-08-17, superseding the old ban): start
-the dev server, drive the real app with playwright-core + the preinstalled Chromium, and LOOK at
-what you changed — iterate on what you see before pushing. The author still eyeballs the final
-result. Component render TESTS stay out (the vitest env is `node`, no jsdom/testing-library);
-reserve tests for logic. When unsure which environment is active, ask rather than push.
+Playwright screenshotting IS sanctioned (author 2026-08-17): drive the real app with
+playwright-core + the preinstalled Chromium and LOOK at what you changed before pushing; the
+author still eyeballs the final result. Component render TESTS stay out (the vitest env is
+`node`); reserve tests for logic. When unsure which environment is active, ask rather than push.
 
 ## Environment constraints
-**TAG PUSHES DO NOT WORK from a cloud/container session** (Claude Code web + mobile). BRANCH
-pushes are fine — `main` and `develop` go up normally — but `git push origin <tag>` always dies
-with `send-pack: unexpected disconnect while reading sideband packet` / `the remote end hung up`,
-for annotated and lightweight alike, and the GitHub MCP surface has no create-tag/create-ref tool
-(only `create_branch`). Do NOT retry or hunt for a workaround: merge and push the branch, then
-hand the author the one command to run in their DESKTOP terminal, where it works:
-`git fetch origin main && git tag -a vX.Y.Z <sha> -m "Release vX.Y.Z" && git push origin vX.Y.Z`.
-
-**WebFetch is unreliable on JS-rendered sites — and worse, it fabricates** plausible-looking
-specifics that aren't on the page. Don't trust it for exact content. What works: `curl -sL -A
-"<browser UA>" <url> -o page.html`, then extract the real content (Next.js/techcommunity pages
-server-render the article into a `<script type="application/ld+json">` blob — read its
-`description`). Raw GitHub via `raw.githubusercontent.com` is fine. `defuddle parse` fails on
-modern CSS (jsdom chokes on nesting `&`).
+- **Tag pushes fail from a cloud/container session** (`send-pack: unexpected disconnect`);
+  branch pushes are fine. Don't retry or hunt for a workaround: push the branch, then hand the
+  author the one desktop command:
+  `git fetch origin main && git tag -a vX.Y.Z <sha> -m "Release vX.Y.Z" && git push origin vX.Y.Z`.
+- **WebFetch fabricates on JS-rendered sites.** Use `curl -sL -A "<browser UA>" <url> -o page.html`
+  and read the real content (Next.js/techcommunity pages server-render the article into a
+  `<script type="application/ld+json">` blob). Raw GitHub via `raw.githubusercontent.com` is fine.
 
 ## Project: Solenoid
+Visual computation graph — a node-based "Excel alternative" for data tables. React 19 + Vite +
+Tauri. The view is **React Flow** over a **headless rete model** (`NodeEditor` + `ClassicPreset`
++ `DataflowEngine`; decisions reactFlowView — every rete render package is deleted, do not
+rebuild a third render path). Relational verbs run on native Polars on desktop and an identical
+JS oracle on web behind the `FrameBackend` seam (decisions polarsEngine).
 
-Visual computation graph tool — a node-based "Excel alternative" for data tables. React 19 + Vite
-+ Tauri (desktop shell). View layer: React Flow (`@xyflow/react`) over a HEADLESS rete-core
-model (`NodeEditor` + `ClassicPreset`), push-based recompute via `DataflowEngine`
-(`node.data()` methods) — the react-port cutover (2026-08-26) deleted every rete RENDER
-package; only rete core + rete-engine remain, as the model/compute spine.
-(`node.data()` methods). Relational verbs run on native Polars (Rust) on desktop, an identical JS
-oracle on web, behind the `FrameBackend` seam.
-
-### Current phase — 1.3 polish (author pivot, 2026-08-07; reconcile at the 1.3 cut)
-**1.3 ships basically as-is.** The queue (`docs/backlog.md`) is bugs, small patches, and
+### Current phase — 1.3 polish (author pivot, 2026-08-07)
+**1.3 ships basically as-is.** The queue (`docs/backlog.md`) is bugs, small patches and
 thorough SMALL-SCOPE polish sweeps — one node family, one seam, one subsystem at a time,
-investigated completely, fixed, pinned with a test, one terse digest line. Depth on
-something small beats breadth on anything. Feature-shaped work is parked in
-`docs/deferrals.md` "Pushed to 1.4/2.0" — do NOT start it on your own initiative, even
-when a sweep makes it tempting; note the finding and stay on scope.
+investigated completely, fixed, pinned with a test, one terse digest line. Depth on something
+small beats breadth on anything. Feature-shaped work is parked in `docs/deferrals.md` — do NOT
+start it on your own initiative; note the finding and stay on scope.
 
-### Docs map
-Deep detail lives in `docs/` so this always-loaded file stays lean. Start: `docs/mental-model.md`
-(how the system RUNS, end to end — read before touching code), `docs/README.md` (the index),
-`docs/glossary.md` (the invented vocabulary — read before the deep dives).
-- **`DESIGN.md` (repo root) — the design-system rulebook. READ BEFORE ANY UI/VISUAL CHANGE.**
-  Non-obvious hard rules you WILL violate blind: no colored accent stripe by ANY technique — tint
-  the element itself; the Quiet Accent Rule (chrome color conveys type/state; decoration exists
-  only in its named homes — brand, user-authored, opt-in flourishes — and NEW decoration is an
-  author call, never a default); no faux-3D/gradient/glassmorphism. **"UI change" includes STRINGS, not just pixels** — §7 Voice &
-  copy governs `src/graph/help/*.md`, every `nodeCatalog` description, tooltips and empty states;
-  read it before writing any of them. `uiCopy.test.ts` machine-checks the decidable subset only.
-- **`docs/rules.md` — the NORMATIVE architecture spec. Read before changing sockets, the
-  formula surface, naming, or value handling.** Numbered MUST-rules (`SSOT-n`, `SOCK-n`,
-  `FX-n`, `VAL-n`, `PERSIST-n`, `ENGINE-n`, `EFFECT-n`, `STORE-n`, `authorRuled`), each naming
-  the test that enforces it or marked UNENFORCED. Covers the invariants that CANNOT be
-  caught by looking at the app — a broken socket rule or a mishandled null yields a
-  plausible answer, not a visible defect. Cite rule IDs in comments and commits.
-- **`docs/subsystem-invariants.md`** — full mechanics + invariants for the tricky subsystems
-  (indexed below).
-- **`docs/decisions.md`** — the decision log (what stands / where / what would reopen it).
-  Check it so a change doesn't RELAPSE on a recorded decision — currentExcelParity is the standing example:
-  an eliminated function (VLOOKUP/MATCH…) stays eliminated on every surface. It is a
-  relapse-guard, NOT a caution brake: no cross-cutting change needs a design pass or author
-  sign-off (that reflex is obliterated by author order). Decide on merits, do it, record it.
-  The ONLY author-gated work: never push `main`/releases; compositeToolbarReroute and
-  conditionalFormatting, both deferred author-present.
-- **`docs/layout-chrome.md`** — the on-screen chrome map. READ BEFORE ADDING/MOVING ANY BAR OR
-  FLOATING OVERLAY. Vertical envelopes are measured (`--chrome-top`/`--chrome-bottom` — derive,
-  never hand-key); the rest of the offsets/z-index are the sync map (the source of the
-  recurring "overlay overlaps a bar" bugs).
-- `docs/node-coverage.md` — node inventory; `nodeCatalog.ts` is the real source of truth (Add
-  menu + Function Reference generate from it). Adding a node: the `add-node` skill /
-  `scripts/new-node.mjs`. `docs/architecture.md` — the file map.
-- `docs/backlog.md` — the task queue (OPEN items only; the single source of truth for to-dos).
-  `docs/deferrals.md` — the deferred/parked/author-gated set behind the backlog's single
-  Deferral-review item. `docs/dev-notes.md` — open problems + the latest session digests only.
-- Rationale/reference: `docs/socket-reference.md` (every socket variant — what each
-  accepts, what it's blocked from, what the coercion boundary does; read before typing
-  a new port or debugging a refused cable), `docs/format-model.md` (FC control truth
-  table, mirrored in `formatModel.ts` — read before touching FC controls),
-  `docs/value-semantics.md` (incl. the WIRED-blank vs typed-literal spec — read
-  "Reading an input" before writing a node's `data()`), `docs/formulajs-divergences.md`
-  (why each `registerInternal` override exists — read before deleting one or widening
-  the Formula.js fallthrough), `docs/pack-architecture.md`,
-  `docs/out-of-scope.md` (the standing NO list), `docs/v2.0/` (open plan bundles).
-  Finished/point-in-time docs: `docs/archive/` (see its README — incl. the parity
-  program record, cube scoping, and toolbar-parity verdicts, archived 2026-08-07).
-  **Nothing live is parked in `archive/`** — if it's routed or still load-bearing it
-  lives in the working set (machine-checked: `docsPointers.test.ts`).
-- **`docs/code-comments.md` (commentMinimalism) — the comment policy: comments are the LAST-RESORT home;
-  default outcome for an existing comment is deletion.** History → commits; rulings →
-  decisions/specs; investigations → dev-notes. Before editing a file, grep it in the
-  "Code → spec routing" table in `docs/README.md` — routed files carry zero comment
-  pointers by design. Read the policy before writing comment prose.
+### Docs map — read before touching code
+Start: `docs/mental-model.md` (how it RUNS, end to end), `docs/README.md` (the index + the
+**Code → spec routing table**: grep your file there before editing), `docs/glossary.md` (the
+invented vocabulary + the author's names for the on-screen chrome).
+- **`DESIGN.md` — READ BEFORE ANY UI/VISUAL CHANGE, and "UI change" includes STRINGS** (§7
+  Voice governs help markdown, catalog descriptions, tooltips, empty states). Hard rules you
+  will violate blind: no colored accent stripe by any technique, the Quiet Accent Rule, no
+  faux-3D/gradient/glassmorphism, no Captain-Obvious copy, edits commit on Enter/clickaway.
+- **`docs/rules.md` — the NORMATIVE spec.** Named MUST-rules with their enforcing tests
+  (sockets, formula surface, value handling, persistence, engine, effects, stores). Read before
+  changing sockets, names or value handling; cite rule names in comments and commits.
+- **`docs/decisions.md` — the relapse guard.** What stands and what would reopen it. It is
+  NOT a caution brake: no cross-cutting change needs a design pass or author sign-off — decide
+  on merits, do it, record it. The ONLY author-gated work: `main`/releases;
+  compositeToolbarReroute and conditionalFormatting (deferred author-present).
+- **`docs/subsystem-invariants.md` — the mechanics.** Read the section IN FULL before touching
+  its subsystem: **React Flow surface contract** (anything on the canvas — what RF owns, groups
+  as sub-flows, cables, sockets, overlays, boundaries), Pointer gestures (with
+  `docs/touch-gestures.md` as the gesture inventory), Cable routing, Group expand push, Group
+  collapse, Standoffs, Tidy, Conduit faces / resizable-content nodes, Input-cable pruning, Add
+  menu, Socket lattice, Type propagation, Unit flow, Error values, Alerts, Addressable model,
+  Live connections, Load performance, Per-doc autosave, Inline literal maps, Composite drill-in.
+- **`docs/layout-chrome.md`** — read before adding/moving any bar or floating overlay.
+- Reference: `docs/socket-reference.md` (every socket variant), `docs/format-model.md` (FC
+  controls), `docs/value-semantics.md` ("Reading an input" — before writing a `data()`),
+  `docs/formulajs-divergences.md` (before touching a `registerInternal` override),
+  `docs/node-coverage.md` (node inventory + the node-design rules), `docs/architecture.md` (file
+  map), `docs/pack-architecture.md`, `docs/out-of-scope.md`, `docs/renderer-performance.md`.
+- Queue: `docs/backlog.md` (OPEN items only), `docs/deferrals.md`, `docs/dev-notes.md` (open
+  problems + latest digests). Finished docs: `docs/archive/` (nothing live is parked there —
+  `docsPointers.test.ts`).
+- **`docs/code-comments.md`** — comments are the LAST-RESORT home; the default outcome for an
+  existing comment is deletion (decisions commentMinimalism). Read before writing comment prose.
+- Adding a node: the `add-node` skill / `scripts/new-node.mjs`; `nodeCatalog.ts` is the source
+  of truth (Add menu + Function Reference generate from it).
 
-### Author's UI vocabulary (aliases) — what a name maps to in code
-Geometry (offsets, z-index, reflow) is in `docs/layout-chrome.md`; this is term → code handle.
-- **File / menu bar** — top strip (File/Edit/… + doc name). `MenuBar.tsx` · `.solenoid-menubar`.
-- **Top bar** — toolbar row under it. `TopBar.tsx` / `AppToolbar.tsx` · `.solenoid-topbar`.
-  On a TABLET it also carries the touch actions (`TabletActions.tsx`, `html.is-tablet`).
-- **Navigator** — left outline panel. `OutlinePanel.tsx` · `.solenoid-outline` (open sets
-  `body.solenoid-nav-open`).
-- **Bottom bar** (mobile) — touch action bar. `MobileControls.tsx` · `.solenoid-mobile-bar`.
-  A TABLET never gets it (it runs the desktop chrome) — same actions live in the top bar;
-  both bars source handlers/glyphs from `touchActions.tsx` (drift-pinned).
-- **Zoom pill** (desktop) / **Lock pill** (mobile) — upper-right canvas controls. `NavMenu.tsx`.
-- **Align bar** — top-center align/distribute pill (≥2 selected). `SelectionActionsBar.tsx`.
-- **Minimap** — bottom-right. RF `<MiniMap>` in `flow/FlowSurface.tsx` wearing the
-  `.solenoid-minimap` window; accent policy in `components/Minimap.tsx` (hidden on mobile).
-- **Cable inspector** — selected-cable panel. `CableInspector.tsx`.
-- **Conduit popup** — floating toolbar on a Conduit. `ConduitComponent.tsx` ·
-  `.solenoid-conduit-toolbar`.
-- **Chips** — compact value previews in a value box. `ArrayChip.tsx` variants (frame/cube/chart);
-  one chip registry `ValueChip.tsx` `valueChipFor`; errors → `ErrorChip`.
-- **List / Frame / Cube popups** — click-to-open viewers. `TablePopup.tsx` / `CubePopup.tsx` /
-  `ChartPopup.tsx`.
-- **Problems / Alerts / Pins / Comments** — the right-side HUD stack. `HudStack.tsx` +
-  `alertStore` / `pinStore` / `problemsStore` / `commentStore`.
-- **Nodes** — the cards. `NodeCard.tsx` (NodeShell). NO single wrapper class — roots vary
-  (`.solenoid-node` / `.solenoid-note` / `.solenoid-group` / `.solenoid-conduit`); map a DOM
-  event → node via `area.nodeViews` containment, never a class.
-- **Sockets** — typed dots on node edges. `NodeSocket.tsx` (`MeasuredSocketRow`);
-  `.input-socket` / `.output-socket`, locked 12×12.
-- **Cables** — `flow/FlowCableEdge.tsx` (a `<g>` in RF's shared edge svg); paths from
-  `cablePaths.ts`, ribbons from `ribbonCable.ts`.
-- **Hero box** — the large result box at a node's bottom. `.solenoid-node__io-row--hero`; value
-  renders as `.solenoid-node__display-value`.
-- **Pills** — (1) button-group pills (radius-999 clusters, segmented toggles); (2) merged-socket
-  pills on a collapsed group (`.solenoid-node__output-pill` etc.).
-- **App menu** (mobile) — the round ⋯ overflow button opening the File sheet.
-  `.solenoid-topbar__icon` → `.solenoid-menubar__sheet`. (The brand lives in Row A's
-  wordmark, `.solenoid-menubar__wordmark`.)
-- **FC** — the **Format Controller** node. `FormatControllerNode.tsx` · `formatController.ts`;
-  model `formatModel.ts`, flow `unitFlow.ts`.
-- **Reference** — the tabbed overlay (Ctrl+/). `FunctionReference.tsx` · `.fr-panel`.
-- **Inspector** — the right-dock node detail panel ((i) in the top bar). `InspectorPanel.tsx` ·
-  `inspectorStore.ts` · `html.sol-inspector-docked`.
-
-### Pre-alpha — break freely, don't build compat layers
-One user (the author), who says: break old saves, old code, legacy names. Don't add back-compat
-shims, type aliases, migration maps, or deprecation paths — make the clean change and update the
-seed JSONs + tests. An old save referencing a removed node loads as a Placeholder (wiring + data
-kept; re-saves as the original type) — acceptable, no alias needed. When unsure whether to
-preserve something old, delete it. The save-format `v` field stays, and the loader opens ONLY
-the current version — newer refused for forward safety, older refused because there is no
-migration in either direction.
+### Pre-alpha — break freely (decisions noBackCompat)
+One user (the author): break old saves, old code, legacy names. No shims, aliases, migration
+maps or deprecation paths — make the clean change and update the seed JSONs + tests. When
+unsure whether to preserve something old, delete it.
 
 ### Doc maintenance — RECONCILE, don't append
-Forward-looking docs rot because sessions default to appending. When wrapping up (or asked to
-"update the docs"), in order:
+When wrapping up (or asked to "update the docs"), in order:
 1. **Digest in `docs/dev-notes.md`** — extend the current session's digest; sweep digested
    sessions to `docs/archive/dev-notes-history.md`. Per-item detail goes in commit messages.
-2. **Reconcile `docs/backlog.md`** — verify landed items against the CODE and DELETE their lines
-   (git + digests are the record). Add new follow-ups. Keep items terse.
-3. Update the relevant subsystem/coverage/architecture doc if a mechanism or the file map
-   changed. A doc whose job is DONE moves to `docs/archive/`.
+2. **Reconcile `docs/backlog.md`** — verify landed items against the CODE and DELETE their
+   lines. Add new follow-ups. Keep items terse.
+3. Update the subsystem/coverage/architecture doc if a mechanism or the file map changed. A doc
+   whose job is DONE moves to `docs/archive/` (and its row to `docs/archive/README.md`).
 "Reconcile" = verify each claim against current code, not just record what you touched.
 
-**Write OUTCOMES, not narratives (the 2026-08-07 cutdown's standing rule).** Verbosity in a
-doc architecture is a hazard, not a style choice: stale narrative reads as current truth
-(two phantom-gesture incidents came from exactly that), and every duplicated restatement is
-a place a spec can be contradicted. Concretely:
-- A doc entry states what STANDS, where it's enforced, and what would reopen it. Build
-  history, amendment chains, "closed so far" ledgers → commit messages and git.
-- Never duplicate a spec's content into this file or another doc — point at it. One home
-  per fact; a second copy is future drift.
-- Deletion is the default for anything historical, superseded, or restating what a test
-  already pins. When unsure whether prose earns its lines, ask "does an agent need this to
-  act correctly right now?" — if not, cut it.
+**Write OUTCOMES, not narratives.** Stale narrative reads as current truth and every duplicated
+restatement is a place a spec can be contradicted. A doc entry states what STANDS, where it is
+enforced, and what would reopen it; build history goes to git. Never duplicate a spec's content
+into this file or another doc — point at it. Deletion is the default for anything historical,
+superseded, or restating what a test already pins.
 
-### Architecture notes (the traps)
-- **Renderers: the React Flow DOM surface + the experimental HTML-in-Canvas gesture
-  layer over it** (`HtmlCanvasLayer.tsx`, a Setting gated on `supportsHtmlInCanvas()`;
-  author 2026-08-26: HIC is IN — it survived the cutover, ported to RF). Every other
-  direction — the rete surface, the pixi spike, the WGSL/`canvas` layers — was DELETED
-  by author order; git has them. Do not rebuild a third path.
-- **One React tree now** (react-port cutover): the module-singleton stores
-  (`storeKit.ts` + `useSyncExternalStore`) STAY — they are app-wide state, not a
-  separate-root workaround — but plain React context/props/handlers work everywhere.
-- **ONE surface component for both canvases** (`flow/FlowSurface.tsx`): the main canvas
-  (`FlowCanvas`) and the composite drill-in (`FlowCompositeOverlay`) render the SAME
-  component over a `SurfaceStack`; hosts differ only through `SurfaceHooks` (what settles a
-  move, which history answers undo, what Delete removes). Anything surface-level — a
-  gesture, a menu, a key, a layer — goes in FlowSurface, never in one host (author
-  2026-08-26: the two must be equivalent). Verbs the chrome calls through `process.ts`
-  slots (select, Tidy/Cleanup) swap to the drill-in while it is open (`swapSelectionSlots`,
-  `swapArrangeSlots`). Node-scoped code resolves its graph with `getOwningEditor/Area`,
-  chrome with `getActiveEditor/Area`; bare `getEditor()/getArea()` are for persistence and
-  the main-only lifecycle. Two mounted flows MUST carry different RF `id`s (every internal
-  pattern/marker/aria id derives from it).
-- `process.ts` — module singletons `_editor/_engine/_area`; `processGraph()` recomputes.
-  `_area` is the flowArea adapter (`flow/flowArea.ts`, typed `surface.ts` `Surface`) —
-  `area.*` verbs become RF state. The composite drill-in substitutes surfaces via the
-  `activeGraph.ts` seam (`getActive*`); `getEditor()`/persistence stay MAIN (locked by
-  `activeGraph.test.ts`).
-- `SolenoidConnection` must use `ClassicPreset.Node` as its type parameter (variance).
-- **Groups are RF sub-flows** (`parentId`): the MODEL keeps absolute positions; RF holds a
-  member's position RELATIVE to its group, so RF tows members itself. Convert ONLY at the
-  boundary (`flowModel.toFlowPosition/fromFlowPosition`, `handlers.moveNode`,
-  `onNodesChange`) — never write a member's RF position from absolute coordinates.
-- **React Flow owns Delete/Backspace, selection and right-click routing**
-  (`deleteKeyCode` + `onBeforeDelete`, `useOnSelectionChange`, `onNode/Edge/PaneContextMenu`
-  in FlowSurface): the app's verbs run FROM those callbacks. Don't add a second window
-  listener for any of them; RF's own arrow move is off (`disableKeyboardA11y`) because the
-  canvas keyboard nudges the selection on the dot grid.
-- **Cables render as `<g>` inside RF's shared edge svg** (`flow/FlowCableEdge.tsx`):
-  visible strokes are `pointer-events:none`; the named `.solenoid-cable-hit` path (with
-  `data-conn-id`) is the ONE hit target — RF's own interaction path stays disabled
-  (`interactionWidth: 0`) or it eats `closest()` targeting.
-- **Socket box must be a deterministic 12×12** (`display:block; line-height:0` — global rule
-  in `nodeCard.css`); the RF Handle wraps the glyph (`flow/FlowSocketHandle.tsx`, reset by
-  `.sol-rf-handle-reset`) and RF measures the HANDLE's box for cable endpoints.
-- **All sockets anchor to `.solenoid-node__content`** (excludes the header), so socket positions
-  are header-independent. Socket vertical placement is measured per-row (`MeasuredSocketRow`),
-  never a fixed constant; the dot straddles the card edge via `left/right:-5` anchored to
-  `__content` — do NOT make the io-row or `__body` a positioning context.
-- **PINCH LISTENS IN CAPTURE (TOUCH events), PAN IN BUBBLE** — `flow/flowPinch.ts` owns
-  two-finger moves on the wrapper before RF's bubble-phase handlers see them; pan/node-drag
-  stay vetoable. Never flip either. `isPinching()` (`pointerGesture.ts`) — ≥2 TOUCH
-  contacts — is the only definition; never count raw pointers. On touch, a one-finger drag
-  on an UNSELECTED card/group PANS (`flow/flowTouchPan.ts`, author ruling) — it claims BOTH
-  the pointerdown and the touchstart (d3-drag starts node drags from touchstart).
-- **RF owns a node wrapper's inline `visibility`** (stamps `visible` after measuring), so
-  imperative visibility writes on `.react-flow__node` get silently overwritten. Per-node
-  hide/show state rides RF's `className` (flowModel `nodeClassName` + a `!important` rule
-  in flow.css) — collapsed-group member hiding is the standing example.
-- **World-coordinate overlays render inside RF's `<ViewportPortal>`** (StandoffLayer) —
-  a sibling of `<ReactFlow>` paints in screen space and detaches from the camera.
-- **Native form popups inside a node keep their pointer/mouse-down stopPropagation** — it
-  doubles as drag prevention; the rete-era reparent-closes-the-popup mechanism died with the
-  DOM-order stacking (`docs/subsystem-invariants.md` § Pointer gestures).
-- **Don't use `useReducer` forceUpdate to refresh a controlled `<select>`** — drive the value
-  from `useState` and mirror to the node in the change handler.
-- **`area.translate(nodeId, …)` is async** — it won't share a paint with your React commit. If a
-  size change would need a paired position change, restructure so it doesn't (the Conduit
-  pattern: fixed body, content overflows).
-- **Icon-only buttons use EVEN-sized icons** (even content-box + even icon = whole-pixel
-  centering; odd sizes rasterize blurry and shift with browser zoom). Draw dividers with inset
-  `box-shadow`, not a layout border. Never a text `×`/`✕` for a close button — use
-  `components/CloseIcon.tsx`. Genuinely asymmetric glyphs get fixed in the path by ink centroid
-  (an art call, not the parity rule).
-- **Every render is boundaried now** (`components/ErrorBoundary.tsx`): the app root and
-  EACH node card. A throw no longer blacks out the app — the app panel prints the message +
-  component stack with a Copy button, and a single bad card degrades to a small red box
-  while the rest of the canvas keeps working. When a black screen IS reported, ask for the
-  copied text first; don't go hunting blind.
-- **Components NEVER call `node.data()`** — extract a pure helper (the coerceInputs wrapper
-  assumes engine-driven calls).
-- **A cable drag blurs the focused field first** (RF `onConnectStart`), so a mid-edit value
-  commits before it's wired — rely on this, don't re-implement it.
-
-### Subsystem deep-dives → `docs/subsystem-invariants.md`
-Read the relevant section there IN FULL before touching one of these. The one-line index:
-- **Pointer gestures**: pinch = capture + `isPinching()` (≥2 FINGERS); pan/drag = bubble;
-  selection on pointerup, never pointerdown; no palm rejection (author call).
-  **`docs/touch-gestures.md` is the gesture INVENTORY — read before adding/citing any
-  gesture** (long-press = native `contextmenu`; NOTHING double-taps inside the canvas).
-- **Cable routing** (`cablePaths.ts`): one walk-enumeration router; globally-shortest
-  solvable walk, LENGTH stays the primary sort key; `cablePaths.test.ts` stays green.
-- **Group expand push** (`groupPushCore.ts`): rails → clear → cascade; restore only if not
-  manually moved. Membership changes ONLY on an explicit gesture — autofit must NOT reconcile.
-- **Standoffs** (`standoffSolver.ts`): axis-band constraints; the pure solver runs LAST after
-  every layout pass; `{forceLock}` moves a cluster as one rigid block. Area-plane z-order:
-  standoffs −3 < expanded groups −2 < conduits −1 < nodes 0.
-- **Auto-arrange / Tidy** (ELK): custom SYMMETRIC port preset; anchor keeps LEFT + vertical
-  CENTER; `arrangeFn` drops its temporary height pins (groups keep theirs).
-- **Resizable-content nodes** (Conduit pattern): constant body, content overflows; don't size
-  body to content or re-pin via async translate.
-- **Error values** (`errorValue.ts`, `valueKinds.ts`): tagged `SolError` flows (guards wrap
-  every `data()`); first-class null (skipped by aggregators) + per-cell errors + Kleene
-  logical; ONE notion of error (`ISERROR` ⟺ `IFERROR`, `#N/A` via `isNaError`); figure sinks
-  see errors and render empty (`SEES_ERRORS`).
-- **In-place retype** (`fcReconcile.ts`): mutating a socket `dataType` in place fires no
-  connection event — MUST call `reconcileFcTypes`/`retypeOutputCables` or FCs go stale.
-- **Unit flow** (`unitFlow.ts`, `unitBridge.ts`): the unit is a property of the VALUE,
-  authored only by FC/Convert/Table Input/column-unit surfaces; a transform re-derives the
-  dimension through the algebra (display carries when the result's dim matches an operand —
-  noMixCurrencies); an FC downstream of a united value LOCKS (firstClassUnits). Format stays a display annotation. The unit-blind boundary is per-input: `coerceInputs`
-  unwraps unless `unitAware = true` (every new algebra node sets it) or a `passthrough()` spec
-  names the input. Granularity per unitGranularity: list per-cell, frame per-column, matrix one unit.
-- **Alerts** (`alertStore.ts`): edge-detect on STATUS, not a boolean (range LOW↔HIGH re-fires).
-- **Addressable model** (`textForm.ts`): stable user-editable `name` ≠ rete `id`; text form is
-  a pure round-trip and the JSON save derives from it.
-- **Per-doc autosave** (`documentStore.ts`): `persist()` diffs by OBJECT IDENTITY —
-  `documentStoreCore` transforms must stay immutable or changes silently never persist.
-- **Inline literal maps** (`persistence.ts`): load restores `literals`/`stringLiterals` ONLY
-  onto declaring classes (a save can't hardcode a value the user can't see).
-- **Sink nodes**: disk writes fire ONLY from the Run button; the arm flag is excluded from
-  persistence so every load starts disarmed.
-- **Composite drill-in** (`flow/FlowCompositeOverlay.tsx`): one flow stack cached per
-  composite (undo stack included); the level registers as the ACTIVE graph while open.
-- **Socket lattice** (`sockets.ts`): TYPE separation (families never auto-cross; Cast required;
-  sole bridge logical↔number), DIMENSIONAL flow up (a list widens into 2-D as a ROW). Wildcard
-  ladder (wildcardLadder): `any` → `anycombo` → `anylist`/`anytable` → `anydata` (rank ≤ 2) → `trueany`
-  (adoptive supremum; adoption never drops cables, never persists). "Resolve past untyped
-  passthroughs" routes through `isWildcardType()`; FAMILY resolution (the FC) uses
-  `isWildcardRung()`. The full sweep in `socketConnect.test.ts` machine-checks `accepts()`.
-- **Conduit lane faces**: NO flip rule — inputs local −x, outputs +x, rotating with the block;
-  a face-sign predicate anywhere is dead Manifold code.
-
-### UX principles
-- **Edits commit on Enter/clickaway, never per keystroke** (like Excel cells). Drafts stay local
-  while typing; Escape reverts. Use `useDraftCommit` (`inlineInput.tsx`); never call
-  `processGraph()` from a text field's `onChange`. Discrete picks (dropdowns, checkboxes,
-  sliders) apply immediately.
-- **Zero learning curve from Excel**: every element self-documenting — hover tooltips (with
-  Excel equivalents), the Socket Legend, the formula editor's syntax highlighting, per-node
-  descriptions from the catalog, the Function Reference overlay (Ctrl+/). Someone who knows Excel
-  but has never seen a node graph should need zero Googling.
-  **This is a mandate for MECHANISMS, never for prose.** The app is visual and is NOT to be
-  explained by elaborate text. The Reference overlay's tab docs exist SOLELY for systems normal
-  usage cannot make obvious (the socket lattice, unit flow) — the things that would otherwise
-  need annotated examples or a tutorial. If a legend, tooltip, glyph or on-screen control already
-  carries it, the text must NOT restate it: `data-types.md` once held a nine-row shape table
-  rendered directly beneath the Socket Legend that already draws and labels all nine.
-- **No "Captain Obvious" UI strings** (standing aesthetic rule): never narrate the affordance
-  ("Click to add", "Drag fields between boxes"), no placeholder sentences, no redundant
-  subtitles restating a name. Prefer a single muted word over a sentence; nothing over a word;
-  let the control carry the meaning. Genuine STATE explanations are fine ("— connect a frame"
-  on an empty list explains WHY it's empty). UI copy only — docs and code comments can be as
-  explicit as needed.
-- **Node design**: scalars → fine-grained one-op nodes; lists/tables → bundled task-shaped nodes
-  with op selectors. Variadic inputs use individually-labeled, individually-wireable rows
-  (`ExtensibleInputs` / `PairedExtensibleInputs`) when each input plays a distinct role; a
-  single list socket only when elements are interchangeable (SUM). Aligned parallel columns →
-  ONE frame input, not parallel list sockets (charts, SUMIFS, the frame verbs). The same for
-  OUTPUTS: correlated lists (t and y of a solution, the parts of a decomposition) leave as ONE
-  frame, never as parallel list sockets (author, 2026-08-24). A node that takes a user
-  formula takes it as a LAMBDA input (`lambdaIn` + `lambdaSig` + `resolveFn`, the λ-family
-  in `tableLambda.ts`), never as a string socket holding an expression (author, 2026-08-24).
-- **Node combining (recurring author program — Running oneRunningNode, Distribution oneDistributionNode are the models).**
-  "These could be one node" means the MAXIMAL merge: one card, selectors for what varied
-  (2026-08-09 the distribution merge stalled a turn at pairwise; the intent was all fourteen).
-  Mechanics that were gotten wrong once, don't repeat: an op's formula name is `fx ??
-  despace(label)` — when the real name is an Excel spelling or the label went bare, DECLARE
-  `fx` (distribution `normal` → NORM.DIST; Running `SUM` → RUNNINGSUM); never dodge an uniqueNameMap
-  collision by reclassifying the family argument-kind or inventing a parallel presentation
-  flag — `kind: "operation"` whenever the selector names the card, and the accent follows.
-  Selector-driven socket swaps: prune departing keys via `dropInputCables` BEFORE
-  `removeInput` (onePrunePath), spec-table the per-op shape (`DIST_SPECS` pattern), carry state
-  across switches by meaning (PDF↔PMF, inverse variants → Inverse).
-
-### Capability map (orientation only — verify in code/docs before relying on detail)
-- **Canvas**: cables/ribbons, groups, standoffs, Conduits, Tidy (ELK), isolate, minimap,
-  lasso, undo/copy/paste, single-key shortcuts (F9 calculate), command palette, presenter
-  mode, per-doc autosave + multi-doc tabs, Navigator, HUD stack, semantic zoom,
-  html-in-canvas GPU mode (DOM stays the permanent default); AI palette (aiInScope/aiWholeDocRewrite:
-  validator-gated whole-doc rewrite with diff approval; Anthropic key in Settings ▸ AI).
-- **Value model**: frames / cubes (recursive) / matrices / lists / scalars; first-class
-  null/logical/SolError; units by dimensionality with `#UNIT!` algebra; the FC (unit author
-  + display-format annotations); type-default display.
-- **Engine**: full relational verb set — lazy `FrameRef` chains fused into one Polars round
-  trip on desktop, identical JS oracle on web (`frameVerbs.ts`, cargo parity tests); calc
-  modes; headless runner (`npm run run-graph`); Write CSV/JSON/Obsidian sinks; live
-  connections (Web Source, CSV, Data Feed).
-- **Nodes**: current-Excel function parity (rank ≤ 2 per matricesInFormulas), Equation (acausal), composites
-  (drill-in; run modes incl. Monte Carlo/by-row; Query = manual-mode preset, queryIsCompositePreset), charts,
-  Note (pure SOURCE) / Report (pure SINK — deliberate opposites) / Mermaid, ~10 domain packs,
-  Placeholder for unknown types.
-- **Desktop**: Tauri shell (Windows portable exe), native Polars + CSV reader, F12 devtools,
-  accent window border, image bundling beside the doc.
-
-### Standing constraints (quick list — details in decisions.md / backlog.md)
-- Author-gated: `main`/releases; compositeToolbarReroute; conditionalFormatting.
-- Formulas compute at rank ≤ 2 (matricesInFormulas lifted the old 1-D cap; matrices + tagged complex are in);
-  frames/cubes stay OUT of formulas by design — the verb engine is their surface. Containment:
-  Formula.js never sees a matrix or a Cx (`matrixArgs`/`cxArgs` gates, rules.md hideMatrixFromVendor).
-- Units are authored ONLY by the FC / Convert — the Number node is a plain literal source.
-- Node card frames (body border + header accent cap + divider) paint as ONE SVG overlay
-  (`CardFrame`, `NodeCard.tsx`) so the strokes can't subpixel-crack under zoom. Never
-  reintroduce painted CSS borders on the card/header (transparent borders there are
-  layout-only); a new card-like surface reuses `CardFrame`.
-- Formula-authoring gotcha: `e`/`pi`/`tau`/`phi` are constants, not variable names.
-- Default date format is `DD-MMM-YYYY` (`DEFAULT_DATE_FORMAT` in `nodes/date.ts`); ISO stays a
-  selectable FC style.
+### Reflexes (each one is a pointer, not the rule)
+- Components never call `node.data()` (rules noDataInComponents). Edits commit on Enter/blur
+  via `useDraftCommit` (DESIGN.md § Inputs). In-place socket retype must reconcile
+  (rules retypeReconciles). Prune departing sockets' cables before removing them
+  (rules onePrunePath).
+- After a node dedup/merge or an output-socket rename: `seeds.test.ts`, `nodeOps.test.ts`,
+  `formulaNodeCoverage.test.ts` beside the parity/catalog suites (decisions maximalMerge).
+- Formula-authoring gotcha: `e`/`pi`/`tau`/`phi` are constants, not variable names. Default date
+  format is `DD-MMM-YYYY` (decisions dateSerials). Units are authored only by the FC / Convert
+  (decisions firstClassUnits). Frames/cubes never enter formulas (decisions matricesInFormulas).
+- A black screen: every render is boundaried — ask for the copied error text first, don't hunt
+  blind (subsystem-invariants § React Flow surface contract).
 
 ### Commit style
 Short imperative summary, blank line, brief body if needed — match the existing log.

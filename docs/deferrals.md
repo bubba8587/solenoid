@@ -21,7 +21,7 @@ duplicate them, just names them for the review).
   5000-nodes figure is for built-in nodes (custom nodeTypes go hybrid, i.e. our DOM anyway).
   The one piece to take: HIC's held layer painted from a worker (`transferControlToOffscreen`),
   keeping the main thread free during gestures. A contained HtmlCanvasLayer change, NOT a third
-  render path (CLAUDE.md). Pairs with headless card metrics above — both are "draw cards you
+  render path (decisions reactFlowView). Pairs with headless card metrics above — both are "draw cards you
   never mount". 2.0.
 - **Obstacle-avoiding cable shape (author 2026-08-27, via github.com/awaisshah228/avoid-edge-routing)**
   — `obstacle-router`: a pure-TypeScript, zero-dependency port of libavoid (orthogonal / polyline /

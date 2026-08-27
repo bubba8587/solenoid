@@ -6,6 +6,22 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-08-27b — docs reconciled to the merged React Flow port; CLAUDE.md cut to standing orders)
+
+The port merged into `develop`; the ledger `react-port-plan.md` is archived (its live truth
+now lives as decisions **reactFlowView** / **oneFlowSurface** and a new subsystem-invariants
+§ **React Flow surface contract**, which absorbed every RF-era trap CLAUDE.md carried). Rete-era
+claims fixed where they were still read as current: mental-model's "two React worlds" (one tree
+now; RF view over the headless rete model), rules.md's STORE preamble and socketBox12 rationale
+(RF measures the Handle), the standoff layer's "own React root" (a `<ViewportPortal>`), the
+glossary's "load reveal" animation (curtain only), touch-gestures' `FlowCanvas` citations
+(`FlowSurface`), the transpiler bundle's `Canvas.tsx` auto-arrange pointers (`tidyArrange.ts` +
+the `setAutoArrange` slot), and `.claude/commands/startup.md` (back to the main checkout's
+port 1420). CLAUDE.md went from 404 lines to ~110: the UI-vocabulary table → glossary, the node
+design + combining rules → node-coverage + decisions **maximalMerge**, the UX/voice mandates +
+icon parity + CardFrame + commit-on-Enter → DESIGN.md, the capability map → mental-model.
+Every remaining CLAUDE.md line is a standing order or a pointer with the rule's name.
+
 ### SESSION DIGEST (2026-08-27 — react-port-develop: the Conduit's sockets, its cable tips, its hit area)
 
 **The Conduit rendered no sockets at all.** Rete's classic preset wrapped every socket in a
@@ -76,7 +92,7 @@ next pill press or wheel notch rounds an off-lattice pinch back on.
 
 ### SESSION DIGEST (2026-08-26 — react-port-develop: THE CUTOVER — React Flow only, no rete surface)
 Author ruling mid-session: "this branch is for GOING ALL OUT ON REACT FLOW NO RETE." Executed in
-four commits (Cutover A–D; the ledger `docs/react-port-plan.md` carries the full per-item record):
+four commits (Cutover A–D; the ledger `docs/archive/react-port-plan.md` carries the full per-item record):
 - **A** deleted the rete app surface (Canvas.tsx, CompositeEditorOverlay, ConnectionComponent,
   `?rete`, HIC set, tapSelect/nativeHover/guardedSocketPosition/renderMode/zoomSettle/domSync/
   rasterAtlas, loadReveal animation → curtain-only); landing/showcase ported to StaticFlowStage.

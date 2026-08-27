@@ -1,8 +1,13 @@
-# React Flow port — plan and status ledger
+# React Flow port — plan and status ledger (ARCHIVED — merged into `develop` 2026-08-27)
+
+The port is complete and merged; `develop` is the one branch again (CLAUDE.md branch
+model). This is the per-chunk build record only. Live truth: `decisions.md`
+reactFlowView / oneFlowSurface, `subsystem-invariants.md` § React Flow surface
+contract, `architecture.md` § Stack.
 
 **Branch: `react-port-develop`** (author-ordered 2026-08-26, superseding the develop-only
-rule for THIS track). Runs in parallel with rete development on `develop`; merged in
-eventually. Multi-session: each session picks up the next unchecked chunk item below.
+rule for THIS track). Ran in parallel with rete development on `develop`. Multi-session:
+each session picked up the next unchecked chunk item below.
 
 **AUTHOR RULING (2026-08-26): this is a FULL PORT, not a spike.** React Flow is this
 branch's app canvas (`FlowCanvas` in MainApp, real chrome, real documents, real
@@ -478,4 +483,4 @@ until the port completes. No standalone harness — new work integrates with the
       hide-grid-dots to `.react-flow__background`, CableFlourish's canvas
       query, and orphaned `canvas.css` (lock/beads/minimap-position rules)
       re-imported by FlowCanvas. All probe-verified live.
-- [ ] Merge plan back to `develop` (author decides timing).
+- [x] Merged back to `develop` (author, 2026-08-27).

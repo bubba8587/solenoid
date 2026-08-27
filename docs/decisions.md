@@ -22,7 +22,7 @@ one module. Never add a second engine "for web" without reopening this explicitl
 ### noFramesInFormulas — Formula scope is capped: frames/cubes never enter formulas
 The verb engine is the frame/cube surface; formulas stop at rank ≤ 2 (matrices and
 complex ARE in — see matricesInFormulas, which superseded the old 1-D cap). Pressure to widen
-Expression routes to composites/subgraphs instead. **Where:** CLAUDE.md,
+Expression routes to composites/subgraphs instead. **Where:** rules.md hideMatrixFromVendor,
 `broadcastRules.test.ts`. The composite-toolbar-reroute concern that once shared this decision's scope is
 now `compositeToolbarReroute`, deferred author-present (`deferrals.md`). **Reopen if:** nothing at the formula level.
 
@@ -42,12 +42,44 @@ per-cell `SolError` (propagated), plus a first-class logical type with Kleene
 3-valued logic. **Where:** `valueKinds.ts`, `errorValue.ts`,
 `subsystem-invariants.md` § Error values. **Reopen if:** nothing — foundational.
 
-### htmlInCanvasRenderer — Renderer is HTML-in-Canvas over the real DOM
-Cards capture into a mip pyramid of bitmaps; the DOM renderer is the permanent
-default/fallback. Depends on the `CanvasDrawElement` Blink flag (external
-dependency — risk R2). **Reopen if:** the flag stalls → DOM stays default, no
-crisis. The Pixi/WGSL groundwork was DELETED 2026-08-09 (author order — exactly
-two renderers exist: DOM default + the experimental HIC Setting; git has the code).
+### htmlInCanvasRenderer — The gesture renderer is HTML-in-Canvas over the React Flow DOM
+Cards capture into a mip pyramid of bitmaps drawn during pan/zoom; the DOM surface is
+the permanent default and the idle state. Depends on the `CanvasDrawElement` Blink flag
+(external dependency — risk R2). Author ruling 2026-08-26: HIC is IN — it survived the
+rete cutover and was ported to the RF surface (`HtmlCanvasLayer.tsx`, a Setting gated
+on `supportsHtmlInCanvas()`). **Where:** `renderer-performance.md`. **Reopen if:** the
+flag stalls → DOM stays default, no crisis. The Pixi/WGSL groundwork was DELETED
+2026-08-09 (author order — exactly two render paths exist: the RF DOM surface + the
+HIC gesture layer; git has the code). Do not rebuild a third path (reactFlowView).
+
+### reactFlowView — The view layer is React Flow over a headless rete model
+**What stands (author, 2026-08-26: "going all out on React Flow, no rete"):** React
+Flow (`@xyflow/react`) renders every card, cable, the minimap and the viewport in the
+app's ONE React tree; rete core (`NodeEditor` + `ClassicPreset`) and `rete-engine`
+(`DataflowEngine`) stay as the renderer-free model + compute spine carrying the node
+classes, `coerceInputs`, the error guards and persistence untouched. Every rete RENDER
+package (area/react/connection/render-utils/minimap/history/auto-arrange) and
+`styled-components` are deleted; Tidy calls elkjs directly; undo is the snapshot
+history (`flow/flowHistory.ts`). The module-singleton stores (`storeKit.ts`) STAY —
+they are app-wide state, not a separate-root workaround; plain React context/props
+work everywhere. The save format was already rete-independent (saveViaTextForm).
+**Where:** `architecture.md` § Stack, `subsystem-invariants.md` § React Flow surface
+contract, `flow/*`. **Reopen if:** RF's DOM compositing floor blocks the ~300-node
+target (the same floor rete had — xyflow #4711/#5117); the HIC layer is the
+sanctioned lever, never a third render path. Merged to `develop` 2026-08-27; build
+record in `archive/react-port-plan.md`.
+
+### oneFlowSurface — Both canvases are ONE surface component
+**What stands (author, 2026-08-26: the main canvas and the drill-in must be
+equivalent):** `flow/FlowSurface.tsx` is the one surface; the main canvas and the
+composite drill-in render it over a `SurfaceStack` and differ only through
+`SurfaceHooks`. Every surface-level behavior — gesture installers, lasso, menus,
+keyboard, layers — is wired there once; a host may only supply what settles a move,
+which history answers undo, and what Delete removes. **Where:**
+`subsystem-invariants.md` § React Flow surface contract; the drill-in host
+`flow/FlowCompositeOverlay.tsx`. **Reopen if:** a surface genuinely needs a behavior
+the other must not have — then the difference is a named hook, never a host-local
+installer.
 
 ### socketLattice — Socket lattice: type separation, dimensional flow
 Element families never auto-cross (Cast required; sole bridge `logical↔number`);
@@ -128,7 +160,7 @@ Final state: `any` (untyped scalar) → `anycombo` (0-or-1-D) → `anylist` →
 never persists — re-derived after load). INDEX projects the element family from
 its container (a frame column when statically knowable via `frameShapeResolver`);
 a CUBE cell stays `trueany` — the one container heterogeneous within a column.
-**Where:** `sockets.ts`, `trueAnyAdopt.ts`, CLAUDE.md lattice note,
+**Where:** `sockets.ts`, `trueAnyAdopt.ts`, `subsystem-invariants.md` § Socket lattice,
 `socket-reference.md`. **Reopen if:** none foreseen.
 
 ### lambdaBindsByName — A wired LAMBDA binds to the consumer's variables BY NAME
@@ -396,13 +428,33 @@ prunes departing sockets' cables first (onePrunePath), and lets old saves load a
 Placeholders (noBackCompat). Flat ops were preferred over a second axis wherever the
 combo count is small — per-op hover descriptions keep working and no new
 persisted field is needed. **Where:** the merged classes sit in their family
-files; mechanics per CLAUDE.md "Node combining". **Parked pending author
+files; mechanics per maximalMerge. **Parked pending author
 review** (backlog "Node-combining parked"): the paired-list aggregate, the
 payment-breakdown 2×2, and the remaining smaller pairs. (Landed since under
 `docs/plans/`: TREND⊂FORECAST.LINEAR+GROWTH, LINEST⊂LOGEST, PHI/GAUSS→Distribution,
 Select+Drop Columns→Columns, and Text Filter⊂List Filter.)
 **Reopen if:** a merged family needs per-op behavior the
 spec table can't express, or an op needs its own formula-name treatment.
+
+### maximalMerge — "These could be one node" means the MAXIMAL merge
+**What stands (recurring author program; oneRunningNode and oneDistributionNode are the
+models):** one card, selectors for what varied — never a pairwise or partial merge
+(2026-08-09 the distribution merge stalled a turn at pairwise; the intent was all
+fourteen). A variant is a mode/op selector on the existing card, never a sibling node.
+Mechanics that were gotten wrong once and must not repeat: an op's formula name is
+`fx ?? despace(label)` — when the real name is an Excel spelling or the label went bare,
+DECLARE `fx` (distribution `normal` → NORM.DIST; Running `SUM` → RUNNINGSUM); never dodge
+a uniqueNameMap collision by reclassifying the family argument-kind or inventing a
+parallel presentation flag — `kind: "operation"` whenever the selector names the card,
+and the accent follows (aggregatorsAreArguments). Selector-driven socket swaps prune
+departing keys via `dropInputCables` BEFORE `removeInput` (rules onePrunePath),
+spec-table the per-op shape (the `DIST_SPECS` pattern), and carry state across switches
+by meaning (PDF↔PMF, inverse variants → Inverse). Old saves load as Placeholders
+(noBackCompat). After a merge run `nodeOps.test.ts` + `formulaNodeCoverage.test.ts`
+beside the parity/catalog/seed suites. **Where:** nodeCombiningRound1 records the
+landed batch; `node-coverage.md` the inventory. **Reopen if:** a family whose variants
+cannot share a spec table (a second x input, a non-numeric parameter) — then a
+sibling is honest, and the reason is recorded.
 
 ### oneRecordNode — The Record family: ONE figure node, and its views are ARGUMENTS
 **What stands:** Every record-shaped view — Card, Gallery, Board, and any future

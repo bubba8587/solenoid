@@ -30,13 +30,11 @@ back to Expression node" list; `scripts/parity.ts` already generates a report fr
 and is a working example of importing/using this data outside the app.
 
 **Auto-arrange call site (for the transpiler's "arrange the emitted graph" step):**
-`AutoArrangePlugin` from `rete-auto-arrange-plugin`, instantiated `Canvas.tsx:1193`,
-preset registered `:1201`, actual layout call `await arrange.layout({...})` at
-`Canvas.tsx:1809`. Exposed to the rest of the app via `setAutoArrange(fn)`
-(`process.ts:64`, signature `(fn: (opts?: {groupId?: string}) => Promise<void>) => void`),
-invoked as `await arrangeFn({skipConfirm: true})` (e.g. `Canvas.tsx:2031`). **The
-transpiler's layout step should call the same accessor** (`process.ts`'s
-`getAutoArrange()`/equivalent), not reimplement layout invocation.
+Tidy is elkjs called directly — `elkTidyLayout` / `makeArrangeFn` in `tidyArrange.ts`,
+wired by `FlowCanvas` and exposed to the rest of the app via `setAutoArrange(fn)`
+(`process.ts`, signature `(fn: (opts?: {groupId?: string}) => Promise<void>) => void`),
+invoked as `await arrangeFn({skipConfirm: true})`. **The transpiler's layout step should
+call the same accessor** (`process.ts`'s slot), not reimplement layout invocation.
 
 **currentExcelParity enforcement mechanism:** the redirect rule (eliminated functions like VLOOKUP
 never come back, they redirect to Frame Lookup/XLOOKUP) is enforced by simply NOT
@@ -71,8 +69,8 @@ the original text even if inert."
    redirect table becomes an Expression node carrying the original formula text verbatim
    (formulas compute at rank ≤ 2 since matricesInFormulas — frames/cubes stay out — so a fallback can
    still be inert; that's fine, same as any Placeholder).
-5. Layout: call the same `arrangeFn({skipConfirm: true})` accessor Canvas.tsx uses
-   (`process.ts:64`) on the emitted graph.
+5. Layout: call the same `arrangeFn({skipConfirm: true})` accessor the Tidy button uses
+   (`process.ts` `setAutoArrange` slot) on the emitted graph.
 6. Sheets → Groups: each source sheet becomes a `GroupNode` (`nodes/group.ts:11-40`,
    `members: string[]`).
 

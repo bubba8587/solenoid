@@ -4,8 +4,9 @@ Living document, kept at **module granularity** (one line per concern, not one
 line per node file — there are ~300 of those and the registry is the real
 index). Update when a new module or concern lands, in the same commit.
 
-Deep behavioral notes and gotchas live in `CLAUDE.md` (agent-facing) and
-`docs/dev-notes.md` (running log). This file is the map.
+Mechanics and gotchas live in `docs/subsystem-invariants.md`; rulings in
+`docs/decisions.md` and `docs/rules.md`; the running log in `docs/dev-notes.md`.
+This file is the map.
 
 ---
 
@@ -115,7 +116,7 @@ src/
 | `canvasGeometry.ts` | Screen ↔ canvas coordinate helpers (`getSocketScreenCenter`, `screenToCanvas`) shared by FC docking + quick-wire placement |
 | `fcDocking.ts` | FC docking: `findDockTarget` (canvas-unit snap), `computeDockedCanvasPos`/`dockedRenderedDims`, and the inline splice/unsplice (`insertFcInline`/`removeFcInline`) |
 | `tidyArrange.ts` | Tidy + Cleanup: `makeEnsureElk` (lazy elkjs), `elkTidyLayout` (the direct ELK call — symmetric FIXED_POS ports, port-id edges), `makeArrangeFn` (the group/standoff/docked-FC-aware layout — see subsystem-invariants "Auto-arrange / Tidy"), `makeCleanupFn` |
-| `storeKit.ts` | The module-singleton store kit (`createNotifier` / `createToggleStore` / `createValueStore`) every cross-root store builds on (see Conventions) |
+| `storeKit.ts` | The module-singleton store kit (`createNotifier` / `createToggleStore` / `createValueStore`) every app-wide store builds on (see Conventions) |
 | `pointerGesture.ts` | THE two-finger gesture definition: window-capture contact census, `isPinching()` (≥2 fingers) — what the pinch-priority rule stands on |
 | `historyDigest.ts` | Human-readable session-history text (`digestLabeled` over flowHistory's labeled records) |
 | `modelFuzz.ts` | Model fuzzing: valid-shaped inputs per typed leaf source, driven through targeted recompute; findings land in the Problems panel (origin "fuzz") |
@@ -441,14 +442,16 @@ rationale, point-in-time research, the dev-notes history) is indexed in
 - **`extractInit` allowlist** (`copyPaste.ts`; `persistence.ts` imports it): a node's
   persistent constructor fields must be listed there or they silently don't survive
   save/load/paste.
-- **Module-singleton stores** for anything read across React roots
-  (`storeKit.ts`: `createNotifier` / `createToggleStore` / `createValueStore`
-  — the last is the "one nullable open/close value" popup-store shape),
-  consumed via `useSyncExternalStore`.
+- **Module-singleton stores** for app-wide state read by cards, chrome and the
+  headless paths alike (`storeKit.ts`: `createNotifier` / `createToggleStore` /
+  `createValueStore` — the last is the "one nullable open/close value"
+  popup-store shape), consumed via `useSyncExternalStore`. Plain React
+  context/props are fine for anything local to one tree region.
 - **Composability rule**: scalars → fine-grained one-op nodes; lists/tables →
   bundled task-shaped nodes with op selectors.
 - **Excel metadata lives on the node** (`nodeExcel.ts`); menus and the
   Function Reference are generated, never hand-listed.
 - **Stable ids** from `crypto.randomUUID()`; loads remap ids.
-- See `CLAUDE.md` for the rendering/measurement gotchas (socket boxes,
-  measured rows, async `area.translate`, pointer-event traps).
+- Rendering/measurement gotchas (socket boxes, measured rows, async
+  `area.translate`, pointer-event traps): `docs/subsystem-invariants.md`
+  § React Flow surface contract and § Pointer gestures.

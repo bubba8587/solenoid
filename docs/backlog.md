@@ -30,7 +30,7 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   step-2 target is the **socket-dot ring (2,221 elements)**; smaller clean wins are the corner
   badge/lock and the section divider. Step 2 (author's "for later"), paint-only → pseudo-elements /
   backgrounds / masks; paint-only STATE → custom properties + `:has()` / container queries instead of
-  className branching. Sockets may be CSS-positioned too (CLAUDE.md, verified: only a `transform`
+  className branching. Sockets may be CSS-positioned too (subsystem-invariants § React Flow surface contract, verified: only a `transform`
   inside `__content` misreports an endpoint). Charts/popups won't move (recharts + `<input>` grids).
 - [ ] **Architecture map v2 — WAIT FOR THE AUTHOR'S SPEC.** The old map (Subsystem
   cards + import cables, generator chain, coverage guards) is deleted. The author

@@ -34,7 +34,7 @@ does not repeat them.
 
 **Vocabulary:** the invented terms (frame, cube, combo, FC, Conduit, the socket
 families…) are defined in `docs/glossary.md`; read it first if a term here doesn't
-parse. `CLAUDE.md`'s alias table maps the author's UI words to code handles.
+parse; its last section maps the author's UI words to code handles.
 
 ## Conventions
 
@@ -327,9 +327,9 @@ broadcast".
 that would have caught it, or states why it can't be checked.
 
 *Why:* the difference between a spec and a folk memory is whether anything fails when you
-break it. `CLAUDE.md` already carries an honest example of the alternative — the
-OS-dropdown rule, "widely cited, but no originating incident is on record", 21 call sites
-held on precaution.
+break it. `subsystem-invariants.md` § Pointer gestures carries an honest example of the
+alternative — the native-popup pointerdown swallow, kept on drag-prevention grounds after
+its originating mechanism died with the rete surface.
 *Enforced by:* `rules.test.ts` → "every rule labels its enforcement" — the
 labelling itself is mechanical (every rule body carries an *Enforced by:* line, tests
 or an explicit UNENFORCED). Whether a cited test truly enforces is machine-checked for
@@ -401,7 +401,7 @@ unification sweep found eleven.
 
 The lattice is a family × rank product, and its legality rules are DERIVED from that
 product rather than enumerated per pair. Full mechanics: `docs/socket-reference.md`,
-`CLAUDE.md` "Socket lattice".
+`docs/subsystem-invariants.md` § Socket lattice.
 
 ### noAutoCross — Type separation: element families never auto-cross **[INFERRED]**
 **MUST:** a value of one element family never connects to an input of another. Crossing
@@ -509,8 +509,10 @@ reasoned sanctioned list for the central adoption machinery itself.
 **MUST:** the socket span renders `display:block; line-height:0` at a locked 12×12, and
 vertical placement is MEASURED per row — never a fixed constant, never a `transform`.
 
-*Why:* `rete-render-utils` measures the span's offset box for cable endpoints, and
-`offsetTop` ignores transforms, so rete would misreport the endpoint.
+*Why:* React Flow measures the wrapping Handle's box for cable endpoints
+(`flow/FlowSocketHandle.tsx`), and a transform or an unmeasured constant misreports the
+endpoint. Anchoring and the per-row measure: `subsystem-invariants.md` § React Flow
+surface contract.
 *Enforced by:* `sourceInvariants.test.ts` → "socketBox12 — the socket box's greppable
 half": socket.css keeps the deterministic box (display:block, the 12px size variable
 on both axes, line-height 0), no INPUT_ROW_TOP-style constant anywhere, no transform
@@ -1570,8 +1572,9 @@ carry-over bug (switch into an already-met condition).
 
 # STORE — Node-keyed module stores
 
-Rete renders nodes in a separate React root, so per-node UI/derived state lives in
-module-level singleton stores keyed by node id. The lifecycle question — what happens
+Per-node UI/derived state (collapse, manual size, cable values, socket angles…) lives in
+module-level singleton stores keyed by node id — app-wide state read from cards, chrome
+and the headless paths alike (decisions reactFlowView). The lifecycle question — what happens
 to a store's entries when a node is deleted, and on a wholesale rebuild — has ONE
 answer, the registry; a store that answers it privately answers it wrong eventually.
 

@@ -227,10 +227,12 @@ The system is flat at rest and uses elevation only to communicate state. Cards s
 - **Default:** Sunken background (`--surface-sunken`), 1px neutral border (`--border`), body-color icon/text. Quiet and recessive.
 - **Hover / Active:** Background lifts to `--btn-hover`, border steps to `--border-strong`. No color injection; the button stays neutral.
 - **Confirming action** (one per dialog at most — Save, Done): the exception to the neutral rule. Filled with its surface's accent and its matching ink, so the button that commits a change reads as belonging to the thing being changed. Every other button in the same dialog stays neutral; two filled buttons in one footer is the misuse.
+- **Icon-only buttons use EVEN-sized icons** (an even content box + an even icon = whole-pixel centering; odd sizes rasterize blurry and shift with browser zoom). Draw dividers with an inset `box-shadow`, never a layout border. Never a text `×`/`✕` for a close button — `components/CloseIcon.tsx`. A genuinely asymmetric glyph gets fixed in the path by ink centroid (an art call, not the parity rule).
 
 ### Inputs / Fields
 - **Style:** Sunken background (`--surface-sunken`), 1px border (`--border`), 4px radius. Value text in the mono face. Reads as a familiar input box, especially in light theme where the field is the brightest (white) layer.
 - **Focus:** Border shifts to the accent (`--accent`). No glow, no ring; a single colored border edge.
+- **Edits commit on Enter / clickaway, never per keystroke** (like an Excel cell). Drafts stay local while typing; Escape reverts. `useDraftCommit` (`inlineInput.tsx`) is the mechanism; never call `processGraph()` from a text field's `onChange`. Discrete picks (dropdowns, checkboxes, sliders) apply immediately.
 
 ### Op pickers (the accent's one home on a card body)
 A card's OPERATION picker is the single body control that spends the accent: a 2px edge at `--mix-emphasis`, hoisted to the top of the body so the op reads before the inputs it shapes. Everything else in the body stays neutral. Two components can be that picker and they behave identically — `OpSelect` (a dropdown) and `SegToggle` (a segmented toggle) — differing only in shape.
@@ -251,7 +253,7 @@ The family's picker hoists to the top of the body either way. Reading before the
 - **Width:** Fixed at 180px (240px wide tier for nodes carrying 2D table/frame data) so every node reads as a uniform unit; heights stay content-driven.
 - **Background:** `--surface` body with a per-node accent-tinted header band. Each node type owns an accent; the header carries a tint of it (`--header-tint`, 22% dark / 52% light), so type is legible at a glance without coloring the whole card.
 - **Shadow Strategy:** The resting card seam (see Elevation). Flat otherwise.
-- **Border:** 1px neutral, stepping to `--border-strong` on hover. In light theme the border becomes a darker shade of the node's own accent rather than gray.
+- **Border:** 1px neutral, stepping to `--border-strong` on hover. In light theme the border becomes a darker shade of the node's own accent rather than gray. **The frame paints as ONE SVG overlay** (`CardFrame` in `NodeCard.tsx`: body border + header accent cap + divider) so the strokes can't subpixel-crack under zoom. Never reintroduce painted CSS borders on the card or header (transparent borders there are layout-only); a new card-like surface reuses `CardFrame`.
 - **Selected:** A 2px accent ring drawn as a pseudo-element overlay (so it sits above the header and group borders) plus the accent-tinted selection glow. Selection never changes the card's size.
 - **Grouped:** Members drop their shadow and take a 2px border in the group's color, with a small solid corner triangle marking membership.
 
@@ -286,11 +288,29 @@ The family's picker hoists to the top of the body either way. Reading before the
 
 ## 7. Voice & copy
 
-Rules for shipped UI text — headings, dialog bodies, What's New slides, tooltips, empty states.
-The house voice is plain and declarative: name the feature, say what it does, stop. These were
-distilled from a pass that rewrote the What's New / About copy (before → after shown). They sit
-alongside the "no Captain Obvious UI strings" rule in CLAUDE.md (don't narrate an affordance the
-control already conveys) — that rule still governs; these are about tone once the string earns its place.
+Rules for shipped UI text — headings, dialog bodies, What's New slides, tooltips, empty states,
+`src/graph/help/*.md`, every `nodeCatalog` description. The house voice is plain and declarative:
+name the feature, say what it does, stop. These were distilled from a pass that rewrote the
+What's New / About copy (before → after shown).
+
+**Zero learning curve from Excel is a mandate for MECHANISMS, never for prose.** Every element is
+self-documenting through hover tooltips (with Excel equivalents), the Socket Legend, the formula
+editor's syntax highlighting, per-node descriptions from the catalog, and the Function Reference
+overlay (Ctrl+/) — someone who knows Excel but has never seen a node graph needs zero Googling.
+The app is visual and is NOT to be explained by elaborate text: the Reference tab docs exist
+SOLELY for systems normal usage cannot make obvious (the socket lattice, unit flow). If a legend,
+tooltip, glyph or on-screen control already carries it, the text must NOT restate it
+(`data-types.md` once held a nine-row shape table rendered directly beneath the Socket Legend
+that already draws and labels all nine).
+
+**No "Captain Obvious" UI strings.** Never narrate the affordance ("Click to add", "Drag fields
+between boxes"), no placeholder sentences, no redundant subtitles restating a name. Prefer a
+single muted word over a sentence; nothing over a word; let the control carry the meaning. A
+genuine STATE explanation is fine ("— connect a frame" on an empty list explains WHY it is empty).
+Descriptions and tooltips never explain wiring (no sockets/cables/"typed or wired"/"flows out"):
+wiring is the app. Tooltips are structural only — never dynamic data (names, values); visible
+text carries the flexible part. UI copy only — docs and code comments can be as explicit as
+needed. The rules below are about tone once the string earns its place.
 
 `uiCopy.test.ts` enforces the machine-checkable subset of this section over the help markdown and
 the node catalog: teased counts, the slogan phrases, conventional-affordance narration, chummy

@@ -7,12 +7,14 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
 
 ## Start here (new agent, in this order)
 
-1. **`../CLAUDE.md`** — standing rules, architecture notes, the non-obvious traps.
-2. **`mental-model.md`** — how the system RUNS, end to end (the two React worlds,
-   the compute path, types, frames, display, save/load). The story the reference
-   docs assume you know.
+1. **`../CLAUDE.md`** — standing orders (branch, verification, doc duty) and the
+   pointer map; every mechanism lives in the docs below.
+2. **`mental-model.md`** — how the system RUNS, end to end (the React Flow view over
+   the headless rete model, the compute path, types, frames, display, save/load).
+   The story the reference docs assume you know.
 3. **`glossary.md`** — the invented vocabulary (Conduit, Standoff, FrameRef, unit
-   flow…). Read before the deep-dive docs or their terms won't parse.
+   flow…) plus the author's names for the on-screen chrome. Read before the
+   deep-dive docs or their terms won't parse.
 4. **`architecture.md`** — the file map: where things live.
 5. **`rules.md`** — the NORMATIVE spec: what must remain true, and the test that
    enforces each rule. Sockets, formula surface + naming, value handling — the
@@ -28,9 +30,9 @@ is parked there.
 
 ## Reference (read the relevant section before touching a subsystem)
 
-- **`subsystem-invariants.md`** — the "don't break this" mechanics (cable routing,
-  group push, standoffs, tidy, error values, unit flow, alerts, addressable model,
-  autosave, drill-in lifecycle).
+- **`subsystem-invariants.md`** — the "don't break this" mechanics (the React Flow
+  surface contract, pointer gestures, cable routing, group push, standoffs, tidy,
+  error values, unit flow, alerts, addressable model, autosave, drill-in lifecycle).
 - **`layout-chrome.md`** — the on-screen chrome map (bars, overlays, offsets,
   z-index ladder). Read before adding or moving any bar/overlay.
 - **`touch-gestures.md`** — the pointer/touch gesture INVENTORY (what every
@@ -79,9 +81,6 @@ is parked there.
   Landed items get DELETED (git + digests are the record). Since the 2026-08-07
   pivot: 1.3 ships as-is — the queue is bugs, patches, and polish sweeps; feature
   work lives in `deferrals.md` "Pushed to 1.4/2.0". The release tail lives here.
-- **`react-port-plan.md`** — the React Flow port: chunk plan + status ledger for the
-  parallel `react-port-develop` branch (author-ordered 2026-08-26). Port sessions
-  digest THERE, not in `dev-notes.md`, so the track merges cleanly.
 - **`plans/`** — per-task execution plans for the backlog's Execution queue, written
   so a smaller model can do the routine work (index + protocol in `plans/README.md`).
   A plan is deleted with its backlog line.
@@ -121,6 +120,8 @@ relapse.
 | `equationSolve.ts` | `subsystem-invariants.md` § Equation solver |
 | `semanticZoomStore.ts` | `renderer-performance.md` § Semantic zoom gate |
 | `pointerGesture.ts`, `flow/flowPinch.ts`, `flow/flowTouchPan.ts` | `subsystem-invariants.md` § Pointer gestures |
+| `flow/FlowSurface.tsx`, `flow/FlowCanvas.tsx`, `flow/flowModel.ts`, `flow/flowArea.ts` | `subsystem-invariants.md` § React Flow surface contract; decisions reactFlowView, oneFlowSurface |
+| `flow/FlowCableEdge.tsx`, `flow/FlowSocketHandle.tsx`, `NodeSocket.tsx`, `NodeCard.tsx` | `subsystem-invariants.md` § React Flow surface contract; `rules.md` socketBox12; `../DESIGN.md` § Cards |
 | `connectionStore.ts`, `httpBridge.ts`, live-source fetch | `subsystem-invariants.md` § Live connections |
 | `flyToNode.ts`, any camera `zoomAt` caller | `subsystem-invariants.md` § Group collapse (camera targets) |
 | `activeGraph.ts` | `subsystem-invariants.md` § Composite drill-in (canvas-substitution seam) |
@@ -157,8 +158,12 @@ relapse.
 
 ## Task → docs cheat-sheet
 
-- **Adding/changing a node:** `node-coverage.md` + `glossary.md`; `nodeCatalog.ts`
-  is the source of truth (Add menu + Function Reference generate from it).
+- **Adding/changing a node:** `node-coverage.md` (inventory + the node-design rules)
+  + `glossary.md`; `nodeCatalog.ts` is the source of truth (Add menu + Function
+  Reference generate from it). Merging nodes: decisions maximalMerge.
+- **Anything on the canvas surface (a gesture, a key, a menu, a layer, a cable or
+  socket change):** `subsystem-invariants.md` § React Flow surface contract first;
+  `touch-gestures.md` for gestures.
 - **Choosing a socket type for a port, or "why won't this cable connect?":**
   `socket-reference.md` (the per-variant tables) + subsystem-invariants "Socket
   lattice".

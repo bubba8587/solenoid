@@ -45,7 +45,7 @@ mobile model; never gate on coarseness alone what must flip with it.
   swallow pointerdown on desktop (no accidental node drag) but bubble on mobile (a
   pan may start over them). Not for drag-interactive controls or textareas — those
   keep a hard stop.
-- **A cable drag blurs the focused field first** (`onConnectStart` in FlowCanvas) —
+- **A cable drag blurs the focused field first** (`onConnectStart` in FlowSurface) —
   a mid-edit value commits before it is wired.
 
 ## Gesture inventory
@@ -57,7 +57,7 @@ mobile model; never gate on coarseness alone what must flip with it.
 | 1-finger / left-mouse drag | all | pan | RF pane drag (bubble, vetoable); on an unselected card `flowTouchPan.ts` |
 | 2-finger pinch | touch | zoom (capped) | `flowPinch.ts` (wrapper capture), `pointerGesture.ts` |
 | wheel / ctrl+wheel trackpad pinch | mouse | zoom (proportional, step-capped) | `flowWheel.ts` + `wheelZoomDelta` (`areaPresets.ts`) |
-| tap / click | all | clear cable/standoff/endpoint selection | `FlowCanvas.tsx` `onPaneClick` |
+| tap / click | all | clear cable/standoff/endpoint selection | `FlowSurface.tsx` `onPaneClick` |
 | **long-press** (touch) / right-click | all | **context menu routing: empty canvas → ADD MENU**; socket → socket menu (≤11px snap radius); cable → cable menu; node → node menu (headed by the node's catalog one-liner — the header tooltip's touch-reachable home). Two regates: suppressed entirely while ISOLATE is active, and the handler bails on the focused editable (the browser's own menu wins there) | `canvasContextMenu.ts` — ONE native `contextmenu` handler; touch long-press is the browser's own synthesis, there is no timer in our code |
 | double-tap / double-click | all | **nothing, by design** (`zoomOnDoubleClick={false}` — see invariants) | RF props |
 
@@ -81,7 +81,7 @@ Other add paths (not gestures): mobile bar ➕ FAB, the `A` key, Insert ▸ Add 
 
 | Gesture | Config | Action | Where |
 |---|---|---|---|
-| drag from socket | all (mobile: selected node, or any during `--cabling`) | pick/drop cable | RF Handle drag (`FlowSocketHandle`, `onConnect` in FlowCanvas) |
+| drag from socket | all (mobile: selected node, or any during `--cabling`) | pick/drop cable | RF Handle drag (`FlowSocketHandle`, `onConnect` in FlowSurface) |
 | hover dot (300ms intent) | mouse | frame-input EXAMPLE hint | `NodeSocket.tsx` + `frameHint.ts` |
 | tap the input ROW | touch | frame-input EXAMPLE hint — the INTENTIONAL touch trigger; next tap or 4s dismisses. The dot itself deliberately has none: a touch press on the dot begins the cable pick, which captures the pointer (the tap's up never reaches the dot), and the dot scales with the canvas transform anyway (a few px at overview zoom). | `MeasuredSocketRow` / `FrameHintLayer` |
 | long-press socket | touch | socket context menu | `canvasContextMenu.ts` |

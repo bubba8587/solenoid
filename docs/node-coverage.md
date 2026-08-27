@@ -66,6 +66,20 @@ scrollbar that sweep removed.
 
 **Composability rule**: scalars → fine-grained one-op nodes. Lists/tables → bundled task-shaped nodes (e.g. one Aggregate with op selector, not five separate sum/avg/etc. nodes).
 
+**Node design rules (the author's standing shape calls):**
+- Scalars → fine-grained one-op nodes; lists/tables → bundled task-shaped nodes with op
+  selectors. A variant is a mode/op selector on the existing card, never a sibling node
+  (decisions maximalMerge).
+- Aligned parallel columns → ONE frame input, not parallel list sockets (charts, SUMIFS,
+  the frame verbs). The same for OUTPUTS: correlated lists (t and y of a solution, the
+  parts of a decomposition) leave as ONE frame, never as parallel list sockets (author,
+  2026-08-24).
+- A node that takes a user formula takes it as a LAMBDA input (`lambdaIn` + `lambdaSig` +
+  `resolveFn`, the λ-family in `tableLambda.ts`), never as a string socket holding an
+  expression (author, 2026-08-24).
+- Meaningful differences from Excel, especially output-affecting ones, go in the catalog as
+  `parity: false` + a note (`nodeExcel.ts`).
+
 **Labeled-slots vs list-input rule** (the variadic-node design call — see `docs/archive/node-arity-audit.md`): a variadic node uses **individually-labeled, individually-wireable scalar input rows** (the `ExtensibleInputs` / `PairedExtensibleInputs` pattern) — NOT a single list/table socket — when each input plays a **distinct role**: positional (CHOOSE's value-per-index) or **paired** (IFS/SWITCH's condition↔result). The label IS the affordance — it tells the user what each slot does and what their edit affects; a raw list of paired/role-distinct values hides the cond↔result relationship and makes edits opaque. Per-slot sockets also let each input come from a **different** upstream node. Use a single **list socket** only when the elements are **interchangeable** — all the same role, where order may matter but identity/pairing does not (SUM/AVERAGE/AGGREGATE, List literal). Litmus test: if you'd have to write "the 2nd element means X, the 3rd means Y" to explain the list, it should be labeled slots instead.
 
 **Input-dimensionality rule** (audited end-to-end 2026-06-19 — every node input checked against its `data()`; the socket type both gates connections via `canConnect` AND drives engine-boundary coercion in `coerceInputs.ts`, so it must match what `data()` actually consumes). Pick an input socket by the input's ROLE, not by what "feels related":
