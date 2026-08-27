@@ -30,20 +30,18 @@ export type FlowArea = Area & {
   setSize(id: string, size: { w: number; h: number }): void;
 };
 
-/** A node view whose element resolves to the LIVE React Flow node wrapper, so
- *  element-reading code (flash, containment, width measures) sees real DOM. */
+/** A node view: its position is a live read of the model's map (one source of
+ *  truth — nothing to keep in sync), and its element resolves to the LIVE React
+ *  Flow node wrapper so element-reading code (flash, containment, measures) sees
+ *  real DOM. */
 class FlowNodeView {
-  position: { x: number; y: number };
   private dummy: HTMLElement | null = null;
   constructor(
     private id: string,
-    pos: { x: number; y: number },
-    private onTranslate: (id: string, pos: { x: number; y: number }) => Promise<void>,
-  ) {
-    this.position = pos;
-  }
-  async translate(x: number, y: number): Promise<void> {
-    await this.onTranslate(this.id, { x, y });
+    private positions: Map<string, { x: number; y: number }>,
+  ) {}
+  get position(): { x: number; y: number } {
+    return this.positions.get(this.id) ?? ORIGIN;
   }
   get element(): HTMLElement {
     const live = document.querySelector<HTMLElement>(
@@ -67,6 +65,8 @@ class FlowConnView {
   }
 }
 
+const ORIGIN = Object.freeze({ x: 0, y: 0 });
+
 export function makeFlowArea(
   editor: NodeEditor<Schemes>,
   positions: Map<string, { x: number; y: number }>,
@@ -82,21 +82,11 @@ export function makeFlowArea(
 
   const pushViewport = () => cb.setViewport({ x: transform.x, y: transform.y, zoom: transform.k });
 
-  const translateNode = async (id: string, pos: { x: number; y: number }) => {
-    positions.set(id, { x: pos.x, y: pos.y });
-    const view = nodeViews.get(id);
-    if (view) view.position = { x: pos.x, y: pos.y };
-    cb.moveNode(id, pos);
-  };
-
   const syncViews = () => {
     const live = new Set(editor.getNodes().map((n) => n.id));
     for (const id of [...nodeViews.keys()]) if (!live.has(id)) { nodeViews.delete(id); sizes.delete(id); }
     for (const id of live) {
-      const pos = positions.get(id) ?? { x: 0, y: 0 };
-      const view = nodeViews.get(id);
-      if (view) view.position = pos;
-      else nodeViews.set(id, new FlowNodeView(id, pos, translateNode));
+      if (!nodeViews.has(id)) nodeViews.set(id, new FlowNodeView(id, positions));
     }
     const liveConns = new Set(editor.getConnections().map((c) => c.id));
     for (const id of [...connectionViews.keys()]) if (!liveConns.has(id)) connectionViews.delete(id);
@@ -129,8 +119,9 @@ export function makeFlowArea(
       pushViewport();
     },
     async moveNode(id, pos) {
-      if (!nodeViews.has(id)) nodeViews.set(id, new FlowNodeView(id, { ...pos }, translateNode));
-      await translateNode(id, pos);
+      positions.set(id, { x: pos.x, y: pos.y });
+      if (!nodeViews.has(id)) nodeViews.set(id, new FlowNodeView(id, positions));
+      cb.moveNode(id, pos);
     },
     async rerenderNode(id) {
       cb.bumpNode(id);

@@ -33,7 +33,6 @@ interface FakeView {
   stampedH: number | null;
   /** true once the pin-drop loop called removeProperty("width") on this card */
   widthCleared: boolean;
-  translate: (x: number, y: number) => Promise<void>;
   element: {
     offsetWidth: number;
     offsetHeight: number;
@@ -55,7 +54,6 @@ function makeFakeArea() {
       stampedW: null,
       stampedH: null,
       widthCleared: false,
-      translate: async (x2: number, y2: number) => { view.position = { x: x2, y: y2 }; },
       element: {
         get offsetWidth() { return (view.stampedW ?? view.naturalW) + BORDER; },
         get offsetHeight() { return (view.stampedH ?? view.naturalH) + BORDER; },

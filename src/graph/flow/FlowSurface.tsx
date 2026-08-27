@@ -524,10 +524,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         const parentId = s.positions.has(ch.id) ? nodesRef.current.find((n) => n.id === ch.id)?.parentId : undefined;
         const abs = ch.positionAbsolute ?? fromFlowPosition(s, ch.position!, parentId);
         moveNode(s, ch.id, abs);
-        // The view mirror too, or a live reader (the HIC layer's per-frame position
-        // sync) sees the dragged node parked until dragStop's syncViews.
-        const view = s.area.nodeViews.get(ch.id);
-        if (view) view.position = { x: abs.x, y: abs.y };
       }
       // RF's own measures (post-layout, free) feed the surface's DOM-free size source.
       for (const ch of changes) {

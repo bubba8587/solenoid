@@ -5,12 +5,11 @@
 // Flow's parent-relative one (that conversion lives in flowModel).
 
 export type AreaNodeView = {
-  /** Absolute canvas position (the model's copy; moving it goes through `translate`). */
-  position: { x: number; y: number };
+  /** Absolute canvas position — a live read of the MODEL's position (write through
+   *  `Area.moveNode`). */
+  readonly position: { x: number; y: number };
   /** The LIVE React Flow node wrapper (containment tests, flashes, measures). */
   element: HTMLElement;
-  /** Move this node — the per-node form of `Area.moveNode` (layout appliers use it). */
-  translate(x: number, y: number): Promise<void>;
 };
 
 export type AreaConnView = {

@@ -501,7 +501,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       // ELK spacing + direction + width cap from the Tidy knobs (the preset's `spacing`
       // is only port placement).
       options: tidyOptionsFromSettings(),
-      translate: (id, x, y) => area.nodeViews.get(id)?.translate(x, y),
+      translate: (id, x, y) => area.moveNode(id, { x, y }),
     });
 
     // Place cluster members relative to the leader's new position, BEFORE the anchor

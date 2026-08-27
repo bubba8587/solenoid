@@ -3,7 +3,7 @@
 // The compute pass lives in graphCompute.ts (one definition for every caller).
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
-import type { Schemes } from "../schemes";
+import type { Schemes, SolenoidNode } from "../schemes";
 import { installInputCoercion } from "../coerceInputs";
 import { installErrorGuards } from "../errorValue";
 import * as Nodes from "../rete-nodes";
@@ -12,8 +12,6 @@ import { nodeNameStore } from "../nodeNameStore";
 import { groupCollapseStore } from "../groupCollapse";
 import { SolenoidSocket } from "../sockets";
 import { FLAT_CATALOG } from "../catalogUtils";
-
-export type SolNode = Schemes["Node"];
 
 export type SavedNodeLite = {
   id: string;
@@ -62,12 +60,12 @@ export async function buildModel(g: SavedGraphLite): Promise<FlowModel> {
 
   // One document at a time: a fresh build owns the addressable-name space.
   nodeNameStore.clear();
-  const byId = new Map<string, SolNode>();
+  const byId = new Map<string, SolenoidNode>();
   const positions = new Map<string, { x: number; y: number }>();
   for (const sn of g.nodes) {
     const Ctor = resolveCtor(sn.type);
     if (!Ctor) throw new Error(`Unknown node type "${sn.type}" (id ${sn.id}).`);
-    const node = new Ctor({ ...sn.init }) as SolNode;
+    const node = new Ctor({ ...sn.init }) as SolenoidNode;
     const anyNode = node as unknown as Record<string, unknown>;
     // Inline literal maps restore ONLY onto declaring classes (persistence rule).
     if (sn.literals && "literals" in anyNode) anyNode.literals = { ...sn.literals };
@@ -158,10 +156,10 @@ export async function addNode(
   m: FlowModel,
   catalogType: string,
   position: { x: number; y: number },
-): Promise<SolNode | null> {
+): Promise<SolenoidNode | null> {
   const entry = FLAT_CATALOG.get(catalogType);
   if (!entry) return null;
-  const node = entry.create() as SolNode;
+  const node = entry.create() as SolenoidNode;
   await m.editor.addNode(node);
   m.positions.set(node.id, { x: Math.round(position.x), y: Math.round(position.y) });
   nodeNameStore.ensure(node.id, node.constructor.name);
@@ -182,7 +180,7 @@ export type RFNodeLite = {
   parentId?: string;
   zIndex: number;
   className?: string;
-  data: { node: SolNode; version: number };
+  data: { node: SolenoidNode; version: number };
 };
 
 /** The group a node belongs to (groups don't nest). */
@@ -214,7 +212,7 @@ export function fromFlowPosition(
  *  inline `visibility` belongs to RF (it stamps `visible` after measuring), so
  *  any imperative stamp gets overwritten; the class + `!important` rule
  *  (flow.css) is the one channel RF preserves. */
-export function nodeClassName(node: SolNode): string | undefined {
+export function nodeClassName(node: SolenoidNode): string | undefined {
   const cls = [];
   if (groupCollapseStore.isNodeHidden(node.id)) cls.push("sol-member-hidden");
   // A Conduit's node box is a fixed 92 square around a much smaller block, so the box
@@ -226,7 +224,7 @@ export function nodeClassName(node: SolNode): string | undefined {
 /** The rete surface's area-plane z-order (groups −2 < conduits −1 < nodes 0);
  *  without it a group's body sits level with its members and eats their
  *  pointer events. */
-export function nodeZIndex(node: SolNode): number {
+export function nodeZIndex(node: SolenoidNode): number {
   if (node instanceof Nodes.GroupNode) return -2;
   if (node instanceof Nodes.ConduitNode) return -1;
   return 0;

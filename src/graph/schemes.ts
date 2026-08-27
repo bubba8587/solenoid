@@ -10,6 +10,3 @@ export type SolenoidNode = ClassicPreset.Node & DataflowNode & {
 export type SolenoidConnection = ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node>;
 
 export type Schemes = GetSchemes<SolenoidNode, SolenoidConnection>;
-// A phantom render-signal parameter left over from rete's AreaPlugin generics;
-// dissolves with the AreaPlugin type itself when the surface type replaces it.
-export type AreaExtra = never;

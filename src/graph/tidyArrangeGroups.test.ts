@@ -39,7 +39,6 @@ interface FakeView {
     querySelector: (sel: string) => { classList: { contains: (c: string) => boolean }; style: { removeProperty: (p: string) => void } };
     style: Record<string, string>;
   };
-  translate: (x: number, y: number) => Promise<void>;
   /** test-side handle: the size resize() stamped (null = content-driven) */
   stamped: { w: number; h: number } | null;
   /** content-driven size (what the DOM would measure with no stamp) */
@@ -91,7 +90,6 @@ function makeFakeArea() {
               },
         style: {},
       },
-      translate: async (x2: number, y2: number) => { view.position = { x: x2, y: y2 }; },
     };
     nodeViews.set(id, view);
     return view;

@@ -9,10 +9,10 @@ import { componentForNode } from "../nodeRegistry";
 import { withNodeBoundary } from "../components/ErrorBoundary";
 import type { Emit } from "../components/nodeKit";
 import { SolFlowNode } from "./SolFlowNode";
-import type { SolNode } from "./flowModel";
+import type { SolenoidNode } from "../schemes";
 
 export type FlowNodeData = {
-  node: SolNode;
+  node: SolenoidNode;
   /** Bumped by the area adapter's `update("node", id)` — rete's re-render verb. */
   version: number;
   [key: string]: unknown;
