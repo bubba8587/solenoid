@@ -52,7 +52,7 @@ import {
   BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode,
   WebSourceNode, LocalFileNode, ImportHtmlNode, ImportXmlNode, DataFeedNode,
   WriteFileNode, WriteObsidianNode, ImportObsidianNode,
-  GroupNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, SvgPickerNode,
+  GroupNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, FileLinkNode, SvgPickerNode,
   CompositeNode, CompositeInputNode, CompositeOutputNode,
   MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META, TAKEDROP_OP_META,
   type MatDetOp, type TableReshapeOp, type TableSelectOp,
@@ -1048,6 +1048,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
     type: "category", label: "Other", description: "Catch-all for odd one-offs and uncategorized pack nodes.",
     children: [
       { type: "image", label: "Image", description: "A free-floating picture: attach a local file or paste a web URL, and set its height. Annotation only. Carries no data. Web URLs persist in the save. Local files are session-only, not yet embedded.", create: () => new ImageNode(), parity: false },
+      { type: "file-link", label: "File Link", description: "A link to a file on your computer: the path, not the file. Shows a title and preview with an Open button that launches it in its default app. Annotation only, no data. On desktop the link persists in the save; on the web an attach is session-only.", create: () => new FileLinkNode(), parity: false, keywords: "file link attachment attach open path shortcut document local disk launch reference external" },
       { type: "svg", label: "SVG", description: "An interactive SVG: attach a local .svg or paste a URL. The selected shape or layer outputs its name (label or id): a map, floorplan, or schematic as a data selector. Adjustable highlight color.", create: () => new SvgPickerNode(), parity: false, keywords: "svg map picker region layer shape hotspot clickable diagram floorplan schematic slice filter select vector" },
       { type: "promo", label: "✨ Promo", description: "A random Solenoid tagline. Re-rolls on recalc (F9). Pure easter egg.", create: () => new PromoNode() },
     ],

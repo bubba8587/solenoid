@@ -279,3 +279,29 @@ export async function openInFileManager(path: string): Promise<void> {
     // best-effort — nothing to fall back to on desktop
   }
 }
+
+/** Pick ANY file and return its absolute path — the File Link node stores the path,
+ *  not the bytes. Null on cancel and in the browser. Desktop only. */
+export async function pickFileLinkDialog(): Promise<string | null> {
+  if (!isDesktop()) return null;
+  const res = await open({ multiple: false, directory: false, title: "Choose a file to link" });
+  return typeof res === "string" ? res : null;
+}
+
+/** Open a file in its OS default app (desktop only). Needs `opener:allow-open-path`
+ *  in the capability set — reveal-in-dir alone wouldn't launch the file. */
+export async function openFilePath(path: string): Promise<void> {
+  if (!isDesktop() || !path) return;
+  try {
+    const { openPath } = await import("@tauri-apps/plugin-opener");
+    await openPath(path);
+  } catch {
+    // best-effort — a missing/moved file just does nothing
+  }
+}
+
+/** The base name of an absolute path, extension KEPT (unlike fileNameFromPath, which
+ *  is graph-save specific and strips `.json`). Works for both `/` and `\` separators. */
+export function baseNameOf(path: string): string {
+  return path.split(/[/\\]/).pop() ?? path;
+}

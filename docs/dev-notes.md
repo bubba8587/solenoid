@@ -6,6 +6,25 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-08-27c — Note task-list checkboxes go live; File Link node)
+
+**Note read-view checkboxes are interactive.** `marked` already rendered GFM task lists but as
+disabled boxes; `enableTaskCheckboxes` strips `disabled` post-sanitize and a click on a box
+toggles the Nth `- [ ]`/`- [x]` marker in the source (`toggleTaskMarker`, pure, in
+`noteFrontmatter.ts` — skips a frontmatter block so the rendered-body index lines up). The tick
+is intercepted before `startEdit` (native-checkbox + stopPropagation, the Boolean Input pattern)
+and the box is drawn off `--note-color` (custom appearance:none, checkmark in `--surface`).
+`annotation.test.ts` pins the toggle.
+
+**File Link node** (`FileLinkNode`, `annotation.ts` + `components/FileLinkNode.tsx`, "Other"
+category). A canvas link to a file on disk — the PATH, not the bytes; no sockets (installErrorGuards
+no-ops without a `data()`), so it carries nothing into the graph but participates in standoffs by
+node id like any node. Title + preview row + Open button. Desktop stores the absolute `path` and
+Open launches it via `openPath` (added `opener:allow-open-path` to capabilities); web attach is
+session-only (no path in the sandbox), only `fileName` survives reload — the Image node's bargain.
+Fixed-width card, so it owns no `width` and stays out of the persistence SIZE_OWNERS set
+(`persistenceSweep` enforces). `fileBridge.ts` gained `pickFileLinkDialog`/`openFilePath`/`baseNameOf`.
+
 ### SESSION DIGEST (2026-08-27b — docs reconciled to the merged React Flow port; CLAUDE.md cut to standing orders)
 
 The port merged into `develop`; the ledger `react-port-plan.md` is archived (its live truth

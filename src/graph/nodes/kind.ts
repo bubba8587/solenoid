@@ -47,7 +47,7 @@ import { TornadoNode } from "./tornado";
 import { ReconcileNode } from "./frame";
 import { SlicerNode, CableSwitchNode, DateInputNode, XYPadNode, PointPlotterNode, CurveNode, GridPainterNode } from "./control";
 import { SparklineNode, ChartNode, MergePlotsNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, ProportionNode, SankeyNode, HistogramNode, SurfaceNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, SevenSegNode, RecordNode } from "./visual";
-import { NoteNode, ImageNode, SvgPickerNode } from "./annotation";
+import { NoteNode, ImageNode, FileLinkNode, SvgPickerNode } from "./annotation";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "./composite";
 import {
   TableInputNode, MatDetNode, MatSolveNode, MatEigenNode, TableMultNode, TableUnitNode, TableDiagNode, TableOuterNode, TableTransposeNode,
@@ -137,7 +137,8 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof AlertNode || node instanceof IfNode ||
     node instanceof SwitchNode || node instanceof IfsNode ||
     node instanceof CableSwitchNode || node instanceof NoteNode ||
-    node instanceof ImageNode || node instanceof ExpectNode ||
+    node instanceof ImageNode || node instanceof FileLinkNode ||
+    node instanceof ExpectNode ||
     node instanceof WriteFileNode ||
     node instanceof WriteObsidianNode ||
     node instanceof CompositeNode

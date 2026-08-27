@@ -215,6 +215,27 @@ export class ImageNode extends ClassicPreset.Node {
   }
 }
 
+// A LINK to a file on disk — the path, never the bytes. A canvas object with NO
+// sockets: it carries nothing into the graph, it just points at a file you can open.
+// Desktop persists the absolute `path`; on web there is no path (the browser sandbox
+// has none), so an attach is session-only and only `fileName` survives a reload —
+// the same "local file, not saved with the document" bargain the Image node strikes.
+export class FileLinkNode extends ClassicPreset.Node {
+  path: string;        // absolute path — persisted (desktop); "" on web
+  fileName: string;    // display name (with extension) — persisted, carries web reloads
+  collapsed: boolean;  // when true, only the header bar shows
+  // Fixed-width card (no resize gesture), so it deliberately owns no width/height —
+  // the width lives in CSS, and it stays out of the persistence SIZE_OWNERS set.
+
+  constructor(init?: { label?: string; path?: string; fileName?: string; collapsed?: boolean }) {
+    super(init?.label ?? "File Link");
+    this.path = init?.path ?? "";
+    this.fileName = init?.fileName ?? "";
+    this.collapsed = init?.collapsed ?? false;
+    // No addInput/addOutput: a link is not a value in the dataflow.
+  }
+}
+
 // A visual slicer: clicking a shape emits that layer's NAME on `Layer`, and the
 // picture flows out `chart` carrying the selection. The markup is just text, so it
 // persists in `stringLiterals.source`.
