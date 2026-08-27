@@ -1,0 +1,1990 @@
+{
+  "v": 2,
+  "order": 215,
+  "label": "Script: every surface",
+  "group": "Values & units",
+  "nodes": [
+    {
+      "id": "note-head",
+      "type": "NoteNode",
+      "x": 0,
+      "y": -330,
+      "init": {
+        "label": "Script: every surface",
+        "color": "amber",
+        "body": "One Script per socket family it can read, one per result type and rank it can return. A Script is a JavaScript function: its parameters are the inputs, its return value is folded onto the declared result type. Number, text, boolean and date values arrive as plain JS values (a date is its serial), lists as arrays, tables as arrays of rows, complex numbers as {re, im}. Frames, cubes, lambdas, charts and documents stay out: those are the verb engine's and the figures' business.",
+        "width": 560
+      }
+    },
+    {
+      "id": "in-num",
+      "type": "NumberInputNode",
+      "x": 44,
+      "y": 5025,
+      "init": {
+        "label": "7",
+        "value": 7
+      }
+    },
+    {
+      "id": "sc-num",
+      "type": "ScriptNode",
+      "x": 368,
+      "y": 4954,
+      "init": {
+        "label": "number → n²",
+        "expr": "(n) => n * n",
+        "resultAs": "number"
+      }
+    },
+    {
+      "id": "d-num",
+      "type": "DisplayNode",
+      "x": 693,
+      "y": 5020,
+      "init": {
+        "label": "→ 49"
+      }
+    },
+    {
+      "id": "in-list",
+      "type": "SeriesNode",
+      "x": 44,
+      "y": 2771,
+      "init": {
+        "label": "1 … 5",
+        "op": "range"
+      },
+      "literals": {
+        "start": 1,
+        "stop": 5,
+        "step": 1
+      }
+    },
+    {
+      "id": "sc-list",
+      "type": "ScriptNode",
+      "x": 368,
+      "y": 2401,
+      "init": {
+        "label": "list → sum",
+        "expr": "(xs) => xs.reduce((a, b) => a + b, 0)",
+        "resultAs": "number"
+      }
+    },
+    {
+      "id": "d-list",
+      "type": "DisplayNode",
+      "x": 663,
+      "y": 2467,
+      "init": {
+        "label": "→ 15"
+      }
+    },
+    {
+      "id": "in-arith",
+      "type": "ArithmeticNode",
+      "x": 368,
+      "y": 2660,
+      "init": {
+        "label": "list × 3",
+        "op": "mul"
+      },
+      "literals": {
+        "a": 0,
+        "b": 3
+      }
+    },
+    {
+      "id": "sc-numlist",
+      "type": "ScriptNode",
+      "x": 693,
+      "y": 2636,
+      "init": {
+        "label": "numlist → max",
+        "expr": "(xs) => Math.max(...xs)",
+        "resultAs": "number"
+      }
+    },
+    {
+      "id": "d-numlist",
+      "type": "DisplayNode",
+      "x": 988,
+      "y": 2702,
+      "init": {
+        "label": "→ 15"
+      }
+    },
+    {
+      "id": "in-str",
+      "type": "TextInputNode",
+      "x": 44,
+      "y": 4640,
+      "init": {
+        "label": "solenoid",
+        "value": "solenoid"
+      }
+    },
+    {
+      "id": "sc-str",
+      "type": "ScriptNode",
+      "x": 368,
+      "y": 4457,
+      "init": {
+        "label": "text → reversed",
+        "expr": "(s) => s.split(\"\").reverse().join(\"\")",
+        "resultAs": "text"
+      }
+    },
+    {
+      "id": "d-str",
+      "type": "DisplayNode",
+      "x": 663,
+      "y": 4523,
+      "init": {
+        "label": "→ dionelos"
+      }
+    },
+    {
+      "id": "in-split",
+      "type": "TextSplitNode",
+      "x": 44,
+      "y": 1678,
+      "init": {
+        "label": "TEXTSPLIT"
+      },
+      "stringLiterals": {
+        "text": "ada, grace, linus",
+        "delimiter": ", "
+      }
+    },
+    {
+      "id": "sc-strlist",
+      "type": "ScriptNode",
+      "x": 368,
+      "y": 1857,
+      "init": {
+        "label": "text list → initials",
+        "expr": "(names) => names.map((n) => n[0].toUpperCase()).join(\"\")",
+        "resultAs": "text"
+      }
+    },
+    {
+      "id": "d-strlist",
+      "type": "DisplayNode",
+      "x": 663,
+      "y": 1930,
+      "init": {
+        "label": "→ AGL"
+      }
+    },
+    {
+      "id": "in-upper",
+      "type": "TextTransformNode",
+      "x": 368,
+      "y": 1675,
+      "init": {
+        "label": "UPPER",
+        "op": "upper"
+      }
+    },
+    {
+      "id": "sc-strcombo",
+      "type": "ScriptNode",
+      "x": 693,
+      "y": 1633,
+      "init": {
+        "label": "text or list → lengths",
+        "expr": "(ws) => ws.map((w) => w.length)",
+        "resultAs": "number"
+      }
+    },
+    {
+      "id": "d-strcombo",
+      "type": "DisplayNode",
+      "x": 988,
+      "y": 1706,
+      "init": {
+        "label": "→ 3, 5, 5"
+      }
+    },
+    {
+      "id": "in-date",
+      "type": "DateInputNode",
+      "x": 14,
+      "y": 4150,
+      "init": {
+        "label": "Date"
+      },
+      "stringLiterals": {
+        "date": "15-Mar-2026"
+      }
+    },
+    {
+      "id": "sc-date",
+      "type": "ScriptNode",
+      "x": 353,
+      "y": 4202,
+      "init": {
+        "label": "date → +30 days",
+        "expr": "(d) => d + 30",
+        "resultAs": "date"
+      }
+    },
+    {
+      "id": "d-date",
+      "type": "DisplayNode",
+      "x": 663,
+      "y": 4268,
+      "init": {
+        "label": "→ 14-Apr-2026"
+      }
+    },
+    {
+      "id": "in-edate",
+      "type": "DateAddNode",
+      "x": 353,
+      "y": 3990,
+      "init": {
+        "label": "EDATE +3",
+        "op": "edate"
+      },
+      "literals": {
+        "months": 3
+      }
+    },
+    {
+      "id": "sc-datecombo",
+      "type": "ScriptNode",
+      "x": 693,
+      "y": 3966,
+      "init": {
+        "label": "date → weekday",
+        "expr": "(d) => [\"Sun\", \"Mon\", \"Tue\", \"Wed\", \"Thu\", \"Fri\", \"Sat\"][(Math.floor(d) + 6) % 7]",
+        "resultAs": "text"
+      }
+    },
+    {
+      "id": "d-datecombo",
+      "type": "DisplayNode",
+      "x": 988,
+      "y": 4032,
+      "init": {
+        "label": "→ Mon"
+      }
+    },
+    {
+      "id": "in-frame",
+      "type": "FrameInputNode",
+      "x": -16,
+      "y": 3707,
+      "init": {
+        "label": "Visits",
+        "frameText": "city, when, sales\nOslo, 01-Jan-2026, 10\nOslo, 02-Jan-2026, 12\nRiga, 03-Jan-2026, 7"
+      }
+    },
+    {
+      "id": "in-getdates",
+      "type": "GetColumnNode",
+      "x": 338,
+      "y": 3734,
+      "init": {
+        "label": "Get \"when\"",
+        "readAs": "date"
+      },
+      "stringLiterals": {
+        "name": "when"
+      }
+    },
+    {
+      "id": "sc-datelist",
+      "type": "ScriptNode",
+      "x": 693,
+      "y": 3707,
+      "init": {
+        "label": "date list → span",
+        "expr": "(ds) => Math.max(...ds) - Math.min(...ds)",
+        "resultAs": "number"
+      }
+    },
+    {
+      "id": "d-datelist",
+      "type": "DisplayNode",
+      "x": 988,
+      "y": 3773,
+      "init": {
+        "label": "→ 2"
+      }
+    },
+    {
+      "id": "in-cx",
+      "type": "ComplexFromNode",
+      "x": 44,
+      "y": 5972,
+      "init": {
+        "label": "3 + 4i"
+      },
+      "literals": {
+        "re": 3,
+        "im": 4
+      }
+    },
+    {
+      "id": "sc-cx",
+      "type": "ScriptNode",
+      "x": 368,
+      "y": 5934,
+      "init": {
+        "label": "complex → |z|",
+        "expr": "(z) => Math.hypot(z.re, z.im)",
+        "resultAs": "number"
+      }
+    },
+    {
+      "id": "d-cx",
+      "type": "DisplayNode",
+      "x": 663,
+      "y": 6000,
+      "init": {
+        "label": "→ 5"
+      }
+    },
+    {
+      "id": "in-coeffs",
+      "type": "ListInputNode",
+      "x": 44,
+      "y": 3315,
+      "init": {
+        "label": "x² + 1",
+        "dataType": "number",
+        "valueKeys": [
+          "v0",
+          "v1",
+          "v2"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "1",
+        "v1": "0",
+        "v2": "1"
+      }
+    },
+    {
+      "id": "in-roots",
+      "type": "PolyRootsNode",
+      "x": 368,
+      "y": 3482,
+      "init": {
+        "label": "Polynomial Roots"
+      }
+    },
+    {
+      "id": "sc-cxlist",
+      "type": "ScriptNode",
+      "x": 693,
+      "y": 3439,
+      "init": {
+        "label": "complex list → imaginary parts",
+        "expr": "(zs) => zs.map((z) => z.im)",
+        "resultAs": "number"
+      }
+    },
+    {
+      "id": "d-cxlist",
+      "type": "DisplayNode",
+      "x": 988,
+      "y": 3511,
+      "init": {
+        "label": "→ 1, -1"
+      }
+    },
+    {
+      "id": "in-bool",
+      "type": "BooleanInputNode",
+      "x": 44,
+      "y": 6538,
+      "init": {
+        "label": "TRUE",
+        "value": 1
+      }
+    },
+    {
+      "id": "sc-bool",
+      "type": "ScriptNode",
+      "x": 368,
+      "y": 6465,
+      "init": {
+        "label": "boolean → word",
+        "expr": "(b) => (b ? \"yes\" : \"no\")",
+        "resultAs": "text"
+      }
+    },
+    {
+      "id": "d-bool",
+      "type": "DisplayNode",
+      "x": 663,
+      "y": 6531,
+      "init": {
+        "label": "→ yes"
+      }
+    },
+    {
+      "id": "in-cmp",
+      "type": "ComparisonNode",
+      "x": 368,
+      "y": 2926,
+      "init": {
+        "label": "list > 2",
+        "op": "gt"
+      },
+      "literals": {
+        "a": 0,
+        "b": 2
+      }
+    },
+    {
+      "id": "sc-boolcombo",
+      "type": "ScriptNode",
+      "x": 693,
+      "y": 2895,
+      "init": {
+        "label": "boolean list → count true",
+        "expr": "(bs) => bs.filter(Boolean).length",
+        "resultAs": "number"
+      }
+    },
+    {
+      "id": "d-boolcombo",
+      "type": "DisplayNode",
+      "x": 988,
+      "y": 2967,
+      "init": {
+        "label": "→ 3"
+      }
+    },
+    {
+      "id": "in-isin",
+      "type": "IsInNode",
+      "x": 358,
+      "y": 3214,
+      "init": {
+        "label": "Is In"
+      }
+    },
+    {
+      "id": "sc-boollist",
+      "type": "ScriptNode",
+      "x": 693,
+      "y": 3167,
+      "init": {
+        "label": "boolean list → first true",
+        "expr": "(bs) => bs.indexOf(true) + 1",
+        "resultAs": "number"
+      }
+    },
+    {
+      "id": "d-boollist",
+      "type": "DisplayNode",
+      "x": 988,
+      "y": 3239,
+      "init": {
+        "label": "→ 1"
+      }
+    },
+    {
+      "id": "in-table",
+      "type": "TableInputNode",
+      "x": -16,
+      "y": 5433,
+      "init": {
+        "label": "2×2",
+        "tableText": "1, 2\n3, 4",
+        "dataType": "number"
+      }
+    },
+    {
+      "id": "sc-table",
+      "type": "ScriptNode",
+      "x": 338,
+      "y": 5394,
+      "init": {
+        "label": "table → trace",
+        "expr": "(m) => m[0][0] + m[1][1]",
+        "resultAs": "number"
+      }
+    },
+    {
+      "id": "d-table",
+      "type": "DisplayNode",
+      "x": 663,
+      "y": 5460,
+      "init": {
+        "label": "→ 5"
+      }
+    },
+    {
+      "id": "in-strtable",
+      "type": "TableInputNode",
+      "x": 44,
+      "y": 2175,
+      "init": {
+        "label": "Text 2×2",
+        "tableText": "a, b\nc, d",
+        "dataType": "string"
+      }
+    },
+    {
+      "id": "sc-strtable",
+      "type": "ScriptNode",
+      "x": 368,
+      "y": 2129,
+      "init": {
+        "label": "text table → joined",
+        "expr": "(m) => m.map((r) => r.join(\"\")).join(\"/\")",
+        "resultAs": "text"
+      }
+    },
+    {
+      "id": "d-strtable",
+      "type": "DisplayNode",
+      "x": 663,
+      "y": 2202,
+      "init": {
+        "label": "→ ab/cd"
+      }
+    },
+    {
+      "id": "in-datetable",
+      "type": "TableInputNode",
+      "x": 44,
+      "y": 1211,
+      "init": {
+        "label": "Date 2×2",
+        "tableText": "01-Jan-2026, 02-Jan-2026\n03-Jan-2026, 04-Jan-2026",
+        "dataType": "date"
+      }
+    },
+    {
+      "id": "sc-datetable",
+      "type": "ScriptNode",
+      "x": 353,
+      "y": 1174,
+      "init": {
+        "label": "date table → latest",
+        "expr": "(m) => Math.max(...m.flat())",
+        "resultAs": "date"
+      }
+    },
+    {
+      "id": "d-datetable",
+      "type": "DisplayNode",
+      "x": 663,
+      "y": 1240,
+      "init": {
+        "label": "→ 04-Jan-2026"
+      }
+    },
+    {
+      "id": "in-booltable",
+      "type": "TableInputNode",
+      "x": 44,
+      "y": 6238,
+      "init": {
+        "label": "Boolean 2×2",
+        "tableText": "TRUE, FALSE\nTRUE, TRUE",
+        "dataType": "logical"
+      }
+    },
+    {
+      "id": "sc-booltable",
+      "type": "ScriptNode",
+      "x": 368,
+      "y": 6193,
+      "init": {
+        "label": "boolean table → all?",
+        "expr": "(m) => m.flat().every(Boolean)",
+        "resultAs": "auto"
+      }
+    },
+    {
+      "id": "d-booltable",
+      "type": "DisplayNode",
+      "x": 663,
+      "y": 6265,
+      "init": {
+        "label": "→ FALSE"
+      }
+    },
+    {
+      "id": "in-transpose",
+      "type": "TableTransposeNode",
+      "x": 338,
+      "y": 5213,
+      "init": {
+        "label": "TRANSPOSE"
+      }
+    },
+    {
+      "id": "sc-anytable",
+      "type": "ScriptNode",
+      "x": 663,
+      "y": 5177,
+      "init": {
+        "label": "any table → first row",
+        "expr": "(m) => m[0]",
+        "resultAs": "number"
+      }
+    },
+    {
+      "id": "d-anytable",
+      "type": "DisplayNode",
+      "x": 988,
+      "y": 5243,
+      "init": {
+        "label": "→ 1, 3"
+      }
+    },
+    {
+      "id": "in-reverse",
+      "type": "ReverseNode",
+      "x": 368,
+      "y": 1429,
+      "init": {
+        "label": "REVERSE"
+      }
+    },
+    {
+      "id": "sc-anylist",
+      "type": "ScriptNode",
+      "x": 693,
+      "y": 1374,
+      "init": {
+        "label": "any list → first",
+        "expr": "(xs) => xs[0]",
+        "resultAs": "auto"
+      }
+    },
+    {
+      "id": "d-anylist",
+      "type": "DisplayNode",
+      "x": 988,
+      "y": 1440,
+      "init": {
+        "label": "→ linus"
+      }
+    },
+    {
+      "id": "in-regex",
+      "type": "RegexNode",
+      "x": 368,
+      "y": 4716,
+      "init": {
+        "label": "Regex extract",
+        "op": "extract"
+      },
+      "stringLiterals": {
+        "pattern": "[aeiou]+",
+        "replacement": "",
+        "flags": ""
+      }
+    },
+    {
+      "id": "sc-anycombo",
+      "type": "ScriptNode",
+      "x": 693,
+      "y": 4705,
+      "init": {
+        "label": "any → typeof",
+        "expr": "(v) => typeof v + \": \" + v",
+        "resultAs": "text"
+      }
+    },
+    {
+      "id": "d-anycombo",
+      "type": "DisplayNode",
+      "x": 988,
+      "y": 4771,
+      "init": {
+        "label": "→ string: o"
+      }
+    },
+    {
+      "id": "in-reduce",
+      "type": "ReduceLambdaNode",
+      "x": 338,
+      "y": 5653,
+      "init": {
+        "label": "REDUCE (Auto)",
+        "resultAs": "auto"
+      },
+      "literals": {
+        "initial": 0
+      },
+      "stringLiterals": {
+        "formula": "acc + value"
+      }
+    },
+    {
+      "id": "sc-any",
+      "type": "ScriptNode",
+      "x": 693,
+      "y": 5657,
+      "init": {
+        "label": "any scalar → doubled",
+        "expr": "(v) => v * 2",
+        "resultAs": "number"
+      }
+    },
+    {
+      "id": "d-any",
+      "type": "DisplayNode",
+      "x": 988,
+      "y": 5730,
+      "init": {
+        "label": "→ 20"
+      }
+    },
+    {
+      "id": "sc-trueany",
+      "type": "ScriptNode",
+      "x": 988,
+      "y": 4941,
+      "init": {
+        "label": "display passthrough → +1",
+        "expr": "(v) => v + 1",
+        "resultAs": "number"
+      }
+    },
+    {
+      "id": "d-trueany",
+      "type": "DisplayNode",
+      "x": 1260,
+      "y": 5116,
+      "init": {
+        "label": "→ 50"
+      }
+    },
+    {
+      "id": "sc-chain",
+      "type": "ScriptNode",
+      "x": 1260,
+      "y": 4857,
+      "init": {
+        "label": "script → script",
+        "expr": "(v) => v * 10",
+        "resultAs": "number"
+      }
+    },
+    {
+      "id": "d-chain",
+      "type": "DisplayNode",
+      "x": 1525,
+      "y": 4923,
+      "init": {
+        "label": "→ 500"
+      }
+    },
+    {
+      "id": "o-num",
+      "type": "ScriptNode",
+      "x": 1845,
+      "y": 4636,
+      "init": {
+        "label": "Number scalar",
+        "expr": "() => 6",
+        "resultAs": "number"
+      }
+    },
+    {
+      "id": "o-num-arith",
+      "type": "ArithmeticNode",
+      "x": 2152,
+      "y": 4652,
+      "init": {
+        "label": "× 7",
+        "op": "mul"
+      },
+      "literals": {
+        "a": 0,
+        "b": 7
+      }
+    },
+    {
+      "id": "o-num-d",
+      "type": "DisplayNode",
+      "x": 2453,
+      "y": 4696,
+      "init": {
+        "label": "→ 42"
+      }
+    },
+    {
+      "id": "o-numlist",
+      "type": "ScriptNode",
+      "x": 1845,
+      "y": 3122,
+      "init": {
+        "label": "Number list",
+        "expr": "() => [3, 1, 4, 1, 5, 9, 2, 6]",
+        "resultAs": "number"
+      }
+    },
+    {
+      "id": "o-numlist-spark",
+      "type": "SparklineNode",
+      "x": 2116,
+      "y": 3060,
+      "init": {
+        "label": "Sparkline"
+      }
+    },
+    {
+      "id": "o-numlist-size",
+      "type": "TableInfoNode",
+      "x": 2122,
+      "y": 3237,
+      "init": {
+        "label": "As a frame row"
+      }
+    },
+    {
+      "id": "o-numlist-cols",
+      "type": "DisplayNode",
+      "x": 2453,
+      "y": 3265,
+      "init": {
+        "label": "COLS → 8"
+      }
+    },
+    {
+      "id": "o-nummat",
+      "type": "ScriptNode",
+      "x": 1785,
+      "y": 952,
+      "init": {
+        "label": "Number matrix",
+        "expr": "() => [[1, 2, 3], [4, 5, 6]]",
+        "resultAs": "number"
+      }
+    },
+    {
+      "id": "o-nummat-t",
+      "type": "TableTransposeNode",
+      "x": 2122,
+      "y": 965,
+      "init": {
+        "label": "TRANSPOSE"
+      }
+    },
+    {
+      "id": "o-nummat-d",
+      "type": "DisplayNode",
+      "x": 2453,
+      "y": 983,
+      "init": {
+        "label": "→ 3×2"
+      }
+    },
+    {
+      "id": "o-text",
+      "type": "ScriptNode",
+      "x": 1845,
+      "y": 2371,
+      "init": {
+        "label": "Text scalar",
+        "expr": "() => \"solenoid\"",
+        "resultAs": "text"
+      }
+    },
+    {
+      "id": "o-text-upper",
+      "type": "TextTransformNode",
+      "x": 2152,
+      "y": 2392,
+      "init": {
+        "label": "PROPER",
+        "op": "proper"
+      }
+    },
+    {
+      "id": "o-text-d",
+      "type": "DisplayNode",
+      "x": 2453,
+      "y": 2423,
+      "init": {
+        "label": "→ Solenoid"
+      }
+    },
+    {
+      "id": "o-textlist",
+      "type": "ScriptNode",
+      "x": 1845,
+      "y": 3953,
+      "init": {
+        "label": "Text list",
+        "expr": "() => [\"amp\", \"volt\", \"ohm\"]",
+        "resultAs": "text"
+      }
+    },
+    {
+      "id": "o-textlist-regex",
+      "type": "RegexNode",
+      "x": 2152,
+      "y": 3970,
+      "init": {
+        "label": "Regex test",
+        "op": "test"
+      },
+      "stringLiterals": {
+        "pattern": "^v",
+        "replacement": "",
+        "flags": ""
+      }
+    },
+    {
+      "id": "o-textlist-d",
+      "type": "DisplayNode",
+      "x": 2453,
+      "y": 4029,
+      "init": {
+        "label": "→ F, T, F"
+      }
+    },
+    {
+      "id": "o-textmat",
+      "type": "ScriptNode",
+      "x": 1845,
+      "y": 4186,
+      "init": {
+        "label": "Text matrix",
+        "expr": "() => [[\"a\", \"b\"], [\"c\", \"d\"]]",
+        "resultAs": "text"
+      }
+    },
+    {
+      "id": "o-textmat-t",
+      "type": "TableTransposeNode",
+      "x": 2152,
+      "y": 4208,
+      "init": {
+        "label": "TRANSPOSE"
+      }
+    },
+    {
+      "id": "o-textmat-d",
+      "type": "DisplayNode",
+      "x": 2453,
+      "y": 4228,
+      "init": {
+        "label": "→ a c / b d"
+      }
+    },
+    {
+      "id": "o-date",
+      "type": "ScriptNode",
+      "x": 1815,
+      "y": 3726,
+      "init": {
+        "label": "Date scalar",
+        "expr": "() => new Date(Date.UTC(2026, 11, 25))",
+        "resultAs": "date"
+      }
+    },
+    {
+      "id": "o-date-diff",
+      "type": "DateDiffNode",
+      "x": 2152,
+      "y": 3723,
+      "init": {
+        "label": "Days since",
+        "op": "days"
+      },
+      "literals": {
+        "basis": 0
+      }
+    },
+    {
+      "id": "o-date-d",
+      "type": "DisplayNode",
+      "x": 2453,
+      "y": 3768,
+      "init": {
+        "label": "→ 285"
+      }
+    },
+    {
+      "id": "o-datelist",
+      "type": "ScriptNode",
+      "x": 1815,
+      "y": 1893,
+      "init": {
+        "label": "Date list",
+        "expr": "(d) => [0, 1, 2].map((k) => d + k * 7)",
+        "resultAs": "date"
+      }
+    },
+    {
+      "id": "o-datelist-part",
+      "type": "DatePartNode",
+      "x": 2152,
+      "y": 1928,
+      "init": {
+        "label": "DAY",
+        "op": "day"
+      }
+    },
+    {
+      "id": "o-datelist-d",
+      "type": "DisplayNode",
+      "x": 2453,
+      "y": 1959,
+      "init": {
+        "label": "→ 15, 22, 29"
+      }
+    },
+    {
+      "id": "o-datemat",
+      "type": "ScriptNode",
+      "x": 1823,
+      "y": 1402,
+      "init": {
+        "label": "Date matrix",
+        "expr": "(d) => [[d, d + 1], [d + 2, d + 3]]",
+        "resultAs": "date"
+      }
+    },
+    {
+      "id": "o-datemat-d",
+      "type": "DisplayNode",
+      "x": 1823,
+      "y": 580,
+      "init": {
+        "label": "→ 2×2 of dates"
+      }
+    },
+    {
+      "id": "o-auto",
+      "type": "ScriptNode",
+      "x": 1845,
+      "y": 2602,
+      "init": {
+        "label": "Auto scalar",
+        "expr": "() => true",
+        "resultAs": "auto"
+      }
+    },
+    {
+      "id": "o-auto-cast",
+      "type": "CastNode",
+      "x": 2116,
+      "y": 2626,
+      "init": {
+        "label": "Cast → Text",
+        "target": "text"
+      }
+    },
+    {
+      "id": "o-auto-d",
+      "type": "DisplayNode",
+      "x": 2453,
+      "y": 2654,
+      "init": {
+        "label": "→ TRUE"
+      }
+    },
+    {
+      "id": "o-autolist",
+      "type": "ScriptNode",
+      "x": 1845,
+      "y": 2146,
+      "init": {
+        "label": "Auto list",
+        "expr": "() => [\"pear\", \"apple\", \"fig\"]",
+        "resultAs": "auto"
+      }
+    },
+    {
+      "id": "o-autolist-sort",
+      "type": "SortNode",
+      "x": 2152,
+      "y": 2161,
+      "init": {
+        "label": "List Sort",
+        "op": "asc"
+      }
+    },
+    {
+      "id": "o-autolist-d",
+      "type": "DisplayNode",
+      "x": 2453,
+      "y": 2190,
+      "init": {
+        "label": "→ apple, fig, pear"
+      }
+    },
+    {
+      "id": "o-automat",
+      "type": "ScriptNode",
+      "x": 1823,
+      "y": 4411,
+      "init": {
+        "label": "Auto matrix",
+        "expr": "() => [[1, \"one\", true], [2, \"two\", false]]",
+        "resultAs": "auto"
+      }
+    },
+    {
+      "id": "o-automat-d",
+      "type": "DisplayNode",
+      "x": 1823,
+      "y": 4867,
+      "init": {
+        "label": "→ mixed rows"
+      }
+    },
+    {
+      "id": "o-expr",
+      "type": "ScriptNode",
+      "x": 1845,
+      "y": 1177,
+      "init": {
+        "label": "Into Expression",
+        "expr": "() => [10, 20, 30]",
+        "resultAs": "number"
+      }
+    },
+    {
+      "id": "o-expr-x",
+      "type": "ExpressionNode",
+      "x": 2152,
+      "y": 1180,
+      "init": {
+        "label": "xs / 10 + 1",
+        "expr": "xs / 10 + 1"
+      }
+    },
+    {
+      "id": "o-expr-d",
+      "type": "DisplayNode",
+      "x": 2453,
+      "y": 1229,
+      "init": {
+        "label": "→ 2, 3, 4"
+      }
+    },
+    {
+      "id": "o-chart",
+      "type": "ScriptNode",
+      "x": 1845,
+      "y": 3443,
+      "init": {
+        "label": "Into a chart",
+        "expr": "() => [4, 8, 15, 16, 23, 42]",
+        "resultAs": "number"
+      }
+    },
+    {
+      "id": "o-chart-c",
+      "type": "ChartNode",
+      "x": 2116,
+      "y": 3404,
+      "init": {
+        "label": "Column chart",
+        "op": "column"
+      }
+    },
+    {
+      "id": "o-seg",
+      "type": "ScriptNode",
+      "x": 1845,
+      "y": 721,
+      "init": {
+        "label": "Into a readout",
+        "expr": "() => 2026",
+        "resultAs": "number"
+      }
+    },
+    {
+      "id": "o-seg-s",
+      "type": "SevenSegNode",
+      "x": 2116,
+      "y": 736,
+      "init": {
+        "label": "7-Segment"
+      },
+      "literals": {
+        "value": 0,
+        "decimals": 0
+      }
+    },
+    {
+      "id": "o-bool",
+      "type": "ScriptNode",
+      "x": 1845,
+      "y": 2833,
+      "init": {
+        "label": "Booleans into logic",
+        "expr": "() => [true, false, true]",
+        "resultAs": "auto"
+      }
+    },
+    {
+      "id": "o-bool-not",
+      "type": "NotNode",
+      "x": 2152,
+      "y": 2877,
+      "init": {
+        "label": "NOT"
+      }
+    },
+    {
+      "id": "o-bool-d",
+      "type": "DisplayNode",
+      "x": 2453,
+      "y": 2882,
+      "init": {
+        "label": "→ F, T, F"
+      }
+    },
+    {
+      "id": "o-null",
+      "type": "ScriptNode",
+      "x": 1845,
+      "y": 1655,
+      "init": {
+        "label": "Blank and error cells",
+        "expr": "() => [1, null, 0 / 0]",
+        "resultAs": "number"
+      }
+    },
+    {
+      "id": "o-null-d",
+      "type": "DisplayNode",
+      "x": 2116,
+      "y": 1698,
+      "init": {
+        "label": "→ 1, null, #DOMAIN!"
+      }
+    },
+    {
+      "id": "report",
+      "type": "ReportNode",
+      "x": 1761,
+      "y": 5940,
+      "init": {
+        "label": "Script report",
+        "body": "The squared input is `=number → n²` and the chained script reads `=script → script`. A Script is addressable like any node.",
+        "width": 420
+      }
+    },
+    {
+      "id": "grp-in",
+      "type": "GroupNode",
+      "x": -40,
+      "y": 1116,
+      "init": {
+        "label": "In: every socket a Script can read",
+        "members": [
+          "in-num",
+          "sc-num",
+          "d-num",
+          "in-list",
+          "sc-list",
+          "d-list",
+          "in-arith",
+          "sc-numlist",
+          "d-numlist",
+          "in-str",
+          "sc-str",
+          "d-str",
+          "in-split",
+          "sc-strlist",
+          "d-strlist",
+          "in-upper",
+          "sc-strcombo",
+          "d-strcombo",
+          "in-date",
+          "sc-date",
+          "d-date",
+          "in-edate",
+          "sc-datecombo",
+          "d-datecombo",
+          "in-frame",
+          "in-getdates",
+          "sc-datelist",
+          "d-datelist",
+          "in-cx",
+          "sc-cx",
+          "d-cx",
+          "in-coeffs",
+          "in-roots",
+          "sc-cxlist",
+          "d-cxlist",
+          "in-bool",
+          "sc-bool",
+          "d-bool",
+          "in-cmp",
+          "sc-boolcombo",
+          "d-boolcombo",
+          "in-isin",
+          "sc-boollist",
+          "d-boollist",
+          "in-table",
+          "sc-table",
+          "d-table",
+          "in-strtable",
+          "sc-strtable",
+          "d-strtable",
+          "in-datetable",
+          "sc-datetable",
+          "d-datetable",
+          "in-booltable",
+          "sc-booltable",
+          "d-booltable",
+          "in-transpose",
+          "sc-anytable",
+          "d-anytable",
+          "in-reverse",
+          "sc-anylist",
+          "d-anylist",
+          "in-regex",
+          "sc-anycombo",
+          "d-anycombo",
+          "in-reduce",
+          "sc-any",
+          "d-any",
+          "sc-trueany",
+          "d-trueany",
+          "sc-chain",
+          "d-chain"
+        ],
+        "color": "blue",
+        "collapsed": false,
+        "width": 1773,
+        "height": 5598
+      }
+    },
+    {
+      "id": "grp-out",
+      "type": "GroupNode",
+      "x": 1761,
+      "y": 522,
+      "init": {
+        "label": "Out: every type a Script can return",
+        "members": [
+          "o-num",
+          "o-num-arith",
+          "o-num-d",
+          "o-numlist",
+          "o-numlist-spark",
+          "o-numlist-size",
+          "o-numlist-cols",
+          "o-nummat",
+          "o-nummat-t",
+          "o-nummat-d",
+          "o-text",
+          "o-text-upper",
+          "o-text-d",
+          "o-textlist",
+          "o-textlist-regex",
+          "o-textlist-d",
+          "o-textmat",
+          "o-textmat-t",
+          "o-textmat-d",
+          "o-date",
+          "o-date-diff",
+          "o-date-d",
+          "o-datelist",
+          "o-datelist-part",
+          "o-datelist-d",
+          "o-datemat",
+          "o-datemat-d",
+          "o-auto",
+          "o-auto-cast",
+          "o-auto-d",
+          "o-autolist",
+          "o-autolist-sort",
+          "o-autolist-d",
+          "o-automat",
+          "o-automat-d",
+          "o-expr",
+          "o-expr-x",
+          "o-expr-d",
+          "o-chart",
+          "o-chart-c",
+          "o-seg",
+          "o-seg-s",
+          "o-bool",
+          "o-bool-not",
+          "o-bool-d",
+          "o-null",
+          "o-null-d"
+        ],
+        "color": "green",
+        "collapsed": false,
+        "width": 900,
+        "height": 4477
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "in-num",
+      "sourceOutput": "value",
+      "target": "sc-num",
+      "targetInput": "n"
+    },
+    {
+      "source": "sc-num",
+      "sourceOutput": "result",
+      "target": "d-num",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-list",
+      "sourceOutput": "list",
+      "target": "sc-list",
+      "targetInput": "xs"
+    },
+    {
+      "source": "sc-list",
+      "sourceOutput": "result",
+      "target": "d-list",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-list",
+      "sourceOutput": "list",
+      "target": "in-arith",
+      "targetInput": "a"
+    },
+    {
+      "source": "in-arith",
+      "sourceOutput": "result",
+      "target": "sc-numlist",
+      "targetInput": "xs"
+    },
+    {
+      "source": "sc-numlist",
+      "sourceOutput": "result",
+      "target": "d-numlist",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-str",
+      "sourceOutput": "value",
+      "target": "sc-str",
+      "targetInput": "s"
+    },
+    {
+      "source": "sc-str",
+      "sourceOutput": "result",
+      "target": "d-str",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-split",
+      "sourceOutput": "result",
+      "target": "sc-strlist",
+      "targetInput": "names"
+    },
+    {
+      "source": "sc-strlist",
+      "sourceOutput": "result",
+      "target": "d-strlist",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-split",
+      "sourceOutput": "result",
+      "target": "in-upper",
+      "targetInput": "text"
+    },
+    {
+      "source": "in-upper",
+      "sourceOutput": "result",
+      "target": "sc-strcombo",
+      "targetInput": "ws"
+    },
+    {
+      "source": "sc-strcombo",
+      "sourceOutput": "result",
+      "target": "d-strcombo",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-date",
+      "sourceOutput": "result",
+      "target": "sc-date",
+      "targetInput": "d"
+    },
+    {
+      "source": "sc-date",
+      "sourceOutput": "result",
+      "target": "d-date",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-date",
+      "sourceOutput": "result",
+      "target": "in-edate",
+      "targetInput": "start"
+    },
+    {
+      "source": "in-edate",
+      "sourceOutput": "result",
+      "target": "sc-datecombo",
+      "targetInput": "d"
+    },
+    {
+      "source": "sc-datecombo",
+      "sourceOutput": "result",
+      "target": "d-datecombo",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-frame",
+      "sourceOutput": "frame",
+      "target": "in-getdates",
+      "targetInput": "frame"
+    },
+    {
+      "source": "in-getdates",
+      "sourceOutput": "values",
+      "target": "sc-datelist",
+      "targetInput": "ds"
+    },
+    {
+      "source": "sc-datelist",
+      "sourceOutput": "result",
+      "target": "d-datelist",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-cx",
+      "sourceOutput": "z",
+      "target": "sc-cx",
+      "targetInput": "z"
+    },
+    {
+      "source": "sc-cx",
+      "sourceOutput": "result",
+      "target": "d-cx",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-coeffs",
+      "sourceOutput": "list",
+      "target": "in-roots",
+      "targetInput": "coeffs"
+    },
+    {
+      "source": "in-roots",
+      "sourceOutput": "roots",
+      "target": "sc-cxlist",
+      "targetInput": "zs"
+    },
+    {
+      "source": "sc-cxlist",
+      "sourceOutput": "result",
+      "target": "d-cxlist",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-bool",
+      "sourceOutput": "value",
+      "target": "sc-bool",
+      "targetInput": "b"
+    },
+    {
+      "source": "sc-bool",
+      "sourceOutput": "result",
+      "target": "d-bool",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-list",
+      "sourceOutput": "list",
+      "target": "in-cmp",
+      "targetInput": "a"
+    },
+    {
+      "source": "in-cmp",
+      "sourceOutput": "result",
+      "target": "sc-boolcombo",
+      "targetInput": "bs"
+    },
+    {
+      "source": "sc-boolcombo",
+      "sourceOutput": "result",
+      "target": "d-boolcombo",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-list",
+      "sourceOutput": "list",
+      "target": "in-isin",
+      "targetInput": "a"
+    },
+    {
+      "source": "in-coeffs",
+      "sourceOutput": "list",
+      "target": "in-isin",
+      "targetInput": "b"
+    },
+    {
+      "source": "in-isin",
+      "sourceOutput": "result",
+      "target": "sc-boollist",
+      "targetInput": "bs"
+    },
+    {
+      "source": "sc-boollist",
+      "sourceOutput": "result",
+      "target": "d-boollist",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-table",
+      "sourceOutput": "table",
+      "target": "sc-table",
+      "targetInput": "m"
+    },
+    {
+      "source": "sc-table",
+      "sourceOutput": "result",
+      "target": "d-table",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-strtable",
+      "sourceOutput": "table",
+      "target": "sc-strtable",
+      "targetInput": "m"
+    },
+    {
+      "source": "sc-strtable",
+      "sourceOutput": "result",
+      "target": "d-strtable",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-datetable",
+      "sourceOutput": "table",
+      "target": "sc-datetable",
+      "targetInput": "m"
+    },
+    {
+      "source": "sc-datetable",
+      "sourceOutput": "result",
+      "target": "d-datetable",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-booltable",
+      "sourceOutput": "table",
+      "target": "sc-booltable",
+      "targetInput": "m"
+    },
+    {
+      "source": "sc-booltable",
+      "sourceOutput": "result",
+      "target": "d-booltable",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-table",
+      "sourceOutput": "table",
+      "target": "in-transpose",
+      "targetInput": "matrix"
+    },
+    {
+      "source": "in-transpose",
+      "sourceOutput": "result",
+      "target": "sc-anytable",
+      "targetInput": "m"
+    },
+    {
+      "source": "sc-anytable",
+      "sourceOutput": "result",
+      "target": "d-anytable",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-split",
+      "sourceOutput": "result",
+      "target": "in-reverse",
+      "targetInput": "list"
+    },
+    {
+      "source": "in-reverse",
+      "sourceOutput": "result",
+      "target": "sc-anylist",
+      "targetInput": "xs"
+    },
+    {
+      "source": "sc-anylist",
+      "sourceOutput": "result",
+      "target": "d-anylist",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-str",
+      "sourceOutput": "value",
+      "target": "in-regex",
+      "targetInput": "text"
+    },
+    {
+      "source": "in-regex",
+      "sourceOutput": "result",
+      "target": "sc-anycombo",
+      "targetInput": "v"
+    },
+    {
+      "source": "sc-anycombo",
+      "sourceOutput": "result",
+      "target": "d-anycombo",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-table",
+      "sourceOutput": "table",
+      "target": "in-reduce",
+      "targetInput": "table"
+    },
+    {
+      "source": "in-reduce",
+      "sourceOutput": "result",
+      "target": "sc-any",
+      "targetInput": "v"
+    },
+    {
+      "source": "sc-any",
+      "sourceOutput": "result",
+      "target": "d-any",
+      "targetInput": "in"
+    },
+    {
+      "source": "d-num",
+      "sourceOutput": "out",
+      "target": "sc-trueany",
+      "targetInput": "v"
+    },
+    {
+      "source": "sc-trueany",
+      "sourceOutput": "result",
+      "target": "d-trueany",
+      "targetInput": "in"
+    },
+    {
+      "source": "sc-trueany",
+      "sourceOutput": "result",
+      "target": "sc-chain",
+      "targetInput": "v"
+    },
+    {
+      "source": "sc-chain",
+      "sourceOutput": "result",
+      "target": "d-chain",
+      "targetInput": "in"
+    },
+    {
+      "source": "o-num",
+      "sourceOutput": "result",
+      "target": "o-num-arith",
+      "targetInput": "a"
+    },
+    {
+      "source": "o-num-arith",
+      "sourceOutput": "result",
+      "target": "o-num-d",
+      "targetInput": "in"
+    },
+    {
+      "source": "o-numlist",
+      "sourceOutput": "result",
+      "target": "o-numlist-spark",
+      "targetInput": "values"
+    },
+    {
+      "source": "o-numlist",
+      "sourceOutput": "result",
+      "target": "o-numlist-size",
+      "targetInput": "matrix"
+    },
+    {
+      "source": "o-numlist-size",
+      "sourceOutput": "cols",
+      "target": "o-numlist-cols",
+      "targetInput": "in"
+    },
+    {
+      "source": "o-nummat",
+      "sourceOutput": "result",
+      "target": "o-nummat-t",
+      "targetInput": "matrix"
+    },
+    {
+      "source": "o-nummat-t",
+      "sourceOutput": "result",
+      "target": "o-nummat-d",
+      "targetInput": "in"
+    },
+    {
+      "source": "o-text",
+      "sourceOutput": "result",
+      "target": "o-text-upper",
+      "targetInput": "text"
+    },
+    {
+      "source": "o-text-upper",
+      "sourceOutput": "result",
+      "target": "o-text-d",
+      "targetInput": "in"
+    },
+    {
+      "source": "o-textlist",
+      "sourceOutput": "result",
+      "target": "o-textlist-regex",
+      "targetInput": "text"
+    },
+    {
+      "source": "o-textlist-regex",
+      "sourceOutput": "result",
+      "target": "o-textlist-d",
+      "targetInput": "in"
+    },
+    {
+      "source": "o-textmat",
+      "sourceOutput": "result",
+      "target": "o-textmat-t",
+      "targetInput": "matrix"
+    },
+    {
+      "source": "o-textmat-t",
+      "sourceOutput": "result",
+      "target": "o-textmat-d",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-date",
+      "sourceOutput": "result",
+      "target": "o-date-diff",
+      "targetInput": "start"
+    },
+    {
+      "source": "o-date",
+      "sourceOutput": "result",
+      "target": "o-date-diff",
+      "targetInput": "end"
+    },
+    {
+      "source": "o-date-diff",
+      "sourceOutput": "result",
+      "target": "o-date-d",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-date",
+      "sourceOutput": "result",
+      "target": "o-datelist",
+      "targetInput": "d"
+    },
+    {
+      "source": "o-datelist",
+      "sourceOutput": "result",
+      "target": "o-datelist-part",
+      "targetInput": "date"
+    },
+    {
+      "source": "o-datelist-part",
+      "sourceOutput": "result",
+      "target": "o-datelist-d",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-date",
+      "sourceOutput": "result",
+      "target": "o-datemat",
+      "targetInput": "d"
+    },
+    {
+      "source": "o-datemat",
+      "sourceOutput": "result",
+      "target": "o-datemat-d",
+      "targetInput": "in"
+    },
+    {
+      "source": "o-auto",
+      "sourceOutput": "result",
+      "target": "o-auto-cast",
+      "targetInput": "value"
+    },
+    {
+      "source": "o-auto-cast",
+      "sourceOutput": "result",
+      "target": "o-auto-d",
+      "targetInput": "in"
+    },
+    {
+      "source": "o-autolist",
+      "sourceOutput": "result",
+      "target": "o-autolist-sort",
+      "targetInput": "list"
+    },
+    {
+      "source": "o-autolist-sort",
+      "sourceOutput": "result",
+      "target": "o-autolist-d",
+      "targetInput": "in"
+    },
+    {
+      "source": "o-automat",
+      "sourceOutput": "result",
+      "target": "o-automat-d",
+      "targetInput": "in"
+    },
+    {
+      "source": "o-expr",
+      "sourceOutput": "result",
+      "target": "o-expr-x",
+      "targetInput": "xs"
+    },
+    {
+      "source": "o-expr-x",
+      "sourceOutput": "result",
+      "target": "o-expr-d",
+      "targetInput": "in"
+    },
+    {
+      "source": "o-chart",
+      "sourceOutput": "result",
+      "target": "o-chart-c",
+      "targetInput": "values"
+    },
+    {
+      "source": "o-seg",
+      "sourceOutput": "result",
+      "target": "o-seg-s",
+      "targetInput": "value"
+    },
+    {
+      "source": "o-bool",
+      "sourceOutput": "result",
+      "target": "o-bool-not",
+      "targetInput": "in"
+    },
+    {
+      "source": "o-bool-not",
+      "sourceOutput": "result",
+      "target": "o-bool-d",
+      "targetInput": "in"
+    },
+    {
+      "source": "o-null",
+      "sourceOutput": "result",
+      "target": "o-null-d",
+      "targetInput": "in"
+    }
+  ]
+}

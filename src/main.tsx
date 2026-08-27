@@ -103,3 +103,10 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <App />
   </ErrorBoundary>,
 );
+
+// Console-only tooling the probe scripts drive (`scripts/tune-seeds.mjs`,
+// `scripts/card-css-census.mjs`): dev builds only, loaded off the critical path.
+if (import.meta.env.DEV) {
+  void import("./graph/seedTune");
+  void import("./graph/census");
+}

@@ -2,7 +2,7 @@ import type { Area } from "./area";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import { FormatControllerNode, ConvertNode, ConduitNode } from "./rete-nodes";
-import { SolenoidSocket, canConnect } from "./sockets";
+import { SolenoidSocket, AdoptiveSocket, canConnect } from "./sockets";
 import { settleWildcardTypes } from "./trueAnyAdopt";
 
 /** Call after an OUTPUT socket's type changes IN PLACE; drops only the outgoing cables
@@ -18,7 +18,10 @@ export async function retypeOutputCables(
   for (const c of [...editor.getConnections()]) {
     if (c.source !== nodeId || c.sourceOutput !== outKey) continue;
     const inSock = editor.getNode(c.target)?.inputs?.[c.targetInput]?.socket;
-    const inType = inSock instanceof SolenoidSocket ? inSock.dataType : undefined;
+    // An adoptive input is judged by its DECLARED rung, not the type it adopted from this
+    // very cable: a rank-2 result reconciling onto a Display that adopted the rank-1 type
+    // must keep the cable and re-adopt (adoptKeepsCables).
+    const inType = inSock instanceof AdoptiveSocket ? inSock.base : inSock instanceof SolenoidSocket ? inSock.dataType : undefined;
     if (!inType || !canConnect(newType, inType)) await editor.removeConnection(c.id);
   }
   reconcileFcTypes(editor, area);

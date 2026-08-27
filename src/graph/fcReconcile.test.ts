@@ -1,13 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
 import { retypeOutputCables } from "./fcReconcile";
-import { stringSocket, anySocket, numberSocket, SolenoidSocket } from "./sockets";
+import { stringSocket, anySocket, numberSocket, dateTableSocket, SolenoidSocket, AdoptiveSocket } from "./sockets";
 import { FormatControllerNode } from "./nodes/formatController";
 
 type AnyEditor = NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>;
 // reconcileFcTypes only calls area.update for FC/Convert nodes (none here), so a
 // no-op stub suffices to exercise retypeOutputCables' cable-keep logic.
-const stubArea = { update: async () => {} } as never;
+const stubArea = { update: async () => {}, rerenderNode: async () => {}, rerenderCables: () => {} } as never;
 
 describe("retypeOutputCables (Cast / LAMBDA / Get Column shared retype path)", () => {
   it("keeps a cable to an `any` input but drops a now-incompatible typed one", async () => {
@@ -69,5 +69,29 @@ describe("FC family resolution ignores every family-less wildcard rung", () => {
     expect(await fcInto(new SolenoidSocket("frame"))).toBe("frame");
     expect(await fcInto(new SolenoidSocket("lambda"))).toBe("lambda");
     expect(await fcInto(new SolenoidSocket("chart"))).toBe("chart");
+  });
+});
+
+// ─── adoptKeepsCables at the retype seam ─────────────────────────────────────
+// A Display's `in` is an adoptive trueany; once it has adopted a producer's rank-1
+// type (datecombo), the producer's rank-2 reconcile (datetable) must judge the cable
+// against the DECLARED rung, or the very adoption it caused prunes it. This is how
+// the script-tour seed lost two Script → Display cables (2026-08-28).
+describe("retypeOutputCables judges an adoptive input by its base rung", () => {
+  it("keeps a cable whose target adopted the previous type", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const src = new ClassicPreset.Node("Src");
+    src.addOutput("result", new ClassicPreset.Output(dateTableSocket, "Result")); // post-swap: datetable
+    const disp = new ClassicPreset.Node("Display");
+    const sock = new AdoptiveSocket("trueany");
+    sock.setType("datecombo"); // what it adopted from the pre-swap cable
+    disp.addInput("in", new ClassicPreset.Input(sock, "In"));
+    for (const n of [src, disp]) await editor.addNode(n as never);
+    const cable = new ClassicPreset.Connection(src as never, "result", disp as never, "in");
+    await editor.addConnection(cable as never);
+
+    await retypeOutputCables(editor as never, stubArea, src.id, "result");
+
+    expect(editor.getConnections().map((c) => c.id)).toContain(cable.id);
   });
 });
