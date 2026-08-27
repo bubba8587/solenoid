@@ -23,6 +23,17 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
 
 ## Polish sweeps (the 1.3 working mode — thorough, small-scope, one seam at a time)
 
+- [ ] **Model layer, the last two cuts (2026-08-27, after the Area rework — author-approved).**
+  (1) Rename the seam's word: `area` → `view` (type `Area` → `View`, `area.ts` → `view.ts`,
+  `getArea`/`getActiveArea`/`getOwningArea`, `areaRef`, ~230 variables) — rete's word, meaning
+  nothing to a new reader; AND drop the `nodeViews` Map for explicit `view.position(id)` /
+  `view.nodeElement(id)` — today `.element` is a `querySelector` on every read, incl. per-frame
+  paths (lasso, standoffs, HIC sync). One tsc-guided sweep, ~half a day; the fakes in the 7
+  layout tests follow. (2) Put position ON the node (beside `width`/`height`) and delete
+  `FlowModel.positions` + `syncViews`'s reconciliation of the side-map against the editor's
+  node set. Touches persistence/copyPaste/flowModel; the save-path suites are the net.
+  Docs to follow: subsystem-invariants § React Flow surface contract, glossary "Area".
+
 - **Per-card CSS conversion (DOM count is the constrained resource; author 2026-08-25, "for later").**
   **Step 1 census DONE (A2, 2026-08-25 — `scripts/card-css-census.mjs` + `window.__solenoidCardCensus`;
   see the dev-notes FINDING).** 687 card types, 59% paint-only, but most of that is structural
