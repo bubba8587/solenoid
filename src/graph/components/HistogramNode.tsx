@@ -31,7 +31,7 @@ export function HistogramComponent({ data, emit }: NodeProps<HistogramNodeType>)
     const drop = data.keysDroppedByMode(next);
     if (drop.length) await dropInputCables(data.id, drop);
     data.setMode(next);
-    await getActiveArea()?.update("node", data.id);
+    await getActiveArea()?.rerenderNode(data.id);
     await processGraph();
   }
 

@@ -3,13 +3,12 @@
 // node collapses the bounding box. The first tier is React Flow's own post-layout
 // measure (`area.measured`), which costs nothing.
 
-import type { Surface } from "./surface";
+import type { Area } from "./area";
 import { collapseStore } from "./collapseStore";
 import type { Schemes } from "./schemes";
 import type { NodeEditor } from "rete";
 
 type Editor = NodeEditor<Schemes>;
-type Area = Surface;
 
 export type NodeBox = { x: number; y: number; w: number; h: number };
 

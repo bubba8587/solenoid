@@ -281,7 +281,7 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
       // A FRESH name, never the source's — the source is still on the canvas, so
       // inheriting it would collide immediately.
       nodeNameStore.ensure(clone.id, clone.constructor.name);
-      await area.translate(clone.id, { x, y });
+      await area.moveNode(clone.id, { x, y });
     }));
     // The captured subgraph snapshot hydrates into live instances only once the
     // clone exists.

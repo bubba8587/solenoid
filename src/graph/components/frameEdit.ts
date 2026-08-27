@@ -17,7 +17,7 @@ export async function applyGetColumnReadAs(node: GetColumnNode, readAs: GetColum
   if (out) out.socket = getColumnOutput(readAs).socket;
   if (editor && area) await retypeOutputCables(editor, area, node.id, "values");
 
-  if (area) await area.update("node", node.id);
+  if (area) await area.rerenderNode(node.id);
   await processGraph();
 }
 
@@ -32,7 +32,7 @@ export async function applyAddColumnAddAs(node: AddColumnNode, addAs: AddColumnA
   const inp = node.inputs.values;
   if (inp) inp.socket = addColumnInput(addAs).socket;
 
-  if (area) await area.update("node", node.id);
+  if (area) await area.rerenderNode(node.id);
   // An FC docked to this input (or one downstream) must re-resolve against the new
   // input type — no connection event fires on an in-place socket swap.
   if (editor && area) reconcileFcTypes(editor, area);
@@ -51,6 +51,6 @@ export async function applySplitColType(node: SplitFrameNode, colType: SplitColT
   if (out) out.socket = splitMatrixOutput(colType).socket;
   if (editor && area) await retypeOutputCables(editor, area, node.id, "matrix");
 
-  if (area) await area.update("node", node.id);
+  if (area) await area.rerenderNode(node.id);
   await processGraph();
 }

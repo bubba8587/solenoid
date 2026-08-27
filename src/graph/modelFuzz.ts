@@ -288,7 +288,7 @@ export async function insertClampBefore(
   await editor.addNode(clamp);
   const srcPos = area.nodeViews.get(conn.source)?.position ?? { x: 0, y: 0 };
   const tgtPos = area.nodeViews.get(nodeId)?.position ?? { x: 0, y: 0 };
-  await area.translate(clamp.id, { x: (srcPos.x + tgtPos.x) / 2, y: (srcPos.y + tgtPos.y) / 2 - 60 });
+  await area.moveNode(clamp.id, { x: (srcPos.x + tgtPos.x) / 2, y: (srcPos.y + tgtPos.y) / 2 - 60 });
 
   await editor.removeConnection(conn.id);
   await editor.addConnection(new ClassicPreset.Connection(source, conn.sourceOutput, clamp, "value") as SolenoidConnection);

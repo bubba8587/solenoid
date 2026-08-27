@@ -19,7 +19,7 @@ export function ElementComponent({ data, emit }: NodeProps<ElementNodeType>) {
       symbol: data.op,
       onPick: (symbol) => {
         data.op = symbol;
-        void getActiveArea()?.update("node", data.id);
+        void getActiveArea()?.rerenderNode(data.id);
         void processGraph();
       },
     });

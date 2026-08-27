@@ -24,7 +24,7 @@ export function ArgMinMaxComponent({ data, emit }: NodeProps<ArgMinMaxNodeType>)
     const editor = getActiveEditor();
     const area = getActiveArea();
     if (outputChanged && editor && area) await retypeOutputCables(editor, area, data.id, "result");
-    if (area) await area.update("node", data.id);
+    if (area) await area.rerenderNode(data.id);
     setOpField(next);
     await processGraph(data.id);
   }

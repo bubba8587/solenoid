@@ -87,7 +87,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     setFieldsVersion((v) => v + 1);
     const editor = getActiveEditor();
     const area = getActiveArea();
-    await area?.update("node", data.id);
+    await area?.rerenderNode(data.id);
     if (editor && area && retyped.length) reconcileFcTypes(editor, area);
     bumpConnectionVersion();
     await processGraph();
@@ -109,10 +109,10 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   }
 
   function commitLabel() {
-    if (label !== data.label) { data.label = label; scheduleAutosave(); void getActiveArea()?.update("node", data.id); }
+    if (label !== data.label) { data.label = label; scheduleAutosave(); void getActiveArea()?.rerenderNode(data.id); }
     setEditingLabel(false);
   }
-  function pick(c: string) { setColor(c); data.color = c; void getActiveArea()?.update("node", data.id); scheduleAutosave(); }
+  function pick(c: string) { setColor(c); data.color = c; void getActiveArea()?.rerenderNode(data.id); scheduleAutosave(); }
   function toggleCollapse() { const v = !collapsed; setCollapsed(v); data.collapsed = v; scheduleAutosave(); }
 
   const fieldKeys = data.fieldKeys();
@@ -143,7 +143,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   function onResize(size: { width: number; height: number }) {
     data.width = Math.max(MIN_W, size.width);
     data.height = Math.max(minH, size.height);
-    void getActiveArea()?.update("node", data.id);
+    void getActiveArea()?.rerenderNode(data.id);
   }
 
   return (

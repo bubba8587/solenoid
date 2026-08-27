@@ -21,7 +21,7 @@ export function DistributionComponent({ data, emit }: NodeProps<DistributionNode
     if (departing.length > 0) await dropInputCables(data.id, departing);
     data.setOp(next);
     setFormField(data.form); // the switch may have remapped the form
-    await getActiveArea()?.update("node", data.id);
+    await getActiveArea()?.rerenderNode(data.id);
     setOpField(next);
   }
 
@@ -30,7 +30,7 @@ export function DistributionComponent({ data, emit }: NodeProps<DistributionNode
     const crossing = isInverseForm(next) !== isInverseForm(data.form);
     if (crossing) await dropInputCables(data.id, [isInverseForm(next) ? data.xKey : "prob"]);
     data.setForm(next);
-    if (crossing) await getActiveArea()?.update("node", data.id);
+    if (crossing) await getActiveArea()?.rerenderNode(data.id);
     setFormField(next);
   }
 

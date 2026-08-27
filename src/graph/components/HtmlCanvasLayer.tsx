@@ -6,7 +6,7 @@ import { HtmlCanvasRenderer, type EngineNodeSpec } from "../htmlCanvasRenderer";
 import { connectionVersionStore } from "../process";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "../schemes";
-import type { Surface } from "../surface";
+import type { Area } from "../area";
 import { nodeDomWeight } from "../nodes/kind";
 import { snapshotGraph } from "../hicGraphSnapshot";
 import { cableShapeStore } from "../cableShape";
@@ -39,7 +39,7 @@ const graphDomWeight = (ed: NodeEditor<Schemes>): number => {
 /** The fast PAN/ZOOM layer, not a DOM replacement: idle draws nothing so every interaction
  *  stays native; a gesture hides the holder with `visibility:hidden` (which keeps layout, so
  *  the DOM stays measurable) and the canvas draws the captured graph. */
-export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>; area: Surface }) {
+export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>; area: Area }) {
   const mode = useRenderMode();
   const hostRef = useRef<HTMLDivElement>(null);
   // Seeded synchronously so toggling render mode on over an already-loaded big graph engages
@@ -71,11 +71,9 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
     if (!active) return;
     const host = hostRef.current;
     if (!host) return;
-    // The transformed content element: React Flow's viewport (the flow area's
-    // `content.holder` is a detached placeholder). Hiding it hides nodes+edges;
-    // DOM-only elements punch through with inline `visibility: visible`.
-    const holder = (area.container.querySelector<HTMLElement>(".react-flow__viewport") ??
-      (area.area.content.holder as HTMLElement));
+    // React Flow's viewport: hiding it hides nodes+edges; DOM-only elements punch
+    // through with inline `visibility: visible`.
+    const holder = area.viewport;
     // RF stamps inline `visibility: visible` on every measured node wrapper, so the viewport's
     // own visibility never reaches the cards; the class carries a rule that beats the inline
     // style (htmlCanvasLayer.css). DOM-only elements opt out of it via `solenoid-hic-domonly`.
@@ -89,7 +87,7 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
 
     const engine = new HtmlCanvasRenderer(host);
     // Read at PAINT time, since a paint can land a frame after the rAF that scheduled it.
-    engine.setTransformSource(() => area.area.transform);
+    engine.setTransformSource(() => area.transform);
     let built = false;
     // id → the inner element's offset within its node-view wrapper. Cached at build so the
     // gesture-start position sync reads only `view.position` (no layout-forcing offsetLeft).
@@ -264,8 +262,8 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
     const exitGesture = () => {
       gesturing = false;
       gestureZoomed = false;
-      if (holderSynced) { holder.style.transform = holderTransform(area.area.transform); holderSynced = false; }
-      if (area.area.transform.k < holdZoom()) {
+      if (holderSynced) { holder.style.transform = holderTransform(area.transform); holderSynced = false; }
+      if (area.transform.k < holdZoom()) {
         // Stay on the canvas at rest; DOM-only elements and the frozen flow stay as they are.
         enterHeld();
         return;
@@ -290,7 +288,7 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
     const retry = window.setInterval(() => { tryBuild(); if (built) clearInterval(retry); }, 120);
 
     // Every card re-render must reach scheduleRebuild by one of two channels:
-    // area.update("node", id) via the render pipe below (flowArea relays it), or a
+    // area.rerenderNode(id) via the render pipe below (flowArea relays it), or a
     // module store subscribed here. The
     // subscribed set, one per painted-appearance driver:
     //   • connectionVersionStore — topology; • collapseStore — chevron collapse;
@@ -375,15 +373,7 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
     const unsubShape = cableShapeStore.subscribe(fullRebuild("cableShape")); // re-route on cable-shape change
     // Semantic zoom flips a root CSS class the captured bitmaps don't know about.
     const unsubSemantic = semanticZoomStore.subscribe(fullRebuild("semanticZoom"));
-    // area.addPipe has no unsubscribe, so guard with a flag the cleanup flips instead.
-    let pipeLive = true;
-    area.addPipe((ctx: unknown) => {
-      if (pipeLive && ctx && typeof ctx === "object" && "type" in ctx) {
-        const c = ctx as { type: string; data?: { type?: string; payload?: { id?: string } } };
-        if (c.type === "render" && c.data?.type === "node") { count("render-pipe"); scheduleRebuild(c.data.payload?.id); }
-      }
-      return ctx;
-    });
+    const unsubRender = area.onRender((id) => { count("render-pipe"); scheduleRebuild(id); });
 
     // ANY motion — transform change or node drag — is a gesture; discrete interactions move
     // nothing and so stay on the DOM.
@@ -391,7 +381,7 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
     let lastSel = new Set<string>();
     let lastQuality = NaN;
     let raf = requestAnimationFrame(function sync() {
-      const t = area.area.transform;
+      const t = area.transform;
       engine.setTransform(t.k, t.x, t.y);
       // Console knobs: `__hcLive` = per-frame re-raster, `__hcQuality` = LOD bias (texture px ÷
       // on-screen px), `__hcOverlay` = half-opacity over the DOM.
@@ -476,7 +466,7 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
       unsubFmt();
       unsubShape();
       unsubSemantic();
-      pipeLive = false; // area.addPipe can't be removed; the flag makes it a no-op
+      unsubRender();
       window.removeEventListener("pointerdown", onPointerDown, true);
       window.removeEventListener("pointerup", onPointerUp, true);
       window.removeEventListener("pointercancel", onPointerUp, true);
@@ -487,7 +477,7 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
       holder.classList.remove("solenoid-html-frozen");
       hideDomOnly(); // clear the per-element visibility overrides
       demoteDomOnly();
-      if (holderSynced) holder.style.transform = holderTransform(area.area.transform); // hand the transform back
+      if (holderSynced) holder.style.transform = holderTransform(area.transform); // hand the transform back
       engine.dispose();
     };
   }, [active, editor, area]);

@@ -1,6 +1,6 @@
 // Format Controller docking — snap detection, dock positioning, and the inline
 // splice/unsplice into the host's data path; all pure over (editor, area, container, fc).
-import type { Surface } from "./surface";
+import type { Area } from "./area";
 import { ClassicPreset, type NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import { FormatControllerNode } from "./rete-nodes";
@@ -9,7 +9,7 @@ import { getSocketScreenCenter, screenToCanvas } from "./canvasGeometry";
 type SolenoidConnection = import("./schemes").SolenoidConnection;
 
 export function computeDockedCanvasPos(
-  area: Surface,
+  area: Area,
   container: HTMLElement,
   hostNodeId: string,
   socketKey: string,
@@ -26,7 +26,7 @@ export function computeDockedCanvasPos(
   const sockEl = view?.element.querySelector<HTMLElement>(`[data-socket-key="${socketKey}"][data-socket-side="${side}"]`);
   let cx: number, cy: number;
   if (view && sockEl) {
-    const k = area.area.transform.k || 1;
+    const k = area.transform.k || 1;
     const host = view.element.getBoundingClientRect();
     const r = sockEl.getBoundingClientRect();
     cx = view.position.x + (r.left + r.width / 2 - host.left) / k;
@@ -49,7 +49,7 @@ export function computeDockedCanvasPos(
 // Measured size, not the node's stored estimate — the dock math centers the FC on the
 // host socket by height, so a stale estimate drops it several px low.
 export function dockedRenderedDims(
-  area: Surface,
+  area: Area,
   nodeId: string,
   fallbackW: number,
   fallbackH: number,
@@ -65,14 +65,14 @@ const DOCK_SNAP_CANVAS_PX = 34;
 // The nearest host socket whose pairing edge (host output ↔ FC input, host input ↔ FC
 // output) is within snap range; null if nothing is close enough.
 export function findDockTarget(
-  area: Surface,
+  area: Area,
   editor: NodeEditor<Schemes>,
   fc: FormatControllerNode,
 ): { hostNodeId: string; socketKey: string; side: "input" | "output" } | null {
   const fcIn  = getSocketScreenCenter(area, fc.id, "in",  "input");
   const fcOut = getSocketScreenCenter(area, fc.id, "out", "output");
   if (!fcIn && !fcOut) return null;
-  const zoom = area.area.transform.k || 1;
+  const zoom = area.transform.k || 1;
 
   let best: { hostNodeId: string; socketKey: string; side: "input" | "output"; dist: number } | null = null;
   for (const host of editor.getNodes()) {

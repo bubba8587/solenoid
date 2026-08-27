@@ -96,7 +96,7 @@ export function ReportOverlay() {
         }
       }
     }
-    await getArea()?.update("node", node!.id);
+    await getArea()?.rerenderNode(node!.id);
     await processGraph();
   }
 

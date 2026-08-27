@@ -1,4 +1,4 @@
-import type { Surface } from "./surface";
+import type { Area } from "./area";
 import { describe, it, expect } from "vitest";
 import { moveGroupMembers, reconcileGroupMembership, absorbIntoContainingGroup } from "./groupLogic";
 import { GroupNode } from "./rete-nodes";
@@ -11,7 +11,6 @@ import type { Schemes } from "./schemes";
 // carried by the selector, isn't moved again; a programmatic push leaves it off.
 
 type Editor = NodeEditor<Schemes>;
-type Area = Surface;
 
 function harness(selected: Set<string>) {
   const start: Record<string, { x: number; y: number }> = {
@@ -24,7 +23,7 @@ function harness(selected: Set<string>) {
   const editor = { getNode: (id: string) => ({ selected: selected.has(id) }) } as unknown as Editor;
   const area = {
     nodeViews,
-    translate: (id: string, pos: { x: number; y: number }) => { translated.push(id); final.set(id, pos); return Promise.resolve(true); },
+    moveNode: (id: string, pos: { x: number; y: number }) => { translated.push(id); final.set(id, pos); return Promise.resolve(true); },
   } as unknown as Area;
   const group = { members: ["a", "b", "c"] } as unknown as GroupNode;
   return { editor, area, group, translated, final };

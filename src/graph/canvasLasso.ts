@@ -1,6 +1,6 @@
 // AutoCAD winding rule: CW (positive signed area in screen coords) = touch/crossing,
 // CCW = window/enclose.
-import type { Surface } from "./surface";
+import type { Area } from "./area";
 import type { MutableRefObject } from "react";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
@@ -21,7 +21,7 @@ export type LassoState = { points: Pt[]; mode: "touch" | "enclose" } | null;
 export interface LassoDeps {
   container: HTMLElement;
   editorRef: MutableRefObject<NodeEditor<Schemes> | null>;
-  areaRef: MutableRefObject<Surface | null>;
+  areaRef: MutableRefObject<Area | null>;
   /** Feeds the lasso outline <svg> in Canvas's JSX. */
   setLasso: (l: LassoState) => void;
 }
@@ -180,7 +180,7 @@ export function installLassoSelection(deps: LassoDeps): () => void {
     if (!includeCables) return;
 
     // A Ribbon is ONE entity — its members are judged as a unit and selected together.
-    const { x: tx, y: ty, k } = area.area.transform;
+    const { x: tx, y: ty, k } = area.transform;
     const unitHit = (unit: string[]): boolean => {
       let any = false;
       let all = true;

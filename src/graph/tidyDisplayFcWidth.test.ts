@@ -1,4 +1,4 @@
-import type { Surface } from "./surface";
+import type { Area } from "./area";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
@@ -84,20 +84,15 @@ function makeFakeArea() {
   };
   const area = {
     nodeViews,
-    async translate(id: string, pos: { x: number; y: number }) {
+    async moveNode(id: string, pos: { x: number; y: number }) {
       const v = nodeViews.get(id);
       if (v) v.position = { ...pos };
     },
-    async resize(id: string, w: number, h: number) {
-      const v = nodeViews.get(id);
-      if (!v) return;
-      v.stampedW = w; // area.resize sets style.width on the content-box card
-      v.stampedH = h;
-    },
-    async update() { /* no-op headless */ },
-    area: { transform: { k: 1, x: 0, y: 0 } },
+    async rerenderCables() {},
+    async rerenderNode() { /* no-op headless */ },
+    transform: { k: 1, x: 0, y: 0 },
   };
-  return { area: area as unknown as Surface, add };
+  return { area: area as unknown as Area, add };
 }
 
 let rafQueue: FrameRequestCallback[] = [];

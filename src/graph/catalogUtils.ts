@@ -309,11 +309,11 @@ export async function addNodeByCatalogType(catalogType: string): Promise<boolean
   await editor.addNode(node as any);
   nodeNameStore.ensure(node.id, node.constructor.name);
 
-  const { k, x, y } = area.area.transform;
+  const { k, x, y } = area.transform;
   const rect = area.container.getBoundingClientRect();
   const cx = (rect.width / 2 - x) / k;
   const cy = (rect.height / 2 - y) / k;
-  await area.translate(node.id, {
+  await area.moveNode(node.id, {
     x: cx - (node.width ?? 180) / 2,
     y: cy - (node.height ?? 160) / 2,
   });

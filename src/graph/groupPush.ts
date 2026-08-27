@@ -1,5 +1,5 @@
 import { measuredSize } from "./nodeSize";
-import type { Surface } from "./surface";
+import type { Area } from "./area";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import { GroupNode } from "./rete-nodes";
@@ -16,7 +16,6 @@ import { measuredBox } from "./nodeSize";
 // Push records are in-memory only: a reload keeps everything where it is.
 
 type Editor = NodeEditor<Schemes>;
-type Area = Surface;
 
 interface PushRecord {
   pushed: string;        // the entity that was moved (group or loose node)
@@ -54,14 +53,14 @@ function translatePushed(editor: Editor, area: Area, id: string, dx: number, dy:
   if (dx === 0 && dy === 0) return;
   const p = position(area, id);
   if (!p) return;
-  void area.translate(id, { x: p.x + dx, y: p.y + dy });
+  void area.moveNode(id, { x: p.x + dx, y: p.y + dy });
   const node = editor.getNode(id);
   if (node instanceof GroupNode) {
     moveGroupMembers(editor, area, node, dx, dy);
   } else {
     for (const d of dockedNodeStore.getDockedTo(id)) {
       const dp = position(area, d.id);
-      if (dp) void area.translate(d.id, { x: dp.x + dx, y: dp.y + dy });
+      if (dp) void area.moveNode(d.id, { x: dp.x + dx, y: dp.y + dy });
     }
   }
 }
@@ -444,8 +443,8 @@ export async function setGroupsCollapsed(
   for (const g of changed) g.collapsed = collapse;
   syncGroupCollapse(editor, area);
   // Wait for the size/render change so footprints measured below are current.
-  await Promise.all(changed.map((g) => area.update("node", g.id)));
-  for (const g of changed) settleCollapse(editor, area, g.id, g.members, !collapse);
+  await Promise.all(changed.map((g) => area.rerenderNode(g.id)));
+  for (const g of changed) settleCollapse(area, g.id, g.members, !collapse);
 
   if (collapse) {
     restoreSettledPushes(editor, area);

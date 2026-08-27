@@ -1,4 +1,4 @@
-import type { Surface } from "./surface";
+import type { Area } from "./area";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import { getEditor, getArea } from "./process";
@@ -10,7 +10,7 @@ import { getEditor, getArea } from "./process";
 
 export interface ActiveGraph {
   editor: NodeEditor<Schemes>;
-  area: Surface;
+  area: Area;
 }
 
 let _override: ActiveGraph | null = null;
@@ -45,13 +45,13 @@ export function getOwningEditor(nodeId: string): NodeEditor<Schemes> | null {
   return getEditor();
 }
 
-export function getActiveArea(): Surface | null {
+export function getActiveArea(): Area | null {
   return _override?.area ?? getArea();
 }
 
 /** getOwningEditor's area twin, for code running per rendered node: `getArea()` no-ops
  *  inside a drill-in, and `getActiveArea()` wrongly returns the drill-in for a MAIN node. */
-export function getOwningArea(nodeId: string): Surface | null {
+export function getOwningArea(nodeId: string): Area | null {
   if (_override && _override.editor.getNode(nodeId)) return _override.area;
   return getArea();
 }

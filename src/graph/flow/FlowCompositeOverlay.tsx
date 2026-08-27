@@ -3,7 +3,7 @@
 // drill-in-specific chrome (breadcrumb strip, port promotion, run controls) and
 // a per-composite snapshot history. The level registers as the ACTIVE graph and
 // takes over the selection / arrange verbs while open.
-import type { Surface } from "../surface";
+import type { Area } from "../area";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import { FlowSurfaceContext } from "../flowSurface";
@@ -177,7 +177,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
       setReady(true);
       setActiveGraph({
         editor: comp.internalEditor,
-        area: s.area as unknown as Surface,
+        area: s.area as unknown as Area,
       });
       restoreSelection = swapSelectionSlots({
         unselectAllNodes: () => {
@@ -206,7 +206,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
       setActiveGraph(null);
       syncPositionsToComp(comp, s);
       const mainArea = getArea();
-      if (mainArea) syncSemanticZoomFor(mainArea.area.transform.k);
+      if (mainArea) syncSemanticZoomFor(mainArea.transform.k);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [comp, s]);
@@ -260,7 +260,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
   const settleAfterLeave = useCallback(async () => {
     if (parentEditor === getEditor()) {
       const outerArea = getArea();
-      if (outerArea) await outerArea.update("node", comp.id);
+      if (outerArea) await outerArea.rerenderNode(comp.id);
     }
     void processGraph(recomputeTarget());
     scheduleAutosave();
@@ -288,7 +288,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
       x: kind === "input" ? rect.left + 80 : rect.right - 260,
       y: rect.top + rect.height / 2,
     });
-    await s.area.translate(marker.id, pos);
+    await s.area.moveNode(marker.id, pos);
     if (kind === "input") {
       comp.addInputPort({ label, internalNodeId: marker.id, exposure: "exposed", tier: "basic" });
     } else {
@@ -296,7 +296,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     }
     if (parentEditor === getEditor()) {
       const outerArea = getArea();
-      if (outerArea) await outerArea.update("node", comp.id);
+      if (outerArea) await outerArea.rerenderNode(comp.id);
     }
     void processGraph(recomputeTarget());
     scheduleAutosave();
@@ -353,13 +353,13 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     const ensureElk = makeEnsureElk(() => false);
     const arrangeFn = makeArrangeFn({
       editor: comp.internalEditor,
-      area: s.area as unknown as Surface,
+      area: s.area as unknown as Area,
       container: s.handlers.getContainer() ?? document.body,
       ensureElk,
       repositionDockedTo: () => {},
       isDestroyed: () => false,
     });
-    return { tidy: arrangeFn, cleanup: makeCleanupFn(comp.internalEditor, s.area as unknown as Surface, arrangeFn) };
+    return { tidy: arrangeFn, cleanup: makeCleanupFn(comp.internalEditor, s.area as unknown as Area, arrangeFn) };
   }, [comp, s]);
   const settleArrange = useCallback((fit = true) => {
     if (fit) void fitView({ padding: 0.15, duration: 0 });

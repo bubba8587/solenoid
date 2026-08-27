@@ -39,14 +39,14 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
 
   async function addPair() {
     data.addValuePair();
-    await getActiveArea()?.update("node", data.id);
+    await getActiveArea()?.rerenderNode(data.id);
     await processGraph();
   }
 
   async function removePair(colKey: string, valKey: string) {
     await dropInputCables(data.id, [colKey, valKey]);
     data.removeValuePair(colKey);
-    await getActiveArea()?.update("node", data.id);
+    await getActiveArea()?.rerenderNode(data.id);
     bumpConnectionVersion();
     await processGraph();
   }

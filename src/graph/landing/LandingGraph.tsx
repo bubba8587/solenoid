@@ -32,7 +32,7 @@ async function buildDemoGraph(s: StaticStack) {
 
   const survey = new TableInputNode({ label: "Survey grid", tableText: SURVEY_GRID });
   const interp = new InterpolateNode({ label: "Grid Interpolate", mode: "grid" });
-  const surface = new SurfaceNode({ label: "Surface" });
+  const surface = new SurfaceNode({ label: "Area" });
   const contour = new SurfaceNode({ op: "contour", label: "Contour" });
 
   const at: [ClassicPreset.Node, number, number][] = [
@@ -45,7 +45,7 @@ async function buildDemoGraph(s: StaticStack) {
     await s.editor.addNode(asNode(node));
     nodeNameStore.ensure(node.id, node.constructor.name);
   }
-  for (const [node, x, y] of at) await s.area.translate(node.id, { x, y });
+  for (const [node, x, y] of at) await s.area.moveNode(node.id, { x, y });
 
   const wire = (src: ClassicPreset.Node, out: string, tgt: ClassicPreset.Node, inp: string) =>
     s.editor.addConnection(new ClassicPreset.Connection(asNode(src), out, asNode(tgt), inp) as SolenoidConnection);

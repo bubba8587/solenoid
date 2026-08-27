@@ -16,7 +16,7 @@ export function BinComponent({ data, emit }: NodeProps<BinNodeType>) {
     await dropInputCables(data.id, [next === "quantiles" ? "breaks" : "n"]);
     data.setMode(next);
     setMode(next);
-    await getActiveArea()?.update("node", data.id);
+    await getActiveArea()?.rerenderNode(data.id);
     await processGraph();
   }
 

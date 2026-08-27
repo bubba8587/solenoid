@@ -137,13 +137,13 @@ export async function focusNode(id: string) {
   const node = editor.getNode(id);
   const box = measuredBox(area, id, editor);
   if (!node || !box) return;
-  const { k } = area.area.transform;
+  const { k } = area.transform;
   const rect = area.container.getBoundingClientRect();
   // measuredBox reads the LIVE size first — a collapsed group's STORED box is its
   // expanded one, which would off-center the camera.
   const cx = box.x + box.w / 2;
   const cy = box.y + box.h / 2;
-  await area.area.translate(rect.width / 2 - cx * k, rect.height / 2 - cy * k);
+  await area.pan(rect.width / 2 - cx * k, rect.height / 2 - cy * k);
 }
 
 function toggleGroup(id: string) {

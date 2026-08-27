@@ -1,4 +1,4 @@
-import type { Surface } from "./surface";
+import type { Area } from "./area";
 import type { NodeEditor } from "rete";
 import type { ClassicPreset } from "rete";
 import type { Schemes } from "./schemes";
@@ -32,7 +32,6 @@ function majorityColor(nodes: ClassicPreset.Node[]): string {
 }
 
 type Editor = NodeEditor<Schemes>;
-type Area = Surface;
 
 // Shared by creation, the within-group tidy AND autofit — they MUST agree or a
 // tidy-then-autofit cycle (Cleanup) drifts the box a few px each run.
@@ -89,7 +88,7 @@ export async function createGroupFromSelection(editor: Editor, area: Area): Prom
   });
   await editor.addNode(group);
   rebuildGroupMembership(editor); // members tint now, not on the next unrelated rebuild
-  await area.translate(group.id, { x: minX - GROUP_PAD, y: minY - GROUP_PAD - GROUP_HEADER });
+  await area.moveNode(group.id, { x: minX - GROUP_PAD, y: minY - GROUP_PAD - GROUP_HEADER });
   sendGroupToBack(area, group.id);
   return group.id;
 }
@@ -126,8 +125,8 @@ export async function autofitGroupBox(
 
   group.width = after.width;
   group.height = after.height;
-  await area.translate(group.id, { x: after.x, y: after.y });
-  await area.update("node", group.id);
+  await area.moveNode(group.id, { x: after.x, y: after.y });
+  await area.rerenderNode(group.id);
   return { before, after };
 }
 
@@ -159,7 +158,7 @@ export function moveGroupMembers(
     if (skipSelected && (editor.getNode(id) as { selected?: boolean } | undefined)?.selected) continue;
     const v = area.nodeViews.get(id);
     if (!v) continue;
-    void area.translate(id, { x: v.position.x + dx, y: v.position.y + dy });
+    void area.moveNode(id, { x: v.position.x + dx, y: v.position.y + dy });
   }
 }
 

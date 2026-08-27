@@ -38,7 +38,7 @@ export function FieldResizeGrip({ targetRef }: { targetRef: RefObject<HTMLElemen
     e.preventDefault();
     const el = targetRef.current;
     if (!el) return;
-    const k = getActiveArea()?.area.transform.k || 1;
+    const k = getActiveArea()?.transform.k || 1;
     active = { sy: e.clientY, startH: el.getBoundingClientRect().height / k, k, el };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);

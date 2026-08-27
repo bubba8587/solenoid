@@ -7,7 +7,7 @@
 
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
-import type { Surface } from "./surface";
+import type { Area } from "./area";
 import { nodeAccent } from "./nodes/kind";
 import { appThemeStore } from "./appTheme";
 import { parseColor, mixSrgb, type RGBA } from "./cssColor";
@@ -334,9 +334,9 @@ export function readThemeColors(): { body: number; title: number; value: number 
 }
 
 /** Read the given graph + transform, or null if the editor/area aren't ready. */
-export function snapshotGraph(editor: NodeEditor<Schemes> | null, area: Surface | null): GraphSnapshot | null {
+export function snapshotGraph(editor: NodeEditor<Schemes> | null, area: Area | null): GraphSnapshot | null {
   if (!area || !editor) return null;
-  const t = area.area?.transform ?? { k: 1, x: 0, y: 0 };
+  const t = area.transform ?? { k: 1, x: 0, y: 0 };
   const k = t.k > 0 ? t.k : 1;
 
   _sockColorCache.clear(); // re-resolve CSS vars (theme may have changed since last open)

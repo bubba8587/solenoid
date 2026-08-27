@@ -14,7 +14,7 @@ export function LinestComponent({ data, emit }: NodeProps<LinestNodeType>) {
     if (next === data.op) return;
     data.setOp(next);
     setOp(next);
-    await getActiveArea()?.update("node", data.id);
+    await getActiveArea()?.rerenderNode(data.id);
     await processGraph();
   }
 

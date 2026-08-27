@@ -27,7 +27,7 @@ export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
     await dropInputCables(data.id, data.keysDropped(next));
     data.setOp(next);
     setOp(next);
-    await getActiveArea()?.update("node", data.id);
+    await getActiveArea()?.rerenderNode(data.id);
     await processGraph();
   }
 

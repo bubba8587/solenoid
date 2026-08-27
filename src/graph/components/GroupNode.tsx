@@ -116,7 +116,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
     const next = label;
     if (next !== prev) {
       node.label = next;
-      void getOwningArea(node.id)?.update("node", node.id);
+      void getOwningArea(node.id)?.rerenderNode(node.id);
     }
     setEditingLabel(false);
   }
@@ -129,7 +129,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   function onResize(size: { width: number; height: number }) {
     node.width = Math.max(GROUP_MIN_W, size.width);
     node.height = Math.max(GROUP_MIN_H, size.height);
-    void getOwningArea(node.id)?.update("node", node.id);
+    void getOwningArea(node.id)?.rerenderNode(node.id);
   }
   function onResizeEnd() {
     const editor = getOwningEditor(node.id);
@@ -167,7 +167,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   function pickColor(c: string) {
     node.color = c;
     const ed = getOwningEditor(node.id);
-    void getOwningArea(node.id)?.update("node", node.id);
+    void getOwningArea(node.id)?.rerenderNode(node.id);
     if (ed) rebuildGroupMembership(ed); // member dots follow the group color
     scheduleAutosave();
   }

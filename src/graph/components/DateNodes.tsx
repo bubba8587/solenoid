@@ -78,7 +78,7 @@ export function DateTimeValueComponent({ data, emit }: NodeProps<DateTimeValueNo
     const editor = getActiveEditor();
     const area = getActiveArea();
     if (editor && area) await retypeOutputCables(editor, area, data.id, "result");
-    if (area) await area.update("node", data.id);
+    if (area) await area.rerenderNode(data.id);
     setOpField(next);
     setLabel(DATE_TIME_VALUE_OP_META[next].label);
   }
@@ -147,7 +147,7 @@ export function DateDiffComponent({ data, emit }: NodeProps<DateDiffNodeType>) {
     }
     setOp(next); // sets data.op + reconciles + recomputes (useNodeField)
     setLabel(DATE_DIFF_OP_META[next].label);
-    if (data.syncBasisInput()) await getActiveArea()?.update("node", data.id);
+    if (data.syncBasisInput()) await getActiveArea()?.rerenderNode(data.id);
   }
   return (
     <NodeShell node={data} emit={emit}>
@@ -195,7 +195,7 @@ export function WorkdaysComponent({ data, emit }: NodeProps<WorkdaysNodeType>) {
     const editor = getActiveEditor();
     const area = getActiveArea();
     if (editor && area) await retypeOutputCables(editor, area, data.id, "result");
-    if (area) await area.update("node", data.id);
+    if (area) await area.rerenderNode(data.id);
     setOpField(next);
   }
 

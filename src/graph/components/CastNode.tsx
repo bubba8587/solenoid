@@ -27,7 +27,7 @@ export async function applyCastTarget(node: CastNodeType, target: CastTarget): P
   if (out) out.socket = castOutput(target).socket;
   if (editor && area) await retypeOutputCables(editor, area, node.id, "result");
 
-  if (area) await area.update("node", node.id);
+  if (area) await area.rerenderNode(node.id);
   await processGraph();
 }
 

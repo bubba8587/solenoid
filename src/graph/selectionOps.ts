@@ -1,7 +1,7 @@
 // Align / distribute / batch collapse over the selection. Uses the process.ts
 // singletons rather than Canvas-local refs, so it is callable from anywhere.
 
-import type { Surface } from "./surface";
+import type { Area } from "./area";
 import { GroupNode } from "./rete-nodes";
 import { repositionDockedNodes, unselectAllNodes, selectNode } from "./process";
 import { getActiveEditor as getEditor, getActiveArea as getArea } from "./activeGraph";
@@ -13,7 +13,6 @@ import type { Schemes } from "./schemes";
 import type { NodeEditor } from "rete";
 
 type Editor = NodeEditor<Schemes>;
-type Area = Surface;
 type Box = NodeBox;
 
 function selectedNodeIds(editor: Editor): string[] {
@@ -67,7 +66,7 @@ async function applyMoves(editor: Editor, area: Area, moves: Move[]): Promise<vo
     for (const [id, { dx, dy }] of delta) {
       const v = area.nodeViews.get(id);
       if (!v) continue;
-      await area.translate(id, { x: v.position.x + dx, y: v.position.y + dy });
+      await area.moveNode(id, { x: v.position.x + dx, y: v.position.y + dy });
       repositionDockedNodes(id);
     }
   } finally {

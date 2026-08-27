@@ -21,7 +21,7 @@ export function RunningComponent({ data, emit }: NodeProps<RunningNodeType>) {
     if (next === "all") await dropInputCables(data.id, ["window"]);
     data.setMode(next);
     setMode(next);
-    await getActiveArea()?.update("node", data.id);
+    await getActiveArea()?.rerenderNode(data.id);
     await processGraph();
   }
 

@@ -1,4 +1,4 @@
-import type { Surface } from "./surface";
+import type { Area } from "./area";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
@@ -98,20 +98,15 @@ function makeFakeArea() {
   };
   const area = {
     nodeViews,
-    async translate(id: string, pos: Pos) {
+    async moveNode(id: string, pos: Pos) {
       const v = nodeViews.get(id);
       if (v) v.position = { ...pos };
     },
-    async resize(id: string, w: number, h: number) {
-      const v = nodeViews.get(id);
-      if (!v) return;
-      v.stamped = { w, h };
-      v.heightPinned = true;
-    },
-    async update() { /* re-render — nothing to do headless */ },
-    area: { transform: { k: 1, x: 0, y: 0 } },
+    async rerenderCables() {},
+    async rerenderNode() { /* re-render — nothing to do headless */ },
+    transform: { k: 1, x: 0, y: 0 },
   };
-  return { area: area as unknown as Surface, addView };
+  return { area: area as unknown as Area, addView };
 }
 
 
@@ -209,7 +204,7 @@ async function buildScene() {
   return { editor, area, arrangeFn, src, m1, m2, sink, group };
 }
 
-function boxOf(area: Surface, id: string): Box {
+function boxOf(area: Area, id: string): Box {
   const v = area.nodeViews.get(id) as unknown as FakeView;
   return { id, x: v.position.x, y: v.position.y, w: v.element.offsetWidth, h: v.element.offsetHeight };
 }

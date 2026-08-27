@@ -38,14 +38,14 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
 
   async function addRow() {
     data.addValueInput();
-    await getActiveArea()?.update("node", data.id);
+    await getActiveArea()?.rerenderNode(data.id);
     await processGraph();
   }
 
   async function removeRow(key: string) {
     await dropInputCables(data.id, [key]);
     data.removeValueInput(key);
-    await getActiveArea()?.update("node", data.id);
+    await getActiveArea()?.rerenderNode(data.id);
     bumpConnectionVersion();
     await processGraph();
   }

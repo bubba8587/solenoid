@@ -1434,10 +1434,10 @@ export class ReconcileNode extends ClassicPreset.Node {
 function summarizeReconcile(s: ReconcileSummary): string {
   const fmt = (n: number) => (Number.isInteger(n) ? n.toLocaleString(APP_LOCALE) : n.toLocaleString(APP_LOCALE, { maximumFractionDigits: 2 }));
   const parts = [`**${s.added}** added`, `**${s.removed}** removed`, `**${s.changed}** changed`, `**${s.unchanged}** unchanged`];
-  // Surface unmatchable rows so a shrunk output isn't mistaken for a clean reconciliation.
+  // Area unmatchable rows so a shrunk output isn't mistaken for a clean reconciliation.
   if (s.skipped > 0) parts.push(`**${s.skipped}** skipped`);
   let out = parts.join(" · ");
-  // Surface one-sided columns so an all-"unchanged" result isn't read as identical frames.
+  // Area one-sided columns so an all-"unchanged" result isn't read as identical frames.
   if (s.addedColumns.length || s.removedColumns.length) {
     const bits = [...s.addedColumns.map((n) => `+${n}`), ...s.removedColumns.map((n) => `−${n}`)];
     out += `\n\n_Columns: ${bits.join(" · ")}._`;
@@ -1866,7 +1866,7 @@ export class ComputedColumnNode extends ClassicPreset.Node {
         for (const v of added) if (!this.inputs[v]) this.addInput(v, anyDataIn(v));
         await dropInputCables(this.id, removed); // onePrunePath: prune before removeInput
         for (const v of removed) if (this.inputs[v]) this.removeInput(v);
-        await getActiveArea()?.update("node", this.id);
+        await getActiveArea()?.rerenderNode(this.id);
       })();
     });
   }

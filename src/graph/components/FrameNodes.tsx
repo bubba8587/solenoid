@@ -268,14 +268,14 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
 
   async function addPair() {
     data.addValuePair();
-    await getActiveArea()?.update("node", data.id);
+    await getActiveArea()?.rerenderNode(data.id);
     await processGraph();
   }
 
   async function removePair(aKey: string, bKey: string) {
     await dropInputCables(data.id, [aKey, bKey]);
     data.removeValuePair(aKey);
-    await getActiveArea()?.update("node", data.id);
+    await getActiveArea()?.rerenderNode(data.id);
     bumpConnectionVersion();
     await processGraph();
   }

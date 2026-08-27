@@ -134,8 +134,7 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   // Runs after every commit — also covers the collapse toggle's re-layout.
   useLayoutEffect(syncOutputSocketTop);
 
-  // Clear the inline `height` stamped by area.resize on collapse — React's
-  // re-render can't clear it, and the card would stay full-height while empty.
+  // A pinned inline `height` would keep the collapsed card full-height while empty.
   useLayoutEffect(() => {
     if (collapsed) ref.current?.style.removeProperty("height");
   }, [collapsed]);
@@ -157,7 +156,7 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
       // Update LIVE during a resize drag so cables re-route; the grip drags off
       // window listeners, so recreating this node's DOM here doesn't drop it.
       // Owning area (not main): this card may live inside an open drill-in.
-      void getOwningArea(node.id)?.update("node", node.id);
+      void getOwningArea(node.id)?.rerenderNode(node.id);
       // A resize can shift this node's sockets — keep any docked FC aligned.
       repositionDockedNodes(node.id);
       // If THIS node is a docked FC, re-center it on its host now that its real
@@ -213,7 +212,7 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
     if (node) {
       collapseStore.toggle(node.id);
       // Nudge the OWNING area (drill-in aware) so cable endpoints re-measure.
-      void getOwningArea(node.id)?.update("node", node.id);
+      void getOwningArea(node.id)?.rerenderNode(node.id);
     }
   }
   function toggleCollapse(e: React.MouseEvent) {

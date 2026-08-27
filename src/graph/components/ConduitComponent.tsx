@@ -201,7 +201,7 @@ export function ConduitComponent({ data }: Props) {
   // — and the block expands exactly when a cable is being aimed at it. The area's
   // re-render verb is what carries the bump (SolNodeAdapter → updateNodeInternals).
   useEffect(() => {
-    void getOwningArea(node.id)?.update("node", node.id);
+    void getOwningArea(node.id)?.rerenderNode(node.id);
   }, [node.id, angle, scale, lanes]);
 
   // Per-socket cable leads: inputs arrive into the −x face, outputs leave the +x face,
@@ -242,7 +242,7 @@ export function ConduitComponent({ data }: Props) {
     const next = new ConduitNodeType({ angle: node.angle }) as unknown as SolenoidNode;
     await editor.addNode(next);
     const pos = area.nodeViews.get(node.id)?.position ?? { x: 0, y: 0 };
-    await area.translate(next.id, { x: pos.x + 130 * c, y: pos.y + 130 * s });
+    await area.moveNode(next.id, { x: pos.x + 130 * c, y: pos.y + 130 * s });
     const n = Math.max(realLanes, 1);
     for (let i = 0; i < n; i++) {
       try {

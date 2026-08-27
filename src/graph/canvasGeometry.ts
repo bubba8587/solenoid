@@ -1,7 +1,7 @@
-import type { Surface } from "./surface";
+import type { Area } from "./area";
 
 export function getSocketScreenCenter(
-  area: Surface,
+  area: Area,
   nodeId: string,
   socketKey: string,
   side: "input" | "output",
@@ -17,12 +17,12 @@ export function getSocketScreenCenter(
 }
 
 export function screenToCanvas(
-  area: Surface,
+  area: Area,
   container: HTMLElement,
   sx: number,
   sy: number,
 ): { x: number; y: number } {
-  const { x: tx, y: ty, k } = area.area.transform;
+  const { x: tx, y: ty, k } = area.transform;
   const r = container.getBoundingClientRect();
   return { x: (sx - r.left - tx) / k, y: (sy - r.top - ty) / k };
 }

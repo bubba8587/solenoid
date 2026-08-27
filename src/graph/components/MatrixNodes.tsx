@@ -42,7 +42,7 @@ export function MatDetComponent({ data, emit }: NodeProps<MatDetNodeType>) {
     const editor = getActiveEditor();
     const area = getActiveArea();
     if (editor && area) await retypeOutputCables(editor, area, data.id, "result");
-    if (area) await area.update("node", data.id);
+    if (area) await area.rerenderNode(data.id);
     setOpField(next);
   }
   return (

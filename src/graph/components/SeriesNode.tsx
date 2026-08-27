@@ -18,7 +18,7 @@ export function SeriesComponent({ data, emit }: NodeProps<SeriesNodeType>) {
     const departing = data.keysDroppedBySwitch(next);
     if (departing.length > 0) await dropInputCables(data.id, departing);
     data.setOp(next);
-    await getActiveArea()?.update("node", data.id);
+    await getActiveArea()?.rerenderNode(data.id);
     setOpField(next);
   }
 

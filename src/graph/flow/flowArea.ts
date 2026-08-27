@@ -1,16 +1,14 @@
-// THE Surface implementation (see ../surface.ts). process.ts, persistence's
-// rebuildGraph, fcReconcile, zoomAt, NavMenu's zoom pill, flyToNode, and the
-// node components all speak the area-shaped Surface API; those verbs land here
-// and become React Flow state.
+// THE Area implementation (see ../area.ts): the model-side verbs land here and
+// become React Flow state through late-bound callbacks the surface supplies.
 import type { NodeEditor } from "rete";
 import type { Schemes } from "../schemes";
-import type { Surface } from "../surface";
+import type { Area } from "../area";
 import { clampZoom } from "../areaPresets";
 
 export type FlowAreaCallbacks = {
-  /** Re-render one node card (rete's `area.update("node", id)`). */
+  /** Re-render one node card. */
   bumpNode(id: string): void;
-  /** Re-derive the edge list from the editor (connection render/update). */
+  /** Re-derive the edge list from the editor. */
   bumpConnections(): void;
   /** Reflect a programmatic node move into RF state. */
   moveNode(id: string, pos: { x: number; y: number }): void;
@@ -20,21 +18,20 @@ export type FlowAreaCallbacks = {
   getContainer(): HTMLElement | null;
 };
 
-export type FlowArea = Surface & {
+/** The surface-side half: what FlowSurface writes back as React Flow reports. */
+export type FlowArea = Area & {
   /** Keep nodeViews mirroring the editor's node set + model positions. */
   syncViews(): void;
-  /** RF viewport → rete-shaped transform (called from onMove). */
+  /** RF viewport → the camera (called from onMove). */
   setTransform(t: { x: number; y: number; k: number }): void;
-  /** Track the pointer in canvas coords (paste-at-cursor and friends). */
+  /** Track the pointer in canvas coords. */
   setPointer(p: { x: number; y: number }): void;
   /** RF measured a card (onNodesChange `dimensions`) — the DOM-free size source. */
   setSize(id: string, size: { w: number; h: number }): void;
 };
 
 /** A node view whose element resolves to the LIVE React Flow node wrapper, so
- *  element-reading code (flash, containment, width measures) sees real DOM.
- *  `translate` matches rete's NodeView — the auto-arrange applier calls it
- *  per node. */
+ *  element-reading code (flash, containment, width measures) sees real DOM. */
 class FlowNodeView {
   position: { x: number; y: number };
   private dummy: HTMLElement | null = null;
@@ -80,11 +77,8 @@ export function makeFlowArea(
   const sizes = new Map<string, { w: number; h: number }>();
   const transform = { x: 0, y: 0, k: 1 };
   const pointer = { x: 0, y: 0 };
-  const detachedHolder = document.createElement("div");
-  const detachedContainer = document.createElement("div");
-  // Rete-shaped `render` events for per-card re-renders — the one channel the
-  // HTML-in-Canvas layer needs (it re-captures just the re-rendered card).
-  const pipes = new Set<(ctx: unknown) => unknown>();
+  const detached = document.createElement("div");
+  const renderListeners = new Set<(id: string) => void>();
 
   const pushViewport = () => cb.setViewport({ x: transform.x, y: transform.y, zoom: transform.k });
 
@@ -112,69 +106,59 @@ export function makeFlowArea(
   };
   syncViews();
 
-  const fake = {
+  const area: FlowArea = {
     nodeViews,
     connectionViews,
     get container(): HTMLElement {
-      return cb.getContainer() ?? detachedContainer;
+      return cb.getContainer() ?? detached;
     },
-    area: {
-      transform,
-      pointer,
-      content: { holder: detachedHolder },
-      // rete Area2D semantics: set the scale, then ADD (ox, oy) to the pan.
-      async zoom(k: number, ox = 0, oy = 0) {
-        transform.k = clampZoom(k);
-        transform.x += ox;
-        transform.y += oy;
-        pushViewport();
-      },
-      async translate(x: number, y: number) {
-        transform.x = x;
-        transform.y = y;
-        pushViewport();
-      },
-      setPointerFrom() {},
-      setDragHandler() {},
-      setZoomHandler() {},
+    get viewport(): HTMLElement {
+      return cb.getContainer()?.querySelector<HTMLElement>(".react-flow__viewport") ?? detached;
     },
-    async update(type: string, id: string) {
-      if (type === "node") cb.bumpNode(id);
-      else if (type === "connection") cb.bumpConnections();
-      for (const p of pipes) p({ type: "render", data: { type, payload: { id } } });
+    transform,
+    pointer,
+    async zoom(k, ox = 0, oy = 0) {
+      transform.k = clampZoom(k);
+      transform.x += ox;
+      transform.y += oy;
+      pushViewport();
     },
-    async translate(id: string, pos: { x: number; y: number }) {
+    async pan(x, y) {
+      transform.x = x;
+      transform.y = y;
+      pushViewport();
+    },
+    async moveNode(id, pos) {
       if (!nodeViews.has(id)) nodeViews.set(id, new FlowNodeView(id, { ...pos }, translateNode));
       await translateNode(id, pos);
     },
-    async resize() {},
-    addPipe(fn: (ctx: unknown) => unknown) {
-      pipes.add(fn);
+    async rerenderNode(id) {
+      cb.bumpNode(id);
+      for (const l of renderListeners) l(id);
     },
-    removePipe(fn: (ctx: unknown) => unknown) {
-      pipes.delete(fn);
+    async rerenderCables() {
+      cb.bumpConnections();
     },
-    use() {},
-    async emit(ctx: unknown) {
-      return ctx;
+    onRender(fn) {
+      renderListeners.add(fn);
+      return () => { renderListeners.delete(fn); };
     },
-    destroy() {},
+    measured(id) {
+      return sizes.get(id);
+    },
     syncViews,
-    setTransform(t: { x: number; y: number; k: number }) {
+    setTransform(t) {
       transform.x = t.x;
       transform.y = t.y;
       transform.k = t.k;
     },
-    setPointer(p: { x: number; y: number }) {
+    setPointer(p) {
       pointer.x = p.x;
       pointer.y = p.y;
     },
-    setSize(id: string, size: { w: number; h: number }) {
+    setSize(id, size) {
       sizes.set(id, size);
     },
-    measured(id: string) {
-      return sizes.get(id);
-    },
   };
-  return fake as unknown as FlowArea;
+  return area;
 }

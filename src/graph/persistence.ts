@@ -27,7 +27,7 @@ import { frameFormatStore, type FrameColumnFormat } from "./frameFormatStore";
 import { paletteStore, reportPaletteStore } from "./palette";
 import { docMetaStore } from "./docMetaStore";
 import { loadRevealStore } from "./loadReveal";
-import { zoomAt, type ZoomSurface } from "./zoomAt";
+import { zoomAt } from "./zoomAt";
 
 
 /** Curtain threshold in nodes+connections across BOTH sides, so a small doc swaps
@@ -364,7 +364,7 @@ async function rebuildGraph(
   for (let i = 0; i < toBuild.length; i += yieldEvery) {
     await Promise.all(toBuild.slice(i, i + yieldEvery).map(async ({ node, x, y }) => {
       await editor.addNode(node as SolenoidNode);
-      await area.translate(node.id, { x, y });
+      await area.moveNode(node.id, { x, y });
       bump();
     }));
     if (curtain) await paint();
@@ -461,7 +461,7 @@ async function rebuildGraph(
 
   await processGraph();
   // zoomAt over an empty node set produces a NaN transform.
-  if (editor.getNodes().length > 0) await zoomAt(area as unknown as ZoomSurface, editor.getNodes());
+  if (editor.getNodes().length > 0) await zoomAt(area, editor.getNodes());
   syncGroupCollapse(editor, area); // restore any collapsed groups' hidden members
 
   // Two RAFs: docked FCs can only snap once heights settle (a Decimal chip lays

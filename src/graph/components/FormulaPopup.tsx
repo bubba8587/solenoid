@@ -43,7 +43,7 @@ const TABLE_LAMBDA_TYPES = new Set(["MapTableNode", "ByAxisNode", "MakeArrayNode
 function setVarDesc(node: { id: string; varDescriptions: Record<string, string> }, name: string, desc: string): void {
   if (desc.trim() === "") delete node.varDescriptions[name];
   else node.varDescriptions[name] = desc;
-  void getOwningArea(node.id)?.update("node", node.id);
+  void getOwningArea(node.id)?.rerenderNode(node.id);
 }
 
 function formulaHostOf(node: ClassicPreset.Node | undefined): FormulaHost | null {

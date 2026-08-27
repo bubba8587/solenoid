@@ -1,4 +1,4 @@
-import type { Surface } from "./surface";
+import type { Area } from "./area";
 import type { NodeEditor } from "rete";
 import type { DataflowEngine } from "rete-engine";
 import { Cancelled } from "rete-engine";
@@ -14,12 +14,12 @@ import type { Schemes } from "./schemes";
 
 let _editor: NodeEditor<Schemes> | null = null;
 let _engine: DataflowEngine<Schemes> | null = null;
-let _area: Surface | null = null;
+let _area: Area | null = null;
 
 export function setEditorRefs(
   editor: NodeEditor<Schemes>,
   engine: DataflowEngine<Schemes>,
-  area: Surface,
+  area: Area,
 ) {
   _editor = editor;
   _engine = engine;
@@ -471,7 +471,7 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
       return false;
     });
   }
-  await Promise.all(toRender.map((node) => _area!.update("node", node.id)));
+  await Promise.all(toRender.map((node) => _area!.rerenderNode(node.id)));
   if (perf) {
     const t2 = performance.now();
     const ipc1 = ipcSnapshot();

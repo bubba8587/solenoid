@@ -46,7 +46,7 @@ export function ResizeHandle({ nodeId }: { nodeId: string }) {
   };
   const onResizeEnd = () => {
     start.current = null;
-    void getActiveArea()?.update("node", nodeId);
+    void getActiveArea()?.rerenderNode(nodeId);
     scheduleAutosave();
   };
 

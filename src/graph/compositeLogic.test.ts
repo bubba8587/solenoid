@@ -1,4 +1,4 @@
-import type { Surface } from "./surface";
+import type { Area } from "./area";
 import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
@@ -38,12 +38,12 @@ function makeFakeArea(positions: Map<string, { x: number; y: number }>) {
         return p ? { position: p, element: { offsetWidth: 100, offsetHeight: 60 } } : undefined;
       },
     },
-    translate: async (id: string, pos: { x: number; y: number }) => {
+    moveNode: async (id: string, pos: { x: number; y: number }) => {
       translated.push({ id, x: pos.x, y: pos.y });
       positions.set(id, pos); // keep the view in sync, like the real area
     },
   };
-  return { area: area as unknown as Surface, translated };
+  return { area: area as unknown as Area, translated };
 }
 
 function connect(

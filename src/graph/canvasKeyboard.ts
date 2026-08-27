@@ -1,5 +1,5 @@
 // Canvas keyboard shortcuts, skipped while focus is in an editable form element.
-import type { Surface } from "./surface";
+import type { Area } from "./area";
 import type { MutableRefObject } from "react";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
@@ -37,7 +37,7 @@ import { documentStore } from "./documentStore";
 
 export interface CanvasKeyboardDeps {
   editorRef: MutableRefObject<NodeEditor<Schemes> | null>;
-  areaRef: MutableRefObject<Surface | null>;
+  areaRef: MutableRefObject<Area | null>;
   historyRef: MutableRefObject<{ undo(): Promise<unknown>; redo(): Promise<unknown> } | null>;
   containerRef: MutableRefObject<HTMLDivElement | null>;
   screenMouseRef: MutableRefObject<{ x: number; y: number }>;
@@ -130,7 +130,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
     for (const id of toMove) {
       const v = area.nodeViews.get(id);
       if (!v) continue;
-      await area.translate(id, { x: v.position.x + dx, y: v.position.y + dy });
+      await area.moveNode(id, { x: v.position.x + dx, y: v.position.y + dy });
       repositionDockedNodes(id); // a docked FC rides along with its host
     }
     if (!standoffStore.isEmpty()) settleStandoffs();
@@ -273,7 +273,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
         const area = areaRef.current;
         const container = containerRef.current;
         if (area && container) {
-          const { x: tx, y: ty, k } = area.area.transform;
+          const { x: tx, y: ty, k } = area.transform;
           const rect = container.getBoundingClientRect();
           const canvasX = (screenMouseRef.current.x - rect.left - tx) / k;
           const canvasY = (screenMouseRef.current.y - rect.top - ty) / k;

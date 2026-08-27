@@ -1,4 +1,4 @@
-import type { Surface } from "./surface";
+import type { Area } from "./area";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
@@ -47,14 +47,15 @@ function makeFakeArea() {
   };
   const area = {
     nodeViews,
-    async translate(id: string, pos: Pos) {
+    async moveNode(id: string, pos: Pos) {
       const v = nodeViews.get(id);
       if (v) v.position = { ...pos };
     },
-    async update() {},
-    area: { transform: { k: 1, x: 0, y: 0 } },
+    async rerenderCables() {},
+    async rerenderNode() {},
+    transform: { k: 1, x: 0, y: 0 },
   };
-  return { area: area as unknown as Surface, addView };
+  return { area: area as unknown as Area, addView };
 }
 
 let rafQueue: FrameRequestCallback[] = [];
@@ -109,7 +110,7 @@ describe("expand-push records survive a Tidy only with a fresh restore target", 
 
     // 2. A Tidy-style programmatic move relocates N (the applier does exactly
     //    this: area.translate with no drag events, so no record invalidation).
-    await area.translate(n.id, { x: 1200, y: 140 });
+    await area.moveNode(n.id, { x: 1200, y: 140 });
 
     // 3. Expand B — its footprint (1000..1600 × 80..380) covers N's new spot,
     //    so N is pushed again. This merge must treat the old record as stale.

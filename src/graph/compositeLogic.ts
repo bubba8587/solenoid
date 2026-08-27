@@ -1,4 +1,4 @@
-import type { Surface } from "./surface";
+import type { Area } from "./area";
 import { ClassicPreset } from "rete";
 import type { NodeEditor } from "rete";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "./schemes";
@@ -15,7 +15,6 @@ import { getOwningEditor } from "./activeGraph";
 // composite's private internal one; every crossing cable becomes a declared boundary port.
 
 type Editor = NodeEditor<Schemes>;
-type Area = Surface;
 
 function nodeBox(area: Area, id: string): { x: number; y: number; w: number; h: number } | null {
   return measuredBox(area, id, getOwningEditor(id) ?? undefined);
@@ -123,7 +122,7 @@ export async function createCompositeFromSelection(editor: Editor, area: Area): 
     // Must run AFTER the ports exist — the per-cable pipe settle above couldn't see them.
     composite.settleInternalTypes();
     await editor.addNode(composite as SolenoidNode);
-    await area.translate(composite.id, { x: minX, y: minY });
+    await area.moveNode(composite.id, { x: minX, y: minY });
   } finally {
     endGraphRebuild();
   }
@@ -165,7 +164,7 @@ export async function unpackComposite(editor: Editor, area: Area, compositeId: s
       if (markerIds.has(n.id)) continue; // boundary markers dissolve with the card
       await editor.addNode(n as SolenoidNode);
       const rel = composite.internalPositions[n.id];
-      await area.translate(n.id, { x: baseX + (rel?.x ?? 0), y: baseY + (rel?.y ?? 0) });
+      await area.moveNode(n.id, { x: baseX + (rel?.x ?? 0), y: baseY + (rel?.y ?? 0) });
     }
 
     for (const c of internalConns) {

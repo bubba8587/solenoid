@@ -1,4 +1,4 @@
-import type { Surface } from "./surface";
+import type { Area } from "./area";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
@@ -22,8 +22,8 @@ function fakeEditor(ids: string[]): NodeEditor<Schemes> {
   const nodes = new Map(ids.map((id) => [id, { id }]));
   return { getNode: (id: string) => nodes.get(id) } as unknown as NodeEditor<Schemes>;
 }
-const fakeArea = {} as unknown as Surface;
-const subArea = { sub: true } as unknown as Surface;
+const fakeArea = {} as unknown as Area;
+const subArea = { sub: true } as unknown as Area;
 
 const main = fakeEditor(["m1", "m2"]);
 const sub = fakeEditor(["s1", "s2"]);

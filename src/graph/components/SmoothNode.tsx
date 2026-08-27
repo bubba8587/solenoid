@@ -17,7 +17,7 @@ export function SmoothComponent({ data, emit }: NodeProps<SmoothNodeType>) {
     const departing = SMOOTH_OP_META[data.op].params.map((p) => p.key).filter((k) => !SMOOTH_OP_META[next].params.some((p) => p.key === k));
     if (departing.length) await dropInputCables(data.id, departing); // onePrunePath
     data.setOp(next);
-    await getActiveArea()?.update("node", data.id);
+    await getActiveArea()?.rerenderNode(data.id);
     setOpField(next);
     await processGraph(data.id);
   }

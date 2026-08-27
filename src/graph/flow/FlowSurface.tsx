@@ -32,7 +32,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { ClassicPreset } from "rete";
 import type { Schemes } from "../schemes";
-import type { Surface } from "../surface";
+import type { Area } from "../area";
 import { registerFlowSocket, registerFlowResizeGrip } from "../flowSurface";
 import { FlowSocketHandle } from "./FlowSocketHandle";
 import { FlowResizeGrip } from "./FlowResizeGrip";
@@ -91,7 +91,7 @@ import { installLassoSelection, type LassoState } from "../canvasLasso";
 import { installFlowPinch } from "./flowPinch";
 import { installTouchCardPan } from "./flowTouchPan";
 import { installWheelZoom } from "./flowWheel";
-import { zoomAt, type ZoomSurface } from "../zoomAt";
+import { zoomAt } from "../zoomAt";
 import { groupCollapseStore } from "../groupCollapse";
 import { HtmlCanvasLayer } from "../components/HtmlCanvasLayer";
 import { standoffStore, type SettleOpts } from "../standoffs";
@@ -415,11 +415,11 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           if (n) focus.push(n);
         }
         if (focus.length) {
-          void zoomAt(s.area as unknown as ZoomSurface, focus);
+          void zoomAt(s.area, focus);
         }
       } else if (!active && wasActive) {
         for (const [id, pos] of snapshot) {
-          if (s.area.nodeViews.has(id)) void s.area.translate(id, pos);
+          if (s.area.nodeViews.has(id)) void s.area.moveNode(id, pos);
         }
         snapshot.clear();
         scheduleAutosave();
@@ -439,7 +439,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     return installLassoSelection({
       container: el,
       editorRef: { current: s.editor },
-      areaRef: { current: s.area as unknown as Surface },
+      areaRef: { current: s.area as unknown as Area },
       setLasso,
     });
   }, [s]);
@@ -483,7 +483,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   useEffect(() => {
     const unKeys = installCanvasKeyboard({
       editorRef: { current: s.editor },
-      areaRef: { current: s.area as unknown as Surface },
+      areaRef: { current: s.area as unknown as Area },
       historyRef: {
         current: {
           undo: () => hooksRef.current.history.undo(),
@@ -738,7 +738,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
               fc.dockSelf(s.editor);
               const dims = dockedRenderedDims(s.area, fc.id, fc.width, fc.height);
               const pos = computeDockedCanvasPos(s.area, el, fc.hostNodeId, fc.socketKey, fc.side, dims.w, dims.h);
-              if (pos) await s.area.translate(fc.id, pos);
+              if (pos) await s.area.moveNode(fc.id, pos);
               await insertFcInline(s.editor, fc);
               await processGraph();
             })();
@@ -746,7 +746,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
             fc.dockSelf(s.editor);
             const dims = dockedRenderedDims(s.area, fc.id, fc.width, fc.height);
             const pos = computeDockedCanvasPos(s.area, el, fc.hostNodeId, fc.socketKey, fc.side, dims.w, dims.h);
-            if (pos) void s.area.translate(fc.id, pos);
+            if (pos) void s.area.moveNode(fc.id, pos);
           } else {
             fc.releaseDock();
           }
@@ -768,11 +768,11 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       // A node created from an INPUT drag meets the drop point with its OUTPUT
       // edge, so it shifts left by its width once the card has rendered.
       const fromInput = menu.quickWire?.side === "input";
-      await s.area.translate(node.id, { x: Math.round(pos.x), y: Math.round(pos.y) });
+      await s.area.moveNode(node.id, { x: Math.round(pos.x), y: Math.round(pos.y) });
       if (fromInput) {
         requestAnimationFrame(() => {
           const w = s.area.nodeViews.get(node.id)?.element.offsetWidth ?? 0;
-          if (w > 0) void s.area.translate(node.id, { x: Math.round(pos.x) - w, y: Math.round(pos.y) });
+          if (w > 0) void s.area.moveNode(node.id, { x: Math.round(pos.x) - w, y: Math.round(pos.y) });
         });
       }
       nodeNameStore.ensure(node.id, node.constructor.name);
@@ -910,7 +910,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           nodeStrokeWidth={1}
         />
       </ReactFlow>
-      <HtmlCanvasLayer editor={s.editor} area={s.area as unknown as Surface} />
+      <HtmlCanvasLayer editor={s.editor} area={s.area as unknown as Area} />
       {menu && (
         <AddNodeMenu
           screenX={menu.screenX}
@@ -927,7 +927,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           onAttachFormat={(t) =>
             void (async () => {
               const el = wrapperRef.current;
-              if (el) await attachFormatController(s.editor, s.area as unknown as Surface, el, t);
+              if (el) await attachFormatController(s.editor, s.area as unknown as Area, el, t);
             })()
           }
           onClose={() => setSocketCtx(null)}
@@ -939,7 +939,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           onInsertConduit={(t) =>
             void (async () => {
               const el = wrapperRef.current;
-              if (el) await insertConduitForCables(s.editor, s.area as unknown as Surface, el, t);
+              if (el) await insertConduitForCables(s.editor, s.area as unknown as Area, el, t);
             })()
           }
           onDelete={(t) => void deleteCables(s.editor, t)}
@@ -953,7 +953,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           onIsolateChain={(ids) => isolateChainOf(ids)}
           onWhereUsed={(id) => isolateWhereUsed(id)}
           onPin={(id) => pinNodeValue(id)}
-          onLinkStandoff={(t) => linkStandoffBetween(s.editor, s.area as unknown as Surface, t)}
+          onLinkStandoff={(t) => linkStandoffBetween(s.editor, s.area as unknown as Area, t)}
           onAddComment={(id) => commentsPanelUi.openFor(id)}
           onEditComposite={(id) => {
             const n = s.editor.getNode(id);
@@ -962,7 +962,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
             if (compositeEditorStore.isOpen()) compositeEditorStore.drillInto(n);
             else compositeEditorStore.open(n);
           }}
-          onUnpackComposite={(id) => void unpackComposite(s.editor, s.area as unknown as Surface, id)}
+          onUnpackComposite={(id) => void unpackComposite(s.editor, s.area as unknown as Area, id)}
           onClose={() => setNodeCtx(null)}
         />
       )}

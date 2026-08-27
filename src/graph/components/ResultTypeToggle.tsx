@@ -30,7 +30,7 @@ export async function applyResultAs(node: Producer, dim: ResultDim, resultAs: Re
   if (out) out.socket = resultSocket(dim, resultAs);
   if (editor && area) await retypeOutputCables(editor, area, node.id, "result");
 
-  if (area) await area.update("node", node.id);
+  if (area) await area.rerenderNode(node.id);
   await processGraph();
 }
 

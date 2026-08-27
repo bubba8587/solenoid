@@ -26,7 +26,7 @@ async function applyRecordOp(node: RecordNodeType, next: RecordOp): Promise<void
   if (departing.length) await dropInputCables(node.id, departing);
   node.setOp(next);
   const area = getActiveArea();
-  if (area) await area.update("node", node.id);
+  if (area) await area.rerenderNode(node.id);
   await processGraph();
 }
 

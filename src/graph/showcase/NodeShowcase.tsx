@@ -63,7 +63,7 @@ export default function NodeShowcase({ initialType }: { initialType: string }) {
       await stack.editor.addNode(node);
       if (canceled) return;
       nodeNameStore.ensure(node.id, node.constructor.name);
-      await stack.area.translate(node.id, { x: PAD, y: PAD });
+      await stack.area.moveNode(node.id, { x: PAD, y: PAD });
       await processGraph();
     })();
     return () => { canceled = true; };

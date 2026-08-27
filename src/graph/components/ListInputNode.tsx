@@ -34,7 +34,7 @@ export async function applyListType(node: ListInputNodeType, dt: ListElemType): 
     }
     await retypeOutputCables(editor, area, node.id, "list");
   }
-  if (area) await area.update("node", node.id);
+  if (area) await area.rerenderNode(node.id);
   await processGraph();
 }
 

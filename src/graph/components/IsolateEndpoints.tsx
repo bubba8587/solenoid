@@ -30,7 +30,7 @@ function socketCanvasPos(holder: HTMLElement, nodeId: string, key: string, side:
   if (!el) return null;
   const r = el.getBoundingClientRect();
   const hr = holder.getBoundingClientRect();
-  const k = getActiveArea()?.area.transform.k || 1;
+  const k = getActiveArea()?.transform.k || 1;
   return { x: (r.left + r.width / 2 - hr.left) / k, y: (r.top + r.height / 2 - hr.top) / k };
 }
 
@@ -62,7 +62,7 @@ export function IsolateEndpoints() {
   }, [focusKey]);
 
   if (!focus || !editor || !area) return null;
-  const holder = area.area.content.holder as HTMLElement;
+  const holder = area.viewport;
 
   const startDrag = (which: "entry" | "exit") => (e: React.PointerEvent) => {
     e.stopPropagation();
@@ -77,7 +77,7 @@ export function IsolateEndpoints() {
   const onDragMove = (e: React.PointerEvent) => {
     const d = dragRef.current;
     if (!d) return;
-    const k = area.area.transform.k || 1;
+    const k = area.transform.k || 1;
     setOverride((o) => ({ ...o, [d.which]: { x: d.base.x + (e.clientX - d.sx) / k, y: d.base.y + (e.clientY - d.sy) / k } }));
   };
   const endDrag = (e: React.PointerEvent) => {

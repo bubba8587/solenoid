@@ -33,7 +33,7 @@ export async function applyInterpolateMode(node: InterpolateNodeType, mode: Inte
   }
   node._rebuildSockets();
 
-  if (area) await area.update("node", node.id);
+  if (area) await area.rerenderNode(node.id);
   await processGraph();
 }
 

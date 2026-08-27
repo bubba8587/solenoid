@@ -1,4 +1,4 @@
-import type { Surface } from "./surface";
+import type { Area } from "./area";
 import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
@@ -43,8 +43,8 @@ function makeGraph() {
   });
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
-  // runGraphPass touches the area only via `area.update("node", id)` — stub it.
-  const area = { update: async () => {} } as unknown as Surface;
+  // runGraphPass touches the area only via `area.rerenderNode(id)` — stub it.
+  const area = { rerenderNode: async () => {} } as unknown as Area;
   setEditorRefs(editor, engine, area);
   return { editor, engine };
 }

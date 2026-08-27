@@ -1,4 +1,4 @@
-import type { Surface } from "./surface";
+import type { Area } from "./area";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import { GroupNode, DisplayNode, FormatControllerNode, ConduitNode } from "./rete-nodes";
@@ -7,7 +7,6 @@ import { createNotifier } from "./storeKit";
 import { displayNameOf } from "./nodeNamer";
 
 type Editor = NodeEditor<Schemes>;
-type Area = Surface;
 
 export interface RetainedTerminal {
   kind: "display" | "node"; // "display" → read cachedValue; "node" → read cableValueStore
@@ -320,7 +319,6 @@ export function recomputeGroupCollapse(editor: Editor): void {
  *  so EXPAND must re-render members a frame before re-measuring, and COLLAPSE must not
  *  (re-rendering members would clobber the pills' positions). */
 export function settleCollapse(
-  editor: Editor,
   area: Area,
   groupId: string,
   members: string[],
@@ -331,13 +329,9 @@ export function settleCollapse(
   const set = new Set(members);
   for (const m of members) for (const d of dockedNodeStore.getDockedTo(m)) set.add(d.id);
   requestAnimationFrame(() => {
-    void area.update("node", groupId);
-    if (expanding) for (const m of set) void area.update("node", m);
-    requestAnimationFrame(() => {
-      for (const c of editor.getConnections()) {
-        if (set.has(c.source) || set.has(c.target)) void area.update("connection", c.id);
-      }
-    });
+    void area.rerenderNode(groupId);
+    if (expanding) for (const m of set) void area.rerenderNode(m);
+    requestAnimationFrame(() => { void area.rerenderCables(); });
   });
 }
 

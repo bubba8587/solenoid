@@ -195,7 +195,7 @@ function FlowCanvasInner() {
         if ((dockedNode as { selected?: boolean }).selected) continue;
         const { w, h } = dockedRenderedDims(s.area, rel.id, dockedNode.width, dockedNode.height);
         const pos = computeDockedCanvasPos(s.area, el, rel.hostNodeId, rel.socketKey, rel.side, w, h);
-        if (pos) void s.area.translate(rel.id, pos);
+        if (pos) void s.area.moveNode(rel.id, pos);
       }
     };
     setRepositionDocked(repositionDockedTo);
@@ -299,7 +299,7 @@ function FlowCanvasInner() {
             const cable = (ctx as unknown as { data: { source?: string; target?: string } }).data;
             if (cable.target && s.editor.getNode(cable.target)) {
               void processGraph(cable.target, undefined, { topology: true });
-              if (cable.source && s.editor.getNode(cable.source)) void s.area.update("node", cable.source);
+              if (cable.source && s.editor.getNode(cable.source)) void s.area.rerenderNode(cable.source);
             } else {
               void processGraph(undefined, undefined, { topology: true });
             }

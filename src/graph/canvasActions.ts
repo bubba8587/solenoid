@@ -1,4 +1,4 @@
-import type { Surface } from "./surface";
+import type { Area } from "./area";
 import { ClassicPreset, type NodeEditor } from "rete";
 import type { Schemes, SolenoidNode } from "./schemes";
 import type { SocketContextTarget, CableContextTarget } from "./components";
@@ -37,7 +37,7 @@ type SolenoidConnection = import("./schemes").SolenoidConnection;
 // mean flow direction.
 export async function insertConduitForCables(
   editor: NodeEditor<Schemes>,
-  area: Surface,
+  area: Area,
   container: HTMLElement,
   target: CableContextTarget,
 ): Promise<void> {
@@ -135,7 +135,7 @@ export async function insertConduitForCables(
     }
     const conduit = new ConduitNode({ angle }) as unknown as SolenoidNode;
     await editor.addNode(conduit);
-    await area.translate(conduit.id, { x: cx - CONDUIT_PIVOT, y: cy - CONDUIT_PIVOT });
+    await area.moveNode(conduit.id, { x: cx - CONDUIT_PIVOT, y: cy - CONDUIT_PIVOT });
     for (let i = 0; i < chunk.length; i++) {
       const lane = chunk[i];
       const src = editor.getNode(lane.conns[0].source);
@@ -168,7 +168,7 @@ export async function insertConduitForCables(
 // [gap, current distance] — "never closer than a gap, never farther than I placed it".
 export function linkStandoffBetween(
   editor: NodeEditor<Schemes>,
-  area: Surface,
+  area: Area,
   t: { aId: string; bId: string },
 ): void {
   // The same size read the standoff SOLVER uses, so the band matches its boxes.
@@ -203,7 +203,7 @@ export function linkStandoffBetween(
 // Node deletion splices a ghost cable when a node has exactly one in + one out.
 export async function deleteSelection(
   editor: NodeEditor<Schemes>,
-  area: Surface | null,
+  area: Area | null,
 ): Promise<void> {
   // A selected standoff is its own deletion target (exclusive selection).
   const standoffSel = standoffStore.selected();
@@ -329,7 +329,7 @@ export async function deleteCables(
 
 export async function attachFormatController(
   editor: NodeEditor<Schemes>,
-  area: Surface,
+  area: Area,
   container: HTMLElement,
   target: SocketContextTarget,
 ): Promise<void> {
@@ -342,7 +342,7 @@ export async function attachFormatController(
   const rel = dockedNodeStore.get(fc.id);
   if (rel) {
     const pos = computeDockedCanvasPos(area, container, rel.hostNodeId, rel.socketKey, rel.side, fc.width, fc.height);
-    if (pos) await area.translate(fc.id, pos);
+    if (pos) await area.moveNode(fc.id, pos);
   }
   await insertFcInline(editor, fc);
   await processGraph();

@@ -65,7 +65,7 @@ export function SurfaceComponent({ data, emit }: NodeProps<SurfaceNodeType>) {
     if (next === "surface") await dropInputCables(data.id, ["levels"]);
     data.setOp(next);
     setOp(next);
-    await getActiveArea()?.update("node", data.id);
+    await getActiveArea()?.rerenderNode(data.id);
     await processGraph();
   }
 

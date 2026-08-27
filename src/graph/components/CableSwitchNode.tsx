@@ -72,7 +72,7 @@ function SwitchOptionRow({ data, emit, keyName, index, multiSelect, active, chec
       // A title relabels the multi-select cube's `name` column, so multi mode must
       // recompute; single mode only re-renders.
       if (data.multiSelect) void processGraph();
-      else void getActiveArea()?.update("node", data.id);
+      else void getActiveArea()?.rerenderNode(data.id);
     },
   );
   const input = data.inputs[keyName];
@@ -152,7 +152,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     const ed = getActiveEditor();
     const area = getActiveArea();
     if (changed && ed && area) void retypeOutputCables(ed, area, data.id, "out");
-    void area?.update("node", data.id);
+    void area?.rerenderNode(data.id);
     void processGraph();
   }
   function toggleMulti(key: string) {
@@ -164,7 +164,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
   }
   async function addRow() {
     data.addValueInput();
-    await getActiveArea()?.update("node", data.id);
+    await getActiveArea()?.rerenderNode(data.id);
     await processGraph();
   }
   async function removeRow(key: string) {
@@ -172,7 +172,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     data.removeValueInput(key); // re-points activeIndex at the same slot it named
     setSelKeys(data.selectedKeys); // removeValueInput drops the key from the selection
     setSelected(data.activeIndex);
-    await getActiveArea()?.update("node", data.id);
+    await getActiveArea()?.rerenderNode(data.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up
     await processGraph();
   }

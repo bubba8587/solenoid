@@ -81,14 +81,14 @@ export function ExtensibleInputs({
 
   async function addRow() {
     node.addValueInput();
-    await getActiveArea()?.update("node", node.id);
+    await getActiveArea()?.rerenderNode(node.id);
     await processGraph();
   }
 
   async function removeRow(key: string) {
     await dropInputCables(node.id, [key]);
     node.removeValueInput(key);
-    await getActiveArea()?.update("node", node.id);
+    await getActiveArea()?.rerenderNode(node.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up
     await processGraph();
   }

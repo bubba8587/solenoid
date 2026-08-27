@@ -23,7 +23,7 @@ async function applyTableType(node: TableInputNodeType, dt: TableElemType): Prom
   const editor = getActiveEditor();
   const area = getActiveArea();
   if (editor && area) await retypeOutputCables(editor, area, node.id, "table");
-  if (area) await area.update("node", node.id);
+  if (area) await area.rerenderNode(node.id);
   await processGraph();
 }
 

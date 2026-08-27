@@ -18,7 +18,7 @@ type Snapshot = { nodes: number; cables: number; selection: string; zoom: number
 function read(): Snapshot {
   const editor = getActiveEditor();
   const area = getActiveArea();
-  const zoom = area ? Math.round(area.area.transform.k * 100) : 100;
+  const zoom = area ? Math.round(area.transform.k * 100) : 100;
   if (!editor) return { nodes: 0, cables: 0, selection: "Ready", zoom };
 
   const all = editor.getNodes();

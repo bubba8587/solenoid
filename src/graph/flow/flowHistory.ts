@@ -32,12 +32,12 @@ async function restore(json: string): Promise<void> {
   _restoring = true;
   try {
     const area = getArea();
-    const t = area ? { ...area.area.transform } : null;
+    const t = area ? { ...area.transform } : null;
     await loadGraph(JSON.parse(json) as SavedGraph);
     // loadGraph frames the graph (zoomAt); an undo must NOT move the camera.
     if (area && t) {
-      await area.area.translate(t.x, t.y);
-      await area.area.zoom(t.k);
+      await area.pan(t.x, t.y);
+      await area.zoom(t.k);
     }
     // The restored state is the document now — persist it.
     scheduleAutosave();

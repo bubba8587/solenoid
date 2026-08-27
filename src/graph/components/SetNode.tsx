@@ -30,7 +30,7 @@ export async function applySetOp(node: SetNodeType, op: SetOpAll): Promise<void>
     const out = node.outputs.result;
     if (out) out.socket = (isSetRelationOp(op) ? logicalOut("Result") : adoptiveListOut("Result")).socket;
     if (editor && area) await retypeOutputCables(editor, area, node.id, "result");
-    if (area) await area.update("node", node.id);
+    if (area) await area.rerenderNode(node.id);
   }
   await processGraph();
 }

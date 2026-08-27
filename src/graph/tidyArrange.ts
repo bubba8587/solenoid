@@ -1,5 +1,5 @@
-import type { Surface } from "./surface";
-import { zoomAt, type ZoomSurface } from "./zoomAt";
+import type { Area } from "./area";
+import { zoomAt } from "./zoomAt";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import { requestConfirm } from "./confirmStore";
@@ -26,7 +26,7 @@ const TIDY_CONFIRM_THRESHOLD = 12;
 
 export interface TidyDeps {
   editor: NodeEditor<Schemes>;
-  area: Surface;
+  area: Area;
   container: HTMLElement;
   ensureElk: () => Promise<Elk | null>;
   /** Snap every FC docked to `hostId` back onto its socket (defined in the init effect). */
@@ -287,9 +287,6 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     const clusterMembersOf = new Map<string, string[]>(); // leader -> members
     const clusterMemberOffset = new Map<string, { dx: number; dy: number }>();
     const clusterLeaderSize = new Map<string, { w: number; h: number }>();
-    // The leader's REAL size, restored after ELK — the applier resizes a proxy node
-    // to its reported size, here the whole-cluster bbox.
-    const clusterLeaderRealSize = new Map<string, { w: number; h: number }>();
     const clusterFollowers = new Set<string>();
     if (!standoffStore.isEmpty()) {
       const boxOf = (id: string) => measuredBox(area, id, editor);
@@ -312,8 +309,6 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
           const gb = editor.getNode(b[0]) instanceof GroupNode ? 1 : 0;
           return ga !== gb ? ga - gb : (a[1].x + a[1].y) - (b[1].x + b[1].y);
         })[0][0];
-        const leaderBox = boxes.find(([id]) => id === leader)![1];
-        clusterLeaderRealSize.set(leader, { w: leaderBox.w, h: leaderBox.h });
         clusterMembersOf.set(leader, boxes.map(([id]) => id));
         clusterLeaderSize.set(leader, { w: ex - ox, h: ey - oy });
         for (const [id, b] of boxes) {
@@ -375,7 +370,6 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     // restore below stamps a fixed inline height the pin-drop loop never clears.
     const layoutTargetIds = new Set(layoutTargets.map((n) => n.id));
     const hostFootprint = new Map<string, { w: number; h: number }>();
-    const realHostSize = new Map<string, { w: number; h: number }>();
     for (const fcId of dockedFcIds) {
       const fc = editor.getNode(fcId);
       if (!(fc instanceof FormatControllerNode) || fc.side !== "output") continue;
@@ -395,7 +389,6 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
         w: prev.w + fcBox.w + 8,
         h: Math.max(prev.h, socketLocalY + fcBox.h / 2),
       });
-      if (!realHostSize.has(fc.hostNodeId)) realHostSize.set(fc.hostNodeId, { w: hostBox.w, h: hostBox.h });
     }
 
     const proxyNodes = layoutTargets.filter((n) => !clusterFollowers.has(n.id)).map((n) => {
@@ -524,18 +517,8 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       const baseY = lv.position.y;
       for (const mid of members) {
         const off = clusterMemberOffset.get(mid)!;
-        await area.translate(mid, { x: baseX + off.dx, y: baseY + off.dy });
+        await area.moveNode(mid, { x: baseX + off.dx, y: baseY + off.dy });
       }
-    }
-
-    // Restore hosts inflated for the layout BEFORE the anchor measurement, or
-    // the preserved vertical center skews by half the inflation.
-    for (const [id, sz] of realHostSize) {
-      await area.resize(id, sz.w, sz.h);
-    }
-    // Same for cluster leaders, sized to the cluster bbox for the ELK pass.
-    for (const [id, sz] of clusterLeaderRealSize) {
-      await area.resize(id, sz.w, sz.h);
     }
 
     let newLeft = Infinity, newRight = -Infinity, newTop = Infinity, newBottom = -Infinity;
@@ -572,7 +555,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       for (const n of layoutTargets) {
         const v = area.nodeViews.get(n.id);
         if (!v) continue;
-        await area.translate(n.id, { x: v.position.x + dx, y: v.position.y + dy });
+        await area.moveNode(n.id, { x: v.position.x + dx, y: v.position.y + dy });
       }
     }
 
@@ -587,7 +570,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       for (const mid of grp.members) {
         const mv = area.nodeViews.get(mid);
         if (!mv) continue;
-        await area.translate(mid, { x: mv.position.x + gdx, y: mv.position.y + gdy });
+        await area.moveNode(mid, { x: mv.position.x + gdx, y: mv.position.y + gdy });
       }
     }
 
@@ -619,7 +602,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
         // Integer dims: a fractional width puts the box edge on a half-pixel (blur).
         withinGroup.width = Math.round(Math.max(withinGroup.width, (maxX - gv.position.x) + GROUP_PAD));
         withinGroup.height = Math.round(Math.max(withinGroup.height, (maxY - gv.position.y) + GROUP_PAD));
-        await area.update("node", withinGroup.id);
+        await area.rerenderNode(withinGroup.id);
       }
       rebuildGroupMembership(editor);
       syncGroupCollapse(editor, area);
@@ -636,7 +619,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
 
     selectedIds.forEach((id, i) => selectNodeFromProcess(id, i > 0));
 
-    if (!withinGroup && selectedIds.length > 0) await zoomAt(area as unknown as ZoomSurface, targets);
+    if (!withinGroup && selectedIds.length > 0) await zoomAt(area, targets);
 
     // Snap docked FCs back onto their hosts, deferred a frame so the sockets render
     // at the new host positions before we measure them.
@@ -664,7 +647,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
 // nodes are arranged as units, so nothing is tidied twice.
 export function makeCleanupFn(
   editor: NodeEditor<Schemes>,
-  area: Surface,
+  area: Area,
   arrangeFn: ArrangeFn,
 ): () => Promise<void> {
   return async () => {
@@ -705,8 +688,8 @@ export function makeCleanupFn(
       for (const g of toCollapse) g.collapsed = true;
       syncGroupCollapse(editor, area);
       for (const g of toCollapse) {
-        await area.update("node", g.id);
-        settleCollapse(editor, area, g.id, g.members, false);
+        await area.rerenderNode(g.id);
+        settleCollapse(area, g.id, g.members, false);
       }
     }
 

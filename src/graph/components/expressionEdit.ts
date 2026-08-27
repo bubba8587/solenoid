@@ -22,10 +22,9 @@ export async function applyExprChange(node: ExpressionNode, newExpr: string): Pr
 
   node.height = computeExprHeight(node.varNames.length);
   if (area) {
-    // Tidy pins a FIXED inline height via area.resize, so a tidied card can't grow
-    // and a new input row would overflow it — clear the pin before the update.
+    // A pinned inline height would keep the new input row from growing the card.
     clearPinnedHeight(area, node.id);
-    await area.update("node", node.id);
+    await area.rerenderNode(node.id);
   }
   await processGraph();
 }
@@ -59,7 +58,7 @@ export async function applyEquationChange(node: EquationNode, newExpr: string): 
   node.height = computeEquationHeight(node.varNames.length);
   if (area) {
     clearPinnedHeight(area, node.id);
-    await area.update("node", node.id);
+    await area.rerenderNode(node.id);
   }
   await processGraph();
 }
@@ -81,7 +80,7 @@ export async function applyLambdaChange(
   node.height = computeExprHeight(node.captured.length) + INPUT_ROW_PITCH;
   if (area) {
     clearPinnedHeight(area, node.id);
-    await area.update("node", node.id);
+    await area.rerenderNode(node.id);
   }
   await processGraph();
 }

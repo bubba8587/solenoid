@@ -110,7 +110,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     const area = getActiveArea();
     await dropStrandedFrontmatterCables(data.id, removed, retyped);
     setFieldsVersion((v) => v + 1);
-    await area?.update("node", data.id);
+    await area?.rerenderNode(data.id);
     // A pure retype fires no connection event, so re-adapt downstream FCs by hand or
     // they keep formatting by the OLD type.
     if (editor && area && retyped.length) reconcileFcTypes(editor, area);
@@ -151,7 +151,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   function onResize(size: { width: number; height: number }) {
     data.width = Math.max(NOTE_MIN_W, size.width);
     data.height = Math.max(minNoteH, size.height);
-    void getActiveArea()?.update("node", data.id);
+    void getActiveArea()?.rerenderNode(data.id);
   }
   function onResizeEnd() {
     scheduleAutosave();
@@ -191,7 +191,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   function onBody(v: string) { setBody(v); data.body = v; scheduleAutosave(); }
   // area.update drives the pipe the HTML-canvas renderer re-captures on; a bare setColor
   // re-renders only rete's root, leaving the canvas showing the OLD color.
-  function pick(c: string) { setColor(c); data.color = c; void getActiveArea()?.update("node", data.id); scheduleAutosave(); }
+  function pick(c: string) { setColor(c); data.color = c; void getActiveArea()?.rerenderNode(data.id); scheduleAutosave(); }
   function toggleCollapse() { const v = !collapsed; setCollapsed(v); data.collapsed = v; scheduleAutosave(); }
 
   const mode = appThemeStore.getMode();

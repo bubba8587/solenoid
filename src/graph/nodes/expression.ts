@@ -173,7 +173,7 @@ export class ExpressionNode extends ClassicPreset.Node {
         if (!editor || !area || !out || !editor.getNode(this.id)) return;
         out.socket = resultSocket(want === 2 ? "matrix" : "combo", this.resultAs);
         await retypeOutputCables(editor, area, this.id, "result");
-        await area.update("node", this.id);
+        await area.rerenderNode(this.id);
       })();
     });
   }

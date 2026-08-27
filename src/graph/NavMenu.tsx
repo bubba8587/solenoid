@@ -15,7 +15,7 @@ const ZOOM_STEP = 1.4;
 async function zoomBy(delta: number) {
   const area = getActiveArea(); // zoom the graph you're looking at (drill-in too)
   if (!area) return;
-  const { k, x, y } = area.area.transform;
+  const { k, x, y } = area.transform;
   const next = clamp(k * delta, 0.1, 4);
   if (next === k) return;
   // rete's zoom API takes an (ox, oy) ADDED to the transform after the scale change.
@@ -25,7 +25,7 @@ async function zoomBy(delta: number) {
   const cx = rect.width / 2;
   const cy = rect.height / 2;
   const ratio = 1 - next / k;
-  await area.area.zoom(next, (cx - x) * ratio, (cy - y) * ratio);
+  await area.zoom(next, (cx - x) * ratio, (cy - y) * ratio);
 }
 
 // The chrome panels overlay the canvas, so a plain zoom-to-fit centers content under the
@@ -101,8 +101,8 @@ export async function fitAll() {
   const ax = ins.left + availW / 2;   // free-region center, container coords
   const ay = ins.top + availH / 2;
 
-  await area.area.zoom(k);
-  await area.area.translate(ax - cx * k, ay - cy * k);
+  await area.zoom(k);
+  await area.pan(ax - cx * k, ay - cy * k);
 }
 
 /** These act on the viewport, not the document, so they stay on the canvas rather than

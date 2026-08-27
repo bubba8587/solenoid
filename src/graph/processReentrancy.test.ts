@@ -1,4 +1,4 @@
-import type { Surface } from "./surface";
+import type { Area } from "./area";
 import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
@@ -39,14 +39,14 @@ describe("processGraph is single-flight (a mid-pass recompute coalesces, never n
     let reentered = false;
     let resetSeenByReentrantCall: number | null = null;
     const area = {
-      update: async (_type: string, _id: string) => {
+      rerenderNode: async (_id: string) => {
         if (reentered) return;
         reentered = true;
         const before = resetCount;
         await processGraph();               // the re-entrant recompute
         resetSeenByReentrantCall = resetCount - before;
       },
-    } as unknown as Surface;
+    } as unknown as Area;
 
     setEditorRefs(editor, engine, area);
     await expect(processGraph()).resolves.toBeUndefined(); // no throw, no unhandled rejection
@@ -67,12 +67,12 @@ describe("processGraph is single-flight (a mid-pass recompute coalesces, never n
     (engine as unknown as { reset: (id?: string) => void }).reset = (id?: string) => { resetCount++; return origReset(id); };
     let reentered = false;
     const area = {
-      update: async () => {
+      rerenderNode: async () => {
         if (reentered) return;
         reentered = true;
         await processGraph(undefined, undefined, { force: true }); // a second F9 mid-pass
       },
-    } as unknown as Surface;
+    } as unknown as Area;
     setEditorRefs(editor, engine, area);
     calcModeStore.setMode("manual");
     try {

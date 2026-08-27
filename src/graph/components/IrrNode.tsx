@@ -16,7 +16,7 @@ export function IrrComponent({ data, emit }: NodeProps<IrrNodeType>) {
     if (next === "periods") await dropInputCables(data.id, ["dates"]);
     data.setOp(next);
     setOp(next);
-    await getActiveArea()?.update("node", data.id);
+    await getActiveArea()?.rerenderNode(data.id);
     await processGraph();
   }
 

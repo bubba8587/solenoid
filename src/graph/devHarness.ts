@@ -17,13 +17,13 @@ if (import.meta.env.DEV) {
       if (!n) return false;
       const v = ar.nodeViews.get(n.id) as { position: { x: number; y: number } } | undefined;
       if (!v) return false;
-      await ar.area.zoom(k);
-      await ar.area.translate(sx - v.position.x * k, sy - v.position.y * k);
+      await ar.zoom(k);
+      await ar.pan(sx - v.position.x * k, sy - v.position.y * k);
       return true;
     },
     nodeCount: () => getEditor()?.getNodes().length ?? 0,
     transform: () => {
-      const t = getArea()?.area?.transform;
+      const t = getArea()?.transform;
       return t ? { k: t.k, x: t.x, y: t.y } : null;
     },
     probe: () => {
@@ -33,14 +33,14 @@ if (import.meta.env.DEV) {
       const v = ar.nodeViews.get(n.id) as { element: HTMLElement; position: { x: number; y: number } } | undefined;
       if (!v) return null;
       const r = v.element.getBoundingClientRect();
-      const t = ar.area.transform;
+      const t = ar.transform;
       return { world: { x: v.position.x, y: v.position.y }, screen: { x: Math.round(r.left), y: Math.round(r.top) }, t: { k: t.k, x: t.x, y: t.y } };
     },
     // Nodes whose view.position*k+pan ≠ their actual DOM rect (mismatch sources).
     mismatches: () => {
       const ed = getEditor(), ar = getArea();
       if (!ed || !ar) return [];
-      const t = ar.area.transform;
+      const t = ar.transform;
       const out: { label: string; dx: number; dy: number; cls: string }[] = [];
       for (const n of ed.getNodes()) {
         const v = ar.nodeViews.get(n.id) as { element: HTMLElement; position: { x: number; y: number } } | undefined;
