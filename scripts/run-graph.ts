@@ -22,6 +22,7 @@ import type { Schemes } from "../src/graph/schemes";
 import { installInputCoercion } from "../src/graph/coerceInputs";
 import { installErrorGuards } from "../src/graph/errorValue";
 import { isFrameRef, readFrame } from "../src/graph/frameBackend";
+import { computeAll } from "../src/graph/graphCompute";
 import { validateGraph, validateText, formatIssues, hardIssues } from "../src/graph/graphValidate";
 
 type SavedNode = {
@@ -91,6 +92,7 @@ export async function runGraph(g: SavedGraph): Promise<Record<string, unknown>> 
   // Print every node's output, keyed by its label — falling back to its type,
   // disambiguated with a #n suffix on a repeat — the same "what does each box
   // show" a human gets from opening the app, minus the canvas.
+  const values = await computeAll(editor, engine);
   const seen = new Map<string, number>();
   const out: Record<string, unknown> = {};
   for (const sn of g.nodes) {
@@ -100,7 +102,7 @@ export async function runGraph(g: SavedGraph): Promise<Record<string, unknown>> 
     const n = (seen.get(label) ?? 0) + 1;
     seen.set(label, n);
     const key = n === 1 ? label : `${label} #${n}`;
-    out[key] = await resolveFrameRefs(await engine.fetch(node.id));
+    out[key] = await resolveFrameRefs(values.get(node.id) ?? {});
   }
   return out;
 }

@@ -4,8 +4,8 @@ import { DataflowEngine } from "rete-engine";
 import * as Nodes from "./rete-nodes";
 import type { Schemes } from "./schemes";
 import { installInputCoercion } from "./coerceInputs";
-import { installErrorGuards, isSolError, solError, type SolError } from "./errorValue";
-import { loopMembers } from "./process";
+import { installErrorGuards, isSolError, type SolError } from "./errorValue";
+import { computeAll } from "./graphCompute";
 import seed from "./seedGraphs/null-and-logical.json";
 
 // Loads the "Errors, Null & Logic" seed (the error-codes tour merged into it,
@@ -62,20 +62,9 @@ describe("errors-null-logic seed (error-codes tour)", () => {
       );
     }
 
-    // processGraph's cycle handling: seed the loop members' cache with #CIRC! so the
-    // downstream Display/ISERROR compute against it instead of deadlocking.
-    const circ = solError("#CIRC!", "loop");
-    for (const id of loopMembers(editor)) {
-      const node = editor.getNode(id) as unknown as AnyNode;
-      const outs: Record<string, unknown> = {};
-      for (const k of Object.keys(node.outputs)) outs[k] = circ;
-      engine.cache.add(id, Object.assign(Promise.resolve(outs), { cancel() {} }));
-    }
-
-    // Fetch every node (runs each ISERROR's data() so it records seenError).
-    for (const node of editor.getNodes()) {
-      await engine.fetch(node.id);
-    }
+    // The app's own pass (loop seeding included) — runs each ISERROR's data() so it
+    // records seenError.
+    await computeAll(editor, engine);
 
     for (const [id, code] of Object.entries(EXPECTED)) {
       const check = byId.get(id)!;

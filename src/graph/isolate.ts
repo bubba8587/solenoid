@@ -1,4 +1,5 @@
-import { getEditor, downstreamClosure } from "./process";
+import { getEditor } from "./process";
+import { downstreamClosure } from "./graphCompute";
 import { getActiveEditor } from "./activeGraph";
 import { GroupNode, FormatControllerNode } from "./rete-nodes";
 import type { SolenoidNode } from "./schemes";

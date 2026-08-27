@@ -41,7 +41,7 @@ import { FlowCableEdge, type SolFlowEdge } from "./FlowCableEdge";
 import { FlowConnectionLine } from "./FlowConnectionLine";
 import { cableSelectionStore, socketHighlightStore, dragSocketKey } from "../cableState";
 import { toFlowNodes, toFlowEdges, nodeClassName, toFlowPosition, fromFlowPosition, type FlowModel } from "./flowModel";
-import { canConnect, connect, moveNode } from "./flowController";
+import { canConnect, connect, moveNode } from "./flowModel";
 import type { FlowArea } from "./flowArea";
 import { cableDragStore, setCableDragging, processGraph } from "../process";
 import { installCanvasKeyboard } from "../canvasKeyboard";

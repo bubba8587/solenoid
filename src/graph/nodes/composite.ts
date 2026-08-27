@@ -13,7 +13,8 @@ import {
 } from "../monteCarlo";
 import { installInputCoercion } from "../coerceInputs";
 import { isFrameValue, frameRowCount, frameFromRows } from "../frame";
-import { loopMembers, isGraphRebuilding } from "../process";
+import { isGraphRebuilding } from "../process";
+import { loopMembers, seedLoopErrors } from "../graphCompute";
 import { fireAlert } from "../alertStore";
 import { compositeStaleStore } from "../compositeStaleStore";
 import { formatScalar } from "../components/format";
@@ -611,17 +612,12 @@ export class CompositeNode extends ClassicPreset.Node {
   /** Pre-seed the cache with #CIRC! for every TRUE loop member (Tarjan SCC, self-loops
    *  included) so a later `fetch` dead-ends instead of recursing forever. */
   private seedInternalLoopErrors(): void {
-    const loop = loopMembers(this.internalEditor);
-    if (loop.size === 0) return;
-    const circErr = solError("#CIRC!", "This node is part of a circular dependency inside the composite: the calculation feeds back into itself. Switch the container to Simulation mode to run it as a feedback loop instead.");
-    for (const id of loop) {
-      const node = this.internalEditor.getNode(id);
-      if (!node) continue;
-      const outputs: Record<string, unknown> = {};
-      for (const k of Object.keys(node.outputs ?? {})) outputs[k] = circErr;
-      const seeded = Object.assign(Promise.resolve(outputs), { cancel() {} });
-      try { this.internalEngine.cache.add(id, seeded); } catch { this.internalEngine.cache.patch(id, seeded); }
-    }
+    seedLoopErrors(
+      this.internalEditor,
+      this.internalEngine,
+      loopMembers(this.internalEditor),
+      "This node is part of a circular dependency inside the composite: the calculation feeds back into itself. Switch the container to Simulation mode to run it as a feedback loop instead.",
+    );
   }
 
   /** One internal engine pass: inject each input port's value (an `overrides` entry

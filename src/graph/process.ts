@@ -3,7 +3,7 @@ import type { NodeEditor } from "rete";
 import type { DataflowEngine } from "rete-engine";
 import { Cancelled } from "rete-engine";
 import { cableValueStore } from "./cableValueStore";
-import { solError } from "./errorValue";
+import { downstreamClosure, loopMembers, seedLoopErrors } from "./graphCompute";
 import { perfEnabled, beginPass, passTopNodes, ipcSnapshot } from "./perfProbe";
 import { beginCompute, endCompute } from "./computeOverlayStore";
 import { calcModeStore } from "./calcModeStore";
@@ -318,86 +318,12 @@ export async function withGraphRebuild<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-// The TRUE members of every dependency loop (a self-loop or an SCC of 2+), NOT the nodes
-// downstream of one: seeding only these with #CIRC! leaves everything downstream computing
-// normally and showing the propagated error.
-export function loopMembers(editor: NodeEditor<Schemes>): Set<string> {
-  const ids = editor.getNodes().map((n) => n.id);
-  const adj = new Map<string, string[]>();
-  for (const id of ids) adj.set(id, []);
-  const selfLoops = new Set<string>();
-  for (const c of editor.getConnections()) {
-    if (c.source === c.target) { selfLoops.add(c.source); continue; }
-    if (adj.has(c.source) && adj.get(c.source)!.indexOf(c.target) === -1 && ids.includes(c.target)) {
-      adj.get(c.source)!.push(c.target);
-    }
-  }
-  const index = new Map<string, number>();
-  const low = new Map<string, number>();
-  const onStack = new Set<string>();
-  const stack: string[] = [];
-  const members = new Set<string>(selfLoops);
-  let counter = 0;
-  // Iterative Tarjan (recursion would blow the stack on big graphs).
-  for (const start of ids) {
-    if (index.has(start)) continue;
-    const work: Array<{ node: string; i: number }> = [{ node: start, i: 0 }];
-    while (work.length) {
-      const frame = work[work.length - 1];
-      const v = frame.node;
-      if (frame.i === 0) {
-        index.set(v, counter); low.set(v, counter); counter++;
-        stack.push(v); onStack.add(v);
-      }
-      const neighbors = adj.get(v)!;
-      if (frame.i < neighbors.length) {
-        const w = neighbors[frame.i];
-        frame.i++;
-        if (!index.has(w)) {
-          work.push({ node: w, i: 0 });
-        } else if (onStack.has(w)) {
-          low.set(v, Math.min(low.get(v)!, index.get(w)!));
-        }
-      } else {
-        if (low.get(v) === index.get(v)) {
-          const comp: string[] = [];
-          let w: string;
-          do { w = stack.pop()!; onStack.delete(w); comp.push(w); } while (w !== v);
-          if (comp.length > 1) for (const id of comp) members.add(id);
-        }
-        work.pop();
-        if (work.length) {
-          const parent = work[work.length - 1].node;
-          low.set(parent, Math.min(low.get(parent)!, low.get(v)!));
-        }
-      }
-    }
-  }
-  return members;
-}
-
 // Perf probe counter; enable logging with `window.__solenoidPerf = true`.
 let _pgCount = 0;
 
 // Cached loop-member set: every TOPOLOGY change routes through a FULL processGraph, which
 // recomputes it, so the targeted and additive paths can reuse it.
 let _cachedLoop: Set<string> | null = null;
-
-// Downstream closure over outgoing connections — exactly the set rete-engine's
-// `reset(nodeId)` invalidates, and the nodes a single value edit can affect.
-export function downstreamClosure(editor: NodeEditor<Schemes>, startId: string): Set<string> {
-  const out = new Map<string, string[]>();
-  for (const c of editor.getConnections()) {
-    (out.get(c.source) ?? out.set(c.source, []).get(c.source)!).push(c.target);
-  }
-  const seen = new Set<string>([startId]);
-  const queue = [startId];
-  while (queue.length) {
-    const id = queue.shift()!;
-    for (const t of out.get(id) ?? []) if (!seen.has(t)) { seen.add(t); queue.push(t); }
-  }
-  return seen;
-}
 
 // `changedNodeId` — one node's VALUE changed (no topology change): reset + re-render only
 // its downstream cone. Safe ONLY for pure value edits, since data flows solely through
@@ -503,22 +429,7 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
   const loop = (changedNodeId || renderOnly) && !topologyChanged
     ? (_cachedLoop ?? (_cachedLoop = loopMembers(_editor)))
     : (_cachedLoop = loopMembers(_editor));
-  const circErr = solError("#CIRC!", "This node is part of a circular dependency: the calculation feeds back into itself");
-  for (const id of loop) {
-    const node = _editor.getNode(id);
-    if (!node) continue;
-    const outputs: Record<string, unknown> = {};
-    for (const k of Object.keys(node.outputs ?? {})) outputs[k] = circErr;
-    // The member never runs, so seed its value box directly: `cachedResult` (most),
-    // `cachedValue` (Display), `cachedList` (list nodes) — all three, or that family
-    // shows a stale value instead of the badge.
-    const n = node as unknown as { cachedResult?: unknown; cachedValue?: unknown; cachedList?: unknown };
-    if ("cachedResult" in n) n.cachedResult = circErr;
-    if ("cachedValue" in n) n.cachedValue = circErr;
-    if ("cachedList" in n) n.cachedList = circErr;
-    const seeded = Object.assign(Promise.resolve(outputs), { cancel() {} });
-    try { _engine.cache.add(id, seeded); } catch { _engine.cache.patch(id, seeded); }
-  }
+  seedLoopErrors(_editor, _engine, loop);
 
   // Early-cutoff bookkeeping (targeted path only): which cone nodes' outputs CHANGED, and
   // which are display sinks. Compared against the stored value BEFORE it is overwritten.

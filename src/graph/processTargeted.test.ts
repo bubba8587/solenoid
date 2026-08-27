@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
 import type { Schemes } from "./schemes";
-import { downstreamClosure } from "./process";
+import { downstreamClosure } from "./graphCompute";
 
 // Guards the correctness pillar of the TARGETED processGraph path (A1/A2): the
 // downstream closure must equal the set rete-engine's reset(nodeId) invalidates, so

@@ -5,7 +5,7 @@ import type { Schemes } from "./schemes";
 import { installInputCoercion } from "./coerceInputs";
 import { installErrorGuards } from "./errorValue";
 import { isSolError, type SolError } from "./errorValue";
-import { loopMembers } from "./process";
+import { loopMembers } from "./graphCompute";
 import { solError } from "./errorValue";
 import { TableInputNode } from "./nodes/matrix";
 import { ListIndexNode } from "./nodes/list";

@@ -1,7 +1,8 @@
 // Model fuzzing: valid-shaped inputs per typed leaf source, driven through the targeted
 // recompute path; findings land in the Problems panel (problemsStore, origin "fuzz").
 import { ClassicPreset } from "rete";
-import { getEditor, getArea, processGraph, downstreamClosure, beginGraphRebuild, endGraphRebuild } from "./process";
+import { getEditor, getArea, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
+import { downstreamClosure } from "./graphCompute";
 import { beginCompute, endCompute } from "./computeOverlayStore";
 import { NumberInputNode, SliderInputNode } from "./nodes/input";
 import { TextInputNode } from "./nodes/text";

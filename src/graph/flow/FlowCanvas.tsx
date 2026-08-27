@@ -9,7 +9,7 @@ import { DataflowEngine } from "rete-engine";
 import type { Schemes, SolenoidNode } from "../schemes";
 import { FlowSurfaceContext } from "../flowSurface";
 import { cableSelectionStore } from "../cableState";
-import { disconnect, removeNodes } from "./flowController";
+import { disconnect, removeNodes } from "./flowModel";
 import { makeFlowArea, type FlowArea } from "./flowArea";
 import { FlowSurface, idleHandlers, type SurfaceHandlers, type SurfaceHooks } from "./FlowSurface";
 import {

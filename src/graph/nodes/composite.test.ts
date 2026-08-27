@@ -5,7 +5,7 @@ import { ctorRegistry } from "../nodeCtorRegistry";
 import { FLAT_CATALOG } from "../catalogUtils";
 import { extractInit } from "../copyPaste";
 import { isSolError } from "../errorValue";
-import { loopMembers } from "../process";
+import { loopMembers } from "../graphCompute";
 import { alertStore } from "../alertStore";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode, stopConditionMet, byRowValues, BY_ROW_MAX_ROWS } from "./composite";
 import { frameFromCells, isFrameValue, frameRowCount, type FrameValue } from "../frame";

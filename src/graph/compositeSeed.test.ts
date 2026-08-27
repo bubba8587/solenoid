@@ -7,7 +7,7 @@ import { installInputCoercion } from "./coerceInputs";
 import { installErrorGuards } from "./errorValue";
 import { CompositeNode } from "./nodes/composite";
 import { ctorRegistry } from "./nodeCtorRegistry";
-import { loopMembers } from "./process";
+import { loopMembers } from "./graphCompute";
 import seed from "./seedGraphs/composite-workbench.json";
 
 // Runs the Composite Workbench seed through a real editor + DataflowEngine

@@ -6,7 +6,7 @@ import * as Nodes from "./rete-nodes";
 import type { Schemes } from "./schemes";
 import { installInputCoercion } from "./coerceInputs";
 import { installErrorGuards, solError } from "./errorValue";
-import { loopMembers } from "./process";
+import { loopMembers } from "./graphCompute";
 import { csvToFrame } from "./nodes/connection";
 import { connectionStore } from "./connectionStore";
 import seed from "./seedGraphs/personal-finance.json";

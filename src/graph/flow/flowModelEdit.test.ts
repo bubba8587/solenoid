@@ -1,22 +1,19 @@
 import { describe, it, expect } from "vitest";
-import { buildModel } from "./flowModel";
-import type { SavedGraphLite } from "./flowModel";
 import {
-  recompute,
+  buildModel,
   canConnect,
   connect,
   disconnect,
   removeNodes,
   addNode,
   moveNode,
-  serialize,
-} from "./flowController";
-import { validateGraph, hardIssues } from "../graphValidate";
+} from "./flowModel";
+import type { SavedGraphLite } from "./flowModel";
+import { computeAll } from "../graphCompute";
 import { isSolError } from "../errorValue";
 
-// C1 pins: editing verbs write through the editor under the socket lattice,
-// values recompute targeted, and a flow-surface save is a normal Solenoid
-// document (loader-valid, model-round-trippable).
+// The model's edit verbs write through the editor under the socket lattice, and
+// the shared pass recomputes targeted.
 
 const FIXTURE: SavedGraphLite = {
   v: 2,
@@ -42,7 +39,7 @@ async function build() {
 describe("flow controller (React Flow port C1)", () => {
   it("computes through wired inputs", async () => {
     const { m, sum } = await build();
-    const values = await recompute(m);
+    const values = await computeAll(m.editor, m.engine);
     expect(values.get(sum)).toMatchObject({ result: 5 });
   });
 
@@ -67,7 +64,7 @@ describe("flow controller (React Flow port C1)", () => {
     const intoB = m.editor.getConnections().filter((c) => c.target === sum && c.targetInput === "b");
     expect(intoB.length).toBe(1);
     expect(intoB[0].source).toBe(a);
-    const values = await recompute(m, sum);
+    const values = await computeAll(m.editor, m.engine, sum);
     expect(values.get(sum)).toMatchObject({ result: 4 }); // 2 + 2
   });
 
@@ -77,7 +74,7 @@ describe("flow controller (React Flow port C1)", () => {
     await disconnect(m, cable.id);
     expect(m.editor.getConnection(cable.id)).toBeUndefined();
     // WIRED-blank rule: the unwired input reads its literal (0), so 0 + 3.
-    const values = await recompute(m, sum);
+    const values = await computeAll(m.editor, m.engine, sum);
     expect(values.get(sum)).toMatchObject({ result: 3 });
 
     await removeNodes(m, [sum]);
@@ -93,7 +90,7 @@ describe("flow controller (React Flow port C1)", () => {
     expect(m.positions.get(node!.id)).toEqual({ x: 500, y: 500 });
     moveNode(m, node!.id, { x: 10, y: 20 });
     expect(m.positions.get(node!.id)).toEqual({ x: 10, y: 20 });
-    const values = await recompute(m, node!.id);
+    const values = await computeAll(m.editor, m.engine, node!.id);
     expect(values.get(node!.id)).toMatchObject({ value: 0 });
   });
 
@@ -102,24 +99,8 @@ describe("flow controller (React Flow port C1)", () => {
     const other = await addNode(m, "arith-add", { x: 480, y: 60 });
     expect(await connect(m, sum, "result", other!.id, "a")).toBe(true);
     expect(await connect(m, other!.id, "result", sum, "a")).toBe(true);
-    const values = await recompute(m);
+    const values = await computeAll(m.editor, m.engine);
     const out = (values.get(sum) ?? {}).result;
     expect(isSolError(out) && (out as { code?: string }).code === "#CIRC!").toBe(true);
-  });
-
-  it("serialize produces a loader-valid document that round-trips", async () => {
-    const { m } = await build();
-    const saved = serialize(m);
-    expect(saved.v).toBe(2);
-    expect(hardIssues(validateGraph(saved))).toEqual([]);
-    const names = saved.nodes.map((n) => n.name);
-    expect(new Set(names).size).toBe(saved.nodes.length);
-
-    const m2 = await buildModel(saved);
-    expect(m2.editor.getNodes().length).toBe(m.editor.getNodes().length);
-    expect(m2.editor.getConnections().length).toBe(m.editor.getConnections().length);
-    const values = await recompute(m2);
-    const sums = [...values.values()].filter((outs) => (outs ?? {}).result !== undefined);
-    expect(sums.some((outs) => outs!.result === 5)).toBe(true);
   });
 });

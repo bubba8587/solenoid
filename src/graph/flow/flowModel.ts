@@ -1,8 +1,6 @@
-// React Flow port (C0) — the headless graph model.
-// Same compute spine as scripts/run-graph.ts: real NodeEditor + DataflowEngine
-// with coercion + error guards, NO area/react plugins. React Flow is the view;
-// this module is the seam it reads. Projections return plain RF-shaped objects
-// (no @xyflow import) so they stay testable in the node vitest env.
+// The headless graph model: a rete NodeEditor + DataflowEngine with coercion and
+// error guards installed, its edit verbs, and the projections React Flow reads.
+// The compute pass lives in graphCompute.ts (one definition for every caller).
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
 import type { Schemes } from "../schemes";
@@ -12,6 +10,8 @@ import * as Nodes from "../rete-nodes";
 import { ctorRegistry, type NodeCtor } from "../nodeCtorRegistry";
 import { nodeNameStore } from "../nodeNameStore";
 import { groupCollapseStore } from "../groupCollapse";
+import { SolenoidSocket } from "../sockets";
+import { FLAT_CATALOG } from "../catalogUtils";
 
 export type SolNode = Schemes["Node"];
 
@@ -90,7 +90,90 @@ export async function buildModel(g: SavedGraphLite): Promise<FlowModel> {
   return { editor, engine, positions };
 }
 
-// RF-shaped without the RF dependency; FlowApp hands these to <ReactFlow> as-is.
+// ─── Edit verbs ───────────────────────────────────────────────────────────
+
+/** The lattice rule + no self-loop — the one connection gate. */
+export function canConnect(
+  m: FlowModel,
+  source: string,
+  sourceOutput: string,
+  target: string,
+  targetInput: string,
+): boolean {
+  if (source === target) return false;
+  const src = m.editor.getNode(source)?.outputs[sourceOutput]?.socket;
+  const tgt = m.editor.getNode(target)?.inputs[targetInput]?.socket;
+  if (src instanceof SolenoidSocket && tgt instanceof SolenoidSocket) {
+    return src.canConnectTo(tgt);
+  }
+  return !!(src && tgt);
+}
+
+/** Add a cable; a single-connection input evicts its existing cable first. */
+export async function connect(
+  m: FlowModel,
+  source: string,
+  sourceOutput: string,
+  target: string,
+  targetInput: string,
+): Promise<boolean> {
+  if (!canConnect(m, source, sourceOutput, target, targetInput)) return false;
+  const sourceNode = m.editor.getNode(source);
+  const targetNode = m.editor.getNode(target);
+  if (!sourceNode || !targetNode) return false;
+  const input = targetNode.inputs[targetInput] as { multipleConnections?: boolean } | undefined;
+  if (!input?.multipleConnections) {
+    for (const c of m.editor.getConnections()) {
+      if (c.target === target && c.targetInput === targetInput) {
+        await m.editor.removeConnection(c.id);
+      }
+    }
+  }
+  await m.editor.addConnection(
+    new ClassicPreset.Connection(sourceNode, sourceOutput, targetNode, targetInput) as Schemes["Connection"],
+  );
+  return true;
+}
+
+export async function disconnect(m: FlowModel, connectionId: string): Promise<void> {
+  if (m.editor.getConnection(connectionId)) await m.editor.removeConnection(connectionId);
+}
+
+/** Remove nodes and their cables through the editor; names and positions go too. */
+export async function removeNodes(m: FlowModel, ids: string[]): Promise<void> {
+  const doomed = new Set(ids);
+  for (const c of m.editor.getConnections()) {
+    if (doomed.has(c.source) || doomed.has(c.target)) await m.editor.removeConnection(c.id);
+  }
+  for (const id of ids) {
+    if (!m.editor.getNode(id)) continue;
+    await m.editor.removeNode(id);
+    nodeNameStore.forget(id);
+    m.positions.delete(id);
+  }
+}
+
+/** Instantiate a catalog entry at a canvas position. */
+export async function addNode(
+  m: FlowModel,
+  catalogType: string,
+  position: { x: number; y: number },
+): Promise<SolNode | null> {
+  const entry = FLAT_CATALOG.get(catalogType);
+  if (!entry) return null;
+  const node = entry.create() as SolNode;
+  await m.editor.addNode(node);
+  m.positions.set(node.id, { x: Math.round(position.x), y: Math.round(position.y) });
+  nodeNameStore.ensure(node.id, node.constructor.name);
+  return node;
+}
+
+export function moveNode(m: FlowModel, id: string, position: { x: number; y: number }): void {
+  if (m.positions.has(id)) m.positions.set(id, { x: position.x, y: position.y });
+}
+
+// ─── React Flow projections ───────────────────────────────────────────────
+// RF-shaped without the RF dependency, so they stay testable in the node vitest env.
 export type RFNodeLite = {
   id: string;
   type: "sol";
