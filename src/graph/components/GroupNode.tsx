@@ -1,5 +1,5 @@
 import { useFlowResizeGrip } from "../flowSurface";
-import { Fragment, useState, useRef, useEffect, useLayoutEffect, useSyncExternalStore, type CSSProperties } from "react";
+import { Fragment, useState, useRef, useLayoutEffect, useSyncExternalStore, type CSSProperties } from "react";
 import type { GroupNode as GroupNodeType } from "../rete-nodes";
 import { hexToRgba, contrastInk, themeAccent, darkenAccent, resolveColor } from "../palette";
 import { appThemeStore } from "../appTheme";
@@ -25,6 +25,7 @@ import { ErrorChip } from "./ErrorChip";
 import { formatScalar } from "./format";
 import { NodeSocket } from "./NodeSocket";
 import type { NodeProps } from "./nodeKit";
+import { useEditableLabel } from "./inlineInput";
 import "./GroupNode.css";
 import { stopDragStart } from "../coarse";
 import { getOwningArea, getOwningEditor } from "../activeGraph";
@@ -79,8 +80,6 @@ function renderReadout(t: RetainedTerminal) {
 
 export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   const node = data;
-  const [label, setLabel] = useState(node.label);
-  const [editingLabel, setEditingLabel] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const swatchRef = useRef<HTMLButtonElement>(null);
   const paletteRef = useRef<HTMLDivElement>(null);
@@ -89,7 +88,8 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   // The grip's setPointerCapture + preventDefault suppress the native dblclick, so
   // the double-press is timed by hand.
 
-  useEffect(() => { setLabel(node.label); }, [node.label]);
+  // The shared header title-edit mechanic (click-to-edit, Enter/blur, Escape revert).
+  const title = useEditableLabel(node, () => { void getOwningArea(node.id)?.rerenderNode(node.id); });
   useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
   useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
@@ -106,24 +106,6 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
     if (el) el.style.zIndex = pickerOpen ? "20" : node.collapsed ? "1" : "-2";
   });
 
-  const labelCancelled = useRef(false);
-  function onLabelChange(v: string) {
-    setLabel(v); // draft only — node.label unchanged until commit
-  }
-  function commitLabel() {
-    if (labelCancelled.current) { labelCancelled.current = false; setLabel(node.label); return; }
-    const prev = node.label;
-    const next = label;
-    if (next !== prev) {
-      node.label = next;
-      void getOwningArea(node.id)?.rerenderNode(node.id);
-    }
-    setEditingLabel(false);
-  }
-  function onLabelKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
-    else if (e.key === "Escape") { labelCancelled.current = true; e.currentTarget.blur(); }
-  }
 
   const Grip = useFlowResizeGrip();
   function onResize(size: { width: number; height: number }) {
@@ -223,32 +205,23 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
             <path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        {editingLabel ? (
+        {title.editing ? (
           <textarea
             ref={taRef}
             className="solenoid-group__label"
-            value={label}
             rows={1}
-            spellCheck={false}
             placeholder="Group"
-            autoFocus
             style={{ color: ink }}
-            onBlur={commitLabel}
-            onChange={(e) => onLabelChange(e.target.value)}
-            onKeyDown={onLabelKeyDown}
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
+            {...title.inputProps}
           />
         ) : (
           <div
             className="solenoid-group__label solenoid-group__label--display"
             style={{ color: ink }}
-            title={label}
-            onClick={() => setEditingLabel(true)}
-            onPointerDown={stopDragStart}
-            onMouseDown={(e) => e.stopPropagation()}
+            title={node.label}
+            {...title.displayProps}
           >
-            {label || "Group"}
+            {node.label || "Group"}
           </div>
         )}
         {node.members.length > 1 && (

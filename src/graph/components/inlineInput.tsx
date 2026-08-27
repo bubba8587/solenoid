@@ -4,6 +4,7 @@ import { useKatexRender } from "./katexLoader";
 import type { ClassicPreset } from "rete";
 import { SolenoidSocket } from "../sockets";
 import { processGraph } from "../process";
+import { scheduleAutosave } from "../persistence";
 import { connectionVersionStore } from "../graphSignals";
 import { getOwningEditor, getOwningArea } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
@@ -83,6 +84,56 @@ export function useDraftCommit<T>(
     else if (e.key === "Escape") { canceled.current = true; e.currentTarget.blur(); }
   };
   return { draft, setDraft, onBlur, onKeyDown };
+}
+
+// The header title-edit mechanic every custom-chrome node shares. Unconditional
+// stopPropagation on the title (matching Note / Import Obsidian): the caret needs
+// the pointer, and the rest of the fit-content header stays the drag handle.
+const stopTitle = (e: { stopPropagation: () => void }) => e.stopPropagation();
+
+/** THE editable node-title state machine: a click-to-edit header that drafts while
+ *  typing and commits on Enter/blur, with Escape reverting — matching the standard
+ *  NodeShell header. Typing NEVER writes `node.label`; only a commit does, then the
+ *  optional `onCommit` runs the node's side effect (a rerender / processGraph).
+ *  Spread `inputProps` onto the editing <input>, `displayProps` onto the click-to-
+ *  edit display; read the committed value straight off `node.label`. Group drives
+ *  `begin()` from its own double-press instead of the display click. */
+export function useEditableLabel(node: { label: string }, onCommit?: () => void) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(node.label);
+  const canceled = useRef(false);
+  // Resync to an external rename (undo, load) only while not mid-edit.
+  useEffect(() => { if (!editing) setDraft(node.label); }, [node.label, editing]);
+
+  const begin = () => { setDraft(node.label); canceled.current = false; setEditing(true); };
+  const commit = () => {
+    setEditing(false);
+    if (canceled.current) { canceled.current = false; return; }
+    if (draft !== node.label) { node.label = draft; scheduleAutosave(); onCommit?.(); }
+  };
+  const onKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
+    if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
+    else if (e.key === "Escape") { canceled.current = true; e.currentTarget.blur(); }
+  };
+  return {
+    editing,
+    begin,
+    inputProps: {
+      value: draft,
+      autoFocus: true,
+      spellCheck: false,
+      onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setDraft(e.target.value),
+      onBlur: commit,
+      onKeyDown,
+      onPointerDown: stopTitle,
+      onMouseDown: stopTitle,
+    },
+    displayProps: {
+      onClick: begin,
+      onPointerDown: stopTitle,
+      onMouseDown: stopTitle,
+    },
+  };
 }
 
 const numToText = (v: number | undefined) => (v == null ? "" : String(v));

@@ -3,6 +3,7 @@ import type { FileLinkNode as FileLinkNodeType } from "../rete-nodes";
 import { scheduleAutosave } from "../persistence";
 import { isDesktop, pickFileLinkDialog, openFilePath, baseNameOf } from "../fileBridge";
 import type { NodeProps } from "./nodeKit";
+import { useEditableLabel } from "./inlineInput";
 import { stopDragStart } from "../coarse";
 import "./FileLinkNode.css";
 
@@ -22,7 +23,6 @@ function stemOf(name: string): string {
  *  file in its OS app; on web an attach is session-only (the browser has no path),
  *  so Open works this session and only the name survives a reload. */
 export function FileLinkComponent({ data }: NodeProps<FileLinkNodeType>) {
-  const [label, setLabel] = useState(data.label);
   const [path, setPath] = useState(data.path);
   const [fileName, setFileName] = useState(data.fileName);
   const [collapsed, setCollapsed] = useState(data.collapsed);
@@ -30,22 +30,21 @@ export function FileLinkComponent({ data }: NodeProps<FileLinkNodeType>) {
   const [webFile, setWebFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const desktop = isDesktop();
+  // The shared header title-edit mechanic (click-to-edit, Enter/blur, Escape revert).
+  const title = useEditableLabel(data);
 
-  useEffect(() => { setLabel(data.label); }, [data.label]);
   useEffect(() => { setPath(data.path); }, [data.path]);
   useEffect(() => { setFileName(data.fileName); }, [data.fileName]);
   useEffect(() => { setCollapsed(data.collapsed); }, [data.collapsed]);
 
-  // The title is free text (draft only until Enter/blur is moot — a label isn't
-  // wired anywhere, so a live write + autosave is fine, matching the Image node).
-  function onLabel(v: string) { setLabel(v); data.label = v; scheduleAutosave(); }
-
   // Set the link + fill an empty/default title from the file name. Shared by both
-  // platforms; `name` is the display name, `p` the absolute path ("" on web).
+  // platforms; `name` is the display name, `p` the absolute path ("" on web). Writes
+  // data.label directly — the title hook resyncs its display off it when not editing.
   function setLink(name: string, p: string) {
     setPath(p); data.path = p;
     setFileName(name); data.fileName = name;
-    if (!label.trim() || label === "File Link") { const s = stemOf(name); setLabel(s); data.label = s; }
+    const cur = data.label.trim();
+    if (!cur || cur === "File Link") data.label = stemOf(name);
     scheduleAutosave();
   }
 
@@ -100,16 +99,17 @@ export function FileLinkComponent({ data }: NodeProps<FileLinkNodeType>) {
             <path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        <input
-          className="solenoid-filelink__name"
-          value={label}
-          placeholder="File Link"
-          spellCheck={false}
-          onChange={(e) => onLabel(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-          onPointerDown={stopDragStart}
-          onMouseDown={stopDragStart}
-        />
+        {title.editing ? (
+          <input className="solenoid-filelink__name" placeholder="File Link" {...title.inputProps} />
+        ) : (
+          <div
+            className={`solenoid-filelink__name-display${data.label.trim() ? "" : " solenoid-filelink__name-display--empty"}`}
+            title={data.label || "File Link"}
+            {...title.displayProps}
+          >
+            {data.label.trim() || "File Link"}
+          </div>
+        )}
         <button
           type="button"
           className="solenoid-filelink__attach"

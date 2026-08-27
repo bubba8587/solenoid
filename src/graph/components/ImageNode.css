@@ -77,6 +77,25 @@
 .solenoid-image__name:focus { color: var(--text); }
 .solenoid-image__name::placeholder { color: currentColor; opacity: 0.5; }
 
+/* Click-to-edit title (not editing): fit-content so the rest of the bar stays a
+   drag handle — mirrors the Note's name-display and the standard node header. */
+.solenoid-image__name-display {
+  width: fit-content;
+  max-width: calc(100% - 26px);
+  margin-right: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--node-accent) var(--mix-ink), var(--text));
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: text;
+}
+.solenoid-image__name-display--empty { opacity: 0.5; }
+
 .solenoid-image__attach {
   flex: 0 0 auto;
   width: 20px;

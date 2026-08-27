@@ -9,6 +9,7 @@ import { SwatchGrid } from "./SwatchGrid";
 import { SocketDot, type SocketGlyph } from "./SocketLegend";
 import { NodeSocket } from "./NodeSocket";
 import { useDismissOnOutside } from "./useDismissOnOutside";
+import { useEditableLabel } from "./inlineInput";
 // getActiveEditor/getActiveArea, NOT getEditor/getArea: a Note inside a composite
 // drill-in must prune/reconcile/refresh on its OWN graph.
 import { processGraph } from "../process";
@@ -85,13 +86,13 @@ function enableTaskCheckboxes(html: string): string {
  *  socket; those reconcile on BLUR, never per keystroke, so typing can't churn cables. */
 export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
-  const [label, setLabel] = useState(data.label);
   const [body, setBody] = useState(data.body);
   const [color, setColor] = useState(data.color);
   const [collapsed, setCollapsed] = useState(data.collapsed);
   const [editing, setEditing] = useState(false);
-  const [editingLabel, setEditingLabel] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  // The shared header title-edit mechanic (click-to-edit, Enter/blur, Escape revert).
+  const title = useEditableLabel(data);
   // Bumped whenever the frontmatter fields change (body commit / type override)
   // to re-render the strip + markdown off the node's freshly-synced derived state.
   const [, setFieldsVersion] = useState(0);
@@ -99,7 +100,6 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   const paletteRef = useRef<HTMLDivElement>(null);
   useDismissOnOutside(pickerOpen, () => setPickerOpen(false), [swatchRef, paletteRef]);
 
-  useEffect(() => { setLabel(data.label); }, [data.label]);
   useEffect(() => { setBody(data.body); }, [data.body]);
   useEffect(() => { setColor(data.color); }, [data.color]);
   useEffect(() => { setCollapsed(data.collapsed); }, [data.collapsed]);
@@ -210,20 +210,6 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     startEdit();
   }
 
-  // Draft-only while typing (project-wide rule: commit on Enter/blur, never per
-  // keystroke). Escape reverts to the last committed label without writing.
-  const labelCancelled = useRef(false);
-  function onLabel(v: string) { setLabel(v); } // draft only — data.label unchanged until commit
-  function commitLabel() {
-    if (labelCancelled.current) { labelCancelled.current = false; setLabel(data.label); setEditingLabel(false); return; }
-    const prev = data.label;
-    const next = label;
-    if (next !== prev) {
-      data.label = next;
-      scheduleAutosave();
-    }
-    setEditingLabel(false);
-  }
   // Store the raw text live (autosave), but DON'T reconcile sockets per keystroke —
   // that happens on blur (commitFields), so editing the YAML doesn't churn cables.
   function onBody(v: string) { setBody(v); data.body = v; scheduleAutosave(); }
@@ -258,32 +244,16 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
             <path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        {editingLabel ? (
-          <input
-            className="solenoid-note__name"
-            value={label}
-            placeholder="Note"
-            spellCheck={false}
-            autoFocus
-            onChange={(e) => onLabel(e.target.value)}
-            onBlur={commitLabel}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") { e.currentTarget.blur(); }
-              else if (e.key === "Escape") { labelCancelled.current = true; e.currentTarget.blur(); }
-            }}
-            onPointerDown={stop}
-            onMouseDown={stop}
-          />
+        {title.editing ? (
+          <input className="solenoid-note__name" placeholder="Note" {...title.inputProps} />
         ) : (
           // Fit-content so the textless part of the bar stays draggable.
           <div
-            className={`solenoid-note__name-display${label.trim() ? "" : " solenoid-note__name-display--empty"}`}
-            title={label || "Note"}
-            onClick={() => setEditingLabel(true)}
-            onPointerDown={stop}
-            onMouseDown={stop}
+            className={`solenoid-note__name-display${data.label.trim() ? "" : " solenoid-note__name-display--empty"}`}
+            title={data.label || "Note"}
+            {...title.displayProps}
           >
-            {label.trim() || "Note"}
+            {data.label.trim() || "Note"}
           </div>
         )}
         <button

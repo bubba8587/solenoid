@@ -5,7 +5,7 @@ import { processGraph } from "../process";
 import { resolveLayer, elementName } from "../svgLayer";
 import type { NodeProps } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
-import { useDraftCommit, INVALID_DRAFT } from "./inlineInput";
+import { useDraftCommit, INVALID_DRAFT, useEditableLabel } from "./inlineInput";
 import { stopDragStart } from "../coarse";
 import "./SvgPickerNode.css";
 
@@ -37,7 +37,6 @@ function bakeSelectionGlow(source: string, sel: string, color: string): string {
  *  IMPERATIVE (React state per pointermove would thrash): hovered and selected
  *  elements are painted with filters directly and restored on change. */
 export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>) {
-  const [label, setLabel] = useState(data.label);
   const [url, setUrl] = useState(data.url);
   const [source, setSource] = useState(data.stringLiterals.source ?? "");
   const [hoverColor, setHoverColor] = useState(data.hoverColor);
@@ -52,8 +51,10 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
   const [rasterUrl, setRasterUrl] = useState<string | null>(null);
   const rasterUrlRef = useRef<string | null>(null);
 
+  // The shared header title-edit mechanic (click-to-edit, Enter/blur, Escape revert).
+  const title = useEditableLabel(data, () => { void processGraph(data.id); });
+
   // Mirror external changes (undo / paste / load replace the node instance).
-  useEffect(() => { setLabel(data.label); }, [data.label]);
   useEffect(() => { setUrl(data.url); }, [data.url]);
   useEffect(() => { setSource(data.stringLiterals.source ?? ""); }, [data.stringLiterals.source]);
   useEffect(() => { setHoverColor(data.hoverColor); }, [data.hoverColor]);
@@ -182,8 +183,6 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     void processGraph(data.id);
   }
 
-  function onLabel(v: string) { setLabel(v); data.label = v; scheduleAutosave(); }
-  function commitValue() { void processGraph(data.id); }
 
   // Committing a URL fetches the SVG text and inlines it; cross-origin hosts may
   // block the fetch (CORS), so the local-file path is the primary route.
@@ -245,17 +244,17 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
       style={{ width: data.width }}
     >
       <div className="solenoid-svgpick__bar">
-        <input
-          className="solenoid-svgpick__name"
-          value={label}
-          placeholder="SVG"
-          spellCheck={false}
-          onChange={(e) => onLabel(e.target.value)}
-          onBlur={commitValue}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-          onPointerDown={stopDragStart}
-          onMouseDown={stopDragStart}
-        />
+        {title.editing ? (
+          <input className="solenoid-svgpick__name" placeholder="SVG" {...title.inputProps} />
+        ) : (
+          <div
+            className={`solenoid-svgpick__name-display${data.label.trim() ? "" : " solenoid-svgpick__name-display--empty"}`}
+            title={data.label || "SVG"}
+            {...title.displayProps}
+          >
+            {data.label.trim() || "SVG"}
+          </div>
+        )}
         <button
           type="button"
           className="solenoid-svgpick__attach"

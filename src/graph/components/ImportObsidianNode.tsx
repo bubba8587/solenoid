@@ -10,6 +10,7 @@ import { SwatchGrid } from "./SwatchGrid";
 import { NodeSocket } from "./NodeSocket";
 import { FieldRow } from "./NoteNode";
 import { useDismissOnOutside } from "./useDismissOnOutside";
+import { useEditableLabel } from "./inlineInput";
 import { isDesktop, listVaultMarkdownFiles, readVaultFile } from "../fileBridge";
 import { getActiveArea, getActiveEditor } from "../activeGraph";
 import { processGraph } from "../process";
@@ -39,11 +40,9 @@ function baseName(rel: string): string {
  *  anywhere. */
 export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidianNodeType>) {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
-  const [label, setLabel] = useState(data.label);
   const [color, setColor] = useState(data.color);
   const [collapsed, setCollapsed] = useState(data.collapsed);
   const [body, setBody] = useState(data.body);
-  const [editingLabel, setEditingLabel] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [colorOpen, setColorOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -56,7 +55,8 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   const desktop = isDesktop();
   const vault = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("obsidianVault"));
 
-  useEffect(() => { setLabel(data.label); }, [data.label]);
+  // The shared header title-edit mechanic (click-to-edit, Enter/blur, Escape revert).
+  const title = useEditableLabel(data, () => { void getActiveArea()?.rerenderNode(data.id); });
   useEffect(() => { setColor(data.color); }, [data.color]);
   useEffect(() => { setCollapsed(data.collapsed); }, [data.collapsed]);
   useEffect(() => { setBody(data.body); }, [data.body]);
@@ -79,8 +79,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     data.body = content;
     data.fileName = sourcePath;
     if (sourcePath && (data.label === "Obsidian Note" || data.label.trim() === "")) {
-      data.label = baseName(sourcePath);
-      setLabel(data.label);
+      data.label = baseName(sourcePath); // title hook resyncs its display off data.label
     }
     const { removed, retyped } = data.syncFields();
     await dropStrandedFrontmatterCables(data.id, removed, retyped);
@@ -109,10 +108,6 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     catch { /* file gone — keep what's loaded */ }
   }
 
-  function commitLabel() {
-    if (label !== data.label) { data.label = label; scheduleAutosave(); void getActiveArea()?.rerenderNode(data.id); }
-    setEditingLabel(false);
-  }
   function pick(c: string) { setColor(c); data.color = c; void getActiveArea()?.rerenderNode(data.id); scheduleAutosave(); }
   function toggleCollapse() { const v = !collapsed; setCollapsed(v); data.collapsed = v; scheduleAutosave(); }
 
@@ -166,28 +161,15 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
             <path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        {editingLabel ? (
-          <input
-            className="solenoid-note__name"
-            value={label}
-            placeholder="Obsidian Note"
-            spellCheck={false}
-            autoFocus
-            onChange={(e) => setLabel(e.target.value)}
-            onBlur={commitLabel}
-            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); else if (e.key === "Escape") { setLabel(data.label); e.currentTarget.blur(); } }}
-            onPointerDown={stop}
-            onMouseDown={stop}
-          />
+        {title.editing ? (
+          <input className="solenoid-note__name" placeholder="Obsidian Note" {...title.inputProps} />
         ) : (
           <div
-            className={`solenoid-note__name-display${label.trim() ? "" : " solenoid-note__name-display--empty"}`}
-            title={label || "Obsidian Note"}
-            onClick={() => setEditingLabel(true)}
-            onPointerDown={stop}
-            onMouseDown={stop}
+            className={`solenoid-note__name-display${data.label.trim() ? "" : " solenoid-note__name-display--empty"}`}
+            title={data.label || "Obsidian Note"}
+            {...title.displayProps}
           >
-            {label.trim() || "Obsidian Note"}
+            {data.label.trim() || "Obsidian Note"}
           </div>
         )}
         <button

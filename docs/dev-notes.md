@@ -25,6 +25,16 @@ session-only (no path in the sandbox), only `fileName` survives reload — the I
 Fixed-width card, so it owns no `width` and stays out of the persistence SIZE_OWNERS set
 (`persistenceSweep` enforces). `fileBridge.ts` gained `pickFileLinkDialog`/`openFilePath`/`baseNameOf`.
 
+**Header title-edit unified to one hook.** Image / File Link / SVG used a plain always-live
+`<input>` (no click-to-edit, no Escape revert, wrote `node.label` per keystroke) while Note /
+Group / Import Obsidian each carried their own copy of the click-to-edit + Enter-blur-commit +
+Escape-revert machine. Factored `useEditableLabel(node, onCommit?)` in `inlineInput.tsx` (draft
+never writes label; commit writes + autosaves + runs the node's side effect) and routed all six
+through it — Note, Group (still a `<textarea>`), Import Obsidian, Image, File Link, SVG. The
+custom-chrome cards now match the standard NodeShell
+header: a fit-content click-to-edit display (`__name-display`, `--empty` dims a blank title) so the
+rest of the bar stays a drag handle.
+
 ### SESSION DIGEST (2026-08-27b — docs reconciled to the merged React Flow port; CLAUDE.md cut to standing orders)
 
 The port merged into `develop`; the ledger `react-port-plan.md` is archived (its live truth
