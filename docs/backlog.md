@@ -60,13 +60,6 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   2026-08-01, NOT REPRODUCED (headless coarse-pointer sweep over 107+ headers,
   5 seeds, clean). The app now has error boundaries (app + per node) — next
   occurrence prints a copyable message; get that text and this is a 5-minute fix.
-- [ ] **#7 Conduits sometimes unselectable/unmovable except via the Navigator** —
-  intermittent, no repro; suspected z-order/hit-area or group-membership sync.
-  **Likely fixed 2026-08-27** (conduit hit-area rework): a compressed Conduit's lane
-  squares cover the whole block, and RF's connectable rules re-armed the Handle inside
-  each one, so a press on the block started a cable instead of selecting or moving it.
-  Lanes now go `--inert` when compressed and the block carries a grab handle. Confirm
-  against the author's repro before deleting this line.
 - [ ] **AI palette verification tail** — first real-key end-to-end (`ANTHROPIC_API_KEY=…
   npm run ai-prompt`), palette on the preview (author eyeball), Tidy on an all-at-0,0
   generated graph, one desktop CSP smoke test. (Known + accepted: Apply drops undo

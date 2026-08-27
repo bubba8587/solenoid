@@ -265,7 +265,7 @@ until the port completes. No standalone harness — new work integrates with the
       `digestLabeled` when the rete plugin is absent (i.e. on the flow
       surface); verified live ("Moved node: NumberInput_1"). Dev probes:
       `window.__flowHistory`.
-- [ ] Still open: HtmlCanvasLayer decision. (Conduit ribbons landed — see C3.)
+- [x] HtmlCanvasLayer decision: HIC kept and ported (C9). (Conduit ribbons landed — see C3.)
 - [x] C7 probe done — drill-in verified over the flow surface (see C7); the
       template menu is reachable in automation (doctitle caret; use a
       detach-tolerant click for below-the-fold entries).
@@ -344,7 +344,7 @@ until the port completes. No standalone harness — new work integrates with the
       undo not needed at this scale.
 
 ### C6 — Groups, standoffs, conduits
-- [ ] `groupPushCore`/`standoffSolver` (pure) applied via `setNodes`; collapse pills;
+- [x] `groupPushCore`/`standoffSolver` (pure) applied via `setNodes`; collapse pills;
       conduit popup; area-plane z-order.
 
 ### C7 — Composite drill-in
@@ -415,7 +415,7 @@ until the port completes. No standalone harness — new work integrates with the
       over card, zero errors. (Probe lore: CDP touchEnd must LIST lifted points
       or the pointer stream strands; press points must dodge chrome overlap and
       the socket-dot overhang in card bounding boxes.)
-- [ ] Remaining touch items: real-device pass. (Touch cable drag verified in
+- [x] Real-device touch pass (author, 2026-08-27). (Touch cable drag verified in
       C3; touch-select mode landed — see C8.)
 
 ### C9 — Parity sweep + cutover decision
