@@ -607,6 +607,10 @@ export function ValueDisplay({
       style={{
         position: "relative",
         ...(isList ? { fontSize: full ? 14 : 13 } : {}),
+        // A formatted date ("15-Mar-2026") reads far longer than a number, so it
+        // renders a notch smaller than the number hero (18px) by default. An FC's
+        // own text-size annotation still wins (it sets fontSize on the span).
+        ...(isDate && !isList ? { fontSize: 15 } : {}),
         // Text alignment override (advanced tier); the box is right-aligned by default.
         ...(isString && ann?.textAlign ? { textAlign: ann.textAlign } : {}),
         // Desktop selects text to copy; touch pans across it instead (the copy

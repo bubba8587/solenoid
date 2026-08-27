@@ -293,3 +293,15 @@ export function nodeWide(node: ClassicPreset.Node): boolean {
     return s instanceof SolenoidSocket && (s.dataType === "table" || s.dataType === "frame" || s.dataType === "lambda");
   });
 }
+
+// A formatted date reads far longer than a number ("15-Mar-2026", or a custom format
+// longer still), so a node that OUTPUTS a date gets the medium card — roomier than the
+// 180px standard, below the 240px wide tier. Socket-driven like nodeWide (any new date
+// node is medium automatically); the wide tier wins when both would apply (NodeCard).
+export function nodeMedium(node: ClassicPreset.Node): boolean {
+  return Object.values(node.outputs ?? {}).some((p) => {
+    const s = (p as { socket?: ClassicPreset.Socket } | undefined)?.socket;
+    return s instanceof SolenoidSocket &&
+      (s.dataType === "date" || s.dataType === "datelist" || s.dataType === "datecombo");
+  });
+}

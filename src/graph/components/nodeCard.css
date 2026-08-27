@@ -102,6 +102,13 @@
   fill: var(--node-accent-dark, var(--border));
 }
 
+/* Medium tier — date-OUTPUTTING nodes, whose formatted value ("15-Mar-2026", or a
+   longer custom format) reads wider than a number. Applied via nodeMedium() (see
+   kind.ts); the wide tier wins when both apply, and a manual resize overrides it. */
+.solenoid-node--medium {
+  width: 210px;
+}
+
 /* Wide tier — nodes carrying 2D data (table/matrix or frame sockets) so grid and
    named-column previews have room. Applied via nodeWide() (see kind.ts); a manual
    resize sets an inline width that overrides this. */

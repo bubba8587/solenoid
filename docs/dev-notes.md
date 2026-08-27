@@ -35,6 +35,14 @@ custom-chrome cards now match the standard NodeShell
 header: a fit-content click-to-edit display (`__name-display`, `--empty` dims a blank title) so the
 rest of the bar stays a drag handle.
 
+**Dates read smaller + get a medium card.** A formatted date ("15-Mar-2026") is far longer than a
+number, so in the value box (`ValueDisplay`) a scalar date now defaults to 15px (vs the 18px number
+hero; an FC text-size annotation still wins). And a new **medium width tier** (`--medium`, 210px,
+between the 180px standard and 240px `--wide`) is applied by `nodeMedium()` (kind.ts) to any node
+with a `date`/`datelist`/`datecombo` OUTPUT — socket-driven like `nodeWide`, wide wins when both
+apply, a manual resize still overrides. Date Input, Today, Date Range, EDATE/EOMONTH/WORKDAY, etc.
+size up automatically.
+
 ### SESSION DIGEST (2026-08-27b — docs reconciled to the merged React Flow port; CLAUDE.md cut to standing orders)
 
 The port merged into `develop`; the ledger `react-port-plan.md` is archived (its live truth

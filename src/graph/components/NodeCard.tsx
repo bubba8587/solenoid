@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type ReactNod
 import type { ClassicPreset } from "rete";
 import { repositionDockedNodes } from "../canvasCommands";
 import { getOwningArea } from "../activeGraph";
-import { nodeAccent, nodeResizable, nodeWide } from "../rete-nodes";
+import { nodeAccent, nodeResizable, nodeWide, nodeMedium } from "../rete-nodes";
 import { nodeSizeStore } from "../nodeSizeStore";
 import { collapseStore } from "../collapseStore";
 import { groupMembershipStore } from "../groupMembership";
@@ -191,6 +191,8 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   const resizable = !!node && nodeResizable(node as unknown as ClassicPreset.Node);
   // Wider default card for table/frame nodes; a manual size still wins.
   const wide = !collapsed && !!node && nodeWide(node as unknown as ClassicPreset.Node);
+  // Medium card for date-outputting nodes (roomier than standard); wide wins over it.
+  const medium = !collapsed && !wide && !!node && nodeMedium(node as unknown as ClassicPreset.Node);
   // Manual size is ignored while collapsed (collapse owns the layout then).
   const size = collapsed || !node ? undefined : nodeSizeStore.get(node.id);
 
@@ -251,7 +253,7 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
         `solenoid-node${selected ? " solenoid-node--selected" : ""}` +
         `${collapsed ? " solenoid-node--collapsed" : ""}${groupColor ? " solenoid-node--grouped" : ""}` +
         `${resizable ? " solenoid-node--resizable" : ""}${size ? " solenoid-node--sized" : ""}` +
-        `${wide ? " solenoid-node--wide" : ""}${squareCollapse ? " solenoid-node--square-collapse" : ""}` +
+        `${wide ? " solenoid-node--wide" : ""}${medium ? " solenoid-node--medium" : ""}${squareCollapse ? " solenoid-node--square-collapse" : ""}` +
         `${!collapsible ? " solenoid-node--no-chevron" : ""}${className ? " " + className : ""}`
       }
       style={styleProp}
