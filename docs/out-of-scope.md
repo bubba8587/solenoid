@@ -70,17 +70,21 @@ exists AND a real need survives that long.
 **Tell-tale creep:** "two people editing the same canvas live."
 
 ### 4. Notebooks / arbitrary code cells — Jupyter, Observable, Hex
-**Stay out because:** a "run Python here" node instantly destroys every guarantee the
-product sells — purity, typing, provenance, auditability, safety of shared files. This
-is the sharpest-edged NO on the list because it will be the most requested: it's the
-universal escape hatch, and the whole point of Solenoid is that the escape hatch is
-where trust goes to die. The author already made this call once at smaller scale (the
-Expression cap: rank ≤ 2, frames/cubes permanently out — noFramesInFormulas/matricesInFormulas); this is that decision
-at product scale.
-**The line:** extensibility is *more node types* (packs, composites/subgraphs — typed,
-inspectable) — never *arbitrary evaluation*. The report projection is a view of the
-graph, not a notebook runtime.
-**Tell-tale creep:** "just one scripting node for power users."
+**Stay out because:** a notebook cell is arbitrary evaluation with I/O, state between
+runs and untyped results; it destroys every guarantee the product sells — purity, typing,
+provenance, auditability, safety of shared files. It is the universal escape hatch, and
+the whole point of Solenoid is that the escape hatch is where trust goes to die.
+**The line (revised by the author 2026-08-28, decisions scriptNode):** ONE node, **Script**,
+is the bounded form — a single JavaScript function whose parameters are its inputs and
+whose return value is folded onto the value model at a declared result type. No I/O (a
+sandbox worker with the network and storage doors removed), no state between runs, a wall
+clock, and nothing leaves it that is not already a Solenoid value. It is a typed pure
+function, not a cell: no Python, no packages, no frames or cubes (the verb engine is their
+surface, matricesInFormulas), no second language. Extensibility beyond that stays *more
+node types* (packs, composites — typed, inspectable). The report projection is a view of
+the graph, not a notebook runtime.
+**Tell-tale creep:** "let the script fetch", "a Python option", "share state between two
+Scripts", "pass a frame in."
 
 ### 5. Workflow orchestration — Airflow, Dagster, Prefect, n8n, Zapier, Power Automate
 **Stay out because:** retries, backfills, queues, distributed workers, cron

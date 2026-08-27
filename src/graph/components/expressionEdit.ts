@@ -1,4 +1,4 @@
-import type { ExpressionNode, LambdaNode, EquationNode } from "../rete-nodes";
+import type { ExpressionNode, LambdaNode, EquationNode, ScriptNode } from "../rete-nodes";
 import { processGraph } from "../process";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { dropInputCables } from "./cablePrune";
@@ -23,6 +23,28 @@ export async function applyExprChange(node: ExpressionNode, newExpr: string): Pr
   node.height = computeExprHeight(node.varNames.length);
   if (area) {
     // A pinned inline height would keep the new input row from growing the card.
+    clearPinnedHeight(area, node.id);
+    await area.rerenderNode(node.id);
+  }
+  await processGraph();
+}
+
+export function computeScriptHeight(varCount: number): number {
+  return 240 + Math.max(varCount, 0) * INPUT_ROW_PITCH;
+}
+
+/** Mirrors applyExprChange: the parameter sockets re-derive from the source on commit. */
+export async function applyScriptChange(node: ScriptNode, src: string): Promise<void> {
+  node.expr = src;
+  const { removed } = node._rebuild();
+
+  const area = getActiveArea();
+
+  if (removed.length > 0) await dropInputCables(node.id, removed);
+  for (const v of removed) node.removeInput(v);
+
+  node.height = computeScriptHeight(node.varNames.length);
+  if (area) {
     clearPinnedHeight(area, node.id);
     await area.rerenderNode(node.id);
   }

@@ -32,6 +32,7 @@ export * from "./nodes/text";
 export * from "./nodes/date";
 export * from "./nodes/formatController";
 export * from "./nodes/expression";
+export * from "./nodes/script";
 export * from "./nodes/equation";
 export * from "./nodes/placeholder";
 export * from "./nodes/quality";

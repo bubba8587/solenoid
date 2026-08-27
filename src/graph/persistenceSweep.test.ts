@@ -167,6 +167,7 @@ describe("everyFieldClassified — every own field is persisted or deliberately 
     violations: "per-pass check results", results: "per-pass sweep results",
     cachedHolds: "per-pass hold state", solvedFor: "per-pass solve marker",
     solvedKeys: "per-pass solve marker", lastResultRank: "anydataWildcard runtime rank tracker",
+    syntaxError: "Script: re-derived from expr by _rebuild",
     // ── FC / unit adoption state, re-derived by the reconcile passes ──
     forwarding: "re-derived by fcReconcile each pass", lockedByConvert: "re-derived by fcReconcile each pass",
     unitLocked: "re-derived by fcReconcile each pass", dictatedFromUnit: "re-derived by fcReconcile each pass",

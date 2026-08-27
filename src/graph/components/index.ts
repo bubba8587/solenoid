@@ -295,6 +295,7 @@ export { FormatControllerComponent } from "./FormatControllerNode";
 
 // ─── Expression ───────────────────────────────────────────────────────────────
 export { ExpressionComponent } from "./ExpressionNode";
+export { ScriptComponent } from "./ScriptNode";
 
 // ─── Equation (bidirectional solve) ─────────────────────────────────────────────
 export { EquationComponent } from "./EquationNode";

@@ -356,3 +356,21 @@ A composite's drill-in stack (`DrillStack` — flowArea Surface + topology pipe 
 **The drill-in stack is a breadcrumb of CompositeNode INSTANCES** (`compositeEditorStore.ts` — a nested composite isn't in the main editor, so an id alone couldn't resolve). Two consequences the stack exists for: (1) recompute always retargets `stack[0]`, the main-editor ancestor, so an edit any number of levels deep ripples outward correctly; (2) a level's PARENT editor is `stack[i-1]`'s internal editor (the main editor at level 0) — the surface a closed level reconciles its ports against.
 
 **The canvas-substitution seam (`activeGraph.ts`)** is the general extension point for ANY surface that "steals the canvas" (the drill-in today; a future focus/scratch surface tomorrow): on mount `setActiveGraph({ editor, area })`, on unmount `setActiveGraph(null)`, and chrome reads `getActive*` / `getOwningEditor` (NEVER `getEditor`) — keyboard shortcuts, copy/paste, context menus, command palette, tidy, selection, zoom/fit/lock, and the minimap then follow the surface with no further wiring. NESTED surfaces need no stack because the model is REPLACE-not-pile-up: drilling deeper unmounts the current level (cleanup clears) and mounts the deeper one (re-registers); the breadcrumb STACK lives in `compositeEditorStore`, `_override` holds only the current surface. Grow `_override` into a push/pop stack only if a feature ever needs two LIVE surfaces at once — not before.
+
+## Script sandbox (`scriptWorker.ts`, `scriptExecutor.ts`, `nodes/scriptRun.ts`)
+
+One shared module Worker, spawned lazily, one request id per call. `scriptRun.ts` is the
+evaluator and imports NOTHING from the app: it is the worker's whole bundle (no React, no
+DOM-touching module side effects) and the inline fallback for hosts without Workers
+(vitest). The worker deletes the I/O doors (`fetch`, `XMLHttpRequest`, `WebSocket`,
+`indexedDB`, `caches`, `importScripts`, `Worker`, `navigator`, `postMessage`…) from its
+global scope and prototype chain before the first call; `import()` is syntax and stays, so
+this is containment against accidents, not a security boundary. Return values cross as
+clonable data (`toClonable` marks functions/symbols/Map/Set) and are folded onto the value
+model on the MAIN thread by `scriptCoerce.ts`. The wall clock lives in the executor: a call
+past `SCRIPT_TIMEOUT_MS` resolves `#VALUE!` "Timed out", the stuck worker is terminated and
+respawned, and the other in-flight calls re-dispatch on the replacement (they were
+innocent). The main thread ALSO compiles the source (`compileScript`, cached by text) for
+immediate syntax feedback on the card, so `new Function` runs in both contexts: the desktop
+CSP must allow `'unsafe-eval'` in `script-src` or every Script reads a CSP refusal as its
+error.

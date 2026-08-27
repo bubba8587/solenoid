@@ -81,6 +81,30 @@ function envDim(v: unknown): Dim {
   return DIMENSIONLESS;
 }
 
+type RankedProducer = ClassicPreset.Node & { resultAs: ResultType; lastResultRank: 1 | 2 };
+
+/** Reconciles a producer's result socket RANK to the computed VALUE (anydataWildcard).
+ *  Value-driven, so it must run OUTSIDE data() via a microtask; headless runs skip the
+ *  swap. Shared by Expression and Script, whose `result` ports swap identically. */
+export function reconcileResultRank(node: RankedProducer, result: unknown): void {
+  // An error result says nothing about shape — leave the socket where the last value put it.
+  if (isSolError(result)) return;
+  const want: 1 | 2 = Array.isArray(result) && result.length > 0 && Array.isArray(result[0]) ? 2 : 1;
+  if (want === node.lastResultRank) return;
+  node.lastResultRank = want;
+  queueMicrotask(() => {
+    void (async () => {
+      const editor = getActiveEditor();
+      const area = getActiveArea();
+      const out = node.outputs.result;
+      if (!editor || !area || !out || !editor.getNode(node.id)) return;
+      out.socket = resultSocket(want === 2 ? "matrix" : "combo", node.resultAs);
+      await retypeOutputCables(editor, area, node.id, "result");
+      await area.rerenderNode(node.id);
+    })();
+  });
+}
+
 export class ExpressionNode extends ClassicPreset.Node {
   /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
   unitAware = true;
@@ -111,6 +135,8 @@ export class ExpressionNode extends ClassicPreset.Node {
    *  of the formula string, so KaTeX never renders it; shown as a hover tooltip
    *  on the card and as an editable legend in the formula popup. Display-only. */
   varDescriptions: Record<string, string> = {};
+  /** Runtime rank the result socket last settled to (reconcileResultRank); transient. */
+  lastResultRank: 1 | 2 = 1;
 
   constructor(init?: { label?: string; expr?: string; locked?: boolean; resultAs?: ResultType; literals?: Record<string, number>; varDescriptions?: Record<string, string> }) {
     super("Expression");
@@ -154,28 +180,6 @@ export class ExpressionNode extends ClassicPreset.Node {
     this.evaluator = compileEvaluator(this.expr);
     this.ast = parseFormula(this.expr);
     return { added, removed };
-  }
-
-  /** Reconciles the result socket's RANK to the computed VALUE (anydataWildcard). Value-driven,
-   *  so it must run OUTSIDE data() via a microtask; headless runs skip the swap. */
-  private lastResultRank: 1 | 2 = 1;
-  private reconcileResultRank(result: unknown): void {
-    // An error result says nothing about shape — leave the socket where the last value put it.
-    if (isSolError(result)) return;
-    const want: 1 | 2 = Array.isArray(result) && result.length > 0 && Array.isArray(result[0]) ? 2 : 1;
-    if (want === this.lastResultRank) return;
-    this.lastResultRank = want;
-    queueMicrotask(() => {
-      void (async () => {
-        const editor = getActiveEditor();
-        const area = getActiveArea();
-        const out = this.outputs.result;
-        if (!editor || !area || !out || !editor.getNode(this.id)) return;
-        out.socket = resultSocket(want === 2 ? "matrix" : "combo", this.resultAs);
-        await retypeOutputCables(editor, area, this.id, "result");
-        await area.rerenderNode(this.id);
-      })();
-    });
   }
 
   data(inputs: Record<string, unknown[]>): { result: unknown } {
@@ -231,7 +235,7 @@ export class ExpressionNode extends ClassicPreset.Node {
       }
       this.cachedResult = result;
       this.cachedError  = null;
-      this.reconcileResultRank(result);
+      reconcileResultRank(this, result);
       return { result };
     } catch {
       this.cachedError = "Evaluation error";

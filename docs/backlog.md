@@ -234,3 +234,7 @@ REMOVED — the old elkjs-vs-rete-auto-arrange peer conflict left with the plugi
 - [ ] **Keep `release-notes-features.md` current** — the 1.3 selling list.
 - [ ] **Cut 1.3**: desktop-gated checks (cargo on Windows, path-stripped
   `release:desktop`, exe smoke), bump 1.3.0, merge → `main`, tag `v1.3.0`.
+
+## Script (2026-08-28)
+- [ ] **Script on desktop**: `'unsafe-eval'` added to the Tauri CSP for the sandbox worker and the main-thread compile; untested on a desktop build. Author: place a Script, `(x) => x * 2` with x = 21 should read 42, not a CSP refusal.
+- [ ] **Script timeout pin**: the wall clock is Worker-only, so `SCRIPT_TIMEOUT_MS` has no vitest pin (probe-verified only).

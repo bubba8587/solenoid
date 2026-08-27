@@ -594,3 +594,19 @@ longer applies — the form-control pointerdown swallow survives on drag-prevent
 alone. **Reopen if:** cards visibly stack wrongly after selection, or a control needs
 last-selected-on-top semantics RF's `zIndex` model doesn't give.
 
+
+### scriptNode — Script: the ONE arbitrary-evaluation node, typed at the boundary (author 2026-08-28)
+The author asked for a code node whose outputs are restricted to the existing value
+types, overriding out-of-scope §4's blanket NO; §4 now states the bounded form. What
+stands: the source is a JavaScript function expression (`(a, b) => …`); its parameters
+are `anydata` inputs re-derived on commit (Expression's mechanic, `applyScriptChange`);
+the return value passes `coerceScriptResult` at the Number/Text/Date/Auto result type
+(per-cell `#TYPE!` across families with the logical→number bridge as the one exception,
+`#DOMAIN!` for NaN, `#SHAPE!` beyond rows of values, ragged rows padded with null) and
+the result socket's rank reconciles as Expression's does. Evaluation runs in the sandbox
+worker (`subsystem-invariants.md` § Script sandbox) under `SCRIPT_TIMEOUT_MS`; the Tauri
+CSP carries `'unsafe-eval'` for it. Named Script, not Code (NAME-2: CODE is an Excel
+function node). **Where:** `nodes/script.ts`, `nodes/scriptRun.ts`, `nodes/scriptCoerce.ts`,
+`scriptWorker.ts`, `scriptExecutor.ts`; pinned by `nodes/script.test.ts`. **Reopen if:**
+a script needs I/O, state between runs, a frame input, or a second language — each is
+§4's creep, not a feature request.

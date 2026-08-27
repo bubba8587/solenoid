@@ -6,6 +6,29 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-08-28 — Script node)
+
+**Script node** (`ScriptNode`, `nodes/script.ts` + `scriptRun.ts` / `scriptCoerce.ts`, `scriptWorker.ts` /
+`scriptExecutor.ts`; decisions scriptNode; out-of-scope §4 rewritten as the bounded form). The author's
+ask: a code node whose outputs are restricted or coerced to the existing value types. A JS function
+expression is the source (Expression's `expr` key); its parameter names become `anydata` inputs on
+commit (`applyScriptChange`, the applyExprChange twin; the textarea commits on blur / Ctrl+Enter,
+Escape reverts, Tab indents); `autoLiterals` gives an unwired parameter a typed number or text
+(unwired-untyped is JS `undefined`, a wired blank `null`); a per-cell error in any input propagates
+before the script runs. The return value is folded onto the value model at the Number/Text/Date/Auto
+toggle (per-cell `#TYPE!` across families with the boolean→number bridge kept, NaN `#DOMAIN!`,
+`Date` → serial, BigInt past safe `#OVERFLOW!`, ragged rows padded with null, mixed or deeper nesting
+`#SHAPE!`); rank reconciles through `reconcileResultRank`, now a shared function in `expression.ts`
+(was Expression's private method; `lastResultRank` stays a transient node field). Evaluation runs in a
+sandbox Worker with a 1 s wall clock (`subsystem-invariants.md` § Script sandbox); the Tauri CSP gained
+`'unsafe-eval'`, UNVERIFIED on a desktop build (backlog). Named Script: CODE is an Excel node (NAME-2).
+Verified on the live dev page via a puppeteer probe: worker compute, coercion, the timeout + respawn
+(an innocent node recomputes after a sibling's runaway loop), and `fetch`/`XMLHttpRequest`/
+`indexedDB`/`postMessage` all `undefined` inside. Pins: `nodes/script.test.ts` (20).
+**Probe gotcha:** Vite HMR stamps `?t=` onto module URLs, so `import("/src/graph/process.ts")` from a
+probe loads a SECOND instance with no editor; import the stamped URL found in
+`performance.getEntriesByType("resource")`.
+
 ### SESSION DIGEST (2026-08-27c — Note task-list checkboxes go live; File Link node)
 
 **Note read-view checkboxes are interactive.** `marked` already rendered GFM task lists but as

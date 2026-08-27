@@ -168,6 +168,7 @@ src/
 | `presentationStore.ts` + `components/PresentationOverlay.tsx` | Presenter mode: full-screen slideshow, hides chrome (`html.solenoid-presenting`), flies the camera per step (click/Space/→/←/Esc) |
 | `cxValue.ts` | Tagged complex values (tagSpecialScalars), rete-free (implReteFree) — kernels shared with the IM* formulas |
 | `lambdaValue.ts` | Lambda values, rete-free (implReteFree) so the formula path runs editor-less |
+| `scriptWorker.ts` + `scriptExecutor.ts` | The Script node's sandbox (decisions scriptNode): a module Worker whose only import is the app-free evaluator `nodes/scriptRun.ts`, and its main-thread client with the wall clock |
 | `documentValue.ts` / `imageValue.ts` / `svgValue.ts` | The other first-class content values: a Note/Report's renderable content on a cable, images (a chart-socket sibling), inline SVG markup (never a URL — the picker hovers inner elements) |
 | `valueKindLabel.ts` | value → display-kind label, one classifier for chips and popups |
 | `stringOrder.ts` | The ONE string comparator (sorts and dedups share it) |
@@ -320,7 +321,7 @@ Obsidian vault import/export direction).
 One file per family, pure `data()` classes: `scalar`, `list`, `listOps`,
 `stats`, `dist-*`, `finance`, `financeOps`, `text`, `textOps`, `date`,
 `dateSerial`, `complex`, `matrix`, `matrixOps`, `frame`, `cube`,
-`tableLambda`, `lambda`, `expression`, `convert`, `convertUnits`,
+`tableLambda`, `lambda`, `expression`, `script` (+ `scriptRun`, `scriptCoerce`), `convert`, `convertUnits`,
 `logic`, `input`, `control`,
 `display`, `group`, `conduit` (block bundler), `formatController`, `composite`,
 `annotation` (Note — its body's YAML frontmatter becomes typed OUTPUT sockets,

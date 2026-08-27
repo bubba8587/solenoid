@@ -1,0 +1,109 @@
+import { ClassicPreset } from "rete";
+import { anyDataIn, resultOut, readInput, type ResultType } from "./shared";
+import { isSolError, solError, type SolError } from "../errorValue";
+import { scriptParams, compileScript } from "./scriptRun";
+import { coerceScriptResult } from "./scriptCoerce";
+import { executeScript } from "../scriptExecutor";
+import { reconcileResultRank } from "./expression";
+
+export const DEFAULT_SCRIPT = "(x) => x";
+
+/** A per-cell error anywhere in an input outranks running the script at all
+ *  (errorInErrorOut at cell grain: the guard only sees whole-value errors). */
+function firstCellError(v: unknown): SolError | null {
+  if (isSolError(v)) return v;
+  if (Array.isArray(v)) {
+    for (const c of v) {
+      const e = firstCellError(c);
+      if (e) return e;
+    }
+  }
+  return null;
+}
+
+/**
+ * A JavaScript function as a node: its parameters are the inputs, its return value
+ * the result, folded onto the value model by `scriptCoerce.ts` at the declared
+ * result type. The source is Expression's `expr` field (one persistence key, same
+ * edit path shape: `applyScriptChange`), evaluated in the sandbox worker.
+ */
+export class ScriptNode extends ClassicPreset.Node {
+  label: string;
+  expr: string;
+  resultAs: ResultType;
+  cachedResult: unknown = null;
+  /** The message shown under the field: a syntax problem or the script's own throw. */
+  cachedError: string | null = null;
+  // A parameter is a value slot, so an unwired one takes a typed number OR text
+  // (autoLiterals); the reader passes whichever map holds it.
+  literals: Record<string, number> = {};
+  stringLiterals: Record<string, string> = {};
+  autoLiterals = true;
+  width  = 240;
+  height = 240;
+
+  varNames: string[] = [];
+  lastResultRank: 1 | 2 = 1;
+  private syntaxError: string | null = null;
+
+  constructor(init?: { label?: string; expr?: string; resultAs?: ResultType; literals?: Record<string, number>; stringLiterals?: Record<string, string> }) {
+    super("Script");
+    this.label = init?.label ?? "Script";
+    this.expr = init?.expr ?? DEFAULT_SCRIPT;
+    this.resultAs = init?.resultAs ?? "auto";
+    if (init?.literals) this.literals = { ...init.literals };
+    if (init?.stringLiterals) this.stringLiterals = { ...init.stringLiterals };
+    this.addOutput("result", resultOut("Result", "combo", this.resultAs));
+    this._rebuild();
+  }
+
+  /** Re-derive the parameter sockets from the source. Returns the names added and
+   *  the names the caller must prune cables from BEFORE `removeInput`. */
+  _rebuild(): { added: string[]; removed: string[] } {
+    const head = scriptParams(this.expr);
+    const next = "params" in head ? head.params : [];
+    const prev = new Set(this.varNames);
+    const nextSet = new Set(next);
+    const added: string[] = [];
+    const removed: string[] = [];
+    for (const v of next) {
+      if (!prev.has(v)) { this.addInput(v, anyDataIn(v)); added.push(v); }
+    }
+    for (const v of prev) if (!nextSet.has(v)) removed.push(v);
+    this.varNames = next;
+    if ("error" in head) this.syntaxError = head.error;
+    else {
+      const c = compileScript(this.expr);
+      this.syntaxError = "error" in c ? c.error : null;
+    }
+    return { added, removed };
+  }
+
+  async data(inputs: Record<string, unknown[]>): Promise<{ result: unknown }> {
+    if (!this.expr.trim()) {
+      this.cachedError = null;
+      this.cachedResult = null;
+      return { result: null };
+    }
+    if (this.syntaxError) {
+      const err = solError("#SYNTAX!", this.syntaxError);
+      this.cachedError = this.syntaxError;
+      this.cachedResult = err;
+      return { result: err };
+    }
+    // Unwired and untyped is JS `undefined`; a wired blank arrives as null. Exactly one
+    // map holds a typed wildcard literal (InlineAutoField clears the other).
+    const typed = (v: string): unknown => (v in this.literals ? this.literals[v] : this.stringLiterals[v]);
+    const args = this.varNames.map((v) => readInput<unknown>(inputs[v], typed(v)));
+    for (const a of args) {
+      const e = firstCellError(a);
+      if (e) { this.cachedError = null; this.cachedResult = e; return { result: e }; }
+    }
+    const out = await executeScript(this.expr, args);
+    const result = out.ok ? coerceScriptResult(out.value, this.resultAs) : solError(out.code, out.message);
+    this.cachedError = out.ok ? null : out.message;
+    this.cachedResult = result;
+    reconcileResultRank(this, result);
+    return { result };
+  }
+}
