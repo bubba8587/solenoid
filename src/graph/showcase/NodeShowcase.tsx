@@ -5,6 +5,7 @@ import { FLAT_CATALOG } from "../catalogUtils";
 import { setEditorRefs, processGraph } from "../process";
 import { nodeNameStore } from "../nodeNameStore";
 import { FormulaPopup } from "../components/FormulaPopup";
+import { ScriptPopup } from "../components/ScriptPopup";
 import { TablePopup } from "../components/TablePopup";
 import { CubePopup } from "../components/CubePopup";
 import { ChartPopup } from "../components/ChartPopup";
@@ -156,6 +157,7 @@ export default function NodeShowcase({ initialType }: { initialType: string }) {
         </div>
       </main>
       <FormulaPopup />
+      <ScriptPopup />
       <TablePopup />
       <CubePopup />
       <ChartPopup />

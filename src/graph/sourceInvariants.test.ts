@@ -741,6 +741,7 @@ describe("storesRegisterForget — every node-keyed store registers with nodeSto
     "cubePopupStore.ts": "ONE transient open-popup id, not a per-node map",
     "tablePopupStore.ts": "ONE transient open-popup id, not a per-node map",
     "formulaPopupStore.ts": "ONE transient open-popup id, not a per-node map",
+    "scriptPopupStore.ts": "ONE transient open-popup id, not a per-node map",
     "pivotEditorStore.ts": "ONE transient open-editor id, not a per-node map",
     "elementPickerStore.ts": "ONE transient open-picker id, not a per-node map",
     "compositeEditorStore.ts": "ONE transient open-drill-in id, not a per-node map",

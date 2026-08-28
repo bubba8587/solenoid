@@ -14,6 +14,7 @@ import { InspectorPanel } from "./graph/components/InspectorPanel";
 import { PresentationOverlay } from "./graph/components/PresentationOverlay";
 import { ConnectionDialog } from "./graph/components/ConnectionDialog";
 import { FormulaPopup } from "./graph/components/FormulaPopup";
+import { ScriptPopup } from "./graph/components/ScriptPopup";
 import { TablePopup } from "./graph/components/TablePopup";
 import { CubePopup } from "./graph/components/CubePopup";
 import { ChartPopup } from "./graph/components/ChartPopup";
@@ -79,6 +80,7 @@ function MainApp() {
       <PresentationOverlay />
       <ConnectionDialog />
       <FormulaPopup />
+      <ScriptPopup />
       <CubePopup />
       <TablePopup />
       <ChartPopup />

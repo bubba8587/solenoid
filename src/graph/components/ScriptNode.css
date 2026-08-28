@@ -1,36 +1,12 @@
-/* The Script source field: a plain sunken input (DESIGN.md § Inputs) in the mono face,
-   no wrapping so code keeps its shape, resized by the shared field grip. */
+/* The Script source field: the shared JS overlay editor (JsEditor.css) in a sunken
+   box, resized by the shared field grip, expanded to the popup by the corner button. */
 .solenoid-script__field {
-  position: relative; /* offsetParent for the resize grip */
+  position: relative; /* offsetParent for the resize grip + expand button */
   display: flex;
   padding: 4px 4px 2px;
 }
 
-.solenoid-script__textarea {
-  flex: 1;
-  width: 0;
-  min-height: 64px;
-  padding: 4px 6px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 16px;
-  tab-size: 2;
-  white-space: pre;
-  overflow: auto;
-  background: var(--surface-sunken);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--text);
-  resize: none;
-  box-sizing: border-box;
-}
-
-.solenoid-script__textarea:focus {
-  outline: none;
-  border-color: var(--node-accent, var(--accent));
-}
-
-.solenoid-script__textarea::placeholder {
-  color: var(--border-strong);
-  font-style: italic;
-}
+/* Seat the shared grip and the expand button INSIDE the editor box's corner —
+   the field's own padding would otherwise leave them straddling the border. */
+.solenoid-script__field .solenoid-field-resize { right: 6px; bottom: 4px; }
+.solenoid-script__field .solenoid-expr__expand { top: 7px; right: 7px; }

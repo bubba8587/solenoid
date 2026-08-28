@@ -9,6 +9,7 @@ import { ConvertNode } from "./convert";
 import { CastNode } from "./cast";
 import { FormatControllerNode } from "./formatController";
 import { ExpressionNode } from "./expression";
+import { ScriptNode } from "./script";
 import { EquationNode } from "./equation";
 import { GroupByNode } from "./list";
 import { RegexNode } from "./text";
@@ -285,6 +286,8 @@ export function nodeResizable(node: ClassicPreset.Node): boolean {
 export function nodeWide(node: ClassicPreset.Node): boolean {
   // Inline charts and drawing pads need the wide card to fit their fixed-width plot.
   if (node instanceof PointPlotterNode || node instanceof CurveNode) return true;
+  // Typed-source nodes: a formula or script line wants column width, not 180px.
+  if (node instanceof ExpressionNode || node instanceof ScriptNode || node instanceof EquationNode) return true;
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof MermaidNode || node instanceof TornadoNode) return true;
   if (node instanceof ProportionNode || node instanceof SankeyNode || node instanceof HistogramNode) return true;
   const ports = [...Object.values(node.inputs ?? {}), ...Object.values(node.outputs ?? {})];
