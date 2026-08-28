@@ -6,8 +6,9 @@ keep it current as features land; each entry is a *benefit*, not a changelog lin
 Order = rough selling priority. Mark `[slide]` on the ones worth a What's-New slide.
 The bar for what earns a spot: `archive/release-notes-1.1.md` (a sell is a shiny thing
 a user will go discover and play with, or something that would inspire a download —
-What's New is not a changelog; GitHub is). The 1.2 list shipped with v1.2.0
-(2026-07-22) and lives in git history.
+What's New is not a changelog; GitHub is). And there is no install base yet (author
+2026-08-28): novelty *versus 1.2* sells nothing — a slide must sell against Excel, or
+it's a fix. The 1.2 list shipped with v1.2.0 (2026-07-22) and lives in git history.
 
 Covers everything on `develop` since the v1.2.0 tag (v1.2.5, 2026-08-12, was a patch
 tag along the way — the baseline stays v1.2.0).
@@ -32,12 +33,6 @@ tag along the way — the baseline stays v1.2.0).
   time-capped, with a Recalculate button when the source is volatile
   (`Math.random`, `Date.now`). The "Script: worked examples" canvas tours four:
   Monte Carlo π, Collatz, a 30-year amortization table, Friday-the-13ths.
-- **[slide] Matrix formulas & LAMBDA.** Expression now takes matrices (matricesInFormulas):
-  TRANSPOSE/MMULT/SEQUENCE/WRAPROWS and the array-returning core, LAMBDA as a first-
-  class value — including eta-lambdas, higher-order `f(x)`, and reusable λs wired
-  across the graph — plus complex numbers (IM* over a true complex type). Every
-  in-scope Excel name is callable — the unimplemented set is ZERO — and **every pack
-  function** (SUNRISE, AWG, PIPE…) works in a formula the moment its pack is active.
 - **[slide] Query.** A Power Query-style transform node: drop a Query, drill in,
   chain the table verbs, and Refresh on demand — upstream changes only mark it
   stale, never silently recompute (queryIsCompositePreset: a pre-seeded manual-mode Composite).
@@ -76,6 +71,10 @@ tag along the way — the baseline stays v1.2.0).
 
 ## Release-notes body
 
+- The formula surface is whole-Excel now: matrices and the array core
+  (SEQUENCE, TRANSPOSE, MMULT, WRAPROWS…), LAMBDA as a first-class value you can
+  wire across the graph, complex numbers over a true complex type — and every
+  in-scope Excel name is callable, pack functions (SUNRISE, AWG, PIPE…) included.
 - Charts: wire a frame in and every column is a named series — legend, multi-value
   tooltip, click a legend entry to spotlight one series (card and popup alike).
   Merge Plots overlays several charts on one plot; Proportion (treemap or waffle)
