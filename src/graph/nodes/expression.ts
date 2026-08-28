@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
 import { anyDataIn, resultOut, resultSocket, readInput, type ResultType } from "./shared";
-import { frameSocket } from "../sockets";
+import { frameSocket, cubeSocket } from "../sockets";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { extractVariables, compileEvaluator, parseFormula, type ExprEvaluator, type Ast, formulaSyntaxHint } from "../excelFormula";
@@ -83,8 +83,8 @@ function envDim(v: unknown): Dim {
 }
 
 /** What a value-typed producer's result can announce: a result-socket family, or a
- *  whole FRAME (the Script node's row-object return). */
-export type ProducedFamily = ResultType | "frame";
+ *  whole FRAME or CUBE (the Script node's row-object returns). */
+export type ProducedFamily = ResultType | "frame" | "cube";
 
 type RankedProducer = ClassicPreset.Node & { resultAs?: ResultType; lastResultRank: 1 | 2; lastResultFamily?: ProducedFamily };
 
@@ -110,7 +110,9 @@ export function reconcileResultRank(node: RankedProducer, result: unknown, famil
       if (!editor || !area || !out || !editor.getNode(node.id)) return;
       out.socket = wantFamily === "frame"
         ? frameSocket
-        : resultSocket(want === 2 ? "matrix" : "combo", wantFamily);
+        : wantFamily === "cube"
+          ? cubeSocket
+          : resultSocket(want === 2 ? "matrix" : "combo", wantFamily);
       await retypeOutputCables(editor, area, node.id, "result");
       await area.rerenderNode(node.id);
     })();

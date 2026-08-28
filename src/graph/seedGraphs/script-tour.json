@@ -12,7 +12,7 @@
       "init": {
         "label": "Script: worked examples",
         "color": "amber",
-        "body": "One JavaScript function per node: parameters are the inputs, the return value is the result, and the value types itself. A script can return a single value, a list, rows of values, or rows of {name: value} objects, which become a frame with typed columns. A date input arrives as its Excel serial; return a Date, or Solenoid.date(serial), to make dates. The examples below return a number, a list, a text summary, a frame, and dates.",
+        "body": "One JavaScript function per node: parameters are the inputs, the return value is the result, and the value types itself. A script can return a single value, a list, rows of values, or rows of {name: value} objects, which become a frame with typed columns; a wired frame arrives the same way, as rows. A date input arrives as its Excel serial; return a Date, or Solenoid.date(serial), to make dates. The examples below return a number, a list, a text summary, a frame that a second script reads back, and dates.",
         "width": 560
       }
     },
@@ -127,6 +127,25 @@
       }
     },
     {
+      "id": "sc-total",
+      "type": "ScriptNode",
+      "x": 1020,
+      "y": 880,
+      "init": {
+        "label": "Reads the frame back",
+        "expr": "(sched) => {\n  const last = sched[sched.length - 1];\n  return \"Total interest \" + last.interest;\n}"
+      }
+    },
+    {
+      "id": "d-total",
+      "type": "DisplayNode",
+      "x": 1360,
+      "y": 990,
+      "init": {
+        "label": "→ Total interest 206017"
+      }
+    },
+    {
       "id": "in-year",
       "type": "NumberInputNode",
       "x": 0,
@@ -203,6 +222,18 @@
       "source": "sc-loan",
       "sourceOutput": "result",
       "target": "d-loan",
+      "targetInput": "in"
+    },
+    {
+      "source": "sc-loan",
+      "sourceOutput": "result",
+      "target": "sc-total",
+      "targetInput": "sched"
+    },
+    {
+      "source": "sc-total",
+      "sourceOutput": "result",
+      "target": "d-total",
       "targetInput": "in"
     },
     {

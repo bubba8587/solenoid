@@ -10,13 +10,22 @@
 // #AMBIGUOUS!, never a mixed anylist/anytable — mixed-by-nature data is a FRAME, and
 // row objects build one (each column typed, per-column homogeneity enforced the same
 // way; unitGranularity's "a frame ROW is legitimately mixed" is the frame's job).
-import { solError, isSolError } from "../errorValue";
+// Rows whose cells themselves nest rows or lists build a CUBE, the one container
+// whose cells are loose by type (`CubeCell`). The input side mirrors all of it:
+// `scriptArgToJs` hands the script frames and cubes as the same rows-of-objects.
+import { solError, isSolError, type SolError } from "../errorValue";
 import { jsDateToSerial } from "./dateSerial";
 import { isCx } from "../cxValue";
 import { isSolDateTag } from "./scriptRun";
 import type { ResultType } from "./shared";
 import type { ProducedFamily } from "./expression";
-import type { FrameValue, FrameColumn, FrameCell, FrameColType } from "../frame";
+import { isFrameValue, isCubeValue, frameRowCount, cubeFromColumns, type FrameValue, type FrameColumn, type FrameCell, type FrameColType, type CubeValue, type CubeCell } from "../frame";
+import { readFrame, isFrameRef, type FrameInput } from "../frameBackend";
+import { isUnitCell } from "../unitValue";
+import { displayMagnitudeOf } from "../unitBridge";
+import { isLambdaValue } from "../lambdaValue";
+import { isChartValue } from "../chartValue";
+import { isDocumentValue } from "../documentValue";
 
 function describe(v: unknown): string {
   if (typeof v === "object" && v !== null && "__unclonable" in v) {
@@ -83,18 +92,78 @@ function isRowObject(v: unknown): v is Record<string, unknown> {
     && !("__unclonable" in v);
 }
 
+// ─── Input side: a wired value → the plain JS the script reads ────────────────
+
+/** Rows of `{name: value}` from a frame — the exact mirror of the output form, so
+ *  what one script emits another can read. Date columns stay serials, unit-locked
+ *  columns stay as-typed magnitudes (both are how the cells are stored). */
+function frameToRows(f: FrameValue): Record<string, unknown>[] {
+  const n = frameRowCount(f);
+  const rows: Record<string, unknown>[] = [];
+  for (let i = 0; i < n; i++) {
+    const r: Record<string, unknown> = {};
+    for (const c of f.columns) r[c.name] = c.values[i] ?? null;
+    rows.push(r);
+  }
+  return rows;
+}
+
+function cubeCellToJs(cell: CubeCell): unknown {
+  if (cell == null) return null;
+  if (isCubeValue(cell)) return cubeToRows(cell);
+  if (isFrameValue(cell)) return frameToRows(cell);
+  if (isUnitCell(cell)) return displayMagnitudeOf(cell);
+  if (Array.isArray(cell)) return cell.map(cubeCellToJs);
+  return cell;
+}
+
+/** A cube as rows whose cells may hold nested rows or lists — again the mirror of
+ *  the output form. Nested frames are assumed eager (cubes are built materialized). */
+function cubeToRows(c: CubeValue): Record<string, unknown>[] {
+  const n = c.columns.reduce((m, col) => Math.max(m, col.cells.length), 0);
+  const rows: Record<string, unknown>[] = [];
+  for (let i = 0; i < n; i++) {
+    const r: Record<string, unknown> = {};
+    for (const col of c.columns) r[col.name] = cubeCellToJs(col.cells[i] ?? null);
+    rows.push(r);
+  }
+  return rows;
+}
+
+/** A wired input value → what the script's parameter receives: frames (lazy handles
+ *  and head-N previews re-collected in FULL — never a silent truncation) and cubes
+ *  become rows of `{name: value}`; lambdas, charts and documents have no script form
+ *  and error before the script runs. Everything else passes through untouched. */
+export async function scriptArgToJs(v: unknown): Promise<unknown> {
+  if (isLambdaValue(v) || isChartValue(v) || isDocumentValue(v)) {
+    const kind = isLambdaValue(v) ? "a lambda" : isChartValue(v) ? "a chart" : "a document";
+    return solError("#TYPE!", `A script reads data values; ${kind} has no script form`);
+  }
+  if (isFrameRef(v) || isFrameValue(v)) {
+    // A head-N preview carries its lazy handle as `__ref` (structurally typed to
+    // avoid a frame ↔ frameBackend cycle) — collect the FULL frame through it.
+    const full = await readFrame(isFrameValue(v) && v.__ref ? (v.__ref as unknown as FrameInput) : (v as FrameInput));
+    if (full == null || isSolError(full)) return full;
+    return frameToRows(full);
+  }
+  if (isCubeValue(v)) return cubeToRows(v);
+  return v;
+}
+
 const COL_TYPE: Record<Exclude<CellFamily, "complex">, FrameColType> = {
   number: "number", text: "string", date: "date", logical: "logical",
 };
 
-/** Rows of `{name: value}` → a frame: columns are the keys in order of first
- *  appearance, each column typed by its cells and single-typed like any container. */
-function buildFrame(rows: Record<string, unknown>[]): { value: unknown; family: ProducedFamily | null } {
+/** Column names across the rows, in order of first appearance. */
+function rowKeys(rows: Record<string, unknown>[]): string[] {
   const names: string[] = [];
   for (const r of rows) for (const k of Object.keys(r)) if (!names.includes(k)) names.push(k);
-  if (names.length === 0) {
-    return { value: solError("#SHAPE!", "Returned rows with no named values; give each row at least one {name: value}"), family: null };
-  }
+  return names;
+}
+
+/** Rows of `{name: value}` → a frame: columns are the keys in order of first
+ *  appearance, each column typed by its cells and single-typed like any container. */
+function buildFrame(rows: Record<string, unknown>[], names: string[]): { value: unknown; family: ProducedFamily | null } {
   const columns: FrameColumn[] = [];
   for (const name of names) {
     let vote: Vote = null;
@@ -117,20 +186,73 @@ function buildFrame(rows: Record<string, unknown>[]): { value: unknown; family: 
   return { value: frame, family: "frame" };
 }
 
+/** A nested cell of a cube column: rows recurse, a list coerces per cell (each cell
+ *  single-kinded on its own; a cube column carries no homogeneity guarantee — that is
+ *  the cube's looseness by type, `CubeCell`). Returns a SolError to abort the build. */
+function cubeCellFromJs(v: unknown): CubeCell | SolError {
+  if (Array.isArray(v)) {
+    if (v.length > 0 && v.every(isRowObject)) {
+      const nested = buildRows(v);
+      return isSolError(nested.value) ? (nested.value as SolError) : (nested.value as CubeCell);
+    }
+    const cells: CubeCell[] = [];
+    for (const c of v) {
+      const cell = cubeCellFromJs(c);
+      cells.push(cell as CubeCell);
+    }
+    return cells;
+  }
+  if (isRowObject(v)) {
+    const nested = buildRows([v]);
+    return isSolError(nested.value) ? (nested.value as SolError) : (nested.value as CubeCell);
+  }
+  return coerceCell(v).value as CubeCell;
+}
+
+/** Rows of `{name: value}` where some cells nest rows or lists → a CUBE. */
+function buildCube(rows: Record<string, unknown>[], names: string[]): { value: unknown; family: ProducedFamily | null } {
+  const cols: Array<{ name: string; cells: CubeCell[] }> = [];
+  for (const name of names) {
+    const cells: CubeCell[] = [];
+    for (const r of rows) {
+      const cell = cubeCellFromJs(r[name]);
+      // A nested build's structural refusal (#SHAPE!/#AMBIGUOUS! inside a nested
+      // frame) aborts the whole result; a plain bad CELL stays a cell error.
+      if (isSolError(cell) && (Array.isArray(r[name]) || isRowObject(r[name]))) {
+        return { value: cell, family: null };
+      }
+      cells.push(cell as CubeCell);
+    }
+    cols.push({ name, cells });
+  }
+  return { value: cubeFromColumns(cols), family: "cube" };
+}
+
+/** Rows of `{name: value}` → a frame, or — when any cell nests rows or a list — a
+ *  cube (the container whose cells may hold frames and lists). */
+function buildRows(rows: Record<string, unknown>[]): { value: unknown; family: ProducedFamily | null } {
+  const names = rowKeys(rows);
+  if (names.length === 0) {
+    return { value: solError("#SHAPE!", "Returned rows with no named values; give each row at least one {name: value}"), family: null };
+  }
+  const nests = rows.some((r) => names.some((k) => Array.isArray(r[k]) || isRowObject(r[k])));
+  return nests ? buildCube(rows, names) : buildFrame(rows, names);
+}
+
 /** The whole return value: a scalar, a list, rows of values (padded with null when
  *  ragged, as every broadcaster pads), or `{name: value}` row objects, which become a
  *  FRAME. Anything deeper or mixed-with-rows is #SHAPE!; a list or rows mixing
  *  families is #AMBIGUOUS!. `family` is what the value votes onto the result socket —
  *  null when it casts no vote. */
 export function coerceScriptResult(v: unknown): { value: unknown; family: ProducedFamily | null } {
-  if (isRowObject(v)) return buildFrame([v]);
+  if (isRowObject(v)) return buildRows([v]);
   if (!Array.isArray(v)) {
     const r = coerceCell(v);
     return { value: r.value, family: toSocketFamily(r.family) };
   }
   if (v.length === 0) return { value: [], family: null };
   const objRows = v.filter(isRowObject).length;
-  if (objRows === v.length) return buildFrame(v as Record<string, unknown>[]);
+  if (objRows === v.length) return buildRows(v as Record<string, unknown>[]);
   if (objRows > 0) {
     return { value: solError("#SHAPE!", "Returned {name: value} rows mixed with other values; a frame is rows of {name: value} only"), family: null };
   }

@@ -1,23 +1,31 @@
 import { ClassicPreset } from "rete";
-import { anyDataIn, resultOut, readInput } from "./shared";
+import { trueAnyIn, resultOut, readInput } from "./shared";
 import { isSolError, solError, type SolError } from "../errorValue";
 import { scriptParams, compileScript } from "./scriptRun";
-import { coerceScriptResult } from "./scriptCoerce";
+import { coerceScriptResult, scriptArgToJs } from "./scriptCoerce";
 import { executeScript } from "../scriptExecutor";
 import { reconcileResultRank, type ProducedFamily } from "./expression";
 // The Script node has NO declared result type (no toggle): the value types itself.
 // JS values carry their family (a string is text, a `Date` a date), `{name: value}`
-// rows build a FRAME, and the result socket reconciles to the computed value's family
-// and rank; `Solenoid.date(serial)` says the one thing a JS value cannot (scriptRun.ts).
+// rows build a FRAME (nested rows/lists, a CUBE), and the result socket reconciles to
+// the computed value's family and rank; `Solenoid.date(serial)` says the one thing a
+// JS value cannot (scriptRun.ts). Inputs are trueany: frames and cubes arrive as the
+// same rows-of-objects (`scriptArgToJs`); lambdas/charts/documents error before the run.
 
 export const DEFAULT_SCRIPT = "(x) => x";
 
 /** A per-cell error anywhere in an input outranks running the script at all
- *  (errorInErrorOut at cell grain: the guard only sees whole-value errors). */
+ *  (errorInErrorOut at cell grain: the guard only sees whole-value errors). Walks
+ *  lists, rows, and converted `{name: value}` rows. */
 function firstCellError(v: unknown): SolError | null {
   if (isSolError(v)) return v;
   if (Array.isArray(v)) {
     for (const c of v) {
+      const e = firstCellError(c);
+      if (e) return e;
+    }
+  } else if (typeof v === "object" && v !== null && Object.getPrototypeOf(v) === Object.prototype) {
+    for (const c of Object.values(v)) {
       const e = firstCellError(c);
       if (e) return e;
     }
@@ -71,7 +79,7 @@ export class ScriptNode extends ClassicPreset.Node {
     const added: string[] = [];
     const removed: string[] = [];
     for (const v of next) {
-      if (!prev.has(v)) { this.addInput(v, anyDataIn(v)); added.push(v); }
+      if (!prev.has(v)) { this.addInput(v, trueAnyIn(v)); added.push(v); }
     }
     for (const v of prev) if (!nextSet.has(v)) removed.push(v);
     this.varNames = next;
@@ -98,7 +106,9 @@ export class ScriptNode extends ClassicPreset.Node {
     // Unwired and untyped is JS `undefined`; a wired blank arrives as null. Exactly one
     // map holds a typed wildcard literal (InlineAutoField clears the other).
     const typed = (v: string): unknown => (v in this.literals ? this.literals[v] : this.stringLiterals[v]);
-    const args = this.varNames.map((v) => readInput<unknown>(inputs[v], typed(v)));
+    const args = await Promise.all(
+      this.varNames.map((v) => scriptArgToJs(readInput<unknown>(inputs[v], typed(v)))),
+    );
     for (const a of args) {
       const e = firstCellError(a);
       if (e) { this.cachedError = null; this.cachedResult = e; return { result: e }; }

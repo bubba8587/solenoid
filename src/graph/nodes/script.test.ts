@@ -152,6 +152,63 @@ describe("ScriptNode.data — the result is folded onto the value model", () => 
     expect(code((await run("() => [{ a: 1 }, { a: 'x' }]")).result)).toBe("#AMBIGUOUS!");
     expect(code((await run("() => [{ a: 1 }, 2]")).result)).toBe("#SHAPE!");
   });
+  it("rows whose cells nest rows or lists become a CUBE", async () => {
+    const { result, node } = await run(
+      "() => [{ region: 'EU', months: [1, 2], detail: [{ m: 1, sales: 3 }] }]",
+    );
+    const c = result as { __cube: true; depth: number; columns: Array<{ name: string; cells: unknown[] }> };
+    expect(c.__cube).toBe(true);
+    expect(node.lastResultFamily).toBe("cube");
+    expect(c.columns.map((x) => x.name)).toEqual(["region", "months", "detail"]);
+    expect(c.columns[1].cells[0]).toEqual([1, 2]);
+    const detail = c.columns[2].cells[0] as { __frame: true; columns: Array<{ name: string }> };
+    expect(detail.__frame).toBe(true);
+    expect(detail.columns.map((x) => x.name)).toEqual(["m", "sales"]);
+  });
+});
+
+describe("ScriptNode.data — frames and cubes in", () => {
+  const frame = {
+    __frame: true,
+    columns: [
+      { name: "city", type: "string", values: ["Oslo", "Riga"] },
+      { name: "sales", type: "number", values: [10, 7] },
+    ],
+  };
+  it("a frame arrives as rows of {name: value} — the mirror of the output form", async () => {
+    const { result } = await run("(f) => f.map((r) => r.city + ':' + r.sales).join(' ')", { f: [frame] });
+    expect(result).toBe("Oslo:10 Riga:7");
+  });
+  it("a script can round-trip a frame: read rows, return transformed rows", async () => {
+    const { result, node } = await run("(f) => f.map((r) => ({ city: r.city, big: r.sales * 100 }))", { f: [frame] });
+    const out = result as { __frame: true; columns: Array<{ name: string; type: string; values: unknown[] }> };
+    expect(out.columns.map((c) => [c.name, c.type])).toEqual([["city", "string"], ["big", "number"]]);
+    expect(out.columns[1].values).toEqual([1000, 700]);
+    expect(node.lastResultFamily).toBe("frame");
+  });
+  it("an error cell inside a frame propagates without running the script", async () => {
+    const bad = {
+      __frame: true,
+      columns: [{ name: "x", type: "number", values: [1, solError("#DIV/0!", "boom")] }],
+    };
+    expect(code((await run("(f) => f.length", { f: [bad] })).result)).toBe("#DIV/0!");
+  });
+  it("a cube arrives as rows with nested rows/lists in cells", async () => {
+    const cube = {
+      __cube: true, depth: 1,
+      columns: [
+        { name: "k", cells: ["a", "b"] },
+        { name: "vs", cells: [[1, 2], [3]] },
+      ],
+    };
+    const { result } = await run("(c) => c.map((r) => r.k + r.vs.length).join('')", { c: [cube] });
+    expect(result).toBe("a2b1");
+  });
+  it("a lambda has no script form and errors before the run", async () => {
+    const lam = { __lambda: true, params: ["x"], fn: () => 1, expr: "x" };
+    const r = (await run("(g) => g", { g: [lam] })).result;
+    expect(code(r)).toBe("#TYPE!");
+  });
   it("functions and unclonables are #TYPE!; deeper or mixed nesting is #SHAPE!", async () => {
     expect(code((await run("() => () => 1")).result)).toBe("#TYPE!");
     expect(code((await run("() => new Map()")).result)).toBe("#TYPE!");

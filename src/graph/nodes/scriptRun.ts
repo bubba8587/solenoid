@@ -91,11 +91,13 @@ export function compileScript(src: string): { fn: Fn } | { error: string } {
 }
 
 /** Replace anything structured clone cannot carry (functions, symbols) with a marker
- *  the coercer reports as #TYPE!, so a bad return never kills the reply channel. */
+ *  the coercer reports as #TYPE!, so a bad return never kills the reply channel.
+ *  The depth cap must clear the deepest legal shape — cube rows nesting frame rows
+ *  nesting lists — with room for a level of cube-in-cube. */
 export function toClonable(v: unknown, depth = 0): unknown {
   if (typeof v === "function" || typeof v === "symbol") return { __unclonable: typeof v };
   if (v === null || typeof v !== "object" || v instanceof Date) return v;
-  if (depth > 3) return { __unclonable: "nested" };
+  if (depth > 7) return { __unclonable: "nested" };
   if (Array.isArray(v)) return v.map((c) => toClonable(c, depth + 1));
   if (ArrayBuffer.isView(v)) return Array.from(v as unknown as ArrayLike<unknown>);
   if (v instanceof Map || v instanceof Set) return { __unclonable: v instanceof Map ? "Map" : "Set" };

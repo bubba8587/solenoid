@@ -167,6 +167,7 @@ describe("perInputUnitBlind — a node file that runs the dimension algebra decl
   // Files sanctioned to call the algebra WITHOUT declaring, with the reason:
   const SANCTIONED: Record<string, string> = {
     "nodes/shared.ts": "the helper library (broadcastUnit/guardCell/anyDimensioned) — declares no node class; every caller declares unitAware in its own file",
+    "nodes/scriptCoerce.ts": "Script is unit-blind by design; isUnitCell here unwraps CUBE cells (which ride inside the whole CubeValue, past the boundary strip) to magnitudes for the script",
   };
   const NODE_DIRS = ["nodes", "packs"].map((d) => path.join(SRC, d));
 

@@ -47,9 +47,18 @@ So a list, table, or frame column mixing families is `#AMBIGUOUS!`, and mixed-by
 gets its real home: rows of `{name: value}` objects (or one such object) build a `FrameValue`
 (columns keyed in first-appearance order, per-column types incl. date via `Date`/`Solenoid.date`;
 `reconcileResultRank` grew a "frame" vote that swaps the whole socket). Expression's frame ban
-is Excel-surface complexity budget; Script is the more advanced surface (author). Cubes stay
-out. The seed's amortization script now returns row objects → a typed frame, headers shown by
-the Display, frame-violet cable verified live.
+is Excel-surface complexity budget; Script is the more advanced surface (author). The seed's
+amortization script now returns row objects → a typed frame, headers shown by the Display,
+frame-violet cable verified live.
+**Frames and cubes flow both ways (author 2026-08-28d — "no proper justification" for the input
+ban, correctly: it was inherited from the formula surface, not derived).** Script params are now
+trueany; `scriptArgToJs` hands a wired frame (lazy refs and head-N previews collected in FULL via
+`readFrame`) or cube to the script as the same rows-of-objects the output form uses; nested
+rows/lists in returned row cells build a `CubeValue` (`cubeFromColumns`; toClonable depth cap
+raised 3→7 for the nesting); lambdas/charts/documents error before the run; cube `UnitCell`
+cells unwrap to magnitudes (Script stays unit-blind — sanctioned in perInputUnitBlind). Seed
+grew a "Reads the frame back" Script consuming the amortization frame (→ Total interest
+206017, verified live). Details: decisions scriptNode; out-of-scope §4 revised again.
 **Group edge bands outset** 4px past the dashed border (they anchored to the body's padding box
 and started 2px inside the line).
 

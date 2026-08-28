@@ -611,15 +611,22 @@ single-typed, uniformly**: a list, a table, or a frame column mixing families is
 "legitimately mixed" row of unitGranularity is a FRAME row, e.g. Get Row's one-row
 frame). Other unresolvable outputs error: `#TYPE!` for unsupported values, `#DOMAIN!`
 for NaN, `#SHAPE!` beyond the accepted shapes (ragged rows padded with null).
-**Frame OUTPUT is allowed (author 2026-08-28c)**: rows of `{name: value}` objects — or
-one such object — build a `FrameValue` with columns keyed in first-appearance order and
-typed per column. Expression's frame ban is about the complexity budget of an
-Excel-shaped surface; Script is the more advanced surface and follows its own rule.
+**Frames and cubes flow BOTH WAYS (author 2026-08-28c/d)**: rows of `{name: value}`
+objects — or one such object — build a `FrameValue` (columns keyed in first-appearance
+order, typed per column); rows whose cells nest rows or lists build a `CubeValue` (the
+one container loose by type, `CubeCell`). The INPUT side is the exact mirror
+(`scriptArgToJs`): parameters are trueany, a wired frame (lazy handles and head-N
+previews collected in FULL, never a silent truncation) or cube arrives as the same
+rows-of-objects, so what one script emits another reads. Lambdas, charts and documents
+have no script form and error before the run; Script stays unit-blind (cube `UnitCell`
+cells unwrap to magnitudes). Expression's frame ban was about the complexity budget of
+an Excel-shaped surface; Script is the more advanced surface and follows its own rule
+(the author, challenging the inherited exclusion: there was no principled blocker).
 Expression also KEEPS its Number/Text/Date/Auto toggle: a formula's variables don't say
 what it returns; a script's values do. Evaluation runs in the sandbox worker
 (`subsystem-invariants.md` § Script sandbox) under `SCRIPT_TIMEOUT_MS`; the Tauri
 CSP carries `'unsafe-eval'` for it. Named Script, not Code (NAME-2: CODE is an Excel
 function node). **Where:** `nodes/script.ts`, `nodes/scriptRun.ts`, `nodes/scriptCoerce.ts`,
 `scriptWorker.ts`, `scriptExecutor.ts`; pinned by `nodes/script.test.ts`. **Reopen if:**
-a script needs I/O, state between runs, a frame INPUT, cube output, or a second
-language — each is §4's creep, not a feature request.
+a script needs I/O, state between runs, or a second language — each is §4's creep, not
+a feature request.
