@@ -124,6 +124,20 @@ textarea.solenoid-group__label { flex: 1 1 auto; }
   border-radius: 0 0 8px 8px;
 }
 
+/* Pointer surfaces of an OPEN group (its RF wrapper is pointer-transparent —
+   flow.css `.sol-group-open`): header, edge bands and grip always take the
+   pointer; the whole body re-arms once the group is selected. */
+.sol-group-open .solenoid-group__header,
+.sol-group-open .solenoid-group__resize { pointer-events: auto; }
+.sol-group-open .solenoid-group--selected .solenoid-group__body { pointer-events: auto; }
+
+/* Invisible drag bands along the dashed edge, thick enough to grab. */
+.solenoid-group__band { position: absolute; pointer-events: auto; }
+.solenoid-group__band--n { top: 0; left: 0; right: 0; height: 14px; }
+.solenoid-group__band--s { bottom: 0; left: 0; right: 0; height: 14px; }
+.solenoid-group__band--w { top: 0; bottom: 0; left: 0; width: 14px; }
+.solenoid-group__band--e { top: 0; bottom: 0; right: 0; width: 14px; }
+
 /* Bottom-right resize grip. */
 .solenoid-group__resize {
   position: absolute;

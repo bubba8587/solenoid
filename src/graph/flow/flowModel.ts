@@ -218,6 +218,10 @@ export function nodeClassName(node: SolenoidNode): string | undefined {
   // A Conduit's node box is a fixed 92 square around a much smaller block, so the box
   // itself must not take pointers — the painted shell and lane squares do (conduit.css).
   if (node instanceof Nodes.ConduitNode) cls.push("sol-conduit-node");
+  // An OPEN group's interior is working canvas, not a drag handle: the wrapper goes
+  // pointer-transparent and only the header, edge bands, grip — and the body once the
+  // group is selected — take pointers (flow.css + GroupNode.css).
+  if (node instanceof Nodes.GroupNode && !node.collapsed) cls.push("sol-group-open");
   return cls.length ? cls.join(" ") : undefined;
 }
 

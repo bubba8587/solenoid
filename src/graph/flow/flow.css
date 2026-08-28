@@ -36,6 +36,16 @@
      has to out-rank an inline style — the same reason sol-member-hidden shouts. */
   pointer-events: none !important;
 }
+/* An OPEN group's interior is working canvas: a press there pans, lassos or reaches a
+   cable, never drags the box (the rete surface's drag guard, lost in the RF port). The
+   wrapper goes pointer-transparent the same way the Conduit's does; the header, the
+   edge bands and the grip claim their own pointers, and the whole body re-arms once
+   the group is SELECTED so a selected group can be dragged by its face (GroupNode.css).
+   Collapsed groups are small node-like boxes and stay fully draggable. */
+.react-flow__node.sol-group-open {
+  pointer-events: none !important;
+}
+
 /* RF's own connectable rules re-arm the Handle inside a lane, so a COMPRESSED lane
    (pointer-transparent — conduit.css) has to reach in and turn it off too. */
 .solenoid-conduit__lane--inert .react-flow__handle.sol-rf-handle-reset {
