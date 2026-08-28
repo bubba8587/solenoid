@@ -131,12 +131,14 @@ textarea.solenoid-group__label { flex: 1 1 auto; }
 .sol-group-open .solenoid-group__resize { pointer-events: auto; }
 .sol-group-open .solenoid-group--selected .solenoid-group__body { pointer-events: auto; }
 
-/* Invisible drag bands along the dashed edge, thick enough to grab. */
+/* Invisible drag bands along the dashed edge, thick enough to grab. Anchored to the
+   body's PADDING box, so they outset 4px past the 2px border: the dashed line itself
+   and a small reach outside it are part of the grab target, not just the interior. */
 .solenoid-group__band { position: absolute; pointer-events: auto; }
-.solenoid-group__band--n { top: 0; left: 0; right: 0; height: 14px; }
-.solenoid-group__band--s { bottom: 0; left: 0; right: 0; height: 14px; }
-.solenoid-group__band--w { top: 0; bottom: 0; left: 0; width: 14px; }
-.solenoid-group__band--e { top: 0; bottom: 0; right: 0; width: 14px; }
+.solenoid-group__band--n { top: -4px; left: -4px; right: -4px; height: 18px; }
+.solenoid-group__band--s { bottom: -4px; left: -4px; right: -4px; height: 18px; }
+.solenoid-group__band--w { top: -4px; bottom: -4px; left: -4px; width: 18px; }
+.solenoid-group__band--e { top: -4px; bottom: -4px; right: -4px; width: 18px; }
 
 /* Bottom-right resize grip. */
 .solenoid-group__resize {
