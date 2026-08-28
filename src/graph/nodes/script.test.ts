@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ScriptNode, DEFAULT_SCRIPT } from "./script";
-import { scriptParams, toClonable, invokeScript } from "./scriptRun";
+import { scriptParams, toClonable, invokeScript, scriptIsVolatile } from "./scriptRun";
 import { coerceScriptResult } from "./scriptCoerce";
 import { wrapNodeData } from "../coerceInputs";
 import { isSolError, solError, type SolError } from "../errorValue";
@@ -32,6 +32,20 @@ describe("scriptParams — the function head declares the inputs", () => {
     expect(scriptParams("(a = 1) => a")).toHaveProperty("error");
     expect(scriptParams("(class) => 1")).toHaveProperty("error");
     expect(scriptParams("(a, a) => a")).toHaveProperty("error");
+  });
+});
+
+describe("scriptIsVolatile — random/clock sources earn the Recalculate button", () => {
+  it("spots the volatile globals", () => {
+    expect(scriptIsVolatile("() => Math.random()")).toBe(true);
+    expect(scriptIsVolatile("() => Date.now()")).toBe(true);
+    expect(scriptIsVolatile("() => new Date()")).toBe(true);
+    expect(scriptIsVolatile("() => crypto.randomUUID()")).toBe(true);
+    expect(scriptIsVolatile("() => performance.now()")).toBe(true);
+  });
+  it("a pure script, and a Date built FROM arguments, stay quiet", () => {
+    expect(scriptIsVolatile("(x) => x * 2")).toBe(false);
+    expect(scriptIsVolatile("(y) => new Date(Date.UTC(y, 0, 1))")).toBe(false);
   });
 });
 

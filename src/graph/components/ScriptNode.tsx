@@ -5,6 +5,8 @@ import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { FieldResizeGrip } from "./FieldResizeGrip";
 import { ResultTypeToggle } from "./ResultTypeToggle";
+import { RecalcButton } from "./RecalcButton";
+import { scriptIsVolatile } from "../nodes/scriptRun";
 import { applyScriptChange } from "./expressionEdit";
 import { JsEditor } from "./JsEditor";
 import { scriptPopup } from "../scriptPopupStore";
@@ -82,6 +84,7 @@ export function ScriptComponent({ data: node, emit }: NodeProps<ScriptNodeType>)
       <InlineInputs node={node} emit={emit} />
       <ResultTypeToggle node={node} dim="combo" />
       <ValueDisplay value={node.cachedResult as number | number[] | string | string[] | SolError | null} />
+      {scriptIsVolatile(node.expr) && <RecalcButton title="Run the script again" />}
     </NodeShell>
   );
 }

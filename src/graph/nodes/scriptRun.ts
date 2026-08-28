@@ -40,6 +40,16 @@ export function scriptParams(src: string): { params: string[] } | { error: strin
   return { params };
 }
 
+// Source scan, not semantics: a renamed alias escapes it and a string literal can
+// false-positive, and either way the cost is only a Recalculate button.
+const VOLATILE_RE =
+  /\bMath\s*\.\s*random\b|\bDate\s*\.\s*now\b|\bnew\s+Date\s*\(\s*\)|\bcrypto\s*\.\s*(?:getRandomValues|randomUUID)\b|\bperformance\s*\.\s*now\b/;
+
+/** Whether the source draws on randomness or the clock, so each run can differ. */
+export function scriptIsVolatile(src: string): boolean {
+  return VOLATILE_RE.test(src);
+}
+
 type Fn = (...args: unknown[]) => unknown;
 const compiled = new Map<string, Fn>();
 
