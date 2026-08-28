@@ -403,10 +403,13 @@
   text-wrap-style: balance;
 }
 
-/* Socket Types tab — the floating socket legend's rows, given room to breathe. */
+/* Socket Types tab — the floating socket legend's rows, given room to breathe:
+   the column centers in the overlay and the glyphs run two sizes up from the
+   floating legend's 14px (SVGs rescale crisply off their viewBox). */
 .fr-sockets {
   padding: 6px 6px 16px;
   max-width: 440px;
+  margin: 0 auto;
 }
 .fr-sockets__intro {
   margin: 0 0 16px;
@@ -416,7 +419,9 @@
   text-wrap-style: pretty;
 }
 .fr-sockets .solenoid-legend__row { margin-bottom: 13px; }
-.fr-sockets .solenoid-legend__type { font-size: 14px; }
+.fr-sockets .solenoid-legend__type { font-size: 16px; }
+.fr-sockets .solenoid-legend__dot svg { width: 18px; height: 18px; }
+.fr-sockets .solenoid-legend__dots { width: 66px; gap: 5px; }
 
 /* Row-expandable catalog descriptions: a row with one shows it on tap/click in
    a full-width line beneath — the dense table stays dense, and touch (no
