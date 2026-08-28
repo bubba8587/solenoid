@@ -29,6 +29,10 @@ doc header (author): there is NO install base, so novelty versus 1.2 counts for 
 "we can finally do X" reads as a fix; the original bar (shiny, playable,
 download-inspiring) is the whole test. ("Must sell against Excel" was an agent
 over-extrapolation, corrected same session.) Deck stands at nine slides.
+**The deck shipped in-app:** HelpDialogs.tsx SLIDES rewritten to the nine 1.3 slides,
+WHATS_NEW_VERSION → "1.3" (auto-shows once on next launch). Copy follows §7 (no em dashes,
+no trailing parentheticals, label titles); tsc + uiCopy green; all nine eyeballed via
+Playwright on the dev server. Author copy-edits via the in-app freeze as usual.
 
 ### SESSION DIGEST (2026-08-28c — Report embeds become `=name` refs; dev copy-edit freeze)
 
