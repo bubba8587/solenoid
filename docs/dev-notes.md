@@ -25,8 +25,10 @@ columns, Matrix & LAMBDA, Query, AI palette) all landed AFTER the v1.2.0 tag and
 never announced — the 1.2 deck is the eight slides still live in HelpDialogs.tsx, and
 v1.2.5's GitHub release body is just the download blurb — so they stay 1.3 material.
 **Round 2:** Matrix formulas & LAMBDA demoted to a body line, and the bar sharpened in the
-doc header (author): there is NO install base, so novelty versus 1.2 sells nothing — a
-slide must sell against Excel or it's a fix. Deck stands at nine slides.
+doc header (author): there is NO install base, so novelty versus 1.2 counts for nothing —
+"we can finally do X" reads as a fix; the original bar (shiny, playable,
+download-inspiring) is the whole test. ("Must sell against Excel" was an agent
+over-extrapolation, corrected same session.) Deck stands at nine slides.
 
 ### SESSION DIGEST (2026-08-28c — Report embeds become `=name` refs; dev copy-edit freeze)
 

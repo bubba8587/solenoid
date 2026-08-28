@@ -7,8 +7,9 @@ Order = rough selling priority. Mark `[slide]` on the ones worth a What's-New sl
 The bar for what earns a spot: `archive/release-notes-1.1.md` (a sell is a shiny thing
 a user will go discover and play with, or something that would inspire a download —
 What's New is not a changelog; GitHub is). And there is no install base yet (author
-2026-08-28): novelty *versus 1.2* sells nothing — a slide must sell against Excel, or
-it's a fix. The 1.2 list shipped with v1.2.0 (2026-07-22) and lives in git history.
+2026-08-28): novelty *versus 1.2* counts for nothing — "we can finally do X" reads as
+a fix, and only the bar above makes something a slide. The 1.2 list shipped with
+v1.2.0 (2026-07-22) and lives in git history.
 
 Covers everything on `develop` since the v1.2.0 tag (v1.2.5, 2026-08-12, was a patch
 tag along the way — the baseline stays v1.2.0).
