@@ -109,4 +109,6 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
 if (import.meta.env.DEV) {
   void import("./graph/seedTune");
   void import("./graph/census");
+  // Ctrl+Alt+E: freeze the app and edit on-screen strings straight into source.
+  void import("./devCopyEdit");
 }

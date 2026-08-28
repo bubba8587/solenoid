@@ -1,5 +1,13 @@
 # Solenoid String Editor
 
+> **In-app shortcut:** on the dev server you can skip this window entirely — press
+> **Ctrl+Alt+E** in the running app to freeze it and edit any on-screen string in
+> place (`src/devCopyEdit.ts`). Commits post to the Vite `/__copy-edit` endpoint
+> (`vite.config.ts`), which reuses this tool's mapper (`literals.mjs`) — same
+> drift-safe rewrite, same `copy-edits.jsonl` log. Only unique source matches are
+> written; ambiguous or dynamic strings report on the badge and are left alone —
+> use this window for those.
+
 A standalone local **WYSIWYG copy-editing companion** for the Solenoid app. It opens in
 its own browser window, reads the *running* dev server, lists every string currently
 visible on screen, and lets you rewrite any of them straight into the project's source
