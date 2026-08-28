@@ -46,8 +46,8 @@ function weekendSet(code: number): Set<number> {
 export type TodayNowOp = "today" | "now";
 
 export const TODAY_NOW_OP_META = {
-  today: { label: "TODAY", description: "Today's date as a serial number. Excel: TODAY." },
-  now:   { label: "NOW",   description: "Current date + time as a serial. The fractional part encodes time of day. Excel: NOW." },
+  today: { label: "TODAY", description: "Today's date as a serial number. Excel: `TODAY`." },
+  now:   { label: "NOW",   description: "Current date + time as a serial. The fractional part encodes time of day. Excel: `NOW`." },
 } satisfies Record<TodayNowOp, { label: string; description: string }>;
 
 export class TodayNowNode extends ClassicPreset.Node {
@@ -140,8 +140,8 @@ export class TimeConstructNode extends ClassicPreset.Node {
 export type DateTimeValueOp = "date" | "time";
 
 export const DATE_TIME_VALUE_OP_META = {
-  date: { label: "DATEVALUE", description: "Parses a date string into a date serial: ISO, day-first numeric, ordinals and month names (15 March 1996, 3rd Apr 2026). A numeric date that could read as day/month or month/day gives #AMBIGUOUS! rather than a guess. Excel: DATEVALUE." },
-  time: { label: "TIMEVALUE", description: "Parses a time string such as \"14:30:00\" into a fraction of a day, 0 to 1. Excel: TIMEVALUE." },
+  date: { label: "DATEVALUE", description: "Parses a date string into a date serial: ISO, day-first numeric, ordinals and month names (`15 March 1996`, `3rd Apr 2026`). A numeric date that could read as day/month or month/day gives `#AMBIGUOUS!` rather than a guess. Excel: `DATEVALUE`." },
+  time: { label: "TIMEVALUE", description: "Parses a time string such as `\"14:30:00\"` into a fraction of a day, 0 to 1. Excel: `TIMEVALUE`." },
 } satisfies Record<DateTimeValueOp, { label: string; description: string }>;
 
 export class DateTimeValueNode extends ClassicPreset.Node {
@@ -190,12 +190,12 @@ export class DateTimeValueNode extends ClassicPreset.Node {
 export type DatePartOp = "year" | "month" | "day" | "hour" | "minute" | "second";
 
 export const DATE_PART_OP_META = {
-  year:   { label: "YEAR",   description: "Year component of a date. Excel: YEAR." },
-  month:  { label: "MONTH",  description: "Month component 1–12. Excel: MONTH." },
-  day:    { label: "DAY",    description: "Day of month 1–31. Excel: DAY." },
-  hour:   { label: "HOUR",   description: "Hour 0–23 from a date+time serial. Excel: HOUR." },
-  minute: { label: "MINUTE", description: "Minute 0–59 from a date+time serial. Excel: MINUTE." },
-  second: { label: "SECOND", description: "Second 0–59 from a date+time serial. Excel: SECOND." },
+  year:   { label: "YEAR",   description: "Year component of a date. Excel: `YEAR`." },
+  month:  { label: "MONTH",  description: "Month component 1–12. Excel: `MONTH`." },
+  day:    { label: "DAY",    description: "Day of month 1–31. Excel: `DAY`." },
+  hour:   { label: "HOUR",   description: "Hour 0–23 from a date+time serial. Excel: `HOUR`." },
+  minute: { label: "MINUTE", description: "Minute 0–59 from a date+time serial. Excel: `MINUTE`." },
+  second: { label: "SECOND", description: "Second 0–59 from a date+time serial. Excel: `SECOND`." },
 } satisfies Record<DatePartOp, { label: string; description: string }>;
 
 export class DatePartNode extends ClassicPreset.Node {
@@ -232,9 +232,9 @@ export class DatePartNode extends ClassicPreset.Node {
 // ─── Week info (WEEKDAY / WEEKNUM / ISOWEEKNUM) ──────────────────────────────
 
 export const WEEK_INFO_OP_META = {
-  weekday:    { label: "WEEKDAY",    description: "Day of week. return_type 1: 1=Sun…7=Sat | 2: 1=Mon…7=Sun | 3: 0=Mon…6=Sun. Excel: WEEKDAY." },
-  weeknum:    { label: "WEEKNUM",    description: "Week of year. return_type 1: Sun start | 2: Mon start. Excel: WEEKNUM." },
-  isoweeknum: { label: "ISOWEEKNUM", description: "ISO 8601 week number: the week containing the first Thursday, Monday start. return_type is ignored. Excel: ISOWEEKNUM." },
+  weekday:    { label: "WEEKDAY",    description: "Day of week. `return_type` 1: `1=Sun…7=Sat` | 2: `1=Mon…7=Sun` | 3: `0=Mon…6=Sun`. Excel: `WEEKDAY`." },
+  weeknum:    { label: "WEEKNUM",    description: "Week of year. `return_type` 1: Sun start | 2: Mon start. Excel: `WEEKNUM`." },
+  isoweeknum: { label: "ISOWEEKNUM", description: "ISO 8601 week number: the week containing the first Thursday, Monday start. `return_type` is ignored. Excel: `ISOWEEKNUM`." },
 } satisfies Record<WeekInfoOp, { label: string; description: string }>;
 
 export class WeekInfoNode extends ClassicPreset.Node {
@@ -270,14 +270,14 @@ export class WeekInfoNode extends ClassicPreset.Node {
 // surface still dispatches all six unit strings.
 
 export const DATE_DIFF_OP_META = {
-  days:     { label: "DAYS",     description: "Days between dates: end − start, signed. Excel: DAYS." },
-  days360:  { label: "DAYS360",  description: "Days on a 360-day year. Basis 0: US/NASD, 1: European. Excel: DAYS360." },
-  yearfrac: { label: "YEARFRAC", description: "Fraction of year. Basis 0: 30/360US, 1: actual/actual (≈÷365.25), 2: actual/360, 3: actual/365, 4: 30/360EU. Excel: YEARFRAC." },
-  years:    { label: "Whole years",  description: "Complete years between dates. Excel: DATEDIF \"Y\"." },
-  months:   { label: "Whole months", description: "Complete months between dates. Excel: DATEDIF \"M\"." },
-  ym:       { label: "Months ignoring years", description: "Complete months past the last whole year. Excel: DATEDIF \"YM\"." },
-  md:       { label: "Days ignoring months",  description: "Days past the last whole month, borrowing from the month before the end month. Excel: DATEDIF \"MD\"." },
-  yd:       { label: "Days ignoring years",   description: "Days past the last whole year. Excel: DATEDIF \"YD\"." },
+  days:     { label: "DAYS",     description: "Days between dates: `end − start`, signed. Excel: `DAYS`." },
+  days360:  { label: "DAYS360",  description: "Days on a 360-day year. Basis 0: `US/NASD`, 1: European. Excel: `DAYS360`." },
+  yearfrac: { label: "YEARFRAC", description: "Fraction of year. Basis 0: `30/360US`, 1: `actual/actual` (≈÷365.25), 2: `actual/360`, 3: `actual/365`, 4: `30/360EU`. Excel: `YEARFRAC`." },
+  years:    { label: "Whole years",  description: "Complete years between dates. Excel: `DATEDIF \"Y\"`." },
+  months:   { label: "Whole months", description: "Complete months between dates. Excel: `DATEDIF \"M\"`." },
+  ym:       { label: "Months ignoring years", description: "Complete months past the last whole year. Excel: `DATEDIF \"YM\"`." },
+  md:       { label: "Days ignoring months",  description: "Days past the last whole month, borrowing from the month before the end month. Excel: `DATEDIF \"MD\"`." },
+  yd:       { label: "Days ignoring years",   description: "Days past the last whole year. Excel: `DATEDIF \"YD\"`." },
 } satisfies Record<DateDiffOp, { label: string; description: string }>;
 
 export class DateDiffNode extends ClassicPreset.Node {
@@ -331,8 +331,8 @@ export class DateDiffNode extends ClassicPreset.Node {
 export type DateAddOp = "edate" | "eomonth";
 
 export const DATE_ADD_OP_META = {
-  edate:   { label: "EDATE",   description: "Date N months before/after start, preserving day of month. Excel: EDATE." },
-  eomonth: { label: "EOMONTH", description: "Last day of month N months before/after start. Excel: EOMONTH." },
+  edate:   { label: "EDATE",   description: "Date N months before/after start, preserving day of month. Excel: `EDATE`." },
+  eomonth: { label: "EOMONTH", description: "Last day of month N months before/after start. Excel: `EOMONTH`." },
 } satisfies Record<DateAddOp, { label: string; description: string }>;
 
 export class DateAddNode extends ClassicPreset.Node {
@@ -379,8 +379,8 @@ export class DateAddNode extends ClassicPreset.Node {
 export type WorkdaysOp = "workday" | "networkdays";
 
 export const WORKDAYS_OP_META = {
-  workday:     { label: "WORKDAY",     description: "Date N working days from start, skipping weekends + an optional Holidays list. weekend_code 1=Sat+Sun, 2–7 and 11–17 per Excel. Excel: WORKDAY / WORKDAY.INTL, numeric weekend_code only; the 7-char weekend string isn't supported." },
-  networkdays: { label: "NETWORKDAYS", description: "Counts working days between start and end, skipping weekends + an optional Holidays list. weekend_code 1=Sat+Sun, 2–7 and 11–17 per Excel. Excel: NETWORKDAYS / NETWORKDAYS.INTL, numeric weekend_code only; the 7-char weekend string isn't supported." },
+  workday:     { label: "WORKDAY",     description: "Date N working days from start, skipping weekends + an optional Holidays list. `weekend_code` `1=Sat+Sun`, 2–7 and 11–17 per Excel. Excel: `WORKDAY` / `WORKDAY.INTL`, numeric `weekend_code` only; the 7-char weekend string isn't supported." },
+  networkdays: { label: "NETWORKDAYS", description: "Counts working days between start and end, skipping weekends + an optional Holidays list. `weekend_code` `1=Sat+Sun`, 2–7 and 11–17 per Excel. Excel: `NETWORKDAYS` / `NETWORKDAYS.INTL`, numeric `weekend_code` only; the 7-char weekend string isn't supported." },
 } satisfies Record<WorkdaysOp, { label: string; description: string }>;
 
 export class WorkdaysNode extends ClassicPreset.Node {
@@ -487,8 +487,8 @@ export class WorkdaysNode extends ClassicPreset.Node {
 // ─── Epoch (Unix time ↔ date) ─────────────────────────────────────────────────
 export type EpochOp = "from" | "to";
 export const EPOCH_OP_META = {
-  from: { label: "Epoch → Date", description: "Unix time (seconds or milliseconds since 1970-01-01 UTC) → a date. pandas to_datetime, R as.POSIXct." },
-  to:   { label: "Date → Epoch", description: "A date → Unix time in seconds or milliseconds. pandas astype(int64), R as.numeric." },
+  from: { label: "Epoch → Date", description: "Unix time (seconds or milliseconds since `1970-01-01` UTC) → a date. pandas `to_datetime`, R `as.POSIXct`." },
+  to:   { label: "Date → Epoch", description: "A date → Unix time in seconds or milliseconds. pandas `astype(int64)`, R `as.numeric`." },
 } satisfies Record<EpochOp, { label: string; description: string }>;
 export const EPOCH_UNIT_OPTIONS: ReadonlyArray<{ value: EpochUnit; label: string; title: string }> = [
   { value: "s",  label: "s",  title: "Seconds since 1970-01-01 UTC (the Unix convention; 10 digits today)" },

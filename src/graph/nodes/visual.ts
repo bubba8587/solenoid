@@ -310,7 +310,7 @@ export function histogramBins(vals: (number | null)[], k: number): number[] {
 export type HistogramMode = "1d" | "2d";
 export const HISTOGRAM_MODE_META = {
   "1d": { label: "1-D", description: "Bin one list of numbers into equal-width buckets, plotted as columns." },
-  "2d": { label: "2-D", description: "Bin paired X and Y numbers into a grid, drawn as a density plot. numpy histogram2d." },
+  "2d": { label: "2-D", description: "Bin paired X and Y numbers into a grid, drawn as a density plot. numpy `histogram2d`." },
 } satisfies Record<HistogramMode, { label: string; description: string }>;
 
 const listOf = (raw: number | number[] | null | undefined): (number | null)[] =>

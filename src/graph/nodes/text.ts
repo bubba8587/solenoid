@@ -130,13 +130,13 @@ export class PromoNode extends ClassicPreset.Node {
 export type TextTransformOp = "upper" | "lower" | "trim" | "proper" | "clean" | "unaccent" | "slugify";
 
 export const TEXT_TRANSFORM_OP_META = {
-  upper:  { label: "UPPER",  description: "Converts all characters to uppercase. Excel: UPPER." },
-  lower:  { label: "LOWER",  description: "Converts all characters to lowercase. Excel: LOWER." },
-  trim:   { label: "TRIM",   description: "Removes leading and trailing spaces and collapses internal spaces. Excel: TRIM." },
-  proper: { label: "PROPER", description: "Capitalize the first letter of each word. Excel: PROPER." },
-  clean:  { label: "CLEAN",  description: "Removes non-printable control characters (ASCII 0–31). Excel: CLEAN." },
-  unaccent: { label: "UNACCENT", description: "Strips accents and diacritics: Crème Brûlée → Creme Brulee. unidecode, R stri_trans_general Latin-ASCII." },
-  slugify:  { label: "SLUGIFY",  description: "URL / filename slug: accents stripped, lowercase, every non-alphanumeric run a hyphen. python-slugify, R make_clean_names." },
+  upper:  { label: "UPPER",  description: "Converts all characters to uppercase. Excel: `UPPER`." },
+  lower:  { label: "LOWER",  description: "Converts all characters to lowercase. Excel: `LOWER`." },
+  trim:   { label: "TRIM",   description: "Removes leading and trailing spaces and collapses internal spaces. Excel: `TRIM`." },
+  proper: { label: "PROPER", description: "Capitalize the first letter of each word. Excel: `PROPER`." },
+  clean:  { label: "CLEAN",  description: "Removes non-printable control characters (ASCII 0–31). Excel: `CLEAN`." },
+  unaccent: { label: "UNACCENT", description: "Strips accents and diacritics: `Crème Brûlée` → `Creme Brulee`. `unidecode`, R `stri_trans_general` `Latin-ASCII`." },
+  slugify:  { label: "SLUGIFY",  description: "URL / filename slug: accents stripped, lowercase, every non-alphanumeric run a hyphen. `python-slugify`, R `make_clean_names`." },
 } satisfies Record<TextTransformOp, { label: string; description: string }>;
 
 // PROPER stays hand-rolled: FX capitalizes only after certain separators, not Excel's
@@ -181,9 +181,9 @@ export class TextTransformNode extends ClassicPreset.Node {
 // ─── Pad Text / Truncate Text (no Excel equivalent; Python ljust/rjust/center, R str_pad / str_trunc) ───
 
 export const PAD_SIDE_META = {
-  left:   { label: "Left",   description: "Padding goes on the left, right-justifying the text. Python rjust, R str_pad side = left." },
-  right:  { label: "Right",  description: "Padding goes on the right, left-justifying the text. Python ljust, R str_pad side = right." },
-  center: { label: "Center", description: "Padding splits both sides, the odd character on the right. Python center, R str_pad side = both." },
+  left:   { label: "Left",   description: "Padding goes on the left, right-justifying the text. Python `rjust`, R `str_pad` `side = left`." },
+  right:  { label: "Right",  description: "Padding goes on the right, left-justifying the text. Python `ljust`, R `str_pad` `side = right`." },
+  center: { label: "Center", description: "Padding splits both sides, the odd character on the right. Python `center`, R `str_pad` `side = both`." },
 } satisfies Record<PadSide, { label: string; description: string }>;
 
 export class PadTextNode extends ClassicPreset.Node {
@@ -360,9 +360,9 @@ export class ConcatNode extends ClassicPreset.Node {
 export type TextSliceOp = "left" | "right" | "mid";
 
 export const TEXT_SLICE_OP_META = {
-  left:  { label: "LEFT",  description: "First N characters. Excel: LEFT." },
-  right: { label: "RIGHT", description: "Last N characters. Excel: RIGHT." },
-  mid:   { label: "MID",   description: "Substring starting at position Start with length Len (1-based). Excel: MID." },
+  left:  { label: "LEFT",  description: "First N characters. Excel: `LEFT`." },
+  right: { label: "RIGHT", description: "Last N characters. Excel: `RIGHT`." },
+  mid:   { label: "MID",   description: "Substring starting at position Start with length Len (1-based). Excel: `MID`." },
 } satisfies Record<TextSliceOp, { label: string; description: string }>;
 
 export class TextSliceNode extends ClassicPreset.Node {
@@ -424,8 +424,8 @@ export class TextSliceNode extends ClassicPreset.Node {
 export type TextFindOp = "find" | "search";
 
 export const TEXT_FIND_OP_META = {
-  find:   { label: "FIND",   description: "1-based position of find_text in within_text (case-sensitive). #VALUE! if not found. Excel: FIND." },
-  search: { label: "SEARCH", description: "1-based position of find_text in within_text (case-insensitive). #VALUE! if not found. Excel: SEARCH." },
+  find:   { label: "FIND",   description: "1-based position of `find_text` in `within_text` (case-sensitive). `#VALUE!` if not found. Excel: `FIND`." },
+  search: { label: "SEARCH", description: "1-based position of `find_text` in `within_text` (case-insensitive). `#VALUE!` if not found. Excel: `SEARCH`." },
 } satisfies Record<TextFindOp, { label: string; description: string }>;
 
 export class TextFindNode extends ClassicPreset.Node {
@@ -729,8 +729,8 @@ export class TextSplitNode extends ClassicPreset.Node {
 // ─── TEXTAFTER / TEXTBEFORE ───────────────────────────────────────────────────
 
 export const TEXT_AFTER_BEFORE_OP_META = {
-  after:  { label: "TEXTAFTER",  description: "Text after the first occurrence of delimiter. Null if not found. Excel: TEXTAFTER." },
-  before: { label: "TEXTBEFORE", description: "Text before the first occurrence of delimiter. Null if not found. Excel: TEXTBEFORE." },
+  after:  { label: "TEXTAFTER",  description: "Text after the first occurrence of delimiter. Null if not found. Excel: `TEXTAFTER`." },
+  before: { label: "TEXTBEFORE", description: "Text before the first occurrence of delimiter. Null if not found. Excel: `TEXTBEFORE`." },
 } satisfies Record<TextAfterBeforeOp, { label: string; description: string }>;
 
 export class TextAfterBeforeNode extends ClassicPreset.Node {
@@ -1100,11 +1100,11 @@ export class FixedNode extends ClassicPreset.Node {
 // ─── REGEX (REGEXTEST / REGEXEXTRACT / REGEXREPLACE) ─────────────────────────
 
 export const REGEX_OP_META: Record<RegexOp, { label: string; description: string }> = {
-  test:           { label: "REGEXTEST",           description: "Returns 1 if text matches the pattern, else 0. Wired list input broadcasts element-wise. Excel: REGEXTEST." },
-  extract:        { label: "REGEXEXTRACT",        description: "Returns the first match found in text, or empty string if none. Wired list input returns a list of first matches. Excel: REGEXEXTRACT." },
-  extract_all:    { label: "REGEXEXTRACT (all)",    description: "Returns all matches found in a single string as a list. Excel: REGEXEXTRACT with return_mode=1." },
-  extract_groups: { label: "REGEXEXTRACT (groups)", description: "Returns the first match's capture groups as a list. Excel: REGEXEXTRACT with return_mode=2." },
-  replace:        { label: "REGEXREPLACE",        description: "Replaces regex matches with the replacement string: all of them, or only the nth when Occurrence is set. Wired list input broadcasts element-wise. Excel: REGEXREPLACE." },
+  test:           { label: "REGEXTEST",           description: "Returns `1` if text matches the pattern, else `0`. Wired list input broadcasts element-wise. Excel: `REGEXTEST`." },
+  extract:        { label: "REGEXEXTRACT",        description: "Returns the first match found in text, or empty string if none. Wired list input returns a list of first matches. Excel: `REGEXEXTRACT`." },
+  extract_all:    { label: "REGEXEXTRACT (all)",    description: "Returns all matches found in a single string as a list. Excel: `REGEXEXTRACT` with `return_mode=1`." },
+  extract_groups: { label: "REGEXEXTRACT (groups)", description: "Returns the first match's capture groups as a list. Excel: `REGEXEXTRACT` with `return_mode=2`." },
+  replace:        { label: "REGEXREPLACE",        description: "Replaces regex matches with the replacement string: all of them, or only the nth when Occurrence is set. Wired list input broadcasts element-wise. Excel: `REGEXREPLACE`." },
 };
 
 
@@ -1289,8 +1289,8 @@ export class SpellNumberNode extends ClassicPreset.Node {
 
 // ─── TEXT SIMILARITY / FUZZY MATCH (rapidfuzz, stringdist, Excel's Fuzzy Lookup add-in) ──
 export const SIMILARITY_METHOD_META = {
-  ratio:        { label: "Ratio (Levenshtein)", description: "1 − edit distance ÷ longer length: 0 = nothing shared, 1 = identical. rapidfuzz ratio, R stringsim." },
-  damerau:      { label: "Ratio (Damerau)",     description: "The same ratio counting an adjacent swap (teh → the) as one edit." },
+  ratio:        { label: "Ratio (Levenshtein)", description: "1 − edit distance ÷ longer length: 0 = nothing shared, 1 = identical. rapidfuzz `ratio`, R `stringsim`." },
+  damerau:      { label: "Ratio (Damerau)",     description: "The same ratio counting an adjacent swap (`teh` → `the`) as one edit." },
   jaro_winkler: { label: "Jaro–Winkler",        description: "0–1 similarity that rewards a shared prefix: the record-linkage standard for names." },
   levenshtein:  { label: "Edit distance",       description: "The raw Levenshtein distance: how many inserts, deletes or substitutions turn one into the other." },
 } satisfies Record<SimilarityMethod, { label: string; description: string }>;

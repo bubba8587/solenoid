@@ -157,7 +157,9 @@ const LIB_PATTERNS: ReadonlyArray<[LibraryTag, RegExp]> = [
 
 /** The libraries a row cites; `Excel` when it has an Excel function or the prose names one. */
 export function libraryTags(row: Pick<FnRefRow, "excel" | "description" | "keywords" | "note">): LibraryTag[] {
-  const text = `${row.description ?? ""} ${row.keywords ?? ""} ${row.note ?? ""}`;
+  // Descriptions are inline markdown (descriptionMd.ts); the code-span backticks
+  // must not break citation adjacency ("R `boxplot.stats`").
+  const text = `${row.description ?? ""} ${row.keywords ?? ""} ${row.note ?? ""}`.replace(/`/g, "");
   const tags: LibraryTag[] = [];
   for (const [tag, re] of LIB_PATTERNS) if (re.test(text)) tags.push(tag);
   if (row.excel !== null || /\bExcel\b/.test(text)) tags.push("Excel");

@@ -115,11 +115,11 @@ export class TableInputNode extends ClassicPreset.Node {
 export type MatDetOp = "mdeterm" | "minverse" | "trace" | "rank" | "norm";
 
 export const MAT_DET_OP_META = {
-  mdeterm:  { label: "MDETERM",  description: "Determinant of a square matrix. Excel: MDETERM." },
-  minverse: { label: "MINVERSE", description: "Inverse of a square matrix: result × input = identity. Excel: MINVERSE." },
-  trace:    { label: "TRACE",    description: "Sum of the main diagonal. numpy trace, R sum(diag(m))." },
-  rank:     { label: "MATRIXRANK", description: "Rank: the number of linearly independent rows (Gaussian elimination with a tolerance). numpy matrix_rank, R qr(m)$rank." },
-  norm:     { label: "NORM",     description: "Frobenius norm: √Σ every cell squared (numpy.linalg.norm default, R norm(m, \"F\")). Excel: SQRT(SUMSQ(range))." },
+  mdeterm:  { label: "MDETERM",  description: "Determinant of a square matrix. Excel: `MDETERM`." },
+  minverse: { label: "MINVERSE", description: "Inverse of a square matrix: result × input = identity. Excel: `MINVERSE`." },
+  trace:    { label: "TRACE",    description: "Sum of the main diagonal. numpy `trace`, R `sum(diag(m))`." },
+  rank:     { label: "MATRIXRANK", description: "Rank: the number of linearly independent rows (Gaussian elimination with a tolerance). numpy `matrix_rank`, R `qr(m)$rank`." },
+  norm:     { label: "NORM",     description: "Frobenius norm: √Σ every cell squared (`numpy.linalg.norm` default, R `norm(m, \"F\")`). Excel: `SQRT(SUMSQ(range))`." },
 } satisfies Record<MatDetOp, { label: string; description: string }>;
 const MAT_DET_SCALAR: ReadonlySet<MatDetOp> = new Set(["mdeterm", "trace", "rank", "norm"]);
 
@@ -366,8 +366,8 @@ function demoteUnitCells(m: CellMat): CellMat {
 export type StackOp = "vstack" | "hstack";
 
 export const STACK_OP_META = {
-  vstack: { label: "VSTACK", description: "Stacks tables top-to-bottom, in row order. A list counts as one row, so two lists make a 2-row table. A narrower table pads right with #N/A. Excel: VSTACK." },
-  hstack: { label: "HSTACK", description: "Concatenates tables side by side, in row order. A list counts as one row, so two lists make one long row. A shorter table pads down with #N/A. Excel: HSTACK." },
+  vstack: { label: "VSTACK", description: "Stacks tables top-to-bottom, in row order. A list counts as one row, so two lists make a 2-row table. A narrower table pads right with `#N/A`. Excel: `VSTACK`." },
+  hstack: { label: "HSTACK", description: "Concatenates tables side by side, in row order. A list counts as one row, so two lists make one long row. A shorter table pads down with `#N/A`. Excel: `HSTACK`." },
 } satisfies Record<StackOp, { label: string; description: string }>;
 
 // XSTACK: one stacker, the axis is the op. VSTACK is also the lists→table path: a bare
@@ -441,10 +441,10 @@ export class StackNode extends ClassicPreset.Node {
 export type TableReshapeOp = "wraprows" | "wrapcols" | "tocol" | "torow";
 
 export const TABLE_RESHAPE_OP_META = {
-  wraprows: { label: "WRAPROWS", description: "Wraps a list into a table row-by-row. Each row has Wrap_count values. Excel: WRAPROWS." },
-  wrapcols: { label: "WRAPCOLS", description: "Wraps a list into a table column-by-column. Each column has Wrap_count values. Excel: WRAPCOLS." },
-  tocol:    { label: "TOCOL",    description: "Flatten a table to a 1D list, reading row by row. Excel: TOCOL." },
-  torow:    { label: "TOROW",    description: "Flatten a table to a 1D list, reading column by column. Excel: TOROW." },
+  wraprows: { label: "WRAPROWS", description: "Wraps a list into a table row-by-row. Each row has `Wrap_count` values. Excel: `WRAPROWS`." },
+  wrapcols: { label: "WRAPCOLS", description: "Wraps a list into a table column-by-column. Each column has `Wrap_count` values. Excel: `WRAPCOLS`." },
+  tocol:    { label: "TOCOL",    description: "Flatten a table to a 1D list, reading row by row. Excel: `TOCOL`." },
+  torow:    { label: "TOROW",    description: "Flatten a table to a 1D list, reading column by column. Excel: `TOROW`." },
 } satisfies Record<TableReshapeOp, { label: string; description: string }>;
 
 export class TableReshapeNode extends ClassicPreset.Node {
@@ -534,8 +534,8 @@ export class TableReshapeNode extends ClassicPreset.Node {
 export type TableSelectOp = "chooserows" | "choosecols";
 
 export const TABLE_SELECT_OP_META = {
-  chooserows: { label: "CHOOSEROWS", description: "Selects rows from a table by 1-based index list. Excel: CHOOSEROWS." },
-  choosecols: { label: "CHOOSECOLS", description: "Selects columns from a table by 1-based index list. Excel: CHOOSECOLS." },
+  chooserows: { label: "CHOOSEROWS", description: "Selects rows from a table by 1-based index list. Excel: `CHOOSEROWS`." },
+  choosecols: { label: "CHOOSECOLS", description: "Selects columns from a table by 1-based index list. Excel: `CHOOSECOLS`." },
 } satisfies Record<TableSelectOp, { label: string; description: string }>;
 
 export class TableSelectNode extends ClassicPreset.Node {
@@ -578,8 +578,8 @@ export class TableSelectNode extends ClassicPreset.Node {
 export type TakeDropOp = "take" | "drop";
 
 export const TAKEDROP_OP_META = {
-  take: { label: "TAKE", description: "Keeps elements, rows or columns from the edges of a list or table: positive counts from the start, negative from the end, 0 keeps all. Excel: TAKE." },
-  drop: { label: "DROP", description: "Removes elements, rows or columns from the edges of a list or table: positive counts from the start, negative from the end, 0 removes none. Excel: DROP." },
+  take: { label: "TAKE", description: "Keeps elements, rows or columns from the edges of a list or table: positive counts from the start, negative from the end, `0` keeps all. Excel: `TAKE`." },
+  drop: { label: "DROP", description: "Removes elements, rows or columns from the edges of a list or table: positive counts from the start, negative from the end, `0` removes none. Excel: `DROP`." },
 } satisfies Record<TakeDropOp, { label: string; description: string }>;
 
 export class TakeDropNode extends ClassicPreset.Node {

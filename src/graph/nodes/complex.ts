@@ -136,22 +136,22 @@ export type ComplexUnaryOp =
   | "sinh" | "cosh" | "sech" | "csch";
 
 export const COMPLEX_UNARY_OP_META: Record<ComplexUnaryOp, { label: string; description: string }> = {
-  conj:  { label: "IMCONJUGATE", description: "Complex conjugate: negates the imaginary part. Excel: IMCONJUGATE." },
-  exp:   { label: "IMEXP",       description: "e raised to a complex power. Excel: IMEXP." },
-  ln:    { label: "IMLN",        description: "Natural logarithm of a complex number. Excel: IMLN." },
-  log10: { label: "IMLOG10",     description: "Base-10 logarithm of a complex number. Excel: IMLOG10." },
-  log2:  { label: "IMLOG2",      description: "Base-2 logarithm of a complex number. Excel: IMLOG2." },
-  sqrt:  { label: "IMSQRT",      description: "Square root of a complex number (principal value). Excel: IMSQRT." },
-  sin:   { label: "IMSIN",       description: "Sine of a complex number. Excel: IMSIN." },
-  cos:   { label: "IMCOS",       description: "Cosine of a complex number. Excel: IMCOS." },
-  tan:   { label: "IMTAN",       description: "Tangent of a complex number. Excel: IMTAN." },
-  cot:   { label: "IMCOT",       description: "Cotangent of a complex number. Excel: IMCOT." },
-  sec:   { label: "IMSEC",       description: "Secant of a complex number. Excel: IMSEC." },
-  csc:   { label: "IMCSC",       description: "Cosecant of a complex number. Excel: IMCSC." },
-  sinh:  { label: "IMSINH",      description: "Hyperbolic sine of a complex number. Excel: IMSINH." },
-  cosh:  { label: "IMCOSH",      description: "Hyperbolic cosine of a complex number. Excel: IMCOSH." },
-  sech:  { label: "IMSECH",      description: "Hyperbolic secant of a complex number. Excel: IMSECH." },
-  csch:  { label: "IMCSCH",      description: "Hyperbolic cosecant of a complex number. Excel: IMCSCH." },
+  conj:  { label: "IMCONJUGATE", description: "Complex conjugate: negates the imaginary part. Excel: `IMCONJUGATE`." },
+  exp:   { label: "IMEXP",       description: "`e` raised to a complex power. Excel: `IMEXP`." },
+  ln:    { label: "IMLN",        description: "Natural logarithm of a complex number. Excel: `IMLN`." },
+  log10: { label: "IMLOG10",     description: "Base-10 logarithm of a complex number. Excel: `IMLOG10`." },
+  log2:  { label: "IMLOG2",      description: "Base-2 logarithm of a complex number. Excel: `IMLOG2`." },
+  sqrt:  { label: "IMSQRT",      description: "Square root of a complex number (principal value). Excel: `IMSQRT`." },
+  sin:   { label: "IMSIN",       description: "Sine of a complex number. Excel: `IMSIN`." },
+  cos:   { label: "IMCOS",       description: "Cosine of a complex number. Excel: `IMCOS`." },
+  tan:   { label: "IMTAN",       description: "Tangent of a complex number. Excel: `IMTAN`." },
+  cot:   { label: "IMCOT",       description: "Cotangent of a complex number. Excel: `IMCOT`." },
+  sec:   { label: "IMSEC",       description: "Secant of a complex number. Excel: `IMSEC`." },
+  csc:   { label: "IMCSC",       description: "Cosecant of a complex number. Excel: `IMCSC`." },
+  sinh:  { label: "IMSINH",      description: "Hyperbolic sine of a complex number. Excel: `IMSINH`." },
+  cosh:  { label: "IMCOSH",      description: "Hyperbolic cosine of a complex number. Excel: `IMCOSH`." },
+  sech:  { label: "IMSECH",      description: "Hyperbolic secant of a complex number. Excel: `IMSECH`." },
+  csch:  { label: "IMCSCH",      description: "Hyperbolic cosecant of a complex number. Excel: `IMCSCH`." },
 };
 
 export class ComplexUnaryNode extends ClassicPreset.Node {
@@ -197,10 +197,10 @@ export class ComplexUnaryNode extends ClassicPreset.Node {
 export type ComplexBinaryOp = "sum" | "sub" | "product" | "div";
 
 export const COMPLEX_BINARY_OP_META: Record<ComplexBinaryOp, { label: string; description: string }> = {
-  sum:     { label: "IMSUM",     description: "Sum of two complex numbers. Excel: IMSUM." },
-  sub:     { label: "IMSUB",     description: "Difference of two complex numbers. Excel: IMSUB." },
-  product: { label: "IMPRODUCT", description: "Product of two complex numbers. Excel: IMPRODUCT." },
-  div:     { label: "IMDIV",     description: "Quotient of two complex numbers. Excel: IMDIV." },
+  sum:     { label: "IMSUM",     description: "Sum of two complex numbers. Excel: `IMSUM`." },
+  sub:     { label: "IMSUB",     description: "Difference of two complex numbers. Excel: `IMSUB`." },
+  product: { label: "IMPRODUCT", description: "Product of two complex numbers. Excel: `IMPRODUCT`." },
+  div:     { label: "IMDIV",     description: "Quotient of two complex numbers. Excel: `IMDIV`." },
 };
 
 export class ComplexBinaryNode extends ClassicPreset.Node {

@@ -98,12 +98,12 @@ export function compareOp(op: ComparisonOp, x: number, y: number): boolean {
 // `symbol` is the glyph the card shows; `label` is the name alone, which is what an
 // Add-menu search row needs (a bare "≥" would carry nothing there).
 export const COMPARISON_OP_META = {
-  gt:  { symbol: ">", label: "Greater than",     description: "TRUE when A is greater than B. Excel: A>B." },
-  gte: { symbol: "≥", label: "Greater or equal", description: "TRUE when A is greater than or equal to B. Excel: A>=B." },
-  lt:  { symbol: "<", label: "Less than",        description: "TRUE when A is less than B. Excel: A<B." },
-  lte: { symbol: "≤", label: "Less or equal",    description: "TRUE when A is less than or equal to B. Excel: A<=B." },
-  eq:  { symbol: "=", label: "Equal",            description: "TRUE when A equals B. Excel: A=B." },
-  neq: { symbol: "≠", label: "Not equal",        description: "TRUE when A differs from B. Excel: A<>B." },
+  gt:  { symbol: ">", label: "Greater than",     description: "`TRUE` when A is greater than B. Excel: `A>B`." },
+  gte: { symbol: "≥", label: "Greater or equal", description: "`TRUE` when A is greater than or equal to B. Excel: `A>=B`." },
+  lt:  { symbol: "<", label: "Less than",        description: "`TRUE` when A is less than B. Excel: `A<B`." },
+  lte: { symbol: "≤", label: "Less or equal",    description: "`TRUE` when A is less than or equal to B. Excel: `A<=B`." },
+  eq:  { symbol: "=", label: "Equal",            description: "`TRUE` when A equals B. Excel: `A=B`." },
+  neq: { symbol: "≠", label: "Not equal",        description: "`TRUE` when A differs from B. Excel: `A<>B`." },
 } satisfies Record<ComparisonOp, { symbol: string; label: string; description: string }>;
 
 export class ComparisonNode extends ClassicPreset.Node {
@@ -274,12 +274,12 @@ export class IfNode extends ClassicPreset.Node {
 export type BooleanOp = "and" | "or" | "xor" | "nand" | "nor" | "xnor";
 
 export const BOOLEAN_OP_META = {
-  and:  { label: "AND",  description: "TRUE if all inputs are true. Excel: AND." },
-  or:   { label: "OR",   description: "TRUE if any input is true. Excel: OR." },
-  xor:  { label: "XOR",  description: "TRUE if an odd number of inputs are true. Excel: XOR." },
-  nand: { label: "NAND", description: "Negated AND: FALSE only when every input is true. Excel: NOT(AND(…))." },
-  nor:  { label: "NOR",  description: "Negated OR: TRUE only when every input is false. Excel: NOT(OR(…))." },
-  xnor: { label: "XNOR", description: "TRUE if an even number of inputs are true. The negation of XOR." },
+  and:  { label: "AND",  description: "`TRUE` if all inputs are true. Excel: `AND`." },
+  or:   { label: "OR",   description: "`TRUE` if any input is true. Excel: `OR`." },
+  xor:  { label: "XOR",  description: "`TRUE` if an odd number of inputs are true. Excel: `XOR`." },
+  nand: { label: "NAND", description: "Negated `AND`: `FALSE` only when every input is true. Excel: `NOT(AND(…))`." },
+  nor:  { label: "NOR",  description: "Negated `OR`: `TRUE` only when every input is false. Excel: `NOT(OR(…))`." },
+  xnor: { label: "XNOR", description: "`TRUE` if an even number of inputs are true. The negation of `XOR`." },
 } satisfies Record<BooleanOp, { label: string; description: string }>;
 
 /** Folds N tri-valued operands under Kleene three-valued logic. */
@@ -441,14 +441,14 @@ export type IsTestOp = "isnumber" | "isblank" | "isnull" | "iserror" | "isna" | 
 // isBooleanName); it is registered as a callable alias so NAME-4 holds. The `islogical`
 // op value stays: saves are keyed on it.
 export const IS_TEST_OP_META = {
-  isnumber:  { label: "ISNUMBER",  description: "TRUE when the value is a number. Excel: ISNUMBER." },
-  isblank:   { label: "ISBLANK",   description: "TRUE when the cell is empty. Excel: ISBLANK." },
-  isnull:    { label: "ISNULL",    description: "TRUE when the value is missing." },
-  iserror:   { label: "ISERROR",   description: "TRUE when the value is any error. Excel: ISERROR." },
-  isna:      { label: "ISNA",      description: "TRUE when the value is #N/A. Excel: ISNA." },
-  islogical: { label: "ISBOOLEAN", description: "TRUE when the value is a Boolean. Excel: ISLOGICAL." },
-  istext:    { label: "ISTEXT",    description: "TRUE when the value is text. Excel: ISTEXT." },
-  isnontext: { label: "ISNONTEXT", description: "TRUE when the value is anything but text. Excel: ISNONTEXT." },
+  isnumber:  { label: "ISNUMBER",  description: "`TRUE` when the value is a number. Excel: `ISNUMBER`." },
+  isblank:   { label: "ISBLANK",   description: "`TRUE` when the cell is empty. Excel: `ISBLANK`." },
+  isnull:    { label: "ISNULL",    description: "`TRUE` when the value is missing." },
+  iserror:   { label: "ISERROR",   description: "`TRUE` when the value is any error. Excel: `ISERROR`." },
+  isna:      { label: "ISNA",      description: "`TRUE` when the value is `#N/A`. Excel: `ISNA`." },
+  islogical: { label: "ISBOOLEAN", description: "`TRUE` when the value is a Boolean. Excel: `ISLOGICAL`." },
+  istext:    { label: "ISTEXT",    description: "`TRUE` when the value is text. Excel: `ISTEXT`." },
+  isnontext: { label: "ISNONTEXT", description: "`TRUE` when the value is anything but text. Excel: `ISNONTEXT`." },
 } satisfies Record<IsTestOp, { label: string; description: string }>;
 
 // 0/1 (or per-element) → a real logical that renders TRUE/FALSE.
@@ -842,8 +842,8 @@ export class IfsNode extends ClassicPreset.Node {
 export type ParityOp = "iseven" | "isodd";
 
 export const PARITY_OP_META = {
-  iseven: { label: "ISEVEN", description: "TRUE if the integer part is even. Excel: ISEVEN." },
-  isodd:  { label: "ISODD",  description: "TRUE if the integer part is odd. Excel: ISODD." },
+  iseven: { label: "ISEVEN", description: "`TRUE` if the integer part is even. Excel: `ISEVEN`." },
+  isodd:  { label: "ISODD",  description: "`TRUE` if the integer part is odd. Excel: `ISODD`." },
 } satisfies Record<ParityOp, { label: string; description: string }>;
 
 export class IsEvenOddNode extends ClassicPreset.Node {

@@ -36,16 +36,16 @@ export type RankPercentileOp =
   | "percentrank-inc" | "percentrank-exc";
 
 export const RANK_PERCENTILE_OP_META = {
-  large:             { label: "LARGE",           description: "Kth largest value. Excel: LARGE." },
-  small:             { label: "SMALL",           description: "Kth smallest value. Excel: SMALL." },
-  "rank-eq":         { label: "RANK.EQ",         description: "Rank. Ties share the lowest rank. Excel: RANK.EQ." },
-  "rank-avg":        { label: "RANK.AVG",        description: "Rank. Ties share the average rank. Excel: RANK.AVG." },
-  "percentile-inc":  { label: "PERCENTILE.INC",  description: "Value at percentile p (0–1), including the endpoints. Excel: PERCENTILE.INC." },
-  "percentile-exc":  { label: "PERCENTILE.EXC",  description: "Value at percentile p, excluding 0 and 1. Excel: PERCENTILE.EXC." },
-  "quartile-inc":    { label: "QUARTILE.INC",    description: "Quartile Q0–Q4, including the endpoints. Excel: QUARTILE.INC." },
-  "quartile-exc":    { label: "QUARTILE.EXC",    description: "Quartile Q1–Q3, excluding the endpoints. Excel: QUARTILE.EXC." },
-  "percentrank-inc": { label: "PERCENTRANK.INC", description: "Percentile rank of a value (0–1), including the endpoints. Excel: PERCENTRANK.INC." },
-  "percentrank-exc": { label: "PERCENTRANK.EXC", description: "Percentile rank of a value, excluding 0 and 1. Excel: PERCENTRANK.EXC." },
+  large:             { label: "LARGE",           description: "Kth largest value. Excel: `LARGE`." },
+  small:             { label: "SMALL",           description: "Kth smallest value. Excel: `SMALL`." },
+  "rank-eq":         { label: "RANK.EQ",         description: "Rank. Ties share the lowest rank. Excel: `RANK.EQ`." },
+  "rank-avg":        { label: "RANK.AVG",        description: "Rank. Ties share the average rank. Excel: `RANK.AVG`." },
+  "percentile-inc":  { label: "PERCENTILE.INC",  description: "Value at percentile `p` (0–1), including the endpoints. Excel: `PERCENTILE.INC`." },
+  "percentile-exc":  { label: "PERCENTILE.EXC",  description: "Value at percentile `p`, excluding 0 and 1. Excel: `PERCENTILE.EXC`." },
+  "quartile-inc":    { label: "QUARTILE.INC",    description: "Quartile Q0–Q4, including the endpoints. Excel: `QUARTILE.INC`." },
+  "quartile-exc":    { label: "QUARTILE.EXC",    description: "Quartile Q1–Q3, excluding the endpoints. Excel: `QUARTILE.EXC`." },
+  "percentrank-inc": { label: "PERCENTRANK.INC", description: "Percentile rank of a value (0–1), including the endpoints. Excel: `PERCENTRANK.INC`." },
+  "percentrank-exc": { label: "PERCENTRANK.EXC", description: "Percentile rank of a value, excluding 0 and 1. Excel: `PERCENTRANK.EXC`." },
 } satisfies Record<RankPercentileOp, { label: string; description: string }>;
 
 type RankPercentileFamily = "nth" | "rank" | "percentile" | "quartile" | "percentrank";
@@ -175,10 +175,10 @@ export class RankPercentileNode extends ClassicPreset.Node {
 export type CorrelOp = "correl" | "rsq" | "spearman" | "kendall";
 
 export const CORREL_OP_META = {
-  correl: { label: "CORREL", description: "Pearson correlation r between two lists. Excel: CORREL." },
-  rsq:    { label: "RSQ",    description: "R², the square of the correlation coefficient. Excel: RSQ." },
-  spearman: { label: "SPEARMAN", description: "Spearman's rank correlation ρ: Pearson over the ranks, so it follows any monotone relation and shrugs off outliers. scipy spearmanr, R cor with method = spearman." },
-  kendall:  { label: "KENDALL",  description: "Kendall's τ-b: concordant minus discordant pairs, tie-corrected. scipy kendalltau, R cor with method = kendall." },
+  correl: { label: "CORREL", description: "Pearson correlation r between two lists. Excel: `CORREL`." },
+  rsq:    { label: "RSQ",    description: "R², the square of the correlation coefficient. Excel: `RSQ`." },
+  spearman: { label: "SPEARMAN", description: "Spearman's rank correlation ρ: Pearson over the ranks, so it follows any monotone relation and shrugs off outliers. scipy `spearmanr`, R `cor` with `method = spearman`." },
+  kendall:  { label: "KENDALL",  description: "Kendall's τ-b: concordant minus discordant pairs, tie-corrected. scipy `kendalltau`, R `cor` with `method = kendall`." },
 } satisfies Record<CorrelOp, { label: string; description: string }>;
 
 export class CorrelNode extends ClassicPreset.Node {
@@ -249,8 +249,8 @@ export class StandardizeNode extends ClassicPreset.Node {
 export type CovarianceOp = "pop" | "samp";
 
 export const COVARIANCE_OP_META = {
-  pop:  { label: "COVARIANCE.P", description: "Population covariance: how two lists move together. Divides by n. For when you have every data point. Excel: COVARIANCE.P." },
-  samp: { label: "COVARIANCE.S", description: "Sample covariance: how two lists move together. Divides by n−1. For a sample of a bigger population. Excel: COVARIANCE.S." },
+  pop:  { label: "COVARIANCE.P", description: "Population covariance: how two lists move together. Divides by **n**. For when you have every data point. Excel: `COVARIANCE.P`." },
+  samp: { label: "COVARIANCE.S", description: "Sample covariance: how two lists move together. Divides by **n−1**. For a sample of a bigger population. Excel: `COVARIANCE.S`." },
 } satisfies Record<CovarianceOp, { label: string; description: string }>;
 
 export class CovarianceNode extends ClassicPreset.Node {
@@ -285,8 +285,8 @@ export class CovarianceNode extends ClassicPreset.Node {
 export type FisherOp = "fisher" | "fisherinv";
 
 export const FISHER_OP_META = {
-  fisher:    { label: "FISHER",    description: "Fisher transformation: atanh(x), valid for −1 < x < 1. Excel: FISHER." },
-  fisherinv: { label: "FISHERINV", description: "Inverse Fisher: tanh(x). Excel: FISHERINV." },
+  fisher:    { label: "FISHER",    description: "Fisher transformation: `atanh(x)`, valid for −1 < x < 1. Excel: `FISHER`." },
+  fisherinv: { label: "FISHERINV", description: "Inverse Fisher: `tanh(x)`. Excel: `FISHERINV`." },
 } satisfies Record<FisherOp, { label: string; description: string }>;
 
 export class FisherNode extends ClassicPreset.Node {
@@ -319,9 +319,9 @@ export class FisherNode extends ClassicPreset.Node {
 export type RegressionOp = "slope" | "intercept" | "steyx";
 
 export const REGRESSION_OP_META = {
-  slope:     { label: "SLOPE",     description: "Slope of linear regression line through known_ys and known_xs. Excel: SLOPE." },
-  intercept: { label: "INTERCEPT", description: "Y-intercept of linear regression line. Excel: INTERCEPT." },
-  steyx:     { label: "STEYX",     description: "Standard error of predicted y-values in linear regression. Excel: STEYX." },
+  slope:     { label: "SLOPE",     description: "Slope of linear regression line through `known_ys` and `known_xs`. Excel: `SLOPE`." },
+  intercept: { label: "INTERCEPT", description: "Y-intercept of linear regression line. Excel: `INTERCEPT`." },
+  steyx:     { label: "STEYX",     description: "Standard error of predicted y-values in linear regression. Excel: `STEYX`." },
 } satisfies Record<RegressionOp, { label: string; description: string }>;
 
 export class RegressionNode extends ClassicPreset.Node {
@@ -548,8 +548,8 @@ export class FrequencyNode extends ClassicPreset.Node {
 export type ConfidenceOp = "norm" | "t";
 
 export const CONFIDENCE_OP_META = {
-  norm: { label: "NORM", description: "Confidence interval half-width using normal distribution. Excel: CONFIDENCE.NORM." },
-  t:    { label: "T",    description: "Confidence interval half-width using t-distribution. Excel: CONFIDENCE.T." },
+  norm: { label: "NORM", description: "Confidence interval half-width using normal distribution. Excel: `CONFIDENCE.NORM`." },
+  t:    { label: "T",    description: "Confidence interval half-width using t-distribution. Excel: `CONFIDENCE.T`." },
 } satisfies Record<ConfidenceOp, { label: string; description: string }>;
 
 function tInv(prob: number, df: number): number {
@@ -617,20 +617,20 @@ export type HypothesisTestOp =
   | "anova" | "mannwhitney" | "wilcoxon" | "kruskal" | "fisher" | "ks" | "proptest" | "binomtest";
 
 export const HYPOTHESIS_TEST_OP_META = {
-  z:          { label: "Z.TEST",             description: "One-tailed z-test: P(mean > μ₀) given a population or sample. Excel: Z.TEST." },
-  "t-paired": { label: "T.TEST (paired)",    description: "Paired t-test: the same subjects measured twice, 2-tailed. Excel: T.TEST type 1." },
-  "t-equal":  { label: "T.TEST (equal var)", description: "Two-sample t-test with pooled variance, 2-tailed. Excel: T.TEST type 2." },
-  "t-welch":  { label: "T.TEST (Welch)",     description: "Two-sample t-test assuming unequal variances: Welch's t-test, 2-tailed. Excel: T.TEST type 3." },
-  f:          { label: "F.TEST",             description: "Two-tailed F-test for equal variances. Excel: F.TEST." },
-  chisq:      { label: "CHISQ.TEST",         description: "Chi-square goodness-of-fit test (observed vs. expected). Excel: CHISQ.TEST." },
-  anova:      { label: "ANOVA",              description: "One-way ANOVA: do k groups share a mean? Each table column is a group (blanks skipped); the upper-tail F p-value. scipy f_oneway, R aov. No Excel function, only the Data Analysis add-in." },
-  mannwhitney:{ label: "Mann–Whitney U",     description: "Rank-sum test for two independent samples, two-sided (the nonparametric t-test). Normal approximation with tie and continuity corrections. R wilcox.test, scipy mannwhitneyu." },
-  wilcoxon:   { label: "Wilcoxon signed-rank", description: "Paired nonparametric test: ranks of the paired differences, zeros dropped, two-sided with continuity correction. R wilcox.test with paired = TRUE." },
-  kruskal:    { label: "Kruskal–Wallis",     description: "Nonparametric one-way ANOVA over k groups (table columns), tie-corrected H against χ². scipy kruskal, R kruskal.test." },
-  fisher:     { label: "Fisher exact",       description: "Fisher's exact test on a 2×2 table of counts, two-sided: the small-sample answer where CHISQ.TEST is unreliable. R fisher.test, scipy fisher_exact." },
-  ks:         { label: "KS (2-sample)",      description: "Two-sample Kolmogorov–Smirnov: are two samples from the same distribution? Asymptotic two-sided p. scipy ks_2samp, R ks.test." },
-  proptest:   { label: "Two-proportion z",   description: "Are two success rates different? x₁ of n₁ vs x₂ of n₂, pooled z, two-sided, no continuity correction (statsmodels proportions_ztest; R prop.test(correct=FALSE))." },
-  binomtest:  { label: "Binomial test",      description: "Exact test of k successes in n against a hypothesised rate p₀, two-sided. scipy binomtest, R binom.test." },
+  z:          { label: "Z.TEST",             description: "One-tailed z-test: P(mean > μ₀) given a population or sample. Excel: `Z.TEST`." },
+  "t-paired": { label: "T.TEST (paired)",    description: "Paired t-test: the same subjects measured twice, 2-tailed. Excel: `T.TEST` type 1." },
+  "t-equal":  { label: "T.TEST (equal var)", description: "Two-sample t-test with pooled variance, 2-tailed. Excel: `T.TEST` type 2." },
+  "t-welch":  { label: "T.TEST (Welch)",     description: "Two-sample t-test assuming unequal variances: Welch's t-test, 2-tailed. Excel: `T.TEST` type 3." },
+  f:          { label: "F.TEST",             description: "Two-tailed F-test for equal variances. Excel: `F.TEST`." },
+  chisq:      { label: "CHISQ.TEST",         description: "Chi-square goodness-of-fit test (observed vs. expected). Excel: `CHISQ.TEST`." },
+  anova:      { label: "ANOVA",              description: "One-way ANOVA: do k groups share a mean? Each table column is a group (blanks skipped); the upper-tail F p-value. scipy `f_oneway`, R `aov`. No Excel function, only the Data Analysis add-in." },
+  mannwhitney:{ label: "Mann–Whitney U",     description: "Rank-sum test for two independent samples, two-sided (the nonparametric t-test). Normal approximation with tie and continuity corrections. R `wilcox.test`, scipy `mannwhitneyu`." },
+  wilcoxon:   { label: "Wilcoxon signed-rank", description: "Paired nonparametric test: ranks of the paired differences, zeros dropped, two-sided with continuity correction. R `wilcox.test` with `paired = TRUE`." },
+  kruskal:    { label: "Kruskal–Wallis",     description: "Nonparametric one-way ANOVA over k groups (table columns), tie-corrected H against χ². scipy `kruskal`, R `kruskal.test`." },
+  fisher:     { label: "Fisher exact",       description: "Fisher's exact test on a 2×2 table of counts, two-sided: the small-sample answer where `CHISQ.TEST` is unreliable. R `fisher.test`, scipy `fisher_exact`." },
+  ks:         { label: "KS (2-sample)",      description: "Two-sample Kolmogorov–Smirnov: are two samples from the same distribution? Asymptotic two-sided p. scipy `ks_2samp`, R `ks.test`." },
+  proptest:   { label: "Two-proportion z",   description: "Are two success rates different? x₁ of n₁ vs x₂ of n₂, pooled z, two-sided, no continuity correction (statsmodels `proportions_ztest`; R `prop.test(correct=FALSE)`)." },
+  binomtest:  { label: "Binomial test",      description: "Exact test of k successes in n against a hypothesised rate p₀, two-sided. scipy `binomtest`, R `binom.test`." },
 } satisfies Record<HypothesisTestOp, { label: string; description: string }>;
 
 interface HypothesisTestSpec {
@@ -1173,9 +1173,9 @@ export { FIT_FAMILIES };
 
 // ─── DECOMPOSE (classical seasonal decomposition) ────────────────────────────
 export const DECOMPOSE_MODEL_META: Record<DecomposeModel, { label: string; description: string }> = {
-  additive:       { label: "Additive",       description: "y = trend + seasonal + residual; the seasonal swing is a fixed amount." },
-  multiplicative: { label: "Multiplicative", description: "y = trend × seasonal × residual; the seasonal swing scales with the level. Positive data only." },
-  stl:            { label: "STL",            description: "Seasonal-Trend by Loess (R stl, periodic): a loess trend with no blank ends and an exactly-periodic seasonal. Additive." },
+  additive:       { label: "Additive",       description: "`y = trend + seasonal + residual`; the seasonal swing is a fixed amount." },
+  multiplicative: { label: "Multiplicative", description: "`y = trend × seasonal × residual`; the seasonal swing scales with the level. Positive data only." },
+  stl:            { label: "STL",            description: "Seasonal-Trend by Loess (R `stl`, periodic): a loess trend with no blank ends and an exactly-periodic seasonal. Additive." },
 };
 
 export class DecomposeNode extends ClassicPreset.Node {

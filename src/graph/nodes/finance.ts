@@ -34,11 +34,11 @@ export const PAYMENT_TIMING_META: Record<PaymentTiming, string> = {
 export type BitwiseOp = "bitand" | "bitor" | "bitxor" | "bitlshift" | "bitrshift";
 
 export const BITWISE_OP_META = {
-  bitand:    { label: "BITAND",    description: "Bitwise AND: keeps only the bits set in both numbers (mask out the rest). Non-negative integers. Excel: BITAND." },
-  bitor:     { label: "BITOR",     description: "Bitwise OR: sets a bit if it's on in either number (combine flags). Excel: BITOR." },
-  bitxor:    { label: "BITXOR",    description: "Bitwise XOR: sets a bit where the two numbers differ (toggle flags). Excel: BITXOR." },
-  bitlshift: { label: "BITLSHIFT", description: "Shifts A's bits left by B places. Each place doubles the value (A × 2ᴮ). Excel: BITLSHIFT." },
-  bitrshift: { label: "BITRSHIFT", description: "Shifts A's bits right by B places. Each place halves it, dropping low bits (⌊A ÷ 2ᴮ⌋). Excel: BITRSHIFT." },
+  bitand:    { label: "BITAND",    description: "Bitwise AND: keeps only the bits set in both numbers (mask out the rest). Non-negative integers. Excel: `BITAND`." },
+  bitor:     { label: "BITOR",     description: "Bitwise OR: sets a bit if it's on in either number (combine flags). Excel: `BITOR`." },
+  bitxor:    { label: "BITXOR",    description: "Bitwise XOR: sets a bit where the two numbers differ (toggle flags). Excel: `BITXOR`." },
+  bitlshift: { label: "BITLSHIFT", description: "Shifts `A`'s bits left by `B` places. Each place doubles the value (`A × 2ᴮ`). Excel: `BITLSHIFT`." },
+  bitrshift: { label: "BITRSHIFT", description: "Shifts `A`'s bits right by `B` places. Each place halves it, dropping low bits (`⌊A ÷ 2ᴮ⌋`). Excel: `BITRSHIFT`." },
 } satisfies Record<BitwiseOp, { label: string; description: string }>;
 
 export class BitwiseNode extends ClassicPreset.Node {
@@ -80,11 +80,11 @@ export class BitwiseNode extends ClassicPreset.Node {
 export type DepreciationOp = "sln" | "syd" | "ddb" | "db" | "vdb";
 
 export const DEPRECIATION_OP_META = {
-  sln: { label: "SLN", description: "Straight-line depreciation: the asset loses the same amount every period. Excel: SLN." },
-  syd: { label: "SYD", description: "Sum-of-years'-digits depreciation, accelerated: writes off more in the early periods, tapering each year. Excel: SYD." },
-  ddb: { label: "DDB", description: "Double-declining-balance depreciation, accelerated: takes twice the straight-line rate off the remaining value each period. Excel: DDB." },
-  db:  { label: "DB",  description: "Fixed-declining-balance depreciation, accelerated: a constant rate applied to the remaining value each period. Month sets the number of months in the first year (default 12). Excel: DB." },
-  vdb: { label: "VDB", description: "Variable declining balance depreciation over a period range. Uses DDB and switches to straight-line when SL gives a higher deduction. Excel: VDB." },
+  sln: { label: "SLN", description: "Straight-line depreciation: the asset loses the same amount every period. Excel: `SLN`." },
+  syd: { label: "SYD", description: "Sum-of-years'-digits depreciation, accelerated: writes off more in the early periods, tapering each year. Excel: `SYD`." },
+  ddb: { label: "DDB", description: "Double-declining-balance depreciation, accelerated: takes twice the straight-line rate off the remaining value each period. Excel: `DDB`." },
+  db:  { label: "DB",  description: "Fixed-declining-balance depreciation, accelerated: a constant rate applied to the remaining value each period. `Month` sets the number of months in the first year (default `12`). Excel: `DB`." },
+  vdb: { label: "VDB", description: "Variable declining balance depreciation over a period range. Uses `DDB` and switches to straight-line when `SL` gives a higher deduction. Excel: `VDB`." },
 } satisfies Record<DepreciationOp, { label: string; description: string }>;
 
 // Per-op input rows: the shared cost/salvage/life trunk, then each method's own
@@ -266,8 +266,8 @@ export class TvmNode extends EquationNode {
 export type IpmtPpmtOp = "ipmt" | "ppmt";
 
 export const IPMT_PPMT_OP_META = {
-  ipmt: { label: "IPMT", description: "Interest portion of a periodic payment. Excel: IPMT." },
-  ppmt: { label: "PPMT", description: "Principal portion of a periodic payment. Excel: PPMT." },
+  ipmt: { label: "IPMT", description: "Interest portion of a periodic payment. Excel: `IPMT`." },
+  ppmt: { label: "PPMT", description: "Principal portion of a periodic payment. Excel: `PPMT`." },
 } satisfies Record<IpmtPpmtOp, { label: string; description: string }>;
 
 export class IpmtPpmtNode extends ClassicPreset.Node {
@@ -337,7 +337,7 @@ export class IpmtPpmtNode extends ClassicPreset.Node {
 // ─── NPV ──────────────────────────────────────────────────────────────────────
 export const NPV_META = {
   label: "NPV",
-  description: "Net present value of cash flows at a given discount rate (first value = period 1). Excel: NPV.",
+  description: "Net present value of cash flows at a given discount rate (first value = period `1`). Excel: `NPV`.",
 };
 
 // ─── Cash-flow schedule mode (NPV/IRR × periodic/dated) ───────────────────────
@@ -503,7 +503,7 @@ export class IrrNode extends ClassicPreset.Node {
 // ─── MIRR ─────────────────────────────────────────────────────────────────────
 export const MIRR_META = {
   label: "MIRR",
-  description: "Modified IRR: accounts for cost of capital and reinvestment rate. Excel: MIRR.",
+  description: "Modified `IRR`: accounts for cost of capital and reinvestment rate. Excel: `MIRR`.",
 };
 
 export class MirrNode extends ClassicPreset.Node {
@@ -544,7 +544,7 @@ export class MirrNode extends ClassicPreset.Node {
 // ─── FVSCHEDULE ───────────────────────────────────────────────────────────────
 export const FVSCHEDULE_META = {
   label: "FVSCHEDULE",
-  description: "Future value of principal after a schedule of compound interest rates. Excel: FVSCHEDULE.",
+  description: "Future value of principal after a schedule of compound interest rates. Excel: `FVSCHEDULE`.",
 };
 
 export class FvScheduleNode extends ClassicPreset.Node {
@@ -584,7 +584,7 @@ export class FvScheduleNode extends ClassicPreset.Node {
 // ─── ISPMT ────────────────────────────────────────────────────────────────────
 export const ISPMT_META = {
   label: "ISPMT",
-  description: "Interest paid in a given period of a straight-line-principal loan. Excel: ISPMT.",
+  description: "Interest paid in a given period of a straight-line-principal loan. Excel: `ISPMT`.",
 };
 
 export class IspmtNode extends ClassicPreset.Node {
@@ -629,8 +629,8 @@ export class IspmtNode extends ClassicPreset.Node {
 export type DollarOp = "dollarde" | "dollarfr";
 
 export const DOLLAR_OP_META = {
-  dollarde: { label: "DOLLARDE", description: "Fractional-notation dollar to decimal (for example, 1.02 in 32nds → 1.0625). Excel: DOLLARDE." },
-  dollarfr: { label: "DOLLARFR", description: "Decimal dollar to fractional notation (for example, 1.0625 → 1.02 in 32nds). Excel: DOLLARFR." },
+  dollarde: { label: "DOLLARDE", description: "Fractional-notation dollar to decimal (for example, `1.02` in 32nds → `1.0625`). Excel: `DOLLARDE`." },
+  dollarfr: { label: "DOLLARFR", description: "Decimal dollar to fractional notation (for example, `1.0625` → `1.02` in 32nds). Excel: `DOLLARFR`." },
 } satisfies Record<DollarOp, { label: string; description: string }>;
 
 export class DollarNode extends ClassicPreset.Node {
@@ -681,8 +681,8 @@ export class DollarNode extends ClassicPreset.Node {
 export type CumPmtOp = "cumipmt" | "cumprinc";
 
 export const CUM_PMT_OP_META = {
-  cumipmt:  { label: "CUMIPMT",  description: "Cumulative interest paid between two periods. Excel: CUMIPMT." },
-  cumprinc: { label: "CUMPRINC", description: "Cumulative principal paid between two periods. Excel: CUMPRINC." },
+  cumipmt:  { label: "CUMIPMT",  description: "Cumulative interest paid between two periods. Excel: `CUMIPMT`." },
+  cumprinc: { label: "CUMPRINC", description: "Cumulative principal paid between two periods. Excel: `CUMPRINC`." },
 } satisfies Record<CumPmtOp, { label: string; description: string }>;
 
 export class CumPmtNode extends ClassicPreset.Node {
@@ -766,9 +766,9 @@ export class CumPmtNode extends ClassicPreset.Node {
 export type TBillOp = "tbilleq" | "tbillprice" | "tbillyield";
 
 export const TBILL_OP_META = {
-  tbilleq:    { label: "TBILLEQ",    description: "T-bill bond-equivalent yield from settle, maturity, and discount rate. Excel: TBILLEQ." },
-  tbillprice: { label: "TBILLPRICE", description: "T-bill price per $100 face value from settle, maturity, and discount rate. Excel: TBILLPRICE." },
-  tbillyield: { label: "TBILLYIELD", description: "T-bill yield from settle, maturity, and price. Excel: TBILLYIELD." },
+  tbilleq:    { label: "TBILLEQ",    description: "T-bill bond-equivalent yield from settle, maturity, and discount rate. Excel: `TBILLEQ`." },
+  tbillprice: { label: "TBILLPRICE", description: "T-bill price per $100 face value from settle, maturity, and discount rate. Excel: `TBILLPRICE`." },
+  tbillyield: { label: "TBILLYIELD", description: "T-bill yield from settle, maturity, and price. Excel: `TBILLYIELD`." },
 } satisfies Record<TBillOp, { label: string; description: string }>;
 
 export class TBillNode extends ClassicPreset.Node {
@@ -843,9 +843,9 @@ export class TBillNode extends ClassicPreset.Node {
 // ─── DISC / INTRATE / RECEIVED ────────────────────────────────────────────────
 
 export const SECURITY_DISC_OP_META = {
-  disc:     { label: "DISC",     description: "Discount rate for a fully-invested security (redemption>price). Excel: DISC." },
-  intrate:  { label: "INTRATE",  description: "Interest rate for a fully-invested security. Excel: INTRATE." },
-  received: { label: "RECEIVED", description: "Amount received at maturity for a fully-invested security. Excel: RECEIVED." },
+  disc:     { label: "DISC",     description: "Discount rate for a fully-invested security (`redemption>price`). Excel: `DISC`." },
+  intrate:  { label: "INTRATE",  description: "Interest rate for a fully-invested security. Excel: `INTRATE`." },
+  received: { label: "RECEIVED", description: "Amount received at maturity for a fully-invested security. Excel: `RECEIVED`." },
 } satisfies Record<SecurityDiscOp, { label: string; description: string }>;
 
 export class SecurityDiscNode extends ClassicPreset.Node {
@@ -902,12 +902,12 @@ export class SecurityDiscNode extends ClassicPreset.Node {
 // ─── COUPON functions (COUPDAYBS / COUPDAYS / COUPDAYSNC / COUPNCD / COUPPCD / COUPNUM) ─
 
 export const COUPON_OP_META = {
-  coupdaybs:  { label: "COUPDAYBS",  description: "Days from beginning of coupon period to settlement. Excel: COUPDAYBS." },
-  coupdays:   { label: "COUPDAYS",   description: "Days in the coupon period containing settlement. Excel: COUPDAYS." },
-  coupdaysnc: { label: "COUPDAYSNC", description: "Days from settlement to next coupon date. Excel: COUPDAYSNC." },
-  coupncd:    { label: "COUPNCD",    description: "Next coupon date after settlement (as a date serial). Excel: COUPNCD." },
-  couppcd:    { label: "COUPPCD",    description: "Previous coupon date before settlement (as a date serial). Excel: COUPPCD." },
-  coupnum:    { label: "COUPNUM",    description: "Number of coupon periods between settlement and maturity. Excel: COUPNUM." },
+  coupdaybs:  { label: "COUPDAYBS",  description: "Days from beginning of coupon period to settlement. Excel: `COUPDAYBS`." },
+  coupdays:   { label: "COUPDAYS",   description: "Days in the coupon period containing settlement. Excel: `COUPDAYS`." },
+  coupdaysnc: { label: "COUPDAYSNC", description: "Days from settlement to next coupon date. Excel: `COUPDAYSNC`." },
+  coupncd:    { label: "COUPNCD",    description: "Next coupon date after settlement (as a date serial). Excel: `COUPNCD`." },
+  couppcd:    { label: "COUPPCD",    description: "Previous coupon date before settlement (as a date serial). Excel: `COUPPCD`." },
+  coupnum:    { label: "COUPNUM",    description: "Number of coupon periods between settlement and maturity. Excel: `COUPNUM`." },
 } satisfies Record<CouponOp, { label: string; description: string }>;
 
 export class CouponNode extends ClassicPreset.Node {
@@ -1030,8 +1030,8 @@ export class AccrintMNode extends ClassicPreset.Node {
 // ─── PRICEDISC / YIELDDISC ────────────────────────────────────────────────────
 
 export const PRICE_DISC_OP_META = {
-  pricedisc: { label: "PRICEDISC", description: "Price per $100 of a discounted security (such as a T-bill). Excel: PRICEDISC." },
-  yielddisc: { label: "YIELDDISC", description: "Annual yield of a discounted security. Excel: YIELDDISC." },
+  pricedisc: { label: "PRICEDISC", description: "Price per $100 of a discounted security (such as a T-bill). Excel: `PRICEDISC`." },
+  yielddisc: { label: "YIELDDISC", description: "Annual yield of a discounted security. Excel: `YIELDDISC`." },
 } satisfies Record<PriceDiscOp, { label: string; description: string }>;
 
 export class PriceDiscNode extends ClassicPreset.Node {
@@ -1079,8 +1079,8 @@ export class PriceDiscNode extends ClassicPreset.Node {
 // ─── PRICEMAT / YIELDMAT ──────────────────────────────────────────────────────
 
 export const PRICE_MAT_OP_META = {
-  pricemat: { label: "PRICEMAT", description: "Price per $100 of a security that pays interest at maturity. Excel: PRICEMAT." },
-  yieldmat: { label: "YIELDMAT", description: "Annual yield of a security that pays interest at maturity. Excel: YIELDMAT." },
+  pricemat: { label: "PRICEMAT", description: "Price per $100 of a security that pays interest at maturity. Excel: `PRICEMAT`." },
+  yieldmat: { label: "YIELDMAT", description: "Annual yield of a security that pays interest at maturity. Excel: `YIELDMAT`." },
 } satisfies Record<PriceMatOp, { label: string; description: string }>;
 
 export class PriceMatNode extends ClassicPreset.Node {
@@ -1129,8 +1129,8 @@ export class PriceMatNode extends ClassicPreset.Node {
 // ─── DURATION / MDURATION ─────────────────────────────────────────────────────
 
 export const DURATION_OP_META = {
-  duration:  { label: "DURATION",  description: "Macaulay duration: the weighted average time to receive cash flows. Excel: DURATION." },
-  mduration: { label: "MDURATION", description: "Modified duration: price sensitivity to yield changes. Excel: MDURATION." },
+  duration:  { label: "DURATION",  description: "Macaulay duration: the weighted average time to receive cash flows. Excel: `DURATION`." },
+  mduration: { label: "MDURATION", description: "Modified duration: price sensitivity to yield changes. Excel: `MDURATION`." },
 } satisfies Record<DurationOp, { label: string; description: string }>;
 
 export class DurationNode extends ClassicPreset.Node {
@@ -1174,8 +1174,8 @@ export class DurationNode extends ClassicPreset.Node {
 // ─── PRICE / YIELD ────────────────────────────────────────────────────────────
 
 export const BOND_PRICE_OP_META = {
-  price: { label: "PRICE", description: "Clean price per $100 face for a coupon bond (30/360 basis). Excel: PRICE." },
-  yield: { label: "YIELD", description: "Annual yield of a coupon bond given its market price (30/360 basis). Excel: YIELD." },
+  price: { label: "PRICE", description: "Clean price per $100 face for a coupon bond (`30/360` basis). Excel: `PRICE`." },
+  yield: { label: "YIELD", description: "Annual yield of a coupon bond given its market price (`30/360` basis). Excel: `YIELD`." },
 } satisfies Record<BondPriceOp, { label: string; description: string }>;
 
 export class BondPriceNode extends ClassicPreset.Node {
@@ -1227,10 +1227,10 @@ export class BondPriceNode extends ClassicPreset.Node {
 // ─── ODD COUPON — ODDFPRICE / ODDFYIELD / ODDLPRICE / ODDLYIELD ───────────────
 
 export const ODD_COUPON_OP_META = {
-  oddfprice: { label: "ODDFPRICE", description: "Price of a bond with an irregular first coupon period. Excel: ODDFPRICE." },
-  oddfyield: { label: "ODDFYIELD", description: "Yield of a bond with an irregular first coupon period. Excel: ODDFYIELD." },
-  oddlprice: { label: "ODDLPRICE", description: "Price of a bond with an irregular last coupon period. Excel: ODDLPRICE." },
-  oddlyield: { label: "ODDLYIELD", description: "Yield of a bond with an irregular last coupon period. Excel: ODDLYIELD." },
+  oddfprice: { label: "ODDFPRICE", description: "Price of a bond with an irregular first coupon period. Excel: `ODDFPRICE`." },
+  oddfyield: { label: "ODDFYIELD", description: "Yield of a bond with an irregular first coupon period. Excel: `ODDFYIELD`." },
+  oddlprice: { label: "ODDLPRICE", description: "Price of a bond with an irregular last coupon period. Excel: `ODDLPRICE`." },
+  oddlyield: { label: "ODDLYIELD", description: "Yield of a bond with an irregular last coupon period. Excel: `ODDLYIELD`." },
 } satisfies Record<OddCouponOp, { label: string; description: string }>;
 
 export class OddCouponNode extends ClassicPreset.Node {

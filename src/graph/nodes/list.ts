@@ -165,12 +165,12 @@ export class ListInputNode extends ClassicPreset.Node {
 export type SeriesOp = "range" | "sequence" | "linspace" | "geometric" | "fibonacci" | "repeat";
 
 export const SERIES_OP_META = {
-  range:    { label: "Range",    description: "Generates a sequence from Start to Stop inclusive, Step apart. numpy arange stops before Stop; Excel's count-first equivalent is the Sequence op." },
-  sequence: { label: "SEQUENCE", description: "List of N numbers starting at Start with Step between each. Like Range but count-first. Excel: SEQUENCE." },
+  range:    { label: "Range",    description: "Generates a sequence from Start to Stop inclusive, Step apart. `numpy arange` stops before Stop; Excel's count-first equivalent is the Sequence op." },
+  sequence: { label: "SEQUENCE", description: "List of N numbers starting at Start with Step between each. Like Range but count-first. Excel: `SEQUENCE`." },
   linspace: { label: "LinSpace", description: "Generates Count evenly spaced values from Start to End inclusive." },
-  geometric: { label: "Geometric", description: "Geometric series: start × ratio^0, start × ratio^1, …" },
+  geometric: { label: "Geometric", description: "Geometric series: `start × ratio^0`, `start × ratio^1`, …" },
   fibonacci: { label: "Fibonacci", description: "First N Fibonacci numbers: 1, 1, 2, 3, 5, 8, …" },
-  repeat:    { label: "Repeat",    description: "An array of one value repeated N times, like ZEROS or ONES." },
+  repeat:    { label: "Repeat",    description: "An array of one value repeated N times, like `ZEROS` or `ONES`." },
 } satisfies Record<SeriesOp, { label: string; description: string }>;
 
 const SERIES_SPECS: Record<SeriesOp, ReadonlyArray<{ key: string; label: string; def?: number }>> = {
@@ -589,9 +589,9 @@ export class BinNode extends ClassicPreset.Node {
 
 export type { OutlierMethod } from "./listOps";
 export const OUTLIER_METHOD_META = {
-  z:   { label: "z-score", description: "|z| above the threshold (default 3): distance from the mean in sample standard deviations." },
-  iqr: { label: "IQR",     description: "Beyond Q1 − k·IQR or Q3 + k·IQR (default k = 1.5): the boxplot whisker rule. R boxplot.stats." },
-  mad: { label: "MAD",     description: "Modified z-score 0.6745·(x − median)/MAD above the threshold (default 3.5): the robust Iglewicz–Hoaglin rule." },
+  z:   { label: "z-score", description: "`|z|` above the threshold (default 3): distance from the mean in sample standard deviations." },
+  iqr: { label: "IQR",     description: "Beyond `Q1 − k·IQR` or `Q3 + k·IQR` (default `k = 1.5`): the boxplot whisker rule. R `boxplot.stats`." },
+  mad: { label: "MAD",     description: "Modified z-score `0.6745·(x − median)/MAD` above the threshold (default 3.5): the robust Iglewicz–Hoaglin rule." },
 } satisfies Record<OutlierMethod, { label: string; description: string }>;
 
 export class OutliersNode extends ClassicPreset.Node {
@@ -999,11 +999,11 @@ export class FilterNode extends ClassicPreset.Node {
 export type CondAggOp = "sumifs" | "countifs" | "averageifs" | "minifs" | "maxifs";
 
 export const COND_AGG_OP_META = {
-  sumifs:     { label: "SUMIFS",     description: "Sum the Values column over the rows where every criteria row passes. Excel: SUMIFS / SUMIF." },
-  countifs:   { label: "COUNTIFS",   description: "Count the rows where every criteria row passes (needs no Values column). Excel: COUNTIFS / COUNTIF." },
-  averageifs: { label: "AVERAGEIFS", description: "Average the Values column where every criteria row passes. Nothing matching is #DIV/0! like Excel. Excel: AVERAGEIFS / AVERAGEIF." },
-  minifs:     { label: "MINIFS",     description: "Smallest Values-column cell where every criteria row passes. Nothing matching is 0 like Excel. Excel: MINIFS." },
-  maxifs:     { label: "MAXIFS",     description: "Largest Values-column cell where every criteria row passes. Nothing matching is 0 like Excel. Excel: MAXIFS." },
+  sumifs:     { label: "SUMIFS",     description: "Sum the Values column over the rows where every criteria row passes. Excel: `SUMIFS` / `SUMIF`." },
+  countifs:   { label: "COUNTIFS",   description: "Count the rows where every criteria row passes (needs no Values column). Excel: `COUNTIFS` / `COUNTIF`." },
+  averageifs: { label: "AVERAGEIFS", description: "Average the Values column where every criteria row passes. Nothing matching is `#DIV/0!` like Excel. Excel: `AVERAGEIFS` / `AVERAGEIF`." },
+  minifs:     { label: "MINIFS",     description: "Smallest Values-column cell where every criteria row passes. Nothing matching is `0` like Excel. Excel: `MINIFS`." },
+  maxifs:     { label: "MAXIFS",     description: "Largest Values-column cell where every criteria row passes. Nothing matching is `0` like Excel. Excel: `MAXIFS`." },
 } satisfies Record<CondAggOp, { label: string; description: string }>;
 
 export class SumIfsNode extends ClassicPreset.Node {
@@ -1419,7 +1419,7 @@ export const RUNNING_OP_META = {
   max:     { label: "MAX",     description: "Largest value in each window." },
   median:  { label: "MEDIAN",  description: "Middle value of each window." },
   product: { label: "PRODUCT", description: "Product of each window." },
-  stdev:   { label: "STDEV",   description: "Sample standard deviation of each window. Divides by n−1." },
+  stdev:   { label: "STDEV",   description: "Sample standard deviation of each window. Divides by `n−1`." },
 } satisfies Record<RunningOp, { label: string; description: string }>;
 
 export const RUNNING_MODE_OPTIONS: ReadonlyArray<{ value: RunningMode; label: string; title: string }> = [
@@ -1524,9 +1524,9 @@ export type { ArgMinMaxOp } from "./listOps";
 export const ARG_MIN_MAX_OP_META = {
   argmax: { label: "ARGMAX", description: "1-based position of the maximum value" },
   argmin: { label: "ARGMIN", description: "1-based position of the minimum value" },
-  argsort:      { label: "ARGSORT",      description: "1-based positions that would sort the list ascending; reorder a parallel list by them. numpy.argsort, R order." },
-  argsort_desc: { label: "ARGSORT DESC", description: "1-based positions that would sort the list descending. numpy.argsort(-x), R order with decreasing = TRUE." },
-  which:        { label: "WHICH",        description: "1-based positions of the TRUE cells of a logical list. R which, numpy.flatnonzero. Excel: FILTER(SEQUENCE(n), cond)." },
+  argsort:      { label: "ARGSORT",      description: "1-based positions that would sort the list ascending; reorder a parallel list by them. `numpy.argsort`, R `order`." },
+  argsort_desc: { label: "ARGSORT DESC", description: "1-based positions that would sort the list descending. `numpy.argsort(-x)`, R `order` with `decreasing = TRUE`." },
+  which:        { label: "WHICH",        description: "1-based positions of the `TRUE` cells of a logical list. R `which`, `numpy.flatnonzero`. Excel: `FILTER(SEQUENCE(n), cond)`." },
 } satisfies Record<ArgMinMaxOp, { label: string; description: string }>;
 
 export class ArgMinMaxNode extends ClassicPreset.Node {
@@ -1777,9 +1777,9 @@ export class PadNode extends ClassicPreset.Node {
 export type WeightedOp = "wavg" | "wvar" | "wstdev";
 
 export const WEIGHTED_OP_META = {
-  wavg:   { label: "WAVG",   description: "Weighted average: Σ(x·w) / Σw, which is SUMPRODUCT(x,w) over SUM(w) in Excel." },
+  wavg:   { label: "WAVG",   description: "Weighted average: `Σ(x·w) / Σw`, which is `SUMPRODUCT(x,w)` over `SUM(w)` in Excel." },
   wvar:   { label: "WVAR",   description: "Weighted sample variance with reliability weights" },
-  wstdev: { label: "WSTDEV", description: "Weighted sample standard deviation: √WVAR" },
+  wstdev: { label: "WSTDEV", description: "Weighted sample standard deviation: `√WVAR`" },
 } satisfies Record<WeightedOp, { label: string; description: string }>;
 
 export class WeightedNode extends ClassicPreset.Node {
@@ -1815,32 +1815,32 @@ export class WeightedNode extends ClassicPreset.Node {
 export type ReduceOp = AggregateOp | "countblank";
 
 export const REDUCE_OP_META = {
-  sum:     { label: "SUM",     description: "Sums all values. Excel: SUM." },
-  avg:     { label: "AVERAGE", description: "Arithmetic mean. Excel: AVERAGE." },
-  min:     { label: "MIN",     description: "Smallest value. Excel: MIN." },
-  max:     { label: "MAX",     description: "Largest value. Excel: MAX." },
-  count:   { label: "COUNT",   description: "Number of values. Excel: COUNT." },
-  countdistinct: { label: "COUNT DISTINCT", description: "Number of unique values. Excel: COUNTA(UNIQUE(range))." },
-  countblank: { label: "COUNTBLANK", description: "Number of blank (missing) cells. Excel: COUNTBLANK." },
-  median:  { label: "MEDIAN",  description: "Middle value. Excel: MEDIAN." },
-  product: { label: "PRODUCT", description: "Multiply all values. Excel: PRODUCT." },
-  stdev:   { label: "STDEV.S", description: "Sample standard deviation (n−1). Excel: STDEV.S." },
-  stdev_p: { label: "STDEV.P", description: "Population standard deviation (n). Excel: STDEV.P." },
-  var_s:   { label: "VAR.S",   description: "Sample variance (n−1). Excel: VAR.S." },
-  var_p:   { label: "VAR.P",   description: "Population variance (n). Excel: VAR.P." },
-  geomean: { label: "GEOMEAN", description: "Geometric mean (all values must be > 0). Excel: GEOMEAN." },
-  harmean: { label: "HARMEAN", description: "Harmonic mean (all values must be > 0). Excel: HARMEAN." },
-  sumsq:   { label: "SUMSQ",   description: "Sum of squares Σ(xi²). Excel: SUMSQ." },
-  devsq:   { label: "DEVSQ",   description: "Sum of squared deviations from the mean. Excel: DEVSQ." },
-  avedev:  { label: "AVEDEV",  description: "Mean absolute deviation from the mean. Excel: AVEDEV." },
-  skew:    { label: "SKEW",    description: "Sample skewness of the distribution. Excel: SKEW." },
-  skew_p:  { label: "SKEW.P",  description: "Population skewness. Divides by n. Excel: SKEW.P." },
-  kurt:    { label: "KURT",    description: "Excess kurtosis of the distribution. Excel: KURT." },
-  ptp:     { label: "PTP",     description: "Range of the data: max − min. numpy ptp (peak to peak), R diff(range(x)). Excel: MAX − MIN." },
-  iqr:     { label: "IQR",     description: "Interquartile range: the 75th minus the 25th percentile (PERCENTILE.INC). scipy iqr, R IQR." },
-  mad:     { label: "MAD",     description: "Median absolute deviation from the median, unscaled (scipy median_abs_deviation; R's mad multiplies by 1.4826). The robust spread." },
-  sem:     { label: "SEM",     description: "Standard error of the mean: sample stdev ÷ √n. scipy sem, or sd(x)/sqrt(n) in R." },
-  cv:      { label: "CV",      description: "Coefficient of variation: sample stdev ÷ mean. scipy variation, or sd(x)/mean(x) in R." },
+  sum:     { label: "SUM",     description: "Sums all values. Excel: `SUM`." },
+  avg:     { label: "AVERAGE", description: "Arithmetic mean. Excel: `AVERAGE`." },
+  min:     { label: "MIN",     description: "Smallest value. Excel: `MIN`." },
+  max:     { label: "MAX",     description: "Largest value. Excel: `MAX`." },
+  count:   { label: "COUNT",   description: "Number of values. Excel: `COUNT`." },
+  countdistinct: { label: "COUNT DISTINCT", description: "Number of unique values. Excel: `COUNTA(UNIQUE(range))`." },
+  countblank: { label: "COUNTBLANK", description: "Number of blank (missing) cells. Excel: `COUNTBLANK`." },
+  median:  { label: "MEDIAN",  description: "Middle value. Excel: `MEDIAN`." },
+  product: { label: "PRODUCT", description: "Multiply all values. Excel: `PRODUCT`." },
+  stdev:   { label: "STDEV.S", description: "Sample standard deviation (`n−1`). Excel: `STDEV.S`." },
+  stdev_p: { label: "STDEV.P", description: "Population standard deviation (`n`). Excel: `STDEV.P`." },
+  var_s:   { label: "VAR.S",   description: "Sample variance (`n−1`). Excel: `VAR.S`." },
+  var_p:   { label: "VAR.P",   description: "Population variance (`n`). Excel: `VAR.P`." },
+  geomean: { label: "GEOMEAN", description: "Geometric mean (all values must be `> 0`). Excel: `GEOMEAN`." },
+  harmean: { label: "HARMEAN", description: "Harmonic mean (all values must be `> 0`). Excel: `HARMEAN`." },
+  sumsq:   { label: "SUMSQ",   description: "Sum of squares `Σ(xi²)`. Excel: `SUMSQ`." },
+  devsq:   { label: "DEVSQ",   description: "Sum of squared deviations from the mean. Excel: `DEVSQ`." },
+  avedev:  { label: "AVEDEV",  description: "Mean absolute deviation from the mean. Excel: `AVEDEV`." },
+  skew:    { label: "SKEW",    description: "Sample skewness of the distribution. Excel: `SKEW`." },
+  skew_p:  { label: "SKEW.P",  description: "Population skewness. Divides by `n`. Excel: `SKEW.P`." },
+  kurt:    { label: "KURT",    description: "Excess kurtosis of the distribution. Excel: `KURT`." },
+  ptp:     { label: "PTP",     description: "Range of the data: `max − min`. numpy `ptp` (peak to peak), R `diff(range(x))`. Excel: `MAX − MIN`." },
+  iqr:     { label: "IQR",     description: "Interquartile range: the 75th minus the 25th percentile (`PERCENTILE.INC`). scipy `iqr`, R `IQR`." },
+  mad:     { label: "MAD",     description: "Median absolute deviation from the median, unscaled (scipy `median_abs_deviation`; R's `mad` multiplies by 1.4826). The robust spread." },
+  sem:     { label: "SEM",     description: "Standard error of the mean: sample stdev ÷ `√n`. scipy `sem`, or `sd(x)/sqrt(n)` in R." },
+  cv:      { label: "CV",      description: "Coefficient of variation: sample stdev ÷ mean. scipy `variation`, or `sd(x)/mean(x)` in R." },
   rms:     { label: "RMS",     description: "Root mean square: √ of the mean of the squares." },
 } satisfies Record<ReduceOp, { label: string; description: string; fx?: string }>;
 
@@ -2145,15 +2145,15 @@ export type FillOp =
 // `fx` is declared, not despaced: despacing would split the FILL* family and collide
 // with the INTERPOLATE node in stats.ts.
 export const FILL_OP_META = {
-  constant:    { label: "Constant",       fx: "FILLVALUE",       description: "Replace each missing (null) cell with a constant. Excel: IF." },
-  ffill:       { label: "Forward fill",   fx: "FILLFORWARD",     description: "Carry the last present value forward over gaps. Pandas: ffill." },
-  bfill:       { label: "Backward fill",  fx: "FILLBACKWARD",    description: "Carry the next present value back over gaps. Pandas: bfill." },
+  constant:    { label: "Constant",       fx: "FILLVALUE",       description: "Replace each missing (`null`) cell with a constant. Excel: `IF`." },
+  ffill:       { label: "Forward fill",   fx: "FILLFORWARD",     description: "Carry the last present value forward over gaps. Pandas: `ffill`." },
+  bfill:       { label: "Backward fill",  fx: "FILLBACKWARD",    description: "Carry the next present value back over gaps. Pandas: `bfill`." },
   mean:        { label: "Mean",           fx: "FILLMEAN",        description: "Impute gaps with the mean of present values" },
   median:      { label: "Median",         fx: "FILLMEDIAN",      description: "Impute gaps with the median of present values" },
   mode:        { label: "Mode",           fx: "FILLMODE",        description: "Impute gaps with the most common present value" },
   interpolate: { label: "Interpolate",    fx: "FILLINTERPOLATE", description: "Linearly interpolate interior gaps between bracketing present values" },
-  drop:        { label: "Drop missing",   fx: "FILLDROP",        description: "Remove missing (null) cells, shortening the list. Pandas: dropna." },
-  coalesce:    { label: "Coalesce",       fx: "COALESCE",        description: "First present of List then each Else in order, per position. SQL: COALESCE." },
+  drop:        { label: "Drop missing",   fx: "FILLDROP",        description: "Remove missing (`null`) cells, shortening the list. Pandas: `dropna`." },
+  coalesce:    { label: "Coalesce",       fx: "COALESCE",        description: "First present of List then each Else in order, per position. SQL: `COALESCE`." },
 } satisfies Record<FillOp, { label: string; fx: string; description: string }>;
 
 type Cell = number | null | SolError;
@@ -2272,9 +2272,9 @@ export class SpectrumNode extends ClassicPreset.Node {
 // ─── SMOOTH (Savitzky–Golay / LOWESS / Gaussian) ──────────────────────────────
 export type SmoothOp = "savgol" | "lowess" | "gaussian";
 export const SMOOTH_OP_META: Record<SmoothOp, { label: string; fx: string; params: { key: string; label: string; def: number }[]; description: string }> = {
-  savgol:   { label: "Savitzky–Golay", fx: "SAVGOL", params: [{ key: "window", label: "Window", def: 5 }, { key: "order", label: "Order", def: 2 }], description: "Polynomial least-squares over a sliding window (odd width); keeps peak shape better than a moving average. scipy savgol_filter, R signal::sgolayfilt." },
-  lowess:   { label: "LOWESS",         fx: "LOWESS", params: [{ key: "frac", label: "Fraction", def: 0.67 }], description: "Locally weighted linear regression over the nearest fraction of points, three robust passes. statsmodels lowess, R lowess / loess." },
-  gaussian: { label: "Gaussian", fx: "GAUSSIANSMOOTH", params: [{ key: "sigma", label: "Sigma", def: 1 }], description: "Gaussian-weighted average, σ in samples, edges reflected. scipy gaussian_filter1d." },
+  savgol:   { label: "Savitzky–Golay", fx: "SAVGOL", params: [{ key: "window", label: "Window", def: 5 }, { key: "order", label: "Order", def: 2 }], description: "Polynomial least-squares over a sliding window (odd width); keeps peak shape better than a moving average. scipy `savgol_filter`, R `signal::sgolayfilt`." },
+  lowess:   { label: "LOWESS",         fx: "LOWESS", params: [{ key: "frac", label: "Fraction", def: 0.67 }], description: "Locally weighted linear regression over the nearest fraction of points, three robust passes. statsmodels `lowess`, R `lowess` / `loess`." },
+  gaussian: { label: "Gaussian", fx: "GAUSSIANSMOOTH", params: [{ key: "sigma", label: "Sigma", def: 1 }], description: "Gaussian-weighted average, σ in samples, edges reflected. scipy `gaussian_filter1d`." },
 };
 
 export class SmoothNode extends ClassicPreset.Node {

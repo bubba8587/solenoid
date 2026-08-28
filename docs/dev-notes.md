@@ -61,6 +61,14 @@ grew a "Reads the frame back" Script consuming the amortization frame (→ Total
 206017, verified live). Details: decisions scriptNode; out-of-scope §4 revised again.
 **Group edge bands outset** 4px past the dashed border (they anchored to the body's padding box
 and started 2px inside the line).
+**Descriptions are inline markdown** (`descriptionMd.ts`): `descriptionHtml` (marked.parseInline
++ DOMPurify, memoized) renders the Inspector description and the Function Reference description
+row; `descriptionText` strips the marks for every title-attribute tooltip (card header, Add menu,
+Set notation). A 7-agent sweep formatted ~490 of ~890 catalog/OP_META descriptions (backticks on
+function names, literals, formulas, error codes, Py/R equivalents; bold used ONCE, COVARIANCE's
+n vs n−1) — formatting only, prose verified byte-identical modulo the marks. `libraryTags` strips
+backticks before citation matching (the R-adjacency break). Script's description is the
+author-set two-liner; imperative-opener carries a documented §7 instructions exemption for it.
 
 ### SESSION DIGEST (2026-08-28 — Script node)
 

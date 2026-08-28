@@ -93,13 +93,15 @@ const RULES: Rule[] = [
   {
     id: "imperative-opener",
     why: "a node description says what the node DOES, not what the reader should do — third person, the register Excel's own function reference uses",
+    // §7 allows second person for INSTRUCTIONS, and the Script description IS one —
+    // the node is a blank surface for the user's own code (author-set, 2026-08-28).
     // Only verbs that are NEVER a noun at the head of a description in this
     // catalog. Sum, Sample, List, Rank, Set, Clean, Yield, Point and Report are
     // deliberately absent: each opens a real noun phrase here ("Sum of squares",
     // "Sample variance (n−1)", "Set operations on two lists"), and flagging them
     // would push a correct string into "Sums of squares".
     re: /^(?:Draw|Paint|Pull|Append|Convert|Split|Join|Sort|Remove|Keep|Wrap|Parse|Load|Write|Extract|Generate|Reverse|Repeat|Replace|Expand|Reshape|Apply|Define|Show|Plot|Stack|Flip|Nest|Rename|Select|Filter|Order|Score|Test|Group|Read|Scale|Build|Take|Fill|Look|Count|Pick|Combine|Return|Match|Give|Enter|Round|Compute|Solve|Simulate|Import|Export|Insert|Merge|Trim|Normalize|Interpolate)\b/,
-    where: (u) => u.src.endsWith(".desc") && u.opener,
+    where: (u) => u.src.endsWith(".desc") && u.opener && !u.text.startsWith("Write a JavaScript function."),
   },
   {
     id: "wire-instruction",
