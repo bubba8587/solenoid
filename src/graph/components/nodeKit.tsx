@@ -16,6 +16,13 @@ import { LazySelect } from "./LazySelect";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { useDraftCommit } from "./inlineInput";
 import { describeNode, nodeName } from "../catalogUtils";
+import { descriptionText } from "../descriptionMd";
+
+// Tooltips render no markup, so the description's markdown marks strip.
+function headerTitle(node: object): string | undefined {
+  const d = describeNode(node);
+  return d ? descriptionText(d) : undefined;
+}
 import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { flyToNode } from "../flyToNode";
@@ -312,7 +319,7 @@ export function NodeShell({
       <NodeCard selected={node.selected} node={node} collapsible={collapsible} squareCollapse={squareCollapse} className={className} accentOverride={accentOverride}>
         {/* The label display's own title (the untruncated label) wins inside its
             own bounds. */}
-        <div className="solenoid-node__header" ref={headerRef} title={describeNode(node) ?? undefined}>
+        <div className="solenoid-node__header" ref={headerRef} title={headerTitle(node)}>
           {editing ? (
             // A textarea can't ellipsize, so it's only mounted while editing;
             // otherwise a clamped (2-line, ellipsis) display element stands in.

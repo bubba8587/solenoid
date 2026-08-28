@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SetNode as SetNodeType, SetOpAll } from "../rete-nodes";
 import { SET_META, isSetRelationOp, adoptiveListOut, logicalOut } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
+import { descriptionText } from "../descriptionMd";
 import { useKatexRender } from "./katexLoader";
 import { NodeShell, OpSelect, ValueDisplay, type NodeProps, type OpOption } from "./nodeKit";
 import type { DisplayValue } from "./valueDisplayFormat";
@@ -58,7 +59,7 @@ export function SetComponent({ data, emit }: NodeProps<SetNodeType>) {
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} onChange={setOp} options={OPS} />
-      <div className="solenoid-setop__notation" title={meta.description}>
+      <div className="solenoid-setop__notation" title={descriptionText(meta.description)}>
         {html != null ? (
           <span dangerouslySetInnerHTML={{ __html: html }} />
         ) : (

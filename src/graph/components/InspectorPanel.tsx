@@ -11,6 +11,7 @@ import { frameHintFor } from "../frameHint";
 import { SocketComponent } from "./SocketComponent";
 import { FrameHintTable } from "./FrameHintLayer";
 import { CloseIcon } from "./CloseIcon";
+import { descriptionHtml } from "../descriptionMd";
 import "./InspectorPanel.css";
 
 // The node Inspector: a right-docked panel (the pinned Report's chrome pattern
@@ -142,7 +143,7 @@ export function InspectorPanel() {
                 {location.join(" \u25b8 ")}{packs.length > 0 ? ` \u00b7 ${packs.join(", ")} pack` : ""}
               </div>
             )}
-            {description && <p className="inspector-desc">{description}</p>}
+            {description && <p className="inspector-desc" dangerouslySetInnerHTML={{ __html: descriptionHtml(description) }} />}
 
             {excel.length > 0 && <div className="inspector-label">Excel</div>}
             {excel.map((eq) => (

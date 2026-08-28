@@ -432,6 +432,15 @@
   white-space: normal;
   text-wrap-style: pretty;
 }
+/* Descriptions are inline markdown (descriptionMd.ts). */
+.fr-desc-row td code {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  padding: 0 2px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+}
+.fr-desc-row td strong { color: var(--text-dim); }
 
 /* A hairline between the scope pills and the library chips. */
 .fr-filters__sep { width: 1px; align-self: stretch; margin: 2px 4px; box-shadow: inset 1px 0 0 var(--border); }

@@ -11,6 +11,7 @@ import notesMd from "../help/notes.md?raw";
 import dataTypesMd from "../help/data-types.md?raw";
 import dataModelMd from "../help/data-model.md?raw";
 import "./FunctionReference.css";
+import { descriptionHtml } from "../descriptionMd";
 import { CloseIcon } from "./CloseIcon";
 import { useEscapeToClose } from "./useEscapeToClose";
 
@@ -255,7 +256,7 @@ export function FunctionReference() {
                       if (expandable && openDesc === rowKey) {
                         rows.push(
                           <tr key={`${rowKey}-d`} className="fr-desc-row">
-                            <td colSpan={showExcel ? 7 : 5}>{r.description}</td>
+                            <td colSpan={showExcel ? 7 : 5} dangerouslySetInnerHTML={{ __html: descriptionHtml(r.description ?? "") }} />
                           </tr>,
                         );
                       }

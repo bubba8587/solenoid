@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { flattenLeaves, searchLeaves } from "./catalogSearch";
 import { IS_COARSE } from "./coarse";
+import { descriptionText } from "./descriptionMd";
 import "./AddNodeMenu.css";
 
 // Leaf entry — produces a node when selected.
@@ -197,7 +198,7 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
               key={`cat:${it.entry.label}`}
               ref={(el) => { anchorRefs.current[i] = el; }}
               className={`solenoid-add-menu__item solenoid-add-menu__item--category${onPath ? " solenoid-add-menu__item--active" : ""}${open ? " solenoid-add-menu__item--open" : ""}`}
-              title={it.entry.description}
+              title={it.entry.description && descriptionText(it.entry.description)}
               onMouseEnter={() => onHover([...prefix, i, 0])}
               // Submenus are DOM children of this div, so without stopping the bubble the
               // outermost ancestor's handler wins and re-pins to the top.
@@ -221,7 +222,7 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
             key={`leaf:${leaf.type}`}
             ref={active ? (el) => el?.scrollIntoView({ block: "nearest" }) : undefined}
             className={`solenoid-add-menu__item${it.half ? " solenoid-add-menu__item--half" : ""}${leaf.accent ? " solenoid-add-menu__item--accent" : ""}${active ? " solenoid-add-menu__item--active" : ""}${dim ? " solenoid-add-menu__item--incompatible" : ""}`}
-            title={leaf.description}
+            title={leaf.description && descriptionText(leaf.description)}
             style={leaf.accent ? ({ "--item-accent": leaf.accent } as CSSProperties) : undefined}
             onMouseEnter={() => onHover([...prefix, i])}
             onClick={(e) => { e.stopPropagation(); onSelect(leaf); }}
@@ -405,7 +406,7 @@ export function AddNodeMenu({ screenX, screenY, entries, onSelect, onClose, comp
                 key={leaf.type}
                 ref={i === activeIndex ? activeRef : undefined}
                 className={`solenoid-add-menu__item${leaf.accent ? " solenoid-add-menu__item--accent" : ""}${i === activeIndex ? " solenoid-add-menu__item--active" : ""}${isDim(leaf) ? " solenoid-add-menu__item--incompatible" : ""}`}
-                title={leaf.description}
+                title={leaf.description && descriptionText(leaf.description)}
                 style={leaf.accent ? ({ "--item-accent": leaf.accent } as CSSProperties) : undefined}
                 onMouseEnter={() => setActiveIndex(i)}
                 onClick={() => select(leaf)}

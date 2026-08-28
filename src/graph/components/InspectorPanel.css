@@ -104,6 +104,15 @@ html.is-mobile .solenoid-apptools__inspector { display: none; }
   color: var(--text-dim);
   text-wrap-style: pretty;
 }
+/* Descriptions are inline markdown (descriptionMd.ts). */
+.inspector-desc code {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+}
+.inspector-desc strong { color: var(--text); }
 
 .inspector-label {
   margin: 12px 0 4px;
