@@ -4,11 +4,12 @@ import { getEditor } from "./process";
 import { NoteNode, ReportNode } from "./rete-nodes";
 import { nodeDisplayNames } from "./nodeNames";
 import { resolveRefAnnotation, refPreview } from "./components/inlineRefDisplay";
+import { isDocumentValue } from "./documentValue";
+import { parseNoteFrontmatter } from "./noteFrontmatter";
 import { captureCanvasImage, captureChartSvgs } from "./canvasCapture";
 import { saveHtmlFileDialog, isDesktop } from "./fileBridge";
 import { pushNotice } from "./noticeStore";
 import { reportPaletteStore } from "./palette";
-import { EMBED_RE } from "./reportEmbeds";
 import { APP_LOCALE } from "./locale";
 
 // "Export as webpage" freezes a Report into ONE self-contained .html: everything
@@ -23,7 +24,8 @@ export function escapeMd(s: string): string {
 }
 
 /** The freeze step: every `` `=name` `` span becomes its CURRENT formatted value as
- *  escaped text; a name with no live value is left as its original span. */
+ *  escaped text; a name with no live value is left as its original span. A DOCUMENT
+ *  ref (an embedded Note) is also left: the export renders it as a block. */
 export function freezeInlineRefs(
   nodeId: string,
   body: string,
@@ -32,8 +34,10 @@ export function freezeInlineRefs(
 ): string {
   return body.replace(REF_RE, (match, name: string) => {
     if (!refKeys.includes(name)) return match;
+    const value = refValue(name);
+    if (isDocumentValue(value)) return match;
     const ann = resolveRefAnnotation(nodeId, name);
-    return escapeMd(refPreview(refValue(name), ann));
+    return escapeMd(refPreview(value, ann));
   });
 }
 
@@ -71,13 +75,16 @@ body { margin: 0; background: #0e0e0e; color: #e8e8e8; font: 14px/1.6 -apple-sys
 }
 
 /** Node ids the report references — sources wired into its own refs plus any
- *  embedded Note's. Deliberately DIRECT wiring only, not the upstream closure:
- *  a chart belongs in the report when the user wired it in. */
+ *  wired-in Note's (an embedded note's own charts belong too). Deliberately DIRECT
+ *  wiring only, not the upstream closure: a chart belongs in the report when the
+ *  user wired it in. */
 export function reportReferencedNodeIds(
-  report: { id: string; embeds: string[] },
+  report: { id: string },
   connections: readonly { source: string; target: string }[],
+  noteIds: ReadonlySet<string>,
 ): Set<string> {
-  const targets = new Set([report.id, ...report.embeds]);
+  const direct = connections.filter((c) => c.target === report.id).map((c) => c.source);
+  const targets = new Set([report.id, ...direct.filter((id) => noteIds.has(id))]);
   const out = new Set<string>();
   for (const c of connections) if (targets.has(c.target)) out.add(c.source);
   return out;
@@ -95,31 +102,25 @@ export function buildReportExportHtml(
 
   const bodyFrozen = freezeInlineRefs(report.id, report.body, report.refKeys(), (k) => report.refValue(k));
 
-  // Each `![[Name]]` token is substituted INLINE for the named Note's block;
-  // splitting at the token (always its own paragraph) keeps each segment valid.
-  const notes = allNodes.filter((n): n is NoteNode => n instanceof NoteNode);
-  const noteByName = (name: string) =>
-    notes.find((n) => (names.get(n.id) ?? n.label ?? "").trim().toLowerCase() === name.trim().toLowerCase());
+  // A DOCUMENT-valued ref (a wired Note) is substituted INLINE as an embed block;
+  // splitting at the span keeps each surrounding markdown segment valid.
   const parts: string[] = [];
-  const re = new RegExp(EMBED_RE);
+  const re = new RegExp(REF_RE);
   let last = 0;
   let m: RegExpExecArray | null;
   while ((m = re.exec(bodyFrozen))) {
+    const name = m[1];
+    const value = report.refValue(name);
+    if (!isDocumentValue(value)) continue; // frozen already, or an unwired span
     parts.push(renderMarkdown(bodyFrozen.slice(last, m.index)));
-    const name = m[1].trim();
-    const note = noteByName(name);
-    if (note) {
-      // A Note is output-only — no inline refs to freeze.
-      parts.push(`<div class="report-export__embed"><div class="report-export__embed-name">${names.get(note.id) ?? name}</div>${renderMarkdown(note.renderBody)}</div>`);
-    } else {
-      parts.push(`<div class="report-export__embed"><div class="report-export__embed-name">${name} (missing)</div></div>`);
-    }
+    parts.push(`<div class="report-export__embed"><div class="report-export__embed-name">${name}</div>${renderMarkdown(parseNoteFrontmatter(value.body).body)}</div>`);
     last = m.index + m[0].length;
   }
   parts.push(renderMarkdown(bodyFrozen.slice(last)));
   const bodyHtml = parts.join("\n");
 
-  const refIds = reportReferencedNodeIds(report, editor?.getConnections() ?? []);
+  const noteIds = new Set(allNodes.filter((n): n is NoteNode => n instanceof NoteNode).map((n) => n.id));
+  const refIds = reportReferencedNodeIds(report, editor?.getConnections() ?? [], noteIds);
   const charts = captureChartSvgs(names, refIds);
   const chartsHtml = charts.map((c) =>
     `<div class="report-export__chart"><div class="report-export__chart-label">${c.name}</div>${c.svg}</div>`,

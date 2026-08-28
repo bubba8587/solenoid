@@ -6,6 +6,28 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-08-28c — Report embeds become `=name` refs; dev copy-edit freeze)
+
+**Note embedding unified onto `=name` refs (author: `![[ ]]` "doesn't mean much" without a
+document library; reserved for a FUTURE on-disk Obsidian-vault embed).** The `![[Note]]` token,
+`reportEmbeds.ts`, `ReportNode.embeds` and the whole placed-object side-channel are gone. "Embed
+a Note" now inserts `` `=<addressable name>` `` and WIRES the note's `Document` output into the
+minted ref input — the embed is an ordinary cable the graph can see, prune, and recompute.
+`figureFor` gained a document branch (frontmatter-stripped markdown body in a CollapsibleFigure,
+carried refs substituted); the static export renders document refs as embed blocks;
+`valueToObsidianBlock` inlines a document's body (Write-Obsidian gains note embedding);
+`reportReferencedNodeIds` treats wired-in Notes as chart-capture targets. The document socket
+finally has real consumers: Report ref inputs + Write Obsidian. Seed `report-showcase` wires
+Methodology by name; verified live via `scripts/report-embed-probe.mjs`.
+**Dev copy-edit freeze** (`src/devCopyEdit.ts` + the `/__copy-edit` Vite middleware): Ctrl+Alt+E
+freezes the app; click a string, edit its SOURCE form in place, Enter commits — the endpoint maps
+via the string-editor's `literals.mjs` (markdown-stripped index for rendered descriptions/help,
+position-mapped stripped scan for .md), writes EVERY source place, logs to copy-edits.jsonl; HMR
+repaints. Freeze listeners register at boot so they outrank overlay capture handlers. Also:
+Inspector/Reference descriptions render inline markdown (`descriptionMd.ts`; tooltips strip), a
+7-agent sweep backticked ~490 descriptions, one `EXP` cross-listing removed, Socket Types tab
+centered with a larger legend, Session History newest-first.
+
 ### SESSION DIGEST (2026-08-28b — Script polish + the open-group drag guard)
 
 **Open-group drag guard restored** (lost in the RF port; the rete surface had it as a

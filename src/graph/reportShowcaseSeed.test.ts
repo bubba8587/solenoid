@@ -9,14 +9,14 @@ import { isChartValue } from "./chartValue";
 import { isMermaidValue } from "./mermaidValue";
 import { isLambdaValue } from "./nodes/lambda";
 import { isFrameValue } from "./frame";
-import { extractEmbedNames } from "./reportEmbeds";
+import { isDocumentValue } from "./documentValue";
 import seed from "./seedGraphs/report-showcase.json";
 
 // The Report Showcase seed exercises every distinct Report ref/embed render
 // path end to end: a scalar ref (=total), an inline frame table (=table), a
 // chart figure (=fig -> a first-class chart value), a lambda -> KaTeX equation
-// (=model), a Mermaid diagram (=flow -> a chart-family figure), and an inline
-// note embed token (![[Methodology]]).
+// (=model), a Mermaid diagram (=flow -> a chart-family figure), and a Note
+// embedded through the SAME `=name` ref mechanism, wired document -> ref.
 
 type SavedNode = { id: string; type: string; init?: Record<string, unknown>; literals?: Record<string, number>; stringLiterals?: Record<string, string> };
 
@@ -69,6 +69,9 @@ describe("Report Showcase seed", () => {
     expect(isMermaidValue(flow)).toBe(true);
     expect((flow as { source: string }).source).toContain("graph LR");
 
-    expect(extractEmbedNames(report.body)).toContain("Methodology");
+    // The embedded Note arrives as a DOCUMENT value on an ordinary ref cable.
+    const method = report.refValue("Methodology");
+    expect(isDocumentValue(method)).toBe(true);
+    expect((method as { body: string }).body).toContain("unaudited");
   });
 });

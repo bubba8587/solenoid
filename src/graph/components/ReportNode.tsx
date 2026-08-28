@@ -121,11 +121,6 @@ export function ReportComponent({ data, emit }: NodeProps<ReportNodeType>) {
           </svg>
           Open the report
         </button>
-        {data.embeds.length > 0 && (
-          <span className="solenoid-report__embed-count" title={`${data.embeds.length} embedded note${data.embeds.length === 1 ? "" : "s"}`}>
-            {data.embeds.length} embed{data.embeds.length === 1 ? "" : "s"}
-          </span>
-        )}
         {/* Hosted in the content row: the row is the positioning context, so its
             50% centers the dot on the "Open report" button. */}
         {data.outputs.document && (

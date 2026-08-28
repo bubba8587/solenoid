@@ -3,11 +3,10 @@ import { ReportNode } from "./report";
 import { installErrorGuards } from "../errorValue";
 
 describe("ReportNode", () => {
-  it("starts blank: no refs, no embeds; one `document` output", () => {
+  it("starts blank: no refs; one `document` output", () => {
     const n = new ReportNode();
     expect(n.body).toBe("");
     expect(n.refKeys()).toEqual([]);
-    expect(n.embeds).toEqual([]);
     expect(Object.keys(n.outputs)).toEqual(["document"]);
     // data() emits the document value (body + resolved refs).
     const doc = n.data().document;
@@ -38,22 +37,11 @@ describe("ReportNode", () => {
     expect(n.refValue("total")).toBe(42);
   });
 
-  it("addEmbed/removeEmbed manage the embedded-Note id list", () => {
-    const n = new ReportNode();
-    n.addEmbed("note-1");
-    n.addEmbed("note-1"); // no duplicate
-    n.addEmbed("note-2");
-    expect(n.embeds).toEqual(["note-1", "note-2"]);
-    n.removeEmbed("note-1");
-    expect(n.embeds).toEqual(["note-2"]);
-  });
-
-  it("a persisted embeds array round-trips independently per instance (not aliased)", () => {
-    const src = new ReportNode({ embeds: ["a", "b"] });
-    const clone = new ReportNode({ embeds: src.embeds });
-    clone.addEmbed("c");
-    expect(src.embeds).toEqual(["a", "b"]);
-    expect(clone.embeds).toEqual(["a", "b", "c"]);
+  it("a document-valued ref rides data() like any wired value (a Note embed IS a ref)", () => {
+    const n = new ReportNode({ body: "`=Methodology`" });
+    const doc = { __document: true, body: "## How", refs: {} };
+    n.data({ Methodology: [doc] });
+    expect(n.refValue("Methodology")).toBe(doc);
   });
 
   it("is safe to call the installErrorGuards-wrapped data() with no inputs (independent ref lanes)", () => {

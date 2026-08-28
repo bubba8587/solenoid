@@ -50,21 +50,23 @@ describe("freezeInlineRefs", () => {
 // sources wired directly into the report's ref inputs (plus embedded Notes'),
 // computed by this pure helper; captureChartSvgs filters on it.
 describe("reportReferencedNodeIds", () => {
-  const report = { id: "rep", embeds: ["note1"] };
+  const report = { id: "rep" };
+  const noteIds = new Set(["note1"]);
 
   it("collects sources wired into the report itself", () => {
     const ids = reportReferencedNodeIds(report, [
       { source: "chartA", target: "rep" },
       { source: "num", target: "rep" },
-    ]);
+    ], noteIds);
     expect(ids).toEqual(new Set(["chartA", "num"]));
   });
 
-  it("includes sources wired into an embedded note's refs", () => {
+  it("includes sources wired into a wired-in note's refs", () => {
     const ids = reportReferencedNodeIds(report, [
+      { source: "note1", target: "rep" },
       { source: "chartB", target: "note1" },
-    ]);
-    expect(ids).toEqual(new Set(["chartB"]));
+    ], noteIds);
+    expect(ids).toEqual(new Set(["note1", "chartB"]));
   });
 
   it("excludes connections elsewhere in the graph (no upstream closure)", () => {
@@ -72,12 +74,12 @@ describe("reportReferencedNodeIds", () => {
       { source: "chartA", target: "rep" },
       { source: "upstream", target: "chartA" },   // feeds the chart, not the report
       { source: "chartC", target: "otherNode" },  // unrelated
-    ]);
+    ], noteIds);
     expect(ids).toEqual(new Set(["chartA"]));
   });
 
-  it("is empty for a report with no refs or embeds", () => {
-    expect(reportReferencedNodeIds({ id: "rep", embeds: [] }, [])).toEqual(new Set());
+  it("is empty for a report with no refs", () => {
+    expect(reportReferencedNodeIds({ id: "rep" }, [], new Set())).toEqual(new Set());
   });
 });
 

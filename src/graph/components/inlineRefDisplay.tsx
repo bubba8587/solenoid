@@ -1,6 +1,8 @@
 import type { Emit } from "./nodeKit";
-import { useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { marked } from "marked";
+import DOMPurify from "dompurify";
 import type { ClassicPreset } from "rete";
 
 import { cableValueStore } from "../cableValueStore";
@@ -14,7 +16,8 @@ import { isChartValue, type ChartValue } from "../chartValue";
 import { isMermaidValue } from "../mermaidValue";
 import { isImageValue } from "../imageValue";
 import { isSvgValue } from "../svgValue";
-import { isDocumentValue } from "../documentValue";
+import { isDocumentValue, type DocumentValue } from "../documentValue";
+import { parseNoteFrontmatter } from "../noteFrontmatter";
 import { MermaidView } from "./MermaidView";
 import { SvgFigure } from "./SvgFigure";
 import { isLambdaValue, type LambdaValue } from "../nodes/lambda";
@@ -189,8 +192,21 @@ export function CollapsibleFigure({ title, children, defaultOpen = true }: {
   );
 }
 
-/** A figure-class ref value (chart / diagram / table / cube) → its title + body;
- *  `rich` (the Report) previews taller and scrollable. Non-figure values → null. */
+/** A wired document (a Note's, or another Report's) rendered as markdown. A Note's
+ *  leading frontmatter block strips (the fields are sockets, not prose); its own
+ *  `` `=x` `` spans substitute from the CARRIED refs map, and a name the map lacks
+ *  (a Note's — Notes carry none) stays a literal span. */
+function DocumentEmbedBody({ value }: { value: DocumentValue }) {
+  const html = useMemo(() => {
+    const substituted = parseNoteFrontmatter(value.body).body.replace(/`=([A-Za-z_][A-Za-z0-9_]*)!?`/g, (m, name: string) =>
+      name in value.refs ? refPreview(value.refs[name], undefined) : m);
+    return DOMPurify.sanitize(marked.parse(substituted, { async: false, gfm: true, breaks: true }) as string);
+  }, [value]);
+  return <span className="report-embed__body sol-md" dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+/** A figure-class ref value (chart / diagram / table / cube / document) → its title +
+ *  body; `rich` (the Report) previews taller and scrollable. Non-figure values → null. */
 function figureFor(
   value: unknown,
   refKey: string,
@@ -248,6 +264,9 @@ function figureFor(
   }
   if (isCubeValue(value)) {
     return { title: refKey, caption: null, body: <CubeDisplay cube={value} label={refKey} full={false} /> };
+  }
+  if (isDocumentValue(value)) {
+    return { title: refKey, caption: null, body: <DocumentEmbedBody value={value} /> };
   }
   return null;
 }
@@ -314,13 +333,11 @@ export function RefInputRow({
 /** Swaps every `` `=name` `` code span for a live-value portal by DOM query AFTER
  *  the HTML is parsed — string-splitting the HTML would break marked's nesting. */
 export function InlineRefBody({
-  nodeId, bodyHtml, className, renderEmbed, collapsibleEmbeds, onClick, onPointerDown, onMouseDown,
+  nodeId, bodyHtml, className, collapsibleEmbeds, onClick, onPointerDown, onMouseDown,
 }: {
   nodeId: string;
   bodyHtml: string;
   className: string;
-  /** Report only: render an embedded block for an `![[Name]]` token. */
-  renderEmbed?: (name: string) => ReactNode;
   /** Report only: figure refs fold under a titled bar, frames preview taller. */
   collapsibleEmbeds?: boolean;
   onClick?: () => void;
@@ -329,11 +346,6 @@ export function InlineRefBody({
 }) {
   const htmlRef = useRef<HTMLDivElement>(null);
   const [slots, setSlots] = useState<{ el: HTMLElement; name: string; highlight: boolean }[]>([]);
-  const [embedSlots, setEmbedSlots] = useState<{ el: HTMLElement; name: string; i: number }[]>([]);
-  // `renderEmbed`'s identity changes every parent re-render; hold it in a ref so it
-  // can't retrigger the innerHTML rebuild, which tears down every embed portal.
-  const renderEmbedRef = useRef(renderEmbed);
-  renderEmbedRef.current = renderEmbed;
 
   // Set the HTML imperatively so React never owns these children — a React-owned
   // subtree would be re-applied on the setSlots re-render and orphan the portals.
@@ -350,23 +362,12 @@ export function InlineRefBody({
       found.push({ el: span, name: m[1], highlight: m[2] === "!" });
     });
     setSlots(found);
-    // Embed tokens (`![[Name]]`) arrive pre-processed to a data-embed marker.
-    const embeds: { el: HTMLElement; name: string; i: number }[] = [];
-    if (renderEmbedRef.current) {
-      root.querySelectorAll<HTMLElement>("[data-embed]").forEach((el, i) => {
-        embeds.push({ el, name: el.dataset.embed ?? "", i });
-      });
-    }
-    setEmbedSlots(embeds);
   }, [bodyHtml]);
 
   return (
     <div className={className} onClick={onClick} onPointerDown={onPointerDown} onMouseDown={onMouseDown}>
       <div ref={htmlRef} />
       {slots.map((s, i) => createPortal(<InlineRefValue key={`${s.name}:${i}`} nodeId={nodeId} refKey={s.name} collapsible={collapsibleEmbeds} highlight={s.highlight} />, s.el))}
-      {renderEmbed && embedSlots.map((s) => createPortal(
-        <span key={`${s.name}:${s.i}`}>{renderEmbed(s.name)}</span>, s.el,
-      ))}
     </div>
   );
 }

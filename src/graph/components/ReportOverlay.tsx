@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
+import { ClassicPreset } from "rete";
 import { reportStore } from "../reportStore";
 import { getEditor, getArea, processGraph } from "../process";
 import { scheduleAutosave } from "../persistence";
 import { NoteNode, ReportNode } from "../rete-nodes";
+import type { SolenoidConnection } from "../schemes";
 import { nodeDisplayNames } from "../nodeNames";
-import { InlineRefBody, CollapsibleFigure } from "./inlineRefDisplay";
-import { preprocessEmbeds, extractEmbedNames } from "../reportEmbeds";
+import { nodeNameStore } from "../nodeNameStore";
+import { InlineRefBody } from "./inlineRefDisplay";
 import { CloseIcon } from "./CloseIcon";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { useEscapeToClose } from "./useEscapeToClose";
@@ -58,11 +60,8 @@ export function ReportOverlay() {
   useEscapeToClose(closeReport, !!nodeId);
 
   const bodyHtml = useMemo(
-    // Embed tokens become data-embed markers BEFORE the markdown parse, so a Note
-    // renders where the author put it.
     () => DOMPurify.sanitize(
-      marked.parse(preprocessEmbeds(previewBody || ""), { async: false, gfm: true, breaks: true }) as string,
-      { ADD_ATTR: ["data-embed"] },
+      marked.parse(previewBody || "", { async: false, gfm: true, breaks: true }) as string,
     ),
     [previewBody],
   );
@@ -79,14 +78,6 @@ export function ReportOverlay() {
     const current = node!.body;
     if (current === lastSyncRef.current) return;
     lastSyncRef.current = current;
-    // node.embeds must track the tokens actually in the body — the export reads it.
-    const embedNames = extractEmbedNames(current);
-    const ed0 = getEditor();
-    const allNotes = (ed0?.getNodes() ?? []).filter((n): n is NoteNode => n instanceof NoteNode);
-    const nm = nodeDisplayNames(ed0?.getNodes() ?? []);
-    node!.embeds = embedNames
-      .map((name) => allNotes.find((n) => (nm.get(n.id) ?? n.label ?? "").trim().toLowerCase() === name.toLowerCase())?.id)
-      .filter((id): id is string => !!id);
     const { removedInputs } = node!.syncRefs();
     const ed = getEditor();
     if (ed && removedInputs.length) {
@@ -102,20 +93,19 @@ export function ReportOverlay() {
 
   const notes = (editor?.getNodes() ?? []).filter((n): n is NoteNode => n instanceof NoteNode);
   const names = nodeDisplayNames(editor?.getNodes() ?? []);
-  // Every Note stays insertable: placement is a token, not a membership toggle.
+  // Every Note stays insertable: placement is a `=name` ref token like any value's.
   const embeddable = notes;
-  function noteByName(name: string): NoteNode | undefined {
-    const target = name.trim().toLowerCase();
-    return notes.find((n) => (names.get(n.id) ?? n.label ?? "").trim().toLowerCase() === target);
-  }
 
-  // The markdown token is the source of truth for placement; `embeds` only tracks
-  // which notes are referenced, for the export.
-  function addEmbed(id: string) {
+  // Inserts a `` `=name` `` ref at the cursor (the note's ADDRESSABLE name — the
+  // token grammar is the identifier grammar), mints the ref input, and wires the
+  // note's Document output into it. From there it is an ordinary cable: the embed
+  // is a dependency the graph can see, prune, and recompute.
+  async function addEmbed(id: string) {
     const note = editor?.getNode(id) as NoteNode | undefined;
-    const label = names.get(id) ?? note?.label ?? "Note";
+    if (!note) return;
+    const refName = nodeNameStore.ensure(id, "NoteNode");
     const ta = sourceRef.current;
-    const token = `![[${label}]]`;
+    const token = `\`=${refName}\``;
     if (ta) {
       const start = ta.selectionStart ?? body.length;
       const end = ta.selectionEnd ?? body.length;
@@ -132,9 +122,16 @@ export function ReportOverlay() {
     } else {
       onBody(`${body}${body.endsWith("\n") || body === "" ? "" : "\n\n"}${token}\n`);
     }
-    if (!node!.embeds.includes(id)) node!.embeds.push(id);
-    scheduleAutosave();
     setEmbedPickerOpen(false);
+    node!.syncRefs(); // mint the input now so the wire has a socket
+    const ed = getEditor();
+    if (ed && !ed.getConnections().some((c) => c.target === node!.id && c.targetInput === refName)) {
+      await ed.addConnection(new ClassicPreset.Connection(note, "document", node!, refName) as SolenoidConnection);
+    }
+    lastSyncRef.current = node!.body;
+    scheduleAutosave();
+    await getArea()?.rerenderNode(node!.id);
+    await processGraph();
   }
 
   async function doExport() {
@@ -165,7 +162,7 @@ export function ReportOverlay() {
             {embedPickerOpen && (
               <div ref={embedPopRef} className="report-embed-picker">
                 {embeddable.map((n) => (
-                  <button key={n.id} type="button" className="report-embed-opt" onClick={() => addEmbed(n.id)}>
+                  <button key={n.id} type="button" className="report-embed-opt" onClick={() => void addEmbed(n.id)}>
                     {names.get(n.id) ?? "Note"}
                   </button>
                 ))}
@@ -228,7 +225,7 @@ export function ReportOverlay() {
             ref={sourceRef}
             className="report-source"
             value={body}
-            placeholder="Write in markdown. `=name` shows a wired value. ![[Note]] embeds a note."
+            placeholder="Write in markdown. `=name` shows a wired value; a wired Note embeds whole."
             spellCheck={false}
             onChange={(e) => onBody(e.target.value)}
             onBlur={() => void commitBody()}
@@ -240,16 +237,6 @@ export function ReportOverlay() {
                 bodyHtml={bodyHtml}
                 className="report-preview__md"
                 collapsibleEmbeds
-                renderEmbed={(name) => {
-                  const note = noteByName(name);
-                  if (!note) return <span className="report-embed-missing">![[{name}]]: no note by that name</span>;
-                  // The bar's title IS the note name, so the note renders bare.
-                  return (
-                    <CollapsibleFigure title={names.get(note.id) ?? name}>
-                      <EmbeddedNote noteId={note.id} name={names.get(note.id) ?? name} />
-                    </CollapsibleFigure>
-                  );
-                }}
               />
             ) : (
               <div className="report-preview__empty">Preview</div>
@@ -263,18 +250,4 @@ export function ReportOverlay() {
   return docked ? panel : (
     <div className="report-backdrop" onPointerDown={() => closeReport()}>{panel}</div>
   );
-}
-
-/** The note BODY only — the title/collapse bar is the wrapping CollapsibleFigure's. */
-function EmbeddedNote({ noteId, name }: { noteId: string; name: string }) {
-  const editor = getEditor();
-  const note = editor?.getNode(noteId) as NoteNode | undefined;
-  const html = useMemo(
-    () => DOMPurify.sanitize(marked.parse(note?.renderBody || "", { async: false, gfm: true, breaks: true }) as string),
-    [note?.renderBody],
-  );
-  if (!note) {
-    return <div className="report-embed__body report-embed-missing">{name} (removed)</div>;
-  }
-  return <div className="report-embed__body sol-md" dangerouslySetInnerHTML={{ __html: html }} />;
 }

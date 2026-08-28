@@ -4,7 +4,7 @@
 
 import { type FrameValue, formatFrameCell, isFrameValue } from "./frame";
 import { isMermaidValue, type MermaidValue } from "./mermaidValue";
-import { type DocumentValue } from "./documentValue";
+import { isDocumentValue, type DocumentValue } from "./documentValue";
 
 // Duplicates noteInlineRefs.ts's grammar rather than importing it, so this module stays
 // dependency-light; obsidianMarkdown.test.ts machine-checks the two agree.
@@ -102,10 +102,12 @@ export type ObsidianBlock =
   | { kind: "chart"; value: unknown }; // render to an image asset at Run time
 
 /** Frame/mermaid/math get native markdown, a chart is deferred to the DOM-render pass, and
- *  anything else falls back to its plain string form. */
+ *  anything else falls back to its plain string form. A DOCUMENT (a wired Note embed)
+ *  inlines its markdown body. */
 export function valueToObsidianBlock(value: unknown): ObsidianBlock {
   if (isFrameValue(value)) return { kind: "md", md: frameToMarkdownTable(value) };
   if (isMermaidValue(value)) return { kind: "md", md: mermaidToMarkdown(value) };
+  if (isDocumentValue(value)) return { kind: "md", md: value.body };
   // Charts (recharts / hand-drawn SVG) can't be markdown — render at write time.
   if (typeof value === "object" && value !== null && "__chart" in (value as object)) {
     return { kind: "chart", value };
