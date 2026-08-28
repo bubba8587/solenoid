@@ -12,7 +12,7 @@
       "init": {
         "label": "Script: worked examples",
         "color": "amber",
-        "body": "One JavaScript function per node: parameters are the inputs, the return value is the result, and the value types itself. A script can return a single value, a list, rows of values, or rows of {name: value} objects, which become a frame with typed columns; a wired frame arrives the same way, as rows. A date input arrives as its Excel serial; return a Date, or Solenoid.date(serial), to make dates. The examples below return a number, a list, a text summary, a frame that a second script reads back, and dates.",
+        "body": "One JavaScript function per node: parameters are the inputs, the return value is the result, and the value types itself. A script can return a single value, a list, rows of values, or rows of {name: value} objects, which become a frame with typed columns; rows nested inside a row's cell make a cube. A wired frame or cube arrives the same way, as rows. A date input arrives as its Excel serial; return a Date, or Solenoid.date(serial), to make dates. The examples below return a number, a list, a text summary, a frame that a second script reads back, dates, and a cube rolled up by a verb.",
         "width": 560
       }
     },
@@ -173,6 +173,50 @@
       "init": {
         "label": "→ 13-Feb, 13-Mar, 13-Nov"
       }
+    },
+    {
+      "id": "in-growth",
+      "type": "NumberInputNode",
+      "x": 0,
+      "y": 2100,
+      "init": {
+        "label": "Growth",
+        "value": 1.1
+      }
+    },
+    {
+      "id": "sc-cube",
+      "type": "ScriptNode",
+      "x": 320,
+      "y": 2040,
+      "init": {
+        "label": "Nested rows: a cube",
+        "expr": "(growth) => [\"North\", \"South\"]\n  .map((region, i) => ({\n    region,\n    quarters: [1, 2, 3, 4].map((q) => ({\n      quarter: q,\n      sales: Math.round(\n        100 * (i + 1) * growth ** q,\n      ),\n    })),\n  }))"
+      }
+    },
+    {
+      "id": "rollup",
+      "type": "CubeRollupNode",
+      "x": 700,
+      "y": 2060,
+      "init": {
+        "label": "Cube Rollup",
+        "op": "sum"
+      },
+      "stringLiterals": {
+        "nested": "quarters",
+        "column": "sales",
+        "as": "Total"
+      }
+    },
+    {
+      "id": "d-cube",
+      "type": "DisplayNode",
+      "x": 1040,
+      "y": 2100,
+      "init": {
+        "label": "→ North 510, South 1021"
+      }
     }
   ],
   "connections": [
@@ -246,6 +290,24 @@
       "source": "sc-fri13",
       "sourceOutput": "result",
       "target": "d-fri13",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-growth",
+      "sourceOutput": "value",
+      "target": "sc-cube",
+      "targetInput": "growth"
+    },
+    {
+      "source": "sc-cube",
+      "sourceOutput": "result",
+      "target": "rollup",
+      "targetInput": "cube"
+    },
+    {
+      "source": "rollup",
+      "sourceOutput": "frame",
+      "target": "d-cube",
       "targetInput": "in"
     }
   ]

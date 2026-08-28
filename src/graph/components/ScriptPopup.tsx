@@ -96,7 +96,7 @@ export function ScriptPopup() {
         />
         {node.cachedError && <div className="script-popup__error">{node.cachedError}</div>}
         <div className="script-popup__note">
-          Write a JavaScript function. <code>[ ]</code> returns a List, <code>[[ ]]</code> a Table, <code>[{"{name: value}"}, …]</code> a Frame. <code>Solenoid.date(serial)</code> returns a Date.
+          Write a JavaScript function. <code>[ ]</code> returns a List, <code>[[ ]]</code> a Table, <code>[{"{name: value}"}, …]</code> a Frame, <code>[{"{name: [rows]}"}, …]</code> a Cube. <code>Solenoid.date(serial)</code> returns a Date.
         </div>
       </div>
     </PopupShell>
