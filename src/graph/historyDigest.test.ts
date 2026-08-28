@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { digestLabeled } from "./historyDigest";
 
 describe("digestLabeled", () => {
-  it("prints one line per record under a date header", () => {
+  it("prints one line per record under a date header, newest first", () => {
     const t = new Date(2026, 7, 26, 14, 30, 5).getTime();
     const out = digestLabeled([
       { time: t, label: "Added node: rate" },
@@ -11,8 +11,8 @@ describe("digestLabeled", () => {
     const lines = out.split("\n");
     expect(lines).toHaveLength(3);
     expect(lines[0]).toMatch(/^— .*2026 —$/);
-    expect(lines[1]).toMatch(/Added node: rate$/);
-    expect(lines[2]).toMatch(/Connected rate → total$/);
+    expect(lines[1]).toMatch(/Connected rate → total$/);
+    expect(lines[2]).toMatch(/Added node: rate$/);
   });
 
   it("inserts a new date header when records span days", () => {

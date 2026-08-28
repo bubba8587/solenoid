@@ -9,13 +9,15 @@ function fmtDate(t: number): string {
   return new Date(t).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric", year: "numeric" });
 }
 
-/** One line per already-labeled record under a date header; records can span
- *  days, since the stack clears only on document load. */
+/** One line per already-labeled record under a date header, NEWEST FIRST — the
+ *  latest action reads without scrolling. Records can span days, since the
+ *  stack clears only on document load. */
 export function digestLabeled(records: Array<{ time: number; label: string }>): string {
   if (records.length === 0) return "No actions yet this session.";
   const lines: string[] = [];
   let lastDate = "";
-  for (const r of records) {
+  for (let i = records.length - 1; i >= 0; i--) {
+    const r = records[i];
     const d = fmtDate(r.time);
     if (d !== lastDate) {
       lines.push(`— ${d} —`);
