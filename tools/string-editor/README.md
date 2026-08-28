@@ -4,9 +4,11 @@
 > **Ctrl+Alt+E** in the running app to freeze it and edit any on-screen string in
 > place (`src/devCopyEdit.ts`). Commits post to the Vite `/__copy-edit` endpoint
 > (`vite.config.ts`), which reuses this tool's mapper (`literals.mjs`) — same
-> drift-safe rewrite, same `copy-edits.jsonl` log. Only unique source matches are
-> written; ambiguous or dynamic strings report on the badge and are left alone —
-> use this window for those.
+> drift-safe rewrite, same `copy-edits.jsonl` log. The lookup is markdown-aware
+> (a rendered description or help paragraph resolves back to its marked-up source,
+> which is what you edit), and a save rewrites **every** source place the string
+> appears. Strings with no source literal (dynamic, interpolated, document content)
+> report on the badge and are left alone — this window remains the tool for those.
 
 A standalone local **WYSIWYG copy-editing companion** for the Solenoid app. It opens in
 its own browser window, reads the *running* dev server, lists every string currently
