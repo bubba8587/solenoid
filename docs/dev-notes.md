@@ -6,6 +6,19 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-08-28d — release-notes reconcile: the 1.3 selling list catches up)
+
+**`docs/release-notes-features.md` reconciled against all 1011 commits since v1.2.0** (last
+real pass was 2026-07-30). Four new `[slide]` headliners: Script node, the analytics shelf
+(python-r-gap batch), Records & forms, multi-series charts. Body gains Inspector, table-popup
+spreadsheet behaviors, one-card-per-job merges, Date Input, the Excel-accuracy audit, drill-in
+full-surface, lazy frame handles, palettes, Tidy options. New "Under the hood" section seeds
+the GitHub changelog (React Flow port lives there — author: not user-facing, not What's New).
+Known-issues note updated: drill-in gap CLOSED, hairline seam FIXED. The stale "~380
+non-pack functions" count replaced with the parity script's stronger claim (zero
+unimplemented in-scope Excel names). Live-window sweep to the archive is overdue (window
+reaches back to 08-18) — left for a maintenance pass.
+
 ### SESSION DIGEST (2026-08-28c — Report embeds become `=name` refs; dev copy-edit freeze)
 
 **Note embedding unified onto `=name` refs (author: `![[ ]]` "doesn't mean much" without a
