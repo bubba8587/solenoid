@@ -53,7 +53,7 @@ export function buildMenus(): Menu[] {
     {
       label: "File",
       items: [
-        { label: "New blank document", onClick: () => void documentStore.newBlank() },
+        { label: "New Document", onClick: () => void documentStore.newBlank() },
         { label: "Open…", shortcut: "Ctrl+O", onClick: () => void openFromDisk() },
         { sep: true },
         // Work autosaves continuously; Save writes the graph out to its .json file.
@@ -91,10 +91,10 @@ export function buildMenus(): Menu[] {
         { sep: true },
         { label: "Select all", shortcut: "Ctrl+A", onClick: () => fireMenuKey("KeyA", { ctrl: true }) },
         { label: "Group selection", shortcut: "G", onClick: () => fireMenuKey("KeyG") },
-        { label: "Make composite", shortcut: "Ctrl+Shift+G", onClick: () => fireMenuKey("KeyG", { ctrl: true, shift: true }) },
-        { label: "Autofit group box", shortcut: "F", onClick: () => fireMenuKey("KeyF") },
+        { label: "Wrap as Composite", shortcut: "Ctrl+Shift+G", onClick: () => fireMenuKey("KeyG", { ctrl: true, shift: true }) },
+        { label: "Group Autofit", shortcut: "F", onClick: () => fireMenuKey("KeyF") },
         { sep: true },
-        { label: "Find node…", shortcut: "Ctrl+F", onClick: () => outlineSearch.open() },
+        { label: "Find", shortcut: "Ctrl+F", onClick: () => outlineSearch.open() },
       ],
     },
     {
@@ -103,8 +103,8 @@ export function buildMenus(): Menu[] {
         { label: mode === "dark" ? "Light theme" : "Dark theme", onClick: () => appThemeStore.toggleMode() },
         { label: "Lock canvas", checked: locked, onClick: () => canvasLockStore.toggle() },
         { sep: true },
-        { label: "Tidy: auto-arrange", shortcut: "T", onClick: () => autoArrange() },
-        { label: "Cleanup: tidy, collapse, fit", shortcut: "C", onClick: () => cleanup() },
+        { label: "Tidy", shortcut: "T", onClick: () => autoArrange() },
+        { label: "Cleanup", shortcut: "C", onClick: () => cleanup() },
         { label: "Snap to grid", checked: snap, onClick: () => gridSnapStore.toggle() },
         { sep: true },
         { label: "Function reference", shortcut: "Ctrl+/", onClick: () => frStore.open("reference") },
@@ -156,7 +156,7 @@ export function buildMenus(): Menu[] {
           onClick: () => { calcModeStore.setMode("manual"); },
         },
         {
-          label: "Sketch: approximate on a sample",
+          label: "Sketch",
           checked: calcMode === "sketch",
           // Sketch recomputes live, so catch up like switching to Automatic does.
           onClick: () => { if (calcModeStore.setMode("sketch")) void requestRecalc(); },
