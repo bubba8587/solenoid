@@ -95,8 +95,8 @@ describe("ScriptNode.data — the result is folded onto the value model", () => 
     expect(code(result)).toBe("#VALUE!");
     expect(node.cachedError).toMatch(/TypeError/);
   });
-  it("values keep their own kinds; a mixed list rides the wildcard", async () => {
-    expect((await run("() => [1, 'a', true]")).result).toEqual([1, "a", true]);
+  it("values keep their own kinds; blanks and error cells pass through", async () => {
+    expect((await run("() => [1, 2, 3]")).result).toEqual([1, 2, 3]);
     const d = new Date(Date.UTC(2026, 0, 15));
     expect((await run("() => new Date(Date.UTC(2026, 0, 15))")).result).toBe(jsDateToSerial(d));
     const r = (await run("() => [0 / 0, null, 2]")).result as unknown[];
@@ -106,8 +106,7 @@ describe("ScriptNode.data — the result is folded onto the value model", () => 
     expect((await run("() => 5")).node.lastResultFamily).toBe("number");
     expect((await run("() => ['a', 'b']")).node.lastResultFamily).toBe("text");
     expect((await run("() => new Date(Date.UTC(2026, 0, 1))")).node.lastResultFamily).toBe("date");
-    expect((await run("() => [1, 'a']")).node.lastResultFamily).toBe("auto"); // a mixed LIST rides the wildcard
-    expect((await run("() => true")).node.lastResultFamily).toBe("auto");     // no boolean result socket
+    expect((await run("() => true")).node.lastResultFamily).toBe("auto"); // no boolean result socket
     // A vote-less result keeps the settled family rather than flapping to auto.
     const { node } = await run("() => 5");
     await (node.data({}) as Promise<unknown>); // still 5 → number
@@ -125,7 +124,8 @@ describe("ScriptNode.data — the result is folded onto the value model", () => 
     expect(list.node.lastResultFamily).toBe("date");
     expect(code((await run("() => Solenoid.date('soon')")).result)).toBe("#TYPE!");
   });
-  it("a table is single-typed (unitGranularity): mixed rows are #AMBIGUOUS!, one family passes", async () => {
+  it("containers are single-typed, uniformly: a mixed list OR mixed rows are #AMBIGUOUS!", async () => {
+    expect(code((await run("() => [1, 'a']")).result)).toBe("#AMBIGUOUS!");
     expect(code((await run("() => [['year', 1], [2, 3]]")).result)).toBe("#AMBIGUOUS!");
     const ok = await run("() => [[1, 2], [3, 4]]");
     expect(ok.result).toEqual([[1, 2], [3, 4]]);
@@ -133,9 +133,28 @@ describe("ScriptNode.data — the result is folded onto the value model", () => 
     // Homogeneous booleans are not "mixed" — they ride the wildcard whole.
     expect((await run("() => [[true, false], [false, true]]")).node.lastResultFamily).toBe("auto");
   });
-  it("functions and objects are #TYPE!; deeper or mixed nesting is #SHAPE!", async () => {
+  it("{name: value} rows become a FRAME with typed columns; a single object is one row", async () => {
+    const { result, node } = await run("() => [{ n: 1, who: 'ada' }, { n: 2, who: 'lin' }]");
+    const f = result as { __frame: true; columns: Array<{ name: string; type: string; values: unknown[] }> };
+    expect(f.__frame).toBe(true);
+    expect(f.columns.map((c) => [c.name, c.type])).toEqual([["n", "number"], ["who", "string"]]);
+    expect(f.columns[1].values).toEqual(["ada", "lin"]);
+    expect(node.lastResultFamily).toBe("frame");
+    // A missing key is a blank cell; a Date-valued column types as date.
+    const g = (await run("() => [{ a: 1 }, { a: 2, b: new Date(Date.UTC(2026, 0, 1)) }]")).result as { columns: Array<{ name: string; type: string; values: unknown[] }> };
+    expect(g.columns.map((c) => [c.name, c.type])).toEqual([["a", "number"], ["b", "date"]]);
+    expect(g.columns[1].values[0]).toBeNull();
+    const one = (await run("() => ({ total: 9 })")).result as { __frame: true; columns: Array<{ values: unknown[] }> };
+    expect(one.__frame).toBe(true);
+    expect(one.columns[0].values).toEqual([9]);
+  });
+  it("a frame column mixing types is #AMBIGUOUS!; rows mixed with plain values are #SHAPE!", async () => {
+    expect(code((await run("() => [{ a: 1 }, { a: 'x' }]")).result)).toBe("#AMBIGUOUS!");
+    expect(code((await run("() => [{ a: 1 }, 2]")).result)).toBe("#SHAPE!");
+  });
+  it("functions and unclonables are #TYPE!; deeper or mixed nesting is #SHAPE!", async () => {
     expect(code((await run("() => () => 1")).result)).toBe("#TYPE!");
-    expect(code((await run("() => ({ a: 1 })")).result)).toBe("#TYPE!");
+    expect(code((await run("() => new Map()")).result)).toBe("#TYPE!");
     expect(code((await run("() => [1, [2]]")).result)).toBe("#SHAPE!");
     expect(code((await run("() => [[[1]]]")).result)).toBe("#SHAPE!");
   });

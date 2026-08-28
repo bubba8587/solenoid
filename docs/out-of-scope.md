@@ -79,8 +79,9 @@ is the bounded form — a single JavaScript function whose parameters are its in
 whose return value is folded onto the value model, typing itself by what it is. No I/O (a
 sandbox worker with the network and storage doors removed), no state between runs, a wall
 clock, and nothing leaves it that is not already a Solenoid value. It is a typed pure
-function, not a cell: no Python, no packages, no frames or cubes (the verb engine is their
-surface, matricesInFormulas), no second language. Extensibility beyond that stays *more
+function, not a cell: no Python, no packages, no second language, no frame INPUTS and no
+cubes (the verb engine is their surface, matricesInFormulas) — though `{name: value}`
+rows may build a frame OUTPUT (decisions scriptNode; still a typed pure value). Extensibility beyond that stays *more
 node types* (packs, composites — typed, inspectable). The report projection is a view of
 the graph, not a notebook runtime.
 **Tell-tale creep:** "let the script fetch", "a Python option", "share state between two

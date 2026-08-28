@@ -1,5 +1,6 @@
 import { ClassicPreset } from "rete";
 import { anyDataIn, resultOut, resultSocket, readInput, type ResultType } from "./shared";
+import { frameSocket } from "../sockets";
 import { getActiveEditor, getActiveArea } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { extractVariables, compileEvaluator, parseFormula, type ExprEvaluator, type Ast, formulaSyntaxHint } from "../excelFormula";
@@ -81,18 +82,22 @@ function envDim(v: unknown): Dim {
   return DIMENSIONLESS;
 }
 
-type RankedProducer = ClassicPreset.Node & { resultAs?: ResultType; lastResultRank: 1 | 2; lastResultFamily?: ResultType };
+/** What a value-typed producer's result can announce: a result-socket family, or a
+ *  whole FRAME (the Script node's row-object return). */
+export type ProducedFamily = ResultType | "frame";
+
+type RankedProducer = ClassicPreset.Node & { resultAs?: ResultType; lastResultRank: 1 | 2; lastResultFamily?: ProducedFamily };
 
 /** Reconciles a producer's result socket to the computed VALUE (anydataWildcard):
  *  always the RANK, and — when the caller votes one — the element FAMILY too (the
  *  Script node, which has no declared type; Expression passes none and keeps its
- *  toggle's). Value-driven, so it must run OUTSIDE data() via a microtask; headless
- *  runs skip the swap. */
-export function reconcileResultRank(node: RankedProducer, result: unknown, family?: ResultType): void {
+ *  toggle's). A "frame" vote swaps the whole socket to the frame socket. Value-driven,
+ *  so it must run OUTSIDE data() via a microtask; headless runs skip the swap. */
+export function reconcileResultRank(node: RankedProducer, result: unknown, family?: ProducedFamily): void {
   // An error result says nothing about shape — leave the socket where the last value put it.
   if (isSolError(result)) return;
   const want: 1 | 2 = Array.isArray(result) && result.length > 0 && Array.isArray(result[0]) ? 2 : 1;
-  const wantFamily: ResultType = family ?? node.resultAs ?? "auto";
+  const wantFamily: ProducedFamily = family ?? node.resultAs ?? "auto";
   const familyChanged = family !== undefined && node.lastResultFamily !== family;
   if (want === node.lastResultRank && !familyChanged) return;
   node.lastResultRank = want;
@@ -103,7 +108,9 @@ export function reconcileResultRank(node: RankedProducer, result: unknown, famil
       const area = getActiveArea();
       const out = node.outputs.result;
       if (!editor || !area || !out || !editor.getNode(node.id)) return;
-      out.socket = resultSocket(want === 2 ? "matrix" : "combo", wantFamily);
+      out.socket = wantFamily === "frame"
+        ? frameSocket
+        : resultSocket(want === 2 ? "matrix" : "combo", wantFamily);
       await retypeOutputCables(editor, area, node.id, "result");
       await area.rerenderNode(node.id);
     })();

@@ -605,16 +605,21 @@ declared result type** ("if it's going to be a script, script it"): numbers, tex
 booleans carry their own families, a returned `Date` (or `Solenoid.date(serial)`, the
 one in-script global, closed over by `compileScript`) is a date, and the result socket
 reconciles FAMILY as well as rank off the computed value (`reconcileResultRank`;
-number/text/date sockets, logical/complex and mixed LISTS ride the wildcard).
-Unresolvable outputs error: `#TYPE!` for unsupported values, `#DOMAIN!` for NaN,
-`#SHAPE!` beyond rows of values (ragged rows padded with null), and — per
-unitGranularity's single-typed matrix — **rows mixing families are `#AMBIGUOUS!`**,
-never an anytable. Expression KEEPS its Number/Text/Date/Auto toggle: a formula's
-variables don't say what it returns; a script's values do. Evaluation runs in the sandbox
-worker (`subsystem-invariants.md` § Script sandbox) under `SCRIPT_TIMEOUT_MS`; the Tauri
+number/text/date sockets, logical/complex ride the wildcard). **Containers are
+single-typed, uniformly**: a list, a table, or a frame column mixing families is
+`#AMBIGUOUS!` — never a mixed anylist/anytable (the app has no mixed lists; the
+"legitimately mixed" row of unitGranularity is a FRAME row, e.g. Get Row's one-row
+frame). Other unresolvable outputs error: `#TYPE!` for unsupported values, `#DOMAIN!`
+for NaN, `#SHAPE!` beyond the accepted shapes (ragged rows padded with null).
+**Frame OUTPUT is allowed (author 2026-08-28c)**: rows of `{name: value}` objects — or
+one such object — build a `FrameValue` with columns keyed in first-appearance order and
+typed per column. Expression's frame ban is about the complexity budget of an
+Excel-shaped surface; Script is the more advanced surface and follows its own rule.
+Expression also KEEPS its Number/Text/Date/Auto toggle: a formula's variables don't say
+what it returns; a script's values do. Evaluation runs in the sandbox worker
+(`subsystem-invariants.md` § Script sandbox) under `SCRIPT_TIMEOUT_MS`; the Tauri
 CSP carries `'unsafe-eval'` for it. Named Script, not Code (NAME-2: CODE is an Excel
 function node). **Where:** `nodes/script.ts`, `nodes/scriptRun.ts`, `nodes/scriptCoerce.ts`,
 `scriptWorker.ts`, `scriptExecutor.ts`; pinned by `nodes/script.test.ts`. **Reopen if:**
-a script needs I/O, state between runs, a frame input, or a second language — each is
-§4's creep, not a feature request. Frame/cube OUTPUT is a live author question
-(2026-08-28b), not yet ruled.
+a script needs I/O, state between runs, a frame INPUT, cube output, or a second
+language — each is §4's creep, not a feature request.

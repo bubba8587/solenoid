@@ -1,14 +1,14 @@
 import { ClassicPreset } from "rete";
-import { anyDataIn, resultOut, readInput, type ResultType } from "./shared";
+import { anyDataIn, resultOut, readInput } from "./shared";
 import { isSolError, solError, type SolError } from "../errorValue";
 import { scriptParams, compileScript } from "./scriptRun";
 import { coerceScriptResult } from "./scriptCoerce";
 import { executeScript } from "../scriptExecutor";
-import { reconcileResultRank } from "./expression";
+import { reconcileResultRank, type ProducedFamily } from "./expression";
 // The Script node has NO declared result type (no toggle): the value types itself.
-// JS values carry their family (a string is text, a `Date` a date) and the result
-// socket reconciles to the computed value's family and rank; `Solenoid.date(serial)`
-// says the one thing a JS value cannot (scriptRun.ts).
+// JS values carry their family (a string is text, a `Date` a date), `{name: value}`
+// rows build a FRAME, and the result socket reconciles to the computed value's family
+// and rank; `Solenoid.date(serial)` says the one thing a JS value cannot (scriptRun.ts).
 
 export const DEFAULT_SCRIPT = "(x) => x";
 
@@ -48,7 +48,7 @@ export class ScriptNode extends ClassicPreset.Node {
   varNames: string[] = [];
   lastResultRank: 1 | 2 = 1;
   /** Runtime family the result socket last settled to; transient like the rank. */
-  lastResultFamily: ResultType = "auto";
+  lastResultFamily: ProducedFamily = "auto";
   private syntaxError: string | null = null;
 
   constructor(init?: { label?: string; expr?: string; literals?: Record<string, number>; stringLiterals?: Record<string, string> }) {
@@ -105,7 +105,7 @@ export class ScriptNode extends ClassicPreset.Node {
     }
     const out = await executeScript(this.expr, args);
     let result: unknown;
-    let family: ResultType | null = null;
+    let family: ProducedFamily | null = null;
     if (out.ok) ({ value: result, family } = coerceScriptResult(out.value));
     else result = solError(out.code, out.message);
     this.cachedError = out.ok ? null : out.message;

@@ -38,12 +38,18 @@ grip geometry, screenshots).
 still group).
 **Script toggle DROPPED (author: "if it's going to be a script, script it").** The value types
 itself; `Solenoid.date(serial)` is the one in-script global; the result socket reconciles family
-+ rank off the value; rows mixing families are `#AMBIGUOUS!` (unitGranularity's single-typed
-matrix — the old Auto toggle could leak mixed anytables). Expression keeps its toggle. Details:
-decisions scriptNode. Seed updated (Monte Carlo now really `Math.random()` so the card wears its
-Recalculate button; the amortization table dropped its text header row — labeled typed columns
-are a frame's job). Open author question: frame/cube OUTPUT from a script (array-of-row-objects
-→ frame is the natural mapping); not ruled, noted in decisions scriptNode.
++ rank off the value. Expression keeps its toggle. Details: decisions scriptNode. Seed updated
+(Monte Carlo now really `Math.random()` so the card wears its Recalculate button).
+**Script containers are single-typed, uniformly; frame OUTPUT allowed (author 2026-08-28c).**
+The author challenged "mixed lists ride the wildcard" — correctly: the app has no mixed lists
+(unitGranularity's "legitimately mixed" row is a FRAME row; Get Row outputs a one-row frame).
+So a list, table, or frame column mixing families is `#AMBIGUOUS!`, and mixed-by-nature data
+gets its real home: rows of `{name: value}` objects (or one such object) build a `FrameValue`
+(columns keyed in first-appearance order, per-column types incl. date via `Date`/`Solenoid.date`;
+`reconcileResultRank` grew a "frame" vote that swaps the whole socket). Expression's frame ban
+is Excel-surface complexity budget; Script is the more advanced surface (author). Cubes stay
+out. The seed's amortization script now returns row objects → a typed frame, headers shown by
+the Display, frame-violet cable verified live.
 **Group edge bands outset** 4px past the dashed border (they anchored to the body's padding box
 and started 2px inside the line).
 
