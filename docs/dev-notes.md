@@ -18,6 +18,12 @@ Known-issues note updated: drill-in gap CLOSED, hairline seam FIXED. The stale "
 non-pack functions" count replaced with the parity script's stronger claim (zero
 unimplemented in-scope Excel names). Live-window sweep to the archive is overdue (window
 reaches back to 08-18) — left for a maintenance pass.
+**Author curation round:** multi-series charts demoted to a body line ("more of a fix");
+Node Inspector, Frame hints, and Date Input (relative dates + the parser) promoted to
+`[slide]`. Verified the deck baseline: the doc's pre-existing four slides (Computed
+columns, Matrix & LAMBDA, Query, AI palette) all landed AFTER the v1.2.0 tag and were
+never announced — the 1.2 deck is the eight slides still live in HelpDialogs.tsx, and
+v1.2.5's GitHub release body is just the download blurb — so they stay 1.3 material.
 
 ### SESSION DIGEST (2026-08-28c — Report embeds become `=name` refs; dev copy-edit freeze)
 

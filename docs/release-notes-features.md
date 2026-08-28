@@ -61,17 +61,25 @@ tag along the way — the baseline stays v1.2.0).
   Gallery and Board views over the whole frame. Flip a table popup to Form view and
   that layout becomes editable: page through rows and enter data in widgets that
   follow each column's type.
-- **[slide] Multi-series charts.** Wire a frame into a chart and every column is a
-  named series — legend, multi-value tooltip, click a legend entry to spotlight one
-  series (card and popup alike). Merge Plots overlays several charts on one plot.
-  New figures: Proportion (treemap or waffle) and 2-D Histogram; marker size is a
-  chart option everywhere.
+- **[slide] Node Inspector.** Press the (i) and a reference panel docks beside the
+  canvas: what the selected node computes, its Excel equivalence, and every socket
+  described under its real glyph — example tables included for frame inputs. Every
+  context menu opens it too; on a phone it's a sheet.
+- **[slide] Frame hints.** Hover any frame input's socket (tap the row on touch)
+  and a miniature EXAMPLE table shows exactly the columns that input expects, with
+  sample data — the shape question answered before you wire anything.
+- **[slide] Dates you can just type.** Date Input takes a date in about any format
+  through a real parser — and an ambiguous one answers #AMBIGUOUS!, never a silent
+  guess. Opt in to relative dates and `today`, `next friday`, or `in 3 days`
+  resolve on the spot; a native picker rides along, and everything renders in
+  DD-MMM-YYYY.
 
 ## Release-notes body
 
-- Node Inspector: an (i) on the top bar (and every context menu) docks a reference
-  panel for the selected node — what it computes, its Excel equivalence, every
-  socket described under its real glyph, example tables for frame inputs.
+- Charts: wire a frame in and every column is a named series — legend, multi-value
+  tooltip, click a legend entry to spotlight one series (card and popup alike).
+  Merge Plots overlays several charts on one plot; Proportion (treemap or waffle)
+  and 2-D Histogram join the figures; marker size is a chart option everywhere.
 - The table popup is a mini spreadsheet now: arrow/Tab/Enter movement, sorting
   ranks the *whole* dataset (Copy and Export follow the visual order), and a
   summary footer puts a stat picker under every column — Sum, Average, Median,
@@ -81,8 +89,6 @@ tag along the way — the baseline stays v1.2.0).
   (ANOVA, Mann–Whitney, Fisher exact…), one Series, one Running, one Rank &
   Percentile — and every card renames itself to the op it's set to. Searching the
   Add menu finds every op inside them.
-- Date Input: type a date in about any format — or `next friday`, with relative
-  dates as an opt-in — and ambiguity answers #AMBIGUOUS!, never a silent guess.
 - An Excel-accuracy audit pinned the dark corners against real Excel: T-bill day
   counts, bond pricing across issue→maturity, quartile endpoints, half-away-from-zero
   rounding, the iterative solvers — and nodes and formulas share one kernel per
@@ -118,8 +124,6 @@ tag along the way — the baseline stays v1.2.0).
 - Pixel-perfect cards: the card frame (border, header cap, divider) paints as one
   SVG, so strokes can't crack apart at any zoom — the long-standing hairline seam
   and the selection-ring overhang on notes are gone.
-- Hover a frame input's socket (tap the row on touch) and a miniature EXAMPLE
-  table shows exactly the columns it expects, with sample data.
 - A crash can no longer black out the app: the failing card degrades to a small
   red box with a copyable message and everything else keeps working.
 - Touch polish: node descriptions on long-press, tap-to-expand descriptions in
