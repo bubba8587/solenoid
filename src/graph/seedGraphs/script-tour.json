@@ -12,7 +12,7 @@
       "init": {
         "label": "Script: worked examples",
         "color": "amber",
-        "body": "One JavaScript function per node: parameters are the inputs, the return value is the result. A script can return a single value, a list, or rows of values, and numbers, text, booleans and dates travel as plain JS values. The examples below return a number, a list, a text summary, a table, and dates.",
+        "body": "One JavaScript function per node: parameters are the inputs, the return value is the result, and the value types itself. A script can return a single value, a list, or rows of values. A date input arrives as its Excel serial; return a Date, or Solenoid.date(serial), to make dates. The examples below return a number, a list, a text summary, a table, and dates.",
         "width": 560
       }
     },
@@ -33,11 +33,7 @@
       "y": 0,
       "init": {
         "label": "Monte Carlo π",
-        "expr": "(samples, seed) => {\n  let s = seed >>> 0;\n  const rand = () => {\n    s = (s * 1664525 + 1013904223) >>> 0;\n    return s / 2 ** 32;\n  };\n  let hits = 0;\n  for (let i = 0; i < samples; i++) {\n    const x = rand();\n    const y = rand();\n    if (x * x + y * y <= 1) hits++;\n  }\n  return 4 * hits / samples;\n}",
-        "resultAs": "number"
-      },
-      "literals": {
-        "seed": 1
+        "expr": "(samples) => {\n  let hits = 0;\n  for (let i = 0; i < samples; i++) {\n    const x = Math.random();\n    const y = Math.random();\n    if (x * x + y * y <= 1) hits++;\n  }\n  return 4 * hits / samples;\n}"
       }
     },
     {
@@ -46,7 +42,7 @@
       "x": 700,
       "y": 130,
       "init": {
-        "label": "→ 3.1437"
+        "label": "≈ 3.14"
       }
     },
     {
@@ -66,8 +62,7 @@
       "y": 480,
       "init": {
         "label": "Collatz path",
-        "expr": "(n) => {\n  const path = [n];\n  while (n > 1 && path.length < 1000) {\n    n = n % 2 ? 3 * n + 1 : n / 2;\n    path.push(n);\n  }\n  return path;\n}",
-        "resultAs": "number"
+        "expr": "(n) => {\n  const path = [n];\n  while (n > 1 && path.length < 1000) {\n    n = n % 2 ? 3 * n + 1 : n / 2;\n    path.push(n);\n  }\n  return path;\n}"
       }
     },
     {
@@ -86,8 +81,7 @@
       "y": 480,
       "init": {
         "label": "Path summary",
-        "expr": "(path) => {\n  const steps = path.length - 1;\n  const peak = Math.max(...path);\n  return steps + \" steps, peak \" + peak;\n}",
-        "resultAs": "text"
+        "expr": "(path) => {\n  const steps = path.length - 1;\n  const peak = Math.max(...path);\n  return steps + \" steps, peak \" + peak;\n}"
       }
     },
     {
@@ -116,8 +110,7 @@
       "y": 880,
       "init": {
         "label": "Amortization table",
-        "expr": "(principal, rate, years) => {\n  const r = rate / 100 / 12;\n  const n = years * 12;\n  const pow = (1 + r) ** -n;\n  const pay = principal * r / (1 - pow);\n  const rows = [\n    [\"year\", \"interest\", \"balance\"],\n  ];\n  let bal = principal;\n  let paid = 0;\n  for (let m = 1; m <= n; m++) {\n    const i = bal * r;\n    paid += i;\n    bal -= pay - i;\n    if (m % 60 === 0) rows.push([\n      m / 12,\n      Math.round(paid),\n      Math.round(bal),\n    ]);\n  }\n  return rows;\n}",
-        "resultAs": "auto"
+        "expr": "(principal, rate, years) => {\n  const r = rate / 100 / 12;\n  const n = years * 12;\n  const pow = (1 + r) ** -n;\n  const pay = principal * r / (1 - pow);\n  const rows = [];\n  let bal = principal;\n  let paid = 0;\n  for (let m = 1; m <= n; m++) {\n    const i = bal * r;\n    paid += i;\n    bal -= pay - i;\n    if (m % 60 === 0) rows.push([\n      m / 12,\n      Math.round(paid),\n      Math.round(bal),\n    ]);\n  }\n  return rows;\n}"
       },
       "literals": {
         "rate": 4.5,
@@ -130,7 +123,7 @@
       "x": 700,
       "y": 1000,
       "init": {
-        "label": "Every 5 years"
+        "label": "year · interest · balance"
       }
     },
     {
@@ -150,8 +143,7 @@
       "y": 1540,
       "init": {
         "label": "Friday the 13ths",
-        "expr": "(year) => {\n  const hits = [];\n  for (let m = 0; m < 12; m++) {\n    const d = new Date(Date.UTC(year, m, 13));\n    if (d.getUTCDay() === 5) hits.push(d);\n  }\n  return hits;\n}",
-        "resultAs": "date"
+        "expr": "(year) => {\n  const hits = [];\n  for (let m = 0; m < 12; m++) {\n    const d = new Date(Date.UTC(year, m, 13));\n    if (d.getUTCDay() === 5) hits.push(d);\n  }\n  return hits;\n}"
       }
     },
     {

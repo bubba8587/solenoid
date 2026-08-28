@@ -50,10 +50,29 @@ export function scriptIsVolatile(src: string): boolean {
   return VOLATILE_RE.test(src);
 }
 
+/** A date cell the script asked for by serial (`Solenoid.date`); the coercer folds
+ *  it to the serial and votes the date family. */
+export type SolDateTag = { __solDate: unknown };
+export function isSolDateTag(v: unknown): v is SolDateTag {
+  return typeof v === "object" && v !== null && "__solDate" in v;
+}
+
+// The one in-script global. JS values type themselves (a number is a number, a string
+// text, a `Date` a date); the single thing JS cannot say is "this NUMBER is a date
+// serial", so `Solenoid.date(serial)` says it. Maps over lists and rows.
+const SolenoidGlobal = Object.freeze({
+  date(v: unknown): unknown {
+    if (Array.isArray(v)) return v.map((c) => SolenoidGlobal.date(c));
+    if (v == null || v instanceof Date) return v;
+    return { __solDate: v } satisfies SolDateTag; // validated by the coercer
+  },
+});
+
 type Fn = (...args: unknown[]) => unknown;
 const compiled = new Map<string, Fn>();
 
-/** Compile the source to a callable, or a syntax message. Cached by source text. */
+/** Compile the source to a callable, or a syntax message. Cached by source text.
+ *  The returned function closes over the `Solenoid` in-script global. */
 export function compileScript(src: string): { fn: Fn } | { error: string } {
   const hit = compiled.get(src);
   if (hit) return { fn: hit };
@@ -61,7 +80,7 @@ export function compileScript(src: string): { fn: Fn } | { error: string } {
   if ("error" in head) return head;
   let fn: unknown;
   try {
-    fn = new Function(`"use strict"; return (\n${src}\n);`)();
+    fn = new Function("Solenoid", `"use strict"; return (\n${src}\n);`)(SolenoidGlobal);
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) };
   }

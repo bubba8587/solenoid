@@ -5,6 +5,10 @@ import { scriptParams, compileScript } from "./scriptRun";
 import { coerceScriptResult } from "./scriptCoerce";
 import { executeScript } from "../scriptExecutor";
 import { reconcileResultRank } from "./expression";
+// The Script node has NO declared result type (no toggle): the value types itself.
+// JS values carry their family (a string is text, a `Date` a date) and the result
+// socket reconciles to the computed value's family and rank; `Solenoid.date(serial)`
+// says the one thing a JS value cannot (scriptRun.ts).
 
 export const DEFAULT_SCRIPT = "(x) => x";
 
@@ -30,7 +34,6 @@ function firstCellError(v: unknown): SolError | null {
 export class ScriptNode extends ClassicPreset.Node {
   label: string;
   expr: string;
-  resultAs: ResultType;
   cachedResult: unknown = null;
   /** The message shown under the field: a syntax problem or the script's own throw. */
   cachedError: string | null = null;
@@ -44,16 +47,17 @@ export class ScriptNode extends ClassicPreset.Node {
 
   varNames: string[] = [];
   lastResultRank: 1 | 2 = 1;
+  /** Runtime family the result socket last settled to; transient like the rank. */
+  lastResultFamily: ResultType = "auto";
   private syntaxError: string | null = null;
 
-  constructor(init?: { label?: string; expr?: string; resultAs?: ResultType; literals?: Record<string, number>; stringLiterals?: Record<string, string> }) {
+  constructor(init?: { label?: string; expr?: string; literals?: Record<string, number>; stringLiterals?: Record<string, string> }) {
     super("Script");
     this.label = init?.label ?? "Script";
     this.expr = init?.expr ?? DEFAULT_SCRIPT;
-    this.resultAs = init?.resultAs ?? "auto";
     if (init?.literals) this.literals = { ...init.literals };
     if (init?.stringLiterals) this.stringLiterals = { ...init.stringLiterals };
-    this.addOutput("result", resultOut("Result", "combo", this.resultAs));
+    this.addOutput("result", resultOut("Result", "combo", "auto"));
     this._rebuild();
   }
 
@@ -100,10 +104,14 @@ export class ScriptNode extends ClassicPreset.Node {
       if (e) { this.cachedError = null; this.cachedResult = e; return { result: e }; }
     }
     const out = await executeScript(this.expr, args);
-    const result = out.ok ? coerceScriptResult(out.value, this.resultAs) : solError(out.code, out.message);
+    let result: unknown;
+    let family: ResultType | null = null;
+    if (out.ok) ({ value: result, family } = coerceScriptResult(out.value));
+    else result = solError(out.code, out.message);
     this.cachedError = out.ok ? null : out.message;
     this.cachedResult = result;
-    reconcileResultRank(this, result);
+    // A vote-less result (empty list, all blanks/errors) keeps the settled family.
+    reconcileResultRank(this, result, family ?? this.lastResultFamily);
     return { result };
   }
 }

@@ -3,14 +3,13 @@ import { ScriptNode, DEFAULT_SCRIPT } from "./script";
 import { scriptParams, toClonable, invokeScript, scriptIsVolatile } from "./scriptRun";
 import { coerceScriptResult } from "./scriptCoerce";
 import { wrapNodeData } from "../coerceInputs";
-import { isSolError, solError, type SolError } from "../errorValue";
+import { isSolError, solError } from "../errorValue";
 import { extractInit } from "../copyPaste";
 import { jsDateToSerial } from "./dateSerial";
-import type { ResultType } from "./shared";
 
 const code = (v: unknown) => (isSolError(v) ? v.code : v);
 
-async function run(expr: string, inputs: Record<string, unknown[]> = {}, init: { resultAs?: ResultType; literals?: Record<string, number>; stringLiterals?: Record<string, string> } = {}) {
+async function run(expr: string, inputs: Record<string, unknown[]> = {}, init: { literals?: Record<string, number>; stringLiterals?: Record<string, string> } = {}) {
   const node = new ScriptNode({ expr, ...init });
   wrapNodeData(node as unknown as Parameters<typeof wrapNodeData>[0]);
   const out = await (node.data(inputs) as Promise<{ result: unknown }>);
@@ -96,24 +95,43 @@ describe("ScriptNode.data — the result is folded onto the value model", () => 
     expect(code(result)).toBe("#VALUE!");
     expect(node.cachedError).toMatch(/TypeError/);
   });
-  it("auto keeps numbers, text and booleans, and turns a Date into a serial", async () => {
+  it("values keep their own kinds; a mixed list rides the wildcard", async () => {
     expect((await run("() => [1, 'a', true]")).result).toEqual([1, "a", true]);
     const d = new Date(Date.UTC(2026, 0, 15));
     expect((await run("() => new Date(Date.UTC(2026, 0, 15))")).result).toBe(jsDateToSerial(d));
+    const r = (await run("() => [0 / 0, null, 2]")).result as unknown[];
+    expect(r.map(code)).toEqual(["#DOMAIN!", null, 2]);
   });
-  it("number: NaN is #DOMAIN! per cell, text is #TYPE! per cell, booleans ride the bridge", async () => {
-    const r = (await run("() => [0 / 0, 'x', true, null, 2]", {}, { resultAs: "number" })).result as unknown[];
-    expect(r.map(code)).toEqual(["#DOMAIN!", "#TYPE!", 1, null, 2]);
+  it("the result socket family follows the value (no toggle)", async () => {
+    expect((await run("() => 5")).node.lastResultFamily).toBe("number");
+    expect((await run("() => ['a', 'b']")).node.lastResultFamily).toBe("text");
+    expect((await run("() => new Date(Date.UTC(2026, 0, 1))")).node.lastResultFamily).toBe("date");
+    expect((await run("() => [1, 'a']")).node.lastResultFamily).toBe("auto"); // a mixed LIST rides the wildcard
+    expect((await run("() => true")).node.lastResultFamily).toBe("auto");     // no boolean result socket
+    // A vote-less result keeps the settled family rather than flapping to auto.
+    const { node } = await run("() => 5");
+    await (node.data({}) as Promise<unknown>); // still 5 → number
+    node.expr = "() => []";
+    node._rebuild();
+    await (node.data({}) as Promise<unknown>);
+    expect(node.lastResultFamily).toBe("number");
   });
-  it("text: a number is #TYPE!, telling the author to use String()", async () => {
-    const r = (await run("() => 5", {}, { resultAs: "text" })).result as SolError;
-    expect(r.code).toBe("#TYPE!");
-    expect(r.message).toMatch(/String\(\)/);
+  it("Solenoid.date lifts a serial (or a list of them) to dates; a non-serial is #TYPE!", async () => {
+    const { result, node } = await run("(d) => Solenoid.date(d + 30)", { d: [46000] });
+    expect(result).toBe(46030);
+    expect(node.lastResultFamily).toBe("date");
+    const list = await run("(d) => Solenoid.date([d, d + 7])", { d: [46000] });
+    expect(list.result).toEqual([46000, 46007]);
+    expect(list.node.lastResultFamily).toBe("date");
+    expect(code((await run("() => Solenoid.date('soon')")).result)).toBe("#TYPE!");
   });
-  it("date: a serial or a Date passes, text and booleans do not", async () => {
-    expect((await run("() => 46000", {}, { resultAs: "date" })).result).toBe(46000);
-    const r = (await run("() => ['2026-01-01', true]", {}, { resultAs: "date" })).result as unknown[];
-    expect(r.map(code)).toEqual(["#TYPE!", "#TYPE!"]);
+  it("a table is single-typed (unitGranularity): mixed rows are #AMBIGUOUS!, one family passes", async () => {
+    expect(code((await run("() => [['year', 1], [2, 3]]")).result)).toBe("#AMBIGUOUS!");
+    const ok = await run("() => [[1, 2], [3, 4]]");
+    expect(ok.result).toEqual([[1, 2], [3, 4]]);
+    expect(ok.node.lastResultFamily).toBe("number");
+    // Homogeneous booleans are not "mixed" — they ride the wildcard whole.
+    expect((await run("() => [[true, false], [false, true]]")).node.lastResultFamily).toBe("auto");
   });
   it("functions and objects are #TYPE!; deeper or mixed nesting is #SHAPE!", async () => {
     expect(code((await run("() => () => 1")).result)).toBe("#TYPE!");
@@ -140,20 +158,19 @@ describe("evaluator + coercer, standalone", () => {
   it("invokeScript awaits an async function", async () => {
     expect(await invokeScript("async (x) => x * 2", [2])).toEqual({ ok: true, value: 4 });
   });
-  it("a BigInt outside the safe range is #OVERFLOW!", () => {
-    expect(code(coerceScriptResult(2n ** 60n, "number"))).toBe("#OVERFLOW!");
-    expect(coerceScriptResult(7n, "number")).toBe(7);
+  it("a BigInt outside the safe range is #OVERFLOW!; in range it is a number", () => {
+    expect(code(coerceScriptResult(2n ** 60n).value)).toBe("#OVERFLOW!");
+    expect(coerceScriptResult(7n)).toEqual({ value: 7, family: "number" });
   });
 });
 
 describe("persistence", () => {
-  it("extractInit round-trips source, result type and both literal maps", () => {
-    const n = new ScriptNode({ expr: "(a, b) => a", resultAs: "text", literals: { a: 2 }, stringLiterals: { b: "q" } });
+  it("extractInit round-trips source and both literal maps", () => {
+    const n = new ScriptNode({ expr: "(a, b) => a", literals: { a: 2 }, stringLiterals: { b: "q" } });
     n.label = "Mine";
     const init = extractInit(n) as Record<string, unknown>;
     const back = new ScriptNode(init as ConstructorParameters<typeof ScriptNode>[0]);
     expect(back.expr).toBe("(a, b) => a");
-    expect(back.resultAs).toBe("text");
     expect(back.label).toBe("Mine");
     expect(init.a).toBe(2); // literals spread flat into the snapshot; the clone path copies the map
     expect(Object.keys(back.inputs)).toEqual(["a", "b"]);

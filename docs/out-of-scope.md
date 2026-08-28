@@ -76,7 +76,7 @@ provenance, auditability, safety of shared files. It is the universal escape hat
 the whole point of Solenoid is that the escape hatch is where trust goes to die.
 **The line (revised by the author 2026-08-28, decisions scriptNode):** ONE node, **Script**,
 is the bounded form — a single JavaScript function whose parameters are its inputs and
-whose return value is folded onto the value model at a declared result type. No I/O (a
+whose return value is folded onto the value model, typing itself by what it is. No I/O (a
 sandbox worker with the network and storage doors removed), no state between runs, a wall
 clock, and nothing leaves it that is not already a Solenoid value. It is a typed pure
 function, not a cell: no Python, no packages, no frames or cubes (the verb engine is their

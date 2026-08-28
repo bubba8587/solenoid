@@ -36,12 +36,16 @@ Friday-the-13ths (returned `Date`s under the Date toggle). No groups. Values ver
 grip geometry, screenshots).
 **Session History reads newest-first** (`digestLabeled` walks the records backwards; date headers
 still group).
-**Open (for the author):** in-script output typing — today the Number/Text/Date/Auto toggle is the
-one declared boundary; a sandbox-injected tag helper (e.g. `Solenoid.date(x)`) is feasible but
-splits the declared type across two homes. The real gap is only date-ness under Auto (a returned
-`Date` already folds to a serial; the socket just stays `any`). Recommendation in the 08-28b
-session notes to the author: prefer teaching Auto to reconcile the element family off returned
-`Date`s (the rank-reconcile mechanism) over a second API surface.
+**Script toggle DROPPED (author: "if it's going to be a script, script it").** The value types
+itself; `Solenoid.date(serial)` is the one in-script global; the result socket reconciles family
++ rank off the value; rows mixing families are `#AMBIGUOUS!` (unitGranularity's single-typed
+matrix — the old Auto toggle could leak mixed anytables). Expression keeps its toggle. Details:
+decisions scriptNode. Seed updated (Monte Carlo now really `Math.random()` so the card wears its
+Recalculate button; the amortization table dropped its text header row — labeled typed columns
+are a frame's job). Open author question: frame/cube OUTPUT from a script (array-of-row-objects
+→ frame is the natural mapping); not ruled, noted in decisions scriptNode.
+**Group edge bands outset** 4px past the dashed border (they anchored to the body's padding box
+and started 2px inside the line).
 
 ### SESSION DIGEST (2026-08-28 — Script node)
 

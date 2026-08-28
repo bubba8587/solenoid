@@ -595,18 +595,26 @@ alone. **Reopen if:** cards visibly stack wrongly after selection, or a control 
 last-selected-on-top semantics RF's `zIndex` model doesn't give.
 
 
-### scriptNode — Script: the ONE arbitrary-evaluation node, typed at the boundary (author 2026-08-28)
+### scriptNode — Script: the ONE arbitrary-evaluation node, typed at the boundary (author 2026-08-28; toggle dropped 2026-08-28b)
 The author asked for a code node whose outputs are restricted to the existing value
 types, overriding out-of-scope §4's blanket NO; §4 now states the bounded form. What
 stands: the source is a JavaScript function expression (`(a, b) => …`); its parameters
 are `anydata` inputs re-derived on commit (Expression's mechanic, `applyScriptChange`);
-the return value passes `coerceScriptResult` at the Number/Text/Date/Auto result type
-(per-cell `#TYPE!` across families with the logical→number bridge as the one exception,
-`#DOMAIN!` for NaN, `#SHAPE!` beyond rows of values, ragged rows padded with null) and
-the result socket's rank reconciles as Expression's does. Evaluation runs in the sandbox
+the return value passes `coerceScriptResult` and **the value types itself — there is no
+declared result type** ("if it's going to be a script, script it"): numbers, text and
+booleans carry their own families, a returned `Date` (or `Solenoid.date(serial)`, the
+one in-script global, closed over by `compileScript`) is a date, and the result socket
+reconciles FAMILY as well as rank off the computed value (`reconcileResultRank`;
+number/text/date sockets, logical/complex and mixed LISTS ride the wildcard).
+Unresolvable outputs error: `#TYPE!` for unsupported values, `#DOMAIN!` for NaN,
+`#SHAPE!` beyond rows of values (ragged rows padded with null), and — per
+unitGranularity's single-typed matrix — **rows mixing families are `#AMBIGUOUS!`**,
+never an anytable. Expression KEEPS its Number/Text/Date/Auto toggle: a formula's
+variables don't say what it returns; a script's values do. Evaluation runs in the sandbox
 worker (`subsystem-invariants.md` § Script sandbox) under `SCRIPT_TIMEOUT_MS`; the Tauri
 CSP carries `'unsafe-eval'` for it. Named Script, not Code (NAME-2: CODE is an Excel
 function node). **Where:** `nodes/script.ts`, `nodes/scriptRun.ts`, `nodes/scriptCoerce.ts`,
 `scriptWorker.ts`, `scriptExecutor.ts`; pinned by `nodes/script.test.ts`. **Reopen if:**
 a script needs I/O, state between runs, a frame input, or a second language — each is
-§4's creep, not a feature request.
+§4's creep, not a feature request. Frame/cube OUTPUT is a live author question
+(2026-08-28b), not yet ruled.

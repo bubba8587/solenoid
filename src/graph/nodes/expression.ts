@@ -81,24 +81,29 @@ function envDim(v: unknown): Dim {
   return DIMENSIONLESS;
 }
 
-type RankedProducer = ClassicPreset.Node & { resultAs: ResultType; lastResultRank: 1 | 2 };
+type RankedProducer = ClassicPreset.Node & { resultAs?: ResultType; lastResultRank: 1 | 2; lastResultFamily?: ResultType };
 
-/** Reconciles a producer's result socket RANK to the computed VALUE (anydataWildcard).
- *  Value-driven, so it must run OUTSIDE data() via a microtask; headless runs skip the
- *  swap. Shared by Expression and Script, whose `result` ports swap identically. */
-export function reconcileResultRank(node: RankedProducer, result: unknown): void {
+/** Reconciles a producer's result socket to the computed VALUE (anydataWildcard):
+ *  always the RANK, and — when the caller votes one — the element FAMILY too (the
+ *  Script node, which has no declared type; Expression passes none and keeps its
+ *  toggle's). Value-driven, so it must run OUTSIDE data() via a microtask; headless
+ *  runs skip the swap. */
+export function reconcileResultRank(node: RankedProducer, result: unknown, family?: ResultType): void {
   // An error result says nothing about shape — leave the socket where the last value put it.
   if (isSolError(result)) return;
   const want: 1 | 2 = Array.isArray(result) && result.length > 0 && Array.isArray(result[0]) ? 2 : 1;
-  if (want === node.lastResultRank) return;
+  const wantFamily: ResultType = family ?? node.resultAs ?? "auto";
+  const familyChanged = family !== undefined && node.lastResultFamily !== family;
+  if (want === node.lastResultRank && !familyChanged) return;
   node.lastResultRank = want;
+  if (family !== undefined) node.lastResultFamily = family;
   queueMicrotask(() => {
     void (async () => {
       const editor = getActiveEditor();
       const area = getActiveArea();
       const out = node.outputs.result;
       if (!editor || !area || !out || !editor.getNode(node.id)) return;
-      out.socket = resultSocket(want === 2 ? "matrix" : "combo", node.resultAs);
+      out.socket = resultSocket(want === 2 ? "matrix" : "combo", wantFamily);
       await retypeOutputCables(editor, area, node.id, "result");
       await area.rerenderNode(node.id);
     })();
