@@ -376,10 +376,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Logarithms", description: "Logarithms and their inverses.",
         children: [
-          { type: "pair", children: [
-            mathLeaf("log"),
-            mathLeaf("exp", { type: "math-exp-inv", description: "e to the power x, the inverse of `LN`. The `EXP` node, cross-listed here." }),
-          ]},
+          mathLeaf("log"),
           { type: "pair", children: [mathLeaf("log10"), mathLeaf("log2")] },
           twoMathLeaf("log"),
         ],
