@@ -60,7 +60,6 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
   example to 8 digits, so the doc value looks like a typo.
 
 ## Bugs & verifications
-- **Group HEADER resting shadow** (`GroupNode.css` `0 1px 3px rgba(0,0,0,0.12)`): cards lost their resting shadow (2026-08, author: imperceptible); the group header still has one. Author eyeball: drop it or keep it as the one exception.
 
 - [ ] **composite-workbench: `gsComp` (goal-seek) and `fvComp` are computed by no test**
   (found by the 2026-08-29 suite audit: `seedsCompute` skips the whole seed for cost,
