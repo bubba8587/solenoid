@@ -143,6 +143,8 @@ html:not(.is-mobile) .report-panel { max-height: calc(100% - 24px); }
   text-wrap-style: pretty;
 }
 .report-preview__md { max-width: none; margin: 0; }
+/* A Note opened from its Document chip: read-only, so the preview is the whole body. */
+.report-preview--solo { flex: 1 1 100%; }
 /* InlineRefBody wraps the rendered markdown in a bare <div>, so the real first/
    last block is a grandchild — reach through it (the `> * >` hop) to zero the
    outer margin, else the report's first heading floats below a phantom gap. */

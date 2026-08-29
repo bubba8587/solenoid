@@ -78,7 +78,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   async function applyBody(content: string, sourcePath: string) {
     data.body = content;
     data.fileName = sourcePath;
-    if (sourcePath && (data.label === "Obsidian Note" || data.label.trim() === "")) {
+    if (sourcePath && (data.label === "Import Obsidian Note" || data.label.trim() === "")) {
       data.label = baseName(sourcePath); // title hook resyncs its display off data.label
     }
     const { removed, retyped } = data.syncFields();
@@ -162,14 +162,14 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
           </svg>
         </button>
         {title.editing ? (
-          <input className="solenoid-note__name" placeholder="Obsidian Note" {...title.inputProps} />
+          <input className="solenoid-note__name" placeholder="Import Obsidian Note" {...title.inputProps} />
         ) : (
           <div
             className={`solenoid-note__name-display${data.label.trim() ? "" : " solenoid-note__name-display--empty"}`}
-            title={data.label || "Obsidian Note"}
+            title={data.label || "Import Obsidian Note"}
             {...title.displayProps}
           >
-            {data.label.trim() || "Obsidian Note"}
+            {data.label.trim() || "Import Obsidian Note"}
           </div>
         )}
         <button

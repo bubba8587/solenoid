@@ -42,6 +42,9 @@ the host leaf is itself a function name the row is the alias alone ("RIGHTB", "S
 they were formula aliases + alias search rows with no affordance of their own, a node↔formula
 divergence by construction (author). Gone from `excelFunctions`/`formulaSignatures`/the alias
 table; listed with ASC/DBCS/PHONETIC in the out-of-scope entries of `nodeExcel.ts`.
+**The Document chip opens a real panel for Notes** (author): `ReportOverlay` opened on a Note
+(plain or Obsidian) shows it read-only, preview pane only, same dock/close/Esc chrome; the
+chip no longer flies to the card. "Obsidian Note" is "Import Obsidian Note".
 
 ### SESSION DIGEST (2026-08-29 — test-suite trim: −1.3k lines, stale carve-outs out)
 

@@ -9,6 +9,7 @@ import { NoteNode, ReportNode } from "../rete-nodes";
 import type { SolenoidConnection } from "../schemes";
 import { nodeDisplayNames } from "../nodeNames";
 import { nodeNameStore } from "../nodeNameStore";
+import { parseNoteFrontmatter } from "../noteFrontmatter";
 import { InlineRefBody } from "./inlineRefDisplay";
 import { CloseIcon } from "./CloseIcon";
 import { useDismissOnOutside } from "./useDismissOnOutside";
@@ -18,12 +19,16 @@ import "./Markdown.css";
 import "./ReportOverlay.css";
 
 /** The Report's editing surface: markdown source + live preview. No WYSIWYG
- *  toolbar — that is the scope line the plan draws. */
+ *  toolbar — that is the scope line the plan draws. Opened on a Note (plain or
+ *  Obsidian) instead, the same panel shows the note read-only: a Document chip
+ *  opens its source here whichever kind produced it. */
 export function ReportOverlay() {
   const nodeId = useSyncExternalStore(reportStore.subscribe, reportStore.openNodeId);
   const docked = useSyncExternalStore(reportStore.subscribe, reportStore.isDocked);
   const editor = getEditor();
-  const node = nodeId ? (editor?.getNode(nodeId) as ReportNode | undefined) : undefined;
+  const opened = nodeId ? editor?.getNode(nodeId) : undefined;
+  const node = opened instanceof ReportNode ? opened : undefined;
+  const note = opened instanceof NoteNode ? opened : undefined;
 
   const [body, setBody] = useState(node?.body ?? "");
   const [embedPickerOpen, setEmbedPickerOpen] = useState(false);
@@ -54,7 +59,7 @@ export function ReportOverlay() {
   // Commit THEN close: syncRefs runs synchronously before commitBody's first await,
   // so the sockets mint even though this doesn't await.
   function closeReport() {
-    void commitBody();
+    if (node) void commitBody();
     reportStore.close();
   }
   useEscapeToClose(closeReport, !!nodeId);
@@ -68,7 +73,54 @@ export function ReportOverlay() {
 
   const sourceRef = useRef<HTMLTextAreaElement>(null);
 
-  if (!nodeId || !node) return null;
+  // A Note's body is rendered exactly as its card renders it: frontmatter stripped,
+  // sanitized on every render (a body arrives in shared .solenoid files).
+  const noteHtml = useMemo(
+    () => note ? DOMPurify.sanitize(marked.parse(parseNoteFrontmatter(note.body).body || "", { async: false, gfm: true, breaks: true }) as string) : "",
+    [note, note?.body],
+  );
+
+  if (!nodeId) return null;
+
+  if (note) {
+    const closeNote = () => reportStore.close();
+    const notePanel = (
+      <div className={`report-panel${docked ? " report-panel--docked" : ""}`} onPointerDown={(e) => e.stopPropagation()}>
+        <div className="report-header">
+          <span className="report-title">{note.label?.trim() || "Note"}</span>
+          <div className="report-header-actions">
+            <button
+              className={`report-dock-btn${docked ? " report-dock-btn--on" : ""}`}
+              onClick={() => reportStore.toggleDock()}
+              title={docked ? "Undock to a floating panel" : "Dock to the right side"}
+              aria-label={docked ? "Undock note" : "Dock note to the right"}
+              aria-pressed={docked}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect width="18" height="18" x="3" y="3" rx="2" />
+                <path d="M15 3v18" />
+              </svg>
+            </button>
+            <button className="report-close" onClick={closeNote} title="Close (Esc)" aria-label="Close">
+              <CloseIcon size={16} />
+            </button>
+          </div>
+        </div>
+        <div className="report-body">
+          <div className="report-preview report-preview--solo sol-md">
+            {noteHtml.trim()
+              ? <div className="report-preview__md" dangerouslySetInnerHTML={{ __html: noteHtml }} />
+              : <div className="report-preview__empty">Empty note</div>}
+          </div>
+        </div>
+      </div>
+    );
+    return docked ? notePanel : (
+      <div className="report-backdrop" onPointerDown={closeNote}>{notePanel}</div>
+    );
+  }
+
+  if (!node) return null;
 
   function onBody(v: string) { setBody(v); node!.body = v; scheduleAutosave(); }
 
