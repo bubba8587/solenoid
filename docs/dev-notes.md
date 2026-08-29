@@ -32,6 +32,9 @@ socket glyph set incl. the `anydata` hollow square. Leftover for the author: the
 HEADER still casts a resting `0 1px 3px` shadow (`GroupNode.css`). **Running loses its
 Cumulative / Last N toggle** (author): the Window socket is always there and 0 (the literal
 default) means cumulative, matching `RUNNING(op, list, [window])` where the arg is optional.
+**Gauge, Proportion and Record are OP families after all** (author: "treemap" must land on a
+row that says Treemap): op rows "Proportion: Treemap", "Gauge: Dial", "Record: Gallery", field
+back to `op`, `OpToggle`/`OpSelect` on the card; BAR joins the cross-family name allowance.
 
 ### SESSION DIGEST (2026-08-29 — test-suite trim: −1.3k lines, stale carve-outs out)
 

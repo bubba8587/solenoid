@@ -339,6 +339,8 @@ describe("the formula namespace stays unambiguous", () => {
       // figure styles on sink nodes that never register formula names, and the
       // shared words are the point (a sparkline Line IS a small line chart).
       "LINE", "COLUMN",
+      // a gauge Bar is a bar too
+      "BAR",
     ]);
     const opOwners = new Map<string, string>();
     const leafByName = new Map<string, NodeCatalogEntry[]>();

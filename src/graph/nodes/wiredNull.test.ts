@@ -341,7 +341,7 @@ describe("the THIRD state — undefined is omitted, null is unknown", () => {
 
 describe("figure sinks — empty figure for a datum, neutral default for styling", () => {
   it("Gauge (Bar style): value and target go blank, but the track's scale keeps the card's bound", () => {
-    const node = new GaugeNode({ style: "bar" });
+    const node = new GaugeNode({ op: "bar" });
     node.literals.value = 42;
     node.literals.target = 80;
     node.literals.max = 250;
