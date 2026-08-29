@@ -35,6 +35,9 @@ default) means cumulative, matching `RUNNING(op, list, [window])` where the arg 
 **Gauge, Proportion and Record are OP families after all** (author: "treemap" must land on a
 row that says Treemap): op rows "Proportion: Treemap", "Gauge: Dial", "Record: Gallery", field
 back to `op`, `OpToggle`/`OpSelect` on the card; BAR joins the cross-family name allowance.
+**Alias search rows drop a self-repeating host** (author: "RIGHT: RIGHTB" reads wrong): when
+the host leaf is itself a function name the row is the alias alone ("RIGHTB", "SLOPE",
+"COUNTIF"; 41 rows); "Table Size: ROWS" keeps the Host: Name shape (`excelEntry`).
 
 ### SESSION DIGEST (2026-08-29 — test-suite trim: −1.3k lines, stale carve-outs out)
 

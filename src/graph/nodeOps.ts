@@ -338,12 +338,16 @@ export function hiddenOps(decl: NodeOpsDecl, host: NodeCatalogEntry): Array<{ op
 
 /** A search-only row for an Excel function a leaf answers to under another name
  *  ("Table Size: ROWS") — the same "Host: Name" shape as a hidden op's row, so a
- *  user typing the Excel name sees it on the row they get, not just the host. */
+ *  user typing the Excel name sees it on the row they get, not just the host. When
+ *  the host IS a function name the prefix only repeats itself ("RIGHT: RIGHTB",
+ *  "LINEST: SLOPE"), so the row is the alias alone; the description still names
+ *  the host (author, 2026-08-29). */
 export function excelEntry(host: NodeCatalogEntry, name: string): NodeCatalogEntry {
+  const hostIsFunction = /^[A-Z][A-Z0-9.]*$/.test(host.label);
   return {
     ...host,
     type: `${host.type}__excel-${name}`,
-    label: opSearchLabel(host.label, name),
+    label: hostIsFunction ? name : opSearchLabel(host.label, name),
     keywords: undefined,
     hiddenOps: undefined,
     hideOpsMark: undefined,
