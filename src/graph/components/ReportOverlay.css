@@ -143,12 +143,12 @@ html:not(.is-mobile) .report-panel { max-height: calc(100% - 24px); }
   text-wrap-style: pretty;
 }
 .report-preview__md { max-width: none; margin: 0; }
-/* A Note opened from its Document chip: read-only, so the preview is the whole body.
-   .sol-md's own `max-width: 760px; margin: 0 auto` would make the PANE a centered
-   760px box inside the panel; the pane fills instead, and the reading column is
-   the markdown inside it. Wide blocks scroll within themselves, never the pane. */
+/* A Note opened from its Document chip: read-only, so the preview is the whole body
+   and the markdown fills it edge to edge (author: no reading-column flanks).
+   .sol-md's own `max-width: 760px; margin: 0 auto` is overridden at both levels.
+   Wide blocks scroll within themselves, never the pane. */
 .report-preview--solo { flex: 1 1 100%; max-width: none; margin: 0; overflow-x: hidden; }
-.report-preview--solo .report-preview__md { max-width: 760px; margin: 0 auto; }
+.report-preview--solo .report-preview__md { max-width: none; margin: 0; }
 .report-preview--solo img { max-width: 100%; height: auto; }
 .report-preview--solo table { display: block; max-width: 100%; overflow-x: auto; }
 /* InlineRefBody wraps the rendered markdown in a bare <div>, so the real first/
