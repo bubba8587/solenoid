@@ -1630,7 +1630,7 @@ registerInternal("ISCLOSE",    (a, b, tol) => (a == null || b == null ? null : M
 // ONE Running function, aggregator as a string ARGUMENT (aggregatorsAreArguments): a parameter inside a
 // top-level function, so the family gets one name — never seven (the old per-op
 // RUNNING* family is eliminated and must not come back). Same shape as SORT below
-// carrying its direction. Window omitted = cumulative; a BLANK window is unknown and
+// carrying its direction. Window omitted or 0 = cumulative; a BLANK window is unknown and
 // answers blank (value-semantics.md, "Reading an input").
 const RUNNING_ARG_OPS: Record<string, RunningOp> = {
   SUM: "sum", AVERAGE: "avg", AVG: "avg", MIN: "min", MAX: "max",

@@ -309,7 +309,7 @@ export type RunningOp = "sum" | "avg" | "min" | "max" | "median" | "product" | "
  *  stays in reach of, a null is SKIPPED, and an all-null window is 0 for sum and null
  *  otherwise. */
 export function running(op: RunningOp, arr: readonly Cell[], window: number | null): Cell[] {
-  if (window !== null) {
+  if (window !== null && Math.round(window) >= 1) {
     const w = Math.max(1, Math.round(window));
     return arr.map((_, i) => {
       const prep = forAggregate(arr.slice(Math.max(0, i - w + 1), i + 1));

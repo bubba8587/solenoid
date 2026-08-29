@@ -1408,7 +1408,6 @@ export class ConcatListsNode extends ClassicPreset.Node {
 }
 
 export type { RunningOp } from "./listOps";
-export type RunningMode = "all" | "window";
 
 // No `fx`: the aggregator is an ARGUMENT of the windowed scan (aggregatorsAreArguments), so it claims no
 // formula name. The labels are the dropdown's own words.
@@ -1422,59 +1421,33 @@ export const RUNNING_OP_META = {
   stdev:   { label: "STDEV",   description: "Sample standard deviation of each window. Divides by `n−1`." },
 } satisfies Record<RunningOp, { label: string; description: string }>;
 
-export const RUNNING_MODE_OPTIONS: ReadonlyArray<{ value: RunningMode; label: string; title: string }> = [
-  { value: "all",    label: "Cumulative", title: "The window grows: every element from the start through this one" },
-  { value: "window", label: "Last N",     title: "The window slides: only the last N elements ending at this one" },
-];
-
 export class RunningNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    window: "Rounds to a whole number of at least 1. The first elements use as much of the window as exists.",
+    window: "0 (the default) is cumulative: every element from the start through this one. 1 or more slides: only the last N elements ending here, running short at the start.",
   };
 
   label: string;
   agg: RunningOp;
-  mode: RunningMode;
   cachedList: ListCell[] | null = [];
-  literals: Record<string, number> = { window: 3 };
+  literals: Record<string, number> = { window: 0 };
   width = 180;
-  height = 190;
+  height = 218;
 
-  constructor(init?: { label?: string; agg?: RunningOp; mode?: RunningMode }) {
+  constructor(init?: { label?: string; agg?: RunningOp }) {
     super("Running");
     this.label = init?.label ?? "Running";
     this.agg = init?.agg ?? "sum";
-    this.mode = init?.mode ?? "all";
     this.addInput("list", listIn("List"));
-    if (this.mode === "window") this.addInput("window", numIn("Window size"));
+    this.addInput("window", numIn("Window"));
     this.addOutput("result", listOut("Result"));
-    this.height = this.mode === "window" ? 218 : 190;
-  }
-
-  /** The mode owns the Window socket: Last N has it, Cumulative doesn't. Callers with
-   *  a live graph prune the socket's cables BEFORE switching away from Last N. */
-  setMode(next: RunningMode): void {
-    if (next === this.mode) return;
-    this.mode = next;
-    if (next === "window") {
-      if (!this.inputs.window) this.addInput("window", numIn("Window size"));
-    } else if (this.inputs.window) {
-      this.removeInput("window");
-    }
-    this.height = next === "window" ? 218 : 190;
   }
 
   data(inputs: { list?: ListCell[][]; window?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
-    if (this.mode === "window") {
-      const wRaw = readInput(inputs.window, this.literals.window ?? 3);
-      // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
-      if (wRaw === null) { this.cachedList = null; return { result: null }; }
-      const result = running(this.agg, arr, wRaw);
-      this.cachedList = result;
-      return { result };
-    }
-    const result = running(this.agg, arr, null);
+    const w = readInput(inputs.window, this.literals.window ?? 0);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (w === null) { this.cachedList = null; return { result: null }; }
+    const result = running(this.agg, arr, w);
     this.cachedList = result;
     return { result };
   }

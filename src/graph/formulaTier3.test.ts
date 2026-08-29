@@ -80,8 +80,8 @@ describe("every Tier 3 name computes what its node computes", () => {
       expect(ev(`RUNNING("${meta.label}", x)`, { x: LIST }), meta.label)
         .toEqual(node.data({ list: [LIST] }).result);
     }
-    // Windowed (Last N) through the optional third arg; op is case-insensitive.
-    const win = new RunningNode({ agg: "avg", mode: "window" });
+    // A sliding window through the optional third arg (0 or omitted = cumulative); op is case-insensitive.
+    const win = new RunningNode({ agg: "avg" });
     expect(ev('RUNNING("average", x, 2)', { x: LIST }))
       .toEqual(win.data({ list: [LIST], window: [2] }).result);
     // A BLANK window is unknown → blank; an unknown aggregator is a #VALUE!.

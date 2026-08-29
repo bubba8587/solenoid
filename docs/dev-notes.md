@@ -29,7 +29,9 @@ opArgDistinct (op pickers bind `op`; arg pickers never; no `arg` prop). Also thi
 DESIGN.md reconciled to the code for the three width tiers (180/210 medium/240), no
 resting card shadow (`--shadow-card` lives only under in-card popovers), and the full
 socket glyph set incl. the `anydata` hollow square. Leftover for the author: the group
-HEADER still casts a resting `0 1px 3px` shadow (`GroupNode.css`).
+HEADER still casts a resting `0 1px 3px` shadow (`GroupNode.css`). **Running loses its
+Cumulative / Last N toggle** (author): the Window socket is always there and 0 (the literal
+default) means cumulative, matching `RUNNING(op, list, [window])` where the arg is optional.
 
 ### SESSION DIGEST (2026-08-29 — test-suite trim: −1.3k lines, stale carve-outs out)
 

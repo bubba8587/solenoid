@@ -359,7 +359,7 @@ describe("Running — all so far (window grows)", () => {
     const list = [3, null, 1, 4, 1, 5, 9, 2, 6];
     for (const op of ["sum", "avg", "min", "max", "median", "product"] as const) {
       const grow = new RunningNode({ agg: op }).data({ list: [list] }).result;
-      const slide = new RunningNode({ agg: op, mode: "window" }).data({ list: [list], window: [list.length] }).result;
+      const slide = new RunningNode({ agg: op }).data({ list: [list], window: [list.length] }).result;
       expect(grow, op).toEqual(slide);
     }
   });
@@ -378,7 +378,7 @@ describe("Running — all so far (window grows)", () => {
 
 describe("Running — last N (window slides)", () => {
   const windowed = (op: "sum" | "avg" | "min" | "max" | "median" | "product" | "stdev") =>
-    new RunningNode({ agg: op, mode: "window" });
+    new RunningNode({ agg: op });
   it("sum grows then slides", () => {
     expect(windowed("sum").data({ list: [[1, 2, 3, 4, 5]], window: [3] }).result).toEqual([1, 3, 6, 9, 12]);
   });
@@ -408,13 +408,12 @@ describe("Running — last N (window slides)", () => {
     expect(windowed("sum").data({ list: [[1, 2]], window: [null as never] }).result).toBeNull();
   });
 
-  it("setMode owns the Window socket", () => {
+  it("a window of 0 (the literal default) is cumulative; 1 or more slides", () => {
     const node = new RunningNode();
-    expect(node.inputs.window).toBeUndefined();
-    node.setMode("window");
-    expect(node.inputs.window).toBeDefined();
-    node.setMode("all");
-    expect(node.inputs.window).toBeUndefined();
+    expect(node.literals.window).toBe(0);
+    expect(node.data({ list: [[1, 2, 3]] }).result).toEqual([1, 3, 6]);
+    expect(node.data({ list: [[1, 2, 3]], window: [0] }).result).toEqual([1, 3, 6]);
+    expect(node.data({ list: [[1, 2, 3]], window: [2] }).result).toEqual([1, 3, 5]);
   });
 });
 
