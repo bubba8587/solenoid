@@ -705,13 +705,6 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   RANGE:           { returns: "number", rank: "list", listArgs: true, arity: [2, 3], native: true },
   CONCATLISTS:     { returns: "number", rank: "list", listArgs: true, arity: [1, 255], native: true },
 
-  LENB:            { returns: "number", arity: [1, 1], family: "text" },
-  LEFTB:           { returns: "string", arity: [1, 2], family: "text" },
-  MIDB:            { returns: "string", arity: [3, 3], family: "text" },
-  RIGHTB:          { returns: "string", arity: [1, 2], family: "text" },
-  FINDB:           { returns: "number", arity: [2, 3], family: "text" },
-  SEARCHB:         { returns: "number", arity: [2, 3], family: "text" },
-  REPLACEB:        { returns: "string", arity: [4, 4], family: "text" },
   "ERF.PRECISE":   { returns: "number", arity: [1, 1] },
   "ERFC.PRECISE":  { returns: "number", arity: [1, 1] },
   VALUETOTEXT:     { returns: "string", arity: [1, 2], family: "text" },
@@ -1733,8 +1726,6 @@ const delegate = (name: string, to: string) =>
   });
 
 for (const [name, to] of [
-  ["LENB", "LEN"], ["LEFTB", "LEFT"], ["MIDB", "MID"], ["RIGHTB", "RIGHT"],
-  ["FINDB", "FIND"], ["SEARCHB", "SEARCH"], ["REPLACEB", "REPLACE"],
   // ERF.PRECISE / ERFC.PRECISE are Excel's single-argument forms — identical to
   // ERF / ERFC, which is what `nodeExcel.ts` says too ("Same as ERF in Solenoid").
   ["ERF.PRECISE", "ERF"], ["ERFC.PRECISE", "ERFC"],

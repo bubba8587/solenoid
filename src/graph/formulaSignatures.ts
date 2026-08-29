@@ -222,13 +222,6 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   NOR: "logical1, [logical2], …",
   XNOR: "logical1, [logical2], …",
   // ── text ──
-  LENB: "text",
-  LEFTB: "text, [count]",
-  RIGHTB: "text, [count]",
-  MIDB: "text, start, count",
-  FINDB: "find_text, within, [start]",
-  SEARCHB: "find_text, within, [start]",
-  REPLACEB: "text, start, count, new",
   VALUETOTEXT: "value, [format]",
   REVERSETEXT: "text",
   UNACCENT: "text",

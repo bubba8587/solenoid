@@ -38,6 +38,10 @@ back to `op`, `OpToggle`/`OpSelect` on the card; BAR joins the cross-family name
 **Alias search rows drop a self-repeating host** (author: "RIGHT: RIGHTB" reads wrong): when
 the host leaf is itself a function name the row is the alias alone ("RIGHTB", "SLOPE",
 "COUNTIF"; 41 rows); "Table Size: ROWS" keeps the Host: Name shape (`excelEntry`).
+**The byte-counting B twins are OUT OF SCOPE** (LENB/LEFTB/MIDB/RIGHTB/FINDB/SEARCHB/REPLACEB):
+they were formula aliases + alias search rows with no affordance of their own, a node↔formula
+divergence by construction (author). Gone from `excelFunctions`/`formulaSignatures`/the alias
+table; listed with ASC/DBCS/PHONETIC in the out-of-scope entries of `nodeExcel.ts`.
 
 ### SESSION DIGEST (2026-08-29 — test-suite trim: −1.3k lines, stale carve-outs out)
 

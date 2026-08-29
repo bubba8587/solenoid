@@ -452,26 +452,21 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "text-exact": [{ excel: "EXACT", syntax: "=EXACT(text1, text2)", parity: false }],
   "text-find-find": [
     { excel: "FIND", syntax: "=FIND(find_text, within)", parity: false },
-    { excel: "FINDB", syntax: "=FINDB(find_text, within)", parity: false, note: "Byte-indexed; treated as character-indexed" },
   ],
   "text-find-search": [
     { excel: "SEARCH", syntax: "=SEARCH(find_text, within)", parity: false },
-    { excel: "SEARCHB", syntax: "=SEARCHB(find_text, within)", parity: false, note: "Byte-indexed; treated as character-indexed" },
   ],
   "text-fixed": [{ excel: "FIXED", syntax: "=FIXED(number, decimals)", parity: false, note: "Use TEXT node with \"0.00\" format" }],
   "text-join": [{ excel: "TEXTJOIN", syntax: "=TEXTJOIN(delim, ignore, ...)", parity: false, note: "Takes a strlist input; wire from TEXTSPLIT or a Text Input list" }],
   "text-left": [
     { excel: "LEFT", syntax: "=LEFT(text, chars)", parity: false },
-    { excel: "LEFTB", syntax: "=LEFTB(text, bytes)", parity: false, note: "Byte-indexed; treated as character-indexed" },
   ],
   "text-len": [
     { excel: "LEN", syntax: "=LEN(text)", parity: false },
-    { excel: "LENB", syntax: "=LENB(text)", parity: false, note: "Byte-indexed; treated as character-indexed" },
   ],
   "text-lower": [{ excel: "LOWER", syntax: "=LOWER(text)", parity: false }],
   "text-mid": [
     { excel: "MID", syntax: "=MID(text, start, chars)", parity: false },
-    { excel: "MIDB", syntax: "=MIDB(text, start, bytes)", parity: false, note: "Byte-indexed; treated as character-indexed" },
   ],
   // TEXT / VALUE / VALUETOTEXT live on Cast; their dedicated nodes are load-only.
   "cast": [
@@ -483,12 +478,10 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "text-proper": [{ excel: "PROPER", syntax: "=PROPER(text)", parity: false }],
   "text-replace": [
     { excel: "REPLACE", syntax: "=REPLACE(text, start, n, new)", parity: false },
-    { excel: "REPLACEB", syntax: "=REPLACEB(text, start, b, new)", parity: false, note: "Byte-indexed; treated as character-indexed" },
   ],
   "text-rept": [{ excel: "REPT", syntax: "=REPT(text, n)", parity: false }],
   "text-right": [
     { excel: "RIGHT", syntax: "=RIGHT(text, chars)", parity: false },
-    { excel: "RIGHTB", syntax: "=RIGHTB(text, bytes)", parity: false, note: "Byte-indexed; treated as character-indexed" },
   ],
   "text-split": [
     { excel: "TEXTSPLIT", syntax: "=TEXTSPLIT(text, delim)", parity: false, note: "Outputs a strlist; row/col delimiter pair not supported" },
@@ -582,6 +575,13 @@ export const EXCEL_GAP: ExcelGapRow[] = [
   { excel: "CUBESET", syntax: "=CUBESET(connection, set_expr)", category: "Web & Cube", oos: true, note: "OLAP cube; out of scope" },
   { excel: "CUBESETCOUNT", syntax: "=CUBESETCOUNT(set)", category: "Web & Cube", oos: true, note: "OLAP cube; out of scope" },
   { excel: "CUBEVALUE", syntax: "=CUBEVALUE(connection, ...)", category: "Web & Cube", oos: true, note: "OLAP cube; out of scope" },
+  { excel: "LENB", syntax: "=LENB(text)", category: "Text", oos: true, note: "Byte-counted twin for double-byte locales; Solenoid counts characters, so it is LEN; out of scope" },
+  { excel: "LEFTB", syntax: "=LEFTB(text, bytes)", category: "Text", oos: true, note: "Byte-counted twin for double-byte locales; Solenoid counts characters, so it is LEFT; out of scope" },
+  { excel: "MIDB", syntax: "=MIDB(text, start, bytes)", category: "Text", oos: true, note: "Byte-counted twin for double-byte locales; Solenoid counts characters, so it is MID; out of scope" },
+  { excel: "RIGHTB", syntax: "=RIGHTB(text, bytes)", category: "Text", oos: true, note: "Byte-counted twin for double-byte locales; Solenoid counts characters, so it is RIGHT; out of scope" },
+  { excel: "FINDB", syntax: "=FINDB(find_text, within)", category: "Text", oos: true, note: "Byte-counted twin for double-byte locales; Solenoid counts characters, so it is FIND; out of scope" },
+  { excel: "SEARCHB", syntax: "=SEARCHB(find_text, within)", category: "Text", oos: true, note: "Byte-counted twin for double-byte locales; Solenoid counts characters, so it is SEARCH; out of scope" },
+  { excel: "REPLACEB", syntax: "=REPLACEB(text, start, bytes, new)", category: "Text", oos: true, note: "Byte-counted twin for double-byte locales; Solenoid counts characters, so it is REPLACE; out of scope" },
   { excel: "ASC", syntax: "=ASC(text)", category: "Text", oos: true, note: "East Asian full-width to half-width; out of scope" },
   { excel: "BAHTTEXT", syntax: "=BAHTTEXT(number)", category: "Text", oos: true, note: "Thai currency text; out of scope" },
   { excel: "DBCS", syntax: "=DBCS(text)", category: "Text", oos: true, note: "East Asian half-width to full-width; out of scope" },
