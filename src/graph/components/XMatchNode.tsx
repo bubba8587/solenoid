@@ -1,7 +1,7 @@
 import type { XMatchNode as XMatchNodeType, XMatchMatchMode, XMatchSearchMode } from "../rete-nodes";
 import { XMATCH_MATCH_MODE_META, XMATCH_SEARCH_MODE_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
-import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 
 const MATCH_MODES: { value: XMatchMatchMode; label: string }[] = (
@@ -19,8 +19,8 @@ export function XMatchComponent({ data, emit }: NodeProps<XMatchNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect arg value={matchMode} onChange={setMatchMode} options={MATCH_MODES} />
-      <SegToggle arg value={searchMode} options={SEARCH_MODES} onChange={setSearchMode} />
+      <ArgSelect value={matchMode} onChange={setMatchMode} options={MATCH_MODES} />
+      <SegToggle value={searchMode} options={SEARCH_MODES} onChange={setSearchMode} />
       <ValueDisplay value={data.cachedResult} empty="not found" />
     </NodeShell>
   );

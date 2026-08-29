@@ -220,7 +220,7 @@ export function decodeResistor(
 export class ResistorCodeNode extends ClassicPreset.Node {
   label: string;
   /** Band count: "4" (two digits) or "5" (three digits). */
-  op: "4" | "5";
+  bands: "4" | "5";
   /** Band color picks — persisted with the node (b3 read only in 5-band). */
   stringLiterals: Record<string, string> = { b1: "brown", b2: "black", b3: "black", mult: "red", tol: "gold" };
   cachedOhms: number | SolError | null = null;
@@ -228,10 +228,10 @@ export class ResistorCodeNode extends ClassicPreset.Node {
   width = 220;
   height = 230;
 
-  constructor(init?: { label?: string; op?: "4" | "5"; stringLiterals?: Record<string, string> }) {
+  constructor(init?: { label?: string; bands?: "4" | "5"; stringLiterals?: Record<string, string> }) {
     super("ResistorCode");
     this.label = init?.label ?? "Resistor Color Code";
-    this.op = init?.op === "5" ? "5" : "4";
+    this.bands = init?.bands === "5" ? "5" : "4";
     if (init?.stringLiterals) this.stringLiterals = { ...this.stringLiterals, ...init.stringLiterals };
     this.addOutput("ohms", numOut("Ω"));
     this.addOutput("tolerance", numOut("± %"));
@@ -239,7 +239,7 @@ export class ResistorCodeNode extends ClassicPreset.Node {
 
   data() {
     const L = this.stringLiterals;
-    const r = decodeResistor(L.b1, L.b2, L.b3, L.mult, L.tol, this.op === "5");
+    const r = decodeResistor(L.b1, L.b2, L.b3, L.mult, L.tol, this.bands === "5");
     if ("code" in (r as object)) {
       this.cachedOhms = this.cachedTol = r as SolError;
       return { ohms: r as SolError, tolerance: r as SolError };

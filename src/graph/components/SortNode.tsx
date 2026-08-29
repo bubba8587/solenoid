@@ -1,6 +1,6 @@
 import type { SortNode as SortNodeType, SortDir } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
-import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 
 const DIRS: { value: SortDir; label: string }[] = [
   { value: "asc",  label: "Ascending ↑" },
@@ -8,11 +8,11 @@ const DIRS: { value: SortDir; label: string }[] = [
 ];
 
 export function SortComponent({ data, emit }: NodeProps<SortNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
+  const [order, setOrder] = useNodeField(data, "order");
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect value={op} onChange={setOp} options={DIRS} />
+      <ArgSelect value={order} onChange={setOrder} options={DIRS} />
       <ValueDisplay value={data.cachedList} />
     </NodeShell>
   );

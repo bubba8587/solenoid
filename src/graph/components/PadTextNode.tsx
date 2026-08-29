@@ -7,6 +7,6 @@ const SIDES = (Object.keys(PAD_SIDE_META) as PadSide[]).map((s) => ({
 }));
 
 export const PadTextComponent = makeToggleNodeComponent<PadTextNodeType, PadSide>(
-  { read: (n) => n.op, write: (n, v) => { n.op = v; }, options: SIDES },
+  { read: (n) => n.side, write: (n, v) => { n.side = v; }, options: SIDES },
   (n) => n.cachedText,
 );

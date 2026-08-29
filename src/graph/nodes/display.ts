@@ -76,8 +76,7 @@ export class AlertNode extends ClassicPreset.Node {
     result: "The status is 0 when calm and 1 when triggered. Out of range instead emits 1 below Low and 2 above High.",
   };
   label: string;
-  // The op selector, named `op` per selectorNamedOp so the family can declare it.
-  op: AlertMode;
+  condition: AlertMode;
   cachedResult: number | number[] | null = null;
   literals: Record<string, number> = { value: 50, low: 0, high: 100, target: 0 };
   stringLiterals: Record<string, string> = { text: "", match: "" };
@@ -89,11 +88,11 @@ export class AlertNode extends ClassicPreset.Node {
   private lastStatusKey = NO_STATUS;
   private lastEvalOp: AlertMode;
 
-  constructor(init?: { label?: string; op?: AlertMode }) {
+  constructor(init?: { label?: string; condition?: AlertMode }) {
     super("Alert");
     this.label = init?.label ?? "Alert";
-    this.op = init?.op ?? "range";
-    this.lastEvalOp = this.op;
+    this.condition = init?.condition ?? "range";
+    this.lastEvalOp = this.condition;
     this.addInput("value",  numListIn("Value"));
     this.addInput("low",    numListIn("Low"));
     this.addInput("high",   numListIn("High"));
@@ -115,7 +114,7 @@ export class AlertNode extends ClassicPreset.Node {
   // use 1 = triggered. A list yields a per-element status; null = a needed input is
   // missing (unknown — never fires).
   private evaluate(inputs: AlertInputs): number | number[] | null {
-    switch (this.op) {
+    switch (this.condition) {
       case "range": {
         const v = scalarish(inputs.value, this.literals.value);
         const lo = scalarish(inputs.low, this.literals.low);
@@ -154,9 +153,9 @@ export class AlertNode extends ClassicPreset.Node {
     if (result === null) return;
     const key = statusKey(result);
     const alerting = isAlerting(result);
-    const opChanged = this.lastEvalOp !== this.op;
+    const opChanged = this.lastEvalOp !== this.condition;
     const prevKey = opChanged ? NO_STATUS : this.lastStatusKey;
-    this.lastEvalOp = this.op;
+    this.lastEvalOp = this.condition;
     this.lastStatusKey = key;
     if (isGraphRebuilding()) return; // never fire mid load/seed
     if (alerting && key !== prevKey) {
@@ -176,7 +175,7 @@ export class AlertNode extends ClassicPreset.Node {
       const v = got?.[0] ?? lit;
       return typeof v === "number" ? fmt(v) : "value";
     };
-    switch (this.op) {
+    switch (this.condition) {
       case "range": {
         const lo = num(inputs.low, this.literals.low);
         const hi = num(inputs.high, this.literals.high);

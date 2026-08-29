@@ -450,10 +450,7 @@ export class GaugeNode extends ClassicPreset.Node {
     max: "Bar only: the track always starts at zero, so this sets only its upper end.",
   };
 
-  label: string;
-  // The style is the node's OPERATION (it names the card): `op`, per the operation-kind
-  // convention (selectorNamedOp) — the payload's own `style` field mirrors it.
-  op: GaugeStyle = "dial";
+  style: GaugeStyle = "dial";
   literals: Record<string, number> = { value: 0, target: 80, max: 100 };
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
@@ -461,12 +458,12 @@ export class GaugeNode extends ClassicPreset.Node {
   width = 200;
   height = 200;
 
-  constructor(init?: { label?: string; op?: GaugeStyle }) {
+  constructor(init?: { label?: string; style?: GaugeStyle }) {
     super("Gauge");
     this.label = init?.label ?? "";
-    if (init?.op === "bar") this.op = "bar";
+    if (init?.style === "bar") this.style = "bar";
     this.addInput("value", numIn("Value"));
-    if (this.op === "bar") this.addBarInputs();
+    if (this.style === "bar") this.addBarInputs();
     this.addOutput("chart", chartOut("Chart"));
   }
 
@@ -477,14 +474,14 @@ export class GaugeNode extends ClassicPreset.Node {
   }
 
   /** The bar-only input keys a switch to `next` would remove — the component drops
-   *  their cables first (onePrunePath) before calling setOp. */
+   *  their cables first (onePrunePath) before calling setStyle. */
   keysDropped(next: GaugeStyle): string[] {
-    return next === "dial" && this.op === "bar" ? ["target", "max", "options"] : [];
+    return next === "dial" && this.style === "bar" ? ["target", "max", "options"] : [];
   }
 
-  setOp(next: GaugeStyle): void {
-    if (next === this.op) return;
-    this.op = next;
+  setStyle(next: GaugeStyle): void {
+    if (next === this.style) return;
+    this.style = next;
     if (next === "dial") {
       for (const k of ["target", "max", "options"]) if (this.inputs[k]) this.removeInput(k);
     } else {
@@ -497,7 +494,7 @@ export class GaugeNode extends ClassicPreset.Node {
     if (inputs.value?.[0] === undefined) this.literals.value = value ?? 0;
     let payload: ScalePayload;
     let title: string;
-    if (this.op === "bar") {
+    if (this.style === "bar") {
       const target = readInput(inputs.target, this.literals.target ?? null);
       // `max` is the track SCALE, so it keeps the card bound like a Slider; value/target are data.
       const max = readInput(inputs.max, this.literals.max ?? 100) ?? (this.literals.max ?? 100);
@@ -626,7 +623,7 @@ function colAsNumbers(col: FrameColumn | undefined): number[] {
 
 // One card, a layout selector: TREEMAP nests each name/value as a rectangle sized by
 // value; WAFFLE fills a 10×10 grid by share. Both read a (label, value) frame — the
-// layout is the node's OPERATION (it names the card), per the operation-kind convention.
+// The layout is an argument (rules opArgDistinct): two drawings of one figure, one leaf.
 export type ProportionLayout = "treemap" | "waffle";
 export const PROPORTION_LAYOUT_OPTIONS: { value: ProportionLayout; label: string }[] = [
   { value: "treemap", label: "Treemap" },
@@ -635,7 +632,7 @@ export const PROPORTION_LAYOUT_OPTIONS: { value: ProportionLayout; label: string
 
 export class ProportionNode extends ClassicPreset.Node {
   label: string;
-  op: ProportionLayout = "treemap";
+  layout: ProportionLayout = "treemap";
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
   cachedChart: ChartValue | null = null;
@@ -649,18 +646,18 @@ export class ProportionNode extends ClassicPreset.Node {
     ] },
   };
 
-  constructor(init?: { label?: string; op?: ProportionLayout }) {
+  constructor(init?: { label?: string; layout?: ProportionLayout }) {
     super("Proportion");
     this.label = init?.label ?? "";
-    if (init?.op === "waffle") this.op = "waffle";
+    if (init?.layout === "waffle") this.layout = "waffle";
     this.addInput("frame", frameIn("Label + Value"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
 
   // Sockets are identical for both layouts, so the switch only re-derives the figure.
-  setOp(next: ProportionLayout): void {
-    this.op = next;
+  setLayout(next: ProportionLayout): void {
+    this.layout = next;
   }
 
   async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue }> {
@@ -669,7 +666,7 @@ export class ProportionNode extends ClassicPreset.Node {
     // Waffle's single-column fallback is a harmless superset for the treemap too.
     const values = colAsNumbers(cols[1] ?? cols[0]);
     this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
-    const payload: ProportionPayload = { kind: "proportion", layout: this.op, names, values };
+    const payload: ProportionPayload = { kind: "proportion", layout: this.layout, names, values };
     const chart: ChartValue = {
       __chart: true, op: "proportion", values, payload,
       options: this.chartOptions, title: this.chartOptions.title || this.label || "Proportion",
@@ -1164,7 +1161,7 @@ export class RecordNode extends ClassicPreset.Node {
   };
 
   label: string;
-  op: RecordOp;
+  view: RecordOp;
   literals: Record<string, number> = { row: 1 };
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
@@ -1180,24 +1177,24 @@ export class RecordNode extends ClassicPreset.Node {
     ] },
   };
 
-  constructor(init?: { label?: string; op?: RecordOp }) {
+  constructor(init?: { label?: string; view?: RecordOp }) {
     super("Record");
     this.label = init?.label ?? "Record";
-    // Guard a stale op from an old save — fall back rather than crash.
-    this.op = init?.op && init.op in RECORD_OP_META ? init.op : "card";
+    // Guard a stale view from an old save — fall back rather than crash.
+    this.view = init?.view && init.view in RECORD_OP_META ? init.view : "card";
     this.addInput("frame", frameIn("Frame"));
-    if (this.op === "card") this.addInput("row", numIn("Row"));
-    if (this.op === "board") this.addInput("by", strIn("Group by"));
+    if (this.view === "card") this.addInput("row", numIn("Row"));
+    if (this.view === "board") this.addInput("by", strIn("Group by"));
     this.addInput("layout", strIn("Layout"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  /** The op owns the Row and Group-by sockets. Callers on a live graph prune the
+  /** The view owns the Row and Group-by sockets. Callers on a live graph prune the
    *  departing keys' cables BEFORE switching (onePrunePath). */
-  setOp(next: RecordOp): void {
-    if (next === this.op) return;
-    this.op = next;
+  setView(next: RecordOp): void {
+    if (next === this.view) return;
+    this.view = next;
     if (next === "card") { if (!this.inputs.row) this.addInput("row", numIn("Row")); }
     else if (this.inputs.row) this.removeInput("row");
     if (next === "board") { if (!this.inputs.by) this.addInput("by", strIn("Group by")); }
@@ -1211,7 +1208,7 @@ export class RecordNode extends ClassicPreset.Node {
     // Row is which record to draw — a figure's datum: a wired blank or an
     // out-of-range pick renders the boxes EMPTY, never an error out `chart`.
     let index = 0;
-    if (this.op === "card") {
+    if (this.view === "card") {
       const rowRaw = readInput(inputs.row, this.literals.row ?? 1);
       index = rowRaw === null ? 0 : Math.round(rowRaw);
       if (inputs.row?.[0] === undefined && total > 0) {
@@ -1230,9 +1227,9 @@ export class RecordNode extends ClassicPreset.Node {
 
     // The board's grouping column: a column reference, so a wired blank or an
     // unmatched name draws nothing (never "one lane of everything").
-    const byIn = this.op === "board" ? readInput(inputs.by, this.stringLiterals.by ?? "") : "";
+    const byIn = this.view === "board" ? readInput(inputs.by, this.stringLiterals.by ?? "") : "";
     const byKey = typeof byIn === "string" ? byIn.trim().toLowerCase() : "";
-    const byCol = this.op === "board" ? (byKey ? cols.find((c) => c.name.trim().toLowerCase() === byKey) ?? null : null) : null;
+    const byCol = this.view === "board" ? (byKey ? cols.find((c) => c.name.trim().toLowerCase() === byKey) ?? null : null) : null;
 
     const byName = new Map(cols.map((c) => [c.name.trim().toLowerCase(), c]));
     const field = (name: string, col: FrameColumn | undefined, rowIdx: number | null, at: { row: number; col: number; rowSpan: number; colSpan: number; hint?: string }): RecordField => {
@@ -1251,7 +1248,7 @@ export class RecordNode extends ClassicPreset.Node {
     // there — every card in a lane would repeat the lane's label). A layout
     // stands on its own, so it can be drafted before the frame is wired
     // (unmatched names keep their boxes).
-    const stackCols = cols.filter((c) => !(this.op === "board" && c === byCol));
+    const stackCols = cols.filter((c) => !(this.view === "board" && c === byCol));
     const cardAt = (rowIdx: number | null): RecordField[] =>
       placed.length > 0
         ? placed.map((p) => field(p.name, byName.get(p.name.toLowerCase()), rowIdx, p))
@@ -1261,9 +1258,9 @@ export class RecordNode extends ClassicPreset.Node {
     let cards: RecordField[][] = [];
     let lanes: RecordPayload["lanes"];
     let more = 0;
-    if (this.op === "card") {
+    if (this.view === "card") {
       cards = [cardAt(index >= 1 ? index - 1 : null)];
-    } else if (this.op === "gallery") {
+    } else if (this.view === "gallery") {
       const drawn = Math.min(total, RECORD_CARD_CAP);
       cards = Array.from({ length: drawn }, (_, r) => cardAt(r));
       more = total - drawn;
@@ -1285,7 +1282,7 @@ export class RecordNode extends ClassicPreset.Node {
     }
 
     const payload: RecordPayload = {
-      kind: "record", view: this.op, cols: ncols, cards,
+      kind: "record", view: this.view, cols: ncols, cards,
       ...(lanes ? { lanes } : {}), ...(more > 0 ? { more } : {}),
       index, total,
     };

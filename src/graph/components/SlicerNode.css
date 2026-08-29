@@ -25,7 +25,7 @@
   gap: 6px;
   padding: 4px 10px;
 }
-.slicer-node__toolbar .solenoid-node__op-select {
+.slicer-node__toolbar .solenoid-node__select {
   flex: 1 1 auto;
   min-width: 0;
 }

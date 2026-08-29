@@ -1224,7 +1224,7 @@ body.solenoid-scrubbing * {
   background: var(--surface-raised);
 }
 
-.solenoid-node__op-select {
+.solenoid-node__select {
   width: 100%;
   background-color: var(--surface-sunken);
   /* Inline SVG chevron — we draw our own so the native dropdown arrow
@@ -1248,7 +1248,7 @@ body.solenoid-scrubbing * {
   appearance: none;
 }
 
-.solenoid-node__op-select:focus {
+.solenoid-node__select:focus {
   border-color: var(--node-accent, var(--accent));
 }
 
@@ -1260,7 +1260,7 @@ body.solenoid-scrubbing * {
   gap: 6px;
   margin-top: 4px;
 }
-.solenoid-node__field-row .solenoid-node__op-select {
+.solenoid-node__field-row .solenoid-node__select {
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -1330,7 +1330,7 @@ body.solenoid-scrubbing * {
 }
 /* The per-column normalize override — compact, just wide enough for "÷Max" + chevron
    (it's full-width by default). */
-.solenoid-node__dm-weight-row .solenoid-node__op-select {
+.solenoid-node__dm-weight-row .solenoid-node__select {
   flex: 0 0 62px;
   width: 62px;
   font-size: 12px;
@@ -1370,14 +1370,14 @@ body.solenoid-scrubbing * {
    popup background from the <select>'s computed background-color and
    the <option> backgrounds. The popup container itself isn't styleable
    beyond that — the outer frame is the OS's. */
-.solenoid-node__op-select option {
+.solenoid-node__select option {
   background-color: var(--surface);
   color: var(--text-bright);
   padding: 4px 8px;
 }
-.solenoid-node__op-select option:hover,
-.solenoid-node__op-select option:focus,
-.solenoid-node__op-select option:checked {
+.solenoid-node__select option:hover,
+.solenoid-node__select option:focus,
+.solenoid-node__select option:checked {
   background-color: var(--border-subtle);
   color: var(--text);
 }
@@ -1527,75 +1527,46 @@ body.solenoid-scrubbing * {
   justify-content: flex-start;
 }
 
-/* ─── Op selectors: operation vs argument ────────────────────────────────────
-   A card's dropdown either picks between distinct OPERATIONS or sets an ARGUMENT
-   of one operation. An operation selector carries an accent EDGE over the normal
-   neutral field; an argument selector is left alone.
-
-   An accent fill was tried first and pulled far too much weight for what it says
-   (author, 2026-07-27) — DESIGN.md's "accent never carries large fills" was right.
-   An edge says the same thing at the volume the distinction deserves.
-
-   THE CONFLICT THIS HAS TO DODGE: a full-strength accent border already means
-   FOCUS on this very control (see :focus below). So the resting edge takes the
-   --mix-emphasis rung (DESIGN.md, The Accent-Mix Ladder) and focus keeps the
-   pure accent. Author-walked 2026-08-05: 85% read too close to the focus
-   color, the header-band tint too subtle; the quiet-emphasis rung is the
-   in-between step.
+/* ─── Op pickers (DESIGN.md § Op pickers) ───────────────────────────────────
+   A card's OP picker (OpSelect / OpToggle, always bound to the node's `op`) is the
+   one body control that spends the accent: a 2px edge at the --mix-emphasis rung
+   (an accent fill pulled far too much weight; a full-strength edge already means
+   FOCUS, see below). An ARGUMENT picker (ArgSelect / SegToggle) is a plain neutral
+   field and never reaches these rules; the two are different components, so no
+   attribute or family lookup decides which is which.
 
    The 2px edge is paid for out of the PADDING, not the box: the neutral field's
-   1px border with 4px/8px padding becomes a 2px border with 3px/7px, so an
-   operation selector occupies exactly the same space as a neutral one and no row
-   reflows when a family is reclassified.
+   1px border with 4px/8px padding becomes a 2px border with 3px/7px, so an op
+   picker occupies exactly the same space as a neutral one.
 
-   `data-op-kind` is set on the card root by NodeCard, and is ABSENT for a family
-   not yet declared in nodeOps.ts — an undeclared node stays neutral rather than
-   claiming to be an argument selector.
-
-   A SECONDARY select on an operation card (SUMIFS' per-criterion comparator,
-   CumPmt's payment timing) is an ARGUMENT and opts out via `data-op-arg`
-   (OpSelect's `arg` prop) — the descendant match alone would edge every select
-   in the card. */
-/* An OPERATION selector renders at the TOP of the card body, above the input
-   rows (author, 2026-08-05): the op names what the card does, so it reads
-   before the inputs it shapes. Enforced HERE as flex order rather than in a
-   hundred components — the body is a flex column, so one rule hoists every
-   current and future node's op selector; component JSX keeps its natural
-   order. Requires the selector to be a DIRECT body child (the norm; a wrapper
-   div would pin it in place). Argument selectors stay in their rows. Socket
-   rows measure offsetTop after layout, so cable endpoints follow the visual
-   order automatically. */
-.solenoid-node__body > .solenoid-node__op-select:not([data-op-arg]) {
+   The op picker renders at the TOP of the card body, above the input rows
+   (author, 2026-08-05): the op names what the card does, so it reads before the
+   inputs it shapes. Enforced here as flex order so component JSX keeps its
+   natural order; requires the picker to be a DIRECT body child. Socket rows
+   measure offsetTop after layout, so cable endpoints follow the visual order. */
+.solenoid-node__body > .solenoid-node__select--op {
   order: -1;
 }
-.solenoid-node[data-op-kind="operation"] .solenoid-node__op-select:not([data-op-arg]) {
+.solenoid-node__select--op {
   border-width: 2px;
   border-color: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-emphasis), var(--border));
   /* 1px off each side, so the outer box matches the 1px/4px/8px neutral field. */
   padding: 3px 23px 3px 7px;
 }
-
-/* Focus outranks the resting type edge: same width, full-strength accent. Declared
-   after (and at higher specificity than) the rule above so it always wins. */
-.solenoid-node[data-op-kind="operation"] .solenoid-node__op-select:not([data-op-arg]):focus {
+/* Focus outranks the resting edge: same width, full-strength accent. */
+.solenoid-node__select--op:focus {
   border-color: var(--node-accent, var(--accent));
 }
 
-/* A SegToggle is the SAME picker in a different shape (Sparkline's chart type,
-   Surface's view, the resistor's band count all bind `op` there), so it takes the same
-   two rules: the family's op picker hoists, and it carries the accent on an operation
-   card. Those are one decision chain, not two axes — `arg` says the control is not the
-   family picker at all, and for the picker itself the family's `kind` alone decides the
-   accent. Binding `op` is not a second vote: the field name only lets NODE_OPS attach.
-   So the NEUTRAL case is the common one (SegToggle.css defines it) — every `arg`
-   toggle, plus the family picker on any argument-kind card, which is most of them. */
-.solenoid-node__body > .solenoid-seg:not([data-op-arg]) {
+/* OpToggle is the same picker in segmented shape: hoisted, accented on the pressed
+   segment. SegToggle.css defines the neutral argument look it starts from. */
+.solenoid-node__body > .solenoid-seg--op {
   order: -1;
 }
-.solenoid-node[data-op-kind="operation"] .solenoid-seg:not([data-op-arg]) .solenoid-segbtn {
+.solenoid-seg--op .solenoid-segbtn {
   background: var(--border-subtle);
 }
-.solenoid-node[data-op-kind="operation"] .solenoid-seg:not([data-op-arg]) .solenoid-segbtn--on {
+.solenoid-seg--op .solenoid-segbtn--on {
   background: color-mix(in srgb, var(--node-accent, var(--accent)) var(--mix-hairline), var(--border-subtle));
   border-color: var(--node-accent, var(--accent));
   color: var(--text);

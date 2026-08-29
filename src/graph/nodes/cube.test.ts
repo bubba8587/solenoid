@@ -25,7 +25,7 @@ function productsCube(unitCosts: { hinge: number; panel: number }) {
 }
 
 function rollup(cube: ReturnType<typeof productsCube>, op: "sum" | "avg" | "count" = "sum") {
-  const node = new CubeRollupNode({ op });
+  const node = new CubeRollupNode({ agg: op });
   node.stringLiterals = { nested: "Lines", column: "ExtendedCost", as: "TotalCost" };
   return node.data({ cube: [cube] }).frame as FrameValue;
 }

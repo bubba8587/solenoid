@@ -475,7 +475,7 @@ describe("Window — per-group columns in original row order (pandas groupby().t
   it("no partition = the whole frame; no order = input order; a missing column is #REF!", async () => {
     expect(col(windowFrame(f, { partitionBy: [], fn: "cumsum", column: "v", as: "c" }), "c")).toEqual([10, 30, 60, null, 110, 170]);
     expect(() => windowFrame(f, { partitionBy: ["nope"], fn: "row_number", as: "r" })).toThrow();
-    const node = new WindowNode({ op: "cumsum" }); node.stringLiterals = { orderBy: "t", column: "v", name: "" };
+    const node = new WindowNode({ agg: "cumsum" }); node.stringLiterals = { orderBy: "t", column: "v", name: "" };
     const out = await readFrame((await node.data({ frame: [f], keys: [["g"]] })).frame as never) as FrameValue; // lazy node → collect
     expect(out.columns.map((c) => c.name)).toEqual(["g", "t", "v", "running_sum_v"]);
     expect(col(out, "running_sum_v")).toEqual([90, 20, 30, null, 80, 80]);
@@ -548,7 +548,7 @@ describe("text tier 2: UNACCENT / SLUGIFY / Pad Text / Truncate Text", () => {
     const x = new TextTransformNode({ op: "slugify" });
     expect(x.data({ text: [["Café Noir", "B&B Inn"]] }).result).toEqual(["cafe-noir", "b-b-inn"]);
     expect(new TextTransformNode({ op: "unaccent" }).data({ text: ["naïve"] }).result).toBe("naive");
-    const pad = new PadTextNode({ op: "left" });
+    const pad = new PadTextNode({ side: "left" });
     pad.literals.width = 4; pad.stringLiterals.fill = "0";
     expect(pad.data({ text: [["7", "42"]] }).result).toEqual(["0007", "0042"]);
     const tr = new TruncateTextNode();
@@ -652,9 +652,9 @@ describe("Returns card — pandas pct_change / cumprod, PerformanceAnalytics (re
 describe("Hash / UUID / Base64 (hashlib, uuid4, base64 — digests pinned in hashOps.test.ts)", () => {
   const ev = (e: string) => compileEvaluator(e)!({});
   it("the Hash card broadcasts and follows its algorithm; HASH(text, [algorithm]) agrees", () => {
-    const n = new HashNode({ op: "md5" });
+    const n = new HashNode({ algorithm: "md5" });
     expect(n.data({ text: [["abc", "hello world"]] }).result).toEqual(["900150983cd24fb0d6963f7d28e17f72", "5eb63bbbe01eeed093cb22bb8f5acdc3"]);
-    n.op = "crc32";
+    n.algorithm = "crc32";
     expect(n.data({ text: ["abc"] }).result).toBe("352441c2");
     expect(ev('HASH("abc")')).toBe("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
     expect(ev('HASH("abc", "SHA-1")')).toBe("a9993e364706816aba3e25717850c26c9cd0d89d");

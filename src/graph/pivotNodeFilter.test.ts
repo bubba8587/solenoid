@@ -17,7 +17,7 @@ const col = (f: FrameValue, name: string) => f.columns.find((c) => c.name === na
 
 describe("PivotNode field-value filter", () => {
   it("excludes rows whose value key is hidden", () => {
-    const node = new PivotNode({ label: "P", op: "sum" });
+    const node = new PivotNode({ label: "P", agg: "sum" });
     node.filterExclude = { Region: ["S"] };
     const out = node.data({ frame: [frame], rowFields: [["Region"]], colFields: [[]], values: [["Amount"]] });
     expect(isFrameValue(out.frame)).toBe(true);
@@ -27,14 +27,14 @@ describe("PivotNode field-value filter", () => {
   });
 
   it("an empty exclude set is a no-op", () => {
-    const node = new PivotNode({ label: "P", op: "sum" });
+    const node = new PivotNode({ label: "P", agg: "sum" });
     node.filterExclude = { Region: [] };
     const out = node.data({ frame: [frame], rowFields: [["Region"]], colFields: [[]], values: [["Amount"]] });
     expect(col(out.frame as FrameValue, "Region")).toEqual(["N", "S"]);
   });
 
   it("ANDs with a wired logical mask", () => {
-    const node = new PivotNode({ label: "P", op: "sum" });
+    const node = new PivotNode({ label: "P", agg: "sum" });
     node.filterExclude = { Region: ["S"] };
     // wired mask keeps rows 0,1 only; the field filter then also drops S (row 1).
     const out = node.data({ frame: [frame], rowFields: [["Region"]], colFields: [[]], values: [["Amount"]], filter: [[true, true, false, false]] });
@@ -44,7 +44,7 @@ describe("PivotNode field-value filter", () => {
   });
 
   it("stashes distinct value keys for the editor's checklist", () => {
-    const node = new PivotNode({ label: "P", op: "sum" });
+    const node = new PivotNode({ label: "P", agg: "sum" });
     node.data({ frame: [frame], rowFields: [["Region"]], colFields: [[]], values: [["Amount"]] });
     const region = node.sourceColumns.find((c) => c.name === "Region");
     expect(region?.distinct).toEqual(["N", "S"]);
@@ -65,7 +65,7 @@ describe("PivotNode flushes stale fields on frame change", () => {
   };
 
   it("drops fields, per-value funcs, and filters for columns the new frame lacks", () => {
-    const node = new PivotNode({ label: "P", op: "sum" });
+    const node = new PivotNode({ label: "P", agg: "sum" });
     node.stringLiterals.rowFields = "Region"; // still valid
     node.stringLiterals.values = "Amount";    // stale after the swap
     node.funcs = { Amount: "avg" };           // stale
@@ -78,7 +78,7 @@ describe("PivotNode flushes stale fields on frame change", () => {
   });
 
   it("leaves a still-valid field untouched", () => {
-    const node = new PivotNode({ label: "P", op: "sum" });
+    const node = new PivotNode({ label: "P", agg: "sum" });
     node.stringLiterals.values = "qty";
     node.data({ frame: [swapped], rowFields: [["Region"]], colFields: [[]], values: [["qty"]] });
     expect(node.stringLiterals.values).toBe("qty");

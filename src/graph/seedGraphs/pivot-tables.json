@@ -34,7 +34,7 @@
       "y": -360,
       "init": {
         "label": "Revenue: Region × Category (SUM + totals)",
-        "op": "sum",
+        "agg": "sum",
         "rowTotalDepth": 1,
         "colTotalDepth": 1
       },
@@ -51,7 +51,7 @@
       "y": -360,
       "init": {
         "label": "Revenue by Rep — sorted high→low",
-        "op": "sum",
+        "agg": "sum",
         "rowTotalDepth": 1,
         "rowSort": -2
       },
@@ -68,7 +68,7 @@
       "y": -360,
       "init": {
         "label": "Units (SUM) & Price (AVG) by Category",
-        "op": "sum",
+        "agg": "sum",
         "funcs": {
           "Units": "sum",
           "Price": "avg"
@@ -87,7 +87,7 @@
       "y": 100,
       "init": {
         "label": "Revenue: Region × Month (col totals)",
-        "op": "sum",
+        "agg": "sum",
         "colTotalDepth": 1
       },
       "stringLiterals": {
@@ -103,7 +103,7 @@
       "y": 100,
       "init": {
         "label": "Revenue share by Region (% of grand)",
-        "op": "percentof",
+        "agg": "percentof",
         "relativeTo": 2
       },
       "stringLiterals": {
@@ -119,7 +119,7 @@
       "y": 100,
       "init": {
         "label": "Region → Category, with subtotals",
-        "op": "sum",
+        "agg": "sum",
         "rowTotalDepth": 2
       },
       "stringLiterals": {
@@ -135,7 +135,7 @@
       "y": 560,
       "init": {
         "label": "Order count: Region × Channel",
-        "op": "count",
+        "agg": "count",
         "rowTotalDepth": 1,
         "colTotalDepth": 1
       },
@@ -152,7 +152,7 @@
       "y": 560,
       "init": {
         "label": "Median Revenue & Max Units by Rep",
-        "op": "sum",
+        "agg": "sum",
         "funcs": {
           "Revenue": "median",
           "Units": "max"

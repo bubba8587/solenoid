@@ -70,8 +70,8 @@ describe("Element data", () => {
   });
 
   it("node outputs and stale-op fallback", () => {
-    expect(new ElementNode({ op: "Fe" }).data()).toEqual({ mass: 55.845, number: 26 });
-    expect(new ElementNode({ op: "Xx" }).op).toBe("H");
+    expect(new ElementNode({ symbol: "Fe" }).data()).toEqual({ mass: 55.845, number: 26 });
+    expect(new ElementNode({ symbol: "Xx" }).symbol).toBe("H");
   });
 });
 

@@ -123,7 +123,7 @@ export function makeFrameShapeResolver(editor: AnyEditor): FrameShapeResolver {
         const keys = csvList(n, "keys");
         const col = lit(n, "column").trim();
         if (!keys.length || !col) return input;
-        return shapeOf({ kind: "groupBy", keys, aggs: [{ column: col, op: n.op, as: col }] }, input);
+        return shapeOf({ kind: "groupBy", keys, aggs: [{ column: col, op: n.agg, as: col }] }, input);
       }
       if (n instanceof UnpivotNode) {
         const input = inputShape(nodeId, "frame");
@@ -140,7 +140,7 @@ export function makeFrameShapeResolver(editor: AnyEditor): FrameShapeResolver {
         const colFields = csvList(n, "colFields").filter((f) => valid.has(f));
         const values = csvList(n, "values").filter((f) => valid.has(f));
         if (!values.length) return input;
-        const funcs = values.map((name) => n.funcs[name] ?? n.op);
+        const funcs = values.map((name) => n.funcs[name] ?? n.agg);
         return shapeOf({ kind: "pivot", rowFields, colFields, values, funcs }, input);
       }
       if (n instanceof JoinNode) {

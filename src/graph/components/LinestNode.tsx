@@ -5,7 +5,7 @@ import { processGraph } from "../process";
 import { getActiveArea } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
-import { SegToggle } from "./SegToggle";
+import { OpToggle } from "./SegToggle";
 
 export function LinestComponent({ data, emit }: NodeProps<LinestNodeType>) {
   const [op, setOp] = useState<FitOp>(data.op);
@@ -20,7 +20,7 @@ export function LinestComponent({ data, emit }: NodeProps<LinestNodeType>) {
 
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <SegToggle value={op} options={FIT_OP_OPTIONS} onChange={(s) => void pickOp(s)} />
+      <OpToggle value={op} options={FIT_OP_OPTIONS} onChange={(s) => void pickOp(s)} />
       <InlineInputs node={data} emit={emit} />
       <div className="solenoid-node__section-divider" />
       <InlineOutputRows

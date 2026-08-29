@@ -152,7 +152,7 @@ relapse.
 | `nodes/listOps.ts`, `textOps.ts`, `financeOps.ts`, `matrixOps.ts`, `indexAccess.ts`, `dateSerial.ts`, `convertUnits.ts` — and ANY new shared node↔formula module | `rules.md` shareImpl (one impl, two surfaces), implReteFree (rete-free; what not to extract) |
 | `computedColumnCore.ts` | tableRefSemantics, noPerCellFormulas; `rules.md` rowFormulaRefs |
 | `frameVerbs.ts`, `frameBackend.ts`, `frame.ts` | `glossary.md` (FrameRef); polarsEngine, arraySemantics; cargo parity tests |
-| `nodeOps.ts` (op declarations) | aggregatorsAreArguments (aggregators are arguments); `node-coverage.md` |
+| `nodeOps.ts`, any `op` field, `OpSelect`/`ArgSelect`/`SegToggle`/`OpToggle` | `rules.md` opArgDistinct; `../DESIGN.md` § Op pickers; aggregatorsAreArguments; `node-coverage.md` |
 | `nodeCatalog.ts` | `node-coverage.md`; currentExcelParity (eliminated functions stay eliminated) |
 | any `.css`, any visual change | `../DESIGN.md` |
 | any bar/overlay position or z-index | `layout-chrome.md` |

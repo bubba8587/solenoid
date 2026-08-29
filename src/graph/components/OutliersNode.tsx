@@ -1,7 +1,7 @@
 import { OUTLIER_METHOD_META } from "../rete-nodes";
 import type { OutliersNode as OutliersNodeType, OutlierMethod } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
-import { NodeShell, OpSelect, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, ArgSelect, useNodeField, type NodeProps } from "./nodeKit";
 import { FrameDisplay } from "./FrameDisplay";
 import { nodeDisplayName } from "../catalogUtils";
 
@@ -13,7 +13,7 @@ export function OutliersComponent({ data, emit }: NodeProps<OutliersNodeType>) {
   const [method, setMethod] = useNodeField(data, "method");
   return (
     <NodeShell node={data} emit={emit}>
-      <OpSelect arg value={method} onChange={setMethod} options={METHODS} />
+      <ArgSelect value={method} onChange={setMethod} options={METHODS} />
       <InlineInputs node={data} emit={emit} />
       <div className="solenoid-node__section-divider" />
       <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />

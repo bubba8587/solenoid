@@ -5,7 +5,7 @@ import { processGraph } from "../process";
 import { getActiveArea } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
-import { SegToggle } from "./SegToggle";
+import { OpToggle } from "./SegToggle";
 import { dropInputCables } from "./cablePrune";
 
 export function IrrComponent({ data, emit }: NodeProps<IrrNodeType>) {
@@ -22,7 +22,7 @@ export function IrrComponent({ data, emit }: NodeProps<IrrNodeType>) {
 
   return (
     <NodeShell node={data} emit={emit}>
-      <SegToggle value={op} options={CASHFLOW_OP_OPTIONS} onChange={(m) => void pickOp(m)} />
+      <OpToggle value={op} options={CASHFLOW_OP_OPTIONS} onChange={(m) => void pickOp(m)} />
       <InlineInputs node={data} emit={emit} />
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>

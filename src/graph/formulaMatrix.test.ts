@@ -184,8 +184,8 @@ describe("matricesInFormulas tranche 2 — the array-returning core, node-equals
     const { UniqueNode, SortNode } = await import("./nodes/list");
     const x = [3, 1, 3, null, 2];
     expect(ev("UNIQUE(x)", { x: [3, 1, 3, 2] })).toEqual(new UniqueNode().data({ list: [[3, 1, 3, 2]] }).result);
-    expect(ev("SORT(x)", { x })).toEqual(new SortNode({ op: "asc" }).data({ list: [x] }).result);
-    expect(ev("SORT(x,,-1)", { x })).toEqual(new SortNode({ op: "desc" }).data({ list: [x] }).result);
+    expect(ev("SORT(x)", { x })).toEqual(new SortNode({ order: "asc" }).data({ list: [x] }).result);
+    expect(ev("SORT(x,,-1)", { x })).toEqual(new SortNode({ order: "desc" }).data({ list: [x] }).result);
     // SORTBY is the Sort node's optional `by` input (equal-length ⇒ same as the formula's pad).
     const a = ["x", "y", "z"], by = [3, 1, 2];
     expect(ev("SORTBY(a, b)", { a, b: by })).toEqual(new SortNode().data({ list: [a], by: [by] }).result);

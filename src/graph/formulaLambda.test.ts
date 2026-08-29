@@ -76,7 +76,7 @@ describe("each host computes what its node computes (shareImpl)", () => {
     // with the task-shaped RUNNING("sum", x). Asserted against the NODE so this pins
     // the lambda machinery, not the RUNNING wrapper (formulaTier3 covers that).
     expect(ev("SCAN(0, x, LAMBDA(a, v, a + v))", { x: [1, 2, 3, 4] }))
-      .toEqual(new RunningNode({ op: "sum" }).data({ list: [[1, 2, 3, 4]] }).result);
+      .toEqual(new RunningNode({ agg: "sum" }).data({ list: [[1, 2, 3, 4]] }).result);
   });
 
   it("MAKEARRAY — (row, col) 1-based; an n×1 result reads as a LIST", () => {
@@ -89,7 +89,7 @@ describe("each host computes what its node computes (shareImpl)", () => {
 
   it("GROUPBY — first-seen groups, VALUE-keyed, lambda per group's value list", () => {
     const k = ["a", "b", "a", "b"], v = [1, 2, 3, 4];
-    const node = new GroupByNode({ op: "sum" });
+    const node = new GroupByNode({ agg: "sum" });
     // The node emits one Key/Value frame now (C5); the GROUPBY formula still spills [key, value] rows.
     const cols = node.data({ keys: [k], values: [v] }).result!.columns;
     const fx = ev("GROUPBY(k, v, LAMBDA(g, SUM(g)))", { k, v }) as unknown[][];

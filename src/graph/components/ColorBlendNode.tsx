@@ -2,7 +2,7 @@ import { BLEND_MODE_META } from "../rete-nodes";
 import type { ColorBlendNode as ColorBlendNodeType, BlendMode } from "../rete-nodes";
 import { isSolError } from "../errorValue";
 import { InlineInputs } from "./inlineInput";
-import { NodeShell, OpSelect, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, ArgSelect, useNodeField, type NodeProps } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { ErrorChip } from "./ErrorChip";
 
@@ -12,15 +12,15 @@ const MODE_OPTS = (Object.keys(BLEND_MODE_META) as BlendMode[]).map((m) => ({
 }));
 
 export function ColorBlendComponent({ data, emit }: NodeProps<ColorBlendNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
+  const [mode, setMode] = useNodeField(data, "mode");
   const out = data.cachedString;
   const colorOut = data.outputs.color;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <InlineInputs node={data} emit={emit} />
-      {/* Direct body child — the top-of-card op-selector hoist (nodeCard.css
+      {/* Direct body child — the top-of-card mode-selector hoist (nodeCard.css
           flex order) only reaches unwrapped selects. */}
-      <OpSelect value={op} onChange={setOp} options={MODE_OPTS} />
+      <ArgSelect value={mode} onChange={setMode} options={MODE_OPTS} />
       {colorOut && (
         <MeasuredSocketRow side="output" socketKey="color" nodeId={data.id} emit={emit} payload={colorOut.socket}>
           {isSolError(out) ? (

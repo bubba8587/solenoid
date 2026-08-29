@@ -60,11 +60,10 @@ function walk(entries: CatalogEntry[], path: string[], out: ParityRow[], formula
     if (leaf.hidden) continue;
     const excel = (leaf.excel ?? NODE_EXCEL[leaf.type] ?? []).map((x) => x.excel.toUpperCase());
     // An op family's leaf label names the family, so it is covered when every OP is
-    // callable. OPERATION-kind only: an argument-kind family's op labels are argument
-    // VALUES that collide with unrelated names (Group Lists' SUM/AVERAGE/…), which
-    // would count the leaf callable while GROUPBY itself answers #NAME?.
+    // callable. Argument families are not in NODE_OPS (rules opArgDistinct), so an
+    // aggregator VALUE like Group By's SUM never counts GROUPBY as callable.
     const decl = opsFor(leaf.type);
-    const ops = decl?.kind === "operation" ? decl.ops : undefined;
+    const ops = decl?.ops;
     const excelCovered = excelCoverage(excel, (x) => formulaNames.has(x));
     const inFormula = excel.some((x) => formulaNames.has(x))
       || formulaNames.has(despace(leaf.label))

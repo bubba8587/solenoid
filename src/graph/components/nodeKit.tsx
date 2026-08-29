@@ -402,32 +402,17 @@ function opGrouped<T extends string>(options: ReadonlyArray<OpOption<T>>) {
   });
 }
 
-export function OpSelect<T extends string>({
-  value,
-  onChange,
-  options,
-  arg,
-}: {
+type PickProps<T extends string> = {
   value: T;
   onChange: (next: T) => void;
   options: ReadonlyArray<OpOption<T>>;
-  /** This control is NOT the family's op selector — a per-criterion comparator, a
-   *  payment timing, a digit pick. That is ALL it says.
-   *
-   *  It is NOT a way to declare "my ops are arguments": op-vs-arg has one home, `kind`
-   *  on the family's NODE_OPS declaration, and most families whose picker binds `op`
-   *  are declared `argument` there (Group By, Running, the resistor) and render
-   *  neutral. Saying it here too would let a card assert it twice and drift, so a
-   *  control bound to the node's own `op` may not carry `arg` (sourceInvariants).
-   *  Two consumers: the accent edge skips arg selects, and selectorNamedOp's source scan
-   *  requires every NON-arg picker to bind a field named `op`. */
-  arg?: boolean;
-}) {
+};
+
+function PickSelect<T extends string>({ value, onChange, options, className }: PickProps<T> & { className: string }) {
   const hasGroups = options.some((o) => o.group != null);
   return (
     <LazySelect
-      className="solenoid-node__op-select"
-      data-op-arg={arg ? "" : undefined}
+      className={className}
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
       onPointerDown={(e) => e.stopPropagation()}
@@ -439,6 +424,21 @@ export function OpSelect<T extends string>({
       }
     </LazySelect>
   );
+}
+
+/** The family's OP picker: binds the node's `op`, whose values are the family's
+ *  NODE_OPS ops (each a top-level formula function and an Add-menu row). Hoisted to
+ *  the top of the body and edged in the accent by nodeCard.css (DESIGN.md § Op
+ *  pickers). An argument never uses this — see ArgSelect. */
+export function OpSelect<T extends string>(props: PickProps<T>) {
+  return <PickSelect {...props} className="solenoid-node__select solenoid-node__select--op" />;
+}
+
+/** An ARGUMENT picker: a parameter of the node's one function (a sort order, an
+ *  aggregator, a criterion comparator). Neutral, sits in its row, and its field is
+ *  never named `op` (sourceInvariants opArgDistinct). */
+export function ArgSelect<T extends string>(props: PickProps<T>) {
+  return <PickSelect {...props} className="solenoid-node__select" />;
 }
 
 // The copy-value glyph is the `sol-copy-icon` masked ::before in nodeCard.css.

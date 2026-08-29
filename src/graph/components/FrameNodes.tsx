@@ -70,7 +70,7 @@ import { ResultDisplay } from "./ResultDisplay";
 import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { ArrayChip } from "./ArrayChip";
 import { readChipPopupStyle } from "./chipStyle";
-import { NodeShell, ValueDisplay, OpSelect, useNodeField, renderTextMarkdownHtml, type NodeProps, type OpOption } from "./nodeKit";
+import { NodeShell, ValueDisplay, OpSelect, ArgSelect, useNodeField, renderTextMarkdownHtml, type NodeProps, type OpOption } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { applyGetColumnReadAs, applyAddColumnAddAs, applySplitColType } from "./frameEdit";
@@ -202,7 +202,7 @@ export function SortFrameComponent({ data, emit }: NodeProps<SortFrameNodeType>)
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <SegToggle arg value={dir} options={SORT_DIR_OPTIONS} onChange={setDir} />
+      <SegToggle value={dir} options={SORT_DIR_OPTIONS} onChange={setDir} />
       <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
   );
@@ -289,7 +289,7 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
         <>
           <InlineInputs node={data} emit={emit} keys={["frame"]} />
           {pairs.length > 1 && (
-            <SegToggle arg value={combine} options={FILTER_COMBINE_OPTIONS} onChange={setCombine} />
+            <SegToggle value={combine} options={FILTER_COMBINE_OPTIONS} onChange={setCombine} />
           )}
           {pairs.map(([colKey, valKey], i) => {
             const id = colKey.slice(6);
@@ -314,7 +314,7 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
                     </button>
                   )}
                 </MeasuredSocketRow>
-                <OpSelect arg value={c.op} options={FILTER_OP_OPTIONS_WITH_ERROR} onChange={(op) => updateCfg(id, { op })} />
+                <ArgSelect value={c.op} options={FILTER_OP_OPTIONS_WITH_ERROR} onChange={(op) => updateCfg(id, { op })} />
                 {(!VALUELESS_OPS.has(c.op) || connected.has(valKey)) && (
                 <MeasuredSocketRow side="input" socketKey={valKey} nodeId={data.id} emit={emit} payload={data.inputs[valKey]!.socket}>
                   <span className="solenoid-node__io-label">Value</span>
@@ -392,8 +392,8 @@ export function JoinComponent({ data, emit }: NodeProps<JoinNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect arg value={how} options={JOIN_HOW_OPTIONS} onChange={setHow} />
-      {how === "asof" && <SegToggle arg value={asofDirection} options={ASOF_DIRECTION_OPTIONS} onChange={setAsofDirection} />}
+      <ArgSelect value={how} options={JOIN_HOW_OPTIONS} onChange={setHow} />
+      {how === "asof" && <SegToggle value={asofDirection} options={ASOF_DIRECTION_OPTIONS} onChange={setAsofDirection} />}
       <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
   );
@@ -432,13 +432,13 @@ const GROUP_TOTAL_OPTIONS = [
 ];
 
 export function GroupByFrameComponent({ data, emit }: NodeProps<GroupByFrameNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
+  const [agg, setAgg] = useNodeField(data, "agg");
   const [totalDepth, setTotalDepth] = useNodeField(data, "totalDepth");
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect value={op} options={AGG_OP_OPTIONS} onChange={setOp} />
-      <OpSelect arg value={String(totalDepth)} options={GROUP_TOTAL_OPTIONS} onChange={(v) => setTotalDepth(Number(v))} />
+      <ArgSelect value={agg} options={AGG_OP_OPTIONS} onChange={setAgg} />
+      <ArgSelect value={String(totalDepth)} options={GROUP_TOTAL_OPTIONS} onChange={(v) => setTotalDepth(Number(v))} />
       <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
   );
@@ -459,7 +459,7 @@ function pivotSummary(data: PivotNodeType): string {
   const parts: string[] = [];
   if (rows.length) parts.push(`Rows: ${rows.join(", ")}`);
   if (cols.length) parts.push(`Cols: ${cols.join(", ")}`);
-  if (vals.length) parts.push(`Σ ${vals.map((v) => `${v} (${(data.funcs?.[v] ?? data.op).toUpperCase()})`).join(", ")}`);
+  if (vals.length) parts.push(`Σ ${vals.map((v) => `${v} (${(data.funcs?.[v] ?? data.agg).toUpperCase()})`).join(", ")}`);
   return parts.join(" · ");
 }
 
@@ -580,7 +580,7 @@ export function FillBlanksComponent({ data, emit }: NodeProps<FillBlanksNodeType
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <SegToggle arg value={dir} options={FILL_DIR_OPTIONS} onChange={setDir} />
+      <SegToggle value={dir} options={FILL_DIR_OPTIONS} onChange={setDir} />
       <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
   );
@@ -596,7 +596,7 @@ export function ReplaceValuesComponent({ data, emit }: NodeProps<ReplaceValuesNo
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <SegToggle arg value={mode} options={REPLACE_MODE_OPTIONS} onChange={setMode} />
+      <SegToggle value={mode} options={REPLACE_MODE_OPTIONS} onChange={setMode} />
       <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
   );
@@ -615,11 +615,11 @@ const HEADER_OP_OPTIONS = (Object.entries(HEADER_OP_META) as [HeaderOp, { label:
   .map(([value, m]) => ({ value, label: m.label, title: m.description }));
 
 export function HeadersComponent({ data, emit }: NodeProps<HeadersNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
+  const [action, setAction] = useNodeField(data, "action");
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect value={op} onChange={setOp} options={HEADER_OP_OPTIONS} />
+      <ArgSelect value={action} onChange={setAction} options={HEADER_OP_OPTIONS} />
       <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
   );
@@ -629,11 +629,11 @@ const BLANK_ROW_OPTIONS = (Object.entries(BLANK_ROW_OP_META) as [BlankRowMode, {
   .map(([value, m]) => ({ value, label: m.label, title: m.description }));
 
 export function DropBlankRowsComponent({ data, emit }: NodeProps<DropBlankRowsNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
+  const [mode, setMode] = useNodeField(data, "mode");
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect value={op} onChange={setOp} options={BLANK_ROW_OPTIONS} />
+      <ArgSelect value={mode} onChange={setMode} options={BLANK_ROW_OPTIONS} />
       <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
   );
@@ -694,7 +694,7 @@ export function DecisionMatrixComponent({ data, emit }: NodeProps<DecisionMatrix
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} cableOnlyKeys={DECISION_CABLE_ONLY} />
       <div className="solenoid-node__dm-caption" title="The default for every criterion. Norm on a row overrides it.">Normalize</div>
-      <SegToggle arg value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
+      <SegToggle value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
       <div className="solenoid-node__dm-weights">
         {criteria.length === 0 ? (
           <div className="solenoid-node__dm-hint">— connect a Scores frame</div>
@@ -711,14 +711,14 @@ export function DecisionMatrixComponent({ data, emit }: NodeProps<DecisionMatrix
                 {wired
                   ? <span className="solenoid-node__dm-col-weight solenoid-node__dm-weight-ro" title="From the wired Weights list">{wiredWeightAt(i)}</span>
                   : <InlineNumberField value={data.weightMap[name] ?? 1} onChange={(v) => setWeight(name, v)} />}
-                <OpSelect arg value={data.normMap[name] ?? ""} options={DECISION_PERCOL_OPTIONS} onChange={(m) => setNorm(name, m)} />
+                <ArgSelect value={data.normMap[name] ?? ""} options={DECISION_PERCOL_OPTIONS} onChange={(m) => setNorm(name, m)} />
               </div>
             ))}
           </>
         )}
       </div>
       <div className="solenoid-node__dm-caption">Output</div>
-      <SegToggle arg value={detail} options={DECISION_DETAIL_OPTIONS} onChange={setDetail} />
+      <SegToggle value={detail} options={DECISION_DETAIL_OPTIONS} onChange={setDetail} />
       <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
   );
@@ -733,7 +733,7 @@ export function DecisionSensitivityComponent({ data, emit }: NodeProps<DecisionS
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <div className="solenoid-node__dm-caption" title="Applies to every criterion, in every scenario.">Normalize</div>
-      <SegToggle arg value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
+      <SegToggle value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
       <CubeDisplay cube={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
   );
@@ -797,7 +797,7 @@ export function SplitFrameComponent({ data, emit }: NodeProps<SplitFrameNodeType
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <InlineInputs node={data} emit={emit} />
-      <SegToggle arg value={colType} options={SPLIT_COLTYPE_OPTIONS} onChange={(next) => { setColType(next); void applySplitColType(data, next); }} />
+      <SegToggle value={colType} options={SPLIT_COLTYPE_OPTIONS} onChange={(next) => { setColType(next); void applySplitColType(data, next); }} />
       <MeasuredSocketRow side="output" socketKey="matrix" nodeId={data.id} emit={emit} payload={data.outputs.matrix!.socket}>
         <span className="solenoid-node__io-label">Matrix</span>
         <span className="solenoid-node__output-value" style={{ display: "flex", justifyContent: "flex-end" }}>
@@ -836,7 +836,7 @@ export function GetColumnComponent({ data, emit }: NodeProps<GetColumnNodeType>)
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <SegToggle arg
+      <SegToggle
         value={readAs}
         options={GET_COLUMN_READ_OPTIONS}
         onChange={(next) => { setReadAs(next); void applyGetColumnReadAs(data, next); }}
@@ -864,7 +864,7 @@ export function AddColumnComponent({ data, emit }: NodeProps<AddColumnNodeType>)
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <SegToggle arg
+      <SegToggle
         value={addAs}
         options={ADD_COLUMN_OPTIONS}
         onChange={(next) => { setAddAs(next); void applyAddColumnAddAs(data, next); }}
@@ -914,7 +914,7 @@ export function ComputedColumnComponent({ data, emit }: NodeProps<ComputedColumn
         locked={false}
         onOpen={() => formulaPopup.open(data.id)}
       />
-      <OpSelect arg value={addAs} onChange={setAddAs} options={COMPUTED_AS_OPTIONS} />
+      <ArgSelect value={addAs} onChange={setAddAs} options={COMPUTED_AS_OPTIONS} />
       {/* Binding pickers — one quiet row per variable/param, shown once a
           frame is wired. Auto = the by-name ladder (column, else `row`/`rows`,
           else a grown side input); a picked column ALWAYS reads that column,
@@ -923,8 +923,7 @@ export function ComputedColumnComponent({ data, emit }: NodeProps<ComputedColumn
       {data.defVars.length > 0 && data.sourceColumns.length > 0 && data.defVars.map((v) => (
         <div key={v} className="solenoid-node__field-row" title={`Where ${v} reads from`}>
           <span className="solenoid-node__field-label">{v}</span>
-          <OpSelect
-            arg
+          <ArgSelect
             value={data.bindings[v] ?? ""}
             onChange={(next) => bind(v, next)}
             options={[{ value: "", label: "auto" }, ...data.sourceColumns.map((c) => ({ value: c, label: c }))]}
@@ -966,8 +965,8 @@ export function XLookupComponent({ data, emit }: NodeProps<XLookupNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <SegToggle arg value={matchMode} options={LOOKUP_MATCH_OPTIONS} onChange={setMatchMode} />
-      <SegToggle arg value={searchMode} options={LOOKUP_SEARCH_OPTIONS} onChange={setSearchMode} />
+      <SegToggle value={matchMode} options={LOOKUP_MATCH_OPTIONS} onChange={setMatchMode} />
+      <SegToggle value={searchMode} options={LOOKUP_SEARCH_OPTIONS} onChange={setSearchMode} />
       {/* Return = * gives a whole row; a cube lookup can return a nested frame/cube
           cell — ResultDisplay routes Frame → FrameDisplay, Cube → CubeDisplay, else
           ValueDisplay (scalar). */}
@@ -995,7 +994,7 @@ export function CorrMatrixComponent({ data, emit }: NodeProps<CorrMatrixNodeType
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect arg value={method} onChange={setMethod} options={CORR_METHOD_OPTIONS} />
+      <ArgSelect value={method} onChange={setMethod} options={CORR_METHOD_OPTIONS} />
       <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
   );
@@ -1032,7 +1031,7 @@ export function PcaComponent({ data, emit }: NodeProps<PcaNodeType>) {
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <InlineInputs node={data} emit={emit} />
-      <SegToggle arg value={std} options={PCA_SCALE_OPTIONS} onChange={(v) => { setStd(v); data.standardize = v === "corr"; void processGraph(data.id); }} />
+      <SegToggle value={std} options={PCA_SCALE_OPTIONS} onChange={(v) => { setStd(v); data.standardize = v === "corr"; void processGraph(data.id); }} />
       {scoresOut && (
         <MeasuredSocketRow hero side="output" socketKey="scores" nodeId={data.id} emit={emit} payload={scoresOut.socket}>
           <div style={{ width: "100%" }}><FrameDisplay frame={data.cachedScores} label={nodeDisplayName(data)} /></div>
@@ -1077,10 +1076,10 @@ const WINDOW_FN_OPTIONS = (Object.keys(WINDOW_FN_META) as WindowFn[]).map((f) =>
 }));
 
 export function WindowComponent({ data, emit }: NodeProps<WindowNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
+  const [agg, setAgg] = useNodeField(data, "agg");
   return (
     <NodeShell node={data} emit={emit}>
-      <OpSelect value={op} onChange={setOp} options={WINDOW_FN_OPTIONS} />
+      <ArgSelect value={agg} onChange={setAgg} options={WINDOW_FN_OPTIONS} />
       <InlineInputs node={data} emit={emit} />
       <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>

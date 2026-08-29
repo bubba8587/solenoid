@@ -49,7 +49,7 @@ export function frameToJsonText(f: FrameValue): string {
 
 /** csv/json is a serialization-FORMAT config, not the family's op selector: the card
  *  is one "write a frame to a file" sink and the format is a parameter of it — so the
- *  component's toggle carries `arg` (selectorNamedOp) and the node stays a util accent. */
+ *  component's toggle is a SegToggle (an argument) and the node stays a util accent. */
 export type WriteFormat = "csv" | "json";
 
 export class WriteFileNode extends ClassicPreset.Node {

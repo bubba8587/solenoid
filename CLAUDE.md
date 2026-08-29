@@ -23,49 +23,28 @@ merge + version bump and stops. Installers build path-stripped via `npm run rele
 - **Vercel preview of `develop`**: keep `tsc` + `vitest` green, push to `develop`, they eyeball.
 - **Desktop build** (`npm run tauri build` / `release:desktop`): commit freely, hold pushes.
 
-Playwright screenshotting IS sanctioned (author 2026-08-17): drive the real app with
-playwright-core + the preinstalled Chromium and LOOK at what you changed before pushing; the
+Playwright screenshotting IS sanctioned when visual verification is relevant and necessary. Drive the real app with playwright-core + the preinstalled Chromium and LOOK at what you changed before pushing; the
 author still eyeballs the final result. Component render TESTS stay out (the vitest env is
 `node`); reserve tests for logic. When unsure which environment is active, ask rather than push.
 
 ## Environment constraints
 - **Tag pushes fail from a cloud/container session** (`send-pack: unexpected disconnect`);
-  branch pushes are fine. Don't retry or hunt for a workaround: push the branch, then hand the
-  author the one desktop command:
-  `git fetch origin main && git tag -a vX.Y.Z <sha> -m "Release vX.Y.Z" && git push origin vX.Y.Z`.
-- **WebFetch fabricates on JS-rendered sites.** Use `curl -sL -A "<browser UA>" <url> -o page.html`
-  and read the real content (Next.js/techcommunity pages server-render the article into a
-  `<script type="application/ld+json">` blob). Raw GitHub via `raw.githubusercontent.com` is fine.
+  branch pushes are fine. Don't retry or hunt for a workaround: push the branch, then remind the author to go to Github and create a release manually. 
 
 ## Project: Solenoid
 Visual computation graph — a node-based "Excel alternative" for data tables. React 19 + Vite +
-Tauri. The view is **React Flow** (every rete render package is deleted; no third render path);
-the headless graph model + dataflow engine are **`rete` core + `rete-engine`**, kept on purpose
-(decisions reactFlowView — author-ratified 2026-08-27). Relational verbs run on native Polars on desktop and an identical
-JS oracle on web behind the `FrameBackend` seam (decisions polarsEngine).
-
-### Current phase — 1.3 polish (author pivot, 2026-08-07)
-**1.3 ships basically as-is.** The queue (`docs/backlog.md`) is bugs, small patches and
-thorough SMALL-SCOPE polish sweeps — one node family, one seam, one subsystem at a time,
-investigated completely, fixed, pinned with a test, one terse digest line. Depth on something
-small beats breadth on anything. Feature-shaped work is parked in `docs/deferrals.md` — do NOT
-start it on your own initiative; note the finding and stay on scope.
+Tauri. The view is **React Flow**; the headless graph model + dataflow engine are **`rete` core + `rete-engine`**. Relational verbs run on native Polars on desktop and an identical JS oracle on web behind the `FrameBackend` seam (decisions polarsEngine).
 
 ### Docs map — read before touching code
 Start: `docs/mental-model.md` (how it RUNS, end to end), `docs/README.md` (the index + the
 **Code → spec routing table**: grep your file there before editing), `docs/glossary.md` (the
 invented vocabulary + the author's names for the on-screen chrome).
 - **`DESIGN.md` — READ BEFORE ANY UI/VISUAL CHANGE, and "UI change" includes STRINGS** (§7
-  Voice governs help markdown, catalog descriptions, tooltips, empty states). Hard rules you
-  will violate blind: no colored accent stripe by any technique, the Quiet Accent Rule, no
-  faux-3D/gradient/glassmorphism, no Captain-Obvious copy, edits commit on Enter/clickaway.
+  Voice governs help markdown, catalog descriptions, tooltips, empty states).
 - **`docs/rules.md` — the NORMATIVE spec.** Named MUST-rules with their enforcing tests
   (sockets, formula surface, value handling, persistence, engine, effects, stores). Read before
   changing sockets, names or value handling; cite rule names in comments and commits.
-- **`docs/decisions.md` — the relapse guard.** What stands and what would reopen it. It is
-  NOT a caution brake: no cross-cutting change needs a design pass or author sign-off — decide
-  on merits, do it, record it. The ONLY author-gated work: `main`/releases;
-  compositeToolbarReroute and conditionalFormatting (deferred author-present).
+- **`docs/decisions.md` — the relapse guard.** What stands and what would reopen it.
 - **`docs/subsystem-invariants.md` — the mechanics.** Read the section IN FULL before touching
   its subsystem: **React Flow surface contract** (anything on the canvas — what RF owns, groups
   as sub-flows, cables, sockets, overlays, boundaries), Pointer gestures (with
@@ -89,8 +68,7 @@ invented vocabulary + the author's names for the on-screen chrome).
 
 ### Pre-alpha — break freely (decisions noBackCompat)
 One user (the author): break old saves, old code, legacy names. No shims, aliases, migration
-maps or deprecation paths — make the clean change and update the seed JSONs + tests. When
-unsure whether to preserve something old, delete it.
+maps or deprecation paths — make the clean change and update the seed JSONs + tests. Aggressively prune outdated and unneeded things.
 
 ### Doc maintenance — RECONCILE, don't append
 When wrapping up (or asked to "update the docs"), in order:

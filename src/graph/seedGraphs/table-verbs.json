@@ -180,7 +180,7 @@
       "y": -440,
       "init": {
         "label": "Group By Rep → SUM(Amount)",
-        "op": "sum",
+        "agg": "sum",
         "totalDepth": 1
       },
       "stringLiterals": {
@@ -218,7 +218,7 @@
       "y": 367,
       "init": {
         "label": "Pivot → Rep × Region (SUM)",
-        "op": "sum"
+        "agg": "sum"
       },
       "stringLiterals": {
         "rowFields": "Rep",

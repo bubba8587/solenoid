@@ -4,7 +4,7 @@ import {
   ANTOINE,
   type AntoineOp,
 } from "../rete-nodes";
-import { NodeShell, OpSelect, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, ArgSelect, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 
 export function IsaAtmosphereComponent({ data, emit }: NodeProps<IsaAtmosphereNodeType>) {
@@ -30,11 +30,11 @@ const ANTOINE_OPS = (Object.entries(ANTOINE) as [AntoineOp, (typeof ANTOINE)[Ant
 );
 
 export function AntoineComponent({ data, emit }: NodeProps<AntoineNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
+  const [substance, setSubstance] = useNodeField(data, "substance");
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect value={op} onChange={setOp} options={ANTOINE_OPS} />
+      <ArgSelect value={substance} onChange={setSubstance} options={ANTOINE_OPS} />
       <InlineOutputRows
         node={data}
         emit={emit}

@@ -341,7 +341,7 @@ describe("the THIRD state — undefined is omitted, null is unknown", () => {
 
 describe("figure sinks — empty figure for a datum, neutral default for styling", () => {
   it("Gauge (Bar style): value and target go blank, but the track's scale keeps the card's bound", () => {
-    const node = new GaugeNode({ op: "bar" });
+    const node = new GaugeNode({ style: "bar" });
     node.literals.value = 42;
     node.literals.target = 80;
     node.literals.max = 250;
@@ -455,11 +455,11 @@ describe("Kleene logic THROUGH the real coercion wrapper", () => {
 
 describe("a CHECK never fires against a bound the graph withheld", () => {
   it("Alert (range): a wired blank High is unknown — status null, not the card's 100", () => {
-    const node = new AlertNode({ op: "range" });
+    const node = new AlertNode({ condition: "range" });
     node.literals.high = 100;
     expect(node.data({ value: [500], high: [null as unknown as number] }).result).toBeNull();
     // Unwired High keeps the card's bound and still alerts.
-    const unwired = new AlertNode({ op: "range" });
+    const unwired = new AlertNode({ condition: "range" });
     expect(unwired.data({ value: [500] }).result).toBe(2);
   });
 
@@ -617,7 +617,7 @@ describe("Input family — wired blank by role", () => {
   // Color A/B are operands: a wired blank propagates (blank out), it is NOT the
   // "isn't a color" #VALUE! that a typed-empty card gives.
   it("Color Blend: a wired blank color propagates, not a #VALUE! error", () => {
-    const node = new ColorBlendNode({ op: "mix" });
+    const node = new ColorBlendNode({ mode: "mix" });
     expect(node.data({ a: [null as unknown as string] }).color).toBeNull();
     // Unwired still blends the two card colors.
     const out = node.data({}).color;
@@ -754,7 +754,7 @@ describe("Output family — wired blank by role", () => {
   // Alert: a blank on an input the active mode reads makes the status unknown, which
   // never fires; an unwired slot still evaluates against the card's literal.
   it("Alert: a wired blank value is unknown (null status); unwired uses the literal", () => {
-    const node = new AlertNode({ op: "range" });
+    const node = new AlertNode({ condition: "range" });
     node.literals.value = 50; node.literals.low = 0; node.literals.high = 100;
     expect(node.data({ value: [null as unknown as number] }).result).toBeNull();
     expect(node.data({}).result).toBe(0);

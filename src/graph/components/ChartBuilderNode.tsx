@@ -1,6 +1,6 @@
 import type { ChartBuilderNode as ChartBuilderNodeType } from "../rete-nodes";
 import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST, type ChartBuilderKey } from "../nodes/chartOptions";
-import { NodeShell, OpSelect, useNodeField, type NodeProps, type ShellNode, type Emit } from "./nodeKit";
+import { NodeShell, ArgSelect, useNodeField, type NodeProps, type ShellNode, type Emit } from "./nodeKit";
 import { InlineInputs, useConnectedInputs, useIncomingSources } from "./inlineInput";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { processGraph } from "../process";
@@ -78,7 +78,7 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <div style={{ padding: "2px 0 4px" }}>
-        <OpSelect arg value={target} onChange={setTarget} options={TARGET_OPTS} />
+        <ArgSelect value={target} onChange={setTarget} options={TARGET_OPTS} />
       </div>
       <InlineInputs node={data} emit={emit} keys={acc(STR_KEYS) as string[]} />
       {TOGGLE_KEYS.filter(({ key }) => accepted.has(key)).map(({ key, label }) => (

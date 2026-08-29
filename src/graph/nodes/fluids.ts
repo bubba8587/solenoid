@@ -73,24 +73,24 @@ const ROUGHNESS_BY_ID = new Map(PIPE_ROUGHNESS.map((r) => [r.id, r]));
 
 export class PipeRoughnessNode extends ClassicPreset.Node {
   label: string;
-  op: string; // material id
+  material: string; // material id
   literals: Record<string, number> = {};
   cachedEps: number | null = null;
   cachedRel: number | SolError | null = null;
   width = 220;
   height = 190;
 
-  constructor(init?: { label?: string; op?: string }) {
+  constructor(init?: { label?: string; material?: string }) {
     super("PipeRoughness");
     this.label = init?.label ?? "Pipe Roughness";
-    this.op = init?.op && ROUGHNESS_BY_ID.has(init.op) ? init.op : "steel";
+    this.material = init?.material && ROUGHNESS_BY_ID.has(init.material) ? init.material : "steel";
     this.addInput("d", numIn("Diameter mm"));
     this.addOutput("eps", numOut("ε mm"));
     this.addOutput("rel", numOut("ε/D"));
   }
 
   data(inputs: { d?: (number | null)[] }) {
-    const eps = ROUGHNESS_BY_ID.get(this.op)!.mm;
+    const eps = ROUGHNESS_BY_ID.get(this.material)!.mm;
     const d = readInput(inputs.d, this.literals.d ?? null);
     let rel: number | SolError | null = null;
     if (typeof d === "number") {

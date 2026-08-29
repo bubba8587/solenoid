@@ -1,18 +1,19 @@
-// Per node class hosting an op selector: what ops it has and how they surface.
-// The `{ }` marker is DERIVED, never declared; `kind` does not affect the menu.
+// Per OP family (a node class with an `op` field): what ops it has and how they
+// surface. The `{ }` marker is DERIVED, never declared. An ARGUMENT family is not
+// declared here at all (DESIGN.md § Op pickers; nodeOps.test.ts pins both directions).
 
 import type { NodeCatalogEntry } from "./AddNodeMenu";
 import { DIST_SPECS, DistributionNode, type DistKey } from "./nodes/distribution";
 
-import { ChartNode, SparklineNode, SurfaceNode, RecordNode, GaugeNode, ProportionNode } from "./nodes/visual";
+import { ChartNode, SparklineNode, SurfaceNode } from "./nodes/visual";
 import { CHART_OP_META, SPARKLINE_OP_META } from "./nodes/visual";
 import {
-  FillNode, GroupByNode, SetNode, SumIfsNode, RunningNode,
+  FillNode, SetNode, SumIfsNode,
   FILL_OP_META, COND_AGG_OP_META,
   SET_META, PAD_OP_META, PadNode,
-  SortNode, SeriesNode,
+  SeriesNode,
 } from "./nodes/list";
-import { HeadNode, HeadersNode, DropBlankRowsNode, ColumnsNode, HEAD_OP_META, COLUMNS_OP_META } from "./nodes/frame";
+import { HeadNode, ColumnsNode, HEAD_OP_META, COLUMNS_OP_META } from "./nodes/frame";
 import { RegexNode, REGEX_OP_META } from "./nodes/text";
 import { DATE_DIFF_OP_META, DateTimeValueNode, WorkdaysNode } from "./nodes/date";
 import { IFErrorNode } from "./nodes/logic";
@@ -28,31 +29,29 @@ import {
   TwoInputMathNode, GcdNode, RoundNNode,
   TWO_INPUT_MATH_OP_META, GCD_OP_META, ROUNDN_OP_META,
 } from "./nodes/scalar";
-// The kind-only families below, via the node barrel — they contribute no ops list,
-// only their class (for `instanceof`) and their kind.
+// Families whose every op has its own hand-written leaf, via the node barrel — they
+// contribute no ops list, only their class (for `instanceof`).
 import {
-  AggregateNode, AntoineNode, ArgMinMaxNode, ArithmeticNode,
+  AggregateNode, ArgMinMaxNode, ArithmeticNode,
   BesselNode, BitwiseNode,
   BondPriceNode, BooleanOpNode, CharCodeNode, 
   CombinatoricsNode, ComplexBinaryNode, ComplexUnaryNode,
   ConfidenceNode, ConstantNode, CouponNode, CovarianceNode,
-  CubeRollupNode, CumPmtNode, DateAddNode, DateDiffNode, EpochNode, SmoothNode, SMOOTH_OP_META, type SmoothOp, ReturnsNode, RETURNS_OP_META, type ReturnsOp, WindowNode,
+  CumPmtNode, DateAddNode, DateDiffNode, EpochNode, SmoothNode, SMOOTH_OP_META, type SmoothOp, ReturnsNode, RETURNS_OP_META, type ReturnsOp,
   DatePartNode, DepreciationNode, DollarNode, DurationNode,
   ESeriesNode, 
-  FisherNode, GroupByFrameNode,
+  FisherNode,
   IpmtPpmtNode, MRoundNode,
   MatDetNode, MathFnNode, 
   OddCouponNode,
-  PhysicsConstantNode, PipeRoughnessNode, PivotNode, PadTextNode, ElementNode,
+  PhysicsConstantNode,
   PriceDiscNode, PriceMatNode,
   RankPercentileNode, RomanArabicNode, SecurityDiscNode,
   SumProductNode, TBillNode, 
   HypothesisTestNode, TableReshapeNode, TableSelectNode, TakeDropNode, TAKEDROP_OP_META,
   TextAfterBeforeNode, TextFindNode, TextSliceNode, TextTransformNode,
-  TodayNowNode, UrlEncodeNode, HashNode, WeekInfoNode, 
+  TodayNowNode, UrlEncodeNode, WeekInfoNode, 
   WeightedNode,
-  ResistorCodeNode,
-  AlertNode, ColorBlendNode,
 } from "./rete-nodes";
 
 
@@ -60,14 +59,10 @@ import {
  *  deliberately, so `collapsed` is the default. */
 export type OpExposure = "collapsed" | "leaves";
 
-/** Whether an op is its own operation or a parameter of its host (formulaNaming 2(a)). */
-export type OpKind = "operation" | "argument";
-
 interface NodeOpsBase {
   /** Catalog type of the leaf representing this family — the one that carries the
    *  `{ }` marker when ops are hidden. */
   type: string;
-  kind: OpKind;
   /** Defaults to `collapsed`. */
   expose?: OpExposure;
   /** The node class, matched by `instanceof` — a constructor-NAME match would
@@ -102,7 +97,7 @@ function fromMeta(meta: Record<string, { label: string; fx?: string }>): OpEntry
 }
 
 /** The Distribution node's op axis is the DISTRIBUTION; the curve/inverse pick
- *  is the arg-tagged `form` field. Typing "norm.inv" or "weibull" still lands on
+ *  is the `form` argument (an ArgSelect). Typing "norm.inv" or "weibull" still lands on
  *  the right pick — the Excel names ride in `keywords`, which scores at full
  *  weight and never renders. They used to sit in the LABEL, where four dotted
  *  spellings made one row 630px against a 94px median and, since the panel's
@@ -125,78 +120,52 @@ const RANK_PERCENTILE_LEAF_OPS = [
 ];
 
 export const NODE_OPS: NodeOpsDecl[] = [
-  // ── Operation-kind: a chart TYPE is a thing you search for by name ──
-  { type: "chart", ctor: ChartNode, kind: "operation", ops: fromMeta(CHART_OP_META),
+  // ── A chart TYPE is a thing you search for by name ──
+  { type: "chart", ctor: ChartNode, ops: fromMeta(CHART_OP_META),
     create: (op) => new ChartNode({ op: op as never }) },
-  { type: "sparkline", ctor: SparklineNode, kind: "operation", ops: fromMeta(SPARKLINE_OP_META),
+  { type: "sparkline", ctor: SparklineNode, ops: fromMeta(SPARKLINE_OP_META),
     create: (op) => new SparklineNode({ op: op as never }) },
-  // Gauge draws a value on a scale two ways (Dial / Bar); the Bar style is the former
-  // Bullet graph. The Dial/Bar pick is a SegToggle bound to `op`, but the two aren't
-  // separate Add-menu names (both are just "Gauge") — "bullet"/"dial"/"bar" ride the
-  // leaf's keywords for search, so no op rows here (and "bar" would collide with Chart's).
-  { type: "gauge", ctor: GaugeNode, kind: "operation" },
-  // Proportion draws parts of a whole two ways (Treemap / Waffle) — a SegToggle bound to
-  // `op`, both named just "Proportion". The layout names ride the leaf keywords, so no op
-  // rows (like Gauge).
-  { type: "proportion", ctor: ProportionNode, kind: "operation" },
-  // The record VIEW is a presentation parameter of the one figure, not three
-  // things you'd call by name (author call) — neutral picker, no op rows;
-  // "gallery"/"kanban" ride the host leaf's keywords.
-  { type: "record", ctor: RecordNode, kind: "argument" },
   // The 3-D surface and its flat contour twin: two views of one grid, one leaf each.
-  { type: "surface", ctor: SurfaceNode, kind: "operation" },
+  { type: "surface", ctor: SurfaceNode },
   // A distribution is likewise a thing you search for by name; its ops' formula
   // names are the real Excel spellings (fx in DIST_OPS).
-  { type: "distribution", ctor: DistributionNode, kind: "operation", ops: DIST_OPS,
+  { type: "distribution", ctor: DistributionNode, ops: DIST_OPS,
     create: (op) => new DistributionNode({ op: op as never }) },
 
-  // Promote/demote are argument VALUES, not functions — no formula name, so no op rows.
-  // The host leaf's `keywords` already carry "promote demote first row", which is where
-  // an argument's searched words belong (aggregatorsAreArguments's reopen clause: aliases on the host).
-  { type: "headers", ctor: HeadersNode, kind: "argument" },
-  // Aggregators are arguments of Group By, not searchable ops (aggregatorsAreArguments).
-  { type: "list-groupby", ctor: GroupByNode, kind: "argument" },
-  // Direction toggles are parameters of ONE operation.
-  { type: "list-sort", ctor: SortNode, kind: "argument" },
   // TAKE/DROP are one rank-preserving class (list, matrix or scalar); both ops have
   // their own bare leaf, so neither becomes a "TAKE: Drop" colon row. The sign of the
   // count is the direction, an argument.
-  { type: "takedrop", ctor: TakeDropNode, kind: "operation", ops: fromMeta(TAKEDROP_OP_META),
+  { type: "takedrop", ctor: TakeDropNode, ops: fromMeta(TAKEDROP_OP_META),
     create: (op) => new TakeDropNode({ op: op as never }), leafOps: ["take", "drop"] },
-  // Which rows count as blank is a parameter of Drop Blank Rows.
-  { type: "drop-blank-rows", ctor: DropBlankRowsNode, kind: "argument" },
-  // The trigger condition and the blend formula are parameters of their one node.
-  { type: "alert", ctor: AlertNode, kind: "argument" },
-  { type: "color-blend", ctor: ColorBlendNode, kind: "argument" },
 
-  // ── Operation-kind: each op stands alone as a name ──
+  // ── Each op stands alone as a name ──
   // Three parameterizations of one arithmetic progression, each with its own leaf.
-  { type: "list-range", ctor: SeriesNode, kind: "operation" },
-  { type: "list-fill", ctor: FillNode, kind: "operation", ops: fromMeta(FILL_OP_META),
+  { type: "list-range", ctor: SeriesNode },
+  { type: "list-fill", ctor: FillNode, ops: fromMeta(FILL_OP_META),
     create: (op) => new FillNode({ op: op as never }) },
-  { type: "head", ctor: HeadNode, kind: "operation", ops: fromMeta(HEAD_OP_META),
+  { type: "head", ctor: HeadNode, ops: fromMeta(HEAD_OP_META),
     create: (op) => new HeadNode({ op: op as never }) },
   // Both ops have their own bare Add-menu leaf ("Keep Columns" / "Drop Columns"), so
   // neither becomes a "Keep Columns: Drop" colon row; the decl still carries kind +
   // op fx names for the accent and uniqueNameMap.
-  { type: "xstack", ctor: StackNode, kind: "operation", ops: fromMeta(STACK_OP_META),
+  { type: "xstack", ctor: StackNode, ops: fromMeta(STACK_OP_META),
     create: (op) => new StackNode({ op: op as never }) },
-  { type: "by-axis", ctor: ByAxisNode, kind: "operation", ops: fromMeta(BY_AXIS_OP_META),
+  { type: "by-axis", ctor: ByAxisNode, ops: fromMeta(BY_AXIS_OP_META),
     create: (op) => new ByAxisNode({ op: op as never }), leafOps: ["row", "col"] },
-  { type: "npv", ctor: NpvNode, kind: "operation", ops: fromMeta(NPV_OP_META),
+  { type: "npv", ctor: NpvNode, ops: fromMeta(NPV_OP_META),
     create: (op) => new NpvNode({ op: op as never }), leafOps: ["periods", "dates"] },
-  { type: "irr", ctor: IrrNode, kind: "operation", ops: fromMeta(IRR_OP_META),
+  { type: "irr", ctor: IrrNode, ops: fromMeta(IRR_OP_META),
     create: (op) => new IrrNode({ op: op as never }), leafOps: ["periods", "dates"] },
-  { type: "keep-columns", ctor: ColumnsNode, kind: "operation", ops: fromMeta(COLUMNS_OP_META),
+  { type: "keep-columns", ctor: ColumnsNode, ops: fromMeta(COLUMNS_OP_META),
     create: (op) => new ColumnsNode({ op: op as never }), leafOps: ["keep", "drop"] },
-  { type: "list-pad", ctor: PadNode, kind: "operation", ops: fromMeta(PAD_OP_META),
+  { type: "list-pad", ctor: PadNode, ops: fromMeta(PAD_OP_META),
     create: (op) => new PadNode({ op: op as never }) },
-  { type: "list-set", ctor: SetNode, kind: "operation", ops: fromMeta(SET_META),
+  { type: "list-set", ctor: SetNode, ops: fromMeta(SET_META),
     create: (op) => new SetNode({ op: op as never }) },
-  { type: "iferror", ctor: IFErrorNode, kind: "operation",
+  { type: "iferror", ctor: IFErrorNode,
     ops: [{ op: "iferror", label: "IFERROR" }, { op: "ifna", label: "IFNA" }],
     create: (op) => new IFErrorNode({ op: op as never }), leafOps: ["iferror", "ifna"] },
-  { type: "regex", ctor: RegexNode, kind: "operation", ops: fromMeta(REGEX_OP_META),
+  { type: "regex", ctor: RegexNode, ops: fromMeta(REGEX_OP_META),
     create: (op) => new RegexNode({ op: op as never }) },
   // Text Filter's ops are its CONDITION; as operations they would also claim
   // formula names they can't own ("Contains" despaces onto CONTAINS).
@@ -204,134 +173,114 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // (`contains` despaced onto the real CONTAINS function by coincidence, which is
   // exactly the collision aggregatorsAreArguments warns an argument's op rows cause.) Searched words moved
   // to the host leaf's keywords.
-  { type: "sumifs", ctor: SumIfsNode, kind: "operation", ops: fromMeta(COND_AGG_OP_META),
+  { type: "sumifs", ctor: SumIfsNode, ops: fromMeta(COND_AGG_OP_META),
     create: (op) => new SumIfsNode({ op: op as never }) },
-  { type: "regression-steyx", ctor: RegressionNode, kind: "operation", ops: fromMeta(REGRESSION_OP_META),
+  { type: "regression-steyx", ctor: RegressionNode, ops: fromMeta(REGRESSION_OP_META),
     create: (op) => new RegressionNode({ op: op as never }) },
-  { type: "correl-correl", ctor: CorrelNode, kind: "operation", ops: fromMeta(CORREL_OP_META),
+  { type: "correl-correl", ctor: CorrelNode, ops: fromMeta(CORREL_OP_META),
     create: (op) => new CorrelNode({ op: op as never }) },
-  { type: "forecast", ctor: ForecastNode, kind: "operation", ops: fromMeta(FORECAST_OP_META),
+  { type: "forecast", ctor: ForecastNode, ops: fromMeta(FORECAST_OP_META),
     create: (op) => new ForecastNode({ op: op as never }) },
-  { type: "linest", ctor: LinestNode, kind: "operation", ops: fromMeta(FIT_OP_META),
+  { type: "linest", ctor: LinestNode, ops: fromMeta(FIT_OP_META),
     create: (op) => new LinestNode({ op: op as never }) },
   // Label already names both ops.
-  { type: "iseven-isodd", ctor: IsEvenOddNode, kind: "operation", ops: fromMeta(PARITY_OP_META),
+  { type: "iseven-isodd", ctor: IsEvenOddNode, ops: fromMeta(PARITY_OP_META),
     create: (op) => new IsEvenOddNode({ op: op as never }), leafOps: ["iseven", "isodd"] },
 
-  // The aggregator is an ARGUMENT of the windowed scan, like Group By's and Cube
-  // Rollup's: neutral picker, no op rows (searched words ride the host leaf's
-  // keywords), and on the formula surface it is a PARAMETER of the family's one
-  // function — RUNNING(op, list, [window]); the per-op RUNNING* names are dead (aggregatorsAreArguments).
-  { type: "list-running", ctor: RunningNode, kind: "argument" },
   // `fromMeta` takes the NAME, dropping the dropdown's bare operator glyph.
-  { type: "comparison", ctor: ComparisonNode, kind: "operation", ops: fromMeta(COMPARISON_OP_META),
+  { type: "comparison", ctor: ComparisonNode, ops: fromMeta(COMPARISON_OP_META),
     create: (op) => new ComparisonNode({ op: op as never }) },
-  { type: "is-test", ctor: IsTestNode, kind: "operation", ops: fromMeta(IS_TEST_OP_META),
+  { type: "is-test", ctor: IsTestNode, ops: fromMeta(IS_TEST_OP_META),
     create: (op) => new IsTestNode({ op: op as never }) },
   // Label already names both ops, so the marker would only echo it.
-  { type: "gcd-lcm", ctor: GcdNode, kind: "operation", ops: fromMeta(GCD_OP_META),
+  { type: "gcd-lcm", ctor: GcdNode, ops: fromMeta(GCD_OP_META),
     create: (op) => new GcdNode({ op: op as never }), leafOps: ["gcd", "lcm"] },
 
   // ── Partially exposed: some ops already have leaves, the rest ride in search ──
-  { type: "twomath-log", ctor: TwoInputMathNode, kind: "operation", ops: fromMeta(TWO_INPUT_MATH_OP_META),
+  { type: "twomath-log", ctor: TwoInputMathNode, ops: fromMeta(TWO_INPUT_MATH_OP_META),
     leafOps: ["log", "atan2", "delta", "gestep", "hypot"],
     create: (op) => new TwoInputMathNode({ op: op as never }) },
-  { type: "roundn-round", ctor: RoundNNode, kind: "operation", ops: fromMeta(ROUNDN_OP_META),
+  { type: "roundn-round", ctor: RoundNNode, ops: fromMeta(ROUNDN_OP_META),
     leafOps: ["round", "roundup", "rounddown"],
     create: (op) => new RoundNNode({ op: op as never }) },
 
   // ── Kind-only declarations: already listed op-by-op, so nothing to hide or add
   // to search — these only say what the dropdown selects between (which tints it).
-  { type: "reduce-sum", ctor: AggregateNode, kind: "operation" },
-  { type: "arg-argmax", ctor: ArgMinMaxNode, kind: "operation" },
-  { type: "arith-add", ctor: ArithmeticNode, kind: "operation" },
-  { type: "bessel-besselj", ctor: BesselNode, kind: "operation" },
-  { type: "bitwise-bitand", ctor: BitwiseNode, kind: "operation" },
-  { type: "bondprice-price", ctor: BondPriceNode, kind: "operation" },
-  { type: "bool-and", ctor: BooleanOpNode, kind: "operation" },
-  { type: "char-code-char", ctor: CharCodeNode, kind: "operation" },
-  { type: "comb-fact", ctor: CombinatoricsNode, kind: "operation" },
-  { type: "cx-binary-sum", ctor: ComplexBinaryNode, kind: "operation" },
-  { type: "cx-unary-conj", ctor: ComplexUnaryNode, kind: "operation" },
-  { type: "confidence-norm", ctor: ConfidenceNode, kind: "operation" },
-  { type: "constant", ctor: ConstantNode, kind: "operation" },
-  { type: "coupon-coupdaybs", ctor: CouponNode, kind: "operation" },
-  { type: "cov-pop", ctor: CovarianceNode, kind: "operation" },
-  { type: "cumpmt-cumipmt", ctor: CumPmtNode, kind: "operation" },
-  { type: "date-add-edate", ctor: DateAddNode, kind: "operation" },
-  { type: "date-epoch-from", ctor: EpochNode, kind: "operation" },
-  { type: "window", ctor: WindowNode, kind: "argument" },
+  { type: "reduce-sum", ctor: AggregateNode },
+  { type: "arg-argmax", ctor: ArgMinMaxNode },
+  { type: "arith-add", ctor: ArithmeticNode },
+  { type: "bessel-besselj", ctor: BesselNode },
+  { type: "bitwise-bitand", ctor: BitwiseNode },
+  { type: "bondprice-price", ctor: BondPriceNode },
+  { type: "bool-and", ctor: BooleanOpNode },
+  { type: "char-code-char", ctor: CharCodeNode },
+  { type: "comb-fact", ctor: CombinatoricsNode },
+  { type: "cx-binary-sum", ctor: ComplexBinaryNode },
+  { type: "cx-unary-conj", ctor: ComplexUnaryNode },
+  { type: "confidence-norm", ctor: ConfidenceNode },
+  { type: "constant", ctor: ConstantNode },
+  { type: "coupon-coupdaybs", ctor: CouponNode },
+  { type: "cov-pop", ctor: CovarianceNode },
+  { type: "cumpmt-cumipmt", ctor: CumPmtNode },
+  { type: "date-add-edate", ctor: DateAddNode },
+  { type: "date-epoch-from", ctor: EpochNode },
   // Each op is the operation (Sharpe IS the card); fx rides in RETURNS_OP_META.
-  { type: "returns", ctor: ReturnsNode, kind: "operation", ops: fromMeta(RETURNS_OP_META),
+  { type: "returns", ctor: ReturnsNode, ops: fromMeta(RETURNS_OP_META),
     create: (op) => new ReturnsNode({ op: op as ReturnsOp }) },
-  { type: "list-smooth", ctor: SmoothNode, kind: "operation", ops: fromMeta(SMOOTH_OP_META),
+  { type: "list-smooth", ctor: SmoothNode, ops: fromMeta(SMOOTH_OP_META),
     create: (op) => new SmoothNode({ op: op as SmoothOp }) },
   // The day-count ops have Excel-name leaves; the DATEDIF units are hidden ops on
   // the DATEDIF leaf, which is why that leaf hosts the declaration.
-  { type: "date-datedif", ctor: DateDiffNode, kind: "operation", ops: fromMeta(DATE_DIFF_OP_META),
+  { type: "date-datedif", ctor: DateDiffNode, ops: fromMeta(DATE_DIFF_OP_META),
     create: (op) => new DateDiffNode({ op: op as never }), leafOps: ["days", "days360", "yearfrac", "years"] },
-  { type: "date-part-year", ctor: DatePartNode, kind: "operation" },
-  { type: "date-value", ctor: DateTimeValueNode, kind: "operation" },
-  { type: "date-workday", ctor: WorkdaysNode, kind: "operation" },
-  { type: "depr-sln", ctor: DepreciationNode, kind: "operation" },
-  { type: "dollar-dollarde", ctor: DollarNode, kind: "operation" },
-  { type: "duration-duration", ctor: DurationNode, kind: "operation" },
-  { type: "fisher-fisher", ctor: FisherNode, kind: "operation" },
-  { type: "ipmt-ipmt", ctor: IpmtPpmtNode, kind: "operation" },
-  { type: "math-ceiling", ctor: MRoundNode, kind: "operation" },
-  { type: "matdet-mdeterm", ctor: MatDetNode, kind: "operation" },
-  { type: "math-abs", ctor: MathFnNode, kind: "operation" },
-  { type: "oddcoupon-oddfprice", ctor: OddCouponNode, kind: "operation" },
+  { type: "date-part-year", ctor: DatePartNode },
+  { type: "date-value", ctor: DateTimeValueNode },
+  { type: "date-workday", ctor: WorkdaysNode },
+  { type: "depr-sln", ctor: DepreciationNode },
+  { type: "dollar-dollarde", ctor: DollarNode },
+  { type: "duration-duration", ctor: DurationNode },
+  { type: "fisher-fisher", ctor: FisherNode },
+  { type: "ipmt-ipmt", ctor: IpmtPpmtNode },
+  { type: "math-ceiling", ctor: MRoundNode },
+  { type: "matdet-mdeterm", ctor: MatDetNode },
+  { type: "math-abs", ctor: MathFnNode },
+  { type: "oddcoupon-oddfprice", ctor: OddCouponNode },
   // ONE Rank & Percentile class hosts all ten order-statistic ops; the .EXC forms
   // have no leaf of their own, so each family leaf declares its pair and the
   // search rows ride the right host ("PERCENTILE: PERCENTILE.EXC"). The card
   // labels are family words, so the search names are declared here (overrideInPlace).
-  { type: "stat-percentile", ctor: RankPercentileNode, kind: "operation",
+  { type: "stat-percentile", ctor: RankPercentileNode,
     ops: [{ op: "percentile-inc", label: "PERCENTILE.INC" }, { op: "percentile-exc", label: "PERCENTILE.EXC" }],
     leafOps: RANK_PERCENTILE_LEAF_OPS,
     create: (op) => new RankPercentileNode({ op: op as never }) },
-  { type: "stat-percentrank", ctor: RankPercentileNode, kind: "operation",
+  { type: "stat-percentrank", ctor: RankPercentileNode,
     ops: [{ op: "percentrank-inc", label: "PERCENTRANK.INC" }, { op: "percentrank-exc", label: "PERCENTRANK.EXC" }],
     leafOps: RANK_PERCENTILE_LEAF_OPS,
     create: (op) => new RankPercentileNode({ op: op as never }) },
-  { type: "pricedisc-pricedisc", ctor: PriceDiscNode, kind: "operation" },
-  { type: "pricemat-pricemat", ctor: PriceMatNode, kind: "operation" },
-  { type: "stat-quartile", ctor: RankPercentileNode, kind: "operation",
+  { type: "pricedisc-pricedisc", ctor: PriceDiscNode },
+  { type: "pricemat-pricemat", ctor: PriceMatNode },
+  { type: "stat-quartile", ctor: RankPercentileNode,
     ops: [{ op: "quartile-inc", label: "QUARTILE.INC" }, { op: "quartile-exc", label: "QUARTILE.EXC" }],
     leafOps: RANK_PERCENTILE_LEAF_OPS,
     create: (op) => new RankPercentileNode({ op: op as never }) },
-  { type: "roman-arabic-roman", ctor: RomanArabicNode, kind: "operation" },
-  { type: "secdesc-disc", ctor: SecurityDiscNode, kind: "operation" },
-  { type: "sp-sumproduct", ctor: SumProductNode, kind: "operation" },
-  { type: "tbill-tbilleq", ctor: TBillNode, kind: "operation" },
-  { type: "z-test", ctor: HypothesisTestNode, kind: "operation" },
-  { type: "reshape-wraprows", ctor: TableReshapeNode, kind: "operation" },
-  { type: "tblsel-chooserows", ctor: TableSelectNode, kind: "operation" },
-  { type: "text-after-before-after", ctor: TextAfterBeforeNode, kind: "operation" },
-  { type: "text-find-find", ctor: TextFindNode, kind: "operation" },
-  { type: "text-left", ctor: TextSliceNode, kind: "operation" },
-  { type: "text-upper", ctor: TextTransformNode, kind: "operation" },
-  { type: "date-today", ctor: TodayNowNode, kind: "operation" },
-  { type: "url-encode", ctor: UrlEncodeNode, kind: "operation" },
-  { type: "hash", ctor: HashNode, kind: "argument" },
-  { type: "date-week-weekday", ctor: WeekInfoNode, kind: "operation" },
-  { type: "weighted-wavg", ctor: WeightedNode, kind: "operation" },
+  { type: "roman-arabic-roman", ctor: RomanArabicNode },
+  { type: "secdesc-disc", ctor: SecurityDiscNode },
+  { type: "sp-sumproduct", ctor: SumProductNode },
+  { type: "tbill-tbilleq", ctor: TBillNode },
+  { type: "z-test", ctor: HypothesisTestNode },
+  { type: "reshape-wraprows", ctor: TableReshapeNode },
+  { type: "tblsel-chooserows", ctor: TableSelectNode },
+  { type: "text-after-before-after", ctor: TextAfterBeforeNode },
+  { type: "text-find-find", ctor: TextFindNode },
+  { type: "text-left", ctor: TextSliceNode },
+  { type: "text-upper", ctor: TextTransformNode },
+  { type: "date-today", ctor: TodayNowNode },
+  { type: "url-encode", ctor: UrlEncodeNode },
+  { type: "date-week-weekday", ctor: WeekInfoNode },
+  { type: "weighted-wavg", ctor: WeightedNode },
 
-  // ARGUMENT — the aggregator a host verb runs, plus the data-driven pickers, each
-  // a VALUE the graph could supply from a column.
-  { type: "th-antoine", ctor: AntoineNode, kind: "argument" },
-  { type: "cube-rollup", ctor: CubeRollupNode, kind: "argument" },
-  { type: "elec-eseries", ctor: ESeriesNode, kind: "operation" },
-  { type: "elec-resistor-code", ctor: ResistorCodeNode, kind: "argument" },
-  { type: "group-by-frame", ctor: GroupByFrameNode, kind: "argument" },
-  { type: "em-constant", ctor: PhysicsConstantNode, kind: "operation" },
-  { type: "fl-roughness", ctor: PipeRoughnessNode, kind: "argument" },
-  // Pickers that are neither OpSelect nor SegToggle (a config select, the element
-  // picker, the pivot editor) still bind `op`, so the family is declared here; the
-  // selectorNamedOp scan just cannot see them.
-  { type: "text-pad", ctor: PadTextNode, kind: "argument" },
-  { type: "ch-element", ctor: ElementNode, kind: "argument" },
-  { type: "pivot", ctor: PivotNode, kind: "argument" },
+  { type: "elec-eseries", ctor: ESeriesNode },
+  { type: "em-constant", ctor: PhysicsConstantNode },
 ];
 
 const BY_TYPE = new Map(NODE_OPS.map((d) => [d.type, d]));
@@ -370,7 +319,7 @@ function primaryOpOf(host: NodeCatalogEntry): string | null {
 /** The ops of this family with no Add-menu leaf of their own — what search has to
  *  carry, and what makes the host show `{ }`. */
 export function hiddenOps(decl: NodeOpsDecl, host: NodeCatalogEntry): Array<{ op: string; label: string }> {
-  if (!decl.ops) return []; // kind-only: the menu is not this declaration's business
+  if (!decl.ops) return []; // every op has its own leaf: the menu is not this declaration's business
   const own = new Set(decl.leafOps ?? []);
   if (!decl.leafOps) {
     const primary = primaryOpOf(host);
@@ -416,10 +365,3 @@ export function opEntry(
   };
 }
 
-/** The op kind of a live node, undefined for an undeclared family — which RENDERS
- *  identically to "argument", so the coverage test is the only guard. */
-export function opKindForNode(node: object | undefined): OpKind | undefined {
-  if (!node) return undefined;
-  for (const d of NODE_OPS) if (node instanceof d.ctor) return d.kind;
-  return undefined;
-}

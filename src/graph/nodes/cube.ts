@@ -187,16 +187,16 @@ export class CubeRollupNode extends ClassicPreset.Node {
   };
 
   label: string;
-  op: AggOp;
+  agg: AggOp;
   cachedResult: FrameValue | SolError | null = null;
   stringLiterals: Record<string, string> = { nested: "", column: "", as: "Total" };
   width = 220;
   height = 260;
 
-  constructor(init?: { label?: string; op?: AggOp }) {
+  constructor(init?: { label?: string; agg?: AggOp }) {
     super("CubeRollup");
     this.label = init?.label ?? "Cube Rollup";
-    this.op = init?.op ?? "sum";
+    this.agg = init?.agg ?? "sum";
     this.addInput("cube", cubeIn("Cube"));
     this.addInput("nested", strIn("Nested column"));
     this.addInput("column", strIn("Column to roll up"));
@@ -233,7 +233,7 @@ export class CubeRollupNode extends ClassicPreset.Node {
       const sub = isFrameValue(cell) ? cell : null;
       if (!sub) { rolled.push(null); continue; }
       const valueCol = sub.columns.find((c) => c.name === col);
-      rolled.push(valueCol ? aggregateGroup(valueCol.values, this.op) : solError("#REF!", `column "${col}" not found in nested frame`));
+      rolled.push(valueCol ? aggregateGroup(valueCol.values, this.agg) : solError("#REF!", `column "${col}" not found in nested frame`));
     }
     const names = makeHeaders([...flatCols.map((c) => c.name), outName], flatCols.length + 1);
     const result: FrameValue = {

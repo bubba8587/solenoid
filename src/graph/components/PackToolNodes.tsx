@@ -8,7 +8,7 @@ import {
   PIPE_ROUGHNESS,
   type TriangleSolved,
 } from "../rete-nodes";
-import { NodeShell, OpSelect, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, ArgSelect, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { makeNodeComponent } from "./standardNode";
 import { EquationVarRow, EquationOutRow } from "./EquationNode";
@@ -36,10 +36,10 @@ export const HrZonesComponent = makeNodeComponent<HrZonesNodeType>((n) => n.cach
 const ROUGHNESS_OPTIONS = PIPE_ROUGHNESS.map((r) => ({ value: r.id, label: r.label }));
 
 export function PipeRoughnessComponent({ data, emit }: NodeProps<PipeRoughnessNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
+  const [material, setMaterial] = useNodeField(data, "material");
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <OpSelect value={op} onChange={setOp} options={ROUGHNESS_OPTIONS} />
+      <ArgSelect value={material} onChange={setMaterial} options={ROUGHNESS_OPTIONS} />
       <InlineInputs node={data} emit={emit} />
       <InlineOutputRows
         node={data}

@@ -1,3 +1,4 @@
+import { SegToggle } from "./SegToggle";
 import { useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 import type { ClassicPreset } from "rete";
@@ -11,7 +12,7 @@ import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { ChartFigure } from "./chartView";
 import { ChartChip } from "./ChartChip";
-import { SegToggle } from "./SegToggle";
+
 import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
 import { getActiveArea } from "../activeGraph";
@@ -78,15 +79,15 @@ export const CalendarHeatmapComponent = makeFigureComponent<CalendarHeatmapNode>
 // The layout picker is a real component (it owns the useState hook); the figure card
 // itself is the shared one, with the toggle slotted above the inputs (the Gauge pattern).
 function ProportionControls({ data }: { data: ProportionNode }) {
-  const [op, setOp] = useState<ProportionLayout>(data.op);
+  const [layout, setLayout] = useState<ProportionLayout>(data.layout);
   async function pick(next: ProportionLayout) {
-    if (next === data.op) return;
-    data.setOp(next); // sockets are identical for both layouts — no cable prune
-    setOp(next);
+    if (next === data.layout) return;
+    data.setLayout(next); // sockets are identical for both layouts — no cable prune
+    setLayout(next);
     await getActiveArea()?.rerenderNode(data.id);
     await processGraph();
   }
-  return <SegToggle value={op} options={PROPORTION_LAYOUT_OPTIONS} onChange={(s) => void pick(s)} />;
+  return <SegToggle value={layout} options={PROPORTION_LAYOUT_OPTIONS} onChange={(s) => void pick(s)} />;
 }
 
 export const ProportionComponent = makeFigureComponent<ProportionNode>(

@@ -133,7 +133,7 @@
       "y": 458,
       "init": {
         "label": "To target",
-        "op": "bar"
+        "style": "bar"
       },
       "literals": {
         "value": 72,

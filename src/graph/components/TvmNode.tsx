@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { PAYMENT_TIMING_META } from "../rete-nodes";
 import type { TvmNode as TvmNodeType, PaymentTiming } from "../rete-nodes";
-import { OpSelect, type NodeProps } from "./nodeKit";
+import { ArgSelect, type NodeProps } from "./nodeKit";
 import { EquationComponent } from "./EquationNode";
 import { processGraph } from "../process";
 const TIMING_OPTS = (Object.keys(PAYMENT_TIMING_META) as PaymentTiming[]).map((t) => ({
@@ -18,8 +18,7 @@ export function TvmComponent({ data, emit }: NodeProps<TvmNodeType>) {
       data={data}
       emit={emit}
       config={
-        <OpSelect
-          arg
+        <ArgSelect
           value={timing}
           onChange={(t) => {
             data.setPaymentTiming(t);

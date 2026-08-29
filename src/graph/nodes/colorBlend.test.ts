@@ -11,26 +11,26 @@ describe("ColorBlendNode", () => {
   });
 
   it("multiply by white is identity; screen by black is identity", () => {
-    const n = new ColorBlendNode({ op: "multiply" });
+    const n = new ColorBlendNode({ mode: "multiply" });
     n.stringLiterals.a = "#ff8040";
     n.stringLiterals.b = "#ffffff";
     expect(n.data({})).toEqual({ color: "#ff8040" });
-    n.op = "screen";
+    n.mode = "screen";
     n.stringLiterals.b = "#000000";
     expect(n.data({})).toEqual({ color: "#ff8040" });
   });
 
   it("darken/lighten take the per-channel min/max", () => {
-    const n = new ColorBlendNode({ op: "darken" });
+    const n = new ColorBlendNode({ mode: "darken" });
     n.stringLiterals.a = "#ff0080";
     n.stringLiterals.b = "#00ff80";
     expect(n.data({})).toEqual({ color: "#000080" });
-    n.op = "lighten";
+    n.mode = "lighten";
     expect(n.data({})).toEqual({ color: "#ffff80" });
   });
 
   it("wired inputs override the typed literals and accept any CSS color", () => {
-    const n = new ColorBlendNode({ op: "mix" });
+    const n = new ColorBlendNode({ mode: "mix" });
     expect(n.data({ a: ["rgb(0, 0, 0)"], b: ["white"] })).toEqual({ color: "#808080" });
   });
 
@@ -46,10 +46,10 @@ describe("ColorBlendNode", () => {
   });
 
   it("round-trips mode through extractInit; a stale mode falls back to mix", () => {
-    const n = new ColorBlendNode({ op: "overlay" });
+    const n = new ColorBlendNode({ mode: "overlay" });
     const init = extractInit(n);
-    expect(init.op).toBe("overlay");
-    expect(new ColorBlendNode(init as { op?: never }).op).toBe("overlay");
-    expect(new ColorBlendNode({ op: "gone" as never }).op).toBe("mix");
+    expect(init.mode).toBe("overlay");
+    expect(new ColorBlendNode(init as { mode?: never }).mode).toBe("overlay");
+    expect(new ColorBlendNode({ mode: "gone" as never }).mode).toBe("mix");
   });
 });

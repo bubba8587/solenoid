@@ -608,16 +608,16 @@ export class GroupByFrameNode extends ClassicPreset.Node {
   };
 
   label: string;
-  op: AggOp;
+  agg: AggOp;
   totalDepth = 0;
   cachedResult: FrameValue | SolError | null = null;
   stringLiterals: Record<string, string> = { column: "" };
   width = 200; height = 205;
 
-  constructor(init?: { label?: string; op?: AggOp; totalDepth?: number }) {
+  constructor(init?: { label?: string; agg?: AggOp; totalDepth?: number }) {
     super("GroupByFrame");
     this.label = init?.label ?? "GROUPBY";
-    this.op = init?.op ?? "sum";
+    this.agg = init?.agg ?? "sum";
     this.totalDepth = init?.totalDepth ?? 0;
     this.addInput("frame", frameIn("Frame"));
     this.addInput("keys", strListIn("Group by"));
@@ -638,12 +638,12 @@ export class GroupByFrameNode extends ClassicPreset.Node {
       const mat = await readFrame(f);
       if (mat == null || isSolError(mat)) return emitFrame(this, beginPass(this), mat);
       return emitFrame(this, beginPass(this), runVerb(() => pivotFrame(mat, {
-        rowFields: keys, colFields: [], values: [col], funcs: [this.op],
+        rowFields: keys, colFields: [], values: [col], funcs: [this.agg],
         rowTotalDepth: this.totalDepth,
       })));
     }
     return emitFrame(this, beginPass(this),
-      await runFrameUnary(f, { kind: "groupBy", keys, aggs: [{ column: col, op: this.op, as: col }] }));
+      await runFrameUnary(f, { kind: "groupBy", keys, aggs: [{ column: col, op: this.agg, as: col }] }));
   }
 }
 
@@ -675,7 +675,7 @@ export class PivotNode extends ClassicPreset.Node {
   };
 
   label: string;
-  op: AggOp;
+  agg: AggOp;
   funcs: Record<string, AggOp> = {};
   rowTotalDepth = 0;
   colTotalDepth = 0;
@@ -691,13 +691,13 @@ export class PivotNode extends ClassicPreset.Node {
   width = 220; height = 300;
 
   constructor(init?: {
-    label?: string; op?: AggOp; funcs?: Record<string, AggOp>;
+    label?: string; agg?: AggOp; funcs?: Record<string, AggOp>;
     rowTotalDepth?: number; colTotalDepth?: number; rowSort?: number; colSort?: number; relativeTo?: number;
     filterExclude?: Record<string, string[]>;
   }) {
     super("Pivot");
     this.label = init?.label ?? "PIVOTBY";
-    this.op = init?.op ?? "sum";
+    this.agg = init?.agg ?? "sum";
     if (init?.funcs) this.funcs = { ...init.funcs };
     if (init?.filterExclude) this.filterExclude = { ...init.filterExclude };
     this.rowTotalDepth = init?.rowTotalDepth ?? 0;
@@ -771,14 +771,14 @@ export class PivotNode extends ClassicPreset.Node {
       if (isFrameRef(source)) return passFrame(source).then((out) => emitFrame(this, beginPass(this), out));
       this.cachedResult = f; return { frame: f };
     }
-    const funcs = values.map((name) => this.funcs[name] ?? this.op);
+    const funcs = values.map((name) => this.funcs[name] ?? this.agg);
     const spec: PivotSpec = {
       rowFields, colFields, values, funcs,
       rowTotalDepth: this.rowTotalDepth, colTotalDepth: this.colTotalDepth,
       rowSort: this.rowSort, colSort: this.colSort, relativeTo: this.relativeTo,
       filter: this.combineFilter(f, inputs.filter?.[0]),
     };
-    // The pivot itself stays in JS on both engines (the full PIVOTBY spec has no engine op).
+    // The pivot itself stays in JS on both engines (the full PIVOTBY spec has no engine agg).
     this.cachedResult = runVerb(() => pivotFrame(f, spec));
     return { frame: this.cachedResult };
   }
@@ -1217,14 +1217,14 @@ export const HEADER_OP_META: Record<HeaderOp, { label: string; description: stri
 
 export class HeadersNode extends ClassicPreset.Node {
   label: string;
-  op: HeaderOp;
+  action: HeaderOp;
   cachedResult: FrameValue | SolError | null = null;
   width = 200; height = 140;
 
-  constructor(init?: { label?: string; op?: HeaderOp }) {
+  constructor(init?: { label?: string; action?: HeaderOp }) {
     super("Headers");
     this.label = init?.label ?? "Headers";
-    this.op = init?.op ?? "promote";
+    this.action = init?.action ?? "promote";
     this.addInput("frame", frameIn("Frame"));
     this.addOutput("frame", frameOut("Frame"));
   }
@@ -1232,7 +1232,7 @@ export class HeadersNode extends ClassicPreset.Node {
   data(inputs: { frame?: (FrameValue | null)[] }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
-    this.cachedResult = runVerb(() => (this.op === "promote" ? promoteHeaders(f) : demoteHeaders(f)));
+    this.cachedResult = runVerb(() => (this.action === "promote" ? promoteHeaders(f) : demoteHeaders(f)));
     return { frame: this.cachedResult };
   }
 }
@@ -1246,14 +1246,14 @@ export const BLANK_ROW_OP_META: Record<BlankRowMode, { label: string; descriptio
 
 export class DropBlankRowsNode extends ClassicPreset.Node {
   label: string;
-  op: BlankRowMode;
+  mode: BlankRowMode;
   cachedResult: FrameValue | SolError | null = null;
   width = 190; height = 140;
 
-  constructor(init?: { label?: string; op?: BlankRowMode }) {
+  constructor(init?: { label?: string; mode?: BlankRowMode }) {
     super("DropBlankRows");
     this.label = init?.label ?? "Drop Blank Rows";
-    this.op = init?.op ?? "all";
+    this.mode = init?.mode ?? "all";
     this.addInput("frame", frameIn("Frame"));
     this.addOutput("frame", frameOut("Frame"));
   }
@@ -1261,7 +1261,7 @@ export class DropBlankRowsNode extends ClassicPreset.Node {
   data(inputs: { frame?: (FrameValue | null)[] }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
-    this.cachedResult = runVerb(() => dropBlankRows(f, this.op));
+    this.cachedResult = runVerb(() => dropBlankRows(f, this.mode));
     return { frame: this.cachedResult };
   }
 }
@@ -2350,16 +2350,16 @@ export class WindowNode extends ClassicPreset.Node {
     frame: "The input frame with the new column appended; rows stay in their original order. pandas transform.",
   };
   label: string;
-  op: WindowFn = "cumsum";
+  agg: WindowFn = "cumsum";
   literals: Record<string, number> = { n: 3 };
   stringLiterals: Record<string, string> = { orderBy: "", column: "", name: "" };
   cachedResult: FrameValue | SolError | null = null;
   width = 210; height = 300;
 
-  constructor(init?: { label?: string; op?: WindowFn }) {
+  constructor(init?: { label?: string; agg?: WindowFn }) {
     super("Window");
     this.label = init?.label ?? "Window";
-    if (init?.op) this.op = init.op;
+    if (init?.agg) this.agg = init.agg;
     this.addInput("frame", frameIn("Frame"));
     this.addInput("keys", strListIn("Partition by"));
     this.addInput("orderBy", strIn("Order by"));
@@ -2378,12 +2378,12 @@ export class WindowNode extends ClassicPreset.Node {
     const n = readInput(inputs.n, this.literals.n ?? 3);
     if (f == null || keys === null || orderBy === null || column === null || name === null || n === null) return emitFrame(this, beginPass(this), null);
     // A value-reading function with no Value column yet is a passthrough, not an error.
-    if (WINDOW_FN_NEEDS_COLUMN.has(this.op) && !column.trim()) return emitFrame(this, beginPass(this), await passFrame(f));
-    const as = name.trim() || `${WINDOW_FN_META[this.op].label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/_$/, "")}${column.trim() ? "_" + column.trim() : ""}`;
+    if (WINDOW_FN_NEEDS_COLUMN.has(this.agg) && !column.trim()) return emitFrame(this, beginPass(this), await passFrame(f));
+    const as = name.trim() || `${WINDOW_FN_META[this.agg].label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/_$/, "")}${column.trim() ? "_" + column.trim() : ""}`;
     // Lazy: Polars `.over()` on desktop, the oracle's windowFrame on web (one FrameOp).
     return emitFrame(this, beginPass(this), await runFrameUnary(f, {
-      kind: "window", partitionBy: keys, orderBy: orderBy.trim() || undefined, orderDir: "asc", fn: this.op,
-      column: column.trim() || undefined, as, n: WINDOW_FN_NEEDS_N.has(this.op) ? n : undefined,
+      kind: "window", partitionBy: keys, orderBy: orderBy.trim() || undefined, orderDir: "asc", fn: this.agg,
+      column: column.trim() || undefined, as, n: WINDOW_FN_NEEDS_N.has(this.agg) ? n : undefined,
     }));
   }
 }

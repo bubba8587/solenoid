@@ -3,7 +3,7 @@ import { InlineInputs } from "./inlineInput";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { CubeDisplay } from "./CubeDisplay";
 import { FrameDisplay } from "./FrameDisplay";
-import { NodeShell, OpSelect, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, ArgSelect, useNodeField, type NodeProps } from "./nodeKit";
 import { AGG_OP_OPTIONS } from "./FrameNodes";
 import { nodeDisplayName } from "../catalogUtils";
 
@@ -45,11 +45,11 @@ export function CubeColumnsComponent({ data, emit }: NodeProps<CubeColumnsNodeTy
 }
 
 export function CubeRollupComponent({ data, emit }: NodeProps<CubeRollupNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
+  const [agg, setAgg] = useNodeField(data, "agg");
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect value={op} options={AGG_OP_OPTIONS} onChange={setOp} />
+      <ArgSelect value={agg} options={AGG_OP_OPTIONS} onChange={setAgg} />
       <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
   );

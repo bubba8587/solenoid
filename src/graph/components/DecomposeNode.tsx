@@ -1,7 +1,7 @@
 import { DECOMPOSE_MODEL_META } from "../rete-nodes";
 import type { DecomposeNode as DecomposeNodeType, DecomposeModel } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
-import { NodeShell, OpSelect, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, ArgSelect, useNodeField, type NodeProps } from "./nodeKit";
 import { FrameDisplay } from "./FrameDisplay";
 import { nodeDisplayName } from "../catalogUtils";
 
@@ -13,7 +13,7 @@ export function DecomposeComponent({ data, emit }: NodeProps<DecomposeNodeType>)
   const [model, setModel] = useNodeField(data, "model");
   return (
     <NodeShell node={data} emit={emit}>
-      <OpSelect arg value={model} onChange={setModel} options={MODELS} />
+      <ArgSelect value={model} onChange={setModel} options={MODELS} />
       <InlineInputs node={data} emit={emit} />
       <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>

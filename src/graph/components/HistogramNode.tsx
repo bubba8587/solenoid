@@ -36,7 +36,7 @@ export function HistogramComponent({ data, emit }: NodeProps<HistogramNodeType>)
 
   return (
     <NodeShell node={data} emit={emit}>
-      <SegToggle arg value={data.mode} options={MODE_OPTIONS} onChange={(m) => void pickMode(m)} />
+      <SegToggle value={data.mode} options={MODE_OPTIONS} onChange={(m) => void pickMode(m)} />
       {/* `__figure` so NodeCard centers the `chart` OUTPUT socket on the plot row. */}
       <div className="solenoid-node__figure" style={{ position: "relative", height: H, marginTop: 4 }}>
         {has && cv && !collapsed

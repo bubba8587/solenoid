@@ -1316,7 +1316,7 @@
    "y": 2585,
    "init": {
     "label": "Window: running sum",
-    "op": "cumsum"
+    "agg": "cumsum"
    },
    "stringLiterals": {
     "orderBy": "Month",
@@ -1356,7 +1356,7 @@
    "y": 3013,
    "init": {
     "label": "Window: share of group",
-    "op": "share"
+    "agg": "share"
    },
    "stringLiterals": {
     "orderBy": "",
@@ -1380,7 +1380,7 @@
    "y": 3441,
    "init": {
     "label": "Window: rank by Sales",
-    "op": "rank"
+    "agg": "rank"
    },
    "stringLiterals": {
     "orderBy": "Sales",
@@ -1543,7 +1543,7 @@
    "y": 4755,
    "init": {
     "label": "Pad Text (left, zeros)",
-    "op": "left"
+    "side": "left"
    },
    "stringLiterals": {
     "text": "42",
@@ -1834,7 +1834,7 @@
    "y": 5510,
    "init": {
     "label": "Hash (SHA-256)",
-    "op": "sha256"
+    "algorithm": "sha256"
    },
    "stringLiterals": {
     "text": "customer-0042"
@@ -1856,7 +1856,7 @@
    "y": 5723,
    "init": {
     "label": "Hash (MD5)",
-    "op": "md5"
+    "algorithm": "md5"
    },
    "stringLiterals": {
     "text": "abc"

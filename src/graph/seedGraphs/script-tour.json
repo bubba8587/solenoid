@@ -201,7 +201,7 @@
       "y": 2060,
       "init": {
         "label": "Cube Rollup",
-        "op": "sum"
+        "agg": "sum"
       },
       "stringLiterals": {
         "nested": "quarters",

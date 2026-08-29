@@ -70,7 +70,7 @@ describe("visual nodes", () => {
   });
 
   it("Gauge (Bar) emits a bar payload with target and 0→Max track (the former Bullet)", () => {
-    const g = new GaugeNode({ op: "bar" });
+    const g = new GaugeNode({ style: "bar" });
     const out = g.data({ value: [42], target: [80], max: [200] }).chart;
     expect(out.payload).toMatchObject({ kind: "scale", style: "bar", value: 42, target: 80, min: 0, max: 200 });
   });
@@ -86,10 +86,10 @@ describe("visual nodes", () => {
     const sp2 = new SparklineNode(extractInit(sp));
     expect(sp2.op).toBe("column");
 
-    const g = new GaugeNode({ op: "bar" });
+    const g = new GaugeNode({ style: "bar" });
     const init = extractInit(g);
-    expect(init.op).toBe("bar");
-    expect(new GaugeNode(init as { op: "bar" }).op).toBe("bar");
+    expect(init.style).toBe("bar");
+    expect(new GaugeNode(init as { style: "bar" }).style).toBe("bar");
   });
 });
 
@@ -364,12 +364,12 @@ describe("chart-wave nodes emit their payloads", () => {
   });
 
   it("Proportion emits the waffle layout when its op is waffle, round-tripping through extractInit", async () => {
-    const n = new ProportionNode({ op: "waffle" });
+    const n = new ProportionNode({ layout: "waffle" });
     const f = frame([{ name: "Part", type: "string", values: ["A"] }, { name: "Share", type: "number", values: [1] }]);
     expect(((await n.data({ frame: [f] })).chart.payload as ProportionPayload).layout).toBe("waffle");
     const n2 = new ProportionNode(extractInit(n));
-    expect(n2.op).toBe("waffle");
-    n2.setOp("treemap");
+    expect(n2.layout).toBe("waffle");
+    n2.setLayout("treemap");
     expect(((await n2.data({ frame: [f] })).chart.payload as ProportionPayload).layout).toBe("treemap");
   });
 
@@ -571,19 +571,19 @@ describe("Record node", () => {
   });
 
   it("Options styles the figure; label + op round-trip through extractInit", async () => {
-    const n = new RecordNode({ label: "Part", op: "gallery" });
+    const n = new RecordNode({ label: "Part", view: "gallery" });
     const f = frame([{ name: "A", type: "number", values: [1] }]);
     const out = await n.data({ frame: [f], options: ["title=Sheet"] });
     expect(out.chart.title).toBe("Sheet");
-    const clone = new RecordNode(extractInit(n) as { op: "gallery" });
+    const clone = new RecordNode(extractInit(n) as { view: "gallery" });
     expect(clone.label).toBe("Part");
-    expect(clone.op).toBe("gallery");
+    expect(clone.view).toBe("gallery");
     // A stale op from an old save falls back rather than crashing.
-    expect(new RecordNode({ op: "kanban" as "board" }).op).toBe("card");
+    expect(new RecordNode({ view: "kanban" as "board" }).view).toBe("card");
   });
 
   it("gallery draws every row as a card, capped with a `more` count", async () => {
-    const n = new RecordNode({ op: "gallery" });
+    const n = new RecordNode({ view: "gallery" });
     const f = frame([{ name: "A", type: "number", values: Array.from({ length: 70 }, (_, i) => i + 1) }]);
     const out = await n.data({ frame: [f] });
     const p = out.chart.payload as RecordPayload;
@@ -596,7 +596,7 @@ describe("Record node", () => {
   });
 
   it("board groups rows into lanes by the named column, blanks last as an em-dash lane", async () => {
-    const n = new RecordNode({ op: "board" });
+    const n = new RecordNode({ view: "board" });
     n.stringLiterals.by = "status";
     const f = frame([
       { name: "Item", type: "string", values: ["a", "b", "c", "d"] },
@@ -621,11 +621,11 @@ describe("Record node", () => {
   it("setOp swaps the Row / Group-by sockets with the view", () => {
     const n = new RecordNode();
     expect(Object.keys(n.inputs)).toEqual(["frame", "row", "layout", "options"]);
-    n.setOp("gallery");
+    n.setView("gallery");
     expect(Object.keys(n.inputs)).toEqual(["frame", "layout", "options"]);
-    n.setOp("board");
+    n.setView("board");
     expect(Object.keys(n.inputs)).toEqual(["frame", "layout", "options", "by"]);
-    n.setOp("card");
+    n.setView("card");
     expect(Object.keys(n.inputs)).toEqual(["frame", "layout", "options", "row"]);
   });
 });

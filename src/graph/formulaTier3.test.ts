@@ -76,12 +76,12 @@ describe("every Tier 3 name computes what its node computes", () => {
   // never the function disappearing.
   it("RUNNING(op, list, [window]) — the family's ONE name; the aggregator is its argument", () => {
     for (const [op, meta] of Object.entries(RUNNING_OP_META)) {
-      const node = new RunningNode({ op: op as never });
+      const node = new RunningNode({ agg: op as never });
       expect(ev(`RUNNING("${meta.label}", x)`, { x: LIST }), meta.label)
         .toEqual(node.data({ list: [LIST] }).result);
     }
     // Windowed (Last N) through the optional third arg; op is case-insensitive.
-    const win = new RunningNode({ op: "avg", mode: "window" });
+    const win = new RunningNode({ agg: "avg", mode: "window" });
     expect(ev('RUNNING("average", x, 2)', { x: LIST }))
       .toEqual(win.data({ list: [LIST], window: [2] }).result);
     // A BLANK window is unknown → blank; an unknown aggregator is a #VALUE!.
@@ -349,7 +349,7 @@ describe("the formula namespace stays unambiguous", () => {
     }
     const clashes: string[] = [];
     for (const decl of NODE_OPS) {
-      if (decl.kind !== "operation" || !decl.ops) continue;
+      if (!decl.ops) continue;
       for (const op of decl.ops) {
         const name = op.fx ?? parityDespace(op.label);
         const id = `${decl.type}/${op.op}`;

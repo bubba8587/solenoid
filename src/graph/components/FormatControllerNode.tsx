@@ -303,7 +303,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
         <div className="solenoid-fc__row">
           <FcArrow dir="back" title={backTitle} />
           <LazySelect
-            className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+            className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
             value={textCase}
             onChange={(e) => onCaseChange(e.target.value as TextCase)}
             onPointerDown={(e) => e.stopPropagation()}
@@ -338,7 +338,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             title="Italic"
           >I</button>
           <LazySelect
-            className="solenoid-node__op-select solenoid-fc__size"
+            className="solenoid-node__select solenoid-fc__size"
             value={textScale}
             onChange={(e) => onScaleChange(parseFloat(e.target.value))}
             onPointerDown={(e) => e.stopPropagation()}
@@ -356,7 +356,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           <>
             <div className="solenoid-fc__row">
               <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
-              <SegToggle arg
+              <SegToggle
                 className="solenoid-seg--inline"
                 value={textAlign}
                 onChange={onTextAlignChange}
@@ -421,7 +421,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
         <div className="solenoid-fc__row">
           <FcArrow dir="back" title={backTitle} />
           <LazySelect
-            className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+            className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
             value={format}
             onChange={(e) => onFormatChange(e.target.value as FormatStyleId)}
             onPointerDown={(e) => e.stopPropagation()}
@@ -457,7 +457,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
         <div className="solenoid-fc__row">
           <FcArrow dir="back" title={backTitle} />
           <LazySelect
-            className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+            className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
             value={logicalStyle}
             onChange={(e) => onLogicalChange(e.target.value as LogicalStyle)}
             onPointerDown={(e) => e.stopPropagation()}
@@ -475,7 +475,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
         <div className="solenoid-fc__row">
           <FcArrow dir="back" title={backTitle} />
           <LazySelect
-            className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+            className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
             value={lambdaView}
             onChange={(e) => onLambdaViewChange(e.target.value as LambdaView)}
             onPointerDown={(e) => e.stopPropagation()}
@@ -493,7 +493,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
         <div className="solenoid-fc__row">
           <FcArrow dir="back" title={backTitle} />
           <LazySelect
-            className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+            className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
             value={chartFontScale}
             onChange={(e) => onChartScaleChange(parseFloat(e.target.value))}
             onPointerDown={(e) => e.stopPropagation()}
@@ -520,7 +520,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
         <div className="solenoid-fc__row">
           <FcArrow dir="back" title={backTitle} />
           <LazySelect
-            className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+            className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
             value={format}
             onChange={(e) => onFormatChange(e.target.value as FormatStyleId)}
             onPointerDown={(e) => e.stopPropagation()}
@@ -574,7 +574,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               onMouseDown={(e) => e.stopPropagation()}
               title={decimalMode === "places" ? "Digits after the decimal point" : "Number of significant figures"}
             />
-            <SegToggle arg
+            <SegToggle
               className="solenoid-seg--inline"
               value={decimalMode}
               onChange={onModeSet}
@@ -627,7 +627,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               <div className="solenoid-fc__row">
                 <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
                 <LazySelect
-                  className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+                  className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
                   value={negativeStyle}
                   onChange={(e) => onNegativeChange(e.target.value as NegativeStyle)}
                   onPointerDown={(e) => e.stopPropagation()}
@@ -645,7 +645,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               <div className="solenoid-fc__row">
                 <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
                 <LazySelect
-                  className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+                  className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
                   value={scaleMode}
                   onChange={(e) => onScaleChangeMode(e.target.value as ScaleMode)}
                   onPointerDown={(e) => e.stopPropagation()}
@@ -689,7 +689,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             : "Unit labels this box and travels downstream"
           } /> : <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />}
           <LazySelect
-            className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+            className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
             value={unit}
             disabled={node.unitLocked}
             onChange={(e) => onUnitChange(e.target.value)}

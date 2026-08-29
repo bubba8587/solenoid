@@ -1,6 +1,6 @@
 import { useCallback, useState, useSyncExternalStore } from "react";
 import { SlicerNode, type SlicerCell } from "../nodes/control";
-import { NodeShell, OpSelect, type NodeProps } from "./nodeKit";
+import { NodeShell, ArgSelect, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
@@ -96,8 +96,7 @@ export function SlicerComponent({ data, emit }: NodeProps<SlicerNode>) {
       {!collapsed && <div className="slicer-node">
         <div className="slicer-node__toolbar">
           {hasFrame ? (
-            <OpSelect
-              arg
+            <ArgSelect
               value={activeColumn}
               onChange={changeColumn}
               options={columns.map((c) => ({ value: c, label: c }))}

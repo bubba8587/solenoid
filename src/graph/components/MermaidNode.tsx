@@ -64,7 +64,7 @@ export function MermaidComponent({ data, emit }: NodeProps<MermaidNodeType>) {
     >
       {!sourceWired && (
         <LazySelect
-          className="solenoid-node__op-select solenoid-mermaid-template"
+          className="solenoid-node__select solenoid-mermaid-template"
           value=""
           title="Insert a starter diagram"
           onChange={(e) => { const t = MERMAID_TEMPLATES[Number(e.target.value)]; if (t) applyTemplate(t.source); }}

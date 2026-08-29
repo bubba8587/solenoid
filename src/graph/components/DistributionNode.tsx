@@ -1,5 +1,5 @@
 import { InlineInputs } from "./inlineInput";
-import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, OpSelect, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";
 import { getActiveArea } from "../activeGraph";
 import {
@@ -39,7 +39,7 @@ export function DistributionComponent({ data, emit }: NodeProps<DistributionNode
   return (
     <NodeShell node={data} emit={emit}>
       <OpSelect value={op} onChange={(o) => void pickDist(o)} options={DIST_OPTIONS} />
-      <OpSelect arg value={form} onChange={(f) => void pickForm(f)} options={formOptions} />
+      <ArgSelect value={form} onChange={(f) => void pickForm(f)} options={formOptions} />
       <InlineInputs
         node={data}
         emit={emit}

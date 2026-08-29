@@ -12,13 +12,13 @@ describe("AlertNode", () => {
   beforeEach(() => alertStore.clear());
 
   it("round-trips mode through extractInit", () => {
-    const n = new AlertNode({ op: "boolean" });
-    expect(extractInit(n).op).toBe("boolean");
-    expect(new AlertNode(extractInit(n)).op).toBe("boolean");
+    const n = new AlertNode({ condition: "boolean" });
+    expect(extractInit(n).condition).toBe("boolean");
+    expect(new AlertNode(extractInit(n)).condition).toBe("boolean");
   });
 
   it("defaults to range mode", () => {
-    expect(new AlertNode().op).toBe("range");
+    expect(new AlertNode().condition).toBe("range");
   });
 
   it("fires on the first eval when a wired value is already out of range", () => {
@@ -59,10 +59,10 @@ describe("AlertNode", () => {
     // The reported bug: trigger "is true" with a value, switch to range, and the
     // carried-over value is already out of bounds — range must surface that, not
     // sit silently pre-triggered.
-    const n = new AlertNode({ op: "boolean" });
+    const n = new AlertNode({ condition: "boolean" });
     n.data({ value: [1] });                          // boolean: TRUE → fires
     expect(alertStore.list().length).toBe(1);
-    n.op = "range";                                // component flips mode…
+    n.condition = "range";                                // component flips mode…
     n.data({ value: [1], low: [5], high: [100] });   // …recompute: 1 < 5, fresh eval → fires
     expect(alertStore.list().length).toBe(2);
     n.data({ value: [1], low: [5], high: [100] });   // held → no new fire
@@ -70,7 +70,7 @@ describe("AlertNode", () => {
   });
 
   it("boolean mode means TRUE (=== 1), not any nonzero value", () => {
-    const n = new AlertNode({ op: "boolean" });
+    const n = new AlertNode({ condition: "boolean" });
     n.data({ value: [0] });   // false → calm
     n.data({ value: [5] });   // nonzero but NOT true → still calm
     expect(alertStore.list().length).toBe(0);
@@ -79,7 +79,7 @@ describe("AlertNode", () => {
   });
 
   it("equals mode fires when the value matches the target", () => {
-    const n = new AlertNode({ op: "equals" });
+    const n = new AlertNode({ condition: "equals" });
     n.data({ value: [5], target: [7] });             // no match (calm)
     expect(alertStore.list().length).toBe(0);
     n.data({ value: [7], target: [7] });             // match → fires
@@ -87,7 +87,7 @@ describe("AlertNode", () => {
   });
 
   it("text mode fires when the text contains the match string", () => {
-    const n = new AlertNode({ op: "text", label: "Log" });
+    const n = new AlertNode({ condition: "text", label: "Log" });
     n.data({ text: ["all good"], match: ["error"] }); // no match
     expect(alertStore.list().length).toBe(0);
     n.data({ text: ["fatal error"], match: ["error"] }); // contains → fires

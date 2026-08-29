@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { NODE_OPS, opsFor, hiddenOps, exposureOf, opEntry, opKindForNode } from "./nodeOps";
+import { NODE_OPS, opsFor, hiddenOps, exposureOf, opEntry } from "./nodeOps";
 import { buildCatalog } from "./catalogUtils";
 import { flattenLeaves, searchLeaves } from "./catalogSearch";
 import { despace } from "./formulaNodeParity";
@@ -97,36 +97,36 @@ describe("the ops list is derived, not transcribed", () => {
   });
 });
 
-// "Having op" is ONE property with three consequences, not three switches: the ops are
-// genuine top-level functions in the formula editor, they get the accent and the
-// top-of-body slot, and they are searchable in the Add menu. An ARGUMENT is a parameter
-// inside a top-level function: neutral control, no function, no search row of its own.
-// This pins the argument half, which is the checkable one — the operation half (every
-// op callable) is the parity PROGRAM's business and has known open gaps (DATEDIF is
-// 3/8), so asserting it here would just duplicate a tracked backlog as a red test.
-describe("op-vs-arg is harmonized across its three consequences", () => {
-  it("an argument-kind family declares no op rows — an arg is not separately searchable", () => {
-    const offenders = NODE_OPS
-      .filter((d) => d.kind === "argument" && d.ops && d.create)
-      .map((d) => `${d.type} (${d.ops!.length} ops)`);
+// OP and ARG are two different things (DESIGN.md § Op pickers). A node with a field
+// named `op` is an OP family: its values are ops, each a formula function and an
+// Add-menu name, declared in NODE_OPS so the menu and the formula surface can see
+// them. An ARGUMENT is a parameter of the node's one function and lives under its
+// own name (side, order, agg, view). The field name is the whole classification, so
+// the two directions below are the machine check that nothing sits in between.
+describe("op vs arg — a string `op` field means an op family, and only that", () => {
+  const isDeclared = (inst: object) => NODE_OPS.some((d) => inst instanceof d.ctor);
+
+  it("every node with an `op` field is declared in NODE_OPS", () => {
+    const undeclared = new Map<string, string>();
+    for (const leaf of leaves) {
+      let inst: object & { op?: unknown };
+      try { inst = leaf.create() as typeof inst; } catch { continue; }
+      if (typeof inst?.op !== "string") continue;
+      if (isDeclared(inst)) continue;
+      undeclared.set(inst.constructor.name, leaf.type);
+    }
     expect(
-      offenders,
-      `These families are declared \`argument\` yet generate a searchable row per op, ` +
-      `so they are an argument on the card and an operation in the Add menu. Pick one: ` +
-      `if the ops are genuine top-level functions (dispatchable by name in a formula, ` +
-      `like RUNNINGSUM), the family is \`operation\`; if they are parameter values ` +
-      `(promote/demote, contains/starts-with), drop \`ops\`/\`create\` and put the ` +
-      `searched words in the host leaf's \`keywords\`:\n  ` + offenders.join("\n  "),
+      [...undeclared.keys()].sort(),
+      `These classes have an \`op\` field but no NODE_OPS entry. Either its values are ops\n` +
+        `(searchable, formula-callable) — declare the family — or it is a parameter of the\n` +
+        `node's one function: rename the field (side, order, agg, ...) and pick it with\n` +
+        `ArgSelect/SegToggle:\n` +
+        [...undeclared].map(([c, t]) => `  ${c} (leaf "${t}")`).join("\n"),
     ).toEqual([]);
   });
 
-  // `kind` classifies a family's op PICKER, so a declaration only means something on a
-  // class that has an `op` field. A pickerless class declared `argument` renders
-  // identically undeclared (opKindForNode) and just makes "argument" read as "has no
-  // picker" too — 21 such declarations were carried until 2026-08-29.
-  it("an argument-kind family has an `op` field to classify", () => {
+  it("every NODE_OPS family has a string `op` field", () => {
     const dead = NODE_OPS
-      .filter((d) => d.kind === "argument")
       .filter((d) => {
         const leaf = leaves.find((l) => l.type === d.type);
         let inst: { op?: unknown } | undefined;
@@ -134,36 +134,7 @@ describe("op-vs-arg is harmonized across its three consequences", () => {
         return typeof inst?.op !== "string";
       })
       .map((d) => d.type);
-    expect(
-      dead,
-      `These families are declared \`argument\` but have no \`op\` field, so there is no ` +
-      `picker for \`kind\` to classify. Delete the declaration:\n  ` + dead.join("\n  "),
-    ).toEqual([]);
-  });
-});
-
-describe("coverage — every op selector is classified", () => {
-  // The whole point of `kind` is that a NEUTRAL op selector means "argument". That
-  // only holds while every family is declared: an undeclared one also renders
-  // neutral, and would be silently asserting something false about itself. This is
-  // what keeps the visual honest as nodes are added.
-  it("no node with an op dropdown is missing a declaration", () => {
-    const undeclared = new Map<string, string>();
-    for (const leaf of leaves) {
-      let inst: object & { op?: unknown };
-      try { inst = leaf.create() as typeof inst; } catch { continue; }
-      if (typeof inst?.op !== "string") continue;
-      if (opKindForNode(inst)) continue;
-      undeclared.set(inst.constructor.name, leaf.type);
-    }
-    expect(
-      [...undeclared.keys()].sort(),
-      `These classes have an op selector but no entry in NODE_OPS, so their dropdown\n` +
-        `renders neutral — indistinguishable from a declared "argument":\n` +
-        [...undeclared].map(([c, t]) => `  ${c} (leaf "${t}")`).join("\n") +
-        `\nAdd a declaration with its kind: does a user search the Add menu for the\n` +
-        `variant by name (operation), or is it a parameter/datum of the host (argument)?`,
-    ).toEqual([]);
+    expect(dead, `Declared in NODE_OPS but no \`op\` field to pick between:\n  ` + dead.join("\n  ")).toEqual([]);
   });
 });
 
@@ -288,7 +259,6 @@ describe("the one Distribution node is reachable by search without growing the m
     // standard-normal FORMS that moved here from Math). What the dotted rule really
     // guarded is a collision with a Math FUNCTION leaf (the op-Gamma vs GAMMA(x)
     // trap), so assert THAT directly.
-    expect(decl!.kind).toBe("operation");
     expect(decl!.ops!.length).toBeGreaterThan(12);
     const mathFnNames = new Set(
       leaves.filter((l) => l.leaf.type.startsWith("math-")).map((l) => despace(l.leaf.label).toUpperCase()),

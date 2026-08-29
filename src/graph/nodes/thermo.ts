@@ -136,16 +136,16 @@ export function antoinePressure(op: AntoineOp, t: number): number {
 
 export class AntoineNode extends ClassicPreset.Node {
   label: string;
-  op: AntoineOp;
+  substance: AntoineOp;
   literals: Record<string, number> = { t: 25 };
   cachedP: number | SolError | null = null;
   cachedBp: number | null = null;
   width = 220;
   height = 190;
 
-  constructor(init?: { label?: string; op?: AntoineOp }) {
+  constructor(init?: { label?: string; substance?: AntoineOp }) {
     super("Antoine");
-    this.op = init?.op && init.op in ANTOINE ? init.op : "water";
+    this.substance = init?.substance && init.substance in ANTOINE ? init.substance : "water";
     this.label = init?.label ?? "Vapor Pressure";
     this.addInput("t", numIn("T °C"));
     this.addOutput("pressure", numOut("p (Pa)"));
@@ -154,12 +154,12 @@ export class AntoineNode extends ClassicPreset.Node {
 
   data(inputs: { t?: (number | null)[] }) {
     const t = readInput(inputs.t, this.literals.t);
-    const { A, B, C } = ANTOINE[this.op];
+    const { A, B, C } = ANTOINE[this.substance];
     let pressure: number | SolError | null = null;
     if (typeof t === "number") {
       pressure = t <= -C
         ? solError("#DOMAIN!", "Below the equation's temperature range")
-        : antoinePressure(this.op, t);
+        : antoinePressure(this.substance, t);
     }
     // Normal boiling point: solve A − B/(C+T) = log₁₀760.
     const bp = B / (A - Math.log10(760)) - C;

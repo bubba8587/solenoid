@@ -214,7 +214,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
           canRemove={keys.length > 2}
         />
       ))}
-      <SegToggle arg
+      <SegToggle
         value={multi ? "many" : "one"}
         options={[
           { value: "one", label: "One", title: "Route one input to the output" },

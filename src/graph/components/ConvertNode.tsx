@@ -34,7 +34,7 @@ function withUnit(n: number, code: string, format: FormatStyle): string {
 function FormatSelect({ value, onChange }: { value: FormatStyle; onChange: (e: ChangeEvent<HTMLSelectElement>) => void }) {
   return (
     <LazySelect
-      className="solenoid-node__op-select"
+      className="solenoid-node__select"
       value={value}
       onChange={onChange}
       onPointerDown={(e) => e.stopPropagation()}
@@ -179,7 +179,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
       </div>
       <FormatSelect value={inFormat} onChange={onInFormatChange} />
       <LazySelect
-        className="solenoid-node__op-select"
+        className="solenoid-node__select"
         value={fromUnit}
         onChange={onFromChange}
         onPointerDown={(e) => e.stopPropagation()}
@@ -201,7 +201,7 @@ export function ConvertComponent({ data, emit }: NodeProps<ConvertNodeType>) {
         ↓ convert to
       </div>
       <LazySelect
-        className="solenoid-node__op-select"
+        className="solenoid-node__select"
         value={toUnit}
         onChange={onToChange}
         onPointerDown={(e) => e.stopPropagation()}

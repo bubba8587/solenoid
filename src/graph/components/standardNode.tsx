@@ -64,7 +64,7 @@ export function makeToggleNodeComponent<N extends ShellNode & InlineNode, V exte
     useEffect(() => { setCur(live); }, [live]);
     return (
       <NodeShell node={data} emit={emit}>
-        <SegToggle arg
+        <SegToggle
           value={cur}
           options={toggle.options}
           onChange={(next) => { setCur(next); toggle.write(data, next); void processGraph(data.id); }}

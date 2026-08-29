@@ -8,7 +8,6 @@ import { collapseStore } from "../collapseStore";
 import { groupMembershipStore } from "../groupMembership";
 import { appThemeStore } from "../appTheme";
 import { themeAccent, darkenAccent } from "../palette";
-import { opKindForNode } from "../nodeOps";
 
 // The whole node header is a drag surface; a pointer moving less than this many
 // px counts as a TAP, not a drag. Shared with nodeKit's title label.
@@ -245,10 +244,6 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   return (
     <div
       ref={ref}
-      // Tags the card with what its op dropdown selects between, so one CSS rule
-      // styles every op selector; absent for a family not declared in nodeOps.ts,
-      // which is deliberately NOT the same as "argument".
-      data-op-kind={opKindForNode(node)}
       className={
         `solenoid-node${selected ? " solenoid-node--selected" : ""}` +
         `${collapsed ? " solenoid-node--collapsed" : ""}${groupColor ? " solenoid-node--grouped" : ""}` +

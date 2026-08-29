@@ -1,7 +1,7 @@
 import { useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { RecordNode as RecordNodeType, RecordOp } from "../rete-nodes";
 import { RECORD_OP_META } from "../rete-nodes";
-import { NodeShell, OpSelect, type NodeProps, type OpOption } from "./nodeKit";
+import { NodeShell, ArgSelect, type NodeProps, type OpOption } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
 import { InlineInputs, useConnectedInputs } from "./inlineInput";
 import { ChartChip } from "./ChartChip";
@@ -21,10 +21,10 @@ const OPTIONS: ReadonlyArray<OpOption<RecordOp>> = (Object.keys(RECORD_OP_META) 
 // live on invisibly.
 async function applyRecordOp(node: RecordNodeType, next: RecordOp): Promise<void> {
   const departing: string[] = [];
-  if (node.op === "card" && next !== "card") departing.push("row");
-  if (node.op === "board" && next !== "board") departing.push("by");
+  if (node.view === "card" && next !== "card") departing.push("row");
+  if (node.view === "board" && next !== "board") departing.push("by");
   if (departing.length) await dropInputCables(node.id, departing);
-  node.setOp(next);
+  node.setView(next);
   const area = getActiveArea();
   if (area) await area.rerenderNode(node.id);
   await processGraph();
@@ -43,8 +43,8 @@ function Chevron({ back }: { back?: boolean }) {
 
 export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
-  const [op, setOpState] = useState<RecordOp>(data.op);
-  const setOp = useCallback((v: RecordOp) => { setOpState(v); void applyRecordOp(data, v); }, [data]);
+  const [view, setOpState] = useState<RecordOp>(data.view);
+  const setView = useCallback((v: RecordOp) => { setOpState(v); void applyRecordOp(data, v); }, [data]);
   const connected = useConnectedInputs(data.id);
   const layoutWired = connected.has("layout");
   const rowWired = connected.has("row");
@@ -79,9 +79,9 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
   const layoutPort = data.inputs.layout;
 
   const hasBoxes = !!payload && payload.cards.some((c) => c.length > 0);
-  // Per-op body rows; collapsed, the hand-rendered layout block is gone, so its
+  // Per-view body rows; collapsed, the hand-rendered layout block is gone, so its
   // socket folds into the row pills (the ChartNode `values` pattern).
-  const keys = ["frame", ...(op === "card" ? ["row"] : op === "board" ? ["by"] : []), ...(collapsed ? ["layout"] : []), "options"];
+  const keys = ["frame", ...(view === "card" ? ["row"] : view === "board" ? ["by"] : []), ...(collapsed ? ["layout"] : []), "options"];
 
   return (
     <NodeShell
@@ -91,7 +91,7 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
         ? <NodeSocket side="input" socketKey="layout" nodeId={data.id} emit={emit} payload={layoutPort.socket} top={layoutTop} />
         : null}
     >
-      <OpSelect value={op} onChange={setOp} options={OPTIONS} />
+      <ArgSelect value={view} onChange={setView} options={OPTIONS} />
       <InlineInputs node={data} emit={emit} keys={keys} />
       {!collapsed && (
         <div ref={layoutRef} style={{ position: "relative", marginTop: 4 }}>
@@ -99,7 +99,7 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
         </div>
       )}
       <div className="solenoid-node__section-divider" />
-      {!collapsed && op === "card" && !rowWired && total > 0 && (
+      {!collapsed && view === "card" && !rowWired && total > 0 && (
         <div className="solenoid-record__pager">
           <button
             type="button" className="solenoid-record__pager-btn" title="Previous record"

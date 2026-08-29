@@ -3,7 +3,7 @@ import { DATE_TRUNC_UNIT_META } from "../rete-nodes";
 import type { DateTruncNode as DateTruncNodeType, DateTruncUnit } from "../rete-nodes";
 import { processGraph } from "../process";
 import { InlineInputs } from "./inlineInput";
-import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 
 const UNITS = (Object.keys(DATE_TRUNC_UNIT_META) as DateTruncUnit[]).map((u) => ({
@@ -19,9 +19,9 @@ export function DateTruncComponent({ data, emit }: NodeProps<DateTruncNodeType>)
   const [dir, setDir] = useState<"floor" | "ceiling">(data.ceiling ? "ceiling" : "floor");
   return (
     <NodeShell node={data} emit={emit}>
-      <SegToggle arg value={dir} options={DIRECTION}
+      <SegToggle value={dir} options={DIRECTION}
         onChange={(d) => { setDir(d); data.ceiling = d === "ceiling"; void processGraph(data.id); }} />
-      <OpSelect arg value={unit} onChange={setUnit} options={UNITS} />
+      <ArgSelect value={unit} onChange={setUnit} options={UNITS} />
       <InlineInputs node={data} emit={emit} />
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>

@@ -53,7 +53,7 @@ describe("connectionStore refresh drives a real recompute that AlertNode still f
     const source = new WebSourceNode({ url: "https://example.com/data.csv" });
     const col = new GetColumnNode({ readAs: "number" });
     col.stringLiterals.name = "v";
-    const alert = new AlertNode({ op: "range" }); // default 0–100
+    const alert = new AlertNode({ condition: "range" }); // default 0–100
 
     await editor.addNode(source as unknown as Schemes["Node"]);
     await editor.addNode(col as unknown as Schemes["Node"]);

@@ -83,6 +83,7 @@ export const INIT_FIELD_ORDER = [
   "checkNotNull", "checkUnique", "checkRange", "checkRegex", "checkAllowed", "integer",
   "runMode", "simulationSteps", "stopWhenPortId", "stopWhenOp", "stopWhenValue", "byRowPortId", "embeds", "steps",
   "wrap", "method", "ceiling", "model", "standardize",
+  "view", "style", "layout", "action", "agg", "order", "condition", "algorithm", "substance", "bands", "material", "symbol",
 ] as const;
 
 // Object-valued extras, appended after INIT_FIELD_ORDER in this fixed order.

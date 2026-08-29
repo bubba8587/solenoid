@@ -112,7 +112,7 @@ describe("Resistor color code", () => {
     const n = new ResistorCodeNode();
     // Defaults: brown black × red, gold → 1 kΩ ± 5%.
     expect(n.data()).toEqual({ ohms: 1000, tolerance: 5 });
-    n.op = "5";
+    n.bands = "5";
     n.stringLiterals = { b1: "brown", b2: "black", b3: "black", mult: "red", tol: "brown" };
     expect(n.data()).toEqual({ ohms: 10000, tolerance: 1 });
   });

@@ -5,7 +5,7 @@ import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getActiveArea } from "../activeGraph";
 import { useConnectedInputs, InlineInputs, InlineTextField } from "./inlineInput";
-import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { nodeOutputElemFamily } from "./valueDisplayFormat";
@@ -55,14 +55,14 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <InlineInputs node={data} emit={emit} keys={["list"]} />
       {keys.length > 1 && (
-        <SegToggle arg value={combine} options={FILTER_COMBINE_OPTIONS} onChange={setCombine} />
+        <SegToggle value={combine} options={FILTER_COMBINE_OPTIONS} onChange={setCombine} />
       )}
       {keys.map((key, i) => {
         const id = key.slice(5);
         const c = rowCfg(id);
         return (
           <div key={key} className="solenoid-node__pair-group">
-            <OpSelect arg value={c.op} options={FILTER_OP_OPTIONS_WITH_ERROR} onChange={(op) => updateCfg(id, { op })} />
+            <ArgSelect value={c.op} options={FILTER_OP_OPTIONS_WITH_ERROR} onChange={(op) => updateCfg(id, { op })} />
             <MeasuredSocketRow side="input" socketKey={key} nodeId={data.id} emit={emit} payload={data.inputs[key]!.socket}>
               <span className="solenoid-node__io-label">Value{keys.length > 1 ? ` ${i + 1}` : ""}</span>
               {connected.has(key) ? (

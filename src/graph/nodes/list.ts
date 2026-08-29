@@ -447,15 +447,15 @@ export class SortNode extends ClassicPreset.Node {
    *  unit-blind (like SORTBY, which this node absorbed). */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
-  op: SortDir;
+  order: SortDir;
   cachedList: (number | string | boolean | null | SolError)[] | SolError | null = [];
   width = 180;
   height = 175;
 
-  constructor(init?: { label?: string; op?: SortDir }) {
+  constructor(init?: { label?: string; order?: SortDir }) {
     super("Sort");
     this.label = init?.label ?? "List Sort";
-    this.op = init?.op ?? "asc";
+    this.order = init?.order ?? "asc";
     // Widened to anylist so a wired `by` can reorder ANY element family, not just numbers.
     this.addInput("list", anyListIn("List"));
     this.addInput("by",   listIn("Sort by"));
@@ -464,7 +464,7 @@ export class SortNode extends ClassicPreset.Node {
 
   data(inputs: { list?: unknown[][]; by?: ((number | null | SolError)[] | null)[] }): { result: (number | string | boolean | null | SolError)[] | SolError | null } {
     const arr = inputs.list?.[0] ?? [];
-    const desc = this.op === "desc";
+    const desc = this.order === "desc";
     const by = inputs.by?.[0];
     if (Array.isArray(by)) {
       // Wired parallel keys (SORTBY): reorder `arr` by them. Same length required.
@@ -1306,7 +1306,7 @@ export const SET_META: Record<SetOpAll, { label: string; description: string; fx
   ...(Object.fromEntries((Object.keys(SET_RELATION_META) as SetRelation[]).map((op) => [op, { ...SET_RELATION_META[op], group: "Relation" }]))),
 } as Record<SetOpAll, { label: string; description: string; fx: string; tex: string; plain: string; group: string }>;
 
-// ONE Set card (node-combining, `kind: "operation"`): an operation (union / intersection /
+// ONE Set card (node-combining): an OP family (union / intersection /
 // difference / symmetric difference → a list) OR a relation (equal / subset / superset /
 // disjoint → TRUE/FALSE). The output socket swaps list↔logical per op (applySetOp, Split
 // Frame precedent). Set semantics are shared: compared by VALUE with first-seen order and
@@ -1433,17 +1433,17 @@ export class RunningNode extends ClassicPreset.Node {
   };
 
   label: string;
-  op: RunningOp;
+  agg: RunningOp;
   mode: RunningMode;
   cachedList: ListCell[] | null = [];
   literals: Record<string, number> = { window: 3 };
   width = 180;
   height = 190;
 
-  constructor(init?: { label?: string; op?: RunningOp; mode?: RunningMode }) {
+  constructor(init?: { label?: string; agg?: RunningOp; mode?: RunningMode }) {
     super("Running");
     this.label = init?.label ?? "Running";
-    this.op = init?.op ?? "sum";
+    this.agg = init?.agg ?? "sum";
     this.mode = init?.mode ?? "all";
     this.addInput("list", listIn("List"));
     if (this.mode === "window") this.addInput("window", numIn("Window size"));
@@ -1470,11 +1470,11 @@ export class RunningNode extends ClassicPreset.Node {
       const wRaw = readInput(inputs.window, this.literals.window ?? 3);
       // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
       if (wRaw === null) { this.cachedList = null; return { result: null }; }
-      const result = running(this.op, arr, wRaw);
+      const result = running(this.agg, arr, wRaw);
       this.cachedList = result;
       return { result };
     }
-    const result = running(this.op, arr, null);
+    const result = running(this.agg, arr, null);
     this.cachedList = result;
     return { result };
   }
@@ -2077,14 +2077,14 @@ export class GroupByNode extends ClassicPreset.Node {
   };
 
   label: string;
-  op: GroupByOp;
+  agg: GroupByOp;
   cachedResult: FrameValue | null = null;
   width = 180; height = 220;
 
-  constructor(init?: { label?: string; op?: GroupByOp }) {
+  constructor(init?: { label?: string; agg?: GroupByOp }) {
     super("GroupBy");
     this.label = init?.label ?? "Group Lists";
-    this.op    = init?.op    ?? "sum";
+    this.agg    = init?.agg    ?? "sum";
     this.addInput("keys",   anyListIn("Keys"));
     this.addInput("values", listIn("Values"));
     // Unique keys + aggregated values are index-aligned, so they leave as ONE frame (C5):
@@ -2120,7 +2120,7 @@ export class GroupByNode extends ClassicPreset.Node {
       if (Number.isFinite(v)) buckets.get(key)!.push(v);
     }
 
-    const aggValues = order.map((k) => groupByAggregate(buckets.get(String(k))!, this.op));
+    const aggValues = order.map((k) => groupByAggregate(buckets.get(String(k))!, this.agg));
     const frame: FrameValue = {
       __frame: true,
       columns: [

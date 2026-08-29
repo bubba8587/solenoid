@@ -22,7 +22,7 @@ export function BinComponent({ data, emit }: NodeProps<BinNodeType>) {
 
   return (
     <NodeShell node={data} emit={emit}>
-      <SegToggle arg value={mode} options={BIN_MODE_OPTIONS} onChange={(m) => void pickMode(m)} />
+      <SegToggle value={mode} options={BIN_MODE_OPTIONS} onChange={(m) => void pickMode(m)} />
       <InlineInputs node={data} emit={emit} />
       <ValueDisplay value={data.cachedList} />
     </NodeShell>

@@ -6,6 +6,31 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-08-29b — OP and ARG made structurally distinct)
+
+**Author order: "MAKE THESE FULLY DISTINCT THINGS."** The blend was three shared seams — one
+field name (`op`) for both, one component with a flag (`OpSelect arg` / `SegToggle arg`), and
+a `kind` switch on `NODE_OPS` saying which — and each had drifted (argument families accented,
+21 pickerless classes declared `argument`, Gauge/Proportion accented with nothing searchable,
+DESIGN.md counting "fourteen" and naming a deleted node). Now the field name IS the
+classification (rules opArgDistinct, DESIGN.md § Op pickers has the two-column table):
+`op` ⇔ OP family in `NODE_OPS` ⇔ `OpSelect`/`OpToggle` (hoisted, accented, searchable, a
+function per op); anything else ⇔ ARG ⇔ `ArgSelect`/`SegToggle` (neutral, in its row, a
+parameter of the host's function). `kind`, `opKindForNode`, `data-op-kind`, `data-op-arg`
+and the `arg` prop are gone; `NODE_OPS` lists OP families only (Surface kept: two leaves).
+Twenty argument families renamed their field (Sort `order`, Group By/Running/Window/Cube
+Rollup/Group By-frame/Pivot `agg`, Record `view`, Gauge `style`, Proportion `layout`,
+Headers `action`, Alert `condition`, Color Blend + Drop Blank Rows `mode`, Hash `algorithm`,
+Antoine `substance`, Resistor `bands`, Pipe Roughness `material`, Pad Text `side`, Element
+`symbol`); seeds + the PF generator + `INIT_FIELD_ORDER` follow (noBackCompat). The generic
+select style is `solenoid-node__select`; `--op` is the modifier that hoists and edges.
+Pinned both ways: `nodeOps.test.ts` (string `op` ⇔ declared) and `sourceInvariants`
+opArgDistinct (op pickers bind `op`; arg pickers never; no `arg` prop). Also this session:
+DESIGN.md reconciled to the code for the three width tiers (180/210 medium/240), no
+resting card shadow (`--shadow-card` lives only under in-card popovers), and the full
+socket glyph set incl. the `anydata` hollow square. Leftover for the author: the group
+HEADER still casts a resting `0 1px 3px` shadow (`GroupNode.css`).
+
 ### SESSION DIGEST (2026-08-29 — test-suite trim: −1.3k lines, stale carve-outs out)
 
 **Author-ordered suite trim ("cut until genuinely uncomfortable"): 4937 → 4745 cases,

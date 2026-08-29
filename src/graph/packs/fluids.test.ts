@@ -104,7 +104,7 @@ describe("Pipe Roughness", () => {
   });
 
   it("emits ε and, with a diameter, the ε/D that feeds Colebrook", () => {
-    const n = new PipeRoughnessNode({ op: "steel" });
+    const n = new PipeRoughnessNode({ material: "steel" });
     const bare = n.data({});
     expect(bare.eps).toBe(0.045);
     expect(bare.rel).toBeNull();

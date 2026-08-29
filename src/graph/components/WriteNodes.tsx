@@ -69,7 +69,7 @@ export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>)
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <div className="sol-conn">
-        <SegToggle value={format} onChange={pickFormat} options={FORMAT_OPTIONS} arg />
+        <SegToggle value={format} onChange={pickFormat} options={FORMAT_OPTIONS} />
         {!desktop && <div className="sol-conn__note">Writing files is available in the desktop app only.</div>}
         <div style={{ display: "flex", gap: 4 }}>
           <input

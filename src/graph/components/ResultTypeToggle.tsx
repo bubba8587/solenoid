@@ -39,7 +39,7 @@ export function ResultTypeToggle({ node, dim }: { node: Producer; dim: ResultDim
   useEffect(() => { setResultAs(node.resultAs); }, [node.resultAs]);
 
   return (
-    <SegToggle arg
+    <SegToggle
       value={resultAs}
       options={RESULT_TYPE_OPTIONS}
       onChange={(next) => { setResultAs(next); void applyResultAs(node, dim, next); }}

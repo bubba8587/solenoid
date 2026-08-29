@@ -6,7 +6,7 @@ import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getActiveArea } from "../activeGraph";
 import { useConnectedInputs, InlineInputs, InlineTextField } from "./inlineInput";
-import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, OpSelect, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { FILTER_OP_OPTIONS, TEXT_MATCH_OPS, VALUELESS_OPS } from "./FrameNodes";
@@ -89,7 +89,7 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
                 </button>
               )}
             </MeasuredSocketRow>
-            <OpSelect arg value={c.op} options={FILTER_OP_OPTIONS} onChange={(next) => updateCfg(id, { op: next })} />
+            <ArgSelect value={c.op} options={FILTER_OP_OPTIONS} onChange={(next) => updateCfg(id, { op: next })} />
             <MeasuredSocketRow side="input" socketKey={valKey} nodeId={data.id} emit={emit} payload={data.inputs[valKey]!.socket}>
               <span className="solenoid-node__io-label">Value</span>
               {connected.has(valKey) ? (
@@ -122,7 +122,6 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
       {/* With one criterion All and Any are the same, so the toggle only earns its row past that. */}
       {pairs.length > 1 && (
         <SegToggle
-          arg
           value={match}
           options={[{ value: "all", label: "Match all" }, { value: "any", label: "Match any" }]}
           onChange={setMatch}

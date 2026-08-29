@@ -135,7 +135,7 @@ const TEXT_SELECTORS: { sel: string; title?: boolean; input?: boolean; select?: 
   { sel: ".solenoid-node__output-value" },
   { sel: ".solenoid-node__inline-input", input: true },
   { sel: ".solenoid-node__value-input", input: true },
-  { sel: ".solenoid-node__op-select", select: true },
+  { sel: ".solenoid-node__select", select: true },
 ];
 // Markdown block tags for Notes (their text uses plain tags, not node classes).
 const NOTE_SELECTORS: { sel: string; title?: boolean; input?: boolean; select?: boolean }[] = [

@@ -4,7 +4,7 @@ import type { RunningNode as RunningNodeType, RunningOp, RunningMode } from "../
 import { processGraph } from "../process";
 import { getActiveArea } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";
-import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { dropInputCables } from "./cablePrune";
 
@@ -13,7 +13,7 @@ const OPS = (Object.keys(RUNNING_OP_META) as RunningOp[]).map((op) => ({
 }));
 
 export function RunningComponent({ data, emit }: NodeProps<RunningNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
+  const [agg, setAgg] = useNodeField(data, "agg");
   const [mode, setMode] = useState<RunningMode>(data.mode);
 
   async function pickMode(next: RunningMode) {
@@ -27,9 +27,9 @@ export function RunningComponent({ data, emit }: NodeProps<RunningNodeType>) {
 
   return (
     <NodeShell node={data} emit={emit}>
-      <SegToggle arg value={mode} options={RUNNING_MODE_OPTIONS} onChange={(m) => void pickMode(m)} />
+      <SegToggle value={mode} options={RUNNING_MODE_OPTIONS} onChange={(m) => void pickMode(m)} />
       <InlineInputs node={data} emit={emit} />
-      <OpSelect value={op} onChange={setOp} options={OPS} />
+      <ArgSelect value={agg} onChange={setAgg} options={OPS} />
       <ValueDisplay value={data.cachedList} />
     </NodeShell>
   );

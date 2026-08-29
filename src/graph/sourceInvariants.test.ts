@@ -202,38 +202,21 @@ describe("perInputUnitBlind — a node file that runs the dimension algebra decl
   });
 });
 
-describe("selectorNamedOp — a card's family op selector binds a field named `op`", () => {
-  // The declaration machinery resolves a live node's current op by reading
-  // `inst.op` (nodeOps.opKindForNode), so a family whose selector field is named
-  // otherwise cannot declare its ops AT ALL — they become unsearchable and
-  // unmeasurable, silently (the PadNode.dir incident). nodeOps.test.ts covers
-  // nodes that HAVE an `op` field; THIS closes the blindness (rules.md
-  // known-violation 1): it finds the dropdowns in the component source, where a
-  // misnamed field is still visible.
-  //
-  // The contract it enforces: every op-picker either binds `op` (directly, a
-  // per-row `.op` config field, or via useNodeField(…, "op")) or carries the
-  // `arg` prop — the machine-readable "not the family op selector" declaration
-  // (criterion comparators, payment timing, config/data picks; nodeKit.tsx).
-  // A new family that stores its op under `mode`/`dir` fails here by name.
-  //
-  // BOTH doors are scanned. A card carries an op picker as a dropdown (`OpSelect`)
-  // or as a segmented toggle (`SegToggle` — Sparkline's chart type, Surface's view,
-  // the resistor's band count), and while the scan watched only the dropdown, a
-  // family could put its op in a toggle bound to `mode` and be invisible: the
-  // coverage test skips a node whose `inst.op` is undefined, so nothing would have
-  // demanded a declaration. That is the PadNode.dir defect exactly, through the
-  // unwatched door. Most SegToggles ARE arguments (mode/dir/how/combine) and now
-  // say so with `arg`.
-  //
-  // A THIRD picker component would reopen the blindness, and no test can notice that
-  // for you — the scan can only look for names it is given. Add it here the day you
-  // add it to the components tree.
-  const PICKERS = ["<OpSelect", "<SegToggle"];
+describe("opArgDistinct — OP pickers bind `op`, ARG pickers never do", () => {
+  // OP and ARG are two components each, not one component with a flag (DESIGN.md § Op
+  // pickers). OpSelect / OpToggle is the family's op picker and binds the node's `op`
+  // (directly, or a binding renamed via useNodeField(node, "op")), whose values are the
+  // NODE_OPS ops. ArgSelect / SegToggle picks a parameter and binds a field with its own
+  // name (side, order, agg, view, a per-row `c.op` on a criterion) — never the node's
+  // own `op`. nodeOps.test.ts checks the class side (an `op` field ⇔ a NODE_OPS
+  // family); this checks the component side, where a misuse is still visible as text.
+  // A new general-purpose picker component must be added to one of the two lists.
+  const OP_PICKERS = ["<OpSelect", "<OpToggle"];
+  const ARG_PICKERS = ["<ArgSelect", "<SegToggle"];
 
   /** From the tag open, the text through its closing "/>" at brace depth 0
    *  (props contain arrow functions, so a plain [^>]* scan would stop early). */
-  function opSelectTag(src: string, start: number): string | null {
+  function pickerTag(src: string, start: number): string | null {
     let depth = 0;
     for (let i = start; i < src.length; i++) {
       const c = src[i];
@@ -242,16 +225,6 @@ describe("selectorNamedOp — a card's family op selector binds a field named `o
       else if (depth === 0 && c === "/" && src[i + 1] === ">") return src.slice(start, i + 2);
     }
     return null;
-  }
-  /** The tag's prop-level text (brace contents stripped) — where `arg` lives. */
-  function propLevel(tag: string): string {
-    let depth = 0, out = "";
-    for (const c of tag) {
-      if (c === "{") { depth++; continue; }
-      if (c === "}") { depth--; continue; }
-      if (depth === 0) out += c;
-    }
-    return out;
   }
   /** The expression inside value={…}, brace-aware. */
   function valueExpr(tag: string): string | null {
@@ -265,76 +238,62 @@ describe("selectorNamedOp — a card's family op selector binds a field named `o
     }
     return null;
   }
-
-  it("every non-arg op picker binds `op` (directly, per-row `.op`, or via useNodeField)", () => {
-    const offenders: string[] = [];
+  /** Whether `expr` is the node's own `op`: the field itself, `data.op`, or a local
+   *  bound by useNodeField(…, "op") / useState(data.op). A per-row `c.op` is not. */
+  function bindsOwnOp(src: string, expr: string): boolean {
+    if (expr === "op" || expr === "data.op" || expr === "node.op") return true;
+    if (!/^[A-Za-z_$][\w$]*$/.test(expr)) return false;
+    return new RegExp(`const\\s*\\[\\s*${expr}\\b[^\\]]*\\]\\s*=\\s*(?:useNodeField\\([^,]+,\\s*"op"|useState[^(]*\\(\\s*data\\.op\\b)`).test(src);
+  }
+  function eachTag(pickers: string[], fn: (where: string, tag: string, src: string) => void) {
     for (const file of walk(path.join(SRC, "components"))) {
       const src = fs.readFileSync(file, "utf8");
-      for (const picker of PICKERS) {
+      for (const picker of pickers) {
         let idx = -1;
         while ((idx = src.indexOf(picker, idx + 1)) !== -1) {
-          const tag = opSelectTag(src, idx);
+          const tag = pickerTag(src, idx);
           const line = src.slice(0, idx).split("\n").length;
-          const where = `${rel(file)}:${line} ${picker.slice(1)}`;
-          if (!tag) { offenders.push(`${where} (unparseable tag)`); continue; }
-          if (/\barg\b/.test(propLevel(tag))) continue; // declared not-the-op-selector
-          const expr = valueExpr(tag);
-          if (!expr) { offenders.push(`${where} (no value= prop)`); continue; }
-          if (expr === "op" || /\.op$/.test(expr)) continue;
-          // A renamed binding: const [x, …] = useNodeField(node, "op")
-          if (/^[A-Za-z_$][\w$]*$/.test(expr)) {
-            const re = new RegExp(`const\\s*\\[\\s*${expr}\\b[^\\]]*\\]\\s*=\\s*useNodeField\\([^,]+,\\s*"op"`);
-            if (re.test(src)) continue;
-          }
-          offenders.push(`${where} (binds \`${expr}\`)`);
+          fn(`${rel(file)}:${line} ${picker.slice(1)}`, tag ?? "", src);
         }
       }
     }
+  }
+
+  it("every OpSelect / OpToggle binds the node's own `op`", () => {
+    const offenders: string[] = [];
+    eachTag(OP_PICKERS, (where, tag, src) => {
+      const expr = tag ? valueExpr(tag) : null;
+      if (!expr) { offenders.push(`${where} (no value= prop)`); return; }
+      if (!bindsOwnOp(src, expr)) offenders.push(`${where} (binds \`${expr}\`)`);
+    });
     expect(
       offenders,
-      `These op pickers neither bind a field named \`op\` nor carry the \`arg\` prop ` +
-      `(selectorNamedOp). If it IS the family's op selector, the node must store it as \`op\` ` +
-      `(not mode/dir/kind) so NODE_OPS declarations can attach; if it is an ` +
-      `argument/config/data pick, mark it \`arg\`:\n  ` + offenders.join("\n  "),
+      `An OP picker must bind the node's \`op\` (the family's NODE_OPS ops). If this control ` +
+      `picks a parameter of the node's one function, it is an ARGUMENT: store it under its ` +
+      `own name and use ArgSelect / SegToggle:\n  ` + offenders.join("\n  "),
     ).toEqual([]);
   });
 
-  // op-vs-arg has exactly ONE home: `kind` on the family's NODE_OPS declaration. The
-  // control-level `arg` answers a DIFFERENT question — "am I the family's picker at
-  // all?" — and must never be used as a second way to say "argument", or a card could
-  // assert both at once and the two could drift. So a control bound to the node's own
-  // `op` may not carry `arg`: by binding `op` it IS the family's picker, and whether
-  // that picker spends the accent is `kind`'s call alone (most families that bind `op`
-  // are declared `argument` — Group By, Running, the resistor — and render neutral).
-  // A per-ROW config field (`c.op` on a criterion) is a different object's `op` and
-  // stays legal: those genuinely are not the family's picker.
-  it("a control bound to the node's own `op` never also carries `arg` (one home)", () => {
+  it("no ArgSelect / SegToggle binds the node's own `op`", () => {
     const offenders: string[] = [];
-    for (const file of walk(path.join(SRC, "components"))) {
-      const src = fs.readFileSync(file, "utf8");
-      for (const picker of PICKERS) {
-        let idx = -1;
-        while ((idx = src.indexOf(picker, idx + 1)) !== -1) {
-          const tag = opSelectTag(src, idx);
-          if (!tag || !/\barg\b/.test(propLevel(tag))) continue;
-          const expr = valueExpr(tag);
-          if (!expr) continue;
-          const ownOp = expr === "op" || expr === "data.op" ||
-            (/^[A-Za-z_$][\w$]*$/.test(expr) &&
-             new RegExp(`const\\s*\\[\\s*${expr}\\b[^\\]]*\\]\\s*=\\s*useNodeField\\([^,]+,\\s*"op"`).test(src));
-          if (ownOp) {
-            offenders.push(`${rel(file)}:${src.slice(0, idx).split("\n").length} ${picker.slice(1)} (binds \`${expr}\`)`);
-          }
-        }
-      }
-    }
+    eachTag(ARG_PICKERS, (where, tag, src) => {
+      const expr = tag ? valueExpr(tag) : null;
+      if (expr && bindsOwnOp(src, expr)) offenders.push(`${where} (binds \`${expr}\`)`);
+    });
     expect(
       offenders,
-      `These pickers bind the node's own \`op\` AND carry \`arg\`, asserting op-vs-arg ` +
-      `twice. Drop the \`arg\`: binding \`op\` already says this is the family's picker, ` +
-      `and whether it reads as an operation is decided ONCE, by \`kind\` on its ` +
-      `NODE_OPS declaration:\n  ` + offenders.join("\n  "),
+      `An ARGUMENT picker bound to the node's \`op\`: either the values are ops (use ` +
+      `OpSelect / OpToggle and declare the family in NODE_OPS) or the field is misnamed ` +
+      `(rename it — side, order, agg, view):\n  ` + offenders.join("\n  "),
     ).toEqual([]);
+  });
+
+  it("no picker carries the retired `arg` prop", () => {
+    const offenders: string[] = [];
+    eachTag([...OP_PICKERS, ...ARG_PICKERS], (where, tag) => {
+      if (/\sarg(?=[\s/=])/.test(tag.replace(/\{[^}]*\}/g, ""))) offenders.push(where);
+    });
+    expect(offenders, "op-vs-arg is the component, not a flag").toEqual([]);
   });
 });
 

@@ -112,7 +112,7 @@ describe("Antoine vapor pressure", () => {
   });
 
   it("node outputs pressure + boiling point per substance", () => {
-    const n = new AntoineNode({ op: "ethanol" });
+    const n = new AntoineNode({ substance: "ethanol" });
     const r = n.data({ t: [25] });
     expect(r.pressure as number).toBeCloseTo(7833, -2); // ~7.8 kPa
     expect(r.bp).toBeCloseTo(78.37, 0);

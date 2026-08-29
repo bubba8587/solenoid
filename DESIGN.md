@@ -89,26 +89,23 @@ components:
 
 **Creative North Star: "The Instrument Panel"**
 
-Solenoid looks and behaves like a precision instrument, not an app trying to sell itself. The interface is a dark, near-black workbench on which a computation graph is laid out in light, restrained chrome. Every node is a small uniform card; cables between them are typed and colored by the data they carry. The chrome recedes so the graph holds the eye. In the chrome, color, weight, and contrast are spent on conveying state and type; decoration exists but lives in sanctioned homes (brand marks, user-authored color, opt-in flourishes — see the Quiet Accent Rule).
-
-The system is built around legibility before anything else. The typeface is the Braille Institute's Atkinson Hyperlegible family, chosen because it keeps similar glyphs distinct at small sizes, and the type runs small and dense because a working graph wants information per pixel, not whitespace theatre. The default canvas is dark so colored cables and typed sockets read with maximum separation, and a full light theme mirrors every token for users who prefer it. The accent color is user-swappable at runtime, so the system commits to a role for the accent rather than to a single hue.
+Solenoid is built around legibility before anything else. The typeface is the Braille Institute's Atkinson Hyperlegible family. The type runs small and dense because a working graph wants information per pixel, not whitespace theatre.The accent color is user-swappable at runtime.
 
 This system explicitly rejects three looks. It is not a generic SaaS or AI-startup dashboard: no purple gradients, no hero-metric cards, no glassmorphism, no rounded-everything template. It is not a childish or playful no-code toy: no bubbly cartoon blocks, no oversized friendly shapes. And it is not skeuomorphic or cluttered: no faux-3D bevels, no shadow overload, no chrome competing with the graph.
 
 **Key Characteristics:**
 - Dark-default workbench with a fully mirrored light theme.
 - Small, dense, hyperlegible type. Information per pixel over whitespace.
-- In the chrome, color is spent on type and state; decoration lives in its named homes.
 - Flat at rest; elevation and glow appear only as a response to state.
 - Fast, short, functional motion. The two choreographed moments (load reveal, AI-apply
   reveal) are deliberate showpieces, not a license.
 
 ## 2. Colors
 
-A neutral near-black workbench carrying a typed, saturated socket palette and a single swappable accent.
+A neutral workbench carrying a typed, saturated socket palette and a single swappable accent.
 
 ### Primary
-- **Gold Accent** (`#f5b914`): The single interactive accent — the brand coil's gold, shared with the number socket. Marks focus (input field borders), the brand wordmark, and selection glows. Overwritten at runtime by the theme store (the user can pick any palette slot), so treat it as a role, not a fixed hue. Used sparingly; it should never carry large fills.
+- **Gold Accent** (`#f5b914`): The single interactive accent — the brand coil's gold, shared with the number socket. Marks focus (input field borders), the brand wordmark, and selection glows. Overwritten at runtime by the theme store (the user can pick any palette slot), so treat it as a role, not a fixed hue.
 
 ### Neutral
 - **Workbench** (`#1e1e1e`): The raised chrome surface. Node bodies, menus, popovers. In light theme this becomes a near-white off-white (`#fbfcfd`).
@@ -129,7 +126,8 @@ It is all or nothing per palette (paletteAllOrNone) — a partial ramp derives n
 ### Tertiary (Typed Socket Palette)
 The socket colors are the system's real palette: each data type owns a hue so a cable's color tells you what flows through it. They are tuned to stay distinguishable across common color-vision deficiencies, and array and matrix variants are systematic siblings of their scalar (a darker, desaturated shade for lists; a punchier, deeper, hue-shifted shade for tables/matrices).
 
-**The sibling derivation runs in HSV** (`palette.ts`) — the same space as `themeAccent` / `darkenAccent` / `socketRingShade`, so the whole family is tuned on one set of axes and each knob does exactly one thing: array = HSV value ×0.85; matrix = hue −11°, S ×1.18, V ×0.92 (constants averaged over the matrix slots of every built-in palette when the space was swapped, so the depth didn't move). Do NOT reintroduce an RGB multiply (it silently couples value and saturation) or an HSL step (its L scale trades off against saturation differently per hue — the same constant reads "darker" on saturated slots and "more chromatic" on dull ones). This rule's scope is these fixed near-hue steps; the one derivation that crosses hue regions — the adaptive-chrome rotation — runs in OKLCh for the same underlying reason (see §Secondary), not as an exception to it. The socket RING is a fixed HSV value drop rather than one translucent black: a translucent black's visible contrast varies with fill lightness — crisp on light dots, faint on the dark array/matrix/frame ones.
+**The sibling derivation runs in HSV** (`palette.ts`) — the same space as `themeAccent` / `darkenAccent` / `socketRingShade`, so the whole family is tuned on one set of axes and each knob does exactly one thing: array = HSV value ×0.85; matrix = hue −11°, S ×1.18, V ×0.92. Do NOT reintroduce an RGB multiply or HSL step - use HSV. This rule's scope is these fixed near-hue steps; the one derivation that crosses hue regions — the adaptive-chrome rotation — runs in OKLCh for the same underlying reason (see §Secondary), not as an exception to it. The socket RING is a fixed HSV value drop rather than one translucent black.
+
 - **Number Amber** (`#f5b914`): scalar numbers. List sibling `#c08512`.
 - **String Lime** (`#c8e040`): scalar text. List sibling `#7a9210`.
 - **Date Orchid** (`#d685b1`): scalar dates. List sibling `#c06a98`.
@@ -148,7 +146,7 @@ A small reserved set for failure and state feedback, kept apart from the typed s
 - **Warning Amber** (`#d9a93b`): caution / out-of-range states.
 
 ### Named Rules
-**The Quiet Accent Rule (rescoped 2026-08-08 — the old "never decoration" absolute was false).**
+**The Quiet Accent Rule.**
 In the WORKING CHROME — panels, bars, buttons, menus, dialogs, section headers — color conveys
 type or state: a socket, a cable, a focus ring, a selection glow, a status badge. Don't inject
 accent or socket hues there for visual interest. But the app is not colorless by doctrine;
@@ -209,16 +207,16 @@ Always the `text-wrap-style` longhand, never the `text-wrap` shorthand. The shor
 
 ## 4. Elevation
 
-The system is flat at rest and uses elevation only to communicate state. Cards sit on the canvas with a 1px-deep card shadow that is barely more than a seam; depth comes mostly from the tonal step between the dark canvas and the slightly lighter card, not from cast shadows. Real lift is reserved for two things: floating overlay chrome that must read above a busy graph, and state feedback (hover, selection).
+The system is flat at rest and uses elevation only to communicate state. Cards sit on the canvas with no shadow at all; depth is the tonal step between the canvas and the slightly lighter card. (A 1px card seam was tried and dropped as imperceptible.) Real lift is reserved for two things: floating overlay chrome that must read above a busy graph, and state feedback (hover, selection).
 
 ### Shadow Vocabulary
-- **Card seam** (`box-shadow: 0 1px 0 rgba(0,0,0,0.4)`): The resting node shadow. A single dark hairline under the card, not a glow. Light theme softens to `0 1px 2px rgba(20,30,50,0.08)`.
+- **Card seam** (`--shadow-card`, `0 1px 0 rgba(0,0,0,0.4)`; light `0 1px 2px rgba(20,30,50,0.08)`): NOT a card shadow any more. Survives only under small in-card popovers (the note's field picker, the formula editor).
 - **Popover lift** (`--shadow-pop`, `0 4px 14px rgba(0,0,0,0.2)`): Menus and small popovers. Light theme softens to `rgba(20,30,50,0.06)`.
 - **Overlay lift** (`--overlay-shadow`, `0 4px 14px rgba(0,0,0,0.3), 0 1px 4px rgba(0,0,0,0.2)`): Floating chrome that sits above the graph (socket legend, minimap, pins, alerts). Layered so it reads over busy content without pooling under the element. Light theme softens to `rgba(20,30,50,0.09)` / `rgba(20,30,50,0.05)`.
 - **Selection glow** (`box-shadow: 0 4px 14px <node-accent>/28%`): An accent-tinted glow drawn from the selected node's own type color, not a neutral shadow.
 
 ### Named Rules
-**The Flat-By-Default Rule.** Surfaces are flat at rest. Shadow is a response to state (hover, selection) or a job (an overlay floating above the graph), never a default decoration. If a node casts a soft drop shadow while sitting still, the shadow is too strong.
+**The Flat-By-Default Rule.** Surfaces are flat at rest. Shadow is a response to state (hover, selection) or a job (an overlay floating above the graph), never a default decoration. A node at rest casts no shadow.
 
 ## 5. Components
 
@@ -235,56 +233,38 @@ The system is flat at rest and uses elevation only to communicate state. Cards s
 - **Edits commit on Enter / clickaway, never per keystroke** (like an Excel cell). Drafts stay local while typing; Escape reverts. `useDraftCommit` (`inlineInput.tsx`) is the mechanism; never call `processGraph()` from a text field's `onChange`. Discrete picks (dropdowns, checkboxes, sliders) apply immediately.
 
 ### Op pickers (the accent's one home on a card body)
-A card's OPERATION picker is the single body control that spends the accent: a 2px edge at `--mix-emphasis`, hoisted to the top of the body so the op reads before the inputs it shapes. Everything else in the body stays neutral. Two components can be that picker and they behave identically — `OpSelect` (a dropdown) and `SegToggle` (a segmented toggle) — differing only in shape.
+A card body holds two kinds of pick, and they are different things all the way down (rules opArgDistinct):
 
-**"Having op" is ONE property with three consequences** (aggregatorsAreArguments), never three switches you can set apart. An OPERATION's ops are genuine top-level functions in the formula editor, they get the accent and the top-of-body slot, and they are searchable in the Add menu. An ARGUMENT is a parameter inside a top-level function — read that phrase literally, both halves. On the card: neutral control, no search row of its own, searched words riding the host leaf's `keywords`. On the formula surface: no top-level name of its own, but it becomes a PARAMETER of the host's one function. Running is the worked example — `RUNNING(op, list, [window])` with the aggregator as a validated string argument, same shape as `SORT(list, index, order)` carrying its direction. Neither seven per-op names (`RUNNINGSUM`, …) nor zero names is the argument form; both were tried on 2026-08-10 and both were wrong.
+| | **OP** | **ARG** |
+|---|---|---|
+| What it is | Which operation the card performs. Its values are ops: each a top-level formula function and an Add-menu name. | A parameter of the card's one function: a sort order, an aggregator, a pad side, a view. |
+| Field | `op` | its own name (`order`, `agg`, `side`, `view`, `condition`) |
+| Component | `OpSelect` (dropdown) / `OpToggle` (segmented) | `ArgSelect` (dropdown) / `SegToggle` (segmented) |
+| On the card | Hoisted to the top of the body, 2px accent edge at `--mix-emphasis`: the op reads before the inputs it shapes. | Neutral, sits in its row. |
+| Add menu | Searchable per op ("Chart: Column"). | Not a row; its words ride the host leaf's `keywords`. |
+| Formula surface | A function per op (`ISEVEN`, `NORM.DIST`). | A parameter of the host's function: `SORT(list, index, order)`, `RUNNING(op, list, [window])`, `PADTEXT(text, width, [side])`. |
+| Declared in | `NODE_OPS` (`nodeOps.ts`) | nowhere |
 
-**That property has ONE home: `kind` on the family's `NODE_OPS` declaration.** Nothing else may assert it. The control-level `arg` prop answers a different question — *am I the family's picker at all?* — and a control bound to the node's own `op` may never carry it (machine-checked; the two would otherwise be able to disagree, and did, in Sort and Drop Blank Rows).
+A family has at most one OP; the op picker is the only body control that spends the accent, and it is the only control that hoists. Everything else in the body stays neutral. There is no flag, `kind` or attribute that moves a control from one column to the other: the field name and the component are the whole classification, and the tests hold both directions (a string `op` field ⇔ a `NODE_OPS` family; `OpSelect`/`OpToggle` ⇔ bound to `op`; `ArgSelect`/`SegToggle` never bound to `op`).
 
-So a control's treatment reads as:
-
-1. **Not the family's picker** — a criterion comparator, a digit pick. It carries `arg`, stays neutral, never hoists.
-2. **The family's picker** — it binds a field named `op` (selectorNamedOp, scanned over both tags), and `kind` alone decides whether it spends the accent. Binding `op` is not a second vote; the field NAME only lets `NODE_OPS` attach, which every family needs. Fourteen families bind `op` and are declared `argument`, rendering neutral: Group By, Cube Rollup, Group By (frame), Text Filter, Headers, Sort, Alert, Color Blend, the resistor's band count among them.
-
-The family's picker hoists to the top of the body either way. Reading before the inputs it shapes is about being the picker, not about spending the accent. Adding a third picker component means teaching the scan about it; nothing else will notice.
+The sorting question for a new pick: *would the user search the Add menu for this value by name, and call it as a function?* Yes → OP. No → ARG, whatever it looks like on the card. Chart's type is an OP (Column, Line, Scatter are things you search for). Record's view, Gauge's style and Proportion's layout are ARGs (three drawings of one figure). Running's aggregator is an ARG (`RUNNING(op, …)`), while Aggregate's is the OP (SUM *is* the card). Neither per-op names (`RUNNINGSUM`, …) nor zero names is the argument form; both were tried on 2026-08-10 and both were wrong.
 
 ### Cards / Containers (the Node Card, signature component)
 - **Corner Style:** 8px radius.
-- **Width:** Fixed at 180px (240px wide tier for nodes carrying 2D table/frame data) so every node reads as a uniform unit; heights stay content-driven.
+- **Width:** Three fixed tiers so every node reads as a uniform unit: 180px default; 210px medium for nodes whose output is a date (a formatted `15-Mar-2026` reads wider than a number; `nodeMedium` in `nodes/kind.ts`); 240px wide for nodes carrying 2D table/frame data or an inline plot (`nodeWide`). Wide wins when both apply; a manual resize overrides either. Heights stay content-driven.
 - **Background:** `--surface` body with a per-node accent-tinted header band. Each node type owns an accent; the header carries a tint of it (`--header-tint`, 22% dark / 52% light), so type is legible at a glance without coloring the whole card.
-- **Shadow Strategy:** The resting card seam (see Elevation). Flat otherwise.
+- **Shadow Strategy:** None at rest; the selection glow is the only shadow a card ever casts.
 - **Border:** 1px neutral, stepping to `--border-strong` on hover. In light theme the border becomes a darker shade of the node's own accent rather than gray. **The frame paints as ONE SVG overlay** (`CardFrame` in `NodeCard.tsx`: body border + header accent cap + divider) so the strokes can't subpixel-crack under zoom. Never reintroduce painted CSS borders on the card or header (transparent borders there are layout-only); a new card-like surface reuses `CardFrame`.
 - **Selected:** A 2px accent ring drawn as a pseudo-element overlay (so it sits above the header and group borders) plus the accent-tinted selection glow. Selection never changes the card's size.
-- **Grouped:** Members drop their shadow and take a 2px border in the group's color, with a small solid corner triangle marking membership.
+- **Grouped:** Members take a 2px border in the group's color, with a small solid corner triangle marking membership.
 
 ### Navigation / Toolbars
 - **Style:** Floating pill and icon clusters over the canvas, using the overlay chrome tokens (opaque `--surface` fill, always-on `--overlay-border`, deep overlay shadow) so they read above the graph. Controls are neutral; only their icons and state feedback carry weight.
 
 ### Signature: Typed Sockets & Cables
-- **Sockets:** A deterministic 12x12 dot straddling the card edge, filled with the socket's type color and an inset ring (`--socket-ring`). Shape encodes type alongside color (circle = scalar, square = list, split square = scalar-or-list, grid = matrix, "F" letterform in a square = frame, hollow border-only ring = the trueany placeholder).
+- **Sockets:** A deterministic 12x12 dot straddling the card edge, filled with the socket's type color and an inset ring (`--socket-ring`). Shape encodes type alongside color: circle = scalar, square = list, split square = scalar-or-list, grid = matrix, "F" in a square = frame, flat hexagon = cube, λ in a circle = function, three bars in a square = chart, two text lines in a square = document, hollow square = any data up to rank 2 (`anydata`), hollow ring = anything at all (`trueany`). The full table: `docs/socket-reference.md`.
 - **Cables:** Colored by the type they carry, drawn at full curved fidelity at all times. Cables are never straightened, hidden, or shape-swapped during drag, pan, or zoom as a performance shortcut; the curve fidelity is part of the instrument's trustworthiness.
 
-## 6. Do's and Don'ts
-
-### Do:
-- **Do** keep the chrome neutral and spend color on type and state only (the Quiet Accent Rule).
-- **Do** use Atkinson Hyperlegible Next for UI and Atkinson Hyperlegible Mono for values; this is a fixed accessibility constraint.
-- **Do** keep body type at 12px and labels at 11px; build rhythm from spacing and grouping, not large headings.
-- **Do** mirror every new color token across the dark and light themes, with array/matrix hues as systematic siblings of their scalar.
-- **Do** keep surfaces flat at rest; introduce shadow only for state (hover, selection) or for overlay chrome floating above the graph.
-- **Do** keep node cards a uniform fixed width and let height be content-driven.
-- **Do** keep cables at full curved fidelity during every interaction, including drag, pan, and zoom.
-- **Do** make every interactive element self-documenting (tooltips with Excel equivalents, the socket legend, node descriptions). The target is zero learning curve from Excel.
-
-### Don't:
-- **Don't** ship the generic SaaS / AI-startup look: no purple gradients, no hero-metric cards (big number + small label + gradient accent), no glassmorphism, no rounded-everything dashboard template.
-- **Don't** make it childish or playful no-code: no bubbly cartoon blocks, no oversized friendly shapes, no toy aesthetic. This is a serious computation tool.
-- **Don't** go skeuomorphic or cluttered: no faux-3D bevels, no drop-shadow overload, no chrome competing with the graph for attention.
-- **Don't** use a colored left/right accent stripe on cards, alerts, list items, or navigator/outline rows — by ANY technique: not a `border-left`/`border-right` >1px, not an inset `box-shadow` (`inset 3px 0 0 0 <color>`), not a pseudo-element bar. To convey an element's color/type, tint the element ITSELF (a muted `hexToRgba(color, ~0.1)` fill of its own accent, like the group-body fill) or color its own content (dot, label, icon) — never an edge stripe.
-- **Don't** use gradient text (`background-clip: text` over a gradient). Emphasis comes from weight and size, not gradients.
-- **Don't** fill a panel, button, or section header with the accent or a socket hue for visual interest; color must communicate type or state.
-- **Don't** inflate type sizes for "breathing room," and don't substitute a generic geometric sans for the hyperlegible face.
-- **Don't** degrade cables (straighten, hide, swap shape) during motion as a performance trick.
 
 ## 7. Voice & copy
 

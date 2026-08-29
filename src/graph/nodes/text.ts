@@ -192,16 +192,16 @@ export class PadTextNode extends ClassicPreset.Node {
     fill:  "Repeated to fill the gap; blank means a space.",
   };
   label: string;
-  op: PadSide;
+  side: PadSide;
   cachedText: CellResult<string> = null;
   stringLiterals: Record<string, string> = { text: "", fill: "" };
   literals: Record<string, number> = { width: 10 };
   width = 190; height = 210;
 
-  constructor(init?: { label?: string; op?: PadSide }) {
+  constructor(init?: { label?: string; side?: PadSide }) {
     super("PadText");
     this.label = init?.label ?? "Pad Text";
-    this.op = init?.op ?? "right";
+    this.side = init?.side ?? "right";
     this.addInput("text",  strComboIn("Text"));
     this.addInput("width", numIn("Width"));
     this.addInput("fill",  strIn("Fill"));
@@ -212,7 +212,7 @@ export class PadTextNode extends ClassicPreset.Node {
     const w = readInput(inputs.width, this.literals.width ?? 10);
     const fill = strScalar(inputs.fill, this, "fill");
     if (w === null || fill === null) { this.cachedText = null; return { result: null }; }
-    const result = broadcastCells((t: string) => padText(t, w, this.op, fill), strVal(inputs.text, this, "text"));
+    const result = broadcastCells((t: string) => padText(t, w, this.side, fill), strVal(inputs.text, this, "text"));
     this.cachedText = result;
     return { result };
   }
@@ -951,21 +951,21 @@ export class HashNode extends ClassicPreset.Node {
     result: "Lowercase hex of the UTF-8 text; the same text always hashes the same, so hashed keys still join.",
   };
   label: string;
-  op: HashAlgorithm;
+  algorithm: HashAlgorithm;
   cachedText: CellResult<string> = null;
   stringLiterals: Record<string, string> = { text: "" };
   width = 190; height = 170;
 
-  constructor(init?: { label?: string; op?: HashAlgorithm }) {
+  constructor(init?: { label?: string; algorithm?: HashAlgorithm }) {
     super("Hash");
     this.label = init?.label ?? "Hash";
-    this.op = init?.op ?? "sha256";
+    this.algorithm = init?.algorithm ?? "sha256";
     this.addInput("text", strComboIn("Text"));
     this.addOutput("result", strComboOut("Digest"));
   }
 
   data(inputs: { text?: (string | string[])[] }): { result: CellResult<string> } {
-    const result = broadcastCells((t: string) => hashText(t, this.op), strVal(inputs.text, this, "text"));
+    const result = broadcastCells((t: string) => hashText(t, this.algorithm), strVal(inputs.text, this, "text"));
     this.cachedText = result;
     return { result };
   }

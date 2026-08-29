@@ -266,16 +266,15 @@ documents outgrow reliable whole-doc regeneration, or the MCP port ships (its
 typed tools ARE the op layer).
 
 ### aggregatorsAreArguments — Aggregators are ARGUMENTS of their host verb, not searchable ops
-**"Having op" is ONE property with three consequences, never three switches** (author,
-2026-08-10). An operation's ops are (1) genuine top-level functions in the formula
-editor, (2) accented and hoisted to the top of the card body, and (3) searchable in the
-Add menu. An ARGUMENT is a parameter inside a top-level function: neutral control, no
-function, no search row of its own — its searched words live as `keywords` on the HOST
-leaf, which is this entry's own reopen clause. `kind` is the one declaration; it already
-gates (1) via `formulaNodeParity` and (2) via `data-op-kind`, and `nodeOps.test.ts` §
-"op-vs-arg is harmonized" now pins (3) for the argument half. The operation half (every
-op callable) stays the parity PROGRAM's business — DATEDIF sits at 3/8 — so asserting it
-would duplicate a tracked backlog as a red test.
+**OP and ARG are two different things** (author, 2026-08-10; made structural 2026-08-29,
+rules opArgDistinct). An OP family's ops are (1) genuine top-level functions in the
+formula editor, (2) accented and hoisted to the top of the card body, and (3) searchable
+in the Add menu. An ARGUMENT is a parameter inside a top-level function: neutral control
+in its row, no function of its own, no search row of its own — its searched words live
+as `keywords` on the HOST leaf, which is this entry's own reopen clause. The field name
+is the classification: `op` ⇔ OP family in `NODE_OPS` ⇔ `OpSelect`/`OpToggle`; anything
+else ⇔ argument ⇔ `ArgSelect`/`SegToggle`. The operation half (every op callable) stays
+the parity PROGRAM's business — DATEDIF sits at 3/8.
 
 **An argument is a parameter INSIDE a top-level function — both halves are load-bearing.**
 Classifying a family as an argument deletes its PER-OP formula names and moves the op
@@ -300,12 +299,12 @@ OPERATION family, not because arguments may be searchable. On the formula surfac
 argument family gets its host's ONE function with the op as a parameter, where the host
 is formula-eligible at all: RUNNING(op, list, [window]), SORT(list, index, order).
 
-The SUM/AVERAGE/MIN/… picker appears on five cards. Four are `argument` — `list-groupby`,
-`group-by-frame`, `cube-rollup`, `list-running` — none of which names a function. The one
-`operation` is `reduce-sum` (Aggregate), where the aggregator is not a parameter of a host
+The SUM/AVERAGE/MIN/… picker appears on five cards. Four are arguments (`agg`) — Group By,
+Group By (frame), Cube Rollup, Running — none of which names a function. The one
+OP is `reduce-sum` (Aggregate), where the aggregator is not a parameter of a host
 verb but IS the whole node. Test for a new aggregator picker: does the card have a job the
 aggregator merely parameterizes? Then argument, and it gets no formula name and no op row.
-**Where:** `nodeOps.ts` declarations. **Reopen if:** users search aggregator names
+**Where:** the `op` field and `nodeOps.ts` (rules opArgDistinct). **Reopen if:** users search aggregator names
 and fail → search ALIASES on the host (`keywords` on the catalog leaf), not
 per-aggregator rows.
 
@@ -459,9 +458,9 @@ fourteen). A variant is a mode/op selector on the existing card, never a sibling
 Mechanics that were gotten wrong once and must not repeat: an op's formula name is
 `fx ?? despace(label)` — when the real name is an Excel spelling or the label went bare,
 DECLARE `fx` (distribution `normal` → NORM.DIST; Running `SUM` → RUNNINGSUM); never dodge
-a uniqueNameMap collision by reclassifying the family argument-kind or inventing a
-parallel presentation flag — `kind: "operation"` whenever the selector names the card,
-and the accent follows (aggregatorsAreArguments). Selector-driven socket swaps prune
+a uniqueNameMap collision by reclassifying the family as an argument or inventing a
+parallel presentation flag — the selector that names the card is the `op` field,
+and the accent follows (rules opArgDistinct). Selector-driven socket swaps prune
 departing keys via `dropInputCables` BEFORE `removeInput` (rules onePrunePath),
 spec-table the per-op shape (the `DIST_SPECS` pattern), and carry state across switches
 by meaning (PDF↔PMF, inverse variants → Inverse). Old saves load as Placeholders

@@ -13,12 +13,12 @@ import { stopDragStart } from "../coarse";
 // The picker popup lives in App (ElementPicker.tsx, module store) because this
 // card renders in rete's separate React root.
 export function ElementComponent({ data, emit }: NodeProps<ElementNodeType>) {
-  const el = ELEMENT_BY_SYMBOL.get(data.op)!;
+  const el = ELEMENT_BY_SYMBOL.get(data.symbol)!;
   const openPicker = () => {
     elementPicker.open({
-      symbol: data.op,
+      symbol: data.symbol,
       onPick: (symbol) => {
-        data.op = symbol;
+        data.symbol = symbol;
         void getActiveArea()?.rerenderNode(data.id);
         void processGraph();
       },
@@ -28,7 +28,7 @@ export function ElementComponent({ data, emit }: NodeProps<ElementNodeType>) {
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <button
         type="button"
-        className="solenoid-node__op-select el-picker__open"
+        className="solenoid-node__select el-picker__open"
         onClick={(e) => { e.stopPropagation(); openPicker(); }}
         onPointerDown={stopDragStart}
         onMouseDown={(e) => e.stopPropagation()}

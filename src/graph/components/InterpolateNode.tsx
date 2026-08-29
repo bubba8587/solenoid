@@ -46,7 +46,7 @@ export function InterpolateComponent({ data, emit }: NodeProps<InterpolateNodeTy
 
   return (
     <NodeShell node={data} emit={emit}>
-      <SegToggle arg
+      <SegToggle
         value={mode}
         options={MODE_OPTIONS}
         onChange={(next) => { setMode(next); void applyInterpolateMode(data, next); }}

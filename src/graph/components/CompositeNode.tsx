@@ -6,7 +6,7 @@ import { formatScalar } from "./format";
 import { isUncertain } from "../valueKinds";
 import { histogram, type DistributionKind } from "../monteCarlo";
 import { InlineInputs, InlineNumberField, InlineTextField, useDraftCommit, INVALID_DRAFT } from "./inlineInput";
-import { NodeShell, ValueDisplay, OpSelect, useNodeField, PortSockets, type NodeProps, type OpOption } from "./nodeKit";
+import { NodeShell, ValueDisplay, ArgSelect, useNodeField, PortSockets, type NodeProps, type OpOption } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { MeasuredSocketRow } from "./NodeSocket";
 import type { DisplayValue } from "./valueDisplayFormat";
@@ -370,7 +370,7 @@ function MonteCarloEditor({ node }: { node: CompositeNodeType }) {
                 onChange={(v) => { if (m) m.uncertainty = v && v > 0 ? v : null; recompute(); }}
               />
             </div>
-            <SegToggle<DistributionKind> arg
+            <SegToggle<DistributionKind>
               value={m?.distribution ?? "normal"}
               onChange={(d) => { if (m) m.distribution = d; recompute(); }}
               options={DIST_OPTIONS}
@@ -520,7 +520,7 @@ export function CompositeRunControls({ node, emit, insideOnly = false }: { node:
   return (
     <>
       {(node.inputPorts.length > 0 || node.outputPorts.length > 0) && (
-        <OpSelect arg value={runMode} options={RUN_MODE_OPTIONS} onChange={setRunMode} />
+        <ArgSelect value={runMode} options={RUN_MODE_OPTIONS} onChange={setRunMode} />
       )}
       {heavy && (
         <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 4 }}>

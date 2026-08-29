@@ -121,7 +121,7 @@ procedure is in the PROV section). Machine-checked against the actual headings b
 | unitOnValue | The unit is a property of the VALUE |
 | perInputUnitBlind | The unit-blind boundary is PER-INPUT |
 | unitByGranularity | Units attach at the granularity of homogeneity |
-| selectorNamedOp | An op family's selector field is named `op` |
+| opArgDistinct | OP and ARG are different things |
 | noDataInComponents | Components never call `node.data()` |
 | literalsIffEditable | Inline literal maps are declared iff the card edits them |
 | tagSpecialScalars | A special scalar is a TAGGED OBJECT, never a bare array |
@@ -1158,43 +1158,31 @@ column's unit rides through INDEX and LOCKS a downstream FC" (a DERIVED column
 carries the same per-column tag, and it survives projection into a scalar
 `UnitCell`).
 
-### selectorNamedOp — An op family's selector field is named `op` **[INFERRED]**
-**MUST:** a node whose card carries an op dropdown stores it as `op`. Not `dir`, not
-`mode`, not `kind`.
+### opArgDistinct — OP and ARG are different things **[INFERRED]**
+**MUST:** a node's OP is a field named `op`, picked with `OpSelect` / `OpToggle`, and its
+family is declared in `NODE_OPS`: its values are ops, each a formula function and an
+Add-menu name, and the picker hoists to the top of the body and takes the accent. An
+ARGUMENT is a parameter of the node's one function: stored under its own name (`side`,
+`order`, `agg`, `view`, `condition`), picked with `ArgSelect` / `SegToggle`, neutral,
+in its row, and a parameter on the formula surface (`SORT(list, index, order)`,
+`RUNNING(op, list, [window])`, `PADTEXT(text, width, [side])`). Nothing sits in between:
+no `kind` switch, no `arg` flag, no argument family in `NODE_OPS`, no argument stored
+as `op`. Spec: `DESIGN.md` § Op pickers.
 
-*Why:* the declaration mechanism resolves a live node's current op by reading `inst.op`,
-so a family that names it otherwise cannot declare its ops AT ALL — its ops become
-unsearchable and unmeasurable, silently.
-*Enforced by:* `nodeOps.test.ts` → "coverage — every op selector is classified", "no node
-with an op dropdown is missing a declaration" — which catches a family that HAS a
-declaration. The blindness half (a family that CANNOT declare because its field is
-misnamed) is closed by `sourceInvariants.test.ts` → "every non-arg op picker binds `op`":
-a source scan over the component sites, where the misnamed field is still visible. The
-contract: an op picker either binds `op` (directly, a per-row `.op` config field, or via
-`useNodeField(…, "op")`) or carries the `arg` prop — the machine-readable
-"not the family op selector" declaration (criterion comparators, payment timing,
-config/data picks). `arg` says ONLY that, never "my ops are arguments": op-vs-arg lives
-once, in `kind` on the NODE_OPS declaration, so a control bound to the node's own `op`
-may not also carry `arg` — a second companion scan ("a control bound to the node's own
-`op` never also carries `arg`") forbids the double assertion, which Sort and Drop Blank
-Rows were both making when it was added. BOTH picker components are scanned: `OpSelect` (a dropdown) and
-`SegToggle` (a segmented toggle — Sparkline's chart type, Surface's view, the resistor's
-band count bind `op` there). The toggle was added to the scan on 2026-08-10; until then a
-family could carry its op in a toggle bound to `mode` and be invisible to BOTH halves,
-since the coverage check skips a node whose `inst.op` is undefined. A third picker
-component would reopen that hole — the scan can only look for the names it is given, so
-adding one means adding it to `PICKERS`. The recorded borderline (DATEDIF's `unit` selector — an op dropdown
-by mechanism, Excel's argument by semantics) was DISSOLVED rather than settled: the two
-date-difference families merged (2026-07-28) and the units became first-class `op`s of
-the one DateDiff family.
-*Origin:* `PadNode.dir` meant `list-pad` had no declaration, so `PADLEFT`/`PADRIGHT` were
-unsearchable in the Add menu and unmeasurable in the parity walk. It was not missing work
-— it was work that could not attach because one field had a different name. The same
-defect was then found five more times by the enforcement review (Sort/Take/Drop `dir`,
-DropBlankRows/IFError `mode`) and fixed by the same rename — IFERROR and IFNA are now
-searchable. Alert's and ColorBlend's `mode` were the last two, renamed 2026-07-28 with
-argument-kind declarations added (the coverage check demanded them the moment the
-field became visible — the machinery working as designed).
+*Why:* the two used to share a field name (`op`), a component (`OpSelect arg`) and a
+declaration (`kind`), and every seam between them drifted — argument families
+accented (Sort, Drop Blank Rows), pickerless classes declared `argument`, display
+families accented with nothing searchable (Gauge, Proportion). Making the field name
+the whole classification leaves nothing to keep in sync.
+*Enforced by:* `nodeOps.test.ts` → "every node with an `op` field is declared in
+NODE_OPS", "every NODE_OPS family has a string `op` field" (the class side, both
+directions); `sourceInvariants.test.ts` → "every OpSelect / OpToggle binds the node's
+own `op`", "no ArgSelect / SegToggle binds the node's own `op`", "no picker carries the
+retired `arg` prop" (the component side). A new general-purpose picker component must
+join one of the scan's two lists.
+*Origin:* `PadNode.dir` (2026-07) meant `list-pad` could not declare its ops, so
+`PADLEFT`/`PADRIGHT` were unsearchable; the fix (name the op field `op`) was then
+over-applied to argument pickers too, and the blend was cut on 2026-08-29.
 
 ### noDataInComponents — Components never call `node.data()` **[DEFAULT]**
 **MUST:** a React component extracts a pure helper instead. `data()` assumes the
@@ -1624,9 +1612,8 @@ Two of them (adoptKeepsCables, keyByValue) had been written here as "enforced" o
 plausible-sounding test file name, and only turned out to be partial because the
 enforcement column forced the check. That is the argument for the column. Closed across
 the 2026-07-28 passes: adoptKeepsCables (persistence pin), retypeReconciles and noDataInComponents (source scans in
-`sourceInvariants.test.ts`), the selectorNamedOp renames + the uniqueNameMap full naming sweep, then the
-completeness tranche — perInputUnitBlind (algebra-file scan), selectorNamedOp's blindness (the OpSelect
-binding scan + the `arg` contract), literalsIffEditable's only-if (declaring class ⇒ editing
+`sourceInvariants.test.ts`), the op-field renames (now opArgDistinct) + the uniqueNameMap full naming sweep, then the
+completeness tranche — perInputUnitBlind (algebra-file scan), the OpSelect binding scan (now opArgDistinct), literalsIffEditable's only-if (declaring class ⇒ editing
 component). oneResolvePredicate was attempted and recorded as genuinely un-greppable (see the rule).
 
 ---

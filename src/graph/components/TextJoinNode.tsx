@@ -1,7 +1,7 @@
 import { TEXTJOIN_IGNORE_EMPTY_META } from "../rete-nodes";
 import type { TextJoinNode as TextJoinNodeType, TextJoinIgnoreEmpty } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
-import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 
 const IGNORE_EMPTY_OPTS = (Object.keys(TEXTJOIN_IGNORE_EMPTY_META) as TextJoinIgnoreEmpty[]).map((k) => ({
   value: k,
@@ -13,7 +13,7 @@ export function TextJoinComponent({ data, emit }: NodeProps<TextJoinNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect arg value={ignoreEmpty} onChange={setIgnoreEmpty} options={IGNORE_EMPTY_OPTS} />
+      <ArgSelect value={ignoreEmpty} onChange={setIgnoreEmpty} options={IGNORE_EMPTY_OPTS} />
       <ValueDisplay value={data.cachedText} />
     </NodeShell>
   );

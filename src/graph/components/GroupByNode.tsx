@@ -1,6 +1,6 @@
 import type { GroupByNode as GroupByNodeType } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
-import { NodeShell, OpSelect, useNodeField, type NodeProps, type OpOption } from "./nodeKit";
+import { NodeShell, ArgSelect, useNodeField, type NodeProps, type OpOption } from "./nodeKit";
 import type { GroupByOp } from "../rete-nodes";
 import { GROUP_BY_OP_META } from "../rete-nodes";
 import { FrameDisplay } from "./FrameDisplay";
@@ -10,11 +10,11 @@ const GROUP_BY_OPTIONS: ReadonlyArray<OpOption<GroupByOp>> = (Object.keys(GROUP_
   .map((value) => ({ value, label: GROUP_BY_OP_META[value].label }));
 
 export function GroupByComponent({ data: node, emit }: NodeProps<GroupByNodeType>) {
-  const [op, setOp] = useNodeField(node, "op");
+  const [agg, setAgg] = useNodeField(node, "agg");
   return (
     <NodeShell node={node} emit={emit}>
       <InlineInputs node={node} emit={emit} />
-      <OpSelect value={op} onChange={setOp} options={GROUP_BY_OPTIONS} />
+      <ArgSelect value={agg} onChange={setAgg} options={GROUP_BY_OPTIONS} />
       <div className="solenoid-node__section-divider" />
       <FrameDisplay frame={node.cachedResult} label={node.label} />
     </NodeShell>

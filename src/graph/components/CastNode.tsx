@@ -38,7 +38,7 @@ export function CastComponent({ data, emit }: NodeProps<CastNodeType>) {
   return (
     <NodeShell node={data} emit={emit} className="solenoid-node--cast">
       <InlineInputs node={data} emit={emit} />
-      <SegToggle arg
+      <SegToggle
         value={target}
         options={CAST_TARGET_OPTIONS}
         onChange={(next) => { setTarget(next); void applyCastTarget(data, next); }}
