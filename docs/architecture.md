@@ -213,7 +213,7 @@ and the 2026-08-26 cutover; git has it). Do not rebuild a third path.
 | `htmlCanvasSupport.ts` | Gates the `html` option on `supportsHtmlInCanvas()` |
 | `htmlCanvasRenderer.ts` | The HTML-in-Canvas renderer: captures the real node DOM via `drawElementImage` into mip pyramids; pan/zoom draws the canvas, idle shows the DOM |
 | `components/HtmlCanvasLayer.tsx` | Mounted by FlowSurface (both canvases) over the editor/area it renders; engages when mode is `html` ≥100 weighted nodes: gesture swap (RF viewport hidden ↔ canvas), held on at rest below 40% zoom (DOM muted, selected/focused cards live), targeted re-capture per changed node id (the flowArea `render` pipe), DOM-only escape hatch (conduits) |
-| `hicCamera.ts` (+`.test.ts`) | world↔screen camera math (pan, anchored zoom, pinch, fit-to-bounds) |
+| `hicCamera.ts` (+`.test.ts`) | world↔screen camera math (the transform `htmlCanvasRenderer` drives; the Pixi-era pan/zoom/pinch/fit helpers are deleted) |
 | `hicCableGeom.ts` (+`.test.ts`) | `cablePolyline` — the app's REAL router (`getCablePath`) flattened via `pathPoints.ts`, so canvas cables match DOM cables |
 | `hicGraphSnapshot.ts` | snapshots the live graph (node rects, kind colors, socket world-positions, connections) for capture |
 | `hicColors.ts`, `hicSocketGlyph.ts` (+tests) | color helpers + socket-glyph classification the snapshot uses |
@@ -233,7 +233,7 @@ and the 2026-08-26 cutover; git has it). Do not rebuild a third path.
 | `groupCollapse.ts` | Visual-only collapse: retain rules, pill sockets, readouts |
 | `groupPush.ts` + `groupPushCore.ts` (+`.test.ts`) | Expand-push displacement (rails/clear/cascade) + snap-back records; pure core is unit-tested |
 | `standoffs.ts`, `standoffSolver.ts` (+`.test.ts`), `components/StandoffLayer.tsx` | User-declared axis-band constraints; iterative-projection solver runs after every layout pass |
-| `layoutInvariants.test.ts` | Seeded-PRNG property tests over the pure layout cores (`groupPushCore`'s `separateOverlaps`, the composed expand pipeline, `distributeDeltas`, `alignDeltas`, `solveStandoffs`) machine-checking the "nodes/groups never overlap after a layout op" rule — ~1650 fixtures, no violation found. Scopes out ELK Tidy + the `settleStandoffs` integration (not pure cores) |
+| `layoutInvariants.test.ts` | Seeded-PRNG property tests over the pure layout cores (`groupPushCore`'s `separateOverlaps`, a `computeExpandPush` NaN fuzz, `distributeDeltas`, `solveStandoffs`) machine-checking the "nodes/groups never overlap after a layout op" rule. `alignDeltas` is pinned per arm in `selectionOps.test.ts`; ELK Tidy integration lives in `tidyArrangeGroups.test.ts` |
 | `lasso.ts`, `canvasLock.ts`, `nodeSizeStore.ts`, `collapseStore.ts`, `dockedNodeStore.ts` | Box-select, lock, per-node size/collapse, FC docking |
 | `selectionOps.ts` + `components/SelectionActionsBar.tsx`/`selectionActions.css` | Align/distribute deltas (pure) + the bottom-center overlay pill (≥2 nodes selected) that surfaces them outside the Command Palette |
 | `calcModeStore.ts` | Manual/automatic calculation mode + the dirty flag (`processGraph` short-circuits in manual; F9/Calculate Now forces) — persisted like Excel's per-workbook flag |

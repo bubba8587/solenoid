@@ -6,6 +6,39 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-08-29 — test-suite trim: −1.3k lines, stale carve-outs out)
+
+**Author-ordered suite trim ("cut until genuinely uncomfortable"): 4937 → 4745 cases,
+net −1,318 lines across 38 files, everything green (vitest + tsc).** What went: whole-file
+`unitsSeed.test.ts` (both lanes re-asserted verbatim by `unitWiring`/`unitFlowSeed`/
+`unitColumn`); the `compilePositional` semantics twins (it delegates to `compileEvaluator`,
+where they're pinned once — replaced by the one uncovered fact, positional arg binding);
+`formulaReviewFixes` cases whose behavior tier1's node-parity tests already assert (the two
+unique REGEX assertions migrated into tier1 first); `date.test.ts`'s TZ-independence block
+that never set TZ (its stronger 4-zone twin stays); wiredNull's Kleene truth-table dups of
+`logic.test.ts`; the store-suite set/get+notifier enumerations (pinStore 24→7 its,
+settingsStore/collapseStore/nodeSizeStore/cableAngle/cableValue rewritten to their real
+contracts — no-notify guards, write-without-notify, copy semantics — with forget/prefix
+owned by `nodeStoreRegistry.test.ts`); `formatAnnotationStore`'s one-assertion-per-`it`
+padding (same assertions, one `it` per mechanism); `layoutInvariants`' alignDeltas +
+pipeline describes (align arms unit-pinned per edge in `selectionOps.test.ts` — top and
+center-h ADDED there, they had no pin; the pipeline case couldn't fail — group box never
+in the scene — so it's now an honest computeExpandPush NaN fuzz);
+`layoutTidyIntegration`'s dead-premise ELK describe (cited deleted Canvas.tsx/arrange
+plugin and laid out under DRIFTED root options — the fix is `ELK_ROOT_OPTIONS`, one
+exported home in tidyArrange.ts spread by `elkTidyLayout` and the test alike, per
+declareOnce). Dead Pixi-spike halves of `hicCamera.ts`/`hicColors.ts` (pan/zoom/pinch/
+fit, mix/insetShade — zero live callers) deleted at the SOURCE with their tests
+(noBackCompat). **Carve-out audit:** the suite's exemption discipline held up — every
+sanction list in `sourceInvariants`/`catalogRegistry`/`nameSurfaces` is honesty-checked
+and none was stale; the two rotten ones found and removed were the `pixi` walk skip
+(dir long gone) and nameCase's `PCA` allowlist entry (PCA became a FRAME_SURFACE_NAMES
+redirect, so its removal condition had been met). Kept deliberately, against the
+line-count grain: seed-loader ctor guards (failure legibility), value-carrying
+extractInit round-trips (the catalog sweep only perturbs booleans/literal maps),
+the ROUND triple-pin (three seams), composite's per-mode scalar round-trips (cohesion),
+`renderMode`'s dedupe pin. New backlog: gsComp/fvComp computed by no test.
+
 ### SESSION DIGEST (2026-08-28d — release-notes reconcile: the 1.3 selling list catches up)
 
 **`docs/release-notes-features.md` reconciled against all 1011 commits since v1.2.0** (last

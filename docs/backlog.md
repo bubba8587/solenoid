@@ -61,6 +61,10 @@ parked. Each item: build, pin with tests, one digest line, delete the line here.
 
 ## Bugs & verifications
 
+- [ ] **composite-workbench: `gsComp` (goal-seek) and `fvComp` are computed by no test**
+  (found by the 2026-08-29 suite audit: `seedsCompute` skips the whole seed for cost,
+  and `compositeSeed.test.ts` fetches 5 of the 7 composites). Fetch both once with
+  hydrate, value-pinned like the others.
 - [ ] **Undo of a nudge leaves one node 1px off** (found 2026-08-27 by a headless smoke:
   getting-started seed, Ctrl+A, ArrowRight, Ctrl+Z → every card back except one at
   y 678 → 679; identical on the pre-refactor code, so a snapshot-restore rounding issue,
