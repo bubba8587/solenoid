@@ -5,7 +5,12 @@
   color: var(--text);
   font-size: 13.5px;
   line-height: 1.6;
+  /* A run with no break opportunity (a URL, a hash, a long identifier) wraps
+     mid-run rather than pushing the column wider than its box. */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
+.sol-md pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 .sol-md h1 { font-size: 22px; font-weight: 700; margin: 4px 0 14px; color: var(--text-bright); text-wrap-style: balance; }
 .sol-md h2 {
   font-size: 16px; font-weight: 600; margin: 26px 0 8px; padding-bottom: 5px;

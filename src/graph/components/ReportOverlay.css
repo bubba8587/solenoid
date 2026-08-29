@@ -149,7 +149,6 @@ html:not(.is-mobile) .report-panel { max-height: calc(100% - 24px); }
    the markdown inside it. Wide blocks scroll within themselves, never the pane. */
 .report-preview--solo { flex: 1 1 100%; max-width: none; margin: 0; overflow-x: hidden; }
 .report-preview--solo .report-preview__md { max-width: 760px; margin: 0 auto; }
-.report-preview--solo pre { white-space: pre-wrap; }
 .report-preview--solo img { max-width: 100%; height: auto; }
 .report-preview--solo table { display: block; max-width: 100%; overflow-x: auto; }
 /* InlineRefBody wraps the rendered markdown in a bare <div>, so the real first/
