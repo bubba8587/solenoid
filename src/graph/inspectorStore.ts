@@ -1,7 +1,7 @@
 // Open state for the node Inspector — the docked right panel behind the top
 // bar's (i) button. Mirrors reportStore's dock mechanics: the root class
 // `html.sol-inspector-docked` drives the canvas squeeze in plain CSS, and the
-// two right-side docks are mutually exclusive (opening one undocks the other;
+// two right-side docks are mutually exclusive (opening one closes the other;
 // InspectorPanel watches reportStore for the reverse direction).
 import { createToggleStore } from "./storeKit";
 import { reportStore } from "./reportStore";
@@ -26,7 +26,10 @@ export const inspectorStore = {
     this.open();
   },
   open(): void {
-    reportStore.setDocked(false);
+    // The two right docks are exclusive and the swap is symmetric: the one that
+    // opens last takes the slot. Undocking the report instead dropped a modal with
+    // a backdrop over the inspector that had just opened.
+    if (reportStore.isDocked()) reportStore.close();
     s.open();
     syncClass();
   },

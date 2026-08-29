@@ -202,7 +202,8 @@ Answers to the questions that keep biting:
 - **Inspector docked** (desktop/tablet) → `html.sol-inspector-docked` (`inspectorStore.ts`),
   the SAME push mechanics scaled to `--inspector-w:340px` (`InspectorPanel.css`): canvas
   wrapper shrinks, nav pill + HUD stack shift. The two right docks are mutually exclusive —
-  opening either undocks/closes the other, so their squeeze rules never stack.
+  the one that opens last takes the slot and the other CLOSES (side by side was ruled out as
+  too big, author 2026-08-29), so their squeeze rules never stack.
 
 - **Presenting** → `html.solenoid-presenting` (`PresentationOverlay.tsx`) hides basically all
   chrome: header, nav pill, status bar, navigator + open-pill, legend, minimap, mobile bar, HUD
