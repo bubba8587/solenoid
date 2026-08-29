@@ -36,20 +36,20 @@ import {
   BondPriceNode, BooleanOpNode, CharCodeNode, 
   CombinatoricsNode, ComplexBinaryNode, ComplexUnaryNode,
   ConfidenceNode, ConstantNode, CouponNode, CovarianceNode,
-  CubeRollupNode, CumPmtNode, DateAddNode, DateDiffNode, EpochNode, DateTruncNode, OutliersNode, SmoothNode, SMOOTH_OP_META, type SmoothOp, FindPeaksNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode, AmortizationNode, ReturnsNode, RETURNS_OP_META, type ReturnsOp, WindowNode,
+  CubeRollupNode, CumPmtNode, DateAddNode, DateDiffNode, EpochNode, SmoothNode, SMOOTH_OP_META, type SmoothOp, ReturnsNode, RETURNS_OP_META, type ReturnsOp, WindowNode,
   DatePartNode, DepreciationNode, DollarNode, DurationNode,
-  ESeriesNode, ElementNode, 
+  ESeriesNode, 
   FisherNode, GroupByFrameNode,
   IpmtPpmtNode, MRoundNode,
-  MatDetNode, MatSolveNode, MatEigenNode, SpectrumNode, TextSimilarityNode, FuzzyMatchNode, EtsForecastNode, DecomposeNode, FitDistributionNode, MathFnNode, 
+  MatDetNode, MathFnNode, 
   OddCouponNode,
-  PhysicsConstantNode, PipeRoughnessNode, PivotNode,
+  PhysicsConstantNode, PipeRoughnessNode, PivotNode, PadTextNode, ElementNode,
   PriceDiscNode, PriceMatNode,
   RankPercentileNode, RomanArabicNode, SecurityDiscNode,
   SumProductNode, TBillNode, 
   HypothesisTestNode, TableReshapeNode, TableSelectNode, TakeDropNode, TAKEDROP_OP_META,
-  TextAfterBeforeNode, TextFindNode, TextSliceNode, TextTransformNode, PadTextNode, TruncateTextNode,
-  TodayNowNode, UrlEncodeNode, HashNode, TemplateNode, WeekInfoNode, 
+  TextAfterBeforeNode, TextFindNode, TextSliceNode, TextTransformNode,
+  TodayNowNode, UrlEncodeNode, HashNode, WeekInfoNode, 
   WeightedNode,
   ResistorCodeNode,
   AlertNode, ColorBlendNode,
@@ -204,8 +204,6 @@ export const NODE_OPS: NodeOpsDecl[] = [
   // (`contains` despaced onto the real CONTAINS function by coincidence, which is
   // exactly the collision aggregatorsAreArguments warns an argument's op rows cause.) Searched words moved
   // to the host leaf's keywords.
-  { type: "text-pad", ctor: PadTextNode, kind: "argument" },
-  { type: "text-truncate", ctor: TruncateTextNode, kind: "argument" },
   { type: "sumifs", ctor: SumIfsNode, kind: "operation", ops: fromMeta(COND_AGG_OP_META),
     create: (op) => new SumIfsNode({ op: op as never }) },
   { type: "regression-steyx", ctor: RegressionNode, kind: "operation", ops: fromMeta(REGRESSION_OP_META),
@@ -262,20 +260,12 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "cumpmt-cumipmt", ctor: CumPmtNode, kind: "operation" },
   { type: "date-add-edate", ctor: DateAddNode, kind: "operation" },
   { type: "date-epoch-from", ctor: EpochNode, kind: "operation" },
-  { type: "corr-matrix", ctor: CorrMatrixNode, kind: "argument" },
-  { type: "kmeans", ctor: KMeansNode, kind: "argument" },
-  { type: "pca", ctor: PcaNode, kind: "argument" },
-  { type: "logistic", ctor: LogisticNode, kind: "argument" },
   { type: "window", ctor: WindowNode, kind: "argument" },
-  { type: "amortization", ctor: AmortizationNode, kind: "argument" },
   // Each op is the operation (Sharpe IS the card); fx rides in RETURNS_OP_META.
   { type: "returns", ctor: ReturnsNode, kind: "operation", ops: fromMeta(RETURNS_OP_META),
     create: (op) => new ReturnsNode({ op: op as ReturnsOp }) },
-  { type: "date-trunc", ctor: DateTruncNode, kind: "argument" },
-  { type: "list-outliers", ctor: OutliersNode, kind: "argument" },
   { type: "list-smooth", ctor: SmoothNode, kind: "operation", ops: fromMeta(SMOOTH_OP_META),
     create: (op) => new SmoothNode({ op: op as SmoothOp }) },
-  { type: "list-peaks", ctor: FindPeaksNode, kind: "argument" },
   // The day-count ops have Excel-name leaves; the DATEDIF units are hidden ops on
   // the DATEDIF leaf, which is why that leaf hosts the declaration.
   { type: "date-datedif", ctor: DateDiffNode, kind: "operation", ops: fromMeta(DATE_DIFF_OP_META),
@@ -290,14 +280,6 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "ipmt-ipmt", ctor: IpmtPpmtNode, kind: "operation" },
   { type: "math-ceiling", ctor: MRoundNode, kind: "operation" },
   { type: "matdet-mdeterm", ctor: MatDetNode, kind: "operation" },
-  { type: "mat-solve", ctor: MatSolveNode, kind: "argument" },
-  { type: "ets-forecast", ctor: EtsForecastNode, kind: "argument" },
-  { type: "decompose", ctor: DecomposeNode, kind: "argument" },
-  { type: "fit-distribution", ctor: FitDistributionNode, kind: "argument" },
-  { type: "text-similarity", ctor: TextSimilarityNode, kind: "argument" },
-  { type: "fuzzy-match", ctor: FuzzyMatchNode, kind: "argument" },
-  { type: "mat-eigen", ctor: MatEigenNode, kind: "argument" },
-  { type: "list-spectrum", ctor: SpectrumNode, kind: "argument" },
   { type: "math-abs", ctor: MathFnNode, kind: "operation" },
   { type: "oddcoupon-oddfprice", ctor: OddCouponNode, kind: "operation" },
   // ONE Rank & Percentile class hosts all ten order-statistic ops; the .EXC forms
@@ -332,7 +314,6 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "date-today", ctor: TodayNowNode, kind: "operation" },
   { type: "url-encode", ctor: UrlEncodeNode, kind: "operation" },
   { type: "hash", ctor: HashNode, kind: "argument" },
-  { type: "template", ctor: TemplateNode, kind: "argument" },
   { type: "date-week-weekday", ctor: WeekInfoNode, kind: "operation" },
   { type: "weighted-wavg", ctor: WeightedNode, kind: "operation" },
 
@@ -342,10 +323,14 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "cube-rollup", ctor: CubeRollupNode, kind: "argument" },
   { type: "elec-eseries", ctor: ESeriesNode, kind: "operation" },
   { type: "elec-resistor-code", ctor: ResistorCodeNode, kind: "argument" },
-  { type: "ch-element", ctor: ElementNode, kind: "argument" },
   { type: "group-by-frame", ctor: GroupByFrameNode, kind: "argument" },
   { type: "em-constant", ctor: PhysicsConstantNode, kind: "operation" },
   { type: "fl-roughness", ctor: PipeRoughnessNode, kind: "argument" },
+  // Pickers that are neither OpSelect nor SegToggle (a config select, the element
+  // picker, the pivot editor) still bind `op`, so the family is declared here; the
+  // selectorNamedOp scan just cannot see them.
+  { type: "text-pad", ctor: PadTextNode, kind: "argument" },
+  { type: "ch-element", ctor: ElementNode, kind: "argument" },
   { type: "pivot", ctor: PivotNode, kind: "argument" },
 ];
 

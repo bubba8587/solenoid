@@ -119,6 +119,27 @@ describe("op-vs-arg is harmonized across its three consequences", () => {
       `searched words in the host leaf's \`keywords\`:\n  ` + offenders.join("\n  "),
     ).toEqual([]);
   });
+
+  // `kind` classifies a family's op PICKER, so a declaration only means something on a
+  // class that has an `op` field. A pickerless class declared `argument` renders
+  // identically undeclared (opKindForNode) and just makes "argument" read as "has no
+  // picker" too — 21 such declarations were carried until 2026-08-29.
+  it("an argument-kind family has an `op` field to classify", () => {
+    const dead = NODE_OPS
+      .filter((d) => d.kind === "argument")
+      .filter((d) => {
+        const leaf = leaves.find((l) => l.type === d.type);
+        let inst: { op?: unknown } | undefined;
+        try { inst = leaf?.create() as typeof inst; } catch { return false; }
+        return typeof inst?.op !== "string";
+      })
+      .map((d) => d.type);
+    expect(
+      dead,
+      `These families are declared \`argument\` but have no \`op\` field, so there is no ` +
+      `picker for \`kind\` to classify. Delete the declaration:\n  ` + dead.join("\n  "),
+    ).toEqual([]);
+  });
 });
 
 describe("coverage — every op selector is classified", () => {
