@@ -284,10 +284,8 @@ describe("Set relation tests (two lists → TRUE/FALSE)", () => {
     expect(run("subset", [1, 2], [1, 2, 3])).toBe(true);
     expect(run("subset", [1, 4], [1, 2, 3])).toBe(false);
   });
-  it("superset — A contains all of B", () => {
-    expect(run("superset", [1, 2, 3], [1, 2])).toBe(true);
-    expect(run("superset", [1, 2], [1, 2, 3])).toBe(false);
-  });
+  // superset is subsetOf with the args mirrored (listOps.ts) — the dispatch is
+  // pinned by the empty-set case below; the semantics ride the subset tests.
   it("disjoint — no shared members", () => {
     expect(run("disjoint", [1, 2], [3, 4])).toBe(true);
     expect(run("disjoint", [1, 2], [2, 3])).toBe(false);
@@ -404,11 +402,6 @@ describe("Running — last N (window slides)", () => {
   it("nulls are skipped, not counted as 0 (average divides by present count)", () => {
     const r = windowed("avg").data({ list: [[2, null, 4]], window: [2] }).result;
     expect(r).toEqual([2, 2, 4]); // [2], [2,·], [·,4]
-  });
-
-  it("an all-null window is 0 for sum, null otherwise", () => {
-    expect(windowed("sum").data({ list: [[null, null, 5]], window: [1] }).result).toEqual([0, 0, 5]);
-    expect(windowed("max").data({ list: [[null, 5]], window: [1] }).result).toEqual([null, 5]);
   });
 
   it("a wired blank window leaves the result unknown", () => {

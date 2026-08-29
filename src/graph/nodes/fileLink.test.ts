@@ -3,18 +3,9 @@ import { FileLinkNode } from "./annotation";
 import { extractInit } from "../copyPaste";
 
 describe("FileLinkNode", () => {
-  it("defaults to an empty, socketless link", () => {
-    const n = new FileLinkNode();
-    expect(n.label).toBe("File Link");
-    expect(n.path).toBe("");
-    expect(n.fileName).toBe("");
-    // No sockets — a link carries nothing into the graph.
-    expect(Object.keys(n.inputs)).toEqual([]);
-    expect(Object.keys(n.outputs)).toEqual([]);
-    // The engine calls data() on every node; a link emits nothing.
-    expect(n.data()).toEqual({});
-  });
-
+  // The value-carrying round-trip below is the real guard: persistenceSweep's
+  // fixed point runs on DEFAULT instances, so a constructor dropping `path`
+  // would pass it while losing every saved link.
   it("round-trips label, path, fileName and collapsed through extractInit", () => {
     const n = new FileLinkNode({
       label: "Q3 deck", path: "/Users/me/Docs/q3.pptx", fileName: "q3.pptx", collapsed: true,

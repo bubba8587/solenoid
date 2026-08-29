@@ -9,16 +9,8 @@ function isOnDot(v: number): boolean {
 }
 
 describe("snapCoord", () => {
-  it("already-on-dot values are unchanged", () => {
-    expect(snapCoord(0)).toBe(0);
-    expect(snapCoord(24)).toBe(24);
-    expect(snapCoord(48)).toBe(48);
-    expect(snapCoord(-24)).toBe(-24);
-    expect(snapCoord(-48)).toBe(-48);
-  });
-
-  it("lands on a dot for a spread of inputs", () => {
-    const inputs = [-100, -48, -24, -1, 0, 1, 11, 13, 23, 24, 25, 47, 48, 100, 1000];
+  it("lands on a dot for a spread of inputs (decimals included)", () => {
+    const inputs = [-100, -48, -24, -1, -0.5, 0, 1, 11, 12.7, 13, 23, 24, 25, 35.1, 47, 48, 100, 1000];
     for (const v of inputs) {
       expect(isOnDot(snapCoord(v)), `snapCoord(${v}) should land on a dot`).toBe(true);
     }
@@ -50,12 +42,5 @@ describe("snapCoord", () => {
     expect(Object.is(snapCoord(-11), -0)).toBe(false);
     expect(snapCoord(-36)).toBe(-24); // tie goes toward +∞
     expect(snapCoord(-47)).toBe(-48);
-  });
-
-  it("works for large and decimal values", () => {
-    expect(snapCoord(1000)).toBe(1008);
-    expect(isOnDot(snapCoord(12.7))).toBe(true);
-    expect(isOnDot(snapCoord(35.1))).toBe(true);
-    expect(isOnDot(snapCoord(-0.5))).toBe(true);
   });
 });

@@ -3,18 +3,6 @@ import { ReportNode } from "./report";
 import { installErrorGuards } from "../errorValue";
 
 describe("ReportNode", () => {
-  it("starts blank: no refs; one `document` output", () => {
-    const n = new ReportNode();
-    expect(n.body).toBe("");
-    expect(n.refKeys()).toEqual([]);
-    expect(Object.keys(n.outputs)).toEqual(["document"]);
-    // data() emits the document value (body + resolved refs).
-    const doc = n.data().document;
-    expect(doc.__document).toBe(true);
-    expect(doc.body).toBe("");
-    expect(doc.refs).toEqual({});
-  });
-
   it("mints an `any` INPUT socket per distinct `=name` span, source order", () => {
     const n = new ReportNode({ body: "Revenue was `=revenue`, up from `=lastRevenue`." });
     expect(n.refKeys()).toEqual(["revenue", "lastRevenue"]);

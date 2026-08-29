@@ -50,7 +50,6 @@ describe("personal-finance seed data", () => {
     const cat = getColumn(tx, "Category")!.values as string[];
     const amt = nums(tx, "Amount");
     const expenseCats = ["Housing", "Groceries", "Dining", "Transport", "Utilities", "Entertainment", "Shopping", "Health"];
-    expect(expenseCats).not.toContain("Income"); // the slicer set drops income rows
     const perCat = new Map<string, number>();
     cat.forEach((cName, i) => {
       if (!expenseCats.includes(cName)) return;
@@ -83,10 +82,6 @@ describe("personal-finance seed generator", () => {
   const { graph } = require("../../scripts/gen-personal-finance-seed.cjs") as {
     graph: typeof committedSeed;
   };
-
-  it("connection count matches the committed JSON (no silent drops)", () => {
-    expect(graph.connections.length).toBe(committedSeed.connections.length);
-  });
 
   it("committed JSON is an exact re-emit of the generator", () => {
     // Deep-equal ignores key order; covers nodes, connections, standoffs, pins.

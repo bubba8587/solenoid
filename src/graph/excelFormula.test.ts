@@ -47,18 +47,20 @@ describe("extractVariables", () => {
   });
 });
 
-describe("compilePositional (the one evaluation core — scalar semantics pinned here since the codegen retirement)", () => {
+describe("compilePositional — positional binding over the one evaluation core", () => {
+  // compilePositional delegates evaluation to compileEvaluator (excelFormula.ts)
+  // and only binds args to paramNames by INDEX; scalar semantics are pinned once,
+  // in the compileEvaluator describe below. What is positional-specific is the
+  // binding order itself, and the constants/comparison surfaces its callers use.
   const evalF = (expr: string, params: string[], ...args: number[]) => {
     const fn = compilePositional(expr, params);
     if (!fn) throw new Error(`failed to compile: ${expr}`);
     return fn(...args);
   };
 
-  it("evaluates basic arithmetic with Excel precedence", () => {
-    expect(evalF("a + b", ["a", "b"], 2, 3)).toBe(5);
-    expect(evalF("a * b + 1", ["a", "b"], 2, 3)).toBe(7);
-    expect(evalF("a + b * c", ["a", "b", "c"], 2, 3, 4)).toBe(14);
-    expect(evalF("(a + b) * c", ["a", "b", "c"], 2, 3, 4)).toBe(20);
+  it("binds arguments to paramNames by position, not by name order in the expression", () => {
+    expect(evalF("a - b", ["a", "b"], 10, 3)).toBe(7);
+    expect(evalF("b - a", ["a", "b"], 10, 3)).toBe(-7);
   });
 
   it("evaluates math constants without an input", () => {
@@ -70,39 +72,10 @@ describe("compilePositional (the one evaluation core — scalar semantics pinned
     expect(evalF("PI * r ^ 2", ["r"], 2)).toBeCloseTo(Math.PI * 4, 10);
   });
 
-  it("treats ^ as exponentiation, left-associative", () => {
-    expect(evalF("a ^ b", ["a", "b"], 2, 10)).toBe(1024);
-    // left-assoc: (2^3)^2 = 64, not 2^(3^2)=512
-    expect(evalF("2 ^ 3 ^ 2", [])).toBe(64);
-  });
-
-  it("handles unary minus and percent postfix", () => {
-    expect(evalF("-a", ["a"], 5)).toBe(-5);
-    expect(evalF("50%", [])).toBe(0.5);
-    expect(evalF("a * 10%", ["a"], 200)).toBeCloseTo(20);
-  });
-
-  it("dispatches Excel functions through Formula.js", () => {
-    expect(evalF("SQRT(a)", ["a"], 16)).toBe(4);
-    expect(evalF("ABS(a)", ["a"], -7)).toBe(7);
-    expect(evalF("PI()", [])).toBeCloseTo(Math.PI);
-    expect(evalF("MAX(a, b, c)", ["a", "b", "c"], 1, 9, 4)).toBe(9);
-  });
-
   it("evaluates comparisons to booleans", () => {
     const fn = compilePositional("a > b", ["a", "b"]);
     expect(fn!(3, 2)).toBe(true as unknown as number);
     expect(fn!(1, 2)).toBe(false as unknown as number);
-  });
-
-  it("uses = for equality and <> for inequality", () => {
-    expect(compilePositional("a = b", ["a", "b"])!(2, 2)).toBe(true as unknown as number);
-    expect(compilePositional("a <> b", ["a", "b"])!(2, 3)).toBe(true as unknown as number);
-  });
-
-  it("returns null on parse error", () => {
-    expect(compilePositional("a +", ["a"])).toBeNull();
-    expect(compilePositional("", [])).toBeNull();
   });
 
   it("returns a #NAME? SolError at call time on an unknown function (A2 containment)", () => {
@@ -111,11 +84,6 @@ describe("compilePositional (the one evaluation core — scalar semantics pinned
     const r = fn!(1);
     expect(isSolError(r)).toBe(true);
     expect((r as { code: string }).code).toBe("#NAME?");
-  });
-
-  it("supports string concatenation with &", () => {
-    const fn = compilePositional('a & "x"', ["a"]);
-    expect(fn!(5)).toBe("5x" as unknown as number);
   });
 });
 
@@ -173,29 +141,14 @@ describe("formulaToLatex", () => {
     expect(() => katex.renderToString(tex!, { throwOnError: true })).not.toThrow();
   });
 
-  it("renders trig functions with backslash prefix", () => {
+  it("renders the function-name table: trig, POWER, EXP, PI, LN, LOG", () => {
     expect(formulaToLatex("SIN(x)")).toBe("\\sin\\!\\left(x\\right)");
     expect(formulaToLatex("COS(x)")).toBe("\\cos\\!\\left(x\\right)");
     expect(formulaToLatex("ATAN(x)")).toBe("\\arctan\\!\\left(x\\right)");
-  });
-
-  it("renders POWER(a,b) as exponent", () => {
     expect(formulaToLatex("POWER(a, 2)")).toBe("a^{2}");
-  });
-
-  it("renders EXP(a) as e^{a}", () => {
     expect(formulaToLatex("EXP(a)")).toBe("e^{a}");
-  });
-
-  it("renders PI() as \\pi", () => {
     expect(formulaToLatex("PI()")).toBe("\\pi");
-  });
-
-  it("renders LN with \\ln prefix", () => {
     expect(formulaToLatex("LN(x)")).toBe("\\ln\\!\\left(x\\right)");
-  });
-
-  it("renders LOG as \\log", () => {
     expect(formulaToLatex("LOG(x)")).toBe("\\log\\!\\left(x\\right)");
   });
 

@@ -1158,16 +1158,7 @@ describe("Query catalog preset", () => {
     const out = await q.data({ [q.inputPorts[0].id]: [frame] });
     expect(out[q.outputPorts[0].id]).toBe(frame);
   });
-
-  it("round-trips through extractInit → rebuild → hydrate (the persistence shape)", async () => {
-    const q = FLAT_CATALOG.get("query")!.create() as CompositeNode;
-    await q.hydrate(ctorRegistry());
-    const init = extractInit(q as unknown as ClassicPreset.Node);
-    const clone = new CompositeNode(init as ConstructorParameters<typeof CompositeNode>[0]);
-    await clone.hydrate(ctorRegistry());
-    expect(clone.runMode).toBe("manual");
-    const frame = frameFromCells(["A"], [[1]]);
-    const out = await clone.data({ [clone.inputPorts[0].id]: [frame] });
-    expect(out[clone.outputPorts[0].id]).toBe(frame);
-  });
+  // The preset's persistence shape rides the generic pins: extractInit of a
+  // hydrated composite ("round-trips through extractInit — the EXACT path
+  // persistence.ts and paste use") and the runMode round-trip above.
 });

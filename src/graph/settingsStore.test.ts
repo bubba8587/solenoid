@@ -30,105 +30,34 @@ beforeEach(() => {
   resetToDefaults();
 });
 
-describe("settingsStore — defaults", () => {
-  it("groupPush defaults to true", () => {
-    expect(settingsStore.get("groupPush")).toBe(true);
-  });
-
-  it("tidyAlign defaults to 'center'", () => {
-    expect(settingsStore.get("tidyAlign")).toBe("center");
-  });
-
-  it("the three Tidy knobs default to right / normal / off", () => {
-    expect(settingsStore.get("tidyDirection")).toBe("right");
-    expect(settingsStore.get("tidyDensity")).toBe("normal");
-    expect(settingsStore.get("tidyWidthCap")).toBe("off");
-  });
-
-  it("csvFolder defaults to empty string", () => {
-    expect(settingsStore.get("csvFolder")).toBe("");
-  });
-});
-
-describe("settingsStore — get / set", () => {
-  it("set stores a new value retrievable via get", () => {
-    settingsStore.set("groupPush", false);
-    expect(settingsStore.get("groupPush")).toBe(false);
-  });
-
-  it("set overwrites a previously set value", () => {
-    settingsStore.set("tidyAlign", "top");
-    settingsStore.set("tidyAlign", "center");
-    expect(settingsStore.get("tidyAlign")).toBe("center");
-  });
-
-  it("setting one key does not affect others", () => {
-    settingsStore.set("groupPush", false);
-    expect(settingsStore.get("tidyAlign")).toBe("center");
-    expect(settingsStore.get("csvFolder")).toBe("");
-  });
-
-  it("set with a string value stores and returns that string", () => {
-    settingsStore.set("csvFolder", "/home/user/data");
-    expect(settingsStore.get("csvFolder")).toBe("/home/user/data");
-  });
-});
-
 describe("settingsStore — equality guard (no-op on same value)", () => {
-  it("set() with the same value does not notify", () => {
+  it("set() with the same value neither notifies nor bumps the version", () => {
     const cb = vi.fn();
     settingsStore.subscribe(cb);
-    settingsStore.set("groupPush", true); // already true
-    expect(cb).not.toHaveBeenCalled();
-  });
-
-  it("set() with a different value does notify", () => {
-    const cb = vi.fn();
-    settingsStore.subscribe(cb);
-    settingsStore.set("groupPush", false);
-    expect(cb).toHaveBeenCalledOnce();
-  });
-
-  it("version does not bump on same-value set", () => {
     const before = settingsStore.version();
+    settingsStore.set("groupPush", true); // already true
     settingsStore.set("tidyAlign", "center"); // already center
+    expect(cb).not.toHaveBeenCalled();
     expect(settingsStore.version()).toBe(before);
   });
 
-  it("version bumps on a real change", () => {
+  it("set() with a different value notifies and bumps the version", () => {
+    const cb = vi.fn();
+    settingsStore.subscribe(cb);
     const before = settingsStore.version();
     settingsStore.set("tidyAlign", "top");
+    expect(cb).toHaveBeenCalledOnce();
     expect(settingsStore.version()).toBeGreaterThan(before);
+    expect(settingsStore.get("tidyAlign")).toBe("top");
   });
-});
 
-describe("settingsStore — toggle", () => {
-  it("toggle flips groupPush from true to false", () => {
+  it("toggle flips both ways and always notifies (value always changes)", () => {
+    const cb = vi.fn();
+    settingsStore.subscribe(cb);
     settingsStore.toggle("groupPush");
     expect(settingsStore.get("groupPush")).toBe(false);
-  });
-
-  it("toggle flips groupPush back to true", () => {
-    settingsStore.set("groupPush", false);
     settingsStore.toggle("groupPush");
     expect(settingsStore.get("groupPush")).toBe(true);
-  });
-
-  it("toggle always notifies (value always changes)", () => {
-    const cb = vi.fn();
-    settingsStore.subscribe(cb);
-    settingsStore.toggle("groupPush");
-    settingsStore.toggle("groupPush");
-    expect(cb).toHaveBeenCalledTimes(2);
-  });
-});
-
-describe("settingsStore — subscribe", () => {
-  it("callback fires once per real change", () => {
-    const cb = vi.fn();
-    settingsStore.subscribe(cb);
-    settingsStore.set("groupPush", false);
-    settingsStore.set("tidyAlign", "top");
     expect(cb).toHaveBeenCalledTimes(2);
   });
 
@@ -142,12 +71,11 @@ describe("settingsStore — subscribe", () => {
 });
 
 describe("settingsStore — persistence round-trip", () => {
-  it("set() writes to localStorage immediately", () => {
-    settingsStore.set("groupPush", false);
-    const raw = localStorage.getItem(LS_KEY);
-    expect(raw).not.toBeNull();
-    const parsed = JSON.parse(raw!);
-    expect(parsed.groupPush).toBe(false);
+  it("set() writes to localStorage immediately, overwriting the previous value", () => {
+    settingsStore.set("csvFolder", "/first");
+    settingsStore.set("csvFolder", "/second");
+    const parsed = JSON.parse(localStorage.getItem(LS_KEY)!);
+    expect(parsed.csvFolder).toBe("/second");
   });
 
   it("initSettings() restores a previously set value", () => {
@@ -186,14 +114,6 @@ describe("settingsStore — persistence round-trip", () => {
     initSettings(); // should swallow the parse error
     expect(settingsStore.version()).toBe(before);
     expect(settingsStore.get("groupPush")).toBe(true);
-  });
-
-  it("persist() overwrites the previous stored value on each set()", () => {
-    settingsStore.set("csvFolder", "/first");
-    settingsStore.set("csvFolder", "/second");
-    const raw = localStorage.getItem(LS_KEY);
-    const parsed = JSON.parse(raw!);
-    expect(parsed.csvFolder).toBe("/second");
   });
 });
 

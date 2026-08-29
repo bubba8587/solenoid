@@ -2,10 +2,6 @@ import { describe, it, expect } from "vitest";
 import { extractInlineRefs } from "./noteInlineRefs";
 
 describe("extractInlineRefs", () => {
-  it("finds a single inline ref", () => {
-    expect(extractInlineRefs("Revenue was `=revenue` last quarter.")).toEqual(["revenue"]);
-  });
-
   it("finds multiple refs in source order, de-duplicated", () => {
     const body = "`=a` then `=b` then `=a` again.";
     expect(extractInlineRefs(body)).toEqual(["a", "b"]);

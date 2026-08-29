@@ -4,20 +4,9 @@ import { apiKeyStore } from "./apiKeyStore";
 // The node test env has no localStorage; the store degrades to in-memory (its guards
 // swallow the ReferenceError), so these exercise the pure key-map logic.
 describe("apiKeyStore", () => {
-  it("set / get / has / remove round-trips per provider", () => {
-    apiKeyStore.set("fred", "abc123");
-    expect(apiKeyStore.get("fred")).toBe("abc123");
-    expect(apiKeyStore.has("fred")).toBe(true);
-
-    apiKeyStore.set("alphavantage", "XYZ");
-    expect(apiKeyStore.providers().sort()).toEqual(["alphavantage", "fred"]);
-
-    apiKeyStore.remove("fred");
-    expect(apiKeyStore.has("fred")).toBe(false);
-    expect(apiKeyStore.get("fred")).toBe("");
-    expect(apiKeyStore.has("alphavantage")).toBe(true);
-  });
-
+  // The plain set/get/has/remove round-trip is exercised for real by aiService.test.ts,
+  // aiKey.test.ts and nodes/dataFeed.test.ts; only the normalization and observer
+  // contracts are pinned here.
   it("trims whitespace and treats a blank value as a clear", () => {
     apiKeyStore.set("prov", "  keyed  ");
     expect(apiKeyStore.get("prov")).toBe("keyed");

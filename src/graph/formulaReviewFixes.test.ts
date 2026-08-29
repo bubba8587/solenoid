@@ -117,11 +117,9 @@ describe("position-preserving cell contract in the extracted list core", () => {
 });
 
 describe("generators overflow loudly", () => {
-  it("RANGE past MAX_GENERATED is #OVERFLOW!, not a silent 1000-element truncation", () => {
-    const r = ev("RANGE(0, 2000000)");
-    expect(isSolError(r) && r.code).toBe("#OVERFLOW!");
-  });
-
+  // The MAX_GENERATED cap itself is pinned at the formula boundary by
+  // formulaTier3.test.ts ("a generator is capped at the formula boundary") and at
+  // the node surface by auditFixes.test.ts; this is the step-0 guard only.
   it("RANGE with step 0 is a loud error, not an empty list", () => {
     const r = ev("RANGE(0, 5, 0)");
     expect(isSolError(r)).toBe(true);
@@ -129,34 +127,14 @@ describe("generators overflow loudly", () => {
 });
 
 describe("REGEX* take Excel's documented arguments", () => {
+  // REGEXEXTRACT return_mode and REGEXREPLACE occurrence are pinned against the
+  // node in formulaTier1.test.ts ("REGEXEXTRACT (groups) and REGEXREPLACE
+  // occurrence match the node"); only REGEXTEST's case_sensitivity lives here.
   it("REGEXTEST third argument is case_sensitivity (1 = insensitive), not a JS flag string", () => {
     expect(ev('REGEXTEST("Apple", "apple", 1)')).toBe(1);
     expect(ev('REGEXTEST("Apple", "apple", 0)')).toBe(0);
     expect(ev('REGEXTEST("Apple", "apple")')).toBe(0);
     const bad = ev('REGEXTEST("Apple", "apple", 7)');
     expect(isSolError(bad) && bad.code).toBe("#VALUE!");
-  });
-
-  it("REGEXEXTRACT return_mode: 0 first, 1 all, 2 capture groups", () => {
-    expect(ev('REGEXEXTRACT("a1b2", "[0-9]")')).toBe("1");
-    expect(ev('REGEXEXTRACT("a1b2", "[0-9]", 1)')).toEqual(["1", "2"]);
-    expect(ev('REGEXEXTRACT("a1b2", "([a-z])([0-9])", 2)')).toEqual(["a", "1"]);
-    const bad = ev('REGEXEXTRACT("a1b2", "[0-9]", 3)');
-    expect(isSolError(bad) && bad.code).toBe("#VALUE!");
-  });
-
-  it("REGEXREPLACE occurrence replaces only the nth match", () => {
-    expect(ev('REGEXREPLACE("a1b2c3", "[0-9]", "_")')).toBe("a_b_c_");
-    expect(ev('REGEXREPLACE("a1b2c3", "[0-9]", "_", 2)')).toBe("a1b_c3");
-    expect(ev('REGEXREPLACE("a1b2c3", "[0-9]", "_", 9)')).toBe("a1b2c3");
-  });
-});
-
-describe("legacy redirects point at Microsoft's actual replacements", () => {
-  it("TINV → T.INV.2T and TDIST → T.DIST.RT (not the different-shaped T.INV/T.DIST)", () => {
-    const tinv = ev("TINV(0.05, 10)");
-    expect(isSolError(tinv) && tinv.message).toBe("Use T.INV.2T");
-    const tdist = ev("TDIST(2, 10, 2)");
-    expect(isSolError(tdist) && tdist.message).toBe("Use T.DIST.RT");
   });
 });

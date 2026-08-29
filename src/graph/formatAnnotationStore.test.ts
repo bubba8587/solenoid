@@ -97,39 +97,19 @@ describe("formatAnnotationStore — delete", () => {
 });
 
 describe("formatAnnotationStore — subscribe / version", () => {
-  it("version increments on set", () => {
+  it("set and existing-key delete bump the version and notify; a missing-key delete does neither", () => {
+    const fn = vi.fn();
+    const unsub = formatAnnotationStore.subscribe(fn);
     const v0 = formatAnnotationStore.version();
     formatAnnotationStore.set("n1", "out", ann());
     expect(formatAnnotationStore.version()).toBe(v0 + 1);
-  });
-
-  it("version increments on delete (when key existed)", () => {
-    formatAnnotationStore.set("n1", "out", ann());
-    const v0 = formatAnnotationStore.version();
-    formatAnnotationStore.delete("n1", "out");
-    expect(formatAnnotationStore.version()).toBe(v0 + 1);
-  });
-
-  it("delete on nonexistent key does NOT increment version", () => {
-    const v0 = formatAnnotationStore.version();
-    formatAnnotationStore.delete("n1", "out"); // nothing there
-    expect(formatAnnotationStore.version()).toBe(v0);
-  });
-
-  it("subscribe listener fires on set", () => {
-    const fn = vi.fn();
-    const unsub = formatAnnotationStore.subscribe(fn);
-    formatAnnotationStore.set("n1", "out", ann());
     expect(fn).toHaveBeenCalledTimes(1);
-    unsub();
-  });
-
-  it("subscribe listener fires on delete (when key existed)", () => {
-    formatAnnotationStore.set("n1", "out", ann());
-    const fn = vi.fn();
-    const unsub = formatAnnotationStore.subscribe(fn);
     formatAnnotationStore.delete("n1", "out");
-    expect(fn).toHaveBeenCalledTimes(1);
+    expect(formatAnnotationStore.version()).toBe(v0 + 2);
+    expect(fn).toHaveBeenCalledTimes(2);
+    formatAnnotationStore.delete("n1", "out"); // nothing there any more
+    expect(formatAnnotationStore.version()).toBe(v0 + 2);
+    expect(fn).toHaveBeenCalledTimes(2);
     unsub();
   });
 
@@ -145,15 +125,9 @@ describe("formatAnnotationStore — subscribe / version", () => {
 // ─── formatNumberWithAnnotation ────────────────────────────────────────────────
 
 describe("formatNumberWithAnnotation — non-finite passthrough", () => {
-  it("returns 'Infinity' for Infinity", () => {
+  it("passes Infinity / -Infinity / NaN through as their own names", () => {
     expect(fwn(Infinity)).toBe("Infinity");
-  });
-
-  it("returns '-Infinity' for -Infinity", () => {
     expect(fwn(-Infinity)).toBe("-Infinity");
-  });
-
-  it("returns 'NaN' for NaN", () => {
     expect(fwn(NaN)).toBe("NaN");
   });
 });
@@ -174,36 +148,20 @@ describe("formatNumberWithAnnotation — auto format", () => {
 });
 
 describe("formatNumberWithAnnotation — decimal format", () => {
-  it("renders 2 decimal places by default", () => {
+  it("renders the asked decimal places; sigfigs mode counts significant figures instead", () => {
     expect(fwn(1.5, { format: "decimal", decimalDigits: 2 })).toBe("1.50");
-  });
-
-  it("renders 0 decimal places (integer-like)", () => {
     expect(fwn(1.7, { format: "decimal", decimalDigits: 0 })).toBe("2");
-  });
-
-  it("renders 4 decimal places", () => {
     expect(fwn(1.23456, { format: "decimal", decimalDigits: 4 })).toBe("1.2346");
-  });
-
-  it("sigfigs mode uses significant figures not places", () => {
-    const result = fwn(1234.5678, { format: "decimal", decimalDigits: 3, decimalMode: "sigfigs" });
-    expect(result).toBe("1,230");
+    expect(fwn(1234.5678, { format: "decimal", decimalDigits: 3, decimalMode: "sigfigs" })).toBe("1,230");
   });
 });
 
 describe("formatNumberWithAnnotation — percent format", () => {
-  it("multiplies by 100 and appends %", () => {
+  it("multiplies by 100, appends %, and keeps sign and endpoints exact", () => {
     expect(fwn(0.5, { format: "percent", decimalDigits: 2 })).toBe("50.00%");
     expect(fwn(0.1234, { format: "percent", decimalDigits: 1 })).toBe("12.3%");
-  });
-
-  it("handles 0% and 100%", () => {
     expect(fwn(0, { format: "percent", decimalDigits: 0 })).toBe("0%");
     expect(fwn(1, { format: "percent", decimalDigits: 0 })).toBe("100%");
-  });
-
-  it("handles negative percent", () => {
     expect(fwn(-0.05, { format: "percent", decimalDigits: 0 })).toBe("-5%");
   });
 });
@@ -289,41 +247,20 @@ describe("formatNumberWithAnnotation — fraction format", () => {
 });
 
 describe("formatNumberWithAnnotation — fraction_adv format", () => {
-  it("recognizes π/2", () => {
+  it("recognizes the π multiples and falls back to a plain fraction otherwise", () => {
     expect(fwn(Math.PI / 2, { format: "fraction_adv" })).toBe("π/2");
-  });
-
-  it("recognizes π", () => {
     expect(fwn(Math.PI, { format: "fraction_adv" })).toBe("π");
-  });
-
-  it("recognizes 2π", () => {
     expect(fwn(2 * Math.PI, { format: "fraction_adv" })).toBe("2π");
-  });
-
-  it("falls back to plain fraction for non-constant values", () => {
     expect(fwn(0.5, { format: "fraction_adv" })).toBe("1/2");
   });
 });
 
 describe("formatNumberWithAnnotation — unit suffixes and prefixes", () => {
-  it("appends a suffix unit after the number (e.g. degrees)", () => {
+  it("suffix and prefix units land on their side; 'none' and a blank custom add nothing", () => {
     expect(fwn(90, { format: "integer", unit: "deg" })).toBe("90°");
-  });
-
-  it("prepends a prefix unit before the number (currency)", () => {
     expect(fwn(1234, { format: "integer", unit: "usd" })).toBe("$1,234");
-  });
-
-  it("unit 'none' adds no affix", () => {
     expect(fwn(42, { format: "integer", unit: "none" })).toBe("42");
-  });
-
-  it("custom unit appends the customUnit string", () => {
     expect(fwn(5, { format: "integer", unit: "custom", customUnit: " pcs" })).toBe("5 pcs");
-  });
-
-  it("custom unit with no customUnit string adds nothing", () => {
     expect(fwn(5, { format: "integer", unit: "custom" })).toBe("5");
   });
 });
@@ -331,19 +268,10 @@ describe("formatNumberWithAnnotation — unit suffixes and prefixes", () => {
 // ─── applyTextCase ────────────────────────────────────────────────────────────
 
 describe("applyTextCase", () => {
-  it("upper: converts to uppercase", () => {
+  it("covers all four arms: upper, lower, proper, and none/undefined unchanged", () => {
     expect(applyTextCase("hello world", "upper")).toBe("HELLO WORLD");
-  });
-
-  it("lower: converts to lowercase", () => {
     expect(applyTextCase("Hello World", "lower")).toBe("hello world");
-  });
-
-  it("proper: capitalizes first letter of each word", () => {
     expect(applyTextCase("hello world", "proper")).toBe("Hello World");
-  });
-
-  it("none / undefined: returns unchanged", () => {
     expect(applyTextCase("Hello World", "none")).toBe("Hello World");
     expect(applyTextCase("Hello World", undefined)).toBe("Hello World");
   });
@@ -352,22 +280,10 @@ describe("applyTextCase", () => {
 // ─── isDateStyle ─────────────────────────────────────────────────────────────
 
 describe("isDateStyle", () => {
-  it("returns true for date_ prefixed styles", () => {
+  it("date_* / time_* / datetime are date styles; number styles are not", () => {
     expect(isDateStyle("date_iso")).toBe(true);
-    expect(isDateStyle("date_us")).toBe(true);
-    expect(isDateStyle("date_custom")).toBe(true);
-  });
-
-  it("returns true for time_ prefixed styles", () => {
     expect(isDateStyle("time_24")).toBe(true);
-    expect(isDateStyle("time_12")).toBe(true);
-  });
-
-  it("returns true for 'datetime'", () => {
     expect(isDateStyle("datetime")).toBe(true);
-  });
-
-  it("returns false for number styles", () => {
     expect(isDateStyle("decimal")).toBe(false);
     expect(isDateStyle("auto")).toBe(false);
     expect(isDateStyle("percent")).toBe(false);
@@ -377,24 +293,15 @@ describe("isDateStyle", () => {
 // ─── unitsCompatible ─────────────────────────────────────────────────────────
 
 describe("unitsCompatible", () => {
-  it("'none' is compatible with anything", () => {
+  it("none/custom pair with anything; otherwise compatibility is same-group", () => {
     expect(unitsCompatible("none", "usd")).toBe(true);
     expect(unitsCompatible("deg", "none")).toBe(true);
-  });
-
-  it("same group is compatible", () => {
-    expect(unitsCompatible("deg", "rad")).toBe(true);   // both angle
-    expect(unitsCompatible("m", "km")).toBe(true);       // both length
-  });
-
-  it("different groups are not compatible", () => {
-    expect(unitsCompatible("deg", "m")).toBe(false);     // angle vs length
-    expect(unitsCompatible("usd", "kg")).toBe(false);    // currency vs mass
-  });
-
-  it("'custom' is compatible with anything", () => {
     expect(unitsCompatible("custom", "deg")).toBe(true);
     expect(unitsCompatible("m", "custom")).toBe(true);
+    expect(unitsCompatible("deg", "rad")).toBe(true);   // both angle
+    expect(unitsCompatible("m", "km")).toBe(true);       // both length
+    expect(unitsCompatible("deg", "m")).toBe(false);     // angle vs length
+    expect(unitsCompatible("usd", "kg")).toBe(false);    // currency vs mass
   });
 });
 

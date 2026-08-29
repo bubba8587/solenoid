@@ -31,10 +31,7 @@ describe("generator element caps (#5)", () => {
     expect(extractInit(new RandArrayNode({ integer: true }) as never).integer).toBe(true);
   });
 
-  it("a normal SEQUENCE still produces the list", () => {
-    const out = new SeriesNode({ op: "sequence" }).data({ count: [4], start: [1], step: [2] });
-    expect(out.list).toEqual([1, 3, 5, 7]);
-  });
+  // A normal SEQUENCE's values are pinned (node ≡ formula) in formulaMatrix.test.ts.
 });
 
 describe("Aggregate min/max over a large list (#5 — no Math.min spread RangeError)", () => {

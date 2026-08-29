@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { isDocumentValue, makeDocument } from "./documentValue";
-import { canConnect } from "./sockets";
 import { describeValueKind } from "./valueKindLabel";
 
 describe("DocumentValue", () => {
@@ -27,16 +26,6 @@ describe("DocumentValue", () => {
   });
 });
 
-describe("the `document` socket — identity-only object socket (like chart/lambda)", () => {
-  it("connects document → document and to/from the trueany wildcard", () => {
-    expect(canConnect("document", "document")).toBe(true);
-    expect(canConnect("document", "trueany")).toBe(true);
-    expect(canConnect("trueany", "document")).toBe(true);
-  });
-  it("does NOT flow into a scalar `any` or any data container", () => {
-    expect(canConnect("document", "any")).toBe(false);
-    expect(canConnect("document", "frame")).toBe(false);
-    expect(canConnect("document", "string")).toBe(false);
-    expect(canConnect("chart", "document")).toBe(false); // a chart is not a document
-  });
-});
+// The `document` socket's identity-only lattice rules ride socketConnect.test.ts's
+// OBJECT_TYPES sweep ("object types are identity-only: self + trueany, never a
+// regular lattice type"), which covers every direction this file once re-asserted.

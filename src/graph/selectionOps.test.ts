@@ -29,6 +29,22 @@ describe("alignDeltas", () => {
     expect(moves.find((m) => m.seedId === "a")!.dy).toBe(80);
     expect(moves.find((m) => m.seedId === "b")!.dy).toBe(-50);
   });
+
+  it("aligns top edges to the selection's topmost edge", () => {
+    const items = [box("a", 0, 5, 100, 50), box("b", 0, 45, 60, 50)];
+    const moves = alignDeltas(items, "top");
+    expect(moves.find((m) => m.seedId === "a")!.dy).toBe(0);
+    expect(moves.find((m) => m.seedId === "b")!.dy).toBe(-40);
+    expect(moves.every((m) => m.dx === 0)).toBe(true);
+  });
+
+  it("center-h shares one horizontal center line (x-centers equal)", () => {
+    const items = [box("a", 0, 0, 40, 20), box("b", 100, 0, 80, 20)];
+    // xMin=0, xMax=180, mid=90. a -> 90-20=70 (dx 70); b -> 90-40=50 (dx -50)
+    const moves = alignDeltas(items, "center-h");
+    expect(moves.find((m) => m.seedId === "a")!.dx).toBe(70);
+    expect(moves.find((m) => m.seedId === "b")!.dx).toBe(-50);
+  });
 });
 
 describe("distributeDeltas (equal gaps, first/last fixed)", () => {

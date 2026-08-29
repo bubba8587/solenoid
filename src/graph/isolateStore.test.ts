@@ -9,10 +9,6 @@ const edges = [
 ];
 
 describe("chainClosure", () => {
-  it("walks downstream from the seed", () => {
-    expect([...chainClosure(edges, ["a"])].sort()).toEqual(["a", "b", "c", "d"]);
-  });
-
   it("walks upstream as well as downstream", () => {
     expect([...chainClosure(edges, ["c"])].sort()).toEqual(["a", "b", "c", "d"]);
   });

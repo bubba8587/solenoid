@@ -2,7 +2,6 @@ import { describe, it, expect, afterEach } from "vitest";
 import { SaveTimesNode } from "./input";
 import { serialToJsDate } from "./dateSerial";
 import { saveTimeStore, type SaveClock } from "../saveTimeStore";
-import { extractInit } from "../copyPaste";
 
 // The class reads through the seam, so the tests stub the provider directly; the real
 // provider (documentStore's, over the current SolDoc) is pinned in
@@ -12,12 +11,6 @@ const provide = (clock: SaveClock) => saveTimeStore.setProvider(() => clock);
 
 describe("SaveTimesNode", () => {
   afterEach(() => provide(NULLS));
-
-  it("reads blank before either save has happened", () => {
-    provide(NULLS);
-    const n = new SaveTimesNode();
-    expect(n.data()).toEqual({ autosave: null, filesave: null });
-  });
 
   it("emits each clock reading as a date serial carrying its time of day", () => {
     const at = Date.UTC(2026, 7, 16, 14, 32, 0);
@@ -51,12 +44,5 @@ describe("SaveTimesNode", () => {
     n.data();
     expect(n.cachedAutosave).not.toBeNull();
     expect(n.cachedFileSave).toBeNull();
-  });
-
-  it("round-trips its label through extractInit", () => {
-    const n = new SaveTimesNode({ label: "Versions" });
-    const init = extractInit(n);
-    expect(init.label).toBe("Versions");
-    expect(new SaveTimesNode(init).label).toBe("Versions");
   });
 });

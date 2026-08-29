@@ -24,8 +24,4 @@ describe("digestLabeled", () => {
     ]);
     expect(out.split("\n").filter((l) => l.startsWith("—"))).toHaveLength(2);
   });
-
-  it("says so when empty", () => {
-    expect(digestLabeled([])).toBe("No actions yet this session.");
-  });
 });

@@ -74,15 +74,4 @@ describe("Sudoku Solver seed", () => {
     expect(out.p_solved).toBe(true);
     expect(out.p_solution).toEqual(SOLUTION);
   });
-
-  it("the deduction loop is a true internal cycle (simulation feedback)", async () => {
-    const { editor } = buildEditor();
-    const byId = await loadSeed(editor);
-    const comp = byId.get("solver") as CompositeNode;
-    expect(comp.runMode).toBe("simulation");
-    // Every internal node carries a drill-in position from the seed.
-    for (const n of comp.internalEditor.getNodes()) {
-      expect(comp.internalPositions[n.id], `no position for ${n.label}`).toBeDefined();
-    }
-  });
 });

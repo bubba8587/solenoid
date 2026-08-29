@@ -13,7 +13,7 @@ import type { CatalogEntry, CatalogCategory, CatalogPair, NodeCatalogEntry } fro
 // function, both misreport what the node does.
 
 // Acronym proper-nouns + the Solenoid-only ISNULL op may stay all-caps though they don't dispatch.
-const ALLCAPS_ALLOW = new Set(["PCA", "BMI", "TDEE", "SVG", "KPI", "ISNULL"]);
+const ALLCAPS_ALLOW = new Set(["BMI", "TDEE", "SVG", "KPI", "ISNULL"]);
 // The flagship Convert leaf may stay Title Case though CONVERT dispatches.
 const TITLECASE_EXCEL_ALLOW = new Set(["CONVERT"]);
 

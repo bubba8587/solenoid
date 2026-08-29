@@ -110,6 +110,10 @@ describe("text functions: formula matches node", () => {
     expect(ev('REGEXREPLACE("a1b2c3", "\\d", "#", 2)'))
       .toBe(repl.data({ text: ["a1b2c3"], pattern: ["\\d"], replacement: ["#"], occurrence: [2] }).result);
     expect(ev('REGEXREPLACE("a1b2c3", "\\d", "#", 2)')).toBe("a1b#c3");
+    // occurrence past the last match is a no-op, and an unknown return_mode is loud.
+    expect(ev('REGEXREPLACE("a1b2c3", "\\d", "#", 9)')).toBe("a1b2c3");
+    const badMode = ev('REGEXEXTRACT("a1b2", "\\d", 3)');
+    expect(isSolError(badMode) && badMode.code).toBe("#VALUE!");
     // occurrence 0 / unwired still replaces every match — node and formula agree.
     expect(repl.data({ text: ["a1b2c3"], pattern: ["\\d"], replacement: ["#"] }).result)
       .toBe(ev('REGEXREPLACE("a1b2c3", "\\d", "#")'));

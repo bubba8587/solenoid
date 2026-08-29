@@ -142,34 +142,13 @@ describe("Logic — unwired-vs-wired-blank and blank conditions", () => {
 });
 
 describe("Kleene logic — a wired blank is UNKNOWN, not FALSE", () => {
-  // The sharpest form of this bug. `?? 0` didn't just lose the literal, it asserted
-  // a definite FALSE where the graph said "unknown" — and under three-valued logic
-  // those give different answers: AND(unknown, TRUE) is unknown, AND(FALSE, TRUE)
-  // is FALSE. NOT made it visible by flipping: NOT(blank) answered TRUE.
-  it("AND with a wired blank is unknown, not false", () => {
-    const node = new BooleanOpNode({ op: "and" });
-    const keys = Object.keys(node.inputs);
-    const inputs: Record<string, (number | null)[] | undefined> = {};
-    inputs[keys[0]] = [null];
-    inputs[keys[1]] = [1];
-    expect(node.data(inputs).result).toBeNull();
-  });
-
-  it("AND with a wired blank AND a definite FALSE is still false", () => {
-    // Kleene: one FALSE settles the conjunction whatever else is unknown.
-    const node = new BooleanOpNode({ op: "and" });
-    const keys = Object.keys(node.inputs);
-    const inputs: Record<string, (number | null)[] | undefined> = {};
-    inputs[keys[0]] = [null];
-    inputs[keys[1]] = [0];
-    expect(node.data(inputs).result).toBe(false);
-  });
-
-  it("NOT of a wired blank is unknown, not TRUE", () => {
+  // The Kleene truth tables themselves (AND/OR/NOT over null operands) are pinned
+  // in logic.test.ts and valueKinds.test.ts (kleeneLogic); this sweep keeps only
+  // its own charter's half: unwired still falls back to the card literal.
+  it("NOT unwired still uses the literal; only a WIRED blank is unknown", () => {
     const node = new NotNode();
-    expect(node.data({ in: [null] }).result).toBeNull();
-    // Unwired still uses the literal.
     expect(node.data({}).result).toBe(true); // NOT(0) — the default literal
+    expect(node.data({ in: [null] }).result).toBeNull();
   });
 });
 
@@ -453,15 +432,12 @@ describe("Kleene logic THROUGH the real coercion wrapper", () => {
     return node;
   }
 
-  it("AND(false, true) is FALSE through coercion — wired as numbers", () => {
+  it("AND(false, true) is FALSE through coercion — wired as numbers AND as booleans", () => {
+    // The numbers wiring is the pre-fix control; the booleans wiring is the
+    // regression (`false !== 0` made AND(false, TRUE) compute as AND(true, true)).
     const node = wrapped(new BooleanOpNode({ op: "and" }));
     const [a, b] = Object.keys(node.inputs);
     expect((node.data({ [a]: [0], [b]: [1] }) as { result: unknown }).result).toBe(false);
-  });
-
-  it("AND(false, true) is FALSE through coercion — wired as booleans", () => {
-    const node = wrapped(new BooleanOpNode({ op: "and" }));
-    const [a, b] = Object.keys(node.inputs);
     expect((node.data({ [a]: [false], [b]: [true] } as never) as { result: unknown }).result).toBe(false);
   });
 

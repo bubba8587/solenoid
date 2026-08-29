@@ -139,33 +139,21 @@ describe("getColumn", () => {
     [4, 5, 6],
   ]);
 
-  it("returns the column by exact name", () => {
+  it("looks up by exact name (trimmed, case-sensitive), null on a miss", () => {
     const col = getColumn(f, "Beta");
-    expect(col).not.toBeNull();
     expect(col!.name).toBe("Beta");
     expect(col!.values).toEqual([2, 5]);
-  });
-
-  it("returns null for a missing name", () => {
+    expect(getColumn(f, " Beta ")).not.toBeNull(); // key is trimmed
     expect(getColumn(f, "Delta")).toBeNull();
     expect(getColumn(f, "")).toBeNull();
     expect(getColumn(f, "alpha")).toBeNull(); // case-sensitive
   });
 
-  it("returns column by 1-based index string", () => {
-    const col1 = getColumn(f, "1");
-    expect(col1!.name).toBe("Alpha");
-    const col3 = getColumn(f, "3");
-    expect(col3!.name).toBe("Gamma");
-  });
-
-  it("returns null for out-of-range index string", () => {
+  it("looks up by 1-based index string, null out of range", () => {
+    expect(getColumn(f, "1")!.name).toBe("Alpha");
+    expect(getColumn(f, "3")!.name).toBe("Gamma");
     expect(getColumn(f, "0")).toBeNull();
     expect(getColumn(f, "4")).toBeNull();
-  });
-
-  it("trims whitespace from the key", () => {
-    expect(getColumn(f, " Beta ")).not.toBeNull();
   });
 });
 
