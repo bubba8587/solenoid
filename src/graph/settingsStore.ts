@@ -136,7 +136,7 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
       {
         key: "quickWire",
         label: "Quick-wire",
-        help: "Dropping a cable on empty canvas",
+        help: "Drop a cable on empty canvas to pick a compatible node and connect it",
       },
       {
         key: "semanticZoom",
