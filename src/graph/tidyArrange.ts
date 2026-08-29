@@ -89,9 +89,18 @@ const TIDY_DENSITY_SPACING: Record<TidyDensity, readonly [number, number]> = {
   airy:    [80, 56],
 };
 
+/** The root ELK options every Tidy layout runs under — the one home, spread by
+ *  `elkTidyLayout` and consumed verbatim by the integration test so the two
+ *  cannot drift (per declareOnce). */
+export const ELK_ROOT_OPTIONS = {
+  "elk.algorithm": "layered",
+  "elk.hierarchyHandling": "INCLUDE_CHILDREN",
+  "elk.edgeRouting": "POLYLINE",
+} as const;
+
 /** The ELK layout options for the three Tidy knobs, read at layout time by BOTH call
  *  sites (main canvas + composite drill-in). `elk.algorithm`/`hierarchyHandling`/
- *  `edgeRouting` come from `elkTidyLayout`'s root options; this only sets what
+ *  `edgeRouting` come from `ELK_ROOT_OPTIONS`; this only sets what
  *  the knobs drive. A width cap turns ELK's layerUnzipping on (global switch here; the
  *  per-node sublayer count is stamped by the port preset from the node count). */
 export function tidyLayoutOptions(s: {
@@ -193,12 +202,7 @@ export async function elkTidyLayout(
   }));
   const result = await elk.layout({
     id: "root",
-    layoutOptions: {
-      "elk.algorithm": "layered",
-      "elk.hierarchyHandling": "INCLUDE_CHILDREN",
-      "elk.edgeRouting": "POLYLINE",
-      ...args.options,
-    },
+    layoutOptions: { ...ELK_ROOT_OPTIONS, ...args.options },
     children,
     edges,
   });
