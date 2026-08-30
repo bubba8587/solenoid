@@ -1,24 +1,20 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { apiKeyStore } from "./apiKeyStore";
-import { AI_PROVIDER, aiConnected } from "./aiKey";
+import { AI_PROVIDER, AI_ENABLED, aiConnected } from "./aiKey";
 
-// `aiConnected()` is what reveals the command palette's sparkle, so the thing worth
-// pinning is that it is driven by the STORED KEY for OUR provider and nothing else —
-// no separate "connected" flag that could drift out of sync with the key present.
+// `aiConnected()` is what reveals the command palette's sparkle. 1.3 ships with the
+// assistant OFF (`AI_ENABLED = false` — author, 2026-08-30): with the flag down the
+// whole surface stays hidden even when a key is stored. When the flag flips back on,
+// the pin to restore (git 2026-08 has it): connected is driven by the STORED KEY for
+// OUR provider and nothing else — no separate flag that drifts from the key present.
 
 afterEach(() => { apiKeyStore.remove(AI_PROVIDER); });
 
 describe("aiConnected", () => {
-  it("tracks the stored key for AI_PROVIDER only", () => {
+  it("stays disconnected while AI_ENABLED is down, key or no key", () => {
+    expect(AI_ENABLED).toBe(false);
     expect(aiConnected()).toBe(false);
-    apiKeyStore.set("fred", "some-other-key"); // another provider's key is not ours
-    expect(aiConnected()).toBe(false);
-    apiKeyStore.remove("fred");
     apiKeyStore.set(AI_PROVIDER, "sk-test-key");
-    expect(aiConnected()).toBe(true);
-    apiKeyStore.remove(AI_PROVIDER);
-    expect(aiConnected()).toBe(false);
-    apiKeyStore.set(AI_PROVIDER, "   "); // blank is a clear, not a connection
     expect(aiConnected()).toBe(false);
   });
 });

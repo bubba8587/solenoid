@@ -21,10 +21,6 @@ const SLIDES: Slide[] = [
     body: "Drop a Query node, drill in, and chain the table verbs inside. Refresh runs it on demand: upstream changes mark the result stale and never silently recompute.",
   },
   {
-    title: "AI palette",
-    body: "Type a prompt in the command palette. A question gets an answer about your document. A build request gets a whole-document rewrite, validated and shown as a diff you approve or cancel. Bring your own Anthropic key in Settings, or type demo for the staged offline tour.",
-  },
-  {
     title: "The analytics shelf",
     body: "The numpy, pandas, scipy and R toolkit as nodes: Forecast with Holt-Winters intervals, per-group Window columns, K-Means, PCA, FFT, LOWESS smoothing, seasonal decomposition, and Monte Carlo with correlated inputs. The Function Reference gains numpy, pandas, R, SQL and Excel filter chips, so you can search by whichever name you already know.",
   },

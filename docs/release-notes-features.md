@@ -37,11 +37,11 @@ tag along the way — the baseline stays v1.2.0).
 - **[slide] Query.** A Power Query-style transform node: drop a Query, drill in,
   chain the table verbs, and Refresh on demand — upstream changes only mark it
   stale, never silently recompute (queryIsCompositePreset: a pre-seeded manual-mode Composite).
-- **[slide] AI palette.** Type a prompt in the command palette: a question gets an
-  answer about *your* document; a build request gets a validated whole-document
-  rewrite shown as a diff you approve or cancel — never a blind edit (aiInScope/aiWholeDocRewrite).
-  Bring your own Anthropic key (Settings ▸ AI), or type `demo` for the offline
-  staged demo. Applied additions animate in.
+- **AI palette — DISABLED for 1.3** (`AI_ENABLED = false` in `aiKey.ts`; author
+  2026-08-30, verification tail unfinished — see deferrals). Built and tested: a
+  palette prompt gets an answer about *your* document or a validated whole-document
+  rewrite shown as a diff you approve (aiInScope/aiWholeDocRewrite). Flip the flag
+  and restore this entry's `[slide]` + the What's-New slide when it ships.
 - **[slide] The analytics shelf.** The numpy / pandas / scipy / R toolkit, as nodes —
   roughly forty new cards: Forecast (Holt–Winters ETS with confidence intervals),
   Window (per-group running / rank / lag / share-of-group columns), K-Means, PCA,

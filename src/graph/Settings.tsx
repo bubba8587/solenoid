@@ -3,7 +3,7 @@ import { useFocusTrap } from "./components/useFocusTrap";
 import { useEscapeToClose } from "./components/useEscapeToClose";
 import { settingsStore, settingsPanel, SETTINGS_SCHEMA, type SettingField } from "./settingsStore";
 import { apiKeyStore } from "./apiKeyStore";
-import { AI_PROVIDER } from "./aiKey";
+import { AI_PROVIDER, AI_ENABLED } from "./aiKey";
 import { IS_MOBILE } from "./coarse";
 import { packsStore, allPacks, loadCustomPacks, customPacksFolder } from "./packs";
 import { isDesktop, pickFolderDialog, openInFileManager } from "./fileBridge";
@@ -356,7 +356,7 @@ export function Settings() {
           ))}
           <PaletteSection />
           <RendererSection />
-          <AiSection />
+          {AI_ENABLED && <AiSection />}
           <ApiKeysSection />
           <PacksSection />
         </div>
