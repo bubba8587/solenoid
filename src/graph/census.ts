@@ -11,7 +11,7 @@
 // census targets card CHROME (sockets, dividers, badges, chips, rings), which is the
 // step-2 conversion surface, not the plotted figure.
 import { FLAT_CATALOG } from "./catalogUtils";
-import { getEditor, getArea } from "./process";
+import { getEditor, getView } from "./process";
 const frames = (n: number) =>
   new Promise<void>((r) => {
     const step = (left: number) => (left <= 0 ? r() : requestAnimationFrame(() => step(left - 1)));
@@ -51,17 +51,16 @@ function tagClass(el: Element): string {
 
 async function censusOne(type: string, create: () => object): Promise<CardCensusRow | null> {
   const editor = getEditor();
-  const area = getArea();
-  if (!editor || !area) throw new Error("editor/area not ready");
+  const view = getView();
+  if (!editor || !view) throw new Error("editor/view not ready");
   let node: { id: string } | null = null;
   try {
     node = create() as { id: string };
     await editor.addNode(node as never);
     await frames(2);
-    const view = area.nodeViews.get(node.id);
-    const el = view?.element as HTMLElement | undefined;
+    const el = view.nodeElement(node.id);
     if (!el) return null;
-    // The card root sits under rete's view wrapper; take the first element child.
+    // The card root sits under the RF node wrapper; take the first element child.
     const card = (el.firstElementChild as HTMLElement | null) ?? el;
     const all = card.querySelectorAll("*");
     let valueOrHandler = 0;

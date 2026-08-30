@@ -120,7 +120,7 @@ relapse.
 | `equationSolve.ts` | `subsystem-invariants.md` § Equation solver |
 | `semanticZoomStore.ts` | `renderer-performance.md` § Semantic zoom gate |
 | `pointerGesture.ts`, `flow/flowPinch.ts`, `flow/flowTouchPan.ts` | `subsystem-invariants.md` § Pointer gestures |
-| `flow/FlowSurface.tsx`, `flow/FlowCanvas.tsx`, `flow/flowModel.ts`, `flow/flowArea.ts`, `area.ts`, `canvasCommands.ts` | `subsystem-invariants.md` § React Flow surface contract; decisions reactFlowView, oneFlowSurface |
+| `flow/FlowSurface.tsx`, `flow/FlowCanvas.tsx`, `flow/flowModel.ts`, `flow/flowView.ts`, `view.ts`, `canvasCommands.ts` | `subsystem-invariants.md` § React Flow surface contract; decisions reactFlowView, oneFlowSurface |
 | `graphCompute.ts`, `process.ts` (the pass) | `rules.md` targetedEqualsFull, onlyCalcModeSkips; `subsystem-invariants.md` § Error values (`#CIRC!` is engine-level) |
 | `flow/FlowCableEdge.tsx`, `flow/FlowSocketHandle.tsx`, `NodeSocket.tsx`, `NodeCard.tsx` | `subsystem-invariants.md` § React Flow surface contract; `rules.md` socketBox12; `../DESIGN.md` § Cards |
 | `connectionStore.ts`, `httpBridge.ts`, live-source fetch | `subsystem-invariants.md` § Live connections |

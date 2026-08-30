@@ -21,7 +21,7 @@ import {
 } from "../ribbonCable";
 import { processGraph, isGraphRebuilding } from "../process";
 import { cableDragStore, connectionVersionStore, conduitAngleStore, bumpConduitAngle } from "../graphSignals";
-import { getOwningEditor, getOwningArea } from "../activeGraph";
+import { getOwningEditor, getOwningView } from "../activeGraph";
 import { useFlowSocket } from "../flowSurface";
 import { AngleDial } from "../AngleDial";
 import { useDraftCommit, INVALID_DRAFT } from "./inlineInput";
@@ -195,7 +195,7 @@ export function ConduitComponent({ data }: Props) {
   // — and the block expands exactly when a cable is being aimed at it. The area's
   // re-render verb is what carries the bump (SolNodeAdapter → updateNodeInternals).
   useEffect(() => {
-    void getOwningArea(node.id)?.rerenderNode(node.id);
+    void getOwningView(node.id)?.rerenderNode(node.id);
   }, [node.id, angle, scale, lanes]);
 
   // Per-socket cable leads: inputs arrive into the −x face, outputs leave the +x face,
@@ -217,7 +217,7 @@ export function ConduitComponent({ data }: Props) {
   // Render the connector BEHIND the cables (z-index:-1 on the node holder) so wires
   // plug in over the square grid.
   useLayoutEffect(() => {
-    const el = getOwningArea(node.id)?.nodeViews.get(node.id)?.element;
+    const el = getOwningView(node.id)?.nodeElement(node.id);
     if (el) el.style.zIndex = "-1";
     return () => { if (el) el.style.zIndex = ""; };
   }, [node.id]);
@@ -231,12 +231,12 @@ export function ConduitComponent({ data }: Props) {
   const extendToNewConduit = async () => {
     // A Conduit inside a drill-in must spawn the new block in the SAME subgraph.
     const editor = getOwningEditor(node.id);
-    const area = getOwningArea(node.id);
-    if (!editor || !area) return;
+    const view = getOwningView(node.id);
+    if (!editor || !view) return;
     const next = new ConduitNodeType({ angle: node.angle }) as unknown as SolenoidNode;
     await editor.addNode(next);
-    const pos = area.nodeViews.get(node.id)?.position ?? { x: 0, y: 0 };
-    await area.moveNode(next.id, { x: pos.x + 130 * c, y: pos.y + 130 * s });
+    const pos = view.position(node.id) ?? { x: 0, y: 0 };
+    await view.moveNode(next.id, { x: pos.x + 130 * c, y: pos.y + 130 * s });
     const n = Math.max(realLanes, 1);
     for (let i = 0; i < n; i++) {
       try {

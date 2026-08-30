@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ListInputNode as ListInputNodeType, ListElemType } from "../rete-nodes";
 import { processGraph } from "../process";
-import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { getActiveEditor, getActiveView } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { SolenoidSocket, canConnect } from "../sockets";
 import { ExtensibleInputs } from "./ExtensibleInputs";
@@ -22,8 +22,8 @@ export async function applyListType(node: ListInputNodeType, dt: ListElemType): 
   if (!node.setDataType(dt)) return;
   // Active graph: a List Input inside a Composite drill-in retypes its own graph's cables.
   const editor = getActiveEditor();
-  const area = getActiveArea();
-  if (editor && area) {
+  const view = getActiveView();
+  if (editor && view) {
     // The row INPUT sockets were retyped too, and retypeOutputCables only walks outputs.
     const inType = (node.valueSocket as SolenoidSocket).dataType;
     for (const c of [...editor.getConnections()]) {
@@ -32,9 +32,9 @@ export async function applyListType(node: ListInputNodeType, dt: ListElemType): 
       const outType = outSock instanceof SolenoidSocket ? outSock.dataType : undefined;
       if (!outType || !canConnect(outType, inType)) await editor.removeConnection(c.id);
     }
-    await retypeOutputCables(editor, area, node.id, "list");
+    await retypeOutputCables(editor, view, node.id, "list");
   }
-  if (area) await area.rerenderNode(node.id);
+  if (view) await view.rerenderNode(node.id);
   await processGraph();
 }
 

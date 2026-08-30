@@ -1,4 +1,4 @@
-import type { Area } from "../../src/graph/area";
+import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import type { Schemes } from "../../src/graph/schemes";
@@ -12,14 +12,14 @@ import { nodeSizeStore } from "../../src/graph/nodeSizeStore";
 // ── Regression: "num → Display + Format Controller widens on every Tidy" ────────
 // The FC-host footprint restore captured measuredBox().w — which is offsetWidth,
 // a BORDER-BOX read that INCLUDES the card's 1px border — and re-stamped it as
-// style.width via area.resize onto the CONTENT-BOX `.solenoid-node` card. Each
+// style.width via view.resize onto the CONTENT-BOX `.solenoid-node` card. Each
 // Tidy therefore grew the host card by the border width, compounding without
 // bound (and dragging any group autofit along with it). Only the height pin was
 // dropped afterward, so height stayed put while width crept.
 //
-// This fake area models exactly that content-box contract: offsetWidth =
+// This fake view models exactly that content-box contract: offsetWidth =
 // (inline style.width ?? natural content width) + BORDER, an inline width pin
-// persists until removeProperty("width") clears it, and area.resize stamps that
+// persists until removeProperty("width") clears it, and view.resize stamps that
 // pin. The real makeArrangeFn drives real ELK over it. Pre-fix this test fails
 // (the host width climbs); with the width pin dropped it stays flat.
 
@@ -41,7 +41,7 @@ interface FakeView {
   };
 }
 
-function makeFakeArea() {
+function makeFakeView() {
   const nodeViews = new Map<string, FakeView>();
   // rootClass models the card root's CSS class: "solenoid-node" for standard
   // NodeCard roots, "solenoid-note" etc. for React-sized roots the pin-drop
@@ -80,8 +80,12 @@ function makeFakeArea() {
     nodeViews.set(id, view);
     return view;
   };
-  const area = {
-    nodeViews,
+  const view = {
+    fakes: nodeViews,
+    hasNode: (id: string) => nodeViews.has(id),
+    position: (id: string) => nodeViews.get(id)?.position,
+    nodeElement: (id: string) => (nodeViews.get(id)?.element ?? null) as unknown as HTMLElement | null,
+    connectionElement: () => null,
     async moveNode(id: string, pos: { x: number; y: number }) {
       const v = nodeViews.get(id);
       if (v) v.position = { ...pos };
@@ -90,7 +94,7 @@ function makeFakeArea() {
     async rerenderNode() { /* no-op headless */ },
     transform: { k: 1, x: 0, y: 0 },
   };
-  return { area: area as unknown as Area, add };
+  return { view: view as unknown as View & { fakes: Map<string, FakeView> }, add };
 }
 
 let rafQueue: FrameRequestCallback[] = [];
@@ -117,7 +121,7 @@ afterEach(() => {
 
 async function buildScene() {
   const editor = new NodeEditor<Schemes>();
-  const { area, add } = makeFakeArea();
+  const { view, add } = makeFakeView();
 
   const num = new ArithmeticNode({ op: "add" });
   const disp = new DisplayNode();
@@ -144,19 +148,19 @@ async function buildScene() {
   add(fc.id, 340 + 180 + 8, 220, 116, 64);
 
   const arrangeFn = makeArrangeFn({
-    editor, area,
+    editor, view,
     container: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 1000, height: 700 }) } as unknown as HTMLElement,
     ensureElk: makeEnsureElk(() => false),
     repositionDockedTo: () => {},
     isDestroyed: () => false,
   });
-  return { editor, area, arrangeFn, disp, add };
+  return { editor, view, arrangeFn, disp, add };
 }
 
 describe("Tidy with a docked FC does not widen the host on repeat", () => {
   it("the Display host card width is stable across three Tidies", async () => {
-    const { area, arrangeFn, disp } = await buildScene();
-    const widthOf = () => area.nodeViews.get(disp.id)!.element.offsetWidth;
+    const { view, arrangeFn, disp } = await buildScene();
+    const widthOf = () => view.nodeElement(disp.id)!.offsetWidth;
 
     await arrangeFn({ skipConfirm: true });
     await flushRafs();
@@ -175,17 +179,17 @@ describe("Tidy with a docked FC does not widen the host on repeat", () => {
   });
 
   it("a manually-resized Display keeps its chosen width after Tidy", async () => {
-    const { area, arrangeFn, disp } = await buildScene();
+    const { view, arrangeFn, disp } = await buildScene();
     nodeSizeStore.set(disp.id, { w: 260, h: 120 });
-    const view = area.nodeViews.get(disp.id) as unknown as FakeView;
+    const fv = view.fakes.get(disp.id)!;
     // Reflect the manual size the way the ResizeObserver would.
-    view.naturalW = 260;
+    fv.naturalW = 260;
 
     await arrangeFn({ skipConfirm: true });
     await flushRafs();
 
     // The card carries the manual width (re-applied), not a dropped/CSS default.
-    expect(view.stampedW).toBe(260);
+    expect(fv.stampedW).toBe(260);
   });
 
   // Regression: "Tidy makes Notes very very wide (sockets misaligned), fixed by
@@ -195,19 +199,19 @@ describe("Tidy with a docked FC does not widen the host on repeat", () => {
   // unsized element shrink-wraps against the zoom plane. The pin-drop loop must
   // only touch .solenoid-node (NodeCard) roots.
   it("Tidy never clears the inline width of a React-sized root (Note)", async () => {
-    const { editor, area, arrangeFn, add } = await buildScene();
+    const { editor, view, arrangeFn, add } = await buildScene();
     const note = new NoteNode({ body: "hello" });
     await editor.addNode(note as never);
-    const view = add(note.id, 600, 200, note.width, note.height, "solenoid-note");
+    const fv = add(note.id, 600, 200, note.width, note.height, "solenoid-note");
 
     await arrangeFn({ skipConfirm: true });
     await flushRafs();
 
-    expect(view.widthCleared).toBe(false);
+    expect(fv.widthCleared).toBe(false);
     // The standard cards in the same pass DID get their pins dropped.
-    const cleared = [...area.nodeViews.entries()]
+    const cleared = [...view.fakes.entries()]
       .filter(([id]) => id !== note.id)
-      .map(([, v]) => (v as unknown as FakeView).widthCleared);
+      .map(([, v]) => v.widthCleared);
     expect(cleared.some(Boolean)).toBe(true);
   });
 });

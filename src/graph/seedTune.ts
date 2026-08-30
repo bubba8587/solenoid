@@ -2,7 +2,7 @@
 // painted DOM. scripts/tune-seeds.mjs patches the returned geometry back in place —
 // deliberately NOT a re-export, which would rewrite every hand-authored id.
 import { SEEDS, clearAndLoadSeed } from "./seeds";
-import { getEditor, getArea } from "./process";
+import { getEditor, getView } from "./process";
 import { autoArrange } from "./canvasCommands";
 import { GroupNode } from "./rete-nodes";
 import { autofitGroupWithHistory } from "./groupLogic";
@@ -31,8 +31,8 @@ async function tuneSeed(id: string): Promise<Record<string, TunedNodeGeometry>> 
   const ok = await clearAndLoadSeed(id);
   if (!ok) throw new Error(`seed "${id}" failed to load`);
   const editor = getEditor();
-  const area = getArea();
-  if (!editor || !area) throw new Error("editor/area not ready");
+  const view = getView();
+  if (!editor || !view) throw new Error("editor/view not ready");
   const idMap = new Map(getLastLoadIdMap());
 
   // Async values (CSV fetches, chart renders) grow cards, and tidy must measure
@@ -46,17 +46,17 @@ async function tuneSeed(id: string): Promise<Record<string, TunedNodeGeometry>> 
   for (const g of groups) {
     const wasCollapsed = g.collapsed;
     if (wasCollapsed) {
-      await setGroupsCollapsed(editor, area, [g], false);
+      await setGroupsCollapsed(editor, view, [g], false);
       await frames(2);
     }
     if (g.members.length > 1) {
       await autoArrange({ groupId: g.id });
       await frames(2);
     }
-    await autofitGroupWithHistory(editor, area, g);
+    await autofitGroupWithHistory(editor, view, g);
     await frames(2);
     if (wasCollapsed) {
-      await setGroupsCollapsed(editor, area, [g], true);
+      await setGroupsCollapsed(editor, view, [g], true);
       await frames(2);
     }
   }
@@ -70,9 +70,9 @@ async function tuneSeed(id: string): Promise<Record<string, TunedNodeGeometry>> 
   const out: Record<string, TunedNodeGeometry> = {};
   for (const [savedId, liveId] of idMap) {
     const node = editor.getNode(liveId);
-    const view = area.nodeViews.get(liveId);
-    if (!node || !view) continue;
-    const geom: TunedNodeGeometry = { x: Math.round(view.position.x), y: Math.round(view.position.y) };
+    const pos = view.position(liveId);
+    if (!node || !pos) continue;
+    const geom: TunedNodeGeometry = { x: Math.round(pos.x), y: Math.round(pos.y) };
     if (node instanceof GroupNode) {
       geom.width = Math.round(node.width);
       geom.height = Math.round(node.height);

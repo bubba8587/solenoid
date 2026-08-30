@@ -1,23 +1,23 @@
 import { useEffect, useState, useSyncExternalStore, type ReactElement } from "react";
-import { getActiveEditor as getEditor, getActiveArea as getArea, subscribeActiveGraph } from "../activeGraph";
+import { getActiveEditor as getEditor, getActiveView as getView, subscribeActiveGraph } from "../activeGraph";
 import { canvasLockStore } from "../canvasLock";
 import { alignSelection, distributeSelection, type AlignKind } from "../selectionOps";
 import "./selectionActions.css";
 
 // TOP-center so it never collides with the bottom-docked palette, and FIXED (not
-// anchored to the selection bbox) so it never fights the area transform. Selection
+// anchored to the selection bbox) so it never fights the view transform. Selection
 // has no push store, so a light interval counts the selected nodes with a view.
 
 const POLL_MS = 150;
 
 function selectedVisibleCount(): number {
   const editor = getEditor();
-  const area = getArea();
-  if (!editor || !area) return 0;
+  const view = getView();
+  if (!editor || !view) return 0;
   let n = 0;
   for (const node of editor.getNodes()) {
     if ((node as { selected?: boolean }).selected !== true) continue;
-    if (area.nodeViews.get(node.id)) n++;
+    if (view.hasNode(node.id)) n++;
   }
   return n;
 }

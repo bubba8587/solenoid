@@ -11,7 +11,7 @@ import { nodeDisplayName } from "../catalogUtils";
 import { getCablePath, Position } from "../cablePaths";
 import { cableShapeStore } from "../cableShape";
 import "./isolateEndpoints.css";
-import { getActiveArea, getActiveEditor, getOwningEditor } from "../activeGraph";
+import { getActiveView, getActiveEditor, getOwningEditor } from "../activeGraph";
 
 // Boundary terminals for the Isolate overlay, rendered in the area's transformed plane
 // (canvas coords) so they pan/zoom with the graph.
@@ -31,7 +31,7 @@ function socketCanvasPos(holder: HTMLElement, nodeId: string, key: string, side:
   if (!el) return null;
   const r = el.getBoundingClientRect();
   const hr = holder.getBoundingClientRect();
-  const k = getActiveArea()?.transform.k || 1;
+  const k = getActiveView()?.transform.k || 1;
   return { x: (r.left + r.width / 2 - hr.left) / k, y: (r.top + r.height / 2 - hr.top) / k };
 }
 
@@ -51,7 +51,7 @@ export function IsolateEndpoints() {
 
   const focus = isolateStore.get();
   const editor = getActiveEditor();
-  const area = getActiveArea();
+  const view = getActiveView();
 
   // Drag offsets are ephemeral and in canvas coords, applied over the auto-centered position.
   const [override, setOverride] = useState<{ entry: Pt; exit: Pt }>({ entry: { x: 0, y: 0 }, exit: { x: 0, y: 0 } });
@@ -62,8 +62,8 @@ export function IsolateEndpoints() {
     isoEndpointSelect.set(null);
   }, [focusKey]);
 
-  if (!focus || !editor || !area) return null;
-  const holder = area.viewport;
+  if (!focus || !editor || !view) return null;
+  const holder = view.viewport;
 
   const startDrag = (which: "entry" | "exit") => (e: React.PointerEvent) => {
     e.stopPropagation();
@@ -78,7 +78,7 @@ export function IsolateEndpoints() {
   const onDragMove = (e: React.PointerEvent) => {
     const d = dragRef.current;
     if (!d) return;
-    const k = area.transform.k || 1;
+    const k = view.transform.k || 1;
     setOverride((o) => ({ ...o, [d.which]: { x: d.base.x + (e.clientX - d.sx) / k, y: d.base.y + (e.clientY - d.sy) / k } }));
   };
   const endDrag = (e: React.PointerEvent) => {
@@ -94,12 +94,13 @@ export function IsolateEndpoints() {
   // Focus bounding box (canvas coords).
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const id of focus) {
-    const view = area.nodeViews.get(id);
-    if (!view) continue;
-    const m = measuredSize(area, id);
-    const w = m?.w ?? (view.element.offsetWidth || 120), h = m?.h ?? (view.element.offsetHeight || 60);
-    minX = Math.min(minX, view.position.x); minY = Math.min(minY, view.position.y);
-    maxX = Math.max(maxX, view.position.x + w); maxY = Math.max(maxY, view.position.y + h);
+    const pos = view.position(id);
+    if (!pos) continue;
+    const m = measuredSize(view, id);
+    const el = view.nodeElement(id);
+    const w = m?.w ?? (el?.offsetWidth || 120), h = m?.h ?? (el?.offsetHeight || 60);
+    minX = Math.min(minX, pos.x); minY = Math.min(minY, pos.y);
+    maxX = Math.max(maxX, pos.x + w); maxY = Math.max(maxY, pos.y + h);
   }
   if (!isFinite(minX)) return null;
 

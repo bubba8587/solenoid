@@ -1,5 +1,5 @@
 import { measuredSize } from "./nodeSize";
-import type { Area } from "./area";
+import type { View } from "./view";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import { GroupNode } from "./rete-nodes";
@@ -40,27 +40,25 @@ export const groupPushStore = {
   },
 };
 
-function position(area: Area, id: string) {
-  return area.nodeViews.get(id)?.position;
-}
+const position = (view: View, id: string) => view.position(id);
 
 // A group carries its members; a loose node carries any FC docked to it.
-export function translateEntityBy(editor: Editor, area: Area, id: string, dx: number, dy: number): void {
-  translatePushed(editor, area, id, dx, dy);
+export function translateEntityBy(editor: Editor, view: View, id: string, dx: number, dy: number): void {
+  translatePushed(editor, view, id, dx, dy);
 }
 
-function translatePushed(editor: Editor, area: Area, id: string, dx: number, dy: number): void {
+function translatePushed(editor: Editor, view: View, id: string, dx: number, dy: number): void {
   if (dx === 0 && dy === 0) return;
-  const p = position(area, id);
+  const p = position(view, id);
   if (!p) return;
-  void area.moveNode(id, { x: p.x + dx, y: p.y + dy });
+  void view.moveNode(id, { x: p.x + dx, y: p.y + dy });
   const node = editor.getNode(id);
   if (node instanceof GroupNode) {
-    moveGroupMembers(editor, area, node, dx, dy);
+    moveGroupMembers(editor, view, node, dx, dy);
   } else {
     for (const d of dockedNodeStore.getDockedTo(id)) {
-      const dp = position(area, d.id);
-      if (dp) void area.moveNode(d.id, { x: dp.x + dx, y: dp.y + dy });
+      const dp = position(view, d.id);
+      if (dp) void view.moveNode(d.id, { x: dp.x + dx, y: dp.y + dy });
     }
   }
 }
@@ -75,7 +73,7 @@ interface World {
   origin: Map<string, { x: number; y: number }>;
 }
 
-function buildWorld(editor: Editor, area: Area, expandedIds: Set<string>): World {
+function buildWorld(editor: Editor, view: View, expandedIds: Set<string>): World {
   const grouped = new Set<string>();
   for (const n of editor.getNodes()) {
     if (n instanceof GroupNode) for (const m of n.members) grouped.add(m);
@@ -84,18 +82,18 @@ function buildWorld(editor: Editor, area: Area, expandedIds: Set<string>): World
   const looseIds = new Set<string>();
   const origin = new Map<string, { x: number; y: number }>();
   for (const n of editor.getNodes()) {
-    const view = area.nodeViews.get(n.id);
-    if (!view) continue;
-    const p = view.position;
+    const p = view.position(n.id);
+    if (!p) continue;
     if (n instanceof GroupNode) {
-      const m = expandedIds.has(n.id) ? null : measuredSize(area, n.id);
-      const w = expandedIds.has(n.id) ? n.width : m?.w ?? (view.element.offsetWidth || n.width);
-      const h = expandedIds.has(n.id) ? n.height : m?.h ?? (view.element.offsetHeight || n.height);
+      const m = expandedIds.has(n.id) ? null : measuredSize(view, n.id);
+      const el = view.nodeElement(n.id);
+      const w = expandedIds.has(n.id) ? n.width : m?.w ?? (el?.offsetWidth || n.width);
+      const h = expandedIds.has(n.id) ? n.height : m?.h ?? (el?.offsetHeight || n.height);
       boxes.set(n.id, { id: n.id, x: p.x, y: p.y, w, h });
     } else {
       if (grouped.has(n.id) || dockedNodeStore.get(n.id)) continue;
       // The shared size chokepoint, so the push math agrees with align/autofit.
-      const mb = measuredBox(area, n.id, editor);
+      const mb = measuredBox(view, n.id, editor);
       const w = mb?.w ?? 100;
       const h = mb?.h ?? 50;
       // A docked FC has no box of its own, so without reserving its width the
@@ -116,14 +114,14 @@ function buildWorld(editor: Editor, area: Area, expandedIds: Set<string>): World
 
 // alignCy is in WORLD coords — corrected by however far this group has already
 // shifted within the batch, since members only physically move when it applies.
-function satellitesFor(editor: Editor, area: Area, g: GroupNode, world: World): Map<string, Satellite> {
+function satellitesFor(editor: Editor, view: View, g: GroupNode, world: World): Map<string, Satellite> {
   const members = new Set(g.members);
   const gBox = world.boxes.get(g.id);
   const gOrig = world.origin.get(g.id);
   const gShift = gBox && gOrig ? { dx: gBox.x - gOrig.x, dy: gBox.y - gOrig.y } : { dx: 0, dy: 0 };
 
   const memberCy = (id: string): number | null => {
-    const b = measuredBox(area, id, editor);
+    const b = measuredBox(view, id, editor);
     if (!b) return null;
     return b.y + b.h / 2 + gShift.dy;
   };
@@ -197,10 +195,10 @@ function buildAnchors(
 }
 
 // Must be measured BEFORE the expand flips the element; layout formula as fallback.
-function collapsedCardSize(area: Area, g: GroupNode): { w: number; h: number } {
-  const m = measuredSize(area, g.id);
+function collapsedCardSize(view: View, g: GroupNode): { w: number; h: number } {
+  const m = measuredSize(view, g.id);
   if (m) return m;
-  const el = area.nodeViews.get(g.id)?.element;
+  const el = view.nodeElement(g.id);
   if (el && el.offsetWidth > 0) return { w: el.offsetWidth, h: el.offsetHeight };
   const rows = Math.max(
     groupCollapseStore.retainedFor(g.id).length,
@@ -218,13 +216,13 @@ function collapsedCardSize(area: Area, g: GroupNode): { w: number; h: number } {
 
 function runExpandPushes(
   editor: Editor,
-  area: Area,
+  view: View,
   changed: GroupNode[],
   preSizes: Map<string, { w: number; h: number }>,
   record = true,
 ): void {
   const expandedIds = new Set(changed.map((g) => g.id));
-  const world = buildWorld(editor, area, expandedIds);
+  const world = buildWorld(editor, view, expandedIds);
 
   const order = [...changed].sort((a, b) => {
     const pa = world.boxes.get(a.id);
@@ -241,7 +239,7 @@ function runExpandPushes(
     if (!gBox || !pre) continue;
     const spec = { x: gBox.x, y: gBox.y, preW: pre.w, preH: pre.h, postW: gBox.w, postH: gBox.h };
     const obstacles = [...world.boxes.values()].filter((b) => b.id !== g.id);
-    const sats = satellitesFor(editor, area, g, world);
+    const sats = satellitesFor(editor, view, g, world);
     const anchors = buildAnchors(editor, world, sats);
     const disp = computeExpandPush(spec, obstacles, sats, anchors);
     for (const [id, d] of disp) {
@@ -357,7 +355,7 @@ function runExpandPushes(
 
   for (const [id, t] of totals) {
     if (t.dx === 0 && t.dy === 0) continue;
-    const p = position(area, id);
+    const p = position(view, id);
     if (!p) continue;
     // `record` off ⇒ the displacement is PERMANENT, no restore record.
     if (record) {
@@ -383,7 +381,7 @@ function runExpandPushes(
         });
       }
     }
-    translatePushed(editor, area, id, t.dx, t.dy);
+    translatePushed(editor, view, id, t.dx, t.dy);
   }
 }
 
@@ -391,19 +389,19 @@ function runExpandPushes(
  *  size BEFORE it grew, and only actually-grown groups may be passed. */
 export function pushForGrownGroups(
   editor: Editor,
-  area: Area,
+  view: View,
   grown: GroupNode[],
   preSizes: Map<string, { w: number; h: number }>,
 ): void {
   if (grown.length === 0 || !settingsStore.get("groupPush")) return;
-  runExpandPushes(editor, area, grown, preSizes, false);
+  runExpandPushes(editor, view, grown, preSizes, false);
 }
 
 // ─── Restore ───────────────────────────────────────────────────────────────────
 
 /** Slides back every pushed entity whose contributing groups are ALL collapsed or
  *  deleted, unless it moved since; absolute records keep restores order-independent. */
-export function restoreSettledPushes(editor: Editor, area: Area): void {
+export function restoreSettledPushes(editor: Editor, view: View): void {
   let moved = false;
   for (const [id, r] of [..._records]) {
     const settled = [...r.dueTo].every((gid) => {
@@ -412,10 +410,10 @@ export function restoreSettledPushes(editor: Editor, area: Area): void {
     });
     if (!settled) continue;
     _records.delete(id);
-    const p = position(area, id);
+    const p = position(view, id);
     if (!p) continue;
     if (Math.abs(p.x - r.expX) <= EPS && Math.abs(p.y - r.expY) <= EPS) {
-      translatePushed(editor, area, id, r.preX - p.x, r.preY - p.y);
+      translatePushed(editor, view, id, r.preX - p.x, r.preY - p.y);
       moved = true;
     }
     // else: moved since we pushed it — leave it where it is.
@@ -429,7 +427,7 @@ export function restoreSettledPushes(editor: Editor, area: Area): void {
  *  flip → sync → re-render → settle → push/restore order is identical everywhere. */
 export async function setGroupsCollapsed(
   editor: Editor,
-  area: Area,
+  view: View,
   targets: GroupNode[],
   collapse: boolean,
 ): Promise<void> {
@@ -438,32 +436,32 @@ export async function setGroupsCollapsed(
 
   // The seam origins for the expansion — measure BEFORE the flip re-renders full size.
   const preSizes = new Map<string, { w: number; h: number }>();
-  if (!collapse) for (const g of changed) preSizes.set(g.id, collapsedCardSize(area, g));
+  if (!collapse) for (const g of changed) preSizes.set(g.id, collapsedCardSize(view, g));
 
   for (const g of changed) g.collapsed = collapse;
-  syncGroupCollapse(editor, area);
+  syncGroupCollapse(editor, view);
   // Wait for the size/render change so footprints measured below are current.
-  await Promise.all(changed.map((g) => area.rerenderNode(g.id)));
-  for (const g of changed) settleCollapse(area, g.id, g.members, !collapse);
+  await Promise.all(changed.map((g) => view.rerenderNode(g.id)));
+  for (const g of changed) settleCollapse(view, g.id, g.members, !collapse);
 
   if (collapse) {
-    restoreSettledPushes(editor, area);
+    restoreSettledPushes(editor, view);
     // Collapsing moves the standoff anchors, so re-satisfy any band the shrink
     // violated; a no-op when the restores above already landed everything in band.
-    settleStandoffsOverWorld(editor, area, new Set(changed.map((g) => g.id)));
+    settleStandoffsOverWorld(editor, view, new Set(changed.map((g) => g.id)));
   } else if (settingsStore.get("groupPush")) {
-    runExpandPushes(editor, area, changed, preSizes);
+    runExpandPushes(editor, view, changed, preSizes);
   }
   scheduleAutosave();
 }
 
 // Solve the standoff network over live boxes and apply the corrections.
-function settleStandoffsOverWorld(editor: Editor, area: Area, pinned: Set<string>): void {
+function settleStandoffsOverWorld(editor: Editor, view: View, pinned: Set<string>): void {
   if (standoffStore.isEmpty()) return;
-  const world = buildWorld(editor, area, new Set());
+  const world = buildWorld(editor, view, new Set());
   const plain = new Map<string, StandoffBox>(
     [...world.boxes].map(([id, b]) => [id, { x: b.x, y: b.y, w: b.w, h: b.h }]),
   );
   const disp = solveStandoffs(plain, standoffStore.all(), pinned, { forceLock: true });
-  for (const [id, d] of disp) translatePushed(editor, area, id, d.dx, d.dy);
+  for (const [id, d] of disp) translatePushed(editor, view, id, d.dx, d.dy);
 }

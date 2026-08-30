@@ -1,4 +1,4 @@
-import type { Area } from "../../src/graph/area";
+import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
@@ -43,9 +43,9 @@ function makeGraph() {
   });
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
-  // runGraphPass touches the area only via `area.rerenderNode(id)` — stub it.
-  const area = { rerenderNode: async () => {} } as unknown as Area;
-  setEditorRefs(editor, engine, area);
+  // runGraphPass touches the view only via `area.rerenderNode(id)` — stub it.
+  const view = { rerenderNode: async () => {} } as unknown as View;
+  setEditorRefs(editor, engine, view);
   return { editor, engine };
 }
 

@@ -3,7 +3,7 @@ import { useSyncExternalStore } from "react";
 import type { ClassicPreset } from "rete";
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
-import { getActiveArea } from "../activeGraph";
+import { getActiveView } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
 import {
   useConnectedInputs,
@@ -85,7 +85,7 @@ export function PairedExtensibleInputs({
 
   async function addPair() {
     node.addValuePair();
-    await getActiveArea()?.rerenderNode(node.id);
+    await getActiveView()?.rerenderNode(node.id);
     await processGraph();
   }
 
@@ -93,7 +93,7 @@ export function PairedExtensibleInputs({
     await dropInputCables(node.id, keys);
     // AFTER the connection removals, BEFORE the removal (see ExtensibleInputs).
     node.removeValuePair(keys[0]);
-    await getActiveArea()?.rerenderNode(node.id);
+    await getActiveView()?.rerenderNode(node.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up
     await processGraph();
   }

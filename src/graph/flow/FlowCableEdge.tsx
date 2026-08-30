@@ -20,7 +20,7 @@ import { resolveTypedSource, conduitPath } from "../conduitTrace";
 import { ribbonForConnection, ribbonHoverStore, conduitFacePoint, conduitLanePoint, conduitLayoutStore, pinRibbonSeparation } from "../ribbonCable";
 import { SOCKET_COLORS, SolenoidSocket } from "../sockets";
 import { unselectAllNodes } from "../canvasCommands";
-import { getOwningEditor, getOwningArea } from "../activeGraph";
+import { getOwningEditor, getOwningView } from "../activeGraph";
 import { groupCollapseStore, COLLAPSE_LAYOUT, pillY } from "../groupCollapse";
 import { touchSelectStore } from "../touchSelectStore";
 import { standoffStore } from "../standoffs";
@@ -184,7 +184,7 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
   // edge pill, keyed by socket.
   const pillPoint = (p: { groupId: string; side: "left" | "right"; index: number } | undefined) => {
     if (!p) return undefined;
-    const g = getOwningArea(p.groupId)?.nodeViews.get(p.groupId)?.position;
+    const g = getOwningView(p.groupId)?.position(p.groupId);
     if (!g) return undefined;
     return { x: p.side === "left" ? g.x : g.x + COLLAPSE_LAYOUT.width, y: g.y + pillY(p.index) };
   };

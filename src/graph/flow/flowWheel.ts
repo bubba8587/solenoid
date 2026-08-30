@@ -1,9 +1,9 @@
 // React Flow port — the Solenoid wheel curve on the flow surface. RF's d3-zoom
-// wheel is tuned for a mouse; the app's curve (areaPresets.wheelZoomDelta —
+// wheel is tuned for a mouse; the app's curve (viewPresets.wheelZoomDelta —
 // gentle per-px slope, higher cap) is what the author tuned for trackpads.
 // Owned in CAPTURE on the wrapper (RF's bubble-phase d3 handler never sees the
 // wheel); zoomOnScroll stays off so there is exactly one wheel path.
-import { clampZoom, wheelZoomDelta, MIN_ZOOM, MAX_ZOOM } from "../areaPresets";
+import { clampZoom, wheelZoomDelta, MIN_ZOOM, MAX_ZOOM } from "../viewPresets";
 
 type Viewport = { x: number; y: number; zoom: number };
 

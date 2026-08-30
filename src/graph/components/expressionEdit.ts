@@ -1,6 +1,6 @@
 import type { ExpressionNode, LambdaNode, EquationNode, ScriptNode } from "../rete-nodes";
 import { processGraph } from "../process";
-import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { getActiveEditor, getActiveView } from "../activeGraph";
 import { dropInputCables } from "./cablePrune";
 import { INPUT_ROW_PITCH } from "./inlineInput";
 
@@ -15,16 +15,16 @@ export async function applyExprChange(node: ExpressionNode, newExpr: string): Pr
   node.expr = newExpr;
   const { removed } = node._rebuild();
 
-  const area = getActiveArea();
+  const view = getActiveView();
 
   if (removed.length > 0) await dropInputCables(node.id, removed);
   for (const v of removed) node.removeInput(v);
 
   node.height = computeExprHeight(node.varNames.length);
-  if (area) {
+  if (view) {
     // A pinned inline height would keep the new input row from growing the card.
-    clearPinnedHeight(area, node.id);
-    await area.rerenderNode(node.id);
+    clearPinnedHeight(view, node.id);
+    await view.rerenderNode(node.id);
   }
   await processGraph();
 }
@@ -38,15 +38,15 @@ export async function applyScriptChange(node: ScriptNode, src: string): Promise<
   node.expr = src;
   const { removed } = node._rebuild();
 
-  const area = getActiveArea();
+  const view = getActiveView();
 
   if (removed.length > 0) await dropInputCables(node.id, removed);
   for (const v of removed) node.removeInput(v);
 
   node.height = computeScriptHeight(node.varNames.length);
-  if (area) {
-    clearPinnedHeight(area, node.id);
-    await area.rerenderNode(node.id);
+  if (view) {
+    clearPinnedHeight(view, node.id);
+    await view.rerenderNode(node.id);
   }
   await processGraph();
 }
@@ -63,7 +63,7 @@ export async function applyEquationChange(node: EquationNode, newExpr: string): 
   const { removed } = node._rebuild();
 
   const editor = getActiveEditor();
-  const area = getActiveArea();
+  const view = getActiveView();
 
   // NOT dropInputCables: an Equation variable owns an OUTPUT socket too, so this is
   // the one prune that covers both directions.
@@ -78,9 +78,9 @@ export async function applyEquationChange(node: EquationNode, newExpr: string): 
   for (const v of removed) { node.removeInput(v); node.removeOutput(v); }
 
   node.height = computeEquationHeight(node.varNames.length);
-  if (area) {
-    clearPinnedHeight(area, node.id);
-    await area.rerenderNode(node.id);
+  if (view) {
+    clearPinnedHeight(view, node.id);
+    await view.rerenderNode(node.id);
   }
   await processGraph();
 }
@@ -94,24 +94,22 @@ export async function applyLambdaChange(
   if (change.params !== undefined) node.params = change.params;
   const { removed } = node._rebuild();
 
-  const area = getActiveArea();
+  const view = getActiveView();
 
   if (removed.length > 0) await dropInputCables(node.id, removed);
   for (const v of removed) node.removeInput(v);
 
   node.height = computeExprHeight(node.captured.length) + INPUT_ROW_PITCH;
-  if (area) {
-    clearPinnedHeight(area, node.id);
-    await area.rerenderNode(node.id);
+  if (view) {
+    clearPinnedHeight(view, node.id);
+    await view.rerenderNode(node.id);
   }
   await processGraph();
 }
 
-/** Targets the same element rete-area's `resize()` writes to (the view's first
+/** Targets the same element the rete-era `resize()` wrote to (the wrapper's first
  *  non-span child); width is left alone — only the vertical pin overflows. */
-function clearPinnedHeight(area: NonNullable<ReturnType<typeof getActiveArea>>, nodeId: string): void {
-  const card = area.nodeViews
-    .get(nodeId)
-    ?.element.querySelector<HTMLElement>("*:not(span):not([fragment])");
+function clearPinnedHeight(view: NonNullable<ReturnType<typeof getActiveView>>, nodeId: string): void {
+  const card = view.nodeElement(nodeId)?.querySelector<HTMLElement>("*:not(span):not([fragment])");
   if (card) card.style.height = "";
 }

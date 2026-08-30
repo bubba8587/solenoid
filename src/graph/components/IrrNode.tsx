@@ -2,7 +2,7 @@ import { CASHFLOW_OP_OPTIONS } from "../rete-nodes";
 import type { IrrNode as IrrNodeType, CashflowOp } from "../rete-nodes";
 import { useState } from "react";
 import { processGraph } from "../process";
-import { getActiveArea } from "../activeGraph";
+import { getActiveView } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { OpToggle } from "./SegToggle";
@@ -16,7 +16,7 @@ export function IrrComponent({ data, emit }: NodeProps<IrrNodeType>) {
     if (next === "periods") await dropInputCables(data.id, ["dates"]);
     data.setOp(next);
     setOp(next);
-    await getActiveArea()?.rerenderNode(data.id);
+    await getActiveView()?.rerenderNode(data.id);
     await processGraph();
   }
 

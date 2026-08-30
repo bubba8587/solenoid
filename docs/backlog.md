@@ -6,19 +6,6 @@ polish and perf are DONE; what ships 1.3 is this list's easy under-the-hood work
 the release tail. Everything feature-shaped or author-gated lives in `deferrals.md`;
 ruled-out ideas: `out-of-scope.md`; settled rationale: `decisions.md`.
 
-## Under-the-hood (agent-runnable now)
-
-- [ ] **Model layer, the last two cuts (2026-08-27, after the Area rework — author-approved).**
-  (1) Rename the seam's word: `area` → `view` (type `Area` → `View`, `area.ts` → `view.ts`,
-  `getArea`/`getActiveArea`/`getOwningArea`, `areaRef`, ~230 variables) — rete's word, meaning
-  nothing to a new reader; AND drop the `nodeViews` Map for explicit `view.position(id)` /
-  `view.nodeElement(id)` — today `.element` is a `querySelector` on every read, incl. per-frame
-  paths (lasso, standoffs, HIC sync). One tsc-guided sweep, ~half a day; the fakes in the 7
-  layout tests follow. (2) Put position ON the node (beside `width`/`height`) and delete
-  `FlowModel.positions` + `syncViews`'s reconciliation of the side-map against the editor's
-  node set. Touches persistence/copyPaste/flowModel; the save-path suites are the net.
-  Docs to follow: subsystem-invariants § React Flow surface contract, glossary "Area".
-
 ## Awaiting the author
 
 - [ ] **Finance absolute-value verification (real Excel needed).** The bond/coupon

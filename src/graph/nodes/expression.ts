@@ -1,7 +1,7 @@
 import { ClassicPreset } from "rete";
 import { anyDataIn, resultOut, resultSocket, readInput, type ResultType } from "./shared";
 import { frameSocket, cubeSocket } from "../sockets";
-import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { getActiveEditor, getActiveView } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { extractVariables, compileEvaluator, parseFormula, type ExprEvaluator, type Ast, formulaSyntaxHint } from "../excelFormula";
 import { fxErrorToSol } from "../excelFunctions";
@@ -105,16 +105,16 @@ export function reconcileResultRank(node: RankedProducer, result: unknown, famil
   queueMicrotask(() => {
     void (async () => {
       const editor = getActiveEditor();
-      const area = getActiveArea();
+      const view = getActiveView();
       const out = node.outputs.result;
-      if (!editor || !area || !out || !editor.getNode(node.id)) return;
+      if (!editor || !view || !out || !editor.getNode(node.id)) return;
       out.socket = wantFamily === "frame"
         ? frameSocket
         : wantFamily === "cube"
           ? cubeSocket
           : resultSocket(want === 2 ? "matrix" : "combo", wantFamily);
-      await retypeOutputCables(editor, area, node.id, "result");
-      await area.rerenderNode(node.id);
+      await retypeOutputCables(editor, view, node.id, "result");
+      await view.rerenderNode(node.id);
     })();
   });
 }

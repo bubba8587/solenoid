@@ -45,7 +45,7 @@ async function buildDemoGraph(s: StaticStack) {
     await s.editor.addNode(asNode(node));
     nodeNameStore.ensure(node.id, node.constructor.name);
   }
-  for (const [node, x, y] of at) await s.area.moveNode(node.id, { x, y });
+  for (const [node, x, y] of at) await s.view.moveNode(node.id, { x, y });
 
   const wire = (src: ClassicPreset.Node, out: string, tgt: ClassicPreset.Node, inp: string) =>
     s.editor.addConnection(new ClassicPreset.Connection(asNode(src), out, asNode(tgt), inp) as SolenoidConnection);
@@ -62,7 +62,7 @@ export function LandingGraph() {
   const [scale, setScale] = useState(1);
 
   useEffect(() => {
-    setEditorRefs(stack.editor, stack.engine, stack.area);
+    setEditorRefs(stack.editor, stack.engine, stack.view);
     void buildDemoGraph(stack);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stack]);

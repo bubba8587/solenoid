@@ -3,7 +3,7 @@ import type { FilterNode as FilterNodeType } from "../rete-nodes";
 import type { FilterCondConfig } from "../frameVerbs";
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
-import { getActiveArea } from "../activeGraph";
+import { getActiveView } from "../activeGraph";
 import { useConnectedInputs, InlineInputs, InlineTextField } from "./inlineInput";
 import { NodeShell, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
@@ -39,14 +39,14 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
 
   async function addRow() {
     data.addValueInput();
-    await getActiveArea()?.rerenderNode(data.id);
+    await getActiveView()?.rerenderNode(data.id);
     await processGraph();
   }
 
   async function removeRow(key: string) {
     await dropInputCables(data.id, [key]);
     data.removeValueInput(key);
-    await getActiveArea()?.rerenderNode(data.id);
+    await getActiveView()?.rerenderNode(data.id);
     bumpConnectionVersion();
     await processGraph();
   }

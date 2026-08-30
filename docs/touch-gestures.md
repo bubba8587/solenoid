@@ -56,7 +56,7 @@ mobile model; never gate on coarseness alone what must flip with it.
 |---|---|---|---|
 | 1-finger / left-mouse drag | all | pan | RF pane drag (bubble, vetoable); on an unselected card `flowTouchPan.ts` |
 | 2-finger pinch | touch | zoom (capped) | `flowPinch.ts` (wrapper capture), `pointerGesture.ts` |
-| wheel / ctrl+wheel trackpad pinch | mouse | zoom (proportional, step-capped) | `flowWheel.ts` + `wheelZoomDelta` (`areaPresets.ts`) |
+| wheel / ctrl+wheel trackpad pinch | mouse | zoom (proportional, step-capped) | `flowWheel.ts` + `wheelZoomDelta` (`viewPresets.ts`) |
 | tap / click | all | clear cable/standoff/endpoint selection | `FlowSurface.tsx` `onPaneClick` |
 | **long-press** (touch) / right-click | all | **context menu routing: empty canvas → ADD MENU**; socket → socket menu (≤11px snap radius); cable → cable menu; node → node menu (headed by the node's catalog one-liner — the header tooltip's touch-reachable home). Two regates: suppressed entirely while ISOLATE is active, and the handler bails on the focused editable (the browser's own menu wins there) | `canvasContextMenu.ts` — ONE native `contextmenu` handler; touch long-press is the browser's own synthesis, there is no timer in our code |
 | double-tap / double-click | all | **nothing, by design** (`zoomOnDoubleClick={false}` — see invariants) | RF props |

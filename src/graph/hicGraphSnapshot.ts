@@ -1,13 +1,13 @@
 // Snapshot the LIVE graph into a plain drawable model — node cards
 // (world rect + kind color + scraped title/value + socket world positions) and
-// cables (socket-to-socket ends + angle hints). Reads the editor/area singletons
+// cables (socket-to-socket ends + angle hints). Reads the editor/view singletons
 // and the mounted DOM (geometry + text), like nodeScene.ts. Impure and defensive:
 // every read is guarded so a half-built graph yields a partial snapshot, never a
 // throw (the Pixi overlay must never crash the app beneath it).
 
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
-import type { Area } from "./area";
+import type { View } from "./view";
 import { nodeAccent } from "./nodes/kind";
 import { appThemeStore } from "./appTheme";
 import { parseColor, mixSrgb, type RGBA } from "./cssColor";
@@ -333,10 +333,10 @@ export function readThemeColors(): { body: number; title: number; value: number 
   return { body: FALLBACK_BODY, title: 0xf3f5f8, value: 0xcfd6e4 };
 }
 
-/** Read the given graph + transform, or null if the editor/area aren't ready. */
-export function snapshotGraph(editor: NodeEditor<Schemes> | null, area: Area | null): GraphSnapshot | null {
-  if (!area || !editor) return null;
-  const t = area.transform ?? { k: 1, x: 0, y: 0 };
+/** Read the given graph + transform, or null if the editor/view aren't ready. */
+export function snapshotGraph(editor: NodeEditor<Schemes> | null, view: View | null): GraphSnapshot | null {
+  if (!view || !editor) return null;
+  const t = view.transform ?? { k: 1, x: 0, y: 0 };
   const k = t.k > 0 ? t.k : 1;
 
   _sockColorCache.clear(); // re-resolve CSS vars (theme may have changed since last open)
@@ -352,9 +352,9 @@ export function snapshotGraph(editor: NodeEditor<Schemes> | null, area: Area | n
 
   for (const node of editor.getNodes()) {
     try {
-      const view = area.nodeViews.get(node.id);
-      const el = view?.element;
-      if (!view || !el) continue;
+      const pos = view.position(node.id);
+      const el = view.nodeElement(node.id);
+      if (!pos || !el) continue;
 
       // Group containers render as translucent background rects behind cards.
       const groupEl = el.querySelector<HTMLElement>(".solenoid-group")
@@ -373,7 +373,7 @@ export function snapshotGraph(editor: NodeEditor<Schemes> | null, area: Area | n
           if (gtt === "uppercase") label = label.toUpperCase();
           else if (gtt === "lowercase") label = label.toLowerCase();
           else if (gtt === "capitalize") label = label.replace(/\b\w/g, (c) => c.toUpperCase());
-          groups.push({ id: node.id, x: view.position.x, y: view.position.y, w: gw, h: gh, headerH, label, color, border });
+          groups.push({ id: node.id, x: pos.x, y: pos.y, w: gw, h: gh, headerH, label, color, border });
         }
         continue;
       }
@@ -415,19 +415,19 @@ export function snapshotGraph(editor: NodeEditor<Schemes> | null, area: Area | n
       // Socket world positions, scraped from the dots and un-scaled into world space.
       const elRect = el.getBoundingClientRect();
       const isNode = card.classList.contains("solenoid-node");
-      const texts = scrapeTextRuns(card, elRect, view.position.x, view.position.y, k, isNode ? TEXT_SELECTORS : NOTE_SELECTORS);
+      const texts = scrapeTextRuns(card, elRect, pos.x, pos.y, k, isNode ? TEXT_SELECTORS : NOTE_SELECTORS);
       if (isNode && headerH > 0) {
         // Fall back to the node label as a header title run if none was scraped.
         // Only when the card actually HAS a header band — headerless nodes (the
         // Format Controller) would otherwise get a phantom title over their content.
         if (!texts.some((t) => t.isTitle)) {
           const label = (node as { label?: string }).label;
-          if (label) texts.push({ text: label, x: view.position.x + 9, y: view.position.y + 6, w: 0, h: 0, size: 13, color: 0xf3f5f8, mono: false, isTitle: true, boxed: false, chevron: false, bold: true, letterSpacing: 0, boxFill: null, boxBorder: null, align: "left" });
+          if (label) texts.push({ text: label, x: pos.x + 9, y: pos.y + 6, w: 0, h: 0, size: 13, color: 0xf3f5f8, mono: false, isTitle: true, boxed: false, chevron: false, bold: true, letterSpacing: 0, boxFill: null, boxBorder: null, align: "left" });
         }
       } else if (!texts.length) {
         // Note / conduit — show its raw content (their text uses other classes).
         const raw = (card.textContent ?? "").trim();
-        if (raw) texts.push({ text: raw.slice(0, 120), x: view.position.x + 9, y: view.position.y + 7, w: 0, h: 0, size: 12, color: 0xcfd6e4, mono: false, isTitle: false, boxed: false, chevron: false, bold: false, letterSpacing: 0, boxFill: null, boxBorder: null, align: "left" });
+        if (raw) texts.push({ text: raw.slice(0, 120), x: pos.x + 9, y: pos.y + 7, w: 0, h: 0, size: 12, color: 0xcfd6e4, mono: false, isTitle: false, boxed: false, chevron: false, bold: false, letterSpacing: 0, boxFill: null, boxBorder: null, align: "left" });
       }
       const inputs = (node as { inputs?: Record<string, { socket?: { dataType?: string } }> }).inputs ?? {};
       const outputs = (node as { outputs?: Record<string, { socket?: { dataType?: string } }> }).outputs ?? {};
@@ -452,8 +452,8 @@ export function snapshotGraph(editor: NodeEditor<Schemes> | null, area: Area | n
         const s: SnapSocket = {
           key,
           side: sideAttr,
-          x: view.position.x + (cx - elRect.left) / k,
-          y: view.position.y + (cy - elRect.top) / k,
+          x: pos.x + (cx - elRect.left) / k,
+          y: pos.y + (cy - elRect.top) / k,
           kind, color, color2,
         };
         sockets.push(s);
@@ -461,15 +461,15 @@ export function snapshotGraph(editor: NodeEditor<Schemes> | null, area: Area | n
       }
       lookup.set(node.id, byKey);
 
-      // A Conduit's view.position is the node-view origin, but its body floats at a
-      // body-relative offset (and is rotated), so view.position is NOT where it paints
+      // A Conduit's model position is the node-wrapper origin, but its body floats at a
+      // body-relative offset (and is rotated), so the model position is NOT where it paints
       // — the GPU frame drew detached from its own sockets/cables. Use the conduit
       // element's true rect so the frame centers on its sockets.
-      let nx = view.position.x, ny = view.position.y, nw = w, nh = h;
+      let nx = pos.x, ny = pos.y, nw = w, nh = h;
       if (card.classList.contains("solenoid-conduit")) {
         const cr = card.getBoundingClientRect();
-        nx = view.position.x + (cr.left - elRect.left) / k;
-        ny = view.position.y + (cr.top - elRect.top) / k;
+        nx = pos.x + (cr.left - elRect.left) / k;
+        ny = pos.y + (cr.top - elRect.top) / k;
         nw = cr.width / k; nh = cr.height / k;
       }
 
@@ -478,10 +478,10 @@ export function snapshotGraph(editor: NodeEditor<Schemes> | null, area: Area | n
         x: nx, y: ny, w: nw, h: nh, headerH,
         accent, body: isNode ? (bodyColor ?? ownBg) : ownBg, headerColor, border, borderAlpha,
         texts,
-        sliders: isNode ? scrapeSliders(card, elRect, view.position.x, view.position.y, k) : [],
-        checkboxes: isNode ? scrapeCheckboxes(card, elRect, view.position.x, view.position.y, k) : [],
-        decorations: scrapeDecorations(card, elRect, view.position.x, view.position.y, k),
-        images: isNode ? scrapeImages(card, elRect, view.position.x, view.position.y, k) : [],
+        sliders: isNode ? scrapeSliders(card, elRect, pos.x, pos.y, k) : [],
+        checkboxes: isNode ? scrapeCheckboxes(card, elRect, pos.x, pos.y, k) : [],
+        decorations: scrapeDecorations(card, elRect, pos.x, pos.y, k),
+        images: isNode ? scrapeImages(card, elRect, pos.x, pos.y, k) : [],
         isConduit: card.classList.contains("solenoid-conduit"),
         hasChevron: headerH > 0 && !card.classList.contains("solenoid-node--no-chevron"),
         rotation: (((node as { angle?: number }).angle ?? 0) * Math.PI) / 180,

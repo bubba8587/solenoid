@@ -56,7 +56,7 @@ import { parseFrameSource, frameSourceToText, isFrameValue, frameRowCount, type 
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { scheduleAutosave } from "../persistence";
-import { getActiveArea, getOwningEditor, getOwningArea } from "../activeGraph";
+import { getActiveView, getOwningEditor, getOwningView } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { collapseStore } from "../collapseStore";
 import { pivotEditor } from "../pivotEditorStore";
@@ -92,7 +92,7 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
     // A text edit fires no connection event, so settle the derived downstream types by
     // hand — a retyped/renamed column can retype a socket that reads it.
     const ed = getOwningEditor(data.id);
-    const ar = getOwningArea(data.id);
+    const ar = getOwningView(data.id);
     if (ed && ar) reconcileTypesAfterEdit(ed, ar);
     void processGraph();
   }, [data]);
@@ -101,7 +101,7 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
   const onCommitSource = useCallback(async (columns: FrameSourceColumn[]) => {
     data.frameText = frameSourceToText(columns);
     const ed = getOwningEditor(data.id);
-    const ar = getOwningArea(data.id);
+    const ar = getOwningView(data.id);
     if (ed && ar) reconcileTypesAfterEdit(ed, ar);
     await processGraph(data.id);
     const derived = data.cachedResult;
@@ -269,14 +269,14 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
 
   async function addPair() {
     data.addValuePair();
-    await getActiveArea()?.rerenderNode(data.id);
+    await getActiveView()?.rerenderNode(data.id);
     await processGraph();
   }
 
   async function removePair(aKey: string, bKey: string) {
     await dropInputCables(data.id, [aKey, bKey]);
     data.removeValuePair(aKey);
-    await getActiveArea()?.rerenderNode(data.id);
+    await getActiveView()?.rerenderNode(data.id);
     bumpConnectionVersion();
     await processGraph();
   }

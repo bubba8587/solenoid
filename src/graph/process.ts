@@ -1,8 +1,8 @@
-// The app's recompute: the MAIN editor/engine/area refs, the rebuild guard, and
+// The app's recompute: the MAIN editor/engine/view refs, the rebuild guard, and
 // processGraph — the model pass (graphCompute.ts) plus what the view needs around
 // it (targeted re-render, cable values, perf, the compute overlay, calc mode).
 // Chrome verbs live in canvasCommands.ts; this module owns compute only.
-import type { Area } from "./area";
+import type { View } from "./view";
 import type { NodeEditor } from "rete";
 import type { DataflowEngine } from "rete-engine";
 import { Cancelled } from "rete-engine";
@@ -18,20 +18,20 @@ import type { Schemes } from "./schemes";
 
 let _editor: NodeEditor<Schemes> | null = null;
 let _engine: DataflowEngine<Schemes> | null = null;
-let _area: Area | null = null;
+let _view: View | null = null;
 
 export function setEditorRefs(
   editor: NodeEditor<Schemes>,
   engine: DataflowEngine<Schemes>,
-  area: Area,
+  view: View,
 ) {
   _editor = editor;
   _engine = engine;
-  _area = area;
+  _view = view;
 }
 
-export function getArea() {
-  return _area;
+export function getView() {
+  return _view;
 }
 
 export function getEditor() {
@@ -186,7 +186,7 @@ function markInternalEditChain(editor: NodeEditor<Schemes>, innerId: string): bo
 }
 
 async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, topologyChanged = false) {
-  if (!_editor || !_engine || !_area) return;
+  if (!_editor || !_engine || !_view) return;
   // An edit inside a drill-in targets an internal node id — retarget at the owning card,
   // whose cache entry is the one that must be invalidated.
   if (changedNodeId && !_editor.getNode(changedNodeId)) {
@@ -259,7 +259,7 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
       return false;
     });
   }
-  await Promise.all(toRender.map((node) => _area!.rerenderNode(node.id)));
+  await Promise.all(toRender.map((node) => _view!.rerenderNode(node.id)));
   if (perf) {
     const t2 = performance.now();
     const ipc1 = ipcSnapshot();

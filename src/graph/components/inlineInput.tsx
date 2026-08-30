@@ -6,7 +6,7 @@ import { SolenoidSocket } from "../sockets";
 import { processGraph } from "../process";
 import { scheduleAutosave } from "../persistence";
 import { connectionVersionStore } from "../graphSignals";
-import { getOwningEditor, getOwningArea } from "../activeGraph";
+import { getOwningEditor, getOwningView } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { nodeName } from "../catalogUtils";
 import { collapseStore } from "../collapseStore";
@@ -547,7 +547,7 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
   // path, so the wildcard types must be re-settled after a literal edit.
   function settleTypes() {
     const ed = getOwningEditor(node.id);
-    const ar = getOwningArea(node.id);
+    const ar = getOwningView(node.id);
     if (ed && ar) reconcileTypesAfterEdit(ed, ar);
   }
 

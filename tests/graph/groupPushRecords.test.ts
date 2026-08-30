@@ -1,4 +1,4 @@
-import type { Area } from "../../src/graph/area";
+import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { NodeEditor } from "rete";
 import type { Schemes } from "../../src/graph/schemes";
@@ -26,7 +26,7 @@ import { setGroupsCollapsed } from "../../src/graph/groupPush";
 
 type Pos = { x: number; y: number };
 
-function makeFakeArea() {
+function makeFakeView() {
   const nodeViews = new Map<string, {
     position: Pos;
     element: { offsetWidth: number; offsetHeight: number; style: Record<string, string> };
@@ -45,8 +45,11 @@ function makeFakeArea() {
     nodeViews.set(id, view);
     return view;
   };
-  const area = {
-    nodeViews,
+  const view = {
+    hasNode: (id: string) => nodeViews.has(id),
+    position: (id: string) => nodeViews.get(id)?.position,
+    nodeElement: (id: string) => (nodeViews.get(id)?.element ?? null) as unknown as HTMLElement | null,
+    connectionElement: () => null,
     async moveNode(id: string, pos: Pos) {
       const v = nodeViews.get(id);
       if (v) v.position = { ...pos };
@@ -55,7 +58,7 @@ function makeFakeArea() {
     async rerenderNode() {},
     transform: { k: 1, x: 0, y: 0 },
   };
-  return { area: area as unknown as Area, addView };
+  return { view: view as unknown as View, addView };
 }
 
 let rafQueue: FrameRequestCallback[] = [];
@@ -87,7 +90,7 @@ function groupView(g: GroupNode) {
 describe("expand-push records survive a Tidy only with a fresh restore target", () => {
   it("a second push after a programmatic move does NOT re-arm the pre-move restore", async () => {
     const editor = new NodeEditor<Schemes>();
-    const { area, addView } = makeFakeArea();
+    const { view, addView } = makeFakeView();
 
     // Two collapsed groups and a loose, unwired neighbor.
     const gA = new GroupNode({ collapsed: true, width: 600, height: 300 });
@@ -103,31 +106,31 @@ describe("expand-push records survive a Tidy only with a fresh restore target", 
     const nView = addView(n.id, 420, 140, () => ({ w: 180, h: 80 }));
 
     // 1. Expand A — N is pushed clear of the expanded box.
-    await setGroupsCollapsed(editor, area, [gA], false);
+    await setGroupsCollapsed(editor, view, [gA], false);
     await flushRafs();
     const pushedX = nView.position.x;
     expect(pushedX).toBeGreaterThan(420); // the push actually happened
 
     // 2. A Tidy-style programmatic move relocates N (the applier does exactly
-    //    this: area.translate with no drag events, so no record invalidation).
-    await area.moveNode(n.id, { x: 1200, y: 140 });
+    //    this: view.translate with no drag events, so no record invalidation).
+    await view.moveNode(n.id, { x: 1200, y: 140 });
 
     // 3. Expand B — its footprint (1000..1600 × 80..380) covers N's new spot,
     //    so N is pushed again. This merge must treat the old record as stale.
-    await setGroupsCollapsed(editor, area, [gB], false);
+    await setGroupsCollapsed(editor, view, [gB], false);
     await flushRafs();
     expect(nView.position.x).toBeGreaterThan(1200); // pushed again
 
     // 4. Collapse both. The restore must return N to where it stood BEFORE
     //    B's push (its post-Tidy spot, x=1200) — NOT to the pre-Tidy x=420.
-    await setGroupsCollapsed(editor, area, [gA, gB], true);
+    await setGroupsCollapsed(editor, view, [gA, gB], true);
     await flushRafs();
     expect(nView.position.x).toBe(1200);
   });
 
   it("the classic single-group cycle still restores exactly", async () => {
     const editor = new NodeEditor<Schemes>();
-    const { area, addView } = makeFakeArea();
+    const { view, addView } = makeFakeView();
     const g = new GroupNode({ collapsed: true, width: 600, height: 300 });
     const n = new DisplayNode();
     (n as never as { width: number; height: number }).width = 180;
@@ -136,10 +139,10 @@ describe("expand-push records survive a Tidy only with a fresh restore target", 
     addView(g.id, 100, 100, groupView(g));
     const nView = addView(n.id, 420, 140, () => ({ w: 180, h: 80 }));
 
-    await setGroupsCollapsed(editor, area, [g], false);
+    await setGroupsCollapsed(editor, view, [g], false);
     await flushRafs();
     expect(nView.position.x).toBeGreaterThan(420);
-    await setGroupsCollapsed(editor, area, [g], true);
+    await setGroupsCollapsed(editor, view, [g], true);
     await flushRafs();
     expect(nView.position.x).toBe(420);
     expect(nView.position.y).toBe(140);

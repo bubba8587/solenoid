@@ -1,10 +1,10 @@
 // Align / distribute / batch collapse over the selection. Uses the process.ts
 // singletons rather than Canvas-local refs, so it is callable from anywhere.
 
-import type { Area } from "./area";
+import type { View } from "./view";
 import { GroupNode } from "./rete-nodes";
 import { repositionDockedNodes, unselectAllNodes, selectNode } from "./canvasCommands";
-import { getActiveEditor as getEditor, getActiveArea as getArea } from "./activeGraph";
+import { getActiveEditor as getEditor, getActiveView as getView } from "./activeGraph";
 import { standoffStore, standoffClusters, settleStandoffs } from "./standoffs";
 import { collapseStore } from "./collapseStore";
 import { scheduleAutosave } from "./persistence";
@@ -21,8 +21,8 @@ function selectedNodeIds(editor: Editor): string[] {
     .map((n) => n.id);
 }
 
-function boxOf(area: Area, id: string): Box | null {
-  return measuredBox(area, id, getEditor() ?? undefined);
+function boxOf(view: View, id: string): Box | null {
+  return measuredBox(view, id, getEditor() ?? undefined);
 }
 
 // A seed carries its group members and its whole standoff cluster, so moving one end
@@ -48,7 +48,7 @@ type Move = { seedId: string; dx: number; dy: number };
 
 /** Translates every physical node EXACTLY ONCE: a node carried by two seeds follows the
  *  FIRST only, since deltas come from boxes captured up front and would drift. */
-async function applyMoves(editor: Editor, area: Area, moves: Move[]): Promise<void> {
+async function applyMoves(editor: Editor, view: View, moves: Move[]): Promise<void> {
   const delta = new Map<string, { dx: number; dy: number }>();
   for (const { seedId, dx, dy } of moves) {
     if (dx === 0 && dy === 0) continue;
@@ -64,9 +64,9 @@ async function applyMoves(editor: Editor, area: Area, moves: Move[]): Promise<vo
   if (restore.length > 0) unselectAllNodes();
   try {
     for (const [id, { dx, dy }] of delta) {
-      const v = area.nodeViews.get(id);
-      if (!v) continue;
-      await area.moveNode(id, { x: v.position.x + dx, y: v.position.y + dy });
+      const p = view.position(id);
+      if (!p) continue;
+      await view.moveNode(id, { x: p.x + dx, y: p.y + dy });
       repositionDockedNodes(id);
     }
   } finally {
@@ -148,13 +148,13 @@ export function distributeDeltas(items: Placed[], axis: "h" | "v"): Move[] {
  *  nodes already sharing the other axis land on top of each other. */
 export async function alignSelection(kind: AlignKind): Promise<void> {
   const editor = getEditor();
-  const area = getArea();
-  if (!editor || !area) return;
+  const view = getView();
+  if (!editor || !view) return;
   const ids = selectedNodeIds(editor);
-  const items = ids.map((id) => ({ id, box: boxOf(area, id) }))
+  const items = ids.map((id) => ({ id, box: boxOf(view, id) }))
     .filter((e): e is Placed => e.box != null);
   if (items.length < 2) return;
-  await applyMoves(editor, area, alignDeltas(items, kind));
+  await applyMoves(editor, view, alignDeltas(items, kind));
   await settle();
 }
 
@@ -162,13 +162,13 @@ export async function alignSelection(kind: AlignKind): Promise<void> {
  *  that equal-center spacing overlapped big nodes. Needs at least 3 nodes. */
 export async function distributeSelection(axis: "h" | "v"): Promise<void> {
   const editor = getEditor();
-  const area = getArea();
-  if (!editor || !area) return;
+  const view = getView();
+  if (!editor || !view) return;
   const ids = selectedNodeIds(editor);
-  const items = ids.map((id) => ({ id, box: boxOf(area, id) }))
+  const items = ids.map((id) => ({ id, box: boxOf(view, id) }))
     .filter((e): e is Placed => e.box != null);
   if (items.length < 3) return;
-  await applyMoves(editor, area, distributeDeltas(items, axis));
+  await applyMoves(editor, view, distributeDeltas(items, axis));
   await settle();
 }
 
@@ -183,10 +183,10 @@ function isCollapsible(el: HTMLElement): boolean {
 /** Silently skips groups/notes/conduits and chevron-less nodes. */
 export function collapseSelection(collapsed: boolean): void {
   const editor = getEditor();
-  const area = getArea();
-  if (!editor || !area) return;
+  const view = getView();
+  if (!editor || !view) return;
   for (const id of selectedNodeIds(editor)) {
-    const el = area.nodeViews.get(id)?.element;
+    const el = view.nodeElement(id);
     if (el && isCollapsible(el)) collapseStore.set(id, collapsed);
   }
 }

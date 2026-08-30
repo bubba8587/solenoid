@@ -1,4 +1,4 @@
-import { getArea } from "./process";
+import { getView, getEditor } from "./process";
 // Capture for STATIC EXPORT, deliberately separate from the live HTML-in-Canvas
 // renderer, whose `drawElementImage` needs a Chrome flag a recipient won't have.
 
@@ -28,7 +28,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 /** Rasterizes the CURRENT viewport (not the whole world) to a PNG data URL; null
  *  when unmounted or the browser refuses the foreignObject, so export fails soft. */
 export async function captureCanvasImage(): Promise<string | null> {
-  const container = getArea()?.container;
+  const container = getView()?.container;
   if (!container) return null;
 
   const rect = container.getBoundingClientRect();
@@ -100,12 +100,13 @@ export function captureChartSvgs(
   names: Map<string, string>,
   includeNodeIds?: ReadonlySet<string>,
 ): { name: string; svg: string }[] {
-  const area = getArea();
-  if (!area) return [];
+  const view = getView();
+  const editor = getEditor();
+  if (!view || !editor) return [];
   const out: { name: string; svg: string }[] = [];
-  for (const [id, view] of area.nodeViews) {
+  for (const { id } of editor.getNodes()) {
     if (includeNodeIds && !includeNodeIds.has(id)) continue;
-    const svgEl = view.element.querySelector("svg");
+    const svgEl = view.nodeElement(id)?.querySelector("svg");
     if (!svgEl) continue;
     // Skip icon-sized furniture — a chart SVG is always the node's main content.
     const box = svgEl.getBoundingClientRect();

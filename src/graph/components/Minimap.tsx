@@ -1,4 +1,4 @@
-import { getActiveArea, getActiveEditor } from "../activeGraph";
+import { getActiveView, getActiveEditor } from "../activeGraph";
 import type { SolenoidNode } from "../schemes";
 import { GroupNode, NoteNode, nodeAccent } from "../rete-nodes";
 import { groupCollapseStore } from "../groupCollapse";
@@ -25,29 +25,29 @@ interface Fill { background: string; borderColor: string }
 function minimapNodes() {
   // getActive* follows the drill-in subgraph when one is open, else main.
   const editor = getActiveEditor();
-  const area = getActiveArea();
-  if (!editor || !area) return { area: null, nodes: [] as ReturnType<NonNullable<typeof editor>["getNodes"]> };
+  const view = getActiveView();
+  if (!editor || !view) return { view: null, nodes: [] as ReturnType<NonNullable<typeof editor>["getNodes"]> };
   const nodes = editor.getNodes().filter(
-    (n) => area.nodeViews.get(n.id) && !groupCollapseStore.isNodeHidden(n.id),
+    (n) => view.hasNode(n.id) && !groupCollapseStore.isNodeHidden(n.id),
   );
-  return { area, nodes };
+  return { view, nodes };
 }
 
 // The plugin's `getNodesRect` shape, but skipping hidden members and sizing a
 // collapsed group to its real compact box, not its stored expanded one.
 export function collapsedAwareNodesRect() {
-  const { area, nodes } = minimapNodes();
-  if (!area) return [];
+  const { view, nodes } = minimapNodes();
+  if (!view) return [];
   return nodes.map((n) => {
-    const view = area.nodeViews.get(n.id)!;
+    const pos = view.position(n.id) ?? { x: 0, y: 0 };
     let width = n.width;
     let height = n.height;
     if (n instanceof GroupNode && n.collapsed) {
-      const el = view.element;
-      width = el.offsetWidth || width;
-      height = el.offsetHeight || height;
+      const el = view.nodeElement(n.id);
+      width = el?.offsetWidth || width;
+      height = el?.offsetHeight || height;
     }
-    return { width, height, left: view.position.x, top: view.position.y };
+    return { width, height, left: pos.x, top: pos.y };
   });
 }
 

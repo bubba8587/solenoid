@@ -1,6 +1,6 @@
 // A minimal NON-INTERACTIVE flow surface for the side pages (landing demo,
 // ?showcase audit stage): real components, real values, no pan/zoom/drag.
-// Callers build their graph through the stack's editor + area verbs exactly
+// Callers build their graph through the stack's editor + view verbs exactly
 // like any other surface; the stage mirrors topology into RF state.
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -18,7 +18,7 @@ import { FlowResizeGrip } from "./FlowResizeGrip";
 import { SolNodeAdapter, type SolFlowNode } from "./SolNodeAdapter";
 import { FlowCableEdge, type SolFlowEdge } from "./FlowCableEdge";
 import { toFlowNodes, toFlowEdges, toFlowPosition, type FlowModel } from "./flowModel";
-import { makeFlowArea, type FlowArea } from "./flowArea";
+import { makeFlowView, type FlowView } from "./flowView";
 import { installInputCoercion } from "../coerceInputs";
 import { installErrorGuards } from "../errorValue";
 import "./flow.css";
@@ -37,7 +37,7 @@ type StageHandlers = {
 };
 
 export type StaticStack = FlowModel & {
-  area: FlowArea;
+  view: FlowView;
   handlers: StageHandlers;
 };
 
@@ -50,21 +50,20 @@ export function makeStaticStack(): StaticStack {
   });
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
-  const positions = new Map<string, { x: number; y: number }>();
   const handlers: StageHandlers = {
     bumpNode: () => {},
     bumpConnections: () => {},
     moveNode: () => {},
     syncTopology: () => {},
   };
-  const area = makeFlowArea(editor, positions, {
+  const view = makeFlowView(editor, {
     bumpNode: (id) => handlers.bumpNode(id),
     bumpConnections: () => handlers.bumpConnections(),
     moveNode: (id, pos) => handlers.moveNode(id, pos),
     setViewport: () => {},
     getContainer: () => null,
   });
-  const s: StaticStack = { editor, engine, positions, area, handlers };
+  const s: StaticStack = { editor, engine, view, handlers };
   let queued = false;
   editor.addPipe((ctx) => {
     const t = (ctx as { type?: string }).type;
@@ -91,7 +90,6 @@ function StageInner({ stack: s, zoom }: { stack: StaticStack; zoom: number }) {
   const { setViewport } = useReactFlow();
 
   const syncTopology = useCallback(() => {
-    s.area.syncViews();
     setNodes((prev) => {
       const prevById = new Map(prev.map((n) => [n.id, n]));
       return toFlowNodes(s).map((n) => {
@@ -119,7 +117,7 @@ function StageInner({ stack: s, zoom }: { stack: StaticStack; zoom: number }) {
 
   useEffect(() => {
     void setViewport({ x: 0, y: 0, zoom });
-    s.area.setTransform({ x: 0, y: 0, k: zoom });
+    s.view.setTransform({ x: 0, y: 0, k: zoom });
   }, [s, zoom, setViewport]);
 
   return (

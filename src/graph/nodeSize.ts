@@ -3,7 +3,7 @@
 // node collapses the bounding box. The first tier is React Flow's own post-layout
 // measure (`area.measured`), which costs nothing.
 
-import type { Area } from "./area";
+import type { View } from "./view";
 import { collapseStore } from "./collapseStore";
 import type { Schemes } from "./schemes";
 import type { NodeEditor } from "rete";
@@ -20,28 +20,29 @@ export const FALLBACK_NODE_H = 100;
 export const COLLAPSED_NODE_H = 52;
 
 /** A mounted card's size with NO DOM read: RF's measure, else null. */
-export function measuredSize(area: Area, id: string): { w: number; h: number } | null {
-  const m = area.measured?.(id);
+export function measuredSize(view: View, id: string): { w: number; h: number } | null {
+  const m = view.measured?.(id);
   return m && m.w > 0 && m.h > 0 ? m : null;
 }
 
-/** Guaranteed non-zero size; null only when the node has no area view. Tiers: RF's
- *  measure → live rendered size → the ResizeObserver's stored size → a default, with
- *  the fallback tiers COLLAPSE-AWARE. `editor` supplies the stored-size tier. */
-export function measuredBox(area: Area, id: string, editor?: Editor): NodeBox | null {
-  const v = area.nodeViews.get(id);
-  if (!v) return null;
-  const m = measuredSize(area, id);
-  if (m) return { x: v.position.x, y: v.position.y, w: m.w, h: m.h };
-  const liveW = v.element?.offsetWidth || 0;
-  const liveH = v.element?.offsetHeight || 0;
+/** Guaranteed non-zero size; null only when the view doesn't hold the node. Tiers:
+ *  RF's measure → live rendered size → the ResizeObserver's stored size → a default,
+ *  with the fallback tiers COLLAPSE-AWARE. `editor` supplies the stored-size tier. */
+export function measuredBox(view: View, id: string, editor?: Editor): NodeBox | null {
+  const pos = view.position(id);
+  if (!pos) return null;
+  const m = measuredSize(view, id);
+  if (m) return { x: pos.x, y: pos.y, w: m.w, h: m.h };
+  const el = view.nodeElement(id);
+  const liveW = el?.offsetWidth || 0;
+  const liveH = el?.offsetHeight || 0;
   // Once painted the live DOM is the truth and already includes the collapse state.
-  if (liveW > 0 && liveH > 0) return { x: v.position.x, y: v.position.y, w: liveW, h: liveH };
+  if (liveW > 0 && liveH > 0) return { x: pos.x, y: pos.y, w: liveW, h: liveH };
 
   const node = editor?.getNode(id) as { width?: number; height?: number } | undefined;
   const w = liveW || node?.width || FALLBACK_NODE_W;
   const h = collapseStore.get(id)
     ? COLLAPSED_NODE_H
     : (liveH || node?.height || FALLBACK_NODE_H);
-  return { x: v.position.x, y: v.position.y, w, h };
+  return { x: pos.x, y: pos.y, w, h };
 }

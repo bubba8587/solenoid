@@ -1,5 +1,5 @@
 import { type PointerEvent as ReactPointerEvent, type RefObject } from "react";
-import { getActiveArea } from "../activeGraph";
+import { getActiveView } from "../activeGraph";
 
 // Canvas-px floor, mirroring the `min-height` the field carries in CSS. The drag
 // clamps here rather than leaning on min-height: the browser would keep shrinking
@@ -38,7 +38,7 @@ export function FieldResizeGrip({ targetRef }: { targetRef: RefObject<HTMLElemen
     e.preventDefault();
     const el = targetRef.current;
     if (!el) return;
-    const k = getActiveArea()?.transform.k || 1;
+    const k = getActiveView()?.transform.k || 1;
     active = { sy: e.clientY, startH: el.getBoundingClientRect().height / k, k, el };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);

@@ -170,10 +170,12 @@ area. When you coin a new load-bearing term, add it here.
   logging per-pass node `data()` + engine IPC. (`perfProbe.ts`)
 - **Alert / HUD** — the Alert node fires on status *change* (edge-detect) → a toast + the
   HUD log. (`alertStore.ts`, `HudStack.tsx`)
-- **Area** — the canvas-view seam (`area.ts`): node views (absolute positions + live
-  elements), the camera (`transform`/`zoom`/`pan`), `moveNode`, `rerenderNode`/
-  `rerenderCables`; `flow/flowArea.ts` is the one implementation and `area` is its
-  variable name everywhere. **FlowSurface** is the one React component both canvases
+- **View** — the canvas-view seam (`view.ts`, renamed from rete's "Area" 2026-08-30):
+  `position(id)`/`nodeElement(id)`/`connectionElement(id)`/`hasNode(id)`, the camera
+  (`transform`/`zoom`/`pan`), `moveNode`, `rerenderNode`/`rerenderCables`, `measured`;
+  `flow/flowView.ts` is the one implementation and `view` is its variable name
+  everywhere. Positions live ON the node (`node.position`, absolute canvas coords) —
+  there is no side map. **FlowSurface** is the one React component both canvases
   render (decisions oneFlowSurface).
 
 ## The author's UI vocabulary (chrome name → code handle)
@@ -203,7 +205,7 @@ Geometry (offsets, z-index, reflow) is `layout-chrome.md`; this is term → hand
   `alertStore` / `pinStore` / `problemsStore` / `commentStore`.
 - **Nodes** — the cards. `NodeCard.tsx` (NodeShell). NO single wrapper class — roots vary
   (`.solenoid-node` / `.solenoid-note` / `.solenoid-group` / `.solenoid-conduit`); map a DOM
-  event → node via `area.nodeViews` containment, never a class.
+  event → node via `view.nodeElement` containment, never a class.
 - **Sockets** — typed dots on node edges. `NodeSocket.tsx` (`MeasuredSocketRow`);
   `.input-socket` / `.output-socket`, locked 12×12 (rules socketBox12).
 - **Cables** — `flow/FlowCableEdge.tsx` (a `<g>` in RF's shared edge svg); paths from

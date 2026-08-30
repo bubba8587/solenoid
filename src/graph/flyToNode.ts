@@ -1,11 +1,11 @@
 import { zoomAt } from "./zoomAt";
 import type { NodeEditor } from "rete";
 
-import { getOwningEditor, getOwningArea } from "./activeGraph";
+import { getOwningEditor, getOwningView } from "./activeGraph";
 import { groupCollapseStore } from "./groupCollapse";
 import { GroupNode } from "./rete-nodes";
 import type { Schemes } from "./schemes";
-import { getActiveArea, getActiveEditor } from "./activeGraph";
+import { getActiveView, getActiveEditor } from "./activeGraph";
 
 // A node hidden inside a COLLAPSED group has no visible element, so zoomAt would
 // target a stale (~0,0) position — fly to the nearest VISIBLE ancestor instead.
@@ -37,24 +37,24 @@ function visibleRef(editor: NodeEditor<Schemes>, nodeId: string): Schemes["Node"
 export function flyToNode(nodeId: string): void {
   // Drill-in aware: a node inside an open composite flies the DRILL-IN camera.
   const editor = getOwningEditor(nodeId);
-  const area = getOwningArea(nodeId);
-  if (!editor || !area) return;
+  const view = getOwningView(nodeId);
+  if (!editor || !view) return;
   const ref = visibleRef(editor, nodeId);
   if (!ref) return;
-  void zoomAt(area, [ref]);
+  void zoomAt(view, [ref]);
 }
 
 /** Fits a bounding box over every node; unknown/removed ids are skipped and an empty
  *  result is a no-op. */
 export function flyToNodes(nodeIds: string[]): void {
   const editor = getActiveEditor();
-  const area = getActiveArea();
-  if (!editor || !area || nodeIds.length === 0) return;
+  const view = getActiveView();
+  if (!editor || !view || nodeIds.length === 0) return;
   const refs = nodeIds
     .map((id) => visibleRef(editor, id))
     .filter((r): r is Schemes["Node"] => r !== null);
   if (refs.length === 0) return;
-  void zoomAt(area, refs);
+  void zoomAt(view, refs);
 }
 
 const FLASH_CLASS = "solenoid-node-flash";
@@ -65,10 +65,10 @@ const _flashTimers = new Map<string, ReturnType<typeof setTimeout>>();
  *  the group box rather than nothing. */
 export function flashNode(nodeId: string): void {
   const editor = getOwningEditor(nodeId); // drill-in aware, like flyToNode
-  const area = getOwningArea(nodeId);
-  if (!editor || !area) return;
+  const view = getOwningView(nodeId);
+  if (!editor || !view) return;
   const targetId = resolveVisibleTarget(editor, nodeId);
-  const el = area.nodeViews.get(targetId)?.element;
+  const el = view.nodeElement(targetId);
   if (!el) return;
 
   el.classList.remove(FLASH_CLASS);

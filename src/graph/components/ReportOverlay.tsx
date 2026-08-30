@@ -3,7 +3,7 @@ import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { ClassicPreset } from "rete";
 import { reportStore } from "../reportStore";
-import { getEditor, getArea, processGraph } from "../process";
+import { getEditor, getView, processGraph } from "../process";
 import { scheduleAutosave } from "../persistence";
 import { NoteNode, ReportNode } from "../rete-nodes";
 import type { SolenoidConnection } from "../schemes";
@@ -139,7 +139,7 @@ export function ReportOverlay() {
         }
       }
     }
-    await getArea()?.rerenderNode(node!.id);
+    await getView()?.rerenderNode(node!.id);
     await processGraph();
   }
 
@@ -182,7 +182,7 @@ export function ReportOverlay() {
     }
     lastSyncRef.current = node!.body;
     scheduleAutosave();
-    await getArea()?.rerenderNode(node!.id);
+    await getView()?.rerenderNode(node!.id);
     await processGraph();
   }
 

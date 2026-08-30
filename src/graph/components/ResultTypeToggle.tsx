@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { ClassicPreset } from "rete";
 import { resultSocket, RESULT_TYPE_META, type ResultType, type ResultDim } from "../nodes/shared";
 import { processGraph } from "../process";
-import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { getActiveEditor, getActiveView } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { SegToggle } from "./SegToggle";
 
@@ -25,12 +25,12 @@ export async function applyResultAs(node: Producer, dim: ResultDim, resultAs: Re
   node.resultAs = resultAs;
 
   const editor = getActiveEditor(); // active graph: result-type toggle inside a drill-in
-  const area = getActiveArea();
+  const view = getActiveView();
   const out = node.outputs.result;
   if (out) out.socket = resultSocket(dim, resultAs);
-  if (editor && area) await retypeOutputCables(editor, area, node.id, "result");
+  if (editor && view) await retypeOutputCables(editor, view, node.id, "result");
 
-  if (area) await area.rerenderNode(node.id);
+  if (view) await view.rerenderNode(node.id);
   await processGraph();
 }
 

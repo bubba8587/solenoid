@@ -1,4 +1,4 @@
-import type { Area } from "../../src/graph/area";
+import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
@@ -26,24 +26,23 @@ function makeEditor() {
   return { editor, engine };
 }
 
-// compositeLogic.ts only reads `area.nodeViews.get(id).position` (for the
-// bounding-box top-left) and calls `area.translate` — a tiny fake area
-// satisfies both without any real rendering/DOM.
-function makeFakeArea(positions: Map<string, { x: number; y: number }>) {
+// compositeLogic.ts only reads `view.position(id)` (for the bounding-box
+// top-left) and calls `view.moveNode` — a tiny fake view satisfies both
+// without any real rendering/DOM.
+function makeFakeView(positions: Map<string, { x: number; y: number }>) {
   const translated: Array<{ id: string; x: number; y: number }> = [];
-  const area = {
-    nodeViews: {
-      get: (id: string) => {
-        const p = positions.get(id);
-        return p ? { position: p, element: { offsetWidth: 100, offsetHeight: 60 } } : undefined;
-      },
-    },
+  const view = {
+    hasNode: (id: string) => positions.has(id),
+    position: (id: string) => positions.get(id),
+    nodeElement: (id: string) =>
+      (positions.has(id) ? { offsetWidth: 100, offsetHeight: 60 } : null) as unknown as HTMLElement | null,
+    connectionElement: () => null,
     moveNode: async (id: string, pos: { x: number; y: number }) => {
       translated.push({ id, x: pos.x, y: pos.y });
-      positions.set(id, pos); // keep the view in sync, like the real area
+      positions.set(id, pos); // keep the view in sync, like the real view
     },
   };
-  return { area: area as unknown as Area, translated };
+  return { view: view as unknown as View, translated };
 }
 
 function connect(
@@ -58,8 +57,8 @@ function connect(
 describe("createCompositeFromSelection", () => {
   it("returns null when nothing is selected", async () => {
     const { editor } = makeEditor();
-    const { area } = makeFakeArea(new Map());
-    expect(await createCompositeFromSelection(editor, area)).toBeNull();
+    const { view } = makeFakeView(new Map());
+    expect(await createCompositeFromSelection(editor, view)).toBeNull();
   });
 
   it("collapses a mixed selection into one card, preserving end-to-end computation", async () => {
@@ -79,12 +78,12 @@ describe("createCompositeFromSelection", () => {
     (numA as unknown as { selected: boolean }).selected = true;
     (add as unknown as { selected: boolean }).selected = true;
 
-    const { area } = makeFakeArea(new Map([
+    const { view } = makeFakeView(new Map([
       [numA.id, { x: 100, y: 100 }],
       [add.id, { x: 300, y: 100 }],
     ]));
 
-    const compositeId = await createCompositeFromSelection(editor, area);
+    const compositeId = await createCompositeFromSelection(editor, view);
     expect(compositeId).not.toBeNull();
 
     // The selected nodes are GONE from the outer editor — physically relocated,
@@ -115,10 +114,10 @@ describe("createCompositeFromSelection", () => {
     await connect(editor, numB, "value", add, "b");
     for (const n of [numA, numB, add]) (n as unknown as { selected: boolean }).selected = true;
 
-    const { area } = makeFakeArea(new Map([
+    const { view } = makeFakeView(new Map([
       [numA.id, { x: 0, y: 0 }], [numB.id, { x: 0, y: 40 }], [add.id, { x: 150, y: 20 }],
     ]));
-    const compositeId = await createCompositeFromSelection(editor, area);
+    const compositeId = await createCompositeFromSelection(editor, view);
     const composite = editor.getNode(compositeId!) as unknown as CompositeNode;
     expect(composite.inputPorts).toHaveLength(0);
     expect(composite.outputPorts).toHaveLength(0);
@@ -135,11 +134,11 @@ describe("createCompositeFromSelection", () => {
     (numA as unknown as { selected: boolean }).selected = true;
     (add as unknown as { selected: boolean }).selected = true;
 
-    const { area } = makeFakeArea(new Map([
+    const { view } = makeFakeView(new Map([
       [numA.id, { x: 100, y: 200 }],
       [add.id, { x: 350, y: 260 }],
     ]));
-    const compositeId = await createCompositeFromSelection(editor, area);
+    const compositeId = await createCompositeFromSelection(editor, view);
     const composite = editor.getNode(compositeId!) as unknown as CompositeNode;
     expect(composite.internalPositions[numA.id]).toEqual({ x: 0, y: 0 });
     expect(composite.internalPositions[add.id]).toEqual({ x: 250, y: 60 });
@@ -155,13 +154,13 @@ describe("createCompositeFromSelection", () => {
     const num = new NumberInputNode({ value: 5 });
     await editor.addNode(num);
     (num as unknown as { selected: boolean }).selected = true;
-    const { area } = makeFakeArea(new Map([[num.id, { x: 0, y: 0 }]]));
-    const firstId = await createCompositeFromSelection(editor, area);
+    const { view } = makeFakeView(new Map([[num.id, { x: 0, y: 0 }]]));
+    const firstId = await createCompositeFromSelection(editor, view);
     expect(firstId).not.toBeNull();
 
     const composite = editor.getNode(firstId!)!;
     (composite as unknown as { selected: boolean }).selected = true;
-    const secondId = await createCompositeFromSelection(editor, area);
+    const secondId = await createCompositeFromSelection(editor, view);
     expect(secondId).toBeNull(); // the only selected node was a Composite itself
   });
 });
@@ -171,8 +170,8 @@ describe("unpackComposite", () => {
     const { editor } = makeEditor();
     const num = new NumberInputNode({ value: 1 });
     await editor.addNode(num);
-    const { area } = makeFakeArea(new Map());
-    expect(await unpackComposite(editor, area, num.id)).toBe(false);
+    const { view } = makeFakeView(new Map());
+    expect(await unpackComposite(editor, view, num.id)).toBe(false);
     expect(editor.getNode(num.id)).toBeDefined();
   });
 
@@ -193,11 +192,11 @@ describe("unpackComposite", () => {
       [numA.id, { x: 100, y: 100 }],
       [add.id, { x: 300, y: 160 }],
     ]);
-    const { area, translated } = makeFakeArea(positions);
-    const compositeId = await createCompositeFromSelection(editor, area);
+    const { view, translated } = makeFakeView(positions);
+    const compositeId = await createCompositeFromSelection(editor, view);
     expect(compositeId).not.toBeNull();
 
-    const ok = await unpackComposite(editor, area, compositeId!);
+    const ok = await unpackComposite(editor, view, compositeId!);
     expect(ok).toBe(true);
 
     // Card gone, members back, boundary cables restored as direct wires.

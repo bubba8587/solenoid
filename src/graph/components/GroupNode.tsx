@@ -28,7 +28,7 @@ import type { NodeProps } from "./nodeKit";
 import { useEditableLabel } from "./inlineInput";
 import "./GroupNode.css";
 import { stopDragStart } from "../coarse";
-import { getOwningArea, getOwningEditor } from "../activeGraph";
+import { getOwningView, getOwningEditor } from "../activeGraph";
 
 // Honors the FC annotation keyed by `annNodeId`.
 function formatReadout(v: unknown, annNodeId: string): string {
@@ -89,7 +89,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   // the double-press is timed by hand.
 
   // The shared header title-edit mechanic (click-to-edit, Enter/blur, Escape revert).
-  const title = useEditableLabel(node, () => { void getOwningArea(node.id)?.rerenderNode(node.id); });
+  const title = useEditableLabel(node, () => { void getOwningView(node.id)?.rerenderNode(node.id); });
   useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
   useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
@@ -99,7 +99,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   const fillAlpha = mode === "light" ? 0.14 : 0.08;
 
   useLayoutEffect(() => {
-    const el = getOwningArea(node.id)?.nodeViews.get(node.id)?.element;
+    const el = getOwningView(node.id)?.nodeElement(node.id);
     // Expanded sits BEHIND members (standoffs −3 < group −2 < conduit −1 < nodes 0)
     // so a member Conduit stays clickable; collapsed must sit ABOVE the cables or
     // they draw over the edge pill sockets.
@@ -111,17 +111,17 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   function onResize(size: { width: number; height: number }) {
     node.width = Math.max(GROUP_MIN_W, size.width);
     node.height = Math.max(GROUP_MIN_H, size.height);
-    void getOwningArea(node.id)?.rerenderNode(node.id);
+    void getOwningView(node.id)?.rerenderNode(node.id);
   }
   function onResizeEnd() {
     const editor = getOwningEditor(node.id);
-    const area = getOwningArea(node.id);
-    if (editor && area) {
+    const view = getOwningView(node.id);
+    if (editor && view) {
       // A MANUAL resize DOES re-evaluate membership; autofit is the exception —
       // it wraps existing members and must not absorb bystanders.
-      reconcileGroupBox(editor, area, node);
+      reconcileGroupBox(editor, view, node);
       rebuildGroupMembership(editor);
-      syncGroupCollapse(editor, area);
+      syncGroupCollapse(editor, view);
     }
     scheduleAutosave();
     // The solver MEASURES offsetWidth/Height, so defer a frame to let the resize
@@ -133,9 +133,9 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
 
   async function autofitToMembers() {
     const editor = getOwningEditor(node.id);
-    const area = getOwningArea(node.id);
-    if (!editor || !area) return;
-    await autofitGroupWithHistory(editor, area, node);
+    const view = getOwningView(node.id);
+    if (!editor || !view) return;
+    await autofitGroupWithHistory(editor, view, node);
   }
 
   // The within-group tidy snaps docked FCs back onto their hosts in a DEFERRED
@@ -149,7 +149,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   function pickColor(c: string) {
     node.color = c;
     const ed = getOwningEditor(node.id);
-    void getOwningArea(node.id)?.rerenderNode(node.id);
+    void getOwningView(node.id)?.rerenderNode(node.id);
     if (ed) rebuildGroupMembership(ed); // member dots follow the group color
     scheduleAutosave();
   }
@@ -159,9 +159,9 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   function toggleCollapse(e: React.MouseEvent) {
     e.stopPropagation();
     const editor = getOwningEditor(node.id);
-    const area = getOwningArea(node.id);
-    if (!editor || !area) return;
-    void setGroupsCollapsed(editor, area, [node], !node.collapsed);
+    const view = getOwningView(node.id);
+    if (!editor || !view) return;
+    void setGroupsCollapsed(editor, view, [node], !node.collapsed);
   }
 
   // `node.color` stays the canonical value — a palette SLOT id, resolved here.

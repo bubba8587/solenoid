@@ -24,7 +24,7 @@ import { NodeShell, OpSelect, ValueDisplay, InlineOutputRows, useNodeField, type
 import type { DisplayValue } from "./valueDisplayFormat";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { makeToggleNodeComponent } from "./standardNode";
-import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { getActiveEditor, getActiveView } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { nodeDisplayName } from "../catalogUtils";
 
@@ -40,9 +40,9 @@ export function MatDetComponent({ data, emit }: NodeProps<MatDetNodeType>) {
     // The output retyped in place (number ↔ table): drop cables the new type can't feed
     // and let docked FCs re-resolve — no connection event fires.
     const editor = getActiveEditor();
-    const area = getActiveArea();
-    if (editor && area) await retypeOutputCables(editor, area, data.id, "result");
-    if (area) await area.rerenderNode(data.id);
+    const view = getActiveView();
+    if (editor && view) await retypeOutputCables(editor, view, data.id, "result");
+    if (view) await view.rerenderNode(data.id);
     setOpField(next);
   }
   return (

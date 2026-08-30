@@ -4,7 +4,7 @@
 import {
   isDesktop, joinPath, ensureDir, writeTextFilePath, writeBinaryFilePath,
 } from "./fileBridge";
-import { getArea } from "./process";
+import { getView } from "./process";
 import { serializeSvgWithComputedStyles } from "./canvasCapture";
 import { dataUrlToBytes, sanitizeName } from "./imageAssets";
 import { assembleDocumentMarkdown, valueToObsidianBlock } from "./obsidianMarkdown";
@@ -61,16 +61,16 @@ async function rasterizeSvg(svgEl: SVGSVGElement): Promise<Uint8Array | null> {
 
 /** The live `<svg>` element of a node (its main chart art, not a socket glyph). */
 function nodeChartSvg(nodeId: string): SVGSVGElement | null {
-  const view = getArea()?.nodeViews.get(nodeId);
-  if (!view) return null;
-  const svgs = Array.from(view.element.querySelectorAll("svg"));
+  const el = getView()?.nodeElement(nodeId);
+  if (!el) return null;
+  const svgs = Array.from(el.querySelectorAll("svg"));
   // The chart is the node's biggest SVG; glyphs are ~≤20px.
   let best: SVGSVGElement | null = null;
-  let bestArea = 40 * 40; // ignore anything glyph-sized
+  let bestView = 40 * 40; // ignore anything glyph-sized
   for (const s of svgs) {
     const b = s.getBoundingClientRect();
     const a = b.width * b.height;
-    if (a > bestArea) { bestArea = a; best = s as SVGSVGElement; }
+    if (a > bestView) { bestView = a; best = s as SVGSVGElement; }
   }
   return best;
 }

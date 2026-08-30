@@ -1,4 +1,4 @@
-import type { Area } from "../../src/graph/area";
+import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
@@ -10,7 +10,7 @@ import { calcModeStore } from "../../src/graph/calcModeStore";
 // WHILE a pass is running must coalesce into one trailing full pass, never nest a pass inside
 // a pass. A nested pass resets/reads the shared engine + memo + loop state mid-flight and
 // corrupts it (the live symptom was rete-engine's "node is not initialized"). This drives the
-// real singleton processGraph with a stub area whose render step re-enters — exactly what a
+// real singleton processGraph with a stub view whose render step re-enters — exactly what a
 // node's mount/render effect (the Conduit) does under a synchronous render.
 
 class Src extends ClassicPreset.Node {
@@ -38,7 +38,7 @@ describe("processGraph is single-flight (a mid-pass recompute coalesces, never n
     // `useEffect(processGraph, [realLanes])` firing while a node mounts mid-render.
     let reentered = false;
     let resetSeenByReentrantCall: number | null = null;
-    const area = {
+    const view = {
       rerenderNode: async (_id: string) => {
         if (reentered) return;
         reentered = true;
@@ -46,9 +46,9 @@ describe("processGraph is single-flight (a mid-pass recompute coalesces, never n
         await processGraph();               // the re-entrant recompute
         resetSeenByReentrantCall = resetCount - before;
       },
-    } as unknown as Area;
+    } as unknown as View;
 
-    setEditorRefs(editor, engine, area);
+    setEditorRefs(editor, engine, view);
     await expect(processGraph()).resolves.toBeUndefined(); // no throw, no unhandled rejection
 
     // The re-entrant call itself ran NO pass (it coalesced): no reset happened during it.
@@ -66,14 +66,14 @@ describe("processGraph is single-flight (a mid-pass recompute coalesces, never n
     const origReset = engine.reset.bind(engine);
     (engine as unknown as { reset: (id?: string) => void }).reset = (id?: string) => { resetCount++; return origReset(id); };
     let reentered = false;
-    const area = {
+    const view = {
       rerenderNode: async () => {
         if (reentered) return;
         reentered = true;
         await processGraph(undefined, undefined, { force: true }); // a second F9 mid-pass
       },
-    } as unknown as Area;
-    setEditorRefs(editor, engine, area);
+    } as unknown as View;
+    setEditorRefs(editor, engine, view);
     calcModeStore.setMode("manual");
     try {
       await processGraph(undefined, undefined, { force: true });

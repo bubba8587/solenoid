@@ -3,7 +3,7 @@ import { useSyncExternalStore } from "react";
 import type { ClassicPreset } from "rete";
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
-import { getActiveArea } from "../activeGraph";
+import { getActiveView } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
 import { SolenoidSocket } from "../sockets";
 import {
@@ -82,14 +82,14 @@ export function ExtensibleInputs({
 
   async function addRow() {
     node.addValueInput();
-    await getActiveArea()?.rerenderNode(node.id);
+    await getActiveView()?.rerenderNode(node.id);
     await processGraph();
   }
 
   async function removeRow(key: string) {
     await dropInputCables(node.id, [key]);
     node.removeValueInput(key);
-    await getActiveArea()?.rerenderNode(node.id);
+    await getActiveView()?.rerenderNode(node.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up
     await processGraph();
   }

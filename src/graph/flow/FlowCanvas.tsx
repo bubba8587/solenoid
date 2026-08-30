@@ -1,4 +1,4 @@
-// THE app canvas: one editor/engine/area stack lives for the app's lifetime;
+// THE app canvas: one editor/engine/view stack lives for the app's lifetime;
 // documents load through the REAL persistence/documentStore path; chrome talks
 // to it through the process.ts slots. The surface itself (RF element, gestures,
 // menus, keyboard) is FlowSurface, shared with the composite drill-in.
@@ -10,7 +10,7 @@ import type { Schemes, SolenoidNode } from "../schemes";
 import { FlowSurfaceContext } from "../flowSurface";
 import { cableSelectionStore } from "../cableState";
 import { disconnect, removeNodes } from "./flowModel";
-import { makeFlowArea, type FlowArea } from "./flowArea";
+import { makeFlowView, type FlowView } from "./flowView";
 import { FlowSurface, idleHandlers, type SurfaceHandlers, type SurfaceHooks } from "./FlowSurface";
 import { setEditorRefs, setGraphChanged, processGraph, setBulkSettle, markBulkTopoDirty, isGraphRebuilding } from "../process";
 import { setUnselectAllNodes, setSelectNode, setDeleteSelected, setClearHistory, setAutoArrange, setCleanup, setRepositionDocked } from "../canvasCommands";
@@ -50,8 +50,7 @@ import { IS_MOBILE } from "../coarse";
 type Stack = {
   editor: NodeEditor<Schemes>;
   engine: DataflowEngine<Schemes>;
-  positions: Map<string, { x: number; y: number }>;
-  area: FlowArea;
+  view: FlowView;
   handlers: SurfaceHandlers;
   docInit: boolean;
   cablePipeInstalled?: boolean;
@@ -69,9 +68,8 @@ function getStack(): Stack {
   });
   const engine = new DataflowEngine<Schemes>();
   editor.use(engine);
-  const positions = new Map<string, { x: number; y: number }>();
   const handlers = idleHandlers();
-  const area = makeFlowArea(editor, positions, {
+  const view = makeFlowView(editor, {
     bumpNode: (id) => handlers.bumpNode(id),
     bumpConnections: () => handlers.bumpConnections(),
     moveNode: (id, pos) => handlers.moveNode(id, pos),
@@ -100,10 +98,6 @@ function getStack(): Stack {
       t === "nodecreated" || t === "noderemoved" ||
       t === "connectioncreated" || t === "connectionremoved"
     ) {
-      if (t === "noderemoved") {
-        const id = (ctx as unknown as { data: { id: string } }).data.id;
-        positions.delete(id);
-      }
       if (!queued) {
         queued = true;
         queueMicrotask(trySync);
@@ -111,9 +105,9 @@ function getStack(): Stack {
     }
     return ctx;
   });
-  setEditorRefs(editor, engine, area);
+  setEditorRefs(editor, engine, view);
   setCtorRegistryProvider(ctorRegistry);
-  _stack = { editor, engine, positions, area, handlers, docInit: false };
+  _stack = { editor, engine, view, handlers, docInit: false };
   return _stack;
 }
 
@@ -172,7 +166,7 @@ function FlowCanvasInner() {
       scheduleAutosave();
     });
 
-    // Docked FCs ride their host, driven through the area adapter.
+    // Docked FCs ride their host, driven through the view adapter.
     const repositionDockedTo = (hostId: string) => {
       const el = s.handlers.getContainer();
       if (!el) return;
@@ -180,26 +174,26 @@ function FlowCanvasInner() {
         const dockedNode = s.editor.getNode(rel.id);
         if (!dockedNode) continue;
         if ((dockedNode as { selected?: boolean }).selected) continue;
-        const { w, h } = dockedRenderedDims(s.area, rel.id, dockedNode.width, dockedNode.height);
-        const pos = computeDockedCanvasPos(s.area, el, rel.hostNodeId, rel.socketKey, rel.side, w, h);
-        if (pos) void s.area.moveNode(rel.id, pos);
+        const { w, h } = dockedRenderedDims(s.view, rel.id, dockedNode.width, dockedNode.height);
+        const pos = computeDockedCanvasPos(s.view, el, rel.hostNodeId, rel.socketKey, rel.side, w, h);
+        if (pos) void s.view.moveNode(rel.id, pos);
       }
     };
     setRepositionDocked(repositionDockedTo);
 
-    // Tidy + Cleanup; the auto-arrange plugin resolves area/editor through the
-    // adapter's scope shims (see flowArea.ts).
+    // Tidy + Cleanup; the auto-arrange plugin resolves view/editor through the
+    // adapter's scope shims (see flowView.ts).
     const ensureElk = makeEnsureElk(() => false);
     const arrangeFn = makeArrangeFn({
       editor: s.editor,
-      area: s.area,
+      view: s.view,
       container: s.handlers.getContainer() ?? document.body,
       ensureElk,
       repositionDockedTo,
       isDestroyed: () => false,
     });
     setAutoArrange(arrangeFn);
-    setCleanup(makeCleanupFn(s.editor, s.area, arrangeFn));
+    setCleanup(makeCleanupFn(s.editor, s.view, arrangeFn));
 
     // FC ↔ neighbor unit-mismatch badges — rescanned on every cable change and
     // annotation edit.
@@ -229,11 +223,11 @@ function FlowCanvasInner() {
     // The ONE settle after a bulk topology change (paste, unpack, load-adjacent
     // sweeps).
     setBulkSettle(async (renderOnly?: Set<string>) => {
-      reconcileFcTypes(s.editor, s.area);
+      reconcileFcTypes(s.editor, s.view);
       bumpConnectionVersion();
       rescanMismatches();
       await processGraph(undefined, renderOnly);
-      syncGroupCollapse(s.editor, s.area);
+      syncGroupCollapse(s.editor, s.view);
     });
 
     // Standoff network: the pure solver applied through the adapter. Registered
@@ -245,7 +239,7 @@ function FlowCanvasInner() {
       for (const st of standoffStore.all()) {
         for (const end of [st.a, st.b]) {
           if (boxes.has(end.nodeId)) continue;
-          const b = measuredBox(s.area, end.nodeId, s.editor);
+          const b = measuredBox(s.view, end.nodeId, s.editor);
           if (b) boxes.set(end.nodeId, { x: b.x, y: b.y, w: b.w, h: b.h });
         }
       }
@@ -253,7 +247,7 @@ function FlowCanvasInner() {
       if (disp.size === 0) return;
       standoffSolving = true;
       try {
-        for (const [id, d] of disp) translateEntityBy(s.editor, s.area, id, d.dx, d.dy);
+        for (const [id, d] of disp) translateEntityBy(s.editor, s.view, id, d.dx, d.dy);
       } finally {
         standoffSolving = false;
       }
@@ -275,22 +269,22 @@ function FlowCanvasInner() {
           const n = (ctx as unknown as { data: SolenoidNode }).data;
           forgetNode(n.id);
           rebuildGroupMembership(s.editor);
-          syncGroupCollapse(s.editor, s.area);
-          if (n instanceof GroupNode) restoreSettledPushes(s.editor, s.area);
+          syncGroupCollapse(s.editor, s.view);
+          if (n instanceof GroupNode) restoreSettledPushes(s.editor, s.view);
         }
         if (t === "connectioncreated" || t === "connectionremoved") {
           if (!isGraphRebuilding()) {
-            reconcileFcTypes(s.editor, s.area);
+            reconcileFcTypes(s.editor, s.view);
             bumpConnectionVersion();
             rescanMismatches();
             const cable = (ctx as unknown as { data: { source?: string; target?: string } }).data;
             if (cable.target && s.editor.getNode(cable.target)) {
               void processGraph(cable.target, undefined, { topology: true });
-              if (cable.source && s.editor.getNode(cable.source)) void s.area.rerenderNode(cable.source);
+              if (cable.source && s.editor.getNode(cable.source)) void s.view.rerenderNode(cable.source);
             } else {
               void processGraph(undefined, undefined, { topology: true });
             }
-            syncGroupCollapse(s.editor, s.area);
+            syncGroupCollapse(s.editor, s.view);
           } else {
             markBulkTopoDirty();
           }

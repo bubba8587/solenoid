@@ -1,14 +1,14 @@
-import type { Area } from "./area";
+import type { View } from "./view";
 
 export function getSocketScreenCenter(
-  area: Area,
+  view: View,
   nodeId: string,
   socketKey: string,
   side: "input" | "output",
 ): { x: number; y: number } | null {
-  const view = area.nodeViews.get(nodeId);
-  if (!view) return null;
-  const el = view.element.querySelector(
+  const card = view.nodeElement(nodeId);
+  if (!card) return null;
+  const el = card.querySelector(
     `[data-socket-key="${socketKey}"][data-socket-side="${side}"]`,
   ) as HTMLElement | null;
   if (!el) return null;
@@ -17,12 +17,12 @@ export function getSocketScreenCenter(
 }
 
 export function screenToCanvas(
-  area: Area,
+  view: View,
   container: HTMLElement,
   sx: number,
   sy: number,
 ): { x: number; y: number } {
-  const { x: tx, y: ty, k } = area.transform;
+  const { x: tx, y: ty, k } = view.transform;
   const r = container.getBoundingClientRect();
   return { x: (sx - r.left - tx) / k, y: (sy - r.top - ty) / k };
 }

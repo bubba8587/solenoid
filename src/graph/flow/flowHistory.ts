@@ -5,7 +5,7 @@
 // document load (the setClearHistory slot), never on its own restores.
 import { serializeGraph, loadGraph, scheduleAutosave } from "../persistence";
 import type { SavedGraph } from "../persistence";
-import { getArea, isGraphRebuilding } from "../process";
+import { getView, isGraphRebuilding } from "../process";
 import { describeGraphDelta } from "./flowHistoryDigest";
 
 const MAX_DEPTH = 80;
@@ -31,13 +31,13 @@ function capture(): string | null {
 async function restore(json: string): Promise<void> {
   _restoring = true;
   try {
-    const area = getArea();
-    const t = area ? { ...area.transform } : null;
+    const view = getView();
+    const t = view ? { ...view.transform } : null;
     await loadGraph(JSON.parse(json) as SavedGraph);
     // loadGraph frames the graph (zoomAt); an undo must NOT move the camera.
-    if (area && t) {
-      await area.pan(t.x, t.y);
-      await area.zoom(t.k);
+    if (view && t) {
+      await view.pan(t.x, t.y);
+      await view.zoom(t.k);
     }
     // The restored state is the document now — persist it.
     scheduleAutosave();

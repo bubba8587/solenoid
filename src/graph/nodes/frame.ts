@@ -4,7 +4,7 @@ import { extractVariables, compileEvaluator, rowRefNames, type ExprEvaluator } f
 import { isLambdaValue } from "../lambdaValue";
 import { computeColumnCells } from "../computedColumnCore";
 import { dropInputCables } from "../components/cablePrune";
-import { getActiveArea } from "../activeGraph";
+import { getActiveView } from "../activeGraph";
 import { readFilterValue } from "./list";
 import type { FrameHint } from "../frameHint";
 import { toAnyMatrix } from "./coerce";
@@ -1866,7 +1866,7 @@ export class ComputedColumnNode extends ClassicPreset.Node {
         for (const v of added) if (!this.inputs[v]) this.addInput(v, anyDataIn(v));
         await dropInputCables(this.id, removed); // onePrunePath: prune before removeInput
         for (const v of removed) if (this.inputs[v]) this.removeInput(v);
-        await getActiveArea()?.rerenderNode(this.id);
+        await getActiveView()?.rerenderNode(this.id);
       })();
     });
   }

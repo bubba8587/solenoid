@@ -1,11 +1,11 @@
 import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CableSwitchNode as CableSwitchNodeType } from "../rete-nodes";
-// getActiveEditor/getActiveArea, NOT getEditor/getArea: a drill-in Input Switch
+// getActiveEditor/getActiveView, NOT getEditor/getView: a drill-in Input Switch
 // must retype/prune/refresh on its OWN graph.
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
-import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { getActiveEditor, getActiveView } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { collapseStore } from "../collapseStore";
 import { CollapsedInputPill } from "./CollapsedInputPill";
@@ -73,7 +73,7 @@ function SwitchOptionRow({ data, emit, keyName, index, multiSelect, active, chec
       // A title relabels the multi-select cube's `name` column, so multi mode must
       // recompute; single mode only re-renders.
       if (data.multiSelect) void processGraph();
-      else void getActiveArea()?.rerenderNode(data.id);
+      else void getActiveView()?.rerenderNode(data.id);
     },
   );
   const input = data.inputs[keyName];
@@ -151,9 +151,9 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     // downstream cables the new type can't feed must be dropped here.
     const changed = data.syncOutputType();
     const ed = getActiveEditor();
-    const area = getActiveArea();
-    if (changed && ed && area) void retypeOutputCables(ed, area, data.id, "out");
-    void area?.rerenderNode(data.id);
+    const view = getActiveView();
+    if (changed && ed && view) void retypeOutputCables(ed, view, data.id, "out");
+    void view?.rerenderNode(data.id);
     void processGraph();
   }
   function toggleMulti(key: string) {
@@ -165,7 +165,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
   }
   async function addRow() {
     data.addValueInput();
-    await getActiveArea()?.rerenderNode(data.id);
+    await getActiveView()?.rerenderNode(data.id);
     await processGraph();
   }
   async function removeRow(key: string) {
@@ -173,7 +173,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     data.removeValueInput(key); // re-points activeIndex at the same slot it named
     setSelKeys(data.selectedKeys); // removeValueInput drops the key from the selection
     setSelected(data.activeIndex);
-    await getActiveArea()?.rerenderNode(data.id);
+    await getActiveView()?.rerenderNode(data.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up
     await processGraph();
   }

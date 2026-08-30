@@ -1,4 +1,4 @@
-import type { Area } from "./area";
+import type { View } from "./view";
 import { ClassicPreset, type NodeEditor } from "rete";
 import type { Schemes, SolenoidNode } from "./schemes";
 import type { SocketContextTarget, CableContextTarget } from "./components";
@@ -33,7 +33,7 @@ type SolenoidConnection = import("./schemes").SolenoidConnection;
 // mean flow direction.
 export async function insertConduitForCables(
   editor: NodeEditor<Schemes>,
-  area: Area,
+  view: View,
   container: HTMLElement,
   target: CableContextTarget,
 ): Promise<void> {
@@ -45,7 +45,7 @@ export async function insertConduitForCables(
       ? groupCollapseStore.outPillFor(nodeId, key)
       : groupCollapseStore.inPillFor(nodeId, key);
     if (pill) {
-      const g = area.nodeViews.get(pill.groupId)?.position;
+      const g = view.position(pill.groupId);
       if (g) {
         return {
           x: pill.side === "left" ? g.x : g.x + COLLAPSE_LAYOUT.width,
@@ -53,9 +53,9 @@ export async function insertConduitForCables(
         };
       }
     }
-    const sc = getSocketScreenCenter(area, nodeId, key, side);
-    if (sc && (sc.x !== 0 || sc.y !== 0)) return screenToCanvas(area, container, sc.x, sc.y);
-    const np = area.nodeViews.get(nodeId)?.position;
+    const sc = getSocketScreenCenter(view, nodeId, key, side);
+    if (sc && (sc.x !== 0 || sc.y !== 0)) return screenToCanvas(view, container, sc.x, sc.y);
+    const np = view.position(nodeId);
     if (!np) return null;
     const node = editor.getNode(nodeId);
     return {
@@ -115,7 +115,7 @@ export async function insertConduitForCables(
       for (const n of editor.getNodes()) {
         if (n instanceof GroupNode && !n.collapsed) continue;
         if (groupCollapseStore.isNodeHidden(n.id)) continue;
-        const b = measuredBox(area, n.id, editor);
+        const b = measuredBox(view, n.id, editor);
         if (!b) continue;
         const { w, h } = b;
         const p = { x: b.x, y: b.y };
@@ -131,7 +131,7 @@ export async function insertConduitForCables(
     }
     const conduit = new ConduitNode({ angle }) as unknown as SolenoidNode;
     await editor.addNode(conduit);
-    await area.moveNode(conduit.id, { x: cx - CONDUIT_PIVOT, y: cy - CONDUIT_PIVOT });
+    await view.moveNode(conduit.id, { x: cx - CONDUIT_PIVOT, y: cy - CONDUIT_PIVOT });
     for (let i = 0; i < chunk.length; i++) {
       const lane = chunk[i];
       const src = editor.getNode(lane.conns[0].source);
@@ -164,11 +164,11 @@ export async function insertConduitForCables(
 // [gap, current distance] — "never closer than a gap, never farther than I placed it".
 export function linkStandoffBetween(
   editor: NodeEditor<Schemes>,
-  area: Area,
+  view: View,
   t: { aId: string; bId: string },
 ): void {
   // The same size read the standoff SOLVER uses, so the band matches its boxes.
-  const boxOf = (id: string): StandoffBox | null => measuredBox(area, id, editor);
+  const boxOf = (id: string): StandoffBox | null => measuredBox(view, id, editor);
   const ba = boxOf(t.aId);
   const bb = boxOf(t.bId);
   if (!ba || !bb) return;
@@ -199,7 +199,7 @@ export function linkStandoffBetween(
 // Node deletion splices a ghost cable when a node has exactly one in + one out.
 export async function deleteSelection(
   editor: NodeEditor<Schemes>,
-  area: Area | null,
+  view: View | null,
 ): Promise<void> {
   // A selected standoff is its own deletion target (exclusive selection).
   const standoffSel = standoffStore.selected();
@@ -305,7 +305,7 @@ export async function deleteSelection(
     for (const id of deletedIds) forgetNode(id);
     if (deletedIds.length) rebuildGroupMembership(editor);
     await bulkSettle();
-    if (deletedGroup && area) restoreSettledPushes(editor, area);
+    if (deletedGroup && view) restoreSettledPushes(editor, view);
   } else {
     await processGraph();
   }
@@ -325,7 +325,7 @@ export async function deleteCables(
 
 export async function attachFormatController(
   editor: NodeEditor<Schemes>,
-  area: Area,
+  view: View,
   container: HTMLElement,
   target: SocketContextTarget,
 ): Promise<void> {
@@ -337,8 +337,8 @@ export async function attachFormatController(
   await editor.addNode(fc as SolenoidNode);
   const rel = dockedNodeStore.get(fc.id);
   if (rel) {
-    const pos = computeDockedCanvasPos(area, container, rel.hostNodeId, rel.socketKey, rel.side, fc.width, fc.height);
-    if (pos) await area.moveNode(fc.id, pos);
+    const pos = computeDockedCanvasPos(view, container, rel.hostNodeId, rel.socketKey, rel.side, fc.width, fc.height);
+    if (pos) await view.moveNode(fc.id, pos);
   }
   await insertFcInline(editor, fc);
   await processGraph();

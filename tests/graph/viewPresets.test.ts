@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { boundZoom, clampZoom, floorZoom, MIN_ZOOM, MAX_ZOOM, ZOOM_SNAP } from "../../src/graph/areaPresets";
+import { boundZoom, clampZoom, floorZoom, MIN_ZOOM, MAX_ZOOM, ZOOM_SNAP } from "../../src/graph/viewPresets";
 
 // The camera rests only on multiples of ZOOM_SNAP; fits snap down so content still fits.
 describe("zoom snap", () => {

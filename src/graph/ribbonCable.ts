@@ -2,7 +2,7 @@ import { ConduitNode, conduitLaneOf } from "./rete-nodes";
 import { groupCollapseStore } from "./groupCollapse";
 import { cableGhostStore, cableSelectionStore } from "./cableState";
 
-import { getOwningArea } from "./activeGraph";
+import { getOwningView } from "./activeGraph";
 
 // Shared with ConduitComponent so trunk endpoints need no DOM measurement; the
 // squares ARE the sockets, lane pitch is SQ + ROW_GAP (scaled).
@@ -50,7 +50,7 @@ export function conduitFacePoint(
   side: "in" | "out",
 ): { x: number; y: number; angle: number } | null {
   const lay = _layouts.get(nodeId);
-  const pos = getOwningArea(nodeId)?.nodeViews.get(nodeId)?.position;
+  const pos = getOwningView(nodeId)?.position(nodeId);
   if (!lay || !pos) return null;
   const sign = side === "out" ? 1 : -1;
   const rad = (lay.angle * Math.PI) / 180;
@@ -94,7 +94,7 @@ export function conduitLanePoint(
   socketKey: string,
 ): { x: number; y: number } | null {
   const lay = _layouts.get(nodeId);
-  const pos = getOwningArea(nodeId)?.nodeViews.get(nodeId)?.position;
+  const pos = getOwningView(nodeId)?.position(nodeId);
   if (!lay || !pos) return null;
   const i = conduitLaneOf(socketKey, side);
   if (i < 0) return null;

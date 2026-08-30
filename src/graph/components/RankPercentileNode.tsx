@@ -3,7 +3,7 @@ import type { RankPercentileNode as RankPercentileNodeType, RankPercentileOp } f
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";
-import { getActiveArea } from "../activeGraph";
+import { getActiveView } from "../activeGraph";
 
 const OPS = (Object.keys(RANK_PERCENTILE_OP_META) as RankPercentileOp[]).map((op) => ({
   value: op,
@@ -18,7 +18,7 @@ export function RankPercentileComponent({ data, emit }: NodeProps<RankPercentile
     const departing = data.keysDroppedBySwitch(next);
     if (departing.length > 0) await dropInputCables(data.id, departing);
     data.setOp(next);
-    await getActiveArea()?.rerenderNode(data.id);
+    await getActiveView()?.rerenderNode(data.id);
     setOpField(next);
   }
 

@@ -1,4 +1,4 @@
-import type { Area } from "./area";
+import type { View } from "./view";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import { GroupNode, DisplayNode, FormatControllerNode, ConduitNode } from "./rete-nodes";
@@ -319,7 +319,7 @@ export function recomputeGroupCollapse(editor: Editor): void {
  *  so EXPAND must re-render members a frame before re-measuring, and COLLAPSE must not
  *  (re-rendering members would clobber the pills' positions). */
 export function settleCollapse(
-  area: Area,
+  view: View,
   groupId: string,
   members: string[],
   expanding: boolean,
@@ -329,9 +329,9 @@ export function settleCollapse(
   const set = new Set(members);
   for (const m of members) for (const d of dockedNodeStore.getDockedTo(m)) set.add(d.id);
   requestAnimationFrame(() => {
-    void area.rerenderNode(groupId);
-    if (expanding) for (const m of set) void area.rerenderNode(m);
-    requestAnimationFrame(() => { void area.rerenderCables(); });
+    void view.rerenderNode(groupId);
+    if (expanding) for (const m of set) void view.rerenderNode(m);
+    requestAnimationFrame(() => { void view.rerenderCables(); });
   });
 }
 
@@ -340,6 +340,6 @@ export function settleCollapse(
  *  inline visibility — RF owns it and overwrites with `visible` post-measure,
  *  which is how the old imperative element sweep silently lost the load-time
  *  hide. */
-export function syncGroupCollapse(editor: Editor, _area: Area): void {
+export function syncGroupCollapse(editor: Editor, _area: View): void {
   recomputeGroupCollapse(editor);
 }

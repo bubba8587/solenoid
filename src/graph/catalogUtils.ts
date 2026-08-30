@@ -11,7 +11,7 @@ import { nodeNameStore } from "./nodeNameStore";
 // Cycle-safe: nodeCtorRegistry imports FLAT_CATALOG from here, but neither module
 // touches the other's exports at init time.
 import { ctorRegistry, type NodeCtor } from "./nodeCtorRegistry";
-import { getActiveArea, getActiveEditor } from "./activeGraph";
+import { getActiveView, getActiveEditor } from "./activeGraph";
 
 // Pack nodes are INSERTED into the core tree at their target category path, so packs
 // never grow the top level; a type claimed by several packs records every owner.
@@ -298,8 +298,8 @@ export async function addNodeByCatalogType(catalogType: string): Promise<boolean
   const entry = FLAT_CATALOG.get(catalogType);
   if (!entry) return false;
   const editor = getActiveEditor();
-  const area = getActiveArea();
-  if (!editor || !area) return false;
+  const view = getActiveView();
+  if (!editor || !view) return false;
 
   // Cast through unknown: this file deliberately imports no node classes.
   const node = entry.create() as unknown as { id: string; width?: number; height?: number; constructor: { name: string }; hydrate?: (reg: Map<string, NodeCtor>) => Promise<void> };
@@ -310,11 +310,11 @@ export async function addNodeByCatalogType(catalogType: string): Promise<boolean
   await editor.addNode(node as any);
   nodeNameStore.ensure(node.id, node.constructor.name);
 
-  const { k, x, y } = area.transform;
-  const rect = area.container.getBoundingClientRect();
+  const { k, x, y } = view.transform;
+  const rect = view.container.getBoundingClientRect();
   const cx = (rect.width / 2 - x) / k;
   const cy = (rect.height / 2 - y) / k;
-  await area.moveNode(node.id, {
+  await view.moveNode(node.id, {
     x: cx - (node.width ?? 180) / 2,
     y: cy - (node.height ?? 160) / 2,
   });

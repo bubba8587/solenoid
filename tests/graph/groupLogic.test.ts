@@ -1,4 +1,4 @@
-import type { Area } from "../../src/graph/area";
+import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
 import { moveGroupMembers, reconcileGroupMembership, absorbIntoContainingGroup } from "../../src/graph/groupLogic";
 import { GroupNode } from "../../src/graph/rete-nodes";
@@ -21,25 +21,26 @@ function harness(selected: Set<string>) {
   for (const [id, p] of Object.entries(start)) { nodeViews.set(id, { position: { ...p } }); final.set(id, { ...p }); }
   const translated: string[] = [];
   const editor = { getNode: (id: string) => ({ selected: selected.has(id) }) } as unknown as Editor;
-  const area = {
-    nodeViews,
+  const view = {
+    position: (id: string) => nodeViews.get(id)?.position,
+    hasNode: (id: string) => nodeViews.has(id),
     moveNode: (id: string, pos: { x: number; y: number }) => { translated.push(id); final.set(id, pos); return Promise.resolve(true); },
-  } as unknown as Area;
+  } as unknown as View;
   const group = { members: ["a", "b", "c"] } as unknown as GroupNode;
-  return { editor, area, group, translated, final };
+  return { editor, view, group, translated, final };
 }
 
 describe("moveGroupMembers — skipSelected guards the double-move", () => {
   it("moves every member when skipSelected is off (a programmatic push)", () => {
     const h = harness(new Set());
-    moveGroupMembers(h.editor, h.area, h.group, 10, 5);
+    moveGroupMembers(h.editor, h.view, h.group, 10, 5);
     expect([...h.translated].sort()).toEqual(["a", "b", "c"]);
     expect(h.final.get("b")).toEqual({ x: 110, y: 5 });
   });
 
   it("skips a SELECTED member when skipSelected is on (the selector already moved it)", () => {
     const h = harness(new Set(["b"]));
-    moveGroupMembers(h.editor, h.area, h.group, 10, 5, true);
+    moveGroupMembers(h.editor, h.view, h.group, 10, 5, true);
     expect([...h.translated].sort()).toEqual(["a", "c"]);      // b not moved again
     expect(h.final.get("b")).toEqual({ x: 100, y: 0 });        // untouched
     expect(h.final.get("a")).toEqual({ x: 10, y: 5 });
@@ -47,13 +48,13 @@ describe("moveGroupMembers — skipSelected guards the double-move", () => {
 
   it("still moves UNSELECTED members with skipSelected on", () => {
     const h = harness(new Set(["a", "b", "c"])); // whole group + members selected
-    moveGroupMembers(h.editor, h.area, h.group, 10, 5, true);
+    moveGroupMembers(h.editor, h.view, h.group, 10, 5, true);
     expect(h.translated).toEqual([]);                          // all carried by the selector
   });
 
   it("no-op on a zero delta", () => {
     const h = harness(new Set());
-    moveGroupMembers(h.editor, h.area, h.group, 0, 0, true);
+    moveGroupMembers(h.editor, h.view, h.group, 0, 0, true);
     expect(h.translated).toEqual([]);
   });
 });
@@ -79,35 +80,39 @@ describe("collapsed groups never absorb members", () => {
       getNode: (id: string) => ids.get(id),
       getNodes: () => [...ids.values()],
     } as unknown as Editor;
-    const area = { nodeViews } as unknown as Area;
+    const view = {
+      position: (id: string) => nodeViews.get(id)?.position,
+      hasNode: (id: string) => nodeViews.has(id),
+      nodeElement: (id: string) => (nodeViews.get(id)?.element ?? null) as unknown as HTMLElement | null,
+    } as unknown as View;
     const setLoosePos = (x: number, y: number) => { nodeViews.get("n1")!.position = { x, y }; };
-    return { groupA, groupB, editor, area, setLoosePos };
+    return { groupA, groupB, editor, view, setLoosePos, nodeViews };
   }
 
   it("drag-drop onto a collapsed group's card does not join it", () => {
     const h = harness2();
     h.setLoosePos(-10, -10); // node center (80, 30) — inside A's 160×40 card
-    reconcileGroupMembership(h.editor, h.area, "n1");
+    reconcileGroupMembership(h.editor, h.view, "n1");
     expect(h.groupA.members).toEqual([]);
   });
 
   it("drag-drop into an expanded group still joins (guard doesn't overblock)", () => {
     const h = harness2();
     h.setLoosePos(650, 50); // center (740, 90) — inside B's 400×300 box
-    reconcileGroupMembership(h.editor, h.area, "n1");
+    reconcileGroupMembership(h.editor, h.view, "n1");
     expect(h.groupB.members).toEqual(["n1"]);
   });
 
   it("a new node fully over a collapsed card is not absorbed; over an expanded box it is", () => {
     const h = harness2();
     // A tiny node fully inside A's card bounds.
-    h.area.nodeViews.get("n1")!.element = { offsetWidth: 40, offsetHeight: 20 } as unknown as HTMLElement;
+    h.nodeViews.get("n1")!.element = { offsetWidth: 40, offsetHeight: 20 };
     h.setLoosePos(10, 10);
-    expect(absorbIntoContainingGroup(h.editor, h.area, "n1")).toBe(false);
+    expect(absorbIntoContainingGroup(h.editor, h.view, "n1")).toBe(false);
     expect(h.groupA.members).toEqual([]);
     // Same node fully inside B's expanded box → absorbed.
     h.setLoosePos(650, 50);
-    expect(absorbIntoContainingGroup(h.editor, h.area, "n1")).toBe(true);
+    expect(absorbIntoContainingGroup(h.editor, h.view, "n1")).toBe(true);
     expect(h.groupB.members).toEqual(["n1"]);
   });
 });

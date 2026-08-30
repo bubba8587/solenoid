@@ -32,7 +32,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { ClassicPreset } from "rete";
 import type { Schemes } from "../schemes";
-import type { Area } from "../area";
+import type { View } from "../view";
 import { registerFlowSocket, registerFlowResizeGrip } from "../flowSurface";
 import { FlowSocketHandle } from "./FlowSocketHandle";
 import { FlowResizeGrip } from "./FlowResizeGrip";
@@ -42,7 +42,7 @@ import { FlowConnectionLine } from "./FlowConnectionLine";
 import { cableSelectionStore, socketHighlightStore, dragSocketKey } from "../cableState";
 import { toFlowNodes, toFlowEdges, nodeClassName, toFlowPosition, fromFlowPosition, type FlowModel } from "./flowModel";
 import { canConnect, connect, moveNode } from "./flowModel";
-import type { FlowArea } from "./flowArea";
+import type { FlowView } from "./flowView";
 import { processGraph } from "../process";
 import { cableDragStore, setCableDragging } from "../graphSignals";
 import { installCanvasKeyboard } from "../canvasKeyboard";
@@ -57,7 +57,7 @@ import { AddNodeMenu, type NodeCatalogEntry } from "../AddNodeMenu";
 import { addMenuRequest } from "../addMenuStore";
 import { packsStore } from "../packs";
 import { CompositeNode, GroupNode, FormatControllerNode } from "../rete-nodes";
-import { MIN_ZOOM, MAX_ZOOM, floorZoom } from "../areaPresets";
+import { MIN_ZOOM, MAX_ZOOM, floorZoom } from "../viewPresets";
 import { gridSnapStore, DOT_SPACING } from "../gridSnapStore";
 import { isolateStore } from "../isolateStore";
 import {
@@ -159,7 +159,7 @@ export function idleHandlers(): SurfaceHandlers {
 }
 
 export type SurfaceStack = FlowModel & {
-  area: FlowArea;
+  view: FlowView;
   handlers: SurfaceHandlers;
   standoffSettle?: (pinned?: Set<string>, opts?: SettleOpts) => void;
   /** A host-level rebuild in progress (drill-in hydrate/restore) — no live-creation behaviors. */
@@ -232,7 +232,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   }, [nodesInitialized, getNodes, setViewport, storeApi]);
 
   const syncTopology = useCallback(() => {
-    s.area.syncViews();
     // Survivors keep their OBJECT IDENTITY — RF's memo skips them, so adding
     // one node re-renders one card, not the whole canvas.
     setNodes((prev) => {
@@ -308,7 +307,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           let rel: { x: number; y: number } | null = null;
           if (n.id === id) rel = toFlowPosition(s, id, pos);
           else if (isGroup && n.parentId === id) {
-            const abs = s.positions.get(n.id);
+            const abs = s.editor.getNode(n.id)?.position;
             if (abs) rel = { x: abs.x - pos.x, y: abs.y - pos.y };
           }
           if (!rel || (rel.x === n.position.x && rel.y === n.position.y)) return n;
@@ -345,9 +344,9 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       if ((ctx as { type?: string }).type === "nodecreated" && !isGraphRebuilding() && !s.isRebuilding?.()) {
         const newId = (ctx as unknown as { data: { id: string } }).data.id;
         requestAnimationFrame(() => requestAnimationFrame(() => {
-          if (absorbIntoContainingGroup(s.editor, s.area, newId)) {
+          if (absorbIntoContainingGroup(s.editor, s.view, newId)) {
             rebuildGroupMembership(s.editor);
-            syncGroupCollapse(s.editor, s.area);
+            syncGroupCollapse(s.editor, s.view);
             scheduleAutosave();
           }
         }));
@@ -370,7 +369,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     if (!el) return;
     const drive = (v: { x: number; y: number; zoom: number }) => {
       void setViewport(v);
-      s.area.setTransform({ x: v.x, y: v.y, k: v.zoom });
+      s.view.setTransform({ x: v.x, y: v.y, k: v.zoom });
       syncSemanticZoomFor(v.zoom);
     };
     // Every editable is `nodrag`: RF's d3 drag listens on the node wrapper and its
@@ -403,24 +402,24 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     const snapshot = new Map<string, { x: number; y: number }>();
     const apply = () => {
       const active = isolateStore.isActive();
-      for (const [id, view] of s.area.nodeViews) {
-        view.element.classList.toggle("solenoid-isolate-dim", active && !isolateStore.isVisible(id));
+      for (const n of s.editor.getNodes()) {
+        s.view.nodeElement(n.id)?.classList.toggle("solenoid-isolate-dim", active && !isolateStore.isVisible(n.id));
       }
       if (active && !wasActive) {
         snapshot.clear();
         const focus: Schemes["Node"][] = [];
-        for (const [id, view] of s.area.nodeViews) {
-          if (!isolateStore.isVisible(id)) continue;
-          snapshot.set(id, { ...view.position });
-          const n = s.editor.getNode(id);
-          if (n) focus.push(n);
+        for (const n of s.editor.getNodes()) {
+          if (!isolateStore.isVisible(n.id)) continue;
+          const pos = s.view.position(n.id);
+          if (pos) snapshot.set(n.id, { ...pos });
+          focus.push(n);
         }
         if (focus.length) {
-          void zoomAt(s.area, focus);
+          void zoomAt(s.view, focus);
         }
       } else if (!active && wasActive) {
         for (const [id, pos] of snapshot) {
-          if (s.area.nodeViews.has(id)) void s.area.moveNode(id, pos);
+          if (s.view.hasNode(id)) void s.view.moveNode(id, pos);
         }
         snapshot.clear();
         scheduleAutosave();
@@ -433,14 +432,14 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
 
   // Shift-drag lasso — capture-phase on the wrapper, so RF's pane (pan, box
   // selection) never sees the press; cable hits resolve through the live
-  // connectionViews.
+  // edge elements (view.connectionElement).
   useEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
     return installLassoSelection({
       container: el,
       editorRef: { current: s.editor },
-      areaRef: { current: s.area as unknown as Area },
+      viewRef: { current: s.view as unknown as View },
       setLasso,
     });
   }, [s]);
@@ -484,7 +483,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   useEffect(() => {
     const unKeys = installCanvasKeyboard({
       editorRef: { current: s.editor },
-      areaRef: { current: s.area as unknown as Area },
+      viewRef: { current: s.view as unknown as View },
       historyRef: {
         current: {
           undo: () => hooksRef.current.history.undo(),
@@ -521,14 +520,14 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         .sort((a, b) => Number(!(s.editor.getNode(a.id) instanceof GroupNode)) - Number(!(s.editor.getNode(b.id) instanceof GroupNode)));
       for (const ch of moved) {
         if (!s.editor.getNode(ch.id)) continue;
-        const parentId = s.positions.has(ch.id) ? nodesRef.current.find((n) => n.id === ch.id)?.parentId : undefined;
+        const parentId = nodesRef.current.find((n) => n.id === ch.id)?.parentId;
         const abs = ch.positionAbsolute ?? fromFlowPosition(s, ch.position!, parentId);
         moveNode(s, ch.id, abs);
       }
       // RF's own measures (post-layout, free) feed the surface's DOM-free size source.
       for (const ch of changes) {
         if (ch.type === "dimensions" && ch.dimensions && ch.resizing === undefined) {
-          s.area.setSize(ch.id, { w: ch.dimensions.width, h: ch.dimensions.height });
+          s.view.setSize(ch.id, { w: ch.dimensions.width, h: ch.dimensions.height });
         }
       }
       // A resize grip's own dimension changes (`resizing` set) stay out of RF state: the
@@ -590,7 +589,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   const onPaneClick = useCallback(() => cableSelectionStore.set(null), []);
   const onMove = useCallback(
     (_e: unknown, viewport: Viewport) => {
-      s.area.setTransform({ x: viewport.x, y: viewport.y, k: viewport.zoom });
+      s.view.setTransform({ x: viewport.x, y: viewport.y, k: viewport.zoom });
       syncSemanticZoomFor(viewport.zoom);
     },
     [s],
@@ -598,7 +597,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   const onPointerMove = useCallback(
     (e: React.PointerEvent) => {
       screenMouseRef.current = { x: e.clientX, y: e.clientY };
-      s.area.setPointer(screenToFlowPosition({ x: e.clientX, y: e.clientY }));
+      s.view.setPointer(screenToFlowPosition({ x: e.clientX, y: e.clientY }));
     },
     [s, screenToFlowPosition],
   );
@@ -678,7 +677,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         if (!last) continue;
         const dx = n.position.x - last.x;
         const dy = n.position.y - last.y;
-        if (dx !== 0 || dy !== 0) void moveGroupMembers(s.editor, s.area, model, dx, dy, true);
+        if (dx !== 0 || dy !== 0) void moveGroupMembers(s.editor, s.view, model, dx, dy, true);
       }
       for (const n of dragged) dragLastPos.current.set(n.id, { ...n.position });
       // Tow standoff-tied neighbors live, one solve per frame.
@@ -686,7 +685,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         const pinned = new Set(dragged.map((n) => n.id));
         standoffRaf.current = requestAnimationFrame(() => {
           standoffRaf.current = 0;
-          s.area.syncViews();
           s.standoffSettle?.(pinned);
         });
       }
@@ -695,7 +693,6 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   );
   const onNodeDragStop: OnNodeDrag<SolFlowNode> = useCallback(
     (_e, _node, dragged) => {
-      s.area.syncViews();
       // The exact settle on drop (the per-frame solves converge toward it).
       if (s.standoffSettle && !standoffStore.isEmpty()) s.standoffSettle(new Set(dragged.map((n) => n.id)));
       // A node dropped with its center inside an expanded group joins it; dragged out,
@@ -703,12 +700,12 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       let membershipTouched = false;
       for (const n of dragged) {
         if (s.editor.getNode(n.id) instanceof GroupNode) continue;
-        reconcileGroupMembership(s.editor, s.area, n.id);
+        reconcileGroupMembership(s.editor, s.view, n.id);
         membershipTouched = true;
       }
       if (membershipTouched) {
         rebuildGroupMembership(s.editor);
-        syncGroupCollapse(s.editor, s.area);
+        syncGroupCollapse(s.editor, s.view);
       }
       for (const n of dragged) {
         // A manual move invalidates any expand-time push record (a click never
@@ -720,7 +717,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           const el = wrapperRef.current;
           if (!el) continue;
           const fc = model;
-          const target = findDockTarget(s.area, s.editor, fc);
+          const target = findDockTarget(s.view, s.editor, fc);
           const reHome = !!target && (
             target.hostNodeId !== fc.hostNodeId ||
             target.socketKey !== fc.socketKey ||
@@ -733,17 +730,17 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
               fc.socketKey = target.socketKey;
               fc.side = target.side;
               fc.dockSelf(s.editor);
-              const dims = dockedRenderedDims(s.area, fc.id, fc.width, fc.height);
-              const pos = computeDockedCanvasPos(s.area, el, fc.hostNodeId, fc.socketKey, fc.side, dims.w, dims.h);
-              if (pos) await s.area.moveNode(fc.id, pos);
+              const dims = dockedRenderedDims(s.view, fc.id, fc.width, fc.height);
+              const pos = computeDockedCanvasPos(s.view, el, fc.hostNodeId, fc.socketKey, fc.side, dims.w, dims.h);
+              if (pos) await s.view.moveNode(fc.id, pos);
               await insertFcInline(s.editor, fc);
               await processGraph();
             })();
           } else if (target) {
             fc.dockSelf(s.editor);
-            const dims = dockedRenderedDims(s.area, fc.id, fc.width, fc.height);
-            const pos = computeDockedCanvasPos(s.area, el, fc.hostNodeId, fc.socketKey, fc.side, dims.w, dims.h);
-            if (pos) void s.area.moveNode(fc.id, pos);
+            const dims = dockedRenderedDims(s.view, fc.id, fc.width, fc.height);
+            const pos = computeDockedCanvasPos(s.view, el, fc.hostNodeId, fc.socketKey, fc.side, dims.w, dims.h);
+            if (pos) void s.view.moveNode(fc.id, pos);
           } else {
             fc.releaseDock();
           }
@@ -765,11 +762,11 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       // A node created from an INPUT drag meets the drop point with its OUTPUT
       // edge, so it shifts left by its width once the card has rendered.
       const fromInput = menu.quickWire?.side === "input";
-      await s.area.moveNode(node.id, { x: Math.round(pos.x), y: Math.round(pos.y) });
+      await s.view.moveNode(node.id, { x: Math.round(pos.x), y: Math.round(pos.y) });
       if (fromInput) {
         requestAnimationFrame(() => {
-          const w = s.area.nodeViews.get(node.id)?.element.offsetWidth ?? 0;
-          if (w > 0) void s.area.moveNode(node.id, { x: Math.round(pos.x) - w, y: Math.round(pos.y) });
+          const w = s.view.nodeElement(node.id)?.offsetWidth ?? 0;
+          if (w > 0) void s.view.moveNode(node.id, { x: Math.round(pos.x) - w, y: Math.round(pos.y) });
         });
       }
       nodeNameStore.ensure(node.id, node.constructor.name);
@@ -907,7 +904,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           nodeStrokeWidth={1}
         />
       </ReactFlow>
-      <HtmlCanvasLayer editor={s.editor} area={s.area as unknown as Area} />
+      <HtmlCanvasLayer editor={s.editor} view={s.view as unknown as View} />
       {menu && (
         <AddNodeMenu
           screenX={menu.screenX}
@@ -924,7 +921,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           onAttachFormat={(t) =>
             void (async () => {
               const el = wrapperRef.current;
-              if (el) await attachFormatController(s.editor, s.area as unknown as Area, el, t);
+              if (el) await attachFormatController(s.editor, s.view as unknown as View, el, t);
             })()
           }
           onClose={() => setSocketCtx(null)}
@@ -936,7 +933,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           onInsertConduit={(t) =>
             void (async () => {
               const el = wrapperRef.current;
-              if (el) await insertConduitForCables(s.editor, s.area as unknown as Area, el, t);
+              if (el) await insertConduitForCables(s.editor, s.view as unknown as View, el, t);
             })()
           }
           onDelete={(t) => void deleteCables(s.editor, t)}
@@ -950,7 +947,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           onIsolateChain={(ids) => isolateChainOf(ids)}
           onWhereUsed={(id) => isolateWhereUsed(id)}
           onPin={(id) => pinNodeValue(id)}
-          onLinkStandoff={(t) => linkStandoffBetween(s.editor, s.area as unknown as Area, t)}
+          onLinkStandoff={(t) => linkStandoffBetween(s.editor, s.view as unknown as View, t)}
           onAddComment={(id) => commentsPanelUi.openFor(id)}
           onEditComposite={(id) => {
             const n = s.editor.getNode(id);
@@ -959,7 +956,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
             if (compositeEditorStore.isOpen()) compositeEditorStore.drillInto(n);
             else compositeEditorStore.open(n);
           }}
-          onUnpackComposite={(id) => void unpackComposite(s.editor, s.area as unknown as Area, id)}
+          onUnpackComposite={(id) => void unpackComposite(s.editor, s.view as unknown as View, id)}
           onClose={() => setNodeCtx(null)}
         />
       )}

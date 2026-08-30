@@ -2,7 +2,7 @@ import { useState } from "react";
 import { BIN_MODE_OPTIONS } from "../rete-nodes";
 import type { BinNode as BinNodeType, BinMode } from "../rete-nodes";
 import { processGraph } from "../process";
-import { getActiveArea } from "../activeGraph";
+import { getActiveView } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
@@ -16,7 +16,7 @@ export function BinComponent({ data, emit }: NodeProps<BinNodeType>) {
     await dropInputCables(data.id, [next === "quantiles" ? "breaks" : "n"]);
     data.setMode(next);
     setMode(next);
-    await getActiveArea()?.rerenderNode(data.id);
+    await getActiveView()?.rerenderNode(data.id);
     await processGraph();
   }
 

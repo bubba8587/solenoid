@@ -38,8 +38,6 @@ export type SavedGraphLite = {
 export type FlowModel = {
   editor: NodeEditor<Schemes>;
   engine: DataflowEngine<Schemes>;
-  /** live node id → canvas position from the save */
-  positions: Map<string, { x: number; y: number }>;
 };
 
 export function resolveCtor(type: string): NodeCtor | undefined {
@@ -61,7 +59,6 @@ export async function buildModel(g: SavedGraphLite): Promise<FlowModel> {
   // One document at a time: a fresh build owns the addressable-name space.
   nodeNameStore.clear();
   const byId = new Map<string, SolenoidNode>();
-  const positions = new Map<string, { x: number; y: number }>();
   for (const sn of g.nodes) {
     const Ctor = resolveCtor(sn.type);
     if (!Ctor) throw new Error(`Unknown node type "${sn.type}" (id ${sn.id}).`);
@@ -73,9 +70,9 @@ export async function buildModel(g: SavedGraphLite): Promise<FlowModel> {
       anyNode.stringLiterals = { ...sn.stringLiterals };
     }
     byId.set(sn.id, node);
+    node.position = { x: sn.x ?? 0, y: sn.y ?? 0 };
     await editor.addNode(node);
     nodeNameStore.claim(node.id, sn.name, sn.type);
-    positions.set(node.id, { x: sn.x ?? 0, y: sn.y ?? 0 });
   }
   for (const c of g.connections) {
     const source = byId.get(c.source);
@@ -85,7 +82,7 @@ export async function buildModel(g: SavedGraphLite): Promise<FlowModel> {
       new ClassicPreset.Connection(source, c.sourceOutput, target, c.targetInput) as Schemes["Connection"],
     );
   }
-  return { editor, engine, positions };
+  return { editor, engine };
 }
 
 // ─── Edit verbs ───────────────────────────────────────────────────────────
@@ -137,7 +134,7 @@ export async function disconnect(m: FlowModel, connectionId: string): Promise<vo
   if (m.editor.getConnection(connectionId)) await m.editor.removeConnection(connectionId);
 }
 
-/** Remove nodes and their cables through the editor; names and positions go too. */
+/** Remove nodes and their cables through the editor; names go too. */
 export async function removeNodes(m: FlowModel, ids: string[]): Promise<void> {
   const doomed = new Set(ids);
   for (const c of m.editor.getConnections()) {
@@ -147,7 +144,6 @@ export async function removeNodes(m: FlowModel, ids: string[]): Promise<void> {
     if (!m.editor.getNode(id)) continue;
     await m.editor.removeNode(id);
     nodeNameStore.forget(id);
-    m.positions.delete(id);
   }
 }
 
@@ -160,14 +156,15 @@ export async function addNode(
   const entry = FLAT_CATALOG.get(catalogType);
   if (!entry) return null;
   const node = entry.create() as SolenoidNode;
+  node.position = { x: Math.round(position.x), y: Math.round(position.y) };
   await m.editor.addNode(node);
-  m.positions.set(node.id, { x: Math.round(position.x), y: Math.round(position.y) });
   nodeNameStore.ensure(node.id, node.constructor.name);
   return node;
 }
 
 export function moveNode(m: FlowModel, id: string, position: { x: number; y: number }): void {
-  if (m.positions.has(id)) m.positions.set(id, { x: position.x, y: position.y });
+  const node = m.editor.getNode(id);
+  if (node) node.position = { x: position.x, y: position.y };
 }
 
 // ─── React Flow projections ───────────────────────────────────────────────
@@ -191,11 +188,12 @@ export function parentGroupOf(m: FlowModel, id: string): Nodes.GroupNode | undef
   return undefined;
 }
 
-/** The MODEL keeps absolute positions; RF positions a member relative to its group
- *  (`parentId`), so the group's own drag tows it. Convert at the boundary only. */
+/** The MODEL keeps absolute positions (on the node); RF positions a member relative
+ *  to its group (`parentId`), so the group's own drag tows it. Convert at the
+ *  boundary only. */
 export function toFlowPosition(m: FlowModel, id: string, abs: { x: number; y: number }): { x: number; y: number } {
   const g = parentGroupOf(m, id);
-  const gp = g ? m.positions.get(g.id) : undefined;
+  const gp = g ? (g as SolenoidNode).position : undefined;
   return gp ? { x: abs.x - gp.x, y: abs.y - gp.y } : { x: abs.x, y: abs.y };
 }
 
@@ -204,7 +202,7 @@ export function fromFlowPosition(
   rel: { x: number; y: number },
   parentId: string | undefined,
 ): { x: number; y: number } {
-  const gp = parentId ? m.positions.get(parentId) : undefined;
+  const gp = parentId ? m.editor.getNode(parentId)?.position : undefined;
   return gp ? { x: rel.x + gp.x, y: rel.y + gp.y } : { x: rel.x, y: rel.y };
 }
 
@@ -249,14 +247,14 @@ export function toFlowNodes(m: FlowModel): RFNodeLite[] {
     if (g instanceof Nodes.GroupNode) for (const member of g.members) groupOf.set(member, g.id);
   }
   // RF requires a parent before its children in the array.
-  const ordered = [
+  const ordered: SolenoidNode[] = [
     ...nodes.filter((n) => n instanceof Nodes.GroupNode),
     ...nodes.filter((n) => !(n instanceof Nodes.GroupNode)),
   ];
   return ordered.map((node) => {
-    const abs = m.positions.get(node.id) ?? { x: 0, y: 0 };
+    const abs = node.position ?? { x: 0, y: 0 };
     const parentId = groupOf.get(node.id);
-    const parentPos = parentId ? m.positions.get(parentId) : undefined;
+    const parentPos = parentId ? m.editor.getNode(parentId)?.position : undefined;
     return {
       id: node.id,
       type: "sol",

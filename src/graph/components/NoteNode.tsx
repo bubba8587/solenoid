@@ -10,11 +10,11 @@ import { SocketDot, type SocketGlyph } from "./SocketLegend";
 import { NodeSocket } from "./NodeSocket";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { useEditableLabel } from "./inlineInput";
-// getActiveEditor/getActiveArea, NOT getEditor/getArea: a Note inside a composite
+// getActiveEditor/getActiveView, NOT getEditor/getView: a Note inside a composite
 // drill-in must prune/reconcile/refresh on its OWN graph.
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
-import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { getActiveEditor, getActiveView } from "../activeGraph";
 import { reconcileFcTypes } from "../fcReconcile";
 import { scheduleAutosave } from "../persistence";
 import { standoffStore, settleStandoffs } from "../standoffs";
@@ -105,7 +105,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   useEffect(() => { setCollapsed(data.collapsed); }, [data.collapsed]);
 
   // The body text last reconciled to sockets — lets a no-edit blur skip the heavy
-  // area.update + processGraph, whose mid-gesture re-render closed the mobile keyboard.
+  // view.update + processGraph, whose mid-gesture re-render closed the mobile keyboard.
   const lastSyncRef = useRef(data.body);
   // Suppress an enter-edit click landing within a beat of a blur: on mobile the same
   // tap that dismisses the keyboard falls through onto the read view and reopens it.
@@ -119,13 +119,13 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
     lastSyncRef.current = data.body;
     const { removed, retyped } = data.syncFields();
     const editor = getActiveEditor();
-    const area = getActiveArea();
+    const view = getActiveView();
     await dropStrandedFrontmatterCables(data.id, removed, retyped);
     setFieldsVersion((v) => v + 1);
-    await area?.rerenderNode(data.id);
+    await view?.rerenderNode(data.id);
     // A pure retype fires no connection event, so re-adapt downstream FCs by hand or
     // they keep formatting by the OLD type.
-    if (editor && area && retyped.length) reconcileFcTypes(editor, area);
+    if (editor && view && retyped.length) reconcileFcTypes(editor, view);
     bumpConnectionVersion(); // re-route cables whose source row shifted
     await processGraph();
   }
@@ -163,7 +163,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   function onResize(size: { width: number; height: number }) {
     data.width = Math.max(NOTE_MIN_W, size.width);
     data.height = Math.max(minNoteH, size.height);
-    void getActiveArea()?.rerenderNode(data.id);
+    void getActiveView()?.rerenderNode(data.id);
   }
   function onResizeEnd() {
     scheduleAutosave();
@@ -199,10 +199,10 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
         setBody(next);
         data.body = next;
         scheduleAutosave();
-        // area.update re-captures the note for the canvas renderer (a bare setBody
+        // view.update re-captures the note for the canvas renderer (a bare setBody
         // leaves the OLD text showing there, same reason `pick` does it); processGraph
         // refreshes the `document` output for any downstream sink.
-        void getActiveArea()?.rerenderNode(data.id);
+        void getActiveView()?.rerenderNode(data.id);
         void processGraph(data.id);
       }
       return;
@@ -213,9 +213,9 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   // Store the raw text live (autosave), but DON'T reconcile sockets per keystroke —
   // that happens on blur (commitFields), so editing the YAML doesn't churn cables.
   function onBody(v: string) { setBody(v); data.body = v; scheduleAutosave(); }
-  // area.update drives the pipe the HTML-canvas renderer re-captures on; a bare setColor
+  // view.update drives the pipe the HTML-canvas renderer re-captures on; a bare setColor
   // re-renders only rete's root, leaving the canvas showing the OLD color.
-  function pick(c: string) { setColor(c); data.color = c; void getActiveArea()?.rerenderNode(data.id); scheduleAutosave(); }
+  function pick(c: string) { setColor(c); data.color = c; void getActiveView()?.rerenderNode(data.id); scheduleAutosave(); }
   function toggleCollapse() { const v = !collapsed; setCollapsed(v); data.collapsed = v; scheduleAutosave(); }
 
   const mode = appThemeStore.getMode();

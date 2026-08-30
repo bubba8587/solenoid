@@ -6,7 +6,7 @@ import {
 import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
 import { makeNodeComponent } from "./standardNode";
 import { elementPicker } from "../elementPickerStore";
-import { getActiveArea } from "../activeGraph";
+import { getActiveView } from "../activeGraph";
 import { processGraph } from "../process";
 import { stopDragStart } from "../coarse";
 
@@ -19,7 +19,7 @@ export function ElementComponent({ data, emit }: NodeProps<ElementNodeType>) {
       symbol: data.symbol,
       onPick: (symbol) => {
         data.symbol = symbol;
-        void getActiveArea()?.rerenderNode(data.id);
+        void getActiveView()?.rerenderNode(data.id);
         void processGraph();
       },
     });

@@ -12,7 +12,7 @@ import { FieldRow } from "./NoteNode";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { useEditableLabel } from "./inlineInput";
 import { isDesktop, listVaultMarkdownFiles, readVaultFile } from "../fileBridge";
-import { getActiveArea, getActiveEditor } from "../activeGraph";
+import { getActiveView, getActiveEditor } from "../activeGraph";
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { reconcileFcTypes } from "../fcReconcile";
@@ -56,7 +56,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   const vault = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("obsidianVault"));
 
   // The shared header title-edit mechanic (click-to-edit, Enter/blur, Escape revert).
-  const title = useEditableLabel(data, () => { void getActiveArea()?.rerenderNode(data.id); });
+  const title = useEditableLabel(data, () => { void getActiveView()?.rerenderNode(data.id); });
   useEffect(() => { setColor(data.color); }, [data.color]);
   useEffect(() => { setCollapsed(data.collapsed); }, [data.collapsed]);
   useEffect(() => { setBody(data.body); }, [data.body]);
@@ -86,9 +86,9 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     setBody(content);
     setFieldsVersion((v) => v + 1);
     const editor = getActiveEditor();
-    const area = getActiveArea();
-    await area?.rerenderNode(data.id);
-    if (editor && area && retyped.length) reconcileFcTypes(editor, area);
+    const view = getActiveView();
+    await view?.rerenderNode(data.id);
+    if (editor && view && retyped.length) reconcileFcTypes(editor, view);
     bumpConnectionVersion();
     await processGraph();
     scheduleAutosave();
@@ -108,7 +108,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     catch { /* file gone — keep what's loaded */ }
   }
 
-  function pick(c: string) { setColor(c); data.color = c; void getActiveArea()?.rerenderNode(data.id); scheduleAutosave(); }
+  function pick(c: string) { setColor(c); data.color = c; void getActiveView()?.rerenderNode(data.id); scheduleAutosave(); }
   function toggleCollapse() { const v = !collapsed; setCollapsed(v); data.collapsed = v; scheduleAutosave(); }
 
   const fieldKeys = data.fieldKeys();
@@ -139,7 +139,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   function onResize(size: { width: number; height: number }) {
     data.width = Math.max(MIN_W, size.width);
     data.height = Math.max(minH, size.height);
-    void getActiveArea()?.rerenderNode(data.id);
+    void getActiveView()?.rerenderNode(data.id);
   }
 
   return (

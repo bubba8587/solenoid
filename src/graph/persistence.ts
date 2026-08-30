@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
 import type { SolenoidNode, SolenoidConnection } from "./schemes";
-import { getEditor, getArea, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
+import { getEditor, getView, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
 import { repositionDockedNodes, clearHistory } from "./canvasCommands";
 import { getCurrentSeedId } from "./seedStore";
 import type { SeedSelection } from "./seedStore";
@@ -111,11 +111,11 @@ export function serializeGraph(): SavedGraph | null {
 
 function buildRawSavedGraph(): SavedGraph | null {
   const editor = getEditor();
-  const area = getArea();
-  if (!editor || !area) return null;
+  const view = getView();
+  if (!editor || !view) return null;
 
   const nodes: SavedNode[] = editor.getNodes().map((n) => {
-    const pos = area.nodeViews.get(n.id)?.position ?? { x: 0, y: 0 };
+    const pos = view.position(n.id) ?? { x: 0, y: 0 };
     // A placeholder re-emits its ORIGINAL type, never "PlaceholderNode", so a build
     // that has the type restores the real node.
     if (n instanceof PlaceholderNode) {
@@ -198,8 +198,8 @@ export function getLastLoadIdMap(): ReadonlyMap<string, string> {
 /** False = refused or rolled back, with the existing graph left intact. */
 export async function loadGraph(g: SavedGraph): Promise<boolean> {
   const editor = getEditor();
-  const area = getArea();
-  if (!editor || !area) return false;
+  const view = getView();
+  if (!editor || !view) return false;
 
   // Structural gate BEFORE the destructive clear — a malformed file would otherwise
   // throw partway through the rebuild, after the user's graph was gone.
@@ -229,7 +229,7 @@ export async function loadGraph(g: SavedGraph): Promise<boolean> {
   suspendAutosave();
   beginGraphRebuild(); // suppress live-creation behaviors (group absorb) while loading
   try {
-    const { placeholdered } = await rebuildGraph(g, editor, area);
+    const { placeholdered } = await rebuildGraph(g, editor, view);
     if (placeholdered.length > 0) {
       const types = [...new Set(placeholdered)].join(", ");
       pushNotice(
@@ -242,7 +242,7 @@ export async function loadGraph(g: SavedGraph): Promise<boolean> {
     console.error("[solenoid] graph load failed; rolling back to the previous graph", err);
     if (snapshot) {
       try {
-        await rebuildGraph(snapshot, editor, area);
+        await rebuildGraph(snapshot, editor, view);
         pushNotice("That graph couldn't be loaded, so your previous work was restored.", "error");
       } catch (err2) {
         console.error("[solenoid] rollback also failed", err2);
@@ -275,7 +275,7 @@ export async function loadGraph(g: SavedGraph): Promise<boolean> {
 async function rebuildGraph(
   g: SavedGraph,
   editor: NonNullable<ReturnType<typeof getEditor>>,
-  area: NonNullable<ReturnType<typeof getArea>>,
+  view: NonNullable<ReturnType<typeof getView>>,
 ): Promise<{ placeholdered: string[] }> {
   // Build mode must be entered FIRST so the node-by-node construction is never seen;
   // a doc switch gets the same overlay as a plain curtain over teardown + rebuild.
@@ -366,7 +366,7 @@ async function rebuildGraph(
   for (let i = 0; i < toBuild.length; i += yieldEvery) {
     await Promise.all(toBuild.slice(i, i + yieldEvery).map(async ({ node, x, y }) => {
       await editor.addNode(node as SolenoidNode);
-      await area.moveNode(node.id, { x, y });
+      await view.moveNode(node.id, { x, y });
       bump();
     }));
     if (curtain) await paint();
@@ -463,8 +463,8 @@ async function rebuildGraph(
 
   await processGraph();
   // zoomAt over an empty node set produces a NaN transform.
-  if (editor.getNodes().length > 0) await zoomAt(area, editor.getNodes());
-  syncGroupCollapse(editor, area); // restore any collapsed groups' hidden members
+  if (editor.getNodes().length > 0) await zoomAt(view, editor.getNodes());
+  syncGroupCollapse(editor, view); // restore any collapsed groups' hidden members
 
   // Two RAFs: docked FCs can only snap once heights settle (a Decimal chip lays
   // out a frame late).

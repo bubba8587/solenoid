@@ -1,4 +1,4 @@
-import type { Area } from "../../src/graph/area";
+import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import type { Schemes } from "../../src/graph/schemes";
@@ -13,10 +13,10 @@ import { GROUP_PAD, GROUP_HEADER, autofitGroupWithHistory } from "../../src/grap
 import { COLLAPSE_LAYOUT, groupCollapseStore } from "../../src/graph/groupCollapse";
 
 // ─── Headless Tidy/Cleanup harness ──────────────────────────────────────────────
-// The real arrangeFn is DOM-coupled: it measures node sizes off area.nodeViews
-// (offsetWidth/Height), stamps sizes back via area.resize, and moves nodes via
-// async area.translate. This harness runs the REAL makeArrangeFn / makeCleanupFn
-// against a real NodeEditor and a FAKE area whose views model exactly that DOM
+// The real arrangeFn is DOM-coupled: it measures node sizes off view.nodeViews
+// (offsetWidth/Height), stamps sizes back via view.resize, and moves nodes via
+// async view.translate. This harness runs the REAL makeArrangeFn / makeCleanupFn
+// against a real NodeEditor and a FAKE view whose views model exactly that DOM
 // contract (position + a measurable element whose size reflects resize stamps),
 // with elkjs running for real. It exists to pin the expanded-group invariants:
 //
@@ -46,11 +46,14 @@ interface FakeView {
   heightPinned: boolean;
 }
 
-function makeFakeArea() {
+/** The fake exposes its per-node handles as `fakes` beside the real View API. */
+type FakeViewHandle = View & { fakes: Map<string, FakeView> };
+
+function makeFakeView() {
   const nodeViews = new Map<string, FakeView>();
   // `naturalFn` models a React-driven size (groups: expanded box vs compact
   // collapsed card). When it changes what it reports (collapse flip → React
-  // rewrites the style attribute), any earlier area.resize stamp dies with it.
+  // rewrites the style attribute), any earlier view.resize stamp dies with it.
   const addView = (id: string, x: number, y: number, w: number, h: number, naturalFn?: () => { w: number; h: number }) => {
     let lastNatural = naturalFn ? naturalFn() : { w, h };
     const natural = () => {
@@ -94,8 +97,12 @@ function makeFakeArea() {
     nodeViews.set(id, view);
     return view;
   };
-  const area = {
-    nodeViews,
+  const view = {
+    fakes: nodeViews,
+    hasNode: (id: string) => nodeViews.has(id),
+    position: (id: string) => nodeViews.get(id)?.position,
+    nodeElement: (id: string) => (nodeViews.get(id)?.element ?? null) as unknown as HTMLElement | null,
+    connectionElement: () => null,
     async moveNode(id: string, pos: Pos) {
       const v = nodeViews.get(id);
       if (v) v.position = { ...pos };
@@ -104,7 +111,7 @@ function makeFakeArea() {
     async rerenderNode() { /* re-render — nothing to do headless */ },
     transform: { k: 1, x: 0, y: 0 },
   };
-  return { area: area as unknown as Area, addView };
+  return { view: view as unknown as FakeViewHandle, addView };
 }
 
 
@@ -149,7 +156,7 @@ afterEach(() => {
 // Build the standard scene: src → [group: m1 → m2] → sink, group expanded.
 async function buildScene() {
   const editor = new NodeEditor<Schemes>();
-  const { area, addView } = makeFakeArea();
+  const { view, addView } = makeFakeView();
 
   const src = new ArithmeticNode({ op: "add" });
   const m1 = new ArithmeticNode({ op: "add" });
@@ -193,33 +200,33 @@ async function buildScene() {
 
   const ensureElk = makeEnsureElk(() => false);
   const arrangeFn = makeArrangeFn({
-    editor, area,
+    editor, view,
     container: {} as HTMLElement,
     ensureElk,
     repositionDockedTo: () => {},
     isDestroyed: () => false,
   });
-  return { editor, area, arrangeFn, src, m1, m2, sink, group };
+  return { editor, view, arrangeFn, src, m1, m2, sink, group };
 }
 
-function boxOf(area: Area, id: string): Box {
-  const v = area.nodeViews.get(id) as unknown as FakeView;
+function boxOf(view: FakeViewHandle, id: string): Box {
+  const v = view.fakes.get(id) as unknown as FakeView;
   return { id, x: v.position.x, y: v.position.y, w: v.element.offsetWidth, h: v.element.offsetHeight };
 }
 
 describe("global Tidy with an expanded group (headless, real ELK + real arrangeFn)", () => {
   it("members keep their offsets relative to the group box (rigid carry)", async () => {
-    const { area, arrangeFn, m1, m2, group } = await buildScene();
-    const gv = area.nodeViews.get(group.id)!;
+    const { view, arrangeFn, m1, m2, group } = await buildScene();
+    const gv = view.fakes.get(group.id)!;
     const before = {
-      m1: { dx: area.nodeViews.get(m1.id)!.position.x - gv.position.x, dy: area.nodeViews.get(m1.id)!.position.y - gv.position.y },
-      m2: { dx: area.nodeViews.get(m2.id)!.position.x - gv.position.x, dy: area.nodeViews.get(m2.id)!.position.y - gv.position.y },
+      m1: { dx: view.fakes.get(m1.id)!.position.x - gv.position.x, dy: view.fakes.get(m1.id)!.position.y - gv.position.y },
+      m2: { dx: view.fakes.get(m2.id)!.position.x - gv.position.x, dy: view.fakes.get(m2.id)!.position.y - gv.position.y },
     };
     await arrangeFn({ skipConfirm: true });
     await flushRafs();
     const after = {
-      m1: { dx: area.nodeViews.get(m1.id)!.position.x - gv.position.x, dy: area.nodeViews.get(m1.id)!.position.y - gv.position.y },
-      m2: { dx: area.nodeViews.get(m2.id)!.position.x - gv.position.x, dy: area.nodeViews.get(m2.id)!.position.y - gv.position.y },
+      m1: { dx: view.fakes.get(m1.id)!.position.x - gv.position.x, dy: view.fakes.get(m1.id)!.position.y - gv.position.y },
+      m2: { dx: view.fakes.get(m2.id)!.position.x - gv.position.x, dy: view.fakes.get(m2.id)!.position.y - gv.position.y },
     };
     expect(after.m1.dx).toBeCloseTo(before.m1.dx, 6);
     expect(after.m1.dy).toBeCloseTo(before.m1.dy, 6);
@@ -228,35 +235,35 @@ describe("global Tidy with an expanded group (headless, real ELK + real arrangeF
   });
 
   it("loose nodes never land inside the expanded group box", async () => {
-    const { area, arrangeFn, src, sink, group } = await buildScene();
+    const { view, arrangeFn, src, sink, group } = await buildScene();
     await arrangeFn({ skipConfirm: true });
     await flushRafs();
-    const g = boxOf(area, group.id);
+    const g = boxOf(view, group.id);
     for (const id of [src.id, sink.id]) {
-      const b = boxOf(area, id);
+      const b = boxOf(view, id);
       expect(overlaps(g, b), `${id} overlaps the group box`).toBe(false);
     }
   });
 
   it("the group's rendered box is unchanged by the pass (rigid unit, not resized)", async () => {
-    const { area, arrangeFn, group } = await buildScene();
-    const before = boxOf(area, group.id);
+    const { view, arrangeFn, group } = await buildScene();
+    const before = boxOf(view, group.id);
     await arrangeFn({ skipConfirm: true });
     await flushRafs();
-    const after = boxOf(area, group.id);
+    const after = boxOf(view, group.id);
     expect(after.w).toBeCloseTo(before.w, 6);
     expect(after.h).toBeCloseTo(before.h, 6);
   });
 
   async function expectSecondTidyIdempotent() {
-    const { area, arrangeFn, editor } = await buildScene();
+    const { view, arrangeFn, editor } = await buildScene();
     await arrangeFn({ skipConfirm: true });
     await flushRafs();
-    const first = new Map(editor.getNodes().map((n) => [n.id, { ...area.nodeViews.get(n.id)!.position }]));
+    const first = new Map(editor.getNodes().map((n) => [n.id, { ...view.fakes.get(n.id)!.position }]));
     await arrangeFn({ skipConfirm: true });
     await flushRafs();
     for (const n of editor.getNodes()) {
-      const p = area.nodeViews.get(n.id)!.position;
+      const p = view.fakes.get(n.id)!.position;
       const f = first.get(n.id)!;
       expect(Math.abs(p.x - f.x), `${n.label} drifted x`).toBeLessThanOrEqual(1);
       expect(Math.abs(p.y - f.y), `${n.label} drifted y`).toBeLessThanOrEqual(1);
@@ -283,7 +290,7 @@ describe("global Tidy with an expanded group (headless, real ELK + real arrangeF
 describe("global Tidy — two expanded groups + docked FC on a member", () => {
   async function buildTwoGroupScene() {
     const editor = new NodeEditor<Schemes>();
-    const { area, addView } = makeFakeArea();
+    const { view, addView } = makeFakeView();
 
     const src = new ArithmeticNode({ op: "add" });
     const a1 = new ArithmeticNode({ op: "add" });
@@ -331,22 +338,22 @@ describe("global Tidy — two expanded groups + docked FC on a member", () => {
 
     const ensureElk = makeEnsureElk(() => false);
     const arrangeFn = makeArrangeFn({
-      editor, area,
+      editor, view,
       container: {} as HTMLElement,
       ensureElk,
       repositionDockedTo: () => {},
       isDestroyed: () => false,
     });
-    return { editor, area, arrangeFn, src, a1, a2, b1, b2, loose, fc, gA, gB };
+    return { editor, view, arrangeFn, src, a1, a2, b1, b2, loose, fc, gA, gB };
   }
 
   it("members of both groups ride rigidly; no group/loose overlaps; no stray height pins", async () => {
     const s = await buildTwoGroupScene();
     const relBefore = new Map<string, Pos>();
     for (const [gid, mids] of [[s.gA.id, [s.a1.id, s.a2.id]], [s.gB.id, [s.b1.id, s.b2.id]]] as Array<[string, string[]]>) {
-      const gv = s.area.nodeViews.get(gid)!;
+      const gv = s.view.fakes.get(gid)!;
       for (const mid of mids) {
-        const mv = s.area.nodeViews.get(mid)!;
+        const mv = s.view.fakes.get(mid)!;
         relBefore.set(mid, { x: mv.position.x - gv.position.x, y: mv.position.y - gv.position.y });
       }
     }
@@ -354,9 +361,9 @@ describe("global Tidy — two expanded groups + docked FC on a member", () => {
     await flushRafs();
 
     for (const [gid, mids] of [[s.gA.id, [s.a1.id, s.a2.id]], [s.gB.id, [s.b1.id, s.b2.id]]] as Array<[string, string[]]>) {
-      const gv = s.area.nodeViews.get(gid)!;
+      const gv = s.view.fakes.get(gid)!;
       for (const mid of mids) {
-        const mv = s.area.nodeViews.get(mid)!;
+        const mv = s.view.fakes.get(mid)!;
         const rel = relBefore.get(mid)!;
         expect(mv.position.x - gv.position.x, `${mid} rel-x drifted`).toBeCloseTo(rel.x, 6);
         expect(mv.position.y - gv.position.y, `${mid} rel-y drifted`).toBeCloseTo(rel.y, 6);
@@ -366,7 +373,7 @@ describe("global Tidy — two expanded groups + docked FC on a member", () => {
     const units = [s.gA.id, s.gB.id, s.src.id, s.loose.id, s.b2.id].filter(
       (id, i, arr) => arr.indexOf(id) === i,
     );
-    const boxes = [s.gA.id, s.gB.id, s.src.id, s.loose.id].map((id) => boxOf(s.area, id));
+    const boxes = [s.gA.id, s.gB.id, s.src.id, s.loose.id].map((id) => boxOf(s.view, id));
     void units;
     for (let i = 0; i < boxes.length; i++) {
       for (let j = i + 1; j < boxes.length; j++) {
@@ -374,11 +381,11 @@ describe("global Tidy — two expanded groups + docked FC on a member", () => {
       }
     }
     // No node left with a stamped, undropped height pin (a frozen card): the
-    // arrange stamps sizes via area.resize and MUST clear every pin it created
+    // arrange stamps sizes via view.resize and MUST clear every pin it created
     // on regular nodes (groups excluded — React owns their size).
     for (const n of s.editor.getNodes()) {
       if (n instanceof GroupNode) continue;
-      const v = s.area.nodeViews.get(n.id) as unknown as FakeView;
+      const v = s.view.fakes.get(n.id) as unknown as FakeView;
       expect(v.heightPinned, `${n.id} (${n.label}) left with a pinned height`).toBe(false);
     }
     dockedNodeStore.undock(s.fc.id);
@@ -388,7 +395,7 @@ describe("global Tidy — two expanded groups + docked FC on a member", () => {
 describe("within-group Tidy (group Tidy button): grow → push → autofit", () => {
   it("members land inside the final box; a right-hand neighbor is pushed clear", { timeout: 20000 }, async () => {
     const editor = new NodeEditor<Schemes>();
-    const { area, addView } = makeFakeArea();
+    const { view, addView } = makeFakeView();
 
     // A chain of three members crammed into a box that's too small for the
     // laid-out row, plus a neighbor parked just off the box's right edge.
@@ -417,7 +424,7 @@ describe("within-group Tidy (group Tidy button): grow → push → autofit", () 
 
     const ensureElk = makeEnsureElk(() => false);
     const arrangeFn = makeArrangeFn({
-      editor, area,
+      editor, view,
       container: {} as HTMLElement,
       ensureElk,
       repositionDockedTo: () => {},
@@ -428,29 +435,29 @@ describe("within-group Tidy (group Tidy button): grow → push → autofit", () 
     // autofit (wrap-to-members).
     await arrangeFn({ groupId: group.id });
     await flushRafs();
-    await autofitGroupWithHistory(editor, area, group);
+    await autofitGroupWithHistory(editor, view, group);
     await flushRafs();
 
     // Every member sits inside the final box interior.
-    const gv = area.nodeViews.get(group.id)!;
+    const gv = view.fakes.get(group.id)!;
     for (const id of [m1.id, m2.id, m3.id]) {
-      const v = area.nodeViews.get(id)!;
+      const v = view.fakes.get(id)!;
       expect(v.position.x, `${id} left of box`).toBeGreaterThanOrEqual(gv.position.x - 1);
       expect(v.position.y, `${id} above box interior`).toBeGreaterThanOrEqual(gv.position.y + GROUP_HEADER - 1);
       expect(v.position.x + v.element.offsetWidth, `${id} past right edge`).toBeLessThanOrEqual(gv.position.x + group.width + 1);
       expect(v.position.y + v.element.offsetHeight, `${id} past bottom edge`).toBeLessThanOrEqual(gv.position.y + group.height + 1);
     }
     // The neighbor is clear of the grown box.
-    const g = boxOf(area, group.id);
-    const nb = boxOf(area, neighbor.id);
+    const g = boxOf(view, group.id);
+    const nb = boxOf(view, neighbor.id);
     expect(overlaps(g, nb), "neighbor overlaps the grown group box").toBe(false);
   });
 });
 
 describe("Cleanup with an expanded group (headless)", () => {
   it("members ride their group through tidy→autofit→collapse→top-level tidy", { timeout: 20000 }, async () => {
-    const { editor, area, arrangeFn, m1, m2, group } = await buildScene();
-    const cleanup = makeCleanupFn(editor, area, arrangeFn);
+    const { editor, view, arrangeFn, m1, m2, group } = await buildScene();
+    const cleanup = makeCleanupFn(editor, view, arrangeFn);
     const run = cleanup();
     // Cleanup awaits two rAFs mid-flight (and ELK runs for real between them);
     // keep yielding + flushing until it resolves.
@@ -466,9 +473,9 @@ describe("Cleanup with an expanded group (headless)", () => {
     // After cleanup the group is collapsed; members must sit inside the
     // group's STORED (expanded) box at its final position, so a later expand
     // shows them inside it.
-    const gv = area.nodeViews.get(group.id)!;
+    const gv = view.fakes.get(group.id)!;
     for (const id of [m1.id, m2.id]) {
-      const v = area.nodeViews.get(id) as unknown as FakeView;
+      const v = view.fakes.get(id) as unknown as FakeView;
       const inX = v.position.x >= gv.position.x - 1 && v.position.x + v.natural.w <= gv.position.x + group.width + 1;
       const inY = v.position.y >= gv.position.y + GROUP_HEADER - 1 && v.position.y + v.natural.h <= gv.position.y + group.height + 1;
       expect(inX, `${id} left the group box horizontally`).toBe(true);

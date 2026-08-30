@@ -1,4 +1,4 @@
-import type { Area } from "./area";
+import type { View } from "./view";
 import { ClassicPreset } from "rete";
 import type { NodeEditor } from "rete";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "./schemes";
@@ -16,13 +16,13 @@ import { getOwningEditor } from "./activeGraph";
 
 type Editor = NodeEditor<Schemes>;
 
-function nodeBox(area: Area, id: string): { x: number; y: number; w: number; h: number } | null {
-  return measuredBox(area, id, getOwningEditor(id) ?? undefined);
+function nodeBox(view: View, id: string): { x: number; y: number; w: number; h: number } | null {
+  return measuredBox(view, id, getOwningEditor(id) ?? undefined);
 }
 
 /** Create a composite wrapping the current selection. Returns the new
  *  composite's id, or null if nothing selectable was picked. */
-export async function createCompositeFromSelection(editor: Editor, area: Area): Promise<string | null> {
+export async function createCompositeFromSelection(editor: Editor, view: View): Promise<string | null> {
   // A lingering cable selection must not ride along into the relocation reflow.
   cableSelectionStore.set(null);
   // Absorbing a member hidden in a collapsed group would silently rip it out of that group.
@@ -33,7 +33,7 @@ export async function createCompositeFromSelection(editor: Editor, area: Area): 
 
   let minX = Infinity, minY = Infinity;
   for (const n of sel) {
-    const b = nodeBox(area, n.id);
+    const b = nodeBox(view, n.id);
     if (!b) continue;
     minX = Math.min(minX, b.x);
     minY = Math.min(minY, b.y);
@@ -55,7 +55,7 @@ export async function createCompositeFromSelection(editor: Editor, area: Area): 
       await editor.removeConnection(c.id);
     }
     for (const n of sel) {
-      const b = nodeBox(area, n.id);
+      const b = nodeBox(view, n.id);
       await editor.removeNode(n.id);
       await composite.internalEditor.addNode(n as SolenoidNode);
       // Positions are stored BBOX-RELATIVE, so drill-in and unpack both restore the layout.
@@ -111,7 +111,7 @@ export async function createCompositeFromSelection(editor: Editor, area: Area): 
         new ClassicPreset.Connection(source, c.sourceOutput, marker, "value") as SolenoidConnection,
       );
       const sPos = composite.internalPositions[c.source];
-      const sBox = nodeBox(area, c.source); // node already relocated — box may be gone; width falls back
+      const sBox = nodeBox(view, c.source); // node already relocated — box may be gone; width falls back
       if (sPos) composite.internalPositions[marker.id] = { x: sPos.x + (sBox?.w ?? 220) + 80, y: sPos.y };
       const portId = composite.addOutputPort({ label: portLabel, internalNodeId: marker.id, tier: "basic" });
       await editor.addConnection(
@@ -122,7 +122,7 @@ export async function createCompositeFromSelection(editor: Editor, area: Area): 
     // Must run AFTER the ports exist — the per-cable pipe settle above couldn't see them.
     composite.settleInternalTypes();
     await editor.addNode(composite as SolenoidNode);
-    await area.moveNode(composite.id, { x: minX, y: minY });
+    await view.moveNode(composite.id, { x: minX, y: minY });
   } finally {
     endGraphRebuild();
   }
@@ -133,13 +133,13 @@ export async function createCompositeFromSelection(editor: Editor, area: Area): 
 }
 
 /** Returns true if the node was a composite and was unpacked. */
-export async function unpackComposite(editor: Editor, area: Area, compositeId: string): Promise<boolean> {
+export async function unpackComposite(editor: Editor, view: View, compositeId: string): Promise<boolean> {
   const composite = editor.getNode(compositeId);
   if (!(composite instanceof CompositeNode)) return false;
   // A loaded-but-never-computed composite still holds only its snapshot.
   await composite.hydrate(ctorRegistry());
 
-  const box = nodeBox(area, compositeId);
+  const box = nodeBox(view, compositeId);
   const baseX = box?.x ?? 0;
   const baseY = box?.y ?? 0;
 
@@ -164,7 +164,7 @@ export async function unpackComposite(editor: Editor, area: Area, compositeId: s
       if (markerIds.has(n.id)) continue; // boundary markers dissolve with the card
       await editor.addNode(n as SolenoidNode);
       const rel = composite.internalPositions[n.id];
-      await area.moveNode(n.id, { x: baseX + (rel?.x ?? 0), y: baseY + (rel?.y ?? 0) });
+      await view.moveNode(n.id, { x: baseX + (rel?.x ?? 0), y: baseY + (rel?.y ?? 0) });
     }
 
     for (const c of internalConns) {

@@ -3,7 +3,7 @@ import type { SeriesNode as SeriesNodeType, SeriesOp } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";
-import { getActiveArea } from "../activeGraph";
+import { getActiveView } from "../activeGraph";
 
 const OPS = (Object.keys(SERIES_OP_META) as SeriesOp[]).map((op) => ({
   value: op,
@@ -18,7 +18,7 @@ export function SeriesComponent({ data, emit }: NodeProps<SeriesNodeType>) {
     const departing = data.keysDroppedBySwitch(next);
     if (departing.length > 0) await dropInputCables(data.id, departing);
     data.setOp(next);
-    await getActiveArea()?.rerenderNode(data.id);
+    await getActiveView()?.rerenderNode(data.id);
     setOpField(next);
   }
 

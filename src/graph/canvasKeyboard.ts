@@ -1,5 +1,5 @@
 // Canvas keyboard shortcuts, skipped while focus is in an editable form element.
-import type { Area } from "./area";
+import type { View } from "./view";
 import type { MutableRefObject } from "react";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
@@ -33,7 +33,7 @@ import { documentStore } from "./documentStore";
 
 export interface CanvasKeyboardDeps {
   editorRef: MutableRefObject<NodeEditor<Schemes> | null>;
-  areaRef: MutableRefObject<Area | null>;
+  viewRef: MutableRefObject<View | null>;
   historyRef: MutableRefObject<{ undo(): Promise<unknown>; redo(): Promise<unknown> } | null>;
   containerRef: MutableRefObject<HTMLDivElement | null>;
   screenMouseRef: MutableRefObject<{ x: number; y: number }>;
@@ -45,7 +45,7 @@ export interface CanvasKeyboardDeps {
 }
 
 export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
-  const { editorRef, areaRef, historyRef, containerRef, screenMouseRef, isAddMenuOpen, standsDownWhenDrilled } = deps;
+  const { editorRef, viewRef, historyRef, containerRef, screenMouseRef, isAddMenuOpen, standsDownWhenDrilled } = deps;
 
   // Selected groups + the group of any selected member; all groups when none.
   function resolveGroupTargets(): GroupNode[] {
@@ -64,19 +64,19 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
   }
   function expandCollapseGroups() {
     const editor = editorRef.current;
-    const area = areaRef.current;
-    if (!editor || !area) return;
+    const view = viewRef.current;
+    if (!editor || !view) return;
     const targets = resolveGroupTargets();
     if (targets.length === 0) return;
     const collapse = targets.some((g) => !g.collapsed);
-    void setGroupsCollapsed(editor, area, targets, collapse).then(() => scheduleAutosave());
+    void setGroupsCollapsed(editor, view, targets, collapse).then(() => scheduleAutosave());
   }
   function autofitGroups() {
     const editor = editorRef.current;
-    const area = areaRef.current;
-    if (!editor || !area) return;
+    const view = viewRef.current;
+    if (!editor || !view) return;
     const targets = resolveGroupTargets();
-    void (async () => { for (const g of targets) await autofitGroupWithHistory(editor, area, g); })();
+    void (async () => { for (const g of targets) await autofitGroupWithHistory(editor, view, g); })();
   }
   // Rotate the selected Standoff / Conduits / Angle Dials one step (-1 = CCW).
   // Returns the count rotated so the caller only swallows the key on a hit.
@@ -115,8 +115,8 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
   // check the selection synchronously to decide preventDefault (this is async).
   async function nudgeSelection(dx: number, dy: number) {
     const editor = editorRef.current;
-    const area = areaRef.current;
-    if (!editor || !area) return;
+    const view = viewRef.current;
+    if (!editor || !view) return;
     // A standoff cluster moves as a whole — nudging one end and re-settling would
     // pull it half-way back.
     const selectedIds = editor.getNodes()
@@ -124,9 +124,9 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       .map((n) => n.id);
     const toMove = expandMoveSet(editor, selectedIds);
     for (const id of toMove) {
-      const v = area.nodeViews.get(id);
-      if (!v) continue;
-      await area.moveNode(id, { x: v.position.x + dx, y: v.position.y + dy });
+      const pos = view.position(id);
+      if (!pos) continue;
+      await view.moveNode(id, { x: pos.x + dx, y: pos.y + dy });
       repositionDockedNodes(id); // a docked FC rides along with its host
     }
     if (!standoffStore.isEmpty()) settleStandoffs();
@@ -181,7 +181,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       }
       if (!e.shiftKey) {
         const editor = editorRef.current;
-        const area = areaRef.current;
+        const view = viewRef.current;
         // Tab is also the browser's focus-traversal key, so only hijack it on the
         // canvas BACKGROUND — on a control, native traversal must win.
         if (e.key === "Tab") {
@@ -203,8 +203,8 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
             addMenuRequest.open(screenMouseRef.current.x, screenMouseRef.current.y);
             e.preventDefault(); return;
           case "KeyG":
-            if (editor && area && editor.getNodes().some((n) => (n as { selected?: boolean }).selected)) {
-              void createGroupFromSelection(editor, area).then(() => processGraph());
+            if (editor && view && editor.getNodes().some((n) => (n as { selected?: boolean }).selected)) {
+              void createGroupFromSelection(editor, view).then(() => processGraph());
             }
             e.preventDefault(); return;
           case "KeyT":
@@ -241,9 +241,9 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       if (editable) return;
       if (e.code === "KeyG" && e.shiftKey) {
         const editor = editorRef.current;
-        const area = areaRef.current;
-        if (editor && area && editor.getNodes().some((n) => (n as { selected?: boolean }).selected)) {
-          void createCompositeFromSelection(editor, area);
+        const view = viewRef.current;
+        if (editor && view && editor.getNodes().some((n) => (n as { selected?: boolean }).selected)) {
+          void createCompositeFromSelection(editor, view);
         }
         e.preventDefault(); return;
       }
@@ -266,10 +266,10 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       }
       if (e.code === "KeyV") {
         if (isolateStore.isActive()) { e.preventDefault(); return; } // no new nodes while isolating
-        const area = areaRef.current;
+        const view = viewRef.current;
         const container = containerRef.current;
-        if (area && container) {
-          const { x: tx, y: ty, k } = area.transform;
+        if (view && container) {
+          const { x: tx, y: ty, k } = view.transform;
           const rect = container.getBoundingClientRect();
           const canvasX = (screenMouseRef.current.x - rect.left - tx) / k;
           const canvasY = (screenMouseRef.current.y - rect.top - ty) / k;

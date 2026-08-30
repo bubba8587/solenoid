@@ -1,4 +1,4 @@
-import type { Area } from "./area";
+import type { View } from "./view";
 import type { NodeEditor } from "rete";
 import type { ClassicPreset } from "rete";
 import type { Schemes } from "./schemes";
@@ -41,22 +41,22 @@ export const GROUP_HEADER = 34;  // header height (matches GroupNode.css)
 export const GROUP_MIN_W = 140;
 export const GROUP_MIN_H = 90;
 
-function nodeBox(area: Area, id: string): { x: number; y: number; w: number; h: number } | null {
+function nodeBox(view: View, id: string): { x: number; y: number; w: number; h: number } | null {
   // measuredBox guarantees a non-zero size: an unpainted member reading
   // offsetWidth/Height = 0 collapses the wrapped bbox to that member's corner.
-  return measuredBox(area, id, getOwningEditor(id) ?? undefined);
+  return measuredBox(view, id, getOwningEditor(id) ?? undefined);
 }
 
 /** Pin a group's view element behind its members (simpleNodesOrder stacks by DOM order). */
-export function sendGroupToBack(area: Area, groupId: string): void {
-  const el = area.nodeViews.get(groupId)?.element;
+export function sendGroupToBack(view: View, groupId: string): void {
+  const el = view.nodeElement(groupId);
   // Behind members and behind member Conduits (-1) so a Conduit inside a group
   // stays selectable. The GroupNode effect keeps this in sync on later renders.
   if (el) el.style.zIndex = "-2";
 }
 
 /** Create a group wrapping the current selection. Returns the new group's id, or null. */
-export async function createGroupFromSelection(editor: Editor, area: Area): Promise<string | null> {
+export async function createGroupFromSelection(editor: Editor, view: View): Promise<string | null> {
   // Clear the separate cable-selection channel first — a "selected" cable carried
   // into the group-forming reflow garbles its rendering.
   cableSelectionStore.set(null);
@@ -69,7 +69,7 @@ export async function createGroupFromSelection(editor: Editor, area: Area): Prom
 
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const n of sel) {
-    const b = nodeBox(area, n.id);
+    const b = nodeBox(view, n.id);
     if (!b) continue;
     minX = Math.min(minX, b.x);
     minY = Math.min(minY, b.y);
@@ -88,8 +88,8 @@ export async function createGroupFromSelection(editor: Editor, area: Area): Prom
   });
   await editor.addNode(group);
   rebuildGroupMembership(editor); // members tint now, not on the next unrelated rebuild
-  await area.moveNode(group.id, { x: minX - GROUP_PAD, y: minY - GROUP_PAD - GROUP_HEADER });
-  sendGroupToBack(area, group.id);
+  await view.moveNode(group.id, { x: minX - GROUP_PAD, y: minY - GROUP_PAD - GROUP_HEADER });
+  sendGroupToBack(view, group.id);
   return group.id;
 }
 
@@ -98,13 +98,13 @@ export type GroupGeom = { x: number; y: number; width: number; height: number };
 /** Wrap the box tightly around the current members, using the same padding/header
  *  offsets as creation. Returns { before, after } for an undo entry, or null. */
 export async function autofitGroupBox(
-  _editor: Editor, area: Area, group: GroupNode,
+  _editor: Editor, view: View, group: GroupNode,
 ): Promise<{ before: GroupGeom; after: GroupGeom } | null> {
-  const gv = area.nodeViews.get(group.id);
+  const gv = view.position(group.id);
   if (!gv) return null;
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   for (const id of group.members) {
-    const b = nodeBox(area, id);
+    const b = nodeBox(view, id);
     if (!b) continue;
     minX = Math.min(minX, b.x);
     minY = Math.min(minY, b.y);
@@ -113,7 +113,7 @@ export async function autofitGroupBox(
   }
   if (!Number.isFinite(minX)) return null;
 
-  const before: GroupGeom = { x: gv.position.x, y: gv.position.y, width: group.width, height: group.height };
+  const before: GroupGeom = { x: gv.x, y: gv.y, width: group.width, height: group.height };
   const after: GroupGeom = {
     x: minX - GROUP_PAD,
     y: minY - GROUP_PAD - GROUP_HEADER,
@@ -125,20 +125,20 @@ export async function autofitGroupBox(
 
   group.width = after.width;
   group.height = after.height;
-  await area.moveNode(group.id, { x: after.x, y: after.y });
-  await area.rerenderNode(group.id);
+  await view.moveNode(group.id, { x: after.x, y: after.y });
+  await view.rerenderNode(group.id);
   return { before, after };
 }
 
 /** Autofit, then push ONE undo entry (position + size + members) so the resize-grip
  *  double-press and the autofit hotkey undo as a single step. */
-export async function autofitGroupWithHistory(editor: Editor, area: Area, group: GroupNode): Promise<void> {
-  const res = await autofitGroupBox(editor, area, group);
+export async function autofitGroupWithHistory(editor: Editor, view: View, group: GroupNode): Promise<void> {
+  const res = await autofitGroupBox(editor, view, group);
   if (!res) return;
   // Autofit must NOT re-derive membership from the new geometry (no reconcileGroupBox);
   // rebuildGroupMembership only refreshes color markers from the unchanged list.
   rebuildGroupMembership(editor);
-  syncGroupCollapse(editor, area);
+  syncGroupCollapse(editor, view);
   // Autofit moved the box edges; re-settle any standoffs anchored to this group
   // (or its members) as a rigid block, pinning the just-fitted group.
   settleStandoffs(new Set([group.id]), { forceLock: true });
@@ -147,7 +147,7 @@ export async function autofitGroupWithHistory(editor: Editor, area: Area, group:
 
 /** Move every member of a group by (dx, dy) — called as the group is dragged. */
 export function moveGroupMembers(
-  editor: Editor, area: Area, group: GroupNode, dx: number, dy: number,
+  editor: Editor, view: View, group: GroupNode, dx: number, dy: number,
   // Rete's selector already translates selected members, so drag callers pass
   // `skipSelected` or those members move at double speed; a programmatic push isn't
   // selector-driven and leaves it off.
@@ -156,47 +156,47 @@ export function moveGroupMembers(
   if (dx === 0 && dy === 0) return;
   for (const id of group.members) {
     if (skipSelected && (editor.getNode(id) as { selected?: boolean } | undefined)?.selected) continue;
-    const v = area.nodeViews.get(id);
-    if (!v) continue;
-    void area.moveNode(id, { x: v.position.x + dx, y: v.position.y + dy });
+    const p = view.position(id);
+    if (!p) continue;
+    void view.moveNode(id, { x: p.x + dx, y: p.y + dy });
   }
 }
 
 // Containment must use the RENDERED element — a collapsed group draws as a small card,
 // so its stored width/height would absorb nodes dropped where the box merely would be.
-function groupRenderedSize(area: Area, g: GroupNode): { w: number; h: number } {
-  const el = area.nodeViews.get(g.id)?.element;
+function groupRenderedSize(view: View, g: GroupNode): { w: number; h: number } {
+  const el = view.nodeElement(g.id);
   return { w: el?.offsetWidth || g.width, h: el?.offsetHeight || g.height };
 }
 
-function centerInside(area: Area, group: GroupNode, b: { x: number; y: number; w: number; h: number }): boolean {
-  const gv = area.nodeViews.get(group.id);
+function centerInside(view: View, group: GroupNode, b: { x: number; y: number; w: number; h: number }): boolean {
+  const gv = view.position(group.id);
   if (!gv) return false;
-  const { w, h } = groupRenderedSize(area, group);
+  const { w, h } = groupRenderedSize(view, group);
   const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
-  return cx >= gv.position.x && cx <= gv.position.x + w &&
-         cy >= gv.position.y && cy <= gv.position.y + h;
+  return cx >= gv.x && cx <= gv.x + w &&
+         cy >= gv.y && cy <= gv.y + h;
 }
 
 /** EXCLUSIVE and STABLE: a node belongs to at most one group and keeps it while its
  *  center is inside, so an overlapping group can never steal it. */
-export function reconcileGroupMembership(editor: Editor, area: Area, draggedId: string): void {
+export function reconcileGroupMembership(editor: Editor, view: View, draggedId: string): void {
   const dn = editor.getNode(draggedId);
   if (!dn || dn instanceof GroupNode) return; // groups don't nest
-  const b = nodeBox(area, draggedId);
+  const b = nodeBox(view, draggedId);
   if (!b) return;
 
   const groups = editor.getNodes().filter((n): n is GroupNode => n instanceof GroupNode);
   const current = groups.find((g) => g.members.includes(draggedId));
   let host = current;
-  if (current && !centerInside(area, current, b)) {
+  if (current && !centerInside(view, current, b)) {
     current.members = current.members.filter((m) => m !== draggedId);
     host = undefined;
   }
   if (!host) {
     // Never join a COLLAPSED group — the next syncGroupCollapse would hide the new
     // member, so the node visibly vanishes.
-    const target = groups.find((g) => g !== current && !g.collapsed && centerInside(area, g, b));
+    const target = groups.find((g) => g !== current && !g.collapsed && centerInside(view, g, b));
     if (target) { target.members = [...target.members, draggedId]; host = target; }
   }
   // A docked FC follows its host's group membership (it moves programmatically
@@ -211,18 +211,18 @@ export function reconcileGroupMembership(editor: Editor, area: Area, draggedId: 
 }
 
 /** Re-evaluate a single group's membership against all nodes — after its box is resized. */
-export function reconcileGroupBox(editor: Editor, area: Area, group: GroupNode): void {
+export function reconcileGroupBox(editor: Editor, view: View, group: GroupNode): void {
   // Membership only reconciles while EXPANDED — against the collapsed card every
   // member would fall outside and every bystander under it would be absorbed.
   if (group.collapsed) return;
-  const gv = area.nodeViews.get(group.id);
+  const gv = view.position(group.id);
   if (!gv) return;
   const groups = editor.getNodes().filter((n): n is GroupNode => n instanceof GroupNode);
   for (const n of editor.getNodes()) {
     if (n instanceof GroupNode) continue;
-    const b = nodeBox(area, n.id);
+    const b = nodeBox(view, n.id);
     if (!b) continue;
-    const inside = centerInside(area, group, b);
+    const inside = centerInside(view, group, b);
     const isMember = group.members.includes(n.id);
     if (inside && !isMember) {
       // Don't steal a node that already belongs to another group.
@@ -237,25 +237,25 @@ export function reconcileGroupBox(editor: Editor, area: Area, group: GroupNode):
 
 /** For LIVE creation (Add menu, paste) ONLY — during a load/seed rebuild membership
  *  is restored from the saved list instead. Returns true if added. */
-export function absorbIntoContainingGroup(editor: Editor, area: Area, nodeId: string): boolean {
+export function absorbIntoContainingGroup(editor: Editor, view: View, nodeId: string): boolean {
   const n = editor.getNode(nodeId);
   if (!n || n instanceof GroupNode) return false;
   // Already in a group (e.g. a pasted member of its pasted group) → leave it.
   for (const g of editor.getNodes()) {
     if (g instanceof GroupNode && g.members.includes(nodeId)) return false;
   }
-  const b = nodeBox(area, nodeId);
+  const b = nodeBox(view, nodeId);
   if (!b) return false;
   for (const g of editor.getNodes()) {
     // Skip collapsed groups — absorbing a fresh node would immediately hide it, so it
     // looks like the new node never appeared.
     if (!(g instanceof GroupNode) || g.collapsed) continue;
-    const gv = area.nodeViews.get(g.id);
+    const gv = view.position(g.id);
     if (!gv) continue;
-    const { w, h } = groupRenderedSize(area, g);
-    const fully = b.x >= gv.position.x && b.y >= gv.position.y &&
-                  b.x + b.w <= gv.position.x + w &&
-                  b.y + b.h <= gv.position.y + h;
+    const { w, h } = groupRenderedSize(view, g);
+    const fully = b.x >= gv.x && b.y >= gv.y &&
+                  b.x + b.w <= gv.x + w &&
+                  b.y + b.h <= gv.y + h;
     if (fully && !g.members.includes(nodeId)) {
       g.members = [...g.members, nodeId];
       return true;

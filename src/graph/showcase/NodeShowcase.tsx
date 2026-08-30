@@ -50,7 +50,7 @@ export default function NodeShowcase({ initialType }: { initialType: string }) {
   // Point the module singletons at THIS stack; safe only because the app canvas
   // never mounts in showcase mode, so no persistence hook can reach documents.
   useEffect(() => {
-    setEditorRefs(stack.editor, stack.engine, stack.area);
+    setEditorRefs(stack.editor, stack.engine, stack.view);
   }, [stack]);
 
   useEffect(() => {
@@ -64,7 +64,7 @@ export default function NodeShowcase({ initialType }: { initialType: string }) {
       await stack.editor.addNode(node);
       if (canceled) return;
       nodeNameStore.ensure(node.id, node.constructor.name);
-      await stack.area.moveNode(node.id, { x: PAD, y: PAD });
+      await stack.view.moveNode(node.id, { x: PAD, y: PAD });
       await processGraph();
     })();
     return () => { canceled = true; };

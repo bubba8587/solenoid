@@ -16,7 +16,7 @@ import { resolveExcelFunction } from "../excelFunctions";
 import { splitText, textAfterBefore, urlEncode, regexApply, replaceNth, safeRegex, reverseText, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters } from "./textOps";
 import { anyDataIn } from "./shared";
 import { dropInputCables } from "../components/cablePrune";
-import { getActiveArea } from "../activeGraph";
+import { getActiveView } from "../activeGraph";
 import { SolenoidSocket } from "../sockets";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./date";
 import type { TextAfterBeforeOp, UrlEncodeOp, RegexOp, PadSide } from "./textOps";
@@ -920,7 +920,7 @@ export class TemplateNode extends ClassicPreset.Node {
         for (const v of added) if (!this.inputs[v]) this.addInput(v, anyDataIn(v));
         await dropInputCables(this.id, removed);
         for (const v of removed) if (this.inputs[v]) this.removeInput(v);
-        await getActiveArea()?.rerenderNode(this.id);
+        await getActiveView()?.rerenderNode(this.id);
       })();
     });
   }

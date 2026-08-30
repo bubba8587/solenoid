@@ -14,7 +14,7 @@ import {
   TODAY_NOW_OP_META, DATE_TIME_VALUE_OP_META, DATE_PART_OP_META, WEEK_INFO_OP_META,
   DATE_DIFF_OP_META, DATE_ADD_OP_META, WORKDAYS_OP_META, dateDiffNeedsBasis,
 } from "../rete-nodes";
-import { getActiveArea, getActiveEditor } from "../activeGraph";
+import { getActiveView, getActiveEditor } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { InlineInputs } from "./inlineInput";
 import { RecalcButton } from "./RecalcButton";
@@ -76,9 +76,9 @@ export function DateTimeValueComponent({ data, emit }: NodeProps<DateTimeValueNo
     // The output retyped in place (date ↔ number): drop cables the new type
     // can't feed, and let docked FCs re-resolve — no connection event fires.
     const editor = getActiveEditor();
-    const area = getActiveArea();
-    if (editor && area) await retypeOutputCables(editor, area, data.id, "result");
-    if (area) await area.rerenderNode(data.id);
+    const view = getActiveView();
+    if (editor && view) await retypeOutputCables(editor, view, data.id, "result");
+    if (view) await view.rerenderNode(data.id);
     setOpField(next);
     setLabel(DATE_TIME_VALUE_OP_META[next].label);
   }
@@ -147,7 +147,7 @@ export function DateDiffComponent({ data, emit }: NodeProps<DateDiffNodeType>) {
     }
     setOp(next); // sets data.op + reconciles + recomputes (useNodeField)
     setLabel(DATE_DIFF_OP_META[next].label);
-    if (data.syncBasisInput()) await getActiveArea()?.rerenderNode(data.id);
+    if (data.syncBasisInput()) await getActiveView()?.rerenderNode(data.id);
   }
   return (
     <NodeShell node={data} emit={emit}>
@@ -193,9 +193,9 @@ export function WorkdaysComponent({ data, emit }: NodeProps<WorkdaysNodeType>) {
     // The output retyped in place (date ↔ number): drop cables the new type
     // can't feed, and let docked FCs re-resolve — no connection event fires.
     const editor = getActiveEditor();
-    const area = getActiveArea();
-    if (editor && area) await retypeOutputCables(editor, area, data.id, "result");
-    if (area) await area.rerenderNode(data.id);
+    const view = getActiveView();
+    if (editor && view) await retypeOutputCables(editor, view, data.id, "result");
+    if (view) await view.rerenderNode(data.id);
     setOpField(next);
   }
 

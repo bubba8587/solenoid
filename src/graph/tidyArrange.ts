@@ -1,4 +1,4 @@
-import type { Area } from "./area";
+import type { View } from "./view";
 import { zoomAt } from "./zoomAt";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
@@ -22,7 +22,7 @@ const TIDY_CONFIRM_THRESHOLD = 12;
 
 export interface TidyDeps {
   editor: NodeEditor<Schemes>;
-  area: Area;
+  view: View;
   container: HTMLElement;
   ensureElk: () => Promise<Elk | null>;
   /** Snap every FC docked to `hostId` back onto its socket (defined in the init effect). */
@@ -215,7 +215,7 @@ export async function elkTidyLayout(
 // Nodes are handed to ELK as Proxies; a Proxy preserves `id`, so the applier
 // still translates the real node.
 export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
-  const { editor, area, container, ensureElk, repositionDockedTo, isDestroyed } = deps;
+  const { editor, view, container, ensureElk, repositionDockedTo, isDestroyed } = deps;
   return async (opts?: { groupId?: string; skipConfirm?: boolean; skipPush?: boolean }) => {
     const all = editor.getNodes();
     const selected = all.filter((n) => (n as { selected?: boolean }).selected);
@@ -289,7 +289,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     const clusterLeaderSize = new Map<string, { w: number; h: number }>();
     const clusterFollowers = new Set<string>();
     if (!standoffStore.isEmpty()) {
-      const boxOf = (id: string) => measuredBox(area, id, editor);
+      const boxOf = (id: string) => measuredBox(view, id, editor);
       for (const cluster of standoffClusters(standoffStore.all())) {
         // Every member must be a loose layout target; anything excluded from the
         // loose layout falls back to the settle.
@@ -365,7 +365,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
         target: t, targetInput: t !== c.target ? "" : c.targetInput,
       } as unknown as Schemes["Connection"]];
     });
-    // Reserve each host's docked-FC area (the host + FC bounding box) so ELK doesn't
+    // Reserve each host's docked-FC view (the host + FC bounding box) so ELK doesn't
     // pack a neighbor into it — ONLY for hosts actually IN the layout, else the
     // restore below stamps a fixed inline height the pin-drop loop never clears.
     const layoutTargetIds = new Set(layoutTargets.map((n) => n.id));
@@ -375,14 +375,14 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       if (!(fc instanceof FormatControllerNode) || fc.side !== "output") continue;
       if (!layoutTargetIds.has(fc.hostNodeId)) continue;
       const host = editor.getNode(fc.hostNodeId);
-      const hostView = area.nodeViews.get(fc.hostNodeId);
-      if (!host || !hostView) continue;
+      const hostPos = view.position(fc.hostNodeId);
+      if (!host || !hostPos) continue;
       // measuredBox: the live rendered size, not the pre-paint constructor estimate.
-      const hostBox = measuredBox(area, fc.hostNodeId, editor) ?? { w: host.width, h: host.height };
-      const fcBox = measuredBox(area, fcId, editor) ?? { w: fc.width, h: fc.height };
-      const sc = getSocketScreenCenter(area, fc.hostNodeId, fc.socketKey, "output");
+      const hostBox = measuredBox(view, fc.hostNodeId, editor) ?? { w: host.width, h: host.height };
+      const fcBox = measuredBox(view, fcId, editor) ?? { w: fc.width, h: fc.height };
+      const sc = getSocketScreenCenter(view, fc.hostNodeId, fc.socketKey, "output");
       const socketLocalY = sc
-        ? screenToCanvas(area, container, sc.x, sc.y).y - hostView.position.y
+        ? screenToCanvas(view, container, sc.x, sc.y).y - hostPos.y
         : hostBox.h / 2;
       const prev = hostFootprint.get(fc.hostNodeId) ?? { w: hostBox.w, h: hostBox.h };
       hostFootprint.set(fc.hostNodeId, {
@@ -406,7 +406,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       }
       // A group lays out as a single portless rectangle — edges to it are node-level.
       if (n instanceof GroupNode) {
-        const gb = measuredBox(area, n.id, editor);
+        const gb = measuredBox(view, n.id, editor);
         const gw = clusterSize?.w ?? (gb?.w || n.width);
         const gh = clusterSize?.h ?? (gb?.h || n.height);
         return new Proxy(n, {
@@ -457,12 +457,12 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     let origMinX = Infinity, origMinY = Infinity;
     let targetCx = 0, targetCy = 0;
     if (withinGroup) {
-      const gv = area.nodeViews.get(withinGroup.id);
+      const gv = view.position(withinGroup.id);
       if (gv) {
-        const left = gv.position.x + GROUP_PAD;
-        const right = gv.position.x + withinGroup.width - GROUP_PAD;
-        const top = gv.position.y + GROUP_HEADER + GROUP_PAD;
-        const bottom = gv.position.y + withinGroup.height - GROUP_PAD;
+        const left = gv.x + GROUP_PAD;
+        const right = gv.x + withinGroup.width - GROUP_PAD;
+        const top = gv.y + GROUP_HEADER + GROUP_PAD;
+        const bottom = gv.y + withinGroup.height - GROUP_PAD;
         origMinX = left; origMinY = top;
         targetCx = (left + right) / 2;
         targetCy = (top + bottom) / 2;
@@ -470,7 +470,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     } else {
       let oldLeft = Infinity, oldRight = -Infinity, oldTop = Infinity, oldBottom = -Infinity;
       for (const n of layoutTargets) {
-        const b = measuredBox(area, n.id, editor);
+        const b = measuredBox(view, n.id, editor);
         if (!b) continue;
         oldLeft = Math.min(oldLeft, b.x); oldRight = Math.max(oldRight, b.x + b.w);
         oldTop = Math.min(oldTop, b.y); oldBottom = Math.max(oldBottom, b.y + b.h);
@@ -484,8 +484,8 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     const groupOrigPos = new Map<string, { x: number; y: number }>();
     for (const n of layoutTargets) {
       if (n instanceof GroupNode) {
-        const v = area.nodeViews.get(n.id);
-        if (v) groupOrigPos.set(n.id, { x: v.position.x, y: v.position.y });
+        const p = view.position(n.id);
+        if (p) groupOrigPos.set(n.id, { x: p.x, y: p.y });
       }
     }
 
@@ -505,25 +505,25 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       // ELK spacing + direction + width cap from the Tidy knobs (the preset's `spacing`
       // is only port placement).
       options: tidyOptionsFromSettings(),
-      translate: (id, x, y) => area.moveNode(id, { x, y }),
+      translate: (id, x, y) => view.moveNode(id, { x, y }),
     });
 
     // Place cluster members relative to the leader's new position, BEFORE the anchor
     // calc so their fresh positions feed it.
     for (const [leader, members] of clusterMembersOf) {
-      const lv = area.nodeViews.get(leader);
+      const lv = view.position(leader);
       if (!lv) continue;
-      const baseX = lv.position.x;
-      const baseY = lv.position.y;
+      const baseX = lv.x;
+      const baseY = lv.y;
       for (const mid of members) {
         const off = clusterMemberOffset.get(mid)!;
-        await area.moveNode(mid, { x: baseX + off.dx, y: baseY + off.dy });
+        await view.moveNode(mid, { x: baseX + off.dx, y: baseY + off.dy });
       }
     }
 
     let newLeft = Infinity, newRight = -Infinity, newTop = Infinity, newBottom = -Infinity;
     for (const n of layoutTargets) {
-      const b = measuredBox(area, n.id, editor);
+      const b = measuredBox(view, n.id, editor);
       if (!b) continue;
       newLeft = Math.min(newLeft, b.x); newRight = Math.max(newRight, b.x + b.w);
       newTop = Math.min(newTop, b.y); newBottom = Math.max(newBottom, b.y + b.h);
@@ -540,37 +540,37 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     // Within a group, never let centering push members past the box's leading interior
     // edge — the header (top) under RIGHT, the left pad under DOWN.
     if (withinGroup) {
-      const gv = area.nodeViews.get(withinGroup.id);
+      const gv = view.position(withinGroup.id);
       if (gv) {
         if (down) {
-          const interiorLeft = gv.position.x + GROUP_PAD;
+          const interiorLeft = gv.x + GROUP_PAD;
           if (newLeft + dx < interiorLeft) dx = interiorLeft - newLeft;
         } else {
-          const interiorTop = gv.position.y + GROUP_HEADER + GROUP_PAD;
+          const interiorTop = gv.y + GROUP_HEADER + GROUP_PAD;
           if (newTop + dy < interiorTop) dy = interiorTop - newTop;
         }
       }
     }
     if (Number.isFinite(dx) && Number.isFinite(dy) && (dx !== 0 || dy !== 0)) {
       for (const n of layoutTargets) {
-        const v = area.nodeViews.get(n.id);
-        if (!v) continue;
-        await area.moveNode(n.id, { x: v.position.x + dx, y: v.position.y + dy });
+        const p = view.position(n.id);
+        if (!p) continue;
+        await view.moveNode(n.id, { x: p.x + dx, y: p.y + dy });
       }
     }
 
     // Members were held out of the layout, so carry them rigidly by the net move.
     for (const [gid, orig] of groupOrigPos) {
-      const gv = area.nodeViews.get(gid);
+      const gv = view.position(gid);
       const grp = editor.getNode(gid);
       if (!gv || !(grp instanceof GroupNode)) continue;
-      const gdx = gv.position.x - orig.x;
-      const gdy = gv.position.y - orig.y;
+      const gdx = gv.x - orig.x;
+      const gdy = gv.y - orig.y;
       if (gdx === 0 && gdy === 0) continue;
       for (const mid of grp.members) {
-        const mv = area.nodeViews.get(mid);
-        if (!mv) continue;
-        await area.moveNode(mid, { x: mv.position.x + gdx, y: mv.position.y + gdy });
+        const mp = view.position(mid);
+        if (!mp) continue;
+        await view.moveNode(mid, { x: mp.x + gdx, y: mp.y + gdy });
       }
     }
 
@@ -579,7 +579,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     // ONLY `.solenoid-node` roots — every other root sets its inline size from React's
     // `style` prop, which removeProperty would strip with no re-stamp.
     for (const n of layoutTargets) {
-      const card = area.nodeViews.get(n.id)?.element.querySelector<HTMLElement>("*:not(span):not([fragment])");
+      const card = view.nodeElement(n.id)?.querySelector<HTMLElement>("*:not(span):not([fragment])");
       if (!card || !card.classList.contains("solenoid-node")) continue;
       card.style.removeProperty("height");
       const manual = nodeSizeStore.get(n.id);
@@ -591,35 +591,35 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       let maxX = -Infinity, maxY = -Infinity;
       for (const n of layoutTargets) {
         // measuredBox, not offsetWidth: an unpainted member measures 0 and under-grows.
-        const b = measuredBox(area, n.id, editor);
+        const b = measuredBox(view, n.id, editor);
         if (!b) continue;
         maxX = Math.max(maxX, b.x + b.w);
         maxY = Math.max(maxY, b.y + b.h);
       }
-      const gv = area.nodeViews.get(withinGroup.id);
+      const gv = view.position(withinGroup.id);
       const preW = withinGroup.width, preH = withinGroup.height;
       if (gv && Number.isFinite(maxX)) {
         // Integer dims: a fractional width puts the box edge on a half-pixel (blur).
-        withinGroup.width = Math.round(Math.max(withinGroup.width, (maxX - gv.position.x) + GROUP_PAD));
-        withinGroup.height = Math.round(Math.max(withinGroup.height, (maxY - gv.position.y) + GROUP_PAD));
-        await area.rerenderNode(withinGroup.id);
+        withinGroup.width = Math.round(Math.max(withinGroup.width, (maxX - gv.x) + GROUP_PAD));
+        withinGroup.height = Math.round(Math.max(withinGroup.height, (maxY - gv.y) + GROUP_PAD));
+        await view.rerenderNode(withinGroup.id);
       }
       rebuildGroupMembership(editor);
-      syncGroupCollapse(editor, area);
+      syncGroupCollapse(editor, view);
       // An autogrown box pushes its neighbours off the grown edges; Cleanup skips
       // this, managing its own collapse/restore + re-tidy.
       if (!opts?.skipPush && (withinGroup.width > preW + 0.5 || withinGroup.height > preH + 0.5)) {
-        pushForGrownGroups(editor, area, [withinGroup], new Map([[withinGroup.id, { w: preW, h: preH }]]));
+        pushForGrownGroups(editor, view, [withinGroup], new Map([[withinGroup.id, { w: preW, h: preH }]]));
       }
     }
 
-    // area.translate schedules nothing; the autosave debounce reads positions at
+    // view.translate schedules nothing; the autosave debounce reads positions at
     // flush time, so the deferred settle below is still captured.
     scheduleAutosave();
 
     selectedIds.forEach((id, i) => selectNodeFromProcess(id, i > 0));
 
-    if (!withinGroup && selectedIds.length > 0) await zoomAt(area, targets);
+    if (!withinGroup && selectedIds.length > 0) await zoomAt(view, targets);
 
     // Snap docked FCs back onto their hosts, deferred a frame so the sockets render
     // at the new host positions before we measure them.
@@ -647,7 +647,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
 // nodes are arranged as units, so nothing is tidied twice.
 export function makeCleanupFn(
   editor: NodeEditor<Schemes>,
-  area: Area,
+  view: View,
   arrangeFn: ArrangeFn,
 ): () => Promise<void> {
   return async () => {
@@ -680,16 +680,16 @@ export function makeCleanupFn(
     // Two frames (rAF fire, then translate guard) so the within-group tidy's deferred
     // FC snap-backs land — else autofit pads the box around stale far-right FC spots.
     await nextFrame(); await nextFrame();
-    for (const g of groups) await autofitGroupBox(editor, area, g);
+    for (const g of groups) await autofitGroupBox(editor, view, g);
 
     // 2. Collapse every still-expanded group.
     const toCollapse = groupsNow().filter((g) => !g.collapsed);
     if (toCollapse.length) {
       for (const g of toCollapse) g.collapsed = true;
-      syncGroupCollapse(editor, area);
+      syncGroupCollapse(editor, view);
       for (const g of toCollapse) {
-        await area.rerenderNode(g.id);
-        settleCollapse(area, g.id, g.members, false);
+        await view.rerenderNode(g.id);
+        settleCollapse(view, g.id, g.members, false);
       }
     }
 

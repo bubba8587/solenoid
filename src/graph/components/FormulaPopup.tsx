@@ -3,7 +3,7 @@ import { useKatexRender, getKatexRenderer } from "./katexLoader";
 import type { ClassicPreset } from "rete";
 import { formulaPopup } from "../formulaPopupStore";
 import { processGraph } from "../process";
-import { getOwningEditor, getOwningArea } from "../activeGraph";
+import { getOwningEditor, getOwningView } from "../activeGraph";
 import { formulaToLatex, evaluateSteps, extractVariables } from "../excelFormula";
 import { nodeKindOf, NODE_KIND_ACCENTS } from "../rete-nodes";
 import type { ExpressionNode, EquationNode, MapTableNode, LambdaNode } from "../rete-nodes";
@@ -43,7 +43,7 @@ const TABLE_LAMBDA_TYPES = new Set(["MapTableNode", "ByAxisNode", "MakeArrayNode
 function setVarDesc(node: { id: string; varDescriptions: Record<string, string> }, name: string, desc: string): void {
   if (desc.trim() === "") delete node.varDescriptions[name];
   else node.varDescriptions[name] = desc;
-  void getOwningArea(node.id)?.rerenderNode(node.id);
+  void getOwningView(node.id)?.rerenderNode(node.id);
 }
 
 function formulaHostOf(node: ClassicPreset.Node | undefined): FormulaHost | null {

@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type ReactNode, type CSSProperties, type RefObject } from "react";
 import type { ClassicPreset } from "rete";
 import { repositionDockedNodes } from "../canvasCommands";
-import { getOwningArea } from "../activeGraph";
+import { getOwningView } from "../activeGraph";
 import { nodeAccent, nodeResizable, nodeWide, nodeMedium } from "../rete-nodes";
 import { nodeSizeStore } from "../nodeSizeStore";
 import { collapseStore } from "../collapseStore";
@@ -154,8 +154,8 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
       node.height = h;
       // Update LIVE during a resize drag so cables re-route; the grip drags off
       // window listeners, so recreating this node's DOM here doesn't drop it.
-      // Owning area (not main): this card may live inside an open drill-in.
-      void getOwningArea(node.id)?.rerenderNode(node.id);
+      // Owning view (not main): this card may live inside an open drill-in.
+      void getOwningView(node.id)?.rerenderNode(node.id);
       // A resize can shift this node's sockets — keep any docked FC aligned.
       repositionDockedNodes(node.id);
       // If THIS node is a docked FC, re-center it on its host now that its real
@@ -212,8 +212,8 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   function doToggle() {
     if (node) {
       collapseStore.toggle(node.id);
-      // Nudge the OWNING area (drill-in aware) so cable endpoints re-measure.
-      void getOwningArea(node.id)?.rerenderNode(node.id);
+      // Nudge the OWNING view (drill-in aware) so cable endpoints re-measure.
+      void getOwningView(node.id)?.rerenderNode(node.id);
     }
   }
   function toggleCollapse(e: React.MouseEvent) {

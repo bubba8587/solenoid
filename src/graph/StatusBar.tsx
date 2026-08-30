@@ -7,7 +7,7 @@ import { loadRevealStore } from "./loadReveal";
 import { WEB_DEMO_NODE_BUDGET, WEB_DEMO_NODE_WARN_RATIO } from "./nodeBudget";
 import { problemsStore, problemsPanelUi } from "./problemsStore";
 import { useBottomChrome } from "./chromeBottom";
-import { getActiveArea, getActiveEditor } from "./activeGraph";
+import { getActiveView, getActiveEditor } from "./activeGraph";
 
 /** Bottom status strip, polled a few times a second rather than wired to stores.
  *  The node-budget meter is WEB-DEMO only — the limit is the webview's, not the
@@ -17,8 +17,8 @@ type Snapshot = { nodes: number; cables: number; selection: string; zoom: number
 
 function read(): Snapshot {
   const editor = getActiveEditor();
-  const area = getActiveArea();
-  const zoom = area ? Math.round(area.transform.k * 100) : 100;
+  const view = getActiveView();
+  const zoom = view ? Math.round(view.transform.k * 100) : 100;
   if (!editor) return { nodes: 0, cables: 0, selection: "Ready", zoom };
 
   const all = editor.getNodes();

@@ -1,7 +1,7 @@
 import { useRef } from "react";
-// Owning accessors, not getEditor/getArea — a node inside a composite drill-in isn't
+// Owning accessors, not getEditor/getView — a node inside a composite drill-in isn't
 // in the MAIN editor, so the grip wouldn't render.
-import { getOwningEditor, getActiveArea } from "../activeGraph";
+import { getOwningEditor, getActiveView } from "../activeGraph";
 import { useFlowResizeGrip } from "../flowSurface";
 import { nodeSizeStore } from "../nodeSizeStore";
 import { scheduleAutosave } from "../persistence";
@@ -25,7 +25,7 @@ export function ResizeHandle({ nodeId }: { nodeId: string }) {
   const onResizeStart = (size: { width: number; height: number }) => {
     // --box-h is the body's CSS height (its padding sits outside it); clientHeight is
     // layout px, so no zoom division.
-    const box = getActiveArea()?.nodeViews.get(nodeId)?.element.querySelector<HTMLElement>(".solenoid-node__body");
+    const box = getActiveView()?.nodeElement(nodeId)?.querySelector<HTMLElement>(".solenoid-node__body");
     let boxH = size.height;
     if (box) {
       const cs = getComputedStyle(box);
@@ -46,7 +46,7 @@ export function ResizeHandle({ nodeId }: { nodeId: string }) {
   };
   const onResizeEnd = () => {
     start.current = null;
-    void getActiveArea()?.rerenderNode(nodeId);
+    void getActiveView()?.rerenderNode(nodeId);
     scheduleAutosave();
   };
 

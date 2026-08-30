@@ -1,4 +1,4 @@
-import type { Area } from "../../src/graph/area";
+import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "../../src/graph/schemes";
@@ -22,13 +22,13 @@ function fakeEditor(nodes: FakeNode[]): NodeEditor<Schemes> {
     getConnections: () => [],
   } as unknown as NodeEditor<Schemes>;
 }
-const fakeArea = {} as unknown as Area;
+const fakeView = {} as unknown as View;
 
 const main = fakeEditor([{ id: "m1", selected: true }, { id: "m2" }]);
 const sub = fakeEditor([{ id: "s1", selected: true }, { id: "s2", selected: true }, { id: "s3" }]);
 
 beforeEach(() => {
-  setEditorRefs(main, {} as never, fakeArea);
+  setEditorRefs(main, {} as never, fakeView);
   setActiveGraph(null);
   isolateStore.exit();
 });
@@ -44,7 +44,7 @@ describe("isolate resolves through the active graph", () => {
   });
 
   it("isolates the SUBGRAPH selection while drilled in", () => {
-    setActiveGraph({ editor: sub, area: fakeArea });
+    setActiveGraph({ editor: sub, view: fakeView });
     expect(isolateSelection()).toBe(true);
     const focus = isolateStore.get()!;
     expect(focus.has("s1")).toBe(true);
@@ -54,7 +54,7 @@ describe("isolate resolves through the active graph", () => {
   });
 
   it("isolateNodes targets the active editor's nodes", () => {
-    setActiveGraph({ editor: sub, area: fakeArea });
+    setActiveGraph({ editor: sub, view: fakeView });
     expect(isolateNodes(["s3"])).toBe(true);
     expect([...(isolateStore.get() ?? [])]).toEqual(["s3"]);
   });

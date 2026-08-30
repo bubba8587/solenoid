@@ -7,7 +7,7 @@ import { commentStore, commentsPanelUi } from "../commentStore";
 import { settingsStore } from "../settingsStore";
 import type { ClassicPreset } from "rete";
 import { processGraph } from "../process";
-import { getOwningEditor, getOwningArea } from "../activeGraph";
+import { getOwningEditor, getOwningView } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { sharedAnnotationResolver } from "../unitFlow";
 import { formatCx, isCx, type Cx } from "../cxValue";
@@ -102,7 +102,7 @@ export function useNodeField<N extends object, K extends keyof N>(
       // resulting column's type), and no connection event fires here.
       const id = (node as { id?: string }).id;
       const ed = id ? getOwningEditor(id) : null;
-      const ar = id ? getOwningArea(id) : null;
+      const ar = id ? getOwningView(id) : null;
       if (ed && ar) reconcileTypesAfterEdit(ed, ar);
       void processGraph();
     },

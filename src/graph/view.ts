@@ -1,25 +1,20 @@
 // THE canvas-view seam: what the model-side code (layout, docking, keyboard,
-// persistence, process.ts) may ask of the React Flow view. flow/flowArea.ts is the
+// persistence, process.ts) may ask of the React Flow view. flow/flowView.ts is the
 // one implementation (main canvas, drill-in, static stages all build one).
 // Positions here are ABSOLUTE canvas coordinates — the model's frame, never React
 // Flow's parent-relative one (that conversion lives in flowModel).
 
-export type AreaNodeView = {
-  /** Absolute canvas position — a live read of the MODEL's position (write through
-   *  `Area.moveNode`). */
-  readonly position: { x: number; y: number };
-  /** The LIVE React Flow node wrapper (containment tests, flashes, measures). */
-  element: HTMLElement;
-};
-
-export type AreaConnView = {
-  /** The live React Flow edge group. */
-  element: HTMLElement;
-};
-
-export type Area = {
-  nodeViews: Map<string, AreaNodeView>;
-  connectionViews: Map<string, AreaConnView>;
+export type View = {
+  /** Whether this view's editor holds the node — the "belongs to this surface" test. */
+  hasNode(id: string): boolean;
+  /** A node's absolute canvas position (a live read of the MODEL's `node.position`;
+   *  write through `moveNode`). Undefined for an id this view's editor doesn't hold. */
+  position(id: string): { x: number; y: number } | undefined;
+  /** The LIVE React Flow node wrapper (containment tests, flashes, measures) —
+   *  null while unmounted. Resolved per call; cache locally inside per-frame loops. */
+  nodeElement(id: string): HTMLElement | null;
+  /** The live React Flow edge group (lasso cable hit-testing, selected-cable z). */
+  connectionElement(id: string): HTMLElement | null;
   /** The React Flow pane (client size for framing math, the context-menu anchor). */
   readonly container: HTMLElement;
   /** The transformed content element every card and cable lives in. */

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { TableInputNode as TableInputNodeType, TableElemType } from "../rete-nodes";
 import { processGraph } from "../process";
-import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { getActiveEditor, getActiveView } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { rawCellsToText } from "../nodes/matrix";
 import { TableDisplay } from "./TableDisplay";
@@ -21,9 +21,9 @@ const TYPE_OPTIONS: ReadonlyArray<{ value: TableElemType; label: string; title: 
 async function applyTableType(node: TableInputNodeType, dt: TableElemType): Promise<void> {
   if (!node.setDataType(dt)) return;
   const editor = getActiveEditor();
-  const area = getActiveArea();
-  if (editor && area) await retypeOutputCables(editor, area, node.id, "table");
-  if (area) await area.rerenderNode(node.id);
+  const view = getActiveView();
+  if (editor && view) await retypeOutputCables(editor, view, node.id, "table");
+  if (view) await view.rerenderNode(node.id);
   await processGraph();
 }
 

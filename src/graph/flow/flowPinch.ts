@@ -4,7 +4,7 @@
 // out-prioritize them — the capture-vs-bubble split rete's CappedZoom fought
 // for. TOUCH events, not pointer events: multi-finger input is only reliably
 // enumerable there (d3 and rete's stock Zoom listen the same way).
-import { boundZoom } from "../areaPresets";
+import { boundZoom } from "../viewPresets";
 
 type Viewport = { x: number; y: number; zoom: number };
 

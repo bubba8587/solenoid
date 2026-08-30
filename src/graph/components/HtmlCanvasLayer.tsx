@@ -6,7 +6,7 @@ import { HtmlCanvasRenderer, type EngineNodeSpec } from "../htmlCanvasRenderer";
 import { connectionVersionStore } from "../graphSignals";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "../schemes";
-import type { Area } from "../area";
+import type { View } from "../view";
 import { nodeDomWeight } from "../nodes/kind";
 import { snapshotGraph } from "../hicGraphSnapshot";
 import { cableShapeStore } from "../cableShape";
@@ -39,7 +39,7 @@ const graphDomWeight = (ed: NodeEditor<Schemes>): number => {
 /** The fast PAN/ZOOM layer, not a DOM replacement: idle draws nothing so every interaction
  *  stays native; a gesture hides the holder with `visibility:hidden` (which keeps layout, so
  *  the DOM stays measurable) and the canvas draws the captured graph. */
-export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>; area: Area }) {
+export function HtmlCanvasLayer({ editor, view }: { editor: NodeEditor<Schemes>; view: View }) {
   const mode = useRenderMode();
   const hostRef = useRef<HTMLDivElement>(null);
   // Seeded synchronously so toggling render mode on over an already-loaded big graph engages
@@ -50,7 +50,7 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
 
   // Recount on BIND and on node add/remove, and run whenever mode is "html" (NOT gated on
   // `active`) — below the threshold `active` is false yet the crossing must still be noticed.
-  // Add/remove events flow through the EDITOR pipe (the flow area only relays `render`).
+  // Add/remove events flow through the EDITOR pipe (the flow view only relays `render`).
   useEffect(() => {
     if (mode !== "html") return;
     let live = true;
@@ -73,7 +73,7 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
     if (!host) return;
     // React Flow's viewport: hiding it hides nodes+edges; DOM-only elements punch
     // through with inline `visibility: visible`.
-    const holder = area.viewport;
+    const holder = view.viewport;
     // RF stamps inline `visibility: visible` on every measured node wrapper, so the viewport's
     // own visibility never reaches the cards; the class carries a rule that beats the inline
     // style (htmlCanvasLayer.css). DOM-only elements opt out of it via `solenoid-hic-domonly`.
@@ -87,7 +87,7 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
 
     const engine = new HtmlCanvasRenderer(host);
     // Read at PAINT time, since a paint can land a frame after the rAF that scheduled it.
-    engine.setTransformSource(() => area.transform);
+    engine.setTransformSource(() => view.transform);
     let built = false;
     // id → the inner element's offset within its node-view wrapper. Cached at build so the
     // gesture-start position sync reads only `view.position` (no layout-forcing offsetLeft).
@@ -128,9 +128,9 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
       specById.clear();
       const specs: EngineNodeSpec[] = [];
       for (const node of editor.getNodes()) {
-        const view = area.nodeViews.get(node.id);
-        const src = view?.element;
-        if (!view || !src) continue;
+        const pos = view.position(node.id);
+        const src = view.nodeElement(node.id);
+        if (!pos || !src) continue;
         if (getComputedStyle(src).visibility === "hidden") continue; // collapsed-group member
         const inner = src.querySelector<HTMLElement>(".solenoid-node, .solenoid-group, .solenoid-note, .solenoid-conduit") ?? src;
         if (isDomOnly(inner)) { domOnlyIds.add(node.id); continue; } // stays DOM; skip the canvas
@@ -138,7 +138,7 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
         if (w <= 0 || h <= 0) continue;
         const dx = inner.offsetLeft || 0, dy = inner.offsetTop || 0;
         offsets.set(node.id, { dx, dy });
-        const spec: EngineNodeSpec = { id: node.id, el: inner, x: view.position.x + dx, y: view.position.y + dy, w, h, isGroup: inner.classList.contains("solenoid-group") };
+        const spec: EngineNodeSpec = { id: node.id, el: inner, x: pos.x + dx, y: pos.y + dy, w, h, isGroup: inner.classList.contains("solenoid-group") };
         specById.set(node.id, spec);
         specs.push(spec);
       }
@@ -149,10 +149,10 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
     // cable outside `canvasCableIds` (conduit or snapshot-unresolvable), and the standoff svg.
     const collectDomOnlyEls = (canvasCableIds: Set<string>): HTMLElement[] => {
       const els: HTMLElement[] = [];
-      for (const id of domOnlyIds) { const el = area.nodeViews.get(id)?.element; if (el) els.push(el); }
+      for (const id of domOnlyIds) { const el = view.nodeElement(id); if (el) els.push(el); }
       for (const conn of editor.getConnections()) {
         if (canvasCableIds.has(conn.id)) continue; // the canvas draws this one
-        const el = area.connectionViews.get(conn.id)?.element;
+        const el = view.connectionElement(conn.id);
         if (el) els.push(el);
       }
       const standoffSvg = holder.querySelector<HTMLElement>(".solenoid-standoff-svg");
@@ -166,7 +166,7 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
       const hidden = holderHidden();
       if (hidden) setHolderHidden(false);
       const specs = collectSpecs();
-      const snap = snapshotGraph(editor, area);
+      const snap = snapshotGraph(editor, view);
       // Drawable = snapshot-resolvable AND not touching a DOM-only node; the id set lets
       // collectDomOnlyEls keep the rest.
       const canvasCables = snap ? snap.cables.filter((c) => !domOnlyIds.has(c.source) && !domOnlyIds.has(c.target)) : [];
@@ -234,7 +234,7 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
       const focused = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>(".react-flow__node") ?? null;
       for (const node of editor.getNodes()) {
         if (domOnlyIds.has(node.id)) continue;
-        const el = area.nodeViews.get(node.id)?.element;
+        const el = view.nodeElement(node.id);
         if (!el) continue;
         if (el.classList.contains("selected") || el === focused) { next.push(el); ids.add(node.id); }
       }
@@ -262,8 +262,8 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
     const exitGesture = () => {
       gesturing = false;
       gestureZoomed = false;
-      if (holderSynced) { holder.style.transform = holderTransform(area.transform); holderSynced = false; }
-      if (area.transform.k < holdZoom()) {
+      if (holderSynced) { holder.style.transform = holderTransform(view.transform); holderSynced = false; }
+      if (view.transform.k < holdZoom()) {
         // Stay on the canvas at rest; DOM-only elements and the frozen flow stay as they are.
         enterHeld();
         return;
@@ -288,7 +288,7 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
     const retry = window.setInterval(() => { tryBuild(); if (built) clearInterval(retry); }, 120);
 
     // Every card re-render must reach scheduleRebuild by one of two channels:
-    // area.rerenderNode(id) via the render pipe below (flowArea relays it), or a
+    // view.rerenderNode(id) via the render pipe below (flowView relays it), or a
     // module store subscribed here. The
     // subscribed set, one per painted-appearance driver:
     //   • connectionVersionStore — topology; • collapseStore — chevron collapse;
@@ -300,15 +300,15 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
     // Returns null when the node is unknown/new — the caller falls back to a full build.
     const refreshSpec = (id: string): EngineNodeSpec | null => {
       if (!specById.has(id)) return null;
-      const view = area.nodeViews.get(id);
-      const src = view?.element;
-      if (!view || !src) return null;
+      const pos = view.position(id);
+      const src = view.nodeElement(id);
+      if (!pos || !src) return null;
       const inner = src.querySelector<HTMLElement>(".solenoid-node, .solenoid-group, .solenoid-note, .solenoid-conduit") ?? src;
       const w = inner.offsetWidth, h = inner.offsetHeight;
       if (w <= 0 || h <= 0) return null;
       const dx = inner.offsetLeft || 0, dy = inner.offsetTop || 0;
       offsets.set(id, { dx, dy });
-      const spec: EngineNodeSpec = { id, el: inner, x: view.position.x + dx, y: view.position.y + dy, w, h, isGroup: inner.classList.contains("solenoid-group") };
+      const spec: EngineNodeSpec = { id, el: inner, x: pos.x + dx, y: pos.y + dy, w, h, isGroup: inner.classList.contains("solenoid-group") };
       specById.set(id, spec);
       return spec;
     };
@@ -363,7 +363,7 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
     // the store bump carries no ids, so it would force a full rebuild every pass.
     const unsubConn = connectionVersionStore.subscribe(fullRebuild("connection"));
     const unsubCollapse = collapseStore.subscribe(fullRebuild("collapse"));
-    // Group collapse fires area.update for the GROUP id alone, so without this its members
+    // Group collapse fires view.update for the GROUP id alone, so without this its members
     // keep their cached bitmaps and stay drawn.
     const unsubGroupCollapse = groupCollapseStore.subscribe(fullRebuild("groupCollapse"));
     const unsubSize = nodeSizeStore.subscribe(fullRebuild("nodeSize"));
@@ -373,7 +373,7 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
     const unsubShape = cableShapeStore.subscribe(fullRebuild("cableShape")); // re-route on cable-shape change
     // Semantic zoom flips a root CSS class the captured bitmaps don't know about.
     const unsubSemantic = semanticZoomStore.subscribe(fullRebuild("semanticZoom"));
-    const unsubRender = area.onRender((id) => { count("render-pipe"); scheduleRebuild(id); });
+    const unsubRender = view.onRender((id) => { count("render-pipe"); scheduleRebuild(id); });
 
     // ANY motion — transform change or node drag — is a gesture; discrete interactions move
     // nothing and so stay on the DOM.
@@ -381,7 +381,7 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
     let lastSel = new Set<string>();
     let lastQuality = NaN;
     let raf = requestAnimationFrame(function sync() {
-      const t = area.transform;
+      const t = view.transform;
       engine.setTransform(t.k, t.x, t.y);
       // Console knobs: `__hcLive` = per-frame re-raster, `__hcQuality` = LOD bias (texture px ÷
       // on-screen px), `__hcOverlay` = half-opacity over the DOM.
@@ -404,8 +404,8 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
         const curSel = new Set<string>();
         for (const node of editor.getNodes()) {
           const off = offsets.get(node.id);
-          const view = area.nodeViews.get(node.id);
-          if (off && view && engine.setNodePosition(node.id, view.position.x + off.dx, view.position.y + off.dy)) movedIds.add(node.id);
+          const pos = view.position(node.id);
+          if (off && pos && engine.setNodePosition(node.id, pos.x + off.dx, pos.y + off.dy)) movedIds.add(node.id);
           const spec = specById.get(node.id);
           if (spec && spec.el.className.includes("--selected")) curSel.add(node.id);
         }
@@ -477,10 +477,10 @@ export function HtmlCanvasLayer({ editor, area }: { editor: NodeEditor<Schemes>;
       holder.classList.remove("solenoid-html-frozen");
       hideDomOnly(); // clear the per-element visibility overrides
       demoteDomOnly();
-      if (holderSynced) holder.style.transform = holderTransform(area.transform); // hand the transform back
+      if (holderSynced) holder.style.transform = holderTransform(view.transform); // hand the transform back
       engine.dispose();
     };
-  }, [active, editor, area]);
+  }, [active, editor, view]);
 
   if (!active) return null;
   return <div ref={hostRef} className="solenoid-html-layer" />;
