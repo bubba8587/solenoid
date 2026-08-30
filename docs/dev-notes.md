@@ -33,6 +33,11 @@ per-surface maps and `syncViews` reconciliation deleted. Docs follow the rename
 Also: stale backlog items closed as already-fixed (mode-selector wired blank — the
 readInputSweep floor covers it) or dropped by the author (tablet header blackout, Script
 timeout pin, table-popup virtualization "don't really care" → deferrals).
+**Document tabs ruled and deferred (author):** tabs are PAGES IN ONE DOCUMENT — not
+concurrently-loaded library docs with cross-doc references (that fork weighed, rejected).
+Whole feature to 2.0; the infrastructure audit's carryovers live in the deferrals entry
+(drill-in as the surface template, unmounted stacks work post-View-rework, single-engine
+option, the flat nodeNameStore/forgetAllNodes blockers if pages ever get own editors).
 **Number→text predicates RESOLVED by the author (option b → rules textPredicateNeedsText):**
 `contains`/`startsWith`/`endsWith` on a non-string column or list is now `#TYPE!` with a
 fix-naming message (Computed Column `TEXT(@col, "@")`, or Cast to Text) — gates

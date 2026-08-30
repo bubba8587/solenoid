@@ -277,6 +277,19 @@ design-gated, author-present, or UI-eyeball work.
 
 ## Author-present build sessions (2.0 flagships — see `2.0-plan.md`)
 
+- **Document tabs = PAGES IN ONE DOCUMENT (author ruling 2026-08-30; deferred whole to
+  2.0).** One save file; tabs are canvas pages of it; pages reference each other's nodes.
+  Explicitly NOT concurrently-loaded library documents with cross-doc links — that fork
+  was weighed and rejected. The 2026-08-30 audit's carryovers: the drill-in machinery is
+  the surface template (cached stack, one mounted FlowSurface that swaps, activeGraph
+  override), and a stack now works fully unmounted (post area→view: positions on the
+  node, `nodeElement` null-safe). One-doc-one-file means a SINGLE engine/editor can
+  plausibly serve all pages (pages as view scopes; cross-page references could even be
+  real connections rendered as portals) — decide that before building. Known blockers if
+  pages get separate editors instead: `nodeNameStore` is one flat per-doc namespace and
+  `forgetAllNodes()` wipes node-keyed stores globally. Save format: one SavedGraph
+  carrying pages (noBackCompat applies).
+
 - **compositeToolbarReroute — composite toolbar reroute** (top toolbar / mobile bar drive the
   active subgraph). Wants live eyeballing.
 - **conditionalFormatting — conditional formatting for tables** — own design pass; must clear Excel's
