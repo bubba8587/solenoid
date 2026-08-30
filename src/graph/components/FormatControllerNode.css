@@ -20,6 +20,12 @@
 
 /* A compact annotation chip has no label, no collapse — hide the chevron
    NodeCard renders so it doesn't float over the dropdowns. */
+/* Docked: the mating socket sits on the host's own, so only the host's dot shows.
+   visibility (not display) keeps the box React Flow measures for the cable. */
+.solenoid-fc__socket--mated {
+  visibility: hidden;
+}
+
 .solenoid-fc .solenoid-node__chevron {
   display: none;
 }

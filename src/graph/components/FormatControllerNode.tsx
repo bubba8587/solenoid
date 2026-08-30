@@ -21,6 +21,7 @@ import { getOwningEditor } from "../activeGraph";
 import { NodeCard } from "./NodeCard";
 import { LazySelect } from "./LazySelect";
 import { NodeSocket } from "./NodeSocket";
+import { dockedNodeStore } from "../dockedNodeStore";
 import { SegToggle } from "./SegToggle";
 import { useFcFormatOptions, FcArrow } from "./fcControls";
 import type { NodeProps } from "./nodeKit";
@@ -56,6 +57,10 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   // field can be transiently empty while editing (backspace the last digit).
   const [digitsText,    setDigitsText]    = useState(String(node.decimalDigits));
 
+  // The socket that meets the host's sits exactly on it — one dot, the host's, shows.
+  const dockSide = useSyncExternalStore(dockedNodeStore.subscribe, () => dockedNodeStore.get(node.id)?.side);
+  const matedClass = (side: "input" | "output") =>
+    dockSide && (dockSide === "output") === (side === "input") ? "solenoid-fc__socket--mated" : undefined;
   const mismatch = useSyncExternalStore(
     formatMismatchStore.subscribe,
     () => formatMismatchStore.has(node.id),
@@ -286,11 +291,11 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     >
       {/* Input socket (left) */}
       {inputPort && (
-        <NodeSocket side="input" socketKey="in" nodeId={node.id} emit={emit} payload={inputPort.socket} />
+        <NodeSocket side="input" socketKey="in" nodeId={node.id} emit={emit} payload={inputPort.socket} className={matedClass("input")} />
       )}
       {/* Output socket (right) */}
       {outputPort && (
-        <NodeSocket side="output" socketKey="out" nodeId={node.id} emit={emit} payload={outputPort.socket} />
+        <NodeSocket side="output" socketKey="out" nodeId={node.id} emit={emit} payload={outputPort.socket} className={matedClass("output")} />
       )}
 
       {/* Mismatch indicator — corner badge (no header to host it). */}
