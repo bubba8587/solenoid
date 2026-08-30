@@ -175,6 +175,11 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
     socketHoverCableStore.subscribe,
     () => (ribbon ? ribbon.members.some((m) => socketHoverCableStore.isHovered(m.id)) : socketHoverCableStore.isHovered(id)),
   );
+  // Own endpoints only (a Conduit rotation re-angles just its lanes).
+  // HOOKS END HERE — every hook stays above the isConnHidden return: collapsing a
+  // group (E) flips it mid-life, and a hook below it is React #300.
+  const sourceAngleDeg = useSyncExternalStore(cableAngleStore.subscribe, () => cableAngleStore.get(source, conn.sourceOutput));
+  const targetAngleDeg = useSyncExternalStore(cableAngleStore.subscribe, () => cableAngleStore.get(target, conn.targetInput));
   // Evict on unmount so the path cache can't grow across create/delete churn.
   useLayoutEffect(() => () => { _pathCache.delete(id); }, [id]);
 
@@ -220,10 +225,6 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
       );
     }
   };
-
-  // Own endpoints only (a Conduit rotation re-angles just its lanes).
-  const sourceAngleDeg = useSyncExternalStore(cableAngleStore.subscribe, () => cableAngleStore.get(source, conn.sourceOutput));
-  const targetAngleDeg = useSyncExternalStore(cableAngleStore.subscribe, () => cableAngleStore.get(target, conn.targetInput));
 
   // ── Ribbons: rep draws the trunk, every member its own rank-ordered fans ──
   if (ribbon) {
