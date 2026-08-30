@@ -54,6 +54,18 @@ The read-as spec-promotion was conditional ("if config-driven coercions grow") a
 trigger never fired: the sites are still Get Column read-as + Frame/Table Input through
 `coerceFrameCell`, sharing `coerceLogical`, pinned by `getColumnReadAs.test.ts`; dropped, no
 rule. oneResolvePredicate stays the one recorded-un-greppable rule.
+**Author-reported fixes:** (1) an attached FC spawned at canvas (0,0) — Cutover A deleted the
+rete-era `nodecreated` pipe that called `dockSelf`, so `attachFormatController` never
+registered the dock and skipped the placement; it now calls `dockSelf` itself. (2) "node is
+not initialized" on Host → FC → FC, delete the middle: the RF port had swapped the main
+canvas's delete to bare `removeNodes` (ungated per-cable removes → un-awaited targeted
+passes still fetching the node the engine just dropped; the ghost-cable / Conduit-lane
+splice silently lost too). Delete is `deleteSelection` again, and `runGraphPass` skips a
+node removed mid-pass (`fcChainDelete.test.ts` pins both). (3) FC chip stepped 1px wider on
+dropdown hover: `LazySelect` locked `offsetWidth` (integer) against a fractional
+max-content width; it now locks `ceil(getComputedStyle().width)`. (4) Title edit: the
+caret lands where the header was tapped (`textOffsetAtPoint` via caretPositionFromPoint,
+applied after the textarea's autoFocus).
 
 ### SESSION DIGEST (2026-08-29b — OP and ARG made structurally distinct)
 
