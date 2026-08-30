@@ -38,5 +38,6 @@ REMOVED — the old elkjs-vs-rete-auto-arrange peer conflict left with the plugi
 - [ ] **Deferral review (author-present)** — walk `deferrals.md` (now incl. the
   Pushed-to-1.4/2.0 section) and ratify/amend `out-of-scope.md` (still DRAFT).
 - [ ] **Keep `release-notes-features.md` current** — the 1.3 selling list.
-- [ ] **Cut 1.3**: desktop-gated checks (cargo on Windows, path-stripped
-  `release:desktop`, exe smoke), bump 1.3.0, merge → `main`, tag `v1.3.0`.
+- [ ] **Cut 1.3**: version is bumped to 1.3.0 and the web build + vitest + cargo are
+  green (2026-08-30). Left: path-stripped `release:desktop` + exe smoke (Script on
+  desktop, above), merge → `main`, tag `v1.3.0`.
