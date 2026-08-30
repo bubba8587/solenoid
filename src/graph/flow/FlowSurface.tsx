@@ -672,7 +672,10 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     (_e, _node, dragged) => {
       for (const n of dragged) {
         const model = s.editor.getNode(n.id);
-        if (!(model instanceof GroupNode) || model.collapsed) continue;
+        // Collapsed too: RF tows the hidden member CHILDREN either way, and skipping
+        // the model here left members desynced from their group after a collapsed
+        // drag (the rete surface never gated this).
+        if (!(model instanceof GroupNode)) continue;
         const last = dragLastPos.current.get(n.id);
         if (!last) continue;
         const dx = n.position.x - last.x;

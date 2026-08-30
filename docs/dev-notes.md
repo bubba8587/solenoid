@@ -65,7 +65,14 @@ node removed mid-pass (`fcChainDelete.test.ts` pins both). (3) FC chip stepped 1
 dropdown hover: `LazySelect` locked `offsetWidth` (integer) against a fractional
 max-content width; it now locks `ceil(getComputedStyle().width)`. (4) Title edit: the
 caret lands where the header was tapped (`textOffsetAtPoint` via caretPositionFromPoint,
-applied after the textarea's autoFocus).
+applied after the textarea's autoFocus). (5) Collapsed-group drag desynced members:
+the RF port's onNodeDrag member-follow gated on `model.collapsed` (the rete surface
+never did) so hidden members' model positions never followed; gate removed.
+`scripts/layout-probe.mjs` (+ `__spike.groups()`) drives the real page — E-collapse,
+mouse-drag, E-expand: members must follow by the exact delta, then T/C/F each run with
+`__spike.mismatches()` empty (probe fails on the pre-fix tree, clean after). Tidy/
+cleanup/autofit/push audited against the position-on-node model: all go through
+`view.position`/`view.moveNode`, no stale-map readers found.
 
 ### SESSION DIGEST (2026-08-29b — OP and ARG made structurally distinct)
 

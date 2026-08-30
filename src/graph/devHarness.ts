@@ -21,6 +21,10 @@ if (import.meta.env.DEV) {
       return true;
     },
     nodeCount: () => getEditor()?.getNodes().length ?? 0,
+    // Group membership (the layout probe asserts members follow a dragged group).
+    groups: () => (getEditor()?.getNodes() ?? [])
+      .filter((n) => n.constructor.name === "GroupNode")
+      .map((g) => ({ id: g.id, members: [...(g as unknown as { members: string[] }).members], collapsed: (g as unknown as { collapsed?: boolean }).collapsed ?? false })),
     // Edge id → its two handles (the socket-box probe maps drawn cables to Handles).
     connections: () => (getEditor()?.getConnections() ?? []).map((c) =>
       ({ id: c.id, source: c.source, sourceOutput: c.sourceOutput, target: c.target, targetInput: c.targetInput })),
