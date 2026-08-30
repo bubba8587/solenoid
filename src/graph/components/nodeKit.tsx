@@ -211,6 +211,30 @@ export function InlineOutputRows({
   );
 }
 
+/** Character offset of the caret position under (x, y) within `root`'s text, or null
+ *  when the point isn't over its text. */
+function textOffsetAtPoint(root: HTMLElement, x: number, y: number): number | null {
+  const doc = document as Document & {
+    caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+  };
+  let hit: { node: Node; offset: number } | null = null;
+  if (doc.caretPositionFromPoint) {
+    const p = doc.caretPositionFromPoint(x, y);
+    if (p) hit = { node: p.offsetNode, offset: p.offset };
+  } else if (document.caretRangeFromPoint) {
+    const r = document.caretRangeFromPoint(x, y);
+    if (r) hit = { node: r.startContainer, offset: r.startOffset };
+  }
+  if (!hit || !root.contains(hit.node)) return null;
+  let acc = 0;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let t = walker.nextNode(); t; t = walker.nextNode()) {
+    if (t === hit.node) return acc + hit.offset;
+    acc += t.textContent?.length ?? 0;
+  }
+  return null;
+}
+
 // Must match the display div's 4-line clamp (.solenoid-node__label-display) so
 // the editing textarea and the static title agree.
 const LABEL_MAX_HEIGHT = 60;
@@ -290,6 +314,9 @@ export function NodeShell({
   // Pointer-down position on the title label, to tell a tap (→ edit) from a
   // drag (→ move the node) in the click handler below.
   const labelDownPos = useRef<{ x: number; y: number } | null>(null);
+  // Text offset under the tap that opened edit mode; applied once the textarea mounts
+  // (autoFocus alone parks the caret at the start).
+  const pendingCaret = useRef<number | null>(null);
 
   // An explicit placeholder wins, else the catalog name — so a cleared title
   // never collapses the header to a zero-height sliver.
@@ -309,6 +336,14 @@ export function NodeShell({
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, LABEL_MAX_HEIGHT)}px`;
   }, [labelField.draft, editing]);
+  useLayoutEffect(() => {
+    if (!editing) return;
+    const el = taRef.current, at = pendingCaret.current;
+    pendingCaret.current = null;
+    if (!el || at == null) return;
+    const p = Math.min(at, el.value.length);
+    el.setSelectionRange(p, p);
+  }, [editing]);
 
   // Publish the header height as --header-h on every card (the frame SVG clips
   // its accent cap + divider to it; the corner badge offsets by it).
@@ -347,6 +382,7 @@ export function NodeShell({
               onClick={(e) => {
                 const d = labelDownPos.current;
                 if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) > HEADER_TAP_SLOP) return;
+                pendingCaret.current = node.label ? textOffsetAtPoint(e.currentTarget, e.clientX, e.clientY) : 0;
                 setEditing(true);
               }}
             >

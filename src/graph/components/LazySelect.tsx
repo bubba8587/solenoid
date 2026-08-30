@@ -22,8 +22,11 @@ export function LazySelect({
   useLayoutEffect(() => {
     if (!needMeasure) return;
     const el = ref.current;
+    // The used width, not offsetWidth: that rounds to an integer, and a fractional
+    // max-content width then re-grows by the fraction on every hover swap (the docked
+    // FC chip visibly stepped 1px on mouse-over). Round UP so the lock covers it.
     // 0 width = not laid out — stay armed rather than lock a bogus width.
-    const w = el ? el.offsetWidth : 0;
+    const w = el ? Math.ceil(parseFloat(getComputedStyle(el).width) || 0) : 0;
     if (w > 0) {
       setMeasuredSig(sig);
       setMinWidth(w);
