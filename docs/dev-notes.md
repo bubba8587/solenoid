@@ -6,6 +6,34 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-08-30 — the 1.3 cut + the model-layer rename)
+
+**The author cut 1.3's scope**: user-facing polish/perf is DONE; what remained was easy
+under-the-hood work + the release tail. Backlog reconciled to that (landed items deleted,
+the rest parked in `deferrals.md` with the author's calls recorded per item). Landed this
+session: **AI palette ships DISABLED** (`AI_ENABLED = false` in `aiKey.ts` gates the
+sparkle, the Settings section and the What's-New slide; verification tail parked in
+deferrals — flip the flag to restore everything); **composite-workbench goal-seeks
+value-pinned** (`gsComp`/`fvComp` — a goal-seek's output port emits the SOLVED DRIVER
+value, composite.ts runGoalSeek); **the undo "1px drift" root-caused and fixed** — not
+snapshot rounding: the post-load FC re-dock re-measures the host socket from screen rects
+÷ zoom, and an odd FC height puts `cy − h/2` exactly on .5, so sub-pixel wobble made
+Math.round a per-load coin flip; `computeDockedCanvasPos` now snaps the measured offset
+to the half-px grid, and `scripts/undo-drift-probe.mjs` (+ `__spike.positions()`) pins
+restore ≡ pre-edit on the real page across a zoom change. **Tests moved to a mirrored
+`tests/` tree** (author mid-session order): all 273 suites at `tests/<old src path>`,
+imports rewritten, source-scanning sweeps re-aimed at `src/`, tsconfig/vitest/docs updated.
+**Model layer, the last two cuts, LANDED**: `area`→`view` everywhere (`view.ts` /
+`flowView.ts` / `viewPresets.ts`, `getView`/`getActiveView`/`getOwningView`, `View` type),
+the `nodeViews`/`connectionViews` Maps replaced by `view.position(id)`/`view.nodeElement(id)`
+/`view.connectionElement(id)`/`view.hasNode(id)`, and **position moved ONTO the node**
+(`SolenoidNode.position`, stamped by every model add path) — `FlowModel.positions`, the
+per-surface maps and `syncViews` reconciliation deleted. Docs follow the rename
+(subsystem-invariants RF contract, glossary "View", architecture, README routing).
+Also: stale backlog items closed as already-fixed (mode-selector wired blank — the
+readInputSweep floor covers it) or dropped by the author (tablet header blackout, Script
+timeout pin, table-popup virtualization "don't really care" → deferrals).
+
 ### SESSION DIGEST (2026-08-29b — OP and ARG made structurally distinct)
 
 **Author order: "MAKE THESE FULLY DISTINCT THINGS."** The blend was three shared seams — one
