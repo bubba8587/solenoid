@@ -16,6 +16,9 @@ This file is the map.
 /
 ├── docs/                     # Planning, design, decisions, this map
 ├── src/                      # React + TypeScript frontend (the canvas + UI)
+├── tests/                    # ALL vitest suites, mirroring src/ (tests/graph/foo.test.ts
+│                             #     tests src/graph/foo.ts; "(+`.test.ts`)" below means its
+│                             #     suite lives at the mirrored path)
 ├── src-tauri/                # Tauri (Rust) shell: window, fs/dialog plugins
 ├── public/                   # Static assets served by Vite
 ├── fixtures/                 # frame-verbs/ — the shared JS↔Rust verb corpus (oneVerbCorpus)

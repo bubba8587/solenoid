@@ -156,13 +156,13 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
       {
         key: "docsFolder",
         label: "Documents folder",
-        help: "Where you keep saved graphs — File ▸ Open documents folder reveals it",
+        help: "",
         type: "folder",
       },
       {
         key: "relativeDates",
         label: "Relative dates",
-        help: "Date Input understands today, next Friday, in 3 days — resolved again on every recalculation, with an Alert when the day moves",
+        help: "Date Input fields can parse \"next Tuesday\". WARNING: this adds volatility!",
       },
     ],
   },
@@ -172,13 +172,13 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
       {
         key: "obsidianVault",
         label: "Vault folder",
-        help: "The Write to Obsidian and Import from Obsidian nodes read and write .md files under this folder",
+        help: "For the Import from and Write To Obsidian nodes",
         type: "folder",
       },
       {
         key: "obsidianAssetSubfolder",
         label: "Asset subfolder",
-        help: "Where chart or image assets go when writing a note, relative to the vault. Blank = beside the note",
+        help: "Charts and images are saved here.",
         type: "text",
         placeholder: "assets",
       },
@@ -209,8 +209,8 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
       },
       {
         key: "commandPaletteAlwaysOn",
-        label: "Always show command palette",
-        help: "Keep it docked at the bottom instead of opening on Enter",
+        label: "Always show Command Palette",
+        help: "",
         // The palette is top-anchored on mobile — no bottom strip to dock to.
         disabledOnMobile: true,
       },

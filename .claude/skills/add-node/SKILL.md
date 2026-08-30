@@ -123,7 +123,8 @@ script when the component needs hand-writing anyway (op select, custom render).
    if it differs). The Function Reference derives from this; the dev catalog
    validator flags a mapping to a missing node. Omit for Solenoid-native
    nodes; pack nodes declare it inline on the catalog entry instead.
-8. **Tests** → a vitest file NEXT TO THE CLASS (`nodes/foo.test.ts`) pinning
+8. **Tests** → a vitest file at the class's MIRRORED tests/ path
+   (`tests/graph/nodes/foo.test.ts` for `src/graph/nodes/foo.ts`) pinning
    `data()` behavior: happy paths, the error cases, and an `extractInit`
    round-trip (see `colorBlend.test.ts` / `colorPicker.test.ts`). Every node
    family has one; a node without tests is not done.
