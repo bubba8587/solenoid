@@ -191,8 +191,33 @@ design-gated, author-present, or UI-eyeball work.
 - **Aliasing / hidden-port promotion UI** (composites) — the data model has
   `hidden`/`advanced` per port; no UI to flip exposure or edit baked defaults.
   Includes the pack-shell "many ports → one shell parameter" aliasing.
-- **AI palette later-if-wanted** — streamed reply rendering; OAuth-style connect
+- **AI palette — 1.3 ships it DISABLED** (`AI_ENABLED = false` in `aiKey.ts`, author
+  2026-08-30). Re-enabling is flag + restore the What's-New slide and the
+  release-notes `[slide]` (the entry there says how), then the parked verification
+  tail: first real-key end-to-end (`ANTHROPIC_API_KEY=… npm run ai-prompt`), palette
+  on the preview (author eyeball), Tidy on an all-at-0,0 generated graph, one desktop
+  CSP smoke. (Known + accepted: Apply drops undo history — autosave keeps the
+  pre-apply doc.) Later-if-wanted: streamed reply rendering; OAuth-style connect
   instead of a pasted key.
+- **Lazy handles, the ruled-out tail** (Slicer went lazy 7c34d874; plan doc deleted):
+  Rust store as `LazyFrame` plans (would make an intermediate flush free but breaks
+  the eager-independent-frames drop rule) and `WireOp::pivot` — both out-of-scope
+  separate calls.
+- **Per-card CSS conversion, step 2** (author: "for later"; census DONE — A2
+  2026-08-25, `scripts/card-css-census.mjs` + `window.__solenoidCardCensus`, FINDING
+  in archived dev-notes). High-leverage target: the socket-dot ring (2,221 elements);
+  smaller wins: corner badge/lock, section divider. Paint-only → pseudo-elements /
+  backgrounds / masks; paint-only STATE → custom properties + `:has()` / container
+  queries. Sockets may be CSS-positioned (verified: only a `transform` inside
+  `__content` misreports an endpoint). Charts/popups won't move (recharts + `<input>`
+  grids).
+- **XMATCH/XLOOKUP deferred remainder** (the 2026-08-11 narrowness analysis is
+  otherwise LANDED — orientation guards, array-lookup spill on formula AND both
+  nodes, shared `xmatchIndex` kernel; pinned in `excelFunctions.test.ts` /
+  `errorValue.test.ts` / `frameLookup.test.ts`): a 1×N/N×1 MATRIX lookup VALUE still
+  `#SHAPE!`s, and per-argument spill for other functions (wholeArrayArgs/prepByShape)
+  awaits the general mechanism. Also settled there: XLOOKUP/XMATCH take no frame/cube
+  input — Get Column → XMATCH is frame-XMATCH; don't reopen.
 - **Packs (the whole program)** — Materials & Mechanical (INTERPOLATE gate
   cleared; domain content remains — `pack-composite-plans.md`); Timesavers
   autonomous idioms landed (`packs/timesavers.ts`); the config-carrying date idioms stay an author call (below); composite pack-node shape (packs can't ship subgraphs yet); pack
@@ -203,6 +228,29 @@ design-gated, author-present, or UI-eyeball work.
 
 ## Needs an author decision before any build
 
+- **Architecture map v2 — WAIT FOR THE AUTHOR'S SPEC.** The old map (Subsystem cards +
+  import cables, generator chain, coverage guards) is deleted. The author will
+  describe the replacement precisely; build nothing toward it until then.
+- **Table/cube popup virtualization for wide EDITABLE frames** (author 2026-08-30:
+  "don't really care" — parked). Read-only cells already render plain text (~50% off
+  every read-only popup, landed 2026-08-24; `scripts/table-popup-probe.mjs` has the
+  measurements). The open call is Path A (keep the `<table>`, window the `<tr>`s
+  ourselves, ~60 lines) vs Path B (div-grid rewrite on `react-window` — settled:
+  react-window CANNOT wrap the existing `<table>`, its rows are hardcoded divs).
+  Either path: sort order, an open edit scrolling out, Copy CSV / Export staying
+  whole-dataset, and the form-view pager all need checking.
+- **Formula surface flips to an allowlist** (author 2026-08-30: can wait). The surface
+  is defined by SUBTRACTION from Formula.js's export (~445 names via
+  `FX_FUNCTION_NAMES`), so an undeclared FX name with an array arg broadcasts into a
+  #VALUE! array or throws. Near fix: short-circuit those to a clean SolError at the
+  matrix gate; real fix: a name exists iff declared. Plan:
+  `docs/plans/formula-surface-allowlist.md`.
+- **Node-combining round 2** (round 1 LANDED 2026-08-09; Set merge DONE A2 8d77cf7f):
+  paired-list aggregate (SUMPRODUCT + SUMX* + CORREL + COVARIANCE + WAVG family — the
+  two-list Aggregate; author: wait); payment breakdown 2×2 (IPMT/PPMT ×
+  CUMIPMT/CUMPRINC; author unfamiliar — explain first); discount securities
+  (TBill/SecurityDisc/PriceDisc/PriceMat, specs in git 68bf5679); ACCRINT+ACCRINTM;
+  BondPrice+OddCoupon.
 - **Everyday widget nodes (v2.0 bundle 16)** — Weather / Geocode / FX / Holidays /
   TZ Convert / QR. Tier 1 is autonomous-friendly and could be 1.3, but 4 gate
   calls come first: `v2.0/16-widget-nodes.md`.
@@ -241,6 +289,8 @@ design-gated, author-present, or UI-eyeball work.
 
 ## Author-present polish
 
+- **The rules.md ARR pass** (author 2026-08-30: waits for 1.4) — walk every rule and
+  authorize as permanent; the rule index + marking procedure are in place.
 - **FC A4 tails**: per-element mixed-unit trig (a list mixing deg/rad cells should
   interpret EACH cell in its own unit — `resolveTrigModes` still reads one
   socket-level unit); Cube popup FC controls (frames/matrices/lists have the
@@ -249,6 +299,13 @@ design-gated, author-present, or UI-eyeball work.
 
 ## Parked bugs (explicitly parked by the author — records in `dev-notes.md`)
 
+- **High memory use (Chrome tab estimate) for a light app** (author 2026-08-26,
+  parked 2026-08-30: wait) — longstanding, predates the RF port; not investigated.
+  RF's `onlyRenderVisibleElements` is the obvious lever but every DOM reader (HIC
+  snapshot, docked-FC placement, standoff `offsetWidth` measures) assumes off-screen
+  cards exist (see the headless-card-metrics 2.0 entry above). Start with a heap
+  snapshot on the getting-started seed vs a blank doc (retained node clones? HIC
+  pyramids? popup caches?), then per-doc tab growth.
 - **Choppy zoom BAND (parked by the author 2026-08-25: "something we've been chasing
   our tail on massively").** An interior range of camera scales zooms choppier than both
   extremes; not pinned to a `k` range. The full record — what is ruled out (gesture-exit
