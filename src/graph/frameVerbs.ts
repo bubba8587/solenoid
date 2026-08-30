@@ -214,6 +214,35 @@ function filterValueToNumber(value: FrameCell, type: FrameColType): number | nul
   return null;
 }
 
+/** The three predicates that read cells AS TEXT. */
+export const TEXT_FILTER_OPS: ReadonlySet<FilterOp> = new Set(["contains", "startsWith", "endsWith"]);
+
+const TEXT_OP_LABEL: Record<string, string> = {
+  contains: "Contains", startsWith: "Starts with", endsWith: "Ends with",
+};
+
+/** A text predicate on a non-text column is a CONFIGURATION error, `#TYPE!` — never a
+ *  stringified comparison (rules textPredicateNeedsText, author verdict 2026-08-30).
+ *  The old `String(cell)` fallback forced the Rust engine to mirror JS number printing
+ *  digit-for-digit forever (`js_number_string`, deleted with this rule). */
+export function requireTextColumn(op: FilterOp, type: FrameColType, column: string): void {
+  if (!TEXT_FILTER_OPS.has(op) || type === "string") return;
+  throw solError(
+    "#TYPE!",
+    `${TEXT_OP_LABEL[op] ?? op} reads text — "${column}" is a ${type} column. ` +
+    `Convert it first: a Computed Column like TEXT(@${column}, "@"), or Cast to Text`,
+  );
+}
+
+/** The list twin of `requireTextColumn` (same rule, no column to name). */
+export function requireTextList(op: FilterOp, type: FrameColType): void {
+  if (!TEXT_FILTER_OPS.has(op) || type === "string") return;
+  throw solError(
+    "#TYPE!",
+    `${TEXT_OP_LABEL[op] ?? op} reads text — this is a ${type} list. Cast it to Text first`,
+  );
+}
+
 export function passesFilter(cell: FrameCell, op: FilterOp, value: FrameCell, type: FrameColType, matchCase: boolean): boolean {
   // These run BEFORE the null/error guard below, since they exist to SELECT on those
   // states; `noterror` keeps a null — pair it with `notblank` to drop both.
@@ -247,6 +276,7 @@ export function passesFilter(cell: FrameCell, op: FilterOp, value: FrameCell, ty
  *  SUMIFS pattern); blanks/errors are dropped. */
 export function filterRows(f: FrameValue, column: string, op: FilterOp, value: FrameCell, matchCase = false): FrameValue {
   const col = requireColumn(f, column);
+  requireTextColumn(op, col.type, column);
   const keep: number[] = [];
   for (let i = 0; i < frameRowCount(f); i++) {
     if (passesFilter(cellAt(col, i), op, value, col.type, matchCase)) keep.push(i);
@@ -264,6 +294,7 @@ export function filterRowsMulti(f: FrameValue, combine: FilterCombine, condition
   // row, so a null/error cell that fails its condition is KEPT here.
   if (conditions.length === 0) return complement ? reorderRows(f, []) : f;
   const cols = conditions.map((c) => requireColumn(f, c.column));
+  for (let j = 0; j < conditions.length; j++) requireTextColumn(conditions[j].op, cols[j].type, conditions[j].column);
   const keep: number[] = [];
   for (let i = 0; i < frameRowCount(f); i++) {
     const pass = (c: FilterCond, j: number) =>

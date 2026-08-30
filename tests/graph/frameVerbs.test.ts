@@ -602,3 +602,33 @@ describe("timesaver verbs", () => {
   });
 
 });
+
+describe("textPredicateNeedsText — a text predicate reads a TEXT column, or errors", () => {
+  const grab = (fn: () => unknown) => {
+    try { fn(); } catch (e) { return e as { code?: string; message?: string }; }
+    return null;
+  };
+  it("textPredicateNeedsText: a text predicate on a non-string column is #TYPE!", () => {
+    for (const op of ["contains", "startsWith", "endsWith"] as const) {
+      const err = grab(() => filterRows(f, "qty", op, "0"));
+      expect(isSolError(err)).toBe(true);
+      expect(err!.code).toBe("#TYPE!");
+    }
+    // The message names the fix (Computed Column with TEXT, or Cast).
+    const err = grab(() => filterRows(f, "qty", "contains", "0"));
+    expect(err!.message).toContain('TEXT(@qty, "@")');
+    expect(err!.message).toContain("Cast");
+  });
+  it("multi-condition: one text predicate on a number column fails the whole filter, even under OR", () => {
+    const err = grab(() => filterRowsMulti(f, "or", [
+      { column: "name", op: "eq", value: "a" },
+      { column: "qty", op: "contains", value: "2" },
+    ]));
+    expect(isSolError(err)).toBe(true);
+    expect(err!.code).toBe("#TYPE!");
+  });
+  it("text predicates on a STRING column still filter", () => {
+    const out = filterRows(f, "name", "contains", "b");
+    expect(out.columns[0].values).toEqual([2]);
+  });
+});

@@ -22,13 +22,6 @@ ruled-out ideas: `out-of-scope.md`; settled rationale: `decisions.md`.
 - [ ] **Script on desktop**: `'unsafe-eval'` added to the Tauri CSP for the sandbox worker
   and the main-thread compile; untested on a desktop build. Author: place a Script,
   `(x) => x * 2` with x = 21 should read 42, not a CSP refusal.
-- [ ] **OUTSIDE REVIEW WANTED: number→text semantics of the text predicates** —
-  author defers to a reviewer. Today: text predicates on number/date columns compare
-  the JS display string (oracle `String(cell)`; engine mirrors via hand-written
-  `js_number_string` — the own-it-forever liability under review). Alternatives:
-  (a) status quo; (b) `#TYPE!` + require Cast (most lattice-consistent, deletes the
-  Rust formatter); (c) app-format strings (rejected-by-default). Verdict lands as a
-  VAL rule + corpus cases.
 
 ## Dependency updates (walking them one at a time; TypeScript 7 landed 2026-08-11a)
 

@@ -7,7 +7,7 @@ import { getRecalcGen } from "../process";
 import { readInput, listIn, listOut, numIn, numOut, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut } from "./shared";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import { pairIdsFromKeys, pickSlot } from "./logic";
-import { passesFilter, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
+import { passesFilter, requireTextColumn, requireTextList, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate, isMissing, coerceLogical, type Tri } from "../valueKinds";
 import { forAggregateUnits, tagDim, type UnitCell } from "../unitValue";
@@ -977,6 +977,9 @@ export class FilterNode extends ClassicPreset.Node {
       this.cachedDropped = null;
       return { result: this.cachedResult, dropped: null };
     }
+    // Same rule as the frame Filter: a text predicate on a non-text list is #TYPE!
+    // (rules textPredicateNeedsText); the error guards surface the throw.
+    for (const c of conds) requireTextList(c.op, type);
     const kept: unknown[] = [];
     const dropped: unknown[] = [];
     for (let i = 0; i < arr.length; i++) {
@@ -1114,6 +1117,8 @@ export class SumIfsNode extends ClassicPreset.Node {
       if (name === "" || (!valueless && val!.trim() === "")) continue; // row not written yet
       const col = getColumn(f, name);
       if (!col) return finish(solError("#REF!", `No column "${name}" in the frame`));
+      // Same rule as Filter: a text predicate needs a text criteria column (#TYPE!).
+      try { requireTextColumn(op, col.type, name); } catch (e) { return finish(e as SolError); }
       crits.push({ col, op, value: val!, matchCase: cfg?.matchCase ?? false });
     }
     if (crits.length === 0) return finish(null);

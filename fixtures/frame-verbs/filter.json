@@ -781,7 +781,7 @@
    }
   },
   {
-   "name": "text predicates read numbers in JS display form (2^53 has no \".0\")",
+   "name": "a text predicate on a number column is #TYPE! (textPredicateNeedsText)",
    "frames": {
     "in": {
      "columns": [
@@ -789,8 +789,7 @@
        "name": "v",
        "type": "number",
        "values": [
-        9007199254740992,
-        0,
+        1,
         10,
         1234
        ]
@@ -802,41 +801,21 @@
     "kind": "filter",
     "column": "v",
     "op": "endsWith",
-    "value": 0,
-    "matchCase": true
+    "value": "0"
    },
-   "expect": {
-    "columns": [
-     {
-      "name": "v",
-      "type": "number",
-      "values": [
-       0,
-       10
-      ]
-     }
-    ]
-   }
+   "expectError": "#TYPE!"
   },
   {
-   "name": "non-finite cells display as NaN / Infinity for text predicates, not blank",
+   "name": "a text predicate on a date column is #TYPE!",
    "frames": {
     "in": {
      "columns": [
       {
        "name": "v",
-       "type": "number",
+       "type": "date",
        "values": [
-        {
-         "__nf": "nan"
-        },
-        {
-         "__nf": "inf"
-        },
-        {
-         "__nf": "-inf"
-        },
-        5
+        45000,
+        45001
        ]
       }
      ]
@@ -846,40 +825,21 @@
     "kind": "filter",
     "column": "v",
     "op": "contains",
-    "value": "n"
+    "value": "45"
    },
-   "expect": {
-    "columns": [
-     {
-      "name": "v",
-      "type": "number",
-      "values": [
-       {
-        "__nf": "nan"
-       },
-       {
-        "__nf": "inf"
-       },
-       {
-        "__nf": "-inf"
-       }
-      ]
-     }
-    ]
-   }
+   "expectError": "#TYPE!"
   },
   {
-   "name": "huge magnitudes display in JS exponential form (1e+308, signed exponent)",
+   "name": "a text predicate on a logical column is #TYPE!",
    "frames": {
     "in": {
      "columns": [
       {
        "name": "v",
-       "type": "number",
+       "type": "logical",
        "values": [
-        1e+308,
-        5,
-        1e-07
+        true,
+        false
        ]
       }
      ]
@@ -888,21 +848,10 @@
    "op": {
     "kind": "filter",
     "column": "v",
-    "op": "contains",
-    "value": "e+",
-    "matchCase": true
+    "op": "startsWith",
+    "value": "t"
    },
-   "expect": {
-    "columns": [
-     {
-      "name": "v",
-      "type": "number",
-      "values": [
-       1e+308
-      ]
-     }
-    ]
-   }
+   "expectError": "#TYPE!"
   }
  ]
 }

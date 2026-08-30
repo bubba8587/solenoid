@@ -33,6 +33,13 @@ per-surface maps and `syncViews` reconciliation deleted. Docs follow the rename
 Also: stale backlog items closed as already-fixed (mode-selector wired blank — the
 readInputSweep floor covers it) or dropped by the author (tablet header blackout, Script
 timeout pin, table-popup virtualization "don't really care" → deferrals).
+**Number→text predicates RESOLVED by the author (option b → rules textPredicateNeedsText):**
+`contains`/`startsWith`/`endsWith` on a non-string column or list is now `#TYPE!` with a
+fix-naming message (Computed Column `TEXT(@col, "@")`, or Cast to Text) — gates
+`requireTextColumn`/`requireTextList` (frameVerbs) + `require_text_column` (engine.rs) on
+every filter entry (Filter verbs, List Filter, *IFS criteria). The Rust `js_number_string`
+JS-printing mirror is DELETED (its reason to exist was the old `String(cell)` comparison);
+corpus `filter.json`/`filterMulti.json` pin `#TYPE!` on both engines (cargo 30/30 green).
 
 ### SESSION DIGEST (2026-08-29b — OP and ARG made structurally distinct)
 

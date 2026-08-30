@@ -130,6 +130,7 @@ procedure is in the PROV section). Machine-checked against the actual headings b
 | pickVsAggregateErrors | Positional access filters errors per cell; aggregation propagates whole |
 | noMixCurrencies | Two different currency codes are incommensurable in EVERY combinator |
 | classifyNonFinite | No producer emits a bare non-finite; the producer classifies |
+| textPredicateNeedsText | A text predicate reads a TEXT column, or errors |
 | plainJsonInit | `extractInit` is a fixed point, and JSON-plain |
 | saveViaTextForm | The text form is the narrow waist: every `SavedGraph` field, both directions |
 | immutableDocStore | `documentStoreCore` transforms are structurally immutable |
@@ -1314,6 +1315,27 @@ the last leak — nine whole-sample calls (STDEV of one value, CORREL of a const
 GEOMEAN of a negative, SLOPE/RSQ/SKEW/KURT/VAR/Z.TEST degenerate) answered bare NaN
 because the branch, unlike `broadcastCall`, returned dispatch results raw.
 
+### textPredicateNeedsText — A text predicate reads a TEXT column, or errors **[INFERRED]**
+**MUST:** `contains`/`startsWith`/`endsWith` on a non-string column (or list) is a
+`#TYPE!` configuration error — the message names the fix (a Computed Column with
+`TEXT(@col, "@")`, or Cast to Text). Never a stringified comparison: no filter path may
+compare `String(cell)` of a number/date/logical. One gate each side of the engine seam
+(`requireTextColumn`/`requireTextList` in frameVerbs.ts; `require_text_column` in
+engine.rs), called by every filter entry — the Filter verbs, the List Filter, the
+*IFS criteria.
+
+*Why:* the old `String(cell)` fallback made filter results depend on JS's
+number-printing algorithm, and forced the Rust engine to mirror it digit-for-digit
+forever (`js_number_string` — deleted with this rule); an implicit display-string
+comparison is also invisible in the UI, where a format change reads as a data change.
+*Enforced by:* `frameVerbs.test.ts` → "textPredicateNeedsText: a text predicate on a
+non-string column is #TYPE!"; the parity corpus pins both engines (`filter.json` /
+`filterMulti.json` `expectError: "#TYPE!"` cases, run by `frameVerbCorpus.test.ts` and
+the cargo corpus).
+*Origin:* the number→text review item (backlog, closed by the author's verdict
+2026-08-30): text predicates on number/date columns compared the JS display string,
+alternative (b) chosen over the status quo and app-format strings.
+
 ---
 
 # PERSIST — The save path
@@ -1595,11 +1617,11 @@ isolateStore missing too.
 
 # Enforcement summary
 
-77 rules.
+78 rules.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 75 | every rule except the two below |
+| Enforced | 76 | every rule except the two below |
 | Partially enforced | 1 | socketBox12 |
 | Unenforced | 1 | oneResolvePredicate |
 

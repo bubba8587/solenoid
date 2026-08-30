@@ -1251,77 +1251,29 @@ fn verb_sample(frame: &SolFrame, n: usize) -> Result<(SolFrame, f64), IpcError> 
 }
 
 // filter
-/// The exact string JS `String(n)` produces (ECMA-262 Number::toString, base
-/// 10). The text predicates compare DISPLAY strings, and serde's float form is
-/// not that display: it appends ".0" to an integral float outside
-/// num_to_json's i64 window, so 9007199254740992 (2^53, the window's first
-/// miss) read "9007199254740992.0" and an `endsWith "0"` kept it while the
-/// oracle's "9007199254740992" dropped it (corpus fuzz seed 910020, pinned in
-/// filter.json). Rust's `{:e}` yields the same shortest round-trip digits JS
-/// computes — only the formatting rules differ, and those are spelled out
-/// here: decimal form for exponents in (-7, 21], exponential with an explicit
-/// sign otherwise.
-fn js_number_string(n: f64) -> String {
-    if n.is_nan() {
-        return "NaN".into();
-    }
-    if n.is_infinite() {
-        return if n > 0.0 { "Infinity".into() } else { "-Infinity".into() };
-    }
-    if n == 0.0 {
-        return "0".into(); // JS String(-0) is "0" — the sign never prints
-    }
-    let neg = n < 0.0;
-    let sci = format!("{:e}", n.abs()); // "9.007199254740992e15"
-    let (mant, exp) = sci.split_once('e').expect("{:e} always carries an exponent");
-    let exp: i32 = exp.parse().expect("{:e} exponent is an integer");
-    let digits: String = mant.chars().filter(|c| *c != '.').collect();
-    let digits = digits.trim_end_matches('0');
-    let digits = if digits.is_empty() { "0" } else { digits };
-    let k = digits.len() as i32;
-    let np = exp + 1; // ECMA's n: value = 0.d1..dk × 10^n
-    let s = if k <= np && np <= 21 {
-        format!("{}{}", digits, "0".repeat((np - k) as usize))
-    } else if 0 < np && np <= 21 {
-        format!("{}.{}", &digits[..np as usize], &digits[np as usize..])
-    } else if -6 < np && np <= 0 {
-        format!("0.{}{}", "0".repeat((-np) as usize), digits)
-    } else {
-        let mut t = String::from(&digits[..1]);
-        if k > 1 {
-            t.push('.');
-            t.push_str(&digits[1..]);
-        }
-        t.push('e');
-        t.push(if np > 0 { '+' } else { '-' });
-        t.push_str(&(np - 1).abs().to_string());
-        t
-    };
-    if neg { format!("-{s}") } else { s }
-}
-
+/// The filter comparison VALUE as a string. The JS side pre-stringifies every
+/// filter value (`readFilterValue`), so a String is the only shape a filter
+/// sends; the other arms are defensive. This used to carry `js_number_string`
+/// (a digit-for-digit mirror of JS `String(n)`) so numeric cells and needles
+/// compared identically on both engines — deleted with textPredicateNeedsText:
+/// text scans now run only over STRING columns, so no float is ever displayed.
 fn json_str(v: &Json) -> String {
     match v {
         Json::String(s) => s.clone(),
-        // The oracle stringifies a numeric comparison value with String(value)
-        // — mirror it exactly (an integral float needle would otherwise read
-        // "5.0" here and "5" there).
-        Json::Number(n) => n.as_f64().map(js_number_string).unwrap_or_else(|| n.to_string()),
+        Json::Number(n) => n.to_string(),
         Json::Bool(b) => b.to_string(),
         _ => String::new(),
     }
 }
-/// A non-null cell as the string the oracle's `String(cell)` would produce (for
-/// the text predicates). `null` → None (excluded by the predicate, SQL WHERE).
-/// Non-finite cells read "NaN"/"Infinity"/"-Infinity" like JS — they used to
-/// display as "" (num_to_json's sentinel isn't a Number), silently missing
-/// every needle the oracle's "NaN" would contain.
+/// A non-null cell of a STRING column (the only type `require_text_column` lets
+/// reach a text scan) as its text. `null` → None (excluded by the predicate,
+/// SQL WHERE). The non-string arms are defensive.
 fn cell_display(c: &Cell) -> Option<String> {
     match c {
         Cell::Null => None,
         Cell::Str(s) => Some(s.clone()),
         Cell::Bool(b) => Some(b.to_string()),
-        Cell::Num(n) => Some(js_number_string(*n)),
+        Cell::Num(n) => Some(n.to_string()),
     }
 }
 
@@ -1409,11 +1361,28 @@ fn comparison_filter_expr(column: &str, ty: SolType, op: &str, value: &Json) -> 
     Ok(Some(e))
 }
 
+/// rules textPredicateNeedsText (author verdict 2026-08-30): a text predicate on a
+/// non-text column is `#TYPE!`, mirroring the oracle's `requireTextColumn` — never a
+/// stringified comparison. The old `String(cell)` fallback is what forced this engine
+/// to mirror JS number printing digit-for-digit (`js_number_string`, deleted).
+fn require_text_column(op: &str, ty: SolType, column: &str) -> Result<(), IpcError> {
+    if !matches!(op, "contains" | "startsWith" | "endsWith") || ty == SolType::Str {
+        return Ok(());
+    }
+    let label = match op { "contains" => "Contains", "startsWith" => "Starts with", _ => "Ends with" };
+    let tyname = match ty { SolType::Number => "number", SolType::Date => "date", SolType::Logical => "logical", SolType::Str => "string" };
+    Err(IpcError::new(
+        "#TYPE!",
+        format!("{label} reads text — \"{column}\" is a {tyname} column. Convert it first: a Computed Column like TEXT(@{column}, \"@\"), or Cast to Text"),
+    ))
+}
+
 /// Does this op+type+flag combination need the in-engine row scan instead of a
-/// Polars expression? The three text predicates always do; string eq/neq join
-/// them when matching case-insensitively (the default — the oracle's
-/// `passesFilter` fold). ONE predicate shared by `verb_filter` and `apply_step`
-/// so the standalone and fused paths can't drift.
+/// Polars expression? The three text predicates always do (on the STRING columns
+/// `require_text_column` restricts them to); string eq/neq join them when matching
+/// case-insensitively (the default — the oracle's `passesFilter` fold). ONE
+/// predicate shared by `verb_filter` and `apply_step` so the standalone and fused
+/// paths can't drift.
 fn filter_needs_text_scan(ty: SolType, op: &str, match_case: bool) -> bool {
     matches!(op, "contains" | "startsWith" | "endsWith")
         || (ty == SolType::Str && !match_case && matches!(op, "eq" | "neq"))
@@ -1452,6 +1421,7 @@ fn text_scan_mask(frame: &SolFrame, column: &str, op: &str, value: &Json, match_
 fn verb_filter(frame: &SolFrame, column: &str, op: &str, value: &Json, match_case: bool) -> Result<SolFrame, IpcError> {
     require_columns(frame, std::slice::from_ref(&column.to_string()))?;
     let ty = frame.type_of(column).unwrap_or(SolType::Number);
+    require_text_column(op, ty, column)?;
 
     if filter_needs_text_scan(ty, op, match_case) {
         let mask = text_scan_mask(frame, column, op, value, match_case);
@@ -1485,6 +1455,7 @@ fn expr_mask(frame: &SolFrame, expr: Expr) -> Result<Vec<bool>, IpcError> {
 fn condition_mask(frame: &SolFrame, c: &WireFilterCond) -> Result<Vec<bool>, IpcError> {
     require_columns(frame, std::slice::from_ref(&c.column))?;
     let ty = frame.type_of(&c.column).unwrap_or(SolType::Number);
+    require_text_column(&c.op, ty, &c.column)?;
     if filter_needs_text_scan(ty, &c.op, c.match_case) {
         return Ok(text_scan_mask(frame, &c.column, &c.op, &c.value, c.match_case));
     }

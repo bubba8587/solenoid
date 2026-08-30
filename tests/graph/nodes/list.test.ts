@@ -560,6 +560,11 @@ describe("Filter — condition rows over the list's own values (filterOneJob)", 
     expect(mk([{ op: "contains", value: "berg" }]).data({ list: [cities] }).result).toEqual(["BERGEN"]);
   });
 
+  it("a text predicate on a number list is #TYPE! (textPredicateNeedsText)", () => {
+    expect(() => mk([{ op: "contains", value: "2" }]).data({ list: [[1, 12, 3]] }))
+      .toThrowError(expect.objectContaining({ code: "#TYPE!" }));
+  });
+
   it("AND narrows, OR unions", () => {
     const arr = [1, 5, 10, 20];
     expect(mk([{ op: "gt", value: "2" }, { op: "lt", value: "15" }], "and").data({ list: [arr] }).result).toEqual([5, 10]);
