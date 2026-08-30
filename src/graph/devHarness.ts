@@ -21,6 +21,15 @@ if (import.meta.env.DEV) {
       return true;
     },
     nodeCount: () => getEditor()?.getNodes().length ?? 0,
+    // Every node's model position — the undo/layout smoke diffs two of these.
+    positions: () => {
+      const ed = getEditor(), ar = getArea();
+      if (!ed || !ar) return null;
+      return ed.getNodes().map((n) => {
+        const v = ar.nodeViews.get(n.id) as { position: { x: number; y: number } } | undefined;
+        return { id: n.id, type: n.constructor.name, label: (n as { label?: string }).label ?? "?", x: v?.position.x ?? null, y: v?.position.y ?? null };
+      });
+    },
     transform: () => {
       const t = getArea()?.transform;
       return t ? { k: t.k, x: t.x, y: t.y } : null;

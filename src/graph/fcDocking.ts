@@ -29,8 +29,13 @@ export function computeDockedCanvasPos(
     const k = area.transform.k || 1;
     const host = view.element.getBoundingClientRect();
     const r = sockEl.getBoundingClientRect();
-    cx = view.position.x + (r.left + r.width / 2 - host.left) / k;
-    cy = view.position.y + (r.top + r.height / 2 - host.top) / k;
+    // Snap the measured offset to the half-px layout grid. The screen-space rects
+    // wobble ±ε with zoom and sub-pixel placement, and an odd FC height puts the
+    // final `cy − height/2` exactly on .5 — un-snapped, Math.round below becomes a
+    // coin flip that re-docks the FC 1px off its serialized spot on every load
+    // (the undo-smoke's phantom y 678→679).
+    cx = view.position.x + Math.round(((r.left + r.width / 2 - host.left) / k) * 2) / 2;
+    cy = view.position.y + Math.round(((r.top + r.height / 2 - host.top) / k) * 2) / 2;
   } else {
     const sc = getSocketScreenCenter(area, hostNodeId, socketKey, side);
     if (!sc) return null;
