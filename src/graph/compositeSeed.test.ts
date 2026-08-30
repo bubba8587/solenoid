@@ -12,11 +12,10 @@ import seed from "./seedGraphs/composite-workbench.json";
 
 // Runs the Composite Workbench seed through a real editor + DataflowEngine
 // (same coercion + error guards as Canvas, same hydrate step as persistence)
-// and checks all three sections: the single-run container computes through its
-// boundary, the Simulation container resolves its internal feedback loop into
-// a bounded series, and the deliberate OUTER loop is recognized as a true
-// cycle (the #CIRC! seeding set — the full seeding behavior itself is covered
-// by circularReset.test.ts).
+// and value-pins EVERY composite in the seed (single-run, simulation, both
+// goal-seeks, Monte Carlo, scenarios, data-table), plus the deliberate OUTER
+// loop as a true cycle (the #CIRC! seeding set — the full seeding behavior
+// itself is covered by circularReset.test.ts).
 
 type SavedNode = {
   id: string; type: string;
@@ -124,6 +123,25 @@ describe("Composite Workbench seed", () => {
     const out = await engine.fetch(byId.get("dtComp")!.id) as Record<string, unknown>;
     // Price {8,10,12} × Qty {100,200}, first axis slowest.
     expect(out.p_dtot).toEqual([800, 1600, 1000, 2000, 1200, 2400]);
+  });
+
+  it("goal-seek container solves break-even units and emits the solved driver", async () => {
+    const { editor, engine } = buildEditor();
+    const byId = await loadSeed(editor);
+    const out = await engine.fetch(byId.get("gsComp")!.id) as Record<string, unknown>;
+    // profit = units × 25 − 500, target 0 → units = 20. The output port carries the
+    // SOLVED DRIVER value (composite.ts runGoalSeek), not the objective's residual.
+    expect(out.p_profit as number).toBeCloseTo(20, 4);
+    expect((byId.get("gsComp") as CompositeNode).goalSeekResult).toBeCloseTo(20, 4);
+  });
+
+  it("goal-seek container solves the retirement deposit", async () => {
+    const { editor, engine } = buildEditor();
+    const byId = await loadSeed(editor);
+    const out = await engine.fetch(byId.get("fvComp")!.id) as Record<string, unknown>;
+    // fv = pmt × ((1 + 0.07/12)^360 − 1) / (0.07/12), target 500000 → solve pmt.
+    const factor = (Math.pow(1 + 0.07 / 12, 360) - 1) / (0.07 / 12);
+    expect(out.p_fv as number).toBeCloseTo(500000 / factor, 3); // ≈ 409.85/mo
   });
 
   it("hydrated composites carry their drill-in layout", async () => {
