@@ -9,7 +9,7 @@ import { DataflowEngine } from "rete-engine";
 import type { Schemes, SolenoidNode } from "../schemes";
 import { FlowSurfaceContext } from "../flowSurface";
 import { cableSelectionStore } from "../cableState";
-import { disconnect, removeNodes } from "./flowModel";
+import { deleteSelection } from "../canvasActions";
 import { makeFlowView, type FlowView } from "./flowView";
 import { FlowSurface, idleHandlers, type SurfaceHandlers, type SurfaceHooks } from "./FlowSurface";
 import { setEditorRefs, setGraphChanged, processGraph, setBulkSettle, markBulkTopoDirty, isGraphRebuilding } from "../process";
@@ -152,16 +152,15 @@ function FlowCanvasInner() {
       }
       s.handlers.syncSelection();
     });
-    // The single delete verb: editor-selected nodes AND store-selected cables
-    // (RF's own deleteKeyCode is off so there is exactly one path).
+    // The single delete verb (RF's own deleteKeyCode is off so there is exactly one
+    // path): deleteSelection gates the removal — ungated per-cable removes fire
+    // un-awaited targeted passes that were still fetching a node the engine had just
+    // dropped ("node is not initialized" on Host → FC → FC, delete the middle) — and
+    // splices the ghost cable / Conduit lanes.
     setDeleteSelected(async () => {
-      const doomed = s.editor.getNodes().filter((n) => (n as { selected?: boolean }).selected);
-      const cables = cableSelectionStore.ids();
-      if (doomed.length === 0 && cables.length === 0) return;
-      for (const id of cables) await disconnect(s, id);
-      cableSelectionStore.set(null);
-      await removeNodes(s, doomed.map((n) => n.id));
-      await processGraph(undefined, undefined, { topology: true });
+      const doomed = s.editor.getNodes().some((n) => (n as { selected?: boolean }).selected);
+      if (!doomed && cableSelectionStore.ids().length === 0 && !standoffStore.selected()) return;
+      await deleteSelection(s.editor, s.view);
       markGraphCustom();
       scheduleAutosave();
     });

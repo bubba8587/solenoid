@@ -15,7 +15,6 @@ import { CONDUIT_PIVOT } from "./ribbonCable";
 import { groupCollapseStore, COLLAPSE_LAYOUT, pillY } from "./groupCollapse";
 import { getSocketScreenCenter, screenToCanvas } from "./canvasGeometry";
 import { computeDockedCanvasPos, insertFcInline } from "./fcDocking";
-import { dockedNodeStore } from "./dockedNodeStore";
 import { cableSelectionStore, cableGhostStore } from "./cableState";
 import {
   standoffStore, settleStandoffs, anchorPoint, anchorFromVector,
@@ -335,11 +334,9 @@ export async function attachFormatController(
     side:       target.side,
   });
   await editor.addNode(fc as SolenoidNode);
-  const rel = dockedNodeStore.get(fc.id);
-  if (rel) {
-    const pos = computeDockedCanvasPos(view, container, rel.hostNodeId, rel.socketKey, rel.side, fc.width, fc.height);
-    if (pos) await view.moveNode(fc.id, pos);
-  }
+  fc.dockSelf(editor); // registers the dock (needs the id addNode assigned) — undocked, it lands at canvas (0,0)
+  const pos = computeDockedCanvasPos(view, container, fc.hostNodeId, fc.socketKey, fc.side, fc.width, fc.height);
+  if (pos) await view.moveNode(fc.id, pos);
   await insertFcInline(editor, fc);
   await processGraph();
 }

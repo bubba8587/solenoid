@@ -225,6 +225,9 @@ async function runGraphPass(changedNodeId?: string, renderOnly?: Set<string>, to
   const sinks = affected ? new Set<string>() : null;
   try {
     for (const node of _editor.getNodes()) {
+      // The list is a snapshot; a node removed while an earlier fetch awaited is gone
+      // from the engine (rete-engine throws "node is not initialized") — skip it.
+      if (!_editor.getNode(node.id)) continue;
       const outputs = await _engine.fetch(node.id) as Record<string, unknown>;
       if (changedOut) {
         const keys = Object.keys(outputs);
