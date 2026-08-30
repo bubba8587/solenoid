@@ -33,13 +33,6 @@ Current state (2026-08-26): the walkable set is on latest in-range (`react` 19.2
 REMOVED — the old elkjs-vs-rete-auto-arrange peer conflict left with the plugin
 (clean `npm install` dry-run verified).
 
-## Architecture spec (`docs/rules.md`) — small tail
-
-- [ ] **Spec-promotion remainder** — read-as is coercion-not-assertion
-  (`applyGetColumnReadAs` pins it); promote if config-driven coercions grow.
-- [ ] **Enforcement tail (low value)** — socketBox12 partial (un-greppable visual half),
-  oneResolvePredicate unenforced (recorded un-greppable).
-
 ## Release tail (author-run)
 
 - [ ] **Deferral review (author-present)** — walk `deferrals.md` (now incl. the

@@ -756,13 +756,12 @@ describe("storesRegisterForget — every node-keyed store registers with nodeSto
 });
 
 describe("socketBox12 — the socket box's greppable half", () => {
-  // The full rule is a rendering invariant (rete-render-utils measures the
-  // span's offset box; offsetTop ignores transforms) that only a browser can
-  // verify end to end. But its known REGRESSION VECTORS are all textual, and
-  // each has bitten before: losing the deterministic 12×12/line-height:0 box,
-  // reintroducing a fixed INPUT_ROW_TOP-style constant, or positioning the dot
-  // with a transform. This pins the greppable half; the rendering half stays
-  // recorded as unenforced in rules.md.
+  // The rendering half (RF measures the Handle's box; a transform or an
+  // unmeasured constant misreports the cable endpoint) is
+  // scripts/socket-box-probe.mjs on the live page. The known REGRESSION VECTORS
+  // are textual and each has bitten before: losing the deterministic
+  // 12×12/line-height:0 box, reintroducing a fixed INPUT_ROW_TOP-style constant,
+  // or positioning the dot with a transform. This pins that greppable half.
   it("socket.css keeps the deterministic box (display:block, size var at 12px, line-height 0)", () => {
     const css = fs.readFileSync(path.join(SRC, "components/socket.css"), "utf8");
     expect(/display: block/.test(css), "socket span must be display:block").toBe(true);

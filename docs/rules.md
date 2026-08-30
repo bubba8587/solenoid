@@ -517,8 +517,12 @@ surface contract.
 *Enforced by:* `sourceInvariants.test.ts` → "socketBox12 — the socket box's greppable
 half": socket.css keeps the deterministic box (display:block, the 12px size variable
 on both axes, line-height 0), no INPUT_ROW_TOP-style constant anywhere, no transform
-positioning in the socket component. **The RENDERING half stays unenforced** — only a
-browser can verify rete measures the box it expects.
+positioning in the socket component. The RENDERING half is `scripts/socket-box-probe.mjs`
+(dev server, run by hand like the undo-drift probe): on three seeds at two zooms, every
+card Handle's box is the glyph's box at `--socket-size` with no transform, and every
+plain cable's path ends on its Handle's rim (RF's `getHandlePosition` point) — so RF
+measures the box the glyph draws. Conduit lanes are exempt by spec (their tips come from
+`conduitLaneOffset`).
 
 ### anydataWildcard — `anydata`: the rank-≤2 element-agnostic wildcard (matricesInFormulas) **[INFERRED]**
 **MUST:**
@@ -1621,8 +1625,8 @@ isolateStore missing too.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 76 | every rule except the two below |
-| Partially enforced | 1 | socketBox12 |
+| Enforced | 77 | every rule except the one below |
+| Partially enforced | 0 | (socketBox12's rendering half closed 2026-08-30: `scripts/socket-box-probe.mjs`) |
 | Unenforced | 1 | oneResolvePredicate |
 
 **The ORIGINAL partially-enforced six all closed**, and sinkRunButtonOnly (which arrived later

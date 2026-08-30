@@ -21,6 +21,9 @@ if (import.meta.env.DEV) {
       return true;
     },
     nodeCount: () => getEditor()?.getNodes().length ?? 0,
+    // Edge id → its two handles (the socket-box probe maps drawn cables to Handles).
+    connections: () => (getEditor()?.getConnections() ?? []).map((c) =>
+      ({ id: c.id, source: c.source, sourceOutput: c.sourceOutput, target: c.target, targetInput: c.targetInput })),
     // Every node's model position — the undo/layout smoke diffs two of these.
     positions: () => {
       const ed = getEditor(), vw = getView();

@@ -45,6 +45,15 @@ fix-naming message (Computed Column `TEXT(@col, "@")`, or Cast to Text) — gate
 every filter entry (Filter verbs, List Filter, *IFS criteria). The Rust `js_number_string`
 JS-printing mirror is DELETED (its reason to exist was the old `String(cell)` comparison);
 corpus `filter.json`/`filterMulti.json` pin `#TYPE!` on both engines (cargo 30/30 green).
+**Rules-spec tail closed:** socketBox12's rendering half is now `scripts/socket-box-probe.mjs`
+(+ `__spike.connections()`): three seeds × two zooms, every card Handle box ≡ glyph box at
+`--socket-size`, no transform, every plain cable ends on its Handle's RIM — RF's
+`getHandlePosition` gives the rim point, not the center, which is why a naive center check
+reads 6px·k off — Conduit lanes exempt (`conduitLaneOffset`). 256 handles / 90 cables clean.
+The read-as spec-promotion was conditional ("if config-driven coercions grow") and the
+trigger never fired: the sites are still Get Column read-as + Frame/Table Input through
+`coerceFrameCell`, sharing `coerceLogical`, pinned by `getColumnReadAs.test.ts`; dropped, no
+rule. oneResolvePredicate stays the one recorded-un-greppable rule.
 
 ### SESSION DIGEST (2026-08-29b — OP and ARG made structurally distinct)
 
