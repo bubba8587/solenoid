@@ -73,6 +73,16 @@ mouse-drag, E-expand: members must follow by the exact delta, then T/C/F each ru
 `__spike.mismatches()` empty (probe fails on the pre-fix tree, clean after). Tidy/
 cleanup/autofit/push audited against the position-on-node model: all go through
 `view.position`/`view.moveNode`, no stale-map readers found.
+**Also landed (author session, same day):** a docked FC hides its MATING socket
+(`.solenoid-fc__socket--mated`, visibility:hidden so RF still measures — one dot at the
+seam, the host's); **sockets reverted to inline SVG glyphs** (author call: the masked-span
+DOM-diet form rasterized worse; the socket half of 2561bd67 undone, anydata hollow square
+carried over as SVG, the diet's chevron/copy/grip conversions stand); **React #300 on E
+fixed** (FlowCableEdge had two hooks below the isConnHidden early return — collapse flips
+it mid-life; hoisted, with a HOOKS-END comment). **1.3.0 is bumped and desktop-built**
+(web build + vitest 4755 + cargo 30 green; release:desktop produced the 1.3.0 bundles,
+author smoke in progress — the socket revert / E fix / drag fix are NOT in an exe yet,
+rebuild before the next smoke). Dev-notes swept (digests 08-19 → 08-29 to the archive).
 
 ### SESSION DIGEST (2026-08-29b — OP and ARG made structurally distinct)
 
