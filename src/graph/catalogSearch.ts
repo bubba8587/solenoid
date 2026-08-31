@@ -2,7 +2,7 @@
 // is shown — label, description, Excel names, category path, kebab type, keywords.
 
 import { CATALOG_TO_EXCEL } from "./excelToCatalog";
-import { fuzzyScore, fieldScore } from "./fuzzy";
+import { fuzzyScore, fieldScore, tokenWordScore } from "./fuzzy";
 import { opsFor, opEntry, excelEntry } from "./nodeOps";
 import { SolenoidSocket, canConnect, type SocketDataType } from "./sockets";
 import type { NodeCatalogEntry, CatalogEntry, CatalogCategory, CatalogPair } from "./AddNodeMenu";
@@ -64,19 +64,33 @@ function stripGlyphPrefix(label: string): string {
   return label.replace(/^[^\p{L}\p{N}]+\s*/u, "");
 }
 
-/** Score one leaf against a query, or null if the query isn't even a subsequence
- *  of its (wide) searchable text. Higher = better. */
+/** Score one leaf against a query, or null when some query word lands nowhere on
+ *  the leaf. Higher = better. */
 export function scoreLeaf(query: string, { leaf, categoryPath }: LeafWithContext): number | null {
   const excelNames = CATALOG_TO_EXCEL.get(leaf.type) ?? [];
   const category = categoryPath.join(" ");
   const keywords = leaf.keywords ?? "";
   const haystack = `${leaf.label} ${leaf.description ?? ""} ${excelNames.join(" ")} ${category} ${typeWords(leaf.type)} ${keywords}`;
-  const s = fuzzyScore(query, haystack);
-  if (s === null) return null;
-  // Strongest tier across the fields; Excel names weigh slightly under the rest so
-  // an exact label still wins a tie.
-  const fields = [leaf.label, `${leaf.label} ${category}`, typeWords(leaf.type), keywords];
   const bare = stripGlyphPrefix(leaf.label);
+  // Per-WORD gate and base score: every query word must land — as a subsequence of
+  // the wide haystack (order-free across words, so "input frame" finds Frame Input)
+  // or within one edit of a word the leaf answers to ("frane" finds Frame). Word
+  // hits score far above the scattered-subsequence noise a long description
+  // generates, so a typo'd word no longer buries its target under leaves whose
+  // descriptions happen to contain the letters.
+  const words = `${leaf.label} ${bare} ${typeWords(leaf.type)} ${keywords} ${category} ${excelNames.join(" ")}`
+    .toLowerCase().split(/[^\p{L}\p{N}.]+/u).filter(Boolean);
+  let s = 0;
+  for (const token of query.toLowerCase().split(/\s+/)) {
+    if (!token) continue;
+    const sub = fuzzyScore(token, haystack);
+    const word = tokenWordScore(token, words);
+    if (sub === null && word === 0) return null;
+    s += (sub ?? 0) + word;
+  }
+  // Strongest whole-query tier across the fields; Excel names weigh slightly under
+  // the rest so an exact label still wins a tie.
+  const fields = [leaf.label, `${leaf.label} ${category}`, typeWords(leaf.type), keywords];
   if (bare && bare !== leaf.label) fields.push(bare);
   // A generated "Host: Name" row is FOUND by the name after the colon — an exact hit
   // on it ranks like an exact hit on a leaf's own label.
