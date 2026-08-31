@@ -14,6 +14,15 @@ const d = (s: string) => parseDateToSerial(s);
 const settle = d("2024-01-15"), maturity = d("2029-01-15");
 
 describe("real-Excel golden values (author-verified 2026-08-31)", () => {
+  it("ODDFPRICE / ODDFYIELD — the first coupon accrues from ISSUE across quasi periods", () => {
+    // =ODDFPRICE(DATE(2024,1,25),DATE(2031,1,1),DATE(2023,11,11),DATE(2024,7,1),0.0575,0.06,100,2,0)
+    const args = { settle: [d("2024-01-25")], maturity: [d("2031-01-01")], issue: [d("2023-11-11")], firstlast: [d("2024-07-01")], rate: [0.0575], redemption: [100], frequency: [2] };
+    expect(new OddCouponNode({ op: "oddfprice" }).data({ ...args, yld: [0.06] }).result!)
+      .toBeCloseTo(98.5737779, 6);
+    // =ODDFYIELD(DATE(2024,1,25),DATE(2031,1,1),DATE(2023,11,11),DATE(2024,7,1),0.0575,98,100,2,0)
+    expect(new OddCouponNode({ op: "oddfyield" }).data({ ...args, pr: [98] }).result!)
+      .toBeCloseTo(0.061035365, 8);
+  });
   it("ODDLPRICE / ODDLYIELD — the odd-last period discounts with SIMPLE interest", () => {
     // =ODDLPRICE(DATE(2024,2,7),DATE(2024,6,15),DATE(2023,10,15),0.0375,0.0405,100,2,0)
     const args = { settle: [d("2024-02-07")], maturity: [d("2024-06-15")], firstlast: [d("2023-10-15")], rate: [0.0375], redemption: [100], frequency: [2] };
@@ -85,7 +94,7 @@ describe("PRICEMAT ↔ YIELDMAT are inverses", () => {
 
 describe("ODDFPRICE ↔ ODDFYIELD and ODDLPRICE ↔ ODDLYIELD are inverses", () => {
   it("odd-FIRST price/yield round-trip", () => {
-    const args = { settle: [d("2024-01-25")], maturity: [d("2031-01-01")], issue: [d("2023-11-11")], firstlast: [d("2024-07-15")], rate: [0.0575], redemption: [100], frequency: [2] };
+    const args = { settle: [d("2024-01-25")], maturity: [d("2031-01-01")], issue: [d("2023-11-11")], firstlast: [d("2024-07-01")], rate: [0.0575], redemption: [100], frequency: [2] };
     const price = new OddCouponNode({ op: "oddfprice" }).data({ ...args, yld: [0.06] }).result!;
     const yld = new OddCouponNode({ op: "oddfyield" }).data({ ...args, pr: [price] }).result!;
     expect(yld).toBeCloseTo(0.06, 5);

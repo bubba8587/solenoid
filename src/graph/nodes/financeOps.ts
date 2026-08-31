@@ -114,22 +114,28 @@ export function oddfPrice(
   if (settle >= firstCoupon) return bondPrice(settle, maturity, couponRate, yld, redemption, freq);
   const step = 12 / freq;
   const E = 360 / freq;
-  // Quasi-coupon dates, generated backwards from the first real coupon.
-  const qcs: Date[] = [];
-  let d = new Date(firstCoupon.getTime());
-  do { qcs.unshift(new Date(d.getTime())); d = coupAddMonths(d, -step); } while (d >= issue);
-  const oddStart = coupAddMonths(qcs[0], -step);
-  const NLi = days30_360(oddStart, firstCoupon) / E;
-  let prevQC = oddStart;
-  for (const qc of qcs) { if (qc <= settle) prevQC = qc; else break; }
-  const Ai = days30_360(prevQC, settle) / E;
-  const DSC = days30_360(settle, firstCoupon);
-  const N = bondCouponCount(firstCoupon, maturity, freq);
+  // Excel's documented quasi-coupon formula (the odd-long form; a short odd first
+  // period is its NC=1 case). The first coupon accrues from ISSUE, per quasi period
+  // (real-Excel golden 98.5737779, 2026-08-31). 30/360 only, like the rest of the family.
+  const periods: [Date, Date][] = [];
+  let d0 = new Date(firstCoupon.getTime());
+  while (d0 > issue) { const prev = coupAddMonths(d0, -step); periods.unshift([prev, d0]); d0 = prev; }
+  let sumDC = 0, sumA = 0;
+  for (const [qs, qe] of periods) {
+    const start = qs < issue ? issue : qs;
+    sumDC += days30_360(start, qe) / E;
+    const end = settle < qe ? settle : qe;
+    if (end > start) sumA += days30_360(start, end) / E;
+  }
+  const nextQC = periods.find(([, qe]) => qe > settle)![1];
+  const DSC = days30_360(settle, nextQC);
+  const Nq = periods.filter(([qs]) => qs >= nextQC).length; // whole quasi periods left before the first coupon
+  const N = bondCouponCount(coupAddMonths(firstCoupon, step), maturity, freq); // coupons AFTER the first
   const y = yld / freq, C = couponRate / freq * 100;
-  let price = redemption / Math.pow(1 + y, N - 1 + DSC / E);
-  for (let k = 1; k <= N; k++) price += C / Math.pow(1 + y, k - 1 + DSC / E);
-  price += C * (NLi - Ai) / Math.pow(1 + y, DSC / E);
-  price -= C * Ai;
+  let price = redemption / Math.pow(1 + y, N + Nq + DSC / E);
+  price += C * sumDC / Math.pow(1 + y, Nq + DSC / E);
+  for (let k = 1; k <= N; k++) price += C / Math.pow(1 + y, k + Nq + DSC / E);
+  price -= C * sumA;
   return price;
 }
 
