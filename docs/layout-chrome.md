@@ -45,8 +45,8 @@ bottom; everything else floats over the canvas.
 | HUD stack (alerts/pins/problems/comments) | `.solenoid-hud-stack` | `top: chrome-top + 58px; right:12px` | 110 | `hudStack.css` |
 | Cable inspector | `.solenoid-cable-inspector` | bottom-left | 110 | `cableInspector.css` |
 | Command palette | `.solenoid-cmdpalette` (+`-scrim`, `--persistent`) | bottom-docked (`left:50%; bottom: chrome-bottom + 21px`), full-screen scrim behind | 300 modal · **150 persistent** (the always-on bar yields to the 200 modal band: Settings/help/shortcuts) | `CommandPalette.css` |
-| Docked report panel | `.report-panel--docked` | `top: chrome-top; right:0; bottom: chrome-bottom; width:440px` (via `--report-dock-*`) | 90 | `ReportOverlay.css` |
-| Node inspector panel | `.inspector-panel` | `top: chrome-top; right:0; bottom: chrome-bottom; width:340px` (via `--inspector-w`) | 90 (mobile sheet: **5**, beneath the header so the bar's popovers/sheets paint over it; align pill hides while open) | `InspectorPanel.css` |
+| Docked report panel | `.report-panel--docked` | `top: chrome-top; right:0; bottom: chrome-bottom; width:440px` (via `--report-dock-*`) | 5 (beneath the header, shadowless — a dock pushes the canvas, so nothing sits under it) | `ReportOverlay.css` |
+| Node inspector panel | `.inspector-panel` | `top: chrome-top; right:0; bottom: chrome-bottom; width:340px` (via `--inspector-w`) | 5 (desktop and the mobile sheet alike: beneath the header so the bars and their popovers paint over it, shadowless; align pill hides while the mobile sheet is open) | `InspectorPanel.css` |
 
 > **Tablet (`html.is-tablet` = coarse pointer, NOT mobile — `IS_TABLET` in `coarse.ts`):** a
 > tablet runs this DESKTOP stack, so it gets no bottom action bar. The top bar grows the
@@ -224,12 +224,11 @@ Answers to the questions that keep biting:
 1    .solenoid-topbar (local, inside header)
 2    .solenoid-menubar (local; 8 on mobile)
 4    composite drill-in backdrop
-5    nav pill / navigator / webdemo banner
+5    nav pill / navigator / webdemo banner / docked report + inspector panels (under the header on purpose: docks tuck beneath the bars)
 6    header / statusbar / apptools palette
 7    align pill / isolate endpoints
 20   menubar dropdown (local to header) / tidy-options popover (`.solenoid-tidy-options`, local to topbar, `top:100%+6px` under the layout group; header doesn't clip so it overflows onto the canvas)
 60   conduit docked toolbar / node-budget modal
-90   docked report panel
 100  minimap / socket legend / mobile bottom bar
 110  HUD stack / cable inspector
 200  add menu (201 submenu) / settings / shortcuts / doctitle menu

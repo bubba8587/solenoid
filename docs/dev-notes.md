@@ -43,10 +43,16 @@ The two chip rows collapsed to two dropdowns (Category with a By-pack optgroup
 filtering on membership; Library) and light mode got real contrast: the panel's
 semantic colors are `--fr-*` custom props with a light re-tune (was dark-tuned
 hexes and border-strong-as-text). **The analytics shelf split into two
-off-by-default packs** via tags only (nothing moves, everything stays registered):
-Scientific Computing (Spectrum, Smooth, Find Peaks, Convolve, ODE Integrate, Solve,
-Eigen, Polynomial Roots, Fit Distribution, Decompose) and Data Science (K-Means,
-PCA, Logistic Regression, the five nonparametric tests). Everything Excel-named and
-the mainstream tests stay core. **Settings packs are an accordion** now: `Pack.group`
+off-by-default packs**: Scientific Computing (Spectrum, Smooth, Find Peaks, Convolve,
+ODE Integrate, Solve, Eigen, Polynomial Roots, Fit Distribution, Decompose) and Data
+Science (K-Means, PCA, Logistic Regression, the five nonparametric tests). Everything
+Excel-named and the mainstream tests stay core. First cut used tags (cross-woven);
+the author then ruled the Add menu must show what a pack added, so the 18 leaves
+moved out of nodeCatalog into real placements under Packs › <name> (type strings/
+labels/descriptions verbatim — saves, ops, formula dispatch, parity suites all hold;
+frameSurfaceNames' ghost check widened to the whole tree for the pack-homed frame
+verbs). **Docked Inspector + Report tuck under the header now** (z 90 → 5, the heavy
+side shadow deleted — a dock pushes the canvas, nothing sits beneath it;
+layout-chrome.md reconciled). **Settings packs are an accordion** now: `Pack.group`
 (Everyday / Analysis / Science & Engineering), details/summary per group with an
 on-count, descriptions on the rows. What's-New slide + release-notes follow.
