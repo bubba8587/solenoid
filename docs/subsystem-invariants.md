@@ -141,9 +141,15 @@ what the menu renders when the search box is empty. `flattenLeaves` flattens it 
 SEARCH and appends one synthetic row per hidden op (`opEntry`, type
 `` `${host}__op-${op}` ``), so folding a family onto one card never makes an op
 unfindable. Those op rows are generated at search time and never inserted into the tree,
-so catalog walkers don't count them as extra nodes. `scoreLeaf` then ranks against a
-haystack that is deliberately WIDER than what renders: label, description, Excel names
-(`CATALOG_TO_EXCEL`), category path, kebab type, and `keywords`.
+so catalog walkers don't count them as extra nodes. `scoreLeaf` then scores per QUERY
+WORD against a haystack that is deliberately WIDER than what renders — label,
+description, Excel names (`CATALOG_TO_EXCEL`), category path, kebab type, and
+`keywords`. Each query word must land independently: as a subsequence of the haystack,
+or within one Damerau-Levenshtein edit of a word the leaf answers to (`fuzzy.ts`
+`withinOneEdit` / `tokenWordScore`, tokens of 4+ letters only). Word order is therefore
+free ("input frame" finds Frame Input) and a one-letter typo ("frane input") still
+ranks its target first instead of drowning under scattered-subsequence description
+noise — pinned in `catalogSearch.test.ts` + `fuzzy.test.ts`.
 
 **Two search surfaces, different weights.** `keywords` scores as a full-weight FIELD
 alongside the label; Excel names from `CATALOG_TO_EXCEL` score at `-10` so an exact label
