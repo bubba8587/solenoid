@@ -359,26 +359,15 @@ html.is-mobile {
   }
   .fr-close svg { width: 20px; height: 20px; }
 
-  /* Filters were eating half the screen and couldn't scroll. Two fixes:
-     (1) let row 1 wrap so the search field keeps a full line and the filter
-         pills + Excel-columns checkbox flow onto the next line instead of
-         squashing search to nothing;
-     (2) lay the category chips out as a single horizontally-scrolling row (one
-         line, swipe for the rest) and drop the stats legend — a desktop
-         affordance with little value on a phone — so the function table gets
-         the vertical room back. */
+  /* Let row 1 wrap so the search field keeps a full line and the filter
+     dropdowns + Excel-columns checkbox flow onto the next line instead of
+     squashing search to nothing; drop the stats legend — a desktop affordance
+     with little value on a phone — so the function table gets the room back. */
   .fr-header-row1 { flex-wrap: wrap; }
   .fr-search { flex: 1 1 100%; }
   .fr-filters { margin-left: 0; }
-  .fr-filter-pill { padding: 7px 12px; flex-shrink: 0; }
+  .fr-select { padding: 7px 8px; flex-shrink: 0; }
   .fr-colcheck { padding-top: 6px; padding-bottom: 6px; }
-  .fr-cats {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 2px;
-  }
-  .fr-cat { padding: 7px 12px; flex-shrink: 0; }
   .fr-stats { display: none; }
 
   .fr-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }

@@ -1,5 +1,31 @@
 import { describe, it, expect } from "vitest";
 import { buildFunctionReference, libraryTags, LIBRARY_TAGS } from "../../src/graph/functionReference";
+import { EXCEL_GAP } from "../../src/graph/nodeExcel";
+import { ELIMINATED_FUNCTIONS } from "../../src/graph/excelFunctions";
+
+// The gap list's three-way partition drives the Reference's Composable / Superseded /
+// Out of scope sections; "superseded" additionally promises the formula surface blocks
+// the name and names the replacement.
+describe("gap-row scope (Composable / Superseded / Out of scope)", () => {
+  it("every gap row carries exactly one scope", () => {
+    for (const g of EXCEL_GAP) {
+      const n = (g.composition ? 1 : 0) + (g.superseded ? 1 : 0) + (g.oos ? 1 : 0);
+      expect(n, g.excel).toBe(1);
+    }
+  });
+  it("every superseded row is blocked on the formula surface (LEGACY_ALIASES)", () => {
+    for (const g of EXCEL_GAP) {
+      if (g.superseded) expect(ELIMINATED_FUNCTIONS.has(g.excel), g.excel).toBe(true);
+    }
+  });
+  it("there is no to-do tier: every unimplemented Excel row has a scope", () => {
+    for (const r of buildFunctionReference()) {
+      if (r.excel !== null && !r.implemented) {
+        expect(r.composition || r.superseded || r.oos, r.excel).toBe(true);
+      }
+    }
+  });
+});
 
 // The Reference overlay's library chips derive from the catalog prose + keywords; this
 // pins the detector on real rows so a description rewrite can't silently untag a family.

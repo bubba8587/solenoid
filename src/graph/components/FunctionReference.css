@@ -9,6 +9,16 @@
 }
 
 .fr-panel {
+  /* The panel's own semantic colors, dark-tuned here and re-tuned for light below —
+     the neutral chrome stays on the app tokens so palettes flow through. */
+  --fr-link: #9ecbff;             /* node names: the add-to-canvas affordance */
+  --fr-link-hover-bg: #1a2a3a;
+  --fr-link-hover-border: #3a5a8a;
+  --fr-add: #5a9a6a;
+  --fr-compose: #7a9abf;
+  --fr-yes: #3d9e5a;
+  --fr-warn: #c07830;
+  --fr-sup: #5a7fb0;              /* superseded: replaced, the modern route exists */
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: 8px;
@@ -19,6 +29,16 @@
   flex-direction: column;
   overflow: hidden;
   box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+}
+:root[data-theme="light"] .fr-panel {
+  --fr-link: #1f5fa8;
+  --fr-link-hover-bg: #e3edf8;
+  --fr-link-hover-border: #9dbede;
+  --fr-add: #2e7d46;
+  --fr-compose: #4a6d94;
+  --fr-yes: #2e7d46;
+  --fr-warn: #a05a17;
+  --fr-sup: #46648f;
 }
 
 /* ─── Tabs ───────────────────────────────────────────────────────────────────── */
@@ -96,13 +116,6 @@
   gap: 10px;
 }
 
-.fr-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-dim);
-  white-space: nowrap;
-}
-
 .fr-search {
   flex: 1;
   background: var(--surface);
@@ -118,32 +131,7 @@
 .fr-search::placeholder { color: var(--text-muted); }
 .fr-search:focus { border-color: var(--text-muted); }
 
-.fr-cats {
-  display: flex;
-  gap: 5px;
-  flex-wrap: wrap;
-}
-
-.fr-cat {
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-radius: 5px;
-  color: var(--text-dim);
-  font-family: inherit;
-  font-size: 11px;
-  padding: 3px 8px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.1s, color 0.1s;
-}
-.fr-cat:hover { background: var(--border); color: var(--text-dim); }
-.fr-cat--active {
-  background: var(--border-subtle);
-  border-color: var(--text-muted);
-  color: var(--text);
-}
-
-/* Content-filter pills (To-do only / Out of scope) — grouped, pushed right. */
+/* Filter dropdowns (category / library) — grouped, pushed right. */
 .fr-filters {
   display: flex;
   flex-wrap: wrap;
@@ -151,24 +139,18 @@
   margin-left: auto;
 }
 
-.fr-filter-pill {
+.fr-select {
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: 5px;
   color: var(--text-dim);
   font-family: inherit;
   font-size: 11px;
-  padding: 3px 8px;
+  padding: 3px 6px;
   cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.1s, color 0.1s, border-color 0.1s;
+  max-width: 160px;
 }
-.fr-filter-pill:hover { background: var(--border); color: var(--text-dim); }
-.fr-filter-pill--active {
-  background: #2a1a0a;
-  border-color: #c07830;
-  color: #c07830;
-}
+.fr-select:hover { border-color: var(--text-muted); color: var(--text); }
 
 /* Column-visibility checkbox — a distinct control, set apart from the filter
    pills by a thin inset divider (non-layout box-shadow, per the icon-button rule). */
@@ -222,10 +204,10 @@
 }
 .fr-stats span { display: flex; align-items: center; gap: 5px; }
 .fr-stats .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
-.fr-stats .dot--yes  { background: #3d9e5a; }
-.fr-stats .dot--no   { background: #c07830; }
-.fr-stats .dot--miss { background: #5a7fb0; }  /* planned (to-do) — actionable */
-.fr-stats .dot--oos  { background: var(--border-strong); }  /* out of scope — muted */
+.fr-stats .dot--yes  { background: var(--fr-yes); }
+.fr-stats .dot--no   { background: var(--fr-warn); }
+.fr-stats .dot--sup  { background: var(--fr-sup); }       /* superseded — the modern route exists */
+.fr-stats .dot--oos  { background: var(--text-muted); }   /* out of scope — muted */
 
 /* ─── Table ──────────────────────────────────────────────────────────────────── */
 
@@ -310,7 +292,7 @@
   font-family: var(--font-mono);
   font-size: 12px;
 }
-.fr-td-excel--missing { color: var(--border-strong); }
+.fr-td-excel--missing { color: var(--text-muted); }
 .fr-td-excel--sol-only { color: var(--text-muted); font-style: italic; font-weight: 400; }
 
 /* Syntax */
@@ -322,26 +304,26 @@
 
 /* Solenoid node */
 .fr-td-sol {
-  color: #9ecbff;
+  color: var(--fr-link);
   font-size: 12px;
 }
-.fr-td-sol--missing { color: var(--border-strong); }
+.fr-td-sol--missing { color: var(--text-muted); }
 
 /* Parity */
 .fr-td-parity {
   text-align: center;
 }
 .fr-parity-yes {
-  color: #3d9e5a;
+  color: var(--fr-yes);
   font-size: 14px;
   font-weight: 700;
 }
 .fr-parity-warn {
-  color: #c07830;
+  color: var(--fr-warn);
   font-size: 13px;
 }
 .fr-parity-miss {
-  color: var(--border-strong);
+  color: var(--text-muted);
   font-size: 13px;
 }
 
@@ -353,7 +335,7 @@
   background: none;
   border: 1px solid transparent;
   border-radius: 4px;
-  color: #9ecbff;
+  color: var(--fr-link);
   font-family: inherit;
   font-size: 12px;
   cursor: pointer;
@@ -362,13 +344,13 @@
   transition: background 0.1s, border-color 0.1s;
 }
 .fr-sol-btn:hover {
-  background: #1a2a3a;
-  border-color: #3a5a8a;
+  background: var(--fr-link-hover-bg);
+  border-color: var(--fr-link-hover-border);
 }
 .fr-sol-btn__add {
   font-size: 13px;
   font-weight: 700;
-  color: #5a9a6a;
+  color: var(--fr-add);
   opacity: 0;
   transition: opacity 0.1s;
 }
@@ -376,7 +358,7 @@
 
 /* Composition label (no single node to add) */
 .fr-sol-composition {
-  color: #7a9abf;
+  color: var(--fr-compose);
   font-style: italic;
   font-size: 12px;
 }
@@ -389,15 +371,10 @@
   white-space: normal;
   line-height: 1.4;
 }
-.fr-td-note--ok {
-  color: #3a6348;
-  font-style: normal;
-}
-
 /* Empty state */
 .fr-empty {
   text-align: center;
-  color: var(--border-strong);
+  color: var(--text-muted);
   padding: 48px 0;
   font-size: 13px;
   text-wrap-style: balance;
@@ -410,13 +387,6 @@
   padding: 6px 6px 16px;
   max-width: 440px;
   margin: 0 auto;
-}
-.fr-sockets__intro {
-  margin: 0 0 16px;
-  color: var(--text-dim);
-  font-size: 13px;
-  line-height: 1.55;
-  text-wrap-style: pretty;
 }
 .fr-sockets .solenoid-legend__row { margin-bottom: 13px; }
 .fr-sockets .solenoid-legend__type { font-size: 16px; }
@@ -446,6 +416,3 @@
   background: color-mix(in srgb, var(--text) 7%, transparent);
 }
 .fr-desc-row td strong { color: var(--text-dim); }
-
-/* A hairline between the scope pills and the library chips. */
-.fr-filters__sep { width: 1px; align-self: stretch; margin: 2px 4px; box-shadow: inset 1px 0 0 var(--border); }

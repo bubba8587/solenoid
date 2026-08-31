@@ -21,7 +21,8 @@ export interface FnRefRow {
   implemented: boolean;
   composition: boolean;        // no single node, but achievable by composing nodes
   parity: boolean;
-  oos: boolean;
+  oos: boolean;                // the concept has no place here
+  superseded: boolean;         // a modern replacement covers it (the name is blocked)
   note?: string;
   groupKey: string;
   groupLabel: string;
@@ -88,7 +89,7 @@ export function buildFunctionReference(): FnRefRow[] {
   ): FnRefRow => ({
     excel, syntax, nodeLabel: info.label, description: info.description, keywords: info.keywords, catalogType: type,
     location: info.path, packs: info.packs, dependency: isDep(info.packs),
-    implemented: true, composition: false, parity, oos: false, note,
+    implemented: true, composition: false, parity, oos: false, superseded: false, note,
     groupKey: `cat:${topGroup(info.path)}`,
     groupLabel: topGroup(info.path),
   });
@@ -107,21 +108,23 @@ export function buildFunctionReference(): FnRefRow[] {
     rows.push({
       excel: null, syntax: "", nodeLabel: info.label, description: info.description, keywords: info.keywords, catalogType: type,
       location: info.path, packs: info.packs, dependency: isDep(info.packs),
-      implemented: true, composition: false, parity: true, oos: false,
+      implemented: true, composition: false, parity: true, oos: false, superseded: false,
       groupKey: `cat:${topGroup(info.path)}`, groupLabel: topGroup(info.path),
     });
   }
 
   // 2. Excel-only gap — self-heals: an entry that became node-backed above is dropped.
+  // Every gap row is composable, superseded, or out of scope; there is no to-do tier.
   for (const g of EXCEL_GAP) {
     if (emitted.has(g.excel)) continue;
     const composition = g.composition ?? false;
+    const superseded = g.superseded ?? false;
     rows.push({
       excel: g.excel, syntax: g.syntax, nodeLabel: null, catalogType: null,
       location: [], packs: [], dependency: false, implemented: false,
-      composition, parity: false, oos: g.oos ?? false, note: g.note,
-      groupKey: composition ? "compose" : "gap",
-      groupLabel: composition ? "Composable" : "No Solenoid node",
+      composition, parity: false, oos: g.oos ?? false, superseded, note: g.note,
+      groupKey: composition ? "compose" : superseded ? "superseded" : "gap",
+      groupLabel: composition ? "Composable" : superseded ? "Superseded" : "Out of scope",
     });
   }
 
@@ -133,8 +136,8 @@ export function fnRefGroups(rows: FnRefRow[]): { key: string; label: string }[] 
   const seen = new Map<string, string>();
   for (const r of rows) if (!seen.has(r.groupKey)) seen.set(r.groupKey, r.groupLabel);
   const keys = [...seen.keys()];
-  // Catalog groups first (first-seen order), then composable, then the gap.
-  const rank = (k: string) => (k === "gap" ? 2 : k === "compose" ? 1 : 0);
+  // Catalog groups first (first-seen order), then composable, superseded, out of scope.
+  const rank = (k: string) => (k === "gap" ? 3 : k === "superseded" ? 2 : k === "compose" ? 1 : 0);
   keys.sort((a, b) => rank(a) - rank(b));
   return keys.map((k) => ({ key: k, label: seen.get(k)! }));
 }
