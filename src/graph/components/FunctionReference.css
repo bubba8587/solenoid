@@ -15,7 +15,6 @@
   --fr-link-hover-bg: #1a2a3a;
   --fr-link-hover-border: #3a5a8a;
   --fr-add: #5a9a6a;
-  --fr-compose: #7a9abf;
   --fr-yes: #3d9e5a;
   --fr-warn: #c07830;
   --fr-sup: #5a7fb0;              /* superseded: replaced, the modern route exists */
@@ -35,7 +34,6 @@
   --fr-link-hover-bg: #e3edf8;
   --fr-link-hover-border: #9dbede;
   --fr-add: #2e7d46;
-  --fr-compose: #4a6d94;
   --fr-yes: #2e7d46;
   --fr-warn: #a05a17;
   --fr-sup: #46648f;
@@ -355,13 +353,6 @@
   transition: opacity 0.1s;
 }
 .fr-sol-btn:hover .fr-sol-btn__add { opacity: 1; }
-
-/* Composition label (no single node to add) */
-.fr-sol-composition {
-  color: var(--fr-compose);
-  font-style: italic;
-  font-size: 12px;
-}
 
 /* Note */
 .fr-td-note {

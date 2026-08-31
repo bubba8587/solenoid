@@ -528,18 +528,17 @@ export interface ExcelGapRow {
   category: string;
   oos?: boolean;        // the concept has no place here (cell refs, OLAP, locale byte semantics)
   superseded?: boolean; // a modern replacement covers it; the name is blocked on the formula surface (LEGACY_ALIASES)
-  composition?: boolean; // no single node, but achievable by composing nodes (Filter → Aggregate, …)
   note?: string;
 }
 
 /** Excel functions with no Solenoid node; the reference drops any entry whose name later
  *  becomes node-backed. */
 export const EXCEL_GAP: ExcelGapRow[] = [
-  { excel: "SUBTOTAL", syntax: "=SUBTOTAL(fn, range)", category: "Math & Trig", composition: true, note: "Use Aggregate with the matching op; hidden-row exclusion (101–111 variants) not applicable in a node graph" },
-  { excel: "AGGREGATE", syntax: "=AGGREGATE(fn, opts, range)", category: "Math & Trig", composition: true, note: "Use Aggregate with the matching op; the ignore-errors/hidden-rows options are cell-grid concepts" },
-  { excel: "CEILING.PRECISE", syntax: "=CEILING.PRECISE(x, sig)", category: "Math & Trig", composition: true, note: "Ceiling rounds toward +∞ already; PRECISE differs from CEILING only in ignoring the sign of the significance" },
-  { excel: "FLOOR.PRECISE", syntax: "=FLOOR.PRECISE(x, sig)", category: "Math & Trig", composition: true, note: "Floor rounds toward −∞ already; PRECISE differs from FLOOR only in ignoring the sign of the significance" },
-  { excel: "ISO.CEILING", syntax: "=ISO.CEILING(x, sig)", category: "Math & Trig", composition: true, note: "Identical to CEILING.PRECISE; Excel keeps both for ISO compatibility" },
+  { excel: "SUBTOTAL", syntax: "=SUBTOTAL(fn, range)", category: "Math & Trig", superseded: true, note: "Use SUM or the matching aggregate; the hidden-row variants (101-111) are a cell-grid concept." },
+  { excel: "AGGREGATE", syntax: "=AGGREGATE(fn, opts, range)", category: "Math & Trig", superseded: true, note: "Use the matching aggregate; the ignore-errors and hidden-rows options are cell-grid concepts." },
+  { excel: "CEILING.PRECISE", syntax: "=CEILING.PRECISE(x, sig)", category: "Math & Trig", superseded: true, note: "Use CEILING.MATH; PRECISE differs only in ignoring the significance's sign." },
+  { excel: "FLOOR.PRECISE", syntax: "=FLOOR.PRECISE(x, sig)", category: "Math & Trig", superseded: true, note: "Use FLOOR.MATH; PRECISE differs only in ignoring the significance's sign." },
+  { excel: "ISO.CEILING", syntax: "=ISO.CEILING(x, sig)", category: "Math & Trig", superseded: true, note: "Use CEILING.MATH; ISO.CEILING is CEILING.PRECISE under its ISO name." },
   // The *IFS family + singular COUNTIF/AVERAGEIF are node-backed (sumifs node) → NODE_EXCEL.
   // Only SUMIF stays a gap: it is blocked (Formula.js mis-summed a numeric-string range).
   { excel: "SUMIF", syntax: "=SUMIF(range, crit)", category: "Math & Trig", superseded: true, note: "Use SUMIFS." },

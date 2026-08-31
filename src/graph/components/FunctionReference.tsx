@@ -58,7 +58,6 @@ export function FunctionReference() {
   const excelRows = rows.filter((r) => r.excel !== null);
   const implemented = excelRows.filter((r) => r.implemented);
   const parityCount = implemented.filter((r) => r.parity).length;
-  const composable = excelRows.filter((r) => r.composition).length;
   const supersededCount = excelRows.filter((r) => r.superseded).length;
   const oosCount = excelRows.filter((r) => r.oos).length;
 
@@ -158,7 +157,6 @@ export function FunctionReference() {
         <div className="fr-stats">
           <span><span className="dot dot--yes" />{parityCount} full parity</span>
           <span><span className="dot dot--no" />{implemented.length - parityCount} partial / different</span>
-          <span><span className="dot dot--no" />{composable} composable</span>
           <span><span className="dot dot--sup" />{supersededCount} superseded</span>
           <span><span className="dot dot--oos" />{oosCount} out of scope</span>
           <span style={{ marginLeft: "auto" }}>{filtered.length} shown</span>
@@ -210,7 +208,7 @@ export function FunctionReference() {
                           onClick={expandable ? () => setOpenDesc(openDesc === rowKey ? null : rowKey) : undefined}
                         >
                           <td className={`fr-td-sol${r.implemented ? "" : " fr-td-sol--missing"}`}>
-                            {!r.implemented ? "—" : r.catalogType && r.nodeLabel ? (
+                            {r.implemented && r.catalogType && r.nodeLabel ? (
                               <button
                                 className="fr-sol-btn"
                                 title="Add this node to the canvas"
@@ -219,9 +217,7 @@ export function FunctionReference() {
                                 {r.nodeLabel}
                                 <span className="fr-sol-btn__add">+</span>
                               </button>
-                            ) : (
-                              <span className="fr-sol-composition">{r.nodeLabel}</span>
-                            )}
+                            ) : "—"}
                           </td>
                           {showExcel && (
                             <td className={`fr-td-excel${isSolOnly ? " fr-td-excel--missing" : ""}`}>
@@ -232,15 +228,11 @@ export function FunctionReference() {
                           <td className="fr-td-packs">{packsCell(r)}</td>
                           <td className="fr-td-dep">{r.dependency ? "✓" : ""}</td>
                           <td className="fr-td-parity">
-                            {isSolOnly
+                            {isSolOnly || !r.implemented
                               ? <span className="fr-parity-miss">—</span>
-                              : r.composition
-                                ? <span className="fr-parity-warn" title="Achievable by composing nodes">✎</span>
-                                : !r.implemented
-                                  ? <span className="fr-parity-miss">—</span>
-                                  : r.parity
-                                    ? <span className="fr-parity-yes">✓</span>
-                                    : <span className="fr-parity-warn">⚠</span>}
+                              : r.parity
+                                ? <span className="fr-parity-yes">✓</span>
+                                : <span className="fr-parity-warn">⚠</span>}
                           </td>
                           <td className="fr-td-note">{r.note ?? ""}</td>
                         </tr>,

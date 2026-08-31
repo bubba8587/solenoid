@@ -3,13 +3,13 @@ import { buildFunctionReference, libraryTags, LIBRARY_TAGS } from "../../src/gra
 import { EXCEL_GAP } from "../../src/graph/nodeExcel";
 import { ELIMINATED_FUNCTIONS } from "../../src/graph/excelFunctions";
 
-// The gap list's three-way partition drives the Reference's Composable / Superseded /
-// Out of scope sections; "superseded" additionally promises the formula surface blocks
-// the name and names the replacement.
-describe("gap-row scope (Composable / Superseded / Out of scope)", () => {
+// The gap list's two-way partition drives the Reference's Superseded / Out of scope
+// sections; "superseded" additionally promises the formula surface blocks the name
+// and names the replacement.
+describe("gap-row scope (Superseded / Out of scope)", () => {
   it("every gap row carries exactly one scope", () => {
     for (const g of EXCEL_GAP) {
-      const n = (g.composition ? 1 : 0) + (g.superseded ? 1 : 0) + (g.oos ? 1 : 0);
+      const n = (g.superseded ? 1 : 0) + (g.oos ? 1 : 0);
       expect(n, g.excel).toBe(1);
     }
   });
@@ -21,7 +21,7 @@ describe("gap-row scope (Composable / Superseded / Out of scope)", () => {
   it("there is no to-do tier: every unimplemented Excel row has a scope", () => {
     for (const r of buildFunctionReference()) {
       if (r.excel !== null && !r.implemented) {
-        expect(r.composition || r.superseded || r.oos, r.excel).toBe(true);
+        expect(r.superseded || r.oos, r.excel).toBe(true);
       }
     }
   });
