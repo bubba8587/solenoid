@@ -45,8 +45,8 @@ bottom; everything else floats over the canvas.
 | HUD stack (alerts/pins/problems/comments) | `.solenoid-hud-stack` | `top: chrome-top + 58px; right:12px` | 110 | `hudStack.css` |
 | Cable inspector | `.solenoid-cable-inspector` | bottom-left | 110 | `cableInspector.css` |
 | Command palette | `.solenoid-cmdpalette` (+`-scrim`, `--persistent`) | bottom-docked (`left:50%; bottom: chrome-bottom + 21px`), full-screen scrim behind | 300 modal · **150 persistent** (the always-on bar yields to the 200 modal band: Settings/help/shortcuts) | `CommandPalette.css` |
-| Docked report panel | `.report-panel--docked` | `top: chrome-top; right:0; bottom: chrome-bottom; width:440px` (via `--report-dock-*`) | 5 (beneath the header, shadowless — a dock pushes the canvas, so nothing sits under it) | `ReportOverlay.css` |
-| Node inspector panel | `.inspector-panel` | `top: chrome-top; right:0; bottom: chrome-bottom; width:340px` (via `--inspector-w`) | 5 (desktop and the mobile sheet alike: beneath the header so the bars and their popovers paint over it, shadowless; align pill hides while the mobile sheet is open) | `InspectorPanel.css` |
+| Docked report panel | `.report-panel--docked` | `top: chrome-top; right:0; bottom: chrome-bottom; width:440px` (via `--report-dock-*`) | 5 (beneath the header; the minimal `--dock-shadow` edge lift, DESIGN.md §4) | `ReportOverlay.css` |
+| Node inspector panel | `.inspector-panel` | `top: chrome-top; right:0; bottom: chrome-bottom; width:340px` (via `--inspector-w`) | 5 (desktop and the mobile sheet alike: beneath the header so the bars and their popovers paint over it; `--dock-shadow` on desktop, none on the full-width sheet; align pill hides while the mobile sheet is open) | `InspectorPanel.css` |
 
 > **Tablet (`html.is-tablet` = coarse pointer, NOT mobile — `IS_TABLET` in `coarse.ts`):** a
 > tablet runs this DESKTOP stack, so it gets no bottom action bar. The top bar grows the
