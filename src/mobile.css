@@ -8,14 +8,7 @@
    site (desktop UA → desktop layout, as the user asked).
    Canvas touch navigation (pan / pinch-zoom / double-tap) is handled by
    `touch-action: none` in canvas.css. Imported last in App.tsx so these rules
-   win the cascade.
-
-   Second pass (2026-06) covers everything added after the first: the merged
-   apptools pill (+ Reference/Settings buttons), the Cables sheet section
-   (shape switch + flow-bead animation), the Conduit inspector toolbar,
-   Note/Group header chrome, segmented toggles, the table-editor popup, the
-   connection dialog, Settings/Shortcuts overlays, and the tabbed Reference
-   overlay. In-node targets only matter while the node is selected — touch
+   win the cascade. In-node targets only matter while the node is selected — touch
    gates all node interaction on selection (see socket.css). */
 
 html.is-mobile {
@@ -27,8 +20,7 @@ html.is-mobile {
      mobile browser, so gating dvh on is-mobile left its bottom chrome (status
      bar, minimap, navigator) below the usable screen. */
 
-  /* The minimap lives bottom-right and is of little use on a phone-sized canvas
-     — hide it so the corner is free for the socket legend. */
+  /* The minimap is hidden on mobile. */
   .solenoid-minimap { display: none; }
 
   /* ── Top chrome = TWO rows: a thin ACCENT strip (the menu bar, Row A, carrying
