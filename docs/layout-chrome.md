@@ -201,7 +201,9 @@ Answers to the questions that keep biting:
 
 - **Inspector docked** (desktop/tablet) → `html.sol-inspector-docked` (`inspectorStore.ts`),
   the SAME push mechanics scaled to `--inspector-w:340px` (`InspectorPanel.css`): canvas
-  wrapper shrinks, nav pill + HUD stack shift. The two right docks are mutually exclusive —
+  wrapper shrinks; nav pill, HUD stack and socket legend shift; the command palette
+  re-centers on the canvas — the report dock's full set, kept in lockstep (the legend
+  and palette were missing until 2026-08-31). The two right docks are mutually exclusive —
   the one that opens last takes the slot and the other CLOSES (side by side was ruled out as
   too big, author 2026-08-29), so their squeeze rules never stack.
 

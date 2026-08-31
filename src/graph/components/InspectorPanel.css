@@ -26,6 +26,13 @@ html.sol-inspector-docked {
 html.sol-inspector-docked:not(.is-mobile) .sol-rf-appcanvas:not(.solenoid-composite-editor__host) { width: calc(100% - var(--inspector-w)); }
 html.sol-inspector-docked:not(.is-mobile) .solenoid-nav { right: calc(12px + var(--inspector-w)); }
 html.sol-inspector-docked:not(.is-mobile) .solenoid-hud-stack { right: calc(12px + var(--inspector-w)); }
+html.sol-inspector-docked:not(.is-mobile) .solenoid-legend { right: calc(16px + var(--inspector-w)); }
+/* The command palette centers on the CANVAS, width following it a little — the
+   same re-center the report dock does. */
+html.sol-inspector-docked:not(.is-mobile) .solenoid-cmdpalette {
+  left: calc((100vw - var(--inspector-w)) / 2);
+  width: clamp(340px, calc((100vw - var(--inspector-w)) * 0.42), 480px);
+}
 
 /* Mobile: a full-width sheet between the chrome envelopes — a 340px side dock
    has no room on a phone, and the canvas squeeze above stays off. The entry is
