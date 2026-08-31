@@ -323,8 +323,8 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "npv": [{ excel: "NPV", syntax: "=NPV(rate, v1, v2, ...)", parity: true }],
   "nth-large": [{ excel: "LARGE", syntax: "=LARGE(array, k)", parity: true }],
   "nth-small": [{ excel: "SMALL", syntax: "=SMALL(array, k)", parity: true }],
-  "oddcoupon-oddfprice": [{ excel: "ODDFPRICE", syntax: "=ODDFPRICE(...)", parity: false, note: "30/360 basis only; other basis values not supported" }],
-  "oddcoupon-oddfyield": [{ excel: "ODDFYIELD", syntax: "=ODDFYIELD(...)", parity: false, note: "30/360 basis only" }],
+  "oddcoupon-oddfprice": [{ excel: "ODDFPRICE", syntax: "=ODDFPRICE(...)", parity: false, note: "30/360 basis only; a first coupon off the maturity's coupon cycle computes here where Excel gives #NUM!" }],
+  "oddcoupon-oddfyield": [{ excel: "ODDFYIELD", syntax: "=ODDFYIELD(...)", parity: false, note: "30/360 basis only; a first coupon off the maturity's coupon cycle computes here where Excel gives #NUM!" }],
   "oddcoupon-oddlprice": [{ excel: "ODDLPRICE", syntax: "=ODDLPRICE(...)", parity: false, note: "30/360 basis only" }],
   "oddcoupon-oddlyield": [{ excel: "ODDLYIELD", syntax: "=ODDLYIELD(...)", parity: false, note: "30/360 basis only" }],
 

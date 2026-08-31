@@ -985,7 +985,10 @@ export class AccrintNode extends ClassicPreset.Node {
     const settle = serialToJsDate(ss);
     const use30  = basis === 0 || basis === 4;
     const a = use30 ? days30_360(issue, settle) : actualDays(issue, settle);
-    const e = use30 ? 360 / freq : basis === 3 ? 365 / freq : actualDays(issue, coupAddMonths(issue, 12 / freq));
+    // Period length E per basis: only actual/actual (1) measures the real period;
+    // 2 is actual/360 and 3 actual/365 (real-Excel golden values, 2026-08-31).
+    const e = basis === 1 ? actualDays(issue, coupAddMonths(issue, 12 / freq))
+      : basis === 3 ? 365 / freq : 360 / freq;
     const result = par * (rate / freq) * (a / e);
     this.cachedResult = result;
     return { result };

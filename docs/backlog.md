@@ -8,17 +8,16 @@ ruled-out ideas: `out-of-scope.md`; settled rationale: `decisions.md`.
 
 ## Awaiting the author
 
-- [ ] **Finance absolute-value verification (real Excel needed).** The bond/coupon
-  family has NO oracle — Formula.js implements almost none of it. `financeInvariants.test.ts`
-  now pins the round-trips/identities (PRICE↔YIELD, PRICEMAT↔YIELDMAT, ODD* pairs,
-  COUP* day-count, DURATION/MDURATION, VDB total/additivity), which catch structural
-  bugs but NOT a consistently-wrong absolute value. Want golden real-Excel values for:
-  COUP*, ODDF/ODDL, ACCRINT/ACCRINTM, VDB. Already confirmed absolute: PRICE/YIELD
-  + DURATION (Microsoft examples), TBILLYIELD/TBILLEQ + PRICEMAT (real Excel). Worth
-  one real-Excel check: Microsoft's MDURATION example (1-Jan-2008 → 1-Jan-2016, 8%,
-  9%, semiannual, basis 1) publishes 5.7355689 where we and a hand-worked textbook
-  Macaulay both give 5.7356698 — and our DURATION matches Microsoft's own DURATION
-  example to 8 digits, so the doc value looks like a typo.
+- [ ] **Finance absolute-value verification — ODDF retest is the remainder (real
+  Excel).** The 2026-08-31 golden run confirmed COUP*, ACCRINT/ACCRINTM, VDB
+  (fractional included), MDURATION (Microsoft's published 5.7355689 IS a doc typo;
+  real Excel returns our 5.7356698) and, after two fixes it caught (ACCRINT basis-2
+  denominator; ODDLPRICE simple-interest discounting), ODDLPRICE/ODDLYIELD — all
+  pinned in `financeInvariants.test.ts`. Left: ODDFPRICE/ODDFYIELD — the first run's
+  parameters had the first coupon off the maturity's cycle, which Excel #NUM!s. Check:
+  `=ODDFPRICE(DATE(2024,1,25),DATE(2031,1,1),DATE(2023,11,11),DATE(2024,7,1),0.0575,0.06,100,2,0)`
+  → ours 103.824908; `=ODDFYIELD(…same…,0.0575,98,100,2,0)` → ours 0.0708241. Pin on
+  confirmation. (We don't validate that alignment — noted parity:false in nodeExcel.)
 - [ ] **Script on desktop**: `'unsafe-eval'` added to the Tauri CSP for the sandbox worker
   and the main-thread compile; untested on a desktop build. Author: place a Script,
   `(x) => x * 2` with x = 21 should read 42, not a CSP refusal.

@@ -142,9 +142,12 @@ export function oddlPrice(
   const Nc = oddDays / E;
   const finalCF = redemption + couponRate / freq * 100 * Nc;
   if (settle >= lastInterest) {
+    // Excel's odd-last convention discounts the whole odd period with SIMPLE
+    // interest (1 + (DSC/E)·y), like PRICEMAT — never compounded (real-Excel
+    // golden 99.87828601, 2026-08-31).
     const DSC = days30_360(settle, maturity);
     const A = days30_360(lastInterest, settle);
-    const price = finalCF / Math.pow(1 + yld / freq, DSC / E);
+    const price = finalCF / (1 + (DSC / E) * (yld / freq));
     return price - couponRate / freq * 100 * A / E;
   }
   // Regular coupons between settlement and the last interest date, then the odd period.

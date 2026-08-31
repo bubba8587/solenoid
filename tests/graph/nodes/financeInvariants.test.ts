@@ -1,17 +1,60 @@
 import { describe, it, expect } from "vitest";
 import {
-  BondPriceNode, PriceMatNode, DurationNode, OddCouponNode, CouponNode,
+  BondPriceNode, PriceMatNode, DurationNode, OddCouponNode, CouponNode, AccrintNode,
 } from "../../../src/graph/nodes/finance";
 import { vdb, accrintM } from "../../../src/graph/nodes/financeOps";
 import { parseDateToSerial } from "../../../src/graph/nodes/date";
 
 // Formula.js implements almost none of the bond/coupon family, so these functions have
 // no external oracle. These tests pin INVARIANTS that must hold whatever the exact value
-// is — inverse round-trips, day-count identities, depreciation totals. A failure here is
-// a real bug, not a golden-value mismatch. (Absolute values still want a real-Excel check.)
+// is — inverse round-trips, day-count identities, depreciation totals — plus the
+// real-Excel GOLDEN values the author verified by hand (2026-08-31).
 
 const d = (s: string) => parseDateToSerial(s);
 const settle = d("2024-01-15"), maturity = d("2029-01-15");
+
+describe("real-Excel golden values (author-verified 2026-08-31)", () => {
+  it("ODDLPRICE / ODDLYIELD — the odd-last period discounts with SIMPLE interest", () => {
+    // =ODDLPRICE(DATE(2024,2,7),DATE(2024,6,15),DATE(2023,10,15),0.0375,0.0405,100,2,0)
+    const args = { settle: [d("2024-02-07")], maturity: [d("2024-06-15")], firstlast: [d("2023-10-15")], rate: [0.0375], redemption: [100], frequency: [2] };
+    expect(new OddCouponNode({ op: "oddlprice" }).data({ ...args, yld: [0.0405] }).result!)
+      .toBeCloseTo(99.87828601, 7);
+    // =ODDLYIELD(DATE(2024,2,7),DATE(2024,6,15),DATE(2023,10,15),0.0375,99.8,100,2,0)
+    expect(new OddCouponNode({ op: "oddlyield" }).data({ ...args, pr: [99.8] }).result!)
+      .toBeCloseTo(0.042712116, 8);
+  });
+  it("ACCRINT per basis — E is 360/freq for actual/360, actual only for actual/actual", () => {
+    // =ACCRINT(DATE(2023,7,15),DATE(2024,1,15),DATE(2024,1,15),0.06,1000,2,basis)
+    const acc = (basis: number) => new AccrintNode().data({
+      issue: [d("2023-07-15")], settle: [d("2024-01-15")], rate: [0.06], par: [1000], frequency: [2], basis: [basis],
+    }).result!;
+    expect(acc(0)).toBeCloseTo(30, 9);
+    expect(acc(1)).toBeCloseTo(30, 9);
+    expect(acc(2)).toBeCloseTo(30.66666667, 7);
+  });
+  it("VDB matches Excel, fractional periods included", () => {
+    expect(vdb(10000, 1000, 5, 0, 2, 2)!).toBeCloseTo(6400, 9);
+    expect(vdb(10000, 1000, 5, 2, 5, 2)!).toBeCloseTo(2600, 9);
+    expect(vdb(10000, 1000, 5, 0.5, 2.5, 2)!).toBeCloseTo(5120, 9);
+  });
+  it("MDURATION matches real Excel — Microsoft's published 5.7355689 is a doc typo", () => {
+    // =MDURATION(DATE(2008,1,1),DATE(2016,1,1),0.08,0.09,2,1) = 5.735669814 in real Excel.
+    expect(new DurationNode({ op: "mduration" }).data({
+      settle: [d("2008-01-01")], maturity: [d("2016-01-01")], coupon: [0.08], yld: [0.09], frequency: [2], basis: [1],
+    }).result!).toBeCloseTo(5.735669814, 7);
+  });
+  it("the COUP* family matches Excel when settlement lands ON a coupon date", () => {
+    // Settle 15-Jan-2024, maturity 15-Jan-2029, semiannual, basis 0 (all six confirmed).
+    const coup = (op: "coupdaybs" | "coupdays" | "coupdaysnc" | "coupnum" | "couppcd" | "coupncd") =>
+      new CouponNode({ op }).data({ settle: [settle], maturity: [maturity], frequency: [2], basis: [0] }).result!;
+    expect(coup("coupdaybs")).toBe(0);
+    expect(coup("coupdays")).toBeCloseTo(180, 9);
+    expect(coup("coupdaysnc")).toBeCloseTo(180, 9);
+    expect(coup("coupnum")).toBe(10);
+    expect(coup("couppcd")).toBe(settle);
+    expect(coup("coupncd")).toBe(d("2024-07-15"));
+  });
+});
 
 describe("PRICE ↔ YIELD are inverses", () => {
   it("YIELD recovers the yield that PRICE was given", () => {
