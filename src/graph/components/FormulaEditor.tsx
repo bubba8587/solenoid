@@ -89,7 +89,7 @@ export function FormulaEditor({
       <pre ref={preRef} className="fx-editor__hl fx-tokens" aria-hidden="true" dangerouslySetInnerHTML={{ __html: html }} />
       <textarea
         ref={taRef}
-        className="fx-editor__ta"
+        className="fx-editor__ta nowheel"
         value={value}
         readOnly={readOnly}
         placeholder={placeholder}
@@ -115,7 +115,7 @@ export function FormulaEditor({
         onMouseDown={(e) => e.stopPropagation()}
       />
       {menu && !readOnly && (
-        <ul className="fx-editor__menu">
+        <ul className="fx-editor__menu nowheel">
           {menu.items.map((it, i) => (
             <li
               key={it.kind + it.name}

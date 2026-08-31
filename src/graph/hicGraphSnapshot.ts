@@ -1,13 +1,15 @@
-// Snapshot the LIVE rete graph into a plain, Pixi-friendly model — node cards
+// Snapshot the LIVE graph into a plain drawable model — node cards
 // (world rect + kind color + scraped title/value + socket world positions) and
-// cables (socket-to-socket ends + angle hints). Reads the editor/area singletons
+// cables (socket-to-socket ends + angle hints). Reads the editor/view singletons
 // and the mounted DOM (geometry + text), like nodeScene.ts. Impure and defensive:
 // every read is guarded so a half-built graph yields a partial snapshot, never a
 // throw (the Pixi overlay must never crash the app beneath it).
 
-import { getArea, getEditor } from "./process";
-import { nodeKindOf } from "./nodes/kind";
-import { NODE_KIND_ACCENTS } from "./nodes/shared";
+import type { NodeEditor } from "rete";
+import type { Schemes } from "./schemes";
+import type { View } from "./view";
+import { nodeAccent } from "./nodes/kind";
+import { appThemeStore } from "./appTheme";
 import { parseColor, mixSrgb, type RGBA } from "./cssColor";
 import { cableAngleStore } from "./cableAngleStore";
 import { pickTextColor } from "./hicColors";
@@ -133,7 +135,7 @@ const TEXT_SELECTORS: { sel: string; title?: boolean; input?: boolean; select?: 
   { sel: ".solenoid-node__output-value" },
   { sel: ".solenoid-node__inline-input", input: true },
   { sel: ".solenoid-node__value-input", input: true },
-  { sel: ".solenoid-node__op-select", select: true },
+  { sel: ".solenoid-node__select", select: true },
 ];
 // Markdown block tags for Notes (their text uses plain tags, not node classes).
 const NOTE_SELECTORS: { sel: string; title?: boolean; input?: boolean; select?: boolean }[] = [
@@ -158,7 +160,7 @@ function scrapeTextRuns(card: HTMLElement, elRect: DOMRect, viewX: number, viewY
     else if (tt === "capitalize") text = text.replace(/\b\w/g, (c) => c.toUpperCase());
     const ls = parseFloat(cs.letterSpacing); // "normal" → NaN
     // A run is "boxed" if it's an input/select OR its element paints a real box
-    // (a Display value is a bordered surface, not a bare run). Capture the real
+    // (a Display value is a framed surface, not a bare run). Capture the real
     // neutral fill/border — never the warm kind accent.
     const boxBw = parseFloat(cs.borderTopWidth) || 0;
     const bgC = parseColor(cs.backgroundColor);
@@ -331,18 +333,16 @@ export function readThemeColors(): { body: number; title: number; value: number 
   return { body: FALLBACK_BODY, title: 0xf3f5f8, value: 0xcfd6e4 };
 }
 
-/** Read the current graph + transform, or null if the editor/area aren't ready. */
-export function snapshotGraph(): GraphSnapshot | null {
-  const area = getArea();
-  const editor = getEditor();
-  if (!area || !editor) return null;
-  const t = area.area?.transform ?? { k: 1, x: 0, y: 0 };
+/** Read the given graph + transform, or null if the editor/view aren't ready. */
+export function snapshotGraph(editor: NodeEditor<Schemes> | null, view: View | null): GraphSnapshot | null {
+  if (!view || !editor) return null;
+  const t = view.transform ?? { k: 1, x: 0, y: 0 };
   const k = t.k > 0 ? t.k : 1;
 
   _sockColorCache.clear(); // re-resolve CSS vars (theme may have changed since last open)
   // The canvas background a card composites over — translucent fills (a Note's
   // 30%-alpha tint) must be flattened onto it or they render far too saturated.
-  const canvasEl = document.querySelector(".solenoid-canvas") ?? document.body;
+  const canvasEl = document.querySelector(".sol-rf-appcanvas .react-flow") ?? document.body;
   const canvasRGBA = parseColor(getComputedStyle(canvasEl).backgroundColor) ?? { r: 14, g: 16, b: 20, a: 1 };
   const nodes: SnapNode[] = [];
   const groups: SnapGroup[] = [];
@@ -352,9 +352,9 @@ export function snapshotGraph(): GraphSnapshot | null {
 
   for (const node of editor.getNodes()) {
     try {
-      const view = area.nodeViews.get(node.id);
-      const el = view?.element;
-      if (!view || !el) continue;
+      const pos = view.position(node.id);
+      const el = view.nodeElement(node.id);
+      if (!pos || !el) continue;
 
       // Group containers render as translucent background rects behind cards.
       const groupEl = el.querySelector<HTMLElement>(".solenoid-group")
@@ -373,7 +373,7 @@ export function snapshotGraph(): GraphSnapshot | null {
           if (gtt === "uppercase") label = label.toUpperCase();
           else if (gtt === "lowercase") label = label.toLowerCase();
           else if (gtt === "capitalize") label = label.replace(/\b\w/g, (c) => c.toUpperCase());
-          groups.push({ id: node.id, x: view.position.x, y: view.position.y, w: gw, h: gh, headerH, label, color, border });
+          groups.push({ id: node.id, x: pos.x, y: pos.y, w: gw, h: gh, headerH, label, color, border });
         }
         continue;
       }
@@ -402,7 +402,7 @@ export function snapshotGraph(): GraphSnapshot | null {
       // The header composites over the card body, not the canvas.
       const headerColor = headerRGBA ? flatten(headerRGBA, ownRGBA ?? canvasRGBA) : ownBg;
 
-      const accent = hexToNum(NODE_KIND_ACCENTS[nodeKindOf(node)] ?? "#7a8296");
+      const accent = hexToNum(nodeAccent(node, appThemeStore.getMode()));
 
       // Real card border — grouped nodes adopt the group hue at ~0.78 alpha, so it
       // is NOT the kind accent. Capture color AND alpha (a hard outline reads heavy).
@@ -415,19 +415,19 @@ export function snapshotGraph(): GraphSnapshot | null {
       // Socket world positions, scraped from the dots and un-scaled into world space.
       const elRect = el.getBoundingClientRect();
       const isNode = card.classList.contains("solenoid-node");
-      const texts = scrapeTextRuns(card, elRect, view.position.x, view.position.y, k, isNode ? TEXT_SELECTORS : NOTE_SELECTORS);
+      const texts = scrapeTextRuns(card, elRect, pos.x, pos.y, k, isNode ? TEXT_SELECTORS : NOTE_SELECTORS);
       if (isNode && headerH > 0) {
         // Fall back to the node label as a header title run if none was scraped.
         // Only when the card actually HAS a header band — headerless nodes (the
         // Format Controller) would otherwise get a phantom title over their content.
         if (!texts.some((t) => t.isTitle)) {
           const label = (node as { label?: string }).label;
-          if (label) texts.push({ text: label, x: view.position.x + 9, y: view.position.y + 6, w: 0, h: 0, size: 13, color: 0xf3f5f8, mono: false, isTitle: true, boxed: false, chevron: false, bold: true, letterSpacing: 0, boxFill: null, boxBorder: null, align: "left" });
+          if (label) texts.push({ text: label, x: pos.x + 9, y: pos.y + 6, w: 0, h: 0, size: 13, color: 0xf3f5f8, mono: false, isTitle: true, boxed: false, chevron: false, bold: true, letterSpacing: 0, boxFill: null, boxBorder: null, align: "left" });
         }
       } else if (!texts.length) {
         // Note / conduit — show its raw content (their text uses other classes).
         const raw = (card.textContent ?? "").trim();
-        if (raw) texts.push({ text: raw.slice(0, 120), x: view.position.x + 9, y: view.position.y + 7, w: 0, h: 0, size: 12, color: 0xcfd6e4, mono: false, isTitle: false, boxed: false, chevron: false, bold: false, letterSpacing: 0, boxFill: null, boxBorder: null, align: "left" });
+        if (raw) texts.push({ text: raw.slice(0, 120), x: pos.x + 9, y: pos.y + 7, w: 0, h: 0, size: 12, color: 0xcfd6e4, mono: false, isTitle: false, boxed: false, chevron: false, bold: false, letterSpacing: 0, boxFill: null, boxBorder: null, align: "left" });
       }
       const inputs = (node as { inputs?: Record<string, { socket?: { dataType?: string } }> }).inputs ?? {};
       const outputs = (node as { outputs?: Record<string, { socket?: { dataType?: string } }> }).outputs ?? {};
@@ -438,8 +438,10 @@ export function snapshotGraph(): GraphSnapshot | null {
         const key = se.getAttribute("data-socket-key");
         const sideAttr = se.getAttribute("data-socket-side");
         if (!key || (sideAttr !== "input" && sideAttr !== "output")) continue;
-        const r = se.getBoundingClientRect();
-        const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        // React Flow anchors an edge at the HANDLE box's outer edge (right for a source,
+        // left for a target), not its center; measure the handle so the routed ends match.
+        const r = (se.querySelector<HTMLElement>(".react-flow__handle") ?? se).getBoundingClientRect();
+        const cx = sideAttr === "output" ? r.right : r.left, cy = r.top + r.height / 2;
         const dataType = (sideAttr === "input" ? inputs[key]?.socket : outputs[key]?.socket)?.dataType;
         const kind = socketGlyphKind(dataType);
         let color = resolveSockColor(dataType), color2: number | null = null;
@@ -450,8 +452,8 @@ export function snapshotGraph(): GraphSnapshot | null {
         const s: SnapSocket = {
           key,
           side: sideAttr,
-          x: view.position.x + (cx - elRect.left) / k,
-          y: view.position.y + (cy - elRect.top) / k,
+          x: pos.x + (cx - elRect.left) / k,
+          y: pos.y + (cy - elRect.top) / k,
           kind, color, color2,
         };
         sockets.push(s);
@@ -459,15 +461,15 @@ export function snapshotGraph(): GraphSnapshot | null {
       }
       lookup.set(node.id, byKey);
 
-      // A Conduit's view.position is the node-view origin, but its body floats at a
-      // body-relative offset (and is rotated), so view.position is NOT where it paints
+      // A Conduit's model position is the node-wrapper origin, but its body floats at a
+      // body-relative offset (and is rotated), so the model position is NOT where it paints
       // — the GPU frame drew detached from its own sockets/cables. Use the conduit
       // element's true rect so the frame centers on its sockets.
-      let nx = view.position.x, ny = view.position.y, nw = w, nh = h;
+      let nx = pos.x, ny = pos.y, nw = w, nh = h;
       if (card.classList.contains("solenoid-conduit")) {
         const cr = card.getBoundingClientRect();
-        nx = view.position.x + (cr.left - elRect.left) / k;
-        ny = view.position.y + (cr.top - elRect.top) / k;
+        nx = pos.x + (cr.left - elRect.left) / k;
+        ny = pos.y + (cr.top - elRect.top) / k;
         nw = cr.width / k; nh = cr.height / k;
       }
 
@@ -476,10 +478,10 @@ export function snapshotGraph(): GraphSnapshot | null {
         x: nx, y: ny, w: nw, h: nh, headerH,
         accent, body: isNode ? (bodyColor ?? ownBg) : ownBg, headerColor, border, borderAlpha,
         texts,
-        sliders: isNode ? scrapeSliders(card, elRect, view.position.x, view.position.y, k) : [],
-        checkboxes: isNode ? scrapeCheckboxes(card, elRect, view.position.x, view.position.y, k) : [],
-        decorations: scrapeDecorations(card, elRect, view.position.x, view.position.y, k),
-        images: isNode ? scrapeImages(card, elRect, view.position.x, view.position.y, k) : [],
+        sliders: isNode ? scrapeSliders(card, elRect, pos.x, pos.y, k) : [],
+        checkboxes: isNode ? scrapeCheckboxes(card, elRect, pos.x, pos.y, k) : [],
+        decorations: scrapeDecorations(card, elRect, pos.x, pos.y, k),
+        images: isNode ? scrapeImages(card, elRect, pos.x, pos.y, k) : [],
         isConduit: card.classList.contains("solenoid-conduit"),
         hasChevron: headerH > 0 && !card.classList.contains("solenoid-node--no-chevron"),
         rotation: (((node as { angle?: number }).angle ?? 0) * Math.PI) / 180,

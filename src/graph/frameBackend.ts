@@ -2,7 +2,7 @@ import {
   getColumn, frameRowCount,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
 } from "./frame";
-import { applyVerb, joinFrames, appendFrames, sampleFrame, type FrameOp, type JoinOpts, type AggOp } from "./frameVerbs";
+import { applyVerb, joinFrames, appendFrames, bindColumns, sampleFrame, type FrameOp, type JoinOpts, type AggOp } from "./frameVerbs";
 import { solError, isSolError, type SolError } from "./errorValue";
 import { guardFinite } from "./valueKinds";
 import { engineAvailable, enginePing, ipcInvoke } from "./ipcBridge";
@@ -31,15 +31,32 @@ export type FrameInput = FrameValue | FrameRef;
 // while carrying DIFFERENT pending plans, so keying by handle would collapse them.
 let _flushMemo = new Map<FrameRef, Promise<FrameHandle>>();
 let _collectMemo = new Map<FrameRef, Promise<FrameValue | SolError | null>>();
+// Every plan flushed this pass, per base handle, so a longer plan on the same base
+// rebases onto the longest already-materialized prefix instead of re-running it.
+let _flushedPlans = new Map<FrameHandle, { plan: readonly FrameOp[]; p: Promise<FrameHandle> }[]>();
 
 /** Resolve a ref's pending plan to a real handle in ONE `applyMany` round trip —
- *  the fusion entry point, memoized per pass so a fan-out ref flushes once. */
+ *  the fusion entry point, memoized per pass so a fan-out ref flushes once. A chain
+ *  of verb cards flushes once PER CARD (each previews its own output), so the
+ *  flush applies only the ops past the longest prefix a card upstream already
+ *  flushed this pass; each card then costs one op on the previous frame, not the
+ *  whole chain again. A tail holding a groupBy is not rebased: the aggregate
+ *  guard reads its input column off the plan's base handle. */
 export async function flushRef(ref: FrameRef): Promise<FrameHandle> {
   if (ref.__plan.length === 0) return ref.__frameRef;
   let p = _flushMemo.get(ref);
   if (!p) {
-    p = applyPlanWithSketchSampling(ref.__frameRef, ref.__plan);
+    const flushed = _flushedPlans.get(ref.__frameRef) ?? [];
+    const prefix = flushed
+      .filter((f) => f.plan.length < ref.__plan.length && f.plan.every((op, i) => op === ref.__plan[i]))
+      .sort((a, b) => b.plan.length - a.plan.length)[0];
+    const tail = prefix ? ref.__plan.slice(prefix.plan.length) : ref.__plan;
+    p = prefix && !tail.some((op) => op.kind === "groupBy")
+      ? prefix.p.then((h) => applyPlanWithSketchSampling(h, tail))
+      : applyPlanWithSketchSampling(ref.__frameRef, ref.__plan);
     _flushMemo.set(ref, p);
+    flushed.push({ plan: ref.__plan, p });
+    _flushedPlans.set(ref.__frameRef, flushed);
   }
   return p;
 }
@@ -96,6 +113,7 @@ export function clearCollectMemo(): void {
   }
   _flushMemo = new Map();
   _collectMemo = new Map();
+  _flushedPlans = new Map();
 }
 
 /** Collect a cable's frame value back to an eager FrameValue — the materialization
@@ -169,6 +187,8 @@ export interface FrameBackend {
   join(left: FrameHandle, right: FrameHandle, opts: JoinOpts): Promise<FrameHandle>;
   /** Stacks vertically, union by column NAME. */
   append(handles: readonly FrameHandle[]): Promise<FrameHandle>;
+  /** Binds side by side by POSITION; ragged pads with blanks. */
+  bindColumns(handles: readonly FrameHandle[]): Promise<FrameHandle>;
   preview(handle: FrameHandle, n: number): Promise<FramePreview>;
   collect(handle: FrameHandle): Promise<FrameValue>;
   /** `null` when the column name isn't in the frame. */
@@ -225,6 +245,10 @@ class JsFrameBackend implements FrameBackend {
 
   async append(handles: readonly FrameHandle[]): Promise<FrameHandle> {
     return this.register(appendFrames(handles.map((h) => this.get(h))));
+  }
+
+  async bindColumns(handles: readonly FrameHandle[]): Promise<FrameHandle> {
+    return this.register(bindColumns(handles.map((h) => this.get(h))));
   }
 
   private register(frame: FrameValue): FrameHandle {
@@ -314,6 +338,10 @@ class PolarsBackend implements FrameBackend {
 
   async append(handles: readonly FrameHandle[]): Promise<FrameHandle> {
     return ipcInvoke<string>("engine_append", { handles }) as Promise<FrameHandle>;
+  }
+
+  async bindColumns(handles: readonly FrameHandle[]): Promise<FrameHandle> {
+    return ipcInvoke<string>("engine_bind_columns", { handles }) as Promise<FrameHandle>;
   }
 
   async preview(handle: FrameHandle, n: number): Promise<FramePreview> {
@@ -511,6 +539,20 @@ export async function runFrameJoin(left: FrameInput, right: FrameInput, opts: Jo
 }
 
 /** Union by column NAME. */
+export async function runFrameBindColumns(frames: readonly FrameInput[]): Promise<FrameRef | SolError> {
+  const be = frameBackend();
+  const temps: FrameHandle[] = [];
+  try {
+    const handles: FrameHandle[] = [];
+    for (const f of frames) { const r = await inputHandle(f); if (r.temp) temps.push(r.h); handles.push(r.h); }
+    return wrapRef(await be.bindColumns(handles));
+  } catch (e) {
+    return asErrorValue(e);
+  } finally {
+    for (const h of temps) be.drop(h);
+  }
+}
+
 export async function runFrameAppend(frames: readonly FrameInput[]): Promise<FrameRef | SolError> {
   const be = frameBackend();
   const temps: FrameHandle[] = [];

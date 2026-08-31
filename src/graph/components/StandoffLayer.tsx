@@ -1,3 +1,4 @@
+import { measuredSize } from "../nodeSize";
 import { useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -32,7 +33,8 @@ function BandField({ value, onCommit }: { value: number; onCommit: (v: number) =
     />
   );
 }
-import { getEditor, getArea, unselectAllNodes } from "../process";
+import { getEditor, getView } from "../process";
+import { unselectAllNodes } from "../canvasCommands";
 import { cableSelectionStore } from "../cableState";
 import { groupCollapseStore } from "../groupCollapse";
 import { scheduleAutosave } from "../persistence";
@@ -48,14 +50,16 @@ const HIT_WIDTH = 18;
 const CAP_R = 4.5;
 
 function liveBox(id: string): Box | null {
-  const area = getArea();
+  const view = getView();
   const editor = getEditor();
-  const view = area?.nodeViews.get(id);
+  const pos = view?.position(id);
   const node = editor?.getNode(id);
-  if (!view || !node) return null;
-  const w = view.element.offsetWidth || (node as { width?: number }).width || 100;
-  const h = view.element.offsetHeight || (node as { height?: number }).height || 50;
-  return { x: view.position.x, y: view.position.y, w, h };
+  if (!view || !pos || !node) return null;
+  const m = measuredSize(view, id);
+  const el = view.nodeElement(id);
+  const w = m?.w ?? (el?.offsetWidth || (node as { width?: number }).width || 100);
+  const h = m?.h ?? (el?.offsetHeight || (node as { height?: number }).height || 50);
+  return { x: pos.x, y: pos.y, w, h };
 }
 
 function StandoffBar({ s, selected }: { s: Standoff; selected: boolean }) {

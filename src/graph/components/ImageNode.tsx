@@ -5,7 +5,7 @@ import { processGraph } from "../process";
 import { hydrateImageAsset } from "../imageAssets";
 import type { NodeProps } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
-import { useDraftCommit, INVALID_DRAFT } from "./inlineInput";
+import { useDraftCommit, INVALID_DRAFT, useEditableLabel } from "./inlineInput";
 import { stopDragStart } from "../coarse";
 import "./ImageNode.css";
 
@@ -16,14 +16,15 @@ const MAX_H = 800;
  *  Label/URL/height/attachment all ride the emitted ImageValue, so each commit
  *  recomputes the downstream cone. */
 export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
-  const [label, setLabel] = useState(data.label);
   const [url, setUrl] = useState(data.url);
   const [dataUrl, setDataUrl] = useState(data.dataUrl);
   const [height, setHeight] = useState(data.height);
   const [collapsed, setCollapsed] = useState(data.collapsed);
   const fileRef = useRef<HTMLInputElement>(null);
+  // The shared title-edit mechanic; the label becomes ImageValue.title, so a commit
+  // recomputes the downstream cone.
+  const title = useEditableLabel(data, () => { void processGraph(data.id); });
 
-  useEffect(() => { setLabel(data.label); }, [data.label]);
   useEffect(() => { setUrl(data.url); }, [data.url]);
   // Asset hydration sets data.dataUrl AFTER mount — sync it in.
   useEffect(() => { setDataUrl(data.dataUrl); }, [data.dataUrl]);
@@ -33,9 +34,6 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
 
   const src = dataUrl || url;
 
-  // The label IS data here (it becomes ImageValue.title), but propagation still
-  // waits for blur/Enter — never processGraph from onChange.
-  function onLabel(v: string) { setLabel(v); data.label = v; scheduleAutosave(); }
   function commitValue() { void processGraph(data.id); }
 
   // A URL takes over as the source and drops any local attachment, bundled-file
@@ -98,17 +96,17 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
             <path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        <input
-          className="solenoid-image__name"
-          value={label}
-          placeholder="Image"
-          spellCheck={false}
-          onChange={(e) => onLabel(e.target.value)}
-          onBlur={commitValue}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-          onPointerDown={stopDragStart}
-          onMouseDown={stopDragStart}
-        />
+        {title.editing ? (
+          <input className="solenoid-image__name" placeholder="Image" {...title.inputProps} />
+        ) : (
+          <div
+            className={`solenoid-image__name-display${data.label.trim() ? "" : " solenoid-image__name-display--empty"}`}
+            title={data.label || "Image"}
+            {...title.displayProps}
+          >
+            {data.label.trim() || "Image"}
+          </div>
+        )}
         <button
           type="button"
           className="solenoid-image__attach"
@@ -132,7 +130,7 @@ export function ImageComponent({ data, emit }: NodeProps<ImageNodeType>) {
       {!collapsed && (
         <div className="solenoid-image__content">
           {src ? (
-            <img className="solenoid-image__img" src={src} alt={label || "image"} style={{ height }} draggable={false} />
+            <img className="solenoid-image__img" src={src} alt={data.label || "image"} style={{ height }} draggable={false} />
           ) : (
             <button
               type="button"

@@ -41,10 +41,16 @@
       "expect": { "columns": [
         { "name": "a", "type": "string", "values": ["x\u0001s:y", "x"] },
         { "name": "b", "type": "string", "values": ["z", "y\u0001s:z"] } ] } },
-    { "name": "all non-finite numbers share one key bucket (first occurrence wins)",
+    { "name": "each non-finite keys apart: +inf, -inf and NaN are three buckets",
       "frames": { "in": { "columns": [
-        { "name": "v", "type": "number", "values": [{"__nf": "inf"}, {"__nf": "-inf"}, {"__nf": "nan"}, 1] } ] } },
+        { "name": "v", "type": "number", "values": [{"__nf": "inf"}, {"__nf": "-inf"}, {"__nf": "nan"}, {"__nf": "inf"}, {"__nf": "nan"}, 1] } ] } },
       "op": { "kind": "distinct" },
       "expect": { "columns": [
-        { "name": "v", "type": "number", "values": [{"__nf": "inf"}, 1] } ] } }
+        { "name": "v", "type": "number", "values": [{"__nf": "inf"}, {"__nf": "-inf"}, {"__nf": "nan"}, 1] } ] } },
+    { "name": "a non-finite key never collides with the string that names it",
+      "frames": { "in": { "columns": [
+        { "name": "v", "type": "string", "values": ["inf", "-inf", "nan", "inf"] } ] } },
+      "op": { "kind": "distinct" },
+      "expect": { "columns": [
+        { "name": "v", "type": "string", "values": ["inf", "-inf", "nan"] } ] } }
   ] }

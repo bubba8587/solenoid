@@ -130,7 +130,7 @@ export function guardFinite(result: number, ...inputs: unknown[]): number | SolE
     return solError("#DOMAIN!", "The result is undefined: an indeterminate operation such as ∞ − ∞, 0 × ∞, or a value outside the function's domain.");
   }
   const fromInfiniteInput = inputs.some((v) => v === Infinity || v === -Infinity);
-  return fromInfiniteInput ? result : solError("#OVERFLOW!", "The result is too large to represent; the true value exceeds the numeric range.");
+  return fromInfiniteInput ? result : solError("#OVERFLOW!", "The result is too large to represent. The true value exceeds the numeric range.");
 }
 
 // Kleene three-valued logic: T / F / N(=null), matching Polars, pandas and ANSI SQL.

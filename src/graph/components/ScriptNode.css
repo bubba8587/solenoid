@@ -1,0 +1,12 @@
+/* The Script source field: the shared JS overlay editor (JsEditor.css) in a sunken
+   box, resized by the shared field grip, expanded to the popup by the corner button. */
+.solenoid-script__field {
+  position: relative; /* offsetParent for the resize grip + expand button */
+  display: flex;
+  padding: 4px 4px 2px;
+}
+
+/* Seat the shared grip and the expand button INSIDE the editor box's corner —
+   the field's own padding would otherwise leave them straddling the border. */
+.solenoid-script__field .solenoid-field-resize { right: 6px; bottom: 4px; }
+.solenoid-script__field .solenoid-expr__expand { top: 7px; right: 7px; }

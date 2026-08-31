@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import type { AlertNode as AlertNodeType, AlertMode } from "../rete-nodes";
 import { ALERT_MODE_KEYS } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
-import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";
 import { appThemeStore } from "../appTheme";
 import { resolveColor, themeAccent } from "../palette";
@@ -25,21 +25,21 @@ const STATUS: Record<AlertMode, { calm: string; met: (v: number) => string }> = 
 const CALM_COLOR = "var(--text-dim)";
 
 export function AlertComponent({ data, emit }: NodeProps<AlertNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
+  const [condition, setCondition] = useNodeField(data, "condition");
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const metColor = themeAccent(resolveColor("amber"), appThemeStore.getMode());
-  const shownKeys = ALERT_MODE_KEYS[op];
+  const shownKeys = ALERT_MODE_KEYS[condition];
 
   async function handleOpChange(next: AlertMode) {
     // Inputs that leave the active set are about to be hidden — prune first.
     const keep = new Set(ALERT_MODE_KEYS[next]);
     await dropInputCables(data.id, (k) => !keep.has(k));
-    setOp(next);
+    setCondition(next);
   }
 
   return (
     <NodeShell node={data} emit={emit}>
-      <OpSelect value={op} onChange={handleOpChange} options={MODES} />
+      <ArgSelect value={condition} onChange={handleOpChange} options={MODES} />
       <InlineInputs node={data} emit={emit} keys={shownKeys} />
       <ValueDisplay
         value={data.cachedResult}
@@ -47,7 +47,7 @@ export function AlertComponent({ data, emit }: NodeProps<AlertNodeType>) {
           const met = Array.isArray(v) ? v.some((x) => x !== 0) : v !== 0;
           const desc = Array.isArray(v)
             ? (met ? "some out" : "all clear")
-            : (met ? STATUS[op].met(v as number) : STATUS[op].calm);
+            : (met ? STATUS[condition].met(v as number) : STATUS[condition].calm);
           return <span style={{ color: met ? metColor : CALM_COLOR, fontWeight: 600 }}>● {desc}</span>;
         }}
       />

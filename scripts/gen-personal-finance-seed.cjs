@@ -131,12 +131,12 @@ note("note-pivot", 40, -600,
 n("slicer-exp","SlicerNode",   60, -300, { label: "Expenses only", selectedColumn: "Category", selectedValues: ["Housing","Groceries","Dining","Transport","Utilities","Entertainment","Shopping","Health"], multiSelect: true });
 // The frame Group By is one relational verb over the frame, then Get Column
 // pulls the lists the chart/sparkline need. Coords in the TUNED frame.
-n("gbf-spend","GroupByFrameNode", 900, -150, { label: "Spend by category", op: "sum" }, { stringLiterals: { keys: "Category", column: "Amount" } });
+n("gbf-spend","GroupByFrameNode", 900, -150, { label: "Spend by category", agg: "sum" }, { stringLiterals: { keys: "Category", column: "Amount" } });
 n("col-ptotal","GetColumnNode", 1230,  60, { label: "Category totals", readAs: "number" }, { stringLiterals: { name: "Amount" } });
 n("abs-spend","MathFnNode",   600, -180, { label: "Magnitude", op: "abs" });
 n("disp-pivot","DisplayNode", 1889, 207, { label: "Spend by category" });
 n("chart-cat","ChartNode",   1120,  -40, { label: "Spending by category", op: "column" });
-n("gbf-cnt", "GroupByFrameNode",  900, 140, { label: "Count by category", op: "count" }, { stringLiterals: { keys: "Category", column: "Amount" } });
+n("gbf-cnt", "GroupByFrameNode",  900, 140, { label: "Count by category", agg: "count" }, { stringLiterals: { keys: "Category", column: "Amount" } });
 n("col-pcnt","GetColumnNode", 1230, -160, { label: "Counts", readAs: "number" }, { stringLiterals: { name: "Amount" } });
 n("spark-cnt","SparklineNode",600,  40, { label: "# transactions", op: "column" });
 const GRP_PIVOT = ["slicer-exp","gbf-spend","col-ptotal","abs-spend","disp-pivot","chart-cat","gbf-cnt","col-pcnt","spark-cnt"];
@@ -167,7 +167,7 @@ n("slider-goal","SliderInputNode", 60, 1340, { label: "Net-worth goal", value: 1
 n("sumif-assets","SumIfsNode", 1250, 1110, { label: "Assets (Balance > 0)", op: "sumifs", condConfig: { "0": { op: "gt" } }, valueKeys: ["column0"] }, { stringLiterals: { values: "Balance", column0: "Balance", value0: "0" } });
 n("sumif-liab", "SumIfsNode",  1050, 1680, { label: "Debt (Balance < 0)", op: "sumifs", condConfig: { "0": { op: "lt" } }, valueKeys: ["column0"] }, { stringLiterals: { values: "Balance", column0: "Balance", value0: "0" } });
 n("expr-debt","ExpressionNode",    860, 1540, { label: "Liabilities", expr: "-l" });
-n("gbf-type", "GroupByFrameNode",  881, 2042, { label: "By asset class", op: "sum" }, { stringLiterals: { keys: "Type", column: "Balance" } });
+n("gbf-type", "GroupByFrameNode",  881, 2042, { label: "By asset class", agg: "sum" }, { stringLiterals: { keys: "Type", column: "Balance" } });
 n("col-tbal", "GetColumnNode",     881, 2270, { label: "Class totals", readAs: "number" }, { stringLiterals: { name: "Balance" } });
 n("chart-type","ChartNode",  620, 1260, { label: "Assets vs liabilities", op: "column" });
 n("disp-type","DisplayNode", 900, 1080, { label: "Class totals" });
@@ -385,7 +385,7 @@ n("fi-report", "FrameInputNode", 60, 2620, {
   ]),
 });
 n("fill-cat", "FillBlanksNode", 400, 2620, { label: "Fill Down → Category" }, { stringLiterals: { columns: "Category" } });
-n("gb-cat", "GroupByFrameNode", 700, 2620, { label: "Sum by category", op: "sum" }, { stringLiterals: { keys: "Category", column: "Amount" } });
+n("gb-cat", "GroupByFrameNode", 700, 2620, { label: "Sum by category", agg: "sum" }, { stringLiterals: { keys: "Category", column: "Amount" } });
 const GRP_V12 = ["fi-bridge", "wf-bridge", "fi-daily", "cal-daily", "fi-report", "fill-cat", "gb-cat"];
 
 c("fi-bridge", "frame", "wf-bridge", "frame");
@@ -617,7 +617,7 @@ const standoffs = NOTE_TIES.map(([noteId, groupId]) => (
   { a: { nodeId: noteId, anchor: "s" }, b: { nodeId: groupId, anchor: "n" }, min: 30, max: 160 }
 ));
 
-const graph = { label: "Personal Finance", v: 2, nodes, connections: conns, standoffs, pins };
+const graph = { v: 2, order: 500, label: "Personal finance", group: "Worked examples", nodes, connections: conns, standoffs, pins };
 
 // Geometry is owned by the COMMITTED JSON, structure by this generator. The
 // seed-tune harness (scripts/tune-seeds.mjs) writes real tidy/autofit geometry

@@ -7,6 +7,7 @@ export default defineConfig({
   esbuild: { keepNames: true },
   test: {
     environment: "node",
-    include: ["src/**/*.test.{ts,tsx}", "scripts/**/*.test.{ts,tsx}"],
+    include: ["tests/**/*.test.{ts,tsx}", "scripts/**/*.test.{ts,tsx}"],
+    maxWorkers: 4,
   },
 });

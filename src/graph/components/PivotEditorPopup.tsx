@@ -97,7 +97,7 @@ export function PivotEditorPopup() {
     const next: Cfg = { ...cfg, rows: [...cfg.rows], cols: [...cfg.cols], vals: [...cfg.vals], funcs: { ...cfg.funcs } };
     const arr = zoneArr(next, z);
     if (!arr.includes(field)) arr.push(field);
-    if (z === "vals" && !(field in next.funcs)) next.funcs[field] = node.op || "sum";
+    if (z === "vals" && !(field in next.funcs)) next.funcs[field] = node.agg || "sum";
     commit(next);
   }
   function removeField(z: Zone, field: string) {
@@ -133,7 +133,8 @@ export function PivotEditorPopup() {
   }
   function valueLabel(field: string, key: string): string {
     if (key === "") return "(blank)";
-    if (typeOf(field) === "date") { const n = Number(key); return Number.isFinite(n) ? formatDateSerial(n, DEFAULT_DATE_FORMAT) : key; }
+    // A blank key must not read as serial 0 — `Number("")` is 0 (30-Dec-1899).
+    if (typeOf(field) === "date" && key.trim() !== "") { const n = Number(key); return Number.isFinite(n) ? formatDateSerial(n, DEFAULT_DATE_FORMAT) : key; }
     return key;
   }
   function applyDrop(toZone: Zone, insertIdx?: number) {
@@ -154,12 +155,12 @@ export function PivotEditorPopup() {
     const at = insertIdx == null ? without.length : Math.min(insertIdx, without.length);
     without.splice(at, 0, field);
     if (toZone === "rows") next.rows = without; else if (toZone === "cols") next.cols = without; else next.vals = without;
-    if (toZone === "vals" && !(next.funcs[field])) next.funcs[field] = node.op || "sum";
+    if (toZone === "vals" && !(next.funcs[field])) next.funcs[field] = node.agg || "sum";
     commit(next);
   }
 
   const usedSet = new Set([...cfg.rows, ...cfg.cols, ...cfg.vals]);
-  const anyPercent = cfg.vals.some((v) => (cfg.funcs[v] ?? node.op) === "percentof");
+  const anyPercent = cfg.vals.some((v) => (cfg.funcs[v] ?? node.agg) === "percentof");
 
   // Plain functions returning JSX, NOT inline components: an inline component type is
   // re-created every render and remounts its subtree, dropping a <select> mid-pick.
@@ -202,7 +203,7 @@ export function PivotEditorPopup() {
       onDrop={(e) => { e.preventDefault(); e.stopPropagation(); applyDrop("vals", cfg.vals.indexOf(field)); }}
       title={`${field} · ${typeOf(field)}`}>
       <span className="pivot-chip__name">{field}</span>
-      <select className="pivot-chip__func" value={cfg.funcs[field] ?? node.op} onChange={(e) => setFunc(field, e.target.value as AggOp)} onPointerDown={(e) => e.stopPropagation()}>
+      <select className="pivot-chip__func" value={cfg.funcs[field] ?? node.agg} onChange={(e) => setFunc(field, e.target.value as AggOp)} onPointerDown={(e) => e.stopPropagation()}>
         {FUNC_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
       <button className="pivot-chip__x" onClick={() => removeField("vals", field)} aria-label="Remove" title="Remove">×</button>

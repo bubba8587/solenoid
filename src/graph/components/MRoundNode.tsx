@@ -10,15 +10,10 @@ const OPS = (Object.keys(MROUND_OP_META) as MRoundOp[]).map((op) => ({
 
 export function MRoundComponent({ data, emit }: NodeProps<MRoundNode>) {
   const [op, setOp] = useNodeField(data, "op");
-  // Set the label BEFORE setOp, so the re-render setOp triggers shows the new title.
-  const changeOp = (v: MRoundOp) => {
-    data.label = MROUND_OP_META[v].label;
-    setOp(v);
-  };
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect value={op} onChange={changeOp} options={OPS} />
+      <OpSelect value={op} onChange={setOp} options={OPS} />
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>
   );

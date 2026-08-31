@@ -2,8 +2,7 @@ import type React from "react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type {
   WebSourceNode as WebSourceNodeType,
-  CsvConnectionNode as CsvConnectionNodeType,
-  ParquetConnectionNode as ParquetConnectionNodeType,
+  LocalFileNode as LocalFileNodeType,
   ImportHtmlNode as ImportHtmlNodeType,
   ImportXmlNode as ImportXmlNodeType,
   DataFeedNode as DataFeedNodeType,
@@ -11,14 +10,16 @@ import type {
 import { processGraph } from "../process";
 import { connectionStore, refreshConnection, type ConnectionState } from "../connectionStore";
 import { settingsStore } from "../settingsStore";
-import { isDesktop, listCsvFiles, listParquetFiles } from "../fileBridge";
+import { isDesktop, listLocalFiles } from "../fileBridge";
 import { apiKeyStore } from "../apiKeyStore";
 import { PROVIDER_LIST, getProvider, type ProviderId } from "../dataProviders";
 import { FrameDisplay } from "./FrameDisplay";
 import { LazySelect } from "./LazySelect";
 import { NodeShell, type NodeProps } from "./nodeKit";
+import { RefreshIcon } from "./RefreshIcon";
 import "./ConnectionNodes.css";
 import { stopDragStart } from "../coarse";
+import { nodeDisplayName } from "../catalogUtils";
 
 function statusText(s: ConnectionState): string {
   switch (s.status) {
@@ -48,7 +49,7 @@ function RefreshIntervalField({ minutes, onCommit }: { minutes: number; onCommit
     if (n !== minutes) onCommit(n);
   }
   return (
-    <label className="sol-conn__field" title="Automatically refresh on this cadence; 0 turns it off">
+    <label className="sol-conn__field" title="Automatically refreshes on this cadence. 0 turns it off.">
       Auto-refresh (min)
       <input
         className="sol-conn__num"
@@ -83,13 +84,7 @@ function ConnectionStatusRow({ nodeId, onRefresh }: { nodeId: string; onRefresh:
         onPointerDown={stopDragStart}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        {/* Lucide "refresh-cw" (ISC) — an icon, not a font glyph. */}
-        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-          <path d="M21 3v5h-5" />
-          <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-          <path d="M8 16H3v5" />
-        </svg>
+        <RefreshIcon />
       </button>
     </div>
   );
@@ -110,7 +105,7 @@ export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>)
   }
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Web Source">
+    <NodeShell node={data} emit={emit}>
       <div className="sol-conn">
         <input
           className="sol-conn__url"
@@ -126,7 +121,7 @@ export function WebSourceComponent({ data, emit }: NodeProps<WebSourceNodeType>)
         />
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
         <RefreshIntervalField minutes={minutes} onCommit={(n) => { data.refreshMinutes = n; setMinutes(n); }} />
-        <FrameDisplay frame={data.cachedResult} label={data.label} />
+        <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
       </div>
     </NodeShell>
   );
@@ -150,7 +145,7 @@ export function ImportHtmlComponent({ data, emit }: NodeProps<ImportHtmlNodeType
   }
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Import HTML">
+    <NodeShell node={data} emit={emit}>
       <div className="sol-conn">
         <input
           className="sol-conn__url"
@@ -179,7 +174,7 @@ export function ImportHtmlComponent({ data, emit }: NodeProps<ImportHtmlNodeType
           />
         </label>
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
-        <FrameDisplay frame={data.cachedResult} label={data.label} />
+        <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
       </div>
     </NodeShell>
   );
@@ -203,7 +198,7 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
 
   const vals = data.cachedResult;
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Import XML">
+    <NodeShell node={data} emit={emit}>
       <div className="sol-conn">
         <input
           className="sol-conn__url"
@@ -221,7 +216,7 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
           className="sol-conn__url"
           type="text"
           value={query}
-          placeholder='XPath, e.g. //h2/a'
+          placeholder='XPath, for example //h2/a'
           spellCheck={false}
           onChange={(e) => setQuery(e.target.value)}
           onBlur={commit}
@@ -245,7 +240,9 @@ export function ImportXmlComponent({ data, emit }: NodeProps<ImportXmlNodeType>)
 // Desktop only (no filesystem in the browser). The native <LazySelect> needs
 // pointerdown/mousedown stopPropagation or the node-drag re-render closes it mid-pick.
 
-export function CsvConnectionComponent({ data, emit }: NodeProps<CsvConnectionNodeType>) {
+// One node for the data folder's files — the file EXTENSION picks the reader (.parquet
+// through the native engine, everything else CSV), so there is no format control.
+export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>) {
   const folder = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("csvFolder"));
   const [files, setFiles] = useState<string[]>([]);
   const [name, setName] = useState(data.fileName);
@@ -255,7 +252,7 @@ export function CsvConnectionComponent({ data, emit }: NodeProps<CsvConnectionNo
 
   useEffect(() => {
     let alive = true;
-    listCsvFiles(folder).then((fs) => { if (alive) setFiles(fs); }).catch(() => { if (alive) setFiles([]); });
+    listLocalFiles(folder).then((fs) => { if (alive) setFiles(fs); }).catch(() => { if (alive) setFiles([]); });
     return () => { alive = false; };
   }, [folder]);
 
@@ -268,12 +265,12 @@ export function CsvConnectionComponent({ data, emit }: NodeProps<CsvConnectionNo
   }
 
   function refresh() {
-    listCsvFiles(folder).then(setFiles).catch(() => setFiles([]));
+    listLocalFiles(folder).then(setFiles).catch(() => setFiles([]));
     void refreshConnection(data.id);
   }
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="CSV File">
+    <NodeShell node={data} emit={emit}>
       <div className="sol-conn">
         {!desktop ? (
           <div className="sol-conn__note">Local files are available in the desktop app only.</div>
@@ -296,7 +293,7 @@ export function CsvConnectionComponent({ data, emit }: NodeProps<CsvConnectionNo
         {desktop && folder && (
           <RefreshIntervalField minutes={minutes} onCommit={(n) => { data.refreshMinutes = n; setMinutes(n); }} />
         )}
-        <FrameDisplay frame={data.cachedResult} label={data.label} />
+        <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
       </div>
     </NodeShell>
   );
@@ -346,7 +343,7 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
   }
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Data Feed">
+    <NodeShell node={data} emit={emit}>
       <div className="sol-conn">
         <LazySelect className="sol-conn__select" value={provider} onChange={(e) => pickProvider(e.target.value as ProviderId)} {...stopDrag}>
           {PROVIDER_LIST.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
@@ -386,63 +383,9 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
         )}
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
         <RefreshIntervalField minutes={minutes} onCommit={(n) => { data.refreshMinutes = n; setMinutes(n); }} />
-        <FrameDisplay frame={data.cachedResult} label={data.label} />
+        <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
       </div>
     </NodeShell>
   );
 }
 
-// ─── PARQUET CONNECTION (local folder, native engine read) ──────────────────────
-// The read never touches JS, so typed columns arrive intact (no inference step).
-
-export function ParquetConnectionComponent({ data, emit }: NodeProps<ParquetConnectionNodeType>) {
-  const folder = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("csvFolder"));
-  const [files, setFiles] = useState<string[]>([]);
-  const [name, setName] = useState(data.fileName);
-  const desktop = isDesktop();
-
-  useEffect(() => {
-    let alive = true;
-    listParquetFiles(folder).then((fs) => { if (alive) setFiles(fs); }).catch(() => { if (alive) setFiles([]); });
-    return () => { alive = false; };
-  }, [folder]);
-
-  useEffect(() => { setName(data.fileName); }, [data.fileName]);
-
-  function pick(next: string) {
-    setName(next);
-    data.fileName = next;
-    void processGraph();
-  }
-
-  function refresh() {
-    listParquetFiles(folder).then(setFiles).catch(() => setFiles([]));
-    void refreshConnection(data.id);
-  }
-
-  return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Parquet File">
-      <div className="sol-conn">
-        {!desktop ? (
-          <div className="sol-conn__note">Local files are available in the desktop app only.</div>
-        ) : !folder ? (
-          <div className="sol-conn__note">No target folder set. Open Settings ▸ Data to choose one.</div>
-        ) : (
-          <LazySelect
-            className="sol-conn__select"
-            value={name}
-            onChange={(e) => pick(e.target.value)}
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <option value="">Pick a file…</option>
-            {name !== "" && !files.includes(name) && <option value={name}>{name} (missing)</option>}
-            {files.map((f) => <option key={f} value={f}>{f}</option>)}
-          </LazySelect>
-        )}
-        <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
-        <FrameDisplay frame={data.cachedResult} label={data.label} />
-      </div>
-    </NodeShell>
-  );
-}

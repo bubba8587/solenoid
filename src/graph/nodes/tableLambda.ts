@@ -31,16 +31,16 @@ export function compileLambda(expr: string, varNames: string[]): LambdaFn | null
 }
 
 /** A wired LAMBDA wins over the inline text. Its params bind by POSITION (`provided` =
- *  how many the node passes), or by NAME under `byName` (SCAN/REDUCE, D18).
+ *  how many the node passes), or by NAME under `byName` (SCAN/REDUCE, lambdaBindsByName).
  *  `err` is the inline node message; `code` tags the propagating SolError. */
-function resolveFn(
+export function resolveFn(
   lam: unknown, inline: string | undefined,
   fallback: string, varNames: string[], provided: number,
   byName = false,
 ): { fn: LambdaFn | null; err: string | null; code: SolErrorCode } {
   if (isLambdaValue(lam)) {
     if (byName) {
-      // By NAME, not position (D18), so a param named `acc` always gets the accumulator
+      // By NAME, not position (lambdaBindsByName), so a param named `acc` always gets the accumulator
       // and the names can't silently lie; an unknown param can't be supplied → error.
       const unknown = lam.params.filter((p) => !varNames.includes(p));
       if (unknown.length) {
@@ -163,7 +163,7 @@ export class MapTableNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string>;
   cachedResult: Mat | SolError | null = null;
   cachedError: string | null = null;
-  // A wired lambda binds by name (D18); `value` is the primary, the rest optional.
+  // A wired lambda binds by name (lambdaBindsByName); `value` is the primary, the rest optional.
   readonly lambdaSig = { vars: ["value", "value2", "value3", "row", "col"], required: 1 };
   width = 210;
   height = 270;
@@ -217,30 +217,31 @@ export class MapTableNode extends ClassicPreset.Node {
 // ─── BYROW / BYCOL ────────────────────────────────────────────────────────────────
 
 export type ByAxis = "row" | "col";
+export const BY_AXIS_OP_META: Record<ByAxis, { label: string }> = { row: { label: "BYROW" }, col: { label: "BYCOL" } };
 
 export class ByAxisNode extends ClassicPreset.Node {
   /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
   unitAware = true;
   label: string;
-  axis: ByAxis;
+  op: ByAxis;
   resultAs: ResultType;
   stringLiterals: Record<string, string>;
   cachedResult: (Cell | UnitCell)[] | SolError | null = null;
   cachedError: string | null = null;
-  // A wired lambda binds by name (D18); `values` is the row/column as a list.
+  // A wired lambda binds by name (lambdaBindsByName); `values` is the row/column as a list.
   readonly lambdaSig = { vars: ["values"], required: 1 };
   width = 210;
   height = 218;
 
-  constructor(init?: { label?: string; expr?: string; axis?: ByAxis; resultAs?: ResultType }) {
+  constructor(init?: { label?: string; expr?: string; op?: ByAxis; resultAs?: ResultType }) {
     super("ByAxis");
-    this.axis = init?.axis ?? "row";
-    this.label = init?.label ?? (this.axis === "row" ? "BYROW" : "BYCOL");
+    this.op = init?.op ?? "row";
+    this.label = init?.label ?? "";
     this.resultAs = init?.resultAs ?? "number";
     this.stringLiterals = { formula: init?.expr ?? "SUM(values)" };
     this.addInput("table", anyTableIn("Table"));
     this.addInput("lambda", lambdaIn("Lambda"));
-    this.addOutput("result", resultOut("Per-" + this.axis, "combo", this.resultAs));
+    this.addOutput("result", resultOut("Per-" + this.op, "combo", this.resultAs));
   }
 
   data(inputs: { table?: unknown[]; lambda?: unknown[] }): { result: (Cell | UnitCell)[] | SolError | null } {
@@ -256,7 +257,7 @@ export class ByAxisNode extends ClassicPreset.Node {
     if (isSolError(elem)) { this.cachedResult = elem; this.cachedError = null; return { result: elem }; }
     const mm = elem ? stripCells(m) : m;
     try {
-      const vectors = this.axis === "row" ? mm : transpose(mm);
+      const vectors = this.op === "row" ? mm : transpose(mm);
       let out: (Cell | UnitCell)[] = vectors.map((vec) => cell(fn(vec)));
       if (elem) {
         const dr = foldResultDim(foldExpr(inputs.lambda?.[0], this.stringLiterals.formula, "SUM(values)"), ["values"], elem.dim);
@@ -278,6 +279,10 @@ export class ByAxisNode extends ClassicPreset.Node {
 // Row-major fold (matching Excel) from Initial; `Values` widens any shape to a matrix.
 
 export class ReduceLambdaNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    table: "Cells fold in row order, left to right across each row.",
+  };
+
   /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
   unitAware = true;
   label: string;
@@ -286,7 +291,7 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string>;
   cachedResult: Cell | UnitCell | SolError | null = null;
   cachedError: string | null = null;
-  // Wired lambdas bind to (acc, value, step) by name (D18) — the card advises it.
+  // Wired lambdas bind to (acc, value, step) by name (lambdaBindsByName) — the card advises it.
   readonly lambdaSig = { vars: ["acc", "value", "step"], required: 2 };
   width = 210;
   height = 246;
@@ -343,6 +348,10 @@ export class ReduceLambdaNode extends ClassicPreset.Node {
 // cell, so the output keeps the input's shape.
 
 export class ScanLambdaNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    table: "Cells fold in row order, left to right across each row.",
+  };
+
   /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
   unitAware = true;
   label: string;
@@ -351,7 +360,7 @@ export class ScanLambdaNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string>;
   cachedResult: Mat | SolError | null = null;
   cachedError: string | null = null;
-  // Wired lambdas bind to (acc, value, step) by name (D18) — the card advises it.
+  // Wired lambdas bind to (acc, value, step) by name (lambdaBindsByName) — the card advises it.
   readonly lambdaSig = { vars: ["acc", "value", "step"], required: 2 };
   width = 210;
   height = 246;
@@ -406,7 +415,7 @@ export class MakeArrayNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string>;
   cachedResult: Mat | SolError | null = null;
   cachedError: string | null = null;
-  // A wired lambda binds by name (D18); `row`,`col` are the 1-based indices.
+  // A wired lambda binds by name (lambdaBindsByName); `row`,`col` are the 1-based indices.
   readonly lambdaSig = { vars: ["row", "col"], required: 2 };
   width = 210;
   height = 246;

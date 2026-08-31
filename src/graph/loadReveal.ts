@@ -1,20 +1,18 @@
-// The staged load animation's phase + per-connection flags; persistence.ts's
-// rebuildGraph orchestrates it. Nodes fade via their area-view element's OPACITY —
-// a transform would clobber rete's position translate.
+// The load CURTAIN's phase + progress; persistence.ts's rebuildGraph drives it
+// for big loads/switches so node-by-node construction is never seen. (The old
+// staged reveal animation died with the rete surface — git has it.)
 //
-//   idle      → nothing animating; components render normally.
-//   building  → graph being constructed behind the progress overlay; cables hide.
-//   revealing → overlay fading, nodes/cables animating in wave by wave.
+//   idle      → nothing loading; components render normally.
+//   building  → graph being constructed behind the progress overlay.
 
 import { createNotifier } from "./storeKit";
 import { clamp } from "./nodes/mathUtils";
 
-export type RevealPhase = "idle" | "building" | "revealing";
+export type RevealPhase = "idle" | "building";
 
 const { notify, subscribe } = createNotifier();
 let _phase: RevealPhase = "idle";
 let _progress = 0; // 0..1, accurate during `building`
-const _revealedConns = new Set<string>();
 
 export const loadRevealStore = {
   subscribe,
@@ -23,13 +21,11 @@ export const loadRevealStore = {
   isActive: (): boolean => _phase !== "idle",
   phase: (): RevealPhase => _phase,
   progress: (): number => _progress,
-  isConnRevealed: (id: string): boolean => _revealedConns.has(id),
 
   /** Enter the build phase (progress bar shows, everything hidden). */
   begin(): void {
     _phase = "building";
     _progress = 0;
-    _revealedConns.clear();
     notify();
   },
   setProgress(p: number): void {
@@ -37,63 +33,11 @@ export const loadRevealStore = {
     notify();
   },
   /** Build done — overlay fades, the staged reveal begins. */
-  startReveal(): void {
-    _phase = "revealing";
-    _progress = 1;
-    notify();
-  },
-  revealConn(id: string): void {
-    if (_revealedConns.has(id)) return;
-    _revealedConns.add(id);
-    notify();
-  },
   /** Back to idle; always call from a finally so a failed load can't leave the
    *  canvas stuck hidden. */
   finish(): void {
-    if (_phase === "idle" && _revealedConns.size === 0) return;
+    if (_phase === "idle") return;
     _phase = "idle";
-    _revealedConns.clear();
     notify();
   },
 };
-
-/** Input→output layering for the reveal order (Kahn longest-path); self-loops are
- *  ignored, and nodes in a genuine cycle flush into a final wave so none is lost. */
-export function revealWaves(
-  nodeIds: string[],
-  edges: ReadonlyArray<{ source: string; target: string }>,
-): string[][] {
-  if (nodeIds.length === 0) return [];
-  const ids = new Set(nodeIds);
-  const indeg = new Map<string, number>();
-  const out = new Map<string, string[]>();
-  for (const id of nodeIds) { indeg.set(id, 0); out.set(id, []); }
-  for (const e of edges) {
-    if (e.source === e.target) continue;                 // self-loop
-    if (!ids.has(e.source) || !ids.has(e.target)) continue;
-    out.get(e.source)!.push(e.target);
-    indeg.set(e.target, (indeg.get(e.target) ?? 0) + 1);
-  }
-  const depth = new Map<string, number>();
-  const queue: string[] = [];
-  for (const id of nodeIds) if ((indeg.get(id) ?? 0) === 0) { depth.set(id, 0); queue.push(id); }
-  while (queue.length) {
-    const v = queue.shift()!;
-    const dv = depth.get(v) ?? 0;
-    for (const w of out.get(v) ?? []) {
-      depth.set(w, Math.max(depth.get(w) ?? 0, dv + 1));
-      const d = (indeg.get(w) ?? 0) - 1;
-      indeg.set(w, d);
-      if (d === 0) queue.push(w);
-    }
-  }
-  let maxDepth = 0;
-  for (const d of depth.values()) maxDepth = Math.max(maxDepth, d);
-  const cycleDepth = maxDepth + 1;                       // unresolved (cyclic) → back
-  let hadCycle = false;
-  for (const id of nodeIds) if (!depth.has(id)) { depth.set(id, cycleDepth); hadCycle = true; }
-  const waveCount = (hadCycle ? cycleDepth : maxDepth) + 1;
-  const waves: string[][] = Array.from({ length: waveCount }, () => []);
-  for (const id of nodeIds) waves[depth.get(id)!].push(id);
-  return waves.filter((w) => w.length > 0);
-}

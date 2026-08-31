@@ -174,13 +174,14 @@ family.
 |---|---|---|
 | Filled circle | scalar | `number` `string` `date` `complex` `logical` `any` |
 | Filled rounded square | strict list | `list` `strlist` `datelist` `complexlist` `logicallist` `anylist` |
-| Two-tone split square | combo (scalar or list) | `numlist` `strcombo` `datecombo` `complexcombo` `logicalcombo` `anycombo` `anydata` |
+| Two-tone split square | combo (scalar or list) | `numlist` `strcombo` `datecombo` `complexcombo` `logicalcombo` `anycombo` |
 | Square with a 2×2 grid | matrix | `table` `strtable` `datetable` `complextable` `logicaltable` `anytable` |
 | Square with an "F" | frame | `frame` |
 | Flat hexagon (three rhombi) | cube | `cube` |
 | Circle with a λ | function | `lambda` |
 | Square with three bars | chart | `chart` |
 | Square with two text lines | document | `document` |
+| Hollow square (outline only) | any rank ≤ 2 (scalar, list or matrix) | `anydata` |
 | Hollow ring (outline only) | anything | `trueany` |
 
 Colors by family: number amber, text yellow-green, date pink, complex sky blue,
@@ -197,9 +198,6 @@ visible without inventing a hue.
 
 Every dot's border is the same fixed darkening of its own fill. Hovering a dot
 shows the variant's human label.
-
-One split-square nuance the table can't show: `anydata` paints a small rank-2
-grid mark in its lower half — the one visual difference from `anycombo`.
 
 ---
 
@@ -222,7 +220,9 @@ These apply first, at every socket:
 4. **Three variants are typeable in place** — `strlist`, `datelist` and
    `logicallist`. When such an input has no cable, text typed into its box is
    parsed as CSV and injected as the list. A part that will not parse for the type
-   becomes null, holding its position.
+   becomes null, holding its position. A `numlist` input joins them only where its
+   node declares a `stringLiterals` key for it (Surface's Xs / Ys, Grid Interpolate's);
+   otherwise its box is a single number.
 5. **A few ports opt out entirely.** A node that branches on the runtime shape
    itself declares those input keys as raw, and the value reaches it exactly as it
    flowed in. In the shipped catalog there are three: XLOOKUP's frame/cube input,
@@ -842,7 +842,7 @@ combo — what `numlist` is to `number`.
 **Dot:** two-tone split square, gray over gray's own border shade.
 **Ports:** 1 output — Regex's `result`, whose rank follows its operation. No
 input declares it today (`anyComboIn` exists as a factory; Expression's
-variables moved UP a rung to `anydata` with D23 — this rung refuses the
+variables moved UP a rung to `anydata` with matricesInFormulas — this rung refuses the
 matrices formulas now accept).
 
 **Accepts from:** `number`, `list`, `numlist`, `string`, `strlist`,
@@ -864,12 +864,12 @@ this rung exists. There is no element conversion, because the family is unknown.
 #### `anydata` — "Any value, list or matrix"
 
 **Holds:** one value, a list, **or** a 2-D matrix, of an unknown family — the
-rank-≤2 wildcard (SOCK-9), added by D23 so a formula variable can take a matrix.
+rank-≤2 wildcard (anydataWildcard), added by matricesInFormulas so a formula variable can take a matrix.
 What `anycombo` is to rank 1, this is to rank 2. Frames and cubes stay out: the
 matrices-only endpoint is the decision, permanently.
 **Dot:** the anycombo split square with a small rank-2 cross in its lower half
 (author call 2026-07-29 — the old full-square cross read as noise).
-**Ports:** Expression's formula variables (the D23 lift). The result output is
+**Ports:** Expression's formula variables (the matricesInFormulas lift). The result output is
 NOT this type — it keeps its `resultAs` family and reconciles its RANK to the
 computed value (combo rung for a scalar/list result, the family's matrix rung
 for a matrix result).
@@ -888,7 +888,7 @@ for a matrix result).
 
 **On arrival:** a one-element list collapses to the value it contains; everything
 else passes through at its natural rank — a matrix flows WHOLE, and the formula
-evaluator owns the rank semantics from there (the broadcast table, FX-10).
+evaluator owns the rank semantics from there (the broadcast table, oneBroadcast).
 
 #### `anylist` — "List (any)"
 
@@ -1163,7 +1163,7 @@ socket's family:
 **Units.** A unit is a property of the value, authored by the Format Controller
 at the value's origin (or by a frame column's unit spec), and changed only by
 Convert; it rides through passthroughs and selectors. A DOWNSTREAM FC mirrors an
-inherited unit and is locked against re-authoring it (D26) — only the unit
+inherited unit and is locked against re-authoring it (firstClassUnits) — only the unit
 algebra changes a unit. It attaches per element on a list, per column on a frame,
 and once for a whole matrix. Only a node that runs the unit algebra receives the
 tagged cells; the socket is what decides whether the tag survives the boundary.
@@ -1197,6 +1197,13 @@ Two standing rules sit on top of the choice. Aligned parallel columns take **one
 `frame` input**, not several parallel list sockets — that applies to charts, SUMIFS
 and the frame verbs. And a port whose value the node forwards unchanged should
 declare a passthrough, so its type, format and units travel with it.
+
+A naming convention rides on the 2-D grid types (`table` / `anytable`): label the
+port **Matrix** on the linear-algebra nodes (MMULT, MDETERM, MINVERSE, TRANSPOSE,
+EIGEN, SOLVE) and **Table** on the structural row/column/cell editors (CHOOSEROWS/
+CHOOSECOLS, EXPAND, SET CELL, Table Size). It is the same socket type either way;
+the word tracks intent — "Matrix" is the whole-grid math operand, "Table" is the
+rows and columns you edit.
 
 ### The factory to call
 

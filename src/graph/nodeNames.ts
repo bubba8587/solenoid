@@ -1,9 +1,11 @@
 // Node names + connectable endpoints for the connection dialog. Names are derived live,
 // never stored: header title + a 1-based index when shared; untitled falls back to type.
 import type { ClassicPreset } from "rete";
-import { getEditor } from "./process";
+
 import { SolenoidSocket, type SocketDataType } from "./sockets";
 import { GroupNode, FormatControllerNode } from "./rete-nodes";
+import { nodeDisplayName } from "./catalogUtils";
+import { getActiveEditor } from "./activeGraph";
 
 type AnyNode = {
   id: string;
@@ -13,14 +15,8 @@ type AnyNode = {
   constructor: { name: string };
 };
 
-export function nodeTypeName(n: { constructor: { name: string } }): string {
-  return n.constructor.name.replace(/Node$/, "").replace(/([a-z])([A-Z])/g, "$1 $2");
-}
-const typeName = nodeTypeName as (n: AnyNode) => string;
-
 function baseName(n: AnyNode): string {
-  const label = (n.label ?? "").trim();
-  return label || typeName(n);
+  return nodeDisplayName(n);
 }
 
 export function nodeDisplayNames(nodes: AnyNode[]): Map<string, string> {
@@ -52,7 +48,7 @@ export type Endpoint = {
 
 /** Every wireable endpoint on one side of the graph (Groups / FCs excluded). */
 export function listEndpoints(side: "output" | "input"): Endpoint[] {
-  const editor = getEditor();
+  const editor = getActiveEditor();
   if (!editor) return [];
   const nodes = editor.getNodes().filter(
     (n) => !(n instanceof GroupNode) && !(n instanceof FormatControllerNode),
@@ -88,7 +84,7 @@ export type ConnRow = {
 /** From the queried node's point of view ("out" = its output feeds another's input);
  *  Group / Format Controller connections are skipped as internal plumbing. */
 export function nodeConnections(nodeId: string): ConnRow[] {
-  const editor = getEditor();
+  const editor = getActiveEditor();
   if (!editor) return [];
   const real = editor.getNodes().filter(
     (n) => !(n instanceof GroupNode) && !(n instanceof FormatControllerNode),

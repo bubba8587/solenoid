@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { documentStore } from "../documentStore";
 import { requestConfirm } from "../confirmStore";
 import { IS_MOBILE } from "../coarse";
-import { SEEDS } from "../seeds";
+import { SEEDS, SEED_GROUPS } from "../seeds";
 import "./documentTitle.css";
 
 /** The current document's name + the documents menu — the home of the "file system";
@@ -186,18 +186,21 @@ export function DocumentTitle() {
 
           <div className="solenoid-doctitle__sep" />
           <div className="solenoid-doctitle__section-head">New from example</div>
-          <div className="solenoid-doctitle__docs">
-            {Object.entries(SEEDS).map(([id, seed]) => (
-              <button
-                key={id}
-                type="button"
-                className="solenoid-doctitle__action solenoid-doctitle__template"
-                onClick={() => { setMenuOpen(false); void documentStore.newFromTemplate(id); }}
-              >
-                {seed.label}
-              </button>
-            ))}
-          </div>
+          {SEED_GROUPS.map((group) => (
+            <div key={group.head} className="solenoid-doctitle__docs">
+              <div className="solenoid-doctitle__group-head">{group.head}</div>
+              {group.ids.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  className="solenoid-doctitle__action solenoid-doctitle__template"
+                  onClick={() => { setMenuOpen(false); void documentStore.newFromTemplate(id); }}
+                >
+                  {SEEDS[id].label}
+                </button>
+              ))}
+            </div>
+          ))}
         </div>,
         document.body,
       )}

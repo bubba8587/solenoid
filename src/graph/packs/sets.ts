@@ -3,7 +3,7 @@ import type { Pack, PackFormula } from "./packShared";
 
 const asList = (v: unknown): unknown[] => (Array.isArray(v) ? v : v == null ? [] : [v]);
 
-// The pack's nodes as formula functions (D19 decision 4); TALLY returns only the
+// The pack's nodes as formula functions (formulaNaming decision 4); TALLY returns only the
 // COUNTS, since the node's frame can't cross the formula surface.
 const SETS_PACK_FORMULAS: PackFormula[] = [
   {
@@ -24,7 +24,7 @@ export const SETS_PACK: Pack = {
   formulas: SETS_PACK_FORMULAS,
   id: "sets",
   name: "Sets & Membership",
-  description: "List membership and counting: Is In (per-element membership mask — the ISNUMBER(MATCH()) idiom), Tally (value counts as a table), and the COUNT DISTINCT aggregate. The Join node's semi/anti modes are the table-level counterparts.",
+  description: "List membership and counting: Is In (per-element membership mask, the ISNUMBER(MATCH()) idiom), Tally (value counts as a table), and the COUNT DISTINCT aggregate. The Join node's semi or anti modes are the table-level counterparts.",
   builtin: true,
   defaultActive: false,
   nodes: [
@@ -33,7 +33,7 @@ export const SETS_PACK: Pack = {
       entry: {
         type: "sets-isin",
         label: "Is In",
-        description: "For each item of Values: TRUE if it appears in Set — a logical mask aligned to Values, ready for Filter. In Excel you'd write =ISNUMBER(MATCH(A1,list,0)).",
+        description: "For each item of Values: TRUE if it appears in Set, a logical mask aligned to Values, ready for Filter. Excel: ISNUMBER(MATCH(A1, list, 0)).",
         keywords: "membership contains mask in list isnumber match",
         create: () => new IsInNode(),
       },
@@ -43,7 +43,7 @@ export const SETS_PACK: Pack = {
       entry: {
         type: "sets-tally",
         label: "Tally",
-        description: "Distinct value → occurrence count, as a two-column table (first-seen order). The bare-list shortcut for a one-column pivot / GROUPBY count.",
+        description: "Distinct value → occurrence count, as a two-column table (first-seen order). The bare-list shortcut for a one-column pivot or GROUPBY count.",
         keywords: "value counts frequency histogram group count occurrences",
         create: () => new TallyNode(),
       },

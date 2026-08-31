@@ -1,16 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createRoot } from "react-dom/client";
-import { NodeEditor } from "rete";
-import { AreaPlugin } from "rete-area-plugin";
-import { ReactPlugin } from "rete-react-plugin";
-import { DataflowEngine } from "rete-engine";
-import type { Schemes, AreaExtra, SolenoidNode } from "../schemes";
-import { solenoidClassicRenderSetup } from "../areaPresets";
+import type { SolenoidNode } from "../schemes";
+import { makeStaticStack, StaticFlowStage } from "../flow/StaticFlowStage";
 import { FLAT_CATALOG } from "../catalogUtils";
 import { setEditorRefs, processGraph } from "../process";
-import { installErrorGuards } from "../errorValue";
 import { nodeNameStore } from "../nodeNameStore";
 import { FormulaPopup } from "../components/FormulaPopup";
+import { ScriptPopup } from "../components/ScriptPopup";
 import { TablePopup } from "../components/TablePopup";
 import { CubePopup } from "../components/CubePopup";
 import { ChartPopup } from "../components/ChartPopup";
@@ -23,11 +18,6 @@ import "./NodeShowcase.css";
 
 const PAD = 48; // canvas-units from the stage origin to the node's top-left
 
-type Mount = {
-  editor: NodeEditor<Schemes>;
-  area: AreaPlugin<Schemes, AreaExtra>;
-};
-
 export default function NodeShowcase({ initialType }: { initialType: string }) {
   const entries = useMemo(
     () => [...FLAT_CATALOG.values()].filter((e) => !e.hidden),
@@ -38,10 +28,8 @@ export default function NodeShowcase({ initialType }: { initialType: string }) {
     entries.some((e) => e.type === initialType) ? initialType : entries[0]?.type ?? "",
   );
   const [zoom, setZoom] = useState(1);
-  const [ready, setReady] = useState(false);
-  const stageRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const mountRef = useRef<Mount | null>(null);
+  const stack = useMemo(makeStaticStack, []);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -58,58 +46,29 @@ export default function NodeShowcase({ initialType }: { initialType: string }) {
     setType(visible[i].type);
   }
 
-  // Same render preset as the canvas, so the card here is byte-for-byte the real one.
+  // The same flow stage as the canvas, so the card here IS the real one.
+  // Point the module singletons at THIS stack; safe only because the app canvas
+  // never mounts in showcase mode, so no persistence hook can reach documents.
   useEffect(() => {
-    const container = stageRef.current;
-    if (!container) return;
-    const editor = new NodeEditor<Schemes>();
-    const area = new AreaPlugin<Schemes, AreaExtra>(container);
-    const reactPlugin = new ReactPlugin<Schemes, AreaExtra>({ createRoot });
-    const engine = new DataflowEngine<Schemes>();
-    reactPlugin.addPreset(solenoidClassicRenderSetup());
-    editor.addPipe((ctx) => {
-      if (ctx.type === "nodecreated") installErrorGuards(ctx.data);
-      return ctx;
-    });
-    editor.use(area);
-    area.use(reactPlugin);
-    editor.use(engine);
-    // Static stage: no background pan, no wheel zoom (zoom is the preset buttons).
-    area.area.setDragHandler(null);
-    area.area.setZoomHandler(null);
-    // Point the module singletons at THIS stack; safe only because Canvas never mounts
-    // in showcase mode, so no persistence hook can reach the user's documents.
-    setEditorRefs(editor, engine, area);
-    mountRef.current = { editor, area };
-    setReady(true);
-    return () => {
-      mountRef.current = null;
-      area.destroy();
-    };
-  }, []);
+    setEditorRefs(stack.editor, stack.engine, stack.view);
+  }, [stack]);
 
   useEffect(() => {
-    const m = mountRef.current;
-    if (!m || !ready || !type) return;
+    if (!type) return;
     let canceled = false;
     void (async () => {
-      await m.editor.clear();
+      await stack.editor.clear();
       const entry = FLAT_CATALOG.get(type);
       if (!entry || canceled) return;
       const node = entry.create() as unknown as SolenoidNode;
-      await m.editor.addNode(node);
+      await stack.editor.addNode(node);
       if (canceled) return;
       nodeNameStore.ensure(node.id, node.constructor.name);
-      await m.area.translate(node.id, { x: PAD, y: PAD });
+      await stack.view.moveNode(node.id, { x: PAD, y: PAD });
       await processGraph();
     })();
     return () => { canceled = true; };
-  }, [type, ready]);
-
-  useEffect(() => {
-    const m = mountRef.current;
-    if (m && ready) void m.area.area.zoom(zoom, 0, 0);
-  }, [zoom, ready]);
+  }, [stack, type]);
 
   // Deep-link stays current so a reload lands on the same node.
   useEffect(() => {
@@ -193,9 +152,12 @@ export default function NodeShowcase({ initialType }: { initialType: string }) {
             ))}
           </span>
         </header>
-        <div ref={stageRef} className="sol-showcase__stage" />
+        <div className="sol-showcase__stage">
+          <StaticFlowStage stack={stack} zoom={zoom} />
+        </div>
       </main>
       <FormulaPopup />
+      <ScriptPopup />
       <TablePopup />
       <CubePopup />
       <ChartPopup />

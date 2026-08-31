@@ -5,9 +5,9 @@ import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { ChartFigure } from "./chartView";
 import { ChartChip } from "./ChartChip";
-import { SegToggle } from "./SegToggle";
+import { OpToggle } from "./SegToggle";
 import { dropInputCables } from "./cablePrune";
-import { getActiveArea } from "../activeGraph";
+import { getActiveView } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
 import { stopDragStart } from "../coarse";
@@ -65,7 +65,7 @@ export function SurfaceComponent({ data, emit }: NodeProps<SurfaceNodeType>) {
     if (next === "surface") await dropInputCables(data.id, ["levels"]);
     data.setOp(next);
     setOp(next);
-    await getActiveArea()?.update("node", data.id);
+    await getActiveView()?.rerenderNode(data.id);
     await processGraph();
   }
 
@@ -83,7 +83,7 @@ export function SurfaceComponent({ data, emit }: NodeProps<SurfaceNodeType>) {
 
   return (
     <NodeShell node={data} emit={emit}>
-      <SegToggle value={op} options={VIEW_OPTIONS} onChange={(o) => void pickOp(o)} />
+      <OpToggle value={op} options={VIEW_OPTIONS} onChange={(o) => void pickOp(o)} />
       <InlineInputs node={data} emit={emit} />
       <div className="solenoid-node__section-divider" />
       <div style={{ position: "relative", height: H, marginTop: 4 }}>

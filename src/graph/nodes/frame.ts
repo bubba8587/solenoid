@@ -1,15 +1,15 @@
 import { ClassicPreset } from "rete";
-import { readInput, numIn, numListIn, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
+import { readInput, numIn, numListIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
 import { extractVariables, compileEvaluator, rowRefNames, type ExprEvaluator } from "../excelFormula";
 import { isLambdaValue } from "../lambdaValue";
 import { computeColumnCells } from "../computedColumnCore";
 import { dropInputCables } from "../components/cablePrune";
-import { getActiveArea } from "../activeGraph";
+import { getActiveView } from "../activeGraph";
 import { readFilterValue } from "./list";
 import type { FrameHint } from "../frameHint";
 import { toAnyMatrix } from "./coerce";
 import { SolenoidSocket } from "../sockets";
-import { parseDateToSerial } from "./date";
+import { parseDate } from "./date";
 import { isSolError, solError, type SolError } from "../errorValue";
 import { coerceLogical } from "../valueKinds";
 import { APP_LOCALE } from "../locale";
@@ -17,21 +17,24 @@ import {
   buildFrame, buildFrameTyped, typedColumn, colTypeForSocket,
   splitFrame, getColumn, addColumn, frameRowCount, frameHasTextColumns, makeHeaders,
   frameFromInputText, parseFrameSource, frameSourceToText, deriveFrame,
-  formatFrameCell, isCubeValue, isFrameValue, inferColumn,
+  formatFrameCell, isCubeValue, isFrameValue, inferColumn, frameToCube,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType, type FrameSourceColumn,
 } from "../frame";
 import {
   pivotFrame, nestFrame, unnestCube,
   splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity,
-  fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows, borderedGridFromFrame,
-  lookupFrameCell, lookupCubeCell, lookupFrameRowIndex, lookupCubeRowIndex,
+  mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows,
+  lookupCell, lookupRowIndex,
   frameRowAt, cubeRowAt, asLookupSource, reconcileFrames,
   filterRowsMulti, VALUELESS_FILTER_OPS, ERROR_FILTER_OPS,
   type FilterCond, type FilterCombine, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type LookupSearchMode, type ReconcileSummary,
 } from "../frameVerbs";
 import { pairIdsFromKeys } from "./logic";
 import type { PivotSpec, FilterCondConfig } from "../frameVerbs";
-import { runFrameUnary, runFrameJoin, runFrameAppend, readFrame, collectPreview, dropFrameRef, isFrameRef, frameBackend, materialize, flushRef, type FrameInput, type FrameRef } from "../frameBackend";
+import { describeFrame, correlationMatrix, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameVerbs";
+export type { WindowFn } from "../frameVerbs";
+export type { CorrMethod } from "../frameVerbs";
+import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, readFrame, collectPreview, dropFrameRef, isFrameRef, frameBackend, materialize, flushRef, type FrameInput, type FrameRef } from "../frameBackend";
 import type { CubeValue, CubeCell } from "../frame";
 import { type UnitCell } from "../unitValue";
 import { tagFrameCellUnit, columnUnitFromSpec } from "../unitColumn";
@@ -47,18 +50,23 @@ function runVerb<T>(fn: () => T): T | SolError {
 }
 
 // ─── Lazy verb-node output ──────────────────────────────────────────────────────
-// A passthrough (no-op verb) must emit a VALUE, not the upstream ref it doesn't own —
-// callers do `readFrame(f)` for that case.
-interface FrameVerbNode { _ref?: FrameRef | null; _gen?: number; cachedResult: FrameValue | SolError | null }
+export interface FrameVerbNode { _ref?: FrameRef | null; _gen?: number; cachedResult: FrameValue | SolError | null }
 
 /** Stamp a new compute pass — the out-of-order-pass guard; MUST be evaluated BEFORE
  *  the verb's await, which the `emitFrame(this, beginPass(this), await …)` order gives. */
-function beginPass(node: FrameVerbNode): number {
+export function beginPass(node: FrameVerbNode): number {
   node._gen = (node._gen ?? 0) + 1;
   return node._gen;
 }
 
-async function emitFrame(node: FrameVerbNode, gen: number, out: FrameRef | FrameValue | SolError | null): Promise<{ frame: FrameRef | FrameValue | SolError | null }> {
+/** A no-op verb forwards a lazy input as a NON-OWNING ref: the empty `drop` keeps the
+ *  plan non-empty, which is what `dropFrameRef`'s ownership rule keys on. A value
+ *  passes as-is (no upload, `raw` kept). */
+export async function passFrame(f: FrameInput): Promise<FrameRef | FrameValue | SolError> {
+  return isFrameRef(f) ? runFrameUnary(f, { kind: "drop", columns: [] }) : f;
+}
+
+export async function emitFrame(node: FrameVerbNode, gen: number, out: FrameRef | FrameValue | SolError | null): Promise<{ frame: FrameRef | FrameValue | SolError | null }> {
   // Stale pass: leave the node's live ref/preview alone, free the orphan handle.
   const stale = () => {
     if (isFrameRef(out) && out !== node._ref) dropFrameRef(out);
@@ -79,6 +87,9 @@ export class FrameInputNode extends ClassicPreset.Node {
   label: string;
   cachedResult: FrameValue | null = null;
   frameText: string;
+  /** `layout` = the popup Form view's field placement (the Record layout text);
+   *  the declaration is the persistence load gate. */
+  stringLiterals: Record<string, string> = {};
   /** The addable λ input keys (fn1, fn2, …); a source column with `lambda: "fn1"`
    *  computes its cells per row from the λ wired there. */
   lambdaKeys: string[] = [];
@@ -265,10 +276,15 @@ export const HEAD_OP_META: Record<HeadOp, { label: string; description: string }
   first: { label: "First N",      description: "Keep the first N rows." },
   last:  { label: "Last N",       description: "Keep the last N rows." },
   skip:  { label: "Skip first N", description: "Remove the first N rows, keep the rest." },
-  range: { label: "Rows N–To",    description: "Keep rows N through To, 1-based inclusive." },
+  range: { label: "Rows M–N",     description: "Keep rows M through N, 1-based inclusive." },
 };
 
 export class HeadNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    rows: "First, Last, and Skip read this as a row count. Rows M–N reads it as the 1-based start row.",
+    to: "Only the Rows M–N operation reads this, as the last kept row.",
+  };
+
   label: string;
   op: HeadOp;
   cachedResult: FrameValue | SolError | null = null;
@@ -277,7 +293,7 @@ export class HeadNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: HeadOp }) {
     super("Head");
-    this.label = init?.label ?? "Head";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "first";
     this.addInput("frame", frameIn("Frame"));
     this.addInput("rows", numIn("Rows"));
@@ -293,10 +309,10 @@ export class HeadNode extends ClassicPreset.Node {
     const gen = beginPass(this);
     // A wired blank row count leaves the slice unknown (value-semantics.md, "Reading an input").
     if (f == null || n === null || to === null) return emitFrame(this, gen, null);
-    // First-N stays a LAZY verb (the head-of-a-huge-chain case); the other slices are eager.
+    // Every slice is a LAZY verb now — First-N as `head`, the rest as `sliceRows`
+    // (Polars tail / slice on desktop, the oracle on web).
     if (this.op === "first") return emitFrame(this, gen, await runFrameUnary(f, { kind: "head", n }));
-    const fv = await readFrame(f);
-    return emitFrame(this, gen, fv == null || isSolError(fv) ? fv ?? null : runVerb(() => sliceRows(fv, this.op, n, to)));
+    return emitFrame(this, gen, await runFrameUnary(f, { kind: "sliceRows", mode: this.op, n, to: this.op === "range" ? to : undefined }));
   }
 }
 
@@ -325,7 +341,7 @@ export class SortFrameNode extends ClassicPreset.Node {
     const col = readInput(inputs.column, this.stringLiterals.column ?? "");
     // A wired blank column names no column — unknown, not "not chosen yet".
     if (f == null || col === null) return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), col.trim() === "" ? await readFrame(f) : await runFrameUnary(f, { kind: "sort", by: col.trim(), dir: this.dir }));
+    return emitFrame(this, beginPass(this), col.trim() === "" ? await passFrame(f) : await runFrameUnary(f, { kind: "sort", by: col.trim(), dir: this.dir }));
   }
 }
 
@@ -437,7 +453,7 @@ export class FilterFrameNode extends ClassicPreset.Node {
     }
     if (conditions.length === 0) {
       // Pass-through ("not written yet"): Kept = everything, Dropped = blank.
-      return { ...(await emitFrame(this, gen, await readFrame(f))), dropped: this.publishDropped(gen, null) };
+      return { ...(await emitFrame(this, gen, await passFrame(f))), dropped: this.publishDropped(gen, null) };
     }
     // An error predicate must run in the JS ORACLE — the native Polars engine degrades
     // a per-cell error to null on upload and couldn't tell an error from a blank.
@@ -450,7 +466,7 @@ export class FilterFrameNode extends ClassicPreset.Node {
       const droppedF = filterRowsMulti(mat, this.combine, conditions, true);
       return { ...(await emitFrame(this, gen, keptF)), dropped: this.publishDropped(gen, droppedF) };
     }
-    // Null-predicate rows land in Dropped, not lost (D15).
+    // Null-predicate rows land in Dropped, not lost (appendLadder).
     const kept = await runFrameUnary(f, { kind: "filterMulti", combine: this.combine, conditions });
     const dropped = await runFrameUnary(f, { kind: "filterMulti", combine: this.combine, conditions, complement: true });
     return { ...(await emitFrame(this, gen, kept)), dropped: this.publishDropped(gen, dropped) };
@@ -460,6 +476,13 @@ export class FilterFrameNode extends ClassicPreset.Node {
 // ─── JOIN ──────────────────────────────────────────────────────────────────────
 
 export class JoinNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    leftKey: "A blank or error key never matches any row, and the two key columns must share one type.",
+    rightKey: "An empty name reuses the left key's name for the right frame.",
+    tolerance: "Only the as-of join reads this, as the widest key distance a match may span. An empty value allows any distance.",
+    frame: "The right frame's non-key columns follow the left columns, and the key appears once, filled from whichever side has the row.",
+  };
+
   label: string;
   how: JoinHow;
   asofDirection: AsofDirection;
@@ -499,7 +522,8 @@ export class JoinNode extends ClassicPreset.Node {
     }
     const lk = lkRaw.trim();
     const rk = rkRaw.trim() || lk;
-    if (left == null || right == null || lk === "") return emitFrame(this, beginPass(this), null);
+    // A cross join pairs every row with every row: no keys to require.
+    if (left == null || right == null || (lk === "" && this.how !== "cross")) return emitFrame(this, beginPass(this), null);
     return emitFrame(this, beginPass(this), await runFrameJoin(left, right, {
       leftKey: lk, rightKey: rk, how: this.how,
       asofDirection: this.asofDirection, asofTolerance: tolerance,
@@ -507,7 +531,7 @@ export class JoinNode extends ClassicPreset.Node {
   }
 }
 
-// ─── SELECT / DROP COLUMNS ───────────────────────────────────────────────────
+// ─── COLUMNS (KEEP / DROP) ───────────────────────────────────────────────────
 
 // Read a column-name LIST slot: a cable delivering blank reads as UNKNOWN (null), never
 // as the empty literal's "no columns chosen"; missing entries inside a wired list drop.
@@ -516,52 +540,51 @@ function readColumnList(wired: string[][] | undefined): string[] | null {
   return v === null ? null : v.filter((c): c is string => typeof c === "string");
 }
 
-export class SelectColumnsNode extends ClassicPreset.Node {
+export type ColumnsOp = "keep" | "drop";
+
+export const COLUMNS_OP_META: Record<ColumnsOp, { label: string; description: string; fx: string }> = {
+  keep: { label: "Keep", fx: "KEEPCOLS", description: "Keep only the named columns, in the order given." },
+  drop: { label: "Drop", fx: "DROPCOLS", description: "Remove the named columns; the rest pass through." },
+};
+
+// The op names the card ("Keep Columns" / "Drop Columns") — a bare "Columns" would read as
+// Excel's COLUMNS count function (docs/rules.md NAME-2, author 2026-08-25).
+
+export class ColumnsNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    columns: "Keep: an empty list passes the frame through unchanged, and a name the frame lacks is a #REF! error. Drop: names the frame lacks are ignored.",
+  };
+
   label: string;
+  op: ColumnsOp;
   stringLiterals: Record<string, string> = {}; // columns: typeable strlist CSV
   cachedResult: FrameValue | SolError | null = null;
   width = 190; height = 150;
 
-  constructor(init?: { label?: string }) {
-    super("SelectColumns");
-    this.label = init?.label ?? "Select Columns";
+  constructor(init?: { label?: string; op?: ColumnsOp }) {
+    super("Columns");
+    this.op = init?.op ?? "keep";
+    this.label = init?.label ?? "";
     this.addInput("frame", frameIn("Frame"));
-    this.addInput("columns", strListIn("Keep"));
+    this.addInput("columns", strListIn("Columns"));
     this.addOutput("frame", frameOut("Frame"));
   }
 
   async data(inputs: { frame?: (FrameInput | null)[]; columns?: string[][] }) {
     const f = inputs.frame?.[0] ?? null;
     const cols = readColumnList(inputs.columns);
-    if (f == null || cols === null) return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), cols.length ? await runFrameUnary(f, { kind: "select", columns: cols }) : await readFrame(f));
-  }
-}
-
-export class DropColumnsNode extends ClassicPreset.Node {
-  label: string;
-  stringLiterals: Record<string, string> = {}; // columns: typeable strlist CSV
-  cachedResult: FrameValue | SolError | null = null;
-  width = 190; height = 150;
-
-  constructor(init?: { label?: string }) {
-    super("DropColumns");
-    this.label = init?.label ?? "Drop Columns";
-    this.addInput("frame", frameIn("Frame"));
-    this.addInput("columns", strListIn("Drop"));
-    this.addOutput("frame", frameOut("Frame"));
-  }
-
-  async data(inputs: { frame?: (FrameInput | null)[]; columns?: string[][] }) {
-    const f = inputs.frame?.[0] ?? null;
-    const cols = readColumnList(inputs.columns);
-    return emitFrame(this, beginPass(this), f != null && cols !== null ? await runFrameUnary(f, { kind: "drop", columns: cols }) : null);
+    const gen = beginPass(this);
+    // A wired blank column list leaves the result unknown for both ops (value-semantics.md).
+    if (f == null || cols === null) return emitFrame(this, gen, null);
+    if (this.op === "drop") return emitFrame(this, gen, await runFrameUnary(f, { kind: "drop", columns: cols }));
+    // Keep with an empty list passes the frame through; the drop op's empty list is already a no-op verb.
+    return emitFrame(this, gen, cols.length ? await runFrameUnary(f, { kind: "select", columns: cols }) : await passFrame(f));
   }
 }
 
 // ─── GROUP BY (FRAME) ──────────────────────────────────────────────────────────
 
-// The ONE AggOp table (SSOT-1) every agg surface derives from; `pivotOnly` marks the op
+// The ONE AggOp table (declareOnce) every agg surface derives from; `pivotOnly` marks the op
 // only the pivot assembly can run, excluded from the card dropdowns and search rows.
 export const AGG_OP_META: Record<AggOp, { label: string; pivotOnly?: boolean }> = {
   sum: { label: "SUM" },
@@ -580,17 +603,21 @@ export const AGG_OP_META: Record<AggOp, { label: string; pivotOnly?: boolean }> 
 };
 
 export class GroupByFrameNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    keys: "Groups keep first-seen row order, and blank key cells group together as their own group.",
+  };
+
   label: string;
-  op: AggOp;
+  agg: AggOp;
   totalDepth = 0;
   cachedResult: FrameValue | SolError | null = null;
   stringLiterals: Record<string, string> = { column: "" };
   width = 200; height = 205;
 
-  constructor(init?: { label?: string; op?: AggOp; totalDepth?: number }) {
+  constructor(init?: { label?: string; agg?: AggOp; totalDepth?: number }) {
     super("GroupByFrame");
-    this.label = init?.label ?? "Group By";
-    this.op = init?.op ?? "sum";
+    this.label = init?.label ?? "GROUPBY";
+    this.agg = init?.agg ?? "sum";
     this.totalDepth = init?.totalDepth ?? 0;
     this.addInput("frame", frameIn("Frame"));
     this.addInput("keys", strListIn("Group by"));
@@ -605,18 +632,18 @@ export class GroupByFrameNode extends ClassicPreset.Node {
     // A wired blank names no column/keys — unknown, not "not chosen yet".
     if (f == null || colRaw === null || keys === null) return emitFrame(this, beginPass(this), null);
     const col = colRaw.trim();
-    if (!(keys.length && col)) return emitFrame(this, beginPass(this), await readFrame(f));
+    if (!(keys.length && col)) return emitFrame(this, beginPass(this), await passFrame(f));
     // Totals re-aggregate the SOURCE, not the grouped output, so this path is EAGER.
     if (this.totalDepth !== 0) {
       const mat = await readFrame(f);
       if (mat == null || isSolError(mat)) return emitFrame(this, beginPass(this), mat);
       return emitFrame(this, beginPass(this), runVerb(() => pivotFrame(mat, {
-        rowFields: keys, colFields: [], values: [col], funcs: [this.op],
+        rowFields: keys, colFields: [], values: [col], funcs: [this.agg],
         rowTotalDepth: this.totalDepth,
       })));
     }
     return emitFrame(this, beginPass(this),
-      await runFrameUnary(f, { kind: "groupBy", keys, aggs: [{ column: col, op: this.op, as: col }] }));
+      await runFrameUnary(f, { kind: "groupBy", keys, aggs: [{ column: col, op: this.agg, as: col }] }));
   }
 }
 
@@ -643,8 +670,12 @@ function distinctKeys(values: readonly FrameCell[]): string[] {
 // PIVOTBY — full Excel cross-tab; every config field flows into `pivotFrame`, which
 // RE-AGGREGATES the source rather than reshaping a grouped frame (see PivotSpec).
 export class PivotNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    filter: "One cell per source row, in order. Only rows where the mask is TRUE feed the pivot.",
+  };
+
   label: string;
-  op: AggOp;
+  agg: AggOp;
   funcs: Record<string, AggOp> = {};
   rowTotalDepth = 0;
   colTotalDepth = 0;
@@ -660,13 +691,13 @@ export class PivotNode extends ClassicPreset.Node {
   width = 220; height = 300;
 
   constructor(init?: {
-    label?: string; op?: AggOp; funcs?: Record<string, AggOp>;
+    label?: string; agg?: AggOp; funcs?: Record<string, AggOp>;
     rowTotalDepth?: number; colTotalDepth?: number; rowSort?: number; colSort?: number; relativeTo?: number;
     filterExclude?: Record<string, string[]>;
   }) {
     super("Pivot");
-    this.label = init?.label ?? "Pivot";
-    this.op = init?.op ?? "sum";
+    this.label = init?.label ?? "PIVOTBY";
+    this.agg = init?.agg ?? "sum";
     if (init?.funcs) this.funcs = { ...init.funcs };
     if (init?.filterExclude) this.filterExclude = { ...init.filterExclude };
     this.rowTotalDepth = init?.rowTotalDepth ?? 0;
@@ -683,13 +714,47 @@ export class PivotNode extends ClassicPreset.Node {
   }
 
   data(inputs: {
-    frame?: (FrameValue | null)[];
+    frame?: (FrameInput | null)[];
     rowFields?: string[][]; colFields?: string[][]; values?: string[][];
     filter?: (boolean | null)[][];
   }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; this.sourceColumns = []; return { frame: null }; }
-    this.sourceColumns = f.columns.map((c) => ({ name: c.name, type: c.type, distinct: distinctKeys(c.values) }));
+    if (!isFrameRef(f)) {
+      this.sourceColumns = f.columns.map((c) => ({ name: c.name, type: c.type, distinct: distinctKeys(c.values) }));
+      // A value never takes the async forward branch, so the result is sync.
+      return this.computePivot(f, f, inputs) as { frame: FrameValue | SolError | null };
+    }
+    // A lazy upstream: the schema from a zero-row preview, then ONLY the columns the
+    // pivot reads (its fields + the filter-editor's fields), never the whole frame.
+    // The editor lists distinct keys for Filter-zone fields alone, so unfetched
+    // columns keep an empty key list.
+    return (async () => {
+      const schema = await collectPreview(f, 0);
+      if (schema == null || isSolError(schema)) { this.cachedResult = schema; this.sourceColumns = []; return { frame: schema }; }
+      const have = new Set(schema.columns.map((c) => c.name));
+      const wanted = new Set<string>();
+      for (const raw of [inputs.rowFields, inputs.colFields, inputs.values]) for (const n of readColumnList(raw) ?? []) if (have.has(n)) wanted.add(n);
+      for (const key of ["rowFields", "colFields", "values"] as const) for (const n of (this.stringLiterals[key] ?? "").split(",")) if (have.has(n.trim())) wanted.add(n.trim());
+      for (const n of Object.keys(this.filterExclude)) if (have.has(n)) wanted.add(n);
+      const cols = await materialize((async () => {
+        const h = await flushRef(f);
+        return Promise.all([...wanted].map((n) => frameBackend().column(h, n)));
+      })());
+      if (isSolError(cols)) { this.cachedResult = cols; return { frame: cols }; }
+      const byName = new Map(cols.filter((c): c is FrameColumn => c != null).map((c) => [c.name, c]));
+      this.sourceColumns = schema.columns.map((c) => ({ name: c.name, type: c.type, distinct: byName.has(c.name) ? distinctKeys(byName.get(c.name)!.values) : [] }));
+      const slice: FrameValue = { __frame: true, columns: schema.columns.map((c) => byName.get(c.name) ?? { name: c.name, type: c.type, values: [] }) };
+      return this.computePivot(slice, f, inputs);
+    })() as unknown as { frame: FrameValue | SolError | null };
+  }
+
+  /** The pivot over `f` (the whole frame, or the fetched field columns of a lazy
+   *  upstream); `source` is what a values-less config forwards. */
+  private computePivot(f: FrameValue, source: FrameInput, inputs: {
+    rowFields?: string[][]; colFields?: string[][]; values?: string[][];
+    filter?: (boolean | null)[][];
+  }): { frame: FrameInput | SolError | null } | Promise<{ frame: FrameInput | SolError | null }> {
     // Flush fields the current frame no longer has, so repointing at a new source can't
     // leave a stale name aggregating a missing column or lingering in the editor.
     const valid = new Set(f.columns.map((c) => c.name));
@@ -702,16 +767,18 @@ export class PivotNode extends ClassicPreset.Node {
     const rowFields = rowRaw.filter((n) => valid.has(n));
     const colFields = colRaw.filter((n) => valid.has(n));
     const values = valRaw.filter((n) => valid.has(n));
-    if (values.length === 0) { this.cachedResult = f; return { frame: f }; }
-    const funcs = values.map((name) => this.funcs[name] ?? this.op);
+    if (values.length === 0) {
+      if (isFrameRef(source)) return passFrame(source).then((out) => emitFrame(this, beginPass(this), out));
+      this.cachedResult = f; return { frame: f };
+    }
+    const funcs = values.map((name) => this.funcs[name] ?? this.agg);
     const spec: PivotSpec = {
       rowFields, colFields, values, funcs,
       rowTotalDepth: this.rowTotalDepth, colTotalDepth: this.colTotalDepth,
       rowSort: this.rowSort, colSort: this.colSort, relativeTo: this.relativeTo,
       filter: this.combineFilter(f, inputs.filter?.[0]),
     };
-    // Stays EAGER: the full PIVOTBY spec exceeds the engine's simple pivot op, so routing
-    // it through the backend would regress desktop to a basic cross-tab.
+    // The pivot itself stays in JS on both engines (the full PIVOTBY spec has no engine agg).
     this.cachedResult = runVerb(() => pivotFrame(f, spec));
     return { frame: this.cachedResult };
   }
@@ -768,7 +835,7 @@ export class UnpivotNode extends ClassicPreset.Node {
     const ids = readColumnList(inputs.idColumns);
     const vals = readColumnList(inputs.valueColumns);
     if (f == null || ids === null || vals === null) return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), vals.length ? await runFrameUnary(f, { kind: "unpivot", idColumns: ids, valueColumns: vals }) : await readFrame(f));
+    return emitFrame(this, beginPass(this), vals.length ? await runFrameUnary(f, { kind: "unpivot", idColumns: ids, valueColumns: vals }) : await passFrame(f));
   }
 }
 
@@ -802,8 +869,13 @@ export class NestNode extends ClassicPreset.Node {
 }
 
 export class UnnestNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "A parent row with an empty or missing nested table disappears from the output.",
+  };
+
   label: string;
-  cachedResult: FrameValue | SolError | null = null;
+  // Polymorphic: a depth-1 cube flattens to a Frame, a depth-≥2 cube peels to a Cube.
+  cachedResult: FrameValue | CubeValue | SolError | null = null;
   stringLiterals: Record<string, string> = { column: "" };
   width = 190; height = 150;
 
@@ -812,7 +884,8 @@ export class UnnestNode extends ClassicPreset.Node {
     this.label = init?.label ?? "Unnest";
     this.addInput("cube", cubeIn("Cube"));
     this.addInput("column", strIn("Nested column"));
-    this.addOutput("frame", frameOut("Flat"));
+    // The result rank depends on the input's nesting depth, so the output is trueany.
+    this.addOutput("frame", staticTrueAnyOut("Flat"));
   }
 
   data(inputs: { cube?: (CubeValue | null)[]; column?: string[] }) {
@@ -869,7 +942,59 @@ export class AppendNode extends ClassicPreset.Node {
       .map((k) => inputs[k]?.[0] ?? null)
       .filter((f): f is FrameInput => f != null);
     if (frames.length === 0) return emitFrame(this, beginPass(this), null);
-    return emitFrame(this, beginPass(this), frames.length === 1 ? await readFrame(frames[0]) : await runFrameAppend(frames));
+    return emitFrame(this, beginPass(this), frames.length === 1 ? await passFrame(frames[0]) : await runFrameAppend(frames));
+  }
+}
+
+// ─── BIND COLUMNS ──────────────────────────────────────────────────────────────
+
+/** Frames side by side by POSITION (pandas concat(axis=1), R bind_cols, dplyr
+ *  bind_cols): Append's sibling for the other axis — same extensible rows. */
+export class BindColumnsNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "Every column of every frame, left to right; a repeated name gets a 2, 3… suffix; a shorter frame pads down with blanks.",
+  };
+  label: string;
+  cachedResult: FrameValue | SolError | null = null;
+  nextInputId = 0;
+  width = 190; height = 215;
+
+  constructor(init?: { label?: string; valueKeys?: string[] }) {
+    super("BindColumns");
+    this.label = init?.label ?? "Bind Columns";
+    const vKeys = (init?.valueKeys ?? []).filter((k) => k.startsWith("f"));
+    if (vKeys.length) for (const k of vKeys) this.addInputWithKey(k);
+    else for (let i = 0; i < 2; i++) this.addValueInput();
+    this.addOutput("frame", frameOut("Bound"));
+  }
+
+  private addInputWithKey(key: string): void {
+    this.addInput(key, frameIn("Frame"));
+    const n = parseInt(key.replace(/^f/, ""), 10);
+    if (Number.isFinite(n)) this.nextInputId = Math.max(this.nextInputId, n + 1);
+  }
+
+  /** Ordered frame-row keys (insertion order = left-to-right order). */
+  valueInputKeys(): string[] {
+    return Object.keys(this.inputs).filter((k) => k.startsWith("f"));
+  }
+
+  addValueInput(): string {
+    const key = `f${this.nextInputId}`;
+    this.addInputWithKey(key);
+    return key;
+  }
+
+  removeValueInput(key: string): void {
+    this.removeInput(key);
+  }
+
+  async data(inputs: Record<string, (FrameInput | null)[] | undefined>) {
+    const frames = this.valueInputKeys()
+      .map((k) => inputs[k]?.[0] ?? null)
+      .filter((f): f is FrameInput => f != null);
+    if (frames.length === 0) return emitFrame(this, beginPass(this), null);
+    return emitFrame(this, beginPass(this), frames.length === 1 ? await passFrame(frames[0]) : await runFrameBindColumns(frames));
   }
 }
 
@@ -900,13 +1025,16 @@ export class RenameNode extends ClassicPreset.Node {
     for (let i = 0; i < Math.min(from.length, to.length); i++) {
       if (from[i] && to[i]) map[from[i]] = to[i];
     }
-    return emitFrame(this, beginPass(this), Object.keys(map).length ? await runFrameUnary(f, { kind: "rename", map }) : await readFrame(f));
+    return emitFrame(this, beginPass(this), Object.keys(map).length ? await runFrameUnary(f, { kind: "rename", map }) : await passFrame(f));
   }
 }
 
 // ─── SPLIT COLUMN / ADD INDEX (Power Query column ops) ──────────────────────────
 
 export class SplitColumnNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    into: "Names for the split-out columns.",
+  };
   label: string;
   cachedResult: FrameValue | SolError | null = null;
   stringLiterals: Record<string, string> = { column: "", delimiter: ",", into: "" };
@@ -918,7 +1046,7 @@ export class SplitColumnNode extends ClassicPreset.Node {
     this.addInput("frame", frameIn("Frame"));
     this.addInput("column", strIn("Column"));
     this.addInput("delimiter", strIn("Delimiter"));
-    this.addInput("into", strListIn("Into (names)"));
+    this.addInput("into", strListIn("Into"));
     this.addOutput("frame", frameOut("Frame"));
   }
 
@@ -950,26 +1078,27 @@ export class AddIndexNode extends ClassicPreset.Node {
     this.addInput("start", numIn("Start"));
     this.addInput("name", strIn("Name"));
     this.addOutput("frame", frameOut("Frame"));
-    this.addOutput("grid", tableOut("Bordered grid"));
   }
 
   data(inputs: { frame?: (FrameValue | null)[]; start?: number[]; name?: string[] }) {
     const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; return { frame: null, grid: null }; }
+    if (!f) { this.cachedResult = null; return { frame: null }; }
     const start = readInput(inputs.start, this.literals.start ?? 1);
     const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "Index");
     // A wired blank start or name is unknown (value-semantics.md, "Reading an input").
-    if (start === null || nameRaw === null) { this.cachedResult = null; return { frame: null, grid: null }; }
+    if (start === null || nameRaw === null) { this.cachedResult = null; return { frame: null }; }
     const name = nameRaw.trim() || "Index";
     this.cachedResult = runVerb(() => addIndexColumn(f, name, start));
-    const grid = runVerb(() => borderedGridFromFrame(f, start));
-    return { frame: this.cachedResult, grid };
+    return { frame: this.cachedResult };
   }
 }
 
 export type FillDir = "down" | "up";
 
 export class FillBlanksNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    columns: "Leave blank to fill every column.",
+  };
   label: string;
   dir: FillDir;
   cachedResult: FrameValue | SolError | null = null;
@@ -981,29 +1110,36 @@ export class FillBlanksNode extends ClassicPreset.Node {
     this.label = init?.label ?? "Fill Down";
     this.dir = init?.dir ?? "down";
     this.addInput("frame", frameIn("Frame"));
-    this.addInput("columns", strListIn("Columns (blank = all)"));
+    this.addInput("columns", strListIn("Columns"));
     this.addOutput("frame", frameOut("Frame"));
   }
 
-  data(inputs: { frame?: (FrameValue | null)[]; columns?: string[][] }) {
+  async data(inputs: { frame?: (FrameInput | null)[]; columns?: string[][] }) {
     const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; return { frame: null }; }
     const colsRaw = readColumnList(inputs.columns);
     // A wired blank column list is unknown (value-semantics.md, "Reading an input").
-    if (colsRaw === null) { this.cachedResult = null; return { frame: null }; }
+    if (f == null || colsRaw === null) return emitFrame(this, beginPass(this), null);
     const columns = colsRaw.map((c) => c.trim()).filter(Boolean);
-    this.cachedResult = runVerb(() => fillBlanks(f, columns, this.dir));
-    return { frame: this.cachedResult };
+    // Lazy: Polars forward_fill / backward_fill on desktop, the oracle on web.
+    return emitFrame(this, beginPass(this), await runFrameUnary(f, { kind: "fillBlanks", columns, dir: this.dir }));
   }
 }
 
 export type ReplaceMode = "cell" | "substring";
 
 export class ReplaceValuesNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    column: "Leave blank to replace across every column.",
+  };
   label: string;
   mode: ReplaceMode;
   cachedResult: FrameValue | SolError | null = null;
+  // Find / Replace are `anyIn`: a wired Number / Boolean / Date / Slider connects, and the
+  // card literal still types (autoLiterals → a number lands in `literals`, text in
+  // `stringLiterals`; readFilterValue stringifies either side).
+  literals: Record<string, number> = {};
   stringLiterals: Record<string, string> = { column: "", find: "", replace: "" };
+  autoLiterals = true;
   width = 200; height = 205;
 
   constructor(init?: { label?: string; mode?: ReplaceMode }) {
@@ -1011,26 +1147,37 @@ export class ReplaceValuesNode extends ClassicPreset.Node {
     this.label = init?.label ?? "Replace Values";
     this.mode = init?.mode ?? "cell";
     this.addInput("frame", frameIn("Frame"));
-    this.addInput("column", strIn("Column (blank = all)"));
-    this.addInput("find", strIn("Find"));
-    this.addInput("replace", strIn("Replace"));
+    this.addInput("column", strIn("Column"));
+    this.addInput("find", anyIn("Find"));
+    this.addInput("replace", anyIn("Replace"));
     this.addOutput("frame", frameOut("Frame"));
   }
 
-  data(inputs: { frame?: (FrameValue | null)[]; column?: string[]; find?: string[]; replace?: string[] }) {
+  /** The find/replace card literal, number OR text, as the string both engines compare. */
+  private findReplaceLiteral(key: string): string {
+    const s = this.stringLiterals[key];
+    if (s !== undefined && s !== "") return s;
+    const n = this.literals[key];
+    return n !== undefined ? String(n) : "";
+  }
+
+  async data(inputs: { frame?: (FrameInput | null)[]; column?: string[]; find?: unknown[]; replace?: unknown[] }) {
     const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; return { frame: null }; }
     const column = readInput(inputs.column, this.stringLiterals.column ?? "");
-    const find = readInput(inputs.find, this.stringLiterals.find ?? "");
-    const replace = readInput(inputs.replace, this.stringLiterals.replace ?? "");
+    // A wired scalar of any type stringifies so both engines see what a typed literal would.
+    const find = readFilterValue(inputs.find, this.findReplaceLiteral("find"));
+    const replace = readFilterValue(inputs.replace, this.findReplaceLiteral("replace"));
     // A wired blank is unknown, NOT the empty literal's "all columns" / "match nothing".
-    if (column === null || find === null || replace === null) { this.cachedResult = null; return { frame: null }; }
-    this.cachedResult = runVerb(() => replaceValues(f, column, find, replace, this.mode));
-    return { frame: this.cachedResult };
+    if (f == null || column === null || find === null || replace === null) return emitFrame(this, beginPass(this), null);
+    // Lazy: a Polars when/then (or str.replace_all) on desktop, the oracle on web.
+    return emitFrame(this, beginPass(this), await runFrameUnary(f, { kind: "replaceValues", column, find, replaceWith: replace, mode: this.mode }));
   }
 }
 
 export class MergeColumnsNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    name: "The merged column's name. Defaults to Merged.",
+  };
   label: string;
   cachedResult: FrameValue | SolError | null = null;
   stringLiterals: Record<string, string> = { columns: "", separator: "", name: "" };
@@ -1042,7 +1189,7 @@ export class MergeColumnsNode extends ClassicPreset.Node {
     this.addInput("frame", frameIn("Frame"));
     this.addInput("columns", strListIn("Columns"));
     this.addInput("separator", strIn("Separator"));
-    this.addInput("name", strIn("Name (default Merged)"));
+    this.addInput("name", strIn("Name"));
     this.addOutput("frame", frameOut("Frame"));
   }
 
@@ -1064,20 +1211,20 @@ export class MergeColumnsNode extends ClassicPreset.Node {
 export type HeaderOp = "promote" | "demote";
 
 export const HEADER_OP_META: Record<HeaderOp, { label: string; description: string }> = {
-  promote: { label: "Promote first row", description: "The first row becomes the column names. Power Query: Use First Row as Headers." },
-  demote:  { label: "Demote headers", description: "Column names drop into a first row of text; columns auto-name Col1, Col2…" },
+  promote: { label: "Promote first row", description: "The first row becomes the column names. Power Query: `Use First Row as Headers`." },
+  demote:  { label: "Demote headers", description: "Column names drop into a first row of text. Columns auto-name `Col1`, `Col2`…" },
 };
 
 export class HeadersNode extends ClassicPreset.Node {
   label: string;
-  op: HeaderOp;
+  action: HeaderOp;
   cachedResult: FrameValue | SolError | null = null;
   width = 200; height = 140;
 
-  constructor(init?: { label?: string; op?: HeaderOp }) {
+  constructor(init?: { label?: string; action?: HeaderOp }) {
     super("Headers");
     this.label = init?.label ?? "Headers";
-    this.op = init?.op ?? "promote";
+    this.action = init?.action ?? "promote";
     this.addInput("frame", frameIn("Frame"));
     this.addOutput("frame", frameOut("Frame"));
   }
@@ -1085,7 +1232,7 @@ export class HeadersNode extends ClassicPreset.Node {
   data(inputs: { frame?: (FrameValue | null)[] }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
-    this.cachedResult = runVerb(() => (this.op === "promote" ? promoteHeaders(f) : demoteHeaders(f)));
+    this.cachedResult = runVerb(() => (this.action === "promote" ? promoteHeaders(f) : demoteHeaders(f)));
     return { frame: this.cachedResult };
   }
 }
@@ -1093,20 +1240,20 @@ export class HeadersNode extends ClassicPreset.Node {
 export type BlankRowMode = "all" | "any";
 
 export const BLANK_ROW_OP_META: Record<BlankRowMode, { label: string; description: string }> = {
-  all: { label: "All cells blank", description: "Drop only fully-blank rows (spacers)." },
+  all: { label: "All cells blank", description: "Drop only fully-blank rows, the spacers." },
   any: { label: "Any cell blank",  description: "Keep only complete rows." },
 };
 
 export class DropBlankRowsNode extends ClassicPreset.Node {
   label: string;
-  op: BlankRowMode;
+  mode: BlankRowMode;
   cachedResult: FrameValue | SolError | null = null;
   width = 190; height = 140;
 
-  constructor(init?: { label?: string; op?: BlankRowMode }) {
+  constructor(init?: { label?: string; mode?: BlankRowMode }) {
     super("DropBlankRows");
     this.label = init?.label ?? "Drop Blank Rows";
-    this.op = init?.op ?? "all";
+    this.mode = init?.mode ?? "all";
     this.addInput("frame", frameIn("Frame"));
     this.addOutput("frame", frameOut("Frame"));
   }
@@ -1114,7 +1261,7 @@ export class DropBlankRowsNode extends ClassicPreset.Node {
   data(inputs: { frame?: (FrameValue | null)[] }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
-    this.cachedResult = runVerb(() => dropBlankRows(f, this.op));
+    this.cachedResult = runVerb(() => dropBlankRows(f, this.mode));
     return { frame: this.cachedResult };
   }
 }
@@ -1124,6 +1271,11 @@ export class DropBlankRowsNode extends ClassicPreset.Node {
 export type DecisionDetail = "summary" | "breakdown";
 
 export class DecisionMatrixNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "Rows are options. Number and logical columns are the criteria, and the first text column names the options. Date columns are skipped.",
+    weights: "A wired list pairs with the criteria columns in order and overrides the weights typed on the card.",
+  };
+
   label: string;
   normalize: DecisionNormalize;
   detail: DecisionDetail;
@@ -1134,6 +1286,9 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
   normMap: Record<string, DecisionNormalize>;
   // Refreshed each compute, in the order the weights align to.
   criteria: string[] = [];
+  // The wired weights list as of the last compute (null when unwired) — the card
+  // shows these read-only in place of the typed weight boxes.
+  wiredWeights: number[] | null = null;
   cachedResult: FrameValue | SolError | null = null;
   width = 248; height = 235;
 
@@ -1149,7 +1304,7 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; normalize?: DecisionNormalize; detail?: DecisionDetail; weightMap?: Record<string, number>; normMap?: Record<string, DecisionNormalize> }) {
     super("DecisionMatrix");
     this.label = init?.label ?? "Decision Matrix";
-    this.normalize = init?.normalize ?? "none";
+    this.normalize = init?.normalize ?? "max";
     this.detail = init?.detail ?? "summary";
     this.weightMap = init?.weightMap ? { ...init.weightMap } : {};
     this.normMap = init?.normMap ? { ...init.normMap } : {};
@@ -1160,10 +1315,11 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
 
   data(inputs: { frame?: (FrameValue | null)[]; weights?: (number[] | number | null)[] }) {
     const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; this.criteria = []; return { frame: null }; }
+    if (!f) { this.cachedResult = null; this.criteria = []; this.wiredWeights = null; return { frame: null }; }
     this.criteria = decisionCriteria(f);
     const wRaw = inputs.weights?.[0];
     const wired = Array.isArray(wRaw) ? wRaw : typeof wRaw === "number" ? [wRaw] : null;
+    this.wiredWeights = wired;
     // Wired list wins (positional); otherwise the inline name-keyed weights, default 1.
     const weights = wired ?? this.criteria.map((name) => {
       const w = this.weightMap[name];
@@ -1177,6 +1333,11 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
 // ─── DECISION SENSITIVITY ───────────────────────────────────────────────────────
 
 export class DecisionSensitivityNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    scores: "The options frame a Decision Matrix takes: rows are options, number columns criteria.",
+    scenarios: "One row per scenario, named by the first text column. A number column named after a criterion carries that weight; a criterion with no column weighs 1.",
+  };
+
   label: string;
   normalize: DecisionNormalize;
   cachedResult: CubeValue | SolError | null = null;
@@ -1184,12 +1345,18 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
 
   static frameHints: Record<string, FrameHint> = {
     scores: DecisionMatrixNode.frameHints.frame,
+    scenarios: { columns: [
+      { name: "Scenario", type: "string", cells: ["Balanced", "Cost-first", "Speed-first"] },
+      { name: "Cost", type: "number", cells: [-1, -3, -1] },
+      { name: "Speed", type: "number", cells: [1, 1, 3] },
+      { name: "Risk", type: "number", cells: [-1, -1, -1] },
+    ] },
   };
 
   constructor(init?: { label?: string; normalize?: DecisionNormalize }) {
     super("DecisionSensitivity");
     this.label = init?.label ?? "Sensitivity";
-    this.normalize = init?.normalize ?? "none";
+    this.normalize = init?.normalize ?? "max";
     this.addInput("scores", frameIn("Scores"));
     this.addInput("scenarios", frameIn("Scenarios"));
     this.addOutput("cube", cubeOut("By scenario"));
@@ -1208,6 +1375,10 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
 // A materialization boundary, not a lazy verb — data() takes plain FrameValue inputs.
 
 export class ReconcileNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    key: "Duplicate keys pair up in order. A row whose key is blank or an error cannot match and comes out as skipped.",
+  };
+
   label: string;
   cachedResult: FrameValue | SolError | null = null;
   cachedSummary = "";
@@ -1263,10 +1434,10 @@ export class ReconcileNode extends ClassicPreset.Node {
 function summarizeReconcile(s: ReconcileSummary): string {
   const fmt = (n: number) => (Number.isInteger(n) ? n.toLocaleString(APP_LOCALE) : n.toLocaleString(APP_LOCALE, { maximumFractionDigits: 2 }));
   const parts = [`**${s.added}** added`, `**${s.removed}** removed`, `**${s.changed}** changed`, `**${s.unchanged}** unchanged`];
-  // Surface unmatchable rows so a shrunk output isn't mistaken for a clean reconciliation.
+  // Area unmatchable rows so a shrunk output isn't mistaken for a clean reconciliation.
   if (s.skipped > 0) parts.push(`**${s.skipped}** skipped`);
   let out = parts.join(" · ");
-  // Surface one-sided columns so an all-"unchanged" result isn't read as identical frames.
+  // Area one-sided columns so an all-"unchanged" result isn't read as identical frames.
   if (s.addedColumns.length || s.removedColumns.length) {
     const bits = [...s.addedColumns.map((n) => `+${n}`), ...s.removedColumns.map((n) => `−${n}`)];
     out += `\n\n_Columns: ${bits.join(" · ")}._`;
@@ -1426,6 +1597,10 @@ export function splitMatrixOutput(colType: SplitColType) {
 }
 
 export class SplitFrameNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    matrix: "Under All, one text column blanks the whole matrix. Date cells ride as serials and booleans as 1 and 0.",
+  };
+
   label: string;
   colType: SplitColType;
   cachedMatrix: (number | string)[][] | null = null;
@@ -1495,6 +1670,10 @@ type GetColumnValues =
   | null;
 
 export class GetColumnNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    values: "Number and Date reads coerce rather than filter: a text cell parses or becomes NaN, a boolean becomes 1 or 0, and blanks stay blank.",
+  };
+
   label: string;
   readAs: GetColumnReadAs;
   cachedResult: (number | UnitCell | null | SolError)[] | string[] | (boolean | null | SolError)[] | null = null;
@@ -1559,7 +1738,12 @@ export class GetColumnNode extends ClassicPreset.Node {
       if (typeof v === "boolean") return v ? 1 : 0; // a logical column coerces to 1/0
       if (isSolError(v)) return v; // a per-cell error propagates (array-semantics policy)
       if (typeof v === "string") {
-        const n = this.readAs === "date" ? parseDateToSerial(v) : Number(v.trim());
+        if (this.readAs === "date") {
+          const d = parseDate(v);         // #AMBIGUOUS! surfaces (dateAmbiguitySurfaces)
+          if (isSolError(d)) return d;
+          return colUnit ? (tagFrameCellUnit(d, colUnit) as number | UnitCell) : d;
+        }
+        const n = Number(v.trim());
         return colUnit ? (tagFrameCellUnit(n, colUnit) as number | UnitCell) : n;
       }
       return NaN;
@@ -1623,6 +1807,10 @@ export class AddColumnNode extends ClassicPreset.Node {
 export type ComputedColumnAs = "auto" | AddColumnAddAs;
 
 export class ComputedColumnNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    after: "Empty appends the new column at the end. A column name inserts it immediately after that column. A replaced column keeps its place.",
+  };
+
   label: string;
   expr: string;
   addAs: ComputedColumnAs;
@@ -1676,9 +1864,9 @@ export class ComputedColumnNode extends ClassicPreset.Node {
       void (async () => {
         // anydata (rank ≤ 2) so a side value can be a whole list, not just a scalar.
         for (const v of added) if (!this.inputs[v]) this.addInput(v, anyDataIn(v));
-        await dropInputCables(this.id, removed); // SSOT-9: prune before removeInput
+        await dropInputCables(this.id, removed); // onePrunePath: prune before removeInput
         for (const v of removed) if (this.inputs[v]) this.removeInput(v);
-        await getActiveArea()?.update("node", this.id);
+        await getActiveView()?.rerenderNode(this.id);
       })();
     });
   }
@@ -1806,14 +1994,20 @@ export class GetRowNode extends ClassicPreset.Node {
 // ─── XLOOKUP (VLOOKUP / XLOOKUP over a table, cube, or widened list) ─────────────
 
 export class XLookupNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    lookup: "Matching follows the In column's type: text ignores case, and a number or date column parses the lookup text.",
+  };
+
   label: string;
   matchMode: LookupMatchMode;
   searchMode: LookupSearchMode;
   cachedResult: CubeCell | null = null;
   stringLiterals: Record<string, string> = { lookup: "", inColumn: "", returnColumn: "", ifNotFound: "" };
-  // The source is POLYMORPHIC and must arrive UNCOERCED — coercion would toCube a wired
-  // Frame and strip its typed date/logical columns.
-  rawInputs: ReadonlySet<string> = new Set(["frame"]);
+  // The source is POLYMORPHIC: a wired Frame stays a typed Frame and a Cube a Cube, and a
+  // scalar / bare 1-D must reach the shape guard below UN-widened. noWidenInputs (not the old
+  // rawInputs, which skipped ALL coercion) gives exactly that — only rank widening is skipped,
+  // so a scalar can't silently toCube into a 1-row cube that dodges the guard.
+  noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   width = 200; height = 350;
 
   constructor(init?: { label?: string; matchMode?: LookupMatchMode; searchMode?: LookupSearchMode }) {
@@ -1824,7 +2018,9 @@ export class XLookupNode extends ClassicPreset.Node {
     // `cube` is the lattice supremum: accepts a Frame OR a Cube, rejects the lambdas and
     // charts a bare `any` would let through.
     this.addInput("frame", cubeIn("Table / Cube"));
-    this.addInput("lookup", strIn("Lookup"));
+    // `strcombo`: a single lookup value answers a single cell; a LIST of lookup values
+    // spills one result each, matching the XLOOKUP formula's list-needle spill.
+    this.addInput("lookup", strComboIn("Lookup"));
     this.addInput("inColumn", strIn("In column"));
     this.addInput("returnColumn", strIn("Return"));
     this.addInput("ifNotFound", strIn("If not found"));
@@ -1832,7 +2028,7 @@ export class XLookupNode extends ClassicPreset.Node {
   }
 
   data(inputs: {
-    frame?: unknown[]; lookup?: string[];
+    frame?: unknown[]; lookup?: (string | string[])[];
     inColumn?: string[]; returnColumn?: string[]; ifNotFound?: string[];
   }) {
     const raw = inputs.frame?.[0] ?? null;
@@ -1844,11 +2040,13 @@ export class XLookupNode extends ClassicPreset.Node {
     if (lookupRaw === null || inColRaw === null || retColRaw === null || fallbackRaw === null) {
       this.cachedResult = null; return { value: null };
     }
-    const lookup = lookupRaw.trim();
     const inCol = inColRaw.trim();
     const retCol = retColRaw.trim();
-    if (raw == null || inCol === "" || retCol === "" || lookup === "") { this.cachedResult = null; return { value: null }; }
-    // The uncoerced source needs a runtime shape guard: a scalar or bare 1-D list must be
+    // A blank SCALAR lookup is unknown → null (an empty ELEMENT of a list is handled per-cell
+    // in matchOne, so only the scalar case short-circuits the whole node here).
+    const scalarLookupBlank = !Array.isArray(lookupRaw) && lookupRaw.trim() === "";
+    if (raw == null || inCol === "" || retCol === "" || scalarLookupBlank) { this.cachedResult = null; return { value: null }; }
+    // The un-widened source needs a runtime shape guard: a scalar or bare 1-D list must be
     // rejected, not silently widened to a useless 1-row frame.
     const tabular = isFrameValue(raw) || isCubeValue(raw) || (Array.isArray(raw) && Array.isArray((raw as unknown[])[0]));
     if (!tabular) {
@@ -1856,29 +2054,336 @@ export class XLookupNode extends ClassicPreset.Node {
       return { value: this.cachedResult };
     }
     const src = asLookupSource(raw)!;
+    // One lookup path: a frame is looked up as a cube (frameToCube carries col.type), so
+    // the row-finder + cell-getter never fork. Only the whole-row RETURN keeps its shape —
+    // a frame source yields a Frame row, a cube source a Cube row.
+    const srcCube = isCubeValue(src) ? src : frameToCube(src);
     const wholeRow = retCol === "*"; // return the matched row intact, not one cell
-    const result = runVerb<CubeCell>(() => {
+    const fb = fallbackRaw.trim();
+    // One matched cell for one lookup value, shared by the scalar and list-spill paths so
+    // they can't drift. A blank element is unknown → null; the kernel parses the lookup
+    // text against the In column's type (text ignores case).
+    const matchOne = (lookupValue: unknown): CubeCell | null => {
+      const lookup = lookupValue == null ? "" : String(lookupValue).trim();
+      if (lookup === "") return null;
       let cell: CubeCell | undefined;
-      if (isCubeValue(src)) {
-        if (wholeRow) {
-          const idx = lookupCubeRowIndex(src, inCol, lookup, this.matchMode, this.searchMode);
-          cell = idx < 0 ? undefined : cubeRowAt(src, idx);
-        } else {
-          cell = lookupCubeCell(src, inCol, retCol, lookup, this.matchMode, this.searchMode);
-        }
-      } else if (wholeRow) {
-        const idx = lookupFrameRowIndex(src, inCol, lookup, this.matchMode, this.searchMode);
-        cell = idx < 0 ? undefined : frameRowAt(src, idx);
+      if (wholeRow) {
+        const idx = lookupRowIndex(srcCube, inCol, lookup, this.matchMode, this.searchMode);
+        cell = idx < 0 ? undefined : (isCubeValue(src) ? cubeRowAt(src, idx) : frameRowAt(src, idx));
       } else {
-        cell = lookupFrameCell(src, inCol, retCol, lookup, this.matchMode, this.searchMode);
+        cell = lookupCell(srcCube, inCol, retCol, lookup, this.matchMode, this.searchMode);
       }
       if (cell !== undefined) return cell;
-      const fb = fallbackRaw.trim();
       if (fb === "") return solError("#N/A", "No row matched the lookup value");
       const num = Number(fb);
       return Number.isNaN(num) ? fb : num; // a numeric If-not-found flows as a number
-    });
+    };
+    // A LIST of lookup values spills one result per element (matching the XLOOKUP formula).
+    const result = runVerb<CubeCell | null>(() =>
+      Array.isArray(lookupRaw) ? lookupRaw.map(matchOne) : matchOne(lookupRaw),
+    );
     this.cachedResult = result;
     return { value: result };
+  }
+}
+
+// ─── DESCRIBE (pandas describe / R summary) ───────────────────────────────────
+export class DescribeNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "One output row per column: count / blank / distinct for every column; mean, std, min, quartiles, max for the number columns, with min and max for dates.",
+  };
+  label: string;
+  cachedResult: FrameValue | SolError | null = null;
+  width = 190; height = 140;
+
+  constructor(init?: { label?: string }) {
+    super("Describe");
+    this.label = init?.label ?? "Describe";
+    this.addInput("frame", frameIn("Frame"));
+    this.addOutput("frame", frameOut("Summary"));
+  }
+
+  data(inputs: { frame?: (FrameValue | null)[] }) {
+    const f = inputs.frame?.[0] ?? null;
+    if (!f) { this.cachedResult = null; return { frame: null }; }
+    this.cachedResult = runVerb(() => describeFrame(f));
+    return { frame: this.cachedResult };
+  }
+}
+
+// ─── CORRELATION MATRIX (df.corr / cor) ──────────────────────────────────────
+export const CORR_METHOD_META = {
+  pearson:    { label: "Pearson",    description: "Linear correlation r between every pair of number columns." },
+  spearman:   { label: "Spearman",   description: "Rank correlation ρ: any monotone relation, robust to outliers." },
+  kendall:    { label: "Kendall",    description: "Kendall's τ-b from concordant / discordant pairs." },
+  covariance: { label: "Covariance", description: "Sample covariance between every pair of number columns. `df.cov`, R `cov`." },
+} satisfies Record<CorrMethod, { label: string; description: string }>;
+
+export class CorrMatrixNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "Each pair uses the rows where BOTH columns are present (pairwise complete), so a patchy frame still answers; a pair with no variance is a blank cell.",
+  };
+  label: string;
+  method: CorrMethod = "pearson";
+  cachedResult: FrameValue | SolError | null = null;
+  width = 190; height = 170;
+
+  constructor(init?: { label?: string; method?: CorrMethod }) {
+    super("CorrMatrix");
+    this.label = init?.label ?? "Correlation Matrix";
+    if (init?.method) this.method = init.method;
+    this.addInput("frame", frameIn("Frame"));
+    this.addOutput("frame", frameOut("Matrix"));
+  }
+
+  data(inputs: { frame?: (FrameValue | null)[] }) {
+    const f = inputs.frame?.[0] ?? null;
+    if (!f) { this.cachedResult = null; return { frame: null }; }
+    this.cachedResult = runVerb(() => correlationMatrix(f, this.method));
+    return { frame: this.cachedResult };
+  }
+}
+
+// ─── K-MEANS / PCA (the numeric columns of a frame; rows with a blank are left out) ──
+import { kmeans, pca, logisticFit } from "./mlOps";
+
+/** The numeric feature matrix of a frame: which columns, which rows survived. */
+function numericRows(f: FrameValue): { names: string[]; rows: number[][]; kept: number[]; total: number } {
+  const cols = f.columns.filter((c) => c.type === "number");
+  const total = frameRowCount(f);
+  const rows: number[][] = [], kept: number[] = [];
+  for (let r = 0; r < total; r++) {
+    const row = cols.map((c) => c.values[r]);
+    if (row.every((v) => typeof v === "number" && Number.isFinite(v))) { rows.push(row as number[]); kept.push(r); }
+  }
+  return { names: cols.map((c) => c.name), rows, kept, total };
+}
+
+export class KMeansNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "Every number column is a feature; rows with a blank get no cluster. Scale features first when their units differ, with Normalize.",
+    k: "How many clusters.",
+    labels: "Cluster 1…k per row of the frame, in first-appearance order; blank for a skipped row.",
+    centers: "One row per cluster: its center on every feature and its size.",
+  };
+  label: string;
+  literals: Record<string, number> = { k: 3 };
+  cachedLabels: (number | null)[] | SolError | null = null;
+  cachedCenters: FrameValue | null = null;
+  width = 200; height = 190;
+
+  constructor(init?: { label?: string }) {
+    super("KMeans");
+    this.label = init?.label ?? "K-Means";
+    this.addInput("frame", frameIn("Frame"));
+    this.addInput("k", numIn("Clusters"));
+    this.addOutput("labels", numListOut("Cluster"));
+    this.addOutput("centers", frameOut("Centers"));
+  }
+
+  data(inputs: { frame?: (FrameValue | null)[]; k?: number[] }) {
+    const f = inputs.frame?.[0] ?? null;
+    const k = readInput(inputs.k, this.literals.k ?? 3);
+    const blank = () => { this.cachedLabels = null; this.cachedCenters = null; return { labels: null, centers: null }; };
+    if (!f || k === null) return blank();
+    const { names, rows, kept, total } = numericRows(f);
+    if (names.length === 0) { const e = solError("#VALUE!", "K-Means needs at least one number column"); this.cachedLabels = e; this.cachedCenters = null; return { labels: e, centers: null }; }
+    const r = kmeans(rows, k);
+    if (!r) return blank();
+    const labels: (number | null)[] = new Array(total).fill(null);
+    kept.forEach((row, i) => { labels[row] = r.labels[i]; });
+    const counts = r.centers.map((_, c) => r.labels.filter((l) => l === c + 1).length);
+    this.cachedLabels = labels;
+    this.cachedCenters = { __frame: true, columns: [
+      { name: "Cluster", type: "number", values: r.centers.map((_, c) => c + 1) },
+      ...names.map((nm, j) => ({ name: nm, type: "number" as const, values: r.centers.map((c) => c[j]) })),
+      { name: "Count", type: "number", values: counts },
+    ] };
+    return { labels, centers: this.cachedCenters };
+  }
+}
+
+export class PcaNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "Every number column is a feature; rows with a blank are left out of the fit and get blank scores.",
+    scores: "The rows in the new axes: PC1, PC2, …, one column per feature, highest variance first.",
+    loadings: "How much each feature contributes to each axis, a row per feature.",
+    explained: "Share of the total variance per component; the first few usually carry almost all of it.",
+  };
+  label: string;
+  standardize = false;
+  cachedScores: FrameValue | SolError | null = null;
+  cachedLoadings: FrameValue | null = null;
+  cachedExplained: number[] | null = null;
+  width = 200; height = 215;
+
+  constructor(init?: { label?: string; standardize?: boolean }) {
+    super("Pca");
+    this.label = init?.label ?? "PCA";
+    if (init?.standardize) this.standardize = true;
+    this.addInput("frame", frameIn("Frame"));
+    this.addOutput("scores", frameOut("Scores"));
+    this.addOutput("loadings", frameOut("Loadings"));
+    this.addOutput("explained", numListOut("Explained"));
+  }
+
+  data(inputs: { frame?: (FrameValue | null)[] }) {
+    const f = inputs.frame?.[0] ?? null;
+    const blank = () => { this.cachedScores = null; this.cachedLoadings = null; this.cachedExplained = null; return { scores: null, loadings: null, explained: null }; };
+    if (!f) return blank();
+    const { names, rows, kept, total } = numericRows(f);
+    if (names.length === 0) { const e = solError("#VALUE!", "PCA needs at least one number column"); this.cachedScores = e; this.cachedLoadings = null; this.cachedExplained = null; return { scores: e, loadings: null, explained: null }; }
+    const r = pca(rows, { standardize: this.standardize });
+    if (!r) return blank();
+    const pcNames = names.map((_, c) => `PC${c + 1}`);
+    const scores: FrameValue = { __frame: true, columns: pcNames.map((nm, c) => {
+      const values: (number | null)[] = new Array(total).fill(null);
+      kept.forEach((row, i) => { values[row] = r.scores[i][c]; });
+      return { name: nm, type: "number" as const, values };
+    }) };
+    this.cachedScores = scores;
+    this.cachedLoadings = { __frame: true, columns: [
+      { name: "Feature", type: "string", values: names },
+      ...pcNames.map((nm, c) => ({ name: nm, type: "number" as const, values: names.map((_, j) => r.loadings[j][c]) })),
+    ] };
+    this.cachedExplained = r.ratio;
+    return { scores, loadings: this.cachedLoadings, explained: this.cachedExplained };
+  }
+}
+
+export class LogisticNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "The target column is 0/1 (or TRUE/FALSE); every other number column is a feature. Rows with a blank are left out.",
+    target: "Name of the 0/1 column to predict.",
+    coefficients: "Intercept first, then one row per feature: the log-odds coefficient, its standard error, z, and the Wald p.",
+    probabilities: "Fitted P(target = 1) per row of the frame; blank for a skipped row.",
+  };
+  label: string;
+  stringLiterals: Record<string, string> = { target: "" };
+  cachedCoefficients: FrameValue | SolError | null = null;
+  cachedProbabilities: (number | null)[] | null = null;
+  width = 210; height = 200;
+
+  constructor(init?: { label?: string }) {
+    super("Logistic");
+    this.label = init?.label ?? "Logistic Regression";
+    this.addInput("frame", frameIn("Frame"));
+    this.addInput("target", strIn("Target"));
+    this.addOutput("coefficients", frameOut("Coefficients"));
+    this.addOutput("probabilities", numListOut("Probabilities"));
+  }
+
+  data(inputs: { frame?: (FrameValue | null)[]; target?: string[] }) {
+    const f = inputs.frame?.[0] ?? null;
+    const target = readInput(inputs.target, this.stringLiterals.target ?? "");
+    const blank = (err: SolError | null = null) => { this.cachedCoefficients = err; this.cachedProbabilities = null; return { coefficients: err, probabilities: null }; };
+    if (!f || target === null) return blank();
+    const t = target.trim();
+    if (t === "") return blank();
+    const tcol = f.columns.find((c) => c.name === t);
+    if (!tcol) return blank(solError("#REF!", `Logistic Regression: no column "${t}"`));
+    const features = f.columns.filter((c) => c !== tcol && c.type === "number");
+    if (features.length === 0) return blank(solError("#VALUE!", "Logistic Regression needs at least one number column besides the target"));
+    const total = frameRowCount(f);
+    const X: number[][] = [], y: number[] = [], kept: number[] = [];
+    for (let r = 0; r < total; r++) {
+      const tv = tcol.values[r];
+      const yv = tv === true ? 1 : tv === false ? 0 : typeof tv === "number" && (tv === 0 || tv === 1) ? tv : null;
+      const row = features.map((c) => c.values[r]);
+      if (yv === null || !row.every((v) => typeof v === "number" && Number.isFinite(v))) continue;
+      X.push(row as number[]); y.push(yv); kept.push(r);
+    }
+    const fit = logisticFit(X, y);
+    if (!fit) return blank(solError("#DOMAIN!", "Logistic Regression: the target must take both values and there must be more rows than columns"));
+    const terms = ["(Intercept)", ...features.map((c) => c.name)];
+    this.cachedCoefficients = { __frame: true, columns: [
+      { name: "Term", type: "string", values: terms },
+      { name: "Coefficient", type: "number", values: fit.coefficients },
+      { name: "Std Error", type: "number", values: fit.stdErrors },
+      { name: "z", type: "number", values: fit.z },
+      { name: "p", type: "number", values: fit.pValues },
+    ] };
+    const probs: (number | null)[] = new Array(total).fill(null);
+    kept.forEach((row, i) => { probs[row] = fit.probabilities[i]; });
+    this.cachedProbabilities = probs;
+    return { coefficients: this.cachedCoefficients, probabilities: probs };
+  }
+}
+
+// ─── WINDOW (per-group running / rank / lag / share columns) ─────────────────
+export const WINDOW_FN_META = {
+  row_number:   { label: "Row number",        description: "1, 2, 3… within each group in the chosen order. SQL `ROW_NUMBER`, pandas `cumcount()+1`." },
+  rank:         { label: "Rank",              description: "Competition rank by the Order column within the group (ties share the best rank, then skip). SQL `RANK`, dplyr `min_rank`." },
+  dense_rank:   { label: "Dense rank",        description: "Rank without gaps after ties. SQL `DENSE_RANK`, dplyr `dense_rank`." },
+  percent_rank: { label: "Percent rank",      description: "(rank − 1) ÷ (group size − 1): 0 for the first, 1 for the last. SQL `PERCENT_RANK`." },
+  ntile:        { label: "N-tile",            description: "Bucket 1..N by position within the group. SQL `NTILE(n)`, dplyr `ntile`." },
+  cumsum:       { label: "Running sum",       description: "Cumulative sum of the Value column within the group. pandas `groupby().cumsum()`, SQL `SUM() OVER`." },
+  cumavg:       { label: "Running average",   description: "Cumulative mean within the group. SQL `AVG() OVER … ROWS UNBOUNDED PRECEDING`." },
+  cummin:       { label: "Running min",       description: "Cumulative minimum within the group. pandas `cummin`." },
+  cummax:       { label: "Running max",       description: "Cumulative maximum within the group. pandas `cummax`." },
+  cumcount:     { label: "Running count",     description: "How many rows so far in the group, this one included." },
+  lag:          { label: "Lag (previous)",    description: "The Value N rows earlier in the group (blank at the start). SQL `LAG`, pandas `shift(n)`, dplyr `lag`." },
+  lead:         { label: "Lead (next)",       description: "The Value N rows later in the group (blank at the end). SQL `LEAD`, pandas `shift(−n)`, dplyr `lead`." },
+  diff:         { label: "Difference",        description: "Value minus the previous row's Value in the group. pandas `groupby().diff`." },
+  pct_change:   { label: "Percent change",    description: "(Value − previous) ÷ previous within the group. pandas `groupby().pct_change`." },
+  rolling_sum:  { label: "Rolling sum (N)",   description: "Sum of the last N rows in the group, blank until N rows exist. pandas `groupby().rolling(N).sum`." },
+  rolling_avg:  { label: "Rolling average (N)", description: "Mean of the last N rows in the group. pandas `groupby().rolling(N).mean`." },
+  rolling_min:  { label: "Rolling min (N)",   description: "Minimum of the last N rows in the group." },
+  rolling_max:  { label: "Rolling max (N)",   description: "Maximum of the last N rows in the group." },
+  group_sum:    { label: "Group total",       description: "The group's sum of the Value, repeated on every row (a denominator without a join). pandas `transform('sum')`, SQL `SUM() OVER PARTITION BY`." },
+  group_avg:    { label: "Group average",     description: "The group's mean of the Value on every row. pandas `transform`, `mean`." },
+  group_min:    { label: "Group min",         description: "The group's minimum on every row." },
+  group_max:    { label: "Group max",         description: "The group's maximum on every row." },
+  group_count:  { label: "Group count",       description: "How many non-blank Values the group holds, on every row. pandas `transform`, `count`." },
+  share:        { label: "Share of group",    description: "Value ÷ the group's total: each row's fraction of its group. The pandas group-share transform." },
+  first:        { label: "First in group",    description: "The group's first Value (in the chosen order) on every row. SQL `FIRST_VALUE`." },
+  last:         { label: "Last in group",     description: "The group's last Value on every row. SQL `LAST_VALUE`." },
+} satisfies Record<WindowFn, { label: string; description: string }>;
+
+export class WindowNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    keys: "The partition: rows sharing these keys form a group. Leave it empty to treat the whole frame as one group.",
+    orderBy: "The column that orders rows WITHIN each group before running / ranking / lagging. Leave it blank to keep the frame's row order.",
+    column: "The Value column the function reads. Ranks and row numbers don't need one.",
+    n: "Lag / lead offset, rolling window length, or N-tile bucket count.",
+    name: "The new column's name; an existing column of that name is replaced.",
+    frame: "The input frame with the new column appended; rows stay in their original order. pandas transform.",
+  };
+  label: string;
+  agg: WindowFn = "cumsum";
+  literals: Record<string, number> = { n: 3 };
+  stringLiterals: Record<string, string> = { orderBy: "", column: "", name: "" };
+  cachedResult: FrameValue | SolError | null = null;
+  width = 210; height = 300;
+
+  constructor(init?: { label?: string; agg?: WindowFn }) {
+    super("Window");
+    this.label = init?.label ?? "Window";
+    if (init?.agg) this.agg = init.agg;
+    this.addInput("frame", frameIn("Frame"));
+    this.addInput("keys", strListIn("Partition by"));
+    this.addInput("orderBy", strIn("Order by"));
+    this.addInput("column", strIn("Value"));
+    this.addInput("n", numIn("N"));
+    this.addInput("name", strIn("New column"));
+    this.addOutput("frame", frameOut("Frame"));
+  }
+
+  async data(inputs: { frame?: (FrameInput | null)[]; keys?: string[][]; orderBy?: string[]; column?: string[]; n?: number[]; name?: string[] }) {
+    const f = inputs.frame?.[0] ?? null;
+    const keys = readColumnList(inputs.keys);
+    const orderBy = readInput(inputs.orderBy, this.stringLiterals.orderBy ?? "");
+    const column = readInput(inputs.column, this.stringLiterals.column ?? "");
+    const name = readInput(inputs.name, this.stringLiterals.name ?? "");
+    const n = readInput(inputs.n, this.literals.n ?? 3);
+    if (f == null || keys === null || orderBy === null || column === null || name === null || n === null) return emitFrame(this, beginPass(this), null);
+    // A value-reading function with no Value column yet is a passthrough, not an error.
+    if (WINDOW_FN_NEEDS_COLUMN.has(this.agg) && !column.trim()) return emitFrame(this, beginPass(this), await passFrame(f));
+    const as = name.trim() || `${WINDOW_FN_META[this.agg].label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/_$/, "")}${column.trim() ? "_" + column.trim() : ""}`;
+    // Lazy: Polars `.over()` on desktop, the oracle's windowFrame on web (one FrameOp).
+    return emitFrame(this, beginPass(this), await runFrameUnary(f, {
+      kind: "window", partitionBy: keys, orderBy: orderBy.trim() || undefined, orderDir: "asc", fn: this.agg,
+      column: column.trim() || undefined, as, n: WINDOW_FN_NEEDS_N.has(this.agg) ? n : undefined,
+    }));
   }
 }

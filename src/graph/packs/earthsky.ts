@@ -12,18 +12,18 @@ const G = "6.6743*10^-11"; // CODATA gravitational constant
 export const EARTH_FORMULAS: FormulaPackEntry[] = [
   { type: "es-haversine", label: "Great-Circle Distance", expr:
       "2*6371.0088*ASIN(SQRT(SIN((lat2-lat1)*PI()/360)^2+COS(lat1*PI()/180)*COS(lat2*PI()/180)*SIN((lon2-lon1)*PI()/360)^2))",
-    description: "Shortest distance in km between two lat/lon points (degrees) — the haversine formula on the mean-radius sphere",
+    description: "Shortest distance in km between two lat/lon points in degrees. The haversine formula on the mean-radius sphere",
     keywords: "haversine gps distance nautical flight" },
   { type: "es-bearing", label: "Initial Bearing", expr:
       "MOD(DEGREES(ATAN2(COS(lat1*PI()/180)*SIN(lat2*PI()/180)-SIN(lat1*PI()/180)*COS(lat2*PI()/180)*COS((lon2-lon1)*PI()/180),SIN((lon2-lon1)*PI()/180)*COS(lat2*PI()/180)))+360,360)",
-    description: "Compass bearing (° from north) to start a great-circle leg from point 1 to point 2 (lat/lon in degrees)",
+    description: "Compass bearing (° from north) to start a great-circle leg from point 1 to point 2, lat/lon in degrees",
     keywords: "azimuth heading course navigation" },
   { type: "es-gravity", label: "Gravity at Latitude", expr:
       "9.780327*(1+0.0053024*SIN(lat*PI()/180)^2-0.0000058*SIN(2*lat*PI()/180)^2)-0.000003086*h",
-    description: "Local gravity (m/s²): the 1980 International Gravity Formula at latitude lat (°) with the free-air correction for altitude h (m)",
+    description: "Local gravity (m/s²): the 1980 International Gravity Formula at latitude lat (°) with the free-air correction for altitude h in meters",
     keywords: "igf wgs84 gravitational acceleration" },
   { type: "es-horizon", label: "Distance to Horizon", expr: "SQRT(2*6371008.8*h)/1000",
-    description: "How far the horizon is (km) from an eye height h meters above the surface (geometric, no refraction)",
+    description: "How far the horizon is (km) from an eye height h meters above the surface. Geometric, no refraction",
     keywords: "visibility sea level lookout" },
 ];
 
@@ -38,7 +38,7 @@ export const ORBIT_FORMULAS: FormulaPackEntry[] = [
     description: "Period in seconds of an orbit with semi-major axis r (m) around mass m (kg)   (T = 2π√(a³/GM))",
     keywords: "kepler third law satellite year" },
   { type: "es-schwarzschild", label: "Schwarzschild Radius", expr: `2*${G}*m/299792458^2`,
-    description: "Event-horizon radius (m) of mass m (kg)   (r = 2GM/c²; the Sun's is ~3 km)",
+    description: "Event-horizon radius r = 2GM/c² of mass m (kg). The Sun's is about 3 km.",
     keywords: "black hole relativity" },
 ];
 
@@ -130,7 +130,7 @@ export const EARTHSKY_PACK: Pack = {
       entry: {
         type: "es-sun-position",
         label: "Sun Position",
-        description: "Solar elevation, azimuth, and declination for a UTC date+time at a lat/lon — the NOAA solar calculator formulation (geometric, no refraction)",
+        description: "Solar elevation, azimuth, and declination for a UTC date+time at a lat/lon. The NOAA solar calculator formulation, geometric with no refraction",
         keywords: "solar elevation azimuth altitude noaa panel shadow",
         create: () => new SolarPositionNode(),
       },
@@ -141,7 +141,7 @@ export const EARTHSKY_PACK: Pack = {
         type: "es-sunrise-sunset",
         label: "Sunrise / Sunset",
         fx: ["SUNRISE", "SUNSET", "DAYLENGTH"],
-        description: "Sunrise and sunset times (UTC) and day length for a date at a lat/lon — NOAA formulation with standard refraction; blank in polar day/night",
+        description: "Sunrise and sunset times (UTC) and day length for a date at a lat/lon. NOAA formulation with standard refraction. Blank in polar day/night",
         keywords: "dawn dusk daylight noaa golden hour",
         create: () => new SunriseSunsetNode(),
       },
@@ -151,7 +151,7 @@ export const EARTHSKY_PACK: Pack = {
       entry: {
         type: "es-moon-phase",
         label: "Moon Phase",
-        description: "Phase (0 new → 0.5 full), age in days, and illuminated fraction for a date — mean-synodic approximation, good to ~half a day",
+        description: "Phase (0 new → 0.5 full), age in days, and illuminated fraction for a date. Mean-synodic approximation, good to about half a day",
         keywords: "lunar full new moon crescent illumination",
         create: () => new MoonPhaseNode(),
       },

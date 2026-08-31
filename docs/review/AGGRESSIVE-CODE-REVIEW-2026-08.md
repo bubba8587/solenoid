@@ -99,6 +99,10 @@ one-liner" is not a good look for a project this otherwise-tested.
 
 ### 4. ~~MEDIUM~~ RETRACTED — "Your grouping key thinks infinity equals NaN"
 
+> **RESOLVED 2026-08-22.** The inconsistency this item ends on was fixed: +∞, −∞ and
+> NaN now each key into their own bucket on both engines, null keeps its own. B-1a is
+> re-cut, corpus and pins with it. Everything below is the record of the reasoning.
+
 **I was wrong, and the review process is only honest if it says so.** My original claim:
 `encodeCell` → `JSON.stringify` serializes every non-finite number to `null`
 (reproduced: `JSON.stringify(["#", Infinity]) === '["#",null]'`, same for `-Inf`/`NaN`),

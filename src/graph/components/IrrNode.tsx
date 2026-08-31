@@ -1,28 +1,28 @@
-import { CASHFLOW_MODE_OPTIONS } from "../rete-nodes";
-import type { IrrNode as IrrNodeType, CashflowMode } from "../rete-nodes";
+import { CASHFLOW_OP_OPTIONS } from "../rete-nodes";
+import type { IrrNode as IrrNodeType, CashflowOp } from "../rete-nodes";
 import { useState } from "react";
 import { processGraph } from "../process";
-import { getActiveArea } from "../activeGraph";
+import { getActiveView } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
-import { SegToggle } from "./SegToggle";
+import { OpToggle } from "./SegToggle";
 import { dropInputCables } from "./cablePrune";
 
 export function IrrComponent({ data, emit }: NodeProps<IrrNodeType>) {
-  const [mode, setMode] = useState<CashflowMode>(data.mode);
+  const [op, setOp] = useState<CashflowOp>(data.op);
 
-  async function pickMode(next: CashflowMode) {
-    if (next === data.mode) return;
+  async function pickOp(next: CashflowOp) {
+    if (next === data.op) return;
     if (next === "periods") await dropInputCables(data.id, ["dates"]);
-    data.setMode(next);
-    setMode(next);
-    await getActiveArea()?.update("node", data.id);
+    data.setOp(next);
+    setOp(next);
+    await getActiveView()?.rerenderNode(data.id);
     await processGraph();
   }
 
   return (
     <NodeShell node={data} emit={emit}>
-      <SegToggle arg value={mode} options={CASHFLOW_MODE_OPTIONS} onChange={(m) => void pickMode(m)} />
+      <OpToggle value={op} options={CASHFLOW_OP_OPTIONS} onChange={(m) => void pickOp(m)} />
       <InlineInputs node={data} emit={emit} />
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>

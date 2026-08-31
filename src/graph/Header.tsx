@@ -12,10 +12,13 @@ export function Header() {
     const el = ref.current;
     if (!el) return;
     // The ROOT, not the header: the overlays are siblings, so the var must inherit to reach.
+    // FLOOR, never round or ceil — the same rule as chromeBottom.ts: `top: var`
+    // puts a panel's top edge AT the published height, so publishing above the
+    // bar's true fractional height opens a subpixel gap below it.
     const publish = () =>
       document.documentElement.style.setProperty(
         "--chrome-top",
-        `${Math.round(el.getBoundingClientRect().height)}px`,
+        `${Math.floor(el.getBoundingClientRect().height)}px`,
       );
     publish();
     const ro = new ResizeObserver(publish);

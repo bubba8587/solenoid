@@ -10,7 +10,7 @@ export function BooleanInputComponent({ data, emit }: NodeProps<BooleanInputNode
   }
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Boolean">
+    <NodeShell node={data} emit={emit}>
       <label
         style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", padding: "2px 0" }}
         onPointerDown={stopDragStart}

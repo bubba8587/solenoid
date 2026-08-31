@@ -4,7 +4,7 @@ import { problemsStore, problemsPanelUi, type ProblemEntry } from "../problemsSt
 import { registerChrome } from "../chromeToggle";
 import { flyToNodeAndFlash } from "../flyToNode";
 import { getEditor } from "../process";
-import { nodeTypeName } from "../nodeNames";
+import { nodeDisplayName } from "../catalogUtils";
 import { errorTip } from "./ErrorChip";
 import { solError } from "../errorValue";
 import { insertClampBefore } from "../modelFuzz";
@@ -69,7 +69,7 @@ export function ProblemsPanel() {
 
   const row = (e: ProblemEntry) => {
     const node = editor?.getNode(e.nodeId);
-    const label = (node?.label ?? "").trim() || (node ? nodeTypeName(node) : "(deleted node)");
+    const label = node ? nodeDisplayName(node) : "(deleted node)";
     return (
       <div
         key={e.id}

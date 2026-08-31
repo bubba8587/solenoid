@@ -1,6 +1,8 @@
 {
  "v": 2,
- "label": "Errors, Null & Logic",
+ "order": 210,
+ "label": "Errors, null & logic",
+ "group": "Values & units",
  "nodes": [
   {
    "id": "hdr",

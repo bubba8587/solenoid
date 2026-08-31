@@ -1,7 +1,8 @@
 // Model fuzzing: valid-shaped inputs per typed leaf source, driven through the targeted
 // recompute path; findings land in the Problems panel (problemsStore, origin "fuzz").
 import { ClassicPreset } from "rete";
-import { getEditor, getArea, processGraph, downstreamClosure, beginGraphRebuild, endGraphRebuild } from "./process";
+import { getEditor, getView, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
+import { downstreamClosure } from "./graphCompute";
 import { beginCompute, endCompute } from "./computeOverlayStore";
 import { NumberInputNode, SliderInputNode } from "./nodes/input";
 import { TextInputNode } from "./nodes/text";
@@ -271,8 +272,8 @@ export async function insertClampBefore(
   bounds?: { min?: number; max?: number },
 ): Promise<boolean> {
   const editor = getEditor();
-  const area = getArea();
-  if (!editor || !area) return false;
+  const view = getView();
+  if (!editor || !view) return false;
   const target = editor.getNode(nodeId);
   if (!target) return false;
   const conn = editor.getConnections().find((c) => c.target === nodeId && c.targetInput === socketKey);
@@ -285,9 +286,9 @@ export async function insertClampBefore(
   if (typeof bounds?.min === "number") clamp.literals.min = bounds.min;
   if (typeof bounds?.max === "number") clamp.literals.max = bounds.max;
   await editor.addNode(clamp);
-  const srcPos = area.nodeViews.get(conn.source)?.position ?? { x: 0, y: 0 };
-  const tgtPos = area.nodeViews.get(nodeId)?.position ?? { x: 0, y: 0 };
-  await area.translate(clamp.id, { x: (srcPos.x + tgtPos.x) / 2, y: (srcPos.y + tgtPos.y) / 2 - 60 });
+  const srcPos = view.position(conn.source) ?? { x: 0, y: 0 };
+  const tgtPos = view.position(nodeId) ?? { x: 0, y: 0 };
+  await view.moveNode(clamp.id, { x: (srcPos.x + tgtPos.x) / 2, y: (srcPos.y + tgtPos.y) / 2 - 60 });
 
   await editor.removeConnection(conn.id);
   await editor.addConnection(new ClassicPreset.Connection(source, conn.sourceOutput, clamp, "value") as SolenoidConnection);

@@ -4,7 +4,7 @@ import { SolenoidSocket, AdoptiveSocket, elementFamilyOf, type SocketDataType } 
 import { toMatrix, toList, toScalar, toAnyMatrix, ShapeError } from "./nodes/coerce";
 import { isPassthroughNode, getPassthrough } from "./nodes/passthrough";
 import { isFrameValue, frameFromRows, toCube } from "./frame";
-import { parseDateToSerial } from "./nodes/dateSerial";
+import { parseDate } from "./nodes/dateSerial";
 import { coerceLogical } from "./valueKinds";
 import { parseCsvLine } from "./csv";
 import { isFrameRef, readFrame } from "./frameBackend";
@@ -14,13 +14,16 @@ import { isUnitCell, carryMatrixUnit } from "./unitValue";
 
 // The relational verb nodes are LAZY: their frame inputs must reach data() as the
 // raw FrameRef; every OTHER node gets one collected to a FrameValue first.
-const LAZY_FRAME_NODES: ReadonlySet<string> = new Set([
+export const LAZY_FRAME_NODES: ReadonlySet<string> = new Set([
   "DistinctNode", "HeadNode", "SortFrameNode", "FilterFrameNode", "JoinNode",
-  "SelectColumnsNode", "DropColumnsNode", "GroupByFrameNode", "UnpivotNode",
-  "AppendNode", "RenameNode",
-  // Reads ONE column through the backend's column primitive — materializing here
-  // would force a full-frame collect.
-  "GetColumnNode",
+  "ColumnsNode", "GroupByFrameNode", "UnpivotNode",
+  "AppendNode", "BindColumnsNode", "RenameNode",
+  "FillBlanksNode", "ReplaceValuesNode", "WindowNode",
+  // Read through the cheap primitives (column / preview / read-at-Run) instead of a
+  // full-frame collect.
+  "GetColumnNode", "SumIfsNode", "TableInfoNode", "WriteFileNode", "PivotNode",
+  // Slicer (control.ts): reads the schema + one column for its buttons, filters lazily.
+  "SlicerNode",
 ]);
 
 // 1-D non-numeric list sockets typeable in place as CSV. Exported so
@@ -57,7 +60,13 @@ export function parseListLiteral(csv: string, dt: SocketDataType): unknown[] {
   // An unparseable part is first-class `null` (MISSING): dropping would shift every
   // later position, and `?? false` would assert a FALSE the user never typed.
   if (dt === "numlist" || dt === "list") return parts.map((p) => (p !== "" && Number.isFinite(Number(p)) ? Number(p) : null));
-  if (dt === "datelist") return parts.map((p) => { const n = parseDateToSerial(p); return Number.isFinite(n) ? n : null; });
+  // #AMBIGUOUS! SURFACES here rather than collapsing to a blank (dateAmbiguitySurfaces):
+  // "02-03-2026" is a question, not a missing value, and a blank would answer it silently.
+  if (dt === "datelist") return parts.map((p) => {
+    const d = parseDate(p);
+    if (isSolError(d)) return d;
+    return Number.isFinite(d) ? d : null;
+  });
   if (dt === "logicallist") return parts.map(parseBoolText);
   return parts;
 }
@@ -131,7 +140,7 @@ function coerceValue(dataType: SocketDataType, v: unknown): unknown {
   if (hasUnitCell(v)) return coerceUnitCellValue(dataType, v);
   switch (dataType) {
     case "table":
-      // Preserve a homogeneous matrix unit (D20): toMatrix rebuilds the outer array
+      // Preserve a homogeneous matrix unit (unitGranularity): toMatrix rebuilds the outer array
       // and would drop the non-enumerable tag. A no-op when v isn't tagged.
       return carryMatrixUnit(toMatrix(boolsToNums(v) as Numeric), v);
     case "list":
@@ -158,7 +167,7 @@ function coerceValue(dataType: SocketDataType, v: unknown): unknown {
     case "complexcombo":
     // `anycombo`/`anydata`: no element coercion and no rank widening — a scalar STAYS
     // a scalar (contrast `anylist` below, which widens one in); for `anydata` a matrix
-    // flows whole, the formula evaluator owning the rank semantics (FX-10).
+    // flows whole, the formula evaluator owning the rank semantics (oneBroadcast).
     case "anydata":
     case "anycombo":
       return collapseSingleton(v);
@@ -259,7 +268,8 @@ export function wrapNodeData(node: NodeLike) {
         if ((coerced[key]?.length ?? 0) > 0) continue;
         const socket = node.inputs[key]?.socket;
         const dt = socket instanceof SolenoidSocket ? socket.dataType : undefined;
-        if (!dt || !TYPEABLE_LIST.has(dt)) continue;
+        // A numlist is typeable only where the node opted in with a stringLiterals key.
+        if (!dt || !(TYPEABLE_LIST.has(dt) || (dt === "numlist" && key in lits))) continue;
         const csv = lits[key];
         if (csv != null && csv.trim() !== "") coerced[key] = [parseListLiteral(csv, dt)];
       }

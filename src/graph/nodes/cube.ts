@@ -4,8 +4,6 @@ import { cubeFromColumns, relateFramesToCube, relateCubeToFrame, cubeColumnFromV
 import { aggregateGroup, type AggOp } from "../frameVerbs";
 import { solError, type SolError } from "../errorValue";
 
-// Cube nodes — the recursive container. See docs/archive/cube-node-scope.md.
-
 export class BuildCubeNode extends ClassicPreset.Node {
   label: string;
   cachedResult: CubeValue | null = null;
@@ -76,6 +74,10 @@ function asNestChild(v: unknown): FrameValue | CubeValue | null {
 }
 
 export class NestJoinNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    key: "A blank key cell never matches. A parent row without matches keeps an empty nested table, and a child row matching no parent is dropped.",
+  };
+
   label: string;
   cachedResult: CubeValue | SolError | null = null;
   stringLiterals: Record<string, string> = { key: "", name: "" };
@@ -180,17 +182,21 @@ export class CubeColumnsNode extends ClassicPreset.Node {
 // on every op's edge cases.
 
 export class CubeRollupNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "A row without a nested table rolls up to blank, and a nested table missing the column yields a #REF! cell.",
+  };
+
   label: string;
-  op: AggOp;
+  agg: AggOp;
   cachedResult: FrameValue | SolError | null = null;
   stringLiterals: Record<string, string> = { nested: "", column: "", as: "Total" };
   width = 220;
   height = 260;
 
-  constructor(init?: { label?: string; op?: AggOp }) {
+  constructor(init?: { label?: string; agg?: AggOp }) {
     super("CubeRollup");
     this.label = init?.label ?? "Cube Rollup";
-    this.op = init?.op ?? "sum";
+    this.agg = init?.agg ?? "sum";
     this.addInput("cube", cubeIn("Cube"));
     this.addInput("nested", strIn("Nested column"));
     this.addInput("column", strIn("Column to roll up"));
@@ -227,7 +233,7 @@ export class CubeRollupNode extends ClassicPreset.Node {
       const sub = isFrameValue(cell) ? cell : null;
       if (!sub) { rolled.push(null); continue; }
       const valueCol = sub.columns.find((c) => c.name === col);
-      rolled.push(valueCol ? aggregateGroup(valueCol.values, this.op) : solError("#REF!", `column "${col}" not found in nested frame`));
+      rolled.push(valueCol ? aggregateGroup(valueCol.values, this.agg) : solError("#REF!", `column "${col}" not found in nested frame`));
     }
     const names = makeHeaders([...flatCols.map((c) => c.name), outName], flatCols.length + 1);
     const result: FrameValue = {

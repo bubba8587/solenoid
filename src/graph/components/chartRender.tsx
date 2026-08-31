@@ -1,10 +1,17 @@
 // Every recharts-using renderer in ONE module so recharts stays a single lazy
 // chunk — nothing here may be imported statically by the app.
-import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, ZAxis, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart } from "recharts";
+import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, ZAxis, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart, Symbols, type ScatterShapeProps, type SymbolsProps } from "recharts";
+import { useState, type SyntheticEvent, type ReactElement } from "react";
 import "./chartView.css";
 import { formatScalar } from "./format";
 import { useChartColors, useSeriesColors, axisTick, type ChartShape } from "./chartCore";
 import type { ChartOptions } from "../nodes/chartOptions";
+import type { OverlayPayload } from "../chartValue";
+
+const LINE_DOT_R = 2;
+const SCATTER_DOT_R = 3;
+// recharts' Scatter has no size prop: its default Symbols circle is a fixed 64 px² (r ≈ 4.5).
+const scatterDot = (r: number) => (p: ScatterShapeProps) => <Symbols {...(p as unknown as SymbolsProps)} type="circle" size={Math.PI * r * r} />;
 
 // formatScalar precision, not recharts' raw full-float. Point index is 1-based.
 function ChartTooltip({ active, payload, label }: {
@@ -106,6 +113,8 @@ export function ChartView({
   const lw = opts?.linewidth ?? 1.5;
   const showGrid = axes && (opts?.grid ?? true);
   const showMarkers = opts?.marker ?? axes; // lines dot by default when axed
+  const dotR = opts?.markersize ?? LINE_DOT_R;
+  const dot = scatterDot(opts?.markersize ?? SCATTER_DOT_R);
   const fillAlpha = opts?.alpha ?? 0.25;
   // recharts wants "auto" for an open bound.
   const yDomain = opts?.ymin !== undefined || opts?.ymax !== undefined
@@ -132,7 +141,7 @@ export function ChartView({
         {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
         {TIP}
-        <Line dataKey="v" stroke={color} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: 2 } : false} />
+        <Line dataKey="v" stroke={color} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: dotR } : false} />
       </LineChart>
     );
   } else if (op === "area") {
@@ -142,15 +151,20 @@ export function ChartView({
         {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
         {TIP}
-        <Area dataKey="v" stroke={color} fill={color} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: 2 } : false} />
+        <Area dataKey="v" stroke={color} fill={color} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: dotR } : false} />
       </AreaChart>
     );
   } else if (op === "bar") {
+    // The 18px gutter fits index digits; real category labels need room for the
+    // WIDEST one (else "UltraSlim" prints as "im"), capped so bars keep the card.
+    const catW = labels
+      ? Math.min(Math.round(width / 3), Math.max(18, 8 + Math.ceil(Math.max(...series.map((d) => tickFmt(d.i).length)) * 5.2 * fs)))
+      : 18;
     chart = (
       <BarChart width={width} height={chartH} data={series} layout="vertical" margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} horizontal={false} />}
         {axes && <XAxis type="number" tick={AXIS} tickLine={false} domain={yDomain} label={xLabel} height={xLabel ? 28 : undefined} />}
-        {axes && <YAxis type="category" dataKey="i" tick={AXIS} tickLine={false} width={yLabel ? 32 : 18} tickFormatter={tickFmt} label={yLabel} />}
+        {axes && <YAxis type="category" dataKey="i" tick={AXIS} tickLine={false} width={yLabel ? Math.max(32, catW) : catW} tickFormatter={tickFmt} label={yLabel} />}
         {TIP}
         <Bar dataKey="v" fill={color} fillOpacity={fillAlpha < 1 && opts?.alpha !== undefined ? fillAlpha : 1} isAnimationActive={false} />
       </BarChart>
@@ -172,7 +186,7 @@ export function ChartView({
         <PolarAngleAxis dataKey="i" tick={AXIS} tickFormatter={tickFmt} />
         <PolarRadiusAxis tick={AXIS} axisLine={false} tickCount={4} domain={yDomain} />
         {TIP}
-        <Radar dataKey="v" stroke={color} fill={color} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: 2 } : false} />
+        <Radar dataKey="v" stroke={color} fill={color} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: dotR } : false} />
       </RadarChart>
     );
   } else if (op === "radialbar") {
@@ -206,7 +220,7 @@ export function ChartView({
         {axes && <XAxis type="number" dataKey={numericX ? "x" : "i"} tick={AXIS} tickLine={false} tickFormatter={numericX ? (t) => axisTick(Number(t)) : tickFmt} allowDecimals={numericX ? undefined : false} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis type="number" dataKey="v" tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
         {SCATTER_TIP}
-        <Scatter data={scatterData} fill={color} isAnimationActive={false} />
+        <Scatter data={scatterData} fill={color} shape={dot} isAnimationActive={false} />
       </ScatterChart>
     );
   } else {
@@ -233,6 +247,262 @@ export function ChartView({
       </div>
       {chart}
     </div>
+  );
+}
+
+// Lists every series' value at the hovered index (the multi-series counterpart of
+// ChartTooltip); the swatch color comes from each recharts payload entry.
+function MultiTooltip({ active, payload, label, tickFmt }: {
+  active?: boolean;
+  payload?: { name?: string; value?: number; color?: string }[];
+  label?: number | string;
+  tickFmt: (i: number | string) => string;
+}) {
+  if (!active || !payload || !payload.length) return null;
+  return (
+    <div style={{ fontSize: 11, padding: "3px 6px", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)" }}>
+      <div style={{ color: "var(--text-dim)", marginBottom: 2 }}>{tickFmt(label ?? "")}</div>
+      {payload.map((p, i) => (
+        <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <span style={{ width: 8, height: 8, borderRadius: 2, background: p.color, flex: "0 0 auto" }} />
+          <span style={{ color: "var(--text-dim)" }}>{p.name}</span>
+          <span style={{ marginLeft: "auto" }}>{tipValue(p.value)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const LEGEND_H = 16;
+
+/** Multi-series cartesian render (column/bar/line/area/scatter/radar) with a legend —
+ *  the C2 frame path: each numeric column after the label is one named series, colored
+ *  from the palette (Options `color` is single-series only; the palette wins here). */
+export function MultiSeriesView({
+  op, series, labels, width, height, axes, opts, fontScale,
+}: {
+  op: ChartShape;
+  series: { name: string; values: (number | null)[] }[];
+  labels?: (string | number)[];
+  width: number; height: number; axes: boolean;
+  opts?: ChartOptions; fontScale?: number;
+}) {
+  const { grid, axis } = useChartColors();
+  const colors = useSeriesColors();
+  const paint = (j: number) => colors[j % colors.length];
+  // Legend click spotlights one series (the rest dim); clicking it again clears.
+  const [focus, setFocus] = useState<number | null>(null);
+  const dim = (j: number) => (focus !== null && focus !== j ? 0.18 : 1);
+  const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
+  const AXIS = { fontSize: 9 * fs, fill: axis } as const;
+  const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const n = series.reduce((m, s) => Math.max(m, s.values.length), 0);
+  const data = Array.from({ length: n }, (_, i) => {
+    const o: Record<string, number | null> = { i };
+    series.forEach((s, j) => { o[`s${j}`] = num(s.values[i]); });
+    return o;
+  });
+  const tickFmt = (i: number | string) => {
+    const idx = Math.round(Number(i));
+    if (!Number.isFinite(idx)) return "";
+    if (labels) { const lab = labels[idx]; return lab == null || typeof lab === "object" ? "" : typeof lab === "number" ? axisTick(lab) : String(lab); }
+    return idx >= 0 ? String(idx + 1) : "";
+  };
+  const lw = opts?.linewidth ?? 1.5;
+  const showGrid = axes && (opts?.grid ?? true);
+  const showMarkers = opts?.marker ?? false;
+  const dotR = opts?.markersize ?? LINE_DOT_R;
+  const dot = scatterDot(opts?.markersize ?? SCATTER_DOT_R);
+  const fillAlpha = opts?.alpha ?? 0.25;
+  const yDomain = opts?.ymin !== undefined || opts?.ymax !== undefined
+    ? [opts?.ymin ?? "auto", opts?.ymax ?? "auto"] as [number | string, number | string]
+    : undefined;
+  const title = opts?.title;
+  const titleH = title ? Math.ceil(16 * fs) : 0;
+  const chartH = height - titleH; // the <Legend height> reserves its own strip within this
+  const margin = { top: 6, right: 8, bottom: axes ? 4 : 2, left: 0 };
+  const legend = (
+    <Legend
+      verticalAlign="bottom" height={LEGEND_H} iconSize={8}
+      wrapperStyle={{ fontSize: 9 * fs, color: axis, cursor: "pointer" }}
+      onClick={(e) => { const j = series.findIndex((s) => s.name === e.value); if (j >= 0) setFocus((f) => (f === j ? null : j)); }}
+      formatter={(value, _entry, idx) => <span style={{ opacity: dim(idx) }}>{value}</span>}
+    />
+  );
+  const tip = <Tooltip isAnimationActive={false} cursor={{ fill: "rgba(128,128,128,0.12)" }} content={<MultiTooltip tickFmt={tickFmt} />} />;
+
+  let chart;
+  if (op === "line" || op === "area") {
+    const Container = op === "area" ? AreaChart : LineChart;
+    chart = (
+      <Container width={width} height={chartH} data={data} margin={margin}>
+        {showGrid && <CartesianGrid stroke={grid} />}
+        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} />}
+        {axes && <YAxis tick={AXIS} tickLine={false} width={26} domain={yDomain} />}
+        {tip}{legend}
+        {series.map((s, j) => op === "area"
+          ? <Area key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? { r: dotR } : false} isAnimationActive={false} />
+          : <Line key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} strokeWidth={lw} dot={showMarkers ? { r: dotR } : false} isAnimationActive={false} />)}
+      </Container>
+    );
+  } else if (op === "bar") {
+    chart = (
+      <BarChart width={width} height={chartH} data={data} layout="vertical" margin={margin}>
+        {showGrid && <CartesianGrid stroke={grid} horizontal={false} />}
+        {axes && <XAxis type="number" tick={AXIS} tickLine={false} domain={yDomain} />}
+        {axes && <YAxis type="category" dataKey="i" tick={AXIS} tickLine={false} width={40} tickFormatter={tickFmt} />}
+        {tip}{legend}
+        {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} fill={paint(j)} fillOpacity={dim(j)} isAnimationActive={false} />)}
+      </BarChart>
+    );
+  } else if (op === "radar") {
+    chart = (
+      <RadarChart width={width} height={chartH} data={data} cx="50%" cy="50%" outerRadius="68%">
+        <PolarGrid stroke={grid} />
+        <PolarAngleAxis dataKey="i" tick={AXIS} tickFormatter={tickFmt} />
+        <PolarRadiusAxis tick={AXIS} axisLine={false} tickCount={4} domain={yDomain} />
+        {tip}{legend}
+        {series.map((s, j) => <Radar key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} isAnimationActive={false} />)}
+      </RadarChart>
+    );
+  } else if (op === "scatter") {
+    // Each series a cloud; a numeric label column places points at their real x.
+    const numericX = !!labels && data.length > 0 && data.every((d) => typeof labels![d.i as number] === "number");
+    chart = (
+      <ScatterChart width={width} height={chartH} margin={margin}>
+        {showGrid && <CartesianGrid stroke={grid} />}
+        {axes && <XAxis type="number" dataKey="x" tick={AXIS} tickLine={false} tickFormatter={numericX ? (t) => axisTick(Number(t)) : tickFmt} allowDecimals={numericX ? undefined : false} />}
+        {axes && <YAxis type="number" dataKey="y" tick={AXIS} tickLine={false} width={26} domain={yDomain} />}
+        {tip}{legend}
+        {series.map((s, j) => (
+          <Scatter key={j} name={s.name} fill={paint(j)} fillOpacity={dim(j)} shape={dot} isAnimationActive={false}
+            data={data.map((d) => ({ x: numericX ? Number(labels![d.i as number]) : (d.i as number), y: d[`s${j}`] }))} />
+        ))}
+      </ScatterChart>
+    );
+  } else {
+    // column (the default cartesian) — grouped vertical bars.
+    chart = (
+      <BarChart width={width} height={chartH} data={data} margin={margin}>
+        {showGrid && <CartesianGrid stroke={grid} vertical={false} />}
+        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} />}
+        {axes && <YAxis tick={AXIS} tickLine={false} width={26} domain={yDomain} />}
+        {tip}{legend}
+        {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} fill={paint(j)} fillOpacity={dim(j)} isAnimationActive={false} />)}
+      </BarChart>
+    );
+  }
+
+  // Inside a card, rete's drag handler takes pointer capture on mousedown, which would
+  // deliver the click to the node instead of the legend item — so a press that starts on
+  // the legend never reaches rete (the same swallow every in-card control uses).
+  const legendPress = (e: SyntheticEvent) => {
+    if ((e.target as Element | null)?.closest?.(".recharts-legend-wrapper")) e.stopPropagation();
+  };
+  const withLegendGuard = (el: ReactElement) => (
+    <div style={{ width }} onPointerDown={legendPress} onMouseDown={legendPress}>{el}</div>
+  );
+  if (!title) return withLegendGuard(chart);
+  return withLegendGuard(
+    <>
+      <div style={{ height: titleH, lineHeight: `${titleH}px`, textAlign: "center", fontSize: 11 * fs, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {title}
+      </div>
+      {chart}
+    </>,
+  );
+}
+
+/** Several charts overlaid on ONE cartesian plane (the Merge Plots node): each series
+ *  draws in its OWN mark kind (line / area / column / bar / scatter) and keeps the color,
+ *  marker size, line width and fill alpha it inherited from its source chart. Legend +
+ *  click-to-spotlight match MultiSeriesView; a series with no inherited color takes the
+ *  palette. */
+export function OverlayView({ payload, width, height, opts, fontScale }: {
+  payload: OverlayPayload;
+  width: number; height: number; opts?: ChartOptions; fontScale?: number;
+}) {
+  const { grid, axis } = useChartColors();
+  const colors = useSeriesColors();
+  const series = payload.series;
+  const labels = payload.labels;
+  const paint = (j: number) => series[j]?.color || colors[j % colors.length];
+  const [focus, setFocus] = useState<number | null>(null);
+  const dim = (j: number) => (focus !== null && focus !== j ? 0.18 : 1);
+  const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
+  const AXIS = { fontSize: 9 * fs, fill: axis } as const;
+  const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const n = series.reduce((m, s) => Math.max(m, s.values.length), 0);
+  const data = Array.from({ length: n }, (_, i) => {
+    const o: Record<string, number | null> = { i };
+    series.forEach((s, j) => { o[`s${j}`] = num(s.values[i]); });
+    return o;
+  });
+  const tickFmt = (i: number | string) => {
+    const idx = Math.round(Number(i));
+    if (!Number.isFinite(idx)) return "";
+    if (labels) { const lab = labels[idx]; return lab == null || typeof lab === "object" ? "" : typeof lab === "number" ? axisTick(lab) : String(lab); }
+    return idx >= 0 ? String(idx + 1) : "";
+  };
+  const showGrid = opts?.grid ?? true;
+  const yDomain = opts?.ymin !== undefined || opts?.ymax !== undefined
+    ? [opts?.ymin ?? "auto", opts?.ymax ?? "auto"] as [number | string, number | string]
+    : undefined;
+  const title = opts?.title;
+  const titleH = title ? Math.ceil(16 * fs) : 0;
+  const chartH = height - titleH;
+  const margin = { top: 6, right: 8, bottom: 4, left: 0 };
+  const legend = (
+    <Legend
+      verticalAlign="bottom" height={LEGEND_H} iconSize={8}
+      wrapperStyle={{ fontSize: 9 * fs, color: axis, cursor: "pointer" }}
+      // Focus by dataKey (`s{j}`), not name — merged series names can collide.
+      onClick={(e) => { const j = Number(String((e as { dataKey?: unknown }).dataKey ?? "").replace(/^s/, "")); if (Number.isInteger(j)) setFocus((f) => (f === j ? null : j)); }}
+      formatter={(value, _entry, idx) => <span style={{ opacity: dim(idx) }}>{value}</span>}
+    />
+  );
+  const tip = <Tooltip isAnimationActive={false} cursor={{ fill: "rgba(128,128,128,0.12)" }} content={<MultiTooltip tickFmt={tickFmt} />} />;
+
+  const chart = (
+    <ComposedChart width={width} height={chartH} data={data} margin={margin}>
+      {showGrid && <CartesianGrid stroke={grid} vertical={false} />}
+      <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} allowDuplicatedCategory={false} />
+      <YAxis tick={AXIS} tickLine={false} width={26} domain={yDomain} />
+      {tip}{legend}
+      {series.map((s, j) => {
+        const c = paint(j);
+        const o = dim(j);
+        const lw = s.linewidth ?? opts?.linewidth ?? 1.5;
+        const fillAlpha = (s.alpha ?? 0.25) * o;
+        const lineDotR = s.markersize ?? LINE_DOT_R;
+        if (s.kind === "line") {
+          return <Line key={j} dataKey={`s${j}`} name={s.name} stroke={c} strokeOpacity={o} strokeWidth={lw} dot={s.marker ? { r: lineDotR } : false} isAnimationActive={false} />;
+        }
+        if (s.kind === "area") {
+          return <Area key={j} dataKey={`s${j}`} name={s.name} stroke={c} strokeOpacity={o} fill={c} fillOpacity={fillAlpha} strokeWidth={lw} dot={s.marker ? { r: lineDotR } : false} isAnimationActive={false} />;
+        }
+        if (s.kind === "scatter") {
+          return <Scatter key={j} dataKey={`s${j}`} name={s.name} fill={c} fillOpacity={o} shape={scatterDot(s.markersize ?? SCATTER_DOT_R)} isAnimationActive={false} />;
+        }
+        // column / bar — both draw as vertical bars so they share the x-axis.
+        return <Bar key={j} dataKey={`s${j}`} name={s.name} fill={c} fillOpacity={(s.alpha ?? 1) * o} isAnimationActive={false} />;
+      })}
+    </ComposedChart>
+  );
+
+  // Same legend-press swallow as MultiSeriesView — rete's drag would otherwise eat the click.
+  const legendPress = (e: SyntheticEvent) => {
+    if ((e.target as Element | null)?.closest?.(".recharts-legend-wrapper")) e.stopPropagation();
+  };
+  const wrap = (el: ReactElement) => <div style={{ width }} onPointerDown={legendPress} onMouseDown={legendPress}>{el}</div>;
+  if (!title) return wrap(chart);
+  return wrap(
+    <>
+      <div style={{ height: titleH, lineHeight: `${titleH}px`, textAlign: "center", fontSize: 11 * fs, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {title}
+      </div>
+      {chart}
+    </>,
   );
 }
 
@@ -336,16 +606,19 @@ export function SankeyView({ sources, targets, values, width, height, fscale = 1
 }
 
 // Each COLUMN is a series over the row index: column 0 bars, the rest lines.
-export function ComposedView({ matrix, width, height, fscale = 1 }: {
-  matrix: (number | null)[][]; width: number; height: number; fscale?: number;
+// One BAR series (column 0) plus a LINE per remaining series — the named columns of a
+// frame, the C2 replacement for the old Series matrix socket.
+export function ComposedView({ series, width, height, fscale = 1 }: {
+  series: { name: string; values: (number | null)[] }[]; width: number; height: number; fscale?: number;
 }) {
   const { grid, axis } = useChartColors();
   const colors = useSeriesColors();
   const AXIS = { fontSize: 9 * fscale, fill: axis } as const;
-  const ncols = matrix.reduce((m, r) => Math.max(m, r.length), 0);
-  const data = matrix.map((row, i) => {
+  const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const n = series.reduce((m, s) => Math.max(m, s.values.length), 0);
+  const data = Array.from({ length: n }, (_, i) => {
     const o: Record<string, number | null> = { i };
-    for (let j = 0; j < ncols; j++) o[`c${j}`] = typeof row[j] === "number" ? row[j] : null;
+    series.forEach((s, j) => { o[`s${j}`] = num(s.values[i]); });
     return o;
   });
   return (
@@ -354,29 +627,29 @@ export function ComposedView({ matrix, width, height, fscale = 1 }: {
       <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={(i) => String(Number(i) + 1)} />
       <YAxis tick={AXIS} tickLine={false} width={26} />
       <Tooltip isAnimationActive={false} cursor={{ fill: "rgba(128,128,128,0.12)" }} />
-      {Array.from({ length: ncols }, (_, j) => (
-        j === 0
-          ? <Bar key={j} dataKey={`c${j}`} fill={colors[j % colors.length]} isAnimationActive={false} />
-          : <Line key={j} dataKey={`c${j}`} stroke={colors[j % colors.length]} strokeWidth={1.5} dot={false} isAnimationActive={false} />
-      ))}
+      {series.length > 1 && <Legend verticalAlign="bottom" height={LEGEND_H} iconSize={8} wrapperStyle={{ fontSize: 9 * fscale, color: axis }} />}
+      {series.map((s, j) => j === 0
+        ? <Bar key={j} dataKey={`s${j}`} name={s.name} fill={colors[j % colors.length]} isAnimationActive={false} />
+        : <Line key={j} dataKey={`s${j}`} name={s.name} stroke={colors[j % colors.length]} strokeWidth={1.5} dot={false} isAnimationActive={false} />)}
     </ComposedChart>
   );
 }
 
-// Each ROW is a point: column 0 = x, 1 = y, 2 = bubble size (defaults if absent).
-export function BubbleView({ matrix, width, height, fscale = 1 }: {
-  matrix: (number | null)[][]; width: number; height: number; fscale?: number;
+// The first three NUMBER series are x / y / size columns, one dot per row (a frame's
+// first three number columns; a single column plots against itself).
+export function BubbleView({ series, width, height, fscale = 1 }: {
+  series: { name: string; values: (number | null)[] }[]; width: number; height: number; fscale?: number;
 }) {
   const { grid, axis } = useChartColors();
   const colors = useSeriesColors();
   const AXIS = { fontSize: 9 * fscale, fill: axis } as const;
-  const data = matrix
-    .map((row, i) => ({
-      x: typeof row[0] === "number" ? row[0] : i,
-      y: typeof row[1] === "number" ? row[1] : (typeof row[0] === "number" ? row[0] : null),
-      z: typeof row[2] === "number" ? row[2] : 1,
-    }))
-    .filter((d) => d.y !== null);
+  const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const xs = series[0]?.values ?? [], ys = series[1]?.values ?? [], zs = series[2]?.values ?? [];
+  const n = Math.max(xs.length, ys.length);
+  const data = Array.from({ length: n }, (_, i) => {
+    const x = num(xs[i]);
+    return { x: x ?? i, y: series.length >= 2 ? num(ys[i]) : x, z: num(zs[i]) ?? 1 };
+  }).filter((d) => d.y !== null);
   if (data.length === 0) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
   return (
     <ScatterChart width={width} height={height} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>

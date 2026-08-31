@@ -1,7 +1,10 @@
 // Structured-payload figures, so they render as plain CSS/SVG rather than going
 // through the lazy recharts chunk.
-import type { KpiPayload, BulletPayload } from "../chartValue";
+import { useLayoutEffect, useRef, useState } from "react";
+import type { KpiPayload, ScalePayload, RecordPayload } from "../chartValue";
 import { formatScalar } from "./format";
+import { planColumns, packMasonry } from "./masonryLayout";
+import { stopDragStart } from "../coarse";
 import "./chartCards.css";
 
 // A semantic state color, deliberately NOT a palette slot: a KPI trend reads
@@ -39,7 +42,180 @@ export function KpiCard({ payload, fscale }: { payload: KpiPayload; fscale?: num
   );
 }
 
-export function BulletBar({ payload, width, fscale }: { payload: BulletPayload; width?: number; fscale?: number }) {
+// One card of labeled boxes on a CSS grid, placements resolved in the node.
+function RecordGrid({ fields, cols }: { fields: RecordPayload["cards"][number]; cols: number }) {
+  return (
+    <div className="sol-record" style={{ gridTemplateColumns: `repeat(${Math.max(1, cols)}, minmax(0, 1fr))` }}>
+      {fields.map((f, i) => (
+        <div
+          key={i}
+          className="sol-record__box"
+          style={{ gridRow: `${f.row} / span ${f.rowSpan}`, gridColumn: `${f.col} / span ${f.colSpan}` }}
+        >
+          <div className="sol-record__label">{f.label}</div>
+          {f.image ? (
+            <img className="sol-record__img" src={f.image} alt={f.label} draggable={false} />
+          ) : (
+            <div className={`sol-record__value${f.value === null ? (f.hint ? " sol-record__value--hint" : " sol-record__value--empty") : ""}`}>
+              {f.value === null ? (f.hint ?? "—") : typeof f.value === "number" ? formatScalar(f.value) : f.value}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const GALLERY_GAP = 6;
+// Track band: aim at `ideal`, compress to `min` before dropping a column, and
+// never stretch past `max` (a lone wide track reads as a stacked list).
+const GALLERY_TRACK = { ideal: 170, min: 140, max: 260 };
+
+// Masonry gallery (see masonryLayout.ts): tracks justified to the measured
+// container, each card packed into the shortest column. Card heights are
+// text-driven, so they are measured from the DOM; the ResizeObserver re-packs
+// on container resizes, wrap changes, and fscale changes. Tiles stay hidden
+// until the first measurement at the final track width, so the mount never
+// paints a mispacked frame.
+function RecordGallery({ payload }: { payload: RecordPayload }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const tileRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const shownOnce = useRef(false);
+  const n = payload.cards.length;
+  const [box, setBox] = useState<{ w: number; heights: number[]; settled: boolean } | null>(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      const w = el.clientWidth;
+      const tiles = tileRefs.current.slice(0, n);
+      const heights = tiles.map((t) => (t ? t.offsetHeight : 0));
+      const want = Math.round(planColumns(w, GALLERY_GAP, { ...GALLERY_TRACK, items: n }).colWidth);
+      const settled = tiles.every((t) => !t || t.offsetWidth === want);
+      setBox((prev) =>
+        prev && prev.w === w && prev.settled === settled &&
+        prev.heights.length === heights.length && prev.heights.every((h, i) => h === heights[i])
+          ? prev
+          : { w, heights, settled },
+      );
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    for (const t of tileRefs.current.slice(0, n)) if (t) ro.observe(t);
+    return () => ro.disconnect();
+  }, [n, payload]);
+
+  const plan = planColumns(box?.w ?? 0, GALLERY_GAP, { ...GALLERY_TRACK, items: n });
+  const colWidth = Math.round(plan.colWidth);
+  if (box?.settled) shownOnce.current = true;
+  const show = box !== null && (box.settled || shownOnce.current);
+  const packed = box ? packMasonry(box.heights, plan.count, GALLERY_GAP) : null;
+  return (
+    <div ref={ref} className="sol-record-gallery" style={show && packed ? { height: packed.height } : undefined}>
+      {payload.cards.map((c, i) => (
+        <div
+          key={i}
+          ref={(t) => { tileRefs.current[i] = t; }}
+          className="sol-record-tile"
+          style={
+            show && packed
+              ? { width: colWidth, transform: `translate(${packed.slots[i].col * (colWidth + GALLERY_GAP)}px, ${Math.round(packed.slots[i].y)}px)` }
+              : { width: colWidth, visibility: "hidden" }
+          }
+        >
+          <RecordGrid fields={c} cols={payload.cols} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function NavChevron({ back }: { back?: boolean }) {
+  return (
+    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+      <path
+        d={back ? "M6.5 1l-4 4 4 4" : "M3.5 1l4 4-4 4"}
+        fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+// The record figure: the picked card, a gallery of cards, or board lanes.
+// Height is content-driven (layouts vary), so the passed figure height is ignored.
+// `title` is the explicit options title (the label fallback stays off the figure,
+// matching the series charts); popup/report surfaces strip it — their header
+// already carries it. `onStep` puts the row pager ON the drawn card (the node
+// card only chips the chart), provided by surfaces that can reach the node.
+export function RecordCardView({ payload, width, fscale, title, onStep }: {
+  payload: RecordPayload; width?: number; fscale?: number; title?: string; onStep?: (delta: number) => void;
+}) {
+  const outer = { ...(width ? { width } : undefined), ...fscaleStyle(fscale) };
+  const titleLine = title ? <div className="sol-record-figtitle">{title}</div> : null;
+  const moreLine = payload.more ? <div className="sol-record__more">+{payload.more} more</div> : null;
+  if (payload.view === "gallery") {
+    return (
+      <div style={outer}>
+        {titleLine}
+        <RecordGallery payload={payload} />
+        {moreLine}
+      </div>
+    );
+  }
+  if (payload.view === "board") {
+    return (
+      <div style={outer}>
+        {titleLine}
+        <div className="sol-record-board">
+          {(payload.lanes ?? []).map((lane) => (
+            <div key={lane.label} className="sol-record-lane">
+              <div className="sol-record-lane__label">{lane.label}</div>
+              {lane.cards.map((ci) => <RecordGrid key={ci} fields={payload.cards[ci] ?? []} cols={payload.cols} />)}
+            </div>
+          ))}
+        </div>
+        {moreLine}
+      </div>
+    );
+  }
+  // Card view: the pager is a CONTROL, so a host box shorter than the card must
+  // never clip it away — the column fills a definite height and only the grid
+  // area gives. A host with no definite height (the unsized Display, the popup)
+  // resolves the 100% to auto and stays content-driven as before.
+  return (
+    <div className="sol-record-card" style={outer}>
+      {titleLine}
+      <div className="sol-record-card__grid">
+        <RecordGrid fields={payload.cards[0] ?? []} cols={payload.cols} />
+      </div>
+      {onStep && payload.total > 1 && (
+        <div className="sol-record-nav">
+          <button
+            type="button" className="sol-record-nav__btn" title="Previous record"
+            disabled={payload.index <= 1}
+            onClick={(e) => { e.stopPropagation(); onStep(-1); }}
+            onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
+          >
+            <NavChevron back />
+          </button>
+          <span className="sol-record-nav__count">{payload.index > 0 ? payload.index : "–"} / {payload.total}</span>
+          <button
+            type="button" className="sol-record-nav__btn" title="Next record"
+            disabled={payload.index >= payload.total}
+            onClick={(e) => { e.stopPropagation(); onStep(1); }}
+            onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
+          >
+            <NavChevron />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function BulletBar({ payload, width, fscale }: { payload: ScalePayload; width?: number; fscale?: number }) {
   const { value, target } = payload;
   // A non-finite min/max from dirty upstream data makes every frac() NaN — a
   // "NaN%" bar width and "NaN" labels.

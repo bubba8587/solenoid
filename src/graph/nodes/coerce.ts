@@ -1,6 +1,7 @@
 // Array-shape coercion: normalize whatever arrives to the shape a node wants.
 // (type-only import — erased at runtime, so no module cycle with errorValue)
 import type { SolError } from "../errorValue";
+import { matRows, matCols } from "./matrixOps";
 
 export type Mat = number[][];
 
@@ -65,4 +66,14 @@ export function toAnyMatrix(v: unknown): Cell[][] | null {
     return (Array.isArray(v[0]) ? v : [v]) as Cell[][];
   }
   return [[v as Cell]];
+}
+
+/** The row/column COUNTS of a matrix/list/scalar, read identically by the TableInfo
+ *  node (COLUMNS/ROWS outputs) and the COLUMNS/ROWS formulas — the one shape math both
+ *  share (shareImpl). A list is one ROW (widenNeverNarrow), a scalar is 1×1, a wired blank is unknown.
+ *  A Frame carries its own real shape, so its caller (the node) special-cases it before
+ *  reaching here; frames never flow through formulas. */
+export function matrixShape(v: unknown): { rows: number | null; cols: number | null } {
+  const m = toAnyMatrix(v);
+  return { rows: m ? matRows(m) : null, cols: m ? matCols(m) : null };
 }

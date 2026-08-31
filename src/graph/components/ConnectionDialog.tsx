@@ -151,7 +151,7 @@ export function ConnectionDialog() {
 
   const error = useMemo(() => {
     if (!src || !tgt) return null;
-    if (src.nodeId === tgt.nodeId) return "A node can't wire to itself.";
+    if (src.nodeId === tgt.nodeId) return "A node can't connect to itself.";
     if (src.dataType && tgt.dataType && !canConnect(src.dataType, tgt.dataType)) {
       return `Incompatible types: ${typeName(src.dataType)} → ${typeName(tgt.dataType)}.`;
     }
@@ -222,7 +222,7 @@ export function ConnectionDialog() {
             disabled={!src || !tgt || !!error}
             onClick={() => void connect()}
           >
-            {req.editId ? "Re-wire" : "Connect"}
+            {req.editId ? "Reconnect" : "Connect"}
           </button>
         </div>
       </div>

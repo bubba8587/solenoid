@@ -5,7 +5,7 @@ import { serialToJsDate } from "../nodes/date";
 import { heightColor } from "./SurfaceView";
 import type {
   WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload,
-  WafflePayload, QuiverPayload, ContourPayload,
+  ProportionPayload, QuiverPayload, ContourPayload,
 } from "../chartValue";
 
 // Canvas figure views: one DOM element regardless of data size, themed by reading the live
@@ -328,7 +328,7 @@ function drawCalHeat(canvas: HTMLCanvasElement, p: CalHeatPayload, W: number, H:
 
 // ─── Waffle ────────────────────────────────────────────────────────────────────
 
-function drawWaffle(canvas: HTMLCanvasElement, p: WafflePayload, W: number, H: number, colors: string[]) {
+function drawWaffle(canvas: HTMLCanvasElement, p: ProportionPayload, W: number, H: number, colors: string[]) {
   const ctx = setupCanvas(canvas, W, H);
   if (!ctx) return;
   const ink = themeInk(canvas);
@@ -582,7 +582,7 @@ export function CalHeatView({ payload, width, height }: { payload: CalHeatPayloa
   return <canvas ref={ref} style={{ width, height, display: "block" }} />;
 }
 
-export function WaffleView({ payload, width, height, colors }: { payload: WafflePayload; width: number; height: number; colors: string[] }) {
+export function WaffleView({ payload, width, height, colors }: { payload: ProportionPayload; width: number; height: number; colors: string[] }) {
   const ref = useThemedCanvas((c) => drawWaffle(c, payload, width, height, colors));
   if (payload.values.length === 0) return <Empty />;
   return <canvas ref={ref} style={{ width, height, display: "block" }} />;

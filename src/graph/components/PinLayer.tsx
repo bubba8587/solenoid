@@ -3,9 +3,9 @@ import { IS_MOBILE } from "../coarse";
 import { pinStore } from "../pinStore";
 import { registerChrome } from "../chromeToggle";
 import { cableValueStore } from "../cableValueStore";
-import { connectionVersionStore, getEditor } from "../process";
+import { connectionVersionStore } from "../graphSignals";
 import { flyToNode } from "../flyToNode";
-import { nodeTypeName } from "../nodeNames";
+import { nodeDisplayName } from "../catalogUtils";
 import { GroupNode } from "../rete-nodes";
 import { groupReadouts, type RetainedTerminal } from "../groupCollapse";
 import { formatScalar } from "./format";
@@ -13,23 +13,26 @@ import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnno
 import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { ArrayChip, isArrayValue, arrayAccentFor } from "./ArrayChip";
-import { nodeOutputElemFamily } from "./valueDisplayFormat";
+import { nodeOutputElemFamily, formatListCell } from "./valueDisplayFormat";
+import { isCx } from "../cxValue";
+import { isUnitCell } from "../unitValue";
 import { FrameChip, FrameRefChip } from "./FrameChip";
 import { isFrameRef } from "../frameBackend";
 import { CubeChip } from "./CubeChip";
 import { isFrameValue, isCubeValue } from "../frame";
 import "./pinLayer.css";
 import { CloseIcon } from "./CloseIcon";
+import { getActiveEditor, getOwningEditor } from "../activeGraph";
 
 // Must mirror GroupNode's readout: a Display reads cachedValue, a generic member its
 // live output, falling back to cachedResult for LAMBDA-style nodes that cache there.
 function readoutValue(t: RetainedTerminal): unknown {
   if (t.kind === "display") {
-    return (getEditor()?.getNode(t.displayId) as { cachedValue?: unknown } | undefined)?.cachedValue;
+    return (getOwningEditor(t.displayId)?.getNode(t.displayId) as { cachedValue?: unknown } | undefined)?.cachedValue;
   }
   const v = cableValueStore.get(t.effNodeId, t.effSocketKey);
   if (v !== undefined && v !== null) return v;
-  return (getEditor()?.getNode(t.effNodeId) as { cachedResult?: unknown } | undefined)?.cachedResult ?? v;
+  return (getOwningEditor(t.effNodeId)?.getNode(t.effNodeId) as { cachedResult?: unknown } | undefined)?.cachedResult ?? v;
 }
 
 // Mirrors ValueDisplay but standalone (no node/FC context); `label` titles the popup
@@ -54,6 +57,13 @@ function renderValue(v: unknown, label?: string, annNodeId?: string, outKey?: st
   if (typeof v === "number") {
     const ann = annNodeId ? formatAnnotationStore.getForNode(annNodeId) : undefined;
     return <span className="solenoid-pin__value">{ann ? formatNumberWithAnnotation(v, ann) : formatScalar(v)}</span>;
+  }
+  // Logicals, tagged complex and united numbers all have a text form — they fell
+  // through to the empty dash before.
+  if (typeof v === "boolean" || isCx(v) || isUnitCell(v)) {
+    const ann = annNodeId ? formatAnnotationStore.getForNode(annNodeId) : undefined;
+    const one = (n: number) => (ann ? formatNumberWithAnnotation(n, ann) : formatScalar(n));
+    return <span className="solenoid-pin__value">{formatListCell(v, one)}</span>;
   }
   return <span className="solenoid-pin__value solenoid-pin__value--empty">—</span>;
 }
@@ -97,7 +107,7 @@ export function PinLayer() {
   }, [collapsed, pins.length]);
   if (pins.length === 0) return null;
 
-  const editor = getEditor();
+  const editor = getActiveEditor();
   if (!editor) return null;
 
   const removeBtn = (label: string, nodeId: string) => (
@@ -115,7 +125,7 @@ export function PinLayer() {
   const chips = pins.map((pin) => {
     const node = editor.getNode(pin.nodeId);
     if (!node) return null; // safety — should be dropped on delete
-    const label = (node.label ?? "").trim() || nodeTypeName(node);
+    const label = nodeDisplayName(node);
 
     // A pinned GROUP shows the same readouts a collapsed group would.
     if (node instanceof GroupNode) {

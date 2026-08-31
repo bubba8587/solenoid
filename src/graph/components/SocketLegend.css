@@ -142,6 +142,7 @@ html.minimap-hidden .solenoid-legend {
 .solenoid-legend__desc {
   font-size: 11px;
   color: var(--text-dim);
+  text-wrap-style: pretty;
 }
 
 /* ── Mobile pass ────────────────────────────────────────────────────────────
@@ -222,5 +223,6 @@ html.is-mobile .solenoid-legend { display: none; }
   font-size: 11.5px;
   line-height: 1.5;
   color: var(--text-muted);
+  text-wrap-style: pretty;
 }
 .solenoid-dimflow em { font-style: normal; color: var(--text); }

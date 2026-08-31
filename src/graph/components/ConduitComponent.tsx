@@ -1,8 +1,8 @@
+import { SocketComponent } from "./SocketComponent";
+import type { Emit } from "./nodeKit";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { ClassicPreset } from "rete";
-import { Presets } from "rete-react-plugin";
-import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import {
   ConduitNode as ConduitNodeType,
   CONDUIT_MAX_LANES,
@@ -16,26 +16,21 @@ import {
   CONDUIT_SQ,
   CONDUIT_COL_GAP,
   CONDUIT_ROW_GAP,
+  conduitLaneOffset,
   conduitLayoutStore,
 } from "../ribbonCable";
-import {
-  cableDragStore,
-  connectionVersionStore,
-  conduitAngleStore,
-  bumpConduitAngle,
-  processGraph,
-} from "../process";
-import { getOwningEditor, getOwningArea } from "../activeGraph";
+import { processGraph, isGraphRebuilding } from "../process";
+import { cableDragStore, connectionVersionStore, conduitAngleStore, bumpConduitAngle } from "../graphSignals";
+import { getOwningEditor, getOwningView } from "../activeGraph";
+import { useFlowSocket } from "../flowSurface";
 import { AngleDial } from "../AngleDial";
 import { useDraftCommit, INVALID_DRAFT } from "./inlineInput";
 import "../AngleDial.css";
 import "./conduit.css";
 
-const { RefSocket } = Presets.classic;
-
 type Props = {
   data: ConduitNodeType & { width?: number; height?: number };
-  emit: RenderEmit<ClassicScheme>;
+  emit?: Emit;
 };
 
 // Fixed hit-area / pivot box: the connector grows around the pivot and overflows it, so
@@ -52,10 +47,15 @@ const COL_GAP = CONDUIT_COL_GAP;  // gap between the input and output columns
 const ROW_GAP = CONDUIT_ROW_GAP;  // gap between lane rows
 const SHELL_PAD = 2;     // small housing padding so the squares read as a tight grid
 const BORDER_WIDTH = 1.25;
-// Red pin-1 stripe, its own row just above the grid (inside the housing).
+// Grab handle: the connector's keyed top band, and the ONE part of the block no cable
+// ever crosses — so it is what you aim at to select or drag. Its height deliberately
+// does NOT take the collapse scale: the target must not shrink away in the very state
+// (resting, compressed) you reach for it in.
+const HANDLE_H = 12;
+const HANDLE_GAP = 1;    // hairline between the handle and the socket grid
+// Red pin-1 marker, a thin inset inside the handle band.
 const STRIPE_H = 3;
-const STRIPE_GAP = 2;
-const STRIPE_INSET = 1;
+const STRIPE_INSET = 2.5;
 // Rotation snaps to 45°: the cable leads exit along the connector angle, and off-45°
 // angles make the diagonal cable shape look bad.
 const ANGLE_STEP = 45;
@@ -64,6 +64,13 @@ const ANGLE_STEP = 45;
 const normaliseAngle = (deg: number): number => { const m = deg % 360; return m < 0 ? m + 360 : m; };
 
 const snap45 = (deg: number) => normaliseAngle(Math.round(deg / 45) * 45);
+
+/** A rect whose TOP corners are rounded to r — the handle band shares the shell's
+ *  top corners and butts flat against the socket grid below it. */
+function topBand(x: number, y: number, w: number, h: number, r: number): string {
+  const c = Math.max(0, Math.min(r, w / 2, h));
+  return `M ${x} ${y + c} A ${c} ${c} 0 0 1 ${x + c} ${y} H ${x + w - c} A ${c} ${c} 0 0 1 ${x + w} ${y + c} V ${y + h} H ${x} Z`;
+}
 
 // How many lanes are currently wired (max used in_/out_ index + 1).
 function countUsedLanes(nodeId: string): number {
@@ -84,8 +91,9 @@ function countUsedLanes(nodeId: string): number {
   return max + 1;
 }
 
-export function ConduitComponent({ data, emit }: Props) {
+export function ConduitComponent({ data }: Props) {
   const node = data;
+  const FlowSocket = useFlowSocket();
 
   // Angle is DERIVED from node.angle (never local state) so a rotate from OUTSIDE
   // this React root — Canvas's `[` / `]` keys — re-renders the block too.
@@ -149,37 +157,46 @@ export function ConduitComponent({ data, emit }: Props) {
   const rad = (angle * Math.PI) / 180;
   const c = Math.cos(rad);
   const s = Math.sin(rad);
-  const laneY = (i: number) => (i - (lanes - 1) / 2) * rowStep;
-  const place = (faceSign: number, i: number) => {
-    const lx = faceSign * halfW;
-    const ly = laneY(i);
-    return { x: lx * c - ly * s, y: lx * s + ly * c };
-  };
-  const inputHandles  = Array.from({ length: lanes }, (_, i) => place(-1, i));
-  const outputHandles = Array.from({ length: lanes }, (_, i) => place(1, i));
+  // Squares and cable tips read the SAME lane geometry, so a tip can never sit off
+  // the pin hole it plugs into (ribbonCable.conduitLanePoint is the other caller).
+  const place = (side: "in" | "out", i: number) => conduitLaneOffset({ angle, scale, lanes }, side, i);
+  const inputHandles  = Array.from({ length: lanes }, (_, i) => place("in", i));
+  const outputHandles = Array.from({ length: lanes }, (_, i) => place("out", i));
 
-  // The grid stays centered on the pivot; the housing pokes up for the stripe row.
+  // The grid stays centered on the pivot; the housing pokes up for the handle band.
   const gridHalfW = halfW + sq / 2;
   const gridHalfH = ((lanes - 1) * rowStep) / 2 + sq / 2;
   const shellPad = SHELL_PAD * scale;
-  const stripeH = STRIPE_H * scale;
   const gridTop = PIVOT - gridHalfH;
-  const stripeY = gridTop - STRIPE_GAP * scale - stripeH;
-  const stripeX = PIVOT - gridHalfW + STRIPE_INSET * scale;
-  const stripeW = 2 * gridHalfW - 2 * STRIPE_INSET * scale;
   const rectX = PIVOT - gridHalfW - shellPad;
   const rectW = 2 * (gridHalfW + shellPad);
-  const rectY = stripeY - shellPad;
+  const rectY = gridTop - HANDLE_GAP * scale - HANDLE_H;
   const rectH = PIVOT + gridHalfH + shellPad - rectY;
   const radius = Math.min(rectW / 2, 6 * scale);
+  // The handle IS the housing's top slice, full width, top corners following the shell.
+  const handleH = HANDLE_H;
+  const stripeH = STRIPE_H;
+  const stripeY = rectY + (handleH - stripeH) / 2;
+  const stripeX = rectX + STRIPE_INSET;
+  const stripeW = rectW - 2 * STRIPE_INSET;
   const rot = `rotate(${angle} ${PIVOT} ${PIVOT})`;
 
-  // Publish live layout for ribbon-trunk geometry; `selected` rides along so ribbons
-  // touching a selected Conduit separate into individual cables.
+  // Publish live layout: ribbon-trunk geometry AND every lane's cable endpoint are
+  // derived from it (ribbonCable.conduitLanePoint), so `lanes` and `scale` must ride
+  // along or endpoints stall on the previous shape. `selected` rides along too, so
+  // ribbons touching a selected Conduit separate into individual cables.
   useEffect(() => {
-    conduitLayoutStore.set(node.id, { angle, scale, selected });
-  }, [node.id, angle, scale, selected]);
+    conduitLayoutStore.set(node.id, { angle, scale, selected, lanes });
+  }, [node.id, angle, scale, selected, lanes]);
   useEffect(() => () => conduitLayoutStore.clear(node.id), [node.id]);
+
+  // React Flow measures a node's socket boxes once and re-measures only on a version
+  // bump, so without this the lane squares stay drop targets at their COLLAPSED spots
+  // — and the block expands exactly when a cable is being aimed at it. The area's
+  // re-render verb is what carries the bump (SolNodeAdapter → updateNodeInternals).
+  useEffect(() => {
+    void getOwningView(node.id)?.rerenderNode(node.id);
+  }, [node.id, angle, scale, lanes]);
 
   // Per-socket cable leads: inputs arrive into the −x face, outputs leave the +x face,
   // so both resolve to `angle`.
@@ -200,23 +217,26 @@ export function ConduitComponent({ data, emit }: Props) {
   // Render the connector BEHIND the cables (z-index:-1 on the node holder) so wires
   // plug in over the square grid.
   useLayoutEffect(() => {
-    const el = getOwningArea(node.id)?.nodeViews.get(node.id)?.element;
+    const el = getOwningView(node.id)?.nodeElement(node.id);
     if (el) el.style.zIndex = "-1";
     return () => { if (el) el.style.zIndex = ""; };
   }, [node.id]);
 
-  // Downstream nodes pick up newly routed lanes only on a recompute.
-  useEffect(() => { void processGraph(); }, [realLanes]);
+  // Downstream nodes pick up newly routed lanes only on a recompute. NOT during a load:
+  // this mount effect fires as the Conduit's view mounts, which under a synchronous render
+  // is mid-`addNode` — before the graph is fully built — so a recompute there hits a
+  // half-initialized engine. The rebuild's own terminal pass recomputes everything anyway.
+  useEffect(() => { if (isGraphRebuilding()) return; void processGraph(); }, [realLanes]);
 
   const extendToNewConduit = async () => {
     // A Conduit inside a drill-in must spawn the new block in the SAME subgraph.
     const editor = getOwningEditor(node.id);
-    const area = getOwningArea(node.id);
-    if (!editor || !area) return;
+    const view = getOwningView(node.id);
+    if (!editor || !view) return;
     const next = new ConduitNodeType({ angle: node.angle }) as unknown as SolenoidNode;
     await editor.addNode(next);
-    const pos = area.nodeViews.get(node.id)?.position ?? { x: 0, y: 0 };
-    await area.translate(next.id, { x: pos.x + 130 * c, y: pos.y + 130 * s });
+    const pos = view.position(node.id) ?? { x: 0, y: 0 };
+    await view.moveNode(next.id, { x: pos.x + 130 * c, y: pos.y + 130 * s });
     const n = Math.max(realLanes, 1);
     for (let i = 0; i < n; i++) {
       try {
@@ -231,26 +251,33 @@ export function ConduitComponent({ data, emit }: Props) {
   const renderSocket = (side: "input" | "output", key: string, p: { x: number; y: number }, isPhantom: boolean) => (
     <div
       key={key}
-      className={`solenoid-conduit__lane${isPhantom ? " solenoid-conduit__lane--phantom" : ""}`}
-      // The rotate is visual-only around the square's center, so rete still measures the
-      // endpoint at p (offsetLeft/Top ignore transforms). COMPRESSED sockets are
-      // pointer-transparent — the bunched squares cover the whole pill, so otherwise every
-      // click starts a cable drag and the block can never be re-selected.
+      className={
+        "solenoid-conduit__lane"
+        + (isPhantom ? " solenoid-conduit__lane--phantom" : "")
+        // Compressed: pointer-transparent, RF's Handle included (flow.css) — the bunched
+        // squares cover the whole block, so otherwise every press starts a cable drag and
+        // the block can never be grabbed.
+        + (expanded ? "" : " solenoid-conduit__lane--inert")
+      }
+      // The rotate is visual-only around the square's center; cable tips come from the
+      // published layout, not from this box.
       style={{
         left: PIVOT + p.x - socketSize / 2,
         top: PIVOT + p.y - socketSize / 2,
         transform: angle ? `rotate(${angle}deg)` : undefined,
-        pointerEvents: expanded ? undefined : "none",
       }}
     >
-      <RefSocket
-        name={`${side}-socket`}
-        side={side}
-        socketKey={key}
-        nodeId={node.id}
-        emit={emit}
-        payload={(side === "input" ? node.inputs[key]! : node.outputs[key]!).socket}
-      />
+      {(() => {
+        // In the RF tree, lane dots are RF Handles (injected — flowSurface.ts),
+        // or edges into the lanes have no endpoints.
+        const payload = (side === "input" ? node.inputs[key]! : node.outputs[key]!).socket;
+        return FlowSocket ? (
+          <FlowSocket side={side} socketKey={key} payload={payload} shape="square" lit={false} />
+        ) : (
+          <SocketComponent data={payload}
+          />
+        );
+      })()}
     </div>
   );
 
@@ -271,6 +298,10 @@ export function ConduitComponent({ data, emit }: Props) {
           <rect
             className="solenoid-conduit__block"
             x={rectX} y={rectY} width={rectW} height={rectH} rx={radius}
+          />
+          <path
+            className="solenoid-conduit__handle"
+            d={topBand(rectX, rectY, rectW, handleH, radius)}
           />
           <rect
             className="solenoid-conduit__stripe"
@@ -306,7 +337,7 @@ export function ConduitComponent({ data, emit }: Props) {
             type="button"
             className="solenoid-conduit-toolbar__extend"
             onClick={() => void extendToNewConduit()}
-            title="Extend the ribbon: add a new Conduit and wire every current lane into it"
+            title="Extend the ribbon: add a new Conduit and connect every current lane to it"
           >
             <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
               <path d="M2 5 H8 M2 8 H8 M2 11 H8" />

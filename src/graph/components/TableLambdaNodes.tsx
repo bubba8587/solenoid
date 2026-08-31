@@ -13,25 +13,30 @@ import { cableValueStore } from "../cableValueStore";
 import { InlineInputs, useIncomingSources } from "./inlineInput";
 import { FormulaField } from "./FormulaField";
 import { TableDisplay } from "./TableDisplay";
+import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { ResultTypeToggle } from "./ResultTypeToggle";
 import { NodeShell, ValueDisplay, OpSelect, useNodeField, type NodeProps } from "./nodeKit";
 import type { SolError } from "../errorValue";
 import "./ExpressionNode.css";
+import { nodeDisplayName } from "../catalogUtils";
 
 type ScalarVal = number | string | SolError | null;
 type ListVal = number[] | string[] | SolError | null;
 
-const FORMULA_KEYS = new Set(["lambda"]);
+export const FORMULA_KEYS = new Set(["lambda"]);
 
 type FormulaNode = { id: string; label?: string; stringLiterals: Record<string, string>; lambdaSig?: LambdaSig };
 
 /** Formula editor bound to node.stringLiterals.formula; a wired LAMBDA value
  *  supersedes the inline text. */
-function FormulaBox({ node }: { node: FormulaNode }) {
+export function FormulaBox({ node }: { node: FormulaNode }) {
   const incoming = useIncomingSources(node.id);
-  // The wired lambda's signature can change without a topology change.
-  useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
   const lambdaSrc = incoming.get("lambda");
+  // The wired lambda's signature can change without a topology change.
+  const live = useSyncExternalStore(
+    cableValueStore.subscribe,
+    () => (lambdaSrc ? cableValueStore.get(lambdaSrc.sourceId, lambdaSrc.sourceOutput) : undefined),
+  );
   const [val, setVal] = useState(node.stringLiterals.formula ?? "");
 
   useEffect(() => {
@@ -46,16 +51,15 @@ function FormulaBox({ node }: { node: FormulaNode }) {
   }
 
   if (lambdaSrc) {
-    const live = cableValueStore.get(lambdaSrc.sourceId, lambdaSrc.sourceOutput);
     const sig = isLambdaValue(live) ? formatLambda(live) : "λ";
-    // Params bind BY NAME (D18), so a body variable that is one of this node's variables
+    // Params bind BY NAME (lambdaBindsByName), so a body variable that is one of this node's variables
     // but isn't declared a param silently reads as a captured constant rather than binding.
     const undeclared = node.lambdaSig && isLambdaValue(live) ? undeclaredConsumerVars(live.captured, node.lambdaSig) : [];
     return (
       <>
         <div
           className="solenoid-expr__override"
-          title="Runs the wired lambda; parameters bind by name"
+          title="Runs the wired lambda. Parameters bind by name."
         >
           <span className="solenoid-expr__override-sig">{sig}</span>
           <span className="solenoid-expr__override-src">↩ {lambdaSrc.label || "wired"}</span>
@@ -77,17 +81,17 @@ function FormulaBox({ node }: { node: FormulaNode }) {
   );
 }
 
-function FormulaError({ msg }: { msg: string | null }) {
+export function FormulaError({ msg }: { msg: string | null }) {
   return msg ? <div className="solenoid-expr__error">{msg}</div> : null;
 }
 
 export function MapTableComponent({ data, emit }: NodeProps<MapTableNodeType>) {
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="MAP">
+    <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
       <FormulaBox node={data} />
       <ResultTypeToggle node={data} dim="matrix" />
-      <TableDisplay table={data.cachedResult} label={data.label} kind={data.resultAs} />
+      <TableDisplay table={data.cachedResult} label={nodeDisplayName(data)} kind={data.resultAs} elem={nodeOutputElemFamily(data.id)} />
       <FormulaError msg={data.cachedError} />
     </NodeShell>
   );
@@ -99,11 +103,11 @@ const AXIS_OPTS: ReadonlyArray<{ value: ByAxis; label: string }> = [
 ];
 
 export function ByAxisComponent({ data, emit }: NodeProps<ByAxisNodeType>) {
-  const [axis, setAxis] = useNodeField(data, "axis");
+  const [op, setOp] = useNodeField(data, "op");
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="BYROW / BYCOL">
+    <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
-      <OpSelect arg value={axis} onChange={setAxis} options={AXIS_OPTS} />
+      <OpSelect value={op} onChange={setOp} options={AXIS_OPTS} />
       <FormulaBox node={data} />
       <ResultTypeToggle node={data} dim="combo" />
       <ValueDisplay value={data.cachedResult as ListVal} />
@@ -114,7 +118,7 @@ export function ByAxisComponent({ data, emit }: NodeProps<ByAxisNodeType>) {
 
 export function ReduceLambdaComponent({ data, emit }: NodeProps<ReduceLambdaNodeType>) {
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="REDUCE">
+    <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
       <FormulaBox node={data} />
       <ResultTypeToggle node={data} dim="scalar" />
@@ -126,11 +130,11 @@ export function ReduceLambdaComponent({ data, emit }: NodeProps<ReduceLambdaNode
 
 export function ScanLambdaComponent({ data, emit }: NodeProps<ScanLambdaNodeType>) {
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="SCAN">
+    <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
       <FormulaBox node={data} />
       <ResultTypeToggle node={data} dim="matrix" />
-      <TableDisplay table={data.cachedResult} label={data.label} kind={data.resultAs} />
+      <TableDisplay table={data.cachedResult} label={nodeDisplayName(data)} kind={data.resultAs} elem={nodeOutputElemFamily(data.id)} />
       <FormulaError msg={data.cachedError} />
     </NodeShell>
   );
@@ -138,11 +142,11 @@ export function ScanLambdaComponent({ data, emit }: NodeProps<ScanLambdaNodeType
 
 export function MakeArrayComponent({ data, emit }: NodeProps<MakeArrayNodeType>) {
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="MAKEARRAY">
+    <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} cableOnlyKeys={FORMULA_KEYS} mathLabelKeys={FORMULA_KEYS} />
       <FormulaBox node={data} />
       <ResultTypeToggle node={data} dim="matrix" />
-      <TableDisplay table={data.cachedResult} label={data.label} kind={data.resultAs} />
+      <TableDisplay table={data.cachedResult} label={nodeDisplayName(data)} kind={data.resultAs} elem={nodeOutputElemFamily(data.id)} />
       <FormulaError msg={data.cachedError} />
     </NodeShell>
   );

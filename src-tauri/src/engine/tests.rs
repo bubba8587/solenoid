@@ -374,6 +374,27 @@ fn row_key_is_byte_identical_to_js_json_stringify() {
 }
 
 #[test]
+fn row_key_keys_each_non_finite_apart() {
+    // JSON.stringify writes every non-finite as `null`, so the oracle's
+    // encodeCell names them instead — mirror it byte for byte or +∞, −∞ and
+    // NaN silently share a distinct/group bucket on one engine only.
+    let cells: Vec<Vec<Cell>> = vec![
+        vec![Cell::Num(f64::INFINITY)],
+        vec![Cell::Num(f64::NEG_INFINITY)],
+        vec![Cell::Num(f64::NAN)],
+        vec![Cell::Null],
+    ];
+    assert_eq!(
+        row_key_json(&cells, 0),
+        "[[\"#\",\"inf\"],[\"#\",\"-inf\"],[\"#\",\"nan\"],[\"n\"]]"
+    );
+    // The tokens live under the "#" tag, so a string cell spelling "inf"
+    // keys as ["s","inf"] and cannot collide.
+    let strs: Vec<Vec<Cell>> = vec![vec![Cell::Str("inf".into())]];
+    assert_eq!(row_key_json(&strs, 0), "[[\"s\",\"inf\"]]");
+}
+
+#[test]
 fn row_key_float_formatting_matches_js() {
     // Non-integral floats via shortest-round-trip; integral via the i64 branch.
     let cells: Vec<Vec<Cell>> = vec![vec![Cell::Num(1.5)], vec![Cell::Num(0.1)], vec![Cell::Num(-2.0)]];
@@ -492,7 +513,7 @@ fn engine_read_csv_infers_dates_end_to_end() {
     assert_eq!(cols[2].ty, "number"); // Polars-native numeric untouched
 }
 
-// ─── The parity corpus (v2.0/18-parity-corpus.md) ─────────────────────────────
+// ─── The parity corpus ────────────────────────────────────────────────────────
 // One fixture set, both engines: every case in fixtures/frame-verbs also runs
 // through the JS oracle (frameVerbCorpus.test.ts). The fixtures ARE wire
 // payloads, so this runner deserializes them with the PRODUCTION types
@@ -608,6 +629,28 @@ fn corpus_cases() {
                         }
                     }
                 }
+                "bindColumns" => {
+                    #[derive(serde::Deserialize)]
+                    struct BindOp { frames: Vec<String> }
+                    match serde_json::from_value::<BindOp>(case.op) {
+                        Err(e) => { failures.push(format!("{label}: op does not parse as a bindColumns op: {e}")); continue; }
+                        Ok(op) => {
+                            let mut handles: Vec<String> = Vec::new();
+                            let mut missing = false;
+                            for n in &op.frames {
+                                match take(&mut frames, n) {
+                                    Some(f) => handles.push(register(f)),
+                                    None => { failures.push(format!("{label}: bindColumns names an absent frame \"{n}\"")); missing = true; }
+                                }
+                            }
+                            let r = if missing { continue } else { bind_columns(&handles) };
+                            let mut s = store().lock().unwrap();
+                            for h in handles { s.frames.remove(&h); }
+                            drop(s);
+                            r
+                        }
+                    }
+                }
                 "pipeline" => {
                     // The fusion cases: the oracle ran these ops SEQUENTIALLY;
                     // here the whole list goes to apply_ops in one call, so
@@ -695,4 +738,33 @@ fn frames_equal(a: &[(String, String, Vec<Json>)], b: &[(String, String, Vec<Jso
                     _ => p == q,
                 })
         })
+}
+
+/// Replace Values shares ONE match rule with the JS oracle (`replaceValues`, the "shared
+/// match rule" test): a number matches by numeric equality against the parsed find (a
+/// non-numeric find hits no number cell), a boolean matches the words TRUE/FALSE
+/// case-insensitively (never 1/0), a string matches exact text. Dates are serials → number arm.
+#[test]
+fn replace_values_match_rule_parity() {
+    let f = frame(vec![
+        ("n", SolType::Number, vec![Cell::Num(5.0), Cell::Num(20.0), Cell::Null]),
+        ("flag", SolType::Logical, vec![Cell::Bool(true), Cell::Bool(false), Cell::Bool(true)]),
+        ("s", SolType::Str, strs(&["a", "b", "c"])),
+    ]);
+    let replace = |col: &str, find: &str, rep: &str| {
+        apply_ops(&f, &[WireOp::ReplaceValues {
+            column: col.into(), find: find.into(), replace_with: rep.into(), mode: "cell".into(),
+        }]).unwrap()
+    };
+    // Number: "5.0" and "5" both hit 5 numerically; a non-numeric find hits no number cell.
+    assert_eq!(dump(&replace("n", "5.0", "99"))[0].2, vec![num_to_json(99.0), num_to_json(20.0), Json::Null]);
+    assert_eq!(dump(&replace("n", "5", "99"))[0].2, vec![num_to_json(99.0), num_to_json(20.0), Json::Null]);
+    assert_eq!(dump(&replace("n", "five", "99"))[0].2, vec![num_to_json(5.0), num_to_json(20.0), Json::Null]);
+    // Boolean: TRUE/FALSE case-insensitive; "1"/"0" never match a boolean.
+    assert_eq!(dump(&replace("flag", "true", "false"))[1].2, vec![Json::Bool(false), Json::Bool(false), Json::Bool(false)]);
+    assert_eq!(dump(&replace("flag", "TRUE", "false"))[1].2, vec![Json::Bool(false), Json::Bool(false), Json::Bool(false)]);
+    assert_eq!(dump(&replace("flag", "1", "false"))[1].2, vec![Json::Bool(true), Json::Bool(false), Json::Bool(true)]);
+    // String: exact text, case-sensitive.
+    assert_eq!(dump(&replace("s", "b", "99"))[2].2, vec![Json::String("a".into()), Json::String("99".into()), Json::String("c".into())]);
+    assert_eq!(dump(&replace("s", "B", "99"))[2].2, vec![Json::String("a".into()), Json::String("b".into()), Json::String("c".into())]);
 }

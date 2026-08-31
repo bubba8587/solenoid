@@ -10,7 +10,7 @@ import "./SocketLegend.css";
 // Circles = scalars, squares = arrays, grid = 2D; a group pairs the scalar with its
 // list/2D siblings under one type label.
 type Dot = {
-  kind: "circle" | "square" | "grid" | "frame" | "cube" | "lambda" | "chart" | "document" | "ring";
+  kind: "circle" | "square" | "grid" | "frame" | "cube" | "lambda" | "chart" | "document" | "ring" | "hollowSquare";
   color: string;
   tip?: string;
 };
@@ -53,12 +53,12 @@ const GROUPS: LegendGroup[] = [
     { kind: "chart",    color: SOCKET_COLORS.chart,    tip: "Chart" },
     { kind: "document", color: SOCKET_COLORS.document, tip: "Document" },
   ] },
-  // The in-between wildcard rungs (anycombo / anydata) are deliberately NOT rows here —
-  // as legend entries they only restate the ladder.
+  // anycombo is deliberately NOT a row — as a legend entry it only restates the ladder.
   { label: "Any", dots: [
     { kind: "circle", color: SOCKET_COLORS.any,      tip: "Any Scalar" },
     { kind: "square", color: SOCKET_COLORS.anylist,  tip: "Any List" },
     { kind: "grid",   color: SOCKET_COLORS.anytable, tip: "Any Matrix" },
+    { kind: "hollowSquare", color: SOCKET_COLORS.anydata, tip: "Any Data" },
     { kind: "ring",   color: SOCKET_COLORS.trueany,  tip: "True Any" },
   ] },
 ];
@@ -199,6 +199,13 @@ function SocketGlyphSvg({ entry }: { entry: Dot }) {
       </svg>
     );
   }
+  if (entry.kind === "hollowSquare") {
+    return (
+      <svg width={14} height={14} viewBox="-1 -1 14 14" style={{ flexShrink: 0 }}>
+        <rect x="1.5" y="1.5" width="9" height="9" rx="0.75" fill="none" stroke={entry.color} strokeWidth="2.5" />
+      </svg>
+    );
+  }
   if (entry.kind === "chart") {
     return (
       <svg width={14} height={14} viewBox="-1 -1 14 14" style={{ flexShrink: 0 }}>
@@ -291,8 +298,8 @@ export function DimensionalityFlow() {
       <p className="solenoid-dimflow__rule">
         <span className="solenoid-dimflow__badge solenoid-dimflow__badge--no">◂ Narrowing blocked</span>
         The reverse is refused at the socket: a 2-D table/frame output won't connect
-        into a 1-D or 0-D input; it would always be a shape error. Reshape first, e.g.
-        <em> Get Column</em> to pull one list out of a frame.
+        into a 1-D or 0-D input. It would always be a shape error. Reshape first, for example
+        with <em>Get Column</em> to pull one list out of a frame.
       </p>
       <p className="solenoid-dimflow__note">
         Split-square sockets (every family's <em>combo</em>) accept either

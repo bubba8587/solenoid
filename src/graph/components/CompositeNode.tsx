@@ -5,8 +5,8 @@ import { isSolError } from "../errorValue";
 import { formatScalar } from "./format";
 import { isUncertain } from "../valueKinds";
 import { histogram, type DistributionKind } from "../monteCarlo";
-import { InlineInputs, InlineNumberField, useDraftCommit, INVALID_DRAFT } from "./inlineInput";
-import { NodeShell, ValueDisplay, OpSelect, useNodeField, PortSockets, type NodeProps, type OpOption } from "./nodeKit";
+import { InlineInputs, InlineNumberField, InlineTextField, useDraftCommit, INVALID_DRAFT } from "./inlineInput";
+import { NodeShell, ValueDisplay, ArgSelect, useNodeField, PortSockets, type NodeProps, type OpOption } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { MeasuredSocketRow } from "./NodeSocket";
 import type { DisplayValue } from "./valueDisplayFormat";
@@ -24,6 +24,7 @@ import { CubeDisplay } from "./CubeDisplay";
 import { ChartFigure } from "./chartView";
 import { MermaidView } from "./MermaidView";
 import { SvgFigure } from "./SvgFigure";
+import { nodeDisplayName } from "../catalogUtils";
 
 /** A boundary value renders by its KIND, never stringified. */
 function CompositeBoundaryValue({ value, label }: { value: unknown; label: string }) {
@@ -178,7 +179,7 @@ function DataTableEditor({ node }: { node: CompositeNodeType }) {
           <input
             className="solenoid-node__inline-input"
             defaultValue={valuesToCsv(node.dataTableValues[p.id])}
-            placeholder="e.g. 1, 2, 3"
+            placeholder="for example, 1, 2, 3"
             onBlur={(e) => { node.setDataTableValues(p.id, parseCsvValues(e.target.value)); recompute(); }}
             onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
             onPointerDown={stopDragStart}
@@ -369,7 +370,7 @@ function MonteCarloEditor({ node }: { node: CompositeNodeType }) {
                 onChange={(v) => { if (m) m.uncertainty = v && v > 0 ? v : null; recompute(); }}
               />
             </div>
-            <SegToggle<DistributionKind> arg
+            <SegToggle<DistributionKind>
               value={m?.distribution ?? "normal"}
               onChange={(d) => { if (m) m.distribution = d; recompute(); }}
               options={DIST_OPTIONS}
@@ -384,6 +385,12 @@ function MonteCarloEditor({ node }: { node: CompositeNodeType }) {
           <InlineNumberField value={mc?.samples ?? 500} onChange={(v) => { node.setMonteCarlo({ samples: v && v >= 1 ? Math.round(v) : 500 }); recompute(); }} />
           <span className="solenoid-node__io-label">Seed</span>
           <InlineNumberField value={mc?.seed ?? 1} onChange={(v) => { node.setMonteCarlo({ seed: v != null ? Math.round(v) : 1 }); recompute(); }} />
+          <span className="solenoid-node__io-label" title="Correlate inputs (Gaussian copula): label ~ label = ρ, several separated by ; — each input keeps its own ± and shape, only the dependence changes">Correlations</span>
+          <InlineTextField
+            value={mc?.correlations ?? ""}
+            onChange={(v) => { node.setMonteCarlo({ correlations: v }); recompute(); }}
+            placeholder={exposed.length >= 2 ? `${exposed[0].label} ~ ${exposed[1].label} = 0.7` : "a ~ b = 0.7"}
+          />
         </div>
       </AdvancedFoot>
     </div>
@@ -513,7 +520,7 @@ export function CompositeRunControls({ node, emit, insideOnly = false }: { node:
   return (
     <>
       {(node.inputPorts.length > 0 || node.outputPorts.length > 0) && (
-        <OpSelect arg value={runMode} options={RUN_MODE_OPTIONS} onChange={setRunMode} />
+        <ArgSelect value={runMode} options={RUN_MODE_OPTIONS} onChange={setRunMode} />
       )}
       {heavy && (
         <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 4 }}>
@@ -545,7 +552,7 @@ export function CompositeComponent({ data: node, emit }: NodeProps<CompositeNode
   const [runMode] = useNodeField(node, "runMode");
 
   return (
-    <NodeShell node={node} emit={emit} labelPlaceholder="Composite" hideOutputSockets>
+    <NodeShell node={node} emit={emit} hideOutputSockets>
       <button
         type="button"
         className="solenoid-node__inline-input"
@@ -619,7 +626,7 @@ export function CompositeInputMarkerComponent({ data, emit }: NodeProps<Composit
     <NodeShell node={data} emit={emit} collapsible={false} labelPlaceholder="Input" className="solenoid-node--composite-marker">
       {data.externallyWired ? (
         // Fed from outside — a number field can't represent a wired list/frame.
-        <CompositeBoundaryValue value={data.value} label={data.label} />
+        <CompositeBoundaryValue value={data.value} label={nodeDisplayName(data)} />
       ) : (
         <input
           className="solenoid-node__value-input"
@@ -655,7 +662,7 @@ export function CompositeOutputMarkerComponent({ data, emit }: NodeProps<Composi
       leading={<PortSockets node={data} emit={emit} side="input" />}
     >
       {isNumericSeries(data.cachedResult) && <MiniSparkline series={data.cachedResult} />}
-      <CompositeBoundaryValue value={data.cachedResult} label={data.label} />
+      <CompositeBoundaryValue value={data.cachedResult} label={nodeDisplayName(data)} />
       {data.goalTarget != null && <MarkerNote tag="target">{formatScalar(data.goalTarget)}</MarkerNote>}
     </NodeShell>
   );

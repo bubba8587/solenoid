@@ -6,6 +6,10 @@ import { cellShortCircuit, guardFinite, COMPUTE } from "../valueKinds";
 import { type UnitCell, isUnitCell, magnitudeOf, tagDim, tagRatio } from "../unitValue";
 import { dimOf } from "../unitValue";
 
+/** Shared socketDocs string for every finance/date node's day-count `basis` input,
+ *  so the legend lives in ONE place (declareOnce) instead of a copy per node. */
+export const BASIS_DOC = "Day-count basis: 0 = US 30/360, 1 = actual/actual, 2 = actual/360, 3 = actual/365, 4 = European 30/360.";
+
 export const numIn      = (label: string) => new ClassicPreset.Input(numberSocket, label);
 export const listIn     = (label: string) => new ClassicPreset.Input(listSocket, label);
 export const numListIn  = (label: string) => new ClassicPreset.Input(numListSocket, label);
@@ -31,6 +35,9 @@ export const adoptiveListIn   = (label: string) => new ClassicPreset.Input(new A
 // element type, so a reversed date list stays a date list downstream.
 export const adoptiveTableOut = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("anytable"), label);
 export const adoptiveListOut  = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("anylist"), label);
+// Rank-preserving (≤2) adoptive output: adopts the wired input's rank AND element type,
+// so a same-rank op (TAKE/DROP) hands back a list for a list, a matrix for a matrix.
+export const adoptiveDataOut  = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("anydata"), label);
 /** A NON-adoptive `trueany` output for a generative result whose type can't be
  *  derived from any input; an EXTRACTION uses `trueAnyOut` + `passthrough()`. */
 export const staticTrueAnyOut = (label: string) => new ClassicPreset.Output(trueAnySocket, label);
@@ -41,7 +48,7 @@ export const anyListIn  = (label: string) => new ClassicPreset.Input(new Adoptiv
 // `anycombo` accepts what `anyListIn` does, but a scalar reaches data() as a SCALAR
 // instead of widening to a singleton — for a producer whose rank follows its input.
 export const anyComboIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anycombo"), label);
-/** The rank-≤2 element-agnostic input (SOCK-9), adoptive like anyComboIn. */
+/** The rank-≤2 element-agnostic input (anydataWildcard), adoptive like anyComboIn. */
 export const anyDataIn   = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anydata"), label);
 export const anyComboOut = (label: string) => new ClassicPreset.Output(anyComboSocket, label);
 export const numOut     = (label: string) => new ClassicPreset.Output(numberSocket,  label);
@@ -96,7 +103,7 @@ export type ResultType = "number" | "text" | "date" | "auto";
 export type ResultDim = "scalar" | "combo" | "matrix";
 
 export const RESULT_TYPE_META: Record<ResultType, { label: string; title: string }> = {
-  number: { label: "Number", title: "Result is numeric, the default; matches Excel arithmetic" },
+  number: { label: "Number", title: "Result is numeric, the default. Matches Excel arithmetic" },
   text:   { label: "Text",   title: "Result is text: UPPER(x), TEXTJOIN(…), x & \" \" & y" },
   date:   { label: "Date",   title: "Result is a date (Excel serial): DATE(y,m,d), EDATE(x,1)" },
   auto:   { label: "Auto",   title: "Untyped: the wildcard socket accepts whatever the formula returns" },
@@ -295,7 +302,7 @@ export { dimOf, magnitudeOf };
 // ─── Node kind → header accent ─────────────────────────────────────────────────
 // A kind is the node's FAMILY (what it does), distinct from socket type.
 
-export type NodeKind = "input" | "math" | "convert" | "logic" | "list" | "lambda" | "util" | "display" | "string" | "date" | "complex" | "table" | "frame" | "format" | "boundary";
+export type NodeKind = "input" | "math" | "convert" | "logic" | "list" | "lambda" | "util" | "display" | "string" | "date" | "complex" | "table" | "frame" | "format" | "boundary" | "chart";
 
 // A kind picks a palette SLOT, not a raw hex, so retuning a color in palette.ts
 // moves every use of it together.
@@ -309,6 +316,7 @@ export const NODE_KIND_SLOTS: Record<NodeKind, PaletteSlot> = {
   lambda:  "green",
   util:    "gray",
   display: "gold",
+  chart:   "green",     // the chart socket's green (author 2026-08-25; a card may override via headerAccent)
   string:  "lime",      // text / string nodes (matches string socket)
   date:    "pink",      // date / time nodes (matches date socket)
   complex: "sky",       // complex number nodes (matches complex socket)
@@ -340,6 +348,7 @@ export const NODE_KIND_LABELS: Record<NodeKind, string> = {
   lambda:  "Lambda",
   util:    "Utility",
   display: "Display",
+  chart:   "Chart",
   string:  "Text",
   date:    "Date",
   complex: "Complex",

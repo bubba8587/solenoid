@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { colord } from "colord";
 import type { ColorPickerNode as ColorPickerNodeType, ColorMode, ColorFormat } from "../rete-nodes";
-import { NodeShell, OpSelect, type NodeProps } from "./nodeKit";
+import { NodeShell, ArgSelect, type NodeProps } from "./nodeKit";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { SegToggle } from "./SegToggle";
 import { processGraph } from "../process";
@@ -107,8 +107,8 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
   const colorOut = data.outputs.color;
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Color" hideOutputSockets>
-      <SegToggle arg value={mode} onChange={changeMode} options={MODE_OPTS} />
+    <NodeShell node={data} emit={emit} hideOutputSockets>
+      <SegToggle value={mode} onChange={changeMode} options={MODE_OPTS} />
       {mode === "hex" ? (
         <div style={{ padding: "8px 2px 2px" }} onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}>
           <input
@@ -148,7 +148,7 @@ export function ColorPickerComponent({ data, emit }: NodeProps<ColorPickerNodeTy
       )}
 
       <div style={{ padding: "6px 0 2px" }}>
-        <OpSelect arg value={format} onChange={changeFormat} options={FORMAT_OPTS} />
+        <ArgSelect value={format} onChange={changeFormat} options={FORMAT_OPTS} />
       </div>
 
       {/* The color output socket is measured onto the swatch row so it sits next

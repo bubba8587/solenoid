@@ -11,18 +11,18 @@ export const FLUIDS_BASE: FormulaPackEntry[] = [
     description: "Flow regime indicator: density rho (kg/m³), velocity v (m/s), diameter d (m), dynamic viscosity mu (Pa·s). Laminar below ~2300, turbulent above ~4000.",
     keywords: "laminar turbulent" },
   { type: "fl-kinematic-visc", label: "Kinematic Viscosity", expr: "mu/rho",
-    description: "Kinematic from dynamic viscosity: mu (Pa·s) ÷ density rho   (ν = µ/ρ, m²/s)" },
+    description: "Kinematic viscosity ν = µ/ρ in m²/s from dynamic viscosity: mu (Pa·s) ÷ density rho." },
   { type: "fl-hydrostatic", label: "Hydrostatic Pressure", expr: `rho*${G0}*h`,
-    description: "Gauge pressure at depth h (m) in a fluid of density rho   (p = ρgh, Pa)",
+    description: "Gauge pressure p = ρgh in Pa at depth h (m) in a fluid of density rho.",
     keywords: "depth head" },
   { type: "fl-flow-rate", label: "Flow Rate (Q = v·A)", expr: "v*a",
-    description: "Volumetric flow from velocity v (m/s) and cross-section a (m²)   (m³/s)" },
+    description: "Volumetric flow from velocity v (m/s) and cross-section a (m²), in m³/s." },
   { type: "fl-velocity", label: "Velocity from Flow", expr: "q/a",
-    description: "Mean velocity from volumetric flow q (m³/s) and cross-section a (m²)" },
+    description: "Mean velocity from volumetric flow q (m³/s) and cross-section a in m²" },
   { type: "fl-mass-flow", label: "Mass Flow", expr: "rho*q",
-    description: "Mass flow from density rho and volumetric flow q   (ṁ = ρQ, kg/s)" },
+    description: "Mass flow ṁ = ρQ in kg/s from density rho and volumetric flow q." },
   { type: "fl-continuity", label: "Continuity (v₂)", expr: "v1*a1/a2",
-    description: "Velocity after a section change: v1 through a1 entering a2   (A₁v₁ = A₂v₂)",
+    description: "Velocity after a section change, A₁v₁ = A₂v₂: v1 through a1 entering a2.",
     keywords: "nozzle venturi" },
   { type: "fl-bernoulli", label: "Bernoulli (p₂)", expr: `p1+rho/2*(v1^2-v2^2)+rho*${G0}*(z1-z2)`,
     description: "Downstream pressure along a streamline (no losses): pressures Pa, velocities m/s, elevations z m   (p₂ = p₁ + ½ρ(v₁²−v₂²) + ρg(z₁−z₂))" },
@@ -30,7 +30,7 @@ export const FLUIDS_BASE: FormulaPackEntry[] = [
 
 export const FLUIDS_PIPE: FormulaPackEntry[] = [
   { type: "fl-laminar-f", label: "Friction Factor (Laminar)", expr: "64/re",
-    description: "Darcy friction factor for laminar pipe flow (Re < 2300)   (f = 64/Re)" },
+    description: "Darcy friction factor f = 64/Re for laminar pipe flow, Re < 2300." },
   { type: "fl-swamee-jain", label: "Friction Factor (Swamee–Jain)", expr: "0.25/(LOG10(rr/3.7+5.74/re^0.9))^2",
     description: "Explicit turbulent friction factor (±1% of Colebrook): Reynolds re, relative roughness rr = ε/D",
     keywords: "moody turbulent" },
@@ -38,7 +38,7 @@ export const FLUIDS_PIPE: FormulaPackEntry[] = [
     description: "Pipe pressure loss: friction factor f, length len, diameter d, density rho, velocity v   (Δp = f·(L/D)·ρv²/2, Pa)",
     keywords: "head loss pipe" },
   { type: "fl-hazen-williams", label: "Head Loss (Hazen–Williams)", expr: "10.67*len*q^1.852/(c^1.852*d^4.87)",
-    description: "Water head loss (m, SI form): length len (m), flow q (m³/s), roughness coefficient c (~150 PVC, 120 steel, 100 cast iron), diameter d (m)" },
+    description: "Water head loss (m, SI form): length len (m), flow q (m³/s), roughness coefficient c (~150 PVC, 120 steel, 100 cast iron), diameter d in meters" },
   { type: "fl-poiseuille", label: "Poiseuille Flow", expr: "PI()*dp*r^4/(8*mu*len)",
     description: "Laminar flow through a tube from pressure drop dp: radius r, viscosity mu, length len   (Q = πΔp·r⁴/(8µL), m³/s)",
     keywords: "capillary laminar tube" },
@@ -48,28 +48,28 @@ export const FLUIDS_PUMPS: FormulaPackEntry[] = [
   { type: "fl-orifice", label: "Orifice Flow", expr: "cd*a*SQRT(2*dp/rho)",
     description: "Flow through an orifice: discharge coefficient cd (~0.6 sharp-edged), area a (m²), pressure drop dp (Pa)   (Q = C_d·A·√(2Δp/ρ))" },
   { type: "fl-pump-hydraulic", label: "Pump Hydraulic Power", expr: `rho*${G0}*q*head`,
-    description: "Power delivered to the fluid: flow q (m³/s), head (m)   (P = ρgQH, watts)" },
+    description: "Power P = ρgQH in watts delivered to the fluid: flow q (m³/s), head in meters." },
   { type: "fl-pump-shaft", label: "Pump Shaft Power", expr: `rho*${G0}*q*head/eta`,
-    description: "Required shaft power: hydraulic power ÷ pump efficiency eta (0–1)" },
+    description: "Required shaft power: hydraulic power ÷ pump efficiency eta, 0 to 1" },
 ];
 
 export const FLUIDS_AERO: FormulaPackEntry[] = [
   { type: "fl-drag", label: "Drag Force", expr: "rho*v^2*cd*a/2",
-    description: "Aerodynamic drag: density rho, speed v, drag coefficient cd, frontal area a   (F = ½ρv²C_dA, newtons)" },
+    description: "Aerodynamic drag F = ½ρv²C_dA in newtons: density rho, speed v, drag coefficient cd, frontal area a." },
   { type: "fl-stokes", label: "Stokes Terminal Velocity", expr: `d^2*${G0}*(rhop-rhof)/(18*mu)`,
-    description: "Settling speed of a small sphere: diameter d (m), particle density rhop, fluid density rhof, viscosity mu   (valid for Re < ~1)",
+    description: "Settling speed of a small sphere: diameter d (m), particle density rhop, fluid density rhof, viscosity mu. Valid for Re below about 1",
     keywords: "settling sedimentation sphere" },
   { type: "fl-speed-sound", label: "Speed of Sound (Gas)", expr: "SQRT(gamma*rspec*tk)",
     description: "In an ideal gas: heat-capacity ratio gamma (air 1.4), specific gas constant rspec (air 287 J/kg·K), temperature tk (K)   (a = √(γRT))" },
   { type: "fl-mach", label: "Mach Number", expr: "v/SQRT(gamma*rspec*tk)",
-    description: "Speed v relative to the local speed of sound √(γ·rspec·tk)" },
+    description: "Mach number, v ÷ √(γ·rspec·tk): speed relative to the local speed of sound" },
 ];
 
 export const FLUIDS_FORMULAS: FormulaPackEntry[] = [
   ...FLUIDS_BASE, ...FLUIDS_PIPE, ...FLUIDS_PUMPS, ...FLUIDS_AERO,
 ];
 
-// The pack's custom-logic nodes as formula functions (D19 decision 4).
+// The pack's custom-logic nodes as formula functions (formulaNaming decision 4).
 const FLUIDS_PACK_FORMULAS: PackFormula[] = [
   {
     name: "COLEBROOK",
@@ -99,7 +99,7 @@ export const FLUIDS_PACK: Pack = {
   formulas: FLUIDS_PACK_FORMULAS,
   id: "fluids",
   name: "Fluid Mechanics",
-  description: "Pipe flow, pumps, and aero classics: Reynolds number, the pipe-roughness table, Colebrook/Swamee–Jain friction factors, Darcy–Weisbach and Hazen–Williams losses, Bernoulli, orifice and pump power, Stokes settling, drag, speed of sound. SI units.",
+  description: "Pipe flow, pumps, and aero classics: Reynolds number, the pipe-roughness table, Colebrook or Swamee–Jain friction factors, Darcy–Weisbach and Hazen–Williams losses, Bernoulli, orifice and pump power, Stokes settling, drag, speed of sound. SI units.",
   builtin: true,
   defaultActive: false,
   nodes: [
@@ -110,7 +110,7 @@ export const FLUIDS_PACK: Pack = {
       entry: {
         type: "fl-roughness",
         label: "Pipe Roughness",
-        description: "Absolute roughness ε for common pipe materials (textbook values, mm); give a diameter and it also emits ε/D, ready for the Friction Factor nodes",
+        description: "Absolute roughness ε for common pipe materials (textbook values, mm). Give a diameter and it also emits ε/D, ready for the Friction Factor nodes",
         keywords: "roughness epsilon material pipe moody colebrook relative",
         create: () => new PipeRoughnessNode(),
       },
@@ -121,7 +121,7 @@ export const FLUIDS_PACK: Pack = {
         type: "fl-colebrook",
         label: "Friction Factor (Colebrook)",
         fx: ["COLEBROOK"],
-        description: "Solves the implicit Colebrook–White equation for the Darcy friction factor from Reynolds number and relative roughness ε/D; laminar Re hands off to 64/Re",
+        description: "Solves the implicit Colebrook–White equation for the Darcy friction factor from Reynolds number and relative roughness ε/D. Laminar Re hands off to 64/Re",
         keywords: "moody implicit turbulent root",
         create: () => new ColebrookNode(),
       },

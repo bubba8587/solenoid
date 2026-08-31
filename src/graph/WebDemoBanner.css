@@ -10,8 +10,6 @@
   gap: 12px;
   padding: 6px 8px 6px 14px;
   background: var(--panel-bg);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--panel-border);
   border-radius: 8px;
   user-select: none;

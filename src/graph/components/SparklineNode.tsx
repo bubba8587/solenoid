@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import type { SparklineNode as SparklineNodeType, SparklineOp } from "../rete-nodes";
 import { SPARKLINE_OP_META } from "../rete-nodes";
 import { NodeShell, PortSockets, useNodeField, type NodeProps } from "./nodeKit";
-import { SegToggle } from "./SegToggle";
+import { OpToggle } from "./SegToggle";
 import { ChartView, toSeries, type ChartShape } from "./chartView";
 import { ChartExpandButton } from "./ChartExpandButton";
 import { appThemeStore } from "../appTheme";
@@ -31,7 +31,7 @@ export function SparklineComponent({ data, emit }: NodeProps<SparklineNodeType>)
 
   return (
     <NodeShell node={data} emit={emit} squareCollapse leading={<PortSockets node={data} emit={emit} side="input" />}>
-      <SegToggle value={op} onChange={setOp} options={OPTIONS} />
+      <OpToggle value={op} onChange={setOp} options={OPTIONS} />
       <div style={{ position: "relative", marginTop: 4, height: H }}>
         {series.length === 0 ? (
           <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>

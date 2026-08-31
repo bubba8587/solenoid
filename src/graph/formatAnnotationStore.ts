@@ -623,6 +623,6 @@ export function formatWithAnnotation(
   return formatNumberWithAnnotation(n, ann);
 }
 
-// Registered like every node-keyed store (nodeStoreRegistry / STORE-1).
+// Registered like every node-keyed store (nodeStoreRegistry / storesRegisterForget).
 registerNodeForget((nodeId) => formatAnnotationStore.removeForNode(nodeId));
 registerNodeForgetAll(() => formatAnnotationStore.clearNodes());

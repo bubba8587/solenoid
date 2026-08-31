@@ -1,6 +1,8 @@
 {
-  "v": 1,
+  "v": 2,
   "order": 0,
+  "label": "Getting started",
+  "group": "Start here",
   "nodes": [
     {
       "id": "3dc4458fdead68ca",
@@ -351,7 +353,6 @@
       "x": -319,
       "y": 282,
       "init": {
-        "label": "TODAY",
         "op": "today",
         "width": 180,
         "height": 177

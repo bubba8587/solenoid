@@ -1,6 +1,7 @@
+import { polyRoots } from "./mathUtils";
 import { ClassicPreset } from "rete";
-import { numListIn, numListOut, complexComboIn, complexComboOut, readInput, type CellResult, type BroadcastResult } from "./shared";
-import { isSolError, type SolError } from "../errorValue";
+import { numListIn, numListOut, listIn, complexComboIn, complexComboOut, complexListOut, readInput, type CellResult, type BroadcastResult } from "./shared";
+import { solError, isSolError, type SolError } from "../errorValue";
 import { cellShortCircuit, COMPUTE } from "../valueKinds";
 import {
   cx, isCx, type Cx,
@@ -9,7 +10,7 @@ import {
   cxSech, cxCsch, quadraticRoots,
 } from "../cxValue";
 
-// The tagged Cx (VAL-15) and its kernels live in ../cxValue, RETE-FREE so the
+// The tagged Cx (tagSpecialScalars) and its kernels live in ../cxValue, RETE-FREE so the
 // formula path and the display layer need not load the editor; re-exported here.
 export { cx, isCx, formatCx, type Cx } from "../cxValue";
 
@@ -20,7 +21,7 @@ export { cx, isCx, formatCx, type Cx } from "../cxValue";
 /** One tagged operand: `list` is null when the value is a scalar. */
 type Operand<T> = { scalar: T | SolError | null; list: (T | SolError | null)[] | null };
 
-/** Tag a COMPLEX operand. A scalar is a tagged Cx (VAL-15) — no structural sniff. */
+/** Tag a COMPLEX operand. A scalar is a tagged Cx (tagSpecialScalars) — no structural sniff. */
 function cxOp(v: Cx | (Cx | SolError | null)[] | SolError | null): Operand<Cx> {
   if (v === null || isSolError(v)) return { scalar: v, list: null };
   return isCx(v)
@@ -97,6 +98,10 @@ export class ComplexFromNode extends ClassicPreset.Node {
 }
 
 export class ComplexUnpackNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    arg: "The angle is in radians, between −π and π.",
+  };
+
   label: string;
   cachedRe: BroadcastResult = null;
   cachedIm: BroadcastResult = null;
@@ -131,22 +136,22 @@ export type ComplexUnaryOp =
   | "sinh" | "cosh" | "sech" | "csch";
 
 export const COMPLEX_UNARY_OP_META: Record<ComplexUnaryOp, { label: string; description: string }> = {
-  conj:  { label: "IMCONJUGATE", description: "Complex conjugate: negates the imaginary part. Excel: IMCONJUGATE." },
-  exp:   { label: "IMEXP",       description: "e raised to a complex power. Excel: IMEXP." },
-  ln:    { label: "IMLN",        description: "Natural logarithm of a complex number. Excel: IMLN." },
-  log10: { label: "IMLOG10",     description: "Base-10 logarithm of a complex number. Excel: IMLOG10." },
-  log2:  { label: "IMLOG2",      description: "Base-2 logarithm of a complex number. Excel: IMLOG2." },
-  sqrt:  { label: "IMSQRT",      description: "Square root of a complex number (principal value). Excel: IMSQRT." },
-  sin:   { label: "IMSIN",       description: "Sine of a complex number. Excel: IMSIN." },
-  cos:   { label: "IMCOS",       description: "Cosine of a complex number. Excel: IMCOS." },
-  tan:   { label: "IMTAN",       description: "Tangent of a complex number. Excel: IMTAN." },
-  cot:   { label: "IMCOT",       description: "Cotangent of a complex number. Excel: IMCOT." },
-  sec:   { label: "IMSEC",       description: "Secant of a complex number. Excel: IMSEC." },
-  csc:   { label: "IMCSC",       description: "Cosecant of a complex number. Excel: IMCSC." },
-  sinh:  { label: "IMSINH",      description: "Hyperbolic sine of a complex number. Excel: IMSINH." },
-  cosh:  { label: "IMCOSH",      description: "Hyperbolic cosine of a complex number. Excel: IMCOSH." },
-  sech:  { label: "IMSECH",      description: "Hyperbolic secant of a complex number. Excel: IMSECH." },
-  csch:  { label: "IMCSCH",      description: "Hyperbolic cosecant of a complex number. Excel: IMCSCH." },
+  conj:  { label: "IMCONJUGATE", description: "Complex conjugate: negates the imaginary part. Excel: `IMCONJUGATE`." },
+  exp:   { label: "IMEXP",       description: "`e` raised to a complex power. Excel: `IMEXP`." },
+  ln:    { label: "IMLN",        description: "Natural logarithm of a complex number. Excel: `IMLN`." },
+  log10: { label: "IMLOG10",     description: "Base-10 logarithm of a complex number. Excel: `IMLOG10`." },
+  log2:  { label: "IMLOG2",      description: "Base-2 logarithm of a complex number. Excel: `IMLOG2`." },
+  sqrt:  { label: "IMSQRT",      description: "Square root of a complex number (principal value). Excel: `IMSQRT`." },
+  sin:   { label: "IMSIN",       description: "Sine of a complex number. Excel: `IMSIN`." },
+  cos:   { label: "IMCOS",       description: "Cosine of a complex number. Excel: `IMCOS`." },
+  tan:   { label: "IMTAN",       description: "Tangent of a complex number. Excel: `IMTAN`." },
+  cot:   { label: "IMCOT",       description: "Cotangent of a complex number. Excel: `IMCOT`." },
+  sec:   { label: "IMSEC",       description: "Secant of a complex number. Excel: `IMSEC`." },
+  csc:   { label: "IMCSC",       description: "Cosecant of a complex number. Excel: `IMCSC`." },
+  sinh:  { label: "IMSINH",      description: "Hyperbolic sine of a complex number. Excel: `IMSINH`." },
+  cosh:  { label: "IMCOSH",      description: "Hyperbolic cosine of a complex number. Excel: `IMCOSH`." },
+  sech:  { label: "IMSECH",      description: "Hyperbolic secant of a complex number. Excel: `IMSECH`." },
+  csch:  { label: "IMCSCH",      description: "Hyperbolic cosecant of a complex number. Excel: `IMCSCH`." },
 };
 
 export class ComplexUnaryNode extends ClassicPreset.Node {
@@ -157,7 +162,7 @@ export class ComplexUnaryNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: ComplexUnaryOp }) {
     super("Complex");
-    this.label = init?.label ?? COMPLEX_UNARY_OP_META[init?.op ?? "conj"].label;
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "conj";
     this.addInput("z", complexComboIn("z"));
     this.addOutput("result", complexComboOut("Result"));
@@ -192,10 +197,10 @@ export class ComplexUnaryNode extends ClassicPreset.Node {
 export type ComplexBinaryOp = "sum" | "sub" | "product" | "div";
 
 export const COMPLEX_BINARY_OP_META: Record<ComplexBinaryOp, { label: string; description: string }> = {
-  sum:     { label: "IMSUM",     description: "Sum of two complex numbers. Excel: IMSUM." },
-  sub:     { label: "IMSUB",     description: "Difference of two complex numbers. Excel: IMSUB." },
-  product: { label: "IMPRODUCT", description: "Product of two complex numbers. Excel: IMPRODUCT." },
-  div:     { label: "IMDIV",     description: "Quotient of two complex numbers. Excel: IMDIV." },
+  sum:     { label: "IMSUM",     description: "Sum of two complex numbers. Excel: `IMSUM`." },
+  sub:     { label: "IMSUB",     description: "Difference of two complex numbers. Excel: `IMSUB`." },
+  product: { label: "IMPRODUCT", description: "Product of two complex numbers. Excel: `IMPRODUCT`." },
+  div:     { label: "IMDIV",     description: "Quotient of two complex numbers. Excel: `IMDIV`." },
 };
 
 export class ComplexBinaryNode extends ClassicPreset.Node {
@@ -206,7 +211,7 @@ export class ComplexBinaryNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: ComplexBinaryOp }) {
     super("Complex");
-    this.label = init?.label ?? COMPLEX_BINARY_OP_META[init?.op ?? "sum"].label;
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "sum";
     this.addInput("a", complexComboIn("A"));
     this.addInput("b", complexComboIn("B"));
@@ -267,6 +272,39 @@ export class ComplexPowerNode extends ClassicPreset.Node {
 // Equation node's quadratic solve, which stays in the real domain (its numeric
 // sockets can't morph to complex; a negative discriminant there is #SOLVE!).
 // Here the conjugate pair comes out the complex sockets like any other Cx.
+
+/** Every root of a polynomial from its coefficient LIST (highest degree first, the
+ *  numpy.roots / R polyroot convention): the complex list, plus the real ones alone. */
+export class PolyRootsNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    coeffs: "Highest degree first: 1, −6, 11, −6 is x³ − 6x² + 11x − 6. Leading zeros are ignored.",
+    roots: "All roots as complex numbers, conjugate pairs included.",
+    real: "Only the roots with no imaginary part, ascending.",
+  };
+  label: string;
+  cachedRoots: Cx[] | SolError | null = null;
+  cachedReal: number[] | null = null;
+  width = 210; height = 190;
+
+  constructor(init?: { label?: string }) {
+    super("PolyRoots");
+    this.label = init?.label ?? "Polynomial Roots";
+    this.addInput("coeffs", listIn("Coefficients"));
+    this.addOutput("roots", complexListOut("Roots"));
+    this.addOutput("real", numListOut("Real roots"));
+  }
+
+  data(inputs: { coeffs?: (number | null | SolError)[][] }): { roots: Cx[] | SolError | null; real: number[] | null } {
+    const list = inputs.coeffs?.[0] ?? null;
+    if (list === null) { this.cachedRoots = null; this.cachedReal = null; return { roots: null, real: null }; }
+    const nums = list.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+    const rs = polyRoots(nums);
+    if (rs === null) { const e = solError("#DOMAIN!", "Polynomial Roots needs at least one non-zero coefficient"); this.cachedRoots = e; this.cachedReal = null; return { roots: e, real: null }; }
+    this.cachedRoots = rs.map(([re, im]) => cx(re, im));
+    this.cachedReal = rs.filter(([, im]) => im === 0).map(([re]) => re).sort((x, y) => x - y);
+    return { roots: this.cachedRoots, real: this.cachedReal };
+  }
+}
 
 export class QuadraticRootsNode extends ClassicPreset.Node {
   label: string;

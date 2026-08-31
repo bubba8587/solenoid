@@ -1,4 +1,4 @@
-// Packs → the formula language (D19 decision 3): RESOLUTION is global, ADVERTISING
+// Packs → the formula language (formulaNaming decision 3): RESOLUTION is global, ADVERTISING
 // is active-only. Must stay out of `excelFormula.ts` — a packs import there cycles.
 
 import { allPacks, packsStore } from "./packs";

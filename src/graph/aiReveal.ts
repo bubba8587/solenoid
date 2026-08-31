@@ -1,7 +1,7 @@
 // Entrance animation for nodes an AI apply ADDED. The class goes on rete's HOLDER
 // and the keyframes run on its CHILD, leaving rete's translate positioning intact.
 
-import { getArea } from "./process";
+import { getView } from "./process";
 import { getLastLoadIdMap } from "./persistence";
 import { prefersReducedMotion } from "./coarse";
 
@@ -13,13 +13,13 @@ const DURATION_MS = 480;
  *  `getLastLoadIdMap` maps them to the fresh live ids the rebuild minted). */
 export function revealAddedNodes(savedIds: string[]): void {
   if (savedIds.length === 0 || prefersReducedMotion()) return;
-  const area = getArea();
-  if (!area) return;
+  const view = getView();
+  if (!view) return;
   const idMap = getLastLoadIdMap();
   const els: HTMLElement[] = [];
   for (const sid of savedIds) {
     const live = idMap.get(sid);
-    const el = live ? area.nodeViews.get(live)?.element : undefined;
+    const el = live ? view.nodeElement(live) : undefined;
     if (el) els.push(el);
   }
   els.forEach((el, i) => {

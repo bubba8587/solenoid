@@ -2,7 +2,6 @@
 
 // ─── Canvas infrastructure ────────────────────────────────────────────────────
 export { SocketComponent } from "./SocketComponent";
-export { ConnectionComponent } from "./ConnectionComponent";
 export { ConduitComponent } from "./ConduitComponent";
 export { SocketLegend } from "./SocketLegend";
 export { ConfirmDialog } from "./ConfirmDialog";
@@ -48,29 +47,34 @@ export { IsTestComponent } from "./IsTestNode";
 export { ChooseComponent } from "./ChooseNode";
 export { SwitchComponent } from "./SwitchNode";
 export { IfsComponent } from "./IfsNode";
+export { BetweenComponent } from "./BetweenNode";
+export { IsCloseComponent } from "./IsCloseNode";
 
 // ─── Lists — build ────────────────────────────────────────────────────────────
 export { ListInputComponent } from "./ListInputNode";
 export { SeriesComponent } from "./SeriesNode";
-export { VStackComponent } from "./VStackNode";
-export { RepeatComponent } from "./RepeatNode";
-export { GeometricComponent } from "./GeometricNode";
-export { FibonacciComponent } from "./FibonacciNode";
 
 // ─── Lists — shape ────────────────────────────────────────────────────────────
 export { SortComponent } from "./SortNode";
 export { ReverseComponent } from "./ReverseNode";
 export { SliceComponent } from "./SliceNode";
-export { ListTakeDropComponent } from "./ListTakeDropNode";
 export { UniqueComponent } from "./UniqueNode";
-export { SetOpComponent } from "./SetOpNode";
-export { SetRelationComponent } from "./SetRelationNode";
+export { SetComponent } from "./SetNode";
 export { FilterComponent } from "./FilterNode";
 export { SumIfsComponent } from "./SumIfsNode";
 export { FillComponent } from "./FillNode";
 export { DiffComponent } from "./DiffNode";
 export { RunningComponent } from "./RunningNode";
 export { NormalizeComponent } from "./NormalizeNode";
+export { BinComponent } from "./BinNode";
+export { ShiftComponent } from "./ShiftNode";
+export { CombinationsComponent } from "./CombinationsNode";
+export { EwmaComponent } from "./EwmaNode";
+export { ConvolveComponent } from "./ConvolveNode";
+export { CrossComponent } from "./CrossNode";
+export { PolyfitComponent } from "./PolyfitNode";
+export { TrapzComponent } from "./TrapzNode";
+export { RleComponent } from "./RleNode";
 export { ShuffleComponent } from "./ShuffleNode";
 export { InterleaveComponent } from "./InterleaveNode";
 export { NthElementComponent } from "./NthElementNode";
@@ -126,10 +130,11 @@ export { IsEvenOddComponent } from "./IsEvenOddNode";
 // ─── 2D Tables / Matrix ───────────────────────────────────────────────────────
 export { TableInputComponent } from "./TableInputNode";
 export {
-  MatDetComponent, TableMultComponent, TableUnitComponent,
-  TableTransposeComponent, HStackTableComponent,
-  TableReshapeComponent, TableSelectComponent, TableTakeDropComponent, ExpandTableComponent, TableInfoComponent,
+  MatDetComponent, MatSolveComponent, MatEigenComponent, TableMultComponent, TableUnitComponent, TableDiagComponent, TableOuterComponent,
+  TableTransposeComponent, StackComponent,
+  TableReshapeComponent, TableSelectComponent, TakeDropComponent, ExpandTableComponent, TableInfoComponent,
 } from "./MatrixNodes";
+export { SetCellComponent } from "./SetCellNode";
 export { MapTableComponent, ByAxisComponent, MakeArrayComponent, ReduceLambdaComponent, ScanLambdaComponent } from "./TableLambdaNodes";
 export { LambdaComponent } from "./LambdaNode";
 
@@ -137,11 +142,12 @@ export { LambdaComponent } from "./LambdaNode";
 export {
   FrameInputComponent, BuildFrameComponent, SplitFrameComponent, GetColumnComponent, AddColumnComponent, ComputedColumnComponent, GetRowComponent,
   DistinctComponent, HeadComponent, SortFrameComponent, FilterFrameComponent, JoinComponent, XLookupComponent,
-  SelectColumnsComponent, DropColumnsComponent, GroupByFrameComponent, PivotComponent, UnpivotComponent,
-  NestComponent, UnnestComponent, AppendComponent, RenameComponent,
+  ColumnsComponent, GroupByFrameComponent, PivotComponent, UnpivotComponent,
+  NestComponent, UnnestComponent, AppendComponent, BindColumnsComponent, RenameComponent,
   SplitColumnComponent, AddIndexComponent, DecisionMatrixComponent, DecisionSensitivityComponent,
   ReconcileComponent,
   FillBlanksComponent, ReplaceValuesComponent, MergeColumnsComponent, HeadersComponent, DropBlankRowsComponent,
+  DescribeComponent, CorrMatrixComponent, KMeansComponent, PcaComponent, LogisticComponent, WindowComponent,
 } from "./FrameNodes";
 
 // ─── Trust & data quality ───────────────────────────────────────────────────────
@@ -152,10 +158,10 @@ export { TornadoComponent } from "./TornadoNode";
 export { BuildCubeComponent, NestJoinComponent, CubeColumnsComponent, CubeRollupComponent } from "./CubeNodes";
 
 // ─── External-data connections (Web Source, CSV folder, Parquet folder) ─────────
-export { WebSourceComponent, CsvConnectionComponent, ParquetConnectionComponent, ImportHtmlComponent, ImportXmlComponent, DataFeedComponent } from "./ConnectionNodes";
+export { WebSourceComponent, LocalFileComponent, ImportHtmlComponent, ImportXmlComponent, DataFeedComponent } from "./ConnectionNodes";
 
-// ─── File sinks (Write CSV, Write JSON, Write to Obsidian) ────────────────────────
-export { WriteCsvComponent, WriteJsonComponent, WriteObsidianComponent } from "./WriteNodes";
+// ─── File sinks (Write File — CSV/JSON, Write to Obsidian) ────────────────────────
+export { WriteFileComponent, WriteObsidianComponent } from "./WriteNodes";
 
 // ─── Import from Obsidian Vault (read a .md into a read-only Note) ────────────────
 export { ImportObsidianComponent } from "./ImportObsidianNode";
@@ -177,6 +183,7 @@ export { PresentationComponent } from "./PresentationNode";
 
 // ─── Image (canvas annotation) ──────────────────────────────────────────────────
 export { ImageComponent } from "./ImageNode";
+export { FileLinkComponent } from "./FileLinkNode";
 export { SvgPickerComponent } from "./SvgPickerNode";
 
 // ─── Group (framing container) ────────────────────────────────────────────────
@@ -208,10 +215,8 @@ export { BinomDistRangeComponent } from "./BinomDistRangeNode";
 export { HypothesisTestComponent } from "./HypothesisTestNode";
 
 // ─── Regression (extended) ────────────────────────────────────────────────────
-export { TrendComponent } from "./TrendNode";
 export { InterpolateComponent } from "./InterpolateNode";
 export { LinestComponent } from "./LinestNode";
-export { LogestComponent } from "./LogestNode";
 
 // ─── Text ─────────────────────────────────────────────────────────────────────
 export { TextInputComponent } from "./TextInputNode";
@@ -224,16 +229,21 @@ export { SubstituteComponent } from "./SubstituteNode";
 export { TextReplaceComponent } from "./TextReplaceNode";
 export { CastComponent } from "./CastNode";
 export { ReptComponent } from "./ReptNode";
+export { PadTextComponent } from "./PadTextNode";
+export { TruncateTextComponent } from "./TruncateTextNode";
+export { WrapTextComponent } from "./WrapTextNode";
 export { ExactComponent } from "./ExactNode";
 export { CharCodeComponent } from "./CharCodeNode";
 export { TextJoinComponent } from "./TextJoinNode";
 export { TextSplitComponent } from "./TextSplitNode";
 export { TextAfterBeforeComponent } from "./TextAfterBeforeNode";
 export { NumberValueComponent } from "./NumberValueNode";
-export { TextFilterComponent } from "./TextFilterNode";
 export { RomanArabicComponent } from "./RomanArabicNode";
 export { FixedComponent } from "./FixedNode";
 export { UrlEncodeComponent } from "./UrlEncodeNode";
+export { HashComponent } from "./HashNode";
+export { TemplateComponent } from "./TemplateNode";
+export { UuidComponent } from "./UuidNode";
 
 // ─── Date & Time ──────────────────────────────────────────────────────────────
 export {
@@ -249,7 +259,6 @@ export { WeightedComponent } from "./WeightedNode";
 
 // ─── List extras ──────────────────────────────────────────────────────────────
 export { RandArrayComponent } from "./RandArrayNode";
-export { SortByComponent } from "./SortByNode";
 export { XMatchComponent } from "./XMatchNode";
 
 // ─── Convert / output ─────────────────────────────────────────────────────────
@@ -258,17 +267,17 @@ export { DisplayComponent } from "./DisplayNode";
 export { AlertComponent } from "./AlertNode";
 export { SparklineComponent } from "./SparklineNode";
 export { ChartComponent } from "./ChartNode";
+export { MergePlotsComponent } from "./MergePlotsNode";
 export { HistogramComponent } from "./HistogramNode";
 export { KpiComponent } from "./KpiNode";
-export { BulletComponent } from "./BulletNode";
-export { TreemapComponent } from "./TreemapNode";
 export { SankeyComponent } from "./SankeyNode";
 export { SurfaceComponent } from "./SurfaceNode";
 export {
   WaterfallComponent, CandlestickComponent, BoxplotComponent,
-  CalendarHeatmapComponent, WaffleComponent, QuiverComponent,
+  CalendarHeatmapComponent, ProportionComponent, QuiverComponent,
 } from "./FigureNodes";
 export { SevenSegComponent } from "./SevenSegNode";
+export { RecordComponent } from "./RecordNode";
 export { PointPlotterComponent } from "./PointPlotterNode";
 export { CurveComponent } from "./CurveNode";
 export { GridPainterComponent } from "./GridPainterNode";
@@ -276,8 +285,9 @@ export { MermaidComponent } from "./MermaidNode";
 export { GaugeComponent } from "./GaugeNode";
 export { HeatmapCellComponent } from "./HeatmapCellNode";
 export { ChartBuilderComponent } from "./ChartBuilderNode";
-export { DatePickerComponent } from "./DatePickerNode";
+export { DateInputComponent } from "./DateInputNode";
 export { DateRangeComponent } from "./DateRangeNode";
+export { SaveTimesComponent } from "./SaveTimesNode";
 export { XYPadComponent } from "./XYPadNode";
 
 // ─── Format Controller ────────────────────────────────────────────────────────
@@ -285,6 +295,7 @@ export { FormatControllerComponent } from "./FormatControllerNode";
 
 // ─── Expression ───────────────────────────────────────────────────────────────
 export { ExpressionComponent } from "./ExpressionNode";
+export { ScriptComponent } from "./ScriptNode";
 
 // ─── Equation (bidirectional solve) ─────────────────────────────────────────────
 export { EquationComponent } from "./EquationNode";
@@ -301,9 +312,6 @@ export type { StandoffLinkTarget } from "./StandoffLinkMenu";
 export { NodeContextMenu } from "./NodeContextMenu";
 export type { NodeContextTarget } from "./NodeContextMenu";
 export { StandoffLayer } from "./StandoffLayer";
-
-// ─── Packs (example built-in pack node) ───────────────────────────────────────
-export { HypotenuseComponent } from "./HypotenuseNode";
 
 // ─── Electricity & Circuits pack ───────────────────────────────────────────────
 export { ParallelCombineComponent, ESeriesComponent, AwgComponent, ResistorCodeComponent } from "./ElectricalNodes";
@@ -333,9 +341,23 @@ export { ElementComponent, MolarMassComponent } from "./ChemistryNodes";
 export { ConcatListsComponent } from "./ConcatListsNode";
 export { FrameFromListsComponent } from "./FrameFromListsNode";
 export { QuadraticRootsComponent } from "./QuadraticRootsNode";
+export { PolyRootsComponent } from "./PolyRootsNode";
 
 // ─── Missing-type placeholder (load-time only, not in the Add menu) ───────────
 export { PlaceholderComponent } from "./PlaceholderNode";
 
 // ─── Other (easter egg) ───────────────────────────────────────────────────────
 export { PromoComponent } from "./PromoNode";
+export { OutliersComponent } from "./OutliersNode";
+export { SmoothComponent } from "./SmoothNode";
+export { FindPeaksComponent } from "./FindPeaksNode";
+export { EpochComponent } from "./EpochNode";
+export { DateTruncComponent } from "./DateTruncNode";
+export { AmortizationComponent } from "./AmortizationNode";
+export { ReturnsComponent } from "./ReturnsNode";
+export { SpectrumComponent } from "./SpectrumNode";
+export { TextSimilarityComponent, FuzzyMatchComponent } from "./TextSimilarityNode";
+export { EtsForecastComponent } from "./EtsForecastNode";
+export { DecomposeComponent } from "./DecomposeNode";
+export { OdeIntegrateComponent } from "./OdeIntegrateNode";
+export { FitDistributionComponent } from "./FitDistributionNode";

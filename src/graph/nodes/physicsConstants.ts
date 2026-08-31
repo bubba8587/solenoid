@@ -56,7 +56,7 @@ export class PhysicsConstantNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: PhysConstOp }) {
     super("PhysicsConstant");
     this.op = init?.op && init.op in PHYS_CONSTANTS ? init.op : "c";
-    this.label = init?.label ?? "Physics Constant";
+    this.label = init?.label ?? "";
     this.addOutput("value", numOut("Value"));
   }
 

@@ -1,7 +1,7 @@
 import { CUM_PMT_OP_META, PAYMENT_TIMING_META } from "../rete-nodes";
 import type { CumPmtNode as CumPmtNodeType, CumPmtOp, PaymentTiming } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
-import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, OpSelect, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 
 const OPS = (Object.keys(CUM_PMT_OP_META) as CumPmtOp[]).map((op) => ({
   value: op,
@@ -20,7 +20,7 @@ export function CumPmtComponent({ data, emit }: NodeProps<CumPmtNodeType>) {
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} onChange={setOp} options={OPS} />
-      <OpSelect arg value={paymentTiming} onChange={setPaymentTiming} options={TIMING_OPTS} />
+      <ArgSelect value={paymentTiming} onChange={setPaymentTiming} options={TIMING_OPTS} />
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>
   );

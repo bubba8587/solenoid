@@ -21,6 +21,10 @@ export interface TornadoResult {
 }
 
 export class TornadoNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    value: "A run perturbs every Number and Slider upstream of this input and ranks them by how far this value swings.",
+  };
+
   label: string;
   cachedResult: number | null = null;
   /** Last completed run's ranking, best (biggest swing) first. Null = never run. */

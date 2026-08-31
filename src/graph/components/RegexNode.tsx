@@ -7,7 +7,7 @@ import { processGraph } from "../process";
 import type { RegexOp } from "../rete-nodes";
 import { stopDragStart } from "../coarse";
 
-// Derived from REGEX_OP_META (SSOT-1) — the table the search rows read too.
+// Derived from REGEX_OP_META (declareOnce) — the table the search rows read too.
 const REGEX_OPTIONS: ReadonlyArray<OpOption<RegexOp>> = (Object.keys(REGEX_OP_META) as RegexOp[])
   .map((value) => ({ value, label: REGEX_OP_META[value].label }));
 

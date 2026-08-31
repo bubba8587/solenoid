@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { InterpolateNode as InterpolateNodeType, InterpolateMode } from "../rete-nodes";
 import { INTERPOLATE_MODE_META } from "../rete-nodes";
 import { processGraph } from "../process";
-import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { getActiveEditor, getActiveView } from "../activeGraph";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { ResultDisplay } from "./ResultDisplay";
@@ -10,6 +10,7 @@ import { TableDisplay } from "./TableDisplay";
 import { SegToggle } from "./SegToggle";
 import { isSolError, type SolError } from "../errorValue";
 import { stopDragStart } from "../coarse";
+import { nodeDisplayName } from "../catalogUtils";
 
 const MODE_OPTIONS = (Object.keys(INTERPOLATE_MODE_META) as InterpolateMode[]).map((m) => ({
   value: m,
@@ -25,14 +26,14 @@ export async function applyInterpolateMode(node: InterpolateNodeType, mode: Inte
   node.mode = mode;
 
   const editor = getActiveEditor();
-  const area = getActiveArea();
+  const view = getActiveView();
   if (editor) {
     const conns = editor.getConnections().filter((c) => c.target === node.id || c.source === node.id);
     for (const c of conns) await editor.removeConnection(c.id);
   }
   node._rebuildSockets();
 
-  if (area) await area.update("node", node.id);
+  if (view) await view.rerenderNode(node.id);
   await processGraph();
 }
 
@@ -45,7 +46,7 @@ export function InterpolateComponent({ data, emit }: NodeProps<InterpolateNodeTy
 
   return (
     <NodeShell node={data} emit={emit}>
-      <SegToggle arg
+      <SegToggle
         value={mode}
         options={MODE_OPTIONS}
         onChange={(next) => { setMode(next); void applyInterpolateMode(data, next); }}
@@ -55,7 +56,7 @@ export function InterpolateComponent({ data, emit }: NodeProps<InterpolateNodeTy
           <div style={{ fontSize: 11, fontStyle: "italic", color: "var(--text-dim)" }}>Bilinear interpolation</div>
           <label
             style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--text)", marginTop: 2, cursor: "pointer" }}
-            title="Fill EVERY remaining blank with a smooth surface (thin-plate spline) fitted through all the known points — the scattered gaps and beyond the data too, not just the bilinear-enclosed interior"
+            title="Fill every remaining blank with a smooth surface (thin-plate spline) fitted through all the known points — the scattered gaps and beyond the data too, not only the bilinear-enclosed interior"
             onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
           >
@@ -70,8 +71,8 @@ export function InterpolateComponent({ data, emit }: NodeProps<InterpolateNodeTy
       )}
       <InlineInputs node={data} emit={emit} />
       {data.mode === "grid"
-        ? <TableDisplay table={isSolError(data.cachedResult) ? (data.cachedResult as SolError) : (data.cachedResult as (number | null)[][] | null)} label={data.label} />
-        : <ResultDisplay value={data.cachedResult} label={data.label} />}
+        ? <TableDisplay table={isSolError(data.cachedResult) ? (data.cachedResult as SolError) : (data.cachedResult as (number | null)[][] | null)} label={nodeDisplayName(data)} elem="number" />
+        : <ResultDisplay value={data.cachedResult} label={nodeDisplayName(data)} />}
     </NodeShell>
   );
 }

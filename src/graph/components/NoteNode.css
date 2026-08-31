@@ -15,7 +15,6 @@
   background: var(--note-bg);
   border: 2px solid var(--note-color);
   border-radius: 8px;
-  box-shadow: var(--shadow-card);
   cursor: grab;
 }
 .solenoid-note * { box-sizing: border-box; }
@@ -279,6 +278,12 @@
   min-width: 0;
   overflow-wrap: anywhere;
   word-break: break-word;
+  /* Author-written prose in a card-width column, so the Wrap Rule's `pretty`
+     (DESIGN.md §3) applies to the whole body, not just the <p> blocks `.sol-md`
+     covers: it inherits into table cells and any bare text `marked` emits. The
+     editing textarea is a SIBLING (.solenoid-note__body), so it never inherits
+     this and can't rebreak under the caret mid-keystroke. */
+  text-wrap-style: pretty;
 }
 /* Block children that have intrinsic width (code blocks, tables) must also stay
    within the card and scroll internally rather than stretch it. */
@@ -391,6 +396,56 @@
 .solenoid-note__rendered.sol-md kbd {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--note-color, var(--accent)) var(--mix-hairline), var(--border-strong));
 }
+/* GFM task lists are interactive in the read view — the box toggles its source
+   `- [ ]`/`- [x]` marker (NoteComponent onRenderedClick). Drop the list bullet on
+   task items so the checkbox stands in for it, and draw the box off the note's own
+   --note-color (already themeAccent-resolved for the active mode) so it belongs to
+   the card like its headings and rules do (Quiet Accent — tint the control, no
+   stripe). A custom box, not the OS default, to match the card's weight. */
+.solenoid-note__rendered.sol-md li:has(> input[type="checkbox"]) {
+  list-style: none;
+}
+.solenoid-note__rendered.sol-md input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 auto;
+  width: 13px;
+  height: 13px;
+  margin: 0 7px 0 0;
+  vertical-align: -2px;
+  border: 1.5px solid color-mix(in srgb, var(--note-color) 55%, var(--border-strong));
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--note-color) 10%, transparent);
+  cursor: pointer;
+  position: relative;
+  transition: background 90ms ease, border-color 90ms ease;
+}
+.solenoid-note__rendered.sol-md input[type="checkbox"]:hover {
+  border-color: color-mix(in srgb, var(--note-color) 80%, var(--border-strong));
+  background: color-mix(in srgb, var(--note-color) 20%, transparent);
+}
+.solenoid-note__rendered.sol-md input[type="checkbox"]:checked {
+  background: var(--note-color);
+  border-color: var(--note-color);
+}
+/* The tick — an L-shape rotated 45°, in the card surface so it reads against the
+   filled box in either theme. */
+.solenoid-note__rendered.sol-md input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 3.5px;
+  top: 1px;
+  width: 3px;
+  height: 6px;
+  border: solid var(--surface);
+  border-width: 0 1.6px 1.6px 0;
+  transform: rotate(45deg);
+}
+.solenoid-note__rendered.sol-md input[type="checkbox"]:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--note-color) 45%, transparent);
+  outline-offset: 1px;
+}
+
 /* A fenced block is a BLOCK — it owns its margins, so it keeps the real border
    and padding above; only the inline chips fought the line box. Its inner <code>
    resets to bare: the chip selectors are two classes deep and out-specify

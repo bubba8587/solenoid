@@ -1680,6 +1680,157 @@
      }
     ]
    }
+  },
+  {
+   "name": "cross: every left row with every right row, left-major, all columns, collisions deduped",
+   "frames": {
+    "left": {
+     "columns": [
+      {
+       "name": "id",
+       "type": "number",
+       "values": [
+        1,
+        2
+       ]
+      },
+      {
+       "name": "name",
+       "type": "string",
+       "values": [
+        "A",
+        "B"
+       ]
+      }
+     ]
+    },
+    "right": {
+     "columns": [
+      {
+       "name": "name",
+       "type": "string",
+       "values": [
+        "x",
+        "y",
+        "z"
+       ]
+      },
+      {
+       "name": "amt",
+       "type": "number",
+       "values": [
+        10,
+        20,
+        30
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "join",
+    "leftKey": "",
+    "rightKey": "",
+    "how": "cross"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "id",
+      "type": "number",
+      "values": [
+       1,
+       1,
+       1,
+       2,
+       2,
+       2
+      ]
+     },
+     {
+      "name": "name",
+      "type": "string",
+      "values": [
+       "A",
+       "A",
+       "A",
+       "B",
+       "B",
+       "B"
+      ]
+     },
+     {
+      "name": "name2",
+      "type": "string",
+      "values": [
+       "x",
+       "y",
+       "z",
+       "x",
+       "y",
+       "z"
+      ]
+     },
+     {
+      "name": "amt",
+      "type": "number",
+      "values": [
+       10,
+       20,
+       30,
+       10,
+       20,
+       30
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "cross: an empty side yields no rows but the full header",
+   "frames": {
+    "left": {
+     "columns": [
+      {
+       "name": "a",
+       "type": "number",
+       "values": [
+        1,
+        2
+       ]
+      }
+     ]
+    },
+    "right": {
+     "columns": [
+      {
+       "name": "b",
+       "type": "string",
+       "values": []
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "join",
+    "leftKey": "",
+    "rightKey": "",
+    "how": "cross"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "a",
+      "type": "number",
+      "values": []
+     },
+     {
+      "name": "b",
+      "type": "string",
+      "values": []
+     }
+    ]
+   }
   }
  ]
 }

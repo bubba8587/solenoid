@@ -1,7 +1,10 @@
 import { ClassicPreset } from "rete";
 import type { SolenoidNode, SolenoidConnection } from "./schemes";
-import { selectNode, unselectAllNodes, beginGraphRebuild, endGraphRebuild, bulkSettle, markGraphCustom, getCtorRegistry, processGraph } from "./process";
-import { getActiveEditor, getActiveArea, isSubgraphActive } from "./activeGraph";
+import { beginGraphRebuild, endGraphRebuild, bulkSettle, processGraph } from "./process";
+import { selectNode, unselectAllNodes } from "./canvasCommands";
+import { markGraphCustom } from "./seedStore";
+import { getCtorRegistry } from "./ctorProvider";
+import { getActiveEditor, getActiveView, isSubgraphActive } from "./activeGraph";
 import { collapseStore } from "./collapseStore";
 import { nodeNameStore } from "./nodeNameStore";
 
@@ -26,8 +29,8 @@ let _clipboard: ClipboardData | null = null;
 export function copySelected() {
   // Active graph, not main — copy/paste works inside a Composite drill-in too.
   const editor = getActiveEditor();
-  const area = getActiveArea();
-  if (!editor || !area) return;
+  const view = getActiveView();
+  if (!editor || !view) return;
 
   const directly = editor.getNodes().filter((n) => n.selected) as SolenoidNode[];
   if (directly.length === 0) return;
@@ -45,7 +48,7 @@ export function copySelected() {
   );
 
   const positions = selected.map(
-    (n) => area.nodeViews.get(n.id)?.position ?? { x: 0, y: 0 },
+    (n) => view.position(n.id) ?? { x: 0, y: 0 },
   );
   const minX = Math.min(...positions.map((p) => p.x));
   const minY = Math.min(...positions.map((p) => p.y));
@@ -70,15 +73,17 @@ export function copySelected() {
 // textForm.ts's writer shares this order so a node's text-form line is byte-identical
 // across writes; appending is safe, reordering rewrites every existing save.
 export const INIT_FIELD_ORDER = [
-  "label", "op", "form", "value", "unitSuffix", "fromUnit", "toUnit", "lanes", "matchMode", "matchCase", "searchMode", "paymentTiming", "ignoreEmpty", "noCommas", "hostNodeId", "socketKey", "side", "format", "customPattern", "decimalDigits", "decimalMode", "unit", "customUnit", "socketDataType", "expr", "params", "locked", "axis", "op2", "combine", "textCase", "bold", "italic", "textScale", "textAlign", "textMarkdown", "textMono", "logicalStyle", "lambdaView", "chartFontScale", "grouping", "negativeStyle", "scaleMode", "advancedOpen",
+  "label", "op", "form", "value", "unitSuffix", "fromUnit", "toUnit", "lanes", "matchMode", "matchCase", "searchMode", "paymentTiming", "ignoreEmpty", "noCommas", "hostNodeId", "socketKey", "side", "format", "customPattern", "decimalDigits", "decimalMode", "unit", "customUnit", "socketDataType", "expr", "params", "locked", "axis", "op2", "combine", "textCase", "bold", "italic", "textScale", "textAlign", "textMarkdown", "textMono", "logicalStyle", "lambdaView", "chartFontScale", "grouping", "negativeStyle", "scaleMode", "advancedOpen", "match",
   "tableText", "frameText", "pointsText", "url", "fileName", "assetPath", "path", "subfolder", "refreshMinutes", "tableIndex", "query", "dir", "how", "asofDirection", "mode", "inFormat", "outFormat", "provider",
   "inputAngle", "outputAngle", "inputTightness", "outputTightness", "angle",
   "selectedColumn", "selectedValues", "selectedLayer", "multiSelect", "forecast", "offDiag", "readAs", "addAs", "activeIndex", "target", "resultAs", "colType", "dataType", "angleMode", "lambdaKeys", "sideVars",
   "hoverColor",
   "totalDepth", "rowTotalDepth", "colTotalDepth", "rowSort", "colSort", "relativeTo", "normalize", "detail",
   "members", "color", "collapsed", "width", "height", "title", "body", "seq", "defaultValue",
-  "checkNotNull", "checkUnique", "checkRange", "checkRegex", "checkAllowed",
+  "checkNotNull", "checkUnique", "checkRange", "checkRegex", "checkAllowed", "integer",
   "runMode", "simulationSteps", "stopWhenPortId", "stopWhenOp", "stopWhenValue", "byRowPortId", "embeds", "steps",
+  "wrap", "method", "ceiling", "model", "standardize",
+  "action", "agg", "order", "condition", "algorithm", "substance", "bands", "material", "symbol",
 ] as const;
 
 // Object-valued extras, appended after INIT_FIELD_ORDER in this fixed order.
@@ -222,8 +227,8 @@ const PASTE_OFFSET = 30; // canvas units
 export async function pasteClipboard(canvasX: number, canvasY: number) {
   if (!_clipboard || _clipboard.entries.length === 0) return;
   const editor = getActiveEditor();
-  const area = getActiveArea();
-  if (!editor || !area) return;
+  const view = getActiveView();
+  if (!editor || !view) return;
   // Inside a drill-in the selection + settle singletons are main-bound and don't apply.
   const subgraph = isSubgraphActive();
 
@@ -280,7 +285,7 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
       // A FRESH name, never the source's — the source is still on the canvas, so
       // inheriting it would collide immediately.
       nodeNameStore.ensure(clone.id, clone.constructor.name);
-      await area.translate(clone.id, { x, y });
+      await view.moveNode(clone.id, { x, y });
     }));
     // The captured subgraph snapshot hydrates into live instances only once the
     // clone exists.

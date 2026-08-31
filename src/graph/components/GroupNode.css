@@ -21,7 +21,6 @@
   border: 2px solid;
   border-bottom: none;
   border-radius: 8px 8px 0 0;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
   cursor: grab;
 }
 .solenoid-group__header:active { cursor: grabbing; }
@@ -124,6 +123,22 @@ textarea.solenoid-group__label { flex: 1 1 auto; }
   border-radius: 0 0 8px 8px;
 }
 
+/* Pointer surfaces of an OPEN group (its RF wrapper is pointer-transparent —
+   flow.css `.sol-group-open`): header, edge bands and grip always take the
+   pointer; the whole body re-arms once the group is selected. */
+.sol-group-open .solenoid-group__header,
+.sol-group-open .solenoid-group__resize { pointer-events: auto; }
+.sol-group-open .solenoid-group--selected .solenoid-group__body { pointer-events: auto; }
+
+/* Invisible drag bands along the dashed edge, thick enough to grab. Anchored to the
+   body's PADDING box, so they outset 4px past the 2px border: the dashed line itself
+   and a small reach outside it are part of the grab target, not just the interior. */
+.solenoid-group__band { position: absolute; pointer-events: auto; }
+.solenoid-group__band--n { top: -4px; left: -4px; right: -4px; height: 18px; }
+.solenoid-group__band--s { bottom: -4px; left: -4px; right: -4px; height: 18px; }
+.solenoid-group__band--w { top: -4px; bottom: -4px; left: -4px; width: 18px; }
+.solenoid-group__band--e { top: -4px; bottom: -4px; right: -4px; width: 18px; }
+
 /* Bottom-right resize grip. */
 .solenoid-group__resize {
   position: absolute;
@@ -158,7 +173,7 @@ textarea.solenoid-group__label { flex: 1 1 auto; }
   gap: 10px;
 }
 .solenoid-group__row-label {
-  flex: 0 1 auto; /* the LABEL shrinks / ellipsizes — the value reads in full */
+  flex: 0 4 auto; /* the LABEL shrinks / ellipsizes first — the value keeps priority */
   min-width: 0;
   font-size: 12px;
   color: var(--text-dim);
@@ -167,11 +182,14 @@ textarea.solenoid-group__label { flex: 1 1 auto; }
   text-overflow: ellipsis;
 }
 .solenoid-group__row-val {
-  flex: 0 0 auto; /* value takes precedence — shown in full */
+  flex: 0 1 auto; /* ellipsizes only once the label has given way (the hero box does the same) */
+  min-width: 0;
   font-size: 15px;
   color: var(--text-bright);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 /* Edge pill sockets — where external cables reconnect while collapsed. */
 .solenoid-group__pill {
@@ -211,12 +229,6 @@ textarea.solenoid-group__label { flex: 1 1 auto; }
 /* Collapsed-group edge pills (socket wrappers + the stadium pill) paint ABOVE
    the selection ring overlay (z-index 6) — selecting a group must not cover
    its connection points. */
-.solenoid-group [data-socket-side],
-.solenoid-group .solenoid-node__input-pill,
-.solenoid-group .solenoid-node__output-pill {
-  z-index: 7;
-}
-
 /* Align the stadium pill EXACTLY with the plain socket pills (a collapsed group can
    show both). The socket sits at left/right:-5 (NodeSocket.tsx); both are 12px wide,
    so the stadium must use the same -5 to share a center. (Base class stays -6 for

@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect } from "react";
-import { Canvas } from "./graph/Canvas";
+import { FlowCanvas } from "./graph/flow/FlowCanvas";
+import { FlowCompositeOverlay } from "./graph/flow/FlowCompositeOverlay";
 import { HelpDialogs } from "./graph/components/HelpDialogs";
 import { autoShowWhatsNewOnce } from "./graph/helpDialogStore";
 import { Header } from "./graph/Header";
@@ -8,12 +9,12 @@ import { OutlinePanel } from "./graph/OutlinePanel";
 import { StatusBar } from "./graph/StatusBar";
 import { MobileControls } from "./graph/MobileControls";
 import { FunctionReference } from "./graph/components/FunctionReference";
-import { SpecMapView } from "./graph/components/SpecMapView";
 import { ReportOverlay } from "./graph/components/ReportOverlay";
-import { CompositeEditorOverlay } from "./graph/components/CompositeEditorOverlay";
+import { InspectorPanel } from "./graph/components/InspectorPanel";
 import { PresentationOverlay } from "./graph/components/PresentationOverlay";
 import { ConnectionDialog } from "./graph/components/ConnectionDialog";
 import { FormulaPopup } from "./graph/components/FormulaPopup";
+import { ScriptPopup } from "./graph/components/ScriptPopup";
 import { TablePopup } from "./graph/components/TablePopup";
 import { CubePopup } from "./graph/components/CubePopup";
 import { ChartPopup } from "./graph/components/ChartPopup";
@@ -67,18 +68,19 @@ function MainApp() {
 
   return (
     <div className="solenoid-app">
-      <Canvas />
+      <FlowCanvas />
       <Header />
       <NavMenu />
       <OutlinePanel />
       <StatusBar />
       <FunctionReference />
-      <SpecMapView />
       <ReportOverlay />
-      <CompositeEditorOverlay />
+      <InspectorPanel />
+      <FlowCompositeOverlay />
       <PresentationOverlay />
       <ConnectionDialog />
       <FormulaPopup />
+      <ScriptPopup />
       <CubePopup />
       <TablePopup />
       <ChartPopup />

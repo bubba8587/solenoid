@@ -5,44 +5,7 @@ html.minimap-hidden .solenoid-minimap { display: none; }
    bottom-right corner. */
 html.minimap-top .solenoid-minimap { top: 126px; bottom: auto; }
 /* Hide the canvas background dot grid — Settings ▸ View. */
-html.perf-no-grid-dots .solenoid-canvas { background-image: none; }
-
-.solenoid-canvas-wrapper {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  /* No text selection by default: a click-drag on the background or node chrome
-     would otherwise start a selection that sweeps across every node's text.
-     Display value boxes opt back in (user-select: text) so values stay
-     copyable — a selection can only begin on those, not on a drag from chrome. */
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-.solenoid-canvas {
-  width: 100%;
-  height: 100%;
-  background-color: var(--canvas-bg);
-  /* Dot alpha scales with zoom via --dot-pct (set by Canvas.tsx's syncBackground)
-     so the grid fades out as you zoom far away instead of turning into noise. */
-  --dot-pct: 100%;
-  background-image: radial-gradient(circle, color-mix(in srgb, var(--canvas-dot) var(--dot-pct), transparent) 1px, transparent 1px);
-  background-size: 24px 24px; /* updated dynamically by Canvas.tsx to track zoom */
-  /* Hand all touch gestures to Rete's area handler: one finger pans, two
-     fingers pinch-zoom, double-tap zooms (all built into rete-area-plugin's
-     Zoom). Without this the mobile browser eats the gestures as page scroll /
-     zoom and the canvas can't be navigated by touch. Taps/focus on node inputs
-     still work. */
-  touch-action: none;
-  /* Suppress iOS's long-press callout (the copy/share bubble) so holding a node
-     doesn't pop a system menu mid-interaction. */
-  -webkit-touch-callout: none;
-  /* Own stacking context + offset parent so the decorative cable flourish can
-     sit at z-index:-1: above this element's grid background, below the rete
-     node/cable layer (see CableFlourish). */
-  position: relative;
-  isolation: isolate;
-}
+html.perf-no-grid-dots .react-flow__background { display: none; }
 
 /* Lock canvas = view-only. A node's chrome (sockets, fields, value box) and the
    cable hit-paths take no pointer input, so a press / wheel over them falls

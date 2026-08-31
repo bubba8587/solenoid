@@ -6,6 +6,7 @@ import { formatAnnotationStore } from "../formatAnnotationStore";
 import { ChartView, ChartFigure } from "./chartView";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import { clamp } from "../nodes/mathUtils";
+import { recordNavTarget, stepRecordRow } from "./recordNav";
 
 // ChartView needs explicit pixel dims (no ResponsiveContainer), and this popup is
 // a viewport-centered overlay, so window size is the correct measure.
@@ -44,6 +45,18 @@ export function ChartPopup() {
   if (!state) return null;
   const cardStyle = popupCardVars(state);
 
+  // A record card pages here too: step the node's Row, then swap the fresh
+  // chart into this popup's snapshot (the popup holds a value, not a
+  // subscription) — recordNav.ts.
+  const recordId = state.value?.op === "record" && state.pinNodeId ? recordNavTarget(state.pinNodeId) : null;
+  const recordStep = recordId
+    ? (delta: number) => {
+        void stepRecordRow(recordId, delta).then((fresh) => {
+          if (fresh) chartPopup.open({ ...state, value: fresh });
+        });
+      }
+    : undefined;
+
   return (
     <PopupShell
       title={state.title}
@@ -54,8 +67,19 @@ export function ChartPopup() {
     >
       <div style={{ padding: 16, display: "flex", justifyContent: "center", alignItems: "center" }}>
         {state.value ? (
-          // Title stripped — the popup header already shows it.
-          <ChartFigure value={{ ...state.value, title: undefined }} width={w} height={h} fontScale={fontScale} />
+          // Title stripped (the value's and the option's) — the popup header
+          // already shows it; an in-figure copy would double it.
+          <ChartFigure
+            value={{
+              ...state.value,
+              title: undefined,
+              options: state.value.options ? { ...state.value.options, title: undefined } : state.value.options,
+            }}
+            width={w}
+            height={h}
+            fontScale={fontScale}
+            recordNav={recordStep}
+          />
         ) : !state.series || state.series.length === 0 ? (
           <div style={{ color: "var(--text-dim, #888)", padding: 40 }}>No data</div>
         ) : (

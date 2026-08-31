@@ -5,7 +5,8 @@ import { canvasLockStore } from "./canvasLock";
 import { frStore } from "./frStore";
 import { shortcutsStore } from "./shortcutsStore";
 import { outlineSearch } from "./outlineStore";
-import { autoArrange, cleanup, requestRecalc } from "./process";
+import { requestRecalc } from "./process";
+import { autoArrange, cleanup } from "./canvasCommands";
 import { calcModeStore } from "./calcModeStore";
 import { refreshAllConnections } from "./connectionStore";
 import { runModelFuzz } from "./modelFuzz";
@@ -13,10 +14,10 @@ import { problemsPanelUi } from "./problemsStore";
 import { pushNotice } from "./noticeStore";
 import { saveToDisk, openFromDisk } from "./fileSession";
 import { documentStore } from "./documentStore";
+import { inspectorStore } from "./inspectorStore";
 import { addMenuRequest } from "./addMenuStore";
 import { connectionDialog } from "./connectionDialogStore";
 import { settingsPanel, settingsStore } from "./settingsStore";
-import { specMapStore } from "./specMapStore";
 import { pickFolderDialog, openInFileManager, isDesktop } from "./fileBridge";
 import { docPropertiesPanel } from "./docMetaStore";
 import { helpDialogStore } from "./helpDialogStore";
@@ -52,7 +53,7 @@ export function buildMenus(): Menu[] {
     {
       label: "File",
       items: [
-        { label: "New blank document", onClick: () => void documentStore.newBlank() },
+        { label: "New Document", onClick: () => void documentStore.newBlank() },
         { label: "Open…", shortcut: "Ctrl+O", onClick: () => void openFromDisk() },
         { sep: true },
         // Work autosaves continuously; Save writes the graph out to its .json file.
@@ -90,10 +91,10 @@ export function buildMenus(): Menu[] {
         { sep: true },
         { label: "Select all", shortcut: "Ctrl+A", onClick: () => fireMenuKey("KeyA", { ctrl: true }) },
         { label: "Group selection", shortcut: "G", onClick: () => fireMenuKey("KeyG") },
-        { label: "Make composite", shortcut: "Ctrl+Shift+G", onClick: () => fireMenuKey("KeyG", { ctrl: true, shift: true }) },
-        { label: "Autofit group box", shortcut: "F", onClick: () => fireMenuKey("KeyF") },
+        { label: "Wrap as Composite", shortcut: "Ctrl+Shift+G", onClick: () => fireMenuKey("KeyG", { ctrl: true, shift: true }) },
+        { label: "Group Autofit", shortcut: "F", onClick: () => fireMenuKey("KeyF") },
         { sep: true },
-        { label: "Find node…", shortcut: "Ctrl+F", onClick: () => outlineSearch.open() },
+        { label: "Find", shortcut: "Ctrl+F", onClick: () => outlineSearch.open() },
       ],
     },
     {
@@ -102,12 +103,12 @@ export function buildMenus(): Menu[] {
         { label: mode === "dark" ? "Light theme" : "Dark theme", onClick: () => appThemeStore.toggleMode() },
         { label: "Lock canvas", checked: locked, onClick: () => canvasLockStore.toggle() },
         { sep: true },
-        { label: "Tidy: auto-arrange", shortcut: "T", onClick: () => autoArrange() },
-        { label: "Cleanup: tidy, collapse, fit", shortcut: "C", onClick: () => cleanup() },
+        { label: "Tidy", shortcut: "T", onClick: () => autoArrange() },
+        { label: "Cleanup", shortcut: "C", onClick: () => cleanup() },
         { label: "Snap to grid", checked: snap, onClick: () => gridSnapStore.toggle() },
         { sep: true },
         { label: "Function reference", shortcut: "Ctrl+/", onClick: () => frStore.open("reference") },
-        { label: "Architecture map", onClick: () => specMapStore.open() },
+        { label: "Inspector", onClick: () => inspectorStore.toggle() },
         { label: "Settings…", shortcut: "Ctrl+,", onClick: () => settingsPanel.open() },
       ],
     },
@@ -155,7 +156,7 @@ export function buildMenus(): Menu[] {
           onClick: () => { calcModeStore.setMode("manual"); },
         },
         {
-          label: "Sketch: approximate on a sample",
+          label: "Sketch",
           checked: calcMode === "sketch",
           // Sketch recomputes live, so catch up like switching to Automatic does.
           onClick: () => { if (calcModeStore.setMode("sketch")) void requestRecalc(); },

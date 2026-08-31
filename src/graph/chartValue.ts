@@ -14,16 +14,23 @@ export interface KpiPayload {
   /** Whether an increase is "good" (green ↑) — flip for cost-style metrics. */
   goodUp: boolean;
 }
-export interface BulletPayload {
-  kind: "bullet";
+// A value on a fixed scale, drawn one of two ways (the renderer branches on `style`):
+// a radial DIAL (value read as a fraction of 1, so 0.75 → 75% on a fixed 0→100% arc) or a
+// horizontal BAR on a 0→max track with a target tick (the former Bullet graph). Dial leaves
+// `target` null and pins min 0 / max 1; Bar carries the real target and track bound.
+export interface ScalePayload {
+  kind: "scale";
+  style: "dial" | "bar";
   value: number | null;
   target: number | null;
   min: number;
   max: number;
 }
-// A flat labeled treemap — each name/value pair is a rectangle sized by value.
-export interface TreemapPayload {
-  kind: "treemap";
+// Parts of a whole, laid out two ways: a space-filling treemap (each name/value is a
+// rectangle sized by value) or a 10×10 waffle grid of shares. `layout` picks which.
+export interface ProportionPayload {
+  kind: "proportion";
+  layout: "treemap" | "waffle";
   names: string[];
   values: number[];
 }
@@ -86,12 +93,6 @@ export interface CalHeatPayload {
   days: number[];
   values: number[];
 }
-// Category shares as a 10×10 grid; a single value in [0,1] renders as a fraction.
-export interface WafflePayload {
-  kind: "waffle";
-  names: string[];
-  values: number[];
-}
 // A vector field: u/v are same-shaped matrices of the x/y components; one arrow
 // per cell, colored by magnitude. A null in either component skips the cell.
 export interface QuiverPayload {
@@ -105,24 +106,86 @@ export interface SevenSegPayload {
   kind: "sevenseg";
   text: string;
 }
+// One labeled box of a record card, pre-placed on the grid (1-based CSS grid
+// lines, resolved from the layout text in the node so the view stays dumb).
+export interface RecordField {
+  label: string;
+  /** The cell for display: dates/booleans/errors arrive pre-formatted as text,
+   *  numbers stay numeric so the view applies the standard scalar format;
+   *  null = an empty cell. */
+  value: number | string | null;
+  /** An image source when the cell text points at one; the box shows the picture. */
+  image?: string;
+  /** Layout-authored placeholder, present only when the value is empty; the box
+   *  shows it muted in place of the dash. */
+  hint?: string;
+  row: number;
+  col: number;
+  rowSpan: number;
+  colSpan: number;
+}
+// The record figure, three views of one layout: `card` draws the picked row,
+// `gallery` every row as a grid of cards, `board` every row in lanes keyed by a
+// grouping column. `index`/`total` are the card view's 1-based pick and the row
+// count (index 0 = no record selected).
+export interface RecordPayload {
+  kind: "record";
+  view: "card" | "gallery" | "board";
+  /** Grid column count within ONE card (the widest layout row). */
+  cols: number;
+  /** One entry per drawn card; the card view has exactly one (the picked row). */
+  cards: RecordField[][];
+  /** Board lanes: label + indices into `cards`; absent for card/gallery. */
+  lanes?: Array<{ label: string; cards: number[] }>;
+  /** Rows beyond the drawing cap (gallery/board draw at most the cap). */
+  more?: number;
+  index: number;
+  total: number;
+}
+// One artist in an overlay, carrying its OWN mark kind and the styling it inherited
+// from the source chart (Merge Plots keeps each source's color/marker size/etc.). A
+// null value is a gap. `bar` and `column` both draw as vertical bars here so they
+// share the cartesian x-axis with the line/area/scatter marks.
+export interface OverlaySeries {
+  name: string;
+  kind: "line" | "area" | "column" | "bar" | "scatter";
+  values: (number | null)[];
+  /** Inherited from the source chart's Options; the palette fills in when absent. */
+  color?: string;
+  markersize?: number;
+  linewidth?: number;
+  alpha?: number;
+  /** Whether a line/area dots its points (the source's `marker` option). */
+  marker?: boolean;
+}
+// Several charts overlaid on one plot (the Merge Plots node): every source's series
+// keep their own kind + styling, drawn together over a shared x-axis. `labels` is the
+// first source's category axis, if any.
+export interface OverlayPayload {
+  kind: "overlay";
+  series: OverlaySeries[];
+  labels?: (string | number)[];
+}
 export type ChartPayload =
-  | KpiPayload | BulletPayload | TreemapPayload | SankeyPayload | SurfacePayload
+  | KpiPayload | ScalePayload | ProportionPayload | SankeyPayload | SurfacePayload
   | ContourPayload | WaterfallPayload | CandlePayload | BoxplotPayload
-  | CalHeatPayload | WafflePayload | QuiverPayload | SevenSegPayload;
+  | CalHeatPayload | QuiverPayload | SevenSegPayload | RecordPayload | OverlayPayload;
 
 /** Every op the `chart` socket can carry. */
 export type ChartValueOp =
-  | ChartOp | "kpi" | "bullet" | "treemap" | "sankey" | "surface"
-  | "contour" | "waterfall" | "candle" | "boxplot" | "calheat" | "waffle" | "quiver" | "sevenseg";
+  | ChartOp | "kpi" | "scale" | "proportion" | "sankey" | "surface"
+  | "contour" | "waterfall" | "candle" | "boxplot" | "calheat" | "quiver" | "sevenseg" | "record" | "overlay";
 
 export interface ChartValue {
   __chart: true;
   op: ChartValueOp;
   /** The raw values the figure plots; unused by the payload figures. */
   values: number | number[] | null;
-  /** Multi-series / point data for the 2-D chart ops (composed = each COLUMN a
-   *  series; bubble = each ROW an [x, y, size] point). Undefined for 1-D ops. */
-  matrix?: (number | null)[][] | null;
+  /** Named series from a frame's numeric columns. For most ops it's set only when ≥ 2
+   *  survive the label column (a legend then draws) and `values` mirrors the FIRST series
+   *  so every 1-D consumer keeps working; Composed reads them as bar-then-lines and Bubble
+   *  as x / y / size columns. Undefined when a plain list or a single column drives the figure. */
+  series?: { name: string; values: (number | null)[] }[];
   /** X-axis category labels, one per data point, shown instead of the 1,2,3…
    *  index; undefined when a plain `values` list drives the figure. */
   labels?: (string | number)[];

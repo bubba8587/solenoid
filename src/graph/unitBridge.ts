@@ -88,7 +88,7 @@ export function applyFcUnit(value: unknown, fcUnitId: string, customUnit?: strin
   };
   if (Array.isArray(value)) {
     if (value.some((c) => Array.isArray(c))) {
-      // A homogeneous NUMERIC matrix carries ONE unit for the whole grid (D20).
+      // A homogeneous NUMERIC matrix carries ONE unit for the whole grid (unitGranularity).
       const firstRow = (value as unknown[]).find((r) => Array.isArray(r)) as unknown[] | undefined;
       const firstCell = firstRow?.find((c) => c !== null && c !== undefined && c !== "");
       // Tag a COPY of the outer array, never `value` itself — the DataflowEngine hands

@@ -1,0 +1,19 @@
+/* The Subsystem card's module-name rows: dense mono, muted, no interaction —
+   the card face carries the group's leading modules at a glance. */
+.subsys-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 2px 2px 0;
+  min-width: 0;
+}
+.subsys-row {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.subsys-row--more { color: var(--text-muted); }

@@ -1,6 +1,6 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { frStore } from "../frStore";
-import { buildFunctionReference, fnRefGroups, type FnRefRow } from "../functionReference";
+import { buildFunctionReference, fnRefGroups, type FnRefRow , libraryTags, LIBRARY_TAGS, type LibraryTag } from "../functionReference";
 import { addNodeByCatalogType } from "../catalogUtils";
 import { IS_COARSE } from "../coarse";
 import { allPacks } from "../packs";
@@ -11,6 +11,7 @@ import notesMd from "../help/notes.md?raw";
 import dataTypesMd from "../help/data-types.md?raw";
 import dataModelMd from "../help/data-model.md?raw";
 import "./FunctionReference.css";
+import { descriptionHtml } from "../descriptionMd";
 import { CloseIcon } from "./CloseIcon";
 import { useEscapeToClose } from "./useEscapeToClose";
 
@@ -24,6 +25,8 @@ export function FunctionReference() {
   // Opposite slices of the unimplemented rows, so one exclusive mode, not two booleans.
   const [filterMode, setFilterMode] = useState<"all" | "todo" | "oos">("all");
   const [showExcel, setShowExcel] = useState(true);
+  // Library chips: an empty set shows everything; otherwise a row must cite one of the picked libraries.
+  const [libs, setLibs] = useState<ReadonlySet<LibraryTag>>(new Set());
 
   // Independent of pack activation (every pack is included), so stable for the session.
   const rows = useMemo(() => buildFunctionReference(), []);
@@ -41,6 +44,7 @@ export function FunctionReference() {
   const q = search.toLowerCase();
   const filtered = rows.filter((r) => {
     if (group !== "All" && r.groupKey !== group) return false;
+    if (libs.size > 0 && !libraryTags(r).some((t) => libs.has(t))) return false;
     if (filterMode === "todo" && (r.implemented || r.oos || r.composition)) return false;
     if (filterMode === "oos" && !r.oos) return false;
     if (!q) return true;
@@ -125,6 +129,15 @@ export function FunctionReference() {
                 onClick={() => setFilterMode((m) => (m === "oos" ? "all" : "oos"))}
                 title="Show only functions not planned for Solenoid: cell refs, OLAP, and superseded classics"
               >Out of scope</button>
+              <span className="fr-filters__sep" aria-hidden="true" />
+              {LIBRARY_TAGS.map((lib) => (
+                <button
+                  key={lib}
+                  className={`fr-filter-pill${libs.has(lib) ? " fr-filter-pill--active" : ""}`}
+                  onClick={() => setLibs((prev) => { const next = new Set(prev); if (next.has(lib)) next.delete(lib); else next.add(lib); return next; })}
+                  title={`Only the rows that cite ${lib === "R" ? "R (base, dplyr, tidyr, lubridate…)" : lib} — the ones you'd reach for from there`}
+                >{lib}</button>
+              ))}
             </div>
             <label className="fr-colcheck" title="Show or hide the Excel Function and Excel Syntax columns">
               <input
@@ -243,7 +256,7 @@ export function FunctionReference() {
                       if (expandable && openDesc === rowKey) {
                         rows.push(
                           <tr key={`${rowKey}-d`} className="fr-desc-row">
-                            <td colSpan={showExcel ? 7 : 5}>{r.description}</td>
+                            <td colSpan={showExcel ? 7 : 5} dangerouslySetInnerHTML={{ __html: descriptionHtml(r.description ?? "") }} />
                           </tr>,
                         );
                       }

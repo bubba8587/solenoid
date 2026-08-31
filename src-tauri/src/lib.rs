@@ -77,6 +77,7 @@ pub fn run() {
             engine::engine_apply_many,
             engine::engine_join,
             engine::engine_append,
+            engine::engine_bind_columns,
             engine::engine_preview,
             engine::engine_sample,
             engine::engine_column,

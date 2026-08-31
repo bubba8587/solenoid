@@ -1,0 +1,207 @@
+{
+ "verb": "bindColumns",
+ "cases": [
+  {
+   "name": "two frames side by side, positional, names kept",
+   "frames": {
+    "a": {
+     "columns": [
+      {
+       "name": "x",
+       "type": "number",
+       "values": [
+        1,
+        2
+       ]
+      },
+      {
+       "name": "y",
+       "type": "string",
+       "values": [
+        "a",
+        "b"
+       ]
+      }
+     ]
+    },
+    "b": {
+     "columns": [
+      {
+       "name": "z",
+       "type": "number",
+       "values": [
+        10,
+        20
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "bindColumns",
+    "frames": [
+     "a",
+     "b"
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "x",
+      "type": "number",
+      "values": [
+       1,
+       2
+      ]
+     },
+     {
+      "name": "y",
+      "type": "string",
+      "values": [
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "z",
+      "type": "number",
+      "values": [
+       10,
+       20
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a colliding name dedupes like makeHeaders; the shorter frame pads down with blanks",
+   "frames": {
+    "a": {
+     "columns": [
+      {
+       "name": "x",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3
+       ]
+      }
+     ]
+    },
+    "b": {
+     "columns": [
+      {
+       "name": "x",
+       "type": "string",
+       "values": [
+        "p"
+       ]
+      },
+      {
+       "name": "y",
+       "type": "number",
+       "values": [
+        7
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "bindColumns",
+    "frames": [
+     "a",
+     "b"
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "x",
+      "type": "number",
+      "values": [
+       1,
+       2,
+       3
+      ]
+     },
+     {
+      "name": "x2",
+      "type": "string",
+      "values": [
+       "p",
+       null,
+       null
+      ]
+     },
+     {
+      "name": "y",
+      "type": "number",
+      "values": [
+       7,
+       null,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "three frames, order preserved; an empty frame contributes nothing",
+   "frames": {
+    "a": {
+     "columns": [
+      {
+       "name": "a",
+       "type": "number",
+       "values": [
+        1
+       ]
+      }
+     ]
+    },
+    "e": {
+     "columns": []
+    },
+    "c": {
+     "columns": [
+      {
+       "name": "c",
+       "type": "logical",
+       "values": [
+        true
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "bindColumns",
+    "frames": [
+     "a",
+     "e",
+     "c"
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "a",
+      "type": "number",
+      "values": [
+       1
+      ]
+     },
+     {
+      "name": "c",
+      "type": "logical",
+      "values": [
+       true
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}

@@ -5,8 +5,9 @@ import { coerceLogical } from "../valueKinds";
 import { formatDateSerial, parseDateToSerial, DEFAULT_DATE_FORMAT } from "./date";
 import { formatCx, cx, isCx, type Cx } from "./complex";
 import { formatNumberPattern } from "./text";
-import { getEditor } from "../process";
+
 import { solError, isSolError, type SolError } from "../errorValue";
+import { getOwningEditor } from "../activeGraph";
 
 // Cast — coerces a scalar or list to the chosen target type, element-wise. The output
 // socket is swapped in place by applyCastTarget so downstream type checking stays honest.
@@ -14,10 +15,10 @@ import { solError, isSolError, type SolError } from "../errorValue";
 export type CastTarget = "number" | "text" | "date" | "complex" | "logical";
 
 export const CAST_TARGET_META: Record<CastTarget, { label: string; title: string }> = {
-  number:  { label: "Number",  title: "Parse text, a logical's 1/0, or a complex value's real part; pass numbers through" },
+  number:  { label: "Number",  title: "Parse text, a logical's 1/0, or a complex value's real part. Pass numbers through" },
   text:    { label: "Text",    title: "Format numbers and dates (with the format pattern) or complex values as text" },
-  date:    { label: "Date",    title: "Parse date text to an Excel serial; numbers pass through as serials" },
-  complex: { label: "Complex", title: "Parse \"a+bi\" text; numbers become re+0i" },
+  date:    { label: "Date",    title: "Parse date text to an Excel serial. Numbers pass through as serials" },
+  complex: { label: "Complex", title: "Parse \"a+bi\" text. Numbers become re+0i" },
   logical: { label: "Boolean", title: "Parse TRUE/FALSE text (or a nonzero number) to a logical TRUE/FALSE" },
 };
 
@@ -130,6 +131,11 @@ function displayList(out: (CastScalar | SolError)[], target: CastTarget): (numbe
 }
 
 export class CastNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    value: "The source socket's type tells a date serial from a plain number, so dates cast to text format as dates.",
+    result: "A blank input stays blank rather than failing. A value that will not parse becomes #VALUE!, per cell in a list.",
+  };
+
   label: string;
   target: CastTarget;
   // ValueDisplay-compatible; a list stays an array, NOT a pre-joined string.
@@ -147,7 +153,7 @@ export class CastNode extends ClassicPreset.Node {
   // The source socket's dataType — the only witness distinguishing a date serial from
   // a plain number.
   private sourceKind(): SocketDataType | null {
-    const editor = getEditor();
+    const editor = getOwningEditor(this.id);
     if (!editor) return null;
     const conn = editor.getConnections().find(
       (c) => c.target === this.id && c.targetInput === "value",

@@ -1,128 +1,854 @@
-{ "verb": "filterMulti",
-  "cases": [
-    { "name": "and: every condition must pass",
-      "frames": { "in": { "columns": [
-        { "name": "v", "type": "number", "values": [1, 5, 3, 8] },
-        { "name": "s", "type": "string", "values": ["a", "b", "a", "b"] } ] } },
-      "op": { "kind": "filterMulti", "combine": "and", "conditions": [
-        { "column": "v", "op": "gt", "value": 2 },
-        { "column": "s", "op": "eq", "value": "b" } ] },
-      "expect": { "columns": [
-        { "name": "v", "type": "number", "values": [5, 8] },
-        { "name": "s", "type": "string", "values": ["b", "b"] } ] } },
-    { "name": "or: any condition passes",
-      "frames": { "in": { "columns": [
-        { "name": "v", "type": "number", "values": [1, 5, 3, 8] },
-        { "name": "s", "type": "string", "values": ["a", "b", "a", "b"] } ] } },
-      "op": { "kind": "filterMulti", "combine": "or", "conditions": [
-        { "column": "v", "op": "lt", "value": 2 },
-        { "column": "s", "op": "eq", "value": "b" } ] },
-      "expect": { "columns": [
-        { "name": "v", "type": "number", "values": [1, 5, 8] },
-        { "name": "s", "type": "string", "values": ["a", "b", "b"] } ] } },
-    { "name": "complement keeps the REST",
-      "frames": { "in": { "columns": [
-        { "name": "v", "type": "number", "values": [1, 5, 3, 8] },
-        { "name": "s", "type": "string", "values": ["a", "b", "a", "b"] } ] } },
-      "op": { "kind": "filterMulti", "combine": "and", "complement": true, "conditions": [
-        { "column": "v", "op": "gt", "value": 2 } ] },
-      "expect": { "columns": [
-        { "name": "v", "type": "number", "values": [1] },
-        { "name": "s", "type": "string", "values": ["a"] } ] } },
-    { "name": "an unknown condition column errors",
-      "frames": { "in": { "columns": [
-        { "name": "v", "type": "number", "values": [1] } ] } },
-      "op": { "kind": "filterMulti", "combine": "and", "conditions": [
-        { "column": "nope", "op": "gt", "value": 0 } ] },
-      "expectError": "#REF!" },
-    { "name": "matchCase rides per-condition",
-      "frames": { "in": { "columns": [
-        { "name": "qty", "type": "number", "values": [5, 12, null, 20, null] },
-        { "name": "city", "type": "string", "values": ["Oslo", "Bergen", "Oslo", "Tromso", "Oslo"] } ] } },
-      "op": { "kind": "filterMulti", "combine": "or", "conditions": [
-        { "column": "city", "op": "eq", "value": "bergen", "matchCase": true },
-        { "column": "city", "op": "startsWith", "value": "tr" } ] },
-      "expect": { "columns": [
-        { "name": "qty", "type": "number", "values": [20] },
-        { "name": "city", "type": "string", "values": ["Tromso"] } ] } },
-    { "name": "or saves a row whose other condition nulled",
-      "frames": { "in": { "columns": [
-        { "name": "qty", "type": "number", "values": [5, 12, null, 20, null] },
-        { "name": "city", "type": "string", "values": ["Oslo", "Bergen", "Oslo", "Tromso", "Oslo"] } ] } },
-      "op": { "kind": "filterMulti", "combine": "or", "conditions": [
-        { "column": "qty", "op": "gte", "value": 0 },
-        { "column": "city", "op": "eq", "value": "oslo" } ] },
-      "expect": { "columns": [
-        { "name": "qty", "type": "number", "values": [5, 12, null, 20, null] },
-        { "name": "city", "type": "string", "values": ["Oslo", "Bergen", "Oslo", "Tromso", "Oslo"] } ] } },
-    { "name": "an unparseable value matches no rows for that condition; or survives",
-      "frames": { "in": { "columns": [
-        { "name": "qty", "type": "number", "values": [5, 12, null, 20, null] },
-        { "name": "city", "type": "string", "values": ["Oslo", "Bergen", "Oslo", "Tromso", "Oslo"] } ] } },
-      "op": { "kind": "filterMulti", "combine": "or", "conditions": [
-        { "column": "qty", "op": "gt", "value": "garbage" },
-        { "column": "city", "op": "eq", "value": "bergen" } ] },
-      "expect": { "columns": [
-        { "name": "qty", "type": "number", "values": [12] },
-        { "name": "city", "type": "string", "values": ["Bergen"] } ] } },
-    { "name": "an unparseable value under and empties the result",
-      "frames": { "in": { "columns": [
-        { "name": "qty", "type": "number", "values": [5, 12, null, 20, null] },
-        { "name": "city", "type": "string", "values": ["Oslo", "Bergen", "Oslo", "Tromso", "Oslo"] } ] } },
-      "op": { "kind": "filterMulti", "combine": "and", "conditions": [
-        { "column": "qty", "op": "gt", "value": "garbage" },
-        { "column": "city", "op": "eq", "value": "bergen" } ] },
-      "expect": { "columns": [
-        { "name": "qty", "type": "number", "values": [] },
-        { "name": "city", "type": "string", "values": [] } ] } },
-    { "name": "no conditions is the identity under and",
-      "frames": { "in": { "columns": [
-        { "name": "qty", "type": "number", "values": [5, 12, null] } ] } },
-      "op": { "kind": "filterMulti", "combine": "and", "conditions": [] },
-      "expect": { "columns": [
-        { "name": "qty", "type": "number", "values": [5, 12, null] } ] } },
-    { "name": "no conditions is the identity under or (NOT the vacuous false)",
-      "frames": { "in": { "columns": [
-        { "name": "qty", "type": "number", "values": [5, 12, null] } ] } },
-      "op": { "kind": "filterMulti", "combine": "or", "conditions": [] },
-      "expect": { "columns": [
-        { "name": "qty", "type": "number", "values": [5, 12, null] } ] } },
-    { "name": "complement of the identity is the empty frame, schema kept",
-      "frames": { "in": { "columns": [
-        { "name": "qty", "type": "number", "values": [5, 12, null] },
-        { "name": "city", "type": "string", "values": ["a", "b", "c"] } ] } },
-      "op": { "kind": "filterMulti", "combine": "and", "complement": true, "conditions": [] },
-      "expect": { "columns": [
-        { "name": "qty", "type": "number", "values": [] },
-        { "name": "city", "type": "string", "values": [] } ] } },
-    { "name": "complement keeps null-predicate rows (row complement, not negation)",
-      "frames": { "in": { "columns": [
-        { "name": "qty", "type": "number", "values": [5, 12, null, 20, null] },
-        { "name": "city", "type": "string", "values": ["Oslo", "Bergen", "Oslo", "Tromso", "Oslo"] } ] } },
-      "op": { "kind": "filterMulti", "combine": "or", "complement": true, "conditions": [
-        { "column": "qty", "op": "gte", "value": 15 },
-        { "column": "qty", "op": "lt", "value": 6 } ] },
-      "expect": { "columns": [
-        { "name": "qty", "type": "number", "values": [12, null, null] },
-        { "name": "city", "type": "string", "values": ["Bergen", "Oslo", "Oslo"] } ] } },
-    { "name": "numeric-only conditions (the engine's lazy fold path)",
-      "frames": { "in": { "columns": [
-        { "name": "qty", "type": "number", "values": [5, 12, null, 20, null] },
-        { "name": "city", "type": "string", "values": ["Oslo", "Bergen", "Oslo", "Tromso", "Oslo"] } ] } },
-      "op": { "kind": "filterMulti", "combine": "or", "conditions": [
-        { "column": "qty", "op": "gte", "value": 15 },
-        { "column": "qty", "op": "lt", "value": 6 } ] },
-      "expect": { "columns": [
-        { "name": "qty", "type": "number", "values": [5, 20] },
-        { "name": "city", "type": "string", "values": ["Oslo", "Tromso"] } ] } },
-    { "name": "a text condition rides the scan path beside a numeric one",
-      "frames": { "in": { "columns": [
-        { "name": "qty", "type": "number", "values": [5, 12, null, 20, null] },
-        { "name": "city", "type": "string", "values": ["Oslo", "Bergen", "Oslo", "Tromso", "Oslo"] } ] } },
-      "op": { "kind": "filterMulti", "combine": "and", "conditions": [
-        { "column": "city", "op": "contains", "value": "O" },
-        { "column": "qty", "op": "gte", "value": 10 } ] },
-      "expect": { "columns": [
-        { "name": "qty", "type": "number", "values": [20] },
-        { "name": "city", "type": "string", "values": ["Tromso"] } ] } }
-  ] }
+{
+ "verb": "filterMulti",
+ "cases": [
+  {
+   "name": "and: every condition must pass",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        5,
+        3,
+        8
+       ]
+      },
+      {
+       "name": "s",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "a",
+        "b"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filterMulti",
+    "combine": "and",
+    "conditions": [
+     {
+      "column": "v",
+      "op": "gt",
+      "value": 2
+     },
+     {
+      "column": "s",
+      "op": "eq",
+      "value": "b"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       5,
+       8
+      ]
+     },
+     {
+      "name": "s",
+      "type": "string",
+      "values": [
+       "b",
+       "b"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "or: any condition passes",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        5,
+        3,
+        8
+       ]
+      },
+      {
+       "name": "s",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "a",
+        "b"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filterMulti",
+    "combine": "or",
+    "conditions": [
+     {
+      "column": "v",
+      "op": "lt",
+      "value": 2
+     },
+     {
+      "column": "s",
+      "op": "eq",
+      "value": "b"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1,
+       5,
+       8
+      ]
+     },
+     {
+      "name": "s",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "b"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "complement keeps the REST",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        5,
+        3,
+        8
+       ]
+      },
+      {
+       "name": "s",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "a",
+        "b"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filterMulti",
+    "combine": "and",
+    "complement": true,
+    "conditions": [
+     {
+      "column": "v",
+      "op": "gt",
+      "value": 2
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       1
+      ]
+     },
+     {
+      "name": "s",
+      "type": "string",
+      "values": [
+       "a"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "an unknown condition column errors",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filterMulti",
+    "combine": "and",
+    "conditions": [
+     {
+      "column": "nope",
+      "op": "gt",
+      "value": 0
+     }
+    ]
+   },
+   "expectError": "#REF!"
+  },
+  {
+   "name": "matchCase rides per-condition",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "qty",
+       "type": "number",
+       "values": [
+        5,
+        12,
+        null,
+        20,
+        null
+       ]
+      },
+      {
+       "name": "city",
+       "type": "string",
+       "values": [
+        "Oslo",
+        "Bergen",
+        "Oslo",
+        "Tromso",
+        "Oslo"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filterMulti",
+    "combine": "or",
+    "conditions": [
+     {
+      "column": "city",
+      "op": "eq",
+      "value": "bergen",
+      "matchCase": true
+     },
+     {
+      "column": "city",
+      "op": "startsWith",
+      "value": "tr"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "qty",
+      "type": "number",
+      "values": [
+       20
+      ]
+     },
+     {
+      "name": "city",
+      "type": "string",
+      "values": [
+       "Tromso"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "or saves a row whose other condition nulled",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "qty",
+       "type": "number",
+       "values": [
+        5,
+        12,
+        null,
+        20,
+        null
+       ]
+      },
+      {
+       "name": "city",
+       "type": "string",
+       "values": [
+        "Oslo",
+        "Bergen",
+        "Oslo",
+        "Tromso",
+        "Oslo"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filterMulti",
+    "combine": "or",
+    "conditions": [
+     {
+      "column": "qty",
+      "op": "gte",
+      "value": 0
+     },
+     {
+      "column": "city",
+      "op": "eq",
+      "value": "oslo"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "qty",
+      "type": "number",
+      "values": [
+       5,
+       12,
+       null,
+       20,
+       null
+      ]
+     },
+     {
+      "name": "city",
+      "type": "string",
+      "values": [
+       "Oslo",
+       "Bergen",
+       "Oslo",
+       "Tromso",
+       "Oslo"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "an unparseable value matches no rows for that condition; or survives",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "qty",
+       "type": "number",
+       "values": [
+        5,
+        12,
+        null,
+        20,
+        null
+       ]
+      },
+      {
+       "name": "city",
+       "type": "string",
+       "values": [
+        "Oslo",
+        "Bergen",
+        "Oslo",
+        "Tromso",
+        "Oslo"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filterMulti",
+    "combine": "or",
+    "conditions": [
+     {
+      "column": "qty",
+      "op": "gt",
+      "value": "garbage"
+     },
+     {
+      "column": "city",
+      "op": "eq",
+      "value": "bergen"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "qty",
+      "type": "number",
+      "values": [
+       12
+      ]
+     },
+     {
+      "name": "city",
+      "type": "string",
+      "values": [
+       "Bergen"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "an unparseable value under and empties the result",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "qty",
+       "type": "number",
+       "values": [
+        5,
+        12,
+        null,
+        20,
+        null
+       ]
+      },
+      {
+       "name": "city",
+       "type": "string",
+       "values": [
+        "Oslo",
+        "Bergen",
+        "Oslo",
+        "Tromso",
+        "Oslo"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filterMulti",
+    "combine": "and",
+    "conditions": [
+     {
+      "column": "qty",
+      "op": "gt",
+      "value": "garbage"
+     },
+     {
+      "column": "city",
+      "op": "eq",
+      "value": "bergen"
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "qty",
+      "type": "number",
+      "values": []
+     },
+     {
+      "name": "city",
+      "type": "string",
+      "values": []
+     }
+    ]
+   }
+  },
+  {
+   "name": "no conditions is the identity under and",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "qty",
+       "type": "number",
+       "values": [
+        5,
+        12,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filterMulti",
+    "combine": "and",
+    "conditions": []
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "qty",
+      "type": "number",
+      "values": [
+       5,
+       12,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "no conditions is the identity under or (NOT the vacuous false)",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "qty",
+       "type": "number",
+       "values": [
+        5,
+        12,
+        null
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filterMulti",
+    "combine": "or",
+    "conditions": []
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "qty",
+      "type": "number",
+      "values": [
+       5,
+       12,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "complement of the identity is the empty frame, schema kept",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "qty",
+       "type": "number",
+       "values": [
+        5,
+        12,
+        null
+       ]
+      },
+      {
+       "name": "city",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "c"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filterMulti",
+    "combine": "and",
+    "complement": true,
+    "conditions": []
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "qty",
+      "type": "number",
+      "values": []
+     },
+     {
+      "name": "city",
+      "type": "string",
+      "values": []
+     }
+    ]
+   }
+  },
+  {
+   "name": "complement keeps null-predicate rows (row complement, not negation)",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "qty",
+       "type": "number",
+       "values": [
+        5,
+        12,
+        null,
+        20,
+        null
+       ]
+      },
+      {
+       "name": "city",
+       "type": "string",
+       "values": [
+        "Oslo",
+        "Bergen",
+        "Oslo",
+        "Tromso",
+        "Oslo"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filterMulti",
+    "combine": "or",
+    "complement": true,
+    "conditions": [
+     {
+      "column": "qty",
+      "op": "gte",
+      "value": 15
+     },
+     {
+      "column": "qty",
+      "op": "lt",
+      "value": 6
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "qty",
+      "type": "number",
+      "values": [
+       12,
+       null,
+       null
+      ]
+     },
+     {
+      "name": "city",
+      "type": "string",
+      "values": [
+       "Bergen",
+       "Oslo",
+       "Oslo"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "numeric-only conditions (the engine's lazy fold path)",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "qty",
+       "type": "number",
+       "values": [
+        5,
+        12,
+        null,
+        20,
+        null
+       ]
+      },
+      {
+       "name": "city",
+       "type": "string",
+       "values": [
+        "Oslo",
+        "Bergen",
+        "Oslo",
+        "Tromso",
+        "Oslo"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filterMulti",
+    "combine": "or",
+    "conditions": [
+     {
+      "column": "qty",
+      "op": "gte",
+      "value": 15
+     },
+     {
+      "column": "qty",
+      "op": "lt",
+      "value": 6
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "qty",
+      "type": "number",
+      "values": [
+       5,
+       20
+      ]
+     },
+     {
+      "name": "city",
+      "type": "string",
+      "values": [
+       "Oslo",
+       "Tromso"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a text condition rides the scan path beside a numeric one",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "qty",
+       "type": "number",
+       "values": [
+        5,
+        12,
+        null,
+        20,
+        null
+       ]
+      },
+      {
+       "name": "city",
+       "type": "string",
+       "values": [
+        "Oslo",
+        "Bergen",
+        "Oslo",
+        "Tromso",
+        "Oslo"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filterMulti",
+    "combine": "and",
+    "conditions": [
+     {
+      "column": "city",
+      "op": "contains",
+      "value": "O"
+     },
+     {
+      "column": "qty",
+      "op": "gte",
+      "value": 10
+     }
+    ]
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "qty",
+      "type": "number",
+      "values": [
+       20
+      ]
+     },
+     {
+      "name": "city",
+      "type": "string",
+      "values": [
+       "Tromso"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "one text-predicate condition on a number column fails the whole filter with #TYPE! (even under OR)",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3
+       ]
+      },
+      {
+       "name": "s",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "c"
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "filterMulti",
+    "combine": "or",
+    "conditions": [
+     {
+      "column": "s",
+      "op": "eq",
+      "value": "a"
+     },
+     {
+      "column": "v",
+      "op": "contains",
+      "value": "2"
+     }
+    ]
+   },
+   "expectError": "#TYPE!"
+  }
+ ]
+}

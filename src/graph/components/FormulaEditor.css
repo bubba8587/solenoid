@@ -62,6 +62,9 @@
 .fx-tokens .fx-paren,
 .fx-tokens .fx-comma   { color: var(--text-muted); }
 .fx-tokens .fx-err     { color: #e0707a; text-decoration: underline wavy; }
+/* JS-only tokens (jsSyntax.ts — the Script node's source). */
+.fx-tokens .fx-kw      { color: #b48cff; font-weight: 600; }
+.fx-tokens .fx-comment { color: var(--text-muted); font-style: italic; }
 
 /* Autocomplete menu — drops just below the field. */
 .fx-editor__menu {

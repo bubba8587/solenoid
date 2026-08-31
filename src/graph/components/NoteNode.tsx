@@ -1,3 +1,4 @@
+import { useFlowResizeGrip } from "../flowSurface";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
@@ -8,19 +9,20 @@ import { SwatchGrid } from "./SwatchGrid";
 import { SocketDot, type SocketGlyph } from "./SocketLegend";
 import { NodeSocket } from "./NodeSocket";
 import { useDismissOnOutside } from "./useDismissOnOutside";
-// getActiveEditor/getActiveArea, NOT getEditor/getArea: a Note inside a composite
+import { useEditableLabel } from "./inlineInput";
+// getActiveEditor/getActiveView, NOT getEditor/getView: a Note inside a composite
 // drill-in must prune/reconcile/refresh on its OWN graph.
-import { processGraph, bumpConnectionVersion, pushHistory } from "../process";
-import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { processGraph } from "../process";
+import { bumpConnectionVersion } from "../graphSignals";
+import { getActiveEditor, getActiveView } from "../activeGraph";
 import { reconcileFcTypes } from "../fcReconcile";
 import { scheduleAutosave } from "../persistence";
-import { gridSnapStore, snapCoord } from "../gridSnapStore";
 import { standoffStore, settleStandoffs } from "../standoffs";
 import { SOCKET_COLORS } from "../sockets";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
-import { parseNoteFrontmatter, type FrontmatterFieldType, type FrontmatterValue } from "../noteFrontmatter";
+import { parseNoteFrontmatter, toggleTaskMarker, type FrontmatterFieldType, type FrontmatterValue } from "../noteFrontmatter";
 import type { NodeProps, Emit } from "./nodeKit";
 import type { ClassicPreset } from "rete";
 import { stopDragStart } from "../coarse";
@@ -57,17 +59,6 @@ function previewValue(value: FrontmatterValue, t: FrontmatterFieldType): string 
 }
 
 // The body edit gets its OWN undo entry, pushed AFTER the cable removals: syncFields
-// drops the output socket untracked while removeConnection IS tracked, so undo must
-// restore the body and re-derive the socket before the cable re-add lands on it.
-type NoteSyncHost = { body: string; syncFields: () => unknown };
-export function pushNoteFieldRemovalUndo(
-  node: NoteSyncHost, prevBody: string, newBody: string, refresh: () => void,
-): void {
-  pushHistory(
-    () => { node.body = prevBody; node.syncFields(); refresh(); }, // undo → body + socket back
-    () => { node.body = newBody; node.syncFields(); refresh(); },  // redo → re-apply the edit
-  );
-}
 
 // Resize floors, no ceiling. The height floor GROWS by the fields strip (22px per
 // socket row + 6px strip padding) so a note can never shrink below its sockets.
@@ -80,17 +71,28 @@ const fieldsStripHeight = (n: number) => (n > 0 ? n * FIELD_ROW_H + 6 : 0);
 // than start a drag; the READ body keeps coarse-aware stopDragStart so it can drag.
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
+/** Marked renders a GFM task-list item as a DISABLED checkbox, and a disabled input
+ *  fires no click. Strip `disabled` from the checkbox inputs — the only `<input>`
+ *  marked emits — so the read view's boxes are tickable. Runs on already-sanitized
+ *  HTML (post-DOMPurify), so it only ever sees marked's own markup. */
+function enableTaskCheckboxes(html: string): string {
+  return html.replace(/<input\b[^>]*\btype="checkbox"[^>]*>/g, (tag) =>
+    tag.replace(/\s+disabled(="[^"]*")?/g, ""),
+  );
+}
+
+
 /** A `---`-fenced YAML block at the top of the body turns each key into a typed OUTPUT
  *  socket; those reconcile on BLUR, never per keystroke, so typing can't churn cables. */
 export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
-  const [label, setLabel] = useState(data.label);
   const [body, setBody] = useState(data.body);
   const [color, setColor] = useState(data.color);
   const [collapsed, setCollapsed] = useState(data.collapsed);
   const [editing, setEditing] = useState(false);
-  const [editingLabel, setEditingLabel] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  // The shared header title-edit mechanic (click-to-edit, Enter/blur, Escape revert).
+  const title = useEditableLabel(data);
   // Bumped whenever the frontmatter fields change (body commit / type override)
   // to re-render the strip + markdown off the node's freshly-synced derived state.
   const [, setFieldsVersion] = useState(0);
@@ -98,13 +100,12 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   const paletteRef = useRef<HTMLDivElement>(null);
   useDismissOnOutside(pickerOpen, () => setPickerOpen(false), [swatchRef, paletteRef]);
 
-  useEffect(() => { setLabel(data.label); }, [data.label]);
   useEffect(() => { setBody(data.body); }, [data.body]);
   useEffect(() => { setColor(data.color); }, [data.color]);
   useEffect(() => { setCollapsed(data.collapsed); }, [data.collapsed]);
 
   // The body text last reconciled to sockets — lets a no-edit blur skip the heavy
-  // area.update + processGraph, whose mid-gesture re-render closed the mobile keyboard.
+  // view.update + processGraph, whose mid-gesture re-render closed the mobile keyboard.
   const lastSyncRef = useRef(data.body);
   // Suppress an enter-edit click landing within a beat of a blur: on mobile the same
   // tap that dismisses the keyboard falls through onto the read view and reopens it.
@@ -115,31 +116,16 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   // the override path, which mutates fieldTypes rather than the body.
   async function commitFields(force = false) {
     if (!force && data.body === lastSyncRef.current) return;
-    const prevBody = lastSyncRef.current; // body BEFORE this commit (still has the removed key)
-    const newBody = data.body;
     lastSyncRef.current = data.body;
     const { removed, retyped } = data.syncFields();
     const editor = getActiveEditor();
-    const area = getActiveArea();
-    const strandedByRemoval = await dropStrandedFrontmatterCables(data.id, removed, retyped);
-    // Body-path only (`!force`): a type-override drop mutates fieldTypes, not the
-    // body. See pushNoteFieldRemovalUndo for the ordering this depends on.
-    if (!force && strandedByRemoval && prevBody !== newBody) {
-      pushNoteFieldRemovalUndo(data, prevBody, newBody, () => {
-        setBody(data.body);
-        setFieldsVersion((v) => v + 1);
-        const ed = getActiveEditor(); const ar = getActiveArea();
-        void ar?.update("node", data.id);
-        if (ed && ar) reconcileFcTypes(ed, ar);
-        bumpConnectionVersion();
-        void processGraph();
-      });
-    }
+    const view = getActiveView();
+    await dropStrandedFrontmatterCables(data.id, removed, retyped);
     setFieldsVersion((v) => v + 1);
-    await area?.update("node", data.id);
+    await view?.rerenderNode(data.id);
     // A pure retype fires no connection event, so re-adapt downstream FCs by hand or
     // they keep formatting by the OLD type.
-    if (editor && area && retyped.length) reconcileFcTypes(editor, area);
+    if (editor && view && retyped.length) reconcileFcTypes(editor, view);
     bumpConnectionVersion(); // re-route cables whose source row shifted
     await processGraph();
   }
@@ -173,44 +159,19 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
 
   // Manual width + height, like a Group: a fixed box the body fills and scrolls in.
   // No history entry — just an autosave on release.
-  function onResizeDown(e: React.PointerEvent) {
-    e.stopPropagation();
-    e.preventDefault();
-    const startX = e.clientX, startY = e.clientY;
-    const startW = data.width, startH = data.height;
-    const area = getActiveArea();
-    const k = area?.area.transform.k ?? 1;
-    const handle = e.currentTarget as HTMLElement;
-    handle.setPointerCapture(e.pointerId);
-    const move = (ev: PointerEvent) => {
-      // Integer dims — a fractional size renders the inset:-2px selection ring 0.5px off.
-      data.width = Math.round(Math.max(NOTE_MIN_W, startW + (ev.clientX - startX) / k));
-      data.height = Math.round(Math.max(minNoteH, startH + (ev.clientY - startY) / k));
-      void area?.update("node", data.id);
-    };
-    const up = () => {
-      handle.releasePointerCapture(e.pointerId);
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      // Snap-to-grid (on release): land the bottom-right corner on the grid by
-      // adjusting w/h (the top-left is fixed during a resize) — same as Groups.
-      if (gridSnapStore.get()) {
-        const pos = area?.nodeViews.get(data.id)?.position;
-        if (pos) {
-          data.width = Math.round(Math.max(NOTE_MIN_W, snapCoord(pos.x + data.width) - pos.x));
-          data.height = Math.round(Math.max(minNoteH, snapCoord(pos.y + data.height) - pos.y));
-        }
-      }
-      void area?.update("node", data.id);
-      scheduleAutosave();
-      // The standoff solver MEASURES offsetWidth/Height, so defer a frame for the paint;
-      // pinning this note makes its partner re-align, not the reverse.
-      if (!standoffStore.isEmpty()) {
-        requestAnimationFrame(() => settleStandoffs(new Set([data.id])));
-      }
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
+  const Grip = useFlowResizeGrip();
+  function onResize(size: { width: number; height: number }) {
+    data.width = Math.max(NOTE_MIN_W, size.width);
+    data.height = Math.max(minNoteH, size.height);
+    void getActiveView()?.rerenderNode(data.id);
+  }
+  function onResizeEnd() {
+    scheduleAutosave();
+    // The standoff solver MEASURES offsetWidth/Height, so defer a frame for the paint;
+    // pinning this note makes its partner re-align, not the reverse.
+    if (!standoffStore.isEmpty()) {
+      requestAnimationFrame(() => settleStandoffs(new Set([data.id])));
+    }
   }
 
   // Derived LIVE from `body`, not `data.renderBody` — the RENDER is deliberately
@@ -219,34 +180,42 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   // NOT trusted content — a body arrives in shared .solenoid files and marked does no
   // sanitizing, so sanitize EVERY render (the CSP is only the second layer).
   const bodyHtml = useMemo(
-    () => DOMPurify.sanitize(marked.parse(renderBody || "", { async: false, gfm: true, breaks: true }) as string),
+    () => enableTaskCheckboxes(DOMPurify.sanitize(marked.parse(renderBody || "", { async: false, gfm: true, breaks: true }) as string)),
     [renderBody],
   );
-
-  // Draft-only while typing (project-wide rule: commit on Enter/blur, never per
-  // keystroke). Escape reverts to the last committed label without writing.
-  const labelCancelled = useRef(false);
-  function onLabel(v: string) { setLabel(v); } // draft only — data.label unchanged until commit
-  function commitLabel() {
-    if (labelCancelled.current) { labelCancelled.current = false; setLabel(data.label); setEditingLabel(false); return; }
-    const prev = data.label;
-    const next = label;
-    if (next !== prev) {
-      data.label = next;
-      scheduleAutosave();
-      pushHistory(
-        () => { data.label = prev; void getActiveArea()?.update("node", data.id); scheduleAutosave(); },
-        () => { data.label = next; void getActiveArea()?.update("node", data.id); scheduleAutosave(); },
-      );
+  // The read body's task-list checkboxes index into it in document order (= source
+  // order, since a nested item's box still comes after its parent's).
+  const renderedRef = useRef<HTMLDivElement>(null);
+  function onRenderedClick(e: React.MouseEvent<HTMLDivElement>) {
+    const target = e.target;
+    // A tick on a task checkbox toggles its source marker; it must NOT fall through
+    // to startEdit (which would swap in the textarea and drop the tap). The box is a
+    // native input, like the Boolean Input node's.
+    if (target instanceof HTMLInputElement && target.type === "checkbox") {
+      const boxes = renderedRef.current?.querySelectorAll('input[type="checkbox"]');
+      const idx = boxes ? Array.prototype.indexOf.call(boxes, target) : -1;
+      if (idx >= 0) {
+        const next = toggleTaskMarker(body, idx);
+        setBody(next);
+        data.body = next;
+        scheduleAutosave();
+        // view.update re-captures the note for the canvas renderer (a bare setBody
+        // leaves the OLD text showing there, same reason `pick` does it); processGraph
+        // refreshes the `document` output for any downstream sink.
+        void getActiveView()?.rerenderNode(data.id);
+        void processGraph(data.id);
+      }
+      return;
     }
-    setEditingLabel(false);
+    startEdit();
   }
+
   // Store the raw text live (autosave), but DON'T reconcile sockets per keystroke —
   // that happens on blur (commitFields), so editing the YAML doesn't churn cables.
   function onBody(v: string) { setBody(v); data.body = v; scheduleAutosave(); }
-  // area.update drives the pipe the HTML-canvas renderer re-captures on; a bare setColor
+  // view.update drives the pipe the HTML-canvas renderer re-captures on; a bare setColor
   // re-renders only rete's root, leaving the canvas showing the OLD color.
-  function pick(c: string) { setColor(c); data.color = c; void getActiveArea()?.update("node", data.id); scheduleAutosave(); }
+  function pick(c: string) { setColor(c); data.color = c; void getActiveView()?.rerenderNode(data.id); scheduleAutosave(); }
   function toggleCollapse() { const v = !collapsed; setCollapsed(v); data.collapsed = v; scheduleAutosave(); }
 
   const mode = appThemeStore.getMode();
@@ -275,32 +244,16 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
             <path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        {editingLabel ? (
-          <input
-            className="solenoid-note__name"
-            value={label}
-            placeholder="Note"
-            spellCheck={false}
-            autoFocus
-            onChange={(e) => onLabel(e.target.value)}
-            onBlur={commitLabel}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") { e.currentTarget.blur(); }
-              else if (e.key === "Escape") { labelCancelled.current = true; e.currentTarget.blur(); }
-            }}
-            onPointerDown={stop}
-            onMouseDown={stop}
-          />
+        {title.editing ? (
+          <input className="solenoid-note__name" placeholder="Note" {...title.inputProps} />
         ) : (
           // Fit-content so the textless part of the bar stays draggable.
           <div
-            className={`solenoid-note__name-display${label.trim() ? "" : " solenoid-note__name-display--empty"}`}
-            title={label || "Note"}
-            onClick={() => setEditingLabel(true)}
-            onPointerDown={stop}
-            onMouseDown={stop}
+            className={`solenoid-note__name-display${data.label.trim() ? "" : " solenoid-note__name-display--empty"}`}
+            title={data.label || "Note"}
+            {...title.displayProps}
           >
-            {label.trim() || "Note"}
+            {data.label.trim() || "Note"}
           </div>
         )}
         <button
@@ -358,7 +311,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
         <div ref={noteBodyRef} className="solenoid-note__content">
           {editing ? (
             <textarea
-              className="solenoid-note__body"
+              className="solenoid-note__body nowheel"
               value={body}
               placeholder="Markdown note…"
               spellCheck={false}
@@ -374,8 +327,9 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
             // Plain markdown — a Note is output-only, so a `` `=name` `` span stays
             // literal inline code (no ref swap). bodyHtml is already sanitized.
             <div
-              className="solenoid-note__rendered sol-md"
-              onClick={startEdit}
+              ref={renderedRef}
+              className="solenoid-note__rendered sol-md nowheel"
+              onClick={onRenderedClick}
               onPointerDown={stopDragStart}
               onMouseDown={stopDragStart}
               dangerouslySetInnerHTML={{ __html: bodyHtml }}
@@ -392,16 +346,12 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
           )}
         </div>
       )}
-      {!collapsed && (
-        <div
-          className="solenoid-note__resize"
-          onPointerDown={onResizeDown}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
+      {!collapsed && Grip && (
+        <Grip className="solenoid-note__resize" minWidth={NOTE_MIN_W} minHeight={minNoteH} onResize={onResize} onResizeEnd={onResizeEnd}>
           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
             <path d="M11 5 5 11M11 9l-2 2" />
           </svg>
-        </div>
+        </Grip>
       )}
     </div>
   );
@@ -445,7 +395,7 @@ export function FieldRow({
         ref={btnRef}
         type="button"
         className="solenoid-note__field-glyph"
-        title={`${FIELD_TYPE_LABEL[type]}. Change type.`}
+        title={`${FIELD_TYPE_LABEL[type]}. Change the type.`}
         onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
         onPointerDown={stop}
         onMouseDown={stop}

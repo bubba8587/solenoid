@@ -1,6 +1,8 @@
 {
-  "label": "Power Features",
   "v": 2,
+  "order": 10,
+  "label": "Power features",
+  "group": "Start here",
   "nodes": [
     {
       "id": "n-start",
@@ -55,8 +57,8 @@
       "y": -120,
       "init": {
         "label": "× rate",
-        "params": "x",
-        "expr": "x * rate"
+        "params": "value",
+        "expr": "value * rate"
       },
       "literals": {
         "rate": 3

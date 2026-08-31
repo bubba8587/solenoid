@@ -1,7 +1,6 @@
 import React, { useEffect } from "react";
 import { useMenuClamp } from "./menuClamp";
-import { describeNode } from "../catalogUtils";
-import { getOwningEditor } from "../activeGraph";
+import { inspectorStore } from "../inspectorStore";
 import "./SocketContextMenu.css";
 
 // The single right-click menu for a node / group body — a node's right-click has
@@ -89,10 +88,10 @@ export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
-    document.addEventListener("mousedown", onDown);
+    document.addEventListener("pointerdown", onDown, true);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("pointerdown", onDown, true);
       document.removeEventListener("keydown", onKey);
     };
   }, [onClose]);
@@ -109,18 +108,27 @@ export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed
     </button>
   );
 
-  // The catalog one-liner (the header tooltip's text) — this menu is its only
-  // touch-reachable home, since hover doesn't exist on mobile.
-  const node = getOwningEditor(target.nodeId)?.getNode(target.nodeId);
-  const blurb = node ? describeNode(node) : null;
-
   return (
     <div
       ref={ref}
       className="solenoid-socket-ctx"
       style={{ left: target.screenX + 6, top: target.screenY - 4 }}
     >
-      {blurb && <div className="solenoid-socket-ctx__blurb">{blurb}</div>}
+      {/* The description moved to the Inspector; this (i) is its door — and the
+          touch-reachable one, since mobile has no top-bar button. */}
+      <button
+        className="solenoid-socket-ctx__info"
+        title="Inspector"
+        aria-label="Inspector"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={() => { inspectorStore.openFor(target.nodeId); onClose(); }}
+      >
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 16v-4" />
+          <path d="M12 8h.01" />
+        </svg>
+      </button>
       {target.isComposite && onEditComposite &&
         item(<EditSvg />, "Edit contents", () => onEditComposite!(target.nodeId))}
       {target.isComposite && onUnpackComposite &&

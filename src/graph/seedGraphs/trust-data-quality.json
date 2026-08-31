@@ -1,7 +1,8 @@
 {
   "v": 2,
-  "label": "Trust & Data Quality",
-  "order": 78,
+  "order": 220,
+  "label": "Trust & data quality",
+  "group": "Values & units",
   "nodes": [
     {
       "id": "fi-sensors",

@@ -1,6 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ChartNode as ChartNodeType, ChartOp } from "../rete-nodes";
-import { CHART_MATRIX_OPS, CHART_OP_META } from "../rete-nodes";
+import { CHART_OP_META } from "../rete-nodes";
 import { NodeShell, OpSelect, type NodeProps, type OpOption } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
 import { InlineInputs } from "./inlineInput";
@@ -9,27 +9,17 @@ import { ChartExpandButton } from "./ChartExpandButton";
 import { ChartChip } from "./ChartChip";
 import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
-import { getActiveArea } from "../activeGraph";
 import { formatAnnotationStore } from "../formatAnnotationStore";
 import type { ChartValue } from "../chartValue";
-import { dropInputCables } from "./cablePrune";
+import { nodeDisplayName } from "../catalogUtils";
 
-// Both data ports stay defined but only the op's active one renders, so an op-FAMILY
-// switch (1-D ↔ matrix) must drop the inactive socket's cable — else it lives invisibly.
+// Every op reads the one `values` frame now, so switching op is a plain recompute.
 async function applyChartOp(node: ChartNodeType, newOp: ChartOp): Promise<void> {
-  const wasMatrix = CHART_MATRIX_OPS.has(node.op);
-  const nowMatrix = CHART_MATRIX_OPS.has(newOp);
   node.op = newOp;
-  if (wasMatrix !== nowMatrix) {
-    const inactive = nowMatrix ? "values" : "series";
-    await dropInputCables(node.id, [inactive]);
-    const area = getActiveArea();
-    if (area) await area.update("node", node.id);
-  }
   await processGraph();
 }
 
-// Derived from CHART_OP_META so the dropdown can't drift from the Add-menu rows (SSOT-1).
+// Derived from CHART_OP_META so the dropdown can't drift from the Add-menu rows (declareOnce).
 const OPTIONS: ReadonlyArray<OpOption<ChartOp>> = (Object.keys(CHART_OP_META) as ChartOp[])
   .map((value) => ({ value, label: CHART_OP_META[value].label, group: CHART_OP_META[value].group }));
 
@@ -45,14 +35,15 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
   // An FC on the chart output scales the figure's text (display only).
   useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
   const fontScale = formatAnnotationStore.getForNode(data.id)?.chartFontScale;
-  const isMatrix = CHART_MATRIX_OPS.has(op);
-  const hasMatrix = !!data.cachedMatrix && data.cachedMatrix.length > 0;
+  // The expand popup renders a single series; composed/bubble use the [Chart] chip instead.
+  const noExpand = op === "composed" || op === "bubble";
   const series = toSeries(data.cachedResult);
-  const hasData = isMatrix ? hasMatrix || series.length > 0 : series.length > 0;
+  const hasData = series.length > 0 || !!data.cachedSeries;
   const cv: ChartValue = {
-    __chart: true, op, values: data.cachedResult, matrix: data.cachedMatrix,
+    __chart: true, op, values: data.cachedResult,
+    series: data.cachedSeries ?? undefined,
     labels: data.cachedLabels ?? undefined,
-    options: opts, title: opts.title || data.label || "Chart",
+    options: opts, title: opts.title || nodeDisplayName(data),
   };
 
   // The data socket is measured against the card so it can't collide with the Options row.
@@ -70,7 +61,7 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
     <NodeShell
       node={data}
       emit={emit}
-      leading={!collapsed && !isMatrix && valuesPort && valuesTop !== undefined
+      leading={!collapsed && valuesPort && valuesTop !== undefined
         ? <NodeSocket side="input" socketKey="values" nodeId={data.id} emit={emit} payload={valuesPort.socket} top={valuesTop} />
         : null}
     >
@@ -81,24 +72,20 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
         ) : !collapsed && (
           <>
             <ChartFigure value={cv} width={W} height={H} fontScale={fontScale} />
-            {/* The expand popup renders a single series — offer it only for the
-                1-D ops (the matrix ops have no popup path). */}
-            {!isMatrix && (
-              <ChartExpandButton title={opts.title || data.label || "Chart"} op={op as ChartShape} axes series={series} opts={opts} labels={data.cachedLabels ?? undefined} />
+            {!noExpand && (
+              <ChartExpandButton title={opts.title || nodeDisplayName(data)} op={op as ChartShape} axes series={series} opts={opts} labels={data.cachedLabels ?? undefined} value={cv} />
             )}
           </>
         )}
       </div>
       <div className="solenoid-node__section-divider" />
-      {/* The op's data socket + Options. `series` (2-D matrix) shows only for the
-          composed/bubble ops; the 1-D ops feed the leading `values` socket instead.
-          Collapsed, the leading socket is gone, so fold `values` into this row's pill.
-          Options: a matplotlib-style string, or wire a Chart Builder (field hides
-          when wired). */}
+      {/* Every op reads the `values` frame via the leading socket; collapsed, that socket
+          is gone, so fold `values` into this row. Options: a matplotlib-style string, or
+          wire a Chart Builder (the field hides when wired). */}
       <InlineInputs
         node={data}
         emit={emit}
-        keys={collapsed ? (isMatrix ? ["series", "options"] : ["values", "options"]) : (isMatrix ? ["series", "options"] : ["options"])}
+        keys={collapsed ? ["values", "options"] : ["options"]}
       />
       {/* Collapsed → the hero box shows just the [Chart] chip (opens the popup),
           right-aligned like every other value chip. */}

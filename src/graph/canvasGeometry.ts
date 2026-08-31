@@ -1,15 +1,14 @@
-import type { AreaPlugin } from "rete-area-plugin";
-import type { Schemes, AreaExtra } from "./schemes";
+import type { View } from "./view";
 
 export function getSocketScreenCenter(
-  area: AreaPlugin<Schemes, AreaExtra>,
+  view: View,
   nodeId: string,
   socketKey: string,
   side: "input" | "output",
 ): { x: number; y: number } | null {
-  const view = area.nodeViews.get(nodeId);
-  if (!view) return null;
-  const el = view.element.querySelector(
+  const card = view.nodeElement(nodeId);
+  if (!card) return null;
+  const el = card.querySelector(
     `[data-socket-key="${socketKey}"][data-socket-side="${side}"]`,
   ) as HTMLElement | null;
   if (!el) return null;
@@ -18,12 +17,12 @@ export function getSocketScreenCenter(
 }
 
 export function screenToCanvas(
-  area: AreaPlugin<Schemes, AreaExtra>,
+  view: View,
   container: HTMLElement,
   sx: number,
   sy: number,
 ): { x: number; y: number } {
-  const { x: tx, y: ty, k } = area.area.transform;
+  const { x: tx, y: ty, k } = view.transform;
   const r = container.getBoundingClientRect();
   return { x: (sx - r.left - tx) / k, y: (sy - r.top - ty) / k };
 }

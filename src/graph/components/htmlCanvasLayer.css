@@ -1,6 +1,6 @@
-/* The HTML-in-Canvas render layer. A transparent overlay above the rete container that
+/* The HTML-in-Canvas render layer. A transparent overlay above the RF surface that
    fills the wrapper. pointer-events:none so ALL interaction passes through to the real DOM
-   beneath — the canvas only paints during a pan/zoom gesture (when the DOM holder is hidden
+   beneath — the canvas only paints during a pan/zoom gesture (when the RF viewport is hidden
    via visibility:hidden from JS); when idle it draws nothing and the DOM shows through. */
 .solenoid-html-layer {
   position: absolute;
@@ -9,10 +9,26 @@
   pointer-events: none;
 }
 
-/* During a canvas gesture the holder is hidden except the DOM-only passthrough elements
+/* During a canvas gesture the viewport is hidden except the DOM-only passthrough elements
    (conduits + their cables). The canvas cables are a static snapshot, so freeze the DOM-only
    cables' flow beads to match — otherwise conduit cables keep animating while the rest sit
-   still. The class rides the holder; flow resumes when it's removed on settle. */
+   still. The class rides the viewport; flow resumes when it's removed on settle. */
 .solenoid-html-frozen .solenoid-cable-flow {
   animation-play-state: paused;
+}
+
+/* RF writes inline `visibility: visible` on every measured node wrapper, so hiding the
+   viewport alone leaves the cards painting over the canvas. The class (set with the inline
+   visibility by the layer) hides the wrappers too; DOM-only passthrough wrappers opt out. */
+.solenoid-html-hidden .react-flow__node:not(.solenoid-hic-domonly) {
+  visibility: hidden !important;
+}
+
+/* Held at rest below the hold zoom: the canvas keeps drawing and the DOM is MUTED with
+   opacity (it must stay hit-testable, which visibility:hidden is not), except DOM-only
+   passthroughs and the live interaction set (selected / focused cards), which the canvas
+   skips drawing. */
+.solenoid-html-muted .react-flow__node:not(.solenoid-hic-domonly):not(.solenoid-hic-live),
+.solenoid-html-muted .react-flow__edge:not(.solenoid-hic-domonly) {
+  opacity: 0 !important;
 }

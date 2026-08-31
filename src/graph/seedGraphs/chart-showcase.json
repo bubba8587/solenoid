@@ -1,7 +1,8 @@
 {
   "v": 2,
-  "label": "Charts & Visuals",
-  "order": 40,
+  "order": 400,
+  "label": "Charts & visuals",
+  "group": "Charts & reports",
   "nodes": [
     {
       "id": "cats",
@@ -127,11 +128,12 @@
     },
     {
       "id": "bullet",
-      "type": "BulletNode",
+      "type": "GaugeNode",
       "x": 853,
       "y": 458,
       "init": {
-        "label": "To target"
+        "label": "To target",
+        "op": "bar"
       },
       "literals": {
         "value": 72,
@@ -151,7 +153,7 @@
     },
     {
       "id": "treemap",
-      "type": "TreemapNode",
+      "type": "ProportionNode",
       "x": 313,
       "y": 840,
       "init": {
@@ -179,12 +181,12 @@
     },
     {
       "id": "matrix",
-      "type": "TableInputNode",
+      "type": "FrameInputNode",
       "x": -10,
       "y": 1520,
       "init": {
-        "label": "Series matrix",
-        "tableText": "12, 8\n19, 11\n7, 5\n23, 14\n15, 9"
+        "label": "Series frame",
+        "frameText": "[{\"name\": \"Step\", \"type\": \"string\", \"values\": [\"1\", \"2\", \"3\", \"4\", \"5\"]}, {\"name\": \"A\", \"type\": \"number\", \"values\": [12, 19, 7, 23, 15]}, {\"name\": \"B\", \"type\": \"number\", \"values\": [8, 11, 5, 14, 9]}]"
       }
     },
     {
@@ -297,9 +299,7 @@
       "type": "GaugeNode",
       "x": 280,
       "y": 2640,
-      "init": {
-        "label": "Gauge"
-      },
+      "init": {},
       "literals": {
         "value": 0
       }
@@ -459,15 +459,15 @@
     },
     {
       "source": "matrix",
-      "sourceOutput": "table",
+      "sourceOutput": "frame",
       "target": "composed",
-      "targetInput": "series"
+      "targetInput": "values"
     },
     {
       "source": "matrix",
-      "sourceOutput": "table",
+      "sourceOutput": "frame",
       "target": "bubble",
-      "targetInput": "series"
+      "targetInput": "values"
     },
     {
       "source": "ls_x",

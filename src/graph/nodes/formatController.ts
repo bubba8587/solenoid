@@ -45,6 +45,11 @@ function concreteTypeOfOutput(editor: FcEditor, nodeId: string, outKey: string, 
 }
 
 export class FormatControllerNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    in: "The format lands on the box feeding this input and clears when the cable is removed.",
+    out: "The unit rides the value out, and the display format follows it across downstream passthrough boxes.",
+  };
+
   label: string;
   hostNodeId: string;
   socketKey: string;

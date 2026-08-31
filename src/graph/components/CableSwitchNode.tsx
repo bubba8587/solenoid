@@ -1,12 +1,13 @@
+import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { CableSwitchNode as CableSwitchNodeType } from "../rete-nodes";
-// getActiveEditor/getActiveArea, NOT getEditor/getArea: a drill-in Input Switch
+// getActiveEditor/getActiveView, NOT getEditor/getView: a drill-in Input Switch
 // must retype/prune/refresh on its OWN graph.
-import { processGraph, bumpConnectionVersion, pushHistory } from "../process";
-import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { processGraph } from "../process";
+import { bumpConnectionVersion } from "../graphSignals";
+import { getActiveEditor, getActiveView } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { collapseStore } from "../collapseStore";
-import { pushRowRemovalUndo, pushRowAddUndo } from "./ExtensibleInputs";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import { NodeSocket } from "./NodeSocket";
 import { isFrameValue, isCubeValue } from "../frame";
@@ -26,12 +27,13 @@ import { MermaidView } from "./MermaidView";
 import { SvgFigure } from "./SvgFigure";
 import "./CableSwitchNode.css";
 import { dropInputCables } from "./cablePrune";
+import { nodeDisplayName } from "../catalogUtils";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
 // The selected value is `any`, so render BY KIND like Display — never stringified;
 // figures/cubes that would overflow the narrow card show as a chip.
-function SwitchValue({ value, label }: { value: unknown; label?: string }) {
+function SwitchValue({ value, label, nodeId }: { value: unknown; label?: string; nodeId: string }) {
   if (isFrameValue(value)) return <FrameDisplay frame={value} label={label} />;
   // A display-value box so NodeCard measures it (--out-socket-top centers the
   // output socket on it).
@@ -41,7 +43,7 @@ function SwitchValue({ value, label }: { value: unknown; label?: string }) {
   if (isSvgValue(value)) return <SvgFigure value={value} height={120} />;
   if (isLambdaValue(value)) return <div className="solenoid-node__display-value">{formatLambda(value)}</div>;
   if (Array.isArray(value) && Array.isArray((value as unknown[])[0])) {
-    return <TableDisplay table={value as number[][]} label={label} />;
+    return <TableDisplay table={value as number[][]} label={label} elem={nodeOutputElemFamily(nodeId)} />;
   }
   return <ValueDisplay value={value as number | number[] | string | string[] | null} />;
 }
@@ -71,7 +73,7 @@ function SwitchOptionRow({ data, emit, keyName, index, multiSelect, active, chec
       // A title relabels the multi-select cube's `name` column, so multi mode must
       // recompute; single mode only re-renders.
       if (data.multiSelect) void processGraph();
-      else void getActiveArea()?.update("node", data.id);
+      else void getActiveView()?.rerenderNode(data.id);
     },
   );
   const input = data.inputs[keyName];
@@ -115,7 +117,7 @@ function SwitchOptionRow({ data, emit, keyName, index, multiSelect, active, chec
         <button
           type="button"
           className="solenoid-node__row-remove"
-          title="Remove input"
+          title="Remove this input"
           onClick={(e) => { e.stopPropagation(); onRemove(); }}
         >×</button>
       )}
@@ -149,9 +151,9 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     // downstream cables the new type can't feed must be dropped here.
     const changed = data.syncOutputType();
     const ed = getActiveEditor();
-    const area = getActiveArea();
-    if (changed && ed && area) void retypeOutputCables(ed, area, data.id, "out");
-    void area?.update("node", data.id);
+    const view = getActiveView();
+    if (changed && ed && view) void retypeOutputCables(ed, view, data.id, "out");
+    void view?.rerenderNode(data.id);
     void processGraph();
   }
   function toggleMulti(key: string) {
@@ -162,31 +164,16 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     void processGraph();
   }
   async function addRow() {
-    const key = data.addValueInput();
-    pushRowAddUndo(data, [key], () => data.removeValueInput(key));
-    await getActiveArea()?.update("node", data.id);
+    data.addValueInput();
+    await getActiveView()?.rerenderNode(data.id);
     await processGraph();
   }
   async function removeRow(key: string) {
     await dropInputCables(data.id, [key]);
-    // AFTER the connection removals, BEFORE the removal (see ExtensibleInputs).
-    pushRowRemovalUndo(data, [key], () => data.removeValueInput(key));
-    data.removeValueInput(key);
+    data.removeValueInput(key); // re-points activeIndex at the same slot it named
     setSelKeys(data.selectedKeys); // removeValueInput drops the key from the selection
-    const n = Object.keys(data.inputs).length;
-    if (data.activeIndex >= n) {
-      const prevActive = data.activeIndex;
-      const clamped = Math.max(0, n - 1);
-      data.activeIndex = clamped;
-      setSelected(clamped);
-      // Its own history entry, pushed AFTER the row entry so undo restores the
-      // index LAST (the row comes back first).
-      pushHistory(
-        () => { data.activeIndex = prevActive; void getActiveArea()?.update("node", data.id); void processGraph(); },
-        () => { data.activeIndex = clamped; void getActiveArea()?.update("node", data.id); void processGraph(); },
-      );
-    }
-    await getActiveArea()?.update("node", data.id);
+    setSelected(data.activeIndex);
+    await getActiveView()?.rerenderNode(data.id);
     bumpConnectionVersion(); // re-route cables on rows that shifted up
     await processGraph();
   }
@@ -204,7 +191,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
             ) : null;
           })
         )}
-        <SwitchValue value={data.cachedValue} label={data.label} />
+        <SwitchValue value={data.cachedValue} label={nodeDisplayName(data)} nodeId={data.id} />
       </NodeShell>
     );
   }
@@ -227,7 +214,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
           canRemove={keys.length > 2}
         />
       ))}
-      <SegToggle arg
+      <SegToggle
         value={multi ? "many" : "one"}
         options={[
           { value: "one", label: "One", title: "Route one input to the output" },
@@ -249,7 +236,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
           </button>
         )}
       </div>
-      <SwitchValue value={data.cachedValue} label={data.label} />
+      <SwitchValue value={data.cachedValue} label={nodeDisplayName(data)} nodeId={data.id} />
     </NodeShell>
   );
 }

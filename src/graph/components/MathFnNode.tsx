@@ -24,7 +24,7 @@ export function MathFnComponent({ data, emit }: NodeProps<MathFnNodeType>) {
       <InlineInputs node={data} emit={emit} />
       <OpSelect value={op} onChange={setOp} options={OPS} />
       {isTrigOp(op) && (
-        <SegToggle arg value={angleMode} options={ANGLE_MODES} onChange={setAngleMode} />
+        <SegToggle value={angleMode} options={ANGLE_MODES} onChange={setAngleMode} />
       )}
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>

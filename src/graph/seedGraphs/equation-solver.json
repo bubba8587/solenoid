@@ -1,7 +1,8 @@
 {
-  "v": 1,
+  "v": 2,
+  "order": 300,
   "label": "Equation: solve either way",
-  "order": 15,
+  "group": "Modeling",
   "nodes": [
     {
       "id": "note-head",

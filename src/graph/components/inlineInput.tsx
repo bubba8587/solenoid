@@ -1,10 +1,12 @@
+import type { Emit } from "./nodeKit";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
 import { useKatexRender } from "./katexLoader";
 import type { ClassicPreset } from "rete";
-import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import { SolenoidSocket } from "../sockets";
-import { connectionVersionStore, processGraph, pushHistory } from "../process";
-import { getOwningEditor, getOwningArea } from "../activeGraph";
+import { processGraph } from "../process";
+import { scheduleAutosave } from "../persistence";
+import { connectionVersionStore } from "../graphSignals";
+import { getOwningEditor, getOwningView } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { nodeName } from "../catalogUtils";
 import { collapseStore } from "../collapseStore";
@@ -76,13 +78,62 @@ export function useDraftCommit<T>(
       return;
     }
     apply(next);
-    pushHistory(() => apply(committed), () => apply(next));
   };
   const onKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
     if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
     else if (e.key === "Escape") { canceled.current = true; e.currentTarget.blur(); }
   };
   return { draft, setDraft, onBlur, onKeyDown };
+}
+
+// The header title-edit mechanic every custom-chrome node shares. Unconditional
+// stopPropagation on the title (matching Note / Import Obsidian): the caret needs
+// the pointer, and the rest of the fit-content header stays the drag handle.
+const stopTitle = (e: { stopPropagation: () => void }) => e.stopPropagation();
+
+/** THE editable node-title state machine: a click-to-edit header that drafts while
+ *  typing and commits on Enter/blur, with Escape reverting — matching the standard
+ *  NodeShell header. Typing NEVER writes `node.label`; only a commit does, then the
+ *  optional `onCommit` runs the node's side effect (a rerender / processGraph).
+ *  Spread `inputProps` onto the editing <input>, `displayProps` onto the click-to-
+ *  edit display; read the committed value straight off `node.label`. Group drives
+ *  `begin()` from its own double-press instead of the display click. */
+export function useEditableLabel(node: { label: string }, onCommit?: () => void) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(node.label);
+  const canceled = useRef(false);
+  // Resync to an external rename (undo, load) only while not mid-edit.
+  useEffect(() => { if (!editing) setDraft(node.label); }, [node.label, editing]);
+
+  const begin = () => { setDraft(node.label); canceled.current = false; setEditing(true); };
+  const commit = () => {
+    setEditing(false);
+    if (canceled.current) { canceled.current = false; return; }
+    if (draft !== node.label) { node.label = draft; scheduleAutosave(); onCommit?.(); }
+  };
+  const onKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
+    if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
+    else if (e.key === "Escape") { canceled.current = true; e.currentTarget.blur(); }
+  };
+  return {
+    editing,
+    begin,
+    inputProps: {
+      value: draft,
+      autoFocus: true,
+      spellCheck: false,
+      onChange: (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setDraft(e.target.value),
+      onBlur: commit,
+      onKeyDown,
+      onPointerDown: stopTitle,
+      onMouseDown: stopTitle,
+    },
+    displayProps: {
+      onClick: begin,
+      onPointerDown: stopTitle,
+      onMouseDown: stopTitle,
+    },
+  };
 }
 
 const numToText = (v: number | undefined) => (v == null ? "" : String(v));
@@ -200,7 +251,6 @@ export function InlineNumberField({
     (v) => field.setDraft(numToText(v)),
     (next) => {
       onChange(next);
-      pushHistory(() => onChange(value), () => onChange(next));
     },
   );
 
@@ -283,7 +333,6 @@ function QuotedValueTextarea({ value, onChange, autoFocus }: { value: string; on
     if (canceled.current) { canceled.current = false; setDraft(value); return; }
     if (draft === value) return;
     onChange(draft);
-    pushHistory(() => onChange(value), () => onChange(draft));
   };
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Escape") { canceled.current = true; e.currentTarget.blur(); }
@@ -293,7 +342,7 @@ function QuotedValueTextarea({ value, onChange, autoFocus }: { value: string; on
       <span className="solenoid-node__quoted-field">
         <textarea
           ref={ref}
-          className="solenoid-node__quoted-input solenoid-node__quoted-textarea"
+          className="solenoid-node__quoted-input solenoid-node__quoted-textarea nowheel"
           value={draft}
           rows={1}
           onChange={(e) => setDraft(e.target.value)}
@@ -319,6 +368,86 @@ export function InlineTextField({
   placeholder?: string;
 }) {
   return <QuotedTextInput value={value ?? ""} onChange={onChange} placeholder={placeholder} />;
+}
+
+/** A wildcard slot's literal, kept in whichever of the two maps fits. `Number(t)` and
+ *  not `parseFloat`, so "12abc" is TEXT rather than 12. */
+export type AutoLiteral = number | string | undefined;
+const autoToText = (v: AutoLiteral) => (v == null ? "" : String(v));
+const parseAuto = (t: string): AutoLiteral => {
+  const trimmed = t.trim();
+  if (trimmed === "") return undefined;
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? n : t;
+};
+
+/** ONE field for a WILDCARD value slot, which can hold a number or text: a
+ *  numeric-looking entry commits as a number and anything else as text, with the quote
+ *  chrome showing which landed — a SWITCH case of `12` is not a case of `"12"`. */
+export function InlineAutoField({
+  num,
+  text,
+  onChange,
+  placeholder,
+}: {
+  num: number | undefined;
+  text: string | undefined;
+  /** Writes exactly one of the two maps; the caller clears the other. */
+  onChange: (v: AutoLiteral) => void;
+  placeholder?: string;
+}) {
+  const committed: AutoLiteral = text !== undefined ? text : num;
+  const field = useDraftCommit<AutoLiteral>(committed, autoToText, parseAuto, onChange);
+  const quoted = typeof committed === "string";
+  // Drag-to-scrub is kept for the NUMERIC state, so a wildcard slot holding a number
+  // behaves like the number field it replaced.
+  const scrub = useNumberScrub(
+    num,
+    (v) => field.setDraft(autoToText(v)),
+    (next) => {
+      onChange(next);
+    },
+  );
+  // Kept `type="text"`: a number input refuses a non-numeric draft outright, which is
+  // the whole point of this field.
+  const input = (
+    <input
+      type="text"
+      className={quoted ? "solenoid-node__quoted-input" : "solenoid-node__inline-input"}
+      value={field.draft}
+      placeholder={placeholder}
+      onChange={(e: ChangeEvent<HTMLInputElement>) => field.setDraft(e.target.value)}
+      onBlur={field.onBlur}
+      onKeyDown={field.onKeyDown}
+      {...(quoted ? { onPointerDown: stopDragStart } : scrub)}
+      onMouseDown={(e) => e.stopPropagation()}
+      spellCheck={false}
+    />
+  );
+  // The chrome only flips on COMMIT, when the field is already blurred, so the input
+  // remounting here costs no focus.
+  if (!quoted) return input;
+  return (
+    <span className="solenoid-node__quoted solenoid-node__quoted--inline">
+      <span className="solenoid-node__quote" aria-hidden="true">"</span>
+      <span className="solenoid-node__quoted-field">{input}</span>
+      <span className="solenoid-node__quote" aria-hidden="true">"</span>
+    </span>
+  );
+}
+
+/** Opted in by the VALUE SELECTORS, whose wildcard rows are value branches. A wildcard
+ *  SINK or relay (Display, Cast, Report, Cube) leaves it off and stays wire-only. */
+export interface AutoLiteralHost {
+  autoLiterals?: boolean;
+  stringLiterals?: Record<string, string>;
+}
+
+export function takesAutoLiteral(node: AutoLiteralHost, dt: string | undefined): boolean {
+  // `anydata` earns the scalar literal field too (Set Cell's Value rung): a typed literal is
+  // a scalar, and a list/matrix only arrives by wire. A wildcard SINK/relay stays wire-only
+  // by leaving `autoLiterals` off, so widening the rung here can't affect it.
+  return !!node.autoLiterals && (dt === "any" || dt === "anydata" || dt === "trueany");
 }
 
 /** Split a `"Foo (default X)"` socket label into label + placeholder, so the default
@@ -363,11 +492,13 @@ export type InlineNode = {
   inputs: Record<string, InputPort | undefined>;
   literals?: Record<string, number>;
   stringLiterals?: Record<string, string>;
+  /** See `takesAutoLiteral` — the value selectors set it. */
+  autoLiterals?: boolean;
 };
 
 type Props = {
   node: InlineNode;
-  emit: RenderEmit<ClassicScheme>;
+  emit: Emit;
   /** Restrict / reorder which input keys render. Defaults to all inputs. */
   keys?: string[];
   /** Override the row label for a key (e.g. Logical's per-op labels). */
@@ -416,7 +547,7 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
   // path, so the wildcard types must be re-settled after a literal edit.
   function settleTypes() {
     const ed = getOwningEditor(node.id);
-    const ar = getOwningArea(node.id);
+    const ar = getOwningView(node.id);
     if (ed && ar) reconcileTypesAfterEdit(ed, ar);
   }
 
@@ -429,6 +560,16 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
 
   async function setStr(key: string, v: string) {
     strLiterals[key] = v;
+    settleTypes();
+    await processGraph(node.id);
+  }
+
+  async function setAuto(key: string, v: AutoLiteral) {
+    // Exactly one map holds a wildcard slot, so the reader never has to break a tie.
+    delete literals[key];
+    delete strLiterals[key];
+    if (typeof v === "number") literals[key] = v;
+    else if (typeof v === "string") strLiterals[key] = v;
     settleTypes();
     await processGraph(node.id);
   }
@@ -460,11 +601,13 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
       {entries.map(([key, input], i) => {
         const socket = input.socket;
         const dt = socket instanceof SolenoidSocket ? socket.dataType : undefined;
+        // A numeric list keeps its single-number field unless the node OPTS IN by declaring
+        // a stringLiterals key for it — then it types as a CSV list (Surface's Xs / Ys).
+        const numlistCsv = dt === "numlist" && key in strLiterals;
         // A combo only becomes a list when a cable brings one in, so both edit in place.
-        const isNumber = dt === "number" || dt === "numlist";
+        const isNumber = dt === "number" || (dt === "numlist" && !numlistCsv);
         const isStr    = dt === "string" || dt === "strcombo";
-        // Numeric lists keep their single-number field; other 1-D lists type as CSV.
-        const isCsvList = dt === "strlist" || dt === "datelist" || dt === "logicallist";
+        const isCsvList = dt === "strlist" || dt === "datelist" || dt === "logicallist" || numlistCsv;
         const { label, placeholder } = splitDefaultLabel(labelFor ? labelFor(key, i) : (input.label || key));
         const isConn = connected.has(key);
         return (
@@ -478,7 +621,9 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
                 title="Driven by the incoming cable named here"
               >↩ {incoming.get(key)?.label || "wired"}</span>
             ) : cableOnlyKeys?.has(key) ? null
-              : isNumber ? (
+              : takesAutoLiteral(node, dt) ? (
+              <InlineAutoField num={literals[key]} text={strLiterals[key]} onChange={(v) => void setAuto(key, v)} placeholder={placeholder} />
+            ) : isNumber ? (
               <InlineNumberField value={literals[key]} onChange={(v) => set(key, v)} placeholder={placeholder} />
             ) : isStr ? (
               <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} />

@@ -1,5 +1,5 @@
-// A complex is a TAGGED OBJECT (VAL-15), so `Array.isArray` means exactly one
-// thing everywhere. RETE-FREE (FX-2), kernels shared with the IM* formulas (FX-1).
+// A complex is a TAGGED OBJECT (tagSpecialScalars), so `Array.isArray` means exactly one
+// thing everywhere. RETE-FREE (implReteFree), kernels shared with the IM* formulas (shareImpl).
 
 import { solError, type SolError } from "./errorValue";
 
@@ -9,7 +9,7 @@ export function cx(re: number, im: number): Cx {
   return { __cx: true, re, im };
 }
 
-/** The one complex test (VAL-15). Everything that must tell a complex from any other
+/** The one complex test (tagSpecialScalars). Everything that must tell a complex from any other
  *  value routes here — never a structural array sniff. */
 export function isCx(v: unknown): v is Cx {
   return typeof v === "object" && v !== null && (v as { __cx?: unknown }).__cx === true;

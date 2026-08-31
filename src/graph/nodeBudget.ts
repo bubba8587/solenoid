@@ -2,7 +2,6 @@
 // suppressed during the load reveal, so loading over-budget never pops it.
 
 import { getEditor } from "./process";
-
 /** Soft node cap for the web demo. Desktop (Tauri) ignores this entirely. */
 export const WEB_DEMO_NODE_BUDGET = 100;
 

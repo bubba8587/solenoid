@@ -46,6 +46,7 @@ bottom; everything else floats over the canvas.
 | Cable inspector | `.solenoid-cable-inspector` | bottom-left | 110 | `cableInspector.css` |
 | Command palette | `.solenoid-cmdpalette` (+`-scrim`, `--persistent`) | bottom-docked (`left:50%; bottom: chrome-bottom + 21px`), full-screen scrim behind | 300 modal · **150 persistent** (the always-on bar yields to the 200 modal band: Settings/help/shortcuts) | `CommandPalette.css` |
 | Docked report panel | `.report-panel--docked` | `top: chrome-top; right:0; bottom: chrome-bottom; width:440px` (via `--report-dock-*`) | 90 | `ReportOverlay.css` |
+| Node inspector panel | `.inspector-panel` | `top: chrome-top; right:0; bottom: chrome-bottom; width:340px` (via `--inspector-w`) | 90 (mobile sheet: **5**, beneath the header so the bar's popovers/sheets paint over it; align pill hides while open) | `InspectorPanel.css` |
 
 > **Tablet (`html.is-tablet` = coarse pointer, NOT mobile — `IS_TABLET` in `coarse.ts`):** a
 > tablet runs this DESKTOP stack, so it gets no bottom action bar. The top bar grows the
@@ -96,7 +97,11 @@ offsets from it:
 | Docked report | `var(--chrome-top)` | `66px` |
 
 Each keeps a **static fallback** (`var(--chrome-top, 66px)`) so the first paint is correct
-before the observer fires. On desktop the measured value is the old 66px (22 + 44), plus a
+before the observer fires. Both envelopes publish **rounded DOWN** (`Math.floor`): `top:`/`bottom: var(...)`
+puts a panel's edge AT the published height, so a value above the bar's true fractional
+height lifts the edge off the bar — a 1px gap at fractional device pixel ratios (seen on
+Chrome Android). Published at-or-under, panels tuck beneath the opaque bars, whose
+z-index sits above the docked panels. On desktop the measured value is the old 66px (22 + 44), plus a
 2px accent underline ≈ 68px to the canvas.
 
 **Why this changed:** these were six hand-keyed numbers all encoding one envelope, which is
@@ -180,21 +185,31 @@ Answers to the questions that keep biting:
   Nothing else keys off the
   minimap. On mobile the minimap is always hidden, so the legend already sits low.
 
+- **Report undocked** (desktop) → the modal backdrop starts at `--chrome-top`, so the menu +
+  top bar stay visible and usable above it (`ReportOverlay.css`); mobile is full-screen.
 - **Report docked** (desktop) → `html.sol-report-docked` (`reportStore.ts`). This is a real
   **push**: it defines `--report-dock-w:440px`, `--report-dock-top:66px`, `--report-dock-bottom:19px`
   and then (`ReportOverlay.css`):
-  - shrinks `.solenoid-canvas-wrapper` width by `--report-dock-w` (carrying minimap/legend/
-    add-menu, which live inside it);
-  - shifts `.solenoid-nav` and `.solenoid-hud-stack` `right` by `12px + --report-dock-w`.
+  - shrinks the main canvas (`.sol-rf-appcanvas`) width by `--report-dock-w` (carrying
+    minimap/add-menu, which live inside it);
+  - shifts `.solenoid-nav`, `.solenoid-hud-stack` and `.solenoid-legend` (app-fixed, NOT
+    inside the canvas wrapper) `right` by their gutter + `--report-dock-w`;
+  - re-centers `.solenoid-cmdpalette` on the canvas, width `clamp(340px, 42% of canvas, 480px)`.
   The header, status bar, and left navigator are full-width/left-anchored and untouched. Its
   `--report-dock-top`/`--report-dock-bottom` now derive from the measured
   `--chrome-top`/`--chrome-bottom`, so a bar change flows through on its own.
+
+- **Inspector docked** (desktop/tablet) → `html.sol-inspector-docked` (`inspectorStore.ts`),
+  the SAME push mechanics scaled to `--inspector-w:340px` (`InspectorPanel.css`): canvas
+  wrapper shrinks, nav pill + HUD stack shift. The two right docks are mutually exclusive —
+  the one that opens last takes the slot and the other CLOSES (side by side was ruled out as
+  too big, author 2026-08-29), so their squeeze rules never stack.
 
 - **Presenting** → `html.solenoid-presenting` (`PresentationOverlay.tsx`) hides basically all
   chrome: header, nav pill, status bar, navigator + open-pill, legend, minimap, mobile bar, HUD
   (`PresentationOverlay.css`). The canvas is the slide.
 
-- **Drilled into a composite** → `html.sol-drilled-in` (`CompositeEditorOverlay.tsx`). The app
+- **Drilled into a composite** → `html.sol-drilled-in` (`flow/FlowCompositeOverlay.tsx`). The app
   frame stays; it hides the *main* minimap (the drill-in host renders its own) and hides the
   navigator + open-pill (`compositeEditor.css`). The drill-in adds a top-left breadcrumb
   strip (`.solenoid-composite-editor__strip`, desktop `top:74px`, mobile `88px + safe-area`) with
@@ -207,12 +222,12 @@ Answers to the questions that keep biting:
 
 ```
 1    .solenoid-topbar (local, inside header)
-2    .solenoid-menubar (local; 8 on mobile), htmlCanvasLayer
+2    .solenoid-menubar (local; 8 on mobile)
 4    composite drill-in backdrop
 5    nav pill / navigator / webdemo banner
 6    header / statusbar / apptools palette
 7    align pill / isolate endpoints
-20   menubar dropdown (local to header)
+20   menubar dropdown (local to header) / tidy-options popover (`.solenoid-tidy-options`, local to topbar, `top:100%+6px` under the layout group; header doesn't clip so it overflows onto the canvas)
 60   conduit docked toolbar / node-budget modal
 90   docked report panel
 100  minimap / socket legend / mobile bottom bar
@@ -223,7 +238,8 @@ Answers to the questions that keep biting:
 ```
 
 MenuBar (z2) and TopBar (z1) are *local* values inside `.solenoid-header` (itself z6 at app
-level); TopBar's `backdrop-filter` makes it a self-contained stacking context. The canvas gets
+level); TopBar is positioned with its own z-index, so it is a self-contained stacking context
+(this is why the node-budget modal renders as an App-level sibling of the status bar). The canvas gets
 its own context via `isolation:isolate` (`canvas.css`), which is why the minimap needs z100 to
 paint over node cards.
 

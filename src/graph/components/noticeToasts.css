@@ -20,13 +20,14 @@
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: 6px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
   color: var(--text);
   font-size: 12.5px;
   line-height: 1.4;
   cursor: pointer;
   animation: solenoid-notice-in 140ms ease-out;
 }
+:root[data-theme="light"] .solenoid-notice { box-shadow: 0 8px 28px rgba(20, 30, 50, 0.1); }
 
 @keyframes solenoid-notice-in {
   from { opacity: 0; transform: translateY(8px); }
@@ -39,6 +40,7 @@
 
 .solenoid-notice__msg {
   flex: 1;
+  text-wrap-style: balance;
 }
 
 .solenoid-notice__close {

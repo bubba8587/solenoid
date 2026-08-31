@@ -41,7 +41,7 @@
   --text-muted: #80868e;
 
   --shadow-card: 0 1px 0 rgba(0, 0, 0, 0.4);
-  --shadow-pop: 0 4px 14px rgba(0, 0, 0, 0.3);
+  --shadow-pop: 0 4px 14px rgba(0, 0, 0, 0.2);
 
   /* Node header accent-tint strength. (Selection draws from each item's own
      --node-accent via an outline — see nodeCard.css / GroupNode.css.) */
@@ -75,14 +75,16 @@
 
   /* ── Semantic aliases used by the app chrome ───────────────────────── */
   --app-bg: #141414;
-  --canvas-bg: #0e0e0e;
-  --canvas-dot: #2a2a2a;
-  --panel-bg: rgba(30, 30, 30, 0.9);
+  --canvas-bg: #0b0b0b;
+  --canvas-dot: #3b3b3b;
+  /* Chrome fills are OPAQUE — bars, panels and floating overlays are the raised
+     surface, never a window onto the graph behind them. */
+  --panel-bg: var(--surface);
   --panel-border: var(--border);
   /* Floating overlay chrome (socket legend, minimap, pins, alerts) — needs to
-     read clearly ABOVE a busy graph, so: near-opaque fill, a stronger always-on
+     read clearly ABOVE a busy graph, so: the opaque surface, a stronger always-on
      border (vs the subtle --border), and a deeper layered shadow. */
-  --overlay-bg: rgba(28, 28, 28, 0.97);
+  --overlay-bg: var(--surface);
   --overlay-border: #474c54;
   /* Right-side overlay chrome reads better defined by its border than floated by a
      big shadow — a wide soft shadow spreads heavier on the larger panels (the
@@ -90,7 +92,7 @@
      thicker always-on border + a lighter, tighter shadow. Width is theme-agnostic,
      defined once here; the light ramp only re-softens the shadow tint. */
   --overlay-border-width: 2px;
-  --overlay-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), 0 1px 4px rgba(0, 0, 0, 0.3);
+  --overlay-shadow: 0 4px 14px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.2);
   --btn-bg: var(--surface-sunken);
   --btn-hover: #1f1f1f;
   --btn-border: var(--border);
@@ -120,7 +122,7 @@
   --text-muted: #6a717b;
 
   --shadow-card: 0 1px 2px rgba(20, 30, 50, 0.08);
-  --shadow-pop: 0 4px 14px rgba(20, 30, 50, 0.1);
+  --shadow-pop: 0 4px 14px rgba(20, 30, 50, 0.06);
 
   /* Stronger header tint (pale-on-white needs more). */
   --header-tint: 52%;
@@ -138,11 +140,9 @@
 
   --app-bg: #f4f5f7;
   --canvas-bg: #eef1f5;
-  --canvas-dot: #d3d9e1;
-  --panel-bg: rgba(252, 253, 255, 0.94);
-  --overlay-bg: rgba(255, 255, 255, 0.98);
+  --canvas-dot: #c3cad4;
   --overlay-border: #aeb6c1;
-  --overlay-shadow: 0 4px 14px rgba(20, 30, 50, 0.14), 0 1px 4px rgba(20, 30, 50, 0.08);
+  --overlay-shadow: 0 4px 14px rgba(20, 30, 50, 0.09), 0 1px 4px rgba(20, 30, 50, 0.05);
   --btn-hover: #e9ecf0;
   --wordmark-color: #1b1e23;
 }

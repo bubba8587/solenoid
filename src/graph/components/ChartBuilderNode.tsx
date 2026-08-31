@@ -1,6 +1,6 @@
 import type { ChartBuilderNode as ChartBuilderNodeType } from "../rete-nodes";
 import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST, type ChartBuilderKey } from "../nodes/chartOptions";
-import { NodeShell, OpSelect, useNodeField, type NodeProps, type ShellNode, type Emit } from "./nodeKit";
+import { NodeShell, ArgSelect, useNodeField, type NodeProps, type ShellNode, type Emit } from "./nodeKit";
 import { InlineInputs, useConnectedInputs, useIncomingSources } from "./inlineInput";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { processGraph } from "../process";
@@ -55,7 +55,7 @@ const TARGET_OPTS = CHART_TARGET_LIST.map((t) => ({ value: t.id, label: t.label 
 const STR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "color"];
 const TOGGLE_KEYS: readonly { key: ChartBuilderKey; label: string }[] =
   [{ key: "grid", label: "Grid" }, { key: "marker", label: "Markers" }];
-const NUM_KEYS: readonly ChartBuilderKey[] = ["ymin", "ymax", "linewidth", "alpha", "fontsize"];
+const NUM_KEYS: readonly ChartBuilderKey[] = ["ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 
 /** The chart-type dropdown shapes the form, but a WIRED or valued row stays
  *  visible (dimmed) so switching type never hides live state — and every set field
@@ -78,7 +78,7 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <div style={{ padding: "2px 0 4px" }}>
-        <OpSelect arg value={target} onChange={setTarget} options={TARGET_OPTS} />
+        <ArgSelect value={target} onChange={setTarget} options={TARGET_OPTS} />
       </div>
       <InlineInputs node={data} emit={emit} keys={acc(STR_KEYS) as string[]} />
       {TOGGLE_KEYS.filter(({ key }) => accepted.has(key)).map(({ key, label }) => (

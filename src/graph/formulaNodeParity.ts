@@ -22,11 +22,11 @@ export interface ParityRow {
   excelCovered: boolean;
 }
 
-/** The D19 2(a) formula name for a node label: despaced and uppercased; the Tier 3
+/** The formulaNaming 2(a) formula name for a node label: despaced and uppercased; the Tier 3
  *  registrations derive their names the same way. */
 export const despace = (label: string) => label.replace(/\s+/g, "").toUpperCase();
 
-/** SSOT-8: a node claiming Excel names is covered only when EVERY one dispatches;
+/** useEveryNotSome: a node claiming Excel names is covered only when EVERY one dispatches;
  *  empty claims are never covered (vacuous ≠ complete). */
 export function excelCoverage(excel: string[], dispatches: (name: string) => boolean): boolean {
   return excel.length > 0 && excel.every(dispatches);
@@ -39,7 +39,7 @@ const LANGUAGE_LEAVES = new Set([
 ]);
 
 /** A PRESET-FORMULA leaf (a locked ExpressionNode): its formula equivalent is its
- *  own expr, so it counts as covered. Detected mechanically, never listed (SSOT-3). */
+ *  own expr, so it counts as covered. Detected mechanically, never listed (noManualList). */
 function isPresetFormula(leaf: NodeCatalogEntry): boolean {
   try {
     const inst = leaf.create() as { expr?: unknown; locked?: unknown };
@@ -60,11 +60,10 @@ function walk(entries: CatalogEntry[], path: string[], out: ParityRow[], formula
     if (leaf.hidden) continue;
     const excel = (leaf.excel ?? NODE_EXCEL[leaf.type] ?? []).map((x) => x.excel.toUpperCase());
     // An op family's leaf label names the family, so it is covered when every OP is
-    // callable. OPERATION-kind only: an argument-kind family's op labels are argument
-    // VALUES that collide with unrelated names (Group Lists' SUM/AVERAGE/…), which
-    // would count the leaf callable while GROUPBY itself answers #NAME?.
+    // callable. Argument families are not in NODE_OPS (rules opArgDistinct), so an
+    // aggregator VALUE like Group By's SUM never counts GROUPBY as callable.
     const decl = opsFor(leaf.type);
-    const ops = decl?.kind === "operation" ? decl.ops : undefined;
+    const ops = decl?.ops;
     const excelCovered = excelCoverage(excel, (x) => formulaNames.has(x));
     const inFormula = excel.some((x) => formulaNames.has(x))
       || formulaNames.has(despace(leaf.label))

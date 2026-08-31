@@ -11,6 +11,8 @@ export interface ChartOptions {
   ymin?: number;
   ymax?: number;
   linewidth?: number;
+  // marker radius in px (matplotlib's markersize)
+  markersize?: number;
   alpha?: number;
   // matplotlib's font.size rcParam; render surfaces scale every text size by fontsize/10.
   fontsize?: number;
@@ -53,6 +55,8 @@ export function parseChartOptions(input: string | null | undefined): ChartOption
       case "marker": { const b = toBool(val); if (b !== undefined) opts.marker = b; break; }
       case "linewidth":
       case "lw":     { const n = toNum(val); if (n !== undefined) opts.linewidth = n; break; }
+      case "markersize":
+      case "ms":     { const n = toNum(val); if (n !== undefined && n > 0) opts.markersize = n; break; }
       case "alpha":  { const n = toNum(val); if (n !== undefined) opts.alpha = n; break; }
       case "fontsize": { const n = toNum(val); if (n !== undefined && n > 0) opts.fontsize = n; break; }
       case "ylim": {
@@ -82,6 +86,7 @@ export interface ChartBuilderFields {
   ymin?: number | null;
   ymax?: number | null;
   linewidth?: number | null;
+  markersize?: number | null;
   alpha?: number | null;
   fontsize?: number | null;
 }
@@ -108,6 +113,7 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
     parts.push(`ylim=${lo},${hi}`);
   }
   num("linewidth", f.linewidth);
+  num("markersize", f.markersize);
   num("alpha", f.alpha);
   num("fontsize", f.fontsize);
   return parts.join(";");
@@ -120,21 +126,22 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
 //     path skips marker/linewidth but the Chart node can be a line, so the
 //     "chart" target keeps the full set.
 //   • Histogram renders through ChartView as columns → no marker/linewidth.
-//   • The payload figures (KPI / Bullet / Treemap / Sankey) fold fontsize into
-//     their text scale; title flows to the figure title everywhere.
+//   • The payload figures (KPI / Bullet / Proportion / Sankey) fold fontsize into
+//     their text scale; title flows to the figure title everywhere. Proportion's
+//     waffle layout ignores fontsize (inert), but the target is one for both.
 //   • The canvas figures (Waterfall / Candlestick / Boxplot / Calendar
-//     Heatmap / Waffle) read nothing but the title.
+//     Heatmap) read nothing but the title.
 
 export type ChartBuilderKey =
   | "title" | "xlabel" | "ylabel" | "color" | "grid" | "marker"
-  | "ymin" | "ymax" | "linewidth" | "alpha" | "fontsize";
+  | "ymin" | "ymax" | "linewidth" | "markersize" | "alpha" | "fontsize";
 
 export type ChartTargetId =
-  | "chart" | "histogram" | "kpi" | "bullet" | "treemap" | "sankey"
-  | "waterfall" | "candle" | "boxplot" | "calheat" | "waffle";
+  | "chart" | "histogram" | "kpi" | "scale" | "proportion" | "sankey"
+  | "waterfall" | "candle" | "boxplot" | "calheat";
 
 const ALL_KEYS: readonly ChartBuilderKey[] =
-  ["title", "xlabel", "ylabel", "color", "grid", "marker", "ymin", "ymax", "linewidth", "alpha", "fontsize"];
+  ["title", "xlabel", "ylabel", "color", "grid", "marker", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 const AXED_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "alpha", "fontsize"];
 const STAT_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];
@@ -144,14 +151,13 @@ export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; keys:
   chart:     { label: "Chart",            keys: ALL_KEYS },
   histogram: { label: "Histogram",        keys: AXED_KEYS },
   kpi:       { label: "KPI",              keys: STAT_KEYS },
-  bullet:    { label: "Bullet",           keys: STAT_KEYS },
-  treemap:   { label: "Treemap",          keys: STAT_KEYS },
+  scale:     { label: "Gauge",            keys: STAT_KEYS },
+  proportion: { label: "Proportion",      keys: STAT_KEYS },
   sankey:    { label: "Sankey",           keys: STAT_KEYS },
   waterfall: { label: "Waterfall",        keys: TITLE_ONLY },
   candle:    { label: "Candlestick",      keys: TITLE_ONLY },
   boxplot:   { label: "Boxplot",          keys: TITLE_ONLY },
   calheat:   { label: "Calendar Heatmap", keys: TITLE_ONLY },
-  waffle:    { label: "Waffle",           keys: TITLE_ONLY },
 };
 
 export const CHART_TARGET_LIST = (Object.keys(CHART_BUILDER_TARGETS) as ChartTargetId[])

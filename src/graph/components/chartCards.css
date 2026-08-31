@@ -84,3 +84,146 @@
   font-variant-numeric: tabular-nums;
 }
 .sol-bullet__tgt-label { color: var(--text-muted, var(--text-dim)); }
+
+/* Record card: labeled boxes on a grid. Each box is a sunken field; the type
+   signal stays on the sockets, so the boxes are neutral (Quiet Accent Rule). */
+.sol-record {
+  display: grid;
+  align-items: stretch;
+  /* Absorb the boxes' -1px overlap bleed past the last row/column. */
+  padding: 0 1px 1px 0;
+}
+.sol-record__box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 4px 6px 5px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  /* Boxes touch, square (author call): overlap the shared 1px borders so
+     adjacent edges read as one hairline. */
+  margin: 0 -1px -1px 0;
+}
+.sol-record__label {
+  font-size: calc(10px * var(--chart-fscale, 1));
+  line-height: 1.3;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sol-record__value {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: calc(12px * var(--chart-fscale, 1));
+  line-height: 1.35;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+  flex: 1;
+}
+.sol-record__value--empty { color: var(--text-muted, var(--text-dim)); }
+/* Layout-authored placeholder in an empty box — quieter than a real value. */
+.sol-record__value--hint { color: var(--text-muted, var(--text-dim)); opacity: 0.75; }
+.sol-record__img {
+  flex: 1;
+  width: 100%;
+  min-height: 40px;
+  object-fit: cover;
+}
+
+/* Gallery: masonry — justified tracks, each card packed into the shortest
+   column (masonryLayout.ts owns the geometry; height comes inline). Board:
+   one column per lane. */
+.sol-record-gallery {
+  position: relative;
+}
+.sol-record-tile {
+  position: absolute;
+  top: 0;
+  left: 0;
+  min-width: 0;
+}
+.sol-record-board {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.sol-record-lane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sol-record-lane__label {
+  font-size: calc(10px * var(--chart-fscale, 1));
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Figure title (the explicit options title), matching the series charts'
+   in-figure title: centered, 11px at fscale 1, single ellipsized line. */
+.sol-record-figtitle {
+  font-size: calc(11px * var(--chart-fscale, 1));
+  font-weight: 600;
+  line-height: calc(16px * var(--chart-fscale, 1));
+  text-align: center;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 4px;
+}
+
+/* Card view as a column that fills a definite host box (a resized Display), so a
+   box too short for the card clips the GRID and never the pager. Nothing here
+   applies where the host height is auto — the 100% resolves to auto. */
+.sol-record-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.sol-record-card__grid {
+  min-height: 0;
+  overflow: hidden;
+}
+.sol-record-card > .sol-record-figtitle,
+.sol-record-card > .sol-record-nav { flex: none; }
+
+/* Row pager under a drawn card (Display / popup); mirrors the node card's pager. */
+.sol-record-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 5px;
+}
+.sol-record-nav__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: none;
+  border: 1px solid var(--border-strong);
+  border-radius: 5px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.sol-record-nav__btn:hover:not(:disabled) { color: var(--text); background: var(--border-subtle); }
+.sol-record-nav__btn:disabled { opacity: 0.35; cursor: default; }
+.sol-record-nav__count {
+  font-size: calc(10px * var(--chart-fscale, 1));
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.sol-record__more {
+  margin-top: 4px;
+  font-size: calc(10px * var(--chart-fscale, 1));
+  color: var(--text-muted, var(--text-dim));
+  text-align: right;
+}

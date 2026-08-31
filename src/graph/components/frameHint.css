@@ -62,3 +62,24 @@
   text-transform: uppercase;
   color: var(--text-muted);
 }
+
+/* Inline variant — the Inspector renders the same mini-table in flow. */
+.solenoid-frame-hint--inline {
+  position: static;
+  z-index: auto;
+  pointer-events: auto;
+  box-shadow: none;
+  display: inline-block;
+  margin: 2px 0 4px 16px;
+}
+/* In the Inspector it is a reference table to READ, not a hover cue — panel-scale type. */
+.solenoid-frame-hint--inline table {
+  font-size: 11px;
+}
+.solenoid-frame-hint--inline th,
+.solenoid-frame-hint--inline td {
+  padding: 1px 6px;
+}
+.solenoid-frame-hint--inline .solenoid-frame-hint__tag {
+  font-size: 9px;
+}

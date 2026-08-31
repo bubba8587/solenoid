@@ -30,6 +30,8 @@
 .solenoid-array-chip--elem-date-table    { --chip-accent: var(--sock-datetable); }
 .solenoid-array-chip--elem-logical       { --chip-accent: var(--sock-logicallist); }
 .solenoid-array-chip--elem-logical-table { --chip-accent: var(--sock-logicaltable); }
+.solenoid-array-chip--elem-complex       { --chip-accent: var(--sock-complexlist); }
+.solenoid-array-chip--elem-complex-table { --chip-accent: var(--sock-complextable); }
 .solenoid-array-chip--frame { --chip-accent: var(--sock-frame); }  /* frames */
 .solenoid-array-chip--cube  { --chip-accent: var(--sock-cube); }   /* cubes */
 .solenoid-array-chip--chart { --chip-accent: var(--sock-chart); }  /* charts */

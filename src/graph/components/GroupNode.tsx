@@ -1,10 +1,11 @@
-import { Fragment, useState, useRef, useEffect, useLayoutEffect, useSyncExternalStore, type CSSProperties } from "react";
+import { useFlowResizeGrip } from "../flowSurface";
+import { Fragment, useState, useRef, useLayoutEffect, useSyncExternalStore, type CSSProperties } from "react";
 import type { GroupNode as GroupNodeType } from "../rete-nodes";
 import { hexToRgba, contrastInk, themeAccent, darkenAccent, resolveColor } from "../palette";
 import { appThemeStore } from "../appTheme";
 import { SwatchGrid } from "./SwatchGrid";
 import { useDismissOnOutside } from "./useDismissOnOutside";
-import { getArea, getEditor, pushHistory, autoArrange } from "../process";
+import { autoArrange } from "../canvasCommands";
 import { cableValueStore } from "../cableValueStore";
 import { describeValueKind } from "../valueKindLabel";
 import { valueChipFor } from "./ValueChip";
@@ -12,20 +13,22 @@ import { groupCollapseStore, syncGroupCollapse, COLLAPSE_LAYOUT, pillY, type Ret
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
 import { socketHighlightStore, dragSocketKey } from "../cableState";
 import { reconcileGroupBox, autofitGroupWithHistory, GROUP_MIN_W, GROUP_MIN_H } from "../groupLogic";
-import { gridSnapStore, snapCoord } from "../gridSnapStore";
 import { standoffStore, settleStandoffs } from "../standoffs";
 import { setGroupsCollapsed } from "../groupPush";
 import { rebuildGroupMembership } from "../groupMembership";
 import { scheduleAutosave } from "../persistence";
 import { ArrayChip, isArrayValue } from "./ArrayChip";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
+import { formatListCell, nodeOutputElemFamily } from "./valueDisplayFormat";
 import { isSolError } from "../errorValue";
 import { ErrorChip } from "./ErrorChip";
 import { formatScalar } from "./format";
 import { NodeSocket } from "./NodeSocket";
 import type { NodeProps } from "./nodeKit";
+import { useEditableLabel } from "./inlineInput";
 import "./GroupNode.css";
 import { stopDragStart } from "../coarse";
+import { getOwningView, getOwningEditor } from "../activeGraph";
 
 // Honors the FC annotation keyed by `annNodeId`.
 function formatReadout(v: unknown, annNodeId: string): string {
@@ -34,10 +37,13 @@ function formatReadout(v: unknown, annNodeId: string): string {
   const ann = formatAnnotationStore.getForNode(annNodeId);
   const one = (x: number) => (ann ? formatNumberWithAnnotation(x, ann) : formatScalar(x));
   if (typeof v === "number") return one(v);
-  if (Array.isArray(v)) return v.map((x) => (typeof x === "number" ? one(x) : String(x))).join(", ");
+  // Per-cell through the shared formatter: Cx, UnitCell, errors, blanks and
+  // logicals all have a text form — String(x) turned them into [object Object].
+  if (Array.isArray(v)) return v.map((x) => formatListCell(x as Parameters<typeof formatListCell>[0], one)).join(", ");
   // Object-valued kinds get a compact label instead of "[object Object]".
   const kind = describeValueKind(v);
   if (kind != null) return kind;
+  if (typeof v === "object") return formatListCell(v as Parameters<typeof formatListCell>[0], one); // scalar Cx / UnitCell
   return String(v);
 }
 
@@ -45,12 +51,12 @@ function formatReadout(v: unknown, annNodeId: string): string {
 // be in the cable store yet.
 function readoutValue(t: RetainedTerminal): unknown {
   if (t.kind === "display") {
-    const n = getEditor()?.getNode(t.displayId) as { cachedValue?: unknown } | undefined;
+    const n = getOwningEditor(t.displayId)?.getNode(t.displayId) as { cachedValue?: unknown } | undefined;
     return n?.cachedValue;
   }
   const v = cableValueStore.get(t.effNodeId, t.effSocketKey);
   if (v !== undefined && v !== null) return v;
-  const n = getEditor()?.getNode(t.effNodeId) as { cachedResult?: unknown } | undefined;
+  const n = getOwningEditor(t.effNodeId)?.getNode(t.effNodeId) as { cachedResult?: unknown } | undefined;
   return n?.cachedResult ?? v;
 }
 
@@ -72,11 +78,8 @@ function renderReadout(t: RetainedTerminal) {
   return <span className="solenoid-group__row-val">{readoutText(t)}</span>;
 }
 
-
 export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   const node = data;
-  const [label, setLabel] = useState(node.label);
-  const [editingLabel, setEditingLabel] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const swatchRef = useRef<HTMLButtonElement>(null);
   const paletteRef = useRef<HTMLDivElement>(null);
@@ -84,9 +87,9 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   const taRef = useRef<HTMLTextAreaElement>(null);
   // The grip's setPointerCapture + preventDefault suppress the native dblclick, so
   // the double-press is timed by hand.
-  const lastGripDown = useRef(0);
 
-  useEffect(() => { setLabel(node.label); }, [node.label]);
+  // The shared header title-edit mechanic (click-to-edit, Enter/blur, Escape revert).
+  const title = useEditableLabel(node, () => { void getOwningView(node.id)?.rerenderNode(node.id); });
   useSyncExternalStore(groupCollapseStore.subscribe, groupCollapseStore.version);
   useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
@@ -96,113 +99,43 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   const fillAlpha = mode === "light" ? 0.14 : 0.08;
 
   useLayoutEffect(() => {
-    const el = getArea()?.nodeViews.get(node.id)?.element;
+    const el = getOwningView(node.id)?.nodeElement(node.id);
     // Expanded sits BEHIND members (standoffs −3 < group −2 < conduit −1 < nodes 0)
     // so a member Conduit stays clickable; collapsed must sit ABOVE the cables or
     // they draw over the edge pill sockets.
     if (el) el.style.zIndex = pickerOpen ? "20" : node.collapsed ? "1" : "-2";
   });
 
-  const labelCancelled = useRef(false);
-  function onLabelChange(v: string) {
-    setLabel(v); // draft only — node.label unchanged until commit
+
+  const Grip = useFlowResizeGrip();
+  function onResize(size: { width: number; height: number }) {
+    node.width = Math.max(GROUP_MIN_W, size.width);
+    node.height = Math.max(GROUP_MIN_H, size.height);
+    void getOwningView(node.id)?.rerenderNode(node.id);
   }
-  function commitLabel() {
-    if (labelCancelled.current) { labelCancelled.current = false; setLabel(node.label); return; }
-    const prev = node.label;
-    const next = label;
-    if (next !== prev) {
-      node.label = next;
-      void getArea()?.update("node", node.id);
-      pushHistory(
-        () => { node.label = prev; void getArea()?.update("node", node.id); },
-        () => { node.label = next; void getArea()?.update("node", node.id); },
-      );
+  function onResizeEnd() {
+    const editor = getOwningEditor(node.id);
+    const view = getOwningView(node.id);
+    if (editor && view) {
+      // A MANUAL resize DOES re-evaluate membership; autofit is the exception —
+      // it wraps existing members and must not absorb bystanders.
+      reconcileGroupBox(editor, view, node);
+      rebuildGroupMembership(editor);
+      syncGroupCollapse(editor, view);
     }
-    setEditingLabel(false);
-  }
-  function onLabelKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter") { e.preventDefault(); e.currentTarget.blur(); }
-    else if (e.key === "Escape") { labelCancelled.current = true; e.currentTarget.blur(); }
-  }
-
-  function onResizeDown(e: React.PointerEvent) {
-    e.stopPropagation();
-    e.preventDefault();
-    const now = Date.now();
-    if (now - lastGripDown.current < 350) {
-      lastGripDown.current = 0;
-      void autofitToMembers();
-      return;
+    scheduleAutosave();
+    // The solver MEASURES offsetWidth/Height, so defer a frame to let the resize
+    // paint; pinning this group makes its partner re-align to it.
+    if (!standoffStore.isEmpty()) {
+      requestAnimationFrame(() => settleStandoffs(new Set([node.id])));
     }
-    lastGripDown.current = now;
-    const startX = e.clientX, startY = e.clientY;
-    const startW = node.width, startH = node.height;
-    const before = { width: startW, height: startH, members: [...node.members] };
-    const area = getArea();
-    const k = area?.area.transform.k ?? 1;
-    const handle = e.currentTarget as HTMLElement;
-    handle.setPointerCapture(e.pointerId);
-
-    const applySnapshot = (s: { width: number; height: number; members: string[] }) => {
-      node.width = s.width;
-      node.height = s.height;
-      node.members = [...s.members];
-      const ed = getEditor();
-      const ar = getArea();
-      void ar?.update("node", node.id);
-      if (ed && ar) { rebuildGroupMembership(ed); syncGroupCollapse(ed, ar); }
-      scheduleAutosave();
-    };
-
-    const move = (ev: PointerEvent) => {
-      node.width = Math.round(Math.max(GROUP_MIN_W, startW + (ev.clientX - startX) / k));
-      node.height = Math.round(Math.max(GROUP_MIN_H, startH + (ev.clientY - startY) / k));
-      void area?.update("node", node.id);
-    };
-    const up = () => {
-      handle.releasePointerCapture(e.pointerId);
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      // The top-left stays fixed during a BR resize, so snap the corner's WORLD
-      // position and derive width/height from it.
-      if (gridSnapStore.get()) {
-        const pos = area?.nodeViews.get(node.id)?.position;
-        if (pos) {
-          node.width = Math.round(Math.max(GROUP_MIN_W, snapCoord(pos.x + node.width) - pos.x));
-          node.height = Math.round(Math.max(GROUP_MIN_H, snapCoord(pos.y + node.height) - pos.y));
-          void area?.update("node", node.id);
-        }
-      }
-      const editor = getEditor();
-      if (editor && area) {
-        // A MANUAL resize DOES re-evaluate membership; autofit is the exception —
-        // it wraps existing members and must not absorb bystanders.
-        reconcileGroupBox(editor, area, node);
-        rebuildGroupMembership(editor);
-        syncGroupCollapse(editor, area);
-      }
-      scheduleAutosave();
-      // The solver MEASURES offsetWidth/Height, so defer a frame to let the resize
-      // paint; pinning this group makes its partner re-align to it.
-      if (!standoffStore.isEmpty()) {
-        requestAnimationFrame(() => settleStandoffs(new Set([node.id])));
-      }
-      const after = { width: node.width, height: node.height, members: [...node.members] };
-      if (after.width !== before.width || after.height !== before.height ||
-          after.members.length !== before.members.length) {
-        pushHistory(() => applySnapshot(before), () => applySnapshot(after));
-      }
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
   }
 
   async function autofitToMembers() {
-    const editor = getEditor();
-    const area = getArea();
-    if (!editor || !area) return;
-    await autofitGroupWithHistory(editor, area, node);
+    const editor = getOwningEditor(node.id);
+    const view = getOwningView(node.id);
+    if (!editor || !view) return;
+    await autofitGroupWithHistory(editor, view, node);
   }
 
   // The within-group tidy snaps docked FCs back onto their hosts in a DEFERRED
@@ -215,8 +148,8 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
 
   function pickColor(c: string) {
     node.color = c;
-    const ed = getEditor();
-    void getArea()?.update("node", node.id);
+    const ed = getOwningEditor(node.id);
+    void getOwningView(node.id)?.rerenderNode(node.id);
     if (ed) rebuildGroupMembership(ed); // member dots follow the group color
     scheduleAutosave();
   }
@@ -225,10 +158,10 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
 
   function toggleCollapse(e: React.MouseEvent) {
     e.stopPropagation();
-    const editor = getEditor();
-    const area = getArea();
-    if (!editor || !area) return;
-    void setGroupsCollapsed(editor, area, [node], !node.collapsed);
+    const editor = getOwningEditor(node.id);
+    const view = getOwningView(node.id);
+    if (!editor || !view) return;
+    void setGroupsCollapsed(editor, view, [node], !node.collapsed);
   }
 
   // `node.color` stays the canonical value — a palette SLOT id, resolved here.
@@ -263,7 +196,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
         <button
           type="button"
           className="solenoid-group__chevron"
-          title={collapsed ? "Expand group" : "Collapse group"}
+          title={collapsed ? "Expand the group" : "Collapse the group"}
           onClick={toggleCollapse}
           onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
@@ -272,40 +205,31 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
             <path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        {editingLabel ? (
+        {title.editing ? (
           <textarea
             ref={taRef}
             className="solenoid-group__label"
-            value={label}
             rows={1}
-            spellCheck={false}
             placeholder="Group"
-            autoFocus
             style={{ color: ink }}
-            onBlur={commitLabel}
-            onChange={(e) => onLabelChange(e.target.value)}
-            onKeyDown={onLabelKeyDown}
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
+            {...title.inputProps}
           />
         ) : (
           <div
             className="solenoid-group__label solenoid-group__label--display"
             style={{ color: ink }}
-            title={label}
-            onClick={() => setEditingLabel(true)}
-            onPointerDown={stopDragStart}
-            onMouseDown={(e) => e.stopPropagation()}
+            title={node.label}
+            {...title.displayProps}
           >
-            {label || "Group"}
+            {node.label || "Group"}
           </div>
         )}
         {node.members.length > 1 && (
           <button
             type="button"
             className="solenoid-group__tidy"
-            title="Tidy group: auto-arrange members and fit the box"
-            aria-label="Tidy group"
+            title="Tidy the group: auto-arrange members and fit the box"
+            aria-label="Tidy the group"
             onClick={(e) => { e.stopPropagation(); void tidyThenAutofit(); }}
             onPointerDown={stop}
             onMouseDown={stop}
@@ -357,7 +281,14 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
                   {combo ? (
                     <span className="solenoid-group__row-val">{t.lanes} lanes</span>
                   ) : isArrayValue(val) ? (
-                    <ArrayChip value={val} label={t.label} pinNodeId={t.effNodeId} />
+                    <ArrayChip
+                      value={val}
+                      label={t.label}
+                      pinNodeId={t.effNodeId}
+                      elem={t.kind === "display"
+                        ? nodeOutputElemFamily(t.displayId)
+                        : nodeOutputElemFamily(t.effNodeId, t.effSocketKey)}
+                    />
                   ) : (
                     renderReadout(t)
                   )}
@@ -369,7 +300,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
         {/* Edge pills are REAL sockets, so outputs stay draggable; a lanes > 1 pill
             is a Conduit ribbon trunk's terminus, functional socket under a stadium. */}
         {inputPills.map((ip) => {
-          const sock = getEditor()?.getNode(ip.nodeId)?.inputs[ip.socketKey]?.socket;
+          const sock = getOwningEditor(ip.nodeId)?.getNode(ip.nodeId)?.inputs[ip.socketKey]?.socket;
           if (!sock) return null;
           const lanes = ip.lanes ?? 1;
           if (lanes < 2) {
@@ -396,7 +327,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
           );
         })}
         {retained.map((t, i) => {
-          const sock = getEditor()?.getNode(t.effNodeId)?.outputs[t.effSocketKey]?.socket;
+          const sock = getOwningEditor(t.effNodeId)?.getNode(t.effNodeId)?.outputs[t.effSocketKey]?.socket;
           if (!sock) return null;
           // Mirrors the combined INPUT pill's stadium to the right edge.
           if ((t.lanes ?? 0) > 1) {
@@ -425,16 +356,27 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
         </>
       ) : (
         <div className="solenoid-group__body" style={{ borderColor: borderCol, background: hexToRgba(color, fillAlpha) }}>
-          <div
-            className="solenoid-group__resize"
-            style={{ color }}
-            onPointerDown={onResizeDown}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
-              <path d="M11 5 5 11M11 9l-2 2" />
-            </svg>
-          </div>
+          {/* Drag bands along the dashed edge — the only body surface that grabs an
+              UNSELECTED group (the wrapper is pointer-transparent, flow.css). */}
+          <div className="solenoid-group__band solenoid-group__band--n" />
+          <div className="solenoid-group__band solenoid-group__band--e" />
+          <div className="solenoid-group__band solenoid-group__band--s" />
+          <div className="solenoid-group__band solenoid-group__band--w" />
+          {Grip && (
+            <Grip
+              className="solenoid-group__resize"
+              style={{ color }}
+              minWidth={GROUP_MIN_W}
+              minHeight={GROUP_MIN_H}
+              onResize={onResize}
+              onResizeEnd={onResizeEnd}
+              onDoubleClick={() => void autofitToMembers()}
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+                <path d="M11 5 5 11M11 9l-2 2" />
+              </svg>
+            </Grip>
+          )}
         </div>
       )}
     </div>

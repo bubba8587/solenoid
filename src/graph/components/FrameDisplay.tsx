@@ -34,7 +34,7 @@ function fmtCell(v: FrameCell, type: FrameColType = "number", ann?: FormatAnnota
   return Number.isInteger(c) ? String(c) : c.toFixed(3).replace(/\.?0+$/, "");
 }
 
-export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCommitSource, full, previewRows, previewCols, scroll, formatNodeId, lambdaOptions }: {
+export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCommitSource, full, previewRows, previewCols, scroll, formatNodeId, lambdaOptions, formLayout }: {
   frame: FrameValue | SolError | null;
   label?: string;
   /** Whose persisted per-column formats to read; defaults to the host node. A Report
@@ -55,10 +55,12 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
   previewRows?: number;
   /** Override the compact column cap (default 3). */
   previewCols?: number;
-  /** Cap the table height and scroll past it; keeps the chip. */
+  /** A wide table scrolls sideways; never vertically, so the chip stays in view. */
   scroll?: boolean;
   /** The host's λ input keys — forwarded so the popup can offer the source select. */
   lambdaOptions?: string[];
+  /** Form-view field placement (the Record layout text, authored on the card). */
+  formLayout?: string;
 }) {
   // Subscribe so a format change in the popup re-renders this preview.
   const ctxNodeId = useHostNodeId();
@@ -92,7 +94,7 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
   return (
     <div
       className="solenoid-node__display-value solenoid-table-display"
-      style={{ padding: "4px 8px", userSelect: "text", ...(scroll ? { maxHeight: 260, overflow: "auto" } : null) }}
+      style={{ padding: "4px 8px", userSelect: "text", ...(scroll ? { overflowX: "auto" } : null) }}
     >
       <table className="solenoid-table-display__grid" style={{ borderCollapse: "collapse", width: "100%", tableLayout: full ? "auto" : "fixed" }}>
         <thead>
@@ -129,7 +131,7 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
       </table>
       {!full && (
         <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
-          <FrameChip value={frame} label={label} size="sm" onSave={onSave} source={source} onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={lambdaOptions} />
+          <FrameChip value={frame} label={label} size="sm" onSave={onSave} source={source} onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={lambdaOptions} formLayout={formLayout} />
         </div>
       )}
     </div>

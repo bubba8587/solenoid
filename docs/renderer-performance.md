@@ -1,59 +1,51 @@
 # Renderer performance — the settled policies
 
-The domain spec for how the canvas renderers (the DOM default and the HTML-in-Canvas
-layer) stay fast: gesture handling, GPU layer promotion, semantic zoom, and the HIC
-capture pipeline. Settled policy lives HERE; the open investigation (the choppy zoom
-BAND, its instrumentation and test queue) stays in `dev-notes.md` — read that entry
-before tuning anything in this file's domain.
+The perf policies for the render stack: the React Flow DOM surface and the
+HTML-in-Canvas gesture layer over it (author ruling 2026-08-26: HIC is IN —
+it survived the rete cutover, ported to the RF surface). The rete-only
+machinery (holder GPU promotion, the `--panning` quality-drop system) died
+with that surface; git has it.
 
 ## Zoom settle window (`zoomSettle.ts`)
 
-`DEFAULT_ZOOM_SETTLE_MS = 420` — how long after the last zoom event a renderer holds
-its gesture state before restoring the live DOM at the new scale. Shared constant:
-a scale change REPAINTS the visible DOM at the new raster scale while a translate
-only re-composites, and wheel zoom is notchy with no held-pointer signal — a short
-timer would exit + re-enter the gesture PER NOTCH and pay that repaint repeatedly
-mid-zoom. Both renderers hit the identical thrash and must hold the SAME window.
-`window.__zoomSettle = <ms>` overrides live (read at timer-set time). A LONGER
-settle is NOT the lever for the choppy-zoom band — ruled out by a deployed 3000ms
-A/B; see dev-notes "choppy zoom BAND".
+`DEFAULT_ZOOM_SETTLE_MS = 420` — how long after the last zoom event the
+HTML-canvas layer holds its gesture state before restoring the live DOM at
+the new scale. A scale change REPAINTS the visible DOM at the new raster
+scale while a translate only re-composites, and wheel zoom is notchy with no
+held-pointer signal — a short timer would exit + re-enter the gesture PER
+NOTCH and pay that repaint repeatedly mid-zoom. `window.__zoomSettle = <ms>`
+overrides live (read at timer-set time). A LONGER settle is NOT the lever for
+choppy zoom — ruled out by a deployed 3000ms A/B (dev-notes archive).
 
-## GPU layer promotion (`Canvas.tsx`) — pan never, desktop pinch only
+## Semantic zoom gate (`semanticZoomStore.ts`) — raw CSS scale, not dpr-folded
 
-The holder is deliberately NOT promoted to a GPU layer for PAN: promoting made
-collapsed pan smooth, but the holder surface is larger than the mobile GPU max
-texture, so the layer tiles and re-rasterizes as a translate reveals new tiles —
-flickering the visible heavy content (recharts/cards) with a group expanded. Pan
-relies on culling instead (few elements painted → cheap un-layered repaint). ZOOM is
-the exception, on DESKTOP only: a transient `will-change: transform` layer for the
-duration of the pinch (a bounded scale stays within already-rastered tiles; the
-scale runs as a cheap GPU scale of the cached bitmap — smooth, slightly soft — then
-drops on settle to re-rasterize crisp). NOT on touch devices — the gate is
-IS_COARSE, not IS_MOBILE (a tablet runs the desktop UI on the same mobile-class
-GPU): the promoted layer wants holder-bounds × zoom × dpr texture memory, which
-tiles/flickers mid-pinch and on tablets fails raster-tile allocation outright
-(Chrome's green placeholder squares). Touch zoom stays un-layered: a touch
-choppier, but stable.
+The far-zoom simplification class (`html.solenoid-semantic-zoom`, plain CSS
+does the swap) gates on the RAW CSS scale, threshold 0.3. Folding dpr in is a
+measured negative result: it made the gate trigger at a DIFFERENT apparent
+zoom per display, and apparent size is what legibility depends on. 0.3 ≈ a
+card drawn at ~30% (a ~200px card → ~60px): body text unreadable, card still
+a clear block — conservative (far-overview only) but actually reachable.
+Whichever surface is being zoomed owns the toggle (`syncSemanticZoomFor` runs
+from that surface's viewport drivers).
 
-**Negative result — do NOT also drop raster quality on the desktop zoom path.**
-Desktop pinch/wheel zoom is PROMOTED, so content is rasterized once and GPU-scaled,
-not re-rastered per frame: the quality drops save nothing, and toggling them forces
-extra re-rasters plus a box-shadow transition that made desktop zoom measurably
-WORSE. The gesture-time quality-drop system was then removed entirely
-(2026-07-04): the `--panning` class is no longer applied and DOM mode stays
-full-quality while panning — `Canvas.tsx`'s pan tracking is telemetry only.
+## GPU texture budget — a covered canvas must stop painting
 
-## Semantic zoom gate (`semanticZoomStore.ts`) — raw CSS scale, not the mip level
+An occluded subtree is not reliably dropped from raster, so a live canvas
+under a full-viewport opaque overlay keeps its layers and textures resident —
+two surfaces' worth on a mobile GPU whose max texture the canvas bbox × dpr
+can already overrun on its own. The composite drill-in carries the rule
+(`compositeEditor.css`): `html.sol-drilled-in
+.sol-rf-appcanvas:not(.solenoid-composite-editor__host) { visibility: hidden }`;
+any future canvas-covering surface owes the same. It must be `visibility`,
+not `display: none` — the covered area is still asked to re-render and
+re-measure cards while drilled in, and measurement needs a real layout box.
 
-The gate is the RAW CSS scale (threshold 0.3), never
-`computeIdealMipLevel(scale·dpr)`. The mip gate is a measured negative result:
-`mip >= 4` only fired below ~6% zoom on a dpr-1 display (~3% on dpr-2) — so far out
-the body is already sub-pixel and hiding it does nothing visible — and folding in
-dpr made it trigger at a DIFFERENT apparent zoom per display. Apparent size is what
-legibility depends on; dpr is a texture-resolution concern that belongs to the mip
-renderer. 0.3 ≈ a card drawn at ~30% (a ~200px card → ~60px): body text unreadable,
-card still a clear block — conservative (far-overview only) but actually reachable
-and visible.
+The same budget shapes the HTML-canvas layer's promotion rules: the viewport
+gets a gesture-scoped `will-change: transform` layer on fine pointers only —
+NEVER on coarse (`IS_COARSE`, not `IS_MOBILE` — a tablet runs the desktop UI
+on a mobile-class GPU, where a layer that size fails tile allocation); on
+coarse pointers only the small DOM-only elements are promoted per-element,
+size-capped at 1024px.
 
 ## HTML-in-Canvas capture pipeline (`rasterAtlas.ts`, `htmlCanvasRenderer.ts`, `HtmlCanvasLayer.tsx`)
 
@@ -101,26 +93,27 @@ read-back).
 ## DOM↔canvas transform sync (`domSync.ts`)
 
 During a gesture the canvas draws the graph while DOM-only content (conduits, their
-cables, the standoff svg) stays live DOM inside rete's holder — two presentation
-pipelines that can skew by a frame or more (the "conduit trails the pan" complaint):
-the canvas presents the camera it PAINTED with, while the holder composites rete's
-freshest CSS transform. The fix: while gesturing, steer the holder's transform to
-the camera the canvas actually presented (`holderSyncTransform`), deriving that
-presented camera from the WICG API itself when the build exposes it —
-`drawElementImage` returns (and `getElementTransform` computes) the CSS matrix that
-places an element exactly where the canvas drew it, browser rounding included
-(`camFromDrawMatrix`): for a capture box drawn at world (anchorX, anchorY) at
-natural size (REF=1, dest == padded box) the matrix is `translate(k·anchor + t)
-scale(k)`, so `k = a` and `t = (e,f) − k·anchor`. The WICG surface is experimental —
-a build could hand back backing-store px or an unexpected origin — so a
-native-derived camera is trusted only within tolerance of our own bookkeeping
-(`plausibleNativeCam`, defaults 2% of scale / 4 CSS px); anything further is treated
-as a misparse and the bookkeeping wins. Pure math, no DOM; covered by
-`domSync.test.ts`.
+cables, the standoff svg) stays live DOM — two presentation pipelines that can skew
+by a frame or more (the "conduit trails the pan" complaint): the canvas presents the
+camera it PAINTED with, while the RF viewport composites the freshest CSS transform.
+The fix: while gesturing, steer the viewport's transform to the camera the canvas
+actually presented (`holderSyncTransform`), deriving that presented camera from the
+WICG API itself when the build exposes it — `drawElementImage` returns (and
+`getElementTransform` computes) the CSS matrix that places an element exactly where
+the canvas drew it, browser rounding included (`camFromDrawMatrix`): for a capture
+box drawn at world (anchorX, anchorY) at natural size (REF=1, dest == padded box)
+the matrix is `translate(k·anchor + t) scale(k)`, so `k = a` and `t = (e,f) −
+k·anchor`. The WICG surface is experimental — a build could hand back backing-store
+px or an unexpected origin — so a native-derived camera is trusted only within
+tolerance of our own bookkeeping (`plausibleNativeCam`, defaults 2% of scale / 4
+CSS px); anything further is treated as a misparse and the bookkeeping wins. Pure
+math, no DOM; covered by `domSync.test.ts`. On exit the layer hands the transform
+back by re-serializing the live camera (`holderTransform`); React Flow's next
+viewport commit overwrites it with its own equivalent.
 
 **Clone position (`cloneFor`).** Do NOT set `position` on the clone — let each
 root's own CSS class govern it, exactly like the original. `.solenoid-node` is
-static (chrome climbs to the `rel` rete-div stand-in); `.solenoid-note` is
+static (chrome climbs to the `rel` stand-in div); `.solenoid-note` is
 `position: relative` (its resize handle anchors to the note card). Forcing a single
 value breaks whichever root doesn't match it — a forced `static` shifted the note's
 resize handle to the border box (a measured 1.75px shift), a forced `relative`

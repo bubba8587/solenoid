@@ -1,13 +1,13 @@
 import { ClassicPreset } from "rete";
 import { numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfType, comboOfFamily, type SocketDataType, type SolenoidSocket } from "../sockets";
 import { parseListLiteral } from "../coerceInputs";
-import { parseDateToSerial } from "./date";
+import { parseDate } from "./date";
 import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
-import { readInput, listIn, listOut, numIn, numOut, anyIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut } from "./shared";
+import { readInput, listIn, listOut, numIn, numOut, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut } from "./shared";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
-import { pairIdsFromKeys } from "./logic";
-import { passesFilter, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
+import { pairIdsFromKeys, pickSlot } from "./logic";
+import { passesFilter, requireTextColumn, requireTextList, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
 import { forAggregate, isMissing, coerceLogical, type Tri } from "../valueKinds";
 import { forAggregateUnits, tagDim, type UnitCell } from "../unitValue";
@@ -15,7 +15,9 @@ import { tagFrameCellUnit } from "../unitColumn";
 import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
-import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, takeSlice, dropSlice, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell } from "./listOps";
+import { aggregate, type AggregateOp } from "./statsOps";
+import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS } from "./listOps";
+import { isFrameRef, flushRef, frameBackend, materialize } from "../frameBackend";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
 
@@ -50,7 +52,11 @@ function coerceElem(dt: ListElemType, v: unknown): AnyCell {
     case "date": {
       // Dates ARE serials, so a number passes through; a string takes the row's parser.
       if (typeof v === "number") return Number.isFinite(v) ? v : null;
-      if (typeof v === "string") { const n = parseDateToSerial(v); return Number.isFinite(n) ? n : null; }
+      if (typeof v === "string") {
+        const d = parseDate(v);           // #AMBIGUOUS! surfaces (dateAmbiguitySurfaces)
+        if (isSolError(d)) return d;
+        return Number.isFinite(d) ? d : null;
+      }
       return null;
     }
     case "string":
@@ -63,6 +69,10 @@ function coerceElem(dt: ListElemType, v: unknown): AnyCell {
 }
 
 export class ListInputNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    list: "Rows concatenate in order, and a wired row replaces its typed text.",
+  };
+
   label: string;
   cachedList: AnyCell[] = [];
   dataType: ListElemType;
@@ -152,18 +162,24 @@ export class ListInputNode extends ClassicPreset.Node {
 // count-first (SEQUENCE), endpoint-count (LinSpace). Start is shared by all
 // three and Step/Count by their pairs, so an op switch keeps those cables.
 
-export type SeriesOp = "range" | "sequence" | "linspace";
+export type SeriesOp = "range" | "sequence" | "linspace" | "geometric" | "fibonacci" | "repeat";
 
 export const SERIES_OP_META = {
-  range:    { label: "Range",    description: "Generates a sequence: start, start+step, …, < stop. Excel: SEQUENCE." },
-  sequence: { label: "SEQUENCE", description: "List of N numbers starting at Start with Step between each; like Range but count-first. Excel: SEQUENCE." },
+  range:    { label: "Range",    description: "Generates a sequence from Start to Stop inclusive, Step apart. `numpy arange` stops before Stop; Excel's count-first equivalent is the Sequence op." },
+  sequence: { label: "SEQUENCE", description: "List of N numbers starting at Start with Step between each. Like Range but count-first. Excel: `SEQUENCE`." },
   linspace: { label: "LinSpace", description: "Generates Count evenly spaced values from Start to End inclusive." },
+  geometric: { label: "Geometric", description: "Geometric series: `start × ratio^0`, `start × ratio^1`, …" },
+  fibonacci: { label: "Fibonacci", description: "First N Fibonacci numbers: 1, 1, 2, 3, 5, 8, …" },
+  repeat:    { label: "Repeat",    description: "An array of one value repeated N times, like `ZEROS` or `ONES`." },
 } satisfies Record<SeriesOp, { label: string; description: string }>;
 
 const SERIES_SPECS: Record<SeriesOp, ReadonlyArray<{ key: string; label: string; def?: number }>> = {
   range:    [{ key: "start", label: "Start", def: 0 }, { key: "stop", label: "Stop" }, { key: "step", label: "Step", def: 1 }],
   sequence: [{ key: "count", label: "Count", def: 10 }, { key: "start", label: "Start (default 1)" }, { key: "step", label: "Step (default 1)" }],
   linspace: [{ key: "start", label: "Start", def: 0 }, { key: "end", label: "End", def: 1 }, { key: "count", label: "Count", def: 10 }],
+  geometric: [{ key: "start", label: "Start", def: 1 }, { key: "ratio", label: "Ratio", def: 2 }, { key: "count", label: "Count", def: 8 }],
+  fibonacci: [{ key: "count", label: "Count", def: 10 }],
+  repeat:    [{ key: "value", label: "Value", def: 0 }, { key: "count", label: "Count", def: 5 }],
 };
 
 export class SeriesNode extends ClassicPreset.Node {
@@ -176,7 +192,7 @@ export class SeriesNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: SeriesOp }) {
     super("Series");
-    this.label = init?.label ?? "Series";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "range";
     for (const i of SERIES_SPECS[this.op]) this.addInput(i.key, numIn(i.label));
     this.addOutput("list", listOut("List"));
@@ -191,7 +207,7 @@ export class SeriesNode extends ClassicPreset.Node {
   }
 
   /** The keys a switch to `next` would remove. Callers on a live graph prune
-   *  these BEFORE calling setOp (SSOT-9). */
+   *  these BEFORE calling setOp (onePrunePath). */
   keysDroppedBySwitch(next: SeriesOp): string[] {
     const keep = new Set(SERIES_SPECS[next].map((i) => i.key));
     return SERIES_SPECS[this.op].filter((i) => !keep.has(i.key)).map((i) => i.key);
@@ -211,7 +227,7 @@ export class SeriesNode extends ClassicPreset.Node {
     this.seedLiterals();
   }
 
-  data(inputs: { start?: number[]; stop?: number[]; step?: number[]; end?: number[]; count?: number[] }): { list: number[] | SolError | null } {
+  data(inputs: { start?: number[]; stop?: number[]; step?: number[]; end?: number[]; count?: number[]; ratio?: number[]; value?: number[] }): { list: number[] | SolError | null } {
     let list: number[] | SolError | null;
     if (this.op === "range") {
       const start = readInput(inputs.start, this.literals.start ?? 0);
@@ -239,11 +255,30 @@ export class SeriesNode extends ClassicPreset.Node {
           ? solError("#OVERFLOW!", `SEQUENCE count ${count} exceeds the ${MAX_GENERATED} element limit`)
           : sequenceList(count, start, step);
       }
-    } else {
+    } else if (this.op === "linspace") {
       const start = readInput(inputs.start, this.literals.start ?? 0);
       const end   = readInput(inputs.end, this.literals.end ?? 1);
       const nRaw  = readInput(inputs.count, this.literals.count ?? 10);
       list = start === null || end === null || nRaw === null ? null : linspace(start, end, nRaw);
+    } else if (this.op === "geometric") {
+      const start = readInput(inputs.start, this.literals.start ?? 1);
+      const ratio = readInput(inputs.ratio, this.literals.ratio ?? 2);
+      const nRaw  = readInput(inputs.count, this.literals.count ?? 8);
+      if (start === null || ratio === null || nRaw === null) list = null;
+      else list = Math.max(0, Math.round(nRaw)) > MAX_GENERATED
+        ? solError("#OVERFLOW!", `Geometric count ${Math.round(nRaw)} exceeds the ${MAX_GENERATED} element limit`)
+        : geometric(start, ratio, nRaw);
+    } else if (this.op === "fibonacci") {
+      // The kernel self-caps at 78 terms (F79 loses double precision), so no overflow guard.
+      const nRaw = readInput(inputs.count, this.literals.count ?? 10);
+      list = nRaw === null ? null : fibonacci(nRaw);
+    } else {
+      const v    = readInput(inputs.value, this.literals.value ?? 0);
+      const nRaw = readInput(inputs.count, this.literals.count ?? 5);
+      if (v === null || nRaw === null) list = null;
+      else list = Math.max(0, Math.round(nRaw)) > MAX_GENERATED
+        ? solError("#OVERFLOW!", `Repeat count ${Math.round(nRaw)} exceeds the ${MAX_GENERATED} element limit`)
+        : repeatValue(v, nRaw);
     }
     this.cachedList = list;
     return { list };
@@ -276,6 +311,12 @@ export class ListLengthNode extends ClassicPreset.Node {
 // INDEX reads a cell out of ANY container (list / matrix / frame / cube), so its
 // input and output are `any`.
 export class ListIndexNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    index: "Rows count from 1. 0 or unset takes every row. A wired blank blanks the result instead.",
+    column: "Columns count from 1. 0 or unset takes every column. A plain list has only column 1.",
+    result: "A whole row taken from a frame arrives as a one-row frame. A whole column arrives as a list.",
+  };
+
   label: string;
   cachedResult: number | SolError | null | CubeCell | FrameValue | CubeValue = null;
   literals: Record<string, number> = {}; // 1-based (Excel INDEX); unset = [all]
@@ -286,8 +327,8 @@ export class ListIndexNode extends ClassicPreset.Node {
     super("ListIndex");
     this.label = init?.label ?? "INDEX";
     this.addInput("list",  trueAnyIn("Array")); // list, matrix, frame, or cube
-    this.addInput("index", numIn("Row (default [all])"));
-    this.addInput("column", numIn("Column (default [all])"));   // 2-D / frame / cube only
+    this.addInput("index", numIn("Row"));
+    this.addInput("column", numIn("Column"));   // 2-D / frame / cube only
     // ADOPTIVE: the extracted value's ELEMENT FAMILY is the container's, so the
     // output adopts it — see the passthrough() note below for what stays unknowable.
     this.addOutput("result", trueAnyOut("Value"));
@@ -350,8 +391,8 @@ export class ListIndexNode extends ClassicPreset.Node {
 type IndexResult = number | SolError | null | CubeCell | FrameValue | CubeValue;
 
 /** INDEX over a frame or cube. Only the NODE can reach this — a formula holds
- *  neither (FX-9) — so it rides here rather than in the shared accessor, which the
- *  formula path loads and must keep clear of the socket lattice (FX-2). */
+ *  neither (hideMatrixFromVendor) — so it rides here rather than in the shared accessor, which the
+ *  formula path loads and must keep clear of the socket lattice (implReteFree). */
 function indexIntoContainer(v: unknown, row: IndexAxis, col: IndexAxis): IndexResult {
   if (v === null || v === undefined) return null;
   if (!isFrameValue(v) && !isCubeValue(v)) {
@@ -397,29 +438,52 @@ function indexIntoContainer(v: unknown, row: IndexAxis, col: IndexAxis): IndexRe
 export type SortDir = "asc" | "desc";
 
 export class SortNode extends ClassicPreset.Node {
-  label: string;
-  op: SortDir;
-  cachedList: number[] = [];
-  width = 180;
-  height = 150;
+  static socketDocs: Record<string, string> = {
+    by: "Optional. Unwired, the list sorts by its own values. Wired, it sorts by this parallel numeric key list (sort names by their scores); position-only, so any element type reorders. A blank or error key sends its element to the end; a length mismatch errors the result.",
+    result: "Blank and error cells sort to the end in either direction.",
+  };
 
-  constructor(init?: { label?: string; op?: SortDir }) {
+  /** The output adopts the sorted list's type; the `by` keys are a side input and stay
+   *  unit-blind (like SORTBY, which this node absorbed). */
+  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
+  label: string;
+  order: SortDir;
+  cachedList: (number | string | boolean | null | SolError)[] | SolError | null = [];
+  width = 180;
+  height = 175;
+
+  constructor(init?: { label?: string; order?: SortDir }) {
     super("Sort");
     this.label = init?.label ?? "List Sort";
-    this.op = init?.op ?? "asc";
-    this.addInput("list", listIn("List"));
-    this.addOutput("result", listOut("Sorted"));
+    this.order = init?.order ?? "asc";
+    // Widened to anylist so a wired `by` can reorder ANY element family, not just numbers.
+    this.addInput("list", anyListIn("List"));
+    this.addInput("by",   listIn("Sort by"));
+    this.addOutput("result", adoptiveListOut("Sorted"));
   }
 
-  data(inputs: { list?: (number | null | SolError)[][] }) {
+  data(inputs: { list?: unknown[][]; by?: ((number | null | SolError)[] | null)[] }): { result: (number | string | boolean | null | SolError)[] | SolError | null } {
     const arr = inputs.list?.[0] ?? [];
-    const sorted = sortNumericList(arr, this.op === "desc") as number[];
-    this.cachedList = sorted;
-    return { result: sorted };
+    const desc = this.order === "desc";
+    const by = inputs.by?.[0];
+    if (Array.isArray(by)) {
+      // Wired parallel keys (SORTBY): reorder `arr` by them. Same length required.
+      if (by.length !== arr.length) {
+        this.cachedList = solError("#SHAPE!", `The sort-by list has ${by.length} values but the list has ${arr.length}`);
+        return { result: this.cachedList };
+      }
+      this.cachedList = sortByKeys(arr, by, desc) as (number | string | boolean | null | SolError)[];
+      return { result: this.cachedList };
+    }
+    // A wired-blank `by` leaves the result unknown (value-semantics.md, role table);
+    // an UNWIRED `by` self-sorts the list by its own (numeric) values — the classic Sort.
+    if ("by" in inputs) { this.cachedList = null; return { result: null }; }
+    this.cachedList = sortNumericList(arr as ListCell[], desc) as (number | null | SolError)[];
+    return { result: this.cachedList };
   }
 }
 
-// Position-only utilities ride element-agnostic `anylist` sockets (D15); ops needing
+// Position-only utilities ride element-agnostic `anylist` sockets (appendLadder); ops needing
 // comparison or arithmetic semantics (Sort, Cumulative) stay typed.
 export class ReverseNode extends ClassicPreset.Node {
   /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */
@@ -444,7 +508,306 @@ export class ReverseNode extends ClassicPreset.Node {
   }
 }
 
+export class ShiftNode extends ClassicPreset.Node {
+  /** Element-preserving: the output adopts the input's type. */
+  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
+  label: string;
+  literals: Record<string, number> = { by: 1 };
+  /** Vacated slots: blank (drop off the end) or wrap around (numpy.roll). */
+  wrap: "blank" | "wrap" = "blank";
+  cachedList: unknown[] = [];
+  width = 180; height = 150;
+
+  constructor(init?: { label?: string; wrap?: "blank" | "wrap" }) {
+    super("Shift");
+    this.label = init?.label ?? "Shift";
+    if (init?.wrap) this.wrap = init.wrap;
+    this.addInput("list", adoptiveListIn("List"));
+    this.addInput("by", numIn("By"));
+    this.addOutput("result", adoptiveListOut("Shifted"));
+  }
+
+  data(inputs: { list?: unknown[][]; by?: number[] }) {
+    const arr = inputs.list?.[0] ?? [];
+    const by = readInput(inputs.by, this.literals.by ?? 1);
+    if (by === null) { this.cachedList = []; return { result: [] }; }
+    this.cachedList = shiftList(arr as ListCell[], by, this.wrap === "wrap");
+    return { result: this.cachedList };
+  }
+}
+
+export type BinMode = "breaks" | "quantiles";
+export const BIN_MODE_OPTIONS: ReadonlyArray<{ value: BinMode; label: string; title: string }> = [
+  { value: "breaks",    label: "breaks",    title: "Bin by the wired breakpoints: 0 below the first edge, up to n above the last (numpy digitize, R findInterval)" },
+  { value: "quantiles", label: "quantiles", title: "Bin into n equal-count buckets 1..n (dplyr ntile, pandas qcut)" },
+];
+
+export class BinNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    breaks: "The bin edges. A value is placed by how many edges it clears: 0 below the first edge, up to n above the last.",
+    n: "How many equal-count buckets; the result is the bucket number, 1 to n.",
+  };
+  label: string;
+  /** Breakpoint bins (digitize) or quantile buckets (ntile) — the mode owns the second socket. */
+  mode: BinMode = "breaks";
+  literals: Record<string, number> = { n: 4 };
+  cachedList: ListCell[] | SolError = [];
+  width = 180; height = 180;
+
+  constructor(init?: { label?: string; mode?: BinMode }) {
+    super("Bin");
+    this.label = init?.label ?? "Bin";
+    if (init?.mode) this.mode = init.mode;
+    this.addInput("list", listIn("List"));
+    if (this.mode === "quantiles") this.addInput("n", numIn("Buckets"));
+    else this.addInput("breaks", listIn("Breaks"));
+    this.addOutput("result", listOut(this.mode === "quantiles" ? "Bucket" : "Bin index"));
+  }
+
+  /** The mode owns the second socket (Breaks ↔ Buckets). Callers on a live graph prune
+   *  the departing socket's cables BEFORE switching (onePrunePath). */
+  setMode(next: BinMode): void {
+    if (next === this.mode) return;
+    this.mode = next;
+    if (next === "quantiles") { if (this.inputs.breaks) this.removeInput("breaks"); if (!this.inputs.n) this.addInput("n", numIn("Buckets")); }
+    else { if (this.inputs.n) this.removeInput("n"); if (!this.inputs.breaks) this.addInput("breaks", listIn("Breaks")); }
+    const out = this.outputs.result;
+    if (out) out.label = next === "quantiles" ? "Bucket" : "Bin index";
+  }
+
+  data(inputs: { list?: ListCell[][]; breaks?: ListCell[][]; n?: number[] }) {
+    const arr = inputs.list?.[0] ?? [];
+    if (this.mode === "quantiles") {
+      const n = readInput(inputs.n, this.literals.n ?? 4);
+      this.cachedList = n === null ? [] : ntileList(arr, n);
+    } else {
+      this.cachedList = binIndex(arr, inputs.breaks?.[0] ?? []);
+    }
+    return { result: this.cachedList };
+  }
+}
+
+export type { OutlierMethod } from "./listOps";
+export const OUTLIER_METHOD_META = {
+  z:   { label: "z-score", description: "`|z|` above the threshold (default 3): distance from the mean in sample standard deviations." },
+  iqr: { label: "IQR",     description: "Beyond `Q1 − k·IQR` or `Q3 + k·IQR` (default `k = 1.5`): the boxplot whisker rule. R `boxplot.stats`." },
+  mad: { label: "MAD",     description: "Modified z-score `0.6745·(x − median)/MAD` above the threshold (default 3.5): the robust Iglewicz–Hoaglin rule." },
+} satisfies Record<OutlierMethod, { label: string; description: string }>;
+
+export class OutliersNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "One row per input value: Value (the list with outliers blanked, so aggregates skip them and positions hold) and Outlier, TRUE where the rule flags it, though a blank stays blank.",
+    threshold: "Leave unwired for the rule's conventional cutoff: 3 for z, 1.5 for IQR, 3.5 for MAD.",
+  };
+  label: string;
+  method: OutlierMethod = "z";
+  literals: Record<string, number> = {};
+  cachedResult: FrameValue | null = null;
+  width = 190; height = 200;
+
+  constructor(init?: { label?: string; method?: OutlierMethod }) {
+    super("Outliers");
+    this.label = init?.label ?? "Outliers";
+    if (init?.method) this.method = init.method;
+    this.addInput("list", listIn("List"));
+    this.addInput("threshold", numIn("Threshold"));
+    // Value + Outlier are index-aligned, so they leave as ONE frame (C5). Value keeps the
+    // input's element family (inferColumn); Outlier is logical.
+    this.addOutput("result", frameOut("Result"));
+  }
+
+  data(inputs: { list?: ListCell[][]; threshold?: number[] }): { result: FrameValue | null } {
+    const arr = inputs.list?.[0] ?? null;
+    const t = readInput(inputs.threshold, this.literals.threshold ?? OUTLIER_DEFAULT_THRESHOLD[this.method]);
+    if (arr === null || t === null) { this.cachedResult = null; return { result: null }; }
+    const flags = outlierFlags(arr, this.method, t);
+    const clean = arr.map((v, i) => (flags[i] === true ? null : v));
+    const frame: FrameValue = {
+      __frame: true,
+      columns: [
+        inferColumn("Value", clean),
+        { name: "Outlier", type: "logical", values: flags },
+      ],
+    };
+    this.cachedResult = frame;
+    return { result: frame };
+  }
+}
+
+export class CombinationsNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "One row per combination (or permutation). Empty when k is larger than the list.",
+  };
+  label: string;
+  literals: Record<string, number> = { k: 2 };
+  /** Order-independent subsets (itertools.combinations) or ordered arrangements (permutations). */
+  mode: "combinations" | "permutations" = "combinations";
+  cachedResult: ListCell[][] | SolError | null = null;
+  width = 200; height = 210;
+
+  constructor(init?: { label?: string; mode?: "combinations" | "permutations" }) {
+    super("Combinations");
+    this.label = init?.label ?? "Combinations";
+    if (init?.mode) this.mode = init.mode;
+    this.addInput("list", listIn("List"));
+    this.addInput("k", numIn("Choose k"));
+    this.addOutput("result", tableOut("Rows"));
+  }
+
+  data(inputs: { list?: unknown[][]; k?: number[] }) {
+    const arr = (inputs.list?.[0] ?? []) as ListCell[];
+    const k = readInput(inputs.k, this.literals.k ?? 2);
+    if (k === null || arr.length === 0) { this.cachedResult = null; return { result: null }; }
+    this.cachedResult = combinationsOf(arr, k, this.mode);
+    return { result: this.cachedResult };
+  }
+}
+
+export class EwmaNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    alpha: "Smoothing factor 0–1: higher tracks recent values closely, lower smooths harder.",
+  };
+  label: string;
+  literals: Record<string, number> = { alpha: 0.3 };
+  cachedList: ListCell[] | SolError = [];
+  width = 180; height = 150;
+
+  constructor(init?: { label?: string }) {
+    super("Ewma");
+    this.label = init?.label ?? "EWMA";
+    this.addInput("list", listIn("List"));
+    this.addInput("alpha", numIn("Alpha"));
+    this.addOutput("result", listOut("Smoothed"));
+  }
+
+  data(inputs: { list?: ListCell[][]; alpha?: number[] }) {
+    const arr = inputs.list?.[0] ?? [];
+    const alpha = readInput(inputs.alpha, this.literals.alpha ?? 0.3);
+    if (alpha === null) { this.cachedList = []; return { result: [] }; }
+    this.cachedList = ewmaList(arr, alpha);
+    return { result: this.cachedList };
+  }
+}
+
+export class ConvolveNode extends ClassicPreset.Node {
+  label: string;
+  cachedList: ListCell[] | SolError = [];
+  width = 180; height = 150;
+
+  constructor(init?: { label?: string }) {
+    super("Convolve");
+    this.label = init?.label ?? "Convolve";
+    this.addInput("a", listIn("A"));
+    this.addInput("b", listIn("B"));
+    this.addOutput("result", listOut("A ∗ B"));
+  }
+
+  data(inputs: { a?: ListCell[][]; b?: ListCell[][] }) {
+    this.cachedList = convolveList(inputs.a?.[0] ?? [], inputs.b?.[0] ?? []);
+    return { result: this.cachedList };
+  }
+}
+
+export class CrossNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "The vector perpendicular to both inputs. Each operand must be three numbers.",
+  };
+  label: string;
+  cachedList: ListCell[] | SolError = [];
+  width = 180; height = 150;
+
+  constructor(init?: { label?: string }) {
+    super("Cross");
+    this.label = init?.label ?? "Cross Product";
+    this.addInput("a", listIn("A"));
+    this.addInput("b", listIn("B"));
+    this.addOutput("result", listOut("A × B"));
+  }
+
+  data(inputs: { a?: ListCell[][]; b?: ListCell[][] }) {
+    this.cachedList = crossProduct(inputs.a?.[0] ?? [], inputs.b?.[0] ?? []);
+    return { result: this.cachedList };
+  }
+}
+
+export class PolyfitNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "The fitted y value at each input x: the least-squares polynomial of the chosen degree, evaluated back over the data.",
+  };
+  label: string;
+  literals: Record<string, number> = { degree: 2 };
+  cachedList: ListCell[] | SolError = [];
+  width = 200; height = 180;
+
+  constructor(init?: { label?: string }) {
+    super("Polyfit");
+    this.label = init?.label ?? "Poly Fit";
+    this.addInput("x", listIn("x"));
+    this.addInput("y", listIn("y"));
+    this.addInput("degree", numIn("Degree"));
+    this.addOutput("result", listOut("Fitted y"));
+  }
+
+  data(inputs: { x?: ListCell[][]; y?: ListCell[][]; degree?: number[] }) {
+    const degree = readInput(inputs.degree, this.literals.degree ?? 2);
+    if (degree === null) { this.cachedList = []; return { result: [] }; }
+    this.cachedList = polyfitEval(inputs.x?.[0] ?? [], inputs.y?.[0] ?? [], degree);
+    return { result: this.cachedList };
+  }
+}
+
+export class TrapzNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "The area under the piecewise-linear curve through the points, at uniform spacing dx.",
+  };
+  label: string;
+  literals: Record<string, number> = { dx: 1 };
+  cachedResult: number | ListCell | null = null;
+  width = 180; height = 150;
+
+  constructor(init?: { label?: string }) {
+    super("Trapz");
+    this.label = init?.label ?? "Integrate";
+    this.addInput("list", listIn("List"));
+    this.addInput("dx", numIn("dx"));
+    this.addOutput("result", numOut("Area"));
+  }
+
+  data(inputs: { list?: ListCell[][]; dx?: number[] }) {
+    const dx = readInput(inputs.dx, this.literals.dx ?? 1);
+    if (dx === null) { this.cachedResult = null; return { result: null }; }
+    this.cachedResult = trapzList(inputs.list?.[0] ?? [], dx);
+    return { result: this.cachedResult };
+  }
+}
+
+export class RleNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "Two columns: each consecutive run's value and its length. R rle.",
+  };
+  label: string;
+  cachedResult: ListCell[][] | null = null;
+  width = 180; height = 150;
+
+  constructor(init?: { label?: string }) {
+    super("Rle");
+    this.label = init?.label ?? "Run Lengths";
+    this.addInput("list", listIn("List"));
+    this.addOutput("result", tableOut("value, count"));
+  }
+
+  data(inputs: { list?: ListCell[][] }) {
+    const arr = inputs.list?.[0] ?? [];
+    this.cachedResult = arr.length === 0 ? null : rleEncode(arr);
+    return { result: this.cachedResult };
+  }
+}
+
 export class SliceNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    end: "The element at End is included. Left unset, the slice runs to the end of the list.",
+  };
+
   /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
@@ -477,7 +840,7 @@ export class SliceNode extends ClassicPreset.Node {
 }
 
 // ─── Filter ────────────────────────────────────────────────────────────────────
-// A list tested against ITS OWN values (D16) — deliberately no table input and no
+// A list tested against ITS OWN values (filterOneJob) — deliberately no table input and no
 // "Keep if" mask. Kept ∪ Dropped stays the exhaustive complement.
 
 /** Re-export so the barrel keeps one FilterCombine (the frame Filter's). */
@@ -507,6 +870,10 @@ export function readFilterValue(wired: unknown[] | undefined, literal: string | 
 }
 
 export class FilterNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "With no completed condition the whole list passes through unchanged.",
+  };
+
   label: string;
   combine: FilterCombine;
   /** Per-row {op, matchCase}, keyed by the row id (the `value${id}` suffix). */
@@ -610,6 +977,9 @@ export class FilterNode extends ClassicPreset.Node {
       this.cachedDropped = null;
       return { result: this.cachedResult, dropped: null };
     }
+    // Same rule as the frame Filter: a text predicate on a non-text list is #TYPE!
+    // (rules textPredicateNeedsText); the error guards surface the throw.
+    for (const c of conds) requireTextList(c.op, type);
     const kept: unknown[] = [];
     const dropped: unknown[] = [];
     for (let i = 0; i < arr.length; i++) {
@@ -627,21 +997,27 @@ export class FilterNode extends ClassicPreset.Node {
 
 // ─── SUMIFS / COUNTIFS / AVERAGEIFS / MINIFS / MAXIFS ─────────────────────────
 // Conditional aggregation over ONE FRAME, AND-only like Excel's *IFS: position-
-// aligned columns arrive as a frame, never as parallel list sockets (D16).
+// aligned columns arrive as a frame, never as parallel list sockets (filterOneJob).
 
 export type CondAggOp = "sumifs" | "countifs" | "averageifs" | "minifs" | "maxifs";
 
 export const COND_AGG_OP_META = {
-  sumifs:     { label: "SUMIFS",     description: "Sum the Values column over the rows where every criteria row passes. Excel: SUMIFS / SUMIF." },
-  countifs:   { label: "COUNTIFS",   description: "Count the rows where every criteria row passes (needs no Values column). Excel: COUNTIFS / COUNTIF." },
-  averageifs: { label: "AVERAGEIFS", description: "Average the Values column where every criteria row passes; nothing matching is #DIV/0! like Excel. Excel: AVERAGEIFS / AVERAGEIF." },
-  minifs:     { label: "MINIFS",     description: "Smallest Values-column cell where every criteria row passes; nothing matching is 0 like Excel. Excel: MINIFS." },
-  maxifs:     { label: "MAXIFS",     description: "Largest Values-column cell where every criteria row passes; nothing matching is 0 like Excel. Excel: MAXIFS." },
+  sumifs:     { label: "SUMIFS",     description: "Sum the Values column over the rows where every criteria row passes. Excel: `SUMIFS` / `SUMIF`." },
+  countifs:   { label: "COUNTIFS",   description: "Count the rows where every criteria row passes (needs no Values column). Excel: `COUNTIFS` / `COUNTIF`." },
+  averageifs: { label: "AVERAGEIFS", description: "Average the Values column where every criteria row passes. Nothing matching is `#DIV/0!` like Excel. Excel: `AVERAGEIFS` / `AVERAGEIF`." },
+  minifs:     { label: "MINIFS",     description: "Smallest Values-column cell where every criteria row passes. Nothing matching is `0` like Excel. Excel: `MINIFS`." },
+  maxifs:     { label: "MAXIFS",     description: "Largest Values-column cell where every criteria row passes. Nothing matching is `0` like Excel. Excel: `MAXIFS`." },
 } satisfies Record<CondAggOp, { label: string; description: string }>;
 
 export class SumIfsNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    values: "Names the column to aggregate. COUNTIFS counts rows and ignores it.",
+  };
+
   label: string;
   op: CondAggOp;
+  /** Combine the criteria rows: ALL must pass (Excel SUMIFS), or ANY one. */
+  match: "all" | "any" = "all";
   /** Per-pair {op, matchCase}, keyed by the pair id (the `column${id}` suffix). */
   condConfig: Record<string, FilterCondConfig> = {};
   stringLiterals: Record<string, string> = {};
@@ -652,12 +1028,13 @@ export class SumIfsNode extends ClassicPreset.Node {
   height = 280;
 
   constructor(init?: {
-    label?: string; op?: CondAggOp;
+    label?: string; op?: CondAggOp; match?: "all" | "any";
     condConfig?: Record<string, FilterCondConfig>; valueKeys?: string[];
   }) {
     super("SumIfs");
     this.op = init?.op ?? "sumifs";
-    this.label = init?.label ?? COND_AGG_OP_META[this.op].label;
+    if (init?.match === "all" || init?.match === "any") this.match = init.match;
+    this.label = init?.label ?? "";
     this.addInput("frame", frameIn("Frame"));
     this.addInput("values", strIn("Values column"));
     const ids = pairIdsFromKeys(init?.valueKeys, "column");
@@ -703,7 +1080,27 @@ export class SumIfsNode extends ClassicPreset.Node {
 
   data(inputs: Record<string, unknown[] | undefined>): { result: number | UnitCell | SolError | null } {
     const finish = (r: number | UnitCell | SolError | null) => { this.cachedResult = r; return { result: r }; };
-    const f = inputs.frame?.[0] as FrameValue | null | undefined;
+    const raw = inputs.frame?.[0];
+    // A lazy upstream: fetch ONLY the named columns, then run on that slice.
+    if (isFrameRef(raw)) {
+      const names = new Set<string>();
+      for (const [colKey] of this.valuePairKeys()) {
+        const n = readInput(inputs[colKey] as string[] | undefined, this.stringLiterals[colKey] ?? "");
+        if (n != null && String(n).trim() !== "") names.add(String(n).trim());
+      }
+      const vn = readInput(inputs.values as string[] | undefined, this.stringLiterals.values ?? "");
+      if (vn != null && String(vn).trim() !== "") names.add(String(vn).trim());
+      return (async () => {
+        const cols = await materialize((async () => {
+          const h = await flushRef(raw);
+          return Promise.all([...names].map((n) => frameBackend().column(h, n)));
+        })());
+        if (isSolError(cols)) return finish(cols);
+        const slice: FrameValue = { __frame: true, columns: cols.filter((c): c is FrameColumn => c != null) };
+        return this.data({ ...inputs, frame: [slice] });
+      })() as unknown as { result: number | UnitCell | SolError | null };
+    }
+    const f = raw as FrameValue | null | undefined;
     if (!isFrameValue(f)) return finish(null);
     interface Crit { col: FrameColumn; op: FilterOp; value: string; matchCase: boolean }
     const crits: Crit[] = [];
@@ -720,12 +1117,17 @@ export class SumIfsNode extends ClassicPreset.Node {
       if (name === "" || (!valueless && val!.trim() === "")) continue; // row not written yet
       const col = getColumn(f, name);
       if (!col) return finish(solError("#REF!", `No column "${name}" in the frame`));
+      // Same rule as Filter: a text predicate needs a text criteria column (#TYPE!).
+      try { requireTextColumn(op, col.type, name); } catch (e) { return finish(e as SolError); }
       crits.push({ col, op, value: val!, matchCase: cfg?.matchCase ?? false });
     }
     if (crits.length === 0) return finish(null);
     const n = frameRowCount(f);
-    const passes = (i: number) => crits.every((c) =>
-      passesFilter((c.col.values[i] ?? null) as FrameCell, c.op, c.value, c.col.type, c.matchCase));
+    const test = (c: Crit, i: number) =>
+      passesFilter((c.col.values[i] ?? null) as FrameCell, c.op, c.value, c.col.type, c.matchCase);
+    // ALL criteria must pass (Excel SUMIFS), or ANY one — the match selector picks.
+    const passes = (i: number) =>
+      this.match === "any" ? crits.some((c) => test(c, i)) : crits.every((c) => test(c, i));
     // COUNTIFS takes no values range (Excel); the others need the column named.
     if (this.op === "countifs") {
       let count = 0;
@@ -784,51 +1186,28 @@ export type SetOp = "union" | "intersect" | "difference" | "symdiff";
 // Membership must key by VALUE: a complex is a tagged OBJECT, and a JS Set keys
 // objects by REFERENCE, so two equal complexes would never match.
 
-// label / tex / plain = dropdown text, KaTeX notation, Unicode fallback. `fx` is
-// declared per op because D19's "label despaced" rule only works on NAMES.
-export const SET_OP_META: Record<SetOp, { label: string; fx: string; tex: string; plain: string }> = {
-  union:      { label: "Union: in A or B",             fx: "SETUNION",      tex: "A \\cup B",                plain: "A ∪ B" },
-  intersect:  { label: "Intersection: in both",        fx: "SETINTERSECT",  tex: "A \\cap B",                plain: "A ∩ B" },
-  difference: { label: "Difference: in A, not B",      fx: "SETDIFFERENCE", tex: "A \\setminus B",           plain: "A ∖ B" },
-  symdiff:    { label: "Symmetric difference: in one only", fx: "SETSYMDIFF", tex: "A \\mathbin{\\triangle} B", plain: "A △ B" },
+// label = the op's bare name (a card title / search row); the membership hint rides in
+// `description`, which the dropdown shows as the option tooltip. tex / plain = KaTeX
+// notation + Unicode fallback. `fx` is declared per op because a bare name doesn't
+// despace to the SET* function name (formulaNaming's "label despaced" rule).
+export const SET_OP_META: Record<SetOp, { label: string; description: string; fx: string; tex: string; plain: string }> = {
+  union:      { label: "Union",                fx: "SETUNION",      description: "In A or B",         tex: "A \\cup B",                plain: "A ∪ B" },
+  intersect:  { label: "Intersection",         fx: "SETINTERSECT",  description: "In both",           tex: "A \\cap B",                plain: "A ∩ B" },
+  difference: { label: "Difference",           fx: "SETDIFFERENCE", description: "In A, not B",       tex: "A \\setminus B",           plain: "A ∖ B" },
+  symdiff:    { label: "Symmetric difference", fx: "SETSYMDIFF",    description: "In exactly one",    tex: "A \\mathbin{\\triangle} B", plain: "A △ B" },
 };
 
-// Set operations over two lists, compared by VALUE with first-seen order and UNIQUE's
-// dedupe. Blanks aren't members; an error equals nothing, so it passes through where
-// it sits (union, the A-side of difference) rather than vanishing.
-export class SetOpNode extends ClassicPreset.Node {
-  /** Element-preserving: the result is a subset of A ∪ B, so the output adopts
-   *  the agreed element type (a strlist ∖ strlist stays a strlist). */
-  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["a", "b"], combine: "agree" }];
-  label: string;
-  op: SetOp;
-  cachedList: number[] = [];
-  width = 180;
-  height = 200;
-
-  constructor(init?: { label?: string; op?: SetOp }) {
-    super("Set");
-    this.label = init?.label ?? "Set";
-    this.op = init?.op ?? "difference";
-    this.addInput("a", anyListIn("A"));
-    this.addInput("b", anyListIn("B"));
-    this.addOutput("result", adoptiveListOut("Result"));
-  }
-
-  data(inputs: { a?: unknown[][]; b?: unknown[][] }) {
-    // Tags survive the passthrough, but membership keys by display magnitude.
-    const a = stripUnitCells((inputs.a?.[0] ?? []) as unknown[]) as unknown[];
-    const b = stripUnitCells((inputs.b?.[0] ?? []) as unknown[]) as unknown[];
-
-    this.cachedList = setOperation(this.op, a, b) as number[];
-    return { result: this.cachedList };
-  }
-}
+// The Set node (operations + relations, merged) lives after SET_RELATION_META below,
+// since its combined SET_META spans both op tables.
 
 // ─── Is In (membership mask) — Set & Relational pack ─────────────────────────
 // A logical list ALIGNED to A. Membership stance matches the Set node: B's blanks and
 // errors aren't members; an A-side blank or error propagates per cell.
 export class IsInNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "A blank cell in Values yields a blank entry rather than FALSE. Blank cells in Set are never members.",
+  };
+
   label: string;
   cachedList: unknown[] = [];
   width = 180;
@@ -865,6 +1244,10 @@ export function isInMask(a: readonly unknown[], b: readonly unknown[]): (boolean
 // Distinct value → count as a two-column Frame, first-seen order; blanks and errors
 // aren't counted (same stance as Set).
 export class TallyNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "Distinct values appear in first-seen order. Blank and error cells are not counted.",
+  };
+
   label: string;
   cachedResult: FrameValue | null = null;
   width = 200;
@@ -908,93 +1291,80 @@ export function tallyPairs(list: readonly unknown[]): { values: unknown[]; count
 
 export type SetRelation = "equal" | "subset" | "superset" | "disjoint";
 
-export const SET_RELATION_META: Record<SetRelation, { label: string; fx: string; tex: string; plain: string }> = {
-  equal:    { label: "Equal: same set",         fx: "SETEQUAL",    tex: "A = B",                    plain: "A = B" },
-  subset:   { label: "Subset: A within B",      fx: "SETSUBSET",   tex: "A \\subseteq B",           plain: "A ⊆ B" },
-  superset: { label: "Superset: A contains B",  fx: "SETSUPERSET", tex: "A \\supseteq B",           plain: "A ⊇ B" },
-  disjoint: { label: "Disjoint: no overlap",    fx: "SETDISJOINT", tex: "A \\cap B = \\varnothing", plain: "A ∩ B = ∅" },
+export const SET_RELATION_META: Record<SetRelation, { label: string; description: string; fx: string; tex: string; plain: string }> = {
+  equal:    { label: "Equal",    fx: "SETEQUAL",    description: "Same set",      tex: "A = B",                    plain: "A = B" },
+  subset:   { label: "Subset",   fx: "SETSUBSET",   description: "A within B",    tex: "A \\subseteq B",           plain: "A ⊆ B" },
+  superset: { label: "Superset", fx: "SETSUPERSET", description: "A contains B",  tex: "A \\supseteq B",           plain: "A ⊇ B" },
+  disjoint: { label: "Disjoint", fx: "SETDISJOINT", description: "No overlap",    tex: "A \\cap B = \\varnothing", plain: "A ∩ B = ∅" },
 };
 
-// Set RELATION predicates over each side's distinct members, compared by VALUE;
-// blanks and errors aren't members, both sides unwired → null, and the empty-set
-// cases follow set theory (∅ ⊆ anything, ∅ disjoint with anything, ∅ = ∅).
-export class SetRelationNode extends ClassicPreset.Node {
+export type SetOpAll = SetOp | SetRelation;
+
+export const SET_RELATION_OPS: ReadonlySet<SetOpAll> = new Set<SetOpAll>(["equal", "subset", "superset", "disjoint"]);
+export function isSetRelationOp(op: SetOpAll): op is SetRelation { return SET_RELATION_OPS.has(op); }
+
+// The one dropdown across all eight ops, grouped Operation / Relation. `fx`/`tex`/`plain`
+// ride the two sub-tables (SET_OP_META / SET_RELATION_META), which stay the declared home
+// of the SET* formula names.
+export const SET_META: Record<SetOpAll, { label: string; description: string; fx: string; tex: string; plain: string; group: string }> = {
+  ...(Object.fromEntries((Object.keys(SET_OP_META) as SetOp[]).map((op) => [op, { ...SET_OP_META[op], group: "Operation" }]))),
+  ...(Object.fromEntries((Object.keys(SET_RELATION_META) as SetRelation[]).map((op) => [op, { ...SET_RELATION_META[op], group: "Relation" }]))),
+} as Record<SetOpAll, { label: string; description: string; fx: string; tex: string; plain: string; group: string }>;
+
+// ONE Set card (node-combining): an OP family (union / intersection /
+// difference / symmetric difference → a list) OR a relation (equal / subset / superset /
+// disjoint → TRUE/FALSE). The output socket swaps list↔logical per op (applySetOp, Split
+// Frame precedent). Set semantics are shared: compared by VALUE with first-seen order and
+// UNIQUE's dedupe; blanks and errors aren't members; the empty-set cases follow set theory
+// (∅ ⊆ anything, ∅ disjoint with anything, ∅ = ∅). Both sides unwired → the relation is null.
+export class SetNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "An operation gives a list where duplicates collapse to the first occurrence; a relation gives TRUE or FALSE. Blank cells are never members.",
+  };
+
+  /** Element-preserving ONLY in an operation op — the result is a subset of A ∪ B, so the
+   *  list output adopts the agreed element type. A relation outputs a fixed logical. */
+  passthrough = (): PassthroughSpec[] =>
+    isSetRelationOp(this.op) ? [] : [{ output: "result", inputs: ["a", "b"], combine: "agree" }];
   label: string;
-  op: SetRelation;
-  cachedResult: Tri = null;
+  op: SetOpAll;
+  cachedList: unknown[] = [];   // operation result
+  cachedRelation: Tri = null;   // relation result
   width = 180;
   height = 200;
 
-  constructor(init?: { label?: string; op?: SetRelation }) {
-    super("SetRelation");
-    this.label = init?.label ?? "Set relation";
-    this.op = init?.op ?? "equal";
+  constructor(init?: { label?: string; op?: SetOpAll }) {
+    super("Set");
+    this.label = init?.label ?? "";
+    // Guard a stale op from an old save — fall back rather than crash.
+    this.op = init?.op && init.op in SET_META ? init.op : "difference";
     this.addInput("a", anyListIn("A"));
     this.addInput("b", anyListIn("B"));
-    this.addOutput("result", logicalOut("Result"));
+    this.addOutput("result", isSetRelationOp(this.op) ? logicalOut("Result") : adoptiveListOut("Result"));
   }
 
-  data(inputs: { a?: unknown[][]; b?: unknown[][] }): { result: Tri } {
-    const aRaw = inputs.a?.[0];
-    const bRaw = inputs.b?.[0];
-    // Nothing wired on either side — no sets to compare, so the relation is unknown.
-    if (aRaw === undefined && bRaw === undefined) { this.cachedResult = null; return { result: null }; }
-
-    const result = setRelation(this.op, (aRaw ?? []) as unknown[], (bRaw ?? []) as unknown[]);
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
-export type ListTakeDropOp = "take" | "drop";
-export type TakeDir = "first" | "last";
-
-export const LIST_TAKEDROP_OP_META = {
-  take: { label: "TAKE", description: "Keeps the first or last N elements. Excel: TAKE." },
-  drop: { label: "DROP", description: "Removes the first or last N elements. Excel: DROP." },
-} satisfies Record<ListTakeDropOp, { label: string; description: string }>;
-
-// The 1-D edge cut, both directions of it — the list sibling of TableTakeDropNode.
-export class ListTakeDropNode extends ClassicPreset.Node {
-  /** Element-preserving: the output adopts the input's type (passthrough.ts). */
-  passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
-  label: string;
-  op: ListTakeDropOp;
-  dir: TakeDir;
-  cachedList: unknown[] | null = [];
-  literals: Record<string, number> = { count: 1 };
-  width = 180;
-  height = 200;
-
-  constructor(init?: { label?: string; op?: ListTakeDropOp; dir?: TakeDir }) {
-    super("ListTakeDrop");
-    this.op = init?.op ?? "take";
-    this.dir = init?.dir ?? "first";
-    this.label = init?.label ?? LIST_TAKEDROP_OP_META[this.op].label;
-    this.addInput("list",  adoptiveListIn("List"));
-    this.addInput("count", numIn("Count"));
-    this.addOutput("result", adoptiveListOut("Result"));
-  }
-
-  data(inputs: { list?: unknown[][]; count?: number[] }) {
-    const arr = inputs.list?.[0] ?? [];
-    const nRaw = readInput(inputs.count, this.literals.count ?? 1);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
-    if (nRaw === null) { this.cachedList = null; return { result: null }; }
-    const n = Math.round(nRaw);
-    if (this.op === "take") {
-      if (n <= 0) { this.cachedList = []; return { result: [] }; }
-      this.cachedList = takeSlice(arr, this.dir === "first" ? n : -n);
-    } else {
-      if (n <= 0) { this.cachedList = [...arr]; return { result: this.cachedList }; }
-      else if (n >= arr.length) { this.cachedList = []; return { result: [] }; }
-      else this.cachedList = dropSlice(arr, this.dir === "first" ? n : -n);
+  data(inputs: { a?: unknown[][]; b?: unknown[][] }): { result: unknown } {
+    if (isSetRelationOp(this.op)) {
+      const aRaw = inputs.a?.[0];
+      const bRaw = inputs.b?.[0];
+      // Nothing wired on either side — no sets to compare, so the relation is unknown.
+      if (aRaw === undefined && bRaw === undefined) { this.cachedRelation = null; return { result: null }; }
+      const result = setRelation(this.op, (aRaw ?? []) as unknown[], (bRaw ?? []) as unknown[]);
+      this.cachedRelation = result;
+      return { result };
     }
+    // Tags survive the passthrough, but membership keys by display magnitude.
+    const a = stripUnitCells((inputs.a?.[0] ?? []) as unknown[]) as unknown[];
+    const b = stripUnitCells((inputs.b?.[0] ?? []) as unknown[]) as unknown[];
+    this.cachedList = setOperation(this.op, a, b);
     return { result: this.cachedList };
   }
 }
 
-// The 1-D rung of the append ladder (D15): stays 1-D, VSTACK is the table stacker.
+// TAKE / DROP moved to the one rank-preserving TakeDropNode (nodes/matrix.ts):
+// list, matrix or scalar in, same rank out; the sign of the count is the direction.
+
+// The 1-D rung of the append ladder (appendLadder): stays 1-D, VSTACK is the table stacker.
 // Rows are wire-only — a typed literal list belongs to List Input.
 export class ConcatListsNode extends ClassicPreset.Node {
   /** Element-preserving: the output adopts the agreed row type. */
@@ -1043,9 +1413,8 @@ export class ConcatListsNode extends ClassicPreset.Node {
 }
 
 export type { RunningOp } from "./listOps";
-export type RunningMode = "all" | "window";
 
-// No `fx`: the aggregator is an ARGUMENT of the windowed scan (D29), so it claims no
+// No `fx`: the aggregator is an ARGUMENT of the windowed scan (aggregatorsAreArguments), so it claims no
 // formula name. The labels are the dropdown's own words.
 export const RUNNING_OP_META = {
   sum:     { label: "SUM",     description: "The running total: each element is the sum of its window." },
@@ -1054,108 +1423,134 @@ export const RUNNING_OP_META = {
   max:     { label: "MAX",     description: "Largest value in each window." },
   median:  { label: "MEDIAN",  description: "Middle value of each window." },
   product: { label: "PRODUCT", description: "Product of each window." },
-  stdev:   { label: "STDEV",   description: "Sample standard deviation of each window; divides by n−1." },
+  stdev:   { label: "STDEV",   description: "Sample standard deviation of each window. Divides by `n−1`." },
 } satisfies Record<RunningOp, { label: string; description: string }>;
 
-export const RUNNING_MODE_OPTIONS: ReadonlyArray<{ value: RunningMode; label: string; title: string }> = [
-  { value: "all",    label: "Cumulative", title: "The window grows: every element from the start through this one" },
-  { value: "window", label: "Last N",     title: "The window slides: only the last N elements ending at this one" },
-];
-
 export class RunningNode extends ClassicPreset.Node {
-  label: string;
-  op: RunningOp;
-  mode: RunningMode;
-  cachedList: ListCell[] | null = [];
-  literals: Record<string, number> = { window: 3 };
-  width = 180;
-  height = 190;
+  static socketDocs: Record<string, string> = {
+    window: "0 (the default) is cumulative: every element from the start through this one. 1 or more slides: only the last N elements ending here, running short at the start.",
+  };
 
-  constructor(init?: { label?: string; op?: RunningOp; mode?: RunningMode }) {
+  label: string;
+  agg: RunningOp;
+  cachedList: ListCell[] | null = [];
+  literals: Record<string, number> = { window: 0 };
+  width = 180;
+  height = 218;
+
+  constructor(init?: { label?: string; agg?: RunningOp }) {
     super("Running");
     this.label = init?.label ?? "Running";
-    this.op = init?.op ?? "sum";
-    this.mode = init?.mode ?? "all";
+    this.agg = init?.agg ?? "sum";
     this.addInput("list", listIn("List"));
-    if (this.mode === "window") this.addInput("window", numIn("Window size"));
+    this.addInput("window", numIn("Window"));
     this.addOutput("result", listOut("Result"));
-    this.height = this.mode === "window" ? 218 : 190;
-  }
-
-  /** The mode owns the Window socket: Last N has it, Cumulative doesn't. Callers with
-   *  a live graph prune the socket's cables BEFORE switching away from Last N. */
-  setMode(next: RunningMode): void {
-    if (next === this.mode) return;
-    this.mode = next;
-    if (next === "window") {
-      if (!this.inputs.window) this.addInput("window", numIn("Window size"));
-    } else if (this.inputs.window) {
-      this.removeInput("window");
-    }
-    this.height = next === "window" ? 218 : 190;
   }
 
   data(inputs: { list?: ListCell[][]; window?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
-    if (this.mode === "window") {
-      const wRaw = readInput(inputs.window, this.literals.window ?? 3);
-      // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
-      if (wRaw === null) { this.cachedList = null; return { result: null }; }
-      const result = running(this.op, arr, wRaw);
-      this.cachedList = result;
-      return { result };
-    }
-    const result = running(this.op, arr, null);
+    const w = readInput(inputs.window, this.literals.window ?? 0);
+    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
+    if (w === null) { this.cachedList = null; return { result: null }; }
+    const result = running(this.agg, arr, w);
     this.cachedList = result;
     return { result };
   }
 }
 
-export class DiffNode extends ClassicPreset.Node {
-  label: string;
-  cachedList: ListCell[] = [];
-  width = 180;
-  height = 120;
+export type DiffMode = "delta" | "percent" | "gradient";
+const DIFF_OUTPUT_LABEL: Record<DiffMode, string> = { delta: "Differences", percent: "Change", gradient: "Gradient" };
 
-  constructor(init?: { label?: string }) {
+export class DiffNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "Δ and % are one element shorter (change from the element before); ∇ is the same length, the central-difference slope at each point.",
+  };
+
+  label: string;
+  /** Absolute difference (Δ), consecutive percent change (pandas pct_change), or the
+   *  central-difference gradient (numpy.gradient — same length). */
+  mode: DiffMode = "delta";
+  cachedList: ListCell[] | SolError = [];
+  width = 180;
+  height = 150;
+
+  constructor(init?: { label?: string; mode?: DiffMode }) {
     super("Diff");
     this.label = init?.label ?? "DIFF";
+    if (init?.mode) this.mode = init.mode;
     this.addInput("list",   listIn("List"));
-    this.addOutput("result", listOut("Differences"));
+    this.addOutput("result", listOut(DIFF_OUTPUT_LABEL[this.mode]));
+  }
+
+  setMode(next: DiffMode): void {
+    this.mode = next;
+    const out = this.outputs.result;
+    if (out) out.label = DIFF_OUTPUT_LABEL[next];
   }
 
   data(inputs: { list?: ListCell[][] }) {
     const arr = inputs.list?.[0] ?? [];
-    this.cachedList = diffList(arr);
+    this.cachedList = this.mode === "percent" ? pctChangeList(arr) : this.mode === "gradient" ? gradientList(arr) : diffList(arr);
     return { result: this.cachedList };
   }
 }
 
-export type ArgMinMaxOp = "argmax" | "argmin";
+import type { ArgMinMaxOp } from "./listOps";
+import { savgol, gaussianSmooth, lowess, findPeaks } from "./signalOps";
+export type { ArgMinMaxOp } from "./listOps";
 
 export const ARG_MIN_MAX_OP_META = {
   argmax: { label: "ARGMAX", description: "1-based position of the maximum value" },
   argmin: { label: "ARGMIN", description: "1-based position of the minimum value" },
+  argsort:      { label: "ARGSORT",      description: "1-based positions that would sort the list ascending; reorder a parallel list by them. `numpy.argsort`, R `order`." },
+  argsort_desc: { label: "ARGSORT DESC", description: "1-based positions that would sort the list descending. `numpy.argsort(-x)`, R `order` with `decreasing = TRUE`." },
+  which:        { label: "WHICH",        description: "1-based positions of the `TRUE` cells of a logical list. R `which`, `numpy.flatnonzero`. Excel: `FILTER(SEQUENCE(n), cond)`." },
 } satisfies Record<ArgMinMaxOp, { label: string; description: string }>;
 
 export class ArgMinMaxNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "1-based, like MATCH. Blank and error cells never win and sort to the end.",
+  };
   label: string;
   op: ArgMinMaxOp;
-  cachedResult: number | SolError | null = null;
+  cachedResult: number | number[] | SolError | null = null;
+  /** WHICH's logical-list input is typeable (the CSV editor stores its text here). */
+  stringLiterals: Record<string, string> = {};
   width = 180;
   height = 160;
 
   constructor(init?: { label?: string; op?: ArgMinMaxOp }) {
     super("ArgMinMax");
-    this.label = init?.label ?? "ARGMAX";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "argmax";
-    this.addInput("list",   listIn("List"));
-    this.addOutput("result", numOut("Position"));
+    this.addInput("list", ArgMinMaxNode.inputFor(this.op));
+    this.addOutput("result", ArgMinMaxNode.outputFor(this.op));
+  }
+
+  /** WHICH reads a LOGICAL list; every other op a number list. */
+  static inputFor(op: ArgMinMaxOp) { return op === "which" ? logicalListIn("Flags") : listIn("List"); }
+  static outputFor(op: ArgMinMaxOp) { return ARG_LIST_OPS.has(op) ? numListOut("Positions") : numOut("Position"); }
+
+  /** Re-types the sockets IN PLACE when the op crosses a family/rank boundary — no
+   *  connection event fires, so the component prunes: dropInputCables on the input
+   *  BEFORE the swap, retypeOutputCables on the output after. */
+  setOp(next: ArgMinMaxOp): { inputChanged: boolean; outputChanged: boolean } {
+    const inputChanged = (next === "which") !== (this.op === "which");
+    const outputChanged = ARG_LIST_OPS.has(next) !== ARG_LIST_OPS.has(this.op);
+    if (next === this.op) return { inputChanged: false, outputChanged: false };
+    this.op = next;
+    if (inputChanged) { const spec = ArgMinMaxNode.inputFor(next); this.inputs.list!.socket = spec.socket; this.inputs.list!.label = spec.label; }
+    if (outputChanged) { const spec = ArgMinMaxNode.outputFor(next); this.outputs.result!.socket = spec.socket; this.outputs.result!.label = spec.label; }
+    return { inputChanged, outputChanged };
   }
 
   data(inputs: { list?: ListCell[][] }) {
     const arr = inputs.list?.[0] ?? null;
-    const result = arr === null ? null : argMinMax(this.op, arr);
+    let result: number | number[] | SolError | null;
+    if (arr === null) result = null;
+    else if (this.op === "which") result = whichPositions(arr);
+    else if (this.op === "argsort" || this.op === "argsort_desc") result = argsortList(arr, this.op === "argsort_desc");
+    else result = argMinMax(this.op, arr);
     this.cachedResult = result;
     return { result };
   }
@@ -1190,53 +1585,43 @@ export class ContainsNode extends ClassicPreset.Node {
 }
 
 // ─── Normalize ────────────────────────────────────────────────────────────────
+export type NormalizeMode = "minmax" | "zscore";
+const NORMALIZE_OUTPUT_LABEL: Record<NormalizeMode, string> = { minmax: "0–1", zscore: "z-scores" };
+
 export class NormalizeNode extends ClassicPreset.Node {
   label: string;
+  /** Rescale to 0–1 by min/max, or standardize to z-scores (distance from the mean in stdevs). */
+  mode: NormalizeMode = "minmax";
   cachedList: ListCell[] | SolError = [];
-  width = 180; height = 120;
+  width = 180; height = 150;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; mode?: NormalizeMode }) {
     super("Normalize");
     this.label = init?.label ?? "Normalize";
+    if (init?.mode) this.mode = init.mode;
     this.addInput("list",    listIn("List"));
-    this.addOutput("result", listOut("0–1"));
+    this.addOutput("result", listOut(NORMALIZE_OUTPUT_LABEL[this.mode]));
+  }
+
+  setMode(next: NormalizeMode): void {
+    this.mode = next;
+    const out = this.outputs.result;
+    if (out) out.label = NORMALIZE_OUTPUT_LABEL[next];
   }
 
   data(inputs: { list?: ListCell[][] }) {
     const arr = inputs.list?.[0] ?? [];
-    this.cachedList = normalizeList(arr);
-    return { result: this.cachedList };
-  }
-}
-
-// ─── LinSpace ─────────────────────────────────────────────────────────────────
-// ─── Repeat ───────────────────────────────────────────────────────────────────
-export class RepeatNode extends ClassicPreset.Node {
-  label: string;
-  cachedList: number[] | null = [];
-  literals: Record<string, number> = { value: 0, count: 5 };
-  width = 180; height = 160;
-
-  constructor(init?: { label?: string }) {
-    super("Repeat");
-    this.label = init?.label ?? "Repeat";
-    this.addInput("value", numIn("Value"));
-    this.addInput("count", numIn("Count"));
-    this.addOutput("result", listOut("List"));
-  }
-
-  data(inputs: { value?: number[]; count?: number[] }) {
-    const v    = readInput(inputs.value, this.literals.value ?? 0);
-    const nRaw = readInput(inputs.count, this.literals.count ?? 5);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
-    if (v === null || nRaw === null) { this.cachedList = null; return { result: null }; }
-    this.cachedList = repeatValue(v, nRaw);
+    this.cachedList = this.mode === "zscore" ? zscoreList(arr) : normalizeList(arr);
     return { result: this.cachedList };
   }
 }
 
 // ─── Shuffle ──────────────────────────────────────────────────────────────────
 export class ShuffleNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "The order holds until a recalculation. Changed values flow through without reshuffling.",
+  };
+
   /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
@@ -1296,6 +1681,10 @@ export class NthElementNode extends ClassicPreset.Node {
 
 // ─── Interleave ───────────────────────────────────────────────────────────────
 export class InterleaveNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "A shorter side contributes blanks so the alternation stays aligned.",
+  };
+
   /** Element-preserving: cells alternate from A and B untouched, so the output
    *  adopts the agreed type of the two sides. */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["a", "b"], combine: "agree" }];
@@ -1328,6 +1717,10 @@ export const PAD_OP_META = {
 } satisfies Record<PadDir, { label: string; description: string }>;
 
 export class PadNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    n: "A target at or below the list's length leaves it unchanged. Nothing is trimmed.",
+  };
+
   /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */
   passthrough = (): PassthroughSpec[] => [{ output: "result", inputs: ["list"], combine: "single" }];
   label: string;
@@ -1338,7 +1731,7 @@ export class PadNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: PadDir }) {
     super("Pad");
-    this.label = init?.label ?? "Pad";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "right";
     this.addInput("list", adoptiveListIn("List"));
     this.addInput("n",    numIn("Target length"));
@@ -1357,70 +1750,21 @@ export class PadNode extends ClassicPreset.Node {
   }
 }
 
-// ─── Geometric Sequence ───────────────────────────────────────────────────────
-export class GeometricNode extends ClassicPreset.Node {
-  label: string;
-  cachedList: number[] | null = [];
-  literals: Record<string, number> = { start: 1, ratio: 2, count: 8 };
-  width = 180; height = 220;
-
-  constructor(init?: { label?: string }) {
-    super("Geometric");
-    this.label = init?.label ?? "Geometric";
-    this.addInput("start", numIn("Start"));
-    this.addInput("ratio", numIn("Ratio"));
-    this.addInput("count", numIn("Count"));
-    this.addOutput("result", listOut("Series"));
-  }
-
-  data(inputs: { start?: number[]; ratio?: number[]; count?: number[] }) {
-    const start = readInput(inputs.start, this.literals.start ?? 1);
-    const ratio = readInput(inputs.ratio, this.literals.ratio ?? 2);
-    const nRaw  = readInput(inputs.count, this.literals.count ?? 8);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
-    if (start === null || ratio === null || nRaw === null) { this.cachedList = null; return { result: null }; }
-    const out = geometric(start, ratio, nRaw);
-    this.cachedList = out;
-    return { result: out };
-  }
-}
-
-// ─── Fibonacci ────────────────────────────────────────────────────────────────
-export class FibonacciNode extends ClassicPreset.Node {
-  label: string;
-  cachedList: number[] | null = [];
-  literals: Record<string, number> = { n: 10 };
-  width = 180; height = 130;
-
-  constructor(init?: { label?: string }) {
-    super("Fibonacci");
-    this.label = init?.label ?? "Fibonacci";
-    this.addInput("n",       numIn("Count"));
-    this.addOutput("result", listOut("Sequence"));
-  }
-
-  data(inputs: { n?: number[] }) {
-    const nRaw = readInput(inputs.n, this.literals.n ?? 10);
-    // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
-    if (nRaw === null) { this.cachedList = null; return { result: null }; }
-    const out = fibonacci(nRaw);
-    this.cachedList = out;
-    return { result: out };
-  }
-}
-
-
 // ─── Weighted Statistics ──────────────────────────────────────────────────────
 
 export type WeightedOp = "wavg" | "wvar" | "wstdev";
 
 export const WEIGHTED_OP_META = {
-  wavg:   { label: "WAVG",   description: "Weighted average: Σ(x·w) / Σw. Excel: SUMPRODUCT(x,w)/SUM(w)." },
+  wavg:   { label: "WAVG",   description: "Weighted average: `Σ(x·w) / Σw`, which is `SUMPRODUCT(x,w)` over `SUM(w)` in Excel." },
   wvar:   { label: "WVAR",   description: "Weighted sample variance with reliability weights" },
-  wstdev: { label: "WSTDEV", description: "Weighted sample standard deviation: √WVAR" },
+  wstdev: { label: "WSTDEV", description: "Weighted sample standard deviation: `√WVAR`" },
 } satisfies Record<WeightedOp, { label: string; description: string }>;
 
 export class WeightedNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    weights: "Pairs with Values by position, and a pair with a blank on either side is dropped. Fewer weights than values blanks the result.",
+  };
+
   label: string;
   op: WeightedOp;
   cachedResult: number | SolError | null = null;
@@ -1428,7 +1772,7 @@ export class WeightedNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: WeightedOp }) {
     super("Weighted");
-    this.label = init?.label ?? "WAVG";
+    this.label = init?.label ?? "";
     this.op    = init?.op    ?? "wavg";
     this.addInput("values",  listIn("Values"));
     this.addInput("weights", listIn("Weights"));
@@ -1446,32 +1790,37 @@ export class WeightedNode extends ClassicPreset.Node {
 
 // ─── Reduce ───────────────────────────────────────────────────────────────────
 
-export type ReduceOp =
-  | "sum" | "avg" | "min" | "max" | "count" | "countdistinct" | "median" | "product" | "stdev"
-  | "geomean" | "harmean" | "sumsq" | "var_s" | "var_p" | "stdev_p" | "devsq" | "avedev" | "skew" | "skew_p" | "kurt";
+export type ReduceOp = AggregateOp | "countblank";
 
 export const REDUCE_OP_META = {
-  sum:     { label: "SUM",     description: "Sums all values. Excel: SUM." },
-  avg:     { label: "AVERAGE", description: "Arithmetic mean. Excel: AVERAGE." },
-  min:     { label: "MIN",     description: "Smallest value. Excel: MIN." },
-  max:     { label: "MAX",     description: "Largest value. Excel: MAX." },
-  count:   { label: "COUNT",   description: "Number of values. Excel: COUNT." },
-  countdistinct: { label: "COUNT DISTINCT", description: "Number of unique values. In Excel you'd write COUNTA(UNIQUE(range))." },
-  median:  { label: "MEDIAN",  description: "Middle value. Excel: MEDIAN." },
-  product: { label: "PRODUCT", description: "Multiply all values. Excel: PRODUCT." },
-  stdev:   { label: "STDEV.S", description: "Sample standard deviation (n−1). Excel: STDEV.S." },
-  stdev_p: { label: "STDEV.P", description: "Population standard deviation (n). Excel: STDEV.P." },
-  var_s:   { label: "VAR.S",   description: "Sample variance (n−1). Excel: VAR.S." },
-  var_p:   { label: "VAR.P",   description: "Population variance (n). Excel: VAR.P." },
-  geomean: { label: "GEOMEAN", description: "Geometric mean (all values must be > 0). Excel: GEOMEAN." },
-  harmean: { label: "HARMEAN", description: "Harmonic mean (all values must be > 0). Excel: HARMEAN." },
-  sumsq:   { label: "SUMSQ",   description: "Sum of squares Σ(xi²). Excel: SUMSQ." },
-  devsq:   { label: "DEVSQ",   description: "Sum of squared deviations from the mean. Excel: DEVSQ." },
-  avedev:  { label: "AVEDEV",  description: "Mean absolute deviation from the mean. Excel: AVEDEV." },
-  skew:    { label: "SKEW",    description: "Sample skewness of the distribution. Excel: SKEW." },
-  skew_p:  { label: "SKEW.P",  description: "Population skewness; divides by n. Excel: SKEW.P." },
-  kurt:    { label: "KURT",    description: "Excess kurtosis of the distribution. Excel: KURT." },
-} satisfies Record<ReduceOp, { label: string; description: string }>;
+  sum:     { label: "SUM",     description: "Sums all values. Excel: `SUM`." },
+  avg:     { label: "AVERAGE", description: "Arithmetic mean. Excel: `AVERAGE`." },
+  min:     { label: "MIN",     description: "Smallest value. Excel: `MIN`." },
+  max:     { label: "MAX",     description: "Largest value. Excel: `MAX`." },
+  count:   { label: "COUNT",   description: "Number of values. Excel: `COUNT`." },
+  countdistinct: { label: "COUNT DISTINCT", description: "Number of unique values. Excel: `COUNTA(UNIQUE(range))`." },
+  countblank: { label: "COUNTBLANK", description: "Number of blank (missing) cells. Excel: `COUNTBLANK`." },
+  median:  { label: "MEDIAN",  description: "Middle value. Excel: `MEDIAN`." },
+  product: { label: "PRODUCT", description: "Multiply all values. Excel: `PRODUCT`." },
+  stdev:   { label: "STDEV.S", description: "Sample standard deviation (`n−1`). Excel: `STDEV.S`." },
+  stdev_p: { label: "STDEV.P", description: "Population standard deviation (`n`). Excel: `STDEV.P`." },
+  var_s:   { label: "VAR.S",   description: "Sample variance (`n−1`). Excel: `VAR.S`." },
+  var_p:   { label: "VAR.P",   description: "Population variance (`n`). Excel: `VAR.P`." },
+  geomean: { label: "GEOMEAN", description: "Geometric mean (all values must be `> 0`). Excel: `GEOMEAN`." },
+  harmean: { label: "HARMEAN", description: "Harmonic mean (all values must be `> 0`). Excel: `HARMEAN`." },
+  sumsq:   { label: "SUMSQ",   description: "Sum of squares `Σ(xi²)`. Excel: `SUMSQ`." },
+  devsq:   { label: "DEVSQ",   description: "Sum of squared deviations from the mean. Excel: `DEVSQ`." },
+  avedev:  { label: "AVEDEV",  description: "Mean absolute deviation from the mean. Excel: `AVEDEV`." },
+  skew:    { label: "SKEW",    description: "Sample skewness of the distribution. Excel: `SKEW`." },
+  skew_p:  { label: "SKEW.P",  description: "Population skewness. Divides by `n`. Excel: `SKEW.P`." },
+  kurt:    { label: "KURT",    description: "Excess kurtosis of the distribution. Excel: `KURT`." },
+  ptp:     { label: "PTP",     description: "Range of the data: `max − min`. numpy `ptp` (peak to peak), R `diff(range(x))`. Excel: `MAX − MIN`." },
+  iqr:     { label: "IQR",     description: "Interquartile range: the 75th minus the 25th percentile (`PERCENTILE.INC`). scipy `iqr`, R `IQR`." },
+  mad:     { label: "MAD",     description: "Median absolute deviation from the median, unscaled (scipy `median_abs_deviation`; R's `mad` multiplies by 1.4826). The robust spread." },
+  sem:     { label: "SEM",     description: "Standard error of the mean: sample stdev ÷ `√n`. scipy `sem`, or `sd(x)/sqrt(n)` in R." },
+  cv:      { label: "CV",      description: "Coefficient of variation: sample stdev ÷ mean. scipy `variation`, or `sd(x)/mean(x)` in R." },
+  rms:     { label: "RMS",     description: "Root mean square: √ of the mean of the squares." },
+} satisfies Record<ReduceOp, { label: string; description: string; fx?: string }>;
 
 // The user-facing identity is "Aggregate", a fixed-op 1-D list aggregator — NOT the
 // table-taking REDUCE lambda. The `reduce` op tokens are never user-visible.
@@ -1484,17 +1833,22 @@ export function aggregateResultDim(op: ReduceOp, dim: Dim, n: number): Dim {
   switch (op) {
     case "sum": case "avg": case "min": case "max": case "median":
     case "geomean": case "harmean": case "stdev": case "stdev_p": case "avedev":
+    case "ptp": case "iqr": case "mad": case "sem": case "rms":
       return dim;
     case "var_s": case "var_p": case "devsq": case "sumsq":
       return dimPow(dim, 2);
     case "product":
       return dimPow(dim, n);
-    default: // count, countdistinct, skew, skew_p, kurt → a plain number
+    default: // count, countdistinct, skew, skew_p, kurt, cv → a plain number
       return DIMENSIONLESS;
   }
 }
 
 export class AggregateNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    list: "Blank cells are skipped, not counted as zero. One error cell makes the whole result that error.",
+  };
+
   /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
   unitAware = true;
   label: string;
@@ -1505,13 +1859,20 @@ export class AggregateNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: ReduceOp }) {
     super("Aggregate");
-    this.label = init?.label ?? "Aggregate";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "sum";
     this.addInput("list",    listIn("List"));
     this.addOutput("result", numOut("Result"));
   }
 
   data(inputs: { list?: (number | null | SolError)[][] }) {
+    // COUNTBLANK counts the MISSING cells, so it reads the raw list before the aggregation
+    // below strips blanks away — and it answers even when every cell is blank.
+    if (this.op === "countblank") {
+      const result = (inputs.list?.[0] ?? []).filter((v) => isMissing(v)).length;
+      this.cachedResult = result;
+      return { result };
+    }
     // Aggregator policy: a SolError PROPAGATES, `null` is SKIPPED, a dimensionless
     // cell ADOPTS the list's real unit (SUM($5, $2, 3) = $10), and only two genuinely
     // different dimensions are #UNIT! (base-SI storage already unifies km + m).
@@ -1519,104 +1880,8 @@ export class AggregateNode extends ClassicPreset.Node {
     if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
     const arr = prep.nums;
     const dim = prep.dim;
-    let result: number | null = null;
-    if (arr.length > 0) {
-      switch (this.op) {
-        case "sum":     result = arr.reduce((a, b) => a + b, 0); break;
-        case "avg":     result = arr.reduce((a, b) => a + b, 0) / arr.length; break;
-        case "min":     result = iterMin(arr); break;
-        case "max":     result = iterMax(arr); break;
-        case "count":   result = arr.length; break;
-        case "countdistinct": result = new Set(arr).size; break;
-        case "product": result = arr.reduce((a, b) => a * b, 1); break;
-        case "median": {
-          const s = [...arr].sort((a, b) => a - b);
-          const m = Math.floor(s.length / 2);
-          result = s.length % 2 === 0 ? (s[m - 1] + s[m]) / 2 : s[m];
-          break;
-        }
-        case "stdev": {
-          if (arr.length < 2) break; // sample stdev undefined under 2 points — blank, like var_s
-          const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
-          const variance = arr.reduce((a, b) => a + (b - mean) ** 2, 0) / (arr.length - 1);
-          result = Math.sqrt(variance);
-          break;
-        }
-        case "geomean": {
-          if (arr.some((v) => v <= 0)) break;
-          result = Math.exp(arr.reduce((a, b) => a + Math.log(b), 0) / arr.length);
-          break;
-        }
-        case "harmean": {
-          if (arr.some((v) => v <= 0)) break;
-          result = arr.length / arr.reduce((a, b) => a + 1 / b, 0);
-          break;
-        }
-        case "sumsq":   result = arr.reduce((a, b) => a + b * b, 0); break;
-        case "var_s": {
-          if (arr.length < 2) break;
-          const meanVs = arr.reduce((a, b) => a + b, 0) / arr.length;
-          result = arr.reduce((a, b) => a + (b - meanVs) ** 2, 0) / (arr.length - 1);
-          break;
-        }
-        case "var_p": {
-          const meanVp = arr.reduce((a, b) => a + b, 0) / arr.length;
-          result = arr.reduce((a, b) => a + (b - meanVp) ** 2, 0) / arr.length;
-          break;
-        }
-        case "stdev_p": {
-          const meanSp = arr.reduce((a, b) => a + b, 0) / arr.length;
-          result = Math.sqrt(arr.reduce((a, b) => a + (b - meanSp) ** 2, 0) / arr.length);
-          break;
-        }
-        case "devsq": {
-          const meanDq = arr.reduce((a, b) => a + b, 0) / arr.length;
-          result = arr.reduce((a, b) => a + (b - meanDq) ** 2, 0);
-          break;
-        }
-        case "avedev": {
-          const meanAd = arr.reduce((a, b) => a + b, 0) / arr.length;
-          result = arr.reduce((a, b) => a + Math.abs(b - meanAd), 0) / arr.length;
-          break;
-        }
-        case "skew": {
-          const nSk = arr.length;
-          if (nSk < 3) break;
-          const meanSk = arr.reduce((a, b) => a + b, 0) / nSk;
-          const sSk = Math.sqrt(arr.reduce((a, b) => a + (b - meanSk) ** 2, 0) / (nSk - 1));
-          if (sSk === 0) break;
-          const sum3 = arr.reduce((a, b) => a + ((b - meanSk) / sSk) ** 3, 0);
-          result = (nSk / ((nSk - 1) * (nSk - 2))) * sum3;
-          break;
-        }
-        case "skew_p": {
-          const nSp = arr.length;
-          if (nSp < 2) break;
-          const meanSp = arr.reduce((a, b) => a + b, 0) / nSp;
-          const sSp = Math.sqrt(arr.reduce((a, b) => a + (b - meanSp) ** 2, 0) / nSp);
-          if (sSp === 0) break;
-          result = arr.reduce((a, b) => a + ((b - meanSp) / sSp) ** 3, 0) / nSp;
-          break;
-        }
-        case "kurt": {
-          const nKu = arr.length;
-          if (nKu < 4) break;
-          const meanKu = arr.reduce((a, b) => a + b, 0) / nKu;
-          const sKu = Math.sqrt(arr.reduce((a, b) => a + (b - meanKu) ** 2, 0) / (nKu - 1));
-          if (sKu === 0) break;
-          const sum4 = arr.reduce((a, b) => a + ((b - meanKu) / sKu) ** 4, 0);
-          result =
-            ((nKu * (nKu + 1)) / ((nKu - 1) * (nKu - 2) * (nKu - 3))) * sum4 -
-            (3 * (nKu - 1) ** 2) / ((nKu - 2) * (nKu - 3));
-          break;
-        }
-      }
-    } else if (this.op === "count" || this.op === "sum") {
-      // Empty/all-null: SUM is 0, PRODUCT is 1 — the identities, matching the formula path.
-      result = 0;
-    } else if (this.op === "product") {
-      result = 1;
-    }
+    const result = aggregate(this.op, arr);
+    if (isSolError(result)) { this.cachedResult = result; return { result }; }
     // Keep the display unit only where the op PRESERVES the dimension; PRODUCT/SUMSQ/
     // VAR derive a new one.
     const resultDim = aggregateResultDim(this.op, dim, arr.length);
@@ -1635,21 +1900,29 @@ export class AggregateNode extends ClassicPreset.Node {
 // #OVERFLOW!; the ceiling lives in listOps.ts so the formulas share this number.
 
 export class RandArrayNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    list: "Draws hold until a recalculation. A new Min or Max rescales the same draws rather than rerolling.",
+  };
+
   label: string;
+  /** Excel's integer flag: round every draw to a whole number. A card checkbox, not a
+   *  socket — it selects a MODE (like the date family's basis), authored on the node. */
+  integer = false;
   cachedList: number[] | SolError | null = [];
   literals: Record<string, number> = { count: 10 }; // min/max ship unset → muted 0/1 placeholders
-  width = 180; height = 225;
+  width = 180; height = 250;
   // Volatile: the raw [0,1) rolls hold until a recalc, but min/max apply live so new
   // bounds rescale the SAME draws.
   private rolls: number[] = [];
   private lastGen = -1;
 
-  constructor(init?: { label?: string }) {
+  constructor(init?: { label?: string; integer?: boolean }) {
     super("RandArray");
     this.label = init?.label ?? "RANDARRAY";
+    if (init?.integer != null) this.integer = init.integer;
     this.addInput("count", numIn("Count"));
-    this.addInput("min",   numIn("Min (default 0)"));
-    this.addInput("max",   numIn("Max (default 1)"));
+    this.addInput("min",   numIn("Min"));
+    this.addInput("max",   numIn("Max"));
     this.addOutput("list", listOut("List"));
   }
 
@@ -1674,40 +1947,9 @@ export class RandArrayNode extends ClassicPreset.Node {
       this.rolls = Array.from({ length: count }, () => Math.random());
       this.lastGen = gen;
     }
-    const list = this.rolls.map((r) => lo + r * range);
-    this.cachedList = list;
-    return { list };
-  }
-}
-
-// ─── SEQUENCE ─────────────────────────────────────────────────────────────────
-
-// ─── SORTBY ───────────────────────────────────────────────────────────────────
-
-export class SortByNode extends ClassicPreset.Node {
-  /** The output adopts the sorted array's type; by_array keys are a side input and
-   *  stay unit-blind. */
-  passthrough = (): PassthroughSpec[] => [{ output: "list", inputs: ["array"], combine: "single" }];
-  label: string;
-  cachedList: unknown[] = [];
-  width = 180; height = 175;
-
-  constructor(init?: { label?: string }) {
-    super("SortBy");
-    this.label = init?.label ?? "SORTBY";
-    // The reordered array is POSITION-ONLY (anylist), so any element family sorts by
-    // a parallel key; only the by_array keys drive comparison, so they stay numeric.
-    this.addInput("array",    anyListIn("Array to sort"));
-    this.addInput("by_array", listIn("Sort by (parallel list)"));
-    this.addOutput("list", adoptiveListOut("Sorted list"));
-  }
-
-  data(inputs: { array?: unknown[][]; by_array?: (number | null | SolError)[][] }): { list: unknown[] } {
-    const arr = inputs.array?.[0] ?? [];
-    const by  = inputs.by_array?.[0] ?? [];
-    // Ragged inputs pad to the LONGEST with null (never drop a value); a null/error
-    // KEY sorts stably to the tail, matching the frame sort's blanks-last policy.
-    const list = sortByKeys(arr, by);
+    // integer rounds the rescaled draw (Excel's 5th arg), applied live like min/max, so
+    // both surfaces agree (the formula's RANDARRAY rounds the same lo + r*range).
+    const list = this.rolls.map((r) => { const x = lo + r * range; return this.integer ? Math.round(x) : x; });
     this.cachedList = list;
     return { list };
   }
@@ -1733,11 +1975,18 @@ export const XMATCH_SEARCH_MODE_META: Record<XMatchSearchMode, { label: string; 
 };
 
 export class XMatchNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    value: "Text matches ignore case, like Excel's lookups. The approximate modes compare numbers and dates only.",
+  };
+
   label: string;
   matchMode: XMatchMatchMode;
   searchMode: XMatchSearchMode;
-  cachedResult: number | SolError | null = null;
+  cachedResult: XMatchResult = null;
   literals: Record<string, number> = { value: 0 };
+  stringLiterals: Record<string, string> = {};
+  // The lookup is a wildcard VALUE slot, so its typed literal may be number or text.
+  autoLiterals = true;
   width = 180; height = 232;
 
   constructor(init?: { label?: string; matchMode?: XMatchMatchMode; searchMode?: XMatchSearchMode }) {
@@ -1745,26 +1994,36 @@ export class XMatchNode extends ClassicPreset.Node {
     this.label      = init?.label      ?? "XMATCH";
     this.matchMode  = init?.matchMode  ?? "exact";
     this.searchMode = init?.searchMode ?? "first";
-    this.addInput("value",  numIn("Lookup value"));
-    this.addInput("array",  listIn("Array"));
-    this.addOutput("result", numOut("1-based position (#N/A when not found)"));
+    // The kernel is type-agnostic (lookupEq), so the sockets are too: any-family
+    // lookup against any 1-D list. Approximate modes stay numeric IN the kernel.
+    // `anycombo` value: a scalar lookup answers a scalar, a LIST lookup spills one
+    // position per element — matching the XMATCH formula, which shares this kernel.
+    this.addInput("value",  anyComboIn("Lookup value"));
+    this.addInput("array",  adoptiveListIn("Array"));
+    this.addOutput("result", numListOut("1-based position (#N/A when not found)"));
   }
 
-  data(inputs: { value?: number[]; array?: number[][] }): { result: number | SolError | null } {
-    const val = readInput(inputs.value, this.literals.value ?? 0);
+  data(inputs: { value?: unknown[]; array?: unknown[][] }): { result: XMatchResult } {
+    const val = pickSlot(this, inputs as Record<string, unknown[] | undefined>, "value");
     // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (val === null) { this.cachedResult = null; return { result: null }; }
-    const wired = inputs.array?.[0] ?? null;
-    const found = xmatchIndex(val, wired ?? [], this.matchMode, this.searchMode);
-    let result: number | SolError | null =
-      isSolError(found) ? found : found === -1 ? null : found + 1;
-    if (wired !== null && result === null) {
-      result = solError("#N/A", "No match found in the array");
-    }
+    const keys = inputs.array?.[0] ?? null;
+    const ks = keys ?? [];
+    // The XMATCH formula's `pick`, shared so the two surfaces can't drift: a hit → its
+    // 1-based position; a miss → #N/A when the array is wired, else null (unknown).
+    const pick = (l: unknown): number | SolError | null => {
+      const found = xmatchIndex(l, ks, this.matchMode, this.searchMode);
+      if (isSolError(found)) return found;
+      if (found >= 0) return found + 1;
+      return keys !== null ? solError("#N/A", "No match found in the array") : null;
+    };
+    const result = Array.isArray(val) ? val.map(pick) : pick(val);
     this.cachedResult = result;
     return { result };
   }
 }
+
+type XMatchResult = number | SolError | null | (number | SolError | null)[];
 
 // ─── GROUPBY ─────────────────────────────────────────────────────────────────
 
@@ -1790,38 +2049,39 @@ function groupByAggregate(vals: number[], op: GroupByOp): number {
 }
 
 export class GroupByNode extends ClassicPreset.Node {
-  /** The unique keys adopt the keys input's element type; the values stay numeric. */
-  passthrough = (): PassthroughSpec[] => [{ output: "keys", inputs: ["keys"], combine: "single" }];
+  static socketDocs: Record<string, string> = {
+    values: "Pairs with Keys by position. Rows beyond the shorter list are ignored.",
+    result: "One row per unique key: Key (adopting the keys input's element type) and the aggregated Value.",
+  };
+
   label: string;
-  op: GroupByOp;
-  cachedKeys: (string | number)[] | null = null;
-  cachedValues: number[] | null = null;
+  agg: GroupByOp;
+  cachedResult: FrameValue | null = null;
   width = 180; height = 220;
 
-  constructor(init?: { label?: string; op?: GroupByOp }) {
+  constructor(init?: { label?: string; agg?: GroupByOp }) {
     super("GroupBy");
     this.label = init?.label ?? "Group Lists";
-    this.op    = init?.op    ?? "sum";
+    this.agg    = init?.agg    ?? "sum";
     this.addInput("keys",   anyListIn("Keys"));
     this.addInput("values", listIn("Values"));
-    this.addOutput("keys",   adoptiveListOut("Unique keys"));
-    this.addOutput("values", listOut("Aggregated"));
+    // Unique keys + aggregated values are index-aligned, so they leave as ONE frame (C5):
+    // Key adopts the keys input's element family (inferColumn), Value stays numeric.
+    this.addOutput("result", frameOut("Groups"));
   }
 
   data(inputs: {
     keys?:   unknown[][];
     values?: number[][];
-  }): { keys: (string | number)[]; values: number[] } {
-    // Grouping keys by String(cell), so tags must be stripped first or a tagged key
-    // list buckets by object identity.
-    const rawKeys = stripUnitCells(inputs.keys?.[0]) as unknown[] | undefined;
+  }): { result: FrameValue | null } {
+    // A wired blank keys list is unknown → blank frame; grouping keys by String(cell), so
+    // tags are stripped first or a tagged key list buckets by object identity.
+    const keysCell = inputs.keys?.[0] ?? null;
+    if (keysCell === null) { this.cachedResult = null; return { result: null }; }
+    const rawKeys = stripUnitCells(keysCell) as unknown[] | undefined;
     const rawVals = inputs.values?.[0] ?? [];
 
-    if (!Array.isArray(rawKeys) || rawKeys.length === 0) {
-      this.cachedKeys = null;
-      this.cachedValues = null;
-      return { keys: [], values: [] };
-    }
+    if (!Array.isArray(rawKeys)) { this.cachedResult = null; return { result: null }; }
 
     const len = Math.min(rawKeys.length, rawVals.length);
     const order: (string | number)[] = [];
@@ -1838,10 +2098,16 @@ export class GroupByNode extends ClassicPreset.Node {
       if (Number.isFinite(v)) buckets.get(key)!.push(v);
     }
 
-    const aggValues = order.map((k) => groupByAggregate(buckets.get(String(k))!, this.op));
-    this.cachedKeys   = order;
-    this.cachedValues = aggValues;
-    return { keys: order, values: aggValues };
+    const aggValues = order.map((k) => groupByAggregate(buckets.get(String(k))!, this.agg));
+    const frame: FrameValue = {
+      __frame: true,
+      columns: [
+        inferColumn("Key", order),
+        { name: "Value", type: "number", values: aggValues },
+      ],
+    };
+    this.cachedResult = frame;
+    return { result: frame };
   }
 }
 
@@ -1857,15 +2123,15 @@ export type FillOp =
 // `fx` is declared, not despaced: despacing would split the FILL* family and collide
 // with the INTERPOLATE node in stats.ts.
 export const FILL_OP_META = {
-  constant:    { label: "Fill with value",  fx: "FILLVALUE",       description: "Replace each missing (null) cell with a constant. Excel: IF(ISBLANK, …)." },
-  ffill:       { label: "Forward fill",     fx: "FILLFORWARD",     description: "Carry the last present value forward over gaps. Pandas: ffill." },
-  bfill:       { label: "Backward fill",    fx: "FILLBACKWARD",    description: "Carry the next present value back over gaps. Pandas: bfill." },
-  mean:        { label: "Fill with mean",   fx: "FILLMEAN",        description: "Impute gaps with the mean of present values" },
-  median:      { label: "Fill with median", fx: "FILLMEDIAN",      description: "Impute gaps with the median of present values" },
-  mode:        { label: "Fill with mode",   fx: "FILLMODE",        description: "Impute gaps with the most common present value" },
-  interpolate: { label: "Interpolate",      fx: "FILLINTERPOLATE", description: "Linearly interpolate interior gaps between bracketing present values" },
-  drop:        { label: "Drop missing",     fx: "FILLDROP",        description: "Remove missing (null) cells, shortening the list. Pandas: dropna." },
-  coalesce:    { label: "Coalesce (else)",  fx: "COALESCE",        description: "First present of List then each Else in order, per position. SQL: COALESCE." },
+  constant:    { label: "Constant",       fx: "FILLVALUE",       description: "Replace each missing (`null`) cell with a constant. Excel: `IF`." },
+  ffill:       { label: "Forward fill",   fx: "FILLFORWARD",     description: "Carry the last present value forward over gaps. Pandas: `ffill`." },
+  bfill:       { label: "Backward fill",  fx: "FILLBACKWARD",    description: "Carry the next present value back over gaps. Pandas: `bfill`." },
+  mean:        { label: "Mean",           fx: "FILLMEAN",        description: "Impute gaps with the mean of present values" },
+  median:      { label: "Median",         fx: "FILLMEDIAN",      description: "Impute gaps with the median of present values" },
+  mode:        { label: "Mode",           fx: "FILLMODE",        description: "Impute gaps with the most common present value" },
+  interpolate: { label: "Interpolate",    fx: "FILLINTERPOLATE", description: "Linearly interpolate interior gaps between bracketing present values" },
+  drop:        { label: "Drop missing",   fx: "FILLDROP",        description: "Remove missing (`null`) cells, shortening the list. Pandas: `dropna`." },
+  coalesce:    { label: "Coalesce",       fx: "COALESCE",        description: "First present of List then each Else in order, per position. SQL: `COALESCE`." },
 } satisfies Record<FillOp, { label: string; fx: string; description: string }>;
 
 type Cell = number | null | SolError;
@@ -1877,6 +2143,10 @@ type Cell = number | null | SolError;
  *  and a non-finite/error cell is a hard boundary, not a value to interpolate from. */
 
 export class FillNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    value: "Only the Fill with value operation reads it.",
+  };
+
   label: string;
   op: FillOp;
   cachedList: Cell[] = [];
@@ -1886,7 +2156,7 @@ export class FillNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: FillOp; valueKeys?: string[] }) {
     super("Fill");
-    this.label = init?.label ?? "Fill";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "constant";
     this.addInput("list",  listIn("List"));
     this.addInput("value", numIn("Fill with")); // shown for the constant mode
@@ -1945,5 +2215,131 @@ export class FillNode extends ClassicPreset.Node {
     const out = fillList(this.op, arr, { constant, fallbacks });
     this.cachedList = out;
     return { result: out };
+  }
+}
+
+// ─── SPECTRUM (FFT) ──────────────────────────────────────────────────────────
+export class SpectrumNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    rate: "Samples per unit time (Hz if per second); the frequency column is in those units. Leave at 1 for frequency in cycles per sample.",
+    result: "One row per frequency bin 0..n/2: frequency, magnitude (a pure sine of amplitude A reads A), phase in radians.",
+  };
+  label: string;
+  literals: Record<string, number> = { rate: 1 };
+  cachedResult: ListCell[][] | null = null;
+  width = 200; height = 160;
+
+  constructor(init?: { label?: string }) {
+    super("Spectrum");
+    this.label = init?.label ?? "Spectrum (FFT)";
+    this.addInput("list", listIn("Signal"));
+    this.addInput("rate", numIn("Sample rate"));
+    this.addOutput("result", tableOut("frequency, magnitude, phase"));
+  }
+
+  data(inputs: { list?: ListCell[][]; rate?: number[] }) {
+    const arr = inputs.list?.[0] ?? [];
+    const rate = readInput(inputs.rate, this.literals.rate ?? 1);
+    if (rate === null || arr.length === 0) { this.cachedResult = null; return { result: null }; }
+    const rows = spectrum(arr, rate);
+    this.cachedResult = rows.map((r) => [r.frequency, r.magnitude, r.phase]);
+    return { result: this.cachedResult };
+  }
+}
+
+// ─── SMOOTH (Savitzky–Golay / LOWESS / Gaussian) ──────────────────────────────
+export type SmoothOp = "savgol" | "lowess" | "gaussian";
+export const SMOOTH_OP_META: Record<SmoothOp, { label: string; fx: string; params: { key: string; label: string; def: number }[]; description: string }> = {
+  savgol:   { label: "Savitzky–Golay", fx: "SAVGOL", params: [{ key: "window", label: "Window", def: 5 }, { key: "order", label: "Order", def: 2 }], description: "Polynomial least-squares over a sliding window (odd width); keeps peak shape better than a moving average. scipy `savgol_filter`, R `signal::sgolayfilt`." },
+  lowess:   { label: "LOWESS",         fx: "LOWESS", params: [{ key: "frac", label: "Fraction", def: 0.67 }], description: "Locally weighted linear regression over the nearest fraction of points, three robust passes. statsmodels `lowess`, R `lowess` / `loess`." },
+  gaussian: { label: "Gaussian", fx: "GAUSSIANSMOOTH", params: [{ key: "sigma", label: "Sigma", def: 1 }], description: "Gaussian-weighted average, σ in samples, edges reflected. scipy `gaussian_filter1d`." },
+};
+
+export class SmoothNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    list: "Blank and error cells are skipped by the fits and stay blank in the result.",
+    window: "Odd number of neighbours, larger than the order.",
+    frac: "Share of the points in each local fit, 0–1; larger is smoother.",
+  };
+  label: string;
+  op: SmoothOp;
+  literals: Record<string, number> = {};
+  cachedList: ListCell[] = [];
+  width = 190; height = 200;
+
+  constructor(init?: { label?: string; op?: SmoothOp }) {
+    super("Smooth");
+    this.op = init?.op ?? "savgol";
+    this.label = init?.label ?? "";
+    this.addInput("list", listIn("List"));
+    for (const prm of SMOOTH_OP_META[this.op].params) { this.addInput(prm.key, numIn(prm.label)); this.literals[prm.key] = prm.def; }
+    this.addOutput("result", listOut("Smoothed"));
+  }
+
+  /** The op owns its parameter sockets; a live caller prunes the departing ones' cables first. */
+  setOp(next: SmoothOp): string[] {
+    if (next === this.op) return [];
+    const before = SMOOTH_OP_META[this.op].params.map((q) => q.key), after = SMOOTH_OP_META[next].params;
+    const removed = before.filter((k) => !after.some((q) => q.key === k));
+    this.op = next;
+    for (const k of removed) if (this.inputs[k]) this.removeInput(k);
+    for (const q of after) { if (!this.inputs[q.key]) this.addInput(q.key, numIn(q.label)); this.literals[q.key] ??= q.def; }
+    return removed;
+  }
+
+  data(inputs: { list?: ListCell[][]; window?: number[]; order?: number[]; frac?: number[]; sigma?: number[] }) {
+    const arr = inputs.list?.[0] ?? null;
+    const prm = (k: "window" | "order" | "frac" | "sigma", def: number) => readInput(inputs[k], this.literals[k] ?? def);
+    let out: ListCell[] | null;
+    if (arr === null) out = null;
+    else if (this.op === "savgol") { const w = prm("window", 5), o = prm("order", 2); out = w === null || o === null ? null : savgol(arr, w, o); }
+    else if (this.op === "lowess") { const f = prm("frac", 0.67); out = f === null ? null : lowess(arr, f); }
+    else { const sg = prm("sigma", 1); out = sg === null ? null : gaussianSmooth(arr, sg); }
+    this.cachedList = out ?? [];
+    return { result: out };
+  }
+}
+
+// ─── FIND PEAKS ───────────────────────────────────────────────────────────────
+export class FindPeaksNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "One row per local maximum that passes every filter: Position (1-based) and Height.",
+    height: "Leave blank for no minimum.",
+    distance: "Minimum spacing between kept peaks (in samples); the higher peak wins.",
+    prominence: "Minimum rise above the higher of the two surrounding valleys: the filter that separates peaks from ripples.",
+  };
+  label: string;
+  literals: Record<string, number> = {};
+  cachedResult: FrameValue | null = null;
+  width = 190; height = 230;
+
+  constructor(init?: { label?: string }) {
+    super("FindPeaks");
+    this.label = init?.label ?? "Find Peaks";
+    this.addInput("list", listIn("List"));
+    this.addInput("height", numIn("Min height"));
+    this.addInput("distance", numIn("Min distance"));
+    this.addInput("prominence", numIn("Min prominence"));
+    // Position + Height are index-aligned, so they leave as ONE frame (C5).
+    this.addOutput("result", frameOut("Peaks"));
+  }
+
+  data(inputs: { list?: ListCell[][]; height?: number[]; distance?: number[]; prominence?: number[] }): { result: FrameValue | null } {
+    const arr = inputs.list?.[0] ?? null;
+    const opt = (k: "height" | "distance" | "prominence") => {
+      const v = readInput(inputs[k], this.literals[k]);
+      return v === null || v === undefined || Number.isNaN(v) ? undefined : v;
+    };
+    if (arr === null) { this.cachedResult = null; return { result: null }; }
+    const peaks = findPeaks(arr, { height: opt("height"), distance: opt("distance"), prominence: opt("prominence") });
+    const frame: FrameValue = {
+      __frame: true,
+      columns: [
+        { name: "Position", type: "number", values: peaks.map((p) => p.position) },
+        { name: "Height", type: "number", values: peaks.map((p) => p.value) },
+      ],
+    };
+    this.cachedResult = frame;
+    return { result: frame };
   }
 }

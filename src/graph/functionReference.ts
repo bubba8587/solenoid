@@ -13,6 +13,7 @@ export interface FnRefRow {
   syntax: string;
   nodeLabel: string | null;    // catalog label, or null when no node covers it
   description?: string;        // the node's prose "what it does" (catalog description)
+  keywords?: string;           // the catalog's search keywords (library names ride here too)
   catalogType: string | null;
   location: string[];          // Add-menu path; [] for Excel-only gap rows
   packs: string[];
@@ -29,6 +30,7 @@ export interface FnRefRow {
 interface LeafInfo {
   label: string;
   description?: string;
+  keywords?: string;
   path: string[];
   packs: string[];
   parity: boolean;
@@ -45,6 +47,7 @@ function indexCatalog(): Map<string, LeafInfo> {
     idx.set(leaf.type, {
       label: leaf.label,
       description: leaf.description,
+      keywords: leaf.keywords,
       path,
       packs: leaf.packs ?? [],
       parity: leaf.parity ?? true,
@@ -83,7 +86,7 @@ export function buildFunctionReference(): FnRefRow[] {
     excel: string | null, syntax: string, type: string, info: LeafInfo,
     parity: boolean, note?: string,
   ): FnRefRow => ({
-    excel, syntax, nodeLabel: info.label, description: info.description, catalogType: type,
+    excel, syntax, nodeLabel: info.label, description: info.description, keywords: info.keywords, catalogType: type,
     location: info.path, packs: info.packs, dependency: isDep(info.packs),
     implemented: true, composition: false, parity, oos: false, note,
     groupKey: `cat:${topGroup(info.path)}`,
@@ -102,7 +105,7 @@ export function buildFunctionReference(): FnRefRow[] {
   for (const [type, info] of idx) {
     if (info.excel?.length) continue; // already emitted as Excel rows above
     rows.push({
-      excel: null, syntax: "", nodeLabel: info.label, description: info.description, catalogType: type,
+      excel: null, syntax: "", nodeLabel: info.label, description: info.description, keywords: info.keywords, catalogType: type,
       location: info.path, packs: info.packs, dependency: isDep(info.packs),
       implemented: true, composition: false, parity: true, oos: false,
       groupKey: `cat:${topGroup(info.path)}`, groupLabel: topGroup(info.path),
@@ -134,4 +137,31 @@ export function fnRefGroups(rows: FnRefRow[]): { key: string; label: string }[] 
   const rank = (k: string) => (k === "gap" ? 2 : k === "compose" ? 1 : 0);
   keys.sort((a, b) => rank(a) - rank(b));
   return keys.map((k) => ({ key: k, label: seen.get(k)! }));
+}
+
+// ─── Library tags (the Reference overlay's numpy / pandas / scipy / R / SQL / Excel filter) ──
+// Derived from the catalog prose + keywords, never hand-kept: a description that cites
+// `numpy.gradient`, `pandas ewm`, `scipy kruskal`, `R cor(…)`, `dplyr ntile`, `SQL OVER` tags
+// the row, so a refugee from that library can narrow the Reference to what they know.
+export const LIBRARY_TAGS = ["numpy", "pandas", "scipy", "R", "SQL", "Excel"] as const;
+export type LibraryTag = (typeof LIBRARY_TAGS)[number];
+
+const LIB_PATTERNS: ReadonlyArray<[LibraryTag, RegExp]> = [
+  ["numpy",  /\bnumpy\b|\bnp\.[a-z]/i],
+  ["pandas", /\bpandas\b|\bpd\.[a-z]|\bdf\.[a-z]|\bgroupby\(/i],
+  ["scipy",  /\bscipy\b|\bstatsmodels\b|\brapidfuzz\b|\bnumpy_financial\b/i],
+  // "R cor", "R's", "R findInterval", dplyr / tidyr / lubridate / stringr / forecast::
+  ["R",      /(?:^|[\s(—;,])R(?:'s)? (?=[a-z])|\b(?:dplyr|tidyr|lubridate|stringr|stringdist|geosphere|fitdistrplus|forecast::|deSolve)\b/],
+  ["SQL",    /\bSQL\b/],
+];
+
+/** The libraries a row cites; `Excel` when it has an Excel function or the prose names one. */
+export function libraryTags(row: Pick<FnRefRow, "excel" | "description" | "keywords" | "note">): LibraryTag[] {
+  // Descriptions are inline markdown (descriptionMd.ts); the code-span backticks
+  // must not break citation adjacency ("R `boxplot.stats`").
+  const text = `${row.description ?? ""} ${row.keywords ?? ""} ${row.note ?? ""}`.replace(/`/g, "");
+  const tags: LibraryTag[] = [];
+  for (const [tag, re] of LIB_PATTERNS) if (re.test(text)) tags.push(tag);
+  if (row.excel !== null || /\bExcel\b/.test(text)) tags.push("Excel");
+  return tags;
 }

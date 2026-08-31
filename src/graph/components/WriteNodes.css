@@ -1,4 +1,4 @@
-/* File sink nodes (Write CSV / Write JSON) — extends the .sol-conn shell from
+/* File sink nodes (Write File — CSV/JSON) — extends the .sol-conn shell from
    ConnectionNodes.css with an arm/run row. */
 .sol-write__row {
   display: flex;

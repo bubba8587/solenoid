@@ -1,6 +1,6 @@
+import type { Emit } from "./nodeKit";
 import { useSyncExternalStore } from "react";
 import type { ClassicPreset } from "rete";
-import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
 import { socketHighlightStore, dragSocketKey } from "../cableState";
 import { NodeSocket } from "./NodeSocket";
@@ -20,7 +20,7 @@ export function CollapsedInputPill({
   keys,
 }: {
   node: PillNode;
-  emit: RenderEmit<ClassicScheme>;
+  emit: Emit;
   keys: string[];
 }) {
   const hlVersion = useSyncExternalStore(socketHighlightStore.subscribe, socketHighlightStore.version);

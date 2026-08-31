@@ -10,6 +10,13 @@ export interface Settings {
   groupPush: boolean;
   /** Tidy's vertical alignment: "center" levels centers, "top" levels top edges. */
   tidyAlign: "center" | "top";
+  /** Tidy layout direction: "right" flows left→right, "down" top→bottom. */
+  tidyDirection: "right" | "down";
+  /** Tidy spacing density: compact 36/24, normal 55/38, airy 80/56 (between-layers / node). */
+  tidyDensity: "compact" | "normal" | "airy";
+  /** Tidy max nodes per layer (Coffman-Graham): "off" = unbounded, else 2/3/4. String so the
+   *  segment control stores it directly; the call site maps to the numeric cap. */
+  tidyWidthCap: "off" | "2" | "3" | "4";
   /** Absolute path local CSV connections read from; desktop only. */
   csvFolder: string;
   /** Bookmark for the "open in file manager" action; never indexed or scanned. */
@@ -24,6 +31,8 @@ export interface Settings {
   minimapPosition: "bottom" | "top" | "hide";
   /** Hide the canvas background dot grid. */
   hideGridDots: boolean;
+  /** The table popup's per-column summary/profile footer. */
+  tablePopupSummary: boolean;
 
   /** Drop a cable on empty canvas → the Add menu opens filtered to compatible
    *  node types, pre-wired to whichever one gets picked. */
@@ -32,20 +41,28 @@ export interface Settings {
   semanticZoom: boolean;
   /** Keep the command palette docked instead of opening on Enter; desktop only. */
   commandPaletteAlwaysOn: boolean;
+  /** Date Input reads relative phrases (today / next friday / in 3 days), re-resolved on every
+   *  recalculation, with an Alert when the resolved day shifts. Off = every date is a fixed day. */
+  relativeDates: boolean;
 }
 
 const DEFAULTS: Settings = {
   groupPush: true,
   tidyAlign: "center",
+  tidyDirection: "right",
+  tidyDensity: "normal",
+  tidyWidthCap: "off",
   csvFolder: "",
   docsFolder: "",
   obsidianVault: "",
   obsidianAssetSubfolder: "",
   minimapPosition: "bottom",
   hideGridDots: false,
+  tablePopupSummary: true,
   quickWire: false,
   semanticZoom: false,
   commandPaletteAlwaysOn: false,
+  relativeDates: false,
 };
 
 export interface SettingField {
@@ -87,9 +104,39 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         ],
       },
       {
+        key: "tidyDirection",
+        label: "Tidy direction",
+        type: "segment",
+        options: [
+          { value: "right", label: "Right" },
+          { value: "down", label: "Down" },
+        ],
+      },
+      {
+        key: "tidyDensity",
+        label: "Tidy density",
+        type: "segment",
+        options: [
+          { value: "compact", label: "Compact" },
+          { value: "normal", label: "Normal" },
+          { value: "airy", label: "Airy" },
+        ],
+      },
+      {
+        key: "tidyWidthCap",
+        label: "Tidy width cap",
+        type: "segment",
+        options: [
+          { value: "off", label: "Off" },
+          { value: "2", label: "2" },
+          { value: "3", label: "3" },
+          { value: "4", label: "4" },
+        ],
+      },
+      {
         key: "quickWire",
         label: "Quick-wire",
-        help: "Drop a cable on empty canvas to pick a compatible node and wire it in",
+        help: "Dropping a cable on empty canvas",
       },
       {
         key: "semanticZoom",
@@ -109,8 +156,13 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
       {
         key: "docsFolder",
         label: "Documents folder",
-        help: "Where you keep saved graphs — File ▸ Open documents folder reveals it",
+        help: "",
         type: "folder",
+      },
+      {
+        key: "relativeDates",
+        label: "Relative dates",
+        help: "Date Input fields can parse \"next Tuesday\". WARNING: this adds volatility!",
       },
     ],
   },
@@ -120,13 +172,13 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
       {
         key: "obsidianVault",
         label: "Vault folder",
-        help: "The Write to Obsidian / Import from Obsidian nodes read and write .md files under this folder",
+        help: "For the Import from and Write To Obsidian nodes",
         type: "folder",
       },
       {
         key: "obsidianAssetSubfolder",
         label: "Asset subfolder",
-        help: "Where chart / image assets go when writing a note, relative to the vault. Blank = beside the note",
+        help: "Charts and images are saved here.",
         type: "text",
         placeholder: "assets",
       },
@@ -152,9 +204,13 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         label: "Hide grid dots",
       },
       {
+        key: "tablePopupSummary",
+        label: "Table popup summary footer",
+      },
+      {
         key: "commandPaletteAlwaysOn",
-        label: "Always show command palette",
-        help: "Keep it docked at the bottom instead of opening on Enter",
+        label: "Always show Command Palette",
+        help: "",
         // The palette is top-anchored on mobile — no bottom strip to dock to.
         disabledOnMobile: true,
       },

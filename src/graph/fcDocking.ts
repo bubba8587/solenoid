@@ -1,15 +1,15 @@
 // Format Controller docking — snap detection, dock positioning, and the inline
-// splice/unsplice into the host's data path; all pure over (editor, area, container, fc).
+// splice/unsplice into the host's data path; all pure over (editor, view, container, fc).
+import type { View } from "./view";
 import { ClassicPreset, type NodeEditor } from "rete";
-import type { AreaPlugin } from "rete-area-plugin";
-import type { Schemes, AreaExtra } from "./schemes";
+import type { Schemes } from "./schemes";
 import { FormatControllerNode } from "./rete-nodes";
 import { getSocketScreenCenter, screenToCanvas } from "./canvasGeometry";
 
 type SolenoidConnection = import("./schemes").SolenoidConnection;
 
 export function computeDockedCanvasPos(
-  area: AreaPlugin<Schemes, AreaExtra>,
+  view: View,
   container: HTMLElement,
   hostNodeId: string,
   socketKey: string,
@@ -17,9 +17,31 @@ export function computeDockedCanvasPos(
   dockedWidth: number,
   dockedHeight: number,
 ): { x: number; y: number } | null {
-  const sc = getSocketScreenCenter(area, hostNodeId, socketKey, side);
-  if (!sc) return null;
-  const { x: cx, y: cy } = screenToCanvas(area, container, sc.x, sc.y);
+  // Anchor on the host's MODEL position plus the socket's offset inside the host wrapper:
+  // both rects come from the same DOM frame, so the offset holds even when the wrapper
+  // has not been re-committed at the host's new position yet (the post-Tidy snap runs a
+  // frame after the translates; reading the socket's screen point there placed the FC
+  // relative to the host's OLD spot). Screen conversion stays as the fallback.
+  const hostEl = view.nodeElement(hostNodeId);
+  const hostPos = view.position(hostNodeId);
+  const sockEl = hostEl?.querySelector<HTMLElement>(`[data-socket-key="${socketKey}"][data-socket-side="${side}"]`);
+  let cx: number, cy: number;
+  if (hostEl && hostPos && sockEl) {
+    const k = view.transform.k || 1;
+    const host = hostEl.getBoundingClientRect();
+    const r = sockEl.getBoundingClientRect();
+    // Snap the measured offset to the half-px layout grid. The screen-space rects
+    // wobble ±ε with zoom and sub-pixel placement, and an odd FC height puts the
+    // final `cy − height/2` exactly on .5 — un-snapped, Math.round below becomes a
+    // coin flip that re-docks the FC 1px off its serialized spot on every load
+    // (the undo-smoke's phantom y 678→679).
+    cx = hostPos.x + Math.round(((r.left + r.width / 2 - host.left) / k) * 2) / 2;
+    cy = hostPos.y + Math.round(((r.top + r.height / 2 - host.top) / k) * 2) / 2;
+  } else {
+    const sc = getSocketScreenCenter(view, hostNodeId, socketKey, side);
+    if (!sc) return null;
+    ({ x: cx, y: cy } = screenToCanvas(view, container, sc.x, sc.y));
+  }
   // Host INPUT  → FC output (right edge) meets it → FC goes LEFT.
   // Host OUTPUT → FC input  (left edge) meets it → FC goes RIGHT.
   // ROUND to whole canvas px — a fractional dock edge (the screen round-trip lands on
@@ -33,12 +55,12 @@ export function computeDockedCanvasPos(
 // Measured size, not the node's stored estimate — the dock math centers the FC on the
 // host socket by height, so a stale estimate drops it several px low.
 export function dockedRenderedDims(
-  area: AreaPlugin<Schemes, AreaExtra>,
+  view: View,
   nodeId: string,
   fallbackW: number,
   fallbackH: number,
 ): { w: number; h: number } {
-  const el = area.nodeViews.get(nodeId)?.element;
+  const el = view.nodeElement(nodeId);
   return { w: el?.offsetWidth || fallbackW, h: el?.offsetHeight || fallbackH };
 }
 
@@ -49,14 +71,14 @@ const DOCK_SNAP_CANVAS_PX = 34;
 // The nearest host socket whose pairing edge (host output ↔ FC input, host input ↔ FC
 // output) is within snap range; null if nothing is close enough.
 export function findDockTarget(
-  area: AreaPlugin<Schemes, AreaExtra>,
+  view: View,
   editor: NodeEditor<Schemes>,
   fc: FormatControllerNode,
 ): { hostNodeId: string; socketKey: string; side: "input" | "output" } | null {
-  const fcIn  = getSocketScreenCenter(area, fc.id, "in",  "input");
-  const fcOut = getSocketScreenCenter(area, fc.id, "out", "output");
+  const fcIn  = getSocketScreenCenter(view, fc.id, "in",  "input");
+  const fcOut = getSocketScreenCenter(view, fc.id, "out", "output");
   if (!fcIn && !fcOut) return null;
-  const zoom = area.area.transform.k || 1;
+  const zoom = view.transform.k || 1;
 
   let best: { hostNodeId: string; socketKey: string; side: "input" | "output"; dist: number } | null = null;
   for (const host of editor.getNodes()) {
@@ -68,7 +90,7 @@ export function findDockTarget(
         // Pair host output with the FC's input edge, host input with its output edge.
         const fcPt = side === "output" ? fcIn : fcOut;
         if (!fcPt) continue;
-        const hostPt = getSocketScreenCenter(area, host.id, socketKey, side);
+        const hostPt = getSocketScreenCenter(view, host.id, socketKey, side);
         if (!hostPt) continue;
         const dist = Math.hypot(hostPt.x - fcPt.x, hostPt.y - fcPt.y) / zoom;
         if (dist <= DOCK_SNAP_CANVAS_PX && (!best || dist < best.dist)) {

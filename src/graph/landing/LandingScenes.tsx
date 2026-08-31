@@ -481,7 +481,7 @@ export function VerbsScene() {
         y={26}
         w={160}
         accent={C.frame}
-        title="Group By"
+        title="GROUPBY"
         socks={[
           { cy: 58, side: "in", glyph: { kind: "frame", color: C.frame, tip: "Frame" } },
           { cy: 92, side: "out", glyph: { kind: "frame", color: C.frame, tip: "Frame" } },

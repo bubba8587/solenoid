@@ -3,7 +3,7 @@
 LIVE reference, routed from `excelFunctions.ts` (docs/README.md). Read before
 deleting an override, widening the Formula.js fallthrough, or "simplifying" a
 registration away: each entry is the evidence that the library's answer is wrong
-for us. A divergence is owned and tripwired (rules.md FX-11), never absorbed.
+for us. A divergence is owned and tripwired (rules.md tripwireVendorDrift), never absorbed.
 
 - **Scalar math** (full sweep 2026-06-25): MOD — Excel's result takes the DIVISOR's
   sign (`MOD(10,-3) = -2`), FX returns −1. ATAN2 — Excel's `ATAN2(x, y)` is
@@ -35,13 +35,21 @@ for us. A divergence is owned and tripwired (rules.md FX-11), never absorbed.
   is the ELIMINATED approach (double-shifted the day on any non-UTC machine: "green in
   UTC CI, red locally").
 - **Array-returning names**: FX writes them against 2-D ranges with unvetted quirks
-  and has been caught mutating arguments in place (a reason for the D23
+  and has been caught mutating arguments in place (a reason for the matricesInFormulas
   matrix-containment rule). Before internal registration, UNIQUE/SORT/MODE.MULT/
   FREQUENCY dispatched through FX and BROADCAST element-wise (`UNIQUE([3,1,3,2])`
   answered a column of singletons); TREND/GROWTH/LINEST/LOGEST were the last
   array-returning names still broadcast (plausible-looking garbage, the class
   `rangeRouting.test.ts` pins). FX's text-complex IM* was the split-brain: string
   args worked while the graph's own tagged complex values answered `#VALUE!`.
+- **IRR / XIRR** run the IRR node's solver (`financeOps.solveDiscountRate`: Newton with
+  a rate floor, then bracket-and-bisect; `#CONV!` only when no root exists). FX's IRR
+  Newton returns a fabricated 1000 (100 000 %) on a root crowded against the floor
+  (`IRR([-4943, -2458, 285])` is −0.903). The `guess` argument is accepted and ignored —
+  the solver needs none, and the node takes none (capabilityParity). Pinned cross-surface
+  in `financeIterative.test.ts`. NPV / MIRR stay FX but are RANGE_ZERO_FILL: a blank
+  period is a zero flow, as the nodes' `cashPrep` treats it — a null-DROP would shift
+  every later period.
 - **The dispatch/name-walk parity class**: a Formula.js FUNCTION is a walkable
   container (`FX.CEILING` is the CEILING function AND the home of CEILING.MATH). An
   object-only walk advertised ten current-Excel names (CEILING.MATH, FLOOR.PRECISE,

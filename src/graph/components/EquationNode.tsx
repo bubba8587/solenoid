@@ -99,7 +99,7 @@ export function EquationComponent({ data: node, emit, config }: NodeProps<Equati
   config?: ReactNode;
 }) {
   return (
-    <NodeShell node={node} emit={emit} labelPlaceholder="Equation" hideOutputSockets>
+    <NodeShell node={node} emit={emit} hideOutputSockets>
       {/* No "=" prefix — the equation text carries its own. */}
       <FormulaField
         value={node.expr}

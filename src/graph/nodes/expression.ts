@@ -1,6 +1,7 @@
 import { ClassicPreset } from "rete";
 import { anyDataIn, resultOut, resultSocket, readInput, type ResultType } from "./shared";
-import { getActiveEditor, getActiveArea } from "../activeGraph";
+import { frameSocket, cubeSocket } from "../sockets";
+import { getActiveEditor, getActiveView } from "../activeGraph";
 import { retypeOutputCables } from "../fcReconcile";
 import { extractVariables, compileEvaluator, parseFormula, type ExprEvaluator, type Ast, formulaSyntaxHint } from "../excelFormula";
 import { fxErrorToSol } from "../excelFunctions";
@@ -43,7 +44,7 @@ function tagResult(v: unknown): unknown {
 function stripUnits(v: unknown): unknown {
   if (isUnitCell(v)) return v.value;
   if (Array.isArray(v)) {
-    // A matrix carries ONE homogeneous unit (D20) but tags cells individually (D23).
+    // A matrix carries ONE homogeneous unit (unitGranularity) but tags cells individually (matricesInFormulas).
     return v.map((c) =>
       Array.isArray(c) ? c.map((e) => (isUnitCell(e) ? (e as UnitCell).value : e))
       : isUnitCell(c) ? (c as UnitCell).value : c);
@@ -52,7 +53,7 @@ function stripUnits(v: unknown): unknown {
 }
 
 /** The shared display id of a pure-currency input's cells — the currency's real unit
- *  identity (VAL-19) — or undefined when uncoded, mixed, or not currency. */
+ *  identity (noMixCurrencies) — or undefined when uncoded, mixed, or not currency. */
 function envCurrencyCode(v: unknown, dim: Dim): string | undefined {
   if (!dimEqual(dim, { currency: 1 })) return undefined;
   const cells = Array.isArray(v) ? v.flat() : [v];
@@ -66,7 +67,7 @@ function envCurrencyCode(v: unknown, dim: Dim): string | undefined {
 }
 
 /** A scalar's dim, or a container's shared cell dim (dimensionless if none/mixed);
- *  rank 2 flattens, since a matrix carries ONE homogeneous unit (D20). */
+ *  rank 2 flattens, since a matrix carries ONE homogeneous unit (unitGranularity). */
 function envDim(v: unknown): Dim {
   if (isUnitCell(v)) return v.dim;
   if (Array.isArray(v)) {
@@ -79,6 +80,43 @@ function envDim(v: unknown): Dim {
     return dim ?? DIMENSIONLESS;
   }
   return DIMENSIONLESS;
+}
+
+/** What a value-typed producer's result can announce: a result-socket family, or a
+ *  whole FRAME or CUBE (the Script node's row-object returns). */
+export type ProducedFamily = ResultType | "frame" | "cube";
+
+type RankedProducer = ClassicPreset.Node & { resultAs?: ResultType; lastResultRank: 1 | 2; lastResultFamily?: ProducedFamily };
+
+/** Reconciles a producer's result socket to the computed VALUE (anydataWildcard):
+ *  always the RANK, and — when the caller votes one — the element FAMILY too (the
+ *  Script node, which has no declared type; Expression passes none and keeps its
+ *  toggle's). A "frame" vote swaps the whole socket to the frame socket. Value-driven,
+ *  so it must run OUTSIDE data() via a microtask; headless runs skip the swap. */
+export function reconcileResultRank(node: RankedProducer, result: unknown, family?: ProducedFamily): void {
+  // An error result says nothing about shape — leave the socket where the last value put it.
+  if (isSolError(result)) return;
+  const want: 1 | 2 = Array.isArray(result) && result.length > 0 && Array.isArray(result[0]) ? 2 : 1;
+  const wantFamily: ProducedFamily = family ?? node.resultAs ?? "auto";
+  const familyChanged = family !== undefined && node.lastResultFamily !== family;
+  if (want === node.lastResultRank && !familyChanged) return;
+  node.lastResultRank = want;
+  if (family !== undefined) node.lastResultFamily = family;
+  queueMicrotask(() => {
+    void (async () => {
+      const editor = getActiveEditor();
+      const view = getActiveView();
+      const out = node.outputs.result;
+      if (!editor || !view || !out || !editor.getNode(node.id)) return;
+      out.socket = wantFamily === "frame"
+        ? frameSocket
+        : wantFamily === "cube"
+          ? cubeSocket
+          : resultSocket(want === 2 ? "matrix" : "combo", wantFamily);
+      await retypeOutputCables(editor, view, node.id, "result");
+      await view.rerenderNode(node.id);
+    })();
+  });
 }
 
 export class ExpressionNode extends ClassicPreset.Node {
@@ -111,6 +149,8 @@ export class ExpressionNode extends ClassicPreset.Node {
    *  of the formula string, so KaTeX never renders it; shown as a hover tooltip
    *  on the card and as an editable legend in the formula popup. Display-only. */
   varDescriptions: Record<string, string> = {};
+  /** Runtime rank the result socket last settled to (reconcileResultRank); transient. */
+  lastResultRank: 1 | 2 = 1;
 
   constructor(init?: { label?: string; expr?: string; locked?: boolean; resultAs?: ResultType; literals?: Record<string, number>; varDescriptions?: Record<string, string> }) {
     super("Expression");
@@ -156,28 +196,6 @@ export class ExpressionNode extends ClassicPreset.Node {
     return { added, removed };
   }
 
-  /** Reconciles the result socket's RANK to the computed VALUE (SOCK-9). Value-driven,
-   *  so it must run OUTSIDE data() via a microtask; headless runs skip the swap. */
-  private lastResultRank: 1 | 2 = 1;
-  private reconcileResultRank(result: unknown): void {
-    // An error result says nothing about shape — leave the socket where the last value put it.
-    if (isSolError(result)) return;
-    const want: 1 | 2 = Array.isArray(result) && result.length > 0 && Array.isArray(result[0]) ? 2 : 1;
-    if (want === this.lastResultRank) return;
-    this.lastResultRank = want;
-    queueMicrotask(() => {
-      void (async () => {
-        const editor = getActiveEditor();
-        const area = getActiveArea();
-        const out = this.outputs.result;
-        if (!editor || !area || !out || !editor.getNode(this.id)) return;
-        out.socket = resultSocket(want === 2 ? "matrix" : "combo", this.resultAs);
-        await retypeOutputCables(editor, area, this.id, "result");
-        await area.update("node", this.id);
-      })();
-    });
-  }
-
   data(inputs: Record<string, unknown[]>): { result: unknown } {
     // Failures emit a tagged error for the downstream chain; cachedError keeps the richer
     // in-node message. An empty formula is a blank, not an error.
@@ -214,7 +232,7 @@ export class ExpressionNode extends ClassicPreset.Node {
         const codeEnv: CodeEnv = {};
         for (const v of this.varNames) {
           dimEnv[v] = envDim(rawEnv[v]);
-          // The currency code rides along so the dim pass can refuse `$a + €b` (VAL-19).
+          // The currency code rides along so the dim pass can refuse `$a + €b` (noMixCurrencies).
           const code = envCurrencyCode(rawEnv[v], dimEnv[v]);
           if (code !== undefined) codeEnv[v] = code;
         }
@@ -231,7 +249,7 @@ export class ExpressionNode extends ClassicPreset.Node {
       }
       this.cachedResult = result;
       this.cachedError  = null;
-      this.reconcileResultRank(result);
+      reconcileResultRank(this, result);
       return { result };
     } catch {
       this.cachedError = "Evaluation error";

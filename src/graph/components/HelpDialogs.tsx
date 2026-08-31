@@ -9,36 +9,36 @@ import "./helpDialogs.css";
 type Slide = { title: string; body: string };
 const SLIDES: Slide[] = [
   {
-    title: "Real units",
-    body: "Values carry units now. SUM(5 km, 3) is 8 km, m × m is m², and meters plus seconds fails loud with #UNIT! instead of silently adding nonsense. Units ride through lists, frame columns, lookups and selectors; the Format Controller authors them, Convert changes them, and 10 m ÷ 2 m cancels to a pure 5:1 ratio.",
+    title: "Computed columns",
+    body: "Pick Formula on any table column and define it: @price * @qty computes per row. A bare column name is the whole column and @name is this row's cell, so @revenue / SUM(revenue) is a share of total and SUMIFS(amt, cat, @cat) is a per-group subtotal. Computed columns reference each other and take units and number formats like any typed column. Mid-pipeline, the Computed Column node does the same over any incoming frame.",
   },
   {
-    title: "Monte Carlo",
-    body: "Give a composite's inputs a ± spread and its outputs come back as distributions: mean ± deviation with a histogram, from a seeded, reproducible sampler. Uncertainty as a value, alongside Goal Seek, Scenarios, and Data Table.",
+    title: "Script node",
+    body: "Write a JavaScript function; it runs as a node. The value types itself from what you return: a number, text, [ ] for a list, [[ ]] for a table, rows of {name: value} for a frame. Wired frames arrive the same way. Scripts run sandboxed and time-capped, a volatile one gets a Recalculate button, and the worked-examples canvas in the Examples menu tours Monte Carlo, Collatz, an amortization table, and Friday the 13ths.",
   },
   {
-    title: "Draw your data",
-    body: "Three controls make data by hand. Point Plotter turns clicks on a plane into X and Y lists, Curve samples a draggable no-overshoot spline into a list, and Grid Painter fills a matrix with a value brush. Sketch a dataset, then run real math on it.",
+    title: "Query",
+    body: "Drop a Query node, drill in, and chain the table verbs inside. Refresh runs it on demand: upstream changes mark the result stale and never silently recompute.",
   },
   {
-    title: "Terrain and fields",
-    body: "Wire one coordinate-bordered grid through the whole family: Grid Interpolate fills the blanks with a smooth surface, Surface draws it as a shaded 3-D mesh, Contour draws the map view with iso-lines, and Vector Field draws arrow flows. Add Index's new two-way output turns any table into that grid in one hop.",
+    title: "The analytics shelf",
+    body: "The numpy, pandas, scipy and R toolkit as nodes: Forecast with Holt-Winters intervals, per-group Window columns, K-Means, PCA, FFT, LOWESS smoothing, seasonal decomposition, and Monte Carlo with correlated inputs. The Function Reference gains numpy, pandas, R, SQL and Excel filter chips, so you can search by whichever name you already know.",
   },
   {
-    title: "Seven new chart types",
-    body: "Waterfall for the finance bridge, Candlestick for price history (wire Data Feed straight in), Boxplot, a GitHub-style Calendar heatmap, Waffle shares, Contour, and Vector Field — plus a flat 7-Segment meter readout. All of them embed live in Reports.",
+    title: "Records and forms",
+    body: "The Record node draws one table row as a card you lay out yourself: labeled boxes on a text-defined grid, with Gallery and Board views over the whole frame. A table popup's Form view makes that layout editable; page through rows and enter data in fields that follow each column's type.",
   },
   {
-    title: "Obsidian, both directions",
-    body: "Import a vault note as a live, typed source — its frontmatter becomes output sockets, and Reload re-reads from disk. Write Notes and Reports back into the vault as portable markdown with real tables, mermaid blocks, math, and rendered chart images.",
+    title: "The Node Inspector",
+    body: "Press the (i) and a reference panel docks beside the canvas: what the selected node computes, its Excel equivalent, and each socket described under its own glyph. Frame inputs include an example table showing the columns they expect.",
   },
   {
-    title: "Table cleanup, the daily set",
-    body: "Fill Down un-merges report-shaped tables, Replace Values fixes cells in place, Merge Columns is the inverse of Split Column, Promote Headers lifts a first row into names, Drop Blank Rows clears the spacers, and Head slices first / last / skip / range.",
+    title: "Frame hints",
+    body: "Hover a frame input's socket and a miniature example table shows the exact columns it expects, with sample data. On touch, tap the row.",
   },
   {
-    title: "Scrub any number",
-    body: "Drag any number field to set it — hold Shift for coarse steps, Alt for fine. Works on every number input in the app, including the Number node itself.",
+    title: "Type any date",
+    body: "Date Input reads a date in about any format and renders it as DD-MMM-YYYY. An ambiguous one answers #AMBIGUOUS! instead of guessing. Opt in to relative dates and today, next friday, or in 3 days resolve on the spot.",
   },
 ];
 

@@ -55,6 +55,9 @@ export function remoteTextToFrame(text: string, contentType: string, url: string
 // ─── WEB SOURCE ─────────────────────────────────────────────────────────────────
 
 export class WebSourceNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "Rows are never saved into the project file. Reopening the document fetches from the URL again.",
+  };
   label: string;
   url: string;
   /** Minutes, 0 = off — the component runs the timer. */
@@ -175,6 +178,9 @@ export function xpathToList(html: string, query: string): string[] {
 // ─── IMPORT HTML (Nth table on a page → Frame) ──────────────────────────────────
 
 export class ImportHtmlNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "The first row becomes headers only when the page marks it as a header row.",
+  };
   label: string;
   url: string;
   tableIndex: number; // 1-based which <table> on the page
@@ -259,32 +265,43 @@ export class ImportXmlNode extends ClassicPreset.Node {
 // Desktop only (no filesystem in the browser). The cache key folds in folder + file
 // name, so re-pointing either re-reads.
 
-export class CsvConnectionNode extends ClassicPreset.Node {
+export class LocalFileNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frame: "Reads the named file from the folder chosen in Settings. Rows are never saved into the project file.",
+  };
   label: string;
   /** File name relative to the Settings target folder (not a full path). */
   fileName: string;
   /** Auto-refresh interval in minutes (0 = off) — see WebSourceNode. */
   refreshMinutes: number;
-  cachedResult: FrameValue | null = null;
+  /** CSV holds a materialized Frame; Parquet holds the preview (its lazy handle is `ref`). */
+  cachedResult: FrameValue | SolError | null = null;
   width = 260; height = 210;
 
   private lastKey: string | undefined;
   private inflightKey: string | undefined;
-  private inflight: Promise<{ frame: FrameValue | null }> | undefined;
+  private inflight: Promise<{ frame: FrameValue | FrameRef | SolError | null }> | undefined;
+  /** The Parquet handle backing `cachedResult`'s preview — owned by this node, dropped on
+   *  a refresh/re-point (or a switch to CSV), mirroring the verb nodes' `_ref`. */
+  private ref: FrameRef | null = null;
 
   constructor(init?: { label?: string; fileName?: string; refreshMinutes?: number }) {
-    super("CsvConnection");
-    this.label = init?.label ?? "CSV File";
+    super("LocalFile");
+    this.label = init?.label ?? "Local File";
     this.fileName = init?.fileName ?? "";
     this.refreshMinutes = init?.refreshMinutes ?? 0;
     this.addOutput("frame", frameOut("Frame"));
   }
 
-  async data(): Promise<{ frame: FrameValue | null }> {
+  private static isParquet(name: string): boolean {
+    return name.toLowerCase().endsWith(".parquet");
+  }
+
+  async data(): Promise<{ frame: FrameValue | FrameRef | SolError | null }> {
     const folder = settingsStore.get("csvFolder");
     const name = this.fileName.trim();
     const key = connectionStore.key(this.id, `${folder}\u0000${name}`);
-    if (key === this.lastKey) return { frame: this.cachedResult };
+    if (key === this.lastKey) return { frame: this.ref ?? this.cachedResult };
     if (this.inflightKey !== key || !this.inflight) {
       this.inflightKey = key;
       this.inflight = this.load(folder, name, key);
@@ -292,18 +309,41 @@ export class CsvConnectionNode extends ClassicPreset.Node {
     return this.inflight;
   }
 
-  private async load(folder: string, name: string, key: string): Promise<{ frame: FrameValue | null }> {
+  private async load(folder: string, name: string, key: string): Promise<{ frame: FrameValue | FrameRef | SolError | null }> {
+    const parquet = LocalFileNode.isParquet(name);
+    // Parquet errors flow as a #REF! value (downstream sees an error); CSV clears to null.
     const fail = (message: string, status: "idle" | "error" = "error") => {
-      this.cachedResult = null;
+      if (this.ref) { dropFrameRef(this.ref); this.ref = null; }
+      const out = status === "error" && parquet ? solError("#REF!", message) : null;
+      this.cachedResult = out;
       this.lastKey = key;
       connectionStore.setState(this.id, { status, message });
-      return { frame: null };
+      return { frame: out };
     };
-    if (!isDesktop()) return fail("Desktop app only");
+    if (parquet ? (!isDesktop() || !engineAvailable()) : !isDesktop()) {
+      return fail(parquet ? "Desktop app (native engine) only" : "Desktop app only");
+    }
     if (folder === "") return fail("Set a target folder in Settings", "idle");
     if (name === "") return fail("Pick a file", "idle");
     connectionStore.setState(this.id, { status: "loading" });
     try {
+      if (parquet) {
+        // The read never touches JS, so typed columns arrive intact (no inference step);
+        // a LAZY FrameRef off the fresh handle keeps a verb chain from re-uploading.
+        const handle = await ipcInvoke<string>("engine_read_parquet", { folder, name });
+        if (this.ref) dropFrameRef(this.ref);
+        const ref: FrameRef = { __frameRef: handle as FrameHandle, __plan: [] };
+        this.ref = ref;
+        const preview = await collectPreview(ref);
+        this.cachedResult = preview;
+        this.lastKey = key;
+        const rows = !preview || isSolError(preview) ? 0 : (preview.__totalRows ?? frameRowCount(preview));
+        const cols = !preview || isSolError(preview) ? 0 : preview.columns.length;
+        connectionStore.setState(this.id, { status: "ok", rows, cols, fetchedAt: Date.now() });
+        return { frame: ref };
+      }
+      // CSV: a Parquet handle from a previous file is stale now — drop it.
+      if (this.ref) { dropFrameRef(this.ref); this.ref = null; }
       // Desktop parses in Rust so the file text never crosses IPC; web keeps the JS path.
       const frame = engineAvailable()
         ? await (async () => {
@@ -321,74 +361,6 @@ export class CsvConnectionNode extends ClassicPreset.Node {
         fetchedAt: Date.now(),
       });
       return { frame };
-    } catch (e) {
-      return fail(e instanceof Error ? e.message : String(e));
-    }
-  }
-}
-
-// ─── PARQUET CONNECTION (local folder, native engine read) ──────────────────────
-// Native-engine only — there is no JS Parquet reader to fall back to. Emits a LAZY
-// FrameRef off the fresh handle, so a verb chain never re-uploads through engine_source.
-
-export class ParquetConnectionNode extends ClassicPreset.Node {
-  label: string;
-  /** File name relative to the Settings target folder (not a full path). */
-  fileName: string;
-  cachedResult: FrameValue | SolError | null = null;
-  width = 260; height = 210;
-
-  private lastKey: string | undefined;
-  private inflightKey: string | undefined;
-  private inflight: Promise<{ frame: FrameRef | SolError | null }> | undefined;
-  /** The handle backing `cachedResult`'s preview — owned by this node, dropped
-   *  when a refresh/re-point replaces it (mirrors the verb nodes' `_ref`). */
-  private ref: FrameRef | null = null;
-
-  constructor(init?: { label?: string; fileName?: string }) {
-    super("ParquetConnection");
-    this.label = init?.label ?? "Parquet File";
-    this.fileName = init?.fileName ?? "";
-    this.addOutput("frame", frameOut("Frame"));
-  }
-
-  async data(): Promise<{ frame: FrameRef | SolError | null }> {
-    const folder = settingsStore.get("csvFolder");
-    const name = this.fileName.trim();
-    const key = connectionStore.key(this.id, `${folder} ${name}`);
-    if (key === this.lastKey) return { frame: this.ref ?? (this.cachedResult as SolError | null) };
-    if (this.inflightKey !== key || !this.inflight) {
-      this.inflightKey = key;
-      this.inflight = this.load(folder, name, key);
-    }
-    return this.inflight;
-  }
-
-  private async load(folder: string, name: string, key: string): Promise<{ frame: FrameRef | SolError | null }> {
-    const fail = (message: string, status: "idle" | "error" = "error"): { frame: SolError | null } => {
-      if (this.ref) { dropFrameRef(this.ref); this.ref = null; }
-      const out = status === "idle" ? null : solError("#REF!", message);
-      this.cachedResult = out;
-      this.lastKey = key;
-      connectionStore.setState(this.id, { status, message });
-      return { frame: out };
-    };
-    if (!isDesktop() || !engineAvailable()) return fail("Desktop app (native engine) only");
-    if (folder === "") return fail("Set a target folder in Settings", "idle");
-    if (name === "") return fail("Pick a file", "idle");
-    connectionStore.setState(this.id, { status: "loading" });
-    try {
-      const handle = await ipcInvoke<string>("engine_read_parquet", { folder, name });
-      if (this.ref) dropFrameRef(this.ref);
-      const ref: FrameRef = { __frameRef: handle as FrameHandle, __plan: [] };
-      this.ref = ref;
-      const preview = await collectPreview(ref);
-      this.cachedResult = preview;
-      this.lastKey = key;
-      const rows = !preview || isSolError(preview) ? 0 : (preview.__totalRows ?? frameRowCount(preview));
-      const cols = !preview || isSolError(preview) ? 0 : preview.columns.length;
-      connectionStore.setState(this.id, { status: "ok", rows, cols, fetchedAt: Date.now() });
-      return { frame: ref };
     } catch (e) {
       return fail(e instanceof Error ? e.message : String(e));
     }

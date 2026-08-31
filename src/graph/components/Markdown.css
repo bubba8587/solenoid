@@ -5,16 +5,22 @@
   color: var(--text);
   font-size: 13.5px;
   line-height: 1.6;
+  /* A run with no break opportunity (a URL, a hash, a long identifier) wraps
+     mid-run rather than pushing the column wider than its box. */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
-.sol-md h1 { font-size: 22px; font-weight: 700; margin: 4px 0 14px; color: var(--text-bright); }
+.sol-md pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+.sol-md h1 { font-size: 22px; font-weight: 700; margin: 4px 0 14px; color: var(--text-bright); text-wrap-style: balance; }
 .sol-md h2 {
   font-size: 16px; font-weight: 600; margin: 26px 0 8px; padding-bottom: 5px;
   color: var(--text-bright); border-bottom: 1px solid var(--border);
+  text-wrap-style: balance;
 }
-.sol-md h3 { font-size: 14px; font-weight: 600; margin: 18px 0 6px; color: var(--text); }
-.sol-md p { margin: 8px 0; }
+.sol-md h3 { font-size: 14px; font-weight: 600; margin: 18px 0 6px; color: var(--text); text-wrap-style: balance; }
+.sol-md p { margin: 8px 0; text-wrap-style: pretty; }
 .sol-md ul, .sol-md ol { margin: 8px 0; padding-left: 22px; }
-.sol-md li { margin: 3px 0; }
+.sol-md li { margin: 3px 0; text-wrap-style: pretty; }
 .sol-md li > ul, .sol-md li > ol { margin: 3px 0; }
 .sol-md a { color: var(--accent); text-decoration: none; }
 .sol-md a:hover { text-decoration: underline; }
@@ -28,11 +34,16 @@
 .sol-md pre {
   margin: 10px 0; padding: 10px 12px; overflow: auto;
   background: var(--surface-sunken); border: 1px solid var(--border); border-radius: 6px;
+  /* Code wraps greedily. The Note and Report set `pretty` on the whole rendered
+     body, and rebreaking a wrapped code line to even out its tail moves the
+     break away from where the code actually reads. */
+  text-wrap-style: auto;
 }
 .sol-md pre code { padding: 0; border: none; background: none; }
 .sol-md blockquote {
   margin: 10px 0; padding: 2px 12px;
   border-left: 3px solid var(--border-strong); color: var(--text-dim);
+  text-wrap-style: pretty;
 }
 .sol-md hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
 .sol-md kbd {

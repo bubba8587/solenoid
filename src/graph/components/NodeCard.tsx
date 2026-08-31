@@ -1,14 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type ReactNode, type CSSProperties, type RefObject } from "react";
 import type { ClassicPreset } from "rete";
-import { repositionDockedNodes } from "../process";
-import { getOwningArea } from "../activeGraph";
-import { nodeKindOf, nodeResizable, nodeWide, NODE_KIND_ACCENTS } from "../rete-nodes";
+import { repositionDockedNodes } from "../canvasCommands";
+import { getOwningView } from "../activeGraph";
+import { nodeAccent, nodeResizable, nodeWide, nodeMedium } from "../rete-nodes";
 import { nodeSizeStore } from "../nodeSizeStore";
 import { collapseStore } from "../collapseStore";
 import { groupMembershipStore } from "../groupMembership";
 import { appThemeStore } from "../appTheme";
 import { themeAccent, darkenAccent } from "../palette";
-import { opKindForNode } from "../nodeOps";
 
 // The whole node header is a drag surface; a pointer moving less than this many
 // px counts as a TAP, not a drag. Shared with nodeKit's title label.
@@ -61,10 +60,10 @@ export function useHeaderHeightVar(headerRef: RefObject<HTMLElement | null>) {
 type Props = {
   selected?: boolean;
   // The live node instance: the card reports its measured DOM size back here so
-  // minimap silhouettes match the real cards, and derives the accent via nodeKindOf.
+  // minimap silhouettes match the real cards, and derives the accent via nodeAccent.
   node?: { id: string; width: number; height: number };
   className?: string;
-  /** Override the accent color derived from nodeKindOf. */
+  /** Override the accent color derived from nodeAccent. */
   accentOverride?: string;
   /** When false, the node can't collapse and no chevron is shown. */
   collapsible?: boolean;
@@ -82,8 +81,6 @@ type Props = {
  *  native bubble listener fires before React's synthetic ones. */
 export function NodeCard({ selected, node, className, accentOverride, collapsible = true, squareCollapse = false, frameless = false, children }: Props) {
   const ref = useRef<HTMLDivElement>(null);
-  // Pointer-down position on the chevron, to tell a tap (→ toggle) from a drag.
-  const chevronDownPos = useRef<{ x: number; y: number } | null>(null);
   const collapsed = useSyncExternalStore(
     collapseStore.subscribe,
     () => (node ? collapseStore.get(node.id) : false),
@@ -136,8 +133,7 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   // Runs after every commit — also covers the collapse toggle's re-layout.
   useLayoutEffect(syncOutputSocketTop);
 
-  // Clear the inline `height` stamped by area.resize on collapse — React's
-  // re-render can't clear it, and the card would stay full-height while empty.
+  // A pinned inline `height` would keep the collapsed card full-height while empty.
   useLayoutEffect(() => {
     if (collapsed) ref.current?.style.removeProperty("height");
   }, [collapsed]);
@@ -158,8 +154,8 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
       node.height = h;
       // Update LIVE during a resize drag so cables re-route; the grip drags off
       // window listeners, so recreating this node's DOM here doesn't drop it.
-      // Owning area (not main): this card may live inside an open drill-in.
-      void getOwningArea(node.id)?.update("node", node.id);
+      // Owning view (not main): this card may live inside an open drill-in.
+      void getOwningView(node.id)?.rerenderNode(node.id);
       // A resize can shift this node's sockets — keep any docked FC aligned.
       repositionDockedNodes(node.id);
       // If THIS node is a docked FC, re-center it on its host now that its real
@@ -172,18 +168,18 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   }, [node]);
 
   // `node` is typed minimally here but is the live instance at runtime, so
-  // instanceof inside nodeKindOf works.
+  // instanceof inside nodeAccent works.
   // Re-render on theme change so the accent shift (light vs dark) is live.
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const mode = appThemeStore.getMode();
-  const rawAccent = accentOverride ?? (node
-    ? NODE_KIND_ACCENTS[nodeKindOf(node as unknown as ClassicPreset.Node)]
-    : undefined);
-  const accent = rawAccent ? themeAccent(rawAccent, mode) : undefined;
+  // An explicit override (the FC's mismatch orange / its own socket color) still gets
+  // theme-adjusted here; nodeAccent already returns a final theme-resolved hex.
+  const accent = accentOverride
+    ? themeAccent(accentOverride, mode)
+    : node ? nodeAccent(node as unknown as ClassicPreset.Node, mode) : undefined;
   // The "inside a group" indicator: the color is published as a CSS var and the
   // grouped class applies the treatment (yielding to selection).
-  useSyncExternalStore(groupMembershipStore.subscribe, groupMembershipStore.version);
-  const groupColor = node ? groupMembershipStore.color(node.id) : undefined;
+  const groupColor = useSyncExternalStore(groupMembershipStore.subscribe, () => (node ? groupMembershipStore.color(node.id) : undefined));
 
   // A persisted user size overrides the CSS width/height as an inline style; the
   // drag itself lives in ResizeHandle.
@@ -194,13 +190,15 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   const resizable = !!node && nodeResizable(node as unknown as ClassicPreset.Node);
   // Wider default card for table/frame nodes; a manual size still wins.
   const wide = !collapsed && !!node && nodeWide(node as unknown as ClassicPreset.Node);
+  // Medium card for date-outputting nodes (roomier than standard); wide wins over it.
+  const medium = !collapsed && !wide && !!node && nodeMedium(node as unknown as ClassicPreset.Node);
   // Manual size is ignored while collapsed (collapse owns the layout then).
   const size = collapsed || !node ? undefined : nodeSizeStore.get(node.id);
 
   const style: CSSProperties = {};
   if (accent) (style as Record<string, string>)["--node-accent"] = accent;
   // Darker shade for the light-mode outside border (matches the group framing).
-  if (rawAccent) (style as Record<string, string>)["--node-accent-dark"] = darkenAccent(rawAccent);
+  if (accent) (style as Record<string, string>)["--node-accent-dark"] = darkenAccent(accent);
   if (groupColor) (style as Record<string, string>)["--group-color"] = themeAccent(groupColor, mode);
   if (groupColor) (style as Record<string, string>)["--group-color-dark"] = darkenAccent(groupColor);
   // Width sizes the card; height is published as a var the value box consumes —
@@ -211,27 +209,46 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   }
   const styleProp = accent || groupColor || size ? style : undefined;
 
-  function toggleCollapse(e: React.MouseEvent) {
-    e.stopPropagation();
+  function doToggle() {
     if (node) {
       collapseStore.toggle(node.id);
-      // Nudge the OWNING area (drill-in aware) so cable endpoints re-measure.
-      void getOwningArea(node.id)?.update("node", node.id);
+      // Nudge the OWNING view (drill-in aware) so cable endpoints re-measure.
+      void getOwningView(node.id)?.rerenderNode(node.id);
     }
+  }
+  function toggleCollapse(e: React.MouseEvent) {
+    e.stopPropagation();
+    doToggle();
+  }
+  // The chevron's pointerdown reaches rete on purpose (drag the node from the header),
+  // but that makes rete eat the synthesized `click` on a DESKTOP mouse — mousedown lands
+  // on the chevron, mouseup elsewhere, so `click` targets the card, not the button, and
+  // the toggle never fires (worked on touch, which drags differently — the regression that
+  // shipped mobile-tested). So detect a stationary tap on a WINDOW pointerup, which fires
+  // regardless of pointer capture, instead of relying on the button's own click.
+  function armChevronTap(e: React.PointerEvent) {
+    const sx = e.clientX, sy = e.clientY;
+    const onEnd = (ev: PointerEvent) => {
+      window.removeEventListener("pointerup", onEnd, true);
+      window.removeEventListener("pointercancel", onCancel, true);
+      if (Math.hypot(ev.clientX - sx, ev.clientY - sy) <= HEADER_TAP_SLOP) doToggle();
+    };
+    const onCancel = () => {
+      window.removeEventListener("pointerup", onEnd, true);
+      window.removeEventListener("pointercancel", onCancel, true);
+    };
+    window.addEventListener("pointerup", onEnd, true);
+    window.addEventListener("pointercancel", onCancel, true);
   }
 
   return (
     <div
       ref={ref}
-      // Tags the card with what its op dropdown selects between, so one CSS rule
-      // styles every op selector; absent for a family not declared in nodeOps.ts,
-      // which is deliberately NOT the same as "argument".
-      data-op-kind={opKindForNode(node)}
       className={
         `solenoid-node${selected ? " solenoid-node--selected" : ""}` +
         `${collapsed ? " solenoid-node--collapsed" : ""}${groupColor ? " solenoid-node--grouped" : ""}` +
         `${resizable ? " solenoid-node--resizable" : ""}${size ? " solenoid-node--sized" : ""}` +
-        `${wide ? " solenoid-node--wide" : ""}${squareCollapse ? " solenoid-node--square-collapse" : ""}` +
+        `${wide ? " solenoid-node--wide" : ""}${medium ? " solenoid-node--medium" : ""}${squareCollapse ? " solenoid-node--square-collapse" : ""}` +
         `${!collapsible ? " solenoid-node--no-chevron" : ""}${className ? " " + className : ""}`
       }
       style={styleProp}
@@ -244,20 +261,12 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
           type="button"
           className="solenoid-node__chevron"
           title={collapsed ? "Expand" : "Collapse"}
-          aria-label={collapsed ? "Expand node" : "Collapse node"}
-          // Let the pointerdown reach rete so a drag from the chevron moves the
-          // node; toggle only on a stationary tap (< HEADER_TAP_SLOP).
-          onPointerDown={(e) => { chevronDownPos.current = { x: e.clientX, y: e.clientY }; }}
-          onClick={(e) => {
-            const d = chevronDownPos.current;
-            if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) > HEADER_TAP_SLOP) return;
-            toggleCollapse(e);
-          }}
-        >
-          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-            <path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+          aria-label={collapsed ? "Expand the node" : "Collapse the node"}
+          // Let the pointerdown reach rete so a drag from the chevron moves the node;
+          // arm a window-level tap detector that toggles only on a stationary release
+          // (robust to rete eating the click on a desktop mouse).
+          onPointerDown={armChevronTap}
+        />
       )}
       {children}
     </div>

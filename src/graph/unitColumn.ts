@@ -58,7 +58,7 @@ export function tagFrameCellUnit(v: unknown, cu: ColumnUnit): unknown {
   return u ? fromUnit(v, u, cu.display) : tagDim(v, cu.dim);
 }
 
-// A matrix carries ONE whole-grid unit over AS-TYPED cells (D20) while a list carries
+// A matrix carries ONE whole-grid unit over AS-TYPED cells (unitGranularity) while a list carries
 // per-cell base-SI `UnitCell`s, so a rank-changing reshape must CONVERT between the
 // two carriers or the unit vanishes.
 
@@ -68,7 +68,7 @@ export function taggedListFromMatrix(cells: readonly unknown[], cu: ColumnUnit |
 }
 
 /** List → matrix: bare as-typed magnitudes + the ONE unit the list shares (undefined
- *  when the tagged cells disagree) — a matrix is homogeneous (D20) and never holds
+ *  when the tagged cells disagree) — a matrix is homogeneous (unitGranularity) and never holds
  *  `UnitCell`s. */
 export function matrixCellsFromList(cells: readonly unknown[]): { mags: unknown[]; unit: ColumnUnit | undefined } {
   const mags = cells.map((c) => (isUnitCell(c) ? displayMagnitudeOf(c) : c));

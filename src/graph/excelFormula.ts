@@ -1,5 +1,5 @@
 import { solError, isSolError, isNaError } from "./errorValue";
-import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, ELIMINATED_FUNCTIONS, LEGACY_ALIASES, FRAME_SURFACE_NAMES, registryGeneration } from "./excelFunctions";
+import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, isInternalFunction, ELIMINATED_FUNCTIONS, LEGACY_ALIASES, FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES, registryGeneration } from "./excelFunctions";
 import { isMissing, guardFinite } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 import { isLambdaValue, type LambdaValue } from "./lambdaValue";
@@ -24,7 +24,7 @@ export type Ast =
   // This-row reference, resolved via computedColumnCore's row context — NOT a
   // variable: extractVariables skips it, so it never grows a socket.
   | { t: "atcol"; name: string }
-  // A WHOLE-column structured reference (D24) — not a variable either.
+  // A WHOLE-column structured reference (tableRefSemantics) — not a variable either.
   | { t: "wholecol"; name: string };
 
 /** Identifier-shaped: printable as a bare `@name` / variable; anything else
@@ -78,7 +78,7 @@ function tokenize(src: string): Tok[] | null {
     if (c === "(" || c === ")") { toks.push({ k: "paren", v: c }); i++; continue; }
     if (c === ",") { toks.push({ k: "comma", v: "," }); i++; continue; }
     if (c === "[") {
-      // Structured reference (D24): `[Name]` = whole column, `[@Name]` = this row;
+      // Structured reference (tableRefSemantics): `[Name]` = whole column, `[@Name]` = this row;
       // the name is raw text up to `]`, which can't itself appear.
       let j = i + 1;
       let row = false;
@@ -257,7 +257,7 @@ export function formulaSyntaxHint(expr: string): string | null {
   if (/[{}]/.test(s)) return "Braces { } aren't formula syntax — remove them (array literals aren't supported; wire a List or Table input instead)";
   if (s.startsWith("=")) return "Drop the leading = — type just the formula body";
   if (/;/.test(s)) return "Separate arguments with commas, not semicolons";
-  // Brackets ARE syntax (D24) — only an unbalanced pair is diagnosable here.
+  // Brackets ARE syntax (tableRefSemantics) — only an unbalanced pair is diagnosable here.
   const openB = (s.match(/\[/g) ?? []).length;
   const closeB = (s.match(/\]/g) ?? []).length;
   if (openB !== closeB) return "Unclosed [ — a whole column is [Name], this row's cell is @[Name]";
@@ -293,7 +293,7 @@ export function formulaFunctionNames(): string[] {
     ...FX_FUNCTION_NAMES, // flat AND namespaced-dotted (NORM.DIST, STDEV.S, …)
     ...Object.keys(EXCEL_IMPL_META),
     ...internalFunctionNames(),
-  ])).filter((n) => !ELIMINATED_FUNCTIONS.has(n)).sort(); // D10: eliminated stays eliminated on EVERY surface
+  ])).filter((n) => !ELIMINATED_FUNCTIONS.has(n)).sort(); // currentExcelParity: eliminated stays eliminated on EVERY surface
   _namesGen = gen;
   return _names;
 }
@@ -381,23 +381,26 @@ export const RANGE_FUNCTIONS = new Set<string>([
   "SUM", "SUMSQ", "SUMPRODUCT", "PRODUCT", "AVERAGE", "AVERAGEA", "AVEDEV", "DEVSQ",
   "MIN", "MINA", "MAX", "MAXA", "COUNT", "COUNTA", "COUNTBLANK",
   "MEDIAN", "MODE", "GEOMEAN", "HARMEAN", "TRIMMEAN",
-  // STDEVP/VARP are absent on purpose: they're D10-blocked legacy spellings
-  // (LEGACY_ALIASES), so listing them here would only be deleted by the D10 gate.
+  // STDEVP/VARP are absent on purpose: they're currentExcelParity-blocked legacy spellings
+  // (LEGACY_ALIASES), so listing them here would only be deleted by the currentExcelParity gate.
   "STDEV", "STDEVA", "STDEVPA", "STDEV.S", "STDEV.P",
   "VAR", "VARA", "VARPA", "VAR.S", "VAR.P",
   "SKEW", "SKEW.P", "KURT", "LARGE", "SMALL",
+  "PTP", "IQR", "MAD", "SEM", "CV", "RMS", "SPEARMAN", "KENDALL",
+  "ANOVA", "KRUSKAL", "MANNWHITNEY", "WILCOXON", "KSTEST",
   "PERCENTILE", "PERCENTILE.INC", "PERCENTILE.EXC",
   "QUARTILE", "QUARTILE.INC", "QUARTILE.EXC",
   "RANK", "RANK.EQ", "RANK.AVG", "PERCENTRANK",
   "CORREL", "COVAR", "COVARIANCE.P", "COVARIANCE.S",
-  "SLOPE", "INTERCEPT", "RSQ", "FORECAST.LINEAR",
+  "SLOPE", "INTERCEPT", "RSQ", "STEYX", "FORECAST.LINEAR",
   "AND", "OR", "XOR",
   "TEXTJOIN", "CONCAT",
   // criteria + meta aggregators: range (+ criteria/selector) in, scalar out.
   "SUMIF", "SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF", "AVERAGEIFS",
   "MAXIFS", "MINIFS", "SUBTOTAL", "AGGREGATE",
-  // cashflow functions take a whole list of cash flows; broadcast would be garbage.
-  "NPV", "IRR", "MIRR", "XIRR", "XNPV",
+  // cashflow functions take a whole list of cash flows; broadcast would be garbage
+  // (IRR / XIRR / MIRR are whole-arg natives now — `listArgs` routes them before this set).
+  "NPV", "XNPV",
   // Lookup functions take whole lookup + return lists (registered 1-D impls).
   "XLOOKUP", "XMATCH", "VLOOKUP", "HLOOKUP", "LOOKUP", "MATCH", "INDEX",
   // Statistical TESTS and the pairwise sums — whole samples in, ONE number out.
@@ -417,8 +420,8 @@ const RANGE_RAW = new Set(["COUNT", "COUNTA", "COUNTBLANK"]);
 // range, since per-array dropping would shear the pairing; the min-length zip on
 // ragged ranges IS the pad-with-null policy (padded rows would drop anyway).
 const RANGE_PAIRED = new Set([
-  "SUMPRODUCT", "CORREL", "COVAR", "COVARIANCE.P", "COVARIANCE.S",
-  "SLOPE", "INTERCEPT", "RSQ", "FORECAST.LINEAR", "XIRR", "XNPV",
+  "SUMPRODUCT", "CORREL", "SPEARMAN", "KENDALL", "WILCOXON", "COVAR", "COVARIANCE.P", "COVARIANCE.S",
+  "SLOPE", "INTERCEPT", "RSQ", "STEYX", "FORECAST.LINEAR", "XNPV",
   "SUMIF", "SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF", "AVERAGEIFS",
   "MAXIFS", "MINIFS",
   // term-by-term / cell-for-cell definitions: these must stay index-aligned.
@@ -428,11 +431,12 @@ const RANGE_PAIRED = new Set([
 // POSITIONAL lookups answer in indices, so nulls stay put (a drop would shift
 // every match); errors still propagate.
 const RANGE_POSITIONAL = new Set(["XLOOKUP", "XMATCH", "VLOOKUP", "HLOOKUP", "LOOKUP", "MATCH", "INDEX"]);
-// SERIESSUM's coefficients are positional, so a null-drop would shift every later
-// one onto a lower power; a blank contributes 0·x^k in place.
-const RANGE_ZERO_FILL = new Set(["SERIESSUM"]);
+// POSITIONAL-by-period lists: SERIESSUM's coefficients sit on powers, NPV's cash flows
+// on periods — a null-drop would shift every later one, so a blank contributes 0 in
+// place (the same policy the NPV node applies via cashPrep).
+const RANGE_ZERO_FILL = new Set(["SERIESSUM", "NPV"]);
 
-// Whole-list natives (D19 Tier 3) take their 1-D args RAW: they are
+// Whole-list natives (formulaNaming Tier 3) take their 1-D args RAW: they are
 // position-preserving, so a null-drop would change the answer
 // (`REVERSE([1,null,3])`) and an error hoist would erase which cell it came from.
 function takesWholeArgs(name: string): boolean {
@@ -443,24 +447,27 @@ function takesWholeArgs(name: string): boolean {
 // the exemptions to the blank-scalar-propagates rule at the call site.
 const NULLABLE_SCALARS_OK = new Set([
   "FILLVALUE", "COALESCE",
-  // The D23 matrix tranche: optional args arrive as blanks and each registration
+  // The matricesInFormulas matrix tranche: optional args arrive as blanks and each registration
   // decides blank-by-blank, which the generic blank guard would pre-empt.
   "SEQUENCE", "WRAPROWS", "WRAPCOLS", "MMULT", "MDETERM", "MINVERSE", "TRANSPOSE", "MUNIT", "TOCOL", "TOROW",
   // Tranche 2, same contract.
-  "UNIQUE", "SORT", "SORTBY", "FILTER", "TAKE", "DROP", "MODE.MULT", "FREQUENCY", "RANDARRAY",
+  "UNIQUE", "SORT", "SORTBY", "FILTER", "TAKE", "DROP", "MODE.MULT", "FREQUENCY", "RANDARRAY", "RANDDIST",
+  // Grid mode's omitted axes arrive as blanks (INTERPOLATE(table, , , FALSE) = index axes).
+  "INTERPOLATE",
+  // The append ladder + grid selection/grow: blanks are dropped (stackers) or mean an
+  // omitted arg (EXPAND's Fill/cols), so each registration decides blank-by-blank.
+  "HSTACK", "VSTACK", "CHOOSECOLS", "CHOOSEROWS", "EXPAND",
   // The lambda tranche: hosts validate their own arguments.
   "MAP", "BYROW", "BYCOL", "REDUCE", "SCAN", "MAKEARRAY", "GROUPBY",
   // The regression quartet: blank xs / new_xs each mean an Excel default.
   "TREND", "GROWTH", "LINEST", "LOGEST",
-  // A blank condition means the default "contains".
-  "TEXTFILTER",
 ]);
 
 // Lambda HOSTS whose fn argument may be a bare function name (eta) — MAKEARRAY is
 // excluded, its (row, col) GENERATOR slot makes a bare scalar fn a real mistake.
 const ETA_HOSTS = new Set(["MAP", "BYROW", "BYCOL", "REDUCE", "SCAN", "GROUPBY"]);
 
-// D10 gate: a BLOCKED spelling gets no range routing, derived from the blocklist
+// currentExcelParity gate: a BLOCKED spelling gets no range routing, derived from the blocklist
 // so the two can't drift apart.
 for (const blocked of ELIMINATED_FUNCTIONS) {
   RANGE_FUNCTIONS.delete(blocked);
@@ -549,8 +556,8 @@ const isErr = (v: unknown): boolean => isSolError(v) || v instanceof Error;
 const mapOne = (v: unknown, f: (x: unknown) => unknown): unknown =>
   isArr(v) ? v.map(f) : f(v);
 
-// ─── Rank-aware element-wise mapping (D23 — the broadcast-rules table) ────────
-// The D23 table implemented once for every element-wise surface;
+// ─── Rank-aware element-wise mapping (matricesInFormulas — the broadcast-rules table) ────────
+// The matricesInFormulas table implemented once for every element-wise surface;
 // `broadcastRules.test.ts` transcribes it row by row against THIS code.
 
 const isMatrix = (v: unknown): v is unknown[][] => isArr(v) && v.length > 0 && isArr(v[0]);
@@ -713,7 +720,7 @@ function applyCxOp(op: string, a: unknown, b: unknown): unknown {
 // Functions whose result DEPENDS ON a blank operand: `null` flows INTO them
 // (ISBLANK(null) is TRUE) while every other function propagates missing; errors
 // still short-circuit, and IF is listed so an `IF(x,,y)` branch can flow.
-const NULL_INSPECTING = new Set(["ISBLANK", "ISNUMBER", "ISTEXT", "ISNONTEXT", "ISLOGICAL", "ISREF", "N", "T", "TYPE", "IF"]);
+const NULL_INSPECTING = new Set(["ISBLANK", "ISNUMBER", "ISTEXT", "ISNONTEXT", "ISLOGICAL", "ISBOOLEAN", "ISREF", "N", "T", "TYPE", "IF", "CHOOSE"]);
 
 /** Broadcast a non-range function element-wise (scalars repeat, ragged args zip to
  *  the LONGEST and pad with `null`): per cell an error propagates first, else a
@@ -843,10 +850,17 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       // identical #NAME?s.
       const redirect = LEGACY_ALIASES[name];
       if (redirect) return solError("#NAME?", `Use ${redirect}`);
-      // A frame verb is a real name whose type can't flow here (D23) — #TYPE!
+      // A frame verb is a real name whose type can't flow here (matricesInFormulas) — #TYPE!
       // naming the node, short-circuited for the same reason as the block above.
       const frameNode = FRAME_SURFACE_NAMES[name];
       if (frameNode) return solError("#TYPE!", `Frames don't flow through formulas — use the ${frameNode} node, or a Computed Column for row math`);
+      // A capability that became a NODE (not a frame verb): recognized, redirected. #NAME?
+      // like a legacy alias — the name simply isn't a formula function, it's a node.
+      const nodeVerb = NODE_SURFACE_NAMES[name];
+      if (nodeVerb) return solError("#NAME?", `Use the ${nodeVerb} node`);
+      // A genuinely unknown NAME(...) is a clean #NAME? here, not a per-cell throw
+      // that leaks as #ERROR! from broadcastCall's dispatch (A2 containment).
+      if (!resolveExcelFunction(name)) return solError("#NAME?", `Unknown function ${name}`);
       // In a lambda HOST's argument a bare dispatchable name is an eta LambdaValue,
       // not an undefined variable (see etaOrEval).
       let argv = ETA_HOSTS.has(name)
@@ -857,7 +871,7 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       // A tagged error doesn't survive a trip through Formula.js, so surface it here.
       const sol = argv.find(isSolError);
       if (sol) return sol;
-      // D23 containment: a matrix reaches a dispatch whole only through a declared
+      // matricesInFormulas containment: a matrix reaches a dispatch whole only through a declared
       // `matrixArgs`; otherwise a range aggregate flattens row-major, a positional
       // lookup or whole-list native answers #SHAPE!, and the rest broadcasts.
       if (argv.some((a) => isMatrix(a)) && !EXCEL_IMPL_META[name]?.matrixArgs) {
@@ -866,7 +880,9 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
         }
         if (RANGE_FUNCTIONS.has(name)) {
           argv = argv.map((a) => (isMatrix(a) ? a.flat() : a));
-        } else if (takesWholeArgs(name)) {
+        } else if (takesWholeArgs(name) || (EXCEL_IMPL_META[name] === undefined && !isInternalFunction(name))) {
+          // A whole-list native, or an undeclared FX name that would otherwise broadcast
+          // the matrix into per-cell #VALUE!s (hideMatrixFromVendor): one #SHAPE!.
           return solError("#SHAPE!", `${name} works on values and 1-D lists, not a 2-D matrix`);
         }
       }
@@ -903,7 +919,7 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
 export type ExprEvaluator = (env: Record<string, unknown>) => unknown;
 
 /** Compile a formula into an array-aware evaluator over a name→value environment;
- *  null on a parse error, throws at eval time on an unknown function. */
+ *  null on a parse error, a `#NAME?` SolError at eval time on an unknown function. */
 export function compileEvaluator(expr: string): ExprEvaluator | null {
   const ast = parseExpr(expr);
   if (!ast) return null;
@@ -960,7 +976,12 @@ function numLatex(v: string): string {
   return v;
 }
 
-const TRIG = new Set(["SIN", "COS", "TAN", "SINH", "COSH", "TANH", "ASIN", "ACOS", "ATAN"]);
+// KaTeX's own operator names — the arc functions are \arcsin, never \asin.
+const TRIG_TEX: Record<string, string> = {
+  SIN: "\\sin", COS: "\\cos", TAN: "\\tan",
+  SINH: "\\sinh", COSH: "\\cosh", TANH: "\\tanh",
+  ASIN: "\\arcsin", ACOS: "\\arccos", ATAN: "\\arctan",
+};
 const CMP_TEX: Record<string, string> = { "=": "=", "<>": "\\ne", "<": "<", ">": ">", "<=": "\\le", ">=": "\\ge" };
 
 /** A string literal → KaTeX text mode: `\textquotedbl` is NOT a KaTeX command, so
@@ -1002,7 +1023,7 @@ function tex(n: Ast, parent: number): string {
       if (name === "PI" && a.length === 0) return "\\pi";
       if (name === "LN") return `\\ln\\!\\left(${a.map((x) => tex(x, 0)).join(",\\, ")}\\right)`;
       if ((name === "LOG10" || name === "LOG") && a.length <= 1) return `\\log\\!\\left(${a.map((x) => tex(x, 0)).join("")}\\right)`;
-      const fn = TRIG.has(name) ? `\\${name.toLowerCase()}` : `\\operatorname{${name}}`;
+      const fn = TRIG_TEX[name] ?? `\\operatorname{${name}}`;
       return `${fn}\\!\\left(${a.map((x) => tex(x, 0)).join(",\\, ")}\\right)`;
     }
     case "bin": {

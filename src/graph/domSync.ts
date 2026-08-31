@@ -1,16 +1,16 @@
-// DOM↔canvas transform sync: during a gesture the holder is steered to the camera
+// DOM↔canvas transform sync: during a gesture the viewport is steered to the camera
 // the canvas actually PRESENTED, or DOM-only content skews a frame behind the paint.
 
 export interface CamXform { k: number; x: number; y: number }
 
-/** rete-area-plugin's holder serialization, byte-identical so a sync write is
- *  indistinguishable from rete's own and restoring is a plain re-serialize. */
+/** The viewport transform serialization (`translate(xpx, ypx) scale(k)`) — a sync
+ *  write is a plain re-serialize of the live camera. */
 export function holderTransform(t: CamXform): string {
   return `translate(${t.x}px, ${t.y}px) scale(${t.k})`;
 }
 
-/** The holder transform that lands DOM-only content on the canvas's last-presented
- *  frame — null when they already agree, leaving rete's own write untouched. */
+/** The viewport transform that lands DOM-only content on the canvas's last-presented
+ *  frame — null when they already agree, leaving the surface's own write untouched. */
 export function holderSyncTransform(
   live: CamXform,
   presented: CamXform | null,

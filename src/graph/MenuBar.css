@@ -1,6 +1,6 @@
 .solenoid-menubar {
-  /* Above the toolbar row so dropdowns paint over it (TopBar's backdrop-filter
-     makes it its own stacking context). */
+  /* Above the toolbar row so dropdowns paint over it (TopBar is positioned with
+     its own z-index, so it's a self-contained stacking context). */
   position: relative;
   z-index: 2;
   display: flex;

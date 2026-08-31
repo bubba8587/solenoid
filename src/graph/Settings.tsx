@@ -3,7 +3,7 @@ import { useFocusTrap } from "./components/useFocusTrap";
 import { useEscapeToClose } from "./components/useEscapeToClose";
 import { settingsStore, settingsPanel, SETTINGS_SCHEMA, type SettingField } from "./settingsStore";
 import { apiKeyStore } from "./apiKeyStore";
-import { AI_PROVIDER } from "./aiKey";
+import { AI_PROVIDER, AI_ENABLED } from "./aiKey";
 import { IS_MOBILE } from "./coarse";
 import { packsStore, allPacks, loadCustomPacks, customPacksFolder } from "./packs";
 import { isDesktop, pickFolderDialog, openInFileManager } from "./fileBridge";
@@ -210,7 +210,7 @@ function RendererSection() {
         label="HTML-in-Canvas GPU renderer"
         help={
           supported
-            ? "Faster zoom and pan on big graphs. Experimental; the DOM renderer is the fallback."
+            ? "Faster zoom and pan on big graphs. Experimental. The DOM renderer is the fallback."
             : "Requires Chrome with chrome://flags/#canvas-draw-element. Unavailable in this browser."
         }
         on={on && supported}
@@ -234,7 +234,6 @@ function PacksSection() {
         <Row
           key={p.id}
           label={p.name}
-          help={p.description}
           on={packsStore.isActive(p.id)}
           onToggle={() => packsStore.toggle(p.id)}
         />
@@ -260,8 +259,8 @@ function PacksSection() {
 }
 
 const API_PROVIDERS = [
-  { id: "fred", label: "FRED", help: "Economic data series from the St. Louis Fed; free key at fredaccount.stlouisfed.org." },
-  { id: "alphavantage", label: "Alpha Vantage", help: "Stock history; free key at alphavantage.co." },
+  { id: "fred", label: "FRED", help: "Economic data series from the St. Louis Fed. Free key at fredaccount.stlouisfed.org." },
+  { id: "alphavantage", label: "Alpha Vantage", help: "Stock history. Free key at alphavantage.co." },
 ] as const;
 
 function ApiKeyRow({ id, label, help }: { id: string; label: string; help: string }) {
@@ -303,7 +302,7 @@ function ApiKeysSection() {
     <div className="solenoid-settings__section">
       <div className="solenoid-settings__section-title">Data connection API keys</div>
       {API_PROVIDERS.map((p) => <ApiKeyRow key={p.id} id={p.id} label={p.label} help={p.help} />)}
-      <div className="solenoid-settings__note">Stored only on this device; sent only to each provider's own API.</div>
+      <div className="solenoid-settings__note">Stored only on this device. Sent only to each provider's own API.</div>
     </div>
   );
 }
@@ -357,7 +356,7 @@ export function Settings() {
           ))}
           <PaletteSection />
           <RendererSection />
-          <AiSection />
+          {AI_ENABLED && <AiSection />}
           <ApiKeysSection />
           <PacksSection />
         </div>

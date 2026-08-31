@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { useKatexRender, getKatexRenderer } from "./katexLoader";
-import { ClassicPreset } from "rete";
+import type { ClassicPreset } from "rete";
 import { formulaPopup } from "../formulaPopupStore";
 import { processGraph } from "../process";
-import { getOwningEditor, getOwningArea } from "../activeGraph";
+import { getOwningEditor, getOwningView } from "../activeGraph";
 import { formulaToLatex, evaluateSteps, extractVariables } from "../excelFormula";
 import { nodeKindOf, NODE_KIND_ACCENTS } from "../rete-nodes";
 import type { ExpressionNode, EquationNode, MapTableNode, LambdaNode } from "../rete-nodes";
@@ -17,6 +17,7 @@ import { useFormulaFit } from "./formulaFit";
 import { formatScalar } from "./format";
 import { PopupShell } from "./PopupShell";
 import "./FormulaPopup.css";
+import { nodeDisplayName } from "../catalogUtils";
 
 // Step-by-step evaluator: built, then shelved; flip to re-enable its intact wiring.
 const SHOW_STEPS = false;
@@ -36,18 +37,18 @@ type FormulaHost = {
 
 // Identify hosts by constructor NAME, never instanceof — a Vite hot swap replaces the class
 // objects while rete keeps instances built from the old ones, silently breaking the gate.
-const TABLE_LAMBDA_TYPES = new Set(["MapTableNode", "ByAxisNode", "MakeArrayNode", "ReduceLambdaNode", "ScanLambdaNode"]);
+const TABLE_LAMBDA_TYPES = new Set(["MapTableNode", "ByAxisNode", "MakeArrayNode", "ReduceLambdaNode", "ScanLambdaNode", "OdeIntegrateNode"]);
 
 /** Display-only, so no recompute — just re-render the card for its tooltip. */
 function setVarDesc(node: { id: string; varDescriptions: Record<string, string> }, name: string, desc: string): void {
   if (desc.trim() === "") delete node.varDescriptions[name];
   else node.varDescriptions[name] = desc;
-  void getOwningArea(node.id)?.update("node", node.id);
+  void getOwningView(node.id)?.rerenderNode(node.id);
 }
 
 function formulaHostOf(node: ClassicPreset.Node | undefined): FormulaHost | null {
   if (!node) return null;
-  const label = (node as { label?: string }).label || "Formula";
+  const label = nodeDisplayName(node);
   const typeName = node.constructor.name;
   if (typeName === "ExpressionNode") {
     const n = node as ExpressionNode;
@@ -266,7 +267,7 @@ export function FormulaPopup() {
 
         {/* Engine note: the formula path resolves through the same registry as the
             visual nodes, so they match wherever they overlap. The load-bearing thing
-            to tell the user is the SHAPE boundary as of D23/D24: scalars, lists and
+            to tell the user is the SHAPE boundary as of matricesInFormulas/tableRefSemantics: scalars, lists and
             MATRICES are in (with complex); frames/cubes stay out — the verb nodes
             are their surface, and a computed column's references are the row door. */}
         {host.equation ? (
@@ -275,7 +276,7 @@ export function FormulaPopup() {
           </div>
         ) : (
         <div className="formula-popup__engine-note">
-          ƒ Works on <strong>single values, 1-D lists, and 2-D matrices</strong>: element-wise broadcast, list aggregates (SUM, AVERAGE…), the matrix core (TRANSPOSE, MMULT, SEQUENCE…), and complex numbers. <strong>MAP / BYROW / BYCOL / REDUCE</strong> apply a λ over an array. Data tables stay out — the frame verbs are nodes (a verb name typed here names its node), and in a computed column <code>@name</code> is this row's cell, a bare column name the whole column.
+          The Formula surface does not support Frame-related nodes, such as JOIN.
         </div>
         )}
 

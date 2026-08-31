@@ -5,7 +5,7 @@ import { QuotedTextInput } from "./inlineInput";
 
 export function TextInputComponent({ data, emit }: NodeProps<TextInputNodeType>) {
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Text">
+    <NodeShell node={data} emit={emit}>
       <QuotedTextInput
         variant="value"
         nodeId={data.id}

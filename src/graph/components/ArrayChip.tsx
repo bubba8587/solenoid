@@ -2,7 +2,8 @@ import { tablePopup, type Cell, type TablePopupState } from "../tablePopupStore"
 import { useHostNodeId } from "./nodeContext";
 import { readChipPopupStyle } from "./chipStyle";
 import { isSolError } from "../errorValue";
-import { matrixUnitOf } from "../unitValue";
+import { isCx } from "../cxValue";
+import { matrixUnitOf, isUnitCell } from "../unitValue";
 import "./ArrayChip.css";
 import { stopDragStart } from "../coarse";
 
@@ -18,12 +19,12 @@ function to2D(v: ArrayValue): Cell[][] {
 // The declared socket FAMILY decides this when known; the fallback reads the FIRST
 // cell only, so a leading `null` misreads a text list as numeric.
 function cellTypeOf(v: ArrayValue, family?: ElemFamily): "number" | "string" | "date" | "logical" {
-  if (family) return family;
+  if (family) return family === "complex" ? "string" : family; // Cx cells arrive pre-stringified
   const first = is2D(v) ? (v[0] as Cell[])[0] : (v as Cell[])[0];
-  return typeof first === "string" ? "string" : "number";
+  return typeof first === "string" ? "string" : typeof first === "boolean" ? "logical" : "number";
 }
 
-export type ElemFamily = "number" | "string" | "date" | "logical";
+export type ElemFamily = "number" | "string" | "date" | "logical" | "complex";
 
 /** Mirrors the `--elem-*` classes in ArrayChip.css; `undefined` (a genuine wildcard)
  *  falls back to the plain list/table color. */
@@ -33,6 +34,7 @@ export function arrayAccentFor(family: ElemFamily | undefined, twoD: boolean): s
     case "string":  return `var(--sock-str${suffix})`;
     case "date":    return `var(--sock-date${suffix})`;
     case "logical": return `var(--sock-logical${suffix})`;
+    case "complex": return `var(--sock-complex${suffix})`;
     default:        return twoD ? "var(--sock-table)" : "var(--sock-list)";
   }
 }
@@ -47,6 +49,8 @@ function elemFamilyOfCells(v: ArrayValue): ElemFamily | undefined {
       typeof cell === "number" ? "number"
       : typeof cell === "string" ? "string"
       : typeof cell === "boolean" ? "logical"
+      : isCx(cell) ? "complex"
+      : isUnitCell(cell) ? "number" // a united number is still numeric
       : undefined;
     if (!f) return undefined;
     if (fam && fam !== f) return undefined; // mixed — no tint
@@ -68,9 +72,12 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
   onSave?: (next: (number | null)[][]) => void;
   /** The node the popup's Pin action targets; defaults to the host node from context. */
   pinNodeId?: string;
-  /** Tint override for when the caller KNOWS the socket family; otherwise derived
-   *  from homogeneous cells. */
-  elem?: ElemFamily;
+  /** The SOCKET-declared element family — every chip sits on a known output
+   *  socket, so derive it there (`nodeOutputElemFamily`); REQUIRED so a new host
+   *  can't silently fall back to cell-guessing (the recurring untinted-chip bug).
+   *  Pass the derived value even when it's `undefined` — that means the socket is
+   *  a genuinely unresolved wildcard rung, the one case cells are sniffed. */
+  elem: ElemFamily | undefined;
   /** Merged into the popup open() — Table Input passes raw literal cells + onSaveRaw
    *  so the grid edits source text, never derived values. */
   popupOverrides?: Partial<TablePopupState>;
@@ -87,7 +94,7 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
     ? ` solenoid-array-chip--elem-${family}${table ? "-table" : ""}`
     : "";
 
-  // A homogeneous numeric matrix carries ONE unit for the whole grid (D20).
+  // A homogeneous numeric matrix carries ONE unit for the whole grid (unitGranularity).
   const matUnit = table ? matrixUnitOf(value) : undefined;
   const chipLabel = table ? `${rows}×${cols} Table` : "List";
   const verb = onSave ? "Edit" : "View";

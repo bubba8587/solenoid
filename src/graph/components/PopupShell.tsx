@@ -3,7 +3,7 @@ import "./popupChrome.css";
 import { CloseIcon } from "./CloseIcon";
 import { PopupPinButton, PopupGoToButton } from "./PopupPinButton";
 import { useEscapeToClose } from "./useEscapeToClose";
-import { contrastInk } from "../palette";
+import { contrastInk, darkenAccent } from "../palette";
 
 /** Derives `--node-accent-ink` per node: the app-wide `--accent-ink` is computed for the
  *  APP accent, so accent-filled popup chrome would otherwise wear ink for the wrong hue. */
@@ -16,6 +16,8 @@ export function popupCardVars(v: {
   if (v.accent) {
     vars["--node-accent"] = v.accent;
     vars["--node-accent-ink"] = contrastInk(v.accent);
+    // The card's light-mode body border uses the darkened accent, mirroring the node card.
+    vars["--node-accent-dark"] = darkenAccent(v.accent);
   }
   if (v.groupColor) vars["--group-color"] = v.groupColor;
   if (v.groupColorDark) vars["--group-color-dark"] = v.groupColorDark;

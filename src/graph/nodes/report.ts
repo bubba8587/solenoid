@@ -7,8 +7,11 @@ import { makeDocument, type DocumentValue } from "../documentValue";
 // anchor. Unlike Note it is a pure SINK — no frontmatter output half.
 
 export class ReportNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    document: "Carries the report's markdown with every inline reference resolved to its wired value.",
+  };
+
   body: string;         // markdown — blank by default
-  embeds: string[];     // embedded Note node ids, placed-object style
   color: string;        // palette SLOT id — tints the anchor card, like Note
   width: number;
   height: number;
@@ -18,12 +21,11 @@ export class ReportNode extends ClassicPreset.Node {
   private _refValues = new Map<string, unknown>();
 
   constructor(init?: {
-    label?: string; body?: string; embeds?: string[]; color?: string;
+    label?: string; body?: string; color?: string;
     width?: number; height?: number; collapsed?: boolean;
   }) {
     super(init?.label ?? "Report");
     this.body = init?.body ?? "";
-    this.embeds = init?.embeds ? [...init.embeds] : [];
     this.color = init?.color ?? "sky";
     this.width = init?.width ?? 200;
     this.height = init?.height ?? 96;
@@ -54,14 +56,6 @@ export class ReportNode extends ClassicPreset.Node {
     }
     this._refKeys = wanted;
     return { removedInputs };
-  }
-
-  /** Embed an existing Note as a placed object (no-op if already embedded). */
-  addEmbed(noteId: string): void {
-    if (!this.embeds.includes(noteId)) this.embeds.push(noteId);
-  }
-  removeEmbed(noteId: string): void {
-    this.embeds = this.embeds.filter((id) => id !== noteId);
   }
 
   // `inputs` is optional so a bare `new ReportNode().data()` can't throw with no

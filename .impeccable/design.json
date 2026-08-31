@@ -6,7 +6,7 @@
     "colorMeta": {
       "accent": { "role": "primary", "displayName": "Sky Accent", "canonical": "#56b4e9", "note": "Swappable at runtime via the theme store; treat as a role, not a fixed hue.", "tonalRamp": ["#10243a", "#173752", "#1f4d70", "#2b6a96", "#3a8cc2", "#56b4e9", "#84cbf0", "#b6e1f7"] },
       "surface": { "role": "neutral", "displayName": "Workbench", "canonical": "#1e1e1e", "note": "Light theme: #fbfcfd", "tonalRamp": ["#0e0e0e", "#141414", "#1a1a1a", "#1e1e1e", "#262626", "#333333", "#4a4a4a", "#6b6b6b"] },
-      "canvas-bg": { "role": "neutral", "displayName": "Canvas Void", "canonical": "#0e0e0e", "note": "Light theme: #eef1f5", "tonalRamp": ["#000000", "#0e0e0e", "#161616", "#1f1f1f", "#2a2a2a", "#3a3a3a", "#555555", "#777777"] },
+      "canvas-bg": { "role": "neutral", "displayName": "Canvas Void", "canonical": "#0b0b0b", "note": "Light theme: #eef1f5", "tonalRamp": ["#000000", "#0b0b0b", "#161616", "#1f1f1f", "#2a2a2a", "#3a3a3a", "#555555", "#777777"] },
       "text": { "role": "neutral", "displayName": "Ink", "canonical": "#e8e8e8", "note": "Light theme: #1b1e23", "tonalRamp": ["#3a3d40", "#54585c", "#6b7177", "#9aa0a6", "#c2c6ca", "#e8e8e8", "#f3f4f5", "#ffffff"] },
       "sock-number": { "role": "tertiary", "displayName": "Number Amber", "canonical": "#f5b914", "tonalRamp": ["#3a2c05", "#5c450a", "#8a6710", "#c08512", "#dca116", "#f5b914", "#f8cd55", "#fbe199"] },
       "sock-string": { "role": "tertiary", "displayName": "String Lime", "canonical": "#c8e040", "tonalRamp": ["#2c3209", "#454e0e", "#647110", "#7a9210", "#a6bf1a", "#c8e040", "#d9eb76", "#e9f4ad"] },

@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { deleteSelected } from "./process";
+import { deleteSelected } from "./canvasCommands";
 import { addMenuRequest } from "./addMenuStore";
 import { touchSelectStore } from "./touchSelectStore";
 import { IS_MOBILE } from "./coarse";

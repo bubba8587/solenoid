@@ -1,18 +1,15 @@
+import type { View } from "./view";
 import type { NodeEditor } from "rete";
-import type { AreaPlugin } from "rete-area-plugin";
-import type { HistoryPlugin } from "rete-history-plugin";
-import type { Schemes, AreaExtra } from "./schemes";
-import { getEditor, getArea, getHistoryPlugin } from "./process";
-
+import type { Schemes } from "./schemes";
+import { getEditor, getView } from "./process";
 // The graph the app CHROME acts on, and the seam any canvas-substituting surface registers
-// with. Deliberately NOT `getEditor()/getArea()`, which stay MAIN-only forever because
+// with. Deliberately NOT `getEditor()/getView()`, which stay MAIN-only forever because
 // persistence reads them — the override would autosave the substituted surface over the
 // document. Locked by activeGraph.test.ts.
 
 export interface ActiveGraph {
   editor: NodeEditor<Schemes>;
-  area: AreaPlugin<Schemes, AreaExtra>;
-  history: HistoryPlugin<Schemes> | null;
+  view: View;
 }
 
 let _override: ActiveGraph | null = null;
@@ -47,17 +44,13 @@ export function getOwningEditor(nodeId: string): NodeEditor<Schemes> | null {
   return getEditor();
 }
 
-export function getActiveArea(): AreaPlugin<Schemes, AreaExtra> | null {
-  return _override?.area ?? getArea();
+export function getActiveView(): View | null {
+  return _override?.view ?? getView();
 }
 
-/** getOwningEditor's area twin, for code running per rendered node: `getArea()` no-ops
- *  inside a drill-in, and `getActiveArea()` wrongly returns the drill-in for a MAIN node. */
-export function getOwningArea(nodeId: string): AreaPlugin<Schemes, AreaExtra> | null {
-  if (_override && _override.editor.getNode(nodeId)) return _override.area;
-  return getArea();
-}
-
-export function getActiveHistory(): HistoryPlugin<Schemes> | null {
-  return _override ? _override.history : getHistoryPlugin();
+/** getOwningEditor's view twin, for code running per rendered node: `getView()` no-ops
+ *  inside a drill-in, and `getActiveView()` wrongly returns the drill-in for a MAIN node. */
+export function getOwningView(nodeId: string): View | null {
+  if (_override && _override.editor.getNode(nodeId)) return _override.view;
+  return getView();
 }

@@ -1,7 +1,7 @@
-import { AreaExtensions, AreaPlugin } from "rete-area-plugin";
+import type { View } from "./view";
+import { zoomAt } from "./zoomAt";
 import type { NodeEditor } from "rete";
-import type { AutoArrangePlugin } from "rete-auto-arrange-plugin";
-import type { Schemes, AreaExtra } from "./schemes";
+import type { Schemes } from "./schemes";
 import { requestConfirm } from "./confirmStore";
 import { settingsStore } from "./settingsStore";
 import { cableSelectionStore } from "./cableState";
@@ -17,18 +17,14 @@ import { fitAll } from "./NavMenu";
 import { dockedNodeStore } from "./dockedNodeStore";
 import { getSocketScreenCenter, screenToCanvas } from "./canvasGeometry";
 import { scheduleAutosave } from "./persistence";
-import {
-  unselectAllNodes as unselectAllNodesFromProcess,
-  selectNode as selectNodeFromProcess,
-} from "./process";
-
+import { unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess } from "./canvasCommands";
 const TIDY_CONFIRM_THRESHOLD = 12;
 
 export interface TidyDeps {
   editor: NodeEditor<Schemes>;
-  area: AreaPlugin<Schemes, AreaExtra>;
+  view: View;
   container: HTMLElement;
-  ensureArrange: () => Promise<AutoArrangePlugin<Schemes> | null>;
+  ensureElk: () => Promise<Elk | null>;
   /** Snap every FC docked to `hostId` back onto its socket (defined in the init effect). */
   repositionDockedTo: (hostId: string) => void;
   /** The mount's destroyed flag — deferred rAF work must bail after unmount. */
@@ -38,47 +34,188 @@ export interface TidyDeps {
 export type ArrangeFn = (opts?: { groupId?: string; skipConfirm?: boolean; skipPush?: boolean }) => Promise<void>;
 
 // Ports placed SYMMETRICALLY (same offset for in/out) so two connected nodes line
-// up — do NOT fall back to the plugin's `classic` preset.
-export function symmetricPortPreset() {
+// up — do NOT fall back to the plugin's `classic` preset. A factory over the layout
+// DIRECTION: RIGHT puts inputs WEST / outputs EAST and spaces them down the card's
+// height; DOWN transposes to NORTH / SOUTH, spaced across the card's width.
+// A width cap wraps a fat layer into sublayers via ELK's per-node layerUnzipping.
+// `layerSplit` is the sublayer COUNT and lives per-node; the arrange fn stamps it here
+// from the layout's node count just before `layout()` (the preset factory re-runs per
+// layout, so this closure reads the fresh value). 0 = uncapped.
+let tidyLayerSplit = 0;
+
+export function symmetricPortPreset(direction: TidyDirection) {
+  const down = direction === "down";
   return {
     port(data: { side: "input" | "output"; index: number; ports: number; width: number; height: number }) {
       const spacing = 16;
-      const y = settingsStore.get("tidyAlign") === "top"
+      // The align axis follows the flow: RIGHT levels vertically, DOWN horizontally.
+      const extent = down ? data.width : data.height;
+      const along = settingsStore.get("tidyAlign") === "top"
         ? 20 + data.index * spacing
-        : data.height / 2 + (data.index - (data.ports - 1) / 2) * spacing;
-      return { x: 0, y, width: 15, height: 15, side: data.side === "output" ? "EAST" : "WEST" } as const;
+        : extent / 2 + (data.index - (data.ports - 1) / 2) * spacing;
+      return down
+        ? { x: along, y: 0, width: 15, height: 15, side: data.side === "output" ? "SOUTH" : "NORTH" } as const
+        : { x: 0, y: along, width: 15, height: 15, side: data.side === "output" ? "EAST" : "WEST" } as const;
+    },
+    // layerSplit is per-node; stamp the same sublayer count on every card so the fat
+    // layer wraps. Empty when uncapped so ELK keeps one layer per depth.
+    options(_id: string): Record<string, string | number | boolean> {
+      return tidyLayerSplit > 0
+        ? { "elk.layered.layerUnzipping.layerSplit": String(tidyLayerSplit) }
+        : {};
     },
   };
 }
 
-// ELK is a heavy chunk only Tidy needs — wire it on first arrange, never at init.
-export function makeEnsureArrange(
-  area: AreaPlugin<Schemes, AreaExtra>,
-  isDestroyed: () => boolean,
-): () => Promise<AutoArrangePlugin<Schemes> | null> {
-  let arrange: AutoArrangePlugin<Schemes> | null = null;
-  let arrangeLoading: Promise<AutoArrangePlugin<Schemes> | null> | null = null;
-  return () => {
-    if (arrange) return Promise.resolve(arrange);
-    if (arrangeLoading) return arrangeLoading;
-    arrangeLoading = (async () => {
-      const { AutoArrangePlugin } = await import("rete-auto-arrange-plugin");
-      // A doc switch / unmount can destroy the area during the dynamic import.
-      if (isDestroyed()) return null;
-      const plugin = new AutoArrangePlugin<Schemes>();
-      plugin.addPreset(symmetricPortPreset);
-      area.use(plugin);
-      arrange = plugin;
-      return plugin;
-    })();
-    return arrangeLoading;
+/** The Tidy knobs read from settings as an ELK option map — the app-facing wrapper over
+ *  `tidyLayoutOptions`, used by both ELK call sites. */
+export function tidyOptionsFromSettings(): Record<string, string> {
+  const cap = settingsStore.get("tidyWidthCap");
+  return tidyLayoutOptions({
+    direction: settingsStore.get("tidyDirection"),
+    density: settingsStore.get("tidyDensity"),
+    widthCap: cap === "off" ? 0 : (Number(cap) as TidyWidthCap),
+  });
+}
+
+export type TidyDirection = "right" | "down";
+export type TidyDensity = "compact" | "normal" | "airy";
+export type TidyWidthCap = 0 | 2 | 3 | 4;
+
+// Between-layers / within-layer node spacing per density. `normal` is today's 55/38.
+const TIDY_DENSITY_SPACING: Record<TidyDensity, readonly [number, number]> = {
+  compact: [36, 24],
+  normal:  [55, 38],
+  airy:    [80, 56],
+};
+
+/** The root ELK options every Tidy layout runs under — the one home, spread by
+ *  `elkTidyLayout` and consumed verbatim by the integration test so the two
+ *  cannot drift (per declareOnce). */
+export const ELK_ROOT_OPTIONS = {
+  "elk.algorithm": "layered",
+  "elk.hierarchyHandling": "INCLUDE_CHILDREN",
+  "elk.edgeRouting": "POLYLINE",
+} as const;
+
+/** The ELK layout options for the three Tidy knobs, read at layout time by BOTH call
+ *  sites (main canvas + composite drill-in). `elk.algorithm`/`hierarchyHandling`/
+ *  `edgeRouting` come from `ELK_ROOT_OPTIONS`; this only sets what
+ *  the knobs drive. A width cap turns ELK's layerUnzipping on (global switch here; the
+ *  per-node sublayer count is stamped by the port preset from the node count). */
+export function tidyLayoutOptions(s: {
+  direction: TidyDirection;
+  density: TidyDensity;
+  widthCap: TidyWidthCap;
+}): Record<string, string> {
+  const [betweenLayers, nodeNode] = TIDY_DENSITY_SPACING[s.density];
+  const opts: Record<string, string> = {
+    "elk.direction": s.direction === "down" ? "DOWN" : "RIGHT",
+    "elk.layered.spacing.nodeNodeBetweenLayers": String(betweenLayers),
+    "elk.spacing.nodeNode": String(nodeNode),
   };
+  if (s.widthCap > 0) {
+    opts["elk.layered.layerUnzipping.strategy"] = "ALTERNATING";
+  }
+  return opts;
+}
+
+/** Sublayer count for a width cap of "at most `cap` per row": ceil(count / cap), floored
+ *  at 1. `count` is the WHOLE layout's node count — per-layer widths aren't known before
+ *  ELK runs, so a graph with nodes outside the fat layer over-splits slightly. That errs
+ *  SAFE: the widest layer holds W ≤ count, so W / ceil(count/cap) ≤ cap — never exceeds the
+ *  cap. Shared by the arrange fn and the integration test so the two can't drift. */
+export function tidyLayerSplitFor(nodeCount: number, widthCap: TidyWidthCap): number {
+  return widthCap > 0 ? Math.max(1, Math.ceil(nodeCount / widthCap)) : 0;
+}
+
+// The layout engine, called DIRECTLY (rete-auto-arrange died with the rete
+// surface; its ELK graph construction lives on in elkTidyLayout below).
+export type Elk = { layout(graph: unknown): Promise<ElkResult> };
+type ElkResult = { children?: Array<{ id?: string; x?: number; y?: number }> };
+
+// ELK is a heavy chunk only Tidy needs — load it on first arrange, never at init.
+export function makeEnsureElk(isDestroyed: () => boolean): () => Promise<Elk | null> {
+  let elk: Elk | null = null;
+  let loading: Promise<Elk | null> | null = null;
+  return () => {
+    if (elk) return Promise.resolve(elk);
+    if (loading) return loading;
+    loading = (async () => {
+      const { default: ELK } = await import("elkjs");
+      // A doc switch / unmount can destroy the surface during the dynamic import.
+      if (isDestroyed()) return null;
+      elk = new ELK() as unknown as Elk;
+      return elk;
+    })();
+    return loading;
+  };
+}
+
+/** The exact ELK graph rete-auto-arrange built (root layered/INCLUDE_CHILDREN/
+ *  POLYLINE defaults, sorted FIXED_POS ports from symmetricPortPreset, port-id
+ *  edges), run directly and applied through the given translate. */
+export async function elkTidyLayout(
+  elk: Elk,
+  args: {
+    nodes: ReadonlyArray<Schemes["Node"]>;
+    connections: ReadonlyArray<{
+      id: string; source: string; sourceOutput: string; target: string; targetInput: string;
+    }>;
+    options: Record<string, string>;
+    translate: (id: string, x: number, y: number) => Promise<unknown> | unknown;
+  },
+): Promise<void> {
+  const preset = symmetricPortPreset(settingsStore.get("tidyDirection"));
+  const portId = (id: string, key: string, side: string) => [id, key, side].join("_");
+  const byIndex = (rec: Record<string, { index?: number } | undefined>) =>
+    Object.entries(rec).sort((a, b) => (a[1]?.index ?? 0) - (b[1]?.index ?? 0));
+  const children = args.nodes.map((n) => {
+    const node = n as unknown as {
+      id: string; width: number; height: number;
+      inputs?: Record<string, { index?: number } | undefined>;
+      outputs?: Record<string, { index?: number } | undefined>;
+    };
+    const mk = (side: "input" | "output", entries: Array<[string, unknown]>) =>
+      entries.map(([key], index) => {
+        const p = preset.port({
+          side, index, ports: entries.length, width: node.width, height: node.height,
+        });
+        return {
+          id: portId(node.id, key, side),
+          width: p.width, height: p.height, x: p.x, y: p.y,
+          properties: { side: p.side },
+        };
+      });
+    return {
+      id: node.id,
+      width: node.width,
+      height: node.height,
+      ports: [...mk("input", byIndex(node.inputs ?? {})), ...mk("output", byIndex(node.outputs ?? {}))],
+      layoutOptions: { ...preset.options(node.id), portConstraints: "FIXED_POS" },
+    };
+  });
+  const edges = args.connections.map((c) => ({
+    id: c.id,
+    sources: [c.sourceOutput ? portId(c.source, c.sourceOutput, "output") : c.source],
+    targets: [c.targetInput ? portId(c.target, c.targetInput, "input") : c.target],
+  }));
+  const result = await elk.layout({
+    id: "root",
+    layoutOptions: { ...ELK_ROOT_OPTIONS, ...args.options },
+    children,
+    edges,
+  });
+  for (const c of result.children ?? []) {
+    if (!c.id || typeof c.x === "undefined" || typeof c.y === "undefined") continue;
+    await args.translate(c.id, c.x, c.y);
+  }
 }
 
 // Nodes are handed to ELK as Proxies; a Proxy preserves `id`, so the applier
 // still translates the real node.
 export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
-  const { editor, area, container, ensureArrange, repositionDockedTo, isDestroyed } = deps;
+  const { editor, view, container, ensureElk, repositionDockedTo, isDestroyed } = deps;
   return async (opts?: { groupId?: string; skipConfirm?: boolean; skipPush?: boolean }) => {
     const all = editor.getNodes();
     const selected = all.filter((n) => (n as { selected?: boolean }).selected);
@@ -150,12 +287,9 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     const clusterMembersOf = new Map<string, string[]>(); // leader -> members
     const clusterMemberOffset = new Map<string, { dx: number; dy: number }>();
     const clusterLeaderSize = new Map<string, { w: number; h: number }>();
-    // The leader's REAL size, restored after ELK — the applier resizes a proxy node
-    // to its reported size, here the whole-cluster bbox.
-    const clusterLeaderRealSize = new Map<string, { w: number; h: number }>();
     const clusterFollowers = new Set<string>();
     if (!standoffStore.isEmpty()) {
-      const boxOf = (id: string) => measuredBox(area, id, editor);
+      const boxOf = (id: string) => measuredBox(view, id, editor);
       for (const cluster of standoffClusters(standoffStore.all())) {
         // Every member must be a loose layout target; anything excluded from the
         // loose layout falls back to the settle.
@@ -175,8 +309,6 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
           const gb = editor.getNode(b[0]) instanceof GroupNode ? 1 : 0;
           return ga !== gb ? ga - gb : (a[1].x + a[1].y) - (b[1].x + b[1].y);
         })[0][0];
-        const leaderBox = boxes.find(([id]) => id === leader)![1];
-        clusterLeaderRealSize.set(leader, { w: leaderBox.w, h: leaderBox.h });
         clusterMembersOf.set(leader, boxes.map(([id]) => id));
         clusterLeaderSize.set(leader, { w: ex - ox, h: ey - oy });
         for (const [id, b] of boxes) {
@@ -201,7 +333,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       }
     }
     // Remap any cable touching a member to the group, with an EMPTY socket key so
-    // the plugin makes it a node-level edge (no port to match).
+    // elkTidyLayout makes it a node-level edge (no port to match).
     if (!withinGroup) {
       for (const c of conns) {
         const sg = memberOf.get(c.source);
@@ -233,32 +365,30 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
         target: t, targetInput: t !== c.target ? "" : c.targetInput,
       } as unknown as Schemes["Connection"]];
     });
-    // Reserve each host's docked-FC area (the host + FC bounding box) so ELK doesn't
+    // Reserve each host's docked-FC view (the host + FC bounding box) so ELK doesn't
     // pack a neighbor into it — ONLY for hosts actually IN the layout, else the
     // restore below stamps a fixed inline height the pin-drop loop never clears.
     const layoutTargetIds = new Set(layoutTargets.map((n) => n.id));
     const hostFootprint = new Map<string, { w: number; h: number }>();
-    const realHostSize = new Map<string, { w: number; h: number }>();
     for (const fcId of dockedFcIds) {
       const fc = editor.getNode(fcId);
       if (!(fc instanceof FormatControllerNode) || fc.side !== "output") continue;
       if (!layoutTargetIds.has(fc.hostNodeId)) continue;
       const host = editor.getNode(fc.hostNodeId);
-      const hostView = area.nodeViews.get(fc.hostNodeId);
-      if (!host || !hostView) continue;
+      const hostPos = view.position(fc.hostNodeId);
+      if (!host || !hostPos) continue;
       // measuredBox: the live rendered size, not the pre-paint constructor estimate.
-      const hostBox = measuredBox(area, fc.hostNodeId, editor) ?? { w: host.width, h: host.height };
-      const fcBox = measuredBox(area, fcId, editor) ?? { w: fc.width, h: fc.height };
-      const sc = getSocketScreenCenter(area, fc.hostNodeId, fc.socketKey, "output");
+      const hostBox = measuredBox(view, fc.hostNodeId, editor) ?? { w: host.width, h: host.height };
+      const fcBox = measuredBox(view, fcId, editor) ?? { w: fc.width, h: fc.height };
+      const sc = getSocketScreenCenter(view, fc.hostNodeId, fc.socketKey, "output");
       const socketLocalY = sc
-        ? screenToCanvas(area, container, sc.x, sc.y).y - hostView.position.y
+        ? screenToCanvas(view, container, sc.x, sc.y).y - hostPos.y
         : hostBox.h / 2;
       const prev = hostFootprint.get(fc.hostNodeId) ?? { w: hostBox.w, h: hostBox.h };
       hostFootprint.set(fc.hostNodeId, {
         w: prev.w + fcBox.w + 8,
         h: Math.max(prev.h, socketLocalY + fcBox.h / 2),
       });
-      if (!realHostSize.has(fc.hostNodeId)) realHostSize.set(fc.hostNodeId, { w: hostBox.w, h: hostBox.h });
     }
 
     const proxyNodes = layoutTargets.filter((n) => !clusterFollowers.has(n.id)).map((n) => {
@@ -276,7 +406,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       }
       // A group lays out as a single portless rectangle — edges to it are node-level.
       if (n instanceof GroupNode) {
-        const gb = measuredBox(area, n.id, editor);
+        const gb = measuredBox(view, n.id, editor);
         const gw = clusterSize?.w ?? (gb?.w || n.width);
         const gh = clusterSize?.h ?? (gb?.h || n.height);
         return new Proxy(n, {
@@ -320,27 +450,33 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
         },
       });
     });
-    // ELK lays out from origin; shift the result back keeping the LEFT edge and the
-    // vertical CENTER (never the top), so a tidy→autofit cycle stays a fixed point.
-    let origMinX = Infinity;
-    let targetCy = 0;
+    // ELK lays out from origin; shift the result back keeping the flow's LEADING EDGE and
+    // the CROSS-AXIS CENTER, so a tidy→autofit cycle stays a fixed point. RIGHT keeps the
+    // LEFT edge + vertical center; DOWN transposes to the TOP edge + horizontal center.
+    const down = settingsStore.get("tidyDirection") === "down";
+    let origMinX = Infinity, origMinY = Infinity;
+    let targetCx = 0, targetCy = 0;
     if (withinGroup) {
-      const gv = area.nodeViews.get(withinGroup.id);
+      const gv = view.position(withinGroup.id);
       if (gv) {
-        origMinX = gv.position.x + GROUP_PAD;
-        const top = gv.position.y + GROUP_HEADER + GROUP_PAD;
-        const bottom = gv.position.y + withinGroup.height - GROUP_PAD;
+        const left = gv.x + GROUP_PAD;
+        const right = gv.x + withinGroup.width - GROUP_PAD;
+        const top = gv.y + GROUP_HEADER + GROUP_PAD;
+        const bottom = gv.y + withinGroup.height - GROUP_PAD;
+        origMinX = left; origMinY = top;
+        targetCx = (left + right) / 2;
         targetCy = (top + bottom) / 2;
       }
     } else {
-      let oldTop = Infinity, oldBottom = -Infinity;
+      let oldLeft = Infinity, oldRight = -Infinity, oldTop = Infinity, oldBottom = -Infinity;
       for (const n of layoutTargets) {
-        const b = measuredBox(area, n.id, editor);
+        const b = measuredBox(view, n.id, editor);
         if (!b) continue;
-        origMinX = Math.min(origMinX, b.x);
-        oldTop = Math.min(oldTop, b.y);
-        oldBottom = Math.max(oldBottom, b.y + b.h);
+        oldLeft = Math.min(oldLeft, b.x); oldRight = Math.max(oldRight, b.x + b.w);
+        oldTop = Math.min(oldTop, b.y); oldBottom = Math.max(oldBottom, b.y + b.h);
       }
+      origMinX = oldLeft; origMinY = oldTop;
+      targetCx = (oldLeft + oldRight) / 2;
       targetCy = (oldTop + oldBottom) / 2;
     }
 
@@ -348,85 +484,93 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     const groupOrigPos = new Map<string, { x: number; y: number }>();
     for (const n of layoutTargets) {
       if (n instanceof GroupNode) {
-        const v = area.nodeViews.get(n.id);
-        if (v) groupOrigPos.set(n.id, { x: v.position.x, y: v.position.y });
+        const p = view.position(n.id);
+        if (p) groupOrigPos.set(n.id, { x: p.x, y: p.y });
       }
     }
 
-    // Null only if the area was destroyed mid-import — nothing left to lay out.
-    const arrangePlugin = await ensureArrange();
-    if (!arrangePlugin) return;
-    await arrangePlugin.layout({
+    // Null only if the surface was destroyed mid-import — nothing left to lay out.
+    const elk = await ensureElk();
+    if (!elk) return;
+
+    // widthCap is "at most N per row"; layerUnzipping wants the sublayer COUNT. Read here
+    // (from the layout's node count) so the preset's per-node hook stamps the same value.
+    const capSetting = settingsStore.get("tidyWidthCap");
+    const widthCap = (capSetting === "off" ? 0 : Number(capSetting)) as TidyWidthCap;
+    tidyLayerSplit = tidyLayerSplitFor(proxyNodes.length, widthCap);
+
+    await elkTidyLayout(elk, {
       nodes: proxyNodes as Schemes["Node"][],
       connections: subsetConns,
-      // ELK spacing (the preset's `spacing` is only port placement).
-      options: {
-        "elk.layered.spacing.nodeNodeBetweenLayers": "55",
-        "elk.spacing.nodeNode": "38",
-      },
+      // ELK spacing + direction + width cap from the Tidy knobs (the preset's `spacing`
+      // is only port placement).
+      options: tidyOptionsFromSettings(),
+      translate: (id, x, y) => view.moveNode(id, { x, y }),
     });
 
     // Place cluster members relative to the leader's new position, BEFORE the anchor
     // calc so their fresh positions feed it.
     for (const [leader, members] of clusterMembersOf) {
-      const lv = area.nodeViews.get(leader);
+      const lv = view.position(leader);
       if (!lv) continue;
-      const baseX = lv.position.x;
-      const baseY = lv.position.y;
+      const baseX = lv.x;
+      const baseY = lv.y;
       for (const mid of members) {
         const off = clusterMemberOffset.get(mid)!;
-        await area.translate(mid, { x: baseX + off.dx, y: baseY + off.dy });
+        await view.moveNode(mid, { x: baseX + off.dx, y: baseY + off.dy });
       }
     }
 
-    // Restore hosts inflated for the layout BEFORE the anchor measurement, or
-    // the preserved vertical center skews by half the inflation.
-    for (const [id, sz] of realHostSize) {
-      await area.resize(id, sz.w, sz.h);
-    }
-    // Same for cluster leaders, sized to the cluster bbox for the ELK pass.
-    for (const [id, sz] of clusterLeaderRealSize) {
-      await area.resize(id, sz.w, sz.h);
-    }
-
-    let newMinX = Infinity, newTop = Infinity, newBottom = -Infinity;
+    let newLeft = Infinity, newRight = -Infinity, newTop = Infinity, newBottom = -Infinity;
     for (const n of layoutTargets) {
-      const b = measuredBox(area, n.id, editor);
+      const b = measuredBox(view, n.id, editor);
       if (!b) continue;
-      newMinX = Math.min(newMinX, b.x);
-      newTop = Math.min(newTop, b.y);
-      newBottom = Math.max(newBottom, b.y + b.h);
+      newLeft = Math.min(newLeft, b.x); newRight = Math.max(newRight, b.x + b.w);
+      newTop = Math.min(newTop, b.y); newBottom = Math.max(newBottom, b.y + b.h);
     }
-    const dx = origMinX - newMinX;
-    let dy = targetCy - (newTop + newBottom) / 2;
-    // Within a group, never let centering lift members above the box header.
+    // DOWN preserves the TOP edge + horizontal center; RIGHT the LEFT edge + vertical center.
+    let dx: number, dy: number;
+    if (down) {
+      dy = origMinY - newTop;
+      dx = targetCx - (newLeft + newRight) / 2;
+    } else {
+      dx = origMinX - newLeft;
+      dy = targetCy - (newTop + newBottom) / 2;
+    }
+    // Within a group, never let centering push members past the box's leading interior
+    // edge — the header (top) under RIGHT, the left pad under DOWN.
     if (withinGroup) {
-      const gv = area.nodeViews.get(withinGroup.id);
+      const gv = view.position(withinGroup.id);
       if (gv) {
-        const interiorTop = gv.position.y + GROUP_HEADER + GROUP_PAD;
-        if (newTop + dy < interiorTop) dy = interiorTop - newTop;
+        if (down) {
+          const interiorLeft = gv.x + GROUP_PAD;
+          if (newLeft + dx < interiorLeft) dx = interiorLeft - newLeft;
+        } else {
+          const interiorTop = gv.y + GROUP_HEADER + GROUP_PAD;
+          if (newTop + dy < interiorTop) dy = interiorTop - newTop;
+        }
       }
     }
     if (Number.isFinite(dx) && Number.isFinite(dy) && (dx !== 0 || dy !== 0)) {
       for (const n of layoutTargets) {
-        const v = area.nodeViews.get(n.id);
-        if (!v) continue;
-        await area.translate(n.id, { x: v.position.x + dx, y: v.position.y + dy });
+        const p = view.position(n.id);
+        if (!p) continue;
+        await view.moveNode(n.id, { x: p.x + dx, y: p.y + dy });
       }
     }
 
     // Members were held out of the layout, so carry them rigidly by the net move.
     for (const [gid, orig] of groupOrigPos) {
-      const gv = area.nodeViews.get(gid);
+      const gv = view.position(gid);
       const grp = editor.getNode(gid);
       if (!gv || !(grp instanceof GroupNode)) continue;
-      const gdx = gv.position.x - orig.x;
-      const gdy = gv.position.y - orig.y;
+      const gdx = gv.x - orig.x;
+      const gdy = gv.y - orig.y;
       if (gdx === 0 && gdy === 0) continue;
       for (const mid of grp.members) {
-        const mv = area.nodeViews.get(mid);
-        if (!mv) continue;
-        await area.translate(mid, { x: mv.position.x + gdx, y: mv.position.y + gdy });
+        const mp = view.position(mid);
+        if (!mp) continue;
+        await view.moveNode(mid, { x: mp.x + gdx, y: mp.y + gdy });
       }
     }
 
@@ -435,7 +579,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     // ONLY `.solenoid-node` roots — every other root sets its inline size from React's
     // `style` prop, which removeProperty would strip with no re-stamp.
     for (const n of layoutTargets) {
-      const card = area.nodeViews.get(n.id)?.element.querySelector<HTMLElement>("*:not(span):not([fragment])");
+      const card = view.nodeElement(n.id)?.querySelector<HTMLElement>("*:not(span):not([fragment])");
       if (!card || !card.classList.contains("solenoid-node")) continue;
       card.style.removeProperty("height");
       const manual = nodeSizeStore.get(n.id);
@@ -447,35 +591,35 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       let maxX = -Infinity, maxY = -Infinity;
       for (const n of layoutTargets) {
         // measuredBox, not offsetWidth: an unpainted member measures 0 and under-grows.
-        const b = measuredBox(area, n.id, editor);
+        const b = measuredBox(view, n.id, editor);
         if (!b) continue;
         maxX = Math.max(maxX, b.x + b.w);
         maxY = Math.max(maxY, b.y + b.h);
       }
-      const gv = area.nodeViews.get(withinGroup.id);
+      const gv = view.position(withinGroup.id);
       const preW = withinGroup.width, preH = withinGroup.height;
       if (gv && Number.isFinite(maxX)) {
         // Integer dims: a fractional width puts the box edge on a half-pixel (blur).
-        withinGroup.width = Math.round(Math.max(withinGroup.width, (maxX - gv.position.x) + GROUP_PAD));
-        withinGroup.height = Math.round(Math.max(withinGroup.height, (maxY - gv.position.y) + GROUP_PAD));
-        await area.update("node", withinGroup.id);
+        withinGroup.width = Math.round(Math.max(withinGroup.width, (maxX - gv.x) + GROUP_PAD));
+        withinGroup.height = Math.round(Math.max(withinGroup.height, (maxY - gv.y) + GROUP_PAD));
+        await view.rerenderNode(withinGroup.id);
       }
       rebuildGroupMembership(editor);
-      syncGroupCollapse(editor, area);
+      syncGroupCollapse(editor, view);
       // An autogrown box pushes its neighbours off the grown edges; Cleanup skips
       // this, managing its own collapse/restore + re-tidy.
       if (!opts?.skipPush && (withinGroup.width > preW + 0.5 || withinGroup.height > preH + 0.5)) {
-        pushForGrownGroups(editor, area, [withinGroup], new Map([[withinGroup.id, { w: preW, h: preH }]]));
+        pushForGrownGroups(editor, view, [withinGroup], new Map([[withinGroup.id, { w: preW, h: preH }]]));
       }
     }
 
-    // area.translate schedules nothing; the autosave debounce reads positions at
+    // view.translate schedules nothing; the autosave debounce reads positions at
     // flush time, so the deferred settle below is still captured.
     scheduleAutosave();
 
     selectedIds.forEach((id, i) => selectNodeFromProcess(id, i > 0));
 
-    if (!withinGroup && selectedIds.length > 0) await AreaExtensions.zoomAt(area, targets);
+    if (!withinGroup && selectedIds.length > 0) await zoomAt(view, targets);
 
     // Snap docked FCs back onto their hosts, deferred a frame so the sockets render
     // at the new host positions before we measure them.
@@ -503,7 +647,7 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
 // nodes are arranged as units, so nothing is tidied twice.
 export function makeCleanupFn(
   editor: NodeEditor<Schemes>,
-  area: AreaPlugin<Schemes, AreaExtra>,
+  view: View,
   arrangeFn: ArrangeFn,
 ): () => Promise<void> {
   return async () => {
@@ -536,16 +680,16 @@ export function makeCleanupFn(
     // Two frames (rAF fire, then translate guard) so the within-group tidy's deferred
     // FC snap-backs land — else autofit pads the box around stale far-right FC spots.
     await nextFrame(); await nextFrame();
-    for (const g of groups) await autofitGroupBox(editor, area, g);
+    for (const g of groups) await autofitGroupBox(editor, view, g);
 
     // 2. Collapse every still-expanded group.
     const toCollapse = groupsNow().filter((g) => !g.collapsed);
     if (toCollapse.length) {
       for (const g of toCollapse) g.collapsed = true;
-      syncGroupCollapse(editor, area);
+      syncGroupCollapse(editor, view);
       for (const g of toCollapse) {
-        await area.update("node", g.id);
-        settleCollapse(editor, area, g.id, g.members, false);
+        await view.rerenderNode(g.id);
+        settleCollapse(view, g.id, g.members, false);
       }
     }
 

@@ -10,11 +10,9 @@
   width: auto;
   flex: 1 1 auto;
 }
-/* The RESTING look is neutral, because most toggles are arguments (`arg`, the same
-   declaration OpSelect takes). Selection reads as a tonal step — recessed field to
-   raised fill, the tokens' own job — with no color injection, which is what every
-   other argument control does. The family's OP toggle overrides this back to the
-   accent from nodeCard.css, next to the OpSelect rules it mirrors. */
+/* The RESTING look is neutral: SegToggle is an ARGUMENT control. Selection reads as
+   a tonal step (recessed field to raised fill), no color injection. OpToggle, the
+   family's op picker in this shape, layers the accent on top from nodeCard.css. */
 .solenoid-segbtn {
   flex: 1 1 auto;
   height: 22px;

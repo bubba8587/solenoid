@@ -106,14 +106,17 @@ impl Cell {
     }
 }
 
-/// Key-side number JSON, matching `JSON.stringify` exactly: non-finite → null
-/// (JS stringifies Infinity/NaN as null, so the oracle keys ALL non-finite into
-/// one `["#",null]` bucket — parity requires the same here, NOT the `__nf` wire
-/// sentinel); integral-in-safe-range prints as an integer (ryu would say "1.0",
+/// Key-side number JSON, matching the oracle's `encodeCell` exactly: a
+/// non-finite keys by NAME (`"nan"` / `"inf"` / `"-inf"`), because plain
+/// `JSON.stringify` writes all three as `null` and would file them into one
+/// bucket; integral-in-safe-range prints as an integer (ryu would say "1.0",
 /// JS says "1"; also keys `-0` as `0`); else shortest-round-trip float.
 fn key_num(n: f64) -> Json {
-    if !n.is_finite() {
-        return Json::Null;
+    if n.is_nan() {
+        return Json::String("nan".into());
+    }
+    if n.is_infinite() {
+        return Json::String(if n > 0.0 { "inf" } else { "-inf" }.into());
     }
     if n.fract() == 0.0 && n.abs() < 9.007_199_254_740_992e15 {
         return Json::Number((n as i64).into());
@@ -492,6 +495,40 @@ pub enum WireOp {
     },
     #[serde(rename = "groupBy")]
     GroupBy { keys: Vec<String>, aggs: Vec<WireAgg> },
+    // The per-group window column (the oracle's `windowFrame`, frameVerbs.ts):
+    // partition, order within the partition, one function, written back in the
+    // ORIGINAL row order as a new column.
+    #[serde(rename = "window")]
+    Window {
+        #[serde(rename = "partitionBy")]
+        partition_by: Vec<String>,
+        #[serde(rename = "orderBy", default)]
+        order_by: Option<String>,
+        #[serde(rename = "orderDir", default)]
+        order_dir: Option<String>,
+        #[serde(rename = "fn")]
+        func: String,
+        #[serde(default)]
+        column: Option<String>,
+        #[serde(rename = "as")]
+        as_name: String,
+        #[serde(default)]
+        n: Option<f64>,
+    },
+    // The three cleanup verbs that used to materialize (deferrals → backlog B5): the
+    // oracle's fillBlanks / replaceValues / sliceRows, each a plain Polars expression.
+    #[serde(rename = "fillBlanks")]
+    FillBlanks { columns: Vec<String>, dir: String },
+    #[serde(rename = "replaceValues")]
+    ReplaceValues {
+        column: String,
+        find: String,
+        #[serde(rename = "replaceWith")]
+        replace_with: String,
+        mode: String,
+    },
+    #[serde(rename = "sliceRows")]
+    SliceRows { mode: String, n: f64, #[serde(default)] to: Option<f64> },
     #[serde(rename = "unpivot")]
     Unpivot {
         #[serde(rename = "idColumns")]
@@ -941,6 +978,223 @@ fn lazy_head(plan: Plan, n: f64) -> Result<Plan, IpcError> {
     Ok(Plan { lf: plan.lf.limit(take), ..plan })
 }
 
+// ─── Window (the oracle's windowFrame — per-group column, original row order) ────
+// Polars' `.over(partition)` evaluates an expression per group in the frame's CURRENT
+// row order, so the plan is: stamp a row index, sort by the order key (nulls last,
+// index as the tiebreak — the oracle's stable within-group order), apply the
+// expression `.over(keys)`, sort back by the index and drop it. An existing column of
+// the output name is dropped first so the new one lands LAST (the oracle's
+// filter-then-append). Value nulls: Polars' cum_* / shift / first / last / rolling
+// already carry and skip nulls the way the oracle does; the few places they differ
+// (an all-null group's sum is 0 here, null there; a zero denominator is an error
+// there) are masked explicitly below.
+const WINDOW_IDX: &str = "__solenoid_window_idx__";
+fn lazy_window(
+    plan: Plan,
+    partition_by: &[String],
+    order_by: Option<&str>,
+    order_dir: Option<&str>,
+    func: &str,
+    column: Option<&str>,
+    as_name: &str,
+    n: Option<f64>,
+) -> Result<Plan, IpcError> {
+    require_in(&plan.names, partition_by)?;
+    if let Some(o) = order_by { require_in(&plan.names, std::slice::from_ref(&o.to_string()))?; }
+    let needs_column = matches!(func,
+        "cumsum" | "cumavg" | "cummin" | "cummax" | "lag" | "lead" | "diff" | "pct_change"
+        | "rolling_sum" | "rolling_avg" | "rolling_min" | "rolling_max"
+        | "group_sum" | "group_avg" | "group_min" | "group_max" | "group_count" | "share" | "first" | "last");
+    let col_name = match (needs_column, column) {
+        (true, Some(c)) => { require_in(&plan.names, std::slice::from_ref(&c.to_string()))?; Some(c) }
+        (true, None) => return Err(IpcError::new("#REF!", "column \"\" not found")),
+        (false, _) => None,
+    };
+    let nn = n.unwrap_or(1.0).round().max(1.0) as i64;
+    let keys: Vec<Expr> = if partition_by.is_empty() { vec![lit(1)] } else { partition_by.iter().map(|k| col(k.as_str())).collect() };
+    let over = |e: Expr| e.over(keys.clone());
+    // The value column as f64 (logical 0/1, the rest already numeric) for the arithmetic
+    // functions; the ORIGINAL column for lag/lead/first/last so text/dates pass through.
+    let col_ty = col_name.and_then(|c| type_of_in(&plan.names, &plan.types, c));
+    let vnum = || {
+        let c = col(col_name.unwrap());
+        match col_ty { Some(SolType::Logical) => c.cast(DataType::Float64), _ => c }
+    };
+    let vraw = || col(col_name.unwrap());
+    // The order key expr (the sort key lazy_sort uses: logical → 0/1, NaN → null).
+    let order_key = order_by.map(|o| {
+        let ty = type_of_in(&plan.names, &plan.types, o).unwrap_or(SolType::Str);
+        match ty {
+            SolType::Logical => col(o).cast(DataType::Float64),
+            SolType::Number | SolType::Date => { let c = col(o); when(c.clone().is_nan()).then(lit(NULL)).otherwise(c).cast(DataType::Float64) }
+            SolType::Str => col(o),
+        }
+    });
+    let desc = order_dir == Some("desc");
+    let rownum = || over(col(WINDOW_IDX).cum_count(false)).cast(DataType::Float64); // 1..m within the group
+    let group_len = || over(col(WINDOW_IDX).count()).cast(DataType::Float64);
+    let rank_expr = |method: RankMethod| -> Expr {
+        match &order_key {
+            Some(k) => over(k.clone().rank(RankOptions { method, descending: desc }, None)).cast(DataType::Float64),
+            None => rownum(),
+        }
+    };
+    let nonnull_present = || over(vnum().count()).cast(DataType::Float64); // non-null values in the group
+    let expr: Expr = match func {
+        "row_number" | "cumcount" => rownum(),
+        "rank" => rank_expr(RankMethod::Min),
+        "dense_rank" => rank_expr(RankMethod::Dense),
+        "percent_rank" => {
+            let ranked = match &order_key { Some(k) => over(k.clone().count()).cast(DataType::Float64), None => group_len() };
+            let r = rank_expr(RankMethod::Min);
+            when(ranked.clone().gt(lit(1.0)))
+                .then((r.clone() - lit(1.0)) / (ranked - lit(1.0)))
+                .otherwise(r * lit(0.0))
+        }
+        // floor via an Int64 cast (non-negative operand; `floor` needs a feature this build doesn't pull)
+        "ntile" => ((rownum() - lit(1.0)) * lit(nn as f64) / group_len()).cast(DataType::Int64).cast(DataType::Float64) + lit(1.0),
+        "cumsum" => over(vnum().cum_sum(false)),
+        "cumavg" => over(vnum().cum_sum(false)) / over(vnum().cum_count(false)).cast(DataType::Float64),
+        "cummin" => over(vnum().cum_min(false)),
+        "cummax" => over(vnum().cum_max(false)),
+        "lag" => over(vraw().shift(lit(nn))),
+        "lead" => over(vraw().shift(lit(-nn))),
+        "diff" => over(vnum().clone() - vnum().shift(lit(1))),
+        "pct_change" => {
+            let prev = over(vnum().shift(lit(1)));
+            let cur = vnum();
+            when(prev.clone().eq(lit(0.0))).then(lit(NULL)).otherwise((cur - prev.clone()) / prev)
+        }
+        "rolling_sum" | "rolling_avg" | "rolling_min" | "rolling_max" => {
+            let opts = RollingOptionsFixedWindow { window_size: nn as usize, min_periods: 1, ..Default::default() };
+            let rolled = match func {
+                "rolling_sum" => vnum().rolling_sum(opts),
+                "rolling_avg" => vnum().rolling_mean(opts),
+                "rolling_min" => vnum().rolling_min(opts),
+                _ => vnum().rolling_max(opts),
+            };
+            // Blank until N rows exist in the group and when the row's own value is blank.
+            when(rownum().gt_eq(lit(nn as f64)).and(vnum().is_not_null())).then(over(rolled)).otherwise(lit(NULL))
+        }
+        "group_sum" => when(nonnull_present().gt(lit(0.0))).then(over(vnum().sum())).otherwise(lit(NULL)),
+        "group_avg" => over(vnum().mean()),
+        "group_min" => over(vnum().min()),
+        "group_max" => over(vnum().max()),
+        "group_count" => nonnull_present(),
+        "share" => {
+            let total = over(vnum().sum());
+            when(total.clone().eq(lit(0.0))).then(lit(NULL)).otherwise(vnum() / total)
+        }
+        "first" => over(vraw().first()),
+        "last" => over(vraw().last()),
+        other => return Err(IpcError::new("#VALUE!", format!("unknown window function \"{other}\""))),
+    };
+    let out_ty = match func {
+        "lag" | "lead" | "first" | "last" => col_ty.unwrap_or(SolType::Number),
+        _ => SolType::Number,
+    };
+    let name = if as_name.trim().is_empty() { func } else { as_name.trim() };
+    let mut lf = plan.lf.with_row_index(WINDOW_IDX, None);
+    if let Some(k) = &order_key {
+        let opts = SortMultipleOptions::default().with_order_descending_multi([desc, false]).with_nulls_last(true);
+        lf = lf.sort_by_exprs([k.clone(), col(WINDOW_IDX)], opts);
+    }
+    let existed = plan.names.iter().position(|c| c == name);
+    if existed.is_some() { lf = lf.drop([name]); }
+    let lf = lf
+        .with_column(expr.alias(name))
+        .sort([WINDOW_IDX], SortMultipleOptions::default())
+        .drop([WINDOW_IDX]);
+    let mut names = plan.names.clone();
+    let mut types = plan.types.clone();
+    if let Some(i) = existed { names.remove(i); types.remove(i); }
+    names.push(name.to_string());
+    types.push(out_ty);
+    Ok(Plan { lf, names, types })
+}
+
+// ─── Fill Down / Replace Values / row slices (the oracle's fillBlanks / replaceValues /
+// sliceRows, frameVerbs.ts) ──────────────────────────────────────────────────────────
+fn lazy_fill_blanks(plan: Plan, columns: &[String], dir: &str) -> Result<Plan, IpcError> {
+    require_in(&plan.names, columns)?;
+    let targets: HashSet<&str> = if columns.is_empty() { plan.names.iter().map(|s| s.as_str()).collect() } else { columns.iter().map(|s| s.as_str()).collect() };
+    let exprs: Vec<Expr> = plan.names.iter().map(|n| {
+        let c = col(n.as_str());
+        if !targets.contains(n.as_str()) { return c; }
+        if dir == "up" { c.backward_fill(None).alias(n.as_str()) } else { c.forward_fill(None).alias(n.as_str()) }
+    }).collect();
+    Ok(Plan { lf: plan.lf.with_columns(exprs), ..plan })
+}
+
+/// The oracle's `coerceReplacement`: blank → null, an unparseable number → NaN, an
+/// unparseable date / logical → null, text verbatim.
+fn replacement_lit(ty: SolType, text: &str) -> Expr {
+    let t = text.trim();
+    match ty {
+        SolType::Str => lit(text.to_string()),
+        SolType::Number => {
+            if t.is_empty() { return lit(NULL).cast(DataType::Float64); }
+            match t.parse::<f64>() { Ok(n) if n.is_finite() => lit(n), _ => lit(f64::NAN) }
+        }
+        SolType::Date => {
+            if t.is_empty() { return lit(NULL).cast(DataType::Float64); }
+            match t.parse::<f64>() { Ok(n) if n.is_finite() => lit(n), _ => lit(NULL).cast(DataType::Float64) }
+        }
+        SolType::Logical => match t.to_ascii_lowercase().as_str() {
+            "true" | "1" => lit(true),
+            "false" | "0" => lit(false),
+            _ => lit(NULL).cast(DataType::Boolean),
+        },
+    }
+}
+
+fn lazy_replace_values(plan: Plan, column: &str, find: &str, replace_with: &str, mode: &str) -> Result<Plan, IpcError> {
+    if find.is_empty() { return Ok(plan); }
+    let target = column.trim();
+    if !target.is_empty() { require_in(&plan.names, std::slice::from_ref(&target.to_string()))?; }
+    let find_num = find.trim().parse::<f64>().ok().filter(|n| n.is_finite());
+    let find_lower = find.to_ascii_lowercase();
+    let exprs: Vec<Expr> = plan.names.iter().enumerate().map(|(i, n)| {
+        let c = col(n.as_str());
+        if !target.is_empty() && n != target { return c; }
+        let ty = plan.types[i];
+        if mode == "substring" {
+            // String columns only; case-sensitive, literal (no regex).
+            return if ty == SolType::Str { c.str().replace_all(lit(find.to_string()), lit(replace_with.to_string()), true).alias(n.as_str()) } else { c };
+        }
+        let rep = replacement_lit(ty, replace_with);
+        let hit: Option<Expr> = match ty {
+            SolType::Str => Some(c.clone().eq(lit(find.to_string()))),
+            // Numbers match numerically (so "5" hits 5); a non-numeric find text matches no number cell.
+            SolType::Number | SolType::Date => find_num.map(|v| c.clone().eq(lit(v))),
+            SolType::Logical => match find_lower.as_str() { "true" => Some(c.clone().eq(lit(true))), "false" => Some(c.clone().eq(lit(false))), _ => None },
+        };
+        match hit {
+            // A null cell never matches (null == x is null → otherwise keeps the null).
+            Some(h) => when(h).then(rep).otherwise(c).alias(n.as_str()),
+            None => c,
+        }
+    }).collect();
+    Ok(Plan { lf: plan.lf.with_columns(exprs), ..plan })
+}
+
+fn lazy_slice_rows(plan: Plan, mode: &str, n: f64, to: Option<f64>) -> Result<Plan, IpcError> {
+    let count = n.trunc().max(0.0);
+    let lf = match mode {
+        "first" => plan.lf.limit(count as IdxSize),
+        "last" => plan.lf.tail(count as IdxSize),
+        "skip" => plan.lf.slice(count as i64, IdxSize::MAX),
+        _ => {
+            // Rows N–To: 1-based inclusive; an inverted or empty span is no rows.
+            let start = (n.trunc() - 1.0).max(0.0);
+            let end = to.unwrap_or(n).trunc();
+            let len = (end - start).max(0.0);
+            plan.lf.slice(start as i64, len as IdxSize)
+        }
+    };
+    Ok(Plan { lf, ..plan })
+}
+
 // Re-materialize a frame from a row-index list (the basis for distinct).
 fn reorder_rows(frame: &SolFrame, idxs: &[usize]) -> Result<SolFrame, IpcError> {
     let names = frame.names();
@@ -997,77 +1251,29 @@ fn verb_sample(frame: &SolFrame, n: usize) -> Result<(SolFrame, f64), IpcError> 
 }
 
 // filter
-/// The exact string JS `String(n)` produces (ECMA-262 Number::toString, base
-/// 10). The text predicates compare DISPLAY strings, and serde's float form is
-/// not that display: it appends ".0" to an integral float outside
-/// num_to_json's i64 window, so 9007199254740992 (2^53, the window's first
-/// miss) read "9007199254740992.0" and an `endsWith "0"` kept it while the
-/// oracle's "9007199254740992" dropped it (corpus fuzz seed 910020, pinned in
-/// filter.json). Rust's `{:e}` yields the same shortest round-trip digits JS
-/// computes — only the formatting rules differ, and those are spelled out
-/// here: decimal form for exponents in (-7, 21], exponential with an explicit
-/// sign otherwise.
-fn js_number_string(n: f64) -> String {
-    if n.is_nan() {
-        return "NaN".into();
-    }
-    if n.is_infinite() {
-        return if n > 0.0 { "Infinity".into() } else { "-Infinity".into() };
-    }
-    if n == 0.0 {
-        return "0".into(); // JS String(-0) is "0" — the sign never prints
-    }
-    let neg = n < 0.0;
-    let sci = format!("{:e}", n.abs()); // "9.007199254740992e15"
-    let (mant, exp) = sci.split_once('e').expect("{:e} always carries an exponent");
-    let exp: i32 = exp.parse().expect("{:e} exponent is an integer");
-    let digits: String = mant.chars().filter(|c| *c != '.').collect();
-    let digits = digits.trim_end_matches('0');
-    let digits = if digits.is_empty() { "0" } else { digits };
-    let k = digits.len() as i32;
-    let np = exp + 1; // ECMA's n: value = 0.d1..dk × 10^n
-    let s = if k <= np && np <= 21 {
-        format!("{}{}", digits, "0".repeat((np - k) as usize))
-    } else if 0 < np && np <= 21 {
-        format!("{}.{}", &digits[..np as usize], &digits[np as usize..])
-    } else if -6 < np && np <= 0 {
-        format!("0.{}{}", "0".repeat((-np) as usize), digits)
-    } else {
-        let mut t = String::from(&digits[..1]);
-        if k > 1 {
-            t.push('.');
-            t.push_str(&digits[1..]);
-        }
-        t.push('e');
-        t.push(if np > 0 { '+' } else { '-' });
-        t.push_str(&(np - 1).abs().to_string());
-        t
-    };
-    if neg { format!("-{s}") } else { s }
-}
-
+/// The filter comparison VALUE as a string. The JS side pre-stringifies every
+/// filter value (`readFilterValue`), so a String is the only shape a filter
+/// sends; the other arms are defensive. This used to carry `js_number_string`
+/// (a digit-for-digit mirror of JS `String(n)`) so numeric cells and needles
+/// compared identically on both engines — deleted with textPredicateNeedsText:
+/// text scans now run only over STRING columns, so no float is ever displayed.
 fn json_str(v: &Json) -> String {
     match v {
         Json::String(s) => s.clone(),
-        // The oracle stringifies a numeric comparison value with String(value)
-        // — mirror it exactly (an integral float needle would otherwise read
-        // "5.0" here and "5" there).
-        Json::Number(n) => n.as_f64().map(js_number_string).unwrap_or_else(|| n.to_string()),
+        Json::Number(n) => n.to_string(),
         Json::Bool(b) => b.to_string(),
         _ => String::new(),
     }
 }
-/// A non-null cell as the string the oracle's `String(cell)` would produce (for
-/// the text predicates). `null` → None (excluded by the predicate, SQL WHERE).
-/// Non-finite cells read "NaN"/"Infinity"/"-Infinity" like JS — they used to
-/// display as "" (num_to_json's sentinel isn't a Number), silently missing
-/// every needle the oracle's "NaN" would contain.
+/// A non-null cell of a STRING column (the only type `require_text_column` lets
+/// reach a text scan) as its text. `null` → None (excluded by the predicate,
+/// SQL WHERE). The non-string arms are defensive.
 fn cell_display(c: &Cell) -> Option<String> {
     match c {
         Cell::Null => None,
         Cell::Str(s) => Some(s.clone()),
         Cell::Bool(b) => Some(b.to_string()),
-        Cell::Num(n) => Some(js_number_string(*n)),
+        Cell::Num(n) => Some(n.to_string()),
     }
 }
 
@@ -1155,11 +1361,28 @@ fn comparison_filter_expr(column: &str, ty: SolType, op: &str, value: &Json) -> 
     Ok(Some(e))
 }
 
+/// rules textPredicateNeedsText (author verdict 2026-08-30): a text predicate on a
+/// non-text column is `#TYPE!`, mirroring the oracle's `requireTextColumn` — never a
+/// stringified comparison. The old `String(cell)` fallback is what forced this engine
+/// to mirror JS number printing digit-for-digit (`js_number_string`, deleted).
+fn require_text_column(op: &str, ty: SolType, column: &str) -> Result<(), IpcError> {
+    if !matches!(op, "contains" | "startsWith" | "endsWith") || ty == SolType::Str {
+        return Ok(());
+    }
+    let label = match op { "contains" => "Contains", "startsWith" => "Starts with", _ => "Ends with" };
+    let tyname = match ty { SolType::Number => "number", SolType::Date => "date", SolType::Logical => "logical", SolType::Str => "string" };
+    Err(IpcError::new(
+        "#TYPE!",
+        format!("{label} reads text — \"{column}\" is a {tyname} column. Convert it first: a Computed Column like TEXT(@{column}, \"@\"), or Cast to Text"),
+    ))
+}
+
 /// Does this op+type+flag combination need the in-engine row scan instead of a
-/// Polars expression? The three text predicates always do; string eq/neq join
-/// them when matching case-insensitively (the default — the oracle's
-/// `passesFilter` fold). ONE predicate shared by `verb_filter` and `apply_step`
-/// so the standalone and fused paths can't drift.
+/// Polars expression? The three text predicates always do (on the STRING columns
+/// `require_text_column` restricts them to); string eq/neq join them when matching
+/// case-insensitively (the default — the oracle's `passesFilter` fold). ONE
+/// predicate shared by `verb_filter` and `apply_step` so the standalone and fused
+/// paths can't drift.
 fn filter_needs_text_scan(ty: SolType, op: &str, match_case: bool) -> bool {
     matches!(op, "contains" | "startsWith" | "endsWith")
         || (ty == SolType::Str && !match_case && matches!(op, "eq" | "neq"))
@@ -1198,6 +1421,7 @@ fn text_scan_mask(frame: &SolFrame, column: &str, op: &str, value: &Json, match_
 fn verb_filter(frame: &SolFrame, column: &str, op: &str, value: &Json, match_case: bool) -> Result<SolFrame, IpcError> {
     require_columns(frame, std::slice::from_ref(&column.to_string()))?;
     let ty = frame.type_of(column).unwrap_or(SolType::Number);
+    require_text_column(op, ty, column)?;
 
     if filter_needs_text_scan(ty, op, match_case) {
         let mask = text_scan_mask(frame, column, op, value, match_case);
@@ -1231,6 +1455,7 @@ fn expr_mask(frame: &SolFrame, expr: Expr) -> Result<Vec<bool>, IpcError> {
 fn condition_mask(frame: &SolFrame, c: &WireFilterCond) -> Result<Vec<bool>, IpcError> {
     require_columns(frame, std::slice::from_ref(&c.column))?;
     let ty = frame.type_of(&c.column).unwrap_or(SolType::Number);
+    require_text_column(&c.op, ty, &c.column)?;
     if filter_needs_text_scan(ty, &c.op, c.match_case) {
         return Ok(text_scan_mask(frame, &c.column, &c.op, &c.value, c.match_case));
     }
@@ -1522,13 +1747,13 @@ fn group_by_lazy_plan(
     let out_names = make_headers(&proposed, proposed.len());
     let agg_names = &out_names[keys.len()..];
 
-    // Group on DERIVED key exprs, not the raw columns: a float key's
-    // non-finite values share ONE bucket, distinct from the null bucket — the
-    // oracle's B-1a key encoding (JSON keys every non-finite as the same
-    // token; corpus fuzz sweep). Per float key: (value masked to null when
-    // non-finite, an is-non-finite flag) — finite x → (x, false), any
-    // non-finite → (null, true), null → (null, null). The OUTPUT key value is
-    // the group's first-seen ORIGINAL cell, like the oracle's bucket walk.
+    // Group on DERIVED key exprs, not the raw columns, so a float key's
+    // non-finites bucket the way the oracle's `encodeCell` keys them: +∞, −∞
+    // and NaN each own a bucket and null keeps its own. Per float key: (value
+    // masked to null when non-finite, a non-finite CLASS carrying the same
+    // token the oracle writes) — finite x → (x, null), ±∞/NaN → (null,
+    // "inf"/"-inf"/"nan"), null → (null, null). The OUTPUT key value is the
+    // group's first-seen ORIGINAL cell, like the oracle's bucket walk.
     let mut group_exprs: Vec<Expr> = Vec::new();
     for (i, k) in keys.iter().enumerate() {
         let kt = type_of_in(names, types, k).unwrap();
@@ -1537,7 +1762,16 @@ fn group_by_lazy_plan(
             group_exprs.push(
                 when(c.clone().is_finite()).then(c.clone()).otherwise(lit(NULL)).alias(format!("__gk{i}v")),
             );
-            group_exprs.push(c.is_finite().not().alias(format!("__gk{i}nf")));
+            group_exprs.push(
+                when(c.clone().is_nan())
+                    .then(lit("nan"))
+                    .when(c.clone().eq(lit(f64::INFINITY)))
+                    .then(lit("inf"))
+                    .when(c.eq(lit(f64::NEG_INFINITY)))
+                    .then(lit("-inf"))
+                    .otherwise(lit(NULL))
+                    .alias(format!("__gk{i}nf")),
+            );
         } else {
             group_exprs.push(c.alias(format!("__gk{i}v")));
         }
@@ -1693,6 +1927,17 @@ fn assemble_join_layout(
 }
 
 fn verb_join(left: &SolFrame, right: &SolFrame, opts: &WireJoinOpts) -> Result<SolFrame, IpcError> {
+    // Cross: the Cartesian product, left-major, ALL columns of both sides — no keys.
+    // Polars suffixes a colliding right column "_right", the layout pass renames by
+    // position like the oracle's makeHeaders (an empty right_key matches no column).
+    if opts.how.as_str() == "cross" {
+        let joined = left
+            .df
+            .cross_join(&right.df, Some("_right".into()), None)
+            .map_err(|e| IpcError::internal(format!("cross join failed: {e}")))?;
+        let no_key = WireJoinOpts { right_key: String::new(), how: "cross".into(), ..Default::default() };
+        return assemble_join_layout(left, right, &no_key, &joined);
+    }
     require_columns(left, std::slice::from_ref(&opts.left_key))?;
     require_columns(right, std::slice::from_ref(&opts.right_key))?;
     // Keys of two different types can never match (SOCK-1's discipline at the
@@ -2034,6 +2279,40 @@ fn append_frames(handles: &[String]) -> Result<SolFrame, IpcError> {
     Ok(SolFrame { df, types })
 }
 
+/// Side-by-side by POSITION (the oracle's bindColumns): every column of every
+/// frame in order, headers deduped by make_headers, a shorter frame padded
+/// down with nulls.
+fn bind_columns(handles: &[String]) -> Result<SolFrame, IpcError> {
+    let frames: Vec<SolFrame> = {
+        let s = lock_store();
+        handles
+            .iter()
+            .map(|h| {
+                s.frames
+                    .get(h)
+                    .cloned()
+                    .ok_or_else(|| IpcError::new("#REF!", format!("frame handle {h} not found")))
+            })
+            .collect::<Result<_, _>>()?
+    };
+    let rows = frames.iter().map(|f| f.df.height()).max().unwrap_or(0);
+    let mut proposed: Vec<String> = Vec::new();
+    let mut types: Vec<SolType> = Vec::new();
+    let mut out_cols: Vec<Vec<Cell>> = Vec::new();
+    for f in &frames {
+        for (i, n) in f.names().iter().enumerate() {
+            proposed.push(n.clone());
+            types.push(f.types[i]);
+            let mut cells = f.column_cells(n).map(|(_, c)| c).unwrap_or_default();
+            cells.resize(rows, Cell::Null);
+            out_cols.push(cells);
+        }
+    }
+    let names = make_headers(&proposed, proposed.len());
+    let df = build_df(&names, &types, &out_cols)?;
+    Ok(SolFrame { df, types })
+}
+
 // ─── Preview / column extraction ────────────────────────────────────────────────
 fn preview_of(frame: &SolFrame, n: usize) -> OutPreview {
     let row_count = frame.df.height();
@@ -2118,6 +2397,12 @@ fn apply_step(plan: Plan, op: &WireOp) -> Result<Plan, IpcError> {
             let (lf, names, types) = group_by_lazy_plan(plan.lf, &plan.names, &plan.types, keys, aggs)?;
             Ok(Plan { lf, names, types })
         }
+        WireOp::Window { partition_by, order_by, order_dir, func, column, as_name, n } => {
+            lazy_window(plan, partition_by, order_by.as_deref(), order_dir.as_deref(), func, column.as_deref(), as_name, *n)
+        }
+        WireOp::FillBlanks { columns, dir } => lazy_fill_blanks(plan, columns, dir),
+        WireOp::ReplaceValues { column, find, replace_with, mode } => lazy_replace_values(plan, column, find, replace_with, mode),
+        WireOp::SliceRows { mode, n, to } => lazy_slice_rows(plan, mode, *n, *to),
         WireOp::Filter { column, op: fop, value, match_case } => {
             require_in(&plan.names, std::slice::from_ref(column))?;
             let ty = type_of_in(&plan.names, &plan.types, column).unwrap();
@@ -2273,6 +2558,11 @@ pub fn engine_join(left: String, right: String, opts: WireJoinOpts) -> Result<St
 #[tauri::command]
 pub fn engine_append(handles: Vec<String>) -> Result<String, IpcError> {
     Ok(register(append_frames(&handles)?))
+}
+
+#[tauri::command]
+pub fn engine_bind_columns(handles: Vec<String>) -> Result<String, IpcError> {
+    Ok(register(bind_columns(&handles)?))
 }
 
 #[tauri::command]

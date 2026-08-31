@@ -1,0 +1,238 @@
+{
+ "verb": "sliceRows",
+ "cases": [
+  {
+   "name": "last 2",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "i",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "sliceRows",
+    "mode": "last",
+    "n": 2
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "i",
+      "type": "number",
+      "values": [
+       5,
+       6
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "skip 4",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "i",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "sliceRows",
+    "mode": "skip",
+    "n": 4
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "i",
+      "type": "number",
+      "values": [
+       5,
+       6
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "rows 2–4 (1-based inclusive)",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "i",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "sliceRows",
+    "mode": "range",
+    "n": 2,
+    "to": 4
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "i",
+      "type": "number",
+      "values": [
+       2,
+       3,
+       4
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "a range past the end clamps",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "i",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "sliceRows",
+    "mode": "range",
+    "n": 5,
+    "to": 99
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "i",
+      "type": "number",
+      "values": [
+       5,
+       6
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "an inverted range is empty",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "i",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "sliceRows",
+    "mode": "range",
+    "n": 4,
+    "to": 2
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "i",
+      "type": "number",
+      "values": []
+     }
+    ]
+   }
+  },
+  {
+   "name": "first 0 / last more than the rows",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "i",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "sliceRows",
+    "mode": "last",
+    "n": 10
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "i",
+      "type": "number",
+      "values": [
+       1,
+       2,
+       3,
+       4,
+       5,
+       6
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}

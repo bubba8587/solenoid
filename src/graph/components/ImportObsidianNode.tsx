@@ -1,3 +1,4 @@
+import { useFlowResizeGrip } from "../flowSurface";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
@@ -9,9 +10,11 @@ import { SwatchGrid } from "./SwatchGrid";
 import { NodeSocket } from "./NodeSocket";
 import { FieldRow } from "./NoteNode";
 import { useDismissOnOutside } from "./useDismissOnOutside";
+import { useEditableLabel } from "./inlineInput";
 import { isDesktop, listVaultMarkdownFiles, readVaultFile } from "../fileBridge";
-import { getActiveArea, getActiveEditor } from "../activeGraph";
-import { processGraph, bumpConnectionVersion } from "../process";
+import { getActiveView, getActiveEditor } from "../activeGraph";
+import { processGraph } from "../process";
+import { bumpConnectionVersion } from "../graphSignals";
 import { reconcileFcTypes } from "../fcReconcile";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { scheduleAutosave } from "../persistence";
@@ -37,11 +40,9 @@ function baseName(rel: string): string {
  *  anywhere. */
 export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidianNodeType>) {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
-  const [label, setLabel] = useState(data.label);
   const [color, setColor] = useState(data.color);
   const [collapsed, setCollapsed] = useState(data.collapsed);
   const [body, setBody] = useState(data.body);
-  const [editingLabel, setEditingLabel] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [colorOpen, setColorOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -54,7 +55,8 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   const desktop = isDesktop();
   const vault = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("obsidianVault"));
 
-  useEffect(() => { setLabel(data.label); }, [data.label]);
+  // The shared header title-edit mechanic (click-to-edit, Enter/blur, Escape revert).
+  const title = useEditableLabel(data, () => { void getActiveView()?.rerenderNode(data.id); });
   useEffect(() => { setColor(data.color); }, [data.color]);
   useEffect(() => { setCollapsed(data.collapsed); }, [data.collapsed]);
   useEffect(() => { setBody(data.body); }, [data.body]);
@@ -76,18 +78,17 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   async function applyBody(content: string, sourcePath: string) {
     data.body = content;
     data.fileName = sourcePath;
-    if (sourcePath && (data.label === "Imported Note" || data.label.trim() === "")) {
-      data.label = baseName(sourcePath);
-      setLabel(data.label);
+    if (sourcePath && (data.label === "Import Obsidian Note" || data.label.trim() === "")) {
+      data.label = baseName(sourcePath); // title hook resyncs its display off data.label
     }
     const { removed, retyped } = data.syncFields();
     await dropStrandedFrontmatterCables(data.id, removed, retyped);
     setBody(content);
     setFieldsVersion((v) => v + 1);
     const editor = getActiveEditor();
-    const area = getActiveArea();
-    await area?.update("node", data.id);
-    if (editor && area && retyped.length) reconcileFcTypes(editor, area);
+    const view = getActiveView();
+    await view?.rerenderNode(data.id);
+    if (editor && view && retyped.length) reconcileFcTypes(editor, view);
     bumpConnectionVersion();
     await processGraph();
     scheduleAutosave();
@@ -107,11 +108,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     catch { /* file gone — keep what's loaded */ }
   }
 
-  function commitLabel() {
-    if (label !== data.label) { data.label = label; scheduleAutosave(); void getActiveArea()?.update("node", data.id); }
-    setEditingLabel(false);
-  }
-  function pick(c: string) { setColor(c); data.color = c; void getActiveArea()?.update("node", data.id); scheduleAutosave(); }
+  function pick(c: string) { setColor(c); data.color = c; void getActiveView()?.rerenderNode(data.id); scheduleAutosave(); }
   function toggleCollapse() { const v = !collapsed; setCollapsed(v); data.collapsed = v; scheduleAutosave(); }
 
   const fieldKeys = data.fieldKeys();
@@ -138,25 +135,11 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   const themed = themeAccent(resolveColor(color), mode);
   const vars = { "--note-color": themed, "--note-bg": hexToRgba(themed, 0.3) } as React.CSSProperties;
 
-  function onResizeDown(e: React.PointerEvent) {
-    e.stopPropagation();
-    e.preventDefault();
-    const area = getActiveArea();
-    const startX = e.clientX, startY = e.clientY;
-    const zoom = area?.area.transform.k ?? 1;
-    const startW = data.width, startH = Math.max(data.height, minH);
-    const move = (ev: PointerEvent) => {
-      data.width = Math.round(Math.max(MIN_W, startW + (ev.clientX - startX) / zoom));
-      data.height = Math.round(Math.max(minH, startH + (ev.clientY - startY) / zoom));
-      void area?.update("node", data.id);
-    };
-    const up = () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      scheduleAutosave();
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
+  const Grip = useFlowResizeGrip();
+  function onResize(size: { width: number; height: number }) {
+    data.width = Math.max(MIN_W, size.width);
+    data.height = Math.max(minH, size.height);
+    void getActiveView()?.rerenderNode(data.id);
   }
 
   return (
@@ -178,28 +161,15 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
             <path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        {editingLabel ? (
-          <input
-            className="solenoid-note__name"
-            value={label}
-            placeholder="Imported Note"
-            spellCheck={false}
-            autoFocus
-            onChange={(e) => setLabel(e.target.value)}
-            onBlur={commitLabel}
-            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); else if (e.key === "Escape") { setLabel(data.label); e.currentTarget.blur(); } }}
-            onPointerDown={stop}
-            onMouseDown={stop}
-          />
+        {title.editing ? (
+          <input className="solenoid-note__name" placeholder="Import Obsidian Note" {...title.inputProps} />
         ) : (
           <div
-            className={`solenoid-note__name-display${label.trim() ? "" : " solenoid-note__name-display--empty"}`}
-            title={label || "Imported Note"}
-            onClick={() => setEditingLabel(true)}
-            onPointerDown={stop}
-            onMouseDown={stop}
+            className={`solenoid-note__name-display${data.label.trim() ? "" : " solenoid-note__name-display--empty"}`}
+            title={data.label || "Import Obsidian Note"}
+            {...title.displayProps}
           >
-            {label.trim() || "Imported Note"}
+            {data.label.trim() || "Import Obsidian Note"}
           </div>
         )}
         <button
@@ -252,7 +222,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
                 autoFocus
                 onChange={(e) => setSearch(e.target.value)}
               />
-              <div className="sol-import__list">
+              <div className="sol-import__list nowheel">
                 {filtered.length === 0 ? (
                   <div className="sol-import__empty">No .md files</div>
                 ) : (
@@ -308,7 +278,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
         <div ref={bodyRef} className="solenoid-note__content">
           {data.renderBody.trim() ? (
             <div
-              className="solenoid-note__rendered sol-md"
+              className="solenoid-note__rendered sol-md nowheel"
               onPointerDown={stopDragStart}
               onMouseDown={stopDragStart}
               dangerouslySetInnerHTML={{ __html: bodyHtml }}
@@ -325,12 +295,12 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
         </div>
       )}
 
-      {!collapsed && (
-        <div className="solenoid-note__resize" onPointerDown={onResizeDown} onMouseDown={(e) => e.stopPropagation()}>
+      {!collapsed && Grip && (
+        <Grip className="solenoid-note__resize" minWidth={MIN_W} minHeight={minH} onResize={onResize} onResizeEnd={() => scheduleAutosave()}>
           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
             <path d="M11 5 5 11M11 9l-2 2" />
           </svg>
-        </div>
+        </Grip>
       )}
     </div>
   );

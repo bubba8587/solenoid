@@ -1,6 +1,8 @@
 {
-  "label": "Personal Finance",
   "v": 2,
+  "order": 500,
+  "label": "Personal finance",
+  "group": "Worked examples",
   "nodes": [
     {
       "id": "note-title",
@@ -357,7 +359,7 @@
       "y": -150,
       "init": {
         "label": "Spend by category",
-        "op": "sum"
+        "agg": "sum"
       },
       "stringLiterals": {
         "keys": "Category",
@@ -413,7 +415,7 @@
       "y": 140,
       "init": {
         "label": "Count by category",
-        "op": "count"
+        "agg": "count"
       },
       "stringLiterals": {
         "keys": "Category",
@@ -592,7 +594,7 @@
       "y": 2042,
       "init": {
         "label": "By asset class",
-        "op": "sum"
+        "agg": "sum"
       },
       "stringLiterals": {
         "keys": "Type",
@@ -1480,7 +1482,7 @@
       "y": 3337,
       "init": {
         "label": "Sum by category",
-        "op": "sum"
+        "agg": "sum"
       },
       "stringLiterals": {
         "keys": "Category",

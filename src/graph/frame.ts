@@ -1,5 +1,5 @@
 import { parseCsvRows } from "./csv";
-import { parseDateToSerial, formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
+import { parseDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
 import { isSolError, type SolError } from "./errorValue";
 import { coerceLogical } from "./valueKinds";
 import { type ColumnUnit, type UnitCell, isUnitCell } from "./unitValue";
@@ -236,7 +236,7 @@ export interface FrameSourceColumn {
    *  per row and the raw `cells` are ignored. */
   lambda?: string;
   /** COMPUTED column, inline row-wise formula — the CC node's expr rules verbatim
-   *  (D24); a `lambda` binding wins when both are set. */
+   *  (tableRefSemantics); a `lambda` binding wins when both are set. */
   expr?: string;
 }
 export type FrameSource = FrameSourceColumn[];
@@ -250,7 +250,7 @@ export function coerceFrameCell(type: FrameColType, raw: string): FrameCell {
   if (type === "logical") return coerceLogical(s);
   const n = cellToNumber(s);
   if (n !== null) return n;
-  if (type === "date") { const d = parseDateToSerial(s); return Number.isFinite(d) ? d : NaN; }
+  if (type === "date") { const r = parseDate(s); if (isSolError(r)) return r; return Number.isFinite(r) ? r : NaN; }
   return NaN;
 }
 
@@ -399,7 +399,7 @@ function cellToBool(v: unknown): boolean {
 /** Numeric → number; else all-TRUE/FALSE → logical; else unambiguous ISO → date
  *  (serials); else text. Numeric runs first so a 0/1 mask stays numeric. */
 export function inferColumn(name: string, cells: ReadonlyArray<unknown>): FrameColumn {
-  // Cube cells carry units per-cell (D20): recover the uniform unit and unwrap to
+  // Cube cells carry units per-cell (unitGranularity): recover the uniform unit and unwrap to
   // magnitudes before inference, so a frame→cube→frame round trip keeps units.
   let recovered: ColumnUnit | undefined;
   if (cells.some(isUnitCell)) {
@@ -453,7 +453,7 @@ export function frameFromRows(rows: ReadonlyArray<ReadonlyArray<unknown>>, heade
 
 // ─── Cube: the recursive container (lattice supremum) ─────────────────────────
 
-/** Any data value, recursively. A cube is heterogeneous PER CELL (D20), so a
+/** Any data value, recursively. A cube is heterogeneous PER CELL (unitGranularity), so a
  *  dimensioned cell carries its unit AS A VALUE — a base-SI `UnitCell`. */
 export type CubeCell = FrameCell | FrameValue | CubeValue | UnitCell | CubeCell[];
 
@@ -511,7 +511,7 @@ export function cubeRowCount(c: CubeValue): number {
 }
 
 /** The single frame→cube unit bridge — every flattening path routes through it: a
- *  unit-locked column's cells become per-cell base-SI `UnitCell`s (D20). */
+ *  unit-locked column's cells become per-cell base-SI `UnitCell`s (unitGranularity). */
 export function cubeCellsFromColumn(col: FrameColumn): CubeCell[] {
   return col.unit
     ? col.values.map((v) => tagFrameCellUnit(v, col.unit!) as CubeCell)

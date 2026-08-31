@@ -41,10 +41,28 @@ const triBool = (x: number | boolean | null): Tri =>
 // Condition truthiness for the value-selectors: the coerced boolean AND a raw 0/1.
 const truthy = (x: unknown): boolean => x === true || (typeof x === "number" && x !== 0);
 
+/** A value selector's slots are WILDCARD, so a typed literal lands in whichever of the
+ *  two maps fits and both have to be read back. The inline field writes exactly one, so
+ *  there is no tie to break. */
+type LiteralHost = { literals: Record<string, number>; stringLiterals: Record<string, string> };
+
+function typedLiteral(node: LiteralHost, key: string): number | string | undefined {
+  const text = node.stringLiterals[key];
+  return text !== undefined ? text : node.literals[key];
+}
+
+/** Read a slot: a connected cable's value wins even when null, and only an UNWIRED slot
+ *  falls back to its typed literal (`readInput`'s rule, over both literal maps). The one
+ *  reader for every `autoLiterals` wildcard slot (value-semantics.md). */
+export function pickSlot(node: LiteralHost, inputs: Record<string, unknown[] | undefined>, key: string): unknown {
+  if (inputs[key]?.length) return inputs[key]![0];
+  return typedLiteral(node, key) ?? null;
+}
+
 /** SET = a cable OR a typed literal; UNSET is distinct from a slot deliberately set
  *  to null/0, and an unmatched selector with an UNSET fallback is #N/A, not null. */
-function isSet(inputs: Record<string, unknown[] | undefined>, literals: Record<string, number>, key: string): boolean {
-  return inputs[key] !== undefined || literals[key] !== undefined;
+function isSet(inputs: Record<string, unknown[] | undefined>, node: LiteralHost, key: string): boolean {
+  return inputs[key] !== undefined || typedLiteral(node, key) !== undefined;
 }
 
 // On load/paste a paired node must rebuild the EXACT pair ids present in the captured
@@ -80,15 +98,19 @@ export function compareOp(op: ComparisonOp, x: number, y: number): boolean {
 // `symbol` is the glyph the card shows; `label` is the name alone, which is what an
 // Add-menu search row needs (a bare "≥" would carry nothing there).
 export const COMPARISON_OP_META = {
-  gt:  { symbol: ">", label: "Greater than",     description: "TRUE when A is greater than B. Excel: A>B." },
-  gte: { symbol: "≥", label: "Greater or equal", description: "TRUE when A is greater than or equal to B. Excel: A>=B." },
-  lt:  { symbol: "<", label: "Less than",        description: "TRUE when A is less than B. Excel: A<B." },
-  lte: { symbol: "≤", label: "Less or equal",    description: "TRUE when A is less than or equal to B. Excel: A<=B." },
-  eq:  { symbol: "=", label: "Equal",            description: "TRUE when A equals B. Excel: A=B." },
-  neq: { symbol: "≠", label: "Not equal",        description: "TRUE when A differs from B. Excel: A<>B." },
+  gt:  { symbol: ">", label: "Greater than",     description: "`TRUE` when A is greater than B. Excel: `A>B`." },
+  gte: { symbol: "≥", label: "Greater or equal", description: "`TRUE` when A is greater than or equal to B. Excel: `A>=B`." },
+  lt:  { symbol: "<", label: "Less than",        description: "`TRUE` when A is less than B. Excel: `A<B`." },
+  lte: { symbol: "≤", label: "Less or equal",    description: "`TRUE` when A is less than or equal to B. Excel: `A<=B`." },
+  eq:  { symbol: "=", label: "Equal",            description: "`TRUE` when A equals B. Excel: `A=B`." },
+  neq: { symbol: "≠", label: "Not equal",        description: "`TRUE` when A differs from B. Excel: `A<>B`." },
 } satisfies Record<ComparisonOp, { symbol: string; label: string; description: string }>;
 
 export class ComparisonNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "Ordering values that measure different things is #UNIT!, while equal answers FALSE and not equal TRUE. A plain number compared against a value with a unit is read in that value's display unit.",
+  };
+
   /** Keeps `UnitCell` tags so the comparison runs on BASE-SI magnitudes and
    *  enforces commensurability. */
   unitAware = true;
@@ -101,7 +123,7 @@ export class ComparisonNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: ComparisonOp }) {
     super("Comparison");
-    this.label = init?.label ?? "Compare";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "gt";
     this.addInput("a", numListIn("A"));
     this.addInput("b", numListIn("B"));
@@ -136,13 +158,81 @@ function compareCell(op: ComparisonOp, x: unknown, y: unknown): Tri | SolError {
   return compareOp(op, cmp.l, cmp.r);
 }
 
+// ─── BETWEEN / IS-CLOSE — range and tolerance predicates ─────────────────────
+export class BetweenNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "TRUE when Low ≤ Value ≤ High (inclusive). Broadcasts over a list of Values. R between / pandas Series.between.",
+  };
+  label: string;
+  cachedResult: Tri | Tri[] = null;
+  literals: Record<string, number> = { value: 0, lo: 0, hi: 1 };
+  width = 180;
+  height = 235;
+
+  constructor(init?: { label?: string }) {
+    super("Between");
+    this.label = init?.label ?? "Between";
+    this.addInput("value", numListIn("Value"));
+    this.addInput("lo", numIn("Low"));
+    this.addInput("hi", numIn("High"));
+    this.addOutput("result", logicalComboOut("Result"));
+  }
+
+  data(inputs: { value?: unknown[]; lo?: number[]; hi?: number[] }) {
+    const value = (inputs.value?.length ? inputs.value[0] : this.literals.value) ?? null;
+    const lo = readInput(inputs.lo, this.literals.lo ?? 0);
+    const hi = readInput(inputs.hi, this.literals.hi ?? 0);
+    const result: Tri | Tri[] = lo === null || hi === null ? null
+      : broadcastEl<unknown, Tri>((x) => (typeof x === "number" ? x >= lo && x <= hi : null), value);
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
+export class IsCloseNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    result: "TRUE when |A − B| ≤ tolerance: approximate equality for floats. Broadcasts element-wise. math.isclose.",
+  };
+  label: string;
+  cachedResult: Tri | Tri[] = null;
+  literals: Record<string, number> = { a: 0, b: 0, tol: 1e-9 };
+  width = 180;
+  height = 235;
+
+  constructor(init?: { label?: string }) {
+    super("IsClose");
+    this.label = init?.label ?? "Is Close";
+    this.addInput("a", numListIn("A"));
+    this.addInput("b", numListIn("B"));
+    this.addInput("tol", numIn("Tolerance"));
+    this.addOutput("result", logicalComboOut("Result"));
+  }
+
+  data(inputs: { a?: unknown[]; b?: unknown[]; tol?: number[] }) {
+    const a = (inputs.a?.length ? inputs.a[0] : this.literals.a) ?? null;
+    const b = (inputs.b?.length ? inputs.b[0] : this.literals.b) ?? null;
+    const tol = readInput(inputs.tol, this.literals.tol ?? 1e-9);
+    const result: Tri | Tri[] = tol === null ? null
+      : broadcastEl<unknown, Tri>((x, y) => (typeof x === "number" && typeof y === "number" ? Math.abs(x - y) <= tol : null), a, b);
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
 // ─── IF (value passthrough) ──────────────────────────────────────────────────
 // Returns whichever branch, NOT a logical — boolean combining lives in BooleanOpNode.
 
 export class IfNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    cond: "A list condition picks element by element from the two branches. A blank condition gives a blank result.",
+  };
+
   label: string;
   cachedResult: unknown = null;
   literals: Record<string, number> = { cond: 0, then: 0, else: 0 };
+  stringLiterals: Record<string, string> = {};
+  // The branches are wildcard VALUE slots, so each takes a number or text literal.
+  autoLiterals = true;
   width = 180;
   height = 200;
 
@@ -166,8 +256,8 @@ export class IfNode extends ClassicPreset.Node {
   data(inputs: { cond?: unknown[]; then?: unknown[]; else?: unknown[] }) {
     // Connection-presence, not `??`, so a WIRED null/false survives.
     const cond = inputs.cond?.length ? inputs.cond[0] : this.literals.cond;
-    const then = inputs.then?.length ? inputs.then[0] : this.literals.then;
-    const els  = inputs.else?.length ? inputs.else[0] : this.literals.else;
+    const then = pickSlot(this, inputs as Record<string, unknown[] | undefined>, "then");
+    const els  = pickSlot(this, inputs as Record<string, unknown[] | undefined>, "else");
     this._selectedUnitKey = Array.isArray(cond) || isMissing(cond) ? null : truthy(cond) ? "then" : "else";
     // A missing condition → null: no branch can be picked.
     const result = broadcastEl<unknown, unknown>(
@@ -184,12 +274,12 @@ export class IfNode extends ClassicPreset.Node {
 export type BooleanOp = "and" | "or" | "xor" | "nand" | "nor" | "xnor";
 
 export const BOOLEAN_OP_META = {
-  and:  { label: "AND",  description: "TRUE if ALL inputs are true. Excel: AND(…)." },
-  or:   { label: "OR",   description: "TRUE if ANY input is true. Excel: OR(…)." },
-  xor:  { label: "XOR",  description: "TRUE if an ODD number of inputs are true. Excel: XOR(…)." },
-  nand: { label: "NAND", description: "Negated AND: FALSE only when every input is true. Excel: NOT(AND(…))." },
-  nor:  { label: "NOR",  description: "Negated OR: TRUE only when every input is false. Excel: NOT(OR(…))." },
-  xnor: { label: "XNOR", description: "TRUE if an EVEN number of inputs are true; the negation of XOR" },
+  and:  { label: "AND",  description: "`TRUE` if all inputs are true. Excel: `AND`." },
+  or:   { label: "OR",   description: "`TRUE` if any input is true. Excel: `OR`." },
+  xor:  { label: "XOR",  description: "`TRUE` if an odd number of inputs are true. Excel: `XOR`." },
+  nand: { label: "NAND", description: "Negated `AND`: `FALSE` only when every input is true. Excel: `NOT(AND(…))`." },
+  nor:  { label: "NOR",  description: "Negated `OR`: `TRUE` only when every input is false. Excel: `NOT(OR(…))`." },
+  xnor: { label: "XNOR", description: "`TRUE` if an even number of inputs are true. The negation of `XOR`." },
 } satisfies Record<BooleanOp, { label: string; description: string }>;
 
 /** Folds N tri-valued operands under Kleene three-valued logic. */
@@ -223,7 +313,7 @@ export class BooleanOpNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: BooleanOp; valueKeys?: string[] }) {
     super("BooleanOp");
     this.op = init?.op ?? "and";
-    this.label = init?.label ?? BOOLEAN_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     const vKeys = (init?.valueKeys ?? []).filter((k) => k.startsWith("a"));
     if (vKeys.length) for (const k of vKeys) this.addInputWithKey(k);
     else for (let i = 0; i < 2; i++) this.addValueInput();
@@ -264,6 +354,10 @@ export class BooleanOpNode extends ClassicPreset.Node {
 // ─── NOT (unary logical flip) ────────────────────────────────────────────────
 
 export class NotNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    in: "A wired blank is unknown, so the result is blank rather than TRUE.",
+  };
+
   label: string;
   cachedResult: Tri | Tri[] = null;
   literals: Record<string, number> = { in: 0 };
@@ -291,6 +385,11 @@ export class NotNode extends ClassicPreset.Node {
 export type IFErrorMode = "iferror" | "ifna";
 
 export class IFErrorNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    value: "A blank is not an error and passes through untouched.",
+    fallback: "Replaces each caught cell. A list fallback pairs with the value by position.",
+  };
+
   label: string;
   op: IFErrorMode;
   cachedResult: unknown = null;
@@ -303,7 +402,7 @@ export class IFErrorNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: IFErrorMode }) {
     super("IFError");
-    this.label = init?.label ?? "IFERROR";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "iferror";
     this.addInput("value",    trueAnyIn("Value"));
     this.addInput("fallback", trueAnyIn("Fallback"));
@@ -338,17 +437,18 @@ function replaceCaught(value: unknown, fallback: unknown, caught: (v: unknown) =
 
 export type IsTestOp = "isnumber" | "isblank" | "isnull" | "iserror" | "isna" | "islogical" | "istext" | "isnontext";
 
-// ISBOOLEAN is the card's name for Excel's ISLOGICAL; the `islogical` op value must
-// stay because saves are keyed on it.
+// ISBOOLEAN is Solenoid's name for Excel's ISLOGICAL (author ruling, decisions.md
+// isBooleanName); it is registered as a callable alias so NAME-4 holds. The `islogical`
+// op value stays: saves are keyed on it.
 export const IS_TEST_OP_META = {
-  isnumber:  { label: "ISNUMBER",  description: "TRUE when the value is a number. Excel: ISNUMBER." },
-  isblank:   { label: "ISBLANK",   description: "TRUE when the cell is empty. Excel: ISBLANK." },
-  isnull:    { label: "ISNULL",    description: "TRUE when the value is missing (null)." },
-  iserror:   { label: "ISERROR",   description: "TRUE when the value is any error. Excel: ISERROR." },
-  isna:      { label: "ISNA",      description: "TRUE when the value is #N/A. Excel: ISNA." },
-  islogical: { label: "ISBOOLEAN", description: "TRUE when the value is a logical. Excel: ISLOGICAL." },
-  istext:    { label: "ISTEXT",    description: "TRUE when the value is text. Excel: ISTEXT." },
-  isnontext: { label: "ISNONTEXT", description: "TRUE when the value is anything but text. Excel: ISNONTEXT." },
+  isnumber:  { label: "ISNUMBER",  description: "`TRUE` when the value is a number. Excel: `ISNUMBER`." },
+  isblank:   { label: "ISBLANK",   description: "`TRUE` when the cell is empty. Excel: `ISBLANK`." },
+  isnull:    { label: "ISNULL",    description: "`TRUE` when the value is missing." },
+  iserror:   { label: "ISERROR",   description: "`TRUE` when the value is any error. Excel: `ISERROR`." },
+  isna:      { label: "ISNA",      description: "`TRUE` when the value is `#N/A`. Excel: `ISNA`." },
+  islogical: { label: "ISBOOLEAN", description: "`TRUE` when the value is a Boolean. Excel: `ISLOGICAL`." },
+  istext:    { label: "ISTEXT",    description: "`TRUE` when the value is text. Excel: `ISTEXT`." },
+  isnontext: { label: "ISNONTEXT", description: "`TRUE` when the value is anything but text. Excel: `ISNONTEXT`." },
 } satisfies Record<IsTestOp, { label: string; description: string }>;
 
 // 0/1 (or per-element) → a real logical that renders TRUE/FALSE.
@@ -357,6 +457,10 @@ function toLogical(r: number | number[] | null): boolean | boolean[] | null {
 }
 
 export class IsTestNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    value: "With nothing wired there is nothing to test, so the result is blank. ISBLANK answers TRUE only for a wired blank.",
+  };
+
   label: string;
   op: IsTestOp;
   cachedResult: boolean | boolean[] | boolean[][] | null = null;
@@ -369,7 +473,7 @@ export class IsTestNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: IsTestOp }) {
     super("IsTest");
-    this.label = init?.label ?? "IS.TEST";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "isnumber";
     this.addInput("value", trueAnyIn("Value"));
     this.addOutput("result", logicalComboOut("Result"));
@@ -456,10 +560,17 @@ export class NaNode extends ClassicPreset.Node {
 // ─── Choose ───────────────────────────────────────────────────────────────────
 
 export class ChooseNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    index: "A fractional index rounds to the nearest whole row, and an out-of-range one is #VALUE! rather than blank.",
+  };
+
   label: string;
   cachedResult: unknown = null;
   // Sparse literals: only typed/wired `v*` slots contribute.
   literals: Record<string, number> = { index: 1 };
+  stringLiterals: Record<string, string> = {};
+  // The `v*` rows are wildcard VALUE slots, so each takes a number or text literal.
+  autoLiterals = true;
   nextInputId = 0;
   width = 180;
   height = 250;
@@ -501,6 +612,7 @@ export class ChooseNode extends ClassicPreset.Node {
   removeValueInput(key: string): void {
     this.removeInput(key);
     delete this.literals[key];
+    delete this.stringLiterals[key];
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
@@ -518,7 +630,7 @@ export class ChooseNode extends ClassicPreset.Node {
       this.cachedResult = err;
       return { result: err };
     }
-    const result = inputs[key]?.length ? inputs[key]![0] : (this.literals[key] ?? null);
+    const result = pickSlot(this, inputs, key);
     this.cachedResult = result;
     return { result };
   }
@@ -527,10 +639,18 @@ export class ChooseNode extends ClassicPreset.Node {
 // ─── Switch ───────────────────────────────────────────────────────────────────
 
 export class SwitchNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    expr: "Cases match by exact equality, with no numeric tolerance. A blank expression gives a blank result rather than matching a blank case.",
+    default: "Left unset, an unmatched expression is #N/A. Any typed or wired value, even blank or zero, returns instead.",
+  };
+
   label: string;
   cachedResult: unknown = null;
   // Pair `i` owns `when${i}` / `then${i}`.
   literals: Record<string, number> = { expr: 0, default: 0 };
+  stringLiterals: Record<string, string> = {};
+  // Every slot here is wildcard, so a case can be matched on text as well as a number.
+  autoLiterals = true;
   nextPairId = 0;
   readonly pairLabels: [string, string] = ["When", "Then"];
   width = 180;
@@ -580,13 +700,14 @@ export class SwitchNode extends ClassicPreset.Node {
     const id = aKey.slice(4);
     this.removeInput(`when${id}`);
     this.removeInput(`then${id}`);
-    delete this.literals[`when${id}`];
-    delete this.literals[`then${id}`];
+    for (const k of [`when${id}`, `then${id}`]) {
+      delete this.literals[k];
+      delete this.stringLiterals[k];
+    }
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    const pick = (key: string): unknown =>
-      inputs[key]?.length ? inputs[key]![0] : (this.literals[key] ?? null);
+    const pick = (key: string): unknown => pickSlot(this, inputs, key);
     // Exact equality across every type, with no numeric tolerance and no date-serial
     // special case.
     const expr = pick("expr");
@@ -606,7 +727,7 @@ export class SwitchNode extends ClassicPreset.Node {
     }
     // An UNSET Default is a logic hole → #N/A; a SET one — even null/0 — returns as-is.
     this._selectedUnitKey = "default";
-    if (!isSet(inputs, this.literals, "default")) {
+    if (!isSet(inputs, this, "default")) {
       const err = solError("#N/A", "No SWITCH case matched and no Default was set");
       this.cachedResult = err;
       return { result: err };
@@ -620,10 +741,17 @@ export class SwitchNode extends ClassicPreset.Node {
 // ─── IFS ──────────────────────────────────────────────────────────────────────
 
 export class IfsNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    otherwise: "Left unset, falling through every condition is #N/A. Any typed or wired value, even blank or zero, returns instead.",
+  };
+
   label: string;
   cachedResult: unknown = null;
   // Pair `i` owns `cond${i}` / `val${i}`; sparse literals, only set slots contribute.
   literals: Record<string, number> = {};
+  stringLiterals: Record<string, string> = {};
+  // The `val*` rows and Otherwise are wildcard VALUE slots (a `cond*` stays logical).
+  autoLiterals = true;
   nextPairId = 0;
   readonly pairLabels: [string, string] = ["If", "Then"];
   width = 180;
@@ -671,13 +799,14 @@ export class IfsNode extends ClassicPreset.Node {
     const id = aKey.slice(4);
     this.removeInput(`cond${id}`);
     this.removeInput(`val${id}`);
-    delete this.literals[`cond${id}`];
-    delete this.literals[`val${id}`];
+    for (const k of [`cond${id}`, `val${id}`]) {
+      delete this.literals[k];
+      delete this.stringLiterals[k];
+    }
   }
 
   data(inputs: Record<string, unknown[] | undefined>) {
-    const pick = (key: string): unknown =>
-      inputs[key]?.length ? inputs[key]![0] : (this.literals[key] ?? null);
+    const pick = (key: string): unknown => pickSlot(this, inputs, key);
     for (const [condKey, valKey] of this.valuePairKeys()) {
       const cond = pick(condKey);
       // A WIRED blank condition is UNKNOWN — the row might have matched, so the whole
@@ -697,7 +826,7 @@ export class IfsNode extends ClassicPreset.Node {
     // An UNSET Otherwise is a logic hole → a catchable #N/A, NOT a silent null that
     // aggregators skip; a SET fallback — even null/0 — is returned.
     this._selectedUnitKey = "otherwise";
-    if (!isSet(inputs, this.literals, "otherwise")) {
+    if (!isSet(inputs, this, "otherwise")) {
       const err = solError("#N/A", "No IFS condition matched and no Otherwise was set");
       this.cachedResult = err;
       return { result: err };
@@ -713,8 +842,8 @@ export class IfsNode extends ClassicPreset.Node {
 export type ParityOp = "iseven" | "isodd";
 
 export const PARITY_OP_META = {
-  iseven: { label: "ISEVEN", description: "TRUE if the integer part is even. Excel: ISEVEN(x)." },
-  isodd:  { label: "ISODD",  description: "TRUE if the integer part is odd. Excel: ISODD(x)." },
+  iseven: { label: "ISEVEN", description: "`TRUE` if the integer part is even. Excel: `ISEVEN`." },
+  isodd:  { label: "ISODD",  description: "`TRUE` if the integer part is odd. Excel: `ISODD`." },
 } satisfies Record<ParityOp, { label: string; description: string }>;
 
 export class IsEvenOddNode extends ClassicPreset.Node {
@@ -729,7 +858,7 @@ export class IsEvenOddNode extends ClassicPreset.Node {
     super("IsEvenOdd");
     const op = init?.op ?? "iseven";
     this.op = op;
-    this.label = init?.label ?? PARITY_OP_META[op].label;
+    this.label = init?.label ?? "";
     this.addInput("in", numListIn("In"));
     this.addOutput("result", logicalComboOut("Result"));
   }

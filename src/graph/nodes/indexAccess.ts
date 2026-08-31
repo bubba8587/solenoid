@@ -3,9 +3,9 @@
 // Pure — no React/Rete.
 //
 // SCOPE: scalar / list / matrix — everything both surfaces can hold. Frame and
-// cube slicing stays in the node (FX-9: neither reaches a formula), because
+// cube slicing stays in the node (hideMatrixFromVendor: neither reaches a formula), because
 // `frame.ts` imports the socket lattice and the formula path must not load it
-// (FX-2, formulaPathIsReteFree.test.ts). Same reason `tagFrameCellUnit` arrives
+// (implReteFree, formulaPathIsReteFree.test.ts). Same reason `tagFrameCellUnit` arrives
 // as an argument instead of an import — `unitColumn.ts` reaches rete through
 // unitBridge.
 
@@ -57,13 +57,13 @@ export function indexInto(v: unknown, row: IndexAxis, col: IndexAxis, tagUnit?: 
   if (!Array.isArray(v)) {
     // A scalar is a 1×1 — row/col 1 (or [all]) returns it, anything else #REF!.
     const ok = (rowAll || r === 0) && (colAll || c === 0);
-    return ok ? v : solError("#REF!", "Index is outside a single value; only index 1 exists");
+    return ok ? v : solError("#REF!", "Index is outside a single value. Only index 1 exists");
   }
 
   if (Array.isArray((v as unknown[])[0])) {
     // A genuine 2-D matrix.
     const grid = v as unknown[][];
-    // A homogeneous matrix unit (D20) must ride out into the extraction, so each
+    // A homogeneous matrix unit (unitGranularity) must ride out into the extraction, so each
     // extracted number is tagged; `tag` is identity for a plain matrix.
     const mUnit = matrixUnitOf(v);
     const tag = (x: unknown): unknown => (mUnit && tagUnit ? tagUnit(x, mUnit) : x);

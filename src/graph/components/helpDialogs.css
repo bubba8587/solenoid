@@ -65,6 +65,7 @@
   font-size: 14px;
   font-weight: 600;
   color: var(--text);
+  text-wrap-style: balance;
 }
 .solenoid-helpdlg__about-body {
   margin: 0 auto 20px;
@@ -72,6 +73,8 @@
   font-size: 13px;
   line-height: 1.55;
   color: var(--text-dim);
+  /* Centered and only a few lines deep, so the block reads as a shape. */
+  text-wrap-style: balance;
 }
 
 /* ── What's New ── */
@@ -97,11 +100,13 @@
   font-weight: 700;
   line-height: 1.2;
   color: var(--text-bright);
+  text-wrap-style: balance;
 }
 .solenoid-helpdlg__slide-body {
   font-size: 14px;
   line-height: 1.55;
   color: var(--text-dim);
+  text-wrap-style: pretty;
 }
 
 .solenoid-helpdlg__nav {

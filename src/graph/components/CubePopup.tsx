@@ -82,16 +82,17 @@ function mdEsc(s: string): string {
 }
 /** Full source-order serialization of the CURRENT drill level — every row, not
  *  just the rendered window (text is cheap; only the DOM needed the cap). */
-function levelText(view: DrillView, headers: string[] | null, rows: number, cols: number, kind: "csv" | "md"): string {
+/** The level as text — every row, in the given (visual-sort) order. */
+function levelText(view: DrillView, headers: string[] | null, order: readonly number[], cols: number, kind: "csv" | "md"): string {
   const head = headers ?? Array.from({ length: cols }, (_, c) => `Col ${c + 1}`);
   const row = (r: number) => Array.from({ length: cols }, (_, c) => tokenAt(view, r, c));
   if (kind === "csv") {
     const lines = [head.map(csvEsc).join(",")];
-    for (let r = 0; r < rows; r++) lines.push(row(r).map(csvEsc).join(","));
+    for (const r of order) lines.push(row(r).map(csvEsc).join(","));
     return lines.join("\n");
   }
   const md = [head.map(mdEsc), head.map(() => "---")];
-  for (let r = 0; r < rows; r++) md.push(row(r).map(mdEsc));
+  for (const r of order) md.push(row(r).map(mdEsc));
   return md.map((cells) => `| ${cells.join(" | ")} |`).join("\n");
 }
 
@@ -111,10 +112,11 @@ export function CubePopup() {
   // in the DOM and kill the renderer.
   const MAX_VISIBLE_ROWS = 1000;
   const rowsTruncated = rows > MAX_VISIBLE_ROWS;
-  const shownRows = rowsTruncated ? MAX_VISIBLE_ROWS : rows;
-  // Visual-only sort: `cell()` is handed the SOURCE row index, so drilling still
-  // lands on the right nested value.
-  const sortOrder = sortedOrder(shownRows, sort, sortKey);
+  // Visual-only sort over EVERY row: `cell()` is handed the SOURCE row index, so
+  // drilling still lands on the right nested value; the render shows the first
+  // MAX_VISIBLE_ROWS of the order, Copy emits all of it.
+  const sortOrder = sortedOrder(rows, sort, sortKey);
+  const visibleOrder = rowsTruncated ? sortOrder.slice(0, MAX_VISIBLE_ROWS) : sortOrder;
 
   const grouped = !!state.groupColor;
   const cardStyle = popupCardVars(state);
@@ -150,13 +152,13 @@ export function CubePopup() {
       headerActions={
         <PopupOverflowMenu
           items={[
-            { label: "Copy CSV", onClick: () => void copyText(levelText(view, headers, rows, cols, "csv")) },
-            { label: "Copy as Markdown", onClick: () => void copyText(levelText(view, headers, rows, cols, "md")) },
+            { label: "Copy CSV", onClick: () => void copyText(levelText(view, headers, sortOrder, cols, "csv")) },
+            { label: "Copy as Markdown", onClick: () => void copyText(levelText(view, headers, sortOrder, cols, "md")) },
             {
               label: "Export CSV…",
               onClick: () => {
                 const base = (view.label || "cube").replace(/[^\w.-]+/g, "_") || "cube";
-                void saveCsvFileDialog(`${base}.csv`, levelText(view, headers, rows, cols, "csv"));
+                void saveCsvFileDialog(`${base}.csv`, levelText(view, headers, sortOrder, cols, "csv"));
               },
             },
           ]}
@@ -197,7 +199,7 @@ export function CubePopup() {
             </tr>
           </thead>
           <tbody>
-            {sortOrder.map((r) => (
+            {visibleOrder.map((r) => (
               <tr key={r}>
                 <th className="table-popup__rowhead">{r + 1}</th>
                 {Array.from({ length: cols }, (_, c) => (

@@ -27,6 +27,7 @@
 //
 // IFERROR catches every code; IFNA / ISNA match only #N/A.
 import { perfEnabled, recordNode } from "./perfProbe";
+import { displayNameOf } from "./nodeNamer";
 
 export type SolErrorCode =
   | "#DIV/0!" | "#N/A"
@@ -34,6 +35,7 @@ export type SolErrorCode =
   | "#SYNTAX!" | "#VALUE!" | "#TYPE!" | "#SHAPE!" | "#UNIT!"
   | "#NAME?" | "#REF!" | "#CIRC!"
   | "#SOLVE!" // the Equation node found no root (equationSolve.ts)
+  | "#AMBIGUOUS!" // a date string could read as either D/M or M/D (dateSerial.ts)
   | "#ERROR!";
 
 const TAG = "__solError";
@@ -76,6 +78,7 @@ export const ERROR_EXPLANATIONS: Record<SolErrorCode, string> = {
   "#REF!":   "A reference points at something that no longer exists, usually a deleted node or column.",
   "#CIRC!":  "A circular dependency: the calculation feeds back into itself. Remove one cable in the cycle to break it.",
   "#SOLVE!": "The Equation node found no value that satisfies the equation. Check the known values, or rearrange the equation.",
+  "#AMBIGUOUS!": "A date like 3/4/2026 could mean either 3 April or March 4 — Solenoid won't guess. Write the month as a name (3-Apr-2026), use an unambiguous day (13/4/2026), or the ISO form (2026-04-03).",
   "#ERROR!": "The node failed unexpectedly. If it persists, it's likely a Solenoid bug worth reporting.",
 };
 
@@ -183,12 +186,8 @@ export function findCellError(v: unknown): SolError | null {
   return null;
 }
 
-// Duplicates nodeNames.ts's baseName rather than importing it — nodeNames pulls in
-// process.ts, which would cycle back into this module.
-function nodeDisplayName(n: { label?: string; constructor: { name: string } }): string {
-  const label = n.label?.trim();
-  return label || n.constructor.name.replace(/Node$/, "").replace(/([a-z])([A-Z])/g, "$1 $2");
-}
+// Late-bound (nodeNamer.ts): catalogUtils would cycle back into this module.
+const nodeDisplayName = (n: object): string => displayNameOf(n);
 
 /** Tags untagged SolErrors with `origin`; already-tagged ones are left alone so
  *  origin points at the FIRST place an error was seen. Returns `v` uncopied when

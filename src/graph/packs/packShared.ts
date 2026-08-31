@@ -13,7 +13,7 @@ export { solError, isSolError } from "../errorValue";
 export type { SolError } from "../errorValue";
 
 // A declared function is callable inside any Expression/LAMBDA. Names follow the
-// D19 rule (bare, spaces removed; Excel-named ops keep their Excel name), and
+// formulaNaming rule (bare, spaces removed; Excel-named ops keep their Excel name), and
 // `formulaExtensions.ts` fails loudly rather than shadowing a core name.
 export interface PackFormula {
   /** Dispatch name, UPPERCASE. */

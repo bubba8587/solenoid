@@ -2,9 +2,12 @@ import { loadGraph } from "./persistence";
 import type { SavedGraph } from "./persistence";
 
 // Seeds are plain JSON in ./seedGraphs/ — the SAME shape serializeGraph produces,
-// plus two menu-only fields (`label`, `order`) that loadGraph ignores.
-type SeedFile = SavedGraph & { label?: string; order?: number };
+// plus three menu-only fields (`label`, `order`, `group`) that loadGraph ignores.
+// seeds.test.ts requires all three on every seed, so the fallbacks below are
+// load-safety only, not an authoring path.
+type SeedFile = SavedGraph & { label?: string; order?: number; group?: string };
 const DEFAULT_ORDER = 1000;
+const DEFAULT_GROUP = "More";
 
 // Vite inlines every matching JSON at build time.
 const modules = import.meta.glob<SeedFile>("./seedGraphs/*.json", {
@@ -23,13 +26,20 @@ function labelFromId(id: string): string {
 
 export type SeedId = string;
 
-// Insertion order IS the menu order (the menu maps Object.entries).
-export const SEEDS: Record<string, { label: string; graph: SavedGraph }> = {};
+// Insertion order IS the menu order (consumers map Object.entries).
+export const SEEDS: Record<string, { label: string; group: string; graph: SavedGraph }> = {};
+// The same seeds partitioned for the menu: groups appear in order of their
+// first (lowest-order) member, seeds in global order within each.
+export const SEED_GROUPS: { head: string; ids: SeedId[] }[] = [];
 const ordered = Object.entries(modules)
   .map(([path, mod]) => ({ id: idFromPath(path), mod, order: mod.order ?? DEFAULT_ORDER }))
   .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
 for (const { id, mod } of ordered) {
-  SEEDS[id] = { label: mod.label ?? labelFromId(id), graph: mod };
+  const group = mod.group ?? DEFAULT_GROUP;
+  SEEDS[id] = { label: mod.label ?? labelFromId(id), group, graph: mod };
+  const bucket = SEED_GROUPS.find((g) => g.head === group);
+  if (bucket) bucket.ids.push(id);
+  else SEED_GROUPS.push({ head: group, ids: [id] });
 }
 
 // The seed loaded on a fresh start (no autosave).

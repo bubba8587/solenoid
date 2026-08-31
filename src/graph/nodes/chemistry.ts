@@ -128,7 +128,7 @@ export function searchElements(query: string): ElementMeta[] {
 
 export function molarMass(input: string): number | SolError {
   const s = input.replace(/\s+/g, "");
-  if (!s) return solError("#VALUE!", "Type a chemical formula, e.g. H2O");
+  if (!s) return solError("#VALUE!", "Type a chemical formula, such as H2O");
   let total = 0;
   for (const segRaw of s.split(/[·•*]|(?<=[)\]\d])\.(?=\d*[A-Z])/)) {
     // A hydrate segment may open with a multiplier: CuSO4·5H2O.
@@ -187,20 +187,20 @@ function parseGroup(s: string, i: number, close: string): [number, number] | Sol
 
 export class ElementNode extends ClassicPreset.Node {
   label: string;
-  op: string; // element symbol
+  symbol: string; // element symbol
   width = 220;
   height = 170;
 
-  constructor(init?: { label?: string; op?: string }) {
+  constructor(init?: { label?: string; symbol?: string }) {
     super("Element");
-    this.op = init?.op && ELEMENT_BY_SYMBOL.has(init.op) ? init.op : "H";
+    this.symbol = init?.symbol && ELEMENT_BY_SYMBOL.has(init.symbol) ? init.symbol : "H";
     this.label = init?.label ?? "Element";
     this.addOutput("mass", numOut("g/mol"));
     this.addOutput("number", numOut("Z"));
   }
 
   data() {
-    const el = ELEMENT_BY_SYMBOL.get(this.op)!;
+    const el = ELEMENT_BY_SYMBOL.get(this.symbol)!;
     return { mass: el.mass, number: el.n };
   }
 

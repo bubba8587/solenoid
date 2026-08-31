@@ -1,0 +1,314 @@
+{
+  "v": 2,
+  "order": 215,
+  "label": "Script: worked examples",
+  "group": "Values & units",
+  "nodes": [
+    {
+      "id": "note-head",
+      "type": "NoteNode",
+      "x": 0,
+      "y": -360,
+      "init": {
+        "label": "Script: worked examples",
+        "color": "amber",
+        "body": "One JavaScript function per node: parameters are the inputs, the return value is the result, and the value types itself. A script can return a single value, a list, rows of values, or rows of {name: value} objects, which become a frame with typed columns; rows nested inside a row's cell make a cube. A wired frame or cube arrives the same way, as rows. A date input arrives as its Excel serial; return a Date, or Solenoid.date(serial), to make dates. The examples below return a number, a list, a text summary, a frame that a second script reads back, dates, and a cube rolled up by a verb.",
+        "width": 560
+      }
+    },
+    {
+      "id": "in-samples",
+      "type": "NumberInputNode",
+      "x": 0,
+      "y": 60,
+      "init": {
+        "label": "Samples",
+        "value": 100000
+      }
+    },
+    {
+      "id": "sc-pi",
+      "type": "ScriptNode",
+      "x": 320,
+      "y": 0,
+      "init": {
+        "label": "Monte Carlo π",
+        "expr": "(samples) => {\n  let hits = 0;\n  for (let i = 0; i < samples; i++) {\n    const x = Math.random();\n    const y = Math.random();\n    if (x * x + y * y <= 1) hits++;\n  }\n  return 4 * hits / samples;\n}"
+      }
+    },
+    {
+      "id": "d-pi",
+      "type": "DisplayNode",
+      "x": 700,
+      "y": 130,
+      "init": {
+        "label": "≈ 3.14"
+      }
+    },
+    {
+      "id": "in-n",
+      "type": "NumberInputNode",
+      "x": 0,
+      "y": 560,
+      "init": {
+        "label": "27",
+        "value": 27
+      }
+    },
+    {
+      "id": "sc-collatz",
+      "type": "ScriptNode",
+      "x": 320,
+      "y": 480,
+      "init": {
+        "label": "Collatz path",
+        "expr": "(n) => {\n  const path = [n];\n  while (n > 1 && path.length < 1000) {\n    n = n % 2 ? 3 * n + 1 : n / 2;\n    path.push(n);\n  }\n  return path;\n}"
+      }
+    },
+    {
+      "id": "spark",
+      "type": "SparklineNode",
+      "x": 700,
+      "y": 480,
+      "init": {
+        "label": "Sparkline"
+      }
+    },
+    {
+      "id": "sc-summary",
+      "type": "ScriptNode",
+      "x": 1020,
+      "y": 480,
+      "init": {
+        "label": "Path summary",
+        "expr": "(path) => {\n  const steps = path.length - 1;\n  const peak = Math.max(...path);\n  return steps + \" steps, peak \" + peak;\n}"
+      }
+    },
+    {
+      "id": "d-summary",
+      "type": "DisplayNode",
+      "x": 1360,
+      "y": 560,
+      "init": {
+        "label": "→ 111 steps, peak 9232"
+      }
+    },
+    {
+      "id": "in-principal",
+      "type": "NumberInputNode",
+      "x": 0,
+      "y": 1000,
+      "init": {
+        "label": "Principal",
+        "value": 250000
+      }
+    },
+    {
+      "id": "sc-loan",
+      "type": "ScriptNode",
+      "x": 320,
+      "y": 880,
+      "init": {
+        "label": "Amortization table",
+        "expr": "(principal, rate, years) => {\n  const r = rate / 100 / 12;\n  const n = years * 12;\n  const pow = (1 + r) ** -n;\n  const pay = principal * r / (1 - pow);\n  const rows = [];\n  let bal = principal;\n  let paid = 0;\n  for (let m = 1; m <= n; m++) {\n    const i = bal * r;\n    paid += i;\n    bal -= pay - i;\n    if (m % 60 === 0) rows.push({\n      year: m / 12,\n      interest: Math.round(paid),\n      balance: Math.round(bal),\n    });\n  }\n  return rows;\n}"
+      },
+      "literals": {
+        "rate": 4.5,
+        "years": 30
+      }
+    },
+    {
+      "id": "d-loan",
+      "type": "DisplayNode",
+      "x": 700,
+      "y": 1000,
+      "init": {
+        "label": "Every 5 years"
+      }
+    },
+    {
+      "id": "sc-total",
+      "type": "ScriptNode",
+      "x": 1020,
+      "y": 880,
+      "init": {
+        "label": "Reads the frame back",
+        "expr": "(sched) => {\n  const last = sched[sched.length - 1];\n  return \"Total interest \" + last.interest;\n}"
+      }
+    },
+    {
+      "id": "d-total",
+      "type": "DisplayNode",
+      "x": 1360,
+      "y": 990,
+      "init": {
+        "label": "→ Total interest 206017"
+      }
+    },
+    {
+      "id": "in-year",
+      "type": "NumberInputNode",
+      "x": 0,
+      "y": 1620,
+      "init": {
+        "label": "Year",
+        "value": 2026
+      }
+    },
+    {
+      "id": "sc-fri13",
+      "type": "ScriptNode",
+      "x": 320,
+      "y": 1540,
+      "init": {
+        "label": "Friday the 13ths",
+        "expr": "(year) => {\n  const hits = [];\n  for (let m = 0; m < 12; m++) {\n    const d = new Date(Date.UTC(year, m, 13));\n    if (d.getUTCDay() === 5) hits.push(d);\n  }\n  return hits;\n}"
+      }
+    },
+    {
+      "id": "d-fri13",
+      "type": "DisplayNode",
+      "x": 700,
+      "y": 1620,
+      "init": {
+        "label": "→ 13-Feb, 13-Mar, 13-Nov"
+      }
+    },
+    {
+      "id": "in-growth",
+      "type": "NumberInputNode",
+      "x": 0,
+      "y": 2100,
+      "init": {
+        "label": "Growth",
+        "value": 1.1
+      }
+    },
+    {
+      "id": "sc-cube",
+      "type": "ScriptNode",
+      "x": 320,
+      "y": 2040,
+      "init": {
+        "label": "Nested rows: a cube",
+        "expr": "(growth) => [\"North\", \"South\"]\n  .map((region, i) => ({\n    region,\n    quarters: [1, 2, 3, 4].map((q) => ({\n      quarter: q,\n      sales: Math.round(\n        100 * (i + 1) * growth ** q,\n      ),\n    })),\n  }))"
+      }
+    },
+    {
+      "id": "rollup",
+      "type": "CubeRollupNode",
+      "x": 700,
+      "y": 2060,
+      "init": {
+        "label": "Cube Rollup",
+        "agg": "sum"
+      },
+      "stringLiterals": {
+        "nested": "quarters",
+        "column": "sales",
+        "as": "Total"
+      }
+    },
+    {
+      "id": "d-cube",
+      "type": "DisplayNode",
+      "x": 1040,
+      "y": 2100,
+      "init": {
+        "label": "→ North 510, South 1021"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "in-samples",
+      "sourceOutput": "value",
+      "target": "sc-pi",
+      "targetInput": "samples"
+    },
+    {
+      "source": "sc-pi",
+      "sourceOutput": "result",
+      "target": "d-pi",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-n",
+      "sourceOutput": "value",
+      "target": "sc-collatz",
+      "targetInput": "n"
+    },
+    {
+      "source": "sc-collatz",
+      "sourceOutput": "result",
+      "target": "spark",
+      "targetInput": "values"
+    },
+    {
+      "source": "sc-collatz",
+      "sourceOutput": "result",
+      "target": "sc-summary",
+      "targetInput": "path"
+    },
+    {
+      "source": "sc-summary",
+      "sourceOutput": "result",
+      "target": "d-summary",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-principal",
+      "sourceOutput": "value",
+      "target": "sc-loan",
+      "targetInput": "principal"
+    },
+    {
+      "source": "sc-loan",
+      "sourceOutput": "result",
+      "target": "d-loan",
+      "targetInput": "in"
+    },
+    {
+      "source": "sc-loan",
+      "sourceOutput": "result",
+      "target": "sc-total",
+      "targetInput": "sched"
+    },
+    {
+      "source": "sc-total",
+      "sourceOutput": "result",
+      "target": "d-total",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-year",
+      "sourceOutput": "value",
+      "target": "sc-fri13",
+      "targetInput": "year"
+    },
+    {
+      "source": "sc-fri13",
+      "sourceOutput": "result",
+      "target": "d-fri13",
+      "targetInput": "in"
+    },
+    {
+      "source": "in-growth",
+      "sourceOutput": "value",
+      "target": "sc-cube",
+      "targetInput": "growth"
+    },
+    {
+      "source": "sc-cube",
+      "sourceOutput": "result",
+      "target": "rollup",
+      "targetInput": "cube"
+    },
+    {
+      "source": "rollup",
+      "sourceOutput": "frame",
+      "target": "d-cube",
+      "targetInput": "in"
+    }
+  ]
+}

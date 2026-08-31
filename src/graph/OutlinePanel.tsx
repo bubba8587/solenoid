@@ -1,5 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type MouseEvent } from "react";
-import { getEditor, getArea, selectNode, unselectAllNodes, connectionVersionStore } from "./process";
+import { getEditor, getView } from "./process";
+import { selectNode, unselectAllNodes } from "./canvasCommands";
+import { connectionVersionStore } from "./graphSignals";
 import { outlineSearch } from "./outlineStore";
 import { registerChrome } from "./chromeToggle";
 import { touchSelectStore } from "./touchSelectStore";
@@ -16,6 +18,7 @@ import { appThemeStore } from "./appTheme";
 import { themeAccent, resolveColor, hexToRgba } from "./palette";
 import "./OutlinePanel.css";
 import { CloseIcon } from "./components/CloseIcon";
+import { nodeDisplayName, nodeName } from "./catalogUtils";
 
 /** Left-docked outline / navigator, mirroring canvas group membership and collapse
  *  state; Format Controllers are filtered out entirely. */
@@ -41,11 +44,9 @@ function colorOf(n: unknown, mode: "dark" | "light"): string {
   return themeAccent(base, mode);
 }
 
-// The same type string the node header shows on hover (nodeKit's typeHint).
+// The catalog name, the same string the node header shows on hover.
 function typeOf(n: unknown): string {
-  return (n as { constructor: { name: string } }).constructor.name
-    .replace(/Node$/, "")
-    .replace(/([a-z])([A-Z])/g, "$1 $2");
+  return nodeName(n as object) ?? "";
 }
 
 function catOf(n: unknown, wiredIn: Set<string>, wiredOut: Set<string>): Cat {
@@ -67,7 +68,7 @@ type SortMode = "position" | "alpha";
 function buildState(mode: "dark" | "light", sortMode: SortMode): State {
   const editor = getEditor();
   if (!editor) return { tree: [], flat: [] };
-  const area = getArea();
+  const view = getView();
   const nodes = editor.getNodes();
   const byId = new Map(nodes.map((n) => [n.id, n]));
 
@@ -77,8 +78,8 @@ function buildState(mode: "dark" | "light", sortMode: SortMode): State {
 
   // Position mode reads top→bottom in loose row bands, then left→right; ROW_BAND is
   // intentionally GENEROUS so the order doesn't react to small y jitter.
-  const labelOf = (n: (typeof nodes)[number]) => (n as { label?: string }).label ?? "";
-  const posOf = (n: (typeof nodes)[number]) => area?.nodeViews.get(n.id)?.position ?? { x: 0, y: 0 };
+  const labelOf = (n: (typeof nodes)[number]) => nodeDisplayName(n);
+  const posOf = (n: (typeof nodes)[number]) => view?.position(n.id) ?? { x: 0, y: 0 };
   const ROW_BAND = 120;
   const cmp = sortMode === "alpha"
     ? (a: (typeof nodes)[number], b: (typeof nodes)[number]) =>
@@ -99,7 +100,7 @@ function buildState(mode: "dark" | "light", sortMode: SortMode): State {
     const color = colorOf(n, mode);
     return {
       id: n.id,
-      label: (n as { label?: string }).label ?? "Node",
+      label: nodeDisplayName(n),
       type: typeOf(n),
       color,
       selected: !!(n as { selected?: boolean }).selected,
@@ -131,41 +132,41 @@ function buildState(mode: "dark" | "light", sortMode: SortMode): State {
 /** Select + pan-to-center a node; shared with the palette's jump-to-node. */
 export async function focusNode(id: string) {
   const editor = getEditor();
-  const area = getArea();
-  if (!editor || !area) return;
+  const view = getView();
+  if (!editor || !view) return;
   unselectAllNodes();
   selectNode(id, false);
   const node = editor.getNode(id);
-  const box = measuredBox(area, id, editor);
+  const box = measuredBox(view, id, editor);
   if (!node || !box) return;
-  const { k } = area.area.transform;
-  const rect = area.container.getBoundingClientRect();
+  const { k } = view.transform;
+  const rect = view.container.getBoundingClientRect();
   // measuredBox reads the LIVE size first — a collapsed group's STORED box is its
   // expanded one, which would off-center the camera.
   const cx = box.x + box.w / 2;
   const cy = box.y + box.h / 2;
-  await area.area.translate(rect.width / 2 - cx * k, rect.height / 2 - cy * k);
+  await view.pan(rect.width / 2 - cx * k, rect.height / 2 - cy * k);
 }
 
 function toggleGroup(id: string) {
   const editor = getEditor();
-  const area = getArea();
-  if (!editor || !area) return;
+  const view = getView();
+  if (!editor || !view) return;
   const g = editor.getNode(id);
   if (!(g instanceof GroupNode)) return;
-  void setGroupsCollapsed(editor, area, [g], !g.collapsed);
+  void setGroupsCollapsed(editor, view, [g], !g.collapsed);
 }
 
 // Routes through setGroupsCollapsed so the neighbor-push and expand sweep apply,
 // same as the single-group toggle.
 export function toggleAllGroups() {
   const editor = getEditor();
-  const area = getArea();
-  if (!editor || !area) return;
+  const view = getView();
+  if (!editor || !view) return;
   const groups = editor.getNodes().filter((n): n is GroupNode => n instanceof GroupNode);
   if (groups.length === 0) return;
   const collapse = groups.some((g) => !g.collapsed);
-  void setGroupsCollapsed(editor, area, groups, collapse);
+  void setGroupsCollapsed(editor, view, groups, collapse);
 }
 
 /** Live group-collapse summary; reads the editor directly, so callers must

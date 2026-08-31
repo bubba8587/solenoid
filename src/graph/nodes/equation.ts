@@ -24,7 +24,7 @@ function dimOfVal(v: unknown): Dim {
   return DIMENSIONLESS;
 }
 
-/** A currency's real identity (VAL-19), threaded through dimEval so `$P = €C`
+/** A currency's real identity (noMixCurrencies), threaded through dimEval so `$P = €C`
  *  refuses instead of holding by magnitude. */
 function codeOfVal(v: unknown, dim: Dim): string | undefined {
   if (!dimEqual(dim, { currency: 1 })) return undefined;
@@ -88,6 +88,10 @@ function guardVal(raw: unknown): Val {
 }
 
 export class EquationNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    holds: "Equality is judged within a small relative tolerance, cell by cell for lists.",
+  };
+
   /** Keeps `UnitCell` tags on its inputs — runs the dimensional interpretation itself (FC A4; see coerceInputs). */
   unitAware = true;
   label: string;
@@ -232,7 +236,7 @@ export class EquationNode extends ClassicPreset.Node {
           this.cachedHolds = unitError("The two sides carry different units.");
           return finish(null);
         }
-        // Different CURRENCIES share the dimension but can't be equated (VAL-19):
+        // Different CURRENCIES share the dimension but can't be equated (noMixCurrencies):
         // `$5 = €5` must refuse, not "hold" by base magnitude.
         if (dl !== null && dr !== null && dl.code !== undefined && dr.code !== undefined && dl.code !== dr.code) {
           this.cachedHolds = unitError(`Can't equate ${dl.code} and ${dr.code} — different currencies, no exchange rate.`);

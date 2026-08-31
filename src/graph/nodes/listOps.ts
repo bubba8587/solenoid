@@ -2,6 +2,7 @@ import { isSolError, solError, type SolError } from "../errorValue";
 import { isCx } from "../cxValue";
 import { forAggregate, isMissing } from "../valueKinds";
 import { iterMin, iterMax } from "./mathUtils";
+import { percentileOf } from "./statsOps";
 
 // ONE implementation per list op, called by both the node's `data()` and the formula
 // registration, so the two surfaces cannot disagree. Kept out of list.ts, which pulls in rete.
@@ -77,6 +78,229 @@ export function normalizeList(arr: readonly Cell[]): Cell[] | SolError {
 }
 
 
+/** Slide every element k places (k > 0 = later, toward the end). Vacated slots are
+ *  blank; `wrap` fills them from the elements that fell off the other end (numpy.roll). */
+export function shiftList(arr: readonly Cell[], k: number, wrap: boolean): Cell[] {
+  const n = arr.length;
+  if (n === 0) return [];
+  const s = Math.round(k);
+  if (wrap) {
+    const m = ((s % n) + n) % n;
+    return arr.map((_, i) => arr[(i - m + n) % n]);
+  }
+  return arr.map((_, i) => {
+    const j = i - s;
+    return j >= 0 && j < n ? arr[j] : null;
+  });
+}
+
+/** Consecutive percent change (x[i] − x[i−1]) / x[i−1], one shorter than the input; a
+ *  missing neighbour makes that entry blank, a zero base is #DIV/0!, an error propagates. */
+export function pctChangeList(arr: readonly Cell[]): Cell[] {
+  return arr.slice(1).map((v, i) => {
+    const prev = arr[i];
+    if (isSolError(v)) return v;
+    if (isSolError(prev)) return prev;
+    if (isMissing(v) || isMissing(prev)) return null;
+    if ((prev as number) === 0) return solError("#DIV/0!", "Percent change from zero is undefined");
+    return ((v as number) - (prev as number)) / (prev as number);
+  });
+}
+
+/** Standardize to z-scores (x − mean) / stdev, population stdev; a flat list → all
+ *  zeros. Like normalizeList, the reduction poisons on any error and skips nulls. */
+export function zscoreList(arr: readonly Cell[]): Cell[] | SolError {
+  const err = firstError(arr);
+  if (err) return err;
+  const nums = presentNumbers(arr);
+  if (nums.length === 0) return arr.map(() => null);
+  const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
+  const sd = Math.sqrt(nums.reduce((a, b) => a + (b - mean) ** 2, 0) / nums.length);
+  return arr.map((v) =>
+    typeof v === "number" && Number.isFinite(v) ? (sd === 0 ? 0 : (v - mean) / sd) : null);
+}
+
+/** Which half-open bin each value falls in: the count of breakpoints ≤ the value
+ *  (0 = below the first break, so n breaks give bins 0..n). R findInterval / numpy.digitize. */
+export function binIndex(arr: readonly Cell[], breaks: readonly Cell[]): Cell[] {
+  const edges = presentNumbers(breaks).slice().sort((a, b) => a - b);
+  return arr.map((v) => {
+    if (isSolError(v)) return v;
+    if (!(typeof v === "number" && Number.isFinite(v))) return null;
+    let lo = 0, hi = edges.length;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (edges[m] <= v) lo = m + 1; else hi = m; }
+    return lo;
+  });
+}
+
+/** All k-length combinations (order-independent) or permutations (ordered) of a list,
+ *  each returned as one row — itertools.combinations / permutations. Capped: the count is
+ *  computed first (multiplicatively, no factorial overflow) and an explosive request is
+ *  refused with #NUM! rather than generating an enormous table. */
+const COMBO_CAP = 10_000;
+export function combinationsOf(arr: readonly Cell[], k: number, kind: "combinations" | "permutations"): Cell[][] | SolError {
+  const n = arr.length;
+  const kk = Math.round(k);
+  if (kk < 0) return solError("#VALUE!", "Choose count must be zero or more");
+  if (kk > n) return []; // can't pick more than the list holds
+  let count = 1;
+  if (kind === "combinations") for (let i = 0; i < kk; i++) count = (count * (n - i)) / (i + 1);
+  else for (let i = 0; i < kk; i++) count *= n - i;
+  count = Math.round(count);
+  if (count > COMBO_CAP) return solError("#OVERFLOW!", `That makes ${count} ${kind} — over the ${COMBO_CAP} cap. Use a shorter list or a smaller k.`);
+  const out: Cell[][] = [];
+  const cur: Cell[] = [];
+  if (kind === "combinations") {
+    const rec = (start: number): void => {
+      if (cur.length === kk) { out.push(cur.slice()); return; }
+      for (let i = start; i < n; i++) { cur.push(arr[i]); rec(i + 1); cur.pop(); }
+    };
+    rec(0);
+  } else {
+    const used = new Array<boolean>(n).fill(false);
+    const rec = (): void => {
+      if (cur.length === kk) { out.push(cur.slice()); return; }
+      for (let i = 0; i < n; i++) { if (used[i]) continue; used[i] = true; cur.push(arr[i]); rec(); cur.pop(); used[i] = false; }
+    };
+    rec();
+  }
+  return out;
+}
+
+/** Central-difference gradient (numpy.gradient): interior points use both neighbours,
+ *  the ends a one-sided difference. Same length as the input; a missing neighbour blanks
+ *  that entry. `dx` is the uniform spacing. */
+export function gradientList(arr: readonly Cell[], dx = 1): Cell[] | SolError {
+  const err = firstError(arr);
+  if (err) return err;
+  const n = arr.length;
+  const num = (i: number): number | null => { const v = arr[i]; return typeof v === "number" && Number.isFinite(v) ? v : null; };
+  if (n < 2) return arr.map(() => null);
+  const out: Cell[] = [];
+  for (let i = 0; i < n; i++) {
+    let a: number | null, b: number | null, h: number;
+    if (i === 0) { a = num(0); b = num(1); h = dx; }
+    else if (i === n - 1) { a = num(n - 2); b = num(n - 1); h = dx; }
+    else { a = num(i - 1); b = num(i + 1); h = 2 * dx; }
+    out.push(a !== null && b !== null ? (b - a) / h : null);
+  }
+  return out;
+}
+
+/** Exponentially weighted moving average: y[0] = x[0], y[i] = α·x[i] + (1−α)·y[i−1].
+ *  A blank carries the previous value forward. pandas ewm. */
+export function ewmaList(arr: readonly Cell[], alpha: number): Cell[] | SolError {
+  const err = firstError(arr);
+  if (err) return err;
+  const a = Math.min(1, Math.max(0, alpha));
+  let prev: number | null = null;
+  return arr.map((v) => {
+    if (!(typeof v === "number" && Number.isFinite(v))) return prev;
+    prev = prev === null ? v : a * v + (1 - a) * prev;
+    return prev;
+  });
+}
+
+/** Trapezoidal integral of sampled points with uniform spacing `dx` (numpy.trapz) — the
+ *  area under the piecewise-linear curve through them. A gap makes the area undefined. */
+export function trapzList(arr: readonly Cell[], dx = 1): Cell | SolError {
+  const err = firstError(arr);
+  if (err) return err;
+  const nums: number[] = [];
+  for (const v of arr) {
+    if (typeof v === "number" && Number.isFinite(v)) nums.push(v);
+    else return solError("#VALUE!", "Trapezoidal integration needs a gap-free numeric list");
+  }
+  if (nums.length < 2) return 0;
+  let s = 0;
+  for (let i = 1; i < nums.length; i++) s += ((nums[i] + nums[i - 1]) / 2) * dx;
+  return s;
+}
+
+/** Discrete linear convolution (numpy.convolve 'full'): length a+b−1, out[k] = Σ a[i]·b[k−i].
+ *  A blank counts as zero. */
+export function convolveList(a: readonly Cell[], b: readonly Cell[]): Cell[] | SolError {
+  const err = firstError(a) ?? firstError(b);
+  if (err) return err;
+  const A = a.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : 0));
+  const B = b.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : 0));
+  if (A.length === 0 || B.length === 0) return [];
+  const out = new Array<number>(A.length + B.length - 1).fill(0);
+  for (let i = 0; i < A.length; i++) for (let j = 0; j < B.length; j++) out[i + j] += A[i] * B[j];
+  return out;
+}
+
+/** Run-length encode: each run of consecutive equal values → a row [value, count]. R rle. */
+export function rleEncode(arr: readonly Cell[]): Cell[][] {
+  const out: Cell[][] = [];
+  for (let i = 0; i < arr.length; ) {
+    let j = i + 1;
+    while (j < arr.length && setKey(arr[j]) === setKey(arr[i])) j++;
+    out.push([arr[i], j - i]);
+    i = j;
+  }
+  return out;
+}
+
+/** 3-D vector cross product a × b (numpy.cross). Both operands must have three numbers. */
+export function crossProduct(a: readonly Cell[], b: readonly Cell[]): Cell[] | SolError {
+  const err = firstError(a) ?? firstError(b);
+  if (err) return err;
+  const A = presentNumbers(a), B = presentNumbers(b);
+  if (A.length !== 3 || B.length !== 3) return solError("#SHAPE!", "Cross product needs two 3-element vectors");
+  return [A[1] * B[2] - A[2] * B[1], A[2] * B[0] - A[0] * B[2], A[0] * B[1] - A[1] * B[0]];
+}
+
+/** Gaussian elimination with partial pivoting; null when the matrix is singular. */
+function solveLinear(A: number[][], b: number[]): number[] | null {
+  const n = b.length;
+  const M = A.map((row, i) => [...row, b[i]]);
+  for (let col = 0; col < n; col++) {
+    let piv = col;
+    for (let r = col + 1; r < n; r++) if (Math.abs(M[r][col]) > Math.abs(M[piv][col])) piv = r;
+    if (Math.abs(M[piv][col]) < 1e-12) return null;
+    [M[col], M[piv]] = [M[piv], M[col]];
+    for (let r = 0; r < n; r++) {
+      if (r === col) continue;
+      const f = M[r][col] / M[col][col];
+      for (let c = col; c <= n; c++) M[r][c] -= f * M[col][c];
+    }
+  }
+  return M.map((row, i) => row[n] / row[i]);
+}
+
+/** Least-squares polynomial fit of degree d through (x, y), evaluated back at each x —
+ *  numpy.polyfit + polyval in one. Solves the normal equations (VᵀV)c = Vᵀy. The fit uses
+ *  the PAIRS where both x and y are present (a blank on either side drops that pair, it
+ *  never shifts the pairing); the result is position-preserving over x — every present
+ *  x gets its fitted value, a missing x stays blank. */
+export function polyfitEval(xs: readonly Cell[], ys: readonly Cell[], degree: number): Cell[] | SolError {
+  const err = firstError(xs) ?? firstError(ys);
+  if (err) return err;
+  const isNum = (v: Cell): v is number => typeof v === "number" && Number.isFinite(v);
+  const X: number[] = [], Y: number[] = [];
+  for (let i = 0; i < Math.min(xs.length, ys.length); i++) {
+    const a = xs[i], b = ys[i];
+    if (isNum(a) && isNum(b)) { X.push(a); Y.push(b); }
+  }
+  const n = X.length;
+  const d = Math.max(0, Math.round(degree));
+  if (n === 0) return xs.map(() => null);
+  if (n < d + 1) return solError("#VALUE!", `A degree-${d} fit needs at least ${d + 1} points`);
+  const m = d + 1;
+  const ATA: number[][] = Array.from({ length: m }, () => new Array<number>(m).fill(0));
+  const ATy: number[] = new Array<number>(m).fill(0);
+  for (let k = 0; k < n; k++) {
+    const powers: number[] = []; let p = 1;
+    for (let j = 0; j < m; j++) { powers.push(p); p *= X[k]; }
+    for (let r = 0; r < m; r++) { for (let c = 0; c < m; c++) ATA[r][c] += powers[r] * powers[c]; ATy[r] += powers[r] * Y[k]; }
+  }
+  const coeffs = solveLinear(ATA, ATy);
+  if (!coeffs) return solError("#SOLVE!", "Polynomial fit is singular — the points may be collinear for this degree");
+  const evalAt = (xv: number): number => { let acc = 0; for (let j = m - 1; j >= 0; j--) acc = acc * xv + coeffs[j]; return acc; };
+  return xs.map((xv) => (isNum(xv) ? evalAt(xv) : null));
+}
+
 export type RunningOp = "sum" | "avg" | "min" | "max" | "median" | "product" | "stdev";
 
 /** One aggregate per element over the window ending there: every element so far
@@ -85,7 +309,7 @@ export type RunningOp = "sum" | "avg" | "min" | "max" | "median" | "product" | "
  *  stays in reach of, a null is SKIPPED, and an all-null window is 0 for sum and null
  *  otherwise. */
 export function running(op: RunningOp, arr: readonly Cell[], window: number | null): Cell[] {
-  if (window !== null) {
+  if (window !== null && Math.round(window) >= 1) {
     const w = Math.max(1, Math.round(window));
     return arr.map((_, i) => {
       const prep = forAggregate(arr.slice(Math.max(0, i - w + 1), i + 1));
@@ -154,7 +378,34 @@ export function running(op: RunningOp, arr: readonly Cell[], window: number | nu
 
 // ─── Find: list in, scalar out ────────────────────────────────────────────────
 
-export type ArgMinMaxOp = "argmax" | "argmin";
+export type ArgMinMaxOp = "argmax" | "argmin" | "argsort" | "argsort_desc" | "which";
+/** The ops whose answer is a LIST of positions (the card's output retypes number ↔ list). */
+export const ARG_LIST_OPS: ReadonlySet<ArgMinMaxOp> = new Set(["argsort", "argsort_desc", "which"]);
+
+/** 1-based positions that would sort the list (numpy.argsort, R order): numbers by value,
+ *  stable on ties; blank and error cells go to the end in either direction. */
+export function argsortList(arr: readonly Cell[], desc = false): number[] {
+  const isTail = (v: unknown) => isMissing(v) || isSolError(v) || typeof v !== "number" || !Number.isFinite(v);
+  const idx = arr.map((_, i) => i);
+  idx.sort((i, j) => {
+    const ti = isTail(arr[i]), tj = isTail(arr[j]);
+    if (ti || tj) return ti && tj ? i - j : ti ? 1 : -1;
+    const c = (arr[i] as number) - (arr[j] as number);
+    return c !== 0 ? (desc ? -c : c) : i - j;
+  });
+  return idx.map((i) => i + 1);
+}
+
+/** 1-based positions of the TRUE cells (R which, numpy.flatnonzero). A number counts
+ *  when non-zero, text when non-empty; blanks and errors never do. */
+export function whichPositions(arr: readonly unknown[]): number[] {
+  const out: number[] = [];
+  arr.forEach((v, i) => {
+    const hit = v === true || (typeof v === "number" && Number.isFinite(v) && v !== 0) || (typeof v === "string" && v !== "");
+    if (hit) out.push(i + 1);
+  });
+  return out;
+}
 
 /** 1-based position of the extreme value; null for an empty or all-missing list, with the
 *  usual reducer policy (error propagates, null skipped). */
@@ -219,7 +470,7 @@ export function xmatchIndex(
 }
 
 /** 1 / 0 rather than a logical, matching the node's numeric output socket. Membership keys
-*  by VALUE (setKey, VAL-8); blank and error cells are not members. */
+*  by VALUE (setKey, keyByValue); blank and error cells are not members. */
 export function containsValue(arr: readonly unknown[], v: unknown): boolean {
   const k = setKey(v);
   return arr.some((x) => !isMissing(x) && !isSolError(x) && setKey(x) === k);
@@ -300,8 +551,8 @@ export function fibonacci(count: number): number[] {
 }
 
 // ─── Sets ─────────────────────────────────────────────────────────────────────
-// Membership is by VALUE (VAL-8), but JS Sets key OBJECTS by reference, so only a tagged
-// complex (VAL-15) canonicalizes to a string; primitives stay themselves.
+// Membership is by VALUE (keyByValue), but JS Sets key OBJECTS by reference, so only a tagged
+// complex (tagSpecialScalars) canonicalizes to a string; primitives stay themselves.
 export function setKey(v: unknown): unknown {
   return isCx(v) ? `\x00cx:${v.re},${v.im}` : v;
 }
@@ -471,13 +722,13 @@ export function fillList(
 
 // ─── Range ────────────────────────────────────────────────────────────────────
 
-/** Half-open `[start, stop)`; an UNSET stop means no series yet, not a blank cable. The
- *  returned length is what callers cap on (there is no Count field), and is Infinity when
- *  the walk never terminates. */
+/** INCLUSIVE `[start, stop]`, Step apart (author 2026-08-24 — Range now ends ON Stop, unlike
+ *  numpy arange). An UNSET stop means no series yet, not a blank cable. The returned length is
+ *  what callers cap on (there is no Count field), and is Infinity when the walk never terminates. */
 export function rangeCount(start: number, stop: number | undefined, step: number): number {
   if (stop === undefined) return 0;
-  if (step === 0) return start === stop ? 0 : Infinity;
-  const n = Math.ceil((stop - start) / step);
+  if (step === 0) return start === stop ? 1 : Infinity;
+  const n = Math.floor((stop - start) / step + 1e-9) + 1;
   return n > 0 ? n : 0;
 }
 
@@ -485,8 +736,13 @@ export function rangeList(start: number, stop: number | undefined, step: number)
   const n = rangeCount(start, stop, step);
   if (!Number.isFinite(n)) return [];
   const out: number[] = [];
-  let cur = start;
-  for (let i = 0; i < n; i++) { out.push(cur); cur += step; }
+  for (let i = 0; i < n; i++) {
+    // start + i*step, NOT accumulated (float drift); snap the LAST value onto Stop exactly
+    // so e.g. 0→1 by 0.1 ends on 1, not 0.9999999.
+    let v = start + i * step;
+    if (i === n - 1 && stop !== undefined && step !== 0 && Math.abs(v - stop) < Math.abs(step) * 1e-9) v = stop;
+    out.push(v);
+  }
   return out;
 }
 
@@ -508,9 +764,9 @@ export function shuffleList<T>(arr: readonly T[], keys: readonly number[]): T[] 
     .map((p) => p.v);
 }
 
-// ─── D23 tranche 2: the array-returning core ──────────────────────────────────
+// ─── matricesInFormulas tranche 2: the array-returning core ──────────────────────────────────
 
-/** UNIQUE: first-seen dedupe by VALUE (setKey, VAL-8); every ERROR cell survives, so the
+/** UNIQUE: first-seen dedupe by VALUE (setKey, keyByValue); every ERROR cell survives, so the
  *  count of errors to fix is deterministic. */
 export function uniqueList(arr: readonly unknown[]): unknown[] {
   const seen = new Set<unknown>();
@@ -540,17 +796,17 @@ export function sortNumericList(arr: readonly Cell[], desc = false): Cell[] {
 }
 
 /** SORTBY: reorder `arr` by parallel numeric keys; ragged pads to the LONGEST with
- *  null; a null/error KEY sends its row to the tail, stably. */
-export function sortByKeys<T>(arr: readonly T[], by: readonly Cell[]): (T | null)[] {
+ *  null; a null/error KEY sends its row to the tail, stably (in either direction). */
+export function sortByKeys<T>(arr: readonly T[], by: readonly Cell[], desc = false): (T | null)[] {
   const n = Math.max(arr.length, by.length);
   const isTail = (v: unknown) => isMissing(v) || isSolError(v);
   const idx = Array.from({ length: n }, (_, i) => i);
   idx.sort((i, j) => {
     const ki = i < by.length ? by[i] : null, kj = j < by.length ? by[j] : null;
     const ti = isTail(ki), tj = isTail(kj);
-    if (ti || tj) return ti && tj ? i - j : ti ? 1 : -1;
+    if (ti || tj) return ti && tj ? i - j : ti ? 1 : -1; // tail last in both directions
     const c = (ki as number) - (kj as number);
-    return c !== 0 ? c : i - j;
+    return c !== 0 ? (desc ? -c : c) : i - j; // stable on ties
   });
   return idx.map((i) => (i < arr.length ? arr[i] : null));
 }
@@ -612,4 +868,123 @@ export function frequencyBins(data: readonly Cell[], bins: readonly Cell[]): num
     if (!placed) counts[bins.length]++; // overflow: greater than every bin
   }
   return counts;
+}
+
+/** Quantile buckets 1..n (dplyr ntile, pandas qcut): the edges are the PERCENTILE.INC
+ *  quantiles at k/n and each value answers how many it clears, plus one. Position-
+ *  preserving: a blank stays blank, an error rides along. */
+export function ntileList(arr: readonly Cell[], n: number): Cell[] | SolError {
+  const k = Math.round(n);
+  if (!(k >= 1)) return solError("#VALUE!", "NTILE needs at least one bucket");
+  const nums = presentNumbers(arr);
+  if (nums.length === 0) return arr.map((v) => (isSolError(v) ? v : null));
+  const sorted = [...nums].sort((a, b) => a - b);
+  const edges: number[] = [];
+  for (let i = 1; i < k; i++) edges.push(percentileOf(sorted, i / k, false));
+  return binIndex(arr, edges).map((v) => (typeof v === "number" ? v + 1 : v));
+}
+
+export type OutlierMethod = "z" | "iqr" | "mad";
+/** The conventional cutoffs: |z| > 3, 1.5 × IQR beyond the quartiles, modified z (0.6745·dev/MAD) > 3.5. */
+export const OUTLIER_DEFAULT_THRESHOLD: Record<OutlierMethod, number> = { z: 3, iqr: 1.5, mad: 3.5 };
+
+/** Flag each value as an outlier by the chosen rule; blank → blank, error → error, and a
+ *  list too small or too flat to judge flags nothing (all FALSE). */
+export function outlierFlags(arr: readonly Cell[], method: OutlierMethod, threshold: number): (boolean | null | SolError)[] {
+  const nums = presentNumbers(arr);
+  const no = () => arr.map((v) => (isSolError(v) ? v : v == null ? null : false));
+  if (nums.length < 3) return no();
+  let test: (v: number) => boolean;
+  if (method === "z") {
+    const m = nums.reduce((a, b) => a + b, 0) / nums.length;
+    const sd = Math.sqrt(nums.reduce((a, b) => a + (b - m) ** 2, 0) / (nums.length - 1));
+    if (sd === 0) return no();
+    test = (v) => Math.abs((v - m) / sd) > threshold;
+  } else if (method === "iqr") {
+    const s = [...nums].sort((a, b) => a - b);
+    const q1 = percentileOf(s, 0.25, false), q3 = percentileOf(s, 0.75, false), iqr = q3 - q1;
+    if (iqr === 0) return no();
+    test = (v) => v < q1 - threshold * iqr || v > q3 + threshold * iqr;
+  } else {
+    const s = [...nums].sort((a, b) => a - b);
+    const med = percentileOf(s, 0.5, false);
+    const dev = nums.map((v) => Math.abs(v - med)).sort((a, b) => a - b);
+    const mad = percentileOf(dev, 0.5, false);
+    if (mad === 0) return no();
+    test = (v) => Math.abs((0.6745 * (v - med)) / mad) > threshold;
+  }
+  return arr.map((v) => (isSolError(v) ? v : typeof v === "number" && Number.isFinite(v) ? test(v) : null));
+}
+
+/** Discrete Fourier transform of a real list — Bluestein's chirp-z for any length (a
+ *  power-of-two inner FFT), so no padding changes the answer (numpy.fft.fft, R fft).
+ *  Returns the full complex spectrum as [re[], im[]]. */
+export function fftReal(x: readonly number[]): { re: number[]; im: number[] } {
+  const n = x.length;
+  if (n === 0) return { re: [], im: [] };
+  if (n === 1) return { re: [x[0]], im: [0] };
+  const isPow2 = (n & (n - 1)) === 0;
+  const re = [...x], im = new Array<number>(n).fill(0);
+  if (isPow2) { fftInPlace(re, im, false); return { re, im }; }
+  // Bluestein: x_k · w^{k²/2} convolved with the chirp w^{-k²/2}, via a size-m FFT (m ≥ 2n−1, power of 2).
+  let m = 1; while (m < 2 * n - 1) m <<= 1;
+  const cosT: number[] = [], sinT: number[] = [];
+  for (let k = 0; k < n; k++) { const ang = (Math.PI * ((k * k) % (2 * n))) / n; cosT.push(Math.cos(ang)); sinT.push(Math.sin(ang)); }
+  const aRe = new Array<number>(m).fill(0), aIm = new Array<number>(m).fill(0);
+  for (let k = 0; k < n; k++) { aRe[k] = x[k] * cosT[k]; aIm[k] = -x[k] * sinT[k]; }
+  const bRe = new Array<number>(m).fill(0), bIm = new Array<number>(m).fill(0);
+  bRe[0] = cosT[0]; bIm[0] = sinT[0];
+  for (let k = 1; k < n; k++) { bRe[k] = bRe[m - k] = cosT[k]; bIm[k] = bIm[m - k] = sinT[k]; }
+  fftInPlace(aRe, aIm, false); fftInPlace(bRe, bIm, false);
+  for (let k = 0; k < m; k++) { const r = aRe[k] * bRe[k] - aIm[k] * bIm[k]; const i = aRe[k] * bIm[k] + aIm[k] * bRe[k]; aRe[k] = r; aIm[k] = i; }
+  fftInPlace(aRe, aIm, true);
+  const outRe: number[] = [], outIm: number[] = [];
+  for (let k = 0; k < n; k++) { outRe.push(aRe[k] * cosT[k] + aIm[k] * sinT[k]); outIm.push(aIm[k] * cosT[k] - aRe[k] * sinT[k]); }
+  return { re: outRe, im: outIm };
+}
+
+/** Iterative radix-2 Cooley–Tukey in place; `inverse` divides by n. */
+function fftInPlace(re: number[], im: number[], inverse: boolean): void {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; }
+  }
+  for (let len = 2; len <= n; len <<= 1) {
+    const ang = ((inverse ? 2 : -2) * Math.PI) / len;
+    const wRe = Math.cos(ang), wIm = Math.sin(ang);
+    for (let i = 0; i < n; i += len) {
+      let cRe = 1, cIm = 0;
+      for (let j = 0; j < len / 2; j++) {
+        const uRe = re[i + j], uIm = im[i + j];
+        const vRe = re[i + j + len / 2] * cRe - im[i + j + len / 2] * cIm;
+        const vIm = re[i + j + len / 2] * cIm + im[i + j + len / 2] * cRe;
+        re[i + j] = uRe + vRe; im[i + j] = uIm + vIm;
+        re[i + j + len / 2] = uRe - vRe; im[i + j + len / 2] = uIm - vIm;
+        const nRe = cRe * wRe - cIm * wIm; cIm = cRe * wIm + cIm * wRe; cRe = nRe;
+      }
+    }
+  }
+  if (inverse) for (let i = 0; i < n; i++) { re[i] /= n; im[i] /= n; }
+}
+
+export interface SpectrumRow { bin: number; frequency: number; magnitude: number; phase: number }
+/** The one-sided amplitude spectrum of a real signal sampled at `rate` (numpy.fft.rfft +
+ *  rfftfreq): bins 0..⌊n/2⌋, magnitude scaled 2/n (1/n at DC and Nyquist) so a pure
+ *  sine of amplitude A reads A; phase in radians. A blank in the signal counts as 0. */
+export function spectrum(x: readonly Cell[], rate = 1): SpectrumRow[] {
+  const sig = x.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : 0));
+  const n = sig.length;
+  if (n === 0) return [];
+  const { re, im } = fftReal(sig);
+  const rows: SpectrumRow[] = [];
+  const half = Math.floor(n / 2);
+  for (let k = 0; k <= half; k++) {
+    const mag = Math.hypot(re[k], im[k]);
+    const scale = k === 0 || (n % 2 === 0 && k === half) ? 1 / n : 2 / n;
+    rows.push({ bin: k, frequency: (k * rate) / n, magnitude: mag * scale, phase: Math.atan2(im[k], re[k]) });
+  }
+  return rows;
 }

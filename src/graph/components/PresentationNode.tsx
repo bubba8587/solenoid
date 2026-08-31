@@ -4,7 +4,7 @@ import { hexToRgba, themeAccent, resolveColor } from "../palette";
 import { appThemeStore } from "../appTheme";
 import { SwatchGrid } from "./SwatchGrid";
 import { useDismissOnOutside } from "./useDismissOnOutside";
-import { getEditor } from "../process";
+
 import { flyToNodes } from "../flyToNode";
 import { presentationStore } from "../presentationStore";
 import { scheduleAutosave } from "../persistence";
@@ -12,6 +12,7 @@ import { nodeDisplayNames } from "../nodeNames";
 import type { NodeProps } from "./nodeKit";
 import { stopDragStart } from "../coarse";
 import "./PresentationNode.css";
+import { getActiveEditor } from "../activeGraph";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
@@ -39,7 +40,7 @@ export function PresentationComponent({ data }: NodeProps<PresentationNodeType>)
   function refresh() { bump((v) => v + 1); scheduleAutosave(); }
 
   function addStep() {
-    const selected = (getEditor()?.getNodes() ?? []).filter((n) => n.selected && n.id !== data.id);
+    const selected = (getActiveEditor()?.getNodes() ?? []).filter((n) => n.selected && n.id !== data.id);
     const n = data.steps.length + 1;
     data.addStep(`Step ${n}`, selected.map((s) => s.id));
     refresh();
@@ -56,7 +57,7 @@ export function PresentationComponent({ data }: NodeProps<PresentationNodeType>)
   function next() { goTo(data.activeIndex + 1); }
   function prev() { goTo(data.activeIndex - 1); }
 
-  const editor = getEditor();
+  const editor = getActiveEditor();
   const names = editor ? nodeDisplayNames(editor.getNodes()) : new Map<string, string>();
   const mode = appThemeStore.getMode();
   const themed = themeAccent(resolveColor(color), mode);
@@ -112,9 +113,9 @@ export function PresentationComponent({ data }: NodeProps<PresentationNodeType>)
         )}
       </div>
 
-      <div className="solenoid-pres__steps" onPointerDown={stop} onMouseDown={stop}>
+      <div className="solenoid-pres__steps nowheel" onPointerDown={stop} onMouseDown={stop}>
         {data.steps.length === 0 ? (
-          <div className="solenoid-pres__empty">Select nodes, then Add step</div>
+          <div className="solenoid-pres__empty">Select nodes, then add a step</div>
         ) : (
           data.steps.map((step, i) => (
             <div key={i} className={`solenoid-pres__step${i === data.activeIndex ? " solenoid-pres__step--active" : ""}`}>
@@ -135,13 +136,13 @@ export function PresentationComponent({ data }: NodeProps<PresentationNodeType>)
               <div className="solenoid-pres__step-actions">
                 <button type="button" disabled={i === 0} onClick={() => move(i, -1)} title="Move up">↑</button>
                 <button type="button" disabled={i === data.steps.length - 1} onClick={() => move(i, 1)} title="Move down">↓</button>
-                <button type="button" onClick={() => removeStep(i)} title="Remove step">×</button>
+                <button type="button" onClick={() => removeStep(i)} title="Remove this step">×</button>
               </div>
             </div>
           ))
         )}
         <button type="button" className="solenoid-pres__add" onClick={addStep} title="Capture the current canvas selection as a new step">
-          + Add step
+          + Add a step
         </button>
       </div>
 
@@ -156,7 +157,7 @@ export function PresentationComponent({ data }: NodeProps<PresentationNodeType>)
           className="solenoid-pres__present"
           onClick={() => presentationStore.start(data.id)}
           disabled={data.steps.length === 0}
-          title="Present full screen. Space or → advances; Esc exits."
+          title="Present full screen. Space or → advances. Esc exits."
         >
           ▶ Present
         </button>

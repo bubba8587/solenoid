@@ -4,9 +4,11 @@ import { tablePopup, type TablePopupState, type Cell as CellValue, type FramePop
 import { appThemeStore } from "../appTheme";
 import { formatScalar } from "./format";
 import { parseCsvRows } from "../csv";
-import { isSolError } from "../errorValue";
-import { formatDateSerial, parseDateToSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
+import { isSolError, ERROR_EXPLANATIONS } from "../errorValue";
+import { formatDateSerial, parseDateToSerial, serialToJsDate, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { coerceFrameCell, formatFrameCell, type FrameSourceColumn } from "../frame";
+import { describeColumn, type ColumnProfile } from "../frameVerbs";
+import { aggregate } from "../nodes/statsOps";
 import { formatNumberWithAnnotation, isDateStyle, applyLogicalStyle, type FormatAnnotation, type FormatStyleId } from "../formatAnnotationStore";
 import { isUnitCell } from "../unitValue";
 import { columnUnitLabel } from "../unitColumn";
@@ -15,10 +17,14 @@ import { formatListCell } from "./valueDisplayFormat";
 import { FormatStyleSelect, DateStyleSelect, UnitSelect, LogicalStyleSelect, TextCaseSelect } from "./fcControls";
 import { applyTextCase } from "../formatAnnotationStore";
 import { PopupShell, popupCardVars } from "./PopupShell";
+import { settingsStore } from "../settingsStore";
+import { gridKeyOf, nextCell } from "./gridKeyboard";
 import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortIndicator, stopSortTrigger } from "./columnSort";
+import { parseRecordLayout } from "../nodes/visual";
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
 import { saveCsvFileDialog } from "../fileBridge";
 import { APP_LOCALE } from "../locale";
+import "./errorChip.css";
 import "./TablePopup.css";
 
 type CellType = "number" | "string" | "date" | "logical"; // "date" edits as its serial (number-ish); "logical" as TRUE/FALSE
@@ -101,6 +107,16 @@ function parseCSV(text: string): string[][] {
   return parseCsvRows(text, { keepBlankLines: true }).map((row) => row.map((c) => c.trim()));
 }
 
+// The form's date picker seeds from the raw cell — a serial or parseable date
+// text — and writes back ISO text (parseable source, readable in Source/CSV).
+function dateCellToISO(raw: string): string {
+  const t = raw.trim();
+  if (t === "") return "";
+  const n = Number(t);
+  const serial = Number.isFinite(n) ? n : parseDateToSerial(t);
+  return Number.isFinite(serial) && serial > 0 ? serialToJsDate(serial).toISOString().slice(0, 10) : "";
+}
+
 // Spreadsheet column labels: A, B, … Z, AA, AB, …
 function colLabel(i: number): string {
   let s = "";
@@ -112,6 +128,28 @@ function colLabel(i: number): string {
  * Mode is set by which save callback the opener passes: `onSave` → numeric matrix,
  * `onSaveFrame`/`onSaveSource`/`onSaveRaw` → frame editor, none → read-only viewer.
  */
+type ColSummary = { profile: ColumnProfile; sum: number | null };
+type FooterStat = "sum" | "avg" | "min" | "max" | "median" | "count" | "distinct" | "blank" | "error";
+const NUMERIC_STATS: ReadonlyArray<FooterStat> = ["sum", "avg", "min", "max", "median"];
+const FOOTER_STAT_LABEL: Record<FooterStat, string> = {
+  sum: "Sum", avg: "Average", min: "Min", max: "Max", median: "Median",
+  count: "Count", distinct: "Distinct", blank: "Empty", error: "Errors",
+};
+function footerStatValue(stat: FooterStat, s: ColSummary): number | null {
+  const p = s.profile;
+  switch (stat) {
+    case "sum": return s.sum;
+    case "avg": return p.mean;
+    case "min": return p.min;
+    case "max": return p.max;
+    case "median": return p.median;
+    case "count": return p.count;
+    case "distinct": return p.distinct;
+    case "blank": return p.blank;
+    case "error": return p.error;
+  }
+}
+
 export function TablePopup() {
   const state = useSyncExternalStore(tablePopup.subscribe, tablePopup.get);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
@@ -123,7 +161,7 @@ export function TablePopup() {
   const [headerNames, setHeaderNames] = useState<string[]>([]);
   const [columnTypes, setColumnTypes] = useState<CellType[]>([]);
   // CSV keeps its own text buffer so mid-typing isn't reshaped by cell coercion.
-  const [view, setView] = useState<"grid" | "csv">("grid");
+  const [view, setView] = useState<"grid" | "csv" | "form">("grid");
   const [csvText, setCsvText] = useState("");
   // SOURCE = raw text, FORMATTED = derived render; on a literal-source editor BOTH
   // modes edit the same raw truth (Formatted swaps to raw text while focused).
@@ -132,8 +170,16 @@ export function TablePopup() {
   // re-sort the row out from under the caret. The draft lives in a ref so Escape can
   // reset it and blur synchronously without committing a stale closure's text.
   const [editCell, setEditCell] = useState<{ r: number; c: number } | null>(null);
+  // Form view's record cursor (a SOURCE row index, sort-independent).
+  const [formRow, setFormRow] = useState(0);
+
   const editDraft = useRef("");
   const [, bumpDraft] = useState(0);
+  // The grid table, so the keyboard mover can find a target cell by its data-vi/data-c.
+  const gridRef = useRef<HTMLTableElement | null>(null);
+  // One stat per column in the summary footer; unset = Sum for a number column, else Count.
+  const [colStat, setColStat] = useState<Record<number, FooterStat>>({});
+  const showSummary = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupSummary"));
   // DISPLAY-ONLY list orientation — the value stays the flat row; copy/CSV/Markdown
   // must keep flattening to the same list.
   const [listVertical, setListVertical] = useState(false);
@@ -151,6 +197,7 @@ export function TablePopup() {
   // without a Save/close round trip.
   const [liveComputed, setLiveComputed] = useState<CellValue[][] | null>(null);
   const initedFor = useRef<TablePopupState | null>(null);
+  const summaryCache = useRef<{ deps: unknown[]; value: ColSummary[] | null }>({ deps: [], value: null });
 
   useEffect(() => {
     if (!state) { initedFor.current = null; return; }
@@ -190,12 +237,13 @@ export function TablePopup() {
     setView("grid");
     setDisplayMode("formatted");
     setEditCell(null);
+    setFormRow(0);
   }, [state]);
 
   if (!state) return null;
   const cellType: CellType = state.cellType ?? "number";
   const editable = (!!state.onSave && cellType === "number") || !!state.onSaveFrame || !!state.onSaveSource || !!state.onSaveRaw;
-  // Literal-source editor: the grid holds RAW text, never coerced (D31).
+  // Literal-source editor: the grid holds RAW text, never coerced (tableInputRawText).
   const literalSource = !!state.onSaveSource || !!state.onSaveRaw;
   const formattedPreview = literalSource && displayMode === "formatted";
   const editableHeaders = editable && !!state.editableHeaders;
@@ -219,39 +267,48 @@ export function TablePopup() {
     if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
     return isSolError(v) ? v.code : String(v);
   };
-  const shownBase = rowsTruncated ? grid.slice(0, MAX_VISIBLE_ROWS) : grid;
-  const shownGrid = hasComputed
-    ? shownBase.map((_, r) => Array.from({ length: cols }, (_c, c) => rawAt(r, c)))
-    : shownBase;
+  // The grid is addressed ROW BY ROW from here on, over the FULL dataset: the sort ranks
+  // every row, Copy/CSV/Export emit every row, and only the RENDER takes the first
+  // MAX_VISIBLE_ROWS of the sorted order (the DOM budget). Nothing pre-slices.
+  const rawRow = (r: number): string[] =>
+    hasComputed ? Array.from({ length: cols }, (_c, c) => rawAt(r, c)) : (grid[r] ?? []);
 
   const hasDateCols = state.columnTypes?.some(t => t === "date") || state.cellType === "date";
   // A frame popup carries per-column types; a plain Table/list does not.
   const isFramePopup = !!state.columnTypes;
   const showFmtToggle = literalSource || (!editable && (isFramePopup || hasDateCols));
   // Display-only: `grid` (raw text) is ALWAYS the edit/save truth.
-  const displayGrid = formattedPreview
-    ? shownGrid.map((row) => row.map((raw, c) => {
+  const displayRowAt = (r: number): string[] => {
+    const row = rawRow(r);
+    if (formattedPreview) {
+      return row.map((raw, c) => {
         const type = colTypeAt(c);
         const f = formatFrameCell(type, coerceFrameCell(type, raw ?? ""));
         return f == null ? "" : String(f);
-      }))
-    : (!editable && (isFramePopup || hasDateCols))
-      ? shownGrid.map((row, r) => row.map((cell, c) => {
-          const type = colTypeAt(c);
-          if (displayMode === "formatted") {
-            if (type === "date") {
-              const n = Number(cell);
-              return Number.isFinite(n) ? formatDateSerial(n, DEFAULT_DATE_FORMAT) : cell;
-            }
-            return cell;
+      });
+    }
+    if (!editable && (isFramePopup || hasDateCols)) {
+      return row.map((cell, c) => {
+        const type = colTypeAt(c);
+        if (displayMode === "formatted") {
+          if (type === "date") {
+            // toGrid renders a blank as "", and `Number("")` is 0 — a REAL serial
+            // (30-Dec-1899), so an unguarded parse prints a date for a missing cell.
+            if (cell.trim() === "") return cell;
+            const n = Number(cell);
+            return Number.isFinite(n) ? formatDateSerial(n, DEFAULT_DATE_FORMAT) : cell;
           }
-          // Source: the inputted text verbatim if we have it, else the underlying form.
-          const src = state.sourceCells?.[r]?.[c];
-          if (src != null) return src;
-          if (type === "logical") return cell === "TRUE" ? "1" : cell === "FALSE" ? "0" : cell;
           return cell;
-        }))
-      : shownGrid;
+        }
+        // Source: the inputted text verbatim if we have it, else the underlying form.
+        const src = state.sourceCells?.[r]?.[c];
+        if (src != null) return src;
+        if (type === "logical") return cell === "TRUE" ? "1" : cell === "FALSE" ? "0" : cell;
+        return cell;
+      });
+    }
+    return row;
+  };
 
   // The format+unit row re-renders the ON-SCREEN grid only — Copy/CSV stay raw.
   const showFmtControls = !!state.formatControls && view === "grid" && !state.list;
@@ -316,27 +373,33 @@ export function TablePopup() {
     return String(v);
   }
 
-  // A pure render transpose — `grid`/`displayGrid` stay the 1×N truth, and lists are
-  // read-only here so no edit-index remap is needed.
+  // A pure render transpose — `grid` stays the 1×N truth, and lists are read-only here
+  // so no edit-index remap is needed.
   const vertical = !!state.list && listVertical;
-  const listLen = displayGrid[0]?.length ?? 0;
+  const listLen = grid[0]?.length ?? 0;
   const listTruncated = vertical && listLen > MAX_VISIBLE_ROWS; // cap rows like a tall table
   // formatRenderActive ⇒ not a list, so `vertical` is false here.
-  const controlledSrc: CellValue[][] = editable ? shownGrid : state.data;
-  const onScreenGrid: string[][] = formatRenderActive
-    ? controlledSrc.slice(0, MAX_VISIBLE_ROWS).map((row) =>
-        Array.from({ length: cols }, (_, c) => controlledCell(row[c], c)))
-    : displayGrid;
-  const viewGrid = vertical
-    ? (displayGrid[0] ?? []).slice(0, MAX_VISIBLE_ROWS).map((v) => [v])
-    : onScreenGrid;
+  const controlledRowAt = (r: number): CellValue[] => (editable ? rawRow(r) : (state.data[r] ?? []));
+  // The on-screen text of one SOURCE row (or, for a vertical list, of list element r).
+  const viewRowAt = (r: number): string[] => {
+    if (vertical) return [displayRowAt(0)[r] ?? ""];
+    if (formatRenderActive) { const row = controlledRowAt(r); return Array.from({ length: cols }, (_, c) => controlledCell(row[c], c)); }
+    return displayRowAt(r);
+  };
   const viewCols = vertical ? 1 : cols;
+  const viewRows = vertical ? listLen : rows;
 
-  // `sortOrder` holds SOURCE row indices, so every index it hands on stays the source
-  // row and `grid` is never touched. The key must come from the RAW grid, never the
-  // on-screen text — a date renders "20-Mar-2026" but sorts by its serial.
-  const sortOrder = sortedOrder(viewGrid.length, sort, (r, c) =>
+  // `sortOrder` holds SOURCE row indices over the WHOLE dataset, so every index it hands
+  // on stays the source row and `grid` is never touched; the render shows the first
+  // MAX_VISIBLE_ROWS of it, so a sort on a 50k-row frame shows the true top of the order.
+  // The key must come from the RAW grid, never the on-screen text — a date renders
+  // "20-Mar-2026" but sorts by its serial.
+  const sortOrder = sortedOrder(viewRows, sort, (r, c) =>
     sortKeyOf(vertical ? grid[0]?.[r] : rawAt(r, c)));
+  const visibleOrder = sortOrder.length > MAX_VISIBLE_ROWS ? sortOrder.slice(0, MAX_VISIBLE_ROWS) : sortOrder;
+  // The visible rows' on-screen text, built once per render (the only rows that render).
+  const viewRowCache = new Map<number, string[]>();
+  const viewRow = (r: number): string[] => { let v = viewRowCache.get(r); if (!v) { v = viewRowAt(r); viewRowCache.set(r, v); } return v; };
   // A row-oriented list is one row of N columns — sorting a column would sort one cell.
   const sortable = !(state.list && !vertical);
 
@@ -349,7 +412,7 @@ export function TablePopup() {
     const colType = vertical ? cellType : typeAt(c, cellType, state.columnTypes);
     if (isTextType(colType)) { colMinWidths.push(undefined); continue; }
     let m = 0;
-    for (const row of viewGrid) m = Math.max(m, (row[c] ?? "").length);
+    for (const r of visibleOrder) m = Math.max(m, (viewRow(r)[c] ?? "").length);
     const px = Math.ceil(m * MONO_CH_PX) + 16;
     colMinWidths.push(px > 72 ? Math.min(px, 200) : undefined);
   }
@@ -396,6 +459,30 @@ export function TablePopup() {
     setHeaderNames((h) => h.slice(0, -1));
     setColumnTypes((t) => t.slice(0, -1));
   }
+  // ── Form view (frame-source editor): one record as stacked labeled fields ──
+  // Rides the same raw-text grid truth and edit-draft path as the grid cells;
+  // the cursor is a SOURCE row, so it reaches rows past the grid's render cap.
+  const formCapable = !!state.onSaveSource;
+  const fRow = Math.min(formRow, Math.max(0, rows - 1));
+  // Same semantics as the Record node: matched names take the column, an unknown
+  // name keeps an (inert) box, columns not in the layout are simply not shown.
+  // The layout is authored on the HOST CARD (the Record pattern) — never here.
+  const formLayout = state.formLayout ?? "";
+  const formPlaced = formLayout.trim() !== "" ? parseRecordLayout(formLayout) : [];
+  const formCols = formPlaced.length > 0 ? Math.max(...formPlaced.map((pl) => pl.col + pl.colSpan - 1)) : 1;
+  const formColIndex = (name: string): number =>
+    headerNames.findIndex((h) => (h ?? "").trim().toLowerCase() === name.trim().toLowerCase());
+  function addRecord() {
+    const at = rows;
+    setGrid((g) => (g.length === 0 ? [Array.from({ length: Math.max(1, cols) }, () => "")] : [...g, Array.from({ length: Math.max(1, cols) }, () => "")]));
+    setFormRow(at);
+  }
+  function removeRecord() {
+    if (rows <= 1) return;
+    // Row order is untouched, so column sort keys stay valid (order re-derives).
+    setGrid((g) => g.filter((_, i) => i !== fRow));
+    setFormRow(Math.max(0, Math.min(fRow, rows - 2)));
+  }
 
   // Blank → null; a numeric column coerces each cell (invalid → NaN); text is verbatim.
   function buildFrameColumns(): FramePopupColumn[] {
@@ -423,20 +510,60 @@ export function TablePopup() {
     });
   }
 
+  // Per-column summary + profile for the footer (frame popups only), over the WHOLE
+  // dataset: read-only reads state.data, editable reparses buildFrameColumns, a computed
+  // column reads its derived cells (B6). Skipped entirely for a plain list/table popup.
+  // Cached on the identities it reads: a keystroke (bumpDraft) or a sort click re-renders
+  // without rescanning the grid.
+  const summaryDeps = [state, grid, columnTypes, computedVals, colLambdas, colExprs, listVertical, editable, showSummary];
+  const sameDeps = (a: unknown[], b: unknown[]) => a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
+  if (!sameDeps(summaryCache.current.deps, summaryDeps)) {
+    const value: ColSummary[] | null = showSummary && isFramePopup && !vertical ? (() => {
+      const frameCols = editable ? buildFrameColumns() : null;
+      const valuesFor = (c: number): unknown[] => {
+        if (hasComputed && isComputedCol(c)) return (computedVals ?? []).map((row) => row?.[c] ?? null);
+        if (frameCols) return frameCols[c]?.values ?? [];
+        return state.data.map((row) => row?.[c] ?? null);
+      };
+      return Array.from({ length: cols }, (_c, c) => {
+        const type = colTypeAt(c);
+        const values = valuesFor(c);
+        const profile = describeColumn(values, type);
+        let sum: number | null = null;
+        if (type === "number") {
+          const r = aggregate("sum", values.filter((v): v is number => typeof v === "number" && Number.isFinite(v)));
+          sum = typeof r === "number" ? r : null;
+        }
+        return { profile, sum };
+      });
+    })() : null;
+    summaryCache.current = { deps: summaryDeps, value };
+  }
+  const colSummaries = summaryCache.current.value;
+  const fmtStat = (n: number | null): string => (n == null ? "—" : formatScalar(n));
+
   const headers = editableHeaders ? headerNames : state.headers;
-  // Read-only popups neutralize formula-injection prefixes on export; editable
-  // ones must round-trip the typed text exactly.
-  const bodyCSV = toCSV(displayGrid, cellType, columnTypes, !editable);
   // A frame's CSV view prepends a header line (below); a plain table/list doesn't.
   const hasHeaderLine = !state.list && !!(headers && headers.length);
-  const asText = state.list
-    ? listToText(displayGrid, cellType)
-    : hasHeaderLine
-      ? `${headers!.map((h) => csvField(h, "string", !editable)).join(",")}\n${bodyCSV}`
-      : bodyCSV;
+  // The WHOLE dataset as text — never the rendered slice. `inSortOrder` follows the
+  // visual sort (the read paths: Copy, Export, a read-only CSV view); the EDITABLE CSV
+  // view stays in source order because its text parses straight back into `grid`.
+  // Read-only popups neutralize formula-injection prefixes on export; editable ones
+  // must round-trip the typed text exactly.
+  function buildText(inSortOrder: boolean): string {
+    const order = inSortOrder ? sortOrder : Array.from({ length: viewRows }, (_, i) => i);
+    if (state!.list) {
+      const line = displayRowAt(0);
+      return listToText([vertical ? order.map((i) => line[i] ?? "") : line], cellType);
+    }
+    const body = toCSV(order.map((r) => displayRowAt(r)), cellType, columnTypes, !editable);
+    return hasHeaderLine
+      ? `${headers!.map((h) => csvField(h, "string", !editable)).join(",")}\n${body}`
+      : body;
+  }
 
   function showCSV() {
-    setCsvText(asText);
+    setCsvText(buildText(!editable));
     setView("csv");
   }
   function onCsvChange(v: string) {
@@ -456,15 +583,16 @@ export function TablePopup() {
   }
 
   function copy() {
-    const text = view === "csv" ? csvText : asText;
+    const text = view === "csv" ? csvText : buildText(true);
     void copyText(text);
   }
   function copyMarkdown() {
-    void copyText(toMarkdown(displayGrid, cellType, columnTypes, headers, !!state?.list));
+    const gridForMd = state?.list ? [displayRowAt(0)] : sortOrder.map((r) => displayRowAt(r));
+    void copyText(toMarkdown(gridForMd, cellType, columnTypes, headers, !!state?.list));
   }
   function exportCsv() {
     const base = (state?.title || "table").replace(/[^\w.-]+/g, "_") || "table";
-    void saveCsvFileDialog(`${base}.csv`, asText);
+    void saveCsvFileDialog(`${base}.csv`, buildText(true));
   }
   // Cells stay verbatim — coercion to typed values happens downstream in deriveFrame.
   function buildSourceColumns(overrides?: {
@@ -513,10 +641,54 @@ export function TablePopup() {
   const grouped = !!state.groupColor;
   const cardStyle = popupCardVars(state);
 
+  // Move focus to the grid cell at a VISUAL position (index into visibleOrder) + column,
+  // located by its data-attrs so no per-cell refs are needed.
+  const focusGridCell = (target: { vi: number; c: number } | null) => {
+    if (!target) return;
+    // Read-only cells are a focusable <div> (tabIndex -1), not an <input> — match either.
+    const el = gridRef.current?.querySelector<HTMLElement>(`[data-vi="${target.vi}"][data-c="${target.c}"]`);
+    if (el) { el.focus(); if (el instanceof HTMLInputElement) el.select(); }
+  };
+  // A read-only grid cell renders as plain TEXT, not an <input readOnly> — the <input> is
+  // ~2.5× the per-cell DOM cost (the popup-virtualize Finding, dev-notes) and read-only
+  // popups paid it for nothing. Stays keyboard-navigable: tabIndex -1 + data-vi/data-c so
+  // focusGridCell lands here, and the same column-skipping arrow mover an editable cell uses.
+  const readOnlyCell = (content: string, className: string, vi: number, c: number) => (
+    <div
+      className={`${className} table-popup__input--ro`}
+      data-vi={vi}
+      data-c={c}
+      tabIndex={-1}
+      onKeyDown={(e) => {
+        const k = gridKeyOf(e);
+        if (!k) return;
+        const target = nextCell(k, { vi, c }, { rows: visibleOrder.length, cols: viewCols }, (_vi, cc) => isComputedCol(cc));
+        if (!target) return;
+        e.preventDefault();
+        focusGridCell(target);
+      }}
+    >
+      {content === "" ? " " : content}
+    </div>
+  );
+  // Escape mid-edit reverts the cell being edited and keeps the popup open (the shell's
+  // capture listener fires before the cell's own keydown); Escape with nothing mid-edit
+  // closes. Deletes the need for a per-cell Escape branch.
+  const onGridEscape = () => {
+    if (editCell) {
+      editDraft.current = grid[editCell.r]?.[editCell.c] ?? "";
+      setEditCell(null);
+      (document.activeElement as HTMLElement | null)?.blur?.();
+    } else {
+      tablePopup.close();
+    }
+  };
+
   return (
     <PopupShell
       title={state.title}
       onClose={() => tablePopup.close()}
+      onEscape={onGridEscape}
       cardClassName="table-popup"
       grouped={grouped}
       cardStyle={cardStyle}
@@ -528,6 +700,7 @@ export function TablePopup() {
             { label: state.list ? "Copy" : "Copy CSV", onClick: copy },
             { label: "Copy as Markdown", onClick: copyMarkdown },
             { label: "Export CSV…", onClick: exportCsv },
+            ...(isFramePopup ? [{ label: showSummary ? "Hide summary footer" : "Show summary footer", onClick: () => settingsStore.set("tablePopupSummary", !showSummary) }] : []),
           ]}
         />
       }
@@ -565,7 +738,7 @@ export function TablePopup() {
       )}
       {view === "grid" ? (
         <div className="table-popup__grid-scroll">
-          <table className="table-popup__grid">
+          <table className="table-popup__grid" ref={gridRef}>
             <thead>
               <tr>
                 <th className="table-popup__corner" />
@@ -633,7 +806,7 @@ export function TablePopup() {
                         </select>
                         {colExprs[c] !== undefined && !colLambdas[c] && (
                           // One formula per column: @name reads this row, a bare name
-                          // the whole column (D24).
+                          // the whole column (tableRefSemantics).
                           <div className="table-popup__exprrow">
                             <span className="table-popup__exprprefix">=</span>
                             <input
@@ -729,7 +902,7 @@ export function TablePopup() {
             <tbody>
               {/* Rows render in SORT order but carry their SOURCE index `r`, so the row
                   number and every edit below address the real row. */}
-              {sortOrder.map((r) => { const row = viewGrid[r] ?? []; return (
+              {visibleOrder.map((r, vi) => { const row = viewRow(r); return (
                 <tr key={r}>
                   <th className="table-popup__rowhead">{r + 1}</th>
                   {Array.from({ length: viewCols }, (_, c) => {
@@ -737,6 +910,12 @@ export function TablePopup() {
                     const type = vertical ? cellType : colTypeAt(c);
                     // In a NUMERIC column a shown "NaN" can only be a real NaN (dirty data).
                     const nan = !isTextType(type) && (row[c] ?? "") === "NaN";
+                    // A tagged error renders as its #CODE!. Membership in ERROR_EXPLANATIONS
+                    // (a total Record<SolErrorCode, string>) is the test, so a NEW code is
+                    // covered the day it is declared — a hand-kept list or a `#\w+!` regex
+                    // would not be (per noManualList).
+                    const errCode = (row[c] ?? "").trim();
+                    const isErrCell = errCode !== "" && Object.prototype.hasOwnProperty.call(ERROR_EXPLANATIONS, errCode);
                     // Formatted mode swaps the derived render for the RAW text on focus
                     // (the edit truth) and re-renders formatted on the commit.
                     const fmtEdit = formattedPreview && editable && !vertical;
@@ -753,13 +932,11 @@ export function TablePopup() {
                           className="table-popup__cell table-popup__cell--computed"
                           style={colMinWidths[c] !== undefined ? { minWidth: colMinWidths[c] } : undefined}
                         >
-                          <input
-                            className={`table-popup__input table-popup__input--computed${isTextType(type) ? " table-popup__input--text" : ""}`}
-                            value={controlledCell((liveComputed ?? state.computedCells)?.[r]?.[c] ?? null, c)}
-                            readOnly
-                            tabIndex={-1}
-                            spellCheck={false}
-                          />
+                          {readOnlyCell(
+                            controlledCell((liveComputed ?? state.computedCells)?.[r]?.[c] ?? null, c),
+                            `table-popup__input table-popup__input--computed${isTextType(type) ? " table-popup__input--text" : ""}`,
+                            vi, c,
+                          )}
                         </td>
                       );
                     }
@@ -768,10 +945,17 @@ export function TablePopup() {
                       key={c}
                       className={`table-popup__cell${nan ? " table-popup__cell--nan" : ""}`}
                       style={colMinWidths[c] !== undefined ? { minWidth: colMinWidths[c] } : undefined}
-                      title={nan ? "Not a number: an undefined value in the data" : undefined}
+                      title={nan ? "Not a number: an undefined value in the data"
+                        : isErrCell ? ERROR_EXPLANATIONS[errCode as keyof typeof ERROR_EXPLANATIONS]
+                        : undefined}
                     >
+                      {!canEdit ? readOnlyCell(
+                        row[c] ?? "",
+                        `${isTextType(type) ? "table-popup__input table-popup__input--text" : "table-popup__input"}${isErrCell ? " sol-error-chip" : ""}`,
+                        vi, c,
+                      ) : (
                       <input
-                        className={isTextType(type) ? "table-popup__input table-popup__input--text" : "table-popup__input"}
+                        className={`${isTextType(type) ? "table-popup__input table-popup__input--text" : "table-popup__input"}${isErrCell ? " sol-error-chip" : ""}`}
                         value={editingHere ? editDraft.current : row[c] ?? ""}
                         readOnly={!editable || (formattedPreview && !fmtEdit)}
                         inputMode={isTextType(type) ? "text" : "decimal"}
@@ -786,18 +970,157 @@ export function TablePopup() {
                           else setEditCell({ r, c });
                         }}
                         onBlur={canEdit ? () => { if (editingHere) { setCell(r, c, editDraft.current); setEditCell(null); } } : undefined}
+                        data-vi={vi}
+                        data-c={c}
                         onKeyDown={canEdit ? (e) => {
-                          if (e.key === "Enter") e.currentTarget.blur();
-                          else if (e.key === "Escape") { editDraft.current = grid[r]?.[c] ?? ""; e.currentTarget.blur(); }
+                          const k = gridKeyOf(e);
+                          if (!k) return; // Escape is handled by the shell's onEscape (capture)
+                          // Mid-edit, arrows/Home/End move the CARET (Excel edit-mode); Enter/Tab
+                          // always commit-then-move.
+                          const midEdit = editingHere && editDraft.current !== (grid[r]?.[c] ?? "");
+                          if (midEdit && k !== "Enter" && k !== "ShiftEnter" && k !== "Tab" && k !== "ShiftTab") return;
+                          const target = nextCell(k, { vi, c }, { rows: visibleOrder.length, cols: viewCols }, (_vi, cc) => isComputedCol(cc));
+                          // Commit-then-move, explicit so blur is a no-op. The target is the VISUAL
+                          // position from before the commit — a commit can re-rank the row (sort); accepted.
+                          if (editingHere) { setCell(r, c, editDraft.current); setEditCell(null); }
+                          if (!target) return; // Tab/Shift+Tab off the end → the browser's default Tab
+                          e.preventDefault();
+                          focusGridCell(target);
                         } : undefined}
                       />
+                      )}
                     </td>
                     );
                   })}
                 </tr>
               ); })}
             </tbody>
+            {colSummaries && (
+              <tfoot className="table-popup__sumfoot">
+                <tr>
+                  <th className="table-popup__corner" />
+                  {Array.from({ length: viewCols }, (_, c) => {
+                    const numeric = colTypeAt(c) === "number";
+                    const stat: FooterStat = colStat[c] ?? (numeric ? "sum" : "count");
+                    const choices = (Object.keys(FOOTER_STAT_LABEL) as FooterStat[]).filter((k) => numeric || !NUMERIC_STATS.includes(k));
+                    return (
+                      <td key={c} className="table-popup__statcell">
+                        {/* The visible picker is the stat's word (sized to itself); the real
+                            select sits over it invisibly, so it never widens the column. */}
+                        <span className="table-popup__statpick">
+                          <span className="table-popup__statlabel">{FOOTER_STAT_LABEL[stat]} ▾</span>
+                          <select
+                            className="table-popup__statselect"
+                            value={stat}
+                            aria-label="Summary statistic"
+                            onChange={(e) => setColStat((m) => ({ ...m, [c]: e.target.value as FooterStat }))}
+                          >
+                            {choices.map((k) => <option key={k} value={k}>{FOOTER_STAT_LABEL[k]}</option>)}
+                          </select>
+                        </span>
+                        <span className="table-popup__statvalue">{fmtStat(footerStatValue(stat, colSummaries[c]))}</span>
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tfoot>
+            )}
           </table>
+        </div>
+      ) : view === "form" ? (
+        <div className="table-popup__form-scroll">
+          <div className="table-popup__form">
+            <div className="table-popup__form-nav">
+              <button type="button" className="table-popup__btn" onClick={() => setFormRow(Math.max(0, fRow - 1))} disabled={fRow <= 0} title="Previous record">
+                <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M6.5 1l-4 4 4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </button>
+              <span className="table-popup__form-count">{rows === 0 ? "0 / 0" : `${fRow + 1} / ${rows}`}</span>
+              <button type="button" className="table-popup__btn" onClick={() => setFormRow(Math.min(rows - 1, fRow + 1))} disabled={fRow >= rows - 1} title="Next record">
+                <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M3.5 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </button>
+              <div className="table-popup__spacer" />
+              <button type="button" className="table-popup__btn" onClick={addRecord} title="Add a record">+ Record</button>
+              <button type="button" className="table-popup__btn" onClick={removeRecord} disabled={rows <= 1} title="Delete this record">− Record</button>
+            </div>
+            {rows > 0 && (() => {
+              // Record-look boxes: touching, square, label-in-box; the input is
+              // the box's value line (the figure look, made editable).
+              const box = (c: number, name: string, key: number | string, at?: React.CSSProperties, hint?: string) => {
+                const type = c === -1 ? "string" : colTypeAt(c);
+                const computedHere = c !== -1 && (!!colLambdas[c] || colExprs[c] !== undefined);
+                const label = c === -1 ? name : (headerNames[c] ?? "").trim() || colLabel(c);
+                const editingHere = c !== -1 && !!editCell && editCell.r === fRow && editCell.c === c;
+                return (
+                  <label className="table-popup__form-box" key={key} style={at}>
+                    <span className="table-popup__form-box-label">{label}</span>
+                    {c === -1 ? (
+                      <input className="table-popup__form-box-input" value="" placeholder={hint} readOnly tabIndex={-1} />
+                    ) : computedHere ? (
+                      <input
+                        className="table-popup__form-box-input"
+                        value={controlledCell((liveComputed ?? state.computedCells)?.[fRow]?.[c] ?? null, c)}
+                        readOnly
+                        tabIndex={-1}
+                        spellCheck={false}
+                      />
+                    ) : type === "logical" ? (
+                      // A discrete pick applies immediately; a blank cell shows as
+                      // the indeterminate state (blank ≠ FALSE) until first toggle.
+                      (() => {
+                        const raw = (grid[fRow]?.[c] ?? "").trim().toLowerCase();
+                        const val = raw === "true" || raw === "1" ? true : raw === "false" || raw === "0" ? false : null;
+                        return (
+                          <input
+                            type="checkbox"
+                            className="table-popup__form-box-check"
+                            checked={val === true}
+                            ref={(el) => { if (el) el.indeterminate = val === null; }}
+                            onChange={(e) => setCell(fRow, c, e.target.checked ? "TRUE" : "FALSE")}
+                          />
+                        );
+                      })()
+                    ) : type === "date" ? (
+                      // The native picker (the Date Input node's control); clearing
+                      // writes a blank cell (missing), never a fabricated date.
+                      <input
+                        type="date"
+                        className="table-popup__form-box-input"
+                        value={dateCellToISO(grid[fRow]?.[c] ?? "")}
+                        onChange={(e) => setCell(fRow, c, e.target.value)}
+                      />
+                    ) : (
+                      <input
+                        className="table-popup__form-box-input"
+                        value={editingHere ? editDraft.current : grid[fRow]?.[c] ?? ""}
+                        placeholder={hint}
+                        inputMode={isTextType(type) ? "text" : "decimal"}
+                        spellCheck={false}
+                        onFocus={() => { editDraft.current = grid[fRow]?.[c] ?? ""; setEditCell({ r: fRow, c }); }}
+                        onChange={(e) => {
+                          editDraft.current = e.target.value;
+                          if (editingHere) bumpDraft((x) => x + 1);
+                          else setEditCell({ r: fRow, c });
+                        }}
+                        onBlur={() => { if (editingHere) { setCell(fRow, c, editDraft.current); setEditCell(null); } }}
+                        onKeyDown={(e) => {
+                          // Escape is handled by the shell's onEscape (editCell is set here too).
+                          if (e.key === "Enter") e.currentTarget.blur();
+                        }}
+                      />
+                    )}
+                  </label>
+                );
+              };
+              return (
+                <div className="table-popup__form-grid" style={{ gridTemplateColumns: `repeat(${formPlaced.length > 0 ? formCols : 1}, minmax(0, 1fr))` }}>
+                  {formPlaced.length > 0
+                    ? formPlaced.map((pl, i) =>
+                        box(formColIndex(pl.name), pl.name, i, { gridRow: `${pl.row} / span ${pl.rowSpan}`, gridColumn: `${pl.col} / span ${pl.colSpan}` }, pl.hint))
+                    : Array.from({ length: cols }, (_, c) => box(c, "", c))}
+                </div>
+              );
+            })()}
+          </div>
         </div>
       ) : (
         <textarea
@@ -817,6 +1140,13 @@ export function TablePopup() {
             aria-pressed={view === "grid"}
             onClick={() => setView("grid")}
           >Grid</button>
+          {formCapable && (
+            <button
+              type="button"
+              aria-pressed={view === "form"}
+              onClick={() => setView("form")}
+            >Form</button>
+          )}
           <button
             type="button"
             aria-pressed={view === "csv"}
@@ -835,15 +1165,15 @@ export function TablePopup() {
               type="button"
               aria-pressed={listVertical}
               onClick={() => setListVertical(true)}
-              title="Show the list down a column — one value per line (display only; the value is unchanged)"
+              title="Show the list down a column — one value per line (display only, the value is unchanged)"
             >Column</button>
           </div>
         )}
-        {showFmtToggle && (
+        {showFmtToggle && view !== "form" && (
           <label
             className="table-popup__source-check"
             title={literalSource
-              ? "Checked: show & edit exactly what you typed. Unchecked: the derived render, e.g. TRUE/FALSE and formatted dates."
+              ? "Checked: show and edit exactly what you typed. Unchecked: the derived render, such as TRUE/FALSE and formatted dates."
               : "Show the inputted source text instead of the formatted value"}
           >
             <input

@@ -1,6 +1,6 @@
 import { useCallback, useState, useSyncExternalStore } from "react";
 import { SlicerNode, type SlicerCell } from "../nodes/control";
-import { NodeShell, OpSelect, type NodeProps } from "./nodeKit";
+import { NodeShell, ArgSelect, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
@@ -87,7 +87,7 @@ export function SlicerComponent({ data, emit }: NodeProps<SlicerNode>) {
   const selCount = allSelected ? uniqueVals.length : selected.length;
 
   return (
-    <NodeShell node={data} emit={emit} labelPlaceholder="Slicer" className={widthClass(uniqueVals)}>
+    <NodeShell node={data} emit={emit} className={widthClass(uniqueVals)}>
       <InlineInputs node={data} emit={emit} />
       {/* Collapsed readout: how many of the column's values are active. */}
       <div className="solenoid-node__collapsed-only slicer-node__summary">
@@ -96,8 +96,7 @@ export function SlicerComponent({ data, emit }: NodeProps<SlicerNode>) {
       {!collapsed && <div className="slicer-node">
         <div className="slicer-node__toolbar">
           {hasFrame ? (
-            <OpSelect
-              arg
+            <ArgSelect
               value={activeColumn}
               onChange={changeColumn}
               options={columns.map((c) => ({ value: c, label: c }))}
@@ -123,7 +122,7 @@ export function SlicerComponent({ data, emit }: NodeProps<SlicerNode>) {
           </div>
         )}
         <div
-          className="slicer-node__values"
+          className="slicer-node__values nowheel"
           onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
         >

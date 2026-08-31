@@ -1,3 +1,4 @@
+import { SegToggle } from "./SegToggle";
 import {
   ParallelCombineNode as ParallelCombineNodeType,
   ESeriesNode as ESeriesNodeType,
@@ -6,10 +7,10 @@ import {
   RESISTOR_DIGIT, RESISTOR_MULT, RESISTOR_TOL,
   type ESeriesOp,
 } from "../rete-nodes";
-import { NodeShell, OpSelect, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, OpSelect, ArgSelect, InlineOutputRows, useNodeField, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { makeNodeComponent } from "./standardNode";
-import { SegToggle } from "./SegToggle";
+
 import { processGraph } from "../process";
 import { useState } from "react";
 
@@ -91,7 +92,7 @@ function ResistorGlyph({ bands }: { bands: string[] }) {
 }
 
 export function ResistorCodeComponent({ data, emit }: NodeProps<ResistorCodeNodeType>) {
-  const [op, setOp] = useNodeField(data, "op");
+  const [bandCount, setBandCount] = useNodeField(data, "bands");
   const [, bump] = useState(0);
   const L = data.stringLiterals;
   const set = (key: string, v: string) => {
@@ -99,17 +100,17 @@ export function ResistorCodeComponent({ data, emit }: NodeProps<ResistorCodeNode
     bump((n) => n + 1);
     void processGraph();
   };
-  const five = op === "5";
+  const five = bandCount === "5";
   const bands = five ? [L.b1, L.b2, L.b3, L.mult, L.tol] : [L.b1, L.b2, L.mult, L.tol];
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <SegToggle value={op} options={[{ value: "4", label: "4 band" }, { value: "5", label: "5 band" }]} onChange={setOp} />
+      <SegToggle value={bandCount} options={[{ value: "4", label: "4 band" }, { value: "5", label: "5 band" }]} onChange={setBandCount} />
       <ResistorGlyph bands={bands} />
-      <OpSelect arg value={L.b1} options={DIGIT_OPTIONS} onChange={(v) => set("b1", v)} />
-      <OpSelect arg value={L.b2} options={DIGIT_OPTIONS} onChange={(v) => set("b2", v)} />
-      {five && <OpSelect arg value={L.b3} options={DIGIT_OPTIONS} onChange={(v) => set("b3", v)} />}
-      <OpSelect arg value={L.mult} options={MULT_OPTIONS} onChange={(v) => set("mult", v)} />
-      <OpSelect arg value={L.tol} options={TOL_OPTIONS} onChange={(v) => set("tol", v)} />
+      <ArgSelect value={L.b1} options={DIGIT_OPTIONS} onChange={(v) => set("b1", v)} />
+      <ArgSelect value={L.b2} options={DIGIT_OPTIONS} onChange={(v) => set("b2", v)} />
+      {five && <ArgSelect value={L.b3} options={DIGIT_OPTIONS} onChange={(v) => set("b3", v)} />}
+      <ArgSelect value={L.mult} options={MULT_OPTIONS} onChange={(v) => set("mult", v)} />
+      <ArgSelect value={L.tol} options={TOL_OPTIONS} onChange={(v) => set("tol", v)} />
       <InlineOutputRows
         node={data}
         emit={emit}

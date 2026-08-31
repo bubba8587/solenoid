@@ -1,12 +1,12 @@
+import type { View } from "./view";
 import type { NodeEditor } from "rete";
-import type { AreaPlugin } from "rete-area-plugin";
-import type { Schemes, AreaExtra } from "./schemes";
+import type { Schemes } from "./schemes";
 import { GroupNode, DisplayNode, FormatControllerNode, ConduitNode } from "./rete-nodes";
 import { dockedNodeStore } from "./dockedNodeStore";
 import { createNotifier } from "./storeKit";
+import { displayNameOf } from "./nodeNamer";
 
 type Editor = NodeEditor<Schemes>;
-type Area = AreaPlugin<Schemes, AreaExtra>;
 
 export interface RetainedTerminal {
   kind: "display" | "node"; // "display" → read cachedValue; "node" → read cableValueStore
@@ -32,11 +32,8 @@ function extendedMembers(editor: Editor, group: GroupNode): string[] {
   return ext;
 }
 
-// Falls back to constructor.name, which the build's keepNames setting preserves.
-function genericLabel(node: { constructor: { name: string }; label?: string }): string {
-  const l = (node.label ?? "").trim();
-  if (l) return l;
-  return node.constructor.name.replace(/Node$/, "").replace(/([a-z])([A-Z])/g, "$1 $2");
+function genericLabel(node: object): string {
+  return displayNameOf(node);
 }
 
 // Keyed by the SOCKET it stands in for, not a connection, so an in-progress cable
@@ -322,8 +319,7 @@ export function recomputeGroupCollapse(editor: Editor): void {
  *  so EXPAND must re-render members a frame before re-measuring, and COLLAPSE must not
  *  (re-rendering members would clobber the pills' positions). */
 export function settleCollapse(
-  editor: Editor,
-  area: Area,
+  view: View,
   groupId: string,
   members: string[],
   expanding: boolean,
@@ -333,26 +329,17 @@ export function settleCollapse(
   const set = new Set(members);
   for (const m of members) for (const d of dockedNodeStore.getDockedTo(m)) set.add(d.id);
   requestAnimationFrame(() => {
-    void area.update("node", groupId);
-    if (expanding) for (const m of set) void area.update("node", m);
-    requestAnimationFrame(() => {
-      for (const c of editor.getConnections()) {
-        if (set.has(c.source) || set.has(c.target)) void area.update("connection", c.id);
-      }
-    });
+    void view.rerenderNode(groupId);
+    if (expanding) for (const m of set) void view.rerenderNode(m);
+    requestAnimationFrame(() => { void view.rerenderCables(); });
   });
 }
 
-/** Recompute, then hide/show member node elements to match (cables hide reactively). */
-export function syncGroupCollapse(editor: Editor, area: Area): void {
+/** Recompute; hiding rides RF node `className` off the store notify (flowModel
+ *  `nodeClassName` + FlowCanvas's subscription). Never stamp the wrapper's
+ *  inline visibility — RF owns it and overwrites with `visible` post-measure,
+ *  which is how the old imperative element sweep silently lost the load-time
+ *  hide. */
+export function syncGroupCollapse(editor: Editor, _area: View): void {
   recomputeGroupCollapse(editor);
-  for (const n of editor.getNodes()) {
-    const el = area.nodeViews.get(n.id)?.element;
-    if (!el) continue;
-    const shouldHide = _hiddenNodes.has(n.id);
-    // Hide with `visibility`, never `display: none` — the element must stay laid out or its
-    // measured size and socket positions collapse to 0 and cables re-anchor at the origin.
-    el.style.visibility = shouldHide ? "hidden" : "";
-    el.style.pointerEvents = shouldHide ? "none" : "";
-  }
 }

@@ -141,7 +141,7 @@ export function nodeOutputElemFamily(nodeId: string | null, outKey?: string): El
   if (t === undefined) return undefined;
   if (isDateType(t)) return "date";
   const fam = elementFamilyOf(t);
-  return fam === "number" || fam === "string" || fam === "logical" ? fam : undefined;
+  return fam === "number" || fam === "string" || fam === "logical" || fam === "complex" ? fam : undefined;
 }
 
 /** Turn numeric serials into date strings when the output socket is a date; a no-op once an
@@ -151,8 +151,18 @@ export function dateFormatDisplay(value: DisplayValue, dateLike: boolean, hasAnn
   if (typeof value === "number") {
     return Number.isFinite(value) ? fmtSerial(value) : value;
   }
-  if (Array.isArray(value) && typeof value[0] === "number") {
-    return (value as number[]).map((v) => (Number.isFinite(v) ? fmtSerial(v) : ""));
+  // PER CELL, and never gated on cell 0. `dateLike` is the DECLARED family, so every
+  // cell here is a date cell; deciding the whole list's treatment from the first one
+  // meant a leading valid date turned every error and blank after it into "" — an
+  // #AMBIGUOUS! cell rendered as an empty cell, which is the one thing it must not do.
+  if (Array.isArray(value)) {
+    return (value as (number | string | boolean | null | SolError)[]).map((v) => {
+      if (isSolError(v)) return v.code;   // an error cell keeps its #CODE!
+      if (v === null) return "";          // a blank stays blank
+      // A non-finite SERIAL is dirty data with no date to show — blank, per the pin.
+      if (typeof v === "number") return Number.isFinite(v) ? fmtSerial(v) : "";
+      return v;                           // text/logical cells pass through
+    }) as unknown as DisplayValue;
   }
   return value;
 }

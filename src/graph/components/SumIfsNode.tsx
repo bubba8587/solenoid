@@ -2,12 +2,13 @@ import { useState } from "react";
 import type { SumIfsNode as SumIfsNodeType, CondAggOp } from "../rete-nodes";
 import { COND_AGG_OP_META } from "../rete-nodes";
 import type { FilterCondConfig } from "../frameVerbs";
-import { processGraph, bumpConnectionVersion } from "../process";
-import { getActiveArea } from "../activeGraph";
+import { processGraph } from "../process";
+import { bumpConnectionVersion } from "../graphSignals";
+import { getActiveView } from "../activeGraph";
 import { useConnectedInputs, InlineInputs, InlineTextField } from "./inlineInput";
-import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, OpSelect, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { SegToggle } from "./SegToggle";
 import { MeasuredSocketRow } from "./NodeSocket";
-import { pushRowAddUndo, pushRowRemovalUndo } from "./ExtensibleInputs";
 import { FILTER_OP_OPTIONS, TEXT_MATCH_OPS, VALUELESS_OPS } from "./FrameNodes";
 import { stopDragStart } from "../coarse";
 import { dropInputCables } from "./cablePrune";
@@ -20,6 +21,7 @@ const OPS = (Object.keys(COND_AGG_OP_META) as CondAggOp[]).map((op) => ({
 export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
   const connected = useConnectedInputs(data.id);
   const [op, setOp] = useNodeField(data, "op");
+  const [match, setMatch] = useNodeField(data, "match");
   const [cfg, setCfg] = useState<Record<string, FilterCondConfig>>(() => ({ ...data.condConfig }));
   const strLiterals = (data.stringLiterals ??= {});
   const pairs = data.valuePairKeys();
@@ -37,20 +39,15 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
   };
 
   async function addPair() {
-    const before = new Set(Object.keys(data.inputs));
     data.addValuePair();
-    const added = Object.keys(data.inputs).filter((k) => !before.has(k));
-    const colKey = added[0];
-    if (colKey) pushRowAddUndo(data, added, () => data.removeValuePair(colKey));
-    await getActiveArea()?.update("node", data.id);
+    await getActiveView()?.rerenderNode(data.id);
     await processGraph();
   }
 
   async function removePair(colKey: string, valKey: string) {
     await dropInputCables(data.id, [colKey, valKey]);
-    pushRowRemovalUndo(data, [colKey, valKey], () => data.removeValuePair(colKey));
     data.removeValuePair(colKey);
-    await getActiveArea()?.update("node", data.id);
+    await getActiveView()?.rerenderNode(data.id);
     bumpConnectionVersion();
     await processGraph();
   }
@@ -92,7 +89,7 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
                 </button>
               )}
             </MeasuredSocketRow>
-            <OpSelect arg value={c.op} options={FILTER_OP_OPTIONS} onChange={(next) => updateCfg(id, { op: next })} />
+            <ArgSelect value={c.op} options={FILTER_OP_OPTIONS} onChange={(next) => updateCfg(id, { op: next })} />
             <MeasuredSocketRow side="input" socketKey={valKey} nodeId={data.id} emit={emit} payload={data.inputs[valKey]!.socket}>
               <span className="solenoid-node__io-label">Value</span>
               {connected.has(valKey) ? (
@@ -122,6 +119,14 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
           </div>
         );
       })}
+      {/* With one criterion All and Any are the same, so the toggle only earns its row past that. */}
+      {pairs.length > 1 && (
+        <SegToggle
+          value={match}
+          options={[{ value: "all", label: "Match all" }, { value: "any", label: "Match any" }]}
+          onChange={setMatch}
+        />
+      )}
       <button
         type="button"
         className="solenoid-node__add-input"

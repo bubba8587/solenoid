@@ -30,3 +30,8 @@ dist-ssr
 # Affinity Designer editor lock files
 *~lock~
 sample-data/
+
+# generated copy-rewrite working files (scripts/copy-inventory.ts)
+copy-inventory.md
+copy-inventory.md.orig.json
+/rf-*.png

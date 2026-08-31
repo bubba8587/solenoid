@@ -1,20 +1,10 @@
-/* All socket sizing flows from these two CSS variables. The defaults
-   apply everywhere; a node-scoped rule can shrink/grow sockets just
-   by setting `--socket-size` (and optionally `--socket-border-width`).
+/* All socket sizing flows from --socket-size. The default applies
+   everywhere; a node-scoped rule can shrink/grow sockets just by
+   setting it. */
 
-   The wrapping <span class="input-socket"|"output-socket"> is sized
-   the same as the dot so rete-render-utils measures the right box
-   and cables land on the dot's center. */
-
-/* All three layers — our outer span, rete's wrapper span, the SVG —
-   read the same size variable so width === height always. The dot
-   itself is a real SVG <circle>, not a CSS border-radius div, so it
-   stays a perfect circle even when the box lands on a subpixel
-   boundary. */
-.input-socket,
-.output-socket,
-.input-socket > span,
-.output-socket > span,
+/* The dot reads --socket-size so width === height always. It is a masked span
+   (or, for the cube, an SVG) rather than a border-radius div, so the glyph holds
+   its shape even when the box lands on a subpixel boundary. */
 .solenoid-socket-dot {
   display: block;
   width: var(--socket-size, 12px);
@@ -30,14 +20,22 @@
   overflow: visible;
 }
 
-.input-socket::before {
+/* ── Pointer catch zones ────────────────────────────────────────────────────
+   The halo hangs off the socket WRAPPER — NodeSocket's absolutely positioned box
+   ([data-socket-side]) and the Conduit's lane square. Both are the same box as the
+   dot, so the ::before only extends the pointer-catch region: it has no fill and
+   doesn't move the measured socket box, and cable endpoints stay put.
+   (Pre-port these keyed off .input-socket/.output-socket, spans rete's classic
+   preset wrapped every socket in. The render packages went at cutover and took
+   those class names with them, silently un-arming every rule below.) */
+[data-socket-side="input"]::before {
   content: '';
   position: absolute;
   inset: -2px; /* extends hit area ~20% beyond the visual edge */
   border-radius: 50%;
 }
 
-[data-socket-shape="square"] .input-socket::before {
+[data-socket-side="input"][data-socket-shape="square"]::before {
   border-radius: 0;
 }
 
@@ -47,55 +45,54 @@
    Mouse-precise, so more modest than the coarse-pointer blowout below. The
    Conduit's tightly packed lanes stay tight — a 6px halo there would overlap
    the next lane over. */
-.solenoid-canvas--cabling .input-socket::before,
-.solenoid-canvas--cabling .output-socket::before {
+.solenoid-canvas--cabling [data-socket-side]::before {
+  content: '';
+  position: absolute;
   inset: -6px;
+  border-radius: 50%;
 }
-.solenoid-canvas--cabling [data-socket-shape="square"] .input-socket::before,
-.solenoid-canvas--cabling [data-socket-shape="square"] .output-socket::before {
+.solenoid-canvas--cabling [data-socket-shape="square"]::before {
   border-radius: 0;
 }
-.solenoid-canvas--cabling .solenoid-conduit .input-socket::before,
-.solenoid-canvas--cabling .solenoid-conduit .output-socket::before {
+.solenoid-canvas--cabling .solenoid-conduit__lane::before {
+  content: '';
+  position: absolute;
   inset: -2px;
+  border-radius: 0;
 }
 
 /* Touch: a 12px dot is far too small to grab with a fingertip when drawing or
    dropping a cable, so on coarse pointers blow the invisible hit area out to
    ~28px around the dot (both sides — outputs get one too). Mouse-precise
-   devices keep the tight 2px extension above. The ::before only extends the
-   pointer-catch region; it has no fill and doesn't move the measured socket
-   box, so cable endpoints stay centered on the dot. */
+   devices keep the tight 2px extension above. */
 @media (pointer: coarse) {
-  .input-socket::before,
-  .output-socket::before {
+  [data-socket-side]::before {
     content: '';
     position: absolute;
     inset: -8px;
     border-radius: 50%;
   }
-  [data-socket-shape="square"] .input-socket::before,
-  [data-socket-shape="square"] .output-socket::before {
+  [data-socket-shape="square"]::before {
     border-radius: 0;
   }
 
   /* The Conduit packs several lane sockets onto a small body, so the big ~28px
      touch target swallows the body and you can't grab it to move. Give its
      sockets a much smaller target. */
-  .solenoid-conduit .input-socket::before,
-  .solenoid-conduit .output-socket::before {
+  .solenoid-conduit__lane::before {
+    content: '';
+    position: absolute;
     inset: -2px;
+    border-radius: 0;
   }
 
   /* While cabling, coarse targets must GROW past their resting -8px — without
-     this, the 2-class cabling rule above (-6px) outranks the media rule and
-     SHRINKS the target mid-drag. */
-  .solenoid-canvas--cabling .input-socket::before,
-  .solenoid-canvas--cabling .output-socket::before {
+     this, the cabling rule above (-6px) outranks the media rule and SHRINKS the
+     target mid-drag. */
+  .solenoid-canvas--cabling [data-socket-side]::before {
     inset: -14px;
   }
-  .solenoid-canvas--cabling .solenoid-conduit .input-socket::before,
-  .solenoid-canvas--cabling .solenoid-conduit .output-socket::before {
+  .solenoid-canvas--cabling .solenoid-conduit__lane::before {
     inset: -2px;
   }
 }
@@ -116,9 +113,16 @@ html.is-mobile {
     pointer-events: none;
   }
   .solenoid-node:not(.solenoid-node--selected),
-  .solenoid-conduit:not(.solenoid-conduit--selected),
   .solenoid-group:not(.solenoid-group--selected),
   .solenoid-note:not(.solenoid-note--selected) {
+    pointer-events: auto;
+  }
+  /* The Conduit's own box is a fixed 92 square around a tiny block, so the tap
+     target is its PAINTED shell, never the box (conduit.css). */
+  .solenoid-conduit:not(.solenoid-conduit--selected) .solenoid-conduit__block,
+  .solenoid-conduit:not(.solenoid-conduit--selected) .solenoid-conduit__block-border,
+  .solenoid-conduit:not(.solenoid-conduit--selected) .solenoid-conduit__handle,
+  .solenoid-conduit:not(.solenoid-conduit--selected) .solenoid-conduit__stripe {
     pointer-events: auto;
   }
   /* …except the resize grip stays grabbable on an unselected node, so the box
@@ -129,8 +133,8 @@ html.is-mobile {
   /* During a cable drag every socket is a live drop target again, on any node. */
   .solenoid-canvas--cabling .solenoid-node [data-socket-side],
   .solenoid-canvas--cabling .solenoid-node [data-socket-side] *,
-  .solenoid-canvas--cabling .solenoid-conduit .input-socket,
-  .solenoid-canvas--cabling .solenoid-conduit .output-socket {
+  .solenoid-canvas--cabling .solenoid-conduit__lane,
+  .solenoid-canvas--cabling .solenoid-conduit__lane * {
     pointer-events: auto;
   }
 }
@@ -163,9 +167,8 @@ html.is-mobile {
 }
 
 /* Conduit sockets scale with the connector — ConduitComponent sets --socket-size
-   inline (base × the collapse scale) so the dots track the body size. This is
-   just the fallback + the border width. */
+   inline (base × the collapse scale) so the lane squares track the body size.
+   This is just the fallback. */
 .solenoid-conduit {
   --socket-size: 9px;
-  --socket-border-width: 1.5px;
 }

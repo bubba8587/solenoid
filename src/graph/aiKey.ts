@@ -6,9 +6,14 @@ import { apiKeyStore } from "./apiKeyStore";
  *  provider-neutral so a rename never touches stored keys. */
 export const AI_PROVIDER = "ai";
 
-/** Whether a non-empty key is stored. */
+/** 1.3 ships with the assistant OFF (author, 2026-08-30) — its verification tail is
+ *  unfinished, so the sparkle, the Settings section and the What's-New slide all hide.
+ *  Flip to true to restore the whole surface; nothing else was removed. */
+export const AI_ENABLED = false;
+
+/** Whether the assistant is on AND a non-empty key is stored. */
 export function aiConnected(): boolean {
-  return apiKeyStore.has(AI_PROVIDER);
+  return AI_ENABLED && apiKeyStore.has(AI_PROVIDER);
 }
 
 /** The stored key, or ""; `aiService.ts` reads it per request and never caches. */

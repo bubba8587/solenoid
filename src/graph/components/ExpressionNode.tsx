@@ -35,7 +35,7 @@ export function ExpressionComponent({ data: node, emit }: NodeProps<ExpressionNo
   ) : undefined;
 
   return (
-    <NodeShell node={node} emit={emit} labelPlaceholder="Expression" cornerBadge={lockBadge}>
+    <NodeShell node={node} emit={emit} cornerBadge={lockBadge}>
       {/* Expression infers its inputs from the text, so there is no formula socket. */}
       <FormulaField
         value={expr}

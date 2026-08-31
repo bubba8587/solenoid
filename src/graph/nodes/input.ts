@@ -5,8 +5,10 @@ import namesPlugin from "colord/plugins/names";
 // Global: named CSS colors ("tomato") must parse everywhere colord is used.
 extend([namesPlugin]);
 import { numberSocket } from "../sockets";
-import { numIn, strIn, strOut, logicalOut, readInput } from "./shared";
+import { numIn, strIn, strOut, logicalOut, dateOut, readInput } from "./shared";
 import { solError, isSolError, type SolError } from "../errorValue";
+import { jsDateToSerial } from "./dateSerial";
+import { saveTimeStore } from "../saveTimeStore";
 
 export class NumberInputNode extends ClassicPreset.Node {
   label: string;
@@ -99,40 +101,48 @@ export const BLEND_MODE_META: Record<BlendMode, { label: string; blend: (a: numb
 
 export class ColorBlendNode extends ClassicPreset.Node {
   label: string;
-  /** The blend-op selector — named `op` per VAL-12 so the family can declare. */
-  op: BlendMode;
+  mode: BlendMode;
   // Defaults are two palette colors so the node shows a result cold.
   stringLiterals: Record<string, string> = { a: "#56b4e9", b: "#e69f00" };
   cachedString: string | SolError | null = null;
   width = 210;
   height = 190;
 
-  constructor(init?: { label?: string; op?: BlendMode }) {
+  constructor(init?: { label?: string; mode?: BlendMode }) {
     super("ColorBlend");
     this.label = init?.label ?? "Color Blend";
-    // Guard a stale op from an old save — fall back rather than crash data().
-    this.op = init?.op && init.op in BLEND_MODE_META ? init.op : "mix";
+    // Guard a stale mode from an old save — fall back rather than crash data().
+    this.mode = init?.mode && init.mode in BLEND_MODE_META ? init.mode : "mix";
     this.addInput("a", strIn("Color A"));
     this.addInput("b", strIn("Color B"));
     this.addOutput("color", strOut("Color"));
   }
 
-  data(inputs: { a?: string[]; b?: string[] }): { color: string | SolError } {
+  data(inputs: { a?: string[]; b?: string[] }): { color: string | SolError | null } {
+    // Colors A and B are operands: a wired blank propagates (blank in, blank out), it is
+    // not an invalid-color error. An untouched empty card ("") is still a #VALUE!.
     const parse = (key: "a" | "b", label: string) => {
-      const s = String(readInput(inputs[key], this.stringLiterals[key] ?? "") ?? "").trim();
+      const raw = readInput(inputs[key], this.stringLiterals[key] ?? "");
+      if (raw === null) return null;
+      const s = String(raw).trim();
       const c = colord(s);
       return c.isValid() ? c : solError("#VALUE!", `${label} isn't a color: "${s}"`);
     };
     const a = parse("a", "Color A");
     const b = parse("b", "Color B");
+    // An error outranks an unknown: the error branch runs before the blank one.
     const err = [a, b].find(isSolError);
     if (err) {
       this.cachedString = err;
       return { color: err };
     }
+    if (a === null || b === null) {
+      this.cachedString = null;
+      return { color: null };
+    }
     const ar = (a as Colord).toRgb();
     const br = (b as Colord).toRgb();
-    const { blend } = BLEND_MODE_META[this.op];
+    const { blend } = BLEND_MODE_META[this.mode];
     const ch = (x: number, y: number) => Math.round(Math.min(1, Math.max(0, blend(x / 255, y / 255))) * 255);
     const out = colord({ r: ch(ar.r, br.r), g: ch(ar.g, br.g), b: ch(ar.b, br.b) }).toHex();
     this.cachedString = out;
@@ -171,7 +181,7 @@ export class ConstantNode extends ClassicPreset.Node {
     super("Constant");
     // Guard a stale op from an old save rather than crash data() on CONSTANTS[op].
     this.op = init?.op && init.op in CONSTANTS ? init.op : "pi";
-    this.label = init?.label ?? "Constant";
+    this.label = init?.label ?? "";
     this.addOutput("value", new ClassicPreset.Output(numberSocket));
   }
 
@@ -181,6 +191,10 @@ export class ConstantNode extends ClassicPreset.Node {
 }
 
 export class SliderInputNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    min: "Wiring a bound clamps the slider's value to it immediately. A blank on the cable falls back to the bound typed on the card.",
+    max: "Wiring a bound clamps the slider's value to it immediately. A blank on the cable falls back to the bound typed on the card.",
+  };
   label: string;
   value: number;
   literals: Record<string, number> = { min: 0, max: 100, step: 1 };
@@ -235,5 +249,31 @@ export class BooleanInputNode extends ClassicPreset.Node {
   // `value` stays 0|1 for the toggle UI + persistence; the EMITTED value is a real boolean.
   data() {
     return { value: this.value === 1 };
+  }
+}
+
+/** Reads the save clock (`saveTimeStore` — the leaf seam over the current SolDoc's
+ *  per-document timestamps), so the two serials refresh on any recompute and the
+ *  card's Refresh button is just `requestRecalc()`. */
+export class SaveTimesNode extends ClassicPreset.Node {
+  label: string;
+  cachedAutosave: number | null = null;
+  cachedFileSave: number | null = null;
+  width  = 220;
+  height = 170;
+
+  constructor(init?: { label?: string }) {
+    super("SaveTimes");
+    this.label = init?.label ?? "Save Times";
+    this.addOutput("autosave", dateOut("Autosaved"));
+    this.addOutput("filesave", dateOut("Saved"));
+  }
+
+  data(): { autosave: number | null; filesave: number | null } {
+    const auto = saveTimeStore.lastAutosaveAt();
+    const file = saveTimeStore.lastFileSaveAt();
+    this.cachedAutosave = auto === null ? null : jsDateToSerial(new Date(auto));
+    this.cachedFileSave = file === null ? null : jsDateToSerial(new Date(file));
+    return { autosave: this.cachedAutosave, filesave: this.cachedFileSave };
   }
 }

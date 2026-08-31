@@ -66,6 +66,10 @@ function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType): Front
 }
 
 export class NoteNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    document: "Carries the note's full text, frontmatter included, for a document sink such as Write to Obsidian.",
+  };
+
   body: string;        // markdown — may open with a `---`-fenced YAML frontmatter block
   color: string;       // palette SLOT id (resolved to a hex at render); tints the note bg + accent
   width: number;
@@ -211,6 +215,33 @@ export class ImageNode extends ClassicPreset.Node {
   }
 }
 
+// A LINK to a file on disk — the path, never the bytes. A canvas object with NO
+// sockets: it carries nothing into the graph, it just points at a file you can open.
+// Desktop persists the absolute `path`; on web there is no path (the browser sandbox
+// has none), so an attach is session-only and only `fileName` survives a reload —
+// the same "local file, not saved with the document" bargain the Image node strikes.
+export class FileLinkNode extends ClassicPreset.Node {
+  path: string;        // absolute path — persisted (desktop); "" on web
+  fileName: string;    // display name (with extension) — persisted, carries web reloads
+  collapsed: boolean;  // when true, only the header bar shows
+  // Fixed-width card (no resize gesture), so it deliberately owns no width/height —
+  // the width lives in CSS, and it stays out of the persistence SIZE_OWNERS set.
+
+  constructor(init?: { label?: string; path?: string; fileName?: string; collapsed?: boolean }) {
+    super(init?.label ?? "File Link");
+    this.path = init?.path ?? "";
+    this.fileName = init?.fileName ?? "";
+    this.collapsed = init?.collapsed ?? false;
+    // No addInput/addOutput: a link is not a value in the dataflow.
+  }
+
+  // No outputs, but the dataflow engine still calls data() on every node — return
+  // nothing (the Presentation / Session History pattern for a sockets-less node).
+  data(): Record<string, never> {
+    return {};
+  }
+}
+
 // A visual slicer: clicking a shape emits that layer's NAME on `Layer`, and the
 // picture flows out `chart` carrying the selection. The markup is just text, so it
 // persists in `stringLiterals.source`.
@@ -218,6 +249,10 @@ export class ImageNode extends ClassicPreset.Node {
 const DEFAULT_SVG_HOVER = "#4f9dff";
 
 export class SvgPickerNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    layer: "Carries the clicked layer's name and stays blank until a shape is picked.",
+  };
+
   url: string;                                  // last web source URL — persisted
   stringLiterals: Record<string, string> = {}; // .source = inlined SVG markup — persisted
   hoverColor: string;                           // hover/selection highlight color — persisted

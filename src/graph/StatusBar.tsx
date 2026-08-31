@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { getEditor, getArea, requestRecalc } from "./process";
+import { requestRecalc } from "./process";
 import { calcModeStore } from "./calcModeStore";
-import { nodeTypeName } from "./nodeNames";
+import { nodeDisplayName } from "./catalogUtils";
 import { isWebDemo } from "../env";
 import { loadRevealStore } from "./loadReveal";
 import { WEB_DEMO_NODE_BUDGET, WEB_DEMO_NODE_WARN_RATIO } from "./nodeBudget";
 import { problemsStore, problemsPanelUi } from "./problemsStore";
 import { useBottomChrome } from "./chromeBottom";
+import { getActiveView, getActiveEditor } from "./activeGraph";
 
 /** Bottom status strip, polled a few times a second rather than wired to stores.
  *  The node-budget meter is WEB-DEMO only — the limit is the webview's, not the
@@ -15,9 +16,9 @@ import { useBottomChrome } from "./chromeBottom";
 type Snapshot = { nodes: number; cables: number; selection: string; zoom: number };
 
 function read(): Snapshot {
-  const editor = getEditor();
-  const area = getArea();
-  const zoom = area ? Math.round(area.area.transform.k * 100) : 100;
+  const editor = getActiveEditor();
+  const view = getActiveView();
+  const zoom = view ? Math.round(view.transform.k * 100) : 100;
   if (!editor) return { nodes: 0, cables: 0, selection: "Ready", zoom };
 
   const all = editor.getNodes();
@@ -27,7 +28,7 @@ function read(): Snapshot {
   let selection: string;
   if (selected.length === 0) selection = "Ready";
   // Node TYPE, not the user-editable header title.
-  else if (selected.length === 1) selection = nodeTypeName(selected[0]);
+  else if (selected.length === 1) selection = nodeDisplayName(selected[0]);
   else selection = `${selected.length} selected`;
 
   return { nodes: all.length, cables, selection, zoom };
@@ -136,8 +137,8 @@ export function StatusBar() {
         )}
         <span className="solenoid-statusbar__zoom">{snap.zoom}%</span>
       </div>
-      {/* An App-level sibling: the strip's backdrop-filter would trap the modal's
-          stacking context below it. */}
+      {/* An App-level sibling: the strip's own stacking context (position + z-index)
+          would trap the modal below it. */}
       {modalOpen && <NodeBudgetModal count={snap.nodes} onClose={() => setModalOpen(false)} />}
     </>
   );

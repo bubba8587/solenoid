@@ -11,6 +11,8 @@ import { isSolError, solError } from "./errorValue";
 import { forAggregate, coerceLogical, guardFinite } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 import { compareOp, type ComparisonOp } from "./nodes/logic";
+import { xmatchIndex, type XMatchMatchMode } from "./nodes/listOps";
+import { aggregate, percentile, pearson, spearman, kendallTau, covariance } from "./nodes/statsOps";
 import { parseDateToSerial } from "./nodes/dateSerial";
 
 /** Group-aggregation ops (the GroupBy / PivotBy core). count = non-null cells
@@ -61,13 +63,17 @@ export type FrameOp =
   | { kind: "filterMulti"; combine: FilterCombine; conditions: FilterCond[]; complement?: boolean } // keep rows passing ALL ("and") / ANY ("or") predicates; complement keeps the REST
   | { kind: "groupBy"; keys: string[]; aggs: AggSpec[] } // one row per key combo + aggregates
   | { kind: "unpivot"; idColumns: string[]; valueColumns: string[]; variableName?: string; valueName?: string } // wide → long
-  | ({ kind: "pivot" } & PivotSpec); // long → wide cross-tab (Excel PIVOTBY)
+  | ({ kind: "pivot" } & PivotSpec)  // long → wide cross-tab (Excel PIVOTBY)
+  | ({ kind: "window" } & WindowSpec) // one per-group window column, original row order
+  | { kind: "fillBlanks"; columns: string[]; dir: "down" | "up" }   // carry the last value into blanks
+  | { kind: "replaceValues"; column: string; find: string; replaceWith: string; mode: "cell" | "substring" }
+  | { kind: "sliceRows"; mode: "first" | "last" | "skip" | "range"; n: number; to?: number };
 
 /** Pinned to the TYPE below, so a `FrameOp` kind missing here fails `tsc` and the
  *  parity corpus then demands its fixture file. */
 export const FRAME_OP_KINDS = [
   "select", "drop", "rename", "sort", "distinct", "head",
-  "filter", "filterMulti", "groupBy", "unpivot", "pivot",
+  "filter", "filterMulti", "groupBy", "unpivot", "pivot", "window", "fillBlanks", "replaceValues", "sliceRows",
 ] as const satisfies readonly FrameOp["kind"][];
 // Exhaustiveness: a FrameOp kind missing from FRAME_OP_KINDS makes this `never`
 // assignment fail to compile.
@@ -113,12 +119,19 @@ function comparatorFor(type: FrameColType): (a: FrameCell, b: FrameCell) => numb
 }
 
 /** A JSON-safe, type-distinguishing encoding of a cell, for distinct/group keys
- *  (so `1` ≠ `"1"`, `null` ≠ `0`, and an error keys by its code). */
+ *  (so `1` ≠ `"1"`, `null` ≠ `0`, and an error keys by its code).
+ *  Non-finites key by NAME because `JSON.stringify` writes all three as `null`,
+ *  which used to file +∞, −∞ and NaN into one shared bucket — sort orders ±∞ at
+ *  opposite ends and aggregation reads NaN as `#DOMAIN!` while passing ±∞
+ *  through, so one bucket was the odd surface out. */
 function encodeCell(v: FrameCell): unknown {
   if (isSolError(v)) return ["e", v.code];
   if (v === null) return ["n"];
   if (typeof v === "boolean") return ["b", v];
-  if (typeof v === "number") return ["#", v];
+  if (typeof v === "number") {
+    if (Number.isFinite(v)) return ["#", v];
+    return ["#", Number.isNaN(v) ? "nan" : v > 0 ? "inf" : "-inf"];
+  }
   return ["s", v];
 }
 
@@ -201,6 +214,35 @@ function filterValueToNumber(value: FrameCell, type: FrameColType): number | nul
   return null;
 }
 
+/** The three predicates that read cells AS TEXT. */
+export const TEXT_FILTER_OPS: ReadonlySet<FilterOp> = new Set(["contains", "startsWith", "endsWith"]);
+
+const TEXT_OP_LABEL: Record<string, string> = {
+  contains: "Contains", startsWith: "Starts with", endsWith: "Ends with",
+};
+
+/** A text predicate on a non-text column is a CONFIGURATION error, `#TYPE!` — never a
+ *  stringified comparison (rules textPredicateNeedsText, author verdict 2026-08-30).
+ *  The old `String(cell)` fallback forced the Rust engine to mirror JS number printing
+ *  digit-for-digit forever (`js_number_string`, deleted with this rule). */
+export function requireTextColumn(op: FilterOp, type: FrameColType, column: string): void {
+  if (!TEXT_FILTER_OPS.has(op) || type === "string") return;
+  throw solError(
+    "#TYPE!",
+    `${TEXT_OP_LABEL[op] ?? op} reads text — "${column}" is a ${type} column. ` +
+    `Convert it first: a Computed Column like TEXT(@${column}, "@"), or Cast to Text`,
+  );
+}
+
+/** The list twin of `requireTextColumn` (same rule, no column to name). */
+export function requireTextList(op: FilterOp, type: FrameColType): void {
+  if (!TEXT_FILTER_OPS.has(op) || type === "string") return;
+  throw solError(
+    "#TYPE!",
+    `${TEXT_OP_LABEL[op] ?? op} reads text — this is a ${type} list. Cast it to Text first`,
+  );
+}
+
 export function passesFilter(cell: FrameCell, op: FilterOp, value: FrameCell, type: FrameColType, matchCase: boolean): boolean {
   // These run BEFORE the null/error guard below, since they exist to SELECT on those
   // states; `noterror` keeps a null — pair it with `notblank` to drop both.
@@ -234,6 +276,7 @@ export function passesFilter(cell: FrameCell, op: FilterOp, value: FrameCell, ty
  *  SUMIFS pattern); blanks/errors are dropped. */
 export function filterRows(f: FrameValue, column: string, op: FilterOp, value: FrameCell, matchCase = false): FrameValue {
   const col = requireColumn(f, column);
+  requireTextColumn(op, col.type, column);
   const keep: number[] = [];
   for (let i = 0; i < frameRowCount(f); i++) {
     if (passesFilter(cellAt(col, i), op, value, col.type, matchCase)) keep.push(i);
@@ -251,6 +294,7 @@ export function filterRowsMulti(f: FrameValue, combine: FilterCombine, condition
   // row, so a null/error cell that fails its condition is KEPT here.
   if (conditions.length === 0) return complement ? reorderRows(f, []) : f;
   const cols = conditions.map((c) => requireColumn(f, c.column));
+  for (let j = 0; j < conditions.length; j++) requireTextColumn(conditions[j].op, cols[j].type, conditions[j].column);
   const keep: number[] = [];
   for (let i = 0; i < frameRowCount(f); i++) {
     const pass = (c: FilterCond, j: number) =>
@@ -441,7 +485,7 @@ export function addIndexColumn(f: FrameValue, name: string, start: number): Fram
 }
 
 // ─── Join (binary) ─────────────────────────────────────────────────────────────
-export type JoinHow = "inner" | "left" | "right" | "outer" | "semi" | "anti" | "asof";
+export type JoinHow = "inner" | "left" | "right" | "outer" | "semi" | "anti" | "asof" | "cross";
 // backward = latest right key ≤ left key (Polars' default strategy); forward =
 // earliest right key ≥ left key; nearest = whichever is closer (ties → backward).
 export type AsofDirection = "backward" | "forward" | "nearest";
@@ -459,8 +503,9 @@ function keyIndex(col: FrameColumn, n: number): Map<string, number[]> {
   const idx = new Map<string, number[]>();
   for (let i = 0; i < n; i++) {
     const cell = cellAt(col, i);
-    // NON-FINITE keys never join: encKey buckets every non-finite alike, which would
-    // match NaN to −∞ — fine for dedupe, garbage as an equality MATCH.
+    // NON-FINITE keys never join, even now that they key apart for dedupe: NaN
+    // does not equal itself, and ±∞ are overflow sentinels — two rows that both
+    // overflowed are not the same entity. verb_join masks them to null likewise.
     if (cell === null || isSolError(cell) || (typeof cell === "number" && !Number.isFinite(cell))) continue;
     const k = encKey(cell);
     const bucket = idx.get(k);
@@ -575,7 +620,31 @@ function asofPairs(
  *  only; left/right keep all rows of that side (other side null); outer keeps all
  *  of both; asof = nearest-match (see `asofPairs`). The unmatched side's cells
  *  are `null`. */
+/** Cartesian product, left-major: every left row paired with every right row; ALL
+ *  columns of both sides, colliding names deduped (pandas merge(how="cross"), R
+ *  expand.grid / tidyr crossing, SQL CROSS JOIN). No keys. */
+export function crossJoinFrames(left: FrameValue, right: FrameValue): FrameValue {
+  const ln = frameRowCount(left), rn = frameRowCount(right);
+  const names = makeHeaders(
+    [...left.columns.map((c) => c.name), ...right.columns.map((c) => c.name)],
+    left.columns.length + right.columns.length,
+  );
+  const out: FrameColumn[] = [];
+  left.columns.forEach((c, ci) => {
+    const values: FrameCell[] = [];
+    for (let i = 0; i < ln; i++) { const v = cellAt(c, i); for (let j = 0; j < rn; j++) values.push(v); }
+    out.push({ name: names[ci], type: c.type, values });
+  });
+  right.columns.forEach((c, ri) => {
+    const values: FrameCell[] = [];
+    for (let i = 0; i < ln; i++) for (let j = 0; j < rn; j++) values.push(cellAt(c, j));
+    out.push({ name: names[left.columns.length + ri], type: c.type, values });
+  });
+  return frame(out);
+}
+
 export function joinFrames(left: FrameValue, right: FrameValue, opts: JoinOpts): FrameValue {
+  if (opts.how === "cross") return crossJoinFrames(left, right);
   const lk = requireColumn(left, opts.leftKey);
   const rk = requireColumn(right, opts.rightKey);
   // Keys of two different types can never match (families never auto-cross) —
@@ -1141,15 +1210,56 @@ export function nestFrame(f: FrameValue, keyColumns: readonly string[], nestedNa
   return cubeFromColumns([...keyOut, { name: names[keyColumns.length], cells: nestedCells }]);
 }
 
-/** UNNEST: expand a Cube's nested-frame column back to a flat frame — each parent
- *  row repeats once per child row, with the nested frame's columns appended.
- *  Parent rows whose nested frame is empty are dropped (standard unnest). Parent
- *  (flat) column types are re-inferred; nested column types are preserved. */
-export function unnestCube(c: CubeValue, nestedColumn: string): FrameValue {
+/** UNNEST: peel a Cube's nested column ONE level — each parent row repeats once per
+ *  child row, with the child's columns appended. Nested FRAMES flatten to a flat Frame;
+ *  nested CUBES peel to a shallower Cube (a child's own nested column stays nested). A
+ *  column mixing frames and cubes is a `#TYPE!`. Parent rows whose nested value is
+ *  empty/missing are dropped (standard unnest). Parent (flat) column types are re-inferred
+ *  on the frame path; nested column types are preserved. */
+export function unnestCube(c: CubeValue, nestedColumn: string): FrameValue | CubeValue {
   const nestedIdx = c.columns.findIndex((col) => col.name === nestedColumn);
   if (nestedIdx < 0) throw solError("#REF!", `column "${nestedColumn}" not found`);
   const flatCols = c.columns.filter((_, j) => j !== nestedIdx);
   const nested = c.columns[nestedIdx];
+
+  // The child kind decides the output rank: all frames → flat Frame; all cubes → peel one
+  // level to a shallower Cube; a mix is unresolvable.
+  let sawFrame = false, sawCube = false;
+  for (const cell of nested.cells) {
+    if (isFrameValue(cell)) sawFrame = true;
+    else if (isCubeValue(cell)) sawCube = true;
+  }
+  if (sawFrame && sawCube) throw solError("#TYPE!", "nested cells must all be tables or all be cubes");
+
+  if (sawCube) {
+    // ── PEEL: nested cells are cubes → a depth-(n−1) cube. ──
+    const schemaCube = nested.cells.find((cell) => isCubeValue(cell)) as CubeValue | undefined;
+    const childCubeCols = schemaCube?.columns ?? [];
+    const flatValsC: CubeCell[][] = flatCols.map(() => []);
+    const childValsC: CubeCell[][] = childCubeCols.map(() => []);
+    for (let i = 0; i < cubeRowCount(c); i++) {
+      const cell = nested.cells[i];
+      const childCube = isCubeValue(cell) ? cell : null;
+      const childRows = childCube ? cubeRowCount(childCube) : 0;
+      for (let r = 0; r < childRows; r++) {
+        flatCols.forEach((fc, k) => flatValsC[k].push(cubeCellAt(fc, i)));
+        childCubeCols.forEach((cc, k) => {
+          const col = childCube!.columns.find((x) => x.name === cc.name);
+          childValsC[k].push(col ? (col.cells[r] ?? null) : null);
+        });
+      }
+    }
+    const namesC = makeHeaders(
+      [...flatCols.map((c2) => c2.name), ...childCubeCols.map((c2) => c2.name)],
+      flatCols.length + childCubeCols.length,
+    );
+    return cubeFromColumns([
+      ...flatCols.map((fc, k) => ({ name: namesC[k], cells: flatValsC[k], ...(fc.type ? { type: fc.type } : {}) })),
+      ...childCubeCols.map((cc, k) => ({ name: namesC[flatCols.length + k], cells: childValsC[k], ...(cc.type ? { type: cc.type } : {}) })),
+    ]);
+  }
+
+  // ── FLATTEN: nested cells are frames (or none) → the flat-frame path. ──
   const schemaFrame = nested.cells.find((cell) => isFrameValue(cell)) as FrameValue | undefined;
   const childCols = schemaFrame?.columns ?? [];
   const flatVals: CubeCell[][] = flatCols.map(() => []);
@@ -1182,16 +1292,25 @@ export function unnestCube(c: CubeValue, nestedColumn: string): FrameValue {
  *  "apple"); logical → 0/1 identity (so "1"/"true" both match
  *  TRUE); date → the lookup parsed as a serial (digits) or an ISO date;
  *  number → numeric. */
-function keyMatches(cell: FrameCell, lookup: string, type: FrameColType): boolean {
-  if (type === "string") return String(cell).toLowerCase() === lookup.toLowerCase();
-  if (type === "logical") return (cell ? 1 : 0) === (coerceLogical(lookup) ? 1 : 0);
+// The node's lookup arrives as a STRING (its lookup socket is string-typed — the
+// Expression-node socket guard is what keeps frames off the formula surface, not a
+// separate impl). Parse it into a needle typed by the key column, then hand the actual
+// MATCH to the shared `xmatchIndex` — the SAME kernel the XMATCH/XLOOKUP formulas use,
+// so the node and formula surfaces cannot drift. This parse is the node's only extra
+// step; the formula's caller already holds a typed value.
+function lookupNeedle(lookup: string, type: FrameColType): FrameCell {
+  if (type === "logical") return !!coerceLogical(lookup);
   if (type === "date") {
     const t = lookup.trim();
-    const serial = /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : parseDateToSerial(t);
-    return Number(cell) === serial;
+    return /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : parseDateToSerial(t);
   }
-  return Number(cell) === Number(lookup); // number
+  if (type === "number") return Number(lookup);
+  return lookup; // string — lookupEq folds case
 }
+
+const NODE_TO_XMATCH_MODE: Record<LookupMatchMode, XMatchMatchMode> = {
+  exact: "exact", nextSmaller: "next_smaller", nextLarger: "next_larger",
+};
 
 /** XLOOKUP's `match_mode`: "exact" (default) requires an equal cell; "nextSmaller"/
  *  "nextLarger" fall back to the closest ≤/≥ row ONLY when no exact match exists
@@ -1204,68 +1323,6 @@ export type LookupMatchMode = "exact" | "nextSmaller" | "nextLarger";
  *  first match top-to-bottom; "last" (search_mode -1) returns the last. Affects
  *  exact matching; an approximate (≤/≥) match already picks the closest key. */
 export type LookupSearchMode = "first" | "last";
-
-/** XLOOKUP over a Frame: the FIRST row whose `lookupColumn` cell equals `lookup`
- *  (type-aware via keyMatches), returning that row's `returnColumn` cell.
- *  `undefined` when no row matches (the node turns that into If-not-found / #N/A);
- *  a missing column is a #REF! (thrown, surfaced by the caller's guard). A `null`
- *  or error key cell never matches — same rule as a join key. `matchMode` (default
- *  "exact") opts into an approximate fallback — see `LookupMatchMode`. */
-export function lookupFrameCell(
-  f: FrameValue, lookupColumn: string, returnColumn: string, lookup: string,
-  matchMode: LookupMatchMode = "exact", searchMode: LookupSearchMode = "first",
-): FrameCell | undefined {
-  const idx = lookupFrameRowIndex(f, lookupColumn, lookup, matchMode, searchMode);
-  const ret = requireColumn(f, returnColumn); // #REF! if the return column is missing (even on a miss)
-  return idx < 0 ? undefined : cellAt(ret, idx);
-}
-
-/** The row-finding half of the frame XLOOKUP, shared by the single-cell return
- *  (`lookupFrameCell`) and the whole-row `*` return (`frameRowAt`) so both agree on
- *  which row matched. Returns the 0-based row index, or -1 for a miss. Only requires
- *  the KEY column (a missing key column is a #REF!; the return column is checked by
- *  the caller). A null / error key cell never matches — same rule as a join key. */
-export function lookupFrameRowIndex(
-  f: FrameValue, lookupColumn: string, lookup: string,
-  matchMode: LookupMatchMode = "exact", searchMode: LookupSearchMode = "first",
-): number {
-  const key = requireColumn(f, lookupColumn);
-  const n = frameRowCount(f);
-  if (matchMode === "exact") {
-    if (searchMode === "last") {
-      for (let i = n - 1; i >= 0; i--) {
-        const cell = cellAt(key, i);
-        if (cell === null || isSolError(cell)) continue;
-        if (keyMatches(cell, lookup, key.type)) return i;
-      }
-    } else {
-      for (let i = 0; i < n; i++) {
-        const cell = cellAt(key, i);
-        if (cell === null || isSolError(cell)) continue;
-        if (keyMatches(cell, lookup, key.type)) return i;
-      }
-    }
-    return -1;
-  }
-  if (!isOrderableKey(key.type)) {
-    throw solError("#VALUE!", "Approximate lookup requires a numeric or date column");
-  }
-  const t = lookup.trim();
-  const target = key.type === "date"
-    ? (/^-?\d+(\.\d+)?$/.test(t) ? Number(t) : parseDateToSerial(t))
-    : Number(t);
-  if (!Number.isFinite(target)) return -1;
-  let bestIdx = -1, bestKey = NaN;
-  for (let i = 0; i < n; i++) {
-    const cell = cellAt(key, i);
-    if (cell === null || isSolError(cell)) continue;
-    const k = Number(cell);
-    if (k === target) return i; // exact match always wins, first-seen
-    if (matchMode === "nextSmaller" && k < target && (bestIdx === -1 || k > bestKey)) { bestIdx = i; bestKey = k; }
-    if (matchMode === "nextLarger" && k > target && (bestIdx === -1 || k < bestKey)) { bestIdx = i; bestKey = k; }
-  }
-  return bestIdx;
-}
 
 /** A cube's top-level column by name, or a #REF! (thrown; the caller's guard
  *  renders it). Mirrors `requireColumn` for frames. */
@@ -1293,72 +1350,44 @@ function inferCubeKeyType(col: CubeColumn): FrameColType {
   return "string"; // empty / all-null column
 }
 
-/** Matches TOP-LEVEL columns only — never descends into nested cells — and returns the
- *  matched cell WHOLE, so a nested frame/cube comes out intact. `undefined` on no match,
- *  #REF! on a missing column; null/error/container key cells never match. */
-export function lookupCubeCell(
+/** THE XLOOKUP cell-getter (frame + cube). A frame is looked up by `frameToCube` first
+ *  (it carries `col.type`), so this one path serves both surfaces. Matches TOP-LEVEL
+ *  columns only — never descends into nested cells — and returns the matched cell WHOLE,
+ *  so a nested frame/cube comes out intact. `undefined` on no match, #REF! on a missing
+ *  column; null/error/container key cells never match. */
+export function lookupCell(
   c: CubeValue, lookupColumn: string, returnColumn: string, lookup: string,
   matchMode: LookupMatchMode = "exact", searchMode: LookupSearchMode = "first",
 ): CubeCell | undefined {
-  const idx = lookupCubeRowIndex(c, lookupColumn, lookup, matchMode, searchMode);
+  const idx = lookupRowIndex(c, lookupColumn, lookup, matchMode, searchMode);
   const ret = requireCubeColumn(c, returnColumn); // #REF! if the return column is missing
   if (idx < 0) return undefined;
   return idx < ret.cells.length ? ret.cells[idx] ?? null : null;
 }
 
-/** The row-finding half of the cube XLOOKUP — shared by cell return and whole-row
- *  `*` return (`cubeRowAt`). Returns the matched 0-based row index, or -1. Only the
- *  KEY column is required (#REF! if missing). A null / error / nested-container key
- *  cell is never a key (same first-match-wins + join-key rules as the frame path). */
-export function lookupCubeRowIndex(
+/** THE XLOOKUP row-finder (frame + cube) — shared by the cell return and the whole-row
+ *  `*` return (`frameRowAt` / `cubeRowAt`). Returns the matched 0-based row index, or -1.
+ *  Only the KEY column is required (#REF! if missing). A null / error / nested-container
+ *  key cell is never a key (first-match-wins + join-key rules). */
+export function lookupRowIndex(
   c: CubeValue, lookupColumn: string, lookup: string,
   matchMode: LookupMatchMode = "exact", searchMode: LookupSearchMode = "first",
 ): number {
   const key = requireCubeColumn(c, lookupColumn);
-  const n = cubeRowCount(c);
-  // Prefer the column's CARRIED type so a date-keyed cube column matches an ISO-date
-  // lookup; fall back to inference only for a hand-built (untyped) cube.
+  // Prefer the column's CARRIED type so a date-keyed column matches an ISO-date lookup
+  // (a frame column and a frame→cube column both carry it); fall back to inference only
+  // for a hand-built (untyped) cube.
   const keyType = key.type ?? inferCubeKeyType(key);
-  // A key cell usable for matching: a flat scalar only (a nested frame/cube/list is
-  // never a key). Returns undefined for a non-key cell (null/error/container).
-  const scalarAt = (i: number): FrameCell | undefined => {
-    const cell = i < key.cells.length ? key.cells[i] : null;
-    if (typeof cell === "number" || typeof cell === "string" || typeof cell === "boolean") return cell;
-    return undefined;
-  };
-  if (matchMode === "exact") {
-    if (searchMode === "last") {
-      for (let i = n - 1; i >= 0; i--) {
-        const cell = scalarAt(i);
-        if (cell === undefined) continue;
-        if (keyMatches(cell, lookup, keyType)) return i;
-      }
-    } else {
-      for (let i = 0; i < n; i++) {
-        const cell = scalarAt(i);
-        if (cell === undefined) continue;
-        if (keyMatches(cell, lookup, keyType)) return i;
-      }
-    }
-    return -1;
+  if (matchMode !== "exact" && !isOrderableKey(keyType)) {
+    throw solError("#VALUE!", "Approximate lookup requires a numeric or date column");
   }
-  if (keyType !== "number" && keyType !== "date") {
-    throw solError("#VALUE!", "Approximate lookup requires a numeric or date key column");
-  }
-  const t = lookup.trim();
-  const target = keyType === "date"
-    ? (/^-?\d+(\.\d+)?$/.test(t) ? Number(t) : parseDateToSerial(t))
-    : Number(t);
-  if (!Number.isFinite(target)) return -1;
-  let bestIdx = -1, bestKey = NaN;
-  for (let i = 0; i < n; i++) {
-    const cell = scalarAt(i);
-    if (typeof cell !== "number") continue;
-    if (cell === target) return i; // an exact match always wins first
-    if (matchMode === "nextSmaller" && cell < target && (bestIdx === -1 || cell > bestKey)) { bestIdx = i; bestKey = cell; }
-    if (matchMode === "nextLarger" && cell > target && (bestIdx === -1 || cell < bestKey)) { bestIdx = i; bestKey = cell; }
-  }
-  return bestIdx;
+  const needle = lookupNeedle(lookup, keyType);
+  if (matchMode !== "exact" && !(typeof needle === "number" && Number.isFinite(needle))) return -1;
+  // A nested frame/cube/list key cell is never `===` a scalar and never numeric, so
+  // xmatchIndex excludes it as a key on its own.
+  const keys = key.cells.slice(0, cubeRowCount(c));
+  const idx = xmatchIndex(needle, keys, NODE_TO_XMATCH_MODE[matchMode], searchMode);
+  return isSolError(idx) ? -1 : idx;
 }
 
 /** XLOOKUP's whole-row return (`Return = *`): the matched row as a single-row Frame
@@ -1375,8 +1404,10 @@ export function cubeRowAt(c: CubeValue, i: number): CubeValue {
   );
 }
 
-// The source socket is `any` because a cube can't narrow into a frame socket; a bare
-// list/matrix/scalar widens into a frame exactly as a `frame` socket would.
+// Normalize the XLookup node's polymorphic Table/Cube source to a Frame or Cube. Its socket
+// is `cube` and the value arrives un-widened (noWidenInputs), and the node's shape guard has
+// already rejected a scalar / bare 1-D — so in practice a Frame/Cube passes through and a
+// matrix widens into a Frame; the scalar/list arms below stay as defensive fallbacks.
 export function asLookupSource(v: unknown): FrameValue | CubeValue | null {
   if (v == null) return null;
   if (isCubeValue(v)) return v;
@@ -1414,7 +1445,21 @@ export function appendFrames(frames: readonly FrameValue[]): FrameValue {
   }));
 }
 
-/** Dispatch a unary verb. Binary verbs (join/append) are separate entry points. */
+/** Side-by-side by POSITION: every column of every frame, in order, colliding names
+ *  deduped; a shorter frame pads down with blanks (pandas concat(axis=1), R bind_cols
+ *  — which errors on ragged input; we pad, like HSTACK). */
+export function bindColumns(frames: readonly FrameValue[]): FrameValue {
+  const rows = Math.max(0, ...frames.map(frameRowCount));
+  const all = frames.flatMap((f) => f.columns);
+  const names = makeHeaders(all.map((c) => c.name), all.length);
+  return frame(all.map((c, i) => {
+    const values: FrameCell[] = [];
+    for (let r = 0; r < rows; r++) values.push(cellAt(c, r));
+    return { name: names[i], type: c.type, values };
+  }));
+}
+
+/** Dispatch a unary verb. Binary verbs (join/append/bindColumns) are separate entry points. */
 export function applyVerb(f: FrameValue, op: FrameOp): FrameValue {
   switch (op.kind) {
     case "select":   return selectColumns(f, op.columns);
@@ -1428,6 +1473,10 @@ export function applyVerb(f: FrameValue, op: FrameOp): FrameValue {
     case "groupBy":  return groupByFrame(f, op.keys, op.aggs);
     case "unpivot":  return unpivotFrame(f, op.idColumns, op.valueColumns, { variableName: op.variableName, valueName: op.valueName });
     case "pivot":    return pivotFrame(f, op);
+    case "window":   return windowFrame(f, op);
+    case "fillBlanks": return fillBlanks(f, op.columns, op.dir);
+    case "replaceValues": return replaceValues(f, op.column, op.find, op.replaceWith, op.mode);
+    case "sliceRows": return sliceRows(f, op.mode, op.n, op.to);
   }
 }
 
@@ -1460,7 +1509,11 @@ function normalizeColumn(vals: number[], mode: DecisionNormalize): number[] {
   return vals.map((v) => vals.filter((o) => o < v).length / (n - 1));
 }
 
-const round4 = (n: number): number => Math.round(n * 1e4) / 1e4;
+// −0 flattens to 0 so a zero contribution under a negative weight can't print "-0".
+const round4 = (n: number): number => {
+  const r = Math.round(n * 1e4) / 1e4;
+  return r === 0 ? 0 : r;
+};
 
 // Date columns are deliberately NOT criteria — a date's serial is never a
 // meaningful "score". One definition, shared by the verb and the node (which needs
@@ -1514,10 +1567,12 @@ export function decisionMatrix(
   let sumAbsW = 0;
   for (let j = 0; j < criteriaCols.length; j++) sumAbsW += Math.abs(weightOf(j));
 
+  // Rounded on COMPUTE, not display, so rank and the shown Score can never
+  // disagree: two options that print the same score share a rank.
   const scores: number[] = Array.from({ length: rows }, (_, i) => {
     let sw = 0;
     for (let j = 0; j < criteriaCols.length; j++) sw += effective[j][i] * weightOf(j);
-    return sumAbsW > 0 ? sw / sumAbsW : 0;
+    return round4(sumAbsW > 0 ? sw / sumAbsW : 0);
   });
 
   // Competition rank: equal scores share a rank, the next distinct score skips the
@@ -1535,12 +1590,16 @@ export function decisionMatrix(
   const out: FrameColumn[] = [
     { name: labelCol?.name ?? "Option", type: "string", values: idx.map((i) => labels[i]) },
   ];
+  // Breakdown columns are SIGNED contributions — effective × weight / Σ|weight| —
+  // so they sum to the Score (within rounding) and a negative-weight criterion
+  // reads as the penalty it is, not as a high post-normalize value.
   if (breakdown) {
     criteriaCols.forEach((c, j) => {
-      out.push({ name: c.name, type: "number", values: idx.map((i) => round4(effective[j][i])) });
+      const w = weightOf(j);
+      out.push({ name: c.name, type: "number", values: idx.map((i) => round4(sumAbsW > 0 ? (effective[j][i] * w) / sumAbsW : 0)) });
     });
   }
-  out.push({ name: "Score", type: "number", values: idx.map((i) => round4(scores[i])) });
+  out.push({ name: "Score", type: "number", values: idx.map((i) => scores[i]) });
   out.push({ name: "Rank", type: "number", values: idx.map((i) => rankByRow[i]) });
 
   const names = makeHeaders(out.map((c) => c.name), out.length);
@@ -1565,6 +1624,11 @@ export function decisionSensitivity(
   const nScen = frameRowCount(scenarios);
   const scenLabelCol = scenarios.columns.find((c) => c.type === "string") ?? null;
   const weightColFor = (name: string) => scenarios.columns.find((c) => c.name === name) ?? null;
+  // With zero matching columns every weight defaults to 1 and all scenarios come out
+  // identical — a naming mismatch (renamed criteria), not a sensitivity run.
+  if (!criteria.some((name) => weightColFor(name))) {
+    throw solError("#VALUE!", "No Scenarios column is named after a criterion");
+  }
 
   const scenarioCells: CubeCell[] = [];
   const winnerCells: CubeCell[] = [];
@@ -1577,12 +1641,18 @@ export function decisionSensitivity(
       return typeof v === "number" && Number.isFinite(v) ? v : 1; // missing weight → 1
     });
     const ranking = decisionMatrix(scores, weights, normalize, false);
-    const scoreCol = ranking.columns.find((c) => c.name === "Score")!;
+    // Positional: breakdown=false fixes the shape to label · Score · Rank (a
+    // criterion NAMED "Score" would defeat a find-by-name here).
+    const scoreCol = ranking.columns[1];
+    const rankCol = ranking.columns[2];
     const top = typeof scoreCol.values[0] === "number" ? (scoreCol.values[0] as number) : null;
     const second = typeof scoreCol.values[1] === "number" ? (scoreCol.values[1] as number) : null;
 
     scenarioCells.push(scenLabelCol ? (scenLabelCol.values[i] ?? `Scenario ${i + 1}`) : `Scenario ${i + 1}`);
-    winnerCells.push(ranking.columns[0].values[0] ?? null); // rank-1 option (best-first)
+    // Every option tied at rank 1 (best-first, so they lead the frame) — a dead
+    // tie names them all rather than silently picking whichever sorted first.
+    const tied = ranking.columns[0].values.filter((_, k) => rankCol.values[k] === 1);
+    winnerCells.push(tied.length > 1 ? tied.map((v) => String(v ?? "")).join(" = ") : (tied[0] ?? null));
     marginCells.push(top !== null && second !== null ? round4(top - second) : null);
     rankingCells.push(ranking);
   }
@@ -1668,10 +1738,14 @@ export function replaceValues(
       ...col,
       values: col.values.map((v) => {
         if (v == null || isSolError(v)) return v;
+        // ONE match rule, shared with Rust `lazy_replace_values`: a number matches by
+        // numeric equality against the parsed find (a non-numeric find hits no number
+        // cell); a boolean matches the words TRUE/FALSE case-insensitively (not 1/0); a
+        // string matches exact text. Dates are serials, so they fall through the number arm.
         const hit = typeof v === "number"
-          ? (numericFind && v === findNum) || String(v) === find
+          ? numericFind && v === findNum
           : typeof v === "boolean"
-            ? (v ? "TRUE" : "FALSE") === find || String(v) === find.toLowerCase()
+            ? (v ? "TRUE" : "FALSE") === find.toUpperCase()
             : String(v) === find;
         return hit ? replacement : v;
       }),
@@ -1762,19 +1836,260 @@ export function sliceRows(f: FrameValue, mode: "first" | "last" | "skip" | "rang
   return { __frame: true, columns: f.columns.map((c) => ({ ...c, values: c.values.slice(start, end) })) };
 }
 
-/** A frame's numeric body as the COORDINATE-BORDERED grid Surface / Contour /
- *  Grid Interpolate read: row 0 = column indices, column 0 = row indices (both
- *  counting from `start`), corner blank, non-numeric cells blank. Add Index's
- *  two-way output. */
-export function borderedGridFromFrame(f: FrameValue, start = 1): (number | null)[][] {
-  const rows = frameRowCount(f);
-  const header: (number | null)[] = [null, ...f.columns.map((_, j) => start + j)];
-  const out: (number | null)[][] = [header];
-  for (let i = 0; i < rows; i++) {
-    out.push([start + i, ...f.columns.map((c) => {
-      const v = c.values[i];
-      return typeof v === "number" && Number.isFinite(v) ? v : null;
-    })]);
+// ─── Describe (pandas describe / R summary) — one row per column ──────────────
+/** Per-column profile: the three presence counts (present = valid + error, blank),
+ *  distinct (over present non-errors), and for NUMBER/DATE columns the numeric stats
+ *  (PERCENTILE.INC, pandas' linear). `error` is the SolError share of `count`; a
+ *  non-numeric column leaves the stats null. Shared by `describeFrame` (the node) and
+ *  the Table popup's summary footer. */
+export interface ColumnProfile {
+  count: number; blank: number; error: number; distinct: number;
+  mean: number | null; std: number | null; min: number | null;
+  q25: number | null; median: number | null; q75: number | null; max: number | null;
+}
+
+export function describeColumn(values: readonly unknown[], type: FrameColType | undefined): ColumnProfile {
+  const present = values.filter((v) => v != null);
+  const profile: ColumnProfile = {
+    count: present.length,
+    blank: values.length - present.length,
+    error: present.filter((v) => isSolError(v)).length,
+    distinct: new Set(present.filter((v) => !isSolError(v)).map((v) => (typeof v === "number" ? `#${v}` : typeof v === "boolean" ? `b${v}` : `s${v}`))).size,
+    mean: null, std: null, min: null, q25: null, median: null, q75: null, max: null,
+  };
+  if (type === "number" || type === "date") {
+    const nums = values.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+    const stat = (op: "avg" | "stdev" | "min" | "max"): number | null => { const r = aggregate(op, nums); return typeof r === "number" ? r : null; };
+    const pct = (p: number): number | null => { const r = percentile(nums, p, false); return typeof r === "number" ? r : null; };
+    profile.mean = type === "number" ? stat("avg") : null;
+    profile.std = type === "number" ? stat("stdev") : null;
+    profile.min = stat("min");
+    profile.q25 = type === "number" ? pct(0.25) : null;
+    profile.median = type === "number" ? pct(0.5) : null;
+    profile.q75 = type === "number" ? pct(0.75) : null;
+    profile.max = stat("max");
   }
-  return out;
+  return profile;
+}
+
+/** One row per input column: count (present), blank, distinct, and for NUMBER columns
+ *  mean / std (sample) / min / 25% / 50% / 75% / max (PERCENTILE.INC, pandas' linear).
+ *  Text, date and logical columns carry the three counts and leave the numeric stats
+ *  blank; a date column's min/max are dates (serials). Errors count as present. */
+export function describeFrame(f: FrameValue): FrameValue {
+  const names: string[] = [], types: string[] = [], count: number[] = [], blank: number[] = [], distinct: number[] = [];
+  const mean: (number | null)[] = [], std: (number | null)[] = [], min: (number | null)[] = [], q25: (number | null)[] = [],
+    q50: (number | null)[] = [], q75: (number | null)[] = [], max: (number | null)[] = [];
+  for (const c of f.columns) {
+    names.push(c.name); types.push(c.type);
+    const p = describeColumn(c.values, c.type);
+    count.push(p.count); blank.push(p.blank); distinct.push(p.distinct);
+    mean.push(p.mean); std.push(p.std); min.push(p.min);
+    q25.push(p.q25); q50.push(p.median); q75.push(p.q75); max.push(p.max);
+  }
+  return { __frame: true, columns: [
+    { name: "column", type: "string", values: names },
+    { name: "type", type: "string", values: types },
+    { name: "count", type: "number", values: count },
+    { name: "blank", type: "number", values: blank },
+    { name: "distinct", type: "number", values: distinct },
+    { name: "mean", type: "number", values: mean },
+    { name: "std", type: "number", values: std },
+    { name: "min", type: "number", values: min },
+    { name: "25%", type: "number", values: q25 },
+    { name: "50%", type: "number", values: q50 },
+    { name: "75%", type: "number", values: q75 },
+    { name: "max", type: "number", values: max },
+  ] };
+}
+
+export type CorrMethod = "pearson" | "spearman" | "kendall" | "covariance";
+
+/** The pairwise correlation (or covariance) matrix of a frame's NUMBER columns as a
+ *  frame: a leading `column` name column, then one column per variable (pandas df.corr /
+ *  df.cov, R cor / cov with use="pairwise.complete.obs"): each pair drops the rows where
+ *  either side is blank, so a patchy frame still answers; a pair with too little data or
+ *  zero variance is a blank cell. Covariance is the SAMPLE covariance (pandas / R). */
+export function correlationMatrix(f: FrameValue, method: CorrMethod): FrameValue {
+  const cols = f.columns.filter((c) => c.type === "number");
+  const vals = cols.map((c) => c.values.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : null)));
+  const cell = (i: number, j: number): number | null => {
+    const xs: number[] = [], ys: number[] = [];
+    const n = Math.min(vals[i].length, vals[j].length);
+    for (let r = 0; r < n; r++) { const a = vals[i][r], b = vals[j][r]; if (a !== null && b !== null) { xs.push(a); ys.push(b); } }
+    const v = method === "pearson" ? pearson(xs, ys)
+      : method === "spearman" ? spearman(xs, ys)
+      : method === "kendall" ? kendallTau(xs, ys)
+      : covariance(xs, ys, true);
+    return typeof v === "number" ? v : null;
+  };
+  const out: FrameColumn[] = [{ name: "column", type: "string", values: cols.map((c) => c.name) }];
+  cols.forEach((cj, j) => out.push({ name: cj.name, type: "number", values: cols.map((_, i) => cell(i, j)) }));
+  return { __frame: true, columns: out };
+}
+
+// ─── Window functions by group (pandas groupby().transform / .over(), dplyr group_by %>%
+// mutate, SQL OVER (PARTITION BY … ORDER BY …)) ────────────────────────────────────────
+export type WindowFn =
+  | "row_number" | "rank" | "dense_rank" | "percent_rank" | "ntile"
+  | "cumsum" | "cumavg" | "cummin" | "cummax" | "cumcount"
+  | "lag" | "lead" | "diff" | "pct_change"
+  | "rolling_sum" | "rolling_avg" | "rolling_min" | "rolling_max"
+  | "group_sum" | "group_avg" | "group_min" | "group_max" | "group_count" | "share" | "first" | "last";
+
+export interface WindowSpec {
+  /** Partition columns; empty = the whole frame is one group. */
+  partitionBy: string[];
+  /** Order within the partition; omitted = input row order. */
+  orderBy?: string;
+  orderDir?: "asc" | "desc";
+  fn: WindowFn;
+  /** The value column (ranks / row_number rank by `orderBy` and need no value column). */
+  column?: string;
+  /** Output column name. */
+  as: string;
+  /** lag/lead offset, rolling window size, or ntile buckets. */
+  n?: number;
+}
+
+/** Which functions need the value column. */
+export const WINDOW_FN_NEEDS_COLUMN: ReadonlySet<WindowFn> = new Set([
+  "cumsum", "cumavg", "cummin", "cummax", "lag", "lead", "diff", "pct_change",
+  "rolling_sum", "rolling_avg", "rolling_min", "rolling_max",
+  "group_sum", "group_avg", "group_min", "group_max", "group_count", "share", "first", "last",
+]);
+/** Which functions read `n`. */
+export const WINDOW_FN_NEEDS_N: ReadonlySet<WindowFn> = new Set(["lag", "lead", "rolling_sum", "rolling_avg", "rolling_min", "rolling_max", "ntile"]);
+
+/** Append ONE computed column to the frame, evaluated per partition in the partition's
+ *  order, then written back in the ORIGINAL row order (pandas transform semantics — the
+ *  frame keeps its shape). Blanks: a blank value cell contributes nothing to sums/means
+ *  and answers blank for its own row; ranks skip blank order keys (blank rank). Errors in
+ *  the value column poison their partition's aggregate cells (#ERROR propagates). */
+export function windowFrame(f: FrameValue, spec: WindowSpec): FrameValue {
+  const n = frameRowCount(f);
+  const keyCols = spec.partitionBy.map((k) => requireColumn(f, k));
+  const orderCol = spec.orderBy ? requireColumn(f, spec.orderBy) : null;
+  const valCol = WINDOW_FN_NEEDS_COLUMN.has(spec.fn) ? requireColumn(f, spec.column ?? "") : null;
+  const N = Math.max(1, Math.round(spec.n ?? 1));
+  // Partition: first-seen key order, rows in input order within a partition.
+  const parts = new Map<string, number[]>();
+  for (let i = 0; i < n; i++) {
+    const k = JSON.stringify(keyCols.map((c) => encodeCell(cellAt(c, i))));
+    const arr = parts.get(k); if (arr) arr.push(i); else parts.set(k, [i]);
+  }
+  const out: FrameCell[] = new Array<FrameCell>(n).fill(null);
+  const cmp = (a: FrameCell, b: FrameCell): number => {
+    if (typeof a === "number" && typeof b === "number") return a - b;
+    if (typeof a === "string" && typeof b === "string") return compareStrings(a, b);
+    if (typeof a === "boolean" && typeof b === "boolean") return Number(a) - Number(b);
+    return String(a) < String(b) ? -1 : String(a) > String(b) ? 1 : 0;
+  };
+  for (const rows of parts.values()) {
+    // Order within the partition (stable; blank order keys sort LAST, both directions).
+    let ordered = rows;
+    if (orderCol) {
+      const dir = spec.orderDir === "desc" ? -1 : 1;
+      ordered = [...rows].sort((i, j) => {
+        const a = cellAt(orderCol, i), b = cellAt(orderCol, j);
+        const aBlank = a == null || isSolError(a), bBlank = b == null || isSolError(b);
+        if (aBlank || bBlank) return aBlank === bBlank ? i - j : aBlank ? 1 : -1;
+        const c = cmp(a, b) * dir;
+        return c !== 0 ? c : i - j;
+      });
+    }
+    const vals = valCol ? ordered.map((i) => cellAt(valCol, i)) : [];
+    const err = vals.find(isSolError);
+    const nums = vals.map((v) => (typeof v === "number" && Number.isFinite(v) ? v : null));
+    const present = nums.filter((v): v is number => v !== null);
+    const orderVals = orderCol ? ordered.map((i) => cellAt(orderCol, i)) : [];
+    const m = ordered.length;
+    const groupAgg = (): FrameCell => {
+      if (err) return err;
+      if (present.length === 0) return spec.fn === "group_count" ? 0 : null;
+      switch (spec.fn) {
+        case "group_sum":   return present.reduce((a, b) => a + b, 0);
+        case "group_avg":   return present.reduce((a, b) => a + b, 0) / present.length;
+        case "group_min":   return Math.min(...present);
+        case "group_max":   return Math.max(...present);
+        case "group_count": return present.length;
+        default: return null;
+      }
+    };
+    for (let p = 0; p < m; p++) {
+      const row = ordered[p];
+      let v: FrameCell = null;
+      switch (spec.fn) {
+        case "row_number": v = p + 1; break;
+        case "rank": case "dense_rank": case "percent_rank": {
+          // Competition rank on the ORDER column (or position when none): ties share the
+          // best rank; dense packs; percent = (rank − 1)/(m − 1) like dplyr / SQL.
+          if (!orderCol) { v = spec.fn === "percent_rank" ? (m > 1 ? p / (m - 1) : 0) : p + 1; break; }
+          const key = orderVals[p];
+          if (key == null || isSolError(key)) { v = null; break; }
+          if (spec.fn === "dense_rank") {
+            // Same key as the previous row → its rank; else one more than the distinct keys before.
+            if (p > 0 && cmp(orderVals[p], orderVals[p - 1]) === 0) v = out[ordered[p - 1]];
+            else {
+              let distinctBefore = 0;
+              for (let q = 0; q < p; q++) if (q === 0 || cmp(orderVals[q], orderVals[q - 1]) !== 0) distinctBefore++;
+              v = distinctBefore + 1;
+            }
+          } else {
+            let first = p;
+            while (first > 0 && cmp(orderVals[first - 1], key) === 0) first--;
+            // percent_rank's denominator counts the RANKED rows (blank keys excluded — pandas rank(pct=True)).
+            const ranked = orderVals.filter((k) => k != null && !isSolError(k)).length;
+            v = spec.fn === "rank" ? first + 1 : (ranked > 1 ? first / (ranked - 1) : 0);
+          }
+          break;
+        }
+        case "ntile": v = Math.floor((p * N) / m) + 1; break;
+        case "cumcount": v = p + 1; break;
+        case "cumsum": case "cumavg": case "cummin": case "cummax": {
+          if (err) { v = err; break; }
+          const prefix = nums.slice(0, p + 1).filter((x): x is number => x !== null);
+          if (nums[p] === null) { v = null; break; }
+          if (prefix.length === 0) { v = null; break; }
+          v = spec.fn === "cumsum" ? prefix.reduce((a, b) => a + b, 0)
+            : spec.fn === "cumavg" ? prefix.reduce((a, b) => a + b, 0) / prefix.length
+            : spec.fn === "cummin" ? Math.min(...prefix) : Math.max(...prefix);
+          break;
+        }
+        case "lag": v = p - N >= 0 ? vals[p - N] : null; break;
+        case "lead": v = p + N < m ? vals[p + N] : null; break;
+        case "diff": case "pct_change": {
+          const cur = nums[p], prev = p >= 1 ? nums[p - 1] : null;
+          if (err) { v = err; break; }
+          if (cur === null || prev === null) { v = null; break; }
+          v = spec.fn === "diff" ? cur - prev : prev === 0 ? solError("#DIV/0!", "Percent change from zero is undefined") : (cur - prev) / prev;
+          break;
+        }
+        case "rolling_sum": case "rolling_avg": case "rolling_min": case "rolling_max": {
+          if (err) { v = err; break; }
+          if (p < N - 1 || nums[p] === null) { v = null; break; }
+          const win = nums.slice(p - N + 1, p + 1).filter((x): x is number => x !== null);
+          if (win.length === 0) { v = null; break; }
+          v = spec.fn === "rolling_sum" ? win.reduce((a, b) => a + b, 0)
+            : spec.fn === "rolling_avg" ? win.reduce((a, b) => a + b, 0) / win.length
+            : spec.fn === "rolling_min" ? Math.min(...win) : Math.max(...win);
+          break;
+        }
+        case "group_sum": case "group_avg": case "group_min": case "group_max": case "group_count": v = groupAgg(); break;
+        case "share": {
+          if (err) { v = err; break; }
+          const total = present.reduce((a, b) => a + b, 0);
+          v = nums[p] === null ? null : total === 0 ? solError("#DIV/0!", "The group total is 0") : nums[p]! / total;
+          break;
+        }
+        case "first": v = err ?? (vals.length ? vals[0] : null); break;
+        case "last":  v = err ?? (vals.length ? vals[m - 1] : null); break;
+      }
+      out[row] = v;
+    }
+  }
+  const outType: FrameColType =
+    (spec.fn === "lag" || spec.fn === "lead" || spec.fn === "first" || spec.fn === "last") && valCol ? valCol.type : "number";
+  const name = spec.as.trim() || spec.fn;
+  return { __frame: true, columns: [...f.columns.filter((c) => c.name !== name), { name, type: outType, values: out }] };
 }

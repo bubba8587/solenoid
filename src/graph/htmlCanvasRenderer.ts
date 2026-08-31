@@ -123,6 +123,7 @@ export class HtmlCanvasRenderer {
   private slowDraws = 0;
 
   private selected = new Set<string>();
+  private domLive = new Set<string>();
   private selectBox: { x: number; y: number; w: number; h: number } | null = null; // screen px
   // Active = draw the graph (gesture); inactive = clear to transparent so the interactive DOM
   // shows through. The canvas stays visible either way so capture keeps working.
@@ -165,7 +166,7 @@ export class HtmlCanvasRenderer {
     return this.presented;
   }
 
-  /** Camera transform from rete's area ({ k, x, y } in CSS px). */
+  /** Camera transform from the area mirror ({ k, x, y } in CSS px). */
   setTransform(scale: number, tx: number, ty: number): void {
     if (this.cam.scale === scale && this.cam.tx === tx && this.cam.ty === ty) return;
     this.cam.scale = scale; this.cam.tx = tx; this.cam.ty = ty;
@@ -189,6 +190,14 @@ export class HtmlCanvasRenderer {
 
   /** Live (faithful) mode — re-rasterize per frame instead of cached bitmaps. */
   setLive(on: boolean): void { if (this.live !== on) { this.live = on; this.dirty = true; } }
+
+  /** Nodes the real DOM is showing on top of the canvas (the held-at-rest interaction
+   *  set), skipped here so they never double-paint. No-ops when the set is unchanged. */
+  setDomLive(ids: Set<string>): void {
+    if (ids.size === this.domLive.size && [...ids].every((id) => this.domLive.has(id))) return;
+    this.domLive = new Set(ids);
+    this.dirty = true;
+  }
 
   /** Which nodes draw a selection ring. No-ops when the set is unchanged. */
   setSelected(ids: Set<string>): void {
@@ -263,7 +272,7 @@ export class HtmlCanvasRenderer {
     wrap.style.overflow = "visible";
     wrap.style.pointerEvents = "none";
     if (REF !== 1) wrap.style.setProperty("zoom", String(REF));
-    // Stand-in for rete's node-view div: zero padding/border/margin so its padding box equals
+    // Stand-in for the node-view wrapper: zero padding/border/margin so its padding box equals
     // the card's border box, where the card's absolutely-positioned chrome anchors.
     const rel = document.createElement("div");
     rel.style.position = "relative";
@@ -559,7 +568,7 @@ export class HtmlCanvasRenderer {
           imgW: n.refImg.width, imgH: n.refImg.height, // capture px (= box·dpr; rounding is cosmetic, unused)
           cloneOffsetW: clone?.offsetWidth, cloneOffsetH: clone?.offsetHeight, // should == w / h
         });
-        // Clone-vs-original screen-position check; the original is inside rete's area transform
+        // Clone-vs-original screen-position check; the original is inside the viewport transform
         // (scale k) and the clone only has zoom:REF, so divide each out to compare.
         const origCard = n.srcEl;
         const oEls = origCard.querySelectorAll<HTMLElement>("*");
@@ -775,7 +784,9 @@ export class HtmlCanvasRenderer {
   private drawCables(vp: { minX: number; minY: number; maxX: number; maxY: number }): void {
     const { ctx, cam, bsx, bsy } = this;
     ctx.setTransform(bsx, 0, 0, bsy, 0, 0); // CSS-screen → backing (exact ratio, matches the DOM)
-    ctx.lineWidth = 1.8; // matches the DOM cable's default visible stroke
+    // The DOM cable is a 1.8-unit stroke inside the scaled viewport, so its screen width is
+    // 1.8·zoom; a constant screen width reads far heavier once zoomed out.
+    ctx.lineWidth = 1.8 * cam.scale;
     ctx.lineJoin = "round";
     // Bucket visible cables by type color into one Path2D each — a handful of strokes rather
     // than one per cable.
@@ -860,10 +871,11 @@ export class HtmlCanvasRenderer {
 
     let drawn = 0;
     camCTM();
-    for (const n of this.nodes) { if (n.isGroup && inView(n) && drawOne(n)) drawn++; }
+    const skip = this.domLive;
+    for (const n of this.nodes) { if (n.isGroup && !skip.has(n.id) && inView(n) && drawOne(n)) drawn++; }
     this.drawCables(vp);
     camCTM();
-    for (const n of this.nodes) { if (!n.isGroup && inView(n) && drawOne(n)) drawn++; }
+    for (const n of this.nodes) { if (!n.isGroup && !skip.has(n.id) && inView(n) && drawOne(n)) drawn++; }
     this.nVisible = drawn;
     this.drawSelection();
 

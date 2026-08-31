@@ -1,7 +1,7 @@
 import { InlineInputs } from "./inlineInput";
-import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, OpSelect, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 import { dropInputCables } from "./cablePrune";
-import { getActiveArea } from "../activeGraph";
+import { getActiveView } from "../activeGraph";
 import {
   DIST_SPECS, DIST_FORM_META, isInverseForm,
   type DistributionNode as DistributionNodeType, type DistKey, type DistForm,
@@ -21,7 +21,7 @@ export function DistributionComponent({ data, emit }: NodeProps<DistributionNode
     if (departing.length > 0) await dropInputCables(data.id, departing);
     data.setOp(next);
     setFormField(data.form); // the switch may have remapped the form
-    await getActiveArea()?.update("node", data.id);
+    await getActiveView()?.rerenderNode(data.id);
     setOpField(next);
   }
 
@@ -30,7 +30,7 @@ export function DistributionComponent({ data, emit }: NodeProps<DistributionNode
     const crossing = isInverseForm(next) !== isInverseForm(data.form);
     if (crossing) await dropInputCables(data.id, [isInverseForm(next) ? data.xKey : "prob"]);
     data.setForm(next);
-    if (crossing) await getActiveArea()?.update("node", data.id);
+    if (crossing) await getActiveView()?.rerenderNode(data.id);
     setFormField(next);
   }
 
@@ -39,7 +39,7 @@ export function DistributionComponent({ data, emit }: NodeProps<DistributionNode
   return (
     <NodeShell node={data} emit={emit}>
       <OpSelect value={op} onChange={(o) => void pickDist(o)} options={DIST_OPTIONS} />
-      <OpSelect arg value={form} onChange={(f) => void pickForm(f)} options={formOptions} />
+      <ArgSelect value={form} onChange={(f) => void pickForm(f)} options={formOptions} />
       <InlineInputs
         node={data}
         emit={emit}

@@ -2,16 +2,14 @@
 
 Shared scratchpad for when several agents work this repo in parallel. Dormant in a solo session — claim nothing, ignore it.
 
-**Protocol.** Check here before starting a task and claim it in one line so two agents don't pick the same thing. Update on claim and on hand-off, not on every edit. Delete an entry once it lands; prior history is in `git log`. Agent 1 is Lead. The durable role split, shared-file policy, and commit/push rules live in the agent's memory; a session may post a short "This session" block here that overrides them where they conflict.
+**Protocol.** Agents message each other directly for live coordination; this board is only the durable claim list (one line per claim, delete on land) so a late-joining or restarted agent knows what's taken. Agent 1 is Lead. The durable role split, shared-file policy, and commit/push rules live in the agent's memory.
 
-## This session
+**Sessions (ListAgents names): A1 = solenoid-f9; peers solenoid-c7 / solenoid-ca (A2/A3 self-identify below). Message directly via SendMessage; the board is the durable record only.**
 
-_(no active parallel session)_
-
-## Streams
-
-_(none claimed)_
+**Standing order (author, 2026-08-25): every agent runs a session cron `*/10 * * * *` → `/continue` (CronCreate on your first sync; A1 has cc889131).**
 
 ## Claims
 
-_(none)_
+(none — session 2026-08-25b closed by the author; develop clean, unpushed)
+
+**Awaiting the author's eyeball from this session:** Set card (8d77cf7f: 8-op merge, result-socket-driven accent) — the three finance merges (discount securities, ACCRINT/ACCRINTM, BondPrice/OddCoupon; specs in git 68bf5679) stay HELD on that verdict; the anydata hollow-square glyph + Socket Legend row; the catalog description sweep (8d5c8f74); Merge Plots figure + expand button; Vite 8 (desktop `tauri build` ride-along result per A3's last message).

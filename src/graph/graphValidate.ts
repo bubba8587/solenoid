@@ -106,8 +106,8 @@ export function validateGraph(g: SavedGraph, lineOf?: (name: string) => number |
   const at = (name: string | null): number | null => (name && lineOf ? lineOf(name) : null);
   const displayName = (sn: SavedNode): string => sn.name ?? sn.id;
 
-  if (typeof g.v === "number" && g.v > CURRENT_SAVE_VERSION) {
-    issues.push({ line: null, node: null, message: `save version ${g.v} is newer than this build's ${CURRENT_SAVE_VERSION} — the loader will refuse the file.` });
+  if (g.v !== CURRENT_SAVE_VERSION) {
+    issues.push({ line: null, node: null, message: `save version ${g.v} is not this build's ${CURRENT_SAVE_VERSION} — the loader only opens the current format.` });
   }
 
   // One headless instance per node — init can change the socket set, so a per-class

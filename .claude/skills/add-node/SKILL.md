@@ -123,7 +123,8 @@ script when the component needs hand-writing anyway (op select, custom render).
    if it differs). The Function Reference derives from this; the dev catalog
    validator flags a mapping to a missing node. Omit for Solenoid-native
    nodes; pack nodes declare it inline on the catalog entry instead.
-8. **Tests** → a vitest file NEXT TO THE CLASS (`nodes/foo.test.ts`) pinning
+8. **Tests** → a vitest file at the class's MIRRORED tests/ path
+   (`tests/graph/nodes/foo.test.ts` for `src/graph/nodes/foo.ts`) pinning
    `data()` behavior: happy paths, the error cases, and an `extractInit`
    round-trip (see `colorBlend.test.ts` / `colorPicker.test.ts`). Every node
    family has one; a node without tests is not done.
@@ -156,6 +157,16 @@ script when the component needs hand-writing anyway (op select, custom render).
   block in `extractInit` — copy the object, and keep only LIVE rows' entries
   (orphans from undo break the text form's second-write identity). Follow the
   `condConfig`/`titles` examples there.
+
+## Inspector declarations (both opt-in, both static on the CLASS)
+
+- **`static socketDocs: Record<string, string>`** — one plain-English sentence
+  per socket KEY, shown under that socket's row in the Inspector. Only for
+  sockets whose behavior isn't obvious from label + type name (wired-blank
+  semantics, which duplicate wins, coercion quirks); most sockets need nothing.
+  Reader: `socketDocs.ts`; worked example: `SubsystemNode`. DESIGN.md §7 voice.
+- **`static frameHints`** (`frameHint.ts`) — a tiny example frame per frame
+  input; shows on socket hover AND with that socket in the Inspector.
 
 ## UX rules the component must follow
 

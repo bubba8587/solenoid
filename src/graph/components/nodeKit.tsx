@@ -6,9 +6,8 @@ import { isPassthroughNode } from "../nodes/passthrough";
 import { commentStore, commentsPanelUi } from "../commentStore";
 import { settingsStore } from "../settingsStore";
 import type { ClassicPreset } from "rete";
-import type { ClassicScheme, RenderEmit } from "rete-react-plugin";
 import { processGraph } from "../process";
-import { getOwningEditor, getOwningArea } from "../activeGraph";
+import { getOwningEditor, getOwningView } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { sharedAnnotationResolver } from "../unitFlow";
 import { formatCx, isCx, type Cx } from "../cxValue";
@@ -17,10 +16,18 @@ import { LazySelect } from "./LazySelect";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { useDraftCommit } from "./inlineInput";
 import { describeNode, nodeName } from "../catalogUtils";
+import { descriptionText } from "../descriptionMd";
+
+// Tooltips render no markup, so the description's markdown marks strip.
+function headerTitle(node: object): string | undefined {
+  const d = describeNode(node);
+  return d ? descriptionText(d) : undefined;
+}
 import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { flyToNode } from "../flyToNode";
 import { ResizeHandle } from "./ResizeHandle";
+import { nodeSizeStore } from "../nodeSizeStore";
 import { nodeResizable } from "../rete-nodes";
 import { formatScalar } from "./format";
 import { ArrayChip } from "./ArrayChip";
@@ -73,10 +80,12 @@ export type ShellNode = {
 /** Standard props every node component receives from the Rete preset. */
 export type NodeProps<N> = {
   data: N & { width?: number; height?: number };
-  emit: RenderEmit<ClassicScheme>;
+  emit: Emit;
 };
 
-export type Emit = RenderEmit<ClassicScheme>;
+// The render-pipe emit rete's preset used to require. On the flow surface the
+// socket seam never calls it — a stub satisfies every component's contract.
+export type Emit = (ctx: unknown) => void;
 
 /** Controlled local state mirrored onto `node[key]`, recomputing the graph on
  *  change — the `useState` is what React tracks for controlled inputs/selects. */
@@ -93,7 +102,7 @@ export function useNodeField<N extends object, K extends keyof N>(
       // resulting column's type), and no connection event fires here.
       const id = (node as { id?: string }).id;
       const ed = id ? getOwningEditor(id) : null;
-      const ar = id ? getOwningArea(id) : null;
+      const ar = id ? getOwningView(id) : null;
       if (ed && ar) reconcileTypesAfterEdit(ed, ar);
       void processGraph();
     },
@@ -145,19 +154,18 @@ function MeasuredOutputRow({
   node: ShellNode;
   emit: Emit;
 }) {
-  // Re-render when an FC docks/undocks or edits its format (same subscription
-  // ValueDisplay holds); must run before the early return below.
-  useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
-  const port = node.outputs[rowKey];
-  if (!port) return null;
   // Per-SOCKET annotation, exactly like a socketKey'd ValueDisplay: a docked FC's
   // direct write first, else the node's own per-output declaration (Triangle
-  // Solver's deg, Element's g/mol) through the shared resolver.
-  let ann = formatAnnotationStore.get(node.id, rowKey);
-  if (!ann && typeof (node as unknown as { annotationFor?: unknown }).annotationFor === "function") {
+  // Solver's deg, Element's g/mol) through the shared resolver. Selected per row, so
+  // an FC edit re-renders the rows it formats; must run before the early return below.
+  const ann = useSyncExternalStore(formatAnnotationStore.subscribe, () => {
+    const direct = formatAnnotationStore.get(node.id, rowKey);
+    if (direct || typeof (node as unknown as { annotationFor?: unknown }).annotationFor !== "function") return direct;
     const editor = getOwningEditor(node.id);
-    if (editor) ann = sharedAnnotationResolver(editor).outAnnotation(node.id, rowKey);
-  }
+    return editor ? sharedAnnotationResolver(editor).outAnnotation(node.id, rowKey) : undefined;
+  });
+  const port = node.outputs[rowKey];
+  if (!port) return null;
   return (
     <MeasuredSocketRow side="output" socketKey={rowKey} nodeId={node.id} emit={emit} payload={port.socket}>
       <span className="solenoid-node__io-label">{label}</span>
@@ -203,15 +211,36 @@ export function InlineOutputRows({
   );
 }
 
+/** Character offset of the caret position under (x, y) within `root`'s text, or null
+ *  when the point isn't over its text. */
+function textOffsetAtPoint(root: HTMLElement, x: number, y: number): number | null {
+  const doc = document as Document & {
+    caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+  };
+  let hit: { node: Node; offset: number } | null = null;
+  if (doc.caretPositionFromPoint) {
+    const p = doc.caretPositionFromPoint(x, y);
+    if (p) hit = { node: p.offsetNode, offset: p.offset };
+  } else if (document.caretRangeFromPoint) {
+    const r = document.caretRangeFromPoint(x, y);
+    if (r) hit = { node: r.startContainer, offset: r.startOffset };
+  }
+  if (!hit || !root.contains(hit.node)) return null;
+  let acc = 0;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let t = walker.nextNode(); t; t = walker.nextNode()) {
+    if (t === hit.node) return acc + hit.offset;
+    acc += t.textContent?.length ?? 0;
+  }
+  return null;
+}
+
 // Must match the display div's 4-line clamp (.solenoid-node__label-display) so
 // the editing textarea and the static title agree.
 const LABEL_MAX_HEIGHT = 60;
 
 function typeHint(node: ShellNode): string {
-  return (node as unknown as { constructor: { name: string } }).constructor.name
-    .replace(/Node$/, "")
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .toUpperCase();
+  return nodeName(node) ?? "";
 }
 
 // Lucide "message-square" — matches NodeContextMenu's Add-comment icon.
@@ -285,6 +314,9 @@ export function NodeShell({
   // Pointer-down position on the title label, to tell a tap (→ edit) from a
   // drag (→ move the node) in the click handler below.
   const labelDownPos = useRef<{ x: number; y: number } | null>(null);
+  // Text offset under the tap that opened edit mode; applied once the textarea mounts
+  // (autoFocus alone parks the caret at the start).
+  const pendingCaret = useRef<number | null>(null);
 
   // An explicit placeholder wins, else the catalog name — so a cleared title
   // never collapses the header to a zero-height sliver.
@@ -293,6 +325,7 @@ export function NodeShell({
   // The SETTING, not the zoom state — changes only on a Settings click, so the
   // full-graph re-render it triggers is fine; see the semantic div below.
   const semanticZoomSetting = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("semanticZoom"));
+  const sized = useSyncExternalStore(nodeSizeStore.subscribe, () => nodeSizeStore.get(node.id) !== undefined);
 
   // useLayoutEffect (not useEffect): the height must settle BEFORE paint, in the
   // same frame NodeCard measures --out-socket-top.
@@ -303,6 +336,14 @@ export function NodeShell({
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, LABEL_MAX_HEIGHT)}px`;
   }, [labelField.draft, editing]);
+  useLayoutEffect(() => {
+    if (!editing) return;
+    const el = taRef.current, at = pendingCaret.current;
+    pendingCaret.current = null;
+    if (!el || at == null) return;
+    const p = Math.min(at, el.value.length);
+    el.setSelectionRange(p, p);
+  }, [editing]);
 
   // Publish the header height as --header-h on every card (the frame SVG clips
   // its accent cap + divider to it; the corner badge offsets by it).
@@ -313,7 +354,7 @@ export function NodeShell({
       <NodeCard selected={node.selected} node={node} collapsible={collapsible} squareCollapse={squareCollapse} className={className} accentOverride={accentOverride}>
         {/* The label display's own title (the untruncated label) wins inside its
             own bounds. */}
-        <div className="solenoid-node__header" ref={headerRef} title={describeNode(node) ?? undefined}>
+        <div className="solenoid-node__header" ref={headerRef} title={headerTitle(node)}>
           {editing ? (
             // A textarea can't ellipsize, so it's only mounted while editing;
             // otherwise a clamped (2-line, ellipsis) display element stands in.
@@ -341,6 +382,7 @@ export function NodeShell({
               onClick={(e) => {
                 const d = labelDownPos.current;
                 if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) > HEADER_TAP_SLOP) return;
+                pendingCaret.current = node.label ? textOffsetAtPoint(e.currentTarget, e.clientX, e.clientY) : 0;
                 setEditing(true);
               }}
             >
@@ -360,7 +402,7 @@ export function NodeShell({
         <div className="solenoid-node__content">
           {leading}
           {!hideOutputSockets && <PortSockets node={node} emit={emit} side="output" />}
-          <div className="solenoid-node__body">{children}</div>
+          <div className={sized ? "solenoid-node__body nowheel" : "solenoid-node__body"}>{children}</div>
           {/* One universal resizer per resizable node — drags the card width and
               the body height (--box-h); the body's content fills/scrolls. */}
           {nodeResizable(node as unknown as ClassicPreset.Node) && <ResizeHandle nodeId={node.id} />}
@@ -378,7 +420,7 @@ export function NodeShell({
   );
 }
 
-export type OpOption<T extends string> = { value: T; label: string; group?: string };
+export type OpOption<T extends string> = { value: T; label: string; group?: string; title?: string };
 
 function opGrouped<T extends string>(options: ReadonlyArray<OpOption<T>>) {
   const order: string[] = [];
@@ -390,38 +432,23 @@ function opGrouped<T extends string>(options: ReadonlyArray<OpOption<T>>) {
   }
   return order.flatMap((g) => {
     const items = byGroup.get(g)!.map((o) => (
-      <option key={o.value} value={o.value}>{o.label}</option>
+      <option key={o.value} value={o.value} title={o.title}>{o.label}</option>
     ));
     return g === "" ? items : [<optgroup key={g} label={g}>{items}</optgroup>];
   });
 }
 
-export function OpSelect<T extends string>({
-  value,
-  onChange,
-  options,
-  arg,
-}: {
+type PickProps<T extends string> = {
   value: T;
   onChange: (next: T) => void;
   options: ReadonlyArray<OpOption<T>>;
-  /** This control is NOT the family's op selector — a per-criterion comparator, a
-   *  payment timing, a digit pick. That is ALL it says.
-   *
-   *  It is NOT a way to declare "my ops are arguments": op-vs-arg has one home, `kind`
-   *  on the family's NODE_OPS declaration, and most families whose picker binds `op`
-   *  are declared `argument` there (Group By, Running, the resistor) and render
-   *  neutral. Saying it here too would let a card assert it twice and drift, so a
-   *  control bound to the node's own `op` may not carry `arg` (sourceInvariants).
-   *  Two consumers: the accent edge skips arg selects, and VAL-12's source scan
-   *  requires every NON-arg picker to bind a field named `op`. */
-  arg?: boolean;
-}) {
+};
+
+function PickSelect<T extends string>({ value, onChange, options, className }: PickProps<T> & { className: string }) {
   const hasGroups = options.some((o) => o.group != null);
   return (
     <LazySelect
-      className="solenoid-node__op-select"
-      data-op-arg={arg ? "" : undefined}
+      className={className}
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
       onPointerDown={(e) => e.stopPropagation()}
@@ -429,19 +456,28 @@ export function OpSelect<T extends string>({
     >
       {hasGroups
         ? opGrouped(options)
-        : options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)
+        : options.map((o) => <option key={o.value} value={o.value} title={o.title}>{o.label}</option>)
       }
     </LazySelect>
   );
 }
 
-export function ClipboardIcon() {
-  return (
-    <svg width="13" height="14" viewBox="0 0 16 17" fill="currentColor" stroke="currentColor" strokeWidth="0.85" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg" style={{ display: "block" }}>
-      <path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6zM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2z"/>
-    </svg>
-  );
+/** The family's OP picker: binds the node's `op`, whose values are the family's
+ *  NODE_OPS ops (each a top-level formula function and an Add-menu row). Hoisted to
+ *  the top of the body and edged in the accent by nodeCard.css (DESIGN.md § Op
+ *  pickers). An argument never uses this — see ArgSelect. */
+export function OpSelect<T extends string>(props: PickProps<T>) {
+  return <PickSelect {...props} className="solenoid-node__select solenoid-node__select--op" />;
 }
+
+/** An ARGUMENT picker: a parameter of the node's one function (a sort order, an
+ *  aggregator, a criterion comparator). Neutral, sits in its row, and its field is
+ *  never named `op` (sourceInvariants opArgDistinct). */
+export function ArgSelect<T extends string>(props: PickProps<T>) {
+  return <PickSelect {...props} className="solenoid-node__select" />;
+}
+
+// The copy-value glyph is the `sol-copy-icon` masked ::before in nodeCard.css.
 
 /**
  * The result/display box — null (empty), a list (preview), or a scalar.
@@ -583,7 +619,7 @@ export function ValueDisplay({
     if (isEmpty) return "";
     if (isString) return cased(value as string);
     if (isLogical) return applyLogicalStyle(value as boolean, ann?.logicalStyle);
-    if (listIsString) return (value as (string | null)[]).map((v) => (v === null ? "null" : cased(v))).join(", ");
+    if (listIsString) return (value as (string | null | SolError)[]).map((v) => (v === null ? "null" : isSolError(v) ? v.code : cased(v))).join(", ");
     // A Format Controller annotation overrides a node's own custom render.
     // null/error cells aren't FC-formattable, so they take the literal cell form.
     if (isList) return (value as (number | null | SolError)[]).map((v) =>
@@ -614,6 +650,10 @@ export function ValueDisplay({
       style={{
         position: "relative",
         ...(isList ? { fontSize: full ? 14 : 13 } : {}),
+        // A formatted date ("15-Mar-2026") reads far longer than a number, so it
+        // renders a notch smaller than the number hero (18px) by default. An FC's
+        // own text-size annotation still wins (it sets fontSize on the span).
+        ...(isDate && !isList ? { fontSize: 15 } : {}),
         // Text alignment override (advanced tier); the box is right-aligned by default.
         ...(isString && ann?.textAlign ? { textAlign: ann.textAlign } : {}),
         // Desktop selects text to copy; touch pans across it instead (the copy
@@ -622,8 +662,8 @@ export function ValueDisplay({
         cursor: isEmpty ? undefined : "text",
         paddingLeft: isEmpty ? undefined : 26,
       }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={() => setHovered(false)}
       onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
     >
@@ -650,7 +690,7 @@ export function ValueDisplay({
             )
           )
         : isLogical ? applyLogicalStyle(value as boolean, ann?.logicalStyle)
-        : listIsString ? (listInline ? (value as (string | null)[]).map((v) => (v === null ? "null" : cased(v))).join(", ")
+        : listIsString ? (listInline ? (value as (string | null | SolError)[]).map((v) => (v === null ? "null" : isSolError(v) ? v.code : cased(v))).join(", ")
             // `elem` matters MOST here: dateFormatDisplay turned a date list's
             // serials into STRINGS, so the chip would otherwise sniff "text".
             : <ArrayChip value={value as string[]} elem={elemFam} />)
@@ -669,6 +709,7 @@ export function ValueDisplay({
         : fmtScalar(value as number)}
       {!isEmpty && (
         <button
+          className="sol-copy-icon"
           onClick={handleCopy}
           onPointerDown={stopDragStart}
           onMouseDown={(e) => e.stopPropagation()}
@@ -686,9 +727,7 @@ export function ValueDisplay({
             opacity: copied ? 1 : hovered ? 0.9 : 0.45,
             transition: "opacity 0.15s, color 0.15s",
           }}
-        >
-          <ClipboardIcon />
-        </button>
+        />
       )}
     </div>
   );

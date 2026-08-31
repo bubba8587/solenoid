@@ -1,14 +1,17 @@
 import { NODE_CATALOG } from "./nodeCatalog";
+import { nodeTypeName, setNodeNamer } from "./nodeNamer";
 import { packPlacements, packsStore, NODE_PACK_TAGS } from "./packs";
 import { NODE_OPS, hiddenOps, exposureOf, opEntry } from "./nodeOps";
 import { CATALOG_TO_EXCEL } from "./excelToCatalog";
 import { NODE_EXCEL } from "./nodeExcel";
-import { getEditor, getArea, processGraph, unselectAllNodes, selectNode } from "./process";
+import { processGraph } from "./process";
+import { unselectAllNodes, selectNode } from "./canvasCommands";
 import type { NodeCatalogEntry, CatalogCategory, CatalogPair, CatalogEntry } from "./AddNodeMenu";
 import { nodeNameStore } from "./nodeNameStore";
 // Cycle-safe: nodeCtorRegistry imports FLAT_CATALOG from here, but neither module
 // touches the other's exports at init time.
 import { ctorRegistry, type NodeCtor } from "./nodeCtorRegistry";
+import { getActiveView, getActiveEditor } from "./activeGraph";
 
 // Pack nodes are INSERTED into the core tree at their target category path, so packs
 // never grow the top level; a type claimed by several packs records every owner.
@@ -227,7 +230,7 @@ function nameIndex(): Map<string, string> {
   if (_nameIndex) return _nameIndex;
   _nameIndex = new Map();
   for (const entry of FLAT_CATALOG.values()) {
-    if (!entry.label) continue;
+    if (!entry.label || entry.type.includes("__op-")) continue;
     try {
       const inst = entry.create() as unknown as { constructor: { name: string }; op?: unknown };
       const ctor = inst.constructor.name;
@@ -237,6 +240,36 @@ function nameIndex(): Map<string, string> {
     } catch { /* a leaf that fails to build must not break naming for the rest */ }
   }
   return _nameIndex;
+}
+
+// Parallel to descIndex, for the catalog TYPE key — what nodeExcel.ts and the
+// pack metadata are keyed by (the Inspector's Excel-equivalence lookup).
+let _typeIndex: Map<string, string> | null = null;
+function typeIndex(): Map<string, string> {
+  if (_typeIndex) return _typeIndex;
+  _typeIndex = new Map();
+  for (const [type, entry] of FLAT_CATALOG) {
+    try {
+      const inst = entry.create() as unknown as { constructor: { name: string }; op?: unknown };
+      const ctor = inst.constructor.name;
+      const op = typeof inst.op === "string" ? inst.op : "";
+      if (!_typeIndex.has(`${ctor}::${op}`)) _typeIndex.set(`${ctor}::${op}`, type);
+      if (!_typeIndex.has(`${ctor}::`)) _typeIndex.set(`${ctor}::`, type);
+    } catch { /* a leaf that fails to build must not break the lookup for the rest */ }
+  }
+  return _typeIndex;
+}
+
+/** Catalog type key for a placed node (op-aware), or null if unknown. */
+export function catalogTypeOf(node: object): string | null {
+  const idx = typeIndex();
+  const ctor = (node as { constructor: { name: string } }).constructor.name;
+  const op = (node as { op?: unknown }).op;
+  return (
+    idx.get(`${ctor}::${typeof op === "string" ? op : ""}`) ??
+    idx.get(`${ctor}::`) ??
+    null
+  );
 }
 
 /** Catalog label (node name) for a placed node (op-aware), or null if unknown. */
@@ -251,12 +284,22 @@ export function nodeName(node: object): string | null {
   );
 }
 
+/** The name a placed node shows everywhere (card title, Navigator, Inspector, cable
+ *  inspector, popups): the user's own label if typed, else the catalog name of its
+ *  current op — so an op family's card is named by its op (NAME-3). */
+export function nodeDisplayName(node: object): string {
+  const label = ((node as { label?: string }).label ?? "").trim();
+  return label || nodeName(node) || nodeTypeName(node as { constructor: { name: string } });
+}
+setNodeNamer(nodeDisplayName);
+export { nodeTypeName };
+
 export async function addNodeByCatalogType(catalogType: string): Promise<boolean> {
   const entry = FLAT_CATALOG.get(catalogType);
   if (!entry) return false;
-  const editor = getEditor();
-  const area = getArea();
-  if (!editor || !area) return false;
+  const editor = getActiveEditor();
+  const view = getActiveView();
+  if (!editor || !view) return false;
 
   // Cast through unknown: this file deliberately imports no node classes.
   const node = entry.create() as unknown as { id: string; width?: number; height?: number; constructor: { name: string }; hydrate?: (reg: Map<string, NodeCtor>) => Promise<void> };
@@ -267,11 +310,11 @@ export async function addNodeByCatalogType(catalogType: string): Promise<boolean
   await editor.addNode(node as any);
   nodeNameStore.ensure(node.id, node.constructor.name);
 
-  const { k, x, y } = area.area.transform;
-  const rect = area.container.getBoundingClientRect();
+  const { k, x, y } = view.transform;
+  const rect = view.container.getBoundingClientRect();
   const cx = (rect.width / 2 - x) / k;
   const cy = (rect.height / 2 - y) / k;
-  await area.translate(node.id, {
+  await view.moveNode(node.id, {
     x: cx - (node.width ?? 180) / 2,
     y: cy - (node.height ?? 160) / 2,
   });

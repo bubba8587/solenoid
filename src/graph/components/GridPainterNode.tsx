@@ -4,7 +4,6 @@ import { parsePaintGrid, paintGridToText } from "../nodes/control";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineNumberField } from "./inlineInput";
 import { processGraph } from "../process";
-
 // The Grid Painter's well: left-drag paints the brush value into cells,
 // right-drag (or Alt-drag) erases back to blank (null).
 

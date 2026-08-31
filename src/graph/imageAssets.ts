@@ -11,7 +11,7 @@ import {
   readBinaryFilePath,
   writeBinaryFilePath,
 } from "./fileBridge";
-import { getEditor, getArea, processGraph } from "./process";
+import { getEditor, getView, processGraph } from "./process";
 import { documentStore } from "./documentStore";
 
 export const IMAGES_DIR = "images";
@@ -118,7 +118,7 @@ export async function bundleLocalImages(docPath: string): Promise<{ bundled: num
 
   const dir = await dirOfPath(docPath);
   const imagesDir = await joinPath(dir, IMAGES_DIR);
-  const area = getArea();
+  const view = getView();
 
   for (const n of nodes) {
     const parsed = dataUrlToBytes(n.dataUrl);
@@ -150,7 +150,7 @@ export async function bundleLocalImages(docPath: string): Promise<{ bundled: num
       if (!finalName) { failed++; continue; } // pathological — every candidate taken by different content
       n.assetPath = `${IMAGES_DIR}/${finalName}`;
       bundled++;
-      void area?.update("node", n.id); // the card's "not saved" hint clears
+      void view?.rerenderNode(n.id); // the card's "not saved" hint clears
     } catch (e) {
       console.error(`[solenoid] couldn't bundle image "${n.fileName || n.label}"`, e);
       failed++;
@@ -178,7 +178,7 @@ export async function hydrateImageAsset(node: unknown): Promise<void> {
     const ext = splitExt(n.assetPath).ext;
     n.dataUrl = bytesToDataUrl(bytes, EXT_TO_MIME[ext] ?? "image/png");
     if (!n.fileName) n.fileName = sanitizeName(n.assetPath);
-    void getArea()?.update("node", n.id);
+    void getView()?.rerenderNode(n.id);
     void processGraph(n.id);
   } catch (e) {
     console.error(`[solenoid] couldn't load bundled image "${n.assetPath}"`, e);

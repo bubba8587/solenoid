@@ -4,8 +4,8 @@ import { InlineInputs, useConnectedInputs } from "./inlineInput";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 
-const OPS: { value: FillOp; label: string }[] =
-  (Object.keys(FILL_OP_META) as FillOp[]).map((value) => ({ value, label: FILL_OP_META[value].label }));
+const OPS: { value: FillOp; label: string; title: string }[] =
+  (Object.keys(FILL_OP_META) as FillOp[]).map((value) => ({ value, label: FILL_OP_META[value].label, title: FILL_OP_META[value].description }));
 
 export function FillComponent({ data, emit }: NodeProps<FillNodeType>) {
   const [op, setOp] = useNodeField(data, "op");

@@ -1,0 +1,53 @@
+/* Script source overlay editor — a transparent <textarea> over a highlighted <pre>.
+   The two layers MUST share identical text metrics (font, size, line-height, padding,
+   tab-size, white-space) or the colored layer drifts from the caret. The container
+   owns the border/background; code never soft-wraps (white-space: pre) so it keeps
+   its shape, and the layers scroll-sync instead. */
+.sol-js-editor {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface-sunken);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 16px;
+}
+.sol-js-editor:focus-within {
+  border-color: var(--node-accent, var(--accent));
+}
+.sol-js-editor__hl,
+.sol-js-editor__ta {
+  margin: 0;
+  padding: 4px 6px;
+  font: inherit;
+  letter-spacing: 0;
+  tab-size: 2;
+  white-space: pre;
+  box-sizing: border-box;
+  border: 0;
+}
+.sol-js-editor__hl {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  color: var(--text);
+}
+.sol-js-editor__ta {
+  flex: 1;
+  width: 0;
+  min-height: 62px;
+  background: transparent;
+  color: transparent;       /* only the highlighted <pre> shows the text */
+  caret-color: var(--text); /* but keep a visible caret */
+  resize: none;
+  outline: none;
+  overflow: auto;
+}
+.sol-js-editor__ta::placeholder {
+  color: var(--border-strong);
+  font-style: italic;
+}

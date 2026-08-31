@@ -207,6 +207,24 @@ function isPaletteSlot(s: string): s is PaletteSlot {
   return Object.prototype.hasOwnProperty.call(PALETTE, s);
 }
 
+const SOCKET_VAR_BY_NAME = new Map(SOCKET_VARS.map((s) => [s.var, s]));
+
+/** The concrete hex a `--sock-*` var (or a `var(--sock-*)` expression) resolves to —
+ *  the SAME derivation appTheme writes to the CSS custom property (palette slot →
+ *  theme mode → array/matrix shade), but DOM-free. Canvas consumers (the minimap, the
+ *  html-canvas snapshot) can't read a CSS var, so they resolve through this instead.
+ *  A bare hex passes through; an unknown expr falls back to neutral gray. */
+export function socketVarHex(expr: string, mode: "dark" | "light"): string {
+  if (expr.startsWith("#")) return expr;
+  const m = /--[a-z0-9-]+/i.exec(expr);
+  const spec = m ? SOCKET_VAR_BY_NAME.get(m[0]) : undefined;
+  if (!spec) return resolveColor("gray");
+  const base = themeAccent(resolveColor(spec.slot), mode);
+  return spec.kind === "array" ? socketArrayShade(base)
+    : spec.kind === "matrix" ? socketMatrixShade(base)
+    : base;
+}
+
 // ── Built-in palettes (the app switcher picks among these) ────────────────────
 export type PaletteName = "Default" | "Muted" | "Colorblind-safe" | "Solarized" | "Equinox" | "Orchard" | "Blueprint";
 
@@ -353,7 +371,7 @@ export const PALETTE_NAMES = Object.keys(BUILTIN_PALETTES) as PaletteName[];
 // the inline property for every var it isn't given, so the cascade answers instead of
 // the last palette's value sticking. Authoring a ramp is opt-in and rare: recoloring
 // the graph is what a palette does, recoloring the workbench is a separate claim, and
-// only Orchard makes it (D35).
+// only Orchard makes it (paletteAllOrNone).
 //
 // The 13 keys are the ones a warm palette actually has to move. The rest of the neutral
 // chrome DERIVES from them (see chromeCssVars) — either through App.css's own var()
@@ -391,7 +409,7 @@ export const CHROME_KEYS: ChromeKey[] = CHROME_VARS.map((v) => v.key);
  *  read a stylesheet, so this pair is a hand-held mirror. */
 export const DEFAULT_CHROME: { dark: Record<ChromeKey, string>; light: Record<ChromeKey, string> } = {
   dark: {
-    appBg: "#141414", canvasBg: "#0e0e0e", canvasDot: "#2a2a2a",
+    appBg: "#141414", canvasBg: "#0b0b0b", canvasDot: "#2a2a2a",
     surface: "#1e1e1e", surfaceSunken: "#141414", surfaceRaised: "#262626",
     border: "#2d2d2d", borderStrong: "#3a3a3a", borderSubtle: "#2a2a2a",
     text: "#e8e8e8", textBright: "#f3f4f5", textDim: "#9aa0a6", textMuted: "#80868e",
@@ -414,7 +432,7 @@ export const DEFAULT_CHROME: { dark: Record<ChromeKey, string>; light: Record<Ch
 const ORCHARD_CHROME: PaletteChrome = {
   dark: {
     appBg: "#17160c",         // dark-surface-sunken (the frame, a step off the canvas)
-    canvasBg: "#141309",      // dark-bg
+    canvasBg: "#111007",      // dark-bg, a hair deeper
     canvasDot: "#363320",     // dark-border
     surface: "#1f1d12",       // dark-surface
     surfaceSunken: "#17160c", // dark-surface-sunken
@@ -449,7 +467,7 @@ const ORCHARD_CHROME: PaletteChrome = {
 // point is lower glare, not a hue.
 const MUTED_CHROME: PaletteChrome = {
   dark: {
-    appBg: "#1b1c20", canvasBg: "#16171a", canvasDot: "#303338",
+    appBg: "#1b1c20", canvasBg: "#131417", canvasDot: "#303338",
     surface: "#232529", surfaceSunken: "#1a1b1f", surfaceRaised: "#2b2e33",
     border: "#34373d", borderStrong: "#43474e", borderSubtle: "#2d3035",
     text: "#dfe1e5", textBright: "#f0f1f3", textDim: "#a2a7ae", textMuted: "#8b9098",
@@ -468,7 +486,7 @@ const MUTED_CHROME: PaletteChrome = {
 // content.
 const CVD_CHROME: PaletteChrome = {
   dark: {
-    appBg: "#131313", canvasBg: "#0a0a0a", canvasDot: "#2e2e2e",
+    appBg: "#131313", canvasBg: "#080808", canvasDot: "#2e2e2e",
     surface: "#1c1c1c", surfaceSunken: "#121212", surfaceRaised: "#292929",
     border: "#333333", borderStrong: "#4a4a4a", borderSubtle: "#272727",
     text: "#f2f2f2", textBright: "#ffffff", textDim: "#ababab", textMuted: "#949494",
@@ -487,7 +505,7 @@ const CVD_CHROME: PaletteChrome = {
 // background highlight, then the content tones in Solarized's own order. Border tiers
 // are blends up the base02→base01 gap, the one place Solarized leaves open.
 //
-// Solarized's body pairings sit near 3:1 — that low contrast IS the design, and D35
+// Solarized's body pairings sit near 3:1 — that low contrast IS the design, and paletteAllOrNone
 // scopes the AA requirement to Default and Colorblind-safe precisely so a lifted
 // system can be itself here. Do not "fix" these tones upward; a Solarized that clears
 // 4.5:1 everywhere is a different palette wearing the name.
@@ -498,7 +516,7 @@ const BASE = {
 const SOLARIZED_CHROME: PaletteChrome = {
   dark: {
     appBg: "#03303b",
-    canvasBg: BASE.b03,       // background
+    canvasBg: BASE.b03,       // base03 — Solarized's own ground, no off-canon deepening to force card lift
     canvasDot: BASE.b02,      // background highlight — the grid IS Solarized's own step
     surface: BASE.b02,        // background highlight — a card
     surfaceSunken: "#03303b",
@@ -528,7 +546,7 @@ const SOLARIZED_CHROME: PaletteChrome = {
 // fully achromatic.
 const EQUINOX_CHROME: PaletteChrome = {
   dark: {
-    appBg: "#141414", canvasBg: "#0e0e0e", canvasDot: "#2a2a2a",
+    appBg: "#141414", canvasBg: "#0b0b0b", canvasDot: "#2a2a2a",
     surface: "#1e1e1e", surfaceSunken: "#141414", surfaceRaised: "#262626",
     border: "#2d2d2d", borderStrong: "#3a3a3a", borderSubtle: "#272727",
     text: "#e8e8e8", textBright: "#f4f4f4", textDim: "#a0a0a0", textMuted: "#878787",
@@ -547,7 +565,7 @@ const EQUINOX_CHROME: PaletteChrome = {
 // — that is what keeps Blueprint and Orchard from being the same idea twice.
 const BLUEPRINT_CHROME: PaletteChrome = {
   dark: {
-    appBg: "#10273f", canvasBg: "#0d2137",
+    appBg: "#10273f", canvasBg: "#0a1e34",
     canvasDot: "#1e3f60",     // the grid line, a clear step off the ground
     surface: "#16304b", surfaceSunken: "#102843", surfaceRaised: "#1e3d5c",
     border: "#274a6d", borderStrong: "#375f85", borderSubtle: "#1f4062",
@@ -575,6 +593,130 @@ export const BUILTIN_CHROME: Record<PaletteName, PaletteChrome> = {
   "Blueprint": BLUEPRINT_CHROME,
 };
 
+// ── Accent-adaptive chrome (paletteAllOrNone) ──────────────────────────────────────────────
+// A tinted ramp has a hue, and the accent is user-swappable — so the tinted ramps
+// declare the accent SLOT they were authored against, and appTheme rotates the whole
+// ramp by the hue delta to the live accent. At the home accent the ramp passes
+// through untouched (Orchard IS its authored cream at green, Blueprint its prussian
+// at blue). Adaptation is declared per palette, never universal: Solarized's base
+// ladder is the identity of a lifted system, Colorblind-safe and Equinox are
+// achromatic on purpose, Muted's brief is glare rather than hue, and Custom is
+// exactly what its author picked.
+export const CHROME_HOME: Partial<Record<PaletteName, PaletteSlot>> = {
+  Orchard: "green",
+  Blueprint: "blue",
+};
+
+/** WCAG relative luminance, 0..1. */
+function relLum(hex: string): number {
+  const t = parseHex(hex);
+  if (!t) return 0;
+  const lin = t.map((c) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+}
+
+// The rotation runs in OKLCh, NOT HSL/HSV: HSL saturation is hue-anisotropic — the
+// S that reads as barely-tinted paper in Orchard's yellow band reads as a heavy
+// wash carried to pink or blue (first attempt, 2026-08-18) — while OKLCh chroma is
+// perceptually even, so "the tint strength the author set" survives the trip around
+// the wheel. (The socket-shade siblings stay HSV by design — see DESIGN.md §Tertiary;
+// that derivation never crosses hue regions, this one always does.)
+function srgbToLinear(c: number): number {
+  return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+}
+function linearToSrgb(c: number): number {
+  return c <= 0.0031308 ? c * 12.92 : 1.055 * c ** (1 / 2.4) - 0.055;
+}
+
+/** Hex → OKLCh [L, C, h°]; gray inputs give C≈0 with a meaningless hue. */
+export function hexToOklch(hex: string): [number, number, number] {
+  const t = parseHex(hex);
+  if (!t) return [0, 0, 0];
+  const [r, g, b] = t.map((c) => srgbToLinear(c / 255));
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  const L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+  const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+  const B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+  return [L, Math.hypot(A, B), (Math.atan2(B, A) * 180) / Math.PI];
+}
+
+/** OKLCh → linear-sRGB triple, unclamped (callers gamut-check). */
+function oklchToLinear(L: number, C: number, h: number): [number, number, number] {
+  const A = C * Math.cos((h * Math.PI) / 180);
+  const B = C * Math.sin((h * Math.PI) / 180);
+  const l = (L + 0.3963377774 * A + 0.2158037573 * B) ** 3;
+  const m = (L - 0.1055613458 * A - 0.0638541728 * B) ** 3;
+  const s = (L - 0.0894841775 * A - 1.291485548 * B) ** 3;
+  return [
+    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s,
+  ];
+}
+
+/** OKLCh → hex, mapping into gamut by walking C toward gray at fixed L and h. */
+function oklchToHex(L: number, C: number, h: number): string {
+  let rgb = oklchToLinear(L, C, h);
+  if (rgb.some((c) => c < -1e-4 || c > 1 + 1e-4)) {
+    let lo = 0, hi = C;
+    for (let i = 0; i < 16; i++) {
+      const mid = (lo + hi) / 2;
+      const cand = oklchToLinear(L, mid, h);
+      if (cand.some((c) => c < -1e-4 || c > 1 + 1e-4)) hi = mid; else lo = mid;
+    }
+    rgb = oklchToLinear(L, lo, h);
+  }
+  const to = (c: number) => Math.round(Math.min(1, Math.max(0, linearToSrgb(c))) * 255).toString(16).padStart(2, "0");
+  return `#${rgb.map(to).join("")}`;
+}
+
+// Below this OKLCh chroma an accent has no hue worth following (the gray slot in
+// every adaptive palette, the neutral cycle) — the authored ramp stands. Centered in
+// the measured gap: the grayest guard case is Orchard's quiet at C≈.038, the least
+// chromatic real accent Orchard's teal at C≈.072.
+const ADAPT_MIN_CHROMA = 0.05;
+
+// WCAG luminance is monotonic in OK lightness at fixed chroma/hue, so bisecting L
+// hits the authored luminance at the new hue. Chroma is HELD and luminance is
+// re-matched: the tint stays exactly as strong as authored, and the paletteAllOrNone ramp
+// STRUCTURE — every contrast relationship the author eyeballed — stays true under
+// any accent. Only hue moves.
+function rotateHueKeepLum(hex: string, delta: number): string {
+  const [, C, h] = hexToOklch(hex);
+  const target = relLum(hex);
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 22; i++) {
+    const mid = (lo + hi) / 2;
+    if (relLum(oklchToHex(mid, C, h + delta)) < target) lo = mid; else hi = mid;
+  }
+  return oklchToHex((lo + hi) / 2, C, h + delta);
+}
+
+/**
+ * The ramp re-tinted for the live accent: every key's OKLCh hue rotated by
+ * (accent − home), chroma and luminance held. Returns `ramp` ITSELF when there is
+ * nothing to do — accent at home, or too gray to carry a hue — so the authored
+ * hexes pass through byte-identical rather than round-tripped.
+ */
+export function adaptChrome(ramp: ChromeRamp, homeHex: string, accentHex: string): ChromeRamp {
+  if (!parseHex(homeHex) || !parseHex(accentHex)) return ramp;
+  const [, accChroma, accHue] = hexToOklch(accentHex);
+  if (accChroma < ADAPT_MIN_CHROMA) return ramp;
+  const delta = (((accHue - hexToOklch(homeHex)[2]) % 360) + 360) % 360;
+  if (delta < 0.5 || delta > 359.5) return ramp;
+  const out: ChromeRamp = {};
+  for (const key of CHROME_KEYS) {
+    const v = ramp[key];
+    if (isHex(v)) out[key] = rotateHueKeepLum(v, delta);
+  }
+  return out;
+}
+
 // ── Chrome derivation ─────────────────────────────────────────────────────────
 // The neutral tokens App.css spells as literals rather than var() chains, rebuilt
 // from the authored ramp. Every one is a mix between two ramp colors at a fixed
@@ -587,7 +729,7 @@ export const BUILTIN_CHROME: Record<PaletteName, PaletteChrome> = {
 // shade or two also behaves on a ramp nobody has eyeballed. Retune a step by redoing
 // that comparison, not by nudging until one palette looks right.
 export const DERIVED_CHROME_VARS = [
-  "--panel-bg", "--overlay-bg", "--overlay-border", "--btn-hover",
+  "--overlay-border", "--btn-hover",
   "--gauge-track", "--cable-selected", "--wordmark-color",
   "--shadow-card", "--shadow-pop", "--overlay-shadow",
 ] as const;
@@ -613,10 +755,8 @@ export function chromeCssVars(ramp: ChromeRamp, mode: "dark" | "light"): Record<
   }
   const { surface, surfaceSunken, borderStrong, text, textBright, textMuted } = ramp;
   if (!isHex(surface) || !isHex(text)) return out; // a partial ramp derives nothing
-  // Panels and floating overlays are the surface at near-opacity — the overlay reads
-  // above a busy graph, so it sits a step more opaque than a panel.
-  out["--panel-bg"] = hexToRgba(surface, 0.92);
-  out["--overlay-bg"] = hexToRgba(surface, 0.97);
+  // --panel-bg / --overlay-bg aren't derived: App.css aliases both to --surface, which
+  // the ramp already wrote, so opaque chrome follows the palette on its own.
   // Overlay chrome is defined by its border rather than floated by a big shadow, so
   // its edge steps past --border-strong toward the ink.
   if (isHex(borderStrong)) out["--overlay-border"] = mixHex(borderStrong, text, 0.08);
@@ -636,8 +776,8 @@ export function chromeCssVars(ramp: ChromeRamp, mode: "dark" | "light"): Record<
     // a warm shadow. Dark mode keeps App.css's black: on a dark ground the shadow is
     // absence of light, not a hue.
     out["--shadow-card"] = `0 1px 2px ${hexToRgba(text, 0.1)}`;
-    out["--shadow-pop"] = `0 4px 14px ${hexToRgba(text, 0.12)}`;
-    out["--overlay-shadow"] = `0 4px 14px ${hexToRgba(text, 0.16)}, 0 1px 4px ${hexToRgba(text, 0.1)}`;
+    out["--shadow-pop"] = `0 4px 14px ${hexToRgba(text, 0.07)}`;
+    out["--overlay-shadow"] = `0 4px 14px ${hexToRgba(text, 0.1)}, 0 1px 4px ${hexToRgba(text, 0.06)}`;
   }
   return out;
 }
@@ -757,6 +897,16 @@ export const paletteStore = {
   /** The active palette's chrome ramp — empty when it authors none, in which case
    *  appTheme clears the vars and App.css's neutral ramps answer. */
   chrome: (): PaletteChrome => ({ dark: { ..._effectiveChrome.dark }, light: { ..._effectiveChrome.light } }),
+  /** The effective base's adaptive-chrome home color — the accent hex its ramp was
+   *  authored against — or null when that base's ramp doesn't follow the accent.
+   *  Always the BUILT-IN's own slot hex: the ramp was tuned against the palette's
+   *  authored colors, while the live accent resolves through doc overrides too. */
+  chromeHomeHex(): string | null {
+    const base = _docBase ?? _appBase;
+    if (base === "Custom") return null;
+    const slot = CHROME_HOME[base];
+    return slot ? BUILTIN_PALETTES[base][slot] : null;
+  },
   /** The user's editable custom palette (F-1) — a full slot→hex map. */
   customMap: (): Record<PaletteSlot, string> => ({ ..._customMap }),
   /** The custom palette's chrome ramp — always complete (see _customChrome). */

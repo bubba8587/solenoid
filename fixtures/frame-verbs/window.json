@@ -1,0 +1,1993 @@
+{
+ "verb": "window",
+ "cases": [
+  {
+   "name": "running sum in t order, written back in row order; a blank value stays blank",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "a",
+        "b",
+        "a",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        1,
+        2,
+        2,
+        3
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        10,
+        20,
+        30,
+        null,
+        50,
+        60
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "t",
+    "orderDir": "asc",
+    "fn": "cumsum",
+    "column": "v",
+    "as": "out"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "a",
+       "b",
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       1,
+       2,
+       2,
+       3
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       10,
+       20,
+       30,
+       null,
+       50,
+       60
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       90,
+       20,
+       30,
+       null,
+       80,
+       80
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "row number within the group by t",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "a",
+        "b",
+        "a",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        1,
+        2,
+        2,
+        3
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        10,
+        20,
+        30,
+        null,
+        50,
+        60
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "t",
+    "orderDir": "asc",
+    "fn": "row_number",
+    "as": "out"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "a",
+       "b",
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       1,
+       2,
+       2,
+       3
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       10,
+       20,
+       30,
+       null,
+       50,
+       60
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       1,
+       2,
+       2,
+       3
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "lag 1 by t carries the previous VALUE (a blank included)",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "a",
+        "b",
+        "a",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        1,
+        2,
+        2,
+        3
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        10,
+        20,
+        30,
+        null,
+        50,
+        60
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "t",
+    "orderDir": "asc",
+    "fn": "lag",
+    "column": "v",
+    "as": "out",
+    "n": 1
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "a",
+       "b",
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       1,
+       2,
+       2,
+       3
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       10,
+       20,
+       30,
+       null,
+       50,
+       60
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       50,
+       null,
+       null,
+       20,
+       30,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "lead 1 by t",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "a",
+        "b",
+        "a",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        1,
+        2,
+        2,
+        3
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        10,
+        20,
+        30,
+        null,
+        50,
+        60
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "t",
+    "orderDir": "asc",
+    "fn": "lead",
+    "column": "v",
+    "as": "out",
+    "n": 1
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "a",
+       "b",
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       1,
+       2,
+       2,
+       3
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       10,
+       20,
+       30,
+       null,
+       50,
+       60
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       null,
+       null,
+       50,
+       60,
+       10,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "diff by t: blank when either side is blank",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "a",
+        "b",
+        "a",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        1,
+        2,
+        2,
+        3
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        10,
+        20,
+        30,
+        null,
+        50,
+        60
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "t",
+    "orderDir": "asc",
+    "fn": "diff",
+    "column": "v",
+    "as": "out"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "a",
+       "b",
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       1,
+       2,
+       2,
+       3
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       10,
+       20,
+       30,
+       null,
+       50,
+       60
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       -40,
+       null,
+       null,
+       null,
+       20,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "pct_change by t",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "a",
+        "b",
+        "a",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        1,
+        2,
+        2,
+        3
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        10,
+        20,
+        30,
+        null,
+        50,
+        60
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "t",
+    "orderDir": "asc",
+    "fn": "pct_change",
+    "column": "v",
+    "as": "out"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "a",
+       "b",
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       1,
+       2,
+       2,
+       3
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       10,
+       20,
+       30,
+       null,
+       50,
+       60
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       -0.8,
+       null,
+       null,
+       null,
+       0.6666666666666666,
+       null
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "rolling sum of 2: blank through the warm-up and on a blank value",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "a",
+        "b",
+        "a",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        1,
+        2,
+        2,
+        3
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        10,
+        20,
+        30,
+        null,
+        50,
+        60
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "t",
+    "orderDir": "asc",
+    "fn": "rolling_sum",
+    "column": "v",
+    "as": "out",
+    "n": 2
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "a",
+       "b",
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       1,
+       2,
+       2,
+       3
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       10,
+       20,
+       30,
+       null,
+       50,
+       60
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       60,
+       null,
+       null,
+       null,
+       80,
+       60
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "competition rank by v (blank order key → blank)",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "a",
+        "b",
+        "a",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        1,
+        2,
+        2,
+        3
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        10,
+        20,
+        30,
+        null,
+        50,
+        60
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "v",
+    "orderDir": "asc",
+    "fn": "rank",
+    "as": "out"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "a",
+       "b",
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       1,
+       2,
+       2,
+       3
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       10,
+       20,
+       30,
+       null,
+       50,
+       60
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       1,
+       1,
+       2,
+       null,
+       3,
+       2
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "dense rank by t",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "a",
+        "b",
+        "a",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        1,
+        2,
+        2,
+        3
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        10,
+        20,
+        30,
+        null,
+        50,
+        60
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "t",
+    "orderDir": "asc",
+    "fn": "dense_rank",
+    "as": "out"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "a",
+       "b",
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       1,
+       2,
+       2,
+       3
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       10,
+       20,
+       30,
+       null,
+       50,
+       60
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       1,
+       2,
+       2,
+       3
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "percent rank by v: the ranked rows are the denominator",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "a",
+        "b",
+        "a",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        1,
+        2,
+        2,
+        3
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        10,
+        20,
+        30,
+        null,
+        50,
+        60
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "v",
+    "orderDir": "asc",
+    "fn": "percent_rank",
+    "as": "out"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "a",
+       "b",
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       1,
+       2,
+       2,
+       3
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       10,
+       20,
+       30,
+       null,
+       50,
+       60
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       0,
+       0,
+       0.5,
+       null,
+       1,
+       1
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "ntile 3 by t",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "a",
+        "b",
+        "a",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        1,
+        2,
+        2,
+        3
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        10,
+        20,
+        30,
+        null,
+        50,
+        60
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "t",
+    "orderDir": "asc",
+    "fn": "ntile",
+    "as": "out",
+    "n": 3
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "a",
+       "b",
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       1,
+       2,
+       2,
+       3
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       10,
+       20,
+       30,
+       null,
+       50,
+       60
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       1,
+       2,
+       2,
+       3
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "group total on every row",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "a",
+        "b",
+        "a",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        1,
+        2,
+        2,
+        3
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        10,
+        20,
+        30,
+        null,
+        50,
+        60
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "t",
+    "orderDir": "asc",
+    "fn": "group_sum",
+    "column": "v",
+    "as": "out"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "a",
+       "b",
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       1,
+       2,
+       2,
+       3
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       10,
+       20,
+       30,
+       null,
+       50,
+       60
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       90,
+       80,
+       90,
+       80,
+       90,
+       80
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "group count of non-blank values",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "a",
+        "b",
+        "a",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        1,
+        2,
+        2,
+        3
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        10,
+        20,
+        30,
+        null,
+        50,
+        60
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "t",
+    "orderDir": "asc",
+    "fn": "group_count",
+    "column": "v",
+    "as": "out"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "a",
+       "b",
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       1,
+       2,
+       2,
+       3
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       10,
+       20,
+       30,
+       null,
+       50,
+       60
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       3,
+       2,
+       3,
+       2,
+       3,
+       2
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "share of the group total",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "a",
+        "b",
+        "a",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        1,
+        2,
+        2,
+        3
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        10,
+        20,
+        30,
+        null,
+        50,
+        60
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "t",
+    "orderDir": "asc",
+    "fn": "share",
+    "column": "v",
+    "as": "out"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "a",
+       "b",
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       1,
+       2,
+       2,
+       3
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       10,
+       20,
+       30,
+       null,
+       50,
+       60
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       0.1111111111111111,
+       0.25,
+       0.3333333333333333,
+       null,
+       0.5555555555555556,
+       0.75
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "first and last in t order repeat per row (first)",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "a",
+        "b",
+        "a",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        1,
+        2,
+        2,
+        3
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        10,
+        20,
+        30,
+        null,
+        50,
+        60
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "t",
+    "orderDir": "asc",
+    "fn": "first",
+    "column": "v",
+    "as": "out"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "a",
+       "b",
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       1,
+       2,
+       2,
+       3
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       10,
+       20,
+       30,
+       null,
+       50,
+       60
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       30,
+       20,
+       30,
+       20,
+       30,
+       20
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "first and last in t order repeat per row (last)",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "a",
+        "b",
+        "a",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        1,
+        2,
+        2,
+        3
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        10,
+        20,
+        30,
+        null,
+        50,
+        60
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "t",
+    "orderDir": "asc",
+    "fn": "last",
+    "column": "v",
+    "as": "out"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "a",
+       "b",
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       1,
+       2,
+       2,
+       3
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       10,
+       20,
+       30,
+       null,
+       50,
+       60
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       10,
+       60,
+       10,
+       60,
+       10,
+       60
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "no partition: the whole frame, input order",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "a",
+        "b",
+        "a",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        1,
+        2,
+        2,
+        3
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        10,
+        20,
+        30,
+        null,
+        50,
+        60
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "fn": "cumsum",
+    "column": "v",
+    "as": "c"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "b",
+       "a",
+       "b",
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       3,
+       1,
+       1,
+       2,
+       2,
+       3
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       10,
+       20,
+       30,
+       null,
+       50,
+       60
+      ]
+     },
+     {
+      "name": "c",
+      "type": "number",
+      "values": [
+       10,
+       30,
+       60,
+       null,
+       110,
+       170
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "ties share the competition rank and skip; dense packs",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "number",
+       "values": [
+        5,
+        5,
+        7,
+        9
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "orderBy": "k",
+    "orderDir": "asc",
+    "fn": "rank",
+    "as": "r"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "number",
+      "values": [
+       5,
+       5,
+       7,
+       9
+      ]
+     },
+     {
+      "name": "r",
+      "type": "number",
+      "values": [
+       1,
+       1,
+       3,
+       4
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "descending order reverses the running sum",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "k",
+       "type": "number",
+       "values": [
+        5,
+        2,
+        9,
+        0
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [],
+    "orderBy": "k",
+    "orderDir": "desc",
+    "fn": "cumsum",
+    "column": "k",
+    "as": "r"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "k",
+      "type": "number",
+      "values": [
+       5,
+       2,
+       9,
+       0
+      ]
+     },
+     {
+      "name": "r",
+      "type": "number",
+      "values": [
+       14,
+       16,
+       9,
+       16
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "an unknown partition column is #REF!",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "b",
+        "a",
+        "b",
+        "a",
+        "b"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        3,
+        1,
+        1,
+        2,
+        2,
+        3
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        10,
+        20,
+        30,
+        null,
+        50,
+        60
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "nope"
+    ],
+    "fn": "row_number",
+    "as": "r"
+   },
+   "expectError": "#REF!"
+  }
+ ]
+}

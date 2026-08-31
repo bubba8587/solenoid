@@ -1,5 +1,6 @@
+import { floorZoom } from "./viewPresets";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { getActiveArea, getActiveEditor } from "./activeGraph";
+import { getActiveView, getActiveEditor } from "./activeGraph";
 import { collapsedAwareNodesRect } from "./components/Minimap";
 import { canvasLockStore } from "./canvasLock";
 import { cableFlourishBridge } from "./cableFlourishStore";
@@ -12,19 +13,19 @@ import "./NavMenu.css";
 const ZOOM_STEP = 1.4;
 
 async function zoomBy(delta: number) {
-  const area = getActiveArea(); // zoom the graph you're looking at (drill-in too)
-  if (!area) return;
-  const { k, x, y } = area.area.transform;
+  const view = getActiveView(); // zoom the graph you're looking at (drill-in too)
+  if (!view) return;
+  const { k, x, y } = view.transform;
   const next = clamp(k * delta, 0.1, 4);
   if (next === k) return;
   // rete's zoom API takes an (ox, oy) ADDED to the transform after the scale change.
   // Solving for "screen point (cx, cy) stays put":
   //   newX = cx − (next / k) * (cx − x)   →   dx = (cx − x) * (1 − next/k)
-  const rect = area.container.getBoundingClientRect();
+  const rect = view.container.getBoundingClientRect();
   const cx = rect.width / 2;
   const cy = rect.height / 2;
   const ratio = 1 - next / k;
-  await area.area.zoom(next, (cx - x) * ratio, (cy - y) * ratio);
+  await view.zoom(next, (cx - x) * ratio, (cy - y) * ratio);
 }
 
 // The chrome panels overlay the canvas, so a plain zoom-to-fit centers content under the
@@ -69,9 +70,9 @@ function visibleInsets(c: DOMRect) {
 
 // Chrome-aware zoom-to-fit; Cleanup calls it so it frames the view like the Fit button.
 export async function fitAll() {
-  const area = getActiveArea(); // fit the graph you're looking at (drill-in too)
+  const view = getActiveView(); // fit the graph you're looking at (drill-in too)
   const editor = getActiveEditor();
-  if (!area || !editor) return;
+  if (!view || !editor) return;
 
   // Same geometry the minimap uses: hidden members dropped, a collapsed group sized to
   // its compact rendered box.
@@ -88,20 +89,20 @@ export async function fitAll() {
   const bw = Math.max(1, maxX - minX);
   const bh = Math.max(1, maxY - minY);
 
-  const c = area.container.getBoundingClientRect();
+  const c = view.container.getBoundingClientRect();
   const ins = visibleInsets(c);
   const availW = Math.max(60, c.width - ins.left - ins.right);
   const availH = Math.max(60, c.height - ins.top - ins.bottom);
 
   // Fit the box into the free region, with a little slack, clamped.
-  const k = Math.max(0.1, Math.min(availW / bw, availH / bh, 1.5) * 0.92);
+  const k = floorZoom(Math.min(availW / bw, availH / bh, 1.5) * 0.92);
   const cx = (minX + maxX) / 2;
   const cy = (minY + maxY) / 2;
   const ax = ins.left + availW / 2;   // free-region center, container coords
   const ay = ins.top + availH / 2;
 
-  await area.area.zoom(k);
-  await area.area.translate(ax - cx * k, ay - cy * k);
+  await view.zoom(k);
+  await view.pan(ax - cx * k, ay - cy * k);
 }
 
 /** These act on the viewport, not the document, so they stay on the canvas rather than

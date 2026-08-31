@@ -120,6 +120,7 @@
   line-height: 1.5;
   color: var(--text-muted);
   padding: 4px 0;
+  text-wrap-style: pretty;
 }
 .solenoid-settings__note code {
   font-family: var(--font-mono);

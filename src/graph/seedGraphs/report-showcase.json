@@ -1,6 +1,8 @@
 {
-  "v": 1,
-  "label": "Report Showcase",
+  "v": 2,
+  "order": 420,
+  "label": "Report showcase",
+  "group": "Charts & reports",
   "nodes": [
     {
       "id": "data",
@@ -78,6 +80,7 @@
     {
       "id": "method",
       "type": "NoteNode",
+      "name": "Methodology",
       "x": -80,
       "y": 380,
       "init": {
@@ -95,11 +98,17 @@
       "y": -144,
       "init": {
         "label": "Quarterly review",
-        "body": "# Quarterly review\n\nTotal bookings came to **`=total`** units across the six-month period, drawn from the source ledger:\n\n`=table`\n\nPlotted month over month:\n\n`=fig`\n\nBookings climbed steadily, with a soft patch in month 3.\n\n## Forecast\n\nWe project month *t* forward from the latest run-rate using compound growth:\n\n`=model`\n\n## How the numbers flow\n\n`=flow`\n\n![[Methodology]]\n\n*Draft — figures subject to revision.*"
+        "body": "# Quarterly review\n\nTotal bookings came to **`=total`** units across the six-month period, drawn from the source ledger:\n\n`=table`\n\nPlotted month over month:\n\n`=fig`\n\nBookings climbed steadily, with a soft patch in month 3.\n\n## Forecast\n\nWe project month *t* forward from the latest run-rate using compound growth:\n\n`=model`\n\n## How the numbers flow\n\n`=flow`\n\n`=Methodology`\n\n*Draft — figures subject to revision.*"
       }
     }
   ],
   "connections": [
+    {
+      "source": "method",
+      "sourceOutput": "document",
+      "target": "report",
+      "targetInput": "Methodology"
+    },
     {
       "source": "data",
       "sourceOutput": "frame",

@@ -1,0 +1,176 @@
+/* The app-canvas layer (chrome overlays it; the dock/drill rules in
+   ReportOverlay.css / InspectorPanel.css / compositeEditor.css size and hide
+   it by this class) plus the RF-specific resets. */
+
+.sol-rf-appcanvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+  -webkit-user-select: none;
+  /* Hand ALL touch gestures to the canvas (one finger pans, two pinch) — the
+     same rule .solenoid-canvas carries; without it the browser eats touch
+     moves as page scroll/zoom. Field taps/focus still work. */
+  touch-action: none;
+  -webkit-touch-callout: none;
+}
+.sol-rf-appcanvas .react-flow {
+  background-color: var(--canvas-bg);
+}
+
+/* Collapsed-group members: RF owns the wrapper's inline visibility (it stamps
+   `visible` after measuring), so the hide must out-rank the inline style. Kept
+   as visibility, never display — the member must stay laid out or its measured
+   size and socket positions collapse to 0 and cables re-anchor at the origin. */
+.react-flow__node.sol-member-hidden {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* A Conduit's node box is a fixed 92 square wrapped around a much smaller block, so
+   an invisible box that took pointers would out-rank the cables, standoffs and canvas
+   under it. Pointers land on what is painted instead — the shell shapes and the lane
+   squares each claim `auto` for themselves (conduit.css). */
+.react-flow__node.sol-conduit-node {
+  /* RF stamps `pointer-events: all` inline on every selectable node wrapper, so this
+     has to out-rank an inline style — the same reason sol-member-hidden shouts. */
+  pointer-events: none !important;
+}
+/* An OPEN group's interior is working canvas: a press there pans, lassos or reaches a
+   cable, never drags the box (the rete surface's drag guard, lost in the RF port). The
+   wrapper goes pointer-transparent the same way the Conduit's does; the header, the
+   edge bands and the grip claim their own pointers, and the whole body re-arms once
+   the group is SELECTED so a selected group can be dragged by its face (GroupNode.css).
+   Collapsed groups are small node-like boxes and stay fully draggable. */
+.react-flow__node.sol-group-open {
+  pointer-events: none !important;
+}
+
+/* RF's own connectable rules re-arm the Handle inside a lane, so a COMPRESSED lane
+   (pointer-transparent — conduit.css) has to reach in and turn it off too. */
+.solenoid-conduit__lane--inert .react-flow__handle.sol-rf-handle-reset {
+  pointer-events: none;
+}
+
+/* The real-card socket dot: an RF Handle inside NodeSocket's absolutely
+   positioned wrapper. Strip RF's default dot styling; SocketComponent draws. */
+.react-flow__handle.sol-rf-handle-reset {
+  position: static;
+  width: var(--socket-size, 12px);
+  height: var(--socket-size, 12px);
+  min-width: 0;
+  min-height: 0;
+  display: block;
+  line-height: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  transform: none;
+}
+.sol-rf-handle-reset svg { pointer-events: none; }
+
+/* RF's MiniMap wears the Solenoid minimap WINDOW (.solenoid-minimap in
+   Minimap.css — overlay chrome, and the minimap-top / minimap-hidden / mobile
+   rules all key off that class). The panel's own margin/inset must yield to
+   the window's measured position, and the svg stays transparent so the
+   overlay background reads through. */
+.sol-rf-appcanvas .react-flow__minimap.solenoid-minimap {
+  margin: 0;
+  right: 16px;
+  left: auto;
+  bottom: calc(var(--chrome-bottom, 19px) + 11px);
+  top: auto;
+  z-index: 100;
+  /* The svg is sized to the panel's style width/height — content-box + no
+     padding keeps it unclipped (RF's own bounds offset provides the inset). */
+  box-sizing: content-box;
+  padding: 0;
+}
+.sol-rf-appcanvas .react-flow__minimap-svg {
+  display: block;
+  border-radius: 4px;
+}
+html.minimap-top .sol-rf-appcanvas .react-flow__minimap.solenoid-minimap {
+  top: 126px;
+  bottom: auto;
+}
+/* Corner resize grips are RF NodeResizeControls wearing the app's grip mark: undo
+   RF's 5px handle box and let the site class (color, z-index, cursor) show through. */
+.sol-rf-grip.react-flow__resize-control.handle.bottom.right {
+  left: auto;
+  top: auto;
+  right: 2px;
+  bottom: 2px;
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  translate: none;
+  cursor: nwse-resize;
+}
+.sol-rf-grip__mark {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Real cards size themselves (NodeCard sets width); RF's wrapper must not add
+   a visible box of its own. */
+.react-flow__node-sol {
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+/* ── C0 generic FALLBACK card (unregistered node types only) ─────────────── */
+
+.sol-rf-card {
+  min-width: 140px;
+  border: 1px solid light-dark(#c9c9c4, #3a3e47);
+  border-radius: 8px;
+  background: light-dark(#ffffff, #1e2128);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+.sol-rf-card--selected { outline: 2px solid light-dark(#4a90d9, #6aa8e8); }
+
+.sol-rf-card__header {
+  padding: 5px 10px;
+  border-bottom: 1px solid light-dark(#e3e3df, #2c2f36);
+  font-weight: 600;
+}
+
+.sol-rf-card__body { padding: 4px 0 6px; }
+
+.sol-rf-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  min-height: 20px;
+}
+.sol-rf-row--out { justify-content: flex-end; }
+.sol-rf-row__label { opacity: 0.8; }
+.sol-rf-row__value {
+  font-family: "Atkinson Hyperlegible Mono Variable", ui-monospace, monospace;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sol-rf-handle.sol-rf-handle--in,
+.sol-rf-handle.sol-rf-handle--out {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translateY(-50%);
+  border: 1px solid light-dark(#00000055, #ffffff66);
+  border-radius: 3px;
+}
+.sol-rf-handle--in { left: -6px; }
+.sol-rf-handle--out { right: -6px; left: auto; }

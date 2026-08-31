@@ -8,12 +8,14 @@ import { extractInit } from "../copyPaste";
 import { installErrorGuards, solError, type SolError } from "../errorValue";
 import { coerceNumber as toNumber } from "../valueKinds";
 import {
-  mulberry32, sampleUncertain, summarizeSamples,
+  mulberry32, sampleUncertain, summarizeSamples, parseCorrelations, correlationCholesky, sampleCorrelated,
   DEFAULT_MC_SAMPLES, DEFAULT_MC_SEED, type DistributionKind,
 } from "../monteCarlo";
 import { installInputCoercion } from "../coerceInputs";
 import { isFrameValue, frameRowCount, frameFromRows } from "../frame";
-import { loopMembers } from "../process";
+import { isGraphRebuilding } from "../process";
+import { loopMembers, seedLoopErrors } from "../graphCompute";
+import { fireAlert } from "../alertStore";
 import { compositeStaleStore } from "../compositeStaleStore";
 import { formatScalar } from "../components/format";
 import type { NodeCtor } from "../nodeCtorRegistry";
@@ -88,6 +90,9 @@ export interface CompositeGoalSeek {
 export interface CompositeMonteCarlo {
   samples: number;
   seed: number;
+  /** `a ~ b = 0.7; c ~ d = -0.3` over exposed-input labels or ids — the Gaussian-copula
+   *  correlation between draws (monteCarlo.ts). Absent / empty = independent. */
+  correlations?: string;
 }
 
 /** Simulation "Stop when" comparator, over the chosen output's numeric value
@@ -148,6 +153,10 @@ export type CompositeDataTableValues = Record<string, unknown[]>;
 // runtime VALUE shape matters.
 
 export class CompositeInputNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    value: "When the composite's outer port is wired, the outside value flows here and the editable seed is ignored.",
+  };
+
   label: string;
   value: unknown = null;
   /** Transient: the exposed port is EXTERNALLY WIRED, so `value` comes from outside
@@ -188,6 +197,10 @@ export class CompositeInputNode extends ClassicPreset.Node {
 }
 
 export class CompositeOutputNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    value: "Whatever arrives here becomes the composite's matching outer output. A multi-run mode collects one entry per run.",
+  };
+
   label: string;
   /** Last value seen — the drill-in editor's value box (named cachedResult so the
    *  error guard's short-circuit mirrors an error into it). */
@@ -239,6 +252,10 @@ export class CompositeNode extends ClassicPreset.Node {
   /** By-Row mode: the exposed INPUT port to iterate — one pass per row of its value
    *  (see `byRowValues`), other ports fixed. `""` = not set, so a single pass. */
   byRowPortId: string;
+  /** By-Row edge-detect: the row total the last cap warning fired at, or null when the
+   *  last run wasn't capped — so a re-Solve of the same over-cap frame doesn't re-toast,
+   *  but a change in how much is dropped (or a fresh relapse) does. Not persisted. */
+  private lastByRowCapTotal: number | null = null;
   /** Goal-seek config (null until the mode is configured). */
   goalSeek: CompositeGoalSeek | null;
   /** Monte Carlo config (null until the mode is configured). */
@@ -263,6 +280,10 @@ export class CompositeNode extends ClassicPreset.Node {
   /** Bumped on any edit to the INTERNAL graph and folded into solveKey, so a held
    *  heavy solve reads stale when the subgraph itself changes, not just its inputs. */
   internalEditSeq = 0;
+  /** Counts `data()` invocations. Nothing inside the subgraph — values or marker stamps —
+   *  can move without one, so an open drill-in re-renders its views only when this
+   *  advances, instead of on every pass the surrounding document happens to run. */
+  runSeq = 0;
   private _refIds = new WeakMap<object, number>();
   private _refSeq = 0;
   /** Internal-graph layout keyed by LIVE internal node id (remapped on hydrate,
@@ -356,7 +377,7 @@ export class CompositeNode extends ClassicPreset.Node {
       if (!Ctor) continue; // unknown internal type (pack off / renamed) — dropped, not placeholdered
       const node = new Ctor({ ...sn.init });
       const anyNode = node as unknown as Record<string, unknown>;
-      // VAL-14: restore ONLY onto declaring classes — same gate as the main load
+      // literalsIffEditable: restore ONLY onto declaring classes — same gate as the main load
       // path, so a composite's internal graph can't plant an invisible literal.
       if (sn.literals && typeof anyNode.literals === "object") anyNode.literals = { ...sn.literals };
       if (sn.stringLiterals && typeof anyNode.stringLiterals === "object") anyNode.stringLiterals = { ...sn.stringLiterals };
@@ -393,6 +414,22 @@ export class CompositeNode extends ClassicPreset.Node {
     }
     this._hydrating = false;
     this.settleInternalTypes();
+  }
+
+  /** Undo support (flow drill-in): rebuild the internal graph from an earlier
+   *  snapshot. Ids remint through hydrate's `built` remap, ports included; a
+   *  port whose marker isn't in the snapshot dangles until leaveLevel prunes it
+   *  (the same window the rete overlay's history left open). */
+  async restoreInternal(snap: CompositeInternalSnapshot, reg: Map<string, NodeCtor>): Promise<void> {
+    for (const c of [...this.internalEditor.getConnections()]) {
+      await this.internalEditor.removeConnection(c.id);
+    }
+    for (const n of [...this.internalEditor.getNodes()]) {
+      await this.internalEditor.removeNode(n.id);
+    }
+    this.internalPositions = {};
+    this._pending = { nodes: [...snap.nodes], connections: [...snap.connections] };
+    await this.hydrate(reg);
   }
 
   /** Snapshot the internal graph as plain JSON (the `internal` constructor arg), wired
@@ -575,17 +612,12 @@ export class CompositeNode extends ClassicPreset.Node {
   /** Pre-seed the cache with #CIRC! for every TRUE loop member (Tarjan SCC, self-loops
    *  included) so a later `fetch` dead-ends instead of recursing forever. */
   private seedInternalLoopErrors(): void {
-    const loop = loopMembers(this.internalEditor);
-    if (loop.size === 0) return;
-    const circErr = solError("#CIRC!", "This node is part of a circular dependency inside the composite: the calculation feeds back into itself. Switch the container to Simulation mode to run it as a feedback loop instead.");
-    for (const id of loop) {
-      const node = this.internalEditor.getNode(id);
-      if (!node) continue;
-      const outputs: Record<string, unknown> = {};
-      for (const k of Object.keys(node.outputs ?? {})) outputs[k] = circErr;
-      const seeded = Object.assign(Promise.resolve(outputs), { cancel() {} });
-      try { this.internalEngine.cache.add(id, seeded); } catch { this.internalEngine.cache.patch(id, seeded); }
-    }
+    seedLoopErrors(
+      this.internalEditor,
+      this.internalEngine,
+      loopMembers(this.internalEditor),
+      "This node is part of a circular dependency inside the composite: the calculation feeds back into itself. Switch the container to Simulation mode to run it as a feedback loop instead.",
+    );
   }
 
   /** One internal engine pass: inject each input port's value (an `overrides` entry
@@ -777,6 +809,7 @@ export class CompositeNode extends ClassicPreset.Node {
   }
 
   async data(inputs: Record<string, unknown[]>): Promise<Record<string, unknown>> {
+    this.runSeq++;
     this.syncPortLabels();
     this.syncMarkerSocketTypes();
     // Marker stamps are topology/config-only, so they stay current even on a held heavy pass.
@@ -862,7 +895,7 @@ export class CompositeNode extends ClassicPreset.Node {
   }
 
   /** Each exposed output port adopts the type feeding its internal Output marker
-   *  (`trueany` when unwired). Adoption NEVER drops an outer cable (D17). Returns true
+   *  (`trueany` when unwired). Adoption NEVER drops an outer cable (wildcardLadder). Returns true
    *  if a type changed, so the caller re-renders the card + its cables. */
   adoptBoundaryTypes(): boolean {
     const conns = this.internalEditor.getConnections();
@@ -965,7 +998,26 @@ export class CompositeNode extends ClassicPreset.Node {
       : (marker?.defaultValue ?? port.default ?? null);
     let rows = byRowValues(source);
     if (rows.length === 0) return this.runPass(inputs);
-    if (rows.length > BY_ROW_MAX_ROWS) rows = rows.slice(0, BY_ROW_MAX_ROWS);
+    // The only heavy mode whose pass COUNT comes from the data, not a typed number, so it
+    // caps to bound a runaway. Truncation drops rows off the tail — a plausible-but-partial
+    // series — so warn loudly (Alerts HUD + toast). Edge-detected on the total per the
+    // alertStore STATUS rule; a Solve runs outside the bulk-rebuild guard, so skip that.
+    if (rows.length > BY_ROW_MAX_ROWS) {
+      const total = rows.length;
+      if (total !== this.lastByRowCapTotal && !isGraphRebuilding()) {
+        const name = (this.label ?? "").trim() || "Composite";
+        fireAlert({
+          nodeId: this.id,
+          label: name,
+          kind: "warning",
+          message: `${name}: By-Row ran the first ${BY_ROW_MAX_ROWS} of ${total} rows (the rest were skipped)`,
+        });
+      }
+      this.lastByRowCapTotal = total;
+      rows = rows.slice(0, BY_ROW_MAX_ROWS);
+    } else {
+      this.lastByRowCapTotal = null;
+    }
     return this.collectMultiple(inputs, rows.map((r) => ({ [port.id]: r })));
   }
 
@@ -992,10 +1044,27 @@ export class CompositeNode extends ClassicPreset.Node {
       return { port, marker, mean: meanOf(port, marker), spread: marker.uncertainty as number, kind: marker.distribution };
     });
 
+    // Correlated inputs: resolve the card's pairs (labels or ids) onto the uncertain
+    // ports, Cholesky once, then one copula draw per iteration; independent otherwise.
+    const corrText = cfg.correlations?.trim() ?? "";
+    const resolvePort = (name: string): string | undefined =>
+      specs.find((s) => s.port.id === name || s.port.label.trim() === name)?.port.id;
+    const pairs = corrText
+      ? parseCorrelations(corrText).pairs
+          .map((p) => ({ a: resolvePort(p.a), b: resolvePort(p.b), rho: p.rho }))
+          .filter((p): p is { a: string; b: string; rho: number } => !!p.a && !!p.b && p.a !== p.b)
+      : [];
+    const chol = pairs.length ? correlationCholesky(specs.map((s) => s.port.id), pairs) : null;
+
     const rows: Record<string, unknown>[] = [];
     for (let i = 0; i < draws; i++) {
       const overrides: Record<string, unknown> = {};
-      for (const s of specs) overrides[s.port.id] = sampleUncertain(s.mean, { kind: s.kind, spread: s.spread }, rng);
+      if (chol) {
+        const vals = sampleCorrelated(specs.map((s) => ({ mean: s.mean, spec: { kind: s.kind, spread: s.spread } })), chol, rng);
+        specs.forEach((s, k) => { overrides[s.port.id] = vals[k]; });
+      } else {
+        for (const s of specs) overrides[s.port.id] = sampleUncertain(s.mean, { kind: s.kind, spread: s.spread }, rng);
+      }
       rows.push(await this.runPass(inputs, overrides));
     }
 

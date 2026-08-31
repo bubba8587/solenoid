@@ -6,20 +6,20 @@ import {
 import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
 import { makeNodeComponent } from "./standardNode";
 import { elementPicker } from "../elementPickerStore";
-import { getActiveArea } from "../activeGraph";
+import { getActiveView } from "../activeGraph";
 import { processGraph } from "../process";
 import { stopDragStart } from "../coarse";
 
 // The picker popup lives in App (ElementPicker.tsx, module store) because this
 // card renders in rete's separate React root.
 export function ElementComponent({ data, emit }: NodeProps<ElementNodeType>) {
-  const el = ELEMENT_BY_SYMBOL.get(data.op)!;
+  const el = ELEMENT_BY_SYMBOL.get(data.symbol)!;
   const openPicker = () => {
     elementPicker.open({
-      symbol: data.op,
+      symbol: data.symbol,
       onPick: (symbol) => {
-        data.op = symbol;
-        void getActiveArea()?.update("node", data.id);
+        data.symbol = symbol;
+        void getActiveView()?.rerenderNode(data.id);
         void processGraph();
       },
     });
@@ -28,7 +28,7 @@ export function ElementComponent({ data, emit }: NodeProps<ElementNodeType>) {
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <button
         type="button"
-        className="solenoid-node__op-select el-picker__open"
+        className="solenoid-node__select el-picker__open"
         onClick={(e) => { e.stopPropagation(); openPicker(); }}
         onPointerDown={stopDragStart}
         onMouseDown={(e) => e.stopPropagation()}

@@ -15,15 +15,17 @@
   background: var(--surface);
   border: 1px solid var(--border-strong);
   border-radius: 8px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
   padding: 18px 18px 14px;
   color: var(--text);
   font-size: 13px;
 }
+:root[data-theme="light"] .solenoid-confirm__dialog { box-shadow: 0 12px 40px rgba(20, 30, 50, 0.12); }
 
 .solenoid-confirm__message {
   line-height: 1.45;
   margin-bottom: 16px;
+  text-wrap-style: balance;
 }
 
 .solenoid-confirm__buttons {

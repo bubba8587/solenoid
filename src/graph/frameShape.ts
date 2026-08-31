@@ -48,6 +48,14 @@ export function shapeOf(op: FrameOp, input: Shape): Shape {
     case "head":
     case "filter":
     case "filterMulti":
+    case "sliceRows":
+      return input;
+    // Cell-rewriting ops keep the column set and types; an unknown target column is #REF!.
+    case "fillBlanks":
+      for (const c of op.columns) requireCol(input, c);
+      return input;
+    case "replaceValues":
+      if (op.column.trim()) requireCol(input, op.column.trim());
       return input;
     case "groupBy": {
       const keyCols = op.keys.map((n) => requireCol(input, n));
@@ -85,6 +93,15 @@ export function shapeOf(op: FrameOp, input: Shape): Shape {
       const keyNames = makeHeaders(rowFields, rowFields.length);
       // The cross-tab width depends on the DATA and can't be known without running.
       return { columns: rowCols.map((c, k) => ({ name: keyNames[k], type: c.type })), dynamic: true };
+    }
+    case "window": {
+      for (const k of op.partitionBy) requireCol(input, k);
+      if (op.orderBy) requireCol(input, op.orderBy);
+      const valCol = op.column ? requireCol(input, op.column) : null;
+      const name = op.as.trim() || op.fn;
+      // lag / lead / first / last carry the value column's type; everything else is numeric.
+      const type: FrameColType = valCol && (op.fn === "lag" || op.fn === "lead" || op.fn === "first" || op.fn === "last") ? valCol.type : "number";
+      return { columns: [...input.columns.filter((c) => c.name !== name), { name, type }] };
     }
   }
 }

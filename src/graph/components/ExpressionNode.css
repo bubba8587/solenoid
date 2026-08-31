@@ -3,7 +3,9 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
+  /* Tight horizontal padding so the field reaches close to the card edges; the "="
+     prefix is flex-shrink:0 and stays put. */
+  padding: 4px 4px;
   /* Grows when the user drags the grip (shared --box-h, published by NodeCard). */
   min-height: var(--box-h, auto);
 }
@@ -30,18 +32,19 @@
   flex: 1;
   /* width: 0 lets flex-grow fill the remaining space */
   width: 0;
-  /* Roomy by default so a fraction/KaTeX has vertical headroom and doesn't have
-     to scale down to fit (it still auto-grows past this up to max-height). The
-     popup carries full legibility; this just makes the resting card comfortable. */
-  min-height: 54px;
+  /* Sized to content: JS auto-grows the textarea to its lines (capped), so a short
+     formula rests small. Wraps (soft-wrap) so a long one never scrolls sideways. */
+  min-height: 22px;
   max-height: 96px;
-  padding: 1px 5px;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  padding: 2px 5px;
+  font-family: var(--font-mono);
   font-size: 11px;
   line-height: 18px;
-  background: var(--border-subtle);
-  border: 1px solid var(--border-strong);
-  border-radius: 3px;
+  /* No tint: a colorful (node-accent) outline instead, reusing the op-select border
+     idiom (1px, 4px radius). */
+  background: transparent;
+  border: 1px solid var(--node-accent, var(--accent));
+  border-radius: 4px;
   color: var(--text);
   resize: none;
   overflow-y: hidden;
@@ -62,24 +65,33 @@
 .solenoid-expr__rendered {
   flex: 1;
   width: 0;
-  /* FIXED height (not content-driven) so the JS font-fit has a stable height to
-     scale against — a content-driven height would change as the font scales and
-     loop. Follows the resize grip via --box-h; defaults to the roomy box. */
-  height: var(--box-h, 54px);
+  /* Content-sized down to one line (--box-h wins only after a resize drag); grows with
+     wrapped lines up to a cap. Column flex + justify-center vertically centers the text
+     between top and bottom, while the full-width block child below actually wraps. */
+  min-height: var(--box-h, 22px);
+  max-height: 96px;
   display: flex;
-  align-items: center;
-  overflow-x: auto;
+  flex-direction: column;
+  justify-content: center;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 2px 6px;
-  background: var(--border-subtle);
-  border: 1px solid var(--border-strong);
-  border-radius: 3px;
+  /* No tint: a colorful (node-accent) outline instead — the op-select border idiom. */
+  background: transparent;
+  border: 1px solid var(--node-accent, var(--accent));
+  border-radius: 4px;
   color: var(--text);
   cursor: text;
 }
-.solenoid-expr__rendered .katex { font-size: 1.05em; }
 .solenoid-expr__raw {
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  /* Full-width block so pre-wrap can break it; min-width:0 defeats the flex-item
+     content floor that otherwise blocks wrapping and forces a sideways scroll. */
+  width: 100%;
+  min-width: 0;
+  font-family: var(--font-mono);
   font-size: 11px;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
 }
 .solenoid-expr__placeholder {
   color: var(--border-strong);

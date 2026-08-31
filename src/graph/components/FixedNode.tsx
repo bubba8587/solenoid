@@ -1,7 +1,7 @@
 import { FIXED_NO_COMMAS_META } from "../rete-nodes";
 import type { FixedNode as FixedNodeType, FixedNoCommas } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
-import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { NodeShell, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
 
 const NO_COMMAS_OPTS = (Object.keys(FIXED_NO_COMMAS_META) as FixedNoCommas[]).map((k) => ({
   value: k,
@@ -13,7 +13,7 @@ export function FixedComponent({ data, emit }: NodeProps<FixedNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <OpSelect arg value={noCommas} onChange={setNoCommas} options={NO_COMMAS_OPTS} />
+      <ArgSelect value={noCommas} onChange={setNoCommas} options={NO_COMMAS_OPTS} />
       <ValueDisplay value={data.cachedText} />
     </NodeShell>
   );

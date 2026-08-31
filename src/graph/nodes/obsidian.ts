@@ -6,7 +6,8 @@ import { isDocumentValue, type DocumentValue } from "../documentValue";
 import { isSolError, type SolError } from "../errorValue";
 import { isDesktop } from "../fileBridge";
 import { settingsStore } from "../settingsStore";
-import { getEditor } from "../process";
+
+import { getOwningEditor } from "../activeGraph";
 // obsidianWrite is imported lazily INSIDE run(): pulling its subtree eagerly through
 // the rete-nodes barrel creates an init cycle (…→ documentStore → persistence →
 // nodeCatalog → rete-nodes) that leaves catalog metadata undefined at eval time.
@@ -17,6 +18,9 @@ import { getEditor } from "../process";
 export type ObsidianWriteStatus = "idle" | "writing" | "ok" | "error";
 
 export class WriteObsidianNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    in: "Wiring a document never writes the note. The write runs only from the Run button, and the node loads disarmed.",
+  };
   label: string;
   /** The note file name (no extension — ".md" is appended at write). */
   fileName: string;
@@ -47,7 +51,7 @@ export class WriteObsidianNode extends ClassicPreset.Node {
    *  ref inputs. Used only to rasterize a chart ref, which needs its live SVG. */
   private refSources(): Map<string, string> {
     const out = new Map<string, string>();
-    const ed = getEditor();
+    const ed = getOwningEditor(this.id);
     if (!ed) return out;
     const conns = ed.getConnections();
     const toMe = conns.find((c) => c.target === this.id && c.targetInput === "in");
@@ -61,7 +65,7 @@ export class WriteObsidianNode extends ClassicPreset.Node {
   /** Call ONLY from the node's Run button; re-entrancy-guarded, desktop only. */
   async run(): Promise<void> {
     if (this.status === "writing") return;
-    if (!this.enabled) { this.status = "error"; this.statusMessage = "Disabled; arm it first"; return; }
+    if (!this.enabled) { this.status = "error"; this.statusMessage = "Disabled. Arm it first."; return; }
     if (!isDesktop()) { this.status = "error"; this.statusMessage = "Desktop app only"; return; }
     const vault = settingsStore.get("obsidianVault").trim();
     if (!vault) { this.status = "error"; this.statusMessage = "Set the vault folder in Settings"; return; }
@@ -69,7 +73,7 @@ export class WriteObsidianNode extends ClassicPreset.Node {
     if (!name) { this.status = "error"; this.statusMessage = "Name the note"; return; }
     const doc = this.cachedDoc;
     if (isSolError(doc)) { this.status = "error"; this.statusMessage = doc.code; return; }
-    if (!isDocumentValue(doc)) { this.status = "error"; this.statusMessage = "Nothing to write; connect a Note or Report"; return; }
+    if (!isDocumentValue(doc)) { this.status = "error"; this.statusMessage = "Nothing to write. Connect a Note or Report."; return; }
     this.status = "writing";
     try {
       const { writeDocumentToVault } = await import("../obsidianWrite");
@@ -104,7 +108,7 @@ export class ImportObsidianNode extends NoteNode {
     collapsed?: boolean; fieldTypes?: Record<string, FrontmatterFieldType>; fileName?: string;
   }) {
     super({
-      label: init?.label ?? "Imported Note",
+      label: init?.label ?? "Import Obsidian Note",
       body: init?.body ?? "",
       color: init?.color ?? "violet",
       width: init?.width ?? 345,

@@ -43,6 +43,7 @@ load-bearing core (noted below); the full originals are likewise in git history.
 - [`v1.1-plan.md`](v1.1-plan.md) — the B1 pack-distribution + dependency-system remainder (backlog cites "B1 remainder").
 
 ### Shipped plans — the feature is built; kept as the design record
+- [`react-port-plan.md`](react-port-plan.md) — the React Flow port's chunk plan + status ledger (C0–C9), merged into `develop` 2026-08-27. Live truth: decisions reactFlowView / oneFlowSurface, subsystem-invariants § React Flow surface contract.
 - [`units-format-controller.md`](units-format-controller.md) — the shipped A4 units-by-dimensionality plan (the FC flagship; live truth is `formatModel.ts` + subsystem-invariants "Unit flow" + D20).
 - [`1.2-plan.md`](1.2-plan.md) — the executed 1.2 build queue (author-run release tail tracked in `../backlog.md`).
 - [`release-plan-1.1.md`](release-plan-1.1.md) — the shipped 1.1 release view, kept for the cut-process shape (readiness / checklist / decision structure).

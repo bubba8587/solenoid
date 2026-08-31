@@ -38,9 +38,14 @@ export async function saveToDisk(opts: { forceDialog?: boolean } = {}): Promise<
       const { failed } = await bundleLocalImages(path);
       const g = serializeGraph();
       if (!g) return;
+      // One instant for the file bytes and the library clock, so a round trip
+      // through another machine reads back the same stamp.
+      const at = Date.now();
+      g.savedAt = at;
       await writeTextFilePath(path, JSON.stringify(g, null, 2));
       if (fresh) documentStore.bindCurrentToPath(path, fileNameFromPath(path));
       documentStore.captureCurrent(); // the localStorage copy carries assetPaths too
+      documentStore.markCurrentFileSaved(at);
       pushNotice(`Saved ${fileNameFromPath(path)}`, "info", 2500);
       if (failed > 0) {
         pushNotice(`${failed} image${failed === 1 ? "" : "s"} couldn't be written to the images folder.`, "warn");
@@ -50,7 +55,10 @@ export async function saveToDisk(opts: { forceDialog?: boolean } = {}): Promise<
     // No filesystem to bundle into; the browser's own download UI is the confirmation.
     const g = serializeGraph();
     if (!g) return;
+    const at = Date.now();
+    g.savedAt = at;
     await saveTextFileDialog(suggestedName(), JSON.stringify(g, null, 2));
+    documentStore.markCurrentFileSaved(at);
   } catch (e) {
     console.error("[solenoid] save failed", e);
     pushNotice("Couldn't save the file.", "error", 0);

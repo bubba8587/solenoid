@@ -1,24 +1,23 @@
 import { useEffect, useState, useSyncExternalStore, type ReactElement } from "react";
-import { getEditor, getArea } from "../process";
-import { subscribeActiveGraph, isSubgraphActive } from "../activeGraph";
+import { getActiveEditor as getEditor, getActiveView as getView, subscribeActiveGraph } from "../activeGraph";
 import { canvasLockStore } from "../canvasLock";
 import { alignSelection, distributeSelection, type AlignKind } from "../selectionOps";
 import "./selectionActions.css";
 
 // TOP-center so it never collides with the bottom-docked palette, and FIXED (not
-// anchored to the selection bbox) so it never fights the area transform. Selection
+// anchored to the selection bbox) so it never fights the view transform. Selection
 // has no push store, so a light interval counts the selected nodes with a view.
 
 const POLL_MS = 150;
 
 function selectedVisibleCount(): number {
   const editor = getEditor();
-  const area = getArea();
-  if (!editor || !area) return 0;
+  const view = getView();
+  if (!editor || !view) return 0;
   let n = 0;
   for (const node of editor.getNodes()) {
     if ((node as { selected?: boolean }).selected !== true) continue;
-    if (area.nodeViews.get(node.id)) n++;
+    if (view.hasNode(node.id)) n++;
   }
   return n;
 }
@@ -95,9 +94,8 @@ const ALIGN_BTNS: AlignBtn[] = [
 export function SelectionActionsBar() {
   const [count, setCount] = useState(0);
   const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
-  // The ops read the MAIN graph's selection, so showing this over a drill-in would
-  // align invisible main-canvas nodes behind the subgraph.
-  const drilled = useSyncExternalStore(subscribeActiveGraph, isSubgraphActive);
+  // The ops act on the ACTIVE graph (a drill-in included); re-render on the swap.
+  useSyncExternalStore(subscribeActiveGraph, () => 0);
 
   useEffect(() => {
     let prev = -1;
@@ -110,7 +108,7 @@ export function SelectionActionsBar() {
     return () => window.clearInterval(id);
   }, []);
 
-  if (drilled || locked || count < 2) return null;
+  if (locked || count < 2) return null;
   const canDistribute = count >= 3;
 
   return (

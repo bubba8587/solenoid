@@ -13,8 +13,6 @@
      two floating pills then align on both edges instead of the zoom pill hanging 2px low. */
   padding: 2px;
   background: var(--panel-bg);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--panel-border);
   border-radius: 999px;
   user-select: none;

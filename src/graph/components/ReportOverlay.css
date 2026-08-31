@@ -8,6 +8,11 @@
   justify-content: center;
 }
 
+/* Desktop: the overlay lives UNDER the app bar (menu + top bar stay visible and
+   usable, as the docked column already does); the panel fits the remaining height. */
+html:not(.is-mobile) .report-backdrop { top: var(--chrome-top, 66px); }
+html:not(.is-mobile) .report-panel { max-height: calc(100% - 24px); }
+
 .report-panel {
   background: var(--surface);
   border: 1px solid var(--border-strong);
@@ -132,8 +137,20 @@
   min-width: 0;
   overflow: auto;
   padding: 16px 24px;
+  /* Same as the Note's read view: `pretty` over the whole rendered body, which
+     also carries into embedded notes (.report-embed__body renders in here). The
+     .report-source textarea beside it is a sibling and stays greedy. */
+  text-wrap-style: pretty;
 }
 .report-preview__md { max-width: none; margin: 0; }
+/* A Note opened from its Document chip: read-only, so the preview is the whole body
+   and the markdown fills it edge to edge (author: no reading-column flanks).
+   .sol-md's own `max-width: 760px; margin: 0 auto` is overridden at both levels.
+   Wide blocks scroll within themselves, never the pane. */
+.report-preview--solo { flex: 1 1 100%; max-width: none; margin: 0; overflow-x: hidden; }
+.report-preview--solo .report-preview__md { max-width: none; margin: 0; }
+.report-preview--solo img { max-width: 100%; height: auto; }
+.report-preview--solo table { display: block; max-width: 100%; overflow-x: auto; }
 /* InlineRefBody wraps the rendered markdown in a bare <div>, so the real first/
    last block is a grandchild — reach through it (the `> * >` hop) to zero the
    outer margin, else the report's first heading floats below a phantom gap. */
@@ -203,6 +220,9 @@
   padding: 10px 14px;
   font-size: 12.5px;
 }
+/* A frame embed never scrolls vertically (its row/col chip must stay in view);
+   a wide one scrolls sideways inside FrameDisplay. */
+.report-embed__body:has(.solenoid-table-display) { max-height: none; overflow: visible; }
 
 /* ── Narrow screens: Draft/Preview become TABS (one pane at a time), instead of
       a side-by-side split that would push the preview into the right half.
@@ -356,9 +376,16 @@ html.sol-report-docked {
 .report-panel--docked .report-preview { margin: 0; max-width: none; align-self: stretch; }
 
 /* Shift the canvas area left so nothing hides behind the docked panel. The wrapper
-   carries the canvas, minimap, socket legend and add-menu (all positioned inside
-   it); the nav pill and HUD column are app/viewport-fixed, so offset their right.
+   carries the canvas, minimap and add-menu (all positioned inside it); the nav pill,
+   HUD column and socket legend are app/viewport-fixed, so offset their right.
    The top header, bottom StatusBar and the LEFT navigator are untouched. */
-html.sol-report-docked .solenoid-canvas-wrapper { width: calc(100% - var(--report-dock-w)); }
+html.sol-report-docked .sol-rf-appcanvas:not(.solenoid-composite-editor__host) { width: calc(100% - var(--report-dock-w)); }
 html.sol-report-docked .solenoid-nav { right: calc(12px + var(--report-dock-w)); }
 html.sol-report-docked .solenoid-hud-stack { right: calc(12px + var(--report-dock-w)); }
+html.sol-report-docked .solenoid-legend { right: calc(16px + var(--report-dock-w)); }
+/* The command palette centers on the CANVAS, and its width follows the canvas width a
+   little (never below 340px, never above its 480px default). */
+html.sol-report-docked .solenoid-cmdpalette {
+  left: calc((100vw - var(--report-dock-w)) / 2);
+  width: clamp(340px, calc((100vw - var(--report-dock-w)) * 0.42), 480px);
+}

@@ -2,16 +2,16 @@
 // serialization is deliberately NOT done here: the consumer (Write node) resolves
 // each ref by kind, deferring the DOM-dependent chart render to where it belongs.
 
-/** A resolved embed value keyed by its ref/embed name (a frame, chart, mermaid,
- *  scalar, or — for `![[Note]]` — an embedded note's raw markdown body). */
+/** A resolved value keyed by its `` `=name` `` ref (a frame, chart, mermaid, scalar,
+ *  or a whole DocumentValue — a wired Note embeds through the same refs). */
 export type DocumentRefs = Record<string, unknown>;
 
 export interface DocumentValue {
   __document: true;
   /** YAML frontmatter fields (a Note's; a Report has none). */
   frontmatter?: Record<string, unknown>;
-  /** The raw markdown body — `` `=name` `` refs and `![[Note]]` embeds NOT yet
-   *  substituted; the consumer resolves them against `refs` at serialize time. */
+  /** The raw markdown body — `` `=name` `` refs NOT yet substituted; the consumer
+   *  resolves them against `refs` at serialize time. */
   body: string;
   /** The resolved value of each `` `=name` `` ref in `body` (empty for a Note). */
   refs: DocumentRefs;

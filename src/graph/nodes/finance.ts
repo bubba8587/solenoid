@@ -1,7 +1,8 @@
 ﻿import { ClassicPreset } from "rete";
-import { numIn, numOut, listIn, dateIn, readInput } from "./shared";
+import { numIn, numOut, listIn, listOut, dateIn, dateListIn, frameOut, readInput, BASIS_DOC } from "./shared";
+import type { FrameValue } from "../frame";
 import { serialToJsDate } from "./date";
-import { solError, isSolError, type SolError } from "../errorValue";
+import { solError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
 import { EquationNode } from "./equation";
 // The pure bond/security math, shared verbatim with the formula surface
@@ -9,22 +10,17 @@ import { EquationNode } from "./equation";
 import {
   coupAddMonths, days30_360, actualDays,
   couponValue, accrintM, securityDisc, priceDisc, priceMat, durationValue,
-  bondPriceYield, oddCoupon, vdb,
+  bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr, amortizationSchedule,
+  returnsOp, RETURNS_OP_META, type ReturnsOp,
 } from "./financeOps";
+export { RETURNS_OP_META } from "./financeOps";
+export type { ReturnsOp } from "./financeOps";
 import type {
   CouponOp, SecurityDiscOp, PriceDiscOp, PriceMatOp, DurationOp, BondPriceOp, OddCouponOp,
 } from "./financeOps";
 export type {
   CouponOp, SecurityDiscOp, PriceDiscOp, PriceMatOp, DurationOp, BondPriceOp, OddCouponOp,
 } from "./financeOps";
-
-// Propagates the first SolError, and coerces a null cell to 0 — skipping it would
-// misalign every later period's exponent in a position-discounted sum.
-function cashPrep(raw: (number | null | SolError)[] | null): { error?: SolError; nums: number[] } {
-  if (!raw) return { nums: [] };
-  for (const v of raw) if (isSolError(v)) return { error: v, nums: [] };
-  return { nums: raw.map((v) => (typeof v === "number" ? v : 0)) };
-}
 
 export type PaymentTiming = "end" | "beg";
 export const PAYMENT_TIMING_META: Record<PaymentTiming, string> = {
@@ -38,11 +34,11 @@ export const PAYMENT_TIMING_META: Record<PaymentTiming, string> = {
 export type BitwiseOp = "bitand" | "bitor" | "bitxor" | "bitlshift" | "bitrshift";
 
 export const BITWISE_OP_META = {
-  bitand:    { label: "BITAND",    description: "Bitwise AND: keeps only the bits set in BOTH numbers (mask out the rest); non-negative integers. Excel: BITAND." },
-  bitor:     { label: "BITOR",     description: "Bitwise OR: sets a bit if it's on in EITHER number (combine flags). Excel: BITOR." },
-  bitxor:    { label: "BITXOR",    description: "Bitwise XOR: sets a bit where the two numbers DIFFER (toggle flags). Excel: BITXOR." },
-  bitlshift: { label: "BITLSHIFT", description: "Shifts A's bits left by B places; each place doubles the value (A × 2ᴮ). Excel: BITLSHIFT." },
-  bitrshift: { label: "BITRSHIFT", description: "Shifts A's bits right by B places; each place halves it, dropping low bits (⌊A ÷ 2ᴮ⌋). Excel: BITRSHIFT." },
+  bitand:    { label: "BITAND",    description: "Bitwise AND: keeps only the bits set in both numbers (mask out the rest). Non-negative integers. Excel: `BITAND`." },
+  bitor:     { label: "BITOR",     description: "Bitwise OR: sets a bit if it's on in either number (combine flags). Excel: `BITOR`." },
+  bitxor:    { label: "BITXOR",    description: "Bitwise XOR: sets a bit where the two numbers differ (toggle flags). Excel: `BITXOR`." },
+  bitlshift: { label: "BITLSHIFT", description: "Shifts `A`'s bits left by `B` places. Each place doubles the value (`A × 2ᴮ`). Excel: `BITLSHIFT`." },
+  bitrshift: { label: "BITRSHIFT", description: "Shifts `A`'s bits right by `B` places. Each place halves it, dropping low bits (`⌊A ÷ 2ᴮ⌋`). Excel: `BITRSHIFT`." },
 } satisfies Record<BitwiseOp, { label: string; description: string }>;
 
 export class BitwiseNode extends ClassicPreset.Node {
@@ -54,7 +50,7 @@ export class BitwiseNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: BitwiseOp }) {
     super("Bitwise");
-    this.label = init?.label ?? "BITAND";
+    this.label = init?.label ?? "";
     this.op = init?.op ?? "bitand";
     this.addInput("a", numIn("A"));
     this.addInput("b", numIn("B"));
@@ -84,11 +80,11 @@ export class BitwiseNode extends ClassicPreset.Node {
 export type DepreciationOp = "sln" | "syd" | "ddb" | "db" | "vdb";
 
 export const DEPRECIATION_OP_META = {
-  sln: { label: "SLN", description: "Straight-line depreciation: the asset loses the SAME amount every period. Excel: SLN(cost, salvage, life)." },
-  syd: { label: "SYD", description: "Sum-of-years'-digits depreciation, accelerated: writes off more in the early periods, tapering each year. Excel: SYD(cost, salvage, life, per)." },
-  ddb: { label: "DDB", description: "Double-declining-balance depreciation, accelerated: takes twice the straight-line rate off the REMAINING value each period. Excel: DDB(cost, salvage, life, period, [factor])." },
-  db:  { label: "DB",  description: "Fixed-declining-balance depreciation, accelerated: a constant rate applied to the remaining value each period. Excel: DB(cost, salvage, life, period)." },
-  vdb: { label: "VDB", description: "Variable declining balance depreciation over a period range; uses DDB and switches to straight-line when SL gives a higher deduction. Excel: VDB." },
+  sln: { label: "SLN", description: "Straight-line depreciation: the asset loses the same amount every period. Excel: `SLN`." },
+  syd: { label: "SYD", description: "Sum-of-years'-digits depreciation, accelerated: writes off more in the early periods, tapering each year. Excel: `SYD`." },
+  ddb: { label: "DDB", description: "Double-declining-balance depreciation, accelerated: takes twice the straight-line rate off the remaining value each period. Excel: `DDB`." },
+  db:  { label: "DB",  description: "Fixed-declining-balance depreciation, accelerated: a constant rate applied to the remaining value each period. `Month` sets the number of months in the first year (default `12`). Excel: `DB`." },
+  vdb: { label: "VDB", description: "Variable declining balance depreciation over a period range. Uses `DDB` and switches to straight-line when `SL` gives a higher deduction. Excel: `VDB`." },
 } satisfies Record<DepreciationOp, { label: string; description: string }>;
 
 // Per-op input rows: the shared cost/salvage/life trunk, then each method's own
@@ -99,13 +95,14 @@ const DEPRECIATION_INPUTS: Record<DepreciationOp, ReadonlyArray<{ key: string; l
   const life    = { key: "life",    label: "Life (periods)", def: 5 };
   const per     = { key: "per",     label: "Period",         def: 1 };
   const factor  = { key: "factor",  label: "Factor",         def: 2 };
+  const month   = { key: "month",   label: "Month (1st yr)", def: 12 };
   const start   = { key: "start",   label: "Start period",   def: 0 };
   const end     = { key: "end",     label: "End period",     def: 1 };
   return {
     sln: [cost, salvage, life],
     syd: [cost, salvage, life, per],
     ddb: [cost, salvage, life, per, factor],
-    db:  [cost, salvage, life, per],
+    db:  [cost, salvage, life, per, month],
     vdb: [cost, salvage, life, start, end, factor],
   };
 })();
@@ -120,7 +117,7 @@ export class DepreciationNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: DepreciationOp }) {
     super("Depreciation");
     this.op = init?.op ?? "sln";
-    this.label = init?.label ?? DEPRECIATION_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     for (const i of DEPRECIATION_INPUTS[this.op]) this.addInput(i.key, numIn(i.label));
     this.addOutput("result", numOut("Result"));
     this.seedLiterals();
@@ -136,7 +133,7 @@ export class DepreciationNode extends ClassicPreset.Node {
   }
 
   /** The keys a switch to `next` would remove. Callers on a live graph prune
-   *  these BEFORE calling setOp (SSOT-9). */
+   *  these BEFORE calling setOp (onePrunePath). */
   keysDroppedBySwitch(next: DepreciationOp): string[] {
     const keep = new Set(DEPRECIATION_INPUTS[next].map((i) => i.key));
     return DEPRECIATION_INPUTS[this.op].filter((i) => !keep.has(i.key)).map((i) => i.key);
@@ -161,7 +158,7 @@ export class DepreciationNode extends ClassicPreset.Node {
     this.height = this.heightFor();
   }
 
-  data(inputs: { cost?: number[]; salvage?: number[]; life?: number[]; per?: number[]; factor?: number[]; start?: number[]; end?: number[] }) {
+  data(inputs: { cost?: number[]; salvage?: number[]; life?: number[]; per?: number[]; factor?: number[]; month?: number[]; start?: number[]; end?: number[] }) {
     const cost    = readInput(inputs.cost, this.literals.cost ?? null);
     const salvage = readInput(inputs.salvage, this.literals.salvage ?? null);
     const life    = readInput(inputs.life, this.literals.life ?? null);
@@ -181,13 +178,19 @@ export class DepreciationNode extends ClassicPreset.Node {
       if (cost !== null && salvage !== null && life !== null && life > 0) {
         if (this.op === "sln") {
           result = resolveExcelFunction("SLN")!(cost, salvage, life) as number;
-        } else if (per !== null && per >= 1 && per <= life) {
-          if (this.op === "syd") {
+        } else if (per !== null && per >= 1) {
+          if (this.op === "syd" && per <= life) {
             result = resolveExcelFunction("SYD")!(cost, salvage, life, per) as number;
-          } else if (this.op === "ddb") {
+          } else if (this.op === "ddb" && per <= life) {
             result = factor === null ? null : resolveExcelFunction("DDB")!(cost, salvage, life, per, factor) as number;
           } else if (this.op === "db") {
-            result = (cost <= 0 || salvage <= 0) ? null : (resolveExcelFunction("DB")!(cost, salvage, life, per) as number);
+            const month = readInput(inputs.month, this.literals.month ?? 12);
+            // Excel needs cost > 0 and salvage > 0. Period runs 1..life on this surface —
+            // Formula.js's DB #DOMAIN!s the life+1 partial-year period, so we don't offer
+            // it either (an equal Excel divergence, not a node↔formula gap).
+            if (month !== null && cost > 0 && salvage > 0 && per <= life) {
+              result = resolveExcelFunction("DB")!(cost, salvage, life, per, month) as number;
+            }
           }
         }
       }
@@ -213,6 +216,12 @@ export const TVM_TIMING_EXPRS: Record<PaymentTiming, string> = {
 const TVM_ZERO_RATE_EXPR = "pv + pmt*nper + fv = 0";
 
 export class TvmNode extends EquationNode {
+  static socketDocs: Record<string, string> = {
+    ...EquationNode.socketDocs,
+    rate: "The rate for a single period. Divide an annual rate by the number of periods per year.",
+    pmt: "The payment per period. Money paid out is negative, money received is positive.",
+  };
+
   paymentTiming: PaymentTiming;
   private _zeroRate: EquationNode | null = null;
 
@@ -257,11 +266,16 @@ export class TvmNode extends EquationNode {
 export type IpmtPpmtOp = "ipmt" | "ppmt";
 
 export const IPMT_PPMT_OP_META = {
-  ipmt: { label: "IPMT", description: "Interest portion of a periodic payment. Excel: IPMT(rate, per, nper, pv, [fv], [type])." },
-  ppmt: { label: "PPMT", description: "Principal portion of a periodic payment. Excel: PPMT(rate, per, nper, pv, [fv], [type])." },
+  ipmt: { label: "IPMT", description: "Interest portion of a periodic payment. Excel: `IPMT`." },
+  ppmt: { label: "PPMT", description: "Principal portion of a periodic payment. Excel: `PPMT`." },
 } satisfies Record<IpmtPpmtOp, { label: string; description: string }>;
 
 export class IpmtPpmtNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    rate: "The rate for a single period. Divide an annual rate by the number of periods per year.",
+    per: "The single period to report, counted from 1.",
+  };
+
   label: string;
   op: IpmtPpmtOp;
   paymentTiming: PaymentTiming;
@@ -271,7 +285,7 @@ export class IpmtPpmtNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: IpmtPpmtOp; paymentTiming?: PaymentTiming }) {
     super("IpmtPpmt");
-    this.label         = init?.label         ?? "IPMT";
+    this.label         = init?.label         ?? "";
     this.op            = init?.op            ?? "ipmt";
     this.paymentTiming = init?.paymentTiming ?? "end";
     this.addInput("rate", numIn("Rate"));
@@ -323,7 +337,7 @@ export class IpmtPpmtNode extends ClassicPreset.Node {
 // ─── NPV ──────────────────────────────────────────────────────────────────────
 export const NPV_META = {
   label: "NPV",
-  description: "Net present value of cash flows at a given discount rate (first value = period 1). Excel: NPV(rate, values).",
+  description: "Net present value of cash flows at a given discount rate (first value = period `1`). Excel: `NPV`.",
 };
 
 // ─── Cash-flow schedule mode (NPV/IRR × periodic/dated) ───────────────────────
@@ -331,55 +345,54 @@ export const NPV_META = {
 // SegToggle reveals the Dates input instead of a second node (Running's window
 // pattern).
 
-export type CashflowMode = "periods" | "dates";
+export type CashflowOp = "periods" | "dates";
+export const NPV_OP_META: Record<CashflowOp, { label: string }> = { periods: { label: "NPV" }, dates: { label: "XNPV" } };
+export const IRR_OP_META: Record<CashflowOp, { label: string }> = { periods: { label: "IRR" }, dates: { label: "XIRR" } };
 
-export const CASHFLOW_MODE_OPTIONS: { value: CashflowMode; label: string }[] = [
+export const CASHFLOW_OP_OPTIONS: { value: CashflowOp; label: string }[] = [
   { value: "periods", label: "Periodic" },
   { value: "dates", label: "Dated" },
 ];
 
-/** Shared prep for the dated schedules: error first, null cash → 0 (cashPrep),
- *  null DATE → unknown (value-semantics.md, "an error outranks an unknown"). */
-function datedPrep(valuesRaw: (number | null | SolError)[] | null, datesRaw: (number | null | SolError)[]):
-  { error?: SolError; blank?: boolean; values: number[]; dates: number[] } {
-  const { error, nums: values } = cashPrep(valuesRaw);
-  if (error) return { error, values: [], dates: [] };
-  for (const d of datesRaw) if (isSolError(d)) return { error: d, values: [], dates: [] };
-  if (datesRaw.some((d) => d == null)) return { blank: true, values: [], dates: [] };
-  return { values, dates: datesRaw as number[] };
-}
-
 export class NpvNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    list: "A blank cell counts as zero. Dropping it would shift every later flow.",
+    dates: "Values discount back to the first date. A blank date makes the whole result blank.",
+  };
+
   label: string;
-  mode: CashflowMode;
+  op: CashflowOp;
   cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { rate: 0.1 };
+  // `dates` is a typeable datelist: the CSV the user types is parsed and injected by
+  // coerceInputs, and persistence restores it only onto a class that DECLARES the map.
+  stringLiterals: Record<string, string> = {};
   width = 180; height = 203;
 
-  constructor(init?: { label?: string; mode?: CashflowMode }) {
+  constructor(init?: { label?: string; op?: CashflowOp }) {
     super("Npv");
-    this.label = init?.label ?? "NPV";
-    this.mode = init?.mode ?? "periods";
+    this.label = init?.label ?? "";
+    this.op = init?.op ?? "periods";
     this.addInput("rate", numIn("Rate"));
     this.addInput("list", listIn("Cash flows"));
-    if (this.mode === "dates") this.addInput("dates", listIn("Date serials"));
+    if (this.op === "dates") this.addInput("dates", dateListIn("Dates"));
     this.addOutput("result", numOut("Result"));
-    this.height = this.mode === "dates" ? 231 : 203;
+    this.height = this.op === "dates" ? 231 : 203;
   }
 
   /** The mode owns the Dates socket. Callers on a live graph prune its cables
-   *  BEFORE switching to Periodic (SSOT-9). */
-  setMode(next: CashflowMode): void {
-    if (next === this.mode) return;
-    this.mode = next;
-    if (next === "dates") { if (!this.inputs.dates) this.addInput("dates", listIn("Date serials")); }
+   *  BEFORE switching to Periodic (onePrunePath). */
+  setOp(next: CashflowOp): void {
+    if (next === this.op) return;
+    this.op = next;
+    if (next === "dates") { if (!this.inputs.dates) this.addInput("dates", dateListIn("Dates")); }
     else if (this.inputs.dates) this.removeInput("dates");
     this.height = next === "dates" ? 231 : 203;
   }
 
   data(inputs: { rate?: number[]; list?: (number | null | SolError)[][]; dates?: number[][] }) {
     const rate = readInput(inputs.rate, this.literals.rate ?? 0.1);
-    if (this.mode === "dates") {
+    if (this.op === "dates") {
       if (rate === null) { this.cachedResult = null; return { result: null }; }
       const prep = datedPrep(inputs.list?.[0] ?? null, (inputs.dates?.[0] ?? []) as (number | null | SolError)[]);
       if (prep.error) { this.cachedResult = prep.error; return { result: prep.error }; }
@@ -408,66 +421,53 @@ export class NpvNode extends ClassicPreset.Node {
 
 // ─── IRR ──────────────────────────────────────────────────────────────────────
 
-
 export class IrrNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    list: "A blank cell counts as zero. Dropping it would shift every later flow.",
+  };
+
   label: string;
-  mode: CashflowMode;
+  op: CashflowOp;
   cachedResult: number | SolError | null = null;
+  // `dates` is a typeable datelist: the CSV the user types is parsed and injected by
+  // coerceInputs, and persistence restores it only onto a class that DECLARES the map.
+  stringLiterals: Record<string, string> = {};
   width = 180; height = 163;
 
-  constructor(init?: { label?: string; mode?: CashflowMode }) {
+  constructor(init?: { label?: string; op?: CashflowOp }) {
     super("Irr");
-    this.label = init?.label ?? "IRR";
-    this.mode = init?.mode ?? "periods";
+    this.label = init?.label ?? "";
+    this.op = init?.op ?? "periods";
     this.addInput("list", listIn("Cash flows"));
-    if (this.mode === "dates") this.addInput("dates", listIn("Date serials"));
+    if (this.op === "dates") this.addInput("dates", dateListIn("Dates"));
     this.addOutput("result", numOut("Result"));
-    this.height = this.mode === "dates" ? 191 : 163;
+    this.height = this.op === "dates" ? 191 : 163;
   }
 
   /** The mode owns the Dates socket. Callers on a live graph prune its cables
-   *  BEFORE switching to Periodic (SSOT-9). */
-  setMode(next: CashflowMode): void {
-    if (next === this.mode) return;
-    this.mode = next;
-    if (next === "dates") { if (!this.inputs.dates) this.addInput("dates", listIn("Date serials")); }
+   *  BEFORE switching to Periodic (onePrunePath). */
+  setOp(next: CashflowOp): void {
+    if (next === this.op) return;
+    this.op = next;
+    if (next === "dates") { if (!this.inputs.dates) this.addInput("dates", dateListIn("Dates")); }
     else if (this.inputs.dates) this.removeInput("dates");
     this.height = next === "dates" ? 191 : 163;
   }
 
   data(inputs: { list?: (number | null | SolError)[][]; dates?: number[][] }): { result: number | SolError | null } {
-    if (this.mode === "dates") return this.dataDated(inputs);
+    if (this.op === "dates") return this.dataDated(inputs);
     const { error, nums: cashflows } = cashPrep(inputs.list?.[0] ?? null);
     if (error) { this.cachedResult = error; return { result: error }; }
     if (cashflows.length <= 1) {
       this.cachedResult = null;
       return { result: null }; // not wired / too few points — a blank, not an error
     }
-    let rate = 0.1;
-    let converged = false;
-    for (let i = 0; i < 100; i++) {
-      let npv = 0;
-      let dnpv = 0;
-      for (let t = 0; t < cashflows.length; t++) {
-        const disc = Math.pow(1 + rate, t);
-        npv += cashflows[t] / disc;
-        if (t > 0) {
-          dnpv += -t * cashflows[t] / (disc * (1 + rate));
-        }
-      }
-      if (Math.abs(dnpv) < 1e-30) break; // flat derivative — Newton can't proceed
-      const newRate = rate - npv / dnpv;
-      if (Math.abs(newRate - rate) < 1e-12) {
-        rate = newRate;
-        converged = true;
-        break;
-      }
-      rate = newRate;
-    }
+    // Periodic flows discount by their position in the series.
+    const rate = solveDiscountRate(cashflows, cashflows.map((_, t) => t));
     // Newton ran out of iterations (or hit a flat derivative) without settling —
     // typically an all-same-sign cashflow series with no internal rate at all.
-    if (!converged || !Number.isFinite(rate)) {
-      const err = solError("#CONV!", "IRR couldn't converge. The cash flows may have no internal rate of return, e.g. they never change sign.");
+    if (rate === null) {
+      const err = solError("#CONV!", "IRR couldn't converge. The cash flows may have no internal rate of return, for example they never change sign.");
       this.cachedResult = err;
       return { result: err };
     }
@@ -485,27 +485,13 @@ export class IrrNode extends ClassicPreset.Node {
     const { values, dates } = prep;
     const n = Math.min(values.length, dates.length);
     if (n < 2) { this.cachedResult = null; return { result: null }; }
+    // Dated flows discount by their year fraction from the first date.
     const d0 = dates[0];
-    let r = 0.1;
-    let converged = false;
-    for (let iter = 0; iter < 100; iter++) {
-      let f = 0, df = 0;
-      for (let i = 0; i < n; i++) {
-        const t = (dates[i] - d0) / 365;
-        const disc = Math.pow(1 + r, t);
-        f  += values[i] / disc;
-        df -= values[i] * t / (disc * (1 + r));
-      }
-      if (Math.abs(df) < 1e-15) break;
-      const delta = f / df;
-      r -= delta;
-      if (Math.abs(delta) < 1e-10) { converged = true; break; }
-      r = Math.max(-0.9999, r);
-    }
+    const r = solveDiscountRate(values.slice(0, n), dates.slice(0, n).map((d) => (d - d0) / 365));
     // Like RATE/IRR, the Newton solve can stall on cash flows with no real
     // rate of return — Excel returns #NUM!, we split that into #CONV!.
-    if (!converged || !Number.isFinite(r)) {
-      const err = solError("#CONV!", "XIRR couldn't converge. The dated cash flows may have no internal rate of return, e.g. they never change sign.");
+    if (r === null) {
+      const err = solError("#CONV!", "XIRR couldn't converge. The dated cash flows may have no internal rate of return, for example they never change sign.");
       this.cachedResult = err;
       return { result: err };
     }
@@ -517,10 +503,14 @@ export class IrrNode extends ClassicPreset.Node {
 // ─── MIRR ─────────────────────────────────────────────────────────────────────
 export const MIRR_META = {
   label: "MIRR",
-  description: "Modified IRR: accounts for cost of capital and reinvestment rate. Excel: MIRR(values, finance_rate, reinvest_rate).",
+  description: "Modified `IRR`: accounts for cost of capital and reinvestment rate. Excel: `MIRR`.",
 };
 
 export class MirrNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    list: "A blank cell counts as zero. Dropping it would shift every later flow.",
+  };
+
   label: string;
   cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { finrate: 0.1, reinrate: 0.12 };
@@ -545,42 +535,23 @@ export class MirrNode extends ClassicPreset.Node {
       this.cachedResult = null;
       return { result: null }; // not wired / too few points — a blank, not an error
     }
-    const n = cashflows.length;
-    let pvNeg = 0;
-    let fvPos = 0;
-    for (let i = 0; i < n; i++) {
-      const cf = cashflows[i];
-      if (cf < 0) {
-        pvNeg += cf / Math.pow(1 + finrate, i);
-      } else {
-        fvPos += cf * Math.pow(1 + reinrate, n - 1 - i);
-      }
-    }
-    // MIRR needs one negative AND one positive flow, or the outflow/inflow ratio
-    // divides by zero (Excel returns #DIV/0! for an all-same-sign series).
-    if (pvNeg === 0 || fvPos === 0) {
-      const err = solError("#DIV/0!", "MIRR needs both a negative (investment) and a positive (return) cash flow");
-      this.cachedResult = err;
-      return { result: err };
-    }
-    const mirr = Math.pow(-fvPos / pvNeg, 1 / (n - 1)) - 1;
-    if (!Number.isFinite(mirr)) {
-      const err = solError("#OVERFLOW!", "MIRR overflowed: the cash flows or rates are extreme");
-      this.cachedResult = err;
-      return { result: err };
-    }
-    this.cachedResult = mirr;
-    return { result: mirr };
+    const result = mirr(cashflows, finrate, reinrate); // shared with the MIRR formula
+    this.cachedResult = result;
+    return { result };
   }
 }
 
 // ─── FVSCHEDULE ───────────────────────────────────────────────────────────────
 export const FVSCHEDULE_META = {
   label: "FVSCHEDULE",
-  description: "Future value of principal after a schedule of compound interest rates. Excel: FVSCHEDULE(principal, schedule).",
+  description: "Future value of principal after a schedule of compound interest rates. Excel: `FVSCHEDULE`.",
 };
 
 export class FvScheduleNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    schedule: "Each rate compounds in order. A blank cell counts as zero interest for that period.",
+  };
+
   label: string;
   cachedResult: number | SolError | null = null;
   literals: Record<string, number> = { pv: 1000 };
@@ -613,10 +584,14 @@ export class FvScheduleNode extends ClassicPreset.Node {
 // ─── ISPMT ────────────────────────────────────────────────────────────────────
 export const ISPMT_META = {
   label: "ISPMT",
-  description: "Interest paid in a given period of a straight-line-principal loan. Excel: ISPMT(rate, per, nper, pv).",
+  description: "Interest paid in a given period of a straight-line-principal loan. Excel: `ISPMT`.",
 };
 
 export class IspmtNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    rate: "The rate for a single period. Divide an annual rate by the number of periods per year.",
+  };
+
   label: string;
   cachedResult: number | null = null;
   literals: Record<string, number> = { rate: 0.05, per: 1, nper: 12, pv: 10000 };
@@ -640,7 +615,9 @@ export class IspmtNode extends ClassicPreset.Node {
     if (rate === null || per === null || nper === null || pv === null) { this.cachedResult = null; return { result: null }; }
     let result: number | null = null;
     if (nper > 0) {
-      result = pv * rate * (1 - per / nper);
+      // Excel returns the interest as a signed cash flow: ISPMT(0.1,1,3,8000000) = -533,333.33,
+      // i.e. pv·rate·(per/nper − 1), an outflow for a positive pv (matches Formula.js).
+      result = pv * rate * (per / nper - 1);
       if (!Number.isFinite(result)) result = null;
     }
     this.cachedResult = result;
@@ -652,11 +629,15 @@ export class IspmtNode extends ClassicPreset.Node {
 export type DollarOp = "dollarde" | "dollarfr";
 
 export const DOLLAR_OP_META = {
-  dollarde: { label: "DOLLARDE", description: "Fractional-notation dollar to decimal (e.g. 1.02 in 32nds → 1.0625). Excel: DOLLARDE." },
-  dollarfr: { label: "DOLLARFR", description: "Decimal dollar to fractional notation (e.g. 1.0625 → 1.02 in 32nds). Excel: DOLLARFR." },
+  dollarde: { label: "DOLLARDE", description: "Fractional-notation dollar to decimal (for example, `1.02` in 32nds → `1.0625`). Excel: `DOLLARDE`." },
+  dollarfr: { label: "DOLLARFR", description: "Decimal dollar to fractional notation (for example, `1.0625` → `1.02` in 32nds). Excel: `DOLLARFR`." },
 } satisfies Record<DollarOp, { label: string; description: string }>;
 
 export class DollarNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    fraction: "The denominator of the fraction, such as 32 for prices in 32nds.",
+  };
+
   label: string;
   op: DollarOp;
   cachedResult: number | null = null;
@@ -665,7 +646,7 @@ export class DollarNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: DollarOp }) {
     super("Dollar");
-    this.label = init?.label ?? "DOLLARDE";
+    this.label = init?.label ?? "";
     this.op    = init?.op    ?? "dollarde";
     this.addInput("dollar",   numIn("Dollar"));
     this.addInput("fraction", numIn("Fraction"));
@@ -700,11 +681,16 @@ export class DollarNode extends ClassicPreset.Node {
 export type CumPmtOp = "cumipmt" | "cumprinc";
 
 export const CUM_PMT_OP_META = {
-  cumipmt:  { label: "CUMIPMT",  description: "Cumulative interest paid between two periods. Excel: CUMIPMT(rate, nper, pv, start_period, end_period, type)." },
-  cumprinc: { label: "CUMPRINC", description: "Cumulative principal paid between two periods. Excel: CUMPRINC(rate, nper, pv, start_period, end_period, type)." },
+  cumipmt:  { label: "CUMIPMT",  description: "Cumulative interest paid between two periods. Excel: `CUMIPMT`." },
+  cumprinc: { label: "CUMPRINC", description: "Cumulative principal paid between two periods. Excel: `CUMPRINC`." },
 } satisfies Record<CumPmtOp, { label: string; description: string }>;
 
 export class CumPmtNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    rate: "The rate for a single period. Divide an annual rate by the number of periods per year.",
+    end: "The sum includes both the start and end periods.",
+  };
+
   label: string;
   op: CumPmtOp;
   paymentTiming: PaymentTiming;
@@ -714,7 +700,7 @@ export class CumPmtNode extends ClassicPreset.Node {
 
   constructor(init?: { label?: string; op?: CumPmtOp; paymentTiming?: PaymentTiming }) {
     super("CumPmt");
-    this.label         = init?.label         ?? "CUMIPMT";
+    this.label         = init?.label         ?? "";
     this.op            = init?.op            ?? "cumipmt";
     this.paymentTiming = init?.paymentTiming ?? "end";
     this.addInput("rate",  numIn("Rate"));
@@ -780,12 +766,16 @@ export class CumPmtNode extends ClassicPreset.Node {
 export type TBillOp = "tbilleq" | "tbillprice" | "tbillyield";
 
 export const TBILL_OP_META = {
-  tbilleq:    { label: "TBILLEQ",    description: "T-bill bond-equivalent yield from settle, maturity, and discount rate. Excel: TBILLEQ." },
-  tbillprice: { label: "TBILLPRICE", description: "T-bill price per $100 face value from settle, maturity, and discount rate. Excel: TBILLPRICE." },
-  tbillyield: { label: "TBILLYIELD", description: "T-bill yield from settle, maturity, and price. Excel: TBILLYIELD." },
+  tbilleq:    { label: "TBILLEQ",    description: "T-bill bond-equivalent yield from settle, maturity, and discount rate. Excel: `TBILLEQ`." },
+  tbillprice: { label: "TBILLPRICE", description: "T-bill price per $100 face value from settle, maturity, and discount rate. Excel: `TBILLPRICE`." },
+  tbillyield: { label: "TBILLYIELD", description: "T-bill yield from settle, maturity, and price. Excel: `TBILLYIELD`." },
 } satisfies Record<TBillOp, { label: string; description: string }>;
 
 export class TBillNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    price: "Per $100 of face value.",
+    discount: "As a decimal, e.g. 0.05 for 5%.",
+  };
   label: string;
   op: TBillOp;
   cachedResult: number | null = null;
@@ -795,13 +785,13 @@ export class TBillNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: TBillOp }) {
     super("TBill");
     this.op    = init?.op    ?? "tbilleq";
-    this.label = init?.label ?? TBILL_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("settle",   dateIn("Settlement date"));
     this.addInput("maturity", dateIn("Maturity date"));
     if (this.op === "tbillyield") {
-      this.addInput("price",    numIn("Price ($100 face)"));
+      this.addInput("price",    numIn("Price"));
     } else {
-      this.addInput("discount", numIn("Discount rate (e.g. 0.05)"));
+      this.addInput("discount", numIn("Discount rate"));
     }
     this.addOutput("result", numOut("Result"));
   }
@@ -816,7 +806,17 @@ export class TBillNode extends ClassicPreset.Node {
       case "tbilleq": {
         const d = readInput(inputs.discount, this.literals.discount ?? 0.05);
         if (d === null) { this.cachedResult = null; return { result: null }; }
-        result = (365 * d) / (360 - d * dsm);
+        if (dsm <= 182) {
+          result = (365 * d) / (360 - d * dsm);
+        } else {
+          // Over 182 days Excel switches to the bond-equivalent (coupon-equivalent)
+          // yield, solving the semiannual-compounding price equation in closed form
+          // (SIA). Verified against real Excel: =TBILLEQ(DATE(2024,1,15),
+          // DATE(2024,12,15),0.05) = 0.052539935.
+          const t = dsm / 365;
+          const price = 1 - d * dsm / 360; // TBILLPRICE per $1
+          result = (-t + Math.sqrt(t * t - (2 * t - 1) * (1 - 1 / price))) / (t - 0.5);
+        }
         break;
       }
       case "tbillprice": {
@@ -828,7 +828,10 @@ export class TBillNode extends ClassicPreset.Node {
       case "tbillyield": {
         const pr = readInput(inputs.price, this.literals.price ?? 97.5);
         if (pr === null) { this.cachedResult = null; return { result: null }; }
-        result = ((100 - pr) / pr) * (365 / dsm);
+        // Excel's TBILLYIELD is a money-market yield on a 360-day basis (verified against
+        // real Excel: =TBILLYIELD(DATE(2024,1,15),DATE(2024,7,15),97.5) = 0.050718512).
+        // The 365 that was here is TBILLEQ's bond-equivalent basis, not this one.
+        result = ((100 - pr) / pr) * (360 / dsm);
         break;
       }
     }
@@ -840,12 +843,15 @@ export class TBillNode extends ClassicPreset.Node {
 // ─── DISC / INTRATE / RECEIVED ────────────────────────────────────────────────
 
 export const SECURITY_DISC_OP_META = {
-  disc:     { label: "DISC",     description: "Discount rate for a fully-invested security (redemption>price). Excel: DISC." },
-  intrate:  { label: "INTRATE",  description: "Interest rate for a fully-invested security. Excel: INTRATE." },
-  received: { label: "RECEIVED", description: "Amount received at maturity for a fully-invested security. Excel: RECEIVED." },
+  disc:     { label: "DISC",     description: "Discount rate for a fully-invested security (`redemption>price`). Excel: `DISC`." },
+  intrate:  { label: "INTRATE",  description: "Interest rate for a fully-invested security. Excel: `INTRATE`." },
+  received: { label: "RECEIVED", description: "Amount received at maturity for a fully-invested security. Excel: `RECEIVED`." },
 } satisfies Record<SecurityDiscOp, { label: string; description: string }>;
 
 export class SecurityDiscNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    basis: BASIS_DOC,
+  };
   label: string;
   op: SecurityDiscOp;
   cachedResult: number | null = null;
@@ -855,11 +861,11 @@ export class SecurityDiscNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: SecurityDiscOp }) {
     super("SecurityDisc");
     this.op    = init?.op    ?? "disc";
-    this.label = init?.label ?? SECURITY_DISC_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("settle",   dateIn("Settlement date"));
     this.addInput("maturity", dateIn("Maturity date"));
     if (this.op === "disc") {
-      this.addInput("pr",         numIn("Price (pr)"));
+      this.addInput("pr",         numIn("Price"));
       this.addInput("redemption", numIn("Redemption"));
     } else if (this.op === "intrate") {
       this.addInput("investment", numIn("Investment"));
@@ -868,7 +874,7 @@ export class SecurityDiscNode extends ClassicPreset.Node {
       this.addInput("investment", numIn("Investment"));
       this.addInput("discount",   numIn("Discount rate"));
     }
-    this.addInput("basis", numIn("Basis (0=30/360)"));
+    this.addInput("basis", numIn("Basis"));
     this.addOutput("result", numOut("Result"));
   }
 
@@ -896,15 +902,19 @@ export class SecurityDiscNode extends ClassicPreset.Node {
 // ─── COUPON functions (COUPDAYBS / COUPDAYS / COUPDAYSNC / COUPNCD / COUPPCD / COUPNUM) ─
 
 export const COUPON_OP_META = {
-  coupdaybs:  { label: "COUPDAYBS",  description: "Days from beginning of coupon period to settlement. Excel: COUPDAYBS." },
-  coupdays:   { label: "COUPDAYS",   description: "Days in the coupon period containing settlement. Excel: COUPDAYS." },
-  coupdaysnc: { label: "COUPDAYSNC", description: "Days from settlement to next coupon date. Excel: COUPDAYSNC." },
-  coupncd:    { label: "COUPNCD",    description: "Next coupon date after settlement (as a date serial). Excel: COUPNCD." },
-  couppcd:    { label: "COUPPCD",    description: "Previous coupon date before settlement (as a date serial). Excel: COUPPCD." },
-  coupnum:    { label: "COUPNUM",    description: "Number of coupon periods between settlement and maturity. Excel: COUPNUM." },
+  coupdaybs:  { label: "COUPDAYBS",  description: "Days from beginning of coupon period to settlement. Excel: `COUPDAYBS`." },
+  coupdays:   { label: "COUPDAYS",   description: "Days in the coupon period containing settlement. Excel: `COUPDAYS`." },
+  coupdaysnc: { label: "COUPDAYSNC", description: "Days from settlement to next coupon date. Excel: `COUPDAYSNC`." },
+  coupncd:    { label: "COUPNCD",    description: "Next coupon date after settlement (as a date serial). Excel: `COUPNCD`." },
+  couppcd:    { label: "COUPPCD",    description: "Previous coupon date before settlement (as a date serial). Excel: `COUPPCD`." },
+  coupnum:    { label: "COUPNUM",    description: "Number of coupon periods between settlement and maturity. Excel: `COUPNUM`." },
 } satisfies Record<CouponOp, { label: string; description: string }>;
 
 export class CouponNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
+    basis: BASIS_DOC,
+  };
   label: string;
   op: CouponOp;
   cachedResult: number | null = null;
@@ -914,11 +924,11 @@ export class CouponNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: CouponOp }) {
     super("Coupon");
     this.op    = init?.op    ?? "coupdaybs";
-    this.label = init?.label ?? COUPON_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("settle",    dateIn("Settlement date"));
     this.addInput("maturity",  dateIn("Maturity date"));
-    this.addInput("frequency", numIn("Freq (1=annual, 2=semi, 4=qtr)"));
-    this.addInput("basis",     numIn("Basis (0=30/360)"));
+    this.addInput("frequency", numIn("Frequency"));
+    this.addInput("basis",     numIn("Basis"));
     this.addOutput("result", numOut("Result"));
   }
 
@@ -938,6 +948,10 @@ export class CouponNode extends ClassicPreset.Node {
 // ─── ACCRINT ─────────────────────────────────────────────────────────────────
 
 export class AccrintNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
+    basis: BASIS_DOC,
+  };
   label: string;
   cachedResult: number | null = null;
   literals: Record<string, number> = { rate: 0.06, par: 1000, frequency: 2, basis: 0 };
@@ -950,8 +964,8 @@ export class AccrintNode extends ClassicPreset.Node {
     this.addInput("settle",    dateIn("Settlement date"));
     this.addInput("rate",      numIn("Annual coupon rate"));
     this.addInput("par",       numIn("Par value"));
-    this.addInput("frequency", numIn("Freq (1/2/4)"));
-    this.addInput("basis",     numIn("Basis (0=30/360)"));
+    this.addInput("frequency", numIn("Frequency"));
+    this.addInput("basis",     numIn("Basis"));
     this.addOutput("result", numOut("Accrued interest"));
   }
 
@@ -971,7 +985,10 @@ export class AccrintNode extends ClassicPreset.Node {
     const settle = serialToJsDate(ss);
     const use30  = basis === 0 || basis === 4;
     const a = use30 ? days30_360(issue, settle) : actualDays(issue, settle);
-    const e = use30 ? 360 / freq : basis === 3 ? 365 / freq : actualDays(issue, coupAddMonths(issue, 12 / freq));
+    // Period length E per basis: only actual/actual (1) measures the real period;
+    // 2 is actual/360 and 3 actual/365 (real-Excel golden values, 2026-08-31).
+    const e = basis === 1 ? actualDays(issue, coupAddMonths(issue, 12 / freq))
+      : basis === 3 ? 365 / freq : 360 / freq;
     const result = par * (rate / freq) * (a / e);
     this.cachedResult = result;
     return { result };
@@ -981,6 +998,9 @@ export class AccrintNode extends ClassicPreset.Node {
 // ─── ACCRINTM ─────────────────────────────────────────────────────────────────
 
 export class AccrintMNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    basis: BASIS_DOC,
+  };
   label: string;
   cachedResult: number | null = null;
   literals: Record<string, number> = { rate: 0.06, par: 1000, basis: 0 };
@@ -993,7 +1013,7 @@ export class AccrintMNode extends ClassicPreset.Node {
     this.addInput("settle", dateIn("Settlement date"));
     this.addInput("rate",   numIn("Annual coupon rate"));
     this.addInput("par",    numIn("Par value"));
-    this.addInput("basis",  numIn("Basis (0=30/360)"));
+    this.addInput("basis",  numIn("Basis"));
     this.addOutput("result", numOut("Accrued interest"));
   }
 
@@ -1013,11 +1033,16 @@ export class AccrintMNode extends ClassicPreset.Node {
 // ─── PRICEDISC / YIELDDISC ────────────────────────────────────────────────────
 
 export const PRICE_DISC_OP_META = {
-  pricedisc: { label: "PRICEDISC", description: "Price per $100 of a discounted security (e.g. T-bill). Excel: PRICEDISC." },
-  yielddisc: { label: "YIELDDISC", description: "Annual yield of a discounted security. Excel: YIELDDISC." },
+  pricedisc: { label: "PRICEDISC", description: "Price per $100 of a discounted security (such as a T-bill). Excel: `PRICEDISC`." },
+  yielddisc: { label: "YIELDDISC", description: "Annual yield of a discounted security. Excel: `YIELDDISC`." },
 } satisfies Record<PriceDiscOp, { label: string; description: string }>;
 
 export class PriceDiscNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    pr: "Read in YIELDDISC mode: the price to solve the yield from.",
+    redemption: "Face value redeemed at maturity. Defaults to 100, the par value.",
+    basis: BASIS_DOC,
+  };
   label: string;
   op: PriceDiscOp;
   cachedResult: number | null = null;
@@ -1027,13 +1052,13 @@ export class PriceDiscNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: PriceDiscOp }) {
     super("PriceDisc");
     this.op    = init?.op    ?? "pricedisc";
-    this.label = init?.label ?? PRICE_DISC_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("settle",     dateIn("Settlement date"));
     this.addInput("maturity",   dateIn("Maturity date"));
     this.addInput("discount",   numIn("Discount rate"));
-    this.addInput("pr",         numIn("Price (YIELDDISC only)"));
-    this.addInput("redemption", numIn("Redemption (default 100)"));
-    this.addInput("basis",      numIn("Basis (0=30/360)"));
+    this.addInput("pr",         numIn("Price"));
+    this.addInput("redemption", numIn("Redemption"));
+    this.addInput("basis",      numIn("Basis"));
     this.addOutput("result", numOut("Result"));
   }
 
@@ -1057,11 +1082,16 @@ export class PriceDiscNode extends ClassicPreset.Node {
 // ─── PRICEMAT / YIELDMAT ──────────────────────────────────────────────────────
 
 export const PRICE_MAT_OP_META = {
-  pricemat: { label: "PRICEMAT", description: "Price per $100 of a security that pays interest at maturity. Excel: PRICEMAT." },
-  yieldmat: { label: "YIELDMAT", description: "Annual yield of a security that pays interest at maturity. Excel: YIELDMAT." },
+  pricemat: { label: "PRICEMAT", description: "Price per $100 of a security that pays interest at maturity. Excel: `PRICEMAT`." },
+  yieldmat: { label: "YIELDMAT", description: "Annual yield of a security that pays interest at maturity. Excel: `YIELDMAT`." },
 } satisfies Record<PriceMatOp, { label: string; description: string }>;
 
 export class PriceMatNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    yld: "Read in PRICEMAT mode: the yield to price from.",
+    pr: "Read in YIELDMAT mode: the price to solve the yield from.",
+    basis: BASIS_DOC,
+  };
   label: string;
   op: PriceMatOp;
   cachedResult: number | null = null;
@@ -1071,14 +1101,14 @@ export class PriceMatNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: PriceMatOp }) {
     super("PriceMat");
     this.op    = init?.op    ?? "pricemat";
-    this.label = init?.label ?? PRICE_MAT_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("settle",   dateIn("Settlement date"));
     this.addInput("maturity", dateIn("Maturity date"));
     this.addInput("issue",    dateIn("Issue date"));
     this.addInput("rate",     numIn("Coupon rate"));
-    this.addInput("yld",      numIn("Yield (PRICEMAT only)"));
-    this.addInput("pr",       numIn("Price (YIELDMAT only)"));
-    this.addInput("basis",    numIn("Basis (0=30/360)"));
+    this.addInput("yld",      numIn("Yield"));
+    this.addInput("pr",       numIn("Price"));
+    this.addInput("basis",    numIn("Basis"));
     this.addOutput("result", numOut("Result"));
   }
 
@@ -1102,11 +1132,15 @@ export class PriceMatNode extends ClassicPreset.Node {
 // ─── DURATION / MDURATION ─────────────────────────────────────────────────────
 
 export const DURATION_OP_META = {
-  duration:  { label: "DURATION",  description: "Macaulay duration: the weighted average time to receive cash flows. Excel: DURATION." },
-  mduration: { label: "MDURATION", description: "Modified duration: price sensitivity to yield changes. Excel: MDURATION." },
+  duration:  { label: "DURATION",  description: "Macaulay duration: the weighted average time to receive cash flows. Excel: `DURATION`." },
+  mduration: { label: "MDURATION", description: "Modified duration: price sensitivity to yield changes. Excel: `MDURATION`." },
 } satisfies Record<DurationOp, { label: string; description: string }>;
 
 export class DurationNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
+    basis: BASIS_DOC,
+  };
   label: string;
   op: DurationOp;
   cachedResult: number | null = null;
@@ -1116,13 +1150,13 @@ export class DurationNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: DurationOp }) {
     super("Duration");
     this.op    = init?.op    ?? "duration";
-    this.label = init?.label ?? DURATION_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("settle",    dateIn("Settlement date"));
     this.addInput("maturity",  dateIn("Maturity date"));
     this.addInput("coupon",    numIn("Annual coupon rate"));
     this.addInput("yld",       numIn("Annual yield"));
-    this.addInput("frequency", numIn("Freq (1=annual, 2=semi, 4=qtr)"));
-    this.addInput("basis",     numIn("Basis (0=30/360)"));
+    this.addInput("frequency", numIn("Frequency"));
+    this.addInput("basis",     numIn("Basis"));
     this.addOutput("result", numOut("Years"));
   }
 
@@ -1143,11 +1177,17 @@ export class DurationNode extends ClassicPreset.Node {
 // ─── PRICE / YIELD ────────────────────────────────────────────────────────────
 
 export const BOND_PRICE_OP_META = {
-  price: { label: "PRICE", description: "Clean price per $100 face for a coupon bond (30/360 basis). Excel: PRICE." },
-  yield: { label: "YIELD", description: "Annual yield of a coupon bond given its market price (30/360 basis). Excel: YIELD." },
+  price: { label: "PRICE", description: "Clean price per $100 face for a coupon bond (`30/360` basis). Excel: `PRICE`." },
+  yield: { label: "YIELD", description: "Annual yield of a coupon bond given its market price (`30/360` basis). Excel: `YIELD`." },
 } satisfies Record<BondPriceOp, { label: string; description: string }>;
 
 export class BondPriceNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
+    yld: "Read in PRICE mode: the yield to price from.",
+    pr: "Read in YIELD mode: the price to solve the yield from.",
+    redemption: "Face value redeemed at maturity. Defaults to 100, the par value.",
+  };
   label: string;
   op: BondPriceOp;
   cachedResult: number | null = null;
@@ -1157,14 +1197,14 @@ export class BondPriceNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: BondPriceOp }) {
     super("BondPrice");
     this.op    = init?.op    ?? "price";
-    this.label = init?.label ?? BOND_PRICE_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     this.addInput("settle",     dateIn("Settlement date"));
     this.addInput("maturity",   dateIn("Maturity date"));
     this.addInput("rate",       numIn("Coupon rate"));
-    this.addInput("yld",        numIn("Yield (PRICE only)"));
-    this.addInput("pr",         numIn("Price (YIELD only)"));
-    this.addInput("redemption", numIn("Redemption (default 100)"));
-    this.addInput("frequency",  numIn("Frequency (1/2/4)"));
+    this.addInput("yld",        numIn("Yield"));
+    this.addInput("pr",         numIn("Price"));
+    this.addInput("redemption", numIn("Redemption"));
+    this.addInput("frequency",  numIn("Frequency"));
     this.addOutput("result", numOut("Result"));
   }
 
@@ -1190,13 +1230,21 @@ export class BondPriceNode extends ClassicPreset.Node {
 // ─── ODD COUPON — ODDFPRICE / ODDFYIELD / ODDLPRICE / ODDLYIELD ───────────────
 
 export const ODD_COUPON_OP_META = {
-  oddfprice: { label: "ODDFPRICE", description: "Price of a bond with an irregular first coupon period. Excel: ODDFPRICE." },
-  oddfyield: { label: "ODDFYIELD", description: "Yield of a bond with an irregular first coupon period. Excel: ODDFYIELD." },
-  oddlprice: { label: "ODDLPRICE", description: "Price of a bond with an irregular last coupon period. Excel: ODDLPRICE." },
-  oddlyield: { label: "ODDLYIELD", description: "Yield of a bond with an irregular last coupon period. Excel: ODDLYIELD." },
+  oddfprice: { label: "ODDFPRICE", description: "Price of a bond with an irregular first coupon period. Excel: `ODDFPRICE`." },
+  oddfyield: { label: "ODDFYIELD", description: "Yield of a bond with an irregular first coupon period. Excel: `ODDFYIELD`." },
+  oddlprice: { label: "ODDLPRICE", description: "Price of a bond with an irregular last coupon period. Excel: `ODDLPRICE`." },
+  oddlyield: { label: "ODDLYIELD", description: "Yield of a bond with an irregular last coupon period. Excel: `ODDLYIELD`." },
 } satisfies Record<OddCouponOp, { label: string; description: string }>;
 
 export class OddCouponNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    issue: "Left unwired, the issue date falls back to the settlement date.",
+    frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
+    yld: "Read by the PRICE ops: the yield to price from.",
+    pr: "Read by the YIELD ops: the price to solve the yield from.",
+    redemption: "Face value redeemed at maturity. Defaults to 100, the par value.",
+  };
+
   label: string;
   op: OddCouponOp;
   cachedResult: number | null = null;
@@ -1206,7 +1254,7 @@ export class OddCouponNode extends ClassicPreset.Node {
   constructor(init?: { label?: string; op?: OddCouponOp }) {
     super("OddCoupon");
     this.op    = init?.op    ?? "oddfprice";
-    this.label = init?.label ?? ODD_COUPON_OP_META[this.op].label;
+    this.label = init?.label ?? "";
     const isFirst = this.op === "oddfprice" || this.op === "oddfyield";
     this.addInput("settle",     dateIn("Settlement date"));
     this.addInput("maturity",   dateIn("Maturity date"));
@@ -1217,10 +1265,10 @@ export class OddCouponNode extends ClassicPreset.Node {
       this.addInput("firstlast",  dateIn("Last interest date"));
     }
     this.addInput("rate",       numIn("Coupon rate"));
-    this.addInput("yld",        numIn("Yield (PRICE ops only)"));
-    this.addInput("pr",         numIn("Price (YIELD ops only)"));
-    this.addInput("redemption", numIn("Redemption (default 100)"));
-    this.addInput("frequency",  numIn("Frequency (1/2/4)"));
+    this.addInput("yld",        numIn("Yield"));
+    this.addInput("pr",         numIn("Price"));
+    this.addInput("redemption", numIn("Redemption"));
+    this.addInput("frequency",  numIn("Frequency"));
     this.addOutput("result", numOut("Result"));
   }
 
@@ -1249,3 +1297,98 @@ export class OddCouponNode extends ClassicPreset.Node {
   }
 }
 
+// ─── AMORTIZATION SCHEDULE ───────────────────────────────────────────────────
+export class AmortizationNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    rate: "The rate PER PERIOD: a 6% annual loan paid monthly is 0.005 here, with nper in months.",
+    frame: "Period · Payment · Interest · Principal · Balance. Payment, interest and principal carry Excel's sign, negative for a loan received.",
+  };
+  label: string;
+  paymentTiming: PaymentTiming = "end";
+  literals: Record<string, number> = { rate: 0.005, nper: 12, pv: 10000, fv: 0 };
+  cachedResult: FrameValue | null = null;
+  width = 200; height = 230;
+
+  constructor(init?: { label?: string; paymentTiming?: PaymentTiming }) {
+    super("Amortization");
+    this.label = init?.label ?? "Amortization Schedule";
+    if (init?.paymentTiming) this.paymentTiming = init.paymentTiming;
+    this.addInput("rate", numIn("Rate per period"));
+    this.addInput("nper", numIn("Nper"));
+    this.addInput("pv",   numIn("PV"));
+    this.addInput("fv",   numIn("FV"));
+    this.addOutput("frame", frameOut("Schedule"));
+  }
+
+  data(inputs: { rate?: number[]; nper?: number[]; pv?: number[]; fv?: number[] }): { frame: FrameValue | null } {
+    const rate = readInput(inputs.rate, this.literals.rate ?? 0);
+    const nper = readInput(inputs.nper, this.literals.nper ?? 0);
+    const pv   = readInput(inputs.pv, this.literals.pv ?? 0);
+    const fv   = readInput(inputs.fv, this.literals.fv ?? 0);
+    if (rate === null || nper === null || pv === null || fv === null) { this.cachedResult = null; return { frame: null }; }
+    const rows = amortizationSchedule(rate, nper, pv, fv, this.paymentTiming === "beg" ? 1 : 0);
+    const frame: FrameValue | null = rows.length === 0 ? null : { __frame: true, columns: [
+      { name: "Period",    type: "number", values: rows.map((r) => r.period) },
+      { name: "Payment",   type: "number", values: rows.map((r) => r.payment) },
+      { name: "Interest",  type: "number", values: rows.map((r) => r.interest) },
+      { name: "Principal", type: "number", values: rows.map((r) => r.principal) },
+      { name: "Balance",   type: "number", values: rows.map((r) => r.balance) },
+    ] };
+    this.cachedResult = frame;
+    return { frame };
+  }
+}
+
+// ─── RETURNS (return-series quant one-liners) ────────────────────────────────
+export class ReturnsNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    list: "Prices for the price-based ops (log / simple returns, drawdown, CAGR); per-period returns for the rest.",
+    rf: "Risk-free rate PER PERIOD (an annual 4% on daily data is 0.04 / 252); 0 when unwired.",
+    periods: "Periods per year for annualizing: 252 trading days, 12 months, 1 for none.",
+  };
+  label: string;
+  op: ReturnsOp;
+  literals: Record<string, number> = { rf: 0, periods: 1 };
+  cachedResult: (number | null | SolError)[] | number | SolError | null = null;
+  width = 190; height = 200;
+
+  constructor(init?: { label?: string; op?: ReturnsOp }) {
+    super("Returns");
+    this.op = init?.op ?? "log";
+    this.label = init?.label ?? "";
+    this.addInput("list", listIn(ReturnsNode.inputLabel(this.op)));
+    for (const k of RETURNS_OP_META[this.op].needs) this.addInput(k, ReturnsNode.extraInput(k));
+    this.addOutput("result", ReturnsNode.outputFor(this.op));
+  }
+
+  static inputLabel(op: ReturnsOp) { return RETURNS_OP_META[op].takes === "prices" ? "Prices" : "Returns"; }
+  static extraInput(k: "rf" | "periods") { return k === "rf" ? numIn("Risk-free / period") : numIn("Periods / year"); }
+  static outputFor(op: ReturnsOp) { return RETURNS_OP_META[op].scalar ? numOut(RETURNS_OP_META[op].label) : listOut(RETURNS_OP_META[op].label); }
+
+  /** The op owns the extra sockets (rf / periods) and the output rank. In-place: callers on a
+   *  live graph prune the departing extras' cables BEFORE (onePrunePath) and
+   *  retypeOutputCables AFTER when `outputChanged`. */
+  setOp(next: ReturnsOp): { removed: string[]; outputChanged: boolean } {
+    if (next === this.op) return { removed: [], outputChanged: false };
+    const before = RETURNS_OP_META[this.op], after = RETURNS_OP_META[next];
+    const removed = before.needs.filter((k) => !after.needs.includes(k));
+    this.op = next;
+    for (const k of removed) if (this.inputs[k]) this.removeInput(k);
+    for (const k of after.needs) if (!this.inputs[k]) this.addInput(k, ReturnsNode.extraInput(k));
+    const list = this.inputs.list; if (list) list.label = ReturnsNode.inputLabel(next);
+    const outputChanged = before.scalar !== after.scalar;
+    if (outputChanged) { const spec = ReturnsNode.outputFor(next); this.outputs.result!.socket = spec.socket; }
+    this.outputs.result!.label = after.label;
+    return { removed, outputChanged };
+  }
+
+  data(inputs: { list?: (number | null | SolError)[][]; rf?: number[]; periods?: number[] }) {
+    const arr = inputs.list?.[0] ?? null;
+    const rf = readInput(inputs.rf, this.literals.rf ?? 0);
+    const periods = readInput(inputs.periods, this.literals.periods ?? 1);
+    if (arr === null || rf === null || periods === null) { this.cachedResult = null; return { result: null }; }
+    const result = returnsOp(this.op, arr, rf, periods);
+    this.cachedResult = result;
+    return { result };
+  }
+}

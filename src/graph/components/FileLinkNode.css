@@ -1,0 +1,221 @@
+/* Canvas File Link — a free-floating link to a file on disk (the path, not the
+   bytes). Mirrors the Image node's chrome (drag-handle bar, chevron, selection
+   ring, neutral slate accent) with a preview row + Open button instead of a well. */
+.solenoid-filelink {
+  position: relative;
+  width: 240px; /* fixed — the node owns no resizable width (see FileLinkNode class) */
+  --node-accent: #6b8299; /* neutral slate — selection ring + shadow */
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: grab;
+}
+.solenoid-filelink * { box-sizing: border-box; }
+.solenoid-filelink:active { cursor: grabbing; }
+
+/* Header bar = drag handle. The chevron / name / attach button stop pointerdown so
+   they don't start a drag; the leftover strip stays grabbable. */
+.solenoid-filelink__bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 6px 0 22px; /* room for the absolute chevron on the left */
+  background: color-mix(in srgb, var(--node-accent) var(--header-tint), var(--surface));
+  border-radius: 5px 5px 0 0;
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+.solenoid-filelink--collapsed .solenoid-filelink__bar {
+  border-radius: 5px;
+  box-shadow: none;
+}
+
+.solenoid-filelink__chevron {
+  position: absolute;
+  top: 50%;
+  left: 6px;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  color: color-mix(in srgb, var(--node-accent) var(--mix-ink), var(--text));
+  opacity: 0.8;
+  cursor: pointer;
+}
+.solenoid-filelink__chevron:hover { opacity: 1; }
+.solenoid-filelink__chevron svg { transition: transform 100ms ease; transform: rotate(90deg); }
+.solenoid-filelink--collapsed .solenoid-filelink__chevron svg { transform: rotate(0deg); }
+
+.solenoid-filelink__name {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--node-accent) var(--mix-ink), var(--text));
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: text;
+}
+.solenoid-filelink__name:focus { color: var(--text); }
+.solenoid-filelink__name::placeholder { color: currentColor; opacity: 0.5; }
+
+/* Click-to-edit title (not editing): fit-content so the rest of the bar stays a
+   drag handle — mirrors the Note's name-display and the standard node header. */
+.solenoid-filelink__name-display {
+  width: fit-content;
+  max-width: calc(100% - 26px);
+  margin-right: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--node-accent) var(--mix-ink), var(--text));
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: text;
+}
+.solenoid-filelink__name-display--empty { opacity: 0.5; }
+
+.solenoid-filelink__attach {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: color-mix(in srgb, var(--node-accent) var(--mix-ink), var(--text));
+  cursor: pointer;
+  opacity: 0.85;
+}
+.solenoid-filelink__attach:hover { opacity: 1; }
+
+.solenoid-filelink__content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  overflow: hidden;
+  border-radius: 0 0 5px 5px;
+}
+
+/* Preview row: a file glyph (with the extension tucked into its corner) beside the
+   linked file's name. The name wraps rather than widen the card. */
+.solenoid-filelink__preview {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.solenoid-filelink__glyph {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: color-mix(in srgb, var(--node-accent) 55%, var(--text-dim));
+}
+.solenoid-filelink__ext {
+  position: absolute;
+  bottom: -1px;
+  right: -3px;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--node-accent) 22%, var(--surface-sunken));
+  color: var(--text-dim);
+  font-family: var(--font-sans);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  max-width: 42px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.solenoid-filelink__file {
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.solenoid-filelink__open {
+  align-self: flex-start;
+  padding: 4px 14px;
+  background: color-mix(in srgb, var(--node-accent) 16%, var(--surface-sunken));
+  border: 1px solid color-mix(in srgb, var(--node-accent) 40%, var(--border));
+  border-radius: 5px;
+  color: var(--text-bright);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.solenoid-filelink__open:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--node-accent) 26%, var(--surface-sunken));
+  border-color: color-mix(in srgb, var(--node-accent) 55%, var(--border));
+}
+.solenoid-filelink__open:disabled { opacity: 0.45; cursor: default; }
+
+.solenoid-filelink__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 14px 8px;
+  background: var(--surface-sunken);
+  border: 1px dashed var(--border-strong);
+  border-radius: 5px;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  text-align: center;
+  cursor: pointer;
+}
+.solenoid-filelink__placeholder:hover { color: var(--text); }
+
+.solenoid-filelink__hint {
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+/* Selection ring — mirrors the Image node's (own ring at the card radius, above
+   the 1px border, so pull it out to -1px). */
+.solenoid-filelink--selected {
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) var(--mix-glow), transparent);
+}
+.solenoid-filelink--selected::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  box-sizing: border-box;
+  border: 2px solid color-mix(in srgb, var(--node-accent) var(--mix-ring), var(--ring-into));
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 6;
+}

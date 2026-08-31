@@ -1,0 +1,13 @@
+{
+  "name": "solenoid-string-editor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local WYSIWYG copy-editing companion for the Solenoid dev server",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "playwright-core": "1.60.0"
+  }
+}

@@ -134,6 +134,31 @@
   color: var(--text);
   cursor: default;
 }
+/* A read-only cell renders as a plain-text <div>, not an <input readOnly> (the <input> is
+   ~2.5× the per-cell DOM cost — the popup-virtualize Finding). It reuses .table-popup__input
+   for identical font/size/alignment/padding + the type/error/nan variants; these overrides
+   restore the input's own behaviours a <div> lacks: fill the cell (width:100% needs a block
+   box), the readonly ink, and single-line clipping so a long value never wraps and grows the
+   row. A numeric column is pre-sized by colMinWidths so the text fits; a text column has no
+   fitted width, so it auto-sizes to its visible content instead of clipping at 120px. */
+.table-popup__input--ro {
+  display: block;
+  color: var(--text);
+  cursor: default;
+  white-space: nowrap;
+  overflow: hidden;
+}
+/* An error VALUE in a cell wears the SHARED #CODE! treatment — `.sol-error-chip`
+   (errorChip.css) is the single source of truth for it, and the cell just adds the
+   class. This rule defines no new colour; it exists only to win specificity, since
+   the readonly rule above is [class][attr] and would repaint the code in body ink.
+   Font size stays the grid's 13px — the chip's 11.5px is calibrated for an inline
+   badge on a node card, not for a table cell. */
+.table-popup__input.sol-error-chip,
+.table-popup__input.sol-error-chip[readonly] {
+  color: var(--sol-error);
+  font-size: 13px;
+}
 /* Text cells (string lists) read left-to-right and want room to breathe. */
 .table-popup__input--text {
   text-align: left;
@@ -522,4 +547,143 @@
 /* Touch: the drill-path breadcrumb links need tappable room. */
 @media (pointer: coarse) {
   .cube-popup__crumb { padding: 5px 8px; font-size: 13px; }
+}
+
+/* Form view: one record as stacked labeled fields (the record-entry editor). */
+.table-popup__form-scroll {
+  margin: 12px 14px;
+  max-height: 56vh;
+  max-height: 56dvh;
+  overflow: auto;
+}
+.table-popup__form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 380px;
+}
+.table-popup__form-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.table-popup__form-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+/* The record-card look, made editable: touching square boxes, label in the box,
+   the input as the box's value line (matches .sol-record in chartCards.css). */
+.table-popup__form-grid {
+  display: grid;
+  align-items: stretch;
+  /* The boxes' -1px overlap margins bleed 1px past the last row/column; this
+     padding absorbs it so the popup never grows a 1px scrollbar. */
+  padding: 0 1px 1px 0;
+}
+.table-popup__form-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 4px 6px 5px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  margin: 0 -1px -1px 0;
+}
+/* The focused box lifts over its overlapped neighbors so the accent edge draws whole. */
+.table-popup__form-box:focus-within {
+  border-color: var(--node-accent, var(--accent));
+  position: relative;
+  z-index: 1;
+}
+.table-popup__form-box-label {
+  font-size: 10px;
+  line-height: 1.3;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.table-popup__form-box-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.table-popup__form-box-input[readonly] {
+  color: var(--text-dim);
+  cursor: default;
+}
+.table-popup__form-box-check {
+  width: 14px;
+  height: 14px;
+  margin: 2px 0;
+  accent-color: var(--node-accent, var(--accent));
+}
+.table-popup__form-box-input[type="date"] { padding: 0; }
+
+/* ── Summary footer (frame popups): one stat per column ───────────────────────
+   A sticky one-row tfoot pinned to the bottom, mirroring the format row's chrome
+   (sunken cells, sticky-left corner). Each cell is a stat picker + its value,
+   computed over the WHOLE dataset, read-only. */
+.table-popup__sumfoot td,
+.table-popup__sumfoot th {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: var(--surface-sunken);
+  border-right: 1px solid var(--border);
+  border-top: 1px solid var(--border-strong);
+  padding: 3px 6px;
+  vertical-align: middle;
+}
+/* The footer's left corner pins on both axes, one rung above the scrolling cells. */
+.table-popup__sumfoot th.table-popup__corner {
+  left: 0;
+  z-index: 3;
+}
+/* Stacked: the stat's word over its value. The visible picker is a text label sized to
+   itself; the real <select> is laid over it at zero opacity, absolutely positioned so it
+   contributes NO width — the column stays as wide as the data. */
+.table-popup__statcell {
+  min-width: 0;
+  white-space: nowrap;
+}
+.table-popup__statpick {
+  position: relative;
+  display: inline-block;
+  line-height: 1.2;
+}
+.table-popup__statlabel {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.table-popup__statpick:hover .table-popup__statlabel,
+.table-popup__statpick:focus-within .table-popup__statlabel {
+  color: var(--text);
+}
+.table-popup__statselect {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.table-popup__statvalue {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11px;
 }

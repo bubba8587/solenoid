@@ -168,3 +168,32 @@ export function parseNoteFrontmatter(text: string): ParsedFrontmatter {
 
   return { fields, body, hasBlock: true };
 }
+
+/** Toggle the Nth GFM task marker (`- [ ]` ⇄ `- [x]`) in a note body, counting only
+ *  markers BELOW any frontmatter block so the index — taken from the RENDERED body,
+ *  which has the frontmatter stripped — lines up with the source. Pure. */
+export function toggleTaskMarker(body: string, index: number): string {
+  const lines = body.split("\n");
+  // Skip a top-of-file `---…---` block, mirroring parseNoteFrontmatter's boundary.
+  let start = 0;
+  if (lines[0]?.trim() === "---") {
+    for (let i = 1; i < lines.length; i++) {
+      if (lines[i].trim() === "---") { start = i + 1; break; }
+    }
+  }
+  // The exact shape `marked` treats as a checkbox: a bullet item whose text opens
+  // with `[ ]`/`[x]` followed by a space or the line end.
+  const marker = /^(\s*[-*+]\s+)\[([ xX])\](?=\s|$)/;
+  let count = -1;
+  for (let i = start; i < lines.length; i++) {
+    const m = marker.exec(lines[i]);
+    if (!m) continue;
+    count++;
+    if (count === index) {
+      const checked = m[2].toLowerCase() === "x";
+      lines[i] = m[1] + (checked ? "[ ]" : "[x]") + lines[i].slice(m[0].length);
+      break;
+    }
+  }
+  return lines.join("\n");
+}

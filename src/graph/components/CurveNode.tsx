@@ -1,9 +1,12 @@
 import { useMemo, useRef, useState, type CSSProperties } from "react";
 import type { CurveNode as CurveNodeType } from "../rete-nodes";
-import { curvePoints, pointsToText, monotoneCubic, sampleCurve } from "../nodes/control";
-import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
+import { curvePoints, pointsToText, monotoneCubic, sampleCurve, curveToFrame } from "../nodes/control";
+import { NodeShell, type NodeProps } from "./nodeKit";
+import { FrameDisplay } from "./FrameDisplay";
+import { MeasuredSocketRow } from "./NodeSocket";
 import { InlineNumberField } from "./inlineInput";
 import { processGraph } from "../process";
+import { nodeDisplayName } from "../catalogUtils";
 
 // A curve keeps ≥ 2 control points; the monotone spline through them draws live and
 // the node samples it into a list.
@@ -91,8 +94,6 @@ export function CurveComponent({ data, emit }: NodeProps<CurveNodeType>) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pts, xmin, xmax, ymin, ymax]);
 
-  // NEVER data.data(): the engine wraps it with the coercion boundary, which expects
-  // an inputs record, so calling it bare throws and kills the card.
   const sampled = sampleCurve(data.pointsText, xmin, xmax, data.literals.samples ?? 32);
 
   return (
@@ -166,14 +167,11 @@ export function CurveComponent({ data, emit }: NodeProps<CurveNodeType>) {
         <InlineNumberField value={data.literals.samples ?? 32} onChange={(v) => setLit("samples")(v ?? 32)} />
       </div>
       <div className="solenoid-node__section-divider" />
-      <InlineOutputRows
-        node={data}
-        emit={emit}
-        rows={[
-          { key: "values", label: "Values", value: sampled.values },
-          { key: "xs", label: "X positions", value: sampled.xs },
-        ]}
-      />
+      {data.outputs.result && (
+        <MeasuredSocketRow hero side="output" socketKey="result" nodeId={data.id} emit={emit} payload={data.outputs.result.socket}>
+          <div style={{ width: "100%" }}><FrameDisplay frame={curveToFrame(sampled.xs, sampled.values)} label={nodeDisplayName(data)} /></div>
+        </MeasuredSocketRow>
+      )}
     </NodeShell>
   );
 }

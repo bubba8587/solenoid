@@ -15,11 +15,13 @@ import {
 } from "../formatModel";
 import { SOCKET_COLORS } from "../sockets";
 import { clamp } from "../nodes/mathUtils";
-import { processGraph, repositionDockedNodes } from "../process";
+import { processGraph } from "../process";
+import { repositionDockedNodes } from "../canvasCommands";
 import { getOwningEditor } from "../activeGraph";
 import { NodeCard } from "./NodeCard";
 import { LazySelect } from "./LazySelect";
 import { NodeSocket } from "./NodeSocket";
+import { dockedNodeStore } from "../dockedNodeStore";
 import { SegToggle } from "./SegToggle";
 import { useFcFormatOptions, FcArrow } from "./fcControls";
 import type { NodeProps } from "./nodeKit";
@@ -55,6 +57,10 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   // field can be transiently empty while editing (backspace the last digit).
   const [digitsText,    setDigitsText]    = useState(String(node.decimalDigits));
 
+  // The socket that meets the host's sits exactly on it — one dot, the host's, shows.
+  const dockSide = useSyncExternalStore(dockedNodeStore.subscribe, () => dockedNodeStore.get(node.id)?.side);
+  const matedClass = (side: "input" | "output") =>
+    dockSide && (dockSide === "output") === (side === "input") ? "solenoid-fc__socket--mated" : undefined;
   const mismatch = useSyncExternalStore(
     formatMismatchStore.subscribe,
     () => formatMismatchStore.has(node.id),
@@ -285,11 +291,11 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     >
       {/* Input socket (left) */}
       {inputPort && (
-        <NodeSocket side="input" socketKey="in" nodeId={node.id} emit={emit} payload={inputPort.socket} />
+        <NodeSocket side="input" socketKey="in" nodeId={node.id} emit={emit} payload={inputPort.socket} className={matedClass("input")} />
       )}
       {/* Output socket (right) */}
       {outputPort && (
-        <NodeSocket side="output" socketKey="out" nodeId={node.id} emit={emit} payload={outputPort.socket} />
+        <NodeSocket side="output" socketKey="out" nodeId={node.id} emit={emit} payload={outputPort.socket} className={matedClass("output")} />
       )}
 
       {/* Mismatch indicator — corner badge (no header to host it). */}
@@ -302,7 +308,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
         <div className="solenoid-fc__row">
           <FcArrow dir="back" title={backTitle} />
           <LazySelect
-            className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+            className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
             value={textCase}
             onChange={(e) => onCaseChange(e.target.value as TextCase)}
             onPointerDown={(e) => e.stopPropagation()}
@@ -337,7 +343,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             title="Italic"
           >I</button>
           <LazySelect
-            className="solenoid-node__op-select solenoid-fc__size"
+            className="solenoid-node__select solenoid-fc__size"
             value={textScale}
             onChange={(e) => onScaleChange(parseFloat(e.target.value))}
             onPointerDown={(e) => e.stopPropagation()}
@@ -355,7 +361,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           <>
             <div className="solenoid-fc__row">
               <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
-              <SegToggle arg
+              <SegToggle
                 className="solenoid-seg--inline"
                 value={textAlign}
                 onChange={onTextAlignChange}
@@ -420,7 +426,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
         <div className="solenoid-fc__row">
           <FcArrow dir="back" title={backTitle} />
           <LazySelect
-            className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+            className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
             value={format}
             onChange={(e) => onFormatChange(e.target.value as FormatStyleId)}
             onPointerDown={(e) => e.stopPropagation()}
@@ -442,7 +448,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               type="text"
               className="solenoid-node__inline-input solenoid-fc__pattern"
               value={customPattern}
-              placeholder="pattern, e.g. YYYY-MM-DD"
+              placeholder="pattern, for example YYYY-MM-DD"
               onChange={(e) => onPatternChange(e.target.value)}
               onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}
@@ -456,7 +462,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
         <div className="solenoid-fc__row">
           <FcArrow dir="back" title={backTitle} />
           <LazySelect
-            className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+            className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
             value={logicalStyle}
             onChange={(e) => onLogicalChange(e.target.value as LogicalStyle)}
             onPointerDown={(e) => e.stopPropagation()}
@@ -474,7 +480,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
         <div className="solenoid-fc__row">
           <FcArrow dir="back" title={backTitle} />
           <LazySelect
-            className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+            className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
             value={lambdaView}
             onChange={(e) => onLambdaViewChange(e.target.value as LambdaView)}
             onPointerDown={(e) => e.stopPropagation()}
@@ -492,7 +498,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
         <div className="solenoid-fc__row">
           <FcArrow dir="back" title={backTitle} />
           <LazySelect
-            className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+            className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
             value={chartFontScale}
             onChange={(e) => onChartScaleChange(parseFloat(e.target.value))}
             onPointerDown={(e) => e.stopPropagation()}
@@ -519,7 +525,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
         <div className="solenoid-fc__row">
           <FcArrow dir="back" title={backTitle} />
           <LazySelect
-            className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+            className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
             value={format}
             onChange={(e) => onFormatChange(e.target.value as FormatStyleId)}
             onPointerDown={(e) => e.stopPropagation()}
@@ -573,7 +579,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               onMouseDown={(e) => e.stopPropagation()}
               title={decimalMode === "places" ? "Digits after the decimal point" : "Number of significant figures"}
             />
-            <SegToggle arg
+            <SegToggle
               className="solenoid-seg--inline"
               value={decimalMode}
               onChange={onModeSet}
@@ -593,7 +599,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               type="text"
               className="solenoid-node__inline-input solenoid-fc__pattern"
               value={customPattern}
-              placeholder='format, e.g. "0.00"'
+              placeholder='format, for example "0.00"'
               onChange={(e) => onPatternChange(e.target.value)}
               onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}
@@ -626,7 +632,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               <div className="solenoid-fc__row">
                 <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
                 <LazySelect
-                  className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+                  className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
                   value={negativeStyle}
                   onChange={(e) => onNegativeChange(e.target.value as NegativeStyle)}
                   onPointerDown={(e) => e.stopPropagation()}
@@ -644,7 +650,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               <div className="solenoid-fc__row">
                 <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
                 <LazySelect
-                  className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+                  className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
                   value={scaleMode}
                   onChange={(e) => onScaleChangeMode(e.target.value as ScaleMode)}
                   onPointerDown={(e) => e.stopPropagation()}
@@ -688,13 +694,13 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             : "Unit labels this box and travels downstream"
           } /> : <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />}
           <LazySelect
-            className="solenoid-node__op-select solenoid-fc__select solenoid-fc__select--wide"
+            className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
             value={unit}
             disabled={node.unitLocked}
             onChange={(e) => onUnitChange(e.target.value)}
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
-            title={node.unitLocked ? "Unit locked; set elsewhere in the chain" : "Unit label / cable constraint"}
+            title={node.unitLocked ? "Unit locked. Set elsewhere in the chain." : "Unit label or cable constraint"}
           >
             {unitGroupOrder.map((group) => {
               const items = unitGroups.get(group);
@@ -727,7 +733,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
               type="text"
               className="solenoid-node__inline-input solenoid-fc__pattern"
               value={customUnit}
-              placeholder="unit, e.g. psi"
+              placeholder="unit, for example psi"
               onChange={(e) => onCustomUnitChange(e.target.value)}
               onPointerDown={stopDragStart}
               onMouseDown={(e) => e.stopPropagation()}
