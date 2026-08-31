@@ -154,10 +154,9 @@ Non-sells that shipped; mentioned in the release body, never headlined.
 - Toolchain: TypeScript 7 (native typecheck), Vite 8, React 19.2, Recharts 3.10,
   KaTeX 0.18, elkjs 0.12, plus the full dependency-major sweep.
 
-## Known issues (for the GitHub release body — finalize at cut time)
+## Known issues (for the GitHub release body — finalized 2026-08-31)
 
-- Carry forward from 1.2 if still true: browser Data Feed CORS limits, no cable
-  collision avoidance (obstacle router deferred behind an LGPL gate), Android
-  status-bar tint. High memory on big documents (author-filed, pre-dates the RF
-  port). The 1.2 drill-in gap is CLOSED (full canvas surface inside composites) and
-  the header/body hairline seam is FIXED — drop both.
+- Browser Data Feed CORS limits (desktop unaffected).
+- No cable collision avoidance (obstacle router deferred behind an LGPL gate).
+- Android status-bar tint.
+- High memory on big documents (author-filed; pre-dates the React Flow port).
