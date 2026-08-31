@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { requestRecalc } from "./process";
 import { calcModeStore } from "./calcModeStore";
 import { nodeDisplayName } from "./catalogUtils";
-import { isWebDemo } from "../env";
+import { isDesktop } from "./fileBridge";
 import { loadRevealStore } from "./loadReveal";
 import { WEB_DEMO_NODE_BUDGET, WEB_DEMO_NODE_WARN_RATIO } from "./nodeBudget";
 import { problemsStore, problemsPanelUi } from "./problemsStore";
@@ -12,6 +12,9 @@ import { getActiveView, getActiveEditor } from "./activeGraph";
 /** Bottom status strip, polled a few times a second rather than wired to stores.
  *  The node-budget meter is WEB-DEMO only — the limit is the webview's, not the
  *  product's. */
+
+// Stable for the session: Tauri injects its marker before any app code runs.
+const isWebDemo = !isDesktop();
 
 type Snapshot = { nodes: number; cables: number; selection: string; zoom: number };
 
