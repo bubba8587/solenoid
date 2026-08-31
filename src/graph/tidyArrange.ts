@@ -148,6 +148,8 @@ export function makeEnsureElk(isDestroyed: () => boolean): () => Promise<Elk | n
       elk = new ELK() as unknown as Elk;
       return elk;
     })();
+    // A failed fetch must not stick: clear the cached promise so the next Tidy retries.
+    loading.catch(() => { loading = null; });
     return loading;
   };
 }
