@@ -97,6 +97,7 @@ import { groupCollapseStore } from "../groupCollapse";
 import { HtmlCanvasLayer } from "../components/HtmlCanvasLayer";
 import { standoffStore, type SettleOpts } from "../standoffs";
 import { appThemeStore } from "../appTheme";
+import { paletteStore as colorPaletteStore } from "../palette";
 import { minimapFillForNode } from "../components/Minimap";
 import { computeDockedCanvasPos, dockedRenderedDims, findDockTarget, insertFcInline, removeFcInline } from "../fcDocking";
 import { groupPushStore } from "../groupPush";
@@ -820,13 +821,16 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const themeMode = appThemeStore.getMode();
   const gridSnap = useSyncExternalStore(gridSnapStore.subscribe, gridSnapStore.get);
+  // A palette switch changes the accents minimapFillForNode computes; RF's MiniMap
+  // only recomputes when the callback identity changes, so the version is a dep.
+  const paletteVersion = useSyncExternalStore(colorPaletteStore.subscribe, colorPaletteStore.version);
   const minimapNodeColor = useCallback(
     (n: SolFlowNode) => minimapFillForNode(n.data.node, themeMode).background,
-    [themeMode],
+    [themeMode, paletteVersion],
   );
   const minimapNodeStrokeColor = useCallback(
     (n: SolFlowNode) => minimapFillForNode(n.data.node, themeMode).borderColor,
-    [themeMode],
+    [themeMode, paletteVersion],
   );
   const packsVersion = useSyncExternalStore(packsStore.subscribe, packsStore.version);
   const visibleCatalog = useMemo(() => buildCatalog(true), [packsVersion]);
