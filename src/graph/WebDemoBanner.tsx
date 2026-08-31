@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { isWebDemo } from "../env";
+import { isDesktop } from "./fileBridge";
 import "./WebDemoBanner.css";
 
 // Web frontend only, never the Tauri shell. Disabled for now (author request) —
@@ -8,7 +8,7 @@ const WEB_DEMO_BANNER_ENABLED = false;
 
 export function WebDemoBanner() {
   const [dismissed, setDismissed] = useState(false);
-  if (!WEB_DEMO_BANNER_ENABLED || !isWebDemo || dismissed) return null;
+  if (!WEB_DEMO_BANNER_ENABLED || isDesktop() || dismissed) return null;
 
   const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 

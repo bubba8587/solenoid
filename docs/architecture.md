@@ -67,7 +67,6 @@ src/
 ├── App.css                   # Theme token layer (dark/light ramps; socket colors are BUILT by palette.ts/appTheme.ts, not defined here. The NEUTRAL ramp IS defined here, but a palette may replace it — appTheme writes or CLEARS every chrome var per apply, see paletteAllOrNone)
 ├── mobile.css                # @media (pointer: coarse) overrides (desktop layout is truth)
 ├── desktopFrame.css          # Tauri window chrome
-├── env.ts                    # IS_COARSE / isDesktop-style environment flags
 ├── logo/                     # Brand assets
 └── graph/                    # Everything graph-related (flat; grouped below by concern)
 ```
