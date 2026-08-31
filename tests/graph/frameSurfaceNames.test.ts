@@ -59,7 +59,18 @@ describe("FRAME_SURFACE_NAMES ← catalog derivation (both ways)", () => {
   });
 
   it("no map entry shadows a dispatchable name, a legacy alias, or a ghost leaf", () => {
-    const labels = new Set(leaves.map((l) => l.label));
+    // Redirect targets may live anywhere in the tree — K-Means/PCA/Logistic moved
+    // under Packs › Data Science but remain frame verbs — so ghosts check the WHOLE
+    // catalog, not just the Tables & Frames walk the teaching check above scopes to.
+    const labels = new Set<string>();
+    const collect = (entries: CatalogEntry[]): void => {
+      for (const e of entries) {
+        if (isCategory(e)) { collect(e.children); continue; }
+        if (isPair(e)) { collect(e.children); continue; }
+        if (!e.hidden) labels.add(e.label);
+      }
+    };
+    collect(buildCatalog(false));
     const shadowing = Object.keys(FRAME_SURFACE_NAMES).filter((n) => dispatchable.has(n));
     const legacy = Object.keys(FRAME_SURFACE_NAMES).filter((n) => n in LEGACY_ALIASES);
     const ghosts = Object.entries(FRAME_SURFACE_NAMES).filter(([, label]) => !labels.has(label));
