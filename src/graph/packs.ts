@@ -13,6 +13,8 @@ import { THERMO_PACK } from "./packs/thermo";
 import { SETS_PACK } from "./packs/sets";
 import { EARTHSKY_PACK } from "./packs/earthsky";
 import { CHEMISTRY_PACK } from "./packs/chemistry";
+import { SCIENTIFIC_PACK } from "./packs/scientific";
+import { DATA_SCIENCE_PACK } from "./packs/datascience";
 import type { Pack, PackPlacement } from "./packs/packShared";
 
 // Re-export the authoring types so existing consumers keep one import site.
@@ -21,6 +23,8 @@ export type { Pack, PackPlacement, FormulaPackEntry } from "./packs/packShared";
 export const BUILTIN_PACKS: Pack[] = [
   GEOMETRY_PACK,
   TIMESAVERS_PACK,
+  SCIENTIFIC_PACK,
+  DATA_SCIENCE_PACK,
   ELECTRICITY_PACK,
   ELECTROMAGNETISM_PACK,
   HEALTH_PACK,

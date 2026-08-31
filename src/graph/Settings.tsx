@@ -223,21 +223,49 @@ function RendererSection() {
   );
 }
 
+const PACK_GROUP_ORDER = ["Everyday", "Analysis", "Science & Engineering"];
+
 function PacksSection() {
   useSyncExternalStore(packsStore.subscribe, packsStore.version);
   const builtin = allPacks().filter((p) => p.builtin);
   const custom = loadCustomPacks();
+  // Accordion groups by each pack's declared group; an undeclared one lands in Other
+  // rather than vanishing.
+  const groupNames = [...PACK_GROUP_ORDER, "Other"];
+  const grouped = groupNames
+    .map((g) => ({
+      name: g,
+      packs: builtin.filter((p) => (g === "Other" ? !PACK_GROUP_ORDER.includes(p.group ?? "") : p.group === g)),
+    }))
+    .filter((g) => g.packs.length > 0);
   return (
     <div className="solenoid-settings__section">
       <div className="solenoid-settings__section-title">Node Packs</div>
-      {builtin.map((p) => (
-        <Row
-          key={p.id}
-          label={p.name}
-          on={packsStore.isActive(p.id)}
-          onToggle={() => packsStore.toggle(p.id)}
-        />
-      ))}
+      {grouped.map((g) => {
+        const onCount = g.packs.filter((p) => packsStore.isActive(p.id)).length;
+        return (
+          <details key={g.name} className="solenoid-settings__acc">
+            <summary className="solenoid-settings__acc-head">
+              <span className="solenoid-settings__acc-chevron" aria-hidden="true">
+                <svg width="10" height="10" viewBox="0 0 10 10"><path d="M3 1.5 L7 5 L3 8.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </span>
+              <span className="solenoid-settings__acc-name">{g.name}</span>
+              <span className="solenoid-settings__acc-count">{onCount} of {g.packs.length} on</span>
+            </summary>
+            <div className="solenoid-settings__acc-body">
+              {g.packs.map((p) => (
+                <Row
+                  key={p.id}
+                  label={p.name}
+                  help={p.description}
+                  on={packsStore.isActive(p.id)}
+                  onToggle={() => packsStore.toggle(p.id)}
+                />
+              ))}
+            </div>
+          </details>
+        );
+      })}
 
       <div className="solenoid-settings__subhead">Custom packs</div>
       {custom.length === 0 ? (

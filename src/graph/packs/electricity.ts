@@ -170,6 +170,7 @@ const ELECTRICITY_PACK_FORMULAS: PackFormula[] = [
 export const ELECTRICITY_PACK: Pack = {
   formulas: ELECTRICITY_PACK_FORMULAS,
   id: "electricity",
+  group: "Science & Engineering",
   name: "Electricity & Circuits",
   description: "Everyday electrical engineering: Ohm's law and power, dividers, reactance and resonance, RC or RL transients, decibels, the resistor color-code decoder, E-series component values, and AWG wire properties. SI units.",
   builtin: true,
