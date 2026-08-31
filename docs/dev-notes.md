@@ -56,3 +56,16 @@ side shadow deleted — a dock pushes the canvas, nothing sits beneath it;
 layout-chrome.md reconciled). **Settings packs are an accordion** now: `Pack.group`
 (Everyday / Analysis / Science & Engineering), details/summary per group with an
 on-count, descriptions on the rows. What's-New slide + release-notes follow.
+**Third wave.** **Add-menu search scores per query word with one-edit typo tolerance**
+(author: "frane input" surfaced nothing — it ranked 19th under description noise):
+each word lands as a haystack subsequence or within one Damerau-Levenshtein edit of
+a leaf word; word order free; pinned in `catalogSearch.test.ts` + new `fuzzy.test.ts`
+(subsystem-invariants § Add menu reconciled). **Add-menu leaves reordered
+significance-first** within Output / Visuals / Tables & Frames / Lists / Logic /
+Text / Date & Time — pure reorder of `nodeCatalog.ts`, no entries changed.
+**Attribution shipped**: THIRD-PARTY-NOTICES.md gains React Flow (MIT text, watermark
+stays on) + a bundled-libraries section naming the non-MIT ones (elkjs, dompurify,
+OFL fonts); README License line credits React Flow / Rete.js / Polars. README
+rewritten by the author; factual audit delivered in-session (verbs are frame-only,
+Cube isn't "3D", Record outputs on the chart socket rather than "renders as a
+Chart", logical↔number is a deliberate bridge) — copy fixes are the author's.

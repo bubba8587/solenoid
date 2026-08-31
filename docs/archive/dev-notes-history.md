@@ -6036,7 +6036,7 @@ Acted on a value-model audit (SolError propagation, null-as-missing, forAggregat
 Tests in `auditFixes.test.ts` + additions to `decisionMatrix.test.ts`. Render-path fixes (#1/#2) aren't unit-tested (node vitest env, no jsdom).
 
 ### Decision Matrix node — DMBV port (2026-06-30)
-Ported the jortscity **Decision Matrix Bases View** Obsidian plugin into one Solenoid
+Ported the author's **Decision Matrix Bases View** Obsidian plugin into one Solenoid
 node, `DecisionMatrixNode` (frame kind, in Add → Table verbs). The plugin's distinctive
 contribution is the **weighted-average + ranking math**, not the tables/CSS around it — so
 the port keeps the math and hands everything else to existing Solenoid nodes (per the

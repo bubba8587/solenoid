@@ -51,6 +51,24 @@ describe("Add-menu search — category + type + keywords are searchable", () => 
   });
 });
 
+// Per-word scoring: each query word lands independently (subsequence of the wide
+// haystack, or one edit from a word the leaf answers to). A typo'd word must not
+// bury its target under scattered-subsequence noise from long descriptions.
+// (Author 2026-08-31: "frane input" surfaced nothing — Frame Input ranked 19th.)
+describe("Add-menu search — typo tolerance and word order", () => {
+  it("'frane input' (one-letter typo) ranks Frame Input #1", () => {
+    expect(types("frane input")[0]).toBe("frame-input");
+  });
+
+  it("'input frame' (reversed word order) still surfaces Frame Input at the top", () => {
+    expect(types("input frame")).toContain("frame-input");
+  });
+
+  it("a typo'd Excel name still finds its node ('xlokup' → XLOOKUP)", () => {
+    expect(types("xlokup")).toContain("lookup-xlookup");
+  });
+});
+
 // TAKE / DROP folded onto one rank-preserving card (D6). Both ops keep a bare
 // Add-menu leaf (no "TAKE: Drop" colon row), and the family keywords carry the old
 // "list take" / "table take" spellings so either surface still finds the card.
