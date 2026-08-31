@@ -50,12 +50,24 @@ describe("blocked spellings redirect to a LIVE replacement", () => {
       expect(isSolError(r) && r.message, name).toBe(`Use ${use}`);
     }
   });
+
+  it("blocks the fn-code aggregators and the PRECISE/ISO rounding variants (retired Composable tier)", () => {
+    for (const [expr, use] of [
+      ["SUBTOTAL(9, 4)", "SUM"], ["AGGREGATE(9, 4, 5)", "SUM"],
+      ["CEILING.PRECISE(4.2)", "CEILING.MATH"], ["FLOOR.PRECISE(-4.2)", "FLOOR.MATH"],
+      ["ISO.CEILING(4.2)", "CEILING.MATH"],
+    ]) {
+      const r = ev(expr);
+      expect(isSolError(r) && r.code, expr).toBe("#NAME?");
+      expect(isSolError(r) && r.message, expr).toBe(`Use ${use}`);
+    }
+  });
 });
 
 describe("current-Excel names the fxLookup walk used to advertise but not dispatch", () => {
   // FX hangs these off a CALLABLE parent (FX.CEILING is the function AND the home
   // of CEILING.MATH); the old object-only walk couldn't reach them.
-  it.each(["CEILING.MATH", "CEILING.PRECISE", "FLOOR.MATH", "FLOOR.PRECISE",
+  it.each(["CEILING.MATH", "FLOOR.MATH",
            "GAMMALN.PRECISE", "SKEW.P", "T.TEST", "NETWORKDAYS.INTL", "WORKDAY.INTL",
            "BINOM.DIST.RANGE"])("%s dispatches", (name) => {
     expect(resolveExcelFunction(name)).not.toBeNull();
@@ -63,7 +75,7 @@ describe("current-Excel names the fxLookup walk used to advertise but not dispat
 
   it("computes, not just resolves", () => {
     expect(ev("CEILING.MATH(4.2)")).toBe(5);
-    expect(ev("FLOOR.PRECISE(-4.2)")).toBe(-5);
+    expect(ev("FLOOR.MATH(-4.2)")).toBe(-5);
   });
 });
 

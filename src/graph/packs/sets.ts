@@ -23,6 +23,7 @@ const SETS_PACK_FORMULAS: PackFormula[] = [
 export const SETS_PACK: Pack = {
   formulas: SETS_PACK_FORMULAS,
   id: "sets",
+  group: "Everyday",
   name: "Sets & Membership",
   description: "List membership and counting: Is In (per-element membership mask, the ISNUMBER(MATCH()) idiom), Tally (value counts as a table), and the COUNT DISTINCT aggregate. The Join node's semi or anti modes are the table-level counterparts.",
   builtin: true,

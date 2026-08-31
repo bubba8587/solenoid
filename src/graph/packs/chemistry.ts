@@ -83,6 +83,7 @@ const CHEMISTRY_PACK_FORMULAS: PackFormula[] = [
 export const CHEMISTRY_PACK: Pack = {
   formulas: CHEMISTRY_PACK_FORMULAS,
   id: "chemistry",
+  group: "Science & Engineering",
   name: "Chemistry Basics",
   description: "The periodic table as a node, molar mass from a typed formula (parentheses and hydrates included), and the lab-bench set: moles/molarity/dilution, pH, Nernst, Arrhenius, Gibbs, Beer–Lambert, radioactive decay.",
   builtin: true,

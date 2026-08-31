@@ -49,9 +49,10 @@ tag along the way — the baseline stays v1.2.0).
   Find Peaks, Decompose (classical + STL), Fit Distribution (MLE fits ranked by
   AIC), Monte Carlo with *correlated* inputs (Gaussian copula), ODE Integrate,
   Polynomial Roots, Text Similarity + Fuzzy Match, Returns (drawdown, CAGR, Sharpe,
-  Sortino), Describe, Correlation Matrix, Amortization Schedule… The Function
-  Reference grew numpy / pandas / scipy / R / SQL / Excel filter chips, so you find
-  them from whichever vocabulary you already speak.
+  Sortino), Describe, Correlation Matrix, Amortization Schedule… The deeper science
+  tools ship as two Settings packs (Scientific Computing, Data Science) so the base
+  Add menu stays lean. The Function Reference grew numpy / pandas / scipy / R / SQL /
+  Excel filters, so you find them from whichever vocabulary you already speak.
 - **[slide] Records & forms.** The Record node shows one table row as a card you lay
   out yourself — labeled boxes on a text-defined grid, `*N` column spans — with
   Gallery and Board views over the whole frame. Flip a table popup to Form view and
@@ -95,6 +96,10 @@ tag along the way — the baseline stays v1.2.0).
   name, so both surfaces answer alike.
 - Every formula autocompletes with named arguments (`RUNNING(op, list, [window])`),
   never "N args".
+- The Function Reference separates Superseded (each blocked classic points at its
+  modern route) from Out of scope, filters by category, pack, or source library from
+  two dropdowns, and reads properly in light mode. Node packs group into an
+  accordion in Settings.
 - Lists everywhere: the date, text, and complex families are element-wise now —
   wire a list of dates into EOMONTH like a column, no MAP ceremony.
 - Frame verbs typed in a formula (FILTER, PIVOT…) are recognized and redirected to

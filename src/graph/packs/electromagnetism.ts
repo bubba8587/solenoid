@@ -107,6 +107,7 @@ const ELECTROMAGNETISM_PACK_FORMULAS: PackFormula[] = [
 export const ELECTROMAGNETISM_PACK: Pack = {
   formulas: ELECTROMAGNETISM_PACK_FORMULAS,
   id: "electromagnetism",
+  group: "Science & Engineering",
   name: "Electromagnetism",
   description: "Fields, forces, waves, and induction: Coulomb's law, capacitance and inductance from geometry, magnetic fields, Lorentz force, photons, skin depth, Faraday's law, the EM spectrum band namer, and the CODATA physical-constants node. Builds on Electricity & Circuits.",
   builtin: true,

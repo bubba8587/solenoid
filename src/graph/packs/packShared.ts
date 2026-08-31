@@ -89,6 +89,8 @@ export interface Pack {
   builtin: boolean;
   /** Whether the pack starts active the first time it's seen. */
   defaultActive: boolean;
+  /** Settings accordion group ("Everyday", "Analysis", "Science & Engineering"). */
+  group?: string;
   /** Nodes this pack inserts into the Add-menu tree while active. */
   nodes?: PackPlacement[];
   /** Other pack ids this pack needs — activating it activates them too. */

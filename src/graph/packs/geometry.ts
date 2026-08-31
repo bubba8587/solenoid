@@ -122,6 +122,7 @@ const GEOMETRY_PACK_FORMULAS: PackFormula[] = [
 export const GEOMETRY_PACK: Pack = {
   formulas: GEOMETRY_PACK_FORMULAS,
   id: "geometry",
+  group: "Everyday",
   name: "Geometry",
   description: "Geometric helpers: hypotenuse, the any-three-parts Triangle Solver, circles and arcs, solids. On by default. Turn off to declutter.",
   builtin: true,

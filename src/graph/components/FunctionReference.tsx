@@ -19,14 +19,13 @@ export function FunctionReference() {
   const open = useSyncExternalStore(frStore.subscribe, frStore.get);
   const tab = useSyncExternalStore(frStore.subscribe, frStore.tab);
   const [search, setSearch] = useState("");
-  const [group, setGroup] = useState<string | "All">("All");
+  // One category value space: "All", a section groupKey, or "pack:<id>" (membership,
+  // so a pack's cross-woven nodes are found too, not just the Packs menu branch).
+  const [category, setCategory] = useState("All");
+  const [lib, setLib] = useState<"All" | LibraryTag>("All");
   // The row whose catalog description is expanded beneath it (tap/click toggles).
   const [openDesc, setOpenDesc] = useState<string | null>(null);
-  // Opposite slices of the unimplemented rows, so one exclusive mode, not two booleans.
-  const [filterMode, setFilterMode] = useState<"all" | "todo" | "oos">("all");
   const [showExcel, setShowExcel] = useState(true);
-  // Library chips: an empty set shows everything; otherwise a row must cite one of the picked libraries.
-  const [libs, setLibs] = useState<ReadonlySet<LibraryTag>>(new Set());
 
   // Independent of pack activation (every pack is included), so stable for the session.
   const rows = useMemo(() => buildFunctionReference(), []);
@@ -42,11 +41,11 @@ export function FunctionReference() {
   if (!open) return null;
 
   const q = search.toLowerCase();
+  const packFilter = category.startsWith("pack:") ? category.slice(5) : null;
   const filtered = rows.filter((r) => {
-    if (group !== "All" && r.groupKey !== group) return false;
-    if (libs.size > 0 && !libraryTags(r).some((t) => libs.has(t))) return false;
-    if (filterMode === "todo" && (r.implemented || r.oos || r.composition)) return false;
-    if (filterMode === "oos" && !r.oos) return false;
+    if (packFilter !== null) { if (!r.packs.includes(packFilter)) return false; }
+    else if (category !== "All" && r.groupKey !== category) return false;
+    if (lib !== "All" && !libraryTags(r).includes(lib)) return false;
     if (!q) return true;
     return (r.excel ?? "").toLowerCase().includes(q)
       || r.syntax.toLowerCase().includes(q)
@@ -59,12 +58,11 @@ export function FunctionReference() {
   const excelRows = rows.filter((r) => r.excel !== null);
   const implemented = excelRows.filter((r) => r.implemented);
   const parityCount = implemented.filter((r) => r.parity).length;
-  const composable = excelRows.filter((r) => r.composition).length;
-  const unimplemented = excelRows.filter((r) => !r.implemented && !r.composition);
-  const oosCount = unimplemented.filter((r) => r.oos).length;
-  const plannedCount = unimplemented.length - oosCount;
+  const supersededCount = excelRows.filter((r) => r.superseded).length;
+  const oosCount = excelRows.filter((r) => r.oos).length;
 
-  const shownGroups = group === "All" ? groups : groups.filter((g) => g.key === group);
+  const shownGroups = packFilter !== null || category === "All"
+    ? groups : groups.filter((g) => g.key === category);
 
   const packsCell = (r: FnRefRow) =>
     r.packs.length ? r.packs.map((p) => packName.get(p) ?? p).join(", ") : "";
@@ -119,25 +117,31 @@ export function FunctionReference() {
               autoFocus={!IS_COARSE}
             />
             <div className="fr-filters">
-              <button
-                className={`fr-filter-pill${filterMode === "todo" ? " fr-filter-pill--active" : ""}`}
-                onClick={() => setFilterMode((m) => (m === "todo" ? "all" : "todo"))}
-                title="Show only planned functions, excluding out-of-scope ones like cell refs, OLAP, and superseded classics"
-              >To-do only</button>
-              <button
-                className={`fr-filter-pill${filterMode === "oos" ? " fr-filter-pill--active" : ""}`}
-                onClick={() => setFilterMode((m) => (m === "oos" ? "all" : "oos"))}
-                title="Show only functions not planned for Solenoid: cell refs, OLAP, and superseded classics"
-              >Out of scope</button>
-              <span className="fr-filters__sep" aria-hidden="true" />
-              {LIBRARY_TAGS.map((lib) => (
-                <button
-                  key={lib}
-                  className={`fr-filter-pill${libs.has(lib) ? " fr-filter-pill--active" : ""}`}
-                  onClick={() => setLibs((prev) => { const next = new Set(prev); if (next.has(lib)) next.delete(lib); else next.add(lib); return next; })}
-                  title={`Only the rows that cite ${lib === "R" ? "R (base, dplyr, tidyr, lubridate…)" : lib} — the ones you'd reach for from there`}
-                >{lib}</button>
-              ))}
+              <select
+                className="fr-select"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                title="Narrow to one section, or to one pack's nodes"
+              >
+                <option value="All">All categories</option>
+                {groups.map((g) => (
+                  <option key={g.key} value={g.key}>{g.label}</option>
+                ))}
+                <optgroup label="By pack">
+                  {allPacks().map((p) => (
+                    <option key={p.id} value={`pack:${p.id}`}>{p.name}</option>
+                  ))}
+                </optgroup>
+              </select>
+              <select
+                className="fr-select"
+                value={lib}
+                onChange={(e) => setLib(e.target.value as "All" | LibraryTag)}
+                title="Only the rows that cite this library — the ones you'd reach for from there"
+              >
+                <option value="All">Any library</option>
+                {LIBRARY_TAGS.map((l) => <option key={l} value={l}>{l}</option>)}
+              </select>
             </div>
             <label className="fr-colcheck" title="Show or hide the Excel Function and Excel Syntax columns">
               <input
@@ -148,33 +152,19 @@ export function FunctionReference() {
               Excel columns
             </label>
           </div>
-          <div className="fr-cats">
-            <button
-              className={`fr-cat${group === "All" ? " fr-cat--active" : ""}`}
-              onClick={() => setGroup("All")}
-            >All</button>
-            {groups.map((g) => (
-              <button
-                key={g.key}
-                className={`fr-cat${group === g.key ? " fr-cat--active" : ""}`}
-                onClick={() => setGroup(g.key)}
-              >{g.label}</button>
-            ))}
-          </div>
         </div>
 
         <div className="fr-stats">
           <span><span className="dot dot--yes" />{parityCount} full parity</span>
           <span><span className="dot dot--no" />{implemented.length - parityCount} partial / different</span>
-          <span><span className="dot dot--no" />{composable} composable</span>
-          <span><span className="dot dot--miss" />{plannedCount} planned (to-do)</span>
+          <span><span className="dot dot--sup" />{supersededCount} superseded</span>
           <span><span className="dot dot--oos" />{oosCount} out of scope</span>
           <span style={{ marginLeft: "auto" }}>{filtered.length} shown</span>
         </div>
 
         <div className="fr-scroll">
           {filtered.length === 0 ? (
-            <div className="fr-empty">No functions match "{search}"</div>
+            <div className="fr-empty">{search ? `No functions match "${search}"` : "No functions match the filters"}</div>
           ) : (
             <table className={`fr-table${showExcel ? " fr-table--excel" : ""}`}>
               <colgroup>
@@ -218,7 +208,7 @@ export function FunctionReference() {
                           onClick={expandable ? () => setOpenDesc(openDesc === rowKey ? null : rowKey) : undefined}
                         >
                           <td className={`fr-td-sol${r.implemented ? "" : " fr-td-sol--missing"}`}>
-                            {!r.implemented ? "—" : r.catalogType && r.nodeLabel ? (
+                            {r.implemented && r.catalogType && r.nodeLabel ? (
                               <button
                                 className="fr-sol-btn"
                                 title="Add this node to the canvas"
@@ -227,9 +217,7 @@ export function FunctionReference() {
                                 {r.nodeLabel}
                                 <span className="fr-sol-btn__add">+</span>
                               </button>
-                            ) : (
-                              <span className="fr-sol-composition">{r.nodeLabel}</span>
-                            )}
+                            ) : "—"}
                           </td>
                           {showExcel && (
                             <td className={`fr-td-excel${isSolOnly ? " fr-td-excel--missing" : ""}`}>
@@ -240,15 +228,11 @@ export function FunctionReference() {
                           <td className="fr-td-packs">{packsCell(r)}</td>
                           <td className="fr-td-dep">{r.dependency ? "✓" : ""}</td>
                           <td className="fr-td-parity">
-                            {isSolOnly
+                            {isSolOnly || !r.implemented
                               ? <span className="fr-parity-miss">—</span>
-                              : r.composition
-                                ? <span className="fr-parity-warn" title="Achievable by composing nodes">✎</span>
-                                : !r.implemented
-                                  ? <span className="fr-parity-miss">—</span>
-                                  : r.parity
-                                    ? <span className="fr-parity-yes">✓</span>
-                                    : <span className="fr-parity-warn">⚠</span>}
+                              : r.parity
+                                ? <span className="fr-parity-yes">✓</span>
+                                : <span className="fr-parity-warn">⚠</span>}
                           </td>
                           <td className="fr-td-note">{r.note ?? ""}</td>
                         </tr>,

@@ -22,7 +22,7 @@ const SLIDES: Slide[] = [
   },
   {
     title: "The analytics shelf",
-    body: "The numpy, pandas, scipy and R toolkit as nodes: Forecast with Holt-Winters intervals, per-group Window columns, K-Means, PCA, FFT, LOWESS smoothing, seasonal decomposition, and Monte Carlo with correlated inputs. The Function Reference gains numpy, pandas, R, SQL and Excel filter chips, so you can search by whichever name you already know.",
+    body: "The numpy, pandas, scipy and R toolkit as nodes: Forecast with Holt-Winters intervals, per-group Window columns, K-Means, PCA, FFT, LOWESS smoothing, seasonal decomposition, and Monte Carlo with correlated inputs. The deeper science tools ship as the Scientific Computing and Data Science packs in Settings. The Function Reference gains numpy, pandas, R, SQL and Excel filters, so you can search by whichever name you already know.",
   },
   {
     title: "Records and forms",

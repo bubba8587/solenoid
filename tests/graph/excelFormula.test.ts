@@ -410,15 +410,15 @@ describe("compileEvaluator — array-aware (broadcast vs aggregate per call site
   });
 
   it("classifies + aggregates the criteria/meta range functions", () => {
-    // SUMIF is absent on purpose — currentExcelParity blocks it, and blockedFailFast strips a blocked
-    // spelling from RANGE_FUNCTIONS so it answers before its args are shaped.
+    // SUMIF / SUBTOTAL / AGGREGATE are absent on purpose — currentExcelParity blocks
+    // them, and blockedFailFast strips a blocked spelling from RANGE_FUNCTIONS so it
+    // answers before its args are shaped.
     for (const f of ["SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF",
-                     "AVERAGEIFS", "MAXIFS", "MINIFS", "SUBTOTAL", "AGGREGATE"]) {
+                     "AVERAGEIFS", "MAXIFS", "MINIFS"]) {
       expect(RANGE_FUNCTIONS.has(f)).toBe(true);
     }
     // the range arg passes WHOLE (would be wrong if broadcast element-wise)
     expect(ev('COUNTIF(x, ">2")', { x: [1, 2, 3, 4] })).toBe(2);
-    expect(ev("SUBTOTAL(9, x)", { x: [1, 2, 3, 4] })).toBe(10);
   });
 
   // ── in-formula errors (P5) — div0 is minted + propagates as a scalar ──

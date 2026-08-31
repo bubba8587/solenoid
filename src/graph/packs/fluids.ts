@@ -98,6 +98,7 @@ const FLUIDS_PACK_FORMULAS: PackFormula[] = [
 export const FLUIDS_PACK: Pack = {
   formulas: FLUIDS_PACK_FORMULAS,
   id: "fluids",
+  group: "Science & Engineering",
   name: "Fluid Mechanics",
   description: "Pipe flow, pumps, and aero classics: Reynolds number, the pipe-roughness table, Colebrook or Swamee–Jain friction factors, Darcy–Weisbach and Hazen–Williams losses, Bernoulli, orifice and pump power, Stokes settling, drag, speed of sound. SI units.",
   builtin: true,

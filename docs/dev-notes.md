@@ -29,3 +29,24 @@ merged to `main` (6227956a; local main first fast-forwarded from origin — it h
 339 commits stale since 1.1). Left to the author: push both branches, tag `v1.3.0`.
 The deferral review's ratification of `out-of-scope.md` (DRAFT since July) was
 presented and is still awaiting the author's word.
+**Same day, second wave (author: all of it ships IN 1.3; the tag waits).**
+**Minimap palette bug fixed**: RF's MiniMap recomputes node fills only when the
+nodeColor callback identity changes; the callbacks keyed on light/dark alone, so a
+palette switch kept stale accents — the palette store version is now a dep
+(FlowSurface). **Function Reference reworked** (author asks): the structurally-empty
+To-do tier is deleted; gap rows now partition two-way into **Superseded** (VLOOKUP
+family, MATCH, SUMIF, the D* dozen, and — second author ruling, the Composable tier
+retired — SUBTOTAL/AGGREGATE/CEILING.PRECISE/FLOOR.PRECISE/ISO.CEILING, all five
+newly LEGACY_ALIASES-blocked with live redirects) and **Out of scope**;
+`functionReferenceLibs.test.ts` pins the partition and that superseded ⇒ blocked.
+The two chip rows collapsed to two dropdowns (Category with a By-pack optgroup
+filtering on membership; Library) and light mode got real contrast: the panel's
+semantic colors are `--fr-*` custom props with a light re-tune (was dark-tuned
+hexes and border-strong-as-text). **The analytics shelf split into two
+off-by-default packs** via tags only (nothing moves, everything stays registered):
+Scientific Computing (Spectrum, Smooth, Find Peaks, Convolve, ODE Integrate, Solve,
+Eigen, Polynomial Roots, Fit Distribution, Decompose) and Data Science (K-Means,
+PCA, Logistic Regression, the five nonparametric tests). Everything Excel-named and
+the mainstream tests stay core. **Settings packs are an accordion** now: `Pack.group`
+(Everyday / Analysis / Science & Engineering), details/summary per group with an
+on-count, descriptions on the rows. What's-New slide + release-notes follow.

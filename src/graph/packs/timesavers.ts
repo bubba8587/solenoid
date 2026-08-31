@@ -48,6 +48,7 @@ export const TIMESAVER_FORMULAS: FormulaPackEntry[] = [
 
 export const TIMESAVERS_PACK: Pack = {
   id: "timesavers",
+  group: "Everyday",
   name: "Common Excel Timesavers",
   description: "Solenoid conveniences that aren't single Excel functions (rolling aggregates, weighted stats, list utilities, extended logic, percent change and CAGR, text cleanup, Reverse Text, Spell Number…). On by default. Turn off to declutter.",
   builtin: true,

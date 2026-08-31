@@ -312,8 +312,16 @@ export const LEGACY_ALIASES: Readonly<Record<string, string>> = {
   FORECAST: "FORECAST.LINEAR",
   NETWORKDAYSINTL: "NETWORKDAYS.INTL", WORKDAYINTL: "WORKDAY.INTL",
 
-  CEILINGMATH: "CEILING.MATH", CEILINGPRECISE: "CEILING.PRECISE",
-  FLOORMATH: "FLOOR.MATH", FLOORPRECISE: "FLOOR.PRECISE",
+  CEILINGMATH: "CEILING.MATH", CEILINGPRECISE: "CEILING.MATH",
+  FLOORMATH: "FLOOR.MATH", FLOORPRECISE: "FLOOR.MATH",
+
+  // The PRECISE/ISO rounding variants differ from the MATH forms only in ignoring
+  // the significance's sign; and SUBTOTAL/AGGREGATE are fn-code indirection whose
+  // hidden-row / ignore-errors options are cell-grid concepts — all superseded,
+  // like SUMIF (nodeExcel's gap rows carry the story).
+  "CEILING.PRECISE": "CEILING.MATH", "FLOOR.PRECISE": "FLOOR.MATH",
+  "ISO.CEILING": "CEILING.MATH",
+  SUBTOTAL: "SUM", AGGREGATE: "SUM",
   GAMMALNPRECISE: "GAMMALN.PRECISE",
   MODESNGL: "MODE.SNGL", MODEMULT: "MODE.MULT",
   PERCENTILEINC: "PERCENTILE.INC", PERCENTILEEXC: "PERCENTILE.EXC",
@@ -331,7 +339,7 @@ export const LEGACY_ALIASES: Readonly<Record<string, string>> = {
   "CHIDIST.RT": "CHISQ.DIST.RT", "CHIINV.RT": "CHISQ.INV.RT",
   "FDIST.RT": "F.DIST.RT", "FINV.RT": "F.INV.RT",
   "BINOMDIST.RANGE": "BINOM.DIST.RANGE",
-  "ISO.CEILING.MATH": "ISO.CEILING", "ISO.CEILING.PRECISE": "ISO.CEILING",
+  "ISO.CEILING.MATH": "CEILING.MATH", "ISO.CEILING.PRECISE": "CEILING.MATH",
 
   // Excel's COLUMN/ROW answer a cell REFERENCE's position, which this graph has no
   // notion of — `nodeExcel.ts` has them out of scope and no node provides them.
