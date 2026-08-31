@@ -93,6 +93,10 @@
      defined once here; the light ramp only re-softens the shadow tint. */
   --overlay-border-width: 2px;
   --overlay-shadow: 0 4px 14px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.2);
+  /* Dock edge: the right docks' (Inspector, Report) leftward lift — cards scroll
+     off the page under that edge, so the border alone reads flat. Minimal on
+     purpose, and it stays under the bars (docks sit below the header's z). */
+  --dock-shadow: -4px 0 12px rgba(0, 0, 0, 0.25);
   --btn-bg: var(--surface-sunken);
   --btn-hover: #1f1f1f;
   --btn-border: var(--border);
@@ -143,6 +147,7 @@
   --canvas-dot: #c3cad4;
   --overlay-border: #aeb6c1;
   --overlay-shadow: 0 4px 14px rgba(20, 30, 50, 0.09), 0 1px 4px rgba(20, 30, 50, 0.05);
+  --dock-shadow: -4px 0 12px rgba(20, 30, 50, 0.1);
   --btn-hover: #e9ecf0;
   --wordmark-color: #1b1e23;
 }

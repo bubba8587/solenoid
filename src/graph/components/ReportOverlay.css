@@ -338,10 +338,10 @@ html.sol-report-docked {
   border: none;
   border-left: 1px solid var(--border-strong);
   border-radius: 0;
-  /* Same dock chrome as the Inspector: under the header (z 5 < 6) so nothing
-     spills over the bars, and shadowless — the dock pushes the canvas, so there
-     is nothing beneath it to lift above. */
-  box-shadow: none;
+  /* Same dock chrome as the Inspector: under the header (z 5 < 6) so the shadow
+     can't spill over the bars; the minimal dock-edge lift marks where cards
+     scroll off the page. */
+  box-shadow: var(--dock-shadow);
   z-index: 5;
 }
 

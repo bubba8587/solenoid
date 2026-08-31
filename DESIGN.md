@@ -213,6 +213,7 @@ The system is flat at rest and uses elevation only to communicate state. Cards s
 - **Card seam** (`--shadow-card`, `0 1px 0 rgba(0,0,0,0.4)`; light `0 1px 2px rgba(20,30,50,0.08)`): NOT a card shadow any more. Survives only under small in-card popovers (the note's field picker, the formula editor).
 - **Popover lift** (`--shadow-pop`, `0 4px 14px rgba(0,0,0,0.2)`): Menus and small popovers. Light theme softens to `rgba(20,30,50,0.06)`.
 - **Overlay lift** (`--overlay-shadow`, `0 4px 14px rgba(0,0,0,0.3), 0 1px 4px rgba(0,0,0,0.2)`): Floating chrome that sits above the graph (socket legend, minimap, pins, alerts). Layered so it reads over busy content without pooling under the element. Light theme softens to `rgba(20,30,50,0.09)` / `rgba(20,30,50,0.05)`.
+- **Dock edge** (`--dock-shadow`, `-4px 0 12px rgba(0,0,0,0.25)`; light `rgba(20,30,50,0.1)`): The right docks' (Inspector, docked Report) leftward lift. Deliberately minimal — the dock pushes the canvas, but cards scroll off the page under its edge and a bare border reads flat there. Docks sit below the header's z, so this can never spill over the bars.
 - **Selection glow** (`box-shadow: 0 4px 14px <node-accent>/28%`): An accent-tinted glow drawn from the selected node's own type color, not a neutral shadow.
 
 ### Named Rules
