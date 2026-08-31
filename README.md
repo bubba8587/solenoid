@@ -76,5 +76,5 @@ npm run tauri build  # production build → src-tauri/target/release/
 
 ## License
 
-MIT, see [LICENSE](LICENSE). Third-party credits are in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+MIT, see [LICENSE](LICENSE). The node canvas is built on [React Flow](https://reactflow.dev) by [xyflow](https://xyflow.com); the graph model runs on [Rete.js](https://retejs.org) and the desktop relational engine is [Polars](https://pola.rs). Full third-party credits are in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
