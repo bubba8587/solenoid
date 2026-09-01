@@ -61,7 +61,8 @@ is parked there.
   this is the authoring guide + rationale).
 - **`pack-composite-plans.md`** — queued composite-shaped pack nodes (parked —
   the pack program is 1.4/2.0, see `deferrals.md`).
-- **`release-notes-features.md`** — the curated selling list / What's-New source.
+- **`release-notes-features.md`** — the curated selling list / What's-New source for
+  the release in progress (1.4; the 1.3 list is at the v1.3.0 tag).
 - **`grid-system.md`** — the (unbuilt) soft-grid design spec; parked in
   `deferrals.md`.
 - **`out-of-scope.md`** — the standing NO list.
@@ -78,21 +79,29 @@ is parked there.
 ## Work queue (forward-looking — verify against code; these rot)
 
 - **`backlog.md`** — OPEN items only; **the single source of truth for tasks.**
-  Landed items get DELETED (git + digests are the record). Since the 2026-08-07
-  pivot: 1.3 ships as-is — the queue is bugs, patches, and polish sweeps; feature
-  work lives in `deferrals.md` "Pushed to 1.4/2.0". The release tail lives here.
-- **`plans/`** — per-task execution plans for the backlog's Execution queue, written
-  so a smaller model can do the routine work (index + protocol in `plans/README.md`).
+  Landed items get DELETED (git + digests are the record). 1.3 shipped; the 1.4 cut
+  is proposed in `1.4-plan.md` and items land here as the author promotes them. The
+  release tail lives here.
+- **`1.4-plan.md`** — the 1.4 release plan (PROPOSAL 2026-09-01): the workbench release.
+  Every deferred idea scored on one rubric (strength / relevance / complexity / blast
+  radius — no time estimates) and, where planned, its grounded per-item plan; the
+  consolidated author-call list. Archive when 1.4 ships.
+- **`plans/`** — per-task execution plans for promoted backlog items, written so a
+  smaller model can do the routine work (index + protocol in `plans/README.md`).
   A plan is deleted with its backlog line.
 - **`python-r-gap.md`** — the 2026-08-23 survey of numpy/pandas/scipy/R functions with no
   Solenoid node (ranked; Tier 1 = build next). Delete a line when its node lands.
-- **`deferrals.md`** — everything the author has deferred/parked/author-gated,
-  in one reviewable list; the backlog carries a single Deferral-review item
-  pointing at it. Nothing there is scheduled until that review promotes it.
-- **`2.0-plan.md`** — the author-present flagships (Excel `.xlsx` transpiler, compositeToolbarReroute, conditionalFormatting;
-  FC A4 units already shipped), the release view over `v2.0/`.
+- **`deferrals.md`** — the parked set WITHOUT a plan (reopen-only, trigger-gated,
+  parked bugs and features), with the notes needed to reopen each. Planned items live
+  in `1.4-plan.md` / `2.0-plan.md`, never here too.
+- **`2.0-plan.md`** — the 2.0 release plan (PROPOSAL 2026-09-01): the arcs that change
+  what a document is — pages, collaboration (accounts / cloud saves / multiplayer), the
+  Excel transpiler, conditional formatting, canvas at scale, value-model extensions,
+  packs, Gantt — plus the cross-cutting prerequisites (save-format freeze, trust on
+  open, updater, the web-target decision) and the decisions it reopens.
 - **`v2.0/`** — the live plan bundles: 08 Excel transpiler, 10 decision sensitivity,
-  12 uncertain/money, 16 widget nodes. Built bundles are archived (05 units →
+  12 uncertain/money, 16 widget nodes (proposed for 1.4), 20 pages, 21 collaboration,
+  22 canvas at scale, 23 conditional formatting. Built bundles are archived (05 units →
   `archive/units-format-controller.md`; 17 matrix formulas, 18 parity corpus,
   19 computed-column surface → `archive/`); see `v2.0/README.md`.
 - **`dev-notes.md`** — session DIGESTS + open problems only; per-item history in

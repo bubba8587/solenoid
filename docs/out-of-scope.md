@@ -4,6 +4,13 @@
 > (2026-07-02). Treat every entry as a *proposal*, not policy: do not cite it to
 > reject work until the author has been through it. The four tests and the
 > Alteryx-pattern distinction are the parts most likely to survive review intact.
+>
+> **2026-09-01:** the author has put **accounts, cloud saves and multiplayer editing** on the
+> 2.0 plan (`v2.0/21-collaboration.md`). That order contradicts **test 3, §3 and §11** below
+> (and decisions R5). Do not cite those sections to reject that work; the ratification must
+> rewrite them into the staged posture the bundle describes (the file stays the product,
+> local-first stays true, every hosted piece has an exit). §4's bounded Script form already
+> shows the shape of such a rewrite.
 
 Last in the series ([architecture](archive/future-directions.md) →
 [features](archive/scope-features.md)). This one is the

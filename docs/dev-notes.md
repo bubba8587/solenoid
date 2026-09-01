@@ -6,66 +6,39 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
-### SESSION DIGEST (2026-08-31 — the finance golden run + the 1.3 release tail)
+### SESSION DIGEST (2026-09-01 — 1.3 shipped; the 1.4 / 2.0 planning pass)
 
-**The bond/coupon family is real-Excel-verified** (the author ran the golden list by
-hand; the last backlog "awaiting the author" item is CLOSED). The run confirmed COUP*,
-ACCRINT b0/b1, ACCRINTM, VDB (fractional windows included) and MDURATION — where it
-also settled the doc question: real Excel returns our 5.7356698, so Microsoft's
-published 5.7355689 IS a typo. It caught **three real bugs, all fixed** in the shared
-ops (nodes + formulas move together): ACCRINT basis 2 divided by the actual period
-length instead of 360/freq; ODDLPRICE compounded the odd-last discount where Excel
-uses SIMPLE interest (the PRICEMAT convention); ODDFPRICE sized the first coupon from
-the quasi-period start instead of ISSUE — a long odd first coupon carried a full
-extra period of interest (103.82 vs Excel's 98.57). Rewritten to Excel's documented
-quasi-coupon form (DC/NL, A/NL per quasi period, exponents N + Nq + DSC/E). Every
-confirmed value is pinned in `financeInvariants.test.ts`'s golden block. One noted
-divergence (nodeExcel parity:false): Excel #NUM!s a first coupon off the maturity's
-cycle; we compute.
-**Release tail executed:** tsc + vitest green, `release:desktop` built clean (exe +
-MSI + NSIS), the author smoked Script-on-desktop (CSP `'unsafe-eval'` holds: 42, no
-refusal), Known Issues finalized in `release-notes-features.md`, and `develop` was
-merged to `main` (6227956a; local main first fast-forwarded from origin — it had sat
-339 commits stale since 1.1). Left to the author: push both branches, tag `v1.3.0`.
-The deferral review's ratification of `out-of-scope.md` (DRAFT since July) was
-presented and is still awaiting the author's word.
-**Same day, second wave (author: all of it ships IN 1.3; the tag waits).**
-**Minimap palette bug fixed**: RF's MiniMap recomputes node fills only when the
-nodeColor callback identity changes; the callbacks keyed on light/dark alone, so a
-palette switch kept stale accents — the palette store version is now a dep
-(FlowSurface). **Function Reference reworked** (author asks): the structurally-empty
-To-do tier is deleted; gap rows now partition two-way into **Superseded** (VLOOKUP
-family, MATCH, SUMIF, the D* dozen, and — second author ruling, the Composable tier
-retired — SUBTOTAL/AGGREGATE/CEILING.PRECISE/FLOOR.PRECISE/ISO.CEILING, all five
-newly LEGACY_ALIASES-blocked with live redirects) and **Out of scope**;
-`functionReferenceLibs.test.ts` pins the partition and that superseded ⇒ blocked.
-The two chip rows collapsed to two dropdowns (Category with a By-pack optgroup
-filtering on membership; Library) and light mode got real contrast: the panel's
-semantic colors are `--fr-*` custom props with a light re-tune (was dark-tuned
-hexes and border-strong-as-text). **The analytics shelf split into two
-off-by-default packs**: Scientific Computing (Spectrum, Smooth, Find Peaks, Convolve,
-ODE Integrate, Solve, Eigen, Polynomial Roots, Fit Distribution, Decompose) and Data
-Science (K-Means, PCA, Logistic Regression, the five nonparametric tests). Everything
-Excel-named and the mainstream tests stay core. First cut used tags (cross-woven);
-the author then ruled the Add menu must show what a pack added, so the 18 leaves
-moved out of nodeCatalog into real placements under Packs › <name> (type strings/
-labels/descriptions verbatim — saves, ops, formula dispatch, parity suites all hold;
-frameSurfaceNames' ghost check widened to the whole tree for the pack-homed frame
-verbs). **Docked Inspector + Report tuck under the header now** (z 90 → 5, the heavy
-side shadow deleted — a dock pushes the canvas, nothing sits beneath it;
-layout-chrome.md reconciled). **Settings packs are an accordion** now: `Pack.group`
-(Everyday / Analysis / Science & Engineering), details/summary per group with an
-on-count, descriptions on the rows. What's-New slide + release-notes follow.
-**Third wave.** **Add-menu search scores per query word with one-edit typo tolerance**
-(author: "frane input" surfaced nothing — it ranked 19th under description noise):
-each word lands as a haystack subsequence or within one Damerau-Levenshtein edit of
-a leaf word; word order free; pinned in `catalogSearch.test.ts` + new `fuzzy.test.ts`
-(subsystem-invariants § Add menu reconciled). **Add-menu leaves reordered
-significance-first** within Output / Visuals / Tables & Frames / Lists / Logic /
-Text / Date & Time — pure reorder of `nodeCatalog.ts`, no entries changed.
-**Attribution shipped**: THIRD-PARTY-NOTICES.md gains React Flow (MIT text, watermark
-stays on) + a bundled-libraries section naming the non-MIT ones (elkjs, dompurify,
-OFL fonts); README License line credits React Flow / Rete.js / Polars. README
-rewritten by the author; factual audit delivered in-session (verbs are frame-only,
-Cube isn't "3D", Record outputs on the chart socket rather than "renders as a
-Chart", logical↔number is a deliberate bridge) — copy fixes are the author's.
+**1.3 is released** (v1.3.0 on `main`; the author: `develop` is level with it). The backlog's
+"Cut 1.3" tail is deleted; the backlog is retitled to 1.4 and carries only the two
+ratifications (the 1.4 cut, `out-of-scope.md`) plus the ARR pass.
+**The deferral review ran as a planning pass.** Every parked, deferred and author-gated idea
+(deferrals, the 2.0 flagships, the v2.0 bundles, the pack-composite queue, the open
+python-r-gap item) was walked and scored on one rubric — strength, relevance,
+complexity, blast radius; no time estimates by order — and placed: **`1.4-plan.md`** (new: the
+workbench release — what-if surgery pin/mute/peek/cone + an Optimize run mode, the Record and
+table lifts, the widget nodes behind a per-document network permission, the surface
+hardening: allowlist A, node-combining round 2, ARR, AI palette back on; every item with a
+grounded plan, tests, gate and done-definition; a consolidated author-call list), and
+**`2.0-plan.md`** (rewritten: pages, collaboration, the transpiler, conditional formatting,
+canvas at scale, value-model extensions, packs as a program, Gantt; the cross-cutting
+prerequisites it surfaces — save-format freeze + migration seam, trust on open, desktop
+updater, the web-target decision, version history + diff, an accessibility baseline).
+Four new bundle docs: `v2.0/20-pages.md` (one editor/engine, pages as view scopes, cross-page
+cables as portal stubs), `v2.0/21-collaboration.md` (the author's new surface — accounts,
+cloud saves, multiplayer — staged 0→3, Stage 0 serverless and 1.4-pullable; states plainly
+what it reverses in `out-of-scope.md` test 3/§3/§11 + decisions R5/noBackCompat and what a
+service costs; the CRDT keyed by the addressable model's names; the trust-on-open security
+work), `v2.0/22-canvas-at-scale.md` (headless card metrics → virtualization → worker HIC),
+`v2.0/23-conditional-formatting.md` (design-pass prep: a rule is a graph value).
+**Reconciles:** `deferrals.md` shrunk to parked-with-no-plan (planned entries moved into the
+plans — one home per fact); `release-notes-features.md` reset to the 1.4 shell (the 1.3 list
+is at the v1.3.0 tag); `out-of-scope.md` gains a status line that the collaboration surface
+contradicts it by author order (do not cite §3/§11 to reject that work); bundle 08's
+"sheets → Groups" becomes "sheets → pages"; bundle 16's status points at 1.4 C1; the docs
+index and the v2.0 index list the new docs. Findings from the pass worth a line: the
+compositeToolbarReroute flagship is mostly delivered by the RF port's `activeGraph` seam —
+1.4 E2 is an audit, not a build; Solver parity fits as a composite RUN MODE (Goal Seek
+generalized), not a node; the Excel transpiler's best-fidelity path is Excel Tables →
+Frame Inputs with computed columns (structured refs ≈ tableRefSemantics).
+**Awaiting the author:** the 1.4 cut; the out-of-scope ratification (now a rewrite of three
+sections); the calls listed at the end of `1.4-plan.md` and in `v2.0/21` § Open author calls.

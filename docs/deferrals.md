@@ -1,365 +1,102 @@
-# Deferrals — the parked / author-gated set (1.3 review list)
+# Deferrals — the parked set (no plan attached)
 
-Everything the author has marked deferred, parked, author-present, or
-only-if-triggered, gathered in ONE place. The backlog carries a single item —
-**Deferral review** — that points here; nothing in this file is scheduled work
-until that review promotes it. Ruled-out-forever ideas stay in
-`out-of-scope.md`; the 2.0 flagships stay in `2.0-plan.md` (this list doesn't
-duplicate them, just names them for the review).
-
-## Pushed to 1.4 / 2.0 (the 2026-08-07 pivot — 1.3 ships as-is)
-- **Headless card metrics (author 2026-08-27, via pretextjs.dev)** — every layout consumer
-  (Tidy, docking, standoffs, lasso, minimap, HIC) sizes cards from mounted elements, which is
-  what blocks RF `onlyRenderVisibleElements` (virtualization; the memory lever). A DOM-free card
-  metric — `NodeCard`'s fixed row geometry as arithmetic, Pretext (pure-JS text layout, zero DOM
-  reads) for the wrapped value/text boxes — would size unmounted cards and unlock virtualization,
-  fit-before-paint and HIC painting labels itself. 2.0-shaped. First step landed 2026-08-27:
-  `Surface.measured` (RF's post-layout measure) is the first tier of `measuredBox`, so layout
-  math no longer forces reflows for mounted cards.
-- **HIC paints from a worker (author 2026-08-27, via github.com/awaisshah228/infinit-canvas)** —
-  that library is the RF API over OffscreenCanvas + a Web Worker, DOM only as an overlay; its
-  5000-nodes figure is for built-in nodes (custom nodeTypes go hybrid, i.e. our DOM anyway).
-  The one piece to take: HIC's held layer painted from a worker (`transferControlToOffscreen`),
-  keeping the main thread free during gestures. A contained HtmlCanvasLayer change, NOT a third
-  render path (decisions reactFlowView). Pairs with headless card metrics above — both are "draw cards you
-  never mount". 2.0.
-- **Obstacle-avoiding cable shape (author 2026-08-27, via github.com/awaisshah228/avoid-edge-routing)**
-  — `obstacle-router`: a pure-TypeScript, zero-dependency port of libavoid (orthogonal / polyline /
-  bezier, pin-based handle attachment, nudging of parallel segments, corner rounding), with a
-  `reactflow-edge-routing` wrapper (hooks + Web Worker). Unlike libavoid-js it's not WASM, so it
-  fits the bundle. Where it goes: ONE more entry in the cable-shape selector ("routed"), fed
-  node boxes from `Surface.measured`; never a replacement for `cablePaths.ts` (the walk router is
-  what ribbons, conduit faces and socket angles are built on). License gate: `obstacle-router`
-  is LGPL-2.1 (libavoid's) — dynamic-linking terms don't map cleanly onto a bundled web/Tauri
-  build; the wrapper is MIT. Author call before adopting. Feature-shaped → 1.4.
-
-Feature-shaped backlog items moved here wholesale. **2026-08-23: the author reopened the
-scope** — the engine/logic entries that were never really parked (distribution fitting,
-correlated MC, trajectory capture, column profiling + summary footer, Tidy options, the
-editing-surface kernel, lazy handles, value-popup gaps, eager-verb Polars mirrors, cube
-Unnest, the XLOOKUP bypass) moved to `backlog.md`'s Execution queue; what stays here is
-design-gated, author-present, or UI-eyeball work.
-
-- **Solenoid-wide steal map** (competitor dive round 2, 2026-08-18 — author widened
-  the scope past the Record family; sources in the session digest). Surveyed the
-  Alteryx-pattern incumbents (KNIME/Alteryx, @RISK/Crystal Ball, Mathcad,
-  Quantrix/Causal, Stella/Vensim, Power Query) plus canvas-UX donors (n8n,
-  Blender, marimo/Observable). Every candidate below was verified ABSENT from the
-  code and clear of `out-of-scope.md`, `decisions.md`, and the existing plan set.
-  Already ours, no action: scenario sets, data-table sweeps, goal-seek, and
-  simulation are composite RUN MODES; unpivot is a verb; stale dots, isolate,
-  Tornado, As-Of, Note annotations all shipped; provenance Tier 2 and the
-  compute cache are already parked entries.
-  - **Pin a node's output** (n8n data pinning, KNIME caching): freeze a slow or
-    live branch as its last value, visibly marked, recompute passes it through.
-    Interacts with calc modes, the parked #23 compute cache, and the provenance
-    story (a pinned value is a labeled literal) — needs its own design pass.
-  - **Mute/bypass a node** (Blender M-mute, n8n deactivate): pass-through
-    without unwiring for what-if surgery. Socket-lattice pass-through rules for
-    multi-port nodes are the real design work.
-  - **Peek any socket** (Blender viewer pattern): one gesture wires a floating
-    preview to any output; today a peek needs a Display node or the right popup.
-  - **Constrained optimizer** (Excel Solver, Mathcad solve blocks): min/max an
-    output subject to constraints — the Solver-parity gap; Equation (equationNode)
-    deliberately solves only `=`. Sibling-node-sized, its own author call.
-  - **Fusion indicator** (Power Query folding indicators): show which verb chain
-    fused into one Polars round trip vs materialized in JS — inspection surface
-    for the engine seam; the lazy-handle engine work landed 2026-08-25.
-  - **Dependency-cone hover brush** (marimo reactive highlighting): soft
-    highlight of a node's upstream/downstream cone on hover; isolate is the
-    heavy version, this is the glance version.
-- **Record-family & adjacent display-surface steals** (author-ordered research
-  dive 2026-08-18, rounds 1 and 3, across Airtable / Grist / Notion / Baserow /
-  NocoDB / SeaTable / Coda; session digest has the sources). Candidates, best
-  fit first — all display-side, none make the figure edit its frame:
-  - **Gallery tile click → picks the row**: highlight the clicked tile and drive
-    the card view's row from it, so gallery → card master-detail goes live
-    (Grist's linked card-list pattern). The `picked` row output shipped with the
-    Gallery/Board ops and was removed 2026-08-19, so this needs a channel that
-    isn't a data output socket. A figure gaining an input gesture is an author
-    call.
-  - **Cover image**: a designated image field drawn full-bleed at the card top,
-    label-less, with Airtable's crop/fit distinction (`object-fit` cover/contain).
-    Universal in the genre (Airtable/Notion/Baserow/SeaTable). Authoring surface:
-    an options key or a layout-text marker.
-  - **Title row**: one field rendered label-less and prominent (Airtable primary
-    field, Notion page title, Grist themes all have it).
-  - **Card size presets**: S/M/L options key scaling the gallery track band
-    (Notion/Airtable both offer exactly three sizes).
-  - **Board lane polish**: per-lane card count, collapsible lanes (Airtable
-    kanban has both; lane DRAG-reorder and card drag stay out — moving a card
-    would edit the frame).
-  - **Hide-empty option**: skip null-valued boxes in gallery/board cards
-    (dense-card practice across the genre); the card view keeps its fixed layout.
-  - **Wrap/clamp option**: line-clamp long values on tiles (Notion's wrap toggle
-    inverted); the popup already shows the full card.
-  - **Color-by field** (Airtable "color records"): conditionalFormatting-ADJACENT — conditional
-    color is author-gated; goes nowhere without that session.
-  - **Two-axis board (swimlanes)**: Airtable kanban notably LACKS it (their
-    timeline has it) — a differentiator if the board ever grows; biggest scope
-    of the set.
-  Round 3 (author steer: UI surfaces around the record/gallery family):
-  - **List view as a fourth Record op** (Notion list / Airtable list): one line
-    per record, title field + trailing fields, dense browsing between card and
-    gallery. Fits oneRecordNode exactly — views are ARGUMENTS of the one Record node.
-  - **Grouped gallery sections** (Airtable gallery grouping): a group-by column
-    renders labeled sections inside the gallery, the masonry packing per
-    section — the board's lanes turned horizontal bands.
-  - **Lane / group summary line** (Airtable GRID group summary bars; their
-    kanban notably lacks it): per-lane or per-section count plus one aggregated
-    column (sum/avg of a named column) in the lane header. Display-only, and a
-    place to EXCEED the genre.
-  - **Image lightbox** (Airtable attachment preview): click an image box in any
-    record surface → full-size overlay with prev/next through the record's
-    images or the gallery's cards. Today images render inline and clicks do
-    nothing.
-  - **Record navigation in the popup** (Airtable expanded-record prev/next):
-    the card popup carries the pager so records flip without closing; keyboard
-    arrows included.
-  - **Peek dock** (Notion side peek): open value/figure popups docked to the
-    right instead of center-overlay, canvas stays interactive; the Inspector
-    dock (`sol-inspector-docked`) is the shipped precedent. Per-surface default
-    like Notion (gallery → center, table → side) if it lands.
-  - **Chip hover preview** (macOS Quick Look pattern): hovering a value chip
-    shows a transient mini-preview before committing to the popup.
-  - **Frozen header / first column in the table popup**: sticky header row and
-    optional first-column freeze while scrolling wide frames; no such
-    affordance exists in the popup grid today.
-  - **Calendar figure** (Airtable calendar view, as a pure display figure):
-    date-keyed records on a month grid, chips per day. SAME FAMILY as the
-    timeline/Gantt figure the author MAJORLY deferred (2026-08-18, "loves
-    Gantt, not now") — treat that ruling as covering this sibling until the
-    author says otherwise.
-  Not steals: drag-and-drop card layout editing (our layout is TEXT by design —
-  wireable, Note-authorable), in-view search/sort/filter (upstream verb nodes
-  are the Solenoid answer), form entry (its own program; entry widgets already
-  landed 2026-08-18), timeline/Gantt (already author-deferred above), row
-  tinting / color-by (author-gated conditionalFormatting).
-
-- **Record-family lifts, remaining set** (Airtable/Grist sweep proposed with the
-  Record node, 2026-08-18; author: "mostly fine". Standing constraint: every view
-  lands ON the one Record node — ops, never a sibling node. The Gallery/Board ops
-  and the Table-popup Form view (record-at-a-time entry) landed 2026-08-18; the
-  `picked` row output landed with them and was removed 2026-08-19. Still queued:
-  (1) select/categorical columns — author verdict 2026-08-18: "potential there for
-  sure but needs a larger 1.4 look; backlog with interest". Two halves when that
-  look happens: the DISPLAY half (per-value tinted chips for a string column's
-  distinct values — opt-in "Chip" entry in the popup's per-column format row so
-  the color stays user-authored under the Quiet Accent Rule; hues from the
-  categorical chart palette, assigned by first appearance) and the FUNCTIONAL
-  half (constrained entry: a datalist of the column's distinct values on grid
-  and Form-view string inputs — cheap, no color, arguably the better lift). The
-  larger question for 1.4: whether these become a real enum column semantic or
-  stay display+entry sugar on string columns;
-  (2) a timeline/Gantt figure from Task/Start/End columns — MAJORLY deferred
-  (author 2026-08-18: loves Gantt, not now; Mermaid's gantt text remains the
-  interim route). Author 2026-08-18b: probably a MUST eventually for the
-  all-in-one feel; deferred on sheer scope. Scope note for the review: what
-  makes competitor Gantts app-sized is the EDITOR half (drag-to-reschedule,
-  reflow, resource leveling) — excluded here by the figures-display-only
-  covenant. The Solenoid decomposition is (a) a display figure in the
-  Waterfall class, (b) a Schedule computation (forward pass over
-  Task/Duration/Depends; WORKDAY math already in `date.ts`) as a verb or
-  composite preset, (c) no bar-editing ever — edits happen in the table.
-  Not doing: linked-record columns (Join/XLOOKUP carry the semantics); row
-  tinting (that is author-gated conditionalFormatting).
-- **Image as a real FrameColType** (author proposal with the Record node, 2026-08-18;
-  evaluated and deferred). A first-class `image` column touches every layer that
-  switches on `FrameColType` — both FrameBackends and the cargo parity corpus, CSV
-  read/write, coercion, socket coloring, the popup editor — for a payload Polars
-  cannot compute on. What the proposal was FOR (a picture rendering inside a Record
-  box) shipped without it: `recordImageSrc` detects `data:image/` and
-  image-extension URLs in plain STRING cells at the display layer. Reopen only if
-  images need to behave differently from strings inside the ENGINE (e.g. an
-  attachment store bundling frame images the way the Image node bundles its file);
-  the next cheap slice would be the same detection in `TablePopup` cells.
-- **iFrame / embed node** — web-embed out the `chart` socket. Gate call: CSP
-  `https:` vs domain allowlist. Non-negotiables when built: `sandbox` without
-  allow-top-navigation, `referrerpolicy=no-referrer`, https-only, click-to-load,
-  no off-screen render + capped concurrency.
-- **Data Feed widening** — real symbol-search picker + more providers (shipped
-  baseline: FRED keyless / Alpha Vantage keyed). Stays Excel STOCKHISTORY scope —
-  no crypto/FX/real-time/options/fundamentals.
-- **Document-level FC defaults** (default places / number format) — a
-  format-pipeline integration, author-present.
-- **Top-bar decorative art slot** — `TopBar.tsx` holds the empty middle-gap div;
-  needs author art.
-- **Moveable / resizable / hideable toolbar chrome** — customisation slice.
-- **Computed Column UX tail** — shared column-picker component (Sort/Get Column/
-  Join name columns as free text today), output-column format/unit controls on
-  the CC node's card (popup half shipped), λ view-as on the card.
-- **Aliasing / hidden-port promotion UI** (composites) — the data model has
-  `hidden`/`advanced` per port; no UI to flip exposure or edit baked defaults.
-  Includes the pack-shell "many ports → one shell parameter" aliasing.
-- **AI palette — 1.3 ships it DISABLED** (`AI_ENABLED = false` in `aiKey.ts`, author
-  2026-08-30). Re-enabling is flag + restore the What's-New slide and the
-  release-notes `[slide]` (the entry there says how), then the parked verification
-  tail: first real-key end-to-end (`ANTHROPIC_API_KEY=… npm run ai-prompt`), palette
-  on the preview (author eyeball), Tidy on an all-at-0,0 generated graph, one desktop
-  CSP smoke. (Known + accepted: Apply drops undo history — autosave keeps the
-  pre-apply doc.) Later-if-wanted: streamed reply rendering; OAuth-style connect
-  instead of a pasted key.
-- **Lazy handles, the ruled-out tail** (Slicer went lazy 7c34d874; plan doc deleted):
-  Rust store as `LazyFrame` plans (would make an intermediate flush free but breaks
-  the eager-independent-frames drop rule) and `WireOp::pivot` — both out-of-scope
-  separate calls.
-- **Per-card CSS conversion, step 2** (author: "for later"; census DONE — A2
-  2026-08-25, `scripts/card-css-census.mjs` + `window.__solenoidCardCensus`, FINDING
-  in archived dev-notes). High-leverage target: the socket-dot ring (2,221 elements);
-  smaller wins: corner badge/lock, section divider. Paint-only → pseudo-elements /
-  backgrounds / masks; paint-only STATE → custom properties + `:has()` / container
-  queries. Sockets may be CSS-positioned (verified: only a `transform` inside
-  `__content` misreports an endpoint). Charts/popups won't move (recharts + `<input>`
-  grids).
-- **XMATCH/XLOOKUP deferred remainder** (the 2026-08-11 narrowness analysis is
-  otherwise LANDED — orientation guards, array-lookup spill on formula AND both
-  nodes, shared `xmatchIndex` kernel; pinned in `excelFunctions.test.ts` /
-  `errorValue.test.ts` / `frameLookup.test.ts`): a 1×N/N×1 MATRIX lookup VALUE still
-  `#SHAPE!`s, and per-argument spill for other functions (wholeArrayArgs/prepByShape)
-  awaits the general mechanism. Also settled there: XLOOKUP/XMATCH take no frame/cube
-  input — Get Column → XMATCH is frame-XMATCH; don't reopen.
-- **Packs (the whole program)** — Materials & Mechanical (INTERPOLATE gate
-  cleared; domain content remains — `pack-composite-plans.md`); Timesavers
-  autonomous idioms landed (`packs/timesavers.ts`); the config-carrying date idioms stay an author call (below); composite pack-node shape (packs can't ship subgraphs yet); pack
-  distribution + dependency system (saves don't record required packs; owns the
-  ABSENT-pack formula diagnosis + `initPackFormulas()` re-run on folder reload).
-- **Distribution accuracy widening** — representative-point validation only
-  today; widen if accuracy is ever in doubt.
+Everything the author has parked, ruled reopen-only, or left waiting on a trigger, in ONE
+place — with the notes needed to reopen it without re-deriving. **Planned items are not
+here:** the 2026-09-01 planning pass scored every deferred idea and moved the ones with a
+plan into [`1.4-plan.md`](1.4-plan.md) (the workbench release) or [`2.0-plan.md`](2.0-plan.md)
++ [`v2.0/`](v2.0/README.md) (the structural arcs). An item the author rejects from those plans
+comes back here with a one-line reason; an item promoted from here gets a plan section there
+and its entry deleted. Ruled-out-forever ideas: `out-of-scope.md`; settled rationale:
+`decisions.md`.
 
 ## Needs an author decision before any build
 
 - **Architecture map v2 — WAIT FOR THE AUTHOR'S SPEC.** The old map (Subsystem cards +
-  import cables, generator chain, coverage guards) is deleted. The author will
-  describe the replacement precisely; build nothing toward it until then.
-- **Table/cube popup virtualization for wide EDITABLE frames** (author 2026-08-30:
-  "don't really care" — parked). Read-only cells already render plain text (~50% off
-  every read-only popup, landed 2026-08-24; `scripts/table-popup-probe.mjs` has the
-  measurements). The open call is Path A (keep the `<table>`, window the `<tr>`s
-  ourselves, ~60 lines) vs Path B (div-grid rewrite on `react-window` — settled:
-  react-window CANNOT wrap the existing `<table>`, its rows are hardcoded divs).
-  Either path: sort order, an open edit scrolling out, Copy CSV / Export staying
-  whole-dataset, and the form-view pager all need checking.
-- **Formula surface flips to an allowlist** (author 2026-08-30: can wait). The surface
-  is defined by SUBTRACTION from Formula.js's export (~445 names via
-  `FX_FUNCTION_NAMES`), so an undeclared FX name with an array arg broadcasts into a
-  #VALUE! array or throws. Near fix: short-circuit those to a clean SolError at the
-  matrix gate; real fix: a name exists iff declared. Plan:
-  `docs/plans/formula-surface-allowlist.md`.
-- **Node-combining round 2** (round 1 LANDED 2026-08-09; Set merge DONE A2 8d77cf7f):
-  paired-list aggregate (SUMPRODUCT + SUMX* + CORREL + COVARIANCE + WAVG family — the
-  two-list Aggregate; author: wait); payment breakdown 2×2 (IPMT/PPMT ×
-  CUMIPMT/CUMPRINC; author unfamiliar — explain first); discount securities
-  (TBill/SecurityDisc/PriceDisc/PriceMat, specs in git 68bf5679); ACCRINT+ACCRINTM;
-  BondPrice+OddCoupon.
-- **Everyday widget nodes (v2.0 bundle 16)** — Weather / Geocode / FX / Holidays /
-  TZ Convert / QR. Tier 1 is autonomous-friendly and could be 1.3, but 4 gate
-  calls come first: `v2.0/16-widget-nodes.md`.
+  import cables, generator chain, coverage guards) is deleted. The author will describe the
+  replacement precisely; build nothing toward it until then.
+- **Feature/value copy doc** for landing/marketing — author will initiate; ranked candidate
+  copy lines per feature, author ranks value.
+- **Table/cube popup virtualization for wide EDITABLE frames** (author 2026-08-30: "don't
+  really care" — parked; `1.4-plan.md` B9 HOLD). Read-only cells already render plain text
+  (~50% off every read-only popup, landed 2026-08-24; `scripts/table-popup-probe.mjs` has the
+  measurements). The open call is Path A (keep the `<table>`, window the `<tr>`s ourselves,
+  ~60 lines) vs Path B (div-grid rewrite on `react-window` — settled: react-window CANNOT wrap
+  the existing `<table>`, its rows are hardcoded divs). Either path: sort order, an open edit
+  scrolling out, Copy CSV / Export staying whole-dataset, and the form-view pager all need
+  checking. 1.4's frozen-header lift (B3) is `position: sticky` and does not prejudge this.
+- **INDEX — marked for later (2026-07-01, `archive/cube-node-scope.md`)**: output socket
+  should express Cube (today singular `any`); Excel range forms (`row=0`/`col=0` whole
+  row/col, the reference form) — Solenoid INDEX is cell-only. (`1.4-plan.md` D6 HOLD.)
 
-- **Timesaver date idioms needing a config widget or a judgment call** — Fiscal
-  Quarter (start month), Age (DATEDIF "MD" nuance), Nth Weekday. The zero-config
-  idioms (Quarter, Days in Month) already shipped in `packs/timesavers.ts`.
+## Reopen only if the trigger returns
 
-- **Expression `/` doesn't mint a pure ratio** — the Divide NODE mints `5:1` on a
-  same-dimension cancel; Expression strips UnitCells at its boundary, so `a/b`
-  yields a bare number. Decide: leave (Expression is deliberately type-agnostic —
-  likely fine) or make Expression unit-aware someday.
-- **Error UX on restriction violation** — typed error out the socket vs the node
-  flagging the offending input locally. Pending a call.
-- **Traveling-cable flow pulse → maybe the app's cables** (author likes the landing
-  page's marching-dash rendering, `LandingScenes.tsx` `.sol-cable__flow`).
-  Touches the never-degrade-cables rule and DESIGN.md's no-decoration stance —
-  it would make the pulse MEANING, not decoration.
-- **Feature/value copy doc** for landing/marketing — author will initiate; ranked
-  candidate copy lines per feature, author ranks value.
-- **INDEX — marked for later (2026-07-01, `archive/cube-node-scope.md`)**: output
-  socket should express Cube (today singular `any`); Excel range forms
-  (`row=0`/`col=0` whole row/col, the reference form) — Solenoid INDEX is cell-only.
+- **Image as a real FrameColType** (author proposal with the Record node, 2026-08-18;
+  evaluated and deferred). A first-class `image` column touches every layer that switches on
+  `FrameColType` — both FrameBackends and the cargo parity corpus, CSV read/write, coercion,
+  socket coloring, the popup editor — for a payload Polars cannot compute on. What the
+  proposal was FOR (a picture rendering inside a Record box) shipped without it:
+  `recordImageSrc` detects `data:image/` and image-extension URLs in plain STRING cells at
+  the display layer. Reopen only if images need to behave differently from strings inside
+  the ENGINE (e.g. an attachment store bundling frame images the way the Image node bundles
+  its file — 2.0's cloud assets, `v2.0/21-collaboration.md`, would be that trigger); the
+  next cheap slice would be the same detection in `TablePopup` cells. The same blast-radius
+  argument is why 1.4's categorical columns (B2) ship as sugar, not a type.
+- **Data Feed widening** — real symbol-search picker + more providers (shipped baseline:
+  FRED keyless / Alpha Vantage keyed). Stays Excel STOCKHISTORY scope — no crypto/FX/
+  real-time/options/fundamentals (FX itself is the widget-node call, `1.4-plan.md` C1).
+  Reopen on a user ask. (`1.4-plan.md` C3 HOLD.)
+- **Lazy handles, the ruled-out tail** (Slicer went lazy 7c34d874; plan doc deleted): Rust
+  store as `LazyFrame` plans (would make an intermediate flush free but breaks the eager-
+  independent-frames drop rule) and `WireOp::pivot` — both out-of-scope separate calls.
+- **Distribution accuracy widening** — representative-point validation only today; widen if
+  accuracy is ever in doubt.
+- **Pack variant-switch reconciles the socket set** — a variant dropdown would add/remove
+  sockets like Cast/read-as do. (The existing custom nodes all keep fixed sockets across
+  their dropdowns, deliberately — nothing waits on this; the Materials & Mechanical pack,
+  `1.4-plan.md` E3, uses fixed sockets.)
+- **MMULT dimension algebra** — only if a dimensioned-linear-algebra use case ever appears;
+  documented-strip is the deliberate stance (unitGranularity).
+- **Provenance Tier 2 — on-demand "why is this?" walk** — backward-derivation trace for any
+  value (Tier 1, error origin + fly-to-source, shipped in `errorValue.ts`). Idea salvaged
+  from the archived provenance bundle. 1.4's pin (A1, "a pinned value is a labeled literal")
+  and the dependency-cone brush (A4) are the closest planned relatives.
+- **Inside-solve stale dot is uniform** — after an INSIDE Solve the dot reads green though
+  the held result is seed-based; distinguishing needs a drill-state signal in the compute
+  layer (couples `data()` to `compositeEditorStore`). Left simple on purpose; revisit only
+  if it reads as misleading (1.4's A0 badge vocabulary is where a "held" state would go).
+- **Obsidian follow-ups (if wanted)**: auto-reload an imported note on file change (the
+  Stage-0 file watcher in `v2.0/21-collaboration.md` would give this for free); write config
+  for `![[Note]]` transclusion vs inlining an embedded note's body.
+- **Group-by-into-nesting / a top-edge "grid" Build Cube** — considered-and-dropped ideas
+  the cube doc keeps on the table; add only on demand.
+- **Two-axis board (swimlanes)** — Airtable's kanban lacks it; a differentiator if the board
+  ever grows. HOLD until 1.4's grouped gallery (B1) proves the lane machinery.
 
-## Author-present build sessions (2.0 flagships — see `2.0-plan.md`)
+## Parked bugs (explicitly parked by the author)
 
-- **Document tabs = PAGES IN ONE DOCUMENT (author ruling 2026-08-30; deferred whole to
-  2.0).** One save file; tabs are canvas pages of it; pages reference each other's nodes.
-  Explicitly NOT concurrently-loaded library documents with cross-doc links — that fork
-  was weighed and rejected. The 2026-08-30 audit's carryovers: the drill-in machinery is
-  the surface template (cached stack, one mounted FlowSurface that swaps, activeGraph
-  override), and a stack now works fully unmounted (post area→view: positions on the
-  node, `nodeElement` null-safe). One-doc-one-file means a SINGLE engine/editor can
-  plausibly serve all pages (pages as view scopes; cross-page references could even be
-  real connections rendered as portals) — decide that before building. Known blockers if
-  pages get separate editors instead: `nodeNameStore` is one flat per-doc namespace and
-  `forgetAllNodes()` wipes node-keyed stores globally. Save format: one SavedGraph
-  carrying pages (noBackCompat applies).
-
-- **compositeToolbarReroute — composite toolbar reroute** (top toolbar / mobile bar drive the
-  active subgraph). Wants live eyeballing.
-- **conditionalFormatting — conditional formatting for tables** — own design pass; must clear Excel's
-  version by a lot; Display-node-only; must not step on FC format/units territory.
-- **Excel `.xlsx` transpiler** (`v2.0/08`) — deliberately sequenced late.
-- **v2.0/10 decision sensitivity** — buildable (its Monte Carlo hook shipped);
-  needs re-triage / an author pick.
-- **v2.0/12 uncertain values + money mode** — sequenced dead last; each needs an
-  author representation call first.
-
-## Author-present polish
-
-- **The rules.md ARR pass** (author 2026-08-30: waits for 1.4) — walk every rule and
-  authorize as permanent; the rule index + marking procedure are in place.
-- **FC A4 tails**: per-element mixed-unit trig (a list mixing deg/rad cells should
-  interpret EACH cell in its own unit — `resolveTrigModes` still reads one
-  socket-level unit); Cube popup FC controls (frames/matrices/lists have the
-  per-column format+unit row in `TablePopup` via `fcControls.tsx`; cubes wait on
-  nothing now that `CubeColumn` is typed).
-
-## Parked bugs (explicitly parked by the author — records in `dev-notes.md`)
-
-- **High memory use (Chrome tab estimate) for a light app** (author 2026-08-26,
-  parked 2026-08-30: wait) — longstanding, predates the RF port; not investigated.
-  RF's `onlyRenderVisibleElements` is the obvious lever but every DOM reader (HIC
-  snapshot, docked-FC placement, standoff `offsetWidth` measures) assumes off-screen
-  cards exist (see the headless-card-metrics 2.0 entry above). Start with a heap
-  snapshot on the getting-started seed vs a blank doc (retained node clones? HIC
-  pyramids? popup caches?), then per-doc tab growth.
-- **Choppy zoom BAND (parked by the author 2026-08-25: "something we've been chasing
-  our tail on massively").** An interior range of camera scales zooms choppier than both
+- **High memory use (Chrome tab estimate) for a light app** (author 2026-08-26, parked
+  2026-08-30: wait) — longstanding, predates the RF port; not investigated. The
+  MEASUREMENT is planned (`1.4-plan.md` F5: a heap snapshot on the getting-started seed vs a
+  blank doc — retained node clones? HIC pyramids? popup caches? per-doc tab growth); the
+  virtualization lever is 2.0's `v2.0/22-canvas-at-scale.md`. This entry stays until the
+  finding lands.
+- **Choppy zoom BAND (parked by the author 2026-08-25: "something we've been chasing our
+  tail on massively").** An interior range of camera scales zooms choppier than both
   extremes; not pinned to a `k` range. The full record — what is ruled out (gesture-exit
   settle, element count, the HIC mip curve) and the untried T1–T8 plan — moved verbatim to
   `archive/dev-notes-history.md` (sweep 2026-08-25). Reopens only on the author's say-so,
   and then starts at T1/T2 (pin `k`, trace inside vs outside the band), nothing built before.
 
-## Only if the trigger returns
-
-- **Figure rasterize-at-rest (recharts + KaTeX)** — the last real DOM perf lever;
-  SvgPicker precedent (raster at rest, live on hover; KaTeX re-rasters on zoom).
-  Quality gate: pixel-crisp at any zoom, hover indistinguishable. Only when a
-  real workload demands.
-- **#23 persistent compute cache** · **#35 MCP port** — verdict pending a fresh
-  author call (`v2.0/README.md`).
-- **MMULT dimension algebra** — only if a dimensioned-linear-algebra use case ever
-  appears; documented-strip is the deliberate stance (unitGranularity).
-- **Provenance Tier 2 — on-demand "why is this?" walk** — backward-derivation
-  trace for any value (Tier 1, error origin + fly-to-source, shipped in
-  `errorValue.ts`). Idea salvaged from the archived provenance bundle.
-- **Inside-solve stale dot is uniform** — after an INSIDE Solve the dot reads green
-  though the held result is seed-based; distinguishing needs a drill-state signal
-  in the compute layer (couples `data()` to `compositeEditorStore`). Left simple
-  on purpose; revisit only if it reads as misleading.
-- **Pack variant-switch reconciles the socket set** — a variant dropdown would
-  add/remove sockets like Cast/read-as do. (The existing custom nodes all keep
-  fixed sockets across their dropdowns, deliberately — nothing waits on this.)
-- **Obsidian follow-ups (if wanted)**: auto-reload an imported note on file
-  change; write config for `![[Note]]` transclusion vs inlining an embedded
-  note's body.
-- **Group-by-into-nesting / a top-edge "grid" Build Cube** — considered-and-dropped
-  ideas the cube doc keeps on the table; add only on demand.
-
 ## Parked features (revisit only if the trigger returns)
 
-- **UI-scale toggle (Default / Larger)** — subsumes all per-panel resize asks;
-  don't build per-panel resize.
-- **Cable collision avoidance** — spec: `archive/cable-routing.md` §2.
+- **UI-scale toggle (Default / Larger)** — subsumes all per-panel resize asks; don't build
+  per-panel resize. **Moveable / resizable / hideable toolbar chrome** is the same
+  customization slice (`1.4-plan.md` F3 HOLD; `layout-chrome.md` shows the cost).
+- **Cable collision avoidance** — spec: `archive/cable-routing.md` §2. Superseded by the
+  obstacle-router shape if the author accepts its license (`1.4-plan.md` F1); delete this
+  entry when F1 lands.
 - **Grid system** — spec: `grid-system.md`.
-- **`content-visibility: auto` on node roots — ruled out** while socket positions
-  are measured from live DOM geometry (off-screen subtrees don't compute
-  descendant layout → cable endpoints jump at the viewport edge). With
-  SVG-picker-rasterize + collapsed-figure-unmount shipped, the DOM-weight lever
-  set is exhausted — the GPU renderer is the remaining path at scale.
+- **`content-visibility: auto` on node roots — ruled out** while socket positions are
+  measured from live DOM geometry (off-screen subtrees don't compute descendant layout →
+  cable endpoints jump at the viewport edge). Headless card metrics (`v2.0/22`, step 1)
+  would lift that objection — re-evaluate after it, before virtualization.

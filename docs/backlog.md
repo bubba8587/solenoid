@@ -1,9 +1,11 @@
-# Solenoid — Backlog (1.3)
+# Solenoid — Backlog (1.4)
 
 **OPEN items only, kept terse.** When an item lands, DELETE its line — git history and
-the dev-notes digests are the record. **The 1.3 cut (author, 2026-08-30):** user-facing
-polish and perf are DONE; what ships 1.3 is this list's easy under-the-hood work plus
-the release tail. Everything feature-shaped or author-gated lives in `deferrals.md`;
+the dev-notes digests are the record. **1.3 shipped** (v1.3.0 on `main`; `develop` is
+level with it). **The 1.4 cut is PROPOSED, not ratified:** `1.4-plan.md` scores every
+deferred idea and carries the per-item plans; nothing there is scheduled until the author
+promotes it — a promoted item becomes a line here and its plan section is the spec. The
+structural arcs are `2.0-plan.md` + `v2.0/`; parked-with-no-plan items: `deferrals.md`;
 ruled-out ideas: `out-of-scope.md`; settled rationale: `decisions.md`.
 
 ## Dependency updates (walking them one at a time; TypeScript 7 landed 2026-08-11a)
@@ -16,11 +18,14 @@ Current state (2026-08-26): the walkable set is on latest in-range (`react` 19.2
 REMOVED — the old elkjs-vs-rete-auto-arrange peer conflict left with the plugin
 (clean `npm install` dry-run verified).
 
-## Release tail (author-run)
+## Release planning (author-run)
 
-- [ ] **Deferral review (author-present)** — walk `deferrals.md` (now incl. the
-  Pushed-to-1.4/2.0 section) and ratify/amend `out-of-scope.md` (still DRAFT).
-- [ ] **Cut 1.3**: everything is green and smoked (web build + vitest + cargo
-  2026-08-30; `release:desktop` + Script-on-desktop exe smoke + real-Excel finance
-  goldens 2026-08-31); `develop` is merged to `main`. Left (author): push `develop`
-  and `main`, tag `v1.3.0` (`windows-portable.yml` publishes on the tag).
+- [ ] **Ratify the 1.4 cut** — walk `1.4-plan.md` (the IN / PULLABLE / AUTHOR columns; the
+  consolidated author-call list is its last-but-one section) and `2.0-plan.md`; promoted
+  items land here as lines.
+- [ ] **Ratify `out-of-scope.md`** (DRAFT since July) — the deferral review's standing ask,
+  now also required to rewrite test 3 / §3 / §11 for the 2.0 collaboration surface
+  (`v2.0/21-collaboration.md` § What this reverses) and to amend decisions R5 / noBackCompat
+  to match (`2.0-plan.md` § Decisions this plan reopens).
+- [ ] **The `rules.md` ARR pass** (author-present; the author: waits for 1.4) — early in the
+  release, before the track work adds rules (`1.4-plan.md` D3).
