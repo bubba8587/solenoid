@@ -537,9 +537,12 @@ formula surface ALSO lacks — an equal Excel divergence, which is fine).
   the JS oracle as reference + cargo parity tests.
 - **R4 — Web/desktop parity tax (polarsEngine).** Two engines that must agree — a permanent
   maintenance cost; budget for it.
-- **R5 — Scope creep toward the out-of-scope set.** The most-requested features
-  (code cell, live grid, collaboration) are the identity-killers; `out-of-scope.md`
-  is the shield.
+- **R5 — Scope creep toward the out-of-scope set.** `out-of-scope.md` (a DRAFT, no
+  ARR) is the shield against *unordered* widening; the author has since ordered two of
+  the features it once named as identity-killers (the bounded Script node, 2026-08-28;
+  accounts / cloud saves / multiplayer, 2026-09-01 — `v2.0/21-collaboration.md`), and the
+  doc's sections were rewritten to the order each time. The live grid (§12, per-cell
+  formulas — noPerCellFormulas) remains the unordered one.
 - **R6 — Doc rot.** The project's named failure mode. Mitigation: reconcile-don't-
   append; the README index; verify claims against code.
 

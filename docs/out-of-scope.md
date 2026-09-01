@@ -4,13 +4,11 @@
 > (2026-07-02). Treat every entry as a *proposal*, not policy: do not cite it to
 > reject work until the author has been through it. The four tests and the
 > Alteryx-pattern distinction are the parts most likely to survive review intact.
->
-> **2026-09-01:** the author has put **accounts, cloud saves and multiplayer editing** on the
-> 2.0 plan (`v2.0/21-collaboration.md`). That order contradicts **test 3, §3 and §11** below
-> (and decisions R5). Do not cite those sections to reject that work; the ratification must
-> rewrite them into the staged posture the bundle describes (the file stays the product,
-> local-first stays true, every hosted piece has an exit). §4's bounded Script form already
-> shows the shape of such a rewrite.
+> Nothing here carries ARR (rules `authorRuled`: ARR exists only in `rules.md`); every
+> "stay out" below is the agent's inference until the author marks it. **Where the author
+> HAS spoken, the section says so and the author's word is the line** — §4 (Script,
+> 2026-08-28) and, as of 2026-09-01, test 3 / §3 / §11 (accounts, cloud saves, multiplayer
+> are IN: `v2.0/21-collaboration.md`).
 
 Last in the series ([architecture](archive/future-directions.md) →
 [features](archive/scope-features.md)). This one is the
@@ -30,9 +28,12 @@ A thing belongs OUT of scope if it fails any of these:
 2. **It requires arbitrary code execution inside the graph.** The entire trust thesis
    (typed, inspectable, pure, provenance-carrying) dies the moment a node can run
    arbitrary Python/JS. This is the Expression-cap decision, generalized.
-3. **It requires running a service.** Accounts, hosting, uptime, billing, abuse
-   handling — that's a company, not a feature, and it contradicts the one-file
-   local-first identity (strategy thread #5) and the one-author reality.
+3. **It requires running a service the author has not ordered.** (Author, 2026-09-01:
+   accounts, cloud saves and multiplayer editing ARE ordered — `v2.0/21-collaboration.md`.)
+   The test survives as a cost gate, not a wall: a hosted piece is in only if the file
+   stays the product (the cloud holds the same document the disk holds), the client is
+   local-first, and every hosted piece has an exit. Hosting that fails that bar — hosted
+   compute, hosted apps (§7), a hosted BI portal (§1) — still fails here.
 4. **It's a maintenance treadmill.** Anything whose value is "integrations with 300
    external systems" decays continuously and consumes the roadmap forever.
 
@@ -66,15 +67,16 @@ literals is fine — that's a literal, not a database.
 **Tell-tale creep:** "persistent tables inside Solenoid", "indexes", "multi-user edits
 to shared data."
 
-### 3. Real-time co-editing — Google Sheets, Office 365
-**Stay out because:** simultaneous-cursors collaboration is free at planetary scale
-next door, and building it (CRDTs, presence, conflict UI, servers) is a money pit that
-also contradicts local-first.
-**The line:** collaboration in Solenoid is **asynchronous review** — node-anchored
-comments, sign-off, snapshots, git-friendly diffs (scope #14, #6, Bet 2). The file
-travels; people don't share a cursor. Revisit only if the addressable model (Bet 2)
-exists AND a real need survives that long.
-**Tell-tale creep:** "two people editing the same canvas live."
+### 3. Real-time co-editing — IN by author order (2026-09-01)
+**The author's word:** accounts, cloud saves and multiplayer editing are on the 2.0 plan
+(`v2.0/21-collaboration.md`, staged 0→3). The earlier "stay out" here was the agent's
+inference; its one durable point survived as sequencing: the addressable model (Bet 2)
+had to exist first, and it does — the CRDT is keyed by node NAMES.
+**The line:** asynchronous review first (identified comments, sign-off, versions), live
+multiplayer after; every client computes (no hosted compute); the document stays a file
+that works offline and exports whole.
+**Tell-tale creep:** multiplayer that only works online; a sync key that is not the
+addressable name; server-side evaluation.
 
 ### 4. Notebooks / arbitrary code cells — Jupyter, Observable, Hex
 **Stay out because:** a notebook cell is arbitrary evaluation with I/O, state between
@@ -148,15 +150,16 @@ Solenoid rides git, it never reimplements it. Snapshots (scope #6) are in-file *
 history ("what did the model output at Q2 close"), deliberately distinct from source
 history, which belongs to git. No merge-conflict UI beyond "pick a side" pragmatism.
 
-### 11. Hosted anything — sharing servers, cloud sync, a "Solenoid cloud"
-**Stay out because:** test 3 in its purest form. Every hosted feature (published
-forms as a service, cloud model registry, sync) converts the product into an ops
-burden and the identity from "your file" to "our servers."
-**The line:** publish features emit **static artifacts or self-hostable pieces** (an
-HTML file, a headless CLI the user's own infra calls). If a hosted tier ever happens,
-it's a *business decision* layered on top later — nothing in the architecture should
-require it. (Same verdict already given to scope #18's embeddable-engine platform:
-filed as an identity fork, not chased.)
+### 11. Hosted anything — a Solenoid cloud IS ordered (author, 2026-09-01); the rest stays out
+**The author's word:** accounts, a cloud document library with versions and sharing, and
+a sync relay for multiplayer are in (`v2.0/21-collaboration.md`). The architectural
+principle this section always carried is now the design constraint on that work:
+**nothing in the client requires the service** — a document opens, computes and saves
+without an account; the cloud holds the same file; the relay is self-hostable.
+**Still out:** hosted compute (every client computes), published forms as a service
+(§7, scope #2 stays OUT), a hosted model registry or template marketplace (#55), and
+scope #18's embeddable-engine platform (an identity fork, not chased). Publish features
+that are not the cloud library still emit static artifacts or self-hostable pieces.
 
 ### 12. The A1 grid itself — Excel, Google Sheets, Grist
 **Stay out because — and this is the subtle one:** Solenoid's founding bet is that the
@@ -194,6 +197,7 @@ storage engines, collab servers, connector fleets, hosting, viz platforms. There
 incumbent's moat is exactly the part Solenoid shouldn't want to build, at any price.
 
 One sentence to remember: **Solenoid wins by being the inspectable computation layer —
-everything that stores, hosts, orchestrates, or renders at enterprise scale is
-someone else's product that Solenoid should plug into, undercut from below, or
-ignore.**
+everything that stores other people's data, orchestrates, or renders at enterprise
+scale is someone else's product that Solenoid should plug into, undercut from below,
+or ignore.** (The Solenoid cloud holds Solenoid documents — the same files — and nothing
+else's data.)

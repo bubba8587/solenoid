@@ -23,9 +23,8 @@ REMOVED — the old elkjs-vs-rete-auto-arrange peer conflict left with the plugi
 - [ ] **Ratify the 1.4 cut** — walk `1.4-plan.md` (the IN / PULLABLE / AUTHOR columns; the
   consolidated author-call list is its last-but-one section) and `2.0-plan.md`; promoted
   items land here as lines.
-- [ ] **Ratify `out-of-scope.md`** (DRAFT since July) — the deferral review's standing ask,
-  now also required to rewrite test 3 / §3 / §11 for the 2.0 collaboration surface
-  (`v2.0/21-collaboration.md` § What this reverses) and to amend decisions R5 / noBackCompat
-  to match (`2.0-plan.md` § Decisions this plan reopens).
+- [ ] **Ratify `out-of-scope.md`** (DRAFT since July, no ARR anywhere in it) — the deferral
+  review's standing ask. Test 3 / §3 / §11 already read the author's 2026-09-01 order
+  (collaboration IN); the rest is still the agent's inference awaiting the author's word.
 - [ ] **The `rules.md` ARR pass** (author-present; the author: waits for 1.4) — early in the
   release, before the track work adds rules (`1.4-plan.md` D3).

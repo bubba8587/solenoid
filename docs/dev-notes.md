@@ -26,14 +26,16 @@ updater, the web-target decision, version history + diff, an accessibility basel
 Four new bundle docs: `v2.0/20-pages.md` (one editor/engine, pages as view scopes, cross-page
 cables as portal stubs), `v2.0/21-collaboration.md` (the author's new surface — accounts,
 cloud saves, multiplayer — staged 0→3, Stage 0 serverless and 1.4-pullable; states plainly
-what it reverses in `out-of-scope.md` test 3/§3/§11 + decisions R5/noBackCompat and what a
-service costs; the CRDT keyed by the addressable model's names; the trust-on-open security
+what a service costs; the CRDT keyed by the addressable model's names; the trust-on-open security
 work), `v2.0/22-canvas-at-scale.md` (headless card metrics → virtualization → worker HIC),
 `v2.0/23-conditional-formatting.md` (design-pass prep: a rule is a graph value).
 **Reconciles:** `deferrals.md` shrunk to parked-with-no-plan (planned entries moved into the
 plans — one home per fact); `release-notes-features.md` reset to the 1.4 shell (the 1.3 list
-is at the v1.3.0 tag); `out-of-scope.md` gains a status line that the collaboration surface
-contradicts it by author order (do not cite §3/§11 to reject that work); bundle 08's
+is at the v1.3.0 tag); **`out-of-scope.md` test 3 / §3 / §11 and decisions R5 rewritten to
+the collaboration order** — first framed as "the order reverses them", corrected same
+session on the author's point: that doc carries no ARR (`authorRuled`: nothing outside
+`rules.md` does) and is a DRAFT, so the "stay out" was agent inference and the order is
+the first ruling on that ground — nothing to reverse, only an inference to correct; bundle 08's
 "sheets → Groups" becomes "sheets → pages"; bundle 16's status points at 1.4 C1; the docs
 index and the v2.0 index list the new docs. Findings from the pass worth a line: the
 compositeToolbarReroute flagship is mostly delivered by the RF port's `activeGraph` seam —

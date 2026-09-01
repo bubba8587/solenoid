@@ -1,16 +1,20 @@
 # Bundle 21 — Collaboration: accounts, cloud saves, multiplayer editing
 
 **Source:** author order 2026-09-01 ("a surface to add to 2.0 plans"). **Verdict:** IN, by
-order. **Score:** Strong as a product · Structural relevance (reverses `../out-of-scope.md`
-test 3, §3, §11 and decisions R5) · Very high complexity · Structural blast radius.
+order. **Score:** Strong as a product · Structural relevance (the first author word on
+ground `../out-of-scope.md` — a DRAFT with no ARR — had inferred closed) · Very high
+complexity · Structural blast radius.
 **Written:** 2026-09-01, plan-only.
 
-## What this reverses, said plainly
+## Provenance, said plainly
 
-`out-of-scope.md` (DRAFT, unratified) argued: a service is a company, not a feature; real-
-time co-editing is free next door and contradicts local-first; hosted anything converts "your
-file" into "our servers." Those arguments are not wrong; they are costs. This bundle does not
-re-litigate them — the author has ordered the surface — it designs the arc so that:
+`out-of-scope.md` test 3, §3 and §11 argued: a service is a company, not a feature; real-time
+co-editing is free next door and contradicts local-first; hosted anything converts "your
+file" into "our servers." That doc is a DRAFT and carries no ARR (rules `authorRuled`:
+nothing outside `rules.md` is author-ruled), so those were the agent's inferences, not
+rulings — the author's order is the first word on this ground, and the three sections plus
+decisions R5 were rewritten to it on 2026-09-01. The arguments were not wrong; they were
+costs. This bundle keeps them as design constraints:
 
 1. **The file stays the product.** The cloud holds the same document the disk holds (the text
    form + sidecar, `SavedGraph` v-versioned); everything is exportable at any moment; nothing
@@ -21,9 +25,8 @@ re-litigate them — the author has ordered the surface — it designs the arc s
    plain files behind an API; a user can leave with everything.
 4. **The stages are each a coherent product.** The author can stop after any stage.
 
-At ratification, rewrite test 3 / §3 / §11 into this posture and amend decisions R5 and
-noBackCompat (see `../2.0-plan.md` § Decisions this plan reopens). Until then the draft
-carries a status note; do not cite it to reject this work.
+`noBackCompat` still flips at Stage 1 (`../2.0-plan.md` P1); the out-of-scope doc as a
+whole still awaits its ratification as a DRAFT.
 
 ## What it costs (the list the author is choosing to carry)
 
