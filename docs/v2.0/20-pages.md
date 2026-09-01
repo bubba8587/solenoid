@@ -1,6 +1,6 @@
 # Bundle 20 — Pages: tabs are pages in ONE document
 
-**Source:** the document-tabs audit + author ruling 2026-08-30 (`../archive/dev-notes-history.md`,
+**Source:** the document-tabs audit + the author's 2026-08-30 call (recorded evidence, not ARR — rules `authorRuled`) (`../archive/dev-notes-history.md`,
 sweep 2026-08-31). **Verdict:** IN, whole feature deferred to 2.0. **Score:** Strong · Core ·
 High · Wide. **Written:** 2026-09-01, plan-only.
 

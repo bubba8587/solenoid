@@ -59,8 +59,9 @@ is parked there.
   Formula.js bugs, written up as ready-to-paste upstream issues (author submits).
 - **`pack-architecture.md`** — the lean-core + packs design (framework BUILT;
   this is the authoring guide + rationale).
-- **`pack-composite-plans.md`** — queued composite-shaped pack nodes (parked —
-  the pack program is 1.4/2.0, see `deferrals.md`).
+- **`pack-composite-plans.md`** — queued composite-shaped pack nodes; the pack program
+  is `1.4-plan.md` E3 (Materials & Mechanical content) + `2.0-plan.md` Arc 7 (the
+  composite pack shape + distribution).
 - **`release-notes-features.md`** — the curated selling list / What's-New source for
   the release in progress (1.4; the 1.3 list is at the v1.3.0 tag).
 - **`grid-system.md`** — the (unbuilt) soft-grid design spec; parked in

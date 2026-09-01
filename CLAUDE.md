@@ -58,7 +58,9 @@ invented vocabulary + the author's names for the on-screen chrome).
   `docs/formulajs-divergences.md` (before touching a `registerInternal` override),
   `docs/node-coverage.md` (node inventory + the node-design rules), `docs/architecture.md` (file
   map), `docs/pack-architecture.md`, `docs/out-of-scope.md`, `docs/renderer-performance.md`.
-- Queue: `docs/backlog.md` (OPEN items only), `docs/deferrals.md`, `docs/dev-notes.md` (open
+- Queue: `docs/backlog.md` (OPEN items only), the release plans `docs/1.4-plan.md` /
+  `docs/2.0-plan.md` (proposals until the author promotes an item), `docs/deferrals.md`
+  (parked, no plan), `docs/dev-notes.md` (open
   problems + latest digests). Finished docs: `docs/archive/` (nothing live is parked there —
   `docsPointers.test.ts`).
 - **`docs/code-comments.md`** — comments are the LAST-RESORT home; the default outcome for an
