@@ -7,21 +7,21 @@
     {
       "id": "note",
       "type": "NoteNode",
-      "x": -80,
-      "y": -360,
+      "x": 190,
+      "y": 360,
       "init": {
         "label": "Budget Allocator",
-        "body": "# Spend by what you value\nEach thing you're buying has a price **range** (a floor and a ceiling) and a **weight** for how much you value it. The **Budget Allocator** splits your money to match.\n\n**Fit budget** spends the whole budget in proportion to the weights, kept inside every range. When a category hits its ceiling, the slack flows to the rest.\n\nHere: a 100,000 budget over five categories. Housing is valued 3x, so it takes the biggest share; Tech and Travel fill to their small caps, and the rest splits by weight.\n\nThe allocator itself stays lean: it returns the **Allocation** and each category's **Share** of the spend. Downstream, a **Join** pulls the price range back in and a **Computed Column** works out the **Headroom** left under each ceiling.\n\nTwo more modes on the card: **Min for target** (the least spend that reaches a value goal) and **Min proportional** (the least spend that keeps the weighting). No solver, just arithmetic.",
+        "body": "# Spend by what you value\nEach thing you're buying has a price **range** (a floor and a ceiling) and a **weight** for how much you value it. **Fit budget** spends the whole budget in proportion to the weights, kept inside every range; when a category hits its ceiling the slack flows to the rest.\n\nHere: 100,000 over five categories, Housing valued 3x. The allocator returns each **Allocation** and its **Share** of the spend. The grouped steps join the price range back in and work out the **Headroom** left under each ceiling.\n\nTwo more modes on the card: **Min for target** and **Min proportional**. No solver, just arithmetic.",
         "color": "teal",
-        "width": 400,
-        "height": 380
+        "width": 420,
+        "height": 160
       }
     },
     {
       "id": "items",
       "type": "FrameInputNode",
-      "x": -80,
-      "y": 120,
+      "x": -100,
+      "y": 60,
       "init": {
         "label": "Budget items",
         "frameText": "[{\"name\":\"Category\",\"type\":\"string\",\"values\":[\"Car\",\"Housing\",\"Furniture\",\"Tech\",\"Travel\"]},{\"name\":\"Min\",\"type\":\"number\",\"values\":[20000,15000,3000,2000,1000]},{\"name\":\"Max\",\"type\":\"number\",\"values\":[50000,60000,15000,12000,10000]},{\"name\":\"Weight\",\"type\":\"number\",\"values\":[2,3,1,1,1]}]"
@@ -30,8 +30,8 @@
     {
       "id": "alloc",
       "type": "BudgetAllocatorNode",
-      "x": 360,
-      "y": 140,
+      "x": 280,
+      "y": 60,
       "init": {
         "label": "Budget Allocator",
         "mode": "budget"
@@ -41,10 +41,24 @@
       }
     },
     {
+      "id": "grp-enrich",
+      "type": "GroupNode",
+      "x": 620,
+      "y": 20,
+      "init": {
+        "label": "Enrich",
+        "members": ["join", "hd"],
+        "color": "gray",
+        "collapsed": true,
+        "width": 540,
+        "height": 300
+      }
+    },
+    {
       "id": "join",
       "type": "JoinNode",
-      "x": 740,
-      "y": 40,
+      "x": 660,
+      "y": 70,
       "init": {
         "label": "Join the price range back in",
         "how": "left"
@@ -57,8 +71,8 @@
     {
       "id": "hd",
       "type": "ComputedColumnNode",
-      "x": 1120,
-      "y": 40,
+      "x": 920,
+      "y": 70,
       "init": {
         "label": "Headroom under the ceiling",
         "expr": "@Max - @Allocation",
@@ -72,18 +86,35 @@
     {
       "id": "display",
       "type": "DisplayNode",
-      "x": 1520,
-      "y": 20,
+      "x": 1240,
+      "y": 40,
       "size": { "w": 380, "h": 320 }
+    },
+    {
+      "id": "grp-pie",
+      "type": "GroupNode",
+      "x": 240,
+      "y": 560,
+      "init": {
+        "label": "Styled pie",
+        "members": ["style", "chart"],
+        "color": "purple",
+        "collapsed": true,
+        "width": 520,
+        "height": 260
+      }
     },
     {
       "id": "style",
       "type": "ChartBuilderNode",
-      "x": 360,
-      "y": 440,
+      "x": 270,
+      "y": 610,
       "init": {
         "label": "Pie style",
         "target": "pie"
+      },
+      "literals": {
+        "fontsize": 16
       },
       "stringLiterals": {
         "title": "Allocation by category",
@@ -93,8 +124,8 @@
     {
       "id": "chart",
       "type": "ChartNode",
-      "x": 760,
-      "y": 440,
+      "x": 560,
+      "y": 610,
       "init": {
         "label": "Allocation",
         "op": "pie"
@@ -104,9 +135,9 @@
     {
       "id": "chartdisp",
       "type": "DisplayNode",
-      "x": 1120,
-      "y": 400,
-      "size": { "w": 340, "h": 320 }
+      "x": 820,
+      "y": 590,
+      "size": { "w": 340, "h": 300 }
     }
   ],
   "connections": [
@@ -118,6 +149,14 @@
     { "source": "alloc", "sourceOutput": "frame", "target": "chart", "targetInput": "values" },
     { "source": "style", "sourceOutput": "result", "target": "chart", "targetInput": "options" },
     { "source": "chart", "sourceOutput": "chart", "target": "chartdisp", "targetInput": "in" }
+  ],
+  "standoffs": [
+    {
+      "a": { "nodeId": "alloc", "anchor": "s" },
+      "b": { "nodeId": "note", "anchor": "n" },
+      "min": 40,
+      "max": 160
+    }
   ],
   "frameFormats": [
     {
