@@ -6,6 +6,31 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-03 — charts, pie labels, Budget Allocator seed)
+
+Shipped on `develop`: **Pie category labels** reworked to a hand-drawn two-segment leader
+(radial stub + horizontal run to a fixed column per side, so a side's labels share one x and
+the line meets the text; recharts' own `labelLine` is off). **`pielabels` option** is now
+off/outside/inside — inside centres a backing-plated label on the slice, a thin slice (<6%)
+keeps the outside leader (`chartRender.tsx`; parse aliases on->outside, center->inside).
+**Chart node type picker** is two selects: a family filter + the type OpSelect (the type stays
+`op`). **Chart Builder target** is one grouped two-level dropdown whose entries are the Chart
+ops + the figure nodes, and the form shows only the keys that type reads (`CHART_BUILDER_TARGETS`
+per-op in `chartOptions.ts`); pie gets a Labels select, `color` dropped from pie/radial/funnel
+(palette-painted, so it was inert). **Budget Allocator** slimmed to Category + Allocation +
+Share (raw fraction); the price comparison moved into the seed — a Join pulls Min/Max back in,
+a Computed Column adds Headroom, Share shows as a percent via a per-column `frameFormats` entry;
+the pie Chart is minimized and routed to a large Display, styled by a wired Chart Builder.
+
+**OPEN — input→output cable draw regression (React Flow port).** You can no longer drag a
+cable starting from an INPUT socket back into an output; hovering an input shows the pan-grab
+pointer, not a connect cursor. RF Handles likely only start connections from the source side —
+needs the input Handle to be connectable-as-start (or a reverse-connect path). Not yet fixed.
+
+**FYI carried forward:** `color` applies to radar only for a SINGLE-series radar (multi-series
+uses the palette, like pie); verify in the screenshot pass and decide whether to keep offering
+it. Author sanctioned a screenshot pass over the chart ops + options.
+
 ### SESSION DIGEST (2026-09-03 — group lock, socket flip, popup chrome)
 
 Shipped on `develop`: **Group "Lock position"** (right-click / header icon; `lockedPosition`
