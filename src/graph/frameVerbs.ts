@@ -1571,22 +1571,17 @@ export function allocateFrame(
   }
   const alloc = allocate(mode, mins, maxs, weights, amount);
   const total = alloc.reduce((s, a) => s + a, 0);
-  // Fold in the comparison the allocation is FOR: its share of the spend, the price range it
-  // sits in, and the ceiling it leaves unspent. Allocation stays the first number column so a
-  // wired pie/chart still plots it. The price columns carry the min column's unit.
-  const round1 = (x: number) => Math.round(x * 10) / 10;
-  const priceUnit = minCol.unit ? { unit: minCol.unit } : {};
-  const share = alloc.map((a) => (total > 0 ? round1((a / total) * 100) : 0));
-  const headroom = alloc.map((a, i) => round1(maxs[i] - a));
+  // Allocation is the first number column so a wired pie/chart plots it; Share is the raw
+  // FRACTION of the spend (format it as a percent downstream, not by scaling here). Any
+  // price comparison (the range, headroom) is a join/computed column downstream, not the
+  // allocator's job. Allocation carries the min column's unit.
+  const share = alloc.map((a) => (total > 0 ? a / total : 0));
   return {
     __frame: true,
     columns: [
       { name: nameCol?.name ?? "Category", type: "string", values: names },
-      { name: "Allocation", type: "number", values: alloc, ...priceUnit },
-      { name: "Share %", type: "number", values: share },
-      { name: "Min", type: "number", values: mins, ...priceUnit },
-      { name: "Max", type: "number", values: maxs, ...priceUnit },
-      { name: "Headroom", type: "number", values: headroom, ...priceUnit },
+      { name: "Allocation", type: "number", values: alloc, ...(minCol.unit ? { unit: minCol.unit } : {}) },
+      { name: "Share", type: "number", values: share },
     ],
   };
 }

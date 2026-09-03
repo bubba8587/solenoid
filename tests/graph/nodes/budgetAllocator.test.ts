@@ -22,17 +22,14 @@ describe("BudgetAllocatorNode", () => {
     expect(allocOf(n.data({ categories: [cats], weights: [[1, 3]] }))).toEqual([20, 40]);
   });
 
-  it("folds in the comparison columns: share of spend, the Min/Max range, and Headroom", () => {
+  it("emits Category, Allocation, and Share as a raw fraction of the spend", () => {
     const n = new BudgetAllocatorNode();
     n.literals.amount = 60;
-    const cols = (n.data({ categories: [cats], weights: [[1, 1]] }).frame as FrameValue).columns;
+    const cols = (n.data({ categories: [cats], weights: [[1, 3]] }).frame as FrameValue).columns;
     const col = (name: string) => cols.find((c) => c.name === name)!.values;
-    expect(cols.map((c) => c.name)).toEqual(["Category", "Allocation", "Share %", "Min", "Max", "Headroom"]);
-    expect(col("Allocation")).toEqual([30, 30]);
-    expect(col("Share %")).toEqual([50, 50]);
-    expect(col("Min")).toEqual([20, 10]);
-    expect(col("Max")).toEqual([50, 40]);
-    expect(col("Headroom")).toEqual([20, 10]); // Max − Allocation
+    expect(cols.map((c) => c.name)).toEqual(["Category", "Allocation", "Share"]);
+    expect(col("Allocation")).toEqual([20, 40]);
+    expect(col("Share")).toEqual([1 / 3, 2 / 3]); // raw decimal, formatted downstream
   });
 
   it("reads weights from a Weight column when none is wired; a wired list overrides it", () => {
