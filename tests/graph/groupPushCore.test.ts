@@ -263,4 +263,28 @@ describe("separateOverlaps (hard de-overlap backstop)", () => {
     const boxes = [box("A", 0, 0, 100, 100), box("B", 200, 0, 100, 100)];
     expect(separateOverlaps(boxes).size).toBe(0);
   });
+
+  it("a pinned obstacle never moves; its partner yields instead", () => {
+    // L sits top-left (would normally hold); pinning F would be wrong. Here L is a
+    // fixed locked group and F a tidied node dropped onto it — F must be the mover.
+    const L = box("L", 0, 0, 200, 150);
+    const F = box("F", 40, 30, 200, 150);
+    const disp = separateOverlaps([L, F], undefined, PUSH_GAP, new Set(["L"]));
+    expect(disp.get("L")).toBeUndefined();          // pinned: unmoved
+    expect(disp.has("F")).toBe(true);               // partner yielded
+    expect(anyOverlap([L, F], disp)).toBe(false);
+  });
+
+  it("pushes a free node off a pinned box even when the free node is top-left", () => {
+    const F = box("F", 0, 0, 200, 150);   // top-left, but free
+    const L = box("L", 40, 30, 200, 150); // pinned obstacle
+    const disp = separateOverlaps([F, L], undefined, PUSH_GAP, new Set(["L"]));
+    expect(disp.get("L")).toBeUndefined();
+    expect(anyOverlap([F, L], disp)).toBe(false);
+  });
+
+  it("leaves two pinned obstacles overlapping (neither can move)", () => {
+    const boxes = [box("A", 0, 0, 200, 200), box("B", 50, 50, 200, 200)];
+    expect(separateOverlaps(boxes, undefined, PUSH_GAP, new Set(["A", "B"])).size).toBe(0);
+  });
 });

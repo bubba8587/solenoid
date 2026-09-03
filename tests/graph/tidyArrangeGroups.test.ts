@@ -245,6 +245,27 @@ describe("global Tidy with an expanded group (headless, real ELK + real arrangeF
     }
   });
 
+  it("a position-locked group stays put and nothing lands on it", async () => {
+    const { editor, view, arrangeFn, src, sink, m1, m2, group } = await buildScene();
+    group.lockedPosition = true;
+    const gBefore = { ...view.fakes.get(group.id)!.position };
+    const m1Before = { ...view.fakes.get(m1.id)!.position };
+    const m2Before = { ...view.fakes.get(m2.id)!.position };
+    await arrangeFn({ skipConfirm: true });
+    await flushRafs();
+    // The locked group and its members never moved.
+    expect(view.fakes.get(group.id)!.position).toEqual(gBefore);
+    expect(view.fakes.get(m1.id)!.position).toEqual(m1Before);
+    expect(view.fakes.get(m2.id)!.position).toEqual(m2Before);
+    // No tidied loose node overlaps the fixed group.
+    const g = boxOf(view, group.id);
+    for (const id of [src.id, sink.id]) {
+      expect(overlaps(g, boxOf(view, id)), `${id} overlaps the locked group`).toBe(false);
+    }
+    // Sanity: the pass still ran (loose nodes are the layout targets).
+    expect(editor.getNodes().length).toBe(5);
+  });
+
   it("the group's rendered box is unchanged by the pass (rigid unit, not resized)", async () => {
     const { view, arrangeFn, group } = await buildScene();
     const before = boxOf(view, group.id);

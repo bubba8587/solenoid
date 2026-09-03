@@ -10,6 +10,7 @@ import { autofitGroupBox, GROUP_PAD, GROUP_HEADER } from "./groupLogic";
 import { measuredBox } from "./nodeSize";
 import { nodeSizeStore } from "./nodeSizeStore";
 import { pushForGrownGroups } from "./groupPush";
+import { separateOverlaps, PUSH_GAP, type PushBox } from "./groupPushCore";
 import { standoffStore, standoffClusters, settleStandoffs } from "./standoffs";
 import { rebuildGroupMembership } from "./groupMembership";
 import { syncGroupCollapse, settleCollapse } from "./groupCollapse";
@@ -578,6 +579,42 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
         const mp = view.position(mid);
         if (!mp) continue;
         await view.moveNode(mid, { x: mp.x + gdx, y: mp.y + gdy });
+      }
+    }
+
+    // Position-locked groups sat OUT of the layout (fixed), so the fresh arrangement
+    // can land on top of one. Treat each as a pinned obstacle and separate any node
+    // that overlaps it (monotonic +x/+y, so it terminates and — once clear — stays a
+    // fixed point on re-run). A pushed group carries its members. Global tidy only:
+    // a within-group tidy never touches external groups.
+    if (!withinGroup) {
+      const lockedBoxes: PushBox[] = [];
+      for (const n of editor.getNodes()) {
+        if (n instanceof GroupNode && n.lockedPosition) {
+          const b = measuredBox(view, n.id, editor);
+          if (b) lockedBoxes.push({ id: n.id, x: b.x, y: b.y, w: b.w, h: b.h });
+        }
+      }
+      if (lockedBoxes.length > 0) {
+        const freeBoxes: PushBox[] = [];
+        for (const n of layoutTargets) {
+          const b = measuredBox(view, n.id, editor);
+          if (b) freeBoxes.push({ id: n.id, x: b.x, y: b.y, w: b.w, h: b.h });
+        }
+        const pinned = new Set(lockedBoxes.map((b) => b.id));
+        const disp = separateOverlaps([...lockedBoxes, ...freeBoxes], undefined, PUSH_GAP, pinned);
+        for (const [id, d] of disp) {
+          const p = view.position(id);
+          if (!p) continue;
+          await view.moveNode(id, { x: p.x + d.dx, y: p.y + d.dy });
+          const grp = editor.getNode(id);
+          if (grp instanceof GroupNode) {
+            for (const mid of grp.members) {
+              const mp = view.position(mid);
+              if (mp) await view.moveNode(mid, { x: mp.x + d.dx, y: mp.y + d.dy });
+            }
+          }
+        }
       }
     }
 
