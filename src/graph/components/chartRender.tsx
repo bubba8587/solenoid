@@ -54,6 +54,20 @@ function SliceTooltip({ active, payload }: { active?: boolean; payload?: { value
 }
 const SLICE_TIP = <Tooltip isAnimationActive={false} content={<SliceTooltip />} />;
 
+const RADIAN = Math.PI / 180;
+/** Slice labels can be user text (a Frame's category names): strip control characters,
+ *  collapse whitespace, and cap the length so a long or hostile name can't smear across
+ *  the figure or break its layout. */
+export function sanitizeChartLabel(raw: string, cap = 16): string {
+  let clean = "";
+  for (const ch of raw) {
+    const c = ch.codePointAt(0);
+    clean += (c !== undefined && (c < 0x20 || (c >= 0x7f && c <= 0x9f))) ? " " : ch;
+  }
+  clean = clean.replace(/\s+/g, " ").trim();
+  return clean.length > cap ? `${clean.slice(0, cap - 1).trimEnd()}…` : clean;
+}
+
 // Reads the datum off payload[0].payload so it works whether the x axis is a real
 // coordinate (dataKey "x") or the row index ("i").
 function ScatterTooltip({ active, payload }: { active?: boolean; payload?: { payload?: { x?: number; i?: number; v?: number } }[] }) {
@@ -170,10 +184,26 @@ export function ChartView({
       </BarChart>
     );
   } else if (op === "pie") {
-    const r = Math.max(20, Math.min(width, chartH) / 2 - 6);
+    // Category labels ride the recharts `label`/`labelLine` props by default when the
+    // frame supplies names; the radius shrinks to leave room for them. Each name is
+    // sanitized + length-capped (untrusted text). Vanishingly thin slices are skipped so
+    // their labels don't pile up.
+    const labeled = !!labels;
+    const r = Math.max(18, Math.min(width, chartH) / 2 - (labeled ? Math.min(46, width * 0.16) : 6));
+    const pieLabel = (p: { cx?: number; cy?: number; midAngle?: number; outerRadius?: number; index?: number; percent?: number; payload?: unknown }) => {
+      const cx = p.cx ?? 0, cy = p.cy ?? 0, mid = p.midAngle ?? 0, outerR = p.outerRadius ?? 0, index = p.index ?? 0;
+      const rowI = (p.payload as { i?: number } | undefined)?.i ?? series[index]?.i ?? index;
+      const name = sanitizeChartLabel(tickFmt(rowI));
+      if (!name || (p.percent ?? 0) < 0.02) return null;
+      const rr = outerR + 9;
+      const x = cx + rr * Math.cos(-mid * RADIAN);
+      const y = cy + rr * Math.sin(-mid * RADIAN);
+      return <text x={x} y={y} fill={axis} fontSize={9 * fs} textAnchor={x >= cx ? "start" : "end"} dominantBaseline="central">{name}</text>;
+    };
     chart = (
       <PieChart width={width} height={chartH}>
-        <Pie data={series} dataKey="v" nameKey="i" cx="50%" cy="50%" outerRadius={r} stroke="var(--surface)" isAnimationActive={false}>
+        <Pie data={series} dataKey="v" nameKey="i" cx="50%" cy="50%" outerRadius={r} stroke="var(--surface)" isAnimationActive={false}
+             label={labeled ? pieLabel : undefined} labelLine={labeled ? { stroke: grid } : false}>
           {series.map((_, i) => <Cell key={i} fill={paint(i)} />)}
         </Pie>
         {SLICE_TIP}
