@@ -5,6 +5,7 @@ import { PopupPinButton, PopupGoToButton } from "./PopupPinButton";
 import { useEscapeToClose } from "./useEscapeToClose";
 import { contrastInk, darkenAccent } from "../palette";
 import { PopupResizeGrip, type PopupSize } from "./PopupResizeGrip";
+import { useHeaderHeightVar } from "./NodeCard";
 
 /** Derives `--node-accent-ink` per node: the app-wide `--accent-ink` is computed for the
  *  APP accent, so accent-filled popup chrome would otherwise wear ink for the wrong hue. */
@@ -66,6 +67,10 @@ export function PopupShell({
 }) {
   useEscapeToClose(onEscape ?? onClose, true, { capture: true });
   const cardRef = useRef<HTMLDivElement>(null);
+  // Publish the header's border-box height as --header-h so the ::after body border
+  // starts exactly at the header's bottom (the frame-alignment fix, § popupChrome.css).
+  const headerRef = useRef<HTMLDivElement>(null);
+  useHeaderHeightVar(headerRef);
   const [size, setSize] = useState<PopupSize | null>(resizable?.initial ?? null);
   const sized = !!resizable && !!size;
   const cardClass = `sol-popup${cardClassName ? ` ${cardClassName}` : ""}${grouped ? " sol-popup--grouped" : ""}${sized ? " sol-popup--sized" : ""}`;
@@ -73,7 +78,7 @@ export function PopupShell({
   return (
     <div className="sol-popup-overlay" onPointerDown={() => onClose()}>
       <div ref={cardRef} className={cardClass} style={style} onPointerDown={(e) => e.stopPropagation()}>
-        <div className="sol-popup__header">
+        <div className="sol-popup__header" ref={headerRef}>
           <div className="sol-popup__title">{title}</div>
           {headerExtra}
           {pinNodeId && <PopupGoToButton nodeId={pinNodeId} onClose={onClose} />}

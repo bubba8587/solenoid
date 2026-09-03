@@ -28,7 +28,12 @@
   -webkit-backdrop-filter: blur(2px);
 }
 
-/* Mirrors a node card: same surface, 1px border, 8px radius. */
+/* Mirrors a node card: same surface, 1px body border, 6px radius. The body border is
+   drawn by ::after (below), NOT on the card, so it shares the card's box with the accent
+   header — one rounding basis, so the two edges can't crack apart at a fractional DPR
+   (Chromium rounds each element's border independently; a card border + a header
+   overhang derive from different boxes and split by 1px at 125%/150% zoom — the reason
+   the node cards went to an SVG frame). */
 .sol-popup {
   position: relative;
   box-sizing: border-box;
@@ -37,17 +42,33 @@
   max-width: 100%;
   max-height: 100%;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: none;
   border-radius: 6px;
   box-shadow: var(--shadow-pop);
   font-family: inherit;
   color: var(--text);
 }
+/* The body border: sides + bottom, starting BELOW the accent header (--header-h,
+   published by PopupShell). Derived from the card's own box, exactly like the header —
+   that shared basis is what keeps them aligned. */
+.sol-popup::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: var(--header-h, 34px);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  pointer-events: none;
+}
 /* Light mode frames an ungrouped node card's body in its darkened accent (not gray) —
    the popup body border mirrors that so it matches the card it came from. Dark mode's
    body border is already the neutral --border on both. Grouped popups keep the
    group-color-dark rule below. */
-:root[data-theme="light"] .sol-popup:not(.sol-popup--grouped) {
+:root[data-theme="light"] .sol-popup:not(.sol-popup--grouped)::after {
   border-color: var(--node-accent-dark, var(--border));
 }
 
@@ -66,11 +87,15 @@
    against the 2px sides), top corners rounded to the card. */
 .sol-popup__header {
   position: relative;
+  box-sizing: border-box;
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 8px 10px 8px 14px;
-  margin: -1px -1px 0;
+  /* No overhang: the card draws no border, so the header spans the card box directly
+     (same box the ::after body border uses) — that's the shared rounding basis. */
+  margin: 0;
   border: 2px solid var(--node-accent, transparent);
   border-bottom: none;
   box-shadow: inset 0 -1px 0 var(--border);
@@ -199,30 +224,21 @@
 }
 
 /* ── Group membership — mirrors .solenoid-node--grouped + its corner triangle ── */
-.sol-popup--grouped {
+/* Membership color is the BODY border (::after), 2px; the accent header is unchanged. */
+.sol-popup--grouped::after {
   border-width: 2px;
   border-color: color-mix(in srgb, var(--group-color, var(--text-dim)) 78%, transparent);
 }
-/* Widen the header overhang to match the 2px border so the accent header still
-   sits flush over it (membership color shows on the body, not the header). */
-.sol-popup--grouped .sol-popup__header {
-  margin: -2px -2px 0;
-}
-:root[data-theme="light"] .sol-popup--grouped {
+:root[data-theme="light"] .sol-popup--grouped::after {
   border-color: var(--group-color-dark, var(--border-strong));
 }
 /* Membership corner: a small solid triangle of the group color tucked into the
-   lower-right. inset: -2px puts the overlay over the card's *border box* (not the
-   padding box), so its 8px-radius corner coincides exactly with the card's outer
-   corner and the triangle reaches the true corner instead of stopping a border-
-   width short of it. */
+   lower-right, at the card box edge (inset 0, the card's own 6px corner). */
 .sol-popup--grouped::before {
   content: "";
   position: absolute;
-  inset: -2px;
-  /* The card's 6px radius PLUS the 2px outset: an 8px arc traces the card's own outer
-     corner exactly. At 6px the arc was 2px too tight and bulged proud of the corner. */
-  border-radius: 8px;
+  inset: 0;
+  border-radius: 6px;
   background: color-mix(in srgb, var(--group-color, var(--text-dim)) 78%, var(--surface));
   clip-path: polygon(100% 100%, 100% calc(100% - 18px), calc(100% - 18px) 100%);
   pointer-events: none;
