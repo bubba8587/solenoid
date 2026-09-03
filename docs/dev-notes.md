@@ -22,6 +22,19 @@ Share (raw fraction); the price comparison moved into the seed — a Join pulls 
 a Computed Column adds Headroom, Share shows as a percent via a per-column `frameFormats` entry;
 the pie Chart is minimized and routed to a large Display, styled by a wired Chart Builder.
 
+**Seed layout == Tidy.** The Allocator seed groups its intermediaries (Join+Computed Column,
+Chart Builder+minimized Chart) collapsed and standoffs a rectangular note off the allocator's
+south face. Authoring rule learned: don't hand-place seed geometry — run `scripts/tune-seeds.mjs
+<id>` to bake the app's real tidy/autofit. `seedTune.ts` was UPGRADED to run a **whole-canvas
+Tidy** (`autoArrange({skipConfirm})`, the press-T pass) after the per-group fit, so a seed's
+shipped layout equals the tidied one. Ran it across the library: 22 seeds re-baked. Held back
+**personal-finance** (a full tidy lands its docked FCs + displays inside the expanded
+`grp-advisor` box → absorb-on-reconcile; kept hand-composed) and **live-market-data** (FRED
+charts CORS-block headless, tuned empty). Survey finding: the abstract-the-intermediaries
+pattern only fits pipeline-shaped seeds (the Allocator); the other worked examples are teaching
+GALLERIES whose "intermediary" nodes ARE the exhibit and are named by their notes, so grouping
+them would hide the lesson.
+
 **OPEN — input→output cable draw regression (React Flow port).** You can no longer drag a
 cable starting from an INPUT socket back into an output; hovering an input shows the pan-grab
 pointer, not a connect cursor. RF Handles likely only start connections from the source side —
