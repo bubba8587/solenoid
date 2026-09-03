@@ -297,7 +297,7 @@ describe("scalar-math — formula path overrides Formula.js where it's wrong", (
     expect(ev("MIRR(c, 0.1, 0.12)", cf)).toBeCloseTo(0.13903, 4);
   });
 
-  it("XLOOKUP / XMATCH take a 1×N or N×1 MATRIX as the lookup array (Excel's orientation-free 1-D); a grid is #VALUE!; a matrix lookup VALUE stays #SHAPE!", () => {
+  it("XLOOKUP / XMATCH take a 1×N or N×1 MATRIX as the lookup array (Excel's orientation-free 1-D); a grid is #VALUE!; an orientation-free matrix lookup VALUE spills; a true 2-D grid VALUE is #SHAPE!", () => {
     const row = [["a", "b", "c"]], colm = [["a"], ["b"], ["c"]], grid = [["a", "b"], ["c", "d"]];
     expect(ev("XMATCH(\"b\", ks)", { ks: row })).toBe(2);
     expect(ev("XMATCH(\"c\", ks)", { ks: colm })).toBe(3);
@@ -308,6 +308,11 @@ describe("scalar-math — formula path overrides Formula.js where it's wrong", (
     expect(code(ev("XMATCH(\"b\", ks)", { ks: grid }))).toBe("#VALUE!");
     expect(code(ev("XLOOKUP(\"b\", ks, vs)", { ks: row, vs: grid }))).toBe("#VALUE!");
     expect(code(ev("XLOOKUP(\"b\", ks, vs)", { ks: row, vs: [[10, 20]] }))).toBe("#VALUE!"); // length mismatch
+    // A 1×N / N×1 matrix lookup VALUE spills over its cells, like the lookup array does (B5).
+    expect(ev("XMATCH(m, ks)", { m: [["b", "c"]], ks: ["a", "b", "c"] })).toEqual([2, 3]);
+    expect(ev("XMATCH(m, ks)", { m: [["b"], ["a"]], ks: ["a", "b", "c"] })).toEqual([2, 1]);
+    expect(ev("XLOOKUP(m, ks, vs)", { m: [["b", "c"]], ks: ["a", "b", "c"], vs: [10, 20, 30] })).toEqual([20, 30]);
+    // A TRUE 2-D grid lookup VALUE is still #SHAPE!.
     expect(code(ev("XMATCH(m, ks)", { m: grid, ks: ["a", "b"] }))).toBe("#SHAPE!");
     expect(code(ev("XLOOKUP(m, ks, ks)", { m: grid, ks: ["a", "b"] }))).toBe("#SHAPE!");
   });

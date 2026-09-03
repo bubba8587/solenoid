@@ -1172,15 +1172,16 @@ const xSearchModeArg = (v: unknown): XMatchSearchMode | SolError => {
 // An ARRAY lookup value SPILLS in Excel — one result per element — and we match that:
 // the result is a rank-1 list (still within the formula rank cap), and RANGE_FUNCTIONS
 // return a non-number as-is, so the array flows back cleanly. This is the SCOPED spill
-// for the lookup family only; the general per-argument spill (backlog wholeArrayArgs,
-// which also settles the deferred 1×N matrix orientation) stays deferred. Do NOT read
-// this as other RANGE functions spilling — a matrix lookup value is still #SHAPE!
-// upstream. `keys`/`values` are lists or scalars here (a matrix arg errors before us).
-// Excel's lookup_array / return_array are 1-D but ORIENTATION-FREE: a single row or a single
-// column both work, a true grid is #VALUE!. Both registrations declare `matrixArgs` so a
-// matrix reaches them whole, and guard EACH slot themselves: the lookup VALUE may be a
-// scalar or a list (the spill) but never a matrix (#SHAPE!), the arrays flatten when one
-// of their dimensions is 1, and XLOOKUP's return array must be the lookup array's length.
+// for the lookup family only; the general per-argument spill (backlog wholeArrayArgs)
+// stays deferred. Do NOT read this as other RANGE functions spilling — a matrix reaching
+// any other RANGE function is still #SHAPE! upstream. `keys`/`values` are lists or scalars
+// here (a matrix arg errors before us). Excel's lookup_array / return_array are 1-D but
+// ORIENTATION-FREE: a single row or a single column both work, a true grid is #VALUE!.
+// Both registrations declare `matrixArgs` so a matrix reaches them whole, and guard EACH
+// slot themselves: the lookup VALUE may be a scalar, a list, or an orientation-free 1×N /
+// N×1 matrix (all spill over the cells) — only a true 2-D grid is #SHAPE! (mirrors the
+// lookup array); the arrays flatten when one of their dimensions is 1, and XLOOKUP's
+// return array must be the lookup array's length.
 const isGrid = (v: unknown): v is unknown[][] => Array.isArray(v) && v.length > 0 && Array.isArray(v[0]);
 /** A 1×N / N×1 matrix → its N cells; a list → itself; a scalar → [scalar]; a grid → null. */
 const asOneDim = (v: unknown): unknown[] | null => {
@@ -1194,7 +1195,6 @@ registerInternal("XLOOKUP", (lookup, keys, values, ifNotFound, matchMode, search
   if (isSolError(mm)) return mm;
   const sm = xSearchModeArg(searchMode);
   if (isSolError(sm)) return sm;
-  if (isGrid(lookup)) return solError("#SHAPE!", "XLOOKUP's lookup value is one value or a list, not a matrix");
   const ks = asOneDim(keys), vs = asOneDim(values);
   if (!ks) return solError("#VALUE!", "XLOOKUP's lookup array must be a single row or a single column");
   if (!vs) return solError("#VALUE!", "XLOOKUP's return array must be a single row or a single column");
@@ -1205,6 +1205,13 @@ registerInternal("XLOOKUP", (lookup, keys, values, ifNotFound, matchMode, search
     if (idx >= 0 && idx < vs.length) return vs[idx];
     return ifNotFound !== undefined ? ifNotFound : NA_NO_MATCH();
   };
+  // The lookup VALUE: a scalar picks; a list OR an orientation-free 1×N / N×1 matrix
+  // spills one result per cell; a true 2-D grid is #SHAPE! (mirrors the lookup array).
+  if (isGrid(lookup)) {
+    const cells = asOneDim(lookup);
+    if (!cells) return solError("#SHAPE!", "XLOOKUP's lookup value is one value or a list, not a 2-D grid");
+    return cells.map(pick);
+  }
   return Array.isArray(lookup) ? lookup.map(pick) : pick(lookup);
 });
 registerInternal("XMATCH", (lookup, keys, matchMode, searchMode) => {
@@ -1212,7 +1219,6 @@ registerInternal("XMATCH", (lookup, keys, matchMode, searchMode) => {
   if (isSolError(mm)) return mm;
   const sm = xSearchModeArg(searchMode);
   if (isSolError(sm)) return sm;
-  if (isGrid(lookup)) return solError("#SHAPE!", "XMATCH's lookup value is one value or a list, not a matrix");
   const ks = asOneDim(keys);
   if (!ks) return solError("#VALUE!", "XMATCH's lookup array must be a single row or a single column");
   const pick = (l: unknown) => {
@@ -1220,6 +1226,13 @@ registerInternal("XMATCH", (lookup, keys, matchMode, searchMode) => {
     if (isSolError(idx)) return idx;
     return idx >= 0 ? idx + 1 : solError("#N/A", "No match found");
   };
+  // The lookup VALUE: a scalar picks; a list OR an orientation-free 1×N / N×1 matrix
+  // spills one result per cell; a true 2-D grid is #SHAPE! (mirrors the lookup array).
+  if (isGrid(lookup)) {
+    const cells = asOneDim(lookup);
+    if (!cells) return solError("#SHAPE!", "XMATCH's lookup value is one value or a list, not a 2-D grid");
+    return cells.map(pick);
+  }
   return Array.isArray(lookup) ? lookup.map(pick) : pick(lookup);
 });
 // A blank branch (`IF(x,,y)`) arrives as null and STAYS null — a deliberate deviation;
