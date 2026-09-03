@@ -11,6 +11,7 @@ import { FormatControllerNode } from "../../src/graph/nodes/formatController";
 import { dockedNodeStore } from "../../src/graph/dockedNodeStore";
 import { GROUP_PAD, GROUP_HEADER, autofitGroupWithHistory } from "../../src/graph/groupLogic";
 import { COLLAPSE_LAYOUT, groupCollapseStore } from "../../src/graph/groupCollapse";
+import { socketFlipStore } from "../../src/graph/socketFlipStore";
 
 // ─── Headless Tidy/Cleanup harness ──────────────────────────────────────────────
 // The real arrangeFn is DOM-coupled: it measures node sizes off view.nodeViews
@@ -503,5 +504,46 @@ describe("Cleanup with an expanded group (headless)", () => {
       expect(inY, `${id} left the group box vertically`).toBe(true);
     }
     expect(group.collapsed).toBe(true);
+  });
+});
+
+describe("Tidy with a flipped node (predecessor layering, real ELK)", () => {
+  afterEach(() => { socketFlipStore.clear(); settingsStore.set("tidyDirection", "right"); });
+
+  async function buildPair() {
+    settingsStore.set("tidyDirection", "right");
+    const editor = new NodeEditor<Schemes>();
+    const { view, addView } = makeFakeView();
+    const a = new ArithmeticNode({ op: "add" });
+    const b = new DisplayNode();
+    for (const n of [a, b]) await editor.addNode(n as never);
+    await connect(editor, a, "result", b, "in");
+    (a as unknown as { width: number; height: number }).width = 180;
+    (a as unknown as { width: number; height: number }).height = 100;
+    (b as unknown as { width: number; height: number }).width = 180;
+    (b as unknown as { width: number; height: number }).height = 80;
+    addView(a.id, 100, 100, 180, 100);
+    addView(b.id, 400, 100, 180, 80);
+    const ensureElk = makeEnsureElk(() => false);
+    const arrangeFn = makeArrangeFn({
+      editor, view, container: {} as HTMLElement, ensureElk,
+      repositionDockedTo: () => {}, isDestroyed: () => false,
+    });
+    return { view, arrangeFn, a, b };
+  }
+
+  it("lays the sink to the RIGHT of its source with no flip (normal flow)", async () => {
+    const { view, arrangeFn, a, b } = await buildPair();
+    await arrangeFn({ skipConfirm: true });
+    await flushRafs();
+    expect(view.fakes.get(b.id)!.position.x).toBeGreaterThan(view.fakes.get(a.id)!.position.x);
+  });
+
+  it("lays a FLIPPED sink to the LEFT of its source (acts as a predecessor)", async () => {
+    const { view, arrangeFn, a, b } = await buildPair();
+    socketFlipStore.set(b.id, true);
+    await arrangeFn({ skipConfirm: true });
+    await flushRafs();
+    expect(view.fakes.get(b.id)!.position.x).toBeLessThan(view.fakes.get(a.id)!.position.x);
   });
 });

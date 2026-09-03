@@ -11,6 +11,7 @@ import { measuredBox } from "./nodeSize";
 import { nodeSizeStore } from "./nodeSizeStore";
 import { pushForGrownGroups } from "./groupPush";
 import { separateOverlaps, PUSH_GAP, type PushBox } from "./groupPushCore";
+import { socketFlipStore } from "./socketFlipStore";
 import { standoffStore, standoffClusters, settleStandoffs } from "./standoffs";
 import { rebuildGroupMembership } from "./groupMembership";
 import { syncGroupCollapse, settleCollapse } from "./groupCollapse";
@@ -367,6 +368,20 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       const s = elkId(c.source);
       const t = elkId(c.target);
       if (s === t || !elkVisible.has(s) || !elkVisible.has(t)) return [];
+      // A flipped node reads from its right and emits to its left, so for the layout
+      // it "acts as a predecessor" — its neighbor should sit one layer the other way.
+      // Reverse the ELK edge direction when either end is flipped, and drop the ports
+      // (node-level edge) so the mirrored side never fights the symmetric port preset.
+      // (Grouped members remap to their group, which is never flipped — so this reads
+      // the ELK-visible id, not the raw endpoint.)
+      const flipEdge = socketFlipStore.get(s) || socketFlipStore.get(t);
+      if (flipEdge) {
+        return [{
+          ...c,
+          source: t, sourceOutput: "",
+          target: s, targetInput: "",
+        } as unknown as Schemes["Connection"]];
+      }
       return [{
         ...c,
         source: s, sourceOutput: s !== c.source ? "" : c.sourceOutput,
