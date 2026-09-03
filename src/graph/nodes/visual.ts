@@ -1347,7 +1347,7 @@ export class ChartBuilderNode extends ClassicPreset.Node {
     super("ChartBuilder");
     this.label = init?.label ?? "Chart Builder";
     // Guard a stale target from an old save — fall back rather than crash.
-    this.target = init?.target && init.target in CHART_BUILDER_TARGETS ? init.target : "chart";
+    this.target = init?.target && init.target in CHART_BUILDER_TARGETS ? init.target : "column";
     this.addInput("title",     strIn("Title"));
     this.addInput("xlabel",    strIn("X label"));
     this.addInput("ylabel",    strIn("Y label"));

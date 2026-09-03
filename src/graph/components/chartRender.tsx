@@ -190,17 +190,35 @@ export function ChartView({
     // default when the frame supplies names; `pielabels=off` (or the Chart Builder
     // toggle) turns them off, and then the pie fills the whole box. Names are sanitized +
     // length-capped (untrusted text); vanishingly thin slices skip their label.
-    const labeled = !!labels && (opts?.pielabels ?? true);
-    const pad = labeled ? Math.min(30, width * 0.12) : 6;
+    const pieMode = opts?.pielabels ?? "outside";
+    const labeled = !!labels && pieMode !== "off";
+    // Inside labels ride the slice, so only the small ones spill outside — the box barely
+    // shrinks. Outside labels need the full margin for their leaders.
+    const pad = !labeled ? 6 : pieMode === "inside" ? Math.min(16, width * 0.07) : Math.min(30, width * 0.12);
     const r = Math.max(18, Math.min(width, chartH) / 2 - pad);
     const cap = width < 260 ? 10 : 16;
     const stub = 7;
+    const font = 9 * fs;
     const pieLabel = (p: { cx?: number; cy?: number; midAngle?: number; outerRadius?: number; index?: number; percent?: number; payload?: unknown }) => {
       const cx = p.cx ?? 0, cy = p.cy ?? 0, mid = p.midAngle ?? 0, outerR = p.outerRadius ?? 0, index = p.index ?? 0;
       const rowI = (p.payload as { i?: number } | undefined)?.i ?? series[index]?.i ?? index;
       const name = sanitizeChartLabel(tickFmt(rowI), cap);
-      if (!name || (p.percent ?? 0) < 0.03) return null;
+      const pct = p.percent ?? 0;
+      if (!name || pct < 0.03) return null;
       const cos = Math.cos(-mid * RADIAN), sin = Math.sin(-mid * RADIAN);
+      // Inside: centre a backing-plated label on the slice, but a thin slice (< 6%) can't
+      // hold it, so it keeps the outside leader.
+      if (pieMode === "inside" && pct >= 0.06) {
+        const rr = outerR * 0.62;
+        const x = cx + rr * cos, y = cy + rr * sin;
+        const w = name.length * font * 0.6 + 6, h = font + 4;
+        return (
+          <g>
+            <rect x={x - w / 2} y={y - h / 2} width={w} height={h} rx={3} fill="var(--surface)" opacity={0.72} />
+            <text x={x} y={y} fill={axis} fontSize={font} textAnchor="middle" dominantBaseline="central">{name}</text>
+          </g>
+        );
+      }
       const side = cos >= 0 ? 1 : -1;
       const sx = cx + outerR * cos, sy = cy + outerR * sin;                // slice edge
       const mx = cx + (outerR + stub) * cos, my = cy + (outerR + stub) * sin; // elbow
@@ -208,7 +226,7 @@ export function ChartView({
       return (
         <g>
           <polyline points={`${sx},${sy} ${mx},${my} ${colX},${my}`} stroke={grid} fill="none" />
-          <text x={colX + side * 3} y={my} fill={axis} fontSize={9 * fs} textAnchor={side > 0 ? "start" : "end"} dominantBaseline="central">{name}</text>
+          <text x={colX + side * 3} y={my} fill={axis} fontSize={font} textAnchor={side > 0 ? "start" : "end"} dominantBaseline="central">{name}</text>
         </g>
       );
     };

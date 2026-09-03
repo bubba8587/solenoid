@@ -27,9 +27,12 @@ describe("parseChartOptions", () => {
     expect(parseChartOptions("markersize=0")).toEqual({});
   });
 
-  it("parses pielabels as a boolean", () => {
-    expect(parseChartOptions("pielabels=off").pielabels).toBe(false);
-    expect(parseChartOptions("pielabels=on").pielabels).toBe(true);
+  it("parses pielabels as off/outside/inside, with on and center aliased", () => {
+    expect(parseChartOptions("pielabels=off").pielabels).toBe("off");
+    expect(parseChartOptions("pielabels=on").pielabels).toBe("outside");
+    expect(parseChartOptions("pielabels=outside").pielabels).toBe("outside");
+    expect(parseChartOptions("pielabels=inside").pielabels).toBe("inside");
+    expect(parseChartOptions("pielabels=center").pielabels).toBe("inside");
     expect(parseChartOptions("pielabels=nonsense").pielabels).toBeUndefined();
   });
 
@@ -56,8 +59,9 @@ describe("serializeChartOptions", () => {
     expect(parseChartOptions(s)).toEqual({ title: "Q1", ylabel: "$", grid: true, linewidth: 2, ymin: 0, ymax: 100 });
   });
 
-  it("serializes the pielabels toggle", () => {
-    expect(serializeChartOptions({ pielabels: "off" })).toBe("pielabels=off");
-    expect(parseChartOptions(serializeChartOptions({ pielabels: "off" }))).toEqual({ pielabels: false });
+  it("serializes the pielabels mode and round-trips it", () => {
+    expect(serializeChartOptions({ pielabels: "inside" })).toBe("pielabels=inside");
+    expect(parseChartOptions(serializeChartOptions({ pielabels: "off" }))).toEqual({ pielabels: "off" });
+    expect(parseChartOptions(serializeChartOptions({ pielabels: "inside" }))).toEqual({ pielabels: "inside" });
   });
 });

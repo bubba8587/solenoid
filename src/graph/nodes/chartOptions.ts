@@ -16,10 +16,12 @@ export interface ChartOptions {
   alpha?: number;
   // matplotlib's font.size rcParam; render surfaces scale every text size by fontsize/10.
   fontsize?: number;
-  // Pie slice category labels; on by default when the frame supplies names, so this only
-  // ever carries an explicit off.
-  pielabels?: boolean;
+  // Pie slice category labels: outside on a leader (the default when names are present),
+  // inside/on the slice with a backing plate, or off. Only ever carries an explicit choice.
+  pielabels?: PieLabelMode;
 }
+
+export type PieLabelMode = "off" | "outside" | "inside";
 
 const TRUTHY = new Set(["on", "true", "1", "yes", "y"]);
 const FALSY = new Set(["off", "false", "0", "no", "n"]);
@@ -29,6 +31,16 @@ function toBool(v: string): boolean | undefined {
   if (TRUTHY.has(s)) return true;
   if (FALSY.has(s)) return false;
   return undefined;
+}
+
+/** off/outside/inside, with on→outside and center→inside as friendly aliases; a bare
+ *  boolean on/off still works (an old save, or a plain toggle). */
+function toPieLabelMode(v: string): PieLabelMode | undefined {
+  const s = v.trim().toLowerCase();
+  if (s === "inside" || s === "center" || s === "on-chart") return "inside";
+  if (s === "outside" || s === "leader") return "outside";
+  const b = toBool(s);
+  return b === undefined ? undefined : b ? "outside" : "off";
 }
 
 function toNum(v: string): number | undefined {
@@ -56,7 +68,7 @@ export function parseChartOptions(input: string | null | undefined): ChartOption
       case "color":  if (val) opts.color = val; break;
       case "grid":   { const b = toBool(val); if (b !== undefined) opts.grid = b; break; }
       case "marker": { const b = toBool(val); if (b !== undefined) opts.marker = b; break; }
-      case "pielabels": { const b = toBool(val); if (b !== undefined) opts.pielabels = b; break; }
+      case "pielabels": { const m = toPieLabelMode(val); if (m !== undefined) opts.pielabels = m; break; }
       case "linewidth":
       case "lw":     { const n = toNum(val); if (n !== undefined) opts.linewidth = n; break; }
       case "markersize":
@@ -127,43 +139,70 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
 
 // Which option keys each figure's RENDERER actually reads; keep in sync with the render
 // layer when a view learns an option. The builder still SERIALIZES every set field — an
-// unread key is inert, and one builder may feed several charts.
-//   • ChartView (the Chart node, any shape) reads everything; its column/bar
-//     path skips marker/linewidth but the Chart node can be a line, so the
-//     "chart" target keeps the full set.
-//   • Histogram renders through ChartView as columns → no marker/linewidth.
-//   • The payload figures (KPI / Bullet / Proportion / Sankey) fold fontsize into
-//     their text scale; title flows to the figure title everywhere. Proportion's
-//     waffle layout ignores fontsize (inert), but the target is one for both.
-//   • The canvas figures (Waterfall / Candlestick / Boxplot / Calendar
-//     Heatmap) read nothing but the title.
+// unread key is inert, and one builder can feed several charts, so narrowing is only which
+// fields the form OFFERS.
+//   • Each Chart-node op is its own target: line/area add marker + line width, pie adds
+//     pielabels (and drops the axes), the categorical slices keep only title/color/font.
+//   • Histogram renders through the column path → axes but no marker/line width.
+//   • The payload figures (KPI / Gauge / Proportion / Sankey) fold fontsize into their
+//     text scale; title flows to the figure title everywhere.
+//   • The canvas figures (Waterfall / Candlestick / Boxplot / Calendar Heatmap) read
+//     nothing but the title.
 
 export type ChartBuilderKey =
   | "title" | "xlabel" | "ylabel" | "color" | "grid" | "marker" | "pielabels"
   | "ymin" | "ymax" | "linewidth" | "markersize" | "alpha" | "fontsize";
 
+// The Chart node's own ops are first-class targets so the form can show ONLY the options
+// that op reads (pielabels for Pie, line width for Line, none of that for Bar); the rest are
+// the standalone figure nodes. The `group` drives the target dropdown's two-level layout.
 export type ChartTargetId =
-  | "chart" | "histogram" | "kpi" | "scale" | "proportion" | "sankey"
+  | "column" | "bar" | "line" | "area" | "scatter"
+  | "pie" | "radar" | "radialbar" | "funnel"
+  | "composed" | "bubble"
+  | "histogram" | "kpi" | "scale" | "proportion" | "sankey"
   | "waterfall" | "candle" | "boxplot" | "calheat";
 
-const ALL_KEYS: readonly ChartBuilderKey[] =
-  ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
+const XY_KEYS: readonly ChartBuilderKey[] =
+  ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "alpha", "fontsize"];
+const LINE_KEYS: readonly ChartBuilderKey[] =
+  ["title", "xlabel", "ylabel", "color", "grid", "marker", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
+const SCATTER_KEYS: readonly ChartBuilderKey[] =
+  ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "markersize", "alpha", "fontsize"];
+// Pie / radial / funnel paint each slice from the palette, so a single `color` is inert —
+// it isn't offered. Radar is one series, so it keeps `color`.
+const PIE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize", "pielabels"];
+const RADAR_KEYS: readonly ChartBuilderKey[] = ["title", "color", "grid", "fontsize"];
+const SLICE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];
+const COMPOSED_KEYS: readonly ChartBuilderKey[] =
+  ["title", "xlabel", "ylabel", "grid", "marker", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
+const BUBBLE_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "grid", "ymin", "ymax", "fontsize"];
 const AXED_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "alpha", "fontsize"];
 const STAT_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];
 const TITLE_ONLY: readonly ChartBuilderKey[] = ["title"];
 
-export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; keys: readonly ChartBuilderKey[] }> = {
-  chart:     { label: "Chart",            keys: ALL_KEYS },
-  histogram: { label: "Histogram",        keys: AXED_KEYS },
-  kpi:       { label: "KPI",              keys: STAT_KEYS },
-  scale:     { label: "Gauge",            keys: STAT_KEYS },
-  proportion: { label: "Proportion",      keys: STAT_KEYS },
-  sankey:    { label: "Sankey",           keys: STAT_KEYS },
-  waterfall: { label: "Waterfall",        keys: TITLE_ONLY },
-  candle:    { label: "Candlestick",      keys: TITLE_ONLY },
-  boxplot:   { label: "Boxplot",          keys: TITLE_ONLY },
-  calheat:   { label: "Calendar Heatmap", keys: TITLE_ONLY },
+export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group: string; keys: readonly ChartBuilderKey[] }> = {
+  column:    { label: "Column",           group: "Cartesian",    keys: XY_KEYS },
+  bar:       { label: "Bar",              group: "Cartesian",    keys: XY_KEYS },
+  line:      { label: "Line",             group: "Cartesian",    keys: LINE_KEYS },
+  area:      { label: "Area",             group: "Cartesian",    keys: LINE_KEYS },
+  scatter:   { label: "Scatter",          group: "Cartesian",    keys: SCATTER_KEYS },
+  pie:       { label: "Pie",              group: "Categorical",  keys: PIE_KEYS },
+  radar:     { label: "Radar",            group: "Categorical",  keys: RADAR_KEYS },
+  radialbar: { label: "Radial",           group: "Categorical",  keys: SLICE_KEYS },
+  funnel:    { label: "Funnel",           group: "Categorical",  keys: SLICE_KEYS },
+  composed:  { label: "Composed",         group: "Multi-series", keys: COMPOSED_KEYS },
+  bubble:    { label: "Bubble",           group: "Multi-series", keys: BUBBLE_KEYS },
+  histogram: { label: "Histogram",        group: "Figures",      keys: AXED_KEYS },
+  kpi:       { label: "KPI",              group: "Figures",      keys: STAT_KEYS },
+  scale:     { label: "Gauge",            group: "Figures",      keys: STAT_KEYS },
+  proportion: { label: "Proportion",      group: "Figures",      keys: STAT_KEYS },
+  sankey:    { label: "Sankey",           group: "Figures",      keys: STAT_KEYS },
+  waterfall: { label: "Waterfall",        group: "Figures",      keys: TITLE_ONLY },
+  candle:    { label: "Candlestick",      group: "Figures",      keys: TITLE_ONLY },
+  boxplot:   { label: "Boxplot",          group: "Figures",      keys: TITLE_ONLY },
+  calheat:   { label: "Calendar Heatmap", group: "Figures",      keys: TITLE_ONLY },
 };
 
 export const CHART_TARGET_LIST = (Object.keys(CHART_BUILDER_TARGETS) as ChartTargetId[])

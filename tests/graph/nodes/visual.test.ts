@@ -153,12 +153,12 @@ describe("Chart Builder", () => {
     expect(new ChartBuilderNode().data({})).toEqual({ result: "" });
   });
 
-  it("target round-trips through extractInit; a stale target falls back to chart", () => {
+  it("target round-trips through extractInit; a stale target falls back to column", () => {
     const b = new ChartBuilderNode({ target: "kpi" });
     const init = extractInit(b);
     expect(init.target).toBe("kpi");
     expect(new ChartBuilderNode(init as { target?: never }).target).toBe("kpi");
-    expect(new ChartBuilderNode({ target: "gone" as never }).target).toBe("chart");
+    expect(new ChartBuilderNode({ target: "gone" as never }).target).toBe("column");
   });
 
   it("serialization ignores the target — set fields always emit", () => {
@@ -174,8 +174,12 @@ describe("Chart Builder", () => {
       for (const k of keys) expect(fields.has(k), `${id}:${k}`).toBe(true);
       expect(keys).toContain("title");
     }
-    // The default target accepts the full field set (today's whole form).
-    expect(new Set(CHART_BUILDER_TARGETS.chart.keys)).toEqual(fields);
+    // Every builder field is reachable from at least one target (no orphan socket).
+    const reachable = new Set<string>(CHART_TARGET_LIST.flatMap((t) => [...t.keys]));
+    expect(reachable).toEqual(fields);
+    // pielabels belongs to the pie target only.
+    expect(CHART_BUILDER_TARGETS.pie.keys).toContain("pielabels");
+    expect(CHART_BUILDER_TARGETS.bar.keys).not.toContain("pielabels");
   });
 });
 

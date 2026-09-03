@@ -345,7 +345,8 @@
       "x": 1130,
       "y": 1676,
       "init": {
-        "label": "Style: sine"
+        "label": "Style: sine",
+        "target": "line"
       },
       "literals": {
         "linewidth": 3,
