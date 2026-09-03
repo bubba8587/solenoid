@@ -8,7 +8,7 @@
       "id": "note-head",
       "type": "NoteNode",
       "x": 0,
-      "y": -360,
+      "y": 660,
       "init": {
         "label": "Script: worked examples",
         "color": "amber",
@@ -19,8 +19,8 @@
     {
       "id": "in-samples",
       "type": "NumberInputNode",
-      "x": 0,
-      "y": 60,
+      "x": 380,
+      "y": 1220,
       "init": {
         "label": "Samples",
         "value": 100000
@@ -29,8 +29,8 @@
     {
       "id": "sc-pi",
       "type": "ScriptNode",
-      "x": 320,
-      "y": 0,
+      "x": 645,
+      "y": 1102,
       "init": {
         "label": "Monte Carlo π",
         "expr": "(samples) => {\n  let hits = 0;\n  for (let i = 0; i < samples; i++) {\n    const x = Math.random();\n    const y = Math.random();\n    if (x * x + y * y <= 1) hits++;\n  }\n  return 4 * hits / samples;\n}"
@@ -39,8 +39,8 @@
     {
       "id": "d-pi",
       "type": "DisplayNode",
-      "x": 700,
-      "y": 130,
+      "x": 979,
+      "y": 1215,
       "init": {
         "label": "≈ 3.14"
       }
@@ -48,8 +48,8 @@
     {
       "id": "in-n",
       "type": "NumberInputNode",
-      "x": 0,
-      "y": 560,
+      "x": 380,
+      "y": 542,
       "init": {
         "label": "27",
         "value": 27
@@ -58,8 +58,8 @@
     {
       "id": "sc-collatz",
       "type": "ScriptNode",
-      "x": 320,
-      "y": 480,
+      "x": 645,
+      "y": 450,
       "init": {
         "label": "Collatz path",
         "expr": "(n) => {\n  const path = [n];\n  while (n > 1 && path.length < 1000) {\n    n = n % 2 ? 3 * n + 1 : n / 2;\n    path.push(n);\n  }\n  return path;\n}"
@@ -68,8 +68,8 @@
     {
       "id": "spark",
       "type": "SparklineNode",
-      "x": 700,
-      "y": 480,
+      "x": 979,
+      "y": 622,
       "init": {
         "label": "Sparkline"
       }
@@ -77,8 +77,8 @@
     {
       "id": "sc-summary",
       "type": "ScriptNode",
-      "x": 1020,
-      "y": 480,
+      "x": 981,
+      "y": 362,
       "init": {
         "label": "Path summary",
         "expr": "(path) => {\n  const steps = path.length - 1;\n  const peak = Math.max(...path);\n  return steps + \" steps, peak \" + peak;\n}"
@@ -87,8 +87,8 @@
     {
       "id": "d-summary",
       "type": "DisplayNode",
-      "x": 1360,
-      "y": 560,
+      "x": 1309,
+      "y": 428,
       "init": {
         "label": "→ 111 steps, peak 9232"
       }
@@ -96,8 +96,8 @@
     {
       "id": "in-principal",
       "type": "NumberInputNode",
-      "x": 0,
-      "y": 1000,
+      "x": 380,
+      "y": 1654,
       "init": {
         "label": "Principal",
         "value": 250000
@@ -106,8 +106,8 @@
     {
       "id": "sc-loan",
       "type": "ScriptNode",
-      "x": 320,
-      "y": 880,
+      "x": 645,
+      "y": 1456,
       "init": {
         "label": "Amortization table",
         "expr": "(principal, rate, years) => {\n  const r = rate / 100 / 12;\n  const n = years * 12;\n  const pow = (1 + r) ** -n;\n  const pay = principal * r / (1 - pow);\n  const rows = [];\n  let bal = principal;\n  let paid = 0;\n  for (let m = 1; m <= n; m++) {\n    const i = bal * r;\n    paid += i;\n    bal -= pay - i;\n    if (m % 60 === 0) rows.push({\n      year: m / 12,\n      interest: Math.round(paid),\n      balance: Math.round(bal),\n    });\n  }\n  return rows;\n}"
@@ -120,8 +120,8 @@
     {
       "id": "d-loan",
       "type": "DisplayNode",
-      "x": 700,
-      "y": 1000,
+      "x": 979,
+      "y": 1483,
       "init": {
         "label": "Every 5 years"
       }
@@ -129,8 +129,8 @@
     {
       "id": "sc-total",
       "type": "ScriptNode",
-      "x": 1020,
-      "y": 880,
+      "x": 981,
+      "y": 1730,
       "init": {
         "label": "Reads the frame back",
         "expr": "(sched) => {\n  const last = sched[sched.length - 1];\n  return \"Total interest \" + last.interest;\n}"
@@ -139,8 +139,8 @@
     {
       "id": "d-total",
       "type": "DisplayNode",
-      "x": 1360,
-      "y": 990,
+      "x": 1309,
+      "y": 1788,
       "init": {
         "label": "→ Total interest 206017"
       }
@@ -148,8 +148,8 @@
     {
       "id": "in-year",
       "type": "NumberInputNode",
-      "x": 0,
-      "y": 1620,
+      "x": 380,
+      "y": 892,
       "init": {
         "label": "Year",
         "value": 2026
@@ -158,8 +158,8 @@
     {
       "id": "sc-fri13",
       "type": "ScriptNode",
-      "x": 320,
-      "y": 1540,
+      "x": 645,
+      "y": 800,
       "init": {
         "label": "Friday the 13ths",
         "expr": "(year) => {\n  const hits = [];\n  for (let m = 0; m < 12; m++) {\n    const d = new Date(Date.UTC(year, m, 13));\n    if (d.getUTCDay() === 5) hits.push(d);\n  }\n  return hits;\n}"
@@ -168,8 +168,8 @@
     {
       "id": "d-fri13",
       "type": "DisplayNode",
-      "x": 700,
-      "y": 1620,
+      "x": 979,
+      "y": 865,
       "init": {
         "label": "→ 13-Feb, 13-Mar, 13-Nov"
       }
@@ -177,8 +177,8 @@
     {
       "id": "in-growth",
       "type": "NumberInputNode",
-      "x": 0,
-      "y": 2100,
+      "x": 380,
+      "y": 119,
       "init": {
         "label": "Growth",
         "value": 1.1
@@ -187,8 +187,8 @@
     {
       "id": "sc-cube",
       "type": "ScriptNode",
-      "x": 320,
-      "y": 2040,
+      "x": 645,
+      "y": 12,
       "init": {
         "label": "Nested rows: a cube",
         "expr": "(growth) => [\"North\", \"South\"]\n  .map((region, i) => ({\n    region,\n    quarters: [1, 2, 3, 4].map((q) => ({\n      quarter: q,\n      sales: Math.round(\n        100 * (i + 1) * growth ** q,\n      ),\n    })),\n  }))"
@@ -197,8 +197,8 @@
     {
       "id": "rollup",
       "type": "CubeRollupNode",
-      "x": 700,
-      "y": 2060,
+      "x": 981,
+      "y": 44,
       "init": {
         "label": "Cube Rollup",
         "agg": "sum"
@@ -212,8 +212,8 @@
     {
       "id": "d-cube",
       "type": "DisplayNode",
-      "x": 1040,
-      "y": 2100,
+      "x": 1309,
+      "y": 114,
       "init": {
         "label": "→ North 510, South 1021"
       }

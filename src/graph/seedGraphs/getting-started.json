@@ -7,8 +7,8 @@
     {
       "id": "3dc4458fdead68ca",
       "type": "NumberInputNode",
-      "x": -319,
-      "y": -142,
+      "x": 469,
+      "y": 1110,
       "init": {
         "label": "Monthly budget",
         "value": 50,
@@ -19,8 +19,8 @@
     {
       "id": "707e9dcb674a0586",
       "type": "NumberInputNode",
-      "x": -319,
-      "y": -25,
+      "x": 469,
+      "y": 1227,
       "init": {
         "label": "Months",
         "value": 12,
@@ -31,8 +31,8 @@
     {
       "id": "e69146c2dff9ae27",
       "type": "ArithmeticNode",
-      "x": -50,
-      "y": -133,
+      "x": 738,
+      "y": 1119,
       "init": {
         "label": "Annual total",
         "op": "mul",
@@ -50,8 +50,8 @@
     {
       "id": "cac028027f370893",
       "type": "DisplayNode",
-      "x": 310,
-      "y": -21,
+      "x": 1016,
+      "y": 987,
       "init": {
         "label": "Annual budget",
         "unitSuffix": "none",
@@ -62,8 +62,8 @@
     {
       "id": "10e354041ab33d0a",
       "type": "FormatControllerNode",
-      "x": 492,
-      "y": -12,
+      "x": 1198,
+      "y": 996,
       "init": {
         "label": "Format",
         "hostNodeId": "cac028027f370893",
@@ -87,8 +87,8 @@
     {
       "id": "8aa83ef9f3cbce64",
       "type": "GroupNode",
-      "x": -343,
-      "y": -200,
+      "x": 445,
+      "y": 1052,
       "init": {
         "label": "Budget",
         "members": [
@@ -105,8 +105,8 @@
     {
       "id": "bfa05e574426869f",
       "type": "TextInputNode",
-      "x": -319,
-      "y": 607,
+      "x": -162,
+      "y": -128,
       "init": {
         "label": "First name",
         "value": "ada",
@@ -117,8 +117,8 @@
     {
       "id": "d51023727681c51c",
       "type": "TextInputNode",
-      "x": -319,
-      "y": 724,
+      "x": -162,
+      "y": -11,
       "init": {
         "label": "Last name",
         "value": "lovelace",
@@ -129,8 +129,8 @@
     {
       "id": "18267a40310b0a0c",
       "type": "ConcatNode",
-      "x": -51,
-      "y": 604,
+      "x": 106,
+      "y": -131,
       "init": {
         "label": "Full name",
         "width": 180,
@@ -149,8 +149,8 @@
     {
       "id": "b7055a5f9c1c878c",
       "type": "DisplayNode",
-      "x": 214,
-      "y": 652,
+      "x": 371,
+      "y": -83,
       "init": {
         "label": "Name badge",
         "unitSuffix": "none",
@@ -161,8 +161,8 @@
     {
       "id": "fb924a7fb971dd3a",
       "type": "FormatControllerNode",
-      "x": 454,
-      "y": 678,
+      "x": 606,
+      "y": -57,
       "init": {
         "label": "Format",
         "hostNodeId": "b7055a5f9c1c878c",
@@ -186,8 +186,8 @@
     {
       "id": "c5276e978b610c7f",
       "type": "GroupNode",
-      "x": -343,
-      "y": 546,
+      "x": -186,
+      "y": -189,
       "init": {
         "label": "Name badge",
         "members": [
@@ -199,15 +199,15 @@
         ],
         "color": "lime",
         "collapsed": false,
-        "width": 951,
+        "width": 946,
         "height": 287
       }
     },
     {
       "id": "eccce2ca25f6520e",
       "type": "NumberInputNode",
-      "x": 742,
-      "y": -38,
+      "x": -240,
+      "y": 1522,
       "init": {
         "label": "Distance",
         "value": 1.5,
@@ -218,8 +218,8 @@
     {
       "id": "81e3f277a3a0a7b2",
       "type": "ConvertNode",
-      "x": 1183,
-      "y": -130,
+      "x": 201,
+      "y": 1430,
       "init": {
         "label": "mi → km",
         "fromUnit": "mi",
@@ -232,8 +232,8 @@
     {
       "id": "9232ae9ba13eb334",
       "type": "DisplayNode",
-      "x": 1448,
-      "y": -41,
+      "x": 466,
+      "y": 1519,
       "init": {
         "label": "Distance (km)",
         "unitSuffix": "none",
@@ -244,8 +244,8 @@
     {
       "id": "2326393ec84f58da",
       "type": "FormatControllerNode",
-      "x": 928,
-      "y": -34,
+      "x": -57,
+      "y": 1526,
       "init": {
         "label": "Format",
         "hostNodeId": "eccce2ca25f6520e",
@@ -269,8 +269,8 @@
     {
       "id": "e4fac14f53029814",
       "type": "FormatControllerNode",
-      "x": 1634,
-      "y": -32,
+      "x": 649,
+      "y": 1528,
       "init": {
         "label": "Format",
         "hostNodeId": "9232ae9ba13eb334",
@@ -294,8 +294,8 @@
     {
       "id": "1b7810cc8a788307",
       "type": "TextInputNode",
-      "x": 742,
-      "y": 541,
+      "x": -235,
+      "y": 842,
       "init": {
         "label": "CSV",
         "value": "apple,banana,cherry",
@@ -306,8 +306,8 @@
     {
       "id": "c2611d5dbac7e563",
       "type": "TextSplitNode",
-      "x": 1007,
-      "y": 519,
+      "x": 30,
+      "y": 820,
       "init": {
         "label": "TEXTSPLIT",
         "width": 180,
@@ -322,8 +322,8 @@
     {
       "id": "4cb6d87da6931ba9",
       "type": "TextJoinNode",
-      "x": 1272,
-      "y": 507,
+      "x": 295,
+      "y": 808,
       "init": {
         "label": "TEXTJOIN",
         "ignoreEmpty": "include",
@@ -338,8 +338,8 @@
     {
       "id": "3c071df0f0f5d899",
       "type": "DisplayNode",
-      "x": 1537,
-      "y": 552,
+      "x": 560,
+      "y": 853,
       "init": {
         "label": "Joined",
         "unitSuffix": "none",
@@ -350,8 +350,8 @@
     {
       "id": "fd35e7e286babf8d",
       "type": "TodayNowNode",
-      "x": -319,
-      "y": 282,
+      "x": -31,
+      "y": -403,
       "init": {
         "op": "today",
         "width": 180,
@@ -361,8 +361,8 @@
     {
       "id": "d96699eb75dc9ee3",
       "type": "DisplayNode",
-      "x": -54,
-      "y": 312,
+      "x": 264,
+      "y": -373,
       "init": {
         "label": "Today",
         "unitSuffix": "none",
@@ -373,8 +373,8 @@
     {
       "id": "c2e0bfe3d60c2820",
       "type": "FormatControllerNode",
-      "x": 132,
-      "y": 356,
+      "x": 447,
+      "y": -331,
       "init": {
         "label": "Format",
         "hostNodeId": "d96699eb75dc9ee3",
@@ -398,8 +398,8 @@
     {
       "id": "d43e296a48729cc5",
       "type": "GroupNode",
-      "x": -343,
-      "y": 224,
+      "x": -55,
+      "y": -461,
       "init": {
         "label": "Today's date",
         "members": [
@@ -409,15 +409,15 @@
         ],
         "color": "pink",
         "collapsed": false,
-        "width": 656,
-        "height": 238
+        "width": 683,
+        "height": 234
       }
     },
     {
       "id": "551f5558f6e9b0ec",
       "type": "GroupNode",
-      "x": 718,
-      "y": -188,
+      "x": -264,
+      "y": 1372,
       "init": {
         "label": "Convert Mi to KM",
         "members": [
@@ -429,15 +429,15 @@
         ],
         "color": "gold",
         "collapsed": false,
-        "width": 1104,
+        "width": 1101,
         "height": 379
       }
     },
     {
       "id": "610e3e14726cf88f",
       "type": "GroupNode",
-      "x": 718,
-      "y": 449,
+      "x": -259,
+      "y": 750,
       "init": {
         "label": "Split & join text",
         "members": [
@@ -456,7 +456,7 @@
       "id": "gs-sales",
       "type": "FrameInputNode",
       "x": -349,
-      "y": 1150,
+      "y": 351,
       "init": {
         "label": "Quarterly sales",
         "frameText": "[{\"name\": \"Quarter\", \"type\": \"string\", \"values\": [\"Q1\", \"Q2\", \"Q3\", \"Q4\"]}, {\"name\": \"Sales\", \"type\": \"number\", \"values\": [1200, 1550, 1340, 1810]}]"
@@ -466,7 +466,7 @@
       "id": "gs-chart",
       "type": "ChartNode",
       "x": -14,
-      "y": 972,
+      "y": 194,
       "init": {
         "label": "Sales by quarter",
         "op": "column"
@@ -476,7 +476,7 @@
       "id": "gs-getcol",
       "type": "GetColumnNode",
       "x": -14,
-      "y": 1291,
+      "y": 517,
       "init": {
         "label": "Get Column → Sales"
       },
@@ -488,7 +488,7 @@
       "id": "gs-sum",
       "type": "AggregateNode",
       "x": 311,
-      "y": 1300,
+      "y": 526,
       "init": {
         "label": "SUM",
         "op": "sum"
@@ -498,7 +498,7 @@
       "id": "gs-total",
       "type": "DisplayNode",
       "x": 576,
-      "y": 1317,
+      "y": 543,
       "init": {
         "label": "Total sales"
       }
@@ -506,8 +506,8 @@
     {
       "id": "gs-fc",
       "type": "FormatControllerNode",
-      "x": 762,
-      "y": 1326,
+      "x": 758,
+      "y": 552,
       "init": {
         "label": "Format",
         "hostNodeId": "gs-total",
@@ -532,13 +532,13 @@
       "id": "gs-group",
       "type": "GroupNode",
       "x": -373,
-      "y": 914,
+      "y": 136,
       "init": {
         "label": "Tables & charts",
         "color": "amber",
         "collapsed": false,
-        "width": 1323,
-        "height": 572,
+        "width": 1319,
+        "height": 576,
         "members": [
           "gs-sales",
           "gs-chart",

@@ -8,7 +8,7 @@
       "id": "noteIntro",
       "type": "NoteNode",
       "x": -40,
-      "y": -300,
+      "y": -743,
       "init": {
         "label": "Cubes: nested tables",
         "body": "A **Cube** is a Frame whose cells hold ANY value: a scalar, list, nested **Frame**, or another **Cube**. It is the recursive container that closes the socket lattice. One **Orders** fact table + two dimensions drive every demo; drill any chip for the breadcrumb.",
@@ -20,8 +20,8 @@
     {
       "id": "regions",
       "type": "FrameInputNode",
-      "x": -10,
-      "y": -82,
+      "x": 280,
+      "y": -129,
       "init": {
         "label": "Regions (dim)",
         "frameText": "Region\nNorth\nSouth\nEast\nWest"
@@ -30,8 +30,8 @@
     {
       "id": "reps",
       "type": "FrameInputNode",
-      "x": -10,
-      "y": 123,
+      "x": 280,
+      "y": 130,
       "init": {
         "label": "Reps (dim)",
         "frameText": "Rep, Region\nAda, North\nBo, South\nCy, East\nDi, West"
@@ -40,8 +40,8 @@
     {
       "id": "orders",
       "type": "FrameInputNode",
-      "x": -10,
-      "y": 357,
+      "x": 280,
+      "y": 1082,
       "init": {
         "label": "Orders (36-row fact)",
         "frameText": "[{\"name\": \"Date\", \"type\": \"date\", \"values\": [\"2026-01-04\", \"2026-01-06\", \"2026-01-09\", \"2026-01-11\", \"2026-01-14\", \"2026-01-17\", \"2026-01-19\", \"2026-01-22\", \"2026-01-24\", \"2026-01-27\", \"2026-01-29\", \"2026-01-31\", \"2026-02-02\", \"2026-02-05\", \"2026-02-07\", \"2026-02-10\", \"2026-02-12\", \"2026-02-15\", \"2026-02-17\", \"2026-02-20\", \"2026-02-22\", \"2026-02-24\", \"2026-02-26\", \"2026-02-28\", \"2026-03-03\", \"2026-03-06\", \"2026-03-08\", \"2026-03-11\", \"2026-03-13\", \"2026-03-16\", \"2026-03-18\", \"2026-03-21\", \"2026-03-23\", \"2026-03-25\", \"2026-03-27\", \"2026-03-30\"]}, {\"name\": \"Month\", \"type\": \"string\", \"values\": [\"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\"]}, {\"name\": \"Region\", \"type\": \"string\", \"values\": [\"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\"]}, {\"name\": \"Category\", \"type\": \"string\", \"values\": [\"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\"]}, {\"name\": \"Rep\", \"type\": \"string\", \"values\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Ada\", \"Bo\", \"Cy\", \"Di\", \"Cy\", \"Ada\", \"Bo\", \"Di\", \"Bo\", \"Cy\", \"Di\", \"Ada\", \"Bo\", \"Cy\", \"Di\", \"Ada\", \"Di\", \"Bo\", \"Cy\", \"Ada\", \"Cy\", \"Di\", \"Ada\", \"Bo\", \"Cy\", \"Di\", \"Ada\", \"Bo\", \"Ada\", \"Cy\", \"Di\", \"Bo\"]}, {\"name\": \"Channel\", \"type\": \"string\", \"values\": [\"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\"]}, {\"name\": \"Units\", \"type\": \"number\", \"values\": [3, 5, 12, 2, 4, 9, 6, 3, 15, 4, 7, 11, 5, 6, 18, 3, 2, 14, 7, 5, 10, 8, 4, 13, 6, 7, 16, 4, 3, 12, 9, 6, 14, 5, 8, 10]}, {\"name\": \"Price\", \"type\": \"number\", \"values\": [500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25]}, {\"name\": \"Revenue\", \"type\": \"number\", \"values\": [1500, 1500, 300, 1000, 1200, 225, 3000, 900, 375, 2000, 2100, 275, 2500, 1800, 450, 1500, 600, 350, 3500, 1500, 250, 4000, 1200, 325, 3000, 2100, 400, 2000, 900, 300, 4500, 1800, 350, 2500, 2400, 250]}, {\"name\": \"SKU\", \"type\": \"string\", \"values\": [\"EL-001\", \"FU-002\", \"OF-003\", \"EL-004\", \"FU-005\", \"OF-006\", \"EL-007\", \"FU-008\", \"OF-009\", \"EL-010\", \"FU-011\", \"OF-012\", \"EL-013\", \"FU-014\", \"OF-015\", \"EL-016\", \"FU-017\", \"OF-018\", \"EL-019\", \"FU-020\", \"OF-021\", \"EL-022\", \"FU-023\", \"OF-024\", \"EL-025\", \"FU-026\", \"OF-027\", \"EL-028\", \"FU-029\", \"OF-030\", \"EL-031\", \"FU-032\", \"OF-033\", \"EL-034\", \"FU-035\", \"OF-036\"]}]"
@@ -50,8 +50,8 @@
     {
       "id": "noteNest",
       "type": "NoteNode",
-      "x": 440,
-      "y": -300,
+      "x": 83,
+      "y": 676,
       "init": {
         "label": "Nest Join: depth 1",
         "body": "**Nest Join** joins Reps × Orders on **Rep**: each rep keeps one row, their matching orders tucked into a nested-Frame cell (tidyr's nest_join). **INDEX** reads a cell back out: a whole sub-Frame, or a scalar.",
@@ -63,8 +63,8 @@
     {
       "id": "nestRep",
       "type": "NestJoinNode",
-      "x": 460,
-      "y": 118,
+      "x": 711,
+      "y": 1575,
       "init": {
         "label": "Nest Join: Orders under each Rep"
       },
@@ -76,8 +76,8 @@
     {
       "id": "dispRep",
       "type": "DisplayNode",
-      "x": 803,
-      "y": 60,
+      "x": 1098,
+      "y": 1620,
       "init": {
         "label": "Reps cube (drill the orders chip)"
       }
@@ -85,8 +85,8 @@
     {
       "id": "idxRepOrders",
       "type": "ListIndexNode",
-      "x": 823,
-      "y": 220,
+      "x": 1129,
+      "y": 1886,
       "init": {
         "label": "INDEX → Ada's orders (row 1, col 3)"
       },
@@ -98,8 +98,8 @@
     {
       "id": "dispRepOrders",
       "type": "DisplayNode",
-      "x": 1165,
-      "y": 186,
+      "x": 1444,
+      "y": 1888,
       "init": {
         "label": "Ada's orders — a Frame"
       }
@@ -107,8 +107,8 @@
     {
       "id": "idxRepName",
       "type": "ListIndexNode",
-      "x": 823,
-      "y": 372,
+      "x": 1129,
+      "y": 2199,
       "init": {
         "label": "INDEX → a scalar (row 1, col 1)"
       },
@@ -120,8 +120,8 @@
     {
       "id": "dispRepName",
       "type": "DisplayNode",
-      "x": 1165,
-      "y": 419,
+      "x": 1444,
+      "y": 2248,
       "init": {
         "label": "Ada (a plain value)"
       }
@@ -129,8 +129,8 @@
     {
       "id": "noteMulti",
       "type": "NoteNode",
-      "x": 440,
-      "y": 560,
+      "x": 83,
+      "y": 1341,
       "init": {
         "label": "Multi-level: depth 2",
         "body": "Feed a Nest Join's **Cube** back in as the Parent and it deepens one level. Regions × Reps, then that cube × Orders → **Region → Rep → Orders**. The depth badge reads 2.",
@@ -142,8 +142,8 @@
     {
       "id": "nestRegionReps",
       "type": "NestJoinNode",
-      "x": 460,
-      "y": 760,
+      "x": 711,
+      "y": 141,
       "init": {
         "label": "Nest Join: Reps under each Region"
       },
@@ -155,8 +155,8 @@
     {
       "id": "nestDeep",
       "type": "NestJoinNode",
-      "x": 808,
-      "y": 760,
+      "x": 1099,
+      "y": 254,
       "init": {
         "label": "Deepen: Orders under each Rep (cube parent)"
       },
@@ -168,8 +168,8 @@
     {
       "id": "dispDeep",
       "type": "DisplayNode",
-      "x": 1165,
-      "y": 651,
+      "x": 1444,
+      "y": 561,
       "init": {
         "label": "Region → Rep → Orders (depth 2)"
       }
@@ -177,8 +177,8 @@
     {
       "id": "idxRegion",
       "type": "ListIndexNode",
-      "x": 823,
-      "y": 917,
+      "x": 1792,
+      "y": 301,
       "init": {
         "label": "INDEX → North's reps (row 1, col 2)"
       },
@@ -190,8 +190,8 @@
     {
       "id": "dispRegion",
       "type": "DisplayNode",
-      "x": 1165,
-      "y": 884,
+      "x": 2404,
+      "y": 345,
       "init": {
         "label": "North's reps — a nested cube"
       }
@@ -199,8 +199,8 @@
     {
       "id": "noteUnnest",
       "type": "NoteNode",
-      "x": 440,
-      "y": 1110,
+      "x": 83,
+      "y": 894,
       "init": {
         "label": "Unnest: flatten back",
         "body": "**Unnest** the depth-1 cube's orders column to get the flat joined table back, one row per order. `Unnest(Nest Join) = a flat join`.",
@@ -212,8 +212,8 @@
     {
       "id": "unnestRep",
       "type": "UnnestNode",
-      "x": 818,
-      "y": 1117,
+      "x": 1129,
+      "y": 1313,
       "init": {
         "label": "Unnest → flat Rep × Orders"
       },
@@ -224,8 +224,8 @@
     {
       "id": "dispUnnest",
       "type": "DisplayNode",
-      "x": 1165,
-      "y": 1117,
+      "x": 1444,
+      "y": 1011,
       "init": {
         "label": "Flat again — every order, with its rep"
       }
@@ -233,8 +233,8 @@
     {
       "id": "noteBuild",
       "type": "NoteNode",
-      "x": -40,
-      "y": 760,
+      "x": 68,
+      "y": -337,
       "init": {
         "label": "Build by hand",
         "body": "**Build Cube** packs values into ONE column: a scalar, a list, a Frame… **Cube Columns** lines several columns up side by side. Here each row holds a count and the source table itself.",
@@ -246,8 +246,8 @@
     {
       "id": "counts",
       "type": "ListInputNode",
-      "x": 20,
-      "y": 983,
+      "x": 771,
+      "y": -572,
       "init": {
         "label": "Row counts",
         "valueKeys": [
@@ -265,8 +265,8 @@
     {
       "id": "buildTables",
       "type": "BuildCubeNode",
-      "x": 10,
-      "y": 1130,
+      "x": 711,
+      "y": -310,
       "init": {
         "label": "Build Cube: the 3 source tables",
         "valueKeys": [
@@ -282,8 +282,8 @@
     {
       "id": "cubeCols",
       "type": "CubeColumnsNode",
-      "x": 363,
-      "y": 1067,
+      "x": 1119,
+      "y": -453,
       "init": {
         "label": "Cube Columns: count + table",
         "valueKeys": [
@@ -298,8 +298,8 @@
     {
       "id": "dispCols",
       "type": "DisplayNode",
-      "x": 358,
-      "y": 1280,
+      "x": 1444,
+      "y": -406,
       "init": {
         "label": "A 2-column cube of tables"
       }
@@ -307,8 +307,8 @@
     {
       "id": "noteDepth",
       "type": "NoteNode",
-      "x": 1520,
-      "y": 660,
+      "x": 98,
+      "y": 478,
       "init": {
         "label": "Depth: cube-in-cube",
         "body": "A flat cube is depth 1; a nested Frame is a leaf with no depth. Only a cube INSIDE a cube grows it. Wrap the depth-2 cube → **depth 3**.",
@@ -320,8 +320,8 @@
     {
       "id": "deep3",
       "type": "BuildCubeNode",
-      "x": 1525,
-      "y": 887,
+      "x": 1792,
+      "y": 54,
       "init": {
         "label": "Wrap the depth-2 cube",
         "valueKeys": [
@@ -335,8 +335,8 @@
     {
       "id": "dispDeep3",
       "type": "DisplayNode",
-      "x": 1515,
-      "y": 1008,
+      "x": 2404,
+      "y": 91,
       "init": {
         "label": "depth 3 — drill the breadcrumb"
       }
@@ -344,8 +344,8 @@
     {
       "id": "rollupRep",
       "type": "CubeRollupNode",
-      "x": 803,
-      "y": -60,
+      "x": 1099,
+      "y": 721,
       "init": {
         "label": "Cube Rollup → SUM(Revenue)"
       },
@@ -358,8 +358,8 @@
     {
       "id": "dispRollup",
       "type": "DisplayNode",
-      "x": 1165,
-      "y": -47,
+      "x": 1444,
+      "y": 793,
       "init": {
         "label": "Revenue per Rep (rolled up)"
       }
@@ -367,8 +367,8 @@
     {
       "id": "noteRollup",
       "type": "NoteNode",
-      "x": 820,
-      "y": -300,
+      "x": 78,
+      "y": -525,
       "init": {
         "label": "Roll a cube back up",
         "body": "**Cube Rollup** aggregates a column inside each row's nested table. SUM of each Rep's `orders.Revenue` lands as a flat `Total` column. This is the BOM shape: the cost of an assembly is the sum of its parts.",

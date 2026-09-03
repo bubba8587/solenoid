@@ -8,7 +8,7 @@
       "id": "data",
       "type": "FrameInputNode",
       "x": -80,
-      "y": -120,
+      "y": -312,
       "init": {
         "label": "Bookings ledger",
         "frameText": "[{\"name\":\"Month\",\"type\":\"string\",\"values\":[\"Jan\",\"Feb\",\"Mar\",\"Apr\",\"May\",\"Jun\"]},{\"name\":\"Bookings\",\"type\":\"number\",\"values\":[12,19,14,23,18,27]}]"
@@ -17,8 +17,8 @@
     {
       "id": "col",
       "type": "GetColumnNode",
-      "x": 313,
-      "y": 20,
+      "x": 248,
+      "y": -324,
       "init": {
         "label": "Get Column → Bookings",
         "readAs": "number"
@@ -30,8 +30,8 @@
     {
       "id": "chart",
       "type": "ChartNode",
-      "x": 645,
-      "y": -216,
+      "x": 623,
+      "y": -135,
       "init": {
         "label": "Bookings by month",
         "op": "column"
@@ -43,8 +43,8 @@
     {
       "id": "total",
       "type": "AggregateNode",
-      "x": 675,
-      "y": 120,
+      "x": 653,
+      "y": -316,
       "init": {
         "label": "Total bookings",
         "op": "sum"
@@ -53,8 +53,8 @@
     {
       "id": "model",
       "type": "LambdaNode",
-      "x": 303,
-      "y": 267,
+      "x": 656,
+      "y": 189,
       "init": {
         "label": "Forecast model",
         "params": "t",
@@ -68,8 +68,8 @@
     {
       "id": "flow",
       "type": "MermaidNode",
-      "x": 283,
-      "y": 520,
+      "x": 656,
+      "y": 443,
       "init": {
         "label": "Reporting pipeline"
       },
@@ -81,8 +81,8 @@
       "id": "method",
       "type": "NoteNode",
       "name": "Methodology",
-      "x": -80,
-      "y": 380,
+      "x": 576,
+      "y": 699,
       "init": {
         "label": "Methodology",
         "body": "## Methodology\nFigures are **unaudited** monthly bookings, net of refunds. Month 3 excludes the pilot region.",
@@ -94,8 +94,8 @@
     {
       "id": "report",
       "type": "ReportNode",
-      "x": 1060,
-      "y": -144,
+      "x": 1023,
+      "y": 104,
       "init": {
         "label": "Quarterly review",
         "body": "# Quarterly review\n\nTotal bookings came to **`=total`** units across the six-month period, drawn from the source ledger:\n\n`=table`\n\nPlotted month over month:\n\n`=fig`\n\nBookings climbed steadily, with a soft patch in month 3.\n\n## Forecast\n\nWe project month *t* forward from the latest run-rate using compound growth:\n\n`=model`\n\n## How the numbers flow\n\n`=flow`\n\n`=Methodology`\n\n*Draft — figures subject to revision.*"

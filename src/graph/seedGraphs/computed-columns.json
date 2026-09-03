@@ -8,7 +8,7 @@
       "id": "hdr",
       "type": "NoteNode",
       "x": -360,
-      "y": -250,
+      "y": 46,
       "init": {
         "label": "Computed columns: define a column, don't type it",
         "body": "A table column can be **Data** (literal cells), a **Formula** (a row-wise expression stored on the column), or a **λ** wired in from outside. Excel's table rule applies: `@price` is *this row's* cell (`[@Price]`), a bare `price` is the *whole column* (`[Price]`) — so `@price * @qty` multiplies this row's two, and `@revenue / SUM(revenue)` is a share of the total. For names a variable can't spell, the brackets do both: `@[Unit Price]` is this row, `[Unit Price]` the whole column. Open the Sales table (click its chip) to see the per-column source selects; the chip's **ƒ** marks a table with defined columns.",
@@ -20,8 +20,8 @@
     {
       "id": "rule",
       "type": "LambdaNode",
-      "x": -360,
-      "y": 60,
+      "x": 340,
+      "y": 477,
       "init": {
         "label": "Margin rule — its param names the column",
         "expr": "revenue * 0.25",
@@ -31,19 +31,21 @@
     {
       "id": "sales",
       "type": "FrameInputNode",
-      "x": -40,
-      "y": 60,
+      "x": 665,
+      "y": 439,
       "init": {
         "label": "Sales",
         "frameText": "[{\"name\":\"price\",\"type\":\"number\",\"cells\":[\"120\",\"80\",\"45\",\"200\"]},{\"name\":\"qty\",\"type\":\"number\",\"cells\":[\"3\",\"7\",\"12\",\"2\"]},{\"name\":\"revenue\",\"type\":\"number\",\"cells\":[],\"expr\":\"@price * @qty\"},{\"name\":\"margin\",\"type\":\"number\",\"cells\":[],\"lambda\":\"fn1\"},{\"name\":\"share\",\"type\":\"number\",\"cells\":[],\"expr\":\"@revenue / SUM(revenue)\"}]",
-        "lambdaKeys": ["fn1"]
+        "lambdaKeys": [
+          "fn1"
+        ]
       }
     },
     {
       "id": "noteA",
       "type": "NoteNode",
-      "x": -360,
-      "y": 340,
+      "x": -162,
+      "y": -167,
       "init": {
         "label": "Three defined columns in one table",
         "body": "`revenue` is a **Formula** column — `@price * @qty`, stored on the column itself. `margin` is a **λ** column bound to the wired Margin rule: `LAMBDA(revenue, revenue * 0.25)`, whose parameter binds to *this row's* cell of the column it names — the λ's per-row interface. `share` mixes both reference kinds: `@revenue / SUM(revenue)` — this row's revenue over the whole column's total. Computed columns reference each other freely; evaluation is in dependency order.",
@@ -55,11 +57,13 @@
     {
       "id": "scale",
       "type": "ListInputNode",
-      "x": -40,
-      "y": 590,
+      "x": 725,
+      "y": 220,
       "init": {
         "label": "Scale — one value per row",
-        "valueKeys": ["v0"],
+        "valueKeys": [
+          "v0"
+        ],
         "dataType": "number"
       },
       "stringLiterals": {
@@ -69,12 +73,14 @@
     {
       "id": "cc",
       "type": "ComputedColumnNode",
-      "x": 330,
-      "y": 60,
+      "x": 999,
+      "y": 271,
       "init": {
         "label": "Computed Column",
         "expr": "@revenue * @scale",
-        "sideVars": ["scale"]
+        "sideVars": [
+          "scale"
+        ]
       },
       "stringLiterals": {
         "name": "scaled",
@@ -84,8 +90,8 @@
     {
       "id": "out",
       "type": "DisplayNode",
-      "x": 700,
-      "y": 60,
+      "x": 1324,
+      "y": 378,
       "init": {
         "label": "Sales + scaled"
       }
@@ -93,8 +99,8 @@
     {
       "id": "noteB",
       "type": "NoteNode",
-      "x": 330,
-      "y": 420,
+      "x": -162,
+      "y": 254,
       "init": {
         "label": "@ over a wired list",
         "body": "Mid-pipeline, the **Computed Column** node adds `scaled = @revenue * @scale`. `revenue` is a column; `scale` isn't — an `@name` matching no column becomes a side input on this node, and the wired list is read **row by row** (it must line up: 4 values for 4 rows; a mismatch is a per-row `#SHAPE!`). A scalar wired there would read the same every row.",

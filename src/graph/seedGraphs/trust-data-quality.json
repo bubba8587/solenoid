@@ -8,7 +8,7 @@
       "id": "fi-sensors",
       "type": "FrameInputNode",
       "x": -10,
-      "y": -5,
+      "y": -37,
       "init": {
         "label": "Sensor readings",
         "frameText": "Sensor, Temp\nA, 21\nB, \nC, 45\nD, 88"
@@ -17,8 +17,8 @@
     {
       "id": "exp",
       "type": "ExpectNode",
-      "x": 340,
-      "y": -24,
+      "x": 331,
+      "y": -42,
       "init": {
         "label": "Temp 0–50 °C?",
         "checkNotNull": true,
@@ -33,7 +33,7 @@
       "id": "fi-jan",
       "type": "FrameInputNode",
       "x": -10,
-      "y": 330,
+      "y": 278,
       "init": {
         "label": "Prices — January",
         "frameText": "SKU, Price, Qty\nA, 10, 5\nB, 20, 3\nC, 30, 2"
@@ -43,7 +43,7 @@
       "id": "fi-feb",
       "type": "FrameInputNode",
       "x": -10,
-      "y": 600,
+      "y": 522,
       "init": {
         "label": "Prices — February",
         "frameText": "SKU, Price, Qty\nA, 10, 6\nB, 25, 3\nD, 40, 1"
@@ -52,8 +52,8 @@
     {
       "id": "rec",
       "type": "ReconcileNode",
-      "x": 380,
-      "y": 420,
+      "x": 331,
+      "y": 344,
       "init": {
         "label": "Jan → Feb"
       },
@@ -66,8 +66,8 @@
     {
       "id": "sl-price",
       "type": "SliderInputNode",
-      "x": 10,
-      "y": 940,
+      "x": 50,
+      "y": 766,
       "init": {
         "label": "Price",
         "value": 12,
@@ -84,8 +84,8 @@
     {
       "id": "sl-cost",
       "type": "SliderInputNode",
-      "x": 10,
-      "y": 1056,
+      "x": 50,
+      "y": 1002,
       "init": {
         "label": "Unit cost",
         "value": 7,
@@ -102,8 +102,8 @@
     {
       "id": "sl-units",
       "type": "SliderInputNode",
-      "x": 10,
-      "y": 1220,
+      "x": 50,
+      "y": 1238,
       "init": {
         "label": "Units sold",
         "value": 100,
@@ -120,8 +120,8 @@
     {
       "id": "expr-profit",
       "type": "ExpressionNode",
-      "x": 340,
-      "y": 1080,
+      "x": 331,
+      "y": 979,
       "init": {
         "label": "Profit",
         "expr": "(price - cost) * units"
@@ -130,8 +130,8 @@
     {
       "id": "tornado",
       "type": "TornadoNode",
-      "x": 660,
-      "y": 1045,
+      "x": 656,
+      "y": 1004,
       "init": {
         "label": "Profit sensitivity"
       }

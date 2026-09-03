@@ -8,7 +8,7 @@
       "id": "hdr",
       "type": "NoteNode",
       "x": -40,
-      "y": -200,
+      "y": 2233,
       "init": {
         "label": "Dimensional Flow & the Type Wall",
         "body": "The lattice enforces **type separation** (date/number/complex/string never auto-cross without a Cast) but allows **dimensional flow**: a value widens freely scalar → list → matrix → **frame**. A–D show widening; E shows the wall.",
@@ -20,8 +20,8 @@
     {
       "id": "nA",
       "type": "NoteNode",
-      "x": -40,
-      "y": 40,
+      "x": 133,
+      "y": 2045,
       "init": {
         "label": "A · a list widens into a frame as one ROW",
         "body": "A 1-D list `[10,20,30]` into a `frame` input lands as a **single row**: a **1 × 3** frame.",
@@ -33,8 +33,8 @@
     {
       "id": "llA",
       "type": "ListInputNode",
-      "x": 233,
-      "y": 230,
+      "x": 540,
+      "y": 92,
       "init": {
         "label": "[10, 20, 30]",
         "valueKeys": [
@@ -52,8 +52,8 @@
     {
       "id": "tiA",
       "type": "TableInfoNode",
-      "x": 473,
-      "y": 230,
+      "x": 822,
+      "y": 139,
       "init": {
         "label": "Table Info"
       }
@@ -61,8 +61,8 @@
     {
       "id": "dArows",
       "type": "DisplayNode",
-      "x": 717,
-      "y": 180,
+      "x": 1155,
+      "y": 95,
       "init": {
         "label": "ROWS → 1"
       }
@@ -70,8 +70,8 @@
     {
       "id": "dAcols",
       "type": "DisplayNode",
-      "x": 717,
-      "y": 320,
+      "x": 1155,
+      "y": 223,
       "init": {
         "label": "COLS → 3"
       }
@@ -79,8 +79,8 @@
     {
       "id": "nB",
       "type": "NoteNode",
-      "x": -40,
-      "y": 470,
+      "x": 133,
+      "y": -76,
       "init": {
         "label": "B · a scalar widens into a 1×1 frame",
         "body": "A bare number `42` widens to a **1×1** frame.",
@@ -92,8 +92,8 @@
     {
       "id": "scB",
       "type": "NumberInputNode",
-      "x": 233,
-      "y": 628,
+      "x": 540,
+      "y": 420,
       "init": {
         "label": "42",
         "value": 42
@@ -102,8 +102,8 @@
     {
       "id": "tiB",
       "type": "TableInfoNode",
-      "x": 473,
-      "y": 640,
+      "x": 822,
+      "y": 395,
       "init": {
         "label": "Table Info"
       }
@@ -111,8 +111,8 @@
     {
       "id": "dBrows",
       "type": "DisplayNode",
-      "x": 717,
-      "y": 603,
+      "x": 1155,
+      "y": 351,
       "init": {
         "label": "ROWS → 1"
       }
@@ -120,8 +120,8 @@
     {
       "id": "dBcols",
       "type": "DisplayNode",
-      "x": 717,
-      "y": 730,
+      "x": 1155,
+      "y": 479,
       "init": {
         "label": "COLS → 1"
       }
@@ -129,8 +129,8 @@
     {
       "id": "nC",
       "type": "NoteNode",
-      "x": -40,
-      "y": 880,
+      "x": 133,
+      "y": 1837,
       "init": {
         "label": "C · a matrix widens into a frame, no Build Frame",
         "body": "The 3×2 Table Input drops straight into Table Info **and** Get Column, read as a default-header frame with no Build Frame. Get \"Col1\" → `10, 30, 50`.",
@@ -142,8 +142,8 @@
     {
       "id": "tC",
       "type": "TableInputNode",
-      "x": 213,
-      "y": 1093,
+      "x": 480,
+      "y": 905,
       "init": {
         "label": "3×2 Table",
         "tableText": "10, 20\n30, 40\n50, 60"
@@ -152,8 +152,8 @@
     {
       "id": "tinfoC",
       "type": "TableInfoNode",
-      "x": 473,
-      "y": 1040,
+      "x": 822,
+      "y": 1018,
       "init": {
         "label": "Table Info"
       }
@@ -161,8 +161,8 @@
     {
       "id": "dCrows",
       "type": "DisplayNode",
-      "x": 717,
-      "y": 1000,
+      "x": 1155,
+      "y": 974,
       "init": {
         "label": "ROWS → 3"
       }
@@ -170,8 +170,8 @@
     {
       "id": "dCcols",
       "type": "DisplayNode",
-      "x": 717,
-      "y": 1128,
+      "x": 1155,
+      "y": 1102,
       "init": {
         "label": "COLS → 2"
       }
@@ -179,8 +179,8 @@
     {
       "id": "gcC",
       "type": "GetColumnNode",
-      "x": 473,
-      "y": 1226,
+      "x": 820,
+      "y": 783,
       "init": {
         "label": "Get \"Col1\"",
         "readAs": "number"
@@ -192,8 +192,8 @@
     {
       "id": "dCcol",
       "type": "DisplayNode",
-      "x": 717,
-      "y": 1254,
+      "x": 1155,
+      "y": 825,
       "init": {
         "label": "→ 10, 30, 50"
       }
@@ -201,8 +201,8 @@
     {
       "id": "nD",
       "type": "NoteNode",
-      "x": -40,
-      "y": 1400,
+      "x": 133,
+      "y": -274,
       "init": {
         "label": "D · TRANSPOSE of a list → a column",
         "body": "A list widens into the 2-D `anytable` input; TRANSPOSE of the row `[1,2,3]` is the column `[[1],[2],[3]]`.",
@@ -214,8 +214,8 @@
     {
       "id": "llD",
       "type": "ListInputNode",
-      "x": 233,
-      "y": 1578,
+      "x": 540,
+      "y": 2451,
       "init": {
         "label": "[1, 2, 3]",
         "valueKeys": [
@@ -233,8 +233,8 @@
     {
       "id": "trD",
       "type": "TableTransposeNode",
-      "x": 483,
-      "y": 1588,
+      "x": 820,
+      "y": 2482,
       "init": {
         "label": "TRANSPOSE"
       }
@@ -242,8 +242,8 @@
     {
       "id": "dD",
       "type": "DisplayNode",
-      "x": 717,
-      "y": 1603,
+      "x": 1155,
+      "y": 2501,
       "init": {
         "label": "→ column 3×1"
       }
@@ -251,8 +251,8 @@
     {
       "id": "nE",
       "type": "NoteNode",
-      "x": -40,
-      "y": 1820,
+      "x": 68,
+      "y": 1373,
       "init": {
         "label": "E · the TYPE wall: elements don't auto-cross",
         "body": "A **text** or **date** won't wire straight into a number socket. Drag one to the `× 10` input and the cable is **refused**. The top two rows cross explicitly with **Cast**. The ONE auto-bridge is **logical → number** (bottom): a comparison feeds a math node directly, coercing TRUE→1.",
@@ -264,8 +264,8 @@
     {
       "id": "siE",
       "type": "TextInputNode",
-      "x": 233,
-      "y": 2062,
+      "x": 540,
+      "y": 1255,
       "init": {
         "label": "Text \"42\"",
         "value": "42"
@@ -274,8 +274,8 @@
     {
       "id": "castTxt",
       "type": "CastNode",
-      "x": 447,
-      "y": 2019,
+      "x": 814,
+      "y": 1222,
       "init": {
         "label": "Cast → Number",
         "target": "number"
@@ -284,8 +284,8 @@
     {
       "id": "dTxt",
       "type": "DisplayNode",
-      "x": 717,
-      "y": 2039,
+      "x": 1155,
+      "y": 1250,
       "init": {
         "label": "→ 42"
       }
@@ -293,8 +293,8 @@
     {
       "id": "dpE",
       "type": "DateInputNode",
-      "x": 233,
-      "y": 2210,
+      "x": 510,
+      "y": 632,
       "init": {
         "label": "Date"
       },
@@ -305,8 +305,8 @@
     {
       "id": "castDt",
       "type": "CastNode",
-      "x": 447,
-      "y": 2170,
+      "x": 814,
+      "y": 599,
       "init": {
         "label": "Cast → Number",
         "target": "number"
@@ -315,8 +315,8 @@
     {
       "id": "dDt",
       "type": "DisplayNode",
-      "x": 717,
-      "y": 2190,
+      "x": 1155,
+      "y": 627,
       "init": {
         "label": "→ serial 45658"
       }
@@ -324,8 +324,8 @@
     {
       "id": "e5",
       "type": "NumberInputNode",
-      "x": 233,
-      "y": 2360,
+      "x": 540,
+      "y": 1601,
       "init": {
         "label": "5",
         "value": 5
@@ -334,8 +334,8 @@
     {
       "id": "e3",
       "type": "NumberInputNode",
-      "x": 233,
-      "y": 2459,
+      "x": 540,
+      "y": 1719,
       "init": {
         "label": "3",
         "value": 3
@@ -344,8 +344,8 @@
     {
       "id": "cmpE",
       "type": "ComparisonNode",
-      "x": 483,
-      "y": 2409,
+      "x": 838,
+      "y": 1611,
       "init": {
         "label": "5 > 3 → TRUE",
         "op": "gt"
@@ -354,8 +354,8 @@
     {
       "id": "mulE",
       "type": "ArithmeticNode",
-      "x": 737,
-      "y": 2409,
+      "x": 1155,
+      "y": 1612,
       "init": {
         "label": "× 10  (TRUE→1, auto-bridge)",
         "op": "mul"
@@ -368,8 +368,8 @@
     {
       "id": "dLog",
       "type": "DisplayNode",
-      "x": 920,
-      "y": 2434,
+      "x": 1420,
+      "y": 1663,
       "init": {
         "label": "→ 10"
       }
