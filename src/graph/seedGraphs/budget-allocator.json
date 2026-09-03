@@ -11,7 +11,7 @@
       "y": -320,
       "init": {
         "label": "Budget Allocator",
-        "body": "# Spend by what you value\nEach thing you're buying has a price **range** (a floor and a ceiling) and a **weight** for how much you value it. The **Budget Allocator** splits your money to match.\n\n**Fit budget** spends the whole budget in proportion to the weights, kept inside every range. When a category hits its ceiling, the slack flows to the rest.\n\nHere: a 90,000 budget over Car, Housing, and Other. Housing is valued 2x, so it fills to its 45,000 cap and the other two split what's left. Change a weight or the budget and watch the split move.\n\nTwo more modes on the card: **Min for target** (the least spend that reaches a value goal) and **Min proportional** (the least spend that keeps the weighting). No solver, just arithmetic.",
+        "body": "# Spend by what you value\nEach thing you're buying has a price **range** (a floor and a ceiling) and a **weight** for how much you value it. The **Budget Allocator** splits your money to match.\n\n**Fit budget** spends the whole budget in proportion to the weights, kept inside every range. When a category hits its ceiling, the slack flows to the rest.\n\nHere: a 100,000 budget over five categories. Housing is valued 3x, so it takes the biggest share; Tech and Travel fill to their small caps, and the rest splits by weight. Change a weight or the budget and watch the pie move.\n\nTwo more modes on the card: **Min for target** (the least spend that reaches a value goal) and **Min proportional** (the least spend that keeps the weighting). No solver, just arithmetic.",
         "color": "teal",
         "width": 400,
         "height": 320
@@ -24,7 +24,7 @@
       "y": 60,
       "init": {
         "label": "Budget items",
-        "frameText": "[{\"name\":\"Category\",\"type\":\"string\",\"values\":[\"Car\",\"Housing\",\"Other\"]},{\"name\":\"Min\",\"type\":\"number\",\"values\":[20000,15000,10000]},{\"name\":\"Max\",\"type\":\"number\",\"values\":[50000,45000,40000]},{\"name\":\"Weight\",\"type\":\"number\",\"values\":[1,2,1]}]"
+        "frameText": "[{\"name\":\"Category\",\"type\":\"string\",\"values\":[\"Car\",\"Housing\",\"Furniture\",\"Tech\",\"Travel\"]},{\"name\":\"Min\",\"type\":\"number\",\"values\":[20000,15000,3000,2000,1000]},{\"name\":\"Max\",\"type\":\"number\",\"values\":[50000,60000,15000,12000,10000]},{\"name\":\"Weight\",\"type\":\"number\",\"values\":[2,3,1,1,1]}]"
       }
     },
     {
@@ -37,7 +37,7 @@
         "mode": "budget"
       },
       "literals": {
-        "amount": 90000
+        "amount": 100000
       }
     },
     {
@@ -53,7 +53,7 @@
       "y": 300,
       "init": {
         "label": "Allocation",
-        "op": "bar"
+        "op": "pie"
       }
     }
   ],

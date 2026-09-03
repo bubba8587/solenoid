@@ -84,6 +84,8 @@ import type { AllocateMode } from "../nodes/allocateOps";
 
 const ALLOCATE_MODE_OPTIONS: OpOption<AllocateMode>[] =
   (Object.entries(ALLOCATE_MODE_META) as [AllocateMode, { label: string }][]).map(([value, m]) => ({ value, label: m.label }));
+const BUDGET_CABLE_ONLY = new Set(["weights"]);
+const BUDGET_CABLE_ONLY_PROP = new Set(["weights", "amount"]);
 
 // ─── FRAME INPUT ─────────────────────────────────────────────────────────────
 // Like Table Input: the single result box doubles as the editor, and Save serializes
@@ -747,11 +749,14 @@ export function DecisionSensitivityComponent({ data, emit }: NodeProps<DecisionS
 
 export function BudgetAllocatorComponent({ data, emit }: NodeProps<BudgetAllocatorNodeType>) {
   const [mode, setMode] = useNodeField(data, "mode");
+  // Every input keeps its socket; `weights` is cable-only (no inline field), and the
+  // amount field is hidden in Min proportional (which uses neither budget nor target) —
+  // its socket stays so nothing is ever left wired to an undrawn dot.
+  const cableOnly = mode === "minProportional" ? BUDGET_CABLE_ONLY_PROP : BUDGET_CABLE_ONLY;
   return (
     <NodeShell node={data} emit={emit}>
       <ArgSelect value={mode} onChange={setMode} options={ALLOCATE_MODE_OPTIONS} />
-      {/* The amount is the budget or the target; Min proportional uses neither. */}
-      <InlineInputs node={data} emit={emit} keys={mode === "minProportional" ? [] : ["amount"]} />
+      <InlineInputs node={data} emit={emit} cableOnlyKeys={cableOnly} />
       <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
   );

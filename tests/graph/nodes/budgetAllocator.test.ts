@@ -79,8 +79,8 @@ describe("BudgetAllocatorNode", () => {
     expect(back.mode).toBe("minProportional");
   });
 
-  // Ties the shipped seed to a verified answer: Housing (weight 2) fills to its 45k cap and
-  // Car + Other split the remaining 45k evenly.
+  // Ties the shipped seed to a verified answer: Tech and Travel fill their small caps
+  // (12k, 10k), then Car/Housing/Furniture split the remaining 78k by weight (2:3:1).
   it("computes the budget-allocator seed's allocation", () => {
     const nodes = seed.nodes as { id: string; init?: Record<string, unknown>; literals?: Record<string, number> }[];
     const items = nodes.find((n) => n.id === "items")!;
@@ -88,6 +88,6 @@ describe("BudgetAllocatorNode", () => {
     const f = frameFromInputText(items.init!.frameText as string);
     const n = new BudgetAllocatorNode({ mode: alloc.init!.mode as never });
     n.literals.amount = alloc.literals!.amount;
-    expect(allocOf(n.data({ categories: [f] }))).toEqual([22500, 45000, 22500]);
+    expect(allocOf(n.data({ categories: [f] }))).toEqual([26000, 39000, 13000, 12000, 10000]);
   });
 });
