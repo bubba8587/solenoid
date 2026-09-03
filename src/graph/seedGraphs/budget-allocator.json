@@ -7,8 +7,8 @@
     {
       "id": "note",
       "type": "NoteNode",
-      "x": 190,
-      "y": 360,
+      "x": 191,
+      "y": 372,
       "init": {
         "label": "Budget Allocator",
         "body": "# Spend by what you value\nEach thing you're buying has a price **range** (a floor and a ceiling) and a **weight** for how much you value it. **Fit budget** spends the whole budget in proportion to the weights, kept inside every range; when a category hits its ceiling the slack flows to the rest.\n\nHere: 100,000 over five categories, Housing valued 3x. The allocator returns each **Allocation** and its **Share** of the spend. The grouped steps join the price range back in and work out the **Headroom** left under each ceiling.\n\nTwo more modes on the card: **Min for target** and **Min proportional**. No solver, just arithmetic.",
@@ -31,7 +31,7 @@
       "id": "alloc",
       "type": "BudgetAllocatorNode",
       "x": 280,
-      "y": 60,
+      "y": 48,
       "init": {
         "label": "Budget Allocator",
         "mode": "budget"
@@ -47,18 +47,21 @@
       "y": 20,
       "init": {
         "label": "Enrich",
-        "members": ["join", "hd"],
+        "members": [
+          "join",
+          "hd"
+        ],
         "color": "gray",
         "collapsed": true,
-        "width": 540,
-        "height": 300
+        "width": 617,
+        "height": 467
       }
     },
     {
       "id": "join",
       "type": "JoinNode",
-      "x": 660,
-      "y": 70,
+      "x": 644,
+      "y": 78,
       "init": {
         "label": "Join the price range back in",
         "how": "left"
@@ -71,8 +74,8 @@
     {
       "id": "hd",
       "type": "ComputedColumnNode",
-      "x": 920,
-      "y": 70,
+      "x": 969,
+      "y": 95,
       "init": {
         "label": "Headroom under the ceiling",
         "expr": "@Max - @Allocation",
@@ -88,7 +91,10 @@
       "type": "DisplayNode",
       "x": 1240,
       "y": 40,
-      "size": { "w": 380, "h": 320 }
+      "size": {
+        "w": 380,
+        "h": 320
+      }
     },
     {
       "id": "grp-pie",
@@ -97,18 +103,21 @@
       "y": 560,
       "init": {
         "label": "Styled pie",
-        "members": ["style", "chart"],
+        "members": [
+          "style",
+          "chart"
+        ],
         "color": "purple",
         "collapsed": true,
-        "width": 520,
-        "height": 260
+        "width": 497,
+        "height": 297
       }
     },
     {
       "id": "style",
       "type": "ChartBuilderNode",
-      "x": 270,
-      "y": 610,
+      "x": 264,
+      "y": 618,
       "init": {
         "label": "Pie style",
         "target": "pie"
@@ -124,8 +133,8 @@
     {
       "id": "chart",
       "type": "ChartNode",
-      "x": 560,
-      "y": 610,
+      "x": 529,
+      "y": 676,
       "init": {
         "label": "Allocation",
         "op": "pie"
@@ -137,23 +146,72 @@
       "type": "DisplayNode",
       "x": 820,
       "y": 590,
-      "size": { "w": 340, "h": 300 }
+      "size": {
+        "w": 340,
+        "h": 300
+      }
     }
   ],
   "connections": [
-    { "source": "items", "sourceOutput": "frame", "target": "alloc", "targetInput": "categories" },
-    { "source": "alloc", "sourceOutput": "frame", "target": "join", "targetInput": "left" },
-    { "source": "items", "sourceOutput": "frame", "target": "join", "targetInput": "right" },
-    { "source": "join", "sourceOutput": "frame", "target": "hd", "targetInput": "frame" },
-    { "source": "hd", "sourceOutput": "frame", "target": "display", "targetInput": "in" },
-    { "source": "alloc", "sourceOutput": "frame", "target": "chart", "targetInput": "values" },
-    { "source": "style", "sourceOutput": "result", "target": "chart", "targetInput": "options" },
-    { "source": "chart", "sourceOutput": "chart", "target": "chartdisp", "targetInput": "in" }
+    {
+      "source": "items",
+      "sourceOutput": "frame",
+      "target": "alloc",
+      "targetInput": "categories"
+    },
+    {
+      "source": "alloc",
+      "sourceOutput": "frame",
+      "target": "join",
+      "targetInput": "left"
+    },
+    {
+      "source": "items",
+      "sourceOutput": "frame",
+      "target": "join",
+      "targetInput": "right"
+    },
+    {
+      "source": "join",
+      "sourceOutput": "frame",
+      "target": "hd",
+      "targetInput": "frame"
+    },
+    {
+      "source": "hd",
+      "sourceOutput": "frame",
+      "target": "display",
+      "targetInput": "in"
+    },
+    {
+      "source": "alloc",
+      "sourceOutput": "frame",
+      "target": "chart",
+      "targetInput": "values"
+    },
+    {
+      "source": "style",
+      "sourceOutput": "result",
+      "target": "chart",
+      "targetInput": "options"
+    },
+    {
+      "source": "chart",
+      "sourceOutput": "chart",
+      "target": "chartdisp",
+      "targetInput": "in"
+    }
   ],
   "standoffs": [
     {
-      "a": { "nodeId": "alloc", "anchor": "s" },
-      "b": { "nodeId": "note", "anchor": "n" },
+      "a": {
+        "nodeId": "alloc",
+        "anchor": "s"
+      },
+      "b": {
+        "nodeId": "note",
+        "anchor": "n"
+      },
       "min": 40,
       "max": 160
     }
@@ -162,7 +220,12 @@
     {
       "nodeId": "display",
       "column": "Share",
-      "ann": { "format": "percent", "unit": "none", "decimalDigits": 0, "decimalMode": "places" }
+      "ann": {
+        "format": "percent",
+        "unit": "none",
+        "decimalDigits": 0,
+        "decimalMode": "places"
+      }
     }
   ]
 }
