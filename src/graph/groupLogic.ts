@@ -41,6 +41,18 @@ export const GROUP_HEADER = 34;  // header height (matches GroupNode.css)
 export const GROUP_MIN_W = 140;
 export const GROUP_MIN_H = 90;
 
+/** A locked group must sit out the standoff solve as well — the position lock wins
+ *  over the band, so the correction falls entirely on the other endpoint. Returns a
+ *  pinned set that includes every locked group; `solveStandoffs` ignores ids that
+ *  aren't standoff endpoints, so passing them all is harmless. */
+export function withLockedGroupsPinned(editor: Editor, pinned: Set<string> = new Set()): Set<string> {
+  const set = new Set(pinned);
+  for (const g of editor.getNodes()) {
+    if (g instanceof GroupNode && g.lockedPosition) set.add(g.id);
+  }
+  return set;
+}
+
 /** Pin / unpin a group's top-left corner. A locked group can't be dragged
  *  (per-node `draggable: false` in `toFlowNodes`) and is skipped by global Tidy
  *  and Cleanup; it still resizes. rebuildGroupMembership fires the topology

@@ -34,6 +34,7 @@ import { FormatControllerNode, GroupNode } from "../rete-nodes";
 import { formatAnnotationStore, formatMismatchStore, unitsCompatible } from "../formatAnnotationStore";
 import { standoffStore, setStandoffSettle, type SettleOpts } from "../standoffs";
 import { solveStandoffs } from "../standoffSolver";
+import { withLockedGroupsPinned } from "../groupLogic";
 import { measuredBox } from "../nodeSize";
 import { translateEntityBy } from "../groupPush";
 import { computeDockedCanvasPos, dockedRenderedDims } from "../fcDocking";
@@ -242,7 +243,8 @@ function FlowCanvasInner() {
           if (b) boxes.set(end.nodeId, { x: b.x, y: b.y, w: b.w, h: b.h });
         }
       }
-      const disp = solveStandoffs(boxes, standoffStore.all(), pinned, opts);
+      // A position-locked group holds against the band too — pin it in the solve.
+      const disp = solveStandoffs(boxes, standoffStore.all(), withLockedGroupsPinned(s.editor, pinned), opts);
       if (disp.size === 0) return;
       standoffSolving = true;
       try {

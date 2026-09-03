@@ -29,10 +29,14 @@ REMOVED — the old elkjs-vs-rete-auto-arrange peer conflict left with the plugi
 - [ ] **The `rules.md` ARR pass** (author-present; the author: waits for 1.4) — early in the
   release, before the track work adds rules (`1.4-plan.md` D3).
 
-## Groups
+## Layout
 
-- [ ] **Locked group + Standoff interaction.** A position-locked group (`lockedPosition`)
-  is exempt from Tidy/Cleanup and acts as a fixed obstacle, but the post-tidy
-  `settleStandoffs` can still drag it if it's a standoff endpoint — the lock should win
-  over the standoff solve (pin the endpoint / skip it in the settle). See the edge note in
-  `subsystem-invariants.md` § locked group.
+- [ ] **Flipped-node Tidy places it up-and-left; want down-and-left.** The predecessor
+  hack (reversed ELK edge) leaves the flipped node's vertical order to ELK crossing-min,
+  which stacks it above its neighbor. Needs a within-layer ordering lever (position
+  choice / model order) to bias it below. Cosmetic; the leftward part is correct.
+- [ ] **Convergence loop for Tidy/Cleanup (optional).** The author asked for a loop that
+  re-runs until positions stop shifting or a short timeout, as a determinism hedge. The
+  locked-group + Standoff root cause is fixed (pinned in the solve), so verify whether
+  drift still shows before adding the loop — it wraps a rAF-deferred pipeline, so it's
+  not free.

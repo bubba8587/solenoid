@@ -1,6 +1,6 @@
 import type { View } from "../../src/graph/view";
 import { describe, it, expect } from "vitest";
-import { moveGroupMembers, reconcileGroupMembership, absorbIntoContainingGroup } from "../../src/graph/groupLogic";
+import { moveGroupMembers, reconcileGroupMembership, absorbIntoContainingGroup, withLockedGroupsPinned } from "../../src/graph/groupLogic";
 import { GroupNode } from "../../src/graph/rete-nodes";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "../../src/graph/schemes";
@@ -114,5 +114,23 @@ describe("collapsed groups never absorb members", () => {
     h.setLoosePos(650, 50);
     expect(absorbIntoContainingGroup(h.editor, h.view, "n1")).toBe(true);
     expect(h.groupB.members).toEqual(["n1"]);
+  });
+});
+
+describe("withLockedGroupsPinned", () => {
+  it("pins every locked group and preserves the caller's set", () => {
+    const locked = new GroupNode();
+    (locked as unknown as { id: string }).id = "gLocked";
+    locked.lockedPosition = true;
+    const loose = new GroupNode();
+    (loose as unknown as { id: string }).id = "gLoose";
+    const plain = { id: "n1" };
+    const editor = { getNodes: () => [locked, loose, plain] } as unknown as Editor;
+
+    const pinned = withLockedGroupsPinned(editor, new Set(["seed"]));
+    expect(pinned.has("gLocked")).toBe(true);   // locked group is pinned
+    expect(pinned.has("gLoose")).toBe(false);   // an unlocked group is not
+    expect(pinned.has("seed")).toBe(true);      // caller's pins are kept
+    expect(pinned.has("n1")).toBe(false);       // plain nodes untouched
   });
 });
