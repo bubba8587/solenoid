@@ -755,6 +755,16 @@ export function concatLists(...lists: (readonly unknown[] | null | undefined)[])
 
 // ─── Shuffle ──────────────────────────────────────────────────────────────────
 
+/** Efraimidis–Spirakis weighted-shuffle key from a per-slot uniform `u` ∈ [0,1) and a
+ *  weight: sorting these ASCENDING (via `shuffleList`) yields a permutation where
+ *  P(element lands first) ∝ its weight — `np.random.choice(replace=False, p=)`. A
+ *  non-positive or non-finite weight sinks the element to the end (Infinity key). */
+export function weightedShuffleKey(u: number, weight: number): number {
+  if (!(weight > 0) || !Number.isFinite(weight)) return Infinity;
+  const uu = u <= 0 ? Number.EPSILON : u >= 1 ? 1 - Number.EPSILON : u;
+  return -Math.log(uu) / weight;
+}
+
 /** Permute by caller-supplied SORT KEYS, leaving volatility outside: the node holds keys
  *  until the next recalc, a formula generates fresh ones per evaluation. */
 export function shuffleList<T>(arr: readonly T[], keys: readonly number[]): T[] {

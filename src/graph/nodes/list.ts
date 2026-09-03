@@ -4,7 +4,7 @@ import { parseListLiteral } from "../coerceInputs";
 import { parseDate } from "./date";
 import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
-import { readInput, listIn, listOut, numIn, numOut, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut } from "./shared";
+import { readInput, listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut } from "./shared";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
 import { pairIdsFromKeys, pickSlot } from "./logic";
 import { passesFilter, requireTextColumn, requireTextList, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
@@ -16,7 +16,7 @@ import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
 import { aggregate, type AggregateOp } from "./statsOps";
-import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS } from "./listOps";
+import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, weightedShuffleKey, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS } from "./listOps";
 import { isFrameRef, flushRef, frameBackend, materialize } from "../frameBackend";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
@@ -1620,6 +1620,7 @@ export class NormalizeNode extends ClassicPreset.Node {
 export class ShuffleNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     result: "The order holds until a recalculation. Changed values flow through without reshuffling.",
+    weights: "Optional, one per element. Higher weight tends to land earlier, a weighted draw without replacement. Unwired is a uniform shuffle.",
   };
 
   /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */
@@ -1627,8 +1628,8 @@ export class ShuffleNode extends ClassicPreset.Node {
   label: string;
   cachedList: unknown[] = [];
   width = 180; height = 150;
-  // Volatile: per-slot sort keys, not a fixed permutation, so live values flow
-  // through while the order holds until a recalc.
+  // Volatile: per-slot UNIFORMS, not a fixed permutation, so live values flow
+  // through while the order holds until a recalc. Weighted keys derive from these.
   private keys: number[] = [];
   private lastGen = -1;
 
@@ -1636,17 +1637,24 @@ export class ShuffleNode extends ClassicPreset.Node {
     super("Shuffle");
     this.label = init?.label ?? "Shuffle";
     this.addInput("list",    adoptiveListIn("List"));
+    this.addInput("weights", numListIn("Weights"));
     this.addOutput("result", adoptiveListOut("Shuffled"));
   }
 
-  data(inputs: { list?: unknown[][] }) {
+  data(inputs: { list?: unknown[][]; weights?: unknown[][] }) {
     const arr = [...(inputs.list?.[0] ?? [])];
     const gen = getRecalcGen();
     if (this.lastGen !== gen || this.keys.length !== arr.length) {
       this.keys = arr.map(() => Math.random());
       this.lastGen = gen;
     }
-    const order = shuffleList(arr, this.keys);
+    // Weighted draw when a per-element weight list is wired (length must cover the
+    // list); each element's sort key becomes -ln(u)/w so P(first) ∝ weight.
+    const w = inputs.weights?.[0];
+    const keys = w && w.length >= arr.length
+      ? this.keys.map((u, i) => weightedShuffleKey(u, typeof w[i] === "number" ? (w[i] as number) : 0))
+      : this.keys;
+    const order = shuffleList(arr, keys);
     this.cachedList = order;
     return { result: order };
   }
