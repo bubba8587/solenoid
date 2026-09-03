@@ -2,6 +2,7 @@ import type { Emit } from "./nodeKit";
 import { useSyncExternalStore, useRef, useState, useLayoutEffect, useEffect, type ReactNode } from "react";
 import type { ClassicPreset } from "rete";
 import { socketHighlightStore, dragSocketKey } from "../cableState";
+import { socketFlipStore } from "../socketFlipStore";
 import { useFlowSocket } from "../flowSurface";
 import { SolenoidSocket, SOCKET_TYPE_LABELS } from "../sockets";
 import { frameHintFor, frameHintStore, type FrameHint } from "../frameHint";
@@ -137,10 +138,15 @@ export function SocketLitRing({ shape }: { shape: "circle" | "square" | "cube" }
 
 export function NodeSocket({ side, socketKey, nodeId, payload, top, className }: Props) {
   const FlowSocket = useFlowSocket();
+  // A flipped node mirrors its sockets: inputs move to the right edge, outputs to the
+  // left. `data-socket-side` below stays the SEMANTIC side (DOM lookups resolve by the
+  // measured dot, not this attribute) — only the visual edge moves.
+  const flipped = useSyncExternalStore(socketFlipStore.subscribe, () => socketFlipStore.get(nodeId));
+  const visualSide: Side = flipped ? (side === "input" ? "output" : "input") : side;
   // The 12px dot straddles the card edge: -5 for card/group-anchored sockets, while
   // .solenoid-node__content sits 1px inside the border and sets --node-socket-x: -6px.
   const x = "var(--node-socket-x, -5px)";
-  const horizontal = side === "input" ? { left: x } : { right: x };
+  const horizontal = visualSide === "input" ? { left: x } : { right: x };
   // No explicit `top` → center on the value box via --out-socket-top, else 50% of the
   // CONTENT wrapper — not the card, or a node with no value box centers over the header.
   const vertical =
@@ -201,7 +207,7 @@ export function NodeSocket({ side, socketKey, nodeId, payload, top, className }:
         // Inside the RF tree the dot is an RF Handle (injected — no @xyflow
         // import here). Outside it (a static render with no provider) the bare
         // glyph draws with no wiring affordance.
-        <FlowSocket side={side} socketKey={socketKey} payload={payload} shape={shape} lit={lit} />
+        <FlowSocket side={side} socketKey={socketKey} payload={payload} shape={shape} lit={lit} flipped={flipped} />
       ) : (
         <SocketComponent data={payload} />
       )}

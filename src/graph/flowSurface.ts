@@ -14,6 +14,9 @@ export type FlowSocketProps = {
   shape: "circle" | "square" | "cube";
   /** Already lit by the app's own highlight store (no second ring). */
   lit: boolean;
+  /** The node's sockets are flipped left<->right — the Handle draws on the opposite
+   *  edge. The `type` (target/source) stays semantic; only the visual side moves. */
+  flipped?: boolean;
 };
 
 /** A resize grip on a card corner (RF NodeResizeControl): the host reports canvas-unit

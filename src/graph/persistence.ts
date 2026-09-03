@@ -13,6 +13,7 @@ import { syncGroupCollapse } from "./groupCollapse";
 import { nodeSizeStore } from "./nodeSizeStore";
 import { forgetAllNodes } from "./nodeStoreRegistry";
 import { collapseStore } from "./collapseStore";
+import { socketFlipStore } from "./socketFlipStore";
 import { standoffStore, type StandoffEnd } from "./standoffs";
 import { nodeNameStore } from "./nodeNameStore";
 import { writeTextForm, readTextForm } from "./textForm";
@@ -53,6 +54,7 @@ export interface SavedNode {
   size?: { w: number; h: number };           // manual resize (resizable nodes)
   collapsed?: boolean;                       // per-node body collapse (collapseStore —
                                              // distinct from init.collapsed, the Group field)
+  flipped?: boolean;                         // sockets mirrored left<->right (socketFlipStore)
 }
 
 export interface SavedConnection {
@@ -132,6 +134,7 @@ function buildRawSavedGraph(): SavedGraph | null {
       const sz = nodeSizeStore.get(n.id);
       if (sz) sn.size = { w: Math.round(sz.w), h: Math.round(sz.h) };
       if (collapseStore.get(n.id)) sn.collapsed = true;
+      if (socketFlipStore.get(n.id)) sn.flipped = true;
       return sn;
     }
     const anyN = n as unknown as Record<string, unknown>;
@@ -152,6 +155,7 @@ function buildRawSavedGraph(): SavedGraph | null {
     const sz = nodeSizeStore.get(n.id);
     if (sz) sn.size = { w: Math.round(sz.w), h: Math.round(sz.h) };
     if (collapseStore.get(n.id)) sn.collapsed = true;
+    if (socketFlipStore.get(n.id)) sn.flipped = true;
     return sn;
   });
 
@@ -360,6 +364,7 @@ async function rebuildGraph(
     nodeNameStore.claim(node.id, sn.name, sn.type);
     if (sn.size) nodeSizeStore.set(node.id, { ...sn.size });
     if (sn.collapsed) collapseStore.set(node.id, true);
+    if (sn.flipped) socketFlipStore.set(node.id, true);
     created.push(node);
     toBuild.push({ node, x: sn.x ?? 0, y: sn.y ?? 0 });
   }

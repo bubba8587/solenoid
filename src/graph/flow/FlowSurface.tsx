@@ -84,6 +84,7 @@ import { pinNodeValue } from "../pinStore";
 import { unpackComposite } from "../compositeLogic";
 import { compositeEditorStore } from "../compositeEditorStore";
 import { moveGroupMembers, reconcileGroupMembership, absorbIntoContainingGroup, setGroupLocked } from "../groupLogic";
+import { socketFlipStore } from "../socketFlipStore";
 import { rebuildGroupMembership, groupMembershipStore } from "../groupMembership";
 import { syncGroupCollapse } from "../groupCollapse";
 import { isGraphRebuilding } from "../process";
@@ -968,6 +969,11 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           onToggleLock={(id) => {
             const n = s.editor.getNode(id);
             if (n instanceof GroupNode) setGroupLocked(s.editor, s.view as unknown as View, n, !n.lockedPosition);
+          }}
+          onToggleFlip={(id) => {
+            socketFlipStore.toggle(id);
+            // Nudge the node so RF re-measures its moved handles and cables re-route.
+            void (s.view as unknown as View).rerenderNode(id);
           }}
           onClose={() => setNodeCtx(null)}
         />

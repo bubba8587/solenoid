@@ -10,6 +10,8 @@ import { cableSelectionStore, cableGhostStore } from "./cableState";
 import { ribbonForConnection } from "./ribbonCable";
 import { standoffStore } from "./standoffs";
 import { dockedNodeStore } from "./dockedNodeStore";
+import { isFlippableNode } from "./flippableNodes";
+import { socketFlipStore } from "./socketFlipStore";
 import { unselectAllNodes as unselectAllNodesFromProcess } from "./canvasCommands";
 type Point = { clientX: number; clientY: number; target: EventTarget | null };
 
@@ -112,5 +114,7 @@ export function nodeTargetFor(editor: NodeEditor<Schemes>, clickedId: string, e:
   const isComposite = clickedNode instanceof CompositeNode;
   const isGroup = clickedNode instanceof GroupNode;
   const lockedPosition = isGroup ? clickedNode.lockedPosition : undefined;
-  return { nodeId: clickedId, seedIds, screenX: e.clientX, screenY: e.clientY, canPin, isComposite, isGroup, lockedPosition, standoff };
+  const isFlippable = isFlippableNode(clickedNode);
+  const flipped = isFlippable ? socketFlipStore.get(clickedId) : undefined;
+  return { nodeId: clickedId, seedIds, screenX: e.clientX, screenY: e.clientY, canPin, isComposite, isGroup, lockedPosition, isFlippable, flipped, standoff };
 }

@@ -12,6 +12,7 @@ import { BaseEdge, type Edge, type EdgeProps } from "@xyflow/react";
 import { getCablePath, Position as CablePosition } from "../cablePaths";
 import { cableShapeStore, type CableShape } from "../cableShape";
 import { cableAngleStore } from "../cableAngleStore";
+import { socketFlipStore } from "../socketFlipStore";
 import { cableSelectionStore, cableGhostStore, socketHighlightStore, socketHoverCableStore, dragSocketKey } from "../cableState";
 import { cableValueStore } from "../cableValueStore";
 import { cableFlowStore } from "../cableFlowStore";
@@ -79,13 +80,17 @@ function cachedMainPath(
   ce: { x: number; y: number },
   sourceAngleDeg: number | null,
   targetAngleDeg: number | null,
+  // A flipped source's output leaves on its LEFT; a flipped target's input enters
+  // from its RIGHT — so the cable's stub direction follows the socket, no backwards hook.
+  sourcePos: CablePosition,
+  targetPos: CablePosition,
 ): string {
-  const key = `${shape}|${cs.x},${cs.y},${sourceAngleDeg}|${ce.x},${ce.y},${targetAngleDeg}`;
+  const key = `${shape}|${cs.x},${cs.y},${sourceAngleDeg},${sourcePos}|${ce.x},${ce.y},${targetAngleDeg},${targetPos}`;
   const hit = _pathCache.get(id);
   if (hit && hit.key === key) return hit.d;
   const d = getCablePath(shape, {
-    sourceX: cs.x, sourceY: cs.y, sourcePosition: CablePosition.Right, sourceAngleDeg,
-    targetX: ce.x, targetY: ce.y, targetPosition: CablePosition.Left, targetAngleDeg,
+    sourceX: cs.x, sourceY: cs.y, sourcePosition: sourcePos, sourceAngleDeg,
+    targetX: ce.x, targetY: ce.y, targetPosition: targetPos, targetAngleDeg,
   });
   _pathCache.set(id, { key, d });
   return d;
@@ -180,6 +185,10 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
   // group (E) flips it mid-life, and a hook below it is React #300.
   const sourceAngleDeg = useSyncExternalStore(cableAngleStore.subscribe, () => cableAngleStore.get(source, conn.sourceOutput));
   const targetAngleDeg = useSyncExternalStore(cableAngleStore.subscribe, () => cableAngleStore.get(target, conn.targetInput));
+  // A flipped endpoint's socket is on the opposite edge, so the stub must leave/enter
+  // that side. Own endpoints only (per-edge selector).
+  const sourceFlipped = useSyncExternalStore(socketFlipStore.subscribe, () => socketFlipStore.get(source));
+  const targetFlipped = useSyncExternalStore(socketFlipStore.subscribe, () => socketFlipStore.get(target));
   // Evict on unmount so the path cache can't grow across create/delete churn.
   useLayoutEffect(() => () => { _pathCache.delete(id); }, [id]);
 
@@ -422,7 +431,12 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
   }
 
   // ── Plain cable ──
-  const pathD = cachedMainPath(id, shape, cs, ce, sourceAngleDeg, targetAngleDeg);
+  // Source output normally exits Right, target input enters Left; a flipped endpoint
+  // swaps to the opposite edge. (Ribbon/conduit branches above keep their own face
+  // geometry — no flippable node is a Conduit source today.)
+  const sourcePos = sourceFlipped ? CablePosition.Left : CablePosition.Right;
+  const targetPos = targetFlipped ? CablePosition.Right : CablePosition.Left;
+  const pathD = cachedMainPath(id, shape, cs, ce, sourceAngleDeg, targetAngleDeg, sourcePos, targetPos);
 
   function onClick(e: React.MouseEvent) {
     e.stopPropagation();

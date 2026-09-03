@@ -331,3 +331,27 @@ describe("text form: unit cases", () => {
     expect(reloaded.connections.length).toBe(2);
   });
 });
+
+describe("per-node flipped state (socketFlipStore)", () => {
+  const g: SavedGraph = {
+    v: 2,
+    nodes: [
+      { id: "d", type: "DisplayNode", name: "D", x: 0, y: 0, init: {}, flipped: true },
+      { id: "e", type: "DisplayNode", name: "E", x: 40, y: 0, init: {} },
+    ],
+    connections: [],
+  };
+
+  it("round-trips flipped through the text form", () => {
+    const reloaded = readTextForm(writeTextForm(g));
+    expect(reloaded.nodes.find((n) => n.name === "D")?.flipped).toBe(true);
+    // An unflipped node carries no flag (parity with collapsed — absent, not false).
+    expect(reloaded.nodes.find((n) => n.name === "E")?.flipped).toBeUndefined();
+  });
+
+  it("is idempotent (second write byte-identical)", () => {
+    const text1 = writeTextForm(g);
+    const text2 = writeTextForm(readTextForm(text1));
+    expect(text2).toBe(text1);
+  });
+});

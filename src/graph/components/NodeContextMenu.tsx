@@ -54,6 +54,16 @@ const UnlockSvg = () => (
   </svg>
 );
 
+// Lucide "arrow-left-right" — flip a node's sockets left<->right. https://lucide.dev/icons/arrow-left-right
+const FlipSvg = () => (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+    <path d="M8 3 4 7l4 4" />
+    <path d="M4 7h16" />
+    <path d="m16 21 4-4-4-4" />
+    <path d="M20 17H4" />
+  </svg>
+);
+
 // Lucide "package-open" — Unpack composite. https://lucide.dev/icons/package-open
 const UnpackSvg = () => (
   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
@@ -79,6 +89,10 @@ export type NodeContextTarget = {
   isGroup?: boolean;
   /** A group's current position-lock state (drives the Lock ↔ Unlock label). */
   lockedPosition?: boolean;
+  /** The clicked node opts into socketFlipStore — offers Flip / Unflip sockets. */
+  isFlippable?: boolean;
+  /** Its current flip state (drives the Flip ↔ Unflip label). */
+  flipped?: boolean;
   /** Present only when a Standoff link is on offer (exactly two selected). */
   standoff?: { aId: string; bId: string };
 };
@@ -94,10 +108,11 @@ type Props = {
   onEditComposite?: (nodeId: string) => void;
   onUnpackComposite?: (nodeId: string) => void;
   onToggleLock?: (nodeId: string) => void;
+  onToggleFlip?: (nodeId: string) => void;
   onClose: () => void;
 };
 
-export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed, onPin, onLinkStandoff, onAddComment, onEditComposite, onUnpackComposite, onToggleLock, onClose }: Props) {
+export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed, onPin, onLinkStandoff, onAddComment, onEditComposite, onUnpackComposite, onToggleLock, onToggleFlip, onClose }: Props) {
   const ref = useMenuClamp<HTMLDivElement>(target.screenX, target.screenY);
 
   useEffect(() => {
@@ -161,6 +176,9 @@ export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed
       {onAddComment && item(<CommentSvg />, "Add comment", () => onAddComment!(target.nodeId))}
       {target.standoff && onLinkStandoff &&
         item("⊷", "Link with Standoff", () => onLinkStandoff!(target.standoff!))}
+      {target.isFlippable && onToggleFlip &&
+        item(<FlipSvg />, target.flipped ? "Unflip sockets" : "Flip sockets", () => onToggleFlip!(target.nodeId),
+          "Swap the inputs and outputs to the opposite sides")}
       {target.isGroup && onToggleLock && (
         target.lockedPosition
           ? item(<UnlockSvg />, "Unlock position", () => onToggleLock!(target.nodeId),
