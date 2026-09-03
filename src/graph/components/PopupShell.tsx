@@ -1,9 +1,10 @@
-import type { CSSProperties, ReactNode } from "react";
+import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import "./popupChrome.css";
 import { CloseIcon } from "./CloseIcon";
 import { PopupPinButton, PopupGoToButton } from "./PopupPinButton";
 import { useEscapeToClose } from "./useEscapeToClose";
 import { contrastInk, darkenAccent } from "../palette";
+import { PopupResizeGrip, type PopupSize } from "./PopupResizeGrip";
 
 /** Derives `--node-accent-ink` per node: the app-wide `--accent-ink` is computed for the
  *  APP accent, so accent-filled popup chrome would otherwise wear ink for the wrong hue. */
@@ -36,6 +37,7 @@ export function PopupShell({
   headerExtra,
   pinNodeId,
   headerActions,
+  resizable,
   children,
 }: {
   title: ReactNode;
@@ -55,13 +57,22 @@ export function PopupShell({
   pinNodeId?: string;
   /** Sits between the pin pair and the close button (overflow menu). */
   headerActions?: ReactNode;
+  /** Add a corner resize grip. `min` floors the drag; `initial` sizes the card from
+   *  the start (a figure popup that must fill), else the card stays content-sized until
+   *  the first drag. The overlay keeps it centered — growth is symmetric about center.
+   *  A resized card is `display:flex` column, so a `.sol-popup__scroll` region fills. */
+  resizable?: { min: PopupSize; initial?: PopupSize };
   children?: ReactNode;
 }) {
   useEscapeToClose(onEscape ?? onClose, true, { capture: true });
-  const cardClass = `sol-popup${cardClassName ? ` ${cardClassName}` : ""}${grouped ? " sol-popup--grouped" : ""}`;
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState<PopupSize | null>(resizable?.initial ?? null);
+  const sized = !!resizable && !!size;
+  const cardClass = `sol-popup${cardClassName ? ` ${cardClassName}` : ""}${grouped ? " sol-popup--grouped" : ""}${sized ? " sol-popup--sized" : ""}`;
+  const style = sized ? { ...cardStyle, width: size!.w, height: size!.h } : cardStyle;
   return (
     <div className="sol-popup-overlay" onPointerDown={() => onClose()}>
-      <div className={cardClass} style={cardStyle} onPointerDown={(e) => e.stopPropagation()}>
+      <div ref={cardRef} className={cardClass} style={style} onPointerDown={(e) => e.stopPropagation()}>
         <div className="sol-popup__header">
           <div className="sol-popup__title">{title}</div>
           {headerExtra}
@@ -71,6 +82,7 @@ export function PopupShell({
           <button className="sol-popup__close" onClick={() => onClose()} aria-label="Close"><CloseIcon size={16} /></button>
         </div>
         {children}
+        {resizable && <PopupResizeGrip cardRef={cardRef} min={resizable.min} onResize={setSize} />}
       </div>
     </div>
   );

@@ -29,6 +29,15 @@ REMOVED — the old elkjs-vs-rete-auto-arrange peer conflict left with the plugi
 - [ ] **The `rules.md` ARR pass** (author-present; the author: waits for 1.4) — early in the
   release, before the track work adds rules (`1.4-plan.md` D3).
 
+## Canvas & chrome
+
+- [ ] **Canvas cursor: standard pointer on hover, pan-hand only while panning** (React Flow
+  port consequence — RF sets the grab cursor everywhere). Keep the pan-hand for Canvas Lock;
+  otherwise a plain pointer on hover and the grab cursor only during an actual pan drag.
+- [ ] **Popup card border sits 1px inward** of the header overhang + the grouped corner
+  indicator (the corner then reads ~0.5px proud of the modal corner). Card border should be
+  1px larger in all directions to line up. (Being looked at with the resize work.)
+
 ## Input & modals
 
 - [ ] **Keystroke guards on modals / pop-ups** (maybe a React Flow port symptom). Canvas

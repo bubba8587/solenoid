@@ -230,6 +230,42 @@
   background: var(--group-color-dark, var(--border-strong));
 }
 
+/* ── Resize (PopupShell `resizable`) ── */
+/* A sized card is a flex column: header + footer stay natural, the marked scroll
+   region fills. Only applied once sized, so an unsized popup keeps its own layout. */
+.sol-popup--sized {
+  display: flex;
+  flex-direction: column;
+}
+.sol-popup--sized .sol-popup__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+}
+/* Corner grip — the same mark as the node/field grips (glyph in nodeCard.css). Sits
+   ABOVE the group-membership corner triangle (z 5), which shares this corner. */
+.sol-popup__resize {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  opacity: 0.5;
+  cursor: nwse-resize;
+  z-index: 6;
+}
+.sol-popup__resize:hover {
+  opacity: 0.9;
+  color: var(--node-accent, var(--accent));
+}
+@media (pointer: coarse) {
+  .sol-popup__resize { right: 0; bottom: 0; padding: 7px; opacity: 0.7; }
+}
+
 /* Touch devices: bigger header tap targets (close / pin) and a touch-friendly
    title so the chrome scales on a phone. Shared by every popup. */
 @media (pointer: coarse) {

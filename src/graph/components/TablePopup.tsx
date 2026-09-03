@@ -694,6 +694,7 @@ export function TablePopup() {
       cardClassName="table-popup"
       grouped={grouped}
       cardStyle={cardStyle}
+      resizable={{ min: { w: 320, h: 220 } }}
       headerExtra={<span className="table-popup__dims">{vertical ? `${listLen}×1` : `${rows}×${cols}`}{rowsTruncated || listTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>}
       pinNodeId={state.pinNodeId}
       headerActions={
@@ -739,7 +740,7 @@ export function TablePopup() {
         </div>
       )}
       {view === "grid" ? (
-        <div className="table-popup__grid-scroll">
+        <div className="table-popup__grid-scroll sol-popup__scroll">
           <table className="table-popup__grid" ref={gridRef}>
             <thead>
               <tr>
@@ -1030,7 +1031,7 @@ export function TablePopup() {
           </table>
         </div>
       ) : view === "form" ? (
-        <div className="table-popup__form-scroll">
+        <div className="table-popup__form-scroll sol-popup__scroll">
           <div className="table-popup__form">
             <div className="table-popup__form-nav">
               <button type="button" className="table-popup__btn" onClick={() => setFormRow(Math.max(0, fRow - 1))} disabled={fRow <= 0} title="Previous record">
@@ -1154,7 +1155,7 @@ export function TablePopup() {
         </div>
       ) : (
         <textarea
-          className="table-popup__csv"
+          className="table-popup__csv sol-popup__scroll"
           value={csvText}
           readOnly={!editable || formattedPreview}
           spellCheck={false}

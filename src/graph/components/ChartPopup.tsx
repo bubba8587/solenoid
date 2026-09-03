@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useSyncExternalStore } from "react";
 import { chartPopup } from "../chartPopupStore";
 import { appThemeStore } from "../appTheme";
@@ -16,11 +16,16 @@ const MAX_H = 380;
 const MARGIN_X = 32;
 const CHROME_Y = 32 /* overlay margin */ + 38 /* header */ + 32 /* chart padding */;
 
+// The FIGURE size the popup opens at (fills the viewport up to the caps). The card is
+// this plus its chrome; after that the figure follows its measured region so a resize
+// grows it.
 function chartSize() {
   const w = clamp(window.innerWidth - MARGIN_X - 32, 200, MAX_W);
   const h = clamp(window.innerHeight - CHROME_Y, 140, MAX_H);
   return { w, h };
 }
+const FIG_PAD = 16;    // the figure region's inline padding, each side
+const CARD_CHROME = 40; // header height + the card's own top/bottom border
 
 /** A big read-only view of a Sparkline / Chart, opened from the node's expand
  *  button; reads its module store, mounted once in App. */
@@ -32,17 +37,26 @@ export function ChartPopup() {
   const fontScale = state?.pinNodeId
     ? formatAnnotationStore.getForNode(state.pinNodeId)?.chartFontScale
     : undefined;
-  const [{ w, h }, setSize] = useState(chartSize);
-
-  useEffect(() => {
-    if (!state) return;
-    setSize(chartSize());
-    const onResize = () => setSize(chartSize());
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+  // The figure follows its measured region (which fills the card), so a popup resize
+  // grows the chart. Starts at the window-fit size until the region first measures.
+  const figRef = useRef<HTMLDivElement>(null);
+  const [{ w, h }, setFig] = useState(chartSize);
+  useLayoutEffect(() => {
+    const el = figRef.current;
+    if (!el) return;
+    const measure = () => {
+      const mw = Math.max(160, el.clientWidth - FIG_PAD * 2);
+      const mh = Math.max(120, el.clientHeight - FIG_PAD * 2);
+      setFig((prev) => (prev.w === mw && prev.h === mh ? prev : { w: mw, h: mh }));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, [state]);
 
   if (!state) return null;
+  const initialCard = (() => { const f = chartSize(); return { w: f.w + FIG_PAD * 2, h: f.h + FIG_PAD * 2 + CARD_CHROME }; })();
   const cardStyle = popupCardVars(state);
 
   // A record card pages here too: step the node's Row, then swap the fresh
@@ -64,8 +78,9 @@ export function ChartPopup() {
       cardStyle={cardStyle}
       headerExtra={state.series && <span className="table-popup__dims">{state.series.length} pts</span>}
       pinNodeId={state.pinNodeId}
+      resizable={{ min: { w: 260, h: 200 }, initial: initialCard }}
     >
-      <div style={{ padding: 16, display: "flex", justifyContent: "center", alignItems: "center" }}>
+      <div ref={figRef} className="sol-popup__scroll" style={{ padding: FIG_PAD, display: "flex", justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
         {state.value ? (
           // Title stripped (the value's and the option's) — the popup header
           // already shows it; an in-figure copy would double it.

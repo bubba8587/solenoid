@@ -806,7 +806,8 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
 /* The shared corner-grip mark (ResizeHandle + FieldResizeGrip), drawn as a
    masked ::before instead of an inline <svg>. */
 .solenoid-node__resize-handle::before,
-.solenoid-field-resize::before {
+.solenoid-field-resize::before,
+.sol-popup__resize::before {
   content: "";
   width: 12px;
   height: 12px;
