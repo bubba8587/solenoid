@@ -33,6 +33,15 @@ carries the real accent border with no overhang — both edges now share the car
 rounding basis) so they can't crack. Verified in isolation across fractional widths at DPR 2.5
 AND `scale(1.37)`.
 
+**Plan-pull (mechanical items from `1.4-plan.md`).** Landed: **B5** — XLOOKUP/XMATCH accept
+an orientation-free 1×N/N×1 matrix as the lookup VALUE (spills over its cells, mirroring the
+lookup array; a true 2-D grid stays `#SHAPE!`). **D12** — an optional `weights` socket on the
+Shuffle node for a weighted draw without replacement (Efraimidis–Spirakis `-ln(u)/w`; the last
+open `python-r-gap` Tier-2 item; the positional `TakeDrop` isn't random, so weights apply to
+Shuffle only). **D13 HELD by the author** (2026-09-03): the "perturb ±N%" sensitivity affordance
+needs a base-weight source (the node has only `scores` + `scenarios`; each scenario is a full
+weight set); left alone pending a base-weights decision.
+
 **OPEN — revert NodeCard's SVG frame (`CardFrame`) to CSS, same principle.** Verified viable:
 the one-basis CSS holds under a fractional `transform: scale()` (the canvas zoom, the exact
 case the SVG was built for). Plan:
