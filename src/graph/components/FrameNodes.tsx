@@ -30,6 +30,7 @@ import type {
   DropBlankRowsNode as DropBlankRowsNodeType,
   DecisionMatrixNode as DecisionMatrixNodeType,
   DecisionSensitivityNode as DecisionSensitivityNodeType,
+  BudgetAllocatorNode as BudgetAllocatorNodeType,
   ReconcileNode as ReconcileNodeType,
   XLookupNode as XLookupNodeType,
   FrameSortDir,
@@ -78,6 +79,11 @@ import type { GetColumnReadAs, AddColumnAddAs } from "../rete-nodes";
 import { stopDragStart } from "../coarse";
 import { dropInputCables } from "./cablePrune";
 import { nodeDisplayName } from "../catalogUtils";
+import { ALLOCATE_MODE_META } from "../rete-nodes";
+import type { AllocateMode } from "../nodes/allocateOps";
+
+const ALLOCATE_MODE_OPTIONS: OpOption<AllocateMode>[] =
+  (Object.entries(ALLOCATE_MODE_META) as [AllocateMode, { label: string }][]).map(([value, m]) => ({ value, label: m.label }));
 
 // ─── FRAME INPUT ─────────────────────────────────────────────────────────────
 // Like Table Input: the single result box doubles as the editor, and Save serializes
@@ -735,6 +741,18 @@ export function DecisionSensitivityComponent({ data, emit }: NodeProps<DecisionS
       <div className="solenoid-node__dm-caption" title="Applies to every criterion, in every scenario.">Normalize</div>
       <SegToggle value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
       <CubeDisplay cube={data.cachedResult} label={nodeDisplayName(data)} />
+    </NodeShell>
+  );
+}
+
+export function BudgetAllocatorComponent({ data, emit }: NodeProps<BudgetAllocatorNodeType>) {
+  const [mode, setMode] = useNodeField(data, "mode");
+  return (
+    <NodeShell node={data} emit={emit}>
+      <ArgSelect value={mode} onChange={setMode} options={ALLOCATE_MODE_OPTIONS} />
+      {/* The amount is the budget or the target; Min proportional uses neither. */}
+      <InlineInputs node={data} emit={emit} keys={mode === "minProportional" ? [] : ["amount"]} />
+      <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
   );
 }

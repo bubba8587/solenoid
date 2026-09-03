@@ -22,7 +22,7 @@ import {
 } from "../frame";
 import {
   pivotFrame, nestFrame, unnestCube,
-  splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity,
+  splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity, allocateFrame,
   mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows,
   lookupCell, lookupRowIndex,
   frameRowAt, cubeRowAt, asLookupSource, reconcileFrames,
@@ -31,6 +31,7 @@ import {
 } from "../frameVerbs";
 import { pairIdsFromKeys } from "./logic";
 import type { PivotSpec, FilterCondConfig } from "../frameVerbs";
+import type { AllocateMode } from "./allocateOps";
 import { describeFrame, correlationMatrix, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameVerbs";
 export type { WindowFn } from "../frameVerbs";
 export type { CorrMethod } from "../frameVerbs";
@@ -1368,6 +1369,59 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
     if (!scores || !scenarios) { this.cachedResult = null; return { cube: null }; }
     this.cachedResult = runVerb(() => decisionSensitivity(scores, scenarios, this.normalize));
     return { cube: this.cachedResult };
+  }
+}
+
+// ─── BUDGET ALLOCATOR ───────────────────────────────────────────────────────────
+// `mode` is a parameter of the one verb (not an op family), picked with ArgSelect. The
+// table names each mode once (declareOnce): the card select reads it.
+export const ALLOCATE_MODE_META = {
+  budget:          { label: "Fit budget",       description: "Spend a fixed budget across the categories in proportion to their weights, held inside each price range." },
+  minTarget:       { label: "Min for target",   description: "The least spend that reaches a weighted-value target, buying the most-valued categories first." },
+  minProportional: { label: "Min proportional", description: "The least spend that keeps each category in proportion to its weight while covering its floor." },
+} satisfies Record<AllocateMode, { label: string; description: string }>;
+
+export class BudgetAllocatorNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    categories: "Rows are categories. A min and a max number column set each price range, the first text column names them, and a weight (or value) column says how much you value each.",
+    weights: "Optional, one per category row: how much you value it. Overrides a weight column; unwired and with no weight column, every category weighs the same.",
+    amount: "The budget to spend (Fit budget) or the value target to reach (Min for target). Ignored by Min proportional.",
+  };
+
+  label: string;
+  mode: AllocateMode;
+  // The budget / target typed on the card; a wired `amount` overrides it.
+  literals: Record<string, number> = { amount: 60000 };
+  cachedResult: FrameValue | SolError | null = null;
+  width = 240; height = 215;
+
+  static frameHints: Record<string, FrameHint> = {
+    categories: { columns: [
+      { name: "Category", type: "string", cells: ["Car", "Housing", "Other"] },
+      { name: "Min", type: "number", cells: [20000, 15000, 10000] },
+      { name: "Max", type: "number", cells: [50000, 45000, 40000] },
+      { name: "Weight", type: "number", cells: [1, 2, 1] },
+    ] },
+  };
+
+  constructor(init?: { label?: string; mode?: AllocateMode }) {
+    super("BudgetAllocator");
+    this.label = init?.label ?? "Budget Allocator";
+    this.mode = init?.mode && init.mode in ALLOCATE_MODE_META ? init.mode : "budget";
+    this.addInput("categories", frameIn("Categories"));
+    this.addInput("weights", numListIn("Weights"));
+    this.addInput("amount", numIn("Budget / Target"));
+    this.addOutput("frame", frameOut("Allocation"));
+  }
+
+  data(inputs: { categories?: (FrameValue | null)[]; weights?: (number[] | number | null)[]; amount?: (number | null)[] }) {
+    const f = inputs.categories?.[0] ?? null;
+    if (!f) { this.cachedResult = null; return { frame: null }; }
+    const amount = readInput(inputs.amount, this.literals.amount ?? 0) ?? 0;
+    const wRaw = inputs.weights?.[0];
+    const wired = Array.isArray(wRaw) ? wRaw : typeof wRaw === "number" ? [wRaw] : null;
+    this.cachedResult = runVerb(() => allocateFrame(f, this.mode, amount, wired));
+    return { frame: this.cachedResult };
   }
 }
 

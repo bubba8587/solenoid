@@ -1,0 +1,65 @@
+{
+  "v": 2,
+  "order": 515,
+  "label": "Budget allocator: value-weighted spend",
+  "group": "Worked examples",
+  "nodes": [
+    {
+      "id": "note",
+      "type": "NoteNode",
+      "x": -60,
+      "y": -320,
+      "init": {
+        "label": "Budget Allocator",
+        "body": "# Spend by what you value\nEach thing you're buying has a price **range** (a floor and a ceiling) and a **weight** for how much you value it. The **Budget Allocator** splits your money to match.\n\n**Fit budget** spends the whole budget in proportion to the weights, kept inside every range. When a category hits its ceiling, the slack flows to the rest.\n\nHere: a 90,000 budget over Car, Housing, and Other. Housing is valued 2x, so it fills to its 45,000 cap and the other two split what's left. Change a weight or the budget and watch the split move.\n\nTwo more modes on the card: **Min for target** (the least spend that reaches a value goal) and **Min proportional** (the least spend that keeps the weighting). No solver, just arithmetic.",
+        "color": "teal",
+        "width": 400,
+        "height": 320
+      }
+    },
+    {
+      "id": "items",
+      "type": "FrameInputNode",
+      "x": -60,
+      "y": 60,
+      "init": {
+        "label": "Budget items",
+        "frameText": "[{\"name\":\"Category\",\"type\":\"string\",\"values\":[\"Car\",\"Housing\",\"Other\"]},{\"name\":\"Min\",\"type\":\"number\",\"values\":[20000,15000,10000]},{\"name\":\"Max\",\"type\":\"number\",\"values\":[50000,45000,40000]},{\"name\":\"Weight\",\"type\":\"number\",\"values\":[1,2,1]}]"
+      }
+    },
+    {
+      "id": "alloc",
+      "type": "BudgetAllocatorNode",
+      "x": 420,
+      "y": 80,
+      "init": {
+        "label": "Budget Allocator",
+        "mode": "budget"
+      },
+      "literals": {
+        "amount": 90000
+      }
+    },
+    {
+      "id": "display",
+      "type": "DisplayNode",
+      "x": 780,
+      "y": 60
+    },
+    {
+      "id": "chart",
+      "type": "ChartNode",
+      "x": 780,
+      "y": 300,
+      "init": {
+        "label": "Allocation",
+        "op": "bar"
+      }
+    }
+  ],
+  "connections": [
+    { "source": "items", "sourceOutput": "frame", "target": "alloc", "targetInput": "categories" },
+    { "source": "alloc", "sourceOutput": "frame", "target": "display", "targetInput": "in" },
+    { "source": "alloc", "sourceOutput": "frame", "target": "chart", "targetInput": "values" }
+  ]
+}

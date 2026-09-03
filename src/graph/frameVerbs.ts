@@ -12,6 +12,7 @@ import { forAggregate, coerceLogical, guardFinite } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 import { compareOp, type ComparisonOp } from "./nodes/logic";
 import { xmatchIndex, type XMatchMatchMode } from "./nodes/listOps";
+import { allocate, type AllocateMode } from "./nodes/allocateOps";
 import { aggregate, percentile, pearson, spearman, kendallTau, covariance } from "./nodes/statsOps";
 import { parseDateToSerial } from "./nodes/dateSerial";
 
@@ -1529,6 +1530,53 @@ export function decisionColumns(f: FrameValue): { labelCol: FrameColumn | null; 
 /** The criteria column names, in the order the weights list aligns to. */
 export function decisionCriteria(f: FrameValue): string[] {
   return decisionColumns(f).criteriaCols.map((c) => c.name);
+}
+
+/** Budget Allocator: read each category's [min, max] and value weight from `f`, run the
+ *  chosen allocation mode (`allocateOps.ts`, no solver), and return a `Category ·
+ *  Allocation` frame. Columns are found by name (min / max / weight·value) with a fallback
+ *  to the first two number columns for the range; a wired weights list overrides a weight
+ *  column. The allocation carries the min column's unit when it has one. */
+export function allocateFrame(
+  f: FrameValue, mode: AllocateMode, amount: number, wiredWeights: number[] | null,
+): FrameValue {
+  const rows = frameRowCount(f);
+  const byName = (...names: string[]): FrameColumn | undefined => {
+    const set = new Set(names.map((n) => n.toLowerCase()));
+    return f.columns.find((c) => set.has(c.name.trim().toLowerCase()));
+  };
+  const nums = f.columns.filter((c) => c.type === "number");
+  const weightCol = byName("weight", "weights", "value");
+  const priceNums = nums.filter((c) => c !== weightCol);
+  const minCol = byName("min") ?? priceNums[0];
+  const maxCol = byName("max") ?? priceNums.filter((c) => c !== minCol)[0];
+  if (!minCol || !maxCol) {
+    throw solError("#VALUE!", "Budget Allocator needs a min and a max number column");
+  }
+  const nameCol = f.columns.find((c) => c.type === "string");
+  const asNum = (cell: FrameCell, what: string): number => {
+    if (isSolError(cell)) throw cell;
+    if (typeof cell === "number" && Number.isFinite(cell)) return cell;
+    throw solError("#VALUE!", `Budget Allocator: every ${what} must be a number`);
+  };
+  const mins: number[] = [], maxs: number[] = [], weights: number[] = [], names: FrameCell[] = [];
+  for (let i = 0; i < rows; i++) {
+    mins.push(asNum(minCol.values[i] ?? null, "min"));
+    maxs.push(asNum(maxCol.values[i] ?? null, "max"));
+    const w = wiredWeights ? wiredWeights[i]
+      : weightCol && typeof weightCol.values[i] === "number" ? (weightCol.values[i] as number)
+      : 1;
+    weights.push(typeof w === "number" && Number.isFinite(w) ? w : 1);
+    names.push(nameCol ? (nameCol.values[i] ?? `Item ${i + 1}`) : `Item ${i + 1}`);
+  }
+  const alloc = allocate(mode, mins, maxs, weights, amount);
+  return {
+    __frame: true,
+    columns: [
+      { name: nameCol?.name ?? "Category", type: "string", values: names },
+      { name: "Allocation", type: "number", values: alloc, ...(minCol.unit ? { unit: minCol.unit } : {}) },
+    ],
+  };
 }
 
 export function decisionMatrix(
