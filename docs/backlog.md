@@ -28,3 +28,11 @@ REMOVED — the old elkjs-vs-rete-auto-arrange peer conflict left with the plugi
   (collaboration IN); the rest is still the agent's inference awaiting the author's word.
 - [ ] **The `rules.md` ARR pass** (author-present; the author: waits for 1.4) — early in the
   release, before the track work adds rules (`1.4-plan.md` D3).
+
+## Groups
+
+- [ ] **Locked group + Standoff interaction.** A position-locked group (`lockedPosition`)
+  is exempt from Tidy/Cleanup and acts as a fixed obstacle, but the post-tidy
+  `settleStandoffs` can still drag it if it's a standoff endpoint — the lock should win
+  over the standoff solve (pin the endpoint / skip it in the settle). See the edge note in
+  `subsystem-invariants.md` § locked group.
