@@ -10,8 +10,9 @@ import { TableDisplay } from "./TableDisplay";
 import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { FrameDisplay } from "./FrameDisplay";
 import { CubeDisplay } from "./CubeDisplay";
-import { ChartFigure } from "./chartView";
+import { ChartFigure, type ChartShape } from "./chartView";
 import { ChartChip } from "./ChartChip";
+import { ChartExpandButton } from "./ChartExpandButton";
 import { MermaidView } from "./MermaidView";
 import { SvgFigure } from "./SvgFigure";
 import { isFrameValue, isCubeValue } from "../frame";
@@ -123,9 +124,19 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
       ) : isCube ? (
         <CubeDisplay cube={v} label={nodeDisplayName(data)} full={full} />
       ) : isChart ? (
-        !full ? <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}><ChartChip value={v} /></div>
-              : sized ? <MeasuredChart value={v} fontScale={ann?.chartFontScale} recordNav={recordStep} />
-              : <ChartFigure value={v} width={210} height={130} fontScale={ann?.chartFontScale} recordNav={recordStep} />
+        !full ? (
+          <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}><ChartChip value={v} /></div>
+        ) : (
+          // Every full chart (record included) gets the same expand affordance — the
+          // popup renders the value through the SAME ChartFigure path, so no op is left
+          // without a pop-out. Pinned by chartPopupCoverage.test.ts.
+          <div style={{ position: "relative", width: sized ? "100%" : undefined, height: sized ? "100%" : undefined }}>
+            {sized
+              ? <MeasuredChart value={v} fontScale={ann?.chartFontScale} recordNav={recordStep} />
+              : <ChartFigure value={v} width={210} height={130} fontScale={ann?.chartFontScale} recordNav={recordStep} />}
+            <ChartExpandButton value={v} op={v.op as ChartShape} axes series={[]} title={v.title || nodeDisplayName(data)} />
+          </div>
+        )
       ) : isMermaid ? (
         <MermaidView source={v.source} />
       ) : isSvg ? (

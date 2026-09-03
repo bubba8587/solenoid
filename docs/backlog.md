@@ -29,6 +29,13 @@ REMOVED — the old elkjs-vs-rete-auto-arrange peer conflict left with the plugi
 - [ ] **The `rules.md` ARR pass** (author-present; the author: waits for 1.4) — early in the
   release, before the track work adds rules (`1.4-plan.md` D3).
 
+## Nodes
+
+- [ ] **Frame Input Form mode: restore the Source toggle.** The Form layout should carry
+  the same Source on/off toggle that grid/csv modes have; Source Off renders images (the
+  exact behavior of the Record chart type). Form mode currently sits in an in-between
+  state without it.
+
 ## Layout
 
 - [ ] **Flipped-node Tidy places it up-and-left; want down-and-left.** The predecessor

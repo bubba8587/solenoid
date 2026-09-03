@@ -1,4 +1,4 @@
-import type { ChartOp } from "./nodes/visual";
+import { type ChartOp, CHART_OP_META } from "./nodes/visual";
 import type { ChartOptions } from "./nodes/chartOptions";
 
 // What the `chart` socket carries: a self-describing figure. Must stay flat +
@@ -171,10 +171,26 @@ export type ChartPayload =
   | ContourPayload | WaterfallPayload | CandlePayload | BoxplotPayload
   | CalHeatPayload | QuiverPayload | SevenSegPayload | RecordPayload | OverlayPayload;
 
+/** The payload / special-figure ops beyond the ChartNode's own selectable ChartOps.
+ *  The single source of truth (declareOnce) — the union below derives from it, and
+ *  `CHART_VALUE_OPS` + `chartPopupCoverage.test.ts` enumerate it, so a new figure op
+ *  can't ship without going through the shared popup path. */
+export const CHART_SPECIAL_OPS = [
+  "kpi", "scale", "proportion", "sankey", "surface", "contour", "waterfall",
+  "candle", "boxplot", "calheat", "quiver", "sevenseg", "record", "overlay",
+] as const;
+
 /** Every op the `chart` socket can carry. */
-export type ChartValueOp =
-  | ChartOp | "kpi" | "scale" | "proportion" | "sankey" | "surface"
-  | "contour" | "waterfall" | "candle" | "boxplot" | "calheat" | "quiver" | "sevenseg" | "record" | "overlay";
+export type ChartValueOp = ChartOp | (typeof CHART_SPECIAL_OPS)[number];
+
+/** Every chart op, enumerable at runtime. ChartOps come from `CHART_OP_META`
+ *  (which `satisfies Record<ChartOp, …>`, so it is exactly the ChartOp set) and the
+ *  specials from `CHART_SPECIAL_OPS`, so this list cannot drift from the type. Lazy:
+ *  `CHART_OP_META` lives in a module that cycles back to this one, so reading it at
+ *  load time would see it half-initialized. */
+export function chartValueOps(): readonly ChartValueOp[] {
+  return [...(Object.keys(CHART_OP_META) as ChartOp[]), ...CHART_SPECIAL_OPS];
+}
 
 export interface ChartValue {
   __chart: true;
