@@ -220,7 +220,9 @@
   content: "";
   position: absolute;
   inset: -2px;
-  border-radius: 6px;
+  /* The card's 6px radius PLUS the 2px outset: an 8px arc traces the card's own outer
+     corner exactly. At 6px the arc was 2px too tight and bulged proud of the corner. */
+  border-radius: 8px;
   background: color-mix(in srgb, var(--group-color, var(--text-dim)) 78%, var(--surface));
   clip-path: polygon(100% 100%, 100% calc(100% - 18px), calc(100% - 18px) 100%);
   pointer-events: none;

@@ -2,6 +2,15 @@
    ReportOverlay.css / InspectorPanel.css / compositeEditor.css size and hide
    it by this class) plus the RF-specific resets. */
 
+/* Canvas cursor: a plain pointer on hover, the grab-hand only while actually panning.
+   React Flow defaults the pane to `grab` everywhere, which reads as "always about to
+   pan"; the pointer is the more intuitive resting state. Canvas Lock is the exception —
+   panning is then the only gesture, so keep the grab-hand there. (flow.css loads after
+   RF's stylesheet, so these override its `.react-flow__pane.draggable` rule.) */
+.react-flow__pane.draggable { cursor: default; }
+.react-flow__pane.dragging { cursor: grabbing; }
+.solenoid-canvas--locked .react-flow__pane.draggable { cursor: grab; }
+
 .sol-rf-appcanvas {
   position: relative;
   width: 100%;
