@@ -27,6 +27,12 @@ describe("parseChartOptions", () => {
     expect(parseChartOptions("markersize=0")).toEqual({});
   });
 
+  it("parses pielabels as a boolean", () => {
+    expect(parseChartOptions("pielabels=off").pielabels).toBe(false);
+    expect(parseChartOptions("pielabels=on").pielabels).toBe(true);
+    expect(parseChartOptions("pielabels=nonsense").pielabels).toBeUndefined();
+  });
+
   it("ignores unknown keys, blank values, and junk", () => {
     expect(parseChartOptions("bogus=1;title=;color=red;nope")).toEqual({ color: "red" });
     expect(parseChartOptions("")).toEqual({});
@@ -48,5 +54,10 @@ describe("serializeChartOptions", () => {
   it("round-trips back through the parser", () => {
     const s = serializeChartOptions({ title: "Q1", ylabel: "$", grid: "on", linewidth: 2, ymin: 0, ymax: 100 });
     expect(parseChartOptions(s)).toEqual({ title: "Q1", ylabel: "$", grid: true, linewidth: 2, ymin: 0, ymax: 100 });
+  });
+
+  it("serializes the pielabels toggle", () => {
+    expect(serializeChartOptions({ pielabels: "off" })).toBe("pielabels=off");
+    expect(parseChartOptions(serializeChartOptions({ pielabels: "off" }))).toEqual({ pielabels: false });
   });
 });

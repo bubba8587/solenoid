@@ -184,26 +184,38 @@ export function ChartView({
       </BarChart>
     );
   } else if (op === "pie") {
-    // Category labels ride the recharts `label`/`labelLine` props by default when the
-    // frame supplies names; the radius shrinks to leave room for them. Each name is
-    // sanitized + length-capped (untrusted text). Vanishingly thin slices are skipped so
-    // their labels don't pile up.
-    const labeled = !!labels;
-    const r = Math.max(18, Math.min(width, chartH) / 2 - (labeled ? Math.min(46, width * 0.16) : 6));
+    // Category labels ride a hand-drawn two-segment leader (a radial stub, then a
+    // horizontal run to a fixed column per side) so every label on a side shares one x —
+    // no arc-following, and the line meets the text instead of stopping short. On by
+    // default when the frame supplies names; `pielabels=off` (or the Chart Builder
+    // toggle) turns them off, and then the pie fills the whole box. Names are sanitized +
+    // length-capped (untrusted text); vanishingly thin slices skip their label.
+    const labeled = !!labels && (opts?.pielabels ?? true);
+    const pad = labeled ? Math.min(30, width * 0.12) : 6;
+    const r = Math.max(18, Math.min(width, chartH) / 2 - pad);
+    const cap = width < 260 ? 10 : 16;
+    const stub = 7;
     const pieLabel = (p: { cx?: number; cy?: number; midAngle?: number; outerRadius?: number; index?: number; percent?: number; payload?: unknown }) => {
       const cx = p.cx ?? 0, cy = p.cy ?? 0, mid = p.midAngle ?? 0, outerR = p.outerRadius ?? 0, index = p.index ?? 0;
       const rowI = (p.payload as { i?: number } | undefined)?.i ?? series[index]?.i ?? index;
-      const name = sanitizeChartLabel(tickFmt(rowI));
-      if (!name || (p.percent ?? 0) < 0.02) return null;
-      const rr = outerR + 9;
-      const x = cx + rr * Math.cos(-mid * RADIAN);
-      const y = cy + rr * Math.sin(-mid * RADIAN);
-      return <text x={x} y={y} fill={axis} fontSize={9 * fs} textAnchor={x >= cx ? "start" : "end"} dominantBaseline="central">{name}</text>;
+      const name = sanitizeChartLabel(tickFmt(rowI), cap);
+      if (!name || (p.percent ?? 0) < 0.03) return null;
+      const cos = Math.cos(-mid * RADIAN), sin = Math.sin(-mid * RADIAN);
+      const side = cos >= 0 ? 1 : -1;
+      const sx = cx + outerR * cos, sy = cy + outerR * sin;                // slice edge
+      const mx = cx + (outerR + stub) * cos, my = cy + (outerR + stub) * sin; // elbow
+      const colX = cx + (outerR + stub) * side;                            // shared column x
+      return (
+        <g>
+          <polyline points={`${sx},${sy} ${mx},${my} ${colX},${my}`} stroke={grid} fill="none" />
+          <text x={colX + side * 3} y={my} fill={axis} fontSize={9 * fs} textAnchor={side > 0 ? "start" : "end"} dominantBaseline="central">{name}</text>
+        </g>
+      );
     };
     chart = (
       <PieChart width={width} height={chartH}>
         <Pie data={series} dataKey="v" nameKey="i" cx="50%" cy="50%" outerRadius={r} stroke="var(--surface)" isAnimationActive={false}
-             label={labeled ? pieLabel : undefined} labelLine={labeled ? { stroke: grid } : false}>
+             label={labeled ? pieLabel : undefined} labelLine={false}>
           {series.map((_, i) => <Cell key={i} fill={paint(i)} />)}
         </Pie>
         {SLICE_TIP}

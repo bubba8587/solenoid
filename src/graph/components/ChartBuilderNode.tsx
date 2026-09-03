@@ -54,7 +54,7 @@ const TARGET_OPTS = CHART_TARGET_LIST.map((t) => ({ value: t.id, label: t.label 
 
 const STR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "color"];
 const TOGGLE_KEYS: readonly { key: ChartBuilderKey; label: string }[] =
-  [{ key: "grid", label: "Grid" }, { key: "marker", label: "Markers" }];
+  [{ key: "grid", label: "Grid" }, { key: "marker", label: "Markers" }, { key: "pielabels", label: "Pie labels" }];
 const NUM_KEYS: readonly ChartBuilderKey[] = ["ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 
 /** The chart-type dropdown shapes the form, but a WIRED or valued row stays

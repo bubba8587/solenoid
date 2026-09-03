@@ -16,6 +16,9 @@ export interface ChartOptions {
   alpha?: number;
   // matplotlib's font.size rcParam; render surfaces scale every text size by fontsize/10.
   fontsize?: number;
+  // Pie slice category labels; on by default when the frame supplies names, so this only
+  // ever carries an explicit off.
+  pielabels?: boolean;
 }
 
 const TRUTHY = new Set(["on", "true", "1", "yes", "y"]);
@@ -53,6 +56,7 @@ export function parseChartOptions(input: string | null | undefined): ChartOption
       case "color":  if (val) opts.color = val; break;
       case "grid":   { const b = toBool(val); if (b !== undefined) opts.grid = b; break; }
       case "marker": { const b = toBool(val); if (b !== undefined) opts.marker = b; break; }
+      case "pielabels": { const b = toBool(val); if (b !== undefined) opts.pielabels = b; break; }
       case "linewidth":
       case "lw":     { const n = toNum(val); if (n !== undefined) opts.linewidth = n; break; }
       case "markersize":
@@ -83,6 +87,7 @@ export interface ChartBuilderFields {
   color?: string;
   grid?: string;
   marker?: string;
+  pielabels?: string;
   ymin?: number | null;
   ymax?: number | null;
   linewidth?: number | null;
@@ -107,6 +112,7 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
   str("color", f.color);
   str("grid", f.grid);
   str("marker", f.marker);
+  str("pielabels", f.pielabels);
   if ((f.ymin != null && Number.isFinite(f.ymin)) || (f.ymax != null && Number.isFinite(f.ymax))) {
     const lo = f.ymin != null && Number.isFinite(f.ymin) ? f.ymin : "";
     const hi = f.ymax != null && Number.isFinite(f.ymax) ? f.ymax : "";
@@ -133,7 +139,7 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
 //     Heatmap) read nothing but the title.
 
 export type ChartBuilderKey =
-  | "title" | "xlabel" | "ylabel" | "color" | "grid" | "marker"
+  | "title" | "xlabel" | "ylabel" | "color" | "grid" | "marker" | "pielabels"
   | "ymin" | "ymax" | "linewidth" | "markersize" | "alpha" | "fontsize";
 
 export type ChartTargetId =
@@ -141,7 +147,7 @@ export type ChartTargetId =
   | "waterfall" | "candle" | "boxplot" | "calheat";
 
 const ALL_KEYS: readonly ChartBuilderKey[] =
-  ["title", "xlabel", "ylabel", "color", "grid", "marker", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
+  ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 const AXED_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "alpha", "fontsize"];
 const STAT_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];

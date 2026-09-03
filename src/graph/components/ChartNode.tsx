@@ -1,7 +1,7 @@
 import { useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ChartNode as ChartNodeType, ChartOp } from "../rete-nodes";
 import { CHART_OP_META } from "../rete-nodes";
-import { NodeShell, OpSelect, type NodeProps, type OpOption } from "./nodeKit";
+import { NodeShell, OpSelect, ArgSelect, type NodeProps, type OpOption } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
 import { InlineInputs } from "./inlineInput";
 import { ChartFigure, toSeries, type ChartShape } from "./chartView";
@@ -19,9 +19,16 @@ async function applyChartOp(node: ChartNodeType, newOp: ChartOp): Promise<void> 
   await processGraph();
 }
 
-// Derived from CHART_OP_META so the dropdown can't drift from the Add-menu rows (declareOnce).
-const OPTIONS: ReadonlyArray<OpOption<ChartOp>> = (Object.keys(CHART_OP_META) as ChartOp[])
-  .map((value) => ({ value, label: CHART_OP_META[value].label, group: CHART_OP_META[value].group }));
+// A two-level pick: the FAMILY (Cartesian / Categorical / Multi-series) is the primary
+// op-select, and a neutral second select refines it to a specific type. Both derive from
+// CHART_OP_META so they can't drift from the Add-menu rows (declareOnce). Picking a family
+// jumps to its first type.
+const CHART_OPS = Object.keys(CHART_OP_META) as ChartOp[];
+const FAMILIES = [...new Set(CHART_OPS.map((op) => CHART_OP_META[op].group))];
+const OPS_BY_FAMILY: Record<string, ChartOp[]> = Object.fromEntries(
+  FAMILIES.map((f) => [f, CHART_OPS.filter((op) => CHART_OP_META[op].group === f)]),
+);
+const FAMILY_OPTS: ReadonlyArray<OpOption<string>> = FAMILIES.map((value) => ({ value, label: value }));
 
 // Fills the wide card (240) minus body padding.
 const W = 218;
@@ -30,6 +37,10 @@ const H = 150;
 export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
   const [op, setOpState] = useState<ChartOp>(data.op);
   const setOp = useCallback((v: ChartOp) => { setOpState(v); void applyChartOp(data, v); }, [data]);
+  const family = CHART_OP_META[op].group;
+  const setFamily = useCallback((f: string) => { setOp(OPS_BY_FAMILY[f][0]); }, [setOp]);
+  const typeOpts: ReadonlyArray<OpOption<ChartOp>> = OPS_BY_FAMILY[family]
+    .map((value) => ({ value, label: CHART_OP_META[value].label }));
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const opts = data.chartOptions;
   // An FC on the chart output scales the figure's text (display only).
@@ -65,7 +76,12 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
         ? <NodeSocket side="input" socketKey="values" nodeId={data.id} emit={emit} payload={valuesPort.socket} top={valuesTop} />
         : null}
     >
-      <OpSelect value={op} onChange={setOp} options={OPTIONS} />
+      {/* The chart TYPE is the node's `op`, so it stays the accented OpSelect; the family is
+          a filter that narrows the type list to one group (sourceInvariants opArgDistinct). */}
+      <div className="solenoid-node__field-row">
+        <ArgSelect value={family} onChange={setFamily} options={FAMILY_OPTS} />
+        <OpSelect value={op} onChange={setOp} options={typeOpts} />
+      </div>
       <div ref={chartRef} className="solenoid-node__figure" style={{ position: "relative", marginTop: 4, height: H }}>
         {!hasData ? (
           <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>
