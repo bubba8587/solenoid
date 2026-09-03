@@ -96,6 +96,21 @@ and its entry deleted. Ruled-out-forever ideas: `out-of-scope.md`; settled ratio
   obstacle-router shape if the author accepts its license (`1.4-plan.md` F1); delete this
   entry when F1 lands.
 - **Grid system** — spec: `grid-system.md`.
+- **Floor-plan bridge (author 2026-09-03, "chew on it"; ruled: don't build a plan editor, in
+  Solenoid or standalone).** The editing experience is the hard part and it is solved and
+  free: openPlan3D (github.com/laanlabs/openPlan3D — MIT, three.js, client-side, walls with
+  thickness + snapping, doors/windows, ~140 furniture items, plain-JSON save) is the modern
+  Sweet Home 3D; SH3D itself (GPL, Java Swing + Java3D, handed to Space Mushrooms 2024-08,
+  its JS port is a JSweet transpile) is worth borrowing the DATA MODEL from (walls as
+  segments with thickness/height/arc, rooms as polygons, furniture as catalog refs +
+  placement, levels), never the code. Two things worth building if the trigger returns:
+  (1) an IMPORT node reading an openPlan3D JSON (or an `.sh3d` zip's `Home.xml`) into
+  `walls` / `objects` frames — wall length, paint area, flooring cost then fall out as
+  ordinary downstream nodes; (2) a **Floor Plan figure** on the chart socket — `walls`
+  (x1,y1,x2,y2,thickness,height) + `objects` (type,x,y,w,d,h,rotation,label) frames in,
+  an isometric extrusion out, reusing Surface's yaw/pitch camera + painter's algorithm
+  (`SurfaceView.tsx`); NO openings, NO drawing on the canvas — each of those turns the node
+  into a project. Trigger: the author has an actual plan to quantify.
 - **`content-visibility: auto` on node roots — ruled out** while socket positions are
   measured from live DOM geometry (off-screen subtrees don't compute descendant layout →
   cable endpoints jump at the viewport edge). Headless card metrics (`v2.0/22`, step 1)
