@@ -6,6 +6,54 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-03 — group lock, socket flip, popup chrome)
+
+Shipped on `develop`: **Group "Lock position"** (right-click / header icon; `lockedPosition`
+persisted; drag off + exempt from Tidy/Cleanup, which treat it as a fixed obstacle via a
+pinned `separateOverlaps`; the lock also wins over a Standoff band — every `solveStandoffs`
+call site pins locked groups, `withLockedGroupsPinned`). **Flip sockets** — a reusable
+per-node left↔right socket mirror (`socketFlipStore` + `flippableNodes.ts`; Display is the
+first adopter; the cable path threads each flipped endpoint's `CablePosition` into
+`getCablePath`; a flipped node lays out as a *predecessor* — `subsetConns` reverses its ELK
+edge, portless). **Chart pop-out on every Display chart** + a mechanical `chartPopupCoverage`
+sweep so no op ships without one. **Frame Input Form** carries the Source toggle; Source Off
+renders through the shared `RecordGrid` (Record chart view, images). **Pop-ups: resize grip**
+(centered, `PopupShell` `resizable`) and **canvas cursor** (plain pointer on hover, grab only
+while panning; Lock keeps the grab-hand). Small fix: chart-in-Display wheel trap; tidy no
+longer stamps a manual width on a collapsed card.
+
+**Pop-up frame alignment (root cause + fix).** The accent header (a child overhanging the
+card border) and the card's own border derived from DIFFERENT boxes (content box vs border
+box); Chromium rounds each element's border independently at paint, so at a fractional DPR
+(Windows 125%/150% scaling) OR a fractional `transform: scale()` the two edges split by ~1px,
+width-dependent. Same-width does NOT fix it (still two elements) — this is why the node cards
+went to SVG. Fix (`popupChrome.css` + `PopupShell`): the card draws NO border; the body
+border is `::after` starting at `--header-h` (published via `useHeaderHeightVar`); the header
+carries the real accent border with no overhang — both edges now share the card box (one
+rounding basis) so they can't crack. Verified in isolation across fractional widths at DPR 2.5
+AND `scale(1.37)`.
+
+**OPEN — revert NodeCard's SVG frame (`CardFrame`) to CSS, same principle.** Verified viable:
+the one-basis CSS holds under a fractional `transform: scale()` (the canvas zoom, the exact
+case the SVG was built for). Plan:
+- Card `border: none`; header gets the REAL accent border (2px top+sides), `width:100%`,
+  `box-sizing:border-box`, `margin:0` (drop the `-1px` overhang), `box-shadow: inset 0 -1px 0`
+  divider. Body border becomes ONE absolute overlay div `.solenoid-node__frame-body`
+  (`top:var(--header-h)`, sides+bottom) — a div, not a pseudo, since `::after`=selection ring
+  and `::before`=group corner are taken. Both header + overlay derive from the card box → align.
+- Move the `__frame-body/cap/divider` color states (hover→`border-strong`, selected/grouped
+  exclusions, grouped `2px`+group-color, light `--node-accent-dark`) onto the header + overlay.
+- Adjustments the border removal forces: bump `--node-socket-x` (`-6.5px`→`-5.5px`) + input-pill
+  (`-7px`→`-6px`) so dots keep straddling the edge (verify cable endpoints); carry the
+  `--frame-outset` math onto the overlay (isolate endpoints, palette sample); group-corner
+  `::before` inset/radius correction (as the popup needed); `--header-h:0` cards (headerless /
+  square-collapse) wrap all four sides — verify Sparkline + collapsed readout; `frameless` FC
+  nodes unchanged.
+- Sequence: (1) author confirms the POPUP fix at their scaling first; (2) apply to nodes,
+  verify live across zoom levels × states (hover/selected/grouped/collapsed/square/FC/resized);
+  (3) delete `CardFrame` + `__frame-*` CSS. Net: −1 component, ~−60 lines SVG CSS, node+popup
+  framing unified.
+
 ### SESSION DIGEST (2026-09-01 — 1.3 shipped; the 1.4 / 2.0 planning pass)
 
 **1.3 is released** (v1.3.0 on `main`; the author: `develop` is level with it). The backlog's
