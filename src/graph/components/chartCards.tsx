@@ -42,8 +42,10 @@ export function KpiCard({ payload, fscale }: { payload: KpiPayload; fscale?: num
   );
 }
 
-// One card of labeled boxes on a CSS grid, placements resolved in the node.
-function RecordGrid({ fields, cols }: { fields: RecordPayload["cards"][number]; cols: number }) {
+// One card of labeled boxes on a CSS grid, placements resolved in the node. Shared:
+// the Frame Input popup's Form view (Source Off) renders through this exact component,
+// so the editable form and the Record figure are one look.
+export function RecordGrid({ fields, cols }: { fields: RecordPayload["cards"][number]; cols: number }) {
   return (
     <div className="sol-record" style={{ gridTemplateColumns: `repeat(${Math.max(1, cols)}, minmax(0, 1fr))` }}>
       {fields.map((f, i) => (

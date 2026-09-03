@@ -20,7 +20,9 @@ import { PopupShell, popupCardVars } from "./PopupShell";
 import { settingsStore } from "../settingsStore";
 import { gridKeyOf, nextCell } from "./gridKeyboard";
 import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortIndicator, stopSortTrigger } from "./columnSort";
-import { parseRecordLayout } from "../nodes/visual";
+import { parseRecordLayout, recordImageSrc } from "../nodes/visual";
+import { RecordGrid } from "./chartCards";
+import type { RecordField } from "../chartValue";
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
 import { saveCsvFileDialog } from "../fileBridge";
 import { APP_LOCALE } from "../locale";
@@ -1043,6 +1045,34 @@ export function TablePopup() {
               <button type="button" className="table-popup__btn" onClick={removeRecord} disabled={rows <= 1} title="Delete this record">− Record</button>
             </div>
             {rows > 0 && (() => {
+              // Source OFF renders the row through the SAME RecordGrid the Record chart
+              // type uses — one look for the figure and the form, images included. Source
+              // ON is the editable version below.
+              if (formattedPreview) {
+                const shownAt = (c: number): string | null => {
+                  if (c === -1) return null;
+                  if (isComputedCol(c)) {
+                    const s = controlledCell((liveComputed ?? state.computedCells)?.[fRow]?.[c] ?? null, c);
+                    return s === "" ? null : s;
+                  }
+                  const raw = grid[fRow]?.[c] ?? "";
+                  if (raw.trim() === "") return null;
+                  const f = formatFrameCell(colTypeAt(c), coerceFrameCell(colTypeAt(c), raw));
+                  return f == null ? null : String(f);
+                };
+                const toField = (c: number, name: string, at: { row: number; col: number; rowSpan: number; colSpan: number }, hint?: string): RecordField => {
+                  const label = c === -1 ? name : (headerNames[c] ?? "").trim() || colLabel(c);
+                  const shown = shownAt(c);
+                  const image = shown != null ? recordImageSrc(shown) : null;
+                  const f: RecordField = { label, value: shown, ...(image ? { image } : {}), ...at };
+                  if (shown == null && hint) f.hint = hint;
+                  return f;
+                };
+                const fields = formPlaced.length > 0
+                  ? formPlaced.map((pl) => toField(formColIndex(pl.name), pl.name, { row: pl.row, col: pl.col, rowSpan: pl.rowSpan, colSpan: pl.colSpan }, pl.hint))
+                  : Array.from({ length: cols }, (_, c) => toField(c, "", { row: c + 1, col: 1, rowSpan: 1, colSpan: 1 }));
+                return <RecordGrid fields={fields} cols={formPlaced.length > 0 ? formCols : 1} />;
+              }
               // Record-look boxes: touching, square, label-in-box; the input is
               // the box's value line (the figure look, made editable).
               const box = (c: number, name: string, key: number | string, at?: React.CSSProperties, hint?: string) => {
@@ -1169,7 +1199,7 @@ export function TablePopup() {
             >Column</button>
           </div>
         )}
-        {showFmtToggle && view !== "form" && (
+        {showFmtToggle && (
           <label
             className="table-popup__source-check"
             title={literalSource

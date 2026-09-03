@@ -29,12 +29,13 @@ REMOVED — the old elkjs-vs-rete-auto-arrange peer conflict left with the plugi
 - [ ] **The `rules.md` ARR pass** (author-present; the author: waits for 1.4) — early in the
   release, before the track work adds rules (`1.4-plan.md` D3).
 
-## Nodes
+## Input & modals
 
-- [ ] **Frame Input Form mode: restore the Source toggle.** The Form layout should carry
-  the same Source on/off toggle that grid/csv modes have; Source Off renders images (the
-  exact behavior of the Record chart type). Form mode currently sits in an in-between
-  state without it.
+- [ ] **Keystroke guards on modals / pop-ups** (maybe a React Flow port symptom). Canvas
+  shortcuts leak through open overlays: with a Frame Input pop-up open, `A` still opens the
+  Add menu behind it; with a Tidy/Cleanup confirm modal up, `Enter` both confirms the modal
+  AND opens the Command Palette. The canvas key handler should stand down while a
+  modal/popup owns the keyboard.
 
 ## Layout
 
