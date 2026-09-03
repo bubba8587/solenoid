@@ -40,6 +40,20 @@ const EditSvg = () => (
   </svg>
 );
 
+// Lucide "lock" / "lock-open" — pin or release a group's position. https://lucide.dev/icons/lock
+const LockSvg = () => (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </svg>
+);
+const UnlockSvg = () => (
+  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 9.9-1" />
+  </svg>
+);
+
 // Lucide "package-open" — Unpack composite. https://lucide.dev/icons/package-open
 const UnpackSvg = () => (
   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: "block" }}>
@@ -61,6 +75,10 @@ export type NodeContextTarget = {
   canPin?: boolean;
   /** The clicked node is a Composite — offers Edit contents / Unpack. */
   isComposite?: boolean;
+  /** The clicked node is a Group — offers Lock / Unlock position. */
+  isGroup?: boolean;
+  /** A group's current position-lock state (drives the Lock ↔ Unlock label). */
+  lockedPosition?: boolean;
   /** Present only when a Standoff link is on offer (exactly two selected). */
   standoff?: { aId: string; bId: string };
 };
@@ -75,10 +93,11 @@ type Props = {
   onAddComment?: (nodeId: string) => void;
   onEditComposite?: (nodeId: string) => void;
   onUnpackComposite?: (nodeId: string) => void;
+  onToggleLock?: (nodeId: string) => void;
   onClose: () => void;
 };
 
-export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed, onPin, onLinkStandoff, onAddComment, onEditComposite, onUnpackComposite, onClose }: Props) {
+export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed, onPin, onLinkStandoff, onAddComment, onEditComposite, onUnpackComposite, onToggleLock, onClose }: Props) {
   const ref = useMenuClamp<HTMLDivElement>(target.screenX, target.screenY);
 
   useEffect(() => {
@@ -142,6 +161,13 @@ export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed
       {onAddComment && item(<CommentSvg />, "Add comment", () => onAddComment!(target.nodeId))}
       {target.standoff && onLinkStandoff &&
         item("⊷", "Link with Standoff", () => onLinkStandoff!(target.standoff!))}
+      {target.isGroup && onToggleLock && (
+        target.lockedPosition
+          ? item(<UnlockSvg />, "Unlock position", () => onToggleLock!(target.nodeId),
+              "Let the group be dragged again and included in Tidy / Cleanup")
+          : item(<LockSvg />, "Lock position", () => onToggleLock!(target.nodeId),
+              "Pin the group's corner: no dragging, and Tidy / Cleanup skip it (resize still works)")
+      )}
     </div>
   );
 }

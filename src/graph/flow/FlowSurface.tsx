@@ -83,7 +83,7 @@ import { commentsPanelUi } from "../commentStore";
 import { pinNodeValue } from "../pinStore";
 import { unpackComposite } from "../compositeLogic";
 import { compositeEditorStore } from "../compositeEditorStore";
-import { moveGroupMembers, reconcileGroupMembership, absorbIntoContainingGroup } from "../groupLogic";
+import { moveGroupMembers, reconcileGroupMembership, absorbIntoContainingGroup, setGroupLocked } from "../groupLogic";
 import { rebuildGroupMembership, groupMembershipStore } from "../groupMembership";
 import { syncGroupCollapse } from "../groupCollapse";
 import { isGraphRebuilding } from "../process";
@@ -245,7 +245,8 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           old.position.y === n.position.y &&
           old.parentId === n.parentId &&
           old.zIndex === n.zIndex &&
-          old.className === n.className
+          old.className === n.className &&
+          old.draggable === n.draggable
         ) {
           return old;
         }
@@ -964,6 +965,10 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
             else compositeEditorStore.open(n);
           }}
           onUnpackComposite={(id) => void unpackComposite(s.editor, s.view as unknown as View, id)}
+          onToggleLock={(id) => {
+            const n = s.editor.getNode(id);
+            if (n instanceof GroupNode) setGroupLocked(s.editor, s.view as unknown as View, n, !n.lockedPosition);
+          }}
           onClose={() => setNodeCtx(null)}
         />
       )}

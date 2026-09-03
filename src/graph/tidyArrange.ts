@@ -278,8 +278,13 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     // Global tidy keeps GROUPS as rigid units and excludes their members;
     // within-group tidy keeps exactly that group's members.
     const memberIds = new Set(memberOf.keys());
+    // A position-locked group (and its members) sits out global tidy entirely — it
+    // stays exactly where the user pinned it. Within-group tidy is that group's own
+    // Tidy button, which still arranges its members.
     const layoutTargets = tidyNodes.filter(
-      (n) => !dockedFcIds.has(n.id) && (withinGroup ? true : !memberIds.has(n.id)),
+      (n) =>
+        !dockedFcIds.has(n.id) &&
+        (withinGroup ? true : !memberIds.has(n.id) && !(n instanceof GroupNode && n.lockedPosition)),
     );
 
     // Standoff clusters lay out as ONE rigid block: collapse each fully-loose
@@ -676,8 +681,9 @@ export function makeCleanupFn(
 
     const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
 
-    // 1. Tidy every group's members.
-    const groups = groupsNow();
+    // 1. Tidy every group's members. Locked groups are left untouched: no member
+    //    tidy, no autofit, no collapse below — they stay exactly as pinned.
+    const groups = groupsNow().filter((g) => !g.lockedPosition);
     for (const g of groups) await arrangeFn({ groupId: g.id, skipPush: true });
     // Two frames (rAF fire, then translate guard) so the within-group tidy's deferred
     // FC snap-backs land — else autofit pads the box around stale far-right FC spots.
@@ -685,7 +691,7 @@ export function makeCleanupFn(
     for (const g of groups) await autofitGroupBox(editor, view, g);
 
     // 2. Collapse every still-expanded group.
-    const toCollapse = groupsNow().filter((g) => !g.collapsed);
+    const toCollapse = groupsNow().filter((g) => !g.collapsed && !g.lockedPosition);
     if (toCollapse.length) {
       for (const g of toCollapse) g.collapsed = true;
       syncGroupCollapse(editor, view);

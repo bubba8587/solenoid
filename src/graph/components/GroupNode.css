@@ -87,6 +87,7 @@ textarea.solenoid-group__label { flex: 1 1 auto; }
 
 /* Tidy + color-swatch controls cluster on the header's right side. The label's
    auto right margin does the pushing now, so neither needs margin-left:auto. */
+.solenoid-group__lock,
 .solenoid-group__tidy,
 .solenoid-group__swatch {
   flex: 0 0 auto;
@@ -101,9 +102,15 @@ textarea.solenoid-group__label { flex: 1 1 auto; }
   cursor: pointer;
   opacity: 0.85;
 }
-.solenoid-group__swatch { margin-left: 2px; } /* small gap from the tidy button */
+.solenoid-group__tidy,
+.solenoid-group__swatch { margin-left: 2px; } /* small gap between header controls */
+.solenoid-group__lock:hover,
 .solenoid-group__tidy:hover,
 .solenoid-group__swatch:hover { opacity: 1; }
+
+/* Locked: the header stops advertising itself as a drag handle. */
+.solenoid-group--locked .solenoid-group__header { cursor: default; }
+.solenoid-group--locked .solenoid-group__header:active { cursor: default; }
 
 /* Positions the shared SwatchGrid popover under the header swatch. */
 .solenoid-group__palette {

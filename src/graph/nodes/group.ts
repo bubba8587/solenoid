@@ -9,6 +9,7 @@ export class GroupNode extends ClassicPreset.Node {
   collapsed: boolean;
   width: number;
   height: number;
+  lockedPosition: boolean; // pins the top-left corner: no drag, and Tidy/Cleanup skip it
 
   constructor(init?: {
     label?: string;
@@ -17,6 +18,7 @@ export class GroupNode extends ClassicPreset.Node {
     collapsed?: boolean;
     width?: number;
     height?: number;
+    lockedPosition?: boolean;
   }) {
     super("Group");
     this.label = init?.label ?? "Group";
@@ -25,6 +27,7 @@ export class GroupNode extends ClassicPreset.Node {
     this.collapsed = init?.collapsed ?? false;
     this.width = init?.width ?? 320;
     this.height = init?.height ?? 220;
+    this.lockedPosition = init?.lockedPosition ?? false;
   }
 
   // No outputs, but DataflowEngine still fetches it.

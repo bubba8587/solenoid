@@ -79,7 +79,7 @@ export const INIT_FIELD_ORDER = [
   "selectedColumn", "selectedValues", "selectedLayer", "multiSelect", "forecast", "offDiag", "readAs", "addAs", "activeIndex", "target", "resultAs", "colType", "dataType", "angleMode", "lambdaKeys", "sideVars",
   "hoverColor",
   "totalDepth", "rowTotalDepth", "colTotalDepth", "rowSort", "colSort", "relativeTo", "normalize", "detail",
-  "members", "color", "collapsed", "width", "height", "title", "body", "seq", "defaultValue",
+  "members", "color", "collapsed", "width", "height", "lockedPosition", "title", "body", "seq", "defaultValue",
   "checkNotNull", "checkUnique", "checkRange", "checkRegex", "checkAllowed", "integer",
   "runMode", "simulationSteps", "stopWhenPortId", "stopWhenOp", "stopWhenValue", "byRowPortId", "embeds", "steps",
   "wrap", "method", "ceiling", "model", "standardize",

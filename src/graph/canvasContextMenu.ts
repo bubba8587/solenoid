@@ -110,5 +110,7 @@ export function nodeTargetFor(editor: NodeEditor<Schemes>, clickedId: string, e:
   }
 
   const isComposite = clickedNode instanceof CompositeNode;
-  return { nodeId: clickedId, seedIds, screenX: e.clientX, screenY: e.clientY, canPin, isComposite, standoff };
+  const isGroup = clickedNode instanceof GroupNode;
+  const lockedPosition = isGroup ? clickedNode.lockedPosition : undefined;
+  return { nodeId: clickedId, seedIds, screenX: e.clientX, screenY: e.clientY, canPin, isComposite, isGroup, lockedPosition, standoff };
 }

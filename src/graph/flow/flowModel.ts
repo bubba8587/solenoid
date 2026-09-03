@@ -177,6 +177,9 @@ export type RFNodeLite = {
   parentId?: string;
   zIndex: number;
   className?: string;
+  /** false pins a locked group in place (RF still resizes it); undefined defers to
+   *  the board-wide `nodesDraggable`. */
+  draggable?: boolean;
   data: { node: SolenoidNode; version: number };
 };
 
@@ -255,6 +258,7 @@ export function toFlowNodes(m: FlowModel): RFNodeLite[] {
     const abs = node.position ?? { x: 0, y: 0 };
     const parentId = groupOf.get(node.id);
     const parentPos = parentId ? m.editor.getNode(parentId)?.position : undefined;
+    const locked = node instanceof Nodes.GroupNode && node.lockedPosition;
     return {
       id: node.id,
       type: "sol",
@@ -262,6 +266,7 @@ export function toFlowNodes(m: FlowModel): RFNodeLite[] {
       parentId: parentPos ? parentId : undefined,
       zIndex: nodeZIndex(node),
       className: nodeClassName(node),
+      draggable: locked ? false : undefined,
       data: { node, version: 0 },
     };
   });

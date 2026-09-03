@@ -12,7 +12,7 @@ import { valueChipFor } from "./ValueChip";
 import { groupCollapseStore, syncGroupCollapse, COLLAPSE_LAYOUT, pillY, type RetainedTerminal } from "../groupCollapse";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
 import { socketHighlightStore, dragSocketKey } from "../cableState";
-import { reconcileGroupBox, autofitGroupWithHistory, GROUP_MIN_W, GROUP_MIN_H } from "../groupLogic";
+import { reconcileGroupBox, autofitGroupWithHistory, setGroupLocked, GROUP_MIN_W, GROUP_MIN_H } from "../groupLogic";
 import { standoffStore, settleStandoffs } from "../standoffs";
 import { setGroupsCollapsed } from "../groupPush";
 import { rebuildGroupMembership } from "../groupMembership";
@@ -164,6 +164,14 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
     void setGroupsCollapsed(editor, view, [node], !node.collapsed);
   }
 
+  function unlockPosition(e: React.MouseEvent) {
+    e.stopPropagation();
+    const editor = getOwningEditor(node.id);
+    const view = getOwningView(node.id);
+    if (!editor || !view) return;
+    setGroupLocked(editor, view, node, false);
+  }
+
   // `node.color` stays the canonical value — a palette SLOT id, resolved here.
   const baseHex = resolveColor(node.color);
   const color = themeAccent(baseHex, mode);
@@ -189,7 +197,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
 
   return (
     <div
-      className={`solenoid-group${node.selected ? " solenoid-group--selected" : ""}${collapsed ? " solenoid-group--collapsed" : ""}`}
+      className={`solenoid-group${node.selected ? " solenoid-group--selected" : ""}${collapsed ? " solenoid-group--collapsed" : ""}${node.lockedPosition ? " solenoid-group--locked" : ""}`}
       style={rootStyle}
     >
       <div className="solenoid-group__header" style={{ background: color, borderColor: borderCol, color: ink }}>
@@ -223,6 +231,22 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
           >
             {node.label || "Group"}
           </div>
+        )}
+        {node.lockedPosition && (
+          <button
+            type="button"
+            className="solenoid-group__lock"
+            title="Unlock the group's position"
+            aria-label="Unlock the group's position"
+            onClick={unlockPosition}
+            onPointerDown={stop}
+            onMouseDown={stop}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={ink} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </button>
         )}
         {node.members.length > 1 && (
           <button
