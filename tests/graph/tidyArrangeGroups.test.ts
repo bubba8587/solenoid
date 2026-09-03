@@ -12,6 +12,8 @@ import { dockedNodeStore } from "../../src/graph/dockedNodeStore";
 import { GROUP_PAD, GROUP_HEADER, autofitGroupWithHistory } from "../../src/graph/groupLogic";
 import { COLLAPSE_LAYOUT, groupCollapseStore } from "../../src/graph/groupCollapse";
 import { socketFlipStore } from "../../src/graph/socketFlipStore";
+import { collapseStore } from "../../src/graph/collapseStore";
+import { nodeSizeStore } from "../../src/graph/nodeSizeStore";
 
 // ─── Headless Tidy/Cleanup harness ──────────────────────────────────────────────
 // The real arrangeFn is DOM-coupled: it measures node sizes off view.nodeViews
@@ -37,7 +39,7 @@ interface FakeView {
   element: {
     offsetWidth: number;
     offsetHeight: number;
-    querySelector: (sel: string) => { classList: { contains: (c: string) => boolean }; style: { removeProperty: (p: string) => void } };
+    querySelector: (sel: string) => { classList: { contains: (c: string) => boolean }; style: { removeProperty: (p: string) => void; width: string } };
     style: Record<string, string>;
   };
   /** test-side handle: the size resize() stamped (null = content-driven) */
@@ -45,6 +47,8 @@ interface FakeView {
   /** content-driven size (what the DOM would measure with no stamp) */
   natural: { w: number; h: number };
   heightPinned: boolean;
+  /** the width the tidy pin-drop stamped on the card (null = removed/none) */
+  stampedWidth: string | null;
 }
 
 /** The fake exposes its per-node handles as `fakes` beside the real View API. */
@@ -74,6 +78,7 @@ function makeFakeView() {
       stamped: null,
       natural: { w, h },
       heightPinned: false,
+      stampedWidth: null,
       element: {
         get offsetWidth() { return view.stamped?.w ?? natural().w; },
         get offsetHeight() {
@@ -89,7 +94,12 @@ function makeFakeView() {
             : {
                 classList: { contains: (c: string) => c === "solenoid-node" },
                 style: {
-                  removeProperty: (p: string) => { if (p === "height") view.heightPinned = false; },
+                  removeProperty: (p: string) => {
+                    if (p === "height") view.heightPinned = false;
+                    if (p === "width") view.stampedWidth = null;
+                  },
+                  set width(v: string) { view.stampedWidth = v; },
+                  get width() { return view.stampedWidth ?? ""; },
                 },
               },
         style: {},
@@ -545,5 +555,27 @@ describe("Tidy with a flipped node (predecessor layering, real ELK)", () => {
     await arrangeFn({ skipConfirm: true });
     await flushRafs();
     expect(view.fakes.get(b.id)!.position.x).toBeLessThan(view.fakes.get(a.id)!.position.x);
+  });
+
+  it("does NOT stamp a manual (expanded) width onto a COLLAPSED node", async () => {
+    const { view, arrangeFn, a, b } = await buildPair();
+    // b was resized wider than its collapsed form while expanded, then collapsed.
+    nodeSizeStore.set(b.id, { w: 420, h: 200 });
+    collapseStore.set(b.id, true);
+    try {
+      await arrangeFn({ skipConfirm: true });
+      await flushRafs();
+      // The collapsed card must keep its compact width — the pin-drop skips the
+      // manual stamp (mirrors NodeCard dropping the manual size while collapsed).
+      expect(view.fakes.get(b.id)!.stampedWidth).toBeNull();
+      // A non-collapsed sized node still gets its manual width.
+      nodeSizeStore.set(a.id, { w: 300, h: 100 });
+      await arrangeFn({ skipConfirm: true });
+      await flushRafs();
+      expect(view.fakes.get(a.id)!.stampedWidth).toBe("300px");
+    } finally {
+      collapseStore.clear();
+      nodeSizeStore.clear();
+    }
   });
 });

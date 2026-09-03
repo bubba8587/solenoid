@@ -12,6 +12,7 @@ import { nodeSizeStore } from "./nodeSizeStore";
 import { pushForGrownGroups } from "./groupPush";
 import { separateOverlaps, PUSH_GAP, type PushBox } from "./groupPushCore";
 import { socketFlipStore } from "./socketFlipStore";
+import { collapseStore } from "./collapseStore";
 import { standoffStore, standoffClusters, settleStandoffs } from "./standoffs";
 import { rebuildGroupMembership } from "./groupMembership";
 import { syncGroupCollapse, settleCollapse } from "./groupCollapse";
@@ -641,7 +642,10 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       const card = view.nodeElement(n.id)?.querySelector<HTMLElement>("*:not(span):not([fragment])");
       if (!card || !card.classList.contains("solenoid-node")) continue;
       card.style.removeProperty("height");
-      const manual = nodeSizeStore.get(n.id);
+      // A collapsed card owns its own (compact) width — re-stamping the manual
+      // expanded width here stretched a collapsed, resized node (NodeCard drops the
+      // manual size while collapsed for the same reason).
+      const manual = collapseStore.get(n.id) ? undefined : nodeSizeStore.get(n.id);
       if (manual) card.style.width = `${Math.round(manual.w)}px`;
       else card.style.removeProperty("width");
     }

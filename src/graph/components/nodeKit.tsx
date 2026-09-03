@@ -282,6 +282,7 @@ export function NodeShell({
   squareCollapse = false,
   className,
   accentOverride,
+  nonScrollingBody = false,
 }: {
   node: ShellNode;
   emit: Emit;
@@ -299,6 +300,9 @@ export function NodeShell({
   className?: string;
   /** Forwarded to NodeCard — a header accent replacing the kind color. */
   accentOverride?: string;
+  /** The body content scales rather than scrolls (a chart/figure), so a sized card
+   *  should NOT trap the wheel (`nowheel`) — let it zoom/pan the canvas through. */
+  nonScrollingBody?: boolean;
 }) {
   // Title edits commit on Enter/clickaway, never per keystroke — a committed
   // rename ripples through processGraph, and that must not run mid-typing.
@@ -402,7 +406,7 @@ export function NodeShell({
         <div className="solenoid-node__content">
           {leading}
           {!hideOutputSockets && <PortSockets node={node} emit={emit} side="output" />}
-          <div className={sized ? "solenoid-node__body nowheel" : "solenoid-node__body"}>{children}</div>
+          <div className={sized && !nonScrollingBody ? "solenoid-node__body nowheel" : "solenoid-node__body"}>{children}</div>
           {/* One universal resizer per resizable node — drags the card width and
               the body height (--box-h); the body's content fills/scrolls. */}
           {nodeResizable(node as unknown as ClassicPreset.Node) && <ResizeHandle nodeId={node.id} />}

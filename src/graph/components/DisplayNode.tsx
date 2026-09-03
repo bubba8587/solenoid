@@ -110,8 +110,12 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
     return () => nodeSizeStore.setMin(data.id, undefined);
   }, [data.id, minSize.w, minSize.h]);
 
+  // A chart / svg / scalar scales to the card; only a table/frame/cube actually
+  // scrolls, so only those need the sized-body wheel trap.
+  const scrolls = isTable || isFrame || isCube;
+
   return (
-    <NodeShell node={data} emit={emit} className={growClass} leading={<PortSockets node={data} emit={emit} side="input" />}>
+    <NodeShell node={data} emit={emit} className={growClass} nonScrollingBody={!scrolls} leading={<PortSockets node={data} emit={emit} side="input" />}>
       {isError ? (
         <ValueDisplay value={v} full={full} />
       ) : isFrame ? (
