@@ -1,6 +1,8 @@
-// Console-only tooling: true group fit needs the LIVE app, since tidy/autofit measure
-// painted DOM. scripts/tune-seeds.mjs patches the returned geometry back in place —
-// deliberately NOT a re-export, which would rewrite every hand-authored id.
+// Console-only tooling: true group fit AND a faithful whole-canvas Tidy need the LIVE
+// app, since tidy/autofit measure painted DOM. Per group it lays out members + autofits
+// the box, then it runs a whole-canvas Tidy (the same pass as pressing T) so the shipped
+// geometry equals the tidied layout. scripts/tune-seeds.mjs patches the returned geometry
+// back in place — deliberately NOT a re-export, which would rewrite every hand-authored id.
 import { SEEDS, clearAndLoadSeed } from "./seeds";
 import { getEditor, getView } from "./process";
 import { autoArrange } from "./canvasCommands";
@@ -40,8 +42,10 @@ async function tuneSeed(id: string): Promise<Record<string, TunedNodeGeometry>> 
   await sleep(2500);
   await frames(2);
 
-  // Sequential and per-group so expand-push displacements restore on re-collapse
-  // and the seed's overall composition survives.
+  // First, per-group and sequential, so each group's members are laid out and its
+  // box wraps their REAL painted sizes (expand-push displacements restore on
+  // re-collapse). This is the internal layout the whole-canvas pass then treats as
+  // a rigid unit.
   const groups = editor.getNodes().filter((n): n is GroupNode => n instanceof GroupNode);
   for (const g of groups) {
     const wasCollapsed = g.collapsed;
@@ -61,7 +65,14 @@ async function tuneSeed(id: string): Promise<Record<string, TunedNodeGeometry>> 
     }
   }
 
-  // Catches note→group ties whose group moved under them after its own settle.
+  // Then a WHOLE-CANVAS Tidy — exactly what pressing T does: it places every loose
+  // node and every group (as a unit, groups shipped collapsed stay collapsed) so the
+  // baked layout equals the tidied one, not a hand-composed approximation.
+  await autoArrange({ skipConfirm: true });
+  await frames(2);
+
+  // Standoffs settle last, against the tidied positions (a note re-hangs off its
+  // group after the group's own move).
   if (!standoffStore.isEmpty()) {
     settleStandoffs();
     await frames(2);

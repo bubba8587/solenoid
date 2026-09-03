@@ -1,10 +1,11 @@
 // Seed geometry tuner. Drives the running Vite dev server (port 1420) with
 // system Edge headless, calls the in-app hook window.__solenoidTuneSeed(id)
-// (seedTune.ts) for each seed — which loads it and runs the real per-group
-// tidy → autofit with painted DOM sizes — then patches the returned geometry
-// (node x/y, group width/height) back into src/graph/seedGraphs/<id>.json IN
-// PLACE. Ids, structure, and every other field are untouched; this is not a
-// re-export (serializeGraph would rewrite ids to names).
+// (seedTune.ts) for each seed — which loads it, runs the real per-group tidy →
+// autofit, then a whole-canvas Tidy (the same pass as pressing T), all with
+// painted DOM sizes — then patches the returned geometry (node x/y, group
+// width/height) back into src/graph/seedGraphs/<id>.json IN PLACE. Ids,
+// structure, and every other field are untouched; this is not a re-export
+// (serializeGraph would rewrite ids to names).
 //
 //   node scripts/tune-seeds.mjs             # all seeds
 //   node scripts/tune-seeds.mjs cubes pivot-tables   # a subset
