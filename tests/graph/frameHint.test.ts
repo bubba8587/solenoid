@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
-import type { FrameHint } from "../../src/graph/frameHint";
+import { frameHintStore, type FrameHint } from "../../src/graph/frameHint";
 
 // frameLabelHint (rules.md): a role-chain-labeled frame input and its example hint are
 // ONE contract — the hint must exist, its column names must match the label's
@@ -83,5 +83,30 @@ describe("frame-input example hints", () => {
         }
       }
     }
+  });
+});
+
+describe("frameHintStore — one overlay payload at a time (hover peek on any socket)", () => {
+  const anchor = { left: 100, right: 112, centerY: 50 };
+  const exampleHint: FrameHint = { columns: [{ name: "A", type: "number", cells: [1, 2, 3] }] };
+
+  it("carries the example hint OR a value peek, and a new open replaces the last", () => {
+    frameHintStore.close();
+    expect(frameHintStore.get()).toBeNull();
+
+    // An unwired frame input's example hint.
+    frameHintStore.open({ kind: "example", hint: exampleHint, anchor });
+    expect(frameHintStore.get()?.kind).toBe("example");
+
+    // A socket's live value peek replaces it — never both open at once.
+    frameHintStore.open({ kind: "value", value: 42, nodeId: "n1", anchor });
+    const s = frameHintStore.get();
+    expect(s?.kind).toBe("value");
+    expect(s && s.kind === "value" ? s.value : null).toBe(42);
+    expect(s && s.kind === "value" ? s.nodeId : null).toBe("n1");
+
+    // Leave / wheel / cable-pick all route here (FrameHintLayer + NodeSocket).
+    frameHintStore.close();
+    expect(frameHintStore.get()).toBeNull();
   });
 });

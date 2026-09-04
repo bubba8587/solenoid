@@ -24,10 +24,14 @@ export function frameHintFor(node: object, socketKey: string): FrameHint | undef
   return ctor.frameHints?.[socketKey];
 }
 
-export type FrameHintState = {
-  hint: FrameHint;
-  /** The hovered socket's screen rect (the layer positions off its left edge). */
-  anchor: { left: number; right: number; centerY: number };
-};
+/** The hovered socket's screen rect (the layer positions off its left edge). */
+export type HintAnchor = { left: number; right: number; centerY: number };
+
+/** The floating layer carries one of two payloads at a time (one open at a time):
+ *  the declared EXAMPLE mini-table for an unwired frame input, or a live VALUE peek
+ *  of a socket's output — a scaled-down Display (hover peek on any socket). */
+export type FrameHintState =
+  | { kind: "example"; hint: FrameHint; anchor: HintAnchor }
+  | { kind: "value"; value: unknown; nodeId: string; anchor: HintAnchor };
 
 export const frameHintStore = createValueStore<FrameHintState>();

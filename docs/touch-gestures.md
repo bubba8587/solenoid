@@ -82,7 +82,8 @@ Other add paths (not gestures): mobile bar ➕ FAB, the `A` key, Insert ▸ Add 
 | Gesture | Config | Action | Where |
 |---|---|---|---|
 | drag from socket | all (mobile: selected node, or any during `--cabling`) | pick/drop cable | RF Handle drag (`FlowSocketHandle`, `onConnect` in FlowSurface) |
-| hover dot (300ms intent) | mouse | frame-input EXAMPLE hint | `NodeSocket.tsx` + `frameHint.ts` |
+| hover dot (300ms intent) | mouse | frame-input EXAMPLE hint (unwired frame input only) | `NodeSocket.tsx` + `frameHint.ts` |
+| hover dot (400ms intent) | mouse | VALUE peek — an output socket or a wired input pops the socket's live value as a scaled-down Display beside it (`SocketValuePeek`, the frameHint layer's second payload kind); leave / wheel / cable-pick hides it. Never both with the example hint. Desktop pointer only (touch has no hover). | `NodeSocket.tsx` + `frameHint.ts` + `FrameHintLayer.tsx` |
 | tap the input ROW | touch | frame-input EXAMPLE hint — the INTENTIONAL touch trigger; next tap or 4s dismisses. The dot itself deliberately has none: a touch press on the dot begins the cable pick, which captures the pointer (the tap's up never reaches the dot), and the dot scales with the canvas transform anyway (a few px at overview zoom). | `MeasuredSocketRow` / `FrameHintLayer` |
 | long-press socket | touch | socket context menu | `canvasContextMenu.ts` |
 | touch hit areas | coarse | dot targets inflate to ~28px (Conduit sockets deliberately small so its body stays grabbable); every socket grows further while cabling (coarse −8px → −14px inset; a specificity bug once SHRANK it, fixed 2026-08-09) | `socket.css` |

@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { frameHintStore, type FrameHint } from "../frameHint";
 import { formatFrameCell } from "../frame";
+import { SocketValuePeek } from "./SocketValuePeek";
 import "./frameHint.css";
 
 /** The example mini-table itself, shared by the floating hover layer and the
@@ -77,6 +78,16 @@ export function FrameHintLayer() {
   }, [state]);
 
   if (!state) return null;
+  // A live VALUE peek renders the socket's value as a scaled-down Display; the declared
+  // EXAMPLE hint renders the miniature TablePopup grid. Both share the positioning +
+  // hide logic above (one open at a time).
+  if (state.kind === "value") {
+    return (
+      <div className="solenoid-socket-peek" ref={ref} aria-hidden="true">
+        <SocketValuePeek value={state.value} nodeId={state.nodeId} />
+      </div>
+    );
+  }
   return (
     <div className="solenoid-frame-hint" ref={ref} aria-hidden="true">
       {/* The TablePopup grid in miniature — sunken column heads + gridlines —

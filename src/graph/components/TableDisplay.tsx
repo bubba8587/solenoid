@@ -44,9 +44,11 @@ export function formatTableCell(v: Cell, dateLike: boolean, ann?: FormatAnnotati
   return fmtNum(v);
 }
 
-export function TableDisplay({ table, label, onSave, full, kind, elem, ann: annProp, popupOverrides }: {
+export function TableDisplay({ table, label, onSave, full, kind, elem, ann: annProp, popupOverrides, peek }: {
   table: Mat | SolError | null;
   label?: string;
+  /** Socket hover-peek: a compact head-5 preview with NO chip (read-only, no popup). */
+  peek?: boolean;
   /** When set, the chip opens the grid editable and Save writes back through this. */
   onSave?: (next: (number | null)[][]) => void;
   /** The SOCKET-declared element family (see ArrayChip.elem) — REQUIRED; pass
@@ -97,7 +99,7 @@ export function TableDisplay({ table, label, onSave, full, kind, elem, ann: annP
     return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
   }
   const rows = table.length, cols = table[0]?.length ?? 0;
-  const maxR = full ? rows : Math.min(rows, 4), maxC = full ? cols : Math.min(cols, 4);
+  const maxR = full ? rows : Math.min(rows, peek ? 5 : 4), maxC = full ? cols : Math.min(cols, 4);
   const dateLike = kind === "date" || elem === "date";
 
   return (
@@ -125,7 +127,7 @@ export function TableDisplay({ table, label, onSave, full, kind, elem, ann: annP
           )}
         </tbody>
       </table>
-      {!full && (
+      {!full && !peek && (
         <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
           <ArrayChip value={table} label={label} size="sm" onSave={onSave} elem={elem} popupOverrides={popupOverrides} />
         </div>

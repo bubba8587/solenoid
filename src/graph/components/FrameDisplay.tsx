@@ -34,9 +34,12 @@ export function fmtCell(v: FrameCell, type: FrameColType = "number", ann?: Forma
   return Number.isInteger(c) ? String(c) : c.toFixed(3).replace(/\.?0+$/, "");
 }
 
-export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCommitSource, full, previewRows, previewCols, scroll, formatNodeId, lambdaOptions, formLayout }: {
+export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCommitSource, full, previewRows, previewCols, scroll, formatNodeId, lambdaOptions, formLayout, peek }: {
   frame: FrameValue | SolError | null;
   label?: string;
+  /** Socket hover-peek: a compact preview like `!full`, but with NO chip (read-only,
+   *  no popup). Pair with `previewRows` for the peek's row cap. */
+  peek?: boolean;
   /** Whose persisted per-column formats to read; defaults to the host node. A Report
    *  embed passes the SOURCE frame node so it shows that frame's formats. */
   formatNodeId?: string;
@@ -130,7 +133,7 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
           )}
         </tbody>
       </table>
-      {!full && (
+      {!full && !peek && (
         <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
           <FrameChip value={frame} label={label} size="sm" onSave={onSave} source={source} onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={lambdaOptions} formLayout={formLayout} />
         </div>
