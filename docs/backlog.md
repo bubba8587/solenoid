@@ -94,6 +94,13 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
   upstream walk go. Analysis + scope in `1.4-plan.md` Track I. Gate: the author's go after the
   downstream-flow work has been lived with, plus the source-node control design.
 
+## Units
+
+- [ ] **Per-element mixed-unit trig (1.4 D7, author 2026-09-04c).** `resolveTrigModes` reads one
+  socket-level unit for a whole list; a list whose cells carry their own deg/rad tags should
+  interpret each cell in its own unit. The one compute-time unit read in `trigMode.ts`; pin with a
+  mixed-list fixture; untagged lists byte-identical.
+
 ## Seeds
 
 - [ ] **Seed-layout sweep — the author eyeballs the 20 re-cut seeds** (2026-09-04b, two agent

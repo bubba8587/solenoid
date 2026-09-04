@@ -30,6 +30,9 @@ and its entry deleted. Ruled-out-forever ideas: `out-of-scope.md`; settled ratio
 
 ## Reopen only if the trigger returns
 
+- **Cube popup format + unit row** (1.4-plan D7; author 2026-09-04c: defer — "questioning whether cube
+  columns should actually be typed"). Open call for the author: typed `CubeColumn` stays or goes;
+  nothing builds on it until then.
 - **iFrame / embed node** (1.4-plan C4; author 2026-09-04c: deferred, not ruled out). Needs a CSP
   loosening; with 2.0's shared documents an embedded page is a phishing surface — that is the
   question to answer before any build.
