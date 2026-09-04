@@ -57,6 +57,21 @@ getting-started / table-verbs / unit-flow / decision-matrix (run while no other 
 seed JSONs — a concurrent `tune-seeds` write HMR-reloads the page and fakes drift). The optional
 convergence-loop backlog item is deleted on that evidence.
 
+**Frame shapes are declared per node (the backlog item, landed 6f41d140 by an Opus agent).**
+`nodes/frameShapeHook.ts` is the producer sibling of `passthrough()`: a node states its own
+output columns via `frameShape(outKey, ctx)` (`ctx.inputShape`, `ctx.wired`); the resolver keeps
+only the walk, the Conduit lane case and passthrough forwarding — the `instanceof` chain is
+gone. The 17 old rules moved verbatim (two dead spots fixed on the way: Append read sockets it
+no longer has; Split Column substituted `,` for a cleared delimiter), and ~23 more producers
+gained rules, so ~40 frame outputs carry a static shape instead of 17. Where a verb's columns
+provably don't depend on row data the node runs its OWN verb over `emptyFrameOf(shape)` rather
+than a second mirror that could drift (Reconcile, Describe, CorrMatrix, Merge Columns,
+Allocator, Bind Columns, Headers-demote, Add/Computed Column). `frameShapeCoverage.test.ts`
+fails any frame output with no rule unless it is a NAMED data-dependent producer (BuildFrame,
+KMeans, PCA, Logistic, the imports/feeds, Cube Rollup, Outliers, list Group By, Tally);
+`frameShapeRules.test.ts` pins one case per rule. Follow-up in the backlog: the migrated rules
+still read a card literal on a WIRED socket; the new ones gate on `ctx.wired`.
+
 **Seed-layout sweep, batch one (the backlog item, under the rule above; an Opus agent per
 batch).** getting-started (the Budget exhibit now wraps its Display + FC; no Notes there),
 table-verbs (a Nearest-match group holding the as-of/XLOOKUP exhibit + its Note; the intro Note's
