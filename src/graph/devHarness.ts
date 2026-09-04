@@ -2,7 +2,7 @@
 // Tree-shaken out of production builds (import.meta.env.DEV guard).
 import { documentStore } from "./documentStore";
 import { loadRevealStore } from "./loadReveal";
-import { getEditor, getView } from "./process";
+import { getEditor, getView, processGraph } from "./process";
 if (import.meta.env.DEV) {
   (window as unknown as { __spike: unknown }).__spike = {
     seed: (id: string) => documentStore.newFromTemplate(id),
@@ -21,6 +21,15 @@ if (import.meta.env.DEV) {
       return true;
     },
     nodeCount: () => getEditor()?.getNodes().length ?? 0,
+    // Retarget one node by id (frameText, stringLiterals, …) and recompute — the chart
+    // contact sheet re-feeds one Chart node instead of authoring a seed per variant.
+    patch: async (id: string, fields: Record<string, unknown>) => {
+      const n = getEditor()?.getNode(id);
+      if (!n) return false;
+      Object.assign(n, fields);
+      await processGraph();
+      return true;
+    },
     // Group membership (the layout probe asserts members follow a dragged group).
     groups: () => (getEditor()?.getNodes() ?? [])
       .filter((n) => n.constructor.name === "GroupNode")
