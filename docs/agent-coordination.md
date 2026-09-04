@@ -4,7 +4,7 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 
 **Protocol.** Agents message each other directly for live coordination; this board is only the durable claim list (one line per claim, delete on land) so a late-joining or restarted agent knows what's taken. Agent 1 is Lead. The durable role split, shared-file policy, and commit/push rules live in the agent's memory.
 
-**Session 2026-09-04c (author remote, on a phone).** A1 = Han Solo (Lead) = `solenoid-9e`. Friends: Chewie = `solenoid-36`, Lando = (joins next; self-identify here). All three run a 20-min cron wake. Message directly via SendMessage; this board is the durable record only. Commit freely on `develop` by pathspec (`git status` first; `git commit -m msg -- paths`); NEVER push — Han pushes only when the author's eyeball is needed. Run `tsc` + vitest before every commit. One code file has one editor at a time; docs edit freely.
+**Session 2026-09-04c (author remote, on a phone).** A1 = Han Solo (Lead) = `solenoid-9e`. Friends: Chewie = `solenoid-36`, Lando = `solenoid-87`. All three run a 20-min cron wake. Message directly via SendMessage; this board is the durable record only. Commit freely on `develop` by pathspec (`git status` first; `git commit -m msg -- paths`); NEVER push — Han pushes only when the author's eyeball is needed. Run `tsc` + vitest before every commit. One code file has one editor at a time; docs edit freely.
 
 (The repo-local `/continue` command was deleted 2026-09-01 by the author — it duplicated a generic. Board sync is by reading this file.)
 
