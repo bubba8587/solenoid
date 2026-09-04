@@ -12,6 +12,8 @@ import { nodeName } from "../catalogUtils";
 import { collapseStore } from "../collapseStore";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
+import { ColumnPickerField } from "./ColumnPickerField";
+import { columnPickersOf } from "../nodes/columnPickerHook";
 import { stopDragStart } from "../coarse";
 
 // Sizes nodes whose body grows by row count; socket PLACEMENT never uses it — each
@@ -542,6 +544,8 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
     .filter((e): e is [string, InputPort] => !!e[1]);
 
   const strLiterals = (node.stringLiterals ??= {});
+  // Column-name literals this node declares as frame-column pickers (B4): key → frame input.
+  const pickerKeys = new Map(columnPickersOf(node).map((p) => [p.key, p.frameInput]));
 
   // A literal can move a derived SOCKET type and no connection event fires on this
   // path, so the wildcard types must be re-settled after a literal edit.
@@ -626,7 +630,11 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
             ) : isNumber ? (
               <InlineNumberField value={literals[key]} onChange={(v) => set(key, v)} placeholder={placeholder} />
             ) : isStr ? (
-              <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} />
+              pickerKeys.has(key) ? (
+                <ColumnPickerField nodeId={node.id} frameInput={pickerKeys.get(key)!} value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} />
+              ) : (
+                <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} />
+              )
             ) : isCsvList ? (
               <InlineCsvField value={strLiterals[key]} onChange={(v) => setStr(key, v)} />
             ) : null}
