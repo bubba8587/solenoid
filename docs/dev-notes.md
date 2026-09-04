@@ -51,9 +51,17 @@ DM → all weights 1, default normalize. Seed rewired (a Weights Frame Input, tr
 **Radar reads a frame transposed (chartRadarTranspose).** A frame-fed radar was inverting the
 intuitive mapping. Now the number COLUMNS are the spokes and each ROW is one overlaid polygon
 named by column 0 (`ChartNode.data()` in `visual.ts`, radar-only; cartesian charts and list-fed
-radars untouched). Added a radar off the DM seed's Join output. CAVEAT flagged to the author:
-raw Price ($700–2200) swamps the /10 criteria on a shared radius — same scale problem the seed's
-own note calls out — so it wants a normalized or Price-dropped feed to read well.
+radars untouched). **Per-axis normalization (chartRender):** mixed-unit spokes let the big axis
+own the radius, so each spoke is scaled to [0,1] by its own MAX (÷max, not min/max — min/max
+pinned the weakest option to the centre), raw value kept on the tooltip, radial ticks hidden. A
+new `radarscale` option (axis | shared, on the string and the Chart Builder) opts back to a raw
+shared radius. Single-series radars can't self-normalize (one value per spoke), left as-is. Added
+a radar off the DM seed's Join output.
+
+**DM seed layout for whole-canvas Tidy.** Tidy scattered the seed's free-floating Notes, so the
+decision-matrix seed got 2 groups (collapsed Podium, expanded Sensitivity) + 7 note-standoffs
+(each Note pinned to the node/group it explains; Weights/radar inputs to their consumers), then
+re-tuned. Exemplar for the backlogged sweep across the rest of the seed library.
 
 ### SESSION DIGEST (2026-09-03 — charts, pie labels, Budget Allocator seed)
 
