@@ -7,8 +7,8 @@
     {
       "id": "note0",
       "type": "NoteNode",
-      "x": -560,
-      "y": 26,
+      "x": -580,
+      "y": -52,
       "init": {
         "label": "Record cards",
         "body": "# One row at a time\nThe **Record** node shows a single frame row as labeled boxes. The layout is plain text: one line per grid row, names split by `|`; repeating a name merges its cells, and `*2` widens one (the `Photo` box spans all four rows and two columns). The card itself stays compact and carries the chip; the drawn card lands wherever the chart output goes, like the resizable **Display** or the Spec sheet report. Here an **XMATCH** searches the SKU column and drives **Row**, so the card jumps to the matching part; unplug Row to flip records with the pager instead. A cell holding an image URL renders as the picture.",
@@ -20,11 +20,11 @@
     {
       "id": "parts",
       "type": "FrameInputNode",
-      "x": -160,
-      "y": 30,
+      "x": -180,
+      "y": -49,
       "init": {
         "label": "Parts",
-        "frameText": "[{\"name\": \"Item\", \"type\": \"string\", \"values\": [\"Hex bolt M4\", \"Lock nut M4\", \"Flat washer M4\", \"Spring pin 3 mm\"]}, {\"name\": \"SKU\", \"type\": \"string\", \"values\": [\"HB-401\", \"LN-402\", \"FW-403\", \"SP-304\"]}, {\"name\": \"Qty\", \"type\": \"number\", \"values\": [240, 118, 460, 0]}, {\"name\": \"Price\", \"type\": \"number\", \"values\": [0.35, 0.12, 0.05, 0.22]}, {\"name\": \"Updated\", \"type\": \"date\", \"values\": [46237, 46224, 46244, 46203]}, {\"name\": \"In Stock\", \"type\": \"logical\", \"values\": [true, true, true, false]}, {\"name\": \"Photo\", \"type\": \"string\", \"values\": [\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20fill%3D%22%231a1a1a%22%2F%3E%3Cpolygon%20points%3D%2224%2C6%2033%2C11%2033%2C21%2024%2C26%2015%2C21%2015%2C11%22%20fill%3D%22%239aa0a6%22%20stroke%3D%22%23c7ccd2%22%20stroke-width%3D%221.5%22%2F%3E%3Crect%20x%3D%2220%22%20y%3D%2226%22%20width%3D%228%22%20height%3D%2216%22%20rx%3D%221.5%22%20fill%3D%22%239aa0a6%22%20stroke%3D%22%23c7ccd2%22%20stroke-width%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M20%2030h8M20%2034h8M20%2038h8%22%20stroke%3D%22%23c7ccd2%22%20stroke-width%3D%221.2%22%2F%3E%3C%2Fsvg%3E\", \"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20fill%3D%22%231a1a1a%22%2F%3E%3Cpolygon%20points%3D%2224%2C8%2038%2C16%2038%2C32%2024%2C40%2010%2C32%2010%2C16%22%20fill%3D%22%239aa0a6%22%20stroke%3D%22%23c7ccd2%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2224%22%20r%3D%227%22%20fill%3D%22%231a1a1a%22%20stroke%3D%22%23c7ccd2%22%20stroke-width%3D%221.5%22%2F%3E%3C%2Fsvg%3E\", \"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20fill%3D%22%231a1a1a%22%2F%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2224%22%20r%3D%2215%22%20fill%3D%22%239aa0a6%22%20stroke%3D%22%23c7ccd2%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2224%22%20r%3D%226%22%20fill%3D%22%231a1a1a%22%20stroke%3D%22%23c7ccd2%22%20stroke-width%3D%221.5%22%2F%3E%3C%2Fsvg%3E\", \"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20fill%3D%22%231a1a1a%22%2F%3E%3Crect%20x%3D%2214%22%20y%3D%2210%22%20width%3D%2220%22%20height%3D%2228%22%20rx%3D%229%22%20transform%3D%22rotate%2835%2024%2024%29%22%20fill%3D%22%239aa0a6%22%20stroke%3D%22%23c7ccd2%22%20stroke-width%3D%221.5%22%2F%3E%3C%2Fsvg%3E\"]}]"
+        "frameText": "[{\"name\": \"Item\", \"type\": \"string\", \"values\": [\"Hex bolt M4\", \"Lock nut M4\", \"Flat washer M4\", \"Spring pin 3 mm\"]}, {\"name\": \"SKU\", \"type\": \"string\", \"values\": [\"HB-401\", \"LN-402\", \"FW-403\", \"SP-304\"]}, {\"name\": \"Qty\", \"type\": \"number\", \"values\": [240, 118, 460, 0]}, {\"name\": \"Price\", \"type\": \"number\", \"values\": [0.35, 0.12, 0.05, 0.22]}, {\"name\": \"Updated\", \"type\": \"date\", \"values\": [46237, 46224, 46244, 46203]}, {\"name\": \"In Stock\", \"type\": \"logical\", \"values\": [true, true, true, false]}, {\"name\": \"Photo\", \"type\": \"string\", \"values\": [\"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20fill%3D%22%231a1a1a%22%2F%3E%3Cpolygon%20points%3D%2224%2C6%2033%2C11%2033%2C21%2024%2C26%2015%2C21%2015%2C11%22%20fill%3D%22%239aa0a6%22%20stroke%3D%22%23c7ccd2%22%20stroke-width%3D%221.5%22%2F%3E%3Crect%20x%3D%2220%22%20y%3D%2226%22%20width%3D%228%22%20height%3D%2216%22%20rx%3D%221.5%22%20fill%3D%22%239aa0a6%22%20stroke%3D%22%23c7ccd2%22%20stroke-width%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M20%2030h8M20%2034h8M20%2038h8%22%20stroke%3D%22%23c7ccd2%22%20stroke-width%3D%221.2%22%2F%3E%3C%2Fsvg%3E\", \"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20fill%3D%22%231a1a1a%22%2F%3E%3Cpolygon%20points%3D%2224%2C8%2038%2C16%2038%2C32%2024%2C40%2010%2C32%2010%2C16%22%20fill%3D%22%239aa0a6%22%20stroke%3D%22%23c7ccd2%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2224%22%20r%3D%227%22%20fill%3D%22%231a1a1a%22%20stroke%3D%22%23c7ccd2%22%20stroke-width%3D%221.5%22%2F%3E%3C%2Fsvg%3E\", \"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20fill%3D%22%231a1a1a%22%2F%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2224%22%20r%3D%2215%22%20fill%3D%22%239aa0a6%22%20stroke%3D%22%23c7ccd2%22%20stroke-width%3D%221.5%22%2F%3E%3Ccircle%20cx%3D%2224%22%20cy%3D%2224%22%20r%3D%226%22%20fill%3D%22%231a1a1a%22%20stroke%3D%22%23c7ccd2%22%20stroke-width%3D%221.5%22%2F%3E%3C%2Fsvg%3E\", \"data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2048%2048%22%3E%3Crect%20width%3D%2248%22%20height%3D%2248%22%20fill%3D%22%231a1a1a%22%2F%3E%3Crect%20x%3D%2214%22%20y%3D%2210%22%20width%3D%2220%22%20height%3D%2228%22%20rx%3D%229%22%20transform%3D%22rotate%2835%2024%2024%29%22%20fill%3D%22%239aa0a6%22%20stroke%3D%22%23c7ccd2%22%20stroke-width%3D%221.5%22%2F%3E%3C%2Fsvg%3E\"]}, {\"name\": \"Notes\", \"type\": \"string\", \"values\": [\"Zinc-plated steel hex head, DIN 933, fully threaded to the head.\", \"Nylon-insert lock nut, DIN 985, reusable and vibration-resistant.\", \"Flat washer, DIN 125, deburred edges for an even bearing surface.\", \"Slotted spring pin, DIN 1481, heat-treated for a secure press fit.\"]}]"
       },
       "stringLiterals": {
         "layout": "Item | Item | Photo*2\nSKU | Qty | Photo\nPrice | Updated | Photo\nIn Stock | In Stock | Photo"
@@ -33,8 +33,8 @@
     {
       "id": "card",
       "type": "RecordNode",
-      "x": 785,
-      "y": -113,
+      "x": 867,
+      "y": -890,
       "init": {
         "label": "Part card"
       },
@@ -48,8 +48,8 @@
     {
       "id": "report",
       "type": "ReportNode",
-      "x": 1119,
-      "y": 100,
+      "x": 1201,
+      "y": -677,
       "init": {
         "label": "Spec sheet",
         "body": "# Spec sheet\nThe current part, embedded straight from the card's chart output:\n\n`=part`\n",
@@ -61,8 +61,8 @@
     {
       "id": "display",
       "type": "DisplayNode",
-      "x": 1154,
-      "y": 258,
+      "x": 1236,
+      "y": -519,
       "init": {
         "label": "Card view",
         "width": 300,
@@ -72,8 +72,8 @@
     {
       "id": "find",
       "type": "TextInputNode",
-      "x": 237,
-      "y": 92,
+      "x": 319,
+      "y": -687,
       "init": {
         "label": "Find SKU",
         "value": "FW-403"
@@ -82,8 +82,8 @@
     {
       "id": "getqty",
       "type": "GetColumnNode",
-      "x": 177,
-      "y": 209,
+      "x": 259,
+      "y": -570,
       "init": {
         "label": "SKU column",
         "readAs": "text"
@@ -95,8 +95,8 @@
     {
       "id": "xmatch",
       "type": "XMatchNode",
-      "x": 507,
-      "y": 109,
+      "x": 589,
+      "y": -670,
       "init": {
         "label": "Find the row"
       }
@@ -104,8 +104,8 @@
     {
       "id": "grp-find",
       "type": "GroupNode",
-      "x": 153,
-      "y": 34,
+      "x": 235,
+      "y": -745,
       "init": {
         "label": "Row lookup",
         "members": [
@@ -122,8 +122,8 @@
     {
       "id": "grp-out",
       "type": "GroupNode",
-      "x": 1095,
-      "y": 42,
+      "x": 1177,
+      "y": -735,
       "init": {
         "label": "Card output",
         "members": [
@@ -134,6 +134,180 @@
         "collapsed": false,
         "width": 348,
         "height": 526
+      }
+    },
+    {
+      "id": "rec-list",
+      "type": "RecordNode",
+      "x": 269,
+      "y": -279,
+      "init": {
+        "label": "List view",
+        "op": "list"
+      },
+      "stringLiterals": {
+        "layout": "Item\nSKU\nQty\nPrice"
+      }
+    },
+    {
+      "id": "note-list",
+      "type": "NoteNode",
+      "x": 259,
+      "y": 26,
+      "init": {
+        "label": "List view",
+        "body": "# List view\nEvery record on one line: the title field, then its other fields indented beneath. The densest way to read a frame.",
+        "color": "violet",
+        "width": 250,
+        "height": 140
+      }
+    },
+    {
+      "id": "grp-list",
+      "type": "GroupNode",
+      "x": 235,
+      "y": -337,
+      "init": {
+        "label": "List view",
+        "members": [
+          "rec-list",
+          "note-list"
+        ],
+        "color": "gold",
+        "collapsed": false,
+        "width": 302,
+        "height": 527
+      }
+    },
+    {
+      "id": "rec-title",
+      "type": "RecordNode",
+      "x": 269,
+      "y": 286,
+      "init": {
+        "label": "Title field",
+        "op": "gallery"
+      },
+      "stringLiterals": {
+        "layout": "#Item | Item\nSKU | Qty\nPrice | In Stock"
+      }
+    },
+    {
+      "id": "note-title",
+      "type": "NoteNode",
+      "x": 259,
+      "y": 591,
+      "init": {
+        "label": "Title field",
+        "body": "# Title field\nPrefix a field with `#` in the layout to make it the record's title. It renders large and without its label at the top of every card, in every view.",
+        "color": "violet",
+        "width": 250,
+        "height": 140
+      }
+    },
+    {
+      "id": "grp-title",
+      "type": "GroupNode",
+      "x": 235,
+      "y": 228,
+      "init": {
+        "label": "Title field",
+        "members": [
+          "rec-title",
+          "note-title"
+        ],
+        "color": "gold",
+        "collapsed": false,
+        "width": 302,
+        "height": 527
+      }
+    },
+    {
+      "id": "rec-size",
+      "type": "RecordNode",
+      "x": 269,
+      "y": 851,
+      "init": {
+        "label": "Card size",
+        "op": "gallery"
+      },
+      "stringLiterals": {
+        "layout": "Item\nSKU\nQty",
+        "options": "cardsize=s"
+      }
+    },
+    {
+      "id": "note-size",
+      "type": "NoteNode",
+      "x": 259,
+      "y": 1156,
+      "init": {
+        "label": "Card size",
+        "body": "# Card size\nThe `cardsize` option sizes gallery tiles: `s`, `m` or `l`. These are small.",
+        "color": "violet",
+        "width": 250,
+        "height": 140
+      }
+    },
+    {
+      "id": "grp-size",
+      "type": "GroupNode",
+      "x": 235,
+      "y": 793,
+      "init": {
+        "label": "Card size",
+        "members": [
+          "rec-size",
+          "note-size"
+        ],
+        "color": "gold",
+        "collapsed": false,
+        "width": 302,
+        "height": 527
+      }
+    },
+    {
+      "id": "rec-clamp",
+      "type": "RecordNode",
+      "x": 269,
+      "y": 1416,
+      "init": {
+        "label": "Clamp long text",
+        "op": "gallery"
+      },
+      "stringLiterals": {
+        "layout": "#Item\nNotes",
+        "options": "clamp=on"
+      }
+    },
+    {
+      "id": "note-clamp",
+      "type": "NoteNode",
+      "x": 259,
+      "y": 1721,
+      "init": {
+        "label": "Clamp long text",
+        "body": "# Clamp long text\nThe `clamp` option caps long tile values at three lines with an ellipsis, so the grid stays even. The pop-up still shows the whole card.",
+        "color": "violet",
+        "width": 250,
+        "height": 140
+      }
+    },
+    {
+      "id": "grp-clamp",
+      "type": "GroupNode",
+      "x": 235,
+      "y": 1358,
+      "init": {
+        "label": "Clamp long text",
+        "members": [
+          "rec-clamp",
+          "note-clamp"
+        ],
+        "color": "gold",
+        "collapsed": false,
+        "width": 302,
+        "height": 527
       }
     }
   ],
@@ -179,6 +353,30 @@
       "sourceOutput": "result",
       "target": "card",
       "targetInput": "row"
+    },
+    {
+      "source": "parts",
+      "sourceOutput": "frame",
+      "target": "rec-list",
+      "targetInput": "frame"
+    },
+    {
+      "source": "parts",
+      "sourceOutput": "frame",
+      "target": "rec-title",
+      "targetInput": "frame"
+    },
+    {
+      "source": "parts",
+      "sourceOutput": "frame",
+      "target": "rec-size",
+      "targetInput": "frame"
+    },
+    {
+      "source": "parts",
+      "sourceOutput": "frame",
+      "target": "rec-clamp",
+      "targetInput": "frame"
     }
   ],
   "standoffs": [

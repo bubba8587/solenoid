@@ -96,7 +96,11 @@ a `#name` layout marker (one parser change in `parseRecordLayout`) flags a field
 big + label-less in every view; `titleIndexFor` reads the flag and still falls back to field[0].
 A `clamp=on` option line-clamps long gallery-tile values to 3 lines (the popup shows the whole
 card). Pinned by `recordViews.test.ts`. Still OUT of the trim: cover image, hide-empty, grouped
-gallery / lane summaries.
+gallery / lane summaries. Follow-through (Done line): the record-cards seed gained four exhibits
+(List view, a `#`-marked title, `cardsize=s`, `clamp=on`), each a group with its Note inside off
+the shared Parts frame (a new long Notes column feeds the clamp exhibit), re-baked with
+`tune-seeds.mjs` (given a `URL`/`CHROME` env so a worktree tunes its own edited seeds against its
+own dev server); catalog description + `#`/`cardsize`/`clamp` socketDocs carry the four lifts.
 
 **D1 — formula-surface allowlist: Option A DROPPED on step-0 findings (Chewie).** Option A
 (one guard before `broadcastCall`: an undeclared FX name refuses ARRAY args) was greenlit on

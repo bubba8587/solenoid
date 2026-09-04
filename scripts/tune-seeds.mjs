@@ -14,8 +14,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import puppeteer from "puppeteer-core";
 
-const EDGE = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
-const URL = "http://localhost:1420";
+// Defaults hit the main checkout's dev server with system Edge; a worktree tunes its
+// OWN edited seeds by pointing URL at its own dev server (and CHROME at any Chromium).
+const EDGE = process.env.CHROME ?? "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
+const URL = process.env.URL ?? "http://localhost:1420";
 const seedsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "src", "graph", "seedGraphs");
 
 const main = async () => {
