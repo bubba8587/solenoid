@@ -204,10 +204,17 @@ compat shim.
   `format === "decimal"` gates. The unit dropdown's `disabled` under a lock state
   is the one sanctioned non-`controlsFor` modifier (presence is still the
   family's call; only editability is the lock's).
-- Render surfaces (`ValueDisplay`, `DisplayNode`, `CableInspector`,
-  `inlineRefDisplay`, Report embeds) — booleans route through
-  `applyLogicalStyle` when an annotation is present; numbers keep routing through
-  `formatNumberWithAnnotation` (already the single entry).
+- Render surfaces — every one asks ONE question, `resolveDisplayAnnotation(nodeId,
+  socketKey?)` (`valueDisplayFormat.ts`: direct FC ?? carried `outAnnotation` ??
+  trailing-FC `downstreamAnnotation`, on the owning editor): `ValueDisplay` (any card,
+  scalars and list cells), `InlineOutputRows` (per socket), `DisplayNode` + `TableDisplay`
+  (matrix cells), `inlineRefDisplay` (Note/Report refs), `CableInspector`, `PinLayer`,
+  the collapsed-group readouts. Booleans route through `applyLogicalStyle`, text through
+  `applyTextCase`, numbers through `formatNumberWithAnnotation` (the single entry); a
+  `UnitCell` under an annotation whose `unit` is `none` keeps the CELL's own display unit
+  (`annotationForValue`) — the annotation supplies the style, the value owns the unit.
+  Frames/cubes and the table popup grid stay per-column (a separate representation).
+  Pinned by `valueDisplayAnnotation.test.ts`.
 
 ## Non-goals (this spec deliberately excludes)
 

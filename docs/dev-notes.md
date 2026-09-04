@@ -170,8 +170,16 @@ wins, gated on the output socket's element family matching, the copy stripped to
 drops (it rescales the magnitude, so the old precision no longer describes the number); the
 UPSTREAM walk stays bounded by transforms. Unit-flow seed lane C's copy now reads "keeps the
 FORMAT; the unit COMPUTES" (author's strings, rewritten because the old caption became false —
-eyeball). Surfaces sweep (every display honors a resolved annotation, one shared resolver
-helper) is the companion commit.
+eyeball). **Surfaces sweep (`f08482b6`):** every render surface asks one question,
+`resolveDisplayAnnotation(nodeId, socketKey?)` (direct ?? carried ?? trailing FC) — ordinary
+card value boxes (the passthrough-only guard is gone), list cells (logical show-as, text case,
+complex and united cells too), `TableDisplay` matrix cells (had no annotation at all), inline
+refs (united/complex refs rendered `[object Object]` before), the cable inspector, pins, the
+collapsed-group readouts. `annotationForValue`: an annotation with `unit:"none"` over a
+`UnitCell` keeps the cell's unit and supplies only the style. Unchanged by design: the array
+chip shows no cells; frames/cubes/the table popup grid are per-column. Verified on the unit-flow
+lanes A/B/C: an FC moved 2 → 3 places re-formats every downstream surface, units kept, and the
+Multiply card's own box after the transform now reads `$1,000.000`.
 
 **Dev graph mirror (`f2827631`).** The author asked whether the live graph is readable. Now
 it is: each autosave POSTs the document to `/__dev-graph` (vite.config.ts `devGraphMirror`) →
