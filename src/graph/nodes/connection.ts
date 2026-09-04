@@ -1,6 +1,9 @@
 import { ClassicPreset } from "rete";
-import { frameOut, strListOut, strIn, numOut, strOut, readInput } from "./shared";
+import { frameOut, strListOut, strIn, numIn, numOut, strOut, readInput } from "./shared";
 import { geocodeUrl, parseGeocode, pickGeocodeMatch, type GeocodeMatch } from "../geocodeProvider";
+import { weatherUrl, parseWeather, type TempUnit, type WeatherResult } from "../weatherProvider";
+import { applyFcUnit } from "../unitBridge";
+import { type Shape } from "../frameShape";
 import { connectionStore, scheduleConnectionRecalc, requestNetwork } from "../connectionStore";
 import { settingsStore } from "../settingsStore";
 import { isDesktop, readFileText } from "../fileBridge";
@@ -431,6 +434,90 @@ export class GeocodeNode extends ClassicPreset.Node {
         : { status: "ok", rows: this.matches.length, cols: 1, fetchedAt: Date.now() });
     } catch (e) {
       this.matches = [];
+      connectionStore.setState(this.id, { status: "error", message: e instanceof Error ? e.message : String(e) });
+    }
+  }
+}
+
+// ─── WEATHER (Open-Meteo forecast: a Daily frame + Now scalars) ─────────────────
+// The anchor widget. One call returns past_days + a 16-day forecast. Lat/lon come from
+// Geocode (or typed literals). The °C/°F toggle sets the API unit AND tags the temps
+// with that unit so it flows downstream like Convert (firstClassUnits). Reuses the
+// WebSource sync-background fetch pattern, so it rides the C2 network gate.
+export class WeatherNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    lat: "Latitude. Wire from Geocode, or type it.",
+    lon: "Longitude. Wire from Geocode, or type it.",
+    daily: "One row per day: date, rain mm, rain %, high, low, ET₀, condition. Past and future in one frame; split with a Frame Filter against TODAY.",
+    temp: "The current temperature, carrying its °C/°F unit downstream.",
+  };
+  label: string;
+  literals: Record<string, number> = { lat: 0, lon: 0 };
+  unit: TempUnit;
+  pastDays: number;
+  forecastDays: number;
+  /** Minutes, 0 = off — the component runs the timer. */
+  refreshMinutes: number;
+  width = 240; height = 200;
+  private cached: WeatherResult | null = null;
+  private _lastKey: string | undefined;
+
+  constructor(init?: { label?: string; unit?: TempUnit; pastDays?: number; forecastDays?: number; refreshMinutes?: number }) {
+    super("Weather");
+    this.label = init?.label ?? "Weather";
+    this.unit = init?.unit === "F" ? "F" : "C";
+    this.pastDays = init?.pastDays ?? 0;
+    this.forecastDays = init?.forecastDays ?? 7;
+    this.refreshMinutes = init?.refreshMinutes ?? 0;
+    this.addInput("lat", numIn("Lat"));
+    this.addInput("lon", numIn("Lon"));
+    this.addOutput("daily", frameOut("Daily"));
+    this.addOutput("temp", numOut("Now"));
+    this.addOutput("condition", strOut("Condition"));
+  }
+
+  // The daily frame's columns are FIXED (declareOnce), so downstream pickers know them
+  // before any fetch lands.
+  frameShape(): Shape {
+    return { columns: [
+      { name: "Date", type: "date" }, { name: "Rain mm", type: "number" }, { name: "Rain %", type: "number" },
+      { name: "High", type: "number" }, { name: "Low", type: "number" }, { name: "ET₀ mm", type: "number" },
+      { name: "Condition", type: "string" },
+    ] };
+  }
+
+  data(inputs: { lat?: number[]; lon?: number[] }): { daily: FrameValue; temp: unknown; condition: string | null } {
+    const lat = readInput(inputs.lat, this.literals.lat);
+    const lon = readInput(inputs.lon, this.literals.lon);
+    const have = typeof lat === "number" && typeof lon === "number";
+    const key = connectionStore.key(this.id, have ? `${lat},${lon},${this.unit},${this.pastDays},${this.forecastDays}` : "");
+    if (key !== this._lastKey) {
+      if (!have) {
+        this._lastKey = key;
+        this.cached = null;
+        connectionStore.setState(this.id, { status: "idle" });
+      } else if (requestNetwork(this.id)) {
+        this._lastKey = key;
+        void this.fetchWeather(lat, lon).then(() => scheduleConnectionRecalc());
+      }
+    }
+    const c = this.cached;
+    const fcUnit = this.unit === "F" ? "degF" : "degC";
+    return {
+      daily: c?.daily ?? { __frame: true, columns: [] },
+      temp: c?.nowTemp != null ? applyFcUnit(c.nowTemp, fcUnit) : null,
+      condition: c?.nowCondition ?? null,
+    };
+  }
+
+  private async fetchWeather(lat: number, lon: number): Promise<void> {
+    connectionStore.setState(this.id, { status: "loading" });
+    try {
+      const { text } = await fetchText(weatherUrl(lat, lon, this.unit, this.pastDays, this.forecastDays));
+      this.cached = parseWeather(text, this.unit);
+      connectionStore.setState(this.id, { status: "ok", rows: frameRowCount(this.cached.daily), cols: this.cached.daily.columns.length, fetchedAt: Date.now() });
+    } catch (e) {
+      this.cached = null;
       connectionStore.setState(this.id, { status: "error", message: e instanceof Error ? e.message : String(e) });
     }
   }

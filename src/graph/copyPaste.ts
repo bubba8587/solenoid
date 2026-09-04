@@ -87,6 +87,7 @@ export const INIT_FIELD_ORDER = [
   "layoutHidden",
   "inheritFormat",
   "pickedLabel",
+  "pastDays", "forecastDays",
 ] as const;
 
 // Object-valued extras, appended after INIT_FIELD_ORDER in this fixed order.
