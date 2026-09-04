@@ -1,7 +1,8 @@
 // Structured-payload figures, so they render as plain CSS/SVG rather than going
 // through the lazy recharts chunk.
 import { useLayoutEffect, useRef, useState } from "react";
-import type { KpiPayload, ScalePayload, RecordPayload } from "../chartValue";
+import type { KpiPayload, ScalePayload, RecordPayload, RecordSize } from "../chartValue";
+import { titleIndexFor } from "../chartValue";
 import { formatScalar } from "./format";
 import { planColumns, packMasonry } from "./masonryLayout";
 import { stopDragStart } from "../coarse";
@@ -70,8 +71,13 @@ export function RecordGrid({ fields, cols }: { fields: RecordPayload["cards"][nu
 
 const GALLERY_GAP = 6;
 // Track band: aim at `ideal`, compress to `min` before dropping a column, and
-// never stretch past `max` (a lone wide track reads as a stacked list).
-const GALLERY_TRACK = { ideal: 170, min: 140, max: 260 };
+// never stretch past `max` (a lone wide track reads as a stacked list). Three presets
+// (the `cardsize` option, gallery only); medium is the default band.
+const GALLERY_TRACK_BY_SIZE: Record<RecordSize, { ideal: number; min: number; max: number }> = {
+  s: { ideal: 130, min: 110, max: 190 },
+  m: { ideal: 170, min: 140, max: 260 },
+  l: { ideal: 230, min: 190, max: 340 },
+};
 
 // Masonry gallery (see masonryLayout.ts): tracks justified to the measured
 // container, each card packed into the shortest column. Card heights are
@@ -84,6 +90,7 @@ function RecordGallery({ payload }: { payload: RecordPayload }) {
   const tileRefs = useRef<(HTMLDivElement | null)[]>([]);
   const shownOnce = useRef(false);
   const n = payload.cards.length;
+  const track = GALLERY_TRACK_BY_SIZE[payload.size ?? "m"];
   const [box, setBox] = useState<{ w: number; heights: number[]; settled: boolean } | null>(null);
 
   useLayoutEffect(() => {
@@ -93,7 +100,7 @@ function RecordGallery({ payload }: { payload: RecordPayload }) {
       const w = el.clientWidth;
       const tiles = tileRefs.current.slice(0, n);
       const heights = tiles.map((t) => (t ? t.offsetHeight : 0));
-      const want = Math.round(planColumns(w, GALLERY_GAP, { ...GALLERY_TRACK, items: n }).colWidth);
+      const want = Math.round(planColumns(w, GALLERY_GAP, { ...track, items: n }).colWidth);
       const settled = tiles.every((t) => !t || t.offsetWidth === want);
       setBox((prev) =>
         prev && prev.w === w && prev.settled === settled &&
@@ -109,7 +116,7 @@ function RecordGallery({ payload }: { payload: RecordPayload }) {
     return () => ro.disconnect();
   }, [n, payload]);
 
-  const plan = planColumns(box?.w ?? 0, GALLERY_GAP, { ...GALLERY_TRACK, items: n });
+  const plan = planColumns(box?.w ?? 0, GALLERY_GAP, { ...track, items: n });
   const colWidth = Math.round(plan.colWidth);
   if (box?.settled) shownOnce.current = true;
   const show = box !== null && (box.settled || shownOnce.current);
@@ -145,7 +152,37 @@ function NavChevron({ back }: { back?: boolean }) {
   );
 }
 
-// The record figure: the picked card, a gallery of cards, or board lanes.
+// One field's display text (numbers formatted, empty → its hint or a dash) — the outline
+// shows text only, so a long value / image URL clamps to its line rather than drawing.
+function cellText(f: RecordPayload["cards"][number][number]): string {
+  if (f.value === null) return f.hint ?? "—";
+  return typeof f.value === "number" ? formatScalar(f.value) : f.value;
+}
+
+// List view: one indented outline block per record — the title field on its own line,
+// the remaining fields as "label: value" rows beneath it.
+function RecordList({ payload }: { payload: RecordPayload }) {
+  return (
+    <div className="sol-record-list">
+      {payload.cards.map((fields, i) => {
+        const ti = titleIndexFor(fields);
+        return (
+          <div key={i} className="sol-record-list__item">
+            <div className="sol-record-list__title">{ti >= 0 ? cellText(fields[ti]) : "—"}</div>
+            {fields.map((f, j) => j === ti ? null : (
+              <div key={j} className="sol-record-list__field">
+                <span className="sol-record-list__flabel">{f.label}</span>
+                <span className="sol-record-list__fvalue">{cellText(f)}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// The record figure: the picked card, a gallery of cards, board lanes, or a list outline.
 // Height is content-driven (layouts vary), so the passed figure height is ignored.
 // `title` is the explicit options title (the label fallback stays off the figure,
 // matching the series charts); popup/report surfaces strip it — their header
@@ -162,6 +199,15 @@ export function RecordCardView({ payload, width, fscale, title, onStep }: {
       <div style={outer}>
         {titleLine}
         <RecordGallery payload={payload} />
+        {moreLine}
+      </div>
+    );
+  }
+  if (payload.view === "list") {
+    return (
+      <div style={outer}>
+        {titleLine}
+        <RecordList payload={payload} />
         {moreLine}
       </div>
     );

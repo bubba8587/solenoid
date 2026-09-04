@@ -163,6 +163,49 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* List view: an indented outline, one block per record. The title leads; the
+   trailing fields sit beneath it, each a single ellipsized "label  value" line. */
+.sol-record-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sol-record-list__item {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.sol-record-list__title {
+  font-size: calc(12px * var(--chart-fscale, 1));
+  font-weight: 600;
+  line-height: calc(16px * var(--chart-fscale, 1));
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sol-record-list__field {
+  display: flex;
+  gap: 8px;
+  padding-left: 12px; /* the indent under the title */
+  font-size: calc(11px * var(--chart-fscale, 1));
+  line-height: calc(15px * var(--chart-fscale, 1));
+  min-width: 0;
+}
+.sol-record-list__flabel {
+  flex: 0 0 auto;
+  color: var(--text-dim);
+}
+.sol-record-list__fvalue {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Figure title (the explicit options title), matching the series charts'
    in-figure title: centered, 11px at fscale 1, single ellipsized line. */
 .sol-record-figtitle {
