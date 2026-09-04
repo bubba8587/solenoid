@@ -35,6 +35,13 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
   balancing is the Allocator" as a seed. GATE: nothing starts until the author picks; the first
   pass's Hungarian matching + Erlang staffing sit in `deferrals.md`.
 
+## Formatting & units
+
+- [ ] **LATER (author, 2026-09-04): fold the Format Controller into the Display** — format and
+  unit set at sources and displays, flowing downstream only; the docking subsystem and the
+  upstream walk go. Analysis + scope in `1.4-plan.md` Track I. Gate: the author's go after the
+  downstream-flow work has been lived with, plus the source-node control design.
+
 ## Seeds
 
 - [ ] **Seed-layout sweep — the author eyeballs the 20 re-cut seeds** (2026-09-04b, two agent
