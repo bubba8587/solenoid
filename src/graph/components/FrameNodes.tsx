@@ -30,7 +30,7 @@ import type {
   DropBlankRowsNode as DropBlankRowsNodeType,
   DecisionMatrixNode as DecisionMatrixNodeType,
   DecisionSensitivityNode as DecisionSensitivityNodeType,
-  BudgetAllocatorNode as BudgetAllocatorNodeType,
+  AllocatorNode as AllocatorNodeType,
   ReconcileNode as ReconcileNodeType,
   XLookupNode as XLookupNodeType,
   FrameSortDir,
@@ -747,7 +747,7 @@ export function DecisionSensitivityComponent({ data, emit }: NodeProps<DecisionS
   );
 }
 
-export function BudgetAllocatorComponent({ data, emit }: NodeProps<BudgetAllocatorNodeType>) {
+export function AllocatorComponent({ data, emit }: NodeProps<AllocatorNodeType>) {
   const [mode, setMode] = useNodeField(data, "mode");
   // Every input keeps its socket; `weights` is cable-only (no inline field), and the
   // amount field is hidden in Min proportional (which uses neither budget nor target) —

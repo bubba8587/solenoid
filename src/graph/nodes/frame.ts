@@ -1381,7 +1381,7 @@ export const ALLOCATE_MODE_META = {
   minProportional: { label: "Min proportional", description: "The least spend that keeps each category in proportion to its weight while covering its floor." },
 } satisfies Record<AllocateMode, { label: string; description: string }>;
 
-export class BudgetAllocatorNode extends ClassicPreset.Node {
+export class AllocatorNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     categories: "Rows are categories. A min and a max number column set each price range, the first text column names them, and a weight (or value) column says how much you value each.",
     weights: "Optional, one per category row: how much you value it. Overrides a weight column; unwired and with no weight column, every category weighs the same.",
@@ -1405,7 +1405,7 @@ export class BudgetAllocatorNode extends ClassicPreset.Node {
   };
 
   constructor(init?: { label?: string; mode?: AllocateMode }) {
-    super("BudgetAllocator");
+    super("Allocator");
     this.label = init?.label ?? "Allocator";
     this.mode = init?.mode && init.mode in ALLOCATE_MODE_META ? init.mode : "budget";
     this.addInput("categories", frameIn("Categories"));

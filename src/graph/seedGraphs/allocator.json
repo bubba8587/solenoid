@@ -29,7 +29,7 @@
     },
     {
       "id": "alloc",
-      "type": "BudgetAllocatorNode",
+      "type": "AllocatorNode",
       "x": 328,
       "y": 412,
       "init": {
