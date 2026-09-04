@@ -7,6 +7,7 @@ import type {
   ImportXmlNode as ImportXmlNodeType,
   DataFeedNode as DataFeedNodeType,
   GeocodeNode as GeocodeNodeType,
+  WeatherNode as WeatherNodeType,
 } from "../rete-nodes";
 import { processGraph } from "../process";
 import { connectionStore, refreshConnection, type ConnectionState } from "../connectionStore";
@@ -434,6 +435,63 @@ export function GeocodeComponent({ data, emit }: NodeProps<GeocodeNodeType>) {
           </LazySelect>
         )}
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
+      </div>
+    </NodeShell>
+  );
+}
+
+// ─── WEATHER ─────────────────────────────────────────────────────────────────────
+// Lat/lon come from Geocode's sockets or the typed fallbacks; the °C/°F toggle sets the
+// API unit and tags the temps downstream. Numeric fields commit on blur/Enter.
+export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
+  const [lat, setLat] = useState(String(data.literals.lat ?? 0));
+  const [lon, setLon] = useState(String(data.literals.lon ?? 0));
+  const [past, setPast] = useState(String(data.pastDays));
+  const [fwd, setFwd] = useState(String(data.forecastDays));
+  const [minutes, setMinutes] = useState(data.refreshMinutes);
+  useAutoRefresh(data.id, minutes);
+  useEffect(() => { setLat(String(data.literals.lat ?? 0)); setLon(String(data.literals.lon ?? 0)); }, [data]);
+
+  function commit() {
+    const nLat = Number(lat) || 0, nLon = Number(lon) || 0;
+    const nPast = Math.max(0, Math.min(92, Math.round(Number(past) || 0)));
+    const nFwd = Math.max(1, Math.min(16, Math.round(Number(fwd) || 7)));
+    setPast(String(nPast)); setFwd(String(nFwd));
+    if (nLat !== data.literals.lat || nLon !== data.literals.lon || nPast !== data.pastDays || nFwd !== data.forecastDays) {
+      data.literals.lat = nLat; data.literals.lon = nLon; data.pastDays = nPast; data.forecastDays = nFwd;
+      void processGraph();
+    }
+  }
+  const numField = (label: string, val: string, set: (s: string) => void) => (
+    <label className="sol-conn__field">
+      {label}
+      <input
+        className="sol-conn__num" type="number" value={val}
+        onChange={(e) => set(e.target.value)} onBlur={commit}
+        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+        onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
+      />
+    </label>
+  );
+
+  return (
+    <NodeShell node={data} emit={emit}>
+      <div className="sol-conn">
+        <LazySelect
+          className="sol-conn__select"
+          value={data.unit}
+          title="Temperature unit"
+          onChange={(e) => { data.unit = e.target.value === "F" ? "F" : "C"; void processGraph(); }}
+        >
+          <option value="C">°C</option>
+          <option value="F">°F</option>
+        </LazySelect>
+        {numField("Lat", lat, setLat)}
+        {numField("Lon", lon, setLon)}
+        {numField("Past days", past, setPast)}
+        {numField("Forecast days", fwd, setFwd)}
+        <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
+        <RefreshIntervalField minutes={minutes} onCommit={(n) => { data.refreshMinutes = n; setMinutes(n); }} />
       </div>
     </NodeShell>
   );

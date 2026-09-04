@@ -88,6 +88,7 @@ export const INIT_FIELD_ORDER = [
   "inheritFormat",
   "chip",
   "pickedLabel",
+  "pastDays", "forecastDays",
 ] as const;
 
 // Object-valued extras, appended after INIT_FIELD_ORDER in this fixed order.
