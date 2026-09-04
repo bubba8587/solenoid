@@ -3,7 +3,9 @@
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
-import type { FormatAnnotation } from "./formatAnnotationStore";
+import { FORMAT_STYLE_LABELS, LOGICAL_STYLE_LABELS, TEXT_CASE_LABELS, type FormatAnnotation, type FormatStyle } from "./formatAnnotationStore";
+import { precisionApplies } from "./formatModel";
+import type { FrameColType } from "./frame";
 
 /** The annotation's `unit` field is ignored — a column's unit is its value's. */
 export interface FrameColumnFormat {
@@ -60,3 +62,39 @@ export const frameFormatStore = {
 
 registerNodeForget((nodeId) => frameFormatStore.removeForNode(nodeId));
 registerNodeForgetAll(() => frameFormatStore.clear());
+
+/** The style dropdown's state for one column of the table popup's format row. */
+export interface ColumnFormatRow {
+  /** The dropdown's current value; `""` is the INHERIT pick (no local entry). */
+  value: string;
+  /** What the column carries in, e.g. `← Decimal · 3 places`; absent when nothing does. */
+  hint?: string;
+}
+
+function styleValueOf(ann: FormatAnnotation, type: FrameColType): string {
+  if (type === "logical") return ann.logicalStyle ?? "truefalse";
+  if (type === "string") return ann.textCase ?? "none";
+  return ann.format;
+}
+
+function describeAnnotation(ann: FormatAnnotation, type: FrameColType): string {
+  if (type === "logical") return LOGICAL_STYLE_LABELS[ann.logicalStyle ?? "truefalse"];
+  if (type === "string") return TEXT_CASE_LABELS[ann.textCase ?? "none"];
+  const label = FORMAT_STYLE_LABELS[ann.format as FormatStyle] ?? ann.format;
+  if (!precisionApplies(ann.format)) return label;
+  const d = ann.decimalDigits ?? 2;
+  const noun = ann.decimalMode === "sigfigs" ? "sig fig" : "place";
+  return `${label} · ${d} ${noun}${d === 1 ? "" : "s"}`;
+}
+
+/** No local entry means INHERIT: the dropdown reads blank and the hint names what
+ *  arrived, so an upstream format is never silently replaced by a look-alike pick
+ *  (rules formatFlowsDownstream). */
+export function columnFormatRow(
+  local: FormatAnnotation | undefined,
+  inherited: FormatAnnotation | undefined,
+  type: FrameColType = "number",
+): ColumnFormatRow {
+  if (local) return { value: styleValueOf(local, type) };
+  return inherited ? { value: "", hint: `← ${describeAnnotation(inherited, type)}` } : { value: "" };
+}

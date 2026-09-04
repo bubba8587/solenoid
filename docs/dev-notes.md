@@ -114,13 +114,19 @@ frame is shared) and memoizes on the frame's identity, which the backend's uploa
 nodes' own identity memos depend on. A verb-BUILT column takes a source column's format only
 where it already takes the unit — nest and the Allocator's Allocation, per an exhaustive audit
 of every `FrameColumn` construction in `frameVerbs.ts`; everything that spreads carries it free.
-Readers take the local pick first (`FrameDisplay.annFor`, the popup's format row, which now shows
-an inherited format as its current value). **Limit, same as the unit's:** a LAZY verb emits a
+Readers take the local pick first (`FrameDisplay.annFor`, the popup's format row).
+**Limit, same as the unit's:** a LAZY verb emits a
 `FrameRef`, so its own pick can't be stamped into the value — it renders on that node's card but
 travels no further; and `previewToFrame` / the Polars wire structs carry neither field.
 **Second defect, same area:** a popup format pick wrote to the store with no `scheduleAutosave()`
 and no recompute, so it survived a reload only by luck — both now fire, and Frame Input's
 `onSaveSource`/`onCommitSource` (where a popup UNIT pick lands) autosave too.
+**Third defect (author): Auto silently overrode an inherited format**, because the row's dropdown
+had no way to say "no pick of mine". Every per-column style dropdown now leads with `—` (delete
+the entry), the row carries a muted `← Decimal · 3 places` reading of what arrives, and Auto is a
+real override — `columnFormatRow` in `frameFormatStore.ts`. The blank option is an `<option>`
+ELEMENT, not a component: `LazySelect`'s collapsed render walks children for `type === "option"`
+and skipped a wrapper, showing the next option's label instead.
 
 **Docs reconciled:** `node-coverage.md` § Decision support (weights frame, inverted scenarios,
 the Note-frame seed), `v2.0/10` grounding, `architecture.md` (modalGuard row), `format-model.md`

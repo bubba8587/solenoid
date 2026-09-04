@@ -44,6 +44,12 @@ if (import.meta.env.DEV) {
       await processGraph();
       return true;
     },
+    // The blank pick in that row: no entry, so the column keeps the format it carries in.
+    clearColumnFormat: async (nodeId: string, column: string) => {
+      frameFormatStore.delete(nodeId, column);
+      await processGraph();
+      return true;
+    },
     // Attach a docked Format Controller the way the socket menu does (the FC probes).
     attachFc: async (hostNodeId: string, socketKey: string, side: "input" | "output") => {
       const ed = getEditor(), vw = getView();

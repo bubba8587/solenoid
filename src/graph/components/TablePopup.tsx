@@ -12,7 +12,7 @@ import { aggregate } from "../nodes/statsOps";
 import { formatNumberWithAnnotation, isDateStyle, applyLogicalStyle, type FormatAnnotation, type FormatStyleId } from "../formatAnnotationStore";
 import { isUnitCell } from "../unitValue";
 import { columnUnitLabel } from "../unitColumn";
-import { frameFormatStore } from "../frameFormatStore";
+import { frameFormatStore, columnFormatRow, type ColumnFormatRow } from "../frameFormatStore";
 import { scheduleAutosave } from "../persistence";
 import { processGraph } from "../process";
 import { formatListCell } from "./valueDisplayFormat";
@@ -154,6 +154,12 @@ function footerStatValue(stat: FooterStat, s: ColSummary): number | null {
   }
 }
 
+// The format row's fallback where neither a local pick nor an inherited format exists.
+function typeDefaultAnn(st: TablePopupState, j: number): FormatAnnotation {
+  const unit = st.columnUnits?.[st.formatControls === "matrix" ? 0 : j]?.display ?? "none";
+  return { format: st.formatControls !== "matrix" && st.columnTypes?.[j] === "date" ? "date_dmy" : "auto", unit };
+}
+
 export function TablePopup() {
   const state = useSyncExternalStore(tablePopup.subscribe, tablePopup.get);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
@@ -190,6 +196,10 @@ export function TablePopup() {
   // Indexed by column; a "matrix" popup uses index 0 for the whole grid. Display-only —
   // never the value or Copy/CSV.
   const [colFmt, setColFmt] = useState<FormatAnnotation[]>([]);
+  // Parallel to `colFmt`: whether THIS node picked the format (the dropdown shows a
+  // style), and what the column carried in when it didn't (the row's muted hint).
+  const [colLocal, setColLocal] = useState<boolean[]>([]);
+  const [colInherited, setColInherited] = useState<(FormatAnnotation | undefined)[]>([]);
   // undefined = Data, else the host's λ input key defining the column.
   const [colLambdas, setColLambdas] = useState<(string | undefined)[]>([]);
   // undefined = not a Formula column; a string (possibly empty, mid-authoring) = the
@@ -217,12 +227,12 @@ export function TablePopup() {
     setColExprs(Array.from({ length: ncols }, (_, j) => state.sourceExprs?.[j]));
     committedExprs.current = Array.from({ length: ncols }, (_, j) => state.sourceExprs?.[j]);
     setLiveComputed(null);
-    // A persisted per-column format (keyed by node+column) wins over the type default.
     const fmtNodeId = state.pinNodeId;
-    const seedFormat = (colName: string | undefined, dflt: FormatAnnotation, inherited?: FormatAnnotation): FormatAnnotation => {
-      // A LOCAL pick wins; else the format the column carried in reads as the current
-      // value, so the row shows what the grid is rendering (rules formatFlowsDownstream).
-      const saved = (fmtNodeId && colName ? frameFormatStore.get(fmtNodeId, colName) : undefined) ?? inherited;
+    const localAt = (colName: string | undefined): FormatAnnotation | undefined =>
+      fmtNodeId && colName ? frameFormatStore.get(fmtNodeId, colName) : undefined;
+    // The effective annotation the grid renders: a local pick, else what the column
+    // carried in, else the type default (rules formatFlowsDownstream).
+    const seedFormat = (saved: FormatAnnotation | undefined, dflt: FormatAnnotation): FormatAnnotation => {
       if (!saved) return dflt;
       // A saved format left cross-type by a column type switch resets to the type default.
       const fmt = isDateStyle(saved.format) === isDateStyle(dflt.format) ? saved.format : dflt.format;
@@ -230,15 +240,23 @@ export function TablePopup() {
     };
     if (state.formatControls === "matrix") {
       // A matrix has no column names — one whole-sheet format under a fixed key.
-      setColFmt([seedFormat("*", { format: "auto", unit: state.columnUnits?.[0]?.display ?? "none" })]);
+      const local = localAt("*");
+      setColFmt([seedFormat(local, typeDefaultAnn(state, 0))]);
+      setColLocal([!!local]);
+      setColInherited([undefined]);
     } else if (state.formatControls === "columns") {
+      const locals = Array.from({ length: ncols }, (_, j) => localAt(state.headers?.[j]));
+      // The value's stamp IS this node's own pick wherever it made one, so it reports an
+      // UPSTREAM format only for a column with no local entry.
+      const inherited = locals.map((l, j) => (l ? undefined : state.columnFormats?.[j]));
       setColFmt(Array.from({ length: ncols }, (_, j) =>
-        seedFormat(state.headers?.[j], {
-          format: state.columnTypes?.[j] === "date" ? "date_dmy" : "auto",
-          unit: state.columnUnits?.[j]?.display ?? "none",
-        }, state.columnFormats?.[j])));
+        seedFormat(locals[j] ?? inherited[j], typeDefaultAnn(state, j))));
+      setColLocal(locals.map((l) => !!l));
+      setColInherited(inherited);
     } else {
       setColFmt([]);
+      setColLocal([]);
+      setColInherited([]);
     }
     setView("grid");
     setDisplayMode("formatted");
@@ -340,10 +358,13 @@ export function TablePopup() {
     return state?.formatControls === "matrix" ? "*" : state?.headers?.[c];
   }
   // The UNIT does NOT persist here — a column's unit belongs to its value, saved on
-  // the source column.
+  // the source column. `annFor(c)` is the INHERITED annotation until this node picks,
+  // so editing one axis materializes the rest of the upstream format rather than
+  // resetting the style to Auto.
   function persistColFmt(c: number, patch: Partial<FormatAnnotation>) {
     const idx = state?.formatControls === "matrix" ? 0 : c;
     setColFmtAt(idx, patch);
+    setColLocalAt(idx, true);
     const nodeId = state?.pinNodeId;
     const col = colFmtKey(c);
     if (!nodeId || !col) return;
@@ -354,6 +375,37 @@ export function TablePopup() {
     scheduleAutosave();
     void processGraph(nodeId);
   }
+  function setColLocalAt(i: number, on: boolean) {
+    setColLocal((l) => { const next = l.slice(); while (next.length <= i) next.push(false); next[i] = on; return next; });
+  }
+  // The blank pick: drop this node's entry so the column renders whatever arrives.
+  function clearColFmt(c: number) {
+    const idx = state?.formatControls === "matrix" ? 0 : c;
+    const fallback = colInherited[idx] ?? typeDefaultAnn(state!, idx);
+    setColFmt((f) => {
+      const next = f.slice();
+      while (next.length <= idx) next.push({ format: "auto", unit: "none" });
+      // The unit is the SOURCE column's own choice, not part of the format pick.
+      next[idx] = { ...fallback, unit: next[idx].unit };
+      return next;
+    });
+    setColLocalAt(idx, false);
+    const nodeId = state?.pinNodeId;
+    const col = colFmtKey(c);
+    if (!nodeId || !col) return;
+    frameFormatStore.delete(nodeId, col);
+    scheduleAutosave();
+    void processGraph(nodeId);
+  }
+  function fmtRow(c: number): ColumnFormatRow {
+    const idx = state?.formatControls === "matrix" ? 0 : c;
+    const type = state?.formatControls === "matrix" ? cellType : colTypeAt(c);
+    return columnFormatRow(colLocal[idx] ? annFor(c) : undefined, colInherited[idx], type);
+  }
+  const fmtHint = (c: number) => {
+    const { hint } = fmtRow(c);
+    return hint ? <span className="table-popup__fmthint">{hint}</span> : null;
+  };
   // Takes either a read-only frame's typed value or an editable source's raw text.
   function controlledCell(raw: CellValue, c: number): string {
     if (raw === null || raw === undefined || raw === "") return "";
@@ -723,14 +775,15 @@ export function TablePopup() {
         // ABOVE the grid rather than inside it as a column row.
         <div className="table-popup__matrix-fmt">
           {cellType === "logical" ? (
-            <LogicalStyleSelect className="table-popup__fmtselect" value={annFor(0).logicalStyle} onChange={(s) => persistColFmt(0, { logicalStyle: s })} />
+            <LogicalStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(0).value} onChange={(s) => (s ? persistColFmt(0, { logicalStyle: s }) : clearColFmt(0))} />
           ) : cellType === "date" ? (
-            <DateStyleSelect className="table-popup__fmtselect" value={annFor(0).format} onChange={(f) => persistColFmt(0, { format: f })} />
+            <DateStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(0).value} onChange={(f) => (f ? persistColFmt(0, { format: f }) : clearColFmt(0))} />
           ) : cellType === "string" ? (
-            <TextCaseSelect className="table-popup__fmtselect" value={annFor(0).textCase} onChange={(tc) => persistColFmt(0, { textCase: tc })} />
+            <TextCaseSelect className="table-popup__fmtselect" inherit value={fmtRow(0).value} onChange={(tc) => (tc ? persistColFmt(0, { textCase: tc }) : clearColFmt(0))} />
           ) : (
-            <FormatStyleSelect className="table-popup__fmtselect" value={annFor(0).format} onChange={(f) => persistColFmt(0, { format: f })} />
+            <FormatStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(0).value} onChange={(f) => (f ? persistColFmt(0, { format: f }) : clearColFmt(0))} />
           )}
+          {fmtHint(0)}
           {state.unitTaggable && cellType === "number" ? (
             <UnitSelect
               className="table-popup__fmtselect"
@@ -874,15 +927,19 @@ export function TablePopup() {
                     const type = colTypeAt(c);
                     return (
                       <td key={c} className="table-popup__fmtcell">
-                        {type === "date" ? (
-                          <DateStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => persistColFmt(c, { format: f })} />
-                        ) : type === "logical" ? (
-                          <LogicalStyleSelect className="table-popup__fmtselect" value={annFor(c).logicalStyle} onChange={(s) => persistColFmt(c, { logicalStyle: s })} />
-                        ) : type === "string" ? (
-                          <TextCaseSelect className="table-popup__fmtselect" value={annFor(c).textCase} onChange={(tc) => persistColFmt(c, { textCase: tc })} />
-                        ) : type === "number" ? (
+                        {type === "date" ? (<>
+                          <DateStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(f) => (f ? persistColFmt(c, { format: f }) : clearColFmt(c))} />
+                          {fmtHint(c)}
+                        </>) : type === "logical" ? (<>
+                          <LogicalStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(s) => (s ? persistColFmt(c, { logicalStyle: s }) : clearColFmt(c))} />
+                          {fmtHint(c)}
+                        </>) : type === "string" ? (<>
+                          <TextCaseSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(tc) => (tc ? persistColFmt(c, { textCase: tc }) : clearColFmt(c))} />
+                          {fmtHint(c)}
+                        </>) : type === "number" ? (
                           <div className="table-popup__fmtstack">
-                            <FormatStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => persistColFmt(c, { format: f })} />
+                            <FormatStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(f) => (f ? persistColFmt(c, { format: f }) : clearColFmt(c))} />
+                            {fmtHint(c)}
                             {state.unitTaggable ? (
                               <UnitSelect
                                 className="table-popup__fmtselect"

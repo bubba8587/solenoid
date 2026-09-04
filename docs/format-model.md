@@ -97,7 +97,10 @@ nearer node's pick overrides what arrived. `frameFormatStore` stays the one
 PERSISTED home, keyed by the node that picked — `format` is derived per compute
 and never serialized. A column BUILT by a verb carries a source column's format
 only where that verb already carries its unit (nest, the Allocator's Allocation);
-every other derived column starts blank.
+every other derived column starts blank. In the popup, a column with no entry of
+its own reads `—` (inherit) with the arriving format as a muted hint beside it,
+and every concrete style — `auto` included — is a real local override that
+deletes back to `—` (`columnFormatRow`, `frameFormatStore.ts`).
 
 ## The control truth table
 

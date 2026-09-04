@@ -4,7 +4,7 @@
 import { useMemo, useSyncExternalStore, type ReactNode } from "react";
 import {
   FORMAT_STYLE_LABELS, FORMAT_STYLE_GROUPS, DATE_FORMAT_STYLES, UNIT_ANNOTATIONS,
-  LOGICAL_STYLE_LABELS, unitGroupLabel, type FormatStyleId, type LogicalStyle, type TextCase,
+  LOGICAL_STYLE_LABELS, TEXT_CASE_LABELS, unitGroupLabel, type FormatStyleId, type LogicalStyle, type TextCase,
 } from "../formatAnnotationStore";
 import { packsStore } from "../packs";
 import { activePackUnits, activePackFormats } from "../fcExtensions";
@@ -161,12 +161,21 @@ export function unitOptions(opts: FcFormatOptions) {
 
 // ─── Standalone selects (for non-FC surfaces — the table popup) ───────────────
 
+/** The blank first option: no pick of its own, so an upstream format applies. A caller
+ *  passing `inherit` must handle `""` in `onChange` by dropping its stored pick. Returns
+ *  the <option> ELEMENT, not a component — LazySelect's collapsed render walks for
+ *  `type === "option"` and would otherwise miss it and show the wrong label. */
+function inheritOption(show?: boolean) {
+  return show ? <option value="" title="Inherit the upstream format">—</option> : null;
+}
+
 /** A number-format <select> matching the FC's, driven by external state. */
-export function FormatStyleSelect({ value, onChange, className, title }: {
-  value: FormatStyleId;
-  onChange: (v: FormatStyleId) => void;
+export function FormatStyleSelect({ value, onChange, className, title, inherit }: {
+  value: FormatStyleId | "";
+  onChange: (v: FormatStyleId | "") => void;
   className?: string;
   title?: string;
+  inherit?: boolean;
 }) {
   const opts = useFcFormatOptions();
   return (
@@ -174,27 +183,30 @@ export function FormatStyleSelect({ value, onChange, className, title }: {
       className={className}
       value={value}
       title={title ?? "Number format"}
-      onChange={(e) => onChange(e.target.value as FormatStyleId)}
+      onChange={(e) => onChange(e.target.value as FormatStyleId | "")}
     >
+      {inheritOption(inherit)}
       {numberFormatOptions(opts.packFormatGroups)}
     </LazySelect>
   );
 }
 
 /** A date-format <select> matching the FC's date socket. */
-export function DateStyleSelect({ value, onChange, className, title }: {
-  value: FormatStyleId;
-  onChange: (v: FormatStyleId) => void;
+export function DateStyleSelect({ value, onChange, className, title, inherit }: {
+  value: FormatStyleId | "";
+  onChange: (v: FormatStyleId | "") => void;
   className?: string;
   title?: string;
+  inherit?: boolean;
 }) {
   return (
     <LazySelect
       className={className}
       value={value}
       title={title ?? "Date format"}
-      onChange={(e) => onChange(e.target.value as FormatStyleId)}
+      onChange={(e) => onChange(e.target.value as FormatStyleId | "")}
     >
+      {inheritOption(inherit)}
       {DATE_FORMAT_STYLES.map((s) => (
         <option key={s} value={s}>
           {s === "date_custom" ? "Custom…" : FORMAT_STYLE_LABELS[s]}
@@ -206,19 +218,21 @@ export function DateStyleSelect({ value, onChange, className, title }: {
 
 /** A logical show-as <select> matching the FC's logical socket (TRUE/FALSE · 1/0 ·
  *  Yes/No · ✓/✗). */
-export function LogicalStyleSelect({ value, onChange, className, title }: {
-  value: LogicalStyle | undefined;
-  onChange: (v: LogicalStyle) => void;
+export function LogicalStyleSelect({ value, onChange, className, title, inherit }: {
+  value: string | undefined;
+  onChange: (v: LogicalStyle | "") => void;
   className?: string;
   title?: string;
+  inherit?: boolean;
 }) {
   return (
     <LazySelect
       className={className}
       value={value ?? "truefalse"}
       title={title ?? "How TRUE/FALSE renders"}
-      onChange={(e) => onChange(e.target.value as LogicalStyle)}
+      onChange={(e) => onChange(e.target.value as LogicalStyle | "")}
     >
+      {inheritOption(inherit)}
       {Object.entries(LOGICAL_STYLE_LABELS).map(([id, label]) => (
         <option key={id} value={id}>{label}</option>
       ))}
@@ -227,23 +241,24 @@ export function LogicalStyleSelect({ value, onChange, className, title }: {
 }
 
 /** A letter-case <select> matching the FC's text socket — display-only, non-destructive. */
-export function TextCaseSelect({ value, onChange, className, title }: {
-  value: TextCase | undefined;
-  onChange: (v: TextCase) => void;
+export function TextCaseSelect({ value, onChange, className, title, inherit }: {
+  value: string | undefined;
+  onChange: (v: TextCase | "") => void;
   className?: string;
   title?: string;
+  inherit?: boolean;
 }) {
   return (
     <LazySelect
       className={className}
       value={value ?? "none"}
       title={title ?? "Letter case, display only"}
-      onChange={(e) => onChange(e.target.value as TextCase)}
+      onChange={(e) => onChange(e.target.value as TextCase | "")}
     >
-      <option value="none">Aa (as-is)</option>
-      <option value="upper">UPPER</option>
-      <option value="lower">lower</option>
-      <option value="proper">Proper</option>
+      {inheritOption(inherit)}
+      {Object.entries(TEXT_CASE_LABELS).map(([id, label]) => (
+        <option key={id} value={id}>{label}</option>
+      ))}
     </LazySelect>
   );
 }

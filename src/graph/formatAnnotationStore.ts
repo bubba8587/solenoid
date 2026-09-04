@@ -382,6 +382,13 @@ export function unitsCompatible(a: string, b: string): boolean {
 
 export type TextCase = "none" | "upper" | "lower" | "proper";
 
+export const TEXT_CASE_LABELS: Record<TextCase, string> = {
+  none:   "Aa (as-is)",
+  upper:  "UPPER",
+  lower:  "lower",
+  proper: "Proper",
+};
+
 // The display box is right-aligned by default; this overrides it. Display-only.
 export type TextAlign = "left" | "center" | "right";
 

@@ -3,7 +3,7 @@ import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
 import type { Schemes } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { frameFormatStore } from "../../src/graph/frameFormatStore";
+import { frameFormatStore, columnFormatRow } from "../../src/graph/frameFormatStore";
 import { fmtCell } from "../../src/graph/components/FrameDisplay";
 import {
   FrameInputNode, SortFrameNode, ColumnsNode, ComputedColumnNode, AddIndexNode, AllocatorNode,
@@ -162,6 +162,34 @@ describe("a DERIVED column carries the format only where it carries the unit", (
     const out = n.data({ categories: [cats] }).frame as FrameValue;
     expect(col(out, "Allocation").format).toEqual(DEC3);
     expect(col(out, "Share").format).toBeUndefined();
+  });
+});
+
+// The author's gap: "Auto" was a real pick that silently replaced the inherited format,
+// and there was no way to say "no pick of mine". The blank option is that way.
+describe("the format row's current value and hint", () => {
+  it("no local pick + an inherited format: blank, and the hint names what flows in", () => {
+    expect(columnFormatRow(undefined, DEC3)).toEqual({ value: "", hint: "← Decimal · 3 places" });
+    expect(columnFormatRow(undefined, { format: "auto", unit: "none" }))
+      .toEqual({ value: "", hint: "← Auto" });
+    expect(columnFormatRow(undefined, { ...DEC3, decimalDigits: 1 }).hint).toBe("← Decimal · 1 place");
+    expect(columnFormatRow(undefined, { ...DEC3, decimalMode: "sigfigs" }).hint).toBe("← Decimal · 3 sig figs");
+  });
+
+  it("a local pick reads as the picked style, with no hint", () => {
+    expect(columnFormatRow(DEC0, DEC3)).toEqual({ value: "decimal" });
+    expect(columnFormatRow({ format: "auto", unit: "none" }, DEC3)).toEqual({ value: "auto" });
+  });
+
+  it("neither: blank and silent", () => {
+    expect(columnFormatRow(undefined, undefined)).toEqual({ value: "" });
+  });
+
+  it("a logical/text column names its own axis", () => {
+    expect(columnFormatRow(undefined, { format: "auto", unit: "none", logicalStyle: "yesno" }, "logical"))
+      .toEqual({ value: "", hint: "← Yes / No" });
+    expect(columnFormatRow({ format: "auto", unit: "none", textCase: "upper" }, undefined, "string"))
+      .toEqual({ value: "upper" });
   });
 });
 
