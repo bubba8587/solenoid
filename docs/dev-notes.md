@@ -36,6 +36,25 @@ over a roster. Not yet a spec: assignment/balancing is LP-ish (Hungarian / min-c
 author decides which slice is node-sized and closed-form vs a composite run mode (A6) before a
 Track H sibling gets written.
 
+**Decision Matrix / Sensitivity — weights as a criterion-keyed frame.** The DM `weights` socket
+went from a positional number list (+ on-card weightMap/normMap boxes) to a `frameIn`: a
+`Criterion | Weight | Norm` frame keyed by criterion NAME (orderedColumnsAreFrames). The whole
+per-criterion card section, `weightMap`, `normMap`, `criteria`, `wiredWeights`, and the
+positional-override path are gone; the card keeps only the fallback Normalize + Summary/Breakdown
+toggles. Sensitivity's Scenarios frame is INVERTED to the same shape: rows are criteria, each
+number column is one scenario's weights, one optional shared `Norm` column. `decisionMatrix`
+(the engine) is unchanged — the node resolves the frame to its existing `(weights[],
+normOverrides)` args via `resolveDecisionWeights` / `parseNormalize` in `frameVerbs.ts`. Unwired
+DM → all weights 1, default normalize. Seed rewired (a Weights Frame Input, transposed scenarios)
++ retuned; copyPaste + persistenceSweep transient/extra entries pruned; orphan `dm-*` CSS removed.
+
+**Radar reads a frame transposed (chartRadarTranspose).** A frame-fed radar was inverting the
+intuitive mapping. Now the number COLUMNS are the spokes and each ROW is one overlaid polygon
+named by column 0 (`ChartNode.data()` in `visual.ts`, radar-only; cartesian charts and list-fed
+radars untouched). Added a radar off the DM seed's Join output. CAVEAT flagged to the author:
+raw Price ($700–2200) swamps the /10 criteria on a shared radius — same scale problem the seed's
+own note calls out — so it wants a normalized or Price-dropped feed to read well.
+
 ### SESSION DIGEST (2026-09-03 — charts, pie labels, Budget Allocator seed)
 
 Shipped on `develop`: **Pie category labels** reworked to a hand-drawn two-segment leader
