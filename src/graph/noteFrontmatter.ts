@@ -1,7 +1,9 @@
 import { parseDateToSerial } from "./nodes/dateSerial";
 
 // The PURE frontmatter parser + type guesser, over a deliberately small YAML subset:
-// scalar `key: value`, inline flow arrays, and block lists. Keep it graph/DOM-free.
+// scalar `key: value`, inline flow arrays, block lists, and rows of inline objects
+// (`- {k: v}` block or `[{k: v}, …]` flow) → a `frame`. Keep it graph/DOM-free. The frame
+// row shape mirrors the Script node's `{name: value}` rows, so what one emits the other reads.
 
 // A SUBSET of SocketDataType with IDENTICAL names, so the node maps field type → socket
 // by identity (FIELD_SOCKETS in annotation.ts).
@@ -13,11 +15,13 @@ export type FrontmatterFieldType =
   | "list"
   | "strlist"
   | "logicallist"
-  | "datelist";
+  | "datelist"
+  | "frame";
 
 // Dates emit as serials, like the rest of Solenoid.
 export type FrontmatterScalar = number | string | boolean | null;
-export type FrontmatterValue = FrontmatterScalar | FrontmatterScalar[];
+export type FrontmatterRow = Record<string, FrontmatterScalar>;
+export type FrontmatterValue = FrontmatterScalar | FrontmatterScalar[] | FrontmatterRow[];
 
 export interface FrontmatterField {
   key: string;
@@ -63,11 +67,13 @@ function parseScalar(raw: string): { value: FrontmatterScalar; kind: ScalarKind 
   return { value: t, kind: "string" };
 }
 
-/** Split a flow-array body (`a, b, "c, d"`) on TOP-LEVEL commas, honoring quotes. */
+/** Split a flow body (`a, b, "c, d"`, or `{k: v}, {k: v}`) on TOP-LEVEL commas, honoring
+ *  quotes AND `{…}` object nesting so a comma inside a row object doesn't split it. */
 function splitFlow(inner: string): string[] {
   const out: string[] = [];
   let buf = "";
   let quote: '"' | "'" | null = null;
+  let depth = 0;
   for (const ch of inner) {
     if (quote) {
       buf += ch;
@@ -75,7 +81,13 @@ function splitFlow(inner: string): string[] {
     } else if (ch === '"' || ch === "'") {
       quote = ch;
       buf += ch;
-    } else if (ch === ",") {
+    } else if (ch === "{") {
+      depth++;
+      buf += ch;
+    } else if (ch === "}") {
+      depth = Math.max(0, depth - 1);
+      buf += ch;
+    } else if (ch === "," && depth === 0) {
       out.push(buf);
       buf = "";
     } else {
@@ -84,6 +96,24 @@ function splitFlow(inner: string): string[] {
   }
   if (buf.trim() !== "" || out.length > 0) out.push(buf);
   return out;
+}
+
+/** `{k: v, k: v}` → a row object; null when the token isn't a brace-wrapped inline map.
+ *  Keys split on the FIRST colon; values run through the same scalar parser as everything. */
+function parseInlineObject(raw: string): FrontmatterRow | null {
+  const t = raw.trim();
+  if (!(t.startsWith("{") && t.endsWith("}"))) return null;
+  const inner = t.slice(1, -1).trim();
+  const row: FrontmatterRow = {};
+  if (inner === "") return row;
+  for (const part of splitFlow(inner)) {
+    const c = part.indexOf(":");
+    if (c < 0) continue;
+    const k = part.slice(0, c).trim();
+    if (k === "") continue;
+    row[k] = parseScalar(part.slice(c + 1)).value;
+  }
+  return row;
 }
 
 /** Type a (possibly mixed) array from its first non-null element. */
@@ -105,6 +135,19 @@ function fieldFromScalar(key: string, raw: string): FrontmatterField {
 function fieldFromArray(key: string, values: FrontmatterScalar[]): FrontmatterField {
   // A date inside an array stays a serial number, so the list types as `list`.
   return { key, value: values, guessed: listType(values) };
+}
+
+/** Rows of inline objects → a `frame` field; the node builds the columns from the keys. */
+function fieldFromRows(key: string, rows: FrontmatterRow[]): FrontmatterField {
+  return { key, value: rows, guessed: "frame" };
+}
+
+/** Items (flow or block) → a frame field iff EVERY item is an inline object; else a scalar
+ *  array. Empty → a scalar array (an empty frame would have no columns). */
+function fieldFromItems(key: string, items: string[]): FrontmatterField {
+  const rows = items.map(parseInlineObject);
+  if (rows.length > 0 && rows.every((r) => r !== null)) return fieldFromRows(key, rows as FrontmatterRow[]);
+  return fieldFromArray(key, items.map((s) => parseScalar(s).value));
 }
 
 /** With no valid top-of-file `---…---` block: no fields, `body` unchanged, `hasBlock` false. */
@@ -139,15 +182,15 @@ export function parseNoteFrontmatter(text: string): ParsedFrontmatter {
 
     if (rest.trim() === "") {
       // A bare `key:` may introduce a block list, so look ahead for `- item` lines.
-      const items: FrontmatterScalar[] = [];
+      const items: string[] = [];
       let j = i + 1;
       for (; j < yamlLines.length; j++) {
         const lm = /^\s*-\s+(.*)$/.exec(yamlLines[j]);
         if (!lm) break;
-        items.push(parseScalar(lm[1]).value);
+        items.push(lm[1]);
       }
       if (items.length > 0) {
-        fields.push(fieldFromArray(key, items));
+        fields.push(fieldFromItems(key, items));
         i = j - 1;
       } else {
         fields.push({ key, value: null, guessed: "string" });
@@ -158,9 +201,8 @@ export function parseNoteFrontmatter(text: string): ParsedFrontmatter {
     const trimmed = rest.trim();
     if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
       const inner = trimmed.slice(1, -1);
-      const values =
-        inner.trim() === "" ? [] : splitFlow(inner).map((s) => parseScalar(s).value);
-      fields.push(fieldFromArray(key, values));
+      const items = inner.trim() === "" ? [] : splitFlow(inner);
+      fields.push(fieldFromItems(key, items));
     } else {
       fields.push(fieldFromScalar(key, rest));
     }

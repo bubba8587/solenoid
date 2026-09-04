@@ -43,6 +43,20 @@ describe("NoteNode frontmatter outputs", () => {
     expect(n.renderBody).toBe("# Body");
   });
 
+  it("a frame frontmatter field emits a frame output, columns from the row keys", () => {
+    const n = new NoteNode({
+      body: ["---", "screen:", "  - {Laptop: ProBook, Screen: 8}", "  - {Laptop: UltraSlim, Screen: 9}", "---"].join("\n"),
+    });
+    expect(typeOf(n, "screen")).toBe("frame");
+    expect(n.fieldValues().screen).toEqual({
+      __frame: true,
+      columns: [
+        { name: "Laptop", type: "string", values: ["ProBook", "UltraSlim"] },
+        { name: "Screen", type: "number", values: [8, 9] },
+      ],
+    });
+  });
+
   it("syncFields adds, removes, and reports dropped keys when the body changes", () => {
     const n = new NoteNode({ body: "---\na: 1\nb: 2\n---" });
     expect(n.fieldKeys()).toEqual(["a", "b"]);

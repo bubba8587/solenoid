@@ -1,20 +1,26 @@
 import { ClassicPreset } from "rete";
 import {
   numberSocket, stringSocket, logicalSocket, dateSocket,
-  listSocket, strListSocket, logicalListSocket, dateListSocket,
+  listSocket, strListSocket, logicalListSocket, dateListSocket, frameSocket,
   SolenoidSocket,
 } from "../sockets";
 import { parseDateToSerial } from "./date";
 import { chartOut, strOut, documentOut } from "./shared";
 import { makeDocument, type DocumentValue } from "../documentValue";
+import type { FrameValue, FrameColumn, FrameColType, FrameCell } from "../frame";
 import type { ImageValue } from "../imageValue";
 import type { SvgValue } from "../svgValue";
 import {
   parseNoteFrontmatter,
   type FrontmatterFieldType,
   type FrontmatterScalar,
+  type FrontmatterRow,
   type FrontmatterValue,
 } from "../noteFrontmatter";
+
+/** The value a frontmatter key emits: a scalar/list (FrontmatterValue) or, for a `frame`
+ *  field, a built FrameValue. */
+type EmittedValue = FrontmatterValue | FrameValue;
 
 // A Note is a pure SOURCE: `---`-fenced frontmatter keys become typed OUTPUT
 // sockets, and it deliberately mints no inputs — that is the Report node's job.
@@ -28,13 +34,38 @@ const FIELD_SOCKETS: Record<FrontmatterFieldType, SolenoidSocket> = {
   strlist: strListSocket,
   logicallist: logicalListSocket,
   datelist: dateListSocket,
+  frame: frameSocket,
 };
 
-const FIELD_BASE: Record<FrontmatterFieldType, "number" | "string" | "logical" | "date"> = {
+const FIELD_BASE: Record<Exclude<FrontmatterFieldType, "frame">, "number" | "string" | "logical" | "date"> = {
   number: "number", string: "string", logical: "logical", date: "date",
   list: "number", strlist: "string", logicallist: "logical", datelist: "date",
 };
 const LIST_TYPES = new Set<FrontmatterFieldType>(["list", "strlist", "logicallist", "datelist"]);
+
+/** A frame column's type from its cells, first non-null wins (dates already collapsed to
+ *  serials, so they type as number — a Note frame is plain data, no per-column date pick). */
+function frameColType(cells: FrontmatterScalar[]): FrameColType {
+  for (const v of cells) {
+    if (v === null) continue;
+    if (typeof v === "boolean") return "logical";
+    if (typeof v === "number") return "number";
+    return "string";
+  }
+  return "string";
+}
+
+/** Rows of `{name: value}` → a FrameValue: columns are the keys in first-appearance order
+ *  (the mirror of the Script node's frame form). A missing key in a row is a null cell. */
+function rowsToFrame(rows: FrontmatterRow[]): FrameValue {
+  const names: string[] = [];
+  for (const r of rows) for (const k of Object.keys(r)) if (!names.includes(k)) names.push(k);
+  const columns: FrameColumn[] = names.map((name) => {
+    const cells = rows.map((r) => (name in r ? r[name] : null));
+    return { name, type: frameColType(cells), values: cells as FrameCell[] };
+  });
+  return { __frame: true, columns };
+}
 
 // Only bites when a per-key TYPE override disagrees with the guessed value.
 function coerceScalar(v: FrontmatterScalar, base: "number" | "string" | "logical" | "date"): FrontmatterScalar {
@@ -55,7 +86,8 @@ function coerceScalar(v: FrontmatterScalar, base: "number" | "string" | "logical
   }
 }
 
-function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType): FrontmatterValue {
+function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType): EmittedValue {
+  if (type === "frame") return rowsToFrame(Array.isArray(value) ? (value as FrontmatterRow[]) : []);
   const base = FIELD_BASE[type];
   if (LIST_TYPES.has(type)) {
     const arr = Array.isArray(value) ? value : value === null ? [] : [value];
@@ -82,7 +114,7 @@ export class NoteNode extends ClassicPreset.Node {
   // Derived from `body` on every sync (NOT persisted — the body is the source).
   private _renderBody = "";                              // markdown below the block
   private _fieldKeys: string[] = [];                     // output keys in source order
-  private _fieldValues = new Map<string, FrontmatterValue>();
+  private _fieldValues = new Map<string, EmittedValue>();
 
   constructor(init?: {
     label?: string; body?: string; color?: string; width?: number; height?: number;
@@ -131,7 +163,7 @@ export class NoteNode extends ClassicPreset.Node {
     const parsed = parseNoteFrontmatter(this.body);
     this._renderBody = parsed.body;
 
-    const wanted = new Map<string, { value: FrontmatterValue; type: FrontmatterFieldType }>();
+    const wanted = new Map<string, { value: EmittedValue; type: FrontmatterFieldType }>();
     for (const f of parsed.fields) {
       const type = this.fieldTypes[f.key] ?? f.guessed;
       wanted.set(f.key, { value: coerceValue(f.value, type), type });
@@ -164,14 +196,14 @@ export class NoteNode extends ClassicPreset.Node {
     return { removed, retyped };
   }
 
-  data(): Record<string, FrontmatterValue | DocumentValue> {
+  data(): Record<string, EmittedValue | DocumentValue> {
     return { ...this.fieldValues(), document: makeDocument(this.body, {}, undefined, this.id) };
   }
 
 /** Use this from the UI: the installErrorGuards wrapper calls `firstInputError`
  *  OUTSIDE its try/catch, so calling `data()` with no args throws. */
-  fieldValues(): Record<string, FrontmatterValue> {
-    const out: Record<string, FrontmatterValue> = {};
+  fieldValues(): Record<string, EmittedValue> {
+    const out: Record<string, EmittedValue> = {};
     for (const [k, v] of this._fieldValues) out[k] = v;
     return out;
   }
