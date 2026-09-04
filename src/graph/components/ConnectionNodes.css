@@ -134,6 +134,9 @@
 .sol-conn__dot--ok      { background: #2fae7a; }
 .sol-conn__dot--error   { background: #e0566b; }
 .sol-conn__dot--loading { background: #d9a93b; animation: sol-conn-pulse 1s ease-in-out infinite; }
+/* Gated (network permission not granted): a hollow, muted ring — armed but not fired,
+   the disarmed-sink idle look. */
+.sol-conn__dot--gated   { background: transparent; box-shadow: inset 0 0 0 1.5px var(--text-dim); }
 
 @keyframes sol-conn-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
 

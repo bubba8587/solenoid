@@ -3,8 +3,13 @@
 import { createNotifier } from "./storeKit";
 import { processGraph } from "./process";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
+import { docMetaStore } from "./docMetaStore";
+import { settingsStore } from "./settingsStore";
+import { pushNotice } from "./noticeStore";
 
-export type ConnectionStatus = "idle" | "loading" | "ok" | "error";
+// "gated" = the per-document network permission (C2) has not been granted, so this
+// node fetched nothing (the sinkRunButtonOnly mirror: armed, not fired).
+export type ConnectionStatus = "idle" | "loading" | "ok" | "error" | "gated";
 
 export interface ConnectionState {
   status: ConnectionStatus;
@@ -47,12 +52,67 @@ export const connectionStore = {
   version,
 };
 
+// ─── Per-document network permission (C2 — the sinkRunButtonOnly mirror) ─────────
+// A FOREIGN document (opened / imported) fetches nothing until the user allows it.
+// Own documents and the global "always allow" bypass the gate. State lives on the
+// document's meta (docMetaStore, persisted in the sidecar); this reads it.
+
+/** May the OPEN document's connection nodes fetch? Own doc, an always-allow setting,
+ *  or an explicit per-doc grant → yes; a foreign, undecided doc → no. */
+export function networkAllowed(): boolean {
+  if (!docMetaStore.isForeign()) return true;
+  if (settingsStore.get("alwaysAllowNetwork")) return true;
+  return docMetaStore.networkAllowed() === true;
+}
+
+// Nodes that tried to fetch while gated (this doc), so the one prompt can count them
+// and their cards can show the waiting state. Reset on doc rebuild (forgetAll).
+const _gated = new Set<string>();
+let _prompted = false;
+let _promptQueued = false;
+
+/** The fetch gate the connection nodes call BEFORE hitting the network: true = go,
+ *  false = blocked (the node records itself gated and the one per-doc prompt is
+ *  scheduled). */
+export function requestNetwork(id: string): boolean {
+  if (networkAllowed()) { _gated.delete(id); return true; }
+  _gated.add(id);
+  connectionStore.setState(id, { status: "gated" });
+  if (!_prompted && !_promptQueued) {
+    _promptQueued = true;
+    // Next tick: every node gating on this recompute has registered, so N is right.
+    setTimeout(() => {
+      _promptQueued = false;
+      if (_prompted || networkAllowed() || _gated.size === 0) return;
+      _prompted = true;
+      const n = _gated.size;
+      pushNotice(
+        `This document connects to ${n} ${n === 1 ? "service" : "services"}. Allow it to fetch?`,
+        "warn",
+        0, // sticky until dismissed or Allowed
+        { label: "Allow", onClick: () => allowNetwork() },
+      );
+    }, 0);
+  }
+  return false;
+}
+
+/** Grant the open document's network permission (the notice's Allow, or Settings ▸ Data),
+ *  persist it (docMetaStore → sidecar), and re-fetch everything that was gated. */
+export function allowNetwork(): void {
+  docMetaStore.setNetworkAllowed(true);
+  _gated.clear();
+  void refreshAllConnections();
+}
+
 // Node-forget seam: a deleted node's status/token must not linger for the tab's lifetime.
-registerNodeForget((id) => connectionStore.forget(id));
+registerNodeForget((id) => { _gated.delete(id); connectionStore.forget(id); });
 registerNodeForgetAll(() => {
   const had = _states.size > 0 || _tokens.size > 0;
   _states.clear();
   _tokens.clear();
+  _gated.clear();
+  _prompted = false; // a fresh document re-asks
   if (had) notify();
 });
 

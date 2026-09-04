@@ -4,7 +4,9 @@ import { DataflowEngine } from "rete-engine";
 import { WebSourceNode } from "../../src/graph/nodes/connection";
 import { GetColumnNode } from "../../src/graph/nodes/frame";
 import { AlertNode } from "../../src/graph/nodes/display";
-import { connectionStore, refreshConnection } from "../../src/graph/connectionStore";
+import { connectionStore, refreshConnection, networkAllowed, requestNetwork, allowNetwork } from "../../src/graph/connectionStore";
+import { docMetaStore } from "../../src/graph/docMetaStore";
+import { settingsStore } from "../../src/graph/settingsStore";
 import { alertStore } from "../../src/graph/alertStore";
 import { isGraphRebuilding } from "../../src/graph/process";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
@@ -87,5 +89,46 @@ describe("connectionStore refresh drives a real recompute that AlertNode still f
     await engine.fetch(alert.id); // 150: above High → rising edge → fires
     expect(alertStore.list().length).toBe(1);
     expect(alertStore.list()[0].message).toContain("above");
+  });
+});
+
+describe("C2 — per-document network permission gate", () => {
+  afterEach(() => {
+    docMetaStore.setDocMeta(null);
+    settingsStore.set("alwaysAllowNetwork", false);
+  });
+
+  it("an OWN document is never gated", () => {
+    docMetaStore.setDocMeta({}); // not foreign
+    expect(networkAllowed()).toBe(true);
+    expect(requestNetwork("n1")).toBe(true);
+  });
+
+  it("a FOREIGN, undecided document is gated (no fetch, node marked gated)", () => {
+    docMetaStore.setDocMeta({ foreign: true });
+    expect(networkAllowed()).toBe(false);
+    expect(requestNetwork("n2")).toBe(false);
+    expect(connectionStore.getState("n2").status).toBe("gated");
+  });
+
+  it("allowNetwork() grants the foreign document and opens the gate", () => {
+    docMetaStore.setDocMeta({ foreign: true });
+    expect(networkAllowed()).toBe(false);
+    allowNetwork();
+    expect(docMetaStore.networkAllowed()).toBe(true);
+    expect(networkAllowed()).toBe(true);
+    expect(requestNetwork("n3")).toBe(true);
+  });
+
+  it("the always-allow setting bypasses the gate for a foreign document", () => {
+    docMetaStore.setDocMeta({ foreign: true });
+    settingsStore.set("alwaysAllowNetwork", true);
+    expect(networkAllowed()).toBe(true);
+    expect(requestNetwork("n4")).toBe(true);
+  });
+
+  it("a prior grant persists in the meta and is honored on reload", () => {
+    docMetaStore.setDocMeta({ foreign: true, networkAllowed: true });
+    expect(networkAllowed()).toBe(true);
   });
 });

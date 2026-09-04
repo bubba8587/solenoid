@@ -90,7 +90,8 @@ export interface SavedGraph {
   // Scoped to report/export rendering surfaces, never the editing canvas.
   reportPalette?: { base?: string; overrides?: Record<string, string> };
   // Author + tags; the document TITLE is the documentStore name, not carried here.
-  meta?: { author?: string; tags?: string[] };
+  // `foreign`/`networkAllowed` carry the C2 per-document network permission (docMetaStore).
+  meta?: { author?: string; tags?: string[]; foreign?: boolean; networkAllowed?: boolean };
   // Epoch ms of the write that produced this file — stamped by the FILE-WRITE path
   // (fileSession) only, never by serializeGraph, so autosave captures and seed
   // fixtures stay stable. Read once, at adoption: importAsDocument seeds BOTH save

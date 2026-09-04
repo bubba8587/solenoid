@@ -21,6 +21,8 @@ export interface Settings {
   csvFolder: string;
   /** Bookmark for the "open in file manager" action; never indexed or scanned. */
   docsFolder: string;
+  /** Bypass the per-document network gate (C2): opened/imported docs fetch without asking. */
+  alwaysAllowNetwork: boolean;
   /** Obsidian vault root the Obsidian nodes read/write `.md` under; desktop only. */
   obsidianVault: string;
   /** Vault-relative subfolder for written image assets; empty = beside the note. */
@@ -56,6 +58,7 @@ const DEFAULTS: Settings = {
   tidyWidthCap: "off",
   csvFolder: "",
   docsFolder: "",
+  alwaysAllowNetwork: false,
   obsidianVault: "",
   obsidianAssetSubfolder: "",
   minimapPosition: "bottom",
@@ -166,6 +169,11 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         key: "relativeDates",
         label: "Relative dates",
         help: "Date Input fields can parse \"next Tuesday\". WARNING: this adds volatility!",
+      },
+      {
+        key: "alwaysAllowNetwork",
+        label: "Always allow network",
+        help: "Opened and imported documents fetch without asking. Off: each foreign document asks once.",
       },
     ],
   },

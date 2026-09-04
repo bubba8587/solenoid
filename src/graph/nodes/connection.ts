@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
 import { frameOut, strListOut } from "./shared";
-import { connectionStore, scheduleConnectionRecalc } from "../connectionStore";
+import { connectionStore, scheduleConnectionRecalc, requestNetwork } from "../connectionStore";
 import { settingsStore } from "../settingsStore";
 import { isDesktop, readFileText } from "../fileBridge";
 import { fetchText } from "../httpBridge";
@@ -83,6 +83,8 @@ export class WebSourceNode extends ClassicPreset.Node {
     const ref = this.url.trim();
     const key = connectionStore.key(this.id, ref);
     if (key === this.lastKey) return { frame: this.cachedResult };
+    // Per-document network gate (C2): a foreign, un-allowed document fetches nothing.
+    if (ref !== "" && !requestNetwork(this.id)) return { frame: this.cachedResult };
     if (this.inflightKey !== key) {
       this.inflightKey = key;
       // fetchFrame sets cachedResult + lastKey; the recompute then reads them.
@@ -131,6 +133,7 @@ async function fetchParsed<T>(
   size: (v: T) => { rows: number; cols: number },
 ): Promise<T | null> {
   if (url === "") { connectionStore.setState(nodeId, { status: "idle" }); return null; }
+  if (!requestNetwork(nodeId)) return null; // C2 gate: foreign doc not yet allowed
   connectionStore.setState(nodeId, { status: "loading" });
   try {
     const { text, contentType } = await fetchText(url);
