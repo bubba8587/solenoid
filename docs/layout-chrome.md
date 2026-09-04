@@ -248,6 +248,11 @@ Rule of thumb: **floating canvas pills 5–7**, **corner panels 100–110**, **m
 **transient context menus top**. A new overlay picks the band by what it must sit above. If you
 need it above the HUD but below modals, you're in the 110–199 gap.
 
+**Notice toasts** (`.solenoid-notices`, `NoticeToasts`) stack transiently above the chrome. A
+notice may carry ONE optional action button (`NoticeAction`) beside its message + the dismiss ×
+— the C2 network-permission prompt uses it for **Allow** (`connectionStore`). Keep it to a single
+verb button; anything richer belongs in a panel, not a toast.
+
 ---
 
 ## Before you add or move any chrome — checklist

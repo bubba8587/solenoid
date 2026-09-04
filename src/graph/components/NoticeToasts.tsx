@@ -18,6 +18,19 @@ export function NoticeToasts() {
           title="Dismiss"
         >
           <span className="solenoid-notice__msg">{n.message}</span>
+          {n.action && (
+            <button
+              type="button"
+              className="solenoid-notice__action"
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                n.action!.onClick();
+                dismissNotice(n.id);
+              }}
+            >
+              {n.action.label}
+            </button>
+          )}
           <button
             type="button"
             className="solenoid-notice__close"

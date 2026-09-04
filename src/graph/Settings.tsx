@@ -11,6 +11,8 @@ import { paletteStore, paletteEditorPanel, type PaletteChoice } from "./palette"
 import { useRenderMode, renderModeStore } from "./renderMode";
 import { supportsHtmlInCanvas } from "./htmlCanvasSupport";
 import { getEditor } from "./process";
+import { docMetaStore } from "./docMetaStore";
+import { networkAllowed, allowNetwork } from "./connectionStore";
 import { rebuildGroupMembership } from "./groupMembership";
 import { SwatchGrid } from "./components/SwatchGrid";
 import "./Settings.css";
@@ -121,6 +123,33 @@ function FolderRow({ field }: { field: SettingField }) {
         {value && desktop && <button type="button" className="solenoid-settings__store-btn" onClick={() => void openInFileManager(value)}>Open</button>}
         {value && <button type="button" className="solenoid-settings__store-btn" onClick={() => settingsStore.set(field.key, "")}>Clear</button>}
       </span>
+    </div>
+  );
+}
+
+// The open document's network permission (C2): own docs connect freely; a foreign,
+// undecided doc shows an Allow here — the way back after the notice is dismissed.
+function NetworkDocRow() {
+  useSyncExternalStore(docMetaStore.subscribe, docMetaStore.version);
+  useSyncExternalStore(settingsStore.subscribe, settingsStore.version);
+  const foreign = docMetaStore.isForeign();
+  const allowed = networkAllowed();
+  const help = !foreign
+    ? "Your own documents connect freely. An opened or imported document asks once."
+    : allowed
+    ? "This document is allowed to connect."
+    : "This document is waiting for permission to connect.";
+  return (
+    <div className="solenoid-settings__row solenoid-settings__row--folder">
+      <span className="solenoid-settings__row-text">
+        <span className="solenoid-settings__row-label">Network for this document</span>
+        <span className="solenoid-settings__row-help">{help}</span>
+      </span>
+      {foreign && !allowed && (
+        <span className="solenoid-settings__folder-actions">
+          <button type="button" className="solenoid-settings__store-btn" onClick={() => allowNetwork()}>Allow</button>
+        </span>
+      )}
     </div>
   );
 }
@@ -380,6 +409,7 @@ export function Settings() {
                 : f.type === "segment" ? <SegmentRow key={f.key} field={f} />
                 : f.type === "text" ? <TextRow key={f.key} field={f} />
                 : <Toggle key={f.key} field={f} />)}
+              {section.title === "Data" && <NetworkDocRow />}
             </div>
           ))}
           <PaletteSection />

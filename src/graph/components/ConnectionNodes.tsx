@@ -26,6 +26,7 @@ function statusText(s: ConnectionState): string {
     case "loading": return "Loading…";
     case "error":   return s.message || "Failed";
     case "ok":      return `${s.rows ?? 0}×${s.cols ?? 0}${s.fetchedAt ? ` · ${new Date(s.fetchedAt).toLocaleTimeString()}` : ""}`;
+    case "gated":   return "Waiting for permission";
     default:        return "Not connected";
   }
 }
@@ -71,7 +72,10 @@ function ConnectionStatusRow({ nodeId, onRefresh }: { nodeId: string; onRefresh:
   const s = connectionStore.getState(nodeId);
   return (
     <div className="sol-conn__status">
-      <span className={`sol-conn__dot sol-conn__dot--${s.status}`} />
+      <span
+        className={`sol-conn__dot sol-conn__dot--${s.status}`}
+        title={s.status === "gated" ? "Waiting for permission. Allow this document to connect in Settings ▸ Data." : undefined}
+      />
       <span className="sol-conn__status-text" title={s.status === "error" ? s.message : undefined}>
         {statusText(s)}
       </span>

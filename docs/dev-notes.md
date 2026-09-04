@@ -122,6 +122,20 @@ swapping the fresh chart into the popup snapshot without closing; `canvasKeyboar
 down under the `.sol-popup-overlay` (modalGuard), so the arrows reach only the popup. Pinned by
 `recordNav.test.ts` (the pager gate: card + >1 row + unwired Row, else none).
 
+**C2 — per-document network permission (Lando).** A FOREIGN document (opened / imported) fetches
+nothing until the user allows it — the sinkRunButtonOnly mirror. Model: `importAsDocument` stamps
+`meta.foreign` at adoption; the grant is `meta.networkAllowed`, both persisted in the sidecar and
+held per-open-doc by `docMetaStore`. Own docs (template/blank/saveAs) carry no `foreign` → never
+gated. Gate: `connectionStore.networkAllowed()` = own || `settingsStore.alwaysAllowNetwork` || the
+per-doc grant; the connection fetch triggers (`WebSourceNode.data`, the import `fetchParsed`) call
+`requestNetwork(id)` BEFORE `fetchText` — blocked → status `"gated"`, zero network. The first gated
+recompute pushes ONE sticky notice ("connects to N services. Allow?") with an **Allow** action
+(`noticeStore` gained an optional `NoticeAction`); after dismissal the way back is the connection
+card's hollow "Waiting for permission" dot and Settings ▸ Data ("Network for this document" + Allow,
+plus the global "Always allow network"). Allow → `docMetaStore.setNetworkAllowed(true)` (persists) +
+`refreshAllConnections`. LocalFile (disk) is not network → not gated. Pinned by
+`connectionStore.test.ts` (own never gated, foreign gated until allowed, always-allow bypass).
+
 **D1 — formula-surface allowlist: Option A DROPPED on step-0 findings (Chewie).** Option A
 (one guard before `broadcastCall`: an undeclared FX name refuses ARRAY args) was greenlit on
 the proposal's premise that only "a handful" of undeclared names broadcast fine. Step 0
