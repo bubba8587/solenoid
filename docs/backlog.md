@@ -10,13 +10,14 @@ ruled-out ideas: `out-of-scope.md`; settled rationale: `decisions.md`.
 
 ## Dependency updates (walking them one at a time; TypeScript 7 landed 2026-08-11a)
 
-Current state (2026-08-26): the walkable set is on latest in-range (`react` 19.2.8,
-`vitest` 4.1.11, `vite` 8, etc. — git has the walk); the rete RENDER packages and
-`styled-components` were removed outright by the React Flow cutover (rete core
-2.0.6 + rete-engine + elkjs 0.12 + `@xyflow/react` remain). Remaining major:
-`@anthropic-ai/sdk` 0.120 (skipped). The `.npmrc` `legacy-peer-deps` workaround is
-REMOVED — the old elkjs-vs-rete-auto-arrange peer conflict left with the plugin
-(clean `npm install` dry-run verified).
+Current state (2026-09-04): the walkable set is on latest in-range (`react` 19.2.8,
+`vite` 8, `@xyflow/react` 12.11.6, the Tauri plugins, etc. — git has the walk), and
+`@anthropic-ai/sdk` is on 0.123 (the palette's `beta.messages` surface, error classes
+and client options were untouched across those majors). Remaining major: `vitest` 5
+(4.1.11 stands). The rete RENDER packages and `styled-components` were removed outright
+by the React Flow cutover (rete core 2.0.6 + rete-engine + elkjs 0.12 + `@xyflow/react`
+remain). The `.npmrc` `legacy-peer-deps` workaround is REMOVED — the old
+elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Release planning (author-run)
 
