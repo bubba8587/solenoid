@@ -33,7 +33,7 @@
       "x": 328,
       "y": 412,
       "init": {
-        "label": "Budget Allocator",
+        "label": "Allocator",
         "mode": "budget"
       },
       "literals": {

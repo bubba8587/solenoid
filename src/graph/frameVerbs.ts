@@ -1551,13 +1551,13 @@ export function allocateFrame(
   const minCol = byName("min") ?? priceNums[0];
   const maxCol = byName("max") ?? priceNums.filter((c) => c !== minCol)[0];
   if (!minCol || !maxCol) {
-    throw solError("#VALUE!", "Budget Allocator needs a min and a max number column");
+    throw solError("#VALUE!", "Allocator needs a min and a max number column");
   }
   const nameCol = f.columns.find((c) => c.type === "string");
   const asNum = (cell: FrameCell, what: string): number => {
     if (isSolError(cell)) throw cell;
     if (typeof cell === "number" && Number.isFinite(cell)) return cell;
-    throw solError("#VALUE!", `Budget Allocator: every ${what} must be a number`);
+    throw solError("#VALUE!", `Allocator: every ${what} must be a number`);
   };
   const mins: number[] = [], maxs: number[] = [], weights: number[] = [], names: FrameCell[] = [];
   for (let i = 0; i < rows; i++) {
