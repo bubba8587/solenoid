@@ -57,6 +57,19 @@ getting-started / table-verbs / unit-flow / decision-matrix (run while no other 
 seed JSONs — a concurrent `tune-seeds` write HMR-reloads the page and fakes drift). The optional
 convergence-loop backlog item is deleted on that evidence.
 
+**Seed-layout sweep, batch one (the backlog item, under the rule above; an Opus agent per
+batch).** getting-started (the Budget exhibit now wraps its Display + FC; no Notes there),
+table-verbs (a Nearest-match group holding the as-of/XLOOKUP exhibit + its Note; the intro Note's
+one standoff to Sales), computed-columns (2 exhibit groups, Notes inside; intro standoff to the
+first group), pivot-tables (Reshape-the-source group; intro standoff to Orders), cubes (6 exhibit
+groups each holding its Note; intro standoff), chart-showcase (9 groups, one per exhibit; no
+Notes). Pattern that held everywhere: every unwired explanatory Note became a group MEMBER; the
+only standoffs are whole-canvas intro Notes; shared source frames that fan out stay loose. All
+re-baked + seed suites green. Gotcha: a peer agent's `src/` saves HMR-reload the tune page
+("Execution context was destroyed") — retry the seed on a quiet window. Batch two (the remaining
+12 teaching seeds) is running; sudoku-solver / composite-workbench / zz-scratch / the two held
+seeds are out of the sweep. **The author eyeballs the results** — the rule was applied blind.
+
 **Docs reconciled:** `node-coverage.md` § Decision support (weights frame, inverted scenarios,
 the Note-frame seed), `v2.0/10` grounding, `architecture.md` (modalGuard row), backlog (canvas
 cursor + popup 1px + keystroke-guard lines deleted as landed).
