@@ -58,6 +58,14 @@ new `radarscale` option (axis | shared, on the string and the Chart Builder) opt
 shared radius. Single-series radars can't self-normalize (one value per spoke), left as-is. Added
 a radar off the DM seed's Join output.
 
+**Note frontmatter → frame output.** A frontmatter key whose value is rows of inline objects
+(`- {k: v}` block or `[{k: v}, …]` flow) now emits a single `frame` output, columns from the row
+keys — the Script node's `{name: value}` row shape (so what one emits the other reads).
+`noteFrontmatter.ts` gained brace-aware flow splitting + inline-object parsing + a "frame" field
+type; `annotation.ts` builds the FrameValue; NoteNode's field row shows a frame glyph, no retype
+picker. Applied to the decision-matrix seed: the screen-scores Note wires its one frame straight
+into the Join, dropping the two parallel lists + the Frame from Lists node.
+
 **DM seed layout for whole-canvas Tidy.** Tidy scattered the seed's free-floating Notes, so the
 decision-matrix seed got 2 groups (collapsed Podium, expanded Sensitivity) + 7 note-standoffs
 (each Note pinned to the node/group it explains; Weights/radar inputs to their consumers), then
