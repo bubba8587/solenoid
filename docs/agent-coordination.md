@@ -12,6 +12,13 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 
 - Chewie — **Expand pop-up on every Display frame / table / list** (backlog § Display). Spec: the backlog line; `ChartExpandButton` + `chartPopupCoverage.test.ts` are the pattern; opens the same `TablePopup` the chip opens. Read DESIGN.md + subsystem-invariants § React Flow surface contract first.
 - Lando — **FC style dropdown blank = inherit** (backlog § Formatting & units). Spec: the backlog line; the frame column row's `—` (212770a0) is the exemplar; `formatModel`/`format-model.md` + the FC card. 
-- Han — lead; backward review of the friends' commits; the author's eyeball queue below, one item per turn.
+- Han — lead; merges `chewie` / `lando` into develop; backward review of what lands. Working: finance merge 1 (discount securities) on develop.
 
-**Awaiting the author's eyeball from this session:** Set card (8d77cf7f: 8-op merge, result-socket-driven accent) — the three finance merges (discount securities, ACCRINT/ACCRINTM, BondPrice/OddCoupon; specs in git 68bf5679) stay HELD on that verdict; the anydata hollow-square glyph + Socket Legend row; the catalog description sweep (8d5c8f74); Merge Plots figure + expand button; Vite 8 (desktop `tauri build` ride-along result per A3's last message).
+## Queue (author released the Set card 2026-09-04c; take the next when free, message Han)
+
+Specs in git: `git show 182fbb17 -- docs/agent-coordination.md` (discount securities) and `git show 1946d71a -- docs/agent-coordination.md` (ACCRINT/ACCRINTM, BondPrice/OddCoupon). The Set card (8d77cf7f) is the shape precedent.
+1. Discount securities → ONE card (TBill / SecurityDisc / PriceDisc / PriceMat) — Han.
+2. ACCRINT + ACCRINTM → ONE card — open.
+3. BondPrice + OddCoupon → ONE card — open.
+
+**Awaiting the author's eyeball from this session:** the anydata hollow-square glyph + Socket Legend row; the catalog description sweep (8d5c8f74); Merge Plots figure + expand button; Vite 8 (desktop `tauri build` ride-along result per A3's last message).
