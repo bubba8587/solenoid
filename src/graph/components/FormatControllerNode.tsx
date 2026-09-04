@@ -63,6 +63,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   const [textAlign,     setTextAlignLocal] = useState<TextAlign>(node.textAlign);
   const [textMarkdown,  setTextMdLocal]   = useState(node.textMarkdown);
   const [textMono,      setTextMonoLocal] = useState(node.textMono);
+  const [chip,          setChipLocal]     = useState(node.chip);
   const [decimalDigits, setDigitsLocal]   = useState(node.decimalDigits);
   const [decimalMode,   setModeLocal]     = useState<DecimalMode>(node.decimalMode);
   // Raw text of the digits box, kept separate from the committed number so the
@@ -152,13 +153,18 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
 
   // `""` is the `—` (inherit) pick, shared with the number/date style dropdown: the FC
   // carries the whole upstream text/logical display cluster through rather than its own.
-  function onCaseChange(cs: TextCase | "") {
+  function onCaseChange(cs: TextCase | "" | "chip") {
+    // `chip` = render as a categorical color chip (B2.2); `""` = inherit; else a letter case.
+    // The three share the one text STYLE dropdown, so picking one clears the others.
+    const isChip = cs === "chip";
     const inherit = cs === "";
+    node.chip = isChip;
+    setChipLocal(isChip);
     node.inheritFormat = inherit;
     setInheritLocal(inherit);
-    if (!inherit) { node.textCase = cs; setTextCaseLocal(cs); }
+    if (!isChip && !inherit) { node.textCase = cs; setTextCaseLocal(cs); }
     syncNode();
-    // Inheriting collapses the B/I/size + advanced rows, changing the chip height.
+    // Chip / inherit collapse the B/I/size + advanced rows, changing the card height.
     if (node.hostNodeId) {
       requestAnimationFrame(() => requestAnimationFrame(() => repositionDockedNodes(node.hostNodeId)));
     }
@@ -303,7 +309,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   // While inheriting, the FC's own precision + advanced tier are moot — the whole
   // display cluster rides in from upstream — so those rows collapse to the hint.
   const c0 = controlsFor(family, format);
-  const c = inheritFormat ? { ...c0, precision: false, advanced: false, customPattern: false } : c0;
+  const c = (inheritFormat || chip) ? { ...c0, precision: false, advanced: false, customPattern: false } : c0;
   const inheritedHint = inheritFormat && node.inheritedAnnotation
     ? describeInheritedStyle(node.inheritedAnnotation, family) : "";
 
@@ -348,17 +354,18 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           <FcArrow dir="back" title={backTitle} />
           <LazySelect
             className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
-            value={inheritFormat ? "" : textCase}
-            onChange={(e) => onCaseChange(e.target.value as TextCase | "")}
+            value={inheritFormat ? "" : chip ? "chip" : textCase}
+            onChange={(e) => onCaseChange(e.target.value as TextCase | "" | "chip")}
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
-            title="Letter case, display only"
+            title="Letter case / chip, display only"
           >
             <option value="" title="Inherit the upstream format">—</option>
             <option value="none">Aa (as-is)</option>
             <option value="upper">UPPER</option>
             <option value="lower">lower</option>
             <option value="proper">Proper</option>
+            <option value="chip" title="Render as a categorical color chip">Chip</option>
           </LazySelect>
           <FcArrow dir="fwd" title={fwdTitle} />
         </div>
@@ -369,7 +376,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
             <span className="solenoid-fc__arrow-spacer" />
           </div>
         )}
-        {!inheritFormat && (
+        {!inheritFormat && !chip && (
         <div className="solenoid-fc__row">
           <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
           <button

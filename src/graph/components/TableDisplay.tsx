@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { ArrayChip, type ElemFamily } from "./ArrayChip";
+import { CategoryChip } from "./CategoryChip";
+import { categoryColorIndex } from "../categoryColor";
 import type { TablePopupState } from "../tablePopupStore";
 import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
@@ -101,6 +103,9 @@ export function TableDisplay({ table, label, onSave, full, kind, elem, ann: annP
   const rows = table.length, cols = table[0]?.length ?? 0;
   const maxR = full ? rows : Math.min(rows, peek ? 5 : 4), maxC = full ? cols : Math.min(cols, 4);
   const dateLike = kind === "date" || elem === "date";
+  // A string matrix set to the Chip style: one categorical map over the whole matrix, so a
+  // value is the same color in any cell (B2.2). One annotation for the whole matrix here.
+  const chipMap = ann?.chip ? categoryColorIndex(table.flat().map((v) => (typeof v === "string" ? v : null))) : null;
 
   return (
     // The class lets the collapsed-node CSS hide the grid and keep only the chip.
@@ -113,7 +118,9 @@ export function TableDisplay({ table, label, onSave, full, kind, elem, ann: annP
                 const nan = isNanCell(v);
                 return (
                 <td key={j} className={nan ? "solenoid-nan-cell" : undefined} title={nan ? "Not a number: an undefined value in the data" : undefined} style={{ padding: full ? "2px 7px" : "1px 3px", textAlign: typeof v === "string" ? "left" : "right", fontSize: full ? 13 : 12, fontFamily: "var(--font-mono)", color: "var(--text)", borderRight: "1px solid var(--border)", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {formatTableCell(v, dateLike, ann)}
+                  {chipMap && typeof v === "string"
+                    ? <CategoryChip value={v} index={chipMap.get(v) ?? 0} />
+                    : formatTableCell(v, dateLike, ann)}
                 </td>
                 );
               })}

@@ -49,14 +49,12 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
   it lists before data flows), free-text fallback when the shape is unknown. One component,
   three first customers; picker pure over `FrameShape`; existing suites green. Out: card-side
   format/unit on Computed Column (the popup column row is the one home).
-- [ ] **Chip style for text values (1.4 B2.2, author 2026-09-04c).** An opt-in "Chip" style that
-  renders each distinct text value as a small tinted pill, hues from the categorical chart
-  palette by first appearance, stable under row reorder. TWO homes, one mechanism: the popup's
-  per-column format row (`fcControls.tsx`, annotation in `frameFormatStore`, display only, never
-  the unit) AND the standard Format Controller's text-family style dropdown, so a chipped
-  text value / list / column reads the same everywhere. DESIGN.md Quiet Accent: the color is
-  user-authored by picking the style. Build the chip mechanism once — Record color-by and
-  conditional formatting inherit it. The enum column TYPE stays 2.0 (author).
+- [ ] **Chip + case compose (1.4 B2.2 follow-up).** The Chip style (LANDED B2.2) shares the
+  text-family style dropdown with letter-case, so it's exclusive with UPPER/lower/Proper this
+  tranche. If wanted, let a chip also carry a case — a separate `chip` toggle beside the case
+  dropdown rather than a fifth dropdown value (`chip` is already its own annotation flag).
+  Record color-by and conditional formatting still inherit the one chip mechanism; enum column
+  TYPE stays 2.0 (author).
 
 ## Sources
 
@@ -75,6 +73,15 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
   beside the Connections nodes, the pure two in Timesavers; a "Garden Dashboard" seed. Order:
   Geocode + Weather, Holidays, TZ/QR, FX last. Node-design rules in `node-coverage.md`;
   descriptions never explain wiring.
+
+## Finance
+
+- [ ] **Payment breakdown: ONE card (1.4 D2, author 2026-09-04c: in).** IPMT/PPMT (one payment's
+  interest / principal share) + CUMIPMT/CUMPRINC (the total over a range of payments) merge:
+  op = interest | principal, arg = single period | period range (the `per` socket becomes a
+  start/end pair). Same spec-table mechanism as the 09-04c finance cards (`finance.ts` § Spec-table
+  op cards, `makeSpecOpComponent`); goldens unchanged; `financeInvariants` + parity + nodeOps /
+  formulaNodeCoverage / seeds / catalogRegistry / uiCopy; old saves → Placeholder.
 
 ## Display
 

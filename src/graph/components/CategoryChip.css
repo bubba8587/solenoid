@@ -1,0 +1,27 @@
+/* The categorical Chip text style (B2.2). Structural only — the hue-derived fill + ink are
+   inline (per-value). Flat by the DESIGN flat-at-rest rule; 5px is DESIGN's `rounded.chip`. */
+.solenoid-category-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 1px 7px;
+  border-radius: 5px;
+  font-family: var(--font-sans);
+  font-size: 0.92em;
+  line-height: 1.45;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* A list of chips wraps to the box width. */
+.solenoid-node__chiplist {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  align-items: center;
+}
+.solenoid-node__chip-blank {
+  opacity: 0.55;
+  font-size: 0.92em;
+}

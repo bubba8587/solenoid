@@ -13,6 +13,7 @@ import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase } from
 import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { ArrayChip, isArrayValue, arrayAccentFor } from "./ArrayChip";
+import { CategoryChip } from "./CategoryChip";
 import { nodeOutputElemFamily, formatListCell, resolveDisplayAnnotation } from "./valueDisplayFormat";
 import { isCx } from "../cxValue";
 import { isUnitCell } from "../unitValue";
@@ -55,6 +56,7 @@ function renderValue(v: unknown, label?: string, annNodeId?: string, outKey?: st
     return <ArrayChip value={arr} label={label} size="sm" accent={arrayAccentFor(family, twoD)} elem={family} />;
   }
   if (typeof v === "string") {
+    if (ann?.chip) return <span className="solenoid-pin__value"><CategoryChip value={applyTextCase(v, ann.textCase)} index={0} /></span>;
     return <span className="solenoid-pin__value">{(ann ? applyTextCase(v, ann.textCase) : v) || "—"}</span>;
   }
   if (typeof v === "number") {

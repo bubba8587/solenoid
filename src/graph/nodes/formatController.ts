@@ -68,6 +68,7 @@ export class FormatControllerNode extends ClassicPreset.Node {
   textAlign: TextAlign;
   textMarkdown: boolean;
   textMono: boolean;
+  chip: boolean;
   logicalStyle: LogicalStyle;
   lambdaView: LambdaView;
   chartFontScale: number;
@@ -124,6 +125,7 @@ export class FormatControllerNode extends ClassicPreset.Node {
     textAlign?: TextAlign;
     textMarkdown?: boolean;
     textMono?: boolean;
+    chip?: boolean;
     logicalStyle?: LogicalStyle;
     lambdaView?: LambdaView;
     chartFontScale?: number;
@@ -152,6 +154,7 @@ export class FormatControllerNode extends ClassicPreset.Node {
     this.textAlign    = init?.textAlign    ?? "right";
     this.textMarkdown = init?.textMarkdown ?? false;
     this.textMono     = init?.textMono     ?? false;
+    this.chip         = init?.chip         ?? false;
     this.logicalStyle = init?.logicalStyle ?? "truefalse";
     this.lambdaView     = init?.lambdaView     ?? "signature";
     this.chartFontScale = init?.chartFontScale ?? 1;
@@ -306,6 +309,7 @@ export class FormatControllerNode extends ClassicPreset.Node {
       textAlign:     this.textAlign,
       textMarkdown:  this.textMarkdown,
       textMono:      this.textMono,
+      chip:          this.chip,
       logicalStyle:  this.logicalStyle,
       lambdaView:    this.lambdaView,
       chartFontScale: this.chartFontScale,

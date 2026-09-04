@@ -17,7 +17,9 @@ import { scheduleAutosave } from "../persistence";
 import { processGraph } from "../process";
 import { formatListCell } from "./valueDisplayFormat";
 import { FormatStyleSelect, DateStyleSelect, UnitSelect, LogicalStyleSelect, TextCaseSelect } from "./fcControls";
-import { applyTextCase } from "../formatAnnotationStore";
+import { CategoryChip } from "./CategoryChip";
+import { categoryColorIndex } from "../categoryColor";
+import { applyTextCase, type TextCase } from "../formatAnnotationStore";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import { settingsStore } from "../settingsStore";
 import { gridKeyOf, nextCell } from "./gridKeyboard";
@@ -737,6 +739,19 @@ export function TablePopup() {
   // ~2.5× the per-cell DOM cost (the popup-virtualize Finding, dev-notes) and read-only
   // popups paid it for nothing. Stays keyboard-navigable: tabIndex -1 + data-vi/data-c so
   // focusGridCell lands here, and the same column-skipping arrow mover an editable cell uses.
+  // Chip columns (B2.2): a string column set to "Chip" colors its READ-ONLY cells by
+  // category. Keyed by first appearance in SOURCE row order (not the sorted view), so a
+  // column sort in the popup never recolors the categories; editing cells stay raw text.
+  const chipCols = new Map<number, Map<string, number>>();
+  if (!vertical) {
+    for (let cc = 0; cc < viewCols; cc++) {
+      if (colTypeAt(cc) === "string" && annFor(cc).chip) {
+        const col: (string | null)[] = [];
+        for (let r = 0; r < viewRows; r++) { const rv = rawAt(r, cc); col.push(rv == null || rv === "" ? null : String(rv)); }
+        chipCols.set(cc, categoryColorIndex(col));
+      }
+    }
+  }
   const readOnlyCell = (content: string, className: string, vi: number, c: number) => (
     <div
       className={`${className} table-popup__input--ro`}
@@ -752,7 +767,7 @@ export function TablePopup() {
         focusGridCell(target);
       }}
     >
-      {content === "" ? " " : content}
+      {chipCols.has(c) && content !== "" ? <CategoryChip value={content} index={chipCols.get(c)!.get(content) ?? 0} /> : content === "" ? " " : content}
     </div>
   );
   // Escape mid-edit reverts the cell being edited and keeps the popup open (the shell's
@@ -800,7 +815,7 @@ export function TablePopup() {
           ) : cellType === "date" ? (
             <DateStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(0).value} onChange={(f) => (f ? persistColFmt(0, { format: f }) : clearColFmt(0))} />
           ) : cellType === "string" ? (
-            <TextCaseSelect className="table-popup__fmtselect" inherit value={fmtRow(0).value} onChange={(tc) => (tc ? persistColFmt(0, { textCase: tc }) : clearColFmt(0))} />
+            <TextCaseSelect className="table-popup__fmtselect" inherit value={fmtRow(0).value} onChange={(tc) => tc === "chip" ? persistColFmt(0, { chip: true, textCase: "none" }) : tc ? persistColFmt(0, { textCase: tc as TextCase, chip: false }) : clearColFmt(0)} />
           ) : (
             <FormatStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(0).value} onChange={(f) => (f ? persistColFmt(0, { format: f }) : clearColFmt(0))} />
           )}
@@ -956,7 +971,7 @@ export function TablePopup() {
                           <LogicalStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(s) => (s ? persistColFmt(c, { logicalStyle: s }) : clearColFmt(c))} />
                           {fmtHint(c)}
                         </>) : type === "string" ? (<>
-                          <TextCaseSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(tc) => (tc ? persistColFmt(c, { textCase: tc }) : clearColFmt(c))} />
+                          <TextCaseSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(tc) => tc === "chip" ? persistColFmt(c, { chip: true, textCase: "none" }) : tc ? persistColFmt(c, { textCase: tc as TextCase, chip: false }) : clearColFmt(c)} />
                           {fmtHint(c)}
                         </>) : type === "number" ? (
                           <div className="table-popup__fmtstack">
