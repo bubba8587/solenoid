@@ -49,17 +49,6 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
   it lists before data flows), free-text fallback when the shape is unknown. One component,
   three first customers; picker pure over `FrameShape`; existing suites green. Out: card-side
   format/unit on Computed Column (the popup column row is the one home).
-- [ ] **Table popup: frozen header + first column (1.4 B3, author 2026-09-04c).** The column
-  names stay put while a long table scrolls, and optionally the first column while it scrolls
-  sideways (`position: sticky` on `th` / the first `td`, no virtualization). Toggled from the
-  popup's OVERFLOW menu (`PopupOverflowMenu`), default on, persisted like `tablePopupSummary` —
-  and NOT surfaced in the Settings panel. Same commit: the "Table popup summary footer" row
-  LEAVES the Settings panel (the overflow menu already owns that toggle; the author: popup
-  chrome is set in the popup). Check sort order, an open edit scrolling out, Copy CSV / Export
-  staying whole-dataset.
-- [ ] **Record popup: prev / next with the arrow keys (1.4 B3, author 2026-09-04c).** With a
-  Record card's popup open, ←/→ (and on-screen prev/next) step to the neighbouring record
-  without closing; `recordNav.ts` already holds the stepping. Out: image lightbox, chip hover.
 - [ ] **Chip style for text values (1.4 B2.2, author 2026-09-04c).** An opt-in "Chip" style that
   renders each distinct text value as a small tinted pill, hues from the categorical chart
   palette by first appearance, stable under row reorder. TWO homes, one mechanism: the popup's
