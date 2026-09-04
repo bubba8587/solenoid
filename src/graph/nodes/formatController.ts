@@ -175,19 +175,27 @@ export class FormatControllerNode extends ClassicPreset.Node {
     }
   }
 
-  /** Mirrors the type onto both sockets and re-defaults the format — a date socket
-   *  left on the number default "auto" would render a raw serial. A WILDCARD carries
-   *  no answer, so it leaves the pick alone: a value typed only at run time (a Script
-   *  output) resolves through `trueany` at load, and re-defaulting there turned a saved
-   *  date style into "auto", then into the first date style once the real type came. */
+  /** Mirrors the type onto both sockets. The PICK (`format`) is never touched here: a
+   *  value typed only at run time (a Script output) passes through a wildcard and then
+   *  its construction-time family before the real type arrives, and re-defaulting on
+   *  each hop destroyed a saved date style. A pick outside the socket's family is inert
+   *  instead — `effectiveFormat()` falls back to the family default while it lasts. */
   private _applyType(dataType: SocketDataType): void {
     this.socketDataType = dataType;
     this._inSock.setType(dataType);
     this._outSock.setType(dataType);
-    if (isWildcardRung(dataType)) return;
-    const isDate = isDateType(dataType);
-    if (isDate && !isDateStyle(this.format)) this.format = "date_dmy";
-    else if (!isDate && isDateStyle(this.format)) this.format = "auto";
+  }
+
+  /** The style that actually applies: the pick when it fits the socket's family, else
+   *  the family default (a date socket on a number style would render a raw serial; a
+   *  number socket on a date style would render nonsense). A wildcard has no family, so
+   *  the pick stands. */
+  effectiveFormat(): FormatStyleId {
+    if (isWildcardRung(this.socketDataType)) return this.format;
+    const isDate = isDateType(this.socketDataType);
+    if (isDate && !isDateStyle(this.format)) return "date_dmy";
+    if (!isDate && isDateStyle(this.format)) return "auto";
+    return this.format;
   }
 
   /** Adopt the concrete type this FC is attached to (docked host socket or cables),
@@ -270,7 +278,7 @@ export class FormatControllerNode extends ClassicPreset.Node {
    *  it forward so a downstream passthrough box needs no trailing FC of its own. */
   annotation(): FormatAnnotation {
     return {
-      format:        this.format,
+      format:        this.effectiveFormat(),
       customPattern: this.customPattern,
       decimalDigits: this.decimalDigits,
       decimalMode:   this.decimalMode,

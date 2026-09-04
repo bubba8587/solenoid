@@ -3,6 +3,7 @@
 import { documentStore } from "./documentStore";
 import { loadRevealStore } from "./loadReveal";
 import { getEditor, getView, processGraph } from "./process";
+import { attachFormatController } from "./canvasActions";
 if (import.meta.env.DEV) {
   (window as unknown as { __spike: unknown }).__spike = {
     seed: (id: string) => documentStore.newFromTemplate(id),
@@ -27,7 +28,18 @@ if (import.meta.env.DEV) {
       const n = getEditor()?.getNode(id);
       if (!n) return false;
       Object.assign(n, fields);
+      // An FC's popup re-registers its annotation on every pick; mirror that.
+      const ed = getEditor();
+      const fc = n as unknown as { refreshAnnotation?: (e: unknown) => void };
+      if (ed && typeof fc.refreshAnnotation === "function") fc.refreshAnnotation(ed);
       await processGraph();
+      return true;
+    },
+    // Attach a docked Format Controller the way the socket menu does (the FC probes).
+    attachFc: async (hostNodeId: string, socketKey: string, side: "input" | "output") => {
+      const ed = getEditor(), vw = getView();
+      if (!ed || !vw) return false;
+      await attachFormatController(ed, vw, vw.container, { nodeId: hostNodeId, socketKey, side, screenX: 0, screenY: 0 });
       return true;
     },
     // Read plain fields off a node (the reload probes compare a node before/after).

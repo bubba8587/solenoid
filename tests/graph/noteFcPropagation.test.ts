@@ -20,10 +20,11 @@ describe("Note frontmatter retype propagates type to a downstream FC", () => {
       new ClassicPreset.Connection(note as never, "x", fc as never, "in") as never,
     );
 
-    // FC adopts the date type and auto-picks a date format.
+    // FC adopts the date type; its number pick is inert there, so the date default applies.
     fc.adaptTypeFromConnections(editor as never);
     expect(fc.socketDataType).toBe("date");
-    expect(fc.format).toBe("date_dmy");
+    expect(fc.effectiveFormat()).toBe("date_dmy");
+    expect(fc.annotation().format).toBe("date_dmy");
 
     // Retype the field: date serial → plain number (value no longer parses as a date).
     note.body = "---\nx: 5\n---";
@@ -31,11 +32,12 @@ describe("Note frontmatter retype propagates type to a downstream FC", () => {
     expect(retyped).toEqual([{ key: "x", type: "number" }]);
     expect(note.outputs.x).toBeDefined(); // same key, new socket — cable still references it
 
-    // Re-adapting now sees the NEW upstream type and reverts the date format.
+    // Re-adapting now sees the NEW upstream type; no date style applies to a number.
     const changed = fc.adaptTypeFromConnections(editor as never);
     expect(changed).toBe(true);
     expect(fc.socketDataType).toBe("number");
-    expect(fc.format).toBe("auto");
+    expect(fc.effectiveFormat()).toBe("auto");
+    expect(fc.annotation().format).toBe("auto");
   });
 
   it("resolves through a passthrough (any) node between the Note and the FC", async () => {
@@ -60,6 +62,6 @@ describe("Note frontmatter retype propagates type to a downstream FC", () => {
     note.syncFields();
     fc.adaptTypeFromConnections(editor as never);
     expect(fc.socketDataType).toBe("number");
-    expect(fc.format).toBe("auto");
+    expect(fc.effectiveFormat()).toBe("auto");
   });
 });

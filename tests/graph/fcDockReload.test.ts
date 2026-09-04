@@ -42,11 +42,13 @@ async function buildChain() {
   return { editor, fi, idx, fc };
 }
 
-describe("a docked FC keeps its saved date style through a load-time wildcard", () => {
+describe("a docked FC keeps its saved date style through load-time type hops", () => {
   // The author's chain: Script → Display → FC set to "Wed, Jun 3, 2026". A Script's
-  // output type is only known after the data pass, so at dockSelf the Display's `out`
-  // still reads trueany; re-defaulting the format there turned the saved date style
-  // into "auto", and the later re-adapt to date turned that into the FIRST date style.
+  // output type is only known after the data pass: at load the Display's `out` reads
+  // the wildcard, then the Script's construction-time NUMBER family, then the real date
+  // family. Re-defaulting the pick on each hop turned the saved date style into "auto"
+  // and then into the FIRST date style. The pick is never rewritten now; a pick outside
+  // the socket's family is inert (`effectiveFormat()`) until the family comes back.
   it("resolving through trueany leaves the pick alone; the real date type keeps it", async () => {
     const editor = new NodeEditor() as unknown as AnyEditor;
     const disp = new DisplayNode();
@@ -73,7 +75,7 @@ describe("a docked FC keeps its saved date style through a load-time wildcard", 
     expect(fc.format).toBe("date_dow");
   });
 
-  it("a real family change still re-defaults: a date style on a number socket → auto", async () => {
+  it("a date pick on a number socket is INERT (effective auto), not rewritten — it returns with the family", async () => {
     const editor = new NodeEditor() as unknown as AnyEditor;
     const fi = new FrameInputNode({ frameText: frameSourceToText([{ name: "n", type: "number", cells: ["1", "2"] }]) });
     const idx = new ListIndexNode();
@@ -89,7 +91,9 @@ describe("a docked FC keeps its saved date style through a load-time wildcard", 
     settleWildcardTypes(editor as never);
     fc.dockSelf(editor as never);
     expect(fc.socketDataType).toBe("numlist");
-    expect(fc.format).toBe("auto");
+    expect(fc.format).toBe("date_dow");          // the pick survives
+    expect(fc.effectiveFormat()).toBe("auto");    // but does not apply to a number
+    expect(fc.annotation().format).toBe("auto");
   });
 });
 

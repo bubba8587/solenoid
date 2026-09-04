@@ -33,7 +33,7 @@ import { stopDragStart } from "../coarse";
 export function FormatControllerComponent({ data, emit }: NodeProps<FormatControllerNodeType>) {
   const node = data;
 
-  const [format,        setFormatLocal]   = useState<FormatStyleId>(node.format);
+  const [format,        setFormatLocal]   = useState<FormatStyleId>(node.effectiveFormat());
   const [customPattern, setPatternLocal]  = useState(node.customPattern);
   const [unit,          setUnitLocal]     = useState(node.unit);
   const [customUnit,    setCustomUnitLocal] = useState(node.customUnit);
@@ -72,7 +72,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   // Drag-to-dock changes node.format and socketDataType externally, so the controlled
   // selects must resync or they show a stale value.
   useEffect(() => {
-    setFormatLocal(node.format);
+    setFormatLocal(node.effectiveFormat());
     setUnitLocal(node.unit);
     setTextCaseLocal(node.textCase);
     setLogicalLocal(node.logicalStyle);
