@@ -1532,13 +1532,13 @@ export function decisionCriteria(f: FrameValue): string[] {
   return decisionColumns(f).criteriaCols.map((c) => c.name);
 }
 
-/** Budget Allocator: read each category's [min, max] and value weight from `f`, run the
- *  chosen allocation mode (`allocateOps.ts`, no solver), and return a `Category ·
- *  Allocation` frame. Columns are found by name (min / max / weight·value) with a fallback
- *  to the first two number columns for the range; a wired weights list overrides a weight
- *  column. The allocation carries the min column's unit when it has one. */
+/** Allocator: read each category's [min, max] and value weight from `f`, run the chosen
+ *  allocation mode (`allocateOps.ts`, no solver), and return a `Category · Allocation` frame.
+ *  Columns are found by name (min / max / weight·value) with a fallback to the first two
+ *  number columns for the range; ordered weights ride the frame's Weight column, not a wired
+ *  list (orderedColumnsAreFrames). The allocation carries the min column's unit when it has one. */
 export function allocateFrame(
-  f: FrameValue, mode: AllocateMode, amount: number, wiredWeights: number[] | null,
+  f: FrameValue, mode: AllocateMode, amount: number,
 ): FrameValue {
   const rows = frameRowCount(f);
   const byName = (...names: string[]): FrameColumn | undefined => {
@@ -1563,9 +1563,7 @@ export function allocateFrame(
   for (let i = 0; i < rows; i++) {
     mins.push(asNum(minCol.values[i] ?? null, "min"));
     maxs.push(asNum(maxCol.values[i] ?? null, "max"));
-    const w = wiredWeights ? wiredWeights[i]
-      : weightCol && typeof weightCol.values[i] === "number" ? (weightCol.values[i] as number)
-      : 1;
+    const w = weightCol && typeof weightCol.values[i] === "number" ? (weightCol.values[i] as number) : 1;
     weights.push(typeof w === "number" && Number.isFinite(w) ? w : 1);
     names.push(nameCol ? (nameCol.values[i] ?? `Item ${i + 1}`) : `Item ${i + 1}`);
   }

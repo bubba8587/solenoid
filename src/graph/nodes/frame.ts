@@ -1383,8 +1383,7 @@ export const ALLOCATE_MODE_META = {
 
 export class AllocatorNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    categories: "Rows are categories. A min and a max number column set each price range, the first text column names them, and a weight (or value) column says how much you value each.",
-    weights: "Optional, one per category row: how much you value it. Overrides a weight column; unwired and with no weight column, every category weighs the same.",
+    categories: "Rows are categories. A min and a max number column set each price range, the first text column names them, and a Weight (or Value) column says how much you value each — with no such column every category weighs the same.",
     amount: "The budget to spend (Fit budget) or the value target to reach (Min for target). Ignored by Min proportional.",
   };
 
@@ -1393,7 +1392,7 @@ export class AllocatorNode extends ClassicPreset.Node {
   // The budget / target typed on the card; a wired `amount` overrides it.
   literals: Record<string, number> = { amount: 60000 };
   cachedResult: FrameValue | SolError | null = null;
-  width = 240; height = 215;
+  width = 240; height = 191;
 
   static frameHints: Record<string, FrameHint> = {
     categories: { columns: [
@@ -1409,18 +1408,15 @@ export class AllocatorNode extends ClassicPreset.Node {
     this.label = init?.label ?? "Allocator";
     this.mode = init?.mode && init.mode in ALLOCATE_MODE_META ? init.mode : "budget";
     this.addInput("categories", frameIn("Categories"));
-    this.addInput("weights", numListIn("Weights"));
     this.addInput("amount", numIn("Budget / Target"));
     this.addOutput("frame", frameOut("Allocation"));
   }
 
-  data(inputs: { categories?: (FrameValue | null)[]; weights?: (number[] | number | null)[]; amount?: (number | null)[] }) {
+  data(inputs: { categories?: (FrameValue | null)[]; amount?: (number | null)[] }) {
     const f = inputs.categories?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
     const amount = readInput(inputs.amount, this.literals.amount ?? 0) ?? 0;
-    const wRaw = inputs.weights?.[0];
-    const wired = Array.isArray(wRaw) ? wRaw : typeof wRaw === "number" ? [wRaw] : null;
-    this.cachedResult = runVerb(() => allocateFrame(f, this.mode, amount, wired));
+    this.cachedResult = runVerb(() => allocateFrame(f, this.mode, amount));
     return { frame: this.cachedResult };
   }
 }

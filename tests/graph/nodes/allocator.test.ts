@@ -13,31 +13,33 @@ const cats = frame([
 ]);
 const allocOf = (out: { frame: FrameValue | unknown }): unknown[] =>
   (out.frame as FrameValue).columns.find((c) => c.name === "Allocation")!.values;
+// Weights are an ordered column on the frame (orderedColumnsAreFrames), never a wired list.
+const wcats = (weights: number[]): FrameValue =>
+  frame([...cats.columns, { name: "Weight", type: "number", values: weights }]);
 
 describe("AllocatorNode", () => {
   it("fits a budget by weight, clamped to each range (the worked example)", () => {
     const n = new AllocatorNode();
     n.literals.amount = 60;
-    expect(allocOf(n.data({ categories: [cats], weights: [[1, 1]] }))).toEqual([30, 30]);
-    expect(allocOf(n.data({ categories: [cats], weights: [[1, 3]] }))).toEqual([20, 40]);
+    expect(allocOf(n.data({ categories: [cats] }))).toEqual([30, 30]);          // no Weight column → equal
+    expect(allocOf(n.data({ categories: [wcats([1, 3])] }))).toEqual([20, 40]); // Weight column drives it
   });
 
   it("emits Category, Allocation, and Share as a raw fraction of the spend", () => {
     const n = new AllocatorNode();
     n.literals.amount = 60;
-    const cols = (n.data({ categories: [cats], weights: [[1, 3]] }).frame as FrameValue).columns;
+    const cols = (n.data({ categories: [wcats([1, 3])] }).frame as FrameValue).columns;
     const col = (name: string) => cols.find((c) => c.name === name)!.values;
     expect(cols.map((c) => c.name)).toEqual(["Category", "Allocation", "Share"]);
     expect(col("Allocation")).toEqual([20, 40]);
     expect(col("Share")).toEqual([1 / 3, 2 / 3]); // raw decimal, formatted downstream
   });
 
-  it("reads weights from a Weight column when none is wired; a wired list overrides it", () => {
-    const withW = frame([...cats.columns, { name: "Weight", type: "number", values: [1, 3] }]);
+  it("reads weights from the Weight column; no column means equal weights", () => {
     const n = new AllocatorNode();
     n.literals.amount = 60;
-    expect(allocOf(n.data({ categories: [withW] }))).toEqual([20, 40]);           // column
-    expect(allocOf(n.data({ categories: [withW], weights: [[1, 1]] }))).toEqual([30, 30]); // wired wins
+    expect(allocOf(n.data({ categories: [wcats([1, 3])] }))).toEqual([20, 40]); // column
+    expect(allocOf(n.data({ categories: [cats] }))).toEqual([30, 30]);          // equal fallback
   });
 
   it("min-for-target buys the most-valued category first", () => {
@@ -45,10 +47,11 @@ describe("AllocatorNode", () => {
       { name: "Category", type: "string", values: ["A", "B"] },
       { name: "Min", type: "number", values: [0, 0] },
       { name: "Max", type: "number", values: [100, 100] },
+      { name: "Weight", type: "number", values: [3, 1] },
     ]);
     const n = new AllocatorNode({ mode: "minTarget" });
     n.literals.amount = 150;
-    expect(allocOf(n.data({ categories: [zero], weights: [[3, 1]] }))).toEqual([50, 0]);
+    expect(allocOf(n.data({ categories: [zero] }))).toEqual([50, 0]);
   });
 
   it("min-proportional scales up from the binding floor", () => {
@@ -57,8 +60,9 @@ describe("AllocatorNode", () => {
       { name: "Category", type: "string", values: ["Car", "Other"] },
       { name: "Min", type: "number", values: [20, 10] },
       { name: "Max", type: "number", values: [1000, 1000] },
+      { name: "Weight", type: "number", values: [1, 3] },
     ]);
-    expect(allocOf(n.data({ categories: [wide], weights: [[1, 3]] }))).toEqual([20, 60]);
+    expect(allocOf(n.data({ categories: [wide] }))).toEqual([20, 60]);
   });
 
   it("carries the min column's unit onto the Allocation column", () => {
