@@ -20,7 +20,8 @@ import {
   frameHasTextColumns,
 } from "../../src/graph/frame";
 import { parseDateToSerial } from "../../src/graph/nodes/date";
-import { BuildFrameNode, FrameFromListsNode } from "../../src/graph/nodes/frame";
+import { BuildFrameNode, FrameFromListsNode, FrameInputNode } from "../../src/graph/nodes/frame";
+import { extractInit } from "../../src/graph/copyPaste";
 import { MutableSocket } from "../../src/graph/sockets";
 import { solError } from "../../src/graph/errorValue";
 
@@ -492,6 +493,28 @@ describe("frameText persistence round-trip", () => {
     const col = getColumn(back, "flag")!;
     expect(col.type).toBe("logical");
     expect(col.values).toEqual([true, null, false]);
+  });
+});
+
+describe("Frame Input's Form layout hides without deleting", () => {
+  it("activeLayout is the text while shown and nothing while hidden", () => {
+    const n = new FrameInputNode();
+    n.stringLiterals.layout = "Name | Qty";
+    expect(n.activeLayout).toBe("Name | Qty");
+    n.layoutHidden = true;
+    expect(n.activeLayout).toBeUndefined();
+    expect(n.stringLiterals.layout).toBe("Name | Qty"); // the text is KEPT
+    n.layoutHidden = false;
+    expect(n.activeLayout).toBe("Name | Qty");
+  });
+
+  it("layoutHidden survives a save/load cycle", () => {
+    const n = new FrameInputNode();
+    n.layoutHidden = true;
+    const init = extractInit(n) as { layoutHidden?: boolean };
+    expect(init.layoutHidden).toBe(true);
+    expect(new FrameInputNode(init).layoutHidden).toBe(true);
+    expect(new FrameInputNode().layoutHidden).toBe(false);
   });
 });
 

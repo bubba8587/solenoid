@@ -34,12 +34,6 @@ REMOVED — the old elkjs-vs-rete-auto-arrange peer conflict left with the plugi
   balancing is the Allocator" as a seed. GATE: nothing starts until the author picks; the first
   pass's Hungarian matching + Erlang staffing sit in `deferrals.md`.
 
-## Records & Frame Input
-
-- [ ] **Form-layout hide toggle.** Frame Input → Add Form Layout: the layout box wants a small
-  ✕ in its top-right corner that hides AND disables the entered form layout — WITHOUT deleting
-  it (the layout text is kept, just inert until re-enabled).
-
 ## Seeds
 
 - [ ] **Seed-layout sweep — the author eyeballs the 20 re-cut seeds** (2026-09-04b, two agent

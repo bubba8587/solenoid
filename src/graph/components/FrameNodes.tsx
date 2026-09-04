@@ -50,6 +50,7 @@ import { VALUELESS_FILTER_OPS } from "../frameVerbs";
 import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameVerbs";
 import type { FilterCondConfig } from "../nodes/frame";
 import { RecordLayoutField } from "./RecordLayoutField";
+import { CloseIcon } from "./CloseIcon";
 import { HEAD_OP_META, HEADER_OP_META, BLANK_ROW_OP_META, COLUMNS_OP_META } from "../nodes/frame";
 import { CubeDisplay } from "./CubeDisplay";
 import { isCubeValue } from "../frame";
@@ -131,27 +132,48 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
   // The Form-view layout is opt-in: an unauthored one stays hidden behind a button so the
   // card isn't carrying an empty textarea most Frame Inputs never fill.
   const [showLayout, setShowLayout] = useState(false);
+  // Mirrors data.layoutHidden so the card re-renders on the toggle; hiding keeps the text.
+  const [layoutHidden, setLayoutHidden] = useState(data.layoutHidden);
+  function setHidden(next: boolean) {
+    data.layoutHidden = next;
+    setLayoutHidden(next);
+    scheduleAutosave();
+  }
+  const hasLayout = !!data.stringLiterals.layout;
 
   return (
     <NodeShell node={data} emit={emit}>
       {/* Addable λ inputs (column-source model, slice 1): each wired λ can
           define a column — pick it per column in the grid editor. */}
       <ExtensibleInputs node={data} emit={emit} valueKeys={data.lambdaKeys} minRows={0} addLabel="+ Add lambda" />
-      {data.stringLiterals.layout || showLayout ? (
-        <RecordLayoutField value={data.stringLiterals.layout ?? ""} onCommit={commitLayout} />
+      {!layoutHidden && (hasLayout || showLayout) ? (
+        <div className="solenoid-layout-field">
+          <RecordLayoutField value={data.stringLiterals.layout ?? ""} onCommit={commitLayout} />
+          <button
+            type="button"
+            className="solenoid-layout-field__hide"
+            title="Hide the form layout"
+            aria-label="Hide the form layout"
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); setHidden(true); }}
+          >
+            <CloseIcon size={10} />
+          </button>
+        </div>
       ) : (
         <button
           type="button"
           className="solenoid-node__add-input"
-          onClick={(e) => { e.stopPropagation(); setShowLayout(true); }}
+          onClick={(e) => { e.stopPropagation(); if (layoutHidden) setHidden(false); setShowLayout(true); }}
         >
-          + Add Form layout
+          {layoutHidden && hasLayout ? "Show Form layout" : "+ Add Form layout"}
         </button>
       )}
       <FrameDisplay
         frame={data.cachedResult} label={nodeDisplayName(data)} source={source}
         onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={data.lambdaKeys}
-        formLayout={data.stringLiterals.layout}
+        formLayout={data.activeLayout}
       />
     </NodeShell>
   );

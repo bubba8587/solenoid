@@ -97,6 +97,9 @@ export class FrameInputNode extends ClassicPreset.Node {
   /** `layout` = the popup Form view's field placement (the Record layout text);
    *  the declaration is the persistence load gate. */
   stringLiterals: Record<string, string> = {};
+  /** Hiding the layout box KEEPS its text and only makes it inert; every reader
+   *  takes `activeLayout`, never `stringLiterals.layout`. */
+  layoutHidden: boolean;
   /** The addable λ input keys (fn1, fn2, …); a source column with `lambda: "fn1"`
    *  computes its cells per row from the λ wired there. */
   lambdaKeys: string[] = [];
@@ -105,13 +108,19 @@ export class FrameInputNode extends ClassicPreset.Node {
   private _builtFrom: string | undefined;
   width = 240; height = 220;
 
-  constructor(init?: { label?: string; frameText?: string; lambdaKeys?: string[] }) {
+  constructor(init?: { label?: string; frameText?: string; lambdaKeys?: string[]; layoutHidden?: boolean }) {
     super("FrameInput");
     this.label = init?.label ?? "Frame Input";
     this.frameText = init?.frameText ?? "A, B\n1, 2\n3, 4";
+    this.layoutHidden = init?.layoutHidden ?? false;
     if (Array.isArray(init?.lambdaKeys)) this.lambdaKeys = init.lambdaKeys.filter((k) => typeof k === "string");
     for (const k of this.lambdaKeys) this.addInput(k, lambdaIn(`λ${k.replace(/^fn/, "")}`));
     this.addOutput("frame", frameOut("Frame"));
+  }
+
+  /** The Form layout in force: the typed text, or nothing while it is hidden. */
+  get activeLayout(): string | undefined {
+    return this.layoutHidden ? undefined : this.stringLiterals.layout;
   }
 
   /** Add one λ input row (the ExtensibleInputs contract). */
