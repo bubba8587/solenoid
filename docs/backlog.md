@@ -52,6 +52,14 @@ REMOVED — the old elkjs-vs-rete-auto-arrange peer conflict left with the plugi
   ✕ in its top-right corner that hides AND disables the entered form layout — WITHOUT deleting
   it (the layout text is kept, just inert until re-enabled).
 
+## Seeds
+
+- [ ] **Seed-layout sweep for whole-canvas Tidy.** Full-canvas Tidy (baked into every seed via
+  `tune-seeds`) scatters free-floating Notes. Go through the seed library adding **groups** (wrap
+  intermediary clusters) and **note-standoffs** (pin each explanatory Note to the node/group it
+  explains) so the tuned layout stays sensible, then re-tune. The **decision-matrix** seed is the
+  done exemplar/pattern (2 groups + 7 standoffs; see its `standoffs`/`GroupNode` entries).
+
 ## Layout
 
 - [ ] **Flipped-node Tidy places it up-and-left; want down-and-left.** The predecessor
