@@ -37,6 +37,18 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Formatting & units
 
+- [ ] **NEXT — a frame's per-column FORMAT flows downstream like its unit** (author,
+  2026-09-04: Allocator seed → Headroom's column set to Decimal → Display: neither the card frame
+  nor the popup shows it). Cause: `FrameColumn.unit` rides the VALUE, but per-column formats
+  live in `frameFormatStore` keyed by the authoring node, and a downstream frame renderer reads
+  its OWN node's entries. Design: add `format?: FormatAnnotation` to `FrameColumn` beside
+  `unit`; the `data()` output pipe (`coerceInputs.ts`'s nodecreated wrapper) stamps it from the
+  producing node's `frameFormatStore` picks so it travels through every frame verb the way the
+  unit does (verbs that spread columns keep it; check `pivot`/`groupBy`/`unpivot` derived
+  columns); `FrameDisplay.fmtCell` and the TablePopup grid use `column.format` as the default,
+  a local per-column pick overriding (formatFlowsDownstream, override by the nearer setter).
+  Tests: a Frame Input column format survives Sort → Columns → Display; a local override wins;
+  persistence unchanged (the store is already per node).
 - [ ] **LATER (author, 2026-09-04): fold the Format Controller into the Display** — format and
   unit set at sources and displays, flowing downstream only; the docking subsystem and the
   upstream walk go. Analysis + scope in `1.4-plan.md` Track I. Gate: the author's go after the
