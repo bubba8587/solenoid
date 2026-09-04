@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import { makeFrameShapeResolver } from "../../src/graph/frameShapeResolver";
-import { FrameInputNode, SortFrameNode } from "../../src/graph/nodes/frame";
+import { FrameInputNode, SortFrameNode, DecisionMatrixNode } from "../../src/graph/nodes/frame";
+import { NoteNode } from "../../src/graph/nodes/annotation";
 import { DisplayNode } from "../../src/graph/nodes/display";
 import { IfNode } from "../../src/graph/nodes/logic";
 import { ConduitNode, conduitInKey, conduitOutKey } from "../../src/graph/nodes/conduit";
@@ -62,5 +63,33 @@ describe("frame SHAPE survives a passthrough (Bug B)", () => {
       return { node: i, inKey: "then", outKey: "result" };
     });
     expect(cols(r.viaMid)).toEqual(["Name", "Qty"]);
+  });
+});
+
+describe("frame PRODUCERS carry their column types into the static shape", () => {
+  it("a Note frame frontmatter key resolves to its typed columns", async () => {
+    const editor = new NodeEditor<Schemes>();
+    const note = new NoteNode({ body: "---\nt:\n  - {Name: A, Qty: 1}\n  - {Name: B, Qty: 2}\n---" }) as unknown as Schemes["Node"];
+    await editor.addNode(note);
+    const s = makeFrameShapeResolver(editor as never).outShape(note.id, "t");
+    expect(s?.columns).toEqual([{ name: "Name", type: "string" }, { name: "Qty", type: "number" }]);
+  });
+
+  it("Decision Matrix types the label string first, Score/Rank number (breakdown adds criteria)", async () => {
+    const editor = new NodeEditor<Schemes>();
+    const src = new FrameInputNode() as unknown as Schemes["Node"];
+    (src as unknown as FrameInputNode).frameText = "Option, A, B\nx, 1, 2\ny, 3, 4";
+    await editor.addNode(src);
+    const dm = new DecisionMatrixNode({ detail: "breakdown" }) as unknown as Schemes["Node"];
+    await editor.addNode(dm);
+    await editor.addConnection(new ClassicPreset.Connection(src, "frame", dm, "frame") as Schemes["Connection"]);
+    const s = makeFrameShapeResolver(editor as never).outShape(dm.id, "frame");
+    expect(s?.columns).toEqual([
+      { name: "Option", type: "string" },
+      { name: "A", type: "number" },
+      { name: "B", type: "number" },
+      { name: "Score", type: "number" },
+      { name: "Rank", type: "number" },
+    ]);
   });
 });

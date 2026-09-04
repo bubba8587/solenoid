@@ -1,15 +1,16 @@
 import type { NodeEditor, ClassicPreset } from "rete";
 import { parseListLiteral } from "./coerceInputs";
-import { frameFromInputText } from "./frame";
+import { frameFromInputText, isFrameValue, makeHeaders } from "./frame";
 import {
   shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
-  type Shape,
+  type Shape, type ShapeColumn,
 } from "./frameShape";
 import {
   FrameInputNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode,
   ColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode,
-  AppendNode, RenameNode, SplitColumnNode, AddIndexNode, GetRowNode,
+  AppendNode, RenameNode, SplitColumnNode, AddIndexNode, GetRowNode, DecisionMatrixNode,
 } from "./nodes/frame";
+import { NoteNode } from "./nodes/annotation";
 import { ConduitNode, conduitLaneOf, conduitInKey } from "./nodes/conduit";
 import { passthroughForOutput, type PassthroughSpec } from "./nodes/passthrough";
 
@@ -168,6 +169,25 @@ export function makeFrameShapeResolver(editor: AnyEditor): FrameShapeResolver {
         const input = inputShape(nodeId, "frame");
         if (!input) return null;
         return shapeOfAddIndex(input, lit(n, "name") || "Index");
+      }
+      // A Note frontmatter key can emit a frame (rows-of-objects); its columns are known.
+      if (n instanceof NoteNode) {
+        const v = n.fieldValues()[outKey];
+        return isFrameValue(v) ? shapeOfFrameValue(v) : null;
+      }
+      // Decision Matrix: label (string) · [criteria if breakdown] · Score · Rank. The label
+      // and Score/Rank types are fixed; criteria mirror the input columns (dedup like the verb).
+      if (n instanceof DecisionMatrixNode) {
+        const input = inputShape(nodeId, "frame");
+        if (!input) return null;
+        const label = input.columns.find((c) => c.type === "string");
+        const criteria = input.columns.filter((c) => c !== label && (c.type === "number" || c.type === "logical"));
+        if (criteria.length === 0) return null; // a runtime #VALUE!, no shape to offer
+        const cols: ShapeColumn[] = [{ name: label?.name ?? "Option", type: "string" }];
+        if (n.detail === "breakdown") for (const c of criteria) cols.push({ name: c.name, type: "number" });
+        cols.push({ name: "Score", type: "number" }, { name: "Rank", type: "number" });
+        const names = makeHeaders(cols.map((c) => c.name), cols.length);
+        return { columns: cols.map((c, i) => ({ name: names[i], type: c.type })), dynamic: input.dynamic };
       }
 
       // A runtime-loaded source, or a node outside this walk's scope.
