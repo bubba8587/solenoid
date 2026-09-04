@@ -13,7 +13,7 @@ import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../rete-
 import type { SolenoidNode } from "../schemes";
 import { compositeEditorStore, compositePassStore } from "../compositeEditorStore";
 import { getEditor, getView, processGraph } from "../process";
-import { swapSelectionSlots, swapArrangeSlots } from "../canvasCommands";
+import { swapSelectionSlots, swapArrangeSlots, swapDeleteSlot } from "../canvasCommands";
 import { setActiveGraph } from "../activeGraph";
 import { syncSemanticZoomFor } from "../semanticZoomStore";
 import { scheduleAutosave } from "../persistence";
@@ -159,6 +159,7 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     let canceled = false;
     let restoreSelection: (() => void) | null = null;
     let restoreArrange: (() => void) | null = null;
+    let restoreDelete: (() => void) | null = null;
     s.rebuilding = true;
     void (async () => {
       await comp.hydrate(ctorRegistry());
@@ -194,12 +195,16 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
         autoArrange: (opts) => tidyRef.current(opts),
         cleanup: () => cleanupRef.current(),
       });
+      // The keyboard-less delete button (mobile / tablet) goes through the slot, not RF's
+      // per-surface Delete key — swap it to this level's delete so it can't hit MAIN.
+      restoreDelete = swapDeleteSlot(() => deleteSelection());
       if (s.history.stack.length === 0) recordNow(comp, s);
     })();
     return () => {
       canceled = true;
       restoreSelection?.();
       restoreArrange?.();
+      restoreDelete?.();
       isolateStore.exit();
       setActiveGraph(null);
       syncPositionsToComp(comp, s);

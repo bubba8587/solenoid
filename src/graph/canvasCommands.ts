@@ -81,6 +81,16 @@ export function swapArrangeSlots(fns: { autoArrange: (opts?: { groupId?: string 
   };
 }
 
+/** Point the delete verb (the keyboard-less mobile / tablet delete button) at a substitute
+ *  surface (the composite drill-in) while it is open; the returned restorer hands it back.
+ *  The Delete KEY is already per-surface through RF's onBeforeDelete — this covers the chrome
+ *  button that goes through the slot instead. */
+export function swapDeleteSlot(fn: () => Promise<void>): () => void {
+  const prev = _deleteSelected;
+  _deleteSelected = fn;
+  return () => { _deleteSelected = prev; };
+}
+
 /** Point the selection verbs at a substitute surface (the composite drill-in) while it is
  *  open; the returned restorer hands them back to the main canvas. */
 export function swapSelectionSlots(fns: {

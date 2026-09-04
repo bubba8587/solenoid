@@ -77,3 +77,11 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
   loose expression chain was wrapped beside two pre-existing groups rather than merged. Not swept:
   sudoku-solver, composite-workbench, zz-scratch-new-nodes (not teaching galleries),
   personal-finance and live-market-data (held from tuning, see the 09-03 digest).
+
+## Composites
+
+- [ ] **Docked FCs inside a drill-in don't recenter** (2026-09-04c, from the E2 audit) —
+  `FlowCompositeOverlay`'s arrange factory passes `repositionDockedTo: () => {}` and the
+  component/keyboard callers hit the MAIN `repositionDocked` slot, so a Format Controller docked
+  in a composite doesn't follow its host on resize / format change / Tidy. Component reflow, not a
+  chrome verb (out of E2's scope). Fix by giving the drill-in a real reposition through the seam.
