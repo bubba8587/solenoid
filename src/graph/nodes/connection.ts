@@ -1,5 +1,6 @@
 import { ClassicPreset } from "rete";
-import { frameOut, strListOut } from "./shared";
+import { frameOut, strListOut, strIn, numOut, strOut, readInput } from "./shared";
+import { geocodeUrl, parseGeocode, pickGeocodeMatch, type GeocodeMatch } from "../geocodeProvider";
 import { connectionStore, scheduleConnectionRecalc, requestNetwork } from "../connectionStore";
 import { settingsStore } from "../settingsStore";
 import { isDesktop, readFileText } from "../fileBridge";
@@ -366,6 +367,71 @@ export class LocalFileNode extends ClassicPreset.Node {
       return { frame };
     } catch (e) {
       return fail(e instanceof Error ? e.message : String(e));
+    }
+  }
+}
+
+// ─── GEOCODE (place name → lat / lon / timezone) ────────────────────────────────
+// Open-Meteo geocoding, keyless + CORS-open. The enabler node: feeds Weather and any
+// node that today wants hand-typed coordinates. Sync data() + one background fetch per
+// place (the WebSource pattern); ambiguity is a per-node label pick, default top match.
+export class GeocodeNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    place: "A place name, for example Boise or Paris. Pick among matches on the card.",
+    timezone: "IANA name, for example America/Boise. Feeds Weather and Time Zone Convert.",
+  };
+  label: string;
+  stringLiterals: Record<string, string> = {};
+  /** The chosen match's label (ambiguity pick); "" = the top match. */
+  pickedLabel = "";
+  width = 220; height = 150;
+  // Transient: the last fetch's matches (for the card's pick list) + the fetch cache guard.
+  matches: GeocodeMatch[] = [];
+  private _lastFetchKey: string | undefined;
+
+  constructor(init?: { label?: string; pickedLabel?: string }) {
+    super("Geocode");
+    this.label = init?.label ?? "Geocode";
+    this.pickedLabel = init?.pickedLabel ?? "";
+    this.addInput("place", strIn("Place"));
+    this.addOutput("lat", numOut("Lat"));
+    this.addOutput("lon", numOut("Lon"));
+    this.addOutput("timezone", strOut("Time zone"));
+    this.addOutput("label", strOut("Place"));
+  }
+
+  data(inputs: { place?: string[] }): { lat: number | null; lon: number | null; timezone: string | null; label: string | null } {
+    const raw = readInput(inputs.place, this.stringLiterals.place ?? "");
+    const place = typeof raw === "string" ? raw.trim() : "";
+    const key = connectionStore.key(this.id, place);
+    if (key !== this._lastFetchKey) {
+      if (place === "") {
+        this._lastFetchKey = key;
+        this.matches = [];
+        connectionStore.setState(this.id, { status: "idle" });
+      } else if (requestNetwork(this.id)) {
+        // Only commit the key once the fetch is actually launched, so a gated pass re-asks.
+        this._lastFetchKey = key;
+        void this.fetchMatches(place).then(() => scheduleConnectionRecalc());
+      }
+    }
+    // The pick is applied per compute (cheap, from the cached matches) so changing it
+    // re-selects without a re-fetch.
+    const m = pickGeocodeMatch(this.matches, this.pickedLabel);
+    return { lat: m?.lat ?? null, lon: m?.lon ?? null, timezone: m?.timezone ?? null, label: m?.label ?? null };
+  }
+
+  private async fetchMatches(place: string): Promise<void> {
+    connectionStore.setState(this.id, { status: "loading" });
+    try {
+      const { text } = await fetchText(geocodeUrl(place));
+      this.matches = parseGeocode(text);
+      connectionStore.setState(this.id, this.matches.length === 0
+        ? { status: "error", message: "No match" }
+        : { status: "ok", rows: this.matches.length, cols: 1, fetchedAt: Date.now() });
+    } catch (e) {
+      this.matches = [];
+      connectionStore.setState(this.id, { status: "error", message: e instanceof Error ? e.message : String(e) });
     }
   }
 }

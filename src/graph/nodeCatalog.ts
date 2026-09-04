@@ -48,7 +48,7 @@ import {
   ColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, BindColumnsNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode, AllocatorNode,
   ReconcileNode,
   BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode,
-  WebSourceNode, LocalFileNode, ImportHtmlNode, ImportXmlNode, DataFeedNode,
+  WebSourceNode, LocalFileNode, ImportHtmlNode, ImportXmlNode, DataFeedNode, GeocodeNode,
   WriteFileNode, WriteObsidianNode, ImportObsidianNode,
   GroupNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, FileLinkNode, SvgPickerNode,
   CompositeNode, CompositeInputNode, CompositeOutputNode,
@@ -206,6 +206,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         children: [
           { type: "web-source",    label: "Web Source",  description: "Loads a Frame from a CSV or JSON URL. Columns are auto-typed. Stores the URL, not the data: refresh to re-pull. Desktop fetches any URL. The browser only fetches CORS-enabled ones.", create: () => new WebSourceNode(), parity: false },
           { type: "data-feed",     label: "Data Feed",   description: "Live economic and market data as a Frame: FRED series with no key, stock history through Alpha Vantage with a free key. Stores the series id or ticker, not the data. Refresh re-pulls. Desktop works with arbitrary URLs. The browser is CORS-limited.", create: () => new DataFeedNode(), parity: false },
+          { type: "geocode",       label: "Geocode",     description: "Turns a place name into latitude, longitude and timezone. Pick among matches when a name is ambiguous. Feeds Weather and anything that wants coordinates. No key needed.", create: () => new GeocodeNode(), parity: false, keywords: "geocode place location city coordinates latitude longitude timezone lookup open-meteo" },
           { type: "local-file",   label: "Local File",  description: "Loads a Frame from your data folder (Settings ▸ Data). A `.parquet` reads straight into the native engine, so typed columns arrive intact with no inference. Anything else is read as CSV with columns auto-typed. Stores the file name. Refresh to re-read. Desktop only.", create: () => new LocalFileNode(), parity: false, keywords: "csv parquet arrow column columnar native engine polars file load import" },
           { type: "import-html",   label: "Import HTML", description: "Grab the Nth HTML table on a page as a Frame, columns auto-typed. Stores the URL. Refresh to re-pull. Desktop any URL, browser CORS-only. Sheets: `IMPORTHTML`.", create: () => new ImportHtmlNode(), parity: false },
           { type: "import-xml",    label: "Import XML",  description: "Extracts a page's XPath matches (for example `//h2/a`) as a text list. Stores the URL. Refresh to re-pull. Desktop any URL, browser CORS-only. Sheets: `IMPORTXML`.", create: () => new ImportXmlNode(), parity: false },

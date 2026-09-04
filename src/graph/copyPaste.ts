@@ -86,6 +86,7 @@ export const INIT_FIELD_ORDER = [
   "action", "agg", "order", "condition", "algorithm", "substance", "bands", "material", "symbol",
   "layoutHidden",
   "inheritFormat",
+  "pickedLabel",
 ] as const;
 
 // Object-valued extras, appended after INIT_FIELD_ORDER in this fixed order.
