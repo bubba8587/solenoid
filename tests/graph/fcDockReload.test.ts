@@ -3,6 +3,8 @@ import { NodeEditor, ClassicPreset } from "rete";
 import { FrameInputNode } from "../../src/graph/nodes/frame";
 import { ListIndexNode } from "../../src/graph/nodes/list";
 import { FormatControllerNode } from "../../src/graph/nodes/formatController";
+import { DisplayNode } from "../../src/graph/nodes/display";
+import { TodayNowNode } from "../../src/graph/nodes/date";
 import { settleWildcardTypes } from "../../src/graph/trueAnyAdopt";
 import { frameSourceToText, type FrameValue } from "../../src/graph/frame";
 import type { Schemes } from "../../src/graph/schemes";
@@ -39,6 +41,57 @@ async function buildChain() {
   await editor.addConnection(new ClassicPreset.Connection(fi as never, "frame", idx as never, "list") as never);
   return { editor, fi, idx, fc };
 }
+
+describe("a docked FC keeps its saved date style through a load-time wildcard", () => {
+  // The author's chain: Script → Display → FC set to "Wed, Jun 3, 2026". A Script's
+  // output type is only known after the data pass, so at dockSelf the Display's `out`
+  // still reads trueany; re-defaulting the format there turned the saved date style
+  // into "auto", and the later re-adapt to date turned that into the FIRST date style.
+  it("resolving through trueany leaves the pick alone; the real date type keeps it", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const disp = new DisplayNode();
+    const fc = new FormatControllerNode({ format: "date_dow", socketDataType: "datelist" });
+    for (const n of [disp, fc]) await editor.addNode(n as never);
+    fc.hostNodeId = disp.id;
+    fc.socketKey = "out";
+    fc.side = "output";
+    await editor.addConnection(new ClassicPreset.Connection(disp as never, "out", fc as never, "in") as never);
+
+    // Load order with an unfed host: the type resolves to the wildcard.
+    settleWildcardTypes(editor as never);
+    fc.dockSelf(editor as never);
+    expect(fc.socketDataType).toBe("trueany");
+    expect(fc.format).toBe("date_dow");
+
+    // The value's type arrives (here statically, a date source) — the pick stands.
+    const today = new TodayNowNode();
+    await editor.addNode(today as never);
+    await editor.addConnection(new ClassicPreset.Connection(today as never, "result", disp as never, "in") as never);
+    settleWildcardTypes(editor as never);
+    fc.adaptTypeFromConnections(editor as never);
+    expect(fc.socketDataType).toBe("date");
+    expect(fc.format).toBe("date_dow");
+  });
+
+  it("a real family change still re-defaults: a date style on a number socket → auto", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const fi = new FrameInputNode({ frameText: frameSourceToText([{ name: "n", type: "number", cells: ["1", "2"] }]) });
+    const idx = new ListIndexNode();
+    idx.literals.index = 1;
+    idx.literals.column = 1;
+    const fc = new FormatControllerNode({ format: "date_dow", socketDataType: "date" });
+    for (const n of [fi, idx, fc]) await editor.addNode(n as never);
+    fc.hostNodeId = idx.id;
+    fc.socketKey = "result";
+    fc.side = "output";
+    await editor.addConnection(new ClassicPreset.Connection(idx as never, "result", fc as never, "in") as never);
+    await editor.addConnection(new ClassicPreset.Connection(fi as never, "frame", idx as never, "list") as never);
+    settleWildcardTypes(editor as never);
+    fc.dockSelf(editor as never);
+    expect(fc.socketDataType).toBe("numlist");
+    expect(fc.format).toBe("auto");
+  });
+});
 
 describe("docked FC survives a reload of the computed-column → INDEX chain", () => {
   it("MECHANISM: docking before the settle is exactly the bug — the FC adopts the raw upstream frame", async () => {
