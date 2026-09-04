@@ -6,6 +6,65 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-04b — backward commit review: fixes, reconciles, the input-cable regression)
+
+Walked `develop` backward from `5b3004ac` to `1fd16b6c` (the whole post-1.3 tail) for correctness
+and refactor findings; baseline and end state both `tsc` clean, full vitest green.
+
+**Input→output cable regression — ROOT CAUSE + FIX (`flow.css`).** Probed live (a puppeteer DOM
+probe, now `scripts/socket-drag-probe.mjs`): at rest the INPUT socket wrapper carries the
+pointer-catch halo (`socket.css` `[data-socket-side="input"]::before`, absolutely positioned),
+and the RF Handle reset made the Handle `position: static` — a positioned pseudo paints OVER a
+static sibling, so `elementFromPoint` on an input dot returned the classless wrapper, the press
+went to RF's node drag, and the cursor was the node's `grab`. Outputs carry no rest halo, hence
+one-sided. Fix: the Handle reset is `position: relative` (same box, paints above the halo);
+every input now starts a cable with the crosshair, an input-started drag lands on an output, and
+`socket-box-probe.mjs` (socketBox12) stays clean. React Flow itself already allowed target-first
+drags (`connectablestart` on both handle types) — the block was purely the paint order.
+
+**Fixes landed from the review.** (1) Note frontmatter type PINS now respect the value's
+dimensionality (`reshapePin` in `annotation.ts`): a pinned `strlist` on a key that becomes
+rows-of-objects no longer stringifies each row to `[object Object]`, and a scalar pin on a key
+that becomes a list no longer truncates it to its first element — the pin keeps the element
+family, the body owns scalar/list/frame; a `frame` guess drops the pin. (2) The DM criterion-key
+normalization (`critKey` / `criterionColumn`) has one home in `frameVerbs.ts`; XLOOKUP/XMATCH share
+one `spillLookup`. (3) Catalog copy caught up with the redesigns: Sensitivity's Scenarios sentence
+was still the row-per-scenario shape, Decision Matrix said nothing about the weights table, the
+Allocator listed a two-column output. (4) Chart Builder's select rows are table-driven
+(`SELECT_KEYS`, like `TOGGLE_KEYS`); the radar `color` comment no longer claims radar is one series.
+
+**Decision-matrix seed re-cut to the author's seed rule** (groups liberally, standoffs sparingly:
+a standoff ONLY pins an unwired explanatory Note to what it explains; a Note wired through its
+frontmatter exports needs none; data nodes never standoff to consumers). Dropped `weights→dm`,
+`noteScreen→join` (frame-wired) and `radar→join`; added the expanded `grp-dm` (Weights + Decision
+Matrix) and retargeted the DM note to it; 4 note standoffs + 3 groups; re-baked with `tune-seeds`.
+The backlog sweep item carries the rule.
+
+**Modal keystroke guard (`modalGuard.ts`).** The author hit Enter on the Tidy confirm opening the
+Command Palette (the confirm's capture handler prevented default but the canvas's bubble handler
+still ran). One predicate, `modalOwnsKeyboard()` — an `aria-modal` dialog / pop-up overlay root in
+the DOM, or an open palette / reference / settings / shortcuts — is asked first by
+`canvasKeyboard` (F9 excepted), the surface's Escape handler and RF's `onBeforeDelete`; the
+per-store checks those handlers each carried are gone. Backlog item deleted.
+
+**Docs reconciled:** `node-coverage.md` § Decision support (weights frame, inverted scenarios,
+the Note-frame seed), `v2.0/10` grounding, `architecture.md` (modalGuard row), backlog (canvas
+cursor + popup 1px + keystroke-guard lines deleted as landed).
+
+**Reviewed clean (no action):** frame-shape resolver DM/Note rules (match `decisionColumns`;
+scaffolding for the declarative-shape backlog item), radar transpose + ÷max normalization, the
+Allocator verb + `allocateOps` modes, weighted Shuffle key, XLOOKUP matrix spill, locked-group
+obstacle separation, flip-edge reversal (OR is right: both ends flipped still puts the reader
+left), pop-up one-basis frame, the elk import retry.
+
+**Questions for the author** (not blocking, answered whenever):
+- Shuffle: a wired `weights` list SHORTER than the list silently falls back to a uniform shuffle.
+  Keep, error (`#VALUE!`), or weigh the missing tail 0?
+- Radar per-axis scale divides by max |value|, so a negative spoke value plots below the centre and
+  the [0,1] domain clips it. Acceptable for now, or clamp / min-max when negatives appear?
+- `allocator.json` still titles the seed and its note "Budget Allocator" after the node rename —
+  deliberate (the seed IS about a budget), or should both follow the node?
+
 ### SESSION DIGEST (2026-09-04 — Allocator rename, weights-row removal, domain sweep)
 
 **Renamed Budget Allocator → Allocator**, whole identity: class `AllocatorNode`, kind
@@ -100,11 +159,6 @@ pattern only fits pipeline-shaped seeds (the Allocator); the other worked exampl
 GALLERIES whose "intermediary" nodes ARE the exhibit and are named by their notes, so grouping
 them would hide the lesson.
 
-**OPEN — input→output cable draw regression (React Flow port).** You can no longer drag a
-cable starting from an INPUT socket back into an output; hovering an input shows the pan-grab
-pointer, not a connect cursor. RF Handles likely only start connections from the source side —
-needs the input Handle to be connectable-as-start (or a reverse-connect path). Not yet fixed.
-
 **FYI carried forward:** `color` applies to radar only for a SINGLE-series radar (multi-series
 uses the palette, like pie); verify in the screenshot pass and decide whether to keep offering
 it. Author sanctioned a screenshot pass over the chart ops + options.
@@ -166,41 +220,3 @@ case the SVG was built for). Plan:
   (3) delete `CardFrame` + `__frame-*` CSS. Net: −1 component, ~−60 lines SVG CSS, node+popup
   framing unified.
 
-### SESSION DIGEST (2026-09-01 — 1.3 shipped; the 1.4 / 2.0 planning pass)
-
-**1.3 is released** (v1.3.0 on `main`; the author: `develop` is level with it). The backlog's
-"Cut 1.3" tail is deleted; the backlog is retitled to 1.4 and carries only the two
-ratifications (the 1.4 cut, `out-of-scope.md`) plus the ARR pass.
-**The deferral review ran as a planning pass.** Every parked, deferred and author-gated idea
-(deferrals, the 2.0 flagships, the v2.0 bundles, the pack-composite queue, the open
-python-r-gap item) was walked and scored on one rubric — strength, relevance,
-complexity, blast radius; no time estimates by order — and placed: **`1.4-plan.md`** (new: the
-workbench release — what-if surgery pin/mute/peek/cone + an Optimize run mode, the Record and
-table lifts, the widget nodes behind a per-document network permission, the surface
-hardening: allowlist A, node-combining round 2, ARR, AI palette back on; every item with a
-grounded plan, tests, gate and done-definition; a consolidated author-call list), and
-**`2.0-plan.md`** (rewritten: pages, collaboration, the transpiler, conditional formatting,
-canvas at scale, value-model extensions, packs as a program, Gantt; the cross-cutting
-prerequisites it surfaces — save-format freeze + migration seam, trust on open, desktop
-updater, the web-target decision, version history + diff, an accessibility baseline).
-Four new bundle docs: `v2.0/20-pages.md` (one editor/engine, pages as view scopes, cross-page
-cables as portal stubs), `v2.0/21-collaboration.md` (the author's new surface — accounts,
-cloud saves, multiplayer — staged 0→3, Stage 0 serverless and 1.4-pullable; states plainly
-what a service costs; the CRDT keyed by the addressable model's names; the trust-on-open security
-work), `v2.0/22-canvas-at-scale.md` (headless card metrics → virtualization → worker HIC),
-`v2.0/23-conditional-formatting.md` (design-pass prep: a rule is a graph value).
-**Reconciles:** `deferrals.md` shrunk to parked-with-no-plan (planned entries moved into the
-plans — one home per fact); `release-notes-features.md` reset to the 1.4 shell (the 1.3 list
-is at the v1.3.0 tag); **`out-of-scope.md` test 3 / §3 / §11 and decisions R5 rewritten to
-the collaboration order** — first framed as "the order reverses them", corrected same
-session on the author's point: that doc carries no ARR (`authorRuled`: nothing outside
-`rules.md` does) and is a DRAFT, so the "stay out" was agent inference and the order is
-the first ruling on that ground — nothing to reverse, only an inference to correct; bundle 08's
-"sheets → Groups" becomes "sheets → pages"; bundle 16's status points at 1.4 C1; the docs
-index and the v2.0 index list the new docs. Findings from the pass worth a line: the
-compositeToolbarReroute flagship is mostly delivered by the RF port's `activeGraph` seam —
-1.4 E2 is an audit, not a build; Solver parity fits as a composite RUN MODE (Goal Seek
-generalized), not a node; the Excel transpiler's best-fidelity path is Excel Tables →
-Frame Inputs with computed columns (structured refs ≈ tableRefSemantics).
-**Awaiting the author:** the 1.4 cut; the out-of-scope ratification (now a rewrite of three
-sections); the calls listed at the end of `1.4-plan.md` and in `v2.0/21` § Open author calls.

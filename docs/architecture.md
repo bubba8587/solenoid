@@ -117,6 +117,7 @@ src/
 | `flow/StaticFlowStage.tsx` | Non-interactive RF stage (landing demo, node showcase): `makeStaticStack` + controlled viewport |
 | `flow/flowSeeds.ts`, `flow/preview.ts` | Own seed glob (no persistence import — headless-harness-safe); generic-card value previews |
 | `canvasKeyboard.ts` | `installCanvasKeyboard(deps)` — the whole keyboard map (single-key graph actions, Ctrl chords, F9, arrows/nudge, rotate, Tab chrome toggle) + its helpers (resolveGroupTargets, rotateSelection, nudgeSelection) |
+| `modalGuard.ts` | `modalOwnsKeyboard()` — the one gate every canvas-level key handler (canvasKeyboard, the surface's Escape, RF's delete hook) asks first: an `aria-modal` dialog / pop-up overlay in the DOM, or an open palette / reference / settings / shortcuts, and the canvas shortcuts stand down (F9 excepted) |
 | `canvasLasso.ts` | `installLassoSelection(deps)` — shift-drag / touch-select lasso: winding-direction touch vs enclose modes, cached node rects, frame-coalesced live apply, release-time cable path sampling |
 | `canvasContextMenu.ts` | Right-click TARGET resolvers behind RF's node/edge/pane handlers: socket (with near-miss radius), cable (ribbon/selection expansion), node body (pin/standoff offers) |
 | `canvasActions.ts` | The graph actions those menus/keys invoke: `deleteSelection` (ghost-splicing bulk delete), `insertConduitForCables` (lane-bundled Conduit splice), `linkStandoffBetween`, `deleteCables`, `attachFormatController` |

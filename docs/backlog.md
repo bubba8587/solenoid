@@ -29,23 +29,6 @@ REMOVED — the old elkjs-vs-rete-auto-arrange peer conflict left with the plugi
 - [ ] **The `rules.md` ARR pass** (author-present; the author: waits for 1.4) — early in the
   release, before the track work adds rules (`1.4-plan.md` D3).
 
-## Canvas & chrome
-
-- [ ] **Canvas cursor: standard pointer on hover, pan-hand only while panning** (React Flow
-  port consequence — RF sets the grab cursor everywhere). Keep the pan-hand for Canvas Lock;
-  otherwise a plain pointer on hover and the grab cursor only during an actual pan drag.
-- [ ] **Popup card border sits 1px inward** of the header overhang + the grouped corner
-  indicator (the corner then reads ~0.5px proud of the modal corner). Card border should be
-  1px larger in all directions to line up. (Being looked at with the resize work.)
-
-## Input & modals
-
-- [ ] **Keystroke guards on modals / pop-ups** (maybe a React Flow port symptom). Canvas
-  shortcuts leak through open overlays: with a Frame Input pop-up open, `A` still opens the
-  Add menu behind it; with a Tidy/Cleanup confirm modal up, `Enter` both confirms the modal
-  AND opens the Command Palette. The canvas key handler should stand down while a
-  modal/popup owns the keyboard.
-
 ## Records & Frame Input
 
 - [ ] **Form-layout hide toggle.** Frame Input → Add Form Layout: the layout box wants a small
@@ -71,10 +54,13 @@ REMOVED — the old elkjs-vs-rete-auto-arrange peer conflict left with the plugi
 ## Seeds
 
 - [ ] **Seed-layout sweep for whole-canvas Tidy.** Full-canvas Tidy (baked into every seed via
-  `tune-seeds`) scatters free-floating Notes. Go through the seed library adding **groups** (wrap
-  intermediary clusters) and **note-standoffs** (pin each explanatory Note to the node/group it
-  explains) so the tuned layout stays sensible, then re-tune. The **decision-matrix** seed is the
-  done exemplar/pattern (2 groups + 7 standoffs; see its `standoffs`/`GroupNode` entries).
+  `tune-seeds`) scatters free-floating Notes. Go through the seed library adding **groups**
+  (liberally: wrap intermediary clusters and an input beside its consumer) and, sparingly, a
+  **note-standoff** — ONLY to pin an explanatory Note that is not otherwise wired to the node/group
+  it explains (a Note whose frontmatter exports feed the graph is already tied in; data nodes never
+  standoff to their consumers). Author's ruling 2026-09-04: the first decision-matrix pass (7
+  standoffs, input→consumer ones included) overused them; that seed is being re-cut to the rule and
+  becomes the exemplar. Re-tune after each seed.
 
 ## Layout
 
