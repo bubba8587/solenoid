@@ -109,6 +109,12 @@ carries the two open calls.
 the Note-frame seed), `v2.0/10` grounding, `architecture.md` (modalGuard row), backlog (canvas
 cursor + popup 1px + keystroke-guard lines deleted as landed).
 
+**Walk stop point.** Below `main` the walk covered `af410b48` down to `45130f0c` (the Add-menu
+per-word search + one-edit matcher, the env.ts dissolve, the minimap recolor, the four RF-port
+fixes: collapsed-group tow, the FlowCableEdge hook order, the FC chip 1px step + caret
+placement, the delete verb + removed-node skip in the pass) — all clean; older is the
+author-smoked 1.3 release tail, not re-walked.
+
 **Reviewed clean (no action):** frame-shape resolver DM/Note rules (match `decisionColumns`;
 scaffolding for the declarative-shape backlog item), radar transpose + ÷max normalization, the
 Allocator verb + `allocateOps` modes, weighted Shuffle key, XLOOKUP matrix spill, locked-group
