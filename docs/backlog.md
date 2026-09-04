@@ -43,9 +43,6 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Tables
 
-- [ ] **Constrained entry on text columns (1.4 B2.1, author 2026-09-04c).** Typing into a text cell
-  in the table popup's grid or Form view offers the column's distinct existing values (a
-  `datalist`); anything new still types. Pure distinct list from `frameVerbs`; no new column type.
 - [ ] **Table popup: frozen header + first column (1.4 B3, author 2026-09-04c).** The column
   names stay put while a long table scrolls, and optionally the first column while it scrolls
   sideways (`position: sticky` on `th` / the first `td`, no virtualization). Toggled from the
