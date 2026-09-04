@@ -6,12 +6,14 @@ import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { flyToNode } from "../flyToNode";
 
-export function CubeDisplay({ cube, label, full }: {
+export function CubeDisplay({ cube, label, full, peek }: {
   cube: CubeValue | SolError | null;
   label?: string;
   /** Render every column/row instead of the compact 3×3 preview. MUST switch tableLayout to
    *  `auto` — a `fixed` width:100% table inside a `width:max-content` card sizes runaway. */
   full?: boolean;
+  /** Socket hover-peek: a compact head-5 preview with NO chip (read-only, no popup). */
+  peek?: boolean;
 }) {
   if (isSolError(cube)) {
     return (
@@ -31,7 +33,7 @@ export function CubeDisplay({ cube, label, full }: {
   }
   const rows = cubeRowCount(cube);
   // Cap rendered rows even when "full" — a Display card is not a browser.
-  const maxR = full ? Math.min(rows, 100) : Math.min(rows, 3);
+  const maxR = full ? Math.min(rows, 100) : Math.min(rows, peek ? 5 : 3);
   const maxC = full ? cube.columns.length : Math.min(cube.columns.length, 3);
   const extraCols = !full && cube.columns.length > maxC;
 
@@ -66,9 +68,11 @@ export function CubeDisplay({ cube, label, full }: {
           )}
         </tbody>
       </table>
-      <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
-        <CubeChip value={cube} label={label} size="sm" />
-      </div>
+      {!peek && (
+        <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
+          <CubeChip value={cube} label={label} size="sm" />
+        </div>
+      )}
     </div>
   );
 }

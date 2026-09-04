@@ -6,6 +6,7 @@ import { socketFlipStore } from "../socketFlipStore";
 import { useFlowSocket } from "../flowSurface";
 import { SolenoidSocket, SOCKET_TYPE_LABELS } from "../sockets";
 import { frameHintFor, frameHintStore, type FrameHint } from "../frameHint";
+import { cableValueStore } from "../cableValueStore";
 import { getActiveEditor } from "../activeGraph";
 import { cubeTransform, CUBE_FILL_PATH } from "./cubeGlyph";
 import { SocketComponent, LIST_TYPES, TABLE_TYPES, COMBO_COLORS } from "./SocketComponent";
@@ -13,6 +14,9 @@ import { SocketComponent, LIST_TYPES, TABLE_TYPES, COMBO_COLORS } from "./Socket
 // Hover-intent delay before the example hint pops (tooltip-like; a cable drag
 // crossing sockets must not flash tables).
 const HINT_DELAY_MS = 300;
+// The live VALUE peek dwells a touch longer — it's a bigger surface and shouldn't
+// flash as the pointer crosses output sockets during ordinary work / cable routing.
+const PEEK_DELAY_MS = 400;
 
 /** The declared example hint for this input, if its node's class carries one. */
 function hintFor(side: Side, nodeId: string, socketKey: string): FrameHint | undefined {
@@ -82,7 +86,7 @@ export function MeasuredSocketRow({
     const hint = hintFor(side, nodeId, socketKey);
     if (!hint) return;
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    frameHintStore.open({ hint, anchor: { left: r.left, right: r.right, centerY: r.top + r.height / 2 } });
+    frameHintStore.open({ kind: "example", hint, anchor: { left: r.left, right: r.right, centerY: r.top + r.height / 2 } });
   };
   return (
     // Output rows get a modifier so they SURVIVE collapse into the output values.
@@ -163,41 +167,61 @@ export function NodeSocket({ side, socketKey, nodeId, payload, top, className }:
   const shape = isCube ? "cube" : isSquare ? "square" : "circle";
   const typeLabel = payload instanceof SolenoidSocket ? SOCKET_TYPE_LABELS[payload.dataType] : undefined;
 
-  // Frame-input example hint (frameHint.ts) — the MOUSE half: hover-intent on
-  // the dot shows it; leaving, pressing (a cable pick), or unmount hides it.
-  // The dot deliberately has NO touch trigger: a touch press on the dot begins
-  // the cable pick, which captures the pointer, so the tap's pointerup never
-  // reaches this wrapper — the TOUCH trigger is the whole row
-  // (MeasuredSocketRow, the intentional mobile path; touch-gestures.md).
+  // Socket hover overlay (frameHint.ts) — the MOUSE half: after a dwell, a floating
+  // layer pops beside the dot. A live VALUE peek for an OUTPUT socket or a WIRED input
+  // (the socket's value as a scaled-down Display), else the declared EXAMPLE hint for an
+  // unwired frame input — never both. Leaving, pressing (a cable pick), unmount, or a
+  // wheel hides it. The dot has NO touch trigger: a touch press begins the cable pick,
+  // which captures the pointer, so the tap's up never reaches this wrapper — the touch
+  // trigger is the whole row (MeasuredSocketRow's example-hint path; touch-gestures.md).
   const hint = hintFor(side, nodeId, socketKey);
   const hintTimer = useRef<number | null>(null);
+  const [peekShown, setPeekShown] = useState(false);
   const cancelHint = () => {
     if (hintTimer.current !== null) { clearTimeout(hintTimer.current); hintTimer.current = null; }
+    if (peekShown) setPeekShown(false);
     frameHintStore.close();
   };
-  useEffect(() => cancelHint, []);
-  const hintEnter = hint
-    ? (e: React.PointerEvent) => {
-        if (e.pointerType !== "mouse") return;
-        const el = e.currentTarget as HTMLElement;
-        if (hintTimer.current !== null) clearTimeout(hintTimer.current);
-        hintTimer.current = window.setTimeout(() => {
-          hintTimer.current = null;
-          const r = el.getBoundingClientRect();
-          frameHintStore.open({ hint, anchor: { left: r.left, right: r.right, centerY: r.top + r.height / 2 } });
-        }, HINT_DELAY_MS);
-      }
-    : undefined;
+  useEffect(() => cancelHint, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The socket's live value + the node whose formatting frames it: an output reads its
+  // own cached output; a wired input reads its SOURCE output (so units/formats match the
+  // producer). An unwired input has none.
+  const resolvePeekValue = (): { value: unknown; nodeId: string } | null => {
+    if (side === "output") return { value: cableValueStore.get(nodeId, socketKey), nodeId };
+    const conn = getActiveEditor()?.getConnections()
+      .find((c) => c.target === nodeId && c.targetInput === socketKey);
+    if (!conn) return null;
+    return { value: cableValueStore.get(conn.source, conn.sourceOutput), nodeId: conn.source };
+  };
+
+  const hintEnter = (e: React.PointerEvent) => {
+    if (e.pointerType !== "mouse") return;
+    const el = e.currentTarget as HTMLElement;
+    const peek = resolvePeekValue();
+    const willValue = !!peek && peek.value != null;
+    if (!willValue && !hint) return; // nothing to show — don't arm
+    if (hintTimer.current !== null) clearTimeout(hintTimer.current);
+    hintTimer.current = window.setTimeout(() => {
+      hintTimer.current = null;
+      const r = el.getBoundingClientRect();
+      const anchor = { left: r.left, right: r.right, centerY: r.top + r.height / 2 };
+      if (willValue) frameHintStore.open({ kind: "value", value: peek!.value, nodeId: peek!.nodeId, anchor });
+      else frameHintStore.open({ kind: "example", hint: hint!, anchor });
+      setPeekShown(true);
+    }, willValue ? PEEK_DELAY_MS : HINT_DELAY_MS);
+  };
 
   return (
     <div
       onPointerEnter={hintEnter}
-      onPointerLeave={hint ? cancelHint : undefined}
+      onPointerLeave={cancelHint}
       className={(className ?? "") + (lit ? " solenoid-socket--lit" : "")}
       style={{ position: "absolute", ...horizontal, ...vertical }}
-      // The hint replaces the native type tooltip (both at once would overlap).
-      title={hint ? undefined : typeLabel}
-      onPointerDown={hint ? cancelHint : undefined}
+      // The hover overlay (example hint OR value peek) replaces the native type tooltip
+      // while it is up — both at once would overlap.
+      title={hint || peekShown ? undefined : typeLabel}
+      onPointerDown={cancelHint}
       data-socket-key={socketKey}
       data-socket-side={side}
       data-node-id={nodeId}
