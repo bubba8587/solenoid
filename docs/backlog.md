@@ -48,10 +48,6 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Formatting & units
 
-- [ ] **FC inherit pick for text case / logical show-as** (2026-09-04c, follow-up to the FC's
-  `—` style pick). The `—` inherit affordance lives on the format-field dropdown (number /
-  complex / date); text (case) and logical (show-as) use their own fields and have no toggle
-  yet. `inheritFormat` already inherits every axis when set, so this is UI only.
 - [ ] **LATER (author, 2026-09-04): fold the Format Controller into the Display** — format and
   unit set at sources and displays, flowing downstream only; the docking subsystem and the
   upstream walk go. Analysis + scope in `1.4-plan.md` Track I. Gate: the author's go after the

@@ -217,6 +217,32 @@ describe("FC inherit (`—` style pick) — carries the upstream format, keeps i
     expect(makeAnnotationResolver(editor).outAnnotation(fc2.id, "out")?.format).toBe("percent");
   });
 
+  it("text: FC1 UPPER case → FC2 (—) carries UPPER downstream", async () => {
+    const { FormatControllerNode } = await import("../../src/graph/nodes/formatController");
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const fc1 = new FormatControllerNode({ textCase: "upper", socketDataType: "string" });
+    const fc2 = new FormatControllerNode({ inheritFormat: true, socketDataType: "string" });
+    const disp = node("Display", { passesUnitThrough: true });
+    for (const n of [fc1, fc2] as unknown as ClassicPreset.Node[]) await editor.addNode(n as never);
+    await editor.addNode(disp as never);
+    await connect(editor, fc1 as unknown as ClassicPreset.Node, fc2 as unknown as ClassicPreset.Node);
+    await connect(editor, fc2 as unknown as ClassicPreset.Node, disp);
+    expect(makeAnnotationResolver(editor).inAnnotation(disp.id, "in")?.textCase).toBe("upper");
+  });
+
+  it("logical: FC1 Yes/No → FC2 (—) carries yesno downstream", async () => {
+    const { FormatControllerNode } = await import("../../src/graph/nodes/formatController");
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const fc1 = new FormatControllerNode({ logicalStyle: "yesno", socketDataType: "logical" });
+    const fc2 = new FormatControllerNode({ inheritFormat: true, socketDataType: "logical" });
+    const disp = node("Display", { passesUnitThrough: true });
+    for (const n of [fc1, fc2] as unknown as ClassicPreset.Node[]) await editor.addNode(n as never);
+    await editor.addNode(disp as never);
+    await connect(editor, fc1 as unknown as ClassicPreset.Node, fc2 as unknown as ClassicPreset.Node);
+    await connect(editor, fc2 as unknown as ClassicPreset.Node, disp);
+    expect(makeAnnotationResolver(editor).inAnnotation(disp.id, "in")?.logicalStyle).toBe("yesno");
+  });
+
   it("inherit with nothing upstream falls back to the FC's own style + unit", async () => {
     const { FormatControllerNode } = await import("../../src/graph/nodes/formatController");
     const editor = new NodeEditor() as unknown as AnyEditor;

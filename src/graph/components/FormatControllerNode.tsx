@@ -3,7 +3,7 @@ import { FormatControllerNode } from "../rete-nodes";
 import type { FormatControllerNode as FormatControllerNodeType } from "../rete-nodes";
 import {
   FORMAT_STYLE_LABELS, FORMAT_STYLE_GROUPS, DATE_FORMAT_STYLES,
-  LOGICAL_STYLE_LABELS, LAMBDA_VIEW_LABELS, CHART_FONT_SCALES,
+  LOGICAL_STYLE_LABELS, TEXT_CASE_LABELS, LAMBDA_VIEW_LABELS, CHART_FONT_SCALES,
   NEGATIVE_STYLE_LABELS, SCALE_MODE_LABELS,
   unitGroupLabel, formatMismatchStore,
   type FormatStyleId, type FormatStyle, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle,
@@ -11,7 +11,7 @@ import {
 } from "../formatAnnotationStore";
 import {
   familyOf, controlsFor, COMPLEX_FORMAT_STYLES, precisionApplies,
-  groupingApplies, scaleApplies, negativeApplies,
+  groupingApplies, scaleApplies, negativeApplies, type FormatFamily,
 } from "../formatModel";
 import { SOCKET_COLORS } from "../sockets";
 import { clamp } from "../nodes/mathUtils";
@@ -30,9 +30,11 @@ import "./FormatControllerNode.css";
 import { stopDragStart } from "../coarse";
 
 
-/** The muted `← Decimal · 3 places` hint the inherit pick shows, in the column row's own
- *  words (frameFormatStore.describeAnnotation). */
-function describeInheritedStyle(ann: FormatAnnotation): string {
+/** The muted `← Decimal · 3 places` hint the inherit pick shows, per family, in the column
+ *  row's own words (frameFormatStore.describeAnnotation). */
+function describeInheritedStyle(ann: FormatAnnotation, family: FormatFamily): string {
+  if (family === "text") return TEXT_CASE_LABELS[ann.textCase ?? "none"];
+  if (family === "logical") return LOGICAL_STYLE_LABELS[ann.logicalStyle ?? "truefalse"];
   const label = FORMAT_STYLE_LABELS[ann.format as FormatStyle] ?? ann.format;
   if (!precisionApplies(ann.format)) return label;
   const d = ann.decimalDigits ?? 2;
@@ -149,16 +151,29 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     syncNode();
   }
 
-  function onCaseChange(c: TextCase) {
-    node.textCase = c;
-    setTextCaseLocal(c);
+  // `""` is the `—` (inherit) pick, shared with the number/date style dropdown: the FC
+  // carries the whole upstream text/logical display cluster through rather than its own.
+  function onCaseChange(cs: TextCase | "") {
+    const inherit = cs === "";
+    node.inheritFormat = inherit;
+    setInheritLocal(inherit);
+    if (!inherit) { node.textCase = cs; setTextCaseLocal(cs); }
     syncNode();
+    // Inheriting collapses the B/I/size + advanced rows, changing the chip height.
+    if (node.hostNodeId) {
+      requestAnimationFrame(() => requestAnimationFrame(() => repositionDockedNodes(node.hostNodeId)));
+    }
   }
 
-  function onLogicalChange(s: LogicalStyle) {
-    node.logicalStyle = s;
-    setLogicalLocal(s);
+  function onLogicalChange(s: LogicalStyle | "") {
+    const inherit = s === "";
+    node.inheritFormat = inherit;
+    setInheritLocal(inherit);
+    if (!inherit) { node.logicalStyle = s; setLogicalLocal(s); }
     syncNode();
+    if (node.hostNodeId) {
+      requestAnimationFrame(() => requestAnimationFrame(() => repositionDockedNodes(node.hostNodeId)));
+    }
   }
 
   function onLambdaViewChange(v: LambdaView) {
@@ -291,7 +306,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   const c0 = controlsFor(family, format);
   const c = inheritFormat ? { ...c0, precision: false, advanced: false, customPattern: false } : c0;
   const inheritedHint = inheritFormat && node.inheritedAnnotation
-    ? describeInheritedStyle(node.inheritedAnnotation) : "";
+    ? describeInheritedStyle(node.inheritedAnnotation, family) : "";
 
   // The style row keeps the fixed ← → pair (the format applies behind and travels
   // forward); the `—` pick adds the muted upstream-style hint below the dropdown.
@@ -334,12 +349,13 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           <FcArrow dir="back" title={backTitle} />
           <LazySelect
             className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
-            value={textCase}
-            onChange={(e) => onCaseChange(e.target.value as TextCase)}
+            value={inheritFormat ? "" : textCase}
+            onChange={(e) => onCaseChange(e.target.value as TextCase | "")}
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             title="Letter case, display only"
           >
+            <option value="" title="Inherit the upstream format">—</option>
             <option value="none">Aa (as-is)</option>
             <option value="upper">UPPER</option>
             <option value="lower">lower</option>
@@ -347,6 +363,14 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           </LazySelect>
           <FcArrow dir="fwd" title={fwdTitle} />
         </div>
+        {inheritedHint && (
+          <div className="solenoid-fc__row solenoid-fc__inherit-hint" aria-hidden="true">
+            <span className="solenoid-fc__arrow-spacer" />
+            <span>{`← ${inheritedHint}`}</span>
+            <span className="solenoid-fc__arrow-spacer" />
+          </div>
+        )}
+        {!inheritFormat && (
         <div className="solenoid-fc__row">
           <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
           <button
@@ -381,6 +405,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           </LazySelect>
           <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
         </div>
+        )}
         {/* Advanced tier — alignment / markdown / monospace, all display-only. */}
         {c.advanced && advancedOpen && (
           <>
@@ -492,22 +517,32 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
         </>
       ) : c.logical ? (
         /* Logical socket: show-as (TRUE/FALSE · 1/0 · Yes/No · ✓/✗), display only. */
+        <>
         <div className="solenoid-fc__row">
           <FcArrow dir="back" title={backTitle} />
           <LazySelect
             className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
-            value={logicalStyle}
-            onChange={(e) => onLogicalChange(e.target.value as LogicalStyle)}
+            value={inheritFormat ? "" : logicalStyle}
+            onChange={(e) => onLogicalChange(e.target.value as LogicalStyle | "")}
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             title="How TRUE/FALSE renders"
           >
+            <option value="" title="Inherit the upstream format">—</option>
             {Object.entries(LOGICAL_STYLE_LABELS).map(([id, label]) => (
               <option key={id} value={id}>{label}</option>
             ))}
           </LazySelect>
           <FcArrow dir="fwd" title={fwdTitle} />
         </div>
+        {inheritedHint && (
+          <div className="solenoid-fc__row solenoid-fc__inherit-hint" aria-hidden="true">
+            <span className="solenoid-fc__arrow-spacer" />
+            <span>{`← ${inheritedHint}`}</span>
+            <span className="solenoid-fc__arrow-spacer" />
+          </div>
+        )}
+        </>
       ) : c.lambda ? (
         /* Lambda socket: view-as (signature · KaTeX · highlighted · mono), display only. */
         <div className="solenoid-fc__row">
