@@ -90,6 +90,15 @@ source column's unit tag rides onto the derived column (`nodes/frame.ts`), gated
 on the derived cells inferring as `number`: a computed column whose cells come
 out non-numeric silently drops its authored unit.
 
+The per-column FORMAT rides `FrameColumn.format` downstream exactly like the unit
+(formatFlowsDownstream): the coercion wrapper's OUTPUT step (`coerceInputs.ts`)
+stamps every emitted frame with that node's own `frameFormatStore` picks, and the
+nearer node's pick overrides what arrived. `frameFormatStore` stays the one
+PERSISTED home, keyed by the node that picked — `format` is derived per compute
+and never serialized. A column BUILT by a verb carries a source column's format
+only where that verb already carries its unit (nest, the Allocator's Allocation);
+every other derived column starts blank.
+
 ## The control truth table
 
 Which controls exist per family (popup rows AND resolution axes):

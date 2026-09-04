@@ -102,6 +102,7 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
     const ed = getOwningEditor(data.id);
     const ar = getOwningView(data.id);
     if (ed && ar) reconcileTypesAfterEdit(ed, ar);
+    scheduleAutosave();
     void processGraph();
   }, [data]);
   // LIVE write-through: an in-popup edit commits and recomputes NOW, handing the open
@@ -111,6 +112,7 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
     const ed = getOwningEditor(data.id);
     const ar = getOwningView(data.id);
     if (ed && ar) reconcileTypesAfterEdit(ed, ar);
+    scheduleAutosave();
     await processGraph(data.id);
     const derived = data.cachedResult;
     if (!isFrameValue(derived)) return null;

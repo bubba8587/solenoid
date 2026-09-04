@@ -4,6 +4,7 @@ import { createValueStore } from "./storeKit";
 import type { SolError } from "./errorValue";
 import type { FrameSourceColumn } from "./frame";
 import type { ColumnUnit } from "./unitValue";
+import type { FormatAnnotation } from "./formatAnnotationStore";
 
 /** A grid cell; `null` is MISSING and a SolError is a per-cell error. */
 export type Cell = number | string | boolean | null | SolError;
@@ -65,6 +66,9 @@ export interface TablePopupState {
   formatControls?: "columns" | "matrix";
   /** Per-column unit driving the base-SI → display conversion; aligned with `headers`. */
   columnUnits?: (ColumnUnit | undefined)[];
+  /** Per-column format INHERITED on the value (rules formatFlowsDownstream); the row
+   *  shows it as its current value until this node makes its own pick. */
+  columnFormats?: (FormatAnnotation | undefined)[];
   /** A unit-TAGGABLE source: the unit choice is written back on Save and rides the
    *  value downstream. Derived frames leave this off (display-only formats). */
   unitTaggable?: boolean;

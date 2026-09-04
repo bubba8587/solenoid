@@ -4,6 +4,8 @@ import { documentStore } from "./documentStore";
 import { loadRevealStore } from "./loadReveal";
 import { getEditor, getView, processGraph } from "./process";
 import { attachFormatController } from "./canvasActions";
+import { frameFormatStore } from "./frameFormatStore";
+import type { FormatAnnotation } from "./formatAnnotationStore";
 if (import.meta.env.DEV) {
   (window as unknown as { __spike: unknown }).__spike = {
     seed: (id: string) => documentStore.newFromTemplate(id),
@@ -32,6 +34,13 @@ if (import.meta.env.DEV) {
       const ed = getEditor();
       const fc = n as unknown as { refreshAnnotation?: (e: unknown) => void };
       if (ed && typeof fc.refreshAnnotation === "function") fc.refreshAnnotation(ed);
+      await processGraph();
+      return true;
+    },
+    // The table popup's per-column format pick, which `patch` can't reach (a store, not
+    // a node field) — the format-flow probe sets it on the AUTHORING node.
+    setColumnFormat: async (nodeId: string, column: string, ann: FormatAnnotation) => {
+      frameFormatStore.set(nodeId, column, ann);
       await processGraph();
       return true;
     },

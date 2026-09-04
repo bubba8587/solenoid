@@ -11,6 +11,8 @@ import { isFrameRef, readFrame } from "./frameBackend";
 import { isSolError } from "./errorValue";
 import { stripUnitCells } from "./unitBridge";
 import { isUnitCell, carryMatrixUnit } from "./unitValue";
+import { frameFormatStore } from "./frameFormatStore";
+import type { FrameValue } from "./frame";
 
 // The relational verb nodes are LAZY: their frame inputs must reach data() as the
 // raw FrameRef; every OTHER node gets one collected to a FrameValue first.
@@ -211,7 +213,23 @@ function coerceValueNoWiden(dataType: SocketDataType, v: unknown): unknown {
   return v;
 }
 
+/** Stamp THIS node's per-column format picks onto the frame it emits, so the format
+ *  rides the value downstream (rules formatFlowsDownstream). A column with no local
+ *  pick keeps whatever arrived on the input frame. Shallow-copies rather than
+ *  mutating — a cached frame is shared with every other consumer. */
+function stampFrameFormats(nodeId: string, f: FrameValue): FrameValue {
+  let changed = false;
+  const columns = f.columns.map((c) => {
+    const ann = frameFormatStore.get(nodeId, c.name);
+    if (ann === undefined || ann === c.format) return c;
+    changed = true;
+    return { ...c, format: ann };
+  });
+  return changed ? { ...f, columns } : f;
+}
+
 type NodeLike = {
+  id?: string;
   data: (inputs: Record<string, unknown[]>) => unknown;
   inputs?: Record<string, { socket?: unknown } | undefined>;
   stringLiterals?: Record<string, string>;
@@ -241,6 +259,32 @@ export function wrapNodeData(node: NodeLike) {
   // passthrough only on its spec-named ones; SIDE inputs unwrap.
   const keepAllUnits = node.unitAware === true;
   const isPass = !keepAllUnits && isPassthroughNode(node);
+
+  // The OUTPUT half of the boundary. Memoized on the emitted frame's IDENTITY, which
+  // the backend's upload cache and every node's own identity memo depend on staying
+  // stable across passes.
+  const nodeId = typeof node.id === "string" ? node.id : null;
+  const stampMemo = new WeakMap<FrameValue, { ver: number; out: FrameValue }>();
+  const stampFrame = (f: FrameValue): FrameValue => {
+    const ver = frameFormatStore.version();
+    const hit = stampMemo.get(f);
+    if (hit && hit.ver === ver) return hit.out;
+    const out = stampFrameFormats(nodeId!, f);
+    stampMemo.set(f, { ver, out });
+    return out;
+  };
+  const stampOutputs = (out: unknown): unknown => {
+    if (!nodeId || out === null || typeof out !== "object") return out;
+    const rec = out as Record<string, unknown>;
+    let next: Record<string, unknown> | null = null;
+    for (const key of Object.keys(rec)) {
+      const v = rec[key];
+      if (!isFrameValue(v)) continue;
+      const stamped = stampFrame(v);
+      if (stamped !== v) (next ??= { ...rec })[key] = stamped;
+    }
+    return next ?? out;
+  };
 
   // Runs once inputs are ref-free (none arrived, or they were materialized first).
   const coerceAll = (inputs: Record<string, unknown[]>) => {
@@ -274,7 +318,8 @@ export function wrapNodeData(node: NodeLike) {
         if (csv != null && csv.trim() !== "") coerced[key] = [parseListLiteral(csv, dt)];
       }
     }
-    return orig(coerced);
+    const out = orig(coerced);
+    return out instanceof Promise ? out.then(stampOutputs) : stampOutputs(out);
   };
 
   node.data = (inputs: Record<string, unknown[]>) => {

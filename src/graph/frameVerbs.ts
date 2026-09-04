@@ -1203,7 +1203,7 @@ export function nestFrame(f: FrameValue, keyColumns: readonly string[], nestedNa
     return {
       __frame: true,
       columns: childCols.map((c) => ({
-        name: c.name, type: c.type, ...(c.unit ? { unit: c.unit } : {}),
+        name: c.name, type: c.type, ...(c.unit ? { unit: c.unit } : {}), ...(c.format ? { format: c.format } : {}),
         values: rowIdx.map((i) => cellAt(c, i)),
       })),
     } as FrameValue;
@@ -1638,13 +1638,13 @@ export function allocateFrame(
   // Allocation is the first number column so a wired pie/chart plots it; Share is the raw
   // FRACTION of the spend (format it as a percent downstream, not by scaling here). Any
   // price comparison (the range, headroom) is a join/computed column downstream, not the
-  // allocator's job. Allocation carries the min column's unit.
+  // allocator's job. Allocation carries the min column's unit and format.
   const share = alloc.map((a) => (total > 0 ? a / total : 0));
   return {
     __frame: true,
     columns: [
       { name: nameCol?.name ?? "Category", type: "string", values: names },
-      { name: "Allocation", type: "number", values: alloc, ...(minCol.unit ? { unit: minCol.unit } : {}) },
+      { name: "Allocation", type: "number", values: alloc, ...(minCol.unit ? { unit: minCol.unit } : {}), ...(minCol.format ? { format: minCol.format } : {}) },
       { name: "Share", type: "number", values: share },
     ],
   };

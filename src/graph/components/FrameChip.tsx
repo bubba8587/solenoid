@@ -96,6 +96,7 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
           // frame gets the display-only format dropdown.
           formatControls: "columns",
           columnUnits: full.columns.map((c) => c.unit),
+          columnFormats: full.columns.map((c) => c.format),
           unitTaggable: isSource,
           editableHeaders: isSource || !!onSave,
           literalSource: isSource,

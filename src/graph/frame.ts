@@ -7,6 +7,7 @@ import { formatDim, dimEqual, type Dim } from "./dimension";
 import { parseColumnUnitFromHeader, columnUnitFromSpec, tagFrameCellUnit, matrixCellsFromList } from "./unitColumn";
 import { displayMagnitudeOf } from "./unitBridge";
 import { elementFamilyOf, type SocketDataType } from "./sockets";
+import type { FormatAnnotation } from "./formatAnnotationStore";
 
 // A date column stores Excel serials — the `type: "date"` tag is the only signal
 // those numbers are dates.
@@ -22,6 +23,9 @@ export interface FrameColumn {
   /** A numeric column LOCKED to a dimensional unit: cells stay bare AS-TYPED
    *  magnitudes (the display unit's, NOT base-SI — `tagFrameCellUnit` converts). */
   unit?: ColumnUnit;
+  /** The DISPLAY format riding downstream from the node that picked it, stamped at
+   *  the producer (`coerceInputs`); never serialized, and a nearer pick overrides. */
+  format?: FormatAnnotation;
   /** The INPUTTED source text per cell, BEFORE type inference rewrote it. Present
    *  only on SOURCE frames; a computed/transformed column drops it. */
   raw?: string[];
@@ -597,6 +601,7 @@ function subFrame(child: FrameValue, rowIdxs: number[]): FrameValue {
       name: c.name,
       type: c.type,
       ...(c.unit ? { unit: c.unit } : {}),
+      ...(c.format ? { format: c.format } : {}),
       values: rowIdxs.map((i) => c.values[i] ?? null),
       ...(c.raw ? { raw: rowIdxs.map((i) => c.raw![i] ?? "") } : {}),
     })),

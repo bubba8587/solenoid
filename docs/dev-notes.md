@@ -105,9 +105,28 @@ narrated demo bar). sudoku-solver / composite-workbench / zz-scratch / the two h
 of the sweep. **The author eyeballs the results** — the rule was applied blind; the backlog line
 carries the two open calls.
 
+**A frame column's FORMAT now flows downstream like its unit** (the author's Allocator report:
+Headroom set to Decimal in the popup, and neither the downstream Display's card frame nor its
+popup showed it). `FrameColumn.format` is the carrier; the stamp is ONE seam — the coercion
+wrapper's new OUTPUT step in `coerceInputs.ts`, which every node's `data()` result passes,
+composites included — reading that node's own `frameFormatStore` picks. Shallow-copies (a cached
+frame is shared) and memoizes on the frame's identity, which the backend's upload cache and the
+nodes' own identity memos depend on. A verb-BUILT column takes a source column's format only
+where it already takes the unit — nest and the Allocator's Allocation, per an exhaustive audit
+of every `FrameColumn` construction in `frameVerbs.ts`; everything that spreads carries it free.
+Readers take the local pick first (`FrameDisplay.annFor`, the popup's format row, which now shows
+an inherited format as its current value). **Limit, same as the unit's:** a LAZY verb emits a
+`FrameRef`, so its own pick can't be stamped into the value — it renders on that node's card but
+travels no further; and `previewToFrame` / the Polars wire structs carry neither field.
+**Second defect, same area:** a popup format pick wrote to the store with no `scheduleAutosave()`
+and no recompute, so it survived a reload only by luck — both now fire, and Frame Input's
+`onSaveSource`/`onCommitSource` (where a popup UNIT pick lands) autosave too.
+
 **Docs reconciled:** `node-coverage.md` § Decision support (weights frame, inverted scenarios,
-the Note-frame seed), `v2.0/10` grounding, `architecture.md` (modalGuard row), backlog (canvas
-cursor + popup 1px + keystroke-guard lines deleted as landed).
+the Note-frame seed), `v2.0/10` grounding, `architecture.md` (modalGuard row), `format-model.md`
++ `rules.md` formatFlowsDownstream + subsystem-invariants § Unit flow (the frame-column format
+carrier), backlog (canvas cursor + popup 1px + keystroke-guard + frame-format lines deleted as
+landed).
 
 **Third mechanical lane (author: "any other mechanical backlog work?").** (1) `04262401` +
 `5dfcb29d` — the dependency walk: in-range moves (Tauri plugins, `@xyflow/react` 12.11.6,

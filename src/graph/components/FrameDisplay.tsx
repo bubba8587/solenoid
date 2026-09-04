@@ -17,7 +17,7 @@ function isNanCell(v: FrameCell): boolean {
   return typeof v === "number" && Number.isNaN(v);
 }
 
-function fmtCell(v: FrameCell, type: FrameColType = "number", ann?: FormatAnnotation): string {
+export function fmtCell(v: FrameCell, type: FrameColType = "number", ann?: FormatAnnotation): string {
   // A persisted format applies by column KIND, so a stale cross-type one left by a
   // number↔date switch falls through to the type default rather than misrendering.
   if (ann) {
@@ -66,8 +66,9 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
   const ctxNodeId = useHostNodeId();
   const hostNodeId = formatNodeId ?? ctxNodeId;
   useSyncExternalStore(frameFormatStore.subscribe, frameFormatStore.version);
-  const annFor = (colName: string): FormatAnnotation | undefined =>
-    hostNodeId ? frameFormatStore.get(hostNodeId, colName) : undefined;
+  // A local pick overrides the format the column carried in (rules formatFlowsDownstream).
+  const annFor = (col: { name: string; format?: FormatAnnotation }): FormatAnnotation | undefined =>
+    (hostNodeId ? frameFormatStore.get(hostNodeId, col.name) : undefined) ?? col.format;
 
   if (isSolError(frame)) {
     return (
@@ -115,7 +116,7 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
                 const nan = isNanCell(cell);
                 return (
                 <td key={j} className={nan ? "solenoid-nan-cell" : undefined} title={nan ? "Not a number: an undefined value in the data" : undefined} style={{ padding: full ? "2px 8px" : "1px 4px", textAlign: c.type === "string" ? "left" : "right", fontSize: full ? 13 : 12, fontFamily: "var(--font-mono)", color: "var(--text)", borderRight: "1px solid var(--border)", whiteSpace: full ? "nowrap" : undefined, ...(full ? {} : { overflow: "hidden", textOverflow: "ellipsis" }) }}>
-                  {fmtCell(cell, c.type, annFor(c.name))}
+                  {fmtCell(cell, c.type, annFor(c))}
                 </td>
                 );
               })}

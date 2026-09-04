@@ -13,6 +13,8 @@ import { formatNumberWithAnnotation, isDateStyle, applyLogicalStyle, type Format
 import { isUnitCell } from "../unitValue";
 import { columnUnitLabel } from "../unitColumn";
 import { frameFormatStore } from "../frameFormatStore";
+import { scheduleAutosave } from "../persistence";
+import { processGraph } from "../process";
 import { formatListCell } from "./valueDisplayFormat";
 import { FormatStyleSelect, DateStyleSelect, UnitSelect, LogicalStyleSelect, TextCaseSelect } from "./fcControls";
 import { applyTextCase } from "../formatAnnotationStore";
@@ -217,8 +219,10 @@ export function TablePopup() {
     setLiveComputed(null);
     // A persisted per-column format (keyed by node+column) wins over the type default.
     const fmtNodeId = state.pinNodeId;
-    const seedFormat = (colName: string | undefined, dflt: FormatAnnotation): FormatAnnotation => {
-      const saved = fmtNodeId && colName ? frameFormatStore.get(fmtNodeId, colName) : undefined;
+    const seedFormat = (colName: string | undefined, dflt: FormatAnnotation, inherited?: FormatAnnotation): FormatAnnotation => {
+      // A LOCAL pick wins; else the format the column carried in reads as the current
+      // value, so the row shows what the grid is rendering (rules formatFlowsDownstream).
+      const saved = (fmtNodeId && colName ? frameFormatStore.get(fmtNodeId, colName) : undefined) ?? inherited;
       if (!saved) return dflt;
       // A saved format left cross-type by a column type switch resets to the type default.
       const fmt = isDateStyle(saved.format) === isDateStyle(dflt.format) ? saved.format : dflt.format;
@@ -232,7 +236,7 @@ export function TablePopup() {
         seedFormat(state.headers?.[j], {
           format: state.columnTypes?.[j] === "date" ? "date_dmy" : "auto",
           unit: state.columnUnits?.[j]?.display ?? "none",
-        })));
+        }, state.columnFormats?.[j])));
     } else {
       setColFmt([]);
     }
@@ -342,7 +346,13 @@ export function TablePopup() {
     setColFmtAt(idx, patch);
     const nodeId = state?.pinNodeId;
     const col = colFmtKey(c);
-    if (nodeId && col) frameFormatStore.set(nodeId, col, { ...annFor(c), ...patch, unit: "none" });
+    if (!nodeId || !col) return;
+    frameFormatStore.set(nodeId, col, { ...annFor(c), ...patch, unit: "none" });
+    // The pick lives in a sidecar store, so nothing else marks the document dirty; and
+    // the stamp onto FrameColumn.format happens at COMPUTE, so downstream frames only
+    // pick it up on a recompute (rules formatFlowsDownstream).
+    scheduleAutosave();
+    void processGraph(nodeId);
   }
   // Takes either a read-only frame's typed value or an editable source's raw text.
   function controlledCell(raw: CellValue, c: number): string {

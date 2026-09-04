@@ -1146,7 +1146,11 @@ what it inherits, so a format is always overridable from any point down the chai
 the magnitude, so the precision chosen for the old unit no longer describes the number.
 The UPSTREAM direction (`downstreamAnnotation`, a box reading a trailing FC) stays
 bounded by transforms: a format chosen AFTER a transform says nothing about the value
-before it.
+before it. A FRAME's per-column format obeys the same rule through a different carrier:
+it rides `FrameColumn.format` on the VALUE (like the column's unit), stamped onto every
+emitted frame from the producing node's own `frameFormatStore` picks by the coercion
+wrapper's output step, with the nearer node's pick overriding. It is derived per compute
+and NEVER serialized — the store stays the one persisted home.
 
 *Why (author, 2026-09-04):* "Generally, we want formatting to carry down the stream if
 possible, but it's always possible to override. Units are LOCKED in contrast."
@@ -1156,7 +1160,9 @@ formats pass as one", "a family change drops the format (number → text)", "an 
 downstream of a transform overrides the inherited format", "Convert still DROPS the
 format — it authors a new unit and rescales the magnitude", and the upstream bound "the
 lock STOPS at a transform between the Display and the FC"; `unitFlowSeed.test.ts` → "C ·
-a transform carries the number FORMAT, and the unit ($ dimension + display) rides".
+a transform carries the number FORMAT, and the unit ($ dimension + display) rides";
+`frameColumnFormat.test.ts` for the frame-column carrier (survives Sort → Columns, the
+nearer pick wins, derived columns follow the unit rule, nothing serializes).
 
 ### perInputUnitBlind — The unit-blind boundary is PER-INPUT **[INFERRED]**
 **MUST:** raw `UnitCell`s never reach a node that doesn't run the dimension algebra.
