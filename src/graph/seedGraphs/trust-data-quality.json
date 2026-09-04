@@ -7,8 +7,8 @@
     {
       "id": "fi-sensors",
       "type": "FrameInputNode",
-      "x": -10,
-      "y": -37,
+      "x": 115,
+      "y": 722,
       "init": {
         "label": "Sensor readings",
         "frameText": "Sensor, Temp\nA, 21\nB, \nC, 45\nD, 88"
@@ -17,8 +17,8 @@
     {
       "id": "exp",
       "type": "ExpectNode",
-      "x": 331,
-      "y": -42,
+      "x": 440,
+      "y": 717,
       "init": {
         "label": "Temp 0–50 °C?",
         "checkNotNull": true,
@@ -32,8 +32,8 @@
     {
       "id": "fi-jan",
       "type": "FrameInputNode",
-      "x": -10,
-      "y": 278,
+      "x": 111,
+      "y": 1135,
       "init": {
         "label": "Prices — January",
         "frameText": "SKU, Price, Qty\nA, 10, 5\nB, 20, 3\nC, 30, 2"
@@ -42,8 +42,8 @@
     {
       "id": "fi-feb",
       "type": "FrameInputNode",
-      "x": -10,
-      "y": 522,
+      "x": 111,
+      "y": 1378,
       "init": {
         "label": "Prices — February",
         "frameText": "SKU, Price, Qty\nA, 10, 6\nB, 25, 3\nD, 40, 1"
@@ -52,8 +52,8 @@
     {
       "id": "rec",
       "type": "ReconcileNode",
-      "x": 331,
-      "y": 344,
+      "x": 444,
+      "y": 1204,
       "init": {
         "label": "Jan → Feb"
       },
@@ -66,8 +66,8 @@
     {
       "id": "sl-price",
       "type": "SliderInputNode",
-      "x": 50,
-      "y": 766,
+      "x": -26,
+      "y": -74,
       "init": {
         "label": "Price",
         "value": 12,
@@ -84,8 +84,8 @@
     {
       "id": "sl-cost",
       "type": "SliderInputNode",
-      "x": 50,
-      "y": 1002,
+      "x": -26,
+      "y": 161,
       "init": {
         "label": "Unit cost",
         "value": 7,
@@ -102,8 +102,8 @@
     {
       "id": "sl-units",
       "type": "SliderInputNode",
-      "x": 50,
-      "y": 1238,
+      "x": -26,
+      "y": 396,
       "init": {
         "label": "Units sold",
         "value": 100,
@@ -120,8 +120,8 @@
     {
       "id": "expr-profit",
       "type": "ExpressionNode",
-      "x": 331,
-      "y": 979,
+      "x": 255,
+      "y": 138,
       "init": {
         "label": "Profit",
         "expr": "(price - cost) * units"
@@ -130,10 +130,65 @@
     {
       "id": "tornado",
       "type": "TornadoNode",
-      "x": 656,
-      "y": 1004,
+      "x": 580,
+      "y": 163,
       "init": {
         "label": "Profit sensitivity"
+      }
+    },
+    {
+      "id": "grp-expect",
+      "type": "GroupNode",
+      "x": 91,
+      "y": 659,
+      "init": {
+        "label": "Range and null check",
+        "members": [
+          "fi-sensors",
+          "exp"
+        ],
+        "color": "gold",
+        "collapsed": false,
+        "width": 617,
+        "height": 380
+      }
+    },
+    {
+      "id": "grp-reconcile",
+      "type": "GroupNode",
+      "x": 87,
+      "y": 1077,
+      "init": {
+        "label": "Reconcile two months",
+        "members": [
+          "fi-jan",
+          "fi-feb",
+          "rec"
+        ],
+        "color": "blue",
+        "collapsed": false,
+        "width": 625,
+        "height": 534
+      }
+    },
+    {
+      "id": "grp-sensitivity",
+      "type": "GroupNode",
+      "x": -50,
+      "y": -132,
+      "init": {
+        "label": "Sensitivity sliders",
+        "members": [
+          "sl-price",
+          "sl-cost",
+          "sl-units",
+          "expr-profit",
+          "tornado"
+        ],
+        "color": "purple",
+        "collapsed": false,
+        "width": 898,
+        "height": 753
       }
     }
   ],
