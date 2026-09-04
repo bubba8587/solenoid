@@ -6,6 +6,34 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-04 — Allocator rename, weights-row removal, domain sweep)
+
+**Renamed Budget Allocator → Allocator**, whole identity: class `AllocatorNode`, kind
+`super("Allocator")`, catalog `type:"allocator"`, refused formula token `ALLOCATOR`
+(`FRAME_SURFACE_NAMES`), seed `allocator.json`, test `allocator.test.ts`. Standing rule: "rename"
+means the type too, not just the label.
+
+**Removed the Allocator's `weights` list socket** — an ordered per-row list wired as a socket
+violates orderedColumnsAreFrames (node-coverage §Node design rules: aligned parallel columns →
+ONE frame, not parallel list sockets). Weights now come ONLY from the categories frame's Weight
+(or Value) column; no column = equal weights. `allocateFrame` lost its `wiredWeights` param; the
+card's `BUDGET_CABLE_ONLY` set is gone (only `amount` is cable-only, in Min proportional); height
+215→191. Seed already fed weights by column, unchanged. **Open parallel:** DecisionMatrix still
+has a wired `weights` list socket (its inline weights are criterion-name-keyed, the wired list a
+positional override) — same rule smell, left for the author to rule on.
+
+**Allocator-domain sweep.** Author promoted three same-DNA nodes (closed-form linear, solver-free,
+tedious by hand), each to ship with a seed → specs in `1.4-plan.md` Track H: **H1 Payoff Planner**
+(debt avalanche/snowball, cascade freed payments), **H2 Apportionment** (integer exact-sum split;
+recommended a NEW node over an Allocator mode — different inputs/invariant), **H3 Group Cost
+Settle** (net + greedy min-transfers). Parked to `deferrals.md`: blend/mix (alligation), loan-term
+solver. Break-even ruled a composite run mode (A6), not a node.
+
+**Open problem — personnel scheduling.** Author asked to explore shift fill-in / balancing hours
+over a roster. Not yet a spec: assignment/balancing is LP-ish (Hungarian / min-cost-flow), so the
+author decides which slice is node-sized and closed-form vs a composite run mode (A6) before a
+Track H sibling gets written.
+
 ### SESSION DIGEST (2026-09-03 — charts, pie labels, Budget Allocator seed)
 
 Shipped on `develop`: **Pie category labels** reworked to a hand-drawn two-segment leader

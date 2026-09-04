@@ -46,6 +46,12 @@ REMOVED — the old elkjs-vs-rete-auto-arrange peer conflict left with the plugi
   AND opens the Command Palette. The canvas key handler should stand down while a
   modal/popup owns the keyboard.
 
+## Records & Frame Input
+
+- [ ] **Form-layout hide toggle.** Frame Input → Add Form Layout: the layout box wants a small
+  ✕ in its top-right corner that hides AND disables the entered form layout — WITHOUT deleting
+  it (the layout text is kept, just inert until re-enabled).
+
 ## Layout
 
 - [ ] **Flipped-node Tidy places it up-and-left; want down-and-left.** The predecessor

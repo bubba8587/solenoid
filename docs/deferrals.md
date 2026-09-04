@@ -72,6 +72,15 @@ and its entry deleted. Ruled-out-forever ideas: `out-of-scope.md`; settled ratio
 - **Two-axis board (swimlanes)** — Airtable's kanban lacks it; a differentiator if the board
   ever grows. HOLD until 1.4's grouped gallery (B1) proves the lane machinery.
 
+- **Blend / mix to a spec** — Allocator-family (2026-09-04 domain sweep, parked). Rows are
+  ingredients with a cost + one attribute (protein %, octane, ABV); find the cheapest blend that
+  hits a target attribute. Closed-form for the two-source case (alligation), greedy beyond.
+  Reopen on a real mixing use case. Sibling to `1.4-plan.md` Track H (Allocator family).
+- **Loan / annuity term solver** — Allocator-family (parked same sweep). principal + rate +
+  payment → months to payoff (closed-form log), the inverse of an amortization; or the payment
+  for a given term. Small — likely a formula or a composite run mode (A6), not its own node;
+  its amortization kernel overlaps Track H's **H1 Payoff Planner**, so build it there if at all.
+
 ## Parked bugs (explicitly parked by the author)
 
 - **High memory use (Chrome tab estimate) for a light app** (author 2026-08-26, parked
