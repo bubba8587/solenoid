@@ -22,9 +22,11 @@ This file is the map.
 ├── src-tauri/                # Tauri (Rust) shell: window, fs/dialog plugins
 ├── public/                   # Static assets served by Vite
 ├── fixtures/                 # frame-verbs/ — the shared JS↔Rust verb corpus (oneVerbCorpus)
-├── scripts/                  # new-node.mjs (scaffold), undo-drift-probe.mjs + socket-box-probe.mjs
-│                             #     (live-page probes on the dev server: undo position fidelity,
-│                             #     socketBox12's rendering half), run-graph.ts (headless runner; takes
+├── scripts/                  # new-node.mjs (scaffold), undo-drift-probe.mjs + socket-box-probe.mjs +
+│                             #     socket-drag-probe.mjs + tidy-drift-probe.mjs (live-page probes on the
+│                             #     dev server: undo position fidelity, socketBox12's rendering half, a
+│                             #     cable starts from either socket end, Tidy is a fixed point + the
+│                             #     confirm's Enter stays modal), run-graph.ts (headless runner; takes
 │                             #     JSON or the text form, gated on graphValidate),
 │                             #     validate-graph.ts (strict-reader CLI), ai-grounding.ts
 │                             #     (model-facing spec CLI), ai-prompt.ts (the palette's AI

@@ -72,6 +72,18 @@ KMeans, PCA, Logistic, the imports/feeds, Cube Rollup, Outliers, list Group By, 
 `frameShapeRules.test.ts` pins one case per rule. Follow-up in the backlog: the migrated rules
 still read a card literal on a WIRED socket; the new ones gate on `ctx.wired`.
 
+**Two more backlog items landed by the same agent lane.** (1) `857e757c` — the eight migrated
+frame-shape rules (Columns, Rename, Group By, Unpivot, Pivot, Join, Split Column, Add Index)
+return `null` when their config socket is WIRED instead of projecting the card literal (unwired
+paths byte-identical; 8 tests). (2) `f01f6287` — the **Frame Input form-layout hide toggle**:
+`FrameInputNode.layoutHidden` (persisted via `INIT_FIELD_ORDER`), a `get activeLayout()` that is
+the ONE reader the card and `FrameDisplay`'s `formLayout` share (hidden → the popup Form view
+falls back to stacked), a ✕ top-right of the layout box, and the add button reading "Show Form
+layout" while a hidden text exists. **Author eyeball:** type a layout, ✕ → box collapses to the
+Show button and the popup Form view is stacked; Show (and a reload while hidden) → the exact
+text is back, the state survives. End state of the session: `tsc` clean, 285 files / 4888 tests
+green; `tidy-drift-probe` clean on cubes / unit-flow / null-and-logical / decision-matrix.
+
 **Seed-layout sweep, batch one (the backlog item, under the rule above; an Opus agent per
 batch).** getting-started (the Budget exhibit now wraps its Display + FC; no Notes there),
 table-verbs (a Nearest-match group holding the as-of/XLOOKUP exhibit + its Note; the intro Note's
