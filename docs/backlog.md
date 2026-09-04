@@ -58,13 +58,6 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Sources
 
-- [ ] **Per-document network permission (1.4 C2, author 2026-09-04c; build FIRST, the widgets
-  ship behind it).** A document opened from a file or import fetches nothing until allowed: one
-  notice ("This document connects to N services — allow?"), remembered per document in the
-  sidecar `meta`; your own autosaved documents never gated; an "always allow" escape hatch in
-  Settings ▸ Data. Doc-level gate in `connectionStore.ts` in front of the background fetch;
-  foreign-vs-own known at import in `persistence.ts`. Tests: gated doc fetches nothing, allow
-  releases all, own docs unaffected. Spec: `1.4-plan.md` § C2.
 - [ ] **Widget nodes Tier 1 (1.4 C1, author 2026-09-04c).** The bundle in `v2.0/16-widget-nodes.md`:
   Weather + Geocode (Open-Meteo), Currency/FX (Frankfurter), Holidays (Nager.Date), Time Zone
   Convert + World Clock (pure `Intl`), QR Code (pure). Each on the Data Feed build (provider file
