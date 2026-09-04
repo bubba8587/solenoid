@@ -424,14 +424,14 @@ export function MultiSeriesView({
   } else if (op === "radar") {
     // Radar spokes carry incommensurable units (a $ column beside /10 scores), so unless the
     // author asked for a shared radius, normalize each spoke (data row) to [0,1] by its own
-    // min/max and plot `_n{j}`; the raw `s{j}` still rides the row for the tooltip.
+    // MAX (÷max, not min/max) and plot `_n{j}`; proportional, so the weakest option keeps its
+    // real fraction of the axis rather than collapsing to the centre. Raw `s{j}` stays on the
+    // row for the tooltip.
     const radarNorm = (opts?.radarscale ?? "axis") === "axis";
     const rData = !radarNorm ? data : data.map((row) => {
-      const fin = series.map((_, j) => row[`s${j}`]).filter((x): x is number => x != null);
-      const lo = fin.length ? Math.min(...fin) : 0;
-      const hi = fin.length ? Math.max(...fin) : 0;
+      const hi = series.reduce((m, _, j) => { const x = row[`s${j}`]; return x == null ? m : Math.max(m, Math.abs(x)); }, 0);
       const out = { ...row };
-      series.forEach((_, j) => { const rv = row[`s${j}`]; out[`_n${j}`] = rv == null ? null : hi > lo ? (rv - lo) / (hi - lo) : 0.5; });
+      series.forEach((_, j) => { const rv = row[`s${j}`]; out[`_n${j}`] = rv == null ? null : hi > 0 ? rv / hi : 0; });
       return out;
     });
     const key = (j: number) => (radarNorm ? `_n${j}` : `s${j}`);
