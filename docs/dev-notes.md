@@ -6,6 +6,27 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-04c — three agents in worktrees; the finance merges land)
+
+Three Opus agents (Han = Lead on `develop`, Chewie and Lando on their own branches in git
+worktrees, merged by Han); the author remote, one docs point per turn.
+
+**The three finance merges, released by the author's Set-card verdict.** Discount Security
+(TBILLEQ/TBILLPRICE/TBILLYIELD, DISC/PRICEDISC/YIELDDISC/INTRATE/RECEIVED, PRICEMAT/YIELDMAT),
+Accrued Interest (ACCRINT / ACCRINTM as a Periodic / At-maturity toggle, the Irr precedent) and
+Bond Pricing (PRICE/YIELD + the four ODD* ops). Each card's sockets follow a per-op key table
+after the shared settlement/maturity pair; the switch prunes departing cables first
+(onePrunePath), keeps shared inputs' cables and literals, and reorders sockets per the new
+op. One mechanism for all three: `keysDroppedBy` + `reshapeInputs` (`finance.ts` § Spec-table
+op cards) and `makeSpecOpComponent` (`components/specOpNode.tsx`). Side effects: PriceDisc and
+BondPrice no longer show a dead price socket beside their yield; the odd-coupon date is two
+sockets (`firstcoupon` / `lastinterest`) because they are different facts; the T-bill and
+ACCRINT math moved to `financeOps` as kernels (`tbill`, `accrint`). Ten + two + six catalog
+leaves collapsed to three, each carrying its Excel equivalents in `nodeExcel`; old saves of the
+merged types load as Placeholders (noBackCompat). **Author eyeball:** Finance > Other has
+Discount Security + Accrued Interest, Finance > Bonds has Bond Pricing; switch ops and watch
+the sockets reshape with the shared ones keeping their cables.
+
 ### SESSION DIGEST (2026-09-04b — backward commit review: fixes, reconciles, the input-cable regression)
 
 Walked `develop` backward from `5b3004ac` to `1fd16b6c` (the whole post-1.3 tail) for correctness
