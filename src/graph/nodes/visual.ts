@@ -88,7 +88,7 @@ export const CHART_OP_META = {
 
 export class ChartNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    values: "A list plots by position. In a frame, column 0 supplies the x-axis labels and every number column after it is a series. Bubble reads three number columns as x, y, and size.",
+    values: "A list plots by position. In a frame, column 0 supplies the x-axis labels and every number column after it is a series. Radar flips this: the number columns are the spokes and each row is one polygon, named by column 0. Bubble reads three number columns as x, y, and size.",
     options: "Accepts key=value pairs separated by semicolons, using matplotlib names such as title, ylim, and grid. Unknown keys are ignored.",
   };
 
@@ -144,6 +144,21 @@ export class ChartNode extends ClassicPreset.Node {
         const pts = cols.filter((c) => c.type === "number").slice(0, 3).map((c) => ({ name: c.name, values: asNums(c) }));
         this.cachedSeries = pts.length > 0 ? pts : null;
         v = pts.length > 0 ? (pts[0].values as unknown as number[]) : null;
+      } else if (this.op === "radar" && cols.length >= 2) {
+        // Radar reads the frame TRANSPOSED from the cartesian charts (chartRadarTranspose):
+        // the numeric COLUMNS are the spokes (axes) and each ROW is one overlaid polygon,
+        // named by column 0 — so a Decision-Matrix row scores across its criteria, not the
+        // reverse. Cartesian charts keep column-0-as-labels; only radar flips.
+        const labelCol = cols[0];
+        const numCols = cols.slice(1).filter((c) => c.type === "number");
+        this.cachedLabels = numCols.map((c) => c.name);
+        const series = labelCol.values.map((cell, r) => ({
+          name: String(formatFrameCell(labelCol.type, cell) ?? `Row ${r + 1}`),
+          values: numCols.map((c) => num(c.values[r])),
+        }));
+        v = series.length > 0 ? (series[0].values as unknown as number[]) : null;
+        // 2+ rows overlay as a legend; a single row draws one polygon (values + labels).
+        this.cachedSeries = series.length >= 2 ? series : null;
       } else if (cols.length >= 2) {
         // Column 0 is ALWAYS the x-axis label column at ≥ 2 columns (a numeric col 0 —
         // Year, an epoch — is a real axis; scatter promotes it to a coordinate x).
