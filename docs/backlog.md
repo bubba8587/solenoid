@@ -21,9 +21,9 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Release planning (author-run)
 
-- [ ] **Ratify the 1.4 cut** — walk `1.4-plan.md` (the IN / PULLABLE / AUTHOR columns; the
-  consolidated author-call list is its last-but-one section) and `2.0-plan.md`; promoted
-  items land here as lines.
+- [ ] **Finish ratifying the 1.4 cut** — the author walked `1.4-plan.md` one item per turn on
+  2026-09-04c (Tracks A–C and D1–D8 ruled; every ruling is in the table's Call column). RESUME AT
+  D9 (AI palette re-enable), then D10, D12, D13, E1, E3, F1, F2, F4, Track H, G; then `2.0-plan.md`.
 - [ ] **Ratify `out-of-scope.md`** (DRAFT since July, no ARR anywhere in it) — the deferral
   review's standing ask. Test 3 / §3 / §11 already read the author's 2026-09-01 order
   (collaboration IN); the rest is still the agent's inference awaiting the author's word.
@@ -40,6 +40,11 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 - [ ] **LATER — Optimize run mode on composites (1.4 A6; author 2026-09-04c: in, not now).** Excel
   Solver's shape as a sixth composite run mode beside Goal Seek; spec + steps in `1.4-plan.md`
   § A6. Gate: the author says go (and settles the constraint forms; integer no).
+- [ ] **Docked FCs inside a drill-in don't recenter** (2026-09-04c, from the E2 audit) —
+  `FlowCompositeOverlay`'s arrange factory passes `repositionDockedTo: () => {}` and the
+  component/keyboard callers hit the MAIN `repositionDocked` slot, so a Format Controller docked
+  in a composite doesn't follow its host on resize / format change / Tidy. Component reflow, not a
+  chrome verb (out of E2's scope). Fix by giving the drill-in a real reposition through the seam.
 
 ## Tables
 
@@ -70,17 +75,6 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
   op cards, `makeSpecOpComponent`); goldens unchanged; `financeInvariants` + parity + nodeOps /
   formulaNodeCoverage / seeds / catalogRegistry / uiCopy; old saves → Placeholder.
 
-## Display
-
-- [ ] **Expand pop-up on every Display frame / table / list, like the charts** (author,
-  2026-09-04b). An expanded Display renders the frame inline with no way into the table
-  pop-up, whose per-column format + unit row is real editing surface — today it is reachable
-  only by collapsing the Display first and clicking the chip. Give frames, matrices and lists
-  the same corner expand affordance every chart gets (`ChartExpandButton` on the sized/full
-  figure, pinned by `chartPopupCoverage.test.ts`), opening the same `TablePopup` the chip opens
-  (pinned to the Display, `formatNodeId` semantics unchanged). Add the same coverage guard so a
-  Display value kind can't ship without a pop-out.
-
 ## Formatting & units
 
 - [ ] **LATER (author, 2026-09-04): fold the Format Controller into the Display** — format and
@@ -104,11 +98,3 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
   loose expression chain was wrapped beside two pre-existing groups rather than merged. Not swept:
   sudoku-solver, composite-workbench, zz-scratch-new-nodes (not teaching galleries),
   personal-finance and live-market-data (held from tuning, see the 09-03 digest).
-
-## Composites
-
-- [ ] **Docked FCs inside a drill-in don't recenter** (2026-09-04c, from the E2 audit) —
-  `FlowCompositeOverlay`'s arrange factory passes `repositionDockedTo: () => {}` and the
-  component/keyboard callers hit the MAIN `repositionDocked` slot, so a Format Controller docked
-  in a composite doesn't follow its host on resize / format change / Tidy. Component reflow, not a
-  chrome verb (out of E2's scope). Fix by giving the drill-in a real reposition through the seam.
