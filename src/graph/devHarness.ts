@@ -30,6 +30,11 @@ if (import.meta.env.DEV) {
       await processGraph();
       return true;
     },
+    // Read plain fields off a node (the reload probes compare a node before/after).
+    fields: (id: string, keys: string[]): Record<string, unknown> | null => {
+      const n = getEditor()?.getNode(id) as unknown as Record<string, unknown> | undefined;
+      return n ? Object.fromEntries(keys.map((k) => [k, n[k]])) : null;
+    },
     // Group membership (the layout probe asserts members follow a dragged group).
     groups: () => (getEditor()?.getNodes() ?? [])
       .filter((n) => n.constructor.name === "GroupNode")
