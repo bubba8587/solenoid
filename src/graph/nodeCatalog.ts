@@ -33,8 +33,7 @@ import {
   DateDiffNode, DateAddNode, WorkdaysNode, WORKDAYS_OP_META, EpochNode, DateTruncNode,
   RandArrayNode,
   XMatchNode,
-  DiscountSecurityNode, CouponNode, AccrintNode,
-  AccrintMNode, DurationNode,
+  DiscountSecurityNode, CouponNode, AccruedInterestNode, DurationNode,
   BondPriceNode, OddCouponNode,
   COUPON_OP_META,
   DURATION_OP_META, BOND_PRICE_OP_META, ODD_COUPON_OP_META,
@@ -713,10 +712,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "ispmt",      label: "ISPMT",      description: "Interest paid in a specific period of a straight-line-principal loan. Excel: `ISPMT`.", create: () => new IspmtNode() },
           { type: "pair", children: [dollarLeaf("dollarde"), dollarLeaf("dollarfr")] },
           { type: "discount-security", label: "Discount Security", description: "Prices, yields, and discount rates for securities that pay no coupon: Treasury bills, discounted paper, and notes that pay their interest at maturity. Pick the Excel function; the inputs follow. Excel: `TBILLEQ`, `TBILLPRICE`, `TBILLYIELD`, `DISC`, `PRICEDISC`, `YIELDDISC`, `INTRATE`, `RECEIVED`, `PRICEMAT`, `YIELDMAT`.", create: () => new DiscountSecurityNode(), parity: false, keywords: "treasury bill t-bill tbill discount discounted security paper note zero coupon price yield rate redemption investment received interest at maturity money market bond equivalent" },
-          { type: "pair", children: [
-            { type: "accrint",  label: "ACCRINT",  description: "Accrued interest for a security that pays periodic interest. Excel: `ACCRINT`.",  create: () => new AccrintNode(),  parity: false },
-            { type: "accrintm", label: "ACCRINTM", description: "Accrued interest for a security that pays interest at maturity. Excel: `ACCRINTM`.", create: () => new AccrintMNode(), parity: false },
-          ]},
+          { type: "accrued-interest", label: "Accrued Interest", description: "Interest a security has earned since its issue date but not yet paid out at settlement, whether the coupons come periodically or all at maturity. Excel: `ACCRINT`, `ACCRINTM`.", create: () => new AccruedInterestNode(), parity: false, keywords: "accrued interest accrint accrintm coupon issue settlement periodic maturity bond par" },
           { type: "pair", children: [durationLeaf("duration"),  durationLeaf("mduration")] },
           // XNPV lives in Cash flow analysis beside XIRR, not here.
           {

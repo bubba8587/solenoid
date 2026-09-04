@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  BondPriceNode, DiscountSecurityNode, DurationNode, OddCouponNode, CouponNode, AccrintNode,
+  BondPriceNode, DiscountSecurityNode, DurationNode, OddCouponNode, CouponNode, AccruedInterestNode,
 } from "../../../src/graph/nodes/finance";
 import { vdb, accrintM } from "../../../src/graph/nodes/financeOps";
 import { parseDateToSerial } from "../../../src/graph/nodes/date";
@@ -34,7 +34,7 @@ describe("real-Excel golden values (author-verified 2026-08-31)", () => {
   });
   it("ACCRINT per basis — E is 360/freq for actual/360, actual only for actual/actual", () => {
     // =ACCRINT(DATE(2023,7,15),DATE(2024,1,15),DATE(2024,1,15),0.06,1000,2,basis)
-    const acc = (basis: number) => new AccrintNode().data({
+    const acc = (basis: number) => new AccruedInterestNode().data({
       issue: [d("2023-07-15")], settle: [d("2024-01-15")], rate: [0.06], par: [1000], frequency: [2], basis: [basis],
     }).result!;
     expect(acc(0)).toBeCloseTo(30, 9);
@@ -208,5 +208,23 @@ describe("ONE Discount Security card: the op table drives the sockets", () => {
     const n = new DiscountSecurityNode({ op: "pricedisc" });
     expect(typeof n.data({ settle: [settle], maturity: [maturity], pr: [null as unknown as number] }).result).toBe("number");
     expect(n.data({ settle: [settle], maturity: [maturity], discount: [null as unknown as number] }).result).toBeNull();
+  });
+});
+
+describe("ONE Accrued Interest card: frequency is the periodic form's socket", () => {
+  it("switching to At maturity drops frequency (and nothing else); switching back restores it in place", () => {
+    const node = new AccruedInterestNode();
+    expect(Object.keys(node.inputs)).toEqual(["issue", "settle", "rate", "par", "frequency", "basis"]);
+    expect(node.keysDroppedBySwitch("maturity")).toEqual(["frequency"]);
+    node.setOp("maturity");
+    expect(Object.keys(node.inputs)).toEqual(["issue", "settle", "rate", "par", "basis"]);
+    expect(node.keysDroppedBySwitch("periodic")).toEqual([]);
+    node.setOp("periodic");
+    expect(Object.keys(node.inputs)).toEqual(["issue", "settle", "rate", "par", "frequency", "basis"]);
+  });
+  it("At maturity is ACCRINTM: the kernel the formula uses", () => {
+    const issue = d("2023-07-15"), settle = d("2024-01-15");
+    const viaNode = new AccruedInterestNode({ op: "maturity" }).data({ issue: [issue], settle: [settle], rate: [0.06], par: [1000], basis: [0] }).result;
+    expect(viaNode).toBeCloseTo(accrintM(issue, settle, 0.06, 1000, 0)!, 12);
   });
 });

@@ -230,6 +230,23 @@ export function couponValue(
   }
 }
 
+/** ACCRINT — accrued interest for a security paying periodic coupons, over the
+ *  issue→settlement span. Period length E per basis: only actual/actual (1) measures the
+ *  real period; 2 is actual/360 and 3 actual/365 (real-Excel goldens, 2026-08-31). Excel's
+ *  first_interest and calc_method arguments aren't modeled. */
+export function accrint(
+  issueSerial: number, settleSerial: number, rate: number, par = 1000, frequency = 2, basis = 0,
+): number | null {
+  if (!Number.isFinite(issueSerial) || !Number.isFinite(settleSerial)) return null;
+  const freq = Math.round(frequency);
+  if (![1, 2, 4].includes(freq)) return null;
+  const b = Math.round(basis);
+  const issue = serialToJsDate(issueSerial), settle = serialToJsDate(settleSerial);
+  const a = b === 0 || b === 4 ? days30_360(issue, settle) : actualDays(issue, settle);
+  const e = b === 1 ? actualDays(issue, coupAddMonths(issue, 12 / freq)) : b === 3 ? 365 / freq : 360 / freq;
+  return par * (rate / freq) * (a / e);
+}
+
 /** ACCRINTM — accrued interest for a security that pays at maturity. */
 export function accrintM(
   issueSerial: number, settleSerial: number, rate: number, par = 1000, basis = 0,

@@ -4,8 +4,10 @@ import type { ExcelEquiv } from "./AddNodeMenu";
 
 /** catalog node type -> the Excel function(s) it stands in for. */
 export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
-  "accrint": [{ excel: "ACCRINT", syntax: "=ACCRINT(issue,settle,rate,par,freq,basis)", parity: false, note: "Accrued interest over the issue→settlement span; all four bases: 30/360, actual/actual, actual/360, actual/365. Excel's first_interest and calc_method arguments aren't modeled." }],
-  "accrintm": [{ excel: "ACCRINTM", syntax: "=ACCRINTM(issue,settle,rate,par,basis)", parity: false, note: "Accrued interest at maturity; all four bases: 30/360, actual/actual, actual/360, actual/365." }],
+  "accrued-interest": [
+    { excel: "ACCRINT", syntax: "=ACCRINT(issue,settle,rate,par,freq,basis)", parity: false, note: "Accrued interest over the issue→settlement span; all four bases: 30/360, actual/actual, actual/360, actual/365. Excel's first_interest and calc_method arguments aren't modeled." },
+    { excel: "ACCRINTM", syntax: "=ACCRINTM(issue,settle,rate,par,basis)", parity: false, note: "Accrued interest at maturity; all four bases: 30/360, actual/actual, actual/360, actual/365." },
+  ],
   "arith-mod": [{ excel: "MOD", syntax: "=MOD(a, b)", parity: true }],
   "arith-pow": [{ excel: "POWER", syntax: "=POWER(x, n)", parity: true }],
   "arith-quotient": [{ excel: "QUOTIENT", syntax: "=QUOTIENT(a, b)", parity: true }],

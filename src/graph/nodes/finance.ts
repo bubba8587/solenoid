@@ -2,15 +2,13 @@
 import { numIn, numOut, listIn, listOut, dateIn, dateListIn, frameOut, readInput, BASIS_DOC } from "./shared";
 import type { FrameValue } from "../frame";
 import type { Shape } from "../frameShape";
-import { serialToJsDate } from "./date";
 import { solError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
 import { EquationNode } from "./equation";
 // The pure bond/security math, shared verbatim with the formula surface
 // (financeOps.ts). The op types stay re-exported so the node barrel keeps its shape.
 import {
-  coupAddMonths, days30_360, actualDays,
-  couponValue, accrintM, tbill, securityDisc, priceDisc, priceMat, durationValue,
+  couponValue, accrint, accrintM, tbill, securityDisc, priceDisc, priceMat, durationValue,
   bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr, amortizationSchedule,
   returnsOp, RETURNS_OP_META, type ReturnsOp,
 } from "./financeOps";
@@ -935,90 +933,95 @@ export class CouponNode extends ClassicPreset.Node {
   }
 }
 
-// ─── ACCRINT ─────────────────────────────────────────────────────────────────
+// ─── Accrued interest: ONE card ──────────────────────────────────────────────
 
-export class AccrintNode extends ClassicPreset.Node {
+export type AccruedInterestOp = "periodic" | "maturity";
+
+export const ACCRUED_INTEREST_OP_META: Record<AccruedInterestOp, { label: string; description: string }> = {
+  periodic: { label: "ACCRINT",  description: "Accrued interest for a security that pays periodic interest. Excel: `ACCRINT`." },
+  maturity: { label: "ACCRINTM", description: "Accrued interest for a security that pays interest at maturity. Excel: `ACCRINTM`." },
+};
+
+export const ACCRUED_INTEREST_OP_OPTIONS: { value: AccruedInterestOp; label: string }[] = [
+  { value: "periodic", label: "Periodic" },
+  { value: "maturity", label: "At maturity" },
+];
+
+const ACCRUED_INTEREST_KEYS = ["issue", "settle", "rate", "par", "frequency", "basis"] as const;
+function accruedInterestKeys(op: AccruedInterestOp): string[] {
+  return ACCRUED_INTEREST_KEYS.filter((k) => k !== "frequency" || op === "periodic");
+}
+
+/** ACCRINT and ACCRINTM on one card: the coupon schedule is the op, `frequency` is the
+ *  one socket only the periodic form shows. */
+export class AccruedInterestNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
     basis: BASIS_DOC,
   };
   label: string;
+  op: AccruedInterestOp;
   cachedResult: number | null = null;
   literals: Record<string, number> = { rate: 0.06, par: 1000, frequency: 2, basis: 0 };
   width = 180; height = 280;
 
-  constructor(init?: { label?: string }) {
-    super("Accrint");
-    this.label = init?.label ?? "ACCRINT";
-    this.addInput("issue",     dateIn("Issue date"));
-    this.addInput("settle",    dateIn("Settlement date"));
-    this.addInput("rate",      numIn("Annual coupon rate"));
-    this.addInput("par",       numIn("Par value"));
-    this.addInput("frequency", numIn("Frequency"));
-    this.addInput("basis",     numIn("Basis"));
+  constructor(init?: { label?: string; op?: AccruedInterestOp }) {
+    super("AccruedInterest");
+    this.label = init?.label ?? "";
+    this.op = init?.op === "maturity" ? "maturity" : "periodic";
+    for (const k of accruedInterestKeys(this.op)) this.addInput(k, this.makeInput(k));
     this.addOutput("result", numOut("Accrued interest"));
+    this.height = this.op === "periodic" ? 280 : 245;
+  }
+
+  private makeInput(key: string) {
+    switch (key) {
+      case "issue":     return dateIn("Issue date");
+      case "settle":    return dateIn("Settlement date");
+      case "rate":      return numIn("Annual coupon rate");
+      case "par":       return numIn("Par value");
+      case "frequency": return numIn("Frequency");
+      default:          return numIn("Basis");
+    }
+  }
+
+  /** Callers on a live graph prune these BEFORE calling setOp (onePrunePath). */
+  keysDroppedBySwitch(next: AccruedInterestOp): string[] {
+    return next === "maturity" && this.op === "periodic" ? ["frequency"] : [];
+  }
+
+  setOp(next: AccruedInterestOp): void {
+    if (next === this.op) return;
+    const after = accruedInterestKeys(next);
+    for (const k of Object.keys(this.inputs)) if (!after.includes(k)) this.removeInput(k);
+    const ordered: typeof this.inputs = {};
+    for (const k of after) ordered[k] = this.inputs[k] ?? this.makeInput(k);
+    this.inputs = ordered;
+    this.op = next;
+    this.height = next === "periodic" ? 280 : 245;
   }
 
   data(inputs: { issue?: number[]; settle?: number[]; rate?: number[]; par?: number[]; frequency?: number[]; basis?: number[] }): { result: number | null } {
-    const is = inputs.issue?.[0];
-    const ss = inputs.settle?.[0];
-    if (is == null || ss == null) { this.cachedResult = null; return { result: null }; }
-    const rate  = readInput(inputs.rate, this.literals.rate ?? 0.06);
-    const par   = readInput(inputs.par, this.literals.par ?? 1000);
-    const freqRaw = readInput(inputs.frequency, this.literals.frequency ?? 2);
-    const basisRaw = readInput(inputs.basis, this.literals.basis ?? 0);
-    if (rate === null || par === null || freqRaw === null || basisRaw === null) { this.cachedResult = null; return { result: null }; }
-    const freq = Math.round(freqRaw);
-    const basis = Math.round(basisRaw);
-    if (![1, 2, 4].includes(freq)) { this.cachedResult = null; return { result: null }; }
-    const issue  = serialToJsDate(is);
-    const settle = serialToJsDate(ss);
-    const use30  = basis === 0 || basis === 4;
-    const a = use30 ? days30_360(issue, settle) : actualDays(issue, settle);
-    // Period length E per basis: only actual/actual (1) measures the real period;
-    // 2 is actual/360 and 3 actual/365 (real-Excel golden values, 2026-08-31).
-    const e = basis === 1 ? actualDays(issue, coupAddMonths(issue, 12 / freq))
-      : basis === 3 ? 365 / freq : 360 / freq;
-    const result = par * (rate / freq) * (a / e);
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
-// ─── ACCRINTM ─────────────────────────────────────────────────────────────────
-
-export class AccrintMNode extends ClassicPreset.Node {
-  static socketDocs: Record<string, string> = {
-    basis: BASIS_DOC,
-  };
-  label: string;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = { rate: 0.06, par: 1000, basis: 0 };
-  width = 180; height = 245;
-
-  constructor(init?: { label?: string }) {
-    super("AccrintM");
-    this.label = init?.label ?? "ACCRINTM";
-    this.addInput("issue",  dateIn("Issue date"));
-    this.addInput("settle", dateIn("Settlement date"));
-    this.addInput("rate",   numIn("Annual coupon rate"));
-    this.addInput("par",    numIn("Par value"));
-    this.addInput("basis",  numIn("Basis"));
-    this.addOutput("result", numOut("Accrued interest"));
-  }
-
-  data(inputs: { issue?: number[]; settle?: number[]; rate?: number[]; par?: number[]; basis?: number[] }): { result: number | null } {
     const is = inputs.issue?.[0], ss = inputs.settle?.[0];
-    if (is == null || ss == null) { this.cachedResult = null; return { result: null }; }
+    const fail = () => { this.cachedResult = null; return { result: null }; };
+    if (is == null || ss == null) return fail();
     const rate  = readInput(inputs.rate, this.literals.rate ?? 0.06);
     const par   = readInput(inputs.par, this.literals.par ?? 1000);
     const basis = readInput(inputs.basis, this.literals.basis ?? 0);
-    if (rate === null || par === null || basis === null) { this.cachedResult = null; return { result: null }; }
-    const result = accrintM(is, ss, rate, par, basis);
+    if (rate === null || par === null || basis === null) return fail();
+    let result: number | null;
+    if (this.op === "periodic") {
+      const freq = readInput(inputs.frequency, this.literals.frequency ?? 2);
+      if (freq === null) return fail();
+      result = accrint(is, ss, rate, par, freq, basis);
+    } else {
+      result = accrintM(is, ss, rate, par, basis);
+    }
     this.cachedResult = result;
     return { result };
   }
 }
+
 
 // ─── DURATION / MDURATION ─────────────────────────────────────────────────────
 
