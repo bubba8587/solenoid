@@ -36,6 +36,14 @@ describe("parseChartOptions", () => {
     expect(parseChartOptions("pielabels=nonsense").pielabels).toBeUndefined();
   });
 
+  it("parses radarscale as axis/shared, with normalize and raw aliased", () => {
+    expect(parseChartOptions("radarscale=axis").radarscale).toBe("axis");
+    expect(parseChartOptions("radarscale=normalize").radarscale).toBe("axis");
+    expect(parseChartOptions("radarscale=shared").radarscale).toBe("shared");
+    expect(parseChartOptions("radarscale=raw").radarscale).toBe("shared");
+    expect(parseChartOptions("radarscale=nonsense").radarscale).toBeUndefined();
+  });
+
   it("ignores unknown keys, blank values, and junk", () => {
     expect(parseChartOptions("bogus=1;title=;color=red;nope")).toEqual({ color: "red" });
     expect(parseChartOptions("")).toEqual({});

@@ -19,9 +19,13 @@ export interface ChartOptions {
   // Pie slice category labels: outside on a leader (the default when names are present),
   // inside/on the slice with a backing plate, or off. Only ever carries an explicit choice.
   pielabels?: PieLabelMode;
+  // Radar radial scale: "axis" normalizes each spoke to [0,1] by its own min/max so no one
+  // axis (a dollar column beside /10 scores) swamps the rest; "shared" keeps one raw radius.
+  radarscale?: RadarScale;
 }
 
 export type PieLabelMode = "off" | "outside" | "inside";
+export type RadarScale = "axis" | "shared";
 
 const TRUTHY = new Set(["on", "true", "1", "yes", "y"]);
 const FALSY = new Set(["off", "false", "0", "no", "n"]);
@@ -41,6 +45,14 @@ function toPieLabelMode(v: string): PieLabelMode | undefined {
   if (s === "outside" || s === "leader") return "outside";
   const b = toBool(s);
   return b === undefined ? undefined : b ? "outside" : "off";
+}
+
+/** per-axis / shared, with normalize→axis and raw→shared as friendly aliases. */
+function toRadarScale(v: string): RadarScale | undefined {
+  const s = v.trim().toLowerCase();
+  if (s === "axis" || s === "normalize" || s === "normalized" || s === "independent") return "axis";
+  if (s === "shared" || s === "raw" || s === "absolute") return "shared";
+  return undefined;
 }
 
 function toNum(v: string): number | undefined {
@@ -69,6 +81,7 @@ export function parseChartOptions(input: string | null | undefined): ChartOption
       case "grid":   { const b = toBool(val); if (b !== undefined) opts.grid = b; break; }
       case "marker": { const b = toBool(val); if (b !== undefined) opts.marker = b; break; }
       case "pielabels": { const m = toPieLabelMode(val); if (m !== undefined) opts.pielabels = m; break; }
+      case "radarscale": { const m = toRadarScale(val); if (m !== undefined) opts.radarscale = m; break; }
       case "linewidth":
       case "lw":     { const n = toNum(val); if (n !== undefined) opts.linewidth = n; break; }
       case "markersize":
@@ -100,6 +113,7 @@ export interface ChartBuilderFields {
   grid?: string;
   marker?: string;
   pielabels?: string;
+  radarscale?: string;
   ymin?: number | null;
   ymax?: number | null;
   linewidth?: number | null;
@@ -125,6 +139,7 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
   str("grid", f.grid);
   str("marker", f.marker);
   str("pielabels", f.pielabels);
+  str("radarscale", f.radarscale);
   if ((f.ymin != null && Number.isFinite(f.ymin)) || (f.ymax != null && Number.isFinite(f.ymax))) {
     const lo = f.ymin != null && Number.isFinite(f.ymin) ? f.ymin : "";
     const hi = f.ymax != null && Number.isFinite(f.ymax) ? f.ymax : "";
@@ -150,7 +165,7 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
 //     nothing but the title.
 
 export type ChartBuilderKey =
-  | "title" | "xlabel" | "ylabel" | "color" | "grid" | "marker" | "pielabels"
+  | "title" | "xlabel" | "ylabel" | "color" | "grid" | "marker" | "pielabels" | "radarscale"
   | "ymin" | "ymax" | "linewidth" | "markersize" | "alpha" | "fontsize";
 
 // The Chart node's own ops are first-class targets so the form can show ONLY the options
@@ -172,7 +187,7 @@ const SCATTER_KEYS: readonly ChartBuilderKey[] =
 // Pie / radial / funnel paint each slice from the palette, so a single `color` is inert —
 // it isn't offered. Radar is one series, so it keeps `color`.
 const PIE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize", "pielabels"];
-const RADAR_KEYS: readonly ChartBuilderKey[] = ["title", "color", "grid", "fontsize"];
+const RADAR_KEYS: readonly ChartBuilderKey[] = ["title", "color", "grid", "radarscale", "fontsize"];
 const SLICE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];
 const COMPOSED_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "grid", "marker", "ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];

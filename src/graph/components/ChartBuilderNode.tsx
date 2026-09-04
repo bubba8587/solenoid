@@ -93,6 +93,11 @@ const PIE_LABEL_OPTS = [
   { value: "off", label: "Labels: off" },
 ] as const;
 
+const RADAR_SCALE_OPTS = [
+  { value: "axis", label: "Scale: per axis" },
+  { value: "shared", label: "Scale: shared" },
+] as const;
+
 const STR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "color"];
 const TOGGLE_KEYS: readonly { key: ChartBuilderKey; label: string }[] =
   [{ key: "grid", label: "Grid" }, { key: "marker", label: "Markers" }];
@@ -115,8 +120,9 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
   const inertStr = inert(STR_KEYS);
   const inertToggles = TOGGLE_KEYS.filter(({ key }) => !accepted.has(key) && live(key));
   const inertPie = !accepted.has("pielabels") && live("pielabels");
+  const inertRadar = !accepted.has("radarscale") && live("radarscale");
   const inertNum = inert(NUM_KEYS);
-  const anyInert = inertStr.length > 0 || inertToggles.length > 0 || inertPie || inertNum.length > 0;
+  const anyInert = inertStr.length > 0 || inertToggles.length > 0 || inertPie || inertRadar || inertNum.length > 0;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <div style={{ padding: "2px 0 4px" }}>
@@ -129,6 +135,9 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
       {accepted.has("pielabels") && (
         <SelectInputRow node={data} emit={emit} socketKey="pielabels" label="Pie labels" options={PIE_LABEL_OPTS} clearValue="outside" />
       )}
+      {accepted.has("radarscale") && (
+        <SelectInputRow node={data} emit={emit} socketKey="radarscale" label="Radar scale" options={RADAR_SCALE_OPTS} clearValue="axis" />
+      )}
       <InlineInputs node={data} emit={emit} keys={acc(NUM_KEYS) as string[]} />
       {anyInert && (
         <div style={{ opacity: 0.45 }} title={`Not read by ${spec.label}`}>
@@ -138,6 +147,9 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
           ))}
           {inertPie && (
             <SelectInputRow node={data} emit={emit} socketKey="pielabels" label="Pie labels" options={PIE_LABEL_OPTS} clearValue="outside" />
+          )}
+          {inertRadar && (
+            <SelectInputRow node={data} emit={emit} socketKey="radarscale" label="Radar scale" options={RADAR_SCALE_OPTS} clearValue="axis" />
           )}
           <InlineInputs node={data} emit={emit} keys={inertNum as string[]} />
         </div>

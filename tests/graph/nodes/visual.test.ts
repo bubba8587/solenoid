@@ -47,6 +47,27 @@ describe("visual nodes", () => {
     expect(ch.chartOptions).toEqual({});
   });
 
+  it("radar reads a frame transposed: number columns are spokes, rows are series", () => {
+    const frame: FrameValue = { __frame: true, columns: [
+      { name: "Laptop", type: "string", values: ["A", "B"] },
+      { name: "Speed", type: "number", values: [9, 6] },
+      { name: "Price", type: "number", values: [1800, 1400] },
+    ] };
+    const out = new ChartNode({ op: "radar" }).data({ values: [frame] }).chart;
+    expect(out.labels).toEqual(["Speed", "Price"]);       // spokes = the number columns
+    expect(out.series).toEqual([
+      { name: "A", values: [9, 1800] },                    // one polygon per row, named by col 0
+      { name: "B", values: [6, 1400] },
+    ]);
+    // A cartesian chart keeps the other orientation: col 0 labels, columns are series.
+    const bar = new ChartNode({ op: "bar" }).data({ values: [frame] }).chart;
+    expect(bar.labels).toEqual(["A", "B"]);
+    expect(bar.series).toEqual([
+      { name: "Speed", values: [9, 6] },
+      { name: "Price", values: [1800, 1400] },
+    ]);
+  });
+
   it("Mermaid emits a first-class diagram value from its source", () => {
     const m = new MermaidNode({ label: "Flow" });
     // Inline source is stored in stringLiterals (round-trips like Chart's options).

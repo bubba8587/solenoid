@@ -312,13 +312,19 @@ export function ChartView({
 
 // Lists every series' value at the hovered index (the multi-series counterpart of
 // ChartTooltip); the swatch color comes from each recharts payload entry.
-function MultiTooltip({ active, payload, label, tickFmt }: {
+function MultiTooltip({ active, payload, label, tickFmt, rawFromNorm }: {
   active?: boolean;
-  payload?: { name?: string; value?: number; color?: string }[];
+  payload?: { name?: string; value?: number; color?: string; dataKey?: string; payload?: Record<string, number | null> }[];
   label?: number | string;
   tickFmt: (i: number | string) => string;
+  // Radar plots the per-axis-normalized `_n{j}`; show the RAW `s{j}` from the row instead.
+  rawFromNorm?: boolean;
 }) {
   if (!active || !payload || !payload.length) return null;
+  const shown = (p: { value?: number; dataKey?: string; payload?: Record<string, number | null> }) =>
+    rawFromNorm && typeof p.dataKey === "string" && p.dataKey.startsWith("_n") && p.payload
+      ? p.payload[`s${p.dataKey.slice(2)}`]
+      : p.value;
   return (
     <div style={{ fontSize: 11, padding: "3px 6px", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)" }}>
       <div style={{ color: "var(--text-dim)", marginBottom: 2 }}>{tickFmt(label ?? "")}</div>
@@ -326,7 +332,7 @@ function MultiTooltip({ active, payload, label, tickFmt }: {
         <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <span style={{ width: 8, height: 8, borderRadius: 2, background: p.color, flex: "0 0 auto" }} />
           <span style={{ color: "var(--text-dim)" }}>{p.name}</span>
-          <span style={{ marginLeft: "auto" }}>{tipValue(p.value)}</span>
+          <span style={{ marginLeft: "auto" }}>{tipValue(shown(p) ?? undefined)}</span>
         </div>
       ))}
     </div>
@@ -416,13 +422,27 @@ export function MultiSeriesView({
       </BarChart>
     );
   } else if (op === "radar") {
+    // Radar spokes carry incommensurable units (a $ column beside /10 scores), so unless the
+    // author asked for a shared radius, normalize each spoke (data row) to [0,1] by its own
+    // min/max and plot `_n{j}`; the raw `s{j}` still rides the row for the tooltip.
+    const radarNorm = (opts?.radarscale ?? "axis") === "axis";
+    const rData = !radarNorm ? data : data.map((row) => {
+      const fin = series.map((_, j) => row[`s${j}`]).filter((x): x is number => x != null);
+      const lo = fin.length ? Math.min(...fin) : 0;
+      const hi = fin.length ? Math.max(...fin) : 0;
+      const out = { ...row };
+      series.forEach((_, j) => { const rv = row[`s${j}`]; out[`_n${j}`] = rv == null ? null : hi > lo ? (rv - lo) / (hi - lo) : 0.5; });
+      return out;
+    });
+    const key = (j: number) => (radarNorm ? `_n${j}` : `s${j}`);
+    const radarTip = <Tooltip isAnimationActive={false} content={<MultiTooltip tickFmt={tickFmt} rawFromNorm={radarNorm} />} />;
     chart = (
-      <RadarChart width={width} height={chartH} data={data} cx="50%" cy="50%" outerRadius="68%">
+      <RadarChart width={width} height={chartH} data={rData} cx="50%" cy="50%" outerRadius="68%">
         <PolarGrid stroke={grid} />
         <PolarAngleAxis dataKey="i" tick={AXIS} tickFormatter={tickFmt} />
-        <PolarRadiusAxis tick={AXIS} axisLine={false} tickCount={4} domain={yDomain} />
-        {tip}{legend}
-        {series.map((s, j) => <Radar key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} isAnimationActive={false} />)}
+        <PolarRadiusAxis tick={AXIS} axisLine={false} tickCount={4} domain={radarNorm ? [0, 1] : yDomain} tickFormatter={radarNorm ? () => "" : undefined} />
+        {radarTip}{legend}
+        {series.map((s, j) => <Radar key={j} dataKey={key(j)} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} isAnimationActive={false} />)}
       </RadarChart>
     );
   } else if (op === "scatter") {
