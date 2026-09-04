@@ -9,11 +9,11 @@ import { connectionVersionStore } from "../graphSignals";
 import { getActiveEditor as getEditor } from "../activeGraph";
 import { nodeDisplayName } from "../catalogUtils";
 import { formatScalar } from "./format";
-import { formatAnnotationStore, formatNumberWithAnnotation, applyLogicalStyle } from "../formatAnnotationStore";
+import { formatAnnotationStore, formatNumberWithAnnotation, applyLogicalStyle, applyTextCase } from "../formatAnnotationStore";
 import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { ArrayChip, isArrayValue, arrayAccentFor } from "./ArrayChip";
-import { nodeOutputElemFamily, formatListCell } from "./valueDisplayFormat";
+import { nodeOutputElemFamily, formatListCell, resolveDisplayAnnotation } from "./valueDisplayFormat";
 import { isCx } from "../cxValue";
 import { isUnitCell } from "../unitValue";
 import { FrameChip, FrameRefChip } from "./FrameChip";
@@ -28,6 +28,7 @@ import "./cableInspector.css";
 
 // Mirrors PinLayer.renderValue.
 function renderWireValue(v: unknown, annNodeId: string, outKey: string) {
+  const ann = resolveDisplayAnnotation(annNodeId, outKey);
   if (isSolError(v)) {
     return <span className="solenoid-cable-inspector__value solenoid-cable-inspector__value--error" title={errorTip(v)}>{v.code}</span>;
   }
@@ -45,21 +46,20 @@ function renderWireValue(v: unknown, annNodeId: string, outKey: string) {
     const family = nodeOutputElemFamily(annNodeId, outKey);
     return <ArrayChip value={arr} size="sm" accent={arrayAccentFor(family, twoD)} elem={family} />;
   }
-  if (typeof v === "string") return <span className="solenoid-cable-inspector__value">{v || "—"}</span>;
+  if (typeof v === "string") {
+    return <span className="solenoid-cable-inspector__value">{(ann ? applyTextCase(v, ann.textCase) : v) || "—"}</span>;
+  }
   if (typeof v === "boolean") {
-    const ann = formatAnnotationStore.getForNode(annNodeId);
     return <span className="solenoid-cable-inspector__value">{applyLogicalStyle(v, ann?.logicalStyle)}</span>;
   }
   if (typeof v === "number") {
-    const ann = formatAnnotationStore.getForNode(annNodeId);
     return <span className="solenoid-cable-inspector__value">{ann ? formatNumberWithAnnotation(v, ann) : formatScalar(v)}</span>;
   }
   // Tagged complex and united numbers have a text form — they fell through to
   // the empty dash before.
   if (isCx(v) || isUnitCell(v)) {
-    const ann = formatAnnotationStore.getForNode(annNodeId);
     const one = (n: number) => (ann ? formatNumberWithAnnotation(n, ann) : formatScalar(n));
-    return <span className="solenoid-cable-inspector__value">{formatListCell(v, one)}</span>;
+    return <span className="solenoid-cable-inspector__value">{formatListCell(v, one, ann)}</span>;
   }
   return <span className="solenoid-cable-inspector__value solenoid-cable-inspector__value--empty">—</span>;
 }

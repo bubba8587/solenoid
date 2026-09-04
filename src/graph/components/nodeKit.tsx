@@ -2,14 +2,12 @@ import { useCallback, useState, useRef, type ReactNode, useLayoutEffect, useCont
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { copyText } from "../clipboard";
-import { isPassthroughNode } from "../nodes/passthrough";
 import { commentStore, commentsPanelUi } from "../commentStore";
 import { settingsStore } from "../settingsStore";
 import type { ClassicPreset } from "rete";
 import { processGraph } from "../process";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
-import { sharedAnnotationResolver } from "../unitFlow";
 import { formatCx, isCx, type Cx } from "../cxValue";
 import { NodeCard, HEADER_TAP_SLOP, useHeaderHeightVar } from "./NodeCard";
 import { LazySelect } from "./LazySelect";
@@ -32,7 +30,7 @@ import { nodeResizable } from "../rete-nodes";
 import { formatScalar } from "./format";
 import { ArrayChip } from "./ArrayChip";
 import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase, applyLogicalStyle, annotationRendersNegativeRed, formatCxWithAnnotation } from "../formatAnnotationStore";
-import { nodeOutputElemFamily, dateFormatDisplay, shouldRenderListInline, formatListCell, unwrapUnitCells, formatRowValue, type DisplayValue } from "./valueDisplayFormat";
+import { nodeOutputElemFamily, dateFormatDisplay, shouldRenderListInline, formatListCell, unwrapUnitCells, formatRowValue, resolveDisplayAnnotation, annotationForValue, type DisplayValue } from "./valueDisplayFormat";
 import { IS_COARSE, stopDragStart } from "../coarse";
 import { NodeFormatContext } from "./nodeContext";
 import { describeValueKind } from "../valueKindLabel";
@@ -154,16 +152,9 @@ function MeasuredOutputRow({
   node: ShellNode;
   emit: Emit;
 }) {
-  // Per-SOCKET annotation, exactly like a socketKey'd ValueDisplay: a docked FC's
-  // direct write first, else the node's own per-output declaration (Triangle
-  // Solver's deg, Element's g/mol) through the shared resolver. Selected per row, so
-  // an FC edit re-renders the rows it formats; must run before the early return below.
-  const ann = useSyncExternalStore(formatAnnotationStore.subscribe, () => {
-    const direct = formatAnnotationStore.get(node.id, rowKey);
-    if (direct || typeof (node as unknown as { annotationFor?: unknown }).annotationFor !== "function") return direct;
-    const editor = getOwningEditor(node.id);
-    return editor ? sharedAnnotationResolver(editor).outAnnotation(node.id, rowKey) : undefined;
-  });
+  // Per-SOCKET, exactly like a socketKey'd ValueDisplay. Selected per row, so an FC
+  // edit re-renders the rows it formats; must run before the early return below.
+  const ann = useSyncExternalStore(formatAnnotationStore.subscribe, () => resolveDisplayAnnotation(node.id, rowKey));
   const port = node.outputs[rowKey];
   if (!port) return null;
   return (
@@ -534,29 +525,7 @@ export function ValueDisplay({
 
   // A multi-box card names its socket so an FC on one hero row can't smear over
   // its siblings; single-box cards keep the any-socket read.
-  let ann = ctxNodeId
-    ? (socketKey ? formatAnnotationStore.get(ctxNodeId, socketKey) : formatAnnotationStore.getForNode(ctxNodeId))
-    : undefined;
-  // With no DIRECT annotation, a node that PASSES or SELECTS the value carries the
-  // locked format on its output; guarded to those nodes (plus a socketKey'd box's
-  // own output) so sources/transforms never pay the graph walk.
-  if (!ann && ctxNodeId) {
-    // Owning editor, not main: a node inside a Composite drill-in lives in the
-    // internal editor, so its docked/carried FC must resolve there.
-    const editor = getOwningEditor(ctxNodeId);
-    const node = editor?.getNode(ctxNodeId) as
-      (Record<string, unknown> & { outputs?: Record<string, unknown> }) | undefined;
-    const carries = !!node && isPassthroughNode(node);
-    if (editor && node && socketKey && typeof node.annotationFor === "function") {
-      ann = sharedAnnotationResolver(editor).outAnnotation(ctxNodeId, socketKey);
-    } else if (editor && node && carries) {
-      const resolver = sharedAnnotationResolver(editor);
-      for (const k of Object.keys(node.outputs ?? {})) {
-        const a = resolver.outAnnotation(ctxNodeId, k);
-        if (a) { ann = a; break; }
-      }
-    }
-  }
+  const ann = annotationForValue(rawValue, resolveDisplayAnnotation(ctxNodeId, socketKey));
 
   // The DECLARED element family, never a cell scan — a scan can't see a date (a
   // serial looks numeric) or an all-null list, so it would fall back to "numeric".
@@ -627,7 +596,7 @@ export function ValueDisplay({
     // A Format Controller annotation overrides a node's own custom render.
     // null/error cells aren't FC-formattable, so they take the literal cell form.
     if (isList) return (value as (number | null | SolError)[]).map((v) =>
-      (toClipboard && !ann && typeof v === "number") ? toClipboard(v) : formatListCell(v, fmtScalar)
+      (toClipboard && !ann && typeof v === "number") ? toClipboard(v) : formatListCell(v, fmtScalar, ann)
     ).join(", ");
     return toClipboard && !ann ? toClipboard(value as number) : fmtScalar(value as number);
   }
@@ -698,7 +667,7 @@ export function ValueDisplay({
             // `elem` matters MOST here: dateFormatDisplay turned a date list's
             // serials into STRINGS, so the chip would otherwise sniff "text".
             : <ArrayChip value={value as string[]} elem={elemFam} />)
-        : isList ? (listInline ? (value as (number | null | SolError)[]).map((v) => formatListCell(v, fmtScalar)).join(", ") : <ArrayChip value={value as number[] | number[][]} elem={elemFam} />)
+        : isList ? (listInline ? (value as (number | null | SolError)[]).map((v) => formatListCell(v, fmtScalar, ann)).join(", ") : <ArrayChip value={value as number[] | number[][]} elem={elemFam} />)
         : typeof value === "number" && Number.isNaN(value) ? (
             // A residual NaN is dirty DATA, not an error — a quiet muted
             // affordance, never error-red.

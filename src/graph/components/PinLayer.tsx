@@ -9,11 +9,11 @@ import { nodeDisplayName } from "../catalogUtils";
 import { GroupNode } from "../rete-nodes";
 import { groupReadouts, type RetainedTerminal } from "../groupCollapse";
 import { formatScalar } from "./format";
-import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
+import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase } from "../formatAnnotationStore";
 import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { ArrayChip, isArrayValue, arrayAccentFor } from "./ArrayChip";
-import { nodeOutputElemFamily, formatListCell } from "./valueDisplayFormat";
+import { nodeOutputElemFamily, formatListCell, resolveDisplayAnnotation } from "./valueDisplayFormat";
 import { isCx } from "../cxValue";
 import { isUnitCell } from "../unitValue";
 import { FrameChip, FrameRefChip } from "./FrameChip";
@@ -38,6 +38,7 @@ function readoutValue(t: RetainedTerminal): unknown {
 // Mirrors ValueDisplay but standalone (no node/FC context); `label` titles the popup
 // an array/frame chip opens.
 function renderValue(v: unknown, label?: string, annNodeId?: string, outKey?: string) {
+  const ann = resolveDisplayAnnotation(annNodeId ?? null, outKey);
   if (isSolError(v)) {
     return <span className="solenoid-pin__value solenoid-pin__value--error" title={errorTip(v)}>{v.code}</span>;
   }
@@ -53,17 +54,17 @@ function renderValue(v: unknown, label?: string, annNodeId?: string, outKey?: st
     const family = nodeOutputElemFamily(annNodeId ?? null, outKey);
     return <ArrayChip value={arr} label={label} size="sm" accent={arrayAccentFor(family, twoD)} elem={family} />;
   }
-  if (typeof v === "string") return <span className="solenoid-pin__value">{v || "—"}</span>;
+  if (typeof v === "string") {
+    return <span className="solenoid-pin__value">{(ann ? applyTextCase(v, ann.textCase) : v) || "—"}</span>;
+  }
   if (typeof v === "number") {
-    const ann = annNodeId ? formatAnnotationStore.getForNode(annNodeId) : undefined;
     return <span className="solenoid-pin__value">{ann ? formatNumberWithAnnotation(v, ann) : formatScalar(v)}</span>;
   }
   // Logicals, tagged complex and united numbers all have a text form — they fell
   // through to the empty dash before.
   if (typeof v === "boolean" || isCx(v) || isUnitCell(v)) {
-    const ann = annNodeId ? formatAnnotationStore.getForNode(annNodeId) : undefined;
     const one = (n: number) => (ann ? formatNumberWithAnnotation(n, ann) : formatScalar(n));
-    return <span className="solenoid-pin__value">{formatListCell(v, one)}</span>;
+    return <span className="solenoid-pin__value">{formatListCell(v, one, ann)}</span>;
   }
   return <span className="solenoid-pin__value solenoid-pin__value--empty">—</span>;
 }

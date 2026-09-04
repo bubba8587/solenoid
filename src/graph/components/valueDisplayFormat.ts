@@ -1,8 +1,9 @@
-// Date-aware display helpers for ValueDisplay; a value is a DATE when the host node's
-// OUTPUT SOCKET is a date type, never because its cells look like serials.
+// The one annotation resolution every value surface asks through, plus cell/date/unit
+// rendering. A value is a DATE when its node's OUTPUT SOCKET says so, never by cell shape.
 
 import { isCx, formatCx, type Cx } from "../cxValue";
 import { getOwningEditor } from "../activeGraph";
+import { sharedAnnotationResolver } from "../unitFlow";
 import { SolenoidSocket, isDateType, elementFamilyOf, type SocketDataType } from "../sockets";
 import type { ElemFamily } from "./ArrayChip";
 import { formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "../nodes/date";
@@ -11,7 +12,34 @@ import { isUnitCell, formatUnitCell, type UnitCell } from "../unitValue";
 import { fcUnitToUnit } from "../unitBridge";
 import { dimEqual } from "../dimension";
 import { formatScalar } from "./format";
-import { formatNumberWithAnnotation, formatCxWithAnnotation, applyTextCase, applyLogicalStyle, type FormatAnnotation } from "../formatAnnotationStore";
+import { formatAnnotationStore, formatNumberWithAnnotation, formatCxWithAnnotation, applyTextCase, applyLogicalStyle, type FormatAnnotation } from "../formatAnnotationStore";
+
+/**
+ * The annotation that governs how this node's value RENDERS, asked the same way by
+ * every surface: a DIRECTLY docked FC, else one CARRIED onto the output (an upstream
+ * FC riding through passthroughs, or the node's own per-output declaration), else one
+ * docked DOWNSTREAM through a run of passthroughs. `socketKey` names WHICH output on a
+ * multi-box card; without it each output is asked in declaration order.
+ */
+export function resolveDisplayAnnotation(nodeId: string | null, socketKey?: string): FormatAnnotation | undefined {
+  if (!nodeId) return undefined;
+  const direct = socketKey
+    ? formatAnnotationStore.get(nodeId, socketKey)
+    : formatAnnotationStore.getForNode(nodeId);
+  if (direct) return direct;
+  // Owning editor, not main: a node inside a Composite drill-in resolves its FC there.
+  const editor = getOwningEditor(nodeId);
+  const node = editor?.getNode(nodeId) as
+    (Record<string, unknown> & { outputs?: Record<string, unknown> }) | undefined;
+  if (!editor || !node) return undefined;
+  // Memoized per microtask, so a card pays one graph walk per commit.
+  const resolver = sharedAnnotationResolver(editor);
+  for (const k of socketKey ? [socketKey] : Object.keys(node.outputs ?? {})) {
+    const a = resolver.outAnnotation(nodeId, k) ?? resolver.downstreamAnnotation(nodeId, k);
+    if (a) return a;
+  }
+  return undefined;
+}
 
 /** One inline-output-row cell, honouring a resolved FC annotation: numbers via the
  *  annotation formatter, Cx likewise, text case and logical style applied; errors
@@ -53,15 +81,40 @@ export type DisplayValue =
   | null;
 
 /** Format ONE list element for the value box / clipboard: `null` for a missing cell,
- *  `TRUE`/`FALSE` (Excel form) for a logical, `#CODE!` for an error. */
-export function formatListCell(v: number | string | boolean | null | SolError | UnitCell | Cx, fmtNum: (n: number) => string): string {
+ *  `#CODE!` for an error, and every other cell through `ann` when one is resolved —
+ *  logical show-as, text case, complex and united cells included. */
+export function formatListCell(
+  v: number | string | boolean | null | SolError | UnitCell | Cx,
+  fmtNum: (n: number) => string,
+  ann?: FormatAnnotation,
+): string {
   if (v === null) return "null";
-  if (isUnitCell(v)) return formatCellWithDisplay(v, fmtNum);
-  if (isCx(v)) return formatCx(v);
-  if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
+  if (isUnitCell(v)) {
+    const a = annotationForValue(v, ann);
+    return a ? formatNumberWithAnnotation(displayMagnitude(v, a), a) : formatCellWithDisplay(v, fmtNum);
+  }
+  if (isCx(v)) return ann ? formatCxWithAnnotation(v, ann) : formatCx(v);
+  if (typeof v === "boolean") return applyLogicalStyle(v, ann?.logicalStyle);
   if (isSolError(v)) return v.code;
-  if (typeof v === "string") return v;
+  if (typeof v === "string") return ann ? applyTextCase(v, ann.textCase) : v;
   return fmtNum(v);
+}
+
+/** An annotation that names no unit of its own — a FORMAT carried across a transform
+ *  arrives stripped this way (unit is value-level, formatFlowsDownstream). */
+function annotationCarriesNoUnit(ann: FormatAnnotation): boolean {
+  return ann.unit === "none" || (ann.unit === "custom" && !ann.customUnit);
+}
+
+/** The annotation a DIMENSIONED value renders with: when the annotation names no unit,
+ *  the cell's own display unit survives and the annotation supplies the number style
+ *  alone — a carried format must never strip a `$` off the value it formats. */
+export function annotationForValue(value: unknown, ann: FormatAnnotation | undefined): FormatAnnotation | undefined {
+  if (!ann || !annotationCarriesNoUnit(ann)) return ann;
+  const cell = isUnitCell(value)
+    ? value
+    : Array.isArray(value) ? (value as unknown[]).find((c) => isUnitCell(c)) as UnitCell | undefined : undefined;
+  return cell?.display ? { ...ann, unit: cell.display, customUnit: "" } : ann;
 }
 
 // A `UnitCell` must be unwrapped before ValueDisplay's number/string branches: with an FC

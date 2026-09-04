@@ -2,12 +2,10 @@ import { useSyncExternalStore, useLayoutEffect, useRef, useState } from "react";
 import type { DisplayNode as DisplayNodeType } from "../rete-nodes";
 import { formatWithUnit } from "../unitFormat";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
-import { sharedAnnotationResolver } from "../unitFlow";
-import { getOwningEditor } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
 import { NodeShell, PortSockets, ValueDisplay, type NodeProps } from "./nodeKit";
 import { TableDisplay } from "./TableDisplay";
-import { nodeOutputElemFamily } from "./valueDisplayFormat";
+import { nodeOutputElemFamily, resolveDisplayAnnotation } from "./valueDisplayFormat";
 import { FrameDisplay } from "./FrameDisplay";
 import { CubeDisplay } from "./CubeDisplay";
 import { ChartFigure, type ChartShape } from "./chartView";
@@ -61,17 +59,7 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
   const manualSize = useSyncExternalStore(nodeSizeStore.subscribe, () => nodeSizeStore.get(data.id));
   const sized = !collapsed && !!manualSize;
 
-  // A direct (docked) annotation wins; otherwise resolve the FC's lock in EITHER
-  // direction, both breaking at a transform:
-  //   • inAnnotation — an FC UPSTREAM, its lock riding the value down into here.
-  //   • downstreamAnnotation — an FC DOWNSTREAM through a run of passthroughs, so
-  //     `…→Disp1→Disp2→FC` formats Disp1 too.
-  const editor = getOwningEditor(data.id); // internal drill-in nodes resolve their FC in the internal editor
-  const resolver = editor ? sharedAnnotationResolver(editor) : undefined;
-  const ann =
-    formatAnnotationStore.getForNode(data.id) ??
-    resolver?.inAnnotation(data.id, "in") ??
-    resolver?.downstreamAnnotation(data.id, "out");
+  const ann = resolveDisplayAnnotation(data.id);
 
   function fmt(v: number): string {
     // Backstop: a stray non-number reaching formatWithUnit (.toFixed) crashes the node.
@@ -144,7 +132,7 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
       ) : isLambda ? (
         <LambdaValueView value={v} view={ann?.lambdaView} />
       ) : isTable ? (
-        <TableDisplay table={v as number[][]} label={nodeDisplayName(data)} full={full} elem={nodeOutputElemFamily(data.id)} />
+        <TableDisplay table={v as number[][]} label={nodeDisplayName(data)} full={full} elem={nodeOutputElemFamily(data.id)} ann={ann} />
       ) : (
         <ValueDisplay
           value={v as number | number[] | string | string[] | null}

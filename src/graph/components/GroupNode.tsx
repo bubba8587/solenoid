@@ -18,8 +18,8 @@ import { setGroupsCollapsed } from "../groupPush";
 import { rebuildGroupMembership } from "../groupMembership";
 import { scheduleAutosave } from "../persistence";
 import { ArrayChip, isArrayValue } from "./ArrayChip";
-import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
-import { formatListCell, nodeOutputElemFamily } from "./valueDisplayFormat";
+import { formatAnnotationStore, formatNumberWithAnnotation, applyLogicalStyle, applyTextCase } from "../formatAnnotationStore";
+import { formatListCell, nodeOutputElemFamily, resolveDisplayAnnotation } from "./valueDisplayFormat";
 import { isSolError } from "../errorValue";
 import { ErrorChip } from "./ErrorChip";
 import { formatScalar } from "./format";
@@ -30,20 +30,22 @@ import "./GroupNode.css";
 import { stopDragStart } from "../coarse";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 
-// Honors the FC annotation keyed by `annNodeId`.
-function formatReadout(v: unknown, annNodeId: string): string {
+// Honors the FC annotation resolved for `annNodeId`'s output.
+function formatReadout(v: unknown, annNodeId: string, outKey?: string): string {
   if (v === undefined || v === null) return "—";
   if (isSolError(v)) return v.code;
-  const ann = formatAnnotationStore.getForNode(annNodeId);
+  const ann = resolveDisplayAnnotation(annNodeId, outKey);
   const one = (x: number) => (ann ? formatNumberWithAnnotation(x, ann) : formatScalar(x));
   if (typeof v === "number") return one(v);
+  if (typeof v === "boolean") return applyLogicalStyle(v, ann?.logicalStyle);
+  if (typeof v === "string") return ann ? applyTextCase(v, ann.textCase) : v;
   // Per-cell through the shared formatter: Cx, UnitCell, errors, blanks and
   // logicals all have a text form — String(x) turned them into [object Object].
-  if (Array.isArray(v)) return v.map((x) => formatListCell(x as Parameters<typeof formatListCell>[0], one)).join(", ");
+  if (Array.isArray(v)) return v.map((x) => formatListCell(x as Parameters<typeof formatListCell>[0], one, ann)).join(", ");
   // Object-valued kinds get a compact label instead of "[object Object]".
   const kind = describeValueKind(v);
   if (kind != null) return kind;
-  if (typeof v === "object") return formatListCell(v as Parameters<typeof formatListCell>[0], one); // scalar Cx / UnitCell
+  if (typeof v === "object") return formatListCell(v as Parameters<typeof formatListCell>[0], one, ann); // scalar Cx / UnitCell
   return String(v);
 }
 
@@ -61,7 +63,9 @@ function readoutValue(t: RetainedTerminal): unknown {
 }
 
 function readoutText(t: RetainedTerminal): string {
-  return formatReadout(readoutValue(t), t.kind === "display" ? t.displayId : t.effNodeId);
+  return t.kind === "display"
+    ? formatReadout(readoutValue(t), t.displayId)
+    : formatReadout(readoutValue(t), t.effNodeId, t.effSocketKey);
 }
 
 // A chip renders as a DIRECT flex child so the row's align-items:center centers it —
@@ -94,6 +98,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   useSyncExternalStore(socketHighlightStore.subscribe, socketHighlightStore.version);
+  useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
   const mode = appThemeStore.getMode();
   // Group tint reads heavier on a light canvas — give it a touch more fill.
   const fillAlpha = mode === "light" ? 0.14 : 0.08;

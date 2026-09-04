@@ -6,9 +6,12 @@ import DOMPurify from "dompurify";
 import type { ClassicPreset } from "rete";
 
 import { cableValueStore } from "../cableValueStore";
-import { formatAnnotationStore, formatNumberWithAnnotation, applyLogicalStyle, type FormatAnnotation, type LambdaView } from "../formatAnnotationStore";
+import { formatAnnotationStore, formatNumberWithAnnotation, formatCxWithAnnotation, applyLogicalStyle, applyTextCase, type FormatAnnotation, type LambdaView } from "../formatAnnotationStore";
 import { highlightFormula } from "../formulaSyntax";
 import { sharedAnnotationResolver } from "../unitFlow";
+import { isCx, formatCx } from "../cxValue";
+import { isUnitCell } from "../unitValue";
+import { unwrapUnitCells, annotationForValue } from "./valueDisplayFormat";
 import { formatScalar } from "./format";
 import { useKatexRender } from "./katexLoader";
 import { isFrameValue, isCubeValue } from "../frame";
@@ -63,7 +66,14 @@ export function refPreview(value: unknown, ann: FormatAnnotation | undefined): s
   if (isSolError(value)) return value.code;
   if (typeof value === "boolean") return applyLogicalStyle(value, ann?.logicalStyle);
   if (typeof value === "number") return ann ? formatNumberWithAnnotation(value, ann) : formatScalar(value);
-  if (typeof value === "string") return value;
+  if (typeof value === "string") return ann ? applyTextCase(value, ann.textCase) : value;
+  // A united or complex value reaches the ref RAW, so the annotation formats it here;
+  // a UnitCell resolves to its magnitude in the display unit and re-enters above.
+  if (isUnitCell(value)) {
+    const a = annotationForValue(value, ann);
+    return refPreview(unwrapUnitCells(value, a), a);
+  }
+  if (isCx(value)) return ann ? formatCxWithAnnotation(value, ann) : formatCx(value);
   if (isLambdaValue(value)) return lambdaText(value);
   if (isMermaidValue(value)) return value.title || "diagram";
   if (isImageValue(value)) return value.title || "image";

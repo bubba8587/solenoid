@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from "react";
 import { ArrayChip, type ElemFamily } from "./ArrayChip";
 import type { TablePopupState } from "../tablePopupStore";
 import { isSolError, type SolError } from "../errorValue";
@@ -5,6 +6,12 @@ import { errorTip } from "./ErrorChip";
 import { flyToNode } from "../flyToNode";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { extremeSci } from "./format";
+import { useHostNodeId } from "./nodeContext";
+import { resolveDisplayAnnotation } from "./valueDisplayFormat";
+import {
+  formatAnnotationStore, formatNumberWithAnnotation, applyLogicalStyle, applyTextCase,
+  type FormatAnnotation,
+} from "../formatAnnotationStore";
 import type { ResultType } from "../nodes/shared";
 
 // A polyform matrix cell: number (date serial included), text, logical, null, or SolError.
@@ -24,18 +31,20 @@ function isNanCell(v: Cell): boolean {
   return typeof v === "number" && Number.isNaN(v);
 }
 
-/** Render one cell. Text passes through; a logical shows TRUE/FALSE; a date matrix
- *  formats its serials; everything else is numeric. */
-function fmtCell(v: Cell, kind?: ResultType): string {
+/** Render one cell. A resolved FC annotation formats it (per cell, one annotation —
+ *  the array-semantics model), and owns dates itself once present; without one, text
+ *  passes through, a logical shows TRUE/FALSE, a date matrix formats its serials. */
+export function formatTableCell(v: Cell, dateLike: boolean, ann?: FormatAnnotation): string {
   if (v === null) return ""; // a missing cell renders blank
   if (isSolError(v)) return v.code; // a per-cell error shows its #CODE!
-  if (typeof v === "boolean") return v ? "TRUE" : "FALSE"; // logical cell
-  if (typeof v === "string") return v;
-  if (kind === "date" && Number.isFinite(v)) return formatDateSerial(v, DEFAULT_DATE_FORMAT);
+  if (typeof v === "boolean") return applyLogicalStyle(v, ann?.logicalStyle);
+  if (typeof v === "string") return ann ? applyTextCase(v, ann.textCase) : v;
+  if (ann) return formatNumberWithAnnotation(v, ann);
+  if (dateLike && Number.isFinite(v)) return formatDateSerial(v, DEFAULT_DATE_FORMAT);
   return fmtNum(v);
 }
 
-export function TableDisplay({ table, label, onSave, full, kind, elem, popupOverrides }: {
+export function TableDisplay({ table, label, onSave, full, kind, elem, ann: annProp, popupOverrides }: {
   table: Mat | SolError | null;
   label?: string;
   /** When set, the chip opens the grid editable and Save writes back through this. */
@@ -49,7 +58,15 @@ export function TableDisplay({ table, label, onSave, full, kind, elem, popupOver
   full?: boolean;
   /** Drives text passthrough / date formatting of cells; omitted for numeric tables. */
   kind?: ResultType;
+  /** The FC annotation to format cells with; omitted, it resolves from the host node. */
+  ann?: FormatAnnotation;
 }) {
+  // Every matrix card is inside a NodeShell, so the host's FC resolves without a prop;
+  // the subscription is what restyles the grid live on an FC edit.
+  const hostId = useHostNodeId();
+  const hostAnn = useSyncExternalStore(formatAnnotationStore.subscribe, () => resolveDisplayAnnotation(hostId));
+  const ann = annProp ?? hostAnn;
+
   // A SolError in cachedResult renders the same red #CODE! badge a scalar box shows.
   if (isSolError(table)) {
     return (
@@ -81,6 +98,7 @@ export function TableDisplay({ table, label, onSave, full, kind, elem, popupOver
   }
   const rows = table.length, cols = table[0]?.length ?? 0;
   const maxR = full ? rows : Math.min(rows, 4), maxC = full ? cols : Math.min(cols, 4);
+  const dateLike = kind === "date" || elem === "date";
 
   return (
     // The class lets the collapsed-node CSS hide the grid and keep only the chip.
@@ -93,7 +111,7 @@ export function TableDisplay({ table, label, onSave, full, kind, elem, popupOver
                 const nan = isNanCell(v);
                 return (
                 <td key={j} className={nan ? "solenoid-nan-cell" : undefined} title={nan ? "Not a number: an undefined value in the data" : undefined} style={{ padding: full ? "2px 7px" : "1px 3px", textAlign: typeof v === "string" ? "left" : "right", fontSize: full ? 13 : 12, fontFamily: "var(--font-mono)", color: "var(--text)", borderRight: "1px solid var(--border)", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {fmtCell(v, kind)}
+                  {formatTableCell(v, dateLike, ann)}
                 </td>
                 );
               })}
