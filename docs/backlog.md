@@ -35,6 +35,17 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
   balancing is the Allocator" as a seed. GATE: nothing starts until the author picks; the first
   pass's Hungarian matching + Erlang staffing sit in `deferrals.md`.
 
+## Display
+
+- [ ] **Expand pop-up on every Display frame / table / list, like the charts** (author,
+  2026-09-04b). An expanded Display renders the frame inline with no way into the table
+  pop-up, whose per-column format + unit row is real editing surface — today it is reachable
+  only by collapsing the Display first and clicking the chip. Give frames, matrices and lists
+  the same corner expand affordance every chart gets (`ChartExpandButton` on the sized/full
+  figure, pinned by `chartPopupCoverage.test.ts`), opening the same `TablePopup` the chip opens
+  (pinned to the Display, `formatNodeId` semantics unchanged). Add the same coverage guard so a
+  Display value kind can't ship without a pop-out.
+
 ## Formatting & units
 
 - [ ] **The FC's own style dropdown wants the same blank = inherit** (2026-09-04b, follow-up to
