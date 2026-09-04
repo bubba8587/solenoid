@@ -23,8 +23,7 @@ one module. Never add a second engine "for web" without reopening this explicitl
 The verb engine is the frame/cube surface; formulas stop at rank ≤ 2 (matrices and
 complex ARE in — see matricesInFormulas, which superseded the old 1-D cap). Pressure to widen
 Expression routes to composites/subgraphs instead. **Where:** rules.md hideMatrixFromVendor,
-`broadcastRules.test.ts`. The composite-toolbar-reroute concern that once shared this decision's scope is
-now `compositeToolbarReroute`, deferred author-present (`deferrals.md`). **Reopen if:** nothing at the formula level.
+`broadcastRules.test.ts`. **Reopen if:** nothing at the formula level.
 
 ### noBackCompat — No backward compatibility / migration shims (pre-alpha)
 Break saves/code/names freely; delete rather than preserve. The save-format `v`

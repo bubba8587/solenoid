@@ -63,6 +63,21 @@ Same DOM/listeners; the ~29 MB dev gap is unminified source + per-module `code` 
 Proposal for the author (no code changed): the app is memory-clean — measure prod, not dev, if a
 real number is wanted. Nothing here is a contained fix; F5's output is this finding.
 
+**E2 — compositeToolbarReroute audit + close (Lando).** Walked every top-toolbar / menu-bar /
+mobile-bar / keyboard verb with a drill-in open. Already correct via the seam: keyboard (the
+drill-in installs its own instance over its refs, MAIN stands down), undo/redo (per-surface
+history), Tidy/Cleanup and select/unselect/Ctrl+A (`swapArrangeSlots` / `swapSelectionSlots`
+already swap them), add-node placement + copy/paste + isolate (`getActiveEditor/View`), Navigator
++ Minimap + fit/zoom (`getActiveView`), the Delete KEY (RF per-surface `onBeforeDelete`). The ONE
+genuine gap: the keyboard-less **delete button** (mobile / tablet `MobileControls` /
+`TabletActions` → `canvasCommands.deleteSelected()`) went to MAIN because the drill-in swapped
+selection + arrange but not delete. Fixed by adding `swapDeleteSlot` and having the drill-in swap
+`deleteSelected` → its own level (restored on unmount) — the existing pattern, not a rebuild.
+Pinned by `canvasCommandsSwap.test.ts`. Known limitation logged (backlog § Composites): docked FCs
+inside a drill-in don't recenter (`repositionDockedTo` is a no-op) — component reflow, out of E2's
+verb scope. `compositeToolbarReroute` flagship closed (2.0-plan) + its decisions pointer; E2 marked
+done in the 1.4 table.
+
 ### SESSION DIGEST (2026-09-04b — backward commit review: fixes, reconciles, the input-cable regression)
 
 Walked `develop` backward from `5b3004ac` to `1fd16b6c` (the whole post-1.3 tail) for correctness
