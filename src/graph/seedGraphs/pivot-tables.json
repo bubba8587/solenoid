@@ -7,8 +7,8 @@
     {
       "id": "title",
       "type": "NoteNode",
-      "x": -40,
-      "y": -132,
+      "x": -1500,
+      "y": 486,
       "init": {
         "label": "Multiple pivot tables, one source",
         "body": "# Pivots from one Orders table\nThe **Orders** frame is 36 rows · 10 columns: a **date**, text dims, and numeric **Units / Price / Revenue**. It feeds *every* pivot on its own branch. Each **Pivot** node is Excel `=PIVOTBY` with different Rows / Columns / Values / function / totals; a chip opens the full table. Edit a number in Orders and **every** pivot recomputes.",
@@ -20,8 +20,8 @@
     {
       "id": "orders",
       "type": "FrameInputNode",
-      "x": 180,
-      "y": 304,
+      "x": -1000,
+      "y": 480,
       "init": {
         "label": "Orders (source · 36 rows)",
         "frameText": "[{\"name\": \"Date\", \"type\": \"date\", \"values\": [\"2026-01-04\", \"2026-01-06\", \"2026-01-09\", \"2026-01-11\", \"2026-01-14\", \"2026-01-17\", \"2026-01-19\", \"2026-01-22\", \"2026-01-24\", \"2026-01-27\", \"2026-01-29\", \"2026-01-31\", \"2026-02-02\", \"2026-02-05\", \"2026-02-07\", \"2026-02-10\", \"2026-02-12\", \"2026-02-15\", \"2026-02-17\", \"2026-02-20\", \"2026-02-22\", \"2026-02-24\", \"2026-02-26\", \"2026-02-28\", \"2026-03-03\", \"2026-03-06\", \"2026-03-08\", \"2026-03-11\", \"2026-03-13\", \"2026-03-16\", \"2026-03-18\", \"2026-03-21\", \"2026-03-23\", \"2026-03-25\", \"2026-03-27\", \"2026-03-30\"]}, {\"name\": \"Month\", \"type\": \"string\", \"values\": [\"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Jan\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Feb\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\", \"Mar\"]}, {\"name\": \"Region\", \"type\": \"string\", \"values\": [\"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\", \"North\", \"South\", \"East\", \"West\"]}, {\"name\": \"Category\", \"type\": \"string\", \"values\": [\"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\", \"Electronics\", \"Furniture\", \"Office\"]}, {\"name\": \"Rep\", \"type\": \"string\", \"values\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Ada\", \"Bo\", \"Cy\", \"Di\", \"Cy\", \"Ada\", \"Bo\", \"Di\", \"Bo\", \"Cy\", \"Di\", \"Ada\", \"Bo\", \"Cy\", \"Di\", \"Ada\", \"Di\", \"Bo\", \"Cy\", \"Ada\", \"Cy\", \"Di\", \"Ada\", \"Bo\", \"Cy\", \"Di\", \"Ada\", \"Bo\", \"Ada\", \"Cy\", \"Di\", \"Bo\"]}, {\"name\": \"Channel\", \"type\": \"string\", \"values\": [\"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\", \"Retail\", \"Online\"]}, {\"name\": \"Units\", \"type\": \"number\", \"values\": [3, 5, 12, 2, 4, 9, 6, 3, 15, 4, 7, 11, 5, 6, 18, 3, 2, 14, 7, 5, 10, 8, 4, 13, 6, 7, 16, 4, 3, 12, 9, 6, 14, 5, 8, 10]}, {\"name\": \"Price\", \"type\": \"number\", \"values\": [500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25, 500, 300, 25]}, {\"name\": \"Revenue\", \"type\": \"number\", \"values\": [1500, 1500, 300, 1000, 1200, 225, 3000, 900, 375, 2000, 2100, 275, 2500, 1800, 450, 1500, 600, 350, 3500, 1500, 250, 4000, 1200, 325, 3000, 2100, 400, 2000, 900, 300, 4500, 1800, 350, 2500, 2400, 250]}, {\"name\": \"SKU\", \"type\": \"string\", \"values\": [\"EL-001\", \"FU-002\", \"OF-003\", \"EL-004\", \"FU-005\", \"OF-006\", \"EL-007\", \"FU-008\", \"OF-009\", \"EL-010\", \"FU-011\", \"OF-012\", \"EL-013\", \"FU-014\", \"OF-015\", \"EL-016\", \"FU-017\", \"OF-018\", \"EL-019\", \"FU-020\", \"OF-021\", \"EL-022\", \"FU-023\", \"OF-024\", \"EL-025\", \"FU-026\", \"OF-027\", \"EL-028\", \"FU-029\", \"OF-030\", \"EL-031\", \"FU-032\", \"OF-033\", \"EL-034\", \"FU-035\", \"OF-036\"]}]"
@@ -30,8 +30,8 @@
     {
       "id": "p1",
       "type": "PivotNode",
-      "x": 642,
-      "y": 1707,
+      "x": -535,
+      "y": -1587,
       "init": {
         "label": "Revenue: Region × Category (SUM + totals)",
         "agg": "sum",
@@ -47,8 +47,8 @@
     {
       "id": "p2",
       "type": "PivotNode",
-      "x": 642,
-      "y": 2141,
+      "x": -535,
+      "y": -1153,
       "init": {
         "label": "Revenue by Rep — sorted high→low",
         "agg": "sum",
@@ -64,8 +64,8 @@
     {
       "id": "p3",
       "type": "PivotNode",
-      "x": 642,
-      "y": -1452,
+      "x": -535,
+      "y": -734,
       "init": {
         "label": "Units (SUM) & Price (AVG) by Category",
         "agg": "sum",
@@ -83,8 +83,8 @@
     {
       "id": "p4",
       "type": "PivotNode",
-      "x": 642,
-      "y": -327,
+      "x": -535,
+      "y": -330,
       "init": {
         "label": "Revenue: Region × Month (col totals)",
         "agg": "sum",
@@ -99,8 +99,8 @@
     {
       "id": "p5",
       "type": "PivotNode",
-      "x": 642,
-      "y": 869,
+      "x": -535,
+      "y": 104,
       "init": {
         "label": "Revenue share by Region (% of grand)",
         "agg": "percentof",
@@ -115,8 +115,8 @@
     {
       "id": "p6",
       "type": "PivotNode",
-      "x": 642,
-      "y": 1288,
+      "x": -535,
+      "y": 523,
       "init": {
         "label": "Region → Category, with subtotals",
         "agg": "sum",
@@ -131,8 +131,8 @@
     {
       "id": "p7",
       "type": "PivotNode",
-      "x": 642,
-      "y": 435,
+      "x": -535,
+      "y": 942,
       "init": {
         "label": "Order count: Region × Channel",
         "agg": "count",
@@ -148,8 +148,8 @@
     {
       "id": "p8",
       "type": "PivotNode",
-      "x": 642,
-      "y": -1048,
+      "x": -535,
+      "y": 1376,
       "init": {
         "label": "Median Revenue & Max Units by Rep",
         "agg": "sum",
@@ -167,8 +167,8 @@
     {
       "id": "noteReshape",
       "type": "NoteNode",
-      "x": 8,
-      "y": 116,
+      "x": -526,
+      "y": 1868,
       "init": {
         "label": "Reshape the source",
         "color": "violet",
@@ -180,8 +180,8 @@
     {
       "id": "splitDate",
       "type": "SplitColumnNode",
-      "x": 642,
-      "y": 107,
+      "x": -449,
+      "y": 2056,
       "init": {
         "label": "Split Column → SKU into Dept/Code"
       },
@@ -194,8 +194,8 @@
     {
       "id": "addIdx",
       "type": "AddIndexNode",
-      "x": 642,
-      "y": -614,
+      "x": -449,
+      "y": 2383,
       "init": {
         "label": "Add Index → row numbers"
       },
@@ -204,6 +204,24 @@
       },
       "literals": {
         "start": 1
+      }
+    },
+    {
+      "id": "grp-reshape",
+      "type": "GroupNode",
+      "x": -550,
+      "y": 1810,
+      "init": {
+        "label": "Reshape the source",
+        "members": [
+          "splitDate",
+          "addIdx",
+          "noteReshape"
+        ],
+        "color": "teal",
+        "collapsed": false,
+        "width": 428,
+        "height": 849
       }
     }
   ],
@@ -267,6 +285,20 @@
       "sourceOutput": "frame",
       "target": "addIdx",
       "targetInput": "frame"
+    }
+  ],
+  "standoffs": [
+    {
+      "a": {
+        "nodeId": "orders",
+        "anchor": "w"
+      },
+      "b": {
+        "nodeId": "title",
+        "anchor": "e"
+      },
+      "min": 40,
+      "max": 240
     }
   ]
 }
