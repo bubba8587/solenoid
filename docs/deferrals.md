@@ -30,6 +30,9 @@ and its entry deleted. Ruled-out-forever ideas: `out-of-scope.md`; settled ratio
 
 ## Reopen only if the trigger returns
 
+- **Pin a node's output** (1.4-plan A1; author 2026-09-04c: "out for now, defer"). The plan section
+  stays the spec if it returns; the engine hook (`invalidate` stops at pins, both passes agree) is
+  the one real change.
 - **Image as a real FrameColType** (author proposal with the Record node, 2026-08-18;
   evaluated and deferred). A first-class `image` column touches every layer that switches on
   `FrameColType` — both FrameBackends and the cargo parity corpus, CSV read/write, coercion,
