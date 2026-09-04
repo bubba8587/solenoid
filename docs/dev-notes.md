@@ -78,6 +78,47 @@ inside a drill-in don't recenter (`repositionDockedTo` is a no-op) — component
 verb scope. `compositeToolbarReroute` flagship closed (2.0-plan) + its decisions pointer; E2 marked
 done in the 1.4 table.
 
+**D1 — formula-surface allowlist: Option A DROPPED on step-0 findings (Chewie).** Option A
+(one guard before `broadcastCall`: an undeclared FX name refuses ARRAY args) was greenlit on
+the proposal's premise that only "a handful" of undeclared names broadcast fine. Step 0
+refutes it. Method: enumerate `FX_FUNCTION_NAMES` minus (declared `EXCEL_IMPL_META` ∪ internal ∪
+legacy-alias ∪ frame-verb ∪ node-verb ∪ eliminated ∪ non-resolving), then classify each
+survivor by evaluating `NAME(x)` with `x=[1,2,3]` through `compileEvaluator`. Of **174**
+undeclared names: **127 broadcast a CLEAN element-wise array today** — the guard would refuse
+every one (`COS({1,2,3})` → SolError instead of three cosines), a large regression of correct
+behaviour, not a handful. 33 are `RANGE_FUNCTIONS` (SUM etc.) that never reach the guard. Only
+14 error on the one-arg probe, and that set is arity-contaminated (multi-arg fns flagged only
+because the probe passed a single arg). The genuinely broadcast-WRONG set can't be separated
+mechanically — arity confounds any uniform probe — and that separation IS the Option B
+per-name audit. **Author's call (via Han, 2026-09-04c): Option A does NOT ship; Option B (D1b)
+is the path, author-present.** No code landed; the proposal keeps its top note pointing here.
+
+- **IMPROVE (the Option B starting set — 14, VERIFY each before declaring):** ACOTH, CLEAN,
+  CODE, CONFIDENCE.NORM, CONFIDENCE.T, ERROR.TYPE, IPMT, ISPMT, NPER, PDURATION, PEARSON, PMT,
+  PPMT, UNICODE. Caveat: these merely errored on a ONE-arg list probe. PMT/IPMT/PPMT/NPER/
+  PDURATION/ISPMT are multi-arg financials that almost certainly broadcast fine with real args
+  (probe artifact, not a real hole); CLEAN/CODE/UNICODE/CONFIDENCE.*/PEARSON/ERROR.TYPE/ACOTH
+  are the names actually worth an author look. So the real hole is a handful — but a DIFFERENT
+  handful than the surface count implied, and only the audit tells which.
+- **REGRESS (127 — broadcast correctly today, Option A would wrongly refuse):** ACCRINT, ACOT,
+  ARABIC, ASINH, ATAN, BASE, BESSELI, BESSELJ, BESSELK, BESSELY, BIN2DEC, BIN2HEX, BIN2OCT,
+  BINOM.DIST.RANGE, BITAND, BITLSHIFT, BITOR, BITRSHIFT, BITXOR, CEILING, CEILING.MATH, CHAR,
+  COMBIN, COMBINA, COS, COSH, COT, COTH, COUPDAYS, CSC, CSCH, CUMIPMT, CUMPRINC, DB, DDB,
+  DEC2BIN, DEC2HEX, DEC2OCT, DECIMAL, DEGREES, DELTA, DISC, DOLLARDE, DOLLARFR, EFFECT, ERF,
+  ERFC, EVEN, EXP, FACT, FACTDOUBLE, FALSE, FIXED, FLOOR, FLOOR.MATH, FV, FVSCHEDULE, GAMMA,
+  GAMMALN, GAMMALN.PRECISE, GAUSS, GCD, GESTEP, HEX2BIN, HEX2DEC, HEX2OCT, IFERROR, IFNA, IFS,
+  INT, ISBLANK, ISERR, ISERROR, ISEVEN, ISLOGICAL, ISNA, ISNONTEXT, ISNUMBER, ISODD, ISTEXT,
+  LCM, LOG, MROUND, MULTINOMIAL, N, NA, NOMINAL, NOT, OCT2BIN, OCT2DEC, OCT2HEX, ODD,
+  PERCENTRANK.EXC, PERCENTRANK.INC, PERMUT, PERMUTATIONA, PHI, PI, POWER, PRICEDISC, PV,
+  RADIANS, RAND, RANDBETWEEN, RATE, ROMAN, ROUNDDOWN, ROUNDUP, RRI, SEC, SECH, SIGN, SIN, SINH,
+  SLN, SWITCH, SYD, T, TAN, TANH, TBILLEQ, TBILLPRICE, TBILLYIELD, TRUE, TRUNC, TYPE, UNICHAR.
+  (IFERROR/IFNA/IFS/SWITCH/NA/TRUE/FALSE/IS* land here as probe quirks — control/predicate
+  names, not broadcast math; they too resolve their own way. The audit sorts them.)
+- **RANGE_FUNCTIONS (33 — never reach the guard, handled at the range gate; for completeness):**
+  AND, AVERAGEIF, AVERAGEIFS, CHISQ.TEST, COUNT, COUNTA, COUNTBLANK, COUNTIF, COUNTIFS, MAX,
+  MAXA, MAXIFS, MIN, MINA, MINIFS, NPV, OR, PRODUCT, SERIESSUM, STDEVA, STDEVPA, SUM, SUMIFS,
+  SUMPRODUCT, SUMSQ, SUMX2MY2, SUMX2PY2, SUMXMY2, VARA, VARPA, XNPV, XOR, Z.TEST.
+
 ### SESSION DIGEST (2026-09-04b — backward commit review: fixes, reconciles, the input-cable regression)
 
 Walked `develop` backward from `5b3004ac` to `1fd16b6c` (the whole post-1.3 tail) for correctness

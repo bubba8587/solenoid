@@ -1,5 +1,13 @@
 # Formula surface: close the open-by-default hole (allowlist)
 
+> **OPTION A WITHDRAWN (2026-09-04c).** Its step 0 found 127 of the 174 undeclared names
+> broadcast a CLEAN element-wise array over a list today, so the "refuse undeclared array
+> args" guard would regress 127 correct functions — not the "handful" this proposal assumed.
+> The author's call: Option A does not ship; **Option B is the path** (author-present audit).
+> Method, counts and the full REGRESS / IMPROVE / RANGE lists are in `docs/dev-notes.md`
+> (2026-09-04c); the IMPROVE list is Option B's starting set. The Option A section below is
+> kept for the record — do not execute it. The proposal text is otherwise unchanged.
+
 **STATUS — AUTHOR-GATED PROPOSAL. DO NOT EXECUTE UNTIL THE AUTHOR GREENLIGHTS.**
 The backlog ("Formula surface is open-by-default") and `docs/plans/README.md` both flag
 this "raise with the author first." This file is the concrete artifact for that
