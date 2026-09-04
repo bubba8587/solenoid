@@ -10,15 +10,8 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 
 ## Claims
 
-- Chewie — **Expand pop-up on every Display frame / table / list** (backlog § Display). Spec: the backlog line; `ChartExpandButton` + `chartPopupCoverage.test.ts` are the pattern; opens the same `TablePopup` the chip opens. Read DESIGN.md + subsystem-invariants § React Flow surface contract first.
-- Lando — **FC style dropdown blank = inherit** (backlog § Formatting & units). Spec: the backlog line; the frame column row's `—` (212770a0) is the exemplar; `formatModel`/`format-model.md` + the FC card. 
-- Han — lead; merges `chewie` / `lando` into develop; backward review of what lands. Working: merges + review as the friends land; the docs pass.
+- Chewie — backward review of the three finance merges (correctness, live op switch, old-save Placeholder path, Add menu / Reference). Display expand pop-out LANDED (65711495, merged).
+- Lando — the `—` inherit pick for text case / logical show-as (backlog § Formatting & units). FC inherit pick LANDED (7f904f54, merged).
+- Han — lead; merges; walking the 1.4 cut with the author one item per turn (at A1).
 
-## Queue (author released the Set card 2026-09-04c; take the next when free, message Han)
-
-Specs in git: `git show 182fbb17 -- docs/agent-coordination.md` (discount securities) and `git show 1946d71a -- docs/agent-coordination.md` (ACCRINT/ACCRINTM, BondPrice/OddCoupon). The Set card (8d77cf7f) is the shape precedent.
-1. Discount securities → ONE card — LANDED 7db2049f (Han), awaiting the author's eyeball.
-2. ACCRINT + ACCRINTM → ONE card — LANDED eaec2320 (Han).
-3. BondPrice + OddCoupon → ONE card — LANDED (Han). All three await the author's eyeball (Finance > Bonds / Other in the Add menu).
-
-**Awaiting the author's eyeball from this session:** the anydata hollow-square glyph + Socket Legend row; the catalog description sweep (8d5c8f74); Merge Plots figure + expand button; Vite 8 (desktop `tauri build` ride-along result per A3's last message).
+**Awaiting the author's eyeball:** three finance cards (Finance > Other / Bonds), the FC `—` inherit pick, the Display corner expand on frames/tables/lists; from earlier: the anydata hollow-square glyph + Socket Legend row; the catalog description sweep (8d5c8f74); Merge Plots figure + expand button; Vite 8 (desktop `tauri build` ride-along result per A3's last message).
