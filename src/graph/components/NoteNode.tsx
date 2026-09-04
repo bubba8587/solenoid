@@ -23,13 +23,14 @@ import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { parseNoteFrontmatter, toggleTaskMarker, type FrontmatterFieldType, type FrontmatterValue } from "../noteFrontmatter";
-import type { FrameValue } from "../frame";
-type FieldValue = FrontmatterValue | FrameValue;
+import { isFrameValue, type FrameValue } from "../frame";
 import type { NodeProps, Emit } from "./nodeKit";
 import type { ClassicPreset } from "rete";
 import { stopDragStart } from "../coarse";
 import "./Markdown.css";
 import "./NoteNode.css";
+
+type FieldValue = FrontmatterValue | FrameValue;
 
 // Grouped by dimensionality — the override picker offers the four element families at
 // the field's CURRENT dimension; glyphs reuse the Socket Legend vocabulary.
@@ -46,13 +47,10 @@ function glyphFor(t: FrontmatterFieldType): SocketGlyph {
   return { kind: isListFieldType(t) || t === "frame" ? "square" : "circle", color: SOCKET_COLORS[t] };
 }
 
-const isFrameVal = (v: unknown): v is { columns: { values: unknown[] }[] } =>
-  typeof v === "object" && v !== null && "__frame" in v;
-
 /** A short, human-readable preview of a field's value for the row. */
 function previewValue(value: FieldValue, t: FrontmatterFieldType): string {
   if (t === "frame") {
-    if (!isFrameVal(value)) return "table";
+    if (!isFrameValue(value)) return "table";
     const rows = value.columns[0]?.values.length ?? 0;
     return `⊞ ${rows}×${value.columns.length}`;
   }

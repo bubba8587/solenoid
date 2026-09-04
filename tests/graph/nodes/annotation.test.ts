@@ -95,6 +95,44 @@ describe("NoteNode frontmatter outputs", () => {
     expect(n.fieldValues()).toEqual({ id: "42" });
   });
 
+  it("drops a pin when the value becomes rows of objects (the frame survives)", () => {
+    const n = new NoteNode({ body: "---\nscreen: [a, b]\n---", fieldTypes: { screen: "strlist" } });
+    expect(typeOf(n, "screen")).toBe("strlist");
+    n.body = ["---", "screen:", "  - {Laptop: ProBook, Screen: 8}", "  - {Laptop: UltraSlim, Screen: 9}", "---"].join("\n");
+    const { retyped } = n.syncFields();
+    expect(retyped).toEqual([{ key: "screen", type: "frame" }]);
+    expect(n.fieldType("screen")).toBe("frame");
+    expect(n.fieldValues().screen).toEqual({
+      __frame: true,
+      columns: [
+        { name: "Laptop", type: "string", values: ["ProBook", "UltraSlim"] },
+        { name: "Screen", type: "number", values: [8, 9] },
+      ],
+    });
+    expect(n.fieldTypes.screen).toBeUndefined();
+  });
+
+  it("carries a scalar pin onto a list value, keeping every element", () => {
+    const n = new NoteNode({ body: "---\nk: 1\n---", fieldTypes: { k: "string" } });
+    expect(typeOf(n, "k")).toBe("string");
+    n.body = "---\nk: [1, 2]\n---";
+    const { retyped } = n.syncFields();
+    expect(retyped).toEqual([{ key: "k", type: "strlist" }]);
+    expect(n.fieldType("k")).toBe("strlist");
+    expect(n.fieldValues()).toEqual({ k: ["1", "2"] });
+    expect(n.fieldTypes.k).toBe("strlist");
+  });
+
+  it("carries a list pin onto a scalar value", () => {
+    const n = new NoteNode({ body: "---\nk: [a, b]\n---", fieldTypes: { k: "strlist" } });
+    n.body = "---\nk: 7\n---";
+    const { retyped } = n.syncFields();
+    expect(retyped).toEqual([{ key: "k", type: "string" }]);
+    expect(n.fieldType("k")).toBe("string");
+    expect(n.fieldValues()).toEqual({ k: "7" });
+    expect(n.fieldTypes.k).toBe("string");
+  });
+
   it("prunes overrides for keys no longer in the body", () => {
     const n = new NoteNode({ body: "---\nid: 42\n---", fieldTypes: { id: "string", gone: "number" } });
     expect(n.fieldTypes).toEqual({ id: "string" });

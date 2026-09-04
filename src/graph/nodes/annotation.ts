@@ -42,6 +42,21 @@ const FIELD_BASE: Record<Exclude<FrontmatterFieldType, "frame">, "number" | "str
   list: "number", strlist: "string", logicallist: "logical", datelist: "date",
 };
 const LIST_TYPES = new Set<FrontmatterFieldType>(["list", "strlist", "logicallist", "datelist"]);
+const LIST_OF: Record<"number" | "string" | "logical" | "date", FrontmatterFieldType> = {
+  number: "list", string: "strlist", logical: "logicallist", date: "datelist",
+};
+
+/** A pin carries only its ELEMENT family: reshape it onto the guess's dimensionality, or
+ *  drop it when either side is a frame (a frame has no element family to pin). */
+function reshapePin(
+  pinned: FrontmatterFieldType | undefined,
+  guessed: FrontmatterFieldType,
+): FrontmatterFieldType | undefined {
+  if (!pinned || pinned === "frame" || guessed === "frame") return undefined;
+  if (LIST_TYPES.has(pinned) === LIST_TYPES.has(guessed)) return pinned;
+  const base = FIELD_BASE[pinned];
+  return LIST_TYPES.has(guessed) ? LIST_OF[base] : base;
+}
 
 /** A frame column's type from its cells, first non-null wins (dates already collapsed to
  *  serials, so they type as number — a Note frame is plain data, no per-column date pick). */
@@ -107,8 +122,8 @@ export class NoteNode extends ClassicPreset.Node {
   width: number;
   height: number;
   collapsed: boolean;  // when true, only the header bar shows
-  // A field's type is GUESSED on first sight; a user pick pins it here so editing
-  // the value later can't silently re-type the socket. Persisted.
+  // A user's per-key type pick, persisted. The pin holds the ELEMENT family only; the
+  // value's dimensionality (scalar / list / frame) always comes from the body.
   fieldTypes: Record<string, FrontmatterFieldType>;
 
   // Derived from `body` on every sync (NOT persisted — the body is the source).
@@ -165,7 +180,13 @@ export class NoteNode extends ClassicPreset.Node {
 
     const wanted = new Map<string, { value: EmittedValue; type: FrontmatterFieldType }>();
     for (const f of parsed.fields) {
-      const type = this.fieldTypes[f.key] ?? f.guessed;
+      const pinned: FrontmatterFieldType | undefined = this.fieldTypes[f.key];
+      const pin = reshapePin(pinned, f.guessed);
+      if (pinned !== undefined && pin !== pinned) {
+        if (pin === undefined) delete this.fieldTypes[f.key];
+        else this.fieldTypes[f.key] = pin;
+      }
+      const type = pin ?? f.guessed;
       wanted.set(f.key, { value: coerceValue(f.value, type), type });
     }
     // Prune overrides for keys no longer present (keep the save lean).
