@@ -11,7 +11,7 @@
       "y": 4174,
       "init": {
         "label": "Unit Flow: units live on the value; format is display",
-        "body": "A value's **unit** is part of the VALUE: a **Format Controller (FC)** authors it, **Convert** re-expresses it, and it **computes** — `5 m ÷ 1 s` IS `5 m/s`, `$ + 2` adopts the `$`, meters + seconds is a **#UNIT!**. The number **format** ($ places, 2 decimals) stays a display lock that rides passthroughs and drops at a transform. Lanes go simple → complex; watch the value boxes and the FC arrows.",
+        "body": "A value's **unit** is part of the VALUE: a **Format Controller (FC)** authors it, **Convert** re-expresses it, and it **computes** — `5 m ÷ 1 s` IS `5 m/s`, `$ + 2` adopts the `$`, meters + seconds is a **#UNIT!**. The number **format** ($ places, 2 decimals) is a display lock that flows downstream, through passthroughs and transforms alike, until another FC overrides it. Lanes go simple → complex; watch the value boxes and the FC arrows.",
         "color": "gray",
         "width": 900,
         "height": 190
@@ -139,8 +139,8 @@
       "x": -334,
       "y": -910,
       "init": {
-        "label": "C · A transform drops the FORMAT; the unit RIDES",
-        "body": "Each one costs `$10.00`. The **2-decimal format** is display — the ×100 transform drops it. The **currency itself is physical**: `$10 × 100` is still money, so the lot total keeps its `$` — re-dock an FC after a transform only if you want the *format* back.",
+        "label": "C · A transform keeps the FORMAT; the unit COMPUTES",
+        "body": "Each one costs `$10.00`. The **2-decimal format** is display — it flows on through the ×100 transform, so the lot total shows two places too. The **currency itself is physical**: `$10 × 100` is still money, so the total keeps its `$`. Dock an FC after the transform only to *override* the format from there on.",
         "color": "amber",
         "width": 330,
         "height": 170
@@ -974,7 +974,7 @@
       "x": -378,
       "y": -1142,
       "init": {
-        "label": "C · A transform drops the format",
+        "label": "C · A transform keeps the format",
         "members": [
           "capC",
           "C_num",

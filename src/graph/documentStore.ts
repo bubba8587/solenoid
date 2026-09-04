@@ -39,6 +39,18 @@ interface DocSlot { seq: number; doc: SolDoc }
 
 const { notify, subscribe, version } = createNotifier();
 let _lib: DocLibrary = emptyLibrary();
+
+// Dev server only: mirror each autosave to `.dev/current-graph.json` via the Vite
+// middleware (vite.config.ts devGraphMirror) so an agent beside the running app can
+// read the author's live graph. Fire-and-forget; never in tests or production.
+function mirrorToDevServer(g: SavedGraph): void {
+  if (!import.meta.env.DEV || typeof window === "undefined" || typeof fetch !== "function") return;
+  // The author's tab only: a headless probe (navigator.webdriver) loading a seed must
+  // not overwrite the mirror of the document they are editing.
+  if (typeof navigator !== "undefined" && navigator.webdriver) return;
+  void fetch("/__dev-graph", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(g) })
+    .catch(() => { /* no dev server behind this origin (tauri dev without vite, a preview) */ });
+}
 let _saveFailNoticeId: number | null = null;
 const _lastPersisted = new Map<string, SolDoc>();
 let _seq = Date.now();
@@ -266,6 +278,7 @@ export const documentStore = {
     _lib = updateCurrentGraph(_lib, g, Date.now());
     persist();
     notify();
+    mirrorToDevServer(g);
   },
 
   /** A genuine reload — full teardown + rebuild with the load reveal, not a replay. */

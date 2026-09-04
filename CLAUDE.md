@@ -23,6 +23,10 @@ merge + version bump and stops. Installers build path-stripped via `npm run rele
 - **Vercel preview of `develop`**: keep `tsc` + `vitest` green, push to `develop`, they eyeball.
 - **Desktop build** (`npm run tauri build` / `release:desktop`): commit freely, hold pushes.
 
+**The author's live graph is readable:** with the dev server running, every autosave mirrors the
+current document to `.dev/current-graph.json` (ignored; `vite.config.ts` devGraphMirror). Read it
+before rebuilding a chain the author describes — it IS their canvas.
+
 Playwright screenshotting IS sanctioned when visual verification is relevant and necessary. Drive the real app with playwright-core + the preinstalled Chromium and LOOK at what you changed before pushing; the
 author still eyeballs the final result. Component render TESTS stay out (the vitest env is
 `node`); reserve tests for logic. When unsure which environment is active, ask rather than push.

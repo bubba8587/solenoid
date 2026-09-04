@@ -35,3 +35,6 @@ sample-data/
 copy-inventory.md
 copy-inventory.md.orig.json
 /rf-*.png
+
+# Dev-server mirror of the document being edited (vite.config.ts devGraphMirror)
+.dev/
