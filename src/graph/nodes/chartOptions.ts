@@ -20,7 +20,8 @@ export interface ChartOptions {
   // inside/on the slice with a backing plate, or off. Only ever carries an explicit choice.
   pielabels?: PieLabelMode;
   // Radar radial scale: "axis" normalizes each spoke to [0,1] by its own max so no one axis
-  // (a dollar column beside /10 scores) swamps the rest; "shared" keeps one raw radius.
+  // (a dollar column beside /10 scores) swamps the rest, a negative plotting at the centre;
+  // "shared" keeps one raw radius.
   radarscale?: RadarScale;
 }
 

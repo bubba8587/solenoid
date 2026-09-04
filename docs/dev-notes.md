@@ -141,6 +141,10 @@ its tooltip, and draws its title (also silently dropped before).
 uniform shuffle; a longer list is fine (extras ignored). `#SHAPE!` over `#VALUE!` because the
 house vocabulary reserves `#SHAPE!` for a length/dimension mismatch (`errorValue.ts`).
 
+**Author call — radar negatives.** Under the per-axis scale a negative value plots at the centre
+(clamped to 0; the spoke's max is the max VALUE, not |value|): "there's no sensible correct way"
+to place a negative on a radar. The raw value still rides the tooltip.
+
 **Walk stop point.** Below `main` the walk covered `af410b48` down to `45130f0c` (the Add-menu
 per-word search + one-edit matcher, the env.ts dissolve, the minimap recolor, the four RF-port
 fixes: collapsed-group tow, the FlowCableEdge hook order, the FC chip 1px step + caret
@@ -166,8 +170,6 @@ Hungarian matching and Erlang staffing parked to `deferrals.md`. Nothing starts 
 picks; a backlog line carries the gate.
 
 **Questions for the author** (not blocking, answered whenever):
-- Radar per-axis scale divides by max |value|, so a negative spoke value plots below the centre and
-  the [0,1] domain clips it. Acceptable for now, or clamp / min-max when negatives appear?
 - `allocator.json` still titles the seed and its note "Budget Allocator" after the node rename —
   deliberate (the seed IS about a budget), or should both follow the node?
 - Chart Builder offers `color` for radar, but it only paints a SINGLE-series radar (a frame-fed
