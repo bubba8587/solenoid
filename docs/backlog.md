@@ -47,8 +47,12 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
   author 2026-09-04c).** (a) An options key with exactly three card sizes S/M/L that scales the
   GALLERY tile band only. (b) A fourth `RecordOp`, List: one line per record with the title
   field first, the trailing fields INDENTED beneath it as an outline (the author's word:
-  "indented list view"). Spec detail + tests in `1.4-plan.md` § B1. Out: cover image,
-  hide-empty, grouped gallery / lane summaries.
+  "indented list view"). (c) A per-card TITLE ROW: a `#field` marker in the layout text
+  renders that field big and label-less at the top of every card (all views; List's title
+  line reads it too, through the one title-pick function). (d) WRAP/CLAMP: an options key
+  that line-clamps long values on gallery tiles at 3 lines; the popup shows the whole
+  card. Spec detail + tests in `1.4-plan.md` § B1. Out: cover image, hide-empty, grouped
+  gallery / lane summaries.
 
 ## Display
 

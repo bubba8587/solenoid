@@ -10,7 +10,7 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 
 ## Claims
 
-- Chewie — backward review of the FC inherit commits. Display expand (65711495), finance review (ef77ccc4), A3 hover peek (ef0494ea) LANDED, merged.
+- Chewie — D1 Option A: the formula-surface allowlist guard. Display expand, finance review, A3 hover peek, FC inherit review (6960fc0b) LANDED, merged.
 - Lando — B1 trimmed: Record gallery size presets + indented List view (backlog § Records). E2 LANDED (8c9c6f11), merged. FC inherit pick + F5 findings LANDED, merged.
 - Han — lead; merges; walking the 1.4 cut with the author one item per turn (Track A settled; at B1).
 
