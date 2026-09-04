@@ -116,6 +116,14 @@
   width: 240px;
 }
 
+/* Geocode reads long strings at the 180px base — an IANA zone ("America/Boise") and a
+   full match label ("Boise, Idaho, United States") in both its picker and its output
+   rows. Matched to the wide tier its Weather partner already sits at, so the pair reads
+   as one set. */
+.solenoid-node--geocode {
+  width: 240px;
+}
+
 /* Cast carries a 5-segment type selector (Number/Text/Date/Complex/Boolean) in a
    full-width SegToggle; the base 180px card clips the last segments (they don't
    wrap — see SegToggle.css). Wider so all five fit. */

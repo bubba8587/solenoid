@@ -17,11 +17,15 @@ import { apiKeyStore } from "../apiKeyStore";
 import { PROVIDER_LIST, getProvider, type ProviderId } from "../dataProviders";
 import { FrameDisplay } from "./FrameDisplay";
 import { LazySelect } from "./LazySelect";
-import { NodeShell, type NodeProps } from "./nodeKit";
+import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
+import { InlineInputs } from "./inlineInput";
+import { MeasuredSocketRow } from "./NodeSocket";
 import { RefreshIcon } from "./RefreshIcon";
 import "./ConnectionNodes.css";
 import { stopDragStart } from "../coarse";
 import { nodeDisplayName } from "../catalogUtils";
+import { pickGeocodeMatch } from "../geocodeProvider";
+import { frameRowCount } from "../frame";
 
 function statusText(s: ConnectionState): string {
   switch (s.status) {
@@ -401,29 +405,15 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
 // keystroke); when several places match, a pick chooses which (stored by label).
 export function GeocodeComponent({ data, emit }: NodeProps<GeocodeNodeType>) {
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version); // re-read matches when a fetch lands
-  const [place, setPlace] = useState(data.stringLiterals.place ?? "");
-  useEffect(() => { setPlace(data.stringLiterals.place ?? ""); }, [data]);
-
-  function commit() {
-    const next = place.trim();
-    if (next !== (data.stringLiterals.place ?? "")) { data.stringLiterals.place = next; void processGraph(); }
-  }
+  // The SAME pick the node computes, so the rows never disagree with the cables.
+  const m = pickGeocodeMatch(data.matches, data.pickedLabel);
 
   return (
-    <NodeShell node={data} emit={emit}>
+    <NodeShell node={data} emit={emit} hideOutputSockets className="solenoid-node--geocode">
+      {/* The Place input is a wireable socket row, not bare chrome — a Text Input or a
+          frame cell drives it exactly as a typed name does. */}
+      <InlineInputs node={data} emit={emit} />
       <div className="sol-conn">
-        <input
-          className="sol-conn__url"
-          type="text"
-          value={place}
-          placeholder="place, for example Boise"
-          spellCheck={false}
-          onChange={(e) => setPlace(e.target.value)}
-          onBlur={commit}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-          onPointerDown={stopDragStart}
-          onMouseDown={(e) => e.stopPropagation()}
-        />
         {data.matches.length > 1 && (
           <LazySelect
             className="sol-conn__select"
@@ -431,11 +421,21 @@ export function GeocodeComponent({ data, emit }: NodeProps<GeocodeNodeType>) {
             title="Which match"
             onChange={(e) => { data.pickedLabel = e.target.value; void processGraph(); }}
           >
-            {data.matches.map((m) => <option key={m.label} value={m.label}>{m.label}</option>)}
+            {data.matches.map((m2) => <option key={m2.label} value={m2.label}>{m2.label}</option>)}
           </LazySelect>
         )}
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
       </div>
+      <InlineOutputRows
+        node={data}
+        emit={emit}
+        rows={[
+          { key: "lat",      label: "LAT",       value: m?.lat ?? null },
+          { key: "lon",      label: "LON",       value: m?.lon ?? null },
+          { key: "timezone", label: "TIME ZONE", value: m?.timezone ?? null },
+          { key: "label",    label: "PLACE",     value: m?.label ?? null },
+        ]}
+      />
     </NodeShell>
   );
 }
@@ -444,21 +444,18 @@ export function GeocodeComponent({ data, emit }: NodeProps<GeocodeNodeType>) {
 // Lat/lon come from Geocode's sockets or the typed fallbacks; the °C/°F toggle sets the
 // API unit and tags the temps downstream. Numeric fields commit on blur/Enter.
 export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
-  const [lat, setLat] = useState(String(data.literals.lat ?? 0));
-  const [lon, setLon] = useState(String(data.literals.lon ?? 0));
+  useSyncExternalStore(connectionStore.subscribe, connectionStore.version); // fill the Now rows when a fetch lands
   const [past, setPast] = useState(String(data.pastDays));
   const [fwd, setFwd] = useState(String(data.forecastDays));
   const [minutes, setMinutes] = useState(data.refreshMinutes);
   useAutoRefresh(data.id, minutes);
-  useEffect(() => { setLat(String(data.literals.lat ?? 0)); setLon(String(data.literals.lon ?? 0)); }, [data]);
 
   function commit() {
-    const nLat = Number(lat) || 0, nLon = Number(lon) || 0;
     const nPast = Math.max(0, Math.min(92, Math.round(Number(past) || 0)));
     const nFwd = Math.max(1, Math.min(16, Math.round(Number(fwd) || 7)));
     setPast(String(nPast)); setFwd(String(nFwd));
-    if (nLat !== data.literals.lat || nLon !== data.literals.lon || nPast !== data.pastDays || nFwd !== data.forecastDays) {
-      data.literals.lat = nLat; data.literals.lon = nLon; data.pastDays = nPast; data.forecastDays = nFwd;
+    if (nPast !== data.pastDays || nFwd !== data.forecastDays) {
+      data.pastDays = nPast; data.forecastDays = nFwd;
       void processGraph();
     }
   }
@@ -473,9 +470,11 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
       />
     </label>
   );
+  const daily = data.outputs.daily;
+  const rows = data.cached ? frameRowCount(data.cached.daily) : 0;
 
   return (
-    <NodeShell node={data} emit={emit}>
+    <NodeShell node={data} emit={emit} hideOutputSockets>
       <div className="sol-conn">
         <LazySelect
           className="sol-conn__select"
@@ -486,13 +485,29 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
           <option value="C">°C</option>
           <option value="F">°F</option>
         </LazySelect>
-        {numField("Lat", lat, setLat)}
-        {numField("Lon", lon, setLon)}
+      </div>
+      {/* Lat/Lon are wireable socket rows — Geocode drives them, or the typed fallback does. */}
+      <InlineInputs node={data} emit={emit} />
+      <div className="sol-conn">
         {numField("Past days", past, setPast)}
         {numField("Forecast days", fwd, setFwd)}
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
         <RefreshIntervalField minutes={minutes} onCommit={(n) => { data.refreshMinutes = n; setMinutes(n); }} />
       </div>
+      {daily && (
+        <MeasuredSocketRow side="output" socketKey="daily" nodeId={data.id} emit={emit} payload={daily.socket}>
+          <span className="solenoid-node__io-label">DAILY</span>
+          <span className="solenoid-node__output-value">{rows > 0 ? `${rows} days` : "—"}</span>
+        </MeasuredSocketRow>
+      )}
+      <InlineOutputRows
+        node={data}
+        emit={emit}
+        rows={[
+          { key: "temp",      label: `NOW °${data.unit}`, value: data.cached?.nowTemp ?? null },
+          { key: "condition", label: "CONDITION",         value: data.cached?.nowCondition || null },
+        ]}
+      />
     </NodeShell>
   );
 }

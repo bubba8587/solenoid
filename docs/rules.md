@@ -90,6 +90,7 @@ procedure is in the PROV section). Machine-checked against the actual headings b
 | oneResolvePredicate | "Resolve past untyped passthroughs" goes through one predicate |
 | retypeReconciles | In-place retype must reconcile downstream |
 | socketBox12 | The socket box is a deterministic 12×12 |
+| socketRows | A side with more than one socket renders one row per socket |
 | anydataWildcard | `anydata`: the rank-≤2 element-agnostic wildcard (matricesInFormulas) |
 | portOwnsSocket | An adopting port owns its socket instance |
 | trueanyNeedsPassthrough | A `trueany` output implies a `passthrough()` declaration |
@@ -524,6 +525,26 @@ card Handle's box is the glyph's box at `--socket-size` with no transform, and e
 plain cable's path ends on its Handle's rim (RF's `getHandlePosition` point) — so RF
 measures the box the glyph draws. Conduit lanes are exempt by spec (their tips come from
 `conduitLaneOffset`).
+
+### socketRows — A side with more than one socket renders one row per socket **[INFERRED]**
+**MUST:** where a card carries two or more sockets on the same side, each one renders
+inside its own MEASURED row — `InlineInputs` / `InlineOutputRows` / `MeasuredSocketRow`
+(or a card's own measured row, as the acausal `EquationVarRow` / `EquationOutRow` are).
+`NodeShell` lays out OUTPUT sockets only, and only as bare dots; a card that declares
+inputs renders them itself.
+
+*Why:* a socket with no row gets no `top` of its own — `NodeSocket` falls back to
+`--out-socket-top, 50%`, so every dot on that side lands on the SAME pixel. The result
+is one visible handle with the rest stacked underneath it, unreachable and unnamed, and
+nothing throws. Geocode shipped with `lat`/`lon`/`timezone`/`label` on one point and
+Weather with `lat`/`lon` declared but no dot to plug into, which left the two nodes
+unable to wire to each other at all (2026-09-04).
+*Enforced by:* `socketRowCoverage.test.ts` → "no catalog node stacks its sockets on a
+single point": instantiates every catalog leaf, pairs its class to a component through
+`nodeRegistry.ts`, follows a delegating card to the one that owns the body, and requires
+a per-row renderer wherever a side carries 2+ sockets — with a reasoned sanctioned list
+for the cards that place their own dots (the Conduit face) or render alternatives rather
+than a pair.
 
 ### anydataWildcard — `anydata`: the rank-≤2 element-agnostic wildcard (matricesInFormulas) **[INFERRED]**
 **MUST:**
@@ -1659,11 +1680,11 @@ isolateStore missing too.
 
 # Enforcement summary
 
-79 rules.
+80 rules.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 78 | every rule except the one below |
+| Enforced | 79 | every rule except the one below |
 | Partially enforced | 0 | (socketBox12's rendering half closed 2026-08-30: `scripts/socket-box-probe.mjs`) |
 | Unenforced | 1 | oneResolvePredicate |
 

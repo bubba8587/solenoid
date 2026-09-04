@@ -29,6 +29,20 @@ columns), mixed-unit trig IN (open); D8 deferred (sockets untouched). **The walk
 Track H, G. Every ruling is in the `1.4-plan.md` table's Call column; promoted items are backlog
 lines; deferred ones sit in `deferrals.md`.
 
+**Geocode / Weather could not be wired to each other (socketRows, fixed 2026-09-04).** Both
+widget cards rendered a bare `NodeShell`, which lays out OUTPUT dots only and gives an unrowed
+socket no `top` — so Geocode's `lat`/`lon`/`timezone`/`label` stacked on one pixel and Weather's
+declared `lat`/`lon` inputs drew no dot at all. Both now follow the widget pattern the Astro
+cards set: `hideOutputSockets` + `InlineInputs` for the wireable inputs (Geocode's Place is a
+string socket row, Weather's Lat/Lon are number rows with their typed fallbacks) +
+`InlineOutputRows` for the labelled outputs, with `daily` on its own `MeasuredSocketRow` showing
+its day count. `WeatherNode.cached` is public so the Now rows can read it; Geocode takes the wide
+card (`--geocode`, matching Weather) because an IANA zone and a full match label overrun 180px.
+New rule socketRows + `socketRowCoverage.test.ts` closes the completeness half — it walks the
+catalog, pairs each class to its component through `nodeRegistry`, and fails any side carrying
+2+ sockets with no measured row. **Author eyeball:** add both, type a place, drag Geocode's Lat
+and Lon into Weather's — the Now/Condition/Daily rows fill.
+
 **The three finance merges, released by the author's Set-card verdict.** Discount Security
 (TBILLEQ/TBILLPRICE/TBILLYIELD, DISC/PRICEDISC/YIELDDISC/INTRATE/RECEIVED, PRICEMAT/YIELDMAT),
 Accrued Interest (ACCRINT / ACCRINTM as a Periodic / At-maturity toggle, the Irr precedent) and

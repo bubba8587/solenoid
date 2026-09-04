@@ -387,7 +387,7 @@ export class GeocodeNode extends ClassicPreset.Node {
   stringLiterals: Record<string, string> = {};
   /** The chosen match's label (ambiguity pick); "" = the top match. */
   pickedLabel = "";
-  width = 220; height = 150;
+  width = 240; height = 230;
   // Transient: the last fetch's matches (for the card's pick list) + the fetch cache guard.
   matches: GeocodeMatch[] = [];
   private _lastFetchKey: string | undefined;
@@ -458,8 +458,9 @@ export class WeatherNode extends ClassicPreset.Node {
   forecastDays: number;
   /** Minutes, 0 = off — the component runs the timer. */
   refreshMinutes: number;
-  width = 240; height = 200;
-  private cached: WeatherResult | null = null;
+  width = 240; height = 280;
+  /** Read by the component's output rows; never persisted. */
+  cached: WeatherResult | null = null;
   private _lastKey: string | undefined;
 
   constructor(init?: { label?: string; unit?: TempUnit; pastDays?: number; forecastDays?: number; refreshMinutes?: number }) {
