@@ -278,7 +278,8 @@ export function ChartView({
         {/* Radial ticks print rotated ON the polygon; the tooltip carries the raw value. */}
         <PolarRadiusAxis tick={false} axisLine={false} tickCount={4} domain={yDomain} />
         {TIP}
-        <Radar dataKey="v" stroke={color} fill={color} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: dotR } : false} />
+        {/* Palette-painted like every other categorical op (`color` is not offered for radar). */}
+        <Radar dataKey="v" stroke={paint(0)} fill={paint(0)} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: dotR } : false} />
       </RadarChart>
     );
   } else if (op === "radialbar") {
