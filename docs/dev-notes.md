@@ -78,6 +78,10 @@ inside a drill-in don't recenter (`repositionDockedTo` is a no-op) — component
 verb scope. `compositeToolbarReroute` flagship closed (2.0-plan) + its decisions pointer; E2 marked
 done in the 1.4 table.
 
+**Author ruling (2026-09-04c) on the FC `—` pick with nothing upstream:** it falls back to the FC's own
+style, and that is correct — the FC's DEFAULT is Auto (a real pick), the frame column row's default
+is blank (inherit); the two defaults work together. Not a bug; don't reopen.
+
 **B1 (trimmed) — Record gallery size preset + List view (Lando).** Two lifts on the one Record
 node (`nodes/visual.ts` + `chartCards.tsx`): (a) a `cardsize=s|m|l` OPTIONS key (default m) read
 in `data()` and carried on `RecordPayload.size`, scaling the gallery track band only (S 130/110/190
