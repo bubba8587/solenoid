@@ -8,7 +8,7 @@ import { ComplexFromNode, QuadraticRootsNode } from "../../../src/graph/nodes/co
 import { CableSwitchNode } from "../../../src/graph/nodes/control";
 import { ExpressionNode } from "../../../src/graph/nodes/expression";
 import { ClampNode, ArithmeticNode, MathFnNode, MRoundNode, CombinatoricsNode } from "../../../src/graph/nodes/scalar";
-import { MirrNode, DiscountSecurityNode, IrrNode, OddCouponNode, NpvNode, DepreciationNode } from "../../../src/graph/nodes/finance";
+import { MirrNode, DiscountSecurityNode, IrrNode, BondPricingNode, NpvNode, DepreciationNode } from "../../../src/graph/nodes/finance";
 import { SortFrameNode, JoinNode, HeadNode, ColumnsNode, XLookupNode } from "../../../src/graph/nodes/frame";
 import { ListIndexNode, SliceNode, FilterNode, SeriesNode, AggregateNode } from "../../../src/graph/nodes/list";
 import { GaugeNode, KpiNode, HistogramNode } from "../../../src/graph/nodes/visual";
@@ -495,11 +495,11 @@ describe("the guard is scoped to the ACTIVE op — second pass", () => {
   });
 
   it("ODDLPRICE ignores `issue` entirely; ODDFPRICE blanks on a wired blank issue", () => {
-    const f2 = new OddCouponNode({ op: "oddfprice" });
+    const f2 = new BondPricingNode({ op: "oddfprice" });
     const s = 45000, m = 48000, fl = 45100;
-    const withIssue = f2.data({ settle: [s], maturity: [m], firstlast: [fl], issue: [44900] }).result;
+    const withIssue = f2.data({ settle: [s], maturity: [m], firstcoupon: [fl], issue: [44900] }).result;
     expect(withIssue).not.toBeNull();
-    expect(f2.data({ settle: [s], maturity: [m], firstlast: [fl], issue: [null as unknown as number] }).result).toBeNull();
+    expect(f2.data({ settle: [s], maturity: [m], firstcoupon: [fl], issue: [null as unknown as number] }).result).toBeNull();
   });
 });
 

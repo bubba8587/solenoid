@@ -760,13 +760,31 @@ export class CumPmtNode extends ClassicPreset.Node {
   }
 }
 
+// ─── Spec-table op cards ──────────────────────────────────────────────────────
+// A multi-op card whose sockets follow a per-op key table (Discount Security, Accrued
+// Interest, Bond Pricing): the switch keeps the inputs both ops share (their cables and
+// literals ride along), drops the rest, and orders the sockets per the new op.
+
+/** The keys a switch from `before` to `after` removes — pruned by the caller first
+ *  (onePrunePath). */
+function keysDroppedBy(before: string[], after: string[]): string[] {
+  const keep = new Set(after);
+  return before.filter((k) => !keep.has(k));
+}
+
+function reshapeInputs(node: ClassicPreset.Node, after: string[], make: (key: string) => ClassicPreset.Input<ClassicPreset.Socket>): void {
+  for (const k of Object.keys(node.inputs)) if (!after.includes(k)) node.removeInput(k);
+  const ordered: typeof node.inputs = {};
+  for (const k of after) ordered[k] = node.inputs[k] ?? make(k);
+  node.inputs = ordered;
+}
+
 // ─── Discount securities: ONE card ───────────────────────────────────────────
 
 export type DiscountSecurityOp = TBillOp | SecurityDiscOp | PriceDiscOp | PriceMatOp;
 
 /** The op dropdown: label = the Excel name, `keys` = the inputs that follow the shared
- *  settlement/maturity pair (the Distribution spec-table precedent — the card and the
- *  switch read the same table). */
+ *  settlement/maturity pair (the card and the switch read the same table). */
 export const DISCOUNT_SECURITY_META: Record<DiscountSecurityOp, { label: string; description: string; group: string; keys: readonly string[] }> = {
   tbilleq:    { group: "Treasury bill", label: "TBILLEQ",    keys: ["discount"], description: "T-bill bond-equivalent yield from settle, maturity, and discount rate. Excel: `TBILLEQ`." },
   tbillprice: { group: "Treasury bill", label: "TBILLPRICE", keys: ["discount"], description: "T-bill price per $100 face value from settle, maturity, and discount rate. Excel: `TBILLPRICE`." },
@@ -822,19 +840,13 @@ export class DiscountSecurityNode extends ClassicPreset.Node {
   /** The keys a switch to `next` would remove. Callers on a live graph prune these
    *  BEFORE calling setOp (onePrunePath). */
   keysDroppedBySwitch(next: DiscountSecurityOp): string[] {
-    const keep = new Set(discountSecurityKeys(next));
-    return discountSecurityKeys(this.op).filter((k) => !keep.has(k));
+    return keysDroppedBy(discountSecurityKeys(this.op), discountSecurityKeys(next));
   }
 
-  /** Inputs both ops share carry their literals and cables across; the socket order
-   *  follows the new op's table. */
   setOp(next: DiscountSecurityOp): void {
     if (next === this.op) return;
     const after = discountSecurityKeys(next);
-    for (const k of Object.keys(this.inputs)) if (!after.includes(k)) this.removeInput(k);
-    const ordered: typeof this.inputs = {};
-    for (const k of after) ordered[k] = this.inputs[k] ?? DISCOUNT_SECURITY_INPUTS[k]();
-    this.inputs = ordered;
+    reshapeInputs(this, after, (k) => DISCOUNT_SECURITY_INPUTS[k]());
     this.op = next;
     this.height = 149 + 27 * after.length;
   }
@@ -987,16 +999,13 @@ export class AccruedInterestNode extends ClassicPreset.Node {
 
   /** Callers on a live graph prune these BEFORE calling setOp (onePrunePath). */
   keysDroppedBySwitch(next: AccruedInterestOp): string[] {
-    return next === "maturity" && this.op === "periodic" ? ["frequency"] : [];
+    return keysDroppedBy(accruedInterestKeys(this.op), accruedInterestKeys(next));
   }
 
   setOp(next: AccruedInterestOp): void {
     if (next === this.op) return;
     const after = accruedInterestKeys(next);
-    for (const k of Object.keys(this.inputs)) if (!after.includes(k)) this.removeInput(k);
-    const ordered: typeof this.inputs = {};
-    for (const k of after) ordered[k] = this.inputs[k] ?? this.makeInput(k);
-    this.inputs = ordered;
+    reshapeInputs(this, after, (k) => this.makeInput(k));
     this.op = next;
     this.height = next === "periodic" ? 280 : 245;
   }
@@ -1068,128 +1077,106 @@ export class DurationNode extends ClassicPreset.Node {
   }
 }
 
-// ─── PRICE / YIELD ────────────────────────────────────────────────────────────
+// ─── Bond pricing: ONE card ──────────────────────────────────────────────────
 
-export const BOND_PRICE_OP_META = {
-  price: { label: "PRICE", description: "Clean price per $100 face for a coupon bond (`30/360` basis). Excel: `PRICE`." },
-  yield: { label: "YIELD", description: "Annual yield of a coupon bond given its market price (`30/360` basis). Excel: `YIELD`." },
-} satisfies Record<BondPriceOp, { label: string; description: string }>;
+export type BondPricingOp = BondPriceOp | OddCouponOp;
 
-export class BondPriceNode extends ClassicPreset.Node {
+/** The op dropdown: label = the Excel name, `keys` = the inputs that follow the shared
+ *  settlement/maturity pair. The odd-coupon ops add their own date; a first-coupon date
+ *  and a last-interest date are different facts, so they are different sockets. */
+export const BOND_PRICING_META: Record<BondPricingOp, { label: string; description: string; group: string; keys: readonly string[] }> = {
+  price:     { group: "Regular coupons",  label: "PRICE",     keys: ["rate", "yld", "redemption", "frequency"], description: "Clean price per $100 face for a coupon bond (`30/360` basis). Excel: `PRICE`." },
+  yield:     { group: "Regular coupons",  label: "YIELD",     keys: ["rate", "pr", "redemption", "frequency"], description: "Annual yield of a coupon bond given its market price (`30/360` basis). Excel: `YIELD`." },
+  oddfprice: { group: "Odd first coupon", label: "ODDFPRICE", keys: ["issue", "firstcoupon", "rate", "yld", "redemption", "frequency"], description: "Price of a bond with an irregular first coupon period. Excel: `ODDFPRICE`." },
+  oddfyield: { group: "Odd first coupon", label: "ODDFYIELD", keys: ["issue", "firstcoupon", "rate", "pr", "redemption", "frequency"], description: "Yield of a bond with an irregular first coupon period. Excel: `ODDFYIELD`." },
+  oddlprice: { group: "Odd last coupon",  label: "ODDLPRICE", keys: ["lastinterest", "rate", "yld", "redemption", "frequency"], description: "Price of a bond with an irregular last coupon period. Excel: `ODDLPRICE`." },
+  oddlyield: { group: "Odd last coupon",  label: "ODDLYIELD", keys: ["lastinterest", "rate", "pr", "redemption", "frequency"], description: "Yield of a bond with an irregular last coupon period. Excel: `ODDLYIELD`." },
+};
+
+const BOND_PRICING_INPUTS: Record<string, () => ClassicPreset.Input<ClassicPreset.Socket>> = {
+  settle:       () => dateIn("Settlement date"),
+  maturity:     () => dateIn("Maturity date"),
+  issue:        () => dateIn("Issue date"),
+  firstcoupon:  () => dateIn("First coupon date"),
+  lastinterest: () => dateIn("Last interest date"),
+  rate:         () => numIn("Coupon rate"),
+  yld:          () => numIn("Yield"),
+  pr:           () => numIn("Price"),
+  redemption:   () => numIn("Redemption"),
+  frequency:    () => numIn("Frequency"),
+};
+
+function bondPricingKeys(op: BondPricingOp): string[] {
+  return ["settle", "maturity", ...BOND_PRICING_META[op].keys];
+}
+const isOddFirst = (op: BondPricingOp) => op === "oddfprice" || op === "oddfyield";
+const isOddLast  = (op: BondPricingOp) => op === "oddlprice" || op === "oddlyield";
+
+export class BondPricingNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
+    issue: "Left unwired, the issue date falls back to the settlement date.",
     frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
-    yld: "Read in PRICE mode: the yield to price from.",
-    pr: "Read in YIELD mode: the price to solve the yield from.",
     redemption: "Face value redeemed at maturity. Defaults to 100, the par value.",
   };
   label: string;
-  op: BondPriceOp;
+  op: BondPricingOp;
   cachedResult: number | null = null;
   literals: Record<string, number> = { rate: 0.065, yld: 0.07, pr: 97.5, redemption: 100, frequency: 2 };
   width = 180; height = 280;
 
-  constructor(init?: { label?: string; op?: BondPriceOp }) {
-    super("BondPrice");
-    this.op    = init?.op    ?? "price";
+  constructor(init?: { label?: string; op?: BondPricingOp }) {
+    super("BondPricing");
     this.label = init?.label ?? "";
-    this.addInput("settle",     dateIn("Settlement date"));
-    this.addInput("maturity",   dateIn("Maturity date"));
-    this.addInput("rate",       numIn("Coupon rate"));
-    this.addInput("yld",        numIn("Yield"));
-    this.addInput("pr",         numIn("Price"));
-    this.addInput("redemption", numIn("Redemption"));
-    this.addInput("frequency",  numIn("Frequency"));
+    this.op = init?.op && init.op in BOND_PRICING_META ? init.op : "price";
+    for (const k of bondPricingKeys(this.op)) this.addInput(k, BOND_PRICING_INPUTS[k]());
     this.addOutput("result", numOut("Result"));
+    this.height = 149 + 27 * bondPricingKeys(this.op).length;
   }
 
-  data(inputs: { settle?: number[]; maturity?: number[]; rate?: number[]; yld?: number[]; pr?: number[]; redemption?: number[]; frequency?: number[] }): { result: number | null } {
+  /** Callers on a live graph prune these BEFORE calling setOp (onePrunePath). */
+  keysDroppedBySwitch(next: BondPricingOp): string[] {
+    return keysDroppedBy(bondPricingKeys(this.op), bondPricingKeys(next));
+  }
+
+  setOp(next: BondPricingOp): void {
+    if (next === this.op) return;
+    const after = bondPricingKeys(next);
+    reshapeInputs(this, after, (k) => BOND_PRICING_INPUTS[k]());
+    this.op = next;
+    this.height = 149 + 27 * after.length;
+  }
+
+  data(inputs: Record<string, number[] | undefined>): { result: number | null } {
     const s = inputs.settle?.[0], m = inputs.maturity?.[0];
-    if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
+    const fail = () => { this.cachedResult = null; return { result: null }; };
+    if (s == null || m == null) return fail();
     const rate       = readInput(inputs.rate, this.literals.rate ?? 0.065);
     const redemption = readInput(inputs.redemption, this.literals.redemption ?? 100);
     const freq       = readInput(inputs.frequency, this.literals.frequency ?? 2);
-    if (rate === null || redemption === null || freq === null) { this.cachedResult = null; return { result: null }; }
-    // The yield for PRICE, the market price for YIELD.
-    const yldOrPrice = this.op === "price"
-      ? (readInput(inputs.yld, this.literals.yld ?? 0.07))
-      : (readInput(inputs.pr, this.literals.pr ?? 97.5));
-    if (yldOrPrice === null) { this.cachedResult = null; return { result: null }; }
-    const result = bondPriceYield(this.op, s, m, rate, yldOrPrice, redemption, freq);
+    if (rate === null || redemption === null || freq === null) return fail();
+    // The yield for the *PRICE ops, the market price for the *YIELD ops.
+    const isPrice = this.op === "price" || this.op === "oddfprice" || this.op === "oddlprice";
+    const yldOrPrice = isPrice
+      ? readInput(inputs.yld, this.literals.yld ?? 0.07)
+      : readInput(inputs.pr, this.literals.pr ?? 97.5);
+    if (yldOrPrice === null) return fail();
+    let result: number | null;
+    if (isOddFirst(this.op) || isOddLast(this.op)) {
+      const fl = isOddFirst(this.op) ? inputs.firstcoupon?.[0] : inputs.lastinterest?.[0];
+      if (fl == null) return fail();
+      // UNWIRED `issue` keeps the settlement-date fallback; a WIRED blank is unknown,
+      // since pricing as if issued at settlement would fabricate an answer.
+      const issue = isOddFirst(this.op) ? readInput(inputs.issue, s) : s;
+      if (issue === null) return fail();
+      result = oddCoupon(this.op as OddCouponOp, s, m, issue, fl, rate, yldOrPrice, redemption, freq);
+    } else {
+      result = bondPriceYield(this.op as BondPriceOp, s, m, rate, yldOrPrice, redemption, freq);
+    }
     this.cachedResult = result;
     return { result };
   }
 }
 
-
-// ─── ODD COUPON — ODDFPRICE / ODDFYIELD / ODDLPRICE / ODDLYIELD ───────────────
-
-export const ODD_COUPON_OP_META = {
-  oddfprice: { label: "ODDFPRICE", description: "Price of a bond with an irregular first coupon period. Excel: `ODDFPRICE`." },
-  oddfyield: { label: "ODDFYIELD", description: "Yield of a bond with an irregular first coupon period. Excel: `ODDFYIELD`." },
-  oddlprice: { label: "ODDLPRICE", description: "Price of a bond with an irregular last coupon period. Excel: `ODDLPRICE`." },
-  oddlyield: { label: "ODDLYIELD", description: "Yield of a bond with an irregular last coupon period. Excel: `ODDLYIELD`." },
-} satisfies Record<OddCouponOp, { label: string; description: string }>;
-
-export class OddCouponNode extends ClassicPreset.Node {
-  static socketDocs: Record<string, string> = {
-    issue: "Left unwired, the issue date falls back to the settlement date.",
-    frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
-    yld: "Read by the PRICE ops: the yield to price from.",
-    pr: "Read by the YIELD ops: the price to solve the yield from.",
-    redemption: "Face value redeemed at maturity. Defaults to 100, the par value.",
-  };
-
-  label: string;
-  op: OddCouponOp;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = { rate: 0.0775, yld: 0.085, pr: 99.5, redemption: 100, frequency: 2 };
-  width = 180; height = 300;
-
-  constructor(init?: { label?: string; op?: OddCouponOp }) {
-    super("OddCoupon");
-    this.op    = init?.op    ?? "oddfprice";
-    this.label = init?.label ?? "";
-    const isFirst = this.op === "oddfprice" || this.op === "oddfyield";
-    this.addInput("settle",     dateIn("Settlement date"));
-    this.addInput("maturity",   dateIn("Maturity date"));
-    if (isFirst) {
-      this.addInput("issue",      dateIn("Issue date"));
-      this.addInput("firstlast",  dateIn("First coupon date"));
-    } else {
-      this.addInput("firstlast",  dateIn("Last interest date"));
-    }
-    this.addInput("rate",       numIn("Coupon rate"));
-    this.addInput("yld",        numIn("Yield"));
-    this.addInput("pr",         numIn("Price"));
-    this.addInput("redemption", numIn("Redemption"));
-    this.addInput("frequency",  numIn("Frequency"));
-    this.addOutput("result", numOut("Result"));
-  }
-
-  data(inputs: { settle?: number[]; maturity?: number[]; issue?: number[]; firstlast?: number[]; rate?: number[]; yld?: number[]; pr?: number[]; redemption?: number[]; frequency?: number[] }): { result: number | null } {
-    const s = inputs.settle?.[0], m = inputs.maturity?.[0], fl = inputs.firstlast?.[0];
-    if (s == null || m == null || fl == null) { this.cachedResult = null; return { result: null }; }
-    const rate       = readInput(inputs.rate, this.literals.rate ?? 0.0775);
-    const redemption = readInput(inputs.redemption, this.literals.redemption ?? 100);
-    const freq       = readInput(inputs.frequency, this.literals.frequency ?? 2);
-    if (rate === null || redemption === null || freq === null) { this.cachedResult = null; return { result: null }; }
-    // The yield for the *PRICE ops, the market price for the *YIELD ops (which
-    // Newton-solve for the yield that reproduces it).
-    const isPrice = this.op === "oddfprice" || this.op === "oddlprice";
-    const yldOrPrice = isPrice
-      ? (readInput(inputs.yld, this.literals.yld ?? 0.085))
-      : (readInput(inputs.pr, this.literals.pr ?? 99.5));
-    if (yldOrPrice === null) { this.cachedResult = null; return { result: null }; }
-    // UNWIRED `issue` keeps the settlement-date fallback; a WIRED blank is unknown,
-    // since pricing as if issued at settlement would fabricate an answer.
-    const isFirst = this.op === "oddfprice" || this.op === "oddfyield";
-    const issue = isFirst ? readInput(inputs.issue, s) : s;
-    if (issue === null) { this.cachedResult = null; return { result: null }; }
-    const result = oddCoupon(this.op, s, m, issue, fl, rate, yldOrPrice, redemption, freq);
-    this.cachedResult = result;
-    return { result: this.cachedResult };
-  }
-}
 
 // ─── AMORTIZATION SCHEDULE ───────────────────────────────────────────────────
 export class AmortizationNode extends ClassicPreset.Node {

@@ -34,10 +34,9 @@ import {
   RandArrayNode,
   XMatchNode,
   DiscountSecurityNode, CouponNode, AccruedInterestNode, DurationNode,
-  BondPriceNode, OddCouponNode,
+  BondPricingNode,
   COUPON_OP_META,
-  DURATION_OP_META, BOND_PRICE_OP_META, ODD_COUPON_OP_META,
-  type BondPriceOp, type OddCouponOp,
+  DURATION_OP_META,
   ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode, ComplexPowerNode,
   COMPLEX_UNARY_OP_META, COMPLEX_BINARY_OP_META,
   type ComplexUnaryOp, type ComplexBinaryOp,
@@ -136,8 +135,6 @@ const durationLeaf  = (op: DurationOp):  NodeCatalogEntry => ({ type: `duration-
 
 const couponLeaf = (op: CouponOp): NodeCatalogEntry => ({ type: `coupon-${op}`, label: COUPON_OP_META[op].label, description: COUPON_OP_META[op].description, create: () => new CouponNode({ op }), parity: false });
 
-const bondPriceLeaf = (op: BondPriceOp): NodeCatalogEntry => ({ type: `bondprice-${op}`, label: BOND_PRICE_OP_META[op].label, description: BOND_PRICE_OP_META[op].description, create: () => new BondPriceNode({ op }), parity: false });
-const oddCouponLeaf = (op: OddCouponOp): NodeCatalogEntry => ({ type: `oddcoupon-${op}`, label: ODD_COUPON_OP_META[op].label, description: ODD_COUPON_OP_META[op].description, create: () => new OddCouponNode({ op }), parity: false });
 const CX = NODE_KIND_ACCENTS.complex;
 const complexUnaryLeaf  = (op: ComplexUnaryOp):  NodeCatalogEntry => ({ type: `cx-unary-${op}`,  label: COMPLEX_UNARY_OP_META[op].label,  description: COMPLEX_UNARY_OP_META[op].description,  create: () => new ComplexUnaryNode({ op }),  parity: false });
 const complexBinaryLeaf = (op: ComplexBinaryOp): NodeCatalogEntry => ({ type: `cx-binary-${op}`, label: COMPLEX_BINARY_OP_META[op].label, description: COMPLEX_BINARY_OP_META[op].description, create: () => new ComplexBinaryNode({ op }), parity: false });
@@ -692,9 +689,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Bond pricing", description: "Price and yield for coupon bonds.",
         children: [
-          { type: "pair", children: [bondPriceLeaf("price"), bondPriceLeaf("yield")] },
-          { type: "pair", children: [oddCouponLeaf("oddfprice"), oddCouponLeaf("oddfyield")] },
-          { type: "pair", children: [oddCouponLeaf("oddlprice"), oddCouponLeaf("oddlyield")] },
+          { type: "bond-pricing", label: "Bond Pricing", description: "A coupon bond's clean price from its yield, or its yield from a market price, on a `30/360` basis. The odd-coupon forms take a first coupon date or a last interest date for bonds whose first or last period is irregular. Excel: `PRICE`, `YIELD`, `ODDFPRICE`, `ODDFYIELD`, `ODDLPRICE`, `ODDLYIELD`.", create: () => new BondPricingNode(), parity: false, keywords: "bond price yield coupon clean price yield to maturity ytm odd first last irregular period redemption par frequency" },
         ],
       },
       {

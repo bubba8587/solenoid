@@ -116,8 +116,7 @@ export { DiscountSecurityComponent } from "./DiscountSecurityNode";
 export { CouponComponent } from "./CouponNode";
 export { AccruedInterestComponent } from "./AccruedInterestNode";
 export { DurationComponent } from "./DurationNode";
-export { BondPriceComponent } from "./BondPriceNode";
-export { OddCouponComponent } from "./OddCouponNode";
+export { BondPricingComponent } from "./BondPricingNode";
 
 // ─── Currency formatting ──────────────────────────────────────────────────────
 export { FormatDollarComponent } from "./TypeCoerceNodes";

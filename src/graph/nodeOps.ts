@@ -34,7 +34,7 @@ import {
 import {
   AggregateNode, ArgMinMaxNode, ArithmeticNode,
   BesselNode, BitwiseNode,
-  BondPriceNode, BooleanOpNode, CharCodeNode, 
+  BondPricingNode, BOND_PRICING_META, BooleanOpNode, CharCodeNode, 
   CombinatoricsNode, ComplexBinaryNode, ComplexUnaryNode,
   ConfidenceNode, ConstantNode, CouponNode, CovarianceNode,
   CumPmtNode, DateAddNode, DateDiffNode, EpochNode, SmoothNode, SMOOTH_OP_META, type SmoothOp, ReturnsNode, RETURNS_OP_META, type ReturnsOp, DISCOUNT_SECURITY_META,
@@ -43,7 +43,6 @@ import {
   FisherNode,
   IpmtPpmtNode, MRoundNode,
   MatDetNode, MathFnNode, 
-  OddCouponNode,
   PhysicsConstantNode,
   DiscountSecurityNode, AccruedInterestNode, ACCRUED_INTEREST_OP_META,
   RankPercentileNode, RomanArabicNode,
@@ -219,7 +218,6 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "arith-add", ctor: ArithmeticNode },
   { type: "bessel-besselj", ctor: BesselNode },
   { type: "bitwise-bitand", ctor: BitwiseNode },
-  { type: "bondprice-price", ctor: BondPriceNode },
   { type: "bool-and", ctor: BooleanOpNode },
   { type: "char-code-char", ctor: CharCodeNode },
   { type: "comb-fact", ctor: CombinatoricsNode },
@@ -252,7 +250,6 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "math-ceiling", ctor: MRoundNode },
   { type: "matdet-mdeterm", ctor: MatDetNode },
   { type: "math-abs", ctor: MathFnNode },
-  { type: "oddcoupon-oddfprice", ctor: OddCouponNode },
   // ONE Rank & Percentile class hosts all ten order-statistic ops; the .EXC forms
   // have no leaf of their own, so each family leaf declares its pair and the
   // search rows ride the right host ("PERCENTILE: PERCENTILE.EXC"). The card
@@ -269,6 +266,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
     ops: [{ op: "quartile-inc", label: "QUARTILE.INC" }, { op: "quartile-exc", label: "QUARTILE.EXC" }],
     leafOps: RANK_PERCENTILE_LEAF_OPS,
     create: (op) => new RankPercentileNode({ op: op as never }) },
+  { type: "bond-pricing", ctor: BondPricingNode, ops: fromMeta(BOND_PRICING_META),
+    create: (op) => new BondPricingNode({ op: op as never }) },
   { type: "accrued-interest", ctor: AccruedInterestNode, ops: fromMeta(ACCRUED_INTEREST_OP_META),
     create: (op) => new AccruedInterestNode({ op: op as never }) },
   { type: "discount-security", ctor: DiscountSecurityNode, ops: fromMeta(DISCOUNT_SECURITY_META),

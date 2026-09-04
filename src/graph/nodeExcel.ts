@@ -37,8 +37,14 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "bitwise-bitor": [{ excel: "BITOR", syntax: "=BITOR(a, b)", parity: true }],
   "bitwise-bitrshift": [{ excel: "BITRSHIFT", syntax: "=BITRSHIFT(a, n)", parity: true }],
   "bitwise-bitxor": [{ excel: "BITXOR", syntax: "=BITXOR(a, b)", parity: true }],
-  "bondprice-price": [{ excel: "PRICE", syntax: "=PRICE(settle,maturity,rate,yld,redemption,freq)", parity: false, note: "30/360 basis only (no basis argument). Confirmed against Microsoft's worked example." }],
-  "bondprice-yield": [{ excel: "YIELD", syntax: "=YIELD(settle,maturity,rate,pr,redemption,freq)", parity: false, note: "30/360 basis only" }],
+  "bond-pricing": [
+    { excel: "PRICE", syntax: "=PRICE(settle,maturity,rate,yld,redemption,freq)", parity: false, note: "30/360 basis only (no basis argument). Confirmed against Microsoft's worked example." },
+    { excel: "YIELD", syntax: "=YIELD(settle,maturity,rate,pr,redemption,freq)", parity: false, note: "30/360 basis only" },
+    { excel: "ODDFPRICE", syntax: "=ODDFPRICE(...)", parity: false, note: "30/360 basis only; a first coupon off the maturity's coupon cycle computes here where Excel gives #NUM!" },
+    { excel: "ODDFYIELD", syntax: "=ODDFYIELD(...)", parity: false, note: "30/360 basis only; a first coupon off the maturity's coupon cycle computes here where Excel gives #NUM!" },
+    { excel: "ODDLPRICE", syntax: "=ODDLPRICE(...)", parity: false, note: "30/360 basis only" },
+    { excel: "ODDLYIELD", syntax: "=ODDLYIELD(...)", parity: false, note: "30/360 basis only" },
+  ],
   "by-axis": [{ excel: "BYROW", syntax: "=BYROW(array, LAMBDA(values, ...))", parity: false, note: "Reduces each row with its own formula of (values), or a wired LAMBDA value" }],
   "by-col": [{ excel: "BYCOL", syntax: "=BYCOL(array, LAMBDA(values, ...))", parity: false, note: "Reduces each column with its own formula of (values), or a wired LAMBDA value" }],
   "char-code-char": [
@@ -337,10 +343,6 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
   "npv": [{ excel: "NPV", syntax: "=NPV(rate, v1, v2, ...)", parity: true }],
   "nth-large": [{ excel: "LARGE", syntax: "=LARGE(array, k)", parity: true }],
   "nth-small": [{ excel: "SMALL", syntax: "=SMALL(array, k)", parity: true }],
-  "oddcoupon-oddfprice": [{ excel: "ODDFPRICE", syntax: "=ODDFPRICE(...)", parity: false, note: "30/360 basis only; a first coupon off the maturity's coupon cycle computes here where Excel gives #NUM!" }],
-  "oddcoupon-oddfyield": [{ excel: "ODDFYIELD", syntax: "=ODDFYIELD(...)", parity: false, note: "30/360 basis only; a first coupon off the maturity's coupon cycle computes here where Excel gives #NUM!" }],
-  "oddcoupon-oddlprice": [{ excel: "ODDLPRICE", syntax: "=ODDLPRICE(...)", parity: false, note: "30/360 basis only" }],
-  "oddcoupon-oddlyield": [{ excel: "ODDLYIELD", syntax: "=ODDLYIELD(...)", parity: false, note: "30/360 basis only" }],
 
   "prob": [{ excel: "PROB", syntax: "=PROB(range, prob, lo, hi)" }],
   "randbetween": [

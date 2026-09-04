@@ -3,7 +3,7 @@ import { resolveExcelFunction, LEGACY_ALIASES } from "../../src/graph/excelFunct
 import { compileEvaluator, formulaFunctionNames, RANGE_FUNCTIONS } from "../../src/graph/excelFormula";
 import { isSolError } from "../../src/graph/errorValue";
 import { TextSplitNode, TextAfterBeforeNode, UrlEncodeNode, RegexNode } from "../../src/graph/nodes/text";
-import { CouponNode, BondPriceNode, DurationNode, DepreciationNode } from "../../src/graph/nodes/finance";
+import { CouponNode, BondPricingNode, DurationNode, DepreciationNode } from "../../src/graph/nodes/finance";
 import { ForecastNode } from "../../src/graph/nodes/stats";
 
 // ─── Tier 1 registrations (formulaNaming) ───────────────────────────────────────────────
@@ -146,7 +146,7 @@ describe("finance functions: formula matches node", () => {
   });
 
   it("PRICE / YIELD round-trip through each other", () => {
-    const priceNode = new BondPriceNode({ op: "price" });
+    const priceNode = new BondPricingNode({ op: "price" });
     const price = ev(`PRICE(${settle}, ${maturity}, 0.065, 0.07, 100, 2)`);
     expect(price).toBe(priceNode.data({
       settle: [settle], maturity: [maturity], rate: [0.065], yld: [0.07], redemption: [100], frequency: [2],
