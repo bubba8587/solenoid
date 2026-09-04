@@ -1103,6 +1103,8 @@ export interface RecordPlacement {
   colSpan: number;
   /** Muted text an EMPTY box shows in place of the value dash. */
   hint?: string;
+  /** The title field (a `#name` marker): drawn big and label-less in every view. */
+  title?: boolean;
 }
 
 /** A layout cell: one line per grid row, cells split on "|", "." or an empty
@@ -1123,26 +1125,30 @@ export function parseRecordLayout(text: string): RecordPlacement[] {
         const hint = ci >= 0 ? cell.slice(ci + 1).trim() : "";
         const head = (ci >= 0 ? cell.slice(0, ci) : cell).trim();
         const m = /^(.*?)\s*\*\s*(\d+)$/.exec(head);
-        const name = m ? m[1].trim() : head;
+        const named = m ? m[1].trim() : head;
+        // A leading `#` marks the title field (drawn big, label-less); the rest is the name.
+        const title = named.startsWith("#");
+        const name = title ? named.slice(1).trim() : named;
         const span = m ? Math.min(12, Math.max(1, Number(m[2]))) : 1;
-        return Array.from({ length: span }, (_, i) => ({ name, hint: i === 0 ? hint : "" }));
+        return Array.from({ length: span }, (_, i) => ({ name, hint: i === 0 ? hint : "", title }));
       }),
     )
     .filter((cells) => cells.some((c) => c.name !== "" && c.name !== "."));
-  const rects = new Map<string, { name: string; hint: string; r0: number; c0: number; r1: number; c1: number }>();
+  const rects = new Map<string, { name: string; hint: string; title: boolean; r0: number; c0: number; r1: number; c1: number }>();
   const order: string[] = [];
   rows.forEach((cells, r) =>
-    cells.forEach(({ name, hint }, c) => {
+    cells.forEach(({ name, hint, title }, c) => {
       if (name === "" || name === ".") return;
       const key = name.toLowerCase();
       const rect = rects.get(key);
       if (!rect) {
-        rects.set(key, { name, hint, r0: r, c0: c, r1: r, c1: c });
+        rects.set(key, { name, hint, title, r0: r, c0: c, r1: r, c1: c });
         order.push(key);
       } else {
         rect.r0 = Math.min(rect.r0, r); rect.c0 = Math.min(rect.c0, c);
         rect.r1 = Math.max(rect.r1, r); rect.c1 = Math.max(rect.c1, c);
         if (!rect.hint) rect.hint = hint;
+        if (title) rect.title = true;
       }
     }),
   );
@@ -1151,6 +1157,7 @@ export function parseRecordLayout(text: string): RecordPlacement[] {
     return {
       name: t.name, row: t.r0 + 1, col: t.c0 + 1, rowSpan: t.r1 - t.r0 + 1, colSpan: t.c1 - t.c0 + 1,
       ...(t.hint ? { hint: t.hint } : {}),
+      ...(t.title ? { title: true } : {}),
     };
   });
 }
@@ -1179,6 +1186,10 @@ function readCardSize(optStr: string | null): RecordSize | undefined {
   const m = optStr && /(?:^|;)\s*cardsize\s*=\s*([sml])\b/i.exec(optStr);
   return m ? (m[1].toLowerCase() as RecordSize) : undefined;
 }
+// The `clamp=on` option: line-clamp long values on gallery tiles (the popup still shows all).
+function readClamp(optStr: string | null): boolean {
+  return !!optStr && /(?:^|;)\s*clamp\s*=\s*(on|true|yes|1)\b/i.test(optStr);
+}
 
 // Gallery/board draw at most this many cards; `payload.more` carries the rest.
 export const RECORD_CARD_CAP = 60;
@@ -1187,8 +1198,8 @@ export class RecordNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     row: "Selects the 1-based record. Blank or out of range shows the boxes empty.",
     by: "Names the column whose values become the board's lanes. Blank or unmatched draws nothing.",
-    layout: "One line per grid row, names split by | marks. Repeating a name merges its cells into one box. Photo*2 widens a box two columns. Qty: for example 40 gives an empty box muted placeholder text. A dot or an empty cell stays blank. Left empty, the columns stack.",
-    options: "title=Parts;fontsize=12;cardsize=l. Gallery tiles size s, m or l.",
+    layout: "One line per grid row, names split by | marks. Repeating a name merges its cells into one box. Photo*2 widens a box two columns. Qty: for example 40 gives an empty box muted placeholder text. Prefix a name with # to make it the title, drawn big and without its label. A dot or an empty cell stays blank. Left empty, the columns stack.",
+    options: "title=Parts;fontsize=12;cardsize=l. Gallery tiles size s, m or l; clamp=on caps long tile values at three lines.",
   };
 
   label: string;
@@ -1256,8 +1267,9 @@ export class RecordNode extends ClassicPreset.Node {
     const optIn = readInput(inputs.options, this.stringLiterals.options ?? null);
     const optStr = typeof optIn === "string" || optIn === null ? optIn : (this.stringLiterals.options ?? null);
     this.chartOptions = parseChartOptions(optStr);
-    // Gallery tile size preset (gallery only; other views ignore it).
+    // Gallery tile size preset + value clamp (gallery only; other views ignore them).
     const size = readCardSize(optStr);
+    const clampTiles = readClamp(optStr);
 
     // The board's grouping column: a column reference, so a wired blank or an
     // unmatched name draws nothing (never "one lane of everything").
@@ -1266,14 +1278,14 @@ export class RecordNode extends ClassicPreset.Node {
     const byCol = this.op === "board" ? (byKey ? cols.find((c) => c.name.trim().toLowerCase() === byKey) ?? null : null) : null;
 
     const byName = new Map(cols.map((c) => [c.name.trim().toLowerCase(), c]));
-    const field = (name: string, col: FrameColumn | undefined, rowIdx: number | null, at: { row: number; col: number; rowSpan: number; colSpan: number; hint?: string }): RecordField => {
+    const field = (name: string, col: FrameColumn | undefined, rowIdx: number | null, at: { row: number; col: number; rowSpan: number; colSpan: number; hint?: string; title?: boolean }): RecordField => {
       const label = col
         ? (col.unit ? `${col.name} (${columnUnitLabel(col.unit)})` : col.name)
         : name;
       const raw = col && rowIdx !== null ? col.values[rowIdx] ?? null : null;
       const shown = raw === null ? null : formatFrameCell(col!.type, raw);
       const image = typeof shown === "string" ? recordImageSrc(shown) : null;
-      const f: RecordField = { label, value: shown, ...(image ? { image } : {}), row: at.row, col: at.col, rowSpan: at.rowSpan, colSpan: at.colSpan };
+      const f: RecordField = { label, value: shown, ...(image ? { image } : {}), ...(at.title ? { isTitle: true } : {}), row: at.row, col: at.col, rowSpan: at.rowSpan, colSpan: at.colSpan };
       if (shown === null && at.hint) f.hint = at.hint;
       return f;
     };
@@ -1319,6 +1331,7 @@ export class RecordNode extends ClassicPreset.Node {
       kind: "record", view: this.op, cols: ncols, cards,
       ...(lanes ? { lanes } : {}), ...(more > 0 ? { more } : {}),
       ...(size ? { size } : {}),
+      ...(clampTiles ? { clamp: true } : {}),
       index, total,
     };
     const chart: ChartValue = {

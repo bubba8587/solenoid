@@ -125,6 +125,21 @@
 .sol-record__value--empty { color: var(--text-muted, var(--text-dim)); }
 /* Layout-authored placeholder in an empty box — quieter than a real value. */
 .sol-record__value--hint { color: var(--text-muted, var(--text-dim)); opacity: 0.75; }
+/* Title field (a `#name` marker): label-less and prominent in every view. */
+.sol-record__box--title .sol-record__value {
+  font-family: inherit;
+  font-size: calc(14px * var(--chart-fscale, 1));
+  font-weight: 600;
+}
+/* The `clamp` option: cap long tile values at 3 lines with an ellipsis (gallery only;
+   the popup shows the whole card). */
+.sol-record-gallery--clamp .sol-record__value {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
 .sol-record__img {
   flex: 1;
   width: 100%;
