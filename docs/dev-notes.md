@@ -109,6 +109,25 @@ carries the two open calls.
 the Note-frame seed), `v2.0/10` grounding, `architecture.md` (modalGuard row), backlog (canvas
 cursor + popup 1px + keystroke-guard lines deleted as landed).
 
+**Third mechanical lane (author: "any other mechanical backlog work?").** (1) `04262401` +
+`5dfcb29d` — the dependency walk: in-range moves (Tauri plugins, `@xyflow/react` 12.11.6,
+mermaid, katex, plugin-react, puppeteer-core) and the long-skipped `@anthropic-ai/sdk` major
+(0.115 → 0.123, zero call-site changes; `aiDemo.test.ts` drives the real client over the demo
+transport); `vitest` 5 is the one remaining major, untouched; `npm audit --omit=dev` clean. (2)
+`e0da2250` — **a flipped node lays out down-and-left**: `elk.layered.considerModelOrder.strategy
+= NODES_AND_EDGES` + `crossingMinimization.forceNodeModelOrder` are added to the root options ONLY
+when an ELK-visible node is flipped, and flipped nodes are emitted last in `children`; measured
+src y 41 / flipped sink y 179 (was 159 / 41); an unflipped layout's options + children order are
+pinned byte-identical by a recording-stub test. (3) `b29a71ce` — the sanctioned **chart
+screenshot pass**: `scripts/chart-contact-sheet.mjs` (+ a dev-only `__spike.patch(id, fields)`
+hook) renders every Chart op × option variant × theme off the chart-showcase seed (46 PNGs).
+Reviewed by eye; defects handed to a fix lane (composed drops the label column + title + line
+width; radar radial tick labels smear into the polygon; stacked area fills hide the first
+series; the expand button + top tick sit on the plot's top edge; bar/scatter thin their category
+ticks, scatter leaves a right gutter; radialbar has no legend; bubble names no column). Left
+as-is: `color` is inert on a multi-series radar (palette-painted) but works single-series — the
+Builder keeps offering it; a question for the author below.
+
 **Walk stop point.** Below `main` the walk covered `af410b48` down to `45130f0c` (the Add-menu
 per-word search + one-edit matcher, the env.ts dissolve, the minimap recolor, the four RF-port
 fixes: collapsed-group tow, the FlowCableEdge hook order, the FC chip 1px step + caret
@@ -140,6 +159,8 @@ picks; a backlog line carries the gate.
   the [0,1] domain clips it. Acceptable for now, or clamp / min-max when negatives appear?
 - `allocator.json` still titles the seed and its note "Budget Allocator" after the node rename —
   deliberate (the seed IS about a budget), or should both follow the node?
+- Chart Builder offers `color` for radar, but it only paints a SINGLE-series radar (a frame-fed
+  multi-series one uses the palette). Keep offering it, or drop it from `RADAR_KEYS` like pie?
 
 ### SESSION DIGEST (2026-09-04 — Allocator rename, weights-row removal, domain sweep)
 
