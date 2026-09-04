@@ -10,8 +10,8 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 
 ## Claims
 
-- Chewie — B2.2 chip style, both homes (backlog § Tables). C5 date idioms (cd1de172) merged. Display expand, finance review, A3 hover peek, FC inherit review (6960fc0b) LANDED, merged.
+- Chewie — B4 shared column picker (backlog § Tables). B2.2 chips (f4b88d37) merged. Display expand, finance review, A3 hover peek, FC inherit review (6960fc0b) LANDED, merged.
 - Lando — C2 per-document network permission, then C1 widget nodes in order (backlog § Sources). B2.1 + B3 merged. E2 LANDED (8c9c6f11), merged. FC inherit pick + F5 findings LANDED, merged.
-- Han — lead; merges; walking the 1.4 cut with the author one item per turn (Tracks A–C settled; at D2).
+- Han — lead; merges; walking the 1.4 cut with the author one item per turn (Tracks A–C settled; D2 payment breakdown in; at D4).
 
-**Awaiting the author's eyeball:** three finance cards (Finance > Other / Bonds), the FC `—` inherit pick, the Display corner expand on frames/tables/lists, the socket hover peek (A3), the mobile delete button inside a drill-in (E2), the Record List view / cardsize / #title / clamp (B1) + the four new record-cards seed exhibits, the Quarter `start` / Age / Nth Weekday presets (C5), the text-cell suggestions in the table popup (B2.1), the popup's frozen-header toggle + record arrow keys (B3); from earlier: the anydata hollow-square glyph + Socket Legend row; the catalog description sweep (8d5c8f74); Merge Plots figure + expand button; Vite 8 (desktop `tauri build` ride-along result per A3's last message).
+**Awaiting the author's eyeball:** three finance cards (Finance > Other / Bonds), the FC `—` inherit pick, the Display corner expand on frames/tables/lists, the socket hover peek (A3), the mobile delete button inside a drill-in (E2), the Record List view / cardsize / #title / clamp (B1) + the four new record-cards seed exhibits, the Quarter `start` / Age / Nth Weekday presets (C5), the text-cell suggestions in the table popup (B2.1), the popup's frozen-header toggle + record arrow keys (B3), the Chip style on the FC + popup column row (B2.2); from earlier: the anydata hollow-square glyph + Socket Legend row; the catalog description sweep (8d5c8f74); Merge Plots figure + expand button; Vite 8 (desktop `tauri build` ride-along result per A3's last message).
