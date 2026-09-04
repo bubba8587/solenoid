@@ -8,10 +8,10 @@
       "id": "noteIntro",
       "type": "NoteNode",
       "x": -60,
-      "y": 452,
+      "y": 758,
       "init": {
         "label": "Decision Matrix",
-        "body": "# Weighted scoring, ranked\nA **Decision Matrix** scores a table of options against weighted criteria and ranks them.\n\n**Flow:** a Frame of scores (rows are options, number columns are criteria) → **Decision Matrix** → `Option · Score · Rank`, best first. The Screen column comes from a **Note**: its frontmatter lists carry the scores, joined in by laptop name, and its text records the reasoning. A **Report** at the end pulls the results into a live memo.\n\nA small **Weights** table wires in one row per criterion: a **weight** (default 1; negative = lower is better, like Price) and an optional **Norm** override. Score = **Σ(value × weight) / Σ|weight|**. Tweak a weight and watch the ranking move.",
+        "body": "# Weighted scoring, ranked\nA **Decision Matrix** scores a table of options against weighted criteria and ranks them.\n\n**Flow:** a Frame of scores (rows are options, number columns are criteria) → **Decision Matrix** → `Option · Score · Rank`, best first. The Screen column comes from a **Note**: its frontmatter emits a keyed table, joined in by laptop name, and its text records the reasoning. A **Report** at the end pulls the results into a live memo.\n\nA small **Weights** table wires in one row per criterion: a **weight** (default 1; negative = lower is better, like Price) and an optional **Norm** override. Score = **Σ(value × weight) / Σ|weight|**. Tweak a weight and watch the ranking move.",
         "color": "violet",
         "width": 400,
         "height": 300
@@ -21,7 +21,7 @@
       "id": "scores",
       "type": "FrameInputNode",
       "x": 426,
-      "y": 490,
+      "y": 796,
       "init": {
         "label": "Score table",
         "frameText": "[{\"name\":\"Laptop\",\"type\":\"string\",\"values\":[\"ProBook\",\"UltraSlim\",\"PowerLifter\",\"Budget\"]},{\"name\":\"Performance\",\"type\":\"number\",\"values\":[9,6,10,4]},{\"name\":\"Battery\",\"type\":\"number\",\"values\":[6,9,5,7]},{\"name\":\"Price\",\"type\":\"number\",\"values\":[1800,1400,2200,700]}]"
@@ -30,34 +30,21 @@
     {
       "id": "noteScreen",
       "type": "NoteNode",
-      "x": -60,
-      "y": 815,
+      "x": 738,
+      "y": 803,
       "init": {
         "label": "Screen scores",
-        "body": "---\nlaptop: [ProBook, UltraSlim, PowerLifter, Budget]\nscreen: [8, 9, 7, 5]\n---\n### Screen scores\nProBook 8: 4K panel with an anti-glare coating. UltraSlim 9: brightest of the four. PowerLifter 7: sharp but reflective. Budget 5: a review flagged weak brightness.\n\nEach frontmatter list is an output socket. The two lists build a keyed table, so a score stays attached to its laptop however the main table is sorted.",
+        "body": "---\nscreen:\n  - {Laptop: ProBook, Screen: 8}\n  - {Laptop: UltraSlim, Screen: 9}\n  - {Laptop: PowerLifter, Screen: 7}\n  - {Laptop: Budget, Screen: 5}\n---\n### Screen scores\nProBook 8: 4K panel with an anti-glare coating. UltraSlim 9: brightest of the four. PowerLifter 7: sharp but reflective. Budget 5: a review flagged weak brightness.\n\nThe frontmatter rows emit a keyed table directly, one **frame** output, so each score stays attached to its laptop however the main table is sorted.",
         "color": "amber",
         "width": 400,
         "height": 250
       }
     },
     {
-      "id": "screenframe",
-      "type": "FrameFromListsNode",
-      "x": 426,
-      "y": 790,
-      "init": {
-        "label": "Screen table"
-      },
-      "stringLiterals": {
-        "name0": "Laptop",
-        "name1": "Screen"
-      }
-    },
-    {
       "id": "join",
       "type": "JoinNode",
-      "x": 765,
-      "y": 303,
+      "x": 1398,
+      "y": 758,
       "init": {
         "label": "Join on Laptop",
         "how": "left"
@@ -70,8 +57,8 @@
     {
       "id": "dm",
       "type": "DecisionMatrixNode",
-      "x": 1410,
-      "y": 992,
+      "x": 2047,
+      "y": 364,
       "init": {
         "label": "Decision Matrix",
         "normalize": "max",
@@ -81,8 +68,8 @@
     {
       "id": "weights",
       "type": "FrameInputNode",
-      "x": 1128,
-      "y": 1043,
+      "x": 1765,
+      "y": 415,
       "init": {
         "label": "Weights",
         "frameText": "[{\"name\":\"Criterion\",\"type\":\"string\",\"values\":[\"Performance\",\"Battery\",\"Screen\",\"Price\"]},{\"name\":\"Weight\",\"type\":\"number\",\"values\":[3,2,1,-2]},{\"name\":\"Norm\",\"type\":\"string\",\"values\":[\"\",\"\",\"\",\"Rank\"]}]"
@@ -91,8 +78,8 @@
     {
       "id": "noteDM",
       "type": "NoteNode",
-      "x": 1345,
-      "y": 1357,
+      "x": 1982,
+      "y": 729,
       "init": {
         "label": "Mixed scales, one range",
         "body": "Price is in **dollars**; the rest are out of **10**. Scored raw, the dollar column would swamp everything, so each column is first squeezed onto the same footing; then only the **weights** decide influence.\n\n**÷Max** divides a column by its biggest value, so each tops out at 1. **Rank** keeps only the order: $2,200 counts as “most expensive”, not as 2,200 of anything. Price uses Rank; the rest follow the ÷Max default.\n\n**Breakdown** is on: each criterion column is its **signed contribution**, and the contributions sum to the Score. Price shows negative, the penalty it is.",
@@ -104,8 +91,8 @@
     {
       "id": "select",
       "type": "ColumnsNode",
-      "x": 1870,
-      "y": 1378,
+      "x": 2482,
+      "y": 813,
       "init": {
         "label": "Keep Laptop · Score"
       },
@@ -116,8 +103,8 @@
     {
       "id": "chart",
       "type": "ChartNode",
-      "x": 2195,
-      "y": 1370,
+      "x": 2807,
+      "y": 805,
       "init": {
         "label": "Podium",
         "op": "bar"
@@ -129,8 +116,8 @@
     {
       "id": "noteChart",
       "type": "NoteNode",
-      "x": 1818,
-      "y": 992,
+      "x": 2430,
+      "y": 427,
       "init": {
         "label": "The podium is a chart",
         "body": "The ranking is already the table. For the podium, **Select Columns** keeps `Laptop · Score`, and a two-column frame into **Chart** draws labeled bars: the first column names them, the second sets the lengths.",
@@ -142,8 +129,8 @@
     {
       "id": "winner",
       "type": "ListIndexNode",
-      "x": 1866,
-      "y": 780,
+      "x": 2478,
+      "y": 232,
       "init": {
         "label": "Winner"
       },
@@ -155,8 +142,8 @@
     {
       "id": "report",
       "type": "ReportNode",
-      "x": 2241,
-      "y": 1079,
+      "x": 2839,
+      "y": 330,
       "init": {
         "label": "Decision memo",
         "body": "# Laptop pick\n\nWith the weights on the canvas, the matrix picks `=winner!`.\n\n`=podium`\n\nBehind the bars, each criterion column is a signed contribution; the contributions sum to the Score, and Price counts against:\n\n`=ranking`\n\nEvery figure here is wired. Change a weight or a score upstream and the memo follows."
@@ -165,8 +152,8 @@
     {
       "id": "noteSens",
       "type": "NoteNode",
-      "x": 1221,
-      "y": 674,
+      "x": 1857,
+      "y": 1423,
       "init": {
         "label": "Sensitivity",
         "body": "# Stress-test the weights\nThe winner depends on the weights picked above. **Sensitivity** re-scores the same options under several weight **scenarios**, one per weight column of the Scenarios frame, and returns a **Cube**: per scenario the **Winner**, the **Margin** (top score minus runner-up), and the full **Ranking** nested in the cell. Drill in.\n\nThe winner flips: **UltraSlim** under Balanced, **PowerLifter** when performance dominates. Under Budget the Winner cell reads **UltraSlim = Budget**, a dead tie at Margin 0. That pick is fragile; the first two hold.",
@@ -178,8 +165,8 @@
     {
       "id": "scenarios",
       "type": "FrameInputNode",
-      "x": 1127,
-      "y": 379,
+      "x": 1763,
+      "y": 1128,
       "init": {
         "label": "Weight scenarios",
         "frameText": "[{\"name\":\"Criterion\",\"type\":\"string\",\"values\":[\"Performance\",\"Battery\",\"Screen\",\"Price\"]},{\"name\":\"Balanced\",\"type\":\"number\",\"values\":[3,2,1,-2]},{\"name\":\"Performance-first\",\"type\":\"number\",\"values\":[5,1,1,-1]},{\"name\":\"Budget\",\"type\":\"number\",\"values\":[1,1,1,-5]}]"
@@ -188,8 +175,8 @@
     {
       "id": "sens",
       "type": "DecisionSensitivityNode",
-      "x": 1452,
-      "y": 356,
+      "x": 2088,
+      "y": 1105,
       "init": {
         "label": "Sensitivity",
         "normalize": "rank"
@@ -198,8 +185,8 @@
     {
       "id": "radar",
       "type": "ChartNode",
-      "x": 765,
-      "y": 683,
+      "x": 1398,
+      "y": 1138,
       "init": {
         "label": "Profiles (radar)",
         "op": "radar"
@@ -211,8 +198,8 @@
     {
       "id": "grp-podium",
       "type": "GroupNode",
-      "x": 1846,
-      "y": 1312,
+      "x": 2458,
+      "y": 747,
       "init": {
         "label": "Podium",
         "members": [
@@ -228,8 +215,8 @@
     {
       "id": "grp-sens",
       "type": "GroupNode",
-      "x": 1103,
-      "y": 298,
+      "x": 1739,
+      "y": 1047,
       "init": {
         "label": "Sensitivity",
         "members": [
@@ -257,22 +244,10 @@
       "targetInput": "left"
     },
     {
-      "source": "screenframe",
-      "sourceOutput": "frame",
-      "target": "join",
-      "targetInput": "right"
-    },
-    {
-      "source": "noteScreen",
-      "sourceOutput": "laptop",
-      "target": "screenframe",
-      "targetInput": "vals0"
-    },
-    {
       "source": "noteScreen",
       "sourceOutput": "screen",
-      "target": "screenframe",
-      "targetInput": "vals1"
+      "target": "join",
+      "targetInput": "right"
     },
     {
       "source": "join",
@@ -398,7 +373,7 @@
     },
     {
       "a": {
-        "nodeId": "screenframe",
+        "nodeId": "join",
         "anchor": "w"
       },
       "b": {
@@ -406,7 +381,7 @@
         "anchor": "e"
       },
       "min": 40,
-      "max": 220
+      "max": 260
     },
     {
       "a": {

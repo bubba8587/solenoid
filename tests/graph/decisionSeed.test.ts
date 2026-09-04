@@ -3,7 +3,7 @@ import seed from "../../src/graph/seedGraphs/decision-matrix.json";
 import { decisionMatrix, decisionCriteria, decisionSensitivity, resolveDecisionWeights } from "../../src/graph/frameVerbs";
 import { isCubeValue, type FrameValue, type FrameColumn } from "../../src/graph/frame";
 import type { DecisionNormalize } from "../../src/graph/frameVerbs";
-import { parseNoteFrontmatter } from "../../src/graph/noteFrontmatter";
+import { NoteNode } from "../../src/graph/nodes/annotation";
 import { extractInlineRefs } from "../../src/graph/noteInlineRefs";
 import { joinFrames } from "../../src/graph/frameVerbs";
 
@@ -28,19 +28,11 @@ const frameOf = (id: string): FrameValue => ({
   columns: JSON.parse(byId(id).init!.frameText as string) as FrameColumn[],
 });
 
-// The graph assembles the Scores frame the keyed way: the Note's two frontmatter
-// lists become a (Laptop, Screen) frame, left-joined onto the score table by
-// laptop name — row order in either table cannot misalign a score.
-const noteFields = parseNoteFrontmatter(byId("noteScreen").init!.body as string).fields;
-const laptopField = noteFields.find((f) => f.key === "laptop")!;
-const screenField = noteFields.find((f) => f.key === "screen")!;
-const screenFrame: FrameValue = {
-  __frame: true,
-  columns: [
-    { name: byId("screenframe").stringLiterals!.name0, type: "string", values: laptopField.value as string[] },
-    { name: byId("screenframe").stringLiterals!.name1, type: "number", values: screenField.value as number[] },
-  ],
-};
+// The graph assembles the Scores frame the keyed way: the Note's frontmatter emits a
+// (Laptop, Screen) FRAME directly (rows-of-objects frontmatter), left-joined onto the
+// score table by laptop name — row order in either table cannot misalign a score.
+const screenNote = new NoteNode({ body: byId("noteScreen").init!.body as string });
+const screenFrame = screenNote.fieldValues().screen as FrameValue;
 const joinLits = byId("join").stringLiterals!;
 const scores: FrameValue = joinFrames(frameOf("scores"), screenFrame, {
   leftKey: joinLits.leftKey, rightKey: joinLits.rightKey,
@@ -53,14 +45,13 @@ const weightsFrame = frameOf("weights");
 const { weights, normOverrides } = resolveDecisionWeights(weightsFrame, decisionCriteria(scores));
 
 describe("decision-matrix seed", () => {
-  it("the Note's lists are keyed: every laptop in the score table gets a screen score", () => {
-    expect(laptopField.guessed).toBe("strlist");
-    expect(screenField.guessed).toBe("list");
-    expect((screenField.value as number[]).length).toBe((laptopField.value as string[]).length);
-    for (const v of screenField.value as number[]) expect(typeof v).toBe("number");
+  it("the Note emits a keyed (Laptop, Screen) frame covering every score-table laptop", () => {
+    // The frontmatter rows-of-objects give a real frame, not two parallel lists.
+    expect(screenFrame.columns.map((c) => c.name)).toEqual(["Laptop", "Screen"]);
+    expect(screenFrame.columns[1].type).toBe("number");
     // set equality with the score table's key column — the join must match every row
     const tableNames = [...(frameOf("scores").columns[0].values as string[])].sort();
-    expect([...(laptopField.value as string[])].sort()).toEqual(tableNames);
+    expect([...(screenFrame.columns[0].values as string[])].sort()).toEqual(tableNames);
     // and the joined frame carries a complete numeric Screen column
     const screenCol = scores.columns.find((c) => c.name === "Screen")!;
     for (const v of screenCol.values) expect(typeof v).toBe("number");
