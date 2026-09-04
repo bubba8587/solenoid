@@ -35,6 +35,12 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
   balancing is the Allocator" as a seed. GATE: nothing starts until the author picks; the first
   pass's Hungarian matching + Erlang staffing sit in `deferrals.md`.
 
+## Composites
+
+- [ ] **LATER — Optimize run mode on composites (1.4 A6; author 2026-09-04c: in, not now).** Excel
+  Solver's shape as a sixth composite run mode beside Goal Seek; spec + steps in `1.4-plan.md`
+  § A6. Gate: the author says go (and settles the constraint forms; integer no).
+
 ## Display
 
 - [ ] **Hover peek on any socket (1.4 A3, author 2026-09-04c).** Hovering an OUTPUT socket
