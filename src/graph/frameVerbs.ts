@@ -171,6 +171,26 @@ export function distinctRows(f: FrameValue, columns?: readonly string[]): FrameV
   return reorderRows(f, keep);
 }
 
+/** The distinct non-blank cell TEXTS of one column, in first-seen order — the
+ *  constrained-entry datalist source (B2.1). Blanks (`null`/`""`) and cells the optional
+ *  `isExcluded` predicate rejects (error codes at the call site) are dropped; the rest
+ *  dedupe by exact text. Pure. */
+export function distinctColumnValues(
+  cells: readonly (string | null | undefined)[],
+  isExcluded?: (v: string) => boolean,
+): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const c of cells) {
+    if (c == null || c === "") continue;
+    if (isExcluded?.(c)) continue;
+    if (seen.has(c)) continue;
+    seen.add(c);
+    out.push(c);
+  }
+  return out;
+}
+
 /** The first `n` rows (n ≤ 0 → empty; n ≥ rowCount → unchanged). */
 export function headRows(f: FrameValue, n: number): FrameValue {
   const take = Math.max(0, Math.min(Math.trunc(n), frameRowCount(f)));

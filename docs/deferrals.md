@@ -30,6 +30,12 @@ and its entry deleted. Ruled-out-forever ideas: `out-of-scope.md`; settled ratio
 
 ## Reopen only if the trigger returns
 
+- **iFrame / embed node** (1.4-plan C4; author 2026-09-04c: deferred, not ruled out). Needs a CSP
+  loosening; with 2.0's shared documents an embedded page is a phishing surface — that is the
+  question to answer before any build.
+- **λ view-as on the Computed Column card** (1.4-plan B4; author 2026-09-04c: "defer, I may need that
+  later"). A declared result kind for an inline formula; today the popup's column format row
+  covers the date-serial case.
 - **Dependency-cone hover brush** (1.4-plan A4; author 2026-09-04c: out). The isolate cone walk
   is the mechanism if it returns.
 - **Mute / bypass a node** (1.4-plan A2; author 2026-09-04c: out). Pass-through needs the

@@ -102,6 +102,26 @@ the shared Parts frame (a new long Notes column feeds the clamp exhibit), re-bak
 `tune-seeds.mjs` (given a `URL`/`CHROME` env so a worktree tunes its own edited seeds against its
 own dev server); catalog description + `#`/`cardsize`/`clamp` socketDocs carry the four lifts.
 
+**B2.1 — constrained entry (Lando).** Editing a TEXT cell in the table popup (grid or Form view)
+now offers the column's distinct existing values as a `<datalist>`; anything new still types.
+The list is a pure helper `distinctColumnValues(cells, isExcluded?)` in `frameVerbs.ts` (first-seen
+order, blanks + error codes excluded), fed from the grid text and gated to `string` columns only
+(logical/date/number keep their own entry). No new commit path — a datalist pick populates the
+same `<input>`, so it commits on Enter/blur exactly like a keystroke; no `FormatAnnotation` field.
+Pinned by `constrainedEntry.test.ts` (the distinct list; a suggestion coerces identically to a
+typed value). Renders one `<datalist>` per text column in the active view's scroll container.
+
+**B3 — table popup polish (Lando, two commits).** (1) The always-on sticky header + row-number
+first column became a toggle: `settingsStore.tablePopupFrozen` (default on, persisted, NOT in the
+Settings panel), flipped from `PopupOverflowMenu` beside the summary-footer item; an `--unfrozen`
+class reverts the sticky cells to static. Same commit removed the "Table popup summary footer"
+row from the Settings panel — popup chrome is set in the popup (the author's rule). (2) A Record
+CARD popup now pages with ←/→ (the on-screen prev/next by keyboard): `ChartPopup` binds the arrows
+to the existing `stepRecordRow`/`recordNavTarget` (recordNav.ts, same path the Display pager uses),
+swapping the fresh chart into the popup snapshot without closing; `canvasKeyboard` already stands
+down under the `.sol-popup-overlay` (modalGuard), so the arrows reach only the popup. Pinned by
+`recordNav.test.ts` (the pager gate: card + >1 row + unwired Row, else none).
+
 **D1 — formula-surface allowlist: Option A DROPPED on step-0 findings (Chewie).** Option A
 (one guard before `broadcastCall`: an undeclared FX name refuses ARRAY args) was greenlit on
 the proposal's premise that only "a handful" of undeclared names broadcast fine. Step 0

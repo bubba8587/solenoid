@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useSyncExternalStore } from "react";
 import { chartPopup } from "../chartPopupStore";
 import { appThemeStore } from "../appTheme";
@@ -53,6 +53,29 @@ export function ChartPopup() {
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
+  }, [state]);
+
+  // ←/→ page a Record card's popup without closing it — the on-screen prev/next by
+  // keyboard. canvasKeyboard already stands down under the overlay (modalGuard), so this
+  // is the only handler seeing the arrows; each step swaps the fresh chart into the
+  // snapshot. Bound here (a hook, before the early return); a no-op when the popup isn't
+  // a steppable record. Ignored while focus is in a field (there are none today, but safe).
+  useEffect(() => {
+    if (!state) return;
+    const s = state;
+    const rid = s.value?.op === "record" && s.pinNodeId ? recordNavTarget(s.pinNodeId) : null;
+    if (!rid) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      e.preventDefault();
+      void stepRecordRow(rid, e.key === "ArrowRight" ? 1 : -1).then((fresh) => {
+        if (fresh) chartPopup.open({ ...s, value: fresh });
+      });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [state]);
 
   if (!state) return null;

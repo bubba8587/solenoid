@@ -43,26 +43,36 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Tables
 
-- [ ] **Constrained entry on text columns (1.4 B2.1, author 2026-09-04c).** Typing into a text cell
-  in the table popup's grid or Form view offers the column's distinct existing values (a
-  `datalist`); anything new still types. Pure distinct list from `frameVerbs`; no new column type.
-- [ ] **Table popup: frozen header + first column (1.4 B3, author 2026-09-04c).** The column
-  names stay put while a long table scrolls, and optionally the first column while it scrolls
-  sideways (`position: sticky` on `th` / the first `td`, no virtualization). Toggled from the
-  popup's OVERFLOW menu (`PopupOverflowMenu`), default on, persisted like `tablePopupSummary` —
-  and NOT surfaced in the Settings panel. Same commit: the "Table popup summary footer" row
-  LEAVES the Settings panel (the overflow menu already owns that toggle; the author: popup
-  chrome is set in the popup). Check sort order, an open edit scrolling out, Copy CSV / Export
-  staying whole-dataset.
-- [ ] **Record popup: prev / next with the arrow keys (1.4 B3, author 2026-09-04c).** With a
-  Record card's popup open, ←/→ (and on-screen prev/next) step to the neighbouring record
-  without closing; `recordNav.ts` already holds the stepping. Out: image lightbox, chip hover.
+- [ ] **Shared column picker (1.4 B4, author 2026-09-04c).** Sort, Get Column and Join name a
+  column as free text today; one picker component lists the columns the incoming frame will
+  carry, fed by the static shape (`frameShapeResolver.ts` walks forward from literal sources, so
+  it lists before data flows), free-text fallback when the shape is unknown. One component,
+  three first customers; picker pure over `FrameShape`; existing suites green. Out: card-side
+  format/unit on Computed Column (the popup column row is the one home).
 - [ ] **Chip + case compose (1.4 B2.2 follow-up).** The Chip style (LANDED B2.2) shares the
   text-family style dropdown with letter-case, so it's exclusive with UPPER/lower/Proper this
   tranche. If wanted, let a chip also carry a case — a separate `chip` toggle beside the case
   dropdown rather than a fifth dropdown value (`chip` is already its own annotation flag).
   Record color-by and conditional formatting still inherit the one chip mechanism; enum column
   TYPE stays 2.0 (author).
+
+## Sources
+
+- [ ] **Per-document network permission (1.4 C2, author 2026-09-04c; build FIRST, the widgets
+  ship behind it).** A document opened from a file or import fetches nothing until allowed: one
+  notice ("This document connects to N services — allow?"), remembered per document in the
+  sidecar `meta`; your own autosaved documents never gated; an "always allow" escape hatch in
+  Settings ▸ Data. Doc-level gate in `connectionStore.ts` in front of the background fetch;
+  foreign-vs-own known at import in `persistence.ts`. Tests: gated doc fetches nothing, allow
+  releases all, own docs unaffected. Spec: `1.4-plan.md` § C2.
+- [ ] **Widget nodes Tier 1 (1.4 C1, author 2026-09-04c).** The bundle in `v2.0/16-widget-nodes.md`:
+  Weather + Geocode (Open-Meteo), Currency/FX (Frankfurter), Holidays (Nager.Date), Time Zone
+  Convert + World Clock (pure `Intl`), QR Code (pure). Each on the Data Feed build (provider file
+  + node + component + fixture tests + seed). Defaults taken from the plan unless the author
+  overrules: FX in; the three keyless providers as built-in dependencies; the fetching four
+  beside the Connections nodes, the pure two in Timesavers; a "Garden Dashboard" seed. Order:
+  Geocode + Weather, Holidays, TZ/QR, FX last. Node-design rules in `node-coverage.md`;
+  descriptions never explain wiring.
 
 ## Display
 
