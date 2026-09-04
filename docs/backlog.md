@@ -37,6 +37,12 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Formatting & units
 
+- [ ] **The FC's own style dropdown wants the same blank = inherit** (2026-09-04b, follow-up to
+  the frame column row's `—`). With formats flowing downstream, a Format Controller docked after
+  another FC always overrides with its style, and its default "Auto" is a real pick. Give the
+  style dropdown a leading `—` ("Inherit the upstream format") that makes the FC's annotation
+  carry the inherited style (unit and the other axes still its own); show the inherited style as
+  the same muted hint. Moot if Track I lands first.
 - [ ] **LATER (author, 2026-09-04): fold the Format Controller into the Display** — format and
   unit set at sources and displays, flowing downstream only; the docking subsystem and the
   upstream walk go. Analysis + scope in `1.4-plan.md` Track I. Gate: the author's go after the
