@@ -1370,7 +1370,7 @@ export const ALLOCATE_MODE_META = {
 
 export class AllocatorNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    categories: "Rows are categories. A min and a max number column set each price range, the first text column names them, and a Weight (or Value) column says how much you value each — with no such column every category weighs the same.",
+    categories: "Rows are categories. A min and a max number column set each price range, the first text column names them, and a Weight (or Value) column says how much you value each. With no such column every category weighs the same.",
     amount: "The budget to spend (Fit budget) or the value target to reach (Min for target). Ignored by Min proportional.",
   };
 
