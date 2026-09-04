@@ -152,6 +152,33 @@ about a budget; the node is the general Allocator).
 and the single-series radar now paints from the palette like every categorical op, so `color`
 is inert on radar in both shapes.
 
+**FC lost its date style on reload (author: Script → Display → FC "Wed, Jun 3" → reload →
+default date).** Not persistence — every FC field is whitelisted and the autosave rides
+`processGraph`'s graph-changed hook. The pick was REWRITTEN by `_applyType` on every family hop:
+at load a Script-fed Display resolves through the wildcard, then the Script's construction-time
+NUMBER family, then the real date type, and "date style on a non-date → auto, then auto on a
+date → first date style" ate the pick. `9738f145`: `_applyType` only mirrors the type; a pick
+outside the socket's family is INERT via `effectiveFormat()` (the family default applies, the
+popup shows it) and returns with its family. Replayed live by `scripts/fc-attach-probe.mjs`
+(`__spike.attachFc`, and `patch()` re-registers an FC annotation); the seed-level
+`fc-reload-probe.mjs` had passed because no seed FC sits on a run-time-typed value.
+
+**Format flows downstream through transforms (author ruling, `3edeb031`, `formatFlowsDownstream`
+in rules.md).** The resolver's transform case: the first wired input carrying an annotation
+wins, gated on the output socket's element family matching, the copy stripped to `unit:"none"`
+— the unit stays value-level and locked (`unitOnValue`); a nearer FC overrides; Convert still
+drops (it rescales the magnitude, so the old precision no longer describes the number); the
+UPSTREAM walk stays bounded by transforms. Unit-flow seed lane C's copy now reads "keeps the
+FORMAT; the unit COMPUTES" (author's strings, rewritten because the old caption became false —
+eyeball). Surfaces sweep (every display honors a resolved annotation, one shared resolver
+helper) is the companion commit.
+
+**Dev graph mirror (`f2827631`).** The author asked whether the live graph is readable. Now
+it is: each autosave POSTs the document to `/__dev-graph` (vite.config.ts `devGraphMirror`) →
+`.dev/current-graph.json` (ignored); automated pages (`navigator.webdriver`) skip it. CLAUDE.md
+carries the pointer. Track I (`1.4-plan.md`): the author's later proposal to fold the FC into
+the Display (format/unit set at sources + displays, downstream only) — analysis + scope there.
+
 **Walk stop point.** Below `main` the walk covered `af410b48` down to `45130f0c` (the Add-menu
 per-word search + one-edit matcher, the env.ts dissolve, the minimap recolor, the four RF-port
 fixes: collapsed-group tow, the FlowCableEdge hook order, the FC chip 1px step + caret
