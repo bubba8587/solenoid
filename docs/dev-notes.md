@@ -18,9 +18,11 @@ violates orderedColumnsAreFrames (node-coverage §Node design rules: aligned par
 ONE frame, not parallel list sockets). Weights now come ONLY from the categories frame's Weight
 (or Value) column; no column = equal weights. `allocateFrame` lost its `wiredWeights` param; the
 card's `BUDGET_CABLE_ONLY` set is gone (only `amount` is cable-only, in Min proportional); height
-215→191. Seed already fed weights by column, unchanged. **Open parallel:** DecisionMatrix still
-has a wired `weights` list socket (its inline weights are criterion-name-keyed, the wired list a
-positional override) — same rule smell, left for the author to rule on.
+215→191. Seed already fed weights by column, unchanged. **NOT the same as DecisionMatrix:** its
+wired `weights` list is correct and stays — those weights are ORTHOGONAL to the frame (one per
+criterion COLUMN, not per row), so they aren't row-aligned parallel data and the aligned-columns
+rule doesn't apply. The Allocator's weights were per-ROW (parallel to the category rows), which is
+exactly why they belong in a column.
 
 **Allocator-domain sweep.** Author promoted three same-DNA nodes (closed-form linear, solver-free,
 tedious by hand), each to ship with a seed → specs in `1.4-plan.md` Track H: **H1 Payoff Planner**

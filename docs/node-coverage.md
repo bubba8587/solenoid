@@ -75,7 +75,10 @@ scrollbar that sweep removed.
 - Aligned parallel columns → ONE frame input, not parallel list sockets (charts, SUMIFS,
   the frame verbs). The same for OUTPUTS: correlated lists (t and y of a solution, the
   parts of a decomposition) leave as ONE frame, never as parallel list sockets (author,
-  2026-08-24).
+  2026-08-24). This is about ROW-aligned data — a value per row, parallel to a frame's rows
+  (why the Allocator's per-category weights are a Weight COLUMN, not a socket). A vector that
+  runs ORTHOGONAL to the frame — one value per COLUMN, like Decision Matrix's per-criterion
+  weights — is not parallel data and legitimately stays a list socket.
 - A node that takes a user formula takes it as a LAMBDA input (`lambdaIn` + `lambdaSig` +
   `resolveFn`, the λ-family in `tableLambda.ts`), never as a string socket holding an
   expression (author, 2026-08-24).
