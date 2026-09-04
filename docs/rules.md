@@ -119,6 +119,7 @@ procedure is in the PROV section). Machine-checked against the actual headings b
 | kleeneLogic | Logical is a first-class family with Kleene logic |
 | keyByValue | Membership keys by VALUE, never identity |
 | unitOnValue | The unit is a property of the VALUE |
+| formatFlowsDownstream | The display FORMAT flows downstream; the unit does not |
 | perInputUnitBlind | The unit-blind boundary is PER-INPUT |
 | unitByGranularity | Units attach at the granularity of homogeneity |
 | opArgDistinct | OP and ARG are different things |
@@ -594,7 +595,7 @@ which segment was clicked.
 the whole run a cable belongs to" (run identity); `frameShapePassthrough.test.ts` →
 "frame SHAPE survives a passthrough (Bug B)" (through a Display / a Conduit lane / a
 half-wired IF); the unit-annotation half: `unitFlowAnnotation.test.ts` → "the lock
-survives a chain of passthroughs but BREAKS at a transform", "the lock crosses a
+survives a chain of passthroughs", "the lock crosses a
 Conduit lane (in_i → out_i), each lane independent".
 *Origin:* Bug B — downstream column pickers went empty and formula column references
 silently failed to resolve through a passthrough, with no error anywhere.
@@ -1132,6 +1133,31 @@ plain literal source.
 "an FC FEEDING a Convert is dictated its fromUnit: ← ←, locked to m";
 `unitWiring.test.ts`, `unitFlowAnnotation.test.ts`.
 
+### formatFlowsDownstream — The display FORMAT flows downstream; the unit does not **[INFERRED]**
+**MUST:** the FORMAT half of an annotation (style, precision, grouping, negatives,
+scale, text attributes, logical show-as) flows DOWNSTREAM through transforms, not just
+through passthroughs: `makeAnnotationResolver.compute` carries the first wired input's
+annotation onto an output whose element family MATCHES that input's (a wildcard or a
+family change — number → text — carries nothing). The carried copy has `unit: "none"`:
+the unit is VALUE-level and locked (unitOnValue), riding its `UnitCell` or breaking at
+the transform on its own, and an annotation never re-states it. A nearer FC OVERRIDES
+what it inherits, so a format is always overridable from any point down the chain.
+**Convert is the one transform that still DROPS** — it authors a new unit and rescales
+the magnitude, so the precision chosen for the old unit no longer describes the number.
+The UPSTREAM direction (`downstreamAnnotation`, a box reading a trailing FC) stays
+bounded by transforms: a format chosen AFTER a transform says nothing about the value
+before it.
+
+*Why (author, 2026-09-04):* "Generally, we want formatting to carry down the stream if
+possible, but it's always possible to override. Units are LOCKED in contrast."
+*Enforced by:* `unitFlowAnnotation.test.ts` → "the FORMAT carries through a transform,
+the unit does not", "two annotated operands: the first input's format wins; agreeing
+formats pass as one", "a family change drops the format (number → text)", "an FC
+downstream of a transform overrides the inherited format", "Convert still DROPS the
+format — it authors a new unit and rescales the magnitude", and the upstream bound "the
+lock STOPS at a transform between the Display and the FC"; `unitFlowSeed.test.ts` → "C ·
+a transform carries the number FORMAT, and the unit ($ dimension + display) rides".
+
 ### perInputUnitBlind — The unit-blind boundary is PER-INPUT **[INFERRED]**
 **MUST:** raw `UnitCell`s never reach a node that doesn't run the dimension algebra.
 `coerceInputs` centrally unwraps to display magnitude; `unitAware = true` keeps tags on
@@ -1621,11 +1647,11 @@ isolateStore missing too.
 
 # Enforcement summary
 
-78 rules.
+79 rules.
 
 | Status | Count | Rules |
 |---|---|---|
-| Enforced | 77 | every rule except the one below |
+| Enforced | 78 | every rule except the one below |
 | Partially enforced | 0 | (socketBox12's rendering half closed 2026-08-30: `scripts/socket-box-probe.mjs`) |
 | Unenforced | 1 | oneResolvePredicate |
 

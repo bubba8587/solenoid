@@ -5,6 +5,7 @@ import { applyFcUnit } from "../../src/graph/unitBridge";
 import { isUnitCell, magnitudeOf, dimOf, fromUnit, matrixUnitOf, type UnitCell } from "../../src/graph/unitValue";
 import { UNITS } from "../../src/graph/dimension";
 import { isSolError } from "../../src/graph/errorValue";
+import { SolenoidSocket, type SocketDataType } from "../../src/graph/sockets";
 import type { FormatAnnotation } from "../../src/graph/formatAnnotationStore";
 
 type AnyEditor = NodeEditor<{ Node: ClassicPreset.Node; Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node> }>;
@@ -16,6 +17,8 @@ const usd: FormatAnnotation = {
 const eur: FormatAnnotation = { ...usd, unit: "eur" };
 const km: FormatAnnotation = { ...usd, unit: "km" };
 const mi: FormatAnnotation = { ...usd, unit: "mi" };
+const km3: FormatAnnotation = { ...km, decimalDigits: 3 };
+const pct: FormatAnnotation = { ...usd, format: "percent", unit: "none" };
 
 function node(label: string, extra: Record<string, unknown> = {}) {
   const n = new ClassicPreset.Node(label) as ClassicPreset.Node & Record<string, unknown>;
@@ -53,6 +56,16 @@ function ifNode(label: string, selected: string | null | undefined) {
   }];
   return n;
 }
+/** A transform with REAL socket types — the format carry is family-gated, so a mock
+ *  with the untyped `sock` above would carry nothing whatever the rule says. */
+function xformNode(label: string, inputs: Record<string, SocketDataType>, outType: SocketDataType) {
+  const n = new ClassicPreset.Node(label) as ClassicPreset.Node & Record<string, unknown>;
+  for (const [k, t] of Object.entries(inputs)) {
+    n.addInput(k, new ClassicPreset.Input(new SolenoidSocket(t), k));
+  }
+  n.addOutput("result", new ClassicPreset.Output(new SolenoidSocket(outType), "Result"));
+  return n;
+}
 const connect = async (e: AnyEditor, s: ClassicPreset.Node, t: ClassicPreset.Node, tIn = "in") =>
   e.addConnection(new ClassicPreset.Connection(s as never, "out", t as never, tIn) as never);
 
@@ -67,19 +80,17 @@ describe("makeAnnotationResolver — FC locks a format that rides through passth
     expect(r.inAnnotation(disp.id, "in")?.unit).toBe("usd");
   });
 
-  it("the lock survives a chain of passthroughs but BREAKS at a transform", async () => {
+  it("the lock survives a chain of passthroughs", async () => {
     const editor = new NodeEditor() as unknown as AnyEditor;
     const fc = node("FC", { annotation: () => usd });
     const d1 = node("Display1", { passesUnitThrough: true });
-    const xform = node("Add");                 // not FC, not passthrough → transform
     const d2 = node("Display2", { passesUnitThrough: true });
-    for (const n of [fc, d1, xform, d2]) await editor.addNode(n as never);
-    await connect(editor, fc, d1);     // fc → d1 (locked)
-    await connect(editor, d1, xform);  // d1 → transform
-    await connect(editor, xform, d2);  // transform → d2 (unlocked)
+    for (const n of [fc, d1, d2]) await editor.addNode(n as never);
+    await connect(editor, fc, d1);
+    await connect(editor, d1, d2);
     const r = makeAnnotationResolver(editor);
-    expect(r.inAnnotation(d1.id, "in")?.unit).toBe("usd"); // carried across the passthrough
-    expect(r.inAnnotation(d2.id, "in")).toBeUndefined();   // dropped at the transform
+    expect(r.inAnnotation(d1.id, "in")?.unit).toBe("usd");
+    expect(r.inAnnotation(d2.id, "in")?.unit).toBe("usd");
   });
 
   it("the lock crosses a Conduit lane (in_i → out_i), each lane independent", async () => {
@@ -104,6 +115,77 @@ describe("makeAnnotationResolver — FC locks a format that rides through passth
     const r = makeAnnotationResolver(editor);
     expect(r.inAnnotation(dA.id, "in")?.unit).toBe("usd");
     expect(r.inAnnotation(dB.id, "in")?.unit).toBe("eur");
+  });
+});
+
+describe("formatFlowsDownstream — the FORMAT crosses a transform, the unit stays locked", () => {
+  it("the FORMAT carries through a transform, the unit does not", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const fc = node("FC", { annotation: () => km3 });          // decimal, 3 places, km
+    const times2 = xformNode("Arithmetic", { a: "numlist", b: "numlist" }, "numlist");
+    const disp = node("Display", { passesUnitThrough: true });
+    for (const n of [fc, times2, disp]) await editor.addNode(n as never);
+    await connect(editor, fc, times2, "a");
+    await editor.addConnection(new ClassicPreset.Connection(times2 as never, "result", disp as never, "in") as never);
+    const ann = makeAnnotationResolver(editor).inAnnotation(disp.id, "in");
+    expect(ann?.format).toBe("decimal");
+    expect(ann?.decimalDigits).toBe(3);
+    expect(ann?.unit).toBe("none");        // the unit rides the VALUE, not the format
+    expect(ann?.customUnit).toBe("");
+  });
+
+  it("two annotated operands: the first input's format wins; agreeing formats pass as one", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const first = node("FC-decimal", { annotation: () => km3 });
+    const second = node("FC-percent", { annotation: () => pct });
+    const add = xformNode("Arithmetic", { a: "numlist", b: "numlist" }, "numlist");
+    const agreeA = node("FC-a", { annotation: () => km3 });
+    const agreeB = node("FC-b", { annotation: () => km3 });
+    const agree = xformNode("Arithmetic2", { a: "numlist", b: "numlist" }, "numlist");
+    for (const n of [first, second, add, agreeA, agreeB, agree]) await editor.addNode(n as never);
+    await connect(editor, first, add, "a");
+    await connect(editor, second, add, "b");
+    await connect(editor, agreeA, agree, "a");
+    await connect(editor, agreeB, agree, "b");
+    const r = makeAnnotationResolver(editor);
+    expect(r.outAnnotation(add.id, "result")?.format).toBe("decimal");   // the left operand
+    expect(r.outAnnotation(agree.id, "result")?.decimalDigits).toBe(3);  // both the same
+  });
+
+  it("a family change drops the format (number → text)", async () => {
+    const { CharCodeNode } = await import("../../src/graph/nodes/text");
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const fc = node("FC", { annotation: () => km3 });
+    const char = new CharCodeNode({ op: "char" });   // numlist "code" → strcombo "result"
+    for (const n of [fc, char]) await editor.addNode(n as never);
+    await connect(editor, fc, char as unknown as ClassicPreset.Node, "code");
+    expect(makeAnnotationResolver(editor).outAnnotation(char.id, "result")).toBeUndefined();
+  });
+
+  it("an FC downstream of a transform overrides the inherited format", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const fc = node("FC-km", { annotation: () => km3 });
+    const times2 = xformNode("Arithmetic", { a: "numlist", b: "numlist" }, "numlist");
+    const fcPct = node("FC-percent", { annotation: () => pct });
+    const disp = node("Display", { passesUnitThrough: true });
+    for (const n of [fc, times2, fcPct, disp]) await editor.addNode(n as never);
+    await connect(editor, fc, times2, "a");
+    await editor.addConnection(new ClassicPreset.Connection(times2 as never, "result", fcPct as never, "in") as never);
+    await connect(editor, fcPct, disp);
+    const r = makeAnnotationResolver(editor);
+    expect(r.outAnnotation(times2.id, "result")?.format).toBe("decimal"); // inherited so far
+    expect(r.inAnnotation(disp.id, "in")?.format).toBe("percent");        // the nearer FC wins
+  });
+
+  it("Convert still DROPS the format — it authors a new unit and rescales the magnitude", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const fc = node("FC", { annotation: () => km3 });
+    const conv = node("Convert", { fromUnit: "km", toUnit: "mi" });
+    const disp = node("Display", { passesUnitThrough: true });
+    for (const n of [fc, conv, disp]) await editor.addNode(n as never);
+    await connect(editor, fc, conv);
+    await connect(editor, conv, disp);
+    expect(makeAnnotationResolver(editor).inAnnotation(disp.id, "in")).toBeUndefined();
   });
 });
 

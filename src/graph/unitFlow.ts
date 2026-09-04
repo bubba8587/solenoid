@@ -1,6 +1,7 @@
 import type { ClassicPreset } from "rete";
 import type { NodeEditor } from "rete";
 import { type FormatAnnotation } from "./formatAnnotationStore";
+import { elementFamilyOf, type SocketDataType } from "./sockets";
 import { isPassthroughNode, isPurePassthroughNode, passInputKeys, selectedPassInput } from "./nodes/passthrough";
 
 type AnyEditor = NodeEditor<{
@@ -39,6 +40,14 @@ function hasAnnotationFor(n: unknown): n is FcAnnForLike {
   return typeof (n as Record<string, unknown> | null)?.annotationFor === "function";
 }
 
+type AnyPort = { socket?: { dataType?: SocketDataType } } | undefined;
+/** The element family a port DECLARES; null for a wildcard or a structural type
+ *  (`frame`, `lambda`, …), which carries no format. Dates are their own family. */
+function portFamily(port: AnyPort): string | null {
+  const dt = port?.socket?.dataType;
+  return dt ? elementFamilyOf(dt) : null;
+}
+
 /** Branches must carry the SAME lock (unit + format) to pass it. */
 function combineAnnotations(anns: (FormatAnnotation | undefined)[]): FormatAnnotation | undefined {
   const real = anns.filter((a): a is FormatAnnotation => !!a);
@@ -59,7 +68,8 @@ export type AnnotationResolver = {
 };
 
 /** An FC LOCKS its format+unit onto the value, a passthrough carries it across
- *  UNCHANGED, anything else (Convert included) DROPS it. */
+ *  UNCHANGED, a same-family transform carries the FORMAT alone (formatFlowsDownstream),
+ *  and Convert DROPS it. */
 export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
   const memo = new Map<string, FormatAnnotation | null>();
   const visiting = new Set<string>();
@@ -101,6 +111,26 @@ export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
     const lane = /^out_(\d+)$/.exec(outKey);
     if (lane && n && typeof n === "object" && Array.isArray((n as { cachedLane?: unknown }).cachedLane)) {
       return inAnnotation(nodeId, `in_${lane[1]}`);
+    }
+    return carriedFormat(n, nodeId, outKey);
+  }
+  /** A TRANSFORM passes the display FORMAT on and NOTHING else (formatFlowsDownstream):
+   *  the first wired input carrying an annotation wins, the output must stay in that
+   *  input's element family, and the unit is stripped — it is value-level (unitOnValue),
+   *  riding the `UnitCell` or breaking at the transform on its own. Inputs carrying the
+   *  SAME lock resolve to that same annotation, so agreement needs no separate case. */
+  function carriedFormat(
+    n: ClassicPreset.Node | undefined,
+    nodeId: string,
+    outKey: string,
+  ): FormatAnnotation | undefined {
+    const outFamily = portFamily(n?.outputs?.[outKey] as AnyPort);
+    if (!outFamily) return undefined;
+    for (const inKey of Object.keys(n?.inputs ?? {})) {
+      const ann = inAnnotation(nodeId, inKey);
+      if (!ann) continue;
+      if (portFamily(n?.inputs?.[inKey] as AnyPort) !== outFamily) return undefined;
+      return { ...ann, unit: "none", customUnit: "" };
     }
     return undefined;
   }

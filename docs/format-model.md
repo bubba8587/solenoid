@@ -54,10 +54,10 @@ value ──▶ 1 TYPE GATE ──▶ 2 STYLE (scale-divide, then precision+grou
    `unitLocked = lockedByConvert || forwarding`; the popup renders the dropdown
    present-but-disabled under a lock (`disabled={node.unitLocked}`) — the value
    HAS a unit, so the control shows it; it just isn't this FC's to change. The rest of this pipeline
-   (style / precision / negatives / K-M-B) stays a DISPLAY annotation the FC locks
-   onto the box behind it (`unitFlow.ts` `makeAnnotationResolver` carries it to a
-   downstream passthrough box). So the unit computes and clashes honestly; the
-   number format is pure presentation.
+   (style / precision / negatives / K-M-B) stays a DISPLAY annotation, and it FLOWS
+   DOWNSTREAM through transforms of the same element family, minus the unit, until a
+   nearer FC overrides it (rules.md formatFlowsDownstream). So the unit computes and
+   clashes honestly; the number format is pure presentation, inherited and overridable.
 4. **Text attributes.** Case / bold / italic / size apply as display-only
    transforms (the underlying value is never mutated). Text family only.
 

@@ -250,6 +250,19 @@ Join-key equality for dimensioned values: dimension symbol + base-SI magnitude
 `formatController.ts`, `unitFlow.ts`, `subsystem-invariants.md` § Unit flow.
 **Reopen if:** nothing — value-model integrity, same class as arraySemantics.
 
+### formatFlowsDownstream — Formatting carries down the stream; units stay locked
+Author ruling 2026-09-04: "Generally, we want formatting to carry down the stream if
+possible, but it's always possible to override. Units are LOCKED in contrast." The
+display FORMAT (style / precision / grouping / negatives / scale / text attrs / logical
+show-as) now crosses TRANSFORMS as well as passthroughs, within one element family,
+first wired input winning, until a nearer FC overrides it; the UNIT never travels in an
+annotation (unitOnValue, firstClassUnits) and Convert still drops, having rescaled the
+magnitude. **Where:** the MUST + its tests are `rules.md` formatFlowsDownstream;
+mechanism in `subsystem-invariants.md` § Unit flow (`unitFlow.ts` `carriedFormat`).
+**Reopen if:** the author finds an inherited format reading wrong on a value whose scale
+the transform changed (a sum, a ratio) — the narrower rule is passthroughs-only, which
+is what this replaced.
+
 ### aiInScope — The AI layer is IN scope; marketing stays minimal
 Reverses the old #7/#19 ruled-OUT. The cage framing survives as the design rule:
 an AI edit proposes through the same governed, validated path a human edit takes,
