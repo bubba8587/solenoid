@@ -77,7 +77,11 @@ function styleValueOf(ann: FormatAnnotation, type: FrameColType): string {
   return ann.format;
 }
 
-function describeAnnotation(ann: FormatAnnotation, type: FrameColType): string {
+/** The muted `← Decimal · 3 places` hint text for an inherited format, in the column
+ *  row's own words — the SINGLE source shared by the frame column-format row and the
+ *  docked FC's inherit hint (FormatControllerNode.describeInheritedStyle delegates here),
+ *  so the two never drift. */
+export function describeAnnotation(ann: FormatAnnotation, type: FrameColType): string {
   if (type === "logical") return LOGICAL_STYLE_LABELS[ann.logicalStyle ?? "truefalse"];
   if (type === "string") return TEXT_CASE_LABELS[ann.textCase ?? "none"];
   const label = FORMAT_STYLE_LABELS[ann.format as FormatStyle] ?? ann.format;

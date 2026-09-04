@@ -3,16 +3,18 @@ import { FormatControllerNode } from "../rete-nodes";
 import type { FormatControllerNode as FormatControllerNodeType } from "../rete-nodes";
 import {
   FORMAT_STYLE_LABELS, FORMAT_STYLE_GROUPS, DATE_FORMAT_STYLES,
-  LOGICAL_STYLE_LABELS, TEXT_CASE_LABELS, LAMBDA_VIEW_LABELS, CHART_FONT_SCALES,
+  LOGICAL_STYLE_LABELS, LAMBDA_VIEW_LABELS, CHART_FONT_SCALES,
   NEGATIVE_STYLE_LABELS, SCALE_MODE_LABELS,
   unitGroupLabel, formatMismatchStore,
-  type FormatStyleId, type FormatStyle, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle,
+  type FormatStyleId, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle,
   type LambdaView, type NegativeStyle, type ScaleMode,
 } from "../formatAnnotationStore";
 import {
-  familyOf, controlsFor, COMPLEX_FORMAT_STYLES, precisionApplies,
+  familyOf, controlsFor, COMPLEX_FORMAT_STYLES,
   groupingApplies, scaleApplies, negativeApplies, type FormatFamily,
 } from "../formatModel";
+import { describeAnnotation } from "../frameFormatStore";
+import type { FrameColType } from "../frame";
 import { SOCKET_COLORS } from "../sockets";
 import { clamp } from "../nodes/mathUtils";
 import { processGraph } from "../process";
@@ -30,16 +32,13 @@ import "./FormatControllerNode.css";
 import { stopDragStart } from "../coarse";
 
 
-/** The muted `← Decimal · 3 places` hint the inherit pick shows, per family, in the column
- *  row's own words (frameFormatStore.describeAnnotation). */
+/** The muted `← Decimal · 3 places` hint the inherit pick shows — the SAME wording the
+ *  frame column-format row uses, so the two can't drift: map the FC's family to that
+ *  function's column type and delegate to `frameFormatStore.describeAnnotation`. */
 function describeInheritedStyle(ann: FormatAnnotation, family: FormatFamily): string {
-  if (family === "text") return TEXT_CASE_LABELS[ann.textCase ?? "none"];
-  if (family === "logical") return LOGICAL_STYLE_LABELS[ann.logicalStyle ?? "truefalse"];
-  const label = FORMAT_STYLE_LABELS[ann.format as FormatStyle] ?? ann.format;
-  if (!precisionApplies(ann.format)) return label;
-  const d = ann.decimalDigits ?? 2;
-  const noun = ann.decimalMode === "sigfigs" ? "sig fig" : "place";
-  return `${label} · ${d} ${noun}${d === 1 ? "" : "s"}`;
+  const type: FrameColType =
+    family === "text" ? "string" : family === "logical" ? "logical" : family === "date" ? "date" : "number";
+  return describeAnnotation(ann, type);
 }
 
 export function FormatControllerComponent({ data, emit }: NodeProps<FormatControllerNodeType>) {
