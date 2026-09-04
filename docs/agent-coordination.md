@@ -11,7 +11,7 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 ## Claims
 
 - Chewie — backward review of the three finance merges (correctness, live op switch, old-save Placeholder path, Add menu / Reference). Display expand pop-out LANDED (65711495, merged).
-- Lando — the `—` inherit pick for text case / logical show-as (backlog § Formatting & units). FC inherit pick LANDED (7f904f54, merged).
+- Lando — F5 memory heap-snapshot investigation (findings in the digest; contained fix only). FC inherit pick LANDED (7f904f54 + 11950fe0, merged).
 - Han — lead; merges; walking the 1.4 cut with the author one item per turn (at A1).
 
 **Awaiting the author's eyeball:** three finance cards (Finance > Other / Bonds), the FC `—` inherit pick, the Display corner expand on frames/tables/lists; from earlier: the anydata hollow-square glyph + Socket Legend row; the catalog description sweep (8d5c8f74); Merge Plots figure + expand button; Vite 8 (desktop `tauri build` ride-along result per A3's last message).
