@@ -12,6 +12,6 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 
 - Chewie — B2.2 chip style, both homes (backlog § Tables). C5 date idioms (cd1de172) merged. Display expand, finance review, A3 hover peek, FC inherit review (6960fc0b) LANDED, merged.
 - Lando — B3: frozen header (+ the Settings row removal), then record arrow-key nav (backlog § Tables). B2.1 (26d59844) merged. E2 LANDED (8c9c6f11), merged. FC inherit pick + F5 findings LANDED, merged.
-- Han — lead; merges; walking the 1.4 cut with the author one item per turn (Track A, B1–B3 settled; at B4).
+- Han — lead; merges; walking the 1.4 cut with the author one item per turn (Track A, B1–B4 settled; at C1).
 
 **Awaiting the author's eyeball:** three finance cards (Finance > Other / Bonds), the FC `—` inherit pick, the Display corner expand on frames/tables/lists, the socket hover peek (A3), the mobile delete button inside a drill-in (E2), the Record List view / cardsize / #title / clamp (B1) + the four new record-cards seed exhibits, the Quarter `start` / Age / Nth Weekday presets (C5), the text-cell suggestions in the table popup (B2.1); from earlier: the anydata hollow-square glyph + Socket Legend row; the catalog description sweep (8d5c8f74); Merge Plots figure + expand button; Vite 8 (desktop `tauri build` ride-along result per A3's last message).

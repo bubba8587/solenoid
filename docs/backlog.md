@@ -43,6 +43,12 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Tables
 
+- [ ] **Shared column picker (1.4 B4, author 2026-09-04c).** Sort, Get Column and Join name a
+  column as free text today; one picker component lists the columns the incoming frame will
+  carry, fed by the static shape (`frameShapeResolver.ts` walks forward from literal sources, so
+  it lists before data flows), free-text fallback when the shape is unknown. One component,
+  three first customers; picker pure over `FrameShape`; existing suites green. Out: card-side
+  format/unit on Computed Column (the popup column row is the one home).
 - [ ] **Table popup: frozen header + first column (1.4 B3, author 2026-09-04c).** The column
   names stay put while a long table scrolls, and optionally the first column while it scrolls
   sideways (`position: sticky` on `th` / the first `td`, no virtualization). Toggled from the
