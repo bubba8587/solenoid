@@ -10,8 +10,8 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 
 ## Claims
 
-- Chewie — A3 hover peek on any socket (backlog § Display, author-promoted 2026-09-04c). Display expand pop-out (65711495) + finance review (ef77ccc4) LANDED, merged.
-- Lando — E2 compositeToolbarReroute audit (fix through the activeGraph seam; close the flagship if clean). FC inherit pick + F5 findings LANDED, merged.
-- Han — lead; merges; walking the 1.4 cut with the author one item per turn (A0–A4 settled; at A6).
+- Chewie — backward review of the FC inherit commits. Display expand (65711495), finance review (ef77ccc4), A3 hover peek (ef0494ea) LANDED, merged.
+- Lando — E2: swapDeleteSlot for the drill-in (the one real finding); close the flagship. FC inherit pick + F5 findings LANDED, merged.
+- Han — lead; merges; walking the 1.4 cut with the author one item per turn (Track A settled; at B1).
 
-**Awaiting the author's eyeball:** three finance cards (Finance > Other / Bonds), the FC `—` inherit pick, the Display corner expand on frames/tables/lists; from earlier: the anydata hollow-square glyph + Socket Legend row; the catalog description sweep (8d5c8f74); Merge Plots figure + expand button; Vite 8 (desktop `tauri build` ride-along result per A3's last message).
+**Awaiting the author's eyeball:** three finance cards (Finance > Other / Bonds), the FC `—` inherit pick, the Display corner expand on frames/tables/lists, the socket hover peek (A3); from earlier: the anydata hollow-square glyph + Socket Legend row; the catalog description sweep (8d5c8f74); Merge Plots figure + expand button; Vite 8 (desktop `tauri build` ride-along result per A3's last message).

@@ -43,17 +43,6 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Display
 
-- [ ] **Hover peek on any socket (1.4 A3, author 2026-09-04c).** Hovering an OUTPUT socket
-  (and a wired input's socket) for a short dwell pops a small, scaled-down Display of the
-  socket's live value beside it, fixed screen-space like a tooltip; leave or wheel hides it.
-  Build on the frame-hint hover (`frameHint.ts` + `FrameHintLayer.tsx`, opened from
-  `NodeSocket`): the layer grows a second payload kind — a value — rendered by the Display's
-  own value views (`ValueDisplay` / `FrameDisplay` / chart figure) at reduced scale, head-N for
-  frames (`collectPreview`), no popup, no editing. Not a menu verb, mints no node. Desktop pointer
-  only (touch has no hover); must not fight the HIC gesture layer. Dwell + hide rules in
-  `docs/touch-gestures.md`; layer row in `layout-chrome.md`; DESIGN.md Quiet Accent for the
-  chrome. Tests: the hint store's state transitions (dwell, hide on leave/wheel, one open at a
-  time) and a coverage guard that every Display value kind renders in the peek.
 - [ ] **Expand pop-up on every Display frame / table / list, like the charts** (author,
   2026-09-04b). An expanded Display renders the frame inline with no way into the table
   pop-up, whose per-column format + unit row is real editing surface — today it is reachable
