@@ -1621,7 +1621,7 @@ export class NormalizeNode extends ClassicPreset.Node {
 export class ShuffleNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     result: "The order holds until a recalculation. Changed values flow through without reshuffling.",
-    weights: "Optional, one per element. Higher weight tends to land earlier, a weighted draw without replacement. Unwired is a uniform shuffle.",
+    weights: "Optional, one per element and at least as long as the list. Higher weight tends to land earlier, a weighted draw without replacement. Unwired is a uniform shuffle.",
   };
 
   /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */
@@ -1649,10 +1649,15 @@ export class ShuffleNode extends ClassicPreset.Node {
       this.keys = arr.map(() => Math.random());
       this.lastGen = gen;
     }
-    // Weighted draw when a per-element weight list is wired (length must cover the
-    // list); each element's sort key becomes -ln(u)/w so P(first) ∝ weight.
+    // Weighted draw when a per-element weight list is wired; each element's sort key
+    // becomes -ln(u)/w so P(first) ∝ weight. A list that doesn't cover every element is
+    // a misaligned input, not a request for a uniform shuffle (the Sort-by rule).
     const w = inputs.weights?.[0];
-    const keys = w && w.length >= arr.length
+    if (Array.isArray(w) && w.length < arr.length) {
+      this.cachedList = [];
+      return { result: solError("#SHAPE!", `The weights list has ${w.length} values but the list has ${arr.length}`) };
+    }
+    const keys = Array.isArray(w)
       ? this.keys.map((u, i) => weightedShuffleKey(u, typeof w[i] === "number" ? (w[i] as number) : 0))
       : this.keys;
     const order = shuffleList(arr, keys);

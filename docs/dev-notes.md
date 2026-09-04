@@ -136,6 +136,11 @@ row-index category axes `interval={0}` up to 12 rows and categorical scatter x p
 draws; bubble defaults `xlabel`/`ylabel` to its first two number columns, names x/y/size in
 its tooltip, and draws its title (also silently dropped before).
 
+**Author call — Shuffle weights.** A wired `weights` list shorter than the list is now
+`#SHAPE!` ("The weights list has N values but the list has M", the Sort-by rule), not a silent
+uniform shuffle; a longer list is fine (extras ignored). `#SHAPE!` over `#VALUE!` because the
+house vocabulary reserves `#SHAPE!` for a length/dimension mismatch (`errorValue.ts`).
+
 **Walk stop point.** Below `main` the walk covered `af410b48` down to `45130f0c` (the Add-menu
 per-word search + one-edit matcher, the env.ts dissolve, the minimap recolor, the four RF-port
 fixes: collapsed-group tow, the FlowCableEdge hook order, the FC chip 1px step + caret
@@ -161,8 +166,6 @@ Hungarian matching and Erlang staffing parked to `deferrals.md`. Nothing starts 
 picks; a backlog line carries the gate.
 
 **Questions for the author** (not blocking, answered whenever):
-- Shuffle: a wired `weights` list SHORTER than the list silently falls back to a uniform shuffle.
-  Keep, error (`#VALUE!`), or weigh the missing tail 0?
 - Radar per-axis scale divides by max |value|, so a negative spoke value plots below the centre and
   the [0,1] domain clips it. Acceptable for now, or clamp / min-max when negatives appear?
 - `allocator.json` still titles the seed and its note "Budget Allocator" after the node rename —
