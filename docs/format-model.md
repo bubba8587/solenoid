@@ -102,11 +102,14 @@ its own reads `—` (inherit) with the arriving format as a muted hint beside it
 and every concrete style — `auto` included — is a real local override that
 deletes back to `—` (`columnFormatRow`, `frameFormatStore.ts`).
 
-**A docked FC's style dropdown carries the SAME `—` pick** (`inheritFormat`): with it,
-the FC carries the display format arriving at `in` through unchanged (style + precision +
-advanced tier) and authors its own unit alone, so a second FC docked only for a unit no
-longer resets the style to `auto` (formatFlowsDownstream). While inheriting, the FC's own
-precision + advanced rows collapse to the column row's muted `← Decimal · 3 places` hint.
+**Every family's primary style dropdown carries the SAME `—` pick** (`inheritFormat`) —
+the number/complex/date format dropdown, the text case dropdown, and the logical show-as
+dropdown: with it, the FC carries the display format arriving at `in` through unchanged
+(style + precision + advanced tier, or case / show-as) and authors its own unit alone, so
+a second FC docked only for a unit no longer resets the style to `auto`
+(formatFlowsDownstream). While inheriting, the FC's own dependent rows collapse to the
+column row's muted hint — `← Decimal · 3 places` for a number, `← UPPER` / `← Yes / No`
+for text / logical (`describeInheritedStyle`, per family, in the column row's words).
 `FormatControllerNode.resolveAnnotation(inherited)` does the merge (own `unit`/`customUnit`,
 every display axis from upstream); `makeAnnotationResolver.compute` calls it in place of
 `annotation()`, so the carried-downstream and box-behind paths agree. The node's `format`
