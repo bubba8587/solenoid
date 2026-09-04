@@ -7,7 +7,8 @@ import {
 import { parseDateToSerial } from "./date";
 import { chartOut, strOut, documentOut } from "./shared";
 import { makeDocument, type DocumentValue } from "../documentValue";
-import type { FrameValue, FrameColumn, FrameColType, FrameCell } from "../frame";
+import { isFrameValue, type FrameValue, type FrameColumn, type FrameColType, type FrameCell } from "../frame";
+import { shapeOfFrameValue, type Shape } from "../frameShape";
 import type { ImageValue } from "../imageValue";
 import type { SvgValue } from "../svgValue";
 import {
@@ -215,6 +216,12 @@ export class NoteNode extends ClassicPreset.Node {
     this._fieldValues = new Map([...wanted].map(([k, w]) => [k, w.value]));
 
     return { removed, retyped };
+  }
+
+  /** A rows-of-objects frontmatter key emits a built frame, so its columns are known. */
+  frameShape(outKey: string): Shape | null {
+    const v = this.fieldValues()[outKey];
+    return isFrameValue(v) ? shapeOfFrameValue(v) : null;
   }
 
   data(): Record<string, EmittedValue | DocumentValue> {

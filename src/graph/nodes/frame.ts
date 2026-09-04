@@ -36,6 +36,12 @@ import { describeFrame, correlationMatrix, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEE
 export type { WindowFn } from "../frameVerbs";
 export type { CorrMethod } from "../frameVerbs";
 import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, readFrame, collectPreview, dropFrameRef, isFrameRef, frameBackend, materialize, flushRef, type FrameInput, type FrameRef } from "../frameBackend";
+import { bindColumns } from "../frameVerbs";
+import {
+  shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
+  emptyFrameOf, type Shape, type ShapeColumn,
+} from "../frameShape";
+import { csvList, type FrameShapeContext } from "./frameShapeHook";
 import type { CubeValue, CubeCell } from "../frame";
 import { type UnitCell } from "../unitValue";
 import { tagFrameCellUnit, columnUnitFromSpec } from "../unitColumn";
@@ -134,6 +140,10 @@ export class FrameInputNode extends ClassicPreset.Node {
   /** What the last computed frame was built from — text plus each λ input's value
    *  identity, so an unchanged pass returns the SAME frame object. */
   private _computedFrom: { text: string; lams: unknown[] } | null = null;
+
+  frameShape(): Shape {
+    return shapeOfFrameValue(frameFromInputText(this.frameText));
+  }
 
   data(inputs: Record<string, unknown[] | undefined> = {}) {
     const source = parseFrameSource(this.frameText);
@@ -263,6 +273,10 @@ export class DistinctNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Unique"));
   }
 
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    return ctx.inputShape("frame");
+  }
+
   async data(inputs: { frame?: (FrameInput | null)[] }) {
     const f = inputs.frame?.[0] ?? null;
     return emitFrame(this, beginPass(this), f != null ? await runFrameUnary(f, { kind: "distinct" }) : null);
@@ -302,6 +316,10 @@ export class HeadNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Head"));
   }
 
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    return ctx.inputShape("frame");
+  }
+
   async data(inputs: { frame?: (FrameInput | null)[]; rows?: number[]; to?: number[] }) {
     const f = inputs.frame?.[0] ?? null;
     const n = readInput(inputs.rows, this.literals.rows ?? 10);
@@ -335,6 +353,10 @@ export class SortFrameNode extends ClassicPreset.Node {
     this.addInput("frame", frameIn("Frame"));
     this.addInput("column", strIn("Column"));
     this.addOutput("frame", frameOut("Sorted"));
+  }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    return ctx.inputShape("frame");
   }
 
   async data(inputs: { frame?: (FrameInput | null)[]; column?: string[] }) {
@@ -417,6 +439,11 @@ export class FilterFrameNode extends ClassicPreset.Node {
     delete this.stringLiterals[`column${id}`];
     delete this.stringLiterals[`value${id}`];
     // condConfig[id] is kept so row-removal undo restores its op/matchCase; reload prunes orphans.
+  }
+
+  /** Kept and Dropped are both row selections — same columns as the input. */
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    return ctx.inputShape("frame");
   }
 
   /** emitFrame's stale-pass + previous-ref lifecycle for the secondary output, minus
@@ -505,6 +532,15 @@ export class JoinNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Joined"));
   }
 
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const left = ctx.inputShape("left");
+    const right = ctx.inputShape("right");
+    const lk = (this.stringLiterals.leftKey ?? "").trim();
+    const rk = (this.stringLiterals.rightKey ?? "").trim() || lk;
+    if (!left || !right || lk === "") return null;
+    return shapeOfJoin(left, right, { leftKey: lk, rightKey: rk, how: this.how });
+  }
+
   async data(inputs: {
     left?: (FrameInput | null)[]; right?: (FrameInput | null)[];
     leftKey?: string[]; rightKey?: string[]; tolerance?: number[];
@@ -571,6 +607,14 @@ export class ColumnsNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Frame"));
   }
 
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input) return null;
+    const cols = csvList(this.stringLiterals.columns);
+    if (this.op === "keep") return cols.length ? shapeOf({ kind: "select", columns: cols }, input) : input;
+    return shapeOf({ kind: "drop", columns: cols }, input);
+  }
+
   async data(inputs: { frame?: (FrameInput | null)[]; columns?: string[][] }) {
     const f = inputs.frame?.[0] ?? null;
     const cols = readColumnList(inputs.columns);
@@ -624,6 +668,15 @@ export class GroupByFrameNode extends ClassicPreset.Node {
     this.addInput("keys", strListIn("Group by"));
     this.addInput("column", strIn("Aggregate"));
     this.addOutput("frame", frameOut("Grouped"));
+  }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input) return null;
+    const keys = csvList(this.stringLiterals.keys);
+    const col = (this.stringLiterals.column ?? "").trim();
+    if (!keys.length || !col) return input;
+    return shapeOf({ kind: "groupBy", keys, aggs: [{ column: col, op: this.agg, as: col }] }, input);
   }
 
   async data(inputs: { frame?: (FrameInput | null)[]; keys?: string[][]; column?: string[] }) {
@@ -712,6 +765,18 @@ export class PivotNode extends ClassicPreset.Node {
     this.addInput("values", strListIn("Values"));
     this.addInput("filter", logicalListIn("Filter"));
     this.addOutput("frame", frameOut("Wide"));
+  }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input) return null;
+    const valid = new Set(input.columns.map((c) => c.name));
+    const rowFields = csvList(this.stringLiterals.rowFields).filter((f) => valid.has(f));
+    const colFields = csvList(this.stringLiterals.colFields).filter((f) => valid.has(f));
+    const values = csvList(this.stringLiterals.values).filter((f) => valid.has(f));
+    if (!values.length) return input;
+    const funcs = values.map((name) => this.funcs[name] ?? this.agg);
+    return shapeOf({ kind: "pivot", rowFields, colFields, values, funcs }, input);
   }
 
   data(inputs: {
@@ -831,6 +896,14 @@ export class UnpivotNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Long"));
   }
 
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input) return null;
+    const vals = csvList(this.stringLiterals.valueColumns);
+    if (!vals.length) return input;
+    return shapeOf({ kind: "unpivot", idColumns: csvList(this.stringLiterals.idColumns), valueColumns: vals }, input);
+  }
+
   async data(inputs: { frame?: (FrameInput | null)[]; idColumns?: string[][]; valueColumns?: string[][] }) {
     const f = inputs.frame?.[0] ?? null;
     const ids = readColumnList(inputs.idColumns);
@@ -938,6 +1011,20 @@ export class AppendNode extends ClassicPreset.Node {
     this.removeInput(key);
   }
 
+  /** Union by name over the WIRED rows; one unresolvable row could contribute unseen
+   *  columns, so it makes the whole stack unknown. */
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const shapes: Shape[] = [];
+    for (const k of this.valueInputKeys()) {
+      if (!ctx.wired(k)) continue;
+      const s = ctx.inputShape(k);
+      if (!s) return null;
+      shapes.push(s);
+    }
+    if (shapes.length === 0) return null;
+    return shapes.length === 1 ? shapes[0] : shapeOfAppend(shapes);
+  }
+
   async data(inputs: Record<string, (FrameInput | null)[] | undefined>) {
     const frames = this.valueInputKeys()
       .map((k) => inputs[k]?.[0] ?? null)
@@ -990,6 +1077,19 @@ export class BindColumnsNode extends ClassicPreset.Node {
     this.removeInput(key);
   }
 
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const shapes: Shape[] = [];
+    for (const k of this.valueInputKeys()) {
+      if (!ctx.wired(k)) continue;
+      const s = ctx.inputShape(k);
+      if (!s) return null;
+      shapes.push(s);
+    }
+    if (shapes.length === 0) return null;
+    if (shapes.length === 1) return shapes[0];
+    return shapeOfFrameValue(bindColumns(shapes.map(emptyFrameOf)));
+  }
+
   async data(inputs: Record<string, (FrameInput | null)[] | undefined>) {
     const frames = this.valueInputKeys()
       .map((k) => inputs[k]?.[0] ?? null)
@@ -1014,6 +1114,16 @@ export class RenameNode extends ClassicPreset.Node {
     this.addInput("from", strListIn("From"));
     this.addInput("to", strListIn("To"));
     this.addOutput("frame", frameOut("Frame"));
+  }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input) return null;
+    const from = csvList(this.stringLiterals.from);
+    const to = csvList(this.stringLiterals.to);
+    const map: Record<string, string> = {};
+    for (let i = 0; i < Math.min(from.length, to.length); i++) if (from[i] && to[i]) map[from[i]] = to[i];
+    return Object.keys(map).length ? shapeOf({ kind: "rename", map }, input) : input;
   }
 
   async data(inputs: { frame?: (FrameInput | null)[]; from?: string[][]; to?: string[][] }) {
@@ -1051,6 +1161,14 @@ export class SplitColumnNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Frame"));
   }
 
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input) return null;
+    const column = (this.stringLiterals.column ?? "").trim();
+    if (!column) return input;
+    return shapeOfSplitColumn(input, column, this.stringLiterals.delimiter ?? "");
+  }
+
   data(inputs: { frame?: (FrameValue | null)[]; column?: string[]; delimiter?: string[]; into?: string[][] }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
@@ -1079,6 +1197,11 @@ export class AddIndexNode extends ClassicPreset.Node {
     this.addInput("start", numIn("Start"));
     this.addInput("name", strIn("Name"));
     this.addOutput("frame", frameOut("Frame"));
+  }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    return input ? shapeOfAddIndex(input, this.stringLiterals.name || "Index") : null;
   }
 
   data(inputs: { frame?: (FrameValue | null)[]; start?: number[]; name?: string[] }) {
@@ -1113,6 +1236,13 @@ export class FillBlanksNode extends ClassicPreset.Node {
     this.addInput("frame", frameIn("Frame"));
     this.addInput("columns", strListIn("Columns"));
     this.addOutput("frame", frameOut("Frame"));
+  }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input || ctx.wired("columns")) return null;
+    const columns = csvList(this.stringLiterals.columns).map((c) => c.trim()).filter(Boolean);
+    return shapeOf({ kind: "fillBlanks", columns, dir: this.dir }, input);
   }
 
   async data(inputs: { frame?: (FrameInput | null)[]; columns?: string[][] }) {
@@ -1162,6 +1292,15 @@ export class ReplaceValuesNode extends ClassicPreset.Node {
     return n !== undefined ? String(n) : "";
   }
 
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input || ctx.wired("column")) return null;
+    return shapeOf({
+      kind: "replaceValues", column: this.stringLiterals.column ?? "",
+      find: this.findReplaceLiteral("find"), replaceWith: this.findReplaceLiteral("replace"), mode: this.mode,
+    }, input);
+  }
+
   async data(inputs: { frame?: (FrameInput | null)[]; column?: string[]; find?: unknown[]; replace?: unknown[] }) {
     const f = inputs.frame?.[0] ?? null;
     const column = readInput(inputs.column, this.stringLiterals.column ?? "");
@@ -1192,6 +1331,14 @@ export class MergeColumnsNode extends ClassicPreset.Node {
     this.addInput("separator", strIn("Separator"));
     this.addInput("name", strIn("Name"));
     this.addOutput("frame", frameOut("Frame"));
+  }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input || ctx.wired("columns") || ctx.wired("name")) return null;
+    const columns = csvList(this.stringLiterals.columns).map((c) => c.trim()).filter(Boolean);
+    if (columns.length < 2) return input;
+    return shapeOfFrameValue(mergeColumns(emptyFrameOf(input), columns, "", this.stringLiterals.name ?? ""));
   }
 
   data(inputs: { frame?: (FrameValue | null)[]; columns?: string[][]; separator?: string[]; name?: string[] }) {
@@ -1230,6 +1377,13 @@ export class HeadersNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Frame"));
   }
 
+  /** Demote is Col1…ColN text; PROMOTE takes its names from the first ROW, which is data. */
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input || this.action === "promote") return null;
+    return shapeOfFrameValue(demoteHeaders(emptyFrameOf(input)));
+  }
+
   data(inputs: { frame?: (FrameValue | null)[] }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
@@ -1257,6 +1411,10 @@ export class DropBlankRowsNode extends ClassicPreset.Node {
     this.mode = init?.mode ?? "all";
     this.addInput("frame", frameIn("Frame"));
     this.addOutput("frame", frameOut("Frame"));
+  }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    return ctx.inputShape("frame");
   }
 
   data(inputs: { frame?: (FrameValue | null)[] }) {
@@ -1305,6 +1463,21 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
     this.addInput("frame", frameIn("Scores"));
     this.addInput("weights", frameIn("Weights"));
     this.addOutput("frame", frameOut("Ranking"));
+  }
+
+  /** label (string) · [criteria if breakdown] · Score · Rank: the label and Score/Rank types
+   *  are fixed; criteria mirror the input columns (deduped like the verb). */
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input) return null;
+    const label = input.columns.find((c) => c.type === "string");
+    const criteria = input.columns.filter((c) => c !== label && (c.type === "number" || c.type === "logical"));
+    if (criteria.length === 0) return null; // a runtime #VALUE!, no shape to offer
+    const cols: ShapeColumn[] = [{ name: label?.name ?? "Option", type: "string" }];
+    if (this.detail === "breakdown") for (const c of criteria) cols.push({ name: c.name, type: "number" });
+    cols.push({ name: "Score", type: "number" }, { name: "Rank", type: "number" });
+    const names = makeHeaders(cols.map((c) => c.name), cols.length);
+    return { columns: cols.map((c, i) => ({ name: names[i], type: c.type })), dynamic: input.dynamic };
   }
 
   data(inputs: { frame?: (FrameValue | null)[]; weights?: (FrameValue | null)[] }) {
@@ -1399,6 +1572,11 @@ export class AllocatorNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Allocation"));
   }
 
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("categories");
+    return input ? shapeOfFrameValue(allocateFrame(emptyFrameOf(input), this.mode, 0)) : null;
+  }
+
   data(inputs: { categories?: (FrameValue | null)[]; amount?: (number | null)[] }) {
     const f = inputs.categories?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
@@ -1432,6 +1610,16 @@ export class ReconcileNode extends ClassicPreset.Node {
     this.addInput("qtyColumn", strIn("Qty column"));
     this.addOutput("frame", frameOut("Reconciliation"));
     this.addOutput("summary", strOut("Summary"));
+  }
+
+  frameShape(outKey: string, ctx: FrameShapeContext): Shape | null {
+    if (outKey !== "frame") return null;
+    const left = ctx.inputShape("left");
+    const right = ctx.inputShape("right");
+    const key = (this.stringLiterals.key ?? "").trim();
+    if (!left || !right || !key || ctx.wired("key")) return null;
+    // The price/qty columns drive the summary, never the column set.
+    return shapeOfFrameValue(reconcileFrames(emptyFrameOf(left), emptyFrameOf(right), { leftKey: key, rightKey: key }).frame);
   }
 
   data(inputs: {
@@ -1584,6 +1772,23 @@ export class FrameFromListsNode extends ClassicPreset.Node {
     this.removeInput(`name${id}`);
     this.removeInput(`vals${id}`);
     delete this.stringLiterals[`name${id}`];
+  }
+
+  /** One column per WIRED row, typed by the port's adopted family — an untyped port infers
+   *  from the values at run time, which is no static answer. */
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const cols: ShapeColumn[] = [];
+    for (const [nameKey, valsKey] of this.valuePairKeys()) {
+      if (!ctx.wired(valsKey)) continue;
+      if (ctx.wired(nameKey)) return null;
+      const sock = this.inputs[valsKey]?.socket;
+      const known = colTypeForSocket(sock instanceof SolenoidSocket ? sock.dataType : undefined);
+      if (!known) return null;
+      cols.push({ name: (this.stringLiterals[nameKey] ?? "").trim(), type: known });
+    }
+    if (cols.length === 0) return null;
+    const names = makeHeaders(cols.map((c) => c.name), cols.length);
+    return { columns: cols.map((c, i) => ({ name: names[i], type: c.type })) };
   }
 
   data(inputs: Record<string, unknown[]>) {
@@ -1794,6 +1999,11 @@ export class GetColumnNode extends ClassicPreset.Node {
 
 export type AddColumnAddAs = "number" | "text" | "date" | "logical";
 
+/** The frame column type an add-as choice writes. */
+export function colTypeForAddAs(addAs: AddColumnAddAs): FrameColType {
+  return addAs === "text" ? "string" : addAs;
+}
+
 /** Values input port for an add-as choice. */
 export function addColumnInput(addAs: AddColumnAddAs) {
   return addAs === "text" ? strListIn("Values")
@@ -1819,6 +2029,13 @@ export class AddColumnNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Frame"));
   }
 
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input || ctx.wired("name")) return null;
+    const name = (this.stringLiterals.name ?? "").trim() || "Col";
+    return shapeOfFrameValue(addColumn(emptyFrameOf(input), name, [], colTypeForAddAs(this.addAs)));
+  }
+
   data(inputs: { frame?: (FrameValue | null)[]; values?: FrameCell[][]; name?: string[] }) {
     const f = inputs.frame?.[0] ?? null;
     const values = inputs.values?.[0] ?? null;
@@ -1831,7 +2048,7 @@ export class AddColumnNode extends ClassicPreset.Node {
     const padded: FrameCell[] = Array.from({ length: rows }, (_, i) =>
       i < values.length ? values[i] : null,
     );
-    this.cachedResult = addColumn(f, name, padded, this.addAs === "text" ? "string" : this.addAs === "date" ? "date" : this.addAs === "logical" ? "logical" : "number");
+    this.cachedResult = addColumn(f, name, padded, colTypeForAddAs(this.addAs));
     return { frame: this.cachedResult };
   }
 }
@@ -1908,6 +2125,24 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     });
   }
 
+  /** Static only when the type is DECLARED — `auto` infers it from the computed cells. */
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input) return null;
+    if (!ctx.wired("fn") && !this.expr.trim()) return input; // nothing defined yet — a passthrough
+    if (this.addAs === "auto" || ctx.wired("name") || ctx.wired("after")) return null;
+    const name = (this.stringLiterals.name ?? "").trim() || "computed";
+    const after = (this.stringLiterals.after ?? "").trim();
+    const result = addColumn(emptyFrameOf(input), name, [], colTypeForAddAs(this.addAs));
+    const replacing = result.columns.length === input.columns.length;
+    if (!after || replacing) return shapeOfFrameValue(result);
+    const anchorIdx = result.columns.findIndex((c) => c.name === after);
+    if (anchorIdx < 0) throw solError("#REF!", `No column "${after}" to place after`);
+    const cols = [...result.columns];
+    cols.splice(anchorIdx + 1, 0, cols.pop()!);
+    return shapeOfFrameValue({ __frame: true, columns: cols });
+  }
+
   data(inputs: { frame?: (FrameValue | null)[]; name?: string[]; after?: string[]; fn?: unknown[] } & Record<string, unknown[] | undefined>) {
     const f = inputs.frame?.[0] ?? null;
     const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");
@@ -1972,7 +2207,7 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     const values = computed.cells;
     const colType: FrameColType = this.addAs === "auto"
       ? inferColumn(name, values).type
-      : this.addAs === "text" ? "string" : this.addAs;
+      : colTypeForAddAs(this.addAs);
 
     // Replacement is detected by the column COUNT — exact, and avoids a second copy of
     // addColumn's `Name (unit)` header parsing.
@@ -2011,6 +2246,10 @@ export class GetRowNode extends ClassicPreset.Node {
     this.addInput("frame", frameIn("Frame"));
     this.addInput("index", numIn("Row"));
     this.addOutput("frame", frameOut("Row"));
+  }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    return ctx.inputShape("frame");
   }
 
   data(inputs: { frame?: (FrameValue | null)[]; index?: number[] }) {
@@ -2140,6 +2379,11 @@ export class DescribeNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Summary"));
   }
 
+  /** The profile's own columns are fixed: one output ROW per input column. */
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    return ctx.wired("frame") ? shapeOfFrameValue(describeFrame(emptyFrameOf({ columns: [] }))) : null;
+  }
+
   data(inputs: { frame?: (FrameValue | null)[] }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
@@ -2171,6 +2415,11 @@ export class CorrMatrixNode extends ClassicPreset.Node {
     if (init?.method) this.method = init.method;
     this.addInput("frame", frameIn("Frame"));
     this.addOutput("frame", frameOut("Matrix"));
+  }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    return input ? shapeOfFrameValue(correlationMatrix(emptyFrameOf(input), this.method)) : null;
   }
 
   data(inputs: { frame?: (FrameValue | null)[] }) {
@@ -2406,6 +2655,25 @@ export class WindowNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Frame"));
   }
 
+  /** The output column's name: the typed one, else derived from the function and Value. */
+  private outColumnName(name: string, column: string): string {
+    return name.trim() || `${WINDOW_FN_META[this.agg].label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/_$/, "")}${column.trim() ? "_" + column.trim() : ""}`;
+  }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input) return null;
+    if (ctx.wired("keys") || ctx.wired("orderBy") || ctx.wired("column") || ctx.wired("name")) return null;
+    const column = (this.stringLiterals.column ?? "").trim();
+    if (WINDOW_FN_NEEDS_COLUMN.has(this.agg) && !column) return input;
+    const orderBy = (this.stringLiterals.orderBy ?? "").trim();
+    return shapeOf({
+      kind: "window", partitionBy: csvList(this.stringLiterals.keys), orderBy: orderBy || undefined, orderDir: "asc",
+      fn: this.agg, column: column || undefined, as: this.outColumnName(this.stringLiterals.name ?? "", column),
+      n: WINDOW_FN_NEEDS_N.has(this.agg) ? this.literals.n ?? 3 : undefined,
+    }, input);
+  }
+
   async data(inputs: { frame?: (FrameInput | null)[]; keys?: string[][]; orderBy?: string[]; column?: string[]; n?: number[]; name?: string[] }) {
     const f = inputs.frame?.[0] ?? null;
     const keys = readColumnList(inputs.keys);
@@ -2416,7 +2684,7 @@ export class WindowNode extends ClassicPreset.Node {
     if (f == null || keys === null || orderBy === null || column === null || name === null || n === null) return emitFrame(this, beginPass(this), null);
     // A value-reading function with no Value column yet is a passthrough, not an error.
     if (WINDOW_FN_NEEDS_COLUMN.has(this.agg) && !column.trim()) return emitFrame(this, beginPass(this), await passFrame(f));
-    const as = name.trim() || `${WINDOW_FN_META[this.agg].label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/_$/, "")}${column.trim() ? "_" + column.trim() : ""}`;
+    const as = this.outColumnName(name, column);
     // Lazy: Polars `.over()` on desktop, the oracle's windowFrame on web (one FrameOp).
     return emitFrame(this, beginPass(this), await runFrameUnary(f, {
       kind: "window", partitionBy: keys, orderBy: orderBy.trim() || undefined, orderDir: "asc", fn: this.agg,

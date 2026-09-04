@@ -1,6 +1,7 @@
 import { ClassicPreset } from "rete";
 import { numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfType, comboOfFamily, type SocketDataType, type SolenoidSocket } from "../sockets";
 import { parseListLiteral } from "../coerceInputs";
+import type { Shape } from "../frameShape";
 import { parseDate } from "./date";
 import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
@@ -2330,6 +2331,10 @@ export class FindPeaksNode extends ClassicPreset.Node {
     this.addInput("prominence", numIn("Min prominence"));
     // Position + Height are index-aligned, so they leave as ONE frame (C5).
     this.addOutput("result", frameOut("Peaks"));
+  }
+
+  frameShape(): Shape {
+    return { columns: [{ name: "Position", type: "number" }, { name: "Height", type: "number" }] };
   }
 
   data(inputs: { list?: ListCell[][]; height?: number[]; distance?: number[]; prominence?: number[] }): { result: FrameValue | null } {

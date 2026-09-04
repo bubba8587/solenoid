@@ -37,19 +37,10 @@ REMOVED — the old elkjs-vs-rete-auto-arrange peer conflict left with the plugi
 
 ## Engine & types
 
-- [ ] **Frame shapes: declarative per-node, retire the central resolver.** Today
-  `frameShapeResolver.ts` is one `instanceof` chain that knows each frame producer's output
-  columns; only ~17 of ~34+ producers are covered, so the rest degrade to `trueany` (INDEX/unit
-  flow/conduit trace/display lose the column types). **Decision:** each frame-producing node
-  declares its own output shape — a `frameShape(inputShapes) => Shape | null` hook (the producer
-  sibling of `passthrough()`): shape-preserving verbs forward the input shape, transformers print
-  their own, data-dependent producers (KMeans/PCA/Logistic/Data Feed/HTML-XML import) return null.
-  The graph walk stays but goes node-agnostic (resolve inputs → call the node's hook); the
-  `instanceof` chain is deleted as it empties. Migrate the existing ~17 rules onto their nodes and
-  add the missing computable ones (DropBlankRows/FillBlanks/ReplaceValues forward; AddColumn/
-  ComputedColumn/BindColumns/MergeColumns/Headers/Allocator add typed columns; BuildFrame/
-  FrameFromLists/Reconcile/Describe/CorrMatrix/Window compute). **Interim:** the DecisionMatrix +
-  Note-frame rules added to the resolver 2026-09-04 are scaffolding to migrate here.
+- [ ] **A frame-shape rule still reads a WIRED literal socket.** The migrated verb rules
+  (Columns / Rename / Group By / Unpivot / Pivot / Join / Split Column / Add Index) read their
+  card literal even when a cable feeds that socket, so the declared shape can name a column the
+  run never uses. The rules added since gate on `ctx.wired()`; make the rest do the same.
 
 ## Seeds
 

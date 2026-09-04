@@ -4,6 +4,7 @@
 import { ClassicPreset } from "rete";
 import { numIn, frameOut, readInput } from "./shared";
 import type { FrameValue } from "../frame";
+import { shapeOfFrameValue, type Shape } from "../frameShape";
 import { solError, type SolError } from "../errorValue";
 
 const ZONES: Array<{ name: string; lo: number; hi: number }> = [
@@ -61,6 +62,10 @@ export class HrZonesNode extends ClassicPreset.Node {
     // Optional: overrides the classic 220 − age (wire the pack's Tanaka node).
     this.addInput("max", numIn("Max HR"));
     this.addOutput("zones", frameOut("Zones"));
+  }
+
+  frameShape(): Shape {
+    return shapeOfFrameValue(hrZonesFrame(0, null));
   }
 
   data(inputs: { age?: (number | null)[]; resting?: (number | null)[]; max?: (number | null)[] }) {

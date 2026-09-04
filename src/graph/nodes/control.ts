@@ -2,6 +2,8 @@ import { ClassicPreset } from "rete";
 import { numberSocket, AdoptiveSocket, MutableSocket, type SocketDataType } from "../sockets";
 import { frameIn, frameOut, dateOut, numOut, tableOut } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
+import { shapeOfFrameValue, type Shape } from "../frameShape";
+import type { FrameShapeContext } from "./frameShapeHook";
 import { isFrameValue, getColumn, frameRowCount, cubeFromColumns, type FrameValue, type FrameColumn, type FrameCell, type FrameColType, type CubeCell } from "../frame";
 import { runFrameUnary, collectPreview, isFrameRef, flushRef, materialize, frameBackend, type FrameRef } from "../frameBackend";
 import { beginPass, passFrame, emitFrame } from "./frame";
@@ -310,6 +312,10 @@ export class SlicerNode extends ClassicPreset.Node {
     this.addOutput("result", frameOut("Filtered"));
   }
 
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    return ctx.inputShape("frame");
+  }
+
   private async emitResult(gen: number, out: FrameRef | FrameValue | SolError | null): Promise<{ result: FrameRef | FrameValue | SolError | null }> {
     const { frame } = await emitFrame(this, gen, out);
     return { result: frame };
@@ -403,6 +409,10 @@ export class PointPlotterNode extends ClassicPreset.Node {
       if (typeof init?.[k] === "number") this.literals[k] = init[k]!;
     }
     this.addOutput("result", frameOut("Points"));
+  }
+
+  frameShape(): Shape {
+    return shapeOfFrameValue(pointsToFrame([]));
   }
 
   data(): { result: FrameValue } {
@@ -503,6 +513,10 @@ export class CurveNode extends ClassicPreset.Node {
       if (typeof init?.[k] === "number") this.literals[k] = init[k]!;
     }
     this.addOutput("result", frameOut("Curve"));
+  }
+
+  frameShape(): Shape {
+    return shapeOfFrameValue(curveToFrame([], []));
   }
 
   data(): { result: FrameValue } {

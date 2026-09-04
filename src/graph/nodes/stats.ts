@@ -1,6 +1,7 @@
 import { ClassicPreset } from "rete";
 import { broadcastErr, listIn, listOut, numIn, numOut, numListIn, numListOut, readInput, tableIn, tableOut, frameOut, strOut } from "./shared";
 import { rk4 } from "./odeOps";
+import type { Shape } from "../frameShape";
 import { resolveFn } from "./tableLambda";
 import { lambdaIn } from "./shared";
 import { gridAxes, fillGrid } from "./mathUtils";
@@ -1094,6 +1095,10 @@ export class EtsForecastNode extends ClassicPreset.Node {
     this.addOutput("detected", numOut("Season used"));
   }
 
+  frameShape(outKey: string): Shape | null {
+    return outKey === "forecast" ? { columns: [{ name: "Forecast", type: "number" }, { name: "Interval", type: "number" }] } : null;
+  }
+
   data(inputs: { values?: (number | null | SolError)[][]; horizon?: number[]; season?: number[] }): { forecast: FrameValue | SolError | null; detected: number | null } {
     const blank = () => { this.cachedResult = null; this.cachedSeason = null; return { forecast: null, detected: null }; };
     const prep = forAggregate(inputs.values?.[0] ?? []);
@@ -1144,6 +1149,15 @@ export class FitDistributionNode extends ClassicPreset.Node {
     this.addOutput("ranking", frameOut("Ranking"));
     this.addOutput("best", strOut("Best family"));
     this.addOutput("params", numListOut("Parameters"));
+  }
+
+  frameShape(outKey: string): Shape | null {
+    if (outKey !== "ranking") return null;
+    return { columns: [
+      { name: "family", type: "string" }, { name: "parameter 1", type: "string" }, { name: "value 1", type: "number" },
+      { name: "parameter 2", type: "string" }, { name: "value 2", type: "number" },
+      { name: "log-likelihood", type: "number" }, { name: "AIC", type: "number" }, { name: "KS", type: "number" },
+    ] };
   }
 
   data(inputs: { list?: (number | null | SolError)[][] }) {
@@ -1200,6 +1214,10 @@ export class DecomposeNode extends ClassicPreset.Node {
     this.addOutput("decomposition", frameOut("Decomposition"));
   }
 
+  frameShape(): Shape {
+    return { columns: [{ name: "Trend", type: "number" }, { name: "Seasonal", type: "number" }, { name: "Residual", type: "number" }] };
+  }
+
   data(inputs: { values?: (number | null | SolError)[][]; period?: number[] }): { decomposition: FrameValue | SolError | null } {
     const blank = (err: SolError | null = null) => { this.cachedResult = err; return { decomposition: err }; };
     const raw = inputs.values?.[0] ?? null;
@@ -1251,6 +1269,10 @@ export class OdeIntegrateNode extends ClassicPreset.Node {
     // row (the MAP-family layout); the FormulaBox is the derivative's inline authoring.
     this.addInput("lambda", lambdaIn("dy/dt"));
     this.addOutput("solution", frameOut("Solution"));
+  }
+
+  frameShape(): Shape {
+    return { columns: [{ name: "t", type: "number" }, { name: "y", type: "number" }] };
   }
 
   data(inputs: { lambda?: unknown[]; y0?: number[]; t0?: number[]; t1?: number[]; steps?: number[] }): { solution: FrameValue | SolError | null } {

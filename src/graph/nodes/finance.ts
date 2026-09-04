@@ -1,6 +1,7 @@
 ﻿import { ClassicPreset } from "rete";
 import { numIn, numOut, listIn, listOut, dateIn, dateListIn, frameOut, readInput, BASIS_DOC } from "./shared";
 import type { FrameValue } from "../frame";
+import type { Shape } from "../frameShape";
 import { serialToJsDate } from "./date";
 import { solError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
@@ -1318,6 +1319,13 @@ export class AmortizationNode extends ClassicPreset.Node {
     this.addInput("pv",   numIn("PV"));
     this.addInput("fv",   numIn("FV"));
     this.addOutput("frame", frameOut("Schedule"));
+  }
+
+  frameShape(): Shape {
+    return { columns: [
+      { name: "Period", type: "number" }, { name: "Payment", type: "number" }, { name: "Interest", type: "number" },
+      { name: "Principal", type: "number" }, { name: "Balance", type: "number" },
+    ] };
   }
 
   data(inputs: { rate?: number[]; nper?: number[]; pv?: number[]; fv?: number[] }): { frame: FrameValue | null } {

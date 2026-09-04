@@ -19,6 +19,12 @@ export function shapeOfFrameValue(f: FrameValue): Shape {
   return { columns: f.columns.map((c) => ({ name: c.name, type: c.type })) };
 }
 
+/** A zero-row frame of this shape: lets a producer whose columns never depend on ROW data
+ *  declare its shape by running its OWN verb, instead of a second mirror of it that can drift. */
+export function emptyFrameOf(shape: Shape): FrameValue {
+  return { __frame: true, columns: shape.columns.map((c) => ({ name: c.name, type: c.type, values: [] })) };
+}
+
 function requireCol(s: Shape, name: string): ShapeColumn {
   const col = s.columns.find((c) => c.name === name);
   if (!col) throw solError("#REF!", `column "${name}" not found`);
