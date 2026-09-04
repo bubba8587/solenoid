@@ -1537,12 +1537,16 @@ export function decisionCriteria(f: FrameValue): string[] {
 // first text column (orderedColumnsAreFrames — the label rides the data, not a positional
 // list). A criterion the frame omits weighs 1 and inherits the default normalize.
 
+const critKey = (s: string): string => s.trim().toLowerCase();
+
+/** The first text column: the Criterion names of a criterion-keyed frame. */
+const criterionColumn = (f: FrameValue): FrameColumn | undefined => f.columns.find((c) => c.type === "string");
+
 /** criterion name (trimmed, lower-cased) → its row index in a criterion-keyed frame. */
 function criterionRowIndex(f: FrameValue): Map<string, number> {
-  const critCol = f.columns.find((c) => c.type === "string");
   const m = new Map<string, number>();
-  critCol?.values.forEach((v, i) => {
-    if (typeof v === "string") { const k = v.trim().toLowerCase(); if (k && !m.has(k)) m.set(k, i); }
+  criterionColumn(f)?.values.forEach((v, i) => {
+    if (typeof v === "string") { const k = critKey(v); if (k && !m.has(k)) m.set(k, i); }
   });
   return m;
 }
@@ -1563,12 +1567,12 @@ export function parseNormalize(v: FrameCell): DecisionNormalize | null {
 
 /** Per-criterion normalize overrides read from an optional `Norm` text column. */
 function normOverridesFrom(f: FrameValue, criteria: string[], rowIndex: Map<string, number>): Record<string, DecisionNormalize> {
-  const critCol = f.columns.find((c) => c.type === "string");
-  const normCol = f.columns.find((c) => c !== critCol && c.name.trim().toLowerCase() === "norm");
+  const critCol = criterionColumn(f);
+  const normCol = f.columns.find((c) => c !== critCol && critKey(c.name) === "norm");
   const out: Record<string, DecisionNormalize> = {};
   if (!normCol) return out;
   for (const name of criteria) {
-    const r = rowIndex.get(name.trim().toLowerCase());
+    const r = rowIndex.get(critKey(name));
     const m = r != null ? parseNormalize(normCol.values[r]) : null;
     if (m) out[name] = m;
   }
@@ -1585,9 +1589,9 @@ export function resolveDecisionWeights(
   if (!wf) return { weights: null, normOverrides: {} };
   const rowIndex = criterionRowIndex(wf);
   const nums = wf.columns.filter((c) => c.type === "number");
-  const weightCol = nums.find((c) => ["weight", "weights", "value"].includes(c.name.trim().toLowerCase())) ?? nums[0] ?? null;
+  const weightCol = nums.find((c) => ["weight", "weights", "value"].includes(critKey(c.name))) ?? nums[0] ?? null;
   const weights = criteria.map((name) => {
-    const r = rowIndex.get(name.trim().toLowerCase());
+    const r = rowIndex.get(critKey(name));
     const v = r != null && weightCol ? numOrNull(weightCol.values[r]) : null;
     return v ?? 1;
   });
@@ -1744,7 +1748,7 @@ export function decisionSensitivity(
   }
   // With no criterion row matched, every weight defaults to 1 and all scenarios come out
   // identical — a naming mismatch (renamed criteria), not a sensitivity run.
-  if (!criteria.some((name) => rowIndex.has(name.trim().toLowerCase()))) {
+  if (!criteria.some((name) => rowIndex.has(critKey(name)))) {
     throw solError("#VALUE!", "No Scenarios row is named after a criterion");
   }
   const normOverrides = normOverridesFrom(scenarios, criteria, rowIndex);
@@ -1756,7 +1760,7 @@ export function decisionSensitivity(
 
   for (const scenCol of scenarioCols) {
     const weights = criteria.map((name) => {
-      const r = rowIndex.get(name.trim().toLowerCase());
+      const r = rowIndex.get(critKey(name));
       const v = r != null ? numOrNull(scenCol.values[r]) : null;
       return v ?? 1; // missing weight → 1
     });

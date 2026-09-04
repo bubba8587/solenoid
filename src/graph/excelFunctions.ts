@@ -1190,6 +1190,14 @@ const asOneDim = (v: unknown): unknown[] | null => {
   if (v.every((row) => row.length === 1)) return v.map((row) => row[0]);
   return null;
 };
+const spillLookup = (fnName: string, lookup: unknown, pick: (l: unknown) => unknown): unknown => {
+  if (isGrid(lookup)) {
+    const cells = asOneDim(lookup);
+    if (!cells) return solError("#SHAPE!", `${fnName}'s lookup value is one value or a list, not a 2-D grid`);
+    return cells.map(pick);
+  }
+  return Array.isArray(lookup) ? lookup.map(pick) : pick(lookup);
+};
 registerInternal("XLOOKUP", (lookup, keys, values, ifNotFound, matchMode, searchMode) => {
   const mm = xMatchModeArg(matchMode);
   if (isSolError(mm)) return mm;
@@ -1205,14 +1213,7 @@ registerInternal("XLOOKUP", (lookup, keys, values, ifNotFound, matchMode, search
     if (idx >= 0 && idx < vs.length) return vs[idx];
     return ifNotFound !== undefined ? ifNotFound : NA_NO_MATCH();
   };
-  // The lookup VALUE: a scalar picks; a list OR an orientation-free 1×N / N×1 matrix
-  // spills one result per cell; a true 2-D grid is #SHAPE! (mirrors the lookup array).
-  if (isGrid(lookup)) {
-    const cells = asOneDim(lookup);
-    if (!cells) return solError("#SHAPE!", "XLOOKUP's lookup value is one value or a list, not a 2-D grid");
-    return cells.map(pick);
-  }
-  return Array.isArray(lookup) ? lookup.map(pick) : pick(lookup);
+  return spillLookup("XLOOKUP", lookup, pick);
 });
 registerInternal("XMATCH", (lookup, keys, matchMode, searchMode) => {
   const mm = xMatchModeArg(matchMode);
@@ -1226,14 +1227,7 @@ registerInternal("XMATCH", (lookup, keys, matchMode, searchMode) => {
     if (isSolError(idx)) return idx;
     return idx >= 0 ? idx + 1 : solError("#N/A", "No match found");
   };
-  // The lookup VALUE: a scalar picks; a list OR an orientation-free 1×N / N×1 matrix
-  // spills one result per cell; a true 2-D grid is #SHAPE! (mirrors the lookup array).
-  if (isGrid(lookup)) {
-    const cells = asOneDim(lookup);
-    if (!cells) return solError("#SHAPE!", "XMATCH's lookup value is one value or a list, not a 2-D grid");
-    return cells.map(pick);
-  }
-  return Array.isArray(lookup) ? lookup.map(pick) : pick(lookup);
+  return spillLookup("XMATCH", lookup, pick);
 });
 // A blank branch (`IF(x,,y)`) arrives as null and STAYS null — a deliberate deviation;
 // real Excel's omitted arg is 0. IF(test, then) with a false test → FALSE.
