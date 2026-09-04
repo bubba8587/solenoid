@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { writeTextForm, readTextForm } from "../../src/graph/textForm";
 import type { SavedGraph } from "../../src/graph/persistence";
-import { RecordNode } from "../../src/graph/nodes/visual";
+import { RecordNode, parseRecordLayout } from "../../src/graph/nodes/visual";
 import { titleIndexFor, type RecordPayload } from "../../src/graph/chartValue";
 import type { FrameValue } from "../../src/graph/frame";
 
@@ -46,6 +46,43 @@ describe("Record List op — indented outline", () => {
     expect(titleIndexFor(p.cards[0])).toBe(0); // the ONE title seam → first field
     expect(p.cards[0][0].label).toBe("Item");  // title field
     expect(p.cards[0].length).toBe(3);         // title + two trailing fields
+  });
+});
+
+describe("Record title-row #field marker", () => {
+  it("parses a leading # as the title flag, name stripped", () => {
+    const placed = parseRecordLayout("#SKU | Qty");
+    expect(placed.find((p) => p.name === "SKU")?.title).toBe(true);
+    expect(placed.find((p) => p.name === "Qty")?.title).toBeFalsy();
+    expect(placed.some((p) => p.name === "#SKU")).toBe(false); // the # is not part of the name
+  });
+
+  it("a marked field (even non-first) is the title titleIndexFor points at", async () => {
+    const rec = new RecordNode({ op: "list" });
+    rec.stringLiterals.layout = "Qty | #Item"; // Item marked though it is second
+    const p = (await rec.data({ frame: [frame] })).chart.payload as RecordPayload;
+    const ti = titleIndexFor(p.cards[0]);
+    expect(p.cards[0][ti].label).toBe("Item");
+    expect(p.cards[0][ti].isTitle).toBe(true);
+  });
+});
+
+describe("Record clamp option", () => {
+  it("clamp=on sets payload.clamp on a gallery", async () => {
+    const rec = new RecordNode({ op: "gallery" });
+    rec.stringLiterals.options = "clamp=on";
+    const p = (await rec.data({ frame: [frame] })).chart.payload as RecordPayload;
+    expect(p.clamp).toBe(true);
+  });
+
+  it("round-trips through the text form", () => {
+    const g: SavedGraph = {
+      v: 2,
+      nodes: [{ id: "r", type: "RecordNode", name: "P", x: 0, y: 0, init: { op: "gallery" }, stringLiterals: { options: "clamp=on" } }],
+      connections: [],
+    };
+    const rn = readTextForm(writeTextForm(g)).nodes.find((n) => n.type === "RecordNode");
+    expect(rn?.stringLiterals?.options).toContain("clamp=on");
   });
 });
 

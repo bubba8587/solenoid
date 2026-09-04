@@ -119,6 +119,9 @@ export interface RecordField {
   /** Layout-authored placeholder, present only when the value is empty; the box
    *  shows it muted in place of the dash. */
   hint?: string;
+  /** The title field (a `#name` layout marker): drawn big and label-less. `titleIndexFor`
+   *  reads this; the List view leads with it and every card view renders it prominent. */
+  isTitle?: boolean;
   row: number;
   col: number;
   rowSpan: number;
@@ -131,7 +134,8 @@ export type RecordSize = "s" | "m" | "l";
  *  ONE place this is decided: today the first field, so a per-card title marker (the pending
  *  `#field` layout marker) plugs in HERE and every view follows. */
 export function titleIndexFor(fields: RecordField[]): number {
-  return fields.length > 0 ? 0 : -1;
+  const marked = fields.findIndex((f) => f.isTitle);
+  return marked >= 0 ? marked : fields.length > 0 ? 0 : -1;
 }
 
 // The record figure, four views of one layout: `card` draws the picked row,
@@ -152,6 +156,9 @@ export interface RecordPayload {
   more?: number;
   /** Gallery tile size preset; absent = medium. Gallery view only. */
   size?: RecordSize;
+  /** Clamp long tile values to a few lines with an ellipsis (the `clamp` option); the
+   *  popup still shows everything. Gallery view only. */
+  clamp?: boolean;
   index: number;
   total: number;
 }

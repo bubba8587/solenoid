@@ -52,10 +52,10 @@ export function RecordGrid({ fields, cols }: { fields: RecordPayload["cards"][nu
       {fields.map((f, i) => (
         <div
           key={i}
-          className="sol-record__box"
+          className={`sol-record__box${f.isTitle ? " sol-record__box--title" : ""}`}
           style={{ gridRow: `${f.row} / span ${f.rowSpan}`, gridColumn: `${f.col} / span ${f.colSpan}` }}
         >
-          <div className="sol-record__label">{f.label}</div>
+          {f.isTitle ? null : <div className="sol-record__label">{f.label}</div>}
           {f.image ? (
             <img className="sol-record__img" src={f.image} alt={f.label} draggable={false} />
           ) : (
@@ -122,7 +122,7 @@ function RecordGallery({ payload }: { payload: RecordPayload }) {
   const show = box !== null && (box.settled || shownOnce.current);
   const packed = box ? packMasonry(box.heights, plan.count, GALLERY_GAP) : null;
   return (
-    <div ref={ref} className="sol-record-gallery" style={show && packed ? { height: packed.height } : undefined}>
+    <div ref={ref} className={`sol-record-gallery${payload.clamp ? " sol-record-gallery--clamp" : ""}`} style={show && packed ? { height: packed.height } : undefined}>
       {payload.cards.map((c, i) => (
         <div
           key={i}

@@ -91,8 +91,12 @@ indented outline block per record, the title field on its own line and the trail
 behind ONE seam, `titleIndexFor(fields)` in `chartValue.ts` (today the first field; the per-card
 `#field` title-row marker plugs in there and every view follows). List reuses the gallery row build
 (cap `RECORD_CARD_CAP`, no row/by socket). Catalog description + `cardsize` socketDoc updated. Pinned
-by `recordViews.test.ts`. Title row (`#field` marker) + wrap/clamp land next (author promoted both
-back IN 2026-09-04c).
+by `recordViews.test.ts`. Then title row + wrap/clamp (author promoted both back IN 2026-09-04c):
+a `#name` layout marker (one parser change in `parseRecordLayout`) flags a field `isTitle`, drawn
+big + label-less in every view; `titleIndexFor` reads the flag and still falls back to field[0].
+A `clamp=on` option line-clamps long gallery-tile values to 3 lines (the popup shows the whole
+card). Pinned by `recordViews.test.ts`. Still OUT of the trim: cover image, hide-empty, grouped
+gallery / lane summaries.
 
 **D1 — formula-surface allowlist: Option A DROPPED on step-0 findings (Chewie).** Option A
 (one guard before `broadcastCall`: an undeclared FX name refuses ARRAY args) was greenlit on
