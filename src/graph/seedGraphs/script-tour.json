@@ -7,8 +7,8 @@
     {
       "id": "note-head",
       "type": "NoteNode",
-      "x": 0,
-      "y": 660,
+      "x": -130,
+      "y": 1343,
       "init": {
         "label": "Script: worked examples",
         "color": "amber",
@@ -19,8 +19,8 @@
     {
       "id": "in-samples",
       "type": "NumberInputNode",
-      "x": 380,
-      "y": 1220,
+      "x": 494,
+      "y": 1394,
       "init": {
         "label": "Samples",
         "value": 100000
@@ -29,8 +29,8 @@
     {
       "id": "sc-pi",
       "type": "ScriptNode",
-      "x": 645,
-      "y": 1102,
+      "x": 759,
+      "y": 1276,
       "init": {
         "label": "Monte Carlo π",
         "expr": "(samples) => {\n  let hits = 0;\n  for (let i = 0; i < samples; i++) {\n    const x = Math.random();\n    const y = Math.random();\n    if (x * x + y * y <= 1) hits++;\n  }\n  return 4 * hits / samples;\n}"
@@ -39,8 +39,8 @@
     {
       "id": "d-pi",
       "type": "DisplayNode",
-      "x": 979,
-      "y": 1215,
+      "x": 1084,
+      "y": 1389,
       "init": {
         "label": "≈ 3.14"
       }
@@ -48,8 +48,8 @@
     {
       "id": "in-n",
       "type": "NumberInputNode",
-      "x": 380,
-      "y": 542,
+      "x": 13,
+      "y": 1854,
       "init": {
         "label": "27",
         "value": 27
@@ -58,8 +58,8 @@
     {
       "id": "sc-collatz",
       "type": "ScriptNode",
-      "x": 645,
-      "y": 450,
+      "x": 278,
+      "y": 1762,
       "init": {
         "label": "Collatz path",
         "expr": "(n) => {\n  const path = [n];\n  while (n > 1 && path.length < 1000) {\n    n = n % 2 ? 3 * n + 1 : n / 2;\n    path.push(n);\n  }\n  return path;\n}"
@@ -68,8 +68,8 @@
     {
       "id": "spark",
       "type": "SparklineNode",
-      "x": 979,
-      "y": 622,
+      "x": 611,
+      "y": 1715,
       "init": {
         "label": "Sparkline"
       }
@@ -77,8 +77,8 @@
     {
       "id": "sc-summary",
       "type": "ScriptNode",
-      "x": 981,
-      "y": 362,
+      "x": 611,
+      "y": 1892,
       "init": {
         "label": "Path summary",
         "expr": "(path) => {\n  const steps = path.length - 1;\n  const peak = Math.max(...path);\n  return steps + \" steps, peak \" + peak;\n}"
@@ -87,8 +87,8 @@
     {
       "id": "d-summary",
       "type": "DisplayNode",
-      "x": 1309,
-      "y": 428,
+      "x": 936,
+      "y": 1958,
       "init": {
         "label": "→ 111 steps, peak 9232"
       }
@@ -96,8 +96,8 @@
     {
       "id": "in-principal",
       "type": "NumberInputNode",
-      "x": 380,
-      "y": 1654,
+      "x": 6,
+      "y": 23,
       "init": {
         "label": "Principal",
         "value": 250000
@@ -106,8 +106,8 @@
     {
       "id": "sc-loan",
       "type": "ScriptNode",
-      "x": 645,
-      "y": 1456,
+      "x": 271,
+      "y": -175,
       "init": {
         "label": "Amortization table",
         "expr": "(principal, rate, years) => {\n  const r = rate / 100 / 12;\n  const n = years * 12;\n  const pow = (1 + r) ** -n;\n  const pay = principal * r / (1 - pow);\n  const rows = [];\n  let bal = principal;\n  let paid = 0;\n  for (let m = 1; m <= n; m++) {\n    const i = bal * r;\n    paid += i;\n    bal -= pay - i;\n    if (m % 60 === 0) rows.push({\n      year: m / 12,\n      interest: Math.round(paid),\n      balance: Math.round(bal),\n    });\n  }\n  return rows;\n}"
@@ -120,8 +120,8 @@
     {
       "id": "d-loan",
       "type": "DisplayNode",
-      "x": 979,
-      "y": 1483,
+      "x": 605,
+      "y": -147,
       "init": {
         "label": "Every 5 years"
       }
@@ -129,8 +129,8 @@
     {
       "id": "sc-total",
       "type": "ScriptNode",
-      "x": 981,
-      "y": 1730,
+      "x": 607,
+      "y": 99,
       "init": {
         "label": "Reads the frame back",
         "expr": "(sched) => {\n  const last = sched[sched.length - 1];\n  return \"Total interest \" + last.interest;\n}"
@@ -139,8 +139,8 @@
     {
       "id": "d-total",
       "type": "DisplayNode",
-      "x": 1309,
-      "y": 1788,
+      "x": 935,
+      "y": 157,
       "init": {
         "label": "→ Total interest 206017"
       }
@@ -148,8 +148,8 @@
     {
       "id": "in-year",
       "type": "NumberInputNode",
-      "x": 380,
-      "y": 892,
+      "x": 187,
+      "y": 549,
       "init": {
         "label": "Year",
         "value": 2026
@@ -158,8 +158,8 @@
     {
       "id": "sc-fri13",
       "type": "ScriptNode",
-      "x": 645,
-      "y": 800,
+      "x": 452,
+      "y": 457,
       "init": {
         "label": "Friday the 13ths",
         "expr": "(year) => {\n  const hits = [];\n  for (let m = 0; m < 12; m++) {\n    const d = new Date(Date.UTC(year, m, 13));\n    if (d.getUTCDay() === 5) hits.push(d);\n  }\n  return hits;\n}"
@@ -168,8 +168,8 @@
     {
       "id": "d-fri13",
       "type": "DisplayNode",
-      "x": 979,
-      "y": 865,
+      "x": 777,
+      "y": 522,
       "init": {
         "label": "→ 13-Feb, 13-Mar, 13-Nov"
       }
@@ -177,8 +177,8 @@
     {
       "id": "in-growth",
       "type": "NumberInputNode",
-      "x": 380,
-      "y": 119,
+      "x": 39,
+      "y": 950,
       "init": {
         "label": "Growth",
         "value": 1.1
@@ -187,8 +187,8 @@
     {
       "id": "sc-cube",
       "type": "ScriptNode",
-      "x": 645,
-      "y": 12,
+      "x": 304,
+      "y": 844,
       "init": {
         "label": "Nested rows: a cube",
         "expr": "(growth) => [\"North\", \"South\"]\n  .map((region, i) => ({\n    region,\n    quarters: [1, 2, 3, 4].map((q) => ({\n      quarter: q,\n      sales: Math.round(\n        100 * (i + 1) * growth ** q,\n      ),\n    })),\n  }))"
@@ -197,8 +197,8 @@
     {
       "id": "rollup",
       "type": "CubeRollupNode",
-      "x": 981,
-      "y": 44,
+      "x": 629,
+      "y": 876,
       "init": {
         "label": "Cube Rollup",
         "agg": "sum"
@@ -212,10 +212,105 @@
     {
       "id": "d-cube",
       "type": "DisplayNode",
-      "x": 1309,
-      "y": 114,
+      "x": 954,
+      "y": 945,
       "init": {
         "label": "→ North 510, South 1021"
+      }
+    },
+    {
+      "id": "grp-pi",
+      "type": "GroupNode",
+      "x": 470,
+      "y": 1218,
+      "init": {
+        "label": "Monte Carlo π",
+        "members": [
+          "in-samples",
+          "sc-pi",
+          "d-pi"
+        ],
+        "color": "gold",
+        "collapsed": false,
+        "width": 822,
+        "height": 401
+      }
+    },
+    {
+      "id": "grp-collatz",
+      "type": "GroupNode",
+      "x": -11,
+      "y": 1657,
+      "init": {
+        "label": "Collatz path",
+        "members": [
+          "in-n",
+          "sc-collatz",
+          "spark",
+          "sc-summary",
+          "d-summary"
+        ],
+        "color": "blue",
+        "collapsed": false,
+        "width": 1199,
+        "height": 484
+      }
+    },
+    {
+      "id": "grp-loan",
+      "type": "GroupNode",
+      "x": -18,
+      "y": -233,
+      "init": {
+        "label": "Amortization table",
+        "members": [
+          "in-principal",
+          "sc-loan",
+          "d-loan",
+          "sc-total",
+          "d-total"
+        ],
+        "color": "purple",
+        "collapsed": false,
+        "width": 1213,
+        "height": 594
+      }
+    },
+    {
+      "id": "grp-fri13",
+      "type": "GroupNode",
+      "x": 163,
+      "y": 399,
+      "init": {
+        "label": "Friday the 13ths",
+        "members": [
+          "in-year",
+          "sc-fri13",
+          "d-fri13"
+        ],
+        "color": "teal",
+        "collapsed": false,
+        "width": 852,
+        "height": 349
+      }
+    },
+    {
+      "id": "grp-cube",
+      "type": "GroupNode",
+      "x": 15,
+      "y": 786,
+      "init": {
+        "label": "Nested rows make a cube",
+        "members": [
+          "in-growth",
+          "sc-cube",
+          "rollup",
+          "d-cube"
+        ],
+        "color": "lime",
+        "collapsed": false,
+        "width": 1147,
+        "height": 394
       }
     }
   ],
@@ -309,6 +404,20 @@
       "sourceOutput": "frame",
       "target": "d-cube",
       "targetInput": "in"
+    }
+  ],
+  "standoffs": [
+    {
+      "a": {
+        "nodeId": "grp-pi",
+        "anchor": "w"
+      },
+      "b": {
+        "nodeId": "note-head",
+        "anchor": "e"
+      },
+      "min": 40,
+      "max": 240
     }
   ]
 }
