@@ -189,6 +189,45 @@ describe("formatFlowsDownstream — the FORMAT crosses a transform, the unit sta
   });
 });
 
+describe("FC inherit (`—` style pick) — carries the upstream format, keeps its own unit", () => {
+  it("FC1 Decimal·3 places → FC2 (— + usd): downstream reads Decimal·3 places in usd", async () => {
+    const { FormatControllerNode } = await import("../../src/graph/nodes/formatController");
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const fc1 = new FormatControllerNode({ format: "decimal", decimalDigits: 3 });
+    const fc2 = new FormatControllerNode({ inheritFormat: true, unit: "usd" });
+    const disp = node("Display", { passesUnitThrough: true });
+    for (const n of [fc1 as unknown as ClassicPreset.Node, fc2 as unknown as ClassicPreset.Node, disp]) {
+      await editor.addNode(n as never);
+    }
+    await connect(editor, fc1 as unknown as ClassicPreset.Node, fc2 as unknown as ClassicPreset.Node);
+    await connect(editor, fc2 as unknown as ClassicPreset.Node, disp);
+    const ann = makeAnnotationResolver(editor).inAnnotation(disp.id, "in");
+    expect(ann?.format).toBe("decimal");        // FC1's style, carried through
+    expect(ann?.decimalDigits).toBe(3);          // and its precision
+    expect(ann?.unit).toBe("usd");               // FC2's own unit stands
+  });
+
+  it("a concrete pick on FC2 overrides the upstream style (no inherit)", async () => {
+    const { FormatControllerNode } = await import("../../src/graph/nodes/formatController");
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const fc1 = new FormatControllerNode({ format: "decimal", decimalDigits: 3 });
+    const fc2 = new FormatControllerNode({ format: "percent", unit: "usd" });
+    for (const n of [fc1, fc2] as unknown as ClassicPreset.Node[]) await editor.addNode(n as never);
+    await connect(editor, fc1 as unknown as ClassicPreset.Node, fc2 as unknown as ClassicPreset.Node);
+    expect(makeAnnotationResolver(editor).outAnnotation(fc2.id, "out")?.format).toBe("percent");
+  });
+
+  it("inherit with nothing upstream falls back to the FC's own style + unit", async () => {
+    const { FormatControllerNode } = await import("../../src/graph/nodes/formatController");
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const fc = new FormatControllerNode({ inheritFormat: true, unit: "usd" });
+    await editor.addNode(fc as unknown as ClassicPreset.Node as never);
+    const ann = makeAnnotationResolver(editor).outAnnotation(fc.id, "out");
+    expect(ann?.unit).toBe("usd");              // the unit still authors
+    expect(ann?.format).toBe("auto");           // no upstream style → the family default
+  });
+});
+
 describe("downstreamAnnotation — an FC's lock reaches Displays AHEAD of it (upstream segment)", () => {
   it("a Display two hops ABOVE the FC carries the lock (Number→Disp1→Disp2→FC)", async () => {
     const editor = new NodeEditor() as unknown as AnyEditor;

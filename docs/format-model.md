@@ -102,6 +102,17 @@ its own reads `—` (inherit) with the arriving format as a muted hint beside it
 and every concrete style — `auto` included — is a real local override that
 deletes back to `—` (`columnFormatRow`, `frameFormatStore.ts`).
 
+**A docked FC's style dropdown carries the SAME `—` pick** (`inheritFormat`): with it,
+the FC carries the display format arriving at `in` through unchanged (style + precision +
+advanced tier) and authors its own unit alone, so a second FC docked only for a unit no
+longer resets the style to `auto` (formatFlowsDownstream). While inheriting, the FC's own
+precision + advanced rows collapse to the column row's muted `← Decimal · 3 places` hint.
+`FormatControllerNode.resolveAnnotation(inherited)` does the merge (own `unit`/`customUnit`,
+every display axis from upstream); `makeAnnotationResolver.compute` calls it in place of
+`annotation()`, so the carried-downstream and box-behind paths agree. The node's `format`
+field stays a concrete `FormatStyleId` — `inheritFormat` is the separate flag, and `""` is
+the dropdown's inherit value.
+
 ## The control truth table
 
 Which controls exist per family (popup rows AND resolution axes):

@@ -1141,7 +1141,11 @@ annotation onto an output whose element family MATCHES that input's (a wildcard 
 family change — number → text — carries nothing). The carried copy has `unit: "none"`:
 the unit is VALUE-level and locked (unitOnValue), riding its `UnitCell` or breaking at
 the transform on its own, and an annotation never re-states it. A nearer FC OVERRIDES
-what it inherits, so a format is always overridable from any point down the chain.
+what it inherits, so a format is always overridable from any point down the chain — but
+a docked FC can also DECLINE to override: its style dropdown's leading `—` pick
+(`inheritFormat`) carries the upstream display format through unchanged and authors the
+FC's unit alone (`FormatControllerNode.resolveAnnotation`), so a second FC docked only
+for a unit no longer resets the style to Auto.
 **Convert is the one transform that still DROPS** — it authors a new unit and rescales
 the magnitude, so the precision chosen for the old unit no longer describes the number.
 The UPSTREAM direction (`downstreamAnnotation`, a box reading a trailing FC) stays
@@ -1158,8 +1162,10 @@ possible, but it's always possible to override. Units are LOCKED in contrast."
 the unit does not", "two annotated operands: the first input's format wins; agreeing
 formats pass as one", "a family change drops the format (number → text)", "an FC
 downstream of a transform overrides the inherited format", "Convert still DROPS the
-format — it authors a new unit and rescales the magnitude", and the upstream bound "the
-lock STOPS at a transform between the Display and the FC"; `unitFlowSeed.test.ts` → "C ·
+format — it authors a new unit and rescales the magnitude", the upstream bound "the
+lock STOPS at a transform between the Display and the FC", and the `—` inherit pick "FC
+inherit (`—` style pick) — carries the upstream format, keeps its own unit";
+`unitFlowSeed.test.ts` → "C ·
 a transform carries the number FORMAT, and the unit ($ dimension + display) rides";
 `frameColumnFormat.test.ts` for the frame-column carrier (survives Sort → Columns, the
 nearer pick wins, derived columns follow the unit rule, nothing serializes).

@@ -33,6 +33,12 @@ type FcAnnLike = { annotation: () => FormatAnnotation };
 function hasAnnotation(n: unknown): n is FcAnnLike {
   return typeof (n as Record<string, unknown> | null)?.annotation === "function";
 }
+/** An FC whose style dropdown may be set to `—` (inherit): it merges the format
+ *  arriving at `in` with its own unit rather than publishing a fixed annotation. */
+type FcResolveLike = { resolveAnnotation: (inherited: FormatAnnotation | undefined) => FormatAnnotation };
+function hasResolveAnnotation(n: unknown): n is FcResolveLike {
+  return typeof (n as Record<string, unknown> | null)?.resolveAnnotation === "function";
+}
 /** Per-OUTPUT producer annotation; undefined for a key means that output carries
  *  nothing, while node-level `annotation()` is the single-output form. */
 type FcAnnForLike = { annotationFor: (outKey: string) => FormatAnnotation | undefined };
@@ -99,6 +105,9 @@ export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
     const n = editor.getNode(nodeId);
     if (isConvert(n)) return undefined;
     if (hasAnnotationFor(n)) return n.annotationFor(outKey);
+    // An FC that may inherit reads the format arriving at its `in`; a plain FC just
+    // publishes its own. `resolveAnnotation` covers both, so it wins where present.
+    if (hasResolveAnnotation(n)) return n.resolveAnnotation(inAnnotation(nodeId, "in"));
     if (hasAnnotation(n)) return n.annotation();
     if (isPassthrough(n)) {
       const sel = selectedKey(n);
@@ -160,6 +169,7 @@ export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
     for (const c of bySource.get(nodeId) ?? []) {
       if (c.sourceOutput !== outKey) continue;
       const consumer = editor.getNode(c.target);
+      if (hasResolveAnnotation(consumer)) { found = consumer.resolveAnnotation(inAnnotation(c.target, "in")); break; }
       if (hasAnnotation(consumer)) { found = consumer.annotation(); break; }
       if (isPurePassthrough(consumer)) {
         for (const ok of Object.keys(consumer?.outputs ?? {})) {
