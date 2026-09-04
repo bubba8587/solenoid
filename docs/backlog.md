@@ -68,12 +68,17 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Finance
 
-- [ ] **Payment breakdown: ONE card (1.4 D2, author 2026-09-04c: in).** IPMT/PPMT (one payment's
-  interest / principal share) + CUMIPMT/CUMPRINC (the total over a range of payments) merge:
-  op = interest | principal, arg = single period | period range (the `per` socket becomes a
-  start/end pair). Same spec-table mechanism as the 09-04c finance cards (`finance.ts` § Spec-table
-  op cards, `makeSpecOpComponent`); goldens unchanged; `financeInvariants` + parity + nodeOps /
-  formulaNodeCoverage / seeds / catalogRegistry / uiCopy; old saves → Placeholder.
+- [ ] **Payment breakdown: ONE card (1.4 D2, author 2026-09-04c: in; designed, not started).**
+  `PaymentBreakdownNode`, one `op` = ipmt | ppmt | cumipmt | cumprinc; two toggles SET it — Share
+  (Interest | Principal) flips within the pair, Span (One period | Range) flips the pair AND drives
+  the reshape; payment timing stays an arg toggle. Keys: single = [rate, per, nper, pv, fv];
+  range = [rate, nper, pv, start, end]; shared sockets keep cables via `keysDroppedBySwitch` +
+  `reshapeInputs` (`finance.ts` § Spec-table op cards), component hand-rolled like
+  AccruedInterest. Math copied VERBATIM from `IpmtPpmtNode.data()` / `CumPmtNode.data()` (goldens
+  byte-identical); nodeExcel merges the four names under one key; the two catalog pairs
+  (`ipmtPpmtLeaf` / `cumPmtLeaf`) become one "Payment Breakdown" leaf; retired names "IpmtPpmt" /
+  "CumPmt" → Placeholder (registry test). Suites: financeInvariants, parity, nodeOps,
+  formulaNodeCoverage, seeds, catalogRegistry, uiCopy.
 
 ## Formatting & units
 
