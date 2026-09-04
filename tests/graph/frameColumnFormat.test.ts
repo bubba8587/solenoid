@@ -3,7 +3,7 @@ import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
 import type { Schemes } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
-import { frameFormatStore, columnFormatRow } from "../../src/graph/frameFormatStore";
+import { frameFormatStore, columnFormatRow, describeAnnotation } from "../../src/graph/frameFormatStore";
 import { fmtCell } from "../../src/graph/components/FrameDisplay";
 import {
   FrameInputNode, SortFrameNode, ColumnsNode, ComputedColumnNode, AddIndexNode, AllocatorNode,
@@ -205,5 +205,30 @@ describe("a stamped format is never serialized", () => {
     expect(col(out, "B").format).toEqual(DEC3);
     expect(frameColumnsToInputText(out.columns)).not.toContain("format");
     expect(input.frameText).not.toContain("format");
+  });
+});
+
+describe("describeAnnotation — the one shared inherit/column hint wording", () => {
+  // The docked FC's inherit hint (FormatControllerNode.describeInheritedStyle) now
+  // delegates here instead of re-implementing the wording, so this is the single guard
+  // for both surfaces. Pins the connective prose (the part that drifts) and the
+  // per-column-type dispatch, not the label words themselves (those are label tables).
+  it("number precision reads `· N place(s)` / `· N sig fig(s)`, pluralized", () => {
+    expect(describeAnnotation({ format: "decimal", unit: "none", decimalDigits: 3, decimalMode: "places" }, "number")).toMatch(/· 3 places$/);
+    expect(describeAnnotation({ format: "decimal", unit: "none", decimalDigits: 1, decimalMode: "places" }, "number")).toMatch(/· 1 place$/);
+    expect(describeAnnotation({ format: "decimal", unit: "none", decimalDigits: 2, decimalMode: "sigfigs" }, "number")).toMatch(/· 2 sig figs$/);
+  });
+
+  it("dispatches by column type — string reads case, logical reads show-as, number reads format", () => {
+    const ann: FormatAnnotation = {
+      format: "decimal", unit: "none", decimalDigits: 0, decimalMode: "places",
+      textCase: "upper", logicalStyle: "yesno",
+    };
+    const distinct = new Set([
+      describeAnnotation(ann, "string"),
+      describeAnnotation(ann, "logical"),
+      describeAnnotation(ann, "number"),
+    ]);
+    expect(distinct.size, "each column type reads a different axis").toBe(3);
   });
 });
