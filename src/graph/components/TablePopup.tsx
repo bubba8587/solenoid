@@ -7,7 +7,7 @@ import { parseCsvRows } from "../csv";
 import { isSolError, ERROR_EXPLANATIONS } from "../errorValue";
 import { formatDateSerial, parseDateToSerial, serialToJsDate, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { coerceFrameCell, formatFrameCell, type FrameSourceColumn } from "../frame";
-import { describeColumn, type ColumnProfile } from "../frameVerbs";
+import { describeColumn, distinctColumnValues, type ColumnProfile } from "../frameVerbs";
 import { aggregate } from "../nodes/statsOps";
 import { formatNumberWithAnnotation, isDateStyle, applyLogicalStyle, type FormatAnnotation, type FormatStyleId } from "../formatAnnotationStore";
 import { isUnitCell } from "../unitValue";
@@ -453,6 +453,25 @@ export function TablePopup() {
   const viewCols = vertical ? 1 : cols;
   const viewRows = vertical ? listLen : rows;
 
+  // Constrained entry (B2.1): a TEXT column's distinct existing values, offered as a
+  // datalist while a cell is edited — anything new still types. Plain computation, not a
+  // hook (below the guard); the distinct list is pure (frameVerbs), blanks + error codes
+  // excluded, first-seen order. TEXT only (logical/date/number have their own entry).
+  const isErrCode = (s: string): boolean => Object.prototype.hasOwnProperty.call(ERROR_EXPLANATIONS, s.trim());
+  const textColDistinct = new Map<number, string[]>();
+  for (let c = 0; c < viewCols; c++) {
+    // Same type the cell input reads (a list popup carries its element type on `cellType`).
+    if ((vertical ? cellType : colTypeAt(c)) === "string") {
+      textColDistinct.set(c, distinctColumnValues(grid.map((r) => r[c]), isErrCode));
+    }
+  }
+  const dlId = (c: number) => `tp-dl-${c}`;
+  const datalists = (
+    <>{[...textColDistinct].map(([c, vals]) => (
+      <datalist key={c} id={dlId(c)}>{vals.map((v) => <option key={v} value={v} />)}</datalist>
+    ))}</>
+  );
+
   // `sortOrder` holds SOURCE row indices over the WHOLE dataset, so every index it hands
   // on stays the source row and `grid` is never touched; the render shows the first
   // MAX_VISIBLE_ROWS of it, so a sort on a 50k-row frame shows the true top of the order.
@@ -804,6 +823,7 @@ export function TablePopup() {
       )}
       {view === "grid" ? (
         <div className="table-popup__grid-scroll sol-popup__scroll">
+          {datalists}
           <table className="table-popup__grid" ref={gridRef}>
             <thead>
               <tr>
@@ -1040,6 +1060,7 @@ export function TablePopup() {
                           else setEditCell({ r, c });
                         }}
                         onBlur={canEdit ? () => { if (editingHere) { setCell(r, c, editDraft.current); setEditCell(null); } } : undefined}
+                        list={canEdit && type === "string" ? dlId(c) : undefined}
                         data-vi={vi}
                         data-c={c}
                         onKeyDown={canEdit ? (e) => {
@@ -1099,6 +1120,7 @@ export function TablePopup() {
         </div>
       ) : view === "form" ? (
         <div className="table-popup__form-scroll sol-popup__scroll">
+          {datalists}
           <div className="table-popup__form">
             <div className="table-popup__form-nav">
               <button type="button" className="table-popup__btn" onClick={() => setFormRow(Math.max(0, fRow - 1))} disabled={fRow <= 0} title="Previous record">
@@ -1192,6 +1214,7 @@ export function TablePopup() {
                         value={editingHere ? editDraft.current : grid[fRow]?.[c] ?? ""}
                         placeholder={hint}
                         inputMode={isTextType(type) ? "text" : "decimal"}
+                        list={type === "string" ? dlId(c) : undefined}
                         spellCheck={false}
                         onFocus={() => { editDraft.current = grid[fRow]?.[c] ?? ""; setEditCell({ r: fRow, c }); }}
                         onChange={(e) => {

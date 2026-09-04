@@ -102,6 +102,15 @@ the shared Parts frame (a new long Notes column feeds the clamp exhibit), re-bak
 `tune-seeds.mjs` (given a `URL`/`CHROME` env so a worktree tunes its own edited seeds against its
 own dev server); catalog description + `#`/`cardsize`/`clamp` socketDocs carry the four lifts.
 
+**B2.1 — constrained entry (Lando).** Editing a TEXT cell in the table popup (grid or Form view)
+now offers the column's distinct existing values as a `<datalist>`; anything new still types.
+The list is a pure helper `distinctColumnValues(cells, isExcluded?)` in `frameVerbs.ts` (first-seen
+order, blanks + error codes excluded), fed from the grid text and gated to `string` columns only
+(logical/date/number keep their own entry). No new commit path — a datalist pick populates the
+same `<input>`, so it commits on Enter/blur exactly like a keystroke; no `FormatAnnotation` field.
+Pinned by `constrainedEntry.test.ts` (the distinct list; a suggestion coerces identically to a
+typed value). Renders one `<datalist>` per text column in the active view's scroll container.
+
 **D1 — formula-surface allowlist: Option A DROPPED on step-0 findings (Chewie).** Option A
 (one guard before `broadcastCall`: an undeclared FX name refuses ARRAY args) was greenlit on
 the proposal's premise that only "a handful" of undeclared names broadcast fine. Step 0
