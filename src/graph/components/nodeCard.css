@@ -420,6 +420,13 @@
   opacity: 0.4;
 }
 
+/* The Display's value expand button reuses the shared expand-pill look but drops its
+   absolute offset — the corner-badge slot already positions it (and stays put over a
+   body that scrolls, unlike an in-body button). */
+.solenoid-node__corner-badge .solenoid-expr__expand {
+  position: static;
+}
+
 /* Comment indicator (#14): a quiet round badge peeking out of the top-left
    corner — mirrors cornerBadge's top-right slot without colliding with it.
    Fixed offset (not header-relative): it marks the CARD, not a header detail. */

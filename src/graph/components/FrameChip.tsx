@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { tablePopup, type FramePopupColumn, type SourceCommitRefresh } from "../tablePopupStore";
-import { frameRowCount, frameToGrid, isFrameValue, type FrameValue, type FrameSourceColumn } from "../frame";
-import { collectPreview, readFrame, type FrameRef } from "../frameBackend";
+import { frameRowCount, isFrameValue, type FrameValue, type FrameSourceColumn } from "../frame";
+import { collectPreview, type FrameRef } from "../frameBackend";
 import { useHostNodeId } from "./nodeContext";
 import { readChipPopupStyle } from "./chipStyle";
+import { openFramePopup } from "../valuePopup";
 import "./ArrayChip.css";
 import { stopDragStart } from "../coarse";
 
@@ -68,58 +69,51 @@ export function FrameChip({ value, label, size = "md", accent, onSave, source, o
         const st = readChipPopupStyle(e.currentTarget, "--sock-frame");
         // Seed from the RAW typed cells so editing never canonicalises "1" → "TRUE".
         const isSource = !!source && !!onSaveSource;
-        const rowCount = isSource ? source!.reduce((m, c) => Math.max(m, c.cells.length), 0) : 0;
-        // Fetch the FULL frame through the carried handle, or Copy CSV silently
-        // exports the truncated preview; a dropped handle falls back to it.
-        let full = value;
-        if (!isSource && value.__totalRows != null && value.__ref) {
-          const collected = await readFrame(value.__ref as FrameRef);
-          if (isFrameValue(collected)) full = collected;
+        if (!isSource) {
+          // A read-only / typed-grid frame uses the shared opener (valuePopup) — the
+          // same path the Display's corner expand button takes.
+          await openFramePopup(value, {
+            label, hostId, onSave,
+            accent: accent || st.accent, groupColor: st.groupColor, groupColorDark: st.groupColorDark,
+          });
+          return;
         }
+        // Literal-source editing (Frame Input): the grid IS the raw typed text, with a
+        // per-column source select and live-computed columns riding alongside — a shape
+        // only this chip authors, so it stays inline.
+        const rowCount = source!.reduce((m, c) => Math.max(m, c.cells.length), 0);
         tablePopup.open({
           title: label || "Frame",
-          data: isSource
-            ? Array.from({ length: rowCount }, (_, r) => source!.map((c) => c.cells[r] ?? ""))
-            : frameToGrid(full),
-          headers: (isSource ? source! : full.columns).map((c) => c.name),
+          data: Array.from({ length: rowCount }, (_, r) => source!.map((c) => c.cells[r] ?? "")),
+          headers: source!.map((c) => c.name),
           // A COMPUTED column's type is the DERIVED one, so the format row offers the
           // selector family matching what the cells actually are.
-          columnTypes: isSource
-            ? source!.map((c, j) => ((c.lambda || c.expr) ? (value.columns[j]?.type ?? "number") : c.type))
-            : full.columns.map((c) => c.type),
-          // Read-only frame: the Source view shows the INPUTTED text, not the value.
-          sourceCells: isSource || !full.columns.some((c) => c.raw)
-            ? undefined
-            : Array.from({ length: frameRowCount(full) }, (_, r) => full.columns.map((c) => c.raw?.[r] ?? null)),
+          columnTypes: source!.map((c, j) => ((c.lambda || c.expr) ? (value.columns[j]?.type ?? "number") : c.type)),
           cellType: "number",
-          // A unit-taggable source gets the unit dropdown (persisted on Save); a derived
-          // frame gets the display-only format dropdown.
+          // A unit-taggable source gets the unit dropdown (persisted on Save).
           formatControls: "columns",
-          columnUnits: full.columns.map((c) => c.unit),
-          columnFormats: full.columns.map((c) => c.format),
-          unitTaggable: isSource,
-          editableHeaders: isSource || !!onSave,
-          literalSource: isSource,
-          onSaveSource: isSource ? onSaveSource : undefined,
-          onCommitSource: isSource ? onCommitSource : undefined,
-          onSaveFrame: isSource ? undefined : onSave,
+          columnUnits: value.columns.map((c) => c.unit),
+          columnFormats: value.columns.map((c) => c.format),
+          unitTaggable: true,
+          editableHeaders: true,
+          literalSource: true,
+          onSaveSource,
+          onCommitSource,
           accent: accent || st.accent,
           groupColor: st.groupColor,
           groupColorDark: st.groupColorDark,
           pinNodeId: hostId ?? undefined,
           // Computed columns have no raw cells, so their derived VALUES ride along;
           // always passed for a literal source, so the source select exists pre-λ.
-          ...(isSource ? {
-            formLayout,
-            lambdaOptions: lambdaOptions ?? [],
-            sourceLambdas: source!.map((c) => c.lambda),
-            sourceExprs: source!.map((c) => c.expr),
-            computedCells: Array.from(
-              { length: Math.max(rowCount, frameRowCount(value)) },
-              (_, r) => source!.map((c, j) =>
-                (c.lambda || c.expr) ? (value.columns[j]?.values[r] ?? null) : null),
-            ),
-          } : {}),
+          formLayout,
+          lambdaOptions: lambdaOptions ?? [],
+          sourceLambdas: source!.map((c) => c.lambda),
+          sourceExprs: source!.map((c) => c.expr),
+          computedCells: Array.from(
+            { length: Math.max(rowCount, frameRowCount(value)) },
+            (_, r) => source!.map((c, j) =>
+              (c.lambda || c.expr) ? (value.columns[j]?.values[r] ?? null) : null),
+          ),
         });
       }}
       onPointerDown={stopDragStart}
