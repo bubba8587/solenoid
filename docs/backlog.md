@@ -67,9 +67,8 @@ REMOVED — the old elkjs-vs-rete-auto-arrange peer conflict left with the plugi
 - [ ] **Flipped-node Tidy places it up-and-left; want down-and-left.** The predecessor
   hack (reversed ELK edge) leaves the flipped node's vertical order to ELK crossing-min,
   which stacks it above its neighbor. Needs a within-layer ordering lever (position
-  choice / model order) to bias it below. Cosmetic; the leftward part is correct.
-- [ ] **Convergence loop for Tidy/Cleanup (optional).** The author asked for a loop that
-  re-runs until positions stop shifting or a short timeout, as a determinism hedge. The
-  locked-group + Standoff root cause is fixed (pinned in the solve), so verify whether
-  drift still shows before adding the loop — it wraps a rAF-deferred pipeline, so it's
-  not free.
+  choice / model order) to bias it below. Cosmetic; the leftward part is correct. Candidate
+  lever (untried, 2026-09-04): `elk.layered.considerModelOrder.strategy=NODES_AND_EDGES` (+
+  `crossingMinimization.forceNodeModelOrder`) with the flipped node emitted AFTER its neighbor
+  in the ELK children order — global, so it also re-breaks every other layer's ties; verify
+  with `scripts/layout-probe.mjs` before keeping.

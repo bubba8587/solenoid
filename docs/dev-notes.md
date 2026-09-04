@@ -45,7 +45,17 @@ Command Palette (the confirm's capture handler prevented default but the canvas'
 still ran). One predicate, `modalOwnsKeyboard()` — an `aria-modal` dialog / pop-up overlay root in
 the DOM, or an open palette / reference / settings / shortcuts — is asked first by
 `canvasKeyboard` (F9 excepted), the surface's Escape handler and RF's `onBeforeDelete`; the
-per-store checks those handlers each carried are gone. Backlog item deleted.
+per-store checks those handlers each carried are gone. **Timing gotcha:** the overlay answers
+in the CAPTURE phase and closes on the same key, and React has removed it from the DOM before
+the canvas's bubble handler runs — so a bubble-time DOM check still opened the palette. The
+answer is taken by a load-time capture listener and pinned on the event (`keyUnderModal(e)`).
+Pinned live by `scripts/tidy-drift-probe.mjs` (T → confirm → Enter → no palette). Backlog item
+deleted.
+
+**Tidy converges.** The same probe presses T twice and diffs every model position: no drift on
+getting-started / table-verbs / unit-flow / decision-matrix (run while no other tune was writing
+seed JSONs — a concurrent `tune-seeds` write HMR-reloads the page and fakes drift). The optional
+convergence-loop backlog item is deleted on that evidence.
 
 **Docs reconciled:** `node-coverage.md` § Decision support (weights frame, inverted scenarios,
 the Note-frame seed), `v2.0/10` grounding, `architecture.md` (modalGuard row), backlog (canvas
