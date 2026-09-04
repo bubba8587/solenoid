@@ -30,6 +30,8 @@ and its entry deleted. Ruled-out-forever ideas: `out-of-scope.md`; settled ratio
 
 ## Reopen only if the trigger returns
 
+- **Dependency-cone hover brush** (1.4-plan A4; author 2026-09-04c: out). The isolate cone walk
+  is the mechanism if it returns.
 - **Mute / bypass a node** (1.4-plan A2; author 2026-09-04c: out). Pass-through needs the
   lattice rules for mismatched in/out types; the plan section stays the spec.
 - **Pin a node's output** (1.4-plan A1; author 2026-09-04c: "out for now, defer"). The plan section
