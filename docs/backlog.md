@@ -43,12 +43,6 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Tables
 
-- [ ] **Shared column picker (1.4 B4, author 2026-09-04c).** Sort, Get Column and Join name a
-  column as free text today; one picker component lists the columns the incoming frame will
-  carry, fed by the static shape (`frameShapeResolver.ts` walks forward from literal sources, so
-  it lists before data flows), free-text fallback when the shape is unknown. One component,
-  three first customers; picker pure over `FrameShape`; existing suites green. Out: card-side
-  format/unit on Computed Column (the popup column row is the one home).
 - [ ] **Chip + case compose (1.4 B2.2 follow-up).** The Chip style (LANDED B2.2) shares the
   text-family style dropdown with letter-case, so it's exclusive with UPPER/lower/Proper this
   tranche. If wanted, let a chip also carry a case — a separate `chip` toggle beside the case
