@@ -126,7 +126,15 @@ width; radar radial tick labels smear into the polygon; stacked area fills hide 
 series; the expand button + top tick sit on the plot's top edge; bar/scatter thin their category
 ticks, scatter leaves a right gutter; radialbar has no legend; bubble names no column). Left
 as-is: `color` is inert on a multi-series radar (palette-painted) but works single-series — the
-Builder keeps offering it; a question for the author below.
+Builder keeps offering it; a question for the author below. **Fixed in `427c1e29`** (verified on
+the re-rendered PNGs): Composed takes `labels` + `opts` (col 0 ticks, the title strip,
+`linewidth`/`marker` on its line, `MultiTooltip`); `PolarRadiusAxis tick={false}` on every
+radar; multi-series area fill alpha 0.18 (two fills overlap to ≈0.33, so the first series
+shows; `alpha=` still wins); `PLOT_TOP = 14` on every axed cartesian margin incl. Merge Plots;
+row-index category axes `interval={0}` up to 12 rows and categorical scatter x pinned to
+`[0, n−1]` with a tick per index; radialbar ring data carries `name`/`fill` so a `Legend`
+draws; bubble defaults `xlabel`/`ylabel` to its first two number columns, names x/y/size in
+its tooltip, and draws its title (also silently dropped before).
 
 **Walk stop point.** Below `main` the walk covered `af410b48` down to `45130f0c` (the Add-menu
 per-word search + one-edit matcher, the env.ts dissolve, the minimap recolor, the four RF-port
