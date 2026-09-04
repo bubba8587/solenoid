@@ -1,5 +1,6 @@
 import { ClassicPreset, type NodeEditor } from "rete";
 import { formatAnnotationStore, isDateStyle, isFcUnit, type FormatStyleId, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle, type LambdaView, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
+import { sharedAnnotationResolver } from "../unitFlow";
 import { applyFcUnit, fcUnitIdForUnit } from "../unitBridge";
 import { isPurePassthroughNode } from "./passthrough";
 import { isUnitCell, type UnitCell } from "../unitValue";
@@ -74,6 +75,13 @@ export class FormatControllerNode extends ClassicPreset.Node {
   negativeStyle: NegativeStyle;
   scaleMode: ScaleMode;
   advancedOpen: boolean;
+  // The style dropdown's `—` pick: the FC carries the upstream display format through
+  // and authors its unit alone, so a second FC docked only for a unit no longer resets
+  // the style to Auto (rules.md formatFlowsDownstream).
+  inheritFormat: boolean;
+  // The format arriving at `in` while inheriting — the muted hint the popup shows and the
+  // source of the carried style. Recomputed in refreshAnnotation; never serialized.
+  inheritedAnnotation?: FormatAnnotation;
   socketDataType: SocketDataType = "trueany";
   // Sockets this FC currently annotates — tracked so they clear when the wiring
   // changes. Docking is positional only; the wiring decides all of this.
@@ -123,6 +131,7 @@ export class FormatControllerNode extends ClassicPreset.Node {
     negativeStyle?: NegativeStyle;
     scaleMode?: ScaleMode;
     advancedOpen?: boolean;
+    inheritFormat?: boolean;
     socketDataType?: SocketDataType;
   }) {
     super("FormatController");
@@ -150,6 +159,7 @@ export class FormatControllerNode extends ClassicPreset.Node {
     this.negativeStyle = init?.negativeStyle ?? "minus";
     this.scaleMode     = init?.scaleMode     ?? "none";
     this.advancedOpen  = init?.advancedOpen  ?? false;
+    this.inheritFormat = init?.inheritFormat ?? false;
     if (init?.socketDataType) {
       this.socketDataType = init.socketDataType;
       this._inSock.setType(init.socketDataType);
@@ -264,7 +274,12 @@ export class FormatControllerNode extends ClassicPreset.Node {
     const targets: Array<{ nodeId: string; socketKey: string }> = [];
     if (inSrcId) targets.push({ nodeId: inSrcId, socketKey: inSrcSock });
 
-    const ann = this.annotation();
+    // Inherit pick: the display format arriving at `in` is what the FC carries through;
+    // stash it for the popup hint and re-clad it in this FC's own unit.
+    this.inheritedAnnotation = this.inheritFormat && inSrcId
+      ? sharedAnnotationResolver(editor).outAnnotation(inSrcId, inSrcSock)
+      : undefined;
+    const ann = this.resolveAnnotation(this.inheritedAnnotation);
     for (const w of this._written) {
       if (!targets.some((t) => t.nodeId === w.nodeId && t.socketKey === w.socketKey)) {
         formatAnnotationStore.delete(w.nodeId, w.socketKey);
@@ -298,6 +313,19 @@ export class FormatControllerNode extends ClassicPreset.Node {
       negativeStyle: this.negativeStyle,
       scaleMode:     this.scaleMode,
     };
+  }
+
+  /** The annotation this FC actually contributes: its own, or — when the style dropdown
+   *  is set to `—` (inherit) and a format arrives at `in` — the upstream display format
+   *  re-clad in this FC's own unit. The unit is value-level (unitOnValue), so it is the
+   *  one axis the inherit pick keeps local; every display axis rides in from upstream
+   *  (formatFlowsDownstream). `makeAnnotationResolver` calls this in place of
+   *  `annotation()`. */
+  resolveAnnotation(inherited: FormatAnnotation | undefined): FormatAnnotation {
+    if (this.inheritFormat && inherited) {
+      return { ...inherited, unit: this.unit, customUnit: this.customUnit };
+    }
+    return this.annotation();
   }
 
   /** A socket this FC currently annotates (the first, for mismatch checks). */

@@ -6,11 +6,11 @@ import {
   LOGICAL_STYLE_LABELS, LAMBDA_VIEW_LABELS, CHART_FONT_SCALES,
   NEGATIVE_STYLE_LABELS, SCALE_MODE_LABELS,
   unitGroupLabel, formatMismatchStore,
-  type FormatStyleId, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle,
+  type FormatStyleId, type FormatStyle, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle,
   type LambdaView, type NegativeStyle, type ScaleMode,
 } from "../formatAnnotationStore";
 import {
-  familyOf, controlsFor, COMPLEX_FORMAT_STYLES,
+  familyOf, controlsFor, COMPLEX_FORMAT_STYLES, precisionApplies,
   groupingApplies, scaleApplies, negativeApplies,
 } from "../formatModel";
 import { SOCKET_COLORS } from "../sockets";
@@ -30,9 +30,20 @@ import "./FormatControllerNode.css";
 import { stopDragStart } from "../coarse";
 
 
+/** The muted `← Decimal · 3 places` hint the inherit pick shows, in the column row's own
+ *  words (frameFormatStore.describeAnnotation). */
+function describeInheritedStyle(ann: FormatAnnotation): string {
+  const label = FORMAT_STYLE_LABELS[ann.format as FormatStyle] ?? ann.format;
+  if (!precisionApplies(ann.format)) return label;
+  const d = ann.decimalDigits ?? 2;
+  const noun = ann.decimalMode === "sigfigs" ? "sig fig" : "place";
+  return `${label} · ${d} ${noun}${d === 1 ? "" : "s"}`;
+}
+
 export function FormatControllerComponent({ data, emit }: NodeProps<FormatControllerNodeType>) {
   const node = data;
 
+  const [inheritFormat, setInheritLocal] = useState(node.inheritFormat);
   const [format,        setFormatLocal]   = useState<FormatStyleId>(node.effectiveFormat());
   const [customPattern, setPatternLocal]  = useState(node.customPattern);
   const [unit,          setUnitLocal]     = useState(node.unit);
@@ -72,6 +83,7 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
   // Drag-to-dock changes node.format and socketDataType externally, so the controlled
   // selects must resync or they show a stale value.
   useEffect(() => {
+    setInheritLocal(node.inheritFormat);
     setFormatLocal(node.effectiveFormat());
     setUnitLocal(node.unit);
     setTextCaseLocal(node.textCase);
@@ -102,9 +114,16 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
     void processGraph();
   }
 
-  function onFormatChange(f: FormatStyleId) {
-    node.format = f;
-    setFormatLocal(f);
+  // `""` is the `—` (inherit) pick: the FC carries the upstream style through and keeps
+  // authoring its unit alone; any concrete style is a local override.
+  function onFormatChange(f: FormatStyleId | "") {
+    const inherit = f === "";
+    node.inheritFormat = inherit;
+    setInheritLocal(inherit);
+    if (!inherit) {
+      node.format = f;
+      setFormatLocal(f);
+    }
     syncNode();
     // The row count changes the chip height, so a docked FC must re-center after layout.
     if (node.hostNodeId) {
@@ -267,9 +286,15 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
 
   // A control outside the host socket's family is hidden, not disabled.
   const family = familyOf(node.socketDataType);
-  const c = controlsFor(family, format);
+  // While inheriting, the FC's own precision + advanced tier are moot — the whole
+  // display cluster rides in from upstream — so those rows collapse to the hint.
+  const c0 = controlsFor(family, format);
+  const c = inheritFormat ? { ...c0, precision: false, advanced: false, customPattern: false } : c0;
+  const inheritedHint = inheritFormat && node.inheritedAnnotation
+    ? describeInheritedStyle(node.inheritedAnnotation) : "";
 
-  // Format never inherits, so the format/style row always gets the fixed ← → pair.
+  // The style row keeps the fixed ← → pair (the format applies behind and travels
+  // forward); the `—` pick adds the muted upstream-style hint below the dropdown.
   const hasUnit = unit !== "none";
   let unitLeft: "back" | "fwd" | null = null;
   let unitRight: "back" | "fwd" | null = null;
@@ -427,12 +452,13 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           <FcArrow dir="back" title={backTitle} />
           <LazySelect
             className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
-            value={format}
-            onChange={(e) => onFormatChange(e.target.value as FormatStyleId)}
+            value={inheritFormat ? "" : format}
+            onChange={(e) => onFormatChange(e.target.value as FormatStyleId | "")}
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             title="Date format"
           >
+            <option value="" title="Inherit the upstream format">—</option>
             {DATE_FORMAT_STYLES.map((s) => (
               <option key={s} value={s}>
                 {s === "date_custom" ? "Custom…" : FORMAT_STYLE_LABELS[s]}
@@ -441,6 +467,13 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           </LazySelect>
           <FcArrow dir="fwd" title={fwdTitle} />
         </div>
+        {inheritedHint && (
+          <div className="solenoid-fc__row solenoid-fc__inherit-hint" aria-hidden="true">
+            <span className="solenoid-fc__arrow-spacer" />
+            <span>{`← ${inheritedHint}`}</span>
+            <span className="solenoid-fc__arrow-spacer" />
+          </div>
+        )}
         {c.customPattern && (
           <div className="solenoid-fc__row solenoid-fc__row--custom">
             <span className="solenoid-fc__arrow-spacer" aria-hidden="true" />
@@ -526,12 +559,13 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           <FcArrow dir="back" title={backTitle} />
           <LazySelect
             className="solenoid-node__select solenoid-fc__select solenoid-fc__select--wide"
-            value={format}
-            onChange={(e) => onFormatChange(e.target.value as FormatStyleId)}
+            value={inheritFormat ? "" : format}
+            onChange={(e) => onFormatChange(e.target.value as FormatStyleId | "")}
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             title="Number format"
           >
+            <option value="" title="Inherit the upstream format">—</option>
             {c.complexStyle ? (
               COMPLEX_FORMAT_STYLES.map((s) => (
                 <option key={s} value={s}>{FORMAT_STYLE_LABELS[s]}</option>
@@ -561,6 +595,13 @@ export function FormatControllerComponent({ data, emit }: NodeProps<FormatContro
           </LazySelect>
           <FcArrow dir="fwd" title={fwdTitle} />
         </div>
+        {inheritedHint && (
+          <div className="solenoid-fc__row solenoid-fc__inherit-hint" aria-hidden="true">
+            <span className="solenoid-fc__arrow-spacer" />
+            <span>{`← ${inheritedHint}`}</span>
+            <span className="solenoid-fc__arrow-spacer" />
+          </div>
+        )}
         {c.precision && (
           <div className="solenoid-fc__row solenoid-fc__row--decimal">
             {/* spacers matching the arrow gutters, so the controls line up with

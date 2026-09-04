@@ -170,6 +170,7 @@ describe("everyFieldClassified — every own field is persisted or deliberately 
     // ── FC / unit adoption state, re-derived by the reconcile passes ──
     forwarding: "re-derived by fcReconcile each pass", lockedByConvert: "re-derived by fcReconcile each pass",
     unitLocked: "re-derived by fcReconcile each pass", dictatedFromUnit: "re-derived by fcReconcile each pass",
+    inheritedAnnotation: "the upstream format the `—` pick carries; re-resolved in refreshAnnotation each pass",
     imposesUp: "re-derived from the unit config", imposesDown: "re-derived from the unit config",
     // ── freezeVolatilePerCalc volatile roll state (freezes per recalc generation, never saved) ──
     rolls: "freezeVolatilePerCalc frozen rolls", rawRoll: "freezeVolatilePerCalc frozen roll", keys: "freezeVolatilePerCalc frozen shuffle keys",
