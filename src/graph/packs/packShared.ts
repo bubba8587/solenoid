@@ -54,6 +54,11 @@ export interface FormulaPackEntry {
   keywords?: string;
   /** Per-variable prose for the hover tooltip + formula-popup legend; display-only. */
   varDescriptions?: Record<string, string>;
+  /** Per-variable default literals seeded onto the preset, so a config variable computes
+   *  sensibly untouched (e.g. a fiscal-quarter `start` month of 1 = calendar quarters) and
+   *  the user overrides it inline. An unseeded variable defaults to 0. This is the lever
+   *  that lets an idiom be a CONFIG of an existing preset rather than a sibling. */
+  literals?: Record<string, number>;
 }
 
 export function formulaNode(e: FormulaPackEntry): NodeCatalogEntry {
@@ -66,7 +71,7 @@ export function formulaNode(e: FormulaPackEntry): NodeCatalogEntry {
     // No `accent`: the Add-menu highlight is reserved for key nodes, not presets.
     create: () => e.equation
       ? new EquationNode({ label: e.label, expr: e.expr, locked: true, varDescriptions: e.varDescriptions })
-      : new ExpressionNode({ label: e.label, expr: e.expr, locked: true, resultAs: e.resultAs, varDescriptions: e.varDescriptions }),
+      : new ExpressionNode({ label: e.label, expr: e.expr, locked: true, resultAs: e.resultAs, varDescriptions: e.varDescriptions, literals: e.literals }),
   };
 }
 
