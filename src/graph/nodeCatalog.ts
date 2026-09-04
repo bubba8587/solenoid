@@ -33,12 +33,12 @@ import {
   DateDiffNode, DateAddNode, WorkdaysNode, WORKDAYS_OP_META, EpochNode, DateTruncNode,
   RandArrayNode,
   XMatchNode,
-  TBillNode, SecurityDiscNode, CouponNode, AccrintNode,
-  AccrintMNode, PriceDiscNode, PriceMatNode, DurationNode,
+  DiscountSecurityNode, CouponNode, AccrintNode,
+  AccrintMNode, DurationNode,
   BondPriceNode, OddCouponNode,
-  TBILL_OP_META, SECURITY_DISC_OP_META, COUPON_OP_META,
-  PRICE_DISC_OP_META, PRICE_MAT_OP_META, DURATION_OP_META, BOND_PRICE_OP_META, ODD_COUPON_OP_META,
-  type TBillOp, type SecurityDiscOp, type BondPriceOp, type OddCouponOp,
+  COUPON_OP_META,
+  DURATION_OP_META, BOND_PRICE_OP_META, ODD_COUPON_OP_META,
+  type BondPriceOp, type OddCouponOp,
   ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode, ComplexPowerNode,
   COMPLEX_UNARY_OP_META, COMPLEX_BINARY_OP_META,
   type ComplexUnaryOp, type ComplexBinaryOp,
@@ -80,7 +80,7 @@ import {
   type CovarianceOp, type FisherOp, type BitwiseOp,
   type DepreciationOp,
   type IpmtPpmtOp, type CumPmtOp, type DollarOp, type WeightedOp,
-  type CouponOp, type PriceDiscOp, type PriceMatOp, type DurationOp,
+  type CouponOp, type DurationOp,
   type TextTransformOp, type TextSliceOp, type TextFindOp, type CharCodeOp, type TextAfterBeforeOp,
   type RomanArabicOp,
   type BesselOp, type RegressionOp,
@@ -133,8 +133,6 @@ const dateDiffLeaf  = (op: DateDiffOp):  NodeCatalogEntry => ({ type: `date-diff
 const dateAddLeaf   = (op: DateAddOp):   NodeCatalogEntry => ({ type: `date-add-${op}`,   label: DATE_ADD_OP_META[op].label,   description: DATE_ADD_OP_META[op].description,   create: () => new DateAddNode({ op }),   parity: false });
 const todayNowLeaf  = (op: TodayNowOp):  NodeCatalogEntry => ({ type: `date-${op}`,        label: TODAY_NOW_OP_META[op].label,  description: TODAY_NOW_OP_META[op].description,  create: () => new TodayNowNode({ op }),  parity: false });
 
-const priceDiscLeaf = (op: PriceDiscOp): NodeCatalogEntry => ({ type: `pricedisc-${op}`, label: PRICE_DISC_OP_META[op].label, description: PRICE_DISC_OP_META[op].description, create: () => new PriceDiscNode({ op }), parity: false });
-const priceMatLeaf  = (op: PriceMatOp):  NodeCatalogEntry => ({ type: `pricemat-${op}`,  label: PRICE_MAT_OP_META[op].label,  description: PRICE_MAT_OP_META[op].description,  create: () => new PriceMatNode({ op }),  parity: false });
 const durationLeaf  = (op: DurationOp):  NodeCatalogEntry => ({ type: `duration-${op}`,  label: DURATION_OP_META[op].label,   description: DURATION_OP_META[op].description,   create: () => new DurationNode({ op }),  parity: false });
 
 const couponLeaf = (op: CouponOp): NodeCatalogEntry => ({ type: `coupon-${op}`, label: COUPON_OP_META[op].label, description: COUPON_OP_META[op].description, create: () => new CouponNode({ op }), parity: false });
@@ -162,8 +160,6 @@ const romanArabicLeaf = (op: RomanArabicOp): NodeCatalogEntry => ({
 });
 
 
-const tbillLeaf    = (op: TBillOp):       NodeCatalogEntry => ({ type: `tbill-${op}`,   label: TBILL_OP_META[op].label,          description: TBILL_OP_META[op].description,          create: () => new TBillNode({ op }),          parity: false });
-const secDiscLeaf  = (op: SecurityDiscOp): NodeCatalogEntry => ({ type: `secdesc-${op}`, label: SECURITY_DISC_OP_META[op].label,  description: SECURITY_DISC_OP_META[op].description,  create: () => new SecurityDiscNode({ op }),   parity: false });
 
 const STR = NODE_KIND_ACCENTS.string;
 const textXformLeaf         = (op: TextTransformOp):   NodeCatalogEntry => ({ type: `text-${op}`,              label: TEXT_TRANSFORM_OP_META[op].label,        description: TEXT_TRANSFORM_OP_META[op].description,        create: () => new TextTransformNode({ op }),     parity: false });
@@ -716,16 +712,11 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "fvschedule", label: "FVSCHEDULE", description: "Future value of principal after applying a schedule of interest rates. Excel: `FVSCHEDULE`.", create: () => new FvScheduleNode() },
           { type: "ispmt",      label: "ISPMT",      description: "Interest paid in a specific period of a straight-line-principal loan. Excel: `ISPMT`.", create: () => new IspmtNode() },
           { type: "pair", children: [dollarLeaf("dollarde"), dollarLeaf("dollarfr")] },
-          { type: "pair", children: [tbillLeaf("tbilleq"), tbillLeaf("tbillprice")] },
-          tbillLeaf("tbillyield"),
-          { type: "pair", children: [secDiscLeaf("disc"), secDiscLeaf("intrate")] },
-          secDiscLeaf("received"),
+          { type: "discount-security", label: "Discount Security", description: "Prices, yields, and discount rates for securities that pay no coupon: Treasury bills, discounted paper, and notes that pay their interest at maturity. Pick the Excel function; the inputs follow. Excel: `TBILLEQ`, `TBILLPRICE`, `TBILLYIELD`, `DISC`, `PRICEDISC`, `YIELDDISC`, `INTRATE`, `RECEIVED`, `PRICEMAT`, `YIELDMAT`.", create: () => new DiscountSecurityNode(), parity: false, keywords: "treasury bill t-bill tbill discount discounted security paper note zero coupon price yield rate redemption investment received interest at maturity money market bond equivalent" },
           { type: "pair", children: [
             { type: "accrint",  label: "ACCRINT",  description: "Accrued interest for a security that pays periodic interest. Excel: `ACCRINT`.",  create: () => new AccrintNode(),  parity: false },
             { type: "accrintm", label: "ACCRINTM", description: "Accrued interest for a security that pays interest at maturity. Excel: `ACCRINTM`.", create: () => new AccrintMNode(), parity: false },
           ]},
-          { type: "pair", children: [priceDiscLeaf("pricedisc"), priceDiscLeaf("yielddisc")] },
-          { type: "pair", children: [priceMatLeaf("pricemat"),  priceMatLeaf("yieldmat")]  },
           { type: "pair", children: [durationLeaf("duration"),  durationLeaf("mduration")] },
           // XNPV lives in Cash flow analysis beside XIRR, not here.
           {

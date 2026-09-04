@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  BondPriceNode, PriceMatNode, DurationNode, OddCouponNode, CouponNode, AccrintNode,
+  BondPriceNode, DiscountSecurityNode, DurationNode, OddCouponNode, CouponNode, AccrintNode,
 } from "../../../src/graph/nodes/finance";
 import { vdb, accrintM } from "../../../src/graph/nodes/financeOps";
 import { parseDateToSerial } from "../../../src/graph/nodes/date";
@@ -79,14 +79,14 @@ describe("PRICEMAT ↔ YIELDMAT are inverses", () => {
   const issue = d("2023-07-15");
   it("PRICEMAT matches real Excel (absolute value, not just the round-trip)", () => {
     // =PRICEMAT(DATE(2024,1,15), DATE(2029,1,15), DATE(2023,7,15), 0.06, 0.065) = 97.37735849.
-    expect(new PriceMatNode({ op: "pricemat" })
+    expect(new DiscountSecurityNode({ op: "pricemat" })
       .data({ settle: [settle], maturity: [maturity], issue: [issue], rate: [0.06], yld: [0.065], basis: [0] }).result!)
       .toBeCloseTo(97.37735849, 6);
   });
   it("YIELDMAT recovers the yield that PRICEMAT was given", () => {
-    const price = new PriceMatNode({ op: "pricemat" })
+    const price = new DiscountSecurityNode({ op: "pricemat" })
       .data({ settle: [settle], maturity: [maturity], issue: [issue], rate: [0.06], yld: [0.065], basis: [0] }).result!;
-    const yld = new PriceMatNode({ op: "yieldmat" })
+    const yld = new DiscountSecurityNode({ op: "yieldmat" })
       .data({ settle: [settle], maturity: [maturity], issue: [issue], rate: [0.06], pr: [price], basis: [0] }).result!;
     expect(yld).toBeCloseTo(0.065, 6);
   });
@@ -187,5 +187,26 @@ describe("VDB depreciation is total-conserving and additive", () => {
     const a = vdb(10000, 1000, 5, 0, 2, 2)!;
     const b = vdb(10000, 1000, 5, 2, 5, 2)!;
     expect(a + b).toBeCloseTo(whole, 6);
+  });
+});
+
+describe("ONE Discount Security card: the op table drives the sockets", () => {
+  it("a switch keeps the inputs both ops share (cables and literals stay), drops the rest, and orders the sockets per the new op", () => {
+    const node = new DiscountSecurityNode({ op: "disc" });
+    expect(Object.keys(node.inputs)).toEqual(["settle", "maturity", "pr", "redemption", "basis"]);
+    const kept = node.inputs.pr;
+    expect(node.keysDroppedBySwitch("received").sort()).toEqual(["pr", "redemption"]);
+    node.setOp("received");
+    expect(Object.keys(node.inputs)).toEqual(["settle", "maturity", "investment", "discount", "basis"]);
+    node.setOp("yieldmat");
+    expect(Object.keys(node.inputs)).toEqual(["settle", "maturity", "issue", "rate", "pr", "basis"]);
+    expect(node.inputs.pr).not.toBe(kept); // it left and came back — a fresh socket
+    expect(node.inputs.basis).toBeDefined();
+  });
+  it("every op reads only its own inputs: a blank on a socket the op does not show is not a blank answer", () => {
+    const settle = d("2024-01-15"), maturity = d("2024-07-15");
+    const n = new DiscountSecurityNode({ op: "pricedisc" });
+    expect(typeof n.data({ settle: [settle], maturity: [maturity], pr: [null as unknown as number] }).result).toBe("number");
+    expect(n.data({ settle: [settle], maturity: [maturity], discount: [null as unknown as number] }).result).toBeNull();
   });
 });

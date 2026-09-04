@@ -242,6 +242,32 @@ export function accrintM(
   return par * rate * a / d;
 }
 
+export type TBillOp = "tbilleq" | "tbillprice" | "tbillyield";
+
+/** TBILLEQ / TBILLPRICE / TBILLYIELD on actual days over 360. `x` is the discount rate
+ *  (TBILLEQ / TBILLPRICE) or the price per $100 (TBILLYIELD). Real-Excel goldens sit in
+ *  finance.test.ts. */
+export function tbill(op: TBillOp, settleSerial: number, maturitySerial: number, x: number): number | null {
+  if (!Number.isFinite(settleSerial) || !Number.isFinite(maturitySerial)) return null;
+  if (maturitySerial <= settleSerial) return null;
+  const dsm = Math.round(maturitySerial - settleSerial);
+  switch (op) {
+    case "tbillprice": return 100 * (1 - x * dsm / 360);
+    // A money-market yield on a 360-day basis (=TBILLYIELD(2024-01-15, 2024-07-15, 97.5) = 0.050718512);
+    // the 365 belongs to TBILLEQ's bond-equivalent basis.
+    case "tbillyield": return ((100 - x) / x) * (360 / dsm);
+    case "tbilleq": {
+      if (dsm <= 182) return (365 * x) / (360 - x * dsm);
+      // Past 182 days Excel switches to the bond-equivalent (coupon-equivalent) yield: the
+      // semiannual-compounding price equation in closed form (SIA).
+      // =TBILLEQ(2024-01-15, 2024-12-15, 0.05) = 0.052539935.
+      const t = dsm / 365;
+      const price = 1 - x * dsm / 360;
+      return (-t + Math.sqrt(t * t - (2 * t - 1) * (1 - 1 / price))) / (t - 0.5);
+    }
+  }
+}
+
 export type SecurityDiscOp = "disc" | "intrate" | "received";
 
 /** DISC / INTRATE / RECEIVED — the discounted-security trio. `a` is the price

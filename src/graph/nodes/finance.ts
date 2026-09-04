@@ -10,17 +10,17 @@ import { EquationNode } from "./equation";
 // (financeOps.ts). The op types stay re-exported so the node barrel keeps its shape.
 import {
   coupAddMonths, days30_360, actualDays,
-  couponValue, accrintM, securityDisc, priceDisc, priceMat, durationValue,
+  couponValue, accrintM, tbill, securityDisc, priceDisc, priceMat, durationValue,
   bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr, amortizationSchedule,
   returnsOp, RETURNS_OP_META, type ReturnsOp,
 } from "./financeOps";
 export { RETURNS_OP_META } from "./financeOps";
 export type { ReturnsOp } from "./financeOps";
 import type {
-  CouponOp, SecurityDiscOp, PriceDiscOp, PriceMatOp, DurationOp, BondPriceOp, OddCouponOp,
+  CouponOp, TBillOp, SecurityDiscOp, PriceDiscOp, PriceMatOp, DurationOp, BondPriceOp, OddCouponOp,
 } from "./financeOps";
 export type {
-  CouponOp, SecurityDiscOp, PriceDiscOp, PriceMatOp, DurationOp, BondPriceOp, OddCouponOp,
+  CouponOp, TBillOp, SecurityDiscOp, PriceDiscOp, PriceMatOp, DurationOp, BondPriceOp, OddCouponOp,
 } from "./financeOps";
 
 export type PaymentTiming = "end" | "beg";
@@ -762,143 +762,132 @@ export class CumPmtNode extends ClassicPreset.Node {
   }
 }
 
-// ─── TBILL ────────────────────────────────────────────────────────────────────
+// ─── Discount securities: ONE card ───────────────────────────────────────────
 
-export type TBillOp = "tbilleq" | "tbillprice" | "tbillyield";
+export type DiscountSecurityOp = TBillOp | SecurityDiscOp | PriceDiscOp | PriceMatOp;
 
-export const TBILL_OP_META = {
-  tbilleq:    { label: "TBILLEQ",    description: "T-bill bond-equivalent yield from settle, maturity, and discount rate. Excel: `TBILLEQ`." },
-  tbillprice: { label: "TBILLPRICE", description: "T-bill price per $100 face value from settle, maturity, and discount rate. Excel: `TBILLPRICE`." },
-  tbillyield: { label: "TBILLYIELD", description: "T-bill yield from settle, maturity, and price. Excel: `TBILLYIELD`." },
-} satisfies Record<TBillOp, { label: string; description: string }>;
+/** The op dropdown: label = the Excel name, `keys` = the inputs that follow the shared
+ *  settlement/maturity pair (the Distribution spec-table precedent — the card and the
+ *  switch read the same table). */
+export const DISCOUNT_SECURITY_META: Record<DiscountSecurityOp, { label: string; description: string; group: string; keys: readonly string[] }> = {
+  tbilleq:    { group: "Treasury bill", label: "TBILLEQ",    keys: ["discount"], description: "T-bill bond-equivalent yield from settle, maturity, and discount rate. Excel: `TBILLEQ`." },
+  tbillprice: { group: "Treasury bill", label: "TBILLPRICE", keys: ["discount"], description: "T-bill price per $100 face value from settle, maturity, and discount rate. Excel: `TBILLPRICE`." },
+  tbillyield: { group: "Treasury bill", label: "TBILLYIELD", keys: ["pr"], description: "T-bill yield from settle, maturity, and price. Excel: `TBILLYIELD`." },
+  disc:       { group: "Discounted",    label: "DISC",       keys: ["pr", "redemption", "basis"], description: "Discount rate for a fully-invested security (`redemption>price`). Excel: `DISC`." },
+  pricedisc:  { group: "Discounted",    label: "PRICEDISC",  keys: ["discount", "redemption", "basis"], description: "Price per $100 of a discounted security (such as a T-bill). Excel: `PRICEDISC`." },
+  yielddisc:  { group: "Discounted",    label: "YIELDDISC",  keys: ["pr", "redemption", "basis"], description: "Annual yield of a discounted security. Excel: `YIELDDISC`." },
+  intrate:    { group: "Discounted",    label: "INTRATE",    keys: ["investment", "redemption", "basis"], description: "Interest rate for a fully-invested security. Excel: `INTRATE`." },
+  received:   { group: "Discounted",    label: "RECEIVED",   keys: ["investment", "discount", "basis"], description: "Amount received at maturity for a fully-invested security. Excel: `RECEIVED`." },
+  pricemat:   { group: "Interest at maturity", label: "PRICEMAT", keys: ["issue", "rate", "yld", "basis"], description: "Price per $100 of a security that pays interest at maturity. Excel: `PRICEMAT`." },
+  yieldmat:   { group: "Interest at maturity", label: "YIELDMAT", keys: ["issue", "rate", "pr", "basis"], description: "Annual yield of a security that pays interest at maturity. Excel: `YIELDMAT`." },
+};
 
-export class TBillNode extends ClassicPreset.Node {
-  static socketDocs: Record<string, string> = {
-    price: "Per $100 of face value.",
-    discount: "As a decimal, e.g. 0.05 for 5%.",
-  };
-  label: string;
-  op: TBillOp;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = { discount: 0.05, price: 97.5 };
-  width = 180; height = 230;
+const DISCOUNT_SECURITY_INPUTS: Record<string, () => ClassicPreset.Input<ClassicPreset.Socket>> = {
+  settle:     () => dateIn("Settlement date"),
+  maturity:   () => dateIn("Maturity date"),
+  issue:      () => dateIn("Issue date"),
+  discount:   () => numIn("Discount rate"),
+  pr:         () => numIn("Price"),
+  redemption: () => numIn("Redemption"),
+  investment: () => numIn("Investment"),
+  rate:       () => numIn("Coupon rate"),
+  yld:        () => numIn("Yield"),
+  basis:      () => numIn("Basis"),
+};
 
-  constructor(init?: { label?: string; op?: TBillOp }) {
-    super("TBill");
-    this.op    = init?.op    ?? "tbilleq";
-    this.label = init?.label ?? "";
-    this.addInput("settle",   dateIn("Settlement date"));
-    this.addInput("maturity", dateIn("Maturity date"));
-    if (this.op === "tbillyield") {
-      this.addInput("price",    numIn("Price"));
-    } else {
-      this.addInput("discount", numIn("Discount rate"));
-    }
-    this.addOutput("result", numOut("Result"));
-  }
-
-  data(inputs: { settle?: number[]; maturity?: number[]; discount?: number[]; price?: number[] }): { result: number | null } {
-    const s = inputs.settle?.[0];
-    const m = inputs.maturity?.[0];
-    if (s == null || m == null || m <= s) { this.cachedResult = null; return { result: null }; }
-    const dsm = Math.round(m - s);
-    let result: number;
-    switch (this.op) {
-      case "tbilleq": {
-        const d = readInput(inputs.discount, this.literals.discount ?? 0.05);
-        if (d === null) { this.cachedResult = null; return { result: null }; }
-        if (dsm <= 182) {
-          result = (365 * d) / (360 - d * dsm);
-        } else {
-          // Over 182 days Excel switches to the bond-equivalent (coupon-equivalent)
-          // yield, solving the semiannual-compounding price equation in closed form
-          // (SIA). Verified against real Excel: =TBILLEQ(DATE(2024,1,15),
-          // DATE(2024,12,15),0.05) = 0.052539935.
-          const t = dsm / 365;
-          const price = 1 - d * dsm / 360; // TBILLPRICE per $1
-          result = (-t + Math.sqrt(t * t - (2 * t - 1) * (1 - 1 / price))) / (t - 0.5);
-        }
-        break;
-      }
-      case "tbillprice": {
-        const d = readInput(inputs.discount, this.literals.discount ?? 0.05);
-        if (d === null) { this.cachedResult = null; return { result: null }; }
-        result = 100 * (1 - d * dsm / 360);
-        break;
-      }
-      case "tbillyield": {
-        const pr = readInput(inputs.price, this.literals.price ?? 97.5);
-        if (pr === null) { this.cachedResult = null; return { result: null }; }
-        // Excel's TBILLYIELD is a money-market yield on a 360-day basis (verified against
-        // real Excel: =TBILLYIELD(DATE(2024,1,15),DATE(2024,7,15),97.5) = 0.050718512).
-        // The 365 that was here is TBILLEQ's bond-equivalent basis, not this one.
-        result = ((100 - pr) / pr) * (360 / dsm);
-        break;
-      }
-    }
-    this.cachedResult = result!;
-    return { result: result! };
-  }
+function discountSecurityKeys(op: DiscountSecurityOp): string[] {
+  return ["settle", "maturity", ...DISCOUNT_SECURITY_META[op].keys];
 }
 
-// ─── DISC / INTRATE / RECEIVED ────────────────────────────────────────────────
-
-export const SECURITY_DISC_OP_META = {
-  disc:     { label: "DISC",     description: "Discount rate for a fully-invested security (`redemption>price`). Excel: `DISC`." },
-  intrate:  { label: "INTRATE",  description: "Interest rate for a fully-invested security. Excel: `INTRATE`." },
-  received: { label: "RECEIVED", description: "Amount received at maturity for a fully-invested security. Excel: `RECEIVED`." },
-} satisfies Record<SecurityDiscOp, { label: string; description: string }>;
-
-export class SecurityDiscNode extends ClassicPreset.Node {
+export class DiscountSecurityNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
+    pr: "Per $100 of face value.",
+    discount: "As a decimal, e.g. 0.05 for 5%.",
+    redemption: "Face value redeemed at maturity. Defaults to 100, the par value.",
     basis: BASIS_DOC,
   };
   label: string;
-  op: SecurityDiscOp;
+  op: DiscountSecurityOp;
   cachedResult: number | null = null;
-  literals: Record<string, number> = { pr: 95, redemption: 100, investment: 1000, discount: 0.05, basis: 0 };
-  width = 180; height = 280;
+  literals: Record<string, number> = { discount: 0.05, pr: 97.5, redemption: 100, investment: 1000, rate: 0.06, yld: 0.065, basis: 0 };
+  width = 180; height = 230;
 
-  constructor(init?: { label?: string; op?: SecurityDiscOp }) {
-    super("SecurityDisc");
-    this.op    = init?.op    ?? "disc";
+  constructor(init?: { label?: string; op?: DiscountSecurityOp }) {
+    super("DiscountSecurity");
     this.label = init?.label ?? "";
-    this.addInput("settle",   dateIn("Settlement date"));
-    this.addInput("maturity", dateIn("Maturity date"));
-    if (this.op === "disc") {
-      this.addInput("pr",         numIn("Price"));
-      this.addInput("redemption", numIn("Redemption"));
-    } else if (this.op === "intrate") {
-      this.addInput("investment", numIn("Investment"));
-      this.addInput("redemption", numIn("Redemption"));
-    } else {
-      this.addInput("investment", numIn("Investment"));
-      this.addInput("discount",   numIn("Discount rate"));
-    }
-    this.addInput("basis", numIn("Basis"));
+    this.op = init?.op && init.op in DISCOUNT_SECURITY_META ? init.op : "tbillprice";
+    for (const k of discountSecurityKeys(this.op)) this.addInput(k, DISCOUNT_SECURITY_INPUTS[k]());
     this.addOutput("result", numOut("Result"));
+    this.height = 149 + 27 * discountSecurityKeys(this.op).length;
   }
 
-  data(inputs: { settle?: number[]; maturity?: number[]; pr?: number[]; redemption?: number[]; investment?: number[]; discount?: number[]; basis?: number[] }): { result: number | null } {
+  /** The keys a switch to `next` would remove. Callers on a live graph prune these
+   *  BEFORE calling setOp (onePrunePath). */
+  keysDroppedBySwitch(next: DiscountSecurityOp): string[] {
+    const keep = new Set(discountSecurityKeys(next));
+    return discountSecurityKeys(this.op).filter((k) => !keep.has(k));
+  }
+
+  /** Inputs both ops share carry their literals and cables across; the socket order
+   *  follows the new op's table. */
+  setOp(next: DiscountSecurityOp): void {
+    if (next === this.op) return;
+    const after = discountSecurityKeys(next);
+    for (const k of Object.keys(this.inputs)) if (!after.includes(k)) this.removeInput(k);
+    const ordered: typeof this.inputs = {};
+    for (const k of after) ordered[k] = this.inputs[k] ?? DISCOUNT_SECURITY_INPUTS[k]();
+    this.inputs = ordered;
+    this.op = next;
+    this.height = 149 + 27 * after.length;
+  }
+
+  data(inputs: Record<string, number[] | undefined>): { result: number | null } {
     const s = inputs.settle?.[0];
     const m = inputs.maturity?.[0];
-    if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
-    const basis = readInput(inputs.basis, this.literals.basis ?? 0);
-    if (basis === null) { this.cachedResult = null; return { result: null }; }
-    // `a` is the price (DISC) or the investment (INTRATE/RECEIVED); `b` the
-    // redemption (DISC/INTRATE) or the discount rate (RECEIVED).
-    const a = this.op === "disc"
-      ? (readInput(inputs.pr, this.literals.pr ?? 95))
-      : (readInput(inputs.investment, this.literals.investment ?? 1000));
-    const b = this.op === "received"
-      ? (readInput(inputs.discount, this.literals.discount ?? 0.05))
-      : (readInput(inputs.redemption, this.literals.redemption ?? 100));
-    if (a === null || b === null) { this.cachedResult = null; return { result: null }; }
-    const result = securityDisc(this.op, s, m, a, b, basis);
+    const fail = () => { this.cachedResult = null; return { result: null }; };
+    if (s == null || m == null) return fail();
+    const read = (k: string) => readInput(inputs[k], this.literals[k] ?? 0);
+    let result: number | null;
+    switch (this.op) {
+      case "tbilleq": case "tbillprice": case "tbillyield": {
+        const x = read(this.op === "tbillyield" ? "pr" : "discount");
+        if (x === null) return fail();
+        result = tbill(this.op, s, m, x);
+        break;
+      }
+      case "disc": case "intrate": case "received": {
+        // `a` is the price (DISC) or the investment; `b` the redemption or the discount rate.
+        const a = read(this.op === "disc" ? "pr" : "investment");
+        const b = read(this.op === "received" ? "discount" : "redemption");
+        const basis = read("basis");
+        if (a === null || b === null || basis === null) return fail();
+        result = securityDisc(this.op, s, m, a, b, basis);
+        break;
+      }
+      case "pricedisc": case "yielddisc": {
+        const rateOrPrice = read(this.op === "pricedisc" ? "discount" : "pr");
+        const redemption = read("redemption");
+        const basis = read("basis");
+        if (rateOrPrice === null || redemption === null || basis === null) return fail();
+        result = priceDisc(this.op, s, m, rateOrPrice, redemption, basis);
+        break;
+      }
+      case "pricemat": case "yieldmat": {
+        const is = inputs.issue?.[0];
+        if (is == null) return fail();
+        const rate = read("rate");
+        const yldOrPrice = read(this.op === "pricemat" ? "yld" : "pr");
+        const basis = read("basis");
+        if (rate === null || yldOrPrice === null || basis === null) return fail();
+        result = priceMat(this.op, s, m, is, rate, yldOrPrice, basis);
+        break;
+      }
+    }
     this.cachedResult = result;
     return { result };
   }
 }
+
 
 // ─── COUPON functions (COUPDAYBS / COUPDAYS / COUPDAYSNC / COUPNCD / COUPPCD / COUPNUM) ─
 
@@ -1026,105 +1015,6 @@ export class AccrintMNode extends ClassicPreset.Node {
     const basis = readInput(inputs.basis, this.literals.basis ?? 0);
     if (rate === null || par === null || basis === null) { this.cachedResult = null; return { result: null }; }
     const result = accrintM(is, ss, rate, par, basis);
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
-// ─── PRICEDISC / YIELDDISC ────────────────────────────────────────────────────
-
-export const PRICE_DISC_OP_META = {
-  pricedisc: { label: "PRICEDISC", description: "Price per $100 of a discounted security (such as a T-bill). Excel: `PRICEDISC`." },
-  yielddisc: { label: "YIELDDISC", description: "Annual yield of a discounted security. Excel: `YIELDDISC`." },
-} satisfies Record<PriceDiscOp, { label: string; description: string }>;
-
-export class PriceDiscNode extends ClassicPreset.Node {
-  static socketDocs: Record<string, string> = {
-    pr: "Read in YIELDDISC mode: the price to solve the yield from.",
-    redemption: "Face value redeemed at maturity. Defaults to 100, the par value.",
-    basis: BASIS_DOC,
-  };
-  label: string;
-  op: PriceDiscOp;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = { discount: 0.05, pr: 97, redemption: 100, basis: 0 };
-  width = 180; height = 255;
-
-  constructor(init?: { label?: string; op?: PriceDiscOp }) {
-    super("PriceDisc");
-    this.op    = init?.op    ?? "pricedisc";
-    this.label = init?.label ?? "";
-    this.addInput("settle",     dateIn("Settlement date"));
-    this.addInput("maturity",   dateIn("Maturity date"));
-    this.addInput("discount",   numIn("Discount rate"));
-    this.addInput("pr",         numIn("Price"));
-    this.addInput("redemption", numIn("Redemption"));
-    this.addInput("basis",      numIn("Basis"));
-    this.addOutput("result", numOut("Result"));
-  }
-
-  data(inputs: { settle?: number[]; maturity?: number[]; discount?: number[]; pr?: number[]; redemption?: number[]; basis?: number[] }): { result: number | null } {
-    const s = inputs.settle?.[0], m = inputs.maturity?.[0];
-    if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
-    const basis      = readInput(inputs.basis, this.literals.basis ?? 0);
-    const redemption = readInput(inputs.redemption, this.literals.redemption ?? 100);
-    if (basis === null || redemption === null) { this.cachedResult = null; return { result: null }; }
-    // The discount rate for PRICEDISC, the market price for YIELDDISC.
-    const rateOrPrice = this.op === "pricedisc"
-      ? (readInput(inputs.discount, this.literals.discount ?? 0.05))
-      : (readInput(inputs.pr, this.literals.pr ?? 97));
-    if (rateOrPrice === null) { this.cachedResult = null; return { result: null }; }
-    const result = priceDisc(this.op, s, m, rateOrPrice, redemption, basis);
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
-// ─── PRICEMAT / YIELDMAT ──────────────────────────────────────────────────────
-
-export const PRICE_MAT_OP_META = {
-  pricemat: { label: "PRICEMAT", description: "Price per $100 of a security that pays interest at maturity. Excel: `PRICEMAT`." },
-  yieldmat: { label: "YIELDMAT", description: "Annual yield of a security that pays interest at maturity. Excel: `YIELDMAT`." },
-} satisfies Record<PriceMatOp, { label: string; description: string }>;
-
-export class PriceMatNode extends ClassicPreset.Node {
-  static socketDocs: Record<string, string> = {
-    yld: "Read in PRICEMAT mode: the yield to price from.",
-    pr: "Read in YIELDMAT mode: the price to solve the yield from.",
-    basis: BASIS_DOC,
-  };
-  label: string;
-  op: PriceMatOp;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = { rate: 0.06, yld: 0.065, pr: 99, basis: 0 };
-  width = 180; height = 280;
-
-  constructor(init?: { label?: string; op?: PriceMatOp }) {
-    super("PriceMat");
-    this.op    = init?.op    ?? "pricemat";
-    this.label = init?.label ?? "";
-    this.addInput("settle",   dateIn("Settlement date"));
-    this.addInput("maturity", dateIn("Maturity date"));
-    this.addInput("issue",    dateIn("Issue date"));
-    this.addInput("rate",     numIn("Coupon rate"));
-    this.addInput("yld",      numIn("Yield"));
-    this.addInput("pr",       numIn("Price"));
-    this.addInput("basis",    numIn("Basis"));
-    this.addOutput("result", numOut("Result"));
-  }
-
-  data(inputs: { settle?: number[]; maturity?: number[]; issue?: number[]; rate?: number[]; yld?: number[]; pr?: number[]; basis?: number[] }): { result: number | null } {
-    const s = inputs.settle?.[0], m = inputs.maturity?.[0], is = inputs.issue?.[0];
-    if (s == null || m == null || is == null) { this.cachedResult = null; return { result: null }; }
-    const rate  = readInput(inputs.rate, this.literals.rate ?? 0.06);
-    const basis = readInput(inputs.basis, this.literals.basis ?? 0);
-    if (rate === null || basis === null) { this.cachedResult = null; return { result: null }; }
-    // The yield for PRICEMAT, the market price for YIELDMAT.
-    const yldOrPrice = this.op === "pricemat"
-      ? (readInput(inputs.yld, this.literals.yld ?? 0.065))
-      : (readInput(inputs.pr, this.literals.pr ?? 99));
-    if (yldOrPrice === null) { this.cachedResult = null; return { result: null }; }
-    const result = priceMat(this.op, s, m, is, rate, yldOrPrice, basis);
     this.cachedResult = result;
     return { result };
   }

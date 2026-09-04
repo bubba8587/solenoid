@@ -8,7 +8,7 @@ import { ComplexFromNode, QuadraticRootsNode } from "../../../src/graph/nodes/co
 import { CableSwitchNode } from "../../../src/graph/nodes/control";
 import { ExpressionNode } from "../../../src/graph/nodes/expression";
 import { ClampNode, ArithmeticNode, MathFnNode, MRoundNode, CombinatoricsNode } from "../../../src/graph/nodes/scalar";
-import { MirrNode, TBillNode, IrrNode, OddCouponNode, NpvNode, DepreciationNode } from "../../../src/graph/nodes/finance";
+import { MirrNode, DiscountSecurityNode, IrrNode, OddCouponNode, NpvNode, DepreciationNode } from "../../../src/graph/nodes/finance";
 import { SortFrameNode, JoinNode, HeadNode, ColumnsNode, XLookupNode } from "../../../src/graph/nodes/frame";
 import { ListIndexNode, SliceNode, FilterNode, SeriesNode, AggregateNode } from "../../../src/graph/nodes/list";
 import { GaugeNode, KpiNode, HistogramNode } from "../../../src/graph/nodes/visual";
@@ -255,15 +255,15 @@ describe("where the blank check GOES", () => {
   it("the guard is scoped to the ACTIVE op: TBILLYIELD ignores a blank discount", () => {
     // `discount` belongs to TBILLEQ/TBILLPRICE. A guard hoisted above the switch would
     // have nulled this, because it ANDs together inputs this op never reads.
-    const node = new TBillNode({ op: "tbillyield" });
-    node.literals.price = 97.5;
+    const node = new DiscountSecurityNode({ op: "tbillyield" });
+    node.literals.pr = 97.5;
     const out = node.data({
       settle: [46096], maturity: [46187], discount: [null as unknown as number],
     }).result;
     expect(typeof out).toBe("number");
     // Its OWN input still propagates.
     expect(node.data({
-      settle: [46096], maturity: [46187], price: [null as unknown as number],
+      settle: [46096], maturity: [46187], pr: [null as unknown as number],
     }).result).toBeNull();
   });
 });
