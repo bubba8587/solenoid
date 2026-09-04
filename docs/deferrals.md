@@ -30,6 +30,9 @@ and its entry deleted. Ruled-out-forever ideas: `out-of-scope.md`; settled ratio
 
 ## Reopen only if the trigger returns
 
+- **Per-card CSS conversion, step 2** (1.4-plan D8; author 2026-09-04c: "don't touch sockets,
+  otherwise defer"). The socket-dot ring stays a DOM element; the badge / lock / divider steps are
+  parked with it. Census in `scripts/card-css-census.mjs`.
 - **Cube popup format + unit row** (1.4-plan D7; author 2026-09-04c: defer — "questioning whether cube
   columns should actually be typed"). Open call for the author: typed `CubeColumn` stays or goes;
   nothing builds on it until then.
