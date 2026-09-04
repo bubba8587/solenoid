@@ -42,6 +42,7 @@ import {
   emptyFrameOf, type Shape, type ShapeColumn,
 } from "../frameShape";
 import { csvList, type FrameShapeContext } from "./frameShapeHook";
+import type { ColumnPickerSpec } from "./columnPickerHook";
 import type { CubeValue, CubeCell } from "../frame";
 import { type UnitCell } from "../unitValue";
 import { tagFrameCellUnit, columnUnitFromSpec } from "../unitColumn";
@@ -368,6 +369,8 @@ export class SortFrameNode extends ClassicPreset.Node {
     return ctx.inputShape("frame");
   }
 
+  columnPickers(): ColumnPickerSpec[] { return [{ key: "column", frameInput: "frame" }]; }
+
   async data(inputs: { frame?: (FrameInput | null)[]; column?: string[] }) {
     const f = inputs.frame?.[0] ?? null;
     const col = readInput(inputs.column, this.stringLiterals.column ?? "");
@@ -549,6 +552,10 @@ export class JoinNode extends ClassicPreset.Node {
     const rk = (this.stringLiterals.rightKey ?? "").trim() || lk;
     if (lk === "") return null;
     return shapeOfJoin(left, right, { leftKey: lk, rightKey: rk, how: this.how });
+  }
+
+  columnPickers(): ColumnPickerSpec[] {
+    return [{ key: "leftKey", frameInput: "left" }, { key: "rightKey", frameInput: "right" }];
   }
 
   async data(inputs: {
@@ -1942,6 +1949,8 @@ export class GetColumnNode extends ClassicPreset.Node {
     this.addInput("name", strIn("Column"));
     this.addOutput("values", getColumnOutput(this.readAs));
   }
+
+  columnPickers(): ColumnPickerSpec[] { return [{ key: "name", frameInput: "frame" }]; }
 
   data(inputs: { frame?: (FrameInput | null)[]; name?: string[] }): { values: GetColumnValues } {
     const f = inputs.frame?.[0] ?? null;
