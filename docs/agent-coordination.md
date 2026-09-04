@@ -11,7 +11,7 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 ## Claims
 
 - Chewie — A3 hover peek on any socket (backlog § Display, author-promoted 2026-09-04c). Display expand pop-out (65711495) + finance review (ef77ccc4) LANDED, merged.
-- Lando — F5 memory heap-snapshot investigation (findings in the digest; contained fix only). FC inherit pick LANDED (7f904f54 + 11950fe0, merged).
-- Han — lead; merges; walking the 1.4 cut with the author one item per turn (A1/A2 deferred, A3 promoted; next A4).
+- Lando — E2 compositeToolbarReroute audit (fix through the activeGraph seam; close the flagship if clean). FC inherit pick + F5 findings LANDED, merged.
+- Han — lead; merges; walking the 1.4 cut with the author one item per turn (A0–A4 settled; at A6).
 
 **Awaiting the author's eyeball:** three finance cards (Finance > Other / Bonds), the FC `—` inherit pick, the Display corner expand on frames/tables/lists; from earlier: the anydata hollow-square glyph + Socket Legend row; the catalog description sweep (8d5c8f74); Merge Plots figure + expand button; Vite 8 (desktop `tauri build` ride-along result per A3's last message).
