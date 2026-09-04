@@ -21,7 +21,9 @@ export function evalFormula(
   e: FormulaPackEntry,
   inputs: Record<string, number | string | (number | string)[]>,
 ): unknown {
-  const node = new ExpressionNode({ expr: e.expr, locked: true, resultAs: e.resultAs });
+  // Seed literals like the Add menu does (formulaNode), so an unprovided config variable
+  // takes its preset default (e.g. Fiscal Quarter's start = 1) rather than 0.
+  const node = new ExpressionNode({ expr: e.expr, locked: true, resultAs: e.resultAs, literals: e.literals });
   const env: Record<string, unknown[]> = {};
   for (const [k, v] of Object.entries(inputs)) env[k] = [v];
   return (node.data(env) as { result: unknown }).result;

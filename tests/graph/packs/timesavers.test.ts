@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { TIMESAVER_FORMULAS } from "../../../src/graph/packs/timesavers";
-import { auditFormulaPack, entryByType, evalFormula } from "../../../src/graph/packs/formulaTestKit";
+import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { ReverseTextNode, SpellNumberNode, spellNumber } from "../../../src/graph/nodes/text";
-import { jsDateToSerial } from "../../../src/graph/nodes/date";
+import { jsDateToSerial, serialToJsDate } from "../../../src/graph/nodes/date";
 import { isSolError } from "../../../src/graph/errorValue";
 
 const run = (type: string, inputs: Record<string, number | string>) =>
@@ -58,6 +58,56 @@ describe("Timesavers formula presets", () => {
     expect(run("ts-days-in-month", { date: ser(2026, 2, 10) })).toBe(28);
     expect(run("ts-days-in-month", { date: ser(2026, 4, 10) })).toBe(30);
     expect(run("ts-days-in-month", { date: ser(2026, 7, 10) })).toBe(31);
+  });
+});
+
+describe("Timesaver date idioms with config (C5)", () => {
+  const weekdayOf = (serial: number) => serialToJsDate(serial).getUTCDay(); // 0=Sun … 6=Sat
+  const domOf = (serial: number) => serialToJsDate(serial).getUTCDate();
+
+  it("Fiscal Quarter: start defaults to 1 (calendar); a fiscal start shifts the quarters", () => {
+    // Untouched (start seeded 1) === the calendar behaviour the existing test pins.
+    expect(run("ts-quarter", { date: ser(2026, 4, 1) })).toBe(2);
+    // April fiscal year (start=4): April is Q1, March is Q4, July is Q2.
+    expect(run("ts-quarter", { date: ser(2026, 4, 1), start: 4 })).toBe(1);
+    expect(run("ts-quarter", { date: ser(2026, 3, 31), start: 4 })).toBe(4);
+    expect(run("ts-quarter", { date: ser(2026, 7, 1), start: 4 })).toBe(2);
+    // July fiscal year (start=7): January falls in Q3.
+    expect(run("ts-quarter", { date: ser(2026, 1, 15), start: 7 })).toBe(3);
+  });
+
+  it("Age: the DATEDIF Y/YM/MD pieces against real-Excel goldens + the composed text", () => {
+    // 15 Jan 1990 → 20 Mar 2020 = 30y 2m 5d (Excel DATEDIF Y / YM / MD).
+    const dob = ser(1990, 1, 15), end = ser(2020, 3, 20);
+    expect(evalPackFormula('DATEDIF(dob,end,"Y")', { dob, end })).toBe(30);
+    expect(evalPackFormula('DATEDIF(dob,end,"YM")', { dob, end })).toBe(2);
+    expect(evalPackFormula('DATEDIF(dob,end,"MD")', { dob, end })).toBe(5);
+    // The preset's exact composition, with a fixed end standing in for TODAY().
+    expect(evalPackFormula(
+      'DATEDIF(dob,end,"Y")&"y "&DATEDIF(dob,end,"YM")&"m "&DATEDIF(dob,end,"MD")&"d"',
+      { dob, end },
+    )).toBe("30y 2m 5d");
+    // The documented MD edge (31 Jan → 1 Mar, a whole February skipped): Excel is
+    // unreliable, Solenoid's borrow is deterministic — pin OUR value (parity: false).
+    expect(evalPackFormula('DATEDIF(a,b,"MD")', { a: ser(2024, 1, 31), b: ser(2024, 3, 1) })).toBe(-1);
+  });
+
+  it("Nth Weekday: default is the 2nd Tuesday; n and weekday select the occurrence", () => {
+    // Default seeds (n=2, weekday=3=Tuesday): a Tuesday in the 2nd week (day 8–14).
+    const d = run("ts-nth-weekday", { date: ser(2026, 9, 20) }) as number;
+    expect(weekdayOf(d)).toBe(2); // getUTCDay 2 = Tuesday
+    expect(domOf(d)).toBeGreaterThanOrEqual(8);
+    expect(domOf(d)).toBeLessThanOrEqual(14);
+    // 1st Monday (n=1, weekday=2): a Monday in days 1–7.
+    const m = run("ts-nth-weekday", { date: ser(2026, 9, 10), n: 1, weekday: 2 }) as number;
+    expect(weekdayOf(m)).toBe(1);
+    expect(domOf(m)).toBeGreaterThanOrEqual(1);
+    expect(domOf(m)).toBeLessThanOrEqual(7);
+    // 3rd Saturday — exercises the +7 wrap when the wanted weekday precedes the 1st's.
+    const s = run("ts-nth-weekday", { date: ser(2026, 2, 1), n: 3, weekday: 7 }) as number;
+    expect(weekdayOf(s)).toBe(6); // Saturday
+    expect(domOf(s)).toBeGreaterThanOrEqual(15);
+    expect(domOf(s)).toBeLessThanOrEqual(21);
   });
 });
 
