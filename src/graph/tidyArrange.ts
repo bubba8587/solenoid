@@ -101,6 +101,18 @@ export const ELK_ROOT_OPTIONS = {
   "elk.edgeRouting": "POLYLINE",
 } as const;
 
+/** Within-layer ordering lever, added ONLY when the layout holds a flipped node.
+ *  `elkTidyLayout` emits flipped nodes LAST in the children array; forcing model order
+ *  through crossing minimization then sorts them to the trailing edge of their layer
+ *  (BELOW under RIGHT), so a flipped node lands down-and-left of its neighbor instead of
+ *  up-and-left. ELK wants `considerModelOrder.strategy` set alongside the force flag —
+ *  the flag assumes model order already survived into crossing minimization.
+ *  With no flipped node these options are absent, so ordinary layouts are unchanged. */
+export const FLIPPED_MODEL_ORDER_OPTIONS = {
+  "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
+  "elk.layered.crossingMinimization.forceNodeModelOrder": "true",
+} as const;
+
 /** The ELK layout options for the three Tidy knobs, read at layout time by BOTH call
  *  sites (main canvas + composite drill-in). `elk.algorithm`/`hierarchyHandling`/
  *  `edgeRouting` come from `ELK_ROOT_OPTIONS`; this only sets what
@@ -175,7 +187,14 @@ export async function elkTidyLayout(
   const portId = (id: string, key: string, side: string) => [id, key, side].join("_");
   const byIndex = (rec: Record<string, { index?: number } | undefined>) =>
     Object.entries(rec).sort((a, b) => (a[1]?.index ?? 0) - (b[1]?.index ?? 0));
-  const children = args.nodes.map((n) => {
+  // Flipped nodes go LAST so ELK's forced model order drops them to the trailing edge
+  // of their layer; the order is otherwise untouched (see FLIPPED_MODEL_ORDER_OPTIONS).
+  const isFlipped = (n: Schemes["Node"]) => socketFlipStore.get(n.id);
+  const anyFlipped = args.nodes.some(isFlipped);
+  const ordered = anyFlipped
+    ? [...args.nodes.filter((n) => !isFlipped(n)), ...args.nodes.filter(isFlipped)]
+    : args.nodes;
+  const children = ordered.map((n) => {
     const node = n as unknown as {
       id: string; width: number; height: number;
       inputs?: Record<string, { index?: number } | undefined>;
@@ -207,7 +226,11 @@ export async function elkTidyLayout(
   }));
   const result = await elk.layout({
     id: "root",
-    layoutOptions: { ...ELK_ROOT_OPTIONS, ...args.options },
+    layoutOptions: {
+      ...ELK_ROOT_OPTIONS,
+      ...args.options,
+      ...(anyFlipped ? FLIPPED_MODEL_ORDER_OPTIONS : {}),
+    },
     children,
     edges,
   });

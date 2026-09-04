@@ -44,14 +44,3 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
   loose expression chain was wrapped beside two pre-existing groups rather than merged. Not swept:
   sudoku-solver, composite-workbench, zz-scratch-new-nodes (not teaching galleries),
   personal-finance and live-market-data (held from tuning, see the 09-03 digest).
-
-## Layout
-
-- [ ] **Flipped-node Tidy places it up-and-left; want down-and-left.** The predecessor
-  hack (reversed ELK edge) leaves the flipped node's vertical order to ELK crossing-min,
-  which stacks it above its neighbor. Needs a within-layer ordering lever (position
-  choice / model order) to bias it below. Cosmetic; the leftward part is correct. Candidate
-  lever (untried, 2026-09-04): `elk.layered.considerModelOrder.strategy=NODES_AND_EDGES` (+
-  `crossingMinimization.forceNodeModelOrder`) with the flipped node emitted AFTER its neighbor
-  in the ELK children order — global, so it also re-breaks every other layer's ties; verify
-  with `scripts/layout-probe.mjs` before keeping.

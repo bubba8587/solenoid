@@ -2,7 +2,10 @@ import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import type { Schemes } from "../../src/graph/schemes";
-import { makeArrangeFn, makeCleanupFn, makeEnsureElk } from "../../src/graph/tidyArrange";
+import {
+  makeArrangeFn, makeCleanupFn, makeEnsureElk, elkTidyLayout,
+  ELK_ROOT_OPTIONS, FLIPPED_MODEL_ORDER_OPTIONS,
+} from "../../src/graph/tidyArrange";
 import { settingsStore } from "../../src/graph/settingsStore";
 import { GroupNode } from "../../src/graph/nodes/group";
 import { ArithmeticNode } from "../../src/graph/nodes/scalar";
@@ -555,6 +558,73 @@ describe("Tidy with a flipped node (predecessor layering, real ELK)", () => {
     await arrangeFn({ skipConfirm: true });
     await flushRafs();
     expect(view.fakes.get(b.id)!.position.x).toBeLessThan(view.fakes.get(a.id)!.position.x);
+  });
+
+  // src → mid → sink, sink flipped: the flipped sink joins src's LAYER, so its
+  // within-layer order (not the edge reversal) decides above vs below.
+  async function buildChain() {
+    settingsStore.set("tidyDirection", "right");
+    const editor = new NodeEditor<Schemes>();
+    const { view, addView } = makeFakeView();
+    const src = new ArithmeticNode({ op: "add" });
+    const mid = new ArithmeticNode({ op: "add" });
+    const sink = new DisplayNode();
+    for (const n of [src, mid, sink]) await editor.addNode(n as never);
+    await connect(editor, src, "result", mid, "a");
+    await connect(editor, mid, "result", sink, "in");
+    for (const n of [src, mid] as Array<{ width: number; height: number }>) { n.width = 180; n.height = 100; }
+    (sink as unknown as { width: number; height: number }).width = 180;
+    (sink as unknown as { width: number; height: number }).height = 80;
+    addView(src.id, 100, 100, 180, 100);
+    addView(mid.id, 400, 100, 180, 100);
+    addView(sink.id, 700, 100, 180, 80);
+    const arrangeFn = makeArrangeFn({
+      editor, view, container: {} as HTMLElement, ensureElk: makeEnsureElk(() => false),
+      repositionDockedTo: () => {}, isDestroyed: () => false,
+    });
+    return { view, arrangeFn, src, mid, sink };
+  }
+
+  it("puts a FLIPPED sink DOWN-and-left, not up-and-left", async () => {
+    const { view, arrangeFn, src, mid, sink } = await buildChain();
+    socketFlipStore.set(sink.id, true);
+    await arrangeFn({ skipConfirm: true });
+    await flushRafs();
+    const s = view.fakes.get(src.id)!.position;
+    const m = view.fakes.get(mid.id)!.position;
+    const d = view.fakes.get(sink.id)!.position;
+    expect(d.x, "flipped sink should sit left of its source").toBeLessThan(m.x);
+    expect(d.y, "flipped sink should sit BELOW its layer-mate").toBeGreaterThan(s.y);
+  });
+
+  it("model-order options and children order are untouched without a flip", async () => {
+    const { src, mid, sink } = await buildChain();
+    const seen: Array<{ ids: string[]; options: Record<string, string> }> = [];
+    const recorder = {
+      async layout(graph: unknown) {
+        const g = graph as { children: Array<{ id: string }>; layoutOptions: Record<string, string> };
+        seen.push({ ids: g.children.map((c) => c.id), options: g.layoutOptions });
+        return { children: [] };
+      },
+    };
+    // sink FIRST, so the flipped reorder is visible.
+    const nodes = [sink, src, mid] as unknown as Array<Schemes["Node"]>;
+    const run = () => elkTidyLayout(recorder, {
+      nodes, connections: [], options: { "elk.direction": "RIGHT" }, translate: () => {},
+    });
+    await run();
+    socketFlipStore.set(sink.id, true);
+    await run();
+
+    const [plain, flipped] = seen;
+    // No flip: the graph is exactly the pre-model-order one.
+    expect(plain.ids).toEqual([sink.id, src.id, mid.id]);
+    expect(plain.options).toEqual({ ...ELK_ROOT_OPTIONS, "elk.direction": "RIGHT" });
+    // A flip turns the lever on and moves the flipped node last.
+    expect(flipped.ids).toEqual([src.id, mid.id, sink.id]);
+    expect(flipped.options).toEqual({
+      ...ELK_ROOT_OPTIONS, "elk.direction": "RIGHT", ...FLIPPED_MODEL_ORDER_OPTIONS,
+    });
   });
 
   it("does NOT stamp a manual (expanded) width onto a COLLAPSED node", async () => {
