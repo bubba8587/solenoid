@@ -62,9 +62,13 @@
 }
 
 /* The real-card socket dot: an RF Handle inside NodeSocket's absolutely
-   positioned wrapper. Strip RF's default dot styling; SocketComponent draws. */
+   positioned wrapper. Strip RF's default dot styling; SocketComponent draws.
+   `relative`, not `static`: the wrapper's pointer-catch halo (socket.css
+   [data-socket-side]::before) is a positioned box, and a static Handle paints
+   UNDER it — the wrapper then swallows the press and RF starts a node drag instead
+   of a cable (inputs, which carry the halo at rest, could not start a cable). */
 .react-flow__handle.sol-rf-handle-reset {
-  position: static;
+  position: relative;
   width: var(--socket-size, 12px);
   height: var(--socket-size, 12px);
   min-width: 0;
