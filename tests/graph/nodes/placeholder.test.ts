@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { PlaceholderNode } from "../../../src/graph/nodes/placeholder";
 import { isSolError } from "../../../src/graph/errorValue";
+import { ctorRegistry } from "../../../src/graph/nodeCtorRegistry";
 
 describe("PlaceholderNode", () => {
   it("synthesizes the input + output sockets it's told to", () => {
@@ -43,5 +44,31 @@ describe("PlaceholderNode", () => {
   it("emits nothing when it has no outputs", () => {
     const n = new PlaceholderNode({ missingType: "Foo" });
     expect(n.data()).toEqual({});
+  });
+});
+
+describe("retired finance types load as placeholders", () => {
+  // The three "ONE card" finance merges deleted these classes. serializeGraph writes a
+  // node's constructor name as its saved `type`, and rebuildGraph routes any type absent
+  // from the ctor registry to a PlaceholderNode (which the tests above prove keeps wiring
+  // and re-saves losslessly). Pin the retirement so a re-added or mis-renamed class can't
+  // silently break an old save that still names one of these.
+  const RETIRED = [
+    "TBillNode", "SecurityDiscNode", "PriceDiscNode", "PriceMatNode",
+    "AccrintNode", "AccrintMNode", "BondPriceNode", "OddCouponNode",
+  ];
+
+  it("are absent from the ctor registry, so old saves fall to the placeholder branch", () => {
+    const reg = ctorRegistry();
+    for (const name of RETIRED) {
+      expect(reg.has(name), `${name} must stay retired (rebuildGraph's !reg.has → PlaceholderNode)`).toBe(false);
+    }
+  });
+
+  it("register their one-card replacements instead", () => {
+    const reg = ctorRegistry();
+    for (const name of ["DiscountSecurityNode", "AccruedInterestNode", "BondPricingNode"]) {
+      expect(reg.has(name), `${name} must be registered`).toBe(true);
+    }
   });
 });
