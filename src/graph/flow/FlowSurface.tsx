@@ -85,6 +85,7 @@ import { unpackComposite } from "../compositeLogic";
 import { compositeEditorStore } from "../compositeEditorStore";
 import { moveGroupMembers, reconcileGroupMembership, absorbIntoContainingGroup, setGroupLocked } from "../groupLogic";
 import { socketFlipStore } from "../socketFlipStore";
+import { modalOwnsKeyboard } from "../modalGuard";
 import { rebuildGroupMembership, groupMembershipStore } from "../groupMembership";
 import { syncGroupCollapse } from "../groupCollapse";
 import { isGraphRebuilding } from "../process";
@@ -103,9 +104,7 @@ import { minimapFillForNode } from "../components/Minimap";
 import { computeDockedCanvasPos, dockedRenderedDims, findDockTarget, insertFcInline, removeFcInline } from "../fcDocking";
 import { groupPushStore } from "../groupPush";
 import { CableInspector } from "../components/CableInspector";
-import { paletteStore } from "../paletteStore";
-import { frStore } from "../frStore";
-import { settingsPanel, settingsStore } from "../settingsStore";
+import { settingsStore } from "../settingsStore";
 import { IS_COARSE } from "../coarse";
 import { touchSelectStore } from "../touchSelectStore";
 import "../canvas.css";
@@ -503,8 +502,8 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!target?.isContentEditable) return;
-      // An open overlay (palette, reference, settings, add menu, isolate) takes it.
-      if (paletteStore.get() || frStore.get() || settingsPanel.get() || menuRef.current || isolateStore.isActive()) return;
+      // An open overlay (any modal / pop-up, add menu, isolate) takes it.
+      if (modalOwnsKeyboard() || menuRef.current || isolateStore.isActive()) return;
       hooksRef.current.onEscape();
     };
     window.addEventListener("keydown", onKeyDown);
@@ -577,7 +576,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   // selection from the MODEL and RF state follows the topology pipe — so RF is told
   // to remove nothing itself (it would also take a deleted group's members).
   const onBeforeDelete: OnBeforeDelete<SolFlowNode, SolFlowEdge> = useCallback(async () => {
-    if (computeOverlayStore.visible() || presentationStore.isActive()) return false;
+    if (computeOverlayStore.visible() || presentationStore.isActive() || modalOwnsKeyboard()) return false;
     if (hooksRef.current.standsDownWhenDrilled && compositeEditorStore.isOpen()) return false;
     await hooksRef.current.deleteSelected();
     return false;

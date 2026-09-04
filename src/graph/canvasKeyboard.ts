@@ -12,8 +12,8 @@ import { compositeEditorStore } from "./compositeEditorStore";
 import { presentationStore } from "./presentationStore";
 import { paletteStore } from "./paletteStore";
 import { frStore } from "./frStore";
-import { shortcutsStore } from "./shortcutsStore";
 import { settingsPanel } from "./settingsStore";
+import { modalOwnsKeyboard } from "./modalGuard";
 import { cableSelectionStore } from "./cableState";
 import { ConduitNode, AngleDialNode, GroupNode } from "./rete-nodes";
 import { toggleAllChrome, toggleChrome } from "./chromeToggle";
@@ -150,17 +150,18 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
     // the still-selected node on the hidden canvas.
     if (presentationStore.isActive() && e.key !== "F9") return;
 
-    // F9 stays live while typing, presenting and drilled in — under those overlays
-    // it is the only remaining recompute path. Only the compute gate outranks it.
+    // A modal / pop-up owns the keyboard (modalGuard): Enter in a confirm must not
+    // also open the palette, A under a Frame Input pop-up must not open the Add menu.
+    if (modalOwnsKeyboard() && e.key !== "F9") return;
+
+    // F9 stays live while typing, presenting, drilled in and under a modal — there it
+    // is the only remaining recompute path. Only the compute gate outranks it.
     if (e.key === "F9") { e.preventDefault(); void requestRecalc(); return; }
 
     if (!editable && !e.ctrlKey && !e.metaKey && !e.altKey) {
       // Bare Enter opens the palette — gated on `editable` so committing a field
-      // never opens it, and on every other modal that `editable` wouldn't catch.
-      if (
-        e.key === "Enter" && !paletteStore.get() && !isAddMenuOpen() &&
-        !frStore.get() && !settingsPanel.get() && !shortcutsStore.get()
-      ) {
+      // never opens it (the modal gate above covers every overlay).
+      if (e.key === "Enter" && !isAddMenuOpen()) {
         paletteStore.open(); e.preventDefault(); return;
       }
       if (e.key === "Escape" && isolateStore.isActive()) {
