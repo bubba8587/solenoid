@@ -27,6 +27,42 @@ merged types load as Placeholders (noBackCompat). **Author eyeball:** Finance > 
 Discount Security + Accrued Interest, Finance > Bonds has Bond Pricing; switch ops and watch
 the sockets reshape with the shared ones keeping their cables.
 
+**The FC `—` inherit pick (Lando, landed 7f904f54 + 11950fe0).** Every family's primary style
+dropdown gets a leading `—` ("Inherit the upstream format"): the FC carries the upstream display
+cluster through and authors its unit alone, so a 2nd FC docked only for a unit no longer resets
+the style to Auto. `inheritFormat` flag + `FormatControllerNode.resolveAnnotation`, which
+`makeAnnotationResolver` calls in place of `annotation()`. Enforced in `unitFlowAnnotation.test.ts`;
+spec in rules.md formatFlowsDownstream + format-model.md. **Author eyeball:** dock two FCs, set
+the 2nd's style to `—` + a unit → upstream style survives, muted `← Decimal · 3 places` hint shows.
+
+**F5 — memory heap-snapshot investigation (Lando; `scripts/heap-probe.mjs`, CDP on a worktree dev
+server).** Finding: **no product memory leak; the "high memory for a light app" is mostly a
+DEV-build artifact.** The light seed's real footprint is ~20MB.
+
+| getting-started | JS heap | DOM nodes | listeners |
+|---|---|---|---|
+| dev (`vite`, :5199) | 49.1 MB | 2733 | 1932 |
+| prod (`vite build` + preview) | **20.1 MB** | 2575 | 1918 |
+
+Same DOM/listeners; the ~29 MB dev gap is unminified source + per-module `code` objects + React
+19 dev perf-track marks. Other findings:
+- **No teardown/rebuild leak.** 5× full reload (Ctrl+Shift+L) of chart-showcase: heap 67.6→68.3 MB,
+  DOM flat 5315, listeners flat 8095, snapshot detached-DOM = **0 MB**. Node clones / HIC atlas /
+  React Flow internals all release on teardown.
+- **Per-doc tabs are bounded**, not a leak. Seeding a doc 5× (5 library tabs): +1.3 MB total
+  (~0.25 MB/tab = the serialized `SavedGraph` JSON), DOM/listeners flat — only the current doc
+  renders; background docs keep no DOM/listeners resident.
+- **Where the bytes are** (chart-showcase snapshot, ~140 MB incl. shared): `ExternalStringData`
+  66 + `string` 26 + `code` 18 = ~110 MB (78%) is the dev bundle's source/code; `FiberNode` 1.9,
+  `Object` 4.1, arrays 7 are the modest runtime. `PerformanceMeasure` grew 3.3→5.7 MB across
+  reloads = React/Vite dev perf-track entries (no `performance.measure` in src), dev-only.
+- **DOM at scale** is frame/table cards, not node count: personal-finance is 14.5k DOM at 82 MB.
+  The `onlyRenderVisibleElements` virtualization lever stays the 2.0 canvas-at-scale item; the
+  table/cube popup already caps at 1000 rows.
+
+Proposal for the author (no code changed): the app is memory-clean — measure prod, not dev, if a
+real number is wanted. Nothing here is a contained fix; F5's output is this finding.
+
 ### SESSION DIGEST (2026-09-04b — backward commit review: fixes, reconciles, the input-cable regression)
 
 Walked `develop` backward from `5b3004ac` to `1fd16b6c` (the whole post-1.3 tail) for correctness
