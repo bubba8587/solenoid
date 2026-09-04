@@ -34,12 +34,28 @@ export const TIMESAVER_TEXT: FormulaPackEntry[] = [
 ];
 
 export const TIMESAVER_DATE: FormulaPackEntry[] = [
-  { type: "ts-quarter", label: "Quarter", expr: "ROUNDUP(MONTH(date)/3,0)",
-    description: "Calendar quarter 1–4 of a date. No single Excel function; the usual formula is ROUNDUP(MONTH()/3, 0).",
-    keywords: "q1 q2 q3 q4 fiscal period three months" },
+  { type: "ts-quarter", label: "Quarter", expr: "ROUNDUP((MOD(MONTH(date)-start,12)+1)/3,0)",
+    literals: { start: 1 },
+    varDescriptions: { start: "First month of the fiscal year: 1 = January (plain calendar quarters). Set 4 for an April fiscal year, 7 for July, and so on." },
+    description: "Quarter 1–4 of a date. Calendar by default; set the start month to your fiscal year's first month (1 = January) for fiscal quarters. No single Excel function.",
+    keywords: "q1 q2 q3 q4 fiscal calendar period three months start" },
   { type: "ts-days-in-month", label: "Days in Month", expr: "DAY(EOMONTH(date,0))",
     description: "How many days are in a date's month, 28–31. Excel: DAY(EOMONTH(date, 0)).",
     keywords: "month length last day eomonth 28 29 30 31" },
+  { type: "ts-age", label: "Age", resultAs: "text",
+    expr: "DATEDIF(dob,TODAY(),\"Y\")&\"y \"&DATEDIF(dob,TODAY(),\"YM\")&\"m \"&DATEDIF(dob,TODAY(),\"MD\")&\"d\"",
+    varDescriptions: { dob: "The birth date (or any start date). Age is measured to today." },
+    description: "Age from a date to today, as \"34y 2m 5d\". Built on DATEDIF. The days part uses DATEDIF's \"MD\", which Excel itself computes unreliably when a whole month is skipped, the classic 31 Jan → 1 Mar. Solenoid borrows from the month before the end date for a consistent, repeatable result, so that edge case can read differently from Excel.",
+    keywords: "birthday dob datedif years months days duration elapsed how old" },
+  { type: "ts-nth-weekday", label: "Nth Weekday", resultAs: "date",
+    expr: "DATE(YEAR(date),MONTH(date),1+MOD(weekday-WEEKDAY(DATE(YEAR(date),MONTH(date),1))+7,7)+(n-1)*7)",
+    literals: { n: 2, weekday: 3 },
+    varDescriptions: {
+      n: "Which occurrence: 1 = first, 2 = second, … A 5th rolls into the next month when the month has only four.",
+      weekday: "Day of the week, Excel WEEKDAY numbering: 1 = Sunday, 2 = Monday … 7 = Saturday.",
+    },
+    description: "The date of the Nth weekday of a month. The default is the 2nd Tuesday. Give any date in the target month, then pick the occurrence and the weekday. No single Excel function.",
+    keywords: "nth first second third fourth tuesday monday meeting recurring day of week payday" },
 ];
 
 export const TIMESAVER_FORMULAS: FormulaPackEntry[] = [
