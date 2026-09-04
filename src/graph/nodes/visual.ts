@@ -8,7 +8,7 @@ import { isChartValue } from "../chartValue";
 import type {
   ChartValue, KpiPayload, ScalePayload, ProportionPayload, SankeyPayload, SurfacePayload,
   ContourPayload, WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, QuiverPayload, SevenSegPayload,
-  RecordPayload, RecordField, OverlaySeries, OverlayPayload,
+  RecordPayload, RecordField, RecordSize, OverlaySeries, OverlayPayload,
 } from "../chartValue";
 import { solError, type SolError } from "../errorValue";
 import { columnUnitLabel } from "../unitColumn";
@@ -1164,14 +1164,21 @@ export function recordImageSrc(text: string): string | null {
   return null;
 }
 
-export type RecordOp = "card" | "gallery" | "board";
+export type RecordOp = "card" | "gallery" | "board" | "list";
 
 // The card dropdown DERIVES from this table (declareOnce) — never hand-write a second list.
 export const RECORD_OP_META = {
   card:    { label: "Card" },
   gallery: { label: "Gallery" },
   board:   { label: "Board" },
+  list:    { label: "List" },
 } satisfies Record<RecordOp, { label: string }>;
+
+// The gallery size preset (`cardsize=s|m|l` option); the three sizes render in `chartCards`.
+function readCardSize(optStr: string | null): RecordSize | undefined {
+  const m = optStr && /(?:^|;)\s*cardsize\s*=\s*([sml])\b/i.exec(optStr);
+  return m ? (m[1].toLowerCase() as RecordSize) : undefined;
+}
 
 // Gallery/board draw at most this many cards; `payload.more` carries the rest.
 export const RECORD_CARD_CAP = 60;
@@ -1181,7 +1188,7 @@ export class RecordNode extends ClassicPreset.Node {
     row: "Selects the 1-based record. Blank or out of range shows the boxes empty.",
     by: "Names the column whose values become the board's lanes. Blank or unmatched draws nothing.",
     layout: "One line per grid row, names split by | marks. Repeating a name merges its cells into one box. Photo*2 widens a box two columns. Qty: for example 40 gives an empty box muted placeholder text. A dot or an empty cell stays blank. Left empty, the columns stack.",
-    options: "title=Parts;fontsize=12",
+    options: "title=Parts;fontsize=12;cardsize=l. Gallery tiles size s, m or l.",
   };
 
   label: string;
@@ -1247,7 +1254,10 @@ export class RecordNode extends ClassicPreset.Node {
     const layIn = readInput(inputs.layout, this.stringLiterals.layout ?? null);
     const layStr = typeof layIn === "string" ? layIn : null;
     const optIn = readInput(inputs.options, this.stringLiterals.options ?? null);
-    this.chartOptions = parseChartOptions(typeof optIn === "string" || optIn === null ? optIn : (this.stringLiterals.options ?? null));
+    const optStr = typeof optIn === "string" || optIn === null ? optIn : (this.stringLiterals.options ?? null);
+    this.chartOptions = parseChartOptions(optStr);
+    // Gallery tile size preset (gallery only; other views ignore it).
+    const size = readCardSize(optStr);
 
     // The board's grouping column: a column reference, so a wired blank or an
     // unmatched name draws nothing (never "one lane of everything").
@@ -1284,7 +1294,7 @@ export class RecordNode extends ClassicPreset.Node {
     let more = 0;
     if (this.op === "card") {
       cards = [cardAt(index >= 1 ? index - 1 : null)];
-    } else if (this.op === "gallery") {
+    } else if (this.op === "gallery" || this.op === "list") {
       const drawn = Math.min(total, RECORD_CARD_CAP);
       cards = Array.from({ length: drawn }, (_, r) => cardAt(r));
       more = total - drawn;
@@ -1308,6 +1318,7 @@ export class RecordNode extends ClassicPreset.Node {
     const payload: RecordPayload = {
       kind: "record", view: this.op, cols: ncols, cards,
       ...(lanes ? { lanes } : {}), ...(more > 0 ? { more } : {}),
+      ...(size ? { size } : {}),
       index, total,
     };
     const chart: ChartValue = {

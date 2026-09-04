@@ -119,6 +119,18 @@ is the path, author-present.** No code landed; the proposal keeps its top note p
   MAXA, MAXIFS, MIN, MINA, MINIFS, NPV, OR, PRODUCT, SERIESSUM, STDEVA, STDEVPA, SUM, SUMIFS,
   SUMPRODUCT, SUMSQ, SUMX2MY2, SUMX2PY2, SUMXMY2, VARA, VARPA, XNPV, XOR, Z.TEST.
 
+**B1 (trimmed) — Record gallery size preset + List view (Lando).** Two lifts on the one Record
+node (`nodes/visual.ts` + `chartCards.tsx`): (a) a `cardsize=s|m|l` OPTIONS key (default m) read
+in `data()` and carried on `RecordPayload.size`, scaling the gallery track band only (S 130/110/190
+· M 170/140/260 · L 230/190/340); card/board/list ignore it. (b) a fourth `RecordOp` "list" — one
+indented outline block per record, the title field on its own line and the trailing fields as
+"label: value" rows beneath, drawn text-only with per-line ellipsis. WHICH field is the title lives
+behind ONE seam, `titleIndexFor(fields)` in `chartValue.ts` (today the first field; the per-card
+`#field` title-row marker plugs in there and every view follows). List reuses the gallery row build
+(cap `RECORD_CARD_CAP`, no row/by socket). Catalog description + `cardsize` socketDoc updated. Pinned
+by `recordViews.test.ts`. Title row (`#field` marker) + wrap/clamp land next (author promoted both
+back IN 2026-09-04c).
+
 ### SESSION DIGEST (2026-09-04b — backward commit review: fixes, reconciles, the input-cable regression)
 
 Walked `develop` backward from `5b3004ac` to `1fd16b6c` (the whole post-1.3 tail) for correctness
