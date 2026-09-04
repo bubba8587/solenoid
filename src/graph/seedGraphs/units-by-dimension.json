@@ -7,8 +7,8 @@
     {
       "id": "hdr",
       "type": "NoteNode",
-      "x": -40,
-      "y": 239,
+      "x": -356,
+      "y": -243,
       "init": {
         "label": "Units by dimensionality (FC A4)",
         "body": "Numbers carry a **physical dimension** and compute with it. A meter ÷ a second **is** a m/s; meters + seconds is a **#UNIT!**. A unit rides **per element** through a list and **per column** through a frame — cancellation is free, mismatch is caught.",
@@ -20,8 +20,8 @@
     {
       "id": "nA",
       "type": "NoteNode",
-      "x": 168,
-      "y": 51,
+      "x": 468,
+      "y": -227,
       "init": {
         "label": "A · dimensional algebra: 5 m ÷ 1 s = 5 m/s",
         "body": "A **Format Controller** gives a value its **unit** — the number becomes a dimensioned quantity. Divide a length by a time and the result reads **m/s** — computed from the dimensions, not a label.",
@@ -33,8 +33,8 @@
     {
       "id": "numD",
       "type": "NumberInputNode",
-      "x": 366,
-      "y": -218,
+      "x": 472,
+      "y": -361,
       "init": {
         "label": "Distance",
         "value": 5
@@ -43,8 +43,8 @@
     {
       "id": "fcD",
       "type": "FormatControllerNode",
-      "x": 548,
-      "y": -201,
+      "x": 655,
+      "y": -343,
       "init": {
         "label": "m",
         "hostNodeId": "numD",
@@ -57,8 +57,8 @@
     {
       "id": "numT",
       "type": "NumberInputNode",
-      "x": 366,
-      "y": -84,
+      "x": 472,
+      "y": -39,
       "init": {
         "label": "Time",
         "value": 1
@@ -67,8 +67,8 @@
     {
       "id": "fcT",
       "type": "FormatControllerNode",
-      "x": 548,
-      "y": -66,
+      "x": 655,
+      "y": -21,
       "init": {
         "label": "s",
         "hostNodeId": "numT",
@@ -81,8 +81,8 @@
     {
       "id": "ariB",
       "type": "ArithmeticNode",
-      "x": 832,
-      "y": -192,
+      "x": 924,
+      "y": -241,
       "init": {
         "label": "Speed = d ÷ t",
         "op": "div"
@@ -91,8 +91,8 @@
     {
       "id": "dispB",
       "type": "DisplayNode",
-      "x": 1137,
-      "y": -148,
+      "x": 1189,
+      "y": -196,
       "init": {
         "label": "= 5 m/s"
       }
@@ -100,8 +100,8 @@
     {
       "id": "nB",
       "type": "NoteNode",
-      "x": 168,
-      "y": -406,
+      "x": -247,
+      "y": 178,
       "init": {
         "label": "B · a frame column LOCKS to its header's unit",
         "body": "Head a Build Frame column `Revenue ($0.00)` and the column is locked to **$**. Get Column carries the unit out as a list, and SUM keeps it — the total reads **$18.00**.",
@@ -113,8 +113,8 @@
     {
       "id": "tblA",
       "type": "TableInputNode",
-      "x": 480,
-      "y": 427,
+      "x": -127,
+      "y": 366,
       "init": {
         "label": "Revenue rows",
         "tableText": "5\n6\n7",
@@ -124,8 +124,8 @@
     {
       "id": "hdrA",
       "type": "ListInputNode",
-      "x": 540,
-      "y": 627,
+      "x": -67,
+      "y": 565,
       "init": {
         "label": "Header",
         "dataType": "string",
@@ -140,8 +140,8 @@
     {
       "id": "bfA",
       "type": "BuildFrameNode",
-      "x": 812,
-      "y": 506,
+      "x": 204,
+      "y": 445,
       "init": {
         "label": "Build Frame"
       }
@@ -149,8 +149,8 @@
     {
       "id": "gcA",
       "type": "GetColumnNode",
-      "x": 1137,
-      "y": 533,
+      "x": 529,
+      "y": 472,
       "init": {
         "label": "Get Revenue",
         "readAs": "number"
@@ -162,8 +162,8 @@
     {
       "id": "aggA",
       "type": "AggregateNode",
-      "x": 1462,
-      "y": 542,
+      "x": 854,
+      "y": 481,
       "init": {
         "label": "Total revenue",
         "op": "sum"
@@ -172,10 +172,54 @@
     {
       "id": "dispA",
       "type": "DisplayNode",
-      "x": 1727,
-      "y": 572,
+      "x": 1119,
+      "y": 511,
       "init": {
         "label": "= $18.00"
+      }
+    },
+    {
+      "id": "grp-a",
+      "type": "GroupNode",
+      "x": 444,
+      "y": -419,
+      "init": {
+        "label": "A · Dimensional algebra",
+        "members": [
+          "nA",
+          "numD",
+          "fcD",
+          "numT",
+          "fcT",
+          "ariB",
+          "dispB"
+        ],
+        "color": "gold",
+        "collapsed": false,
+        "width": 953,
+        "height": 501
+      }
+    },
+    {
+      "id": "grp-b",
+      "type": "GroupNode",
+      "x": -271,
+      "y": 120,
+      "init": {
+        "label": "B · A column locks to its unit",
+        "members": [
+          "nB",
+          "tblA",
+          "hdrA",
+          "bfA",
+          "gcA",
+          "aggA",
+          "dispA"
+        ],
+        "color": "blue",
+        "collapsed": false,
+        "width": 1599,
+        "height": 640
       }
     }
   ],
@@ -239,6 +283,20 @@
       "sourceOutput": "result",
       "target": "dispA",
       "targetInput": "in"
+    }
+  ],
+  "standoffs": [
+    {
+      "a": {
+        "nodeId": "grp-a",
+        "anchor": "w"
+      },
+      "b": {
+        "nodeId": "hdr",
+        "anchor": "e"
+      },
+      "min": 40,
+      "max": 240
     }
   ]
 }
