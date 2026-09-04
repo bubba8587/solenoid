@@ -41,6 +41,20 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
   Solver's shape as a sixth composite run mode beside Goal Seek; spec + steps in `1.4-plan.md`
   § A6. Gate: the author says go (and settles the constraint forms; integer no).
 
+## Tables
+
+- [ ] **Constrained entry on text columns (1.4 B2.1, author 2026-09-04c).** Typing into a text cell
+  in the table popup's grid or Form view offers the column's distinct existing values (a
+  `datalist`); anything new still types. Pure distinct list from `frameVerbs`; no new column type.
+- [ ] **Chip style for text values (1.4 B2.2, author 2026-09-04c).** An opt-in "Chip" style that
+  renders each distinct text value as a small tinted pill, hues from the categorical chart
+  palette by first appearance, stable under row reorder. TWO homes, one mechanism: the popup's
+  per-column format row (`fcControls.tsx`, annotation in `frameFormatStore`, display only, never
+  the unit) AND the standard Format Controller's text-family style dropdown, so a chipped
+  text value / list / column reads the same everywhere. DESIGN.md Quiet Accent: the color is
+  user-authored by picking the style. Build the chip mechanism once — Record color-by and
+  conditional formatting inherit it. The enum column TYPE stays 2.0 (author).
+
 ## Display
 
 - [ ] **Expand pop-up on every Display frame / table / list, like the charts** (author,
