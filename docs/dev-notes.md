@@ -95,6 +95,18 @@ Allocator verb + `allocateOps` modes, weighted Shuffle key, XLOOKUP matrix spill
 obstacle separation, flip-edge reversal (OR is right: both ends flipped still puts the reader
 left), pop-up one-basis frame, the elk import retry.
 
+**Scheduling slice, reworked (AUTHOR-GATED — `1.4-plan.md` Track H § Scheduling slice).** The
+author: the first pass was decent but wanted calendar/schedule-shaped, solver-free where
+possible, useful to a simplistic user. Now: **hours balancing is the Allocator** (a seed + "range"
+copy, no node); **H4 Rota** (Shifts × People → Assignments + Load, round-robin or
+fewest-hours-first, explicit Unfilled rows, greedy and says so); **H5 Spread over dates** (a total
+phased over a date range: every day / working days + holidays / weekday weights / ramp / month
+length → Date · Amount · Cumulative); **H6 Schedule** (Tasks with durations + predecessors →
+Start · Finish · Float · Critical, CPM passes on working days — the data half of the 2.0 Gantt);
+**H7 Common free time** (availability windows → when everyone, or any N, is free ≥ M minutes).
+Hungarian matching and Erlang staffing parked to `deferrals.md`. Nothing starts until the author
+picks; a backlog line carries the gate.
+
 **Questions for the author** (not blocking, answered whenever):
 - Shuffle: a wired `weights` list SHORTER than the list silently falls back to a uniform shuffle.
   Keep, error (`#VALUE!`), or weigh the missing tail 0?
@@ -128,10 +140,9 @@ recommended a NEW node over an Allocator mode — different inputs/invariant), *
 Settle** (net + greedy min-transfers). Parked to `deferrals.md`: blend/mix (alligation), loan-term
 solver. Break-even ruled a composite run mode (A6), not a node.
 
-**Open problem — personnel scheduling.** Author asked to explore shift fill-in / balancing hours
-over a roster. Not yet a spec: assignment/balancing is LP-ish (Hungarian / min-cost-flow), so the
-author decides which slice is node-sized and closed-form vs a composite run mode (A6) before a
-Track H sibling gets written.
+**Personnel scheduling** — the author's ask (shift fill-in / balancing hours over a roster) got a
+first pass this session (Hours Balancer as an Allocator mode, Hungarian Shift Assignment, a
+round-robin Rotation generator, Erlang staffing), unanswered here; reworked in 09-04b below.
 
 **Decision Matrix / Sensitivity — weights as a criterion-keyed frame.** The DM `weights` socket
 went from a positional number list (+ on-card weightMap/normMap boxes) to a `frameIn`: a

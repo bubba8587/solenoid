@@ -28,6 +28,11 @@ REMOVED — the old elkjs-vs-rete-auto-arrange peer conflict left with the plugi
   (collaboration IN); the rest is still the agent's inference awaiting the author's word.
 - [ ] **The `rules.md` ARR pass** (author-present; the author: waits for 1.4) — early in the
   release, before the track work adds rules (`1.4-plan.md` D3).
+- [ ] **Review with the author — the scheduling slice of Track H** (`1.4-plan.md` § Scheduling
+  slice, 2026-09-04b): H4 Rota (shift fill-in, round-robin / fewest-hours-first), H5 Spread over
+  dates (phasing), H6 Schedule (CPM forward/backward pass), H7 Common free time, plus "hours
+  balancing is the Allocator" as a seed. GATE: nothing starts until the author picks; the first
+  pass's Hungarian matching + Erlang staffing sit in `deferrals.md`.
 
 ## Records & Frame Input
 

@@ -80,6 +80,13 @@ and its entry deleted. Ruled-out-forever ideas: `out-of-scope.md`; settled ratio
   payment → months to payoff (closed-form log), the inverse of an amortization; or the payment
   for a given term. Small — likely a formula or a composite run mode (A6), not its own node;
   its amortization kernel overlaps Track H's **H1 Payoff Planner**, so build it there if at all.
+- **Shift Assignment (best one-to-one matching)** — scheduling sweep 2026-09-04b, parked. A
+  people × shifts score matrix → the best matching + total (Hungarian: exact, but it reads as a
+  solver and answers a question a simple user rarely asks). If it returns, it is the Optimize
+  run mode (A6), not a node. The calendar-shaped siblings are `1.4-plan.md` Track H H4–H7.
+- **Staffing requirement (Erlang C)** — same sweep, parked: demand per interval + a service
+  target → minimum staff per interval. Closed-form but call-centre specific; the schedule that
+  covers it is set-cover (solver). Reopen on a real contact-centre use case.
 
 ## Parked bugs (explicitly parked by the author)
 
