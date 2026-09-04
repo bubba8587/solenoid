@@ -57,14 +57,12 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 - [ ] **Record popup: prev / next with the arrow keys (1.4 B3, author 2026-09-04c).** With a
   Record card's popup open, ←/→ (and on-screen prev/next) step to the neighbouring record
   without closing; `recordNav.ts` already holds the stepping. Out: image lightbox, chip hover.
-- [ ] **Chip style for text values (1.4 B2.2, author 2026-09-04c).** An opt-in "Chip" style that
-  renders each distinct text value as a small tinted pill, hues from the categorical chart
-  palette by first appearance, stable under row reorder. TWO homes, one mechanism: the popup's
-  per-column format row (`fcControls.tsx`, annotation in `frameFormatStore`, display only, never
-  the unit) AND the standard Format Controller's text-family style dropdown, so a chipped
-  text value / list / column reads the same everywhere. DESIGN.md Quiet Accent: the color is
-  user-authored by picking the style. Build the chip mechanism once — Record color-by and
-  conditional formatting inherit it. The enum column TYPE stays 2.0 (author).
+- [ ] **Chip + case compose (1.4 B2.2 follow-up).** The Chip style (LANDED B2.2) shares the
+  text-family style dropdown with letter-case, so it's exclusive with UPPER/lower/Proper this
+  tranche. If wanted, let a chip also carry a case — a separate `chip` toggle beside the case
+  dropdown rather than a fifth dropdown value (`chip` is already its own annotation flag).
+  Record color-by and conditional formatting still inherit the one chip mechanism; enum column
+  TYPE stays 2.0 (author).
 
 ## Display
 

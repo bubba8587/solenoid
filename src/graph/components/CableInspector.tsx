@@ -13,6 +13,7 @@ import { formatAnnotationStore, formatNumberWithAnnotation, applyLogicalStyle, a
 import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { ArrayChip, isArrayValue, arrayAccentFor } from "./ArrayChip";
+import { CategoryChip } from "./CategoryChip";
 import { nodeOutputElemFamily, formatListCell, resolveDisplayAnnotation } from "./valueDisplayFormat";
 import { isCx } from "../cxValue";
 import { isUnitCell } from "../unitValue";
@@ -47,6 +48,7 @@ function renderWireValue(v: unknown, annNodeId: string, outKey: string) {
     return <ArrayChip value={arr} size="sm" accent={arrayAccentFor(family, twoD)} elem={family} />;
   }
   if (typeof v === "string") {
+    if (ann?.chip) return <span className="solenoid-cable-inspector__value"><CategoryChip value={applyTextCase(v, ann.textCase)} index={0} /></span>;
     return <span className="solenoid-cable-inspector__value">{(ann ? applyTextCase(v, ann.textCase) : v) || "—"}</span>;
   }
   if (typeof v === "boolean") {

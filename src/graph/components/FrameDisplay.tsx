@@ -2,6 +2,8 @@
 // TableDisplay (same classes) so the collapse-to-chip CSS applies unchanged.
 import { useSyncExternalStore } from "react";
 import { FrameChip } from "./FrameChip";
+import { CategoryChip } from "./CategoryChip";
+import { categoryColorIndex } from "../categoryColor";
 import { frameRowCount, formatFrameCell, type FrameCell, type FrameColType, type FrameValue, type FrameSourceColumn } from "../frame";
 import type { FramePopupColumn, SourceCommitRefresh } from "../tablePopupStore";
 import { isSolError, type SolError } from "../errorValue";
@@ -94,6 +96,12 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
   const maxR = full ? Math.min(rows, 100) : Math.min(rows, previewRows ?? 3);
   const maxC = full ? frame.columns.length : Math.min(frame.columns.length, previewCols ?? 3);
   const extraCols = !full && frame.columns.length > maxC;
+  // A string column set to the Chip style renders its cells as categorical color chips,
+  // keyed by the FULL column so colors are stable across the preview cut (B2.2).
+  const chipCols = new Map<number, Map<string, number>>();
+  frame.columns.forEach((c, j) => {
+    if (c.type === "string" && annFor(c)?.chip) chipCols.set(j, categoryColorIndex(c.values as (string | null)[]));
+  });
 
   return (
     <div
@@ -119,7 +127,9 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
                 const nan = isNanCell(cell);
                 return (
                 <td key={j} className={nan ? "solenoid-nan-cell" : undefined} title={nan ? "Not a number: an undefined value in the data" : undefined} style={{ padding: full ? "2px 8px" : "1px 4px", textAlign: c.type === "string" ? "left" : "right", fontSize: full ? 13 : 12, fontFamily: "var(--font-mono)", color: "var(--text)", borderRight: "1px solid var(--border)", whiteSpace: full ? "nowrap" : undefined, ...(full ? {} : { overflow: "hidden", textOverflow: "ellipsis" }) }}>
-                  {fmtCell(cell, c.type, annFor(c))}
+                  {cell !== null && chipCols.has(j)
+                    ? <CategoryChip value={String(cell)} index={chipCols.get(j)!.get(String(cell)) ?? 0} />
+                    : fmtCell(cell, c.type, annFor(c))}
                 </td>
                 );
               })}

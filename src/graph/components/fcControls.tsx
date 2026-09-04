@@ -240,10 +240,12 @@ export function LogicalStyleSelect({ value, onChange, className, title, inherit 
   );
 }
 
-/** A letter-case <select> matching the FC's text socket — display-only, non-destructive. */
+/** A letter-case <select> matching the FC's text socket — display-only, non-destructive.
+ *  `"chip"` is the categorical color-chip style (B2.2), sharing this one dropdown with the
+ *  cases (exclusive with them this tranche). */
 export function TextCaseSelect({ value, onChange, className, title, inherit }: {
   value: string | undefined;
-  onChange: (v: TextCase | "") => void;
+  onChange: (v: TextCase | "" | "chip") => void;
   className?: string;
   title?: string;
   inherit?: boolean;
@@ -252,13 +254,14 @@ export function TextCaseSelect({ value, onChange, className, title, inherit }: {
     <LazySelect
       className={className}
       value={value ?? "none"}
-      title={title ?? "Letter case, display only"}
-      onChange={(e) => onChange(e.target.value as TextCase | "")}
+      title={title ?? "Letter case / chip, display only"}
+      onChange={(e) => onChange(e.target.value as TextCase | "" | "chip")}
     >
       {inheritOption(inherit)}
       {Object.entries(TEXT_CASE_LABELS).map(([id, label]) => (
         <option key={id} value={id}>{label}</option>
       ))}
+      <option value="chip" title="Render as a categorical color chip">Chip</option>
     </LazySelect>
   );
 }

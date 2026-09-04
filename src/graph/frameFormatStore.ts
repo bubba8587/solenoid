@@ -73,7 +73,7 @@ export interface ColumnFormatRow {
 
 function styleValueOf(ann: FormatAnnotation, type: FrameColType): string {
   if (type === "logical") return ann.logicalStyle ?? "truefalse";
-  if (type === "string") return ann.textCase ?? "none";
+  if (type === "string") return ann.chip ? "chip" : (ann.textCase ?? "none");
   return ann.format;
 }
 
@@ -83,7 +83,7 @@ function styleValueOf(ann: FormatAnnotation, type: FrameColType): string {
  *  so the two never drift. */
 export function describeAnnotation(ann: FormatAnnotation, type: FrameColType): string {
   if (type === "logical") return LOGICAL_STYLE_LABELS[ann.logicalStyle ?? "truefalse"];
-  if (type === "string") return TEXT_CASE_LABELS[ann.textCase ?? "none"];
+  if (type === "string") return ann.chip ? "Chip" : TEXT_CASE_LABELS[ann.textCase ?? "none"];
   const label = FORMAT_STYLE_LABELS[ann.format as FormatStyle] ?? ann.format;
   if (!precisionApplies(ann.format)) return label;
   const d = ann.decimalDigits ?? 2;

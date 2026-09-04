@@ -29,6 +29,8 @@ import { nodeSizeStore } from "../nodeSizeStore";
 import { nodeResizable } from "../rete-nodes";
 import { formatScalar } from "./format";
 import { ArrayChip } from "./ArrayChip";
+import { CategoryChip } from "./CategoryChip";
+import { categoryColorIndex } from "../categoryColor";
 import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase, applyLogicalStyle, annotationRendersNegativeRed, formatCxWithAnnotation } from "../formatAnnotationStore";
 import { nodeOutputElemFamily, dateFormatDisplay, shouldRenderListInline, formatListCell, unwrapUnitCells, formatRowValue, resolveDisplayAnnotation, annotationForValue, type DisplayValue } from "./valueDisplayFormat";
 import { IS_COARSE, stopDragStart } from "../coarse";
@@ -474,6 +476,21 @@ export function ArgSelect<T extends string>(props: PickProps<T>) {
 
 // The copy-value glyph is the `sol-copy-icon` masked ::before in nodeCard.css.
 
+/** A string list rendered as categorical color chips (the Chip text style, B2.2): each
+ *  distinct value takes a palette slot by first appearance, so the same value is the same
+ *  color anywhere in the list. `null`/error cells render plainly. */
+function ChipList({ items, cased }: { items: (string | null | SolError)[]; cased: (s: string) => string }) {
+  const idx = categoryColorIndex(items.map((v) => (v === null || isSolError(v) ? null : v)));
+  return (
+    <span className="solenoid-node__chiplist">
+      {items.map((v, i) =>
+        v === null ? <span key={i} className="solenoid-node__chip-blank">null</span>
+        : isSolError(v) ? <span key={i} className="solenoid-node__chip-blank">{v.code}</span>
+        : <CategoryChip key={i} value={cased(v)} index={idx.get(v) ?? 0} />)}
+    </span>
+  );
+}
+
 /**
  * The result/display box — null (empty), a list (preview), or a scalar.
  * `empty` overrides the placeholder; `render` overrides scalar formatting;
@@ -642,7 +659,10 @@ export function ValueDisplay({
     >
       {isEmpty ? empty
         : isString ? (
-            ann?.textMarkdown ? (
+            ann?.chip ? (
+              // A scalar is its own first appearance → palette slot 0 (B2.2).
+              <CategoryChip value={cased(value as string)} index={0} />
+            ) : ann?.textMarkdown ? (
               // Block markdown needs its own container — a <div> can't live inside
               // the text <span>.
               <div
@@ -663,7 +683,9 @@ export function ValueDisplay({
             )
           )
         : isLogical ? applyLogicalStyle(value as boolean, ann?.logicalStyle)
-        : listIsString ? (listInline ? (value as (string | null | SolError)[]).map((v) => (v === null ? "null" : isSolError(v) ? v.code : cased(v))).join(", ")
+        : listIsString ? (
+            ann?.chip ? <ChipList items={value as (string | null | SolError)[]} cased={cased} />
+            : listInline ? (value as (string | null | SolError)[]).map((v) => (v === null ? "null" : isSolError(v) ? v.code : cased(v))).join(", ")
             // `elem` matters MOST here: dateFormatDisplay turned a date list's
             // serials into STRINGS, so the chip would otherwise sniff "text".
             : <ArrayChip value={value as string[]} elem={elemFam} />)

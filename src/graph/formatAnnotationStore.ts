@@ -458,6 +458,8 @@ export type FormatAnnotation = {
   textAlign?: TextAlign;    // overrides the box's right-aligned default
   textMarkdown?: boolean;   // render the string as (inline) markdown
   textMono?: boolean;       // render in the monospace face instead of sans
+  chip?: boolean;           // render the string as a categorical color chip (B2.2);
+                            // shares the text STYLE dropdown, exclusive with case this tranche
   // Flexible "decimal" format params (digit count + places-vs-sig-figs).
   decimalDigits?: number;
   decimalMode?: DecimalMode;
