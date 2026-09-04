@@ -6,6 +6,7 @@ import type {
   ImportHtmlNode as ImportHtmlNodeType,
   ImportXmlNode as ImportXmlNodeType,
   DataFeedNode as DataFeedNodeType,
+  GeocodeNode as GeocodeNodeType,
 } from "../rete-nodes";
 import { processGraph } from "../process";
 import { connectionStore, refreshConnection, type ConnectionState } from "../connectionStore";
@@ -393,3 +394,47 @@ export function DataFeedComponent({ data, emit }: NodeProps<DataFeedNodeType>) {
   );
 }
 
+
+// ─── GEOCODE ─────────────────────────────────────────────────────────────────────
+// Place name → lat / lon / timezone. The Place field commits on blur/Enter (never per
+// keystroke); when several places match, a pick chooses which (stored by label).
+export function GeocodeComponent({ data, emit }: NodeProps<GeocodeNodeType>) {
+  useSyncExternalStore(connectionStore.subscribe, connectionStore.version); // re-read matches when a fetch lands
+  const [place, setPlace] = useState(data.stringLiterals.place ?? "");
+  useEffect(() => { setPlace(data.stringLiterals.place ?? ""); }, [data]);
+
+  function commit() {
+    const next = place.trim();
+    if (next !== (data.stringLiterals.place ?? "")) { data.stringLiterals.place = next; void processGraph(); }
+  }
+
+  return (
+    <NodeShell node={data} emit={emit}>
+      <div className="sol-conn">
+        <input
+          className="sol-conn__url"
+          type="text"
+          value={place}
+          placeholder="place, for example Boise"
+          spellCheck={false}
+          onChange={(e) => setPlace(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          onPointerDown={stopDragStart}
+          onMouseDown={(e) => e.stopPropagation()}
+        />
+        {data.matches.length > 1 && (
+          <LazySelect
+            className="sol-conn__select"
+            value={data.pickedLabel || data.matches[0].label}
+            title="Which match"
+            onChange={(e) => { data.pickedLabel = e.target.value; void processGraph(); }}
+          >
+            {data.matches.map((m) => <option key={m.label} value={m.label}>{m.label}</option>)}
+          </LazySelect>
+        )}
+        <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
+      </div>
+    </NodeShell>
+  );
+}

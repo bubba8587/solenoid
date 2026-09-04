@@ -87,6 +87,7 @@ export const INIT_FIELD_ORDER = [
   "layoutHidden",
   "inheritFormat",
   "chip",
+  "pickedLabel",
 ] as const;
 
 // Object-valued extras, appended after INIT_FIELD_ORDER in this fixed order.

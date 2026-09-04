@@ -136,6 +136,16 @@ plus the global "Always allow network"). Allow → `docMetaStore.setNetworkAllow
 `refreshAllConnections`. LocalFile (disk) is not network → not gated. Pinned by
 `connectionStore.test.ts` (own never gated, foreign gated until allowed, always-allow bypass).
 
+**C1 widget nodes — Geocode (Lando, first of the bundle).** Place name → lat / lon / IANA timezone /
+label, via Open-Meteo geocoding (keyless, CORS-open). Reuses the WebSource fetch pattern verbatim
+(sync data() + one background fetch per place through connectionStore, so it rides the C2 gate for
+free) — `geocodeProvider.ts` is the pure, fixture-tested parse. Ambiguity is a per-node pick stored
+by the match's LABEL (indexes swap cities when the API reorders on refresh), default = top match.
+Files: provider + `GeocodeNode` (connection.ts) + `GeocodeComponent` (ConnectionNodes) + catalog
+(Connections) + registry; `pickedLabel` serialized, `matches` transient. Pinned by
+`geocodeProvider.test.ts`. Next: Weather (consumes it; brings the garden-watering seed), then
+Holidays, TZ/QR, FX last (FX recorded IN for the bundle per Han).
+
 **D1 — formula-surface allowlist: Option A DROPPED on step-0 findings (Chewie).** Option A
 (one guard before `broadcastCall`: an undeclared FX name refuses ARRAY args) was greenlit on
 the proposal's premise that only "a handful" of undeclared names broadcast fine. Step 0
