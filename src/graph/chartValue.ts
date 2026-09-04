@@ -124,21 +124,34 @@ export interface RecordField {
   rowSpan: number;
   colSpan: number;
 }
-// The record figure, three views of one layout: `card` draws the picked row,
+/** The gallery tile-size preset (`cardsize` option): small / medium (default) / large. */
+export type RecordSize = "s" | "m" | "l";
+
+/** WHICH field is the record's title (the prominent line the List view leads with). The
+ *  ONE place this is decided: today the first field, so a per-card title marker (the pending
+ *  `#field` layout marker) plugs in HERE and every view follows. */
+export function titleIndexFor(fields: RecordField[]): number {
+  return fields.length > 0 ? 0 : -1;
+}
+
+// The record figure, four views of one layout: `card` draws the picked row,
 // `gallery` every row as a grid of cards, `board` every row in lanes keyed by a
-// grouping column. `index`/`total` are the card view's 1-based pick and the row
-// count (index 0 = no record selected).
+// grouping column, `list` every row as an indented outline (title then fields).
+// `index`/`total` are the card view's 1-based pick and the row count (index 0 = no
+// record selected).
 export interface RecordPayload {
   kind: "record";
-  view: "card" | "gallery" | "board";
+  view: "card" | "gallery" | "board" | "list";
   /** Grid column count within ONE card (the widest layout row). */
   cols: number;
   /** One entry per drawn card; the card view has exactly one (the picked row). */
   cards: RecordField[][];
-  /** Board lanes: label + indices into `cards`; absent for card/gallery. */
+  /** Board lanes: label + indices into `cards`; absent for card/gallery/list. */
   lanes?: Array<{ label: string; cards: number[] }>;
-  /** Rows beyond the drawing cap (gallery/board draw at most the cap). */
+  /** Rows beyond the drawing cap (gallery/board/list draw at most the cap). */
   more?: number;
+  /** Gallery tile size preset; absent = medium. Gallery view only. */
+  size?: RecordSize;
   index: number;
   total: number;
 }
