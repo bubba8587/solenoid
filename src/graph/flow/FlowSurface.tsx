@@ -85,7 +85,7 @@ import { unpackComposite } from "../compositeLogic";
 import { compositeEditorStore } from "../compositeEditorStore";
 import { moveGroupMembers, reconcileGroupMembership, absorbIntoContainingGroup, setGroupLocked } from "../groupLogic";
 import { socketFlipStore } from "../socketFlipStore";
-import { modalOwnsKeyboard } from "../modalGuard";
+import { modalOwnsKeyboard, keyUnderModal } from "../modalGuard";
 import { rebuildGroupMembership, groupMembershipStore } from "../groupMembership";
 import { syncGroupCollapse } from "../groupCollapse";
 import { isGraphRebuilding } from "../process";
@@ -503,7 +503,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       const tag = target?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!target?.isContentEditable) return;
       // An open overlay (any modal / pop-up, add menu, isolate) takes it.
-      if (modalOwnsKeyboard() || menuRef.current || isolateStore.isActive()) return;
+      if (keyUnderModal(e) || menuRef.current || isolateStore.isActive()) return;
       hooksRef.current.onEscape();
     };
     window.addEventListener("keydown", onKeyDown);

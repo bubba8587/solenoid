@@ -13,7 +13,7 @@ import { presentationStore } from "./presentationStore";
 import { paletteStore } from "./paletteStore";
 import { frStore } from "./frStore";
 import { settingsPanel } from "./settingsStore";
-import { modalOwnsKeyboard } from "./modalGuard";
+import { keyUnderModal } from "./modalGuard";
 import { cableSelectionStore } from "./cableState";
 import { ConduitNode, AngleDialNode, GroupNode } from "./rete-nodes";
 import { toggleAllChrome, toggleChrome } from "./chromeToggle";
@@ -152,7 +152,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
 
     // A modal / pop-up owns the keyboard (modalGuard): Enter in a confirm must not
     // also open the palette, A under a Frame Input pop-up must not open the Add menu.
-    if (modalOwnsKeyboard() && e.key !== "F9") return;
+    if (keyUnderModal(e) && e.key !== "F9") return;
 
     // F9 stays live while typing, presenting, drilled in and under a modal — there it
     // is the only remaining recompute path. Only the compute gate outranks it.

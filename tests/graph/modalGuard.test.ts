@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { modalOwnsKeyboard, MODAL_SELECTOR } from "../../src/graph/modalGuard";
+import { modalOwnsKeyboard, markIfUnderModal, keyUnderModal, MODAL_SELECTOR } from "../../src/graph/modalGuard";
 import { paletteStore } from "../../src/graph/paletteStore";
 import { frStore } from "../../src/graph/frStore";
 import { settingsPanel } from "../../src/graph/settingsStore";
@@ -27,6 +27,15 @@ describe("modalOwnsKeyboard", () => {
     for (const root of ['[aria-modal="true"]', ".sol-popup-overlay", ".solenoid-confirm__overlay", ".conn-dialog__overlay"]) {
       expect(MODAL_SELECTOR).toContain(root);
     }
+  });
+
+  it("pins the capture-time answer on the event: a key that closed its modal still reads as under it", () => {
+    const enter = {};
+    markIfUnderModal(enter, docWith(true));   // capture: the confirm is open
+    expect(keyUnderModal(enter, docWith(false))).toBe(true); // bubble: the confirm is gone
+    const later = {};
+    markIfUnderModal(later, docWith(false));
+    expect(keyUnderModal(later, docWith(false))).toBe(false);
   });
 
   it("is true while a dialog-less surface (palette, reference, settings, shortcuts) is open", () => {
