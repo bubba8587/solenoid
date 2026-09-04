@@ -185,7 +185,8 @@ const LINE_KEYS: readonly ChartBuilderKey[] =
 const SCATTER_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "markersize", "alpha", "fontsize"];
 // Pie / radial / funnel paint each slice from the palette, so a single `color` is inert —
-// it isn't offered. Radar is one series, so it keeps `color`.
+// it isn't offered. Radar keeps `color`: it paints a single-series radar; a multi-series one
+// uses the palette.
 const PIE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize", "pielabels"];
 const RADAR_KEYS: readonly ChartBuilderKey[] = ["title", "color", "grid", "radarscale", "fontsize"];
 const SLICE_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];

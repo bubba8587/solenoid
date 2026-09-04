@@ -87,20 +87,31 @@ function SelectInputRow({ node, emit, socketKey, label, options, clearValue }: {
 
 const TARGET_OPTS = CHART_TARGET_LIST.map((t) => ({ value: t.id, label: t.label, group: t.group }));
 
-const PIE_LABEL_OPTS = [
-  { value: "outside", label: "Labels: outside" },
-  { value: "inside", label: "Labels: on slice" },
-  { value: "off", label: "Labels: off" },
-] as const;
-
-const RADAR_SCALE_OPTS = [
-  { value: "axis", label: "Scale: per axis" },
-  { value: "shared", label: "Scale: shared" },
-] as const;
-
 const STR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "color"];
 const TOGGLE_KEYS: readonly { key: ChartBuilderKey; label: string }[] =
   [{ key: "grid", label: "Grid" }, { key: "marker", label: "Markers" }];
+const SELECT_KEYS: readonly {
+  key: ChartBuilderKey;
+  label: string;
+  options: readonly { value: string; label: string }[];
+  clearValue: string;
+}[] = [
+  {
+    key: "pielabels", label: "Pie labels", clearValue: "outside",
+    options: [
+      { value: "outside", label: "Labels: outside" },
+      { value: "inside", label: "Labels: on slice" },
+      { value: "off", label: "Labels: off" },
+    ],
+  },
+  {
+    key: "radarscale", label: "Radar scale", clearValue: "axis",
+    options: [
+      { value: "axis", label: "Scale: per axis" },
+      { value: "shared", label: "Scale: shared" },
+    ],
+  },
+];
 const NUM_KEYS: readonly ChartBuilderKey[] = ["ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 
 /** The chart-type dropdown shapes the form, but a WIRED or valued row stays
@@ -119,10 +130,9 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
   const inert = (keys: readonly ChartBuilderKey[]) => keys.filter((k) => !accepted.has(k) && live(k));
   const inertStr = inert(STR_KEYS);
   const inertToggles = TOGGLE_KEYS.filter(({ key }) => !accepted.has(key) && live(key));
-  const inertPie = !accepted.has("pielabels") && live("pielabels");
-  const inertRadar = !accepted.has("radarscale") && live("radarscale");
+  const inertSelects = SELECT_KEYS.filter(({ key }) => !accepted.has(key) && live(key));
   const inertNum = inert(NUM_KEYS);
-  const anyInert = inertStr.length > 0 || inertToggles.length > 0 || inertPie || inertRadar || inertNum.length > 0;
+  const anyInert = inertStr.length > 0 || inertToggles.length > 0 || inertSelects.length > 0 || inertNum.length > 0;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <div style={{ padding: "2px 0 4px" }}>
@@ -132,12 +142,9 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
       {TOGGLE_KEYS.filter(({ key }) => accepted.has(key)).map(({ key, label }) => (
         <ToggleInputRow key={key} node={data} emit={emit} socketKey={key} label={label} />
       ))}
-      {accepted.has("pielabels") && (
-        <SelectInputRow node={data} emit={emit} socketKey="pielabels" label="Pie labels" options={PIE_LABEL_OPTS} clearValue="outside" />
-      )}
-      {accepted.has("radarscale") && (
-        <SelectInputRow node={data} emit={emit} socketKey="radarscale" label="Radar scale" options={RADAR_SCALE_OPTS} clearValue="axis" />
-      )}
+      {SELECT_KEYS.filter(({ key }) => accepted.has(key)).map(({ key, label, options, clearValue }) => (
+        <SelectInputRow key={key} node={data} emit={emit} socketKey={key} label={label} options={options} clearValue={clearValue} />
+      ))}
       <InlineInputs node={data} emit={emit} keys={acc(NUM_KEYS) as string[]} />
       {anyInert && (
         <div style={{ opacity: 0.45 }} title={`Not read by ${spec.label}`}>
@@ -145,12 +152,9 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
           {inertToggles.map(({ key, label }) => (
             <ToggleInputRow key={key} node={data} emit={emit} socketKey={key} label={label} />
           ))}
-          {inertPie && (
-            <SelectInputRow node={data} emit={emit} socketKey="pielabels" label="Pie labels" options={PIE_LABEL_OPTS} clearValue="outside" />
-          )}
-          {inertRadar && (
-            <SelectInputRow node={data} emit={emit} socketKey="radarscale" label="Radar scale" options={RADAR_SCALE_OPTS} clearValue="axis" />
-          )}
+          {inertSelects.map(({ key, label, options, clearValue }) => (
+            <SelectInputRow key={key} node={data} emit={emit} socketKey={key} label={label} options={options} clearValue={clearValue} />
+          ))}
           <InlineInputs node={data} emit={emit} keys={inertNum as string[]} />
         </div>
       )}
