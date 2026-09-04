@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { readInput, numIn, numListIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
+import { readInput, numIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
 import { extractVariables, compileEvaluator, rowRefNames, type ExprEvaluator } from "../excelFormula";
 import { isLambdaValue } from "../lambdaValue";
 import { computeColumnCells } from "../computedColumnCore";
@@ -22,7 +22,7 @@ import {
 } from "../frame";
 import {
   pivotFrame, nestFrame, unnestCube,
-  splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity, allocateFrame,
+  splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity, resolveDecisionWeights, allocateFrame,
   mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows,
   lookupCell, lookupRowIndex,
   frameRowAt, cubeRowAt, asLookupSource, reconcileFrames,
@@ -1274,24 +1274,14 @@ export type DecisionDetail = "summary" | "breakdown";
 export class DecisionMatrixNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frame: "Rows are options. Number and logical columns are the criteria, and the first text column names the options. Date columns are skipped.",
-    weights: "A wired list pairs with the criteria columns in order and overrides the weights typed on the card.",
+    weights: "One row per criterion: a Criterion name, its Weight (negative = lower is better, like cost), and optionally a Norm (Raw / ÷Max / Rank). A criterion you leave out weighs 1 at the default normalize. Build it with a Frame Input.",
   };
 
   label: string;
   normalize: DecisionNormalize;
   detail: DecisionDetail;
-  // Inline weights (criterion name → weight, default 1); a wired `weights` list overrides
-  // this positionally.
-  weightMap: Record<string, number>;
-  // Per-criterion normalize OVERRIDE; absent = inherit the node default `normalize`.
-  normMap: Record<string, DecisionNormalize>;
-  // Refreshed each compute, in the order the weights align to.
-  criteria: string[] = [];
-  // The wired weights list as of the last compute (null when unwired) — the card
-  // shows these read-only in place of the typed weight boxes.
-  wiredWeights: number[] | null = null;
   cachedResult: FrameValue | SolError | null = null;
-  width = 248; height = 235;
+  width = 240; height = 205;
 
   static frameHints: Record<string, FrameHint> = {
     frame: { columns: [
@@ -1300,33 +1290,30 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
       { name: "Speed", type: "number", cells: [9, 6, 4] },
       { name: "Risk", type: "number", cells: [4, 8, 6] },
     ] },
+    weights: { columns: [
+      { name: "Criterion", type: "string", cells: ["Cost", "Speed", "Risk"] },
+      { name: "Weight", type: "number", cells: [-1, 2, -1] },
+      { name: "Norm", type: "string", cells: ["Rank", "÷Max", "Rank"] },
+    ] },
   };
 
-  constructor(init?: { label?: string; normalize?: DecisionNormalize; detail?: DecisionDetail; weightMap?: Record<string, number>; normMap?: Record<string, DecisionNormalize> }) {
+  constructor(init?: { label?: string; normalize?: DecisionNormalize; detail?: DecisionDetail }) {
     super("DecisionMatrix");
     this.label = init?.label ?? "Decision Matrix";
     this.normalize = init?.normalize ?? "max";
     this.detail = init?.detail ?? "summary";
-    this.weightMap = init?.weightMap ? { ...init.weightMap } : {};
-    this.normMap = init?.normMap ? { ...init.normMap } : {};
     this.addInput("frame", frameIn("Scores"));
-    this.addInput("weights", numListIn("Weights"));
+    this.addInput("weights", frameIn("Weights"));
     this.addOutput("frame", frameOut("Ranking"));
   }
 
-  data(inputs: { frame?: (FrameValue | null)[]; weights?: (number[] | number | null)[] }) {
+  data(inputs: { frame?: (FrameValue | null)[]; weights?: (FrameValue | null)[] }) {
     const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; this.criteria = []; this.wiredWeights = null; return { frame: null }; }
-    this.criteria = decisionCriteria(f);
-    const wRaw = inputs.weights?.[0];
-    const wired = Array.isArray(wRaw) ? wRaw : typeof wRaw === "number" ? [wRaw] : null;
-    this.wiredWeights = wired;
-    // Wired list wins (positional); otherwise the inline name-keyed weights, default 1.
-    const weights = wired ?? this.criteria.map((name) => {
-      const w = this.weightMap[name];
-      return typeof w === "number" && Number.isFinite(w) ? w : 1;
-    });
-    this.cachedResult = runVerb(() => decisionMatrix(f, weights, this.normalize, this.detail === "breakdown", this.normMap));
+    if (!f) { this.cachedResult = null; return { frame: null }; }
+    // Weights and per-criterion Norm ride a criterion-keyed frame, aligned to the Scores
+    // criteria by name (orderedColumnsAreFrames); unwired → all weights 1, default normalize.
+    const { weights, normOverrides } = resolveDecisionWeights(inputs.weights?.[0] ?? null, decisionCriteria(f));
+    this.cachedResult = runVerb(() => decisionMatrix(f, weights, this.normalize, this.detail === "breakdown", normOverrides));
     return { frame: this.cachedResult };
   }
 }
@@ -1336,7 +1323,7 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
 export class DecisionSensitivityNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     scores: "The options frame a Decision Matrix takes: rows are options, number columns criteria.",
-    scenarios: "One row per scenario, named by the first text column. A number column named after a criterion carries that weight; a criterion with no column weighs 1.",
+    scenarios: "The Decision Matrix weights frame widened to many scenarios: one row per Criterion, and a number column per scenario (its header names it) carrying that scenario's weight. An optional Norm column applies per criterion across every scenario; a criterion a scenario omits weighs 1.",
   };
 
   label: string;
@@ -1347,10 +1334,10 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
   static frameHints: Record<string, FrameHint> = {
     scores: DecisionMatrixNode.frameHints.frame,
     scenarios: { columns: [
-      { name: "Scenario", type: "string", cells: ["Balanced", "Cost-first", "Speed-first"] },
-      { name: "Cost", type: "number", cells: [-1, -3, -1] },
-      { name: "Speed", type: "number", cells: [1, 1, 3] },
-      { name: "Risk", type: "number", cells: [-1, -1, -1] },
+      { name: "Criterion", type: "string", cells: ["Cost", "Speed", "Risk"] },
+      { name: "Balanced", type: "number", cells: [-1, 1, -1] },
+      { name: "Cost-first", type: "number", cells: [-3, 1, -1] },
+      { name: "Speed-first", type: "number", cells: [-1, 3, -1] },
     ] },
   };
 

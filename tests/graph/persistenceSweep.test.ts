@@ -157,8 +157,6 @@ describe("everyFieldClassified — every own field is persisted or deliberately 
     effectiveMin: "derived from literals", effectiveMax: "derived from literals", effectiveStep: "derived from literals",
     // ── recomputed from inputs every engine pass ──
     chartOptions: "parsed per data() from the persisted options input/literal",
-    criteria: "detected from the input frame per compute",
-    wiredWeights: "mirror of the wired weights list per compute, for the card's read-only rows",
     sourceColumns: "detected from the input frame per compute",
     defVars: "the definition's variables/params, re-stashed per compute for the binding pickers",
     rawInputs: "the pass's raw wired values (chart/lookup diagnostics)",

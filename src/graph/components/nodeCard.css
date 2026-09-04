@@ -1299,72 +1299,14 @@ body.solenoid-scrubbing * {
   -webkit-box-orient: vertical;
 }
 
-/* Decision Matrix — per-criterion weight boxes (one labeled, default-1 number
-   field per detected criterion). A compact name → value row, matching the io-row
-   rhythm so the weights read as a small panel under the toggles. */
-.solenoid-node__dm-weights {
-  margin-top: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.solenoid-node__dm-weight-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-/* Three aligned columns: criterion name (fills), then the right-aligned Weight and
-   Norm controls at fixed widths so they line up across rows AND under the header. */
-.solenoid-node__dm-col-crit {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.solenoid-node__dm-col-weight { flex: 0 0 46px; text-align: right; }
-.solenoid-node__dm-col-norm { flex: 0 0 62px; }
-.solenoid-node__dm-weight-row .solenoid-node__inline-input {
-  flex: 0 0 46px;
-  width: 46px;
-  text-align: right;
-}
-/* The per-column normalize override — compact, just wide enough for "÷Max" + chevron
-   (it's full-width by default). */
-.solenoid-node__dm-weight-row .solenoid-node__select {
-  flex: 0 0 62px;
-  width: 62px;
-  font-size: 12px;
-  padding: 3px 22px 3px 6px;
-}
-/* Column-header row: the small uppercase labels over Weight / Norm. */
-.solenoid-node__dm-weights-head {
-  margin-top: 2px;
-}
-.solenoid-node__dm-weights-head span {
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-muted, #9aa0a6);
-}
-/* Read-only weight cell when the Weights socket is wired — the wired value shows
-   where the typed box would be. */
-.solenoid-node__dm-weight-ro {
-  font-size: 12px;
-  color: var(--text-muted, #9aa0a6);
-  font-variant-numeric: tabular-nums;
-}
+/* Decision Matrix / Sensitivity — the small muted caption over each default toggle
+   (Normalize, Output). The per-criterion weight + Norm now live on the wired Weights
+   frame, so the on-card weight table and its header/read-only styles are gone. */
 .solenoid-node__dm-caption {
   margin-top: 4px;
   font-size: 10px;
   line-height: 1.3;
   color: var(--text-muted, #9aa0a6);
-}
-.solenoid-node__dm-hint {
-  font-size: 11px;
-  line-height: 1.35;
-  color: var(--text-muted, #9aa0a6);
-  font-style: italic;
 }
 
 /* Native option list (the OS popup). Chromium / WebView2 paints the

@@ -1518,7 +1518,7 @@ const round4 = (n: number): number => {
 
 // Date columns are deliberately NOT criteria — a date's serial is never a
 // meaningful "score". One definition, shared by the verb and the node (which needs
-// the criteria NAMES, in this order, to render a labeled weight box per criterion).
+// the criteria NAMES, in this order, to align a weights frame to them by name).
 export function decisionColumns(f: FrameValue): { labelCol: FrameColumn | null; criteriaCols: FrameColumn[] } {
   const labelCol = f.columns.find((c) => c.type === "string") ?? null;
   const criteriaCols = f.columns.filter(
@@ -1530,6 +1530,68 @@ export function decisionColumns(f: FrameValue): { labelCol: FrameColumn | null; 
 /** The criteria column names, in the order the weights list aligns to. */
 export function decisionCriteria(f: FrameValue): string[] {
   return decisionColumns(f).criteriaCols.map((c) => c.name);
+}
+
+// ─── Criterion-keyed weights (a frame, not a list) ──────────────────────────────
+// The DM weights and the Sensitivity scenarios both key BY CRITERION NAME off a frame's
+// first text column (orderedColumnsAreFrames — the label rides the data, not a positional
+// list). A criterion the frame omits weighs 1 and inherits the default normalize.
+
+/** criterion name (trimmed, lower-cased) → its row index in a criterion-keyed frame. */
+function criterionRowIndex(f: FrameValue): Map<string, number> {
+  const critCol = f.columns.find((c) => c.type === "string");
+  const m = new Map<string, number>();
+  critCol?.values.forEach((v, i) => {
+    if (typeof v === "string") { const k = v.trim().toLowerCase(); if (k && !m.has(k)) m.set(k, i); }
+  });
+  return m;
+}
+
+const numOrNull = (v: FrameCell): number | null =>
+  typeof v === "number" && Number.isFinite(v) ? v : typeof v === "boolean" ? (v ? 1 : 0) : null;
+
+/** A Norm cell → a normalize mode; blank / unrecognized → null (inherit the default).
+ *  Accepts the card's labels (Raw / ÷Max / Rank) and the raw enum (none / max / rank). */
+export function parseNormalize(v: FrameCell): DecisionNormalize | null {
+  if (typeof v !== "string") return null;
+  const s = v.trim().toLowerCase().replace(/[÷\s]/g, "");
+  if (s === "raw" || s === "none") return "none";
+  if (s === "max" || s === "divmax") return "max";
+  if (s === "rank") return "rank";
+  return null;
+}
+
+/** Per-criterion normalize overrides read from an optional `Norm` text column. */
+function normOverridesFrom(f: FrameValue, criteria: string[], rowIndex: Map<string, number>): Record<string, DecisionNormalize> {
+  const critCol = f.columns.find((c) => c.type === "string");
+  const normCol = f.columns.find((c) => c !== critCol && c.name.trim().toLowerCase() === "norm");
+  const out: Record<string, DecisionNormalize> = {};
+  if (!normCol) return out;
+  for (const name of criteria) {
+    const r = rowIndex.get(name.trim().toLowerCase());
+    const m = r != null ? parseNormalize(normCol.values[r]) : null;
+    if (m) out[name] = m;
+  }
+  return out;
+}
+
+/** A DM weights frame → weights aligned to `criteria` + per-criterion normalize overrides.
+ *  First text column = Criterion; a number column named Weight/Value (else the first number
+ *  column) = the weight; an optional Norm text column sets the per-criterion mode. Unwired
+ *  (or a criterion the frame omits) → weight 1, default normalize. */
+export function resolveDecisionWeights(
+  wf: FrameValue | null, criteria: string[],
+): { weights: number[] | null; normOverrides: Record<string, DecisionNormalize> } {
+  if (!wf) return { weights: null, normOverrides: {} };
+  const rowIndex = criterionRowIndex(wf);
+  const nums = wf.columns.filter((c) => c.type === "number");
+  const weightCol = nums.find((c) => ["weight", "weights", "value"].includes(c.name.trim().toLowerCase())) ?? nums[0] ?? null;
+  const weights = criteria.map((name) => {
+    const r = rowIndex.get(name.trim().toLowerCase());
+    const v = r != null && weightCol ? numOrNull(weightCol.values[r]) : null;
+    return v ?? 1;
+  });
+  return { weights, normOverrides: normOverridesFrom(wf, criteria, rowIndex) };
 }
 
 /** Allocator: read each category's [min, max] and value weight from `f`, run the chosen
@@ -1660,10 +1722,11 @@ export function decisionMatrix(
 }
 
 // ─── Decision matrix sensitivity (weight scenarios → a Cube of rankings) ────────
-// `scenarios`: each ROW is a scenario — its first text column names it, and a numeric
-// column named after a criterion gives that criterion's weight (missing/blank → 1).
-// Output Cube row: Scenario · Winner · Margin · Ranking (the full Option·Score·Rank
-// table nested in the cell). Margin = top score − runner-up.
+// `scenarios` is the DM weights frame widened to many scenarios: the first text column is
+// the Criterion (rows), each NUMBER column is one scenario (its header names it) carrying
+// that scenario's weight per criterion; an optional Norm column applies per criterion across
+// every scenario. A criterion a scenario omits weighs 1. Output Cube row: Scenario · Winner ·
+// Margin · Ranking (the full Option·Score·Rank table nested in the cell). Margin = top − runner-up.
 export function decisionSensitivity(
   scores: FrameValue,
   scenarios: FrameValue,
@@ -1674,26 +1737,30 @@ export function decisionSensitivity(
     throw solError("#VALUE!", "Decision Matrix needs at least one numeric criterion column");
   }
 
-  const nScen = frameRowCount(scenarios);
-  const scenLabelCol = scenarios.columns.find((c) => c.type === "string") ?? null;
-  const weightColFor = (name: string) => scenarios.columns.find((c) => c.name === name) ?? null;
-  // With zero matching columns every weight defaults to 1 and all scenarios come out
-  // identical — a naming mismatch (renamed criteria), not a sensitivity run.
-  if (!criteria.some((name) => weightColFor(name))) {
-    throw solError("#VALUE!", "No Scenarios column is named after a criterion");
+  const rowIndex = criterionRowIndex(scenarios);
+  const scenarioCols = scenarios.columns.filter((c) => c.type === "number");
+  if (scenarioCols.length === 0) {
+    throw solError("#VALUE!", "Scenarios needs a number column per scenario");
   }
+  // With no criterion row matched, every weight defaults to 1 and all scenarios come out
+  // identical — a naming mismatch (renamed criteria), not a sensitivity run.
+  if (!criteria.some((name) => rowIndex.has(name.trim().toLowerCase()))) {
+    throw solError("#VALUE!", "No Scenarios row is named after a criterion");
+  }
+  const normOverrides = normOverridesFrom(scenarios, criteria, rowIndex);
 
   const scenarioCells: CubeCell[] = [];
   const winnerCells: CubeCell[] = [];
   const marginCells: CubeCell[] = [];
   const rankingCells: CubeCell[] = [];
 
-  for (let i = 0; i < nScen; i++) {
+  for (const scenCol of scenarioCols) {
     const weights = criteria.map((name) => {
-      const v = weightColFor(name)?.values[i];
-      return typeof v === "number" && Number.isFinite(v) ? v : 1; // missing weight → 1
+      const r = rowIndex.get(name.trim().toLowerCase());
+      const v = r != null ? numOrNull(scenCol.values[r]) : null;
+      return v ?? 1; // missing weight → 1
     });
-    const ranking = decisionMatrix(scores, weights, normalize, false);
+    const ranking = decisionMatrix(scores, weights, normalize, false, normOverrides);
     // Positional: breakdown=false fixes the shape to label · Score · Rank (a
     // criterion NAMED "Score" would defeat a find-by-name here).
     const scoreCol = ranking.columns[1];
@@ -1701,7 +1768,7 @@ export function decisionSensitivity(
     const top = typeof scoreCol.values[0] === "number" ? (scoreCol.values[0] as number) : null;
     const second = typeof scoreCol.values[1] === "number" ? (scoreCol.values[1] as number) : null;
 
-    scenarioCells.push(scenLabelCol ? (scenLabelCol.values[i] ?? `Scenario ${i + 1}`) : `Scenario ${i + 1}`);
+    scenarioCells.push(scenCol.name); // the scenario is the column header
     // Every option tied at rank 1 (best-first, so they lead the frame) — a dead
     // tie names them all rather than silently picking whichever sorted first.
     const tied = ranking.columns[0].values.filter((_, k) => rankCol.values[k] === 1);
@@ -1711,7 +1778,7 @@ export function decisionSensitivity(
   }
 
   return cubeFromColumns([
-    { name: scenLabelCol?.name ?? "Scenario", cells: scenarioCells },
+    { name: "Scenario", cells: scenarioCells },
     { name: "Winner", cells: winnerCells },
     { name: "Margin", cells: marginCells },
     { name: "Ranking", cells: rankingCells },

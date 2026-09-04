@@ -61,7 +61,7 @@ import { getActiveView, getOwningEditor, getOwningView } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { collapseStore } from "../collapseStore";
 import { pivotEditor } from "../pivotEditorStore";
-import { InlineInputs, InlineNumberField, InlineTextField, useConnectedInputs } from "./inlineInput";
+import { InlineInputs, InlineTextField, useConnectedInputs } from "./inlineInput";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import { ExtensibleInputs } from "./ExtensibleInputs";
 import { FrameDisplay } from "./FrameDisplay";
@@ -659,71 +659,18 @@ const DECISION_DETAIL_OPTIONS: { value: DecisionDetail; label: string; title: st
   { value: "breakdown", label: "Breakdown", title: "Add a signed column per criterion: its weighted contribution. The contributions sum to the Score." },
 ];
 
-// Per-criterion normalize override. "" = inherit the node's default mode (the
-// global SegToggle); the rest force this one column.
-const DECISION_PERCOL_OPTIONS: { value: "" | DecisionNormalize; label: string; title: string }[] = [
-  { value: "", label: "—", title: "Follow the Normalize default above" },
-  { value: "none", label: "Raw", title: "This column: use the numbers as they are" },
-  { value: "max", label: "÷Max", title: "This column: divide by its biggest value, top = 1" },
-  { value: "rank", label: "Rank", title: "This column: keep only the order, worst 0 to best 1. Suits dollar columns." },
-];
-
-const DECISION_CABLE_ONLY = new Set(["weights"]);
-
-// One row per criterion, NAMED from the upstream Scores frame rather than blind
-// positional slots. A wired `weights` cable overrides the weights, not the modes.
+// The per-criterion weight and normalize live on the wired Weights frame (a Criterion ·
+// Weight · Norm table you build with a Frame Input), not on the card. The card keeps only
+// the node-wide defaults: the fallback Normalize and the Summary/Breakdown output shape.
 export function DecisionMatrixComponent({ data, emit }: NodeProps<DecisionMatrixNodeType>) {
   const [normalize, setNormalize] = useNodeField(data, "normalize");
   const [detail, setDetail] = useNodeField(data, "detail");
-  const connected = useConnectedInputs(data.id);
-  const wired = connected.has("weights");
-  const criteria = data.criteria;
-
-  const setWeight = (name: string, v: number | undefined) => {
-    if (v === undefined) delete data.weightMap[name];
-    else data.weightMap[name] = v;
-    void processGraph(data.id);
-  };
-
-  const setNorm = (name: string, mode: "" | DecisionNormalize) => {
-    if (mode === "") delete data.normMap[name];
-    else data.normMap[name] = mode;
-    void processGraph(data.id);
-  };
-
-  // Mirror weightOf in frameVerbs: a missing or non-finite wired entry weighs 1.
-  const wiredWeightAt = (i: number): number => {
-    const w = data.wiredWeights?.[i];
-    return typeof w === "number" && Number.isFinite(w) ? w : 1;
-  };
 
   return (
     <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} cableOnlyKeys={DECISION_CABLE_ONLY} />
-      <div className="solenoid-node__dm-caption" title="The default for every criterion. Norm on a row overrides it.">Normalize</div>
+      <InlineInputs node={data} emit={emit} />
+      <div className="solenoid-node__dm-caption" title="The fallback for a criterion whose Weights-frame Norm cell is blank.">Normalize</div>
       <SegToggle value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
-      <div className="solenoid-node__dm-weights">
-        {criteria.length === 0 ? (
-          <div className="solenoid-node__dm-hint">— connect a Scores frame</div>
-        ) : (
-          <>
-            <div className="solenoid-node__dm-weight-row solenoid-node__dm-weights-head">
-              <span className="solenoid-node__dm-col-crit">Criterion</span>
-              <span className="solenoid-node__dm-col-weight">Weight</span>
-              <span className="solenoid-node__dm-col-norm" title={'Per-criterion normalize override. "—" uses the default above.'}>Norm</span>
-            </div>
-            {criteria.map((name, i) => (
-              <div className="solenoid-node__dm-weight-row" key={name}>
-                <span className="solenoid-node__io-label solenoid-node__dm-col-crit" title={`“${name}”: weight and normalize. A negative weight means lower is better.`}>{name}</span>
-                {wired
-                  ? <span className="solenoid-node__dm-col-weight solenoid-node__dm-weight-ro" title="From the wired Weights list">{wiredWeightAt(i)}</span>
-                  : <InlineNumberField value={data.weightMap[name] ?? 1} onChange={(v) => setWeight(name, v)} />}
-                <ArgSelect value={data.normMap[name] ?? ""} options={DECISION_PERCOL_OPTIONS} onChange={(m) => setNorm(name, m)} />
-              </div>
-            ))}
-          </>
-        )}
-      </div>
       <div className="solenoid-node__dm-caption">Output</div>
       <SegToggle value={detail} options={DECISION_DETAIL_OPTIONS} onChange={setDetail} />
       <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
@@ -739,7 +686,7 @@ export function DecisionSensitivityComponent({ data, emit }: NodeProps<DecisionS
   return (
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
-      <div className="solenoid-node__dm-caption" title="Applies to every criterion, in every scenario.">Normalize</div>
+      <div className="solenoid-node__dm-caption" title="The fallback for a criterion whose Norm cell is blank; applies across every scenario.">Normalize</div>
       <SegToggle value={normalize} options={DECISION_NORMALIZE_OPTIONS} onChange={setNormalize} />
       <CubeDisplay cube={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>

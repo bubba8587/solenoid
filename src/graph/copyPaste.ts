@@ -88,7 +88,7 @@ export const INIT_FIELD_ORDER = [
 
 // Object-valued extras, appended after INIT_FIELD_ORDER in this fixed order.
 export const INIT_EXTRA_FIELD_ORDER = [
-  "funcs", "filterExclude", "condConfig", "fieldTypes", "weightMap", "normMap", "titles", "selectedKeys", "varDescriptions", "bindings",
+  "funcs", "filterExclude", "condConfig", "fieldTypes", "titles", "selectedKeys", "varDescriptions", "bindings",
 ] as const;
 
 export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
@@ -120,12 +120,6 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
   }
   if (n.fieldTypes && typeof n.fieldTypes === "object") {
     init.fieldTypes = { ...(n.fieldTypes as object) };
-  }
-  if (n.weightMap && typeof n.weightMap === "object") {
-    init.weightMap = { ...(n.weightMap as object) };
-  }
-  if (n.normMap && typeof n.normMap === "object") {
-    init.normMap = { ...(n.normMap as object) };
   }
   // Keep only LIVE input keys, else an orphan title breaks the text form's
   // byte-identical second write.
