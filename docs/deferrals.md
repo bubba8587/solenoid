@@ -97,12 +97,6 @@ and its entry deleted. Ruled-out-forever ideas: `out-of-scope.md`; settled ratio
 
 ## Parked bugs (explicitly parked by the author)
 
-- **High memory use (Chrome tab estimate) for a light app** (author 2026-08-26, parked
-  2026-08-30: wait) — longstanding, predates the RF port; not investigated. The
-  MEASUREMENT is planned (`1.4-plan.md` F5: a heap snapshot on the getting-started seed vs a
-  blank doc — retained node clones? HIC pyramids? popup caches? per-doc tab growth); the
-  virtualization lever is 2.0's `v2.0/22-canvas-at-scale.md`. This entry stays until the
-  finding lands.
 - **Choppy zoom BAND (parked by the author 2026-08-25: "something we've been chasing our
   tail on massively").** An interior range of camera scales zooms choppier than both
   extremes; not pinned to a `k` range. The full record — what is ruled out (gesture-exit
