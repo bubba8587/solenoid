@@ -11,6 +11,8 @@ import { CubeDisplay } from "./CubeDisplay";
 import { ChartFigure, type ChartShape } from "./chartView";
 import { ChartChip } from "./ChartChip";
 import { ChartExpandButton } from "./ChartExpandButton";
+import { ValueExpandButton } from "./ValueExpandButton";
+import { popOutKindFor } from "../valuePopup";
 import { MermaidView } from "./MermaidView";
 import { SvgFigure } from "./SvgFigure";
 import { isFrameValue, isCubeValue } from "../frame";
@@ -103,8 +105,18 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
   // scrolls, so only those need the sized-body wheel trap.
   const scrolls = isTable || isFrame || isCube;
 
+  // An EXPANDED frame / table / list drops its chip (full mode omits it), so give it
+  // the same corner expand affordance every chart gets — a pop-out into the table
+  // popup. It rides NodeShell's non-scrolling cornerBadge slot so it stays pinned when
+  // the body scrolls; charts keep their own in-body button, and a cube keeps its
+  // always-shown chip. Coverage pinned by displayPopupCoverage.test.ts.
+  const popKind = popOutKindFor(v);
+  const expandBadge = full && (popKind === "frame" || popKind === "table" || popKind === "list")
+    ? <ValueExpandButton value={v} label={nodeDisplayName(data)} elem={popKind === "frame" ? undefined : nodeOutputElemFamily(data.id)} />
+    : undefined;
+
   return (
-    <NodeShell node={data} emit={emit} className={growClass} nonScrollingBody={!scrolls} leading={<PortSockets node={data} emit={emit} side="input" />}>
+    <NodeShell node={data} emit={emit} className={growClass} nonScrollingBody={!scrolls} cornerBadge={expandBadge} leading={<PortSockets node={data} emit={emit} side="input" />}>
       {isError ? (
         <ValueDisplay value={v} full={full} />
       ) : isFrame ? (

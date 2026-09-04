@@ -1,7 +1,7 @@
-import { cubePopup } from "../cubePopupStore";
 import { cubeRowCount, cubeDepth, type CubeValue } from "../frame";
 import { useHostNodeId } from "./nodeContext";
 import { readChipPopupStyle } from "./chipStyle";
+import { openCubePopup } from "../valuePopup";
 import "./ArrayChip.css";
 import { stopDragStart } from "../coarse";
 
@@ -26,15 +26,10 @@ export function CubeChip({ value, label, size = "md", accent, pinNodeId }: {
       onClick={(e) => {
         e.stopPropagation();
         const st = readChipPopupStyle(e.currentTarget, "--sock-cube");
-        cubePopup.open(
-          { kind: "cube", cube: value, label: label || "Cube" },
-          {
-            accent: accent || st.accent,
-            groupColor: st.groupColor,
-            groupColorDark: st.groupColorDark,
-            pinNodeId: hostId ?? undefined,
-          },
-        );
+        openCubePopup(value, {
+          label, hostId,
+          accent: accent || st.accent, groupColor: st.groupColor, groupColorDark: st.groupColorDark,
+        });
       }}
       onPointerDown={stopDragStart}
       onMouseDown={(e) => e.stopPropagation()}
