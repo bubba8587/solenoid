@@ -1,7 +1,7 @@
 {
   "v": 2,
   "order": 515,
-  "label": "Budget allocator: value-weighted spend",
+  "label": "Budget Allocator",
   "group": "Worked examples",
   "nodes": [
     {
