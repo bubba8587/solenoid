@@ -111,6 +111,17 @@ same `<input>`, so it commits on Enter/blur exactly like a keystroke; no `Format
 Pinned by `constrainedEntry.test.ts` (the distinct list; a suggestion coerces identically to a
 typed value). Renders one `<datalist>` per text column in the active view's scroll container.
 
+**B3 — table popup polish (Lando, two commits).** (1) The always-on sticky header + row-number
+first column became a toggle: `settingsStore.tablePopupFrozen` (default on, persisted, NOT in the
+Settings panel), flipped from `PopupOverflowMenu` beside the summary-footer item; an `--unfrozen`
+class reverts the sticky cells to static. Same commit removed the "Table popup summary footer"
+row from the Settings panel — popup chrome is set in the popup (the author's rule). (2) A Record
+CARD popup now pages with ←/→ (the on-screen prev/next by keyboard): `ChartPopup` binds the arrows
+to the existing `stepRecordRow`/`recordNavTarget` (recordNav.ts, same path the Display pager uses),
+swapping the fresh chart into the popup snapshot without closing; `canvasKeyboard` already stands
+down under the `.sol-popup-overlay` (modalGuard), so the arrows reach only the popup. Pinned by
+`recordNav.test.ts` (the pager gate: card + >1 row + unwired Row, else none).
+
 **D1 — formula-surface allowlist: Option A DROPPED on step-0 findings (Chewie).** Option A
 (one guard before `broadcastCall`: an undeclared FX name refuses ARRAY args) was greenlit on
 the proposal's premise that only "a handful" of undeclared names broadcast fine. Step 0

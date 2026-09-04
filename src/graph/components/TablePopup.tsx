@@ -190,6 +190,7 @@ export function TablePopup() {
   // One stat per column in the summary footer; unset = Sum for a number column, else Count.
   const [colStat, setColStat] = useState<Record<number, FooterStat>>({});
   const showSummary = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupSummary"));
+  const frozen = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupFrozen"));
   // DISPLAY-ONLY list orientation — the value stays the flat row; copy/CSV/Markdown
   // must keep flattening to the same list.
   const [listVertical, setListVertical] = useState(false);
@@ -785,6 +786,7 @@ export function TablePopup() {
             { label: "Copy as Markdown", onClick: copyMarkdown },
             { label: "Export CSV…", onClick: exportCsv },
             ...(isFramePopup ? [{ label: showSummary ? "Hide summary footer" : "Show summary footer", onClick: () => settingsStore.set("tablePopupSummary", !showSummary) }] : []),
+            ...(view === "grid" ? [{ label: frozen ? "Unfreeze header" : "Freeze header", onClick: () => settingsStore.set("tablePopupFrozen", !frozen) }] : []),
           ]}
         />
       }
@@ -824,7 +826,7 @@ export function TablePopup() {
       {view === "grid" ? (
         <div className="table-popup__grid-scroll sol-popup__scroll">
           {datalists}
-          <table className="table-popup__grid" ref={gridRef}>
+          <table className={`table-popup__grid${frozen ? "" : " table-popup__grid--unfrozen"}`} ref={gridRef}>
             <thead>
               <tr>
                 <th className="table-popup__corner" />

@@ -43,6 +43,16 @@
   top: 0;
   z-index: 2;
 }
+/* The "Freeze header" toggle OFF (settingsStore tablePopupFrozen): the header row and
+   the row-number first column scroll with the body. Equal/higher specificity than the
+   sticky rules above (and placed after them) so `static` wins without !important. The
+   summary footer keeps its own sticky behavior — it is a separate toggle. */
+.table-popup__grid--unfrozen thead th,
+.table-popup__grid--unfrozen .table-popup__rowhead,
+.table-popup__grid--unfrozen thead th.table-popup__corner,
+.table-popup__grid--unfrozen .table-popup__fmtbody th.table-popup__corner {
+  position: static;
+}
 .table-popup__corner,
 .table-popup__colhead,
 .table-popup__rowhead {
