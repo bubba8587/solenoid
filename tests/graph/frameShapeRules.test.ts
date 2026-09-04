@@ -5,7 +5,10 @@ import {
   FrameInputNode, DropBlankRowsNode, FillBlanksNode, ReplaceValuesNode, AddColumnNode,
   ComputedColumnNode, BindColumnsNode, MergeColumnsNode, HeadersNode, AllocatorNode,
   ReconcileNode, DescribeNode, CorrMatrixNode, WindowNode, AppendNode, FrameFromListsNode,
+  ColumnsNode, RenameNode, GroupByFrameNode, UnpivotNode, PivotNode, JoinNode,
+  SplitColumnNode, AddIndexNode,
 } from "../../src/graph/nodes/frame";
+import { TextInputNode } from "../../src/graph/nodes/text";
 import { ListInputNode, FindPeaksNode } from "../../src/graph/nodes/list";
 import { PointPlotterNode, CurveNode, SlicerNode } from "../../src/graph/nodes/control";
 import { AmortizationNode } from "../../src/graph/nodes/finance";
@@ -39,6 +42,21 @@ async function shapeOf(node: object, inKey: string, text: string, outKey = "fram
 }
 
 const SALES = "Region, Qty, Price\nWest, 2, 5\nEast, 3, 7";
+
+/** Wire a frame into `frame` AND a Text Input into each config socket, then read the shape. */
+async function wiredConfig(node: object, configKeys: string[], text = SALES): Promise<Shape | null> {
+  const editor = new NodeEditor<Schemes>();
+  const src = await source(editor, text);
+  const n = node as Schemes["Node"];
+  await editor.addNode(n);
+  await editor.addConnection(new ClassicPreset.Connection(src, "frame", n, "frame") as Schemes["Connection"]);
+  for (const k of configKeys) {
+    const t = new TextInputNode() as unknown as Schemes["Node"];
+    await editor.addNode(t);
+    await editor.addConnection(new ClassicPreset.Connection(t, "value", n, k) as Schemes["Connection"]);
+  }
+  return makeFrameShapeResolver(editor as never).outShape(n.id, "frame");
+}
 
 describe("declared frame shapes match what the node would produce", () => {
   it("Drop Blank Rows forwards the column set", async () => {
@@ -200,5 +218,109 @@ describe("declared frame shapes match what the node would produce", () => {
     await editor.addConnection(new ClassicPreset.Connection(list, "list", ffl, valsKey) as Schemes["Connection"]);
     settleWildcardTypes(editor); // the Column port adopts the wired list's element type
     expect(cols(makeFrameShapeResolver(editor as never).outShape(ffl.id, "frame"))).toEqual(["Qty:number"]);
+  });
+});
+
+// A literal speaks for an UNWIRED socket alone (nodes/frameShapeHook.ts): once a cable feeds
+// the config, the run reads the cable and the card text says nothing about the columns.
+describe("a wired config socket makes the shape unknown", () => {
+  it("Columns reads the typed list, and goes unknown once Columns is wired", async () => {
+    const keep = new ColumnsNode();
+    keep.stringLiterals.columns = "Region";
+    expect(cols(await shapeOf(keep, "frame", SALES))).toEqual(["Region:string"]);
+    const wired = new ColumnsNode();
+    wired.stringLiterals.columns = "Region";
+    expect(await wiredConfig(wired, ["columns"])).toBeNull();
+  });
+
+  it("Rename maps the typed pairs, and goes unknown once From or To is wired", async () => {
+    const ren = new RenameNode();
+    ren.stringLiterals.from = "Region";
+    ren.stringLiterals.to = "Area";
+    expect(cols(await shapeOf(ren, "frame", SALES))).toEqual(["Area:string", "Qty:number", "Price:number"]);
+    for (const key of ["from", "to"]) {
+      const wired = new RenameNode();
+      wired.stringLiterals.from = "Region";
+      wired.stringLiterals.to = "Area";
+      expect(await wiredConfig(wired, [key]), key).toBeNull();
+    }
+  });
+
+  it("Group By reads the typed keys, and goes unknown once Group by or Aggregate is wired", async () => {
+    const g = new GroupByFrameNode();
+    g.stringLiterals.keys = "Region";
+    g.stringLiterals.column = "Qty";
+    expect(cols(await shapeOf(g, "frame", SALES))).toEqual(["Region:string", "Qty:number"]);
+    for (const key of ["keys", "column"]) {
+      const wired = new GroupByFrameNode();
+      wired.stringLiterals.keys = "Region";
+      wired.stringLiterals.column = "Qty";
+      expect(await wiredConfig(wired, [key]), key).toBeNull();
+    }
+  });
+
+  it("Unpivot reads the typed columns, and goes unknown once Keep or Melt is wired", async () => {
+    const u = new UnpivotNode();
+    u.stringLiterals.idColumns = "Region";
+    u.stringLiterals.valueColumns = "Qty, Price";
+    expect(cols(await shapeOf(u, "frame", SALES))).toEqual(["Region:string", "variable:string", "value:number"]);
+    for (const key of ["idColumns", "valueColumns"]) {
+      const wired = new UnpivotNode();
+      wired.stringLiterals.idColumns = "Region";
+      wired.stringLiterals.valueColumns = "Qty, Price";
+      expect(await wiredConfig(wired, [key]), key).toBeNull();
+    }
+  });
+
+  it("Pivot reads the typed fields, and goes unknown once a field list is wired", async () => {
+    const p = new PivotNode();
+    p.stringLiterals.rowFields = "Region";
+    p.stringLiterals.values = "Qty";
+    expect(cols(await shapeOf(p, "frame", SALES))).toEqual(["Region:string"]);
+    for (const key of ["rowFields", "colFields", "values"]) {
+      const wired = new PivotNode();
+      wired.stringLiterals.rowFields = "Region";
+      wired.stringLiterals.values = "Qty";
+      expect(await wiredConfig(wired, [key]), key).toBeNull();
+    }
+  });
+
+  it("Join reads the typed keys, and goes unknown once a key is wired", async () => {
+    const build = async (wireKey?: string) => {
+      const editor = new NodeEditor<Schemes>();
+      const left = await source(editor, "Id, Qty\n1, 2");
+      const right = await source(editor, "Id, Note\n1, ok");
+      const j = new JoinNode() as unknown as Schemes["Node"];
+      (j as unknown as JoinNode).stringLiterals.leftKey = "Id";
+      await editor.addNode(j);
+      await editor.addConnection(new ClassicPreset.Connection(left, "frame", j, "left") as Schemes["Connection"]);
+      await editor.addConnection(new ClassicPreset.Connection(right, "frame", j, "right") as Schemes["Connection"]);
+      if (wireKey) {
+        const t = new TextInputNode() as unknown as Schemes["Node"];
+        await editor.addNode(t);
+        await editor.addConnection(new ClassicPreset.Connection(t, "value", j, wireKey) as Schemes["Connection"]);
+      }
+      return makeFrameShapeResolver(editor as never).outShape(j.id, "frame");
+    };
+    expect(cols(await build())).toEqual(["Id:number", "Qty:number", "Note:string"]);
+    expect(await build("leftKey")).toBeNull();
+    expect(await build("rightKey")).toBeNull();
+  });
+
+  it("Split Column drops the typed column, and goes unknown once Column or Delimiter is wired", async () => {
+    const s = new SplitColumnNode();
+    s.stringLiterals.column = "Region";
+    expect(cols(await shapeOf(s, "frame", SALES))).toEqual(["Qty:number", "Price:number"]);
+    for (const key of ["column", "delimiter"]) {
+      const wired = new SplitColumnNode();
+      wired.stringLiterals.column = "Region";
+      expect(await wiredConfig(wired, [key]), key).toBeNull();
+    }
+  });
+
+  it("Add Index names the new column from the card, and goes unknown once Name is wired", async () => {
+    expect(cols(await shapeOf(new AddIndexNode(), "frame", SALES)))
+      .toEqual(["Index:number", "Region:string", "Qty:number", "Price:number"]);
+    expect(await wiredConfig(new AddIndexNode(), ["name"])).toBeNull();
   });
 });

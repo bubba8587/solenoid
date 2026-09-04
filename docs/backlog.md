@@ -40,13 +40,6 @@ REMOVED — the old elkjs-vs-rete-auto-arrange peer conflict left with the plugi
   ✕ in its top-right corner that hides AND disables the entered form layout — WITHOUT deleting
   it (the layout text is kept, just inert until re-enabled).
 
-## Engine & types
-
-- [ ] **A frame-shape rule still reads a WIRED literal socket.** The migrated verb rules
-  (Columns / Rename / Group By / Unpivot / Pivot / Join / Split Column / Add Index) read their
-  card literal even when a cable feeds that socket, so the declared shape can name a column the
-  run never uses. The rules added since gate on `ctx.wired()`; make the rest do the same.
-
 ## Seeds
 
 - [ ] **Seed-layout sweep for whole-canvas Tidy.** Full-canvas Tidy (baked into every seed via

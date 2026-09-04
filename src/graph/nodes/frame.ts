@@ -535,9 +535,10 @@ export class JoinNode extends ClassicPreset.Node {
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const left = ctx.inputShape("left");
     const right = ctx.inputShape("right");
+    if (!left || !right || ctx.wired("leftKey") || ctx.wired("rightKey")) return null;
     const lk = (this.stringLiterals.leftKey ?? "").trim();
     const rk = (this.stringLiterals.rightKey ?? "").trim() || lk;
-    if (!left || !right || lk === "") return null;
+    if (lk === "") return null;
     return shapeOfJoin(left, right, { leftKey: lk, rightKey: rk, how: this.how });
   }
 
@@ -609,7 +610,7 @@ export class ColumnsNode extends ClassicPreset.Node {
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const input = ctx.inputShape("frame");
-    if (!input) return null;
+    if (!input || ctx.wired("columns")) return null;
     const cols = csvList(this.stringLiterals.columns);
     if (this.op === "keep") return cols.length ? shapeOf({ kind: "select", columns: cols }, input) : input;
     return shapeOf({ kind: "drop", columns: cols }, input);
@@ -672,7 +673,7 @@ export class GroupByFrameNode extends ClassicPreset.Node {
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const input = ctx.inputShape("frame");
-    if (!input) return null;
+    if (!input || ctx.wired("keys") || ctx.wired("column")) return null;
     const keys = csvList(this.stringLiterals.keys);
     const col = (this.stringLiterals.column ?? "").trim();
     if (!keys.length || !col) return input;
@@ -769,7 +770,7 @@ export class PivotNode extends ClassicPreset.Node {
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const input = ctx.inputShape("frame");
-    if (!input) return null;
+    if (!input || ctx.wired("rowFields") || ctx.wired("colFields") || ctx.wired("values")) return null;
     const valid = new Set(input.columns.map((c) => c.name));
     const rowFields = csvList(this.stringLiterals.rowFields).filter((f) => valid.has(f));
     const colFields = csvList(this.stringLiterals.colFields).filter((f) => valid.has(f));
@@ -898,7 +899,7 @@ export class UnpivotNode extends ClassicPreset.Node {
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const input = ctx.inputShape("frame");
-    if (!input) return null;
+    if (!input || ctx.wired("idColumns") || ctx.wired("valueColumns")) return null;
     const vals = csvList(this.stringLiterals.valueColumns);
     if (!vals.length) return input;
     return shapeOf({ kind: "unpivot", idColumns: csvList(this.stringLiterals.idColumns), valueColumns: vals }, input);
@@ -1118,7 +1119,7 @@ export class RenameNode extends ClassicPreset.Node {
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const input = ctx.inputShape("frame");
-    if (!input) return null;
+    if (!input || ctx.wired("from") || ctx.wired("to")) return null;
     const from = csvList(this.stringLiterals.from);
     const to = csvList(this.stringLiterals.to);
     const map: Record<string, string> = {};
@@ -1163,9 +1164,10 @@ export class SplitColumnNode extends ClassicPreset.Node {
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const input = ctx.inputShape("frame");
-    if (!input) return null;
+    if (!input || ctx.wired("column")) return null;
     const column = (this.stringLiterals.column ?? "").trim();
     if (!column) return input;
+    if (ctx.wired("delimiter")) return null;
     return shapeOfSplitColumn(input, column, this.stringLiterals.delimiter ?? "");
   }
 
@@ -1201,7 +1203,8 @@ export class AddIndexNode extends ClassicPreset.Node {
 
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
     const input = ctx.inputShape("frame");
-    return input ? shapeOfAddIndex(input, this.stringLiterals.name || "Index") : null;
+    if (!input || ctx.wired("name")) return null;
+    return shapeOfAddIndex(input, this.stringLiterals.name || "Index");
   }
 
   data(inputs: { frame?: (FrameValue | null)[]; start?: number[]; name?: string[] }) {
