@@ -68,6 +68,40 @@ describe("visual nodes", () => {
     ]);
   });
 
+  it("composed reads the frame like the other cartesian ops: col 0 labels, columns as series", () => {
+    const frame: FrameValue = { __frame: true, columns: [
+      { name: "Month", type: "string", values: ["Jan", "Feb", "Mar"] },
+      { name: "Sales", type: "number", values: [120, 145, 98] },
+      { name: "Target", type: "number", values: [130, 130, 140] },
+    ] };
+    const out = new ChartNode({ op: "composed" }).data({ values: [frame], options: ["title=Sales vs target"] }).chart;
+    expect(out.labels).toEqual(["Jan", "Feb", "Mar"]);
+    expect(out.series).toEqual([
+      { name: "Sales", values: [120, 145, 98] },
+      { name: "Target", values: [130, 130, 140] },
+    ]);
+    expect(out.options.title).toBe("Sales vs target");
+  });
+
+  it("bubble names its axes after the x/y columns unless the options label them", () => {
+    const frame: FrameValue = { __frame: true, columns: [
+      { name: "Spend", type: "number", values: [12, 25] },
+      { name: "Return", type: "number", values: [18, 32] },
+      { name: "Reach", type: "number", values: [40, 90] },
+    ] };
+    const out = new ChartNode({ op: "bubble" }).data({ values: [frame] }).chart;
+    expect(out.series).toEqual([
+      { name: "Spend", values: [12, 25] },
+      { name: "Return", values: [18, 32] },
+      { name: "Reach", values: [40, 90] },   // the size column, named in the tooltip
+    ]);
+    expect(out.options).toMatchObject({ xlabel: "Spend", ylabel: "Return" });
+    // An authored label wins; a plain list has no column names to fall back on.
+    const named = new ChartNode({ op: "bubble" }).data({ values: [frame], options: ["xlabel=£ spent"] }).chart;
+    expect(named.options).toMatchObject({ xlabel: "£ spent", ylabel: "Return" });
+    expect(new ChartNode({ op: "bubble" }).data({ values: [[1, 2, 3]] }).chart.options).toEqual({});
+  });
+
   it("Mermaid emits a first-class diagram value from its source", () => {
     const m = new MermaidNode({ label: "Flow" });
     // Inline source is stored in stringLiterals (round-trips like Chart's options).

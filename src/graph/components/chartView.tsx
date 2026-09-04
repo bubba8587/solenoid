@@ -78,7 +78,7 @@ export function SankeyView(props: { sources: string[]; targets: string[]; values
 
 type SeriesArg = { name: string; values: (number | null)[] }[];
 
-export function ComposedView(props: { series: SeriesArg; width: number; height: number; fscale?: number }) {
+export function ComposedView(props: { series: SeriesArg; labels?: (string | number)[]; width: number; height: number; opts?: ChartOptions; fscale?: number }) {
   return (
     <Suspense fallback={box(props.width, props.height)}>
       <ComposedViewInner {...props} />
@@ -86,7 +86,7 @@ export function ComposedView(props: { series: SeriesArg; width: number; height: 
   );
 }
 
-export function BubbleView(props: { series: SeriesArg; width: number; height: number; fscale?: number }) {
+export function BubbleView(props: { series: SeriesArg; width: number; height: number; opts?: ChartOptions; fscale?: number }) {
   return (
     <Suspense fallback={box(props.width, props.height)}>
       <BubbleViewInner {...props} />
@@ -163,11 +163,11 @@ export function ChartFigure({ value, width, height, axes = true, fontScale, reco
   // falls back to the single-series column/scatter render.
   const hasSeries = !!value.series && value.series.length > 0;
   if (value.op === "composed") {
-    if (hasSeries) return <ComposedView series={value.series!} width={width} height={height} fscale={fscale} />;
+    if (hasSeries) return <ComposedView series={value.series!} labels={value.labels} width={width} height={height} opts={value.options} fscale={fscale} />;
     return renderSeries(value, "column", width, height, axes, fontScale);
   }
   if (value.op === "bubble") {
-    if (hasSeries) return <BubbleView series={value.series!} width={width} height={height} fscale={fscale} />;
+    if (hasSeries) return <BubbleView series={value.series!} width={width} height={height} opts={value.options} fscale={fscale} />;
     return renderSeries(value, "scatter", width, height, axes, fontScale);
   }
   return renderSeries(value, value.op as ChartShape, width, height, axes, fontScale);

@@ -184,6 +184,13 @@ export class ChartNode extends ClassicPreset.Node {
     const optIn = readInput(inputs.options, this.stringLiterals.options ?? null);
     const optStr = typeof optIn === "string" || optIn === null ? optIn : (this.stringLiterals.options ?? null);
     this.chartOptions = parseChartOptions(optStr);
+    // Bubble's axes ARE two of the frame's columns, so they carry those column names
+    // unless the author labelled them; the size column is named by the tooltip.
+    if (this.op === "bubble" && this.cachedSeries) {
+      const [x, y] = this.cachedSeries;
+      if (this.chartOptions.xlabel === undefined && x) this.chartOptions.xlabel = x.name;
+      if (this.chartOptions.ylabel === undefined && y) this.chartOptions.ylabel = y.name;
+    }
     const chart: ChartValue = {
       __chart: true,
       op: this.op,
