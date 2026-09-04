@@ -81,9 +81,17 @@ groups each holding its Note; intro standoff), chart-showcase (9 groups, one per
 Notes). Pattern that held everywhere: every unwired explanatory Note became a group MEMBER; the
 only standoffs are whole-canvas intro Notes; shared source frames that fan out stay loose. All
 re-baked + seed suites green. Gotcha: a peer agent's `src/` saves HMR-reload the tune page
-("Execution context was destroyed") — retry the seed on a quiet window. Batch two (the remaining
-12 teaching seeds) is running; sudoku-solver / composite-workbench / zz-scratch / the two held
-seeds are out of the sweep. **The author eyeballs the results** — the rule was applied blind.
+("Execution context was destroyed") — retry the seed on a quiet window. **Batch two** (12 seeds,
+one commit each): dimensional-flow 5 groups, equation-solver 7, famous-math 1 (the loose
+expression chain + its Note, beside its two pre-existing groups), lambda-helpers unchanged
+(already grouped, no Notes), null-and-logical 10, power-features 4 (KEPT its `in-sb ↔ grp-mon`
+data standoff — a Note narrates that bar, and Note bodies are the author's; so the three sensors
+stay loose), record-cards 2, report-showcase 1 (its `method` Note is frontmatter-wired, no
+standoff), script-tour 5, trust-data-quality 3, unit-flow 10 (one per lane, caption Notes
+inside), units-by-dimension 2. Every standoff left is a whole-canvas intro Note (plus the
+narrated demo bar). sudoku-solver / composite-workbench / zz-scratch / the two held seeds are out
+of the sweep. **The author eyeballs the results** — the rule was applied blind; the backlog line
+carries the two open calls.
 
 **Docs reconciled:** `node-coverage.md` § Decision support (weights frame, inverted scenarios,
 the Note-frame seed), `v2.0/10` grounding, `architecture.md` (modalGuard row), backlog (canvas

@@ -42,14 +42,13 @@ REMOVED — the old elkjs-vs-rete-auto-arrange peer conflict left with the plugi
 
 ## Seeds
 
-- [ ] **Seed-layout sweep for whole-canvas Tidy.** Full-canvas Tidy (baked into every seed via
-  `tune-seeds`) scatters free-floating Notes. Go through the seed library adding **groups**
-  (liberally: wrap intermediary clusters and an input beside its consumer) and, sparingly, a
-  **note-standoff** — ONLY to pin an explanatory Note that is not otherwise wired to the node/group
-  it explains (a Note whose frontmatter exports feed the graph is already tied in; data nodes never
-  standoff to their consumers). Author's ruling 2026-09-04: the first decision-matrix pass (7
-  standoffs, input→consumer ones included) overused them; that seed is being re-cut to the rule and
-  becomes the exemplar. Re-tune after each seed.
+- [ ] **Seed-layout sweep — the author eyeballs the 20 re-cut seeds** (2026-09-04b, two agent
+  batches under the groups-over-standoffs rule in `subsystem-invariants.md` § Standoffs; per-seed
+  outcomes in the dev-notes digest). Open calls: power-features kept its `in-sb ↔ grp-mon` data
+  standoff because a Note narrates that very bar ("cut it and rewrite the Note?"); famous-math's
+  loose expression chain was wrapped beside two pre-existing groups rather than merged. Not swept:
+  sudoku-solver, composite-workbench, zz-scratch-new-nodes (not teaching galleries),
+  personal-finance and live-market-data (held from tuning, see the 09-03 digest).
 
 ## Layout
 
