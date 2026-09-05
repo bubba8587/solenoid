@@ -178,3 +178,30 @@
   opacity: 0.4;
   cursor: default;
 }
+
+/* Removes the point the dial is on. Alt-clicking its handle does the same, but there
+   is no Alt on a phone. */
+.solenoid-drawn-inspector__droppoint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: none;
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  color: var(--text-dim, #9aa0a6);
+  cursor: pointer;
+}
+
+.solenoid-drawn-inspector__droppoint:hover:not(:disabled) {
+  border-color: #c25b5b;
+  color: #e08a8a;
+}
+
+.solenoid-drawn-inspector__droppoint:disabled {
+  opacity: 0.35;
+  cursor: default;
+}

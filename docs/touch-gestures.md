@@ -90,11 +90,30 @@ Other add paths (not gestures): mobile bar ➕ FAB, the `A` key, Insert ▸ Add 
 | click cable / tap | all | select cable (ribbons select the run) | `flow/FlowCableEdge.tsx` |
 | double-click cable | mouse | select the whole RUN (via click `detail` count, NOT onDoubleClick) | `flow/FlowCableEdge.tsx` |
 
+### Drawn cables — the armed draw tool (`components/DrawnCableCapture.tsx`)
+
+The tool is MODAL: while armed a full-window sheet sits over the pane, so these replace the
+canvas gestures above until it is disarmed. It owns pan itself — the sheet is a SIBLING of
+the pane, so declining to swallow a press hands the drag to nobody.
+
+| Gesture | Config | Action | Where |
+|---|---|---|---|
+| tap / click | all | place a point (only inside `TAP_SLOP`; a longer press was a pan) | `DrawnCableCapture.tsx` |
+| 1-finger / left-mouse drag | all | pan the camera, place nothing | `DrawnCableCapture.tsx` `panBy` |
+| 2-finger pinch | touch | zoom, place nothing — `flowPinch` listens in CAPTURE so it sees the fingers THROUGH the sheet, and its click guard eats the trailing click; placement also stands down on `isPinching()` | `flowPinch.ts` |
+| double-click | **mouse only** | finish the run (click `detail`; click 1 places the last point) | `DrawnCableCapture.tsx` |
+| right-click | mouse | finish the run (it raises no click, so it is handled on pointerdown) | `DrawnCableCapture.tsx` |
+| Undo / Finish / Done buttons | coarse | the touch way out — double-tap is NOT the finish gesture here, and there is no Esc | the hint strip, at the THUMB end |
+| tap/click a point handle | all | make it the angle dial's active point, or drag it | `DrawnCableLayer.tsx` |
+| alt-click a handle | mouse | remove that point (the panel's ✕ is the finger's version) | `DrawnCableLayer.tsx` / `DrawnCableInspector.tsx` |
+| double-click the cable body | mouse | insert a point on the nearest span | `DrawnCableLayer.tsx` |
+| touch hit areas | coarse | hit band 40px, and each handle gets an invisible ~44px ring BEHIND its disc rather than a fatter disc; pending markers stay small (nothing grabs them) | `DrawnCableLayer.tsx` |
+
 ### Chrome (bars, popups)
 
 | Gesture | Config | Action | Where |
 |---|---|---|---|
-| touch action buttons | mobile: bottom bar; tablet: top bar | palette/undo/redo/select/group/delete (+ mobile ➕) | `touchActions.tsx` (drift-pinned by `touchActions.test.ts`) |
+| touch action buttons | mobile: bottom bar; tablet: top bar | palette/undo/redo/select/group/delete (+ mobile ➕ and the draw-mode toggle — the top bar's Cable group is `display:none` on mobile) | `touchActions.tsx` (drift-pinned by `touchActions.test.ts`) |
 | taps in popups/overlays | all | normal UI; `stopDragStart` guards chrome that sits over the canvas | per component |
 
 ## Enforcement

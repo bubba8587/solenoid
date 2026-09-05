@@ -146,8 +146,6 @@
   color: var(--accent-ink);
 }
 
-.solenoid-toolbar__draw-icon {
+.solenoid-toolbar__draw svg {
   display: block;
-  width: 19px;
-  height: 15px;
 }

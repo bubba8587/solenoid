@@ -597,6 +597,15 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     ]);
   }, []);
   const onEdgeMouseLeave = useCallback(() => socketHighlightStore.setCableHover([]), []);
+  // Screen-space camera nudge, for the drawn-cable tool's own drag-to-pan: while its
+  // sheet is armed the pane never sees the press, so the tool moves the camera itself.
+  const panBy = useCallback(
+    (dx: number, dy: number) => {
+      const v = getViewport();
+      void setViewport({ x: v.x + dx, y: v.y + dy, zoom: v.zoom });
+    },
+    [getViewport, setViewport],
+  );
   const onPaneClick = useCallback(() => {
     cableSelectionStore.set(null);
     drawnCableStore.select(null);
@@ -1008,7 +1017,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           />
         </svg>
       )}
-      {hooks.drawnCables && <DrawnCableCapture toFlow={screenToFlowPosition} />}
+      {hooks.drawnCables && <DrawnCableCapture toFlow={screenToFlowPosition} panBy={panBy} />}
       <CableInspector />
       {hooks.drawnCables && <DrawnCableInspector />}
       {children}

@@ -96,6 +96,22 @@ export function DeleteGlyph({ size = 20 }: IconProps) {
   );
 }
 
+/** The free-draw tool: a pen laying down a curve. Drawn HERE, not in a bar, because
+ *  three surfaces show it — the mobile bar, the top bar's Cable group, and (through
+ *  that toolbar) the tablet. */
+export function DrawGlyph({ size = 20 }: IconProps) {
+  return (
+    <svg width={size} height={size * 0.8} viewBox="0 0 20 16" aria-hidden="true">
+      <path
+        d="M1.5 13.5 C 4 13.5 4.5 4.5 8.5 4.5 C 11 4.5 11.5 8.5 13.5 9.5"
+        fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"
+      />
+      <path d="M13.6 11.9 L12.6 8.2 L16.3 9.2 Z" fill="currentColor" />
+      <path d="M15.2 8.6 L18.6 5.2" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function GroupGlyph({ size = 20 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" {...stroke}>

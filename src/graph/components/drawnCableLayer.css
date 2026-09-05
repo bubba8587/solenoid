@@ -129,3 +129,57 @@
   stroke-linecap: round;
   pointer-events: none;
 }
+
+/* Touch strip: the same pill, but carrying real buttons instead of key names, and
+   thumb-sized. It is the ONLY way out of the tool on a phone (there is no Esc, and
+   double-tap is not a gesture here), so it stays reachable and never scrolls away. */
+.solenoid-drawn-hint--touch {
+  gap: 6px;
+  padding: 5px 6px 5px 12px;
+  max-width: calc(100vw - 24px);
+}
+
+.solenoid-drawn-hint--touch .solenoid-drawn-hint__state {
+  margin-right: 2px;
+}
+
+.solenoid-drawn-hint__btn {
+  min-height: 32px;
+  padding: 0 12px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto; /* the strip itself is inert */
+}
+
+.solenoid-drawn-hint__btn:disabled {
+  opacity: 0.4;
+}
+
+.solenoid-drawn-hint__btn--go:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* Invisible, finger-sized grab ring around each point handle. */
+.solenoid-drawn-cable__handle-hit {
+  fill: transparent;
+  stroke: none;
+  pointer-events: all;
+  cursor: grab;
+}
+
+/* On touch the strip carries the only way out of the tool, so it moves to the THUMB
+   end of the screen. Centered at the top it also ran under the zoom/lock HUD. */
+@media (pointer: coarse) {
+  .solenoid-drawn-hint--touch {
+    top: auto;
+    bottom: calc(var(--chrome-bottom, 57px) + 12px + env(safe-area-inset-bottom));
+  }
+}

@@ -22,15 +22,23 @@ import { unselectAllNodes } from "../canvasCommands";
 import { cableSelectionStore } from "../cableState";
 import { standoffStore } from "../standoffs";
 import { scheduleAutosave } from "../persistence";
+import { IS_COARSE } from "../coarse";
 import "./drawnCableLayer.css";
 
 // The LINE and its heads are content: they scale with the canvas, exactly like a wired
 // cable. The point handles and the hit target are affordances, so they are divided by
 // the zoom and stay a constant SCREEN size — otherwise a handle is ungrabbable at 30%
 // and a dinner plate at 250%.
-const HIT_STROKE = 18;
-const HANDLE_R = 5;
-const HANDLE_STROKE = 2;
+// Touch gets the bigger targets: a 5px disc and an 18px hit band are a mouse's
+// tolerances, not a fingertip's. PENDING markers keep the small disc at every config —
+// nothing grabs them, and at touch size they read as holes punched in the preview.
+const HIT_STROKE = IS_COARSE ? 40 : 18;
+const HANDLE_R = IS_COARSE ? 11 : 5;
+const PENDING_R = 5;
+const HANDLE_STROKE = IS_COARSE ? 2.5 : 2;
+// A finger needs ~44px; the visible disc stays small, so an invisible ring carries the
+// hit area instead of fattening the drawing.
+const HANDLE_HIT_R = IS_COARSE ? 22 : 9;
 // The needle a point grows once its heading is PINNED by the dial: the override is
 // otherwise invisible until you compare the curve to what it would have been.
 const NEEDLE_LEN = 15;
@@ -207,6 +215,18 @@ function DrawnCableShape({
                   strokeWidth={HANDLE_STROKE / zoom}
                 />
               )}
+              {/* The hit ring: invisible, finger-sized, and BEHIND the disc so the
+                  disc's own cursor and hover still win where they overlap. */}
+              <circle
+                className="solenoid-drawn-cable__handle-hit"
+                cx={p.x}
+                cy={p.y}
+                r={HANDLE_HIT_R / zoom}
+                onPointerDown={(e) => onPointerDown(e, i)}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerUp}
+                onPointerCancel={onPointerUp}
+              />
               <circle
                 className={cls}
                 cx={p.x}
@@ -254,9 +274,9 @@ function PendingCable({ zoom }: { zoom: number }) {
           className="solenoid-drawn-cable__handle"
           cx={p.x}
           cy={p.y}
-          r={HANDLE_R / zoom}
+          r={PENDING_R / zoom}
           stroke={color}
-          strokeWidth={HANDLE_STROKE / zoom}
+          strokeWidth={2 / zoom}
         />
       ))}
     </g>

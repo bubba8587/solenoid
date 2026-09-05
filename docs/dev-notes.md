@@ -25,8 +25,16 @@ STANDS, in one line each:
   arrow has to stay visible over what it points at (author's call).
 - Arrowheads are drawn paths, not SVG markers (per-color marker defs and `context-stroke` are not
   worth it); the tip sits on the endpoint so resizing never moves the point it marks.
-- Reachable four ways, never the hotkey alone: a toggle in the top bar's Cable group, Insert → Draw
-  a cable, the Command Palette (free — `menuModel.ts` feeds both) and `D`. The armed sheet is modal
+- **Touch is a full config, not a fallback.** A drag pans (the tool drives the camera itself — its
+  sheet is a sibling of the pane, so declining to swallow the press hands the drag to nobody) and
+  only a tap inside a slop radius places; pinch keeps working through the sheet because `flowPinch`
+  listens in capture. Double-tap is NOT the finish gesture (touch-gestures.md rules it out), so on
+  coarse the hint strip becomes Undo / Finish / Done buttons at the thumb end — the only way out
+  where there is no Esc. Bigger hit band, an invisible finger-sized ring behind each handle rather
+  than a fatter disc, and a ✕ beside the point stepper because there is no Alt-click on a phone.
+- Reachable four ways, never the hotkey alone: a toggle in the top bar's Cable group (and one in the
+  MOBILE BAR beside select mode, since that toolbar is hidden on phones), Insert → Draw a cable,
+  the Command Palette (free — `menuModel.ts` feeds both) and `D`. The armed sheet is modal
   and swallows the pane's pointers, and it spans the WHOLE window, so its z-index has to stay under
   the header's 6; it shipped at 45 and swallowed the menu bar and toolbar too, leaving the keyboard
   as the only way out. **Points place on `click`, not `pointerdown`** — a `PointerEvent`'s `detail` is always 0 per spec, so the

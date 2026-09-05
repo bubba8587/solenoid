@@ -205,6 +205,17 @@ export function DrawnCableInspector() {
             ›
           </button>
         </div>
+        {/* Alt-clicking the handle does this too, but there is no Alt on a phone. */}
+        <button
+          type="button"
+          className="solenoid-drawn-inspector__droppoint"
+          aria-label="Remove this point"
+          title="Remove this point"
+          disabled={count <= 2}
+          onClick={() => commit(() => drawnCableStore.removePoint(cable.id, point))}
+        >
+          <CloseIcon size={11} />
+        </button>
       </div>
 
       <div className="solenoid-drawn-inspector__row solenoid-drawn-inspector__row--dial">

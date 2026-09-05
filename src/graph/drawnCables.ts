@@ -335,6 +335,9 @@ export const drawModeStore = {
     _armed = true;
     _pending = [];
     _cursor = null;
+    // Arming starts a NEW cable: drop the selected one, so its panel is not competing
+    // with the tool's own strip for the bottom of a phone screen.
+    drawnCableStore.select(null);
     both();
   },
 
