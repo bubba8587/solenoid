@@ -189,6 +189,8 @@ export function writeTextForm(g: SavedGraph): string {
       ...(s.locked ? { locked: true } : {}),
     }));
   }
+  // No name-addressing: a drawn cable is pure canvas geometry, it names no node.
+  if (g.drawnCables && g.drawnCables.length > 0) sidecar.drawnCables = g.drawnCables;
   if (g.pins && g.pins.length > 0) {
     sidecar.pins = g.pins.map((p) => ({ nodeId: nameOf(p.nodeId), outputKey: p.outputKey }));
   }
@@ -265,6 +267,9 @@ export function readTextForm(text: string): SavedGraph {
   const g: SavedGraph = { v: typeof sidecar.v === "number" ? sidecar.v : 2, nodes, connections };
   if (Array.isArray(sidecar.standoffs) && sidecar.standoffs.length > 0) {
     g.standoffs = sidecar.standoffs as SavedStandoff[];
+  }
+  if (Array.isArray(sidecar.drawnCables) && sidecar.drawnCables.length > 0) {
+    g.drawnCables = sidecar.drawnCables as SavedGraph["drawnCables"];
   }
   if (Array.isArray(sidecar.pins) && sidecar.pins.length > 0) {
     g.pins = sidecar.pins as Pin[];

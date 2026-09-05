@@ -25,6 +25,7 @@ import { getOwningEditor, getOwningView } from "../activeGraph";
 import { groupCollapseStore, COLLAPSE_LAYOUT, pillY } from "../groupCollapse";
 import { touchSelectStore } from "../touchSelectStore";
 import { standoffStore } from "../standoffs";
+import { drawnCableStore } from "../drawnCables";
 import { settingsStore } from "../settingsStore";
 import { ConduitNode } from "../rete-nodes";
 import { IS_COARSE, stopDragStart } from "../coarse";
@@ -256,6 +257,7 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
     const onRibbonClick = (e: React.MouseEvent) => {
       e.stopPropagation();
       standoffStore.select(null);
+    drawnCableStore.select(null);
       if (e.detail >= 2) { selectRun(e); return; }
       if (accumulating(e)) {
         cableSelectionStore.toggle(ribbon.repId);
@@ -441,6 +443,7 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
   function onClick(e: React.MouseEvent) {
     e.stopPropagation();
     standoffStore.select(null);
+    drawnCableStore.select(null);
     if (ghost) {
       cableGhostStore.commit(id);
       cableSelectionStore.set(null);

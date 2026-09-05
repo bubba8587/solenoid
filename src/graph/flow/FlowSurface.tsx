@@ -104,6 +104,10 @@ import { minimapFillForNode } from "../components/Minimap";
 import { computeDockedCanvasPos, dockedRenderedDims, findDockTarget, insertFcInline, removeFcInline } from "../fcDocking";
 import { groupPushStore } from "../groupPush";
 import { CableInspector } from "../components/CableInspector";
+import { DrawnCableLayer } from "../components/DrawnCableLayer";
+import { DrawnCableCapture } from "../components/DrawnCableCapture";
+import { DrawnCableInspector } from "../components/DrawnCableInspector";
+import { drawnCableStore } from "../drawnCables";
 import { settingsStore } from "../settingsStore";
 import { IS_COARSE } from "../coarse";
 import { touchSelectStore } from "../touchSelectStore";
@@ -185,6 +189,9 @@ export type SurfaceHooks = {
   afterConnect?: () => void;
   /** Render the standoff layer (a main-graph feature). */
   standoffs?: boolean;
+  /** Render the free-drawn cable layer + its tool (a main-graph feature: drawn
+   *  cables persist into SavedGraph, which is main-only — rules saveBindsMain). */
+  drawnCables?: boolean;
   /** The main canvas stands down while the drill-in owns the keyboard. */
   standsDownWhenDrilled?: boolean;
   /** Frame the graph once the first mounted cards have measured. */
@@ -550,6 +557,8 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       const ids = new Set(sel.map((n) => n.id));
       for (const n of s.editor.getNodes()) (n as { selected?: boolean }).selected = ids.has(n.id);
       cableSelectionStore.replaceAll(selEdges.map((e) => e.id));
+      // Drawn-cable selection is exclusive with the graph's own (§ Standoffs' rule).
+      if (ids.size > 0 || selEdges.length > 0) drawnCableStore.select(null);
     },
     [s],
   );
@@ -588,7 +597,10 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     ]);
   }, []);
   const onEdgeMouseLeave = useCallback(() => socketHighlightStore.setCableHover([]), []);
-  const onPaneClick = useCallback(() => cableSelectionStore.set(null), []);
+  const onPaneClick = useCallback(() => {
+    cableSelectionStore.set(null);
+    drawnCableStore.select(null);
+  }, []);
   const onMove = useCallback(
     (_e: unknown, viewport: Viewport) => {
       s.view.setTransform({ x: viewport.x, y: viewport.y, k: viewport.zoom });
@@ -899,6 +911,11 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
             <StandoffLayer />
           </ViewportPortal>
         )}
+        {hooks.drawnCables && (
+          <ViewportPortal>
+            <DrawnCableLayer />
+          </ViewportPortal>
+        )}
         <MiniMap<SolFlowNode>
           className="solenoid-minimap"
           style={MINIMAP_STYLE}
@@ -991,7 +1008,9 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           />
         </svg>
       )}
+      {hooks.drawnCables && <DrawnCableCapture toFlow={screenToFlowPosition} />}
       <CableInspector />
+      {hooks.drawnCables && <DrawnCableInspector />}
       {children}
     </div>
   );

@@ -15,6 +15,7 @@ import { forgetAllNodes } from "./nodeStoreRegistry";
 import { collapseStore } from "./collapseStore";
 import { socketFlipStore } from "./socketFlipStore";
 import { standoffStore, type StandoffEnd } from "./standoffs";
+import { drawnCableStore, type SavedDrawnCable } from "./drawnCables";
 import { nodeNameStore } from "./nodeNameStore";
 import { writeTextForm, readTextForm } from "./textForm";
 import { validateSavedGraph, CURRENT_SAVE_VERSION, deriveMissingNodeSockets } from "./persistenceCore";
@@ -79,6 +80,9 @@ export interface SavedGraph {
   nodes: SavedNode[];
   connections: SavedConnection[];
   standoffs?: SavedStandoff[];
+  // Free-drawn annotation curves; they reference no node, so they carry no name
+  // addressing through the text form.
+  drawnCables?: SavedDrawnCable[];
   pins?: Pin[];
   comments?: SavedCommentData[];
   frameFormats?: FrameColumnFormat[];
@@ -177,6 +181,8 @@ function buildRawSavedGraph(): SavedGraph | null {
 
   const g: SavedGraph = { v: 2, nodes, connections, seedId: getCurrentSeedId() };
   if (standoffs.length > 0) g.standoffs = standoffs;
+  const drawnCables = drawnCableStore.serialize();
+  if (drawnCables.length > 0) g.drawnCables = drawnCables;
   const pins = pinStore.serialize();
   if (pins.length > 0) g.pins = pins;
   const comments = commentStore.serialize();
@@ -446,6 +452,8 @@ async function rebuildGraph(
       ss.locked ?? false,
     );
   }
+
+  drawnCableStore.load(g.drawnCables ?? []);
 
   pinStore.load(
     (g.pins ?? [])

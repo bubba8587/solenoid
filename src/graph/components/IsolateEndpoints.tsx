@@ -7,6 +7,7 @@ import { unselectAllNodes } from "../canvasCommands";
 import { connectionVersionStore } from "../graphSignals";
 import { cableSelectionStore } from "../cableState";
 import { standoffStore, standoffLayoutTick } from "../standoffs";
+import { drawnCableStore } from "../drawnCables";
 import { nodeDisplayName } from "../catalogUtils";
 import { getCablePath, Position } from "../cablePaths";
 import { cableShapeStore } from "../cableShape";
@@ -72,6 +73,7 @@ export function IsolateEndpoints() {
     unselectAllNodes();
     cableSelectionStore.set(null);
     standoffStore.select(null);
+    drawnCableStore.select(null);
     dragRef.current = { which, sx: e.clientX, sy: e.clientY, base: override[which] };
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
   };

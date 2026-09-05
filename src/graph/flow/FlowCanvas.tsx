@@ -134,6 +134,7 @@ const MAIN_HOOKS: SurfaceHooks = {
   },
   afterConnect: () => markGraphCustom(),
   standoffs: true,
+  drawnCables: true,
   standsDownWhenDrilled: true,
 };
 

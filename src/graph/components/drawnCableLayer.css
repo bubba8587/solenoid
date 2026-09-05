@@ -1,0 +1,111 @@
+/* Free-drawn cables — annotation drawn OVER the graph (arrows point at cards, so they
+   must not slide under one). The standoff layer is the mirror case at z −3. */
+
+.solenoid-drawn-cable-svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 9999px;
+  height: 9999px;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.solenoid-drawn-cable__line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.solenoid-drawn-cable__head {
+  stroke: none;
+  pointer-events: none;
+}
+
+.solenoid-drawn-cable-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-linecap: round;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.solenoid-drawn-cable:hover .solenoid-drawn-cable__line {
+  filter: brightness(1.25);
+}
+
+.solenoid-drawn-cable--selected .solenoid-drawn-cable__line {
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+.solenoid-drawn-cable--selected .solenoid-drawn-cable-hit {
+  cursor: move;
+}
+
+/* Point handles: hollow discs in the cable's own color, filled with the canvas so the
+   line never shows through. Drawn as SVG circles, not CSS radii (SwatchGrid's rule —
+   a CSS circle clips a side at fractional device pixels under canvas zoom). */
+.solenoid-drawn-cable__handle {
+  fill: var(--canvas-bg, #0b0b0b);
+  pointer-events: all;
+  cursor: grab;
+}
+
+.solenoid-drawn-cable__handle:hover {
+  fill: var(--surface-raised, #262626);
+}
+
+.solenoid-drawn-cable--pending .solenoid-drawn-cable__line {
+  stroke-dasharray: 6 5;
+  opacity: 0.75;
+}
+
+.solenoid-drawn-cable--pending .solenoid-drawn-cable__handle {
+  pointer-events: none;
+}
+
+/* The armed tool's capture sheet: screen-space, over the whole pane, so a click places
+   a point instead of panning the canvas or starting a lasso. */
+.solenoid-drawn-capture {
+  position: absolute;
+  inset: 0;
+  z-index: 45; /* under the lasso (50) and every overlay; over the pane */
+  cursor: crosshair;
+  touch-action: none;
+}
+
+/* The armed hint: what the tool is waiting for, in the canvas's own overlay chrome. */
+.solenoid-drawn-hint {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 46;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  background: var(--overlay-bg);
+  border: var(--overlay-border-width) solid var(--overlay-border);
+  border-radius: 999px;
+  box-shadow: var(--overlay-shadow);
+  color: var(--text-dim, #9aa0a6);
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.solenoid-drawn-hint__key {
+  padding: 1px 5px;
+  border: 1px solid var(--border-strong, #3a3a3a);
+  border-radius: 3px;
+  color: var(--text, #e8e8e8);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+}
+
+.solenoid-drawn-hint__state {
+  color: var(--text, #e8e8e8);
+}

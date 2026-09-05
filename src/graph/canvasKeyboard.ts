@@ -21,6 +21,7 @@ import { createGroupFromSelection, autofitGroupWithHistory } from "./groupLogic"
 import { setGroupsCollapsed } from "./groupPush";
 import { groupCollapseStore } from "./groupCollapse";
 import { standoffStore, settleStandoffs, anchorFromVector, ANCHOR_DIR } from "./standoffs";
+import { drawModeStore } from "./drawnCables";
 import { isolateStore } from "./isolateStore";
 import { isolateSelection } from "./isolate";
 import { addMenuRequest } from "./addMenuStore";
@@ -158,6 +159,17 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
     // is the only remaining recompute path. Only the compute gate outranks it.
     if (e.key === "F9") { e.preventDefault(); void requestRecalc(); return; }
 
+    // The armed draw tool owns its keys before the palette (Enter) and isolate (Escape)
+    // claim them; it is a modal tool, so nothing else on the canvas may answer first.
+    if (drawModeStore.armed() && !editable && !e.ctrlKey && !e.metaKey) {
+      if (e.key === "Escape") { drawModeStore.disarm(); e.preventDefault(); return; }
+      if (e.key === "Enter") {
+        if (drawModeStore.finish()) scheduleAutosave();
+        e.preventDefault(); return;
+      }
+      if (e.key === "Backspace") { drawModeStore.undoPoint(); e.preventDefault(); return; }
+    }
+
     if (!editable && !e.ctrlKey && !e.metaKey && !e.altKey) {
       // Bare Enter opens the palette — gated on `editable` so committing a field
       // never opens it (the modal gate above covers every overlay).
@@ -218,6 +230,8 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
             autofitGroups(); e.preventDefault(); return;
           case "KeyN":
             toggleChrome("navigator"); e.preventDefault(); return;
+          case "KeyD":
+            drawModeStore.toggle(); e.preventDefault(); return;
           case "BracketLeft":
           case "BracketRight":
             if (rotateSelection(e.code === "BracketRight" ? 1 : -1) > 0) {

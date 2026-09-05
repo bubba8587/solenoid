@@ -145,6 +145,7 @@ relapse.
 | `cablePaths.ts`, `ribbonCable.ts` | `subsystem-invariants.md` § Cable routing |
 | `groupPushCore.ts`, group expand/collapse | `subsystem-invariants.md` § Group expand push |
 | `standoffSolver.ts`, `standoffs.ts` | `subsystem-invariants.md` § Standoffs |
+| `drawnCables.ts`, `drawnCablePath.ts`, `components/DrawnCable*.tsx` | `subsystem-invariants.md` § Drawn cables |
 | `tidyArrange.ts` (ELK) | `subsystem-invariants.md` § Auto-arrange |
 | `errorValue.ts`, `valueKinds.ts` | `value-semantics.md`; `subsystem-invariants.md` § Error values |
 | `fcReconcile.ts`, in-place socket retype | `subsystem-invariants.md` § Type propagation |

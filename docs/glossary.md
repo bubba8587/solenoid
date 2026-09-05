@@ -23,6 +23,9 @@ area. When you coin a new load-bearing term, add it here.
   membership derived fresh per render. (`ribbonCable.ts`)
 - **Standoff** — a rigid spacing constraint between nodes (axis-band; LOCKED = rigid 45°);
   a standoff-connected cluster moves as one block. (`standoffSolver.ts`)
+- **Drawn cable** — a free-drawn annotation curve over the canvas: user-placed points
+  rendered through the wired cables' three drawers, with its own shape, width,
+  arrowheads and color. Carries no value and joins no socket. (`drawnCables.ts`)
 - **Group** — a container box around member nodes; expand/collapse pushes surrounding
   nodes out of the way. (`groupPushCore.ts`, `GroupNode.tsx`)
 - **Tidy / auto-arrange** — ELK-based layout with a custom symmetric port preset.

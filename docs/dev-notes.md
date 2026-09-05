@@ -6,6 +6,40 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-05 — free-drawn cables)
+
+**Drawn cables landed** (author-ordered): free-drawn annotation curves over the canvas, point by
+point, rendered through the wired cables' own three drawers. Mechanism and its invariants:
+`subsystem-invariants.md` § Drawn cables; term: `glossary.md`; files: `architecture.md`. What
+STANDS, in one line each:
+
+- They are annotation, never wiring: no socket, no value, no run, and deliberately independent of
+  the toolbar's app-wide cable shape — each drawn cable carries its own shape, width, arrowheads
+  and color.
+- Geometry is one `getCablePath` call per span, chained into a single subpath, with every interior
+  point handing BOTH its spans the chord through its neighbours so the drawers' end stubs stay
+  collinear across the joint. That is what makes a multi-point run read as one cable in all three
+  modes rather than a chain of separate cables.
+- The layer is the standoffs' mirror: same `<ViewportPortal>` world-space pattern, same
+  main-graph-only hook, but ABOVE every card (z 6) instead of under them, because an annotation
+  arrow has to stay visible over what it points at (author's call).
+- Arrowheads are drawn paths, not SVG markers (per-color marker defs and `context-stroke` are not
+  worth it); the tip sits on the endpoint so resizing never moves the point it marks.
+- `D` arms the tool; the armed sheet is modal and swallows the pane's pointers. **Points place on
+  `click`, not `pointerdown`** — a `PointerEvent`'s `detail` is always 0 per spec, so the
+  double-click that ends a run is only legible in `onClick`. This cost a debugging round and is the
+  same trap `FlowCableEdge` already documents; a probe that drives it needs an explicit CDP
+  `clickCount`, since CDP does not derive click counts from timing.
+- The selected cable's panel takes the cable inspector's corner and chrome but not its content
+  (a drawn cable has no From/To/Value to report): shape, ends, width, head size, color, remove.
+  The wired-cable `CableInspector` is untouched — selections are mutually exclusive, so only one
+  is ever mounted.
+- Content scales with the canvas; affordances do not. The line and heads are world units, the
+  point handles and hit path divide by the live zoom.
+- Persisted additively as `SavedGraph.drawnCables`, the first text-form sidecar that needs NO
+  name-addressing (nothing in one references a node). Verified end to end in the browser: draw,
+  restyle, reload, still there.
+
 ### SESSION DIGEST (2026-09-04c — three agents in worktrees; the finance merges land)
 
 Three Opus agents (Han = Lead on `develop`, Chewie and Lando on their own branches in git
