@@ -2,7 +2,6 @@ import { useSyncExternalStore } from "react";
 import { CABLE_SHAPES, useCableShape, type CableShape } from "./cableShape";
 import { useCableFlow } from "./cableFlowStore";
 import { drawModeStore } from "./drawnCables";
-import { DrawGlyph } from "./touchActions";
 import "./CableShapeSelector.css";
 
 // Schematic, not literal cable paths: exaggerated so the three shapes stay distinct at icon
@@ -65,9 +64,7 @@ export function CableShapeSelector() {
           </button>
         ))}
       </div>
-      {/* The free-draw tool. It sits in the Cable group because that is where a user
-          looks for one, but it governs DRAWN cables only: the segments to its left are
-          the wired cables' shape and never touch it (each drawn cable carries its own). */}
+      {/* Governs DRAWN cables only; the segments beside it are the wired cables' shape. */}
       <DrawToggle />
 
       {/* Animated mode: toggles the bead flow along every live cable. */}
@@ -116,7 +113,14 @@ function DrawToggle() {
       className={on ? "solenoid-toolbar__draw solenoid-toolbar__draw--active" : "solenoid-toolbar__draw"}
       onClick={() => drawModeStore.toggle()}
     >
-      <DrawGlyph size={19} />
+      <svg viewBox="0 0 20 16" aria-hidden="true" className="solenoid-toolbar__draw-icon">
+        <path
+          d="M1.5 13.5 C 4 13.5 4.5 4.5 8.5 4.5 C 11 4.5 11.5 8.5 13.5 9.5"
+          fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"
+        />
+        <path d="M13.6 11.9 L12.6 8.2 L16.3 9.2 Z" fill="currentColor" />
+        <path d="M15.2 8.6 L18.6 5.2" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      </svg>
     </button>
   );
 }

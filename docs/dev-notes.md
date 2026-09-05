@@ -8,58 +8,20 @@ specific item.
 
 ### SESSION DIGEST (2026-09-05 — free-drawn cables)
 
-**Drawn cables landed** (author-ordered): free-drawn annotation curves over the canvas, point by
-point, rendered through the wired cables' own three drawers. Mechanism and its invariants:
-`subsystem-invariants.md` § Drawn cables; term: `glossary.md`; files: `architecture.md`. What
-STANDS, in one line each:
+**Drawn cables landed** (author-ordered): free-drawn annotation curves, point by point, through
+the wired cables' three drawers, with their own shape / ends / width / head size / color and a
+per-point 45° angle dial. Spec: `subsystem-invariants.md` § Drawn cables; term: `glossary.md`.
 
-- They are annotation, never wiring: no socket, no value, no run, and deliberately independent of
-  the toolbar's app-wide cable shape — each drawn cable carries its own shape, width, arrowheads
-  and color.
-- Geometry is one `getCablePath` call per span, chained into a single subpath, with every interior
-  point handing BOTH its spans the chord through its neighbours so the drawers' end stubs stay
-  collinear across the joint. That is what makes a multi-point run read as one cable in all three
-  modes rather than a chain of separate cables.
-- The layer is the standoffs' mirror: same `<ViewportPortal>` world-space pattern, same
-  main-graph-only hook, but ABOVE every card (z 6) instead of under them, because an annotation
-  arrow has to stay visible over what it points at (author's call).
-- Arrowheads are drawn paths, not SVG markers (per-color marker defs and `context-stroke` are not
-  worth it); the tip sits on the endpoint so resizing never moves the point it marks.
-- **Touch is a full config, not a fallback.** A drag pans (the tool drives the camera itself — its
-  sheet is a sibling of the pane, so declining to swallow the press hands the drag to nobody) and
-  only a tap inside a slop radius places; pinch keeps working through the sheet because `flowPinch`
-  listens in capture. Double-tap is NOT the finish gesture (touch-gestures.md rules it out), so on
-  coarse the hint strip becomes Undo / Finish / Done buttons at the thumb end — the only way out
-  where there is no Esc. Bigger hit band, an invisible finger-sized ring behind each handle rather
-  than a fatter disc, and a ✕ beside the point stepper because there is no Alt-click on a phone.
-- Reachable four ways, never the hotkey alone: a toggle in the top bar's Cable group (and one in the
-  MOBILE BAR beside select mode, since that toolbar is hidden on phones), Insert → Draw a cable,
-  the Command Palette (free — `menuModel.ts` feeds both) and `D`. The armed sheet is modal
-  and swallows the pane's pointers, and it spans the WHOLE window, so its z-index has to stay under
-  the header's 6; it shipped at 45 and swallowed the menu bar and toolbar too, leaving the keyboard
-  as the only way out. **Points place on `click`, not `pointerdown`** — a `PointerEvent`'s `detail` is always 0 per spec, so the
-  double-click that ends a run is only legible in `onClick`. This cost a debugging round and is the
-  same trap `FlowCableEdge` already documents; a probe that drives it needs an explicit CDP
-  `clickCount`, since CDP does not derive click counts from timing.
-- The selected cable's panel takes the cable inspector's corner and chrome but not its content
-  (a drawn cable has no From/To/Value to report): shape, ends, width, head size, color, remove.
-  The wired-cable `CableInspector` is untouched — selections are mutually exclusive, so only one
-  is ever mounted.
-- Content scales with the canvas; affordances do not. The line and heads are world units, the
-  point handles and hit path divide by the live zoom.
-- Every point takes an optional heading override off an `AngleDial` (the Conduit's control, at its
-  **45° step — author-ruled 2026-09-05, a finer step was tried and rejected**), reached by clicking
-  a handle or by the panel's point stepper. Because both spans at a
-  point read the same heading, the override rotates the cable THROUGH the point and can never open
-  a kink. A pinned point grows a needle on canvas.
-- Persisted additively as `SavedGraph.drawnCables`, the first text-form sidecar that needs NO
-  name-addressing (nothing in one references a node). Pinned in tests at BOTH layers the save
-  crosses — the store's serialize/load and the text form the JSON is generated through — since a
-  field the sidecar drops is a field that silently does not save. Verified in the browser too: with
-  every field off its default and two points pinned, the persisted blob is byte-identical across a
-  reload. Two traps found while doing it: `movePoint`/`translate` must spread the point or a drag
-  un-pins it, and a CSS `fill` outranks an SVG `fill` attribute (the active handle rendered
-  unfilled until the color moved to a `--handle-ink` custom property).
+- Two rulings: the dial steps 45° only (a 15° step was proposed and refused); the mobile action
+  bar gets NO draw button (one shipped and was removed). Reach is the Cable group toggle,
+  Insert → Draw a cable / the palette, and `D`.
+- Fixed after review: handle drags panned on touch (RF's d3 pan listens to native events, so
+  the grabbable parts carry `nopan`); the stroke ran under the head to the tip (it now stops at
+  the base); drawing recorded no undo entry, so Ctrl+Z deleted the cable with no redo (edits go
+  through `commitDrawn` → autosave + history); finishing left the tool armed, so the next click
+  on the new cable placed a point (it now disarms and selects the cable).
+- Open, pre-existing: an undo that lands on the load baseline re-records "Moved 2 nodes" from
+  the post-load settle and truncates the redo stack.
 
 ### SESSION DIGEST (2026-09-04c — three agents in worktrees; the finance merges land)
 

@@ -2,13 +2,12 @@ import { useSyncExternalStore } from "react";
 import { deleteSelected } from "./canvasCommands";
 import { addMenuRequest } from "./addMenuStore";
 import { touchSelectStore } from "./touchSelectStore";
-import { drawModeStore } from "./drawnCables";
 import { IS_MOBILE } from "./coarse";
 import { paletteStore } from "./paletteStore";
 import { useBottomChrome } from "./chromeBottom";
 import {
   fireUndo, fireGroup, useHasSelection,
-  CommandGlyph, UndoGlyph, RedoGlyph, SelectGlyph, DeleteGlyph, GroupGlyph, DrawGlyph,
+  CommandGlyph, UndoGlyph, RedoGlyph, SelectGlyph, DeleteGlyph, GroupGlyph,
 } from "./touchActions";
 import "./MobileControls.css";
 
@@ -18,8 +17,6 @@ export function MobileControls() {
   // On desktop the poll would scan every node 5×/sec for an invisible control.
   const hasSelection = useHasSelection(IS_MOBILE);
   const selectMode = useSyncExternalStore(touchSelectStore.subscribe, touchSelectStore.get);
-  useSyncExternalStore(drawModeStore.subscribe, drawModeStore.version);
-  const drawArmed = drawModeStore.armed();
 
   // Near the top, so the on-screen keyboard doesn't cover the menu's search field.
   const openAddMenu = () => addMenuRequest.open(window.innerWidth / 2, 96);
@@ -58,20 +55,6 @@ export function MobileControls() {
         onClick={() => touchSelectStore.toggle()}
       >
         <SelectGlyph size={20} />
-      </button>
-      {/* The draw tool is a MODE, like select mode beside it — the top bar's toggle is
-          hidden on mobile, so without this the only ways in are the hamburger sheet and
-          the palette. */}
-      <button
-        className={
-          "solenoid-mobile-bar__btn solenoid-mobile-bar__draw" +
-          (drawArmed ? " solenoid-mobile-bar__btn--on" : "")
-        }
-        aria-label="Draw a cable"
-        aria-pressed={drawArmed}
-        onClick={() => drawModeStore.toggle()}
-      >
-        <DrawGlyph size={22} />
       </button>
       <button
         className={

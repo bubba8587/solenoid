@@ -2,9 +2,8 @@
    its corner and the Navigator slide). Segments mirror the top bar's cable-shape
    selector so "pick a cable shape" is one control everywhere. */
 
-/* This panel carries more rows than the wired-cable one (shape, ends, width, head,
-   angle, dial, color, remove), so it caps its own height on a short window rather than
-   running off the top. Scoped by the dialog label — cableInspector.css is shared. */
+/* More rows than the wired-cable panel, so it caps its height on a short window.
+   Scoped by the dialog label: cableInspector.css is shared. */
 .solenoid-cable-inspector[aria-label="Drawn cable"] {
   max-height: calc(100dvh - var(--chrome-top, 66px) - var(--chrome-bottom, 19px) - 24px);
   overflow-y: auto;
@@ -153,7 +152,6 @@
 }
 
 .solenoid-drawn-inspector__row--dial {
-  justify-content: center;
   gap: 10px;
   padding: 1px 0;
 }
@@ -179,9 +177,8 @@
   cursor: default;
 }
 
-/* Removes the point the dial is on. Alt-clicking its handle does the same, but there
-   is no Alt on a phone. */
-.solenoid-drawn-inspector__droppoint {
+/* Add / remove the active point (the finger's version of double-click and alt-click). */
+.solenoid-drawn-inspector__pointbtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -193,15 +190,23 @@
   border: 1px solid var(--btn-border);
   border-radius: 999px;
   color: var(--text-dim, #9aa0a6);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1;
   cursor: pointer;
 }
 
-.solenoid-drawn-inspector__droppoint:hover:not(:disabled) {
+.solenoid-drawn-inspector__pointbtn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.solenoid-drawn-inspector__pointbtn--drop:hover:not(:disabled) {
   border-color: #c25b5b;
   color: #e08a8a;
 }
 
-.solenoid-drawn-inspector__droppoint:disabled {
+.solenoid-drawn-inspector__pointbtn:disabled {
   opacity: 0.35;
   cursor: default;
 }

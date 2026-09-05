@@ -1,30 +1,21 @@
-// The panel for exactly ONE selected free-drawn cable. It takes the cable inspector's
-// slot and chrome (same corner, same overlay tokens) but not its content: a drawn cable
-// carries no value, no ends and no run, so it offers what it DOES have — its own drawer,
-// its arrowheads and its color.
-//
-// The wired-cable CableInspector is untouched; selections are mutually exclusive, so
-// only one of the two is ever mounted.
+// The panel for ONE selected drawn cable, in the cable inspector's corner and chrome.
+// The wired-cable CableInspector is untouched; selections are mutually exclusive.
 import { useSyncExternalStore } from "react";
 import {
-  drawnCableStore, nearestOption,
+  drawnCableStore, nearestOption, commitDrawn,
   DRAWN_WIDTHS, DRAWN_HEAD_SCALES, DRAWN_ANGLE_STEP,
 } from "../drawnCables";
 import {
   DRAWN_ARROWS, drawnHeadings, hasAngleOverride, type DrawnArrows,
 } from "../drawnCablePath";
 import { AngleDial } from "../AngleDial";
-import "../AngleDial.css";
 import { CABLE_SHAPES, type CableShape } from "../cableShape";
 import { CableShapeIcon } from "../CableShapeSelector";
 import { SwatchGrid } from "./SwatchGrid";
 import { CloseIcon } from "./CloseIcon";
-import { scheduleAutosave } from "../persistence";
 import "./cableInspector.css";
 import "./drawnCableInspector.css";
 
-/** A horizontal cable with the heads the setting turns on, so the four options read as
- *  one drawing that gains and loses tips. */
 function ArrowIcon({ arrows }: { arrows: DrawnArrows }) {
   const head = (x: number, dir: 1 | -1) =>
     `M ${x},9 L ${x - dir * 7},4.5 L ${x - dir * 7},13.5 Z`;
@@ -45,7 +36,6 @@ function ArrowIcon({ arrows }: { arrows: DrawnArrows }) {
   );
 }
 
-/** A plain size dropdown. Native `<select>`, like every other picker on a card. */
 function SizeSelect({
   label,
   options,
@@ -122,10 +112,8 @@ export function DrawnCableInspector() {
   const cable = id ? drawnCableStore.get(id) : undefined;
   if (!cable) return null;
 
-  const commit = (fn: () => void) => { fn(); scheduleAutosave(); };
+  const commit = (fn: () => void) => { fn(); commitDrawn(); };
 
-  // The stepper reaches every point, so a handle too small to click at low zoom is
-  // still editable; clicking one on the canvas sets the same index.
   const count = cable.points.length;
   const point = Math.min(drawnCableStore.activePoint() ?? 0, count - 1);
   const heads = drawnHeadings(cable.points);
@@ -169,7 +157,6 @@ export function DrawnCableInspector() {
         onPick={(v) => commit(() => drawnCableStore.setWidth(cable.id, v))}
       />
 
-      {/* Nothing to size when neither end carries a head. */}
       <SizeSelect
         label="Head"
         options={DRAWN_HEAD_SCALES}
@@ -178,12 +165,8 @@ export function DrawnCableInspector() {
         onPick={(v) => commit(() => drawnCableStore.setHeadScale(cable.id, v))}
       />
 
-      {/* One point's heading, pinned. The dial reads the LIVE heading whether pinned or
-          derived, so dragging it takes over from where the curve already runs. Because
-          both spans at a point read the same heading, this rotates the cable THROUGH the
-          point rather than opening a kink. */}
       <div className="solenoid-drawn-inspector__row">
-        <span className="solenoid-cable-inspector__role">Angle</span>
+        <span className="solenoid-cable-inspector__role">Point</span>
         <div className="solenoid-drawn-inspector__stepper">
           <button
             type="button"
@@ -205,10 +188,21 @@ export function DrawnCableInspector() {
             ›
           </button>
         </div>
-        {/* Alt-clicking the handle does this too, but there is no Alt on a phone. */}
         <button
           type="button"
-          className="solenoid-drawn-inspector__droppoint"
+          className="solenoid-drawn-inspector__pointbtn"
+          aria-label="Add a point"
+          title="Add a point"
+          onClick={() => commit(() => {
+            const i = drawnCableStore.splitAt(cable.id, point);
+            if (i !== null) drawnCableStore.setActivePoint(i);
+          })}
+        >
+          +
+        </button>
+        <button
+          type="button"
+          className="solenoid-drawn-inspector__pointbtn solenoid-drawn-inspector__pointbtn--drop"
           aria-label="Remove this point"
           title="Remove this point"
           disabled={count <= 2}
@@ -219,6 +213,7 @@ export function DrawnCableInspector() {
       </div>
 
       <div className="solenoid-drawn-inspector__row solenoid-drawn-inspector__row--dial">
+        <span className="solenoid-cable-inspector__role">Angle</span>
         <AngleDial
           value={heads[point]}
           step={DRAWN_ANGLE_STEP}
@@ -229,7 +224,6 @@ export function DrawnCableInspector() {
           type="button"
           className="solenoid-drawn-inspector__auto"
           disabled={!pinned}
-          title="Hand this point's heading back to the curve"
           onClick={() => commit(() => drawnCableStore.setPointAngle(cable.id, point, null))}
         >
           Auto

@@ -42,6 +42,7 @@ import { forgetNode } from "../nodeStoreRegistry";
 import { rebuildGroupMembership } from "../groupMembership";
 import { restoreSettledPushes } from "../groupPush";
 import { dockedNodeStore } from "../dockedNodeStore";
+import { setDrawnCommit } from "../drawnCables";
 import { LoadOverlay } from "../components/LoadOverlay";
 import { ComputeOverlay } from "../components/ComputeOverlay";
 import { IsolatePill } from "../components/IsolatePill";
@@ -300,6 +301,11 @@ function FlowCanvasInner() {
       // Component-internal edits reach us here (processGraph's graphChanged);
       // each settled change autosaves AND records an undo step.
       setGraphChanged(() => {
+        scheduleAutosave();
+        flowHistory.schedule();
+      });
+      // Drawn-cable edits never run processGraph, so they record the same way here.
+      setDrawnCommit(() => {
         scheduleAutosave();
         flowHistory.schedule();
       });

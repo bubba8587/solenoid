@@ -1,18 +1,14 @@
-// Path geometry for FREE-DRAWN cables: a point-by-point polyline rendered through
-// the SAME three drawers a wired cable uses (`getCablePath`), one call per span.
-// Pure — no rete, no DOM, no store — so `drawnCablePath.test.ts` can drive it.
+// Free-drawn cable geometry: one `getCablePath` span per pair of points, chained. Pure.
 import { getCablePath, Position } from "./cablePaths";
 import type { CableShape } from "./cableShape";
 
 export type DrawnPoint = {
   x: number;
   y: number;
-  /** Optional heading OVERRIDE at this point, in the drawers' own units (degrees CW
-   *  from +X, screen space: 0 = right, 90 = down). Unset means the derived chord. */
+  /** Heading override, degrees CW from +X (the drawers' units). Unset = derived chord. */
   angle?: number;
 };
 
-/** Which ends carry a head. */
 export type DrawnArrows = "none" | "start" | "end" | "both";
 
 export const DRAWN_ARROWS: { value: DrawnArrows; label: string }[] = [
@@ -36,23 +32,24 @@ function headingOf(from: DrawnPoint, to: DrawnPoint): number | null {
   return Math.atan2(dy, dx) * DEG;
 }
 
-/** Forward tangent heading (degrees CW from +X) at every point.
- *
- *  An interior point takes the CHORD THROUGH ITS NEIGHBOURS, so the span arriving and
- *  the span leaving are handed the same direction: each drawer pins its end stub to
- *  exactly that heading, so the two stubs are collinear and the joint reads as one
- *  continuous cable instead of a kink. Coincident neighbours fall back to whichever
- *  adjacent span still has length.
- *
- *  A point's own `angle` REPLACES that derivation — the angle dial's whole job. Because
- *  both adjacent spans read the same entry, an override rotates the cable THROUGH the
- *  point and the stubs stay collinear; it can never open a kink. */
+function unit(deg: number): { x: number; y: number } {
+  const r = deg / DEG;
+  return { x: Math.cos(r), y: Math.sin(r) };
+}
+
+export function hasAngleOverride(p: DrawnPoint): boolean {
+  return typeof p.angle === "number" && Number.isFinite(p.angle);
+}
+
+/** Forward tangent heading at every point: the override if pinned, else the chord through
+ *  the neighbours. Both spans at a point read the same value, so their end stubs are
+ *  collinear and a joint never kinks. */
 export function drawnHeadings(pts: readonly DrawnPoint[]): number[] {
   const n = pts.length;
   const out: number[] = new Array<number>(n).fill(0);
   if (n < 2) return out;
   for (let i = 0; i < n; i++) {
-    if (typeof pts[i].angle === "number" && Number.isFinite(pts[i].angle)) {
+    if (hasAngleOverride(pts[i])) {
       out[i] = pts[i].angle as number;
       continue;
     }
@@ -62,68 +59,75 @@ export function drawnHeadings(pts: readonly DrawnPoint[]): number[] {
       headingOf(prev, next) ??
       (i + 1 < n ? headingOf(pts[i], pts[i + 1]) : null) ??
       (i > 0 ? headingOf(pts[i - 1], pts[i]) : null);
-    // Every point coincides: any heading draws the same degenerate dot.
     out[i] = h ?? (i > 0 ? out[i - 1] : 0);
   }
   return out;
 }
 
-/** True when this point's heading is pinned by the dial rather than derived. */
-export function hasAngleOverride(p: DrawnPoint): boolean {
-  return typeof p.angle === "number" && Number.isFinite(p.angle);
-}
-
-/** The whole run as ONE `d`. Fewer than two points draws nothing. */
-export function drawnCablePath(shape: CableShape, pts: readonly DrawnPoint[]): string {
-  if (pts.length < 2) return "";
+/** The whole run as one `d`. With a head length, the stroke stops at each head's BASE
+ *  rather than running under it to the tip, or a thick stroke shows through the
+ *  triangle's sides and its round cap pokes out past the point. */
+export function drawnCablePath(
+  shape: CableShape,
+  pts: readonly DrawnPoint[],
+  arrows: DrawnArrows = "none",
+  headLen = 0,
+): string {
+  const n = pts.length;
+  if (n < 2) return "";
   const heads = drawnHeadings(pts);
+  const ends: { x: number; y: number }[] = pts.map((p) => ({ x: p.x, y: p.y }));
+  if (headLen > 0) {
+    const span = (i: number) => Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y);
+    if (arrows === "start" || arrows === "both") {
+      const u = unit(heads[0]);
+      const d = Math.min(headLen, span(0) / 2);
+      ends[0] = { x: pts[0].x + u.x * d, y: pts[0].y + u.y * d };
+    }
+    if (arrows === "end" || arrows === "both") {
+      const u = unit(heads[n - 1]);
+      const d = Math.min(headLen, span(n - 2) / 2);
+      ends[n - 1] = { x: pts[n - 1].x - u.x * d, y: pts[n - 1].y - u.y * d };
+    }
+  }
   let d = "";
-  for (let i = 0; i < pts.length - 1; i++) {
+  for (let i = 0; i < n - 1; i++) {
     const seg = getCablePath(shape, {
-      sourceX: pts[i].x,
-      sourceY: pts[i].y,
+      sourceX: ends[i].x,
+      sourceY: ends[i].y,
       sourcePosition: Position.Right,
       sourceAngleDeg: heads[i],
-      targetX: pts[i + 1].x,
-      targetY: pts[i + 1].y,
+      targetX: ends[i + 1].x,
+      targetY: ends[i + 1].y,
       targetPosition: Position.Left,
       targetAngleDeg: heads[i + 1],
     });
-    // Every drawer emits `M x,y …`. After the first span the move becomes a LINE to
-    // the shared point (zero length — the spans already meet there), keeping the run
-    // a single subpath so joins render and a head sits on a real path end.
+    // One subpath: a second `M` would break the joins.
     d += i === 0 ? seg : ` L${seg.slice(1)}`;
   }
   return d;
 }
 
-// The head at scale 1. Deliberately shorter than the routers' end stub (DIR_LEAD = 14):
-// in straight and diagonal mode that stub IS the visible directional lead, and a head
-// as long as it hides the lead, leaving the arrow looking bolted on at an angle to the
-// last leg. A scale above ~1.4 trades that lead away, which is the author's call to make.
+// Shorter than the drawers' DIR_LEAD (14) so the directional end stub stays visible.
 export const ARROW_LEN = 10;
 export const ARROW_HALF = 4.6;
 
-/** A filled triangle whose TIP is at `tip`, opening back along `dirDeg` — the
- *  direction the head points. */
+/** A filled triangle, tip at `tip`, pointing along `dirDeg`. */
 export function arrowHeadPath(
   tip: DrawnPoint,
   dirDeg: number,
   len = ARROW_LEN,
   half = ARROW_HALF,
 ): string {
-  const r = dirDeg / DEG;
-  const ux = Math.cos(r);
-  const uy = Math.sin(r);
-  const bx = tip.x - ux * len;
-  const by = tip.y - uy * len;
-  const px = -uy * half;
-  const py = ux * half;
+  const u = unit(dirDeg);
+  const bx = tip.x - u.x * len;
+  const by = tip.y - u.y * len;
+  const px = -u.y * half;
+  const py = u.x * half;
   return `M ${tip.x},${tip.y} L ${bx + px},${by + py} L ${bx - px},${by - py} Z`;
 }
 
-/** Tip + pointing direction for each head the setting asks for. The START head points
- *  BACKWARD out of the first point (a two-headed cable reads both ways). */
+/** Tip and pointing direction of each head. The start head points back out of the run. */
 export function drawnArrowHeads(
   pts: readonly DrawnPoint[],
   arrows: DrawnArrows,

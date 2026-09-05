@@ -66,8 +66,14 @@ export function describeGraphDelta(prev: SavedGraph, next: SavedGraph): string {
   if (!parts.length && moved.length)
     parts.push(moved.length === 1 ? `Moved node: ${nodeName(moved[0])}` : `Moved ${moved.length} nodes`);
   if (!parts.length) {
+    const pd = prev.drawnCables?.length ?? 0;
+    const nd = next.drawnCables?.length ?? 0;
     if (JSON.stringify(prev.standoffs ?? []) !== JSON.stringify(next.standoffs ?? []))
       parts.push("Changed standoffs");
+    else if (nd > pd) parts.push(nd - pd === 1 ? "Drew a cable" : `Drew ${nd - pd} cables`);
+    else if (nd < pd) parts.push(pd - nd === 1 ? "Removed a drawn cable" : `Removed ${pd - nd} drawn cables`);
+    else if (JSON.stringify(prev.drawnCables ?? []) !== JSON.stringify(next.drawnCables ?? []))
+      parts.push("Edited a drawn cable");
     else parts.push("Edited document");
   }
   return parts.join("; ");

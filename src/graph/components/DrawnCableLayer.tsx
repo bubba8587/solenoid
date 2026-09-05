@@ -1,14 +1,9 @@
-// The free-drawn cable layer: renders every drawn cable in WORLD coordinates (mounted
-// inside RF's <ViewportPortal>, like StandoffLayer) and owns their point editing.
-//
-// Stacking is the mirror of the standoffs': standoffs sit at z −3, UNDER the graph;
-// drawn cables sit above every card, because a drawn arrow's whole job is to point at
-// one. They are annotation only — no sockets, no conduits, no ribbons, no part in the
-// wired cables' app-wide shape selection.
+// World-space layer for drawn cables (inside RF's <ViewportPortal>, the standoffs'
+// mirror, but ABOVE the cards). Spec: docs/subsystem-invariants.md § Drawn cables.
 import { useCallback, useRef, useSyncExternalStore } from "react";
 import { useReactFlow, useStore } from "@xyflow/react";
 import {
-  drawnCableStore, drawModeStore,
+  drawnCableStore, drawModeStore, commitDrawn,
   DRAWN_DEFAULT_SHAPE, DRAWN_DEFAULT_WIDTH, DRAWN_DEFAULT_COLOR,
   type DrawnCable,
 } from "../drawnCables";
@@ -21,30 +16,20 @@ import { themeAccent, resolveColor } from "../palette";
 import { unselectAllNodes } from "../canvasCommands";
 import { cableSelectionStore } from "../cableState";
 import { standoffStore } from "../standoffs";
-import { scheduleAutosave } from "../persistence";
 import { IS_COARSE } from "../coarse";
+import { isPinching } from "../pointerGesture";
 import "./drawnCableLayer.css";
 
-// The LINE and its heads are content: they scale with the canvas, exactly like a wired
-// cable. The point handles and the hit target are affordances, so they are divided by
-// the zoom and stay a constant SCREEN size — otherwise a handle is ungrabbable at 30%
-// and a dinner plate at 250%.
-// Touch gets the bigger targets: a 5px disc and an 18px hit band are a mouse's
-// tolerances, not a fingertip's. PENDING markers keep the small disc at every config —
-// nothing grabs them, and at touch size they read as holes punched in the preview.
+// Affordance sizes are SCREEN pixels (divided by the zoom at render); the line and
+// heads are canvas units.
 const HIT_STROKE = IS_COARSE ? 40 : 18;
 const HANDLE_R = IS_COARSE ? 11 : 5;
 const PENDING_R = 5;
 const HANDLE_STROKE = IS_COARSE ? 2.5 : 2;
-// A finger needs ~44px; the visible disc stays small, so an invisible ring carries the
-// hit area instead of fattening the drawing.
 const HANDLE_HIT_R = IS_COARSE ? 22 : 9;
-// The needle a point grows once its heading is PINNED by the dial: the override is
-// otherwise invisible until you compare the curve to what it would have been.
 const NEEDLE_LEN = 15;
 
-/** Squared distance from `p` to segment `a`→`b`. The spans are curved; the chord is
- *  close enough to rank which one a click landed on. */
+/** Squared distance from `p` to the chord `a`→`b`. */
 function distToSpanSq(p: DrawnPoint, a: DrawnPoint, b: DrawnPoint): number {
   const vx = b.x - a.x;
   const vy = b.y - a.y;
@@ -113,22 +98,23 @@ function DrawnCableShape({
 }) {
   const mode = appThemeStore.getMode();
   const color = themeAccent(resolveColor(cable.color), mode);
-  const d = drawnCablePath(cable.shape, cable.points);
+  const d = drawnCablePath(cable.shape, cable.points, cable.arrows, ARROW_LEN * cable.headScale);
+  const dHit = drawnCablePath(cable.shape, cable.points);
   const heads = drawnHeadings(cable.points);
   const activePoint = selected ? drawnCableStore.activePoint() : null;
-  // Set on pointerdown, read on move: which point is under the finger, and where the
-  // grab started, so a body drag translates by the DELTA rather than snapping.
+  // On touch an UNSELECTED body is pan surface: the tap's click selects, a drag pans
+  // (touch-gestures.md). Grabbable things carry `nopan` so RF's d3 pan stands down.
+  const bodyGrabs = !IS_COARSE || selected;
   const drag = useRef<{ index: number | null; last: DrawnPoint; moved: boolean } | null>(null);
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent, index: number | null) => {
-      // The canvas must not pan and RF must not lasso underneath us.
-      e.stopPropagation();
       if (e.button !== 0) return;
-      // Alt-click a point removes it (refused at two — a cable needs both ends).
-      if (index !== null && (e.altKey || e.metaKey)) {
+      if (index === null && !bodyGrabs) return;
+      e.stopPropagation();
+      if (index !== null && e.altKey) {
         drawnCableStore.removePoint(cable.id, index);
-        scheduleAutosave();
+        commitDrawn();
         return;
       }
       selectOnly(cable.id);
@@ -136,27 +122,29 @@ function DrawnCableShape({
       drag.current = { index, last: toFlow({ x: e.clientX, y: e.clientY }), moved: false };
       (e.target as Element).setPointerCapture?.(e.pointerId);
     },
-    [cable.id, toFlow],
+    [cable.id, toFlow, bodyGrabs],
   );
 
-  // A double-click on the BODY splits the nearest span, so a finished cable can still
-  // gain detail. It lives in onClick because a PointerEvent's `detail` is always 0
-  // (spec) — the same reason the cable edge detects its double-click here.
+  // Double-click is only legible here: a PointerEvent's `detail` is always 0.
   const onBodyClick = useCallback(
     (e: React.MouseEvent) => {
-      if (e.detail < 2) return;
       e.stopPropagation();
-      const at = toFlow({ x: e.clientX, y: e.clientY });
-      drawnCableStore.insertPoint(cable.id, nearestSpanIndex(cable.points, at), at);
-      scheduleAutosave();
+      if (e.detail >= 2 && !IS_COARSE) {
+        const at = toFlow({ x: e.clientX, y: e.clientY });
+        drawnCableStore.insertPoint(cable.id, nearestSpanIndex(cable.points, at), at);
+        commitDrawn();
+        return;
+      }
+      if (!selected) selectOnly(cable.id);
     },
-    [cable.id, cable.points, toFlow],
+    [cable.id, cable.points, toFlow, selected],
   );
 
   const onPointerMove = useCallback(
     (e: React.PointerEvent) => {
       const g = drag.current;
       if (!g) return;
+      if (isPinching()) { drag.current = null; return; }
       e.stopPropagation();
       const at = toFlow({ x: e.clientX, y: e.clientY });
       if (g.index === null) drawnCableStore.translate(cable.id, at.x - g.last.x, at.y - g.last.y);
@@ -174,19 +162,21 @@ function DrawnCableShape({
       if (!g) return;
       e.stopPropagation();
       (e.target as Element).releasePointerCapture?.(e.pointerId);
-      if (g.moved) scheduleAutosave();
+      if (g.moved) commitDrawn();
     },
     [],
   );
 
   return (
-    <g className={`solenoid-drawn-cable${selected ? " solenoid-drawn-cable--selected" : ""}`}>
+    <g
+      className={`solenoid-drawn-cable${selected ? " solenoid-drawn-cable--selected" : ""}`}
+      style={{ color }}
+    >
       <path className="solenoid-drawn-cable__line" d={d} stroke={color} strokeWidth={cable.width} />
       <ArrowHeads points={cable.points} arrows={cable.arrows} headScale={cable.headScale} color={color} />
       <path
-        className="solenoid-drawn-cable-hit"
-        d={d}
-        // Never thinner on screen than the stroke it has to catch.
+        className={`solenoid-drawn-cable-hit${bodyGrabs ? " nopan" : ""}`}
+        d={dHit}
         strokeWidth={Math.max(HIT_STROKE / zoom, cable.width)}
         onPointerDown={(e) => onPointerDown(e, null)}
         onClick={onBodyClick}
@@ -198,7 +188,7 @@ function DrawnCableShape({
         cable.points.map((p, i) => {
           const pinned = hasAngleOverride(p);
           const cls =
-            "solenoid-drawn-cable__handle" +
+            "solenoid-drawn-cable__handle nopan" +
             (i === activePoint ? " solenoid-drawn-cable__handle--active" : "") +
             (pinned ? " solenoid-drawn-cable__handle--pinned" : "");
           const rad = (heads[i] * Math.PI) / 180;
@@ -215,10 +205,8 @@ function DrawnCableShape({
                   strokeWidth={HANDLE_STROKE / zoom}
                 />
               )}
-              {/* The hit ring: invisible, finger-sized, and BEHIND the disc so the
-                  disc's own cursor and hover still win where they overlap. */}
               <circle
-                className="solenoid-drawn-cable__handle-hit"
+                className="solenoid-drawn-cable__handle-hit nopan"
                 cx={p.x}
                 cy={p.y}
                 r={HANDLE_HIT_R / zoom}
@@ -227,6 +215,7 @@ function DrawnCableShape({
                 onPointerUp={onPointerUp}
                 onPointerCancel={onPointerUp}
               />
+              {/* Color via a custom property: a CSS `fill` rule outranks a fill attribute. */}
               <circle
                 className={cls}
                 cx={p.x}
@@ -247,10 +236,8 @@ function DrawnCableShape({
   );
 }
 
-/** The half-drawn cable following the cursor while the tool is armed. */
+/** The half-drawn run following the cursor while the tool is armed. */
 function PendingCable({ zoom }: { zoom: number }) {
-  // The ONE subscriber to the cursor notifier: this is the only thing that has to
-  // repaint at pointer rate.
   useSyncExternalStore(drawModeStore.subscribeCursor, drawModeStore.cursorVersion);
   const pending = drawModeStore.pending();
   const cursor = drawModeStore.cursor();
@@ -285,10 +272,7 @@ function PendingCable({ zoom }: { zoom: number }) {
 
 export function DrawnCableLayer() {
   useSyncExternalStore(drawnCableStore.subscribe, drawnCableStore.version);
-  // Palette changes notify through the theme store too (appTheme re-notifies).
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
-  // The armed flag decides whether the svg mounts at all; PendingCable holds its own
-  // subscription for the cursor.
   useSyncExternalStore(drawModeStore.subscribe, drawModeStore.version);
   const { screenToFlowPosition } = useReactFlow();
   const zoom = useStore((st) => st.transform[2]);

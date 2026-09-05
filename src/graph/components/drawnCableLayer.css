@@ -1,5 +1,4 @@
-/* Free-drawn cables — annotation drawn OVER the graph (arrows point at cards, so they
-   must not slide under one). The standoff layer is the mirror case at z −3. */
+/* Free-drawn cables, drawn OVER the graph (z 6). Spec: subsystem-invariants § Drawn cables. */
 
 .solenoid-drawn-cable-svg {
   position: absolute;
@@ -44,12 +43,8 @@
   cursor: move;
 }
 
-/* Point handles: hollow discs in the cable's own color, filled with the canvas so the
-   line never shows through. Drawn as SVG circles, not CSS radii (SwatchGrid's rule —
-   a CSS circle clips a side at fractional device pixels under canvas zoom).
-   The cable's color arrives as `--handle-ink` (a custom property), never as a `fill`
-   attribute: a CSS declaration outranks an SVG presentation attribute, so an attribute
-   fill could never win against these rules. */
+/* Point handles: hollow discs filled with the canvas. The cable's color arrives as
+   `--handle-ink`; a `fill` attribute could never win against these rules. */
 .solenoid-drawn-cable__handle {
   fill: var(--canvas-bg, #0b0b0b);
   pointer-events: all;
@@ -60,7 +55,7 @@
   fill: var(--surface-raised, #262626);
 }
 
-/* The point the angle dial edits, filled solid so it is unmistakable among its siblings. */
+/* The point the angle dial edits. */
 .solenoid-drawn-cable__handle--active,
 .solenoid-drawn-cable__handle--active:hover {
   fill: var(--handle-ink, var(--text));
@@ -75,12 +70,8 @@
   pointer-events: none;
 }
 
-/* The armed tool's capture sheet: screen-space, over the whole pane, so a click places
-   a point instead of panning the canvas or starting a lasso.
-   It spans the WHOLE WINDOW (the canvas host does, and the chrome floats over it), so it
-   MUST stay below the header's z-index 6 — above that it swallows the menu bar and the
-   toolbar and the only way out of the tool is the keyboard. It belongs to the canvas
-   plane: over the pane, under everything that floats. */
+/* The armed tool's capture sheet. It spans the whole window, so its z-index MUST stay
+   below the header's 6 or it swallows the menu bar and toolbar. */
 .solenoid-drawn-capture {
   position: absolute;
   inset: 0;
@@ -89,10 +80,9 @@
   touch-action: none;
 }
 
-/* The armed hint: what the tool is waiting for, in the canvas's own overlay chrome. */
+/* The armed strip: state plus the way out. */
 .solenoid-drawn-hint {
   position: absolute;
-  /* Clears the measured header envelope; at top: 12px it sat on the menu bar. */
   top: calc(var(--chrome-top, 66px) + 12px);
   left: 50%;
   transform: translateX(-50%);
@@ -124,15 +114,13 @@
   color: var(--text, #e8e8e8);
 }
 
-/* A pinned heading grows a needle so the override is visible on the canvas. */
+/* A pinned heading's needle. */
 .solenoid-drawn-cable__needle {
   stroke-linecap: round;
   pointer-events: none;
 }
 
-/* Touch strip: the same pill, but carrying real buttons instead of key names, and
-   thumb-sized. It is the ONLY way out of the tool on a phone (there is no Esc, and
-   double-tap is not a gesture here), so it stays reachable and never scrolls away. */
+/* Touch strip: real buttons, thumb-sized; the only way out of the tool without Esc. */
 .solenoid-drawn-hint--touch {
   gap: 6px;
   padding: 5px 6px 5px 12px;
@@ -167,7 +155,7 @@
   color: var(--accent-ink);
 }
 
-/* Invisible, finger-sized grab ring around each point handle. */
+/* Invisible finger-sized grab ring behind each handle. */
 .solenoid-drawn-cable__handle-hit {
   fill: transparent;
   stroke: none;
@@ -175,8 +163,7 @@
   cursor: grab;
 }
 
-/* On touch the strip carries the only way out of the tool, so it moves to the THUMB
-   end of the screen. Centered at the top it also ran under the zoom/lock HUD. */
+/* Thumb end on touch; centered at the top it ran under the zoom/lock HUD. */
 @media (pointer: coarse) {
   .solenoid-drawn-hint--touch {
     top: auto;

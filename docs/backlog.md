@@ -82,10 +82,6 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Canvas annotation
 
-- [ ] **Drawn cables: undo entries.** Draw, point-drag, translate and remove take no snapshot, so
-  Ctrl+Z steps past them (standoffs have the same gap). `flowHistory` snapshots the graph;
-  drawn cables live outside it, so this needs the store's state folded into a snapshot or its own
-  small history.
 - [ ] **Drawn cables: nothing tows one.** A drawn arrow annotating a node stays put when that node
   moves, Tidy runs, or a group expands. An optional per-END anchor to a node id would fix it and is
   the natural v2; deliberately out of v1 (they take no part in layout).

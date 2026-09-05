@@ -20,7 +20,7 @@ import {
   standoffStore, settleStandoffs, anchorPoint, anchorFromVector,
   OPPOSITE_ANCHOR, ANCHOR_DIR, type Box as StandoffBox,
 } from "./standoffs";
-import { drawnCableStore } from "./drawnCables";
+import { drawnCableStore, commitDrawn } from "./drawnCables";
 import { PUSH_GAP } from "./groupPushCore";
 import { measuredBox } from "./nodeSize";
 import { scheduleAutosave } from "./persistence";
@@ -201,12 +201,11 @@ export async function deleteSelection(
   editor: NodeEditor<Schemes>,
   view: View | null,
 ): Promise<void> {
-  // A selected drawn cable is its own deletion target (exclusive selection), and it
-  // owns no graph entity, so it never reaches the node/cable sweeps below.
+  // A selected drawn cable is its own deletion target (exclusive selection).
   const drawnSel = drawnCableStore.selected();
   if (drawnSel) {
     drawnCableStore.remove(drawnSel);
-    scheduleAutosave();
+    commitDrawn();
     return;
   }
 

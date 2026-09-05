@@ -76,4 +76,17 @@ describe("describeGraphDelta", () => {
     };
     expect(describeGraphDelta(prev, next)).toBe("Changed standoffs");
   });
+
+  it("names drawn-cable changes", () => {
+    const cable = {
+      points: [{ x: 0, y: 0 }, { x: 10, y: 0 }],
+      shape: "spline" as const, arrows: "end" as const, width: 2.4, headScale: 1, color: "gray",
+    };
+    const none = graph([a]);
+    const one: SavedGraph = { ...graph([a]), drawnCables: [cable] };
+    const edited: SavedGraph = { ...graph([a]), drawnCables: [{ ...cable, color: "red" }] };
+    expect(describeGraphDelta(none, one)).toBe("Drew a cable");
+    expect(describeGraphDelta(one, none)).toBe("Removed a drawn cable");
+    expect(describeGraphDelta(one, edited)).toBe("Edited a drawn cable");
+  });
 });

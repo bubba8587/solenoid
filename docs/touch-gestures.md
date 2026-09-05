@@ -93,27 +93,36 @@ Other add paths (not gestures): mobile bar ➕ FAB, the `A` key, Insert ▸ Add 
 ### Drawn cables — the armed draw tool (`components/DrawnCableCapture.tsx`)
 
 The tool is MODAL: while armed a full-window sheet sits over the pane, so these replace the
-canvas gestures above until it is disarmed. It owns pan itself — the sheet is a SIBLING of
-the pane, so declining to swallow a press hands the drag to nobody.
+canvas gestures above until it is disarmed. It owns pan itself (the sheet is a SIBLING of the
+pane). Finishing disarms and selects the new cable.
 
 | Gesture | Config | Action | Where |
 |---|---|---|---|
-| tap / click | all | place a point (only inside `TAP_SLOP`; a longer press was a pan) | `DrawnCableCapture.tsx` |
+| tap / click | all | place a point (only inside `TAP_SLOP`; a repeat tap on the last point is dropped) | `DrawnCableCapture.tsx` |
 | 1-finger / left-mouse drag | all | pan the camera, place nothing | `DrawnCableCapture.tsx` `panBy` |
-| 2-finger pinch | touch | zoom, place nothing — `flowPinch` listens in CAPTURE so it sees the fingers THROUGH the sheet, and its click guard eats the trailing click; placement also stands down on `isPinching()` | `flowPinch.ts` |
-| double-click | **mouse only** | finish the run (click `detail`; click 1 places the last point) | `DrawnCableCapture.tsx` |
-| right-click | mouse | finish the run (it raises no click, so it is handled on pointerdown) | `DrawnCableCapture.tsx` |
-| Undo / Finish / Done buttons | coarse | the touch way out — double-tap is NOT the finish gesture here, and there is no Esc | the hint strip, at the THUMB end |
-| tap/click a point handle | all | make it the angle dial's active point, or drag it | `DrawnCableLayer.tsx` |
-| alt-click a handle | mouse | remove that point (the panel's ✕ is the finger's version) | `DrawnCableLayer.tsx` / `DrawnCableInspector.tsx` |
-| double-click the cable body | mouse | insert a point on the nearest span | `DrawnCableLayer.tsx` |
-| touch hit areas | coarse | hit band 40px, and each handle gets an invisible ~44px ring BEHIND its disc rather than a fatter disc; pending markers stay small (nothing grabs them) | `DrawnCableLayer.tsx` |
+| 2-finger pinch | touch | zoom, place nothing (`flowPinch` listens in CAPTURE, through the sheet) | `flowPinch.ts` |
+| double-click | **mouse only** | finish (click `detail`; click 1 places the last point) | `DrawnCableCapture.tsx` |
+| right-click | mouse | finish (no click is raised, so it is handled on pointerdown) | `DrawnCableCapture.tsx` |
+| Undo / Finish / Cancel buttons | coarse | the touch way out — double-tap is NOT a finish gesture, and there is no Esc | the strip, at the THUMB end |
+
+### Drawn cables — a finished cable (`components/DrawnCableLayer.tsx`)
+
+| Gesture | Config | Action | Where |
+|---|---|---|---|
+| tap the body | touch | select (via the tap's click) | `DrawnCableLayer.tsx` `onBodyClick` |
+| drag the body of an UNSELECTED cable | touch | **pan** (the body is pan surface until selected) | RF pane drag |
+| click / drag the body | mouse; touch only when SELECTED | select and move the whole cable (`nopan`) | `DrawnCableLayer.tsx` |
+| drag a point handle | all (handles show only when selected) | move the point, never pan (`nopan`); a second finger hands off to pinch | `DrawnCableLayer.tsx` |
+| tap / click a handle | all | make it the angle dial's active point | `DrawnCableLayer.tsx` |
+| alt-click a handle | mouse | remove the point (the panel's ✕ is the finger's version) | `DrawnCableLayer.tsx` / `DrawnCableInspector.tsx` |
+| double-click the body | mouse | insert a point on the nearest span (the panel's + is the finger's version) | `DrawnCableLayer.tsx` |
+| touch hit areas | coarse | hit band 40px; each handle gets an invisible ~44px ring behind its disc | `DrawnCableLayer.tsx` |
 
 ### Chrome (bars, popups)
 
 | Gesture | Config | Action | Where |
 |---|---|---|---|
-| touch action buttons | mobile: bottom bar; tablet: top bar | palette/undo/redo/select/group/delete (+ mobile ➕ and the draw-mode toggle — the top bar's Cable group is `display:none` on mobile) | `touchActions.tsx` (drift-pinned by `touchActions.test.ts`) |
+| touch action buttons | mobile: bottom bar; tablet: top bar | palette/undo/redo/select/group/delete (+ mobile ➕) | `touchActions.tsx` (drift-pinned by `touchActions.test.ts`) |
 | taps in popups/overlays | all | normal UI; `stopDragStart` guards chrome that sits over the canvas | per component |
 
 ## Enforcement

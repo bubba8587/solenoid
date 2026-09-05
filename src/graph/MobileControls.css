@@ -70,10 +70,3 @@
   background: var(--accent);
   filter: brightness(0.92);
 }
-
-/* The draw-mode toggle lights exactly like select mode beside it — both are modes, not
-   one-shot actions, so they must read alike when on. */
-.solenoid-mobile-bar__draw.solenoid-mobile-bar__btn--on {
-  background: var(--accent-soft);
-  color: var(--accent);
-}

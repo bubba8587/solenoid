@@ -75,6 +75,24 @@ describe("drawnCablePath — the drawers, chained point to point", () => {
     const four = drawnCablePath("diagonal", pts);
     expect(four.length).toBeGreaterThan(two.length);
   });
+
+  it("stops the stroke at a head's base, not its tip", () => {
+    const line: DrawnPoint[] = [{ x: 0, y: 0 }, { x: 100, y: 0 }];
+    for (const shape of SHAPES) {
+      const both = coords(drawnCablePath(shape, line, "both", 10));
+      expect(both[0]).toEqual({ x: 10, y: 0 });
+      expect(both[both.length - 1]).toEqual({ x: 90, y: 0 });
+      const end = coords(drawnCablePath(shape, line, "end", 10));
+      expect(end[0]).toEqual({ x: 0, y: 0 });
+      expect(end[end.length - 1]).toEqual({ x: 90, y: 0 });
+      const none = coords(drawnCablePath(shape, line, "none", 10));
+      expect(none[none.length - 1]).toEqual({ x: 100, y: 0 });
+    }
+    // A span shorter than two heads keeps half of itself.
+    const short = coords(drawnCablePath("spline", [{ x: 0, y: 0 }, { x: 8, y: 0 }], "both", 10));
+    expect(short[0]).toEqual({ x: 4, y: 0 });
+    expect(short[short.length - 1]).toEqual({ x: 4, y: 0 });
+  });
 });
 
 describe("drawnHeadings — the shared tangent at each joint", () => {
@@ -302,6 +320,16 @@ describe("drawnCableStore", () => {
     expect(nearestOption(DRAWN_HEAD_SCALES, 0)).toBe(0.7);
   });
 
+  it("splits the span after the active point at its midpoint", () => {
+    const c = drawnCableStore.add([{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 20, y: 0 }])!;
+    drawnCableStore.select(c.id);
+    expect(drawnCableStore.splitAt(c.id, 0)).toBe(1);
+    expect(drawnCableStore.get(c.id)!.points[1]).toEqual({ x: 5, y: 0 });
+    // The last point splits the span BEFORE it.
+    expect(drawnCableStore.splitAt(c.id, 3)).toBe(3);
+    expect(drawnCableStore.get(c.id)!.points.map((p) => p.x)).toEqual([0, 5, 10, 15, 20]);
+  });
+
   it("clears the selection when the selected cable goes", () => {
     const c = drawnCableStore.add([{ x: 0, y: 0 }, { x: 1, y: 1 }])!;
     drawnCableStore.select(c.id);
@@ -324,18 +352,30 @@ describe("drawModeStore", () => {
     drawModeStore.place({ x: 20, y: 10 });
     drawModeStore.undoPoint();
     expect(drawModeStore.pending()).toHaveLength(2);
-    expect(drawModeStore.finish()).not.toBeNull();
-    // Still armed for the next run, with nothing pending.
-    expect(drawModeStore.armed()).toBe(true);
+    const c = drawModeStore.finish();
+    expect(c).not.toBeNull();
+    // Finishing leaves the tool and selects the new cable, so its panel opens.
+    expect(drawModeStore.armed()).toBe(false);
     expect(drawModeStore.pending()).toHaveLength(0);
     expect(drawnCableStore.all()).toHaveLength(1);
+    expect(drawnCableStore.selected()).toBe(c!.id);
   });
 
-  it("finishing one point commits nothing", () => {
+  it("drops a repeat tap on the last point", () => {
+    drawModeStore.arm();
+    drawModeStore.place({ x: 0, y: 0 }, 3);
+    drawModeStore.place({ x: 1, y: 1 }, 3);
+    expect(drawModeStore.pending()).toHaveLength(1);
+    drawModeStore.place({ x: 10, y: 0 }, 3);
+    expect(drawModeStore.pending()).toHaveLength(2);
+  });
+
+  it("finishing one point commits nothing and stays armed", () => {
     drawModeStore.arm();
     drawModeStore.place({ x: 0, y: 0 });
     expect(drawModeStore.finish()).toBeNull();
     expect(drawnCableStore.isEmpty()).toBe(true);
+    expect(drawModeStore.armed()).toBe(true);
   });
 
   it("disarming discards a half-drawn run", () => {

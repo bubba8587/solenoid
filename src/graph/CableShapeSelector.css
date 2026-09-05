@@ -115,8 +115,7 @@
   .solenoid-toolbar__flow--active .solenoid-toolbar__flow-beads { animation: none; }
 }
 
-/* The free-draw tool toggle. Sized and lit like the flow toggle beside it, so the two
-   non-shape controls in the Cable group read as one pair. */
+/* The free-draw tool toggle, sized and lit like the flow toggle beside it. */
 .solenoid-toolbar__draw {
   display: flex;
   align-items: center;
@@ -146,6 +145,8 @@
   color: var(--accent-ink);
 }
 
-.solenoid-toolbar__draw svg {
+.solenoid-toolbar__draw-icon {
   display: block;
+  width: 19px;
+  height: 15px;
 }
