@@ -42,6 +42,7 @@ export function PopupResizeGrip({ cardRef, min, onResize }: {
     const el = cardRef.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
+    e.currentTarget.setPointerCapture?.(e.pointerId);
     active = { sx: e.clientX, sy: e.clientY, startW: r.width, startH: r.height, min, set: onResize };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);

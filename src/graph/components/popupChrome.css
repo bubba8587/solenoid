@@ -275,6 +275,8 @@
   opacity: 0.5;
   cursor: nwse-resize;
   z-index: 6;
+  /* Or the browser reclaims the finger for scrolling a few px in and cancels the drag. */
+  touch-action: none;
 }
 .sol-popup__resize:hover {
   opacity: 0.9;

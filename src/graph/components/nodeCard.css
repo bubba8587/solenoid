@@ -1397,6 +1397,7 @@ body.solenoid-scrubbing * {
   bottom: 2px;
   width: 14px;
   height: 14px;
+  touch-action: none;
   display: flex;
   align-items: center;
   justify-content: center;

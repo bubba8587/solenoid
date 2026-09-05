@@ -26,6 +26,9 @@ per-point 45° angle dial. Spec: `subsystem-invariants.md` § Drawn cables; term
   rebind dropped the touch gesture (a mouse's move listener lives on the window and survived).
   The wrapper now keeps stable callbacks behind a ref. The grip is also in `flowTouchPan`'s
   control list, so an UNSELECTED card's grip resizes on touch as socket.css promises.
+- **Popup and text-field grips died a few px into a touch drag** (pre-existing): neither carried
+  `touch-action: none`, so the browser reclaimed the finger for scrolling and fired
+  `pointercancel`. Both now set it and take pointer capture.
 - Open, pre-existing: an undo that lands on the load baseline re-records "Moved 2 nodes" from
   the post-load settle and truncates the redo stack.
 
