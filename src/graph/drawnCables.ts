@@ -310,7 +310,14 @@ registerNodeForgetAll(() => drawnCableStore.clear());
 let _armed = false;
 let _pending: DrawnPoint[] = [];
 let _cursor: DrawnPoint | null = null;
+// TWO notifiers on purpose. The cursor moves on every pointermove while the tool is
+// armed; the toolbar toggle, the menu bar and the layer's mount only care whether it is
+// armed and how many points are down. Folding them into one notifier re-renders the app
+// chrome at pointer rate — only the rubber-band preview subscribes to the cursor.
 const draw = createNotifier();
+const drawCursor = createNotifier();
+/** A structural change moves the preview too, so it wakes both. */
+const both = () => { draw.notify(); drawCursor.notify(); };
 
 export const drawModeStore = {
   armed: () => _armed,
@@ -319,13 +326,16 @@ export const drawModeStore = {
   cursor: () => _cursor,
   version: draw.version,
   subscribe: draw.subscribe,
+  /** Cursor-only: subscribe to this ONLY where the live preview is drawn. */
+  cursorVersion: drawCursor.version,
+  subscribeCursor: drawCursor.subscribe,
 
   arm() {
     if (_armed) return;
     _armed = true;
     _pending = [];
     _cursor = null;
-    draw.notify();
+    both();
   },
 
   /** Leave the tool, discarding anything half-drawn. */
@@ -334,7 +344,7 @@ export const drawModeStore = {
     _armed = false;
     _pending = [];
     _cursor = null;
-    draw.notify();
+    both();
   },
 
   toggle() {
@@ -345,21 +355,21 @@ export const drawModeStore = {
   place(p: DrawnPoint) {
     if (!_armed) return;
     _pending = [..._pending, { x: p.x, y: p.y }];
-    draw.notify();
+    both();
   },
 
   /** Undo the last placed point; the tool stays armed at zero points. */
   undoPoint() {
     if (!_armed || _pending.length === 0) return;
     _pending = _pending.slice(0, -1);
-    draw.notify();
+    both();
   },
 
   moveCursor(p: DrawnPoint | null) {
     if (!_armed) return;
     if (p === null && _cursor === null) return;
     _cursor = p ? { x: p.x, y: p.y } : null;
-    draw.notify();
+    drawCursor.notify();
   },
 
   /** Commit what's placed as a cable and stay armed for the next one. Returns the
@@ -368,7 +378,7 @@ export const drawModeStore = {
     const pts = _pending;
     _pending = [];
     _cursor = null;
-    draw.notify();
+    both();
     return drawnCableStore.add(pts);
   },
 };

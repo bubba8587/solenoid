@@ -23,6 +23,7 @@ import { docPropertiesPanel } from "./docMetaStore";
 import { helpDialogStore } from "./helpDialogStore";
 import { gridSnapStore } from "./gridSnapStore";
 import { APP_LOCALE } from "./locale";
+import { drawModeStore } from "./drawnCables";
 
 export type MenuItem =
   | { sep: true }
@@ -48,6 +49,7 @@ export function buildMenus(): Menu[] {
   const locked = canvasLockStore.get();
   const snap = gridSnapStore.get();
   const calcMode = calcModeStore.mode();
+  const drawArmed = drawModeStore.armed();
 
   return [
     {
@@ -117,6 +119,13 @@ export function buildMenus(): Menu[] {
       items: [
         { label: "Add node…", shortcut: "A", onClick: () => addMenuRequest.open(window.innerWidth / 2, 140) },
         { label: "Add connection…", onClick: () => connectionDialog.open() },
+        { sep: true },
+        {
+          label: "Draw a cable",
+          shortcut: "D",
+          checked: drawArmed,
+          onClick: () => drawModeStore.toggle(),
+        },
       ],
     },
     {

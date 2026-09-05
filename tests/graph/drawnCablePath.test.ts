@@ -347,6 +347,26 @@ describe("drawModeStore", () => {
     expect(drawModeStore.armed()).toBe(false);
   });
 
+  it("a cursor move wakes ONLY the cursor subscribers", () => {
+    // The chrome (toolbar toggle, menu bar) subscribes to the structural notifier; if a
+    // pointermove woke it, the app bar would re-render at pointer rate.
+    let structural = 0;
+    let cursor = 0;
+    const offA = drawModeStore.subscribe(() => structural++);
+    const offB = drawModeStore.subscribeCursor(() => cursor++);
+    drawModeStore.arm();
+    expect(structural).toBe(1);
+    drawModeStore.moveCursor({ x: 1, y: 1 });
+    drawModeStore.moveCursor({ x: 2, y: 2 });
+    expect(structural).toBe(1);
+    expect(cursor).toBe(3); // arm + two moves
+    // A structural change still moves the preview, so it wakes both.
+    drawModeStore.place({ x: 0, y: 0 });
+    expect(structural).toBe(2);
+    expect(cursor).toBe(4);
+    offA(); offB();
+  });
+
   it("ignores placement while disarmed", () => {
     drawModeStore.place({ x: 0, y: 0 });
     expect(drawModeStore.pending()).toHaveLength(0);

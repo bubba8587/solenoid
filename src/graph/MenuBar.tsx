@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { appThemeStore } from "./appTheme";
 import { canvasLockStore } from "./canvasLock";
 import { calcModeStore } from "./calcModeStore";
+import { drawModeStore } from "./drawnCables";
 import { mobileMenuStore } from "./mobileMenuStore";
 import { DocumentTitle } from "./components/DocumentTitle";
 import wordmark from "../logo/solenoidwordmark.svg";
@@ -20,6 +21,7 @@ export function MenuBar() {
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
   useSyncExternalStore(calcModeStore.subscribe, calcModeStore.version);
+  useSyncExternalStore(drawModeStore.subscribe, drawModeStore.version);
   useGridSnap();
   const menus = buildMenus();
 

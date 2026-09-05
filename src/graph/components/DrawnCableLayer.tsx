@@ -229,7 +229,9 @@ function DrawnCableShape({
 
 /** The half-drawn cable following the cursor while the tool is armed. */
 function PendingCable({ zoom }: { zoom: number }) {
-  useSyncExternalStore(drawModeStore.subscribe, drawModeStore.version);
+  // The ONE subscriber to the cursor notifier: this is the only thing that has to
+  // repaint at pointer rate.
+  useSyncExternalStore(drawModeStore.subscribeCursor, drawModeStore.cursorVersion);
   const pending = drawModeStore.pending();
   const cursor = drawModeStore.cursor();
   if (pending.length === 0) return null;

@@ -21,6 +21,7 @@ const GROUPS: Group[] = [
       { keys: ["F"], label: "Autofit the group box to members, selected or all" },
       { keys: ["C"], label: "Cleanup: tidy groups, collapse, fit" },
       { keys: ["N"], label: "Toggle the Navigator (outline) panel" },
+      { keys: ["D"], label: "Draw a cable. Enter finishes it, Esc leaves the tool" },
       { keys: ["[", "]"], label: "Rotate the selected Conduit, Angle Dial, or Standoff" },
       { keys: ["←", "↑", "→", "↓"], label: "Nudge the selection. Shift takes a larger step" },
       { keys: ["Tab"], label: "Expand or collapse all chrome: Navigator, legend, pins, alerts" },

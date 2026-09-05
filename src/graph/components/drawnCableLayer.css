@@ -76,11 +76,15 @@
 }
 
 /* The armed tool's capture sheet: screen-space, over the whole pane, so a click places
-   a point instead of panning the canvas or starting a lasso. */
+   a point instead of panning the canvas or starting a lasso.
+   It spans the WHOLE WINDOW (the canvas host does, and the chrome floats over it), so it
+   MUST stay below the header's z-index 6 — above that it swallows the menu bar and the
+   toolbar and the only way out of the tool is the keyboard. It belongs to the canvas
+   plane: over the pane, under everything that floats. */
 .solenoid-drawn-capture {
   position: absolute;
   inset: 0;
-  z-index: 45; /* under the lasso (50) and every overlay; over the pane */
+  z-index: 4;
   cursor: crosshair;
   touch-action: none;
 }
@@ -88,10 +92,11 @@
 /* The armed hint: what the tool is waiting for, in the canvas's own overlay chrome. */
 .solenoid-drawn-hint {
   position: absolute;
-  top: 12px;
+  /* Clears the measured header envelope; at top: 12px it sat on the menu bar. */
+  top: calc(var(--chrome-top, 66px) + 12px);
   left: 50%;
   transform: translateX(-50%);
-  z-index: 46;
+  z-index: 5;
   display: flex;
   align-items: center;
   gap: 8px;

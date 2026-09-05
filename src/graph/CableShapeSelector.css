@@ -114,3 +114,40 @@
 @media (prefers-reduced-motion: reduce) {
   .solenoid-toolbar__flow--active .solenoid-toolbar__flow-beads { animation: none; }
 }
+
+/* The free-draw tool toggle. Sized and lit like the flow toggle beside it, so the two
+   non-shape controls in the Cable group read as one pair. */
+.solenoid-toolbar__draw {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 7px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 80ms ease, color 80ms ease, border-color 80ms ease;
+}
+
+@media (hover: hover) {
+  .solenoid-toolbar__draw:hover {
+    color: var(--accent);
+    border-color: var(--btn-border-hover, var(--border-strong));
+    background: var(--btn-hover);
+  }
+}
+
+.solenoid-toolbar__draw--active,
+.solenoid-toolbar__draw--active:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.solenoid-toolbar__draw-icon {
+  display: block;
+  width: 19px;
+  height: 15px;
+}

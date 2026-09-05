@@ -25,8 +25,11 @@ STANDS, in one line each:
   arrow has to stay visible over what it points at (author's call).
 - Arrowheads are drawn paths, not SVG markers (per-color marker defs and `context-stroke` are not
   worth it); the tip sits on the endpoint so resizing never moves the point it marks.
-- `D` arms the tool; the armed sheet is modal and swallows the pane's pointers. **Points place on
-  `click`, not `pointerdown`** — a `PointerEvent`'s `detail` is always 0 per spec, so the
+- Reachable four ways, never the hotkey alone: a toggle in the top bar's Cable group, Insert → Draw
+  a cable, the Command Palette (free — `menuModel.ts` feeds both) and `D`. The armed sheet is modal
+  and swallows the pane's pointers, and it spans the WHOLE window, so its z-index has to stay under
+  the header's 6; it shipped at 45 and swallowed the menu bar and toolbar too, leaving the keyboard
+  as the only way out. **Points place on `click`, not `pointerdown`** — a `PointerEvent`'s `detail` is always 0 per spec, so the
   double-click that ends a run is only legible in `onClick`. This cost a debugging round and is the
   same trap `FlowCableEdge` already documents; a probe that drives it needs an explicit CDP
   `clickCount`, since CDP does not derive click counts from timing.
