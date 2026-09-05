@@ -82,9 +82,10 @@ const isPoint = (v: unknown): v is DrawnPoint =>
   typeof v === "object" && v !== null &&
   Number.isFinite((v as DrawnPoint).x) && Number.isFinite((v as DrawnPoint).y);
 
-/** The dial step. Finer than the standoff's and the Conduit's 45: those snap to a
- *  compass by spec, a drawn annotation answers to nothing. */
-export const DRAWN_ANGLE_STEP = 15;
+/** The dial step. 45° ONLY (author, 2026-09-05): the same detent the standoff and the
+ *  Conduit dials use, so every angle control in the app turns the same way. A finer
+ *  step was tried and rejected — do not reopen without the author. */
+export const DRAWN_ANGLE_STEP = 45;
 
 const clonePoint = (p: DrawnPoint): DrawnPoint =>
   hasAngleOverride(p) ? { x: p.x, y: p.y, angle: p.angle } : { x: p.x, y: p.y };

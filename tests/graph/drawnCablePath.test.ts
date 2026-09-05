@@ -9,7 +9,7 @@ import {
 } from "../../src/graph/drawnCablePath";
 import {
   drawnCableStore, drawModeStore, nearestOption,
-  DRAWN_WIDTHS, DRAWN_HEAD_SCALES,
+  DRAWN_WIDTHS, DRAWN_HEAD_SCALES, DRAWN_ANGLE_STEP,
 } from "../../src/graph/drawnCables";
 import type { CableShape } from "../../src/graph/cableShape";
 
@@ -205,6 +205,12 @@ describe("drawnCableStore", () => {
     expect(back.width).toBe(3.6);
     expect(back.headScale).toBe(1.5);
     expect(back.color).toBe("vermilion");
+  });
+
+  // Author ruling, 2026-09-05: the angle dial steps in 45s, matching the standoff and
+  // Conduit dials. A finer step was tried and rejected — this is the relapse guard.
+  it("the angle dial steps in 45s", () => {
+    expect(DRAWN_ANGLE_STEP).toBe(45);
   });
 
   it("pins and releases a point's heading", () => {

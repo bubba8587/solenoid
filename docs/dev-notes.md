@@ -36,8 +36,9 @@ STANDS, in one line each:
   is ever mounted.
 - Content scales with the canvas; affordances do not. The line and heads are world units, the
   point handles and hit path divide by the live zoom.
-- Every point takes an optional heading override off an `AngleDial` (the Conduit's control, at a
-  15° step), reached by clicking a handle or by the panel's point stepper. Because both spans at a
+- Every point takes an optional heading override off an `AngleDial` (the Conduit's control, at its
+  **45° step — author-ruled 2026-09-05, a finer step was tried and rejected**), reached by clicking
+  a handle or by the panel's point stepper. Because both spans at a
   point read the same heading, the override rotates the cable THROUGH the point and can never open
   a kink. A pinned point grows a needle on canvas.
 - Persisted additively as `SavedGraph.drawnCables`, the first text-form sidecar that needs NO
