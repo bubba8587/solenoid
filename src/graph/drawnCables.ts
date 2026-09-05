@@ -11,7 +11,7 @@ import { createNotifier } from "./storeKit";
 import { registerNodeForgetAll } from "./nodeStoreRegistry";
 import type { CableShape } from "./cableShape";
 import type { DrawnPoint, DrawnArrows } from "./drawnCablePath";
-import { isDrawnArrows } from "./drawnCablePath";
+import { isDrawnArrows, hasAngleOverride } from "./drawnCablePath";
 
 export interface DrawnCable {
   id: string;
@@ -82,8 +82,22 @@ const isPoint = (v: unknown): v is DrawnPoint =>
   typeof v === "object" && v !== null &&
   Number.isFinite((v as DrawnPoint).x) && Number.isFinite((v as DrawnPoint).y);
 
+/** The dial step. Finer than the standoff's and the Conduit's 45: those snap to a
+ *  compass by spec, a drawn annotation answers to nothing. */
+export const DRAWN_ANGLE_STEP = 15;
+
+const clonePoint = (p: DrawnPoint): DrawnPoint =>
+  hasAngleOverride(p) ? { x: p.x, y: p.y, angle: p.angle } : { x: p.x, y: p.y };
+
+function normalizeDeg(deg: number): number {
+  const m = deg % 360;
+  return m < 0 ? m + 360 : m;
+}
+
 let _cables: DrawnCable[] = [];
 let _selectedId: string | null = null;
+// Which point the angle dial edits. Cleared whenever it could dangle.
+let _activePoint: number | null = null;
 let _nextId = 1;
 const { notify, subscribe, version } = createNotifier();
 
@@ -102,6 +116,18 @@ export const drawnCableStore = {
   select(id: string | null) {
     if (_selectedId === id) return;
     _selectedId = id && find(id) ? id : null;
+    _activePoint = null;
+    notify();
+  },
+
+  activePoint: () => _activePoint,
+
+  /** The point the dial edits. Out of range (or null) selects none. */
+  setActivePoint(index: number | null) {
+    const c = _selectedId ? find(_selectedId) : undefined;
+    const next = c && index !== null && index >= 0 && index < c.points.length ? index : null;
+    if (_activePoint === next) return;
+    _activePoint = next;
     notify();
   },
 
@@ -110,7 +136,7 @@ export const drawnCableStore = {
     if (points.length < 2) return null;
     const c: DrawnCable = {
       id: `drawn-${_nextId++}`,
-      points: points.map((p) => ({ x: p.x, y: p.y })),
+      points: points.map(clonePoint),
       shape: init?.shape ?? DRAWN_DEFAULT_SHAPE,
       arrows: init?.arrows ?? DRAWN_DEFAULT_ARROWS,
       width: init?.width ?? DRAWN_DEFAULT_WIDTH,
@@ -126,7 +152,7 @@ export const drawnCableStore = {
     const before = _cables.length;
     _cables = _cables.filter((c) => c.id !== id);
     if (_cables.length === before) return;
-    if (_selectedId === id) _selectedId = null;
+    if (_selectedId === id) { _selectedId = null; _activePoint = null; }
     notify();
   },
 
@@ -170,7 +196,24 @@ export const drawnCableStore = {
   movePoint(id: string, index: number, to: DrawnPoint) {
     const c = find(id);
     if (!c || index < 0 || index >= c.points.length) return;
-    c.points[index] = { x: to.x, y: to.y };
+    // The dial's override is a property OF THE POINT: dragging it must not clear it.
+    c.points[index] = { ...c.points[index], x: to.x, y: to.y };
+    notify();
+  },
+
+  /** Pin this point's heading, or `null` to hand it back to the derived chord. */
+  setPointAngle(id: string, index: number, angle: number | null) {
+    const c = find(id);
+    if (!c || index < 0 || index >= c.points.length) return;
+    const p = c.points[index];
+    if (angle === null) {
+      if (p.angle === undefined) return;
+      delete p.angle;
+    } else {
+      const a = normalizeDeg(angle);
+      if (p.angle === a) return;
+      p.angle = a;
+    }
     notify();
   },
 
@@ -178,7 +221,7 @@ export const drawnCableStore = {
   translate(id: string, dx: number, dy: number) {
     const c = find(id);
     if (!c || (dx === 0 && dy === 0)) return;
-    c.points = c.points.map((p) => ({ x: p.x + dx, y: p.y + dy }));
+    c.points = c.points.map((p) => ({ ...p, x: p.x + dx, y: p.y + dy }));
     notify();
   },
 
@@ -187,6 +230,8 @@ export const drawnCableStore = {
     const c = find(id);
     if (!c || index < 1 || index > c.points.length - 1) return;
     c.points = [...c.points.slice(0, index), { x: at.x, y: at.y }, ...c.points.slice(index)];
+    // Indices past the insertion shifted; the dial would otherwise edit a neighbour.
+    if (_selectedId === id && _activePoint !== null && _activePoint >= index) _activePoint++;
     notify();
   },
 
@@ -195,6 +240,11 @@ export const drawnCableStore = {
     const c = find(id);
     if (!c || c.points.length <= 2 || index < 0 || index >= c.points.length) return;
     c.points = c.points.filter((_, i) => i !== index);
+    if (_selectedId === id && _activePoint !== null) {
+      _activePoint = _activePoint === index ? null
+        : _activePoint > index ? _activePoint - 1
+        : _activePoint;
+    }
     notify();
   },
 
@@ -202,12 +252,17 @@ export const drawnCableStore = {
     if (_cables.length === 0 && _selectedId === null) return;
     _cables = [];
     _selectedId = null;
+    _activePoint = null;
     notify();
   },
 
   serialize(): SavedDrawnCable[] {
     return _cables.map((c) => ({
-      points: c.points.map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) })),
+      points: c.points.map((p) => (
+        hasAngleOverride(p)
+          ? { x: Math.round(p.x), y: Math.round(p.y), angle: p.angle }
+          : { x: Math.round(p.x), y: Math.round(p.y) }
+      )),
       shape: c.shape,
       arrows: c.arrows,
       width: c.width,
@@ -221,12 +276,13 @@ export const drawnCableStore = {
   load(saved: readonly unknown[]) {
     _cables = [];
     _selectedId = null;
+    _activePoint = null;
     _nextId = 1;
     for (const raw of saved) {
       if (typeof raw !== "object" || raw === null) continue;
       const s = raw as Partial<SavedDrawnCable>;
       if (!Array.isArray(s.points)) continue;
-      const points = s.points.filter(isPoint).map((p) => ({ x: p.x, y: p.y }));
+      const points = s.points.filter(isPoint).map(clonePoint);
       if (points.length < 2) continue;
       _cables.push({
         id: `drawn-${_nextId++}`,

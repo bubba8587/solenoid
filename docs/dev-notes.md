@@ -36,9 +36,18 @@ STANDS, in one line each:
   is ever mounted.
 - Content scales with the canvas; affordances do not. The line and heads are world units, the
   point handles and hit path divide by the live zoom.
+- Every point takes an optional heading override off an `AngleDial` (the Conduit's control, at a
+  15° step), reached by clicking a handle or by the panel's point stepper. Because both spans at a
+  point read the same heading, the override rotates the cable THROUGH the point and can never open
+  a kink. A pinned point grows a needle on canvas.
 - Persisted additively as `SavedGraph.drawnCables`, the first text-form sidecar that needs NO
-  name-addressing (nothing in one references a node). Verified end to end in the browser: draw,
-  restyle, reload, still there.
+  name-addressing (nothing in one references a node). Pinned in tests at BOTH layers the save
+  crosses — the store's serialize/load and the text form the JSON is generated through — since a
+  field the sidecar drops is a field that silently does not save. Verified in the browser too: with
+  every field off its default and two points pinned, the persisted blob is byte-identical across a
+  reload. Two traps found while doing it: `movePoint`/`translate` must spread the point or a drag
+  un-pins it, and a CSS `fill` outranks an SVG `fill` attribute (the active handle rendered
+  unfilled until the color moved to a `--handle-ink` custom property).
 
 ### SESSION DIGEST (2026-09-04c — three agents in worktrees; the finance merges land)
 

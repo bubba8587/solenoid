@@ -4,7 +4,13 @@
 import { getCablePath, Position } from "./cablePaths";
 import type { CableShape } from "./cableShape";
 
-export type DrawnPoint = { x: number; y: number };
+export type DrawnPoint = {
+  x: number;
+  y: number;
+  /** Optional heading OVERRIDE at this point, in the drawers' own units (degrees CW
+   *  from +X, screen space: 0 = right, 90 = down). Unset means the derived chord. */
+  angle?: number;
+};
 
 /** Which ends carry a head. */
 export type DrawnArrows = "none" | "start" | "end" | "both";
@@ -36,12 +42,20 @@ function headingOf(from: DrawnPoint, to: DrawnPoint): number | null {
  *  the span leaving are handed the same direction: each drawer pins its end stub to
  *  exactly that heading, so the two stubs are collinear and the joint reads as one
  *  continuous cable instead of a kink. Coincident neighbours fall back to whichever
- *  adjacent span still has length. */
+ *  adjacent span still has length.
+ *
+ *  A point's own `angle` REPLACES that derivation — the angle dial's whole job. Because
+ *  both adjacent spans read the same entry, an override rotates the cable THROUGH the
+ *  point and the stubs stay collinear; it can never open a kink. */
 export function drawnHeadings(pts: readonly DrawnPoint[]): number[] {
   const n = pts.length;
   const out: number[] = new Array<number>(n).fill(0);
   if (n < 2) return out;
   for (let i = 0; i < n; i++) {
+    if (typeof pts[i].angle === "number" && Number.isFinite(pts[i].angle)) {
+      out[i] = pts[i].angle as number;
+      continue;
+    }
     const prev = pts[i === 0 ? 0 : i - 1];
     const next = pts[i === n - 1 ? n - 1 : i + 1];
     const h =
@@ -52,6 +66,11 @@ export function drawnHeadings(pts: readonly DrawnPoint[]): number[] {
     out[i] = h ?? (i > 0 ? out[i - 1] : 0);
   }
   return out;
+}
+
+/** True when this point's heading is pinned by the dial rather than derived. */
+export function hasAngleOverride(p: DrawnPoint): boolean {
+  return typeof p.angle === "number" && Number.isFinite(p.angle);
 }
 
 /** The whole run as ONE `d`. Fewer than two points draws nothing. */

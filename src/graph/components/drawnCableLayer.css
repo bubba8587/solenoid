@@ -46,7 +46,10 @@
 
 /* Point handles: hollow discs in the cable's own color, filled with the canvas so the
    line never shows through. Drawn as SVG circles, not CSS radii (SwatchGrid's rule —
-   a CSS circle clips a side at fractional device pixels under canvas zoom). */
+   a CSS circle clips a side at fractional device pixels under canvas zoom).
+   The cable's color arrives as `--handle-ink` (a custom property), never as a `fill`
+   attribute: a CSS declaration outranks an SVG presentation attribute, so an attribute
+   fill could never win against these rules. */
 .solenoid-drawn-cable__handle {
   fill: var(--canvas-bg, #0b0b0b);
   pointer-events: all;
@@ -55,6 +58,12 @@
 
 .solenoid-drawn-cable__handle:hover {
   fill: var(--surface-raised, #262626);
+}
+
+/* The point the angle dial edits, filled solid so it is unmistakable among its siblings. */
+.solenoid-drawn-cable__handle--active,
+.solenoid-drawn-cable__handle--active:hover {
+  fill: var(--handle-ink, var(--text));
 }
 
 .solenoid-drawn-cable--pending .solenoid-drawn-cable__line {
@@ -108,4 +117,10 @@
 
 .solenoid-drawn-hint__state {
   color: var(--text, #e8e8e8);
+}
+
+/* A pinned heading grows a needle so the override is visible on the canvas. */
+.solenoid-drawn-cable__needle {
+  stroke-linecap: round;
+  pointer-events: none;
 }

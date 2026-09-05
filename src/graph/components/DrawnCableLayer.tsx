@@ -13,7 +13,7 @@ import {
   type DrawnCable,
 } from "../drawnCables";
 import {
-  drawnCablePath, drawnArrowHeads, arrowHeadPath,
+  drawnCablePath, drawnArrowHeads, arrowHeadPath, drawnHeadings, hasAngleOverride,
   ARROW_LEN, ARROW_HALF, type DrawnPoint,
 } from "../drawnCablePath";
 import { appThemeStore } from "../appTheme";
@@ -31,6 +31,9 @@ import "./drawnCableLayer.css";
 const HIT_STROKE = 18;
 const HANDLE_R = 5;
 const HANDLE_STROKE = 2;
+// The needle a point grows once its heading is PINNED by the dial: the override is
+// otherwise invisible until you compare the curve to what it would have been.
+const NEEDLE_LEN = 15;
 
 /** Squared distance from `p` to segment `a`→`b`. The spans are curved; the chord is
  *  close enough to rank which one a click landed on. */
@@ -103,6 +106,8 @@ function DrawnCableShape({
   const mode = appThemeStore.getMode();
   const color = themeAccent(resolveColor(cable.color), mode);
   const d = drawnCablePath(cable.shape, cable.points);
+  const heads = drawnHeadings(cable.points);
+  const activePoint = selected ? drawnCableStore.activePoint() : null;
   // Set on pointerdown, read on move: which point is under the finger, and where the
   // grab started, so a body drag translates by the DELTA rather than snapping.
   const drag = useRef<{ index: number | null; last: DrawnPoint; moved: boolean } | null>(null);
@@ -119,6 +124,7 @@ function DrawnCableShape({
         return;
       }
       selectOnly(cable.id);
+      drawnCableStore.setActivePoint(index);
       drag.current = { index, last: toFlow({ x: e.clientX, y: e.clientY }), moved: false };
       (e.target as Element).setPointerCapture?.(e.pointerId);
     },
@@ -181,21 +187,42 @@ function DrawnCableShape({
         onPointerCancel={onPointerUp}
       />
       {selected &&
-        cable.points.map((p, i) => (
-          <circle
-            key={i}
-            className="solenoid-drawn-cable__handle"
-            cx={p.x}
-            cy={p.y}
-            r={HANDLE_R / zoom}
-            stroke={color}
-            strokeWidth={HANDLE_STROKE / zoom}
-            onPointerDown={(e) => onPointerDown(e, i)}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
-          />
-        ))}
+        cable.points.map((p, i) => {
+          const pinned = hasAngleOverride(p);
+          const cls =
+            "solenoid-drawn-cable__handle" +
+            (i === activePoint ? " solenoid-drawn-cable__handle--active" : "") +
+            (pinned ? " solenoid-drawn-cable__handle--pinned" : "");
+          const rad = (heads[i] * Math.PI) / 180;
+          return (
+            <g key={i}>
+              {pinned && (
+                <line
+                  className="solenoid-drawn-cable__needle"
+                  x1={p.x}
+                  y1={p.y}
+                  x2={p.x + Math.cos(rad) * (NEEDLE_LEN / zoom)}
+                  y2={p.y + Math.sin(rad) * (NEEDLE_LEN / zoom)}
+                  stroke={color}
+                  strokeWidth={HANDLE_STROKE / zoom}
+                />
+              )}
+              <circle
+                className={cls}
+                cx={p.x}
+                cy={p.y}
+                r={HANDLE_R / zoom}
+                stroke={color}
+                strokeWidth={HANDLE_STROKE / zoom}
+                style={{ "--handle-ink": color } as React.CSSProperties}
+                onPointerDown={(e) => onPointerDown(e, i)}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerUp}
+                onPointerCancel={onPointerUp}
+              />
+            </g>
+          );
+        })}
     </g>
   );
 }

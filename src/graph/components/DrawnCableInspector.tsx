@@ -8,9 +8,13 @@
 import { useSyncExternalStore } from "react";
 import {
   drawnCableStore, nearestOption,
-  DRAWN_WIDTHS, DRAWN_HEAD_SCALES,
+  DRAWN_WIDTHS, DRAWN_HEAD_SCALES, DRAWN_ANGLE_STEP,
 } from "../drawnCables";
-import { DRAWN_ARROWS, type DrawnArrows } from "../drawnCablePath";
+import {
+  DRAWN_ARROWS, drawnHeadings, hasAngleOverride, type DrawnArrows,
+} from "../drawnCablePath";
+import { AngleDial } from "../AngleDial";
+import "../AngleDial.css";
 import { CABLE_SHAPES, type CableShape } from "../cableShape";
 import { CableShapeIcon } from "../CableShapeSelector";
 import { SwatchGrid } from "./SwatchGrid";
@@ -120,6 +124,13 @@ export function DrawnCableInspector() {
 
   const commit = (fn: () => void) => { fn(); scheduleAutosave(); };
 
+  // The stepper reaches every point, so a handle too small to click at low zoom is
+  // still editable; clicking one on the canvas sets the same index.
+  const count = cable.points.length;
+  const point = Math.min(drawnCableStore.activePoint() ?? 0, count - 1);
+  const heads = drawnHeadings(cable.points);
+  const pinned = hasAngleOverride(cable.points[point]);
+
   return (
     <div className="solenoid-cable-inspector" role="dialog" aria-label="Drawn cable">
       <div className="solenoid-cable-inspector__head">
@@ -166,6 +177,53 @@ export function DrawnCableInspector() {
         disabled={cable.arrows === "none"}
         onPick={(v) => commit(() => drawnCableStore.setHeadScale(cable.id, v))}
       />
+
+      {/* One point's heading, pinned. The dial reads the LIVE heading whether pinned or
+          derived, so dragging it takes over from where the curve already runs. Because
+          both spans at a point read the same heading, this rotates the cable THROUGH the
+          point rather than opening a kink. */}
+      <div className="solenoid-drawn-inspector__row">
+        <span className="solenoid-cable-inspector__role">Angle</span>
+        <div className="solenoid-drawn-inspector__stepper">
+          <button
+            type="button"
+            aria-label="Previous point"
+            title="Previous point"
+            onClick={() => drawnCableStore.setActivePoint((point + count - 1) % count)}
+          >
+            ‹
+          </button>
+          <span className="solenoid-drawn-inspector__point">
+            {point + 1} / {count}
+          </span>
+          <button
+            type="button"
+            aria-label="Next point"
+            title="Next point"
+            onClick={() => drawnCableStore.setActivePoint((point + 1) % count)}
+          >
+            ›
+          </button>
+        </div>
+      </div>
+
+      <div className="solenoid-drawn-inspector__row solenoid-drawn-inspector__row--dial">
+        <AngleDial
+          value={heads[point]}
+          step={DRAWN_ANGLE_STEP}
+          size={40}
+          onChange={(deg) => commit(() => drawnCableStore.setPointAngle(cable.id, point, deg))}
+        />
+        <button
+          type="button"
+          className="solenoid-drawn-inspector__auto"
+          disabled={!pinned}
+          title="Hand this point's heading back to the curve"
+          onClick={() => commit(() => drawnCableStore.setPointAngle(cable.id, point, null))}
+        >
+          Auto
+        </button>
+      </div>
 
       <div className="solenoid-drawn-inspector__row solenoid-drawn-inspector__row--color">
         <span className="solenoid-cable-inspector__role">Color</span>

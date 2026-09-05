@@ -4,6 +4,7 @@ import {
   drawnHeadings,
   drawnArrowHeads,
   arrowHeadPath,
+  hasAngleOverride,
   type DrawnPoint,
 } from "../../src/graph/drawnCablePath";
 import {
@@ -90,6 +91,14 @@ describe("drawnHeadings — the shared tangent at each joint", () => {
     expect(near(h[1], 90)).toBe(true);
   });
 
+  it("a point's own angle REPLACES the derived chord", () => {
+    const pts: DrawnPoint[] = [{ x: 0, y: 0 }, { x: 10, y: 0, angle: 90 }, { x: 20, y: 0 }];
+    expect(drawnHeadings(pts)[1]).toBe(90);
+    // Both spans at that point read the SAME entry, so an override rotates the cable
+    // through the point instead of opening a kink.
+    expect(drawnHeadings(pts)[0]).toBe(0);
+  });
+
   it("survives coincident points without NaN", () => {
     const h = drawnHeadings([{ x: 5, y: 5 }, { x: 5, y: 5 }, { x: 5, y: 5 }]);
     expect(h.every((v) => Number.isFinite(v))).toBe(true);
@@ -165,6 +174,18 @@ describe("drawnCableStore", () => {
     expect(drawnCableStore.get(c.id)!.points).toEqual([{ x: 5, y: -3 }, { x: 15, y: -3 }]);
   });
 
+  it("round-trips a pinned heading", () => {
+    const c = drawnCableStore.add([{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 20, y: 0 }])!;
+    drawnCableStore.setPointAngle(c.id, 1, 135);
+    const saved = drawnCableStore.serialize();
+    // Only the pinned point carries an angle — an unset one stays absent.
+    expect(saved[0].points[0].angle).toBeUndefined();
+    expect(saved[0].points[1].angle).toBe(135);
+    drawnCableStore.clear();
+    drawnCableStore.load(saved);
+    expect(drawnCableStore.all()[0].points[1].angle).toBe(135);
+  });
+
   it("round-trips through serialize / load", () => {
     const c = drawnCableStore.add([{ x: 0, y: 0 }, { x: 10, y: 20 }], {
       shape: "straight",
@@ -184,6 +205,52 @@ describe("drawnCableStore", () => {
     expect(back.width).toBe(3.6);
     expect(back.headScale).toBe(1.5);
     expect(back.color).toBe("vermilion");
+  });
+
+  it("pins and releases a point's heading", () => {
+    const c = drawnCableStore.add([{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 20, y: 0 }])!;
+    drawnCableStore.setPointAngle(c.id, 1, 90);
+    expect(drawnCableStore.get(c.id)!.points[1].angle).toBe(90);
+    expect(hasAngleOverride(drawnCableStore.get(c.id)!.points[1])).toBe(true);
+    // Wrapped into [0, 360).
+    drawnCableStore.setPointAngle(c.id, 1, -90);
+    expect(drawnCableStore.get(c.id)!.points[1].angle).toBe(270);
+    drawnCableStore.setPointAngle(c.id, 1, null);
+    expect(hasAngleOverride(drawnCableStore.get(c.id)!.points[1])).toBe(false);
+  });
+
+  it("dragging a point keeps its pinned heading", () => {
+    const c = drawnCableStore.add([{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 20, y: 0 }])!;
+    drawnCableStore.setPointAngle(c.id, 1, 45);
+    drawnCableStore.movePoint(c.id, 1, { x: 99, y: 99 });
+    expect(drawnCableStore.get(c.id)!.points[1]).toEqual({ x: 99, y: 99, angle: 45 });
+    drawnCableStore.translate(c.id, 1, 1);
+    expect(drawnCableStore.get(c.id)!.points[1].angle).toBe(45);
+  });
+
+  it("the active point follows insertions and removals, never dangles", () => {
+    const c = drawnCableStore.add([{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 20, y: 0 }])!;
+    drawnCableStore.select(c.id);
+    drawnCableStore.setActivePoint(2);
+    drawnCableStore.insertPoint(c.id, 1, { x: 5, y: 5 });
+    expect(drawnCableStore.activePoint()).toBe(3);
+    drawnCableStore.removePoint(c.id, 1);
+    expect(drawnCableStore.activePoint()).toBe(2);
+    // Removing the active point itself leaves none selected.
+    drawnCableStore.removePoint(c.id, 2);
+    expect(drawnCableStore.activePoint()).toBeNull();
+    // Out of range never sticks.
+    drawnCableStore.setActivePoint(99);
+    expect(drawnCableStore.activePoint()).toBeNull();
+  });
+
+  it("selecting another cable drops the active point", () => {
+    const a = drawnCableStore.add([{ x: 0, y: 0 }, { x: 1, y: 1 }])!;
+    const b = drawnCableStore.add([{ x: 5, y: 5 }, { x: 6, y: 6 }])!;
+    drawnCableStore.select(a.id);
+    drawnCableStore.setActivePoint(1);
+    drawnCableStore.select(b.id);
+    expect(drawnCableStore.activePoint()).toBeNull();
   });
 
   it("clamps width and head scale into range", () => {
