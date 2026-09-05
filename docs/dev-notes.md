@@ -20,6 +20,12 @@ per-point 45° angle dial. Spec: `subsystem-invariants.md` § Drawn cables; term
   the base); drawing recorded no undo entry, so Ctrl+Z deleted the cable with no redo (edits go
   through `commitDrawn` → autosave + history); finishing left the tool armed, so the next click
   on the new cable placed a point (it now disarms and selects the cable).
+- **Touch resize grips resized one step and stopped** (pre-existing, every card surface):
+  RF's `NodeResizeControl` rebinds its d3 drag whenever a callback prop changes identity,
+  and `FlowResizeGrip` passed per-render arrows; each resize step re-rendered the card and the
+  rebind dropped the touch gesture (a mouse's move listener lives on the window and survived).
+  The wrapper now keeps stable callbacks behind a ref. The grip is also in `flowTouchPan`'s
+  control list, so an UNSELECTED card's grip resizes on touch as socket.css promises.
 - Open, pre-existing: an undo that lands on the load baseline re-records "Moved 2 nodes" from
   the post-load settle and truncates the redo stack.
 
