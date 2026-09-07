@@ -149,6 +149,7 @@ export function CubePopup() {
       cardClassName="table-popup"
       grouped={grouped}
       cardStyle={cardStyle}
+      resizable={{ min: { w: 320, h: 220 } }}
       headerExtra={
         <>
           <span className="table-popup__dims">{rows}×{cols}{rowsTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>
@@ -196,7 +197,7 @@ export function CubePopup() {
         </div>
       )}
 
-      <div className="table-popup__grid-scroll">
+      <div className="table-popup__grid-scroll sol-popup__scroll">
         <table className="table-popup__grid">
           <thead>
             <tr>
