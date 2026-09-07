@@ -6,6 +6,28 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-07c — the new nodes' formula surface + the Add menu after the bundle)
+
+**Formula surface:** of the nodes the Obsidian / Track H / C1 sessions added, only Time Zone
+Convert is a scalar function both surfaces can hold, so it now registers as `TIMEZONECONVERT`
+(the node's own `convertZone`, node↔formula agreement pinned in `timeZone.test.ts`; `timeZone.ts`
+imports the frame TYPE only, so the rete-free walk stays clean). Everything else is excluded by
+the parity rule itself, not by omission: Geocode / Weather / Holidays / Currency / Vault Folder /
+TaskNotes are sources, the Write nodes are sinks, QR Code and World Clock are figures, and
+Allocator / Schedule / Payoff Planner / Group Cost Settle are frame verbs (frames stay out of
+formulas — matricesInFormulas). Node → formula stands at 100% of in-scope leaves.
+**Add menu:** the bundle had pushed Connections to 16 flat rows (the panel scrolled) and Analyze to
+9. Connections is now sources → an Import HTML / XML pair → Write File → the keyless lookups as
+two pairs (Geocode · Weather, Holidays · Currency) → an **Obsidian** submenu holding the six vault
+nodes; the four planners moved from Analyze to a sibling **Plan** submenu (rows in, a plan out);
+Cube Input joined the literal sources in Input under Frame Input (frame accent) instead of the
+Cubes submenu; COMPLEX · LAMBDA and Append · Bind Columns pair up so Input and Table verbs stay at
+the validator's soft row max. Every new node ranks first for its obvious search word. Still over
+the soft max, unchanged: Date & Time (17 rows, five of them pack rows appended after Save Times)
+and Visuals (QR Code lands after the sub-categories) — pack placements push to the end of a
+category, so a pack leaf always trails the core rows; a fix would be an insertion policy in
+`catalogUtils`, not a catalog edit.
+
 ### SESSION DIGEST (2026-09-07b — three agents: the Obsidian bundle lands, Track H, the Cube Input editor)
 
 **Obsidian + TaskNotes** is the author's adoption bet (backlog § Obsidian + TaskNotes). Landed
