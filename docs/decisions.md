@@ -644,3 +644,18 @@ function node). **Where:** `nodes/script.ts`, `nodes/scriptRun.ts`, `nodes/scrip
 `scriptWorker.ts`, `scriptExecutor.ts`; pinned by `nodes/script.test.ts`. **Reopen if:**
 a script needs I/O, state between runs, or a second language — each is §4's creep, not
 a feature request.
+
+### mdbaseCeiling — mdbase: read the schema, validate on write, nothing more (author 2026-09-07d)
+mdbase is an optional schema file beside a folder of notes, not how TaskNotes records its
+data: TaskNotes writes ordinary frontmatter, and Solenoid reads it (the plugin's API or the
+disk) whether or not a schema exists. What stands: Vault Folder types a column from a
+matching mdbase type FIRST (`mdbaseTypes.ts`, above `.obsidian/types.json` and the guesser),
+and Write Properties refuses a row that breaks a type / enum / min / max / required rule
+(`vaultCube.ts` `mdbaseSchemaFor` + `validateAgainst`). Both fall through silently when no
+schema exists — the spec breaks by policy before 1.0, so an unreadable schema means the
+guesser, never a refused folder. The ceiling: no Solenoid-authored type files (a blended
+Solenoid + TaskNotes `_types/` schema is the user's to write, and works today), no type-file
+writer beside the `.base` writer, no query passthrough to the mdbase binary (bundle item H,
+HOLD). The pitch leads with Obsidian + TaskNotes; mdbase gets one clause ("respects an mdbase
+schema when the folder has one"). **Reopen if:** mdbase reaches 1.0, or users arrive with
+schemas and ask — a type-file writer is then the `.base` writer's size.

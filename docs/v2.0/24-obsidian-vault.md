@@ -16,9 +16,10 @@ demo vault at `demo-vault/`), **A′** the row verbs take cubes, **B** Write Pro
 to Obsidian modes + templates (R1/R2), **D** Open in Obsidian (the stub note is in progress), **E**
 the vault watcher, **F** TaskNotes feed + **F6** Write Tasks (+ the `which-task-next` seed = F4),
 **I** the Import Note's reload cadence, **J** the headless seam, **R5** midnight rollover, and
-**H6 Schedule** cube-in/cube-out with the **Cube Input** literal source. Still open: D's stub
-note + `solenoid:` link, mdbase validation on write, `writeBase`, the F1 seed (needs a computed
-column over a cube: Duration = `timeEstimate` ÷ hours-per-day), G/H/K on hold.
+**H6 Schedule** cube-in/cube-out with the **Cube Input** literal source; D's stub note +
+`solenoid:` link (opt-in), mdbase validation on write, `writeBase`, and the F1 seed
+(`kitchen-remodel-tasknotes`, Computed Column over a cube). G/K on hold; H is ruled out below
+mdbase 1.0 (`../decisions.md` mdbaseCeiling).
 
 - **Import Obsidian Note** (`nodes/obsidian.ts`, a `NoteNode` subclass): one `.md` → its
   frontmatter keys as typed output sockets + a `document` output; manual Reload. **Write to
@@ -256,7 +257,7 @@ reads; revisit if F's API reads need push.
 
 **H. mdbase query passthrough — HOLD.** Shelling out to the native `mdbase … query` binary:
 beta, undocumented JSON shape, no `tauri-plugin-shell`, and Filter/Sort cover the `where`.
-Revisit at mdbase 1.0.
+Revisit at mdbase 1.0 (`../decisions.md` mdbaseCeiling — the ceiling covers type-file writing too).
 
 **I. Import Obsidian Note stays a Note.** Its value is the per-key sockets + `document` output
 + rendered body (a connection node emits one table). It gains: `refreshMinutes` (the
@@ -374,7 +375,9 @@ doubles socket docs). A **Flatten** node with a rule menu (existed only to reach
 verbs; A′ is the answer). Import Note as a connection node (loses its per-key sockets). Monte
 Carlo over a per-row spread column (the run mode samples scalar ports only). By-row over a
 cube (it iterates frames and lists). An invisible-character escape for `%%` in managed blocks
-(refuse instead). A provenance stamp on every patched note (noise in every Bases view).
+(refuse instead). A provenance stamp on every patched note (noise in every Bases view). A
+Solenoid-authored mdbase type file or a blended Solenoid + TaskNotes schema shipped by the app
+(mdbaseCeiling: the schema is the user's; Solenoid reads and validates, never authors).
 "Never write `.base`" (the format is small and official; `writeBase` gives a live table).
 Reading a `.base` as the reader's query (a second expression language). Relative text in
 Filter's value field (moves the opt-in to parser call sites). Dotted `file.*` column names
