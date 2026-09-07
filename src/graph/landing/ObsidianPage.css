@@ -20,6 +20,121 @@
   line-height: 1.6;
 }
 
+/* ── Round-trip flow band ── */
+.obs-flow-section {
+  padding-bottom: 8px;
+}
+
+.obs-flow {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.obs-flow__node {
+  flex: 1 1 0;
+  min-width: 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 20px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.obs-flow__node--hub {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.obs-flow__name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-bright);
+}
+
+.obs-flow__node--hub .obs-flow__name {
+  color: var(--accent);
+}
+
+.obs-flow__node small,
+.obs-flow__link small {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.obs-flow__link {
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 4px;
+  min-width: 96px;
+}
+
+.obs-flow__arrows {
+  font-size: 22px;
+  line-height: 1;
+  color: var(--accent);
+}
+
+@media (max-width: 720px) {
+  .obs-flow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .obs-flow__arrows {
+    transform: rotate(90deg);
+  }
+}
+
+/* ── Spreadsheet grid (Excel over CSV) ── */
+.obs-sheet {
+  border-collapse: collapse;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 12.5px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+.obs-sheet caption {
+  caption-side: top;
+  text-align: left;
+  padding: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  font-family: var(--font-sans);
+}
+
+.obs-sheet th,
+.obs-sheet td {
+  padding: 6px 14px;
+  border: 1px solid var(--border-subtle);
+  text-align: left;
+  min-width: 56px;
+}
+
+.obs-sheet thead th,
+.obs-sheet tbody th {
+  background: var(--surface-sunken);
+  color: var(--text-dim);
+  font-weight: 600;
+  text-align: center;
+}
+
 /* ── Frontmatter → columns vignette ── */
 .obs-illus {
   display: flex;
