@@ -6,6 +6,26 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-07e — Gantt research: the landscape, the spec, the separate-repo plan)
+
+The author asked for a big outside-in research pass on Gantt and project-planning software, not
+built on the existing Schedule node: which open / free / embeddable libraries exist, whether one
+standout repo should be adopted or matched, and whether a separate repo combining the best of the
+mid-tier ones is the right call. Six research passes (libraries; scheduling semantics, engines and
+formats; open-source and data-first apps; commercial benchmarks and UX; text and plotting
+approaches; library internals and headless precedents) landed in **`v2.0/25-gantt.md`** (PROPOSAL,
+Arc 8). Verdict: no permissive repo to adopt whole (every vendor's seam is "anything that computes
+dates"); the standout to match is Microsoft Project's semantics with MPXJ's `MicrosoftScheduler` as
+the open oracle and Project-authored MSPDI files as golden tests; recommend a separate MIT headless
+toolkit (`schedule-engine` · `gantt-layout` · `gantt-dom` · `gantt-react` · `project-io`) that
+Solenoid binds through a Plan node family and a `chart`-socket Gantt figure. Findings that matter:
+DHTMLX 10 relicensed to MIT with readable sources (its scale manager and link router are
+vendorable); SVAR is a hand-written React mirror over a framework-free MIT store; Huly carries the
+one modern TypeScript CPM core (EPL, read-only); the consumer "auto-shift" switch dissolves in a
+pure-function model (gap = lag, typed date = SNET, manual = flag); Excel serials are already the
+zone-less day representation a scheduling engine wants. Ten author calls in the doc's § 10; the
+"no bar editing" ruling stays the default until its phase 5.
+
 ### SESSION DIGEST (2026-09-07d — the pitch read: the Obsidian + TaskNotes surface verified, the mdbase ceiling)
 
 The author is writing the pitch copy and asked for the integration surface as it stands, verified
