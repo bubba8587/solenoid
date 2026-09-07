@@ -290,6 +290,20 @@
   color: var(--text);
 }
 
+/* ── What-you-can-build recipes ── */
+.obs-recipes {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 8px;
+}
+
+@media (max-width: 720px) {
+  .obs-recipes {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ── Setup steps ── */
 .obs-steps {
   list-style: none;

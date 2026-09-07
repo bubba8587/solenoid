@@ -417,6 +417,48 @@ export default function ObsidianPage() {
             </Reveal>
           </section>
 
+          <section className="sol-landing__section">
+            <Reveal>
+              <h2>What you can build</h2>
+              <p className="sol-landing__lede">
+                A few jobs the readers and writers add up to, each a small graph of the
+                cards above.
+              </p>
+            </Reveal>
+            <Reveal delay={100}>
+              <div className="obs-recipes">
+                <div className="obs-card">
+                  <h3>Rank what to do next</h3>
+                  <p>
+                    Score each task by priority, due date and estimate, then write the
+                    score back so a Bases view sorts your list by it.
+                  </p>
+                </div>
+                <div className="obs-card">
+                  <h3>Trend your daily notes</h3>
+                  <p>
+                    Read the Daily folder, where the file name becomes a date and mood,
+                    sleep and weight become columns. Chart the trend and count streaks.
+                  </p>
+                </div>
+                <div className="obs-card">
+                  <h3>Roll up a folder</h3>
+                  <p>
+                    Sum budgets by status across a folder of project notes, count the open
+                    tasks in each, and write the totals into a summary note.
+                  </p>
+                </div>
+                <div className="obs-card">
+                  <h3>Bring a spreadsheet in</h3>
+                  <p>
+                    Join a CSV of expenses against your project notes, then write a
+                    per-project total back to each one.
+                  </p>
+                </div>
+              </div>
+            </Reveal>
+          </section>
+
           <Feature title="Excel too, over CSV" flip scene={<ExcelScene />}>
             <p>
               Export a sheet to CSV and Local File reads it as a table with columns typed
