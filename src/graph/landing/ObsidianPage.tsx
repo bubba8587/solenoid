@@ -2,7 +2,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
 import wordmark from "../../logo/solenoidwordmark.svg";
 import pkg from "../../../package.json";
-import { Reveal, ObsidianScene, Diagram, Cables, MNode } from "./LandingScenes";
+import { Reveal, Diagram, Cables, MNode } from "./LandingScenes";
 import { SOCKET_COLORS } from "../sockets";
 import "./LandingPage.css";
 import "./ObsidianPage.css";
@@ -175,41 +175,83 @@ finished: 2026-08-21
   );
 }
 
-// A static TaskNotes "Tasks" cube, one row per task.
-function TasksScene() {
+// The real Import Obsidian Note node: one note in, its frontmatter keys as typed
+// output sockets plus a document output. Replaces the old made-up example node.
+function NoteImportScene() {
+  const W = 320;
+  const H = 168;
+  const num = { kind: "circle" as const, color: C.number, tip: "Numeric" };
+  const doc = { kind: "document" as const, color: C.document, tip: "Document" };
   return (
-    <div className="obs-illus obs-illus--single">
-      <table className="obs-table obs-table--wide">
-        <caption>Tasks</caption>
-        <thead>
-          <tr><th>title</th><th>status</th><th>priority</th><th>due</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>Draft the invoice</td><td>open</td><td>high</td><td>2026-09-10</td></tr>
-          <tr><td>Tile the backsplash</td><td>in-progress</td><td>normal</td><td>2026-09-14</td></tr>
-          <tr><td>Call the plumber</td><td>done</td><td>low</td><td>2026-09-04</td></tr>
-        </tbody>
-      </table>
-    </div>
+    <Diagram w={W} h={H}>
+      <MNode
+        x={60}
+        y={22}
+        w={200}
+        accent={C.number}
+        title="assumptions.md"
+        socks={[
+          { cy: 52, side: "out", glyph: num },
+          { cy: 70, side: "out", glyph: num },
+          { cy: 92, side: "out", glyph: doc },
+        ]}
+      >
+        <div className="sol-mnode__row"><span className="sol-mnode__label">rate</span><span className="sol-mnode__val">0.045</span></div>
+        <div className="sol-mnode__row"><span className="sol-mnode__label">years</span><span className="sol-mnode__val">25</span></div>
+        <div className="sol-mnode__row"><span className="sol-mnode__label">document</span><span className="sol-mnode__val obs-node-dim">note</span></div>
+      </MNode>
+    </Diagram>
   );
 }
 
-// A static spreadsheet grid, for the Excel-over-CSV feature.
-function ExcelScene() {
+// The real TaskNotes node: three typed outputs off the plugin's API.
+function TaskNotesNodeScene() {
+  const W = 320;
+  const H = 168;
+  const cube = { kind: "cube" as const, color: C.cube, tip: "Cube" };
+  const frame = { kind: "frame" as const, color: C.frame, tip: "Frame" };
+  const num = { kind: "circle" as const, color: C.number, tip: "Numeric" };
   return (
-    <div className="obs-illus obs-illus--single">
-      <table className="obs-sheet">
-        <caption>sales.csv</caption>
-        <thead>
-          <tr><th></th><th>A</th><th>B</th><th>C</th></tr>
-        </thead>
-        <tbody>
-          <tr><th>1</th><td>Region</td><td>Units</td><td>Revenue</td></tr>
-          <tr><th>2</th><td>North</td><td>120</td><td>4,800</td></tr>
-          <tr><th>3</th><td>South</td><td>96</td><td>3,840</td></tr>
-        </tbody>
-      </table>
-    </div>
+    <Diagram w={W} h={H}>
+      <MNode
+        x={65}
+        y={22}
+        w={190}
+        accent={C.cube}
+        title="TaskNotes"
+        socks={[
+          { cy: 52, side: "out", glyph: cube },
+          { cy: 70, side: "out", glyph: frame },
+          { cy: 88, side: "out", glyph: num },
+        ]}
+      >
+        <div className="sol-mnode__row"><span className="sol-mnode__label">Tasks</span><span className="sol-mnode__val obs-node-dim">cube</span></div>
+        <div className="sol-mnode__row"><span className="sol-mnode__label">Calendar</span><span className="sol-mnode__val obs-node-dim">frame</span></div>
+        <div className="sol-mnode__row"><span className="sol-mnode__label">Stats</span><span className="sol-mnode__val obs-node-dim">counts</span></div>
+      </MNode>
+    </Diagram>
+  );
+}
+
+// The real Local File node: a CSV exported from Excel, read as a frame.
+function LocalFileScene() {
+  const W = 320;
+  const H = 150;
+  const frame = { kind: "frame" as const, color: C.frame, tip: "Frame" };
+  return (
+    <Diagram w={W} h={H}>
+      <MNode
+        x={60}
+        y={26}
+        w={200}
+        accent={C.frame}
+        title="sales.csv"
+        socks={[{ cy: 52, side: "out", glyph: frame }]}
+      >
+        <div className="sol-mnode__row"><span className="sol-mnode__label">table</span><span className="sol-mnode__val obs-node-dim">frame</span></div>
+        <p className="sol-mnode__prose">Read from your data folder, columns typed for you.</p>
+      </MNode>
+    </Diagram>
   );
 }
 
@@ -349,7 +391,7 @@ export default function ObsidianPage() {
             </p>
           </Feature>
 
-          <Feature title="A single note as a source" flip scene={<ObsidianScene />}>
+          <Feature title="A single note as a source" flip scene={<NoteImportScene />}>
             <p>
               Import Obsidian Note picks one <code>.md</code> file as a read-only source.
               Its frontmatter keys become typed outputs and the body renders inline.
@@ -362,7 +404,7 @@ export default function ObsidianPage() {
             </p>
           </Feature>
 
-          <Feature title="TaskNotes over its API" scene={<TasksScene />}>
+          <Feature title="TaskNotes over its API" scene={<TaskNotesNodeScene />}>
             <p>
               The TaskNotes node reads the plugin through its local HTTP API, not the
               files, so recurrence expansion and time totals stay the plugin&apos;s own
@@ -459,7 +501,7 @@ export default function ObsidianPage() {
             </Reveal>
           </section>
 
-          <Feature title="Excel too, over CSV" flip scene={<ExcelScene />}>
+          <Feature title="Excel too, over CSV" flip scene={<LocalFileScene />}>
             <p>
               Export a sheet to CSV and Local File reads it as a table with columns typed
               for you. Write File sends a table back out as CSV for Excel to open. The
