@@ -2,9 +2,12 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
 import wordmark from "../../logo/solenoidwordmark.svg";
 import pkg from "../../../package.json";
-import { Reveal, ObsidianScene } from "./LandingScenes";
+import { Reveal, ObsidianScene, Diagram, Cables, MNode } from "./LandingScenes";
+import { SOCKET_COLORS } from "../sockets";
 import "./LandingPage.css";
 import "./ObsidianPage.css";
+
+const C = SOCKET_COLORS;
 
 // The /obsidian route: a standalone document on the landing page's design tokens,
 // pitched at Obsidian users who have never opened Solenoid. It frames Solenoid as
@@ -58,6 +61,62 @@ function Feature({
         {scene}
       </Reveal>
     </section>
+  );
+}
+
+// The concrete showcase: an actual node chain on the canvas ground, so a cold
+// visitor sees the product shape (cards + typed cables) before any prose. The cube
+// socket (violet hexagon) is what every vault reader emits.
+function PipelineScene() {
+  const W = 660;
+  const H = 220;
+  const cube = { kind: "cube" as const, color: C.cube, tip: "Cube" };
+  return (
+    <Diagram w={W} h={H}>
+      <Cables
+        w={W}
+        h={H}
+        runs={[
+          { from: [190, 100], to: [262, 100], color: C.cube },
+          { from: [416, 100], to: [486, 100], color: C.cube },
+        ]}
+      />
+      <MNode
+        x={14}
+        y={48}
+        w={176}
+        accent={C.cube}
+        title="Vault Folder"
+        socks={[{ cy: 52, side: "out", glyph: cube }]}
+      >
+        <span className="obs-node-chip">Notes/</span>
+        <p className="sol-mnode__prose">One row per note, typed from the frontmatter.</p>
+      </MNode>
+      <MNode
+        x={262}
+        y={48}
+        w={154}
+        accent={C.cube}
+        title="Filter"
+        socks={[
+          { cy: 52, side: "in", glyph: cube },
+          { cy: 52, side: "out", glyph: cube },
+        ]}
+      >
+        <pre className="sol-mnode__front">{"tags contains\n\"book\""}</pre>
+      </MNode>
+      <MNode
+        x={486}
+        y={48}
+        w={162}
+        accent={C.cube}
+        title="Write Properties"
+        socks={[{ cy: 52, side: "in", glyph: cube }]}
+      >
+        <p className="sol-mnode__prose">Writes a score back to each note.</p>
+        <span className="obs-node-run">Run</span>
+      </MNode>
+    </Diagram>
   );
 }
 
@@ -235,6 +294,18 @@ export default function ObsidianPage() {
                 </div>
               </Reveal>
             </div>
+          </section>
+
+          <section className="sol-landing__demo">
+            <Reveal>
+              <PipelineScene />
+              <p className="sol-landing__demo-note">
+                A graph that reads a vault folder, keeps the notes tagged{" "}
+                <code>book</code>, and writes a score back to their frontmatter. Every
+                step is a card on a canvas, and the violet cable carries the whole table
+                of notes from one to the next.
+              </p>
+            </Reveal>
           </section>
 
           <section className="sol-landing__section obs-flow-section">

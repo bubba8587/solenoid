@@ -20,6 +20,30 @@
   line-height: 1.6;
 }
 
+/* ── Pipeline showcase node bits ── */
+.obs-node-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 5px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-dim);
+}
+
+.obs-node-run {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 2px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
 /* ── Round-trip flow band ── */
 .obs-flow-section {
   padding-bottom: 8px;
