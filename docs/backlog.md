@@ -75,10 +75,15 @@ build rules and § Sequencing the order (A′ → A → B → D → C → F → 
 verified in the desktop app against the demo vault. Landed ledger: the bundle's § What stands today.
 
 - [ ] **AddColumn over a cube** (fe): Add Column is frame-only; Computed Column already takes a cube.
+- [ ] **Frame-only verbs over a cube** (fe): Window / GROUPBY / Chart's frame input still refuse a
+  live `cube`, so charting or smoothing a Vault Folder needs a cube→frame step (A′ extended, or a
+  Cube → Frame node). Today the `daily-habits` seed runs its Window on a snapshot for this reason.
 - [ ] **Author's desktop eyeball** of the flagship cards against `demo-vault/` (Settings ▸ Obsidian
   → the repo's demo-vault): Vault Folder (be's ten-step checklist in the 09-07 digest), Write
   Properties Preview/Run on a copy, TaskNotes with the plugin's API on, Write to Obsidian block mode
-  + `{{daily}}`, Write Properties' `writeBase` view, the Cube Input editor's three drill targets.
+  + `{{daily}}`, Write Properties' `writeBase` view, the Cube Input editor's three drill targets,
+  and the two new Obsidian seeds (`write-back-to-obsidian`, `daily-habits`) with the live Vault
+  Folder swapped in for the snapshot.
 
 ## Canvas chrome (queued by the author 2026-09-07, "not top priority")
 

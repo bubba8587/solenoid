@@ -6,6 +6,24 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-07e — demo vault deepened, two Obsidian seeds added)
+
+Widened the `demo-vault/` fixture and added two seeds to the **Obsidian** group. Vault: Projects
+now 6 notes (all four `status` values), Notes has 3 books (one with no `finished`, so a null
+column) + a second meeting, Daily runs `2026-08-25`→`2026-09-07` (14 days, enough for a rolling
+average), Tasks is 8 (open/in-progress/done, recurrence + `complete_instances` + block
+`timeEntries`), People gains Priya, and a `Solenoid/` stub note shows item D's shape. The pinned
+fixtures (`vaultCube.test.ts`, `run-graph-vault.test.ts`, `frontmatterPatch.test.ts`) were left
+untouched — additions only — so all 254 tests still pass. Seeds: **`write-back-to-obsidian`** (B
+loop — a Projects snapshot → Computed Column `health` from status+priority → a disarmed Write
+Properties) and **`daily-habits`** (R3 — a Daily snapshot → Window rolling_avg → smoothed line
+chart), both on the snapshot-plus-disarmed-live-node shape so they run on web. Geometry baked by
+`tune-seeds.mjs`. **Gotcha noted, not fixed:** a Vault Folder emits a `cube`, and the row verbs
+adopt it, but the frame-only verbs (Window, GROUPBY, Chart's frame input) still refuse a cube —
+so the daily time-series compute runs on the snapshot, not the live cube. Charting/smoothing a
+live vault folder needs A′ extended to a cube→frame step (or those verbs made cube-adoptive);
+that's the honest gap behind the seed's "swap in the Vault Folder" note wording.
+
 ### SESSION DIGEST (2026-09-07d — the pitch read: the Obsidian + TaskNotes surface verified, the mdbase ceiling)
 
 The author is writing the pitch copy and asked for the integration surface as it stands, verified

@@ -1,0 +1,166 @@
+{
+  "v": 2,
+  "order": 52,
+  "label": "Write it back to Obsidian",
+  "group": "Obsidian",
+  "nodes": [
+    {
+      "id": "noteIntro",
+      "type": "NoteNode",
+      "x": 79,
+      "y": 186,
+      "init": {
+        "label": "Write it back to Obsidian",
+        "body": "# Compute here, see it in Obsidian\nRead your project notes, add a **health** label from status and priority, and write it back as a property. In Obsidian a Bases view over the folder then shows the new column live.\n\nThe **Projects** table here is a snapshot so it runs on the web. On desktop, swap in the **Vault Folder** below and point it at your vault. **Write Properties** loads disarmed and previews every change, so nothing is written until you press its Run button.",
+        "color": "violet",
+        "width": 380,
+        "height": 260
+      }
+    },
+    {
+      "id": "projects",
+      "type": "FrameInputNode",
+      "x": -16,
+      "y": 607,
+      "init": {
+        "label": "Projects (snapshot)",
+        "frameText": "[{\"name\":\"path\",\"type\":\"string\",\"values\":[\"Projects/Kitchen remodel.md\",\"Projects/Garden overhaul.md\",\"Projects/Website launch.md\",\"Projects/Home office setup.md\",\"Projects/Basement waterproofing.md\",\"Projects/Client onboarding revamp.md\"]},{\"name\":\"name\",\"type\":\"string\",\"values\":[\"Kitchen remodel\",\"Garden overhaul\",\"Website launch\",\"Home office setup\",\"Basement waterproofing\",\"Client onboarding revamp\"]},{\"name\":\"status\",\"type\":\"string\",\"values\":[\"active\",\"blocked\",\"planning\",\"done\",\"planning\",\"active\"]},{\"name\":\"priority\",\"type\":\"number\",\"values\":[5,2,3,3,2,4]},{\"name\":\"budget\",\"type\":\"number\",\"values\":[18500,1200,6000,2400,5400,9000]}]"
+      }
+    },
+    {
+      "id": "health",
+      "type": "ComputedColumnNode",
+      "x": 309,
+      "y": 542,
+      "init": {
+        "label": "health from status + priority",
+        "expr": "IF(@status=\"done\",\"done\",IF(@status=\"blocked\",\"at risk\",IF(@priority>=4,\"push\",\"steady\")))",
+        "addAs": "text"
+      },
+      "stringLiterals": {
+        "name": "health",
+        "after": ""
+      }
+    },
+    {
+      "id": "write",
+      "type": "WritePropertiesNode",
+      "x": 656,
+      "y": 542,
+      "init": {
+        "label": "Write Properties",
+        "addMissing": true,
+        "writeBase": false
+      },
+      "stringLiterals": {
+        "keys": "health"
+      }
+    },
+    {
+      "id": "planDisplay",
+      "type": "DisplayNode",
+      "x": 981,
+      "y": 607,
+      "init": {
+        "label": "The plan"
+      }
+    },
+    {
+      "id": "vault",
+      "type": "VaultFolderNode",
+      "x": -16,
+      "y": 28,
+      "init": {
+        "label": "Vault Folder (live)",
+        "folder": "Projects"
+      }
+    },
+    {
+      "id": "liveDisplay",
+      "type": "DisplayNode",
+      "x": 309,
+      "y": 29,
+      "init": {
+        "label": "Your projects"
+      }
+    },
+    {
+      "id": "grp-compute",
+      "type": "GroupNode",
+      "x": -40,
+      "y": 484,
+      "init": {
+        "label": "Read + compute",
+        "members": [
+          "projects",
+          "health"
+        ],
+        "color": "amber",
+        "collapsed": false,
+        "width": 617,
+        "height": 484
+      }
+    },
+    {
+      "id": "grp-write",
+      "type": "GroupNode",
+      "x": 632,
+      "y": 484,
+      "init": {
+        "label": "Write back",
+        "members": [
+          "write",
+          "planDisplay"
+        ],
+        "color": "green",
+        "collapsed": false,
+        "width": 1009,
+        "height": 424
+      }
+    },
+    {
+      "id": "grp-live",
+      "type": "GroupNode",
+      "x": -40,
+      "y": -30,
+      "init": {
+        "label": "Live from your vault",
+        "members": [
+          "vault",
+          "liveDisplay"
+        ],
+        "color": "slate",
+        "collapsed": false,
+        "width": 617,
+        "height": 178
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "projects",
+      "sourceOutput": "frame",
+      "target": "health",
+      "targetInput": "frame"
+    },
+    {
+      "source": "health",
+      "sourceOutput": "frame",
+      "target": "write",
+      "targetInput": "rows"
+    },
+    {
+      "source": "write",
+      "sourceOutput": "plan",
+      "target": "planDisplay",
+      "targetInput": "in"
+    },
+    {
+      "source": "vault",
+      "sourceOutput": "cube",
+      "target": "liveDisplay",
+      "targetInput": "in"
+    }
+  ],
+  "standoffs": []
+}

@@ -328,12 +328,18 @@ reason in the status line on an unreachable vault / port (a 401 reads "token"), 
 
 ## Seeds
 
-Seeds load on web with no vault, so each ships a **Frame Input snapshot of the feed's scalar
-columns** ("replace me with a TaskNotes node"; the row verbs take the nested shape when a
-real feed replaces it): **"Which task next?"** (F4: 12 tasks → Decision Matrix → Score → bar
-chart, a disarmed Write Properties at the end) and, when H6 lands, **"Kitchen remodel from
-TaskNotes"** (H6's seed on the tasks shape). `decision-matrix.json` stays the "vault as a
-source" demo.
+Seeds load on web with no vault, so each ships a **Frame Input snapshot of the scalar
+columns** with the live Vault Folder / TaskNotes node beside it as "replace me on desktop"
+(the row verbs take the nested cube when a real feed replaces the snapshot). The **Obsidian**
+group, over `demo-vault/`: **"Your vault as a table"** (A: Vault Folder → Filter
+`tags contains book` → Sort), **"Write it back to Obsidian"** (B:
+Projects snapshot → Computed Column `health` → a disarmed Write Properties → its plan),
+**"Daily notes as a time series"** (R3: Daily snapshot → Window rolling_avg → line chart, live
+Vault Folder over `Daily/` alongside), and **"Kitchen remodel from TaskNotes"** (F1/H6 on the
+tasks shape). **"Which task next?"** (F4) and `decision-matrix.json` sit in Worked examples.
+Gotcha the daily seed rides around: frame-only verbs (Window, GROUPBY, Chart's frame input)
+still refuse a live `cube`, so the smoothing runs on the snapshot until A′ grows a cube→frame
+step.
 
 ## Rules touched (cite in commits)
 
