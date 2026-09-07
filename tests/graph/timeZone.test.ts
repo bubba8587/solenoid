@@ -87,3 +87,25 @@ describe("worldClockRows / worldClockFrame", () => {
     expect(f.columns[0].values).toEqual(["UTC", "London"]);
   });
 });
+
+// shareImpl capability parity: the node and the formula surface share `convertZone`, and
+// the agreement is asserted, not assumed (the behavioural guard rules.md names).
+describe("TIMEZONECONVERT ↔ Time Zone Convert node", () => {
+  it("the formula computes what the node computes", async () => {
+    const { compileEvaluator } = await import("../../src/graph/excelFormula");
+    const { TimeZoneConvertNode } = await import("../../src/graph/nodes/date");
+    const s = serial(2026, 7, 4, 12, 0);
+    const node = new TimeZoneConvertNode().data({ datetime: [s], from: ["America/New_York"], to: ["Asia/Tokyo"] });
+    const f = compileEvaluator('TIMEZONECONVERT(s, "America/New_York", "Asia/Tokyo")');
+    expect(f).not.toBeNull();
+    expect(f!({ s })).toBe(node.result);
+    expect(node.result).toBe(serial(2026, 7, 5, 1, 0));
+  });
+
+  it("a blank argument is quiet; an unknown zone is a #VALUE!", async () => {
+    const { compileEvaluator } = await import("../../src/graph/excelFormula");
+    expect(compileEvaluator('TIMEZONECONVERT(s, "UTC", "Asia/Tokyo")')!({ s: null })).toBeNull();
+    const bad = compileEvaluator('TIMEZONECONVERT(s, "UTC", "Nowhere/Land")')!({ s: serial(2026, 1, 1) });
+    expect(isSolError(bad)).toBe(true);
+  });
+});

@@ -1,6 +1,7 @@
 import * as FX from "@formulajs/formulajs";
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
 import { serialToJsDate, jsDateToSerial } from "./nodes/dateSerial";
+import { convertZone } from "./timeZone";
 import { bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP, type AggregateOp } from "./nodes/statsOps";
@@ -603,6 +604,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   "WORKDAY.INTL": { returns: "date", arity: [2, 4], family: "datetime" },
   NETWORKDAYS: { returns: "number", arity: [2, 3], family: "datetime" },
   "NETWORKDAYS.INTL": { returns: "number", arity: [2, 4], family: "datetime" },
+  TIMEZONECONVERT: { returns: "date", arity: [3, 3], family: "datetime", native: true },
   "FORECAST.LINEAR": { returns: "number", arity: [3, 3], family: "statistics", native: true },
   "FORECAST.ETS": { returns: "number", listArgs: true, arity: [3, 6], family: "statistics" },
   FITDIST:     { returns: "any", rank: "list", listArgs: true, arity: [1, 2], native: true },
@@ -2178,6 +2180,10 @@ registerInternal("GROUPBY", (keys, values, fn) => {
 // A stub so the name is REGISTERED and a direct resolveExcelFunction caller gets an
 // honest answer instead of a Formula.js fallthrough.
 registerInternal("LAMBDA", () => solError("#VALUE!", "LAMBDA is a special form — write it inline: MAP(x, LAMBDA(v, v*2))"));
+
+// The Time Zone Convert node's kernel (`timeZone.ts` convertZone): a datetime serial read on
+// one IANA zone's wall clock, rebuilt on another's.
+registerInternal("TIMEZONECONVERT", (dt, from, to) => (dt == null || from == null || to == null ? null : convertZone(toNum(dt), toStr(from), toStr(to))));
 
 registerInternal("REVERSETEXT", (t) => (t == null ? null : reverseText(toStr(t))));
 registerInternal("UNACCENT", (t) => (t == null ? null : unaccent(toStr(t))));
