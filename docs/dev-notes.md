@@ -6,6 +6,24 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-07d — the pitch read: the Obsidian + TaskNotes surface verified, the mdbase ceiling)
+
+The author is writing the pitch copy and asked for the integration surface as it stands, verified
+against `develop` (a stale local `develop` was three days behind origin; hard-reset). The surface
+matches `node-coverage.md` § Connections & sinks and the per-item entries — nothing to correct in
+the code; the reading is the pitch's fact sheet. Doc drift fixed: the bundle doc's § What stands
+today still listed the stub note, mdbase validation, `writeBase` and the F1 seed as open (all
+landed, per the code and the 09-07b digest), and two node-coverage "Not yet" clauses (the stub
+note, Write Tasks) pointed at items that had landed in the same file. **mdbase ruling**
+(decisions mdbaseCeiling): mdbase is an optional schema beside the notes, not TaskNotes' storage;
+what stands (schema-first typing in Vault Folder, refuse-on-violation in Write Properties, silent
+fallthrough) is the whole integration — no type-file writer, no query passthrough, one clause in
+the pitch. A blended Solenoid + TaskNotes `_types/` schema is the user's to write and works today;
+untested: how mdbase resolves two types matching one glob, and whether a TaskNotes upgrade
+rewrites its shipped type file. Not-to-claim list for the copy: no `![[Note]]` transclusion on
+write (inlined; deferrals), no `/api/nlp/create`, checkbox ticks in an imported note never write
+back, nothing runs in the browser build.
+
 ### SESSION DIGEST (2026-09-07c — the new nodes' formula surface + the Add menu after the bundle)
 
 **Formula surface:** of the nodes the Obsidian / Track H / C1 sessions added, only Time Zone
