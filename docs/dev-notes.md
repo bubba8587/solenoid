@@ -25,6 +25,23 @@ one modern TypeScript CPM core (EPL, read-only); the consumer "auto-shift" switc
 pure-function model (gap = lag, typed date = SNET, manual = flag); Excel serials are already the
 zone-less day representation a scheduling engine wants. Ten author calls in the doc's § 10; the
 "no bar editing" ruling stays the default until its phase 5.
+**Revised the same day** after the author asked for an adversarial review, a sweep of online
+user pain points, and a scope: two red teams (product fit against the repo's rules; engineering
+claims verified against live sources and clones) and a ~95-source user sweep. What changed
+(`25-gantt.md` § 13): the data model is the author's Cube (nesting = WBS, Predecessors a list or
+a nested Task · Type · Lag table; the flat two-frame form is `Unnest` and the import shape), the
+figure never writes and "no bar editing ever" is no longer softened, MPXJ is a second opinion
+not an oracle and its `junit/data` is mostly binary `.mpp` (the corpus is authored on a Project
+trial), four of the sixteen rules were corrected (free slack per link on the predecessor
+calendar; a deadline moves an ALAP task; out-of-sequence progress; tenths of a minute), the
+packages live as npm workspaces inside this repo (every cited precedent is a monorepo; the
+source-scan tests and the corpus directory cannot reach a second repo), Days and Minutes are
+engine modes with an inclusive Finish on the cell, and one rule (Start = floor, Finish =
+ceiling, Deadline = flag, Manual = pin) replaces the consumer shift switch. The sweep's top
+complaint is dates moving from hidden state; the keepers are cascade, typed predecessors, a
+kept gap, flagging anchors, calendars, milestones, today line, baseline ghost, printing. Scope
+(§ 12): the spreadsheet user's and tinkerer's Gantt; not a PMO tool (no leveling, no XER, no
+bar dragging).
 
 ### SESSION DIGEST (2026-09-07d — the pitch read: the Obsidian + TaskNotes surface verified, the mdbase ceiling)
 
