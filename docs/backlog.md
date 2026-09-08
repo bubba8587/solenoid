@@ -88,6 +88,18 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   cube). Design first (DESIGN.md, `subsystem-invariants.md` § Conduit faces); stage after the
   Obsidian track.
 
+## Cables
+
+- [ ] **Mode-change ghost cable — socket-REMOVING swaps (approved by author, do later).** Option A
+  landed: Group Cost Settle retypes its `in` socket in place on a mode flip, so the cable survives
+  and `cableGhostStore.mark`/`commit` ghosts it until it's valid again (dev-notes 2026-09-08). Option
+  B is the harder case — a swap that fully REMOVES a socket (Workdays days↔end, Record op sockets)
+  drops the cable outright, so there's no real connection left to ghost. It needs a separate
+  "pending-reconnect" ghost that isn't a real `rete` connection, with its own render layer, that
+  re-materializes the cable once a compatible socket returns. Design note: target the fix on the
+  **Input Switch (`CableSwitchNode`)** specifically — the node whose output type actually drives the
+  detach — rather than teaching every downstream mode-swapping node to ghost.
+
 ## Canvas annotation
 
 - [ ] **Drawn cables: nothing tows one.** A drawn arrow annotating a node stays put when that node
