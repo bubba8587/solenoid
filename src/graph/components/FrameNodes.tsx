@@ -50,7 +50,7 @@ import { AGG_OP_META, CORR_METHOD_META, WINDOW_FN_META } from "../rete-nodes";
 import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, KMeansNode as KMeansNodeType, PcaNode as PcaNodeType, LogisticNode as LogisticNodeType, CorrMethod, WindowNode as WindowNodeType, WindowFn } from "../rete-nodes";
 import { VALUELESS_FILTER_OPS } from "../frameVerbs";
 import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameVerbs";
-import type { FilterCondConfig } from "../nodes/frame";
+import type { FilterCondConfig, SettleMode } from "../nodes/frame";
 import { RecordLayoutField } from "./RecordLayoutField";
 import { CloseIcon } from "./CloseIcon";
 import { HEAD_OP_META, HEADER_OP_META, BLANK_ROW_OP_META, COLUMNS_OP_META } from "../nodes/frame";
@@ -785,15 +785,35 @@ const SETTLE_SPLIT_OPTIONS: { value: "equal" | "weighted"; label: string; title:
   { value: "equal", label: "Equal split", title: "Everyone owes the same share" },
   { value: "weighted", label: "By Share", title: "Each person owes in proportion to their Share column (blank = 1)" },
 ];
+const SETTLE_MODE_OPTIONS: { value: SettleMode; label: string; title: string }[] = [
+  { value: "totals", label: "Totals", title: "One row per person: what each Paid, split by an optional Share weight" },
+  { value: "transactions", label: "Transactions", title: "A cube ledger of expenses: each Amount, who Paid, and who it is For, split equally" },
+];
 
 export function SettleComponent({ data, emit }: NodeProps<SettleNodeType>) {
+  const [mode, setModeMirror] = useState<SettleMode>(data.mode);
+  useEffect(() => { setModeMirror(data.mode); }, [data.mode]); // resync on undo/redo/load
   const [split, setSplit] = useNodeField(data, "split");
+
+  // The mode swaps the input socket (people frame ↔ ledger cube), so prune the departing
+  // socket's cables first (onePrunePath), like the op-swapping finance/date nodes.
+  async function pickMode(next: SettleMode) {
+    if (next === data.mode) return;
+    const departing = data.keysDroppedBySwitch(next);
+    if (departing.length > 0) await dropInputCables(data.id, departing);
+    data.setMode(next);
+    setModeMirror(next);
+    await getActiveView()?.rerenderNode(data.id);
+    await processGraph();
+  }
+
   const transfersOut = data.outputs.transfers;
   const netOut = data.outputs.net;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
+      <SegToggle value={mode} options={SETTLE_MODE_OPTIONS} onChange={(m) => void pickMode(m)} />
       <InlineInputs node={data} emit={emit} />
-      <SegToggle value={split} options={SETTLE_SPLIT_OPTIONS} onChange={setSplit} />
+      {mode === "totals" && <SegToggle value={split} options={SETTLE_SPLIT_OPTIONS} onChange={setSplit} />}
       {transfersOut && (
         <MeasuredSocketRow hero side="output" socketKey="transfers" nodeId={data.id} emit={emit} payload={transfersOut.socket}>
           <div style={{ width: "100%" }}>

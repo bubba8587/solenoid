@@ -23,6 +23,19 @@ Three display-layer fixes, each behind its own test:
   `valuePeekKind.ts`): frame/cube/table/list/chart/diagram/svg/lambda — the values whose face is a
   summary chip hiding content. A scalar/string/error is already shown in full, so its peek was pure
   repetition. One gate in `NodeSocket.tsx`; the example-hint path is untouched.
+- **Group Cost Settle gains a Transactions mode** (`SettleMode` "totals" | "transactions", author
+  2026-09-08). Totals is unchanged (people frame, Paid + optional Share weight). Transactions reads
+  a CUBE ledger — one row per expense: an Amount, a Paid by (a name or a list for a shared bill), and
+  a For list of beneficiaries, split EQUALLY (no weights); blank For = the whole roster. Payers and
+  beneficiaries are independent sets, so a bill one person fronts redistributes to a different group.
+  `settleLedger` (pure, `settleOps.ts`) aggregates per-person Paid/Owes and feeds the shared
+  `minTransfers` greedy core (extracted from `settleGroup`); `settleLedgerCube` (`frame.ts`) reads
+  the cube and shapes the same Transfers/Net frames, carrying the Amount column's currency.
+  The `mode` toggle swaps the single input socket in place (people frame ↔ ledger cube) via
+  `setMode` + `dropInputCables` (onePrunePath), the WorkdaysNode pattern; outputs never change so no
+  output retype. Node is now `unitAware`. Seed "Trip split" rebuilt: a totals frame AND a cube
+  ledger, both through an Input Switch (`CableSwitchNode`) into one Settle, so flipping the switch +
+  mode compares the two descriptions of one trip.
 
 ### SESSION DIGEST (2026-09-07e — Gantt research: the landscape, the spec, the separate-repo plan)
 

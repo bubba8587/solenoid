@@ -35,7 +35,7 @@ import {
 import { pairIdsFromKeys } from "./logic";
 import type { PivotSpec, FilterCondConfig } from "../frameVerbs";
 import type { AllocateMode } from "./allocateOps";
-import { settleGroup } from "./settleOps";
+import { settleGroup, settleLedger, type Expense } from "./settleOps";
 import { payoffPlan, type PayoffOrder } from "./payoffOps";
 import { describeFrame, correlationMatrix, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameVerbs";
 export type { WindowFn } from "../frameVerbs";
@@ -49,7 +49,7 @@ import {
 import { csvList, type FrameShapeContext } from "./frameShapeHook";
 import type { ColumnPickerSpec } from "./columnPickerHook";
 import type { CubeValue, CubeCell, CubeColumn } from "../frame";
-import { type UnitCell } from "../unitValue";
+import { type UnitCell, type ColumnUnit, isUnitCell } from "../unitValue";
 import { tagFrameCellUnit, columnUnitFromSpec } from "../unitColumn";
 
 // A thrown SolError must be returned as a VALUE — letting it escape data() flattens
@@ -1821,18 +1821,25 @@ export function payoffFrame(f: FrameValue, extra: number, order: PayoffOrder, vi
 
 // ─── GROUP COST SETTLE (1.4 H3) ──────────────────────────────────────────────
 // People paid uneven amounts; the minimum set of transfers that squares everyone up.
-// `split` is a parameter of the one verb (equal | weighted by a Share column).
+// TWO modes: `totals` reads a people frame (Paid total + optional Share weight); `transactions`
+// reads a CUBE ledger — one row per expense, split equally among a nested list of beneficiaries
+// (author 2026-09-08). `split` is the totals-mode weighting; transactions is equal-split only.
 export type SettleSplit = "equal" | "weighted";
+export type SettleMode = "totals" | "transactions";
 
 export class SettleNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     people: "Rows are people: the first text column names them, a Paid number column says what each paid, and an optional Share column weighs what each owes, where 1 is an equal share and blank counts as 1.",
-    transfers: "Who pays whom, in the fewest transfers: From · To · Amount. Amounts carry the Paid column's currency.",
+    ledger: "A cube of expenses, one row each: an Amount, a Paid by name or list for a shared bill, and a For list of who splits it equally, where blank counts as the whole group. Payers and beneficiaries are independent, so a bill one person fronts can be redistributed to a different group.",
+    transfers: "Who pays whom, in the fewest transfers: From · To · Amount. Amounts carry the Amount column's currency.",
     net: "Each person with their fair share and net position: positive is owed, negative owes.",
   };
 
   label: string;
+  mode: SettleMode;
   split: SettleSplit;
+  /** Reads per-cell currency off the Amount column in transactions mode (settleLedgerCube). */
+  unitAware = true;
   cachedResult: FrameValue | SolError | null = null;
   cachedNet: FrameValue | SolError | null = null;
   width = 240; height = 220;
@@ -1845,31 +1852,125 @@ export class SettleNode extends ClassicPreset.Node {
     ] },
   };
 
-  constructor(init?: { label?: string; split?: SettleSplit }) {
+  constructor(init?: { label?: string; mode?: SettleMode; split?: SettleSplit }) {
     super("Settle");
     this.label = init?.label ?? "Group Cost Settle";
+    this.mode = init?.mode === "transactions" ? "transactions" : "totals";
     this.split = init?.split === "weighted" ? "weighted" : "equal";
-    this.addInput("people", frameIn("People"));
+    if (this.mode === "transactions") this.addInput("ledger", cubeIn("Ledger"));
+    else this.addInput("people", frameIn("People"));
     this.addOutput("transfers", frameOut("Transfers"));
     this.addOutput("net", frameOut("Net"));
   }
 
+  /** The input key a switch to `next` would drop; callers prune its cables BEFORE
+   *  setMode (onePrunePath), like the op-swapping finance/date nodes. */
+  keysDroppedBySwitch(next: SettleMode): string[] {
+    if (next === this.mode) return [];
+    return this.mode === "transactions" ? ["ledger"] : ["people"];
+  }
+
+  /** Swaps the single input socket in place (people frame ↔ ledger cube). The outputs
+   *  are the same two frames in both modes, so no output retype is needed. */
+  setMode(next: SettleMode): void {
+    if (next === this.mode) return;
+    this.mode = next;
+    if (next === "transactions") {
+      if (this.inputs.people) this.removeInput("people");
+      if (!this.inputs.ledger) this.addInput("ledger", cubeIn("Ledger"));
+    } else {
+      if (this.inputs.ledger) this.removeInput("ledger");
+      if (!this.inputs.people) this.addInput("people", frameIn("People"));
+    }
+  }
+
   frameShape(outKey: string, ctx: FrameShapeContext): Shape | null {
-    const input = ctx.inputShape("people");
-    if (!input) return null;
     if (outKey === "transfers") return { columns: [{ name: "From", type: "string" }, { name: "To", type: "string" }, { name: "Amount", type: "number" }] };
-    const name = input.columns.find((c) => c.type === "string")?.name ?? "Person";
+    // net: the person column takes the input's name in totals mode, else "Person".
+    const name = this.mode === "totals"
+      ? (ctx.inputShape("people")?.columns.find((c) => c.type === "string")?.name ?? "Person")
+      : "Person";
     return { columns: [{ name, type: "string" }, { name: "Paid", type: "number" }, { name: "Owes", type: "number" }, { name: "Net", type: "number" }] };
   }
 
-  data(inputs: { people?: (FrameValue | null)[] }) {
-    const f = inputs.people?.[0] ?? null;
-    if (!f) { this.cachedResult = null; this.cachedNet = null; return { transfers: null, net: null }; }
-    const r = runVerb(() => settleFrame(f, this.split));
-    if (isSolError(r)) { this.cachedResult = r; this.cachedNet = r; return { transfers: r, net: r }; }
-    this.cachedResult = r.transfers; this.cachedNet = r.net;
-    return { transfers: r.transfers, net: r.net };
+  data(inputs: { people?: (FrameValue | CubeValue | null)[]; ledger?: (CubeValue | FrameValue | null)[] }) {
+    const none = () => { this.cachedResult = null; this.cachedNet = null; return { transfers: null, net: null }; };
+    const emit = (r: { transfers: FrameValue; net: FrameValue } | SolError) => {
+      if (isSolError(r)) { this.cachedResult = r; this.cachedNet = r; return { transfers: r, net: r }; }
+      this.cachedResult = r.transfers; this.cachedNet = r.net;
+      return { transfers: r.transfers, net: r.net };
+    };
+    if (this.mode === "transactions") {
+      const raw = inputs.ledger?.[0] ?? null;
+      const cube = isCubeValue(raw) ? raw : isFrameValue(raw) ? frameToCube(raw) : null;
+      if (!cube) return none();
+      return emit(runVerb(() => settleLedgerCube(cube)));
+    }
+    const raw = inputs.people?.[0] ?? null;
+    const f = isCubeValue(raw) ? cubeToScalarFrame(raw) : isFrameValue(raw) ? raw : null;
+    if (!f) return none();
+    return emit(runVerb(() => settleFrame(f, this.split)));
   }
+}
+
+/** The transactions half of Group Cost Settle: read the expense cube into an equal-split
+ *  ledger, run settleLedger, shape the two frames. Amount's currency rides onto the outputs. */
+export function settleLedgerCube(cube: CubeValue): { transfers: FrameValue; net: FrameValue } {
+  const norm = (s: string) => s.trim().toLowerCase();
+  const col = (...names: string[]) => { const set = new Set(names); return cube.columns.find((c) => set.has(norm(c.name))); };
+  const amountCol = col("amount", "cost", "total", "price", "spend");
+  const payerCol = col("paid by", "paidby", "payer", "paid", "by", "who paid", "from");
+  const forCol = col("for", "split", "split between", "participants", "shared", "shared by", "shared with", "with", "beneficiaries", "owed by");
+  if (!amountCol) throw solError("#VALUE!", "Group Cost Settle (Transactions) needs an Amount column");
+  if (!payerCol) throw solError("#VALUE!", "Group Cost Settle (Transactions) needs a Paid by column");
+
+  // A cell's names: a list cell → its entries; a scalar → itself; a comma string → its parts.
+  const namesOf = (cell: CubeCell | undefined): string[] => {
+    if (cell == null) return [];
+    if (Array.isArray(cell)) return cell.flatMap(namesOf);
+    if (isUnitCell(cell) || isFrameValue(cell) || isCubeValue(cell)) return [];
+    return String(cell).split(/\s*,\s*/).map((x) => x.trim()).filter(Boolean);
+  };
+  const amountOf = (cell: CubeCell | undefined): number => {
+    if (isUnitCell(cell)) return Number.isFinite(cell.value) ? cell.value : 0;
+    if (typeof cell === "number") return Number.isFinite(cell) ? cell : 0;
+    if (typeof cell === "string") { const n = Number(cell.replace(/[,$£€\s]/g, "")); return Number.isFinite(n) ? n : 0; }
+    return 0;
+  };
+
+  const rows = cubeRowCount(cube);
+  const expenses: Expense[] = [];
+  for (let i = 0; i < rows; i++) {
+    const amount = amountOf(amountCol.cells[i]);
+    const payers = namesOf(payerCol.cells[i]);
+    if (!(amount > 0) || payers.length === 0) continue; // a row with no payer or amount can't be placed
+    const named = forCol ? namesOf(forCol.cells[i]) : [];
+    expenses.push({ amount, payers, beneficiaries: named.length ? named : null }); // blank For = the whole group
+  }
+  const r = settleLedger(expenses);
+  // Carry the Amount column's currency (a per-cell UnitCell) onto the money columns.
+  const unit = ledgerMoney(amountCol.cells);
+  const money = unit ? { unit } : {};
+  return {
+    transfers: { __frame: true, columns: [
+      { name: "From", type: "string", values: r.transfers.map((t) => t.from) },
+      { name: "To", type: "string", values: r.transfers.map((t) => t.to) },
+      { name: "Amount", type: "number", values: r.transfers.map((t) => t.amount), ...money },
+    ] },
+    net: { __frame: true, columns: [
+      { name: "Person", type: "string", values: r.people },
+      { name: "Paid", type: "number", values: r.paid, ...money },
+      { name: "Owes", type: "number", values: r.owed, ...money },
+      { name: "Net", type: "number", values: r.nets, ...money },
+    ] },
+  };
+}
+
+/** The currency of an Amount column when its cells carry a per-cell unit (a UnitCell) — the
+ *  first one wins; a mixed-currency ledger is out of scope. */
+function ledgerMoney(cells: CubeCell[]): ColumnUnit | undefined {
+  for (const c of cells) if (isUnitCell(c)) return c.display ? { dim: c.dim, display: c.display } : { dim: c.dim };
+  return undefined;
 }
 
 /** The frame half of Group Cost Settle: read the people rows, run settleGroup, shape the

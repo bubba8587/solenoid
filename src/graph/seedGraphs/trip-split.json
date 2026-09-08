@@ -7,73 +7,136 @@
     {
       "id": "note",
       "type": "NoteNode",
-      "x": 79,
-      "y": -193,
+      "x": -40,
+      "y": -232,
       "init": {
         "label": "Trip split",
-        "body": "# Who pays whom\nFour friends, one trip, uneven receipts. **Group Cost Settle** nets everyone against their fair share and pays it back in the fewest transfers, exact to the cent.\n\nSwitch to **By Share** and the couple (Share 2) owes twice the single travellers. Change a Paid figure and the transfers re-route.",
+        "body": "# Who pays whom\nOne trip, uneven receipts. **Group Cost Settle** nets everyone against their fair share and pays it back in the fewest transfers, exact to the cent.\n\nThe **Input Switch** picks which description of the same trip feeds it. Flip it, and the Settle **mode** to match:\n\n- **Ledger, in Transactions mode:** a cube of expenses. Each row is an Amount, who **Paid** (one name or a shared bill), and who it is **For** (split equally; blank means everyone). Ada frontloads the hotel with Bo and covers Cy's ticket alone.\n- **Receipts, in Totals mode:** one row per person with what each **Paid** and an optional **Share** weight.",
         "color": "violet",
-        "width": 380,
-        "height": 230
+        "width": 400,
+        "height": 250
       }
     },
     {
-      "id": "people",
-      "type": "FrameInputNode",
-      "x": -16,
-      "y": 140,
+      "id": "ledger",
+      "type": "CubeInputNode",
+      "x": -40,
+      "y": 92,
       "init": {
-        "label": "Receipts",
-        "frameText": "[{\"name\": \"Person\", \"type\": \"string\", \"values\": [\"Ada\", \"Bo\", \"Cy\", \"Di\"]}, {\"name\": \"Paid\", \"type\": \"number\", \"unit\": \"usd\", \"values\": [300, 100, 40, 0]}, {\"name\": \"Share\", \"type\": \"number\", \"values\": [2, 1, 1, 1]}]"
+        "label": "Expenses (ledger)",
+        "cubeText": "[\n  {\"Item\": \"Dinner\",      \"Amount\": 120, \"Paid by\": \"Ada\",          \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\"]},\n  {\"Item\": \"Taxi\",        \"Amount\": 40,  \"Paid by\": \"Bo\",           \"For\": [\"Bo\", \"Cy\"]},\n  {\"Item\": \"Hotel\",       \"Amount\": 300, \"Paid by\": [\"Ada\", \"Bo\"],  \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\"]},\n  {\"Item\": \"Cy's ticket\", \"Amount\": 60,  \"Paid by\": \"Ada\",          \"For\": [\"Cy\"]}\n]"
+      }
+    },
+    {
+      "id": "receipts",
+      "type": "FrameInputNode",
+      "x": -40,
+      "y": 300,
+      "init": {
+        "label": "Receipts (totals)",
+        "frameText": "[{\"name\": \"Person\", \"type\": \"string\", \"values\": [\"Ada\", \"Bo\", \"Cy\", \"Di\"]}, {\"name\": \"Paid\", \"type\": \"number\", \"unit\": \"usd\", \"values\": [330, 190, 0, 0]}, {\"name\": \"Share\", \"type\": \"number\", \"values\": [1, 1, 1, 1]}]"
+      }
+    },
+    {
+      "id": "inswitch",
+      "type": "CableSwitchNode",
+      "x": 320,
+      "y": 176,
+      "init": {
+        "label": "Input Switch",
+        "activeIndex": 0,
+        "valueKeys": [
+          "v0",
+          "v1"
+        ],
+        "titles": {
+          "v0": "Ledger",
+          "v1": "Receipts"
+        },
+        "multiSelect": false
       }
     },
     {
       "id": "settle",
       "type": "SettleNode",
-      "x": 309,
-      "y": 133,
+      "x": 580,
+      "y": 176,
       "init": {
         "label": "Group Cost Settle",
+        "mode": "transactions",
         "split": "equal"
+      }
+    },
+    {
+      "id": "transfersDisplay",
+      "type": "DisplayNode",
+      "x": 900,
+      "y": 40,
+      "init": {
+        "label": "Who pays whom"
+      },
+      "size": {
+        "w": 360,
+        "h": 200
       }
     },
     {
       "id": "netDisplay",
       "type": "DisplayNode",
-      "x": 647,
-      "y": -68,
+      "x": 900,
+      "y": 300,
       "init": {
         "label": "Net positions"
       },
       "size": {
-        "w": 380,
+        "w": 360,
         "h": 220
       }
     },
     {
       "id": "grp",
       "type": "GroupNode",
-      "x": -40,
-      "y": 75,
+      "x": -64,
+      "y": 24,
       "init": {
-        "label": "The receipts",
+        "label": "The trip",
         "members": [
-          "people",
+          "ledger",
+          "receipts",
+          "inswitch",
           "settle"
         ],
         "color": "amber",
         "collapsed": false,
-        "width": 617,
-        "height": 319
+        "width": 900,
+        "height": 470
       }
     }
   ],
   "connections": [
     {
-      "source": "people",
+      "source": "ledger",
+      "sourceOutput": "cube",
+      "target": "inswitch",
+      "targetInput": "v0"
+    },
+    {
+      "source": "receipts",
       "sourceOutput": "frame",
+      "target": "inswitch",
+      "targetInput": "v1"
+    },
+    {
+      "source": "inswitch",
+      "sourceOutput": "out",
       "target": "settle",
-      "targetInput": "people"
+      "targetInput": "ledger"
+    },
+    {
+      "source": "settle",
+      "sourceOutput": "transfers",
+      "target": "transfersDisplay",
+      "targetInput": "in"
     },
     {
       "source": "settle",
