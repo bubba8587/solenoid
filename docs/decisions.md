@@ -35,6 +35,19 @@ field + forward-refusal guard stay (the seam migrations would attach to).
 per-session `claude/*` directives. **Reopen if:** multiple contributors / release
 trains.
 
+### controlDrivenRetype — a node's op/mode/arg field CAN swap that node's own sockets
+Control-driven in-place socket swaps are a first-class, established pattern: a node's
+`op`/`mode`/`arg` toggle can change an INPUT socket, an OUTPUT socket, or both, and add or
+remove whole input rows. The class exposes `setOp`/`setMode` (mutating `this.inputs`/`this.outputs`)
+and `keysDroppedBySwitch`; the component prunes the departing socket's cables FIRST (onePrunePath),
+then calls it, then `retypeOutputCables` after an OUTPUT swap (an in-place swap fires no connection
+event). This is DISTINCT from wiring-driven wildcard adoption (`trueAnyAdopt`), which no field
+touches. **Where:** `subsystem-invariants.md` § Type propagation on in-place socket retype;
+exemplars `WorkdaysNode`, `SettleNode` (mode: people-frame ↔ ledger-cube), `RecordNode`,
+`CableSwitchNode`, the date/finance output swaps, `Expression`/`composite`/`formatController`.
+**Reopen if:** never — logged only because it has been repeatedly and wrongly reported as absent.
+Grep `setOp`/`setMode`/`keysDroppedBySwitch` before claiming a node can't retype on a mode.
+
 ### arraySemantics — Array-semantics value model
 Lists/frames carry first-class `null` (missing — skipped by aggregators) AND
 per-cell `SolError` (propagated), plus a first-class logical type with Kleene

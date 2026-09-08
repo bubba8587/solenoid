@@ -61,19 +61,6 @@
   align-items: center;
   margin: 4px 0 2px;
 }
-.sol-switch__cycle {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 22px;
-  padding: 0 8px;
-  font-family: inherit;
-  font-size: 11px;
-  background: var(--btn-bg);
-  border: 1px solid var(--btn-border);
-  border-radius: 6px;
-  color: var(--text);
-  cursor: pointer;
-}
-.sol-switch__cycle:hover { border-color: var(--node-accent, var(--accent)); color: var(--accent); }
+/* The One-mode input stepper (prev / n·N / next) reuses the Record pager styles
+   (.solenoid-record__pager*); this only pushes it to the right of the + Add button. */
+.sol-switch__pager { margin: 0 0 0 auto; }
