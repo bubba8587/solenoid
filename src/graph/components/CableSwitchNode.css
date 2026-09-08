@@ -61,6 +61,16 @@
   align-items: center;
   margin: 4px 0 2px;
 }
-/* The One-mode input stepper (prev / n·N / next) reuses the Record pager styles
-   (.solenoid-record__pager*); this only pushes it to the right of the + Add button. */
-.sol-switch__pager { margin: 0 0 0 auto; }
+/* The controls row: + Add shrinks to a comfortable minimum (it is width:100% by
+   default) and the One-mode stepper GROWS into the rest of the row. The stepper reuses
+   the Record pager styles (.solenoid-record__pager*), spread full-width here. */
+.sol-switch__controls .solenoid-node__add-input {
+  width: auto;
+  flex: 0 0 auto;
+  padding: 3px 10px;
+}
+.sol-switch__pager {
+  flex: 1 1 auto;
+  margin: 0;
+  justify-content: space-between;
+}
