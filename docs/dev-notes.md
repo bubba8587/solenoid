@@ -35,10 +35,11 @@ Three display-layer fixes, each behind its own test:
   `setMode` + `dropInputCables` (onePrunePath), the WorkdaysNode pattern; outputs never change so no
   output retype. Node is now `unitAware`.
   **Net frame reworked (author 2026-09-08b):** was Person · Paid · Owes(fair share) · Net; now
-  Person · Paid · **Owes**(to others) · **Owed**(by others) · Net, the GROSS flows — a person can
-  both owe and be owed at once (paid for dinner, ate someone's cab). `settleGroup`/`settleLedger`
-  compute them (pot formula for totals; pairwise `amount/(|B|·|P|)` cross-pairs for the ledger);
-  Net = Owed − Owes = Paid − fair share. The **transfers** frame is the main output, now the labelled
+  Person · Paid · **Owes**(to others, NEGATIVE) · **Owed**(by others, POSITIVE) · Net, the GROSS
+  flows — a person can both owe and be owed at once (paid for dinner, ate someone's cab).
+  `settleGroup`/`settleLedger` compute the magnitudes (pot formula for totals; pairwise
+  `amount/(|B|·|P|)` cross-pairs for the ledger); the frame flips Owes negative (`owesSigned`) so the
+  two columns carry opposite signs and Net = Owes + Owed = Paid − fair share. The **transfers** frame is the main output, now the labelled
   hero at the BOTTOM of the card ("WHO PAYS WHOM") with the Net breakdown on top.
   Seed "Trip split" rebuilt: 5 people, 8 expenses (multi-payer, sub-groups, a reimbursement to a
   different person), a totals frame AND a cube ledger through an Input Switch into one Settle, plus a

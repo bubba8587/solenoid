@@ -49,9 +49,9 @@ describe("settleGroup", () => {
     ] };
     const { transfers, net } = settleFrame(f, "weighted");
     expect(net.columns.map((c) => c.name)).toEqual(["Person", "Paid", "Owes", "Owed", "Net"]);
-    expect(net.columns[2].values).toEqual([0, 30]);  // Owes (to others)
-    expect(net.columns[3].values).toEqual([30, 0]);  // Owed (by others)
-    expect(net.columns[4].values).toEqual([30, -30]); // Net = Owed − Owes
+    expect(net.columns[2].values).toEqual([0, -30]);  // Owes (out) reads negative
+    expect(net.columns[3].values).toEqual([30, 0]);   // Owed (in) reads positive
+    expect(net.columns[4].values).toEqual([30, -30]); // Net = Owes + Owed
     expect(transfers.columns.map((c) => c.name)).toEqual(["From", "To", "Amount"]);
   });
 });
@@ -113,7 +113,9 @@ describe("settleLedgerCube", () => {
     const { transfers, net } = settleLedgerCube(cube);
     expect(net.columns.map((c) => c.name)).toEqual(["Person", "Paid", "Owes", "Owed", "Net"]);
     expect(net.columns[0].values).toEqual(["Ada", "Bo", "Cy", "Di"]);
-    expect(net.columns[4].values).toEqual([225, 65, -185, -105]); // Net
+    expect(net.columns[2].values).toEqual([-37.5, -67.5, -185, -105]); // Owes: negative
+    expect(net.columns[3].values).toEqual([262.5, 132.5, 0, 0]);       // Owed: positive
+    expect(net.columns[4].values).toEqual([225, 65, -185, -105]);      // Net = Owes + Owed
     expect(transfers.columns.map((c) => c.name)).toEqual(["From", "To", "Amount"]);
     expect(transfers.columns[2].values).toEqual([185, 40, 65]);
   });

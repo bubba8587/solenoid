@@ -11,7 +11,7 @@
       "y": -300,
       "init": {
         "label": "Trip split",
-        "body": "# Who pays whom\nFive friends, a weekend away, receipts all over the place. **Group Cost Settle** nets everyone against their fair share and pays it back in the fewest transfers, exact to the cent. The **Sankey** shows the money flow; the **Net** table breaks down each person.\n\nThe **Input Switch** picks which description of the same trip feeds it. Flip it, and the Settle **mode** to match:\n\n- **Ledger, in Transactions mode:** a cube of expenses. Each row is an Amount, who **Paid** (one name, or two who split a bill), and who it is **For** (split equally; blank means everyone). Ada fronts the flights and cabin and covers Eve's ticket; drinks and the cabin are split-paid.\n- **Receipts, in Totals mode:** one row per person with what each **Paid**, split evenly.\n\nEach person shows **Paid**, **Owes** others, is **Owed** by others, and **Net**.",
+        "body": "# Who pays whom\nFive friends, a weekend away, receipts all over the place. **Group Cost Settle** nets everyone against their fair share and pays it back in the fewest transfers, exact to the cent. The **Sankey** shows the money flow; the **Net** table breaks down each person.\n\nThe **Input Switch** picks which description of the same trip feeds it. Flip it, and the Settle **mode** to match:\n\n- **Ledger, in Transactions mode:** a cube of expenses. Each row is an Amount, who **Paid** (one name, or two who split a bill), and who it is **For** (split equally; blank means everyone). Ada fronts the cabin, Bo the flights, Cy the car; the kayaks are split-paid, and Bo covers Eve's ticket.\n- **Receipts, in Totals mode:** one row per person with what each **Paid**, split evenly.\n\nEach person shows **Paid**, what they **Owe** others (negative), what they are **Owed** (positive), and **Net**, the sum of the two.",
         "color": "violet",
         "width": 430,
         "height": 300
@@ -24,7 +24,7 @@
       "y": 44,
       "init": {
         "label": "Expenses (ledger)",
-        "cubeText": "[\n  {\"Item\": \"Flights\",      \"Amount\": 1000, \"Paid by\": \"Ada\",          \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]},\n  {\"Item\": \"Cabin\",        \"Amount\": 750,  \"Paid by\": [\"Ada\", \"Bo\"], \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]},\n  {\"Item\": \"Groceries\",    \"Amount\": 200,  \"Paid by\": \"Cy\",           \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]},\n  {\"Item\": \"Dinner out\",   \"Amount\": 160,  \"Paid by\": \"Di\",           \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\"]},\n  {\"Item\": \"Kayak rental\", \"Amount\": 120,  \"Paid by\": \"Eve\",          \"For\": [\"Bo\", \"Cy\", \"Eve\"]},\n  {\"Item\": \"Eve's flight\", \"Amount\": 220,  \"Paid by\": \"Ada\",          \"For\": [\"Eve\"]},\n  {\"Item\": \"Drinks\",       \"Amount\": 90,   \"Paid by\": [\"Bo\", \"Cy\"],  \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]},\n  {\"Item\": \"Coffee\",       \"Amount\": 30,   \"Paid by\": \"Bo\",           \"For\": [\"Ada\", \"Bo\"]}\n]"
+        "cubeText": "[\n  {\"Item\": \"Cabin\",        \"Amount\": 600, \"Paid by\": \"Ada\",          \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]},\n  {\"Item\": \"Flights\",      \"Amount\": 500, \"Paid by\": \"Bo\",           \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]},\n  {\"Item\": \"Rental car\",   \"Amount\": 300, \"Paid by\": \"Cy\",           \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]},\n  {\"Item\": \"Groceries\",    \"Amount\": 150, \"Paid by\": \"Di\",           \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]},\n  {\"Item\": \"Dinner out\",   \"Amount\": 200, \"Paid by\": \"Eve\",          \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]},\n  {\"Item\": \"Kayaks\",       \"Amount\": 90,  \"Paid by\": [\"Ada\", \"Di\"], \"For\": [\"Bo\", \"Cy\", \"Di\"]},\n  {\"Item\": \"Coffee\",       \"Amount\": 40,  \"Paid by\": \"Cy\",           \"For\": [\"Ada\", \"Cy\"]},\n  {\"Item\": \"Eve's ticket\", \"Amount\": 60,  \"Paid by\": \"Bo\",           \"For\": [\"Eve\"]}\n]"
       }
     },
     {
@@ -34,7 +34,7 @@
       "y": 336,
       "init": {
         "label": "Receipts (totals)",
-        "frameText": "[{\"name\": \"Person\", \"type\": \"string\", \"values\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]}, {\"name\": \"Paid\", \"type\": \"number\", \"unit\": \"usd\", \"values\": [1595, 450, 245, 160, 120]}, {\"name\": \"Share\", \"type\": \"number\", \"values\": [1, 1, 1, 1, 1]}]"
+        "frameText": "[{\"name\": \"Person\", \"type\": \"string\", \"values\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]}, {\"name\": \"Paid\", \"type\": \"number\", \"unit\": \"usd\", \"values\": [645, 560, 340, 195, 200]}, {\"name\": \"Share\", \"type\": \"number\", \"values\": [1, 1, 1, 1, 1]}]"
       }
     },
     {
@@ -71,20 +71,16 @@
       "id": "sankey",
       "type": "SankeyNode",
       "x": 968,
-      "y": -48,
+      "y": -32,
       "init": {
         "label": "Money flow"
-      },
-      "size": {
-        "w": 420,
-        "h": 300
       }
     },
     {
       "id": "netDisplay",
       "type": "DisplayNode",
       "x": 968,
-      "y": 316,
+      "y": 300,
       "init": {
         "label": "Net positions"
       },

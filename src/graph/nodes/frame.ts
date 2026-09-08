@@ -1832,7 +1832,7 @@ export class SettleNode extends ClassicPreset.Node {
     people: "Rows are people: the first text column names them, a Paid number column says what each paid, and an optional Share column weighs what each owes, where 1 is an equal share and blank counts as 1.",
     ledger: "A cube of expenses, one row each: an Amount, a Paid by name or list for a shared bill, and a For list of who splits it equally, where blank counts as the whole group. Payers and beneficiaries are independent, so a bill one person fronts can be redistributed to a different group.",
     transfers: "The settle-up, and the node's main output: who pays whom in the fewest transfers, From · To · Amount. Amounts carry the Amount column's currency.",
-    net: "Each person's position: Paid (what they fronted), Owes (their consumption others funded), Owed (their payments that covered others), and Net, which is Owed minus Owes.",
+    net: "Each person's position: Paid (what they fronted), Owes (their consumption others funded, shown negative), Owed (their payments that covered others, shown positive), and Net, the sum of Owes and Owed.",
   };
 
   label: string;
@@ -1960,11 +1960,17 @@ export function settleLedgerCube(cube: CubeValue): { transfers: FrameValue; net:
     net: { __frame: true, columns: [
       { name: "Person", type: "string", values: r.people },
       { name: "Paid", type: "number", values: r.paid, ...money },
-      { name: "Owes", type: "number", values: r.owesToOthers, ...money },
+      { name: "Owes", type: "number", values: owesSigned(r.owesToOthers), ...money },
       { name: "Owed", type: "number", values: r.owedByOthers, ...money },
       { name: "Net", type: "number", values: r.nets, ...money },
     ] },
   };
+}
+
+/** Money the person OWES out reads NEGATIVE, money they are OWED reads positive, so the two
+ *  columns carry opposite signs and Net = Owes + Owed. (−0 is normalized to 0.) */
+function owesSigned(xs: readonly number[]): number[] {
+  return xs.map((x) => (x === 0 ? 0 : -x));
 }
 
 /** The currency of an Amount column when its cells carry a per-cell unit (a UnitCell) — the
@@ -2005,7 +2011,7 @@ export function settleFrame(f: FrameValue, split: SettleSplit): { transfers: Fra
     net: { __frame: true, columns: [
       { name: nameCol?.name ?? "Person", type: "string", values: people.map((p) => p.name) },
       { name: "Paid", type: "number", values: people.map((p) => p.paid), ...money },
-      { name: "Owes", type: "number", values: r.owesToOthers, ...money },
+      { name: "Owes", type: "number", values: owesSigned(r.owesToOthers), ...money },
       { name: "Owed", type: "number", values: r.owedByOthers, ...money },
       { name: "Net", type: "number", values: r.nets, ...money },
     ] },
