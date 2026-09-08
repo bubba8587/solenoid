@@ -6,6 +6,24 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-08 — display fixes: collapsed-group dates, complex both-parts, socket peek gating)
+
+Three display-layer fixes, each behind its own test:
+- **Collapsed-group readout renders a date as a date, not a serial.** A Display member of a
+  collapsed group fell through `formatReadout`'s numeric text path, so a singular Date showed its
+  raw serial. Now routes the unannotated-date case through `dateFormatDisplay` (the Display
+  surface's own helper), keyed off the `nodeOutputElemFamily("date")` lookup the row already uses
+  for date arrays. `GroupNode.tsx`.
+- **Complex DISPLAY always shows both parts** (`0 + 4i`, `23 + 0i`). `assembleCx` gained a
+  `bothParts` flag; `formatCxDisplay` (new) + `formatCxWithAnnotation` pass it, and every display
+  seam (value box, chips, readouts, clipboard) routes through them, so the unit always wraps the
+  two-term form `(0 + 2i) V`. The Excel/coercion form (`formatCx`, `&`, cast-to-text, `IM*`) still
+  drops a zero part for parity and round-trips with `parseCx`. Pinned in `format-model.md`.
+- **Socket hover value-peek arms only on chip-summary kinds** (`isChipSummaryPeek` in
+  `valuePeekKind.ts`): frame/cube/table/list/chart/diagram/svg/lambda — the values whose face is a
+  summary chip hiding content. A scalar/string/error is already shown in full, so its peek was pure
+  repetition. One gate in `NodeSocket.tsx`; the example-hint path is untouched.
+
 ### SESSION DIGEST (2026-09-07e — Gantt research: the landscape, the spec, the separate-repo plan)
 
 The author asked for a big outside-in research pass on Gantt and project-planning software, not
