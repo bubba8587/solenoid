@@ -34,12 +34,13 @@ Three display-layer fixes, each behind its own test:
   The `mode` toggle swaps the single input socket in place (people frame ↔ ledger cube) via
   `setMode` + `dropInputCables` (onePrunePath), the WorkdaysNode pattern; outputs never change so no
   output retype. Node is now `unitAware`.
-  **Net frame reworked (author 2026-09-08b):** was Person · Paid · Owes(fair share) · Net; now
-  Person · Paid · **Owes**(to others, NEGATIVE) · **Owed**(by others, POSITIVE) · Net, the GROSS
-  flows — a person can both owe and be owed at once (paid for dinner, ate someone's cab).
-  `settleGroup`/`settleLedger` compute the magnitudes (pot formula for totals; pairwise
-  `amount/(|B|·|P|)` cross-pairs for the ledger); the frame flips Owes negative (`owesSigned`) so the
-  two columns carry opposite signs and Net = Owes + Owed = Paid − fair share. The **transfers** frame is the main output, now the labelled
+  **Net frame is a TRUE-COST balance (author 2026-09-08c, final):** Person · Paid · Owes · Owed ·
+  Net, where **Net = Paid + Owes + Owed = the fair share** (a person's real cost, NOT their
+  balance). Paid = fronted/external; Owes = still owed to the group (+); Owed = coming back from
+  the group (−). One of Owes/Owed is 0 per person (the settlement is a pure payer or receiver).
+  In equal-split totals every Net matches (everyone's true cost is the same). `settleNetFrame`
+  (frame.ts) derives Owes/Owed from `diff = share − paid`; `settleGroup`/`settleLedger` just return
+  paid + fair share (the earlier gross-cross-flow model was overcomplicated and dropped). The **transfers** frame is the main output, now the labelled
   hero at the BOTTOM of the card ("WHO PAYS WHOM") with the Net breakdown on top.
   Seed "Trip split" rebuilt: 5 people, 8 expenses (multi-payer, sub-groups, a reimbursement to a
   different person), a totals frame AND a cube ledger through an Input Switch into one Settle, plus a

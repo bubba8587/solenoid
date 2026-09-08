@@ -1832,7 +1832,7 @@ export class SettleNode extends ClassicPreset.Node {
     people: "Rows are people: the first text column names them, a Paid number column says what each paid, and an optional Share column weighs what each owes, where 1 is an equal share and blank counts as 1.",
     ledger: "A cube of expenses, one row each: an Amount, a Paid by name or list for a shared bill, and a For list of who splits it equally, where blank counts as the whole group. Payers and beneficiaries are independent, so a bill one person fronts can be redistributed to a different group.",
     transfers: "The settle-up, and the node's main output: who pays whom in the fewest transfers, From · To · Amount. Amounts carry the Amount column's currency.",
-    net: "Each person's position: Paid (what they fronted), Owes (their consumption others funded, shown negative), Owed (their payments that covered others, shown positive), and Net, the sum of Owes and Owed.",
+    net: "Each person's true cost: Paid (already paid out, external), Owes (still owed to the group, positive), Owed (coming back from the group, negative), and Net = Paid + Owes + Owed, their fair share. In equal-split totals every Net matches.",
   };
 
   label: string;
@@ -1957,20 +1957,36 @@ export function settleLedgerCube(cube: CubeValue): { transfers: FrameValue; net:
       { name: "To", type: "string", values: r.transfers.map((t) => t.to) },
       { name: "Amount", type: "number", values: r.transfers.map((t) => t.amount), ...money },
     ] },
-    net: { __frame: true, columns: [
-      { name: "Person", type: "string", values: r.people },
-      { name: "Paid", type: "number", values: r.paid, ...money },
-      { name: "Owes", type: "number", values: owesSigned(r.owesToOthers), ...money },
-      { name: "Owed", type: "number", values: r.owedByOthers, ...money },
-      { name: "Net", type: "number", values: r.nets, ...money },
-    ] },
+    net: settleNetFrame(r.people, r.paid, r.shares, money),
   };
 }
 
-/** Money the person OWES out reads NEGATIVE, money they are OWED reads positive, so the two
- *  columns carry opposite signs and Net = Owes + Owed. (−0 is normalized to 0.) */
-function owesSigned(xs: readonly number[]): number[] {
-  return xs.map((x) => (x === 0 ? 0 : -x));
+const r2 = (x: number) => Math.round(x * 100) / 100;
+
+/** The Net table: Paid (fronted, external) + Owes (still owed to the group, +) + Owed (coming
+ *  back from the group, −) = Net, which is each person's fair share (their true cost). A
+ *  creditor's balance comes back as Owed; a debtor's is paid out as Owes; one is always 0. In
+ *  equal-split totals every Net matches. */
+function settleNetFrame(
+  names: string[], paidRaw: readonly number[], sharesRaw: readonly number[],
+  money: Partial<Pick<FrameColumn, "unit" | "format">>, personLabel = "Person",
+): FrameValue {
+  const paid = paidRaw.map(r2);
+  const net = sharesRaw.map(r2); // Net = the fair share / true cost
+  const owes: number[] = [];
+  const owed: number[] = [];
+  net.forEach((n, i) => {
+    const diff = r2(n - paid[i]); // Net − Paid: > 0 you still owe out, < 0 it comes back
+    owes.push(diff > 0 ? diff : 0);
+    owed.push(diff < 0 ? diff : 0);
+  });
+  return { __frame: true, columns: [
+    { name: personLabel, type: "string", values: names },
+    { name: "Paid", type: "number", values: paid, ...money },
+    { name: "Owes", type: "number", values: owes, ...money },
+    { name: "Owed", type: "number", values: owed, ...money },
+    { name: "Net", type: "number", values: net, ...money },
+  ] };
 }
 
 /** The currency of an Amount column when its cells carry a per-cell unit (a UnitCell) — the
@@ -2008,13 +2024,7 @@ export function settleFrame(f: FrameValue, split: SettleSplit): { transfers: Fra
       { name: "To", type: "string", values: r.transfers.map((t) => t.to) },
       { name: "Amount", type: "number", values: r.transfers.map((t) => t.amount), ...money },
     ] },
-    net: { __frame: true, columns: [
-      { name: nameCol?.name ?? "Person", type: "string", values: people.map((p) => p.name) },
-      { name: "Paid", type: "number", values: people.map((p) => p.paid), ...money },
-      { name: "Owes", type: "number", values: owesSigned(r.owesToOthers), ...money },
-      { name: "Owed", type: "number", values: r.owedByOthers, ...money },
-      { name: "Net", type: "number", values: r.nets, ...money },
-    ] },
+    net: settleNetFrame(people.map((p) => p.name), people.map((p) => p.paid), r.shares, money, nameCol?.name ?? "Person"),
   };
 }
 
