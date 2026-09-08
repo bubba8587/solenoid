@@ -115,8 +115,9 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
     };
   }, []);
 
-  // Publish the result box's vertical center as `--out-socket-top`; offsetTop
-  // resolves against .solenoid-node__content, so it is header-INDEPENDENT.
+  // Publish the result box's vertical center as `--out-socket-top`, measured against
+  // .solenoid-node__content (where the sockets and input-pill anchor), so it is
+  // header-INDEPENDENT.
   function syncOutputSocketTop() {
     const el = ref.current;
     if (!el) return;
@@ -127,8 +128,18 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
     );
     let box: HTMLElement | null = null;
     for (const b of boxes) { if (b.offsetParent !== null) { box = b; break; } }
-    if (box) el.style.setProperty("--out-socket-top", `${box.offsetTop + box.offsetHeight / 2}px`);
-    else el.style.removeProperty("--out-socket-top");
+    if (!box) { el.style.removeProperty("--out-socket-top"); return; }
+    // Sum offsetTop up the offsetParent chain to the content wrapper: a box wrapped in
+    // an intermediate POSITIONED element (Date Input's picker row is position:relative,
+    // to anchor its hidden native picker) is otherwise measured against that wrapper —
+    // ~0 — and the socket floats to the top of the card.
+    const content = el.querySelector<HTMLElement>(".solenoid-node__content");
+    let top = box.offsetHeight / 2;
+    // Walk only when content is a real ancestor, so a missing wrapper degrades to the
+    // plain offsetTop rather than over-summing up to the card root.
+    if (content) for (let n: HTMLElement | null = box; n && n !== content; n = n.offsetParent as HTMLElement | null) top += n.offsetTop;
+    else top += box.offsetTop;
+    el.style.setProperty("--out-socket-top", `${top}px`);
   }
   // Runs after every commit — also covers the collapse toggle's re-layout.
   useLayoutEffect(syncOutputSocketTop);
