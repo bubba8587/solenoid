@@ -1,4 +1,5 @@
-// The value kinds a socket hover-peek can render (hover peek on any socket). Mirrors
+// The value kinds a socket hover-peek can render (the peek arms only for the chip-summary
+// kinds — isChipSummaryPeek below — but the switch stays total over all kinds). Mirrors
 // DisplayComponent's own branch order so the peek shows a value exactly as the Display
 // would. Pure (no React) so the coverage guard can enumerate it cheaply — SocketValuePeek
 // switches on this, and displayPeekCoverage.test.ts pins that every kind has a branch.
@@ -32,4 +33,18 @@ export function peekKindFor(v: unknown): PeekKind {
   }
   if (v === null || v === undefined) return "empty";
   return "scalar"; // number | string | boolean
+}
+
+// The kinds whose node-face representation is a SUMMARY CHIP that hides its content — a
+// frame/cube/table/list/chart/diagram/svg/lambda. The hover value-peek arms ONLY for
+// these: it reveals what the chip stands in for. A scalar/string/error renders in FULL on
+// the face, so peeking it would just repeat it; `empty` shows nothing (decided 2026-09-08).
+const CHIP_SUMMARY_KINDS: ReadonlySet<PeekKind> = new Set([
+  "frame", "cube", "chart", "mermaid", "svg", "lambda", "table", "list",
+]);
+
+/** Whether a live socket value arms the hover value-peek — true only for chip-summary
+ *  kinds, whose content is otherwise hidden behind the face chip. */
+export function isChipSummaryPeek(v: unknown): boolean {
+  return CHIP_SUMMARY_KINDS.has(peekKindFor(v));
 }

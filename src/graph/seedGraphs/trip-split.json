@@ -7,73 +7,132 @@
     {
       "id": "note",
       "type": "NoteNode",
-      "x": 79,
-      "y": -193,
+      "x": 188,
+      "y": 426,
       "init": {
         "label": "Trip split",
-        "body": "# Who pays whom\nFour friends, one trip, uneven receipts. **Group Cost Settle** nets everyone against their fair share and pays it back in the fewest transfers, exact to the cent.\n\nSwitch to **By Share** and the couple (Share 2) owes twice the single travellers. Change a Paid figure and the transfers re-route.",
+        "body": "# Who pays whom\nFive friends, a weekend away, receipts all over the place. **Group Cost Settle** nets everyone against their fair share and pays it back in the fewest transfers, exact to the cent. The **Sankey** shows the money flow; the **Net** table breaks down each person.\n\nThe **Input Switch** picks which description of the same trip feeds it. Flip it, and the Settle **mode** to match:\n\n- **Ledger, in Transactions mode:** a cube of expenses. Each row is an Amount, who **Paid** (one name, or two who split a bill), and who it is **For** (split equally; blank means everyone). Ada fronts the cabin, Bo the flights, Cy the car; the kayaks are split-paid, and Bo covers Eve's ticket.\n- **Receipts, in Totals mode:** one row per person with what each **Paid**, split evenly.\n\nEach person shows **Paid** (already out), what they still **Owe** the group, what is **Owed** back to them, and **Net** — their true cost. In an even split every Net matches.",
         "color": "violet",
-        "width": 380,
-        "height": 230
+        "width": 430,
+        "height": 300
       }
     },
     {
-      "id": "people",
+      "id": "ledger",
+      "type": "CubeInputNode",
+      "x": -48,
+      "y": -56,
+      "init": {
+        "label": "Expenses (ledger)",
+        "cubeText": "[\n  {\"Item\": \"Cabin\",        \"Amount\": 600, \"Paid by\": \"Ada\",          \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]},\n  {\"Item\": \"Flights\",      \"Amount\": 500, \"Paid by\": \"Bo\",           \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]},\n  {\"Item\": \"Rental car\",   \"Amount\": 300, \"Paid by\": \"Cy\",           \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]},\n  {\"Item\": \"Groceries\",    \"Amount\": 150, \"Paid by\": \"Di\",           \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]},\n  {\"Item\": \"Dinner out\",   \"Amount\": 200, \"Paid by\": \"Eve\",          \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]},\n  {\"Item\": \"Kayaks\",       \"Amount\": 90,  \"Paid by\": [\"Ada\", \"Di\"], \"For\": [\"Bo\", \"Cy\", \"Di\"]},\n  {\"Item\": \"Coffee\",       \"Amount\": 40,  \"Paid by\": \"Cy\",           \"For\": [\"Ada\", \"Cy\"]},\n  {\"Item\": \"Eve's ticket\", \"Amount\": 60,  \"Paid by\": \"Bo\",           \"For\": [\"Eve\"]}\n]"
+      }
+    },
+    {
+      "id": "receipts",
       "type": "FrameInputNode",
-      "x": -16,
+      "x": -48,
       "y": 140,
       "init": {
-        "label": "Receipts",
-        "frameText": "[{\"name\": \"Person\", \"type\": \"string\", \"values\": [\"Ada\", \"Bo\", \"Cy\", \"Di\"]}, {\"name\": \"Paid\", \"type\": \"number\", \"unit\": \"usd\", \"values\": [300, 100, 40, 0]}, {\"name\": \"Share\", \"type\": \"number\", \"values\": [2, 1, 1, 1]}]"
+        "label": "Receipts (totals)",
+        "frameText": "[{\"name\": \"Person\", \"type\": \"string\", \"values\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]}, {\"name\": \"Paid\", \"type\": \"number\", \"unit\": \"usd\", \"values\": [645, 560, 340, 195, 200]}, {\"name\": \"Share\", \"type\": \"number\", \"values\": [1, 1, 1, 1, 1]}]"
+      }
+    },
+    {
+      "id": "inswitch",
+      "type": "CableSwitchNode",
+      "x": 285,
+      "y": 35,
+      "init": {
+        "label": "Input Switch",
+        "activeIndex": 0,
+        "valueKeys": [
+          "v0",
+          "v1"
+        ],
+        "titles": {
+          "v0": "Ledger",
+          "v1": "Receipts"
+        },
+        "multiSelect": false
       }
     },
     {
       "id": "settle",
       "type": "SettleNode",
-      "x": 309,
-      "y": 133,
+      "x": 610,
+      "y": 4,
       "init": {
         "label": "Group Cost Settle",
+        "mode": "transactions",
         "split": "equal"
+      }
+    },
+    {
+      "id": "sankey",
+      "type": "SankeyNode",
+      "x": 960,
+      "y": -432,
+      "init": {
+        "label": "Money flow"
       }
     },
     {
       "id": "netDisplay",
       "type": "DisplayNode",
-      "x": 647,
-      "y": -68,
+      "x": 960,
+      "y": -97,
       "init": {
         "label": "Net positions"
       },
       "size": {
-        "w": 380,
-        "h": 220
+        "w": 420,
+        "h": 240
       }
     },
     {
       "id": "grp",
       "type": "GroupNode",
-      "x": -40,
-      "y": 75,
+      "x": -72,
+      "y": -114,
       "init": {
-        "label": "The receipts",
+        "label": "The trip",
         "members": [
-          "people",
+          "ledger",
+          "receipts",
+          "inswitch",
           "settle"
         ],
         "color": "amber",
         "collapsed": false,
-        "width": 617,
-        "height": 319
+        "width": 950,
+        "height": 502
       }
     }
   ],
   "connections": [
     {
-      "source": "people",
+      "source": "ledger",
+      "sourceOutput": "cube",
+      "target": "inswitch",
+      "targetInput": "v0"
+    },
+    {
+      "source": "receipts",
       "sourceOutput": "frame",
+      "target": "inswitch",
+      "targetInput": "v1"
+    },
+    {
+      "source": "inswitch",
+      "sourceOutput": "out",
       "target": "settle",
-      "targetInput": "people"
+      "targetInput": "in"
+    },
+    {
+      "source": "settle",
+      "sourceOutput": "transfers",
+      "target": "sankey",
+      "targetInput": "frame"
     },
     {
       "source": "settle",

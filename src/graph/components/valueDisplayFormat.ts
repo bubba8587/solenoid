@@ -1,7 +1,7 @@
 // The one annotation resolution every value surface asks through, plus cell/date/unit
 // rendering. A value is a DATE when its node's OUTPUT SOCKET says so, never by cell shape.
 
-import { isCx, formatCx, type Cx } from "../cxValue";
+import { isCx, formatCxDisplay, type Cx } from "../cxValue";
 import { getOwningEditor } from "../activeGraph";
 import { sharedAnnotationResolver } from "../unitFlow";
 import { SolenoidSocket, isDateType, elementFamilyOf, type SocketDataType } from "../sockets";
@@ -49,7 +49,7 @@ export function formatRowCell(v: RowCell, ann?: FormatAnnotation): string {
   if (v === null) return "—";
   if (typeof v === "boolean") return applyLogicalStyle(v, ann?.logicalStyle);
   if (typeof v === "string") return ann ? applyTextCase(v, ann.textCase) : v;
-  if (isCx(v)) return ann ? formatCxWithAnnotation(v, ann) : formatCx(v);
+  if (isCx(v)) return ann ? formatCxWithAnnotation(v, ann) : formatCxDisplay(v);
   if (isSolError(v)) return v.code;
   return ann ? formatNumberWithAnnotation(v, ann) : formatScalar(v);
 }
@@ -93,7 +93,7 @@ export function formatListCell(
     const a = annotationForValue(v, ann);
     return a ? formatNumberWithAnnotation(displayMagnitude(v, a), a) : formatCellWithDisplay(v, fmtNum);
   }
-  if (isCx(v)) return ann ? formatCxWithAnnotation(v, ann) : formatCx(v);
+  if (isCx(v)) return ann ? formatCxWithAnnotation(v, ann) : formatCxDisplay(v);
   if (typeof v === "boolean") return applyLogicalStyle(v, ann?.logicalStyle);
   if (isSolError(v)) return v.code;
   if (typeof v === "string") return ann ? applyTextCase(v, ann.textCase) : v;

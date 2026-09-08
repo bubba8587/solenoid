@@ -171,15 +171,20 @@ Notes:
     styles are meaningless on a complex, so they aren't offered — and an
     annotation still carrying one (from before the socket was retyped) falls back
     to `auto` rather than rendering nonsense.
-  - **The unit wraps the WHOLE value**: `(3 + 2i) V`, never `3 V + 2i V`.
-    Parenthesised only in the two-term form, where `3 + 2i V` would read as the
-    unit attaching to the imaginary term alone.
+  - **The unit wraps the WHOLE value**: `(3 + 2i) V`, never `3 V + 2i V` — where
+    `3 + 2i V` would read as the unit attaching to the imaginary term alone. The
+    display form is always two-term (below), so the unit is always parenthesised.
   The advanced tier (grouping/negative/scale) is number-and-text only per
   `controlsFor` and is deliberately not consulted: a complex has no single sign
   to parenthesise and no magnitude to scale. A `Cx` reaches the value box RAW —
   the display layer formats it, so the annotation can act (cards that
   pre-formatted in their own components were exactly why it never could).
-  `assembleCx` (cxValue.ts) owns the written form for both formatters.
+  `assembleCx` (cxValue.ts) owns the written form. Its `bothParts` flag splits the
+  two forms: **display always shows both components** — `0 + 4i`, `23 + 0i`, never a
+  dropped zero part — via `formatCxDisplay` and `formatCxWithAnnotation` (the value
+  box, chips, readouts, clipboard). The **Excel/coercion form** (`formatCx`, the `&`
+  operator, cast-to-text, the `IM*` functions) keeps dropping a zero component
+  (`23`, `4i`) for Excel parity and round-trips with `parseCx`.
 - **Advanced-tier composition order** (2026-07-05): scale divides the magnitude
   and appends its suffix inside the number (`1.2M`); the unit wraps that
   (`$1.2M`); a paren negative wraps OUTSIDE the unit, Excel accounting style

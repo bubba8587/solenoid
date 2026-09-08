@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PEEK_KINDS, peekKindFor, type PeekKind } from "../../src/graph/valuePeekKind";
+import { PEEK_KINDS, peekKindFor, isChipSummaryPeek, type PeekKind } from "../../src/graph/valuePeekKind";
 import { solError } from "../../src/graph/errorValue";
 
 // The socket hover-peek renders a value through the Display's own value views; a value
@@ -34,5 +34,17 @@ describe("socket value-peek coverage — every Display value kind renders", () =
     for (const kind of PEEK_KINDS) {
       expect(peekKindFor(sampleFor(kind)), `${kind}: peekKindFor misclassified its sample`).toBe(kind);
     }
+  });
+
+  // The value-peek arms ONLY for chip-summary kinds — a scalar/string/error is already
+  // shown in full on the socket's node face, so peeking it would just repeat it.
+  it("arms the value-peek only on chip-summary kinds", () => {
+    const armed = new Set<PeekKind>(["frame", "cube", "chart", "mermaid", "svg", "lambda", "table", "list"]);
+    for (const kind of PEEK_KINDS) {
+      expect(isChipSummaryPeek(sampleFor(kind)), `${kind}: wrong peek-arm decision`).toBe(armed.has(kind));
+    }
+    // A string and a boolean scalar never arm, same as a number.
+    expect(isChipSummaryPeek("hello")).toBe(false);
+    expect(isChipSummaryPeek(true)).toBe(false);
   });
 });

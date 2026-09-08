@@ -18,10 +18,12 @@ import puppeteer from "puppeteer-core";
 // OWN edited seeds by pointing URL at its own dev server (and CHROME at any Chromium).
 const EDGE = process.env.CHROME ?? "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
 const URL = process.env.URL ?? "http://localhost:1420";
+// NO_SANDBOX=1 lets Chromium launch as root (a CI/container run); harmless on a normal desktop.
+const NO_SANDBOX = process.env.NO_SANDBOX === "1" || process.env.NO_SANDBOX === "true";
 const seedsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "src", "graph", "seedGraphs");
 
 const main = async () => {
-  const browser = await puppeteer.launch({ executablePath: EDGE, headless: true, args: ["--window-size=1700,1100"] });
+  const browser = await puppeteer.launch({ executablePath: EDGE, headless: true, args: ["--window-size=1700,1100", ...(NO_SANDBOX ? ["--no-sandbox", "--disable-setuid-sandbox"] : [])] });
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: 1700, height: 1100 });

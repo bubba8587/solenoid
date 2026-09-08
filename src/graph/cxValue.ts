@@ -18,20 +18,33 @@ export function isCx(v: unknown): v is Cx {
 /** The ONE place that knows how a complex is spelled — "a + bi", "a - bi", "bi",
  *  "-bi", "i", "a", "0" — so the formatters can't drift. `hasBothParts` reports
  *  the two-term form, which the unit wrapper must parenthesize. */
-export function assembleCx(z: Cx, fmtNum: (n: number) => string): { text: string; hasBothParts: boolean } {
+// `bothParts` forces the full `a + bi` even when a component is 0 (0 + 4i, 23 + 0i) —
+// the DISPLAY form. Left false, it drops a zero component (23, 4i), the Excel/coercion
+// form that `formatCx`, the `&` operator and cast-to-text serialize with.
+export function assembleCx(z: Cx, fmtNum: (n: number) => string, bothParts = false): { text: string; hasBothParts: boolean } {
   const { re, im } = z;
   if (Number.isNaN(re) || Number.isNaN(im)) return { text: "NaN", hasBothParts: false };
   const rStr = fmtNum(re);
-  if (im === 0) return { text: rStr, hasBothParts: false };
   const iAbs = Math.abs(im);
   const iStr = iAbs === 1 ? "i" : `${fmtNum(iAbs)}i`;
-  if (re === 0) return { text: im < 0 ? `-${iStr}` : iStr, hasBothParts: false };
+  if (!bothParts) {
+    if (im === 0) return { text: rStr, hasBothParts: false };
+    if (re === 0) return { text: im < 0 ? `-${iStr}` : iStr, hasBothParts: false };
+  }
   return { text: im < 0 ? `${rStr} - ${iStr}` : `${rStr} + ${iStr}`, hasBothParts: true };
 }
 
+const cxNumFmt = (digits: number) => (n: number) =>
+  Number.isInteger(n) ? n.toString() : n.toFixed(digits).replace(/\.?0+$/, "");
+
+/** Excel/coercion form: drops a zero component (23, 4i). Round-trips with parseCx. */
 export function formatCx(z: Cx, digits = 4): string {
-  return assembleCx(z, (n) =>
-    Number.isInteger(n) ? n.toString() : n.toFixed(digits).replace(/\.?0+$/, "")).text;
+  return assembleCx(z, cxNumFmt(digits)).text;
+}
+
+/** Display form: always `a + bi`, both components shown (0 + 4i, 23 + 0i). */
+export function formatCxDisplay(z: Cx, digits = 4): string {
+  return assembleCx(z, cxNumFmt(digits), true).text;
 }
 
 /** Parse a complex out of text: Excel's forms plus formatCx's spaced output, so

@@ -6,6 +6,56 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-08 — display fixes: collapsed-group dates, complex both-parts, socket peek gating)
+
+Three display-layer fixes, each behind its own test:
+- **Collapsed-group readout renders a date as a date, not a serial.** A Display member of a
+  collapsed group fell through `formatReadout`'s numeric text path, so a singular Date showed its
+  raw serial. Now routes the unannotated-date case through `dateFormatDisplay` (the Display
+  surface's own helper), keyed off the `nodeOutputElemFamily("date")` lookup the row already uses
+  for date arrays. `GroupNode.tsx`.
+- **Complex DISPLAY always shows both parts** (`0 + 4i`, `23 + 0i`). `assembleCx` gained a
+  `bothParts` flag; `formatCxDisplay` (new) + `formatCxWithAnnotation` pass it, and every display
+  seam (value box, chips, readouts, clipboard) routes through them, so the unit always wraps the
+  two-term form `(0 + 2i) V`. The Excel/coercion form (`formatCx`, `&`, cast-to-text, `IM*`) still
+  drops a zero part for parity and round-trips with `parseCx`. Pinned in `format-model.md`.
+- **Socket hover value-peek arms only on chip-summary kinds** (`isChipSummaryPeek` in
+  `valuePeekKind.ts`): frame/cube/table/list/chart/diagram/svg/lambda — the values whose face is a
+  summary chip hiding content. A scalar/string/error is already shown in full, so its peek was pure
+  repetition. One gate in `NodeSocket.tsx`; the example-hint path is untouched.
+- **Group Cost Settle gains a Transactions mode** (`SettleMode` "totals" | "transactions", author
+  2026-09-08). Totals is unchanged (people frame, Paid + optional Share weight). Transactions reads
+  a CUBE ledger — one row per expense: an Amount, a Paid by (a name or a list for a shared bill), and
+  a For list of beneficiaries, split EQUALLY (no weights); blank For = the whole roster. Payers and
+  beneficiaries are independent sets, so a bill one person fronts redistributes to a different group.
+  `settleLedger` (pure, `settleOps.ts`) aggregates per-person Paid/Owes and feeds the shared
+  `minTransfers` greedy core (extracted from `settleGroup`); `settleLedgerCube` (`frame.ts`) reads
+  the cube and shapes the same Transfers/Net frames, carrying the Amount column's currency.
+  The `mode` toggle retypes the SINGLE input socket "in" IN PLACE (People frame ↔ Ledger cube,
+  `setMode` reassigns `input.socket`); the key never changes, so a wired cable survives the swap.
+  Outputs never change, no output retype. Node is `unitAware`.
+  **Ghost cable on an incompatible mode change (author 2026-09-08d):** the component does NOT drop
+  the cable — if the source no longer fits the retyped socket it MARKS it a ghost (`cableGhostStore`,
+  reusing the splice-ghost dashed render + click-to-commit); a ghosted "in" does not feed
+  (`SettleNode.inGhosted` → empty, not a #VALUE! from coercing the wrong type). Flip the upstream
+  source back to a compatible type and one click on the dashed cable commits it (FlowCableEdge gates
+  the commit on `canConnectTo`, then `processGraph(target)` to recompute). Verified live end-to-end.
+  **Net frame is a TRUE-COST balance (author 2026-09-08c, final):** Person · Paid · Owes · Owed ·
+  Net, where **Net = Paid + Owes + Owed = the fair share** (a person's real cost, NOT their
+  balance). Paid = fronted/external; Owes = still owed to the group (+); Owed = coming back from
+  the group (−). One of Owes/Owed is 0 per person (the settlement is a pure payer or receiver).
+  In equal-split totals every Net matches (everyone's true cost is the same). `settleNetFrame`
+  (frame.ts) derives Owes/Owed from `diff = share − paid`; `settleGroup`/`settleLedger` just return
+  paid + fair share (the earlier gross-cross-flow model was overcomplicated and dropped). The **transfers** frame is the main output, now the labelled
+  hero at the BOTTOM of the card ("WHO PAYS WHOM") with the Net breakdown on top.
+  Seed "Trip split" rebuilt: 5 people, 8 expenses (multi-payer, sub-groups, a reimbursement to a
+  different person), a totals frame AND a cube ledger through an Input Switch into one Settle, plus a
+  **Sankey** of the transfers (`SankeyNode` reads From·To·Amount by position) beside the Net table.
+- **Input Switch** (`CableSwitchNode`): the one-way Cycle button is now a bidirectional stepper
+  (Record pager); `select()` re-settles wildcard types (`reconcileTypesAfterEdit`) so the passthrough
+  output re-adopts on an active-input change (cube ↔ frame) instead of keeping the stale type; card
+  widened to 250 for the stepper.
+
 ### SESSION DIGEST (2026-09-07e — demo vault deepened, two Obsidian seeds added)
 
 Widened the `demo-vault/` fixture and added two seeds to the **Obsidian** group. Vault: Projects
@@ -23,6 +73,43 @@ adopt it, but the frame-only verbs (Window, GROUPBY, Chart's frame input) still 
 so the daily time-series compute runs on the snapshot, not the live cube. Charting/smoothing a
 live vault folder needs A′ extended to a cube→frame step (or those verbs made cube-adoptive);
 that's the honest gap behind the seed's "swap in the Vault Folder" note wording.
+
+### SESSION DIGEST (2026-09-07e — Gantt research: the landscape, the spec, the separate-repo plan)
+
+The author asked for a big outside-in research pass on Gantt and project-planning software, not
+built on the existing Schedule node: which open / free / embeddable libraries exist, whether one
+standout repo should be adopted or matched, and whether a separate repo combining the best of the
+mid-tier ones is the right call. Six research passes (libraries; scheduling semantics, engines and
+formats; open-source and data-first apps; commercial benchmarks and UX; text and plotting
+approaches; library internals and headless precedents) landed in **`v2.0/25-gantt.md`** (PROPOSAL,
+Arc 8). Verdict: no permissive repo to adopt whole (every vendor's seam is "anything that computes
+dates"); the standout to match is Microsoft Project's semantics with MPXJ's `MicrosoftScheduler` as
+the open oracle and Project-authored MSPDI files as golden tests; recommend a separate MIT headless
+toolkit (`schedule-engine` · `gantt-layout` · `gantt-dom` · `gantt-react` · `project-io`) that
+Solenoid binds through a Plan node family and a `chart`-socket Gantt figure. Findings that matter:
+DHTMLX 10 relicensed to MIT with readable sources (its scale manager and link router are
+vendorable); SVAR is a hand-written React mirror over a framework-free MIT store; Huly carries the
+one modern TypeScript CPM core (EPL, read-only); the consumer "auto-shift" switch dissolves in a
+pure-function model (gap = lag, typed date = SNET, manual = flag); Excel serials are already the
+zone-less day representation a scheduling engine wants. Ten author calls in the doc's § 10; the
+"no bar editing" ruling stays the default until its phase 5.
+**Revised the same day** after the author asked for an adversarial review, a sweep of online
+user pain points, and a scope: two red teams (product fit against the repo's rules; engineering
+claims verified against live sources and clones) and a ~95-source user sweep. What changed
+(`25-gantt.md` § 13): the data model is the author's Cube (nesting = WBS, Predecessors a list or
+a nested Task · Type · Lag table; the flat two-frame form is `Unnest` and the import shape), the
+figure never writes and "no bar editing ever" is no longer softened, MPXJ is a second opinion
+not an oracle and its `junit/data` is mostly binary `.mpp` (the corpus is authored on a Project
+trial), four of the sixteen rules were corrected (free slack per link on the predecessor
+calendar; a deadline moves an ALAP task; out-of-sequence progress; tenths of a minute), the
+packages live as npm workspaces inside this repo (every cited precedent is a monorepo; the
+source-scan tests and the corpus directory cannot reach a second repo), Days and Minutes are
+engine modes with an inclusive Finish on the cell, and one rule (Start = floor, Finish =
+ceiling, Deadline = flag, Manual = pin) replaces the consumer shift switch. The sweep's top
+complaint is dates moving from hidden state; the keepers are cascade, typed predecessors, a
+kept gap, flagging anchors, calendars, milestones, today line, baseline ghost, printing. Scope
+(§ 12): the spreadsheet user's and tinkerer's Gantt; not a PMO tool (no leveling, no XER, no
+bar dragging).
 
 ### SESSION DIGEST (2026-09-07d — the pitch read: the Obsidian + TaskNotes surface verified, the mdbase ceiling)
 
