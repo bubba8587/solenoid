@@ -1831,8 +1831,8 @@ export class SettleNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     people: "Rows are people: the first text column names them, a Paid number column says what each paid, and an optional Share column weighs what each owes, where 1 is an equal share and blank counts as 1.",
     ledger: "A cube of expenses, one row each: an Amount, a Paid by name or list for a shared bill, and a For list of who splits it equally, where blank counts as the whole group. Payers and beneficiaries are independent, so a bill one person fronts can be redistributed to a different group.",
-    transfers: "Who pays whom, in the fewest transfers: From · To · Amount. Amounts carry the Amount column's currency.",
-    net: "Each person with their fair share and net position: positive is owed, negative owes.",
+    transfers: "The settle-up, and the node's main output: who pays whom in the fewest transfers, From · To · Amount. Amounts carry the Amount column's currency.",
+    net: "Each person's position: Paid (what they fronted), Owes (their consumption others funded), Owed (their payments that covered others), and Net, which is Owed minus Owes.",
   };
 
   label: string;
@@ -1890,7 +1890,7 @@ export class SettleNode extends ClassicPreset.Node {
     const name = this.mode === "totals"
       ? (ctx.inputShape("people")?.columns.find((c) => c.type === "string")?.name ?? "Person")
       : "Person";
-    return { columns: [{ name, type: "string" }, { name: "Paid", type: "number" }, { name: "Owes", type: "number" }, { name: "Net", type: "number" }] };
+    return { columns: [{ name, type: "string" }, { name: "Paid", type: "number" }, { name: "Owes", type: "number" }, { name: "Owed", type: "number" }, { name: "Net", type: "number" }] };
   }
 
   data(inputs: { people?: (FrameValue | CubeValue | null)[]; ledger?: (CubeValue | FrameValue | null)[] }) {
@@ -1960,7 +1960,8 @@ export function settleLedgerCube(cube: CubeValue): { transfers: FrameValue; net:
     net: { __frame: true, columns: [
       { name: "Person", type: "string", values: r.people },
       { name: "Paid", type: "number", values: r.paid, ...money },
-      { name: "Owes", type: "number", values: r.owed, ...money },
+      { name: "Owes", type: "number", values: r.owesToOthers, ...money },
+      { name: "Owed", type: "number", values: r.owedByOthers, ...money },
       { name: "Net", type: "number", values: r.nets, ...money },
     ] },
   };
@@ -2004,7 +2005,8 @@ export function settleFrame(f: FrameValue, split: SettleSplit): { transfers: Fra
     net: { __frame: true, columns: [
       { name: nameCol?.name ?? "Person", type: "string", values: people.map((p) => p.name) },
       { name: "Paid", type: "number", values: people.map((p) => p.paid), ...money },
-      { name: "Owes", type: "number", values: r.shares, ...money },
+      { name: "Owes", type: "number", values: r.owesToOthers, ...money },
+      { name: "Owed", type: "number", values: r.owedByOthers, ...money },
       { name: "Net", type: "number", values: r.nets, ...money },
     ] },
   };

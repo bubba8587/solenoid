@@ -13,6 +13,9 @@ describe("settleGroup", () => {
     ]);
     expect(r.shares).toEqual([110, 110, 110, 110]);
     expect(r.nets).toEqual([190, -10, -70, -110]);
+    // Gross flows (the pot model): net = owedByOthers − owesToOthers.
+    expect(r.owesToOthers).toEqual([35, 85, 100, 110]);
+    expect(r.owedByOthers).toEqual([225, 75, 30, 0]);
     expect(r.transfers).toEqual([
       { from: "Di", to: "Ada", amount: 110 },
       { from: "Cy", to: "Ada", amount: 70 },
@@ -24,6 +27,8 @@ describe("settleGroup", () => {
   it("share weights: a couple counts double; blank weighs 1; opting out of weights ignores them", () => {
     const rows = [{ name: "Ada", paid: 90, share: 2 }, { name: "Bo", paid: 0, share: null }];
     expect(settleGroup(rows).shares).toEqual([60, 30]);
+    expect(settleGroup(rows).owesToOthers).toEqual([0, 30]);
+    expect(settleGroup(rows).owedByOthers).toEqual([30, 0]);
     expect(settleGroup(rows).transfers).toEqual([{ from: "Bo", to: "Ada", amount: 30 }]);
     expect(settleGroup(rows, { weighted: false }).shares).toEqual([45, 45]);
   });
@@ -34,17 +39,19 @@ describe("settleGroup", () => {
     expect(r.transfers).toEqual([{ from: "B", to: "A", amount: 3.33 }, { from: "C", to: "A", amount: 3.33 }]);
   });
   it("an empty group settles nothing", () => {
-    expect(settleGroup([])).toEqual({ nets: [], shares: [], transfers: [] });
+    expect(settleGroup([])).toEqual({ nets: [], shares: [], owesToOthers: [], owedByOthers: [], transfers: [] });
   });
-  it("settleFrame: the net frame names the fair share Owes, never the input's Share weights", () => {
+  it("settleFrame: the net frame is Person · Paid · Owes · Owed · Net", () => {
     const f: FrameValue = { __frame: true, columns: [
       { name: "Person", type: "string", values: ["Ada", "Bo"] },
       { name: "Paid", type: "number", values: [90, 0] },
       { name: "Share", type: "number", values: [2, 1] },
     ] };
     const { transfers, net } = settleFrame(f, "weighted");
-    expect(net.columns.map((c) => c.name)).toEqual(["Person", "Paid", "Owes", "Net"]);
-    expect(net.columns[2].values).toEqual([60, 30]);
+    expect(net.columns.map((c) => c.name)).toEqual(["Person", "Paid", "Owes", "Owed", "Net"]);
+    expect(net.columns[2].values).toEqual([0, 30]);  // Owes (to others)
+    expect(net.columns[3].values).toEqual([30, 0]);  // Owed (by others)
+    expect(net.columns[4].values).toEqual([30, -30]); // Net = Owed − Owes
     expect(transfers.columns.map((c) => c.name)).toEqual(["From", "To", "Amount"]);
   });
 });
@@ -72,8 +79,10 @@ describe("settleLedger", () => {
     ]);
     expect(r.people).toEqual(["Ada", "Bo", "Cy", "Di"]);
     expect(r.paid).toEqual([330, 190, 0, 0]);   // Ada fronted 120 + 150 (half the hotel) + 60
-    expect(r.owed).toEqual([105, 125, 185, 105]);
-    expect(r.nets).toEqual([225, 65, -185, -105]);
+    // Gross flows: Ada both owes (her share of the hotel Bo helped pay) and is owed a lot.
+    expect(r.owesToOthers).toEqual([37.5, 67.5, 185, 105]);
+    expect(r.owedByOthers).toEqual([262.5, 132.5, 0, 0]);
+    expect(r.nets).toEqual([225, 65, -185, -105]); // = owedByOthers − owesToOthers
     expect(r.transfers).toEqual([
       { from: "Cy", to: "Ada", amount: 185 },
       { from: "Di", to: "Ada", amount: 40 },
@@ -87,7 +96,8 @@ describe("settleLedger", () => {
       { amount: 0, payers: ["Cy"], beneficiaries: ["Cy"] },  // registers Cy on the roster
     ]);
     expect(r.people).toEqual(["Ada", "Cy"]);
-    expect(r.owed).toEqual([45, 45]); // 90 split between Ada and Cy
+    expect(r.owesToOthers).toEqual([0, 45]); // Cy owes Ada her 45 share
+    expect(r.owedByOthers).toEqual([45, 0]);
     expect(r.transfers).toEqual([{ from: "Cy", to: "Ada", amount: 45 }]);
   });
 });
@@ -101,9 +111,9 @@ describe("settleLedgerCube", () => {
       { Item: "Cy's ticket", Amount: 60, "Paid by": "Ada", For: ["Cy"] },
     ]);
     const { transfers, net } = settleLedgerCube(cube);
-    expect(net.columns.map((c) => c.name)).toEqual(["Person", "Paid", "Owes", "Net"]);
+    expect(net.columns.map((c) => c.name)).toEqual(["Person", "Paid", "Owes", "Owed", "Net"]);
     expect(net.columns[0].values).toEqual(["Ada", "Bo", "Cy", "Di"]);
-    expect(net.columns[3].values).toEqual([225, 65, -185, -105]); // Net
+    expect(net.columns[4].values).toEqual([225, 65, -185, -105]); // Net
     expect(transfers.columns.map((c) => c.name)).toEqual(["From", "To", "Amount"]);
     expect(transfers.columns[2].values).toEqual([185, 40, 65]);
   });

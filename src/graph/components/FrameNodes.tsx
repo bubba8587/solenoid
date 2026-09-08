@@ -814,19 +814,22 @@ export function SettleComponent({ data, emit }: NodeProps<SettleNodeType>) {
       <SegToggle value={mode} options={SETTLE_MODE_OPTIONS} onChange={(m) => void pickMode(m)} />
       <InlineInputs node={data} emit={emit} />
       {mode === "totals" && <SegToggle value={split} options={SETTLE_SPLIT_OPTIONS} onChange={setSplit} />}
-      {transfersOut && (
-        <MeasuredSocketRow hero side="output" socketKey="transfers" nodeId={data.id} emit={emit} payload={transfersOut.socket}>
-          <div style={{ width: "100%" }}>
-            <FrameDisplay frame={data.cachedResult} label={`${nodeDisplayName(data)}: transfers`} />
-          </div>
-        </MeasuredSocketRow>
-      )}
+      {/* The per-person breakdown sits on top as a compact chip; the settle-up (the main
+          output) is the hero at the BOTTOM, labelled like the net row. */}
       {netOut && (
         <MeasuredSocketRow side="output" socketKey="net" nodeId={data.id} emit={emit} payload={netOut.socket}>
           <span className="solenoid-node__io-label">NET</span>
           <span className="solenoid-node__output-value" style={{ display: "flex", justifyContent: "flex-end" }}>
             {isFrameValue(data.cachedNet) ? <FrameChip value={data.cachedNet} label={`${nodeDisplayName(data)}: net`} size="sm" /> : "—"}
           </span>
+        </MeasuredSocketRow>
+      )}
+      {transfersOut && (
+        <MeasuredSocketRow hero side="output" socketKey="transfers" nodeId={data.id} emit={emit} payload={transfersOut.socket}>
+          <div style={{ width: "100%" }}>
+            <span className="solenoid-node__io-label" style={{ display: "block", marginBottom: 2 }}>WHO PAYS WHOM</span>
+            <FrameDisplay frame={data.cachedResult} label={`${nodeDisplayName(data)}: transfers`} />
+          </div>
         </MeasuredSocketRow>
       )}
     </NodeShell>

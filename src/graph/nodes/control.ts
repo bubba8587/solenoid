@@ -41,7 +41,7 @@ export class CableSwitchNode extends ClassicPreset.Node {
   /** Type flips with the mode: `cube` in Many, `trueany` in One. Its own MutableSocket
    *  instance, so a retype never touches a shared singleton. */
   readonly outSocket = new MutableSocket("trueany");
-  width = 200; height = 220;
+  width = 268; height = 220;
 
   constructor(init?: { label?: string; activeIndex?: number; valueKeys?: string[]; titles?: Record<string, string>; multiSelect?: boolean; selectedKeys?: string[] }) {
     super("CableSwitch");

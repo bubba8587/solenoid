@@ -33,9 +33,20 @@ Three display-layer fixes, each behind its own test:
   the cube and shapes the same Transfers/Net frames, carrying the Amount column's currency.
   The `mode` toggle swaps the single input socket in place (people frame ↔ ledger cube) via
   `setMode` + `dropInputCables` (onePrunePath), the WorkdaysNode pattern; outputs never change so no
-  output retype. Node is now `unitAware`. Seed "Trip split" rebuilt: a totals frame AND a cube
-  ledger, both through an Input Switch (`CableSwitchNode`) into one Settle, so flipping the switch +
-  mode compares the two descriptions of one trip.
+  output retype. Node is now `unitAware`.
+  **Net frame reworked (author 2026-09-08b):** was Person · Paid · Owes(fair share) · Net; now
+  Person · Paid · **Owes**(to others) · **Owed**(by others) · Net, the GROSS flows — a person can
+  both owe and be owed at once (paid for dinner, ate someone's cab). `settleGroup`/`settleLedger`
+  compute them (pot formula for totals; pairwise `amount/(|B|·|P|)` cross-pairs for the ledger);
+  Net = Owed − Owes = Paid − fair share. The **transfers** frame is the main output, now the labelled
+  hero at the BOTTOM of the card ("WHO PAYS WHOM") with the Net breakdown on top.
+  Seed "Trip split" rebuilt: 5 people, 8 expenses (multi-payer, sub-groups, a reimbursement to a
+  different person), a totals frame AND a cube ledger through an Input Switch into one Settle, plus a
+  **Sankey** of the transfers (`SankeyNode` reads From·To·Amount by position) beside the Net table.
+- **Input Switch** (`CableSwitchNode`): the one-way Cycle button is now a bidirectional stepper
+  (Record pager); `select()` re-settles wildcard types (`reconcileTypesAfterEdit`) so the passthrough
+  output re-adopts on an active-input change (cube ↔ frame) instead of keeping the stale type; card
+  widened to 250 for the stepper.
 
 ### SESSION DIGEST (2026-09-07e — Gantt research: the landscape, the spec, the separate-repo plan)
 

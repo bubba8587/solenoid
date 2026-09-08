@@ -7,41 +7,41 @@
     {
       "id": "note",
       "type": "NoteNode",
-      "x": -40,
-      "y": -232,
+      "x": -48,
+      "y": -300,
       "init": {
         "label": "Trip split",
-        "body": "# Who pays whom\nOne trip, uneven receipts. **Group Cost Settle** nets everyone against their fair share and pays it back in the fewest transfers, exact to the cent.\n\nThe **Input Switch** picks which description of the same trip feeds it. Flip it, and the Settle **mode** to match:\n\n- **Ledger, in Transactions mode:** a cube of expenses. Each row is an Amount, who **Paid** (one name or a shared bill), and who it is **For** (split equally; blank means everyone). Ada frontloads the hotel with Bo and covers Cy's ticket alone.\n- **Receipts, in Totals mode:** one row per person with what each **Paid** and an optional **Share** weight.",
+        "body": "# Who pays whom\nFive friends, a weekend away, receipts all over the place. **Group Cost Settle** nets everyone against their fair share and pays it back in the fewest transfers, exact to the cent. The **Sankey** shows the money flow; the **Net** table breaks down each person.\n\nThe **Input Switch** picks which description of the same trip feeds it. Flip it, and the Settle **mode** to match:\n\n- **Ledger, in Transactions mode:** a cube of expenses. Each row is an Amount, who **Paid** (one name, or two who split a bill), and who it is **For** (split equally; blank means everyone). Ada fronts the flights and cabin and covers Eve's ticket; drinks and the cabin are split-paid.\n- **Receipts, in Totals mode:** one row per person with what each **Paid**, split evenly.\n\nEach person shows **Paid**, **Owes** others, is **Owed** by others, and **Net**.",
         "color": "violet",
-        "width": 400,
-        "height": 250
+        "width": 430,
+        "height": 300
       }
     },
     {
       "id": "ledger",
       "type": "CubeInputNode",
-      "x": -40,
-      "y": 92,
+      "x": -48,
+      "y": 44,
       "init": {
         "label": "Expenses (ledger)",
-        "cubeText": "[\n  {\"Item\": \"Dinner\",      \"Amount\": 120, \"Paid by\": \"Ada\",          \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\"]},\n  {\"Item\": \"Taxi\",        \"Amount\": 40,  \"Paid by\": \"Bo\",           \"For\": [\"Bo\", \"Cy\"]},\n  {\"Item\": \"Hotel\",       \"Amount\": 300, \"Paid by\": [\"Ada\", \"Bo\"],  \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\"]},\n  {\"Item\": \"Cy's ticket\", \"Amount\": 60,  \"Paid by\": \"Ada\",          \"For\": [\"Cy\"]}\n]"
+        "cubeText": "[\n  {\"Item\": \"Flights\",      \"Amount\": 1000, \"Paid by\": \"Ada\",          \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]},\n  {\"Item\": \"Cabin\",        \"Amount\": 750,  \"Paid by\": [\"Ada\", \"Bo\"], \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]},\n  {\"Item\": \"Groceries\",    \"Amount\": 200,  \"Paid by\": \"Cy\",           \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]},\n  {\"Item\": \"Dinner out\",   \"Amount\": 160,  \"Paid by\": \"Di\",           \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\"]},\n  {\"Item\": \"Kayak rental\", \"Amount\": 120,  \"Paid by\": \"Eve\",          \"For\": [\"Bo\", \"Cy\", \"Eve\"]},\n  {\"Item\": \"Eve's flight\", \"Amount\": 220,  \"Paid by\": \"Ada\",          \"For\": [\"Eve\"]},\n  {\"Item\": \"Drinks\",       \"Amount\": 90,   \"Paid by\": [\"Bo\", \"Cy\"],  \"For\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]},\n  {\"Item\": \"Coffee\",       \"Amount\": 30,   \"Paid by\": \"Bo\",           \"For\": [\"Ada\", \"Bo\"]}\n]"
       }
     },
     {
       "id": "receipts",
       "type": "FrameInputNode",
-      "x": -40,
-      "y": 300,
+      "x": -48,
+      "y": 336,
       "init": {
         "label": "Receipts (totals)",
-        "frameText": "[{\"name\": \"Person\", \"type\": \"string\", \"values\": [\"Ada\", \"Bo\", \"Cy\", \"Di\"]}, {\"name\": \"Paid\", \"type\": \"number\", \"unit\": \"usd\", \"values\": [330, 190, 0, 0]}, {\"name\": \"Share\", \"type\": \"number\", \"values\": [1, 1, 1, 1]}]"
+        "frameText": "[{\"name\": \"Person\", \"type\": \"string\", \"values\": [\"Ada\", \"Bo\", \"Cy\", \"Di\", \"Eve\"]}, {\"name\": \"Paid\", \"type\": \"number\", \"unit\": \"usd\", \"values\": [1595, 450, 245, 160, 120]}, {\"name\": \"Share\", \"type\": \"number\", \"values\": [1, 1, 1, 1, 1]}]"
       }
     },
     {
       "id": "inswitch",
       "type": "CableSwitchNode",
-      "x": 320,
-      "y": 176,
+      "x": 352,
+      "y": 168,
       "init": {
         "label": "Input Switch",
         "activeIndex": 0,
@@ -59,8 +59,8 @@
     {
       "id": "settle",
       "type": "SettleNode",
-      "x": 580,
-      "y": 176,
+      "x": 648,
+      "y": 168,
       "init": {
         "label": "Group Cost Settle",
         "mode": "transactions",
@@ -68,36 +68,36 @@
       }
     },
     {
-      "id": "transfersDisplay",
-      "type": "DisplayNode",
-      "x": 900,
-      "y": 40,
+      "id": "sankey",
+      "type": "SankeyNode",
+      "x": 968,
+      "y": -48,
       "init": {
-        "label": "Who pays whom"
+        "label": "Money flow"
       },
       "size": {
-        "w": 360,
-        "h": 200
+        "w": 420,
+        "h": 300
       }
     },
     {
       "id": "netDisplay",
       "type": "DisplayNode",
-      "x": 900,
-      "y": 300,
+      "x": 968,
+      "y": 316,
       "init": {
         "label": "Net positions"
       },
       "size": {
-        "w": 360,
-        "h": 220
+        "w": 420,
+        "h": 240
       }
     },
     {
       "id": "grp",
       "type": "GroupNode",
-      "x": -64,
-      "y": 24,
+      "x": -72,
+      "y": -24,
       "init": {
         "label": "The trip",
         "members": [
@@ -108,8 +108,8 @@
         ],
         "color": "amber",
         "collapsed": false,
-        "width": 900,
-        "height": 470
+        "width": 936,
+        "height": 520
       }
     }
   ],
@@ -135,8 +135,8 @@
     {
       "source": "settle",
       "sourceOutput": "transfers",
-      "target": "transfersDisplay",
-      "targetInput": "in"
+      "target": "sankey",
+      "targetInput": "frame"
     },
     {
       "source": "settle",
