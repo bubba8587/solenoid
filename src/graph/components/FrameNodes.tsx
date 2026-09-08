@@ -68,7 +68,9 @@ function FrameOrCubeDisplay({ value, label }: { value: FrameValue | CubeValue | 
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { scheduleAutosave } from "../persistence";
-import { getActiveView, getOwningEditor, getOwningView } from "../activeGraph";
+import { getActiveView, getActiveEditor, getOwningEditor, getOwningView } from "../activeGraph";
+import { SolenoidSocket } from "../sockets";
+import { cableGhostStore } from "../cableState";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { collapseStore } from "../collapseStore";
 import { pivotEditor } from "../pivotEditorStore";
@@ -795,14 +797,26 @@ export function SettleComponent({ data, emit }: NodeProps<SettleNodeType>) {
   useEffect(() => { setModeMirror(data.mode); }, [data.mode]); // resync on undo/redo/load
   const [split, setSplit] = useNodeField(data, "split");
 
-  // The mode swaps the input socket (people frame ↔ ledger cube), so prune the departing
-  // socket's cables first (onePrunePath), like the op-swapping finance/date nodes.
+  // The mode retypes the single input socket in place (People frame ↔ Ledger cube). A wired
+  // cable SURVIVES the swap: if the source no longer fits the new type it becomes a dashed
+  // GHOST (one click to reconnect once the source is compatible again — reusing the splice
+  // ghost machinery), and un-ghosts when it fits again.
   async function pickMode(next: SettleMode) {
     if (next === data.mode) return;
-    const departing = data.keysDroppedBySwitch(next);
-    if (departing.length > 0) await dropInputCables(data.id, departing);
     data.setMode(next);
     setModeMirror(next);
+    const ed = getActiveEditor();
+    const inSock = data.inputs.in?.socket;
+    if (ed && inSock) {
+      for (const c of ed.getConnections()) {
+        if (c.target !== data.id || c.targetInput !== "in") continue;
+        const srcSock = ed.getNode(c.source)?.outputs?.[c.sourceOutput]?.socket;
+        const fits = srcSock instanceof SolenoidSocket && srcSock.canConnectTo(inSock);
+        if (fits) cableGhostStore.commit(c.id); else cableGhostStore.mark(c.id);
+      }
+    }
+    const view = getActiveView();
+    if (ed && view) reconcileTypesAfterEdit(ed, view);
     await getActiveView()?.rerenderNode(data.id);
     await processGraph();
   }

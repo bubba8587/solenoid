@@ -31,9 +31,15 @@ Three display-layer fixes, each behind its own test:
   `settleLedger` (pure, `settleOps.ts`) aggregates per-person Paid/Owes and feeds the shared
   `minTransfers` greedy core (extracted from `settleGroup`); `settleLedgerCube` (`frame.ts`) reads
   the cube and shapes the same Transfers/Net frames, carrying the Amount column's currency.
-  The `mode` toggle swaps the single input socket in place (people frame ↔ ledger cube) via
-  `setMode` + `dropInputCables` (onePrunePath), the WorkdaysNode pattern; outputs never change so no
-  output retype. Node is now `unitAware`.
+  The `mode` toggle retypes the SINGLE input socket "in" IN PLACE (People frame ↔ Ledger cube,
+  `setMode` reassigns `input.socket`); the key never changes, so a wired cable survives the swap.
+  Outputs never change, no output retype. Node is `unitAware`.
+  **Ghost cable on an incompatible mode change (author 2026-09-08d):** the component does NOT drop
+  the cable — if the source no longer fits the retyped socket it MARKS it a ghost (`cableGhostStore`,
+  reusing the splice-ghost dashed render + click-to-commit); a ghosted "in" does not feed
+  (`SettleNode.inGhosted` → empty, not a #VALUE! from coercing the wrong type). Flip the upstream
+  source back to a compatible type and one click on the dashed cable commits it (FlowCableEdge gates
+  the commit on `canConnectTo`, then `processGraph(target)` to recompute). Verified live end-to-end.
   **Net frame is a TRUE-COST balance (author 2026-09-08c, final):** Person · Paid · Owes · Owed ·
   Net, where **Net = Paid + Owes + Owed = the fair share** (a person's real cost, NOT their
   balance). Paid = fronted/external; Owes = still owed to the group (+); Owed = coming back from

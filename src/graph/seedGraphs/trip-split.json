@@ -126,7 +126,7 @@
       "source": "inswitch",
       "sourceOutput": "out",
       "target": "settle",
-      "targetInput": "ledger"
+      "targetInput": "in"
     },
     {
       "source": "settle",

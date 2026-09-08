@@ -5,7 +5,8 @@ import { extractVariables, compileEvaluator, rowRefNames, type ExprEvaluator } f
 import { isLambdaValue } from "../lambdaValue";
 import { computeColumnCells } from "../computedColumnCore";
 import { dropInputCables } from "../components/cablePrune";
-import { getActiveView } from "../activeGraph";
+import { getActiveView, getOwningEditor } from "../activeGraph";
+import { cableGhostStore } from "../cableState";
 import { readFilterValue } from "./list";
 import type { FrameHint } from "../frameHint";
 import { toAnyMatrix } from "./coerce";
@@ -1829,8 +1830,7 @@ export type SettleMode = "totals" | "transactions";
 
 export class SettleNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    people: "Rows are people: the first text column names them, a Paid number column says what each paid, and an optional Share column weighs what each owes, where 1 is an equal share and blank counts as 1.",
-    ledger: "A cube of expenses, one row each: an Amount, a Paid by name or list for a shared bill, and a For list of who splits it equally, where blank counts as the whole group. Payers and beneficiaries are independent, so a bill one person fronts can be redistributed to a different group.",
+    in: "The group's data, retyped by the mode. In Totals, a people frame: a name column, a Paid number, an optional Share weight where 1 is an equal share and blank counts as 1. In Transactions, a cube ledger of expenses, one row each: an Amount, a Paid by name or list for a shared bill, and a For list of who splits it equally, where blank counts as the whole group. Payers and beneficiaries are independent, so a bill one person fronts can be redistributed to a different group.",
     transfers: "The settle-up, and the node's main output: who pays whom in the fewest transfers, From · To · Amount. Amounts carry the Amount column's currency.",
     net: "Each person's true cost: Paid (already paid out, external), Owes (still owed to the group, positive), Owed (coming back from the group, negative), and Net = Paid + Owes + Owed, their fair share. In equal-split totals every Net matches.",
   };
@@ -1845,7 +1845,7 @@ export class SettleNode extends ClassicPreset.Node {
   width = 240; height = 220;
 
   static frameHints: Record<string, FrameHint> = {
-    people: { columns: [
+    in: { columns: [
       { name: "Person", type: "string", cells: ["Ada", "Bo", "Cy"] },
       { name: "Paid", type: "number", cells: [300, 100, 0] },
       { name: "Share", type: "number", cells: [1, 1, 2] },
@@ -1857,57 +1857,61 @@ export class SettleNode extends ClassicPreset.Node {
     this.label = init?.label ?? "Group Cost Settle";
     this.mode = init?.mode === "transactions" ? "transactions" : "totals";
     this.split = init?.split === "weighted" ? "weighted" : "equal";
-    if (this.mode === "transactions") this.addInput("ledger", cubeIn("Ledger"));
-    else this.addInput("people", frameIn("People"));
+    this.addInput("in", this.inputPort());
     this.addOutput("transfers", frameOut("Transfers"));
     this.addOutput("net", frameOut("Net"));
   }
 
-  /** The input key a switch to `next` would drop; callers prune its cables BEFORE
-   *  setMode (onePrunePath), like the op-swapping finance/date nodes. */
-  keysDroppedBySwitch(next: SettleMode): string[] {
-    if (next === this.mode) return [];
-    return this.mode === "transactions" ? ["ledger"] : ["people"];
+  private inputPort() {
+    return this.mode === "transactions" ? cubeIn("Ledger") : frameIn("People");
   }
 
-  /** Swaps the single input socket in place (people frame ↔ ledger cube). The outputs
-   *  are the same two frames in both modes, so no output retype is needed. */
+  /** True while the "in" cable is a ghost (a mode-change left it type-incompatible, awaiting
+   *  a one-click reconnect) — its value must not feed compute. */
+  private inGhosted(): boolean {
+    const c = getOwningEditor(this.id)?.getConnections().find((c) => c.target === this.id && c.targetInput === "in");
+    return !!c && cableGhostStore.isGhost(c.id);
+  }
+
+  /** Retype the SINGLE input socket in place (People frame ↔ Ledger cube) on a mode
+   *  change — the key stays "in", so a wired cable survives the swap. The component then
+   *  ghosts a now-incompatible cable rather than dropping it (one-click reconnect). Outputs
+   *  are the same two frames in both modes, so no output retype. */
   setMode(next: SettleMode): void {
     if (next === this.mode) return;
     this.mode = next;
-    if (next === "transactions") {
-      if (this.inputs.people) this.removeInput("people");
-      if (!this.inputs.ledger) this.addInput("ledger", cubeIn("Ledger"));
-    } else {
-      if (this.inputs.ledger) this.removeInput("ledger");
-      if (!this.inputs.people) this.addInput("people", frameIn("People"));
-    }
+    const input = this.inputs.in;
+    if (!input) return;
+    const port = this.inputPort();
+    input.socket = port.socket;
+    input.label = port.label;
   }
 
   frameShape(outKey: string, ctx: FrameShapeContext): Shape | null {
     if (outKey === "transfers") return { columns: [{ name: "From", type: "string" }, { name: "To", type: "string" }, { name: "Amount", type: "number" }] };
     // net: the person column takes the input's name in totals mode, else "Person".
     const name = this.mode === "totals"
-      ? (ctx.inputShape("people")?.columns.find((c) => c.type === "string")?.name ?? "Person")
+      ? (ctx.inputShape("in")?.columns.find((c) => c.type === "string")?.name ?? "Person")
       : "Person";
     return { columns: [{ name, type: "string" }, { name: "Paid", type: "number" }, { name: "Owes", type: "number" }, { name: "Owed", type: "number" }, { name: "Net", type: "number" }] };
   }
 
-  data(inputs: { people?: (FrameValue | CubeValue | null)[]; ledger?: (CubeValue | FrameValue | null)[] }) {
+  data(inputs: { in?: (FrameValue | CubeValue | null)[] }) {
     const none = () => { this.cachedResult = null; this.cachedNet = null; return { transfers: null, net: null }; };
     const emit = (r: { transfers: FrameValue; net: FrameValue } | SolError) => {
       if (isSolError(r)) { this.cachedResult = r; this.cachedNet = r; return { transfers: r, net: r }; }
       this.cachedResult = r.transfers; this.cachedNet = r.net;
       return { transfers: r.transfers, net: r.net };
     };
+    // A GHOSTED input cable (its source no longer fits the retyped socket after a mode
+    // change) does not feed: show empty, not a #VALUE! from coercing the wrong type.
+    const raw = this.inGhosted() ? null : (inputs.in?.[0] ?? null);
     if (this.mode === "transactions") {
-      const raw = inputs.ledger?.[0] ?? null;
       const cube = isCubeValue(raw) ? raw : isFrameValue(raw) ? frameToCube(raw) : null;
       if (!cube) return none();
       return emit(runVerb(() => settleLedgerCube(cube)));
     }
-    const raw = inputs.people?.[0] ?? null;
-    const f = isCubeValue(raw) ? cubeToScalarFrame(raw) : isFrameValue(raw) ? raw : null;
+    const f = isFrameValue(raw) ? raw : isCubeValue(raw) ? cubeToScalarFrame(raw) : null;
     if (!f) return none();
     return emit(runVerb(() => settleFrame(f, this.split)));
   }

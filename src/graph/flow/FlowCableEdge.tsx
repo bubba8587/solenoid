@@ -22,6 +22,7 @@ import { ribbonForConnection, ribbonHoverStore, conduitFacePoint, conduitLanePoi
 import { SOCKET_COLORS, SolenoidSocket } from "../sockets";
 import { unselectAllNodes } from "../canvasCommands";
 import { getOwningEditor, getOwningView } from "../activeGraph";
+import { processGraph } from "../process";
 import { groupCollapseStore, COLLAPSE_LAYOUT, pillY } from "../groupCollapse";
 import { touchSelectStore } from "../touchSelectStore";
 import { standoffStore } from "../standoffs";
@@ -445,8 +446,20 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
     standoffStore.select(null);
     drawnCableStore.select(null);
     if (ghost) {
-      cableGhostStore.commit(id);
-      cableSelectionStore.set(null);
+      // Commit only a ghost whose endpoints are currently type-compatible. A mode-change
+      // ghost stays dashed and un-committable until its source fits the retyped socket
+      // again; a splice ghost is always compatible, so it commits as before.
+      const ed = getOwningEditor(target) ?? getOwningEditor(source);
+      const conn = ed?.getConnections().find((c) => c.id === id);
+      const srcSock = conn ? ed?.getNode(conn.source)?.outputs?.[conn.sourceOutput]?.socket : undefined;
+      const tgtSock = conn ? ed?.getNode(conn.target)?.inputs?.[conn.targetInput]?.socket : undefined;
+      if (srcSock instanceof SolenoidSocket && tgtSock instanceof SolenoidSocket && srcSock.canConnectTo(tgtSock)) {
+        cableGhostStore.commit(id);
+        cableSelectionStore.set(null);
+        // A mode-change ghost did NOT feed while dashed (its node ignored the ghosted
+        // input), so recompute the target's cone now that the cable is live.
+        void processGraph(target);
+      }
       return;
     }
     if (e.detail >= 2) { selectRun(e); return; }

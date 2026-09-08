@@ -43,8 +43,10 @@ and `keysDroppedBySwitch`; the component prunes the departing socket's cables FI
 then calls it, then `retypeOutputCables` after an OUTPUT swap (an in-place swap fires no connection
 event). This is DISTINCT from wiring-driven wildcard adoption (`trueAnyAdopt`), which no field
 touches. **Where:** `subsystem-invariants.md` § Type propagation on in-place socket retype;
-exemplars `WorkdaysNode`, `SettleNode` (mode: people-frame ↔ ledger-cube), `RecordNode`,
-`CableSwitchNode`, the date/finance output swaps, `Expression`/`composite`/`formatController`.
+exemplars `WorkdaysNode`, `RecordNode`, `CableSwitchNode`, the date/finance output swaps,
+`Expression`/`composite`/`formatController`; `SettleNode` retypes its single "in" socket in place
+(People frame ↔ Ledger cube) and, rather than dropping a now-incompatible cable, GHOSTS it
+(`cableGhostStore`) for a one-click reconnect.
 **Reopen if:** never — logged only because it has been repeatedly and wrongly reported as absent.
 Grep `setOp`/`setMode`/`keysDroppedBySwitch` before claiming a node can't retype on a mode.
 
