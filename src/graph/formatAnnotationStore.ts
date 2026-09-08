@@ -612,7 +612,8 @@ export function formatCxWithAnnotation(z: Cx, ann: FormatAnnotation): string {
     style === "auto"
       // `auto` keeps formatCx's own trim — the FC is annotating, not overriding.
       ? (Number.isInteger(n) ? n.toString() : n.toFixed(4).replace(/\.?0+$/, ""))
-      : applyFormatStyle(n, style, ann.customPattern, ann.decimalDigits, ann.decimalMode, true));
+      : applyFormatStyle(n, style, ann.customPattern, ann.decimalDigits, ann.decimalMode, true),
+    true); // display form — always both parts, so the unit always wraps a two-term value
   if (text === "NaN") return text;
   const unit = ann.unit === "custom" ? (ann.customUnit ?? "") : unitById(ann.unit).label;
   if (!unit) return text;

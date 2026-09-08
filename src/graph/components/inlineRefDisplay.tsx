@@ -9,7 +9,7 @@ import { cableValueStore } from "../cableValueStore";
 import { formatAnnotationStore, formatNumberWithAnnotation, formatCxWithAnnotation, applyLogicalStyle, applyTextCase, type FormatAnnotation, type LambdaView } from "../formatAnnotationStore";
 import { highlightFormula } from "../formulaSyntax";
 import { sharedAnnotationResolver } from "../unitFlow";
-import { isCx, formatCx } from "../cxValue";
+import { isCx, formatCxDisplay } from "../cxValue";
 import { isUnitCell } from "../unitValue";
 import { unwrapUnitCells, annotationForValue } from "./valueDisplayFormat";
 import { formatScalar } from "./format";
@@ -73,7 +73,7 @@ export function refPreview(value: unknown, ann: FormatAnnotation | undefined): s
     const a = annotationForValue(value, ann);
     return refPreview(unwrapUnitCells(value, a), a);
   }
-  if (isCx(value)) return ann ? formatCxWithAnnotation(value, ann) : formatCx(value);
+  if (isCx(value)) return ann ? formatCxWithAnnotation(value, ann) : formatCxDisplay(value);
   if (isLambdaValue(value)) return lambdaText(value);
   if (isMermaidValue(value)) return value.title || "diagram";
   if (isImageValue(value)) return value.title || "image";

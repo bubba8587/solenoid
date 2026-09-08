@@ -8,7 +8,7 @@ import type { ClassicPreset } from "rete";
 import { processGraph } from "../process";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
-import { formatCx, isCx, type Cx } from "../cxValue";
+import { formatCxDisplay, isCx, type Cx } from "../cxValue";
 import { NodeCard, HEADER_TAP_SLOP, useHeaderHeightVar } from "./NodeCard";
 import { LazySelect } from "./LazySelect";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
@@ -550,7 +550,7 @@ export function ValueDisplay({
   const isDate = elemFam === "date";
   // A complex must resolve to a string HERE — after `ann`, before everything else
   // — so box, chip and clipboard alike keep working and honour the FC.
-  const cxFmt = (c: Cx): string => (ann ? formatCxWithAnnotation(c, ann) : formatCx(c));
+  const cxFmt = (c: Cx): string => (ann ? formatCxWithAnnotation(c, ann) : formatCxDisplay(c));
   // Typed off rawValue, not OutputRowValue: the raw box value also carries
   // UnitCells (unwrapped on the next line), and a Cx never survives past here.
   const cxResolved: Exclude<typeof rawValue, Cx> = isCx(rawValue)
