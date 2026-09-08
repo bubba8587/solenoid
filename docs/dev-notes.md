@@ -6,6 +6,23 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-09 — Sudoku seed rebuilt on 2-D Expression)
+
+Rebuilt `sudoku-solver.json` now that the Expression node handles 2-D array formulas. The two
+hand-typed incidence matrices are GONE — the 81×81 peer table and the 27×81 unit table are each
+one Expression that broadcasts a cell-index column against its row (`SEQUENCE`/`TRANSPOSE`, with
+`QUOTIENT`/`MOD` for row/col/box; `INT` and `FLOOR` reject a 2-D arg, `QUOTIENT` is the matrix-safe
+floor-divide). Each MMULT+MAP stage folded into a single Expression, so the three techniques read
+as one node each (naked singles, hidden singles, naked pairs). File 935→388 lines, internal nodes
+44→24. **Gotcha (why the tails aren't pure Expression):** an Expression's output socket only
+reconciles to `matrix` via a microtask that needs an active editor/view, so HEADLESS its socket
+stays rank-1 `number`; a CompositeOutput's MutableSocket then adapts to that and mis-coerces the
+real matrix (#SHAPE! on the 9×9, `true`→`1` on the flag). Fix: end each output tail on a
+genuine-socket node — a TableReshape (wraprows) for the grid, a Comparison (=0) for Solved —
+fed by folded Expressions. The feedback merge stays a MapTable (`IF(value2=value2, value2, value)`):
+on sim round 0 the feedback edge is unresolved, and MapTable falls back to its primary table while
+an Expression would default the unwired var to scalar 0. `sudokuSeed.test.ts` unchanged and green.
+
 ### SESSION DIGEST (2026-09-08 — display fixes: collapsed-group dates, complex both-parts, socket peek gating)
 
 Three display-layer fixes, each behind its own test:
