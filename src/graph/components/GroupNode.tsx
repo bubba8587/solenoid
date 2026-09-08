@@ -19,7 +19,7 @@ import { rebuildGroupMembership } from "../groupMembership";
 import { scheduleAutosave } from "../persistence";
 import { ArrayChip, isArrayValue } from "./ArrayChip";
 import { formatAnnotationStore, formatNumberWithAnnotation, applyLogicalStyle, applyTextCase } from "../formatAnnotationStore";
-import { formatListCell, nodeOutputElemFamily, resolveDisplayAnnotation } from "./valueDisplayFormat";
+import { formatListCell, nodeOutputElemFamily, dateFormatDisplay, resolveDisplayAnnotation } from "./valueDisplayFormat";
 import { isSolError } from "../errorValue";
 import { ErrorChip } from "./ErrorChip";
 import { formatScalar } from "./format";
@@ -35,6 +35,14 @@ function formatReadout(v: unknown, annNodeId: string, outKey?: string): string {
   if (v === undefined || v === null) return "—";
   if (isSolError(v)) return v.code;
   const ann = resolveDisplayAnnotation(annNodeId, outKey);
+  // Unannotated date serials render as DD-MMM-YYYY, exactly as the Display surface does
+  // (dateFormatDisplay); without this the readout showed the raw serial. The FC-annotated
+  // case falls through — formatNumberWithAnnotation formats dates itself.
+  if (ann == null && nodeOutputElemFamily(annNodeId, outKey) === "date") {
+    const d = dateFormatDisplay(v as Parameters<typeof dateFormatDisplay>[0], true, false);
+    if (typeof d === "string") return d;
+    if (Array.isArray(d)) return d.join(", ");
+  }
   const one = (x: number) => (ann ? formatNumberWithAnnotation(x, ann) : formatScalar(x));
   if (typeof v === "number") return one(v);
   if (typeof v === "boolean") return applyLogicalStyle(v, ann?.logicalStyle);
