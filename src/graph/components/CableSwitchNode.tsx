@@ -6,7 +6,7 @@ import type { CableSwitchNode as CableSwitchNodeType } from "../rete-nodes";
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getActiveEditor, getActiveView } from "../activeGraph";
-import { retypeOutputCables } from "../fcReconcile";
+import { retypeOutputCables, reconcileTypesAfterEdit } from "../fcReconcile";
 import { collapseStore } from "../collapseStore";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import { NodeSocket } from "./NodeSocket";
@@ -147,6 +147,13 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
   function select(i: number) {
     data.activeIndex = i;
     setSelected(i);
+    // In One mode the output PASSES THROUGH the active input, so changing which input is
+    // active can move the output's derived type (e.g. cube → frame). No connection event
+    // fires on this path, so re-settle the wildcard types here — else the output socket
+    // keeps the old adopted type while the value has already switched (the reported bug).
+    const ed = getActiveEditor();
+    const view = getActiveView();
+    if (ed && view) reconcileTypesAfterEdit(ed, view);
     void processGraph();
   }
   function step(delta: number) {
