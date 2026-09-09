@@ -915,18 +915,22 @@
       "x": 2566,
       "y": 890,
       "init": {
-        "label": "Years 1…N",
+        "label": "Growth horizon (months)",
         "op": "sequence"
+      },
+      "literals": {
+        "start": 12,
+        "step": 12
       }
     },
     {
-      "id": "expr-traj",
-      "type": "ExpressionNode",
-      "x": 2877,
-      "y": 817,
+      "id": "tvm-traj",
+      "type": "TvmNode",
+      "x": 2240,
+      "y": 440,
       "init": {
-        "label": "FV after c years",
-        "expr": "pv*(1+i)^(12*c) + IF(i=0, pmt*12*c, pmt*((1+i)^(12*c)-1)/i)"
+        "label": "Projected balance curve",
+        "paymentTiming": "end"
       }
     },
     {
@@ -1931,26 +1935,6 @@
       }
     },
     {
-      "id": "txt-rate-good",
-      "type": "TextInputNode",
-      "x": 4460,
-      "y": -240,
-      "init": {
-        "label": "If saving enough",
-        "value": "healthy"
-      }
-    },
-    {
-      "id": "txt-rate-bad",
-      "type": "TextInputNode",
-      "x": 4460,
-      "y": -90,
-      "init": {
-        "label": "If saving too little",
-        "value": "running thin"
-      }
-    },
-    {
       "id": "cmp-rate",
       "type": "ComparisonNode",
       "x": 4760,
@@ -1967,26 +1951,10 @@
       "y": -160,
       "init": {
         "label": "Savings verdict"
-      }
-    },
-    {
-      "id": "txt-proj-good",
-      "type": "TextInputNode",
-      "x": 4460,
-      "y": 120,
-      "init": {
-        "label": "If on track",
-        "value": "on track for"
-      }
-    },
-    {
-      "id": "txt-proj-bad",
-      "type": "TextInputNode",
-      "x": 4460,
-      "y": 270,
-      "init": {
-        "label": "If behind",
-        "value": "coming up short of"
+      },
+      "stringLiterals": {
+        "then": "healthy",
+        "else": "running thin"
       }
     },
     {
@@ -2006,26 +1974,10 @@
       "y": 200,
       "init": {
         "label": "Retirement verdict"
-      }
-    },
-    {
-      "id": "txt-mort-good",
-      "type": "TextInputNode",
-      "x": 4460,
-      "y": 480,
-      "init": {
-        "label": "If affordable",
-        "value": "sits comfortably inside"
-      }
-    },
-    {
-      "id": "txt-mort-bad",
-      "type": "TextInputNode",
-      "x": 4460,
-      "y": 630,
-      "init": {
-        "label": "If stretched",
-        "value": "pushes past"
+      },
+      "stringLiterals": {
+        "then": "on track for",
+        "else": "coming up short of"
       }
     },
     {
@@ -2045,26 +1997,10 @@
       "y": 560,
       "init": {
         "label": "Mortgage verdict"
-      }
-    },
-    {
-      "id": "txt-bud-good",
-      "type": "TextInputNode",
-      "x": 4460,
-      "y": 840,
-      "init": {
-        "label": "If under budget",
-        "value": "under"
-      }
-    },
-    {
-      "id": "txt-bud-bad",
-      "type": "TextInputNode",
-      "x": 4460,
-      "y": 990,
-      "init": {
-        "label": "If over budget",
-        "value": "over"
+      },
+      "stringLiterals": {
+        "then": "sits comfortably inside",
+        "else": "pushes past"
       }
     },
     {
@@ -2084,6 +2020,10 @@
       "y": 920,
       "init": {
         "label": "Budget verdict"
+      },
+      "stringLiterals": {
+        "then": "under",
+        "else": "over"
       }
     },
     {
@@ -2266,7 +2206,7 @@
           "sld-target",
           "alert-proj",
           "seq-years",
-          "expr-traj",
+          "tvm-traj",
           "spark-growth",
           "cd-proj",
           "fc-proj"
@@ -2410,20 +2350,12 @@
           "expr-outflow",
           "disp-outflow",
           "cd-adv",
-          "txt-rate-good",
-          "txt-rate-bad",
           "cmp-rate",
           "if-rate",
-          "txt-proj-good",
-          "txt-proj-bad",
           "cmp-proj",
           "if-proj",
-          "txt-mort-good",
-          "txt-mort-bad",
           "cmp-mort",
           "if-mort",
-          "txt-bud-good",
-          "txt-bud-bad",
           "cmp-bud",
           "if-bud",
           "report-adv",
@@ -2846,32 +2778,32 @@
       "targetInput": "count"
     },
     {
-      "source": "seq-years",
-      "sourceOutput": "list",
-      "target": "expr-traj",
-      "targetInput": "c"
-    },
-    {
-      "source": "red-nw",
-      "sourceOutput": "result",
-      "target": "expr-traj",
-      "targetInput": "pv"
-    },
-    {
       "source": "expr-mrate",
       "sourceOutput": "result",
-      "target": "expr-traj",
-      "targetInput": "i"
+      "target": "tvm-traj",
+      "targetInput": "rate"
     },
     {
-      "source": "sld-contrib",
-      "sourceOutput": "value",
-      "target": "expr-traj",
+      "source": "seq-years",
+      "sourceOutput": "list",
+      "target": "tvm-traj",
+      "targetInput": "nper"
+    },
+    {
+      "source": "expr-pmt",
+      "sourceOutput": "result",
+      "target": "tvm-traj",
       "targetInput": "pmt"
     },
     {
-      "source": "expr-traj",
+      "source": "expr-pv",
       "sourceOutput": "result",
+      "target": "tvm-traj",
+      "targetInput": "pv"
+    },
+    {
+      "source": "tvm-traj",
+      "sourceOutput": "fv",
       "target": "spark-growth",
       "targetInput": "values"
     },
@@ -3308,18 +3240,6 @@
       "targetInput": "cond"
     },
     {
-      "source": "txt-rate-good",
-      "sourceOutput": "value",
-      "target": "if-rate",
-      "targetInput": "then"
-    },
-    {
-      "source": "txt-rate-bad",
-      "sourceOutput": "value",
-      "target": "if-rate",
-      "targetInput": "else"
-    },
-    {
       "source": "cd-proj",
       "sourceOutput": "out_0",
       "target": "cmp-proj",
@@ -3336,18 +3256,6 @@
       "sourceOutput": "result",
       "target": "if-proj",
       "targetInput": "cond"
-    },
-    {
-      "source": "txt-proj-good",
-      "sourceOutput": "value",
-      "target": "if-proj",
-      "targetInput": "then"
-    },
-    {
-      "source": "txt-proj-bad",
-      "sourceOutput": "value",
-      "target": "if-proj",
-      "targetInput": "else"
     },
     {
       "source": "cd-mort",
@@ -3368,18 +3276,6 @@
       "targetInput": "cond"
     },
     {
-      "source": "txt-mort-good",
-      "sourceOutput": "value",
-      "target": "if-mort",
-      "targetInput": "then"
-    },
-    {
-      "source": "txt-mort-bad",
-      "sourceOutput": "value",
-      "target": "if-mort",
-      "targetInput": "else"
-    },
-    {
       "source": "cd-bud",
       "sourceOutput": "out_0",
       "target": "cmp-bud",
@@ -3396,18 +3292,6 @@
       "sourceOutput": "result",
       "target": "if-bud",
       "targetInput": "cond"
-    },
-    {
-      "source": "txt-bud-good",
-      "sourceOutput": "value",
-      "target": "if-bud",
-      "targetInput": "then"
-    },
-    {
-      "source": "txt-bud-bad",
-      "sourceOutput": "value",
-      "target": "if-bud",
-      "targetInput": "else"
     },
     {
       "source": "fc-d-in",
