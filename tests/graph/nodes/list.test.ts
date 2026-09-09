@@ -889,7 +889,7 @@ describe("Series — one arithmetic-progression node, op-switch mechanics", () =
     n.setOp("linspace");
     expect(Object.keys(n.inputs).sort()).toEqual(["count", "end", "start"]);
     n.setOp("sequence");
-    expect(Object.keys(n.inputs).sort()).toEqual(["count", "start", "step"]);
+    expect(Object.keys(n.inputs).sort()).toEqual(["cols", "count", "start", "step"]);
     expect(n.inputs.start!.label).toBe("Start (default 1)");
   });
 

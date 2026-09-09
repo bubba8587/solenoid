@@ -6,6 +6,30 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-09 — SEQUENCE node↔formula divergence killed at the source)
+
+The Series `sequence` op diverged from the `=SEQUENCE` formula: node was `(count, start, step)`
+1-D only, formula is Excel's `(rows, cols, start, step)` 2-D — arg 2 flipped meaning, and the node
+couldn't make a grid. **Why nothing caught it:** the arity guard (`nodeFormulaArgParity.test.ts`,
+the shareImpl ratchet) only scans nodes that dispatch through `resolveExcelFunction`; a node on its
+own kernel is invisible to it, and its header defers those to per-function BEHAVIOURAL agreement
+tests — which for SEQUENCE never existed. The `parity:false` note was the only marker, and it
+understated the divergence. **Fix (convergence at the source):** the sequence op now adds a
+`Columns` input (default 1) and dispatches straight to `resolveExcelFunction("SEQUENCE")(rows,
+cols, start, step)` — ONE impl with the formula, so 2-D wrap and overflow can't drift; a
+value-driven `reconcileRank` swaps the output socket list↔table (the Expression pattern; headless
+keeps the last socket). Non-breaking: cols=1 is the old flat-list return, and the 3 seeds using the
+op don't set cols. Routing through `resolveExcelFunction` also pulls the node INTO the arity guard
+(4-arg call site), so it's now statically enforced too. `NODE_EXCEL` flipped to `parity:true`.
+**Backstop added:** `tests/graph/nodes/arrayShapeParity.test.ts` — behavioural node↔formula parity
+for the SHAPE-PARAMETRIC family (SEQUENCE, WRAPROWS/WRAPCOLS, TOCOL/TOROW), the class where the two
+surfaces drift on capability. **Deliberately NOT built:** a blanket "every parity claim needs a
+test" ratchet — 211 parity-claiming pairs are unverified, almost all trivially-correct scalar math
+(SIN, ABS, SUM…), and the node↔formula arg mapping isn't machine-derivable, which is why the repo
+uses targeted behavioural tests, not a universal harness. The durable pattern is: a node that
+stands for one Excel function should compute by dispatching to that function (auto-guarded by the
+arity scan, can't drift); the shape-parametric family is the priority for behavioural coverage.
+
 ### SESSION DIGEST (2026-09-09 — Sudoku seed rebuilt on 2-D Expression)
 
 Rebuilt `sudoku-solver.json` now that the Expression node handles 2-D array formulas. The two
