@@ -200,11 +200,10 @@ note("note-assump", -1920, 820,
   "Assumptions (your numbers)",
   "# Stray inputs\nHand-entered values that appear in no CSV. They feed the projections and alerts; change one and the right side recomputes.",
   "vermilion", 360, 170);
-n("in-inflation","NumberInputNode", -1900, 1020, { label: "Inflation %/yr", value: 3.2 });
-n("in-emerg",    "SliderInputNode", -1900, 1180, { label: "Emergency-fund target $", value: 15000, min: 0, max: 60000, step: 1000 }, { literals: { min: 0, max: 60000, step: 1000 } });
-n("in-takehome", "NumberInputNode", -1900, 1480, { label: "Monthly take-home $", value: 5200 });
-n("in-years",    "NumberInputNode", -1900, 1660, { label: "Years to retire", value: 30 });
-const GRP_ASSUMP = ["in-inflation","in-emerg","in-takehome","in-years"];
+n("in-emerg",    "SliderInputNode", -1900, 1020, { label: "Emergency-fund target $", value: 15000, min: 0, max: 60000, step: 1000 }, { literals: { min: 0, max: 60000, step: 1000 } });
+n("in-takehome", "NumberInputNode", -1900, 1320, { label: "Monthly take-home $", value: 5200 });
+n("in-years",    "NumberInputNode", -1900, 1500, { label: "Years to retire", value: 30 });
+const GRP_ASSUMP = ["in-emerg","in-takehome","in-years"];
 
 c("in-emerg","value","alert-nw","low");
 
@@ -492,15 +491,15 @@ n("disp-outflow","DisplayNode",    4760, -600, { label: "Outflows (3 mo)" });
 n("cd-adv", "ConduitNode",         4460, -380, { angle: 0, seq: 6 });
 // The verdict words live as the IF's own then/else text literals — no separate
 // Text Input node per branch. The condition picks which word the letter reads.
-n("cmp-rate","ComparisonNode",     4760, -200, { label: "Rate ≥ target?", op: "gte" });
-n("if-rate", "IfNode",             5040, -160, { label: "Savings verdict" }, { stringLiterals: { then: "healthy", else: "running thin" } });
-n("cmp-proj","ComparisonNode",     4760,  160, { label: "Nest egg ≥ target?", op: "gte" });
-n("if-proj", "IfNode",             5040,  200, { label: "Retirement verdict" }, { stringLiterals: { then: "on track for", else: "coming up short of" } });
-n("cmp-mort","ComparisonNode",     4760,  520, { label: "Payment ≤ 28%?", op: "lte" });
-n("if-mort", "IfNode",             5040,  560, { label: "Mortgage verdict" }, { stringLiterals: { then: "sits comfortably inside", else: "pushes past" } });
-n("cmp-bud","ComparisonNode",      4760,  880, { label: "Spend ≤ budget?", op: "lte" });
-n("if-bud", "IfNode",              5040,  920, { label: "Budget verdict" }, { stringLiterals: { then: "under", else: "over" } });
-n("report-adv","ReportNode",       5340,  100, { label: "Advisor's letter", color: "sky", width: 260, height: 150, body: REPORT_BODY });
+n("cmp-rate","ComparisonNode",     4460, -200, { label: "Rate ≥ target?", op: "gte" });
+n("if-rate", "IfNode",             4740, -160, { label: "Savings verdict" }, { stringLiterals: { then: "healthy", else: "running thin" } });
+n("cmp-proj","ComparisonNode",     4460,  160, { label: "Nest egg ≥ target?", op: "gte" });
+n("if-proj", "IfNode",             4740,  200, { label: "Retirement verdict" }, { stringLiterals: { then: "on track for", else: "coming up short of" } });
+n("cmp-mort","ComparisonNode",     4460,  520, { label: "Payment ≤ 28%?", op: "lte" });
+n("if-mort", "IfNode",             4740,  560, { label: "Mortgage verdict" }, { stringLiterals: { then: "sits comfortably inside", else: "pushes past" } });
+n("cmp-bud","ComparisonNode",      4460,  880, { label: "Spend ≤ budget?", op: "lte" });
+n("if-bud", "IfNode",              4740,  920, { label: "Budget verdict" }, { stringLiterals: { then: "under", else: "over" } });
+n("report-adv","ReportNode",       5040,  100, { label: "Advisor's letter", color: "sky", width: 260, height: 150, body: REPORT_BODY });
 const GRP_ADVISOR = ["expr-outflow","disp-outflow","cd-adv","cmp-rate","if-rate",
   "cmp-proj","if-proj","cmp-mort","if-mort",
   "cmp-bud","if-bud","report-adv"];

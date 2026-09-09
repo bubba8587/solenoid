@@ -697,16 +697,6 @@
       }
     },
     {
-      "id": "in-inflation",
-      "type": "NumberInputNode",
-      "x": -1874,
-      "y": 1465,
-      "init": {
-        "label": "Inflation %/yr",
-        "value": 3.2
-      }
-    },
-    {
       "id": "in-emerg",
       "type": "SliderInputNode",
       "x": -1874,
@@ -2174,7 +2164,6 @@
       "init": {
         "label": "Assumptions",
         "members": [
-          "in-inflation",
           "in-emerg",
           "in-takehome",
           "in-years"
