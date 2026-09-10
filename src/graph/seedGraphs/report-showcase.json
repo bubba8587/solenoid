@@ -98,7 +98,7 @@
       "y": -102,
       "init": {
         "label": "Quarterly review",
-        "body": "# Quarterly review\n\nTotal bookings came to **{{ total }}** units across the six-month period, drawn from the source ledger:\n\n{{ table }}\n\nPlotted month over month:\n\n{{ fig }}\n\nBookings climbed steadily, with a soft patch in month 3.\n\n## Forecast\n\nWe project month *t* forward from the latest run-rate using compound growth:\n\n{{ model }}\n\n## How the numbers flow\n\n{{ flow }}\n\n{{ Methodology }}\n\n*Draft — figures subject to revision.*"
+        "body": "# Quarterly review\n\nTotal bookings came to **{{ total }}** units across the six-month period, drawn from the source ledger:\n\n{{ table }}\n\nPlotted month over month:\n\n{{ fig }}\n\nThe best month was {% for r in table %}{% if r.Bookings == 27 %}**{{ r.Month }}**{% endif %}{% endfor %}; the ledger as a list, straight from the same frame:\n\n{% for r in table %}- {{ r.Month }}: {{ r.Bookings }} bookings\n{% endfor %}\n\nBookings climbed steadily, with a soft patch in month 3.\n\n## Forecast\n\nWe project month *t* forward from the latest run-rate using compound growth:\n\n{{ model }}\n\n## How the numbers flow\n\n{{ flow }}\n\n{{ Methodology }}\n\n*Draft — figures subject to revision.*"
       }
     },
     {

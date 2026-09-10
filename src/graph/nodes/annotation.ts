@@ -239,12 +239,16 @@ export class NoteNode extends ClassicPreset.Node {
   }
 
   // Async ONLY when the body carries a template tag; a plain note stays synchronous.
+  // The document carries the RAW body as `source` beside the render, so a Report
+  // wired to this note can use it as its template. A tag naming no field stays
+  // literal (renderKnap keepUnknown): a template note reads as one.
   data(): Record<string, EmittedValue | DocumentValue> | Promise<Record<string, EmittedValue | DocumentValue | SolError>> {
     const fields = this.fieldValues();
-    if (!hasKnapSyntax(this.body)) return { ...fields, document: makeDocument(this.body, {}, undefined, this.id) };
-    return renderKnap(this.body, this.templateVariables()).then((r) => ({
+    const extra = { source: this.body };
+    if (!hasKnapSyntax(this.body)) return { ...fields, document: makeDocument(this.body, {}, undefined, this.id, extra) };
+    return renderKnap(this.body, this.templateVariables(), { keepUnknown: true }).then((r) => ({
       ...fields,
-      document: r.errors.length ? solError("#SYNTAX!", knapErrorText(r.errors)) : makeDocument(r.output, {}, undefined, this.id),
+      document: r.errors.length ? solError("#SYNTAX!", knapErrorText(r.errors)) : makeDocument(r.output, {}, undefined, this.id, extra),
     }));
   }
 

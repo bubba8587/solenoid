@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  hasKnapSyntax, extractKnapVariables, embedBareVariables, toTemplateValue, frameToTemplateRows, renderKnap, knapErrorText,
+  hasKnapSyntax, extractKnapVariables, embedBareVariables, toTemplateValue, frameToTemplateRows, renderKnap, renderKnapPages, knapErrorText,
 } from "../../src/graph/knapTemplate";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 import { makeDocument } from "../../src/graph/documentValue";
@@ -107,5 +107,26 @@ describe("renderKnap", () => {
     expect(r.output).toBe("");
     expect(r.errors.length).toBeGreaterThan(0);
     expect(knapErrorText(r.errors)).toMatch(/^2:\d+ .*endif/);
+  });
+});
+
+describe("renderKnap keepUnknown (a Note's mode)", () => {
+  it("a bare tag naming no variable stays literal; known ones render; logic on unknowns is Knap's", async () => {
+    const r = await renderKnap("# {{ title }} for {{ person }}{% if person %} yes{% endif %} {{ person | upper }}", { title: "T" }, { keepUnknown: true });
+    expect(r.output).toBe("# T for {{ person }}"); // the endif eats the space after it
+  });
+});
+
+describe("renderKnapPages", () => {
+  it("one page per row with row and index; the name template names it, blank → the index", async () => {
+    const r = await renderKnapPages("{{ index }}: {{ row.n }} of {{ total }}", { total: 2 }, [{ n: "a" }, { n: "b" }], "{{ row.n }}-page");
+    expect(r.errors).toEqual([]);
+    expect(r.pages).toEqual([{ name: "a-page", body: "1: a of 2" }, { name: "b-page", body: "2: b of 2" }]);
+    expect((await renderKnapPages("x", {}, [{}, {}], "")).pages.map((p) => p.name)).toEqual(["1", "2"]);
+  });
+  it("a broken template stops the batch with its errors", async () => {
+    const r = await renderKnapPages("{% if x %}", {}, [{}], "");
+    expect(r.pages).toEqual([]);
+    expect(r.errors.length).toBeGreaterThan(0);
   });
 });

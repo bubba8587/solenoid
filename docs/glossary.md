@@ -159,6 +159,11 @@ area. When you coin a new load-bearing term, add it here.
 - **Embed** — a bare `{{ name }}` in a Report: the wired value drawn as the canvas shows
   it (formatted scalar, grid, chart, KaTeX, a Note block). Internally the render emits
   the `` `=name` `` ref span, which resolves by kind. (`noteInlineRefs.ts`)
+- **Template note** — a Note whose body has tags naming no field of its own; they stay
+  literal on the card, and wired into a Report's Template input they become that
+  report's inputs. (`nodes/report.ts`)
+- **Page** — one rendering of a Report per row of its Rows input, named by the page
+  name; a batch document's pages write as one note each. (`documentValue.ts`)
 - **Document / library** — the multi-doc model; each doc persists to its OWN
   two-slot localStorage pair plus a light index. (`documentStore.ts`, `persistence.ts`)
 

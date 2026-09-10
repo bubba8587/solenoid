@@ -209,3 +209,12 @@ describe("NoteNode — Knap template over its own frontmatter", () => {
     expect(new NoteNode({ body: "plain" }).data() instanceof Promise).toBe(false);
   });
 });
+
+describe("NoteNode — a template note", () => {
+  it("keeps a tag naming no field literal (a template reads as a template), and carries its raw source", async () => {
+    const n = new NoteNode({ body: "---\ntitle: Letter\n---\nDear {{ person }}, re {{ title }}" });
+    const doc = (await n.data()).document as { body: string; source?: string };
+    expect(doc.body).toBe("---\ntitle: Letter\n---\nDear {{ person }}, re Letter");
+    expect(doc.source).toBe("---\ntitle: Letter\n---\nDear {{ person }}, re {{ title }}");
+  });
+});

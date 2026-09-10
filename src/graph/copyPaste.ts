@@ -94,6 +94,7 @@ export const INIT_FIELD_ORDER = [
   "vault", "folder", "glob", "nameFormat", "includeBody", "addMissing", "writeBase",
   "cubeText",
   "stamp", "split",
+  "pageName",
 ] as const;
 
 // Object-valued extras, appended after INIT_FIELD_ORDER in this fixed order.

@@ -682,6 +682,10 @@ the wired value by kind — the render rewrites it to the internal `` `=name` ``
 the on-screen, Obsidian-write and export paths resolve exactly as before
 (`embedBareVariables`, node-coverage § Annotation). Anything beyond a bare tag reads the
 plain DATA form. One syntax for the author, one resolution path underneath.
+The Report's Template and Rows inputs follow the same rule: a wired Note's raw `source` is the
+text, its variables the sockets, and a batch is one page per row rendered by the same engine
+(node-coverage § Annotation) — never a second template language for names or pages (the Write
+to Obsidian NAME field's `{{date}}` tokens predate this and stay a file-name mini-language).
 **Reopen if:** an author-typed ref grammar returns beside Knap (two syntaxes for one thing),
 or the bare-tag rule stops matching the on-canvas rendering (a bare `{{ frame }}` printing
 JSON instead of the grid is the relapse).

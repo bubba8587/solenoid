@@ -998,7 +998,8 @@ materialised into a real frame first.
 **Holds:** a frame whose cells may hold any value, including another frame or
 cube. The top of the data lattice.
 **Dot:** violet flat hexagon built from three rhombi.
-**Ports:** 3 inputs, 5 outputs.
+**Ports:** 4 inputs, 5 outputs. Report's Rows is one: a frame arrives AS a frame
+there (`rawInputs`), one page per row.
 
 **Accepts from:** all 28 variants other than `lambda`, `chart`, `document`.
 
@@ -1052,8 +1053,8 @@ never emits a SolError out a `chart` socket.
 
 **Holds:** a whole Note's or Report's renderable content.
 **Dot:** blue square with two left-aligned text lines.
-**Ports:** 1 input, 3 outputs. Note, Report and Import from Obsidian produce one;
-Write to Obsidian consumes one.
+**Ports:** 2 inputs, 3 outputs. Note, Report and Import from Obsidian produce one;
+Write to Obsidian consumes one, and Report's Template takes a Note as its text.
 
 **Accepts from:** `document`, `trueany`.
 **Blocked at the input:** all 29 variants other than `document`, `trueany`.

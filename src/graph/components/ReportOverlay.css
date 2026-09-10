@@ -401,3 +401,43 @@ html.sol-report-docked .solenoid-cmdpalette {
   font-size: 12px;
   color: var(--sol-error);
 }
+
+/* The source pane when a template Note is wired: its text, read-only. */
+.report-source--wired {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+.report-source--wired pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font: inherit;
+  color: var(--text-muted);
+}
+.report-source__hint {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Batch page name: a small labeled field in the header. */
+.report-page-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.report-page-name input {
+  width: 150px;
+  padding: 3px 6px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}

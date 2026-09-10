@@ -165,3 +165,7 @@
   border-color: color-mix(in srgb, var(--node-accent) var(--mix-ring), var(--ring-into));
   box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) var(--mix-glow), transparent);
 }
+
+/* The fixed template / rows inputs read muted until wired. */
+.solenoid-report__ref-row--fixed .solenoid-report__ref-key { font-weight: 500; color: var(--text-muted); }
+.solenoid-report__refs .solenoid-report__refs { padding: 0; box-shadow: none; }

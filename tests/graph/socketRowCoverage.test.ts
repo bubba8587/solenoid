@@ -20,8 +20,10 @@ const SRC = path.resolve(__dirname, "../../src/graph");
 /** Per-row socket renderers: each gives its dot a measured `top` of its own. */
 // EquationVarRow / EquationOutRow are the acausal card's own measured rows — they
 // resolve a `top` per row and hand it to NodeSocket, which is the same guarantee.
+// RefInputRow (Report / Note ref strips) is a `position: relative` row per socket,
+// so the dot's 50% fallback centers on ITS row.
 const ROW_RENDERERS =
-  /InlineInputs|InlineOutputRows|MeasuredSocketRow|CollapsedInputPill|ExtensibleInputs|PairedExtensibleInputs|EquationVarRow|EquationOutRow/;
+  /InlineInputs|InlineOutputRows|MeasuredSocketRow|CollapsedInputPill|ExtensibleInputs|PairedExtensibleInputs|EquationVarRow|EquationOutRow|RefInputRow/;
 
 /** Cards that place their own dots and own the geometry, with the reason. */
 const SANCTIONED: Record<string, string> = {

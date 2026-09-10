@@ -187,12 +187,50 @@ export interface KnapRender {
   errors: TemplateError[];
 }
 
+const HOLD = "\u0001";
+const HOLD_RE = /\u0001([A-Za-z_][A-Za-z0-9_]*)\u0001/g;
+
+/** A bare `{{ name }}` whose name is NOT a variable stays literal text through the
+ *  render, so a template NOTE reads as a template on the canvas and round-trips to
+ *  the vault with its tags intact; only the fields it has fill in. A loop or a
+ *  condition on an unknown name still renders empty, as Knap does. */
+function holdUnknownTags(body: string, known: ReadonlySet<string>): string {
+  return body.replace(/\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g, (tag, name: string) =>
+    known.has(name) ? tag : `${HOLD}${name}${HOLD}`);
+}
+
 /** Render a body against its variables. Never throws: a broken template reports
- *  through `errors`, with the line and column the editor can show. */
-export async function renderKnap(body: string, variables: Record<string, unknown>): Promise<KnapRender> {
+ *  through `errors`, with the line and column the editor can show. `keepUnknown`
+ *  is the Note's mode (see holdUnknownTags). */
+export async function renderKnap(body: string, variables: Record<string, unknown>, opts?: { keepUnknown?: boolean }): Promise<KnapRender> {
   if (!hasKnapSyntax(body)) return { output: body, errors: [] };
-  const r = await engine.render(body, { variables });
-  return { output: r.output, errors: r.errors };
+  const src = opts?.keepUnknown ? holdUnknownTags(body, new Set(Object.keys(variables))) : body;
+  const r = await engine.render(src, { variables });
+  const output = opts?.keepUnknown ? r.output.replace(HOLD_RE, (_m, name: string) => `{{ ${name} }}`) : r.output;
+  return { output, errors: r.errors };
+}
+
+export interface KnapPage { name: string; body: string }
+
+/** The most pages one Report renders per compute; past it the rest are dropped. */
+export const MAX_PAGES = 500;
+
+/** One page per row: the body rendered with `row` (the row's `{column: value}`) and
+ *  `index` (1-based) beside the host's variables, named by `nameTemplate` rendered the
+ *  same way (blank → the index). The first failing page's errors stop the batch. */
+export async function renderKnapPages(
+  body: string, variables: Record<string, unknown>, rows: Record<string, unknown>[], nameTemplate: string,
+): Promise<{ pages: KnapPage[]; errors: TemplateError[] }> {
+  const pages: KnapPage[] = [];
+  for (let i = 0; i < Math.min(rows.length, MAX_PAGES); i++) {
+    const vars = { ...variables, row: rows[i], index: i + 1 };
+    const r = await renderKnap(body, vars);
+    if (r.errors.length) return { pages, errors: r.errors };
+    const n = await renderKnap(nameTemplate, vars);
+    if (n.errors.length) return { pages, errors: n.errors };
+    pages.push({ name: n.output.trim() || String(i + 1), body: r.output });
+  }
+  return { pages, errors: [] };
 }
 
 /** One line per error, `line:column message`, for an error value or the preview. */

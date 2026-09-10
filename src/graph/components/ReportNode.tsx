@@ -87,8 +87,27 @@ export function ReportComponent({ data, emit }: NodeProps<ReportNodeType>) {
           </div>
         )}
       </div>
-      {refKeys.length > 0 && (
-        <div className="solenoid-report__refs">
+      <div className="solenoid-report__refs">
+        {/* The two FIXED inputs: a template Note and the rows of a batch. */}
+        {(["template", "rows"] as const).map((key) => {
+          const input = data.inputs[key];
+          if (!input) return null;
+          return (
+            <RefInputRow
+              key={key}
+              nodeId={data.id}
+              emit={emit}
+              refKey={key}
+              value={key === "template" ? data.templateDoc : data.rowsValue}
+              socket={input.socket}
+              rowClassName="solenoid-report__ref-row solenoid-report__ref-row--fixed"
+              keyClassName="solenoid-report__ref-key"
+              valClassName="solenoid-report__ref-val"
+            />
+          );
+        })}
+        {refKeys.length > 0 && (
+          <div className="solenoid-report__refs">
           {refKeys.map((key) => {
             const input = data.inputs[key];
             if (!input) return null;
@@ -106,8 +125,9 @@ export function ReportComponent({ data, emit }: NodeProps<ReportNodeType>) {
               />
             );
           })}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
       <div className="solenoid-report__content" style={{ position: "relative" }}>
         <button
           type="button"

@@ -150,11 +150,13 @@ export class WriteObsidianNode extends ClassicPreset.Node {
       });
       this.status = "ok";
       this.lastWritten = res.file;
+      const what = res.pages > 1 ? `${res.pages} notes${subfolder ? ` in ${subfolder}` : ""}` : res.file;
       this.statusMessage = res.assets > 0
-        ? `Wrote ${res.file} + ${res.assets} asset${res.assets === 1 ? "" : "s"}`
-        : `Wrote ${res.file}`;
-      // D: link the note back to a Solenoid/<doc> stub note (best effort — the write is done).
-      if (this.stamp) {
+        ? `Wrote ${what} + ${res.assets} asset${res.assets === 1 ? "" : "s"}`
+        : `Wrote ${what}`;
+      // D: link the note back to a Solenoid/<doc> stub note (best effort — the write is
+      // done). A batch stamps nothing: one stub line per page would flood the stub.
+      if (this.stamp && res.pages === 1) {
         try {
           const docName = documentStore.currentName();
           const d = new Date();

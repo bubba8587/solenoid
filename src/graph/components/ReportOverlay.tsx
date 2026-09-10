@@ -14,7 +14,7 @@ import { InlineRefBody } from "./inlineRefDisplay";
 import { CloseIcon } from "./CloseIcon";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { useEscapeToClose } from "./useEscapeToClose";
-import { useKnapRender } from "./useKnapRender";
+import { useKnapRender, type KnapBatch } from "./useKnapRender";
 import { exportReportAsWebpage } from "../reportExport";
 import "./Markdown.css";
 import "./ReportOverlay.css";
@@ -61,7 +61,25 @@ export function ReportOverlay() {
   // The Knap render of the draft against the variables the graph last fed the node;
   // `renderVersion` re-runs it after a commit recomputes them.
   const [renderVersion, setRenderVersion] = useState(0);
-  const { text: rendered, errors: templateErrors } = useKnapRender(node ? node.templateSource(previewBody) : "", node?.templateVars ?? NO_VARS, renderVersion);
+  // With a template wired the source pane is the wired note's text, read-only;
+  // with rows wired the preview is the batch's pages.
+  const wiredTemplate = node?.templateDoc ?? null;
+  const previewSource = node ? node.templateSource(wiredTemplate ? node.activeSource() : previewBody) : "";
+  const batch = useMemo<KnapBatch | null>(
+    () => node?.rows ? { rows: node.rows, pageName: node.pageName } : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [node, node?.rows, node?.pageName, renderVersion],
+  );
+  const { text: rendered, errors: templateErrors } = useKnapRender(previewSource, node?.templateVars ?? NO_VARS, renderVersion, batch);
+  const [pageName, setPageName] = useState(node?.pageName ?? "");
+  useEffect(() => { setPageName(node?.pageName ?? ""); }, [node, nodeId]);
+  async function commitPageName() {
+    if (!node || node.pageName === pageName) return;
+    node.pageName = pageName;
+    scheduleAutosave();
+    await processGraph();
+    setRenderVersion((v) => v + 1);
+  }
 
   // Commit THEN close: syncRefs runs synchronously before commitBody's first await,
   // so the sockets mint even though this doesn't await.
@@ -209,13 +227,26 @@ export function ReportOverlay() {
         <div className="report-header">
           <span className="report-title">{node.label?.trim() || "Report"}</span>
           <div className="report-header-actions">
+            {batch && (
+              <label className="report-page-name" title="Knap for each page's note name, with row and index. Blank names pages by index.">
+                <span>Page name</span>
+                <input
+                  value={pageName}
+                  placeholder="{{ row.Name }}"
+                  spellCheck={false}
+                  onChange={(e) => setPageName(e.target.value)}
+                  onBlur={() => void commitPageName()}
+                  onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                />
+              </label>
+            )}
             <button
               ref={embedBtnRef}
               type="button"
               className="report-embed-btn"
               onClick={() => setEmbedPickerOpen((o) => !o)}
-              disabled={embeddable.length === 0}
-              title={embeddable.length === 0 ? "No Notes to embed" : "Embed a Note"}
+              disabled={embeddable.length === 0 || !!wiredTemplate}
+              title={wiredTemplate ? "The wired template is the text" : embeddable.length === 0 ? "No Notes to embed" : "Embed a Note"}
             >
               Embed a Note
             </button>
@@ -281,6 +312,12 @@ export function ReportOverlay() {
         </div>
 
         <div className="report-body" data-tab={mobileTab}>
+          {wiredTemplate ? (
+            <div className="report-source report-source--wired">
+              <div className="report-source__hint">Template from the wired Note. Edit it there.</div>
+              <pre>{node.activeSource()}</pre>
+            </div>
+          ) : (
           <textarea
             ref={sourceRef}
             className="report-source"
@@ -290,6 +327,7 @@ export function ReportOverlay() {
             onChange={(e) => onBody(e.target.value)}
             onBlur={() => void commitBody()}
           />
+          )}
           <div className="report-preview sol-md">
             {templateErrors ? (
               <pre className="report-preview__error">{templateErrors}</pre>
