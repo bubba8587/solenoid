@@ -53,11 +53,15 @@ returns errors, not names. **Ours:** `extractKnapVariables` in `knapTemplate.ts`
 walk that would retire.
 
 ### 7. Declare keyword parameters in filter metadata
-`list:numbered` is a variable lookup that falls back to the literal word when the name is
-undefined. A host cannot tell it from `join:sep`, so it mints a socket for `numbered`. A
-`keywords` field on `FilterMetadata` (or the tokenizer marking such arguments as literals)
-would let hosts skip them. **Ours:** an unwired input is ABSENT to the template, never
-null, so the fallback still fires; seeds quote the keyword (`list:"numbered"`).
+`list:numbered` is a variable lookup that falls back to the literal word only when the
+name is UNDEFINED: `render("{{ items | list:numbered }}", { variables: { items, numbered: null } })`
+→ error "invalid list type null", while leaving `numbered` out of the variables renders the
+list. A host cannot tell that argument from `join:sep` in the AST, so it either mints an
+input for `numbered` (and feeds it null) or misses a real variable. A `keywords` field on
+`FilterMetadata` (or the tokenizer marking such arguments as literals) would let hosts skip
+them. The null-vs-undefined split itself is defensible (null is a supplied value) and is
+not the ask. **Ours:** an unwired input is ABSENT to the template, never null, so the
+fallback still fires; seeds quote the keyword (`list:"numbered"`).
 
 ### 8. A `description` on `standardFilterMetadata`
 The metadata carries `example` and `validateParams` only; the Report overlay's Filters
