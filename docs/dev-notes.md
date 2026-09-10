@@ -42,10 +42,11 @@ specific item.
   node-coverage § Annotation; `mail-merge.json` is the worked seed; the report seeds gained a
   loop (showcase, decision memo) and an `{% if %}` verdict (garden). Pinned by the Report and
   knapTemplate suites; `seeds.test.ts` treats a Knap tag line as a block, not prose.
-- **The follow-ups landed the same day (09-10c):** Write File takes a document (Markdown;
-  a merge as one `.md` per page into a folder; a frame under MD as a pipe table); the Report
-  overlay tints tags (`knapHighlight.ts`), lists the filters with examples, and steps a merge
-  page by page. Nothing left parked from the Knap work.
+- **The follow-ups landed the same day (09-10c):** the Report overlay highlights the source
+  (`knapHighlight.ts`: Markdown structure + Knap keywords, filters, strings, variables), lists
+  the filters with examples, and steps a merge page by page. Write File taking a document
+  (a merge as one `.md` per page into a folder) was built in `ec715ed` and BACKED OUT the
+  same day (author): it lands as part of the Write mega-merge (backlog), not as a bolt-on.
 - **Seeds exercise Knap's shaping filters** (author 2026-09-10): `sort:("col","desc")`, `slice`,
   `where:("col", v)`, `map:x => x.col`, `unique`, `sum:"col"`, `list:"numbered"`, `join` — the
   showcase's top-three months and ledger sum, the decision memo's sliced podium, the mail

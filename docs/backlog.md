@@ -75,6 +75,11 @@ build rules and § Sequencing the order (A′ → A → B → D → C → F → 
 verified in the desktop app against the demo vault. Landed ledger: the bundle's § What stands today.
 
 - [ ] **AddColumn over a cube** (fe): Add Column is frame-only; Computed Column already takes a cube.
+- [ ] **Write mega-merge** (author 2026-09-10, maximalMerge): Write File + Write to Obsidian as
+  ONE sink with a target selector (file / vault), formats as arguments (CSV, JSON, Markdown),
+  and the merge-to-folder behavior (`ec715ed` built it on Write File: a document input, one
+  `.md` per page into the path as a folder, a frame under MD as a pipe table; backed out
+  pending the merge). Write Tasks / Write Properties are candidates for the same card.
 - [ ] **File the Knap upstream PRs** (`knap-upstream.md`): the typed-value bug first (its three
   repros), then whitespace control, filters in comparisons, the `sort` validator; the API
   asks as issues. Retire the noted workarounds as each lands.

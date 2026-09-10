@@ -23,14 +23,13 @@ import { stopDragStart } from "../coarse";
 // never from a graph recompute.
 
 type WriteNodeData = WriteFileNodeType & {
-  path: string; format: WriteFormat; enabled: boolean; status: string; statusMessage: string; cachedDoc: unknown;
+  path: string; format: WriteFormat; enabled: boolean; status: string; statusMessage: string;
   browse(): Promise<void>; run(): Promise<void>;
 };
 
 const FORMAT_OPTIONS = [
   { value: "csv" as const, label: "CSV", title: "Comma-separated values (.csv)" },
   { value: "json" as const, label: "JSON", title: "Array of row records (.json)" },
-  { value: "md" as const, label: "MD", title: "Markdown: a document as written, a mail merge as one file per page into a folder, a frame as a table (.md)" },
 ];
 
 export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>) {
@@ -41,9 +40,7 @@ export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>)
   const [status, setStatus] = useState(d.status);
   const [message, setMessage] = useState(d.statusMessage);
   const desktop = isDesktop();
-  const ext = format;
-  const doc = isDocumentValue(d.cachedDoc) ? d.cachedDoc : null;
-  const batch = !!doc?.pages?.length;
+  const ext = format === "json" ? "json" : "csv";
 
   useEffect(() => { setPath(d.path); }, [d.path]);
 
@@ -87,7 +84,7 @@ export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>)
             className="sol-conn__url"
             type="text"
             value={path}
-            placeholder={batch ? "…/folder" : `…/output.${ext}`}
+            placeholder={`…/output.${ext}`}
             spellCheck={false}
             onChange={(e) => setPath(e.target.value)}
             onBlur={commitPath}
@@ -137,11 +134,7 @@ export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>)
             {message}
           </div>
         )}
-        {doc ? (
-          <div className="sol-conn__note">{batch ? `${doc.pages!.length} pages, one file each` : "Document"}</div>
-        ) : (
-          <FrameDisplay frame={d.cachedFrame} label={d.label} />
-        )}
+        <FrameDisplay frame={d.cachedFrame} label={d.label} />
       </div>
     </NodeShell>
   );

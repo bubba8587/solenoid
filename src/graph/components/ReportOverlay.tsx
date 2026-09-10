@@ -383,7 +383,7 @@ export function ReportOverlay() {
             </div>
           ) : (
           <div className="report-source">
-          <pre ref={highlightRef} className="report-source__hl" aria-hidden="true" dangerouslySetInnerHTML={{ __html: highlightKnap(body) }} />
+          <pre ref={highlightRef} className="report-source__hl fx-tokens" aria-hidden="true" dangerouslySetInnerHTML={{ __html: highlightKnap(body) }} />
           <textarea
             ref={sourceRef}
             className="report-source__ta"
