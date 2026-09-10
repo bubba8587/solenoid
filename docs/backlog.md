@@ -75,6 +75,9 @@ build rules and § Sequencing the order (A′ → A → B → D → C → F → 
 verified in the desktop app against the demo vault. Landed ledger: the bundle's § What stands today.
 
 - [ ] **AddColumn over a cube** (fe): Add Column is frame-only; Computed Column already takes a cube.
+- [ ] **File the Knap upstream PRs** (`knap-upstream.md`): the typed-value bug first (its three
+  repros), then whitespace control, filters in comparisons, the `sort` validator; the API
+  asks as issues. Retire the noted workarounds as each lands.
 - [ ] **Author's desktop eyeball** of the flagship cards against `demo-vault/` (Settings ▸ Obsidian
   → the repo's demo-vault): Vault Folder (be's ten-step checklist in the 09-07 digest), Write
   Properties Preview/Run on a copy, TaskNotes with the plugin's API on, Write to Obsidian block mode
