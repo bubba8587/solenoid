@@ -181,7 +181,7 @@
         "color": "green",
         "width": 300,
         "height": 200,
-        "body": "# Watering call\n\nRain over the **last 14 days**: `=rainPast` mm. Rain forecast for the **next 7 days**: `=rainNext` mm.\n\nRule of thumb: when both are low (under about 25 mm behind and 10 mm ahead), water. Set your own thresholds with an IF, or let the Alert nudge you."
+        "body": "# Watering call\n\nRain over the **last 14 days**: {{ rainPast }} mm. Rain forecast for the **next 7 days**: {{ rainNext }} mm.\n\nRule of thumb: when both are low (under about 25 mm behind and 10 mm ahead), water. Set your own thresholds with an IF, or let the Alert nudge you."
       }
     },
     {

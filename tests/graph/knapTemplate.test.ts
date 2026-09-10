@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  hasKnapSyntax, extractKnapVariables, toTemplateValue, frameToTemplateRows, renderKnap, knapErrorText,
+  hasKnapSyntax, extractKnapVariables, embedBareVariables, toTemplateValue, frameToTemplateRows, renderKnap, knapErrorText,
 } from "../../src/graph/knapTemplate";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 import { makeDocument } from "../../src/graph/documentValue";
@@ -10,7 +10,7 @@ import type { FrameValue } from "../../src/graph/frame";
 const serial = (iso: string) => Math.round(parseDateToSerial(iso));
 
 describe("hasKnapSyntax", () => {
-  it("only a `{{` or `{%` tag makes a body a template — a `=name` ref alone does not", () => {
+  it("only a `{{` or `{%` tag makes a body a template — the internal ref span does not", () => {
     expect(hasKnapSyntax("plain `=x` text")).toBe(false);
     expect(hasKnapSyntax("{{ x }}")).toBe(true);
     expect(hasKnapSyntax("{% if x %}{% endif %}")).toBe(true);
@@ -33,6 +33,17 @@ describe("extractKnapVariables", () => {
   });
   it("a tag-less body has no variables (and never parses)", () => {
     expect(extractKnapVariables("just `=ref` prose")).toEqual([]);
+  });
+});
+
+describe("embedBareVariables", () => {
+  it("rewrites a bare `{{ input }}` to the ref span, `| highlight` to the tinted span, and leaves the rest to Knap", () => {
+    const src = "{{ a }} {{b}} {{ a | highlight }} {{ a | upper }} {{ a.x }} {{ local }} {% if a %}{{ a }}{% endif %}";
+    expect(embedBareVariables(src, ["a", "b"])).toBe("`=a` `=b` `=a!` {{ a | upper }} {{ a.x }} {{ local }} {% if a %}`=a`{% endif %}");
+  });
+  it("with no inputs or no tag the body is untouched", () => {
+    expect(embedBareVariables("{{ a }}", [])).toBe("{{ a }}");
+    expect(embedBareVariables("plain", ["a"])).toBe("plain");
   });
 });
 
@@ -67,7 +78,7 @@ describe("toTemplateValue", () => {
     expect(toTemplateValue([1, "x"])).toEqual([1, "x"]);
     expect(toTemplateValue(solError("#N/A", "m"))).toBe("#N/A");
   });
-  it("a wired document reads as its body; a chart has no text form", () => {
+  it("a wired document reads as its body; a chart has no data form", () => {
     expect(toTemplateValue(makeDocument("## How"))).toBe("## How");
     expect(toTemplateValue({ __chart: true })).toBe(null);
   });
@@ -87,7 +98,7 @@ describe("renderKnap", () => {
     const r = await renderKnap("plain `=x`", {});
     expect(r).toEqual({ output: "plain `=x`", errors: [] });
   });
-  it("a `=name` ref span survives the render as text (the ref path resolves it later)", async () => {
+  it("the internal ref span survives the render as text (the ref path resolves it later)", async () => {
     const r = await renderKnap("{{ a }} and `=chart`", { a: 1 });
     expect(r.output).toBe("1 and `=chart`");
   });

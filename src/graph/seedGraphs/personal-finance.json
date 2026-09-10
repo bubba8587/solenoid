@@ -1894,7 +1894,7 @@
       "y": -940,
       "init": {
         "label": "10 · The advisor's letter",
-        "body": "# Prose that recomputes\nThe **Report** pulls live values through `` `=name` `` refs — dollars arrive through the dashboard's **Format Controllers** (so they read $1,234, not 1234.5678), charts embed as figures. Each verdict word is a tiny circuit: **Compare → IF → two Text nodes**. Drag a slider and the letter changes its mind.",
+        "body": "# Prose that recomputes\nThe **Report** is a Knap template: a bare `{{ name }}` pulls the live value in, and dollars arrive through the dashboard's **Format Controllers** (so they read $1,234, not 1234.5678), charts embed as figures. Each verdict word is a tiny circuit: **Compare → IF → two Text nodes**. Drag a slider and the letter changes its mind.",
         "color": "sky",
         "width": 420,
         "height": 220,
@@ -2096,7 +2096,7 @@
         "color": "sky",
         "width": 260,
         "height": 150,
-        "body": "# The advisor's letter\n\nYou brought in **`=income`** this quarter and let **`=outflow`** back out, leaving **`=net`** to put to work. Your savings rate is `=savingsRate!` — `=rateWord!` against the target you set.\n\n`=spendChart`\n\n## Net worth\n\nAssets minus debts puts you at **`=netWorth`** today.\n\n`=classChart`\n\n## Retirement\n\nKeep contributing at today's pace and the nest egg reaches **`=nestEgg`** — `=projWord!` your target.\n\n`=growthChart`\n\n## The house\n\nThe mortgage costs **`=payment`** a month, which `=mortWord!` the 28%-of-take-home guideline. Carried to term, the interest alone comes to **`=interest`**.\n\n## Groceries\n\n**`=spent`** spent against a **`=budget`** budget for the quarter — you're `=budgetWord!` so far.\n\n*Move any slider and this letter rewrites itself.*"
+        "body": "# The advisor's letter\n\nYou brought in **{{ income }}** this quarter and let **{{ outflow }}** back out, leaving **{{ net }}** to put to work. Your savings rate is {{ savingsRate | highlight }} — {{ rateWord | highlight }} against the target you set.\n\n{{ spendChart }}\n\n## Net worth\n\nAssets minus debts puts you at **{{ netWorth }}** today.\n\n{{ classChart }}\n\n## Retirement\n\nKeep contributing at today's pace and the nest egg reaches **{{ nestEgg }}** — {{ projWord | highlight }} your target.\n\n{{ growthChart }}\n\n## The house\n\nThe mortgage costs **{{ payment }}** a month, which {{ mortWord | highlight }} the 28%-of-take-home guideline. Carried to term, the interest alone comes to **{{ interest }}**.\n\n## Groceries\n\n**{{ spent }}** spent against a **{{ budget }}** budget for the quarter — you're {{ budgetWord | highlight }} so far.\n\n*Move any slider and this letter rewrites itself.*"
       }
     },
     {

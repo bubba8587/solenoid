@@ -81,8 +81,7 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   + `{{daily}}`, Write Properties' `writeBase` view, the Cube Input editor's three drill targets.
 - [ ] **Knap follow-ups** (bodies are templates since 2026-09-10): tag highlighting in the
   Report source pane; a Filters cheat-sheet reachable from the overlay (the `knap` package
-  exports `standardFilterMetadata` with examples); `{{ chart }}` could mint a `=chart` ref span
-  instead of reading as null.
+  exports `standardFilterMetadata` with examples).
 
 ## Canvas chrome (queued by the author 2026-09-07, "not top priority")
 

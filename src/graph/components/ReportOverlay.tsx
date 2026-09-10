@@ -61,7 +61,7 @@ export function ReportOverlay() {
   // The Knap render of the draft against the variables the graph last fed the node;
   // `renderVersion` re-runs it after a commit recomputes them.
   const [renderVersion, setRenderVersion] = useState(0);
-  const { text: rendered, errors: templateErrors } = useKnapRender(node ? previewBody : "", node?.templateVars ?? NO_VARS, renderVersion);
+  const { text: rendered, errors: templateErrors } = useKnapRender(node ? node.templateSource(previewBody) : "", node?.templateVars ?? NO_VARS, renderVersion);
 
   // Commit THEN close: syncRefs runs synchronously before commitBody's first await,
   // so the sockets mint even though this doesn't await.
@@ -131,7 +131,7 @@ export function ReportOverlay() {
 
   function onBody(v: string) { setBody(v); node!.body = v; scheduleAutosave(); }
 
-  // Mints the `=name` ref sockets. Must read node.body, not the `body` state, so any
+  // Mints the template-variable sockets. Must read node.body, not the `body` state, so any
   // close path can call it without a stale closure — mobile has no textarea blur.
   async function commitBody() {
     const current = node!.body;
@@ -153,19 +153,19 @@ export function ReportOverlay() {
 
   const notes = (editor?.getNodes() ?? []).filter((n): n is NoteNode => n instanceof NoteNode);
   const names = nodeDisplayNames(editor?.getNodes() ?? []);
-  // Every Note stays insertable: placement is a `=name` ref token like any value's.
+  // Every Note stays insertable: placement is a bare `{{ name }}` tag like any value's.
   const embeddable = notes;
 
-  // Inserts a `` `=name` `` ref at the cursor (the note's ADDRESSABLE name — the
-  // token grammar is the identifier grammar), mints the ref input, and wires the
-  // note's Document output into it. From there it is an ordinary cable: the embed
-  // is a dependency the graph can see, prune, and recompute.
+  // Inserts a bare `{{ name }}` at the cursor (the note's ADDRESSABLE name — the
+  // identifier grammar), mints the input, and wires the note's Document output into
+  // it. From there it is an ordinary cable: the embed is a dependency the graph can
+  // see, prune, and recompute.
   async function addEmbed(id: string) {
     const note = editor?.getNode(id) as NoteNode | undefined;
     if (!note) return;
     const refName = nodeNameStore.ensure(id, "NoteNode");
     const ta = sourceRef.current;
-    const token = `\`=${refName}\``;
+    const token = `{{ ${refName} }}`;
     if (ta) {
       const start = ta.selectionStart ?? body.length;
       const end = ta.selectionEnd ?? body.length;
@@ -285,7 +285,7 @@ export function ReportOverlay() {
             ref={sourceRef}
             className="report-source"
             value={body}
-            placeholder="Write in markdown. `=name` shows a wired value; a wired Note embeds whole. {{ name }} inserts one as text, {% for row in table %} repeats."
+            placeholder={'Write in markdown. {{ name }} shows a wired value, a chart, a table, or a wired Note whole; {{ name | date:"D MMM" }} formats it, {% for row in table %} repeats, {% if %} gates.'}
             spellCheck={false}
             onChange={(e) => onBody(e.target.value)}
             onBlur={() => void commitBody()}

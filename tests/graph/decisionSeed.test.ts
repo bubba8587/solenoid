@@ -4,7 +4,7 @@ import { decisionMatrix, decisionCriteria, decisionSensitivity, resolveDecisionW
 import { isCubeValue, type FrameValue, type FrameColumn } from "../../src/graph/frame";
 import type { DecisionNormalize } from "../../src/graph/frameVerbs";
 import { NoteNode } from "../../src/graph/nodes/annotation";
-import { extractInlineRefs } from "../../src/graph/noteInlineRefs";
+import { extractKnapVariables } from "../../src/graph/knapTemplate";
 import { joinFrames } from "../../src/graph/frameVerbs";
 
 // Runtime check for the Decision Matrix seed: the notes state concrete outcomes
@@ -57,8 +57,8 @@ describe("decision-matrix seed", () => {
     for (const v of screenCol.values) expect(typeof v).toBe("number");
   });
 
-  it("every =ref in the report body is wired, and the winner INDEX reads row 1 col 1", () => {
-    const refs = extractInlineRefs(byId("report").init!.body as string);
+  it("every template variable in the report body is wired, and the winner INDEX reads row 1 col 1", () => {
+    const refs = extractKnapVariables(byId("report").init!.body as string);
     expect(refs.length).toBeGreaterThan(0);
     const wired = connections.filter((c) => c.target === "report").map((c) => c.targetInput);
     expect([...refs].sort()).toEqual([...wired].sort());

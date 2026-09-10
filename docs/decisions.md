@@ -674,3 +674,14 @@ writer beside the `.base` writer, no query passthrough to the mdbase binary (bun
 HOLD). The pitch leads with Obsidian + TaskNotes; mdbase gets one clause ("respects an mdbase
 schema when the folder has one"). **Reopen if:** mdbase reaches 1.0, or users arrive with
 schemas and ask — a type-file writer is then the `.base` writer's size.
+
+### knapIsTheDocumentSyntax — Knap is the Note/Report body syntax; the `=name` span is internal (author 2026-09-10)
+**What stands:** the custom `` `=name` `` ref syntax is REPLACED by Knap (knap.md, the
+`knap` package): `{{ name }}` is what the author types, and a bare one in a Report embeds
+the wired value by kind — the render rewrites it to the internal `` `=name` `` span, which
+the on-screen, Obsidian-write and export paths resolve exactly as before
+(`embedBareVariables`, node-coverage § Annotation). Anything beyond a bare tag reads the
+plain DATA form. One syntax for the author, one resolution path underneath.
+**Reopen if:** an author-typed ref grammar returns beside Knap (two syntaxes for one thing),
+or the bare-tag rule stops matching the on-canvas rendering (a bare `{{ frame }}` printing
+JSON instead of the grid is the relapse).

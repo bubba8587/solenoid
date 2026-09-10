@@ -345,8 +345,8 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
           ) : templateErrors ? (
             <pre className="solenoid-note__rendered solenoid-note__template-error" onClick={startEdit} onPointerDown={stopDragStart} onMouseDown={stopDragStart}>{templateErrors}</pre>
           ) : renderBody.trim() ? (
-            // Plain markdown — a Note is output-only, so a `` `=name` `` span stays
-            // literal inline code (no ref swap). bodyHtml is already sanitized.
+            // Plain markdown — a Note is output-only: its template reads its own
+            // fields, and no ref span is swapped. bodyHtml is already sanitized.
             <div
               ref={renderedRef}
               className="solenoid-note__rendered sol-md nowheel"

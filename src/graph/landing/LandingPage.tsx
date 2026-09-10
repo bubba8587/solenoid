@@ -255,8 +255,9 @@ export default function LandingPage() {
           <Feature title="Reports and presenter mode" scene={<PresenterScene />}>
             <p>
               A Report is a markdown document that embeds live values: an inline{" "}
-              <code>`=name`</code> renders a scalar, a scrollable table, a chart or a
-              typeset equation, and updates when the graph does. Dock it to the right
+              <code>{"{{ name }}"}</code> renders a scalar, a scrollable table, a chart or a
+              typeset equation, and updates when the graph does. It is a Knap template,
+              so loops, conditions and filters shape the prose. Dock it to the right
               and the canvas stays live beside it.
             </p>
             <p>

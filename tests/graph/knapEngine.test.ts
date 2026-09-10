@@ -29,17 +29,20 @@ function makeEditor() {
 }
 
 describe("Knap through the engine", () => {
-  it("a Report template reads a wired number and a wired Note's rendered body", async () => {
+  it("a Report template reads a wired number as data and embeds a wired Note's rendered document", async () => {
     const { editor, engine } = makeEditor();
     const n = new NumberInputNode({ value: 1234.5 });
     const note = new NoteNode({ body: "---\ntitle: Method\n---\n## {{ title }}" });
-    const report = new ReportNode({ body: "Total {{ n | number_format:2 }}\n{{ note }}" });
+    const report = new ReportNode({ body: "Total {{ n | number_format:2 }} ({{ n }})\n{{ note }} {{ note | upper }}" });
     for (const x of [n, note, report]) await editor.addNode(x);
     await connect(editor, n, "value", report, "n");
     await connect(editor, note, "document", report, "note");
     const out = await engine.fetch(report.id) as { document: DocumentValue };
     expect(isDocumentValue(out.document)).toBe(true);
-    expect(out.document.body).toBe("Total 1,234.50\n---\ntitle: Method\n---\n## Method");
+    // The bare tags are ref spans (resolved by kind downstream); the Note arrived RENDERED.
+    expect(out.document.body).toBe("Total 1,234.50 (`=n`)\n`=note` ---\nTITLE: METHOD\n---\n## METHOD");
+    expect(isDocumentValue(out.document.refs.note)).toBe(true);
+    expect((out.document.refs.note as DocumentValue).body).toBe("---\ntitle: Method\n---\n## Method");
   });
 
   it("a broken template lands as a tagged #SYNTAX! on the document output", async () => {

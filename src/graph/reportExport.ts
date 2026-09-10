@@ -91,16 +91,17 @@ export function reportReferencedNodeIds(
 }
 
 /** Build the self-contained HTML document string; the caller captures the canvas
- *  image and passes it in, keeping this half synchronous and DOM-free. */
+ *  image and renders the template body, passing both in, keeping this half
+ *  synchronous and DOM-free. */
 export function buildReportExportHtml(
   report: ReportNode,
-  opts: { canvasImage: string | null },
+  opts: { canvasImage: string | null; body: string },
 ): string {
   const editor = getEditor();
   const allNodes = editor?.getNodes() ?? [];
   const names = nodeDisplayNames(allNodes);
 
-  const bodyFrozen = freezeInlineRefs(report.id, report.body, report.refKeys(), (k) => report.refValue(k));
+  const bodyFrozen = freezeInlineRefs(report.id, opts.body, report.refKeys(), (k) => report.refValue(k));
 
   // A DOCUMENT-valued ref (a wired Note) is substituted INLINE as an embed block;
   // splitting at the span keeps each surrounding markdown segment valid.
@@ -159,7 +160,7 @@ export function buildReportExportHtml(
 export async function exportReportAsWebpage(report: ReportNode): Promise<void> {
   try {
     const canvasImage = await captureCanvasImage();
-    const html = buildReportExportHtml(report, { canvasImage });
+    const html = buildReportExportHtml(report, { canvasImage, body: await report.renderedBody() });
     const name = `${(report.label?.trim() || "report").replace(/[^\w -]/g, "")}.html`;
     const chosen = await saveHtmlFileDialog(name, html);
     // Desktop: null = canceled. Web: the download always fires (the helper

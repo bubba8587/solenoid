@@ -6,28 +6,33 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
-### SESSION DIGEST (2026-09-10 — Knap template syntax in Note and Report bodies)
+### SESSION DIGEST (2026-09-10 — Knap replaces the `=name` syntax in Note and Report bodies)
 
-- **Note and Report bodies are Knap templates** (knap.md, Obsidian's template language; the
-  `knap` npm package, MIT, dayjs its one dependency). `{{ name }}`, `{% if %}`, `{% for %}`,
-  `{% set %}` and the standard filters render at compute into the `document` output. Spec in
-  `node-coverage.md` § Annotation; mechanics in `knapTemplate.ts` (AST walk for the root names,
-  value flattening, the engine wrapper). Pinned by `knapTemplate.test.ts`, `knapEngine.test.ts`
-  (the real DataflowEngine awaits the async render through both Canvas wrappers), and the
-  Report/Note node suites.
-- **Rulings:** a Report's root template variables mint `trueany` inputs through the SAME
-  `syncRefs` as `=name` refs (one socket per name, refs first); a Note's variables are its OWN
-  frontmatter, no inputs. The `` `=name` `` ref stays a separate, non-template mechanism: rich
-  values (charts, grids, KaTeX) keep it, Knap covers text and data, and `{{ chart }}` reads as
-  null. A date serial reads as ISO text only when the source socket type says date (a `trueany`
-  input has no type of its own; the Report reads the cable's source socket). `data()` is async
-  ONLY when the body carries a tag — a plain note or report never touches the engine.
-- **Preview:** `useKnapRender` renders the live draft against the node's last variables on the
-  Note card, the Import Obsidian card and the Report overlay; a syntax error replaces the preview
-  with `line:column message` lines and lands as `#SYNTAX!` on the document. Knap eats the newline
-  after a block tag (its whitespace rule, not ours).
+- **Knap is THE document syntax** (knap.md, Obsidian's template language; the `knap` npm
+  package, MIT, dayjs its one dependency; decisions knapIsTheDocumentSyntax). `{{ name }}`,
+  `{% if %}`, `{% for %}`, `{% set %}` and the standard filters render at compute into the
+  `document` output. Spec in `node-coverage.md` § Annotation; mechanics in `knapTemplate.ts`
+  (AST walk for the root names, the bare-tag rewrite, value flattening, the engine wrapper).
+  Pinned by `knapTemplate.test.ts`, `knapEngine.test.ts` (the real DataflowEngine awaits the
+  async render through both Canvas wrappers), the Report/Note node suites and the seed tests.
+- **The rule:** a Report's root template variables mint `trueany` inputs (one per name,
+  first-use order). A BARE `{{ name }}` embeds the wired value as the canvas shows it (FC
+  scalar, grid, chart, KaTeX, Note block) and `{{ name | highlight }}` is the tinted text
+  form: both rewrite to the internal `` `=name` `` / `` `=name!` `` span before the render, so
+  `inlineRefDisplay.tsx`, `obsidianMarkdown.ts` and `reportExport.ts` are unchanged. Any
+  other use reads the data form: frames/cubes as rows, a document as its body, a date serial
+  as ISO only when the SOURCE socket type says date, a chart as null. A Note's variables are
+  its own frontmatter (no inputs). `data()` is async only when a tag is left for the engine.
+- **Swept:** the five seeds with Report refs (`=x` → `{{ x }}`, `=x!` → `{{ x | highlight }}`),
+  the Report overlay's Embed-a-Note token, the export (renders the template first), landing
+  and catalog copy, decisionSeed/reportShowcase tests. `noteInlineRefs.ts` stays as the
+  internal grammar (the machine-checked twin of `obsidianMarkdown.ts`'s regex).
+- **Preview:** `useKnapRender` renders the live draft against the node's last variables on
+  the Note card, the Import Obsidian card and the Report overlay; a syntax error replaces the
+  preview with `line:column message` lines and lands as `#SYNTAX!` on the document. Knap eats
+  the newline after a block tag, and 0.4 rejects the `{{-` trim dashes its README lists.
 - The Write to Obsidian NAME field's `{{date}}` / `{{daily}}` tokens are `nameTemplate.ts`, a
-  separate mini-language for file names; the body template is Knap. Unrelated syntaxes.
+  separate mini-language for file names. Unrelated syntaxes.
 
 ### SESSION DIGEST (2026-09-08 — display fixes: collapsed-group dates, complex both-parts, socket peek gating)
 

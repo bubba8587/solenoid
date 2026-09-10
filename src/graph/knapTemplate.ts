@@ -1,10 +1,12 @@
-// Knap (knap.md, Obsidian's template language) inside a document body: `{{ name }}`,
+// Knap (knap.md, Obsidian's template language) IS the document syntax: `{{ name }}`,
 // `{% if %}`, `{% for %}` and the standard filter set, rendered at compute time. A
-// Report's variables are its wired inputs (each root name mints a `trueany` input,
-// like a `` `=name` `` ref); a Note's are its own frontmatter fields. The `` `=name` ``
-// ref span is NOT template syntax: it survives the render as text and resolves later
-// by kind (a chart rasterizes at write time, a frame draws as a grid), so rich values
-// keep the ref path and Knap covers text and data. Graph/DOM-free.
+// Report's variables are its wired inputs (each root name mints a `trueany` input); a
+// Note's are its own frontmatter fields. In a Report a BARE `{{ name }}` embeds the
+// wired value as the canvas shows it (an FC-formatted scalar, a frame grid, a chart,
+// a KaTeX lambda, a Note block): it rewrites to the internal `` `=name` `` ref span
+// (noteInlineRefs.ts) BEFORE the render, and that span resolves by kind afterwards.
+// Any other use of the name — a filter, a loop, a condition, dot access — reads the
+// plain data form (`toTemplateValue`). Graph/DOM-free.
 
 import { createEngine, parse, standardFilters, type ASTNode, type Expression, type TemplateError } from "knap";
 import { type FrameValue, type CubeValue, type CubeCell, type FrameColType, isFrameValue, isCubeValue, frameRowCount } from "./frame";
@@ -92,6 +94,17 @@ export function extractKnapVariables(body: string): string[] {
   return [...first.entries()].sort((a, b) => a[1] - b[1]).map(([k]) => k);
 }
 
+/** `{{ name }}` (optional inner spaces) → `` `=name` ``, and `{{ name | highlight }}`
+ *  → `` `=name!` `` (the tinted text form), for every `name` in `inputs`. Any other
+ *  filter, a path or an expression leaves the tag to Knap, which then prints the
+ *  DATA form. A name that is not an input is a template-local and stays a tag. */
+export function embedBareVariables(body: string, inputs: readonly string[]): string {
+  if (inputs.length === 0 || !body.includes("{{")) return body;
+  const wired = new Set(inputs);
+  return body.replace(/\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*(\|\s*highlight\s*)?\}\}/g, (tag, name: string, hl?: string) =>
+    wired.has(name) ? `\`=${name}${hl ? "!" : ""}\`` : tag);
+}
+
 // ─── Solenoid value → template value ─────────────────────────────────────────
 
 /** A date serial → ISO text, the form Knap's `date` filter parses; a serial with a
@@ -143,7 +156,8 @@ export function cubeToTemplateRows(c: CubeValue): Record<string, unknown>[] {
 
 /** A wired value as the plain data a template reads. `type` is the SOURCE socket's
  *  data type when known: it is the only way to tell a date serial from a number. A
- *  chart, picture or SVG has no text form and reads as null (embed it with a ref). */
+ *  chart, picture or SVG has no data form and reads as null (a bare `{{ name }}`
+ *  embeds it instead). */
 export function toTemplateValue(v: unknown, type?: SocketDataType | null): unknown {
   if (v === undefined || v === null) return null;
   if (isSolError(v)) return v.code;
