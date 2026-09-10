@@ -14,9 +14,12 @@ import { InlineRefBody } from "./inlineRefDisplay";
 import { CloseIcon } from "./CloseIcon";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { useEscapeToClose } from "./useEscapeToClose";
+import { useKnapRender } from "./useKnapRender";
 import { exportReportAsWebpage } from "../reportExport";
 import "./Markdown.css";
 import "./ReportOverlay.css";
+
+const NO_VARS: Record<string, unknown> = {};
 
 /** The Report's editing surface: markdown source + live preview. No WYSIWYG
  *  toolbar — that is the scope line the plan draws. Opened on a Note (plain or
@@ -55,6 +58,10 @@ export function ReportOverlay() {
     const t = setTimeout(() => setPreviewBody(body), 250);
     return () => clearTimeout(t);
   }, [body]);
+  // The Knap render of the draft against the variables the graph last fed the node;
+  // `renderVersion` re-runs it after a commit recomputes them.
+  const [renderVersion, setRenderVersion] = useState(0);
+  const { text: rendered, errors: templateErrors } = useKnapRender(node ? previewBody : "", node?.templateVars ?? NO_VARS, renderVersion);
 
   // Commit THEN close: syncRefs runs synchronously before commitBody's first await,
   // so the sockets mint even though this doesn't await.
@@ -66,9 +73,9 @@ export function ReportOverlay() {
 
   const bodyHtml = useMemo(
     () => DOMPurify.sanitize(
-      marked.parse(previewBody || "", { async: false, gfm: true, breaks: true }) as string,
+      marked.parse(rendered || "", { async: false, gfm: true, breaks: true }) as string,
     ),
-    [previewBody],
+    [rendered],
   );
 
   const sourceRef = useRef<HTMLTextAreaElement>(null);
@@ -141,6 +148,7 @@ export function ReportOverlay() {
     }
     await getView()?.rerenderNode(node!.id);
     await processGraph();
+    setRenderVersion((v) => v + 1);
   }
 
   const notes = (editor?.getNodes() ?? []).filter((n): n is NoteNode => n instanceof NoteNode);
@@ -277,13 +285,15 @@ export function ReportOverlay() {
             ref={sourceRef}
             className="report-source"
             value={body}
-            placeholder="Write in markdown. `=name` shows a wired value; a wired Note embeds whole."
+            placeholder="Write in markdown. `=name` shows a wired value; a wired Note embeds whole. {{ name }} inserts one as text, {% for row in table %} repeats."
             spellCheck={false}
             onChange={(e) => onBody(e.target.value)}
             onBlur={() => void commitBody()}
           />
           <div className="report-preview sol-md">
-            {previewBody.trim() ? (
+            {templateErrors ? (
+              <pre className="report-preview__error">{templateErrors}</pre>
+            ) : previewBody.trim() ? (
               <InlineRefBody
                 nodeId={node.id}
                 bodyHtml={bodyHtml}

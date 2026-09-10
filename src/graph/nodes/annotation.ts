@@ -7,6 +7,8 @@ import {
 import { parseDateToSerial } from "./date";
 import { chartOut, strOut, documentOut } from "./shared";
 import { makeDocument, type DocumentValue } from "../documentValue";
+import { hasKnapSyntax, knapErrorText, renderKnap, toTemplateValue } from "../knapTemplate";
+import { solError, type SolError } from "../errorValue";
 import { isFrameValue, recordsToCube, type FrameValue, type FrameColumn, type FrameColType, type FrameCell, type CubeValue } from "../frame";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
 import type { ImageValue } from "../imageValue";
@@ -119,7 +121,7 @@ function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType): Emitt
 
 export class NoteNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    document: "Carries the note's full text, frontmatter included, for a document sink such as Write to Obsidian.",
+    document: "Carries the note's full text, frontmatter included and the template rendered, for a document sink such as Write to Obsidian.",
   };
 
   body: string;        // markdown — may open with a `---`-fenced YAML frontmatter block
@@ -228,8 +230,22 @@ export class NoteNode extends ClassicPreset.Node {
     return isFrameValue(v) ? shapeOfFrameValue(v) : null;
   }
 
-  data(): Record<string, EmittedValue | DocumentValue> {
-    return { ...this.fieldValues(), document: makeDocument(this.body, {}, undefined, this.id) };
+  /** The frontmatter fields as template data: a Note's Knap variables are its OWN
+   *  fields (dates as ISO text), so `{{ title }}` in the body reads the block above. */
+  templateVariables(): Record<string, unknown> {
+    const vars: Record<string, unknown> = {};
+    for (const [k, v] of this._fieldValues) vars[k] = toTemplateValue(v, this.fieldType(k));
+    return vars;
+  }
+
+  // Async ONLY when the body carries a template tag; a plain note stays synchronous.
+  data(): Record<string, EmittedValue | DocumentValue> | Promise<Record<string, EmittedValue | DocumentValue | SolError>> {
+    const fields = this.fieldValues();
+    if (!hasKnapSyntax(this.body)) return { ...fields, document: makeDocument(this.body, {}, undefined, this.id) };
+    return renderKnap(this.body, this.templateVariables()).then((r) => ({
+      ...fields,
+      document: r.errors.length ? solError("#SYNTAX!", knapErrorText(r.errors)) : makeDocument(r.output, {}, undefined, this.id),
+    }));
   }
 
 /** Use this from the UI: the installErrorGuards wrapper calls `firstInputError`

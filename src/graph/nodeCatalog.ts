@@ -295,8 +295,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
         { type: "cast", label: "Cast", description: "Change a value's data type: number, text, date serial, Boolean `TRUE` or `FALSE`, or complex. Works element-wise on lists. Excel: `TEXT`, `VALUE`.", create: () => new CastNode(), parity: false },
       ]},
       { type: "pair", children: [
-        { type: "note", label: "Note", description: "A free-floating markdown note, any position, any tint. Open the body with a ----fenced YAML block to turn each key into a typed output, a note doubling as a constants source.", create: () => new NoteNode(), parity: false },
-        { type: "report", label: "Report", description: "A standalone markdown document, separate from the graph: prose with inline `=name` refs that render a value or chart formatted in the text, plus Notes embedded as placed objects.", create: () => new ReportNode(), parity: false },
+        { type: "note", label: "Note", description: "A free-floating markdown note, any position, any tint. Open the body with a ----fenced YAML block to turn each key into a typed output, a note doubling as a constants source. The body is a Knap template over those fields: `{{ title }}`, `{% if %}`, `{% for %}` and the standard filters.", create: () => new NoteNode(), parity: false },
+        { type: "report", label: "Report", description: "A standalone markdown document, separate from the graph: prose with inline `=name` refs that render a value or chart formatted in the text, plus Notes embedded as placed objects. Knap template syntax renders at compute: `{{ name }}` inserts a value as text, `{% for row in table %}` repeats over a frame, `{% if %}` gates a section, and filters such as `date`, `table` and `join` format it.", create: () => new ReportNode(), parity: false },
       ]},
       { type: "group", label: "Group", description: "A container: drop it around nodes, or select them and press Ctrl+G. Its header moves them together. Collapse it to a summary.", create: () => new GroupNode(), parity: false },
       // Query ships a PENDING internal snapshot, so every add path must hydrate the

@@ -135,6 +135,7 @@ src/
 | `saveTimeStore.ts` | The save-clock read seam (per-doc autosave + file-save stamps) documentStore injects, since node classes can't import it |
 | `noteFrontmatterSync.ts` | THE one cable-drop for cables stranded by a frontmatter re-sync (Note on-blur commit + Import file-load share it) |
 | `noteInlineRefs.ts` | Note-body `` `=name` `` refs → minted INPUT sockets (Expression's identifier grammar; trailing `!` is display-only) |
+| `knapTemplate.ts` | Knap (knap.md) inside a Note/Report body: `hasKnapSyntax` gates the async render, `extractKnapVariables` walks the AST for the ROOT names a Report mints as inputs, `toTemplateValue` flattens frames/cubes to rows and date serials to ISO text by SOURCE socket type, `renderKnap` wraps the `knap` engine (standard filters). A `` `=name` `` span is text to the template and resolves later by kind |
 | `reportStore.ts` + `reportExport.ts` | Report chrome seam (open/docked state) and the static HTML export (document-valued refs render as embed blocks) |
 
 ### Typing / sockets / units
@@ -335,7 +336,9 @@ One file per family, pure `data()` classes: `scalar`, `list`, `listOps`,
 `display`, `group`, `conduit` (block bundler), `formatController`, `composite`,
 `annotation` (Note — its body's YAML frontmatter becomes typed OUTPUT sockets,
 parsed by `noteFrontmatter.ts`), `report` (Report — plain-markdown sink with
-`` `=name` `` inline embeds; the mirror-image counterpart to Note), `visual`
+`` `=name` `` inline embeds and a Knap template body whose root variables mint
+inputs too; the mirror-image counterpart to Note — both render through
+`knapTemplate.ts`, async only when the body carries a tag), `visual`
 (the figure family incl. Mermaid), `surfaceFit`, `presentation`, `tornado`,
 `quality` (Expect — data-quality checks, frame-cell-aware), `sink` (Write
 CSV/JSON), `obsidian`, `dataFeed`, `history`, `chartOptions`, `cast`,

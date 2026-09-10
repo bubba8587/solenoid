@@ -153,6 +153,9 @@ area. When you coin a new load-bearing term, add it here.
   (`packs.ts`, `pack-architecture.md`)
 - **Note frontmatter** — a `---`-fenced YAML block at the top of a Note that turns keys
   into typed output sockets (a Note as a typed-record source). (`noteFrontmatter.ts`)
+- **Knap template** — Obsidian's template language (knap.md) in a Note or Report body:
+  `{{ name }}`, `{% if %}`, `{% for %}` and filters, rendered at compute; a Report's
+  root variables are inputs, a Note's are its frontmatter. (`knapTemplate.ts`)
 - **Document / library** — the multi-doc model; each doc persists to its OWN
   two-slot localStorage pair plus a light index. (`documentStore.ts`, `persistence.ts`)
 

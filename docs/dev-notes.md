@@ -6,6 +6,29 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-10 — Knap template syntax in Note and Report bodies)
+
+- **Note and Report bodies are Knap templates** (knap.md, Obsidian's template language; the
+  `knap` npm package, MIT, dayjs its one dependency). `{{ name }}`, `{% if %}`, `{% for %}`,
+  `{% set %}` and the standard filters render at compute into the `document` output. Spec in
+  `node-coverage.md` § Annotation; mechanics in `knapTemplate.ts` (AST walk for the root names,
+  value flattening, the engine wrapper). Pinned by `knapTemplate.test.ts`, `knapEngine.test.ts`
+  (the real DataflowEngine awaits the async render through both Canvas wrappers), and the
+  Report/Note node suites.
+- **Rulings:** a Report's root template variables mint `trueany` inputs through the SAME
+  `syncRefs` as `=name` refs (one socket per name, refs first); a Note's variables are its OWN
+  frontmatter, no inputs. The `` `=name` `` ref stays a separate, non-template mechanism: rich
+  values (charts, grids, KaTeX) keep it, Knap covers text and data, and `{{ chart }}` reads as
+  null. A date serial reads as ISO text only when the source socket type says date (a `trueany`
+  input has no type of its own; the Report reads the cable's source socket). `data()` is async
+  ONLY when the body carries a tag — a plain note or report never touches the engine.
+- **Preview:** `useKnapRender` renders the live draft against the node's last variables on the
+  Note card, the Import Obsidian card and the Report overlay; a syntax error replaces the preview
+  with `line:column message` lines and lands as `#SYNTAX!` on the document. Knap eats the newline
+  after a block tag (its whitespace rule, not ours).
+- The Write to Obsidian NAME field's `{{date}}` / `{{daily}}` tokens are `nameTemplate.ts`, a
+  separate mini-language for file names; the body template is Knap. Unrelated syntaxes.
+
 ### SESSION DIGEST (2026-09-08 — display fixes: collapsed-group dates, complex both-parts, socket peek gating)
 
 Three display-layer fixes, each behind its own test:

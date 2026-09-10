@@ -51,7 +51,7 @@ describe("WriteObsidianNode.run() guards", () => {
 });
 
 describe("ImportObsidianNode", () => {
-  it("is a Note (inherits the frontmatter-socket + document machinery)", () => {
+  it("is a Note (inherits the frontmatter-socket + document machinery)", async () => {
     const n = new ImportObsidianNode({ body: "---\ntitle: Weekly\ncount: 5\n---\n# Body" });
     expect(n).toBeInstanceOf(NoteNode); // reads as a note everywhere (embeds, export, minimap)
     // frontmatter → typed OUTPUT sockets
@@ -62,7 +62,7 @@ describe("ImportObsidianNode", () => {
     // body renders below the stripped frontmatter
     expect(n.renderBody.trim()).toBe("# Body");
     // data() emits each field + the whole note as a document
-    const out = n.data();
+    const out = await n.data();
     expect(out.title).toBe("Weekly");
     expect(out.count).toBe(5);
     expect(isDocumentValue(out.document)).toBe(true);
