@@ -215,15 +215,16 @@ export interface KnapPage { name: string; body: string }
 /** The most pages one Report renders per compute; past it the rest are dropped. */
 export const MAX_PAGES = 500;
 
-/** One page per row: the body rendered with `row` (the row's `{column: value}`) and
- *  `index` (1-based) beside the host's variables, named by `nameTemplate` rendered the
- *  same way (blank → the index). The first failing page's errors stop the batch. */
+/** The mail merge: one page per record, the body rendered with `record` (the row's
+ *  `{column: value}`) and `index` (1-based) beside the host's variables, named by
+ *  `nameTemplate` rendered the same way (blank → the index). The first failing page's
+ *  errors stop the batch. */
 export async function renderKnapPages(
-  body: string, variables: Record<string, unknown>, rows: Record<string, unknown>[], nameTemplate: string,
+  body: string, variables: Record<string, unknown>, records: Record<string, unknown>[], nameTemplate: string,
 ): Promise<{ pages: KnapPage[]; errors: TemplateError[] }> {
   const pages: KnapPage[] = [];
-  for (let i = 0; i < Math.min(rows.length, MAX_PAGES); i++) {
-    const vars = { ...variables, row: rows[i], index: i + 1 };
+  for (let i = 0; i < Math.min(records.length, MAX_PAGES); i++) {
+    const vars = { ...variables, record: records[i], index: i + 1 };
     const r = await renderKnap(body, vars);
     if (r.errors.length) return { pages, errors: r.errors };
     const n = await renderKnap(nameTemplate, vars);

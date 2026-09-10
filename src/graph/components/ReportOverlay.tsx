@@ -62,13 +62,13 @@ export function ReportOverlay() {
   // `renderVersion` re-runs it after a commit recomputes them.
   const [renderVersion, setRenderVersion] = useState(0);
   // With a template wired the source pane is the wired note's text, read-only;
-  // with rows wired the preview is the batch's pages.
+  // with records wired the preview is the merge's pages.
   const wiredTemplate = node?.templateDoc ?? null;
   const previewSource = node ? node.templateSource(wiredTemplate ? node.activeSource() : previewBody) : "";
   const batch = useMemo<KnapBatch | null>(
-    () => node?.rows ? { rows: node.rows, pageName: node.pageName } : null,
+    () => node?.records ? { records: node.records, pageName: node.pageName } : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [node, node?.rows, node?.pageName, renderVersion],
+    [node, node?.records, node?.pageName, renderVersion],
   );
   const { text: rendered, errors: templateErrors } = useKnapRender(previewSource, node?.templateVars ?? NO_VARS, renderVersion, batch);
   const [pageName, setPageName] = useState(node?.pageName ?? "");
@@ -228,11 +228,11 @@ export function ReportOverlay() {
           <span className="report-title">{node.label?.trim() || "Report"}</span>
           <div className="report-header-actions">
             {batch && (
-              <label className="report-page-name" title="Knap for each page's note name, with row and index. Blank names pages by index.">
+              <label className="report-page-name" title="Knap for each page's note name, with record and index. Blank names pages by index.">
                 <span>Page name</span>
                 <input
                   value={pageName}
-                  placeholder="{{ row.Name }}"
+                  placeholder="{{ record.Name }}"
                   spellCheck={false}
                   onChange={(e) => setPageName(e.target.value)}
                   onBlur={() => void commitPageName()}
@@ -322,7 +322,7 @@ export function ReportOverlay() {
             ref={sourceRef}
             className="report-source"
             value={body}
-            placeholder={'Write in markdown. {{ name }} shows a wired value, a chart, a table, or a wired Note whole; {{ name | date:"D MMM" }} formats it, {% for row in table %} repeats, {% if %} gates.'}
+            placeholder={'Write in markdown. {{ name }} shows a wired value, a chart, a table, or a wired Note whole; {{ name | date:"D MMM" }} formats it, {% for row in table %} repeats, {% if %} gates. Records makes it a mail merge: one page per record.'}
             spellCheck={false}
             onChange={(e) => onBody(e.target.value)}
             onBlur={() => void commitBody()}

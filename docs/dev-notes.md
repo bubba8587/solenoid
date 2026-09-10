@@ -33,11 +33,12 @@ specific item.
   the newline after a block tag, and 0.4 rejects the `{{-` trim dashes its README lists.
 - The Write to Obsidian NAME field's `{{date}}` / `{{daily}}` tokens are `nameTemplate.ts`, a
   separate mini-language for file names. Unrelated syntaxes.
-- **Template + Rows on the Report (09-10b):** a wired Note is the text (its raw `source` rides
+- **Template + Records on the Report (09-10b):** a wired Note is the text (its raw `source` rides
   the document; tags naming no field stay literal on a Note so a template note reads as one),
   its variables the sockets (`sideVars` persisted, `data()` reconciles via `dropInputCables`),
-  its frontmatter the defaults; a wired frame/cube renders one page per row (`row`, `index`,
-  the `pageName` Knap names each), and Write to Obsidian writes one note per page. Spec in
+  its frontmatter the defaults; Records is the MAIL MERGE (the author's keyword; "Rows" said
+  nothing): a wired frame/cube renders one page per row (`record`, `index`, the `pageName`
+  Knap names each), and Write to Obsidian writes one note per page. Spec in
   node-coverage § Annotation; `mail-merge.json` is the worked seed; the report seeds gained a
   loop (showcase, decision memo) and an `{% if %}` verdict (garden). Pinned by the Report and
   knapTemplate suites; `seeds.test.ts` treats a Knap tag line as a block, not prose.

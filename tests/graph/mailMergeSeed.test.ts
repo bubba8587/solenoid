@@ -26,7 +26,7 @@ function build() {
 }
 
 describe("Mail Merge seed", () => {
-  it("renders one page per traveler from the template note, defaults from its frontmatter", async () => {
+  it("merges one page per traveler from the template note, defaults from its frontmatter", async () => {
     const { editor, engine } = build();
     const byId = new Map<string, ClassicPreset.Node>();
     for (const sn of (seed.nodes as SavedNode[])) {

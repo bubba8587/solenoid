@@ -118,8 +118,8 @@ describe("renderKnap keepUnknown (a Note's mode)", () => {
 });
 
 describe("renderKnapPages", () => {
-  it("one page per row with row and index; the name template names it, blank → the index", async () => {
-    const r = await renderKnapPages("{{ index }}: {{ row.n }} of {{ total }}", { total: 2 }, [{ n: "a" }, { n: "b" }], "{{ row.n }}-page");
+  it("one page per record with record and index; the name template names it, blank → the index", async () => {
+    const r = await renderKnapPages("{{ index }}: {{ record.n }} of {{ total }}", { total: 2 }, [{ n: "a" }, { n: "b" }], "{{ record.n }}-page");
     expect(r.errors).toEqual([]);
     expect(r.pages).toEqual([{ name: "a-page", body: "1: a of 2" }, { name: "b-page", body: "2: b of 2" }]);
     expect((await renderKnapPages("x", {}, [{}, {}], "")).pages.map((p) => p.name)).toEqual(["1", "2"]);

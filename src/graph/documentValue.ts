@@ -6,7 +6,7 @@
  *  or a whole DocumentValue — a wired Note embeds through the same refs). */
 export type DocumentRefs = Record<string, unknown>;
 
-/** One rendered page of a batch document (a Report with `rows` wired): the note
+/** One rendered page of a mail merge (a Report with `records` wired): the note
  *  name the sink writes it under (no extension) and its body. */
 export interface DocumentPage {
   name: string;
@@ -29,8 +29,8 @@ export interface DocumentValue {
   /** The UN-rendered Knap template the body came from (a Note's raw body), so a
    *  Report wired to it can render the template against its own variables. */
   source?: string;
-  /** One page per row when the producing Report had `rows` wired; a sink writes
-   *  one note per page. Absent on a single document. */
+  /** One page per record when the producing Report had `records` wired (a mail
+   *  merge); a sink writes one note per page. Absent on a single document. */
   pages?: DocumentPage[];
 }
 

@@ -998,8 +998,8 @@ materialised into a real frame first.
 **Holds:** a frame whose cells may hold any value, including another frame or
 cube. The top of the data lattice.
 **Dot:** violet flat hexagon built from three rhombi.
-**Ports:** 4 inputs, 5 outputs. Report's Rows is one: a frame arrives AS a frame
-there (`rawInputs`), one page per row.
+**Ports:** 4 inputs, 5 outputs. Report's Records (the mail merge) is one: a frame
+arrives AS a frame there (`rawInputs`), one page per row.
 
 **Accepts from:** all 28 variants other than `lambda`, `chart`, `document`.
 

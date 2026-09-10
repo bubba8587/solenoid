@@ -88,8 +88,8 @@ export function ReportComponent({ data, emit }: NodeProps<ReportNodeType>) {
         )}
       </div>
       <div className="solenoid-report__refs">
-        {/* The two FIXED inputs: a template Note and the rows of a batch. */}
-        {(["template", "rows"] as const).map((key) => {
+        {/* The two FIXED inputs: a template Note and the records of a mail merge. */}
+        {(["template", "records"] as const).map((key) => {
           const input = data.inputs[key];
           if (!input) return null;
           return (
@@ -98,7 +98,7 @@ export function ReportComponent({ data, emit }: NodeProps<ReportNodeType>) {
               nodeId={data.id}
               emit={emit}
               refKey={key}
-              value={key === "template" ? data.templateDoc : data.rowsValue}
+              value={key === "template" ? data.templateDoc : data.recordsValue}
               socket={input.socket}
               rowClassName="solenoid-report__ref-row solenoid-report__ref-row--fixed"
               keyClassName="solenoid-report__ref-key"

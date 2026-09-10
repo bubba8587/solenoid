@@ -18,23 +18,24 @@ import { SolenoidSocket, type SocketDataType } from "../sockets";
 //
 // Two FIXED inputs widen it: `template` takes a wired Note (a vault template,
 // imported) as the body instead — its variables mint the sockets, its own
-// frontmatter fills any left unwired; `rows` takes a frame or cube and renders one
-// PAGE per row (`row`, `index`), which Write to Obsidian writes as one note each.
+// frontmatter fills any left unwired; `records` takes a frame or cube, the MAIL MERGE
+// list, and renders one PAGE per row (`record`, `index`), which Write to Obsidian
+// writes as one note each.
 
-const FIXED = new Set(["template", "rows"]);
-/** The batch's own names once `rows` is wired: bound per page, never a socket. */
-const BATCH_LOCALS = new Set(["row", "index"]);
+const FIXED = new Set(["template", "records"]);
+/** The merge's own names once `records` is wired: bound per page, never a socket. */
+const BATCH_LOCALS = new Set(["record", "index"]);
 
 const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((k, i) => k === b[i]);
 
 export class ReportNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    document: "Carries the report's markdown, the template rendered, with every embedded value resolved to its wired value. One page per row when Rows is wired.",
+    document: "Carries the report's markdown, the template rendered, with every embedded value resolved to its wired value. One page per record when Records is wired.",
     template: "A wired Note becomes the report's template: its tags mint the inputs here, and its own frontmatter fills any input left unwired. The report's own text is set aside while it is wired.",
-    rows: "A frame or cube: the template renders once per row, with `row` and `index` beside the other inputs, and the page name names each note.",
+    records: "The mail-merge list, a frame or cube: the template renders once per row, with `record` and `index` beside the other inputs, and the page name names each note.",
   };
   /** Frames arrive AS frames (typed date columns) rather than type-stripped cubes. */
-  rawInputs: ReadonlySet<string> = new Set(["rows"]);
+  rawInputs: ReadonlySet<string> = new Set(["records"]);
 
   body: string;         // markdown — blank by default
   color: string;        // palette SLOT id — tints the anchor card, like Note
@@ -44,7 +45,7 @@ export class ReportNode extends ClassicPreset.Node {
   /** The input keys minted from a WIRED template — persisted so a saved cable finds
    *  its socket at load, before the first compute knows the template. */
   sideVars: string[];
-  /** Knap for each page's note name when `rows` is wired (`{{ row.Name }}`); blank
+  /** Knap for each page's note name when `records` is wired (`{{ record.Name }}`); blank
    *  names pages by index. */
   pageName: string;
 
@@ -52,8 +53,8 @@ export class ReportNode extends ClassicPreset.Node {
   private _refValues = new Map<string, unknown>();
   private _computed = false;
   private _templateDoc: DocumentValue | null = null;
-  private _rowsValue: unknown = null;
-  private _rows: Record<string, unknown>[] | null = null;
+  private _recordsValue: unknown = null;
+  private _records: Record<string, unknown>[] | null = null;
   private _pages: DocumentPage[] | null = null;
   /** The data form of every input as of the last compute (runtime only) — the
    *  overlay's live preview and the webpage export render with it. */
@@ -72,7 +73,7 @@ export class ReportNode extends ClassicPreset.Node {
     this.sideVars = Array.isArray(init?.sideVars) ? init.sideVars.filter((v) => typeof v === "string") : [];
     this.pageName = init?.pageName ?? "";
     this.addInput("template", documentIn("Template"));
-    this.addInput("rows", cubeIn("Rows"));
+    this.addInput("records", cubeIn("Records"));
     // The whole content as a DocumentValue, for a sink like Write-to-Obsidian.
     this.addOutput("document", documentOut("Document"));
     this.syncRefs();
@@ -84,11 +85,11 @@ export class ReportNode extends ClassicPreset.Node {
   refValue(key: string): unknown { return this._refValues.get(key); }
   /** The wired template document, when one is (null otherwise). */
   get templateDoc(): DocumentValue | null { return this._templateDoc; }
-  /** The wired rows value as it arrived (a frame/cube), for the card's row. */
-  get rowsValue(): unknown { return this._rowsValue; }
-  /** The rows as template data, when `rows` is wired (the overlay previews pages with them). */
-  get rows(): Record<string, unknown>[] | null { return this._rows; }
-  /** The pages of the last compute, when `rows` was wired. */
+  /** The wired records value as it arrived (a frame/cube), for the card's row. */
+  get recordsValue(): unknown { return this._recordsValue; }
+  /** The records as template data, when wired (the overlay previews pages with them). */
+  get records(): Record<string, unknown>[] | null { return this._records; }
+  /** The pages of the last compute, when `records` was wired. */
   get pages(): DocumentPage[] | null { return this._pages; }
 
   /** The template text in force: the wired Note's raw source, else the body. */
@@ -120,9 +121,9 @@ export class ReportNode extends ClassicPreset.Node {
   }
 
   /** The root names a source reads from the HOST: the fixed inputs are their own
-   *  sockets, and with rows wired `row`/`index` are the page's. */
+   *  sockets, and with records wired `record`/`index` are the page's. */
   private hostVariables(source: string): string[] {
-    return extractKnapVariables(source).filter((k) => !FIXED.has(k) && !(this._rowsValue != null && BATCH_LOCALS.has(k)));
+    return extractKnapVariables(source).filter((k) => !FIXED.has(k) && !(this._recordsValue != null && BATCH_LOCALS.has(k)));
   }
 
   /** data()-driven reconcile (a wired template's variables changed): the sockets
@@ -147,7 +148,7 @@ export class ReportNode extends ClassicPreset.Node {
   templateSource(body: string = this.activeSource()): string {
     const wired = [...this._refKeys];
     if (this._templateDoc) wired.push("template");
-    if (this._rowsValue != null) wired.push("rows");
+    if (this._recordsValue != null) wired.push("records");
     return embedBareVariables(body, wired);
   }
 
@@ -179,8 +180,8 @@ export class ReportNode extends ClassicPreset.Node {
    *  needs the text outside the engine (the webpage export). Errors render as "". */
   async renderedBody(): Promise<string> {
     const src = this.templateSource();
-    if (this._rows) {
-      const r = await renderKnapPages(src, this.templateVars, this._rows, this.pageName);
+    if (this._records) {
+      const r = await renderKnapPages(src, this.templateVars, this._records, this.pageName);
       return r.pages.map((p) => p.body).join(PAGE_SEPARATOR);
     }
     return (await renderKnap(src, this.templateVars)).output;
@@ -188,18 +189,18 @@ export class ReportNode extends ClassicPreset.Node {
 
   // `inputs` is optional so a bare `new ReportNode().data()` can't throw with no
   // engine; serialization is the sink's job at write time. Async ONLY when the
-  // source still carries a tag after the bare-variable rewrite, or rows are wired —
+  // source still carries a tag after the bare-variable rewrite, or records are wired —
   // a report of prose and embeds stays off the engine's async path.
   data(inputs?: Record<string, unknown[]>): { document: DocumentValue | SolError } | Promise<{ document: DocumentValue | SolError }> {
     this._computed = true;
     const tpl = inputs?.template?.[0];
     this._templateDoc = isDocumentValue(tpl) ? tpl : null;
-    this._rowsValue = inputs?.rows?.[0] ?? null;
+    this._recordsValue = inputs?.records?.[0] ?? null;
     const source = this.activeSource();
 
     // The sockets follow the active source; a wired template's keys persist. The
-    // names `template` and `rows` ARE the fixed inputs (a bare `{{ rows }}` embeds
-    // the wired frame; a loop over `rows` reads it), so they never mint a socket.
+    // names `template` and `records` ARE the fixed inputs (a bare `{{ records }}` embeds
+    // the wired frame; a loop over `records` reads it), so they never mint a socket.
     const desired = this.hostVariables(source);
     if (!sameList(desired, this._refKeys)) this.reconcileInputs(desired);
     this.sideVars = this._templateDoc ? [...desired] : [];
@@ -211,28 +212,28 @@ export class ReportNode extends ClassicPreset.Node {
     this._refValues = new Map(desired.map((k) => [k, inputs?.[k] !== undefined ? (inputs[k][0] ?? null) : (defaults[k] ?? null)]));
     const refs: Record<string, unknown> = Object.fromEntries(this._refValues);
     if (this._templateDoc) refs.template = this._templateDoc;
-    if (this._rowsValue != null) refs.rows = this._rowsValue;
+    if (this._recordsValue != null) refs.records = this._recordsValue;
 
     const src = this.templateSource(source);
-    const rowsIn = this._rowsValue;
-    if (rowsIn == null && !hasKnapSyntax(src)) {
-      this._rows = null; this._pages = null;
+    const recordsIn = this._recordsValue;
+    if (recordsIn == null && !hasKnapSyntax(src)) {
+      this._records = null; this._pages = null;
       return { document: makeDocument(src, refs, undefined, this.id) };
     }
     return (async () => {
       this.templateVars = await this.templateVariables(refs, fallbackTypes);
       if (this._templateDoc) this.templateVars.template = source;
-      if (rowsIn != null) {
-        const raw = isFrameRef(rowsIn) ? await readFrame(rowsIn) : rowsIn;
+      if (recordsIn != null) {
+        const raw = isFrameRef(recordsIn) ? await readFrame(recordsIn) : recordsIn;
         const rows = toTemplateValue(raw);
-        this._rows = Array.isArray(rows) ? rows.filter((r): r is Record<string, unknown> => typeof r === "object" && r !== null && !Array.isArray(r)) : [];
-        this.templateVars.rows = this._rows;
-        const r = await renderKnapPages(src, this.templateVars, this._rows, this.pageName);
+        this._records = Array.isArray(rows) ? rows.filter((r): r is Record<string, unknown> => typeof r === "object" && r !== null && !Array.isArray(r)) : [];
+        this.templateVars.records = this._records;
+        const r = await renderKnapPages(src, this.templateVars, this._records, this.pageName);
         if (r.errors.length) { this._pages = null; return { document: solError("#SYNTAX!", knapErrorText(r.errors)) }; }
         this._pages = r.pages;
         return { document: makeDocument(r.pages.map((p) => p.body).join(PAGE_SEPARATOR), refs, undefined, this.id, { pages: r.pages }) };
       }
-      this._rows = null; this._pages = null;
+      this._records = null; this._pages = null;
       const r = await renderKnap(src, this.templateVars);
       if (r.errors.length) return { document: solError("#SYNTAX!", knapErrorText(r.errors)) };
       return { document: makeDocument(r.output, refs, undefined, this.id) };

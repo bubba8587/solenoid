@@ -162,8 +162,9 @@ area. When you coin a new load-bearing term, add it here.
 - **Template note** — a Note whose body has tags naming no field of its own; they stay
   literal on the card, and wired into a Report's Template input they become that
   report's inputs. (`nodes/report.ts`)
-- **Page** — one rendering of a Report per row of its Rows input, named by the page
-  name; a batch document's pages write as one note each. (`documentValue.ts`)
+- **Mail merge / Records** — a Report's Records input: one rendering (a **page**) per
+  row, `record` and `index` in scope, named by the page name; the pages write as one
+  note each. (`nodes/report.ts`, `documentValue.ts`)
 - **Document / library** — the multi-doc model; each doc persists to its OWN
   two-slot localStorage pair plus a light index. (`documentStore.ts`, `persistence.ts`)
 

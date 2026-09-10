@@ -129,15 +129,15 @@ describe("ReportNode — a wired template Note", () => {
   });
 });
 
-describe("ReportNode — rows: one page per row", () => {
+describe("ReportNode — records: a mail merge, one page per record", () => {
   const people = { __frame: true, columns: [
     { name: "Name", type: "string", values: ["Ada", "Bob"] },
     { name: "Owed", type: "number", values: [10, 0] },
   ] };
 
-  it("renders the template once per row with `row` and `index`, names each page, joins the body", async () => {
-    const n = new ReportNode({ body: "# {{ row.Name }}\n{% if row.Owed > 0 %}Pay {{ row.Owed }} to {{ treasurer }}{% else %}Settled{% endif %} ({{ index }}/{{ rows | length }})", pageName: "{{ row.Name | upper }}" });
-    const out = await n.data({ rows: [people], treasurer: ["Cy"] });
+  it("renders the template once per record with `record` and `index`, names each page, joins the body", async () => {
+    const n = new ReportNode({ body: "# {{ record.Name }}\n{% if record.Owed > 0 %}Pay {{ record.Owed }} to {{ treasurer }}{% else %}Settled{% endif %} ({{ index }}/{{ records | length }})", pageName: "{{ record.Name | upper }}" });
+    const out = await n.data({ records: [people], treasurer: ["Cy"] });
     const doc = out.document as DocumentValue;
     expect(doc.pages).toEqual([
       { name: "ADA", body: "# Ada\nPay 10 to `=treasurer` (1/2)" },
@@ -145,18 +145,18 @@ describe("ReportNode — rows: one page per row", () => {
     ]);
     expect(doc.body).toBe("# Ada\nPay 10 to `=treasurer` (1/2)\n\n---\n\n# Bob\nSettled (2/2)");
     expect(n.pages).toEqual(doc.pages);
-    expect(n.rows).toEqual([{ Name: "Ada", Owed: 10 }, { Name: "Bob", Owed: 0 }]);
+    expect(n.records).toEqual([{ Name: "Ada", Owed: 10 }, { Name: "Bob", Owed: 0 }]);
   });
 
-  it("a blank page name numbers the pages; a bare `{{ rows }}` embeds the whole frame", async () => {
-    const n = new ReportNode({ body: "{{ row.Name }} of {{ rows }}" });
-    const doc = (await n.data({ rows: [people] })).document as DocumentValue;
+  it("a blank page name numbers the pages; a bare `{{ records }}` embeds the whole frame", async () => {
+    const n = new ReportNode({ body: "{{ record.Name }} of {{ records }}" });
+    const doc = (await n.data({ records: [people] })).document as DocumentValue;
     expect(doc.pages?.map((p) => p.name)).toEqual(["1", "2"]);
-    expect(doc.pages?.[0].body).toBe("Ada of `=rows`");
-    expect(doc.refs.rows).toBe(people);
+    expect(doc.pages?.[0].body).toBe("Ada of `=records`");
+    expect(doc.refs.records).toBe(people);
   });
 
-  it("no rows wired → no pages, a single document", async () => {
+  it("no records wired → no pages, a single document", async () => {
     const n = new ReportNode({ body: "plain" });
     const doc = (n.data({}) as { document: DocumentValue }).document;
     expect(doc.pages).toBeUndefined();

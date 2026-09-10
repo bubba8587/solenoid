@@ -337,8 +337,8 @@ One file per family, pure `data()` classes: `scalar`, `list`, `listOps`,
 `annotation` (Note — its body's YAML frontmatter becomes typed OUTPUT sockets,
 parsed by `noteFrontmatter.ts`), `report` (Report — plain-markdown sink with
 Knap template body whose root variables mint inputs and whose bare `{{ name }}`
-embeds by kind, with a fixed Template input (a wired Note as the text) and Rows
-input (one page per row); the mirror-image counterpart to Note — both render
+embeds by kind, with a fixed Template input (a wired Note as the text) and Records
+input (a mail merge, one page per row); the mirror-image counterpart to Note — both render
 through `knapTemplate.ts`, async only when a tag is left for the engine), `visual`
 (the figure family incl. Mermaid), `surfaceFit`, `presentation`, `tornado`,
 `quality` (Expect — data-quality checks, frame-cell-aware), `sink` (Write

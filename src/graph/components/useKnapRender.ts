@@ -10,7 +10,7 @@ export interface KnapPreview {
 }
 
 export interface KnapBatch {
-  rows: Record<string, unknown>[];
+  records: Record<string, unknown>[];
   pageName: string;
 }
 
@@ -25,7 +25,7 @@ export function useKnapRender(body: string, variables: Record<string, unknown>, 
     if (!live) return;
     let current = true;
     const run = batch
-      ? renderKnapPages(body, variables, batch.rows, batch.pageName).then((r) => ({
+      ? renderKnapPages(body, variables, batch.records, batch.pageName).then((r) => ({
           text: r.pages.map((p) => `*${p.name}.md*\n\n${p.body}`).join("\n\n---\n\n"),
           errors: knapErrorText(r.errors),
         }))
