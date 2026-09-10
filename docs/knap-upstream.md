@@ -73,6 +73,13 @@ onto the engine's async path. A `renderSync` that throws when a filter returns a
 would let hosts stay synchronous when all filters are. **Ours:** the render is skipped
 entirely when nothing is left for the engine after the bare-tag rewrite.
 
+### 10. A raw block, or an escape for a literal `{{`
+There is no `{% raw %}` ("Unknown tag") and no backslash escape; the only way to print a
+literal `{{ x }}` is `{{ "{" }}{ x }}`. Any prose ABOUT templates (a note documenting
+Knap, an Obsidian Templates-plugin `{{date}}` a Report quotes) needs one. **Ours:** a
+Note holds bare tags naming no field literal (`keepUnknown`), which covers the common case
+of a template note; a Report has no escape.
+
 ## Not bugs (Knap's rules, kept)
 The newline after a block tag is eaten (Liquid behavior; `seeds.test.ts` treats a tag line
 as a block); an unknown variable renders empty (the Note's `keepUnknown` holds bare tags
