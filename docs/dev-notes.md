@@ -42,6 +42,21 @@ specific item.
   node-coverage § Annotation; `mail-merge.json` is the worked seed; the report seeds gained a
   loop (showcase, decision memo) and an `{% if %}` verdict (garden). Pinned by the Report and
   knapTemplate suites; `seeds.test.ts` treats a Knap tag line as a block, not prose.
+- **The follow-ups landed the same day (09-10c):** Write File takes a document (Markdown;
+  a merge as one `.md` per page into a folder; a frame under MD as a pipe table); the Report
+  overlay tints tags (`knapHighlight.ts`), lists the filters with examples, and steps a merge
+  page by page. Nothing left parked from the Knap work.
+- **Seeds exercise Knap's shaping filters** (author 2026-09-10): `sort:("col","desc")`, `slice`,
+  `where:("col", v)`, `map:x => x.col`, `unique`, `sum:"col"`, `list:numbered`, `join` — the
+  showcase's top-three months and ledger sum, the decision memo's sliced podium, the mail
+  merge's paid-most-first roll and who-still-owes line. Gotchas found probing knap 0.4:
+  `first`/`last` after a `sort` come back empty (use `slice:0,1` in a loop or `nth:1`), `set`
+  can't dot into an object it was given, `sort:"col,desc"` is silently ascending (the tuple
+  form works), `{{-` trim dashes are rejected, and a filter in an `{% if %}` comparison
+  (`x | length > 0`) is a parse error (`set` the value first). A BARE filter word
+  (`list:numbered`) is a variable lookup to Knap, so the Report mints a socket for it; an
+  unwired input is therefore ABSENT to the template, never null, so the word still falls
+  through — quote it (`list:"numbered"`) to keep the card clean.
 
 ### SESSION DIGEST (2026-09-08 — display fixes: collapsed-group dates, complex both-parts, socket peek gating)
 

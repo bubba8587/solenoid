@@ -1053,8 +1053,9 @@ never emits a SolError out a `chart` socket.
 
 **Holds:** a whole Note's or Report's renderable content.
 **Dot:** blue square with two left-aligned text lines.
-**Ports:** 2 inputs, 3 outputs. Note, Report and Import from Obsidian produce one;
-Write to Obsidian consumes one, and Report's Template takes a Note as its text.
+**Ports:** 3 inputs, 3 outputs. Note, Report and Import from Obsidian produce one;
+Write to Obsidian and Write File consume one, and Report's Template takes a Note as
+its text.
 
 **Accepts from:** `document`, `trueany`.
 **Blocked at the input:** all 29 variants other than `document`, `trueany`.

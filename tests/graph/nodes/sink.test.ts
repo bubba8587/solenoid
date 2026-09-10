@@ -10,15 +10,18 @@ import { solError } from "../../../src/graph/errorValue";
 // down, alongside the serializers and the "enabled never persists" safety
 // default (see nodes/sink.ts file header for why).
 
-const { writeTextFileMock, renameMock } = vi.hoisted(() => ({
+const { writeTextFileMock, renameMock, mkdirMock } = vi.hoisted(() => ({
   writeTextFileMock: vi.fn(async (_path: string, _content: string) => {}),
   renameMock: vi.fn(async (_from: string, _to: string) => {}),
+  mkdirMock: vi.fn(async (_path: string, _opts?: unknown) => {}),
 }));
 vi.mock("@tauri-apps/plugin-fs", () => ({
   readTextFile: vi.fn(),
   readDir: vi.fn(),
   writeTextFile: writeTextFileMock,
   rename: renameMock,
+  mkdir: mkdirMock,
+  exists: vi.fn(async () => false),
 }));
 vi.mock("@tauri-apps/plugin-dialog", () => ({ open: vi.fn(), save: vi.fn() }));
 vi.mock("@tauri-apps/api/path", () => ({ join: vi.fn(async (a: string, b: string) => `${a}/${b}`) }));
@@ -28,6 +31,7 @@ beforeEach(() => {
   (globalThis as unknown as Record<string, unknown>).__TAURI_INTERNALS__ = {};
   writeTextFileMock.mockClear();
   renameMock.mockClear();
+  mkdirMock.mockClear();
 });
 afterEach(() => {
   delete (globalThis as unknown as Record<string, unknown>).__TAURI_INTERNALS__;
@@ -137,5 +141,46 @@ describe("WriteFileNode.run() — format: json", () => {
     expect(n.status).toBe("ok");
     const [, content] = writeTextFileMock.mock.calls[0];
     expect(JSON.parse(content)[0]).toEqual({ Name: "Ada", Score: 12, Pass: true });
+  });
+});
+
+describe("WriteFileNode — Markdown: a document, a mail merge, a frame as a table", () => {
+  const doc = (body: string, pages?: { name: string; body: string }[]) =>
+    ({ __document: true as const, body, refs: { n: 42 }, ...(pages ? { pages } : {}) });
+
+  it("a wired document writes as Markdown with its refs resolved, whatever the format toggle says", async () => {
+    const n = new WriteFileNode({ path: "C:/out/note.md", format: "csv" });
+    n.enabled = true;
+    n.data({ in: [sample], document: [doc("Total `=n` here")] });
+    await n.run();
+    expect(n.status).toBe("ok");
+    expect(writeTextFileMock).toHaveBeenCalledTimes(1);
+    expect(writeTextFileMock.mock.calls[0][1]).toBe("Total 42 here");
+  });
+
+  it("a merge writes one .md per page into the path as a folder", async () => {
+    const n = new WriteFileNode({ path: "C:/out/letters", format: "md" });
+    n.enabled = true;
+    n.data({ document: [doc("", [{ name: "Ada", body: "Hi Ada `=n`" }, { name: "Bob/Sr", body: "Hi Bob" }])] });
+    await n.run();
+    expect(n.status).toBe("ok");
+    expect(n.statusMessage).toBe("2 files written");
+    expect(mkdirMock).toHaveBeenCalledTimes(1);
+    expect(writeTextFileMock.mock.calls.map((c) => c[0])).toEqual(["C:/out/letters/Ada.md.tmp", "C:/out/letters/Sr.md.tmp"]); // page names sanitize to a file name
+    expect(writeTextFileMock.mock.calls[0][1]).toBe("Hi Ada 42");
+  });
+
+  it("a frame under the MD format writes a pipe table", async () => {
+    const n = new WriteFileNode({ path: "C:/out/data.md", format: "md" });
+    n.enabled = true;
+    n.data({ in: [sample] });
+    await n.run();
+    expect(n.status).toBe("ok");
+    expect(writeTextFileMock.mock.calls[0][1]).toMatch(/^\| Name \| Score \| Pass \|\n\| --- \| --- \| --- \|\n/);
+  });
+
+  it("the md format persists and an unknown format falls back to csv", () => {
+    expect(new WriteFileNode(extractInit(new WriteFileNode({ format: "md" })) as { format: "md" }).format).toBe("md");
+    expect(new WriteFileNode({ format: "xml" as unknown as "csv" }).format).toBe("csv");
   });
 });

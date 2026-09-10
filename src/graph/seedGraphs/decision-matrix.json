@@ -146,7 +146,7 @@
       "y": 1255,
       "init": {
         "label": "Decision memo",
-        "body": "# Laptop pick\n\nWith the weights on the canvas, the matrix picks {{ winner | highlight }}.\n\n{{ podium }}\n\nBehind the bars, each criterion column is a signed contribution; the contributions sum to the Score, and Price counts against:\n\n{{ ranking }}\n\nThe podium in words, looped from the same ranking:\n\n{% for r in ranking %}{% if r.Rank <= 3 %}{{ r.Rank }}. **{{ r.Laptop }}** at {{ r.Score | number_format:2 }}\n{% endif %}{% endfor %}\nEvery figure here is wired. Change a weight or a score upstream and the memo follows."
+        "body": "# Laptop pick\n\nWith the weights on the canvas, the matrix picks {{ winner | highlight }}.\n\n{{ podium }}\n\nBehind the bars, each criterion column is a signed contribution; the contributions sum to the Score, and Price counts against:\n\n{{ ranking }}\n\nThe podium in words: the ranking sorted by rank and sliced to three:\n\n{% for r in ranking | sort:\"Rank\" | slice:0,3 %}{{ r.Rank }}. **{{ r.Laptop }}** at {{ r.Score | number_format:2 }}\n{% endfor %}\nEvery figure here is wired. Change a weight or a score upstream and the memo follows."
       }
     },
     {

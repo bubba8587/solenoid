@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { hasKnapSyntax, knapErrorText, renderKnap, renderKnapPages } from "../knapTemplate";
+import { hasKnapSyntax, knapErrorText, renderKnap, renderKnapPages, type KnapPage } from "../knapTemplate";
 
 export interface KnapPreview {
   /** The rendered body — the body itself when it carries no template tag. A batch
@@ -7,6 +7,8 @@ export interface KnapPreview {
   text: string;
   /** `line:column message` lines, "" when the template rendered. */
   errors: string;
+  /** The merge's pages, when a batch rendered (the overlay steps through them). */
+  pages: KnapPage[] | null;
 }
 
 export interface KnapBatch {
@@ -20,7 +22,7 @@ export interface KnapBatch {
  *  empty. `version` re-renders on demand (the graph recomputed the variables). */
 export function useKnapRender(body: string, variables: Record<string, unknown>, version = 0, batch: KnapBatch | null = null): KnapPreview {
   const live = batch !== null || hasKnapSyntax(body);
-  const [state, setState] = useState<KnapPreview>({ text: live ? "" : body, errors: "" });
+  const [state, setState] = useState<KnapPreview>({ text: live ? "" : body, errors: "", pages: null });
   useEffect(() => {
     if (!live) return;
     let current = true;
@@ -28,10 +30,11 @@ export function useKnapRender(body: string, variables: Record<string, unknown>, 
       ? renderKnapPages(body, variables, batch.records, batch.pageName).then((r) => ({
           text: r.pages.map((p) => `*${p.name}.md*\n\n${p.body}`).join("\n\n---\n\n"),
           errors: knapErrorText(r.errors),
+          pages: r.pages,
         }))
-      : renderKnap(body, variables).then((r) => ({ text: r.output, errors: knapErrorText(r.errors) }));
+      : renderKnap(body, variables).then((r) => ({ text: r.output, errors: knapErrorText(r.errors), pages: null }));
     void run.then((next) => { if (current) setState(next); });
     return () => { current = false; };
   }, [body, variables, version, live, batch]);
-  return live ? state : { text: body, errors: "" };
+  return live ? state : { text: body, errors: "", pages: null };
 }

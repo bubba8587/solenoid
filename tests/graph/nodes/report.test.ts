@@ -163,3 +163,14 @@ describe("ReportNode — records: a mail merge, one page per record", () => {
     expect(n.pages).toBeNull();
   });
 });
+
+describe("ReportNode — an unwired input is absent to the template, not null", () => {
+  it("a bare filter word (`list:numbered`) mints a socket but still reads as the word; `??` sees it absent", async () => {
+    const n = new ReportNode({ body: "{{ items | list:numbered }} {{ missing ?? \"none\" }}" });
+    expect(n.refKeys()).toEqual(["items", "numbered", "missing"]);
+    const out = await n.data({ items: [["a", "b"]] });
+    expect(body(out)).toBe("1. a\n2. b none");
+    expect(n.templateVars).toEqual({ items: ["a", "b"] });
+    expect(n.refValue("numbered")).toBeNull(); // the card still shows the empty socket
+  });
+});

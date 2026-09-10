@@ -15,6 +15,13 @@ import { CloseIcon } from "./CloseIcon";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { useEscapeToClose } from "./useEscapeToClose";
 import { useKnapRender, type KnapBatch } from "./useKnapRender";
+import { highlightKnap } from "../knapHighlight";
+import { standardFilterMetadata } from "knap";
+
+/** The filter cheat-sheet's rows: every standard filter with its example call. */
+const FILTERS = Object.entries(standardFilterMetadata)
+  .map(([name, meta]) => ({ name, example: meta.example ?? name }))
+  .sort((a, b) => a.name.localeCompare(b.name));
 import { exportReportAsWebpage } from "../reportExport";
 import "./Markdown.css";
 import "./ReportOverlay.css";
@@ -70,7 +77,19 @@ export function ReportOverlay() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [node, node?.records, node?.pageName, renderVersion],
   );
-  const { text: rendered, errors: templateErrors } = useKnapRender(previewSource, node?.templateVars ?? NO_VARS, renderVersion, batch);
+  const { text: rendered, errors: templateErrors, pages } = useKnapRender(previewSource, node?.templateVars ?? NO_VARS, renderVersion, batch);
+  // A merge previews ONE page at a time, stepped from the preview's header.
+  const [pageIndex, setPageIndex] = useState(0);
+  const pageCount = pages?.length ?? 0;
+  const shownPage = pageCount ? Math.min(pageIndex, pageCount - 1) : 0;
+  const previewText = pages ? (pages[shownPage]?.body ?? "") : rendered;
+  // The filters cheat-sheet: click a row to insert `| filter` at the cursor.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filterQuery, setFilterQuery] = useState("");
+  const filtersBtnRef = useRef<HTMLButtonElement>(null);
+  const filtersPopRef = useRef<HTMLDivElement>(null);
+  useDismissOnOutside(filtersOpen, () => setFiltersOpen(false), [filtersBtnRef, filtersPopRef]);
+  const highlightRef = useRef<HTMLPreElement>(null);
   const [pageName, setPageName] = useState(node?.pageName ?? "");
   useEffect(() => { setPageName(node?.pageName ?? ""); }, [node, nodeId]);
   async function commitPageName() {
@@ -91,9 +110,9 @@ export function ReportOverlay() {
 
   const bodyHtml = useMemo(
     () => DOMPurify.sanitize(
-      marked.parse(rendered || "", { async: false, gfm: true, breaks: true }) as string,
+      marked.parse(previewText || "", { async: false, gfm: true, breaks: true }) as string,
     ),
-    [rendered],
+    [previewText],
   );
 
   const sourceRef = useRef<HTMLTextAreaElement>(null);
@@ -148,6 +167,21 @@ export function ReportOverlay() {
   if (!node) return null;
 
   function onBody(v: string) { setBody(v); node!.body = v; scheduleAutosave(); }
+
+  /** Insert text at the source pane's cursor (or the end) and keep the caret after it. */
+  function insertAtCursor(text: string) {
+    const ta = sourceRef.current;
+    const start = ta?.selectionStart ?? body.length;
+    const end = ta?.selectionEnd ?? body.length;
+    const next = body.slice(0, start) + text + body.slice(end);
+    onBody(next);
+    if (ta) requestAnimationFrame(() => { const pos = start + text.length; ta.focus(); ta.setSelectionRange(pos, pos); });
+  }
+
+  function insertFilter(example: string) {
+    insertAtCursor(` | ${example}`);
+    setFiltersOpen(false);
+  }
 
   // Mints the template-variable sockets. Must read node.body, not the `body` state, so any
   // close path can call it without a stale closure — mobile has no textarea blur.
@@ -260,6 +294,36 @@ export function ReportOverlay() {
               </div>
             )}
             <button
+              ref={filtersBtnRef}
+              type="button"
+              className="report-embed-btn"
+              disabled={!!wiredTemplate}
+              onClick={() => setFiltersOpen((o) => !o)}
+              title={wiredTemplate ? "The wired template is the text" : "Knap filters. Insert one at the cursor"}
+            >
+              Filters
+            </button>
+            {filtersOpen && (
+              <div ref={filtersPopRef} className="report-embed-picker report-filters">
+                <input
+                  className="report-filters__search"
+                  value={filterQuery}
+                  placeholder="Filter"
+                  spellCheck={false}
+                  autoFocus
+                  onChange={(e) => setFilterQuery(e.target.value)}
+                />
+                <div className="report-filters__list">
+                  {FILTERS.filter((f) => f.name.includes(filterQuery.trim().toLowerCase())).map((f) => (
+                    <button key={f.name} type="button" className="report-embed-opt report-filters__opt" onClick={() => insertFilter(f.example)}>
+                      <span className="report-filters__name">{f.name}</span>
+                      <code>{f.example}</code>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <button
               type="button"
               className="report-embed-btn"
               disabled={exporting}
@@ -318,20 +382,32 @@ export function ReportOverlay() {
               <pre>{node.activeSource()}</pre>
             </div>
           ) : (
+          <div className="report-source">
+          <pre ref={highlightRef} className="report-source__hl" aria-hidden="true" dangerouslySetInnerHTML={{ __html: highlightKnap(body) }} />
           <textarea
             ref={sourceRef}
-            className="report-source"
+            className="report-source__ta"
             value={body}
             placeholder={'Write in markdown. {{ name }} shows a wired value, a chart, a table, or a wired Note whole; {{ name | date:"D MMM" }} formats it, {% for row in table %} repeats, {% if %} gates. Records makes it a mail merge: one page per record.'}
             spellCheck={false}
             onChange={(e) => onBody(e.target.value)}
             onBlur={() => void commitBody()}
+            onScroll={(e) => { const h = highlightRef.current; if (h) { h.scrollTop = e.currentTarget.scrollTop; h.scrollLeft = e.currentTarget.scrollLeft; } }}
           />
+          </div>
           )}
           <div className="report-preview sol-md">
+            {pages && pageCount > 0 && (
+              <div className="report-pages">
+                <button type="button" className="report-pages__step" disabled={shownPage === 0} onClick={() => setPageIndex(shownPage - 1)} aria-label="Previous page">‹</button>
+                <span className="report-pages__name" title={`${pages[shownPage].name}.md`}>{pages[shownPage].name}.md</span>
+                <span className="report-pages__count">{shownPage + 1} / {pageCount}</span>
+                <button type="button" className="report-pages__step" disabled={shownPage >= pageCount - 1} onClick={() => setPageIndex(shownPage + 1)} aria-label="Next page">›</button>
+              </div>
+            )}
             {templateErrors ? (
               <pre className="report-preview__error">{templateErrors}</pre>
-            ) : previewBody.trim() ? (
+            ) : (pages ? pageCount > 0 : previewBody.trim()) ? (
               <InlineRefBody
                 nodeId={node.id}
                 bodyHtml={bodyHtml}

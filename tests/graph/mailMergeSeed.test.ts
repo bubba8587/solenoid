@@ -62,6 +62,9 @@ describe("Mail Merge seed", () => {
     expect(pages[0].body).toContain("You paid more than your share; `=treasurer` will send the difference back.");
     expect(pages[2].body).toContain("Please send **60.00** less what you paid to `=treasurer`.");
     expect(pages[3].body).toContain("*Letter 4 of 4, generated from the ledger.*");
+    // Knap's shaping filters over the records: sorted roll, filtered stragglers.
+    expect(pages[0].body).toContain("Paid so far, most first: Ada, Dee, Bob, Cy.");
+    expect(pages[0].body).toContain("Still to chip in: Cy.");
     expect(pages[0].body.startsWith("---\nsubject: Trip settle-up\ntreasurer: Ada\n---\n")).toBe(true);
     // The sink sees the batch.
     const write = byId.get("write") as unknown as { cachedDoc: DocumentValue | null };

@@ -166,11 +166,15 @@ export class ReportNode extends ClassicPreset.Node {
     return out;
   }
 
-  /** The wired values as template data; a lazy frame reads in full first. */
-  private async templateVariables(refs: Record<string, unknown>, fallbackTypes: Map<string, SocketDataType | undefined>): Promise<Record<string, unknown>> {
+  /** The wired values as template data; a lazy frame reads in full first. An input
+   *  that is neither wired nor defaulted is ABSENT, not null: Knap reads a bare filter
+   *  argument (`list:numbered`) as a variable and falls back to the word only when the
+   *  name is undefined, and `{{ x ?? "none" }}` needs the same. */
+  private async templateVariables(refs: Record<string, unknown>, present: ReadonlySet<string>, fallbackTypes: Map<string, SocketDataType | undefined>): Promise<Record<string, unknown>> {
     const types = this.sourceTypes();
     const vars: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(refs)) {
+      if (!present.has(k)) continue;
       vars[k] = toTemplateValue(isFrameRef(v) ? await readFrame(v) : v, types.get(k) ?? fallbackTypes.get(k));
     }
     return vars;
@@ -211,8 +215,9 @@ export class ReportNode extends ClassicPreset.Node {
     const fallbackTypes = new Map<string, SocketDataType | undefined>(Object.keys(defaults).map((k) => [k, tplNote!.fieldType(k)]));
     this._refValues = new Map(desired.map((k) => [k, inputs?.[k] !== undefined ? (inputs[k][0] ?? null) : (defaults[k] ?? null)]));
     const refs: Record<string, unknown> = Object.fromEntries(this._refValues);
-    if (this._templateDoc) refs.template = this._templateDoc;
-    if (this._recordsValue != null) refs.records = this._recordsValue;
+    const present = new Set(desired.filter((k) => inputs?.[k] !== undefined || k in defaults));
+    if (this._templateDoc) { refs.template = this._templateDoc; present.add("template"); }
+    if (this._recordsValue != null) { refs.records = this._recordsValue; present.add("records"); }
 
     const src = this.templateSource(source);
     const recordsIn = this._recordsValue;
@@ -221,7 +226,7 @@ export class ReportNode extends ClassicPreset.Node {
       return { document: makeDocument(src, refs, undefined, this.id) };
     }
     return (async () => {
-      this.templateVars = await this.templateVariables(refs, fallbackTypes);
+      this.templateVars = await this.templateVariables(refs, present, fallbackTypes);
       if (this._templateDoc) this.templateVars.template = source;
       if (recordsIn != null) {
         const raw = isFrameRef(recordsIn) ? await readFrame(recordsIn) : recordsIn;
