@@ -452,7 +452,7 @@ html.sol-report-docked .solenoid-cmdpalette {
   margin: 0;
   white-space: pre-wrap;
   font: inherit;
-  color: var(--text-muted);
+  color: var(--text);
 }
 .report-source__hint {
   font-family: var(--font-sans);

@@ -379,7 +379,7 @@ export function ReportOverlay() {
           {wiredTemplate ? (
             <div className="report-source report-source--wired">
               <div className="report-source__hint">Template from the wired Note. Edit it there.</div>
-              <pre>{node.activeSource()}</pre>
+              <pre className="fx-tokens" dangerouslySetInnerHTML={{ __html: highlightKnap(node.activeSource()) }} />
             </div>
           ) : (
           <div className="report-source">
