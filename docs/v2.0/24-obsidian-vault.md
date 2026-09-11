@@ -325,7 +325,7 @@ stats (Range, Stddev, Earliest/Latest, Checked/Unchecked) — `../backlog.md`, n
 | Get Column / Decision Matrix / H6 (exist) | — | table input → `cubeIn` | unchanged (list / ranking frame / the cube + 4 columns) | — | same test file |
 | Write Properties | sink · Connections | `cube` (frame widens) | `plan` frame | vault, keys, addMissing, stamp, writeBase | `frontmatterPatch.ts` · `frontmatterPatch.test.ts` (untouched bytes identical; cube → vault → cube equal) |
 | Write to Obsidian (exists) | sink | `document`, `path` (str) | — | + mode, subfolder | `managedBlock.ts` · `obsidianWriteModes.test.ts` |
-| TaskNotes | connection · Connections | `from`, `to` (Calendar only) | Tasks `cube` · Calendar `frame` · Stats scalars | provider, refreshMinutes | `taskNotesApi.ts` · `taskNotesApi.test.ts` (fixture per endpoint) |
+| TaskNotes | connection · Connections | `from`, `to` (Calendar only) | Tasks `cube` · Calendar `frame` · Stats `{ Status \| Count }` frame | provider, refreshMinutes | `taskNotesApi.ts` · `taskNotesApi.test.ts` (fixture per endpoint) |
 | Write Tasks | sink · Connections | `cube` (frame widens) | `plan` frame | mode (create / update), keys, stamp | shares `taskNotesApi.ts` |
 | (app) midnight rollover | — | — | — | — | `volatileDates.ts` + one timer → `requestRecalc()` |
 | (CLI) `run-graph --vault --tasknotes --run` | — | — | — | — | `run-graph.test.ts`: a vault-fixture case, a `--run` case on a temp copy |

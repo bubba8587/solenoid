@@ -18,7 +18,7 @@ import { type Shape } from "../frameShape";
 
 // TaskNotes (Obsidian plugin) over its local HTTP API — the Obsidian bundle's item F.
 // One connection node, a provider select: Tasks → a cube, Calendar → a frame between two
-// dates, Stats → scalars. The WebSource sync-background fetch pattern, so it rides the
+// dates, Stats → a { Status | Count } frame. The WebSource sync-background fetch pattern, so it rides the
 // C2 network gate; the provider switch reshapes the sockets (the op-card pattern).
 
 const INPUTS: Record<TaskNotesProvider, string[]> = { tasks: [], calendar: ["from", "to"], stats: [] };
