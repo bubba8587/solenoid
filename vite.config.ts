@@ -183,6 +183,13 @@ export default defineConfig(async () => ({
   // defaults to the Oxc minifier, which has no keepNames equivalent, so pin
   // the esbuild minifier explicitly and keep its keepNames option.
   esbuild: { keepNames: true },
+  resolve: {
+    alias: {
+      "@solenoid/schedule-engine": path.resolve("packages/schedule-engine/src/index.ts"),
+      "@solenoid/gantt-layout": path.resolve("packages/gantt-layout/src/index.ts"),
+      "@solenoid/gantt-react": path.resolve("packages/gantt-react/src/index.ts"),
+    },
+  },
 
   build: {
     minify: "esbuild",

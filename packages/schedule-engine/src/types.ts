@@ -1,0 +1,129 @@
+// The engine's model. Names are keys. Every date is an Excel serial whole day; every
+// duration and lag is a count of working days on the project calendar. No Date objects
+// anywhere in this package (§ 6.5 of the plan: integer day arithmetic removes the DST bug
+// class every surveyed library carries).
+
+export type LinkType = "FS" | "SS" | "FF" | "SF";
+
+export interface PlanDependency {
+  /** The predecessor's name. */
+  task: string;
+  type: LinkType;
+  /** Working days; negative = lead. */
+  lag: number;
+}
+
+export interface PlanTask {
+  name: string;
+  /** Working days; 0 = milestone. */
+  duration: number;
+  predecessors: PlanDependency[];
+  /** A floor: the task starts no earlier than this (SNET). */
+  start?: number | null;
+  /** A ceiling: caps the late finish (FNLT); negative float rather than a move. */
+  finish?: number | null;
+  /** Caps late dates and flags; never moves. */
+  deadline?: number | null;
+  /** Pins start and finish (start + duration when finish is blank), ignores predecessors. */
+  manual?: boolean;
+  /** 0..100. */
+  complete?: number;
+  /** The section / project label. */
+  group?: string | null;
+  /** Children (the WBS); a parent's own duration/predecessors are ignored — it rolls up. */
+  children?: PlanTask[];
+  /** The source row's position in the flattened order, set by the caller for error messages. */
+  row?: number;
+}
+
+export interface CalendarSpec {
+  /** Skip weekends + holidays when true; every day counts when false. */
+  workingDays: boolean;
+  /** Excel WORKDAY.INTL weekend code (1 = Sat+Sun … 7 = Fri+Sat, 11..17 = one day). */
+  weekendCode?: number;
+  holidays?: readonly (number | null)[];
+}
+
+export interface ScheduleInput {
+  tasks: PlanTask[];
+  /** Project start serial. */
+  start: number;
+  calendar: CalendarSpec;
+  /** When set, Complete drives remaining duration from this day. */
+  statusDate?: number | null;
+  /** Total-float threshold at or below which a task is critical (default 0). */
+  criticalSlack?: number;
+}
+
+export interface ScheduledTask {
+  name: string;
+  level: number;
+  summary: boolean;
+  milestone: boolean;
+  duration: number;
+  start: number;
+  /** Inclusive. */
+  finish: number;
+  earlyStart: number;
+  earlyFinish: number;
+  lateStart: number;
+  lateFinish: number;
+  /** Total float in working days (may be negative under a ceiling / deadline). */
+  float: number;
+  freeFloat: number;
+  critical: boolean;
+  /** The predecessor that set the start, else null. */
+  driving: string | null;
+  /** Finish past the Deadline. */
+  late: boolean;
+  /** A typed Start held this task. */
+  floored: boolean;
+  manual: boolean;
+  complete: number;
+  deadline: number | null;
+  group: string | null;
+  /** "1.2.3" from the nesting. */
+  wbs: string;
+  predecessors: PlanDependency[];
+}
+
+export interface ScheduleLink {
+  from: string;
+  to: string;
+  type: LinkType;
+  lag: number;
+  /** This link set the successor's early start. */
+  driving: boolean;
+  critical: boolean;
+  /** The successor's date breaks the link (a floor or manual pin overrode it). */
+  violated: boolean;
+}
+
+export interface Diagnostic {
+  /** Plain-named check, e.g. "No predecessor", "Negative float", "Held by a typed start". */
+  check: string;
+  task: string;
+  detail: string;
+}
+
+export interface ScheduleOutput {
+  /** Depth-first over the WBS, the input order within a level. */
+  tasks: ScheduledTask[];
+  links: ScheduleLink[];
+  projectStart: number;
+  projectFinish: number;
+  diagnostics: Diagnostic[];
+  /** Non-working spans [from, to] inclusive across [projectStart, projectFinish]. */
+  nonWorking: Array<[number, number]>;
+  weekend: number[];
+  holidays: number[];
+}
+
+/** A whole-graph failure (a cycle, an unknown name, a duplicate): nothing has a defined
+ *  start, so the engine throws one error naming a member. */
+export class ScheduleError extends Error {
+  constructor(message: string, public readonly task?: string) {
+    super(message);
+    this.name = "ScheduleError";
+  }
+}

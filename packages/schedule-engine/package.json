@@ -1,0 +1,10 @@
+{
+  "name": "@solenoid/schedule-engine",
+  "version": "0.1.0",
+  "description": "Headless project scheduling: critical-path passes over a name-keyed task graph with working calendars, typed dependencies, floors, ceilings, deadlines and diagnostics. Integer serial-day arithmetic, no Date.",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "sideEffects": false
+}
