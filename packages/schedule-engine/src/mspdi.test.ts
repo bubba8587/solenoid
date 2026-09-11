@@ -27,7 +27,7 @@ describe("MSPDI read", () => {
     expect(plan.title).toBe("Kitchen remodel");
     expect(iso(plan.start)).toBe("2026-01-05");
     expect(plan.hoursPerDay).toBe(8);
-    expect(plan.calendar).toEqual({ workingDays: true, weekendCode: 1, holidays: [isoToSerial("2026-01-19")] });
+    expect(plan.calendar).toEqual({ workingDays: true, weekendCode: 1, holidays: [isoToSerial("2026-01-19")], intervals: [[480, 720], [780, 1020]] });
     expect(plan.tasks.map((t) => t.name)).toEqual(["Demolition", "Rough-in", "Drywall", "Paint", "Cabinets", "Countertops", "Appliances", "Final inspection"]);
     expect(plan.tasks[1].children?.map((t) => t.name)).toEqual(["Plumbing rough-in", "Electrical rough-in"]);
     expect(plan.tasks[2].predecessors).toEqual([{ task: "Rough-in", type: "FS", lag: 0 }]);
@@ -39,12 +39,12 @@ describe("MSPDI read", () => {
     expect(plan.golden.find((g) => g.name === "Paint")?.totalSlack).toBe(2);
   });
 
-  it("every fixture's stored dates match the engine, except the named divergences", () => {
+  it.each(["days", "minutes"] as const)("every fixture's stored dates match the engine in %s mode, except the named divergences", (precision) => {
     const files = readdirSync(DIR).filter((f) => f.endsWith(".mspdi.xml"));
     expect(files.length).toBeGreaterThan(0);
     for (const f of files) {
       const plan = readMspdi(readFileSync(join(DIR, f), "utf8"));
-      const out = schedule({ tasks: plan.tasks, start: plan.start, calendar: plan.calendar });
+      const out = schedule({ tasks: plan.tasks, start: plan.start, calendar: { ...plan.calendar, precision } });
       const skip = divergences[f] ?? {};
       for (const g of plan.golden) {
         const t = out.tasks.find((x) => x.name === g.name);
@@ -54,7 +54,7 @@ describe("MSPDI read", () => {
           expect(ours, `${f}: ${g.name}.${field}`).toEqual(theirs);
         };
         check("start", iso(t!.start), iso(g.start));
-        check("finish", iso(t!.finish), iso(g.finish));
+        check("finish", iso(t!.finish - (precision === "minutes" ? 1e-9 : 0)), iso(g.finish));
         check("totalSlack", t!.float, g.totalSlack);
         check("critical", t!.critical, g.critical);
       }

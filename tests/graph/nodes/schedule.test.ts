@@ -41,6 +41,17 @@ describe("ScheduleNode", () => {
     expect(new ScheduleNode({ mode: "bogus" as never }).mode).toBe("working");
   });
 
+  it("Minutes precision: an FS successor starts the same afternoon; the field round-trips", () => {
+    const n = new ScheduleNode({ precision: "minutes" });
+    const half = cubeFromColumns([
+      { name: "Task", cells: ["A", "B"], type: "string" }, { name: "Duration", cells: [0.5, 0.5], type: "number" }, { name: "Predecessors", cells: [[], ["A"]] },
+    ]);
+    const out = n.data({ tasks: [half], start: [MON] });
+    expect(formatDateSerial(out.finish as number, "YYYY-MM-DD HH:mm")).toBe("2026-01-05 17:00");
+    expect(extractInit(n as never).precision).toBe("minutes");
+    expect(new ScheduleNode({ precision: "bogus" as never }).precision).toBe("days");
+  });
+
   it("a verb error comes out every socket as the one #VALUE! and is cached", () => {
     const n = new ScheduleNode();
     const bad = cubeFromColumns([{ name: "Task", cells: ["A"], type: "string" }, { name: "Duration", cells: [1], type: "number" }, { name: "Predecessors", cells: [["A"]] }]);

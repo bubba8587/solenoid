@@ -63,6 +63,7 @@ function readCalendar(root: XmlNode, unsupported: string[]): CalendarSpec {
   if (!cal) return { workingDays: true };
   const off: number[] = [];
   const holidays: number[] = [];
+  let intervals: Array<[number, number]> | undefined;
   const wd = child(cal, "WeekDays");
   for (const day of wd ? children(wd, "WeekDay") : []) {
     const type = num(text(day, "DayType"));
@@ -74,7 +75,11 @@ function readCalendar(root: XmlNode, unsupported: string[]): CalendarSpec {
       if (working === false && from != null && to != null) for (let s = from; s <= to; s++) holidays.push(s);
     }
     const times = child(day, "WorkingTimes");
-    if (times && children(times, "WorkingTime").length > 2) unsupported.push("intra-day working times beyond two intervals");
+    if (times && working !== false && !intervals) {
+      const iv = children(times, "WorkingTime").map((w) => [clockMinutes(text(w, "FromTime")), clockMinutes(text(w, "ToTime"))] as [number | null, number | null])
+        .filter((x): x is [number, number] => x[0] != null && x[1] != null && x[1] > x[0]);
+      if (iv.length) intervals = iv;
+    }
   }
   const ex = child(cal, "Exceptions");
   for (const e of ex ? children(ex, "Exception") : []) {
@@ -85,7 +90,13 @@ function readCalendar(root: XmlNode, unsupported: string[]): CalendarSpec {
     for (let s = from; s <= to; s++) holidays.push(s);
   }
   const code = weekendCodeFor(off, unsupported);
-  return { workingDays: true, weekendCode: code, holidays };
+  return { workingDays: true, weekendCode: code, holidays, ...(intervals ? { intervals } : {}) };
+}
+
+/** `08:00:00` → minutes from midnight. */
+function clockMinutes(s: string | undefined): number | null {
+  const m = s && /^(\d{1,2}):(\d{2})/.exec(s.trim());
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 }
 
 /** The WORKDAY.INTL code for a set of off days; an unrepresentable set falls back to

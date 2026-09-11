@@ -67,10 +67,10 @@ function flatten(tasks: PlanTask[]): FlatTask[] {
     const kids = t.children ?? [];
     const ft: FlatTask = {
       index, name, level, parent, children: [], summary: kids.length > 0, wbs,
-      duration: Math.ceil(dur),
+      duration: dur,
       start: t.start ?? null, finish: t.finish ?? null, deadline: t.deadline ?? null,
       manual: t.manual === true, complete, group: t.group == null || t.group === "" ? null : String(t.group),
-      predecessors: (t.predecessors ?? []).map((p) => ({ task: String(p.task ?? "").trim(), type: LINK_TYPES.includes(p.type) ? p.type : "FS", lag: Number.isFinite(p.lag) ? Math.round(p.lag) : 0 })),
+      predecessors: (t.predecessors ?? []).map((p) => ({ task: String(p.task ?? "").trim(), type: LINK_TYPES.includes(p.type) ? p.type : "FS", lag: Number.isFinite(p.lag) ? p.lag : 0 })),
       row,
     };
     out.push(ft);

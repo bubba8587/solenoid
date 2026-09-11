@@ -13,6 +13,12 @@ import type { Shape } from "../frameShape";
 // Predecessors cell is then ONE name).
 
 export type ScheduleMode = "working" | "calendar";
+export type SchedulePrecision = "days" | "minutes";
+
+export const SCHEDULE_PRECISION_OPTIONS: ReadonlyArray<{ value: SchedulePrecision; label: string; title: string }> = [
+  { value: "days",    label: "Days",    title: "Whole working days: a task that follows another starts the next working day" },
+  { value: "minutes", label: "Minutes", title: "Working hours inside each day: a task that follows another can start the same afternoon, and durations may be fractions of a day" },
+];
 
 export const SCHEDULE_MODE_OPTIONS: ReadonlyArray<{ value: ScheduleMode; label: string; title: string }> = [
   { value: "working",  label: "Working days",  title: "Durations count the working week, skipping the Holidays list" },
@@ -32,7 +38,7 @@ export class ScheduleNode extends ClassicPreset.Node {
     holidays: "Dates to skip alongside the weekend. Only read in Working days mode.",
     weekend_code: "Excel's WORKDAY.INTL codes: 1 = Sat+Sun, 2 = Sun+Mon, … 7 = Fri+Sat; 11–17 = a single day off.",
     status: "The day progress is measured on. With it set, the unfinished part of a started task is scheduled after this day. Unwired, Complete only fills the bars.",
-    hours: "Hours in a working day, for a Duration column in hours.",
+    hours: "Hours in a working day: converts a Duration column in hours, and in Minutes mode is the length of the working day, which starts at 08:00.",
     cube: "The rows in their original order with Start, Finish, Float, Critical, Free Float, the early and late dates, Driving and Late appended. Float is how many days a task can slip without moving the finish, Critical marks the tasks whose float is 0, and Driving names the predecessor that set the start.",
     finish: "The last finish.",
     diagnostics: "One row per finding, under plain names: tasks with no predecessor or successor, negative float, a typed start that held, leads and lags, long tasks, work that should have started.",
@@ -41,6 +47,7 @@ export class ScheduleNode extends ClassicPreset.Node {
 
   label: string;
   mode: ScheduleMode;
+  precision: SchedulePrecision;
   literals: Record<string, number> = { weekend_code: 1, hours: 8 };
   stringLiterals: Record<string, string> = {}; // holidays: typeable datelist CSV
   cachedResult: CubeValue | SolError | null = null;
@@ -56,10 +63,11 @@ export class ScheduleNode extends ClassicPreset.Node {
     return { columns: [{ name: "Check", type: "string" }, { name: "Task", type: "string" }, { name: "Detail", type: "string" }] };
   }
 
-  constructor(init?: { label?: string; mode?: ScheduleMode }) {
+  constructor(init?: { label?: string; mode?: ScheduleMode; precision?: SchedulePrecision }) {
     super("Schedule");
     this.label = init?.label ?? "Schedule";
     this.mode = init?.mode === "calendar" ? "calendar" : "working";
+    this.precision = init?.precision === "minutes" ? "minutes" : "days";
     this.addInput("tasks", cubeIn("Tasks"));
     this.addInput("start", dateIn("Start"));
     this.addInput("holidays", dateListIn("Holidays"));
@@ -91,6 +99,7 @@ export class ScheduleNode extends ClassicPreset.Node {
       const r = scheduleTasks(tasks, {
         start, workingDays: this.mode === "working", weekendCode, holidays: inputs.holidays?.[0],
         statusDate: statusDate != null && Number.isFinite(statusDate) ? statusDate : null, hoursPerDay,
+        precision: this.precision,
       });
       this.cachedResult = r.cube; this.cachedFinish = r.projectFinish; this.cachedGantt = r.gantt; this.cachedDiagnostics = r.diagnostics; this.cachedOutput = r.output;
       return { cube: r.cube, finish: r.projectFinish, diagnostics: r.diagnostics, gantt: r.gantt };

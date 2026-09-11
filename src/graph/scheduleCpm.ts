@@ -10,7 +10,7 @@ import { formatDateSerial, parseDate } from "./nodes/dateSerial";
 import { cubeFromColumns, isCubeValue, isFrameValue, frameToCube, type CubeValue, type CubeCell, type CubeColumn, type FrameValue } from "./frame";
 import { isUnitCell } from "./unitValue";
 import {
-  schedule, mermaidGantt, ScheduleError, predecessorText, LINK_TYPES,
+  schedule, mermaidGantt, ScheduleError, predecessorText, LINK_TYPES, intervalsForHours,
   type PlanTask, type PlanDependency, type LinkType, type ScheduleOutput, type ScheduledTask,
 } from "@solenoid/schedule-engine";
 
@@ -25,8 +25,11 @@ export interface ScheduleOptions {
   holidays?: readonly (number | null)[];
   /** When set, Complete drives the remaining work from this day. */
   statusDate?: number | null;
-  /** Converts an hour-united Duration column into days (default 8). */
+  /** Converts an hour-united Duration column into days (default 8); in Minutes mode also
+   *  the length of the working day. */
   hoursPerDay?: number;
+  /** Days (default) or Minutes (Project's 08:00–17:00 model; see the engine's CalendarSpec). */
+  precision?: "days" | "minutes";
 }
 
 export interface ScheduleResult {
@@ -254,7 +257,10 @@ export function scheduleTasks(c: CubeValue, opts: ScheduleOptions): ScheduleResu
   try {
     output = schedule({
       tasks, start: opts.start,
-      calendar: { workingDays: opts.workingDays, weekendCode: opts.weekendCode, holidays: opts.holidays },
+      calendar: {
+        workingDays: opts.workingDays, weekendCode: opts.weekendCode, holidays: opts.holidays,
+        precision: opts.precision ?? "days", intervals: intervalsForHours(hoursPerDay),
+      },
       statusDate: opts.statusDate ?? null,
     });
   } catch (e) {

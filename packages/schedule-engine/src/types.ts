@@ -42,6 +42,13 @@ export interface CalendarSpec {
   /** Excel WORKDAY.INTL weekend code (1 = Sat+Sun … 7 = Fri+Sat, 11..17 = one day). */
   weekendCode?: number;
   holidays?: readonly (number | null)[];
+  /** Days (the default): whole working days, FS lag 0 = the next working day, a finish
+   *  is the last working day. Minutes: Project's model — working intervals inside the
+   *  day, an FS successor may start at 13:00 the same day, a finish is 17:00. */
+  precision?: "days" | "minutes";
+  /** Minutes mode: the working intervals of a day as [from, to] minutes from midnight
+   *  (default 08:00–12:00 and 13:00–17:00). Durations in days convert through their sum. */
+  intervals?: ReadonlyArray<readonly [number, number]>;
 }
 
 export interface ScheduleInput {
@@ -61,14 +68,16 @@ export interface ScheduledTask {
   summary: boolean;
   milestone: boolean;
   duration: number;
+  /** A whole-day serial in Days mode; in Minutes mode the start instant (day + clock). */
   start: number;
-  /** Inclusive. */
+  /** Inclusive: the last working day, or in Minutes mode the end of the last working minute. */
   finish: number;
   earlyStart: number;
   earlyFinish: number;
   lateStart: number;
   lateFinish: number;
-  /** Total float in working days (may be negative under a ceiling / deadline). */
+  /** Total float in working days (may be negative under a ceiling / deadline); a
+   *  fraction of a day in Minutes mode. */
   float: number;
   freeFloat: number;
   critical: boolean;

@@ -152,6 +152,7 @@ describe("everyFieldClassified — every own field is persisted or deliberately 
     templateVars: "Report's last Knap render variables, for the overlay's live preview; rebuilt from the cables on every compute",
     lastWritten: "Write to Obsidian's last written note path, for Open in Obsidian; a load has written nothing",
     planRows: "Write Tasks' plan, derived from the cached rows on every compute",
+    planNotes: "Local File's list of what an MSPDI read could not carry over, for the status line; re-read with the file",
     // ── derived from persisted fields at construction / _rebuild ──
     ast: "compiled from expr", evaluator: "compiled from expr", varNames: "extracted from expr",
     captured: "derived from expr − params", compiled: "compiled from expr/params",

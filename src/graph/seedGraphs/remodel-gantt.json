@@ -8,10 +8,10 @@
       "id": "noteIntro",
       "type": "NoteNode",
       "x": -40,
-      "y": -217,
+      "y": -96,
       "init": {
         "label": "Remodel (Gantt)",
-        "body": "# When will it be done, and what can't slip?\nThe tasks are a **Cube Input**: each record names the task, its **Duration** in working days, and its **Predecessors** as a list. Open the chip to edit a row, a list, or a nested table in place. A **Schedule** node runs the critical-path method over them.\n\nIt appends **Start \u00c2\u00b7 Finish \u00c2\u00b7 Float \u00c2\u00b7 Critical** to the rows. Float is how many days a task can slip without moving the finish; the tasks with none are the critical path. **Project finish** comes out as its own value, and **Gantt** is Mermaid source the Mermaid node draws. A **Holidays** node feeds the days to skip.\n\nTry it: make Paint take 5 days instead of 2 and watch it join the critical path.",
+        "body": "# When will it be done, and what can't slip?\nThe tasks are a **Cube Input**: each record names the task, its **Duration** in working days, and its **Predecessors** as a list. Open the chip to edit a row, a list, or a nested table in place. A **Schedule** node runs the critical-path method over them.\n\nIt appends **Start Â· Finish Â· Float Â· Critical** to the rows. Float is how many days a task can slip without moving the finish; the tasks with none are the critical path. **Project finish** comes out as its own value, and **Gantt** is Mermaid source the Mermaid node draws. A **Holidays** node feeds the days to skip.\n\nTry it: make Paint take 5 days instead of 2 and watch it join the critical path.",
         "color": "violet",
         "width": 380,
         "height": 270
@@ -20,8 +20,8 @@
     {
       "id": "tasks",
       "type": "CubeInputNode",
-      "x": 110,
-      "y": 493,
+      "x": 72,
+      "y": 614,
       "init": {
         "label": "Tasks",
         "cubeText": "[\n  {\n    \"task\": \"Demolition\",\n    \"days\": 2,\n    \"after\": []\n  },\n  {\n    \"task\": \"Plumbing rough-in\",\n    \"days\": 3,\n    \"after\": [\n      \"Demolition\"\n    ]\n  },\n  {\n    \"task\": \"Electrical rough-in\",\n    \"days\": 2,\n    \"after\": [\n      \"Demolition\"\n    ]\n  },\n  {\n    \"task\": \"Drywall\",\n    \"days\": 2,\n    \"after\": [\n      \"Plumbing rough-in\",\n      \"Electrical rough-in\"\n    ]\n  },\n  {\n    \"task\": \"Paint\",\n    \"days\": 2,\n    \"after\": [\n      \"Drywall\"\n    ]\n  },\n  {\n    \"task\": \"Cabinets\",\n    \"days\": 4,\n    \"after\": [\n      \"Drywall\"\n    ]\n  },\n  {\n    \"task\": \"Countertops\",\n    \"days\": 5,\n    \"after\": [\n      \"Cabinets\",\n      \"Paint\"\n    ]\n  },\n  {\n    \"task\": \"Final inspection\",\n    \"days\": 0,\n    \"after\": [\n      \"Countertops\"\n    ]\n  }\n]"
@@ -31,7 +31,7 @@
       "id": "start",
       "type": "DateInputNode",
       "x": 95,
-      "y": 759,
+      "y": 810,
       "init": {
         "label": "Project start"
       },
@@ -43,7 +43,7 @@
       "id": "holidays",
       "type": "HolidaysNode",
       "x": 72,
-      "y": 149,
+      "y": 270,
       "init": {
         "label": "Holidays",
         "country": "US",
@@ -53,8 +53,8 @@
     {
       "id": "schedule",
       "type": "ScheduleNode",
-      "x": 426,
-      "y": -80,
+      "x": 476,
+      "y": -5,
       "init": {
         "label": "Schedule",
         "mode": "working"
@@ -63,8 +63,8 @@
     {
       "id": "criticalDisplay",
       "type": "DisplayNode",
-      "x": 1040,
-      "y": 234,
+      "x": 1200,
+      "y": 370,
       "size": {
         "w": 540,
         "h": 300
@@ -73,8 +73,8 @@
     {
       "id": "finishDisplay",
       "type": "DisplayNode",
-      "x": 775,
-      "y": 133,
+      "x": 905,
+      "y": 270,
       "init": {
         "label": "Project finish"
       }
@@ -82,8 +82,8 @@
     {
       "id": "gantt",
       "type": "MermaidNode",
-      "x": 766,
-      "y": 651,
+      "x": 866,
+      "y": 1071,
       "init": {
         "label": "Gantt"
       },
@@ -95,7 +95,7 @@
       "id": "grp-plan",
       "type": "GroupNode",
       "x": 48,
-      "y": 91,
+      "y": 212,
       "init": {
         "label": "The plan",
         "members": [
@@ -106,14 +106,14 @@
         "color": "amber",
         "collapsed": false,
         "width": 292,
-        "height": 775
+        "height": 705
       }
     },
     {
       "id": "grp-result",
       "type": "GroupNode",
-      "x": 751,
-      "y": 75,
+      "x": 851,
+      "y": 212,
       "init": {
         "label": "Critical path + finish",
         "members": [
@@ -123,15 +123,15 @@
         ],
         "color": "green",
         "collapsed": false,
-        "width": 857,
+        "width": 917,
         "height": 538
       }
     },
     {
       "id": "critical",
       "type": "FilterFrameNode",
-      "x": 775,
-      "y": 256,
+      "x": 875,
+      "y": 393,
       "init": {
         "label": "Critical path",
         "condConfig": {
@@ -153,8 +153,8 @@
     {
       "id": "ganttFigure",
       "type": "GanttNode",
-      "x": 426,
-      "y": 620,
+      "x": 1082,
+      "y": 788,
       "init": {
         "label": "Gantt"
       }
@@ -162,8 +162,8 @@
     {
       "id": "ganttDisplay",
       "type": "DisplayNode",
-      "x": 430,
-      "y": 920,
+      "x": 1838,
+      "y": 704,
       "size": {
         "w": 620,
         "h": 360
