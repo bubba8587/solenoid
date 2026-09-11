@@ -679,8 +679,11 @@ export function FxComponent({ data, emit }: NodeProps<FxNodeType>) {
 // ─── VAULT FOLDER ────────────────────────────────────────────────────────────────
 // An Obsidian folder → one cube. The vault is a per-node path (a chip, defaulting from
 // Settings ▸ Obsidian); folder / glob / name-format / include-body commit on blur/Enter.
+const VAULT_CABLE_ONLY = new Set(["folder", "glob"]);
+
 export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeType>) {
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version); // fill the preview when a read lands
+  const connected = useConnectedInputs(data.id);
   const [folder, setFolder] = useState(data.folder);
   const [glob, setGlob] = useState(data.glob);
   const [nameFormat, setNameFormat] = useState(data.nameFormat);
@@ -720,6 +723,9 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
 
   return (
     <NodeShell node={data} emit={emit}>
+      {/* Wireable folder / glob: the dots + a "wired" tag when a cable drives them, else
+          the card controls below stay the editor. */}
+      <InlineInputs node={data} emit={emit} keys={["folder", "glob"]} cableOnlyKeys={VAULT_CABLE_ONLY} />
       <div className="sol-conn">
         {!desktop ? (
           <div className="sol-conn__note">Reading a vault is available in the desktop app only.</div>
@@ -753,6 +759,8 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
                 className="sol-conn__select"
                 style={{ flex: 1 }}
                 value={folder}
+                disabled={connected.has("folder")}
+                title={connected.has("folder") ? "Driven by the Folder cable" : undefined}
                 onChange={(e) => pickFolder(e.target.value)}
                 onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
               >
@@ -773,7 +781,9 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
               </button>
             </div>
             <input
-              className="sol-conn__url" type="text" value={glob} placeholder="Name filter, e.g. 2026-* (optional)" spellCheck={false}
+              className="sol-conn__url" type="text" value={connected.has("glob") ? "" : glob}
+              placeholder={connected.has("glob") ? "Driven by the Filter cable" : "Name filter, e.g. 2026-* (optional)"}
+              spellCheck={false} disabled={connected.has("glob")}
               onChange={(e) => setGlob(e.target.value)}
               onBlur={(e) => commitField(e.target.value, data.glob, setGlob, (v) => { data.glob = v; })}
               onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}

@@ -47,6 +47,22 @@ describe("run-graph --vault", () => {
     await expect(runGraph(graph, { vault: tmp, run: "No such sink" })).rejects.toThrow(/no sink named/);
   }, 30_000);
 
+  it("a wired `folder` drives Vault Folder to read that subfolder", async () => {
+    const graph = {
+      nodes: [
+        { id: "src", type: "NoteNode", init: { label: "which", body: "---\nfolder: Projects\n---\n" } },
+        { id: "v", type: "VaultFolderNode", init: { label: "Vault" } },
+      ],
+      connections: [{ source: "src", sourceOutput: "folder", target: "v", targetInput: "folder" }],
+    };
+    const out = await runGraph(graph, { vault: DEMO });
+    const cube = (out["Vault"] as { cube: CubeValue }).cube;
+    expect(isCubeValue(cube)).toBe(true);
+    const folderCol = cube.columns.find((c) => c.name === "folder");
+    expect(folderCol?.cells.length ?? 0).toBeGreaterThan(0);
+    expect(folderCol?.cells.every((c) => c === "Projects")).toBe(true); // read only the wired subfolder
+  }, 30_000);
+
   it("a wired `path` drives Import Obsidian to load that note (the wireable identity)", async () => {
     const graph = {
       nodes: [
