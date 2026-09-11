@@ -261,6 +261,22 @@ export function ReportOverlay() {
         <div className="report-header">
           <span className="report-title">{node.label?.trim() || "Report"}</span>
           <div className="report-header-actions">
+            {/* Docked has no side-by-side split, so a tiny Draft/Preview toggle rides
+                the button row instead of the full-width tab bar (mobile keeps that). */}
+            {docked && (
+              <div className="report-viewtoggle" role="tablist">
+                <button
+                  type="button" role="tab" aria-selected={mobileTab === "draft"}
+                  className={`report-viewtoggle__seg${mobileTab === "draft" ? " report-viewtoggle__seg--active" : ""}`}
+                  onClick={() => setMobileTab("draft")}
+                >Draft</button>
+                <button
+                  type="button" role="tab" aria-selected={mobileTab === "preview"}
+                  className={`report-viewtoggle__seg${mobileTab === "preview" ? " report-viewtoggle__seg--active" : ""}`}
+                  onClick={() => { void commitBody(); setMobileTab("preview"); }}
+                >Preview</button>
+              </div>
+            )}
             <button
               ref={embedBtnRef}
               type="button"
