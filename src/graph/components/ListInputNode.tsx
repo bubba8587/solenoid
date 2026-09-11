@@ -69,6 +69,7 @@ export function ListInputComponent({ data, emit }: NodeProps<ListInputNodeType>)
     headers: [data.label || "List"],
     cellType: dt,
     list: false,
+    fixedCols: true, // a list is one column; the popup offers ± Row only
     onSaveRaw: (cells: string[][]) => { void applyListRows(data, listRowsFromCells(cells)); },
   };
 

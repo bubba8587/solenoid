@@ -44,7 +44,19 @@ const NodeShowcase = lazy(() => import("./graph/showcase/NodeShowcase"));
 const IS_LANDING = new URLSearchParams(window.location.search).has("landing");
 const LandingPage = lazy(() => import("./graph/landing/LandingPage"));
 
+// /obsidian is the integration page — a pathname route (every path rewrites to
+// index.html on Vercel), read once at module load like the query-param routes above.
+const IS_OBSIDIAN = window.location.pathname.replace(/\/+$/, "") === "/obsidian";
+const ObsidianPage = lazy(() => import("./graph/landing/ObsidianPage"));
+
 function App() {
+  if (IS_OBSIDIAN) {
+    return (
+      <Suspense fallback={null}>
+        <ObsidianPage />
+      </Suspense>
+    );
+  }
   if (IS_LANDING) {
     return (
       <Suspense fallback={null}>

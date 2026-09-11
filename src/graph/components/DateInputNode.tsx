@@ -1,9 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { DateInputNode as DateInputNodeType } from "../rete-nodes";
-import { jsDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
+import { jsDateToSerial, parseDate, isRelativeDateText, formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { isSolError } from "../errorValue";
+import { settingsStore } from "../settingsStore";
 import { NodeShell, type NodeProps } from "./nodeKit";
+import { useDismissOnOutside } from "./useDismissOnOutside";
 import { processGraph } from "../process";
+
+/** Examples for the (i) popup — valid inputs across the relative + absolute forms. No prose. */
+const FORMAT_EXAMPLES = ["today", "tomorrow", "yesterday", "next friday", "last monday", "in 3 days", "2 weeks ago", "15-Mar-2026", "2026-03-15"];
 const isoOf = (serial: number) => new Date((serial - 25569) * 86400000).toISOString().slice(0, 10);
 
 // The raw source text is the truth (the Frame/Table date model). We render the app's
@@ -13,14 +18,23 @@ const isoOf = (serial: number) => new Date((serial - 25569) * 86400000).toISOStr
 // the browser's native picker; its ISO value flows in underneath.
 export function DateInputComponent({ data, emit }: NodeProps<DateInputNodeType>) {
   const nativeRef = useRef<HTMLInputElement>(null);
+  // Mirror the node: a relative phrase is valid ONLY under the Relative dates opt-in.
+  const relativeAllowed = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("relativeDates"));
   const raw = data.stringLiterals.date ?? "";
-  const parsed = parseDate(raw.trim());
+  const t = raw.trim();
+  const relative = relativeAllowed && isRelativeDateText(t);
+  const parsed = parseDate(t, relative ? { relative: true } : undefined);
   const serial = typeof parsed === "number" && Number.isFinite(parsed) ? Math.floor(parsed) : null;
-  const bad = isSolError(parsed) || (raw.trim() !== "" && serial === null);
-  const idleText = serial !== null ? formatDateSerial(serial, DEFAULT_DATE_FORMAT) : raw;
+  const bad = isSolError(parsed) || (t !== "" && serial === null);
+  // A relative phrase keeps its own text (it re-resolves each pass); an absolute date shows DD-MMM-YYYY.
+  const idleText = serial !== null && !relative ? formatDateSerial(serial, DEFAULT_DATE_FORMAT) : raw;
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(raw);
+  const [infoOpen, setInfoOpen] = useState(false);
+  const infoBtnRef = useRef<HTMLButtonElement>(null);
+  const infoPopRef = useRef<HTMLDivElement>(null);
+  useDismissOnOutside(infoOpen, () => setInfoOpen(false), [infoBtnRef, infoPopRef]);
   // Resync the draft to the source when it changes underneath us (undo, native pick, load).
   useEffect(() => { if (!editing) setDraft(raw); }, [raw, editing]);
 
@@ -48,6 +62,40 @@ export function DateInputComponent({ data, emit }: NodeProps<DateInputNodeType>)
           onPointerDown={stop}
           onMouseDown={stop}
         />
+        {relativeAllowed && (
+          <button
+            ref={infoBtnRef}
+            type="button"
+            className="solenoid-date-input__picker"
+            title="Supported formats"
+            aria-label="Supported date formats"
+            onPointerDown={stop}
+            onMouseDown={stop}
+            onClick={() => setInfoOpen((o) => !o)}
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 2, color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer" }}
+          >
+            {/* Lucide "info" (ISC). */}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" />
+            </svg>
+          </button>
+        )}
+        {infoOpen && (
+          <div
+            ref={infoPopRef}
+            className="nowheel"
+            onPointerDown={stop}
+            onMouseDown={stop}
+            style={{ position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 20, minWidth: 128, padding: "6px 9px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6, boxShadow: "0 4px 14px rgba(0,0,0,0.32)" }}
+          >
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-bright)", marginBottom: 5 }}>Supported Formats</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+              {FORMAT_EXAMPLES.map((ex) => (
+                <span key={ex} style={{ fontSize: 11, fontFamily: "var(--font-mono, monospace)", color: "var(--text)" }}>{ex}</span>
+              ))}
+            </div>
+          </div>
+        )}
         <button
           type="button"
           className="solenoid-date-input__picker"

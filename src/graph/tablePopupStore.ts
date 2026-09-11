@@ -61,6 +61,8 @@ export interface TablePopupState {
   groupColorDark?: string;
   /** A 1-D list shown as one row; Copy joins with ", " instead of CSV lines. */
   list?: boolean;
+  /** The column count is fixed (a List Input is one column); hides + Col / − Col. */
+  fixedCols?: boolean;
   /** An FC controls row: `"columns"` per column, `"matrix"` one pair. Display-only —
    *  it never touches the value or what Copy/CSV export. */
   formatControls?: "columns" | "matrix";

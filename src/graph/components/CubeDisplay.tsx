@@ -71,7 +71,7 @@ export function CubeDisplay({ cube, label, full, peek, edit }: {
           )}
         </tbody>
       </table>
-      {!peek && (
+      {!full && !peek && (
         <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
           <CubeChip value={cube} label={label} size="sm"  edit={edit} />
         </div>

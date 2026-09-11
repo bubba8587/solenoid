@@ -7,7 +7,7 @@ import { type Shape } from "../frameShape";
 import { serialToJsDate, jsDateToSerial } from "./dateSerial";
 import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffNeedsBasis, epochToSerial, serialToEpoch, dateTrunc, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
 export { dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
-export { serialToJsDate, jsDateToSerial, parseDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "./dateSerial";
+export { serialToJsDate, jsDateToSerial, parseDateToSerial, parseDate, isRelativeDateText, formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "./dateSerial";
 
 /** The whole-day key of a date serial, so a holiday matches regardless of
  *  time-of-day; `+1e-9` absorbs float drift from serial↔ms round-tripping. */

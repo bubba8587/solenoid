@@ -4,7 +4,7 @@
 // instant, express that instant in the TO zone, and rebuild the serial. DST falls out for
 // free because the zone offset is read AT the relevant instant.
 import { solError, type SolError } from "./errorValue";
-import { type FrameValue } from "./frame";
+import type { FrameValue } from "./frame";
 
 const MS_PER_DAY = 86400000;
 const EPOCH_OFFSET = 25569; // Excel serial of 1970-01-01

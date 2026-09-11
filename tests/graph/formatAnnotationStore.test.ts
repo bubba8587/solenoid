@@ -357,12 +357,13 @@ describe("formatCxWithAnnotation", () => {
   const fcx = (re: number, im: number, o: Partial<FormatAnnotation> = {}) =>
     formatCxWithAnnotation(cx(re, im), ann(o));
 
-  it("auto keeps the default written form", () => {
+  it("auto keeps the default written form — always both parts", () => {
     expect(fcx(3, 2)).toBe("3 + 2i");
     expect(fcx(3, -2)).toBe("3 - 2i");
-    expect(fcx(0, 1)).toBe("i");
-    expect(fcx(0, -1)).toBe("-i");
-    expect(fcx(5, 0)).toBe("5");
+    // A zero component is shown, not dropped: the display form is always a + bi.
+    expect(fcx(0, 1)).toBe("0 + i");
+    expect(fcx(0, -1)).toBe("0 - i");
+    expect(fcx(5, 0)).toBe("5 + 0i");
   });
 
   it("precision applies to BOTH components — the defect this closes", () => {
@@ -384,11 +385,11 @@ describe("formatCxWithAnnotation", () => {
     }
   });
 
-  it("the unit wraps the WHOLE value, parenthesised only in the two-term form", () => {
+  it("the unit wraps the WHOLE value — always the two-term form, so always parenthesised", () => {
     expect(fcx(3, 2, { unit: "custom", customUnit: " V" })).toBe("(3 + 2i) V");
-    // One term needs no parens — "2i V" cannot be misread.
-    expect(fcx(0, 2, { unit: "custom", customUnit: " V" })).toBe("2i V");
-    expect(fcx(3, 0, { unit: "custom", customUnit: " V" })).toBe("3 V");
+    // A zero component is still shown, so the value stays two-term and parenthesised.
+    expect(fcx(0, 2, { unit: "custom", customUnit: " V" })).toBe("(0 + 2i) V");
+    expect(fcx(3, 0, { unit: "custom", customUnit: " V" })).toBe("(3 + 0i) V");
   });
 
   it("NaN stays NaN rather than formatting into a number", () => {

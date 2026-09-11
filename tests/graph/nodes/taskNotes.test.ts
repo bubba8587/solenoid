@@ -15,12 +15,12 @@ describe("TaskNotesNode", () => {
     expect(new TaskNotesNode({ provider: "bogus" as never }).provider).toBe("tasks");
   });
 
-  it("calendar = From/To inputs + an events frame; stats = five number outputs", () => {
+  it("calendar = From/To inputs + an events frame; stats = one Status/Count frame", () => {
     const c = new TaskNotesNode({ provider: "calendar" });
     expect(Object.keys(c.inputs)).toEqual(["from", "to"]);
     expect(Object.keys(c.outputs)).toEqual(["events"]);
     const s = new TaskNotesNode({ provider: "stats" });
-    expect(Object.keys(s.outputs)).toEqual(["total", "completed", "active", "overdue", "archived"]);
+    expect(Object.keys(s.outputs)).toEqual(["stats"]);
   });
 
   it("keysDroppedBySwitch names the sockets a switch removes (both sides), and setProvider applies it", () => {

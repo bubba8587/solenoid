@@ -134,7 +134,8 @@ src/
 | `fileSession.ts` | Disk save/open: native dialogs on desktop, download / file-input on web; a path-bound doc saves through documentStore |
 | `saveTimeStore.ts` | The save-clock read seam (per-doc autosave + file-save stamps) documentStore injects, since node classes can't import it |
 | `noteFrontmatterSync.ts` | THE one cable-drop for cables stranded by a frontmatter re-sync (Note on-blur commit + Import file-load share it) |
-| `noteInlineRefs.ts` | Note-body `` `=name` `` refs → minted INPUT sockets (Expression's identifier grammar; trailing `!` is display-only) |
+| `noteInlineRefs.ts` | The INTERNAL `` `=name` `` ref span (Expression's identifier grammar; trailing `!` is display-only tinting). Nobody types it: the Report's render emits it for a bare `{{ name }}` |
+| `knapTemplate.ts` | Knap (knap.md) IS the Note/Report body syntax: `hasKnapSyntax` gates the async render, `extractKnapVariables` walks the AST for the ROOT names a Report mints as inputs, `embedBareVariables` rewrites a bare `{{ input }}` to the ref span so it embeds by kind, `toTemplateValue` flattens frames/cubes to rows and date serials to ISO text by SOURCE socket type, `renderKnap` wraps the `knap` engine (standard filters) |
 | `reportStore.ts` + `reportExport.ts` | Report chrome seam (open/docked state) and the static HTML export (document-valued refs render as embed blocks) |
 
 ### Typing / sockets / units
@@ -335,7 +336,10 @@ One file per family, pure `data()` classes: `scalar`, `list`, `listOps`,
 `display`, `group`, `conduit` (block bundler), `formatController`, `composite`,
 `annotation` (Note — its body's YAML frontmatter becomes typed OUTPUT sockets,
 parsed by `noteFrontmatter.ts`), `report` (Report — plain-markdown sink with
-`` `=name` `` inline embeds; the mirror-image counterpart to Note), `visual`
+Knap template body whose root variables mint inputs and whose bare `{{ name }}`
+embeds by kind, with a fixed Template input (a wired Note as the text) and Records
+input (a mail merge, one page per row); the mirror-image counterpart to Note — both render
+through `knapTemplate.ts`, async only when a tag is left for the engine), `visual`
 (the figure family incl. Mermaid), `surfaceFit`, `presentation`, `tornado`,
 `quality` (Expect — data-quality checks, frame-cell-aware), `sink` (Write
 CSV/JSON), `obsidian`, `dataFeed`, `history`, `chartOptions`, `cast`,
@@ -394,7 +398,7 @@ The web landing page (`LandingPage.tsx` + `LandingGraph.tsx` +
 src-tauri/
 ├── Cargo.toml                # Crate manifest (+ fs/dialog plugin deps)
 ├── tauri.conf.json           # Window, identifier, build hooks
-├── capabilities/default.json # Permissions: dialog + fs read/write scoped to $HOME/** + http(s) fetch + opener + window/decorum commands. Read-text also allows `.yaml`/`.yml` (mdbase schemas, bundle 24) and `fs:allow-stat` ($HOME/**) backs the Vault Folder cube's created/modified columns (`statVaultFile`); `opener:allow-open-url` is widened to `obsidian://**` for Open in Obsidian (bundle 24 D)
+├── capabilities/default.json # Permissions: dialog + fs read/write scoped to $HOME/** + http(s) fetch + opener + window/decorum commands. Read-text also allows `.yaml`/`.yml` (mdbase schemas, bundle 24) and `fs:allow-stat` ($HOME/**) backs the Vault Folder cube's created/modified columns (`statVaultFile`); `opener:allow-open-url` is widened to `obsidian://**` for Open in Obsidian (bundle 24 D). The http scope also lists `http://localhost:*` / `http://127.0.0.1:*`: a URL pattern with no port matches only the scheme's default port, and TaskNotes serves on 8080
 ├── src/ipc.rs                # IPC command surface (WS1): `engine_ping` (reports backend "polars") + `IpcError` (serializes SolError-shaped).
 ├── src/engine.rs (+engine/tests.rs) # WS2 native Polars engine: handle table (HashMap<String, SolFrame> = DataFrame + per-column SolType tags) + the relational verbs over polars 0.46; `engine_source/apply/join/append/collect/preview/column/drop` commands. Verb parity vs the frameVerbs JS oracle runs from the shared corpus (`fixtures/frame-verbs/`, oneVerbCorpus): `corpus_cases` in engine/tests.rs + `frameVerbCorpus.test.ts` read the same wire-format fixture files.
 └── src/lib.rs                # Plugin registration + `invoke_handler`: window commands (`open_devtools`, `set_window_border`, `toggle_fullscreen`) + `engine_ping` + the `engine_*` command set

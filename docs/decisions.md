@@ -35,6 +35,21 @@ field + forward-refusal guard stay (the seam migrations would attach to).
 per-session `claude/*` directives. **Reopen if:** multiple contributors / release
 trains.
 
+### controlDrivenRetype — a node's op/mode/arg field CAN swap that node's own sockets
+Control-driven in-place socket swaps are a first-class, established pattern: a node's
+`op`/`mode`/`arg` toggle can change an INPUT socket, an OUTPUT socket, or both, and add or
+remove whole input rows. The class exposes `setOp`/`setMode` (mutating `this.inputs`/`this.outputs`)
+and `keysDroppedBySwitch`; the component prunes the departing socket's cables FIRST (onePrunePath),
+then calls it, then `retypeOutputCables` after an OUTPUT swap (an in-place swap fires no connection
+event). This is DISTINCT from wiring-driven wildcard adoption (`trueAnyAdopt`), which no field
+touches. **Where:** `subsystem-invariants.md` § Type propagation on in-place socket retype;
+exemplars `WorkdaysNode`, `RecordNode`, `CableSwitchNode`, the date/finance output swaps,
+`Expression`/`composite`/`formatController`; `SettleNode` retypes its single "in" socket in place
+(People frame ↔ Ledger cube) and, rather than dropping a now-incompatible cable, GHOSTS it
+(`cableGhostStore`) for a one-click reconnect.
+**Reopen if:** never — logged only because it has been repeatedly and wrongly reported as absent.
+Grep `setOp`/`setMode`/`keysDroppedBySwitch` before claiming a node can't retype on a mode.
+
 ### arraySemantics — Array-semantics value model
 Lists/frames carry first-class `null` (missing — skipped by aggregators) AND
 per-cell `SolError` (propagated), plus a first-class logical type with Kleene
@@ -644,3 +659,33 @@ function node). **Where:** `nodes/script.ts`, `nodes/scriptRun.ts`, `nodes/scrip
 `scriptWorker.ts`, `scriptExecutor.ts`; pinned by `nodes/script.test.ts`. **Reopen if:**
 a script needs I/O, state between runs, or a second language — each is §4's creep, not
 a feature request.
+
+### mdbaseCeiling — mdbase: read the schema, validate on write, nothing more (author 2026-09-07d)
+mdbase is an optional schema file beside a folder of notes, not how TaskNotes records its
+data: TaskNotes writes ordinary frontmatter, and Solenoid reads it (the plugin's API or the
+disk) whether or not a schema exists. What stands: Vault Folder types a column from a
+matching mdbase type FIRST (`mdbaseTypes.ts`, above `.obsidian/types.json` and the guesser),
+and Write Properties refuses a row that breaks a type / enum / min / max / required rule
+(`vaultCube.ts` `mdbaseSchemaFor` + `validateAgainst`). Both fall through silently when no
+schema exists — the spec breaks by policy before 1.0, so an unreadable schema means the
+guesser, never a refused folder. The ceiling: no Solenoid-authored type files (a blended
+Solenoid + TaskNotes `_types/` schema is the user's to write, and works today), no type-file
+writer beside the `.base` writer, no query passthrough to the mdbase binary (bundle item H,
+HOLD). The pitch leads with Obsidian + TaskNotes; mdbase gets one clause ("respects an mdbase
+schema when the folder has one"). **Reopen if:** mdbase reaches 1.0, or users arrive with
+schemas and ask — a type-file writer is then the `.base` writer's size.
+
+### knapIsTheDocumentSyntax — Knap is the Note/Report body syntax; the `=name` span is internal (author 2026-09-10)
+**What stands:** the custom `` `=name` `` ref syntax is REPLACED by Knap (knap.md, the
+`knap` package): `{{ name }}` is what the author types, and a bare one in a Report embeds
+the wired value by kind — the render rewrites it to the internal `` `=name` `` span, which
+the on-screen, Obsidian-write and export paths resolve exactly as before
+(`embedBareVariables`, node-coverage § Annotation). Anything beyond a bare tag reads the
+plain DATA form. One syntax for the author, one resolution path underneath.
+The Report's Template and Records (mail merge) inputs follow the same rule: a wired Note's raw `source` is the
+text, its variables the sockets, and a batch is one page per row rendered by the same engine
+(node-coverage § Annotation) — never a second template language for names or pages (the Write
+to Obsidian NAME field's `{{date}}` tokens predate this and stay a file-name mini-language).
+**Reopen if:** an author-typed ref grammar returns beside Knap (two syntaxes for one thing),
+or the bare-tag rule stops matching the on-canvas rendering (a bare `{{ frame }}` printing
+JSON instead of the grid is the relapse).

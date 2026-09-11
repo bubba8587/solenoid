@@ -1,15 +1,13 @@
-import type { Emit } from "./nodeKit";
 import { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
-import type { ClassicPreset } from "rete";
 
 import { cableValueStore } from "../cableValueStore";
 import { formatAnnotationStore, formatNumberWithAnnotation, formatCxWithAnnotation, applyLogicalStyle, applyTextCase, type FormatAnnotation, type LambdaView } from "../formatAnnotationStore";
 import { highlightFormula } from "../formulaSyntax";
 import { sharedAnnotationResolver } from "../unitFlow";
-import { isCx, formatCx } from "../cxValue";
+import { isCx, formatCxDisplay } from "../cxValue";
 import { isUnitCell } from "../unitValue";
 import { unwrapUnitCells, annotationForValue } from "./valueDisplayFormat";
 import { formatScalar } from "./format";
@@ -30,7 +28,6 @@ import { CubeDisplay } from "./CubeDisplay";
 import { ChartFigure } from "./chartView";
 import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
-import { NodeSocket } from "./NodeSocket";
 import { getOwningEditor } from "../activeGraph";
 
 // The ONE rendering path for a `` `=name` `` inline ref: Note cards and the Report
@@ -73,7 +70,7 @@ export function refPreview(value: unknown, ann: FormatAnnotation | undefined): s
     const a = annotationForValue(value, ann);
     return refPreview(unwrapUnitCells(value, a), a);
   }
-  if (isCx(value)) return ann ? formatCxWithAnnotation(value, ann) : formatCx(value);
+  if (isCx(value)) return ann ? formatCxWithAnnotation(value, ann) : formatCxDisplay(value);
   if (isLambdaValue(value)) return lambdaText(value);
   if (isMermaidValue(value)) return value.title || "diagram";
   if (isImageValue(value)) return value.title || "image";
@@ -194,7 +191,7 @@ export function CollapsibleFigure({ title, children, defaultOpen = true }: {
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
-        <span className={`solenoid-ref-embed__chev${open ? " solenoid-ref-embed__chev--open" : ""}`}>▸</span>
+        <span className={`solenoid-ref-embed__chev${open ? " solenoid-ref-embed__chev--open" : ""}`} aria-hidden="true" />
         <span className="solenoid-ref-embed__title">{title}</span>
       </button>
       {open && <span className="solenoid-ref-embed__body">{children}</span>}
@@ -312,31 +309,6 @@ export function InlineRefValue({ nodeId, refKey, collapsible, highlight }: { nod
     <span className={`solenoid-ref-inline${highlight ? " solenoid-ref-inline--hl" : ""}`}>
       {refPreview(value, ann)}
     </span>
-  );
-}
-
-/** One inline-ref INPUT row; always `any` — a bare name has no re-typeable field.
- *  The row is the socket's positioning context, so each host passes its own class. */
-export function RefInputRow({
-  nodeId, emit, refKey, value, socket, rowClassName, keyClassName, valClassName,
-}: {
-  nodeId: string;
-  emit: Emit;
-  refKey: string;
-  value: unknown;
-  socket: ClassicPreset.Socket;
-  rowClassName: string;
-  keyClassName: string;
-  valClassName: string;
-}) {
-  const ann = useRefAnnotation(nodeId, refKey);
-  const preview = refPreview(value, ann);
-  return (
-    <div className={rowClassName}>
-      <NodeSocket side="input" socketKey={refKey} nodeId={nodeId} emit={emit} payload={socket} />
-      <span className={keyClassName} title={refKey}>{refKey}</span>
-      <span className={valClassName} title={preview}>{preview}</span>
-    </div>
   );
 }
 

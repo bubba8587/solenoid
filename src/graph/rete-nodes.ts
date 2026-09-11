@@ -13,7 +13,6 @@ export * from "./nodes/frame";
 export * from "./nodes/cube";
 export * from "./nodes/schedule";
 export * from "./nodes/connection";
-export * from "./nodes/writeProperties";
 export * from "./nodes/qr";
 export * from "./nodes/dataFeed";
 export * from "./nodes/sink";

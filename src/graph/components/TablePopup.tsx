@@ -1307,8 +1307,8 @@ export function TablePopup() {
           <div className="table-popup__dim-controls">
             <button className="table-popup__btn" onClick={addRow} title="Add row">+ Row</button>
             <button className="table-popup__btn" onClick={removeRow} title="Remove last row" disabled={rows <= 1}>− Row</button>
-            <button className="table-popup__btn" onClick={addCol} title="Add column">+ Col</button>
-            <button className="table-popup__btn" onClick={removeCol} title="Remove last column" disabled={cols <= 1}>− Col</button>
+            {!state.fixedCols && <button className="table-popup__btn" onClick={addCol} title="Add column">+ Col</button>}
+            {!state.fixedCols && <button className="table-popup__btn" onClick={removeCol} title="Remove last column" disabled={cols <= 1}>− Col</button>}
           </div>
         )}
         <div className="table-popup__spacer" />

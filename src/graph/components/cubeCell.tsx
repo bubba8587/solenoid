@@ -20,7 +20,7 @@ export function cubeCellToken(cell: CubeCell, type?: FrameColType): string {
   if (isCubeValue(cell)) return `Cube ${cubeRowCount(cell)}x${cell.columns.length}x${cubeDepth(cell)}`;
   if (isFrameValue(cell)) return `Frame ${frameRowCount(cell)}x${cell.columns.length}`;
   if (isUnitCell(cell)) return formatListCell(cell, formatScalar); // "5 km"
-  if (Array.isArray(cell)) return Array.isArray(cell[0]) ? `${cell.length}x${(cell[0] as unknown[]).length}` : `List ${cell.length}`;
+  if (Array.isArray(cell)) return Array.isArray(cell[0]) ? `${cell.length}x${(cell[0] as unknown[]).length}` : "List";
   if (isSolError(cell)) return cell.code;
   if (type) { const f = formatFrameCell(type, cell as FrameCell); return f === null ? "" : String(f); }
   if (typeof cell === "boolean") return cell ? "TRUE" : "FALSE";
@@ -94,12 +94,12 @@ export function CubeCellChip({ cell, crumb, size = "md", type }: {
       <button
         type="button"
         className={chip("array")}
-        title="Drill in"
+        title={is2D ? "Drill in" : `${cell.length}-item list. Drill in.`}
         onPointerDown={stop}
         onMouseDown={stop}
         onClick={(e) => { stop(e); cubePopup.drill({ kind: "grid", cells: (is2D ? cell : [cell]) as CubeCell[][], label: crumb }); }}
       >
-        [{is2D ? `${cell.length}×${(cell[0] as unknown[]).length}` : `List ${cell.length}`}]
+        [{is2D ? `${cell.length}×${(cell[0] as unknown[]).length}` : "List"}]
       </button>
     );
   }

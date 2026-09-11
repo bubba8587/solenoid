@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { cx, isCx, parseCx, formatCx, type Cx } from "../../src/graph/cxValue";
+import { cx, isCx, parseCx, formatCx, formatCxDisplay, type Cx } from "../../src/graph/cxValue";
 import {
   ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode,
   ComplexPowerNode, QuadraticRootsNode,
@@ -46,6 +46,25 @@ describe("parseCx — Excel's text grammar, formatCx round-trip", () => {
   it("refuses non-complex text", () => {
     for (const bad of ["", "3+4q", "i3", "3 4i", "++2i", "abc"]) {
       expect(parseCx(bad)).toBeNull();
+    }
+  });
+});
+
+describe("formatCxDisplay — always both parts (the display form)", () => {
+  it("keeps a zero component visible where formatCx drops it", () => {
+    // The value box / readouts read a + bi even when a part is 0.
+    expect(formatCxDisplay(cx(23, 0))).toBe("23 + 0i");
+    expect(formatCxDisplay(cx(0, 4))).toBe("0 + 4i");
+    expect(formatCxDisplay(cx(0, -4))).toBe("0 - 4i");
+    expect(formatCxDisplay(cx(0, 1))).toBe("0 + i");
+    expect(formatCxDisplay(cx(3, 2))).toBe("3 + 2i");
+    // The Excel/coercion form still drops the zero part.
+    expect(formatCx(cx(23, 0))).toBe("23");
+    expect(formatCx(cx(0, 4))).toBe("4i");
+  });
+  it("round-trips through parseCx despite the shown zero part", () => {
+    for (const z of [cx(23, 0), cx(0, 4), cx(0, -4), cx(3, 2)]) {
+      expect(parseCx(formatCxDisplay(z))).toEqual(z);
     }
   });
 });

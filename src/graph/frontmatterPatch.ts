@@ -167,6 +167,43 @@ export const BUILTIN_READONLY = new Set([
   "path", "name", "folder", "ext", "size", "created", "modified", "links", "embeds", "date",
 ]);
 
+/** The reserved cube property whose value is the note's BODY (not a frontmatter key) —
+ *  the round-trip partner of Vault Folder's include-body `note-body` column. */
+export const NOTE_BODY = "note-body";
+
+/** Split a note into its frontmatter block (fences included, or "") and the body below. */
+function splitFrontmatter(text: string): { fm: string; body: string } {
+  const lines = text.split("\n");
+  if (lines[0]?.trim() !== FENCE) return { fm: "", body: text };
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trim() === FENCE) {
+      return { fm: lines.slice(0, i + 1).join("\n"), body: lines.slice(i + 1).join("\n").replace(/^\n+/, "") };
+    }
+  }
+  return { fm: "", body: text }; // unterminated fence — treat as no block
+}
+
+/** Replace the note's body below its frontmatter, keeping the frontmatter block
+ *  byte-identical (a note with no block becomes just the body). */
+export function setBody(text: string, newBody: string): string {
+  const { fm } = splitFrontmatter(text);
+  return fm === "" ? newBody : `${fm}\n\n${newBody}\n`;
+}
+
+/** A one-line display of a body for the plan. */
+function bodySnippet(body: string): string {
+  const t = body.trim();
+  if (t === "") return "(empty)";
+  const first = t.split("\n")[0];
+  return first.length > 40 ? `${first.slice(0, 40)}…` : first;
+}
+
+/** What writing `newBody` as the note's body would do, and the current body (a snippet). */
+export function resolveBody(text: string, newBody: string): { action: "unchanged" | "update"; before: string } {
+  const { body } = splitFrontmatter(text);
+  return { action: body.trim() === newBody.trim() ? "unchanged" : "update", before: bodySnippet(body) };
+}
+
 export type PlanAction = "pending" | "add" | "update" | "unchanged" | "unreadable" | "refused";
 
 export interface PlanRow {
@@ -187,8 +224,9 @@ export interface PlanRow {
 export function writableKeys(cube: CubeValue, keysCsv: string): string[] {
   const present = new Set(cube.columns.map((c) => c.name));
   const listed = keysCsv.split(",").map((s) => s.trim()).filter(Boolean);
-  if (listed.length > 0) return listed.filter((k) => present.has(k) && k !== "path");
-  return cube.columns.map((c) => c.name).filter((k) => k !== "path" && !BUILTIN_READONLY.has(k));
+  // `note-body` is the body, never a frontmatter key — planPropertyWrites handles it apart.
+  if (listed.length > 0) return listed.filter((k) => present.has(k) && k !== "path" && k !== NOTE_BODY);
+  return cube.columns.map((c) => c.name).filter((k) => k !== "path" && k !== NOTE_BODY && !BUILTIN_READONLY.has(k));
 }
 
 const colType = (cube: CubeValue, name: string): FrameColType | undefined =>
@@ -218,6 +256,19 @@ export function planPropertyWrites(cube: CubeValue, keysCsv: string, noteNames: 
     for (const c of cols) {
       const value = cellToYaml(c.cells[i] ?? null, c.type, noteNames);
       rows.push({ path: p, key: c.key, value, after: displayValue(value), before: "", action: "pending" });
+    }
+  }
+  // The `note-body` column writes each note's BODY (not frontmatter) — one row per note
+  // whose cell is a string; selected when `keys` is blank or names it.
+  const listed = keysCsv.split(",").map((s) => s.trim()).filter(Boolean);
+  const bodyCol = cube.columns.find((c) => c.name === NOTE_BODY);
+  if (bodyCol && (listed.length === 0 || listed.includes(NOTE_BODY))) {
+    for (let i = 0; i < pathCol.cells.length; i++) {
+      const p = pathCol.cells[i];
+      if (typeof p !== "string" || p.trim() === "") continue;
+      const cell = bodyCol.cells[i];
+      if (typeof cell !== "string") continue;
+      rows.push({ path: p, key: NOTE_BODY, value: cell, after: bodySnippet(cell), before: "", action: "pending" });
     }
   }
   return rows;

@@ -16,13 +16,14 @@ import type {
 import { processGraph } from "../process";
 import { connectionStore, refreshConnection, type ConnectionState } from "../connectionStore";
 import { settingsStore } from "../settingsStore";
-import { isDesktop, listLocalFiles, listVaultFolders, pickFolderDialog, baseNameOf, openExternal } from "../fileBridge";
+import { isDesktop, listLocalFiles, listVaultFolders, openExternal } from "../fileBridge";
 import { obsidianOpenUrl } from "../obsidianLinks";
 import { apiKeyStore } from "../apiKeyStore";
 import { PROVIDER_LIST, getProvider, type ProviderId } from "../dataProviders";
 import { FrameDisplay } from "./FrameDisplay";
 import { LazySelect } from "./LazySelect";
 import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";
+import { SegToggle } from "./SegToggle";
 import { InlineInputs, useConnectedInputs, useIncomingSources } from "./inlineInput";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { RefreshIcon } from "./RefreshIcon";
@@ -34,7 +35,7 @@ import { NAGER_COUNTRIES, filterHolidays, daysToNextHoliday } from "../holidaysP
 import { FX_CURRENCIES } from "../fxProvider";
 import { frameRowCount } from "../frame";
 import { useVaultWatch } from "./useVaultWatch";
-import { TASKNOTES_KEY_ID, TASKNOTES_PROVIDER_META, type TaskNotesProvider } from "../taskNotesApi";
+import { TASKNOTES_KEY_ID, TASKNOTES_PROVIDER_META, statsToFrame, type TaskNotesProvider } from "../taskNotesApi";
 import { dropInputCables } from "./cablePrune";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { getActiveView } from "../activeGraph";
@@ -456,6 +457,10 @@ export function GeocodeComponent({ data, emit }: NodeProps<GeocodeNodeType>) {
 // ─── WEATHER ─────────────────────────────────────────────────────────────────────
 // Lat/lon come from Geocode's sockets or the typed fallbacks; the °C/°F toggle sets the
 // API unit and tags the temps downstream. Numeric fields commit on blur/Enter.
+const WEATHER_UNIT_OPTIONS: { value: "C" | "F"; label: string }[] = [
+  { value: "C", label: "°C" },
+  { value: "F", label: "°F" },
+];
 export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version); // fill the Now rows when a fetch lands
   const [past, setPast] = useState(String(data.pastDays));
@@ -489,15 +494,11 @@ export function WeatherComponent({ data, emit }: NodeProps<WeatherNodeType>) {
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <div className="sol-conn">
-        <LazySelect
-          className="sol-conn__select"
+        <SegToggle
           value={data.unit}
-          title="Temperature unit"
-          onChange={(e) => { data.unit = e.target.value === "F" ? "F" : "C"; void processGraph(); }}
-        >
-          <option value="C">°C</option>
-          <option value="F">°F</option>
-        </LazySelect>
+          options={WEATHER_UNIT_OPTIONS}
+          onChange={(u) => { data.unit = u; void processGraph(); }}
+        />
       </div>
       {/* Lat/Lon are wireable socket rows — Geocode drives them, or the typed fallback does. */}
       <InlineInputs node={data} emit={emit} />
@@ -678,8 +679,12 @@ export function FxComponent({ data, emit }: NodeProps<FxNodeType>) {
 // ─── VAULT FOLDER ────────────────────────────────────────────────────────────────
 // An Obsidian folder → one cube. The vault is a per-node path (a chip, defaulting from
 // Settings ▸ Obsidian); folder / glob / name-format / include-body commit on blur/Enter.
+const VAULT_CABLE_ONLY = new Set(["folder", "glob"]);
+
 export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeType>) {
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version); // fill the preview when a read lands
+  const vault = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("obsidianVault")); // the one vault
+  const connected = useConnectedInputs(data.id);
   const [folder, setFolder] = useState(data.folder);
   const [glob, setGlob] = useState(data.glob);
   const [nameFormat, setNameFormat] = useState(data.nameFormat);
@@ -688,24 +693,20 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
   const desktop = isDesktop();
   useAutoRefresh(data.id, minutes);
   // Obsidian saved under this folder → re-read (bundle E; the cadence stays the stopgap).
-  useVaultWatch(data.vault, folder, () => { void refreshConnection(data.id); }, desktop);
+  useVaultWatch(vault, folder, () => { void refreshConnection(data.id); }, desktop);
   useEffect(() => { setFolder(data.folder); }, [data.folder]);
   // The subfolder dropdown lists the vault's folders (same control as Write to Obsidian).
   useEffect(() => {
     let alive = true;
-    void listVaultFolders(data.vault).then((f) => { if (alive) setFolders(f); });
+    void listVaultFolders(vault).then((f) => { if (alive) setFolders(f); });
     return () => { alive = false; };
-  }, [data.vault]);
+  }, [vault]);
   function pickFolder(next: string) {
     setFolder(next);
     if (next !== data.folder) { data.folder = next; void processGraph(); }
   }
-  function refreshFolders() { void listVaultFolders(data.vault).then(setFolders); }
+  function refreshFolders() { void listVaultFolders(vault).then(setFolders); }
 
-  async function chooseVault() {
-    const picked = await pickFolderDialog();
-    if (picked && picked !== data.vault) { data.vault = picked; void processGraph(); }
-  }
   function commitField(next: string, current: string, set: (v: string) => void, apply: (v: string) => void) {
     const v = next.trim();
     set(v);
@@ -715,24 +716,21 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
   const cube = data.cached;
   const cols = cube?.columns.map((c) => c.name) ?? [];
   const firstCell = cube?.columns.find((c) => c.name === "path")?.cells[0];
-  const openUrl = typeof firstCell === "string" ? obsidianOpenUrl(data.vault, firstCell) : null;
+  const openUrl = typeof firstCell === "string" ? obsidianOpenUrl(vault, firstCell) : null;
 
   return (
     <NodeShell node={data} emit={emit}>
+      {/* Wireable folder / glob: the dots + a "wired" tag when a cable drives them, else
+          the card controls below stay the editor. */}
+      <InlineInputs node={data} emit={emit} keys={["folder", "glob"]} cableOnlyKeys={VAULT_CABLE_ONLY} />
       <div className="sol-conn">
         {!desktop ? (
           <div className="sol-conn__note">Reading a vault is available in the desktop app only.</div>
         ) : (
           <>
+            {vault.trim() === "" && <div className="sol-conn__note">Set the Obsidian vault folder in Settings.</div>}
             <div className="sol-conn__vault">
-              <span className="sol-conn__chip" title={data.vault || "No vault chosen"}>
-                {data.vault ? baseNameOf(data.vault) : "No vault"}
-              </span>
-              <button
-                type="button" className="sol-conn__refresh" title="Choose the vault folder"
-                onClick={(e) => { e.stopPropagation(); void chooseVault(); }}
-                onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
-              >Choose…</button>
+              <div className="sol-conn__note" style={{ flex: 1 }}>Obsidian vault{data.folder ? ` · ${data.folder}` : ""}</div>
               {openUrl && (
                 <button
                   type="button" className="sol-conn__refresh" title="Open the first note in Obsidian"
@@ -746,12 +744,13 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
                 </button>
               )}
             </div>
-            <div className="sol-conn__note">Obsidian vault{data.folder ? ` · ${data.folder}` : ""}</div>
             <div style={{ display: "flex", gap: 4 }}>
               <select
                 className="sol-conn__select"
                 style={{ flex: 1 }}
                 value={folder}
+                disabled={connected.has("folder")}
+                title={connected.has("folder") ? "Driven by the Folder cable" : undefined}
                 onChange={(e) => pickFolder(e.target.value)}
                 onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
               >
@@ -772,7 +771,9 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
               </button>
             </div>
             <input
-              className="sol-conn__url" type="text" value={glob} placeholder="Name filter, e.g. 2026-* (optional)" spellCheck={false}
+              className="sol-conn__url" type="text" value={connected.has("glob") ? "" : glob}
+              placeholder={connected.has("glob") ? "Driven by the Filter cable" : "Name filter, e.g. 2026-* (optional)"}
+              spellCheck={false} disabled={connected.has("glob")}
               onChange={(e) => setGlob(e.target.value)}
               onBlur={(e) => commitField(e.target.value, data.glob, setGlob, (v) => { data.glob = v; })}
               onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
@@ -840,6 +841,7 @@ export function TaskNotesComponent({ data, emit }: NodeProps<TaskNotesNodeType>)
 
   const tasks = data.outputs.tasks;
   const events = data.outputs.events;
+  const stats = data.outputs.stats;
   const s = data.cachedStats;
   const eventRows = data.cachedEvents ? frameRowCount(data.cachedEvents) : 0;
   return (
@@ -887,19 +889,13 @@ export function TaskNotesComponent({ data, emit }: NodeProps<TaskNotesNodeType>)
           <span className="solenoid-node__output-value">{data.cachedEvents ? `${eventRows} event${eventRows === 1 ? "" : "s"}` : "—"}</span>
         </MeasuredSocketRow>
       )}
-      {provider === "stats" && (
-        <InlineOutputRows
-          node={data}
-          emit={emit}
-          rows={[
-            { key: "total",     label: "TOTAL",     value: s?.total ?? null },
-            { key: "completed", label: "COMPLETED", value: s?.completed ?? null },
-            { key: "active",    label: "ACTIVE",    value: s?.active ?? null },
-            { key: "overdue",   label: "OVERDUE",   value: s?.overdue ?? null },
-            { key: "archived",  label: "ARCHIVED",  value: s?.archived ?? null },
-          ]}
-        />
+      {stats && (
+        <MeasuredSocketRow side="output" socketKey="stats" nodeId={data.id} emit={emit} payload={stats.socket}>
+          <span className="solenoid-node__io-label">STATS</span>
+          <span className="solenoid-node__output-value">{s ? `${s.total ?? 0} task${s.total === 1 ? "" : "s"}` : "—"}</span>
+        </MeasuredSocketRow>
       )}
+      {provider === "stats" && s && <FrameDisplay frame={statsToFrame(s)} label="Stats" />}
     </NodeShell>
   );
 }

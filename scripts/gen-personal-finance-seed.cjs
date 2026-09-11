@@ -200,11 +200,10 @@ note("note-assump", -1920, 820,
   "Assumptions (your numbers)",
   "# Stray inputs\nHand-entered values that appear in no CSV. They feed the projections and alerts; change one and the right side recomputes.",
   "vermilion", 360, 170);
-n("in-inflation","NumberInputNode", -1900, 1020, { label: "Inflation %/yr", value: 3.2 });
-n("in-emerg",    "SliderInputNode", -1900, 1180, { label: "Emergency-fund target $", value: 15000, min: 0, max: 60000, step: 1000 }, { literals: { min: 0, max: 60000, step: 1000 } });
-n("in-takehome", "NumberInputNode", -1900, 1480, { label: "Monthly take-home $", value: 5200 });
-n("in-years",    "NumberInputNode", -1900, 1660, { label: "Years to retire", value: 30 });
-const GRP_ASSUMP = ["in-inflation","in-emerg","in-takehome","in-years"];
+n("in-emerg",    "SliderInputNode", -1900, 1020, { label: "Emergency-fund target $", value: 15000, min: 0, max: 60000, step: 1000 }, { literals: { min: 0, max: 60000, step: 1000 } });
+n("in-takehome", "NumberInputNode", -1900, 1320, { label: "Monthly take-home $", value: 5200 });
+n("in-years",    "NumberInputNode", -1900, 1500, { label: "Years to retire", value: 30 });
+const GRP_ASSUMP = ["in-emerg","in-takehome","in-years"];
 
 c("in-emerg","value","alert-nw","low");
 
@@ -225,14 +224,14 @@ n("gauge-proj","GaugeNode",      2480,  -60, { label: "Toward target" }, { liter
 n("ratio-proj","ExpressionNode", 2340,  100, { label: "Progress", expr: "fv / target" });
 n("sld-target","SliderInputNode",2220,  200, { label: "Retirement target $", value: 1000000, min: 100000, max: 3000000, step: 50000 }, { literals: { min: 100000, max: 3000000, step: 50000 } });
 n("alert-proj","AlertNode",      2480,  200, { label: "Off-track watch", mode: "range" }, { literals: { value: 50, low: 0, high: 1000000000000, target: 0 } });
-n("seq-years","SeriesNode",      1960,  440, { label: "Years 1…N", op: "sequence" });
-n("expr-traj","ExpressionNode",   2240,  440, { label: "FV after c years", expr: "pv*(1+i)^(12*c) + IF(i=0, pmt*12*c, pmt*((1+i)^(12*c)-1)/i)" });
+n("seq-years","SeriesNode",      1960,  440, { label: "Growth horizon (months)", op: "sequence" }, { literals: { start: 12, step: 12 } });
+n("tvm-traj","TvmNode",           2240,  440, { label: "Projected balance curve", paymentTiming: "end" });
 n("spark-growth","SparklineNode", 2520,  440, { label: "Growth trajectory", op: "line" });
 // The projection group's exit conduit (the group predates the convention): the
 // nest egg, its target and the growth chart leave as one ribbon — to the
 // dashboard readout and the advisor circuits. Coords in the TUNED frame.
 n("cd-proj", "ConduitNode",       3620,  700, { angle: 0, seq: 5 });
-const GRP_PROJ = ["sld-contrib","sld-return","expr-pmt","expr-mrate","expr-nper","expr-pv","tvm-fv","disp-proj","gauge-proj","ratio-proj","sld-target","alert-proj","seq-years","expr-traj","spark-growth","cd-proj"];
+const GRP_PROJ = ["sld-contrib","sld-return","expr-pmt","expr-mrate","expr-nper","expr-pv","tvm-fv","disp-proj","gauge-proj","ratio-proj","sld-target","alert-proj","seq-years","tvm-traj","spark-growth","cd-proj"];
 
 c("sld-contrib","value","expr-pmt","contrib");
 c("sld-return","value","expr-mrate","ret");
@@ -252,11 +251,13 @@ c("tvm-fv","fv","cd-proj","in_0");
 c("sld-target","value","cd-proj","in_1");
 c("spark-growth","chart","cd-proj","in_2");
 c("in-years","value","seq-years","count");
-c("seq-years","list","expr-traj","c");
-c("red-nw","result","expr-traj","pv");
-c("expr-mrate","result","expr-traj","i");
-c("sld-contrib","value","expr-traj","pmt");
-c("expr-traj","result","spark-growth","values");
+// A real Time-Value-of-Money node broadcasts the months list into an FV curve —
+// same relation as the scalar Projected nest egg, reusing its outflow helpers.
+c("expr-mrate","result","tvm-traj","rate");
+c("seq-years","list","tvm-traj","nper");
+c("expr-pmt","result","tvm-traj","pmt");
+c("expr-pv","result","tvm-traj","pv");
+c("tvm-traj","fv","spark-growth","values");
 fc("fc-proj", "disp-proj", "currency_usd", GRP_PROJ);
 
 // ─── F · Mortgage / debt ────────────────────────────────────────────────────────
@@ -439,43 +440,43 @@ fc("fc-d-bspent", "d-bud-spent", "currency_usd", GRP_DASH);
 fc("fc-d-bbud", "d-bud-bud", "currency_usd", GRP_DASH);
 
 // ─── I · Advisor report (live prose over the whole graph) ───────────────────────
-// A Report that reads like a financial advisor's letter. Scalar `=refs` are wired
+// A Report that reads like a financial advisor's letter. Bare `{{ name }}` embeds are wired
 // from the DASHBOARD's Format Controllers (an FC's `out` carries the value plus
 // its $/% annotation, so the ref renders formatted); charts embed from the
-// existing Chart/Sparkline nodes. The verdict WORDS are computed in-graph: a
-// Compare feeds an IF that picks between two Text nodes, so the prose flips
-// ("healthy" ↔ "running thin") the moment the numbers do. Coords are in the
-// TUNED frame, fresh space right of the Dashboard (its box ends x≈4307).
+// existing Chart/Sparkline nodes. The verdict WORDS are Knap `{% if %}` in the
+// letter, comparing the raw operands the group conduits carry — so the prose flips
+// ("healthy" ↔ "running thin") the moment the numbers do, with no extra nodes. Coords
+// are in the TUNED frame, fresh space right of the Dashboard (its box ends x≈4307).
 note("note-advisor", 4460, -940,
   "10 · The advisor's letter",
-  "# Prose that recomputes\nThe **Report** pulls live values through `` `=name` `` refs — dollars arrive through the dashboard's **Format Controllers** (so they read $1,234, not 1234.5678), charts embed as figures. Each verdict word is a tiny circuit: **Compare → IF → two Text nodes**. Drag a slider and the letter changes its mind.",
+  "# Prose that recomputes\nThe **Report** is a Knap template: a bare `{{ name }}` pulls the live value in, and dollars arrive through the dashboard's **Format Controllers** (so they read $1,234, not 1234.5678), charts embed as figures. Each verdict is an inline `if` in the letter itself, comparing the raw numbers. Drag a slider and the letter changes its mind.",
   "sky", 420, 220);
 const REPORT_BODY = [
   "# The advisor's letter",
   "",
-  "You brought in **`=income`** this quarter and let **`=outflow`** back out, leaving **`=net`** to put to work. Your savings rate is `=savingsRate!` — `=rateWord!` against the target you set.",
+  "You brought in **{{ income }}** this quarter and let **{{ outflow }}** back out, leaving **{{ net }}** to put to work. Your savings rate is {{ savingsRate | highlight }} — {% if rateNow >= rateTarget %}healthy{% else %}running thin{% endif %} against the target you set.",
   "",
-  "`=spendChart`",
+  "{{ spendChart }}",
   "",
   "## Net worth",
   "",
-  "Assets minus debts puts you at **`=netWorth`** today.",
+  "Assets minus debts puts you at **{{ netWorth }}** today.",
   "",
-  "`=classChart`",
+  "{{ classChart }}",
   "",
   "## Retirement",
   "",
-  "Keep contributing at today's pace and the nest egg reaches **`=nestEgg`** — `=projWord!` your target.",
+  "Keep contributing at today's pace and the nest egg reaches **{{ nestEgg }}** — {% if eggNow >= eggTarget %}on track for{% else %}coming up short of{% endif %} your target.",
   "",
-  "`=growthChart`",
+  "{{ growthChart }}",
   "",
   "## The house",
   "",
-  "The mortgage costs **`=payment`** a month, which `=mortWord!` the 28%-of-take-home guideline. Carried to term, the interest alone comes to **`=interest`**.",
+  "The mortgage costs **{{ payment }}** a month, which {% if payNow <= payLimit %}sits comfortably inside{% else %}pushes past{% endif %} the 28%-of-take-home guideline. Carried to term, the interest alone comes to **{{ interest }}**.",
   "",
   "## Groceries",
   "",
-  "**`=spent`** spent against a **`=budget`** budget for the quarter — you're `=budgetWord!` so far.",
+  "**{{ spent }}** spent against a **{{ budget }}** budget for the quarter — you're {% if spendNow <= spendLimit %}under{% else %}over{% endif %} so far.",
   "",
   "*Move any slider and this letter rewrites itself.*",
 ].join("\n");
@@ -488,55 +489,29 @@ n("disp-outflow","DisplayNode",    4760, -600, { label: "Outflows (3 mo)" });
 // across the report. (8-lane cap: `budget` rides direct.) The annotation walk
 // crosses conduit lanes (unitFlow's lane map), so the $/% formats survive.
 n("cd-adv", "ConduitNode",         4460, -380, { angle: 0, seq: 6 });
-n("txt-rate-good","TextInputNode", 4460, -240, { label: "If saving enough", value: "healthy" });
-n("txt-rate-bad", "TextInputNode", 4460,  -90, { label: "If saving too little", value: "running thin" });
-n("cmp-rate","ComparisonNode",     4760, -200, { label: "Rate ≥ target?", op: "gte" });
-n("if-rate", "IfNode",             5040, -160, { label: "Savings verdict" });
-n("txt-proj-good","TextInputNode", 4460,  120, { label: "If on track", value: "on track for" });
-n("txt-proj-bad", "TextInputNode", 4460,  270, { label: "If behind", value: "coming up short of" });
-n("cmp-proj","ComparisonNode",     4760,  160, { label: "Nest egg ≥ target?", op: "gte" });
-n("if-proj", "IfNode",             5040,  200, { label: "Retirement verdict" });
-n("txt-mort-good","TextInputNode", 4460,  480, { label: "If affordable", value: "sits comfortably inside" });
-n("txt-mort-bad", "TextInputNode", 4460,  630, { label: "If stretched", value: "pushes past" });
-n("cmp-mort","ComparisonNode",     4760,  520, { label: "Payment ≤ 28%?", op: "lte" });
-n("if-mort", "IfNode",             5040,  560, { label: "Mortgage verdict" });
-n("txt-bud-good","TextInputNode",  4460,  840, { label: "If under budget", value: "under" });
-n("txt-bud-bad", "TextInputNode",  4460,  990, { label: "If over budget", value: "over" });
-n("cmp-bud","ComparisonNode",      4760,  880, { label: "Spend ≤ budget?", op: "lte" });
-n("if-bud", "IfNode",              5040,  920, { label: "Budget verdict" });
-n("report-adv","ReportNode",       5340,  100, { label: "Advisor's letter", color: "sky", width: 260, height: 150, body: REPORT_BODY });
-const GRP_ADVISOR = ["expr-outflow","disp-outflow","cd-adv","txt-rate-good","txt-rate-bad","cmp-rate","if-rate",
-  "txt-proj-good","txt-proj-bad","cmp-proj","if-proj","txt-mort-good","txt-mort-bad","cmp-mort","if-mort",
-  "txt-bud-good","txt-bud-bad","cmp-bud","if-bud","report-adv"];
+// The verdicts are Knap `{% if %}` in the letter itself, reading the raw operands the
+// dashboard's group conduits already carry (rate/target, egg/target, payment/28%-line,
+// spend/budget). No Compare/IF/Text circuit per verdict — the template does the logic.
+n("report-adv","ReportNode",       5040,  100, { label: "Advisor's letter", width: 260, height: 150, body: REPORT_BODY });
+const GRP_ADVISOR = ["expr-outflow","disp-outflow","cd-adv","report-adv"];
 
 c("sumif-out","result","expr-outflow","spend");
 c("expr-outflow","result","disp-outflow","in");
-// Verdict comparisons read off the source groups' EXIT CONDUITS (cd-cash lane 3
-// already carries the savings rate; new lanes carry the target/affordability
-// lines), so the cross-canvas feeds ride the same ribbons as the dashboard's.
-c("cd-cash","out_3","cmp-rate","a");
-c("cd-cash","out_4","cmp-rate","b");
-c("cmp-rate","result","if-rate","cond");
-c("txt-rate-good","value","if-rate","then");
-c("txt-rate-bad","value","if-rate","else");
-c("cd-proj","out_0","cmp-proj","a");
-c("cd-proj","out_1","cmp-proj","b");
-c("cmp-proj","result","if-proj","cond");
-c("txt-proj-good","value","if-proj","then");
-c("txt-proj-bad","value","if-proj","else");
-c("cd-mort","out_0","cmp-mort","a");
-c("cd-mort","out_2","cmp-mort","b");
-c("cmp-mort","result","if-mort","cond");
-c("txt-mort-good","value","if-mort","then");
-c("txt-mort-bad","value","if-mort","else");
-c("cd-bud","out_0","cmp-bud","a");
-c("cd-bud","out_1","cmp-bud","b");
-c("cmp-bud","result","if-bud","cond");
-c("txt-bud-good","value","if-bud","then");
-c("txt-bud-bad","value","if-bud","else");
+// The verdict operands ride the source groups' EXIT CONDUITS straight into the
+// Report, where the letter's `{% if %}` blocks compare them (rate/target,
+// egg/target, payment/28%-line, spend/budget) — the same pairs the old Compare
+// nodes read, so the prose flips on the same thresholds.
+c("cd-cash","out_3","report-adv","rateNow");
+c("cd-cash","out_4","report-adv","rateTarget");
+c("cd-proj","out_0","report-adv","eggNow");
+c("cd-proj","out_1","report-adv","eggTarget");
+c("cd-mort","out_0","report-adv","payNow");
+c("cd-mort","out_2","report-adv","payLimit");
+c("cd-bud","out_0","report-adv","spendNow");
+c("cd-bud","out_1","report-adv","spendLimit");
 // Report refs — the dashboard FCs' formatted scalars bundle through cd-adv
-// (lane order = reading order in the letter; `budget` direct, 8-lane cap),
-// words from the IFs, figures from the group conduits' chart lanes.
+// (lane order = reading order in the letter; `budget` direct, 8-lane cap) and
+// figures from the group conduits' chart lanes.
 c("fc-d-in","out","cd-adv","in_0");
 c("fc-d-net","out","cd-adv","in_1");
 c("fc-d-rate","out","cd-adv","in_2");
@@ -549,19 +524,15 @@ c("cd-adv","out_0","report-adv","income");
 c("fc-adv-out","out","report-adv","outflow");
 c("cd-adv","out_1","report-adv","net");
 c("cd-adv","out_2","report-adv","savingsRate");
-c("if-rate","result","report-adv","rateWord");
 c("chart-cat","chart","report-adv","spendChart");
 c("cd-adv","out_3","report-adv","netWorth");
 c("cd-acct","out_3","report-adv","classChart");
 c("cd-adv","out_4","report-adv","nestEgg");
-c("if-proj","result","report-adv","projWord");
 c("cd-proj","out_2","report-adv","growthChart");
 c("cd-adv","out_5","report-adv","payment");
-c("if-mort","result","report-adv","mortWord");
 c("cd-adv","out_6","report-adv","interest");
 c("cd-adv","out_7","report-adv","spent");
 c("fc-d-bbud","out","report-adv","budget");
-c("if-bud","result","report-adv","budgetWord");
 fc("fc-adv-out", "disp-outflow", "currency_usd", GRP_ADVISOR);
 
 // ─── Groups (rects auto-computed from members) ──────────────────────────────────

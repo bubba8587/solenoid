@@ -123,12 +123,17 @@
   text-align: left;
 }
 .solenoid-ref-embed__bar:hover { color: var(--text-bright); border-color: var(--border-strong); }
+/* The same chevron the node header uses (nodeCard.css) — a masked ::glyph on the
+   M3 1l4 4-4 4 path, so an embed's collapse control matches a node's. */
 .solenoid-ref-embed__chev {
-  display: inline-block;
-  font-size: 10px;
-  color: var(--text-muted);
-  transition: transform 0.12s ease;
+  display: block;
   flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M3 1l4 4-4 4' fill='none' stroke='%23000' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 8px 8px no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M3 1l4 4-4 4' fill='none' stroke='%23000' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 8px 8px no-repeat;
+  transition: transform 0.12s ease;
 }
 .solenoid-ref-embed__chev--open { transform: rotate(90deg); }
 .solenoid-ref-embed__title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

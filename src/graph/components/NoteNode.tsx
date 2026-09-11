@@ -9,6 +9,7 @@ import { SwatchGrid } from "./SwatchGrid";
 import { SocketDot, type SocketGlyph } from "./SocketLegend";
 import { NodeSocket } from "./NodeSocket";
 import { useDismissOnOutside } from "./useDismissOnOutside";
+import { useKnapRender } from "./useKnapRender";
 import { useEditableLabel } from "./inlineInput";
 // getActiveEditor/getActiveView, NOT getEditor/getView: a Note inside a composite
 // drill-in must prune/reconcile/refresh on its OWN graph.
@@ -109,7 +110,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   const title = useEditableLabel(data);
   // Bumped whenever the frontmatter fields change (body commit / type override)
   // to re-render the strip + markdown off the node's freshly-synced derived state.
-  const [, setFieldsVersion] = useState(0);
+  const [fieldsVersion, setFieldsVersion] = useState(0);
   const swatchRef = useRef<HTMLButtonElement>(null);
   const paletteRef = useRef<HTMLDivElement>(null);
   useDismissOnOutside(pickerOpen, () => setPickerOpen(false), [swatchRef, paletteRef]);
@@ -190,7 +191,13 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
 
   // Derived LIVE from `body`, not `data.renderBody` — the RENDER is deliberately
   // decoupled from the blur-driven socket-commit cycle, which would go stale.
-  const renderBody = useMemo(() => parseNoteFrontmatter(body).body, [body]);
+  // The template reads the fields last committed (blur), so the preview follows the
+  // YAML edits one commit behind, like the sockets do.
+  const templateVars = useMemo(() => data.templateVariables(), [data, fieldsVersion]);
+  // keepUnknown: a Note has no inputs, so a tag naming no frontmatter field stays
+  // literal on the card (a template note reads as a template), never rendered empty.
+  const { text: rendered, errors: templateErrors } = useKnapRender(body, templateVars, 0, null, true);
+  const renderBody = useMemo(() => parseNoteFrontmatter(rendered).body, [rendered]);
   // NOT trusted content — a body arrives in shared .solenoid files and marked does no
   // sanitizing, so sanitize EVERY render (the CSP is only the second layer).
   const bodyHtml = useMemo(
@@ -337,9 +344,11 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
               onPointerDown={stop}
               onMouseDown={stop}
             />
+          ) : templateErrors ? (
+            <pre className="solenoid-note__rendered solenoid-note__template-error" onClick={startEdit} onPointerDown={stopDragStart} onMouseDown={stopDragStart}>{templateErrors}</pre>
           ) : renderBody.trim() ? (
-            // Plain markdown — a Note is output-only, so a `` `=name` `` span stays
-            // literal inline code (no ref swap). bodyHtml is already sanitized.
+            // Plain markdown — a Note is output-only: its template reads its own
+            // fields, and no ref span is swapped. bodyHtml is already sanitized.
             <div
               ref={renderedRef}
               className="solenoid-note__rendered sol-md nowheel"

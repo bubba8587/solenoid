@@ -10,6 +10,8 @@ import { SwatchGrid } from "./SwatchGrid";
 import { NodeSocket } from "./NodeSocket";
 import { FieldRow } from "./NoteNode";
 import { useDismissOnOutside } from "./useDismissOnOutside";
+import { useKnapRender } from "./useKnapRender";
+import { parseNoteFrontmatter } from "../noteFrontmatter";
 import { useEditableLabel } from "./inlineInput";
 import { isDesktop, listVaultMarkdownFiles, readVaultFile, openExternal } from "../fileBridge";
 import { obsidianOpenUrl } from "../obsidianLinks";
@@ -126,7 +128,8 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
 
   const fieldKeys = data.fieldKeys();
   const fieldValues = data.fieldValues();
-  const minH = MIN_H + fieldsStripHeight(fieldKeys.length);
+  // +1 for the always-present `path` row (the note's wireable identity, in + out).
+  const minH = MIN_H + fieldsStripHeight(fieldKeys.length + 1);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -139,9 +142,14 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     setDocDotTop(y + bodyEl.offsetHeight / 2 - 6);
   }, [collapsed, fieldKeys.length, pickerOpen, data.height, data.width, body]);
 
+  const templateVars = useMemo(() => data.templateVariables(), [data, body]);
+  // keepUnknown: like a Note, an imported note has no inputs, so a tag naming no
+  // frontmatter field stays literal on the card rather than rendering empty.
+  const { text: rendered, errors: templateErrors } = useKnapRender(body, templateVars, 0, null, true);
+  const renderBody = useMemo(() => parseNoteFrontmatter(rendered).body, [rendered]);
   const bodyHtml = useMemo(
-    () => DOMPurify.sanitize(marked.parse(data.renderBody || "", { async: false, gfm: true, breaks: true }) as string),
-    [body], // eslint-disable-line react-hooks/exhaustive-deps
+    () => DOMPurify.sanitize(marked.parse(renderBody || "", { async: false, gfm: true, breaks: true }) as string),
+    [renderBody],
   );
 
   const mode = appThemeStore.getMode();
@@ -289,9 +297,19 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
         </div>
       )}
 
-      {fieldKeys.length > 0 && (
-        <div className="solenoid-note__fields">
-          {fieldKeys.map((key) => {
+      <div className="solenoid-note__fields">
+        {/* The wireable identity: `path` out to index against a Vault Folder cube, or
+            wire a path IN to load that note instead of the picked one. */}
+        {data.inputs.path && data.outputs.path && (
+          <div className="solenoid-note__field-row">
+            <NodeSocket side="input" socketKey="path" nodeId={data.id} emit={emit} payload={data.inputs.path.socket} />
+            <span className="solenoid-note__field-key" title="Source note path">path</span>
+            <span className="solenoid-note__field-val" title={data.fileName || undefined}>{data.fileName ? baseName(data.fileName) : "—"}</span>
+            <NodeSocket side="output" socketKey="path" nodeId={data.id} emit={emit} payload={data.outputs.path.socket} />
+          </div>
+        )}
+        {fieldKeys.length > 0 && (
+          fieldKeys.map((key) => {
             const t = data.fieldType(key);
             const output = data.outputs[key];
             if (!t || !output) return null;
@@ -307,9 +325,9 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
                 onPickType={(nt: FrontmatterFieldType) => { data.fieldTypes[key] = nt; void applyBody(data.body, data.fileName); }}
               />
             );
-          })}
-        </div>
-      )}
+          })
+        )}
+      </div>
 
       {data.outputs.document && (
         <NodeSocket side="output" socketKey="document" nodeId={data.id} emit={emit} payload={data.outputs.document.socket} top={docDotTop} />
@@ -317,7 +335,12 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
 
       {!collapsed && !pickerOpen && (
         <div ref={bodyRef} className="solenoid-note__content">
-          {data.renderBody.trim() ? (
+          {/* The imported note's own title (its file name) in the body — Obsidian titles
+              a note by its file. Its socket identity is the `path` row above. */}
+          {data.fileName && <div className="sol-import__doc-title" title={data.fileName}>{baseName(data.fileName)}</div>}
+          {templateErrors ? (
+            <pre className="solenoid-note__rendered solenoid-note__template-error" onPointerDown={stopDragStart} onMouseDown={stopDragStart}>{templateErrors}</pre>
+          ) : renderBody.trim() ? (
             <div
               className="solenoid-note__rendered sol-md nowheel"
               onPointerDown={stopDragStart}

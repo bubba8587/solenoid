@@ -735,11 +735,11 @@ function mdbaseHintFor(collections: Map<string, MdbaseCollection>, folder: strin
 
 export class VaultFolderNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
+    folder: "The vault-relative subfolder to read, blank for the whole vault. Wire a value to drive it, else pick it on the card.",
+    glob: "A file-name filter to keep, e.g. 2026-*, blank for every note. Wire a value or type it on the card.",
     cube: "One row per note: the file columns, then every frontmatter key. Lists and nested tables ride in the cells. Rows are never saved into the project file; reopening the document re-reads the vault.",
   };
   label: string;
-  /** Absolute vault path, per node — defaults from the obsidianVault setting at creation. */
-  vault: string;
   /** Vault-relative subfolder ("" = the whole vault). */
   folder: string;
   /** A file-name glob to keep ("" = every note). */
@@ -755,27 +755,36 @@ export class VaultFolderNode extends ClassicPreset.Node {
   /** Read by the component's preview; never persisted. */
   cached: CubeValue | null = null;
   private _lastKey: string | undefined;
+  /** folder / glob the last data() resolved (wired input, else the card field) — load() reads these. */
+  private _folder = "";
+  private _glob = "";
 
-  constructor(init?: { label?: string; vault?: string; folder?: string; glob?: string; includeBody?: boolean; nameFormat?: string; refreshMinutes?: number }) {
+  constructor(init?: { label?: string; folder?: string; glob?: string; includeBody?: boolean; nameFormat?: string; refreshMinutes?: number }) {
     super("VaultFolder");
     this.label = init?.label ?? "Vault Folder";
-    this.vault = init?.vault ?? settingsStore.get("obsidianVault") ?? "";
     this.folder = init?.folder ?? "";
     this.glob = init?.glob ?? "";
     this.includeBody = init?.includeBody ?? false;
     this.nameFormat = init?.nameFormat ?? "";
     this.refreshMinutes = init?.refreshMinutes ?? 0;
+    this.addInput("folder", strIn("Folder"));
+    this.addInput("glob", strIn("Filter"));
     this.addOutput("cube", cubeOut("Notes"));
   }
 
-  data(): { cube: CubeValue | null } {
-    const key = connectionStore.key(this.id, `${this.vault}\u0000${this.folder}\u0000${this.glob}\u0000${this.nameFormat}\u0000${this.includeBody ? 1 : 0}`);
+  data(inputs?: { folder?: (string | null)[]; glob?: (string | null)[] }): { cube: CubeValue | null } {
+    const folder = (readInput(inputs?.folder, this.folder) ?? "").trim().replace(/^\/+|\/+$/g, "");
+    const glob = (readInput(inputs?.glob, this.glob) ?? "").trim();
+    const vault = settingsStore.get("obsidianVault"); // the one vault (singleVaultFromSetting)
+    const key = connectionStore.key(this.id, `${vault}\u0000${folder}\u0000${glob}\u0000${this.nameFormat}\u0000${this.includeBody ? 1 : 0}`);
     if (key !== this._lastKey) {
       this._lastKey = key;
+      this._folder = folder;
+      this._glob = glob;
       if (!hasFs()) {
         this.cached = null;
         connectionStore.setState(this.id, { status: "error", message: "Reading a vault is available in the desktop app only" });
-      } else if (this.vault.trim() === "") {
+      } else if (vault.trim() === "") {
         this.cached = null;
         connectionStore.setState(this.id, { status: "idle" });
       } else {
@@ -788,10 +797,10 @@ export class VaultFolderNode extends ClassicPreset.Node {
   private async load(): Promise<void> {
     connectionStore.setState(this.id, { status: "loading" });
     try {
-      const vault = this.vault.trim();
-      const folder = this.folder.trim().replace(/^\/+|\/+$/g, "");
+      const vault = settingsStore.get("obsidianVault").trim();
+      const folder = this._folder; // resolved in data() (wired input, else the card field)
       const readRoot = folder ? await joinPath(vault, ...folder.split("/")) : vault;
-      const globRe = this.glob.trim() ? nameGlobToRegExp(this.glob.trim()) : null;
+      const globRe = this._glob ? nameGlobToRegExp(this._glob) : null;
       // Skip mdbase `_types` folders — those are schema files, not records.
       let files = (await listVaultMarkdownFiles(readRoot)).filter((p) => !p.split("/").includes("_types"));
       if (globRe) files = files.filter((p) => globRe.test(p.split("/").pop() ?? p));

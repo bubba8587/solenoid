@@ -2,8 +2,10 @@ import { describe, it, expect, afterEach } from "vitest";
 import { mkdtempSync, cpSync, readFileSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { runGraph } from "./run-graph";
+import { runGraph, nodeFsProvider } from "./run-graph";
 import { setFsProvider } from "../src/graph/fileBridge";
+import { settingsStore } from "../src/graph/settingsStore";
+import { WriteObsidianNode } from "../src/graph/nodes/obsidian";
 import { isCubeValue, type CubeValue } from "../src/graph/frame";
 
 // Bundle 24 J — the headless seam: `run-graph --vault <path>` installs a Node file
@@ -35,7 +37,7 @@ describe("run-graph --vault", () => {
     const graph = {
       nodes: [
         { id: "n", type: "NoteNode", init: { label: "Memo", body: "# Hello\n\nfrom the CLI" } },
-        { id: "w", type: "WriteObsidianNode", init: { label: "Write memo", fileName: "CLI memo", subfolder: "Notes" } },
+        { id: "w", type: "WriteObsidianNode", init: { label: "Write memo", subfolder: "Notes" }, stringLiterals: { path: "CLI memo" } },
       ],
       connections: [{ source: "n", sourceOutput: "document", target: "w", targetInput: "in" }],
     };
@@ -47,6 +49,74 @@ describe("run-graph --vault", () => {
     await expect(runGraph(graph, { vault: tmp, run: "No such sink" })).rejects.toThrow(/no sink named/);
   }, 30_000);
 
+  it("a wired `folder` drives Vault Folder to read that subfolder", async () => {
+    const graph = {
+      nodes: [
+        { id: "src", type: "NoteNode", init: { label: "which", body: "---\nfolder: Projects\n---\n" } },
+        { id: "v", type: "VaultFolderNode", init: { label: "Vault" } },
+      ],
+      connections: [{ source: "src", sourceOutput: "folder", target: "v", targetInput: "folder" }],
+    };
+    const out = await runGraph(graph, { vault: DEMO });
+    const cube = (out["Vault"] as { cube: CubeValue }).cube;
+    expect(isCubeValue(cube)).toBe(true);
+    const folderCol = cube.columns.find((c) => c.name === "folder");
+    expect(folderCol?.cells.length ?? 0).toBeGreaterThan(0);
+    expect(folderCol?.cells.every((c) => c === "Projects")).toBe(true); // read only the wired subfolder
+  }, 30_000);
+
+  it("a wired `path` drives Import Obsidian to load that note (the wireable identity)", async () => {
+    const graph = {
+      nodes: [
+        // A plain Note whose `path` frontmatter is the string source for Import's `path` input.
+        { id: "src", type: "NoteNode", init: { label: "target", body: "---\npath: Projects/Kitchen remodel\n---\n" } },
+        { id: "imp", type: "ImportObsidianNode", init: { label: "Loaded" } },
+      ],
+      connections: [{ source: "src", sourceOutput: "path", target: "imp", targetInput: "path" }],
+    };
+    const out = await runGraph(graph, { vault: DEMO });
+    const imp = out["Loaded"] as Record<string, unknown>;
+    expect(imp.path).toBe("Projects/Kitchen remodel.md"); // identity out (.md, matching a cube's path)
+    expect(imp.status).toBe("active");                    // it adopted the loaded note's frontmatter
+    expect(imp.priority).toBe(5);
+  }, 30_000);
+
+  it("a wired bare NAME resolves to the note anywhere in the vault (Obsidian-style)", async () => {
+    const graph = {
+      nodes: [
+        { id: "src", type: "NoteNode", init: { label: "which", body: "---\npath: kitchen remodel\n---\n" } },
+        { id: "imp", type: "ImportObsidianNode", init: { label: "Loaded" } },
+      ],
+      connections: [{ source: "src", sourceOutput: "path", target: "imp", targetInput: "path" }],
+    };
+    const out = await runGraph(graph, { vault: DEMO });
+    const imp = out["Loaded"] as Record<string, unknown>;
+    expect(imp.path).toBe("Projects/Kitchen remodel.md"); // "kitchen remodel" → the note in Projects/, case-insensitive
+    expect(imp.status).toBe("active");
+  }, 30_000);
+
+  it("Write Properties writes a `note-body` column as the note's body, frontmatter byte-identical", async () => {
+    tmp = mkdtempSync(path.join(tmpdir(), "solenoid-vault-"));
+    cpSync(DEMO, tmp, { recursive: true });
+    const noteRel = path.join("Projects", "Kitchen remodel.md");
+    const before = readFileSync(path.join(tmp, noteRel), "utf8");
+    const fmBefore = before.slice(0, before.indexOf("---", 3) + 3); // the frontmatter block
+
+    setFsProvider(nodeFsProvider);
+    settingsStore.set("obsidianVault", tmp);
+    const n = new WriteObsidianNode({ target: "properties" });
+    const cube: CubeValue = { __cube: true, depth: 1, columns: [
+      { name: "path", cells: ["Projects/Kitchen remodel.md"], type: "string" },
+      { name: "note-body", cells: ["# Rewritten\n\nnew body text"], type: "string" },
+    ] };
+    n.data({ rows: [cube] });
+    n.enabled = true;
+    await n.run();
+    const after = readFileSync(path.join(tmp, noteRel), "utf8");
+    expect(after).toContain("# Rewritten\n\nnew body text"); // the body was replaced
+    expect(after.startsWith(fmBefore)).toBe(true);          // the frontmatter block untouched
+  }, 30_000);
+
   it("--run a Write Properties over the vault writes current scalar values back with no byte change", async () => {
     tmp = mkdtempSync(path.join(tmpdir(), "solenoid-vault-"));
     cpSync(DEMO, tmp, { recursive: true });
@@ -56,7 +126,7 @@ describe("run-graph --vault", () => {
       nodes: [
         { id: "v", type: "VaultFolderNode", init: { label: "Projects", folder: "Projects" } },
         // Only `status` (a scalar) round-trips byte-for-byte; a list would re-render block-style.
-        { id: "w", type: "WritePropertiesNode", init: { label: "Sync status" }, stringLiterals: { keys: "status" } },
+        { id: "w", type: "WriteObsidianNode", init: { label: "Sync status", target: "properties" }, stringLiterals: { keys: "status" } },
       ],
       connections: [{ source: "v", sourceOutput: "cube", target: "w", targetInput: "rows" }],
     };

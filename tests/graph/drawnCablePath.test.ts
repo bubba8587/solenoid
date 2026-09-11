@@ -121,6 +121,23 @@ describe("drawnHeadings — the shared tangent at each joint", () => {
     const h = drawnHeadings([{ x: 5, y: 5 }, { x: 5, y: 5 }, { x: 5, y: 5 }]);
     expect(h.every((v) => Number.isFinite(v))).toBe(true);
   });
+
+  it("snaps a DERIVED heading to the 45° grid, like the dial", () => {
+    // A cable drawn at ~37° reads back at 45° with no dial interaction — the auto
+    // heading already sits where the dial would pin it.
+    const shallow = drawnHeadings([{ x: 0, y: 0 }, { x: 100, y: 20 }]); // ~11.3° → 0
+    expect(shallow[0]).toBe(0);
+    const mid = drawnHeadings([{ x: 0, y: 0 }, { x: 100, y: 75 }]); // ~36.9° → 45
+    expect(mid[0]).toBe(45);
+    for (const v of drawnHeadings([{ x: 0, y: 0 }, { x: 100, y: 75 }, { x: 130, y: 10 }])) {
+      expect(Number.isInteger(v / DRAWN_ANGLE_STEP)).toBe(true);
+    }
+  });
+
+  it("leaves a pinned override untouched even off the grid", () => {
+    // Only DERIVED headings snap; an explicit angle is the user's, passed through as-is.
+    expect(drawnHeadings([{ x: 0, y: 0, angle: 30 }, { x: 10, y: 0 }])[0]).toBe(30);
+  });
 });
 
 describe("arrowheads", () => {

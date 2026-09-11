@@ -1,5 +1,8 @@
 import { ClassicPreset } from "rete";
-import { numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfType, comboOfFamily, type SocketDataType, type SolenoidSocket } from "../sockets";
+import { numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfType, comboOfFamily, listSocket, tableSocket, type SocketDataType, type SolenoidSocket } from "../sockets";
+import { resolveExcelFunction } from "../excelFunctions";
+import { getActiveEditor, getActiveView } from "../activeGraph";
+import { retypeOutputCables } from "../fcReconcile";
 import { parseListLiteral } from "../coerceInputs";
 import type { Shape } from "../frameShape";
 import { parseDate } from "./date";
@@ -17,7 +20,7 @@ import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
 import { aggregate, type AggregateOp } from "./statsOps";
-import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, weightedShuffleKey, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS } from "./listOps";
+import { MAX_GENERATED, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, weightedShuffleKey, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS } from "./listOps";
 import { isFrameRef, flushRef, frameBackend, materialize } from "../frameBackend";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
@@ -167,7 +170,7 @@ export type SeriesOp = "range" | "sequence" | "linspace" | "geometric" | "fibona
 
 export const SERIES_OP_META = {
   range:    { label: "Range",    description: "Generates a sequence from Start to Stop inclusive, Step apart. `numpy arange` stops before Stop; Excel's count-first equivalent is the Sequence op." },
-  sequence: { label: "SEQUENCE", description: "List of N numbers starting at Start with Step between each. Like Range but count-first. Excel: `SEQUENCE`." },
+  sequence: { label: "SEQUENCE", description: "A grid of Rows × Columns numbers starting at Start with Step between each, filled row by row. Columns 1 (the default) gives a plain list, like Range but count-first. Excel: `SEQUENCE`." },
   linspace: { label: "LinSpace", description: "Generates Count evenly spaced values from Start to End inclusive." },
   geometric: { label: "Geometric", description: "Geometric series: `start × ratio^0`, `start × ratio^1`, …" },
   fibonacci: { label: "Fibonacci", description: "First N Fibonacci numbers: 1, 1, 2, 3, 5, 8, …" },
@@ -176,7 +179,7 @@ export const SERIES_OP_META = {
 
 const SERIES_SPECS: Record<SeriesOp, ReadonlyArray<{ key: string; label: string; def?: number }>> = {
   range:    [{ key: "start", label: "Start", def: 0 }, { key: "stop", label: "Stop" }, { key: "step", label: "Step", def: 1 }],
-  sequence: [{ key: "count", label: "Count", def: 10 }, { key: "start", label: "Start (default 1)" }, { key: "step", label: "Step (default 1)" }],
+  sequence: [{ key: "count", label: "Rows", def: 10 }, { key: "cols", label: "Columns (default 1)" }, { key: "start", label: "Start (default 1)" }, { key: "step", label: "Step (default 1)" }],
   linspace: [{ key: "start", label: "Start", def: 0 }, { key: "end", label: "End", def: 1 }, { key: "count", label: "Count", def: 10 }],
   geometric: [{ key: "start", label: "Start", def: 1 }, { key: "ratio", label: "Ratio", def: 2 }, { key: "count", label: "Count", def: 8 }],
   fibonacci: [{ key: "count", label: "Count", def: 10 }],
@@ -186,8 +189,12 @@ const SERIES_SPECS: Record<SeriesOp, ReadonlyArray<{ key: string; label: string;
 export class SeriesNode extends ClassicPreset.Node {
   label: string;
   op: SeriesOp;
-  cachedList: number[] | SolError | null = [];
+  // A 2-D value only for the SEQUENCE op with Columns > 1 (matching the formula); every
+  // other op stays 1-D. Named cachedList for the component's value box.
+  cachedList: number[] | number[][] | SolError | null = [];
   literals: Record<string, number> = {};
+  /** Output rank the socket last settled to (sequenceRankReconcile); transient. */
+  private lastRank: 1 | 2 = 1;
   width = 180;
   height = 248;
 
@@ -225,11 +232,17 @@ export class SeriesNode extends ClassicPreset.Node {
       if (!live) this.addInput(i.key, numIn(i.label));
       else live.label = i.label; // a kept key keeps its cable; the label follows the op
     }
+    // Only SEQUENCE (Columns > 1) can go 2-D; every other op is a list, so reset the
+    // output socket a prior sequence may have swapped to a table (reconcileRank re-swaps).
+    if (next !== "sequence" && this.outputs.list) {
+      this.outputs.list.socket = listSocket;
+      this.lastRank = 1;
+    }
     this.seedLiterals();
   }
 
-  data(inputs: { start?: number[]; stop?: number[]; step?: number[]; end?: number[]; count?: number[]; ratio?: number[]; value?: number[] }): { list: number[] | SolError | null } {
-    let list: number[] | SolError | null;
+  data(inputs: { start?: number[]; stop?: number[]; step?: number[]; end?: number[]; count?: number[]; cols?: number[]; ratio?: number[]; value?: number[] }): { list: number[] | number[][] | SolError | null } {
+    let list: number[] | number[][] | SolError | null;
     if (this.op === "range") {
       const start = readInput(inputs.start, this.literals.start ?? 0);
       // `stop` is legitimately UNSET: undefined is unset, null is a cable carrying blank.
@@ -246,16 +259,16 @@ export class SeriesNode extends ClassicPreset.Node {
         else list = rangeList(start, stop, step);
       }
     } else if (this.op === "sequence") {
-      const countRaw = readInput(inputs.count, this.literals.count ?? 10);
+      // ONE impl with the formula (shareImpl): dispatch straight to =SEQUENCE, so Rows ×
+      // Columns, the 2-D wrap, and the overflow guard can never drift from the formula
+      // surface. Columns default 1 → a flat list, exactly the formula's cols=1 return.
+      const rows  = readInput(inputs.count, this.literals.count ?? 10);
+      const cols  = readInput(inputs.cols,  this.literals.cols  ?? 1);
       const start = readInput(inputs.start, this.literals.start ?? 1);
-      const step  = readInput(inputs.step, this.literals.step ?? 1);
-      if (countRaw === null || start === null || step === null) list = null;
-      else {
-        const count = Math.max(0, Math.floor(countRaw));
-        list = count > MAX_GENERATED
-          ? solError("#OVERFLOW!", `SEQUENCE count ${count} exceeds the ${MAX_GENERATED} element limit`)
-          : sequenceList(count, start, step);
-      }
+      const step  = readInput(inputs.step,  this.literals.step  ?? 1);
+      list = rows === null || cols === null || start === null || step === null
+        ? null
+        : resolveExcelFunction("SEQUENCE")!(rows, cols, start, step) as number[] | number[][] | SolError;
     } else if (this.op === "linspace") {
       const start = readInput(inputs.start, this.literals.start ?? 0);
       const end   = readInput(inputs.end, this.literals.end ?? 1);
@@ -282,7 +295,29 @@ export class SeriesNode extends ClassicPreset.Node {
         : repeatValue(v, nRaw);
     }
     this.cachedList = list;
+    this.reconcileRank(list);
     return { list };
+  }
+
+  /** SEQUENCE with Columns > 1 returns a matrix; every other case a list. Swap the
+   *  output socket to match the computed rank (value-driven, so it runs OUTSIDE data()
+   *  via a microtask; headless runs — no active editor — keep the last socket). */
+  private reconcileRank(result: unknown): void {
+    if (isSolError(result)) return; // an error says nothing about shape
+    const want: 1 | 2 = Array.isArray(result) && result.length > 0 && Array.isArray(result[0]) ? 2 : 1;
+    if (want === this.lastRank) return;
+    this.lastRank = want;
+    queueMicrotask(() => {
+      void (async () => {
+        const editor = getActiveEditor();
+        const view = getActiveView();
+        const out = this.outputs.list;
+        if (!editor || !view || !out || !editor.getNode(this.id)) return;
+        out.socket = want === 2 ? tableSocket : listSocket;
+        await retypeOutputCables(editor, view, this.id, "list");
+        await view.rerenderNode(this.id);
+      })();
+    });
   }
 }
 

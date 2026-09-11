@@ -75,10 +75,50 @@ build rules and § Sequencing the order (A′ → A → B → D → C → F → 
 verified in the desktop app against the demo vault. Landed ledger: the bundle's § What stands today.
 
 - [ ] **AddColumn over a cube** (fe): Add Column is frame-only; Computed Column already takes a cube.
+- [ ] **TaskNotes read vs a plain vault query** (author, review): the TaskNotes read node overlaps
+  Vault Folder for the common case — title/status/priority/due/tags are just frontmatter. The HTTP
+  API earns its keep only for recurrence expansion, `timeEntries` totals, user-remapped field names,
+  and write-back-with-webhooks. Consider whether the read node stays, or folds into a `tags contains
+  task` recipe over Vault Folder. (dev-notes 2026-09-11.)
+- [ ] **Daily-notes targeting** (author, keep — the removed `{{daily}}` successor): a way to write
+  today's daily note in its configured folder + format, wireable (a source node emitting the
+  daily-note path from `.obsidian/daily-notes.json`, not inline template syntax). Not necessarily a
+  node — still shaping. (dev-notes 2026-09-11.)
+- [ ] **Knap for dynamic write paths / content** (author, parked): use Knap to template a Write to
+  Obsidian `path` or the written body from wired values — the successor to the removed `{{date}}`
+  grammar, now that `path` is a plain wireable string.
+- [ ] **Frame-only verbs over a cube** (fe): Window / GROUPBY / Chart's frame input still refuse a
+  live `cube`, so charting or smoothing a Vault Folder needs a cube→frame step (A′ extended, or a
+  Cube → Frame node). Today the `daily-habits` seed runs its Window on a snapshot for this reason.
+- [ ] **Write mega-merge, phase 2** (author 2026-09-10, maximalMerge): the vault half LANDED
+  2026-09-11 — Write Properties folded into Write to Obsidian (Auto / Note / Properties target).
+  Remaining: fold **Write File** (disk CSV/JSON/MD) and **Write Tasks** (API) into the same sink as
+  further targets. Original note: Write File + Write to Obsidian as
+  ONE sink with a target selector (file / vault), formats as arguments (CSV, JSON, Markdown),
+  and the merge-to-folder behavior (`ec715ed` built it on Write File: a document input, one
+  `.md` per page into the path as a folder, a frame under MD as a pipe table; backed out
+  pending the merge). Write Tasks / Write Properties are candidates for the same card.
+- [ ] **Knap eyeball pass** (author): the overlay's highlighted source pane incl. the wired-Template
+  read-only pane (alignment, scroll, mobile), the page stepper + the Page-name field beside it, the
+  Filters popover, a wired template Note changing its tags, Write to Obsidian writing a batch on
+  desktop. Plus the 09-11 rebuild: the **standard-node Report card** (Template/Records rows, the
+  Document-chip hero, collapse to a pill), the **docked header** (stacked title, tiny Draft/Preview
+  toggle in the button row, 26px controls), a **template note** showing its tags literal (not empty),
+  and the **Personal Finance** letter's inline `{% if %}` verdicts flipping as a slider moves. The
+  dev-notes 09-10 "holes at close" + the 09-11 digest are the checklist.
+- [ ] **Knap help page** (`src/graph/help/`, DESIGN § 7): the syntax, the bare-tag rule, the
+  Template/Records inputs, the `{{ "{" }}{ x }}` escape, the upstream gotchas a user will hit.
+- [ ] **Batch cap surfaced**: `MAX_PAGES` truncates silently; the overlay stepper and the sink
+  status should say "500 of N".
+- [ ] **File the Knap upstream PRs** (`knap-upstream.md`): the typed-value bug first (its three
+  repros), then whitespace control, filters in comparisons, the `sort` validator; the API
+  asks as issues. Retire the noted workarounds as each lands.
 - [ ] **Author's desktop eyeball** of the flagship cards against `demo-vault/` (Settings ▸ Obsidian
   → the repo's demo-vault): Vault Folder (be's ten-step checklist in the 09-07 digest), Write
   Properties Preview/Run on a copy, TaskNotes with the plugin's API on, Write to Obsidian block mode
-  + `{{daily}}`, Write Properties' `writeBase` view, the Cube Input editor's three drill targets.
+  + `{{daily}}`, Write Properties' `writeBase` view, the Cube Input editor's three drill targets,
+  and the two new Obsidian seeds (`write-back-to-obsidian`, `daily-habits`) with the live Vault
+  Folder swapped in for the snapshot.
 
 ## Canvas chrome (queued by the author 2026-09-07, "not top priority")
 
@@ -87,6 +127,18 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   consider with it: a special Conduit → bundled cable → Cube node (the bundle's lanes land as one
   cube). Design first (DESIGN.md, `subsystem-invariants.md` § Conduit faces); stage after the
   Obsidian track.
+
+## Cables
+
+- [ ] **Mode-change ghost cable — socket-REMOVING swaps (approved by author, do later).** Option A
+  landed: Group Cost Settle retypes its `in` socket in place on a mode flip, so the cable survives
+  and `cableGhostStore.mark`/`commit` ghosts it until it's valid again (dev-notes 2026-09-08). Option
+  B is the harder case — a swap that fully REMOVES a socket (Workdays days↔end, Record op sockets)
+  drops the cable outright, so there's no real connection left to ghost. It needs a separate
+  "pending-reconnect" ghost that isn't a real `rete` connection, with its own render layer, that
+  re-materializes the cable once a compatible socket returns. Design note: target the fix on the
+  **Input Switch (`CableSwitchNode`)** specifically — the node whose output type actually drives the
+  detach — rather than teaching every downstream mode-swapping node to ghost.
 
 ## Canvas annotation
 

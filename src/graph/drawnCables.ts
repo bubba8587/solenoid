@@ -5,7 +5,7 @@ import { createNotifier } from "./storeKit";
 import { registerNodeForgetAll } from "./nodeStoreRegistry";
 import type { CableShape } from "./cableShape";
 import type { DrawnPoint, DrawnArrows } from "./drawnCablePath";
-import { isDrawnArrows, hasAngleOverride } from "./drawnCablePath";
+import { isDrawnArrows, hasAngleOverride, DRAWN_ANGLE_STEP } from "./drawnCablePath";
 
 export interface DrawnCable {
   id: string;
@@ -45,8 +45,9 @@ export const DRAWN_HEAD_SCALES: { value: number; label: string }[] = [
   { value: 2.2, label: "Huge" },
 ];
 
-/** The dial step. 45° only (author ruling, see the spec); pinned by test. */
-export const DRAWN_ANGLE_STEP = 45;
+/** The dial step. 45° only (author ruling, see the spec); pinned by test. Defined in
+ *  drawnCablePath (where the derived heading snaps to the same grid); re-exported here. */
+export { DRAWN_ANGLE_STEP };
 
 const WIDTH_MIN = 0.2;
 const WIDTH_MAX = 40;

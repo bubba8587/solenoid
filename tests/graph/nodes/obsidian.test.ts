@@ -9,31 +9,35 @@ import { makeDocument, isDocumentValue } from "../../../src/graph/documentValue"
 // tests pin the persistence + arming discipline, which is the safety-critical half.
 
 describe("WriteObsidianNode persistence + arming", () => {
-  it("persists fileName + subfolder through extractInit, but NEVER persists enabled", () => {
-    const n = new WriteObsidianNode({ fileName: "Weekly Report", subfolder: "reports/2026" });
+  it("persists subfolder through extractInit, keeps the path literal, but NEVER persists enabled", () => {
+    const n = new WriteObsidianNode({ subfolder: "reports/2026" });
+    n.stringLiterals.path = "Weekly Report";
     n.enabled = true;
     const init = extractInit(n);
-    expect(init.fileName).toBe("Weekly Report");
     expect(init.subfolder).toBe("reports/2026");
     expect(init.enabled).toBeUndefined();
     const reloaded = new WriteObsidianNode(init);
-    expect(reloaded.fileName).toBe("Weekly Report");
     expect(reloaded.subfolder).toBe("reports/2026");
     expect(reloaded.enabled).toBe(false); // every load starts disarmed
+    expect(new WriteObsidianNode().stringLiterals).toEqual({ path: "", keys: "" }); // path (Note) + keys (Properties)
   });
 
-  it("data() only caches the document for the preview", () => {
+  it("data() caches the document and resolves the path for the preview; the Note plan is empty", () => {
     const doc = makeDocument("# Note\n\nbody", {}, { title: "T" });
-    const n = new WriteObsidianNode();
+    const n = new WriteObsidianNode({ subfolder: "Notes" });
+    n.stringLiterals.path = "Memo";
     const out = n.data({ in: [doc] });
-    expect(out).toEqual({});
+    expect(out).toEqual({ plan: null }); // Note target: no cube, no plan
     expect(n.cachedDoc).toBe(doc);
+    expect(n.resolveMode()).toBe("note");
+    expect(n.renderedTarget()).toEqual({ name: "Memo", subfolder: "Notes" });
   });
 });
 
 describe("WriteObsidianNode.run() guards", () => {
   it("refuses when disarmed (before even checking the vault)", async () => {
-    const n = new WriteObsidianNode({ fileName: "x" });
+    const n = new WriteObsidianNode();
+    n.stringLiterals.path = "x";
     n.data({ in: [makeDocument("body")] });
     await n.run();
     expect(n.status).toBe("error");
@@ -41,7 +45,8 @@ describe("WriteObsidianNode.run() guards", () => {
   });
 
   it("armed but off-desktop → the desktop-only guard", async () => {
-    const n = new WriteObsidianNode({ fileName: "x" });
+    const n = new WriteObsidianNode();
+    n.stringLiterals.path = "x";
     n.enabled = true;
     n.data({ in: [makeDocument("body")] });
     await n.run();
@@ -51,7 +56,7 @@ describe("WriteObsidianNode.run() guards", () => {
 });
 
 describe("ImportObsidianNode", () => {
-  it("is a Note (inherits the frontmatter-socket + document machinery)", () => {
+  it("is a Note (inherits the frontmatter-socket + document machinery)", async () => {
     const n = new ImportObsidianNode({ body: "---\ntitle: Weekly\ncount: 5\n---\n# Body" });
     expect(n).toBeInstanceOf(NoteNode); // reads as a note everywhere (embeds, export, minimap)
     // frontmatter → typed OUTPUT sockets
@@ -62,7 +67,7 @@ describe("ImportObsidianNode", () => {
     // body renders below the stripped frontmatter
     expect(n.renderBody.trim()).toBe("# Body");
     // data() emits each field + the whole note as a document
-    const out = n.data();
+    const out = await n.data();
     expect(out.title).toBe("Weekly");
     expect(out.count).toBe(5);
     expect(isDocumentValue(out.document)).toBe(true);

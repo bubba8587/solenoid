@@ -41,9 +41,16 @@ export function hasAngleOverride(p: DrawnPoint): boolean {
   return typeof p.angle === "number" && Number.isFinite(p.angle);
 }
 
+/** Drawn headings live on a 45° grid — the dial's step AND the snap the DERIVED chord
+ *  heading rounds to, so a freshly drawn (auto) heading already sits where the dial would
+ *  pin it (author, 2026-09-05). One home; drawnCables re-exports it. */
+export const DRAWN_ANGLE_STEP = 45;
+
+const snapHeading = (deg: number) => Math.round(deg / DRAWN_ANGLE_STEP) * DRAWN_ANGLE_STEP;
+
 /** Forward tangent heading at every point: the override if pinned, else the chord through
- *  the neighbours. Both spans at a point read the same value, so their end stubs are
- *  collinear and a joint never kinks. */
+ *  the neighbours SNAPPED to the 45° grid (matching the dial). Both spans at a point read
+ *  the same value, so their end stubs are collinear and a joint never kinks. */
 export function drawnHeadings(pts: readonly DrawnPoint[]): number[] {
   const n = pts.length;
   const out: number[] = new Array<number>(n).fill(0);
@@ -59,7 +66,9 @@ export function drawnHeadings(pts: readonly DrawnPoint[]): number[] {
       headingOf(prev, next) ??
       (i + 1 < n ? headingOf(pts[i], pts[i + 1]) : null) ??
       (i > 0 ? headingOf(pts[i - 1], pts[i]) : null);
-    out[i] = h ?? (i > 0 ? out[i - 1] : 0);
+    // The derived chord snaps to 45°; the fallback carries the prior point's (already
+    // snapped) heading, or 0 at the head of a degenerate run.
+    out[i] = h === null ? (i > 0 ? out[i - 1] : 0) : snapHeading(h);
   }
   return out;
 }

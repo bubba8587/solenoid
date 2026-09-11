@@ -50,7 +50,7 @@ import { AGG_OP_META, CORR_METHOD_META, WINDOW_FN_META } from "../rete-nodes";
 import type { DescribeNode as DescribeNodeType, CorrMatrixNode as CorrMatrixNodeType, KMeansNode as KMeansNodeType, PcaNode as PcaNodeType, LogisticNode as LogisticNodeType, CorrMethod, WindowNode as WindowNodeType, WindowFn } from "../rete-nodes";
 import { VALUELESS_FILTER_OPS } from "../frameVerbs";
 import type { FilterOp, FilterCombine, JoinHow, AsofDirection, AggOp, DecisionNormalize, LookupMatchMode, LookupSearchMode } from "../frameVerbs";
-import type { FilterCondConfig } from "../nodes/frame";
+import type { FilterCondConfig, SettleMode } from "../nodes/frame";
 import { RecordLayoutField } from "./RecordLayoutField";
 import { CloseIcon } from "./CloseIcon";
 import { HEAD_OP_META, HEADER_OP_META, BLANK_ROW_OP_META, COLUMNS_OP_META } from "../nodes/frame";
@@ -68,7 +68,9 @@ function FrameOrCubeDisplay({ value, label }: { value: FrameValue | CubeValue | 
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { scheduleAutosave } from "../persistence";
-import { getActiveView, getOwningEditor, getOwningView } from "../activeGraph";
+import { getActiveView, getActiveEditor, getOwningEditor, getOwningView } from "../activeGraph";
+import { SolenoidSocket } from "../sockets";
+import { cableGhostStore } from "../cableState";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
 import { collapseStore } from "../collapseStore";
 import { pivotEditor } from "../pivotEditorStore";
@@ -785,28 +787,63 @@ const SETTLE_SPLIT_OPTIONS: { value: "equal" | "weighted"; label: string; title:
   { value: "equal", label: "Equal split", title: "Everyone owes the same share" },
   { value: "weighted", label: "By Share", title: "Each person owes in proportion to their Share column (blank = 1)" },
 ];
+const SETTLE_MODE_OPTIONS: { value: SettleMode; label: string; title: string }[] = [
+  { value: "totals", label: "Totals", title: "One row per person: what each Paid, split by an optional Share weight" },
+  { value: "transactions", label: "Transactions", title: "A cube ledger of expenses: each Amount, who Paid, and who it is For, split equally" },
+];
 
 export function SettleComponent({ data, emit }: NodeProps<SettleNodeType>) {
+  const [mode, setModeMirror] = useState<SettleMode>(data.mode);
+  useEffect(() => { setModeMirror(data.mode); }, [data.mode]); // resync on undo/redo/load
   const [split, setSplit] = useNodeField(data, "split");
+
+  // The mode retypes the single input socket in place (People frame ↔ Ledger cube). A wired
+  // cable SURVIVES the swap: if the source no longer fits the new type it becomes a dashed
+  // GHOST (one click to reconnect once the source is compatible again — reusing the splice
+  // ghost machinery), and un-ghosts when it fits again.
+  async function pickMode(next: SettleMode) {
+    if (next === data.mode) return;
+    data.setMode(next);
+    setModeMirror(next);
+    const ed = getActiveEditor();
+    const inSock = data.inputs.in?.socket;
+    if (ed && inSock) {
+      for (const c of ed.getConnections()) {
+        if (c.target !== data.id || c.targetInput !== "in") continue;
+        const srcSock = ed.getNode(c.source)?.outputs?.[c.sourceOutput]?.socket;
+        const fits = srcSock instanceof SolenoidSocket && srcSock.canConnectTo(inSock);
+        if (fits) cableGhostStore.commit(c.id); else cableGhostStore.mark(c.id);
+      }
+    }
+    const view = getActiveView();
+    if (ed && view) reconcileTypesAfterEdit(ed, view);
+    await getActiveView()?.rerenderNode(data.id);
+    await processGraph();
+  }
+
   const transfersOut = data.outputs.transfers;
   const netOut = data.outputs.net;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
+      <SegToggle value={mode} options={SETTLE_MODE_OPTIONS} onChange={(m) => void pickMode(m)} />
       <InlineInputs node={data} emit={emit} />
-      <SegToggle value={split} options={SETTLE_SPLIT_OPTIONS} onChange={setSplit} />
-      {transfersOut && (
-        <MeasuredSocketRow hero side="output" socketKey="transfers" nodeId={data.id} emit={emit} payload={transfersOut.socket}>
-          <div style={{ width: "100%" }}>
-            <FrameDisplay frame={data.cachedResult} label={`${nodeDisplayName(data)}: transfers`} />
-          </div>
-        </MeasuredSocketRow>
-      )}
+      {mode === "totals" && <SegToggle value={split} options={SETTLE_SPLIT_OPTIONS} onChange={setSplit} />}
+      {/* The per-person breakdown sits on top as a compact chip; the settle-up (the main
+          output) is the hero at the BOTTOM, labelled like the net row. */}
       {netOut && (
         <MeasuredSocketRow side="output" socketKey="net" nodeId={data.id} emit={emit} payload={netOut.socket}>
           <span className="solenoid-node__io-label">NET</span>
           <span className="solenoid-node__output-value" style={{ display: "flex", justifyContent: "flex-end" }}>
             {isFrameValue(data.cachedNet) ? <FrameChip value={data.cachedNet} label={`${nodeDisplayName(data)}: net`} size="sm" /> : "—"}
           </span>
+        </MeasuredSocketRow>
+      )}
+      {transfersOut && (
+        <MeasuredSocketRow hero side="output" socketKey="transfers" nodeId={data.id} emit={emit} payload={transfersOut.socket}>
+          <div style={{ width: "100%" }}>
+            <span className="solenoid-node__io-label" style={{ display: "block", marginBottom: 2 }}>WHO PAYS WHOM</span>
+            <FrameDisplay frame={data.cachedResult} label={`${nodeDisplayName(data)}: transfers`} />
+          </div>
         </MeasuredSocketRow>
       )}
     </NodeShell>

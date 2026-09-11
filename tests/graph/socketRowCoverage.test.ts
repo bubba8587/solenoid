@@ -20,8 +20,12 @@ const SRC = path.resolve(__dirname, "../../src/graph");
 /** Per-row socket renderers: each gives its dot a measured `top` of its own. */
 // EquationVarRow / EquationOutRow are the acausal card's own measured rows — they
 // resolve a `top` per row and hand it to NodeSocket, which is the same guarantee.
+// ReportRefRow (the Report card's ref rows) wraps MeasuredSocketRow, one dot per row.
+// FieldRow (the Note / Import card's frontmatter + path rows) renders each dot inside
+// a `position: relative` `.solenoid-note__field-row`, the socket's positioning context
+// (NoteNode.css) — one dot per row, the same non-stacking guarantee.
 const ROW_RENDERERS =
-  /InlineInputs|InlineOutputRows|MeasuredSocketRow|CollapsedInputPill|ExtensibleInputs|PairedExtensibleInputs|EquationVarRow|EquationOutRow/;
+  /InlineInputs|InlineOutputRows|MeasuredSocketRow|CollapsedInputPill|ExtensibleInputs|PairedExtensibleInputs|EquationVarRow|EquationOutRow|ReportRefRow|FieldRow/;
 
 /** Cards that place their own dots and own the geometry, with the reason. */
 const SANCTIONED: Record<string, string> = {

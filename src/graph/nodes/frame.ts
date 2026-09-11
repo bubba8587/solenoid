@@ -5,7 +5,8 @@ import { extractVariables, compileEvaluator, rowRefNames, type ExprEvaluator } f
 import { isLambdaValue } from "../lambdaValue";
 import { computeColumnCells } from "../computedColumnCore";
 import { dropInputCables } from "../components/cablePrune";
-import { getActiveView } from "../activeGraph";
+import { getActiveView, getOwningEditor } from "../activeGraph";
+import { cableGhostStore } from "../cableState";
 import { readFilterValue } from "./list";
 import type { FrameHint } from "../frameHint";
 import { toAnyMatrix } from "./coerce";
@@ -35,7 +36,7 @@ import {
 import { pairIdsFromKeys } from "./logic";
 import type { PivotSpec, FilterCondConfig } from "../frameVerbs";
 import type { AllocateMode } from "./allocateOps";
-import { settleGroup } from "./settleOps";
+import { settleGroup, settleLedger, type Expense } from "./settleOps";
 import { payoffPlan, type PayoffOrder } from "./payoffOps";
 import { describeFrame, correlationMatrix, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameVerbs";
 export type { WindowFn } from "../frameVerbs";
@@ -49,7 +50,7 @@ import {
 import { csvList, type FrameShapeContext } from "./frameShapeHook";
 import type { ColumnPickerSpec } from "./columnPickerHook";
 import type { CubeValue, CubeCell, CubeColumn } from "../frame";
-import { type UnitCell } from "../unitValue";
+import { type UnitCell, type ColumnUnit, isUnitCell } from "../unitValue";
 import { tagFrameCellUnit, columnUnitFromSpec } from "../unitColumn";
 
 // A thrown SolError must be returned as a VALUE — letting it escape data() flattens
@@ -1821,55 +1822,182 @@ export function payoffFrame(f: FrameValue, extra: number, order: PayoffOrder, vi
 
 // ─── GROUP COST SETTLE (1.4 H3) ──────────────────────────────────────────────
 // People paid uneven amounts; the minimum set of transfers that squares everyone up.
-// `split` is a parameter of the one verb (equal | weighted by a Share column).
+// TWO modes: `totals` reads a people frame (Paid total + optional Share weight); `transactions`
+// reads a CUBE ledger — one row per expense, split equally among a nested list of beneficiaries
+// (author 2026-09-08). `split` is the totals-mode weighting; transactions is equal-split only.
 export type SettleSplit = "equal" | "weighted";
+export type SettleMode = "totals" | "transactions";
 
 export class SettleNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    people: "Rows are people: the first text column names them, a Paid number column says what each paid, and an optional Share column weighs what each owes, where 1 is an equal share and blank counts as 1.",
-    transfers: "Who pays whom, in the fewest transfers: From · To · Amount. Amounts carry the Paid column's currency.",
-    net: "Each person with their fair share and net position: positive is owed, negative owes.",
+    in: "The group's data, retyped by the mode. In Totals, a people frame: a name column, a Paid number, an optional Share weight where 1 is an equal share and blank counts as 1. In Transactions, a cube ledger of expenses, one row each: an Amount, a Paid by name or list for a shared bill, and a For list of who splits it equally, where blank counts as the whole group. Payers and beneficiaries are independent, so a bill one person fronts can be redistributed to a different group.",
+    transfers: "The settle-up, and the node's main output: who pays whom in the fewest transfers, From · To · Amount. Amounts carry the Amount column's currency.",
+    net: "Each person's true cost: Paid (already paid out, external), Owes (still owed to the group, positive), Owed (coming back from the group, negative), and Net = Paid + Owes + Owed, their fair share. In equal-split totals every Net matches.",
   };
 
   label: string;
+  mode: SettleMode;
   split: SettleSplit;
+  /** Reads per-cell currency off the Amount column in transactions mode (settleLedgerCube). */
+  unitAware = true;
   cachedResult: FrameValue | SolError | null = null;
   cachedNet: FrameValue | SolError | null = null;
   width = 240; height = 220;
 
   static frameHints: Record<string, FrameHint> = {
-    people: { columns: [
+    in: { columns: [
       { name: "Person", type: "string", cells: ["Ada", "Bo", "Cy"] },
       { name: "Paid", type: "number", cells: [300, 100, 0] },
       { name: "Share", type: "number", cells: [1, 1, 2] },
     ] },
   };
 
-  constructor(init?: { label?: string; split?: SettleSplit }) {
+  constructor(init?: { label?: string; mode?: SettleMode; split?: SettleSplit }) {
     super("Settle");
     this.label = init?.label ?? "Group Cost Settle";
+    this.mode = init?.mode === "transactions" ? "transactions" : "totals";
     this.split = init?.split === "weighted" ? "weighted" : "equal";
-    this.addInput("people", frameIn("People"));
+    this.addInput("in", this.inputPort());
     this.addOutput("transfers", frameOut("Transfers"));
     this.addOutput("net", frameOut("Net"));
   }
 
-  frameShape(outKey: string, ctx: FrameShapeContext): Shape | null {
-    const input = ctx.inputShape("people");
-    if (!input) return null;
-    if (outKey === "transfers") return { columns: [{ name: "From", type: "string" }, { name: "To", type: "string" }, { name: "Amount", type: "number" }] };
-    const name = input.columns.find((c) => c.type === "string")?.name ?? "Person";
-    return { columns: [{ name, type: "string" }, { name: "Paid", type: "number" }, { name: "Owes", type: "number" }, { name: "Net", type: "number" }] };
+  private inputPort() {
+    return this.mode === "transactions" ? cubeIn("Ledger") : frameIn("People");
   }
 
-  data(inputs: { people?: (FrameValue | null)[] }) {
-    const f = inputs.people?.[0] ?? null;
-    if (!f) { this.cachedResult = null; this.cachedNet = null; return { transfers: null, net: null }; }
-    const r = runVerb(() => settleFrame(f, this.split));
-    if (isSolError(r)) { this.cachedResult = r; this.cachedNet = r; return { transfers: r, net: r }; }
-    this.cachedResult = r.transfers; this.cachedNet = r.net;
-    return { transfers: r.transfers, net: r.net };
+  /** True while the "in" cable is a ghost (a mode-change left it type-incompatible, awaiting
+   *  a one-click reconnect) — its value must not feed compute. */
+  private inGhosted(): boolean {
+    const c = getOwningEditor(this.id)?.getConnections().find((c) => c.target === this.id && c.targetInput === "in");
+    return !!c && cableGhostStore.isGhost(c.id);
   }
+
+  /** Retype the SINGLE input socket in place (People frame ↔ Ledger cube) on a mode
+   *  change — the key stays "in", so a wired cable survives the swap. The component then
+   *  ghosts a now-incompatible cable rather than dropping it (one-click reconnect). Outputs
+   *  are the same two frames in both modes, so no output retype. */
+  setMode(next: SettleMode): void {
+    if (next === this.mode) return;
+    this.mode = next;
+    const input = this.inputs.in;
+    if (!input) return;
+    const port = this.inputPort();
+    input.socket = port.socket;
+    input.label = port.label;
+  }
+
+  frameShape(outKey: string, ctx: FrameShapeContext): Shape | null {
+    if (outKey === "transfers") return { columns: [{ name: "From", type: "string" }, { name: "To", type: "string" }, { name: "Amount", type: "number" }] };
+    // net: the person column takes the input's name in totals mode, else "Person".
+    const name = this.mode === "totals"
+      ? (ctx.inputShape("in")?.columns.find((c) => c.type === "string")?.name ?? "Person")
+      : "Person";
+    return { columns: [{ name, type: "string" }, { name: "Paid", type: "number" }, { name: "Owes", type: "number" }, { name: "Owed", type: "number" }, { name: "Net", type: "number" }] };
+  }
+
+  data(inputs: { in?: (FrameValue | CubeValue | null)[] }) {
+    const none = () => { this.cachedResult = null; this.cachedNet = null; return { transfers: null, net: null }; };
+    const emit = (r: { transfers: FrameValue; net: FrameValue } | SolError) => {
+      if (isSolError(r)) { this.cachedResult = r; this.cachedNet = r; return { transfers: r, net: r }; }
+      this.cachedResult = r.transfers; this.cachedNet = r.net;
+      return { transfers: r.transfers, net: r.net };
+    };
+    // A GHOSTED input cable (its source no longer fits the retyped socket after a mode
+    // change) does not feed: show empty, not a #VALUE! from coercing the wrong type.
+    const raw = this.inGhosted() ? null : (inputs.in?.[0] ?? null);
+    if (this.mode === "transactions") {
+      const cube = isCubeValue(raw) ? raw : isFrameValue(raw) ? frameToCube(raw) : null;
+      if (!cube) return none();
+      return emit(runVerb(() => settleLedgerCube(cube)));
+    }
+    const f = isFrameValue(raw) ? raw : isCubeValue(raw) ? cubeToScalarFrame(raw) : null;
+    if (!f) return none();
+    return emit(runVerb(() => settleFrame(f, this.split)));
+  }
+}
+
+/** The transactions half of Group Cost Settle: read the expense cube into an equal-split
+ *  ledger, run settleLedger, shape the two frames. Amount's currency rides onto the outputs. */
+export function settleLedgerCube(cube: CubeValue): { transfers: FrameValue; net: FrameValue } {
+  const norm = (s: string) => s.trim().toLowerCase();
+  const col = (...names: string[]) => { const set = new Set(names); return cube.columns.find((c) => set.has(norm(c.name))); };
+  const amountCol = col("amount", "cost", "total", "price", "spend");
+  const payerCol = col("paid by", "paidby", "payer", "paid", "by", "who paid", "from");
+  const forCol = col("for", "split", "split between", "participants", "shared", "shared by", "shared with", "with", "beneficiaries", "owed by");
+  if (!amountCol) throw solError("#VALUE!", "Group Cost Settle (Transactions) needs an Amount column");
+  if (!payerCol) throw solError("#VALUE!", "Group Cost Settle (Transactions) needs a Paid by column");
+
+  // A cell's names: a list cell → its entries; a scalar → itself; a comma string → its parts.
+  const namesOf = (cell: CubeCell | undefined): string[] => {
+    if (cell == null) return [];
+    if (Array.isArray(cell)) return cell.flatMap(namesOf);
+    if (isUnitCell(cell) || isFrameValue(cell) || isCubeValue(cell)) return [];
+    return String(cell).split(/\s*,\s*/).map((x) => x.trim()).filter(Boolean);
+  };
+  const amountOf = (cell: CubeCell | undefined): number => {
+    if (isUnitCell(cell)) return Number.isFinite(cell.value) ? cell.value : 0;
+    if (typeof cell === "number") return Number.isFinite(cell) ? cell : 0;
+    if (typeof cell === "string") { const n = Number(cell.replace(/[,$£€\s]/g, "")); return Number.isFinite(n) ? n : 0; }
+    return 0;
+  };
+
+  const rows = cubeRowCount(cube);
+  const expenses: Expense[] = [];
+  for (let i = 0; i < rows; i++) {
+    const amount = amountOf(amountCol.cells[i]);
+    const payers = namesOf(payerCol.cells[i]);
+    if (!(amount > 0) || payers.length === 0) continue; // a row with no payer or amount can't be placed
+    const named = forCol ? namesOf(forCol.cells[i]) : [];
+    expenses.push({ amount, payers, beneficiaries: named.length ? named : null }); // blank For = the whole group
+  }
+  const r = settleLedger(expenses);
+  // Carry the Amount column's currency (a per-cell UnitCell) onto the money columns.
+  const unit = ledgerMoney(amountCol.cells);
+  const money = unit ? { unit } : {};
+  return {
+    transfers: { __frame: true, columns: [
+      { name: "From", type: "string", values: r.transfers.map((t) => t.from) },
+      { name: "To", type: "string", values: r.transfers.map((t) => t.to) },
+      { name: "Amount", type: "number", values: r.transfers.map((t) => t.amount), ...money },
+    ] },
+    net: settleNetFrame(r.people, r.paid, r.shares, money),
+  };
+}
+
+const r2 = (x: number) => Math.round(x * 100) / 100;
+
+/** The Net table: Paid (fronted, external) + Owes (still owed to the group, +) + Owed (coming
+ *  back from the group, −) = Net, which is each person's fair share (their true cost). A
+ *  creditor's balance comes back as Owed; a debtor's is paid out as Owes; one is always 0. In
+ *  equal-split totals every Net matches. */
+function settleNetFrame(
+  names: string[], paidRaw: readonly number[], sharesRaw: readonly number[],
+  money: Partial<Pick<FrameColumn, "unit" | "format">>, personLabel = "Person",
+): FrameValue {
+  const paid = paidRaw.map(r2);
+  const net = sharesRaw.map(r2); // Net = the fair share / true cost
+  const owes: number[] = [];
+  const owed: number[] = [];
+  net.forEach((n, i) => {
+    const diff = r2(n - paid[i]); // Net − Paid: > 0 you still owe out, < 0 it comes back
+    owes.push(diff > 0 ? diff : 0);
+    owed.push(diff < 0 ? diff : 0);
+  });
+  return { __frame: true, columns: [
+    { name: personLabel, type: "string", values: names },
+    { name: "Paid", type: "number", values: paid, ...money },
+    { name: "Owes", type: "number", values: owes, ...money },
+    { name: "Owed", type: "number", values: owed, ...money },
+    { name: "Net", type: "number", values: net, ...money },
+  ] };
+}
+
+/** The currency of an Amount column when its cells carry a per-cell unit (a UnitCell) — the
+ *  first one wins; a mixed-currency ledger is out of scope. */
+function ledgerMoney(cells: CubeCell[]): ColumnUnit | undefined {
+  for (const c of cells) if (isUnitCell(c)) return c.display ? { dim: c.dim, display: c.display } : { dim: c.dim };
+  return undefined;
 }
 
 /** The frame half of Group Cost Settle: read the people rows, run settleGroup, shape the
@@ -1900,12 +2028,7 @@ export function settleFrame(f: FrameValue, split: SettleSplit): { transfers: Fra
       { name: "To", type: "string", values: r.transfers.map((t) => t.to) },
       { name: "Amount", type: "number", values: r.transfers.map((t) => t.amount), ...money },
     ] },
-    net: { __frame: true, columns: [
-      { name: nameCol?.name ?? "Person", type: "string", values: people.map((p) => p.name) },
-      { name: "Paid", type: "number", values: people.map((p) => p.paid), ...money },
-      { name: "Owes", type: "number", values: r.shares, ...money },
-      { name: "Net", type: "number", values: r.nets, ...money },
-    ] },
+    net: settleNetFrame(people.map((p) => p.name), people.map((p) => p.paid), r.shares, money, nameCol?.name ?? "Person"),
   };
 }
 

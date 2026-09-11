@@ -37,6 +37,7 @@ describe("urls + auth", () => {
   it("builds the paged tasks, calendar-window and stats endpoints off the settings url", () => {
     expect(tasksUrl("http://localhost:8080/", 200)).toBe("http://localhost:8080/api/tasks?limit=200&offset=200");
     expect(tasksUrl("", 0, 999)).toBe("http://localhost:8080/api/tasks?limit=200&offset=0");
+    expect(tasksUrl("localhost:8080", 0)).toBe("http://localhost:8080/api/tasks?limit=200&offset=0"); // a bare host gets its scheme
     expect(eventsUrl("http://127.0.0.1:9090", d("2026-09-07"), d("2026-09-14")))
       .toBe("http://127.0.0.1:9090/api/calendars/events?start=2026-09-07T00%3A00%3A00&end=2026-09-14T23%3A59%3A59");
     expect(statsUrl(" http://localhost:8080 ")).toBe("http://localhost:8080/api/stats");

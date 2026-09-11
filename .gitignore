@@ -38,3 +38,13 @@ copy-inventory.md.orig.json
 
 # Dev-server mirror of the document being edited (vite.config.ts devGraphMirror)
 .dev/
+
+# Third-party plugin binaries installed locally into the demo vault (TaskNotes); not ours to ship
+demo-vault/.obsidian/plugins/
+# Obsidian writes these when the demo vault is opened; only daily-notes.json, types.json and community-plugins.json are fixture
+demo-vault/.obsidian/workspace.json
+demo-vault/.obsidian/app.json
+demo-vault/.obsidian/appearance.json
+demo-vault/.obsidian/core-plugins.json
+# TaskNotes generates its view bases here
+demo-vault/TaskNotes/

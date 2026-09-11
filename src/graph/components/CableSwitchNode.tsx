@@ -6,7 +6,7 @@ import type { CableSwitchNode as CableSwitchNodeType } from "../rete-nodes";
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getActiveEditor, getActiveView } from "../activeGraph";
-import { retypeOutputCables } from "../fcReconcile";
+import { retypeOutputCables, reconcileTypesAfterEdit } from "../fcReconcile";
 import { collapseStore } from "../collapseStore";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import { NodeSocket } from "./NodeSocket";
@@ -30,6 +30,14 @@ import { dropInputCables } from "./cablePrune";
 import { nodeDisplayName } from "../catalogUtils";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
+
+function Chevron({ back }: { back?: boolean }) {
+  return (
+    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+      <path d={back ? "M6.5 1l-4 4 4 4" : "M3.5 1l4 4-4 4"} fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 // The selected value is `any`, so render BY KIND like Display — never stringified;
 // figures/cubes that would overflow the narrow card show as a chip.
@@ -139,10 +147,18 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
   function select(i: number) {
     data.activeIndex = i;
     setSelected(i);
+    // In One mode the output PASSES THROUGH the active input, so changing which input is
+    // active can move the output's derived type (e.g. cube → frame). No connection event
+    // fires on this path, so re-settle the wildcard types here — else the output socket
+    // keeps the old adopted type while the value has already switched (the reported bug).
+    const ed = getActiveEditor();
+    const view = getActiveView();
+    if (ed && view) reconcileTypesAfterEdit(ed, view);
     void processGraph();
   }
-  function cycle() {
-    if (keys.length) select((data.activeIndex + 1) % keys.length);
+  function step(delta: number) {
+    const next = Math.min(keys.length - 1, Math.max(0, data.activeIndex + delta));
+    if (next !== data.activeIndex) select(next);
   }
   function setMode(many: boolean) {
     data.multiSelect = many;
@@ -225,15 +241,22 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
       />
       <div className="sol-switch__controls">
         <button type="button" className="solenoid-node__add-input" onClick={(e) => { e.stopPropagation(); void addRow(); }}>+ Add</button>
-        {!multi && (
-          <button type="button" className="sol-switch__cycle" title="Cycle to the next input" onClick={(e) => { e.stopPropagation(); cycle(); }} onPointerDown={stop} onMouseDown={stop}>
-            {/* Lucide "rotate-cw" (ISC). */}
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M21 12a9 9 0 1 1-3-6.7L21 8" />
-              <path d="M21 3v5h-5" />
-            </svg>
-            Cycle
-          </button>
+        {!multi && keys.length > 0 && (
+          <div className="solenoid-record__pager sol-switch__pager">
+            <button
+              type="button" className="solenoid-record__pager-btn" title="Previous input"
+              disabled={selected <= 0}
+              onClick={(e) => { e.stopPropagation(); step(-1); }}
+              onPointerDown={stop} onMouseDown={stop}
+            ><Chevron back /></button>
+            <span className="solenoid-record__pager-count">{selected + 1} / {keys.length}</span>
+            <button
+              type="button" className="solenoid-record__pager-btn" title="Next input"
+              disabled={selected >= keys.length - 1}
+              onClick={(e) => { e.stopPropagation(); step(1); }}
+              onPointerDown={stop} onMouseDown={stop}
+            ><Chevron /></button>
+          </div>
         )}
       </div>
       <SwitchValue value={data.cachedValue} label={nodeDisplayName(data)} nodeId={data.id} />

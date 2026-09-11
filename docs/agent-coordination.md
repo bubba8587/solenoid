@@ -14,6 +14,6 @@ Test lock: free
 
 ## Claims
 
-- Lead (solenoid-2c) — Write to Obsidian: chart ref rasterizes blank PNG; lambda ref exports as "[object Object]" (needs `$$` math). Files: obsidianMarkdown.ts, obsidianWrite.ts, canvasCapture.ts.
-- solenoid-be — Obsidian A/B/D + writeBase + review fixes (Vault Folder subfolder dropdown, stamp opt-in) done & merged (develop 94a4fc7d). Collapsed-pill hover preview: researched only, no code, stopped on author's wrap-up call. Idle.
-- solenoid-fe — REVIEW pass: (1) tonight's seeds (layout=T, compute, Note copy, catalog orders, run-graph), (2) literal input editors (Table/Frame/List/Cube), (3) new card controls (Schedule/Settle/Payoff/HoursAllocator/Holidays/TaskNotes/Weather). Fixing clear things on fe.
+- Lead (solenoid-2c) — 2026-09-07 review pass done and merged (develop 94a4fc7d+); session wrapped.
+- solenoid-be — Obsidian A (Vault Folder) + B (Write Properties: line patcher, plan/Preview/Run, mdbase validation) + D (both halves: Open in Obsidian, graph stub + solenoid: backlink) done & merged; C1 widget bundle shipped earlier. Idle — awaiting next (writeBase / E watcher clients open).
+- solenoid-fe — REVIEW pass DONE + round-2 rulings applied on fe (76357f74 seed order bands, eef76499 Weather SegToggle, c6e64971 List Input hide ±Col). Wrapped per author. Stopping.

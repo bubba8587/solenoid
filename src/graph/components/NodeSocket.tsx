@@ -6,6 +6,7 @@ import { socketFlipStore } from "../socketFlipStore";
 import { useFlowSocket } from "../flowSurface";
 import { SolenoidSocket, SOCKET_TYPE_LABELS } from "../sockets";
 import { frameHintFor, frameHintStore, type FrameHint } from "../frameHint";
+import { isChipSummaryPeek } from "../valuePeekKind";
 import { cableValueStore } from "../cableValueStore";
 import { getActiveEditor } from "../activeGraph";
 import { cubeTransform, CUBE_FILL_PATH } from "./cubeGlyph";
@@ -170,7 +171,10 @@ export function NodeSocket({ side, socketKey, nodeId, payload, top, className }:
   // Socket hover overlay (frameHint.ts) — the MOUSE half: after a dwell, a floating
   // layer pops beside the dot. A live VALUE peek for an OUTPUT socket or a WIRED input
   // (the socket's value as a scaled-down Display), else the declared EXAMPLE hint for an
-  // unwired frame input — never both. Leaving, pressing (a cable pick), unmount, or a
+  // unwired frame input — never both. The value peek arms ONLY when the value shows as a
+  // summary chip (isChipSummaryPeek) — a frame/cube/table/list/chart/diagram/lambda —
+  // whose content is hidden behind the chip; a scalar/string/error is already in full on
+  // the face, so peeking it would just repeat it. Leaving, pressing (a cable pick), unmount, or a
   // wheel hides it. The dot has NO touch trigger: a touch press begins the cable pick,
   // which captures the pointer, so the tap's up never reaches this wrapper — the touch
   // trigger is the whole row (MeasuredSocketRow's example-hint path; touch-gestures.md).
@@ -199,7 +203,7 @@ export function NodeSocket({ side, socketKey, nodeId, payload, top, className }:
     if (e.pointerType !== "mouse") return;
     const el = e.currentTarget as HTMLElement;
     const peek = resolvePeekValue();
-    const willValue = !!peek && peek.value != null;
+    const willValue = !!peek && isChipSummaryPeek(peek.value);
     if (!willValue && !hint) return; // nothing to show — don't arm
     if (hintTimer.current !== null) clearTimeout(hintTimer.current);
     hintTimer.current = window.setTimeout(() => {

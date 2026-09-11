@@ -7,6 +7,8 @@ import {
 import { parseDateToSerial } from "./date";
 import { chartOut, strOut, documentOut } from "./shared";
 import { makeDocument, type DocumentValue } from "../documentValue";
+import { hasKnapSyntax, knapErrorText, renderKnap, toTemplateValue } from "../knapTemplate";
+import { solError, type SolError } from "../errorValue";
 import { isFrameValue, recordsToCube, type FrameValue, type FrameColumn, type FrameColType, type FrameCell, type CubeValue } from "../frame";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
 import type { ImageValue } from "../imageValue";
@@ -25,6 +27,9 @@ type EmittedValue = FrontmatterValue | FrameValue | CubeValue;
 
 // A Note is a pure SOURCE: `---`-fenced frontmatter keys become typed OUTPUT
 // sockets, and it deliberately mints no inputs — that is the Report node's job.
+
+/** The one output every Note reserves from frontmatter reconciliation. */
+const NOTE_RESERVED: ReadonlySet<string> = new Set(["document"]);
 
 const FIELD_SOCKETS: Record<FrontmatterFieldType, SolenoidSocket> = {
   number: numberSocket,
@@ -119,7 +124,7 @@ function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType): Emitt
 
 export class NoteNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    document: "Carries the note's full text, frontmatter included, for a document sink such as Write to Obsidian.",
+    document: "Carries the note's full text, frontmatter included and the template rendered, for a document sink such as Write to Obsidian.",
   };
 
   body: string;        // markdown — may open with a `---`-fenced YAML frontmatter block
@@ -153,6 +158,10 @@ export class NoteNode extends ClassicPreset.Node {
     // after node creation then find their outputs present.
     this.syncFields();
   }
+
+  /** Output keys `syncFields` must never treat as a (removable) frontmatter key. The
+   *  base reserves only `document`; Import adds its `path` identity output. */
+  protected reservedOutputs(): ReadonlySet<string> { return NOTE_RESERVED; }
 
   /** The markdown to render — the body with any frontmatter block stripped. */
   get renderBody(): string { return this._renderBody; }
@@ -199,8 +208,9 @@ export class NoteNode extends ClassicPreset.Node {
 
     const removed: string[] = [];
     const retyped: { key: string; type: FrontmatterFieldType }[] = [];
+    const reserved = this.reservedOutputs();
     for (const key of Object.keys(this.outputs)) {
-      if (key === "document") continue; // the fixed document output isn't a frontmatter key
+      if (reserved.has(key)) continue; // fixed outputs (document, a subclass's path) aren't frontmatter keys
       const w = wanted.get(key);
       const cur = this.outputs[key]!.socket;
       if (!w) {
@@ -228,8 +238,26 @@ export class NoteNode extends ClassicPreset.Node {
     return isFrameValue(v) ? shapeOfFrameValue(v) : null;
   }
 
-  data(): Record<string, EmittedValue | DocumentValue> {
-    return { ...this.fieldValues(), document: makeDocument(this.body, {}, undefined, this.id) };
+  /** The frontmatter fields as template data: a Note's Knap variables are its OWN
+   *  fields (dates as ISO text), so `{{ title }}` in the body reads the block above. */
+  templateVariables(): Record<string, unknown> {
+    const vars: Record<string, unknown> = {};
+    for (const [k, v] of this._fieldValues) vars[k] = toTemplateValue(v, this.fieldType(k));
+    return vars;
+  }
+
+  // Async ONLY when the body carries a template tag; a plain note stays synchronous.
+  // The document carries the RAW body as `source` beside the render, so a Report
+  // wired to this note can use it as its template. A tag naming no field stays
+  // literal (renderKnap keepUnknown): a template note reads as one.
+  data(): Record<string, EmittedValue | DocumentValue> | Promise<Record<string, EmittedValue | DocumentValue | SolError>> {
+    const fields = this.fieldValues();
+    const extra = { source: this.body };
+    if (!hasKnapSyntax(this.body)) return { ...fields, document: makeDocument(this.body, {}, undefined, this.id, extra) };
+    return renderKnap(this.body, this.templateVariables(), { keepUnknown: true }).then((r) => ({
+      ...fields,
+      document: r.errors.length ? solError("#SYNTAX!", knapErrorText(r.errors)) : makeDocument(r.output, {}, undefined, this.id, extra),
+    }));
   }
 
 /** Use this from the UI: the installErrorGuards wrapper calls `firstInputError`

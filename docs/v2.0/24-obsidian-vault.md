@@ -10,15 +10,25 @@ states what stands.
 
 ## What stands today (pointers, not restatement)
 
+> **Superseded 2026-09-11 (the wire-in/out pass — current truth in `../node-coverage.md`):** the
+> note identity is now a wireable value across the surface. **C**'s `{{date}}`/`{{daily}}` template
+> grammar, the writer's `date` input, and `nameTemplate.ts` are GONE — Write to Obsidian's target
+> is a single wireable `path` (string) + a Browse chooser; wire a formatted date in for what
+> `{{date}}` did. **I**'s Import Note gained a `path` in (loads the wired note) + `path` out (its
+> identity) + the note's title in the body. Vault Folder's `folder`/`glob` became wireable inputs.
+> The R1/R2/R (relative-date template) items below describe the removed grammar — kept for history.
+
+
 **Landed 2026-09-07** (the author promoted the bundle to the flagship track; each item's
 outcome is in `../node-coverage.md`, cited here by name): **A** Vault Folder → Cube (+ R3, the
 demo vault at `demo-vault/`), **A′** the row verbs take cubes, **B** Write Properties, **C** Write
 to Obsidian modes + templates (R1/R2), **D** Open in Obsidian (the stub note is in progress), **E**
 the vault watcher, **F** TaskNotes feed + **F6** Write Tasks (+ the `which-task-next` seed = F4),
 **I** the Import Note's reload cadence, **J** the headless seam, **R5** midnight rollover, and
-**H6 Schedule** cube-in/cube-out with the **Cube Input** literal source. Still open: D's stub
-note + `solenoid:` link, mdbase validation on write, `writeBase`, the F1 seed (needs a computed
-column over a cube: Duration = `timeEstimate` ÷ hours-per-day), G/H/K on hold.
+**H6 Schedule** cube-in/cube-out with the **Cube Input** literal source; D's stub note +
+`solenoid:` link (opt-in), mdbase validation on write, `writeBase`, and the F1 seed
+(`kitchen-remodel-tasknotes`, Computed Column over a cube). G/K on hold; H is ruled out below
+mdbase 1.0 (`../decisions.md` mdbaseCeiling).
 
 - **Import Obsidian Note** (`nodes/obsidian.ts`, a `NoteNode` subclass): one `.md` → its
   frontmatter keys as typed output sockets + a `document` output; manual Reload. **Write to
@@ -256,7 +266,7 @@ reads; revisit if F's API reads need push.
 
 **H. mdbase query passthrough — HOLD.** Shelling out to the native `mdbase … query` binary:
 beta, undocumented JSON shape, no `tauri-plugin-shell`, and Filter/Sort cover the `where`.
-Revisit at mdbase 1.0.
+Revisit at mdbase 1.0 (`../decisions.md` mdbaseCeiling — the ceiling covers type-file writing too).
 
 **I. Import Obsidian Note stays a Note.** Its value is the per-key sockets + `document` output
 + rendered body (a connection node emits one table). It gains: `refreshMinutes` (the
@@ -314,8 +324,8 @@ stats (Range, Stddev, Earliest/Latest, Checked/Unchecked) — `../backlog.md`, n
 | Filter / Sort / Head / Distinct / Get Row (exist) | passthrough | table input → `cubeIn` | adopts: cube in → cube out | Filter: `contains` / `contains any` / `contains all` / `is empty` | `selectCubeRows` in `frame.ts` · `cubeRowVerbs.test.ts` |
 | Get Column / Decision Matrix / H6 (exist) | — | table input → `cubeIn` | unchanged (list / ranking frame / the cube + 4 columns) | — | same test file |
 | Write Properties | sink · Connections | `cube` (frame widens) | `plan` frame | vault, keys, addMissing, stamp, writeBase | `frontmatterPatch.ts` · `frontmatterPatch.test.ts` (untouched bytes identical; cube → vault → cube equal) |
-| Write to Obsidian (exists) | sink | `document`, optional `date` | — | + mode, fileName / subfolder templates | `managedBlock.ts`, `nameTemplate.ts` · tests per item |
-| TaskNotes | connection · Connections | `from`, `to` (Calendar only) | Tasks `cube` · Calendar `frame` · Stats scalars | provider, refreshMinutes | `taskNotesApi.ts` · `taskNotesApi.test.ts` (fixture per endpoint) |
+| Write to Obsidian (exists) | sink | `document`, `path` (str) | — | + mode, subfolder | `managedBlock.ts` · `obsidianWriteModes.test.ts` |
+| TaskNotes | connection · Connections | `from`, `to` (Calendar only) | Tasks `cube` · Calendar `frame` · Stats `{ Status \| Count }` frame | provider, refreshMinutes | `taskNotesApi.ts` · `taskNotesApi.test.ts` (fixture per endpoint) |
 | Write Tasks | sink · Connections | `cube` (frame widens) | `plan` frame | mode (create / update), keys, stamp | shares `taskNotesApi.ts` |
 | (app) midnight rollover | — | — | — | — | `volatileDates.ts` + one timer → `requestRecalc()` |
 | (CLI) `run-graph --vault --tasknotes --run` | — | — | — | — | `run-graph.test.ts`: a vault-fixture case, a `--run` case on a temp copy |
@@ -327,12 +337,18 @@ reason in the status line on an unreachable vault / port (a 401 reads "token"), 
 
 ## Seeds
 
-Seeds load on web with no vault, so each ships a **Frame Input snapshot of the feed's scalar
-columns** ("replace me with a TaskNotes node"; the row verbs take the nested shape when a
-real feed replaces it): **"Which task next?"** (F4: 12 tasks → Decision Matrix → Score → bar
-chart, a disarmed Write Properties at the end) and, when H6 lands, **"Kitchen remodel from
-TaskNotes"** (H6's seed on the tasks shape). `decision-matrix.json` stays the "vault as a
-source" demo.
+Seeds load on web with no vault, so each ships a **Frame Input snapshot of the scalar
+columns** with the live Vault Folder / TaskNotes node beside it as "replace me on desktop"
+(the row verbs take the nested cube when a real feed replaces the snapshot). The **Obsidian**
+group, over `demo-vault/`: **"Your vault as a table"** (A: Vault Folder → Filter
+`tags contains book` → Sort), **"Write it back to Obsidian"** (B:
+Projects snapshot → Computed Column `health` → a disarmed Write Properties → its plan),
+**"Daily notes as a time series"** (R3: Daily snapshot → Window rolling_avg → line chart, live
+Vault Folder over `Daily/` alongside), and **"Kitchen remodel from TaskNotes"** (F1/H6 on the
+tasks shape). **"Which task next?"** (F4) and `decision-matrix.json` sit in Worked examples.
+Gotcha the daily seed rides around: frame-only verbs (Window, GROUPBY, Chart's frame input)
+still refuse a live `cube`, so the smoothing runs on the snapshot until A′ grows a cube→frame
+step.
 
 ## Rules touched (cite in commits)
 
@@ -374,7 +390,9 @@ doubles socket docs). A **Flatten** node with a rule menu (existed only to reach
 verbs; A′ is the answer). Import Note as a connection node (loses its per-key sockets). Monte
 Carlo over a per-row spread column (the run mode samples scalar ports only). By-row over a
 cube (it iterates frames and lists). An invisible-character escape for `%%` in managed blocks
-(refuse instead). A provenance stamp on every patched note (noise in every Bases view).
+(refuse instead). A provenance stamp on every patched note (noise in every Bases view). A
+Solenoid-authored mdbase type file or a blended Solenoid + TaskNotes schema shipped by the app
+(mdbaseCeiling: the schema is the user's; Solenoid reads and validates, never authors).
 "Never write `.base`" (the format is small and official; `writeBase` gives a live table).
 Reading a `.base` as the reader's query (a second expression language). Relative text in
 Filter's value field (moves the opt-in to parser call sites). Dotted `file.*` column names
