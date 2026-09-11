@@ -13,3 +13,4 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 ## Claims
 
 - Lead (solenoid-9d) — session setup; awaiting the author's task list.
+- solenoid-35 (Agent 2) — Gantt FIGURE: packages/gantt-layout (scale/rows/bars/links/layout/svg + golden tests) + packages/gantt-react (GanttFigure). Contract fixed on develop; coordinating export names with Agent 3 (solenoid-0d).
