@@ -56,7 +56,9 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
     expect(col(r.cube, "Critical")).toEqual([true, true, false, true, false, true, true, true]);
     expect(iso(r.projectFinish)).toBe("2026-01-27");
     // Original columns first (the Predecessors list cells untouched, by reference), then the four appended.
-    expect(r.cube.columns.map((x) => x.name)).toEqual(["Task", "Duration", "Predecessors", "Start", "Finish", "Float", "Critical"]);
+    expect(r.cube.columns.map((x) => x.name).slice(0, 7)).toEqual(["Task", "Duration", "Predecessors", "Start", "Finish", "Float", "Critical"]);
+    expect(r.cube.columns.map((x) => x.name).slice(7)).toEqual(["Free Float", "Early Start", "Early Finish", "Late Start", "Late Finish", "Driving", "Late"]);
+    expect(col(r.cube, "Driving")).toEqual([null, "Demolition", "Demolition", "Plumbing rough-in", "Drywall", "Drywall", "Cabinets", "Countertops"]);
     expect(col(r.cube, "Predecessors")[3]).toBe(col(c, "Predecessors")[3]);
   });
 
@@ -105,6 +107,46 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
       "    section Wrap",
       "    Done :milestone, crit, t2, 2026-01-08, 0d",
     ]);
+  });
+
+  it("typed links: a nested Task · Type · Lag table; the one rule's columns; nesting as the WBS", () => {
+    const deps = (rows: [string, string, number][]) => cubeFromColumns([
+      { name: "Task", cells: rows.map((r) => r[0]), type: "string" },
+      { name: "Type", cells: rows.map((r) => r[1]), type: "string" },
+      { name: "Lag", cells: rows.map((r) => r[2]), type: "number" },
+    ]);
+    const c = cubeFromColumns([
+      { name: "Task", cells: ["A", "B", "C"], type: "string" },
+      { name: "Duration", cells: [4, 2, 1], type: "number" },
+      { name: "Predecessors", cells: [null, deps([["A", "SS", 1]]), deps([["B", "FS", -1]])] },
+      { name: "Deadline", cells: [d("2026-01-07"), null, null], type: "date" },
+      { name: "Manual", cells: [false, false, true], type: "logical" },
+      { name: "Start", cells: [null, null, d("2026-01-06")], type: "date" },
+    ]);
+    const r = scheduleTasks(c, { start: MON, workingDays: true });
+    expect(col(r.cube, "Start").map(iso)).toEqual(["2026-01-05", "2026-01-06", "2026-01-06"]);
+    expect(col(r.cube, "Late")).toEqual([true, false, false]);
+    expect(col(r.cube, "Float")[0]).toBe(-1);
+    // The typed Start column is replaced in place by the scheduled one; no duplicate.
+    expect(r.cube.columns.filter((x) => x.name === "Start").length).toBe(1);
+    expect(r.diagnostics.columns.map((x) => x.name)).toEqual(["Check", "Task", "Detail"]);
+    expect(r.diagnostics.columns[0].values).toContain("Manual");
+    expect(r.diagnostics.columns[0].values).toContain("Past deadline");
+
+    const nested = cubeFromColumns([
+      { name: "Task", cells: ["Phase 1", "Wrap"], type: "string" },
+      { name: "Tasks", cells: [tasks([["A", 2, []], ["B", 3, ["A"]]]), null] },
+      { name: "Duration", cells: [null, 1], type: "number" },
+      { name: "Predecessors", cells: [null, ["Phase 1"]] },
+    ]);
+    const n = scheduleTasks(nested, { start: MON, workingDays: true });
+    expect(col(n.cube, "Summary")).toEqual([true, false]);
+    expect(col(n.cube, "Finish").map(iso)).toEqual(["2026-01-09", "2026-01-12"]);
+    const inner = col(n.cube, "Tasks")[0] as CubeValue;
+    expect(col(inner, "Start").map(iso)).toEqual(["2026-01-05", "2026-01-07"]);
+    expect(col(inner, "WBS")).toEqual(["1.1", "1.2"]);
+    expect(n.output.tasks.map((t) => t.name)).toEqual(["Phase 1", "A", "B", "Wrap"]);
+    expect(n.gantt).toContain("      A :");
   });
 
   it("an empty tasks cube schedules nothing and finishes on the start", () => {
