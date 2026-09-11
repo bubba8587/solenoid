@@ -683,6 +683,7 @@ const VAULT_CABLE_ONLY = new Set(["folder", "glob"]);
 
 export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeType>) {
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version); // fill the preview when a read lands
+  const vault = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("obsidianVault")); // the one vault
   const connected = useConnectedInputs(data.id);
   const [folder, setFolder] = useState(data.folder);
   const [glob, setGlob] = useState(data.glob);
@@ -692,19 +693,19 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
   const desktop = isDesktop();
   useAutoRefresh(data.id, minutes);
   // Obsidian saved under this folder → re-read (bundle E; the cadence stays the stopgap).
-  useVaultWatch(data.vault, folder, () => { void refreshConnection(data.id); }, desktop);
+  useVaultWatch(vault, folder, () => { void refreshConnection(data.id); }, desktop);
   useEffect(() => { setFolder(data.folder); }, [data.folder]);
   // The subfolder dropdown lists the vault's folders (same control as Write to Obsidian).
   useEffect(() => {
     let alive = true;
-    void listVaultFolders(data.vault).then((f) => { if (alive) setFolders(f); });
+    void listVaultFolders(vault).then((f) => { if (alive) setFolders(f); });
     return () => { alive = false; };
-  }, [data.vault]);
+  }, [vault]);
   function pickFolder(next: string) {
     setFolder(next);
     if (next !== data.folder) { data.folder = next; void processGraph(); }
   }
-  function refreshFolders() { void listVaultFolders(data.vault).then(setFolders); }
+  function refreshFolders() { void listVaultFolders(vault).then(setFolders); }
 
   function commitField(next: string, current: string, set: (v: string) => void, apply: (v: string) => void) {
     const v = next.trim();
@@ -715,7 +716,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
   const cube = data.cached;
   const cols = cube?.columns.map((c) => c.name) ?? [];
   const firstCell = cube?.columns.find((c) => c.name === "path")?.cells[0];
-  const openUrl = typeof firstCell === "string" ? obsidianOpenUrl(data.vault, firstCell) : null;
+  const openUrl = typeof firstCell === "string" ? obsidianOpenUrl(vault, firstCell) : null;
 
   return (
     <NodeShell node={data} emit={emit}>
@@ -727,7 +728,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
           <div className="sol-conn__note">Reading a vault is available in the desktop app only.</div>
         ) : (
           <>
-            {data.vault.trim() === "" && <div className="sol-conn__note">Set the Obsidian vault folder in Settings.</div>}
+            {vault.trim() === "" && <div className="sol-conn__note">Set the Obsidian vault folder in Settings.</div>}
             <div className="sol-conn__vault">
               <div className="sol-conn__note" style={{ flex: 1 }}>Obsidian vault{data.folder ? ` · ${data.folder}` : ""}</div>
               {openUrl && (

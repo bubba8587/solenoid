@@ -740,8 +740,6 @@ export class VaultFolderNode extends ClassicPreset.Node {
     cube: "One row per note: the file columns, then every frontmatter key. Lists and nested tables ride in the cells. Rows are never saved into the project file; reopening the document re-reads the vault.",
   };
   label: string;
-  /** The one vault, from the app-wide setting (singleVaultFromSetting). */
-  get vault(): string { return settingsStore.get("obsidianVault"); }
   /** Vault-relative subfolder ("" = the whole vault). */
   folder: string;
   /** A file-name glob to keep ("" = every note). */
@@ -777,7 +775,8 @@ export class VaultFolderNode extends ClassicPreset.Node {
   data(inputs?: { folder?: (string | null)[]; glob?: (string | null)[] }): { cube: CubeValue | null } {
     const folder = (readInput(inputs?.folder, this.folder) ?? "").trim().replace(/^\/+|\/+$/g, "");
     const glob = (readInput(inputs?.glob, this.glob) ?? "").trim();
-    const key = connectionStore.key(this.id, `${this.vault}\u0000${folder}\u0000${glob}\u0000${this.nameFormat}\u0000${this.includeBody ? 1 : 0}`);
+    const vault = settingsStore.get("obsidianVault"); // the one vault (singleVaultFromSetting)
+    const key = connectionStore.key(this.id, `${vault}\u0000${folder}\u0000${glob}\u0000${this.nameFormat}\u0000${this.includeBody ? 1 : 0}`);
     if (key !== this._lastKey) {
       this._lastKey = key;
       this._folder = folder;
@@ -785,7 +784,7 @@ export class VaultFolderNode extends ClassicPreset.Node {
       if (!hasFs()) {
         this.cached = null;
         connectionStore.setState(this.id, { status: "error", message: "Reading a vault is available in the desktop app only" });
-      } else if (this.vault.trim() === "") {
+      } else if (vault.trim() === "") {
         this.cached = null;
         connectionStore.setState(this.id, { status: "idle" });
       } else {
@@ -798,7 +797,7 @@ export class VaultFolderNode extends ClassicPreset.Node {
   private async load(): Promise<void> {
     connectionStore.setState(this.id, { status: "loading" });
     try {
-      const vault = this.vault.trim();
+      const vault = settingsStore.get("obsidianVault").trim();
       const folder = this._folder; // resolved in data() (wired input, else the card field)
       const readRoot = folder ? await joinPath(vault, ...folder.split("/")) : vault;
       const globRe = this._glob ? nameGlobToRegExp(this._glob) : null;
