@@ -19,6 +19,9 @@ export interface GanttTask {
   start: number;
   /** Scheduled finish, INCLUSIVE (the last day the task occupies). Equals start on a milestone. */
   finish: number;
+  /** Working days (the Schedule's Duration; a summary's rolled-up span). Absent: the grid
+   *  falls back to the calendar span. */
+  duration?: number;
   /** 0..100; drawn as bar fill. */
   complete: number;
   critical: boolean;

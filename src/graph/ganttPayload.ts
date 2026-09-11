@@ -122,6 +122,7 @@ export function ganttPayloadFromSchedule(schedule: CubeValue | FrameValue, opts:
         violated: fl !== null && fl < 0,
         float: summary ? null : fl,
       };
+      if (dur !== null && dur >= 0) t.duration = dur;
       if (bool(r.cells.manual)) t.manual = true;
       if (deadline !== null) t.deadline = Math.floor(deadline);
       const group = r.cells.project ?? r.cells.section ?? r.cells.group;
