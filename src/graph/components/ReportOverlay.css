@@ -411,12 +411,6 @@ html.sol-report-docked {
 .report-panel--docked .report-source { border-right: none; }
 .report-panel--docked .report-preview { margin: 0; max-width: none; align-self: stretch; }
 
-/* Docked is narrow: wrap the header actions and keep the batch Page-name field
-   compact so wiring Records can't shove the buttons off-panel (the 150px input
-   overflowed). The controls reflow into a tidy toolbar rather than one field per row. */
-.report-panel--docked .report-header { flex-wrap: wrap; }
-.report-panel--docked .report-header-actions { flex-wrap: wrap; flex-shrink: 1; justify-content: flex-end; min-width: 0; }
-.report-panel--docked .report-page-name input { width: 108px; min-width: 0; }
 
 /* Shift the canvas area left so nothing hides behind the docked panel. The wrapper
    carries the canvas, minimap and add-menu (all positioned inside it); the nav pill,
@@ -491,6 +485,7 @@ html.sol-report-docked .solenoid-cmdpalette {
 .report-pages {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 12px;
   padding-bottom: 8px;
@@ -499,6 +494,9 @@ html.sol-report-docked .solenoid-cmdpalette {
   font-size: 11px;
   color: var(--text-muted);
 }
+/* The Page-name field lives at the right of the stepper; when the strip is too
+   narrow it wraps to its own line still compact and right-aligned, never stretched. */
+.report-pages .report-page-name { margin-left: auto; }
 .report-pages__step {
   padding: 0 8px;
   background: var(--surface-sunken);

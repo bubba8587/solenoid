@@ -261,19 +261,6 @@ export function ReportOverlay() {
         <div className="report-header">
           <span className="report-title">{node.label?.trim() || "Report"}</span>
           <div className="report-header-actions">
-            {batch && (
-              <label className="report-page-name" title="Knap for each page's note name, with record and index. Blank names pages by index.">
-                <span>Page name</span>
-                <input
-                  value={pageName}
-                  placeholder="{{ record.Name }}"
-                  spellCheck={false}
-                  onChange={(e) => setPageName(e.target.value)}
-                  onBlur={() => void commitPageName()}
-                  onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-                />
-              </label>
-            )}
             <button
               ref={embedBtnRef}
               type="button"
@@ -397,12 +384,29 @@ export function ReportOverlay() {
           </div>
           )}
           <div className="report-preview sol-md">
-            {pages && pageCount > 0 && (
+            {batch && (
               <div className="report-pages">
-                <button type="button" className="report-pages__step" disabled={shownPage === 0} onClick={() => setPageIndex(shownPage - 1)} aria-label="Previous page">‹</button>
-                <span className="report-pages__name" title={`${pages[shownPage].name}.md`}>{pages[shownPage].name}.md</span>
-                <span className="report-pages__count">{shownPage + 1} / {pageCount}</span>
-                <button type="button" className="report-pages__step" disabled={shownPage >= pageCount - 1} onClick={() => setPageIndex(shownPage + 1)} aria-label="Next page">›</button>
+                {pages && pageCount > 0 && (
+                  <>
+                    <button type="button" className="report-pages__step" disabled={shownPage === 0} onClick={() => setPageIndex(shownPage - 1)} aria-label="Previous page">‹</button>
+                    <span className="report-pages__name" title={`${pages[shownPage].name}.md`}>{pages[shownPage].name}.md</span>
+                    <span className="report-pages__count">{shownPage + 1} / {pageCount}</span>
+                    <button type="button" className="report-pages__step" disabled={shownPage >= pageCount - 1} onClick={() => setPageIndex(shownPage + 1)} aria-label="Next page">›</button>
+                  </>
+                )}
+                {/* The page-name template names each page — it lives beside the stepper
+                    that shows the names it produces, not in the crowded header. */}
+                <label className="report-page-name" title="Knap for each page's note name, with record and index. Blank names pages by index.">
+                  <span>Page name</span>
+                  <input
+                    value={pageName}
+                    placeholder="{{ record.Name }}"
+                    spellCheck={false}
+                    onChange={(e) => setPageName(e.target.value)}
+                    onBlur={() => void commitPageName()}
+                    onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                  />
+                </label>
               </div>
             )}
             {templateErrors ? (
