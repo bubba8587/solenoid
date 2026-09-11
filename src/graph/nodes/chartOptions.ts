@@ -177,7 +177,7 @@ export type ChartTargetId =
   | "pie" | "radar" | "radialbar" | "funnel"
   | "composed" | "bubble"
   | "histogram" | "kpi" | "scale" | "proportion" | "sankey"
-  | "waterfall" | "candle" | "boxplot" | "calheat";
+  | "waterfall" | "candle" | "boxplot" | "calheat" | "gantt";
 
 const XY_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "alpha", "fontsize"];
@@ -219,6 +219,7 @@ export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group
   candle:    { label: "Candlestick",      group: "Figures",      keys: TITLE_ONLY },
   boxplot:   { label: "Boxplot",          group: "Figures",      keys: TITLE_ONLY },
   calheat:   { label: "Calendar Heatmap", group: "Figures",      keys: TITLE_ONLY },
+  gantt:     { label: "Gantt",            group: "Figures",      keys: STAT_KEYS },
 };
 
 export const CHART_TARGET_LIST = (Object.keys(CHART_BUILDER_TARGETS) as ChartTargetId[])
