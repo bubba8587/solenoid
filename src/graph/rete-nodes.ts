@@ -27,6 +27,7 @@ export * from "./nodes/lambda";
 export * from "./nodes/group";
 export * from "./nodes/display";
 export * from "./nodes/visual";
+export * from "./nodes/gantt";
 export * from "./nodes/conduit";
 export * from "./nodes/cast";
 export * from "./nodes/distribution";

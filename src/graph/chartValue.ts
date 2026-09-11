@@ -1,5 +1,6 @@
 import { type ChartOp, CHART_OP_META } from "./nodes/visual";
 import type { ChartOptions } from "./nodes/chartOptions";
+import type { GanttPayload } from "@solenoid/gantt-layout";
 
 // What the `chart` socket carries: a self-describing figure. Must stay flat +
 // JSON-safe so it rides a cable and serializes like any other value.
@@ -189,7 +190,8 @@ export interface OverlayPayload {
 export type ChartPayload =
   | KpiPayload | ScalePayload | ProportionPayload | SankeyPayload | SurfacePayload
   | ContourPayload | WaterfallPayload | CandlePayload | BoxplotPayload
-  | CalHeatPayload | QuiverPayload | SevenSegPayload | RecordPayload | OverlayPayload;
+  | CalHeatPayload | QuiverPayload | SevenSegPayload | RecordPayload | OverlayPayload
+  | GanttPayload;
 
 /** The payload / special-figure ops beyond the ChartNode's own selectable ChartOps.
  *  The single source of truth (declareOnce) — the union below derives from it, and
@@ -197,7 +199,7 @@ export type ChartPayload =
  *  can't ship without going through the shared popup path. */
 export const CHART_SPECIAL_OPS = [
   "kpi", "scale", "proportion", "sankey", "surface", "contour", "waterfall",
-  "candle", "boxplot", "calheat", "quiver", "sevenseg", "record", "overlay",
+  "candle", "boxplot", "calheat", "quiver", "sevenseg", "record", "overlay", "gantt",
 ] as const;
 
 /** Every op the `chart` socket can carry. */

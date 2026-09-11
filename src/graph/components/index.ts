@@ -273,6 +273,7 @@ export {
 } from "./FigureNodes";
 export { SevenSegComponent } from "./SevenSegNode";
 export { RecordComponent } from "./RecordNode";
+export { GanttComponent } from "./GanttNode";
 export { PointPlotterComponent } from "./PointPlotterNode";
 export { CurveComponent } from "./CurveNode";
 export { GridPainterComponent } from "./GridPainterNode";
