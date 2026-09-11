@@ -6,12 +6,11 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 
 **Session 2026-09-12 (author present).** A1 = Lead = `solenoid-9d` (main checkout, `develop`). Peers: `solenoid-35` = Agent 2 in `.claude/worktrees/be` (branch `be`), `solenoid-0d` = Agent 3 in `.claude/worktrees/fe` (branch `fe`); each merges `develop` in at start, commits freely there, messages the Lead a hash when green; the Lead merges into `develop`. Nobody pushes. Lead runs a half-hourly cron check-in.
 
-**Test lock (one `tsc` / `vitest` run at a time — a second run crashes the author's machine).** Before running either, edit the line below to your name; run; set it back to `free`. If it is held, do something else and retry — never run alongside the holder.
-
-Test lock: free
+**Test lock (one `tsc` / `vitest` run at a time — a second run crashes the author's machine).** The lock is the file `.dev/test-lock` in the MAIN checkout (worktrees have their own copy of this doc, so a line here signals nobody). Before running either: read it; if it says `free`, write your session name; run; write `free` back. If it names someone else, do something else and retry — never run alongside the holder.
 
 (The repo-local `/continue` command was deleted 2026-09-01 by the author — it duplicated a generic. Board sync is by reading this file.)
 
 ## Claims
 
 - Lead (solenoid-9d) — session setup; awaiting the author's task list.
+- solenoid-35 (Agent 2) — Gantt FIGURE: packages/gantt-layout (scale/rows/bars/links/layout/svg + golden tests) + packages/gantt-react (GanttFigure). Contract fixed on develop; coordinating export names with Agent 3 (solenoid-0d).

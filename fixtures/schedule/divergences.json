@@ -1,0 +1,4 @@
+{
+  "_": "Files and fields where the engine is known to disagree with what the file stores, with the reason. A test that hits one of these skips the field instead of failing.",
+  "authored-remodel.mspdi.xml": {}
+}
