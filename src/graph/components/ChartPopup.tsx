@@ -7,11 +7,15 @@ import { ChartView, ChartFigure } from "./chartView";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import { clamp } from "../nodes/mathUtils";
 import { recordNavTarget, stepRecordRow } from "./recordNav";
+import { ganttSvg, type GanttPayload } from "@solenoid/gantt-layout";
 
 // ChartView needs explicit pixel dims (no ResponsiveContainer), and this popup is
 // a viewport-centered overlay, so window size is the correct measure.
 const MAX_W = 1000;
 const MAX_H = 380;
+// The Gantt draws its own tree grid + timeline and reads well tall, so it opens taller
+// (still capped so it never exceeds the viewport, via chartSize's clamp).
+const MAX_H_GANTT = 680;
 // Card chrome to leave room for inside the viewport.
 const MARGIN_X = 32;
 const CHROME_Y = 32 /* overlay margin */ + 38 /* header */ + 32 /* chart padding */;
@@ -19,9 +23,9 @@ const CHROME_Y = 32 /* overlay margin */ + 38 /* header */ + 32 /* chart padding
 // The FIGURE size the popup opens at (fills the viewport up to the caps). The card is
 // this plus its chrome; after that the figure follows its measured region so a resize
 // grows it.
-function chartSize() {
+function chartSize(maxH = MAX_H) {
   const w = clamp(window.innerWidth - MARGIN_X - 32, 200, MAX_W);
-  const h = clamp(window.innerHeight - CHROME_Y, 140, MAX_H);
+  const h = clamp(window.innerHeight - CHROME_Y, 140, maxH);
   return { w, h };
 }
 const FIG_PAD = 16;    // the figure region's inline padding, each side
@@ -41,6 +45,7 @@ export function ChartPopup() {
   // grows the chart. Starts at the window-fit size until the region first measures.
   const figRef = useRef<HTMLDivElement>(null);
   const [{ w, h }, setFig] = useState(chartSize);
+  const [copied, setCopied] = useState(false);
   useLayoutEffect(() => {
     const el = figRef.current;
     if (!el) return;
@@ -79,8 +84,22 @@ export function ChartPopup() {
   }, [state]);
 
   if (!state) return null;
-  const initialCard = (() => { const f = chartSize(); return { w: f.w + FIG_PAD * 2, h: f.h + FIG_PAD * 2 + CARD_CHROME }; })();
+  const isGantt = state.value?.op === "gantt";
+  const ganttPayload = isGantt && state.value?.payload?.kind === "gantt" ? (state.value.payload as GanttPayload) : null;
+  const initialCard = (() => { const f = chartSize(isGantt ? MAX_H_GANTT : MAX_H); return { w: f.w + FIG_PAD * 2, h: f.h + FIG_PAD * 2 + CARD_CHROME }; })();
   const cardStyle = popupCardVars(state);
+
+  // Copy the whole figure as a standalone SVG (the serializer draws the grid + timeline
+  // at the current width; the export uses its own width elsewhere).
+  const copySvg = ganttPayload
+    ? () => {
+        const svg = ganttSvg(ganttPayload, { width: Math.round(w) });
+        void navigator.clipboard?.writeText(svg).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1200);
+        });
+      }
+    : null;
 
   // A record card pages here too: step the node's Row, then swap the fresh
   // chart into this popup's snapshot (the popup holds a value, not a
@@ -100,6 +119,9 @@ export function ChartPopup() {
       onClose={() => chartPopup.close()}
       cardStyle={cardStyle}
       headerExtra={state.series && <span className="table-popup__dims">{state.series.length} pts</span>}
+      headerActions={copySvg
+        ? <button type="button" className="sol-popup__action" onClick={copySvg}>{copied ? "Copied" : "Copy SVG"}</button>
+        : undefined}
       pinNodeId={state.pinNodeId}
       resizable={{ min: { w: 260, h: 200 }, initial: initialCard }}
     >
@@ -117,6 +139,7 @@ export function ChartPopup() {
             height={h}
             fontScale={fontScale}
             recordNav={recordStep}
+            virtualize={isGantt}
           />
         ) : !state.series || state.series.length === 0 ? (
           <div style={{ color: "var(--text-dim, #888)", padding: 40 }}>No data</div>

@@ -12,7 +12,7 @@ export function GanttComponent({ data, emit }: NodeProps<GanttNodeType>) {
   const chart = cv && !isSolError(cv) ? cv : null;
   return (
     <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} keys={["schedule", "baseline", "options"]} />
+      <InlineInputs node={data} emit={emit} keys={["schedule", "baseline", "holidays", "weekend_code", "options"]} />
       <div className="solenoid-node__section-divider" />
       {chart
         ? <div className="solenoid-node__display-value" style={{ justifyContent: "flex-end" }}><ChartChip value={chart} /></div>

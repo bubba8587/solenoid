@@ -4,7 +4,7 @@
 import {
   hasFs, joinPath, ensureDir, writeTextFilePath, writeBinaryFilePath, readTextFilePath,
 } from "./fileBridge";
-import { nodeChartSvg, serializeSvgWithComputedStyles } from "./canvasCapture";
+import { nodeChartSvg, nodeChartSvgProvided, serializeSvgWithComputedStyles } from "./canvasCapture";
 import { dataUrlToBytes, sanitizeName } from "./imageAssets";
 import { assembleDocumentMarkdown, valueToObsidianBlock } from "./obsidianMarkdown";
 import { isImageValue, type ImageValue } from "./imageValue";
@@ -25,21 +25,31 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/** Rasterize a live `<svg>` to PNG bytes, baking computed styles in first — the vault
- *  has none of our CSS. The inline card chart is small, so the raster scales it up to a
- *  note-sized width (vector all the way). Null if the SVG is too small or the raster fails. */
-async function rasterizeSvg(svgEl: SVGSVGElement): Promise<Uint8Array | null> {
-  const box = svgEl.getBoundingClientRect();
-  const w = Math.max(1, Math.round(box.width));
-  const h = Math.max(1, Math.round(box.height));
-  if (w < 8 || h < 8) return null;
-  const markup = serializeSvgWithComputedStyles(svgEl);
-  // Size the root through the DOM, not a string prepend: a recharts root already has
+/** The SVG's own pixel size — a width/height attribute (stripping a unit), else the
+ *  viewBox's extent; 0 when neither is stated. */
+function svgIntrinsic(root: Element, dim: "width" | "height"): number {
+  const attr = parseFloat(root.getAttribute(dim) ?? "");
+  if (Number.isFinite(attr) && attr > 0) return attr;
+  const vb = (root.getAttribute("viewBox") ?? "").split(/[\s,]+/).map(Number);
+  const v = dim === "width" ? vb[2] : vb[3];
+  return Number.isFinite(v) && v > 0 ? v : 0;
+}
+
+/** Rasterize SVG markup to PNG bytes — the vault has none of our CSS, so styles are
+ *  already baked in by the caller. The chart is small, so the raster scales it up to a
+ *  note-sized width (vector all the way). `size` gives a live element's measured box; a
+ *  provider's SVG (Gantt) carries its own width/height, read off the root. Null if the
+ *  SVG is too small or the raster fails. */
+async function rasterizeSvgMarkup(markup: string, size?: { w: number; h: number }): Promise<Uint8Array | null> {
+  // Size the root through the DOM, not a string prepend: a root may already have
   // width/height, and a duplicated attribute is a fatal XML parse error.
   const holder = document.createElement("div");
   holder.innerHTML = markup;
   const root = holder.querySelector("svg");
   if (!root) return null;
+  const w = Math.max(1, Math.round(size?.w ?? svgIntrinsic(root, "width")));
+  const h = Math.max(1, Math.round(size?.h ?? svgIntrinsic(root, "height")));
+  if (w < 8 || h < 8) return null;
   root.setAttribute("width", String(w));
   root.setAttribute("height", String(h));
   const sized = new XMLSerializer().serializeToString(root);
@@ -61,6 +71,13 @@ async function rasterizeSvg(svgEl: SVGSVGElement): Promise<Uint8Array | null> {
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+/** Rasterize a live `<svg>`, baking its computed styles in first and sizing from its
+ *  measured box (a recharts root has no reliable intrinsic size until it's drawn). */
+async function rasterizeSvg(svgEl: SVGSVGElement): Promise<Uint8Array | null> {
+  const box = svgEl.getBoundingClientRect();
+  return rasterizeSvgMarkup(serializeSvgWithComputedStyles(svgEl), { w: box.width, h: box.height });
 }
 
 /** overwrite = the note is the document; append = the document is added at the end;
@@ -151,11 +168,17 @@ export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultO
     }
     const block = valueToObsidianBlock(value);
     if (block.kind === "md") return block.md;
-    // A chart — rasterize the source node's live SVG to a PNG asset.
+    // A chart — rasterize the source node's SVG to a PNG asset. A figure that serializes
+    // itself (the Gantt grid + banded SVGs) supplies its own markup; every other chart is
+    // its live element, measured. Either way, null = not on the live canvas.
     const srcId = opts.refSources.get(name);
-    const svg = srcId ? nodeChartSvg(srcId) : null;
-    if (!svg) return ""; // chart not on the live canvas (nothing to rasterize)
-    const bytes = await rasterizeSvg(svg);
+    const provided = srcId ? nodeChartSvgProvided(srcId) : null;
+    const bytes = provided
+      ? await rasterizeSvgMarkup(provided)
+      : await (async () => {
+          const svg = srcId ? nodeChartSvg(srcId) : null;
+          return svg ? rasterizeSvg(svg) : null;
+        })();
     if (!bytes) return "";
     return writeAsset(name, bytes, "png");
   }

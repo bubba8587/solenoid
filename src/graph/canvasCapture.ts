@@ -94,6 +94,38 @@ export function serializeSvgWithComputedStyles(svgEl: SVGSVGElement): string {
   return clone.outerHTML;
 }
 
+// A figure whose drawn form is NOT a single <svg> — the Gantt tree grid beside a
+// stack of per-row banded SVGs — can't be captured by the largest-SVG scan below
+// (it would grab one band). Such a figure registers a serializer here, keyed by the
+// node it draws in, and the export paths ask it for a standalone SVG string instead.
+// This is the `data-chart-svg-provider` seam (subsystem-invariants, figure payload).
+export type ChartSvgProvider = () => string | null;
+const chartSvgProviders = new Map<string, ChartSvgProvider>();
+
+/** Register a node's own SVG serializer; returns a disposer that removes only this
+ *  provider (a later mount replacing it wins, and unmount can't delete the winner). */
+export function registerChartSvgProvider(nodeId: string, provider: ChartSvgProvider): () => void {
+  chartSvgProviders.set(nodeId, provider);
+  return () => { if (chartSvgProviders.get(nodeId) === provider) chartSvgProviders.delete(nodeId); };
+}
+
+/** The provider's SVG string for a node, or null when none is registered (or it
+ *  declined). The Obsidian raster path checks this first, so an ordinary chart keeps
+ *  its live-measured element path untouched. */
+export function nodeChartSvgProvided(nodeId: string): string | null {
+  return chartSvgProviders.get(nodeId)?.() ?? null;
+}
+
+/** A node's chart as standalone SVG markup: the registered provider (the Gantt figure)
+ *  if one drew there, else the largest in-document `<svg>` with its computed styles
+ *  inlined. Null when the node draws no chart on the live canvas. */
+export function nodeChartSvgString(nodeId: string): string | null {
+  const provided = nodeChartSvgProvided(nodeId);
+  if (provided) return provided;
+  const el = nodeChartSvg(nodeId);
+  return el ? serializeSvgWithComputedStyles(el) : null;
+}
+
 /** A node's chart `<svg>` — its largest SVG that isn't card chrome (the frame
  *  overlays are the biggest SVGs on every card and paint nothing off-canvas) or
  *  glyph-sized furniture. Null when the node isn't on the live canvas or draws no chart. */
@@ -122,9 +154,9 @@ export function captureChartSvgs(
   const out: { name: string; svg: string }[] = [];
   for (const { id } of editor.getNodes()) {
     if (includeNodeIds && !includeNodeIds.has(id)) continue;
-    const svgEl = nodeChartSvg(id);
-    if (!svgEl) continue;
-    out.push({ name: names.get(id) ?? "Chart", svg: serializeSvgWithComputedStyles(svgEl) });
+    const svg = nodeChartSvgString(id);
+    if (!svg) continue;
+    out.push({ name: names.get(id) ?? "Chart", svg });
   }
   return out;
 }

@@ -155,6 +155,12 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
     // also open the palette, A under a Frame Input pop-up must not open the Add menu.
     if (keyUnderModal(e) && e.key !== "F9") return;
 
+    // A focused cell inside a figure that owns its own keyboard (the Gantt tree grid)
+    // marks itself `.nokeys`, so its arrow / letter keys aren't stolen to nudge nodes
+    // or open the Add menu — the keyboard mirror of `.nowheel` (subsystem-invariants,
+    // React Flow surface contract). F9 still recomputes.
+    if (target?.closest?.(".nokeys") && e.key !== "F9") return;
+
     // F9 stays live while typing, presenting, drilled in and under a modal — there it
     // is the only remaining recompute path. Only the compute gate outranks it.
     if (e.key === "F9") { e.preventDefault(); void requestRecalc(); return; }

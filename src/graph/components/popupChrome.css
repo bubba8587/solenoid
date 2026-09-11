@@ -137,6 +137,23 @@
 }
 .sol-popup__close:hover { color: color-mix(in srgb, var(--node-accent, var(--text)) 80%, var(--text)); }
 
+/* A muted text action in the header cluster (e.g. Copy SVG), resting like close and
+   brightening on hover; icon-height so it lines up with the pin/close boxes. */
+.sol-popup__action {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  background: none;
+  border: none;
+  color: color-mix(in srgb, var(--node-accent, var(--text-dim)) var(--mix-ink), var(--text));
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+.sol-popup__action:hover { color: color-mix(in srgb, var(--node-accent, var(--text)) 80%, var(--text)); }
+
 /* Pin action — sits beside the close in the header. Same 24px even box as close
    (icon-parity rule), resting muted like close; brightens on hover, and reads
    accent-filled while the value is pinned so the popup shows the pin's state. */
