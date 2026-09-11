@@ -411,6 +411,17 @@ html.sol-report-docked {
   background: color-mix(in srgb, var(--accent) 18%, transparent);
   color: var(--text-bright);
 }
+
+/* Docked: one common control height across the header row — the tiny Draft/Preview
+   toggle bumps up and the buttons down so every control matches (26px). */
+.report-panel--docked .report-embed-btn,
+.report-panel--docked .report-viewtoggle,
+.report-panel--docked .report-dock-btn,
+.report-panel--docked .report-close { height: 26px; box-sizing: border-box; }
+.report-panel--docked .report-embed-btn { display: inline-flex; align-items: center; padding: 0 11px; font-size: 11.5px; }
+.report-panel--docked .report-dock-btn,
+.report-panel--docked .report-close { width: 26px; }
+.report-panel--docked .report-viewtoggle__seg { display: flex; align-items: center; padding: 0 11px; font-size: 11.5px; line-height: 1; }
 .report-panel--docked .report-body { flex-direction: column; }
 .report-panel--docked .report-source,
 .report-panel--docked .report-preview { flex: 1 1 100%; }
