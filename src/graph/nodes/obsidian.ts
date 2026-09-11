@@ -227,14 +227,21 @@ export class ImportObsidianNode extends NoteNode {
    *  sockets, then recompute. Mirrors the component's picker commit. */
   private async loadFromWire(path: string): Promise<void> {
     try {
-      const rel = /\.md$/i.test(path) ? path : `${path}.md`;
-      const { readVaultFile } = await import("../fileBridge");
-      const content = await readVaultFile(settingsStore.get("obsidianVault").trim(), rel);
-      if (content === this.body && rel === this.fileName) return;
+      const vault = settingsStore.get("obsidianVault").trim();
+      const { readVaultFile, listVaultMarkdownFiles } = await import("../fileBridge");
+      // Resolve a full vault-relative path OR a bare note name — Obsidian resolves
+      // `[[Name]]` from anywhere in the vault, case-insensitively.
+      const withMd = /\.md$/i.test(path) ? path : `${path}.md`;
+      const files = await listVaultMarkdownFiles(vault);
+      const base = (path.split("/").pop() ?? path).replace(/\.md$/i, "").toLowerCase();
+      const rel = files.includes(withMd) ? withMd
+        : files.find((f) => (f.split("/").pop() ?? f).replace(/\.md$/i, "").toLowerCase() === base) ?? null;
+      if (!rel || rel === this.fileName) return; // not found, or already loaded — keep the current body
+      const content = await readVaultFile(vault, rel);
       this.body = content;
       this.fileName = rel;
       if (this.label === "Import Obsidian Note" || this.label.trim() === "") {
-        this.label = (path.split("/").pop() ?? path).replace(/\.md$/i, "");
+        this.label = (rel.split("/").pop() ?? rel).replace(/\.md$/i, "");
       }
       const { removed, retyped } = this.syncFields();
       const { dropStrandedFrontmatterCables } = await import("../noteFrontmatterSync");

@@ -16,7 +16,7 @@ import type {
 import { processGraph } from "../process";
 import { connectionStore, refreshConnection, type ConnectionState } from "../connectionStore";
 import { settingsStore } from "../settingsStore";
-import { isDesktop, listLocalFiles, listVaultFolders, pickFolderDialog, baseNameOf, openExternal } from "../fileBridge";
+import { isDesktop, listLocalFiles, listVaultFolders, openExternal } from "../fileBridge";
 import { obsidianOpenUrl } from "../obsidianLinks";
 import { apiKeyStore } from "../apiKeyStore";
 import { PROVIDER_LIST, getProvider, type ProviderId } from "../dataProviders";
@@ -706,10 +706,6 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
   }
   function refreshFolders() { void listVaultFolders(data.vault).then(setFolders); }
 
-  async function chooseVault() {
-    const picked = await pickFolderDialog();
-    if (picked && picked !== data.vault) { data.vault = picked; void processGraph(); }
-  }
   function commitField(next: string, current: string, set: (v: string) => void, apply: (v: string) => void) {
     const v = next.trim();
     set(v);
@@ -731,15 +727,9 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
           <div className="sol-conn__note">Reading a vault is available in the desktop app only.</div>
         ) : (
           <>
+            {data.vault.trim() === "" && <div className="sol-conn__note">Set the Obsidian vault folder in Settings.</div>}
             <div className="sol-conn__vault">
-              <span className="sol-conn__chip" title={data.vault || "No vault chosen"}>
-                {data.vault ? baseNameOf(data.vault) : "No vault"}
-              </span>
-              <button
-                type="button" className="sol-conn__refresh" title="Choose the vault folder"
-                onClick={(e) => { e.stopPropagation(); void chooseVault(); }}
-                onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
-              >Choose…</button>
+              <div className="sol-conn__note" style={{ flex: 1 }}>Obsidian vault{data.folder ? ` · ${data.folder}` : ""}</div>
               {openUrl && (
                 <button
                   type="button" className="sol-conn__refresh" title="Open the first note in Obsidian"
@@ -753,7 +743,6 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
                 </button>
               )}
             </div>
-            <div className="sol-conn__note">Obsidian vault{data.folder ? ` · ${data.folder}` : ""}</div>
             <div style={{ display: "flex", gap: 4 }}>
               <select
                 className="sol-conn__select"

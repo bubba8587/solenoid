@@ -79,6 +79,20 @@ describe("run-graph --vault", () => {
     expect(imp.priority).toBe(5);
   }, 30_000);
 
+  it("a wired bare NAME resolves to the note anywhere in the vault (Obsidian-style)", async () => {
+    const graph = {
+      nodes: [
+        { id: "src", type: "NoteNode", init: { label: "which", body: "---\npath: kitchen remodel\n---\n" } },
+        { id: "imp", type: "ImportObsidianNode", init: { label: "Loaded" } },
+      ],
+      connections: [{ source: "src", sourceOutput: "path", target: "imp", targetInput: "path" }],
+    };
+    const out = await runGraph(graph, { vault: DEMO });
+    const imp = out["Loaded"] as Record<string, unknown>;
+    expect(imp.path).toBe("Projects/Kitchen remodel.md"); // "kitchen remodel" → the note in Projects/, case-insensitive
+    expect(imp.status).toBe("active");
+  }, 30_000);
+
   it("--run a Write Properties over the vault writes current scalar values back with no byte change", async () => {
     tmp = mkdtempSync(path.join(tmpdir(), "solenoid-vault-"));
     cpSync(DEMO, tmp, { recursive: true });

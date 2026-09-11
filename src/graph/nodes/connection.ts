@@ -740,8 +740,8 @@ export class VaultFolderNode extends ClassicPreset.Node {
     cube: "One row per note: the file columns, then every frontmatter key. Lists and nested tables ride in the cells. Rows are never saved into the project file; reopening the document re-reads the vault.",
   };
   label: string;
-  /** Absolute vault path, per node — defaults from the obsidianVault setting at creation. */
-  vault: string;
+  /** The one vault, from the app-wide setting (singleVaultFromSetting). */
+  get vault(): string { return settingsStore.get("obsidianVault"); }
   /** Vault-relative subfolder ("" = the whole vault). */
   folder: string;
   /** A file-name glob to keep ("" = every note). */
@@ -761,10 +761,9 @@ export class VaultFolderNode extends ClassicPreset.Node {
   private _folder = "";
   private _glob = "";
 
-  constructor(init?: { label?: string; vault?: string; folder?: string; glob?: string; includeBody?: boolean; nameFormat?: string; refreshMinutes?: number }) {
+  constructor(init?: { label?: string; folder?: string; glob?: string; includeBody?: boolean; nameFormat?: string; refreshMinutes?: number }) {
     super("VaultFolder");
     this.label = init?.label ?? "Vault Folder";
-    this.vault = init?.vault ?? settingsStore.get("obsidianVault") ?? "";
     this.folder = init?.folder ?? "";
     this.glob = init?.glob ?? "";
     this.includeBody = init?.includeBody ?? false;

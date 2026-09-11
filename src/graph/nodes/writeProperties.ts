@@ -52,8 +52,8 @@ export class WritePropertiesNode extends ClassicPreset.Node {
     plan: "One row per note × property: path, key, the note's current value, the value to write, and the action. Preview reads the notes to resolve add / update / unchanged / refused.",
   };
   label: string;
-  /** Absolute vault path, per node — defaults from the obsidianVault setting at creation. */
-  vault: string;
+  /** The one vault, from the app-wide setting (singleVaultFromSetting). */
+  private get vault(): string { return settingsStore.get("obsidianVault"); }
   /** Columns to write, comma-separated; "" = every writable column present. */
   stringLiterals: Record<string, string> = { keys: "" };
   /** Append + register a key the note doesn't have yet. */
@@ -76,10 +76,9 @@ export class WritePropertiesNode extends ClassicPreset.Node {
     ] };
   }
 
-  constructor(init?: { label?: string; vault?: string; addMissing?: boolean; writeBase?: boolean }) {
+  constructor(init?: { label?: string; addMissing?: boolean; writeBase?: boolean }) {
     super("WriteProperties");
     this.label = init?.label ?? "Write Properties";
-    this.vault = init?.vault ?? settingsStore.get("obsidianVault") ?? "";
     if (init?.addMissing === false) this.addMissing = false;
     if (init?.writeBase) this.writeBase = true;
     this.addInput("rows", cubeIn("Rows"));
@@ -158,7 +157,7 @@ export class WritePropertiesNode extends ClassicPreset.Node {
   async preview(): Promise<void> {
     if (this.status === "previewing" || this.status === "writing") return;
     if (!this.planRows.length) { this.status = "error"; this.statusMessage = "Nothing to write. Connect rows."; return; }
-    if (this.vault.trim() === "") { this.status = "error"; this.statusMessage = "Choose a vault"; return; }
+    if (this.vault.trim() === "") { this.status = "error"; this.statusMessage = "Set the Obsidian vault folder in Settings"; return; }
     this.status = "previewing";
     this._mdbaseCache.clear();
     try {
@@ -190,7 +189,7 @@ export class WritePropertiesNode extends ClassicPreset.Node {
     if (this.status === "writing" || this.status === "previewing") return;
     if (!this.enabled) { this.status = "error"; this.statusMessage = "Disabled. Arm it first."; return; }
     if (!hasFs()) { this.status = "error"; this.statusMessage = "Writing needs the desktop app"; return; }
-    if (this.vault.trim() === "") { this.status = "error"; this.statusMessage = "Choose a vault"; return; }
+    if (this.vault.trim() === "") { this.status = "error"; this.statusMessage = "Set the Obsidian vault folder in Settings"; return; }
     if (isSolError(this.cachedCube)) { this.status = "error"; this.statusMessage = this.cachedCube.code; return; }
     if (!this.planRows.length) { this.status = "error"; this.statusMessage = "Nothing to write. Connect rows."; return; }
     this.status = "writing";

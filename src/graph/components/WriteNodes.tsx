@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { WriteFileNode as WriteFileNodeType, WriteObsidianNode as WriteObsidianNodeType, WriteTasksNode as WriteTasksNodeType, WritePropertiesNode as WritePropertiesNodeType, WriteFormat } from "../rete-nodes";
-import { isDesktop, listVaultFolders, listVaultMarkdownFiles, openExternal, pickFolderDialog, baseNameOf } from "../fileBridge";
+import { isDesktop, listVaultFolders, listVaultMarkdownFiles, openExternal } from "../fileBridge";
 import { obsidianOpenUrl } from "../obsidianLinks";
 import { settingsStore } from "../settingsStore";
 import { documentStore } from "../documentStore";
@@ -434,12 +434,9 @@ export function WritePropertiesComponent({ data, emit }: NodeProps<WriteProperti
   const [status, setStatus] = useState<string>(data.status);
   const [message, setMessage] = useState(data.statusMessage);
   const desktop = isDesktop();
+  const vault = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("obsidianVault"));
   useEffect(() => { setKeys(data.stringLiterals.keys ?? ""); }, [data.stringLiterals.keys]);
 
-  async function chooseVault() {
-    const picked = await pickFolderDialog();
-    if (picked && picked !== data.vault) { data.vault = picked; void processGraph(); }
-  }
   function commitKeys() {
     const next = keys.split(",").map((k) => k.trim()).filter(Boolean).join(", ");
     setKeys(next);
@@ -466,15 +463,8 @@ export function WritePropertiesComponent({ data, emit }: NodeProps<WriteProperti
     <NodeShell node={data} emit={emit}>
       <InlineInputs node={data} emit={emit} />
       <div className="sol-conn">
-        <div className="sol-conn__vault">
-          <span className="sol-conn__chip" title={data.vault || "No vault chosen"}>
-            {data.vault ? baseNameOf(data.vault) : "No vault"}
-          </span>
-          {desktop && (
-            <button type="button" className="sol-conn__refresh" title="Choose the vault folder"
-              onClick={(e) => { e.stopPropagation(); void chooseVault(); }} {...stopPtr}>Choose…</button>
-          )}
-        </div>
+        {!desktop && <div className="sol-conn__note">Writing to a vault is available in the desktop app only.</div>}
+        {desktop && vault.trim() === "" && <div className="sol-conn__note">Set the Obsidian vault folder in Settings.</div>}
         <input
           className="sol-conn__url" type="text" value={keys} placeholder="Properties to write (blank = all)" spellCheck={false}
           onChange={(e) => setKeys(e.target.value)} onBlur={commitKeys}
