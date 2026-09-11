@@ -191,7 +191,7 @@ export function CollapsibleFigure({ title, children, defaultOpen = true }: {
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
-        <span className={`solenoid-ref-embed__chev${open ? " solenoid-ref-embed__chev--open" : ""}`}>▸</span>
+        <span className={`solenoid-ref-embed__chev${open ? " solenoid-ref-embed__chev--open" : ""}`} aria-hidden="true" />
         <span className="solenoid-ref-embed__title">{title}</span>
       </button>
       {open && <span className="solenoid-ref-embed__body">{children}</span>}
