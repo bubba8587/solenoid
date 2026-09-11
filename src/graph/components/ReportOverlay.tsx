@@ -285,7 +285,7 @@ export function ReportOverlay() {
               disabled={embeddable.length === 0 || !!wiredTemplate}
               title={wiredTemplate ? "The wired template is the text" : embeddable.length === 0 ? "No Notes to embed" : "Embed a Note"}
             >
-              {docked ? "Embed Note" : "Embed a Note"}
+              Embed Note
             </button>
             {embedPickerOpen && (
               <div ref={embedPopRef} className="report-embed-picker">
@@ -333,7 +333,7 @@ export function ReportOverlay() {
               onClick={() => void doExport()}
               title="Export as a self-contained webpage. Refs are frozen to today's values. Charts and a canvas snapshot are inlined."
             >
-              {exporting ? "Exporting…" : docked ? "Export" : "Export as webpage"}
+              {exporting ? "Exporting…" : "Export"}
             </button>
             {/* Dock to / undock from the right side of the page (desktop only —
                 CSS-hidden on mobile, where the report is already full-screen). */}
