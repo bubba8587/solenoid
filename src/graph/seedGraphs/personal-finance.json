@@ -1888,7 +1888,7 @@
       "y": -940,
       "init": {
         "label": "10 · The advisor's letter",
-        "body": "# Prose that recomputes\nThe **Report** is a Knap template: a bare `{{ name }}` pulls the live value in, and dollars arrive through the dashboard's **Format Controllers** (so they read $1,234, not 1234.5678), charts embed as figures. Each verdict word is a tiny circuit: **Compare → IF → two Text nodes**. Drag a slider and the letter changes its mind.",
+        "body": "# Prose that recomputes\nThe **Report** is a Knap template: a bare `{{ name }}` pulls the live value in, and dollars arrive through the dashboard's **Format Controllers** (so they read $1,234, not 1234.5678), charts embed as figures. Each verdict is an inline `if` in the letter itself, comparing the raw numbers. Drag a slider and the letter changes its mind.",
         "color": "sky",
         "width": 420,
         "height": 220,
@@ -1925,98 +1925,6 @@
       }
     },
     {
-      "id": "cmp-rate",
-      "type": "ComparisonNode",
-      "x": 4760,
-      "y": -200,
-      "init": {
-        "label": "Rate ≥ target?",
-        "op": "gte"
-      }
-    },
-    {
-      "id": "if-rate",
-      "type": "IfNode",
-      "x": 5040,
-      "y": -160,
-      "init": {
-        "label": "Savings verdict"
-      },
-      "stringLiterals": {
-        "then": "healthy",
-        "else": "running thin"
-      }
-    },
-    {
-      "id": "cmp-proj",
-      "type": "ComparisonNode",
-      "x": 4760,
-      "y": 160,
-      "init": {
-        "label": "Nest egg ≥ target?",
-        "op": "gte"
-      }
-    },
-    {
-      "id": "if-proj",
-      "type": "IfNode",
-      "x": 5040,
-      "y": 200,
-      "init": {
-        "label": "Retirement verdict"
-      },
-      "stringLiterals": {
-        "then": "on track for",
-        "else": "coming up short of"
-      }
-    },
-    {
-      "id": "cmp-mort",
-      "type": "ComparisonNode",
-      "x": 4760,
-      "y": 520,
-      "init": {
-        "label": "Payment ≤ 28%?",
-        "op": "lte"
-      }
-    },
-    {
-      "id": "if-mort",
-      "type": "IfNode",
-      "x": 5040,
-      "y": 560,
-      "init": {
-        "label": "Mortgage verdict"
-      },
-      "stringLiterals": {
-        "then": "sits comfortably inside",
-        "else": "pushes past"
-      }
-    },
-    {
-      "id": "cmp-bud",
-      "type": "ComparisonNode",
-      "x": 4760,
-      "y": 880,
-      "init": {
-        "label": "Spend ≤ budget?",
-        "op": "lte"
-      }
-    },
-    {
-      "id": "if-bud",
-      "type": "IfNode",
-      "x": 5040,
-      "y": 920,
-      "init": {
-        "label": "Budget verdict"
-      },
-      "stringLiterals": {
-        "then": "under",
-        "else": "over"
-      }
-    },
-    {
       "id": "report-adv",
       "type": "ReportNode",
       "x": 5340,
@@ -2025,7 +1933,7 @@
         "label": "Advisor's letter",
         "width": 260,
         "height": 150,
-        "body": "# The advisor's letter\n\nYou brought in **{{ income }}** this quarter and let **{{ outflow }}** back out, leaving **{{ net }}** to put to work. Your savings rate is {{ savingsRate | highlight }} — {{ rateWord | highlight }} against the target you set.\n\n{{ spendChart }}\n\n## Net worth\n\nAssets minus debts puts you at **{{ netWorth }}** today.\n\n{{ classChart }}\n\n## Retirement\n\nKeep contributing at today's pace and the nest egg reaches **{{ nestEgg }}** — {{ projWord | highlight }} your target.\n\n{{ growthChart }}\n\n## The house\n\nThe mortgage costs **{{ payment }}** a month, which {{ mortWord | highlight }} the 28%-of-take-home guideline. Carried to term, the interest alone comes to **{{ interest }}**.\n\n## Groceries\n\n**{{ spent }}** spent against a **{{ budget }}** budget for the quarter — you're {{ budgetWord | highlight }} so far.\n\n*Move any slider and this letter rewrites itself.*"
+        "body": "# The advisor's letter\n\nYou brought in **{{ income }}** this quarter and let **{{ outflow }}** back out, leaving **{{ net }}** to put to work. Your savings rate is {{ savingsRate | highlight }} — {% if rateNow >= rateTarget %}healthy{% else %}running thin{% endif %} against the target you set.\n\n{{ spendChart }}\n\n## Net worth\n\nAssets minus debts puts you at **{{ netWorth }}** today.\n\n{{ classChart }}\n\n## Retirement\n\nKeep contributing at today's pace and the nest egg reaches **{{ nestEgg }}** — {% if eggNow >= eggTarget %}on track for{% else %}coming up short of{% endif %} your target.\n\n{{ growthChart }}\n\n## The house\n\nThe mortgage costs **{{ payment }}** a month, which {% if payNow <= payLimit %}sits comfortably inside{% else %}pushes past{% endif %} the 28%-of-take-home guideline. Carried to term, the interest alone comes to **{{ interest }}**.\n\n## Groceries\n\n**{{ spent }}** spent against a **{{ budget }}** budget for the quarter — you're {% if spendNow <= spendLimit %}under{% else %}over{% endif %} so far.\n\n*Move any slider and this letter rewrites itself.*"
       }
     },
     {
@@ -2338,14 +2246,6 @@
           "expr-outflow",
           "disp-outflow",
           "cd-adv",
-          "cmp-rate",
-          "if-rate",
-          "cmp-proj",
-          "if-proj",
-          "cmp-mort",
-          "if-mort",
-          "cmp-bud",
-          "if-bud",
           "report-adv",
           "fc-adv-out"
         ],
@@ -3212,74 +3112,50 @@
     {
       "source": "cd-cash",
       "sourceOutput": "out_3",
-      "target": "cmp-rate",
-      "targetInput": "a"
+      "target": "report-adv",
+      "targetInput": "rateNow"
     },
     {
       "source": "cd-cash",
       "sourceOutput": "out_4",
-      "target": "cmp-rate",
-      "targetInput": "b"
-    },
-    {
-      "source": "cmp-rate",
-      "sourceOutput": "result",
-      "target": "if-rate",
-      "targetInput": "cond"
+      "target": "report-adv",
+      "targetInput": "rateTarget"
     },
     {
       "source": "cd-proj",
       "sourceOutput": "out_0",
-      "target": "cmp-proj",
-      "targetInput": "a"
+      "target": "report-adv",
+      "targetInput": "eggNow"
     },
     {
       "source": "cd-proj",
       "sourceOutput": "out_1",
-      "target": "cmp-proj",
-      "targetInput": "b"
-    },
-    {
-      "source": "cmp-proj",
-      "sourceOutput": "result",
-      "target": "if-proj",
-      "targetInput": "cond"
+      "target": "report-adv",
+      "targetInput": "eggTarget"
     },
     {
       "source": "cd-mort",
       "sourceOutput": "out_0",
-      "target": "cmp-mort",
-      "targetInput": "a"
+      "target": "report-adv",
+      "targetInput": "payNow"
     },
     {
       "source": "cd-mort",
       "sourceOutput": "out_2",
-      "target": "cmp-mort",
-      "targetInput": "b"
-    },
-    {
-      "source": "cmp-mort",
-      "sourceOutput": "result",
-      "target": "if-mort",
-      "targetInput": "cond"
+      "target": "report-adv",
+      "targetInput": "payLimit"
     },
     {
       "source": "cd-bud",
       "sourceOutput": "out_0",
-      "target": "cmp-bud",
-      "targetInput": "a"
+      "target": "report-adv",
+      "targetInput": "spendNow"
     },
     {
       "source": "cd-bud",
       "sourceOutput": "out_1",
-      "target": "cmp-bud",
-      "targetInput": "b"
-    },
-    {
-      "source": "cmp-bud",
-      "sourceOutput": "result",
-      "target": "if-bud",
-      "targetInput": "cond"
+      "target": "report-adv",
+      "targetInput": "spendLimit"
     },
     {
       "source": "fc-d-in",
@@ -3354,12 +3230,6 @@
       "targetInput": "savingsRate"
     },
     {
-      "source": "if-rate",
-      "sourceOutput": "result",
-      "target": "report-adv",
-      "targetInput": "rateWord"
-    },
-    {
       "source": "chart-cat",
       "sourceOutput": "chart",
       "target": "report-adv",
@@ -3384,12 +3254,6 @@
       "targetInput": "nestEgg"
     },
     {
-      "source": "if-proj",
-      "sourceOutput": "result",
-      "target": "report-adv",
-      "targetInput": "projWord"
-    },
-    {
       "source": "cd-proj",
       "sourceOutput": "out_2",
       "target": "report-adv",
@@ -3400,12 +3264,6 @@
       "sourceOutput": "out_5",
       "target": "report-adv",
       "targetInput": "payment"
-    },
-    {
-      "source": "if-mort",
-      "sourceOutput": "result",
-      "target": "report-adv",
-      "targetInput": "mortWord"
     },
     {
       "source": "cd-adv",
@@ -3424,12 +3282,6 @@
       "sourceOutput": "out",
       "target": "report-adv",
       "targetInput": "budget"
-    },
-    {
-      "source": "if-bud",
-      "sourceOutput": "result",
-      "target": "report-adv",
-      "targetInput": "budgetWord"
     },
     {
       "source": "disp-outflow",

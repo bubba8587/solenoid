@@ -121,6 +121,18 @@ describe("renderKnap keepUnknown (a Note's mode)", () => {
   });
 });
 
+// The Personal Finance advisor letter compares raw operands with >= / <= in
+// {% if %} verdicts, so pin that Knap supports both, including at equality.
+describe("renderKnap {% if %} comparisons", () => {
+  it("supports >= and <= including the equal boundary", async () => {
+    const at = async (body: string, vars: Record<string, unknown>) => (await renderKnap(body, vars)).output;
+    expect(await at("{% if a >= b %}y{% else %}n{% endif %}", { a: 2, b: 2 })).toBe("y");
+    expect(await at("{% if a >= b %}y{% else %}n{% endif %}", { a: 1, b: 2 })).toBe("n");
+    expect(await at("{% if a <= b %}y{% else %}n{% endif %}", { a: 2, b: 2 })).toBe("y");
+    expect(await at("{% if a <= b %}y{% else %}n{% endif %}", { a: 3, b: 2 })).toBe("n");
+  });
+});
+
 describe("renderKnapPages", () => {
   it("one page per record with record and index; the name template names it, blank → the index", async () => {
     const r = await renderKnapPages("{{ index }}: {{ record.n }} of {{ total }}", { total: 2 }, [{ n: "a" }, { n: "b" }], "{{ record.n }}-page");

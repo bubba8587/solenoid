@@ -443,18 +443,18 @@ fc("fc-d-bbud", "d-bud-bud", "currency_usd", GRP_DASH);
 // A Report that reads like a financial advisor's letter. Bare `{{ name }}` embeds are wired
 // from the DASHBOARD's Format Controllers (an FC's `out` carries the value plus
 // its $/% annotation, so the ref renders formatted); charts embed from the
-// existing Chart/Sparkline nodes. The verdict WORDS are computed in-graph: a
-// Compare feeds an IF that picks between two Text nodes, so the prose flips
-// ("healthy" ↔ "running thin") the moment the numbers do. Coords are in the
-// TUNED frame, fresh space right of the Dashboard (its box ends x≈4307).
+// existing Chart/Sparkline nodes. The verdict WORDS are Knap `{% if %}` in the
+// letter, comparing the raw operands the group conduits carry — so the prose flips
+// ("healthy" ↔ "running thin") the moment the numbers do, with no extra nodes. Coords
+// are in the TUNED frame, fresh space right of the Dashboard (its box ends x≈4307).
 note("note-advisor", 4460, -940,
   "10 · The advisor's letter",
-  "# Prose that recomputes\nThe **Report** is a Knap template: a bare `{{ name }}` pulls the live value in, and dollars arrive through the dashboard's **Format Controllers** (so they read $1,234, not 1234.5678), charts embed as figures. Each verdict word is a tiny circuit: **Compare → IF → two Text nodes**. Drag a slider and the letter changes its mind.",
+  "# Prose that recomputes\nThe **Report** is a Knap template: a bare `{{ name }}` pulls the live value in, and dollars arrive through the dashboard's **Format Controllers** (so they read $1,234, not 1234.5678), charts embed as figures. Each verdict is an inline `if` in the letter itself, comparing the raw numbers. Drag a slider and the letter changes its mind.",
   "sky", 420, 220);
 const REPORT_BODY = [
   "# The advisor's letter",
   "",
-  "You brought in **{{ income }}** this quarter and let **{{ outflow }}** back out, leaving **{{ net }}** to put to work. Your savings rate is {{ savingsRate | highlight }} — {{ rateWord | highlight }} against the target you set.",
+  "You brought in **{{ income }}** this quarter and let **{{ outflow }}** back out, leaving **{{ net }}** to put to work. Your savings rate is {{ savingsRate | highlight }} — {% if rateNow >= rateTarget %}healthy{% else %}running thin{% endif %} against the target you set.",
   "",
   "{{ spendChart }}",
   "",
@@ -466,17 +466,17 @@ const REPORT_BODY = [
   "",
   "## Retirement",
   "",
-  "Keep contributing at today's pace and the nest egg reaches **{{ nestEgg }}** — {{ projWord | highlight }} your target.",
+  "Keep contributing at today's pace and the nest egg reaches **{{ nestEgg }}** — {% if eggNow >= eggTarget %}on track for{% else %}coming up short of{% endif %} your target.",
   "",
   "{{ growthChart }}",
   "",
   "## The house",
   "",
-  "The mortgage costs **{{ payment }}** a month, which {{ mortWord | highlight }} the 28%-of-take-home guideline. Carried to term, the interest alone comes to **{{ interest }}**.",
+  "The mortgage costs **{{ payment }}** a month, which {% if payNow <= payLimit %}sits comfortably inside{% else %}pushes past{% endif %} the 28%-of-take-home guideline. Carried to term, the interest alone comes to **{{ interest }}**.",
   "",
   "## Groceries",
   "",
-  "**{{ spent }}** spent against a **{{ budget }}** budget for the quarter — you're {{ budgetWord | highlight }} so far.",
+  "**{{ spent }}** spent against a **{{ budget }}** budget for the quarter — you're {% if spendNow <= spendLimit %}under{% else %}over{% endif %} so far.",
   "",
   "*Move any slider and this letter rewrites itself.*",
 ].join("\n");
@@ -489,41 +489,29 @@ n("disp-outflow","DisplayNode",    4760, -600, { label: "Outflows (3 mo)" });
 // across the report. (8-lane cap: `budget` rides direct.) The annotation walk
 // crosses conduit lanes (unitFlow's lane map), so the $/% formats survive.
 n("cd-adv", "ConduitNode",         4460, -380, { angle: 0, seq: 6 });
-// The verdict words live as the IF's own then/else text literals — no separate
-// Text Input node per branch. The condition picks which word the letter reads.
-n("cmp-rate","ComparisonNode",     4460, -200, { label: "Rate ≥ target?", op: "gte" });
-n("if-rate", "IfNode",             4740, -160, { label: "Savings verdict" }, { stringLiterals: { then: "healthy", else: "running thin" } });
-n("cmp-proj","ComparisonNode",     4460,  160, { label: "Nest egg ≥ target?", op: "gte" });
-n("if-proj", "IfNode",             4740,  200, { label: "Retirement verdict" }, { stringLiterals: { then: "on track for", else: "coming up short of" } });
-n("cmp-mort","ComparisonNode",     4460,  520, { label: "Payment ≤ 28%?", op: "lte" });
-n("if-mort", "IfNode",             4740,  560, { label: "Mortgage verdict" }, { stringLiterals: { then: "sits comfortably inside", else: "pushes past" } });
-n("cmp-bud","ComparisonNode",      4460,  880, { label: "Spend ≤ budget?", op: "lte" });
-n("if-bud", "IfNode",              4740,  920, { label: "Budget verdict" }, { stringLiterals: { then: "under", else: "over" } });
+// The verdicts are Knap `{% if %}` in the letter itself, reading the raw operands the
+// dashboard's group conduits already carry (rate/target, egg/target, payment/28%-line,
+// spend/budget). No Compare/IF/Text circuit per verdict — the template does the logic.
 n("report-adv","ReportNode",       5040,  100, { label: "Advisor's letter", width: 260, height: 150, body: REPORT_BODY });
-const GRP_ADVISOR = ["expr-outflow","disp-outflow","cd-adv","cmp-rate","if-rate",
-  "cmp-proj","if-proj","cmp-mort","if-mort",
-  "cmp-bud","if-bud","report-adv"];
+const GRP_ADVISOR = ["expr-outflow","disp-outflow","cd-adv","report-adv"];
 
 c("sumif-out","result","expr-outflow","spend");
 c("expr-outflow","result","disp-outflow","in");
-// Verdict comparisons read off the source groups' EXIT CONDUITS (cd-cash lane 3
-// already carries the savings rate; new lanes carry the target/affordability
-// lines), so the cross-canvas feeds ride the same ribbons as the dashboard's.
-c("cd-cash","out_3","cmp-rate","a");
-c("cd-cash","out_4","cmp-rate","b");
-c("cmp-rate","result","if-rate","cond");
-c("cd-proj","out_0","cmp-proj","a");
-c("cd-proj","out_1","cmp-proj","b");
-c("cmp-proj","result","if-proj","cond");
-c("cd-mort","out_0","cmp-mort","a");
-c("cd-mort","out_2","cmp-mort","b");
-c("cmp-mort","result","if-mort","cond");
-c("cd-bud","out_0","cmp-bud","a");
-c("cd-bud","out_1","cmp-bud","b");
-c("cmp-bud","result","if-bud","cond");
+// The verdict operands ride the source groups' EXIT CONDUITS straight into the
+// Report, where the letter's `{% if %}` blocks compare them (rate/target,
+// egg/target, payment/28%-line, spend/budget) — the same pairs the old Compare
+// nodes read, so the prose flips on the same thresholds.
+c("cd-cash","out_3","report-adv","rateNow");
+c("cd-cash","out_4","report-adv","rateTarget");
+c("cd-proj","out_0","report-adv","eggNow");
+c("cd-proj","out_1","report-adv","eggTarget");
+c("cd-mort","out_0","report-adv","payNow");
+c("cd-mort","out_2","report-adv","payLimit");
+c("cd-bud","out_0","report-adv","spendNow");
+c("cd-bud","out_1","report-adv","spendLimit");
 // Report refs — the dashboard FCs' formatted scalars bundle through cd-adv
-// (lane order = reading order in the letter; `budget` direct, 8-lane cap),
-// words from the IFs, figures from the group conduits' chart lanes.
+// (lane order = reading order in the letter; `budget` direct, 8-lane cap) and
+// figures from the group conduits' chart lanes.
 c("fc-d-in","out","cd-adv","in_0");
 c("fc-d-net","out","cd-adv","in_1");
 c("fc-d-rate","out","cd-adv","in_2");
@@ -536,19 +524,15 @@ c("cd-adv","out_0","report-adv","income");
 c("fc-adv-out","out","report-adv","outflow");
 c("cd-adv","out_1","report-adv","net");
 c("cd-adv","out_2","report-adv","savingsRate");
-c("if-rate","result","report-adv","rateWord");
 c("chart-cat","chart","report-adv","spendChart");
 c("cd-adv","out_3","report-adv","netWorth");
 c("cd-acct","out_3","report-adv","classChart");
 c("cd-adv","out_4","report-adv","nestEgg");
-c("if-proj","result","report-adv","projWord");
 c("cd-proj","out_2","report-adv","growthChart");
 c("cd-adv","out_5","report-adv","payment");
-c("if-mort","result","report-adv","mortWord");
 c("cd-adv","out_6","report-adv","interest");
 c("cd-adv","out_7","report-adv","spent");
 c("fc-d-bbud","out","report-adv","budget");
-c("if-bud","result","report-adv","budgetWord");
 fc("fc-adv-out", "disp-outflow", "currency_usd", GRP_ADVISOR);
 
 // ─── Groups (rects auto-computed from members) ──────────────────────────────────
