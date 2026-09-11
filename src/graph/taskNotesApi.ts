@@ -268,6 +268,17 @@ export function parseStats(text: string): TaskStats {
   return { total: num(d.total), completed: num(d.completed), active: num(d.active), overdue: num(d.overdue), archived: num(d.archived) };
 }
 
+/** The task counts as one { Status | Count } frame, a row per count. */
+export function statsToFrame(s: TaskStats): FrameValue {
+  const rows: Array<[string, number | null]> = [
+    ["Total", s.total], ["Completed", s.completed], ["Active", s.active], ["Overdue", s.overdue], ["Archived", s.archived],
+  ];
+  return { __frame: true, columns: [
+    { name: "Status", type: "string", values: rows.map((r) => r[0]) },
+    { name: "Count", type: "number", values: rows.map((r) => r[1]) },
+  ] };
+}
+
 // ─── Write Tasks (F6): rows → API payloads + the plan frame ───────────────────────
 
 /** The API's task fields a row may set; `path` picks the row's task (PUT), never a field. */

@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { dateIn, cubeOut, frameOut, numOut } from "./shared";
+import { dateIn, cubeOut, frameOut } from "./shared";
 import { connectionStore, scheduleConnectionRecalc, requestNetwork, trackInflight } from "../connectionStore";
 import { settingsStore } from "../settingsStore";
 import { apiKeyStore } from "../apiKeyStore";
@@ -8,7 +8,7 @@ import { cubeFromColumns, isCubeValue, type CubeValue, type FrameValue } from ".
 import { isSolError, type SolError } from "../errorValue";
 import {
   TASKNOTES_KEY_ID, TASKS_PAGE, tasksUrl, eventsUrl, statsUrl, authHeaders,
-  parseTasksPage, tasksToCube, parseEvents, parseStats,
+  parseTasksPage, tasksToCube, parseEvents, parseStats, statsToFrame,
   planTaskWrites, taskPlanFrame, taskUrl, createTaskUrl, taskRecord, unwrap, cellToTaskField,
   type TaskNotesProvider, type TaskRecord, type TaskStats, type TaskWritePlanRow,
 } from "../taskNotesApi";
@@ -23,10 +23,11 @@ import { type Shape } from "../frameShape";
 
 const INPUTS: Record<TaskNotesProvider, string[]> = { tasks: [], calendar: ["from", "to"], stats: [] };
 const OUTPUTS: Record<TaskNotesProvider, string[]> = {
-  tasks: ["tasks"], calendar: ["events"], stats: ["total", "completed", "active", "overdue", "archived"],
+  tasks: ["tasks"], calendar: ["events"], stats: ["stats"],
 };
 
 const EMPTY_TASKS: CubeValue = cubeFromColumns([{ name: "title", cells: [] }]);
+const EMPTY_STATS: FrameValue = statsToFrame({ total: null, completed: null, active: null, overdue: null, archived: null });
 const EMPTY_EVENTS: FrameValue = { __frame: true, columns: [
   { name: "Title", type: "string", values: [] }, { name: "Start", type: "date", values: [] },
   { name: "End", type: "date", values: [] }, { name: "Source", type: "string", values: [] },
@@ -43,6 +44,7 @@ export class TaskNotesNode extends ClassicPreset.Node {
     from: "First day of the calendar window. Unwired, a year back.",
     to: "Last day of the calendar window. Unwired, a year ahead.",
     events: "One row per calendar event in the window: title, start, end, source.",
+    stats: "The task counts as a frame: Status and Count, a row each for total, completed, active, overdue and archived.",
   };
 
   label: string;
@@ -90,10 +92,9 @@ export class TaskNotesNode extends ClassicPreset.Node {
     } else if (this.provider === "tasks") {
       if (!this.outputs.tasks) this.addOutput("tasks", cubeOut("Tasks"));
     } else {
-      const labels: Record<string, string> = { total: "Total", completed: "Completed", active: "Active", overdue: "Overdue", archived: "Archived" };
-      for (const k of OUTPUTS.stats) if (!this.outputs[k]) this.addOutput(k, numOut(labels[k]));
+      if (!this.outputs.stats) this.addOutput("stats", frameOut("Stats"));
     }
-    this.height = this.provider === "stats" ? 260 : this.provider === "calendar" ? 230 : 200;
+    this.height = this.provider === "calendar" ? 230 : 200;
   }
 
   private apiUrl(): string { return settingsStore.get("taskNotesUrl"); }
@@ -123,10 +124,7 @@ export class TaskNotesNode extends ClassicPreset.Node {
     switch (this.provider) {
       case "tasks": return { tasks: this.cachedTasks ? tasksToCube(this.cachedTasks) : EMPTY_TASKS };
       case "calendar": return { events: this.cachedEvents ?? EMPTY_EVENTS };
-      default: {
-        const s = this.cachedStats;
-        return { total: s?.total ?? null, completed: s?.completed ?? null, active: s?.active ?? null, overdue: s?.overdue ?? null, archived: s?.archived ?? null };
-      }
+      default: return { stats: this.cachedStats ? statsToFrame(this.cachedStats) : EMPTY_STATS };
     }
   }
 

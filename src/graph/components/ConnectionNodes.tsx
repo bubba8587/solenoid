@@ -35,7 +35,7 @@ import { NAGER_COUNTRIES, filterHolidays, daysToNextHoliday } from "../holidaysP
 import { FX_CURRENCIES } from "../fxProvider";
 import { frameRowCount } from "../frame";
 import { useVaultWatch } from "./useVaultWatch";
-import { TASKNOTES_KEY_ID, TASKNOTES_PROVIDER_META, type TaskNotesProvider } from "../taskNotesApi";
+import { TASKNOTES_KEY_ID, TASKNOTES_PROVIDER_META, statsToFrame, type TaskNotesProvider } from "../taskNotesApi";
 import { dropInputCables } from "./cablePrune";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { getActiveView } from "../activeGraph";
@@ -841,6 +841,7 @@ export function TaskNotesComponent({ data, emit }: NodeProps<TaskNotesNodeType>)
 
   const tasks = data.outputs.tasks;
   const events = data.outputs.events;
+  const stats = data.outputs.stats;
   const s = data.cachedStats;
   const eventRows = data.cachedEvents ? frameRowCount(data.cachedEvents) : 0;
   return (
@@ -888,19 +889,13 @@ export function TaskNotesComponent({ data, emit }: NodeProps<TaskNotesNodeType>)
           <span className="solenoid-node__output-value">{data.cachedEvents ? `${eventRows} event${eventRows === 1 ? "" : "s"}` : "—"}</span>
         </MeasuredSocketRow>
       )}
-      {provider === "stats" && (
-        <InlineOutputRows
-          node={data}
-          emit={emit}
-          rows={[
-            { key: "total",     label: "TOTAL",     value: s?.total ?? null },
-            { key: "completed", label: "COMPLETED", value: s?.completed ?? null },
-            { key: "active",    label: "ACTIVE",    value: s?.active ?? null },
-            { key: "overdue",   label: "OVERDUE",   value: s?.overdue ?? null },
-            { key: "archived",  label: "ARCHIVED",  value: s?.archived ?? null },
-          ]}
-        />
+      {stats && (
+        <MeasuredSocketRow side="output" socketKey="stats" nodeId={data.id} emit={emit} payload={stats.socket}>
+          <span className="solenoid-node__io-label">STATS</span>
+          <span className="solenoid-node__output-value">{s ? `${s.total ?? 0} task${s.total === 1 ? "" : "s"}` : "—"}</span>
+        </MeasuredSocketRow>
       )}
+      {provider === "stats" && s && <FrameDisplay frame={statsToFrame(s)} label="Stats" />}
     </NodeShell>
   );
 }
