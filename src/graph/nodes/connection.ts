@@ -20,6 +20,7 @@ import { parseCsvRows } from "../csv";
 import { engineAvailable, ipcInvoke } from "../ipcBridge";
 import { readCsvFrame, dropFrameRef, collectPreview, type FrameRef, type FrameHandle } from "../frameBackend";
 import { solError, isSolError, type SolError } from "../errorValue";
+import { isMspdiText, mspdiToPlan, csvPlanToCube } from "../planImport";
 
 // ─── External-data connection nodes ─────────────────────────────────────────────
 // A connection node holds only a reference and fetches a Frame on refresh — the data
@@ -282,10 +283,15 @@ export class ImportXmlNode extends ClassicPreset.Node {
 export class LocalFileNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frame: "Reads the named file from the folder chosen in Settings. Rows are never saved into the project file.",
+    plan: "The same file as a project plan, when it is one: a Project XML file, or a CSV whose Predecessors column uses row numbers such as 3FS+2d. Tasks nest as the outline, and each row's predecessors become a list of names, or a table of Task, Type and Lag when a link has a type or a lag. Feeds Schedule. Empty for any other file.",
   };
   label: string;
   /** File name relative to the Settings target folder (not a full path). */
   fileName: string;
+  /** The plan cube beside the frame when the file is a project plan (MSPDI or a grammar CSV). */
+  cachedPlan: CubeValue | null = null;
+  /** What the plan reader saw but could not model (MSPDI), for the status line. */
+  planNotes: string[] = [];
   /** Auto-refresh interval in minutes (0 = off) — see WebSourceNode. */
   refreshMinutes: number;
   /** CSV holds a materialized Frame; Parquet holds the preview (its lazy handle is `ref`). */
@@ -294,7 +300,7 @@ export class LocalFileNode extends ClassicPreset.Node {
 
   private lastKey: string | undefined;
   private inflightKey: string | undefined;
-  private inflight: Promise<{ frame: FrameValue | FrameRef | SolError | null }> | undefined;
+  private inflight: Promise<{ frame: FrameValue | FrameRef | SolError | null; plan: CubeValue | null }> | undefined;
   /** The Parquet handle backing `cachedResult`'s preview — owned by this node, dropped on
    *  a refresh/re-point (or a switch to CSV), mirroring the verb nodes' `_ref`. */
   private ref: FrameRef | null = null;
@@ -305,17 +311,22 @@ export class LocalFileNode extends ClassicPreset.Node {
     this.fileName = init?.fileName ?? "";
     this.refreshMinutes = init?.refreshMinutes ?? 0;
     this.addOutput("frame", frameOut("Frame"));
+    this.addOutput("plan", cubeOut("Plan"));
   }
 
   private static isParquet(name: string): boolean {
     return name.toLowerCase().endsWith(".parquet");
   }
 
-  async data(): Promise<{ frame: FrameValue | FrameRef | SolError | null }> {
+  private static isXml(name: string): boolean {
+    return name.toLowerCase().endsWith(".xml");
+  }
+
+  async data(): Promise<{ frame: FrameValue | FrameRef | SolError | null; plan: CubeValue | null }> {
     const folder = settingsStore.get("csvFolder");
     const name = this.fileName.trim();
     const key = connectionStore.key(this.id, `${folder}\u0000${name}`);
-    if (key === this.lastKey) return { frame: this.ref ?? this.cachedResult };
+    if (key === this.lastKey) return { frame: this.ref ?? this.cachedResult, plan: this.cachedPlan };
     if (this.inflightKey !== key || !this.inflight) {
       this.inflightKey = key;
       this.inflight = this.load(folder, name, key);
@@ -323,8 +334,10 @@ export class LocalFileNode extends ClassicPreset.Node {
     return this.inflight;
   }
 
-  private async load(folder: string, name: string, key: string): Promise<{ frame: FrameValue | FrameRef | SolError | null }> {
+  private async load(folder: string, name: string, key: string): Promise<{ frame: FrameValue | FrameRef | SolError | null; plan: CubeValue | null }> {
     const parquet = LocalFileNode.isParquet(name);
+    this.cachedPlan = null;
+    this.planNotes = [];
     // Parquet errors flow as a #REF! value (downstream sees an error); CSV clears to null.
     const fail = (message: string, status: "idle" | "error" = "error") => {
       if (this.ref) { dropFrameRef(this.ref); this.ref = null; }
@@ -332,7 +345,7 @@ export class LocalFileNode extends ClassicPreset.Node {
       this.cachedResult = out;
       this.lastKey = key;
       connectionStore.setState(this.id, { status, message });
-      return { frame: out };
+      return { frame: out, plan: null };
     };
     if (parquet ? (!isDesktop() || !engineAvailable()) : !isDesktop()) {
       return fail(parquet ? "Desktop app (native engine) only" : "Desktop app only");
@@ -354,10 +367,25 @@ export class LocalFileNode extends ClassicPreset.Node {
         const rows = !preview || isSolError(preview) ? 0 : (preview.__totalRows ?? frameRowCount(preview));
         const cols = !preview || isSolError(preview) ? 0 : preview.columns.length;
         connectionStore.setState(this.id, { status: "ok", rows, cols, fetchedAt: Date.now() });
-        return { frame: ref };
+        return { frame: ref, plan: null };
       }
-      // CSV: a Parquet handle from a previous file is stale now — drop it.
+      // A Parquet handle from a previous file is stale now — drop it.
       if (this.ref) { dropFrameRef(this.ref); this.ref = null; }
+      if (LocalFileNode.isXml(name)) {
+        // Project XML: the plan cube, with the flat outline beside it on the frame socket.
+        const text = await readFileText(folder, name);
+        if (!isMspdiText(text)) throw new Error("Not a Project XML file");
+        const plan = mspdiToPlan(text);
+        this.cachedResult = plan.frame;
+        this.cachedPlan = plan.cube;
+        this.planNotes = plan.unsupported;
+        this.lastKey = key;
+        connectionStore.setState(this.id, {
+          status: "ok", rows: frameRowCount(plan.frame), cols: plan.frame.columns.length, fetchedAt: Date.now(),
+          ...(plan.unsupported.length ? { message: `Not carried over: ${plan.unsupported.join("; ")}` } : {}),
+        });
+        return { frame: plan.frame, plan: plan.cube };
+      }
       // Desktop parses in Rust so the file text never crosses IPC; web keeps the JS path.
       const frame = engineAvailable()
         ? await (async () => {
@@ -367,6 +395,8 @@ export class LocalFileNode extends ClassicPreset.Node {
           })()
         : csvToFrame(await readFileText(folder, name));
       this.cachedResult = frame;
+      // A Smartsheet / Project CSV (row-number predecessors) is also a plan.
+      this.cachedPlan = csvPlanToCube(frame);
       this.lastKey = key;
       connectionStore.setState(this.id, {
         status: "ok",
@@ -374,7 +404,7 @@ export class LocalFileNode extends ClassicPreset.Node {
         cols: frame.columns.length,
         fetchedAt: Date.now(),
       });
-      return { frame };
+      return { frame, plan: this.cachedPlan };
     } catch (e) {
       return fail(e instanceof Error ? e.message : String(e));
     }

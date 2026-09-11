@@ -33,7 +33,7 @@ import { nodeDisplayName } from "../catalogUtils";
 import { pickGeocodeMatch } from "../geocodeProvider";
 import { NAGER_COUNTRIES, filterHolidays, daysToNextHoliday } from "../holidaysProvider";
 import { FX_CURRENCIES } from "../fxProvider";
-import { frameRowCount } from "../frame";
+import { frameRowCount, cubeRowCount } from "../frame";
 import { useVaultWatch } from "./useVaultWatch";
 import { TASKNOTES_KEY_ID, TASKNOTES_PROVIDER_META, statsToFrame, type TaskNotesProvider } from "../taskNotesApi";
 import { dropInputCables } from "./cablePrune";
@@ -292,8 +292,10 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
     void refreshConnection(data.id);
   }
 
+  const frameOut = data.outputs.frame;
+  const planRows = data.cachedPlan ? cubeRowCount(data.cachedPlan) : 0;
   return (
-    <NodeShell node={data} emit={emit}>
+    <NodeShell node={data} emit={emit} hideOutputSockets>
       <div className="sol-conn">
         {!desktop ? (
           <div className="sol-conn__note">Local files are available in the desktop app only.</div>
@@ -316,8 +318,19 @@ export function LocalFileComponent({ data, emit }: NodeProps<LocalFileNodeType>)
         {desktop && folder && (
           <RefreshIntervalField minutes={minutes} onCommit={(n) => { data.refreshMinutes = n; setMinutes(n); }} />
         )}
-        <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
       </div>
+      {frameOut && (
+        <MeasuredSocketRow hero side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={frameOut.socket}>
+          <div style={{ width: "100%" }}>
+            <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
+          </div>
+        </MeasuredSocketRow>
+      )}
+      <InlineOutputRows
+        node={data}
+        emit={emit}
+        rows={[{ key: "plan", label: "Plan", value: planRows > 0 ? `${planRows} task${planRows === 1 ? "" : "s"}` : null }]}
+      />
     </NodeShell>
   );
 }

@@ -4,6 +4,7 @@ import { isSolError, type SolError } from "../errorValue";
 import { isCubeValue, type CubeValue, type FrameValue } from "../frame";
 import { scheduleTasks } from "../scheduleCpm";
 import type { ScheduleOutput } from "@solenoid/schedule-engine";
+import type { Shape } from "../frameShape";
 
 // The Schedule node: one eager verb over a tasks CUBE — the critical-path pass lives in
 // `@solenoid/schedule-engine` behind scheduleCpm.ts; this class only reads its inputs and
@@ -48,6 +49,12 @@ export class ScheduleNode extends ClassicPreset.Node {
   cachedDiagnostics: FrameValue | SolError | null = null;
   cachedOutput: ScheduleOutput | null = null;
   width = 240; height = 300;
+
+  /** The diagnostics frame is fixed-shape; the schedule cube has no static shape. */
+  frameShape(outKey: string): Shape | null {
+    if (outKey !== "diagnostics") return null;
+    return { columns: [{ name: "Check", type: "string" }, { name: "Task", type: "string" }, { name: "Detail", type: "string" }] };
+  }
 
   constructor(init?: { label?: string; mode?: ScheduleMode }) {
     super("Schedule");
