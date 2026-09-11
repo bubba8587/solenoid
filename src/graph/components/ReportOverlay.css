@@ -378,30 +378,39 @@ html.sol-report-docked {
   z-index: 5;
 }
 
+/* Docked is a narrow column: stack the header so the title sits on its own row and
+   the action buttons wrap onto the next, and never squeeze the title. */
+.report-panel--docked .report-header { flex-wrap: wrap; }
+.report-panel--docked .report-title { flex: 1 1 100%; }
+.report-panel--docked .report-header-actions { flex: 1 1 100%; flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
+
 /* Docked always uses the 2-tab (Draft/Preview) layout — the column is too narrow
-   for the side-by-side split — regardless of viewport width. Mirrors the
-   @media(max-width:760px) rules above, scoped to the docked panel. */
+   for the side-by-side split — but as a compact segmented pill toggle, not a
+   full-width tab bar. */
 .report-panel--docked .report-tabs {
   display: flex;
   flex-shrink: 0;
+  gap: 4px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   background: var(--surface-sunken);
 }
 .report-panel--docked .report-tab {
-  flex: 1 1 50%;
-  padding: 11px 8px;
+  flex: 0 0 auto;
+  padding: 4px 14px;
   background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
   color: var(--text-muted);
   font-family: inherit;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
 .report-panel--docked .report-tab--active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
   color: var(--text-bright);
-  border-bottom-color: var(--accent);
 }
 .report-panel--docked .report-body { flex-direction: column; }
 .report-panel--docked .report-source,
