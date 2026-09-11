@@ -1,3 +1,11 @@
 export * from "./payload";
-// Agent 2 adds: `layoutGantt(payload, opts) → RenderFrame` (scale.ts, rows.ts, links.ts,
-// layout.ts) and `ganttSvg(payload, opts) → string` (svg.ts). See the message from the Lead.
+export * from "./frame";
+export { layoutGantt, xForSerial, TIER_HEIGHT, type LayoutOptions } from "./layout";
+export { buildScale, resolveWindow, resolveZoom, type Zoom } from "./scale";
+export { buildRows, cullRows, DEFAULT_ROW_HEIGHT, INDENT_PER_LEVEL } from "./rows";
+export { buildBars, estimateWidth, ellipsize } from "./bars";
+export { buildLinks } from "./links";
+export { buildColumns } from "./columns";
+export { ganttSvg, type GanttSvgOptions } from "./svg";
+export { formatCell, formatDate } from "./cell";
+export * from "./serial";
