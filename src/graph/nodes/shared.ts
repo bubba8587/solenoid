@@ -310,7 +310,7 @@ export { dimOf, magnitudeOf };
 // ─── Node kind → header accent ─────────────────────────────────────────────────
 // A kind is the node's FAMILY (what it does), distinct from socket type.
 
-export type NodeKind = "input" | "math" | "convert" | "logic" | "list" | "lambda" | "util" | "display" | "string" | "date" | "complex" | "table" | "frame" | "format" | "boundary" | "chart";
+export type NodeKind = "input" | "math" | "convert" | "logic" | "list" | "lambda" | "util" | "display" | "string" | "date" | "complex" | "table" | "frame" | "format" | "boundary" | "chart" | "document";
 
 // A kind picks a palette SLOT, not a raw hex, so retuning a color in palette.ts
 // moves every use of it together.
@@ -332,6 +332,7 @@ export const NODE_KIND_SLOTS: Record<NodeKind, PaletteSlot> = {
   frame:   "violet",    // matches frame socket
   format:  "gold",
   boundary: "green",    // green = "special"
+  document: "green",    // the Report — a document sink, green to stand apart from Note's util gray
 };
 
 // Kept LIVE by mutating in place: consumers index this object, so swapping the
@@ -364,4 +365,5 @@ export const NODE_KIND_LABELS: Record<NodeKind, string> = {
   frame:   "Frame",
   format:  "Format",
   boundary: "Boundary",
+  document: "Document",
 };

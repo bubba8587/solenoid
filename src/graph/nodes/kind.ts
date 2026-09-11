@@ -51,6 +51,7 @@ import { ReconcileNode } from "./frame";
 import { SlicerNode, CableSwitchNode, DateInputNode, XYPadNode, PointPlotterNode, CurveNode, GridPainterNode } from "./control";
 import { SparklineNode, ChartNode, MergePlotsNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, ProportionNode, SankeyNode, HistogramNode, SurfaceNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, SevenSegNode, RecordNode } from "./visual";
 import { NoteNode, ImageNode, FileLinkNode, SvgPickerNode } from "./annotation";
+import { ReportNode } from "./report";
 import { QrCodeNode } from "./qr";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "./composite";
 import {
@@ -82,6 +83,7 @@ import {
 export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   // The Composite node itself stays neutral gray (util, below).
   if (node instanceof CompositeInputNode || node instanceof CompositeOutputNode) return "boundary";
+  if (node instanceof ReportNode) return "document";
   if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof PhysicsConstantNode || node instanceof ElementNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof LocalFileNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof DataFeedNode || node instanceof TaskNotesNode || node instanceof XYPadNode || node instanceof ColorPickerNode || node instanceof SvgPickerNode || node instanceof PointPlotterNode || node instanceof CurveNode || node instanceof GridPainterNode) return "input";
   // Charts wear the chart socket's green; the non-chart figures (a diagram, a builder, a
   // readout, a record card) stay on the display gold.

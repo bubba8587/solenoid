@@ -74,5 +74,14 @@ describe("Report Showcase seed", () => {
     const method = report.refValue("Methodology");
     expect(isDocumentValue(method)).toBe(true);
     expect((method as { body: string }).body).toContain("unaudited");
+
+    // The mail-merge Report: a wired template Note (Template) + a records frame
+    // (Records) render one page per row, each named by the pageName Knap.
+    const merge = byId.get("merge") as unknown as { pages: { name: string; body: string }[] | null };
+    expect(merge.pages?.length).toBe(3);
+    expect(merge.pages?.map((p) => p.name)).toEqual(["North", "South", "West"]);
+    expect(merge.pages?.[0].body).toContain("Ada");
+    expect(merge.pages?.[0].body).toContain("top of the pack"); // North booked 54 > 40
+    expect(merge.pages?.[1].body).not.toContain("top of the pack"); // South booked 39
   });
 });
