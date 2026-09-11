@@ -148,7 +148,7 @@ describe("everyFieldClassified — every own field is persisted or deliberately 
   /** name → why this field must NOT persist. Grouped by mechanism. */
   const DELIBERATELY_TRANSIENT: Record<string, string> = {
     resolved: "Write Tasks' Preview resolutions; re-derived by the next Preview, meaningless across loads",
-    wiredDate: "Write to Obsidian's last-seen date input; re-read from the cable on every compute",
+    resolvedPath: "Write to Obsidian's last-resolved target path; re-read from the `path` input/literal on every compute",
     templateVars: "Report's last Knap render variables, for the overlay's live preview; rebuilt from the cables on every compute",
     lastWritten: "Write to Obsidian's last written note path, for Open in Obsidian; a load has written nothing",
     planRows: "Write Tasks' plan, derived from the cached rows on every compute",

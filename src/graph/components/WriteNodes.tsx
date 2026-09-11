@@ -1,22 +1,23 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { WriteFileNode as WriteFileNodeType, WriteObsidianNode as WriteObsidianNodeType, WriteTasksNode as WriteTasksNodeType, WritePropertiesNode as WritePropertiesNodeType, WriteFormat } from "../rete-nodes";
-import { isDesktop, listVaultFolders, openExternal, pickFolderDialog, baseNameOf } from "../fileBridge";
+import { isDesktop, listVaultFolders, listVaultMarkdownFiles, openExternal, pickFolderDialog, baseNameOf } from "../fileBridge";
 import { obsidianOpenUrl } from "../obsidianLinks";
 import { settingsStore } from "../settingsStore";
 import { documentStore } from "../documentStore";
 import { isDocumentValue } from "../documentValue";
 import { isFrameValue } from "../frame";
 import { processGraph } from "../process";
+import { getActiveView } from "../activeGraph";
 import { FrameDisplay } from "./FrameDisplay";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { SegToggle } from "./SegToggle";
 import { OBSIDIAN_WRITE_MODE_OPTIONS } from "../nodes/obsidian";
 import type { ObsidianWriteMode } from "../obsidianWrite";
-import { renderNameTemplate, hasTemplateTokens, type NameTemplateContext } from "../nameTemplate";
 import { stubRelPath } from "../graphStub";
 import "./ConnectionNodes.css";
 import "./WriteNodes.css";
+import "./ImportObsidianNode.css";
 import { stopDragStart } from "../coarse";
 
 // `data.run()` touches disk, so it must fire ONLY from the explicit Run click below —
@@ -143,16 +144,16 @@ export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>)
 // Same arm/disarm discipline as the file sinks: Run is the only thing that writes.
 
 type WriteObsidianData = WriteObsidianNodeType & {
-  fileName: string; subfolder: string; mode: ObsidianWriteMode; stamp: boolean; enabled: boolean; status: string; statusMessage: string; lastWritten: string;
+  subfolder: string; mode: ObsidianWriteMode; stamp: boolean; enabled: boolean; status: string; statusMessage: string; lastWritten: string;
+  stringLiterals: Record<string, string>;
   run(): Promise<void>;
-  templateContext(docName: string): NameTemplateContext;
+  renderedTarget(): { name: string; subfolder: string };
 };
 
 const stopPtr = { onPointerDown: (e: React.PointerEvent) => e.stopPropagation(), onMouseDown: (e: React.MouseEvent) => e.stopPropagation() };
 
 export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNodeType>) {
   const d = data as unknown as WriteObsidianData;
-  const [name, setName] = useState(d.fileName);
   const [subfolder, setSubfolder] = useState(d.subfolder);
   const [mode, setMode] = useState<ObsidianWriteMode>(d.mode);
   const [stamp, setStamp] = useState(d.stamp);
@@ -160,10 +161,11 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
   const [status, setStatus] = useState(d.status);
   const [message, setMessage] = useState(d.statusMessage);
   const [folders, setFolders] = useState<string[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [files, setFiles] = useState<string[]>([]);
+  const [search, setSearch] = useState("");
   const desktop = isDesktop();
   const vault = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("obsidianVault"));
-
-  useEffect(() => { setName(d.fileName); }, [d.fileName]);
 
   // Re-lists the vault's subfolders whenever the vault path changes.
   useEffect(() => {
@@ -171,19 +173,38 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
     void listVaultFolders(vault).then((f) => { if (live) setFolders(f); });
     return () => { live = false; };
   }, [vault]);
+  // The Browse picker lists the vault's notes, same control as Import Obsidian.
+  useEffect(() => {
+    if (!pickerOpen) return;
+    let live = true;
+    void listVaultMarkdownFiles(vault).then((f) => { if (live) setFiles(f); });
+    return () => { live = false; };
+  }, [pickerOpen, vault]);
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return q ? files.filter((f) => f.toLowerCase().includes(q)) : files;
+  }, [files, search]);
 
   function refreshFolders() { void listVaultFolders(vault).then(setFolders); }
-
-  function commitName() {
-    const next = name.trim();
-    d.fileName = next;
-    setName(next);
-  }
 
   function pickSubfolder(v: string) { d.subfolder = v; setSubfolder(v); }
   function pickMode(v: ObsidianWriteMode) { d.mode = v; setMode(v); }
   function toggleArmed() { d.enabled = !d.enabled; setArmed(d.enabled); }
   function toggleStamp() { d.stamp = !d.stamp; setStamp(d.stamp); }
+
+  // Picking a note fills the folder select + the `path` literal (its bare name), so the
+  // two controls stay in sync; a wired `path` overrides both.
+  function pickFile(rel: string) {
+    const noMd = rel.replace(/\.md$/i, "");
+    const slash = noMd.lastIndexOf("/");
+    const folder = slash >= 0 ? noMd.slice(0, slash) : "";
+    const base = slash >= 0 ? noMd.slice(slash + 1) : noMd;
+    d.subfolder = folder; setSubfolder(folder);
+    (d.stringLiterals ??= {}).path = base;
+    setPickerOpen(false);
+    void getActiveView()?.rerenderNode(d.id);
+    void processGraph();
+  }
 
   async function run() {
     setStatus("writing");
@@ -192,12 +213,8 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
     setMessage(d.statusMessage);
   }
 
-  // A templated name shows what it renders to right now (the clock, or the wired date),
-  // live off the draft so the preview follows the typing.
-  const templated = hasTemplateTokens(name) || hasTemplateTokens(subfolder);
-  const ctx = templated ? d.templateContext(documentStore.currentName()) : null;
-  const rendered = ctx ? [renderNameTemplate(subfolder, ctx), renderNameTemplate(name, ctx)].filter(Boolean).join("/") + ".md" : "";
-
+  const target = d.renderedTarget();
+  const renderedName = target.name || d.label || "note";
   const doc = d.cachedDoc;
   const preview = isDocumentValue(doc)
     ? `${doc.frontmatter ? "note" : "report"} · ${doc.body.length} char${doc.body.length === 1 ? "" : "s"}`
@@ -209,18 +226,54 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
       <div className="sol-conn">
         {!desktop && <div className="sol-conn__note">Writing to a vault is available in the desktop app only.</div>}
         {desktop && vault.trim() === "" && <div className="sol-conn__note">Set the Obsidian vault folder in Settings.</div>}
-        <input
-          className="sol-conn__url"
-          type="text"
-          value={name}
-          placeholder="Note name, or {{date}} / {{daily}}"
-          spellCheck={false}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={commitName}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+        <button
+          type="button"
+          className="sol-conn__refresh"
+          title={pickerOpen ? "Hide vault notes" : "Browse the vault for a note to write to"}
+          onClick={(e) => { e.stopPropagation(); setPickerOpen((o) => !o); }}
           {...stopPtr}
-        />
-        {rendered && <div className="sol-conn__note" title="What the name renders to now">{rendered}</div>}
+        >
+          Browse…
+        </button>
+        {pickerOpen && (
+          <div className="sol-import__picker" {...stopPtr}>
+            {!desktop ? (
+              <div className="sol-import__empty">Reading a vault is available in the desktop app only.</div>
+            ) : vault.trim() === "" ? (
+              <div className="sol-import__empty">Set the Obsidian vault folder in Settings.</div>
+            ) : (
+              <>
+                <input
+                  className="sol-import__search"
+                  type="text"
+                  value={search}
+                  placeholder="Search notes…"
+                  spellCheck={false}
+                  autoFocus
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+                <div className="sol-import__list nowheel">
+                  {filtered.length === 0 ? (
+                    <div className="sol-import__empty">No .md files</div>
+                  ) : (
+                    filtered.map((f) => (
+                      <button
+                        key={f}
+                        type="button"
+                        className={`sol-import__row${f.replace(/\.md$/i, "") === [d.subfolder, d.stringLiterals?.path].filter(Boolean).join("/") ? " sol-import__row--on" : ""}`}
+                        title={f}
+                        onClick={() => pickFile(f)}
+                      >
+                        {f}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+        {target.name && <div className="sol-conn__note" title="Where Run writes">{[target.subfolder, renderedName].filter(Boolean).join("/")}.md</div>}
         <SegToggle value={mode} options={OBSIDIAN_WRITE_MODE_OPTIONS} onChange={pickMode} />
         <label className="sol-write__armed" title="Add a solenoid: link on the note + a Solenoid/<graph> stub note" {...stopPtr}>
           <input type="checkbox" checked={stamp} onChange={toggleStamp} />
@@ -259,7 +312,7 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
           <button
             type="button"
             className="sol-write__run"
-            disabled={!desktop || !armed || name.trim() === "" || vault.trim() === "" || status === "writing"}
+            disabled={!desktop || !armed || renderedName.trim() === "" || vault.trim() === "" || status === "writing"}
             title="Write the note now"
             onClick={(e) => { e.stopPropagation(); void run(); }}
             {...stopPtr}

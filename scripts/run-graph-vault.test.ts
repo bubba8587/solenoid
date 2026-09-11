@@ -35,7 +35,7 @@ describe("run-graph --vault", () => {
     const graph = {
       nodes: [
         { id: "n", type: "NoteNode", init: { label: "Memo", body: "# Hello\n\nfrom the CLI" } },
-        { id: "w", type: "WriteObsidianNode", init: { label: "Write memo", fileName: "CLI memo", subfolder: "Notes" } },
+        { id: "w", type: "WriteObsidianNode", init: { label: "Write memo", subfolder: "Notes" }, stringLiterals: { path: "CLI memo" } },
       ],
       connections: [{ source: "n", sourceOutput: "document", target: "w", targetInput: "in" }],
     };

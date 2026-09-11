@@ -3,10 +3,9 @@ import { mergeNoteText } from "../../src/graph/obsidianWrite";
 import { WriteObsidianNode } from "../../src/graph/nodes/obsidian";
 import { extractInit } from "../../src/graph/copyPaste";
 import { beginMarker, END_MARKER } from "../../src/graph/managedBlock";
-import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 import { makeDocument } from "../../src/graph/documentValue";
 
-// Bundle item C: overwrite | append | block, and the name templates on the writer.
+// Bundle item C: overwrite | append | block, and the wireable `path` target on the writer.
 
 describe("mergeNoteText", () => {
   it("overwrite: the note is the document; a missing note is created in every mode", () => {
@@ -25,26 +24,22 @@ describe("mergeNoteText", () => {
   });
 });
 
-describe("WriteObsidianNode modes + templates", () => {
-  it("mode persists through extractInit, defaults to overwrite, a stale value falls back", () => {
+describe("WriteObsidianNode modes + path target", () => {
+  it("mode persists through extractInit, defaults to overwrite, a stale value falls back; inputs are in + path", () => {
     expect(new WriteObsidianNode().mode).toBe("overwrite");
     expect(extractInit(new WriteObsidianNode({ mode: "block" }) as never).mode).toBe("block");
     expect(new WriteObsidianNode({ mode: "nope" as never }).mode).toBe("overwrite");
-    expect(Object.keys(new WriteObsidianNode().inputs)).toEqual(["in", "date"]);
+    expect(Object.keys(new WriteObsidianNode().inputs)).toEqual(["in", "path"]);
   });
-  it("renderedTarget renders the templates against the wired date (else today), the node and doc names", () => {
-    const n = new WriteObsidianNode({ label: "Weekly review", fileName: "{{date:YYYY-MM-DD}} {{name}}", subfolder: "{{doc}}/{{date+1w:YYYY}}" });
-    n.data({ in: [makeDocument("x")], date: [parseDateToSerial("2026-12-30")] });
-    const t = n.renderedTarget("Ops plan");
-    expect(t.templated).toBe(true);
-    expect(t.fileName).toBe("2026-12-30 Weekly review");
-    expect(t.subfolder).toBe("Ops plan/2027");
-    const plain = new WriteObsidianNode({ fileName: "Notes" }).renderedTarget("D");
-    expect(plain).toEqual({ fileName: "Notes", subfolder: "", templated: false });
+  it("renderedTarget resolves the wired path: a folder/name splits, the folder prepends to the subfolder", () => {
+    const n = new WriteObsidianNode({ subfolder: "Ops" });
+    n.data({ in: [makeDocument("x")], path: ["Plans/Q1 review"] });
+    expect(n.renderedTarget()).toEqual({ name: "Q1 review", subfolder: "Ops/Plans" });
   });
-  it("{{daily}} takes the Daily notes config's folder + format", () => {
-    const n = new WriteObsidianNode({ fileName: "{{daily}}" });
-    n.data({ in: [makeDocument("x")], date: [parseDateToSerial("2026-09-07")] });
-    expect(n.renderedTarget("D", { folder: "Journal", format: "DD MMM YYYY" }).fileName).toBe("Journal/07 Sep 2026");
+  it("a bare name uses the node's subfolder; the `path` literal fills in when the input is unwired", () => {
+    const n = new WriteObsidianNode({ subfolder: "Trip letters" });
+    n.stringLiterals.path = "Welcome";
+    n.data({ in: [makeDocument("x")] });
+    expect(n.renderedTarget()).toEqual({ name: "Welcome", subfolder: "Trip letters" });
   });
 });
