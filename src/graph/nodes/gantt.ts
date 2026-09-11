@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { cubeIn, strIn, numIn, dateListIn, chartOut, readInput } from "./shared";
+import { cubeIn, strIn, numIn, dateIn, dateListIn, chartOut, readInput } from "./shared";
 import { parseChartOptions, type ChartOptions } from "./chartOptions";
 import { isCubeValue, isFrameValue, type CubeValue, type FrameValue } from "../frame";
 import { isSolError, type SolError } from "../errorValue";
@@ -20,6 +20,7 @@ export class GanttNode extends ClassicPreset.Node {
     baseline: "A second scheduled project drawn as ghost bars behind the bars, to compare a plan against where it started. Rows match by task name.",
     holidays: "Dates to shade as non-working, alongside the weekend.",
     weekend_code: "Excel's WORKDAY.INTL codes for which days shade as the weekend: 1 = Sat+Sun, 2 = Sun+Mon, … 7 = Fri+Sat; 11–17 = a single day off.",
+    status: "The day progress is measured on, drawn as the status line. Unwired, no line.",
     options: "zoom=week;tiers=2;critical=on;baseline=on;arrows=on;today=on;weekends=on;labels=on. zoom is day, week, month, quarter or year; window=1-Jun,31-Aug frames the dates; collapse=1 folds nesting; columns=name,start,finish,duration picks the grid columns. title and fontsize also apply.",
     chart: "The Gantt figure: the scheduled bars, the milestones, the dependency arrows and the critical path. It draws at full size in the Display, the popup, or a Report.",
   };
@@ -39,6 +40,7 @@ export class GanttNode extends ClassicPreset.Node {
     this.addInput("baseline", cubeIn("Baseline"));
     this.addInput("holidays", dateListIn("Holidays"));
     this.addInput("weekend_code", numIn("Weekend"));
+    this.addInput("status", dateIn("Status date"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
@@ -48,6 +50,7 @@ export class GanttNode extends ClassicPreset.Node {
     baseline?: (CubeValue | FrameValue | SolError | null)[];
     holidays?: (number | null)[][];
     weekend_code?: number[];
+    status?: (number | null)[];
     options?: string[];
   }): { chart: ChartValue | SolError | null } {
     const schedule = inputs.schedule?.[0] ?? null;
@@ -64,10 +67,14 @@ export class GanttNode extends ClassicPreset.Node {
     const baseIn = inputs.baseline?.[0] ?? null;
     const baseline = isCubeValue(baseIn) || isFrameValue(baseIn) ? baseIn : null;
     const weekendCode = readInput(inputs.weekend_code, this.literals.weekend_code ?? 1) ?? 1;
+    // Status is wire-only (a date socket, no literal): unwired = no status line.
+    const statusIn = inputs.status ? inputs.status[0] : null;
+    const statusDate = statusIn != null && Number.isFinite(statusIn) ? statusIn : null;
 
     const payload = ganttPayloadFromSchedule(schedule, {
       baseline,
       today: todaySerial(),
+      statusDate,
       options: optStr,
       calendar: { holidays: inputs.holidays?.[0], weekendCode },
     });
