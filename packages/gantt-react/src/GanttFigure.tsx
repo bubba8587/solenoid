@@ -40,7 +40,14 @@ export function GanttFigure({ payload, width, height, virtualize, fontScale = 1 
   const columns = useMemo(() => buildColumns(payload), [payload]);
   const gridNaturalW = useMemo(() => columns.reduce((s, c) => s + c.width, 0), [columns]);
 
-  const [gridW, setGridW] = useState(() => Math.min(gridNaturalW, Math.max(MIN_GRID_W, width * 0.42)));
+  // The grid defaults to its CONTENT width (name + the columns that fit), not a fixed fraction —
+  // so no empty band, and never a clipped header. The user can drag the splitter from there.
+  const [gridW, setGridW] = useState(() => {
+    const target = Math.min(gridNaturalW, Math.max(MIN_GRID_W, width * 0.55));
+    return fitColumns(columns, target).reduce((s, c) => s + c.width, 0);
+  });
+  // Columns that fit the current grid width; trailing ones are DROPPED, never clipped.
+  const visibleCols = useMemo(() => fitColumns(columns, gridW), [columns, gridW]);
   const timelineW = Math.max(80, width - gridW - 1);
 
   const rows = useMemo(() => buildRows(payload, rowHeight), [payload, rowHeight]);
@@ -123,7 +130,7 @@ export function GanttFigure({ payload, width, height, virtualize, fontScale = 1 
       className="solenoid-gantt nowheel nodrag nokeys"
       role="treegrid"
       aria-rowcount={rows.length}
-      aria-colcount={columns.length}
+      aria-colcount={visibleCols.length}
       style={{ width, height, fontSize: `${12 * fontScale}px` }}
     >
       <style>{ganttStyles}</style>
@@ -131,7 +138,7 @@ export function GanttFigure({ payload, width, height, virtualize, fontScale = 1 
       {/* ── Grid pane ── */}
       <div className="solenoid-gantt__grid" style={{ width: gridW }}>
         <div className="solenoid-gantt__grid-head" style={{ height: headerH }} role="row">
-          {columns.map((c) => (
+          {visibleCols.map((c) => (
             <div key={c.key} className="solenoid-gantt__gh" role="columnheader" style={{ width: c.width, textAlign: c.align }}>
               {c.label}
             </div>
@@ -151,7 +158,7 @@ export function GanttFigure({ payload, width, height, virtualize, fontScale = 1 
               if (!t) return null;
               return (
                 <div key={row.id} className={`solenoid-gantt__row${row.summary ? " is-summary" : ""}`} role="row" aria-level={row.level + 1} style={{ top: row.y, height: row.h }}>
-                  {columns.map((c) => (
+                  {visibleCols.map((c) => (
                     <div
                       key={c.key}
                       role="gridcell"
@@ -209,6 +216,11 @@ export function GanttFigure({ payload, width, height, virtualize, fontScale = 1 
 
           {/* Bars for the shown rows */}
           <svg className="solenoid-gantt__bars" width={contentW} height={contentH} style={{ top: headerH }} aria-hidden="true">
+            <defs>
+              <pattern id="gantt-crit-hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <line className="solenoid-gantt__hatch" x1="0" y1="0" x2="0" y2="5" />
+              </pattern>
+            </defs>
             {rowsToShow.map((row) => {
               const bar = barsByRow.get(row.id);
               return bar ? <Bar key={row.id} bar={bar} payload={payload} /> : null;
@@ -247,8 +259,9 @@ function Bar({ bar, payload }: { bar: FrameBar; payload: GanttPayload }) {
     );
   }
   if (bar.kind === "summary") {
-    const cap = Math.min(6, bar.w / 2);
-    const d = `M${bar.x} ${bar.y} L${bar.x + bar.w} ${bar.y} L${bar.x + bar.w} ${bar.y + bar.h + cap} L${bar.x + bar.w - cap} ${bar.y + bar.h} L${bar.x + cap} ${bar.y + bar.h} L${bar.x} ${bar.y + bar.h + cap} Z`;
+    const rail = 3;
+    const legW = Math.min(8, bar.w / 2);
+    const d = `M${bar.x} ${bar.y} L${bar.x + bar.w} ${bar.y} L${bar.x + bar.w} ${bar.y + bar.h} L${bar.x + bar.w - legW} ${bar.y + rail} L${bar.x + legW} ${bar.y + rail} L${bar.x} ${bar.y + bar.h} Z`;
     return (
       <g>
         <path className={cls("solenoid-gantt__bracket")} d={d}>{title && <title>{title}</title>}</path>
@@ -273,6 +286,13 @@ function Bar({ bar, payload }: { bar: FrameBar; payload: GanttPayload }) {
       </rect>
       {bar.progressW > 0 && (
         <rect className={cls("solenoid-gantt__progress")} x={bar.x} y={bar.y} width={bar.progressW} height={bar.h} rx={2} />
+      )}
+      {bar.critical && !bar.color && (
+        // Non-color cue for the critical path (WCAG 1.4.1): a hatch texture + a darker outline.
+        <>
+          <rect className="solenoid-gantt__crit-hatch" x={bar.x} y={bar.y} width={bar.w} height={bar.h} rx={2} fill="url(#gantt-crit-hatch)" />
+          <rect className="solenoid-gantt__crit-outline" x={bar.x} y={bar.y} width={bar.w} height={bar.h} rx={2} />
+        </>
       )}
       {(bar.violated || bar.late) && (
         <rect className="solenoid-gantt__bar-flag" x={bar.x} y={bar.y} width={bar.w} height={bar.h} rx={2} strokeDasharray={bar.violated ? "3 2" : undefined} />
@@ -324,6 +344,19 @@ function arrowPath(x: number, y: number, dir: "left" | "right"): string {
   const s = 4;
   const dx = dir === "right" ? -s : s;
   return `M${x} ${y} L${x + dx} ${y - s} L${x + dx} ${y + s} Z`;
+}
+
+/** The prefix of `cols` that fits `avail` px; the name column is always kept even if it alone
+ *  exceeds the width. Trailing columns that don't fit are dropped, never clipped. */
+function fitColumns(cols: ReturnType<typeof buildColumns>, avail: number): ReturnType<typeof buildColumns> {
+  const out: typeof cols = [];
+  let used = 0;
+  for (const c of cols) {
+    if (out.length && used + c.width > avail) break;
+    out.push(c);
+    used += c.width;
+  }
+  return out.length ? out : cols.slice(0, 1);
 }
 
 function shadingRects(payload: GanttPayload, scale: { from: number; to: number; pxPerDay: number }, h: number) {
