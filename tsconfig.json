@@ -19,11 +19,10 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
     "paths": {
-      "@solenoid/schedule-engine": ["packages/schedule-engine/src/index.ts"],
-      "@solenoid/gantt-layout": ["packages/gantt-layout/src/index.ts"],
-      "@solenoid/gantt-react": ["packages/gantt-react/src/index.ts"]
+      "@solenoid/schedule-engine": ["./packages/schedule-engine/src/index.ts"],
+      "@solenoid/gantt-layout": ["./packages/gantt-layout/src/index.ts"],
+      "@solenoid/gantt-react": ["./packages/gantt-react/src/index.ts"]
     }
   },
   "include": ["src", "tests", "packages"],

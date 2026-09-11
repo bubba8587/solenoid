@@ -15,8 +15,8 @@ const c: CubeValue = cubeFromColumns([
 describe("ScheduleNode", () => {
   it("takes a cube and a wired start; the three outputs agree; the schedule is a cube", () => {
     const n = new ScheduleNode();
-    expect(Object.keys(n.inputs)).toEqual(["tasks", "start", "holidays"]);
-    expect(Object.keys(n.outputs)).toEqual(["cube", "finish", "gantt"]);
+    expect(Object.keys(n.inputs)).toEqual(["tasks", "start", "holidays", "weekend_code", "status", "hours"]);
+    expect(Object.keys(n.outputs)).toEqual(["cube", "finish", "diagnostics", "gantt"]);
     const out = n.data({ tasks: [c], start: [MON] });
     expect(isCubeValue(out.cube)).toBe(true);
     expect(formatDateSerial(out.finish as number, "YYYY-MM-DD")).toBe("2026-01-07");
@@ -47,6 +47,20 @@ describe("ScheduleNode", () => {
     const out = n.data({ tasks: [bad], start: [MON] });
     expect(isSolError(out.cube) && out.cube.code).toBe("#VALUE!");
     expect(out.gantt).toBe(out.cube);
+    expect(out.diagnostics).toBe(out.cube);
     expect(n.cachedGantt).toBe(out.cube);
+  });
+
+  it("the weekend code and status date reach the engine", () => {
+    const n = new ScheduleNode();
+    n.literals.weekend_code = 7; // Fri + Sat off
+    const out = n.data({ tasks: [c], start: [parseDateToSerial("2026-01-08")] }); // a Thursday
+    expect(formatDateSerial(out.finish as number, "YYYY-MM-DD")).toBe("2026-01-12"); // Thu, Sun, Mon
+    const s = new ScheduleNode();
+    const progressed = cubeFromColumns([
+      { name: "Task", cells: ["A"], type: "string" }, { name: "Duration", cells: [4], type: "number" }, { name: "Complete", cells: [50], type: "number" },
+    ]);
+    const o = s.data({ tasks: [progressed], start: [MON], status: [parseDateToSerial("2026-01-08")] });
+    expect(formatDateSerial(o.finish as number, "YYYY-MM-DD")).toBe("2026-01-12");
   });
 });

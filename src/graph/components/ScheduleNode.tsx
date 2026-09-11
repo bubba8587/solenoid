@@ -7,7 +7,7 @@ import { CubeDisplay } from "./CubeDisplay";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { dateFormatDisplay } from "./valueDisplayFormat";
 import { nodeDisplayName } from "../catalogUtils";
-import { isCubeValue } from "../frame";
+import { isCubeValue, isFrameValue } from "../frame";
 
 function ganttSummary(data: ScheduleNodeType): OutputRowValue {
   const g = data.cachedGantt;
@@ -19,8 +19,15 @@ function ganttSummary(data: ScheduleNodeType): OutputRowValue {
   return `${rows} task${rows === 1 ? "" : "s"} · ${crit} critical`;
 }
 
-// Tasks in, three outputs: the schedule cube (hero), Project finish, and the gantt
-// source — the last two as labeled rows so each keeps its own socket dot.
+function diagnosticsSummary(data: ScheduleNodeType): OutputRowValue {
+  const d = data.cachedDiagnostics;
+  if (!isFrameValue(d)) return d;
+  const n = d.columns[0]?.values.length ?? 0;
+  return n === 0 ? "none" : `${n} finding${n === 1 ? "" : "s"}`;
+}
+
+// Tasks in, four outputs: the schedule cube (hero), Project finish, Diagnostics and the
+// gantt source — the last three as labeled rows so each keeps its own socket dot.
 export function ScheduleComponent({ data, emit }: NodeProps<ScheduleNodeType>) {
   const [mode, setMode] = useNodeField(data, "mode");
   const cubeOut = data.outputs.cube;
@@ -40,6 +47,7 @@ export function ScheduleComponent({ data, emit }: NodeProps<ScheduleNodeType>) {
         emit={emit}
         rows={[
           { key: "finish", label: "Project finish", value: dateFormatDisplay(data.cachedFinish, true, false) as OutputRowValue },
+          { key: "diagnostics", label: "Diagnostics", value: diagnosticsSummary(data) },
           // The socket carries the full Mermaid source; the row says what it holds.
           { key: "gantt", label: "Gantt", value: ganttSummary(data) },
         ]}

@@ -1,165 +1,237 @@
-// The Schedule verb: a critical-path forward/backward pass over a tasks CUBE. Pure and
-// rete-free (like the frame verbs); the node in nodes/schedule.ts wraps it. Exact integer
-// day arithmetic in working-day INDEX space — a date is looked up from its index, so
-// weekends and holidays are skipped once, by construction, never re-counted. The rows
-// arrive as a cube because Predecessors is a LIST cell (a task waits on zero or more
-// tasks) — never an in-cell string list, which the cube exists to eliminate.
+// The Schedule verb: binds a tasks CUBE to `@solenoid/schedule-engine` and re-emits the
+// rows with the computed columns. Pure and rete-free (like the frame verbs); the node in
+// nodes/schedule.ts wraps it. The rows arrive as a cube because Predecessors is a LIST cell
+// (a task waits on zero or more tasks) or a nested Task · Type · Lag table — never an
+// in-cell string list, which the cube exists to eliminate. Nesting is the WBS: a row whose
+// Tasks (or Children / Subtasks) cell holds a table is a summary of those rows.
 
-import { solError } from "./errorValue";
-import { serialToJsDate, formatDateSerial } from "./nodes/dateSerial";
-import { cubeFromColumns, type CubeValue, type CubeCell } from "./frame";
+import { solError, isSolError } from "./errorValue";
+import { formatDateSerial } from "./nodes/dateSerial";
+import { cubeFromColumns, isCubeValue, isFrameValue, frameToCube, type CubeValue, type CubeCell, type CubeColumn, type FrameValue } from "./frame";
+import { isUnitCell } from "./unitValue";
+import {
+  schedule, mermaidGantt, ScheduleError, predecessorText, LINK_TYPES,
+  type PlanTask, type PlanDependency, type LinkType, type ScheduleOutput, type ScheduledTask,
+} from "@solenoid/schedule-engine";
 
 export interface ScheduleOptions {
-  /** Project start, a date serial. The first task can begin on this day (rolled forward
-   *  to the next working day when it falls on a skipped one). */
+  /** Project start, a date serial. */
   start: number;
   /** Skip weekends (and `holidays`) when true; every calendar day counts when false. */
   workingDays: boolean;
+  /** Excel WORKDAY.INTL weekend code; 1 (Sat + Sun) when absent. */
+  weekendCode?: number;
   /** Date serials to skip in working-day mode; ignored in calendar mode. */
   holidays?: readonly (number | null)[];
+  /** When set, Complete drives the remaining work from this day. */
+  statusDate?: number | null;
+  /** Converts an hour-united Duration column into days (default 8). */
+  hoursPerDay?: number;
 }
 
 export interface ScheduleResult {
-  /** The input rows in their original order (nested cells untouched) with
-   *  Start · Finish · Float · Critical appended. */
+  /** The input rows in their original order (nested cells untouched) with the computed
+   *  columns appended at every level. */
   cube: CubeValue;
   /** The last task's finish, a date serial. */
   projectFinish: number;
   /** Mermaid `gantt` source for the schedule. */
   gantt: string;
+  /** One row per finding: Check · Task · Detail. */
+  diagnostics: FrameValue;
+  /** The engine's output, for the figure. */
+  output: ScheduleOutput;
 }
-
-interface Task {
-  name: string;
-  duration: number;
-  preds: string[];
-  project: string | null;
-}
-
-const SATURDAY = 6, SUNDAY = 0;
-
-/** The day-key of a serial (whole days, drift-tolerant), matching nodes/date.ts. */
-function dayKey(serial: number): number {
-  return Math.floor(serial + 1e-9);
-}
-
-/** Task names match trimmed and case-insensitively, so spelling is the only thing that
- *  can fail to match. */
-const key = (name: string) => name.trim().toLowerCase();
 
 const isText = (v: unknown): v is string => typeof v === "string";
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+const norm = (s: string) => s.trim().toLowerCase();
 
-/** The column named `n` (case-insensitive), else the first whose cells fit `pick`. */
-function findColumn(c: CubeValue, names: string[], pick: (cells: CubeCell[]) => boolean) {
+const TASK_NAMES = ["task", "name", "title"];
+const DURATION_NAMES = ["duration", "days"];
+const PRED_NAMES = ["predecessors", "predecessor", "after", "depends on", "blockedby", "blocked by"];
+const CHILD_NAMES = ["tasks", "children", "subtasks", "steps"];
+const START_NAMES = ["start"];
+const FINISH_NAMES = ["finish", "end"];
+const DEADLINE_NAMES = ["deadline", "due"];
+const MANUAL_NAMES = ["manual", "pinned"];
+const COMPLETE_NAMES = ["complete", "% complete", "percent complete", "done", "progress"];
+const GROUP_NAMES = ["project", "section", "group"];
+
+/** The column named one of `names` (case-insensitive), else the first whose cells fit `pick`. */
+function findColumn(c: CubeValue, names: string[], pick?: (col: CubeColumn) => boolean): CubeColumn | undefined {
   for (const n of names) {
-    const col = c.columns.find((col) => col.name.trim().toLowerCase() === n);
+    const col = c.columns.find((col) => norm(col.name) === n);
     if (col) return col;
   }
-  return c.columns.find((col) => pick(col.cells));
+  return pick ? c.columns.find(pick) : undefined;
 }
 
-/** A Predecessors cell → task names: a list cell holds zero or more names; a text cell
- *  is ONE name; blank is none. Nothing is split. */
-function predecessorNames(cell: CubeCell): string[] {
+const isTable = (v: unknown): v is CubeValue | FrameValue => isCubeValue(v) || isFrameValue(v);
+const asCube = (v: CubeValue | FrameValue): CubeValue => (isCubeValue(v) ? v : frameToCube(v));
+
+/** A Predecessors cell → typed dependencies: a list cell holds zero or more names (FS/0);
+ *  a text cell is ONE name (never split); a nested Task · Type · Lag table carries types
+ *  and lags; blank is none. */
+function readPredecessors(cell: CubeCell, taskName: string): PlanDependency[] {
   if (cell == null) return [];
-  if (Array.isArray(cell)) return cell.map((v) => (v == null ? "" : String(v).trim())).filter(Boolean);
-  if (isText(cell)) return cell.trim() ? [cell.trim()] : [];
+  if (Array.isArray(cell)) return cell.map((v) => (v == null ? "" : String(v).trim())).filter(Boolean).map((task) => ({ task, type: "FS" as const, lag: 0 }));
+  if (isText(cell)) return cell.trim() ? [{ task: cell.trim(), type: "FS", lag: 0 }] : [];
+  if (isTable(cell)) {
+    const t = asCube(cell);
+    const nameCol = findColumn(t, TASK_NAMES, (col) => col.cells.some(isText));
+    const typeCol = findColumn(t, ["type", "link", "kind"]);
+    const lagCol = findColumn(t, ["lag", "lead", "offset"]);
+    if (!nameCol) throw solError("#VALUE!", `Schedule: task "${taskName}" has a Predecessors table with no Task column`);
+    const rows = t.columns.reduce((m, col) => Math.max(m, col.cells.length), 0);
+    const out: PlanDependency[] = [];
+    for (let i = 0; i < rows; i++) {
+      const task = String(nameCol.cells[i] ?? "").trim();
+      if (!task) continue;
+      const typeRaw = String(typeCol?.cells[i] ?? "FS").trim().toUpperCase();
+      const type = (LINK_TYPES as readonly string[]).includes(typeRaw) ? (typeRaw as LinkType) : null;
+      if (type === null) throw solError("#VALUE!", `Schedule: task "${taskName}" waits on "${task}" with link type "${typeRaw}"; use FS, SS, FF or SF`);
+      const lagCell = lagCol?.cells[i];
+      const lag = lagCell == null || lagCell === "" ? 0 : isNum(lagCell) ? lagCell : Number(lagCell);
+      if (!Number.isFinite(lag)) throw solError("#VALUE!", `Schedule: task "${taskName}" waits on "${task}" with a lag that is not a number`);
+      out.push({ task, type, lag });
+    }
+    return out;
+  }
   return [];
 }
 
-/** Read the tasks off the cube: Task = the `Task` column or the first text column;
- *  Duration = the `Duration` column or the first number column; Predecessors = the
- *  `Predecessors` column (list cells); Project = an optional text column. */
-function readTasks(c: CubeValue): Task[] {
-  const taskCol = findColumn(c, ["task", "name", "title"], (cells) => cells.some(isText));
-  const durCol = findColumn(c, ["duration", "days"], (cells) => cells.some(isNum) && cells !== taskCol?.cells);
-  const predCol = findColumn(c, ["predecessors", "predecessor", "after", "depends on", "blockedby", "blocked by"], () => false);
-  const projCol = findColumn(c, ["project", "section"], () => false);
-  if (!taskCol) throw solError("#VALUE!", "Schedule needs a Task column (text) naming each task");
-  if (!durCol) throw solError("#VALUE!", "Schedule needs a Duration column (number of days)");
+/** Duration in days from a cell: a plain number is days; an hour- or day-united cell
+ *  converts through hours per day; blank is a milestone. */
+function readDuration(cell: CubeCell, hoursPerDay: number, name: string): number {
+  if (cell == null || cell === "") return 0;
+  if (isUnitCell(cell)) {
+    if (cell.dim.time === 1 && Object.keys(cell.dim).length === 1) return cell.value / 3600 / hoursPerDay;
+    throw solError("#VALUE!", `Schedule: task "${name}" has a Duration that is not a time`);
+  }
+  const d = isNum(cell) ? cell : isText(cell) ? Number(cell) : NaN;
+  if (!Number.isFinite(d) || d < 0) throw solError("#VALUE!", `Schedule: task "${name}" needs a duration of 0 or more days`);
+  return d;
+}
+
+function readDate(cell: CubeCell | undefined): number | null {
+  if (cell == null || cell === "") return null;
+  if (isNum(cell)) return cell;
+  return null;
+}
+
+function readBool(cell: CubeCell | undefined): boolean {
+  if (typeof cell === "boolean") return cell;
+  if (isNum(cell)) return cell !== 0;
+  if (isText(cell)) return ["true", "yes", "y", "1", "on"].includes(norm(cell));
+  return false;
+}
+
+interface Level {
+  cube: CubeValue;
+  cols: {
+    task: CubeColumn; duration?: CubeColumn; pred?: CubeColumn; children?: CubeColumn;
+    start?: CubeColumn; finish?: CubeColumn; deadline?: CubeColumn; manual?: CubeColumn; complete?: CubeColumn; group?: CubeColumn;
+  };
+  rows: number;
+  /** Each row's child level (null for a leaf row). */
+  childLevels: (Level | null)[];
+  names: string[];
+}
+
+/** Read one level of the cube into PlanTasks (recursing into child tables). */
+function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: Level; tasks: PlanTask[] } {
+  const task = findColumn(c, TASK_NAMES, (col) => col.cells.some(isText));
+  if (!task) throw solError("#VALUE!", "Schedule needs a Task column (text) naming each task");
+  const pred = findColumn(c, PRED_NAMES);
+  const children = findColumn(c, CHILD_NAMES, (col) => col !== pred && col.cells.some((v) => isTable(v) && !!findColumn(asCube(v), TASK_NAMES, (cc) => cc.cells.some(isText))));
+  const duration = findColumn(c, DURATION_NAMES, (col) => col !== task && col !== children && col.cells.some((v) => isNum(v) || isUnitCell(v)));
+  if (!duration && !children) throw solError("#VALUE!", "Schedule needs a Duration column (number of days)");
+  const cols: Level["cols"] = {
+    task, duration, pred, children,
+    start: findColumn(c, START_NAMES), finish: findColumn(c, FINISH_NAMES), deadline: findColumn(c, DEADLINE_NAMES),
+    manual: findColumn(c, MANUAL_NAMES), complete: findColumn(c, COMPLETE_NAMES), group: findColumn(c, GROUP_NAMES),
+  };
   const rows = c.columns.reduce((m, col) => Math.max(m, col.cells.length), 0);
-  const out: Task[] = [];
-  const seen = new Set<string>();
+  const tasks: PlanTask[] = [];
+  const childLevels: (Level | null)[] = [];
+  const names: string[] = [];
   for (let i = 0; i < rows; i++) {
-    const name = String(taskCol.cells[i] ?? "").trim();
+    const name = String(task.cells[i] ?? "").trim();
     if (!name) throw solError("#VALUE!", `Schedule: row ${i + 1} has no task name`);
-    if (seen.has(key(name))) throw solError("#VALUE!", `Schedule: task "${name}" is named twice`);
-    seen.add(key(name));
-    const d = durCol.cells[i];
-    // A blank duration is a milestone, never an error.
-    const duration = d == null ? 0 : isNum(d) ? d : NaN;
-    if (!Number.isFinite(duration) || duration < 0) throw solError("#VALUE!", `Schedule: task "${name}" needs a duration of 0 or more days`);
-    const preds = predCol ? predecessorNames(predCol.cells[i] ?? null) : [];
-    const proj = projCol ? projCol.cells[i] : null;
-    out.push({ name, duration: Math.ceil(duration), preds, project: proj == null ? null : String(proj).trim() || null });
-  }
-  return out;
-}
-
-/** Kahn's topological order; a cycle names one task on it. */
-function topoOrder(tasks: Task[]): number[] {
-  const index = new Map(tasks.map((t, i) => [key(t.name), i]));
-  const indeg = tasks.map(() => 0);
-  const succ: number[][] = tasks.map(() => []);
-  tasks.forEach((t, i) => {
-    for (const p of t.preds) {
-      const j = index.get(key(p));
-      if (j === undefined) throw solError("#VALUE!", `Schedule: task "${t.name}" waits on "${p}", which is not a task`);
-      succ[j].push(i);
-      indeg[i]++;
+    names.push(name);
+    const kidCell = children?.cells[i];
+    let kids: PlanTask[] | undefined;
+    let childLevel: Level | null = null;
+    if (kidCell != null && isTable(kidCell)) {
+      const sub = readLevel(asCube(kidCell), hoursPerDay, depth + 1);
+      kids = sub.tasks; childLevel = sub.level;
     }
-  });
-  const queue = tasks.map((_, i) => i).filter((i) => indeg[i] === 0);
-  const order: number[] = [];
-  while (queue.length) {
-    const i = queue.shift()!;
-    order.push(i);
-    for (const s of succ[i]) if (--indeg[s] === 0) queue.push(s);
+    childLevels.push(childLevel);
+    const groupCell = cols.group?.cells[i];
+    tasks.push({
+      name,
+      duration: kids ? 0 : readDuration(duration?.cells[i] ?? null, hoursPerDay, name),
+      predecessors: pred ? readPredecessors(pred.cells[i] ?? null, name) : [],
+      start: readDate(cols.start?.cells[i]), finish: readDate(cols.finish?.cells[i]), deadline: readDate(cols.deadline?.cells[i]),
+      manual: cols.manual ? readBool(cols.manual.cells[i]) : false,
+      complete: cols.complete ? (isNum(cols.complete.cells[i]) ? (cols.complete.cells[i] as number) : 0) : 0,
+      group: groupCell == null ? null : String(groupCell).trim() || null,
+      children: kids,
+      row: i + 1,
+    });
   }
-  if (order.length !== tasks.length) {
-    const stuck = tasks.find((_, i) => indeg[i] > 0)!;
-    throw solError("#VALUE!", `Schedule: "${stuck.name}" is in a dependency loop`);
-  }
-  return order;
+  return { level: { cube: c, cols, rows, childLevels, names }, tasks };
 }
 
-/** A calendar over the schedule: index k ↔ the k-th counted day on or after `start`. */
-class Calendar {
-  private readonly serials: number[] = [];
-  private readonly skip = new Set<number>();
-  constructor(private readonly start: number, private readonly working: boolean, holidays: readonly (number | null)[] | undefined) {
-    if (working && holidays) for (const h of holidays) if (typeof h === "number" && Number.isFinite(h)) this.skip.add(dayKey(h));
+/** Rebuild a level's cube with the computed columns appended (and child tables rebuilt). */
+function writeLevel(level: Level, byName: Map<string, ScheduledTask>, nested: boolean): CubeValue {
+  const rows = level.names.map((n) => byName.get(n.toLowerCase())!);
+  const cells = <T extends CubeCell>(f: (t: ScheduledTask) => T): T[] => rows.map(f);
+  const appended: Array<{ name: string; type?: "date" | "number" | "logical" | "string"; cells: CubeCell[] }> = [
+    { name: "Start", type: "date", cells: cells((t) => t.start) },
+    { name: "Finish", type: "date", cells: cells((t) => t.finish) },
+    { name: "Float", type: "number", cells: cells((t) => t.float) },
+    { name: "Critical", type: "logical", cells: cells((t) => t.critical) },
+    { name: "Free Float", type: "number", cells: cells((t) => t.freeFloat) },
+    { name: "Early Start", type: "date", cells: cells((t) => t.earlyStart) },
+    { name: "Early Finish", type: "date", cells: cells((t) => t.earlyFinish) },
+    { name: "Late Start", type: "date", cells: cells((t) => t.lateStart) },
+    { name: "Late Finish", type: "date", cells: cells((t) => t.lateFinish) },
+    { name: "Driving", type: "string", cells: cells((t) => t.driving) },
+    { name: "Late", type: "logical", cells: cells((t) => t.late) },
+  ];
+  if (nested) {
+    appended.push(
+      { name: "WBS", type: "string", cells: cells((t) => t.wbs) },
+      { name: "Level", type: "number", cells: cells((t) => t.level) },
+      { name: "Summary", type: "logical", cells: cells((t) => t.summary) },
+    );
   }
-
-  private counted(serial: number): boolean {
-    if (!this.working) return true;
-    const dow = serialToJsDate(serial).getUTCDay();
-    return dow !== SATURDAY && dow !== SUNDAY && !this.skip.has(dayKey(serial));
-  }
-
-  /** The serial of day index k (0 = the first counted day on or after start). */
-  date(k: number): number {
-    while (this.serials.length <= k) {
-      let next = this.serials.length ? this.serials[this.serials.length - 1] + 1 : dayKey(this.start);
-      while (!this.counted(next)) next++;
-      this.serials.push(next);
+  const taken = new Set(appended.map((col) => col.name));
+  const kept = level.cube.columns.filter((col) => !taken.has(col.name) || col === level.cols.start || col === level.cols.finish);
+  // A typed Start / Finish column is replaced in place by the scheduled one (a floor that
+  // held shows as typed, since they are equal); the source node still shows what was typed.
+  const rebuilt = kept.map((col) => {
+    if (col === level.cols.start && taken.has("Start")) return null;
+    if (col === level.cols.finish && taken.has("Finish")) return null;
+    if (col === level.cols.children) {
+      return { name: col.name, type: col.type, cells: col.cells.map((cell, i) => (level.childLevels[i] ? writeLevel(level.childLevels[i]!, byName, nested) : cell)) };
     }
-    return this.serials[k];
-  }
-
-  /** The skipped dates inside [from, to], for the gantt `excludes` line. */
-  skippedBetween(from: number, to: number): number[] {
-    const out: number[] = [];
-    if (!this.working) return out;
-    for (let s = dayKey(from); s <= dayKey(to); s++) if (this.skip.has(s)) out.push(s);
-    return out;
-  }
+    return { name: col.name, type: col.type, cells: col.cells };
+  }).filter((c): c is NonNullable<typeof c> => c !== null);
+  return cubeFromColumns([...rebuilt, ...appended]);
 }
 
-/** Mermaid gantt escaping: a task name is a label, so the syntax characters go. */
-function ganttLabel(s: string): string {
-  return s.replace(/[:#;,]/g, " ").replace(/\s+/g, " ").trim() || "task";
+function diagnosticsFrame(out: ScheduleOutput): FrameValue {
+  return {
+    __frame: true,
+    columns: [
+      { name: "Check", type: "string", values: out.diagnostics.map((d) => d.check) },
+      { name: "Task", type: "string", values: out.diagnostics.map((d) => d.task) },
+      { name: "Detail", type: "string", values: out.diagnostics.map((d) => d.detail) },
+    ],
+  };
 }
 
 const ISO = "YYYY-MM-DD";
@@ -167,89 +239,31 @@ const ISO = "YYYY-MM-DD";
 /** Run the pass. Throws a SolError (`#VALUE!`) naming the offending task on a cycle, an
  *  unknown predecessor, a negative or non-numeric duration, or a duplicate name. */
 export function scheduleTasks(c: CubeValue, opts: ScheduleOptions): ScheduleResult {
-  const tasks = readTasks(c);
-  const order = topoOrder(tasks);
-  const index = new Map(tasks.map((t, i) => [key(t.name), i]));
-  const n = tasks.length;
-  const es = new Array<number>(n).fill(0);
-  const ef = new Array<number>(n).fill(0);
-  // Forward: a task starts when its last predecessor has finished (EF is exclusive).
-  for (const i of order) {
-    const t = tasks[i];
-    es[i] = t.preds.reduce((m, p) => Math.max(m, ef[index.get(key(p))!]), 0);
-    ef[i] = es[i] + t.duration;
+  const hoursPerDay = opts.hoursPerDay && opts.hoursPerDay > 0 ? opts.hoursPerDay : 8;
+  const { level, tasks } = readLevel(c, hoursPerDay, 0);
+  let output: ScheduleOutput;
+  try {
+    output = schedule({
+      tasks, start: opts.start,
+      calendar: { workingDays: opts.workingDays, weekendCode: opts.weekendCode, holidays: opts.holidays },
+      statusDate: opts.statusDate ?? null,
+    });
+  } catch (e) {
+    if (e instanceof ScheduleError) throw solError("#VALUE!", `Schedule: ${e.message}`);
+    if (isSolError(e)) throw e;
+    throw e;
   }
-  const end = ef.reduce((m, v) => Math.max(m, v), 0);
-  // Backward: the latest a task may finish is the earliest its successors must start.
-  const lf = new Array<number>(n).fill(end);
-  const ls = new Array<number>(n).fill(0);
-  for (let k = order.length - 1; k >= 0; k--) {
-    const i = order[k];
-    ls[i] = lf[i] - tasks[i].duration;
-    for (const p of tasks[i].preds) {
-      const j = index.get(key(p))!;
-      lf[j] = Math.min(lf[j], ls[i]);
-    }
-  }
-
-  const cal = new Calendar(opts.start, opts.workingDays, opts.holidays);
-  const startCells: CubeCell[] = [];
-  const finishCells: CubeCell[] = [];
-  const floatCells: CubeCell[] = [];
-  const critCells: CubeCell[] = [];
-  for (let i = 0; i < n; i++) {
-    // A task occupies days [ES, EF); its finish is the last of them. A milestone (0
-    // days) sits ON the day its predecessors finish (or the start), not the day after.
-    const milestone = tasks[i].duration === 0;
-    const s = milestone && es[i] > 0 ? cal.date(es[i] - 1) : cal.date(es[i]);
-    const fin = milestone ? s : cal.date(ef[i] - 1);
-    const slack = ls[i] - es[i];
-    startCells.push(s);
-    finishCells.push(fin);
-    floatCells.push(slack);
-    critCells.push(slack === 0);
-  }
-  const projectFinish = n === 0 ? dayKey(opts.start) : finishCells.reduce<number>((m, v) => Math.max(m, v as number), 0);
-
-  const appended = [
-    { name: "Start", type: "date" as const, cells: startCells },
-    { name: "Finish", type: "date" as const, cells: finishCells },
-    { name: "Float", type: "number" as const, cells: floatCells },
-    { name: "Critical", type: "logical" as const, cells: critCells },
-  ];
-  const taken = new Set(appended.map((col) => col.name));
-  const cube = cubeFromColumns([...c.columns.filter((col) => !taken.has(col.name)), ...appended]);
-
-  return { cube, projectFinish, gantt: ganttSource(tasks, startCells as number[], finishCells as number[], critCells as boolean[], cal, opts, projectFinish) };
+  const byName = new Map(output.tasks.map((t) => [t.name.toLowerCase(), t]));
+  const nested = output.tasks.some((t) => t.summary);
+  const cube = writeLevel(level, byName, nested);
+  return {
+    cube,
+    projectFinish: output.projectFinish,
+    gantt: mermaidGantt(output, (s) => formatDateSerial(s, ISO)),
+    diagnostics: diagnosticsFrame(output),
+    output,
+  };
 }
 
-function ganttSource(
-  tasks: Task[], starts: number[], finishes: number[], crit: boolean[],
-  cal: Calendar, opts: ScheduleOptions, projectFinish: number,
-): string {
-  const lines = ["gantt", `    dateFormat ${ISO}`, "    axisFormat %d %b"];
-  if (opts.workingDays) {
-    const skipped = tasks.length ? cal.skippedBetween(dayKey(opts.start), projectFinish).map((s) => formatDateSerial(s, ISO)) : [];
-    lines.push(`    excludes weekends${skipped.length ? ", " + skipped.join(", ") : ""}`);
-  }
-  // One section per project when a Project column exists; tasks stay in row order.
-  const sections = new Map<string | null, number[]>();
-  tasks.forEach((t, i) => {
-    const k = t.project;
-    if (!sections.has(k)) sections.set(k, []);
-    sections.get(k)!.push(i);
-  });
-  for (const [project, idxs] of sections) {
-    if (project !== null) lines.push(`    section ${ganttLabel(project)}`);
-    for (const i of idxs) {
-      const t = tasks[i];
-      const tags = [t.duration === 0 ? "milestone" : "", crit[i] ? "crit" : ""].filter(Boolean);
-      const startIso = formatDateSerial(starts[i], ISO);
-      // Mermaid's end is exclusive, so a bar runs to the day after Finish.
-      const endIso = formatDateSerial(finishes[i] + 1, ISO);
-      const span = t.duration === 0 ? "0d" : endIso;
-      lines.push(`    ${ganttLabel(t.name)} :${tags.length ? tags.join(", ") + ", " : ""}t${i}, ${startIso}, ${span}`);
-    }
-  }
-  return lines.join("\n");
-}
+/** The grid's text for a task's dependencies, for the figure's Predecessors column. */
+export { predecessorText };
