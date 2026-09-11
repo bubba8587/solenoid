@@ -257,6 +257,9 @@ function Bar({ bar, payload }: { bar: FrameBar; payload: GanttPayload }) {
   }
   return (
     <g>
+      {bar.baseline && (
+        <rect className="solenoid-gantt__baseline" x={bar.baseline.x} y={bar.y + bar.h + 1} width={bar.baseline.w} height={3} rx={1} />
+      )}
       <rect
         className={cls("solenoid-gantt__bar")}
         x={bar.x}
@@ -274,11 +277,26 @@ function Bar({ bar, payload }: { bar: FrameBar; payload: GanttPayload }) {
       {(bar.violated || bar.late) && (
         <rect className="solenoid-gantt__bar-flag" x={bar.x} y={bar.y} width={bar.w} height={bar.h} rx={2} strokeDasharray={bar.violated ? "3 2" : undefined} />
       )}
+      {bar.deadlineX != null && <DeadlineFlag x={bar.deadlineX} rowY={bar.y} rowH={bar.h} late={bar.late} />}
       {bar.label && (
         <text className="solenoid-gantt__blabel" x={bar.label.anchor === "end" ? bar.x - 4 : bar.x + bar.w + 4} y={bar.y + bar.h / 2 + 4} textAnchor={bar.label.anchor}>
           {bar.label.text}
         </text>
       )}
+    </g>
+  );
+}
+
+/** A small down-pointing flag at the deadline day — a marker, not a moved date. A late task
+ *  (finish past the deadline) turns the flag into the error color (the non-color cue is its
+ *  distinct pennant shape, present regardless of color). */
+function DeadlineFlag({ x, rowY, rowH, late }: { x: number; rowY: number; rowH: number; late: boolean }) {
+  const top = rowY - 2;
+  const h = rowH + 4;
+  return (
+    <g className={`solenoid-gantt__deadline${late ? " is-late" : ""}`}>
+      <line x1={x} y1={top} x2={x} y2={top + h} />
+      <path d={`M${x} ${top} L${x + 6} ${top + 3} L${x} ${top + 6} Z`} />
     </g>
   );
 }

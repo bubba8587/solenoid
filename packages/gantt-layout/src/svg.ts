@@ -107,6 +107,12 @@ export function ganttSvg(payload: GanttPayload, opts: GanttSvgOptions): string {
         parts.push(`<rect x="${r(bar.x)}" y="${r(y)}" width="${r(bar.w)}" height="${r(bar.h)}" rx="2" fill="none" stroke="${colors.violated}" stroke-width="1.5" stroke-dasharray="${bar.violated ? "3 2" : "0"}"/>`);
       }
     }
+    if (bar.deadlineX != null) {
+      const dc = bar.late ? colors.violated : colors.textDim;
+      const top = y - 2, dh = bar.h + 4, dx = bar.deadlineX;
+      parts.push(`<line x1="${r(dx)}" y1="${r(top)}" x2="${r(dx)}" y2="${r(top + dh)}" stroke="${dc}" stroke-width="1"/>`);
+      parts.push(`<path d="M${r(dx)} ${r(top)} L${r(dx + 6)} ${r(top + 3)} L${r(dx)} ${r(top + 6)} Z" fill="${dc}"/>`);
+    }
     if (bar.label) {
       const lx = bar.label.anchor === "end" ? bar.x - 4 : bar.x + bar.w + 4;
       parts.push(`<text x="${r(lx)}" y="${r(y + bar.h / 2 + 4)}" fill="${colors.text}" font-size="11" text-anchor="${bar.label.anchor}">${esc(bar.label.text)}</text>`);

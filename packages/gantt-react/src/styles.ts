@@ -41,8 +41,11 @@ export const ganttStyles = `
 .solenoid-gantt__tier { position: absolute; left: 0; right: 0; }
 .solenoid-gantt__tcell { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; padding: 0 4px; font-size: 10px; color: var(--text-dim, #9aa0a6); white-space: nowrap; overflow: hidden; border-left: 1px solid var(--border, #2d2d2d); border-bottom: 1px solid var(--border-subtle, #2a2a2a); }
 
-.solenoid-gantt__bg, .solenoid-gantt__bars, .solenoid-gantt__links { position: absolute; left: 0; pointer-events: none; }
-.solenoid-gantt__links { pointer-events: none; }
+.solenoid-gantt__bg, .solenoid-gantt__bars { position: absolute; left: 0; pointer-events: none; }
+/* The links overlay must NOT set pointer-events:none, or its hit paths go dead. An SVG with
+   no painted background captures only on its painted children, so empty regions pass through. */
+.solenoid-gantt__links { position: absolute; left: 0; }
+.solenoid-gantt__link, .solenoid-gantt__arrow { pointer-events: none; }
 
 /* Shading + grid + markers */
 .solenoid-gantt__weekend { fill: var(--border-subtle, #2a2a2a); opacity: 0.5; }
@@ -57,6 +60,11 @@ export const ganttStyles = `
 .solenoid-gantt__progress { fill: color-mix(in srgb, var(--accent, #56b4e9) 55%, #000); }
 .solenoid-gantt__progress.is-critical { fill: color-mix(in srgb, var(--sol-error, #e0473a) 45%, #000); }
 .solenoid-gantt__bar-flag { fill: none; stroke: var(--sol-error, #e0473a); stroke-width: 1.5; }
+.solenoid-gantt__baseline { fill: color-mix(in srgb, var(--text-dim, #9aa0a6) 55%, transparent); }
+.solenoid-gantt__deadline line { stroke: var(--text-dim, #9aa0a6); stroke-width: 1; }
+.solenoid-gantt__deadline path { fill: var(--text-dim, #9aa0a6); }
+.solenoid-gantt__deadline.is-late line { stroke: var(--sol-error, #e0473a); }
+.solenoid-gantt__deadline.is-late path { fill: var(--sol-error, #e0473a); }
 .solenoid-gantt__bracket { fill: var(--text-dim, #9aa0a6); }
 .solenoid-gantt__bracket.is-critical { fill: var(--sol-error, #e0473a); }
 .solenoid-gantt__diamond { fill: var(--text, #e8e8e8); }
