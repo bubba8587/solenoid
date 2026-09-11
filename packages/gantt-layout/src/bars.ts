@@ -80,6 +80,11 @@ function barFor(t: GanttTask, row: FrameRow, scale: FrameScale, payload: GanttPa
     base.baseline = { x: bx, w: Math.max(bEnd - bx, 1) };
   }
 
+  // Deadline flag at the end of the deadline day (a marker, never a moved date).
+  if (t.deadline != null) {
+    base.deadlineX = xOf(t.deadline + 1, scale);
+  }
+
   // Label: to the right of the bar (or left of a milestone/near the right frame). Ellipsize
   // to an assumed room; the real view re-measures, but a headless SVG needs a decent guess.
   if (payload.view.labels !== false) {

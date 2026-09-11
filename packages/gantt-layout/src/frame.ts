@@ -61,6 +61,8 @@ export interface FrameBar {
   color?: string;
   /** Baseline ghost rect, when the payload carries a baseline for this task. */
   baseline?: { x: number; w: number };
+  /** X of the deadline day (a flag marker), when the task carries a Deadline. */
+  deadlineX?: number;
   /** The label text and where it sits relative to the bar. */
   label?: { text: string; x: number; anchor: "start" | "end"; inside: boolean };
 }
