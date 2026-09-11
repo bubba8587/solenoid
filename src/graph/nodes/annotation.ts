@@ -28,6 +28,9 @@ type EmittedValue = FrontmatterValue | FrameValue | CubeValue;
 // A Note is a pure SOURCE: `---`-fenced frontmatter keys become typed OUTPUT
 // sockets, and it deliberately mints no inputs — that is the Report node's job.
 
+/** The one output every Note reserves from frontmatter reconciliation. */
+const NOTE_RESERVED: ReadonlySet<string> = new Set(["document"]);
+
 const FIELD_SOCKETS: Record<FrontmatterFieldType, SolenoidSocket> = {
   number: numberSocket,
   string: stringSocket,
@@ -156,6 +159,10 @@ export class NoteNode extends ClassicPreset.Node {
     this.syncFields();
   }
 
+  /** Output keys `syncFields` must never treat as a (removable) frontmatter key. The
+   *  base reserves only `document`; Import adds its `path` identity output. */
+  protected reservedOutputs(): ReadonlySet<string> { return NOTE_RESERVED; }
+
   /** The markdown to render — the body with any frontmatter block stripped. */
   get renderBody(): string { return this._renderBody; }
   /** Output keys (frontmatter keys) in source order, for socket layout. */
@@ -201,8 +208,9 @@ export class NoteNode extends ClassicPreset.Node {
 
     const removed: string[] = [];
     const retyped: { key: string; type: FrontmatterFieldType }[] = [];
+    const reserved = this.reservedOutputs();
     for (const key of Object.keys(this.outputs)) {
-      if (key === "document") continue; // the fixed document output isn't a frontmatter key
+      if (reserved.has(key)) continue; // fixed outputs (document, a subclass's path) aren't frontmatter keys
       const w = wanted.get(key);
       const cur = this.outputs[key]!.socket;
       if (!w) {

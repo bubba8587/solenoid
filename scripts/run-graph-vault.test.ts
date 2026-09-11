@@ -47,6 +47,22 @@ describe("run-graph --vault", () => {
     await expect(runGraph(graph, { vault: tmp, run: "No such sink" })).rejects.toThrow(/no sink named/);
   }, 30_000);
 
+  it("a wired `path` drives Import Obsidian to load that note (the wireable identity)", async () => {
+    const graph = {
+      nodes: [
+        // A plain Note whose `path` frontmatter is the string source for Import's `path` input.
+        { id: "src", type: "NoteNode", init: { label: "target", body: "---\npath: Projects/Kitchen remodel\n---\n" } },
+        { id: "imp", type: "ImportObsidianNode", init: { label: "Loaded" } },
+      ],
+      connections: [{ source: "src", sourceOutput: "path", target: "imp", targetInput: "path" }],
+    };
+    const out = await runGraph(graph, { vault: DEMO });
+    const imp = out["Loaded"] as Record<string, unknown>;
+    expect(imp.path).toBe("Projects/Kitchen remodel.md"); // identity out (.md, matching a cube's path)
+    expect(imp.status).toBe("active");                    // it adopted the loaded note's frontmatter
+    expect(imp.priority).toBe(5);
+  }, 30_000);
+
   it("--run a Write Properties over the vault writes current scalar values back with no byte change", async () => {
     tmp = mkdtempSync(path.join(tmpdir(), "solenoid-vault-"));
     cpSync(DEMO, tmp, { recursive: true });

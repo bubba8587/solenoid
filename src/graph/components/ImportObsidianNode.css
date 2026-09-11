@@ -95,6 +95,17 @@
   font-size: 10.5px;
   color: var(--text-muted);
 }
+/* The imported note's title, shown at the top of the body — the human name whose
+   wireable identity is the `path` socket row above. */
+.sol-import__doc-title {
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--text-bright);
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .sol-import__minutes {
   width: 38px;
   padding: 2px 4px;

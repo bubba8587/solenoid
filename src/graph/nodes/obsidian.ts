@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { documentIn, strIn, readInput } from "./shared";
+import { documentIn, strIn, strOut, readInput } from "./shared";
 import { formatDateSerial } from "./dateSerial";
 import type { ObsidianWriteMode } from "../obsidianWrite";
 import { NoteNode } from "./annotation";
@@ -8,8 +8,9 @@ import { isDocumentValue, type DocumentValue } from "../documentValue";
 import { isSolError, type SolError } from "../errorValue";
 import { hasFs } from "../fileBridge";
 import { settingsStore } from "../settingsStore";
+import { trackInflight, scheduleConnectionRecalc } from "../connectionStore";
 
-import { getOwningEditor } from "../activeGraph";
+import { getOwningEditor, getOwningView } from "../activeGraph";
 // obsidianWrite is imported lazily INSIDE run(): pulling its subtree eagerly through
 // the rete-nodes barrel creates an init cycle (…→ documentStore → persistence →
 // nodeCatalog → rete-nodes) that leaves catalog metadata undefined at eval time.
@@ -160,9 +161,17 @@ export class WriteObsidianNode extends ClassicPreset.Node {
 
 // It IS a Note (extends NoteNode), reusing the frontmatter-socket machinery and
 // adding only a source path + read-only body, which persists so a loaded doc shows
-// the imported content on web too.
+// the imported content on web too. Beyond a Note it exposes the source `path` as a
+// wireable value — out (index the imported note against a Vault Folder cube) and in
+// (drive which note loads from a value); the human title renders in the card body.
+
+const IMPORT_RESERVED: ReadonlySet<string> = new Set(["document", "path"]);
 
 export class ImportObsidianNode extends NoteNode {
+  static socketDocs: Record<string, string> = {
+    document: "Carries the note's full text, frontmatter included, for a document sink such as Write to Obsidian.",
+    path: "The source note's vault-relative path. Wire it out to join or index against a Vault Folder cube; wire a path in to load that note instead of the picked one.",
+  };
   /** Vault-relative path of the source `.md` file ("" until one is picked). */
   fileName: string;
   /** Minutes between automatic reloads from the vault, 0 = off — the component runs the timer. */
@@ -183,5 +192,55 @@ export class ImportObsidianNode extends NoteNode {
     });
     this.fileName = init?.fileName ?? "";
     this.refreshMinutes = Math.max(0, Math.round(init?.refreshMinutes ?? 0));
+    // The wireable identity: pick a note by hand, OR drive `path` from a cube row.
+    this.addInput("path", strIn("Path"));
+    this.addOutput("path", strOut("Path"));
+  }
+
+  protected reservedOutputs(): ReadonlySet<string> { return IMPORT_RESERVED; }
+
+  /** The path a wired input last drove a load for — guards a reload loop once
+   *  `fileName` catches up (the VaultFolder `_lastKey` pattern). */
+  private _wiredPath = "";
+
+  // Emit the source path beside the fields + document, so downstream can index the
+  // imported note. A wired `path` loads that note in the background (desktop only),
+  // replacing the picked file; unwired, the in-card picker is the source.
+  data(inputs?: { path?: (string | null)[] }): ReturnType<NoteNode["data"]> {
+    const wired = (readInput(inputs?.path, "") ?? "").trim();
+    // Dedupe on the RAW wired value (not fileName, which gains a `.md`): a stable input
+    // loads once, an unwire resets so a re-wire loads again.
+    if (!wired) {
+      this._wiredPath = "";
+    } else if (wired !== this._wiredPath && hasFs()) {
+      this._wiredPath = wired;
+      void trackInflight(this.loadFromWire(wired));
+    }
+    const base = super.data();
+    return base instanceof Promise
+      ? base.then((r) => ({ ...r, path: this.fileName }))
+      : { ...base, path: this.fileName };
+  }
+
+  /** Read the wired note from the vault and adopt it: body, source path (`.md`
+   *  included, matching a Vault Folder cube's `path`), name, and the frontmatter
+   *  sockets, then recompute. Mirrors the component's picker commit. */
+  private async loadFromWire(path: string): Promise<void> {
+    try {
+      const rel = /\.md$/i.test(path) ? path : `${path}.md`;
+      const { readVaultFile } = await import("../fileBridge");
+      const content = await readVaultFile(settingsStore.get("obsidianVault").trim(), rel);
+      if (content === this.body && rel === this.fileName) return;
+      this.body = content;
+      this.fileName = rel;
+      if (this.label === "Import Obsidian Note" || this.label.trim() === "") {
+        this.label = (path.split("/").pop() ?? path).replace(/\.md$/i, "");
+      }
+      const { removed, retyped } = this.syncFields();
+      const { dropStrandedFrontmatterCables } = await import("../noteFrontmatterSync");
+      await dropStrandedFrontmatterCables(this.id, removed, retyped);
+      await getOwningView(this.id)?.rerenderNode(this.id);
+      scheduleConnectionRecalc();
+    } catch { /* unreadable (moved / renamed / off-desktop) — keep the current body */ }
   }
 }
