@@ -10,8 +10,25 @@ export function diagnose(
   opts: { statusDate: number | null; longTask: number },
 ): Diagnostic[] {
   const out: Diagnostic[] = [];
-  const hasPred = new Set(links.map((l) => l.to.toLowerCase()));
-  const hasSucc = new Set(links.map((l) => l.from.toLowerCase()));
+  // A link on a phase counts for every task beneath it (rule 12), so a leaf whose phase
+  // waits on something is not "unlinked".
+  const withAncestors = (name: string) => {
+    const i = tasks.findIndex((t) => t.name === name);
+    const names = [name.toLowerCase()];
+    for (let j = i - 1, level = tasks[i]?.level ?? 0; j >= 0 && level > 0; j--) {
+      if (tasks[j].level < level) { names.push(tasks[j].name.toLowerCase()); level = tasks[j].level; }
+    }
+    return names;
+  };
+  const linkedTo = new Set(links.map((l) => l.to.toLowerCase()));
+  const linkedFrom = new Set(links.map((l) => l.from.toLowerCase()));
+  const hasPred = new Set<string>();
+  const hasSucc = new Set<string>();
+  for (const t of tasks) {
+    const chain = withAncestors(t.name);
+    if (chain.some((n) => linkedTo.has(n))) hasPred.add(t.name.toLowerCase());
+    if (chain.some((n) => linkedFrom.has(n))) hasSucc.add(t.name.toLowerCase());
+  }
   const leaves = tasks.filter((t) => !t.summary);
   const days = (n: number) => `${n} day${n === 1 ? "" : "s"}`;
   for (const t of leaves) {

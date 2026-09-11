@@ -71,6 +71,12 @@ function flatten(c: CubeValue, level: number, out: Row[]): void {
 
 const bool = (v: CubeCell | undefined) => v === true || v === 1 || (isText(v) && ["true", "yes", "1"].includes(norm(v)));
 const num = (v: CubeCell | undefined) => (isNum(v) ? v : null);
+/** A date cell that may still be text (a passthrough Deadline from a Cube Input). */
+const date = (v: CubeCell | undefined) => {
+  if (isNum(v)) return v;
+  if (isText(v) && v.trim()) { const p = parseDate(v); return typeof p === "number" && Number.isFinite(p) ? p : null; }
+  return null;
+};
 
 export interface GanttPayloadOptions {
   baseline?: CubeValue | FrameValue | null;
@@ -105,7 +111,7 @@ export function ganttPayloadFromSchedule(schedule: CubeValue | FrameValue, opts:
       const dur = num(r.cells.duration) ?? num(r.cells.days);
       const fl = num(r.cells.float);
       const base = baseByKey.get(norm(r.name));
-      const deadline = num(r.cells.deadline) ?? num(r.cells.due);
+      const deadline = date(r.cells.deadline) ?? date(r.cells.due);
       const t: GanttTask = {
         id: r.name, name: r.name, level: r.level, summary,
         milestone: !summary && (dur === 0 || (dur === null && start === finish && !summary)),
