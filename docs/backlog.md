@@ -83,10 +83,14 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   and the merge-to-folder behavior (`ec715ed` built it on Write File: a document input, one
   `.md` per page into the path as a folder, a frame under MD as a pipe table; backed out
   pending the merge). Write Tasks / Write Properties are candidates for the same card.
-- [ ] **Knap eyeball pass** (author): the overlay's highlighted source pane (alignment, scroll,
-  mobile), the page stepper and Filters popover, the Report card's Template/Records rows, a
-  wired template Note changing its tags, Write to Obsidian writing a batch on desktop. The
-  dev-notes 09-10 "holes at close" bullet is the checklist.
+- [ ] **Knap eyeball pass** (author): the overlay's highlighted source pane incl. the wired-Template
+  read-only pane (alignment, scroll, mobile), the page stepper + the Page-name field beside it, the
+  Filters popover, a wired template Note changing its tags, Write to Obsidian writing a batch on
+  desktop. Plus the 09-11 rebuild: the **standard-node Report card** (Template/Records rows, the
+  Document-chip hero, collapse to a pill), the **docked header** (stacked title, tiny Draft/Preview
+  toggle in the button row, 26px controls), a **template note** showing its tags literal (not empty),
+  and the **Personal Finance** letter's inline `{% if %}` verdicts flipping as a slider moves. The
+  dev-notes 09-10 "holes at close" + the 09-11 digest are the checklist.
 - [ ] **Knap help page** (`src/graph/help/`, DESIGN § 7): the syntax, the bare-tag rule, the
   Template/Records inputs, the `{{ "{" }}{ x }}` escape, the upstream gotchas a user will hit.
 - [ ] **Batch cap surfaced**: `MAX_PAGES` truncates silently; the overlay stepper and the sink

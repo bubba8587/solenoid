@@ -6,6 +6,36 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-11 — Report card rebuilt as a standard node; Note holds Knap tags literal)
+
+- **The Report card is a standard node** (`ReportNode.tsx`/`.css` on `NodeShell`), not the
+  Note-family frame. Template + Records are two standard measured input rows (`ReportRefRow` →
+  `MeasuredSocketRow`) with a divider before the variable refs; the hero box is the Document chip
+  (`valueChipFor`, opens the overlay), the `document` output socket centers on it; collapse folds
+  the rows into one `CollapsedInputPill` so cables survive. New green **`document` node kind**
+  (`nodes/shared.ts`, `nodes/kind.ts`) — the Report was falling through to math blue. Per-node
+  color dropped (field gone from `report.ts`; the 3 hand seeds + the PF generator updated; overlay
+  and webpage export never read it). `RefInputRow` pruned (the Report was its last user);
+  `socketRowCoverage` whitelist now names `ReportRefRow`.
+- **A Note holds unresolved Knap tags LITERAL, never empty** (`knapTemplate.ts` `holdUnknownTags`
+  widened from bare-only to ANY unknown-rooted `{{ … }}` — bare, dotted, filtered — parked behind
+  an index sentinel and restored after render; `useKnapRender` gained `keepUnknown`, passed true by
+  NoteNode + ImportObsidianNode). A tag naming no frontmatter field reads as its placeholder so a
+  template note reads as a template; blocks (`{% if %}`) over an unknown name still render empty, as
+  Knap does. Fixes template-note variables vanishing on the card.
+- **Report overlay polish:** the wired-Template read-only pane is syntax-highlighted
+  (`highlightKnap`); the batch **Page-name** field moved out of the header to the page-stepper strip
+  (compact, right-aligned, wraps); the docked header stacks (title row + wrapping action row) with a
+  compact segmented Draft/Preview toggle IN the button row, all controls matched at 26px; **"Embed
+  Note" / "Export"** are the labels in both docked and floating. Report embeds use the node-header
+  chevron (masked `M3 1l4 4-4 4`, 8px), not a text triangle.
+- **Seeds:** `report-showcase` gained a Template + Records mail-merge cluster (a regions frame + a
+  per-region template Note → a `merge` Report, one page per region; layout baked with tune-seeds;
+  the showcase test pins the three pages). **Personal Finance** advisor verdicts are inline Knap
+  `{% if %}` reading the raw operand pairs the old Compare→IF→text circuits used — same thresholds,
+  −8 nodes (162→154). `knapTemplate.test` pins `>=`/`<=`. Records stays a **cube** input (the
+  lattice supremum accepts a frame or a cube; a frame socket would reject a cube).
+
 ### SESSION DIGEST (2026-09-10 — Knap replaces the `=name` syntax in Note and Report bodies)
 
 - **Knap is THE document syntax** (knap.md, Obsidian's template language; the `knap` npm
