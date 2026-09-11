@@ -499,7 +499,7 @@ n("cmp-mort","ComparisonNode",     4460,  520, { label: "Payment ≤ 28%?", op: 
 n("if-mort", "IfNode",             4740,  560, { label: "Mortgage verdict" }, { stringLiterals: { then: "sits comfortably inside", else: "pushes past" } });
 n("cmp-bud","ComparisonNode",      4460,  880, { label: "Spend ≤ budget?", op: "lte" });
 n("if-bud", "IfNode",              4740,  920, { label: "Budget verdict" }, { stringLiterals: { then: "under", else: "over" } });
-n("report-adv","ReportNode",       5040,  100, { label: "Advisor's letter", color: "sky", width: 260, height: 150, body: REPORT_BODY });
+n("report-adv","ReportNode",       5040,  100, { label: "Advisor's letter", width: 260, height: 150, body: REPORT_BODY });
 const GRP_ADVISOR = ["expr-outflow","disp-outflow","cd-adv","cmp-rate","if-rate",
   "cmp-proj","if-proj","cmp-mort","if-mort",
   "cmp-bud","if-bud","report-adv"];

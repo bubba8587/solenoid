@@ -38,7 +38,6 @@ export class ReportNode extends ClassicPreset.Node {
   rawInputs: ReadonlySet<string> = new Set(["records"]);
 
   body: string;         // markdown — blank by default
-  color: string;        // palette SLOT id — tints the anchor card, like Note
   width: number;
   height: number;
   collapsed: boolean;
@@ -61,12 +60,11 @@ export class ReportNode extends ClassicPreset.Node {
   templateVars: Record<string, unknown> = {};
 
   constructor(init?: {
-    label?: string; body?: string; color?: string;
+    label?: string; body?: string;
     width?: number; height?: number; collapsed?: boolean; sideVars?: string[]; pageName?: string;
   }) {
     super(init?.label ?? "Report");
     this.body = init?.body ?? "";
-    this.color = init?.color ?? "sky";
     this.width = init?.width ?? 200;
     this.height = init?.height ?? 96;
     this.collapsed = init?.collapsed ?? false;

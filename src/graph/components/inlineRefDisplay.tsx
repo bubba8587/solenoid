@@ -1,9 +1,7 @@
-import type { Emit } from "./nodeKit";
 import { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
-import type { ClassicPreset } from "rete";
 
 import { cableValueStore } from "../cableValueStore";
 import { formatAnnotationStore, formatNumberWithAnnotation, formatCxWithAnnotation, applyLogicalStyle, applyTextCase, type FormatAnnotation, type LambdaView } from "../formatAnnotationStore";
@@ -30,7 +28,6 @@ import { CubeDisplay } from "./CubeDisplay";
 import { ChartFigure } from "./chartView";
 import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
-import { NodeSocket } from "./NodeSocket";
 import { getOwningEditor } from "../activeGraph";
 
 // The ONE rendering path for a `` `=name` `` inline ref: Note cards and the Report
@@ -312,31 +309,6 @@ export function InlineRefValue({ nodeId, refKey, collapsible, highlight }: { nod
     <span className={`solenoid-ref-inline${highlight ? " solenoid-ref-inline--hl" : ""}`}>
       {refPreview(value, ann)}
     </span>
-  );
-}
-
-/** One inline-ref INPUT row; always `any` — a bare name has no re-typeable field.
- *  The row is the socket's positioning context, so each host passes its own class. */
-export function RefInputRow({
-  nodeId, emit, refKey, value, socket, rowClassName, keyClassName, valClassName,
-}: {
-  nodeId: string;
-  emit: Emit;
-  refKey: string;
-  value: unknown;
-  socket: ClassicPreset.Socket;
-  rowClassName: string;
-  keyClassName: string;
-  valClassName: string;
-}) {
-  const ann = useRefAnnotation(nodeId, refKey);
-  const preview = refPreview(value, ann);
-  return (
-    <div className={rowClassName}>
-      <NodeSocket side="input" socketKey={refKey} nodeId={nodeId} emit={emit} payload={socket} />
-      <span className={keyClassName} title={refKey}>{refKey}</span>
-      <span className={valClassName} title={preview}>{preview}</span>
-    </div>
   );
 }
 

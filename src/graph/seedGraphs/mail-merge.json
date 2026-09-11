@@ -90,7 +90,6 @@
       "init": {
         "label": "Settle-up letters",
         "body": "",
-        "color": "sky",
         "width": 260,
         "height": 120,
         "sideVars": [

@@ -178,7 +178,6 @@
       "y": 222,
       "init": {
         "label": "Watering call",
-        "color": "green",
         "width": 300,
         "height": 200,
         "body": "# Watering call\n\nRain over the **last 14 days**: {{ rainPast }} mm. Rain forecast for the **next 7 days**: {{ rainNext }} mm.\n\n{% if rainPast < 25 and rainNext < 10 %}**Water today.** Under 25 mm behind and under 10 mm ahead.{% else %}**Hold off.** The ground or the forecast has it covered.{% endif %}\n\nThe verdict above is a `{% if %}` in the report itself; the Alert on the canvas makes the same call with nodes."
