@@ -6,6 +6,33 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-11 — Obsidian surface: the note identity is a wireable value)
+
+Made the vault nodes honour the wire-in/out principle — the paths and titles the readers
+emit are now values you can wire back into the writers and importer.
+
+- **Write to Obsidian:** the note-name field + the `{{date}}`/`{{daily}}` template grammar are
+  gone, replaced by a wireable `path` (a `string` input, InlineInputs literal else a cable) plus
+  a **Browse** chooser (the Import file picker). A `folder/name` path splits — the folder
+  prepends to the subfolder. The `date` input and **`nameTemplate.ts`** (only this node used it)
+  are deleted; a formatted date wired into `path` replaces `{{date}}`. `run()` resolves the
+  target from the path (blank name still batches — `writeDocumentToVault` names each page).
+- **Import Obsidian:** exposes its identity — a `path` **output** (vault-relative, `.md`
+  included so it joins a Vault Folder cube's `path` column) and a `path` **input** that loads
+  that note in the background (`data()` reads the wire, `loadFromWire` reads the file, adopts the
+  body + frontmatter sockets, recomputes — the VaultFolder guard pattern). The note's own title
+  (its file name) renders at the top of the card body. `NoteNode` gained `reservedOutputs()` so
+  `syncFields` keeps the path output; `FieldRow` joined the `socketRowCoverage` row renderers.
+- **Vault Folder:** `folder` + `glob` are wireable string inputs (cable-only dots via
+  InlineInputs; the dropdown/field disable when wired); `data()` resolves them, `load()` reads
+  the resolved values. (The status count reads 48×44 = the cube's rows×cols; no bug.)
+- Verified headless against `demo-vault/` (`run-graph-vault.test.ts`: a wired path loads a note,
+  a wired folder scopes the read) and on the live desktop app.
+- **Open (author calls, `backlog.md`):** TaskNotes read node overlaps Vault Folder for the common
+  case (only recurrence / time-totals / remapped-fields / write-back need the HTTP API); the
+  per-node vault chip vs the global setting is two ways to set one thing; Knap as the way to drive
+  dynamic write paths / content is parked.
+
 ### SESSION DIGEST (2026-09-11 — Report card rebuilt as a standard node; Note holds Knap tags literal)
 
 - **The Report card is a standard node** (`ReportNode.tsx`/`.css` on `NodeShell`), not the

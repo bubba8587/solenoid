@@ -75,6 +75,16 @@ build rules and § Sequencing the order (A′ → A → B → D → C → F → 
 verified in the desktop app against the demo vault. Landed ledger: the bundle's § What stands today.
 
 - [ ] **AddColumn over a cube** (fe): Add Column is frame-only; Computed Column already takes a cube.
+- [ ] **TaskNotes read vs a plain vault query** (author, review): the TaskNotes read node overlaps
+  Vault Folder for the common case — title/status/priority/due/tags are just frontmatter. The HTTP
+  API earns its keep only for recurrence expansion, `timeEntries` totals, user-remapped field names,
+  and write-back-with-webhooks. Consider whether the read node stays, or folds into a `tags contains
+  task` recipe over Vault Folder. (dev-notes 2026-09-11.)
+- [ ] **One way to set the vault** (author): the per-node vault chip (Vault Folder, Write Properties)
+  vs the app-wide `obsidianVault` setting is two ways to set one thing. Decide the primary.
+- [ ] **Knap for dynamic write paths / content** (author, parked): use Knap to template a Write to
+  Obsidian `path` or the written body from wired values — the successor to the removed `{{date}}`
+  grammar, now that `path` is a plain wireable string.
 - [ ] **Frame-only verbs over a cube** (fe): Window / GROUPBY / Chart's frame input still refuse a
   live `cube`, so charting or smoothing a Vault Folder needs a cube→frame step (A′ extended, or a
   Cube → Frame node). Today the `daily-habits` seed runs its Window on a snapshot for this reason.

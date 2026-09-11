@@ -10,6 +10,15 @@ states what stands.
 
 ## What stands today (pointers, not restatement)
 
+> **Superseded 2026-09-11 (the wire-in/out pass — current truth in `../node-coverage.md`):** the
+> note identity is now a wireable value across the surface. **C**'s `{{date}}`/`{{daily}}` template
+> grammar, the writer's `date` input, and `nameTemplate.ts` are GONE — Write to Obsidian's target
+> is a single wireable `path` (string) + a Browse chooser; wire a formatted date in for what
+> `{{date}}` did. **I**'s Import Note gained a `path` in (loads the wired note) + `path` out (its
+> identity) + the note's title in the body. Vault Folder's `folder`/`glob` became wireable inputs.
+> The R1/R2/R (relative-date template) items below describe the removed grammar — kept for history.
+
+
 **Landed 2026-09-07** (the author promoted the bundle to the flagship track; each item's
 outcome is in `../node-coverage.md`, cited here by name): **A** Vault Folder → Cube (+ R3, the
 demo vault at `demo-vault/`), **A′** the row verbs take cubes, **B** Write Properties, **C** Write
@@ -315,7 +324,7 @@ stats (Range, Stddev, Earliest/Latest, Checked/Unchecked) — `../backlog.md`, n
 | Filter / Sort / Head / Distinct / Get Row (exist) | passthrough | table input → `cubeIn` | adopts: cube in → cube out | Filter: `contains` / `contains any` / `contains all` / `is empty` | `selectCubeRows` in `frame.ts` · `cubeRowVerbs.test.ts` |
 | Get Column / Decision Matrix / H6 (exist) | — | table input → `cubeIn` | unchanged (list / ranking frame / the cube + 4 columns) | — | same test file |
 | Write Properties | sink · Connections | `cube` (frame widens) | `plan` frame | vault, keys, addMissing, stamp, writeBase | `frontmatterPatch.ts` · `frontmatterPatch.test.ts` (untouched bytes identical; cube → vault → cube equal) |
-| Write to Obsidian (exists) | sink | `document`, optional `date` | — | + mode, fileName / subfolder templates | `managedBlock.ts`, `nameTemplate.ts` · tests per item |
+| Write to Obsidian (exists) | sink | `document`, `path` (str) | — | + mode, subfolder | `managedBlock.ts` · `obsidianWriteModes.test.ts` |
 | TaskNotes | connection · Connections | `from`, `to` (Calendar only) | Tasks `cube` · Calendar `frame` · Stats scalars | provider, refreshMinutes | `taskNotesApi.ts` · `taskNotesApi.test.ts` (fixture per endpoint) |
 | Write Tasks | sink · Connections | `cube` (frame widens) | `plan` frame | mode (create / update), keys, stamp | shares `taskNotesApi.ts` |
 | (app) midnight rollover | — | — | — | — | `volatileDates.ts` + one timer → `requestRecalc()` |
