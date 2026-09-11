@@ -11,6 +11,7 @@ import { getActiveView } from "../activeGraph";
 import { FrameDisplay } from "./FrameDisplay";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
+import { RefreshIcon } from "./RefreshIcon";
 import { SegToggle } from "./SegToggle";
 import { OBSIDIAN_WRITE_MODE_OPTIONS, OBSIDIAN_TARGET_OPTIONS, type WriteObsidianTarget } from "../nodes/obsidian";
 import type { ObsidianWriteMode } from "../obsidianWrite";
@@ -259,11 +260,15 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
           <>
             <button
               type="button"
-              className="sol-conn__refresh"
+              className="sol-write__browse"
               title={pickerOpen ? "Hide vault notes" : "Browse the vault for a note to write to"}
               onClick={(e) => { e.stopPropagation(); setPickerOpen((o) => !o); }}
               {...stopPtr}
             >
+              {/* Lucide "folder-open" (ISC), the Import chooser's glyph. */}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" />
+              </svg>
               Browse…
             </button>
             {pickerOpen && (
@@ -317,7 +322,7 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
                 {subfolder && !folders.includes(subfolder) && <option value={subfolder}>{subfolder}</option>}
                 {folders.map((f) => <option key={f} value={f}>{f}</option>)}
               </select>
-              <button type="button" className="sol-conn__refresh" title="Rescan vault folders" onClick={(e) => { e.stopPropagation(); refreshFolders(); }} {...stopPtr}>⟳</button>
+              <button type="button" className="sol-conn__refresh" title="Rescan vault folders" onClick={(e) => { e.stopPropagation(); refreshFolders(); }} {...stopPtr}><RefreshIcon /></button>
             </div>
           </>
         ) : (
