@@ -80,15 +80,20 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   API earns its keep only for recurrence expansion, `timeEntries` totals, user-remapped field names,
   and write-back-with-webhooks. Consider whether the read node stays, or folds into a `tags contains
   task` recipe over Vault Folder. (dev-notes 2026-09-11.)
-- [ ] **One way to set the vault** (author): the per-node vault chip (Vault Folder, Write Properties)
-  vs the app-wide `obsidianVault` setting is two ways to set one thing. Decide the primary.
+- [ ] **Daily-notes targeting** (author, keep — the removed `{{daily}}` successor): a way to write
+  today's daily note in its configured folder + format, wireable (a source node emitting the
+  daily-note path from `.obsidian/daily-notes.json`, not inline template syntax). Not necessarily a
+  node — still shaping. (dev-notes 2026-09-11.)
 - [ ] **Knap for dynamic write paths / content** (author, parked): use Knap to template a Write to
   Obsidian `path` or the written body from wired values — the successor to the removed `{{date}}`
   grammar, now that `path` is a plain wireable string.
 - [ ] **Frame-only verbs over a cube** (fe): Window / GROUPBY / Chart's frame input still refuse a
   live `cube`, so charting or smoothing a Vault Folder needs a cube→frame step (A′ extended, or a
   Cube → Frame node). Today the `daily-habits` seed runs its Window on a snapshot for this reason.
-- [ ] **Write mega-merge** (author 2026-09-10, maximalMerge): Write File + Write to Obsidian as
+- [ ] **Write mega-merge, phase 2** (author 2026-09-10, maximalMerge): the vault half LANDED
+  2026-09-11 — Write Properties folded into Write to Obsidian (Auto / Note / Properties target).
+  Remaining: fold **Write File** (disk CSV/JSON/MD) and **Write Tasks** (API) into the same sink as
+  further targets. Original note: Write File + Write to Obsidian as
   ONE sink with a target selector (file / vault), formats as arguments (CSV, JSON, Markdown),
   and the merge-to-folder behavior (`ec715ed` built it on Write File: a document input, one
   `.md` per page into the path as a folder, a frame under MD as a pipe table; backed out

@@ -29,18 +29,37 @@ emit are now values you can wire back into the writers and importer.
 - Verified headless against `demo-vault/` (`run-graph-vault.test.ts`: a wired path loads a note,
   a wired folder scopes the read) and on the live desktop app.
 **Follow-on (author calls, same day):**
+- **The writer MERGE LANDED:** Write to Obsidian is the one vault sink — `WritePropertiesNode` +
+  its component are deleted, absorbed into `WriteObsidianNode` (`nodes/obsidian.ts`). A Target
+  dropdown (Auto / Note / Properties) picks by the wired input: a Document → a note
+  (overwrite/append/block), a cube of rows → frontmatter + a `note-body` column → the body. Both
+  Preview before Run (`plan` frame on the Properties side, a target-action line on the Note side).
+  The `write-back-to-obsidian` seed switched to `target:"properties"`. Write File + Write Tasks
+  stay separate for now (backlog mega-merge). Rendered fixes: Browse is a real full-width button
+  (folder glyph), the subfolder rescan uses `RefreshIcon` not a unicode ⟳.
 - **`note-body`** is the reserved property that round-trips a note's body: Vault Folder's
-  include-body column is `note-body` (was `body`), and Write Properties writes a `note-body` cube
-  column as each note's BODY, every other column its frontmatter (`frontmatterPatch.ts`
-  `setBody`/`resolveBody`, the block stays byte-identical; `writeProperties.ts` preview/run).
-- **Single vault** (`singleVaultFromSetting`): Vault Folder + Write Properties dropped the per-node
-  vault chip/chooser (never persisted anyway) and read the app-wide `obsidianVault` setting.
-- **Name-resolving Import:** a wired `path` resolves a bare note name the way Obsidian resolves
-  `[[Name]]` — a full vault-relative path matches directly, else the basename, case-insensitive.
-- **Open:** the WRITER MERGE (auto-select-by-input sink + a dropdown override; note-body + a
-  document Preview ride in) — shape to confirm with the author. TaskNotes read overlaps Vault
-  Folder (recurrence / time / remapped fields / write-back are the API's only edge). Daily notes:
-  retain, not necessarily a node — still thinking. Knap for dynamic write paths parked.
+  include-body column is `note-body` (was `body`), and the Properties target writes a `note-body`
+  cube column as each note's BODY, every other column its frontmatter (`frontmatterPatch.ts`
+  `setBody`/`resolveBody`, the block stays byte-identical).
+- **Single vault** (`singleVaultFromSetting`): Vault Folder + Write Properties read the app-wide
+  `obsidianVault` setting (per-node chip gone; a `get vault()` getter leaked the abs path into
+  saves via extractInit, so it reads the setting inline instead).
+- **Name-resolving Import:** a wired `path` resolves a bare note name Obsidian-style — a full
+  vault-relative path matches directly, else the basename, case-insensitive.
+- **TaskNotes:** stats is now **one `{ Status | Count }` frame** (`statsToFrame`), not five number
+  sockets — fixes the mode-switch width oddity. The unwired calendar window is a year either side
+  of today (was `today..today+7`). `/api/calendars/events` only surfaces external calendar sources
+  (ICS/Google/Microsoft), never task scheduled/due, so the demo vault gained `Team Calendar.ics`
+  (a local ICS subscription, plugin config is per-machine + gitignored, so only the `.ics` ships).
+- **Date Input:** a valid relative phrase reads white (was red — the card validated without the
+  `relative` opt-in the node uses); an (i) button beside the picker shows a "Supported Formats"
+  example popup when Relative dates is on. Year-first dates stay ISO (never `#AMBIGUOUS!`; no
+  country uses YDM).
+
+**Still open (author calls):** daily-notes targeting (retain, not necessarily a node — the removed
+`{{daily}}` successor); fold Write File + Write Tasks into the one sink; Knap for dynamic write
+paths / content; the TaskNotes read node's overlap with a plain Vault Folder query. All in
+`backlog.md`.
 
 ### SESSION DIGEST (2026-09-11 — Report card rebuilt as a standard node; Note holds Knap tags literal)
 
