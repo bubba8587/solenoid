@@ -44,11 +44,12 @@
     },
     {
       "id": "write",
-      "type": "WritePropertiesNode",
+      "type": "WriteObsidianNode",
       "x": 656,
       "y": 542,
       "init": {
         "label": "Write Properties",
+        "target": "properties",
         "addMissing": true,
         "writeBase": false
       },

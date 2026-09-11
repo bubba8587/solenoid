@@ -156,7 +156,7 @@ export { WebSourceComponent, LocalFileComponent, ImportHtmlComponent, ImportXmlC
 export { QrCodeComponent } from "./QrNode";
 
 // ─── File sinks (Write File — CSV/JSON, Write to Obsidian) ────────────────────────
-export { WriteFileComponent, WriteObsidianComponent, WriteTasksComponent, WritePropertiesComponent } from "./WriteNodes";
+export { WriteFileComponent, WriteObsidianComponent, WriteTasksComponent } from "./WriteNodes";
 
 // ─── Import from Obsidian Vault (read a .md into a read-only Note) ────────────────
 export { ImportObsidianComponent } from "./ImportObsidianNode";

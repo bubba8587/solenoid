@@ -5,7 +5,7 @@ import path from "node:path";
 import { runGraph, nodeFsProvider } from "./run-graph";
 import { setFsProvider } from "../src/graph/fileBridge";
 import { settingsStore } from "../src/graph/settingsStore";
-import { WritePropertiesNode } from "../src/graph/nodes/writeProperties";
+import { WriteObsidianNode } from "../src/graph/nodes/obsidian";
 import { isCubeValue, type CubeValue } from "../src/graph/frame";
 
 // Bundle 24 J — the headless seam: `run-graph --vault <path>` installs a Node file
@@ -104,7 +104,7 @@ describe("run-graph --vault", () => {
 
     setFsProvider(nodeFsProvider);
     settingsStore.set("obsidianVault", tmp);
-    const n = new WritePropertiesNode();
+    const n = new WriteObsidianNode({ target: "properties" });
     const cube: CubeValue = { __cube: true, depth: 1, columns: [
       { name: "path", cells: ["Projects/Kitchen remodel.md"], type: "string" },
       { name: "note-body", cells: ["# Rewritten\n\nnew body text"], type: "string" },
@@ -126,7 +126,7 @@ describe("run-graph --vault", () => {
       nodes: [
         { id: "v", type: "VaultFolderNode", init: { label: "Projects", folder: "Projects" } },
         // Only `status` (a scalar) round-trips byte-for-byte; a list would re-render block-style.
-        { id: "w", type: "WritePropertiesNode", init: { label: "Sync status" }, stringLiterals: { keys: "status" } },
+        { id: "w", type: "WriteObsidianNode", init: { label: "Sync status", target: "properties" }, stringLiterals: { keys: "status" } },
       ],
       connections: [{ source: "v", sourceOutput: "cube", target: "w", targetInput: "rows" }],
     };

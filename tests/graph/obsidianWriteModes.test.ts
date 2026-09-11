@@ -29,7 +29,7 @@ describe("WriteObsidianNode modes + path target", () => {
     expect(new WriteObsidianNode().mode).toBe("overwrite");
     expect(extractInit(new WriteObsidianNode({ mode: "block" }) as never).mode).toBe("block");
     expect(new WriteObsidianNode({ mode: "nope" as never }).mode).toBe("overwrite");
-    expect(Object.keys(new WriteObsidianNode().inputs)).toEqual(["in", "path"]);
+    expect(Object.keys(new WriteObsidianNode().inputs)).toEqual(["in", "path", "rows"]);
   });
   it("renderedTarget resolves the wired path: a folder/name splits, the folder prepends to the subfolder", () => {
     const n = new WriteObsidianNode({ subfolder: "Ops" });

@@ -19,16 +19,17 @@ describe("WriteObsidianNode persistence + arming", () => {
     const reloaded = new WriteObsidianNode(init);
     expect(reloaded.subfolder).toBe("reports/2026");
     expect(reloaded.enabled).toBe(false); // every load starts disarmed
-    expect(new WriteObsidianNode().stringLiterals).toEqual({}); // the path map declares empty
+    expect(new WriteObsidianNode().stringLiterals).toEqual({ path: "", keys: "" }); // path (Note) + keys (Properties)
   });
 
-  it("data() caches the document and resolves the path for the preview", () => {
+  it("data() caches the document and resolves the path for the preview; the Note plan is empty", () => {
     const doc = makeDocument("# Note\n\nbody", {}, { title: "T" });
     const n = new WriteObsidianNode({ subfolder: "Notes" });
     n.stringLiterals.path = "Memo";
     const out = n.data({ in: [doc] });
-    expect(out).toEqual({});
+    expect(out).toEqual({ plan: null }); // Note target: no cube, no plan
     expect(n.cachedDoc).toBe(doc);
+    expect(n.resolveMode()).toBe("note");
     expect(n.renderedTarget()).toEqual({ name: "Memo", subfolder: "Notes" });
   });
 });
