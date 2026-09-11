@@ -104,7 +104,8 @@ is parked there.
   open, updater, the web-target decision) and the decisions it reopens.
 - **`v2.0/`** — the live plan bundles: 08 Excel transpiler, 10 decision sensitivity,
   12 uncertain/money, 16 widget nodes (proposed for 1.4), 20 pages, 21 collaboration,
-  22 canvas at scale, 23 conditional formatting. Built bundles are archived (05 units →
+  22 canvas at scale, 23 conditional formatting; 25 Gantt is BUILT (2026-09-12) and stays live as
+  the engine + figure spec. Built bundles are archived (05 units →
   `archive/units-format-controller.md`; 17 matrix formulas, 18 parity corpus,
   19 computed-column surface → `archive/`); see `v2.0/README.md`.
 - **`dev-notes.md`** — session DIGESTS + open problems only; per-item history in
@@ -165,6 +166,7 @@ relapse.
 | `excelFunctions.ts`, `excelFormula.ts`, Expression/LAMBDA | `formulajs-divergences.md`; `rules.md` FX rules; tableRefSemantics |
 | `nodes/listOps.ts`, `textOps.ts`, `financeOps.ts`, `matrixOps.ts`, `indexAccess.ts`, `dateSerial.ts`, `convertUnits.ts` — and ANY new shared node↔formula module | `rules.md` shareImpl (one impl, two surfaces), implReteFree (rete-free; what not to extract) |
 | `computedColumnCore.ts` | tableRefSemantics, noPerCellFormulas; `rules.md` rowFormulaRefs |
+| `scheduleCpm.ts`, `ganttPayload.ts`, `planImport.ts`, `nodes/schedule.ts`, `nodes/gantt.ts`, `packages/*` | `node-coverage.md` § Schedule and § Gantt (what stands); `v2.0/25-gantt.md` § 4.1 (the one rule), § 6 (the cube contract, the figure payload, the figure never writes); decisions ganttPackages, oneScheduleRule, noBarEditing |
 | `frameVerbs.ts`, `frameBackend.ts`, `frame.ts` | `glossary.md` (FrameRef); polarsEngine, arraySemantics; cargo parity tests |
 | `nodeOps.ts`, any `op` field, `OpSelect`/`ArgSelect`/`SegToggle`/`OpToggle` | `rules.md` opArgDistinct; `../DESIGN.md` § Op pickers; aggregatorsAreArguments; `node-coverage.md` |
 | `nodeCatalog.ts` | `node-coverage.md`; currentExcelParity (eliminated functions stay eliminated) |

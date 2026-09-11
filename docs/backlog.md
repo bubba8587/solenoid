@@ -120,6 +120,32 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   and the two new Obsidian seeds (`write-back-to-obsidian`, `daily-habits`) with the live Vault
   Folder swapped in for the snapshot.
 
+## Gantt + Schedule (BUILT 2026-09-12 — `v2.0/25-gantt.md` § 9 is the ledger; follow-ups)
+
+- [ ] **Author's eyeball** (desktop, the three seeds): the Schedule card's two toggles + Diagnostics
+  row; the Gantt card's chip; the figure in a Display, the popup (columns, splitter, Copy SVG),
+  a Report overlay + webpage export + Write to Obsidian raster; light theme; the Product launch
+  seed's pinned Board review and the deadline pennant; Local File on a `.xml` (a Project export)
+  and a Smartsheet CSV.
+- [ ] **Project-exported goldens** (author): export MSPDI from a Project trial / 2024 for the two
+  seeds' plans and drop them in `fixtures/schedule/` as `project-*.mspdi.xml`; the parity test
+  picks them up; name any disagreement in `divergences.json`. Until then the corpus is authored.
+- [ ] **Out-of-sequence progress: split the remainder** (engine): today the whole bar moves after
+  the status date; Project splits the done part from the remainder. Needs a segment list on the
+  scheduled task + the figure's split bar.
+- [ ] **Summary SS/SF late bounds** (engine): a successor SS/SF-linked to a phase bounds the
+  phase's late START, which cannot be pushed onto one child; only FS/FF bounds reach the leaves.
+- [ ] **Per-task calendars / hours** (engine, Minutes mode): one interval set from `hours`; a
+  `Calendar` column or per-task hours is the MSPDI `CalendarUID` case.
+- [ ] **Minutes-mode cells show times**: a date column formats date-only, so a 13:00 start reads
+  as its day; the FC's datetime format is the workaround. Consider stamping a datetime format
+  on Start / Finish when precision is Minutes.
+- [ ] **Multiple critical paths / ALAP** (engine): rule 7's per-tail late dates and rule 10.
+- [ ] **Adjacent packs, by author promotion** (§ 12): XER and `.gan` read; MSPDI write as a sink;
+  earned value; resources + effort-driven recalculation; inactive and recurring tasks; the
+  by-row portfolio mode. Reopen only when a user arrives with such a file.
+- [ ] **Calendar figure** (the sibling): the same date-keyed layout code drawing a month grid.
+
 ## Canvas chrome (queued by the author 2026-09-07, "not top priority")
 
 - [ ] **Collapsed stadium pill hover preview** — a collapsed node's input pill shows a hover

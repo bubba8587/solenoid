@@ -111,6 +111,15 @@ area. When you coin a new load-bearing term, add it here.
 - **Cube** — the recursive nested-table container (a frame whose cells can be frames);
   the anti-flat-grid feature, with cached depth and a drill-in popup. (`CubeValue` in
   `frame.ts`; nodes in `nodes/cube.ts`, `cubePopupStore.ts`)
+- **Plan (tasks cube)** — the Schedule node's input shape: one row per task, Predecessors a
+  list cell or a nested Task · Type · Lag table, nesting as the work breakdown, the optional
+  Start / Finish / Deadline / Manual / Complete columns; a Local File's Project XML or
+  grammar CSV arrives in this shape. (`scheduleCpm.ts`, `planImport.ts`; `v2.0/25-gantt.md` § 6.1)
+- **Gantt figure** — the read-only `chart`-socket figure of a scheduled plan: bars, milestone
+  diamonds, summary brackets, dependency arrows, the critical path, today / status lines,
+  shaded non-working days. Data-only payload (`packages/gantt-layout/src/payload.ts`), laid
+  out at its width by `@solenoid/gantt-layout`, drawn by `@solenoid/gantt-react`; it never
+  writes to its source.
 - **Computed column** — a frame column whose cells come from a per-row computation
   (an inline formula or a wired λ) instead of typed data. ONE definition per column,
   never per cell (noPerCellFormulas). Two surfaces, one core: the Frame Input popup's per-column

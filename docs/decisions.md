@@ -689,3 +689,28 @@ to Obsidian NAME field's `{{date}}` tokens predate this and stay a file-name min
 **Reopen if:** an author-typed ref grammar returns beside Knap (two syntaxes for one thing),
 or the bare-tag rule stops matching the on-canvas rendering (a bare `{{ frame }}` printing
 JSON instead of the grid is the relapse).
+
+### ganttPackages — The scheduling engine and Gantt figure are in-repo packages, resolved by alias (2026-09-12)
+`packages/schedule-engine`, `packages/gantt-layout`, `packages/gantt-react` are npm workspaces
+with their own `package.json` + LICENSE, consumed through `tsconfig.json` paths, the Vite alias
+and the vitest alias — no install step changed, `npm ci` and the desktop build are untouched.
+No GPL/EPL/commercial code enters them; each README records what was studied. **Where:**
+`packages/README.md`; `architecture.md` § Packages. **Reopen if:** a second consumer appears
+(publish them), or the source-scan tests and the shared fixture directory stop reaching them.
+
+### oneScheduleRule — Start = floor, Finish = ceiling, Deadline = flag, Manual = pin; no modes (2026-09-12)
+The schedule is always recomputed from the table; a gap is a lag on the link; a typed Start
+holds a task no earlier, a typed Finish caps its late finish and shows as negative float, a
+Deadline flags and never moves, Manual pins and still drives successors. No constraint-type
+columns, no per-task mode, no project-wide shift switch (the user sweep's top complaint is
+dates moving from hidden state). **Where:** `packages/schedule-engine/src/cpm.ts`;
+`v2.0/25-gantt.md` § 4.1; `engine.test.ts` "the one rule". **Reopen if:** an imported file
+needs a constraint the four columns cannot express (ALAP, must-finish-on) — then it is a
+named `unsupported` at the MSPDI border, not a fifth column.
+
+### noBarEditing — The Gantt figure never writes (author ruling, kept 2026-09-12)
+A chart value is flat JSON on a cable drawn by a different node than the one that owns the
+literal; edits happen in the table (the Cube Input popup). **Where:** `@solenoid/gantt-react`
+has no drag machinery; `v2.0/25-gantt.md` § 6.4. **Reopen if:** the author asks — and then
+as the Record node's focused-record model (a display-only pick a second node follows by
+name), written as a reopening, never a cable from the figure.

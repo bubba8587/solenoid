@@ -21,7 +21,10 @@ This file is the map.
 │                             #     suite lives at the mirrored path)
 ├── src-tauri/                # Tauri (Rust) shell: window, fs/dialog plugins
 ├── public/                   # Static assets served by Vite
-├── fixtures/                 # frame-verbs/ — the shared JS↔Rust verb corpus (oneVerbCorpus)
+├── fixtures/                 # frame-verbs/ — the shared JS↔Rust verb corpus (oneVerbCorpus);
+│                             #     schedule/ — MSPDI goldens + divergences.json for the scheduling engine
+├── packages/                 # In-repo MIT workspaces resolved by alias (tsconfig paths, vite, vitest):
+│                             #     schedule-engine, gantt-layout, gantt-react (packages/README.md)
 ├── scripts/                  # new-node.mjs (scaffold), undo-drift-probe.mjs + socket-box-probe.mjs +
 │                             #     socket-drag-probe.mjs + tidy-drift-probe.mjs (live-page probes on the
 │                             #     dev server: undo position fidelity, socketBox12's rendering half, a
@@ -89,6 +92,7 @@ src/
 | `rete-nodes.ts` | Node class re-exports for the editor |
 | `nodeRegistry.ts` | `NODE_COMPONENTS`: `[Ctor, Component]` rows — the one place a node binds its React component |
 | `coerceInputs.ts` | `nodecreated` pipe wrapping every `data()` — normalizes incoming shapes to the socket's declared type (`#SHAPE!` on coercion failure); widens scalar/list/matrix → `frame` (list = ROW), bridges logical↔number. Per-input policy: a node lists `rawInputs` (a `ReadonlySet<string>`) to receive an input UNCOERCED and branch on the runtime shape itself (XLOOKUP's `frame` — a polymorphic frame-or-cube source); ACCEPTANCE stays lattice-driven, COERCION is the node's call |
+| `scheduleCpm.ts`, `ganttPayload.ts`, `planImport.ts` | The scheduling bindings: a tasks cube → `@solenoid/schedule-engine` and back with the computed columns at every level (Schedule); a scheduled table → the Gantt figure's data-only payload (`GanttPayload`, contract in `packages/gantt-layout/src/payload.ts`); a Project XML / grammar CSV → the plan cube (Local File's `plan` socket) |
 | `persistence.ts` (+`persistenceCore.ts`) | JSON save/load (format v2), localStorage autosave, export/import; ctor lookup derived from the catalog; `rebuildGraph` one-commit rebuild behind the load curtain. ORDER MATTERS in the rebuild tail: `settleWildcardTypes` runs BEFORE the FC dock loop (waitForTypeSettle, pinned by `fcDockReload.test.ts`). `persistenceCore` holds the pure validate/version helpers (`validateSavedGraph`, `CURRENT_SAVE_VERSION`) |
 | `loadReveal.ts`, `components/LoadOverlay.tsx` | The load-curtain store (idle/building + progress) + the build-phase progress overlay |
 | `copyPaste.ts` (+`clipboard.ts`) | Ctrl+C/V with topology, id remap (own `cloneNode`/`pasteClipboard` path); ALSO the home of `extractInit`/`INIT_FIELD_ORDER` — imported by persistence/aiGrounding/composite; `clipboard.ts` is the execCommand-fallback text copy |
@@ -384,6 +388,15 @@ packShared, `../rete-nodes`, and type-only app seams — never core internals),
 each with a vitest file pinning its formulas (`packs/formulaTestKit.ts`).
 Framework + activation live with the catalog cluster (`packs.ts` /
 `fcExtensions.ts` above); design + isolation levels: `docs/pack-architecture.md`.
+
+### Packages (`packages/`)
+
+Three separately publishable MIT packages the app consumes by alias, extracted only on a
+second consumer (decisions ganttPackages): `schedule-engine` (calendar in unit index space,
+WBS graph, the CPM passes, diagnostics, Mermaid, the predecessor grammar, MSPDI read),
+`gantt-layout` (payload → render frame at a width; the headless SVG serializer),
+`gantt-react` (the read-only figure). Tests live beside the source (`packages/**/*.test.ts`);
+the app's bindings are `scheduleCpm.ts` / `ganttPayload.ts` / `planImport.ts` above.
 
 ### Landing & showcase (`src/graph/landing/`)
 

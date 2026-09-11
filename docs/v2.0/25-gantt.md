@@ -1,7 +1,11 @@
 # 25 — Gantt and project scheduling: the landscape, the spec, the plan
 
-> **STATUS: PROPOSAL (2026-09-07, revised the same day after two adversarial reviews and a
-> user-pain sweep; § 13 records what changed).** Research bundle for `../2.0-plan.md` Arc 8.
+> **STATUS: BUILT 2026-09-12 (phases 0–4 of § 8; the twelve § 10 calls taken as recommended).**
+> § 9 is the landed ledger and names what is not built; the rest stays live as the engine and
+> figure spec (§ 3 the correctness bar, § 4.1 the one rule, § 6 the contracts, § 12 the scope).
+> What stands in code is recorded in `../node-coverage.md` § Schedule / § Gantt. Originally the
+> research bundle for `../2.0-plan.md` Arc 8 (PROPOSAL 2026-09-07, revised the same day after two
+> adversarial reviews and a user-pain sweep; § 13 records what changed).
 > Written from the outside in: what the best software in this space does, what a correct engine
 > and figure must compute, what real users complain about and refuse to give up, and how that
 > maps onto Solenoid's basics (typed nodes, Frames, the nested Cube). Every recommendation is
@@ -784,11 +788,39 @@ was studied; the fixture directory is the contract.
 
 ---
 
-## 9. What stands in the tree today (one line)
+## 9. What stands in the tree (the landed ledger, 2026-09-12)
 
-`develop` carries a Schedule verb (FS-only, Days mode, working days and holidays, float,
-critical, a Mermaid `gantt` string) and no figure; this bundle keeps its class name, its
-name-keyed cube contract, its inclusive finish and its `gantt` output, and grows it per § 6.
+**Built** (three agents in one session; the mechanics are in `../node-coverage.md` § Schedule /
+§ Gantt, `../subsystem-invariants.md` § React Flow surface contract (figure payload + SVG
+provider seam) and § Pointer gestures (`nokeys`)):
+- `packages/schedule-engine` — § 6.1's cube contract (names, nesting as WBS, list or nested
+  Task · Type · Lag predecessors), § 4.1's one rule, FS/SS/FF/SF with lag and lead, milestones,
+  summary roll-ups with links both ways, deadlines, Complete against a status date, Manual, total
+  and free float, the driving predecessor, plain-named diagnostics, `finish`, the Mermaid source,
+  one `#VALUE!` for structural failures; **Days and Minutes modes** (§ 6.5: Minutes is Project's
+  08:00–17:00 model with working intervals, same-afternoon FS starts, 17:00 finishes); MSPDI
+  read (pj14; nesting, link codes, lag tenths, constraint types onto the one rule, the base
+  calendar with working times); the predecessor grammar at the border; `fixtures/schedule/`
+  with a hand-authored MSPDI whose stored dates reproduce in both modes and `divergences.json`.
+- `packages/gantt-layout` + `packages/gantt-react` — the data-only payload
+  (`payload.ts`), tiers and zoom presets with `fit`, rows with collapse and section bands,
+  bars / diamonds / brackets / progress / baseline ghost / deadline pennant, orthogonal arrows
+  with the endpoint conventions, today and status lines, non-working shading, labels with
+  ellipsis, critical hatch + outline and late / violated cues (WCAG 1.4.1), a tree grid whose
+  columns drop rather than clip, virtualized rows in the popup, the headless SVG serializer.
+- Solenoid — the Schedule node on § 6.2's contract (class name kept; `weekend_code`, `status`,
+  `hours`, a `diagnostics` frame, the precision toggle); the Gantt node (`kind: "gantt"`, the
+  [Chart] chip on the card, Display / popup / Report, "Copy SVG", the `data-chart-svg-provider`
+  seam feeding the webpage export and Write to Obsidian), the `gantt` Chart Builder target, the
+  `.nokeys` opt-out; Local File's `plan` socket (MSPDI and grammar-CSV import); three seeds.
+
+**Not built, by name:** per-task calendars and hours beyond one working pattern (Minutes mode
+takes one interval set from `hours`); split remainders for out-of-sequence progress (the whole
+bar moves after the status date); late bounds from a summary's SS/SF successors; multiple
+critical paths and ALAP; a 24-hour calendar's midnight finish display; Project-exported goldens
+(the author's trial — the corpus is hand-authored until then); a Rust twin (not planned, § 7.4);
+the § 12 adjacent packs (XER / `.gan` read, MSPDI write, earned value, resources, inactive and
+recurring tasks, P6 float definitions, a by-row portfolio mode); the calendar figure sibling.
 
 ## 10. Author calls
 
