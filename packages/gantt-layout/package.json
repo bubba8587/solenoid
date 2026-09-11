@@ -1,0 +1,10 @@
+{
+  "name": "@solenoid/gantt-layout",
+  "version": "0.1.0",
+  "description": "Pure Gantt geometry: a data payload plus a width in, a plain-number render frame out (time-scale tiers, rows, bars, links, shading) and a standalone SVG serializer.",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "sideEffects": false
+}
