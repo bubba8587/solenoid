@@ -8,10 +8,10 @@
       "id": "note0",
       "type": "NoteNode",
       "x": -156,
-      "y": 226,
+      "y": 232,
       "init": {
         "label": "Kitchen remodel from TaskNotes",
-        "body": "# Kitchen remodel, from your tasks\n\nThe Cube Input stands in for a live TaskNotes feed (swap in the TaskNotes node beside it). Filter keeps the tasks whose projects contain \"Kitchen remodel\". Computed Column turns each task's timeEstimate into a Duration in days. Schedule works out Start, Finish, and the critical path, and the Gantt draws it.\n\nReading TaskNotes live needs the desktop app and its local API; the snapshot computes anywhere.",
+        "body": "# Kitchen remodel, from your tasks\n\nThe Cube Input stands in for a live TaskNotes feed (swap in the TaskNotes node beside it). Filter keeps the tasks whose projects contain \"Kitchen remodel\". Computed Column turns each task's timeEstimate into a Duration in days. Schedule works out Start, Finish, and the critical path, and the Gantt draws it, as Mermaid text and as the figure.\n\nReading TaskNotes live needs the desktop app and its local API; the snapshot computes anywhere.",
         "color": "violet",
         "width": 400,
         "height": 210
@@ -20,8 +20,8 @@
     {
       "id": "tasks",
       "type": "CubeInputNode",
-      "x": -38,
-      "y": 474,
+      "x": -68,
+      "y": 480,
       "init": {
         "label": "Tasks (snapshot)",
         "cubeText": "[\n  {\"title\": \"Demolition\", \"projects\": [\"Kitchen remodel\"], \"timeEstimate\": 960, \"blockedBy\": []},\n  {\"title\": \"Plumbing rough-in\", \"projects\": [\"Kitchen remodel\"], \"timeEstimate\": 1440, \"blockedBy\": [\"Demolition\"]},\n  {\"title\": \"Electrical rough-in\", \"projects\": [\"Kitchen remodel\"], \"timeEstimate\": 960, \"blockedBy\": [\"Demolition\"]},\n  {\"title\": \"Drywall\", \"projects\": [\"Kitchen remodel\"], \"timeEstimate\": 960, \"blockedBy\": [\"Plumbing rough-in\", \"Electrical rough-in\"]},\n  {\"title\": \"Cabinets & counters\", \"projects\": [\"Kitchen remodel\"], \"timeEstimate\": 1440, \"blockedBy\": [\"Drywall\"]},\n  {\"title\": \"Fix leaky faucet\", \"projects\": [\"Home\"], \"timeEstimate\": 60, \"blockedBy\": []}\n]"
@@ -30,8 +30,8 @@
     {
       "id": "tasknotes",
       "type": "TaskNotesNode",
-      "x": -38,
-      "y": -62,
+      "x": -68,
+      "y": -36,
       "init": {
         "label": "TaskNotes (live)",
         "provider": "tasks"
@@ -41,7 +41,7 @@
       "id": "kitchen",
       "type": "FilterFrameNode",
       "x": 347,
-      "y": -62,
+      "y": -36,
       "init": {
         "label": "projects contains Kitchen remodel",
         "condConfig": {
@@ -63,8 +63,8 @@
     {
       "id": "days",
       "type": "ComputedColumnNode",
-      "x": 612,
-      "y": -44,
+      "x": 672,
+      "y": -32,
       "init": {
         "label": "Duration = timeEstimate ÷ 8h",
         "expr": "@timeEstimate / 480",
@@ -78,8 +78,8 @@
     {
       "id": "start",
       "type": "DateInputNode",
-      "x": 642,
-      "y": 352,
+      "x": 702,
+      "y": 364,
       "init": {
         "label": "Project start"
       },
@@ -90,8 +90,8 @@
     {
       "id": "schedule",
       "type": "ScheduleNode",
-      "x": 946,
-      "y": 108,
+      "x": 1013,
+      "y": 185,
       "init": {
         "label": "Schedule",
         "mode": "working"
@@ -100,8 +100,8 @@
     {
       "id": "gantt",
       "type": "MermaidNode",
-      "x": 1245,
-      "y": 287,
+      "x": 1354,
+      "y": 476,
       "init": {
         "label": "Gantt"
       },
@@ -112,8 +112,8 @@
     {
       "id": "finishDisplay",
       "type": "DisplayNode",
-      "x": 1245,
-      "y": 164,
+      "x": 1354,
+      "y": 353,
       "init": {
         "label": "Project finish"
       }
@@ -122,7 +122,7 @@
       "id": "grp-source",
       "type": "GroupNode",
       "x": -180,
-      "y": -120,
+      "y": -94,
       "init": {
         "label": "From TaskNotes",
         "members": [
@@ -133,14 +133,14 @@
         "color": "amber",
         "collapsed": false,
         "width": 448,
-        "height": 863
+        "height": 760
       }
     },
     {
       "id": "grp-build",
       "type": "GroupNode",
       "x": 323,
-      "y": -120,
+      "y": -94,
       "init": {
         "label": "Filter → Duration → Schedule → Gantt",
         "members": [
@@ -149,12 +149,36 @@
           "start",
           "schedule",
           "gantt",
-          "finishDisplay"
+          "finishDisplay",
+          "ganttFigure",
+          "ganttDisplay"
         ],
         "color": "sky",
         "collapsed": false,
-        "width": 1190,
-        "height": 582
+        "width": 2084,
+        "height": 745
+      }
+    },
+    {
+      "id": "ganttFigure",
+      "type": "GanttNode",
+      "x": 1354,
+      "y": 71,
+      "init": {
+        "label": "Gantt figure"
+      },
+      "stringLiterals": {
+        "options": ""
+      }
+    },
+    {
+      "id": "ganttDisplay",
+      "type": "DisplayNode",
+      "x": 1679,
+      "y": -12,
+      "size": {
+        "w": 700,
+        "h": 360
       }
     }
   ],
@@ -193,6 +217,18 @@
       "source": "schedule",
       "sourceOutput": "finish",
       "target": "finishDisplay",
+      "targetInput": "in"
+    },
+    {
+      "source": "schedule",
+      "sourceOutput": "cube",
+      "target": "ganttFigure",
+      "targetInput": "schedule"
+    },
+    {
+      "source": "ganttFigure",
+      "sourceOutput": "chart",
+      "target": "ganttDisplay",
       "targetInput": "in"
     }
   ]
