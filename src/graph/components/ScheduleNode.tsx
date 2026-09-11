@@ -12,11 +12,11 @@ import { isCubeValue, isFrameValue } from "../frame";
 function ganttSummary(data: ScheduleNodeType): OutputRowValue {
   const g = data.cachedGantt;
   if (typeof g !== "string") return g;
-  const c = data.cachedResult;
-  if (!isCubeValue(c)) return g;
-  const rows = c.columns[0]?.cells.length ?? 0;
-  const crit = c.columns.find((col) => col.name === "Critical")?.cells.filter((v) => v === true).length ?? 0;
-  return `${rows} task${rows === 1 ? "" : "s"} · ${crit} critical`;
+  const out = data.cachedOutput;
+  if (!out) return isCubeValue(data.cachedResult) ? g : g;
+  const leaves = out.tasks.filter((t) => !t.summary);
+  const crit = leaves.filter((t) => t.critical).length;
+  return `${leaves.length} task${leaves.length === 1 ? "" : "s"} · ${crit} critical`;
 }
 
 function diagnosticsSummary(data: ScheduleNodeType): OutputRowValue {

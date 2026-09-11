@@ -6,7 +6,7 @@
 // Tasks (or Children / Subtasks) cell holds a table is a summary of those rows.
 
 import { solError, isSolError } from "./errorValue";
-import { formatDateSerial } from "./nodes/dateSerial";
+import { formatDateSerial, parseDate } from "./nodes/dateSerial";
 import { cubeFromColumns, isCubeValue, isFrameValue, frameToCube, type CubeValue, type CubeCell, type CubeColumn, type FrameValue } from "./frame";
 import { isUnitCell } from "./unitValue";
 import {
@@ -114,9 +114,18 @@ function readDuration(cell: CubeCell, hoursPerDay: number, name: string): number
   return d;
 }
 
-function readDate(cell: CubeCell | undefined): number | null {
+/** A date cell: a serial, or text through the one canonical parser (a Cube Input keeps
+ *  its typed ISO strings). An ambiguous date is the whole schedule's error (the aggregate
+ *  rule): the row is named, nothing downstream has a defined start. */
+function readDate(cell: CubeCell | undefined, task: string, column: string): number | null {
   if (cell == null || cell === "") return null;
   if (isNum(cell)) return cell;
+  if (isText(cell)) {
+    const v = parseDate(cell);
+    if (isSolError(v)) throw solError(v.code, `Schedule: task "${task}" has a ${column} that reads two ways: ${cell}`);
+    if (!Number.isFinite(v)) throw solError("#VALUE!", `Schedule: task "${task}" has a ${column} that is not a date: ${cell}`);
+    return v;
+  }
   return null;
 }
 
@@ -173,7 +182,7 @@ function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: L
       name,
       duration: kids ? 0 : readDuration(duration?.cells[i] ?? null, hoursPerDay, name),
       predecessors: pred ? readPredecessors(pred.cells[i] ?? null, name) : [],
-      start: readDate(cols.start?.cells[i]), finish: readDate(cols.finish?.cells[i]), deadline: readDate(cols.deadline?.cells[i]),
+      start: readDate(cols.start?.cells[i], name, "Start"), finish: readDate(cols.finish?.cells[i], name, "Finish"), deadline: readDate(cols.deadline?.cells[i], name, "Deadline"),
       manual: cols.manual ? readBool(cols.manual.cells[i]) : false,
       complete: cols.complete ? (isNum(cols.complete.cells[i]) ? (cols.complete.cells[i] as number) : 0) : 0,
       group: groupCell == null ? null : String(groupCell).trim() || null,
