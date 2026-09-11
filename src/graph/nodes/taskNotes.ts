@@ -40,8 +40,8 @@ function todaySerial(): number {
 export class TaskNotesNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     tasks: "One row per task. Lists (projects, contexts, tags, blocked-by) are list cells; time entries and completed instances are nested tables. Filter, Sort and Get Column read the scalar columns; Unnest opens a nested one.",
-    from: "First day of the calendar window. Unwired, today.",
-    to: "Last day of the calendar window. Unwired, seven days from today.",
+    from: "First day of the calendar window. Unwired, a year back.",
+    to: "Last day of the calendar window. Unwired, a year ahead.",
     events: "One row per calendar event in the window: title, start, end, source.",
   };
 
@@ -103,9 +103,10 @@ export class TaskNotesNode extends ClassicPreset.Node {
     let from = 0, to = 0;
     let have = true;
     if (this.provider === "calendar") {
-      // A wired blank date is "no window yet"; unwired = today .. today + 7.
-      const f = inputs.from ? inputs.from[0] : todaySerial();
-      const t = inputs.to ? inputs.to[0] : todaySerial() + 7;
+      // A wired blank date is "no window yet"; unwired = a year either side of today (show
+      // essentially everything, since the API needs a bounded window).
+      const f = inputs.from ? inputs.from[0] : todaySerial() - 365;
+      const t = inputs.to ? inputs.to[0] : todaySerial() + 365;
       have = typeof f === "number" && typeof t === "number" && Number.isFinite(f) && Number.isFinite(t);
       if (have) { from = Math.min(f as number, t as number); to = Math.max(f as number, t as number); }
     }
