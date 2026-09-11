@@ -2,8 +2,10 @@ import { describe, it, expect, afterEach } from "vitest";
 import { mkdtempSync, cpSync, readFileSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { runGraph } from "./run-graph";
+import { runGraph, nodeFsProvider } from "./run-graph";
 import { setFsProvider } from "../src/graph/fileBridge";
+import { settingsStore } from "../src/graph/settingsStore";
+import { WritePropertiesNode } from "../src/graph/nodes/writeProperties";
 import { isCubeValue, type CubeValue } from "../src/graph/frame";
 
 // Bundle 24 J — the headless seam: `run-graph --vault <path>` installs a Node file
@@ -91,6 +93,28 @@ describe("run-graph --vault", () => {
     const imp = out["Loaded"] as Record<string, unknown>;
     expect(imp.path).toBe("Projects/Kitchen remodel.md"); // "kitchen remodel" → the note in Projects/, case-insensitive
     expect(imp.status).toBe("active");
+  }, 30_000);
+
+  it("Write Properties writes a `note-body` column as the note's body, frontmatter byte-identical", async () => {
+    tmp = mkdtempSync(path.join(tmpdir(), "solenoid-vault-"));
+    cpSync(DEMO, tmp, { recursive: true });
+    const noteRel = path.join("Projects", "Kitchen remodel.md");
+    const before = readFileSync(path.join(tmp, noteRel), "utf8");
+    const fmBefore = before.slice(0, before.indexOf("---", 3) + 3); // the frontmatter block
+
+    setFsProvider(nodeFsProvider);
+    settingsStore.set("obsidianVault", tmp);
+    const n = new WritePropertiesNode();
+    const cube: CubeValue = { __cube: true, depth: 1, columns: [
+      { name: "path", cells: ["Projects/Kitchen remodel.md"], type: "string" },
+      { name: "note-body", cells: ["# Rewritten\n\nnew body text"], type: "string" },
+    ] };
+    n.data({ rows: [cube] });
+    n.enabled = true;
+    await n.run();
+    const after = readFileSync(path.join(tmp, noteRel), "utf8");
+    expect(after).toContain("# Rewritten\n\nnew body text"); // the body was replaced
+    expect(after.startsWith(fmBefore)).toBe(true);          // the frontmatter block untouched
   }, 30_000);
 
   it("--run a Write Properties over the vault writes current scalar values back with no byte change", async () => {

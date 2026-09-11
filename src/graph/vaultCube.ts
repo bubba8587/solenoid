@@ -227,7 +227,7 @@ export function notesToCube(notes: readonly VaultNote[], sources: VaultTypeSourc
   }
 
   // Frontmatter column order: first-seen across notes, minus built-in-name clashes.
-  const builtinNames = new Set<string>([...BUILTINS, "body"]);
+  const builtinNames = new Set<string>([...BUILTINS, "note-body"]);
   const fmKeys: string[] = [];
   const seen = new Set<string>();
   for (const p of parsed) {
@@ -240,7 +240,8 @@ export function notesToCube(notes: readonly VaultNote[], sources: VaultTypeSourc
 
   const columns: { name: string; cells: CubeCell[]; type?: FrameColType }[] = [];
   for (const b of BUILTINS) columns.push({ name: b, cells: builtinCells[b], type: colType(b) });
-  if (opts.includeBody) columns.push({ name: "body", cells: builtinCells.body, type: "string" });
+  // The note body rides in a `note-body` column — the reserved property the writer round-trips.
+  if (opts.includeBody) columns.push({ name: "note-body", cells: builtinCells.body, type: "string" });
 
   for (const key of fmKeys) {
     // Resolve the column's parse shape: a hint (mdbase → obsidian), else the guesser.

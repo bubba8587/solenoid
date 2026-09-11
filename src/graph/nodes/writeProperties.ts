@@ -5,7 +5,7 @@
 // button (armed), gated on hasFs() so the headless `--run` can drive it.
 import { ClassicPreset } from "rete";
 import { cubeIn, frameOut } from "./shared";
-import { planPropertyWrites, propertyPlanFrame, resolveKey, patchFrontmatter, writableKeys, type PlanRow } from "../frontmatterPatch";
+import { planPropertyWrites, propertyPlanFrame, resolveKey, resolveBody, patchFrontmatter, setBody, writableKeys, NOTE_BODY, type PlanRow } from "../frontmatterPatch";
 import { buildBaseView, baseRelPath } from "../baseView";
 import { formatDateSerial } from "./dateSerial";
 import { mdbaseSchemaFor, validateAgainst, parseMdbaseCollection, type MdbaseCollection, type PropConstraint } from "../mdbaseTypes";
@@ -48,7 +48,7 @@ function nowSerial(): number {
 
 export class WritePropertiesNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    rows: "Wiring rows never writes. The write runs only from the Run button, and the node loads disarmed. Needs a `path` column naming each note.",
+    rows: "Wiring rows never writes. The write runs only from the Run button, and the node loads disarmed. Needs a `path` column naming each note; a `note-body` column writes each note's body, every other column its frontmatter.",
     plan: "One row per note × property: path, key, the note's current value, the value to write, and the action. Preview reads the notes to resolve add / update / unchanged / refused.",
   };
   label: string;
@@ -166,6 +166,11 @@ export class WritePropertiesNode extends ClassicPreset.Node {
         try { text = await readVaultFile(this.vault, p); }
         catch { for (const r of rows) { r.action = "unreadable"; r.before = ""; r.reason = undefined; } continue; }
         for (const r of rows) {
+          if (r.key === NOTE_BODY) {
+            const { action, before } = resolveBody(text, r.value as string);
+            r.before = before; r.action = action; r.reason = undefined;
+            continue;
+          }
           const { action, before } = resolveKey(text, r.key, r.value);
           r.before = before;
           r.action = action === "add" && !this.addMissing ? "unchanged" : action;
@@ -207,7 +212,12 @@ export class WritePropertiesNode extends ClassicPreset.Node {
         // Only the rows that would change; a fresh resolve so a stale Preview can't misfire.
         const patch: Record<string, PlanRow["value"]> = {};
         let touched = 0;
+        let newBody: string | null = null;
         for (const r of rows) {
+          if (r.key === NOTE_BODY) {
+            if (resolveBody(text, r.value as string).action === "update") { newBody = r.value as string; touched++; }
+            continue;
+          }
           const { action } = resolveKey(text, r.key, r.value);
           if (action === "refused") continue;
           if (action === "add" && !this.addMissing) continue;
@@ -230,7 +240,8 @@ export class WritePropertiesNode extends ClassicPreset.Node {
           }
         }
         if (touched === 0) continue;
-        const { text: out } = patchFrontmatter(text, patch);
+        let out = Object.keys(patch).length ? patchFrontmatter(text, patch).text : text;
+        if (newBody !== null) out = setBody(out, newBody); // the note-body column → the body
         try {
           await writeTextFilePath(await joinPath(this.vault, ...p.split("/")), out);
           wrote++; changed += touched;

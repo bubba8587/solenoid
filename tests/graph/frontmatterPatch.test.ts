@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { patchFrontmatter, cellToYaml, renderKey, writableKeys, planPropertyWrites, propertyPlanFrame, resolveKey } from "../../src/graph/frontmatterPatch";
+import { patchFrontmatter, cellToYaml, renderKey, writableKeys, planPropertyWrites, propertyPlanFrame, resolveKey, setBody, resolveBody } from "../../src/graph/frontmatterPatch";
 import type { CubeValue } from "../../src/graph/frame";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 import { isFrameValue } from "../../src/graph/frame";
@@ -141,6 +141,34 @@ describe("the write plan", () => {
     const f = propertyPlanFrame(planPropertyWrites(cube, "status", NO_NAMES));
     expect(f.columns.map((c) => c.name)).toEqual(["path", "key", "before", "after", "action"]);
     expect(f.columns.find((c) => c.name === "action")!.values.every((v) => v === "pending")).toBe(true);
+  });
+})
+
+describe("note-body (the reserved body property)", () => {
+  const NOTE = "---\nstatus: active\n---\n\n# Old body\n\ntext";
+  it("setBody replaces the body, keeping the frontmatter block byte-identical", () => {
+    const out = setBody(NOTE, "# New body");
+    expect(out.startsWith("---\nstatus: active\n---")).toBe(true);
+    expect(out).toContain("# New body");
+    expect(out).not.toContain("Old body");
+  });
+  it("setBody on a note with no frontmatter writes just the body", () => {
+    expect(setBody("plain note", "# New")).toBe("# New");
+  });
+  it("resolveBody is unchanged when equal, update when different", () => {
+    expect(resolveBody(NOTE, "# Old body\n\ntext").action).toBe("unchanged");
+    expect(resolveBody(NOTE, "# New").action).toBe("update");
+  });
+  it("note-body is never a frontmatter key; it plans a body row instead", () => {
+    const cube: CubeValue = { __cube: true, depth: 1, columns: [
+      { name: "path", cells: ["Notes/A.md"], type: "string" },
+      { name: "status", cells: ["done"], type: "string" },
+      { name: "note-body", cells: ["# Fresh"], type: "string" },
+    ] };
+    expect(writableKeys(cube, "")).toEqual(["status"]); // note-body out of the frontmatter keys
+    const rows = planPropertyWrites(cube, "", NO_NAMES);
+    expect(rows.find((r) => r.key === "note-body")).toMatchObject({ path: "Notes/A.md", value: "# Fresh" });
+    expect(rows.some((r) => r.key === "status")).toBe(true); // frontmatter still planned
   });
 })
 
