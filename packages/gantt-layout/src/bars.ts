@@ -65,10 +65,10 @@ function barFor(t: GanttTask, row: FrameRow, scale: FrameScale, payload: GanttPa
     base.w = half * 2;
     base.h = half * 2;
   } else if (t.summary) {
-    // A slim bracket bar; progress is not drawn on summaries.
-    const brH = Math.max(4, Math.round(barH * 0.5));
-    base.y = row.y + Math.round((rowH - brH) / 2);
-    base.h = brH;
+    // A bracket: a thin top rail with legs dropping the full bar height at each end (drawn by
+    // the view/serializer). Keep the full height so the legs are unmistakable; no progress fill.
+    base.y = yTop;
+    base.h = barH;
   } else {
     base.progressW = t.complete > 0 ? Math.round(w * Math.min(100, Math.max(0, t.complete)) / 100) : 0;
   }

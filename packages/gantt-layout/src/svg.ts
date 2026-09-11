@@ -41,6 +41,10 @@ export function ganttSvg(payload: GanttPayload, opts: GanttSvgOptions): string {
       `viewBox="0 0 ${opts.width} ${totalH}" font-family="${esc(font)}" font-size="12">`,
   );
   parts.push(`<rect width="${opts.width}" height="${totalH}" fill="${colors.surface}"/>`);
+  parts.push(
+    `<defs><pattern id="gantt-crit-hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">` +
+      `<line x1="0" y1="0" x2="0" y2="5" stroke="rgba(0,0,0,0.32)" stroke-width="1.2"/></pattern></defs>`,
+  );
 
   // ── Timeline group, offset right of the grid pane ──
   parts.push(`<g transform="translate(${gridWidth},0)">`);
@@ -101,6 +105,11 @@ export function ganttSvg(payload: GanttPayload, opts: GanttSvgOptions): string {
       parts.push(`<rect x="${r(bar.x)}" y="${r(y)}" width="${r(bar.w)}" height="${r(bar.h)}" rx="2" fill="${fill}" opacity="${bar.color ? 1 : 0.85}"/>`);
       if (bar.progressW > 0) {
         parts.push(`<rect x="${r(bar.x)}" y="${r(y)}" width="${r(bar.progressW)}" height="${r(bar.h)}" rx="2" fill="${prog}"/>`);
+      }
+      if (bar.critical && !bar.color) {
+        // Non-color cue for the critical path (WCAG 1.4.1): a hatch texture + darker outline.
+        parts.push(`<rect x="${r(bar.x)}" y="${r(y)}" width="${r(bar.w)}" height="${r(bar.h)}" rx="2" fill="url(#gantt-crit-hatch)"/>`);
+        parts.push(`<rect x="${r(bar.x)}" y="${r(y)}" width="${r(bar.w)}" height="${r(bar.h)}" rx="2" fill="none" stroke="${darken(colors.critical, 0.45)}" stroke-width="1"/>`);
       }
       if (bar.violated || bar.late) {
         // Non-color cue (WCAG 1.4.1): a striped hatch overlay + outline for critical/violated.
@@ -189,11 +198,12 @@ function gridPane(
 }
 
 function bracketPath(x: number, y: number, w: number, h: number): string {
-  const cap = Math.min(6, w / 2);
-  // A flat top with legs dropping at each end.
+  // A thin top rail with triangular legs dropping the full height at each end.
+  const rail = 3;
+  const legW = Math.min(8, w / 2);
   return (
-    `M${r(x)} ${r(y)} L${r(x + w)} ${r(y)} L${r(x + w)} ${r(y + h + cap)} L${r(x + w - cap)} ${r(y + h)} ` +
-    `L${r(x + cap)} ${r(y + h)} L${r(x)} ${r(y + h + cap)} Z`
+    `M${r(x)} ${r(y)} L${r(x + w)} ${r(y)} L${r(x + w)} ${r(y + h)} L${r(x + w - legW)} ${r(y + rail)} ` +
+    `L${r(x + legW)} ${r(y + rail)} L${r(x)} ${r(y + h)} Z`
   );
 }
 
@@ -209,13 +219,13 @@ function strokeFor(bar: { violated: boolean }, colors: GanttColors): string {
 
 function colsFor(keys: GanttPayload["view"]["columns"] & {}): GridColumn[] {
   const table: Record<string, GridColumn> = {
-    name: { key: "name", label: "Task", width: 200, align: "left" },
-    start: { key: "start", label: "Start", width: 92, align: "left" },
-    finish: { key: "finish", label: "Finish", width: 92, align: "left" },
-    duration: { key: "duration", label: "Days", width: 56, align: "right" },
-    float: { key: "float", label: "Float", width: 56, align: "right" },
-    complete: { key: "complete", label: "%", width: 44, align: "right" },
-    predecessors: { key: "predecessors", label: "Predecessors", width: 160, align: "left" },
+    name: { key: "name", label: "Task", width: 190, align: "left" },
+    start: { key: "start", label: "Start", width: 86, align: "left" },
+    finish: { key: "finish", label: "Finish", width: 86, align: "left" },
+    duration: { key: "duration", label: "Days", width: 50, align: "right" },
+    float: { key: "float", label: "Float", width: 50, align: "right" },
+    complete: { key: "complete", label: "%", width: 42, align: "right" },
+    predecessors: { key: "predecessors", label: "Predecessors", width: 150, align: "left" },
   };
   const out: GridColumn[] = [];
   for (const k of keys ?? ["name", "start", "finish", "duration"]) {
@@ -228,6 +238,14 @@ function colsFor(keys: GanttPayload["view"]["columns"] & {}): GridColumn[] {
 // Rounding + escaping helpers.
 function r(n: number): number {
   return Math.round(n * 100) / 100;
+}
+/** Scale a #rrggbb toward black by `factor` (0.45 → 45% of the original). Non-hex passes through. */
+function darken(hex: string, factor: number): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => Math.round(c * factor));
+  return `#${ch.map((c) => c.toString(16).padStart(2, "0")).join("")}`;
 }
 function esc(s: string): string {
   return s.replace(/[&<>"]/g, (ch) => (ch === "&" ? "&amp;" : ch === "<" ? "&lt;" : ch === ">" ? "&gt;" : "&quot;"));
