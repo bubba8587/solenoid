@@ -11,7 +11,7 @@
       "y": -217,
       "init": {
         "label": "Remodel (Gantt)",
-        "body": "# When will it be done, and what can't slip?\nThe tasks are a **Cube Input**: each record names the task, its **Duration** in working days, and its **Predecessors** as a list. Open the chip to edit a row, a list, or a nested table in place. A **Schedule** node runs the critical-path method over them.\n\nIt appends **Start · Finish · Float · Critical** to the rows. Float is how many days a task can slip without moving the finish; the tasks with none are the critical path. **Project finish** comes out as its own value, and **Gantt** is Mermaid source the Mermaid node draws. A **Holidays** node feeds the days to skip.\n\nTry it: make Paint take 5 days instead of 2 and watch it join the critical path.",
+        "body": "# When will it be done, and what can't slip?\nThe tasks are a **Cube Input**: each record names the task, its **Duration** in working days, and its **Predecessors** as a list. Open the chip to edit a row, a list, or a nested table in place. A **Schedule** node runs the critical-path method over them.\n\nIt appends **Start \u00c2\u00b7 Finish \u00c2\u00b7 Float \u00c2\u00b7 Critical** to the rows. Float is how many days a task can slip without moving the finish; the tasks with none are the critical path. **Project finish** comes out as its own value, and **Gantt** is Mermaid source the Mermaid node draws. A **Holidays** node feeds the days to skip.\n\nTry it: make Paint take 5 days instead of 2 and watch it join the critical path.",
         "color": "violet",
         "width": 380,
         "height": 270
@@ -149,6 +149,25 @@
         "column0": "Float",
         "value0": "0"
       }
+    },
+    {
+      "id": "ganttFigure",
+      "type": "GanttNode",
+      "x": 426,
+      "y": 620,
+      "init": {
+        "label": "Gantt"
+      }
+    },
+    {
+      "id": "ganttDisplay",
+      "type": "DisplayNode",
+      "x": 430,
+      "y": 920,
+      "size": {
+        "w": 620,
+        "h": 360
+      }
     }
   ],
   "connections": [
@@ -192,6 +211,24 @@
       "source": "critical",
       "sourceOutput": "frame",
       "target": "criticalDisplay",
+      "targetInput": "in"
+    },
+    {
+      "source": "schedule",
+      "sourceOutput": "cube",
+      "target": "ganttFigure",
+      "targetInput": "schedule"
+    },
+    {
+      "source": "holidays",
+      "sourceOutput": "dates",
+      "target": "ganttFigure",
+      "targetInput": "holidays"
+    },
+    {
+      "source": "ganttFigure",
+      "sourceOutput": "chart",
+      "target": "ganttDisplay",
       "targetInput": "in"
     }
   ],
