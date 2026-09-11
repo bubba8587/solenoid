@@ -82,6 +82,22 @@ describe("passthrough color", () => {
   });
 });
 
+describe("duration column", () => {
+  it("shows working days from the payload, not the calendar span", () => {
+    // 12-Feb .. 23-Feb inclusive is 12 calendar days but 8 working days.
+    const t = task({ id: "frontend", start: S(2026, 2, 12), finish: S(2026, 2, 23), duration: 8 });
+    expect(formatCell("duration", t, payload([t]))).toBe("8");
+  });
+  it("falls back to the inclusive calendar span when duration is absent", () => {
+    const t = task({ id: "a", start: S(2026, 2, 12), finish: S(2026, 2, 23) });
+    expect(formatCell("duration", t, payload([t]))).toBe("12");
+  });
+  it("a milestone reads 0", () => {
+    const t = task({ id: "m", start: S(2026, 2, 12), finish: S(2026, 2, 12), milestone: true });
+    expect(formatCell("duration", t, payload([t]))).toBe("0");
+  });
+});
+
 describe("predecessor text column", () => {
   it("shows the payload's predecessorText when the column is requested", () => {
     const t = task({ id: "b", start: S(2026, 9, 10), finish: S(2026, 9, 12) });

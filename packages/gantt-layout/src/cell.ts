@@ -22,7 +22,11 @@ export function formatCell(key: GridColumn["key"], t: GanttTask, payload: GanttP
     case "finish":
       return t.milestone ? formatDate(t.start) : formatDate(t.finish);
     case "duration":
-      return t.milestone ? "0" : String(Math.max(1, Math.floor(t.finish) - Math.floor(t.start) + 1));
+      // Working days (Schedule's Duration / a summary's rolled-up span) when the payload
+      // carries it; the inclusive calendar span is only the fallback.
+      if (t.milestone) return "0";
+      if (t.duration != null) return String(t.duration);
+      return String(Math.max(1, Math.floor(t.finish) - Math.floor(t.start) + 1));
     case "float":
       return t.float == null ? "" : String(t.float);
     case "complete":
