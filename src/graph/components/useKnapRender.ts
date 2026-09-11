@@ -20,7 +20,7 @@ export interface KnapBatch {
  *  variables. Synchronous passthrough for a tag-less body with no batch; otherwise
  *  the last render stays up while the next one settles, so the pane never flashes
  *  empty. `version` re-renders on demand (the graph recomputed the variables). */
-export function useKnapRender(body: string, variables: Record<string, unknown>, version = 0, batch: KnapBatch | null = null): KnapPreview {
+export function useKnapRender(body: string, variables: Record<string, unknown>, version = 0, batch: KnapBatch | null = null, keepUnknown = false): KnapPreview {
   const live = batch !== null || hasKnapSyntax(body);
   const [state, setState] = useState<KnapPreview>({ text: live ? "" : body, errors: "", pages: null });
   useEffect(() => {
@@ -32,9 +32,9 @@ export function useKnapRender(body: string, variables: Record<string, unknown>, 
           errors: knapErrorText(r.errors),
           pages: r.pages,
         }))
-      : renderKnap(body, variables).then((r) => ({ text: r.output, errors: knapErrorText(r.errors), pages: null }));
+      : renderKnap(body, variables, { keepUnknown }).then((r) => ({ text: r.output, errors: knapErrorText(r.errors), pages: null }));
     void run.then((next) => { if (current) setState(next); });
     return () => { current = false; };
-  }, [body, variables, version, live, batch]);
+  }, [body, variables, version, live, batch, keepUnknown]);
   return live ? state : { text: body, errors: "", pages: null };
 }

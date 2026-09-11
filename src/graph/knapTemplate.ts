@@ -187,16 +187,24 @@ export interface KnapRender {
   errors: TemplateError[];
 }
 
-const HOLD = "\u0001";
-const HOLD_RE = /\u0001([A-Za-z_][A-Za-z0-9_]*)\u0001/g;
+const HOLD = "";
+const HOLD_RE = /(\d+)/g;
 
-/** A bare `{{ name }}` whose name is NOT a variable stays literal text through the
- *  render, so a template NOTE reads as a template on the canvas and round-trips to
- *  the vault with its tags intact; only the fields it has fill in. A loop or a
- *  condition on an unknown name still renders empty, as Knap does. */
-function holdUnknownTags(body: string, known: ReadonlySet<string>): string {
-  return body.replace(/\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}\}/g, (tag, name: string) =>
-    known.has(name) ? tag : `${HOLD}${name}${HOLD}`);
+/** An interpolation `{{ … }}` whose ROOT name is NOT a variable stays literal text
+ *  through the render — bare (`{{ x }}`), dotted (`{{ record.name }}`) or filtered
+ *  (`{{ x | upper }}`) alike — so a template NOTE reads as a template on the canvas
+ *  and round-trips to the vault with its tags intact; only the fields it has fill in.
+ *  The whole tag is parked verbatim behind an index sentinel and restored after the
+ *  render. A loop or a condition on an unknown name still renders empty, as Knap does
+ *  (a block region can't be parked without evaluating it). */
+function holdUnknownTags(body: string, known: ReadonlySet<string>): { src: string; held: string[] } {
+  const held: string[] = [];
+  const src = body.replace(/\{\{[\s\S]*?\}\}/g, (tag) => {
+    const root = /^\{\{\s*([A-Za-z_][A-Za-z0-9_]*)/.exec(tag)?.[1];
+    if (!root || known.has(root)) return tag;
+    return `${HOLD}${held.push(tag) - 1}${HOLD}`;
+  });
+  return { src, held };
 }
 
 /** Render a body against its variables. Never throws: a broken template reports
@@ -204,10 +212,13 @@ function holdUnknownTags(body: string, known: ReadonlySet<string>): string {
  *  is the Note's mode (see holdUnknownTags). */
 export async function renderKnap(body: string, variables: Record<string, unknown>, opts?: { keepUnknown?: boolean }): Promise<KnapRender> {
   if (!hasKnapSyntax(body)) return { output: body, errors: [] };
-  const src = opts?.keepUnknown ? holdUnknownTags(body, new Set(Object.keys(variables))) : body;
+  if (!opts?.keepUnknown) {
+    const r = await engine.render(body, { variables });
+    return { output: r.output, errors: r.errors };
+  }
+  const { src, held } = holdUnknownTags(body, new Set(Object.keys(variables)));
   const r = await engine.render(src, { variables });
-  const output = opts?.keepUnknown ? r.output.replace(HOLD_RE, (_m, name: string) => `{{ ${name} }}`) : r.output;
-  return { output, errors: r.errors };
+  return { output: r.output.replace(HOLD_RE, (_m, i: string) => held[Number(i)] ?? ""), errors: r.errors };
 }
 
 export interface KnapPage { name: string; body: string }

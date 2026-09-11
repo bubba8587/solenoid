@@ -194,7 +194,9 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   // The template reads the fields last committed (blur), so the preview follows the
   // YAML edits one commit behind, like the sockets do.
   const templateVars = useMemo(() => data.templateVariables(), [data, fieldsVersion]);
-  const { text: rendered, errors: templateErrors } = useKnapRender(body, templateVars);
+  // keepUnknown: a Note has no inputs, so a tag naming no frontmatter field stays
+  // literal on the card (a template note reads as a template), never rendered empty.
+  const { text: rendered, errors: templateErrors } = useKnapRender(body, templateVars, 0, null, true);
   const renderBody = useMemo(() => parseNoteFrontmatter(rendered).body, [rendered]);
   // NOT trusted content — a body arrives in shared .solenoid files and marked does no
   // sanitizing, so sanitize EVERY render (the CSP is only the second layer).

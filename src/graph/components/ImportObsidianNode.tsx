@@ -142,7 +142,9 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   }, [collapsed, fieldKeys.length, pickerOpen, data.height, data.width, body]);
 
   const templateVars = useMemo(() => data.templateVariables(), [data, body]);
-  const { text: rendered, errors: templateErrors } = useKnapRender(body, templateVars);
+  // keepUnknown: like a Note, an imported note has no inputs, so a tag naming no
+  // frontmatter field stays literal on the card rather than rendering empty.
+  const { text: rendered, errors: templateErrors } = useKnapRender(body, templateVars, 0, null, true);
   const renderBody = useMemo(() => parseNoteFrontmatter(rendered).body, [rendered]);
   const bodyHtml = useMemo(
     () => DOMPurify.sanitize(marked.parse(renderBody || "", { async: false, gfm: true, breaks: true }) as string),

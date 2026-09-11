@@ -111,9 +111,13 @@ describe("renderKnap", () => {
 });
 
 describe("renderKnap keepUnknown (a Note's mode)", () => {
-  it("a bare tag naming no variable stays literal; known ones render; logic on unknowns is Knap's", async () => {
-    const r = await renderKnap("# {{ title }} for {{ person }}{% if person %} yes{% endif %} {{ person | upper }}", { title: "T" }, { keepUnknown: true });
-    expect(r.output).toBe("# T for {{ person }}"); // the endif eats the space after it
+  it("a tag naming no variable stays literal — bare, dotted, or filtered — while known ones render", async () => {
+    const r = await renderKnap("{{ title }} / {{ person }} / {{ person | upper }} / {{ record.name }}", { title: "T" }, { keepUnknown: true });
+    expect(r.output).toBe("T / {{ person }} / {{ person | upper }} / {{ record.name }}");
+  });
+  it("a block over an unknown name still renders empty, as Knap does", async () => {
+    const r = await renderKnap("a{% if person %}X{% endif %}b", {}, { keepUnknown: true });
+    expect(r.output).toBe("ab");
   });
 });
 
