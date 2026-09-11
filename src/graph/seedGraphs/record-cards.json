@@ -52,7 +52,7 @@
       "y": -677,
       "init": {
         "label": "Spec sheet",
-        "body": "# Spec sheet\nThe current part, embedded straight from the card's chart output:\n\n`=part`\n",
+        "body": "# Spec sheet\nThe current part, embedded straight from the card's chart output:\n\n{{ part }}\n",
         "color": "sky",
         "width": 300,
         "height": 120

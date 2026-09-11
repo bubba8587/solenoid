@@ -10,6 +10,8 @@ import { SwatchGrid } from "./SwatchGrid";
 import { NodeSocket } from "./NodeSocket";
 import { FieldRow } from "./NoteNode";
 import { useDismissOnOutside } from "./useDismissOnOutside";
+import { useKnapRender } from "./useKnapRender";
+import { parseNoteFrontmatter } from "../noteFrontmatter";
 import { useEditableLabel } from "./inlineInput";
 import { isDesktop, listVaultMarkdownFiles, readVaultFile, openExternal } from "../fileBridge";
 import { obsidianOpenUrl } from "../obsidianLinks";
@@ -139,9 +141,12 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     setDocDotTop(y + bodyEl.offsetHeight / 2 - 6);
   }, [collapsed, fieldKeys.length, pickerOpen, data.height, data.width, body]);
 
+  const templateVars = useMemo(() => data.templateVariables(), [data, body]);
+  const { text: rendered, errors: templateErrors } = useKnapRender(body, templateVars);
+  const renderBody = useMemo(() => parseNoteFrontmatter(rendered).body, [rendered]);
   const bodyHtml = useMemo(
-    () => DOMPurify.sanitize(marked.parse(data.renderBody || "", { async: false, gfm: true, breaks: true }) as string),
-    [body], // eslint-disable-line react-hooks/exhaustive-deps
+    () => DOMPurify.sanitize(marked.parse(renderBody || "", { async: false, gfm: true, breaks: true }) as string),
+    [renderBody],
   );
 
   const mode = appThemeStore.getMode();
@@ -317,7 +322,9 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
 
       {!collapsed && !pickerOpen && (
         <div ref={bodyRef} className="solenoid-note__content">
-          {data.renderBody.trim() ? (
+          {templateErrors ? (
+            <pre className="solenoid-note__rendered solenoid-note__template-error" onPointerDown={stopDragStart} onMouseDown={stopDragStart}>{templateErrors}</pre>
+          ) : renderBody.trim() ? (
             <div
               className="solenoid-note__rendered sol-md nowheel"
               onPointerDown={stopDragStart}

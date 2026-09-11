@@ -440,7 +440,7 @@ fc("fc-d-bspent", "d-bud-spent", "currency_usd", GRP_DASH);
 fc("fc-d-bbud", "d-bud-bud", "currency_usd", GRP_DASH);
 
 // ─── I · Advisor report (live prose over the whole graph) ───────────────────────
-// A Report that reads like a financial advisor's letter. Scalar `=refs` are wired
+// A Report that reads like a financial advisor's letter. Bare `{{ name }}` embeds are wired
 // from the DASHBOARD's Format Controllers (an FC's `out` carries the value plus
 // its $/% annotation, so the ref renders formatted); charts embed from the
 // existing Chart/Sparkline nodes. The verdict WORDS are computed in-graph: a
@@ -449,34 +449,34 @@ fc("fc-d-bbud", "d-bud-bud", "currency_usd", GRP_DASH);
 // TUNED frame, fresh space right of the Dashboard (its box ends x≈4307).
 note("note-advisor", 4460, -940,
   "10 · The advisor's letter",
-  "# Prose that recomputes\nThe **Report** pulls live values through `` `=name` `` refs — dollars arrive through the dashboard's **Format Controllers** (so they read $1,234, not 1234.5678), charts embed as figures. Each verdict word is a tiny circuit: **Compare → IF → two Text nodes**. Drag a slider and the letter changes its mind.",
+  "# Prose that recomputes\nThe **Report** is a Knap template: a bare `{{ name }}` pulls the live value in, and dollars arrive through the dashboard's **Format Controllers** (so they read $1,234, not 1234.5678), charts embed as figures. Each verdict word is a tiny circuit: **Compare → IF → two Text nodes**. Drag a slider and the letter changes its mind.",
   "sky", 420, 220);
 const REPORT_BODY = [
   "# The advisor's letter",
   "",
-  "You brought in **`=income`** this quarter and let **`=outflow`** back out, leaving **`=net`** to put to work. Your savings rate is `=savingsRate!` — `=rateWord!` against the target you set.",
+  "You brought in **{{ income }}** this quarter and let **{{ outflow }}** back out, leaving **{{ net }}** to put to work. Your savings rate is {{ savingsRate | highlight }} — {{ rateWord | highlight }} against the target you set.",
   "",
-  "`=spendChart`",
+  "{{ spendChart }}",
   "",
   "## Net worth",
   "",
-  "Assets minus debts puts you at **`=netWorth`** today.",
+  "Assets minus debts puts you at **{{ netWorth }}** today.",
   "",
-  "`=classChart`",
+  "{{ classChart }}",
   "",
   "## Retirement",
   "",
-  "Keep contributing at today's pace and the nest egg reaches **`=nestEgg`** — `=projWord!` your target.",
+  "Keep contributing at today's pace and the nest egg reaches **{{ nestEgg }}** — {{ projWord | highlight }} your target.",
   "",
-  "`=growthChart`",
+  "{{ growthChart }}",
   "",
   "## The house",
   "",
-  "The mortgage costs **`=payment`** a month, which `=mortWord!` the 28%-of-take-home guideline. Carried to term, the interest alone comes to **`=interest`**.",
+  "The mortgage costs **{{ payment }}** a month, which {{ mortWord | highlight }} the 28%-of-take-home guideline. Carried to term, the interest alone comes to **{{ interest }}**.",
   "",
   "## Groceries",
   "",
-  "**`=spent`** spent against a **`=budget`** budget for the quarter — you're `=budgetWord!` so far.",
+  "**{{ spent }}** spent against a **{{ budget }}** budget for the quarter — you're {{ budgetWord | highlight }} so far.",
   "",
   "*Move any slider and this letter rewrites itself.*",
 ].join("\n");

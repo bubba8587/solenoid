@@ -101,10 +101,12 @@ export interface WriteVaultOptions {
 }
 
 export interface WriteVaultResult {
-  /** The written note's vault-relative path. */
+  /** The written note's vault-relative path (a batch's FIRST page). */
   file: string;
   /** How many image assets were written. */
   assets: number;
+  /** How many notes a batch document wrote (1 for a single document). */
+  pages: number;
 }
 
 /** Desktop only — THROWS off-desktop (the node guards first); overwrites an existing
@@ -122,7 +124,10 @@ export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultO
   const assetDir = assetParts.length ? await joinPath(opts.vault, ...assetParts) : noteDir;
 
   let assetCount = 0;
-  const base = sanitizeName(opts.name) || "note";
+  // A batch document writes one note per page, each named by its page; a single
+  // document writes under the sink's name.
+  const pages = doc.pages?.length ? doc.pages : [{ name: opts.name, body: doc.body }];
+  let base = sanitizeName(opts.name) || "note";
 
   // Returns the Obsidian embed token, which resolves by FILENAME across the vault.
   async function writeAsset(refName: string, bytes: Uint8Array, ext: string): Promise<string> {
@@ -155,15 +160,19 @@ export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultO
     return writeAsset(name, bytes, "png");
   }
 
-  const md = await assembleDocumentMarkdown(doc, resolveRef);
-  const notePath = await joinPath(noteDir, `${base}.md`);
   const mode = opts.mode ?? "overwrite";
-  let existing: string | null = null;
-  if (mode !== "overwrite") {
-    try { existing = await readTextFilePath(notePath); } catch { existing = null; }
+  let first = "";
+  for (const page of pages) {
+    base = sanitizeName(page.name) || "note";
+    const md = await assembleDocumentMarkdown({ ...doc, body: page.body }, resolveRef);
+    const notePath = await joinPath(noteDir, `${base}.md`);
+    let existing: string | null = null;
+    if (mode !== "overwrite") {
+      try { existing = await readTextFilePath(notePath); } catch { existing = null; }
+    }
+    await writeTextFilePath(notePath, mergeNoteText(existing, md, mode, opts.blockName ?? "Solenoid"));
+    const rel = subParts.length ? `${subParts.join("/")}/${base}.md` : `${base}.md`;
+    if (!first) first = rel;
   }
-  await writeTextFilePath(notePath, mergeNoteText(existing, md, mode, opts.blockName ?? "Solenoid"));
-
-  const rel = subParts.length ? `${subParts.join("/")}/${base}.md` : `${base}.md`;
-  return { file: rel, assets: assetCount };
+  return { file: first, assets: assetCount, pages: pages.length };
 }

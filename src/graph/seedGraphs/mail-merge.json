@@ -1,0 +1,179 @@
+{
+  "v": 2,
+  "order": 425,
+  "label": "Mail merge",
+  "group": "Charts & reports",
+  "nodes": [
+    {
+      "id": "note-intro",
+      "type": "NoteNode",
+      "x": -40,
+      "y": -420,
+      "init": {
+        "label": "Mail merge",
+        "body": "# One letter per person\n\nA **Note** is the letter template: its `{{ tags }}` stay literal on the card, and its frontmatter (subject, treasurer) fills in as defaults.\n\nWire it into a **Report**'s **Template** socket and the tags become the report's inputs. Wire the ledger into **Rows** and the report renders one page per row, with `row` and `index` in scope; the page name (`{{ record.Name }}`) names each note.\n\n**Write to Obsidian** then writes one note per page: arm it and press Run.",
+        "color": "amber",
+        "width": 520,
+        "height": 190
+      }
+    },
+    {
+      "id": "ledger",
+      "type": "FrameInputNode",
+      "x": -40,
+      "y": -160,
+      "init": {
+        "label": "Trip ledger",
+        "frameText": "[{\"name\": \"Name\", \"type\": \"string\", \"values\": [\"Ada\", \"Bob\", \"Cy\", \"Dee\"]}, {\"name\": \"Paid\", \"type\": \"number\", \"values\": [120, 40, 0, 80]}, {\"name\": \"Email\", \"type\": \"string\", \"values\": [\"ada@example.com\", \"bob@example.com\", \"cy@example.com\", \"dee@example.com\"]}]"
+      }
+    },
+    {
+      "id": "paid",
+      "type": "GetColumnNode",
+      "x": 330,
+      "y": -160,
+      "init": {
+        "label": "Paid column"
+      },
+      "stringLiterals": {
+        "name": "Paid"
+      }
+    },
+    {
+      "id": "total",
+      "type": "AggregateNode",
+      "x": 600,
+      "y": -200,
+      "init": {
+        "label": "Trip total",
+        "op": "sum"
+      }
+    },
+    {
+      "id": "count",
+      "type": "AggregateNode",
+      "x": 600,
+      "y": -60,
+      "init": {
+        "label": "Travelers",
+        "op": "count"
+      }
+    },
+    {
+      "id": "share",
+      "type": "ArithmeticNode",
+      "x": 860,
+      "y": -130,
+      "init": {
+        "label": "Fair share",
+        "op": "div"
+      }
+    },
+    {
+      "id": "letter",
+      "type": "NoteNode",
+      "x": -40,
+      "y": 120,
+      "init": {
+        "label": "Letter template",
+        "body": "---\nsubject: Trip settle-up\ntreasurer: Ada\n---\n# {{ subject }}: {{ record.Name }}\n\nHi {{ record.Name }},\n\nThe trip cost **{{ total }}** between {{ records | length }} of us, so a fair share is **{{ share | number_format:2 }}**. You paid **{{ record.Paid }}**.\n\n{% if record.Paid > share %}You paid more than your share; {{ treasurer }} will send the difference back.\n{% elseif record.Paid < share %}Please send **{{ share | number_format:2 }}** less what you paid to {{ treasurer }}.\n{% else %}You are exactly square.\n{% endif %}\nPaid so far, most first: {{ records | sort:(\"Paid\",\"desc\") | map:x => x.Name | join:\", \" }}. {% set stragglers = records | where:(\"Paid\", 0) | map:x => x.Name | join:\", \" %}{% if stragglers %}Still to chip in: {{ stragglers }}.{% endif %}\n\nReply to {{ record.Email }} if a number looks off.\n\n*Letter {{ index }} of {{ records | length }}, generated from the ledger.*\n",
+        "color": "slate",
+        "width": 520,
+        "height": 330
+      }
+    },
+    {
+      "id": "report",
+      "type": "ReportNode",
+      "x": 860,
+      "y": 140,
+      "init": {
+        "label": "Settle-up letters",
+        "body": "",
+        "color": "sky",
+        "width": 260,
+        "height": 120,
+        "sideVars": [
+          "subject",
+          "total",
+          "share",
+          "treasurer"
+        ],
+        "pageName": "Settle-up {{ record.Name }}"
+      }
+    },
+    {
+      "id": "write",
+      "type": "WriteObsidianNode",
+      "x": 1240,
+      "y": 140,
+      "init": {
+        "label": "Write letters",
+        "fileName": "",
+        "subfolder": "Trip letters"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "ledger",
+      "sourceOutput": "frame",
+      "target": "paid",
+      "targetInput": "frame"
+    },
+    {
+      "source": "paid",
+      "sourceOutput": "values",
+      "target": "total",
+      "targetInput": "list"
+    },
+    {
+      "source": "paid",
+      "sourceOutput": "values",
+      "target": "count",
+      "targetInput": "list"
+    },
+    {
+      "source": "total",
+      "sourceOutput": "result",
+      "target": "share",
+      "targetInput": "a"
+    },
+    {
+      "source": "count",
+      "sourceOutput": "result",
+      "target": "share",
+      "targetInput": "b"
+    },
+    {
+      "source": "letter",
+      "sourceOutput": "document",
+      "target": "report",
+      "targetInput": "template"
+    },
+    {
+      "source": "ledger",
+      "sourceOutput": "frame",
+      "target": "report",
+      "targetInput": "records"
+    },
+    {
+      "source": "total",
+      "sourceOutput": "result",
+      "target": "report",
+      "targetInput": "total"
+    },
+    {
+      "source": "share",
+      "sourceOutput": "result",
+      "target": "report",
+      "targetInput": "share"
+    },
+    {
+      "source": "report",
+      "sourceOutput": "document",
+      "target": "write",
+      "targetInput": "in"
+    }
+  ]
+}

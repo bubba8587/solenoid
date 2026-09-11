@@ -134,7 +134,8 @@ src/
 | `fileSession.ts` | Disk save/open: native dialogs on desktop, download / file-input on web; a path-bound doc saves through documentStore |
 | `saveTimeStore.ts` | The save-clock read seam (per-doc autosave + file-save stamps) documentStore injects, since node classes can't import it |
 | `noteFrontmatterSync.ts` | THE one cable-drop for cables stranded by a frontmatter re-sync (Note on-blur commit + Import file-load share it) |
-| `noteInlineRefs.ts` | Note-body `` `=name` `` refs → minted INPUT sockets (Expression's identifier grammar; trailing `!` is display-only) |
+| `noteInlineRefs.ts` | The INTERNAL `` `=name` `` ref span (Expression's identifier grammar; trailing `!` is display-only tinting). Nobody types it: the Report's render emits it for a bare `{{ name }}` |
+| `knapTemplate.ts` | Knap (knap.md) IS the Note/Report body syntax: `hasKnapSyntax` gates the async render, `extractKnapVariables` walks the AST for the ROOT names a Report mints as inputs, `embedBareVariables` rewrites a bare `{{ input }}` to the ref span so it embeds by kind, `toTemplateValue` flattens frames/cubes to rows and date serials to ISO text by SOURCE socket type, `renderKnap` wraps the `knap` engine (standard filters) |
 | `reportStore.ts` + `reportExport.ts` | Report chrome seam (open/docked state) and the static HTML export (document-valued refs render as embed blocks) |
 
 ### Typing / sockets / units
@@ -335,7 +336,10 @@ One file per family, pure `data()` classes: `scalar`, `list`, `listOps`,
 `display`, `group`, `conduit` (block bundler), `formatController`, `composite`,
 `annotation` (Note — its body's YAML frontmatter becomes typed OUTPUT sockets,
 parsed by `noteFrontmatter.ts`), `report` (Report — plain-markdown sink with
-`` `=name` `` inline embeds; the mirror-image counterpart to Note), `visual`
+Knap template body whose root variables mint inputs and whose bare `{{ name }}`
+embeds by kind, with a fixed Template input (a wired Note as the text) and Records
+input (a mail merge, one page per row); the mirror-image counterpart to Note — both render
+through `knapTemplate.ts`, async only when a tag is left for the engine), `visual`
 (the figure family incl. Mermaid), `surfaceFit`, `presentation`, `tornado`,
 `quality` (Expect — data-quality checks, frame-cell-aware), `sink` (Write
 CSV/JSON), `obsidian`, `dataFeed`, `history`, `chartOptions`, `cast`,

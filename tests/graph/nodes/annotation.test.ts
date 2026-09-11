@@ -12,16 +12,16 @@ const typeOf = (n: NoteNode, key: string) => {
 };
 
 describe("NoteNode frontmatter outputs", () => {
-  it("a plain note has no FRONTMATTER outputs — just the fixed `document` output", () => {
+  it("a plain note has no FRONTMATTER outputs — just the fixed `document` output", async () => {
     const n = new NoteNode({ body: "just a sticky note" });
     expect(n.fieldKeys()).toEqual([]);
     expect(Object.keys(n.outputs)).toEqual(["document"]);
     expect(n.fieldValues()).toEqual({});             // no frontmatter fields
-    expect(isDocumentValue(n.data().document)).toBe(true); // the whole-note document value
+    expect(isDocumentValue((await n.data()).document)).toBe(true); // the whole-note document value
     expect(n.renderBody).toBe("just a sticky note");
   });
 
-  it("builds typed outputs from frontmatter and emits values via data()", () => {
+  it("builds typed outputs from frontmatter and emits values via data()", async () => {
     const n = new NoteNode({
       body: ["---", "title: Budget", "count: 42", "active: true", "due: 2026-03-01", "tags: [a, b]", "---", "# Body"].join("\n"),
     });
@@ -39,7 +39,7 @@ describe("NoteNode frontmatter outputs", () => {
       due: Math.round(parseDateToSerial("2026-03-01")),
       tags: ["a", "b"],
     });
-    expect(isDocumentValue(n.data().document)).toBe(true);
+    expect(isDocumentValue((await n.data()).document)).toBe(true);
     expect(n.renderBody).toBe("# Body");
   });
 
@@ -190,5 +190,31 @@ describe("toggleTaskMarker — checkable task-list boxes", () => {
   it("leaves the body unchanged when the index is out of range", () => {
     const body = "- [ ] only";
     expect(toggleTaskMarker(body, 5)).toBe(body);
+  });
+});
+
+describe("NoteNode — Knap template over its own frontmatter", () => {
+  it("renders {{ field }} from the block above; dates read as ISO; the document carries the render", async () => {
+    const n = new NoteNode({
+      body: ["---", "title: Budget", "due: 2026-03-01", "tags: [a, b]", "---", "# {{ title }}", "Due {{ due | date:\"D MMM\" }}: {{ tags | join:\", \" }}"].join("\n"),
+    });
+    expect(n.templateVariables()).toEqual({ title: "Budget", due: "2026-03-01", tags: ["a", "b"] });
+    const out = await n.data();
+    expect(out.title).toBe("Budget"); // the typed outputs are untouched
+    const doc = out.document;
+    expect(isDocumentValue(doc)).toBe(true);
+    expect((doc as { body: string }).body).toBe("---\ntitle: Budget\ndue: 2026-03-01\ntags: [a, b]\n---\n# Budget\nDue 1 Mar: a, b");
+  });
+  it("a tag-less note stays synchronous", () => {
+    expect(new NoteNode({ body: "plain" }).data() instanceof Promise).toBe(false);
+  });
+});
+
+describe("NoteNode — a template note", () => {
+  it("keeps a tag naming no field literal (a template reads as a template), and carries its raw source", async () => {
+    const n = new NoteNode({ body: "---\ntitle: Letter\n---\nDear {{ person }}, re {{ title }}" });
+    const doc = (await n.data()).document as { body: string; source?: string };
+    expect(doc.body).toBe("---\ntitle: Letter\n---\nDear {{ person }}, re Letter");
+    expect(doc.source).toBe("---\ntitle: Letter\n---\nDear {{ person }}, re {{ title }}");
   });
 });

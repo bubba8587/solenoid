@@ -463,3 +463,12 @@
   border-color: color-mix(in srgb, var(--node-accent) var(--mix-ring), var(--ring-into));
   box-shadow: 0 6px 16px color-mix(in srgb, var(--node-accent) var(--mix-glow), transparent);
 }
+
+/* A template that failed to render: the error lines replace the body until fixed. */
+.solenoid-note__template-error {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  color: var(--sol-error);
+}

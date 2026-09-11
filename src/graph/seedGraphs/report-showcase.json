@@ -98,7 +98,7 @@
       "y": -102,
       "init": {
         "label": "Quarterly review",
-        "body": "# Quarterly review\n\nTotal bookings came to **`=total`** units across the six-month period, drawn from the source ledger:\n\n`=table`\n\nPlotted month over month:\n\n`=fig`\n\nBookings climbed steadily, with a soft patch in month 3.\n\n## Forecast\n\nWe project month *t* forward from the latest run-rate using compound growth:\n\n`=model`\n\n## How the numbers flow\n\n`=flow`\n\n`=Methodology`\n\n*Draft — figures subject to revision.*"
+        "body": "# Quarterly review\n\nTotal bookings came to **{{ total }}** units across the six-month period, drawn from the source ledger:\n\n{{ table }}\n\nPlotted month over month:\n\n{{ fig }}\n\nThe top three months, sorted and sliced from the same frame:\n\n{{ table | sort:(\"Bookings\",\"desc\") | slice:0,3 | map:x => x.Month | list:\"numbered\" }}\n\nThe whole ledger, best month first, and it sums to {{ table | sum:\"Bookings\" }} either way:\n\n{% for r in table | sort:(\"Bookings\",\"desc\") %}- {{ r.Month }}: {{ r.Bookings }} bookings\n{% endfor %}\n\nBookings climbed steadily, with a soft patch in month 3.\n\n## Forecast\n\nWe project month *t* forward from the latest run-rate using compound growth:\n\n{{ model }}\n\n## How the numbers flow\n\n{{ flow }}\n\n{{ Methodology }}\n\n*Draft — figures subject to revision.*"
       }
     },
     {

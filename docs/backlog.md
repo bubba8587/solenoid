@@ -78,6 +78,22 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 - [ ] **Frame-only verbs over a cube** (fe): Window / GROUPBY / Chart's frame input still refuse a
   live `cube`, so charting or smoothing a Vault Folder needs a cube→frame step (A′ extended, or a
   Cube → Frame node). Today the `daily-habits` seed runs its Window on a snapshot for this reason.
+- [ ] **Write mega-merge** (author 2026-09-10, maximalMerge): Write File + Write to Obsidian as
+  ONE sink with a target selector (file / vault), formats as arguments (CSV, JSON, Markdown),
+  and the merge-to-folder behavior (`ec715ed` built it on Write File: a document input, one
+  `.md` per page into the path as a folder, a frame under MD as a pipe table; backed out
+  pending the merge). Write Tasks / Write Properties are candidates for the same card.
+- [ ] **Knap eyeball pass** (author): the overlay's highlighted source pane (alignment, scroll,
+  mobile), the page stepper and Filters popover, the Report card's Template/Records rows, a
+  wired template Note changing its tags, Write to Obsidian writing a batch on desktop. The
+  dev-notes 09-10 "holes at close" bullet is the checklist.
+- [ ] **Knap help page** (`src/graph/help/`, DESIGN § 7): the syntax, the bare-tag rule, the
+  Template/Records inputs, the `{{ "{" }}{ x }}` escape, the upstream gotchas a user will hit.
+- [ ] **Batch cap surfaced**: `MAX_PAGES` truncates silently; the overlay stepper and the sink
+  status should say "500 of N".
+- [ ] **File the Knap upstream PRs** (`knap-upstream.md`): the typed-value bug first (its three
+  repros), then whitespace control, filters in comparisons, the `sort` validator; the API
+  asks as issues. Retire the noted workarounds as each lands.
 - [ ] **Author's desktop eyeball** of the flagship cards against `demo-vault/` (Settings ▸ Obsidian
   → the repo's demo-vault): Vault Folder (be's ten-step checklist in the 09-07 digest), Write
   Properties Preview/Run on a copy, TaskNotes with the plugin's API on, Write to Obsidian block mode
