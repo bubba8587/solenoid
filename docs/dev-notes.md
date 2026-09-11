@@ -28,10 +28,19 @@ emit are now values you can wire back into the writers and importer.
   the resolved values. (The status count reads 48×44 = the cube's rows×cols; no bug.)
 - Verified headless against `demo-vault/` (`run-graph-vault.test.ts`: a wired path loads a note,
   a wired folder scopes the read) and on the live desktop app.
-- **Open (author calls, `backlog.md`):** TaskNotes read node overlaps Vault Folder for the common
-  case (only recurrence / time-totals / remapped-fields / write-back need the HTTP API); the
-  per-node vault chip vs the global setting is two ways to set one thing; Knap as the way to drive
-  dynamic write paths / content is parked.
+**Follow-on (author calls, same day):**
+- **`note-body`** is the reserved property that round-trips a note's body: Vault Folder's
+  include-body column is `note-body` (was `body`), and Write Properties writes a `note-body` cube
+  column as each note's BODY, every other column its frontmatter (`frontmatterPatch.ts`
+  `setBody`/`resolveBody`, the block stays byte-identical; `writeProperties.ts` preview/run).
+- **Single vault** (`singleVaultFromSetting`): Vault Folder + Write Properties dropped the per-node
+  vault chip/chooser (never persisted anyway) and read the app-wide `obsidianVault` setting.
+- **Name-resolving Import:** a wired `path` resolves a bare note name the way Obsidian resolves
+  `[[Name]]` — a full vault-relative path matches directly, else the basename, case-insensitive.
+- **Open:** the WRITER MERGE (auto-select-by-input sink + a dropdown override; note-body + a
+  document Preview ride in) — shape to confirm with the author. TaskNotes read overlaps Vault
+  Folder (recurrence / time / remapped fields / write-back are the API's only edge). Daily notes:
+  retain, not necessarily a node — still thinking. Knap for dynamic write paths parked.
 
 ### SESSION DIGEST (2026-09-11 — Report card rebuilt as a standard node; Note holds Knap tags literal)
 
