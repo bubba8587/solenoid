@@ -4,6 +4,7 @@
 import type { GanttPayload, GanttTask } from "./payload";
 import type { GridColumn } from "./frame";
 import { civilFromSerial, MONTH_NAMES } from "./serial";
+import { drawnLastDay } from "./scale";
 
 /** Format a whole-day serial as DD-MMM-YYYY (the app's DEFAULT_DATE_FORMAT). */
 export function formatDate(serial: number): string {
@@ -20,13 +21,14 @@ export function formatCell(key: GridColumn["key"], t: GanttTask, payload: GanttP
     case "start":
       return formatDate(t.start);
     case "finish":
-      return t.milestone ? formatDate(t.start) : formatDate(t.finish);
+      // The displayed Finish day (Minutes mode moves a midnight finish to the previous day).
+      return t.milestone ? formatDate(t.start) : formatDate(drawnLastDay(t.finish, payload.view.minutes));
     case "duration":
       // Working days (Schedule's Duration / a summary's rolled-up span) when the payload
       // carries it; the inclusive calendar span is only the fallback.
       if (t.milestone) return "0";
       if (t.duration != null) return String(t.duration);
-      return String(Math.max(1, Math.floor(t.finish) - Math.floor(t.start) + 1));
+      return String(Math.max(1, drawnLastDay(t.finish, payload.view.minutes) - Math.floor(t.start) + 1));
     case "float":
       return t.float == null ? "" : String(t.float);
     case "complete":

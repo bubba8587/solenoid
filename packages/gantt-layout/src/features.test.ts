@@ -113,6 +113,35 @@ describe("split bars (out-of-sequence progress)", () => {
   });
 });
 
+describe("minutes mode: a midnight finish draws on the previous day (§ 6.5)", () => {
+  const win = { window: [S(2026, 9, 6), S(2026, 9, 13)] as [number, number] };
+  const edge = (frame: ReturnType<typeof layoutGantt>, serial: number) => (serial - frame.scale.from) * frame.scale.pxPerDay;
+
+  it("Days mode: finish is the inclusive whole day", () => {
+    const t = task({ id: "a", start: S(2026, 9, 7), finish: S(2026, 9, 11) });
+    const p = payload([t], win);
+    const frame = layoutGantt(p, { width: 700 });
+    expect(frame.bars[0].x + frame.bars[0].w).toBeCloseTo(edge(frame, S(2026, 9, 12)), 3);
+    expect(formatCell("finish", t, p)).toBe("11-Sep-2026");
+  });
+
+  it("Minutes mode: a whole-day (midnight) finish draws through the previous day", () => {
+    const t = task({ id: "a", start: S(2026, 9, 7), finish: S(2026, 9, 11) });
+    const p = payload([t], { minutes: true, ...win });
+    const frame = layoutGantt(p, { width: 700 });
+    expect(frame.bars[0].x + frame.bars[0].w).toBeCloseTo(edge(frame, S(2026, 9, 11)), 3);
+    expect(formatCell("finish", t, p)).toBe("10-Sep-2026");
+  });
+
+  it("Minutes mode: an intra-day finish (17:00) stays on its own day", () => {
+    const t = task({ id: "a", start: S(2026, 9, 7), finish: S(2026, 9, 11) + 17 / 24 });
+    const p = payload([t], { minutes: true, ...win });
+    const frame = layoutGantt(p, { width: 700 });
+    expect(frame.bars[0].x + frame.bars[0].w).toBeCloseTo(edge(frame, S(2026, 9, 12)), 3);
+    expect(formatCell("finish", t, p)).toBe("11-Sep-2026");
+  });
+});
+
 describe("duration column", () => {
   it("shows working days from the payload, not the calendar span", () => {
     // 12-Feb .. 23-Feb inclusive is 12 calendar days but 8 working days.

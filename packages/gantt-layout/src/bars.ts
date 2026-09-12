@@ -4,7 +4,7 @@
 
 import type { GanttPayload, GanttTask } from "./payload";
 import type { FrameRow, FrameBar, FrameScale } from "./frame";
-import { xOf } from "./scale";
+import { xOf, drawnLastDay } from "./scale";
 
 /** Bar height as a fraction of the row, leaving a gap above and below. */
 const BAR_FRACTION = 0.52;
@@ -36,8 +36,9 @@ function barFor(t: GanttTask, row: FrameRow, scale: FrameScale, payload: GanttPa
   const barH = Math.round(rowH * BAR_FRACTION);
   const yTop = row.y + Math.round((rowH - barH) / 2);
 
+  const minutes = payload.view.minutes;
   const startX = xOf(t.start, scale);
-  const endX = xOf(t.finish + 1, scale); // inclusive finish → exclusive draw edge
+  const endX = xOf(drawnLastDay(t.finish, minutes) + 1, scale); // inclusive finish → exclusive draw edge
   const w = Math.max(endX - startX, 1);
 
   const base: FrameBar = {
@@ -74,7 +75,7 @@ function barFor(t: GanttTask, row: FrameRow, scale: FrameScale, payload: GanttPa
     // separate progress overlay (the split itself conveys the actual/remaining parts).
     base.segments = t.segments.map(([s, f]) => {
       const sx = xOf(s, scale);
-      const ex = xOf(f + 1, scale);
+      const ex = xOf(drawnLastDay(f, minutes) + 1, scale);
       return { x: sx, w: Math.max(ex - sx, 1) };
     });
     base.progressW = 0;
