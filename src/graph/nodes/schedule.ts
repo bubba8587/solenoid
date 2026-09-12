@@ -14,6 +14,12 @@ import type { Shape } from "../frameShape";
 
 export type ScheduleMode = "working" | "calendar";
 export type SchedulePrecision = "days" | "minutes";
+export type ScheduleCriticalPaths = "one" | "many";
+
+export const SCHEDULE_CRITICAL_OPTIONS: ReadonlyArray<{ value: ScheduleCriticalPaths; label: string; title: string }> = [
+  { value: "one",  label: "One path",   title: "Float is measured against the project finish, so only the chain that drives it is critical" },
+  { value: "many", label: "Every path", title: "Every independent chain is critical on its own, each measured against its own last task" },
+];
 
 export const SCHEDULE_PRECISION_OPTIONS: ReadonlyArray<{ value: SchedulePrecision; label: string; title: string }> = [
   { value: "days",    label: "Days",    title: "Whole working days: a task that follows another starts the next working day" },
@@ -39,7 +45,7 @@ export class ScheduleNode extends ClassicPreset.Node {
     weekend_code: "Excel's WORKDAY.INTL codes: 1 = Sat+Sun, 2 = Sun+Mon, … 7 = Fri+Sat; 11–17 = a single day off.",
     status: "The day progress is measured on. With it set, the unfinished part of a started task is scheduled after this day. Unwired, Complete only fills the bars.",
     hours: "Hours in a working day: converts a Duration column in hours, and in Minutes mode is the length of the working day, which starts at 08:00.",
-    cube: "The rows in their original order with Start, Finish, Float, Critical, Free Float, the early and late dates, Driving and Late appended. Float is how many days a task can slip without moving the finish, Critical marks the tasks whose float is 0, and Driving names the predecessor that set the start.",
+    cube: "The rows in their original order with Start, Finish, Float, Critical, Free Float, the early and late dates, Driving and Late appended. Float is how many days a task can slip without moving the finish, Critical marks the tasks whose float is 0, and Driving names the predecessor that set the start. One path measures float against the project finish; Every path marks each independent chain critical on its own.",
     finish: "The last finish.",
     diagnostics: "One row per finding, under plain names: tasks with no predecessor or successor, negative float, a typed start that held, leads and lags, long tasks, work that should have started.",
     gantt: "Mermaid gantt source for the schedule: a Mermaid node draws it, and a Report or Write to Obsidian embeds it as a fence.",
@@ -48,6 +54,7 @@ export class ScheduleNode extends ClassicPreset.Node {
   label: string;
   mode: ScheduleMode;
   precision: SchedulePrecision;
+  criticalPaths: ScheduleCriticalPaths;
   literals: Record<string, number> = { weekend_code: 1, hours: 8 };
   stringLiterals: Record<string, string> = {}; // holidays: typeable datelist CSV
   cachedResult: CubeValue | SolError | null = null;
@@ -63,11 +70,12 @@ export class ScheduleNode extends ClassicPreset.Node {
     return { columns: [{ name: "Check", type: "string" }, { name: "Task", type: "string" }, { name: "Detail", type: "string" }] };
   }
 
-  constructor(init?: { label?: string; mode?: ScheduleMode; precision?: SchedulePrecision }) {
+  constructor(init?: { label?: string; mode?: ScheduleMode; precision?: SchedulePrecision; criticalPaths?: ScheduleCriticalPaths }) {
     super("Schedule");
     this.label = init?.label ?? "Schedule";
     this.mode = init?.mode === "calendar" ? "calendar" : "working";
     this.precision = init?.precision === "minutes" ? "minutes" : "days";
+    this.criticalPaths = init?.criticalPaths === "many" ? "many" : "one";
     this.addInput("tasks", cubeIn("Tasks"));
     this.addInput("start", dateIn("Start"));
     this.addInput("holidays", dateListIn("Holidays"));
@@ -100,6 +108,7 @@ export class ScheduleNode extends ClassicPreset.Node {
         start, workingDays: this.mode === "working", weekendCode, holidays: inputs.holidays?.[0],
         statusDate: statusDate != null && Number.isFinite(statusDate) ? statusDate : null, hoursPerDay,
         precision: this.precision,
+        multipleCriticalPaths: this.criticalPaths === "many",
       });
       this.cachedResult = r.cube; this.cachedFinish = r.projectFinish; this.cachedGantt = r.gantt; this.cachedDiagnostics = r.diagnostics; this.cachedOutput = r.output;
       return { cube: r.cube, finish: r.projectFinish, diagnostics: r.diagnostics, gantt: r.gantt };

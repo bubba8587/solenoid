@@ -30,6 +30,8 @@ export interface ScheduleOptions {
   hoursPerDay?: number;
   /** Days (default) or Minutes (Project's 08:00–17:00 model; see the engine's CalendarSpec). */
   precision?: "days" | "minutes";
+  /** Mark every independent longest chain critical, not just the one to the project finish. */
+  multipleCriticalPaths?: boolean;
 }
 
 export interface ScheduleResult {
@@ -270,6 +272,7 @@ export function scheduleTasks(c: CubeValue, opts: ScheduleOptions): ScheduleResu
         precision: opts.precision ?? "days", intervals: intervalsForHours(hoursPerDay),
       },
       statusDate: opts.statusDate ?? null,
+      multipleCriticalPaths: opts.multipleCriticalPaths,
     });
   } catch (e) {
     if (e instanceof ScheduleError) throw solError("#VALUE!", `Schedule: ${e.message}`);
