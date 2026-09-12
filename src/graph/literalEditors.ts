@@ -1,6 +1,9 @@
 // The literal inputs' shared editing helpers (Table / Frame / List / Cube Input all edit
 // through the table popup; the Cube Input drills into the others). Pure: text ↔ records.
 
+import { isSolError } from "./errorValue";
+import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
+
 /** A cube's stored truth: JSON rows of records. A cell may be a scalar, a list of scalars,
  *  or a list of records (a nested table, or a nested cube when a record carries a list). */
 export type CubeRecord = Record<string, unknown>;
@@ -91,4 +94,16 @@ export function cellTextOf(v: unknown): string {
   if (v == null) return "";
   if (typeof v === "object") return JSON.stringify(v);
   return String(v);
+}
+
+/** The List Input editor's grid: one row per list VALUE (wired rows included), each as the
+ *  text the row literal would hold, so Save round-trips through the row parser: a date is
+ *  its date text (a serial would read as a number), an error or blank is an empty cell. */
+export function listEditorCells(values: readonly unknown[], dt: "number" | "string" | "date" | "logical"): (string | number | boolean)[][] {
+  return values.map((v) => {
+    if (v === null || v === undefined || isSolError(v)) return [""];
+    if (dt === "date" && typeof v === "number") return [formatDateSerial(v, DEFAULT_DATE_FORMAT)];
+    if (typeof v === "number" || typeof v === "boolean" || typeof v === "string") return [v];
+    return [String(v)];
+  });
 }

@@ -9,7 +9,7 @@ import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import type { DisplayValue } from "./valueDisplayFormat";
 import { dropInputCables } from "./cablePrune";
-import { listRowsFromCells } from "../literalEditors";
+import { listRowsFromCells, listEditorCells } from "../literalEditors";
 
 const TYPE_OPTIONS: ReadonlyArray<{ value: ListElemType; label: string; title: string }> = [
   { value: "number",  label: "Num",  title: "Number list" },
@@ -43,14 +43,9 @@ export async function applyListType(node: ListInputNodeType, dt: ListElemType): 
 /** Rewrite the typed rows from the popup's one column: existing keys keep their order (and
  *  their cables), extra lines add rows, dropped lines remove rows (cables pruned first). */
 export async function applyListRows(node: ListInputNodeType, rows: string[]): Promise<void> {
-  const keys = Object.keys(node.inputs);
-  const keep = keys.slice(0, rows.length);
-  const departing = keys.slice(rows.length);
+  const departing = node.departingRowKeys(rows.length);
   if (departing.length > 0) await dropInputCables(node.id, departing);
-  for (const k of departing) node.removeValueInput(k);
-  keep.forEach((k, i) => { node.stringLiterals[k] = rows[i]; });
-  for (let i = keep.length; i < rows.length; i++) node.stringLiterals[node.addValueInput()] = rows[i];
-  if (rows.length === 0) node.addValueInput(); // a list keeps one row to type into
+  node.rewriteRows(rows);
   await getActiveView()?.rerenderNode(node.id);
   await processGraph();
 }
@@ -59,12 +54,12 @@ export function ListInputComponent({ data, emit }: NodeProps<ListInputNodeType>)
   // Local mirror so the toggle re-renders on change; the handler swaps the socket types.
   const [dt, setDt] = useState<ListElemType>(data.dataType);
   useEffect(() => { setDt(data.dataType); }, [data.dataType]);
-  // The popup editor (the Table / Frame / Cube Input surface): one raw column, a row per
-  // typed line; Save rewrites the rows.
-  const rows = Object.keys(data.inputs).map((k) => data.stringLiterals[k] ?? "");
+  // The popup editor (the Table / Frame / Cube Input surface): the list's VALUES, one per
+  // row (a typed "1, 2, 3" row shows as three); Save writes one row per cell.
+  const cells = listEditorCells(data.cachedList, dt);
   const popupOverrides = {
     title: data.label || "List Input",
-    data: rows.length ? rows.map((r) => [r]) : [[""]],
+    data: cells.length ? cells : [[""]],
     headers: [data.label || "List"],
     cellType: dt,
     list: false,
