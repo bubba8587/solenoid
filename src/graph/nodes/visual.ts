@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { readInput, numIn, numListIn, tableIn, tableOut, strIn, strOut, chartIn, chartOut, frameIn } from "./shared";
+import { readInput, numIn, numListIn, tableIn, tableOut, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
 import { parseChartOptions, serializeChartOptions, CHART_BUILDER_TARGETS, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp, iterMin, iterMax, gridAxes } from "./mathUtils";
 import { histogram2d } from "./visualOps";
@@ -15,7 +15,8 @@ import { columnUnitLabel } from "../unitColumn";
 import type { MermaidValue } from "../mermaidValue";
 import { readFrame, type FrameInput } from "../frameBackend";
 import type { FrameHint } from "../frameHint";
-import { formatFrameCell, isFrameValue, type FrameColumn } from "../frame";
+import { formatFrameCell, isFrameValue, isCubeValue, flatCubeToFrame, type FrameColumn } from "../frame";
+import { isSolError } from "../errorValue";
 
 // Terminal figures: each node emits a chart VALUE and is never a pass-through.
 
@@ -122,7 +123,7 @@ export class ChartNode extends ClassicPreset.Node {
     this.op = init?.op ?? "column";
     // A frame socket kept UNCOERCED by `rawInputs` — coerced, it would widen a wired list
     // into a single ROW instead of leaving it a list.
-    this.addInput("values", frameIn("Data"));
+    this.addInput("values", cubeAdoptIn("Data"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
@@ -131,7 +132,11 @@ export class ChartNode extends ClassicPreset.Node {
     // A FRAME drives the figure: the numeric columns are named series (a legend at ≥ 2).
     // Every non-finite cell becomes null IN PLACE, so row-indexed labels stay aligned.
     const num = (c: unknown): number | null => (typeof c === "number" && Number.isFinite(c) ? c : null);
-    const raw = inputs.values?.[0] ?? null;
+    const raw0 = inputs.values?.[0] ?? null;
+    // A cube arrives raw (rawInputs); a flat one is the frame the figure reads, a nested
+    // cell reads as nothing to draw (the lattice never lets a cube into a frame socket).
+    const flat = isCubeValue(raw0) ? flatCubeToFrame(raw0) : raw0;
+    const raw = isSolError(flat) ? null : flat;
     this.cachedLabels = null;
     this.cachedSeries = null;
     let v: number | number[] | null = null;

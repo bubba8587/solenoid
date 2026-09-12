@@ -1,5 +1,6 @@
 import { ClassicPreset } from "rete";
 import { readInput, numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
+import { flatCubeToFrame } from "../frame";
 import type { PassthroughSpec } from "./passthrough";
 import { extractVariables, compileEvaluator, rowRefNames, type ExprEvaluator } from "../excelFormula";
 import { isLambdaValue } from "../lambdaValue";
@@ -774,7 +775,7 @@ export class GroupByFrameNode extends ClassicPreset.Node {
     this.label = init?.label ?? "GROUPBY";
     this.agg = init?.agg ?? "sum";
     this.totalDepth = init?.totalDepth ?? 0;
-    this.addInput("frame", frameIn("Frame"));
+    this.addInput("frame", cubeAdoptIn("Frame / Cube"));
     this.addInput("keys", strListIn("Group by"));
     this.addInput("column", strIn("Aggregate"));
     this.addOutput("frame", frameOut("Grouped"));
@@ -789,8 +790,14 @@ export class GroupByFrameNode extends ClassicPreset.Node {
     return shapeOf({ kind: "groupBy", keys, aggs: [{ column: col, op: this.agg, as: col }] }, input);
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; keys?: string[][]; column?: string[] }) {
-    const f = inputs.frame?.[0] ?? null;
+  noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
+
+  async data(inputs: { frame?: (FrameInput | CubeValue | null)[]; keys?: string[][]; column?: string[] }) {
+    const raw = inputs.frame?.[0] ?? null;
+    // A flat cube is rows; a nested cell is the loud #SHAPE! (the lattice never narrows a cube).
+    const flat = isCubeValue(raw) ? flatCubeToFrame(raw) : raw;
+    if (isSolError(flat)) return emitFrame(this, beginPass(this), flat);
+    const f = flat;
     const keys = readColumnList(inputs.keys);
     const colRaw = readInput(inputs.column, this.stringLiterals.column ?? "");
     // A wired blank names no column/keys — unknown, not "not chosen yet".
@@ -3153,7 +3160,7 @@ export class WindowNode extends ClassicPreset.Node {
     super("Window");
     this.label = init?.label ?? "Window";
     if (init?.agg) this.agg = init.agg;
-    this.addInput("frame", frameIn("Frame"));
+    this.addInput("frame", cubeAdoptIn("Frame / Cube"));
     this.addInput("keys", strListIn("Partition by"));
     this.addInput("orderBy", strIn("Order by"));
     this.addInput("column", strIn("Value"));
@@ -3181,8 +3188,15 @@ export class WindowNode extends ClassicPreset.Node {
     }, input);
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; keys?: string[][]; orderBy?: string[]; column?: string[]; n?: number[]; name?: string[] }) {
-    const f = inputs.frame?.[0] ?? null;
+  // A cube arrives AS a cube (noWidenInputs) and flattens here: a flat cube is rows, a nested
+  // cell is the loud #SHAPE! — the lattice never lets a cube into a frame socket.
+  noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
+
+  async data(inputs: { frame?: (FrameInput | CubeValue | null)[]; keys?: string[][]; orderBy?: string[]; column?: string[]; n?: number[]; name?: string[] }) {
+    const raw = inputs.frame?.[0] ?? null;
+    const flat = isCubeValue(raw) ? flatCubeToFrame(raw) : raw;
+    if (isSolError(flat)) return emitFrame(this, beginPass(this), flat);
+    const f = flat;
     const keys = readColumnList(inputs.keys);
     const orderBy = readInput(inputs.orderBy, this.stringLiterals.orderBy ?? "");
     const column = readInput(inputs.column, this.stringLiterals.column ?? "");

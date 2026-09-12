@@ -1,6 +1,6 @@
 import { parseCsvRows } from "./csv";
 import { parseDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
-import { isSolError, type SolError } from "./errorValue";
+import { isSolError, solError, type SolError } from "./errorValue";
 import { coerceLogical } from "./valueKinds";
 import { type ColumnUnit, type UnitCell, isUnitCell } from "./unitValue";
 import { formatDim, dimEqual, type Dim } from "./dimension";
@@ -574,6 +574,24 @@ export function cubeFromRows(
 export function cubeFromColumns(cols: ReadonlyArray<{ name?: string; cells: CubeCell[]; type?: FrameColType; format?: FormatAnnotation }>): CubeValue {
   const names = makeHeaders(cols.map((c) => c.name ?? ""), cols.length);
   return makeCube(names.map((name, j) => ({ name, cells: cols[j].cells, ...(cols[j].type ? { type: cols[j].type } : {}), ...(cols[j].format ? { format: cols[j].format } : {}) })));
+}
+
+/** A FLAT cube as a frame (declared column types kept; a unit cell reads as its magnitude).
+ *  A nested table or list cell is a loud `#SHAPE!` naming the column. This is the NODE-side
+ *  answer to "a cube where a frame verb wants one": a verb that takes a cube declares a
+ *  cube-adoptive input and flattens here inside data(); the lattice never lets a cube into
+ *  a frame socket (the author's ruling, 2026-09-12). */
+export function flatCubeToFrame(c: CubeValue): FrameValue | SolError {
+  for (const col of c.columns) {
+    if (col.cells.some((v) => isCubeValue(v) || isFrameValue(v) || Array.isArray(v))) {
+      return solError("#SHAPE!", `Column "${col.name}" holds nested cells; this reads flat rows`);
+    }
+  }
+  const rows = cubeRowCount(c);
+  return {
+    __frame: true,
+    columns: c.columns.map((col) => typedColumn(col.name, col.cells.map((v) => (isUnitCell(v) ? v.value : v)), rows, col.type ?? null)),
+  };
 }
 
 /** Widen any value into a Cube (mirrors the frame widening in coerceInputs): a 2-D
