@@ -156,3 +156,26 @@ describe("review pins: STDEV.S of one value, DATEDIF order, CONTAINS rank", () =
     expect(resolveExcelFunction("CONTAINS")!([1, 2, 3], 2)).toBe(true);
   });
 });
+
+describe("review pins: whole-argument formulas", () => {
+  it("GCD / LCM / MULTINOMIAL / PERCENTRANK.* take their list whole", async () => {
+    const { compileEvaluator } = await import("../../src/graph/excelFormula");
+    const ev = (src: string, vars: Record<string, unknown>) => compileEvaluator(src)!(vars);
+    expect(ev("GCD(a)", { a: [12, 18, 24] })).toBe(6);
+    expect(ev("LCM(a)", { a: [4, 6] })).toBe(12);
+    expect(ev("MULTINOMIAL(a)", { a: [2, 3, 4] })).toBe(1260);
+    expect(ev("PERCENTRANK.INC(a, 3)", { a: [1, 2, 3, 4] }) as number).toBeCloseTo(0.666, 2);
+  });
+  it("a holiday list is one argument of NETWORKDAYS / WORKDAY", async () => {
+    const { compileEvaluator } = await import("../../src/graph/excelFormula");
+    const ev = (src: string, vars: Record<string, unknown>) => compileEvaluator(src)!(vars);
+    const mon = 46027, fri = 46031;
+    expect(ev("NETWORKDAYS(s, f, h)", { s: mon, f: fri, h: [mon + 1, mon + 2] })).toBe(3);
+    expect(ev("WORKDAY(s, 2, h)", { s: mon, h: [mon + 1, mon + 2] })).toBe(mon + 4);
+  });
+  it("a linear Fit over collinear x is #DIV/0! like SLOPE, not three blanks", async () => {
+    const { LinestNode } = await import("../../src/graph/nodes/stats");
+    const out = new LinestNode({ op: "linear" }).data({ ys: [[1, 2, 3]], xs: [[5, 5, 5]] });
+    expect(isSolError(out.slope) && out.slope.code).toBe("#DIV/0!");
+  });
+});

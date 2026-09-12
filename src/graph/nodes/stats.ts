@@ -996,6 +996,11 @@ export class LinestNode extends ClassicPreset.Node {
       fit = e ? { slope: e.m, intercept: e.b, r2: e.r2 } : null;
     } else {
       fit = linearFitR2(xs, ys);
+      if (!fit && xs.length >= 2) {
+        const err = solError("#DIV/0!", "Known Xs have zero variance"); // SLOPE / LINEST's answer
+        this.cachedSlope = this.cachedIntercept = this.cachedR2 = err;
+        return { slope: err, intercept: err, r2: err };
+      }
     }
     this.cachedSlope     = fit?.slope ?? null;
     this.cachedIntercept = fit?.intercept ?? null;

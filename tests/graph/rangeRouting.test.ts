@@ -19,6 +19,8 @@ const P = [0.1, 0.2, 0.3, 0.4];
 
 /** Whole-sample functions: arrays in, ONE number out. */
 const SCALAR_RESULT: Array<[string, string]> = [
+  ["GCD", "GCD(a)"], ["LCM", "LCM(a)"], ["MULTINOMIAL", "MULTINOMIAL(a)"],
+  ["PERCENTRANK.INC", "PERCENTRANK.INC(a, 3)"], ["PERCENTRANK.EXC", "PERCENTRANK.EXC(a, 3)"],
   ["T.TEST", "T.TEST(a, b, 2, 3)"],
   ["F.TEST", "F.TEST(a, b)"],
   ["Z.TEST", "Z.TEST(a, 2)"],
@@ -68,11 +70,12 @@ describe("a range RESULT classifies non-finite — the last bare-NaN producer (g
   /** The probe battery: whole-sample calls whose degenerate input made
    *  Formula.js / the internal stats answer bare NaN. Each now answers what its NODE
    *  answers (statsOps is the one kernel): "not enough data" is a BLANK (the
-   *  Aggregate/Running rule), zero variance under a division is #DIV/0!, a log-domain
+   *  Aggregate/Running rule) except a sample spread of ONE value, which is Excel's
+   *  #DIV/0!; zero variance under a division is #DIV/0!, a log-domain
    *  failure is #DOMAIN! — and never a bare NaN. */
   const DEGENERATE: Array<[string, string, Record<string, unknown>, string | null]> = [
-    ["STDEV of one value", "STDEV(x)", { x: [5] }, null],
-    ["VAR of one value", "VAR(x)", { x: [5] }, null],
+    ["STDEV of one value", "STDEV(x)", { x: [5] }, "#DIV/0!"], // a SAMPLE spread of one value (Excel)
+    ["VAR of one value", "VAR(x)", { x: [5] }, "#DIV/0!"],
     ["CORREL of a constant", "CORREL(a, b)", { a: [1, 1, 1], b: [1, 2, 3] }, "#DIV/0!"],
     ["SLOPE of constant xs", "SLOPE(y, x)", { y: [1, 2], x: [3, 3] }, "#DIV/0!"],
     ["RSQ of constants", "RSQ(y, x)", { y: [1, 1], x: [1, 1] }, "#DIV/0!"],
