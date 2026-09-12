@@ -225,3 +225,13 @@ describe("review pins: vault reads stay inside the vault", () => {
     expect(isInsideVault("")).toBe(false);
   });
 });
+
+describe("review pins: frontmatter keys", () => {
+  it("a key YAML would misread is quoted, so the properties block stays readable", async () => {
+    const { frontmatterToYaml } = await import("../../src/graph/obsidianMarkdown");
+    const { parse } = await import("yaml");
+    const block = frontmatterToYaml({ "k: v": 1, "#h": 2, "-x": 3, plain: "yes" });
+    const inner = block.replace(/^---\n|\n---\n?$/g, "");
+    expect(parse(inner)).toEqual({ "k: v": 1, "#h": 2, "-x": 3, plain: "yes" });
+  });
+});

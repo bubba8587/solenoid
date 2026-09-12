@@ -95,14 +95,21 @@ export function yamlScalar(v: unknown): string {
   return `"${esc}"`;
 }
 
+/** A key YAML would misread bare (a ":" or "#" inside, a leading "-", "?", "!", "&", "*",
+ *  quotes or brackets, surrounding whitespace, or nothing at all) is written quoted. */
+export function yamlKey(key: string): string {
+  return key === "" || /[:#\[\]{}",'|>%@`]|^[-?!&*\s]|\s$/.test(key) ? yamlScalar(key) : key;
+}
+
 /** One frontmatter key → its YAML line(s): a list becomes a block sequence, a scalar
  *  a `key: value` line. */
 function yamlLine(key: string, v: unknown): string {
+  const k = yamlKey(key);
   if (Array.isArray(v)) {
-    if (v.length === 0) return `${key}: []`;
-    return `${key}:\n${v.map((x) => `  - ${yamlScalar(x)}`).join("\n")}`;
+    if (v.length === 0) return `${k}: []`;
+    return `${k}:\n${v.map((x) => `  - ${yamlScalar(x)}`).join("\n")}`;
   }
-  return `${key}: ${yamlScalar(v)}`;
+  return `${k}: ${yamlScalar(v)}`;
 }
 
 /** A record → a `---`-fenced YAML block with a trailing newline, or "" when there are no
