@@ -9,7 +9,7 @@ import {
   type FilterCond,
 } from "../../src/graph/frameVerbs";
 import { isSolError } from "../../src/graph/errorValue";
-import { ComputedColumnNode } from "../../src/graph/nodes/frame";
+import { ComputedColumnNode, AddColumnNode } from "../../src/graph/nodes/frame";
 
 // A′: the row verbs take cubes. These pin the frameVerbs cube engine — the cube path
 // reorders/keeps WHOLE rows off the flat scalar columns (nested cells ride by reference),
@@ -184,6 +184,35 @@ describe("Computed Column over a cube", () => {
     const cells = colCells(c, "x");
     expect(cells.every((v) => isSolError(v))).toBe(true);
     expect((cells[0] as { code: string }).code).toBe("#SHAPE!");
+  });
+});
+
+describe("Add Column over a cube", () => {
+  const tasks = () => cubeFromColumns([
+    { name: "title", cells: ["A", "B"], type: "string" },
+    { name: "done", cells: [1, 0], type: "number" },
+    { name: "tags", cells: [["work"], ["home", "urgent"]] },
+  ]);
+  function addCol(values: unknown[], name: string): CubeValue {
+    const n = new AddColumnNode({ addAs: "number" });
+    n.stringLiterals.name = name;
+    return n.data({ frame: [tasks()] as never, values: [values as never] }).frame as CubeValue;
+  }
+
+  it("appends the new column onto the cube; the result is a cube", () => {
+    const c = addCol([10, 20], "score");
+    expect(isCubeValue(c)).toBe(true);
+    expect(c.columns.map((k) => k.name)).toEqual(["title", "done", "tags", "score"]);
+    expect(colCells(c, "score")).toEqual([10, 20]);
+  });
+
+  it("a short values list pads with blanks; the nested list column rides through by reference", () => {
+    const src = tasks();
+    const n = new AddColumnNode({ addAs: "number" });
+    n.stringLiterals.name = "score";
+    const c = n.data({ frame: [src] as never, values: [[10] as never] }).frame as CubeValue;
+    expect(colCells(c, "score")).toEqual([10, null]);
+    expect(colCells(c, "tags")[0]).toBe(colCells(src, "tags")[0]);
   });
 });
 

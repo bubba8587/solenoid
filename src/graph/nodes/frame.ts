@@ -2482,7 +2482,10 @@ export function addColumnInput(addAs: AddColumnAddAs) {
 export class AddColumnNode extends ClassicPreset.Node {
   label: string;
   addAs: AddColumnAddAs;
-  cachedResult: FrameValue | null = null;
+  cachedResult: FrameValue | CubeValue | null = null;
+  // A′: the table port is cube-adoptive but keeps the cube un-widened, so a cube arrives AS
+  // a cube and the new column appends per row with the nested cells riding by reference.
+  noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   stringLiterals: Record<string, string> = { name: "" };
   width = 200; height = 235;
 
@@ -2490,32 +2493,41 @@ export class AddColumnNode extends ClassicPreset.Node {
     super("AddColumn");
     this.label = init?.label ?? "Add Column";
     this.addAs = init?.addAs ?? "number";
-    this.addInput("frame", frameIn("Frame"));
+    this.addInput("frame", cubeAdoptIn("Table / Cube"));
     this.addInput("name", strIn("Name"));
     this.addInput("values", addColumnInput(this.addAs));
-    this.addOutput("frame", frameOut("Frame"));
+    this.addOutput("frame", tableAdoptOut("Frame"));
   }
 
+  // Rank-adopts the table (cube in → cube out); the ADDED column is declared in frameShape,
+  // which wins over this passthrough in the shape resolver (like Computed Column).
+  passthrough(): PassthroughSpec[] { return [{ output: "frame", inputs: ["frame"], combine: "single" }]; }
+
   frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
-    const input = ctx.inputShape("frame");
+    const input = ctx.inputShape("frame"); // null for a cube — the shape rides the passthrough
     if (!input || ctx.wired("name")) return null;
     const name = (this.stringLiterals.name ?? "").trim() || "Col";
     return shapeOfFrameValue(addColumn(emptyFrameOf(input), name, [], colTypeForAddAs(this.addAs)));
   }
 
-  data(inputs: { frame?: (FrameValue | null)[]; values?: FrameCell[][]; name?: string[] }) {
-    const f = inputs.frame?.[0] ?? null;
+  data(inputs: { frame?: unknown[]; values?: FrameCell[][]; name?: string[] }) {
+    const rawF = inputs.frame?.[0] ?? null;
+    const isCube = isCubeValue(rawF);
+    const f: FrameValue | null = rawF == null ? null : isCube ? null : (isFrameValue(rawF) ? rawF : null);
     const values = inputs.values?.[0] ?? null;
     const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");
     // A wired blank name is unknown (value-semantics.md, "Reading an input").
-    if (!f || !values || nameRaw === null) { this.cachedResult = null; return { frame: null }; }
+    if ((!f && !isCube) || !values || nameRaw === null) { this.cachedResult = null; return { frame: null }; }
     const name = nameRaw.trim() || "Col";
-    // Pad the new column to the frame's row count so columns stay aligned.
-    const rows = Math.max(frameRowCount(f), values.length);
-    const padded: FrameCell[] = Array.from({ length: rows }, (_, i) =>
-      i < values.length ? values[i] : null,
-    );
-    this.cachedResult = addColumn(f, name, padded, colTypeForAddAs(this.addAs));
+    const colType = colTypeForAddAs(this.addAs);
+    // Pad the new column to the table's row count so columns stay aligned.
+    const rows = Math.max(isCube ? cubeRowCount(rawF as CubeValue) : frameRowCount(f!), values.length);
+    const padded: FrameCell[] = Array.from({ length: rows }, (_, i) => (i < values.length ? values[i] : null));
+    // A cube: append the column onto the ORIGINAL cube so its nested columns ride by
+    // reference (A′). A frame stays a frame.
+    this.cachedResult = isCube
+      ? cubeWithColumn(rawF as CubeValue, name, padded, colType, "")
+      : addColumn(f!, name, padded, colType);
     return { frame: this.cachedResult };
   }
 }

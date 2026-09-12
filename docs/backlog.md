@@ -74,7 +74,6 @@ The bundle `v2.0/24-obsidian-vault.md` is promoted to the flagship track; its §
 build rules and § Sequencing the order (A′ → A → B → D → C → F → I → J → E). Every item ships
 verified in the desktop app against the demo vault. Landed ledger: the bundle's § What stands today.
 
-- [ ] **AddColumn over a cube** (fe): Add Column is frame-only; Computed Column already takes a cube.
 - [ ] **TaskNotes read vs a plain vault query** (author, review): the TaskNotes read node overlaps
   Vault Folder for the common case — title/status/priority/due/tags are just frontmatter. The HTTP
   API earns its keep only for recurrence expansion, `timeEntries` totals, user-remapped field names,
