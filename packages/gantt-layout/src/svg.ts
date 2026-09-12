@@ -122,6 +122,11 @@ export function ganttSvg(payload: GanttPayload, opts: GanttSvgOptions): string {
       parts.push(`<line x1="${r(dx)}" y1="${r(top)}" x2="${r(dx)}" y2="${r(top + dh)}" stroke="${dc}" stroke-width="1"/>`);
       parts.push(`<path d="M${r(dx)} ${r(top)} L${r(dx + 6)} ${r(top + 3)} L${r(dx)} ${r(top + 6)} Z" fill="${dc}"/>`);
     }
+    if (payload.tasks[bar.taskIndex]?.manual) {
+      // Pushpin at the bar start: a manually pinned task, its own cue.
+      parts.push(`<line x1="${r(bar.x)}" y1="${r(y - 6)}" x2="${r(bar.x)}" y2="${r(y + 1)}" stroke="${colors.text}" stroke-width="1"/>`);
+      parts.push(`<circle cx="${r(bar.x)}" cy="${r(y - 6)}" r="2.6" fill="${colors.text}" stroke="${colors.surface}" stroke-width="0.75"/>`);
+    }
     if (bar.label) {
       const lx = bar.label.anchor === "end" ? bar.x - 4 : bar.x + bar.w + 4;
       parts.push(`<text x="${r(lx)}" y="${r(y + bar.h / 2 + 4)}" fill="${colors.text}" font-size="11" text-anchor="${bar.label.anchor}">${esc(bar.label.text)}</text>`);

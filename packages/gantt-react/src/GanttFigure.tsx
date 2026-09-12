@@ -298,11 +298,23 @@ function Bar({ bar, payload }: { bar: FrameBar; payload: GanttPayload }) {
         <rect className="solenoid-gantt__bar-flag" x={bar.x} y={bar.y} width={bar.w} height={bar.h} rx={2} strokeDasharray={bar.violated ? "3 2" : undefined} />
       )}
       {bar.deadlineX != null && <DeadlineFlag x={bar.deadlineX} rowY={bar.y} rowH={bar.h} late={bar.late} />}
+      {t?.manual && <PinGlyph x={bar.x} y={bar.y} />}
       {bar.label && (
         <text className="solenoid-gantt__blabel" x={bar.label.anchor === "end" ? bar.x - 4 : bar.x + bar.w + 4} y={bar.y + bar.h / 2 + 4} textAnchor={bar.label.anchor}>
           {bar.label.text}
         </text>
       )}
+    </g>
+  );
+}
+
+/** A small pushpin at the bar start marking a manually pinned task (Manual = TRUE): its dates
+ *  are held by hand and ignore predecessors. Its own cue, distinct from the violated dash. */
+function PinGlyph({ x, y }: { x: number; y: number }) {
+  return (
+    <g className="solenoid-gantt__pin">
+      <line x1={x} y1={y - 6} x2={x} y2={y + 1} />
+      <circle cx={x} cy={y - 6} r={2.6} />
     </g>
   );
 }

@@ -1,0 +1,53 @@
+# @solenoid/gantt-layout
+
+Pure Gantt geometry. A data payload plus a width in, a plain-number render frame out (time-scale
+tiers, rows, bars, links, non-working shading), and a standalone SVG serializer for headless
+export. No DOM, no React, and no `Date`: every date is an Excel day serial and all calendar math
+is integer, so no timezone or DST can shift a column.
+
+## The contract
+
+- `payload.ts` — `GanttPayload`: the figure's input, data and never geometry. Tasks in WBS order
+  (depth-first, `level`/`summary`/`milestone`/`start`/`finish`/`complete`/`critical`/`late`/
+  `violated`/`float`/`deadline`/`baseline*`/`manual`/`group`/`color`), links (`FS|SS|FF|SF` with
+  lag), non-working spans, holidays, today, status date, project span, per-task predecessor text,
+  and the resolved view options. `finish` is INCLUSIVE (the last day the task occupies); the
+  figure adds one day when it draws a bar. The app's `schedule-engine` and `ganttPayload.ts` build
+  this; nothing in this package parses dates (a `parseDate` is injected for window bounds).
+- `layoutGantt(payload, { width, height?, rowHeight?, scrollTop?, viewportHeight? })` →
+  `RenderFrame` (`frame.ts`): scale tiers, rows, bars, links, shading, grid lines, today/status
+  x, in plain pixels. Viewport culling when `scrollTop`/`viewportHeight` are given.
+- `ganttSvg(payload, { width, height?, colors? })` → a standalone SVG string (the popup's
+  "copy as SVG", the webpage export, a Report snapshot). Colors are passed in because an SVG can
+  not read CSS variables; omitted, a light-legible default is used so text is never invisible.
+
+## What was written here vs studied
+
+Written fresh, on serial math:
+
+- `serial.ts` — Excel-serial civil-date math (civil↔serial by Howard Hinnant's days↔civil
+  algorithms, weekday, ISO/US week numbering, fiscal quarters), anchored on the app's epoch
+  (serial 25569 = 1970-01-01, a Thursday), matching `serialToJsDate(...).getUTCDay()` without a
+  `Date`.
+- `frame.ts` (the RenderFrame shape and the theme-color set), `bars.ts`, `rows.ts`, `columns.ts`,
+  `cell.ts`, `layout.ts`, and `svg.ts` (the headless serializer). All original.
+
+Studied for design only, MIT sources, no code copied (the licence boundary in
+`docs/v2.0/25-gantt.md` § 5/§ 7):
+
+- **DHTMLX v10** `scale_manager` + `size_distribution` — the tier-normalization design (coarser
+  tier snapped to the primary tier's pixels; month columns proportional to their day count),
+  re-derived in `scale.ts` on serials rather than its `Date`-bound singleton.
+- **DHTMLX** `link_render` `path_builder` and **SVAR** `links.ts#getLineCoords` — the orthogonal
+  endpoint conventions (FS right→left, SS left→left, FF right→right, SF left→right) and the
+  six-point polyline, rebuilt in `links.ts`.
+- **SVAR** `scales.ts` (zoom presets) and **d3-time**'s tick-interval idea — the zoom/fit ladder
+  in `scale.ts` (the tick tables are hand-written here; d3-time is not a dependency).
+
+## Tests
+
+Golden JSON, run by the repo's vitest (`packages/**/*.test.ts`): serial round-trips and DST
+weekday parity, ISO vs US week 1, leap years, month columns proportional to day count, hidden
+weekend ranges, one-day bars, a milestone on a non-working day, FS endpoint routing, baseline/
+deadline/late/group/color/collapse, the working-day Days column, `fit` fill without tier-label
+collision, and SVG well-formedness/escaping/colors.

@@ -68,6 +68,8 @@ export const ganttStyles = `
 .solenoid-gantt__deadline path { fill: var(--text-dim, #9aa0a6); }
 .solenoid-gantt__deadline.is-late line { stroke: var(--sol-error, #e0473a); }
 .solenoid-gantt__deadline.is-late path { fill: var(--sol-error, #e0473a); }
+.solenoid-gantt__pin line { stroke: var(--text, #e8e8e8); stroke-width: 1; }
+.solenoid-gantt__pin circle { fill: var(--text, #e8e8e8); stroke: var(--surface, #1e1e1e); stroke-width: 0.75; }
 .solenoid-gantt__bracket { fill: var(--text-dim, #9aa0a6); }
 .solenoid-gantt__bracket.is-critical { fill: var(--sol-error, #e0473a); }
 .solenoid-gantt__diamond { fill: var(--text, #e8e8e8); }
