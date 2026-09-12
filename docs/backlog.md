@@ -122,7 +122,7 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 ## Gantt + Schedule (BUILT 2026-09-12 — `v2.0/25-gantt.md` § 9 is the ledger; follow-ups)
 
-- [ ] **Author's eyeball** (desktop, the three seeds): the Schedule card's two toggles + Diagnostics
+- [ ] **Author's eyeball** (desktop, the four seeds; `node scripts/gantt-shots.mjs` writes every Gantt seed's canvas / Display / popup PNGs in both themes to `.dev/shots/gantt/`): the Schedule card's two toggles + Diagnostics
   row; the Gantt card's chip; the figure in a Display, the popup (columns, splitter, Copy SVG),
   a Report overlay + webpage export + Write to Obsidian raster; light theme; the Product launch
   seed's pinned Board review and the deadline pennant; Local File on a `.xml` (a Project export)

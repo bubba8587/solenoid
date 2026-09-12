@@ -37,7 +37,8 @@ This file is the map.
 │                             #     formula-node-parity.ts (oneMetricImpl gap report), op-exposure.ts,
 │                             #     socket-inventory.ts (regenerates socket-reference counts),
 │                             #     copy-inventory.ts (shipped-string extract/apply),
-│                             #     fuzz-frame-verbs.ts, tune-seeds.mjs, parity.ts, release-build.ps1
+│                             #     fuzz-frame-verbs.ts, tune-seeds.mjs, gantt-shots.mjs (headed Edge: every Gantt seed's
+│                             #     canvas / Display / popup PNGs in both themes to .dev/shots/gantt/), parity.ts, release-build.ps1
 ├── .claude/                  # Claude Code project config: skills/ (add-node), commands/, settings.json
 ├── .github/workflows/        # CI: test.yml (tsc+vitest), windows-portable.yml (solenoid.exe),
 │                             #     cargo-audit.yml (src-tauri/Cargo.lock advisories)
