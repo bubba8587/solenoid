@@ -113,3 +113,18 @@ describe("review pins: formula surface parity", () => {
     expect(resolveExcelFunction("SUBSTITUTE")!("aaa", "a", "b")).toBe("bbb");
   });
 });
+
+describe("review pins: INDEX, RUNNING, VDB", () => {
+  it("INDEX truncates a fractional row like Excel", async () => {
+    const { resolveAxes } = await import("../../src/graph/nodes/indexAccess");
+    expect((resolveAxes(1.9, undefined) as { r?: number }).r).toBe(0);
+  });
+  it("RUNNING with a negative window is #DOMAIN! on the formula, like the card", () => {
+    expect(isSolError(resolveExcelFunction("RUNNING")!("SUM", [1, 2, 3], -2))).toBe(true);
+    expect(resolveExcelFunction("RUNNING")!("SUM", [1, 2, 3], 0)).toEqual([1, 3, 6]);
+  });
+  it("VDB refuses no_switch = TRUE instead of ignoring it", () => {
+    expect(isSolError(resolveExcelFunction("VDB")!(2400, 300, 10, 0, 1, 2, true))).toBe(true);
+    expect(resolveExcelFunction("VDB")!(2400, 300, 10, 0, 1)).toBeCloseTo(480, 6);
+  });
+});

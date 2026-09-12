@@ -29,12 +29,13 @@ export type Axes =
  *  `r`/`c` are 0-based, and −1 when that axis is whole. */
 export function resolveAxes(row: IndexAxis, col: IndexAxis): Axes {
   if (row === null || col === null) return { blank: true };
-  const rowAll = row === undefined || Math.round(row) === 0;
-  const colAll = col === undefined || Math.round(col) === 0;
+  // Excel truncates a fractional row/col (INDEX(x, 1.9) reads row 1).
+  const rowAll = row === undefined || Math.trunc(row) === 0;
+  const colAll = col === undefined || Math.trunc(col) === 0;
   return {
     blank: false, rowAll, colAll,
-    r: rowAll ? -1 : Math.round(row) - 1,
-    c: colAll ? -1 : Math.round(col) - 1,
+    r: rowAll ? -1 : Math.trunc(row) - 1,
+    c: colAll ? -1 : Math.trunc(col) - 1,
   };
 }
 

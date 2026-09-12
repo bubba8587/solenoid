@@ -1503,8 +1503,11 @@ registerInternal("CHOOSE", (index, ...values) => {
 });
 // Excel's VDB carries a trailing no_switch flag; ours always switches to
 // straight-line when that is the larger charge, which is Excel's DEFAULT.
-registerInternal("VDB", (cost, salvage, life, start, end, factor) =>
-  vdb(toNum(cost), toNum(salvage), toNum(life), toNum(start), toNum(end), optNum(factor, 2)));
+registerInternal("VDB", (cost, salvage, life, start, end, factor, noSwitch) => {
+  // The card always switches to straight-line; a no_switch of TRUE is refused, not ignored.
+  if (noSwitch === true || (typeof noSwitch === "number" && noSwitch !== 0)) return solError("#VALUE!", "VDB's no_switch isn't supported; the depreciation always switches to straight-line");
+  return vdb(toNum(cost), toNum(salvage), toNum(life), toNum(start), toNum(end), optNum(factor, 2));
+});
 // ODDF* read an issue date and a FIRST-coupon date; ODDL* read only a LAST-interest
 // date, so their argument lists differ in shape, not just in name.
 registerInternal("ODDFPRICE", (settle, maturity, issue, firstCoupon, rate, yld, redemption, freq) =>
@@ -1692,9 +1695,12 @@ registerInternal("RUNNING", (op, list, w) => {
   if (op == null || list == null) return null;
   const key = RUNNING_ARG_OPS[String(op).trim().toUpperCase()];
   if (!key) return solError("#VALUE!", `RUNNING's aggregator must be one of SUM, AVERAGE, MIN, MAX, MEDIAN, PRODUCT, STDEV — got "${String(op)}"`);
-  return w === undefined ? running(key, numList(list), null)
-    : w == null ? null
-    : running(key, numList(list), Number(w));
+  if (w === undefined) return running(key, numList(list), null);
+  if (w == null) return null;
+  const n = Number(w);
+  // The Running card's rule: 0 is cumulative, a positive count is the window, nothing else.
+  if (!Number.isFinite(n) || n < 0) return solError("#DOMAIN!", "Window must be 0 (cumulative) or a positive count");
+  return running(key, numList(list), n);
 });
 
 // LENGTH counts every slot including the missing ones, which is exactly why these
