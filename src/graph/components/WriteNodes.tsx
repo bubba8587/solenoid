@@ -11,6 +11,7 @@ import { getActiveView } from "../activeGraph";
 import { FrameDisplay } from "./FrameDisplay";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
+import { dropInputCables } from "./cablePrune";
 import { RefreshIcon } from "./RefreshIcon";
 import { SegToggle } from "./SegToggle";
 import { OBSIDIAN_WRITE_MODE_OPTIONS, OBSIDIAN_TARGET_OPTIONS, type WriteObsidianTarget } from "../nodes/obsidian";
@@ -33,6 +34,7 @@ type WriteNodeData = WriteFileNodeType & {
 const FORMAT_OPTIONS = [
   { value: "csv" as const, label: "CSV", title: "Comma-separated values (.csv)" },
   { value: "json" as const, label: "JSON", title: "Array of row records (.json)" },
+  { value: "text" as const, label: "Text", title: "A wired string written as-is; name the file with its own extension (plan.xml)" },
 ];
 
 export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>) {
@@ -43,13 +45,21 @@ export function WriteFileComponent({ data, emit }: NodeProps<WriteFileNodeType>)
   const [status, setStatus] = useState(d.status);
   const [message, setMessage] = useState(d.statusMessage);
   const desktop = isDesktop();
-  const ext = format === "json" ? "json" : "csv";
+  const ext = format === "json" ? "json" : format === "text" ? "txt" : "csv";
 
   useEffect(() => { setPath(d.path); }, [d.path]);
 
-  function pickFormat(next: WriteFormat) {
-    d.format = next;
+  // Text uses a STRING input, CSV/JSON a FRAME input; crossing that boundary retypes the
+  // `in` socket, so prune its cable first (onePrunePath) before setFormat swaps it.
+  async function pickFormat(next: WriteFormat) {
+    if (next === format) return;
+    const willRetype = (format === "text") !== (next === "text");
+    if (willRetype) await dropInputCables(d.id, ["in"]);
+    d.setFormat(next);
     setFormat(next);
+    const view = getActiveView();
+    if (view) await view.rerenderNode(d.id);
+    await processGraph();
   }
 
   function commitPath() {
