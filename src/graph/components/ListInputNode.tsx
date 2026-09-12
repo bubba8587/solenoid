@@ -8,8 +8,6 @@ import { ExtensibleInputs } from "./ExtensibleInputs";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import type { DisplayValue } from "./valueDisplayFormat";
-import { dropInputCables } from "./cablePrune";
-import { listRowsFromCells } from "../literalEditors";
 
 const TYPE_OPTIONS: ReadonlyArray<{ value: ListElemType; label: string; title: string }> = [
   { value: "number",  label: "Num",  title: "Number list" },
@@ -40,39 +38,10 @@ export async function applyListType(node: ListInputNodeType, dt: ListElemType): 
   await processGraph();
 }
 
-/** Rewrite the typed rows from the popup's one column: existing keys keep their order (and
- *  their cables), extra lines add rows, dropped lines remove rows (cables pruned first). */
-export async function applyListRows(node: ListInputNodeType, rows: string[]): Promise<void> {
-  const keys = Object.keys(node.inputs);
-  const keep = keys.slice(0, rows.length);
-  const departing = keys.slice(rows.length);
-  if (departing.length > 0) await dropInputCables(node.id, departing);
-  for (const k of departing) node.removeValueInput(k);
-  keep.forEach((k, i) => { node.stringLiterals[k] = rows[i]; });
-  for (let i = keep.length; i < rows.length; i++) node.stringLiterals[node.addValueInput()] = rows[i];
-  if (rows.length === 0) node.addValueInput(); // a list keeps one row to type into
-  await getActiveView()?.rerenderNode(node.id);
-  await processGraph();
-}
-
 export function ListInputComponent({ data, emit }: NodeProps<ListInputNodeType>) {
   // Local mirror so the toggle re-renders on change; the handler swaps the socket types.
   const [dt, setDt] = useState<ListElemType>(data.dataType);
   useEffect(() => { setDt(data.dataType); }, [data.dataType]);
-  // The popup editor (the Table / Frame / Cube Input surface): the LIST popup, one cell
-  // per typed row as raw TEXT (a row like "1, 2, 3" is one cell; typed as a number it
-  // read NaN), so the Row / Column switcher and the list copy paths apply; Save rewrites
-  // the rows from every cell in reading order.
-  const rows = Object.keys(data.inputs).map((k) => data.stringLiterals[k] ?? "");
-  const popupOverrides = {
-    title: data.label || "List Input",
-    data: [rows.length ? rows : [""]],
-    cellType: "string" as const,
-    list: true,
-    fixedCols: true, // ± Row adds or drops typed rows; no column controls (c6e64971)
-    onSaveRaw: (cells: string[][]) => { void applyListRows(data, listRowsFromCells(cells.flat().map((c) => [c]))); },
-  };
-
   return (
     <NodeShell node={data} emit={emit}>
       <SegToggle
@@ -81,8 +50,7 @@ export function ListInputComponent({ data, emit }: NodeProps<ListInputNodeType>)
         onChange={(next) => { setDt(next); void applyListType(data, next); }}
       />
       <ExtensibleInputs node={data} emit={emit} />
-      {/* The box's own list chip opens the editor; never a second chip beside the box. */}
-      <ValueDisplay value={data.cachedList as DisplayValue} popupOverrides={popupOverrides} />
+      <ValueDisplay value={data.cachedList as DisplayValue} />
     </NodeShell>
   );
 }

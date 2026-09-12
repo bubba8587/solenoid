@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  parseCubeRecords, cubeRecordsToText, listRowsFromCells, getAtPath, setAtPath, recordsShape, parseCellText, cellTextOf,
+  parseCubeRecords, cubeRecordsToText, getAtPath, setAtPath, recordsShape, parseCellText, cellTextOf,
 } from "../../src/graph/literalEditors";
 import { CubeInputNode } from "../../src/graph/rete-nodes";
 import { extractInit } from "../../src/graph/copyPaste";
@@ -46,10 +46,6 @@ describe("paths + shapes + cell text", () => {
     expect(parseCellText("hello")).toBe("hello");
     expect(cellTextOf(["a", 1])).toBe('["a",1]');
     expect(cellTextOf(null)).toBe("");
-  });
-  it("listRowsFromCells drops trailing blank lines only", () => {
-    expect(listRowsFromCells([["a"], [""], ["b"], [""], [""]])).toEqual(["a", "", "b"]);
-    expect(listRowsFromCells([])).toEqual([]);
   });
 });
 

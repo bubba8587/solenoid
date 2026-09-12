@@ -29,7 +29,6 @@ import { nodeSizeStore } from "../nodeSizeStore";
 import { nodeResizable } from "../rete-nodes";
 import { formatScalar } from "./format";
 import { ArrayChip } from "./ArrayChip";
-import type { TablePopupState } from "../tablePopupStore";
 import { CategoryChip } from "./CategoryChip";
 import { categoryColorIndex } from "../categoryColor";
 import { formatAnnotationStore, formatNumberWithAnnotation, applyTextCase, applyLogicalStyle, annotationRendersNegativeRed, formatCxWithAnnotation } from "../formatAnnotationStore";
@@ -504,7 +503,6 @@ export function ValueDisplay({
   toClipboard,
   full,
   socketKey,
-  popupOverrides,
 }: {
   value: DisplayValue;
   empty?: ReactNode;
@@ -512,7 +510,6 @@ export function ValueDisplay({
   toClipboard?: (v: number) => string;
   /** An editable source (List Input): its list chip opens the editor popup with these
    *  overrides. The chip stays the box's own chip; a card never adds a second one. */
-  popupOverrides?: Partial<TablePopupState>;
   /** Show a list in full (all values, joined) instead of a chip — the Display
    *  node, whose box scrolls/wraps when resized. */
   full?: boolean;
@@ -693,8 +690,8 @@ export function ValueDisplay({
             : listInline ? (value as (string | null | SolError)[]).map((v) => (v === null ? "null" : isSolError(v) ? v.code : cased(v))).join(", ")
             // `elem` matters MOST here: dateFormatDisplay turned a date list's
             // serials into STRINGS, so the chip would otherwise sniff "text".
-            : <ArrayChip value={value as string[]} elem={elemFam} popupOverrides={popupOverrides} />)
-        : isList ? (listInline ? (value as (number | null | SolError)[]).map((v) => formatListCell(v, fmtScalar, ann)).join(", ") : <ArrayChip value={value as number[] | number[][]} elem={elemFam} popupOverrides={popupOverrides} />)
+            : <ArrayChip value={value as string[]} elem={elemFam} />)
+        : isList ? (listInline ? (value as (number | null | SolError)[]).map((v) => formatListCell(v, fmtScalar, ann)).join(", ") : <ArrayChip value={value as number[] | number[][]} elem={elemFam} />)
         : typeof value === "number" && Number.isNaN(value) ? (
             // A residual NaN is dirty DATA, not an error — a quiet muted
             // affordance, never error-red.

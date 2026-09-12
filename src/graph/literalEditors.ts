@@ -28,13 +28,6 @@ export function cubeRecordsToText(records: readonly CubeRecord[]): string {
   return JSON.stringify(records, null, 2);
 }
 
-/** The List editor's one raw column → the rows to keep: one text per line, trailing blank
- *  lines dropped (a blank in the middle stays a blank row). */
-export function listRowsFromCells(cells: readonly (readonly string[])[]): string[] {
-  const rows = cells.map((r) => (r[0] ?? "").trim());
-  while (rows.length && rows[rows.length - 1] === "") rows.pop();
-  return rows;
-}
 
 /** A path into the records: alternating row index and key, repeated per nesting level. */
 export type CubePath = (number | string)[];
