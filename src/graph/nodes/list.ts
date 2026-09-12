@@ -410,7 +410,7 @@ export class ListIndexNode extends ClassicPreset.Node {
     // A DYNAMIC shape grows columns at compute time and shifts the ones after them, so
     // a POSITIONAL index into it isn't trustworthy.
     if (!shape || shape.dynamic) return "trueany";
-    const c = shape.columns[Math.round(col) - 1]; // 1-based, Excel INDEX
+    const c = shape.columns[Math.trunc(col) - 1]; // 1-based; Excel truncates (indexAccess.resolveAxes)
     if (!c) return "trueany"; // out of range — a #REF! at runtime, no family to adopt
     return comboOfFamily(c.type) ?? "trueany";
   }

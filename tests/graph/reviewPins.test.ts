@@ -179,3 +179,18 @@ describe("review pins: whole-argument formulas", () => {
     expect(isSolError(out.slope) && out.slope.code).toBe("#DIV/0!");
   });
 });
+
+describe("review pins: one-element lists into list-consuming matrix nodes", () => {
+  it("Diagonal, Outer and Solve take a single-element list as a list", async () => {
+    const { wrapNodeData } = await import("../../src/graph/coerceInputs");
+    const { TableDiagNode, TableOuterNode, MatSolveNode } = await import("../../src/graph/nodes/matrix");
+    const drive = async (n: object, inputs: Record<string, unknown[]>) => {
+      wrapNodeData(n as Parameters<typeof wrapNodeData>[0]);
+      return (n as { data: (i: Record<string, unknown[]>) => Promise<Record<string, unknown>> | Record<string, unknown> }).data(inputs);
+    };
+    expect((await drive(new TableDiagNode(), { diag: [[5]] })).result).toEqual([[5]]);
+    expect((await drive(new TableOuterNode(), { a: [[2]], b: [[3, 4]] })).result).toEqual([[6, 8]]);
+    const solved = (await drive(new MatSolveNode(), { matrix: [[[2]]], b: [[4]] })).result as number[];
+    expect(solved.map((v) => Math.round(v * 1e9) / 1e9)).toEqual([2]);
+  });
+});
