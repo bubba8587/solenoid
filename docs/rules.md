@@ -84,6 +84,7 @@ procedure is in the PROV section). Machine-checked against the actual headings b
 | noAutoCross | Type separation: element families never auto-cross |
 | dateValuedPortIsDateTyped | A port that carries a date is typed date |
 | widenNeverNarrow | Dimensional flow: values widen up, never narrow down |
+| cubeNeverNarrowsToFrame | A cube never enters a frame socket; the node gets the wider socket |
 | derivedSocketTypes | Adding a socket type is a derived edit |
 | wildcardsKeepRank | The wildcard ladder keeps rank |
 | adoptKeepsCables | Adoption never drops cables and never persists |
@@ -449,6 +450,17 @@ combo→scalar), and never narrows", "every rank≤2 value (ANY family) widens I
 containers".
 *Exceptions:* a COMBO (scalar-or-list) narrows into its element scalar; a plain list does
 not. This is what makes a combo a combo. **Removed by:** nothing.
+
+### cubeNeverNarrowsToFrame — A cube never enters a frame socket; the node gets the wider socket **[ARR]**
+**MUST:** the lattice refuses cube → frame. A verb that should accept a cube declares a
+cube-adoptive INPUT (`cubeAdoptIn` + `noWidenInputs`, the Add Column / Computed Column
+pattern) and flattens or refuses inside `data()` (`flatCubeToFrame`: a flat cube is rows, a
+nested cell is a loud `#SHAPE!` naming the column). Never widen the lattice to spare a node.
+
+*Author (2026-09-12):* "cube into frame socket is NOT acceptable. if you have to upgrade
+something, upgrade the sockets on each node, not vice versa." *Enforced by:*
+`cubeAdoptiveVerbs.test.ts` → "cube → frame is still refused at the lattice", "Window, GROUPBY
+and Chart declare cube-adoptive inputs". **Removed by:** the author, in session.
 
 ### derivedSocketTypes — Adding a socket type is a derived edit **[DEFAULT]**
 **MUST:** a new socket type is added by extending the family/rank product. Cross-type

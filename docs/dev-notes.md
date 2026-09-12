@@ -72,7 +72,9 @@ Everything landed on `develop`; nothing pushed. The plan's § 10 calls were take
   cap surfaced ("Wrote 500 of N" on the sink, "first 500 of N" on the stepper) and the Knap help tab
   (`src/graph/help/knap.md`). Agent 3: frame-only verbs (Window / GROUPBY / Chart) now take a live cube —
   the LATTICE allows cube→frame and coerceInputs flattens a flat cube (a nested cell is a loud
-  #SHAPE! naming the column). A lattice change: for the author to confirm in the morning. Then
+  #SHAPE! naming the column). The author REFUSED the lattice change ("upgrade the sockets on each
+  node, not vice versa"): reverted, and the three nodes got cube-adoptive inputs instead, the
+  flatten inside data() (rules cubeNeverNarrowsToFrame, ARR). Then
   Add Column made cube-adoptive like Computed Column (cube in → cube out, nested cells by reference);
   Minutes-mode date cells show their clock (a `CubeColumn.format` seam, the cube twin of the frame
   column's; Schedule stamps the datetime pattern in Minutes mode).
