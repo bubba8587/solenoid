@@ -557,9 +557,11 @@ export function fillGrid(z: (number | null)[][], xs: number[], ys: number[], for
       let contested = false;
       for (const p of knownPts) {
         if ((p.i === rLo || p.i === rHi) && (p.j === cLo || p.j === cHi)) continue; // a corner
+        // A degenerate box is a SEGMENT on one row (or column): only known data on that
+        // same line contests it; data on other rows is not "inside" a row segment.
         const hit =
-          degenRow && !degenCol ? p.x > xA && p.x < xB :
-          degenCol && !degenRow ? p.y > yA && p.y < yB :
+          degenRow && !degenCol ? p.i === rLo && p.x > xA && p.x < xB :
+          degenCol && !degenRow ? p.j === cLo && p.y > yA && p.y < yB :
           p.x >= xA && p.x <= xB && p.y >= yA && p.y <= yB;
         if (hit) { contested = true; break; }
       }

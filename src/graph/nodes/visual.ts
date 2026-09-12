@@ -576,7 +576,8 @@ export class SevenSegNode extends ClassicPreset.Node {
  *  the classic all-dashes overflow when it doesn't fit the display width. */
 export function sevenSegText(v: number | null, decimals: number, maxDigits = 10): string {
   if (v == null || !Number.isFinite(v)) return "";
-  const s = v.toFixed(clamp(Math.round(decimals), 0, 6));
+  const fixed = v.toFixed(clamp(Math.round(decimals), 0, 6));
+  const s = /^-0(\.0+)?$/.test(fixed) ? fixed.slice(1) : fixed; // a negative that rounds to zero shows no sign
   // Count digit CELLS (a '.' rides its neighbor, '-' takes a cell).
   const cells = s.replace(/\./g, "").length;
   return cells > maxDigits ? "-".repeat(maxDigits) : s;
@@ -637,16 +638,18 @@ function colAsStrings(col: FrameColumn | undefined): string[] {
     return c == null ? "" : String(c);
   });
 }
-/** A column coerced to numbers (numeric text parses; anything else → 0). */
-function colAsNumbers(col: FrameColumn | undefined): number[] {
+/** A column coerced to numbers (numeric text parses); a blank, error or non-numeric cell is
+ *  null — unknown, never 0 (value-semantics), so a figure leaves a gap instead of a zero. */
+function colAsNumbers(col: FrameColumn | undefined): (number | null)[] {
   if (!col) return [];
   return col.values.map((v) => {
     const c = formatFrameCell(col.type, v);
     if (typeof c === "number" && Number.isFinite(c)) return c;
     if (typeof c === "string" && c.trim() !== "") { const n = Number(c); if (Number.isFinite(n)) return n; }
-    return 0;
+    return null;
   });
 }
+const knownOnly = (xs: (number | null)[]): number[] => xs.filter((x): x is number => x !== null);
 
 // ─── Proportion ─────────────────────────────────────────────────────────────────
 
@@ -693,7 +696,7 @@ export class ProportionNode extends ClassicPreset.Node {
     const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
     const names = colAsStrings(cols[0]);
     // Waffle's single-column fallback is a harmless superset for the treemap too.
-    const values = colAsNumbers(cols[1] ?? cols[0]);
+    const values = colAsNumbers(cols[1] ?? cols[0]).map((x) => x ?? 0); // 0 draws nothing on a proportion
     this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const payload: ProportionPayload = { kind: "proportion", layout: this.op, names, values };
     const chart: ChartValue = {
@@ -735,7 +738,7 @@ export class SankeyNode extends ClassicPreset.Node {
     const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
     const sources = colAsStrings(cols[0]);
     const targets = colAsStrings(cols[1]);
-    const values = colAsNumbers(cols[2]);
+    const values = colAsNumbers(cols[2]).map((x) => x ?? 0); // a blank flow carries nothing
     this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const payload: SankeyPayload = { kind: "sankey", sources, targets, values };
     this.cachedPayload = payload;
@@ -910,11 +913,11 @@ export class WaterfallNode extends ClassicPreset.Node {
   async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue }> {
     const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
     const names = colAsStrings(cols[0]);
-    const values = colAsNumbers(cols[1]);
+    const values = colAsNumbers(cols[1]); // a blank step is a gap the running total never crosses
     this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const payload: WaterfallPayload = { kind: "waterfall", names, values, total: true };
     const chart: ChartValue = {
-      __chart: true, op: "waterfall", values, payload,
+      __chart: true, op: "waterfall", values: knownOnly(values), payload,
       options: this.chartOptions, title: this.chartOptions.title || this.label || "Waterfall",
     };
     this.cachedChart = chart;
@@ -932,7 +935,7 @@ export class CandlestickNode extends ClassicPreset.Node {
   label: string;
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
-  cachedChart: ChartValue | null = null;
+  cachedChart: ChartValue | SolError | null = null;
   width = 260;
   height = 220;
 
@@ -954,8 +957,14 @@ export class CandlestickNode extends ClassicPreset.Node {
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue }> {
+  async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue | SolError | null }> {
     const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
+    if (cols.length === 0) { this.cachedChart = null; return { chart: null }; }
+    if (cols.length < 4) {
+      const err = solError("#SHAPE!", "Candlestick needs Open, High, Low and Close columns (a date column first is optional)");
+      this.cachedChart = err;
+      return { chart: err };
+    }
     // 5+ columns → col 0 is the date/label axis; exactly 4 → all four are OHLC.
     const hasDates = cols.length >= 5;
     const o = colAsNumbers(cols[hasDates ? 1 : 0]);
@@ -970,7 +979,7 @@ export class CandlestickNode extends ClassicPreset.Node {
     };
     this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const chart: ChartValue = {
-      __chart: true, op: "candle", values: payload.close, payload,
+      __chart: true, op: "candle", values: knownOnly(payload.close), payload,
       options: this.chartOptions, title: this.chartOptions.title || this.label || "Candlestick",
     };
     this.cachedChart = chart;
@@ -1083,8 +1092,10 @@ export class CalendarHeatmapNode extends ClassicPreset.Node {
     for (let i = 0; i < serials.length; i++) {
       const d = serials[i];
       if (d == null) continue;
+      const val = vals[i];
+      if (val == null) continue; // a day without a value stays sunken, never a painted 0
       days.push(Math.floor(d));
-      values.push(vals[i] ?? 0);
+      values.push(val);
     }
     this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const payload: CalHeatPayload = { kind: "calheat", days, values };

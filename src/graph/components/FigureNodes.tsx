@@ -7,6 +7,7 @@ import type {
 } from "../rete-nodes";
 import { PROPORTION_LAYOUT_OPTIONS } from "../rete-nodes";
 import type { ChartValue, ChartPayload } from "../chartValue";
+import { isSolError, type SolError } from "../errorValue";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { ChartFigure } from "./chartView";
@@ -21,7 +22,7 @@ import { getActiveView } from "../activeGraph";
 
 type FigureNode = ClassicPreset.Node & {
   id: string;
-  cachedChart: ChartValue | null;
+  cachedChart: ChartValue | SolError | null;
   width: number;
   height: number;
 };
@@ -33,7 +34,9 @@ function makeFigureComponent<N extends FigureNode>(
 ) {
   return function FigureComponent({ data, emit }: NodeProps<N>) {
     const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
-    const cv = data.cachedChart;
+    const raw = data.cachedChart;
+    const err = raw && isSolError(raw) ? raw : null;
+    const cv = raw && !isSolError(raw) ? raw : null;
     const has = !!cv && hasData(cv.payload);
     const figW = (data.width ?? 240) - 22; // card width minus body padding
     return (
@@ -43,7 +46,7 @@ function makeFigureComponent<N extends FigureNode>(
         <div className="solenoid-node__section-divider" />
         {!collapsed && (has && cv
           ? <ChartFigure value={cv} width={figW} height={figHeight} />
-          : <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>)}
+          : <div className="solenoid-node__display-value solenoid-node__display-value--empty" title={err?.message}>{err ? err.code : "—"}</div>)}
         {/* Collapsed → the hero box shows just the [Chart] chip (opens the popup). */}
         {cv && (
           <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip">

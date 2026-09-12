@@ -65,21 +65,23 @@ export interface ContourPayload {
   levels: number;
 }
 // A waterfall: each (name, value) is a signed delta from the running total; a
-// computed Total bar is appended when `total`.
+// computed Total bar is appended when `total`. A null delta is a GAP: unknown, drawn as
+// nothing, and the running total does not advance over it.
 export interface WaterfallPayload {
   kind: "waterfall";
   names: string[];
-  values: number[];
+  values: (number | null)[];
   total: boolean;
 }
-// OHLC candles, parallel per index; labels are the (formatted) x-axis dates.
+// OHLC candles, parallel per index; labels are the (formatted) x-axis dates. A null in any
+// of the four is an unknown candle, drawn as a gap.
 export interface CandlePayload {
   kind: "candle";
   labels: string[];
-  open: number[];
-  high: number[];
-  low: number[];
-  close: number[];
+  open: (number | null)[];
+  high: (number | null)[];
+  low: (number | null)[];
+  close: (number | null)[];
 }
 // Tukey five-number summary + outliers beyond the 1.5·IQR whiskers, computed in
 // the node so the view stays dumb.

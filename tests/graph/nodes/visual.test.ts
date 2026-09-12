@@ -367,7 +367,7 @@ describe("chart-wave nodes emit their payloads", () => {
       { name: "L", type: "number", values: [9, 11] },
       { name: "C", type: "number", values: [12, 11] },
     ]);
-    const p1 = (await n.data({ frame: [withDates] })).chart.payload as CandlePayload;
+    const p1 = ((await n.data({ frame: [withDates] })).chart as { payload: CandlePayload }).payload;
     expect(p1.labels).toEqual(["Jan", "Feb"]);
     expect(p1.open).toEqual([10, 12]);
     expect(p1.close).toEqual([12, 11]);
@@ -377,7 +377,7 @@ describe("chart-wave nodes emit their payloads", () => {
       { name: "L", type: "number", values: [9] },
       { name: "C", type: "number", values: [12] },
     ]);
-    const p2 = (await n.data({ frame: [bare] })).chart.payload as CandlePayload;
+    const p2 = ((await n.data({ frame: [bare] })).chart as { payload: CandlePayload }).payload;
     expect(p2.labels).toEqual(["1"]);
     expect(p2.high).toEqual([15]);
   });
@@ -457,6 +457,8 @@ describe("SevenSeg", () => {
   it("sevenSegText: fixed decimals; overflow → all dashes; blank when no value", () => {
     expect(sevenSegText(42.5, 1)).toBe("42.5");
     expect(sevenSegText(-3, 0)).toBe("-3");
+    expect(sevenSegText(-0.4, 0)).toBe("0");     // a negative that rounds to zero shows no sign
+    expect(sevenSegText(-0.004, 2)).toBe("0.00");
     expect(sevenSegText(null, 2)).toBe("");
     // 12345678901 = 11 digit cells > 10 → the classic overflow dashes.
     expect(sevenSegText(12345678901, 0)).toBe("----------");
@@ -686,5 +688,44 @@ describe("Record node", () => {
     expect(Object.keys(n.inputs)).toEqual(["frame", "layout", "options", "by"]);
     n.setOp("card");
     expect(Object.keys(n.inputs)).toEqual(["frame", "layout", "options", "row"]);
+  });
+});
+
+describe("figures: a blank cell is a gap, never a zero (review pins)", () => {
+  const frame = (columns: FrameColumn[]): FrameValue => ({ __frame: true, columns });
+  it("Waterfall keeps a null delta as a null step; the chart's values carry only the known ones", async () => {
+    const n = new WaterfallNode();
+    const f = frame([
+      { name: "Item", type: "string", values: ["a", "b", "c"] },
+      { name: "Δ", type: "number", values: [10, null, -3] },
+    ]);
+    const out = await n.data({ frame: [f] });
+    expect((out.chart.payload as WaterfallPayload).values).toEqual([10, null, -3]);
+    expect(out.chart.values).toEqual([10, -3]);
+  });
+  it("Candlestick keeps a null low as null; fewer than four columns is #SHAPE!", async () => {
+    const n = new CandlestickNode();
+    const f = frame([
+      { name: "O", type: "number", values: [10, 12] },
+      { name: "H", type: "number", values: [15, 13] },
+      { name: "L", type: "number", values: [null, 11] },
+      { name: "C", type: "number", values: [12, 11] },
+    ]);
+    const out = await n.data({ frame: [f] });
+    expect(isSolError(out.chart)).toBe(false);
+    expect(((out.chart as { payload: CandlePayload }).payload).low).toEqual([null, 11]);
+    const short = frame([{ name: "O", type: "number", values: [1] }, { name: "H", type: "number", values: [2] }]);
+    const bad = await n.data({ frame: [short] });
+    expect(isSolError(bad.chart) && bad.chart.code).toBe("#SHAPE!");
+  });
+  it("Calendar skips a day whose value is blank instead of painting 0", async () => {
+    const n = new CalendarHeatmapNode();
+    const f = frame([
+      { name: "Day", type: "date", values: [46023, 46024, 46025] },
+      { name: "N", type: "number", values: [3, null, 4] },
+    ]);
+    const p = (await n.data({ frame: [f] })).chart.payload as CalHeatPayload;
+    expect(p.days).toEqual([46023, 46025]);
+    expect(p.values).toEqual([3, 4]);
   });
 });
