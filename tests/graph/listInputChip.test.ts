@@ -7,11 +7,13 @@ import { ListInputNode } from "../../src/graph/nodes/list";
 // hosts a chip of its own and never rewires the popup: 758a2d70 added a dummy 1x1 table
 // chip and a raw-row editor, and every "fix" since broke the popup a new way.
 describe("List Input: the plain value box", () => {
-  it("emits a rank-1 list", () => {
+  it("emits a rank-1 list: every typed row's values, in row order, as ONE flat list (the author's rule)", () => {
     const n = new ListInputNode();
-    n.stringLiterals[Object.keys(n.inputs)[0]] = "1, 2, 3";
+    const k0 = Object.keys(n.inputs)[0];
+    n.stringLiterals[k0] = "1, 2, 3";
+    n.stringLiterals[n.addValueInput()] = "3, 4, 5";
     const out = (n as unknown as { data: (i: Record<string, unknown[]>) => { list: unknown } }).data({});
-    expect(out.list).toEqual([1, 2, 3]);
+    expect(out.list).toEqual([1, 2, 3, 3, 4, 5]);
   });
 
   it("the card hosts no ArrayChip and hands ValueDisplay no popup overrides", () => {
