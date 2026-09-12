@@ -47,6 +47,15 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Sources
 
+- [ ] **List Input popup editor — review with the author** (2026-09-12). Harmonizing the literal
+  editors onto the table popup is allowed for List Input, provided it keeps its behaviors: typed
+  rows are the stored truth and every row's values concatenate into one flat list; the value
+  box's chip opens the ordinary list popup (one element per cell, the Row / Column switcher).
+  The open design question is Save: the popup shows the flat list, so an edit has to say where
+  row boundaries go (rewrite as one row? keep the row a value came from? refuse edits that
+  cross rows?). Stage ONE proposal for the author; do not build. `tests/graph/listInputChip.test.ts`
+  pins the contract; subsystem-invariants § Literal input editors records the ruling.
+
 - [ ] **Widget nodes Tier 1 — follow-ups (1.4 C1).** All six shipped (Geocode, Weather,
   Holidays, Time Zone Convert, World Clock, Currency/FX, QR Code) + the Garden Dashboard seed.
   Left for the author to rule on (Lead is surfacing): FX time-series/Chart frame (Frankfurter has
