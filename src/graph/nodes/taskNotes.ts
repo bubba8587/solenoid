@@ -40,7 +40,7 @@ function todaySerial(): number {
 
 export class TaskNotesNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    tasks: "One row per task. Lists (projects, contexts, tags, blocked-by) are list cells; time entries and completed instances are nested tables. Filter, Sort and Get Column read the scalar columns; Unnest opens a nested one.",
+    tasks: "One row per task. Projects, contexts, tags and blocked-by are lists; time entries and completed instances are nested tables.",
     from: "First day of the calendar window. Unwired, a year back.",
     to: "Last day of the calendar window. Unwired, a year ahead.",
     events: "One row per calendar event in the window: title, start, end, source.",
@@ -170,8 +170,8 @@ export type WriteTasksStatus = "idle" | "previewing" | "writing" | "ok" | "error
 
 export class WriteTasksNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    tasks: "Wiring rows never writes a task. The write runs only from the Run button, and the node loads disarmed. A row with a path updates that task; a row without one creates a task from its title.",
-    plan: "One row per input row: path, title, the action (create, update, unchanged, skip) and the fields that will be sent. Preview fills in unchanged by reading the current tasks.",
+    tasks: "A row with a path updates that task; a row without one creates a task from its title. Only Run writes; the node loads disarmed.",
+    plan: "One row per input row: path, title, the action and the fields to send. Preview marks the rows that would not change.",
   };
   label: string;
   /** Columns to send, comma-separated; "" = every writable column present. */

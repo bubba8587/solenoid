@@ -56,7 +56,7 @@ export type WriteFormat = "csv" | "json" | "text";
 
 export class WriteFileNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    in: "The frame (CSV or JSON) or, in Text mode, the string written as-is. Wiring it never writes the file: the write runs only from the Run button, and the node loads disarmed.",
+    in: "A frame, written as CSV or JSON, or in Text mode the text as-is. Only Run writes; the node loads disarmed.",
   };
   label: string;
   path: string;

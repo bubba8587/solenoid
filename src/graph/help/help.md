@@ -54,6 +54,43 @@ The graph autosaves and returns when you reopen, no file needed. **Save / Open**
 | nested `=IF(…, IF(…))` | one **IFS** or **SWITCH** with as many cases as you need |
 | Power Query's join / append / unpivot | the **Join** / **Append** / **Unpivot** nodes |
 
+## Plans
+
+**Schedule** reads a table of tasks. Task is the first text column, Duration the first number column in days (blank or 0 is a milestone), and Predecessors a list cell naming the tasks that must finish first, or a nested table of Task, Type (FS, SS, FF or SF) and Lag. A row whose Tasks cell holds a table is a summary of those rows. The other columns are optional:
+
+| Column | Effect |
+|---|---|
+| Start, Finish | holds a task no earlier than a date; caps it and shows negative float |
+| Deadline | flags a late finish |
+| Manual | pins a task to its dates |
+| Complete | 0 to 100 |
+| Project | groups the Gantt into sections |
+| ALAP | starts a task as late as possible |
+| Actual start | the day work began |
+| Elapsed | counts every day, weekends included |
+| Weekend, Hours, Holidays | a task's own calendar |
+| Work, Units | hours of work and people on it, setting Duration when it is blank |
+| Resource | who does it, for the histogram |
+| Active | FALSE leaves a row in place with no dates |
+| Repeat, Every | a recurring row: N occurrences, k days apart |
+
+**Gantt** takes its view from the options string, `key=value` pairs separated by semicolons:
+
+| Key | Values |
+|---|---|
+| zoom | day, week, month, quarter, year, fit |
+| tiers | 1 or 2 header rows |
+| window | two dates, `1-Jun,31-Aug`, framing the timeline |
+| collapse | fold nesting below this level |
+| columns | name, start, finish, duration, float, complete, predecessors |
+| layout | gantt, or calendar for a month grid |
+| fit | page lays the whole plan out to one width for export |
+| week | iso or us |
+| fiscal_start | the month, 1 to 12, that starts the fiscal year |
+| critical, baseline, arrows, today, status, weekends, labels, histogram, minutes, group_by | on or off |
+
+`title` and `fontsize` apply as on every chart.
+
 ## Keyboard
 
 Single keys work when you're not typing in a field.

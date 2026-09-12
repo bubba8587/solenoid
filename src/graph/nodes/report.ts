@@ -30,9 +30,9 @@ const sameList = (a: readonly string[], b: readonly string[]) => a.length === b.
 
 export class ReportNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    document: "Carries the report's markdown, the template rendered, with every embedded value resolved to its wired value. One page per record when Records is wired.",
-    template: "A wired Note becomes the report's template: its tags mint the inputs here, and its own frontmatter fills any input left unwired. The report's own text is set aside while it is wired.",
-    records: "The mail-merge list, a frame or cube: the template renders once per row, with `record` and `index` beside the other inputs, and the page name names each note.",
+    document: "The rendered report as markdown, every embedded value resolved. In a mail merge, one page per record.",
+    template: "A Note used as the template: its tags become the inputs and its frontmatter fills the ones left blank. The report's own text waits while it is in use.",
+    records: "The mail-merge rows, a frame or cube: one page per row, with record and index in scope, named by the page name.",
   };
   /** Frames arrive AS frames (typed date columns) rather than type-stripped cubes. */
   rawInputs: ReadonlySet<string> = new Set(["records"]);

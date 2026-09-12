@@ -40,16 +40,16 @@ const RATIO_COLS = new Set(["SPI", "CPI", "TCPI"]);
 
 export class EarnedValueNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    schedule: "A scheduled project: Task, Complete (0 to 100) and a Cost column, plus Start and Finish. Cost carries its currency onto the money columns. An Actual cost column, when present, is the real spend; without one the actual cost equals the earned value, so cost never varies.",
-    baseline: "The plan as it was, a second scheduled project. Its Cost is the budget and its Start and Finish set the planned pace, matched to the current tasks by name. Unwired, the current schedule is its own baseline.",
+    schedule: "A scheduled project with a Cost column and Complete from 0 to 100. An Actual cost column is the real spend; without one it equals the earned value.",
+    baseline: "The plan as it started: its Cost is the budget, its Start and Finish the planned pace. Rows match by task name. Unwired, the schedule is its own baseline.",
     status: "The day progress is measured on. Unwired, today.",
-    holidays: "Dates to skip when working out how much of the plan should be done by the status date, alongside the weekend.",
-    weekend_code: "Excel's WORKDAY.INTL codes for the working week: 1 = Sat+Sun, 2 = Sun+Mon, … 7 = Fri+Sat; 11–17 = a single day off.",
+    holidays: "Dates to skip when measuring planned progress, alongside the weekend.",
+    weekend_code: "Which days are the weekend. Excel: WORKDAY.INTL codes, 1 = Sat+Sun, 2 = Sun+Mon, 11 to 17 = a single day off.",
     cost: "The Cost column's name, when it isn't called Cost, Budget or BAC.",
-    frame: "Task, then BCWS (planned value), BCWP (earned value), ACWP (actual cost), SV and CV (schedule and cost variance), SPI and CPI (the indices), EAC (estimate at completion), VAC (variance at completion) and TCPI.",
+    frame: "A row per task: planned value BCWS, earned value BCWP, actual cost ACWP, the variances SV and CV, the indices SPI and CPI, the estimate at completion EAC, then VAC and TCPI.",
     spi: "The project schedule performance index: earned over planned value.",
     cpi: "The project cost performance index: earned value over actual cost.",
-    eac: "The project estimate at completion: the budget divided by the cost performance index.",
+    eac: "The estimate at completion: the budget over the cost performance index.",
   };
 
   label: string;

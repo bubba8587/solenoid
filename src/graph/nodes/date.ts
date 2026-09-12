@@ -149,7 +149,7 @@ export const DATE_TIME_VALUE_OP_META = {
 
 export class DateTimeValueNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    text: "A date needs a four-digit year (two-digit years don't parse). ISO, day-first numeric, ordinals and month names all work; a numeric date that could go either way (3/4/2026) is #AMBIGUOUS!; write the month as a name.",
+    text: "A date with a four-digit year: ISO, day-first numeric, an ordinal, or a month name. A numeric date that reads both ways, 3/4/2026, is #AMBIGUOUS!; write the month as a name.",
   };
 
   label: string;
@@ -567,7 +567,7 @@ export class DateTruncNode extends ClassicPreset.Node {
 
 export class TimeZoneConvertNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    datetime: "The date and time to convert. Wire a Date Input or NOW.",
+    datetime: "The date and time to convert.",
     from: "The zone the date/time is in now, an IANA name like America/New_York.",
     to: "The zone to express it in, an IANA name like Asia/Tokyo.",
     result: "The same moment, on the To zone's wall clock.",

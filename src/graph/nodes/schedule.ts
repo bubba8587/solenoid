@@ -47,18 +47,18 @@ export function todaySerial(): number {
 
 export class ScheduleNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    tasks: "One row per task. Optional per-task columns: ALAP starts a task as late as possible, Actual start pins the day work began, Elapsed counts every day, Weekend, Hours or Holidays give a task its own calendar, Work in hours with Units (1 = one person full time) sets the duration when Duration is blank, Resource names who does it, and Active = FALSE leaves a row in place with no dates. Task is the first text column with unique names; Duration the first number column in days, where blank or 0 marks a milestone; Predecessors a list cell naming the tasks that must finish first, or a nested table of Task, Type (FS, SS, FF or SF) and Lag in days for typed links and leads. Optional columns: Start holds a task no earlier than a date, Finish caps it and shows negative float, Deadline flags a late finish, Manual pins a task to its dates, Complete is 0 to 100, Project groups the gantt into sections. A row whose Tasks cell holds a table is a summary of those rows.",
+    tasks: "One row per task: Task, Duration in days (blank or 0 is a milestone) and Predecessors, the tasks it waits on. A Tasks cell holding a table makes the row a summary. Start, Finish, Deadline, Complete, Manual, Project and the calendar columns are optional; Help lists them under Plans.",
     start: "The project start. Unwired, the schedule starts today.",
     holidays: "Dates to skip alongside the weekend. Only read in Working days mode.",
-    links: "A flat list of dependencies, one row per link: Successor (or Task, or To), Predecessor (or From), an optional Type (FS, SS, FF or SF) and Lag in days. Its links add to each task's Predecessors, so a plain tasks table with no list column can still carry dependencies. A row naming a task that isn't in the plan is an error.",
-    weekend_code: "Excel's WORKDAY.INTL codes: 1 = Sat+Sun, 2 = Sun+Mon, … 7 = Fri+Sat; 11–17 = a single day off.",
-    status: "The day progress is measured on. With it set, the unfinished part of a started task is scheduled after this day, split from the done part or moved with it. Unwired, Complete only fills the bars.",
-    hours: "Hours in a working day: converts a Duration column in hours, and in Minutes mode is the length of the working day, which starts at 08:00.",
-    cube: "The rows in their original order with Start, Finish, Float, Critical, Free Float, the early and late dates, Driving and Late appended. Float is how many days a task can slip without moving the finish, Critical marks the tasks whose float is 0, and Driving names the predecessor that set the start. One path measures float against the project finish; Every path marks each independent chain critical on its own.",
+    links: "Dependencies as a flat table, one per row: Successor, Predecessor, and an optional Type (FS, SS, FF, SF) and Lag in days. Adds to each task's Predecessors.",
+    weekend_code: "Which days are the weekend. Excel: WORKDAY.INTL codes, 1 = Sat+Sun, 2 = Sun+Mon, 11 to 17 = a single day off.",
+    status: "The day progress is measured on. Work left on a started task is scheduled after it. Unwired, Complete only fills the bars.",
+    hours: "Hours in a working day. Converts a Duration column given in hours; in Minutes mode it is the length of the working day, from 08:00.",
+    cube: "The rows in order, with Start, Finish, Float, Critical, Free Float, the early and late dates, Driving and Late appended. Float is the days a task can slip without moving the finish.",
     finish: "The last finish.",
-    diagnostics: "One row per finding, under plain names: tasks with no predecessor or successor, negative float, a typed start that held, leads and lags, long tasks, work that should have started.",
-    gantt: "Mermaid gantt source for the schedule: a Mermaid node draws it, and a Report or Write to Obsidian embeds it as a fence.",
-    mspdi: "The schedule as a Project XML file, the format Microsoft Project and every desktop scheduler open. Write File saves it as .xml.",
+    diagnostics: "One row per finding: a task with no predecessor or successor, negative float, a start that held, leads and lags, long tasks, work that should have started.",
+    gantt: "Mermaid gantt source for the schedule.",
+    mspdi: "The schedule as Project XML, the file Microsoft Project and other schedulers open.",
   };
 
   label: string;

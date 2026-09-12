@@ -74,10 +74,10 @@ function nowSerial(): number {
 // of copyPaste's persistence whitelist so every load starts disarmed.
 export class WriteObsidianNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    in: "The Document to write as a note (Note target). Wiring never writes; Run does, and the node loads disarmed.",
-    path: "The note to write: a vault-relative path or a bare name (no .md). Wire a path from a Vault Folder row, or pick one with Browse. A leading folder overrides the subfolder.",
-    rows: "The rows to write as properties (Properties target): a cube with a `path` column naming each note; a `note-body` column writes each note's body, every other column its frontmatter. Wiring never writes.",
-    plan: "Properties target: one row per note and property, with the note's current value, the value to write, and the action Preview resolves. Empty in the Note target.",
+    in: "The Document to write as a note. Only Run writes; the node loads disarmed.",
+    path: "The note to write: a vault-relative path, or a bare name without .md. A leading folder overrides the subfolder.",
+    rows: "Rows to write as properties: a path column names each note, a note-body column writes its body, every other column its frontmatter. Only Run writes.",
+    plan: "One row per note and property: the current value, the value to write, and what Run would do. Empty for a Note.",
   };
   label: string;
   /** Vault-relative destination subfolder ("" = the vault root). A leading folder on
@@ -423,8 +423,8 @@ const IMPORT_RESERVED: ReadonlySet<string> = new Set(["document", "path"]);
 
 export class ImportObsidianNode extends NoteNode {
   static socketDocs: Record<string, string> = {
-    document: "Carries the note's full text, frontmatter included, for a document sink such as Write to Obsidian.",
-    path: "The source note's vault-relative path. Wire it out to join or index against a Vault Folder cube; wire a path in to load that note instead of the picked one.",
+    document: "The note's full text, frontmatter included.",
+    path: "The note's vault-relative path. An incoming path loads that note instead of the picked one.",
   };
   /** Vault-relative path of the source `.md` file ("" until one is picked). */
   fileName: string;

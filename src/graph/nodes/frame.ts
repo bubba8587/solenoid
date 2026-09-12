@@ -1722,7 +1722,7 @@ export const PAYOFF_ORDER_META = {
 
 export class PayoffPlannerNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    debts: "Rows are debts: the first text column names them, Balance what is owed, APR the yearly rate (0.24 or 24), and Min the minimum monthly payment. Balance's currency rides onto the result.",
+    debts: "Rows are debts: a name, Balance, APR as 0.24 or 24, and Min, the minimum monthly payment. Balance's currency rides onto the result.",
     extra: "The extra paid every month on top of the minimums; it moves to the next debt as each one clears.",
     start: "The month the plan starts. Unwired, this month.",
     frame: "Summary: Debt · Months · Interest · Payoff date. Schedule: Month · a balance column per debt.",
@@ -1837,9 +1837,9 @@ export type SettleMode = "totals" | "transactions";
 
 export class SettleNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    in: "The group's data, retyped by the mode. In Totals, a people frame: a name column, a Paid number, an optional Share weight where 1 is an equal share and blank counts as 1. In Transactions, a cube ledger of expenses, one row each: an Amount, a Paid by name or list for a shared bill, and a For list of who splits it equally, where blank counts as the whole group. Payers and beneficiaries are independent, so a bill one person fronts can be redistributed to a different group.",
+    in: "The group's data. Totals: one row per person with Paid and an optional Share weight, blank counting as 1. Transactions: a ledger cube, one expense per row with Amount, Paid by and For, where a blank For means the whole group.",
     transfers: "The settle-up, and the node's main output: who pays whom in the fewest transfers, From · To · Amount. Amounts carry the Amount column's currency.",
-    net: "Each person's true cost: Paid (already paid out, external), Owes (still owed to the group, positive), Owed (coming back from the group, negative), and Net = Paid + Owes + Owed, their fair share. In equal-split totals every Net matches.",
+    net: "Each person's true cost: Paid, Owes (still due to the group), Owed (coming back from it) and Net, their fair share.",
   };
 
   label: string;

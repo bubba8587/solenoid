@@ -12,7 +12,7 @@ import { buildQrPayload, qrModulesToSvg, svgDataUrl, type QrTemplate, type QrFie
 export class QrCodeNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     text: "The text or URL to encode.",
-    chart: "The QR image. Drop it on a Report to show or print it.",
+    chart: "The QR image.",
   };
   label: string;
   qrTemplate: QrTemplate;

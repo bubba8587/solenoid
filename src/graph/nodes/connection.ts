@@ -283,7 +283,7 @@ export class ImportXmlNode extends ClassicPreset.Node {
 export class LocalFileNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frame: "Reads the named file from the folder chosen in Settings. Rows are never saved into the project file.",
-    plan: "The same file as a project plan, when it is one: a Project XML file, a GanttProject file, a Primavera XER export, or a CSV whose Predecessors column uses row numbers such as 3FS+2d. Tasks nest as the outline, and each row's predecessors become a list of names, or a table of Task, Type and Lag when a link has a type or a lag. Feeds Schedule. Empty for any other file.",
+    plan: "The file as a project plan: Project XML, GanttProject, Primavera XER, or a CSV whose Predecessors use row numbers such as 3FS+2d. Tasks nest as the outline. Empty for any other file.",
   };
   label: string;
   /** File name relative to the Settings target folder (not a full path). */
@@ -418,8 +418,8 @@ export class LocalFileNode extends ClassicPreset.Node {
 // place (the WebSource pattern); ambiguity is a per-node label pick, default top match.
 export class GeocodeNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    place: "A place name, for example Boise or Paris. Pick among matches on the card.",
-    timezone: "IANA name, for example America/Boise. Feeds Weather and Time Zone Convert.",
+    place: "A place name, for example Boise or Paris.",
+    timezone: "The IANA time zone name, for example America/Boise.",
   };
   label: string;
   stringLiterals: Record<string, string> = {};
@@ -484,8 +484,8 @@ export class GeocodeNode extends ClassicPreset.Node {
 // WebSource sync-background fetch pattern, so it rides the C2 network gate.
 export class WeatherNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    lat: "Latitude. Wire from Geocode, or type it.",
-    lon: "Longitude. Wire from Geocode, or type it.",
+    lat: "Latitude.",
+    lon: "Longitude.",
     daily: "One row per day: date, rain mm, rain %, high, low, ET₀, condition. Past and future in one frame; split with a Frame Filter against TODAY.",
     temp: "The current temperature, carrying its °C/°F unit downstream.",
   };
@@ -766,9 +766,9 @@ function mdbaseHintFor(collections: Map<string, MdbaseCollection>, folder: strin
 
 export class VaultFolderNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    folder: "The vault-relative subfolder to read, blank for the whole vault. Wire a value to drive it, else pick it on the card.",
-    glob: "A file-name filter to keep, e.g. 2026-*, blank for every note. Wire a value or type it on the card.",
-    cube: "One row per note: the file columns, then every frontmatter key. Lists and nested tables ride in the cells. Rows are never saved into the project file; reopening the document re-reads the vault.",
+    folder: "The vault subfolder to read. Blank reads the whole vault.",
+    glob: "A file-name filter such as 2026-*. Blank keeps every note.",
+    cube: "One row per note: the file columns, then every frontmatter key, with lists and nested tables kept in the cells. Notes are never saved into the project file.",
   };
   label: string;
   /** Vault-relative subfolder ("" = the whole vault). */

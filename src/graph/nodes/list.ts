@@ -74,7 +74,7 @@ function coerceElem(dt: ListElemType, v: unknown): AnyCell {
 
 export class ListInputNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    list: "Rows concatenate in order, and a wired row replaces its typed text.",
+    list: "Rows concatenate in order.",
   };
 
   label: string;
