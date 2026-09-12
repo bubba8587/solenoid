@@ -6,8 +6,9 @@
 // Tasks (or Children / Subtasks) cell holds a table is a summary of those rows.
 
 import { solError, isSolError } from "./errorValue";
-import { formatDateSerial, parseDate } from "./nodes/dateSerial";
+import { formatDateSerial, parseDate, DEFAULT_DATETIME_FORMAT } from "./nodes/dateSerial";
 import { cubeFromColumns, isCubeValue, isFrameValue, frameToCube, type CubeValue, type CubeCell, type CubeColumn, type FrameValue } from "./frame";
+import type { FormatAnnotation } from "./formatAnnotationStore";
 import { isUnitCell } from "./unitValue";
 import {
   schedule, mermaidGantt, writeMspdi, ScheduleError, predecessorText, LINK_TYPES, intervalsForHours,
@@ -314,28 +315,34 @@ function taskCalendar(cols: Level["cols"], i: number, hoursPerDay: number): Plan
   return Object.keys(spec).length ? spec : null;
 }
 
+/** In Minutes mode the scheduled instants carry a clock time, so the date columns display with
+ *  the app's datetime pattern ("05-Jan-2026 13:00") instead of the default date-only form. */
+const DATETIME_FORMAT: FormatAnnotation = { format: "date_custom", customPattern: DEFAULT_DATETIME_FORMAT, unit: "none" };
+
 /** Rebuild a level's cube with the computed columns appended (and child tables rebuilt). */
-function writeLevel(level: Level, byName: Map<string, ScheduledTask>, nested: boolean): CubeValue {
+function writeLevel(level: Level, byName: Map<string, ScheduledTask>, nested: boolean, minutes: boolean): CubeValue {
   const rows = level.names.map((n, i) => (level.inactive[i] ? null : byName.get(n.toLowerCase())!)) as ScheduledTask[];
   const cells = <T extends CubeCell>(f: (t: ScheduledTask) => T): (T | null)[] => rows.map((t) => (t ? f(t) : null));
-  const appended: Array<{ name: string; type?: "date" | "number" | "logical" | "string"; cells: CubeCell[] }> = [
-    { name: "Start", type: "date", cells: cells((t) => t.start) },
-    { name: "Finish", type: "date", cells: cells((t) => t.finish) },
+  // Stamp the datetime format on a date column only in Minutes mode; Days mode stays date-only.
+  const dateFmt = minutes ? { format: DATETIME_FORMAT } : {};
+  const appended: Array<{ name: string; type?: "date" | "number" | "logical" | "string"; cells: CubeCell[]; format?: FormatAnnotation }> = [
+    { name: "Start", type: "date", cells: cells((t) => t.start), ...dateFmt },
+    { name: "Finish", type: "date", cells: cells((t) => t.finish), ...dateFmt },
     { name: "Float", type: "number", cells: cells((t) => t.float) },
     { name: "Critical", type: "logical", cells: cells((t) => t.critical) },
     { name: "Free Float", type: "number", cells: cells((t) => t.freeFloat) },
-    { name: "Early Start", type: "date", cells: cells((t) => t.earlyStart) },
-    { name: "Early Finish", type: "date", cells: cells((t) => t.earlyFinish) },
-    { name: "Late Start", type: "date", cells: cells((t) => t.lateStart) },
-    { name: "Late Finish", type: "date", cells: cells((t) => t.lateFinish) },
+    { name: "Early Start", type: "date", cells: cells((t) => t.earlyStart), ...dateFmt },
+    { name: "Early Finish", type: "date", cells: cells((t) => t.earlyFinish), ...dateFmt },
+    { name: "Late Start", type: "date", cells: cells((t) => t.lateStart), ...dateFmt },
+    { name: "Late Finish", type: "date", cells: cells((t) => t.lateFinish), ...dateFmt },
     { name: "Driving", type: "string", cells: cells((t) => t.driving) },
     { name: "Late", type: "logical", cells: cells((t) => t.late) },
   ];
   // A split task's parts, as a nested Start · Finish table, only when some row is split.
   if (rows.some((t) => t?.segments)) {
     appended.push({ name: "Segments", cells: cells((t) => (t.segments ? cubeFromColumns([
-      { name: "Start", type: "date", cells: t.segments.map((s) => s[0]) },
-      { name: "Finish", type: "date", cells: t.segments.map((s) => s[1]) },
+      { name: "Start", type: "date", cells: t.segments.map((s) => s[0]), ...dateFmt },
+      { name: "Finish", type: "date", cells: t.segments.map((s) => s[1]), ...dateFmt },
     ]) : null)) });
   }
   if (nested) {
@@ -350,7 +357,7 @@ function writeLevel(level: Level, byName: Map<string, ScheduledTask>, nested: bo
   if (!level.cols.duration && rows.some((t) => t?.summary)) appended.unshift({ name: "Duration", type: "number", cells: cells((t) => t.duration) });
   // Generated children (a recurring row's occurrences) get a Tasks column the input lacked.
   if (!level.cols.children && level.childLevels.some(Boolean)) {
-    appended.unshift({ name: "Tasks", cells: level.childLevels.map((l) => (l ? writeLevel(l, byName, nested) : null)) });
+    appended.unshift({ name: "Tasks", cells: level.childLevels.map((l) => (l ? writeLevel(l, byName, nested, minutes) : null)) });
   }
   const taken = new Set(appended.map((col) => col.name));
   const kept = level.cube.columns.filter((col) => !taken.has(col.name) || col === level.cols.start || col === level.cols.finish);
@@ -360,7 +367,7 @@ function writeLevel(level: Level, byName: Map<string, ScheduledTask>, nested: bo
     if (col === level.cols.start && taken.has("Start")) return null;
     if (col === level.cols.finish && taken.has("Finish")) return null;
     if (col === level.cols.children) {
-      return { name: col.name, type: col.type, cells: col.cells.map((cell, i) => (level.childLevels[i] ? writeLevel(level.childLevels[i]!, byName, nested) : cell)) };
+      return { name: col.name, type: col.type, cells: col.cells.map((cell, i) => (level.childLevels[i] ? writeLevel(level.childLevels[i]!, byName, nested, minutes) : cell)) };
     }
     // A summary row's Duration is derived (the working days its children span); the input
     // leaves it blank, so the output fills it.
@@ -411,7 +418,7 @@ export function scheduleTasks(c: CubeValue, opts: ScheduleOptions): ScheduleResu
   }
   const byName = new Map(output.tasks.map((t) => [t.name.toLowerCase(), t]));
   const nested = output.tasks.some((t) => t.summary);
-  const cube = writeLevel(level, byName, nested);
+  const cube = writeLevel(level, byName, nested, opts.precision === "minutes");
   return {
     cube,
     projectFinish: output.projectFinish,

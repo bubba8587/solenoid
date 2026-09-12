@@ -3,7 +3,7 @@ import { ScheduleNode } from "../../../src/graph/rete-nodes";
 import { extractInit } from "../../../src/graph/copyPaste";
 import { parseDateToSerial, formatDateSerial } from "../../../src/graph/nodes/dateSerial";
 import { isSolError } from "../../../src/graph/errorValue";
-import { cubeFromColumns, isCubeValue, type CubeValue, type FrameValue } from "../../../src/graph/frame";
+import { cubeFromColumns, isCubeValue, formatFrameCell, type CubeValue, type FrameValue } from "../../../src/graph/frame";
 
 const MON = parseDateToSerial("2026-01-05");
 const c: CubeValue = cubeFromColumns([
@@ -50,6 +50,30 @@ describe("ScheduleNode", () => {
     expect(formatDateSerial(out.finish as number, "YYYY-MM-DD HH:mm")).toBe("2026-01-05 17:00");
     expect(extractInit(n as never).precision).toBe("minutes");
     expect(new ScheduleNode({ precision: "bogus" as never }).precision).toBe("days");
+  });
+
+  it("Minutes precision stamps the datetime format on the date columns so cells read with a time", () => {
+    const half = cubeFromColumns([
+      { name: "Task", cells: ["A", "B"], type: "string" }, { name: "Duration", cells: [0.5, 0.5], type: "number" }, { name: "Predecessors", cells: [[], ["A"]] },
+    ]);
+    const col = (cube: CubeValue, name: string) => cube.columns.find((cc) => cc.name === name);
+
+    const mins = new ScheduleNode({ precision: "minutes" }).data({ tasks: [half], start: [MON] });
+    if (!isCubeValue(mins.cube)) throw new Error("expected a cube");
+    for (const name of ["Start", "Finish", "Early Start", "Early Finish", "Late Start", "Late Finish"]) {
+      expect(col(mins.cube, name)?.format?.customPattern).toBe("DD-MMM-YYYY HH:mm");
+    }
+    expect(col(mins.cube, "Float")?.format).toBeUndefined(); // a non-date column stays unformatted
+    // The stamped format drives the cube's date cells to render with the clock time.
+    const startCell = col(mins.cube, "Start")!.cells[0] as number;
+    expect(formatFrameCell("date", startCell, col(mins.cube, "Start")!.format)).toMatch(/^05-Jan-2026 \d\d:\d\d$/);
+
+    const days = new ScheduleNode().data({ tasks: [half], start: [MON] });
+    if (!isCubeValue(days.cube)) throw new Error("expected a cube");
+    expect(col(days.cube, "Start")?.format).toBeUndefined();
+    expect(col(days.cube, "Finish")?.format).toBeUndefined();
+    // Days mode still reads date-only.
+    expect(formatFrameCell("date", col(days.cube, "Start")!.cells[0] as number, col(days.cube, "Start")?.format)).toBe("05-Jan-2026");
   });
 
   it("Every path marks an independent short chain critical; the field round-trips", () => {

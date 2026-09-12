@@ -122,10 +122,6 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 - [ ] **Project-exported goldens** (author): export MSPDI from a Project trial / 2024 for the two
   seeds' plans and drop them in `fixtures/schedule/` as `project-*.mspdi.xml`; the parity test
   picks them up; name any disagreement in `divergences.json`. Until then the corpus is authored.
-- [ ] **Minutes-mode cells show times**: a date column formats date-only, so a 13:00 start reads
-  as its day; the FC's datetime format is the workaround. Consider stamping a datetime format
-  on Start / Finish when precision is Minutes.
-
 ## Canvas chrome (queued by the author 2026-09-07, "not top priority")
 
 - [ ] **Collapsed stadium pill hover preview** — a collapsed node's input pill shows a hover

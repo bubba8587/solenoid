@@ -84,6 +84,16 @@ export function isDateStyle(style: FormatStyleId): boolean {
   return style.startsWith("date_") || style.startsWith("time_") || style === "datetime";
 }
 
+/** The date pattern a date-style annotation renders with, or null when the annotation is not a
+ *  date style. The frame/cube cell renderers read it so a column's `format` changes its date
+ *  cells (e.g. a Minutes-mode Schedule stamps `DD-MMM-YYYY HH:mm`). */
+export function dateAnnotationPattern(ann: FormatAnnotation): string | null {
+  if (!isDateStyle(ann.format)) return null;
+  return ann.format === "date_custom"
+    ? (ann.customPattern || DEFAULT_DATE_FORMAT)
+    : (DATE_STYLE_PATTERNS[ann.format as FormatStyle] ?? DEFAULT_DATE_FORMAT);
+}
+
 export type DecimalMode = "places" | "sigfigs";
 
 // The ONE precision resolver (format-model.md) — no style case may carry private digit

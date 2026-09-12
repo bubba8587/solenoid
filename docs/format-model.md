@@ -102,6 +102,14 @@ its own reads `—` (inherit) with the arriving format as a muted hint beside it
 and every concrete style — `auto` included — is a real local override that
 deletes back to `—` (`columnFormatRow`, `frameFormatStore.ts`).
 
+A **cube** column carries the same optional `format` (`CubeColumn.format`); the cube
+renderers (`formatFrameCell`'s `format` arg, threaded through `cubeCell.tsx` from
+`CubeDisplay`/`CubePopup`) read it like the frame path. A producing verb may author one:
+the **Schedule** verb stamps the app datetime pattern (`DD-MMM-YYYY HH:mm`) on its Start /
+Finish / Early / Late date columns in Minutes mode, so a `13:00` start reads with its
+clock time; Days mode leaves them blank. This is a verb authoring a fresh format, the same
+kind of exception to "every other derived column starts blank" as the nest / Allocator carry.
+
 **Every family's primary style dropdown carries the SAME `—` pick** (`inheritFormat`) —
 the number/complex/date format dropdown, the text case dropdown, and the logical show-as
 dropdown: with it, the FC carries the display format arriving at `in` through unchanged

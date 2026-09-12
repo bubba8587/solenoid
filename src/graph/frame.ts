@@ -7,7 +7,7 @@ import { formatDim, dimEqual, type Dim } from "./dimension";
 import { parseColumnUnitFromHeader, columnUnitFromSpec, tagFrameCellUnit, matrixCellsFromList } from "./unitColumn";
 import { displayMagnitudeOf } from "./unitBridge";
 import { elementFamilyOf, type SocketDataType } from "./sockets";
-import type { FormatAnnotation } from "./formatAnnotationStore";
+import { dateAnnotationPattern, type FormatAnnotation } from "./formatAnnotationStore";
 
 // A date column stores Excel serials — the `type: "date"` tag is the only signal
 // those numbers are dates.
@@ -179,11 +179,12 @@ export function frameHasTextColumns(f: FrameValue): boolean {
 /** Format one cell for DISPLAY by column type (serials → date strings, booleans →
  *  TRUE/FALSE, errors → #CODE!); the popup editor uses raw `values` so editing stays
  *  literal. */
-export function formatFrameCell(type: FrameColType, v: FrameCell): number | string | null {
+export function formatFrameCell(type: FrameColType, v: FrameCell, format?: FormatAnnotation): number | string | null {
   if (isSolError(v)) return v.code;
   if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
   if (type === "date" && typeof v === "number" && Number.isFinite(v)) {
-    return formatDateSerial(v, DEFAULT_DATE_FORMAT);
+    const pattern = (format && dateAnnotationPattern(format)) || DEFAULT_DATE_FORMAT;
+    return formatDateSerial(v, pattern);
   }
   return v;
 }
@@ -495,6 +496,10 @@ export interface CubeColumn {
   /** OPTIONAL element type carried from a source frame column, so a flat cube still
    *  renders dates/logicals. A DISPLAY hint, not a homogeneity guarantee. */
   type?: FrameColType;
+  /** OPTIONAL per-column display format, the cube analogue of `FrameColumn.format`: a
+   *  producing verb can stamp it so date cells read with a chosen pattern (a Minutes-mode
+   *  Schedule stamps `DD-MMM-YYYY HH:mm` on its Start/Finish columns). */
+  format?: FormatAnnotation;
 }
 
 export interface CubeValue {
@@ -552,7 +557,7 @@ export function cubeCellsFromColumn(col: FrameColumn): CubeCell[] {
 /** A Frame is a Cube of flat cells — element TYPE carried, unit-locked cells tagged;
  *  depth is always 1. */
 export function frameToCube(f: FrameValue): CubeValue {
-  return makeCube(f.columns.map((col) => ({ name: col.name, type: col.type, cells: cubeCellsFromColumn(col) })));
+  return makeCube(f.columns.map((col) => ({ name: col.name, type: col.type, ...(col.format ? { format: col.format } : {}), cells: cubeCellsFromColumn(col) })));
 }
 
 /** Cube from a row-major grid + optional headers; ragged rows pad short with `null`. */
@@ -566,9 +571,9 @@ export function cubeFromRows(
 }
 
 /** Build a Cube from named columns of arbitrary cells (the general constructor). */
-export function cubeFromColumns(cols: ReadonlyArray<{ name?: string; cells: CubeCell[]; type?: FrameColType }>): CubeValue {
+export function cubeFromColumns(cols: ReadonlyArray<{ name?: string; cells: CubeCell[]; type?: FrameColType; format?: FormatAnnotation }>): CubeValue {
   const names = makeHeaders(cols.map((c) => c.name ?? ""), cols.length);
-  return makeCube(names.map((name, j) => ({ name, cells: cols[j].cells, ...(cols[j].type ? { type: cols[j].type } : {}) })));
+  return makeCube(names.map((name, j) => ({ name, cells: cols[j].cells, ...(cols[j].type ? { type: cols[j].type } : {}), ...(cols[j].format ? { format: cols[j].format } : {}) })));
 }
 
 /** Widen any value into a Cube (mirrors the frame widening in coerceInputs): a 2-D
@@ -642,6 +647,7 @@ export function selectCubeRows(cube: CubeValue, indices: readonly number[]): Cub
   return makeCube(cube.columns.map((c) => ({
     name: c.name,
     ...(c.type ? { type: c.type } : {}),
+    ...(c.format ? { format: c.format } : {}),
     cells: indices.map((i) => c.cells[i] ?? null),
   })));
 }

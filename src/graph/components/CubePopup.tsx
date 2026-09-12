@@ -30,7 +30,7 @@ function describe(view: DrillView): {
       rows: cubeRowCount(cube),
       cols: cube.columns.length,
       depth: cubeDepth(cube),
-      cell: (r, c) => <CubeCellChip cell={cube.columns[c].cells[r] ?? null} crumb={cube.columns[c].name} size="sm" type={cube.columns[c].type} />,
+      cell: (r, c) => <CubeCellChip cell={cube.columns[c].cells[r] ?? null} crumb={cube.columns[c].name} size="sm" type={cube.columns[c].type} format={cube.columns[c].format} />,
       sortKey: (r, c) => sortKeyOf(cube.columns[c].cells[r] ?? null),
     };
   }
