@@ -18,6 +18,7 @@ import {
   colTypeForSocket,
   addColumn,
   frameHasTextColumns,
+  type FrameValue,
 } from "../../src/graph/frame";
 import { parseDateToSerial } from "../../src/graph/nodes/date";
 import { BuildFrameNode, FrameFromListsNode, FrameInputNode } from "../../src/graph/nodes/frame";
@@ -272,7 +273,7 @@ describe("Add Column pads a short list with blanks", () => {
     const f = frameFromCells(["a"], [[1], [2], [3]]); // three rows
     const node = new AddColumnNode({ addAs: "number" });
     node.stringLiterals.name = "b";
-    const out = node.data({ frame: [f], values: [[10]] }).frame!; // one value
+    const out = node.data({ frame: [f], values: [[10]] }).frame as FrameValue; // one value
     expect(getColumn(out, "b")!.values).toEqual([10, null, null]);
   });
 });
@@ -435,7 +436,7 @@ describe("per-cell errors in a frame", () => {
     const node = new AddColumnNode({ addAs: "number" });
     node.stringLiterals.name = "b";
     const err = solError("#DIV/0!", "boom");
-    const out = node.data({ frame: [f], values: [[10, err, 30]] }).frame!;
+    const out = node.data({ frame: [f], values: [[10, err, 30]] }).frame as FrameValue;
     const col = getColumn(out, "b")!;
     expect(col.values[0]).toBe(10);
     expect(isSolError(col.values[1]) && (col.values[1] as { code: string }).code).toBe("#DIV/0!");
@@ -449,7 +450,7 @@ describe("per-cell errors in a frame", () => {
     node.stringLiterals.name = "flag";
     // A logicallist input arrives already coerced to booleans (coerceInputs);
     // null (missing) is carried verbatim.
-    const out = node.data({ frame: [f], values: [[true, false, null]] }).frame!;
+    const out = node.data({ frame: [f], values: [[true, false, null]] }).frame as FrameValue;
     const col = getColumn(out, "flag")!;
     expect(col.type).toBe("logical");
     expect(col.values).toEqual([true, false, null]);
