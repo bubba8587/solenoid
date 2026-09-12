@@ -1988,6 +1988,166 @@
     "as": "r"
    },
    "expectError": "#REF!"
+  },
+  {
+   "name": "pct_change from a zero predecessor is the #DIV/0! cell on both engines",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "a"
+       ]
+      },
+      {
+       "name": "t",
+       "type": "number",
+       "values": [
+        1,
+        2,
+        3
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        0,
+        5,
+        10
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "orderBy": "t",
+    "orderDir": "asc",
+    "fn": "pct_change",
+    "column": "v",
+    "as": "out"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "a",
+       "a"
+      ]
+     },
+     {
+      "name": "t",
+      "type": "number",
+      "values": [
+       1,
+       2,
+       3
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       0,
+       5,
+       10
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       null,
+       {
+        "__err": "#DIV/0!"
+       },
+       1
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "name": "share of a zero group total is the #DIV/0! cell on both engines",
+   "frames": {
+    "in": {
+     "columns": [
+      {
+       "name": "g",
+       "type": "string",
+       "values": [
+        "a",
+        "a",
+        "b"
+       ]
+      },
+      {
+       "name": "v",
+       "type": "number",
+       "values": [
+        0,
+        0,
+        4
+       ]
+      }
+     ]
+    }
+   },
+   "op": {
+    "kind": "window",
+    "partitionBy": [
+     "g"
+    ],
+    "fn": "share",
+    "column": "v",
+    "as": "out"
+   },
+   "expect": {
+    "columns": [
+     {
+      "name": "g",
+      "type": "string",
+      "values": [
+       "a",
+       "a",
+       "b"
+      ]
+     },
+     {
+      "name": "v",
+      "type": "number",
+      "values": [
+       0,
+       0,
+       4
+      ]
+     },
+     {
+      "name": "out",
+      "type": "number",
+      "values": [
+       {
+        "__err": "#DIV/0!"
+       },
+       {
+        "__err": "#DIV/0!"
+       },
+       1
+      ]
+     }
+    ]
+   }
   }
  ]
 }

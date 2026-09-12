@@ -310,6 +310,7 @@ fn num_to_json(n: f64) -> Json {
         match n.to_bits() {
             ERR_DOMAIN_BITS => return serde_json::json!({"__err": "#DOMAIN!"}),
             ERR_OVERFLOW_BITS => return serde_json::json!({"__err": "#OVERFLOW!"}),
+            ERR_DIV0_BITS => return serde_json::json!({"__err": "#DIV/0!"}),
             _ => return serde_json::json!({"__nf": "nan"}),
         }
     }
@@ -1063,7 +1064,8 @@ fn lazy_window(
         "pct_change" => {
             let prev = over(vnum().shift(lit(1)));
             let cur = vnum();
-            when(prev.clone().eq(lit(0.0))).then(lit(NULL)).otherwise((cur - prev.clone()) / prev)
+            // The oracle's #DIV/0! cell: "Percent change from zero is undefined".
+            when(prev.clone().eq(lit(0.0))).then(lit(f64::from_bits(ERR_DIV0_BITS))).otherwise((cur - prev.clone()) / prev)
         }
         "rolling_sum" | "rolling_avg" | "rolling_min" | "rolling_max" => {
             let opts = RollingOptionsFixedWindow { window_size: nn as usize, min_periods: 1, ..Default::default() };
@@ -1083,7 +1085,8 @@ fn lazy_window(
         "group_count" => nonnull_present(),
         "share" => {
             let total = over(vnum().sum());
-            when(total.clone().eq(lit(0.0))).then(lit(NULL)).otherwise(vnum() / total)
+            // The oracle's #DIV/0! cell: "The group total is 0".
+            when(total.clone().eq(lit(0.0))).then(lit(f64::from_bits(ERR_DIV0_BITS))).otherwise(vnum() / total)
         }
         "first" => over(vraw().first()),
         "last" => over(vraw().last()),
@@ -1510,6 +1513,9 @@ fn verb_filter_multi(frame: &SolFrame, combine: &str, conditions: &[WireFilterCo
 // propagate the original code — an accepted, chain-only approximation).
 const ERR_DOMAIN_BITS: u64 = 0x7ff8_0000_0000_0d01;
 const ERR_OVERFLOW_BITS: u64 = 0x7ff8_0000_0000_0f02;
+/// The window verb's zero-denominator cells (pct_change from 0, share of a 0 total): the
+/// oracle's #DIV/0! error cell, on the same reserved-NaN wire.
+const ERR_DIV0_BITS: u64 = 0x7ff8_0000_0000_0d03;
 
 /// Wrap an aggregate expression with the B-1b verdicts, in the oracle's exact
 /// order: NaN input → #DOMAIN!; NaN result → #DOMAIN!; ±Inf result with no
