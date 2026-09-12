@@ -60,12 +60,16 @@ export class DataFeedNode extends ClassicPreset.Node {
       return { frame: null };
     }
     const key = p.needsKey ? apiKeyStore.get(p.keyProvider ?? p.id) : "";
+    const start = this.stringLiterals.start?.trim() || undefined;
+    const end = this.stringLiterals.end?.trim() || undefined;
+    // ISO dates compare as text; a reversed range would come back as an opaque provider error.
+    if (start && end && start > end) {
+      this.cachedResult = null;
+      connectionStore.setState(this.id, { status: "error", message: "End is before Start." });
+      return { frame: null };
+    }
     // These ride in the URL, hence the cache key, so changing any of them re-fetches.
-    const url = p.buildUrl(input, key, {
-      start: this.stringLiterals.start?.trim() || undefined,
-      end: this.stringLiterals.end?.trim() || undefined,
-      freq: this.stringLiterals.freq?.trim() || undefined,
-    });
+    const url = p.buildUrl(input, key, { start, end, freq: this.stringLiterals.freq?.trim() || undefined });
     if (!requestNetwork(this.id)) return { frame: this.cachedResult }; // C2 gate: foreign doc not yet allowed
     // The key folds in the provider so switching provider re-fetches.
     const cacheKey = connectionStore.key(this.id, `${this.provider}:${url}`);

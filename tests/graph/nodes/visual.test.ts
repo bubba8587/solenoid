@@ -729,3 +729,13 @@ describe("figures: a blank cell is a gap, never a zero (review pins)", () => {
     expect(p.values).toEqual([3, 4]);
   });
 });
+
+describe("Sparkline blanks are gaps", () => {
+  it("[5, null, 7] keeps the gap in its series; win/loss of [3, null, -2] is [1, null, -1]", () => {
+    const line = new SparklineNode({ op: "line" }).data({ values: [[5, null, 7] as never] }).chart;
+    expect(line.series?.[0].values).toEqual([5, null, 7]);
+    expect(line.values).toEqual([5, 7]);
+    const wl = new SparklineNode({ op: "winloss" }).data({ values: [[3, null, -2] as never] }).chart;
+    expect(wl.series?.[0].values).toEqual([1, null, -1]);
+  });
+});

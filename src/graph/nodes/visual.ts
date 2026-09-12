@@ -51,13 +51,16 @@ export class SparklineNode extends ClassicPreset.Node {
   data(inputs: { values?: (number | number[])[] }): { chart: ChartValue } {
     const raw = inputs.values?.[0] ?? null;
     this.cachedResult = raw;
-    // Finite numbers only — the emitted chart value must never carry a NaN/Infinity/error
-    // the sign / toSeries path would render as garbage (parity with ChartNode.data()).
-    const nums = (Array.isArray(raw) ? raw : raw == null ? [] : [raw]).map((x) => (typeof x === "number" && Number.isFinite(x) ? x : 0));
+    // A blank, error or non-finite cell is a GAP, never a zero (a zero bar, or a win/loss
+    // "draw", would be a fabricated reading). `series` keeps the gaps in place; `values`
+    // (the 1-D summary) carries only the known numbers.
+    const cells = (Array.isArray(raw) ? raw : raw == null ? [] : [raw]).map((x) => (typeof x === "number" && Number.isFinite(x) ? x : null));
+    const signed = this.op === "winloss" ? cells.map((n) => (n === null ? null : Math.sign(n))) : cells;
     const chart: ChartValue = {
       __chart: true,
       op: this.op === "winloss" ? "column" : this.op,
-      values: this.op === "winloss" ? nums.map((n) => Math.sign(n)) : nums,
+      values: signed.filter((n): n is number => n !== null),
+      series: [{ name: this.label || "Sparkline", values: signed }],
       options: this.chartOptions,
       title: this.label || "Sparkline",
     };
