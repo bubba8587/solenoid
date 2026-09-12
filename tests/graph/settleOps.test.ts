@@ -118,3 +118,33 @@ describe("settleLedgerCube", () => {
     expect(transfers.columns[2].values).toEqual([185, 40, 65]);
   });
 });
+
+describe("review pins: names and signs", () => {
+  it("settleFrame: two rows for one name (any case) sum, and nobody pays themselves", () => {
+    const f: FrameValue = { __frame: true, columns: [
+      { name: "Person", type: "string", values: ["A", "a", "B"] },
+      { name: "Paid", type: "number", values: [100, 0, 0] },
+    ] };
+    const { transfers, net } = settleFrame(f, "equal");
+    expect(net.columns[0].values).toEqual(["A", "B"]);
+    expect(transfers.columns[0].values).toEqual(["B"]);
+    expect(transfers.columns[1].values).toEqual(["A"]);
+    expect(transfers.columns[2].values).toEqual([50]);
+  });
+
+  it("minTransfers nets a repeated name before pairing", () => {
+    const t = minTransfers([{ name: "A", net: 50 }, { name: "A", net: -20 }, { name: "B", net: -30 }]);
+    expect(t).toEqual([{ from: "B", to: "A", amount: 30 }]);
+  });
+
+  it("settleLedgerCube: a refund row keeps its sign; ada and Ada are one person", () => {
+    const cube = recordsToCube([
+      { Amount: 100, "Paid by": "Ada", For: "Ada, Bo" },
+      { Amount: -40, "Paid by": "bo", For: "ada" },
+    ]);
+    const { transfers, net } = settleLedgerCube(cube);
+    expect(net.columns[0].values).toEqual(["Ada", "Bo"]);
+    expect(net.columns[4].values).toEqual([10, 50]); // shares: Ada 50 − 40, Bo 50
+    expect(transfers.columns.map((c) => c.values)).toEqual([["Bo"], ["Ada"], [90]]);
+  });
+});

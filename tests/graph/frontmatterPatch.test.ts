@@ -206,3 +206,17 @@ describe("setBody round trips", () => {
     expect(out).toBe("---\r\ntitle: A\r\n---\r\n\r\nNew\r\n");
   });
 });
+
+describe("review pins: a list inside a row", () => {
+  it("renders as a flow sequence and reads back as a list, never a comma string", async () => {
+    const steps: CubeValue = { __cube: true, columns: [
+      { name: "name", cells: ["a", "b"], type: "string" },
+      { name: "tags", cells: [["x", "y"], []] },
+    ] } as unknown as CubeValue;
+    const v = cellToYaml(steps, undefined, NO_NAMES);
+    expect(renderKey("steps", v)).toEqual(["steps:", "  - {name: a, tags: [x, y]}", "  - {name: b, tags: []}"]);
+    const { parse } = await import("yaml");
+    const back = parse(renderKey("steps", v).join("\n")) as { steps: { tags: unknown }[] };
+    expect(back.steps.map((r) => r.tags)).toEqual([["x", "y"], []]);
+  });
+});

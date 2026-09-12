@@ -8,7 +8,9 @@ import { formatDateSerial } from "./nodes/dateSerial";
 
 /** A value ready to render as YAML: a scalar, a scalar list, or rows of scalar objects. */
 export type YamlScalarV = string | number | boolean | null;
-export type YamlValue = YamlScalarV | YamlScalarV[] | Record<string, YamlScalarV>[];
+/** A row's field: a scalar, or a list of scalars (written as a flow sequence `[a, b]`). */
+export type YamlRowV = YamlScalarV | YamlScalarV[];
+export type YamlValue = YamlScalarV | YamlScalarV[] | Record<string, YamlRowV>[];
 
 export interface Refusal { key: string; reason: string; }
 export interface PatchResult { text: string; refused: Refusal[]; }
@@ -51,26 +53,33 @@ function scalarToYaml(cell: CubeCell, colType: FrameColType | undefined, noteNam
 }
 
 interface Col { name: string; cells: CubeCell[]; type?: FrameColType; }
-function frameRows(cols: Col[], noteNames: ReadonlySet<string>): Record<string, YamlScalarV>[] {
+function frameRows(cols: Col[], noteNames: ReadonlySet<string>): Record<string, YamlRowV>[] {
   const n = cols.reduce((m, c) => Math.max(m, c.cells.length), 0);
-  const rows: Record<string, YamlScalarV>[] = [];
+  const rows: Record<string, YamlRowV>[] = [];
   for (let i = 0; i < n; i++) {
-    const row: Record<string, YamlScalarV> = {};
-    for (const c of cols) row[c.name] = scalarToYaml(c.cells[i] ?? null, c.type, noteNames);
+    const row: Record<string, YamlRowV> = {};
+    for (const c of cols) {
+      const cell = c.cells[i] ?? null;
+      // A list cell inside a row stays a list (a flow sequence), never a comma string.
+      row[c.name] = Array.isArray(cell) ? cell.map((x) => scalarToYaml(x as CubeCell, c.type, noteNames)) : scalarToYaml(cell, c.type, noteNames);
+    }
     rows.push(row);
   }
   return rows;
 }
 
 // ─── Rendering a key's YAML line(s) ─────────────────────────────────────────────
-function isRows(v: YamlValue): v is Record<string, YamlScalarV>[] {
+function isRows(v: YamlValue): v is Record<string, YamlRowV>[] {
   return Array.isArray(v) && v.length > 0 && typeof v[0] === "object" && v[0] !== null;
 }
+
+const renderRowValue = (val: YamlRowV): string =>
+  Array.isArray(val) ? `[${val.map(renderScalar).join(", ")}]` : renderScalar(val);
 
 /** The line(s) a key + value render to (no trailing newline; caller joins). */
 export function renderKey(key: string, v: YamlValue): string[] {
   if (isRows(v)) {
-    return [`${key}:`, ...v.map((row) => `  - {${Object.entries(row).map(([k, val]) => `${k}: ${renderScalar(val)}`).join(", ")}}`)];
+    return [`${key}:`, ...v.map((row) => `  - {${Object.entries(row).map(([k, val]) => `${k}: ${renderRowValue(val)}`).join(", ")}}`)];
   }
   if (Array.isArray(v)) {
     if (v.length === 0) return [`${key}: []`];

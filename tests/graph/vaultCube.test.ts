@@ -178,3 +178,14 @@ describe("mdbase validation (Write Properties, item B)", () => {
     expect(validateAgainst("x", sch.constraints.priority)).toMatch(/must be a number/);
   });
 })
+
+describe("review pins: path_glob `?`", () => {
+  it("matches exactly one path character, never a regex quantifier", () => {
+    const collection = parseMdbaseCollection(read("Projects/mdbase.yaml"), [read("Projects/_types/project.md")]);
+    const t = { ...collection.types[0], pathGlob: "task-?.md" };
+    const one = { ...collection, types: [t] };
+    expect(mdbaseSchemaFor(one, "task-1.md")).not.toBeNull();
+    expect(mdbaseSchemaFor(one, "task.md")).toBeNull();
+    expect(mdbaseSchemaFor(one, "task-12.md")).toBeNull();
+  });
+});

@@ -1936,11 +1936,14 @@ export function settleLedgerCube(cube: CubeValue): { transfers: FrameValue; net:
   if (!payerCol) throw solError("#VALUE!", "Group Cost Settle (Transactions) needs a Paid by column");
 
   // A cell's names: a list cell → its entries; a scalar → itself; a comma string → its parts.
+  // "ada" and "Ada" are one person: the first spelling seen is the display name.
+  const canon = new Map<string, string>();
+  const person = (raw: string): string => { const k = norm(raw); const seen = canon.get(k); if (seen) return seen; canon.set(k, raw.trim()); return raw.trim(); };
   const namesOf = (cell: CubeCell | undefined): string[] => {
     if (cell == null) return [];
     if (Array.isArray(cell)) return cell.flatMap(namesOf);
     if (isUnitCell(cell) || isFrameValue(cell) || isCubeValue(cell)) return [];
-    return String(cell).split(/\s*,\s*/).map((x) => x.trim()).filter(Boolean);
+    return String(cell).split(/\s*,\s*/).map((x) => x.trim()).filter(Boolean).map(person);
   };
   const amountOf = (cell: CubeCell | undefined): number => {
     if (isUnitCell(cell)) return Number.isFinite(cell.value) ? cell.value : 0;
@@ -1954,7 +1957,8 @@ export function settleLedgerCube(cube: CubeValue): { transfers: FrameValue; net:
   for (let i = 0; i < rows; i++) {
     const amount = amountOf(amountCol.cells[i]);
     const payers = namesOf(payerCol.cells[i]);
-    if (!(amount > 0) || payers.length === 0) continue; // a row with no payer or amount can't be placed
+    // A refund is a negative row and settles like any other; only a payerless row can't be placed.
+    if (payers.length === 0) continue;
     const named = forCol ? namesOf(forCol.cells[i]) : [];
     expenses.push({ amount, payers, beneficiaries: named.length ? named : null }); // blank For = the whole group
   }
@@ -2017,16 +2021,22 @@ export function settleFrame(f: FrameValue, split: SettleSplit): { transfers: Fra
   const paidCol = byName("paid", "amount", "spent") ?? nums.find((c) => c !== shareCol);
   if (!paidCol) throw solError("#VALUE!", "Group Cost Settle needs a Paid number column");
   const rows = frameRowCount(f);
-  const people = Array.from({ length: rows }, (_, i) => {
+  // One person per name (trimmed, case-insensitive; first spelling shown): two rows for "Ada"
+  // sum their Paid and Share instead of settling Ada against herself.
+  const people: { name: string; paid: number; share: number | null }[] = [];
+  const at = new Map<string, number>();
+  for (let i = 0; i < rows; i++) {
     const paid = paidCol.values[i];
     if (isSolError(paid)) throw paid;
     const share = shareCol ? shareCol.values[i] : null;
-    return {
-      name: String(nameCol?.values[i] ?? `Person ${i + 1}`),
-      paid: typeof paid === "number" && Number.isFinite(paid) ? paid : 0,
-      share: typeof share === "number" && Number.isFinite(share) ? share : null,
-    };
-  });
+    const raw = String(nameCol?.values[i] ?? `Person ${i + 1}`).trim() || `Person ${i + 1}`;
+    const p = typeof paid === "number" && Number.isFinite(paid) ? paid : 0;
+    const s = typeof share === "number" && Number.isFinite(share) ? share : null;
+    const key = raw.toLowerCase();
+    const j = at.get(key);
+    if (j === undefined) { at.set(key, people.length); people.push({ name: raw, paid: p, share: s }); }
+    else { people[j].paid += p; if (s !== null) people[j].share = (people[j].share ?? 0) + s; }
+  }
   const r = settleGroup(people, { weighted: split === "weighted" && !!shareCol });
   const money = { ...(paidCol.unit ? { unit: paidCol.unit } : {}), ...(paidCol.format ? { format: paidCol.format } : {}) };
   return {

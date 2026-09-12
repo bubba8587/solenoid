@@ -459,8 +459,10 @@ export function recordsToCube(records: ReadonlyArray<Record<string, unknown>>): 
   const toCell = (v: unknown): CubeCell => {
     if (v == null) return null;
     if (Array.isArray(v)) {
-      const objs = v.filter((x) => x && typeof x === "object" && !Array.isArray(x));
-      if (v.length > 0 && objs.length === v.length) return recordsToCube(v as Record<string, unknown>[]);
+      // Records with a null beside them are still records; the null is an empty row.
+      const present = v.filter((x) => x != null);
+      const objs = present.filter((x) => typeof x === "object" && !Array.isArray(x));
+      if (present.length > 0 && objs.length === present.length) return recordsToCube(v.map((x) => (x ?? {}) as Record<string, unknown>));
       return v.map(toCell);
     }
     if (typeof v === "object") return recordsToCube([v as Record<string, unknown>]);

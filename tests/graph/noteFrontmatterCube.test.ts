@@ -45,3 +45,12 @@ describe("frontmatter rows with list values → a cube", () => {
     expect(isCubeValue(c.columns[2].cells[0])).toBe(true);
   });
 });
+
+describe("review pins: recordsToCube", () => {
+  it("a null beside records is an empty row of the nested cube, not a list of cubes", () => {
+    const c = recordsToCube([{ steps: [{ a: 1 }, null] }]);
+    const cell = c.columns[0].cells[0];
+    expect(isCubeValue(cell)).toBe(true);
+    expect(isCubeValue(cell) && cell.columns[0].cells).toEqual([1, null]);
+  });
+});

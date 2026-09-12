@@ -41,7 +41,14 @@ const fin = (x: number) => (Number.isFinite(x) ? x : 0);
  *  transfers out. The biggest creditor takes from the biggest debtor until one goes even;
  *  amounts round to cents. Ties keep input order (a stable sort), so the result is
  *  deterministic. */
-export function minTransfers(balances: readonly { name: string; net: number }[]): Transfer[] {
+export function minTransfers(balancesIn: readonly { name: string; net: number }[]): Transfer[] {
+  // One balance per name: a name listed twice nets first, so nobody ever pays themselves.
+  const byName = new Map<string, { name: string; net: number }>();
+  for (const b of balancesIn) {
+    const cur = byName.get(b.name);
+    if (cur) cur.net += b.net; else byName.set(b.name, { name: b.name, net: b.net });
+  }
+  const balances = [...byName.values()];
   const creditors = balances.map((b) => ({ name: b.name, v: round2(b.net) })).filter((x) => x.v > 0.005).sort((a, b) => b.v - a.v);
   const debtors = balances.map((b) => ({ name: b.name, v: round2(-b.net) })).filter((x) => x.v > 0.005).sort((a, b) => b.v - a.v);
   const transfers: Transfer[] = [];

@@ -42,7 +42,8 @@ export function monthlyRate(apr: number): number {
 export function payoffOrder(debts: readonly Debt[], order: PayoffOrder): number[] {
   const idx = debts.map((_, i) => i);
   if (order === "snowball") return idx.sort((a, b) => debts[a].balance - debts[b].balance || a - b);
-  return idx.sort((a, b) => debts[b].apr - debts[a].apr || a - b);
+  // By the rate the plan charges, so 18 (a percent) and 0.24 (a fraction) compare honestly.
+  return idx.sort((a, b) => monthlyRate(debts[b].apr) - monthlyRate(debts[a].apr) || a - b);
 }
 
 /** Roll the plan. Throws when the payments can't cover the interest (the balances would

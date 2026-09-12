@@ -45,3 +45,10 @@ describe("payoffPlan", () => {
     expect(() => payoffPlan([{ name: "Runaway", balance: 10000, apr: 0.5, min: 10 }], 0, "avalanche")).toThrow(/Runaway/);
   });
 });
+
+describe("review pins: avalanche compares rates as charged", () => {
+  it("18 (a percent) outranks 0.24 (a fraction)? no: 24% comes first", () => {
+    const mixed: Debt[] = [{ name: "A", balance: 100, apr: 18, min: 10 }, { name: "B", balance: 100, apr: 0.24, min: 10 }];
+    expect(payoffOrder(mixed, "avalanche")).toEqual([1, 0]);
+  });
+});

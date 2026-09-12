@@ -23,3 +23,13 @@ describe("baseView", () => {
     expect(s).toContain("- file.name");
   });
 });
+
+describe("review pins: quoting", () => {
+  it("a view name or key YAML would misread is quoted; the folder is JS-escaped", () => {
+    const y = buildBaseView('Pro"jects', ["status", "due: date"], "Write: tasks");
+    expect(y).toContain('file.inFolder("Pro\\"jects")');
+    expect(y).toContain('name: "Write: tasks"');
+    expect(y).toContain('- "due: date"');
+    expect(y).toContain("- status\n");
+  });
+});

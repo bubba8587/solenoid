@@ -130,6 +130,8 @@ function globToRegExp(glob: string): RegExp {
     if (ch === "*") {
       if (glob[i + 1] === "*") { re += ".*"; i++; }
       else re += "[^/]*";
+    } else if (ch === "?") {
+      re += "[^/]";
     } else if (".+^${}()|[]\\".includes(ch)) {
       re += "\\" + ch;
     } else {

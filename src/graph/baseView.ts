@@ -3,6 +3,8 @@
 // `![[<node>.base#View]]` and Obsidian renders a live table of what B produced. Pure YAML
 // building; graph/DOM-free.
 
+import { yamlScalar } from "./obsidianMarkdown";
+
 /** A safe single filename segment for the `.base` file (mirrors graphStub's rule). */
 export function sanitizeBaseName(name: string): string {
   const s = (name || "").replace(/[\\/:*?"<>|#^[\]]/g, "-").trim();
@@ -20,13 +22,14 @@ export function baseRelPath(folder: string, nodeName: string): string {
 export function buildBaseView(folder: string, keys: readonly string[], viewName: string): string {
   const lines: string[] = [];
   if (folder) {
-    lines.push("filters:", "  and:", `    - file.inFolder("${folder}")`);
+    // The folder sits inside a JS string literal in the filter expression.
+    lines.push("filters:", "  and:", `    - file.inFolder("${folder.replace(/["\\]/g, "\\$&")}")`);
   }
   lines.push("views:");
   lines.push("  - type: table");
-  lines.push(`    name: ${viewName || "Solenoid"}`);
+  lines.push(`    name: ${yamlScalar(viewName || "Solenoid")}`);
   lines.push("    order:");
   lines.push("      - file.name");
-  for (const k of keys) lines.push(`      - ${k}`);
+  for (const k of keys) lines.push(`      - ${yamlScalar(k)}`);
   return lines.join("\n") + "\n";
 }
