@@ -6,6 +6,56 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-12b — adversarial review of the whole history; 59 fix commits)
+
+The author's order: "adversarial review mode, walk commits backward, don't stop." Every
+substantive commit from HEAD down to 1.0.0 was reviewed in chunks by read-only forks (each
+confirming a finding with a throwaway probe where it could), findings were fixed by the Lead or
+a fixer fork, and every fix carries a pin in `tests/graph/reviewPins.test.ts` or the nearest
+suite. Nothing pushed. The suite is green (tsc + vitest) on the combined tree.
+
+- **What stands, by class.** Security: an imported file can never grant itself network access;
+  Data Feed and the SVG Picker's URL fetch go through the per-document gate; vault-relative
+  and image-asset paths refuse `..` / roots; the SVG Picker scrubs markup at intake; the
+  exported webpage escapes every user-typed name; Mermaid renders strict; Write File CSV
+  neutralizes formula-trigger cells (one rule in `csvSafety.ts`); a File Link to a program or
+  from a foreign document asks first. Value semantics: a wired blank is never 0 (computed-column
+  side values, Monte Carlo ports, Waterfall / Candlestick / Calendar / Sparkline gaps); a
+  sample spread of one value, a non-positive exponential fit, DROP of everything, SAVGOL with an
+  even window, EWMA outside (0, 1], a negative RUNNING window are loud. Excel parity on the
+  formula surface: CHOOSE / INDEX / SUBSTITUTE truncate; the T-bill trio, the *IFS family
+  (wildcards, `~`, date-shaped criteria), WORKDAY.INTL masks, GCD / LCM / MULTINOMIAL /
+  PERCENTRANK.* and the workday trio's holiday list, SORTBY length, COMBINA(0,0), DIAGONAL of a
+  matrix, XIRR's date-order error, STDEV.S of one value, DATEDIF order, CONTAINS on a matrix, a
+  blank optional argument as Excel's 0, numberToText's General thresholds. Engines: the Window
+  verb's zero denominator and Replace Values' NaN agree across JS and Polars; the aggregate
+  guard rides a rebased flush; Slicer's lazy path matches exactly. Schedule engine: milestone
+  dates, empty splits, elapsed lags, MSPDI start / minutes finish, the XER calendar parser,
+  GanttProject duplicate names, Repeat phases. Layout: a locked group's members hold under a
+  standoff; Lock canvas gates every mutator; group shrink clamps to members; a stored card size
+  clamps to the content minimum; drawn cables delete from the keyboard; the HIC snapshot routes
+  flipped endpoints like the DOM. Units: two absolute temperatures combine to a delta, ×/÷/^ on
+  an offset unit is refused, the reshaping verbs keep column units. Composite: goal seek keeps
+  solver precision, Monte Carlo over a blank is blank, drill-in undo runs one at a time, chrome
+  acts on the active graph, a marker is never copied. Nest Join blank keys never match. Knap
+  template locals render. Cube Rollup takes a cube child. Write JSON dates are ISO.
+- **List Input** — the popup-editor commit (758a2d70) was an unasked-for generalization; four
+  fixes in one day each broke the card a new way. The card is back to its pre-editor form
+  (`listInputChip.test.ts` pins rows-concatenate + the plain value box); the invariant and the
+  backlog carry the author's later ruling (harmonize only if the behaviors hold; Save-to-rows is
+  the open question).
+- **Also this session:** the Gantt figure pass (type on the design rungs, fontsize scales text,
+  the popup minimum, the grid pane follows the width; the hero chip centred through ONE shared
+  row, `heroChipRow` pins it) and the Gantt Chart Builder target with every view key; the copy
+  cut of every tooltip and description the new nodes added (63 strings; the Schedule column
+  vocabulary and the Gantt option grammar moved to Help › Plans).
+- **Documented, not changed (author's rules):** the three-valued logic cards vs Excel's AND/OR/
+  NOT/IF, the distribution inverses' blank outside (0,1), UNIQUE 1-D only, SEQUENCE ≤ 0.
+- **Surfaced for the author (backlog):** the List Input editor design; Manual / goal-seek
+  composites solving on first load; the percent format carrying through arithmetic
+  (formatFlowsDownstream as written); the Triangle Solver's bare-degree angle inputs; TEXTJOIN's
+  blank ignore_empty; older long strings (the same copy class, a separate sweep).
+
 ### SESSION DIGEST (2026-09-12 — the Gantt surface: engine, figure, nodes, import; three agents)
 
 The author's order at 01:15: build the entirety of the Gantt surface from `v2.0/25-gantt.md`,

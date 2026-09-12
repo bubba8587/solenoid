@@ -32,6 +32,12 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Composites
 
+- [ ] **Heavy composites solve on first load — review with the author** (2026-09-12b). A never-solved
+  Manual-refresh Query or goal-seek container runs its solve on the first pass after load / paste
+  (`composite.test.ts` pins "first pass solves"). For a Manual Query that is one network round trip
+  per document open. If the intent is hold-until-Solve, a null solve key should read as held for
+  the heavy modes; the pin changes with it.
+
 - [ ] **LATER — Optimize run mode on composites (1.4 A6; author 2026-09-04c: in, not now).** Excel
   Solver's shape as a sixth composite run mode beside Goal Seek; spec + steps in `1.4-plan.md`
   § A6. Gate: the author says go (and settles the constraint forms; integer no).
@@ -157,6 +163,17 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   the natural v2; deliberately out of v1 (they take no part in layout).
 
 ## Formatting & units
+
+- [ ] **A percent style carries through arithmetic — review with the author** (2026-09-12b).
+  `carriedFormat` forwards the FIRST annotated input's format (rules formatFlowsDownstream as
+  written), so `100 × 5%` displays `500%` and a division by a percent-formatted rate likewise. Either
+  carry only when every annotated input agrees, or exempt scale-bearing styles (percent) from
+  carrying across ×/÷. The Triangle Solver's angle inputs are bare degrees (a rad-tagged trig
+  output wired in reads as degrees); a per-input unit read would close it.
+- [ ] **TEXTJOIN with a blank ignore_empty** treats it as TRUE (formulajs); Excel reads the blank
+  argument as FALSE. Document or map. Older long tooltips / descriptions (Decision Matrix,
+  Sensitivity, Allocator, Record layout, Chart values, Slider bounds, 200-plus-character catalog
+  entries) are the same copy class the 2026-09-12b cut fixed for the new nodes; a separate sweep.
 
 - [ ] **LATER (author, 2026-09-04): fold the Format Controller into the Display** — format and
   unit set at sources and displays, flowing downstream only; the docking subsystem and the
