@@ -708,8 +708,12 @@ export class CombinatoricsNode extends ClassicPreset.Node {
         else domainOk = false;
         break;
       case "combina":
-        if (n >= 0 && k >= 0) result = factorial(n + k - 1) / (factorial(k) * factorial(n - 1));
-        else domainOk = false;
+        // C(n+k-1, k) as a product, never a negative factorial: COMBINA(0,0) = 1 (Excel),
+        // COMBINA(0,k>0) = 0.
+        if (n >= 0 && k >= 0) {
+          if (n === 0) result = k === 0 ? 1 : 0;
+          else { let r = 1; for (let i = 1; i <= k; i++) r = r * (n + k - i) / i; result = r; }
+        } else domainOk = false;
         break;
       case "permut":
         if (n >= 0 && k >= 0 && k <= n) result = factorial(n) / factorial(n - k);

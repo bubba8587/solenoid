@@ -247,3 +247,17 @@ describe("review pins: the Equation numeric solver", () => {
     expect(solveNumeric((x) => x - 0.032173) as number).toBeCloseTo(0.032173, 9);
   });
 });
+
+describe("review pins: SORTBY length, COMBINA at zero", () => {
+  it("SORTBY refuses a key list of another length", () => {
+    expect(isSolError(resolveExcelFunction("SORTBY")!(["a", "b", "c"], [2, 1]))).toBe(true);
+    expect(resolveExcelFunction("SORTBY")!(["a", "b", "c"], [2, 1, 3])).toEqual(["b", "a", "c"]);
+  });
+  it("COMBINA(0,0) is 1 on the card; COMBINA(4,2) is 10", async () => {
+    const { CombinatoricsNode } = await import("../../src/graph/nodes/scalar");
+    const card = (n: number, k: number) => (new CombinatoricsNode({ op: "combina" }) as unknown as { data: (i: Record<string, unknown[]>) => { result: unknown } }).data({ n: [n], k: [k] }).result;
+    expect(card(0, 0)).toBe(1);
+    expect(card(0, 3)).toBe(0);
+    expect(card(4, 2)).toBe(10);
+  });
+});

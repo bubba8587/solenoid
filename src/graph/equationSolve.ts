@@ -234,13 +234,13 @@ export function solveNumeric(residual: (x: number) => number | null): number | S
   // Bisect a sign change on [lo, hi]. A pole changes sign too (1/(x-3) at 3), so the
   // converged point counts only when the residual is actually small there.
   const bisect = (lo: number, hi: number, flo: number, fhi: number): number | null => {
-    let l = lo, h = hi, fl = flo, fh = fhi;
+    let l = lo, h = hi, fl = flo;
     for (let i = 0; i < 200; i++) {
       const mid = (l + h) / 2;
       const fm = residual(mid);
       if (!finite(fm)) return null;
       if (fm === 0) return mid;
-      if (Math.sign(fm) === Math.sign(fl)) { l = mid; fl = fm; } else { h = mid; fh = fm; }
+      if (Math.sign(fm) === Math.sign(fl)) { l = mid; fl = fm; } else h = mid;
       if (h - l <= 1e-12 * Math.max(1, Math.abs(l), Math.abs(h))) break;
     }
     const mid = (l + h) / 2;

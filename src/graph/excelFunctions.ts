@@ -2061,7 +2061,10 @@ registerInternal("SORT", (v, sortIndex, order) => {
 });
 registerInternal("SORTBY", (v, by) => {
   if (v == null || by == null) return null;
-  return sortByKeys(toList(v), numList(by));
+  const arr = toList(v), keys = numList(by);
+  // A key list of another length pads nothing (the Sort card and Excel refuse it).
+  if (keys.length !== arr.length) return solError("#SHAPE!", `SORTBY's key list has ${keys.length} values but the list has ${arr.length}`);
+  return sortByKeys(arr, keys);
 });
 registerInternal("FILTER", (v, include, ifEmpty) => {
   if (v == null || include == null) return null;
