@@ -117,7 +117,10 @@ export function criteriaAggregate(kind: CriteriaKind, values: readonly unknown[]
     if (!values) continue;
     const v = values[i];
     if (isSolError(v)) return v;
+    // A numeric-text value cell contributes its number (Excel's AVERAGEIF over "10", "30"
+    // averages 20, never "1030"); other text is ignored.
     if (typeof v === "number" && Number.isFinite(v)) kept.push(v);
+    else if (typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v))) kept.push(Number(v));
   }
   switch (kind) {
     case "count": return count;

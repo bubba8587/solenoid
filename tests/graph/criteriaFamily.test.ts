@@ -49,3 +49,11 @@ describe("the *IFS family runs Excel's criteria grammar", () => {
     expect(card.data({ frame: [f] }).result).toBe(ev("SUMIFS(s, s, \">100\")", { s: [120, 80, 200] }));
   });
 });
+
+describe("numeric text in the ranges (the SUMIF failure mode formulajs had)", () => {
+  it("compares numerically in the criteria range and contributes its number in the value range", () => {
+    expect(ev('COUNTIF(v, ">15")', { v: ["10", "30", "20"] })).toBe(2);
+    expect(ev('AVERAGEIF(k, "a", v)', { k: ["a", "a", "b"], v: ["10", "30", "20"] })).toBe(20);
+    expect(ev('SUMIFS(v, k, "a")', { k: ["a", "a", "b"], v: ["10", "x", "20"] })).toBe(10);
+  });
+});
