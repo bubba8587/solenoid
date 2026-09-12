@@ -271,10 +271,12 @@ function accepts(inT: SocketDataType, outT: SocketDataType): boolean {
   if (inT === "anydata" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anylist" || outT === "anytable")) return true;
   if (outT === "anydata") return inT !== "lambda" && inT !== "chart" && inT !== "document";
   // A 1-D list widens into a `frame` as a single ROW (CSV-consistent — transpose for
-  // a column); coerceInputs builds the frame.
-  if (inT === "frame" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anytable" || outT === "anylist")) return true;
-  // A cube OUTPUT does NOT flow into any narrower container — the nesting would be
-  // silently dropped — so it reaches only another cube (identity) or `any`.
+  // a column); coerceInputs builds the frame. A `cube` also reaches a frame input (the A′
+  // rule): a flat cube flattens (so Window / GROUPBY / Chart chart a live Vault Folder), and
+  // a nested cube is the LOUD refusal — `#SHAPE!` naming the column, not a silent drop —
+  // which is why this narrowing is now allowed where it used not to be (cubeWidensToFrame).
+  if (inT === "frame" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anytable" || outT === "anylist" || outT === "cube")) return true;
+  // A cube INPUT is the lattice supremum: every rank≤2 value, a frame and another cube widen in.
   if (inT === "cube" && (FAMILY_VALUE_TYPES.has(outT) || outT === "anytable" || outT === "anylist" || outT === "frame")) return true;
   return SOCKET_ACCEPTS[inT]?.includes(outT) ?? false;
 }

@@ -3,7 +3,7 @@ import type { Schemes } from "./schemes";
 import { SolenoidSocket, AdoptiveSocket, elementFamilyOf, type SocketDataType } from "./sockets";
 import { toMatrix, toList, toScalar, toAnyMatrix, ShapeError } from "./nodes/coerce";
 import { isPassthroughNode, getPassthrough } from "./nodes/passthrough";
-import { isFrameValue, frameFromRows, toCube } from "./frame";
+import { isFrameValue, isCubeValue, frameFromRows, toCube, inferColumn, type CubeValue, type FrameCell } from "./frame";
 import { parseDate } from "./nodes/dateSerial";
 import { coerceLogical } from "./valueKinds";
 import { parseCsvLine } from "./csv";
@@ -117,6 +117,7 @@ function coerceUnitCellValue(dataType: SocketDataType, v: unknown): unknown {
       return toAnyMatrix(v);
     case "frame":
       if (isFrameValue(v)) return v;
+      if (isCubeValue(v)) return cubeToFrameWiden(v);
       return Array.isArray(v) ? frameFromRows([v as unknown[]]) : frameFromRows([[v]]);
     case "cube":
       return toCube(v);
@@ -131,6 +132,20 @@ function coerceUnitCellValue(dataType: SocketDataType, v: unknown): unknown {
  *  difference between the two rungs. */
 function collapseSingleton(v: unknown): unknown {
   return Array.isArray(v) && v.length === 1 ? v[0] : v;
+}
+
+/** A CUBE widens into a FRAME when every top-level cell is a scalar (the A′ rule: a value
+ *  widens up its family, and a flat cube IS a frame). A column holding a nested table or a
+ *  list cell can't flatten, so it is the loud refusal — `#SHAPE!` naming that column — not a
+ *  silent mis-wrap. A declared column type is kept (dates ride as serials); an untyped column
+ *  is inferred. Lets Window / GROUPBY / Chart chart or smooth a live Vault Folder cube. */
+function cubeToFrameWiden(cube: CubeValue): FrameValue {
+  for (const col of cube.columns) {
+    if (col.cells.some((c) => isFrameValue(c) || isCubeValue(c) || Array.isArray(c))) {
+      throw new ShapeError(`the "${col.name}" column holds a nested table or list, so this cube can't widen to a frame`);
+    }
+  }
+  return { __frame: true, columns: cube.columns.map((c) => (c.type ? { name: c.name, type: c.type, values: c.cells as FrameCell[] } : inferColumn(c.name, c.cells))) };
 }
 
 /** Normalize one incoming value to the shape the consuming socket declares. */
@@ -191,6 +206,7 @@ function coerceValue(dataType: SocketDataType, v: unknown): unknown {
     case "frame":
       // A 1-D list widens into a frame as a single ROW (transpose for a column).
       if (isFrameValue(v)) return v;
+      if (isCubeValue(v)) return cubeToFrameWiden(v); // a flat cube widens to a frame (A′)
       if (v == null) return v;
       if (Array.isArray(v)) return Array.isArray((v as unknown[])[0]) ? frameFromRows(v as unknown[][]) : frameFromRows([v as unknown[]]);
       return frameFromRows([[v]]);

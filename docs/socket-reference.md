@@ -975,18 +975,20 @@ declares it handles anything is taken at its word.
 **Ports:** 44 inputs, 38 outputs — every relational verb, every table-shaped chart,
 every data source.
 
-**Accepts from:** all 27 variants other than `cube`, `lambda`, `chart`, `document`.
+**Accepts from:** all 28 variants other than `lambda`, `chart`, `document`.
 
-**Blocked at the input:** `cube`, `lambda`, `chart`, `document`.
+**Blocked at the input:** `lambda`, `chart`, `document`.
 
 **Reaches:** `frame`, `cube`, `trueany`.
 
 **Blocked at the output:** all 28 variants other than `frame`, `cube`, `trueany`.
 
-**On arrival:** a real frame passes through. A 2-D matrix becomes named columns
-(`Col1`, `Col2`, … with types inferred). A 1-D list becomes a single **row**,
-matching CSV convention — transpose first for a column. A scalar becomes a 1×1
-frame. Null passes through.
+**On arrival:** a real frame passes through. A **cube** widens in (the A′ rule): a
+cube of all-scalar cells flattens to a frame keeping its column types, and a cube
+with a nested table or list cell is a `#SHAPE!` naming that column, never a silent
+drop. A 2-D matrix becomes named columns (`Col1`, `Col2`, … with types inferred). A
+1-D list becomes a single **row**, matching CSV convention — transpose first for a
+column. A scalar becomes a 1×1 frame. Null passes through.
 
 For the eleven lazy relational verbs — and for Get Column, which reads one column
 through the engine's own column primitive — a frame ref arrives as the ref itself,
@@ -1005,9 +1007,9 @@ arrives AS a frame there (`rawInputs`), one page per row.
 
 **Blocked at the input:** `lambda`, `chart`, `document`.
 
-**Reaches:** `cube`, `trueany`.
+**Reaches:** `frame`, `cube`, `trueany`.
 
-**Blocked at the output:** all 29 variants other than `cube`, `trueany`.
+**Blocked at the output:** all 28 variants other than `frame`, `cube`, `trueany`.
 
 **On arrival:** a cube passes through. A frame re-brands as flat cells. A matrix
 becomes a grid of cells. A list becomes one row. A scalar becomes 1×1. Null passes
