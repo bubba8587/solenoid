@@ -7,6 +7,7 @@ import { allPacks } from "../packs";
 import { Markdown } from "./Markdown";
 import { SocketLegendRows, DimensionalityFlow } from "./SocketLegend";
 import helpMd from "../help/help.md?raw";
+import knapMd from "../help/knap.md?raw";
 import notesMd from "../help/notes.md?raw";
 import dataTypesMd from "../help/data-types.md?raw";
 import dataModelMd from "../help/data-model.md?raw";
@@ -71,6 +72,7 @@ export function FunctionReference() {
     { key: "reference", label: "Function Reference" },
     { key: "sockets", label: "Socket Types" },
     { key: "help", label: "Help" },
+    { key: "knap", label: "Knap" },
     { key: "notes", label: "Notes" },
   ];
 
@@ -102,7 +104,7 @@ export function FunctionReference() {
           </div>
         ) : tab !== "reference" ? (
           <div className="fr-doc-scroll">
-            <Markdown md={tab === "help" ? helpMd : notesMd} />
+            <Markdown md={tab === "help" ? helpMd : tab === "knap" ? knapMd : notesMd} />
           </div>
         ) : (
         <>

@@ -248,7 +248,9 @@ export class WriteObsidianNode extends ClassicPreset.Node {
       });
       this.status = "ok";
       this.lastWritten = res.file;
-      const what = res.pages > 1 ? `${res.pages} notes${subfolder ? ` in ${subfolder}` : ""}` : res.file;
+      // A batch that hit the page cap carries the true record count; say "500 of N".
+      const count = doc.total && doc.total > res.pages ? `${res.pages} of ${doc.total}` : `${res.pages}`;
+      const what = res.pages > 1 ? `${count} notes${subfolder ? ` in ${subfolder}` : ""}` : res.file;
       this.statusMessage = res.assets > 0 ? `Wrote ${what} + ${res.assets} asset${res.assets === 1 ? "" : "s"}` : `Wrote ${what}`;
       // D: link the note back to a Solenoid/<doc> stub note (best effort). A batch stamps nothing.
       if (this.stamp && res.pages === 1) {
