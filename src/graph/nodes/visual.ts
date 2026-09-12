@@ -319,9 +319,11 @@ export class MergePlotsNode extends ClassicPreset.Node {
 // ─── Histogram ────────────────────────────────────────────────────────────────
 
 /** Count how many values fall in each of `k` equal-width bins over [min,max]. */
-export function histogramBins(vals: (number | null)[], k: number): number[] {
+export function histogramBins(vals: (number | null)[], k: number): number[] | SolError {
   const nums = vals.filter((x): x is number => typeof x === "number" && Number.isFinite(x));
-  const bins = clamp(Math.floor(k) || 1, 1, 100);
+  // Bins is a shape: 0, a negative or a non-number is a refusal, never a silent one bar.
+  if (!Number.isFinite(k) || Math.floor(k) < 1) return solError("#DOMAIN!", "Bins must be 1 or more");
+  const bins = clamp(Math.floor(k), 1, 100);
   if (nums.length === 0) return [];
   const min = iterMin(nums);
   const max = iterMax(nums);
@@ -398,7 +400,7 @@ export class HistogramNode extends ClassicPreset.Node {
     this.literals.ybins ??= 10;
   }
 
-  data(inputs: { values?: (number | number[])[]; bins?: number[]; y?: (number | number[])[]; ybins?: number[]; options?: string[] }): { chart: ChartValue } {
+  data(inputs: { values?: (number | number[])[]; bins?: number[]; y?: (number | number[])[]; ybins?: number[]; options?: string[] }): { chart: ChartValue | SolError } {
     const xs = listOf(inputs.values?.[0] ?? null);
     // Bins is a SHAPE, not styling — a wired blank empties the figure. Mirror to the card
     // ONLY when unwired; writing a WIRED value into `literals` would overwrite and persist it.
@@ -422,6 +424,7 @@ export class HistogramNode extends ClassicPreset.Node {
     }
 
     const counts = kx === null ? [] : histogramBins(xs, kx);
+    if (isSolError(counts)) { this.cachedResult = null; this.cachedChart = null; return { chart: counts }; }
     this.cachedResult = counts;
     const chart: ChartValue = { __chart: true, op: "column", values: counts, options: this.chartOptions, title };
     this.cachedChart = chart;
@@ -713,11 +716,43 @@ export class ProportionNode extends ClassicPreset.Node {
 
 // ─── Sankey ───────────────────────────────────────────────────────────────────
 
+/** The flows with every cycle-closing link removed, in first-edge order: a Sankey is a
+ *  DAG (recharts' depth pass recurses forever on a loop). Blank, self and non-positive
+ *  flows are skipped the way the figure skips them, so a loop through one of those never
+ *  counts. `dropped` is how many links closed a cycle. */
+export function acyclicFlows(sources: string[], targets: string[], values: number[]): { sources: string[]; targets: string[]; values: number[]; dropped: number } {
+  const out = { sources: [] as string[], targets: [] as string[], values: [] as number[], dropped: 0 };
+  const adj = new Map<string, Set<string>>();
+  const reaches = (from: string, to: string): boolean => {
+    const seen = new Set<string>();
+    const stack = [from];
+    while (stack.length) {
+      const n = stack.pop()!;
+      if (n === to) return true;
+      if (seen.has(n)) continue;
+      seen.add(n);
+      for (const m of adj.get(n) ?? []) stack.push(m);
+    }
+    return false;
+  };
+  for (let i = 0; i < sources.length; i++) {
+    const s = sources[i] ?? "", t = targets[i] ?? "", v = values[i] ?? 0;
+    if (!s || !t || s === t || !(v > 0)) { out.sources.push(s); out.targets.push(t); out.values.push(v); continue; }
+    if (reaches(t, s)) { out.dropped++; continue; }
+    if (!adj.has(s)) adj.set(s, new Set());
+    adj.get(s)!.add(t);
+    out.sources.push(s); out.targets.push(t); out.values.push(v);
+  }
+  return out;
+}
+
 export class SankeyNode extends ClassicPreset.Node {
   label: string;
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
   cachedPayload: SankeyPayload | null = null;
+  /** Flows dropped because they closed a loop (the card can say so). */
+  droppedLoops = 0;
   width = 260;
   height = 220;
 
@@ -737,12 +772,20 @@ export class SankeyNode extends ClassicPreset.Node {
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue }> {
+  async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue | SolError }> {
     const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
-    const sources = colAsStrings(cols[0]);
-    const targets = colAsStrings(cols[1]);
-    const values = colAsNumbers(cols[2]).map((x) => x ?? 0); // a blank flow carries nothing
+    const raw = { sources: colAsStrings(cols[0]), targets: colAsStrings(cols[1]), values: colAsNumbers(cols[2]).map((x) => x ?? 0) }; // a blank flow carries nothing
     this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
+    // A loop cannot be drawn; the flows that close one are dropped and the rest draw. When
+    // every real flow closed a loop there is nothing honest to draw.
+    const { sources, targets, values, dropped } = acyclicFlows(raw.sources, raw.targets, raw.values);
+    this.droppedLoops = dropped;
+    const drawable = sources.some((s, i) => !!s && !!targets[i] && s !== targets[i] && values[i] > 0);
+    if (dropped > 0 && !drawable) {
+      const err = solError("#SHAPE!", "The flows form a loop; a Sankey needs a direction");
+      this.cachedPayload = null;
+      return { chart: err };
+    }
     const payload: SankeyPayload = { kind: "sankey", sources, targets, values };
     this.cachedPayload = payload;
     return {

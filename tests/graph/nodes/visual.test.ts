@@ -251,7 +251,7 @@ describe("histogramBins", () => {
     // throws past ~125k args on min/max.
     const N = 200_000;
     const vals = Array.from({ length: N }, (_, i) => i);
-    const bins = histogramBins(vals, 10);
+    const bins = histogramBins(vals, 10) as number[];
     expect(bins).toHaveLength(10);
     expect(bins.reduce((a, b) => a + b, 0)).toBe(N);
   });
@@ -737,5 +737,40 @@ describe("Sparkline blanks are gaps", () => {
     expect(line.values).toEqual([5, 7]);
     const wl = new SparklineNode({ op: "winloss" }).data({ values: [[3, null, -2] as never] }).chart;
     expect(wl.series?.[0].values).toEqual([1, null, -1]);
+  });
+});
+
+describe("Sankey loops, Histogram bins, Date Range order (review pins)", () => {
+  it("acyclicFlows drops the links that close a loop and keeps the rest in order", async () => {
+    const { acyclicFlows, SankeyNode } = await import("../../../src/graph/nodes/visual");
+    const r = acyclicFlows(["A", "B", "B"], ["B", "A", "C"], [10, 5, 3]);
+    expect(r.sources).toEqual(["A", "B"]);
+    expect(r.targets).toEqual(["B", "C"]);
+    expect(r.dropped).toBe(1);
+    const n = new SankeyNode();
+    const f = { __frame: true, columns: [
+      { name: "From", type: "string", values: ["A", "B"] }, { name: "To", type: "string", values: ["B", "A"] }, { name: "Value", type: "number", values: [10, 5] },
+    ] };
+    const out = await n.data({ frame: [f as never] });
+    expect((out.chart as { payload?: { sources: string[] } }).payload?.sources).toEqual(["A"]);
+    expect(n.droppedLoops).toBe(1);
+    const all = await n.data({ frame: [{ __frame: true, columns: [
+      { name: "From", type: "string", values: ["A"] }, { name: "To", type: "string", values: ["A"] }, { name: "Value", type: "number", values: [1] },
+    ] } as never] });
+    expect((all.chart as { payload?: unknown }).payload).toBeDefined(); // a self-loop is skipped, not a cycle
+  });
+
+  it("histogramBins refuses a bins count below 1 or not a number", () => {
+    const err = histogramBins([1, 2, 3], 0);
+    expect((err as { code?: string }).code).toBe("#DOMAIN!");
+    expect((histogramBins([1, 2, 3], NaN) as { code?: string }).code).toBe("#DOMAIN!");
+    expect(histogramBins([1, 2, 3], 2)).toEqual([1, 2]);
+  });
+
+  it("Date Range never emits an end before its start", async () => {
+    const { DateRangeNode } = await import("../../../src/graph/nodes/control");
+    const n = new DateRangeNode();
+    n.literals.start = 46030; n.literals.end = 46027;
+    expect(n.data()).toEqual({ start: 46027, end: 46030 });
   });
 });

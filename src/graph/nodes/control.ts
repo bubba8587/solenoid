@@ -220,8 +220,10 @@ export class DateRangeNode extends ClassicPreset.Node {
   }
 
   data(): { start: number | null; end: number | null } {
-    const start = this.literals.start ?? 0;
-    const end = this.literals.end ?? 0;
+    let start = this.literals.start ?? 0;
+    let end = this.literals.end ?? 0;
+    // A range runs forward: picked out of order, the two swap (the Slider's bound rule).
+    if (start > 0 && end > 0 && start > end) [start, end] = [end, start];
     return { start: start > 0 ? start : null, end: end > 0 ? end : null };
   }
 }
