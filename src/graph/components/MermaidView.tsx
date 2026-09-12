@@ -72,7 +72,8 @@ function buildThemeVariables(mode: "dark" | "light"): Record<string, string | bo
 }
 
 // One mermaid module per session, re-initialized before every render since the theme can
-// change. `securityLevel: "loose"` is safe here: the source is authored by the app's user.
+// change. The source is a wired socket or a literal that rides in any shared document, so the
+// render stays at Mermaid's strict security level.
 let _mermaidMod: Promise<typeof import("mermaid").default> | null = null;
 function loadMermaid(config: Record<string, unknown>): Promise<typeof import("mermaid").default> {
   if (!_mermaidMod) _mermaidMod = import("mermaid").then((m) => m.default);
