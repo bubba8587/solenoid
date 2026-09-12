@@ -264,3 +264,32 @@ describe("mermaid", () => {
     ]);
   });
 });
+
+describe("review pins: milestones, splits, grammar", () => {
+  it("a milestone with a typed Start inside a phase sits ON that date", () => {
+    const wed = S(2026, 1, 14);
+    const out = run([{ name: "Phase", duration: 0, predecessors: [], children: [t("A", 3), t("M", 0, [], { start: wed })] }]);
+    expect(iso(byName(out, "M").start)).toBe("2026-01-14");
+    expect(iso(byName(out, "M").finish)).toBe("2026-01-14");
+  });
+
+  it("a started task whose done part rounds to nothing moves whole past the status date, no split", () => {
+    const out = run([t("A", 3, [], { complete: 10 })], { statusDate: MON + 7, splitInProgress: true });
+    const a = byName(out, "A");
+    expect(a.segments).toBeUndefined();
+    expect(a.start).toBeGreaterThan(MON + 7);
+    expect(a.finish).toBeGreaterThanOrEqual(a.start);
+  });
+
+  it("a zero-float milestone's early and late dates equal its displayed date", () => {
+    const out = run([t("A", 2), t("M", 0, ["A"])]);
+    const m = byName(out, "M");
+    expect(m.float).toBe(0);
+    expect([m.earlyStart, m.earlyFinish, m.lateStart, m.lateFinish]).toEqual([m.start, m.finish, m.start, m.finish]);
+  });
+
+  it("the grammar keeps an elapsed unit and a sub-day lag", () => {
+    const { deps } = parsePredecessorText("1FS+2ed, 1FS+4h", ["A"]);
+    expect(deps).toEqual([{ task: "A", type: "FS", lag: 2, elapsed: true }, { task: "A", type: "FS", lag: 0.5 }]);
+  });
+});

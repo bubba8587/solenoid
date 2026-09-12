@@ -29,7 +29,9 @@ export function parsePredecessorText(text: string, names: readonly string[]): { 
     const unit = (unitRaw ?? "d").toLowerCase();
     if (unit === "w" || unit === "wk") lag *= 5;
     else if (unit === "h") lag /= 8;
-    deps.push({ task, type: LINK_TYPES.includes(type) ? type : "FS", lag: Math.round(lag) });
+    // Sub-day lags survive (Minutes mode counts them; Days mode rounds at the edge, lagUnits);
+    // `ed` is an elapsed lag, calendar days.
+    deps.push({ task, type: LINK_TYPES.includes(type) ? type : "FS", lag: Math.round(lag * 1000) / 1000, ...(unit === "ed" ? { elapsed: true } : {}) });
   }
   return { deps, errors };
 }

@@ -49,7 +49,7 @@
     <!-- D: FS+2 elapsed days after A (A is over Fri 6 00:00 → Sun 8 00:00 → Mon 9 08:00), 1 day. -->
     <Task><UID>4</UID><ID>4</ID><Name>D</Name><OutlineLevel>1</OutlineLevel><Duration>PT8H0M0S</Duration>
       <Start>2026-02-09T08:00:00</Start><Finish>2026-02-09T17:00:00</Finish><TotalSlack>0</TotalSlack><Critical>1</Critical>
-      <PredecessorLink><PredecessorUID>1</PredecessorUID><Type>1</Type><LinkLag>28800</LinkLag><LagFormat>39</LagFormat></PredecessorLink></Task>
+      <PredecessorLink><PredecessorUID>1</PredecessorUID><Type>1</Type><LinkLag>28800</LinkLag><LagFormat>8</LagFormat></PredecessorLink></Task>
     <!-- Site: on the six-day calendar, FS after D, 5 days: Tue 10 .. Sat 14 (Saturday works). -->
     <Task><UID>5</UID><ID>5</ID><Name>Site</Name><OutlineLevel>1</OutlineLevel><Duration>PT40H0M0S</Duration><CalendarUID>2</CalendarUID>
       <Start>2026-02-10T08:00:00</Start><Finish>2026-02-14T17:00:00</Finish><TotalSlack>0</TotalSlack><Critical>1</Critical>

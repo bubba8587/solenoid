@@ -142,7 +142,8 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
         // The remaining part cannot happen before the status date (rule 13).
         const restStart = Math.max(es + done, sIdx + 1);
         if (restStart > es + done) {
-          if (splitInProgress) { p.split[i] = { doneEnd: es + done, restStart }; ef = restStart + rest; }
+          // A done part of zero units is nothing to split off: the whole task moves.
+          if (splitInProgress && done > 0) { p.split[i] = { doneEnd: es + done, restStart }; ef = restStart + rest; }
           else { es = restStart - done; ef = es + full; driver = null; }
         }
       }
@@ -247,7 +248,7 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
     const t = tasks[i];
     if (t.summary) return startInstant(i);
     if (p.dur[i] === 0) {
-      if (!(p.es[i] > 0 && (inEdges[i].length || t.parent != null))) return startAt(i, p.es[i]);
+      if (p.floored[i] || t.actualStart != null || !(p.es[i] > 0 && (inEdges[i].length || t.parent != null))) return startAt(i, p.es[i]);
       // A milestone sits at its predecessors' finish: the end of the unit before ES on its own
       // calendar, or a predecessor's own finish instant when that is later (another calendar's
       // Saturday, say). Days mode shows the finish DAY (the exclusive end less one).
@@ -266,6 +267,10 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
     return p.dur[i] === 0 ? startOf(i) : endOf(i, p.ef[i] - 1);
   };
 
+  // A milestone shown at its predecessors' finish (the end of the unit before its index) reads
+  // its early / late dates the same way; one shown at its own unit's start reads them as starts.
+  const milestoneAt = (i: number, k: number, start: number) =>
+    (k === p.es[i] ? start : start === startAt(i, p.es[i]) ? startAt(i, k) : endOf(i, k - 1));
   const out: ScheduledTask[] = tasks.map((t, i) => {
     const start = startOf(i), finish = finishOf(i);
     const deadline = t.deadline == null ? null : dayKey(t.deadline);
@@ -277,10 +282,10 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
       name: t.name, level: t.level, summary: t.summary, milestone: !t.summary && t.duration === 0,
       duration: t.summary ? days(i, p.dur[i]) : t.duration,
       start, finish,
-      earlyStart: t.summary ? start : startAt(i, p.es[i]),
+      earlyStart: t.summary ? start : p.dur[i] === 0 ? start : startAt(i, p.es[i]),
       earlyFinish: t.summary ? finish : p.dur[i] === 0 ? finish : endOf(i, p.ef[i] - 1),
-      lateStart: startAt(i, p.ls[i]),
-      lateFinish: p.dur[i] === 0 ? endOf(i, Math.max(p.lf[i] - 1, p.ls[i])) : endOf(i, p.lf[i] - 1),
+      lateStart: p.dur[i] === 0 && !t.summary ? milestoneAt(i, p.ls[i], start) : startAt(i, p.ls[i]),
+      lateFinish: p.dur[i] === 0 ? (t.summary ? endOf(i, Math.max(p.lf[i] - 1, p.ls[i])) : milestoneAt(i, p.ls[i], start)) : endOf(i, p.lf[i] - 1),
       float: totalDays[i], freeFloat: freeDays[i], critical: critical[i],
       driving: p.driver[i] ? tasks[p.driver[i]!.from].name : null,
       ...(segments ? { segments } : {}),

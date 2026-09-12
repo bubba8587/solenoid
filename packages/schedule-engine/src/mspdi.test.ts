@@ -61,3 +61,28 @@ describe("MSPDI read", () => {
     }
   });
 });
+
+describe("review pins: elapsed durations and lags, a missing StartDate", () => {
+  const file = (tasks: string, head = "") => `<?xml version="1.0"?><Project xmlns="http://schemas.microsoft.com/project">${head}<Tasks>${tasks}</Tasks></Project>`;
+  const task = (uid: number, name: string, dur: string, fmt: number, extra = "") =>
+    `<Task><UID>${uid}</UID><Name>${name}</Name><OutlineLevel>1</OutlineLevel><Duration>${dur}</Duration><DurationFormat>${fmt}</DurationFormat><Start>2026-01-05T08:00:00</Start>${extra}</Task>`;
+
+  it("an elapsed-duration task (ed) is measured in 24-hour days", () => {
+    const plan = readMspdi(file(task(1, "Cure", "PT48H0M0S", 8)));
+    expect(plan.tasks[0].duration).toBe(2);
+    expect(plan.tasks[0].elapsed).toBe(true);
+  });
+
+  it("an elapsed lag is the even format code; 20 / 52 are elapsed percent lags; 19 is a plain percent", () => {
+    const link = (fmt: number, tenths: number) => `<PredecessorLink><PredecessorUID>1</PredecessorUID><Type>1</Type><LinkLag>${tenths}</LinkLag><LagFormat>${fmt}</LagFormat></PredecessorLink>`;
+    const plan = readMspdi(file(task(1, "A", "PT8H0M0S", 7) + task(2, "B", "PT16H0M0S", 7, link(8, 2 * 24 * 60 * 10)) + task(3, "C", "PT16H0M0S", 7, link(19, 50)) + task(4, "D", "PT16H0M0S", 7, link(39, 8 * 60 * 10))));
+    expect(plan.tasks[1].predecessors[0]).toEqual({ task: "A", type: "FS", lag: 2, elapsed: true });
+    expect(plan.tasks[2].predecessors[0]).toEqual({ task: "A", type: "FS", lag: 1 });
+    expect(plan.tasks[3].predecessors[0]).toEqual({ task: "A", type: "FS", lag: 1 }); // 39 = estimated days, not elapsed
+  });
+
+  it("a file with no StartDate starts at its earliest stored task start", () => {
+    const plan = readMspdi(file(task(1, "A", "PT8H0M0S", 7)));
+    expect(iso(plan.start)).toBe("2026-01-05");
+  });
+});

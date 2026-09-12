@@ -316,7 +316,7 @@ export function writeMspdi(out: ScheduleOutput, opts: { title?: string; hoursPer
       const puid = uidOf.get(d.task.toLowerCase());
       if (puid == null) continue;
       const lagTenths = Math.round(d.lag * (d.elapsed ? 24 : H) * 60 * 10);
-      f.push(`<PredecessorLink><PredecessorUID>${puid}</PredecessorUID><Type>${LINK_CODE[d.type]}</Type><CrossProject>0</CrossProject><LinkLag>${lagTenths}</LinkLag><LagFormat>${d.elapsed ? 39 : 7}</LagFormat></PredecessorLink>`);
+      f.push(`<PredecessorLink><PredecessorUID>${puid}</PredecessorUID><Type>${LINK_CODE[d.type]}</Type><CrossProject>0</CrossProject><LinkLag>${lagTenths}</LinkLag><LagFormat>${d.elapsed ? 8 : 7}</LagFormat></PredecessorLink>`);
     }
     lines.push(`    <Task>${f.join("")}</Task>`);
   });

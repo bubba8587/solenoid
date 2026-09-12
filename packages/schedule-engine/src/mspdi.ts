@@ -36,6 +36,10 @@ export interface MspdiPlan {
 const LINK_CODES: Record<string, LinkType> = { "0": "FF", "1": "FS", "2": "SF", "3": "SS" };
 
 /** `2026-01-05T08:00:00` → a whole-day serial (Project's day is what the cell shows). */
+/** Project's elapsed DurationFormat / LagFormat codes (em, eh, ed, ew, emo, e% and their
+ *  estimated twins): the even codes. */
+const ELAPSED_FORMATS = [4, 6, 8, 10, 12, 14, 16, 18, 20, 36, 38, 40, 42, 44, 46, 48, 50, 52];
+
 export function isoToSerial(s: string | undefined): number | null {
   if (!s) return null;
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s.trim());
@@ -120,7 +124,7 @@ export function readMspdi(xml: string): MspdiPlan {
   const unsupported: string[] = [];
   const hoursPerDay = (num(text(root, "MinutesPerDay")) ?? 480) / 60;
   const calendar = readCalendar(root, unsupported);
-  const start = isoToSerial(text(root, "StartDate")) ?? 0;
+  const start = isoToSerial(text(root, "StartDate"));
   const tasksEl = child(root, "Tasks");
   const raw = tasksEl ? children(tasksEl, "Task") : [];
   const byUid = new Map<string, string>();
@@ -136,7 +140,9 @@ export function readMspdi(xml: string): MspdiPlan {
     byUid.set(uid, name);
     const hours = xsdDurationToHours(text(el, "Duration")) ?? 0;
     const isMilestone = flag(text(el, "Milestone")) === true;
-    const durationDays = isMilestone && hours === 0 ? 0 : Math.ceil(hours / hoursPerDay - 1e-9);
+    // An elapsed duration (the even DurationFormat codes, "ed") is stored in 24-hour days.
+    const elapsedDuration = /^-?P.*T?.*$/.test(text(el, "Duration") ?? "") && ELAPSED_FORMATS.includes(num(text(el, "DurationFormat")) ?? -1);
+    const durationDays = isMilestone && hours === 0 ? 0 : Math.ceil(hours / (elapsedDuration ? 24 : hoursPerDay) - 1e-9);
     const summary = flag(text(el, "Summary")) === true;
     const manual = flag(text(el, "Manual")) === true;
     const ct = num(text(el, "ConstraintType"));
@@ -158,7 +164,7 @@ export function readMspdi(xml: string): MspdiPlan {
     if (deadline != null) task.deadline = deadline;
     const actual = isoToSerial(text(el, "ActualStart"));
     if (actual != null) task.actualStart = actual;
-    if (/^-?P.*T?.*$/.test(text(el, "Duration") ?? "") && num(text(el, "DurationFormat")) != null && [4, 6, 8, 10, 12, 14, 16, 18, 20, 36, 38, 40, 42, 44, 46, 48, 50, 52].includes(num(text(el, "DurationFormat"))!)) task.elapsed = true;
+    if (elapsedDuration) task.elapsed = true;
     const taskCalUid = text(el, "CalendarUID");
     if (taskCalUid && taskCalUid !== "-1" && taskCalUid !== text(root, "CalendarUID")) {
       const own = readCalendar(root, unsupported, taskCalUid);
@@ -171,10 +177,11 @@ export function readMspdi(xml: string): MspdiPlan {
       const type = LINK_CODES[text(link, "Type") ?? "1"] ?? "FS";
       const lagTenths = num(text(link, "LinkLag")) ?? 0;
       const lagFormat = num(text(link, "LagFormat"));
-      // Tenths of a minute → working days; an elapsed format (codes ≥ 35) is calendar time.
-      const elapsed = lagFormat != null && lagFormat >= 35 && lagFormat !== 51;
+      // Tenths of a minute → working days; an elapsed format (the even codes, "ed") is
+      // calendar time; 19 / 51 are percent lags, 20 / 52 elapsed percent lags.
+      const elapsed = lagFormat != null && ELAPSED_FORMATS.includes(lagFormat);
       let lag = elapsed ? lagTenths / 10 / 60 / 24 : lagTenths / 10 / 60 / hoursPerDay;
-      if (lagFormat === 19 || lagFormat === 51) lag = lagTenths / 100 * (task.duration || 1); // percent lag
+      if (lagFormat === 19 || lagFormat === 51 || lagFormat === 20 || lagFormat === 52) lag = lagTenths / 100 * (task.duration || 1); // percent lag
       task.predecessors.push({ task: puid, type, lag: Math.round(lag * 1000) / 1000, ...(elapsed ? { elapsed: true } : {}) });
     }
     recs.push({
@@ -206,7 +213,10 @@ export function readMspdi(xml: string): MspdiPlan {
     else roots.push(r.task);
     stack.push(r);
   }
-  const startSerial = start || Math.min(...recs.map((r) => r.golden.start ?? Infinity).filter(Number.isFinite), 0);
+  // No StartDate: the earliest stored task start, else the serial epoch (never a bare 0 when
+  // a task start is known).
+  const goldenStarts = recs.map((r) => r.golden.start).filter((v): v is number => v != null);
+  const startSerial = start ?? (goldenStarts.length ? Math.min(...goldenStarts) : 0);
   return { title: text(root, "Title") ?? text(root, "Name") ?? "", start: startSerial, hoursPerDay, calendar, tasks: roots, golden: recs.map((r) => r.golden), unsupported: [...new Set(unsupported)] };
 }
 
