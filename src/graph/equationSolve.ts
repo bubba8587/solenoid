@@ -230,28 +230,59 @@ export function solveNumeric(residual: (x: number) => number | null): number | S
   const consider = (root: number) => {
     if (best === null || Math.abs(root) < Math.abs(best)) best = root;
   };
+  const finite = (v: number | null): v is number => v !== null && Number.isFinite(v);
+  // Bisect a sign change on [lo, hi]. A pole changes sign too (1/(x-3) at 3), so the
+  // converged point counts only when the residual is actually small there.
+  const bisect = (lo: number, hi: number, flo: number, fhi: number): number | null => {
+    let l = lo, h = hi, fl = flo, fh = fhi;
+    for (let i = 0; i < 200; i++) {
+      const mid = (l + h) / 2;
+      const fm = residual(mid);
+      if (!finite(fm)) return null;
+      if (fm === 0) return mid;
+      if (Math.sign(fm) === Math.sign(fl)) { l = mid; fl = fm; } else { h = mid; fh = fm; }
+      if (h - l <= 1e-12 * Math.max(1, Math.abs(l), Math.abs(h))) break;
+    }
+    const mid = (l + h) / 2;
+    const fm = residual(mid);
+    if (!finite(fm)) return null;
+    // Small against the bracket it started from: a true root drives the residual toward 0
+    // while a pole's stays as large as the ends (or larger).
+    const scale = Math.max(1, Math.abs(flo), Math.abs(fhi));
+    return Math.abs(fm) <= 1e-6 * scale ? mid : null;
+  };
+  // The first x in (lo, hi] where the residual is finite: the edge of the domain.
+  const domainEdge = (lo: number, hi: number): { x: number; f: number } | null => {
+    let l = lo, h = hi;
+    for (let i = 0; i < 100; i++) {
+      const mid = (l + h) / 2;
+      if (finite(residual(mid))) h = mid; else l = mid;
+    }
+    const f = residual(h);
+    return finite(f) ? { x: h, f } : null;
+  };
   let prevX: number | null = null;
   let prevF: number | null = null;
   for (const x of grid) {
     const f = residual(x);
-    if (f === null || !Number.isFinite(f)) { prevX = null; prevF = null; continue; }
+    if (!finite(f)) { prevX = x; prevF = null; continue; }
     if (f === 0) { consider(x); prevX = x; prevF = f; continue; }
-    if (prevX !== null && prevF !== null && Math.sign(f) !== Math.sign(prevF)) {
-      let lo = prevX, hi = x, flo = prevF;
-      let root: number | null = null;
-      for (let i = 0; i < 200; i++) {
-        const mid = (lo + hi) / 2;
-        const fm = residual(mid);
-        if (fm === null || !Number.isFinite(fm)) break;
-        if (fm === 0) { root = mid; break; }
-        if (Math.sign(fm) === Math.sign(flo)) { lo = mid; flo = fm; } else { hi = mid; }
-      }
-      consider(root ?? (lo + hi) / 2);
+    if (prevX !== null && prevF === null) {
+      // The residual just came into its domain (sqrt(x-2) below 2): a root between the
+      // domain's edge and this grid point would otherwise never bracket.
+      const edge = domainEdge(prevX, x);
+      if (edge && edge.f !== 0 && Math.sign(edge.f) !== Math.sign(f)) {
+        const r = bisect(edge.x, x, edge.f, f);
+        if (r !== null) consider(r);
+      } else if (edge && edge.f === 0) consider(edge.x);
+    } else if (prevX !== null && prevF !== null && Math.sign(f) !== Math.sign(prevF)) {
+      const r = bisect(prevX, x, prevF, f);
+      if (r !== null) consider(r);
     }
     prevX = x; prevF = f;
   }
   if (best !== null) return best;
-  return solError("#SOLVE!", "No solution found between ±10¹² — the equation may have no real root here");
+  return solError("#SOLVE!", "No solution found between \u00b110\u00b9\u00b2 \u2014 the equation may have no real root here");
 }
 
 /** Relative-tolerance equality for the all-variables-wired truth check. */
