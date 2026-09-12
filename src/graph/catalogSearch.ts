@@ -2,7 +2,7 @@
 // is shown — label, description, Excel names, category path, kebab type, keywords.
 
 import { CATALOG_TO_EXCEL } from "./excelToCatalog";
-import { fuzzyScore, fieldScore, tokenWordScore } from "./fuzzy";
+import { fuzzyScore, fieldScore, tokenWordScore, withinOneEdit } from "./fuzzy";
 import { opsFor, opEntry, excelEntry } from "./nodeOps";
 import { SolenoidSocket, canConnect, type SocketDataType } from "./sockets";
 import type { NodeCatalogEntry, CatalogEntry, CatalogCategory, CatalogPair } from "./AddNodeMenu";
@@ -58,6 +58,12 @@ function typeWords(type: string): string {
   return type.replace(/[-_]/g, " ");
 }
 
+// En/em dashes read as hyphens, so "savitzky-golay" finds a keyword spelled "savitzky–golay".
+const dashes = (s: string) => s.replace(/[\u2010-\u2015]/g, "-");
+// The one separator class both the leaf's words and the query's tokens split on, so a
+// hyphenated query ("k-means", "savitzky-golay") lands word by word.
+const WORD_SEP = /[^\p{L}\p{N}.]+/u;
+
 // An op-glyph prefix ("+ Add") otherwise demotes an exact query to the word-start
 // tier, letting "Add Column" outrank the Add node itself.
 function stripGlyphPrefix(label: string): string {
@@ -70,7 +76,7 @@ export function scoreLeaf(query: string, { leaf, categoryPath }: LeafWithContext
   const excelNames = CATALOG_TO_EXCEL.get(leaf.type) ?? [];
   const category = categoryPath.join(" ");
   const keywords = leaf.keywords ?? "";
-  const haystack = `${leaf.label} ${leaf.description ?? ""} ${excelNames.join(" ")} ${category} ${typeWords(leaf.type)} ${keywords}`;
+  const haystack = dashes(`${leaf.label} ${leaf.description ?? ""} ${excelNames.join(" ")} ${category} ${typeWords(leaf.type)} ${keywords}`);
   const bare = stripGlyphPrefix(leaf.label);
   // Per-WORD gate and base score: every query word must land — as a subsequence of
   // the wide haystack (order-free across words, so "input frame" finds Frame Input)
@@ -78,15 +84,17 @@ export function scoreLeaf(query: string, { leaf, categoryPath }: LeafWithContext
   // hits score far above the scattered-subsequence noise a long description
   // generates, so a typo'd word no longer buries its target under leaves whose
   // descriptions happen to contain the letters.
-  const words = `${leaf.label} ${bare} ${typeWords(leaf.type)} ${keywords} ${category} ${excelNames.join(" ")}`
-    .toLowerCase().split(/[^\p{L}\p{N}.]+/u).filter(Boolean);
+  const words = dashes(`${leaf.label} ${bare} ${typeWords(leaf.type)} ${keywords} ${category} ${excelNames.join(" ")}`)
+    .toLowerCase().split(WORD_SEP).filter(Boolean);
   let s = 0;
-  for (const token of query.toLowerCase().split(/\s+/)) {
+  for (const token of dashes(query).toLowerCase().split(WORD_SEP)) {
     if (!token) continue;
     const sub = fuzzyScore(token, haystack);
     const word = tokenWordScore(token, words);
     if (sub === null && word === 0) return null;
-    s += (sub ?? 0) + word;
+    // A word hit (exact / prefix / one edit) stands alone: the scattered-subsequence
+    // score a long description generates must not lift IMSUM over SUM for "sunm".
+    s += word >= 90 ? word : (sub ?? 0) + word;
   }
   // Strongest whole-query tier across the fields; Excel names weigh slightly under
   // the rest so an exact label still wins a tie.
@@ -105,6 +113,10 @@ export function scoreLeaf(query: string, { leaf, categoryPath }: LeafWithContext
     const fs = fieldScore(query, name);
     if (fs !== null) bonus = Math.max(bonus, fs - 10);
   }
+  // A typo of the NAME itself ("sunm" for SUM) outranks a leaf that merely carries the
+  // corrected word somewhere in its type or keywords (IMSUM's "cx-binary-sum").
+  const q = dashes(query).toLowerCase().trim();
+  if (q.length >= 4 && [leaf.label, bare, ...excelNames].some((n) => withinOneEdit(q, n.toLowerCase()))) bonus = Math.max(bonus, 200);
   return s + bonus;
 }
 

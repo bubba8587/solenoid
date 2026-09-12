@@ -1490,6 +1490,7 @@ export class RunningNode extends ClassicPreset.Node {
     const w = readInput(inputs.window, this.literals.window ?? 0);
     // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (w === null) { this.cachedList = null; return { result: null }; }
+    if (!Number.isFinite(w) || w < 0) { this.cachedList = []; return { result: solError("#DOMAIN!", "Window must be 0 (cumulative) or a positive count") }; }
     const result = running(this.agg, arr, w);
     this.cachedList = result;
     return { result };

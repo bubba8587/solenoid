@@ -90,7 +90,8 @@ const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
  *  fires no click. Strip `disabled` from the checkbox inputs — the only `<input>`
  *  marked emits — so the read view's boxes are tickable. Runs on already-sanitized
  *  HTML (post-DOMPurify), so it only ever sees marked's own markup. */
-function enableTaskCheckboxes(html: string): string {
+function enableTaskCheckboxes(html: string, live: boolean): string {
+  if (!live) return html; // a Knap-rendered body's boxes map onto no source line
   return html.replace(/<input\b[^>]*\btype="checkbox"[^>]*>/g, (tag) =>
     tag.replace(/\s+disabled(="[^"]*")?/g, ""),
   );
@@ -201,8 +202,8 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   // NOT trusted content — a body arrives in shared .solenoid files and marked does no
   // sanitizing, so sanitize EVERY render (the CSP is only the second layer).
   const bodyHtml = useMemo(
-    () => enableTaskCheckboxes(DOMPurify.sanitize(marked.parse(renderBody || "", { async: false, gfm: true, breaks: true }) as string)),
-    [renderBody],
+    () => enableTaskCheckboxes(DOMPurify.sanitize(marked.parse(renderBody || "", { async: false, gfm: true, breaks: true }) as string), rendered === body),
+    [renderBody, rendered, body],
   );
   // The read body's task-list checkboxes index into it in document order (= source
   // order, since a nested item's box still comes after its parent's).

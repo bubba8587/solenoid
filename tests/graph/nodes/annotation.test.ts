@@ -218,3 +218,16 @@ describe("NoteNode — a template note", () => {
     expect(doc.source).toBe("---\ntitle: Letter\n---\nDear {{ person }}, re {{ title }}");
   });
 });
+
+describe("toggleTaskMarker — code is not a checkbox", () => {
+  it("skips a fenced task-shaped line and an indented code block", () => {
+    const body = "```\n- [ ] fake\n```\n- [ ] real\n\npara\n\n    - [ ] code\n- [ ] last";
+    expect(toggleTaskMarker(body, 0)).toBe("```\n- [ ] fake\n```\n- [x] real\n\npara\n\n    - [ ] code\n- [ ] last");
+    expect(toggleTaskMarker(body, 1)).toBe("```\n- [ ] fake\n```\n- [ ] real\n\npara\n\n    - [ ] code\n- [x] last");
+  });
+
+  it("a nested item indented four spaces under a list still counts", () => {
+    const body = "- [ ] top\n    - [ ] nested";
+    expect(toggleTaskMarker(body, 1)).toBe("- [ ] top\n    - [x] nested");
+  });
+});

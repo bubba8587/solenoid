@@ -27,7 +27,8 @@ const HEAD_RE = /^\s*(?:async\s+)?(?:function\s*\*?\s*[\w$]*\s*\(([^)]*)\)|\(([^
  *  a destructured or defaulted parameter has no single name to show. */
 export function scriptParams(src: string): { params: string[] } | { error: string } {
   if (!src.trim()) return { params: [] };
-  const m = HEAD_RE.exec(src);
+  // A leading `// …` line or `/* … */` block is commentary, not the head.
+  const m = HEAD_RE.exec(src.replace(/^\s*(?:(?:\/\/[^\n]*|\/\*[\s\S]*?\*\/)\s*)*/, ""));
   if (!m) return { error: "Write a function: (x) => x * 2" };
   const list = m[3] !== undefined ? m[3] : (m[1] ?? m[2] ?? "");
   const params = list.split(",").map((s) => s.trim()).filter((s, i, a) => s !== "" || i < a.length - 1);

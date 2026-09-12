@@ -900,3 +900,14 @@ describe("Series — one arithmetic-progression node, op-switch mechanics", () =
     expect(n.data({}).list).toEqual([]);
   });
 });
+
+describe("Running — the window's domain", () => {
+  it("a negative or non-finite window is #DOMAIN!, never silently cumulative", () => {
+    const n = new RunningNode({ agg: "sum" });
+    const neg = n.data({ list: [[1, 2, 3, 4]], window: [-2] }).result;
+    expect(isSolError(neg) && neg.code).toBe("#DOMAIN!");
+    const nan = n.data({ list: [[1, 2, 3, 4]], window: [NaN] }).result;
+    expect(isSolError(nan) && nan.code).toBe("#DOMAIN!");
+    expect(n.data({ list: [[1, 2, 3, 4]], window: [0] }).result).toEqual([1, 3, 6, 10]);
+  });
+});

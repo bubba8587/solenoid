@@ -252,3 +252,18 @@ describe("persistence", () => {
     expect(Object.keys(back.inputs)).toEqual(["a", "b"]);
   });
 });
+
+describe("review pins: comments before the head; the inline path clones its arguments", () => {
+  it("a leading line or block comment does not hide the function", () => {
+    expect(scriptParams("// doubles\n(x) => x * 2")).toEqual({ params: ["x"] });
+    expect(scriptParams("/* doubles */ function f(a, b) { return a + b }")).toEqual({ params: ["a", "b"] });
+  });
+
+  it("a script that mutates its argument never edits the caller's array", async () => {
+    const { executeScript } = await import("../../../src/graph/scriptExecutor");
+    const xs = [1, 2, 3];
+    const out = await executeScript("(xs) => { xs.push(9); return xs.length }", [xs]);
+    expect(out.ok && out.value).toBe(4);
+    expect(xs).toEqual([1, 2, 3]);
+  });
+});

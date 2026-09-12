@@ -237,9 +237,26 @@ export function toggleTaskMarker(body: string, index: number): string {
   // The exact shape `marked` treats as a checkbox: a bullet item whose text opens
   // with `[ ]`/`[x]` followed by a space or the line end.
   const marker = /^(\s*[-*+]\s+)\[([ xX])\](?=\s|$)/;
+  // The rendered boxes index into the source, so lines marked renders as CODE (a ```/~~~
+  // fence, or a 4-space block opened after a blank line outside a list) must not count.
   let count = -1;
+  let fence: string | null = null;
+  let prevBlank = true, prevItem = false;
   for (let i = start; i < lines.length; i++) {
-    const m = marker.exec(lines[i]);
+    const line = lines[i];
+    const f = /^\s{0,3}(`{3,}|~{3,})/.exec(line);
+    if (f) {
+      if (fence === null) fence = f[1][0];
+      else if (f[1][0] === fence) fence = null;
+      prevBlank = false; prevItem = false;
+      continue;
+    }
+    if (fence !== null) continue;
+    const blank = line.trim() === "";
+    const indentedCode: boolean = !blank && /^(?: {4,}|\t)/.test(line) && prevBlank && !prevItem;
+    const m = indentedCode ? null : marker.exec(line);
+    prevBlank = blank;
+    if (!blank) prevItem = indentedCode ? prevItem : /^\s*(?:[-*+]|\d+[.)])\s/.test(line);
     if (!m) continue;
     count++;
     if (count === index) {

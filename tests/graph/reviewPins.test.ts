@@ -25,3 +25,28 @@ describe("review pins", () => {
     expect(isSolError(r) && r.code).toBe("#VALUE!");
   });
 });
+
+describe("File Link: which paths run rather than open", () => {
+  it("isExecutablePath names the program extensions, case-insensitively, and nothing else", async () => {
+    const { isExecutablePath } = await import("../../src/graph/fileBridge");
+    for (const p of ["C:\\\\tools\\\\run.EXE", "/tmp/x.bat", "a.lnk", "setup.msi", "s.ps1"]) expect(isExecutablePath(p)).toBe(true);
+    for (const p of ["notes.md", "C:\\\\data\\\\plan.xlsx", "photo.jpg", "readme"]) expect(isExecutablePath(p)).toBe(false);
+  });
+});
+
+describe("review pins: DROP, exponential fits, Slicer, aggregate guard", () => {
+  it("DROP of everything is #CALC!, not an empty list", () => {
+    const drop = resolveExcelFunction("DROP")!;
+    expect(isSolError(drop([1, 2, 3], 5)) && (drop([1, 2, 3], 5) as { code: string }).code).toBe("#CALC!");
+    expect(isSolError(drop([1, 2, 3], -3))).toBe(true);
+    expect(drop([1, 2, 3], 1)).toEqual([2, 3]);
+    expect(isSolError(drop([[1, 2], [3, 4]], 0, 2))).toBe(true);
+  });
+  it("an exponential fit over a y at or below zero is #NUM! on both cards", async () => {
+    const { ForecastNode, LinestNode } = await import("../../src/graph/rete-nodes") as unknown as Record<string, new (i: { op: string }) => { data: (i: Record<string, unknown[]>) => Record<string, unknown> }>;
+    const f = new ForecastNode({ op: "exponential" }).data({ ys: [[1, -2, 3]], xs: [[1, 2, 3]], x: [4] });
+    expect(isSolError(f.result) && (f.result as { code: string }).code).toBe("#NUM!");
+    const l = new LinestNode({ op: "exponential" }).data({ ys: [[1, -2, 3]], xs: [[1, 2, 3]] });
+    expect(isSolError(l.slope) && (l.slope as { code: string }).code).toBe("#NUM!");
+  });
+});

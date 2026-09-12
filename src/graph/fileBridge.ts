@@ -3,6 +3,8 @@
 import { readTextFile, readDir, writeTextFile, rename, readFile, writeFile, mkdir, exists, stat } from "@tauri-apps/plugin-fs";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { join, dirname } from "@tauri-apps/api/path";
+import { requestConfirm } from "./confirmStore";
+import { docMetaStore } from "./docMetaStore";
 
 const JSON_FILTER = [{ name: "Solenoid graph", extensions: ["json"] }];
 const HTML_FILTER = [{ name: "Web page", extensions: ["html"] }];
@@ -353,10 +355,27 @@ export async function pickFileLinkDialog(): Promise<string | null> {
   return typeof res === "string" ? res : null;
 }
 
+const EXECUTABLE_EXT = new Set(["exe", "bat", "cmd", "com", "msi", "ps1", "vbs", "js", "jse", "wsf", "scr", "lnk", "hta", "reg"]);
+
+/** Does the path end in an extension the OS would RUN rather than open in a viewer? */
+export function isExecutablePath(path: string): boolean {
+  const ext = baseNameOf(path).split(".").pop()?.toLowerCase() ?? "";
+  return EXECUTABLE_EXT.has(ext);
+}
+
 /** Open a file in its OS default app (desktop only). Needs `opener:allow-open-path`
- *  in the capability set — reveal-in-dir alone wouldn't launch the file. */
+ *  in the capability set — reveal-in-dir alone wouldn't launch the file. A link that
+ *  runs a program, or any link in a document adopted from outside, asks first: a
+ *  shared .solenoid file can carry any path. */
 export async function openFilePath(path: string): Promise<void> {
   if (!isDesktop() || !path) return;
+  if (isExecutablePath(path) || docMetaStore.isForeign()) {
+    const ok = await requestConfirm({
+      message: isExecutablePath(path) ? "This link runs a program. Open it?" : "This link came with a shared document. Open it?",
+      confirmLabel: "Open",
+    });
+    if (!ok) return;
+  }
   try {
     const { openPath } = await import("@tauri-apps/plugin-opener");
     await openPath(path);
