@@ -853,6 +853,7 @@ function toStr(x: unknown): string {
   return String(x);
 }
 const badNum = (...xs: number[]) => xs.some(Number.isNaN);
+const optNum = (v: unknown, dflt: number) => (v == null ? dflt : toNum(v));
 const VALUE = (fn: string) => solError("#VALUE!", `${fn} needs a number`);
 
 /** Excel ROUND: round half AWAY from zero — JS `Math.round` is half-UP, so they
@@ -914,7 +915,7 @@ export function excelQuartileInc(nums: ReadonlyArray<number>, q: number): number
 }
 
 registerInternal("ROUND", (x, d) => {
-  const n = toNum(x), digits = toNum(d);
+  const n = toNum(x), digits = optNum(d, 0); // a blank digits slot is 0, like ROUNDUP / TRUNC and Excel
   return badNum(n, digits) ? VALUE("ROUND") : excelRound(n, digits);
 });
 registerInternal("SQRT", (x) => {
@@ -1047,7 +1048,7 @@ const domErr = () => solError("#DOMAIN!", "Input is outside this function's doma
 const num1 = (fn: string, f: (x: number) => number | SolError) =>
   registerInternal(fn, (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE(fn) : f(n); });
 registerInternal("MOD", (a, b) => {
-  const x = toNum(a), y = toNum(b);
+  const x = toNum(a), y = optNum(b, 0); // a blank divisor is 0 → #DIV/0! (Excel)
   return badNum(x, y) ? VALUE("MOD") : y === 0 ? solError("#DIV/0!", "Division by zero") : x - y * Math.floor(x / y);
 });
 registerInternal("QUOTIENT", (a, b) => {
@@ -1287,7 +1288,7 @@ for (const fn of ["EDATE", "WORKDAY"]) {
 // date-parsing definition across DATEVALUE, Frame/Table columns, Date Input, Cast, read-as),
 // the week-info trio and the DAYS / DAYS360 / YEARFRAC / DATEDIF family.
 registerInternal("DATE", (y, m, d) => {
-  const yn = toNum(y), mn = toNum(m), dn = toNum(d);
+  const yn = toNum(y), mn = toNum(m), dn = optNum(d, 0); // a blank day is 0: the last day of the month before (Excel)
   return badNum(yn, mn, dn) ? VALUE("DATE") : dateFromParts(yn, mn, dn);
 });
 registerInternal("TIME", (h, m, s) => {
@@ -1430,7 +1431,6 @@ registerInternal("NUMBERVALUE", (text, dec, grp) => {
 
 // The node's own compute (financeOps.ts) in Excel's argument order. An out-of-range
 // argument yields null, never a fabricated number; `basis` defaults to 0 (30/360).
-const optNum = (v: unknown, dflt: number) => (v == null ? dflt : toNum(v));
 
 for (const op of ["coupdaybs", "coupdaysnc", "coupncd", "couppcd", "coupnum"] as const) {
   registerInternal(op, (settle, maturity, freq, basis) =>

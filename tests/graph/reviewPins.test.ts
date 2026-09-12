@@ -205,3 +205,11 @@ describe("review pins: Slider bounds", () => {
     expect(n.effectiveMin).toBe(n.literals.min ?? 0);
   });
 });
+
+describe("review pins: a blank optional numeric argument is Excel's 0", () => {
+  it("ROUND / MOD / DATE read a blank slot like their siblings do", () => {
+    expect(resolveExcelFunction("ROUND")!(2.567, null)).toBe(3);
+    expect(isSolError(resolveExcelFunction("MOD")!(5, null)) && (resolveExcelFunction("MOD")!(5, null) as { code: string }).code).toBe("#DIV/0!");
+    expect(resolveExcelFunction("DATE")!(2026, 1, null)).toBe(resolveExcelFunction("DATE")!(2025, 12, 31));
+  });
+});
