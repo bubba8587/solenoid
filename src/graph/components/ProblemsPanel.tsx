@@ -3,7 +3,7 @@ import { IS_MOBILE } from "../coarse";
 import { problemsStore, problemsPanelUi, type ProblemEntry } from "../problemsStore";
 import { registerChrome } from "../chromeToggle";
 import { flyToNodeAndFlash } from "../flyToNode";
-import { getEditor } from "../process";
+import { getOwningEditor } from "../activeGraph";
 import { nodeDisplayName } from "../catalogUtils";
 import { errorTip } from "./ErrorChip";
 import { solError } from "../errorValue";
@@ -53,7 +53,6 @@ export function ProblemsPanel() {
   }, [collapsed, all.length]);
   if (all.length === 0) return null;
 
-  const editor = getEditor();
 
   const trigger = (
     <button
@@ -68,7 +67,7 @@ export function ProblemsPanel() {
   );
 
   const row = (e: ProblemEntry) => {
-    const node = editor?.getNode(e.nodeId);
+    const node = getOwningEditor(e.nodeId)?.getNode(e.nodeId);
     const label = node ? nodeDisplayName(node) : "(deleted node)";
     return (
       <div

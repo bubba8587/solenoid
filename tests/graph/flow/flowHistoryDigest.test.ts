@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { describeGraphDelta } from "../../../src/graph/flow/flowHistoryDigest";
+import { describeGraphDelta, sameIgnoringDims } from "../../../src/graph/flow/flowHistoryDigest";
 import type { SavedGraph, SavedNode } from "../../../src/graph/persistence";
 
 const node = (id: string, name: string, extra: Partial<SavedNode> = {}): SavedNode => ({
@@ -88,5 +88,16 @@ describe("describeGraphDelta", () => {
     expect(describeGraphDelta(none, one)).toBe("Drew a cable");
     expect(describeGraphDelta(one, none)).toBe("Removed a drawn cable");
     expect(describeGraphDelta(one, edited)).toBe("Edited a drawn cable");
+  });
+});
+
+describe("sameIgnoringDims", () => {
+  it("a dims-only re-stamp after a restore is not an edit; a real edit is", () => {
+    const before = graph([node("n1", "rate", { init: { width: 180, height: 90 } })]);
+    const dims = graph([node("n1", "rate", { init: { width: 181, height: 92 } })]);
+    const moved = graph([node("n1", "rate", { x: 10, init: { width: 181, height: 92 } })]);
+    expect(sameIgnoringDims(before, dims)).toBe(true);
+    expect(sameIgnoringDims(before, moved)).toBe(false);
+    expect(sameIgnoringDims(before, graph([]))).toBe(false);
   });
 });

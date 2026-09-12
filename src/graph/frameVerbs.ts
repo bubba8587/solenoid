@@ -1985,14 +1985,16 @@ export function fillBlanks(f: FrameValue, columns: readonly string[], dir: "down
   return { __frame: true, columns: cols };
 }
 
-/** Coerce a replacement string to a column's type (the quiet-dirty-data rule:
- *  blank → null, unparseable → NaN for numbers / null otherwise). */
-function coerceReplacement(t: FrameColType, text: string): FrameCell {
+/** Coerce a replacement string to a column's type (the quiet-dirty-data rule: blank →
+ *  null, an unparseable logical → null, text verbatim). A number or date column with a
+ *  replacement that is not a number is `undefined`: the cell stays as it was (a NaN cell
+ *  is neither a value, a blank nor an error, so nothing downstream could read it). */
+function coerceReplacement(t: FrameColType, text: string): FrameCell | undefined {
   const s = text.trim();
   if (s === "") return null;
   switch (t) {
-    case "number": { const n = Number(s); return Number.isFinite(n) ? n : NaN; }
-    case "date": { const n = Number(s); return Number.isFinite(n) ? n : null; }
+    case "number":
+    case "date": { const n = Number(s); return Number.isFinite(n) ? n : undefined; }
     case "logical": {
       const l = s.toLowerCase();
       return l === "true" || l === "1" ? true : l === "false" || l === "0" ? false : null;
@@ -2023,6 +2025,7 @@ export function replaceValues(
       };
     }
     const replacement = coerceReplacement(col.type, replaceWith);
+    if (replacement === undefined) return col; // nothing a number/date cell could become
     return {
       ...col,
       values: col.values.map((v) => {

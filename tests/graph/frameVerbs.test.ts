@@ -664,3 +664,15 @@ describe("unnestCube: an empty [] beside tables", () => {
     expect(isCubeValue(out) && out.columns.find((x) => x.name === "p")!.cells).toEqual(["a", "a"]); // no children, no rows (like null)
   });
 });
+
+describe("replaceValues: a non-numeric replacement never writes NaN", () => {
+  it("leaves a number column alone when the replacement is text; the string column still replaces", () => {
+    const f: FrameValue = { __frame: true, columns: [
+      { name: "s", type: "string", values: ["1", "1.0", "a"] },
+      { name: "n", type: "number", values: [1, 1.5, 2] },
+    ] };
+    const out = replaceValues(f, "", "1", "Z", "cell");
+    expect(out.columns[0].values).toEqual(["Z", "1.0", "a"]);
+    expect(out.columns[1].values).toEqual([1, 1.5, 2]);
+  });
+});

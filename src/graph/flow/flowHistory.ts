@@ -6,7 +6,7 @@
 import { serializeGraph, loadGraph, scheduleAutosave } from "../persistence";
 import type { SavedGraph } from "../persistence";
 import { getView, isGraphRebuilding } from "../process";
-import { describeGraphDelta } from "./flowHistoryDigest";
+import { describeGraphDelta, sameIgnoringDims } from "./flowHistoryDigest";
 
 const MAX_DEPTH = 80;
 // Snapshots are whole documents; on a large doc the depth cap alone lets the stack
@@ -83,10 +83,12 @@ export const flowHistory = {
     let label = "Edited document";
     if (top) {
       try {
-        label = describeGraphDelta(
-          JSON.parse(top.json) as SavedGraph,
-          JSON.parse(s) as SavedGraph,
-        );
+        const prev = JSON.parse(top.json) as SavedGraph;
+        const next = JSON.parse(s) as SavedGraph;
+        // Measured dims re-stamped after a restore are not an edit: recording them
+        // would push a new entry and cut off the redo tail.
+        if (sameIgnoringDims(prev, next)) return;
+        label = describeGraphDelta(prev, next);
       } catch { /* a label is cosmetic — never block the record */ }
     }
     _stack = _stack.slice(0, _index + 1);

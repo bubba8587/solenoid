@@ -333,6 +333,10 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
   /** Undo/redo over the per-composite snapshot stack. */
   const historyStep = useCallback(
     async (redo: boolean) => {
+      // One restore at a time: a second Ctrl+Z / Ctrl+Y during the awaited re-hydrate
+      // would interleave two restores on the same internal editor (flowHistory's
+      // _restoring rule).
+      if (s.rebuilding) return;
       const h = s.history;
       if (h.timer) recordNow(comp, s);
       const target = redo ? h.index + 1 : h.index - 1;

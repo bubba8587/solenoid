@@ -1126,26 +1126,23 @@ fn lazy_fill_blanks(plan: Plan, columns: &[String], dir: &str) -> Result<Plan, I
     Ok(Plan { lf: plan.lf.with_columns(exprs), ..plan })
 }
 
-/// The oracle's `coerceReplacement`: blank → null, an unparseable number → NaN, an
-/// unparseable date / logical → null, text verbatim.
-fn replacement_lit(ty: SolType, text: &str) -> Expr {
+/// The oracle's `coerceReplacement`: blank → null, an unparseable logical → null, text
+/// verbatim. A number or date column with a replacement that is not a number is `None`:
+/// the column is left as it was (the oracle skips it too; a NaN cell reads as nothing).
+fn replacement_lit(ty: SolType, text: &str) -> Option<Expr> {
     let t = text.trim();
-    match ty {
+    Some(match ty {
         SolType::Str => lit(text.to_string()),
-        SolType::Number => {
-            if t.is_empty() { return lit(NULL).cast(DataType::Float64); }
-            match t.parse::<f64>() { Ok(n) if n.is_finite() => lit(n), _ => lit(f64::NAN) }
-        }
-        SolType::Date => {
-            if t.is_empty() { return lit(NULL).cast(DataType::Float64); }
-            match t.parse::<f64>() { Ok(n) if n.is_finite() => lit(n), _ => lit(NULL).cast(DataType::Float64) }
+        SolType::Number | SolType::Date => {
+            if t.is_empty() { return Some(lit(NULL).cast(DataType::Float64)); }
+            match t.parse::<f64>() { Ok(n) if n.is_finite() => lit(n), _ => return None }
         }
         SolType::Logical => match t.to_ascii_lowercase().as_str() {
             "true" | "1" => lit(true),
             "false" | "0" => lit(false),
             _ => lit(NULL).cast(DataType::Boolean),
         },
-    }
+    })
 }
 
 fn lazy_replace_values(plan: Plan, column: &str, find: &str, replace_with: &str, mode: &str) -> Result<Plan, IpcError> {
@@ -1162,7 +1159,7 @@ fn lazy_replace_values(plan: Plan, column: &str, find: &str, replace_with: &str,
             // String columns only; case-sensitive, literal (no regex).
             return if ty == SolType::Str { c.str().replace_all(lit(find.to_string()), lit(replace_with.to_string()), true).alias(n.as_str()) } else { c };
         }
-        let rep = replacement_lit(ty, replace_with);
+        let Some(rep) = replacement_lit(ty, replace_with) else { return c; };
         let hit: Option<Expr> = match ty {
             SolType::Str => Some(c.clone().eq(lit(find.to_string()))),
             // Numbers match numerically (so "5" hits 5); a non-numeric find text matches no number cell.
