@@ -355,14 +355,19 @@ object CHANGED. The invariants that make this correct:
 
 ## Literal input editors — one popup surface (2026-09-07)
 
-Every non-scalar literal source edits through the table popup: **Table Input** (raw cells,
-`onSaveRaw`), **Frame Input** (literal-source grid, `onSaveSource` / `onCommitSource`), **List
-Input** (one raw column, `onSaveRaw` → `applyListRows`), and **Cube Input** (the cube popup in
-edit mode: a nested cell drills to an editable list / table / cube LEVEL on the breadcrumb — one
-window, never a popup above a popup — each level bound to a records path). The stored truth is always TEXT on the node (`tableText`, `frameText`,
-the List rows' `stringLiterals`, `cubeText`); a Save rewrites that text and recomputes, never a
-derived value. Reopens if a literal source grows its own editor widget instead of binding the
-popup, or if an editor writes a derived value back.
+The rank-2+ literal sources edit through the table popup: **Table Input** (raw cells,
+`onSaveRaw`), **Frame Input** (literal-source grid, `onSaveSource` / `onCommitSource`), and
+**Cube Input** (the cube popup in edit mode: a nested cell drills to an editable list / table /
+cube LEVEL on the breadcrumb — one window, never a popup above a popup — each level bound to a
+records path). The stored truth is always TEXT on the node (`tableText`, `frameText`,
+`cubeText`); a Save rewrites that text and recomputes, never a derived value. Reopens if a
+literal source grows its own editor widget instead of binding the popup, or if an editor writes
+a derived value back.
+
+**List Input is NOT one of them** (author, 2026-09-12): its rows are typed on the card, every
+row's values concatenate into one flat list, and the value box's chip opens the ordinary list
+value popup. 758a2d70 bolted a raw-row editor and a dummy chip onto it without an ask; four
+fixes later the card went back to its original form (`tests/graph/listInputChip.test.ts` pins it).
 
 ## Inline literal maps — declaration gates restore (2026-07-19)
 
