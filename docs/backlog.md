@@ -86,6 +86,9 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 - [ ] **Knap for dynamic write paths / content** (author, parked): use Knap to template a Write to
   Obsidian `path` or the written body from wired values — the successor to the removed `{{date}}`
   grammar, now that `path` is a plain wireable string.
+- [ ] **Frame-only verbs over a cube** (fe): Window / GROUPBY / Chart's frame input still refuse a
+  live `cube`, so charting or smoothing a Vault Folder needs a cube→frame step (A′ extended, or a
+  Cube → Frame node). Today the `daily-habits` seed runs its Window on a snapshot for this reason.
 - [ ] **Write mega-merge, phase 2** (author 2026-09-10, maximalMerge): the vault half LANDED
   2026-09-11 — Write Properties folded into Write to Obsidian (Auto / Note / Properties target).
   Remaining: fold **Write File** (disk CSV/JSON/MD) and **Write Tasks** (API) into the same sink as

@@ -384,10 +384,9 @@ describe("lattice invariants — TYPE separation + DIMENSIONAL flow (full sweep)
 // ─── Cube — the lattice SUPREMUM (closes the socket types) ─────────────────────
 // A `cube` is the universal recursive container (a frame whose cells hold any
 // value). The governing rule: EVERY data value widens UP into a cube input
-// (including a frame and another cube); a cube OUTPUT flows into another cube, `trueany`,
-// or a FRAME input (the A′ rule, cubeWidensToFrame) — where a flat cube flattens and a
-// nested cube is a loud `#SHAPE!`, never a silent drop — but not into a matrix / list /
-// scalar. This is the top of the dimensional ladder.
+// (including a frame and another cube); a cube OUTPUT preserves its nesting, so it
+// flows ONLY into another cube or `trueany` — never down into a frame / matrix / list
+// (that would silently drop the nesting). This is the top of the dimensional ladder.
 describe("cube — universal recursive container (lattice supremum)", () => {
   const FAM = {
     number:  { scalar: "number",  list: "list",        combo: "numlist",      matrix: "table" },
@@ -409,10 +408,10 @@ describe("cube — universal recursive container (lattice supremum)", () => {
     expect(canConnect("cube", "cube")).toBe(true);    // identity
   });
 
-  it("a cube OUTPUT reaches cube / trueany / a FRAME (A′), never a matrix / list / scalar", () => {
+  it("a cube OUTPUT preserves nesting: only → cube / trueany, never a narrower container", () => {
     for (const t of allTypes) expect(canConnect("cube", t)).toBe(false);
-    expect(canConnect("cube", "frame")).toBe(true);    // A′: flattens, or #SHAPE! on a nested cube
-    expect(canConnect("cube", "anytable")).toBe(false); // a matrix grid would drop the column names
+    expect(canConnect("cube", "frame")).toBe(false);   // would drop the nesting
+    expect(canConnect("cube", "anytable")).toBe(false);
     expect(canConnect("cube", "table")).toBe(false);
     expect(canConnect("cube", "list")).toBe(false);
     expect(canConnect("cube", "number")).toBe(false);

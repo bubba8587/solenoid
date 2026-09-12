@@ -20,7 +20,6 @@ import { ComplexUnaryNode, cx } from "../../src/graph/nodes/complex";
 import { NotNode } from "../../src/graph/nodes/logic";
 import { ArithmeticNode } from "../../src/graph/nodes/scalar";
 import { ListLengthNode, ListInputNode, ListIndexNode } from "../../src/graph/nodes/list";
-import { cubeFromColumns, isFrameValue, type FrameValue } from "../../src/graph/frame";
 
 const MAR_2026 = parseDateToSerial("2026-03-20");
 const APR_2027 = parseDateToSerial("2027-04-21");
@@ -378,49 +377,5 @@ describe("wrapNodeData's FrameRef bridge (lazy forwards the ref, everyone else c
     expect(out).not.toBeInstanceOf(Promise);
     expect(readFrame).not.toHaveBeenCalled();
     expect(p.received()!.frame).toEqual([42]);
-  });
-});
-
-// The A′ widening for cubes: a flat cube widens into a frame socket (so Window / GROUPBY /
-// Chart chart or smooth a live Vault Folder), a nested cell is the loud #SHAPE! refusal.
-describe("a flat cube widens into a frame socket (A′)", () => {
-  function frameNode() {
-    let received: Record<string, unknown[]> | undefined;
-    const node = {
-      data: (inputs: Record<string, unknown[]>) => { received = inputs; return {}; },
-      inputs: { f: { socket: new SolenoidSocket("frame") } },
-      stringLiterals: {},
-    };
-    wrapNodeData(node as Parameters<typeof wrapNodeData>[0]);
-    return { run: (inputs: Record<string, unknown[]>) => { node.data(inputs); return received ?? {}; } };
-  }
-
-  it("flattens a scalar cube, keeping declared column types", () => {
-    const cube = cubeFromColumns([
-      { name: "Day", cells: ["2026-08-25", "2026-08-26"], type: "string" },
-      { name: "Sleep", cells: [7, 6.5], type: "number" },
-    ]);
-    const out = frameNode().run({ f: [cube] }).f[0];
-    expect(isFrameValue(out)).toBe(true);
-    const fv = out as FrameValue;
-    expect(fv.columns.map((c) => [c.name, c.type])).toEqual([["Day", "string"], ["Sleep", "number"]]);
-    expect(fv.columns[1].values).toEqual([7, 6.5]);
-  });
-
-  it("a nested-table cell is the loud refusal — #SHAPE! naming the column", () => {
-    const inner = cubeFromColumns([{ name: "x", cells: [1], type: "number" }]);
-    const cube = cubeFromColumns([
-      { name: "Day", cells: ["A"], type: "string" },
-      { name: "Entries", cells: [inner] },
-    ]);
-    expect(() => frameNode().run({ f: [cube] })).toThrow(/Entries/);
-  });
-
-  it("a list cell (tags) also can't flatten", () => {
-    const cube = cubeFromColumns([
-      { name: "Note", cells: ["A"], type: "string" },
-      { name: "Tags", cells: [["home", "urgent"]] },
-    ]);
-    expect(() => frameNode().run({ f: [cube] })).toThrow(/Tags/);
   });
 });
