@@ -1289,14 +1289,21 @@ export function pivotFrame(f: FrameValue, spec: PivotSpec): FrameValue {
   // ── Key columns (one per rowField). Subtotal rows fill the prefix + a "Total"
   //    marker in the next column; the grand row is "Grand Total" in column 0. ──
   const keyNames = makeHeaders(rowFields, rowFields.length);
-  const keyColumns: FrameColumn[] = rowCols.map((c, k) => ({
-    name: keyNames[k], type: c.type,
-    values: rowOut.map((ro) => {
+  // A total marker is a LABEL in a key column: once one is emitted the column is text
+  // (a "Grand Total" string inside a number-typed column breaks the frame's own contract
+  // and every downstream verb).
+  const hasTotals = rowOut.some((ro) => ro.kind !== "leaf");
+  const keyColumns: FrameColumn[] = rowCols.map((c, k) => {
+    const marked = hasTotals && rowOut.some((ro) => (ro.kind === "grand" && k === 0) || (ro.kind === "sub" && k === ro.fill));
+    const values = rowOut.map((ro) => {
       if (ro.kind === "grand") return k === 0 ? "Grand Total" : null;
       if (ro.kind === "sub")   return k < ro.fill ? ro.tuple[k] : k === ro.fill ? "Total" : null;
       return ro.tuple[k];
-    }),
-  }));
+    });
+    return marked && c.type !== "string"
+      ? { name: keyNames[k], type: "string" as const, values: values.map((v) => (v == null ? null : String(formatFrameCell(c.type, v as FrameCell) ?? v))) }
+      : { name: keyNames[k], type: c.type, values };
+  });
 
   // ── Body columns: colSlot × value. Header = colTuple joined " | " (+ value name
   //    when >1 value), collapsing to the plain Excel layout for the simple case. ──

@@ -271,3 +271,17 @@ describe("review pins: copy skips composite markers", () => {
     expect(src).toMatch(/n\.selected && !isMarker\(n\)/);
   });
 });
+
+describe("review pins: pivot totals", () => {
+  it("a key column that carries a Total label is text, never a number column with a string inside", async () => {
+    const { pivotFrame } = await import("../../src/graph/frameVerbs");
+    const { buildFrame } = await import("../../src/graph/frame");
+    const f = buildFrame([[1, 10], [1, 20], [2, 30]] as never, ["k", "v"]);
+    const out = pivotFrame(f, { rowFields: ["k"], colFields: [], values: ["v"], funcs: ["sum"], rowTotalDepth: 1 } as never);
+    const key = out.columns[0];
+    expect(key.type).toBe("string");
+    expect(key.values).toEqual(["1", "2", "Grand Total"]);
+    const plain = pivotFrame(f, { rowFields: ["k"], colFields: [], values: ["v"], funcs: ["sum"] } as never);
+    expect(plain.columns[0].type).toBe("number");
+  });
+});
