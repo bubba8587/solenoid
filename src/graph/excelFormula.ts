@@ -426,15 +426,18 @@ export const RANGE_FUNCTIONS = new Set<string>([
 
 // COUNT-family sees the raw array — COUNTBLANK counts the nulls, COUNT/COUNTA
 // classify errors themselves (Excel: COUNT skips them, COUNTA counts them).
-const RANGE_RAW = new Set(["COUNT", "COUNTA", "COUNTBLANK"]);
+const RANGE_RAW = new Set([
+  "COUNT", "COUNTA", "COUNTBLANK",
+  // The criteria family reads blanks (a blank criterion matches a blank cell) and decides
+  // per cell what an error means, so its ranges arrive untouched.
+  "SUMIF", "SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF", "AVERAGEIFS", "MAXIFS", "MINIFS",
+]);
 // Index-ALIGNED multi-range functions: a null drops its whole ROW across every
 // range, since per-array dropping would shear the pairing; the min-length zip on
 // ragged ranges IS the pad-with-null policy (padded rows would drop anyway).
 const RANGE_PAIRED = new Set([
   "SUMPRODUCT", "CORREL", "SPEARMAN", "KENDALL", "WILCOXON", "COVAR", "COVARIANCE.P", "COVARIANCE.S",
   "SLOPE", "INTERCEPT", "RSQ", "STEYX", "FORECAST.LINEAR", "XNPV",
-  "SUMIF", "SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF", "AVERAGEIFS",
-  "MAXIFS", "MINIFS",
   // term-by-term / cell-for-cell definitions: these must stay index-aligned.
   "SUMX2MY2", "SUMX2PY2", "SUMXMY2", "CHISQ.TEST", "PROB",
 ]);
@@ -472,6 +475,8 @@ const NULLABLE_SCALARS_OK = new Set([
   "MAP", "BYROW", "BYCOL", "REDUCE", "SCAN", "MAKEARRAY", "GROUPBY",
   // The regression quartet: blank xs / new_xs each mean an Excel default.
   "TREND", "GROWTH", "LINEST", "LOGEST",
+  // A blank criterion matches blank cells (Excel), so it must reach the kernel.
+  "SUMIFS", "COUNTIFS", "AVERAGEIFS", "MINIFS", "MAXIFS", "COUNTIF", "AVERAGEIF",
 ]);
 
 // Lambda HOSTS whose fn argument may be a bare function name (eta) — MAKEARRAY is

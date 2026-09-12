@@ -2,6 +2,7 @@ import * as FX from "@formulajs/formulajs";
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
 import { serialToJsDate, jsDateToSerial } from "./nodes/dateSerial";
 import { convertZone } from "./timeZone";
+import { criteriaAggregate } from "./excelCriteria";
 import { bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP, type AggregateOp } from "./nodes/statsOps";
@@ -468,6 +469,15 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   FISHER:      { returns: "number", arity: [1, 1], family: "statistics" },
   FISHERINV:   { returns: "number", arity: [1, 1], family: "statistics" },
   // numpy / pandas / R one-liners (python-r-gap.md) — Solenoid-native names
+  // The criteria family runs one Excel criteria grammar (excelCriteria.ts): comparison
+  // prefixes, ? / * wildcards with ~, date-shaped text against serials, blank matches blank.
+  SUMIFS:      { returns: "number", arity: [3, 255], native: true },
+  COUNTIFS:    { returns: "number", arity: [2, 255], native: true },
+  AVERAGEIFS:  { returns: "number", arity: [3, 255], native: true },
+  MINIFS:      { returns: "number", arity: [3, 255], native: true },
+  MAXIFS:      { returns: "number", arity: [3, 255], native: true },
+  COUNTIF:     { returns: "number", arity: [2, 2], native: true },
+  AVERAGEIF:   { returns: "number", arity: [2, 3], native: true },
   PTP:         { returns: "number", arity: [1, 255], native: true },
   IQR:         { returns: "number", arity: [1, 255], native: true },
   MAD:         { returns: "number", arity: [1, 255], native: true },
@@ -1009,6 +1019,29 @@ registerInternal("AVERAGEA", (...a) => {
   const cells = a.flatMap((x) => (Array.isArray(x) ? x : [x])).filter((v) => v != null);
   return aggregate("avg", cells.map((v) => { const n = toNum(v); return Number.isFinite(n) ? n : 0; }));
 });
+// The *IFS family: (values, range1, crit1, range2, crit2, …); COUNTIFS has no values range.
+const asRange = (v: unknown): unknown[] => (Array.isArray(v) ? v : [v]);
+const ifsPairs = (rest: unknown[]): Array<[unknown[], unknown]> | SolError => {
+  if (rest.length === 0 || rest.length % 2 !== 0) return solError("#VALUE!", "Criteria come in range, criterion pairs");
+  const pairs: Array<[unknown[], unknown]> = [];
+  for (let i = 0; i < rest.length; i += 2) pairs.push([asRange(rest[i]), rest[i + 1]]);
+  return pairs;
+};
+const ifs = (kind: "sum" | "average" | "min" | "max") => (values: unknown, ...rest: unknown[]) => {
+  const pairs = ifsPairs(rest);
+  return isSolError(pairs) ? pairs : criteriaAggregate(kind, asRange(values), pairs);
+};
+registerInternal("SUMIFS", ifs("sum"));
+registerInternal("AVERAGEIFS", ifs("average"));
+registerInternal("MINIFS", ifs("min"));
+registerInternal("MAXIFS", ifs("max"));
+registerInternal("COUNTIFS", (...rest) => {
+  const pairs = ifsPairs(rest);
+  return isSolError(pairs) ? pairs : criteriaAggregate("count", null, pairs);
+});
+// The singular forms: (range, criterion[, values]); the values range defaults to the range.
+registerInternal("COUNTIF", (range, crit) => criteriaAggregate("count", null, [[asRange(range), crit]]));
+registerInternal("AVERAGEIF", (range, crit, values) => criteriaAggregate("average", asRange(values === undefined ? range : values), [[asRange(range), crit]]));
 registerInternal("LARGE",  (arr, k) => nthExtreme(numsOf(arr), toNum(k), true));
 registerInternal("SMALL",  (arr, k) => nthExtreme(numsOf(arr), toNum(k), false));
 registerInternal("PERCENTILE",     (arr, p) => percentile(numsOf(arr), toNum(p), false));
