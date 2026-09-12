@@ -230,6 +230,11 @@ function writeLevel(level: Level, byName: Map<string, ScheduledTask>, nested: bo
     if (col === level.cols.children) {
       return { name: col.name, type: col.type, cells: col.cells.map((cell, i) => (level.childLevels[i] ? writeLevel(level.childLevels[i]!, byName, nested) : cell)) };
     }
+    // A summary row's Duration is derived (the working days its children span); the input
+    // leaves it blank, so the output fills it.
+    if (col === level.cols.duration) {
+      return { name: col.name, type: col.type, cells: col.cells.map((cell, i) => (rows[i]?.summary ? rows[i].duration : cell)) };
+    }
     return { name: col.name, type: col.type, cells: col.cells };
   }).filter((c): c is NonNullable<typeof c> => c !== null);
   return cubeFromColumns([...rebuilt, ...appended]);

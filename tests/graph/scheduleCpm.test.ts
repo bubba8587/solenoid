@@ -141,6 +141,7 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
     ]);
     const n = scheduleTasks(nested, { start: MON, workingDays: true });
     expect(col(n.cube, "Summary")).toEqual([true, false]);
+    expect(col(n.cube, "Duration")).toEqual([5, 1]); // the phase's working days, filled in
     expect(col(n.cube, "Finish").map(iso)).toEqual(["2026-01-09", "2026-01-12"]);
     const inner = col(n.cube, "Tasks")[0] as CubeValue;
     expect(col(inner, "Start").map(iso)).toEqual(["2026-01-05", "2026-01-07"]);

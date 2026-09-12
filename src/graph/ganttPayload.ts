@@ -185,13 +185,18 @@ function isChildOf(rows: Row[], r: Row, x: Row): boolean {
 
 function linkViolated(d: PlanDependency, pred: Row, succ: Row): boolean {
   const ps = num(pred.cells.start), pf = num(pred.cells.finish), ss = num(succ.cells.start), sf = num(succ.cells.finish);
-  if (ps === null || pf === null || ss === null || sf === null) return false;
-  // Calendar-day approximation of the working-day rule (the engine flagged the exact case in
-  // Diagnostics; here a plain "starts before the predecessor finished" catches the visible break).
+  if (ps === null || pf === null || ss === null || sf === null || d.lag < 0) return false;
+  // The visible break only (the engine's Diagnostics has the exact working-day case): an
+  // FS successor may not start before its predecessor finishes. On whole-day serials a
+  // task starts the NEXT day, so an equal day is a break too — except for a milestone,
+  // which sits on its predecessor's finish day, and in Minutes mode, where a same-day
+  // afternoon start is the rule (the serials then carry a clock fraction).
+  const wholeDays = Number.isInteger(ss) && Number.isInteger(pf);
+  const succMilestone = num(succ.cells.duration) === 0 || (num(succ.cells.duration) === null && ss === sf);
   switch (d.type) {
-    case "FS": return d.lag >= 0 && ss <= pf && !(pred.cells.duration === 0);
-    case "SS": return d.lag >= 0 && ss < ps;
-    case "FF": return d.lag >= 0 && sf < pf;
-    case "SF": return d.lag >= 0 && sf < ps;
+    case "FS": return ss < pf || (ss === pf && wholeDays && !succMilestone);
+    case "SS": return ss < ps;
+    case "FF": return sf < pf;
+    case "SF": return sf < ps;
   }
 }

@@ -34,6 +34,8 @@ describe("ganttPayloadFromSchedule", () => {
     expect(p.tasks[0].group).toBe("Build");
     expect(p.links.map((l) => `${l.from}→${l.to}`)).toEqual(["A→B", "B→Done", "Phase 1→Wrap"]);
     expect(p.links[0].critical).toBe(true);
+    // A milestone sits ON its predecessor's finish day: not a broken link.
+    expect(p.links.map((l) => l.violated)).toEqual([false, false, false]);
     expect(p.predecessorText).toEqual({ Wrap: "Phase 1", B: "A", Done: "B" });
     expect(p.holidays).toEqual([d("2026-01-07")]);
     expect(p.weekend).toEqual([0, 6]);
