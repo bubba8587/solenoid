@@ -313,6 +313,29 @@ describe("nest / unnest (flat ⟷ cube)", () => {
     if (!isSolError(err)) throw new Error("expected SolError");
     expect(err.code).toBe("#TYPE!");
   });
+
+  it("a LIST column explodes to one row per element, keeping the column name; an empty list keeps a blank row", () => {
+    const c = cubeFromColumns([
+      { name: "Task", cells: ["Drywall", "Paint", "Demolition"], type: "string" },
+      { name: "Predecessors", cells: [["Plumbing", "Electrical"], ["Drywall"], []] },
+    ]);
+    const out = unnestCube(c, "Predecessors");
+    if (!isFrameValue(out)) throw new Error("expected a frame");
+    expect(out.columns.map((col) => col.name)).toEqual(["Task", "Predecessors"]);
+    expect(out.columns[0].values).toEqual(["Drywall", "Drywall", "Paint", "Demolition"]);
+    expect(out.columns[1].values).toEqual(["Plumbing", "Electrical", "Drywall", null]); // empty list → one blank row
+  });
+
+  it("a nested column mixing lists and tables is a #TYPE!", () => {
+    const mixed = cubeFromColumns([
+      { name: "k", cells: ["a", "b"], type: "string" },
+      { name: "nested", cells: [["x"], orders1] }, // one list, one frame
+    ]);
+    let err: unknown;
+    try { unnestCube(mixed, "nested"); } catch (e) { err = e; }
+    if (!isSolError(err)) throw new Error("expected SolError");
+    expect(err.code).toBe("#TYPE!");
+  });
 });
 
 describe("pivotFrame — Excel PIVOTBY parity", () => {

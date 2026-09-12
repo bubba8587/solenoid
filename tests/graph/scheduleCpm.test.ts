@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import { scheduleTasks } from "../../src/graph/scheduleCpm";
 import { parseDateToSerial, formatDateSerial } from "../../src/graph/nodes/dateSerial";
 import { isSolError } from "../../src/graph/errorValue";
-import { cubeFromColumns, type CubeValue, type CubeCell } from "../../src/graph/frame";
+import { cubeFromColumns, isFrameValue, type CubeValue, type CubeCell } from "../../src/graph/frame";
+import { unnestCube } from "../../src/graph/frameVerbs";
 
 // The tasks arrive as a CUBE: Predecessors is a list cell (zero or more names), never an
 // in-cell string list — the cube exists to eliminate those (author, 2026-09-07).
@@ -157,6 +158,22 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
     const po = scheduleTasks(phasesOnly, { start: MON, workingDays: true });
     expect(col(po.cube, "Duration")).toEqual([2, 3]);
     expect(col(po.cube, "Start").map(iso)).toEqual(["2026-01-05", "2026-01-07"]);
+  });
+
+  it("round-trips: schedule cube → Unnest Predecessors → the Links frame → the same dates", () => {
+    // A list-cell plan scheduled once; then its Predecessors list unnested into a flat
+    // Links frame and fed back beside a predecessor-free tasks table. Same dates out.
+    const plan = tasks([["A", 2, []], ["B", 3, ["A"]], ["C", 1, ["A"]], ["D", 2, ["B", "C"]]]);
+    const r1 = scheduleTasks(plan, { start: MON, workingDays: true });
+    const links = unnestCube(r1.cube, "Predecessors");
+    if (!isFrameValue(links)) throw new Error("expected a flat Links frame from unnest");
+    const tasksNoPred = cubeFromColumns([
+      { name: "Task", cells: ["A", "B", "C", "D"], type: "string" },
+      { name: "Duration", cells: [2, 3, 1, 2], type: "number" },
+    ]);
+    const r2 = scheduleTasks(tasksNoPred, { start: MON, workingDays: true, links });
+    expect(col(r2.cube, "Start").map(iso)).toEqual(col(r1.cube, "Start").map(iso));
+    expect(col(r2.cube, "Finish").map(iso)).toEqual(col(r1.cube, "Finish").map(iso));
   });
 
   it("an empty tasks cube schedules nothing and finishes on the start", () => {

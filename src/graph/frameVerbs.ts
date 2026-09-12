@@ -1352,24 +1352,48 @@ export function nestFrame(f: FrameValue, keyColumns: readonly string[], nestedNa
 
 /** UNNEST: peel a Cube's nested column ONE level — each parent row repeats once per
  *  child row, with the child's columns appended. Nested FRAMES flatten to a flat Frame;
- *  nested CUBES peel to a shallower Cube (a child's own nested column stays nested). A
- *  column mixing frames and cubes is a `#TYPE!`. Parent rows whose nested value is
- *  empty/missing are dropped (standard unnest). Parent (flat) column types are re-inferred
- *  on the frame path; nested column types are preserved. */
+ *  nested CUBES peel to a shallower Cube (a child's own nested column stays nested); a
+ *  LIST column explodes to one row per element, the element kept under the SAME column
+ *  name (so a Predecessors list round-trips into the Schedule Links input). A column
+ *  mixing lists, frames and cubes is a `#TYPE!`. On the table paths, parent rows whose
+ *  nested value is empty/missing are dropped (standard unnest); on the LIST path an empty
+ *  or missing list keeps the row with a blank, so a task with no predecessors survives.
+ *  Parent (flat) column types are re-inferred on the frame/list paths. */
 export function unnestCube(c: CubeValue, nestedColumn: string): FrameValue | CubeValue {
   const nestedIdx = c.columns.findIndex((col) => col.name === nestedColumn);
   if (nestedIdx < 0) throw solError("#REF!", `column "${nestedColumn}" not found`);
   const flatCols = c.columns.filter((_, j) => j !== nestedIdx);
   const nested = c.columns[nestedIdx];
 
-  // The child kind decides the output rank: all frames → flat Frame; all cubes → peel one
-  // level to a shallower Cube; a mix is unresolvable.
-  let sawFrame = false, sawCube = false;
+  // The child kind decides the output rank: all lists → flat Frame (one row per element);
+  // all frames → flat Frame; all cubes → peel one level to a shallower Cube; a mix is
+  // unresolvable.
+  let sawList = false, sawFrame = false, sawCube = false;
   for (const cell of nested.cells) {
-    if (isFrameValue(cell)) sawFrame = true;
+    if (Array.isArray(cell)) sawList = true;
+    else if (isFrameValue(cell)) sawFrame = true;
     else if (isCubeValue(cell)) sawCube = true;
   }
-  if (sawFrame && sawCube) throw solError("#TYPE!", "nested cells must all be tables or all be cubes");
+  if ([sawList, sawFrame, sawCube].filter(Boolean).length > 1) {
+    throw solError("#TYPE!", "nested cells must all be lists, all tables, or all cubes");
+  }
+
+  if (sawList) {
+    // ── EXPLODE a list column: one row per element, the element under the SAME name. ──
+    const flatValsL: CubeCell[][] = flatCols.map(() => []);
+    const explodedL: CubeCell[] = [];
+    for (let i = 0; i < cubeRowCount(c); i++) {
+      const cell = nested.cells[i];
+      const items = Array.isArray(cell) ? cell : [];
+      const pushParent = () => flatCols.forEach((fc, k) => flatValsL[k].push(cubeCellAt(fc, i)));
+      if (items.length === 0) { pushParent(); explodedL.push(null); }
+      else for (const item of items) { pushParent(); explodedL.push((item ?? null) as CubeCell); }
+    }
+    return frame([
+      ...flatCols.map((fc, k) => ({ ...inferColumn(fc.name, flatValsL[k]), name: fc.name })),
+      { ...inferColumn(nested.name, explodedL), name: nested.name },
+    ]);
+  }
 
   if (sawCube) {
     // ── PEEL: nested cells are cubes → a depth-(n−1) cube. ──
