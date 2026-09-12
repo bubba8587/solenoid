@@ -320,17 +320,25 @@ export function extractVariables(expr: string): string[] {
 
 // The column names read through the row context — not variables; this is the
 // dependency feed for a computed-column topo sort.
-function collectRowRefs(n: Ast, out: Set<string>): void {
+function collectRowRefs(n: Ast, out: Set<string>, bound: ReadonlySet<string> = new Set()): void {
   switch (n.t) {
-    case "atcol": out.add(n.name); break;
-    case "wholecol": out.add(n.name); break;
+    case "atcol": if (!bound.has(n.name)) out.add(n.name); break;
+    case "wholecol": if (!bound.has(n.name)) out.add(n.name); break;
     case "call": {
-      n.args.forEach((a) => collectRowRefs(a, out));
+      // A LAMBDA literal binds its params: `@x` inside LAMBDA(x, …) is the param's
+      // this-row read, never a side name the surface should grow a port for.
+      if (n.name === "LAMBDA" && n.args.length >= 1) {
+        const inner = new Set(bound);
+        for (const a of n.args.slice(0, -1)) if (a.t === "name") inner.add(a.name);
+        collectRowRefs(n.args[n.args.length - 1], out, inner);
+        break;
+      }
+      n.args.forEach((a) => collectRowRefs(a, out, bound));
       break;
     }
-    case "apply": collectRowRefs(n.fn, out); n.args.forEach((a) => collectRowRefs(a, out)); break;
-    case "unary": case "percent": collectRowRefs(n.arg, out); break;
-    case "bin": collectRowRefs(n.l, out); collectRowRefs(n.r, out); break;
+    case "apply": collectRowRefs(n.fn, out, bound); n.args.forEach((a) => collectRowRefs(a, out, bound)); break;
+    case "unary": case "percent": collectRowRefs(n.arg, out, bound); break;
+    case "bin": collectRowRefs(n.l, out, bound); collectRowRefs(n.r, out, bound); break;
   }
 }
 

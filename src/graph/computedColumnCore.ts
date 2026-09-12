@@ -132,11 +132,20 @@ export function computeColumnCells(
       return solError("#REF!", `"${p}" is a reserved input name — rename the variable or the column`);
     }
     sideVars.push(p);
-    bindings.push({ kind: "side", value: opts.sideValue?.(p, "var") ?? 0 });
+    // A wired blank stays null (unknown, value-semantics "Reading an input"); the
+    // unwired default is the surface's to supply.
+    bindings.push({ kind: "side", value: opts.sideValue?.(p, "var") });
   }
-  // An @name matching no column is a SIDE name too — the surface grows a port.
+  // An @name matching no column is a SIDE name too — the surface grows a port. A
+  // picked (aliased) name reads its column instead, and a missing target is the same
+  // whole-column #REF! the variable spelling gets.
   for (const p of opts.rowRefs ?? []) {
     if (p === "row" || p === "rows" || reserved.includes(p)) continue;
+    const target = opts.alias?.[p];
+    if (target !== undefined) {
+      if (!f.columns.some((c) => c.name === target)) return solError("#REF!", `No column "${target}" to bind "${p}" to`);
+      continue;
+    }
     if (f.columns.some((c) => c.name === p)) continue;
     if (!sideVars.includes(p)) sideVars.push(p);
   }
@@ -165,9 +174,15 @@ export function computeColumnCells(
     if (m.err) return m.err;
     return (v as unknown[])[cursor] ?? null;
   };
+  // A picked name resolves to its column before the by-name ladder (missing targets
+  // were refused above, so a lookup here always lands).
+  const aliased = (key: string) => {
+    const target = opts.alias?.[key];
+    return target === undefined ? undefined : colByName.get(target);
+  };
   const rowFrame: RowFrame = {
     strong: (key) => {
-      const c = colByName.get(key);
+      const c = aliased(key) ?? colByName.get(key);
       if (c) return { hit: true, v: c.values[cursor] ?? null };
       if (key === "row") return { hit: true, v: cursor + 1 };
       if (key === "rows") return { hit: true, v: rows };
@@ -175,15 +190,15 @@ export function computeColumnCells(
     },
     side: (key) => {
       if (reserved.includes(key)) return solError("#REF!", `"${key}" is a reserved input name — rename the variable or the column`);
-      if (!sideCache.has(key)) sideCache.set(key, opts.sideValue?.(key, "row") ?? 0);
+      if (!sideCache.has(key)) sideCache.set(key, opts.sideValue?.(key, "row"));
       return at(key, sideCache.get(key));
     },
     at,
     whole: (key) => {
-      const c = colByName.get(key);
+      const c = aliased(key) ?? colByName.get(key);
       if (c) return c.values;
       if (reserved.includes(key)) return solError("#REF!", `"${key}" is a reserved input name — rename the variable or the column`);
-      if (!sideCache.has(key)) sideCache.set(key, opts.sideValue?.(key, "row") ?? 0);
+      if (!sideCache.has(key)) sideCache.set(key, opts.sideValue?.(key, "row"));
       return sideCache.get(key);
     },
   };

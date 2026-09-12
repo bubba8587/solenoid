@@ -779,3 +779,31 @@ describe("persistence", () => {
     expect(clone.inputs.disc).toBeDefined(); // the socket exists BEFORE any compute
   });
 });
+
+describe("review pins — wired blanks, picked columns at @, λ params", () => {
+  it("a WIRED BLANK side value is unknown: blank rows, never 0; unwired keeps the default", () => {
+    const n = named("@qty * rate", "amt");
+    const blank = run(n, sales, { rate: [null] }) as FrameValue;
+    expect(getColumn(blank, "amt")!.values).toEqual([null, null, null]);
+    const bare = run(named("@qty * rate", "amt"), sales) as FrameValue;
+    expect(getColumn(bare, "amt")!.values).toEqual([0, 0, 0]); // the literal default, 0
+    const viaAt = run(named("@qty * @rate", "amt"), sales, { rate: [null] }) as FrameValue;
+    expect(getColumn(viaAt, "amt")!.values).toEqual([null, null, null]);
+  });
+
+  it("@x reads the picked column's this-row cell and grows no side port", () => {
+    const n = named("@x * 2", "dbl");
+    n.bindings = { x: "qty" };
+    const r = run(n, sales) as FrameValue;
+    expect(getColumn(r, "dbl")!.values).toEqual([4, 6, 8]);
+    expect(n.sideVars).toEqual([]);
+    const gone = named("@x * 2", "dbl");
+    gone.bindings = { x: "vanished" };
+    const e = run(gone, sales);
+    expect(isSolError(e) && e.message).toBe('No column "vanished" to bind "x" to');
+  });
+
+  it("a λ literal's params are not side names: @x inside LAMBDA(x, …) grows no socket", () => {
+    expect(rowRefNames("SUM(MAP(qty, LAMBDA(x, @x * 2))) + @rate")).toEqual(["rate"]);
+  });
+});
