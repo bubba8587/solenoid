@@ -7,6 +7,7 @@ import type { GanttPayload } from "./payload";
 import type { GanttColors, GridColumn } from "./frame";
 import { DEFAULT_COLORS } from "./frame";
 import { layoutGantt, TIER_HEIGHT } from "./layout";
+import { layoutCalendar } from "./calendar";
 import { civilFromSerial, MONTH_NAMES } from "./serial";
 import { formatCell } from "./cell";
 
@@ -24,6 +25,7 @@ const MONO = "ui-monospace, SFMono-Regular, Menlo, monospace";
 
 export function ganttSvg(payload: GanttPayload, opts: GanttSvgOptions): string {
   const colors: GanttColors = { ...DEFAULT_COLORS, ...(opts.colors ?? {}) };
+  if (payload.view.layout === "calendar") return calendarSvg(payload, opts, colors);
   const columns = payload.view.columns ?? ["name", "start", "finish", "duration"];
   const gridCols = colsFor(columns);
   const gridWidth = opts.gridWidth ?? gridCols.reduce((s, c) => s + c.width, 0);
@@ -167,6 +169,63 @@ export function ganttSvg(payload: GanttPayload, opts: GanttSvgOptions): string {
   // Divider between panes.
   parts.push(`<line x1="${gridWidth}" y1="0" x2="${gridWidth}" y2="${r(totalH)}" stroke="${colors.borderStrong}" stroke-width="1"/>`);
 
+  parts.push(`</svg>`);
+  return parts.join("");
+}
+
+/** The calendar month-grid serializer (§ 6.3). Same payload as the Gantt, drawn as months. */
+function calendarSvg(payload: GanttPayload, opts: GanttSvgOptions, colors: GanttColors): string {
+  const frame = layoutCalendar(payload, { width: opts.width });
+  const totalH = frame.height;
+  const font = opts.fontFamily ?? "system-ui, sans-serif";
+  const cellW = opts.width / 7;
+  const parts: string[] = [];
+  parts.push(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${opts.width}" height="${totalH}" ` +
+      `viewBox="0 0 ${opts.width} ${totalH}" font-family="${esc(font)}" font-size="12">`,
+  );
+  parts.push(`<rect width="${opts.width}" height="${totalH}" fill="${colors.surface}"/>`);
+
+  for (const m of frame.months) {
+    // Title.
+    parts.push(`<text x="4" y="${r(m.y + 16)}" fill="${colors.text}" font-size="13" font-weight="600">${esc(m.label)}</text>`);
+    // Weekday header.
+    const wdY = m.y + m.headerH;
+    for (let c = 0; c < 7; c++) {
+      parts.push(`<text x="${r(c * cellW + 4)}" y="${r(wdY + 13)}" fill="${colors.textDim}" font-size="10">${esc(frame.weekdayLabels[c])}</text>`);
+    }
+    // Cells.
+    for (const cell of m.cells) {
+      if (cell.weekend || cell.holiday) {
+        parts.push(`<rect x="${r(cell.x)}" y="${r(cell.y)}" width="${r(cell.w)}" height="${r(cell.h)}" fill="${cell.holiday ? colors.holiday : colors.weekend}"/>`);
+      }
+      parts.push(`<rect x="${r(cell.x)}" y="${r(cell.y)}" width="${r(cell.w)}" height="${r(cell.h)}" fill="none" stroke="${colors.gridLine}" stroke-width="1"/>`);
+      if (cell.today) {
+        parts.push(`<rect x="${r(cell.x + 1)}" y="${r(cell.y + 1)}" width="${r(cell.w - 2)}" height="${r(cell.h - 2)}" fill="none" stroke="${colors.today}" stroke-width="1.5"/>`);
+      }
+      parts.push(`<text x="${r(cell.x + 4)}" y="${r(cell.y + 12)}" fill="${cell.inMonth ? colors.text : colors.textDim}" font-size="10" opacity="${cell.inMonth ? 1 : 0.5}">${cell.day}</text>`);
+    }
+    // Chips.
+    for (const ch of m.chips) {
+      const fill = ch.color ?? (ch.critical ? colors.critical : colors.bar);
+      parts.push(`<rect x="${r(ch.x)}" y="${r(ch.y)}" width="${r(ch.w)}" height="${r(ch.h)}" rx="2" fill="${fill}" opacity="${ch.color ? 1 : 0.85}"/>`);
+      if (ch.critical && !ch.color) parts.push(`<rect x="${r(ch.x)}" y="${r(ch.y)}" width="${r(ch.w)}" height="${r(ch.h)}" rx="2" fill="url(#gantt-crit-hatch)"/>`);
+      if (ch.violated || ch.late) parts.push(`<rect x="${r(ch.x)}" y="${r(ch.y)}" width="${r(ch.w)}" height="${r(ch.h)}" rx="2" fill="none" stroke="${colors.violated}" stroke-width="1.2" stroke-dasharray="${ch.violated ? "3 2" : "0"}"/>`);
+      if (ch.w > 24) parts.push(`<text x="${r(ch.x + 4)}" y="${r(ch.y + ch.h - 3)}" fill="${colors.text}" font-size="10">${esc(clip(ch.label, ch.w - 6))}</text>`);
+    }
+    // Milestones.
+    for (const ms of m.milestones) {
+      const fill = ms.critical ? colors.critical : colors.milestone;
+      parts.push(`<circle cx="${r(ms.cx)}" cy="${r(ms.cy)}" r="3.2" fill="${fill}"/>`);
+    }
+    // Overflow markers.
+    for (const o of m.overflow) {
+      parts.push(`<text x="${r(o.x)}" y="${r(o.y)}" fill="${colors.textDim}" font-size="9">+${o.count}</text>`);
+    }
+  }
+
+  // Reuse the critical hatch pattern for the calendar too.
+  parts.splice(1, 0, `<defs><pattern id="gantt-crit-hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="rgba(0,0,0,0.32)" stroke-width="1.2"/></pattern></defs>`);
   parts.push(`</svg>`);
   return parts.join("");
 }

@@ -20,6 +20,13 @@ is integer, so no timezone or DST can shift a column.
 - `ganttSvg(payload, { width, height?, colors? })` → a standalone SVG string (the popup's
   "copy as SVG", the webpage export, a Report snapshot). Colors are passed in because an SVG can
   not read CSS variables; omitted, a light-legible default is used so text is never invisible.
+  When `view.layout === "calendar"` it serializes the calendar month grid instead of the timeline.
+- `layoutCalendar(payload, { width })` → a `CalendarFrame` (the sibling figure, § 6.3): the same
+  payload as month blocks (weeks grouped by each week's mid day so months never duplicate a
+  boundary week), one cell per day, multi-day tasks as chips stacked in lanes across the days they
+  span (clipped at week edges), milestones as dots, weekends/holidays shaded, today flagged.
+  Reuses the scale window + the `drawnLastDay` rule so both figures agree. Option key
+  `layout=calendar`.
 
 ## What was written here vs studied
 

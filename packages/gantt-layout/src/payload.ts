@@ -63,6 +63,9 @@ export interface GanttLink {
 
 /** Persisted view state — the `options` string keys on the Gantt node, resolved. */
 export interface GanttViewOptions {
+  /** Which figure to draw: the Gantt timeline (default) or the calendar month grid, the same
+   *  payload two ways (§ 6.3). Option key `layout=calendar`. */
+  layout?: "gantt" | "calendar";
   /** Time-scale preset; `fit` picks whichever fills the width. */
   zoom?: "day" | "week" | "month" | "quarter" | "year" | "fit";
   /** Header tiers: 1 or 2 (the default). */
@@ -143,6 +146,7 @@ export function parseGanttViewOptions(input: string | null | undefined, parseDat
     const key = part.slice(0, eq).trim().toLowerCase();
     const val = part.slice(eq + 1).trim();
     switch (key) {
+      case "layout": { const l = val.toLowerCase(); if (l === "gantt" || l === "calendar") v.layout = l; break; }
       case "zoom": { const z = val.toLowerCase(); if (ZOOMS.has(z)) v.zoom = z as GanttViewOptions["zoom"]; break; }
       case "tiers": { const n = Number(val); if (n === 1 || n === 2) v.tiers = n; break; }
       case "collapse": { const n = Number(val); if (Number.isInteger(n) && n >= 0) v.collapse = n; break; }

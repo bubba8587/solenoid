@@ -15,6 +15,7 @@ import {
   type GanttColors,
 } from "@solenoid/gantt-layout";
 import { ganttStyles } from "./styles";
+import { CalendarView } from "./CalendarView";
 
 export interface GanttFigureProps {
   payload: GanttPayload;
@@ -33,7 +34,16 @@ const CANVAS_CAP = 60;
 const MIN_GRID_W = 96;
 const BUFFER_ROWS = 6;
 
-export function GanttFigure({ payload, width, height, virtualize, fontScale = 1 }: GanttFigureProps) {
+/** The figure entry point: the Gantt timeline, or the calendar month grid when
+ *  `view.layout === "calendar"` (§ 6.3). A thin dispatch so each view owns its own hooks. */
+export function GanttFigure(props: GanttFigureProps) {
+  if (props.payload.view.layout === "calendar") {
+    return <CalendarView payload={props.payload} width={props.width} height={props.height} fontScale={props.fontScale} />;
+  }
+  return <GanttTimeline {...props} />;
+}
+
+function GanttTimeline({ payload, width, height, virtualize, fontScale = 1 }: GanttFigureProps) {
   const rowHeight = Math.round(DEFAULT_ROW_HEIGHT * fontScale);
 
   // Geometry that only depends on the payload + row height (not on scroll or the splitter).

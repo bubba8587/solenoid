@@ -91,6 +91,18 @@ export const ganttStyles = `
 .solenoid-gantt__hit { stroke: transparent; stroke-width: 10; pointer-events: stroke; }
 .solenoid-gantt__hit:hover + .solenoid-gantt__link { stroke-width: 2.2; }
 
+/* Calendar month-grid sibling */
+.solenoid-gantt--calendar { display: block; }
+.solenoid-gantt-cal__scroll { width: 100%; height: 100%; overflow-y: auto; overflow-x: hidden; }
+.solenoid-gantt-cal__title { fill: var(--text, #e8e8e8); font-size: 13px; font-weight: 600; }
+.solenoid-gantt-cal__weekday { fill: var(--text-dim, #9aa0a6); font-size: 10px; }
+.solenoid-gantt-cal__cell { fill: none; stroke: var(--border-subtle, #2a2a2a); stroke-width: 1; }
+.solenoid-gantt-cal__today { fill: none; stroke: var(--sol-error, #e0473a); stroke-width: 1.5; }
+.solenoid-gantt-cal__daynum { fill: var(--text, #e8e8e8); font-size: 10px; }
+.solenoid-gantt-cal__daynum.is-out { fill: var(--text-dim, #9aa0a6); opacity: 0.5; }
+.solenoid-gantt-cal__chip-label { fill: var(--text, #e8e8e8); font-size: 10px; pointer-events: none; }
+.solenoid-gantt-cal__overflow { fill: var(--text-dim, #9aa0a6); font-size: 9px; }
+
 @media (prefers-reduced-motion: reduce) {
   .solenoid-gantt * { transition: none !important; animation: none !important; }
 }

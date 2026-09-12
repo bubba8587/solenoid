@@ -6,6 +6,15 @@ export { buildRows, cullRows, DEFAULT_ROW_HEIGHT, INDENT_PER_LEVEL } from "./row
 export { buildBars, estimateWidth, ellipsize } from "./bars";
 export { buildLinks } from "./links";
 export { buildColumns } from "./columns";
+export {
+  layoutCalendar,
+  type CalendarFrame,
+  type CalendarOptions,
+  type CalMonthBlock,
+  type CalCell,
+  type CalChip,
+  type CalMilestone,
+} from "./calendar";
 export { ganttSvg, type GanttSvgOptions } from "./svg";
 export { formatCell, formatDate } from "./cell";
 export * from "./serial";
