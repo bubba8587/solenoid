@@ -29,7 +29,7 @@ const GAN = `<?xml version="1.0" encoding="UTF-8"?>
 const XER = [
   "ERMHDR\t19.12\t2026-03-02\tProject\tadmin\tadmin\tdbxDatabaseNoName\tProject Management\tUSD",
   "%T\tPROJECT", "%F\tproj_id\tproj_short_name\tclndr_id\tplan_start_date", "%R\t1\tSHED\t5\t2026-03-02 08:00",
-  "%T\tCALENDAR", "%F\tclndr_id\tday_hr_cnt\tclndr_data", "%R\t5\t8\t(0||CalendarData()(...))",
+  "%T\tCALENDAR", "%F\tclndr_id\tday_hr_cnt\tclndr_data", "%R\t5\t8\t(0||CalendarData()((0||DaysOfWeek()((0||1()())(0||2()((0||0(s|08:00|f|12:00)())(0||1(s|13:00|f|17:00)())))(0||3()((0||0(s|08:00|f|12:00)())(0||1(s|13:00|f|17:00)())))(0||4()((0||0(s|08:00|f|12:00)())(0||1(s|13:00|f|17:00)())))(0||5()((0||0(s|08:00|f|12:00)())(0||1(s|13:00|f|17:00)())))(0||6()((0||0(s|08:00|f|12:00)())(0||1(s|13:00|f|17:00)())))(0||7()())))(0||Exceptions()((0||0(d|46090)())))))",
   "%T\tPROJWBS", "%F\twbs_id\tproj_id\tparent_wbs_id\tseq_num\twbs_name", "%R\t10\t1\t\t1\tSHED", "%R\t11\t1\t10\t2\tBuild", "%R\t12\t1\t10\t3\tFinish",
   "%T\tTASK", "%F\ttask_id\tproj_id\twbs_id\ttask_code\ttask_name\ttask_type\ttarget_drtn_hr_cnt\tphys_complete_pct\tcstr_type\tcstr_date\tact_start_date",
   "%R\t100\t1\t11\tA1000\tFoundation\tTT_Task\t16\t100\t\t\t2026-03-02 08:00",
@@ -70,9 +70,9 @@ describe("Primavera XER", () => {
     expect(iso(shed[1].children![0].start!)).toBe("2026-03-09");
     expect(iso(shed[0].children![0].actualStart!)).toBe("2026-03-02");
     expect(shed[1].children![1].duration).toBe(0);
-    expect(p.unsupported.some((u) => u.includes("clndr_data"))).toBe(true);
+    expect(p.calendar).toEqual({ workingDays: true, weekendCode: 1, holidays: [46090] }); // 9 Mar 2026 off, the standard week
     const o = schedule({ tasks: p.tasks, start: p.start!, calendar: p.calendar });
-    expect(iso(o.tasks.find((t) => t.name === "Paint")!.start)).toBe("2026-03-09");
+    expect(iso(o.tasks.find((t) => t.name === "Paint")!.start)).toBe("2026-03-10"); // the floor on the holiday rolls to Tuesday
   });
 });
 

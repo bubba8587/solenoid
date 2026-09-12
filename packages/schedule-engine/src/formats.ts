@@ -193,10 +193,43 @@ export function readXer(text: string): ImportedPlanFile {
   // A WBS node with no children is just a label; drop it. A WBS with children is a summary.
   const prune = (list: PlanTask[]): PlanTask[] => list.filter((t) => !(t.children && t.children.length === 0 && !byTaskId.has(t.name))).map((t) => (t.children ? { ...t, children: prune(t.children) } : t)).filter((t) => !(t.children && t.children.length === 0));
   const tasks = prune(roots);
-  const cal: CalendarSpec = { workingDays: true, weekendCode: 1 };
   const clndr = tables.get("CALENDAR")?.find((c) => c.clndr_id === project?.clndr_id);
-  if (clndr?.clndr_data) unsupported.push("the calendar's clndr_data blob (weekdays and exceptions) is not read");
+  const cal: CalendarSpec = clndr?.clndr_data ? xerCalendar(clndr.clndr_data, unsupported) : { workingDays: true, weekendCode: 1 };
   return { title: project?.proj_short_name ?? "", start: xerDate(project?.plan_start_date) ?? null, calendar: cal, tasks, unsupported: [...new Set(unsupported)] };
+}
+
+/** P6's `clndr_data` blob: `(0||CalendarData()( (0||DaysOfWeek()( (0||1()()) (0||2()( (0||0(s|08:00|f|17:00)()) )) … ))
+ *  (0||Exceptions()( (0||0(d|46023)()) … )) ))`. A weekday with no work times is off; an
+ *  exception with no work times is a holiday (`d|` is the day serial, P6's epoch being Excel's).
+ *  Work times become the intervals. Anything unparsable leaves the standard week. */
+function xerCalendar(blob: string, unsupported: string[]): CalendarSpec {
+  const cal: CalendarSpec = { workingDays: true, weekendCode: 1 };
+  const days = /\(0\|\|DaysOfWeek\(\)\(([\s\S]*?)\)\)\s*(?=\(0\|\||\)|$)/.exec(blob);
+  if (days) {
+    const off: number[] = [];
+    let intervals: Array<[number, number]> | undefined;
+    for (const m of days[1].matchAll(/\(0\|\|([1-7])\(\)\(([\s\S]*?)\)\)/g)) {
+      const day = Number(m[1]) - 1; // P6: 1 = Sunday
+      const times = [...m[2].matchAll(/s\|(\d{2}):(\d{2})\|f\|(\d{2}):(\d{2})/g)].map((w) => [Number(w[1]) * 60 + Number(w[2]), Number(w[3]) * 60 + Number(w[4])] as [number, number]);
+      if (!times.length) off.push(day);
+      else if (!intervals) intervals = times;
+    }
+    const key = [...new Set(off)].sort((a, b) => a - b).join(",");
+    const table: Record<string, number> = { "0,6": 1, "0,1": 2, "1,2": 3, "2,3": 4, "3,4": 5, "4,5": 6, "5,6": 7, "0": 11, "1": 12, "2": 13, "3": 14, "4": 15, "5": 16, "6": 17 };
+    if (key === "") cal.workingDays = true;
+    if (key in table) cal.weekendCode = table[key]; else if (key) unsupported.push(`weekend pattern [${key}] is not a WORKDAY.INTL code`);
+    if (intervals && !(intervals.length === 2 && intervals[0][0] === 480 && intervals[1][1] === 1020)) cal.intervals = intervals;
+  }
+  const ex = /\(0\|\|Exceptions\(\)\(([\s\S]*)$/.exec(blob);
+  if (ex) {
+    const hol: number[] = [];
+    for (const m of ex[1].matchAll(/\(0\|\|\d+\(d\|(\d+)\)\(([\s\S]*?)\)\)/g)) {
+      if (/s\|\d{2}:\d{2}/.test(m[2])) continue; // a working exception, not a day off
+      hol.push(Number(m[1]));
+    }
+    if (hol.length) cal.holidays = hol.sort((a, b) => a - b);
+  }
+  return cal;
 }
 
 /** `2026-02-02 08:00` → a whole-day serial. */
