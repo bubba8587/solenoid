@@ -1,3 +1,4 @@
+import { cubeFromColumns, isCubeValue, type CubeValue } from "../../../src/graph/frame";
 import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import type { Schemes } from "../../../src/graph/schemes";
@@ -609,6 +610,16 @@ describe("CompositeNode Simulation run mode", () => {
 });
 
 describe("byRowValues (By-Row row semantics)", () => {
+  it("a cube → one single-row cube per row, nested cells kept (a portfolio row by row)", () => {
+    const inner = cubeFromColumns([{ name: "Task", cells: ["A"], type: "string" }, { name: "Duration", cells: [1], type: "number" }]);
+    const c = cubeFromColumns([{ name: "Project", cells: ["P1", "P2"], type: "string" }, { name: "Tasks", cells: [inner, inner] }]);
+    const rows = byRowValues(c);
+    expect(rows.length).toBe(2);
+    expect(isCubeValue(rows[0])).toBe(true);
+    expect((rows[1] as CubeValue).columns[0].cells).toEqual(["P2"]);
+    expect((rows[1] as CubeValue).columns[1].cells[0]).toBe(inner);
+  });
+
   it("iterates a list's elements, a matrix's rows, a scalar once, nothing for null", () => {
     expect(byRowValues([1, 2, 3])).toEqual([1, 2, 3]);          // list → elements
     expect(byRowValues([[1, 2], [3, 4]])).toEqual([[1, 2], [3, 4]]); // matrix → rows

@@ -12,7 +12,7 @@ import {
   DEFAULT_MC_SAMPLES, DEFAULT_MC_SEED, type DistributionKind,
 } from "../monteCarlo";
 import { installInputCoercion } from "../coerceInputs";
-import { isFrameValue, frameRowCount, frameFromRows } from "../frame";
+import { isFrameValue, frameRowCount, frameFromRows, isCubeValue, cubeRowCount, cubeFromColumns } from "../frame";
 import { isGraphRebuilding } from "../process";
 import { loopMembers, seedLoopErrors } from "../graphCompute";
 import { fireAlert } from "../alertStore";
@@ -100,11 +100,18 @@ export interface CompositeMonteCarlo {
 export type CompositeStopOp = "gt" | "ge" | "lt" | "le" | "eq" | "ne";
 
 /** By-Row iterates a WIRED input value into its rows. A frame → one single-row
- *  frame per row (keeps the port frame-typed for downstream frame ops); an array
- *  → its outer elements (a 1-D list yields scalars, a 2-D matrix yields its rows);
- *  a scalar → itself (one row); null/undefined → no rows. */
+ *  frame per row (keeps the port frame-typed for downstream frame ops); a cube → one
+ *  single-row cube per row, nested cells kept (a portfolio of projects schedules row by
+ *  row: 25-gantt.md § 6.1); an array → its outer elements (a 1-D list yields scalars,
+ *  a 2-D matrix yields its rows); a scalar → itself (one row); null/undefined → no rows. */
 export function byRowValues(v: unknown): unknown[] {
   if (v === null || v === undefined) return [];
+  if (isCubeValue(v)) {
+    const n = cubeRowCount(v);
+    const out: unknown[] = [];
+    for (let i = 0; i < n; i++) out.push(cubeFromColumns(v.columns.map((c) => ({ name: c.name, type: c.type, cells: [c.cells[i] ?? null] }))));
+    return out;
+  }
   if (isFrameValue(v)) {
     const n = frameRowCount(v);
     const headers = v.columns.map((c) => c.name);
