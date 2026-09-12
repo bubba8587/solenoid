@@ -68,7 +68,9 @@ Everything landed on `develop`; nothing pushed. The plan's § 10 calls were take
   Earned Value node (holidays honored through the engine's Calendar; `unitAware` so the Cost
   currency carries) and Write File's Text target (the MSPDI sink), the By-Row cube branch for
   portfolios. Wrapped 02:55: full suite 5676 green, tsc clean, 90-odd commits on develop, nothing
-  pushed.
+  pushed. After the wrap, two backlog items off the Obsidian list (Agent 2): the mail-merge batch
+  cap surfaced ("Wrote 500 of N" on the sink, "first 500 of N" on the stepper) and the Knap help tab
+  (`help/knap.md`).
 - Test lock between agents moved from a doc line (per-worktree, signals nobody) to the shared
   file `.dev/test-lock` in the main checkout.
 - Open for the author: the eyeball list and the engine follow-ups in `backlog.md` § Gantt;
