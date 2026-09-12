@@ -81,7 +81,9 @@ const asCube = (v: CubeValue | FrameValue): CubeValue => (isCubeValue(v) ? v : f
 // The flat Dependencies frame's columns: which task the row is FOR (the successor), what it
 // waits on (the predecessor), and the optional link type + lag. Task doubles as Successor.
 const LINK_SUCC_NAMES = ["successor", "task", "to"];
-const LINK_PRED_NAMES = ["predecessor", "from", "after", "depends on"];
+// "predecessors" (plural) too: Unnest of the schedule cube's Predecessors list keeps the
+// column's own name, so the exploded frame reads straight back into this input.
+const LINK_PRED_NAMES = ["predecessor", "predecessors", "from", "after", "depends on"];
 
 /** Merge a flat Dependencies frame into the tasks' predecessor lists (names resolve across
  *  the whole WBS). A row naming a successor that isn't a task is a #VALUE! naming it; an
