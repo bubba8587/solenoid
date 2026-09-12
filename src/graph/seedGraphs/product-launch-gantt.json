@@ -8,10 +8,10 @@
       "id": "noteIntro",
       "type": "NoteNode",
       "x": -40,
-      "y": -265,
+      "y": -257,
       "init": {
         "label": "Product launch (Gantt)",
-        "body": "# Phases, typed links, and the one rule\nThe plan is a **Cube Input** with three phases. Each phase's **tasks** cell is a nested table, so a phase is a bracket that rolls up its children. A predecessor is a name (finish-to-start) or a small table of **task · type · lag**: Frontend starts two days after Design *starts* (SS+2), and Marketing starts three days before QA *finishes* (FS-3).\n\nDates never move on their own. A **start** cell holds a task no earlier than that day, **deadline** flags a late finish without moving it, and **manual** pins a task to its dates. The **status date** measures progress: Interviews is done, Synthesis is 60% done, and the unfinished part is scheduled after that day.\n\nOpen the Gantt's chart chip, or watch the Display. **Diagnostics** lists what to look at: the lead, the SS link, the pinned task, and anything past its deadline.",
+        "body": "# Phases, typed links, and the one rule\nThe plan is a **Cube Input** with three phases. Each phase's **tasks** cell is a nested table, so a phase is a bracket that rolls up its children. A predecessor is a name (finish-to-start) or a small table of **task · type · lag**: Frontend starts two days after Design *starts* (SS+2), and Marketing starts three days before QA *finishes* (FS-3).\n\nDates never move on their own. A **start** cell holds a task no earlier than that day, **deadline** flags a late finish without moving it, and **manual** pins a task to its dates. The **status date** measures progress: Interviews is done, Synthesis is 60% done, and the unfinished part is scheduled after that day.\n\nOpen the Gantt's chart chip, or watch the Display; the second Gantt draws the same plan as a month calendar (`layout=calendar`). **Diagnostics** lists what to look at: the lead, the SS link, the pinned task, and anything past its deadline.",
         "color": "violet",
         "width": 400,
         "height": 300
@@ -21,7 +21,7 @@
       "id": "tasks",
       "type": "CubeInputNode",
       "x": 92,
-      "y": 248,
+      "y": 256,
       "init": {
         "label": "Plan",
         "cubeText": "[\n  {\n    \"task\": \"Discovery\",\n    \"tasks\": [\n      {\n        \"task\": \"Interviews\",\n        \"days\": 5,\n        \"after\": [],\n        \"complete\": 100\n      },\n      {\n        \"task\": \"Synthesis\",\n        \"days\": 3,\n        \"after\": [\n          \"Interviews\"\n        ],\n        \"complete\": 60\n      }\n    ]\n  },\n  {\n    \"task\": \"Build\",\n    \"after\": [\n      \"Discovery\"\n    ],\n    \"tasks\": [\n      {\n        \"task\": \"Design\",\n        \"days\": 5,\n        \"after\": []\n      },\n      {\n        \"task\": \"Frontend\",\n        \"days\": 8,\n        \"after\": [\n          {\n            \"task\": \"Design\",\n            \"type\": \"SS\",\n            \"lag\": 2\n          }\n        ]\n      },\n      {\n        \"task\": \"Backend\",\n        \"days\": 8,\n        \"after\": [\n          \"Design\"\n        ]\n      },\n      {\n        \"task\": \"QA\",\n        \"days\": 4,\n        \"after\": [\n          \"Frontend\",\n          \"Backend\"\n        ]\n      }\n    ]\n  },\n  {\n    \"task\": \"Launch\",\n    \"tasks\": [\n      {\n        \"task\": \"Marketing\",\n        \"days\": 6,\n        \"after\": [\n          {\n            \"task\": \"QA\",\n            \"type\": \"FS\",\n            \"lag\": -3\n          }\n        ]\n      },\n      {\n        \"task\": \"Board review\",\n        \"days\": 1,\n        \"after\": [],\n        \"manual\": true,\n        \"start\": \"2026-03-10\"\n      },\n      {\n        \"task\": \"Press day\",\n        \"days\": 0,\n        \"after\": [\n          \"Marketing\",\n          \"QA\",\n          \"Board review\"\n        ],\n        \"deadline\": \"2026-03-20\"\n      },\n      {\n        \"task\": \"Retrospective\",\n        \"days\": 1,\n        \"after\": [\n          \"Press day\"\n        ]\n      }\n    ]\n  }\n]"
@@ -31,7 +31,7 @@
       "id": "start",
       "type": "DateInputNode",
       "x": 115,
-      "y": 429,
+      "y": 437,
       "init": {
         "label": "Project start"
       },
@@ -43,7 +43,7 @@
       "id": "status",
       "type": "DateInputNode",
       "x": 115,
-      "y": 131,
+      "y": 139,
       "init": {
         "label": "Status date"
       },
@@ -54,8 +54,8 @@
     {
       "id": "schedule",
       "type": "ScheduleNode",
-      "x": 450,
-      "y": -170,
+      "x": 451,
+      "y": -240,
       "init": {
         "label": "Schedule",
         "mode": "working"
@@ -64,8 +64,8 @@
     {
       "id": "gantt",
       "type": "GanttNode",
-      "x": 1066,
-      "y": 555,
+      "x": 1067,
+      "y": 547,
       "init": {
         "label": "Gantt"
       },
@@ -76,8 +76,8 @@
     {
       "id": "ganttDisplay",
       "type": "DisplayNode",
-      "x": 1391,
-      "y": 442,
+      "x": 1392,
+      "y": 448,
       "size": {
         "w": 760,
         "h": 420
@@ -86,8 +86,8 @@
     {
       "id": "diagDisplay",
       "type": "DisplayNode",
-      "x": 786,
-      "y": 206,
+      "x": 787,
+      "y": 198,
       "init": {
         "label": "Diagnostics"
       },
@@ -99,8 +99,8 @@
     {
       "id": "finishDisplay",
       "type": "DisplayNode",
-      "x": 956,
-      "y": 83,
+      "x": 957,
+      "y": 75,
       "init": {
         "label": "Project finish"
       }
@@ -109,7 +109,7 @@
       "id": "grp-plan",
       "type": "GroupNode",
       "x": 68,
-      "y": 73,
+      "y": 81,
       "init": {
         "label": "The plan",
         "members": [
@@ -126,20 +126,44 @@
     {
       "id": "grp-figure",
       "type": "GroupNode",
-      "x": 762,
-      "y": 25,
+      "x": 763,
+      "y": 17,
       "init": {
         "label": "Schedule + Gantt",
         "members": [
           "gantt",
           "ganttDisplay",
           "diagDisplay",
-          "finishDisplay"
+          "finishDisplay",
+          "ganttCal",
+          "calDisplay"
         ],
         "color": "green",
         "collapsed": false,
         "width": 1417,
-        "height": 916
+        "height": 1439
+      }
+    },
+    {
+      "id": "ganttCal",
+      "type": "GanttNode",
+      "x": 1067,
+      "y": 1056,
+      "init": {
+        "label": "Calendar"
+      },
+      "stringLiterals": {
+        "options": "layout=calendar"
+      }
+    },
+    {
+      "id": "calDisplay",
+      "type": "DisplayNode",
+      "x": 1392,
+      "y": 957,
+      "size": {
+        "w": 760,
+        "h": 420
       }
     }
   ],
@@ -184,6 +208,18 @@
       "source": "schedule",
       "sourceOutput": "finish",
       "target": "finishDisplay",
+      "targetInput": "in"
+    },
+    {
+      "source": "schedule",
+      "sourceOutput": "cube",
+      "target": "ganttCal",
+      "targetInput": "schedule"
+    },
+    {
+      "source": "ganttCal",
+      "sourceOutput": "chart",
+      "target": "calDisplay",
       "targetInput": "in"
     }
   ],
