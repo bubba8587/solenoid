@@ -823,11 +823,12 @@ tasks → links direction, the figure's split bars, minutes-mode midnight finish
 keyboard map, the calendar month-grid sibling (`layout=calendar`), GanttProject `.gan` and
 Primavera XER read, MSPDI write (Schedule's `mspdi` output), P6's longest-path critical
 definition, effort-driven durations (Work ÷ Units), inactive rows, recurring rows (Repeat +
-Every). **Not built, by name:**
+Every), XER's calendar blob, the figure's resource histogram (`histogram=on` over Resource /
+Units columns, over-allocation cued) and `fit=page` export fit. **Not built, by name:**
 Project-exported goldens
 (the author's trial — the corpus is hand-authored until then); a Rust twin (not planned, § 7.4);
 resource leveling, a by-row portfolio mode (composite by-row iteration over a
-cube is the prerequisite); XER's `clndr_data` calendar blob.
+cube is the prerequisite).
 
 ## 10. Author calls
 
