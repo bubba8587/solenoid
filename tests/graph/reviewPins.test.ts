@@ -50,3 +50,35 @@ describe("review pins: DROP, exponential fits, Slicer, aggregate guard", () => {
     expect(isSolError(l.slope) && (l.slope as { code: string }).code).toBe("#DOMAIN!");
   });
 });
+
+describe("review pins: analytics batch", () => {
+  it("POLYROOTS reports a double root as two reals", async () => {
+    const { polyRoots } = await import("../../src/graph/nodes/mathUtils");
+    const r = polyRoots([1, -2, 1])!;
+    expect(r.map((x) => x[1])).toEqual([0, 0]);
+    expect(r.map((x) => Math.round(x[0] * 1e6) / 1e6)).toEqual([1, 1]);
+  });
+  it("SAVGOL with an even window is #DOMAIN!, not a blank list", () => {
+    const r = resolveExcelFunction("SAVGOL")!([1, 2, 3, 4, 5], 4, 2);
+    expect(isSolError(r) && r.code).toBe("#DOMAIN!");
+  });
+  it("CHOOSE truncates a fractional index like Excel", () => {
+    expect(resolveExcelFunction("CHOOSE")!(2.7, "a", "b", "c")).toBe("b");
+  });
+  it("XIRR names a date before the first date", () => {
+    const r = resolveExcelFunction("XIRR")!([-100, 60, 60], [45444, 45292, 45658]);
+    expect(isSolError(r) && r.message).toMatch(/before the first/);
+  });
+  it("DIAGONAL of a matrix is its diagonal", () => {
+    expect(resolveExcelFunction("DIAGONAL")!([[1, 2], [3, 4]])).toEqual([1, 4]);
+  });
+  it("EWMA refuses alpha outside (0, 1]", () => {
+    expect(isSolError(resolveExcelFunction("EWMA")!([1, 2, 3], 5))).toBe(true);
+    expect(resolveExcelFunction("EWMA")!([1, 2, 3], 1)).toEqual([1, 2, 3]);
+  });
+  it("Quantile Bin keeps a value on a cut in the bucket below (pandas qcut)", async () => {
+    const { ntileList } = await import("../../src/graph/nodes/listOps");
+    expect(ntileList([1, 2, 3, 4, 5], 2)).toEqual([1, 1, 1, 2, 2]);
+    expect(ntileList([1, 1, 1, 1, 2, 2], 2)).toEqual([1, 1, 1, 1, 2, 2]);
+  });
+});

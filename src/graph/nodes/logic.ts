@@ -561,7 +561,7 @@ export class NaNode extends ClassicPreset.Node {
 
 export class ChooseNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    index: "A fractional index rounds to the nearest whole row, and an out-of-range one is #VALUE! rather than blank.",
+    index: "A fractional index drops its fraction, like Excel, and an out-of-range one is #VALUE! rather than blank.",
   };
 
   label: string;
@@ -620,7 +620,7 @@ export class ChooseNode extends ClassicPreset.Node {
     // A blank index is unknown, not an ERROR — #VALUE! below is for a KNOWN index
     // that is out of range.
     if (idxRaw === null) { this.cachedResult = null; return { result: null }; }
-    const idx = Math.round(idxRaw);
+    const idx = Math.trunc(idxRaw); // Excel truncates
     const keys = this.valueInputKeys();
     const key = idx >= 1 && idx <= keys.length ? keys[idx - 1] : undefined;
     this._selectedUnitKey = key ?? null; // the unit follows the chosen row

@@ -10,7 +10,7 @@ import { fitEts, etsForecast, etsInterval, detectSeason } from "./nodes/forecast
 import { fitAll, fitDistribution, FIT_FAMILIES, type FitFamily } from "./nodes/fitOps";
 import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit, epochToSerial, serialToEpoch, dateTrunc, dateTruncUnitFor, type EpochUnit } from "./nodes/dateOps";
 import { hashText, uuidV4, HASH_ALGORITHM_META, type HashAlgorithm } from "./nodes/hashOps";
-import { savgol, gaussianSmooth, lowess, findPeaks } from "./nodes/signalOps";
+import { savgol, savgolProblem, gaussianSmooth, lowess, findPeaks } from "./nodes/signalOps";
 import { seasonalDecompose, stlDecompose } from "./nodes/forecastOps";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters, type SimilarityMethod, type PadSide } from "./nodes/textOps";
 import { interpolateLinear, gridAxes, fillGrid } from "./nodes/mathUtils";
@@ -1447,6 +1447,9 @@ registerInternal("XIRR", (values, dates) => {
   const n = Math.min(prep.values.length, prep.dates.length);
   if (n < 2) return null;
   const d0 = prep.dates[0];
+  // Excel: every date must be on or after the first (#NUM!); a negative exponent would
+  // otherwise break the solver and blame the sign pattern.
+  if (prep.dates.slice(1, n).some((d) => d < d0)) return solError("#DOMAIN!", "A cash-flow date comes before the first date");
   return solveDiscountRate(prep.values.slice(0, n), prep.dates.slice(0, n).map((d) => (d - d0) / 365)) ?? IRR_CONV("XIRR");
 });
 // CHOOSE runs the Choose node's rule: a blank index is unknown (null), a known index
@@ -1454,7 +1457,7 @@ registerInternal("XIRR", (values, dates) => {
 // CHOOSE is NULL_INSPECTING on the evaluator side so an unchosen blank can't poison it).
 registerInternal("CHOOSE", (index, ...values) => {
   if (index == null) return null;
-  const idx = Math.round(toNum(index));
+  const idx = Math.trunc(toNum(index)); // Excel truncates: CHOOSE(2.7, ...) is the second
   if (Number.isNaN(idx)) return VALUE("CHOOSE");
   if (idx < 1 || idx > values.length) return solError("#VALUE!", `CHOOSE index ${idx} is outside the range 1–${values.length}`);
   return values[idx - 1] ?? null;
@@ -1672,7 +1675,11 @@ registerInternal("DECOMPOSE", (list, period, component, model) => {
   const d = mdl === "stl" ? stlDecompose(y, toNum(period)) : seasonalDecompose(y, toNum(period), mdl);
   return d ? d[comp] : null;
 });
-registerInternal("SAVGOL",      (list, window, order) => savgol(numList(list), toNum(window), toNum(order)));
+registerInternal("SAVGOL",      (list, window, order) => {
+  const xs = numList(list);
+  const why = savgolProblem(xs.length, toNum(window), toNum(order));
+  return why ? solError("#DOMAIN!", why) : savgol(xs, toNum(window), toNum(order));
+});
 registerInternal("LOWESS",      (list, frac) => lowess(numList(list), optNum(frac, 2 / 3)));
 registerInternal("GAUSSIANSMOOTH", (list, sigma) => gaussianSmooth(numList(list), toNum(sigma)));
 registerInternal("FINDPEAKS",   (list, height, distance, prominence) => findPeaks(numList(list), {
@@ -1901,6 +1908,11 @@ registerInternal("MUNIT", (n) => (n == null ? null : matUnit(Number(n), 0)));
 // numpy.diag: a list becomes a square matrix's diagonal (off-diagonal 0). The blank/null
 // off-diagonal is a NODE-only affordance (there's no toggle in a formula).
 registerInternal("DIAGONAL", (list) => {
+  // numpy.diag's dual: a matrix argument gives its diagonal as a list.
+  if (Array.isArray(list) && list.length > 0 && Array.isArray(list[0])) {
+    const m = list as unknown[][];
+    return m.map((row, i) => (row[i] == null ? null : Number(row[i])));
+  }
   const vs = numList(list).map((c) => (c == null ? null : Number(c)));
   return vs.length === 0 ? null : matDiag(vs, 0);
 });

@@ -645,9 +645,11 @@ export function polyRoots(coeffs: readonly number[]): [number, number][] | null 
     }
     roots[i] = [zr, zi];
   }
-  // clean: snap tiny imaginary parts / components relative to the root's size
+  // clean: snap tiny imaginary parts / components relative to the root's size. A multiple
+  // root converges only linearly, leaving ~1e-9 residuals, so the imaginary snap is 1e-7:
+  // a double root reads as two reals (numpy.roots), not a conjugate pair.
   return roots.map(([r, i]) => {
     const scale = Math.max(1, Math.hypot(r, i));
-    return [Math.abs(r) < 1e-12 * scale ? 0 : r, Math.abs(i) < 1e-10 * scale ? 0 : i];
+    return [Math.abs(r) < 1e-12 * scale ? 0 : r, Math.abs(i) < 1e-7 * scale ? 0 : i];
   });
 }

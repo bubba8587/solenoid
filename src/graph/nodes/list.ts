@@ -1535,7 +1535,7 @@ export class DiffNode extends ClassicPreset.Node {
 }
 
 import type { ArgMinMaxOp } from "./listOps";
-import { savgol, gaussianSmooth, lowess, findPeaks } from "./signalOps";
+import { savgol, savgolProblem, gaussianSmooth, lowess, findPeaks } from "./signalOps";
 export type { ArgMinMaxOp } from "./listOps";
 
 export const ARG_MIN_MAX_OP_META = {
@@ -2348,7 +2348,15 @@ export class SmoothNode extends ClassicPreset.Node {
     const prm = (k: "window" | "order" | "frac" | "sigma", def: number) => readInput(inputs[k], this.literals[k] ?? def);
     let out: ListCell[] | null;
     if (arr === null) out = null;
-    else if (this.op === "savgol") { const w = prm("window", 5), o = prm("order", 2); out = w === null || o === null ? null : savgol(arr, w, o); }
+    else if (this.op === "savgol") {
+      const w = prm("window", 5), o = prm("order", 2);
+      if (w === null || o === null) out = null;
+      else {
+        const why = savgolProblem(arr.length, w, o);
+        if (why) { this.cachedList = []; return { result: solError("#DOMAIN!", why) }; }
+        out = savgol(arr, w, o);
+      }
+    }
     else if (this.op === "lowess") { const f = prm("frac", 0.67); out = f === null ? null : lowess(arr, f); }
     else { const sg = prm("sigma", 1); out = sg === null ? null : gaussianSmooth(arr, sg); }
     this.cachedList = out ?? [];

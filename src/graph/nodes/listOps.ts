@@ -122,13 +122,15 @@ export function zscoreList(arr: readonly Cell[]): Cell[] | SolError {
 
 /** Which half-open bin each value falls in: the count of breakpoints ≤ the value
  *  (0 = below the first break, so n breaks give bins 0..n). R findInterval / numpy.digitize. */
-export function binIndex(arr: readonly Cell[], breaks: readonly Cell[]): Cell[] {
+export function binIndex(arr: readonly Cell[], breaks: readonly Cell[], rightInclusive = false): Cell[] {
   const edges = presentNumbers(breaks).slice().sort((a, b) => a - b);
+  // numpy.digitize (right=False): an edge belongs to the bucket above it. pandas qcut's
+  // intervals are right-inclusive, so the quantile path counts only edges strictly below.
   return arr.map((v) => {
     if (isSolError(v)) return v;
     if (!(typeof v === "number" && Number.isFinite(v))) return null;
     let lo = 0, hi = edges.length;
-    while (lo < hi) { const m = (lo + hi) >> 1; if (edges[m] <= v) lo = m + 1; else hi = m; }
+    while (lo < hi) { const m = (lo + hi) >> 1; if (rightInclusive ? edges[m] < v : edges[m] <= v) lo = m + 1; else hi = m; }
     return lo;
   });
 }
@@ -192,7 +194,9 @@ export function gradientList(arr: readonly Cell[], dx = 1): Cell[] | SolError {
 export function ewmaList(arr: readonly Cell[], alpha: number): Cell[] | SolError {
   const err = firstError(arr);
   if (err) return err;
-  const a = Math.min(1, Math.max(0, alpha));
+  // pandas ewm refuses alpha outside (0, 1]; a clamp would quietly return the input.
+  if (!(alpha > 0 && alpha <= 1)) return solError("#DOMAIN!", "Alpha must be above 0 and at most 1");
+  const a = alpha;
   let prev: number | null = null;
   return arr.map((v) => {
     if (!(typeof v === "number" && Number.isFinite(v))) return prev;
@@ -880,9 +884,9 @@ export function frequencyBins(data: readonly Cell[], bins: readonly Cell[]): num
   return counts;
 }
 
-/** Quantile buckets 1..n (dplyr ntile, pandas qcut): the edges are the PERCENTILE.INC
- *  quantiles at k/n and each value answers how many it clears, plus one. Position-
- *  preserving: a blank stays blank, an error rides along. */
+/** Quantile buckets 1..n (pandas qcut, right-inclusive edges): the edges are the
+ *  PERCENTILE.INC quantiles at k/n and a value on an edge stays in the bucket below.
+ *  Position-preserving: a blank stays blank, an error rides along. */
 export function ntileList(arr: readonly Cell[], n: number): Cell[] | SolError {
   const k = Math.round(n);
   if (!(k >= 1)) return solError("#VALUE!", "NTILE needs at least one bucket");
@@ -891,7 +895,7 @@ export function ntileList(arr: readonly Cell[], n: number): Cell[] | SolError {
   const sorted = [...nums].sort((a, b) => a - b);
   const edges: number[] = [];
   for (let i = 1; i < k; i++) edges.push(percentileOf(sorted, i / k, false));
-  return binIndex(arr, edges).map((v) => (typeof v === "number" ? v + 1 : v));
+  return binIndex(arr, edges, true).map((v) => (typeof v === "number" ? v + 1 : v));
 }
 
 export type OutlierMethod = "z" | "iqr" | "mad";
