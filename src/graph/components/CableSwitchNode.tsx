@@ -7,6 +7,7 @@ import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
 import { getActiveEditor, getActiveView } from "../activeGraph";
 import { retypeOutputCables, reconcileTypesAfterEdit } from "../fcReconcile";
+import { snapshotOutgoing, reconcilePendingOnRetype } from "../cablePendingReconnect";
 import { collapseStore } from "../collapseStore";
 import { CollapsedInputPill } from "./CollapsedInputPill";
 import { NodeSocket } from "./NodeSocket";
@@ -160,15 +161,21 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
     const next = Math.min(keys.length - 1, Math.max(0, data.activeIndex + delta));
     if (next !== data.activeIndex) select(next);
   }
-  function setMode(many: boolean) {
+  async function setMode(many: boolean) {
     data.multiSelect = many;
     setMulti(many);
-    // Output is a Cube in Many mode, `any` in One — retype in place, so the
-    // downstream cables the new type can't feed must be dropped here.
+    // Output is a Cube in Many mode, `any` in One — retype in place, so the downstream
+    // cables the new type can't feed are dropped by retypeOutputCables. Option B: ghost
+    // each dropped cable (cablePendingReconnect) and re-materialize it when the flip back
+    // makes the target socket compatible again (trueany fits every socket).
     const changed = data.syncOutputType();
     const ed = getActiveEditor();
     const view = getActiveView();
-    if (changed && ed && view) void retypeOutputCables(ed, view, data.id, "out");
+    if (changed && ed && view) {
+      const before = snapshotOutgoing(ed, data.id, "out");
+      await retypeOutputCables(ed, view, data.id, "out");
+      await reconcilePendingOnRetype(ed, view, data.id, "out", before);
+    }
     void view?.rerenderNode(data.id);
     void processGraph();
   }
