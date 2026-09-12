@@ -108,6 +108,37 @@ describe("predecessor text column", () => {
   });
 });
 
+describe("interactive collapse (collapsedIds) + hasChildren", () => {
+  const tasks = [
+    task({ id: "Discovery", start: S(2026, 1, 5), finish: S(2026, 1, 20), level: 0, summary: true }),
+    task({ id: "Interviews", start: S(2026, 1, 5), finish: S(2026, 1, 9), level: 1 }),
+    task({ id: "Synthesis", start: S(2026, 1, 12), finish: S(2026, 1, 16), level: 1 }),
+    task({ id: "Build", start: S(2026, 1, 21), finish: S(2026, 2, 6), level: 0, summary: true }),
+    task({ id: "Design", start: S(2026, 1, 21), finish: S(2026, 1, 27), level: 1 }),
+  ];
+  it("marks phases with hasChildren and leaves without", () => {
+    const rows = buildRows(payload(tasks, { group_by: false }), 24);
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    expect(byId.get("Discovery")!.hasChildren).toBe(true);
+    expect(byId.get("Build")!.hasChildren).toBe(true);
+    expect(byId.get("Interviews")!.hasChildren).toBeFalsy();
+  });
+  it("collapsing a phase hides its subtree but keeps siblings", () => {
+    const rows = buildRows(payload(tasks, { group_by: false }), 24, new Set(["Discovery"]));
+    expect(rows.map((r) => r.id)).toEqual(["Discovery", "Build", "Design"]);
+  });
+  it("an empty collapsed set shows the whole tree", () => {
+    const rows = buildRows(payload(tasks, { group_by: false }), 24, new Set());
+    expect(rows.map((r) => r.id)).toEqual(["Discovery", "Interviews", "Synthesis", "Build", "Design"]);
+  });
+  it("collapsedIds overrides the view.collapse floor (can expand past it)", () => {
+    // view.collapse=0 would hide all level>0; collapsedIds mode ignores it, so an empty set
+    // reveals children even though the option asked to collapse.
+    const rows = buildRows(payload(tasks, { group_by: false, collapse: 0 }), 24, new Set());
+    expect(rows.some((r) => r.id === "Interviews")).toBe(true);
+  });
+});
+
 describe("collapse level", () => {
   it("hides rows deeper than the collapse level", () => {
     const rows = buildRows(

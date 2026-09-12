@@ -29,6 +29,12 @@ GanttFigure({
 - The root carries `nowheel nodrag nokeys` (the React Flow surface contract) and `role="treegrid"`
   with row/column/level ARIA. Tooltips are structural only (a link's type, never dynamic
   names/values). `prefers-reduced-motion` is honored.
+- The grid is a keyboard treegrid: a roving `tabindex` on the rows, Up/Down move the active row,
+  Left collapses a phase (or moves to the parent on a leaf), Right expands (or steps to the first
+  child), Home/End jump to the first/last row, Enter or Space toggles a phase, and the timeline
+  scrolls the active row's bar into view. Rows carry `aria-expanded`/`aria-selected`. Expand and
+  collapse are ephemeral per-viewer state seeded from the `collapse` option; the option is only a
+  floor the keyboard can open past.
 
 ## What was written here vs studied
 

@@ -23,8 +23,12 @@ export const ganttStyles = `
 .solenoid-gantt__grid-head { display: flex; align-items: flex-end; border-bottom: 1px solid var(--border-strong, #3a3a3a); background: var(--surface-raised, #262626); }
 .solenoid-gantt__gh { padding: 0 6px 4px; font-size: 10px; color: var(--text-dim, #9aa0a6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 0 0 auto; }
 .solenoid-gantt__grid-scroll { overflow-y: auto; overflow-x: hidden; }
-.solenoid-gantt__row { position: absolute; left: 0; right: 0; display: flex; align-items: center; border-bottom: 1px solid var(--border-subtle, #2a2a2a); }
+.solenoid-gantt__row { position: absolute; left: 0; right: 0; display: flex; align-items: center; border-bottom: 1px solid var(--border-subtle, #2a2a2a); outline: none; cursor: default; }
 .solenoid-gantt__row.is-summary { font-weight: 600; }
+.solenoid-gantt__row.is-focused { background: color-mix(in srgb, var(--accent, #56b4e9) 14%, transparent); }
+.solenoid-gantt__row:focus-visible { outline: 2px solid var(--accent, #56b4e9); outline-offset: -2px; }
+.solenoid-gantt__caret { display: inline-block; width: 12px; flex: 0 0 12px; text-align: center; color: var(--text-dim, #9aa0a6); cursor: pointer; user-select: none; font-size: 0.8em; }
+.solenoid-gantt__caret:hover { color: var(--text, #e8e8e8); }
 .solenoid-gantt__cell { padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; flex: 0 0 auto; }
 .solenoid-gantt__cell.is-num { font-family: var(--font-mono, ui-monospace, monospace); color: var(--text-dim, #9aa0a6); }
 .solenoid-gantt__cell.is-name { color: var(--text, #e8e8e8); }

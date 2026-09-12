@@ -37,6 +37,8 @@ export interface FrameRow {
   milestone: boolean;
   /** A section band header row (from group_by), not a task. */
   section?: boolean;
+  /** This row has nested children (a phase). Drives aria-expanded and the disclosure caret. */
+  hasChildren?: boolean;
   /** The task's index into `payload.tasks`, or -1 for a section band. */
   taskIndex: number;
 }
