@@ -12,6 +12,7 @@ export * from "./nodes/matrix";
 export * from "./nodes/frame";
 export * from "./nodes/cube";
 export * from "./nodes/schedule";
+export * from "./nodes/earnedValue";
 export * from "./nodes/connection";
 export * from "./nodes/qr";
 export * from "./nodes/dataFeed";
