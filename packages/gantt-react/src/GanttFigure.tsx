@@ -375,34 +375,35 @@ function Bar({ bar, payload }: { bar: FrameBar; payload: GanttPayload }) {
       </g>
     );
   }
+  const parts = bar.segments ?? [{ x: bar.x, w: bar.w }];
+  const midY = bar.y + bar.h / 2;
   return (
     <g>
       {bar.baseline && (
         <rect className="solenoid-gantt__baseline" x={bar.baseline.x} y={bar.y + bar.h + 1} width={bar.baseline.w} height={3} rx={1} />
       )}
-      <rect
-        className={cls("solenoid-gantt__bar")}
-        x={bar.x}
-        y={bar.y}
-        width={bar.w}
-        height={bar.h}
-        rx={2}
-        style={bar.color ? { fill: bar.color } : undefined}
-      >
-        {title && <title>{title}</title>}
-      </rect>
-      {bar.progressW > 0 && (
+      {/* Dotted connectors across the gaps of a split bar. */}
+      {bar.segments && bar.segments.slice(0, -1).map((seg, i) => (
+        <line key={`c${i}`} className="solenoid-gantt__split-gap" x1={seg.x + seg.w} y1={midY} x2={bar.segments![i + 1].x} y2={midY} />
+      ))}
+      {parts.map((part, i) => (
+        <g key={`p${i}`}>
+          <rect className={cls("solenoid-gantt__bar")} x={part.x} y={bar.y} width={part.w} height={bar.h} rx={2} style={bar.color ? { fill: bar.color } : undefined}>
+            {i === 0 && title && <title>{title}</title>}
+          </rect>
+          {bar.critical && !bar.color && (
+            <>
+              <rect className="solenoid-gantt__crit-hatch" x={part.x} y={bar.y} width={part.w} height={bar.h} rx={2} fill="url(#gantt-crit-hatch)" />
+              <rect className="solenoid-gantt__crit-outline" x={part.x} y={bar.y} width={part.w} height={bar.h} rx={2} />
+            </>
+          )}
+          {(bar.violated || bar.late) && (
+            <rect className="solenoid-gantt__bar-flag" x={part.x} y={bar.y} width={part.w} height={bar.h} rx={2} strokeDasharray={bar.violated ? "3 2" : undefined} />
+          )}
+        </g>
+      ))}
+      {bar.progressW > 0 && !bar.segments && (
         <rect className={cls("solenoid-gantt__progress")} x={bar.x} y={bar.y} width={bar.progressW} height={bar.h} rx={2} />
-      )}
-      {bar.critical && !bar.color && (
-        // Non-color cue for the critical path (WCAG 1.4.1): a hatch texture + a darker outline.
-        <>
-          <rect className="solenoid-gantt__crit-hatch" x={bar.x} y={bar.y} width={bar.w} height={bar.h} rx={2} fill="url(#gantt-crit-hatch)" />
-          <rect className="solenoid-gantt__crit-outline" x={bar.x} y={bar.y} width={bar.w} height={bar.h} rx={2} />
-        </>
-      )}
-      {(bar.violated || bar.late) && (
-        <rect className="solenoid-gantt__bar-flag" x={bar.x} y={bar.y} width={bar.w} height={bar.h} rx={2} strokeDasharray={bar.violated ? "3 2" : undefined} />
       )}
       {bar.deadlineX != null && <DeadlineFlag x={bar.deadlineX} rowY={bar.y} rowH={bar.h} late={bar.late} />}
       {t?.manual && <PinGlyph x={bar.x} y={bar.y} />}

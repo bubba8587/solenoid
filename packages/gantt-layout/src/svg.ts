@@ -102,18 +102,27 @@ export function ganttSvg(payload: GanttPayload, opts: GanttSvgOptions): string {
     } else {
       const fill = bar.color ?? (bar.critical ? colors.critical : colors.bar);
       const prog = bar.critical ? colors.criticalProgress : colors.barProgress;
-      parts.push(`<rect x="${r(bar.x)}" y="${r(y)}" width="${r(bar.w)}" height="${r(bar.h)}" rx="2" fill="${fill}" opacity="${bar.color ? 1 : 0.85}"/>`);
-      if (bar.progressW > 0) {
+      const segs = bar.segments ?? [{ x: bar.x, w: bar.w }];
+      // Dotted connectors across a split bar's gaps.
+      if (bar.segments) {
+        for (let s = 0; s < bar.segments.length - 1; s++) {
+          const a = bar.segments[s], b = bar.segments[s + 1];
+          parts.push(`<line x1="${r(a.x + a.w)}" y1="${r(y + bar.h / 2)}" x2="${r(b.x)}" y2="${r(y + bar.h / 2)}" stroke="${colors.textDim}" stroke-width="1" stroke-dasharray="2 2"/>`);
+        }
+      }
+      for (const seg of segs) {
+        parts.push(`<rect x="${r(seg.x)}" y="${r(y)}" width="${r(seg.w)}" height="${r(bar.h)}" rx="2" fill="${fill}" opacity="${bar.color ? 1 : 0.85}"/>`);
+        if (bar.critical && !bar.color) {
+          // Non-color cue for the critical path (WCAG 1.4.1): a hatch texture + darker outline.
+          parts.push(`<rect x="${r(seg.x)}" y="${r(y)}" width="${r(seg.w)}" height="${r(bar.h)}" rx="2" fill="url(#gantt-crit-hatch)"/>`);
+          parts.push(`<rect x="${r(seg.x)}" y="${r(y)}" width="${r(seg.w)}" height="${r(bar.h)}" rx="2" fill="none" stroke="${darken(colors.critical, 0.45)}" stroke-width="1"/>`);
+        }
+        if (bar.violated || bar.late) {
+          parts.push(`<rect x="${r(seg.x)}" y="${r(y)}" width="${r(seg.w)}" height="${r(bar.h)}" rx="2" fill="none" stroke="${colors.violated}" stroke-width="1.5" stroke-dasharray="${bar.violated ? "3 2" : "0"}"/>`);
+        }
+      }
+      if (bar.progressW > 0 && !bar.segments) {
         parts.push(`<rect x="${r(bar.x)}" y="${r(y)}" width="${r(bar.progressW)}" height="${r(bar.h)}" rx="2" fill="${prog}"/>`);
-      }
-      if (bar.critical && !bar.color) {
-        // Non-color cue for the critical path (WCAG 1.4.1): a hatch texture + darker outline.
-        parts.push(`<rect x="${r(bar.x)}" y="${r(y)}" width="${r(bar.w)}" height="${r(bar.h)}" rx="2" fill="url(#gantt-crit-hatch)"/>`);
-        parts.push(`<rect x="${r(bar.x)}" y="${r(y)}" width="${r(bar.w)}" height="${r(bar.h)}" rx="2" fill="none" stroke="${darken(colors.critical, 0.45)}" stroke-width="1"/>`);
-      }
-      if (bar.violated || bar.late) {
-        // Non-color cue (WCAG 1.4.1): a striped hatch overlay + outline for critical/violated.
-        parts.push(`<rect x="${r(bar.x)}" y="${r(y)}" width="${r(bar.w)}" height="${r(bar.h)}" rx="2" fill="none" stroke="${colors.violated}" stroke-width="1.5" stroke-dasharray="${bar.violated ? "3 2" : "0"}"/>`);
       }
     }
     if (bar.deadlineX != null) {

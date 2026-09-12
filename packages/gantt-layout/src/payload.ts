@@ -22,6 +22,10 @@ export interface GanttTask {
   /** Working days (the Schedule's Duration; a summary's rolled-up span). Absent: the grid
    *  falls back to the calendar span. */
   duration?: number;
+  /** Out-of-sequence progress splits the bar: inclusive [start, finish] serial pairs, in order,
+   *  drawn as segments with a dotted gap between them. Absent: one contiguous bar. The parts
+   *  span within [start, finish]; the engine fills this. */
+  segments?: Array<[number, number]>;
   /** 0..100; drawn as bar fill. */
   complete: number;
   critical: boolean;
