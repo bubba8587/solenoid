@@ -72,7 +72,8 @@ Everything landed on `develop`; nothing pushed. The plan's § 10 calls were take
   cap surfaced ("Wrote 500 of N" on the sink, "first 500 of N" on the stepper) and the Knap help tab
   (`src/graph/help/knap.md`). Agent 3: frame-only verbs (Window / GROUPBY / Chart) now take a live cube —
   the LATTICE allows cube→frame and coerceInputs flattens a flat cube (a nested cell is a loud
-  #SHAPE! naming the column). A lattice change: for the author to confirm in the morning.
+  #SHAPE! naming the column). A lattice change: for the author to confirm in the morning. Then
+  Add Column made cube-adoptive like Computed Column (cube in → cube out, nested cells by reference).
 - Test lock between agents moved from a doc line (per-worktree, signals nobody) to the shared
   file `.dev/test-lock` in the main checkout.
 - Open for the author: the eyeball list and the engine follow-ups in `backlog.md` § Gantt;
