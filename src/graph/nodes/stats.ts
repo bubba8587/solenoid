@@ -399,14 +399,19 @@ export class ForecastNode extends ClassicPreset.Node {
     if (isSolError(q)) { this.cachedResult = q; return { result: q }; }
 
     // Fit once — the model is independent of the query. Enough real data with a null
-    // linear fit means zero X variance (#DIV/0!); too few points or an undefined
-    // exponential fit stays quietly empty, the GROWTH convention.
+    // linear fit means zero X variance (#DIV/0!); an exponential fit over a y at or
+    // below zero is #NUM! (GROWTH's answer); too few points stays quietly empty.
     const enough = xs.length >= 2 && ys.length >= 2;
     let predict: ((x: number) => number) | null = null;
     if (enough) {
       if (this.op === "exponential") {
         const fit = expFit(xs, ys);
-        if (fit) predict = (x) => fit.b * Math.pow(fit.m, x);
+        if (!fit) {
+          const err = solError("#DOMAIN!", "Exponential fit needs every y above 0 (Excel: #NUM!)");
+          this.cachedResult = err;
+          return { result: err };
+        }
+        predict = (x) => fit.b * Math.pow(fit.m, x);
       } else {
         const fit = linearFit(xs, ys);
         if (!fit) {
@@ -983,6 +988,11 @@ export class LinestNode extends ClassicPreset.Node {
     let fit: { slope: number; intercept: number; r2: number } | null;
     if (this.op === "exponential") {
       const e = expFitR2(xs, ys);
+      if (!e && xs.length >= 2 && ys.some((y) => !(y > 0))) {
+        const err = solError("#DOMAIN!", "Exponential fit needs every y above 0 (Excel: #NUM!)"); // LOGEST's answer
+        this.cachedSlope = this.cachedIntercept = this.cachedR2 = err;
+        return { slope: err, intercept: err, r2: err };
+      }
       fit = e ? { slope: e.m, intercept: e.b, r2: e.r2 } : null;
     } else {
       fit = linearFitR2(xs, ys);

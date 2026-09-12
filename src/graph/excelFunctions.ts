@@ -2026,12 +2026,18 @@ registerInternal("TAKE", (v, rows, cols) => {
 registerInternal("DROP", (v, rows, cols) => {
   if (v == null || rows == null) return null;
   const n = Math.round(Number(rows));
+  // Dropping everything is Excel's #CALC!, never a silent empty array.
+  const gone = (len: number, k: number) => len > 0 && Math.abs(k) >= len;
   if (Array.isArray(v) && v.length > 0 && Array.isArray(v[0])) {
-    const m = (v as unknown[][]).map((r) => (cols == null ? [...r] : dropSlice(r, Math.round(Number(cols)))));
+    const c = cols == null ? 0 : Math.round(Number(cols));
+    if (gone(v.length, n) || gone((v[0] as unknown[]).length, c)) return solError("#DOMAIN!", "DROP would leave nothing (Excel: #CALC!)");
+    const m = (v as unknown[][]).map((r) => (cols == null ? [...r] : dropSlice(r, c)));
     return dropSlice(m, n);
   }
   if (cols != null) return solError("#SHAPE!", "DROP of a list has no columns — pass one count");
-  return dropSlice(toList(v), n);
+  const list = toList(v);
+  if (gone(list.length, n)) return solError("#DOMAIN!", "DROP would leave nothing (Excel: #CALC!)");
+  return dropSlice(list, n);
 });
 registerInternal("MODE.MULT", (v) => (v == null ? null : modeMult(toList(v))));
 registerInternal("FREQUENCY", (data, bins) => {

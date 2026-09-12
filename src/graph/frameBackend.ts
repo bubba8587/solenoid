@@ -76,6 +76,11 @@ async function applyPlanWithSketchSampling(baseHandle: FrameHandle, plan: readon
         baseHandle,
         aggCols: new Map(lastGroupBy.aggs.map((a) => [a.as, a.column])),
       });
+    } else {
+      // A tail rebased onto a flushed prefix that held the groupBy: the guard rides on, so a
+      // card downstream of GROUPBY classifies a non-finite aggregate like the GROUPBY card.
+      const inherited = _aggGuardInfo.get(baseHandle);
+      if (inherited) _aggGuardInfo.set(outHandle, inherited);
     }
     if (factor > 1) {
       _sampleFactor.set(outHandle, factor);

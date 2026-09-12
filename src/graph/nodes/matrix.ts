@@ -619,8 +619,15 @@ export class TakeDropNode extends ClassicPreset.Node {
     const nRows = Math.round(rRaw);
     const nCols = Math.round(cRaw);
     // MATRIX: a genuine 2-D array — cut both axes, carry the grid's unit.
+    // DROP of everything is Excel's #CALC!, never a silent empty result.
+    const gone = (len: number, k: number) => this.op === "drop" && len > 0 && Math.abs(k) >= len;
     if (Array.isArray(raw) && raw.length > 0 && Array.isArray(raw[0])) {
       const m = raw as CellMat;
+      if (gone(m.length, nRows) || gone(m[0].length, nCols)) {
+        const err = solError("#DOMAIN!", "DROP would leave nothing (Excel: #CALC!)");
+        this.cachedResult = err;
+        return { result: err };
+      }
       const result = carryMatrixUnit(this.slice(m, nRows).map((r) => [...this.slice(r, nCols)]), m);
       this.cachedResult = result;
       return { result };
@@ -634,6 +641,11 @@ export class TakeDropNode extends ClassicPreset.Node {
       return { result: err };
     }
     const arr = Array.isArray(raw) ? (raw as unknown[]) : [raw];
+    if (gone(arr.length, nRows)) {
+      const err = solError("#DOMAIN!", "DROP would leave nothing (Excel: #CALC!)");
+      this.cachedResult = err;
+      return { result: err };
+    }
     const result = this.slice(arr, nRows);
     this.cachedResult = result;
     return { result };

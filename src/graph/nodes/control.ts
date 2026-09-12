@@ -344,7 +344,7 @@ export class SlicerNode extends ClassicPreset.Node {
       if (col && isSolError(col)) return this.emitResult(gen, col);
       // No column resolved, or "all" selected → forward the frame unchanged (no-op).
       if (!colName || this.selectedValues.length === 0) return this.emitResult(gen, await passFrame(raw));
-      const conditions: FilterCond[] = this.selectedValues.map((v) => ({ column: colName, op: "eq", value: String(v), matchCase: false }));
+      const conditions: FilterCond[] = this.selectedValues.map((v) => ({ column: colName, op: "eq", value: String(v), matchCase: true })); // the buttons ARE the exact values (the eager path matches exactly too)
       return this.emitResult(gen, await runFrameUnary(raw, { kind: "filterMulti", combine: "or", conditions }));
     }
 
