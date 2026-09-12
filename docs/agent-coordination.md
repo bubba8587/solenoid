@@ -12,4 +12,4 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 
 ## Claims
 
-- Lead (solenoid-9d) — 2026-09-12 Gantt surface built and merged (develop b5fff72e+); wrapping. Peers be / fe level and clean.
+- Lead (solenoid-9d) — 2026-09-12 Gantt surface: the whole plan incl. § 12 adjacent items built and merged (develop); session wrapped 02:55. be / fe level and clean.

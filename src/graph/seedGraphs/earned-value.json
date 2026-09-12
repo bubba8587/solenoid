@@ -53,7 +53,7 @@
       "id": "ev",
       "type": "EarnedValueNode",
       "x": 715,
-      "y": 204,
+      "y": 192,
       "init": {
         "label": "Earned Value"
       }
@@ -62,7 +62,7 @@
       "id": "evDisplay",
       "type": "DisplayNode",
       "x": 1040,
-      "y": 164,
+      "y": 180,
       "size": {
         "w": 660,
         "h": 340

@@ -65,8 +65,10 @@ Everything landed on `develop`; nothing pushed. The plan's § 10 calls were take
   P6's longest path on the card, Work ÷ Units durations, inactive rows, recurring rows, XER's
   calendar blob; the known-bug regression list and DCMA checks over the corpus as tests; Agent
   2's resource histogram and fit=page export; the launch seed names who does each task; Agent 3's
-  Earned Value node and Write File's Text target (the MSPDI sink), the By-Row cube branch for
-  portfolios.
+  Earned Value node (holidays honored through the engine's Calendar; `unitAware` so the Cost
+  currency carries) and Write File's Text target (the MSPDI sink), the By-Row cube branch for
+  portfolios. Wrapped 02:55: full suite 5676 green, tsc clean, 90-odd commits on develop, nothing
+  pushed.
 - Test lock between agents moved from a doc line (per-worktree, signals nobody) to the shared
   file `.dev/test-lock` in the main checkout.
 - Open for the author: the eyeball list and the engine follow-ups in `backlog.md` § Gantt;
