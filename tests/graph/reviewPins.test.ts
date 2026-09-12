@@ -128,3 +128,14 @@ describe("review pins: INDEX, RUNNING, VDB", () => {
     expect(resolveExcelFunction("VDB")!(2400, 300, 10, 0, 1)).toBeCloseTo(480, 6);
   });
 });
+
+describe("review pins: Nest Join blank keys", () => {
+  it("a blank key cell never matches, like the Join verb and the socket doc say", async () => {
+    const { relateFramesToCube, buildFrame, frameRowCount } = await import("../../src/graph/frame");
+    const parent = buildFrame([[1], [null]] as never, ["k"]);
+    const child = buildFrame([[1, 10], [null, 20], [null, 30]] as never, ["k", "v"]);
+    const cube = relateFramesToCube(parent, child, "k", "kids")!;
+    expect(frameRowCount(cube.columns[1].cells[0] as never)).toBe(1);
+    expect(frameRowCount(cube.columns[1].cells[1] as never)).toBe(0);
+  });
+});

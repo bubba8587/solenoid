@@ -638,12 +638,11 @@ function keyIdInColumn(v: FrameCell, unit: ColumnUnit | undefined): string {
   return keyId(v);
 }
 
-/** Key id for a CUBE cell; a nested frame/cube/list cell can't be a join key
- *  (→ null, unmatched). */
+/** Key id for a CUBE cell; a blank or error cell never matches (the Join verb's rule and
+ *  the socket doc's), and a nested frame/cube/list cell can't be a join key (→ null). */
 function cellKeyId(cell: CubeCell, unit?: ColumnUnit): string | null {
-  if (cell === null) return keyId(null);
+  if (cell === null || isSolError(cell)) return null;
   if (typeof cell === "number" || typeof cell === "string" || typeof cell === "boolean") return keyIdInColumn(cell as FrameCell, unit);
-  if (isSolError(cell)) return keyId(cell);
   if (isUnitCell(cell)) return keyId(cell);
   return null;
 }
