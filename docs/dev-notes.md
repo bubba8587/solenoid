@@ -41,6 +41,13 @@ Everything landed on `develop`; nothing pushed. The plan's § 10 calls were take
   working-days duration. Found by looking, not by tests: the Cube Input's ISO date strings were
   not parsed (Board review fell to the project start) and Diagnostics called a phase's children
   unlinked.
+- Export verified on the live app by probing the app's own module instance (a Vite dev
+  server serves an HMR-invalidated module under a `?t=` URL, so a bare dynamic import from a
+  probe is a SECOND instance with an empty provider map — the first probe's false alarm): the
+  Gantt node and its Display both serve the whole-chart SVG through the provider seam. Two
+  more mapper fixes from looking: a milestone on its predecessor's finish day is not a broken
+  link (the calendar-day rule was too strict), and a phase's Duration is filled with its
+  rolled-up working days so the grid's Days column is right.
 - Test lock between agents moved from a doc line (per-worktree, signals nobody) to the shared
   file `.dev/test-lock` in the main checkout.
 - Open for the author: the eyeball list and the engine follow-ups in `backlog.md` § Gantt;
