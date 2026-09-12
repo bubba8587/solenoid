@@ -58,7 +58,7 @@ export function CubeDisplay({ cube, label, full, peek, edit }: {
             <tr key={i}>
               {cube.columns.slice(0, maxC).map((c, j) => (
                 <td key={j} style={{ padding: full ? "2px 8px" : "1px 4px", textAlign: "left", fontSize: full ? 12 : 11, fontFamily: "var(--font-mono)", color: "var(--text)", borderRight: "1px solid var(--border)", whiteSpace: "nowrap", ...(full ? {} : { overflow: "hidden", textOverflow: "ellipsis" }) }}>
-                  {cubeCellToken(c.cells[i] ?? null, c.type)}
+                  {cubeCellToken(c.cells[i] ?? null, c.type, c.format)}
                 </td>
               ))}
               {extraCols && <td style={{ color: "var(--text-muted)", fontSize: 10 }}>…</td>}
