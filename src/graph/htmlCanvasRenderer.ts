@@ -73,8 +73,8 @@ interface CableGeom { pts: { x: number; y: number }[]; minX: number; minY: numbe
 // Offsets from the endpoint NODES so a cable follows them live; the absolute snapshot
 // positions are the fallback when an endpoint node isn't present.
 interface CableSpec {
-  sourceId: string; srcOffX: number; srcOffY: number; srcAbsX: number; srcAbsY: number; sourceAngleDeg: number | null;
-  targetId: string; tgtOffX: number; tgtOffY: number; tgtAbsX: number; tgtAbsY: number; targetAngleDeg: number | null;
+  sourceId: string; srcOffX: number; srcOffY: number; srcAbsX: number; srcAbsY: number; sourceAngleDeg: number | null; sourceFlipped: boolean;
+  targetId: string; tgtOffX: number; tgtOffY: number; tgtAbsX: number; tgtAbsY: number; targetAngleDeg: number | null; targetFlipped: boolean;
   color: string; // "#rrggbb" — source socket's data-type color (DOM cable hue)
 }
 
@@ -384,8 +384,8 @@ export class HtmlCanvasRenderer {
     this.cables = cables.map((cb) => {
       const s = this.nodeById.get(cb.source), t = this.nodeById.get(cb.target);
       return {
-        sourceId: cb.source, srcOffX: s ? cb.sx - s.x : 0, srcOffY: s ? cb.sy - s.y : 0, srcAbsX: cb.sx, srcAbsY: cb.sy, sourceAngleDeg: cb.sourceAngleDeg,
-        targetId: cb.target, tgtOffX: t ? cb.ex - t.x : 0, tgtOffY: t ? cb.ey - t.y : 0, tgtAbsX: cb.ex, tgtAbsY: cb.ey, targetAngleDeg: cb.targetAngleDeg,
+        sourceId: cb.source, srcOffX: s ? cb.sx - s.x : 0, srcOffY: s ? cb.sy - s.y : 0, srcAbsX: cb.sx, srcAbsY: cb.sy, sourceAngleDeg: cb.sourceAngleDeg, sourceFlipped: cb.sourceFlipped,
+        targetId: cb.target, tgtOffX: t ? cb.ex - t.x : 0, tgtOffY: t ? cb.ey - t.y : 0, tgtAbsX: cb.ex, tgtAbsY: cb.ey, targetAngleDeg: cb.targetAngleDeg, targetFlipped: cb.targetFlipped,
         color: HtmlCanvasRenderer.hexColor(cb.color),
       };
     });
@@ -402,7 +402,7 @@ export class HtmlCanvasRenderer {
       const s = this.nodeById.get(c.sourceId), t = this.nodeById.get(c.targetId);
       const sx = s ? s.x + c.srcOffX : c.srcAbsX, sy = s ? s.y + c.srcOffY : c.srcAbsY;
       const ex = t ? t.x + c.tgtOffX : c.tgtAbsX, ey = t ? t.y + c.tgtOffY : c.tgtAbsY;
-      const pts = cablePolyline(this.cableShape, { sx, sy, ex, ey, sourceAngleDeg: c.sourceAngleDeg, targetAngleDeg: c.targetAngleDeg });
+      const pts = cablePolyline(this.cableShape, { sx, sy, ex, ey, sourceAngleDeg: c.sourceAngleDeg, targetAngleDeg: c.targetAngleDeg, sourceFlipped: c.sourceFlipped, targetFlipped: c.targetFlipped });
       this.cableGeoms[i] = HtmlCanvasRenderer.geomOf(pts);
     }
     this.dirty = true;
