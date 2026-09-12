@@ -1,5 +1,6 @@
 import { ClassicPreset } from "rete";
 import Papa from "papaparse";
+import { neutralizeFormulaCell } from "../csvSafety";
 import { frameIn, strIn } from "./shared";
 import { frameRowCount, formatFrameCell, type FrameCell, type FrameColType, type FrameValue } from "../frame";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./date";
@@ -18,8 +19,13 @@ export type SinkStatus = "idle" | "writing" | "ok" | "error";
 export function frameToCsvText(f: FrameValue): string {
   const rows = frameRowCount(f);
   const fields = f.columns.map((c) => c.name);
+  // A file handed to someone else: a text cell a spreadsheet would evaluate is neutralized
+  // (csvSafety, the same rule as the popup's export).
   const data = Array.from({ length: rows }, (_, i) =>
-    f.columns.map((c) => formatFrameCell(c.type, c.values[i] ?? null) ?? ""),
+    f.columns.map((c) => {
+      const shown = formatFrameCell(c.type, c.values[i] ?? null) ?? "";
+      return c.type === "string" && typeof shown === "string" ? neutralizeFormulaCell(shown) : shown;
+    }),
   );
   return Papa.unparse({ fields, data });
 }

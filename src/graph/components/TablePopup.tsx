@@ -83,9 +83,7 @@ function cell(c: string, cellType: CellType): string {
 // it; editable grids skip it because their CSV view must round-trip typed text exactly.
 function csvField(c: string, cellType: CellType, escapeFormulas = false): string {
   let out = cell(c, cellType);
-  if (escapeFormulas && cellType === "string" && /^[=+\-@\t\r]/.test(out) && Number.isNaN(Number(out))) {
-    out = `'${out}`;
-  }
+  if (escapeFormulas && cellType === "string") out = neutralizeFormulaCell(out); // csvSafety, shared with Write File
   if (cellType === "string" && /[",\n]/.test(out)) return `"${out.replace(/"/g, '""')}"`;
   return out;
 }

@@ -302,3 +302,18 @@ describe("review pins: number-to-text scientific form; image asset paths", () =>
     expect(isInsideVault("../../secret.png")).toBe(false);
   });
 });
+
+describe("review pins: CSV formula injection", () => {
+  it("Write File neutralizes a formula-trigger text cell like the popup export does", async () => {
+    const { frameToCsvText } = await import("../../src/graph/nodes/sink");
+    const f = { __frame: true as const, columns: [
+      { name: "t", type: "string" as const, values: ['=HYPERLINK("x")', "+cmd", "-5", "plain"] },
+      { name: "n", type: "number" as const, values: [1, 2, 3, 4] },
+    ] };
+    const csv = frameToCsvText(f as never);
+    expect(csv).toContain(`"'=HYPERLINK(""x"")"`);
+    expect(csv).toContain("'+cmd,2");
+    expect(csv).toContain("-5,3"); // a plain number is not a trigger
+    expect(csv).toContain("plain,4");
+  });
+});
