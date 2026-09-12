@@ -9,7 +9,7 @@ import { ConduitNode, FormatControllerNode, GroupNode } from "./rete-nodes";
 import { autofitGroupBox, GROUP_PAD, GROUP_HEADER } from "./groupLogic";
 import { measuredBox } from "./nodeSize";
 import { nodeSizeStore } from "./nodeSizeStore";
-import { pushForGrownGroups } from "./groupPush";
+import { pushForGrownGroups, translateEntityBy } from "./groupPush";
 import { separateOverlaps, PUSH_GAP, type PushBox } from "./groupPushCore";
 import { socketFlipStore } from "./socketFlipStore";
 import { collapseStore } from "./collapseStore";
@@ -642,18 +642,8 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
         }
         const pinned = new Set(lockedBoxes.map((b) => b.id));
         const disp = separateOverlaps([...lockedBoxes, ...freeBoxes], undefined, PUSH_GAP, pinned);
-        for (const [id, d] of disp) {
-          const p = view.position(id);
-          if (!p) continue;
-          await view.moveNode(id, { x: p.x + d.dx, y: p.y + d.dy });
-          const grp = editor.getNode(id);
-          if (grp instanceof GroupNode) {
-            for (const mid of grp.members) {
-              const mp = view.position(mid);
-              if (mp) await view.moveNode(mid, { x: mp.x + d.dx, y: mp.y + d.dy });
-            }
-          }
-        }
+        // translateEntityBy tows a pushed group's members AND a pushed host's docked FCs.
+        for (const [id, d] of disp) translateEntityBy(editor, view, id, d.dx, d.dy);
       }
     }
 

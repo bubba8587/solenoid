@@ -167,6 +167,11 @@ export function linkStandoffBetween(
   view: View,
   t: { aId: string; bId: string },
 ): void {
+  // A standoff links top-level items only (subsystem-invariants, Standoffs): a group
+  // member rides its group. The menu gates this; a stale target must not slip past.
+  for (const n of editor.getNodes()) {
+    if (n instanceof GroupNode && (n.members.includes(t.aId) || n.members.includes(t.bId))) return;
+  }
   // The same size read the standoff SOLVER uses, so the band matches its boxes.
   const boxOf = (id: string): StandoffBox | null => measuredBox(view, id, editor);
   const ba = boxOf(t.aId);

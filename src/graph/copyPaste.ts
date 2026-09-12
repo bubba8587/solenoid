@@ -6,6 +6,7 @@ import { markGraphCustom } from "./seedStore";
 import { getCtorRegistry } from "./ctorProvider";
 import { getActiveEditor, getActiveView, isSubgraphActive } from "./activeGraph";
 import { collapseStore } from "./collapseStore";
+import { socketFlipStore } from "./socketFlipStore";
 import { nodeNameStore } from "./nodeNameStore";
 
 interface ClipboardEntry {
@@ -276,6 +277,8 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
     if (!clone) continue;
     // Body collapse lives in collapseStore, not on the instance, so carry it across.
     if (collapseStore.get(_clipboard.entries[i].node.id)) collapseStore.set(clone.id, true);
+    // The socket flip lives in socketFlipStore the same way.
+    if (socketFlipStore.get(_clipboard.entries[i].node.id)) socketFlipStore.set(clone.id, true);
     // Sequenced identities must not duplicate — the clone re-claims a fresh number.
     const fresh = (clone as unknown as { assignFreshSeq?: () => void }).assignFreshSeq;
     if (typeof fresh === "function") fresh.call(clone);

@@ -122,6 +122,7 @@ describe("withLockedGroupsPinned", () => {
     const locked = new GroupNode();
     (locked as unknown as { id: string }).id = "gLocked";
     locked.lockedPosition = true;
+    locked.members = ["m1"];
     const loose = new GroupNode();
     (loose as unknown as { id: string }).id = "gLoose";
     const plain = { id: "n1" };
@@ -132,5 +133,6 @@ describe("withLockedGroupsPinned", () => {
     expect(pinned.has("gLoose")).toBe(false);   // an unlocked group is not
     expect(pinned.has("seed")).toBe(true);      // caller's pins are kept
     expect(pinned.has("n1")).toBe(false);       // plain nodes untouched
+    expect(pinned.has("m1")).toBe(true);        // a locked group's member holds with it
   });
 });

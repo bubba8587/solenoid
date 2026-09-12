@@ -48,7 +48,11 @@ export const GROUP_MIN_H = 90;
 export function withLockedGroupsPinned(editor: Editor, pinned: Set<string> = new Set()): Set<string> {
   const set = new Set(pinned);
   for (const g of editor.getNodes()) {
-    if (g instanceof GroupNode && g.lockedPosition) set.add(g.id);
+    if (!(g instanceof GroupNode) || !g.lockedPosition) continue;
+    set.add(g.id);
+    // The solver works on raw endpoint ids, so a member standoff would slide the member
+    // out of the locked box: its members hold too.
+    for (const m of g.members) set.add(m);
   }
   return set;
 }
