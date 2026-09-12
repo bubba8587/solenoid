@@ -8,7 +8,6 @@ import { ExtensibleInputs } from "./ExtensibleInputs";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import type { DisplayValue } from "./valueDisplayFormat";
-import { ArrayChip } from "./ArrayChip";
 import { dropInputCables } from "./cablePrune";
 import { listRowsFromCells } from "../literalEditors";
 
@@ -81,12 +80,8 @@ export function ListInputComponent({ data, emit }: NodeProps<ListInputNodeType>)
         onChange={(next) => { setDt(next); void applyListType(data, next); }}
       />
       <ExtensibleInputs node={data} emit={emit} />
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <ValueDisplay value={data.cachedList as DisplayValue} />
-        </div>
-        <ArrayChip value={[[0]]} label={data.label || "List"} size="sm" elem={undefined} popupOverrides={popupOverrides} />
-      </div>
+      {/* The box's own list chip opens the editor; never a second chip beside the box. */}
+      <ValueDisplay value={data.cachedList as DisplayValue} popupOverrides={popupOverrides} />
     </NodeShell>
   );
 }
