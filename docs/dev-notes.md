@@ -62,7 +62,9 @@ Everything landed on `develop`; nothing pushed. The plan's § 10 calls were take
   (a Links frame input) and found Unnest lacked a list-cell branch (the plan assumed it); Agent
   2 built split bars, minutes-mode midnight finishes and the calendar month-grid sibling.
   Then the formats: GanttProject and Primavera XER read, MSPDI write with a pinned round trip;
-  P6's longest path on the card, Work ÷ Units durations, inactive rows.
+  P6's longest path on the card, Work ÷ Units durations, inactive rows, recurring rows, XER's
+  calendar blob; the known-bug regression list and DCMA checks over the corpus as tests; Agent
+  2's resource histogram and fit=page export; the launch seed names who does each task.
 - Test lock between agents moved from a doc line (per-worktree, signals nobody) to the shared
   file `.dev/test-lock` in the main checkout.
 - Open for the author: the eyeball list and the engine follow-ups in `backlog.md` § Gantt;
