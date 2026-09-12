@@ -121,18 +121,6 @@ export class ListInputNode extends ClassicPreset.Node {
     delete this.stringLiterals[key];
   }
 
-  /** Rewrite the rows from the editor, one literal per row: existing keys keep their order
-   *  (and their cables), extra rows are added, surplus rows removed. The caller prunes the
-   *  departing rows' cables FIRST (onePrunePath); `departingRowKeys` names them. */
-  departingRowKeys(rowCount: number): string[] { return Object.keys(this.inputs).slice(rowCount); }
-  rewriteRows(rows: readonly string[]): void {
-    const keys = Object.keys(this.inputs);
-    for (const k of keys.slice(rows.length)) this.removeValueInput(k);
-    keys.slice(0, rows.length).forEach((k, i) => { this.stringLiterals[k] = rows[i]; });
-    for (let i = Math.min(keys.length, rows.length); i < rows.length; i++) this.stringLiterals[this.addValueInput()] = rows[i];
-    if (rows.length === 0) this.addValueInput(); // a list keeps one row to type into
-  }
-
   /** Re-types every row input + the output IN PLACE, which fires no connection event —
    *  the caller owes retypeOutputCables. False = unchanged, no-op. */
   setDataType(dt: ListElemType): boolean {

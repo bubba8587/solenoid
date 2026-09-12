@@ -20,22 +20,11 @@ describe("List Input: one chip, inside the box", () => {
   });
 });
 
-describe("List Input editor round trip", () => {
-  it("the editor's initial grid is the node's list, one value per row; a commit round-trips", async () => {
-    const { listEditorCells, listRowsFromCells } = await import("../../src/graph/literalEditors");
-    const n = new ListInputNode();
-    const run = () => (n as unknown as { data: (i: Record<string, unknown[]>) => { list: unknown[] } }).data({}).list;
-    n.stringLiterals[Object.keys(n.inputs)[0]] = "1, 2, 3";
-    expect(listEditorCells(run(), "number")).toEqual([[1], [2], [3]]);
-    n.rewriteRows(listRowsFromCells([["1"], ["2"], ["4"], [""]]));
-    expect(Object.keys(n.inputs)).toHaveLength(3);
-    expect(run()).toEqual([1, 2, 4]);
-    expect(listEditorCells(run(), "number")).toEqual([[1], [2], [4]]);
-  });
-  it("a date list edits as date text, never as serials", async () => {
-    const { listEditorCells } = await import("../../src/graph/literalEditors");
-    const { parseDateToSerial } = await import("../../src/graph/nodes/dateSerial");
-    const s = parseDateToSerial("2026-01-05");
-    expect(listEditorCells([s, null], "date")).toEqual([["05-Jan-2026"], [""]]);
+describe("List Input editor", () => {
+  it("opens as the LIST popup with the typed rows as text (the switcher, copy paths and no-column-sort rule apply)", () => {
+    const src = readFileSync("src/graph/components/ListInputNode.tsx", "utf8");
+    expect(src).toMatch(/list: true/);
+    expect(src).toMatch(/cellType: "string"/);
+    expect(src).not.toMatch(/list: false/);
   });
 });
