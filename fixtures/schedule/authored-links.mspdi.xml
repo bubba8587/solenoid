@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Project xmlns="http://schemas.microsoft.com/project">
+  <Name>authored-links.mspdi.xml</Name>
+  <Title>Link types, ALAP, elapsed lag, a task calendar</Title>
+  <StartDate>2026-02-02T08:00:00</StartDate>
+  <MinutesPerDay>480</MinutesPerDay>
+  <MinutesPerWeek>2400</MinutesPerWeek>
+  <DaysPerMonth>20</DaysPerMonth>
+  <CalendarUID>1</CalendarUID>
+  <Calendars>
+    <Calendar>
+      <UID>1</UID><Name>Standard</Name><IsBaseCalendar>1</IsBaseCalendar>
+      <WeekDays>
+        <WeekDay><DayType>1</DayType><DayWorking>0</DayWorking></WeekDay>
+        <WeekDay><DayType>2</DayType><DayWorking>1</DayWorking><WorkingTimes><WorkingTime><FromTime>08:00:00</FromTime><ToTime>12:00:00</ToTime></WorkingTime><WorkingTime><FromTime>13:00:00</FromTime><ToTime>17:00:00</ToTime></WorkingTime></WorkingTimes></WeekDay>
+        <WeekDay><DayType>3</DayType><DayWorking>1</DayWorking></WeekDay>
+        <WeekDay><DayType>4</DayType><DayWorking>1</DayWorking></WeekDay>
+        <WeekDay><DayType>5</DayType><DayWorking>1</DayWorking></WeekDay>
+        <WeekDay><DayType>6</DayType><DayWorking>1</DayWorking></WeekDay>
+        <WeekDay><DayType>7</DayType><DayWorking>0</DayWorking></WeekDay>
+      </WeekDays>
+    </Calendar>
+    <Calendar>
+      <UID>2</UID><Name>Six-day site</Name><IsBaseCalendar>1</IsBaseCalendar>
+      <WeekDays>
+        <WeekDay><DayType>1</DayType><DayWorking>0</DayWorking></WeekDay>
+        <WeekDay><DayType>2</DayType><DayWorking>1</DayWorking></WeekDay>
+        <WeekDay><DayType>3</DayType><DayWorking>1</DayWorking></WeekDay>
+        <WeekDay><DayType>4</DayType><DayWorking>1</DayWorking></WeekDay>
+        <WeekDay><DayType>5</DayType><DayWorking>1</DayWorking></WeekDay>
+        <WeekDay><DayType>6</DayType><DayWorking>1</DayWorking></WeekDay>
+        <WeekDay><DayType>7</DayType><DayWorking>1</DayWorking></WeekDay>
+      </WeekDays>
+    </Calendar>
+  </Calendars>
+  <Tasks>
+    <Task><UID>0</UID><ID>0</ID><Name>Links</Name><OutlineLevel>0</OutlineLevel><Summary>1</Summary></Task>
+    <!-- A: Mon 2 .. Thu 5 Feb (4 days). One day of slack: finishing Fri 6 still lets D start Mon 9 after the 2 elapsed days. -->
+    <Task><UID>1</UID><ID>1</ID><Name>A</Name><OutlineLevel>1</OutlineLevel><Duration>PT32H0M0S</Duration>
+      <Start>2026-02-02T08:00:00</Start><Finish>2026-02-05T17:00:00</Finish><TotalSlack>4800</TotalSlack><Critical>0</Critical></Task>
+    <!-- B: SS+1d after A → Tue 3 .. Wed 4 (2 days). Slack: the project closes Mon 16 morning; B may finish Fri 13 → 7 days. -->
+    <Task><UID>2</UID><ID>2</ID><Name>B</Name><OutlineLevel>1</OutlineLevel><Duration>PT16H0M0S</Duration>
+      <Start>2026-02-03T08:00:00</Start><Finish>2026-02-04T17:00:00</Finish><TotalSlack>33600</TotalSlack><Critical>0</Critical>
+      <PredecessorLink><PredecessorUID>1</PredecessorUID><Type>3</Type><LinkLag>4800</LinkLag><LagFormat>7</LagFormat></PredecessorLink></Task>
+    <!-- C: FF+0 with A → ends Thu 5, 2 days: Wed 4 .. Thu 5. Slack 6 days (C could end Fri 13). -->
+    <Task><UID>3</UID><ID>3</ID><Name>C</Name><OutlineLevel>1</OutlineLevel><Duration>PT16H0M0S</Duration>
+      <Start>2026-02-04T08:00:00</Start><Finish>2026-02-05T17:00:00</Finish><TotalSlack>28800</TotalSlack><Critical>0</Critical>
+      <PredecessorLink><PredecessorUID>1</PredecessorUID><Type>0</Type><LinkLag>0</LinkLag><LagFormat>7</LagFormat></PredecessorLink></Task>
+    <!-- D: FS+2 elapsed days after A (A is over Fri 6 00:00 → Sun 8 00:00 → Mon 9 08:00), 1 day. -->
+    <Task><UID>4</UID><ID>4</ID><Name>D</Name><OutlineLevel>1</OutlineLevel><Duration>PT8H0M0S</Duration>
+      <Start>2026-02-09T08:00:00</Start><Finish>2026-02-09T17:00:00</Finish><TotalSlack>0</TotalSlack><Critical>1</Critical>
+      <PredecessorLink><PredecessorUID>1</PredecessorUID><Type>1</Type><LinkLag>28800</LinkLag><LagFormat>39</LagFormat></PredecessorLink></Task>
+    <!-- Site: on the six-day calendar, FS after D, 5 days: Tue 10 .. Sat 14 (Saturday works). -->
+    <Task><UID>5</UID><ID>5</ID><Name>Site</Name><OutlineLevel>1</OutlineLevel><Duration>PT40H0M0S</Duration><CalendarUID>2</CalendarUID>
+      <Start>2026-02-10T08:00:00</Start><Finish>2026-02-14T17:00:00</Finish><TotalSlack>0</TotalSlack><Critical>1</Critical>
+      <PredecessorLink><PredecessorUID>4</PredecessorUID><Type>1</Type><LinkLag>0</LinkLag><LagFormat>7</LagFormat></PredecessorLink></Task>
+    <!-- Order: ALAP, 1 day, must precede Close: sits the working day before Close, Fri 13; critical by rule 9. -->
+    <Task><UID>6</UID><ID>6</ID><Name>Order</Name><OutlineLevel>1</OutlineLevel><Duration>PT8H0M0S</Duration><ConstraintType>1</ConstraintType>
+      <Start>2026-02-13T08:00:00</Start><Finish>2026-02-13T17:00:00</Finish><TotalSlack>0</TotalSlack><Critical>1</Critical></Task>
+    <!-- Close: milestone after Site (ends Sat 14 17:00 on the site calendar → Mon 16 on the standard one) and Order. -->
+    <Task><UID>7</UID><ID>7</ID><Name>Close</Name><OutlineLevel>1</OutlineLevel><Duration>PT0H0M0S</Duration><Milestone>1</Milestone>
+      <Start>2026-02-14T17:00:00</Start><Finish>2026-02-14T17:00:00</Finish><TotalSlack>0</TotalSlack><Critical>1</Critical>
+      <PredecessorLink><PredecessorUID>5</PredecessorUID><Type>1</Type><LinkLag>0</LinkLag><LagFormat>7</LagFormat></PredecessorLink>
+      <PredecessorLink><PredecessorUID>6</PredecessorUID><Type>1</Type><LinkLag>0</LinkLag><LagFormat>7</LagFormat></PredecessorLink></Task>
+  </Tasks>
+</Project>

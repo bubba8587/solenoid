@@ -232,7 +232,18 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
   const startOf = (i: number) => {
     const t = tasks[i];
     if (t.summary) return startInstant(i);
-    if (p.dur[i] === 0) return p.es[i] > 0 && (inEdges[i].length || t.parent != null) ? endOf(i, p.es[i] - 1) : startAt(i, p.es[i]);
+    if (p.dur[i] === 0) {
+      if (!(p.es[i] > 0 && (inEdges[i].length || t.parent != null))) return startAt(i, p.es[i]);
+      // A milestone sits at its predecessors' finish: the end of the unit before ES on its own
+      // calendar, or a predecessor's own finish instant when that is later (another calendar's
+      // Saturday, say). Days mode shows the finish DAY (the exclusive end less one).
+      let at = endOf(i, p.es[i] - 1);
+      for (const e of inEdges[i]) if (e.type === "FS" && !e.lag) {
+        const fin = endInstant(e.from) - (cals[i].minutes ? 0 : 1);
+        if (fin > at) at = fin;
+      }
+      return at;
+    }
     return startAt(i, p.es[i]);
   };
   const finishOf = (i: number) => {
