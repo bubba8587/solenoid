@@ -3,7 +3,7 @@ import Papa from "papaparse";
 import { neutralizeFormulaCell } from "../csvSafety";
 import { frameIn, strIn } from "./shared";
 import { frameRowCount, formatFrameCell, type FrameCell, type FrameColType, type FrameValue } from "../frame";
-import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./date";
+import { formatDateSerial } from "./date";
 import { isSolError, type SolError } from "../errorValue";
 import { isFrameRef, readFrame, collectPreview, type FrameInput } from "../frameBackend";
 import { isDesktop, writeTextFilePath, pickSaveFilePath } from "../fileBridge";
@@ -31,12 +31,13 @@ export function frameToCsvText(f: FrameValue): string {
 }
 
 /** JSON has native number/boolean/null, so only a date and an error cell become
- *  display strings; everything else passes through as its own kind. */
+ *  strings. A date is written as ISO (the form every reader infers as a date, so the
+ *  round trip keeps the column's type); a serial with a time keeps it. */
 function cellToJsonValue(type: FrameColType, v: FrameCell): unknown {
   if (v === null) return null;
   if (isSolError(v)) return v.code;
   if (type === "date" && typeof v === "number" && Number.isFinite(v)) {
-    return formatDateSerial(v, DEFAULT_DATE_FORMAT);
+    return formatDateSerial(v, Number.isInteger(v) ? "YYYY-MM-DD" : "YYYY-MM-DDTHH:mm:ss");
   }
   return v;
 }

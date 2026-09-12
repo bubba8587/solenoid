@@ -3,7 +3,7 @@ import { trueAnyIn, strIn, strListIn, cubeIn, cubeOut, frameOut, readInput } fro
 import { parseCubeRecords, DEFAULT_CUBE_TEXT } from "../literalEditors";
 import { cubeFromColumns, recordsToCube, relateFramesToCube, relateCubeToFrame, cubeColumnFromValue, cubeRowCount, inferColumn, makeHeaders, frameFromRows, isCubeValue, isFrameValue, type CubeValue, type CubeCell, type FrameValue, type FrameCell } from "../frame";
 import { aggregateGroup, type AggOp } from "../frameVerbs";
-import { solError, type SolError } from "../errorValue";
+import { solError, isSolError, type SolError } from "../errorValue";
 
 /** An unwired wildcard row's typed cell: exactly one of the two literal maps holds it. */
 function literalCell(node: { literals: Record<string, number>; stringLiterals: Record<string, string> }, key: string): CubeCell {
@@ -243,10 +243,20 @@ export class CubeRollupNode extends ClassicPreset.Node {
     for (let i = 0; i < rows; i++) {
       flatCols.forEach((fc, k) => flatVals[k].push((fc.cells[i] ?? null) as FrameCell));
       const cell = nested.cells[i];
-      const sub = isFrameValue(cell) ? cell : null;
-      if (!sub) { rolled.push(null); continue; }
-      const valueCol = sub.columns.find((c) => c.name === col);
-      rolled.push(valueCol ? aggregateGroup(valueCol.values, this.agg) : solError("#REF!", `column "${col}" not found in nested frame`));
+      // A child is a frame OR a cube (the readers nest cubes after A'); a cube's flat cells
+      // roll up, a nested cell inside them is the loud #SHAPE!.
+      const values: FrameCell[] | SolError | null = isFrameValue(cell)
+        ? (cell.columns.find((c) => c.name === col)?.values ?? solError("#REF!", `column "${col}" not found in nested frame`))
+        : isCubeValue(cell)
+          ? (() => {
+              const cc = cell.columns.find((c) => c.name === col);
+              if (!cc) return solError("#REF!", `column "${col}" not found in nested cube`);
+              if (cc.cells.some((v) => isCubeValue(v) || isFrameValue(v) || Array.isArray(v))) return solError("#SHAPE!", `column "${col}" holds nested cells; roll up a flat column`);
+              return cc.cells as FrameCell[];
+            })()
+          : null;
+      if (values === null) { rolled.push(null); continue; }
+      rolled.push(isSolError(values) ? values : aggregateGroup(values, this.agg));
     }
     const names = makeHeaders([...flatCols.map((c) => c.name), outName], flatCols.length + 1);
     const result: FrameValue = {

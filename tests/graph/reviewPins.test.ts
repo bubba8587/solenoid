@@ -317,3 +317,29 @@ describe("review pins: CSV formula injection", () => {
     expect(csv).toContain("plain,4");
   });
 });
+
+describe("review pins: Cube Rollup over a cube child; Write JSON dates", () => {
+  it("a nested cube child rolls up like a frame child; a nested cell inside it is #SHAPE!", async () => {
+    const { CubeRollupNode } = await import("../../src/graph/nodes/cube");
+    const { cubeFromColumns } = await import("../../src/graph/frame");
+    const cube = cubeFromColumns([
+      { name: "p", cells: ["a", "b"], type: "string" },
+      { name: "orders", cells: [cubeFromColumns([{ name: "amt", cells: [1, 2], type: "number" }]), cubeFromColumns([{ name: "amt", cells: [[5]] }])] },
+    ]);
+    const n = new CubeRollupNode({ agg: "sum" } as never) as unknown as { stringLiterals: Record<string, string>; data: (i: Record<string, unknown[]>) => { frame: { columns: { values: unknown[] }[] } } };
+    n.stringLiterals.nested = "orders"; n.stringLiterals.column = "amt";
+    const out = n.data({ cube: [cube] });
+    const rolled = out.frame.columns[out.frame.columns.length - 1].values;
+    expect(rolled[0]).toBe(3);
+    expect((rolled[1] as { code?: string })?.code).toBe("#SHAPE!");
+  });
+  it("Write JSON writes a date column as ISO so it reads back as a date", async () => {
+    const { frameToJsonText } = await import("../../src/graph/nodes/sink");
+    const { jsonToFrame } = await import("../../src/graph/nodes/connection");
+    const f = { __frame: true as const, columns: [{ name: "d", type: "date" as const, values: [46027] }] };
+    const text = frameToJsonText(f as never);
+    expect(text).toContain("2026-01-05");
+    const back = jsonToFrame(text) as { columns: { type: string }[] };
+    expect(back.columns[0].type).toBe("date");
+  });
+});
