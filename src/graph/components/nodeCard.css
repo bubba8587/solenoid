@@ -667,6 +667,20 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   box-sizing: border-box;
 }
 
+/* A hero box that holds a CHIP (chart, frame, cube, document, diagram, error) instead
+   of text. The plain box is a block whose 18px line box baseline-aligns an inline chip,
+   which lands it a few px low; that is why "center the chip" kept coming back as a
+   per-card inline style. This ONE rule makes the row a flex row: the chip centers on the
+   cross axis and sits at the end like a right-aligned value, and min-height keeps the
+   box the height of a text value box so chip cards line up with value cards. Cards
+   never restate this inline (sourceInvariants pins it). */
+.solenoid-node__display-value--chip {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: calc(1lh + 14px);
+}
+
 .solenoid-node__display-value--empty {
   color: var(--text-muted);
   font-weight: 400;

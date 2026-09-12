@@ -46,7 +46,7 @@ function makeFigureComponent<N extends FigureNode>(
           : <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>)}
         {/* Collapsed → the hero box shows just the [Chart] chip (opens the popup). */}
         {cv && (
-          <div className="solenoid-node__collapsed-only solenoid-node__display-value" style={{ justifyContent: "flex-end" }}>
+          <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip">
             <ChartChip value={cv} />
           </div>
         )}

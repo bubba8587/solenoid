@@ -101,7 +101,7 @@ export function MermaidComponent({ data, emit }: NodeProps<MermaidNodeType>) {
       {/* Collapsed: the leading socket is gone, so the pill's input dot comes from the
           collapsed InlineInputs (the Chart card's pattern), and the Diagram chip sits beside it. */}
       {collapsed && <InlineInputs node={data} emit={emit} keys={["source"]} />}
-      <div className="solenoid-node__collapsed-only solenoid-node__display-value" style={{ justifyContent: "flex-end" }}>
+      <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip">
         <DiagramChip value={{ __mermaid: true, source, title: data.label }} pinNodeId={data.id} />
       </div>
     </NodeShell>

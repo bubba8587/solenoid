@@ -46,8 +46,8 @@ function SwitchValue({ value, label, nodeId }: { value: unknown; label?: string;
   if (isFrameValue(value)) return <FrameDisplay frame={value} label={label} />;
   // A display-value box so NodeCard measures it (--out-socket-top centers the
   // output socket on it).
-  if (isCubeValue(value)) return <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}><CubeChip value={value} label={label} size="sm" accent="var(--sock-cube)" /></div>;
-  if (isChartValue(value)) return <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}><ChartChip value={value} label={label} /></div>;
+  if (isCubeValue(value)) return <div className="solenoid-node__display-value solenoid-node__display-value--chip"><CubeChip value={value} label={label} size="sm" accent="var(--sock-cube)" /></div>;
+  if (isChartValue(value)) return <div className="solenoid-node__display-value solenoid-node__display-value--chip"><ChartChip value={value} label={label} /></div>;
   if (isMermaidValue(value)) return <MermaidView source={value.source} />;
   if (isSvgValue(value)) return <SvgFigure value={value} height={120} />;
   if (isLambdaValue(value)) return <div className="solenoid-node__display-value">{formatLambda(value)}</div>;

@@ -36,7 +36,7 @@ export function MergePlotsComponent({ data, emit }: NodeProps<MergePlotsNodeType
       <ExtensibleInputs node={data} emit={emit} valueKeys={data.plotKeys()} addLabel="+ Add plot" />
       <div className="solenoid-node__figure" style={{ position: "relative", marginTop: 4, height: H }}>
         {err ? (
-          <div className="solenoid-node__display-value" style={{ justifyContent: "flex-end" }}><ErrorChip err={err} /></div>
+          <div className="solenoid-node__display-value solenoid-node__display-value--chip"><ErrorChip err={err} /></div>
         ) : !hasData ? (
           <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>
         ) : !collapsed && cv ? (
@@ -50,7 +50,7 @@ export function MergePlotsComponent({ data, emit }: NodeProps<MergePlotsNodeType
       {/* Options: a matplotlib-style string, or wire a Chart Builder (the field hides when wired). */}
       <InlineInputs node={data} emit={emit} keys={["options"]} />
       {/* Collapsed → the hero box shows just the [Chart] chip (opens the popup). */}
-      {cv && <div className="solenoid-node__collapsed-only solenoid-node__display-value" style={{ justifyContent: "flex-end" }}><ChartChip value={cv} /></div>}
+      {cv && <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip"><ChartChip value={cv} /></div>}
     </NodeShell>
   );
 }

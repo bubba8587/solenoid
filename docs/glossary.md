@@ -236,7 +236,8 @@ Geometry (offsets, z-index, reflow) is `layout-chrome.md`; this is term → hand
 - **Cables** — `flow/FlowCableEdge.tsx` (a `<g>` in RF's shared edge svg); paths from
   `cablePaths.ts`, ribbons from `ribbonCable.ts`.
 - **Hero box** — the large result box at a node's bottom. `.solenoid-node__io-row--hero`; value
-  renders as `.solenoid-node__display-value`.
+  renders as `.solenoid-node__display-value`; a chip in it (chart, frame, diagram, error) adds
+  `--chip`, the one flex row that centers it (`heroChipRow` in sourceInvariants; never inline).
 - **Pills** — (1) button-group pills (radius-999 clusters, segmented toggles); (2) merged-socket
   pills on a collapsed group (`.solenoid-node__output-pill` etc.).
 - **App menu** (mobile) — the round ⋯ overflow button opening the File sheet.

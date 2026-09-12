@@ -829,3 +829,34 @@ describe("frameLabelGrammar — frame-input labels follow the column-role gramma
     expect(offenders, "labels violating the frameLabelGrammar grammar (rules.md)").toEqual([]);
   });
 });
+
+// ─── heroChipRow: a chip in a hero box rides the shared flex row ─────────────
+// `.solenoid-node__display-value` is a BLOCK sized for an 18px text line; an inline chip
+// baseline-aligns in it and lands ~3px low. Five separate "center the chip" fixes were
+// per-card inline styles (a `justifyContent` without `display: flex` does nothing), and
+// each new chart card copied a broken one. The ONE home is the
+// `solenoid-node__display-value--chip` modifier (nodeCard.css); no card restates it.
+describe("heroChipRow: hero-box chips use the shared --chip row, never an inline alignment", () => {
+  const COMPONENTS = path.join(SRC, "components");
+  const CHIP_TAG = /<(ChartChip|DiagramChip|DocumentChip|ErrorChip)[\s/>]/;
+  const INLINE_ALIGN = /style=\{\{[^}]*\b(justifyContent|alignItems|display)\b/;
+  it("no component sets justifyContent / alignItems / display inline on a display-value box", () => {
+    const offenders: string[] = [];
+    for (const file of walk(COMPONENTS)) {
+      fs.readFileSync(file, "utf8").split(/\r?\n/).forEach((line, i) => {
+        if (line.includes("solenoid-node__display-value") && INLINE_ALIGN.test(line)) offenders.push(`${path.relative(SRC, file)}:${i + 1}`);
+      });
+    }
+    expect(offenders, "use className solenoid-node__display-value--chip (heroChipRow)").toEqual([]);
+  });
+  it("every chart-kind card's chip row carries the --chip modifier", () => {
+    const missing: string[] = [];
+    for (const file of walk(COMPONENTS)) {
+      fs.readFileSync(file, "utf8").split(/\r?\n/).forEach((line, i) => {
+        if (!line.includes("solenoid-node__display-value") || !CHIP_TAG.test(line)) return;
+        if (!line.includes("solenoid-node__display-value--chip")) missing.push(`${path.relative(SRC, file)}:${i + 1}`);
+      });
+    }
+    expect(missing, "a chip row without the --chip modifier (heroChipRow)").toEqual([]);
+  });
+});

@@ -32,7 +32,7 @@ export function GanttComponent({ data, emit }: NodeProps<GanttNodeType>) {
       <InlineInputs node={data} emit={emit} keys={["schedule", "baseline", "holidays", "weekend_code", "status", "options"]} />
       <div className="solenoid-node__section-divider" />
       {chart
-        ? <div className="solenoid-node__display-value" style={{ justifyContent: "flex-end" }}><ChartChip value={chart} /></div>
+        ? <div className="solenoid-node__display-value solenoid-node__display-value--chip"><ChartChip value={chart} /></div>
         : <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>}
     </NodeShell>
   );

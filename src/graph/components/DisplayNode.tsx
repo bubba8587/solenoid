@@ -126,7 +126,7 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
         <CubeDisplay cube={v} label={nodeDisplayName(data)} full={full} />
       ) : isChart ? (
         !full ? (
-          <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}><ChartChip value={v} /></div>
+          <div className="solenoid-node__display-value solenoid-node__display-value--chip"><ChartChip value={v} /></div>
         ) : (
           // Every full chart (record included) gets the same expand affordance — the
           // popup renders the value through the SAME ChartFigure path, so no op is left
@@ -140,7 +140,7 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
         )
       ) : isMermaid ? (
         !full ? (
-          <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}><DiagramChip value={v} /></div>
+          <div className="solenoid-node__display-value solenoid-node__display-value--chip"><DiagramChip value={v} /></div>
         ) : (
           <MermaidView source={v.source} />
         )

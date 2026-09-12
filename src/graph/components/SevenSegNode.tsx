@@ -15,12 +15,12 @@ export function SevenSegComponent({ data, emit }: NodeProps<SevenSegNodeType>) {
       <InlineInputs node={data} emit={emit} />
       <div className="solenoid-node__section-divider" />
       {!collapsed && (
-        <div className="solenoid-node__display-value" style={{ justifyContent: "center", padding: "6px 0" }}>
+        <div className="solenoid-node__display-value" style={{ padding: "6px 0" }}>
           <SevenSegView text={text} width={(data.width ?? 200) - 22} />
         </div>
       )}
       {cv && (
-        <div className="solenoid-node__collapsed-only solenoid-node__display-value" style={{ justifyContent: "flex-end" }}>
+        <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip">
           <ChartChip value={cv} />
         </div>
       )}

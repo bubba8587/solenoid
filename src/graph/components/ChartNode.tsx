@@ -105,7 +105,7 @@ export function ChartComponent({ data, emit }: NodeProps<ChartNodeType>) {
       />
       {/* Collapsed → the hero box shows just the [Chart] chip (opens the popup),
           right-aligned like every other value chip. */}
-      <div className="solenoid-node__collapsed-only solenoid-node__display-value" style={{ justifyContent: "flex-end" }}><ChartChip value={cv} /></div>
+      <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip"><ChartChip value={cv} /></div>
     </NodeShell>
   );
 }
