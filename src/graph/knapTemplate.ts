@@ -101,8 +101,41 @@ export function extractKnapVariables(body: string): string[] {
 export function embedBareVariables(body: string, inputs: readonly string[]): string {
   if (inputs.length === 0 || !body.includes("{{")) return body;
   const wired = new Set(inputs);
-  return body.replace(/\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*(\|\s*highlight\s*)?\}\}/g, (tag, name: string, hl?: string) =>
-    wired.has(name) ? `\`=${name}${hl ? "!" : ""}\`` : tag);
+  // Walk the tags in order with the open `for` iterators as a stack (and `set` names
+  // once seen), so `{{ item }}` inside `{% for item in list %}` stays the loop's own.
+  const shadow: string[] = [];
+  const setNames = new Set<string>();
+  return body.replace(/\{%\s*([\s\S]*?)\s*%\}|\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*(\|\s*highlight\s*)?\}\}/g, (tag, block?: string, name?: string, hl?: string) => {
+    if (block !== undefined) {
+      const forM = /^for\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\b/.exec(block);
+      if (forM) shadow.push(forM[1]);
+      else if (/^endfor\b/.test(block)) shadow.pop();
+      else { const setM = /^set\s+([A-Za-z_][A-Za-z0-9_]*)\s*=/.exec(block); if (setM) setNames.add(setM[1]); }
+      return tag;
+    }
+    if (!name || !wired.has(name) || shadow.includes(name) || setNames.has(name)) return tag;
+    return `\`=${name}${hl ? "!" : ""}\``;
+  });
+}
+
+/** The names a template binds itself (`for` iterators, `loop`, `set` names), collected
+ *  over the whole body; scope-free on purpose, so a Note that loops over a frontmatter
+ *  list never parks its own iterator as an unknown tag. */
+function templateLocals(body: string): Set<string> {
+  const out = new Set<string>();
+  const { ast } = parse(body);
+  const visit = (nodes: ASTNode[]) => {
+    for (const n of nodes) {
+      switch (n.type) {
+        case "if": visit(n.consequent); for (const b of n.elseifs) visit(b.body); if (n.alternate) visit(n.alternate); break;
+        case "for": out.add(n.iterator); out.add("loop"); visit(n.body); break;
+        case "set": out.add(n.variable); break;
+        default: break;
+      }
+    }
+  };
+  visit(ast);
+  return out;
 }
 
 // ─── Solenoid value → template value ─────────────────────────────────────────
@@ -187,8 +220,8 @@ export interface KnapRender {
   errors: TemplateError[];
 }
 
-const HOLD = "";
-const HOLD_RE = /(\d+)/g;
+const HOLD = "\u0001";
+const HOLD_RE = /\u0001(\d+)\u0001/g;
 
 /** An interpolation `{{ … }}` whose ROOT name is NOT a variable stays literal text
  *  through the render — bare (`{{ x }}`), dotted (`{{ record.name }}`) or filtered
@@ -216,7 +249,7 @@ export async function renderKnap(body: string, variables: Record<string, unknown
     const r = await engine.render(body, { variables });
     return { output: r.output, errors: r.errors };
   }
-  const { src, held } = holdUnknownTags(body, new Set(Object.keys(variables)));
+  const { src, held } = holdUnknownTags(body, new Set([...Object.keys(variables), ...templateLocals(body)]));
   const r = await engine.render(src, { variables });
   return { output: r.output.replace(HOLD_RE, (_m, i: string) => held[Number(i)] ?? ""), errors: r.errors };
 }
@@ -242,13 +275,17 @@ export async function renderKnapPages(
 ): Promise<{ pages: KnapPage[]; errors: TemplateError[]; total: number }> {
   const pages: KnapPage[] = [];
   const total = records.length;
+  // Names are file names: a second record rendering the same name gets " (2)", so a
+  // batch never writes two pages into one note (overwriting the first).
+  const taken = new Set<string>();
+  const uniq = (n: string) => { let k = n, i = 2; while (taken.has(k.toLowerCase())) k = `${n} (${i++})`; taken.add(k.toLowerCase()); return k; };
   for (let i = 0; i < Math.min(total, MAX_PAGES); i++) {
     const vars = { ...variables, record: records[i], index: i + 1 };
     const r = await renderKnap(body, vars);
     if (r.errors.length) return { pages, errors: r.errors, total };
     const n = await renderKnap(nameTemplate, vars);
     if (n.errors.length) return { pages, errors: n.errors, total };
-    pages.push({ name: n.output.trim() || String(i + 1), body: r.output });
+    pages.push({ name: uniq(n.output.trim() || String(i + 1)), body: r.output });
   }
   return { pages, errors: [], total };
 }

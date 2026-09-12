@@ -303,7 +303,9 @@ export class SeriesNode extends ClassicPreset.Node {
    *  output socket to match the computed rank (value-driven, so it runs OUTSIDE data()
    *  via a microtask; headless runs — no active editor — keep the last socket). */
   private reconcileRank(result: unknown): void {
-    if (isSolError(result)) return; // an error says nothing about shape
+    // An error, a wired blank or an empty result says nothing about shape: a transient
+    // blank on Rows must not flip a 2-D SEQUENCE to rank 1 and sever its table cables.
+    if (isSolError(result) || result == null || (Array.isArray(result) && result.length === 0)) return;
     const want: 1 | 2 = Array.isArray(result) && result.length > 0 && Array.isArray(result[0]) ? 2 : 1;
     if (want === this.lastRank) return;
     this.lastRank = want;
