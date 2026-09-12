@@ -343,3 +343,17 @@ describe("review pins: Cube Rollup over a cube child; Write JSON dates", () => {
     expect(back.columns[0].type).toBe("date");
   });
 });
+
+describe("review pins: the exported webpage", () => {
+  it("escapes a user-typed title or name into text", async () => {
+    const { escapeHtml } = await import("../../src/graph/reportExport");
+    expect(escapeHtml('<img src=x onerror="alert(1)">')).toBe("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;");
+    expect(escapeHtml("Q3 & beyond")).toBe("Q3 &amp; beyond");
+  });
+  it("Mermaid renders in strict mode", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync("src/graph/components/MermaidView.tsx", "utf8");
+    expect(src).toMatch(/securityLevel: "strict"/);
+    expect(src).not.toMatch(/securityLevel: "loose"/);
+  });
+});

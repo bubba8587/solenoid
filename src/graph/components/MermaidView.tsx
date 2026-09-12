@@ -96,7 +96,9 @@ export function MermaidView({ source, className }: { source: string; className?:
       try {
         const config = {
           startOnLoad: false,
-          securityLevel: "loose",
+          // strict (Mermaid's default): the source is a wired socket or a literal that rides in
+          // any shared document, so labels are text and click/href callbacks stay inert.
+          securityLevel: "strict",
           fontFamily: "inherit",
           theme: "base",
           themeVariables: buildThemeVariables(appThemeStore.getMode()),
