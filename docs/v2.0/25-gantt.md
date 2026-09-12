@@ -814,9 +814,12 @@ provider seam) and § Pointer gestures (`nokeys`)):
   seam feeding the webpage export and Write to Obsidian), the `gantt` Chart Builder target, the
   `.nokeys` opt-out; Local File's `plan` socket (MSPDI and grammar-CSV import); three seeds.
 
-**Not built, by name:** per-task calendars and hours beyond one working pattern (Minutes mode
-takes one interval set from `hours`); split remainders for out-of-sequence progress (the whole
-bar moves after the status date); ALAP; a 24-hour calendar's midnight finish display; Project-exported goldens
+**Built after the first ledger (same night):** per-task calendars (rule 1; links cross calendars
+by instant), elapsed durations and lags (rule 5), ALAP with a deadline pulling it earlier (rules
+7, 10), split remainders and actual starts (rule 13, both of Project's options on the card),
+multiple critical paths on the card, a summary's SS/SF late-start bound, the § 10 call-2
+alternative (a flat Links frame as a second input), the figure's split bars, minutes-mode
+midnight finishes, the tree grid keyboard map. **Not built, by name:** Project-exported goldens
 (the author's trial — the corpus is hand-authored until then); a Rust twin (not planned, § 7.4);
 the § 12 adjacent packs (XER / `.gan` read, MSPDI write, earned value, resources, inactive and
 recurring tasks, P6 float definitions, a by-row portfolio mode); the calendar figure sibling.

@@ -55,6 +55,12 @@ Everything landed on `develop`; nothing pushed. The plan's § 10 calls were take
   keyboard map (Agent 2: roving tabindex, arrows / Home / End, Left / Right fold and unfold a
   phase, Enter / Space toggle, the active row's bar scrolled into view, aria-level / -selected /
   -expanded, all behind `.nokeys`).
+- Second wind (the author: "the entirety, both solutions"): the engine gained per-task calendars
+  (each task its own index space, links crossing by instant), elapsed time, ALAP, split
+  remainders with an Actual start (Project's split-or-move option as the card's fourth toggle),
+  MSPDI's ALAP / elapsed / ActualStart / CalendarUID; Agent 3 built the § 10 call-2 alternative
+  (a Links frame input) and found Unnest lacked a list-cell branch (the plan assumed it); Agent
+  2 built split bars and minutes-mode midnight finishes.
 - Test lock between agents moved from a doc line (per-worktree, signals nobody) to the shared
   file `.dev/test-lock` in the main checkout.
 - Open for the author: the eyeball list and the engine follow-ups in `backlog.md` § Gantt;

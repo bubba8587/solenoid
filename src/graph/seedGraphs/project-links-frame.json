@@ -8,7 +8,7 @@
       "id": "note",
       "type": "NoteNode",
       "x": -60,
-      "y": -230,
+      "y": -121,
       "init": {
         "label": "Two-frame plan",
         "body": "# Dependencies as their own table\nA plain **Frame Input** can't hold a list in a cell, so this plan keeps the tasks and their dependencies in two frames. **Tasks** is just Task and Duration. **Links** is one row per dependency: Successor, Predecessor, Type and Lag.\n\nWire both into **Schedule**: the links add to each task's predecessors, and the rest works the same as a Cube plan. A link naming a task that isn't in Tasks is an error.\n\nThe other form is a Cube Input with a Predecessors list cell (see the Remodel example). Use whichever fits your data.",
@@ -21,7 +21,7 @@
       "id": "tasks",
       "type": "FrameInputNode",
       "x": 60,
-      "y": 80,
+      "y": 167,
       "init": {
         "label": "Tasks",
         "frameText": "[{\"name\": \"Task\", \"type\": \"string\", \"values\": [\"Demolition\", \"Plumbing\", \"Electrical\", \"Drywall\", \"Paint\", \"Cabinets\"]}, {\"name\": \"Duration\", \"type\": \"number\", \"values\": [2, 3, 2, 2, 2, 4]}]"
@@ -31,7 +31,7 @@
       "id": "links",
       "type": "FrameInputNode",
       "x": 60,
-      "y": 380,
+      "y": 426,
       "init": {
         "label": "Links",
         "frameText": "[{\"name\": \"Successor\", \"type\": \"string\", \"values\": [\"Plumbing\", \"Electrical\", \"Drywall\", \"Drywall\", \"Paint\", \"Cabinets\"]}, {\"name\": \"Predecessor\", \"type\": \"string\", \"values\": [\"Demolition\", \"Demolition\", \"Plumbing\", \"Electrical\", \"Drywall\", \"Drywall\"]}, {\"name\": \"Type\", \"type\": \"string\", \"values\": [\"FS\", \"FS\", \"FS\", \"FS\", \"FS\", \"FS\"]}, {\"name\": \"Lag\", \"type\": \"number\", \"values\": [0, 0, 0, 0, 0, 0]}]"
@@ -40,8 +40,8 @@
     {
       "id": "schedule",
       "type": "ScheduleNode",
-      "x": 440,
-      "y": 120,
+      "x": 394,
+      "y": 172,
       "init": {
         "label": "Schedule",
         "mode": "working"
@@ -50,8 +50,8 @@
     {
       "id": "ganttFigure",
       "type": "GanttNode",
-      "x": 800,
-      "y": 120,
+      "x": 719,
+      "y": 327,
       "init": {
         "label": "Gantt"
       }
@@ -59,8 +59,8 @@
     {
       "id": "ganttDisplay",
       "type": "DisplayNode",
-      "x": 800,
-      "y": 420,
+      "x": 1044,
+      "y": 257,
       "size": {
         "w": 620,
         "h": 360

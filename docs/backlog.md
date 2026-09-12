@@ -130,16 +130,9 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 - [ ] **Project-exported goldens** (author): export MSPDI from a Project trial / 2024 for the two
   seeds' plans and drop them in `fixtures/schedule/` as `project-*.mspdi.xml`; the parity test
   picks them up; name any disagreement in `divergences.json`. Until then the corpus is authored.
-- [ ] **Out-of-sequence progress: split the remainder** (engine): today the whole bar moves after
-  the status date; Project splits the done part from the remainder. Needs a segment list on the
-  scheduled task + the figure's split bar.
-- [ ] **Per-task calendars / hours** (engine, Minutes mode): one interval set from `hours`; a
-  `Calendar` column or per-task hours is the MSPDI `CalendarUID` case.
 - [ ] **Minutes-mode cells show times**: a date column formats date-only, so a 13:00 start reads
   as its day; the FC's datetime format is the workaround. Consider stamping a datetime format
   on Start / Finish when precision is Minutes.
-- [ ] **ALAP** (rule 10) stays a named `unsupported` at import; the multiple-critical-paths option
-  is on the card (One path | Every path).
 - [ ] **Adjacent packs, by author promotion** (§ 12): XER and `.gan` read; MSPDI write as a sink;
   earned value; resources + effort-driven recalculation; inactive and recurring tasks; the
   by-row portfolio mode. Reopen only when a user arrives with such a file.
