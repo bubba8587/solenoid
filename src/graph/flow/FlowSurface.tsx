@@ -707,8 +707,15 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         if (dx !== 0 || dy !== 0) void moveGroupMembers(s.editor, s.view, model, dx, dy, true);
       }
       for (const n of dragged) dragLastPos.current.set(n.id, { ...n.position });
-      // Tow standoff-tied neighbors live, one solve per frame.
-      if (s.standoffSettle && !standoffStore.isEmpty() && !standoffRaf.current) {
+      // Tow standoff-tied neighbors live, one solve per frame — only when a dragged node (or
+      // a member of a dragged group) is tied; ties are sparse, so a plain drag costs nothing.
+      const tied = standoffStore.participants();
+      const touchesTie = !standoffStore.isEmpty() && dragged.some((n) => {
+        if (tied.has(n.id)) return true;
+        const model = s.editor.getNode(n.id);
+        return model instanceof GroupNode && model.members.some((m) => tied.has(m));
+      });
+      if (s.standoffSettle && touchesTie && !standoffRaf.current) {
         const pinned = new Set(dragged.map((n) => n.id));
         standoffRaf.current = requestAnimationFrame(() => {
           standoffRaf.current = 0;

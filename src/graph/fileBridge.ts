@@ -136,8 +136,16 @@ export async function listVaultMarkdownFiles(root: string, maxDepth = 6): Promis
   return out.sort((a, b) => a.localeCompare(b));
 }
 
+/** True when a vault-relative path stays inside the vault: no empty, "." or ".." segment,
+ *  no drive or root prefix. A saved document can carry any string here. */
+export function isInsideVault(relPath: string): boolean {
+  if (relPath === "" || /^[\/]/.test(relPath) || /^[A-Za-z]:/.test(relPath)) return false;
+  return relPath.split(/[\/]/).every((seg) => seg !== "" && seg !== "." && seg !== "..");
+}
+
 /** Read a vault-relative file ("notes/weekly.md") as text. Desktop only. */
 export async function readVaultFile(root: string, relPath: string): Promise<string> {
+  if (!isInsideVault(relPath)) throw new Error(`"${relPath}" is not inside the vault`);
   const path = await fs().join(root, ...relPath.split("/"));
   return fs().readTextFile(path);
 }

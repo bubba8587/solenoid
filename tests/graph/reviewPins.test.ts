@@ -213,3 +213,15 @@ describe("review pins: a blank optional numeric argument is Excel's 0", () => {
     expect(resolveExcelFunction("DATE")!(2026, 1, null)).toBe(resolveExcelFunction("DATE")!(2025, 12, 31));
   });
 });
+
+describe("review pins: vault reads stay inside the vault", () => {
+  it("a saved file name with .. or a root prefix is refused", async () => {
+    const { isInsideVault } = await import("../../src/graph/fileBridge");
+    expect(isInsideVault("notes/weekly.md")).toBe(true);
+    expect(isInsideVault("../../.ssh/config")).toBe(false);
+    expect(isInsideVault("notes/../../x.md")).toBe(false);
+    expect(isInsideVault("/etc/passwd")).toBe(false);
+    expect(isInsideVault("C:/secrets.md")).toBe(false);
+    expect(isInsideVault("")).toBe(false);
+  });
+});
