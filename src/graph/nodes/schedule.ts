@@ -42,7 +42,7 @@ export class ScheduleNode extends ClassicPreset.Node {
     cube: "The rows in their original order with Start, Finish, Float, Critical, Free Float, the early and late dates, Driving and Late appended. Float is how many days a task can slip without moving the finish, Critical marks the tasks whose float is 0, and Driving names the predecessor that set the start.",
     finish: "The last finish.",
     diagnostics: "One row per finding, under plain names: tasks with no predecessor or successor, negative float, a typed start that held, leads and lags, long tasks, work that should have started.",
-    gantt: "Mermaid gantt source for the schedule. Wire it into a Mermaid node to draw it, or into a Report.",
+    gantt: "Mermaid gantt source for the schedule: a Mermaid node draws it, and a Report or Write to Obsidian embeds it as a fence.",
   };
 
   label: string;

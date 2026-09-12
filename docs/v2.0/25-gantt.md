@@ -816,8 +816,7 @@ provider seam) and § Pointer gestures (`nokeys`)):
 
 **Not built, by name:** per-task calendars and hours beyond one working pattern (Minutes mode
 takes one interval set from `hours`); split remainders for out-of-sequence progress (the whole
-bar moves after the status date); late bounds from a summary's SS/SF successors; multiple
-critical paths and ALAP; a 24-hour calendar's midnight finish display; Project-exported goldens
+bar moves after the status date); ALAP; a 24-hour calendar's midnight finish display; Project-exported goldens
 (the author's trial — the corpus is hand-authored until then); a Rust twin (not planned, § 7.4);
 the § 12 adjacent packs (XER / `.gan` read, MSPDI write, earned value, resources, inactive and
 recurring tasks, P6 float definitions, a by-row portfolio mode); the calendar figure sibling.

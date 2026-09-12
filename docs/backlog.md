@@ -133,14 +133,14 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 - [ ] **Out-of-sequence progress: split the remainder** (engine): today the whole bar moves after
   the status date; Project splits the done part from the remainder. Needs a segment list on the
   scheduled task + the figure's split bar.
-- [ ] **Summary SS/SF late bounds** (engine): a successor SS/SF-linked to a phase bounds the
-  phase's late START, which cannot be pushed onto one child; only FS/FF bounds reach the leaves.
 - [ ] **Per-task calendars / hours** (engine, Minutes mode): one interval set from `hours`; a
   `Calendar` column or per-task hours is the MSPDI `CalendarUID` case.
 - [ ] **Minutes-mode cells show times**: a date column formats date-only, so a 13:00 start reads
   as its day; the FC's datetime format is the workaround. Consider stamping a datetime format
   on Start / Finish when precision is Minutes.
-- [ ] **Multiple critical paths / ALAP** (engine): rule 7's per-tail late dates and rule 10.
+- [ ] **Multiple critical paths on the card** (the engine option `multipleCriticalPaths` exists,
+  tested; no control reaches it yet — a third toggle or an options key). ALAP (rule 10) stays a
+  named `unsupported` at import.
 - [ ] **Adjacent packs, by author promotion** (§ 12): XER and `.gan` read; MSPDI write as a sink;
   earned value; resources + effort-driven recalculation; inactive and recurring tasks; the
   by-row portfolio mode. Reopen only when a user arrives with such a file.

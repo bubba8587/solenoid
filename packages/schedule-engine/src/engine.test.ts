@@ -160,6 +160,39 @@ describe("schedule — the forward and backward passes", () => {
     expect(o.diagnostics.some((d) => d.check === "Should have finished")).toBe(false);
   });
 
+  it("a summary's SS successor bounds the summary's own float, never one child's late dates", () => {
+    // Phase (A 2d, B 3d) starts Mon 5; T starts the same day as the phase (SS) and must finish by Wed 7.
+    const o = run([
+      { ...t("Phase", 0), children: [t("A", 2), t("B", 3, ["A"])] },
+      t("T", 3, [["Phase", "SS", 0]], { finish: S(2026, 1, 7) }),
+      t("Tail", 1, ["Phase"]),
+    ]);
+    expect(byName(o, "T").float).toBe(0);                 // Mon..Wed exactly
+    expect(byName(o, "B").float).toBe(0);                 // B ends the phase → the tail
+    expect(byName(o, "A").float).toBe(0);
+    expect(byName(o, "Phase").float).toBe(0);
+    // Now make T's ceiling impossible: the phase's late START goes negative, the children keep their own float.
+    const bad = run([
+      { ...t("Phase", 0), children: [t("A", 2), t("B", 3, ["A"])] },
+      t("T", 3, [["Phase", "SS", 0]], { finish: S(2026, 1, 6) }),
+      t("Tail", 5, ["Phase"]),
+    ]);
+    expect(byName(bad, "Phase").float).toBe(-1);
+    expect(byName(bad, "A").float).toBe(0);
+    expect(byName(bad, "Phase").critical).toBe(true);
+  });
+
+  it("multiple critical paths: every independent chain is critical when asked; one finish otherwise", () => {
+    const tasks = [t("A", 5), t("B", 1), t("C", 1, ["B"])];
+    const one = run(tasks);
+    expect(one.tasks.map((x) => x.critical)).toEqual([true, false, false]);
+    expect(byName(one, "C").float).toBe(3);
+    const many = run(tasks, { multipleCriticalPaths: true });
+    expect(many.tasks.map((x) => x.critical)).toEqual([true, true, true]);
+    expect(byName(many, "C").float).toBe(0);
+    expect(iso(many.projectFinish)).toBe(iso(one.projectFinish));
+  });
+
   it("structural failures throw one error naming a member: a cycle, an unknown name, a duplicate, a bad duration, a child depending on its parent", () => {
     const err = (tasks: PlanTask[]) => { try { run(tasks); } catch (e) { return e as ScheduleError; } return null; };
     expect(err([t("A", 1, ["B"]), t("B", 1, ["A"])])?.message).toMatch(/loop/);

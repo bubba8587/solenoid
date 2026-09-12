@@ -60,6 +60,10 @@ export interface ScheduleInput {
   statusDate?: number | null;
   /** Total-float threshold at or below which a task is critical (default 0). */
   criticalSlack?: number;
+  /** Project's "Calculate multiple critical paths": every task with no successor is its own
+   *  tail (its late finish is its own early finish), so each independent chain is critical.
+   *  Default off: one project finish. */
+  multipleCriticalPaths?: boolean;
 }
 
 export interface ScheduledTask {

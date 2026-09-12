@@ -48,6 +48,9 @@ Everything landed on `develop`; nothing pushed. The plan's § 10 calls were take
   more mapper fixes from looking: a milestone on its predecessor's finish day is not a broken
   link (the calendar-day rule was too strict), and a phase's Duration is filled with its
   rolled-up working days so the grid's Days column is right.
+- Engine additions after the ledger was first written: `multipleCriticalPaths` (every
+  successor-less leaf is its own tail; no card control yet) and a summary's SS/SF successors
+  bounding the summary's own late start (its float, never a child's late dates).
 - Test lock between agents moved from a doc line (per-worktree, signals nobody) to the shared
   file `.dev/test-lock` in the main checkout.
 - Open for the author: the eyeball list and the engine follow-ups in `backlog.md` § Gantt;

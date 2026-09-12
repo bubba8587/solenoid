@@ -106,7 +106,7 @@ export function ganttPayloadFromSchedule(schedule: CubeValue | FrameValue, opts:
     const predecessorText_: Record<string, string> = {};
     for (const r of rows) {
       const start = num(r.cells.start), finish = num(r.cells.finish);
-      if (start === null || finish === null) throw solError("#VALUE!", `Gantt: "${r.name}" has no Start or Finish; wire the Schedule node's output`);
+      if (start === null || finish === null) throw solError("#VALUE!", `Gantt: "${r.name}" has no Start or Finish; it needs a Schedule node's output`);
       const summary = bool(r.cells.summary) || rows.some((x) => x.level === r.level + 1 && rows.indexOf(x) > rows.indexOf(r) && isChildOf(rows, r, x));
       const dur = num(r.cells.duration) ?? num(r.cells.days);
       const fl = num(r.cells.float);

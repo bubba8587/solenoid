@@ -109,13 +109,21 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
 
   // ── Backward ────────────────────────────────────────────────────────────────
   p.lf.fill(end);
+  if (input.multipleCriticalPaths) {
+    // Each successor-less leaf is its own tail: late = early there (rule 7's option).
+    for (let i = 0; i < n; i++) if (!tasks[i].summary && !outEdges[i].length && !tasks[i].children.length) p.lf[i] = p.ef[i];
+  }
+  // A summary's SS/SF successors bound its late START, which cannot be pushed onto one
+  // child (its start is the earliest child's); it only narrows the summary's own float.
+  const summaryLs = new Array<number>(n).fill(Infinity);
   for (let k = order.length - 1; k >= 0; k--) {
     const i = order[k];
     const t = tasks[i];
     if (t.finish != null) p.lf[i] = Math.min(p.lf[i], cal.indexFloor(t.finish) + 1);
     if (t.deadline != null) p.lf[i] = Math.min(p.lf[i], cal.indexFloor(t.deadline) + 1);
     if (t.summary) {
-      // A summary's late finish (from its successors) bounds every child's.
+      // A summary's late finish (from its FS/FF successors, its ceiling, its deadline) bounds
+      // every child's.
       for (const c of t.children) p.lf[c] = Math.min(p.lf[c], p.lf[i]);
       p.ls[i] = p.lf[i] - p.dur[i];
       continue;
@@ -123,7 +131,9 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
     p.ls[i] = p.lf[i] - p.dur[i];
     for (const e of inEdges[i]) {
       const v = linkLateFinish(e, lagOf(e), p.ls[i], p.lf[i], p.dur[e.from]);
-      if (v < p.lf[e.from]) p.lf[e.from] = v;
+      if (tasks[e.from].summary && (e.type === "SS" || e.type === "SF")) {
+        summaryLs[e.from] = Math.min(summaryLs[e.from], v - p.dur[e.from]);
+      } else if (v < p.lf[e.from]) p.lf[e.from] = v;
     }
   }
   // Summaries' late dates were pushed onto children after some children were visited
@@ -138,8 +148,8 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
   for (const i of order) {
     const t = tasks[i];
     if (t.summary) {
-      total[i] = Math.min(...t.children.map((c) => total[c]));
-      critical[i] = t.children.some((c) => critical[c]);
+      total[i] = Math.min(...t.children.map((c) => total[c]), summaryLs[i] - p.es[i]);
+      critical[i] = t.children.some((c) => critical[c]) || total[i] <= critLimit;
     } else critical[i] = total[i] <= critLimit && t.complete < 100;
   }
   const free = tasks.map((t, i) => {
