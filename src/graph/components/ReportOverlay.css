@@ -536,6 +536,7 @@ html.sol-report-docked .solenoid-cmdpalette {
   font-family: var(--font-mono);
   color: var(--text);
 }
+.report-pages__cap { color: var(--text-dim); font-size: 11px; white-space: nowrap; }
 
 /* The filters cheat-sheet: a searchable list; a row inserts its example. */
 .report-filters { width: 320px; max-height: 60vh; display: flex; flex-direction: column; }

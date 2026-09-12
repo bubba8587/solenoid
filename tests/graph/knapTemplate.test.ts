@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   hasKnapSyntax, extractKnapVariables, embedBareVariables, toTemplateValue, frameToTemplateRows, renderKnap, renderKnapPages, knapErrorText,
+  batchTruncation, MAX_PAGES,
 } from "../../src/graph/knapTemplate";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 import { makeDocument } from "../../src/graph/documentValue";
@@ -144,5 +145,32 @@ describe("renderKnapPages", () => {
     const r = await renderKnapPages("{% if x %}", {}, [{}], "");
     expect(r.pages).toEqual([]);
     expect(r.errors.length).toBeGreaterThan(0);
+  });
+  it("caps at MAX_PAGES and reports the true record total", async () => {
+    const records = Array.from({ length: MAX_PAGES + 12 }, (_, i) => ({ i }));
+    const r = await renderKnapPages("{{ index }}", {}, records, "");
+    expect(r.pages.length).toBe(MAX_PAGES);
+    expect(r.total).toBe(MAX_PAGES + 12);
+  });
+});
+
+describe("batchTruncation", () => {
+  it("flags a merge past the cap and reports shown of total", () => {
+    expect(batchTruncation(MAX_PAGES + 740)).toEqual({ truncated: true, shown: MAX_PAGES, total: MAX_PAGES + 740 });
+  });
+  it("is not truncated at or under the cap", () => {
+    expect(batchTruncation(300)).toEqual({ truncated: false, shown: 300, total: 300 });
+    expect(batchTruncation(MAX_PAGES)).toEqual({ truncated: false, shown: MAX_PAGES, total: MAX_PAGES });
+  });
+});
+
+describe("makeDocument carries the record total only when the batch was truncated", () => {
+  it("stamps total when it exceeds the page count", () => {
+    const pages = [{ name: "1", body: "a" }, { name: "2", body: "b" }];
+    expect(makeDocument("x", {}, undefined, "n", { pages, total: 1200 }).total).toBe(1200);
+  });
+  it("omits total when nothing was dropped", () => {
+    const pages = [{ name: "1", body: "a" }, { name: "2", body: "b" }];
+    expect(makeDocument("x", {}, undefined, "n", { pages, total: 2 }).total).toBeUndefined();
   });
 });

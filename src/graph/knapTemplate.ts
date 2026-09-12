@@ -226,23 +226,31 @@ export interface KnapPage { name: string; body: string }
 /** The most pages one Report renders per compute; past it the rest are dropped. */
 export const MAX_PAGES = 500;
 
+/** Whether a mail merge of `total` records hit the page cap, and how many it drew. The Report
+ *  overlay's stepper and the Write to Obsidian sink read this to say "500 of N" when truncated. */
+export function batchTruncation(total: number): { truncated: boolean; shown: number; total: number } {
+  const truncated = total > MAX_PAGES;
+  return { truncated, shown: truncated ? MAX_PAGES : total, total };
+}
+
 /** The mail merge: one page per record, the body rendered with `record` (the row's
  *  `{column: value}`) and `index` (1-based) beside the host's variables, named by
  *  `nameTemplate` rendered the same way (blank → the index). The first failing page's
  *  errors stop the batch. */
 export async function renderKnapPages(
   body: string, variables: Record<string, unknown>, records: Record<string, unknown>[], nameTemplate: string,
-): Promise<{ pages: KnapPage[]; errors: TemplateError[] }> {
+): Promise<{ pages: KnapPage[]; errors: TemplateError[]; total: number }> {
   const pages: KnapPage[] = [];
-  for (let i = 0; i < Math.min(records.length, MAX_PAGES); i++) {
+  const total = records.length;
+  for (let i = 0; i < Math.min(total, MAX_PAGES); i++) {
     const vars = { ...variables, record: records[i], index: i + 1 };
     const r = await renderKnap(body, vars);
-    if (r.errors.length) return { pages, errors: r.errors };
+    if (r.errors.length) return { pages, errors: r.errors, total };
     const n = await renderKnap(nameTemplate, vars);
-    if (n.errors.length) return { pages, errors: n.errors };
+    if (n.errors.length) return { pages, errors: n.errors, total };
     pages.push({ name: n.output.trim() || String(i + 1), body: r.output });
   }
-  return { pages, errors: [] };
+  return { pages, errors: [], total };
 }
 
 /** One line per error, `line:column message`, for an error value or the preview. */

@@ -32,6 +32,9 @@ export interface DocumentValue {
   /** One page per record when the producing Report had `records` wired (a mail
    *  merge); a sink writes one note per page. Absent on a single document. */
   pages?: DocumentPage[];
+  /** The record count the merge came from, when it exceeds the rendered pages (the
+   *  batch hit MAX_PAGES): the sink says "500 of N". Absent when nothing was dropped. */
+  total?: number;
 }
 
 /** Brand check — DocumentValues cross React roots, so detect by brand, not structure. */
@@ -42,14 +45,17 @@ export function isDocumentValue(v: unknown): v is DocumentValue {
 /** Build a DocumentValue (the one place the brand is stamped). */
 export function makeDocument(
   body: string, refs: DocumentRefs = {}, frontmatter?: Record<string, unknown>, sourceId?: string,
-  extra?: { source?: string; pages?: DocumentPage[] },
+  extra?: { source?: string; pages?: DocumentPage[]; total?: number },
 ): DocumentValue {
+  const pageCount = extra?.pages?.length ?? 0;
   return {
     __document: true, body, refs,
     ...(frontmatter ? { frontmatter } : {}),
     ...(sourceId ? { sourceId } : {}),
     ...(extra?.source !== undefined ? { source: extra.source } : {}),
     ...(extra?.pages ? { pages: extra.pages } : {}),
+    // Only carry the total when the merge dropped pages past the cap.
+    ...(extra?.total !== undefined && extra.total > pageCount ? { total: extra.total } : {}),
   };
 }
 

@@ -234,7 +234,7 @@ export class ReportNode extends ClassicPreset.Node {
         const r = await renderKnapPages(src, this.templateVars, this._records, this.pageName);
         if (r.errors.length) { this._pages = null; return { document: solError("#SYNTAX!", knapErrorText(r.errors)) }; }
         this._pages = r.pages;
-        return { document: makeDocument(r.pages.map((p) => p.body).join(PAGE_SEPARATOR), refs, undefined, this.id, { pages: r.pages }) };
+        return { document: makeDocument(r.pages.map((p) => p.body).join(PAGE_SEPARATOR), refs, undefined, this.id, { pages: r.pages, total: r.total }) };
       }
       this._records = null; this._pages = null;
       const r = await renderKnap(src, this.templateVars);

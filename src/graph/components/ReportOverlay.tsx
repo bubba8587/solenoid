@@ -82,6 +82,9 @@ export function ReportOverlay() {
   const [pageIndex, setPageIndex] = useState(0);
   const pageCount = pages?.length ?? 0;
   const shownPage = pageCount ? Math.min(pageIndex, pageCount - 1) : 0;
+  // A merge past the page cap previews only the first pageCount of N records.
+  const recordTotal = node?.records?.length ?? 0;
+  const capped = recordTotal > pageCount;
   const previewText = pages ? (pages[shownPage]?.body ?? "") : rendered;
   // The filters cheat-sheet: click a row to insert `| filter` at the cursor.
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -408,6 +411,7 @@ export function ReportOverlay() {
                     <span className="report-pages__name" title={`${pages[shownPage].name}.md`}>{pages[shownPage].name}.md</span>
                     <span className="report-pages__count">{shownPage + 1} / {pageCount}</span>
                     <button type="button" className="report-pages__step" disabled={shownPage >= pageCount - 1} onClick={() => setPageIndex(shownPage + 1)} aria-label="Next page">›</button>
+                    {capped && <span className="report-pages__cap">first {pageCount} of {recordTotal}</span>}
                   </>
                 )}
                 {/* The page-name template names each page — it lives beside the stepper
