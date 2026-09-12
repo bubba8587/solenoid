@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { serialFromCivil } from "./serial";
 import { buildScale } from "./scale";
 import { layoutGantt } from "./layout";
+import { buildColumns } from "./columns";
 import type { GanttPayload, GanttTask, GanttViewOptions } from "./payload";
 
 const S = (y: number, m: number, d: number) => serialFromCivil(y, m, d);
@@ -167,5 +168,14 @@ describe("layout: links route with the endpoint conventions", () => {
     expect(link.points[0].x).toBeCloseTo(aEnd, 3);
     expect(link.arrow.x).toBeCloseTo(bStart, 3);
     expect(link.arrow.dir).toBe("right"); // points into the left edge
+  });
+});
+
+describe("grid columns at the value rung", () => {
+  it("a DD-MMM-YYYY date fits its column at 12px mono (0.6em per glyph) plus the cell padding", () => {
+    const cols = buildColumns(payload([task({ id: "A", start: S(2026, 1, 5), finish: S(2026, 1, 9) })], { columns: ["name", "start", "finish", "duration", "float", "complete"] }));
+    const glyph = 12 * 0.6;
+    for (const c of cols.filter((x) => x.key === "start" || x.key === "finish")) expect(c.width).toBeGreaterThanOrEqual(11 * glyph + 12);
+    for (const c of cols.filter((x) => x.align === "right")) expect(c.width).toBeGreaterThanOrEqual(3 * glyph + 12);
   });
 });

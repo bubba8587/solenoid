@@ -1377,7 +1377,7 @@ export class QuiverNode extends ClassicPreset.Node {
 
 // ─── Chart Builder ────────────────────────────────────────────────────────────
 
-const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale"] as const;
+const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "zoom"] as const;
 const CB_NUM_FIELDS = ["ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"] as const;
 
 export class ChartBuilderNode extends ClassicPreset.Node {
@@ -1407,6 +1407,7 @@ export class ChartBuilderNode extends ClassicPreset.Node {
     this.addInput("marker",    strIn("Markers"));
     this.addInput("pielabels", strIn("Pie labels"));
     this.addInput("radarscale", strIn("Radar scale"));
+    this.addInput("zoom",      strIn("Zoom"));
     this.addInput("ymin",      numIn("Y min"));
     this.addInput("ymax",      numIn("Y max"));
     this.addInput("linewidth", numIn("Line width"));
@@ -1430,6 +1431,7 @@ export class ChartBuilderNode extends ClassicPreset.Node {
       marker:    str("marker"),
       pielabels: str("pielabels"),
       radarscale: str("radarscale"),
+      zoom:      str("zoom"),
       ymin:      num("ymin"),
       ymax:      num("ymax"),
       linewidth: num("linewidth"),

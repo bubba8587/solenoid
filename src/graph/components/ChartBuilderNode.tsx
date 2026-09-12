@@ -111,6 +111,17 @@ const SELECT_KEYS: readonly {
       { value: "shared", label: "Scale: shared" },
     ],
   },
+  {
+    key: "zoom", label: "Zoom", clearValue: "fit",
+    options: [
+      { value: "fit", label: "Zoom: fit the width" },
+      { value: "day", label: "Zoom: days" },
+      { value: "week", label: "Zoom: weeks" },
+      { value: "month", label: "Zoom: months" },
+      { value: "quarter", label: "Zoom: quarters" },
+      { value: "year", label: "Zoom: years" },
+    ],
+  },
 ];
 const NUM_KEYS: readonly ChartBuilderKey[] = ["ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 

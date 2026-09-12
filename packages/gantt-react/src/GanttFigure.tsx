@@ -35,6 +35,7 @@ export interface GanttFigureProps {
 /** Canvas snapshot row cap, mirroring Record's 60-card cap (TablePopup precedent). */
 const CANVAS_CAP = 60;
 const MIN_GRID_W = 96;
+const MIN_TIMELINE_W = 80;
 const BUFFER_ROWS = 6;
 
 /** The figure entry point: the Gantt timeline, or the calendar month grid when
@@ -48,6 +49,7 @@ export function GanttFigure(props: GanttFigureProps) {
 
 function GanttTimeline({ payload, width, height, virtualize, fontScale = 1 }: GanttFigureProps) {
   const rowHeight = Math.round(DEFAULT_ROW_HEIGHT * fontScale);
+  const tierHeight = Math.round(TIER_HEIGHT * fontScale);
 
   // Geometry that only depends on the payload + row height (not on scroll or the splitter).
   const columns = useMemo(() => buildColumns(payload), [payload]);
@@ -55,13 +57,16 @@ function GanttTimeline({ payload, width, height, virtualize, fontScale = 1 }: Ga
 
   // The grid defaults to its CONTENT width (name + the columns that fit), not a fixed fraction —
   // so no empty band, and never a clipped header. The user can drag the splitter from there.
-  const [gridW, setGridW] = useState(() => {
+  const [gridWRaw, setGridW] = useState(() => {
     const target = Math.min(gridNaturalW, Math.max(MIN_GRID_W, width * 0.55));
     return fitColumns(columns, target).reduce((s, c) => s + c.width, 0);
   });
+  // The pane never outgrows the figure: a popup shrunk below the pane's width keeps a
+  // timeline (MIN_TIMELINE_W) and drops trailing columns instead of clipping them.
+  const gridW = Math.max(Math.min(MIN_GRID_W, width - MIN_TIMELINE_W), Math.min(gridWRaw, width - MIN_TIMELINE_W));
   // Columns that fit the current grid width; trailing ones are DROPPED, never clipped.
   const visibleCols = useMemo(() => fitColumns(columns, gridW), [columns, gridW]);
-  const timelineW = Math.max(80, width - gridW - 1);
+  const timelineW = Math.max(MIN_TIMELINE_W, width - gridW - 1);
 
   // Ephemeral per-row collapse (the treegrid's expand/collapse), seeded from the view.collapse
   // floor: every phase at or below that level starts collapsed. Keyboard/click toggles from there.
@@ -89,7 +94,7 @@ function GanttTimeline({ payload, width, height, virtualize, fontScale = 1 }: Ga
 
   const contentW = (scale.to - scale.from) * scale.pxPerDay;
   const contentH = rows.length ? rows[rows.length - 1].y + rows[rows.length - 1].h : 0;
-  const headerH = scale.tiers.length * TIER_HEIGHT;
+  const headerH = scale.tiers.length * tierHeight;
   const bodyH = Math.max(0, height - headerH);
 
   // Vertical scroll shared between the two panes.
@@ -142,7 +147,7 @@ function GanttTimeline({ payload, width, height, virtualize, fontScale = 1 }: Ga
   const onSplitMove = useCallback((e: ReactPointerEvent) => {
     if (!dragRef.current) return;
     const dx = e.clientX - dragRef.current.x0;
-    setGridW(Math.max(MIN_GRID_W, Math.min(width - 80, dragRef.current.w0 + dx)));
+    setGridW(Math.max(MIN_GRID_W, Math.min(width - MIN_TIMELINE_W, dragRef.current.w0 + dx)));
   }, [width]);
   const onSplitUp = useCallback((e: ReactPointerEvent) => {
     dragRef.current = null;
@@ -320,7 +325,7 @@ function GanttTimeline({ payload, width, height, virtualize, fontScale = 1 }: Ga
           {/* Sticky header */}
           <div className="solenoid-gantt__thead" style={{ height: headerH, width: contentW }}>
             {scale.tiers.map((tier, ti) => (
-              <div key={ti} className="solenoid-gantt__tier" style={{ height: TIER_HEIGHT, top: ti * TIER_HEIGHT }}>
+              <div key={ti} className="solenoid-gantt__tier" style={{ height: tierHeight, top: ti * tierHeight }}>
                 {tier.cells.map((cell, ci) => (
                   <div key={ci} className="solenoid-gantt__tcell" style={{ left: cell.x, width: cell.w }}>
                     {cell.w > 14 ? cell.label : ""}

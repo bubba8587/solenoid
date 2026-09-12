@@ -3,6 +3,10 @@
 // so the on-screen figure needs no color resolution; only the headless ganttSvg serializer
 // takes concrete colors. Critical/violated/late carry a non-color cue (dash, outline) for
 // WCAG 1.4.1. Reduced motion is honored (there is no motion to begin with; guarded anyway).
+//
+// Type sits on DESIGN.md's rungs — Body/Value 12px (1em of the root, which the figure sets
+// to 12px × fontScale) and Label 11px (0.9167em) — so the `fontsize` option scales every
+// label along with the rows instead of only the row height.
 
 export const ganttStyles = `
 .solenoid-gantt {
@@ -21,7 +25,7 @@ export const ganttStyles = `
 /* Grid pane */
 .solenoid-gantt__grid { flex: 0 0 auto; display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border-strong, #3a3a3a); }
 .solenoid-gantt__grid-head { display: flex; align-items: flex-end; border-bottom: 1px solid var(--border-strong, #3a3a3a); background: var(--surface-raised, #262626); }
-.solenoid-gantt__gh { padding: 0 6px 4px; font-size: 10px; color: var(--text-dim, #9aa0a6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 0 0 auto; }
+.solenoid-gantt__gh { padding: 0 6px 4px; font-size: 0.9167em; color: var(--text-dim, #9aa0a6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 0 0 auto; }
 .solenoid-gantt__grid-scroll { overflow-y: auto; overflow-x: hidden; }
 .solenoid-gantt__row { position: absolute; left: 0; right: 0; display: flex; align-items: center; border-bottom: 1px solid var(--border-subtle, #2a2a2a); outline: none; cursor: default; }
 .solenoid-gantt__row.is-summary { font-weight: 600; }
@@ -29,11 +33,11 @@ export const ganttStyles = `
 .solenoid-gantt__row:focus-visible { outline: 2px solid var(--accent, #56b4e9); outline-offset: -2px; }
 .solenoid-gantt__caret { display: inline-block; width: 12px; flex: 0 0 12px; text-align: center; color: var(--text-dim, #9aa0a6); cursor: pointer; user-select: none; font-size: 0.8em; }
 .solenoid-gantt__caret:hover { color: var(--text, #e8e8e8); }
-.solenoid-gantt__cell { padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; flex: 0 0 auto; }
+.solenoid-gantt__cell { padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 1em; flex: 0 0 auto; }
 .solenoid-gantt__cell.is-num { font-family: var(--font-mono, ui-monospace, monospace); color: var(--text-dim, #9aa0a6); }
 .solenoid-gantt__cell.is-name { color: var(--text, #e8e8e8); }
-.solenoid-gantt__section { position: absolute; left: 0; right: 0; display: flex; align-items: center; padding: 0 8px; font-size: 11px; font-weight: 600; color: var(--text, #e8e8e8); background: var(--surface-raised, #262626); border-bottom: 1px solid var(--border, #2d2d2d); }
-.solenoid-gantt__more { position: absolute; left: 0; right: 0; padding: 4px 8px; font-size: 10px; color: var(--text-dim, #9aa0a6); font-style: italic; }
+.solenoid-gantt__section { position: absolute; left: 0; right: 0; display: flex; align-items: center; padding: 0 8px; font-size: 0.9167em; font-weight: 600; color: var(--text, #e8e8e8); background: var(--surface-raised, #262626); border-bottom: 1px solid var(--border, #2d2d2d); }
+.solenoid-gantt__more { position: absolute; left: 0; right: 0; padding: 4px 8px; font-size: 0.9167em; color: var(--text-dim, #9aa0a6); font-style: italic; }
 
 /* Splitter */
 .solenoid-gantt__splitter { flex: 0 0 5px; margin-left: -3px; cursor: col-resize; background: transparent; z-index: 3; }
@@ -43,7 +47,7 @@ export const ganttStyles = `
 .solenoid-gantt__timeline { flex: 1 1 auto; overflow: auto; position: relative; }
 .solenoid-gantt__thead { position: sticky; top: 0; z-index: 2; background: var(--surface-raised, #262626); border-bottom: 1px solid var(--border-strong, #3a3a3a); }
 .solenoid-gantt__tier { position: absolute; left: 0; right: 0; }
-.solenoid-gantt__tcell { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; padding: 0 4px; font-size: 10px; color: var(--text-dim, #9aa0a6); white-space: nowrap; overflow: hidden; border-left: 1px solid var(--border, #2d2d2d); border-bottom: 1px solid var(--border-subtle, #2a2a2a); }
+.solenoid-gantt__tcell { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; padding: 0 4px; font-size: 0.9167em; color: var(--text-dim, #9aa0a6); white-space: nowrap; overflow: hidden; border-left: 1px solid var(--border, #2d2d2d); border-bottom: 1px solid var(--border-subtle, #2a2a2a); }
 
 .solenoid-gantt__bg, .solenoid-gantt__bars { position: absolute; left: 0; pointer-events: none; }
 /* The links overlay must NOT set pointer-events:none, or its hit paths go dead. An SVG with
@@ -61,8 +65,8 @@ export const ganttStyles = `
 /* Bars */
 .solenoid-gantt__bar { fill: var(--accent, #56b4e9); opacity: 0.85; }
 .solenoid-gantt__bar.is-critical { fill: var(--sol-error, #e0473a); opacity: 0.9; }
-.solenoid-gantt__progress { fill: color-mix(in srgb, var(--accent, #56b4e9) 55%, #000); }
-.solenoid-gantt__progress.is-critical { fill: color-mix(in srgb, var(--sol-error, #e0473a) 45%, #000); }
+.solenoid-gantt__progress { fill: color-mix(in srgb, var(--accent, #56b4e9) 45%, var(--text, #e8e8e8)); }
+.solenoid-gantt__progress.is-critical { fill: color-mix(in srgb, var(--sol-error, #e0473a) 45%, var(--text, #e8e8e8)); }
 .solenoid-gantt__bar-flag { fill: none; stroke: var(--sol-error, #e0473a); stroke-width: 1.5; }
 .solenoid-gantt__split-gap { stroke: var(--text-dim, #9aa0a6); stroke-width: 1; stroke-dasharray: 2 2; }
 .solenoid-gantt__hatch { stroke: rgba(0, 0, 0, 0.32); stroke-width: 1.2; }
@@ -80,7 +84,7 @@ export const ganttStyles = `
 .solenoid-gantt__diamond { fill: var(--text, #e8e8e8); }
 .solenoid-gantt__diamond.is-critical { fill: var(--sol-error, #e0473a); }
 .solenoid-gantt__diamond.is-violated { stroke: var(--sol-error, #e0473a); stroke-width: 1.5; }
-.solenoid-gantt__blabel { fill: var(--text, #e8e8e8); font-size: 11px; }
+.solenoid-gantt__blabel { fill: var(--text, #e8e8e8); font-size: 0.9167em; paint-order: stroke fill; stroke: var(--surface, #1e1e1e); stroke-width: 3px; stroke-linejoin: round; }
 
 /* Links */
 .solenoid-gantt__link { stroke: var(--text-dim, #9aa0a6); stroke-width: 1.3; }
@@ -94,19 +98,19 @@ export const ganttStyles = `
 /* Calendar month-grid sibling */
 .solenoid-gantt--calendar { display: block; }
 .solenoid-gantt-cal__scroll { width: 100%; height: 100%; overflow-y: auto; overflow-x: hidden; }
-.solenoid-gantt-cal__title { fill: var(--text, #e8e8e8); font-size: 13px; font-weight: 600; }
-.solenoid-gantt-cal__weekday { fill: var(--text-dim, #9aa0a6); font-size: 10px; }
+.solenoid-gantt-cal__title { fill: var(--text, #e8e8e8); font-size: 1.0833em; font-weight: 600; }
+.solenoid-gantt-cal__weekday { fill: var(--text-dim, #9aa0a6); font-size: 0.9167em; }
 .solenoid-gantt-cal__cell { fill: none; stroke: var(--border-subtle, #2a2a2a); stroke-width: 1; }
 .solenoid-gantt-cal__today { fill: none; stroke: var(--sol-error, #e0473a); stroke-width: 1.5; }
-.solenoid-gantt-cal__daynum { fill: var(--text, #e8e8e8); font-size: 10px; }
+.solenoid-gantt-cal__daynum { fill: var(--text, #e8e8e8); font-size: 0.9167em; }
 .solenoid-gantt-cal__daynum.is-out { fill: var(--text-dim, #9aa0a6); opacity: 0.5; }
-.solenoid-gantt-cal__chip-label { fill: var(--text, #e8e8e8); font-size: 10px; pointer-events: none; }
-.solenoid-gantt-cal__overflow { fill: var(--text-dim, #9aa0a6); font-size: 9px; }
+.solenoid-gantt-cal__chip-label { fill: var(--text, #e8e8e8); font-size: 0.9167em; pointer-events: none; }
+.solenoid-gantt-cal__overflow { fill: var(--text-dim, #9aa0a6); font-size: 0.8333em; }
 
 /* Resource histogram band */
 .solenoid-gantt__histo { position: absolute; left: 0; }
 .solenoid-gantt__histo-top { stroke: var(--border-strong, #3a3a3a); stroke-width: 1; }
-.solenoid-gantt__histo-legend { fill: var(--text-dim, #9aa0a6); font-size: 10px; }
+.solenoid-gantt__histo-legend { fill: var(--text-dim, #9aa0a6); font-size: 0.9167em; }
 .solenoid-gantt__histo-over { fill: var(--sol-error, #e0473a); }
 .solenoid-gantt__histo-capacity { stroke: var(--text-dim, #9aa0a6); stroke-width: 1; stroke-dasharray: 3 2; }
 

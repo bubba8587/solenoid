@@ -69,7 +69,7 @@ export function ganttSvg(payload: GanttPayload, opts: GanttSvgOptions): string {
       parts.push(`<rect x="${r(c.x)}" y="${ty}" width="${r(c.w)}" height="${TIER_HEIGHT}" fill="none" stroke="${colors.border}" stroke-width="1"/>`);
       if (c.w > 8) {
         parts.push(
-          `<text x="${r(c.x + 4)}" y="${ty + TIER_HEIGHT / 2 + 4}" fill="${colors.textDim}" font-size="10">${esc(clip(c.label, c.w))}</text>`,
+          `<text x="${r(c.x + 4)}" y="${ty + TIER_HEIGHT / 2 + 4}" fill="${colors.textDim}" font-size="11">${esc(clip(c.label, c.w))}</text>`,
         );
       }
     }
@@ -142,7 +142,7 @@ export function ganttSvg(payload: GanttPayload, opts: GanttSvgOptions): string {
     }
     if (bar.label) {
       const lx = bar.label.anchor === "end" ? bar.x - 4 : bar.x + bar.w + 4;
-      parts.push(`<text x="${r(lx)}" y="${r(y + bar.h / 2 + 4)}" fill="${colors.text}" font-size="11" text-anchor="${bar.label.anchor}">${esc(bar.label.text)}</text>`);
+      parts.push(`<text x="${r(lx)}" y="${r(y + bar.h / 2 + 4)}" fill="${colors.text}" font-size="11" text-anchor="${bar.label.anchor}" paint-order="stroke" stroke="${colors.surface}" stroke-width="3" stroke-linejoin="round">${esc(bar.label.text)}</text>`);
     }
   }
 
@@ -174,7 +174,7 @@ export function ganttSvg(payload: GanttPayload, opts: GanttSvgOptions): string {
     for (const lg of h.legend) {
       const col = RESOURCE_RAMP[lg.resourceIndex % RESOURCE_RAMP.length];
       parts.push(`<rect x="${r(lx)}" y="${r(bandY + 5)}" width="9" height="9" rx="2" fill="${col}"/>`);
-      parts.push(`<text x="${r(lx + 12)}" y="${r(bandY + 13)}" fill="${colors.textDim}" font-size="10">${esc(clip(lg.label, 90))}</text>`);
+      parts.push(`<text x="${r(lx + 12)}" y="${r(bandY + 13)}" fill="${colors.textDim}" font-size="11">${esc(clip(lg.label, 90))}</text>`);
       lx += 18 + Math.min(90, lg.label.length * 6);
     }
     // Columns.
@@ -268,7 +268,7 @@ function gridPane(
   // Column headers on the bottom tier row.
   let x = 0;
   for (const c of cols) {
-    parts.push(`<text x="${r(c.align === "right" ? x + c.width - 6 : x + 6)}" y="${headerH - 6}" fill="${colors.textDim}" font-size="10" text-anchor="${c.align === "right" ? "end" : "start"}">${esc(c.label)}</text>`);
+    parts.push(`<text x="${r(c.align === "right" ? x + c.width - 6 : x + 6)}" y="${headerH - 6}" fill="${colors.textDim}" font-size="11" text-anchor="${c.align === "right" ? "end" : "start"}">${esc(c.label)}</text>`);
     x += c.width;
   }
   parts.push(`<line x1="0" y1="${headerH}" x2="${gridWidth}" y2="${headerH}" stroke="${colors.borderStrong}" stroke-width="1"/>`);
@@ -289,7 +289,7 @@ function gridPane(
       const tx = c.align === "right" ? cx + c.width - 6 : cx + indent;
       const weight = c.key === "name" && t.summary ? ' font-weight="600"' : "";
       const fam = c.align === "right" ? ` font-family="${MONO}"` : "";
-      parts.push(`<text x="${r(tx)}" y="${r(yMid)}" fill="${colors.text}" font-size="11" text-anchor="${c.align === "right" ? "end" : "start"}"${weight}${fam}>${esc(clip(val, c.width - indent - 6))}</text>`);
+      parts.push(`<text x="${r(tx)}" y="${r(yMid)}" fill="${colors.text}" font-size="12" text-anchor="${c.align === "right" ? "end" : "start"}"${weight}${fam}>${esc(clip(val, c.width - indent - 6, 12))}</text>`);
       cx += c.width;
     }
   }
@@ -349,9 +349,9 @@ function darken(hex: string, factor: number): string {
 function esc(s: string): string {
   return s.replace(/[&<>"]/g, (ch) => (ch === "&" ? "&amp;" : ch === "<" ? "&lt;" : ch === ">" ? "&gt;" : "&quot;"));
 }
-/** Truncate text to roughly fit `px` at the header font (drop, don't overflow). */
-function clip(s: string, px: number): string {
-  const max = Math.max(0, Math.floor(px / (10 * 0.6)));
+/** Truncate text to roughly fit `px` at a font size (drop, don't overflow). */
+function clip(s: string, px: number, fontPx = 11): string {
+  const max = Math.max(0, Math.floor(px / (fontPx * 0.6)));
   return s.length <= max ? s : s.slice(0, Math.max(0, max - 1)).trimEnd() + "…";
 }
 

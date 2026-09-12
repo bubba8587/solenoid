@@ -115,6 +115,8 @@ export interface ChartBuilderFields {
   marker?: string;
   pielabels?: string;
   radarscale?: string;
+  /** The Gantt's time-scale preset (`zoom=week`); read by the figure's own view parser. */
+  zoom?: string;
   ymin?: number | null;
   ymax?: number | null;
   linewidth?: number | null;
@@ -141,6 +143,7 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
   str("marker", f.marker);
   str("pielabels", f.pielabels);
   str("radarscale", f.radarscale);
+  str("zoom", f.zoom);
   if ((f.ymin != null && Number.isFinite(f.ymin)) || (f.ymax != null && Number.isFinite(f.ymax))) {
     const lo = f.ymin != null && Number.isFinite(f.ymin) ? f.ymin : "";
     const hi = f.ymax != null && Number.isFinite(f.ymax) ? f.ymax : "";
@@ -166,7 +169,7 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
 //     nothing but the title.
 
 export type ChartBuilderKey =
-  | "title" | "xlabel" | "ylabel" | "color" | "grid" | "marker" | "pielabels" | "radarscale"
+  | "title" | "xlabel" | "ylabel" | "color" | "grid" | "marker" | "pielabels" | "radarscale" | "zoom"
   | "ymin" | "ymax" | "linewidth" | "markersize" | "alpha" | "fontsize";
 
 // The Chart node's own ops are first-class targets so the form can show ONLY the options
@@ -197,6 +200,7 @@ const AXED_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "alpha", "fontsize"];
 const STAT_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];
 const TITLE_ONLY: readonly ChartBuilderKey[] = ["title"];
+const GANTT_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize", "zoom"];
 
 export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group: string; keys: readonly ChartBuilderKey[] }> = {
   column:    { label: "Column",           group: "Cartesian",    keys: XY_KEYS },
@@ -219,7 +223,7 @@ export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group
   candle:    { label: "Candlestick",      group: "Figures",      keys: TITLE_ONLY },
   boxplot:   { label: "Boxplot",          group: "Figures",      keys: TITLE_ONLY },
   calheat:   { label: "Calendar Heatmap", group: "Figures",      keys: TITLE_ONLY },
-  gantt:     { label: "Gantt",            group: "Figures",      keys: STAT_KEYS },
+  gantt:     { label: "Gantt",            group: "Figures",      keys: GANTT_KEYS },
 };
 
 export const CHART_TARGET_LIST = (Object.keys(CHART_BUILDER_TARGETS) as ChartTargetId[])

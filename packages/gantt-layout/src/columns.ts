@@ -5,14 +5,15 @@
 import type { GanttPayload } from "./payload";
 import type { GridColumn } from "./frame";
 
-// Dates are fixed-width (DD-MMM-YYYY, ~11 mono chars); their columns are exactly that wide.
+// Dates are fixed-width (DD-MMM-YYYY, 11 mono chars at the 12px value rung); their columns
+// are exactly that wide plus the cell padding.
 const DEFAULTS: GridColumn[] = [
   { key: "name", label: "Task", width: 190, align: "left" },
-  { key: "start", label: "Start", width: 86, align: "left" },
-  { key: "finish", label: "Finish", width: 86, align: "left" },
-  { key: "duration", label: "Days", width: 50, align: "right" },
-  { key: "float", label: "Float", width: 50, align: "right" },
-  { key: "complete", label: "%", width: 42, align: "right" },
+  { key: "start", label: "Start", width: 94, align: "left" },
+  { key: "finish", label: "Finish", width: 94, align: "left" },
+  { key: "duration", label: "Days", width: 54, align: "right" },
+  { key: "float", label: "Float", width: 54, align: "right" },
+  { key: "complete", label: "%", width: 46, align: "right" },
   { key: "predecessors", label: "Predecessors", width: 150, align: "left" },
 ];
 

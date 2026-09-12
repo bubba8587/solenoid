@@ -123,7 +123,7 @@ export function ChartPopup() {
         ? <button type="button" className="sol-popup__action" onClick={copySvg}>{copied ? "Copied" : "Copy SVG"}</button>
         : undefined}
       pinNodeId={state.pinNodeId}
-      resizable={{ min: { w: 260, h: 200 }, initial: initialCard }}
+      resizable={{ min: isGantt ? { w: 520, h: 300 } : { w: 260, h: 200 }, initial: initialCard }}
     >
       <div ref={figRef} className="sol-popup__scroll" style={{ padding: FIG_PAD, display: "flex", justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
         {state.value ? (
