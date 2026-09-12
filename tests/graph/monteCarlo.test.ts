@@ -138,3 +138,12 @@ describe("correlated inputs (Gaussian copula) — each marginal kept, only the d
     expect(L[1][0]).toBeLessThan(0.9); // shrunk
   });
 });
+
+describe("summarizeSamples — dropped draws", () => {
+  it("counts the draws it could not use, so the readout can say N of M", () => {
+    const s = summarizeSamples([1, NaN, 3, NaN]);
+    expect(s.value).toBe(2);
+    expect(s.dropped).toBe(2);
+    expect(summarizeSamples([1, 2]).dropped).toBeUndefined();
+  });
+});

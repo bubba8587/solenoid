@@ -1039,16 +1039,27 @@ export class CompositeNode extends ClassicPreset.Node {
     const rng = mulberry32((cfg.seed | 0) >>> 0);
 
     // Each uncertain port's mean: the wired value if exposed+wired, else the marker's
-    // seed, else the port default.
-    const meanOf = (port: CompositeInputPort, marker: CompositeInputNode): number => {
-      const wired = port.exposure === "exposed" ? inputs[port.id]?.[0] : undefined;
-      const raw = wired ?? marker.defaultValue ?? port.default ?? 0;
+    // seed, else the port default. A wired blank or error is UNKNOWN (value-semantics,
+    // "Reading an input"), never a 0 to sample around.
+    const meanOf = (port: CompositeInputPort, marker: CompositeInputNode): number | null => {
+      const wired = port.exposure === "exposed" && port.id in inputs ? inputs[port.id]?.[0] : undefined;
+      const raw = wired === undefined ? (marker.defaultValue ?? port.default ?? 0) : wired;
       const n = toNumber(raw);
-      return Number.isFinite(n) ? n : 0;
+      return Number.isFinite(n) ? n : null;
     };
-    const specs = uncertainPorts.map((port) => {
+    const means = uncertainPorts.map((port) => meanOf(port, this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode));
+    if (means.some((m) => m === null)) {
+      const outputs: Record<string, unknown> = {};
+      for (const port of this.outputPorts) {
+        outputs[port.id] = null;
+        const marker = this.internalEditor.getNode(port.internalNodeId);
+        if (marker instanceof CompositeOutputNode) marker.cachedResult = null;
+      }
+      return outputs;
+    }
+    const specs = uncertainPorts.map((port, i) => {
       const marker = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode;
-      return { port, marker, mean: meanOf(port, marker), spread: marker.uncertainty as number, kind: marker.distribution };
+      return { port, marker, mean: means[i] as number, spread: marker.uncertainty as number, kind: marker.distribution };
     });
 
     // Correlated inputs: resolve the card's pairs (labels or ids) onto the uncertain
@@ -1115,9 +1126,10 @@ export class CompositeNode extends ClassicPreset.Node {
       row[gs.outputPortId] = err;
       return row;
     }
-    // Clean the raw solver float to the precision the app exposes (formatScalar), so the
-    // driver never shows a 19.999999998 tail.
-    const solved = Number(formatScalar(solvedRaw));
+    // Strip the float tail only (12 significant digits): display rounding is the readout's
+    // job, and a driver that needs more than four decimals (a monthly rate 0.032173) must
+    // survive to the final pass.
+    const solved = Number(solvedRaw.toPrecision(12));
     this.goalSeekResult = solved;
     // The answer goes to a dedicated readout (solvedValue), NOT back onto the seed, so
     // the driver's editable seed stays the user's starting guess.
@@ -1164,8 +1176,9 @@ async function solveGoalSeek(
     const step = Math.abs(c - b);
     a = b; fa = fb;
     b = c; fb = await f(c);
-    // A tiny step with a LARGE residual means secant stalled — fall through to bracketing.
-    if (step < XTOL) { if (Number.isFinite(fb) && Math.abs(fb) <= 1e-4) return c; break; }
+    // A tiny step means secant stalled: solved only if the residual meets the tolerance,
+    // else fall through to bracketing (never a looser "close enough").
+    if (step < XTOL) { if (Number.isFinite(fb) && Math.abs(fb) <= FTOL) return c; break; }
   }
 
   // ── Bracket-expand + bisection fallback ──

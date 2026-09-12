@@ -54,6 +54,9 @@ export interface UncertainNumber {
   /** The raw draws behind a Monte Carlo summary — powers the histogram. Not part
    *  of the identity: a hand-built `value ± error` omits it. */
   readonly samples?: readonly number[];
+  /** Draws the summary could not count (an errored or blank pass), so the readout can
+   *  say "200 of 500 draws" instead of a confident mean over a fraction. */
+  readonly dropped?: number;
 }
 
 export function isUncertain(v: unknown): v is UncertainNumber {

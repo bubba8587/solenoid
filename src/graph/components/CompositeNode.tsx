@@ -355,9 +355,18 @@ function MonteCarloEditor({ node }: { node: CompositeNodeType }) {
     }
     return null;
   })();
+  // Draws a pass could not count: the mean is over the rest, so say so.
+  const dropped = node.outputPorts.reduce((m, p) => {
+    const v = node.cachedOutputs[p.id];
+    return isUncertain(v) && v.dropped ? Math.max(m, v.dropped) : m;
+  }, 0);
+  const drawCount = Math.max(1, Math.round(mc?.samples ?? 0));
 
   return (
     <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 3 }}>
+      {dropped > 0 && (
+        <div className="solenoid-node__text-empty">{drawCount - dropped} of {drawCount} draws</div>
+      )}
       {exposed.map((p) => {
         const m = markerOf(p.internalNodeId);
         return (

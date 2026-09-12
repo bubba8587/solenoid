@@ -6,6 +6,7 @@ import { ctorRegistry } from "../../../src/graph/nodeCtorRegistry";
 import { FLAT_CATALOG } from "../../../src/graph/catalogUtils";
 import { extractInit } from "../../../src/graph/copyPaste";
 import { isSolError } from "../../../src/graph/errorValue";
+import { isUncertain } from "../../../src/graph/valueKinds";
 import { loopMembers } from "../../../src/graph/graphCompute";
 import { alertStore } from "../../../src/graph/alertStore";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode, stopConditionMet, byRowValues, BY_ROW_MAX_ROWS } from "../../../src/graph/nodes/composite";
@@ -1172,4 +1173,42 @@ describe("Query catalog preset", () => {
   // The preset's persistence shape rides the generic pins: extractInit of a
   // hydrated composite ("round-trips through extractInit — the EXACT path
   // persistence.ts and paste use") and the runMode round-trip above.
+});
+
+describe("CompositeNode run modes — review pins", () => {
+  it("goal seek reports the solved driver at solver precision, not display precision", async () => {
+    // Out = A × B; with B = 7 and target 0.225211, A = 0.032173 (five decimals the readout would round away).
+    const c = new CompositeNode({ runMode: "goal-seek" });
+    const mul = new ArithmeticNode({ op: "mul" });
+    mul.literals = { a: 0, b: 0 };
+    const inA = new CompositeInputNode({ label: "A" });
+    const inB = new CompositeInputNode({ label: "B" });
+    const outMarker = new CompositeOutputNode({ label: "Out" });
+    for (const n of [mul, inA, inB, outMarker]) await c.internalEditor.addNode(n as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, inA, "value", mul, "a");
+    await connect(c.internalEditor, inB, "value", mul, "b");
+    await connect(c.internalEditor, mul, "result", outMarker, "value");
+    const inAId = c.addInputPort({ label: "A", exposure: "exposed", tier: "basic", internalNodeId: inA.id });
+    const inBId = c.addInputPort({ label: "B", exposure: "exposed", tier: "basic", internalNodeId: inB.id });
+    const outId = c.addOutputPort({ label: "Out", tier: "basic", internalNodeId: outMarker.id });
+    c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 0.225211, tolerance: 1e-9 });
+    const out = await c.data({ [inBId]: [7] });
+    expect(out[outId] as number).toBeCloseTo(0.032173, 6);
+    expect(out[outId]).not.toBe(0.0322);
+  });
+
+  it("Monte Carlo over a wired BLANK uncertain input emits blank outputs, never draws around 0", async () => {
+    const c = new CompositeNode({ runMode: "montecarlo" });
+    const inA = new CompositeInputNode({ label: "A", uncertainty: 5, distribution: "normal" });
+    const outMarker = new CompositeOutputNode({ label: "Out" });
+    for (const n of [inA, outMarker]) await c.internalEditor.addNode(n as unknown as Schemes["Node"]);
+    await connect(c.internalEditor, inA, "value", outMarker, "value");
+    const aId = c.addInputPort({ label: "A", exposure: "exposed", tier: "basic", internalNodeId: inA.id });
+    const outId = c.addOutputPort({ label: "Out", tier: "basic", internalNodeId: outMarker.id });
+    const out = await c.data({ [aId]: [null] });
+    expect(out[outId]).toBeNull();
+    c.requestSolve(); // heavy modes hold until asked to solve again
+    const ok = await c.data({ [aId]: [10] });
+    expect(isUncertain(ok[outId])).toBe(true);
+  });
 });
