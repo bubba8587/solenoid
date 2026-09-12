@@ -1,7 +1,9 @@
 # @solenoid/gantt-react
 
 The React 19 Gantt figure over `@solenoid/gantt-layout`. A tree grid beside a timeline, read-only:
-the schedule is edited in the source table, never on the chart.
+the schedule is edited in the source table, never on the chart. `GanttFigure` dispatches to a
+calendar month grid (`CalendarView`) when `view.layout === "calendar"` — the same payload, two
+ways; both are exported.
 
 ## The contract
 
