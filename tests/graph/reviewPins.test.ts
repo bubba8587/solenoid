@@ -285,3 +285,20 @@ describe("review pins: pivot totals", () => {
     expect(plain.columns[0].type).toBe("number");
   });
 });
+
+describe("review pins: number-to-text scientific form; image asset paths", () => {
+  it("numberToText writes Excel's General scientific form", async () => {
+    const { numberToText } = await import("../../src/graph/excelFunctions");
+    expect(numberToText(1e21)).toBe("1E+21");
+    expect(numberToText(0.0000001)).toBe("1E-07");
+    expect(numberToText(0.00001)).toBe("1E-05");
+    expect(numberToText(0.0001)).toBe("0.0001");
+    expect(numberToText(0.1 + 0.2)).toBe("0.3");
+    expect(numberToText(-0)).toBe("0");
+  });
+  it("an image asset path that climbs out of the document folder is refused", async () => {
+    const { isInsideVault } = await import("../../src/graph/fileBridge");
+    expect(isInsideVault("images/a.png")).toBe(true);
+    expect(isInsideVault("../../secret.png")).toBe(false);
+  });
+});

@@ -262,7 +262,7 @@ export const NODE_EXCEL: Record<string, ExcelEquiv[]> = {
     { excel: "SORT", syntax: "=SORT(array, sort_index, order)", parity: false, note: "Solenoid sorts 1D lists only; Excel can sort multi-column ranges" },
     { excel: "SORTBY", syntax: "=SORTBY(array, by_array)", parity: false, note: "Wire the Sort node's `by` input: reorders a 1-D array of ANY element type (position-only) by a parallel NUMERIC key list; text sort keys aren't supported yet" },
   ],
-  "list-unique": [{ excel: "UNIQUE", syntax: "=UNIQUE(array)", parity: true }],
+  "list-unique": [{ excel: "UNIQUE", syntax: "=UNIQUE(array)", parity: false, note: "Values and 1-D lists only; Excel also takes a matrix by row or by column." }],
   "xstack": [
     { excel: "VSTACK", syntax: "=VSTACK(array1, array2, ...)", parity: true, note: "N-ary; ragged inputs pad with #N/A like Excel. A bare list counts as ONE ROW" },
     { excel: "HSTACK", syntax: "=HSTACK(array1, array2, ...)", parity: true, note: "N-ary; ragged inputs pad with #N/A like Excel. A bare list counts as ONE ROW" },

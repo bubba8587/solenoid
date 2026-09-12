@@ -852,7 +852,16 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
  *  `(0.1+0.2) & " kg"` is "0.3 kg". Non-finite falls back to `String`. */
 export function numberToText(x: number): string {
   if (!Number.isFinite(x)) return String(x);
-  return parseFloat(x.toPrecision(15)).toString();
+  const v = parseFloat(x.toPrecision(15));
+  const mag = Math.abs(v);
+  // Excel's General text form goes scientific at 1E+21 and below 0.0001, written as
+  // "1E+21" / "1E-07" (uppercase E, signed, two-digit exponent); JS says "1e+21" / "1e-7".
+  if (mag !== 0 && (mag >= 1e21 || mag < 1e-4)) {
+    const [m, e] = v.toExponential().split("e");
+    const exp = Number(e);
+    return `${parseFloat(Number(m).toPrecision(15))}E${exp < 0 ? "-" : "+"}${String(Math.abs(exp)).padStart(2, "0")}`;
+  }
+  return v.toString();
 }
 
 function toStr(x: unknown): string {
