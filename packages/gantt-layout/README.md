@@ -8,8 +8,9 @@ is integer, so no timezone or DST can shift a column.
 ## The contract
 
 - `payload.ts` — `GanttPayload`: the figure's input, data and never geometry. Tasks in WBS order
-  (depth-first, `level`/`summary`/`milestone`/`start`/`finish`/`complete`/`critical`/`late`/
-  `violated`/`float`/`deadline`/`baseline*`/`manual`/`group`/`color`), links (`FS|SS|FF|SF` with
+  (depth-first, `level`/`summary`/`milestone`/`start`/`finish`/`duration`/`complete`/`critical`/
+  `late`/`violated`/`float`/`deadline`/`baseline*`/`manual`/`group`/`color`/`segments` (split
+  bars)/`resource`/`units`), links (`FS|SS|FF|SF` with
   lag), non-working spans, holidays, today, status date, project span, per-task predecessor text,
   and the resolved view options. `finish` is INCLUSIVE (the last day the task occupies); the
   figure adds one day when it draws a bar. The app's `schedule-engine` and `ganttPayload.ts` build
@@ -43,7 +44,9 @@ Written fresh, on serial math:
   (serial 25569 = 1970-01-01, a Thursday), matching `serialToJsDate(...).getUTCDay()` without a
   `Date`.
 - `frame.ts` (the RenderFrame shape and the theme-color set), `bars.ts`, `rows.ts`, `columns.ts`,
-  `cell.ts`, `layout.ts`, and `svg.ts` (the headless serializer). All original.
+  `cell.ts`, `layout.ts`, `calendar.ts` (the month grid), `histogram.ts` (the resource band), and
+  `svg.ts` (the headless serializer, dispatching to the calendar when `layout=calendar`). All
+  original.
 
 Studied for design only, MIT sources, no code copied (the licence boundary in
 `docs/v2.0/25-gantt.md` § 5/§ 7):
@@ -62,5 +65,8 @@ Studied for design only, MIT sources, no code copied (the licence boundary in
 Golden JSON, run by the repo's vitest (`packages/**/*.test.ts`): serial round-trips and DST
 weekday parity, ISO vs US week 1, leap years, month columns proportional to day count, hidden
 weekend ranges, one-day bars, a milestone on a non-working day, FS endpoint routing, baseline/
-deadline/late/group/color/collapse, the working-day Days column, `fit` fill without tier-label
-collision, and SVG well-formedness/escaping/colors.
+deadline/late/group/color/collapse, interactive collapse + `hasChildren`, the working-day Days
+column, split bars, the minutes-mode midnight-finish rule, `fit`/`fit=page` fill without tier-label
+collision, the calendar month grid (grouping, weekend flags, week-clipped chips, milestone dots,
+today), the resource histogram (per-day sums, over-allocation, legend), and SVG
+well-formedness/escaping/colors.
