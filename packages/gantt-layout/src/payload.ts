@@ -91,6 +91,10 @@ export interface GanttViewOptions {
   week?: "iso" | "us";
   /** Fiscal year start month 1..12 for the quarter/year tiers (default 1). */
   fiscal_start?: number;
+  /** Minutes-precision schedule: start/finish carry a clock fraction, and a finish exactly at a
+   *  whole-day serial (midnight) draws on the PREVIOUS day (§ 6.5). Absent/false: Days mode,
+   *  finish is the inclusive whole day. */
+  minutes?: boolean;
   /** Grid columns to show, in order. Default: name, start, finish, duration. */
   columns?: Array<"name" | "start" | "finish" | "duration" | "float" | "complete" | "predecessors">;
 }
@@ -155,7 +159,7 @@ export function parseGanttViewOptions(input: string | null | undefined, parseDat
         if (cols.length) v.columns = cols as GanttViewOptions["columns"];
         break;
       }
-      case "critical": case "baseline": case "arrows": case "today": case "status": case "weekends": case "group_by": case "labels": {
+      case "critical": case "baseline": case "arrows": case "today": case "status": case "weekends": case "group_by": case "labels": case "minutes": {
         const b = toBool(val);
         if (b !== undefined) v[key] = b;
         break;

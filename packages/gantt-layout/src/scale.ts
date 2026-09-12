@@ -231,5 +231,16 @@ export function xOf(serial: number, scale: Band): number {
   return (serial - scale.from) * scale.pxPerDay;
 }
 
+const ONE_MINUTE = 1 / 1440;
+
+/** The last calendar day a task occupies for DRAWING and the Finish cell. In Days mode the
+ *  finish is already the inclusive whole day. In Minutes mode the finish is a clock instant and
+ *  the displayed day is the day of (finish − one minute), so a finish exactly at midnight
+ *  (a whole-day serial) lands on the previous day (§ 6.5). The bar's exclusive right edge is
+ *  this + 1. */
+export function drawnLastDay(finish: number, minutes?: boolean): number {
+  return minutes ? Math.floor(finish - ONE_MINUTE) : Math.floor(finish);
+}
+
 // Re-exported so callers building day-tier labels can add a weekday initial if they want it.
 export { dayOfWeek, daysInMonth, DAY_NAMES };

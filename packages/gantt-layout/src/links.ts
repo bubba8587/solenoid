@@ -5,7 +5,7 @@
 
 import type { GanttPayload, GanttLink, LinkType } from "./payload";
 import type { FrameRow, FrameBar, FrameScale, FrameLink } from "./frame";
-import { xOf } from "./scale";
+import { xOf, drawnLastDay } from "./scale";
 
 /** Horizontal stub length off a bar edge before the arrow turns, in px. */
 const STUB = 11;
@@ -43,7 +43,7 @@ export function buildLinks(
     if (row.section || row.taskIndex < 0) continue;
     const t = payload.tasks[row.taskIndex];
     const left = xOf(t.start, scale);
-    const right = t.milestone ? xOf(t.start + 1, scale) : xOf(t.finish + 1, scale);
+    const right = t.milestone ? xOf(t.start + 1, scale) : xOf(drawnLastDay(t.finish, payload.view.minutes) + 1, scale);
     const center = xOf(t.start + 0.5, scale);
     anchors.set(t.id, {
       left: t.milestone ? center : left,
