@@ -1,0 +1,105 @@
+{
+  "v": 2,
+  "order": 522,
+  "label": "Earned Value",
+  "group": "Worked examples",
+  "nodes": [
+    {
+      "id": "note",
+      "type": "NoteNode",
+      "x": -60,
+      "y": -240,
+      "init": {
+        "label": "Earned value",
+        "body": "# Are we on time, and on budget?\n**Earned Value** reads a scheduled project with a **Cost** for each task and how far each is **Complete**, and an **Actual cost** where you track it. As of today it works out the planned value (BCWS), the earned value (BCWP) and the actual cost (ACWP), then the schedule and cost variances and the **SPI** and **CPI** indices.\n\nAn index below 1.0 is behind plan or over budget; **EAC** is the projected total at this pace. Here the current schedule is its own baseline. Change a task's Complete or Actual cost and watch the indices move.",
+        "color": "green",
+        "width": 360,
+        "height": 250
+      }
+    },
+    {
+      "id": "tasks",
+      "type": "CubeInputNode",
+      "x": 60,
+      "y": 100,
+      "init": {
+        "label": "Plan",
+        "cubeText": "[\n  {\n    \"task\": \"Demolition\",\n    \"days\": 2,\n    \"after\": [],\n    \"cost\": 1000,\n    \"complete\": 100,\n    \"actual cost\": 1100\n  },\n  {\n    \"task\": \"Plumbing\",\n    \"days\": 3,\n    \"after\": [\n      \"Demolition\"\n    ],\n    \"cost\": 2000,\n    \"complete\": 100,\n    \"actual cost\": 1900\n  },\n  {\n    \"task\": \"Electrical\",\n    \"days\": 2,\n    \"after\": [\n      \"Demolition\"\n    ],\n    \"cost\": 1500,\n    \"complete\": 60,\n    \"actual cost\": 1000\n  },\n  {\n    \"task\": \"Drywall\",\n    \"days\": 2,\n    \"after\": [\n      \"Plumbing\",\n      \"Electrical\"\n    ],\n    \"cost\": 1000,\n    \"complete\": 20,\n    \"actual cost\": 250\n  },\n  {\n    \"task\": \"Cabinets\",\n    \"days\": 4,\n    \"after\": [\n      \"Drywall\"\n    ],\n    \"cost\": 5000,\n    \"complete\": 0,\n    \"actual cost\": 0\n  },\n  {\n    \"task\": \"Countertops\",\n    \"days\": 3,\n    \"after\": [\n      \"Cabinets\"\n    ],\n    \"cost\": 3000,\n    \"complete\": 0,\n    \"actual cost\": 0\n  }\n]"
+      }
+    },
+    {
+      "id": "start",
+      "type": "DateInputNode",
+      "x": 60,
+      "y": 460,
+      "init": {
+        "label": "Project start"
+      },
+      "stringLiterals": {
+        "date": "05-Jan-2026"
+      }
+    },
+    {
+      "id": "schedule",
+      "type": "ScheduleNode",
+      "x": 440,
+      "y": 140,
+      "init": {
+        "label": "Schedule",
+        "mode": "working"
+      }
+    },
+    {
+      "id": "ev",
+      "type": "EarnedValueNode",
+      "x": 800,
+      "y": 140,
+      "init": {
+        "label": "Earned Value"
+      }
+    },
+    {
+      "id": "evDisplay",
+      "type": "DisplayNode",
+      "x": 800,
+      "y": 460,
+      "size": {
+        "w": 660,
+        "h": 340
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "tasks",
+      "sourceOutput": "cube",
+      "target": "schedule",
+      "targetInput": "tasks"
+    },
+    {
+      "source": "start",
+      "sourceOutput": "result",
+      "target": "schedule",
+      "targetInput": "start"
+    },
+    {
+      "source": "schedule",
+      "sourceOutput": "cube",
+      "target": "ev",
+      "targetInput": "schedule"
+    },
+    {
+      "source": "schedule",
+      "sourceOutput": "cube",
+      "target": "ev",
+      "targetInput": "baseline"
+    },
+    {
+      "source": "ev",
+      "sourceOutput": "frame",
+      "target": "evDisplay",
+      "targetInput": "in"
+    }
+  ],
+  "standoffs": []
+}
