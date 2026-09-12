@@ -25,9 +25,19 @@ GanttFigure({
   resolve in inline SVG because the figure lives in the document, so the on-screen figure needs no
   color resolution; only the headless `ganttSvg` serializer (re-exported here) takes concrete
   colors, for a detached export.
-- Critical/violated/late/manual each carry a NON-color cue (WCAG 1.4.1): a hatch + darker outline
-  for critical, a dashed outline for violated, a solid outline and error-tinted deadline flag for
-  late, a pushpin glyph for a manual pin.
+- **Cue vocabulary** — every state also carries a NON-color cue (WCAG 1.4.1), so the figure reads
+  without relying on hue:
+  - **hatch** (+ darker outline) = on the critical path
+  - **dashed outline** = violated (negative float: a floor/pin the predecessors can't honor)
+  - **solid outline** = late (finish past its deadline)
+  - **pushpin** at the bar start = a manual pin (Manual = TRUE)
+  - **pennant** (down-flag at the end of the deadline day) = a Deadline; it turns the error color when late
+  - **dotted gap** between bar parts = a split (out-of-sequence progress, `GanttTask.segments`)
+  - In the resource histogram, **error color + hatch** on a stacked segment = a resource over one unit on a day (over-allocation); the dashed line marks the 1-unit capacity.
+- The resource histogram (`histogram=on` with per-task `resource`/`units`) draws under the timeline:
+  per-day stacked unit columns aligned to the day scale, a per-resource legend, a 1-unit capacity
+  line, and the over-allocation cue above. Its colors come from `RESOURCE_RAMP` (a brand-neutral
+  ramp exported by the layout package).
 - The root carries `nowheel nodrag nokeys` (the React Flow surface contract) and `role="treegrid"`
   with row/column/level ARIA. Tooltips are structural only (a link's type, never dynamic
   names/values). `prefers-reduced-motion` is honored.
@@ -37,6 +47,19 @@ GanttFigure({
   scrolls the active row's bar into view. Rows carry `aria-expanded`/`aria-selected`. Expand and
   collapse are ephemeral per-viewer state seeded from the `collapse` option; the option is only a
   floor the keyboard can open past.
+
+## Option keys
+
+Persisted view state rides the node's `options` string (`key=value;…`, parsed by
+`parseGanttViewOptions` in the layout package):
+
+- `layout` — `gantt` (default) or `calendar` (the month grid, `CalendarView`)
+- `zoom` — `day` / `week` / `month` / `quarter` / `year` / `fit`; `fit=page` (export) fits the
+  whole span to one width with the finest label-wide tier, overriding `zoom`
+- `minutes` — minutes-precision serials (a midnight finish draws on the previous day, § 6.5)
+- `histogram` — draw the resource band
+- `tiers`, `window`, `collapse`, `week` (iso/us), `fiscal_start`, `columns`, and the boolean
+  toggles `critical` / `baseline` / `arrows` / `today` / `status` / `weekends` / `group_by` / `labels`
 
 ## What was written here vs studied
 
