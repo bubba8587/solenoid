@@ -1017,7 +1017,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           />
         </svg>
       )}
-      {hooks.drawnCables && <DrawnCableCapture toFlow={screenToFlowPosition} panBy={panBy} />}
+      {hooks.drawnCables && <DrawnCableCapture toFlow={screenToFlowPosition} panBy={panBy} zoom={() => getViewport().zoom} />}
       <CableInspector />
       {hooks.drawnCables && <DrawnCableInspector />}
       {children}

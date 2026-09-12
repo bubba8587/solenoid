@@ -3,6 +3,9 @@
 // Spec: docs/subsystem-invariants.md § Drawn cables.
 import { createNotifier } from "./storeKit";
 import { registerNodeForgetAll } from "./nodeStoreRegistry";
+import { unselectAllNodes } from "./canvasCommands";
+import { cableSelectionStore } from "./cableState";
+import { standoffStore } from "./standoffs";
 import type { CableShape } from "./cableShape";
 import type { DrawnPoint, DrawnArrows } from "./drawnCablePath";
 import { isDrawnArrows, hasAngleOverride, DRAWN_ANGLE_STEP } from "./drawnCablePath";
@@ -74,13 +77,15 @@ const isPoint = (v: unknown): v is DrawnPoint =>
   typeof v === "object" && v !== null &&
   Number.isFinite((v as DrawnPoint).x) && Number.isFinite((v as DrawnPoint).y);
 
-const clonePoint = (p: DrawnPoint): DrawnPoint =>
-  hasAngleOverride(p) ? { x: p.x, y: p.y, angle: p.angle } : { x: p.x, y: p.y };
-
 function normalizeDeg(deg: number): number {
   const m = deg % 360;
   return m < 0 ? m + 360 : m;
 }
+
+// A pinned angle is stored in [0, 360) however it arrived (the dial normalizes; a loaded
+// or hand-typed -90 must read the same, or the history digest records a spurious edit).
+const clonePoint = (p: DrawnPoint): DrawnPoint =>
+  hasAngleOverride(p) ? { x: p.x, y: p.y, angle: normalizeDeg(p.angle as number) } : { x: p.x, y: p.y };
 
 // Registered by the surface (autosave + an undo entry), like process.ts's graphChanged
 // hook, so this module never imports persistence or the history.
@@ -123,6 +128,16 @@ export const drawnCableStore = {
     _selectedId = id && find(id) ? id : null;
     _activePoint = null;
     notify();
+  },
+
+  /** Select, and drop every node, wired-cable and standoff selection: drawn-cable
+   *  selection is exclusive both ways (the spec's rule). */
+  selectOnly(id: string | null) {
+    drawnCableStore.select(id);
+    if (id === null) return;
+    unselectAllNodes();
+    cableSelectionStore.set(null);
+    standoffStore.select(null);
   },
 
   /** The point the panel's dial edits; null when none. */
@@ -387,7 +402,7 @@ export const drawModeStore = {
     _pending = [];
     _cursor = null;
     both();
-    drawnCableStore.select(c.id);
+    drawnCableStore.selectOnly(c.id);
     return c;
   },
 };

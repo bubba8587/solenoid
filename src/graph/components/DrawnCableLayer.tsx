@@ -13,9 +13,6 @@ import {
 } from "../drawnCablePath";
 import { appThemeStore } from "../appTheme";
 import { themeAccent, resolveColor } from "../palette";
-import { unselectAllNodes } from "../canvasCommands";
-import { cableSelectionStore } from "../cableState";
-import { standoffStore } from "../standoffs";
 import { IS_COARSE } from "../coarse";
 import { isPinching } from "../pointerGesture";
 import "./drawnCableLayer.css";
@@ -51,14 +48,7 @@ function nearestSpanIndex(pts: readonly DrawnPoint[], p: DrawnPoint): number {
   return best;
 }
 
-/** Drawn-cable selection is exclusive with nodes, cables and standoffs. */
-function selectOnly(id: string | null) {
-  drawnCableStore.select(id);
-  if (id === null) return;
-  unselectAllNodes();
-  cableSelectionStore.set(null);
-  standoffStore.select(null);
-}
+const selectOnly = (id: string | null) => drawnCableStore.selectOnly(id);
 
 function ArrowHeads({
   points,
@@ -144,7 +134,9 @@ function DrawnCableShape({
     (e: React.PointerEvent) => {
       const g = drag.current;
       if (!g) return;
-      if (isPinching()) { drag.current = null; return; }
+      // A pinch takes over mid-drag: the points already moved must still settle (autosave
+      // + an undo entry), or a reload right after loses the move.
+      if (isPinching()) { drag.current = null; if (g.moved) commitDrawn(); return; }
       e.stopPropagation();
       const at = toFlow({ x: e.clientX, y: e.clientY });
       if (g.index === null) drawnCableStore.translate(cable.id, at.x - g.last.x, at.y - g.last.y);

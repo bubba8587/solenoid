@@ -429,3 +429,30 @@ describe("drawModeStore", () => {
     expect(drawModeStore.pending()).toHaveLength(0);
   });
 });
+
+describe("drawn cables — review pins (selection exclusivity, angle normalization)", () => {
+  beforeEach(() => { drawnCableStore.clear(); drawModeStore.disarm(); });
+
+  it("load normalizes a pinned angle to [0, 360) so a reload never records a spurious edit", () => {
+    drawnCableStore.load([{ points: [{ x: 0, y: 0, angle: -90 }, { x: 10, y: 0 }], shape: "spline", arrows: "end", width: 2, headScale: 1, color: "gray" }]);
+    expect(drawnCableStore.all()[0].points[0].angle).toBe(270);
+    const c = drawnCableStore.all()[0];
+    drawnCableStore.setPointAngle(c.id, 0, -90);
+    expect(JSON.stringify(drawnCableStore.serialize())).toBe(JSON.stringify(drawnCableStore.serialize()));
+    expect(c.points[0].angle).toBe(270);
+  });
+
+  it("finishing a run selects the new cable exclusively (the standoff selection is dropped)", async () => {
+    const { standoffStore } = await import("../../src/graph/standoffs");
+    const { cableSelectionStore } = await import("../../src/graph/cableState");
+    cableSelectionStore.set("some-cable");
+    drawModeStore.arm();
+    drawModeStore.place({ x: 0, y: 0 });
+    drawModeStore.place({ x: 100, y: 0 });
+    const c = drawModeStore.finish();
+    expect(c && drawnCableStore.selected()).toBe(c!.id);
+    expect(cableSelectionStore.count()).toBe(0);
+    expect(standoffStore.selected()).toBeNull();
+    expect(drawModeStore.armed()).toBe(false);
+  });
+});

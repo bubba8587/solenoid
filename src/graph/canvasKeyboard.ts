@@ -4,7 +4,7 @@ import type { MutableRefObject } from "react";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import { processGraph, requestRecalc, withGraphRebuild } from "./process";
-import { repositionDockedNodes, unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess, cleanup as cleanupGraph, autoArrange as tidyGraph } from "./canvasCommands";
+import { repositionDockedNodes, unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess, cleanup as cleanupGraph, autoArrange as tidyGraph, deleteSelected } from "./canvasCommands";
 import { bumpConduitAngle } from "./graphSignals";
 import { copySelected, pasteClipboard } from "./copyPaste";
 import { createCompositeFromSelection } from "./compositeLogic";
@@ -21,7 +21,7 @@ import { createGroupFromSelection, autofitGroupWithHistory } from "./groupLogic"
 import { setGroupsCollapsed } from "./groupPush";
 import { groupCollapseStore } from "./groupCollapse";
 import { standoffStore, settleStandoffs, anchorFromVector, ANCHOR_DIR } from "./standoffs";
-import { drawModeStore, finishDrawing } from "./drawnCables";
+import { drawModeStore, drawnCableStore, finishDrawing } from "./drawnCables";
 import { isolateStore } from "./isolateStore";
 import { isolateSelection } from "./isolate";
 import { addMenuRequest } from "./addMenuStore";
@@ -174,6 +174,12 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
     }
 
     if (!editable && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // A selected drawn cable or standoff is not React Flow's selection, so RF never
+      // fires its delete hook for it; route the key to the app's delete, which answers
+      // them first (deleteSelection).
+      if ((e.key === "Delete" || e.key === "Backspace") && (drawnCableStore.selected() || standoffStore.selected())) {
+        void deleteSelected(); e.preventDefault(); return;
+      }
       // Bare Enter opens the palette — gated on `editable` so committing a field
       // never opens it (the modal gate above covers every overlay).
       if (e.key === "Enter" && !isAddMenuOpen()) {
