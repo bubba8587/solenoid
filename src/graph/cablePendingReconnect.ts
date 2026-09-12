@@ -64,15 +64,19 @@ export async function reattachPending(editor: Editor, view: View | null, nodeId:
     if (p.sourceOutput !== outKey) continue;
     const tgt = editor.getNode(p.target);
     if (!tgt) { cablePendingStore.drop(p.id); changed = true; continue; } // target node gone
-    // Same key if it's back; else the first input whose label matches the drop-time label.
-    const key = tgt.inputs[p.targetInput]
-      ? p.targetInput
-      : Object.keys(tgt.inputs).find((k) => inputLabel(tgt, k) === p.label);
+    // Same key if it's back; else the ONE input whose label matches the drop-time label
+    // (two inputs sharing a label is ambiguous — the ghost waits).
+    const byLabel = Object.keys(tgt.inputs).filter((k) => inputLabel(tgt, k) === p.label);
+    const key = tgt.inputs[p.targetInput] ? p.targetInput : byLabel.length === 1 ? byLabel[0] : undefined;
     const inType = key ? socketType(tgt.inputs[key]?.socket) : null;
     if (!key || !inType || !canConnect(outType, inType)) continue; // socket not back / still incompatible
-    const already = editor.getConnections().some(
-      (c) => c.source === nodeId && c.sourceOutput === outKey && c.target === p.target && c.targetInput === key,
-    );
+    const occupants = editor.getConnections().filter((c) => c.target === p.target && c.targetInput === key);
+    const already = occupants.some((c) => c.source === nodeId && c.sourceOutput === outKey);
+    // The user rewired that single-cable input from elsewhere while the ghost waited: theirs
+    // wins and the ghost dies, never a second cable on the input (flowModel's connect() evicts
+    // the same way).
+    const multi = (tgt.inputs[key] as { multipleConnections?: boolean } | undefined)?.multipleConnections;
+    if (!already && occupants.length > 0 && !multi) { cablePendingStore.drop(p.id); changed = true; continue; }
     if (!already) {
       const conn = new ClassicPreset.Connection(src, outKey, tgt, key) as SolenoidConnection;
       await editor.addConnection(conn);

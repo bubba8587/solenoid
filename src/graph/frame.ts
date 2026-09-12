@@ -590,7 +590,10 @@ export function flatCubeToFrame(c: CubeValue): FrameValue | SolError {
   const rows = cubeRowCount(c);
   return {
     __frame: true,
-    columns: c.columns.map((col) => typedColumn(col.name, col.cells.map((v) => (isUnitCell(v) ? v.value : v)), rows, col.type ?? null)),
+    columns: c.columns.map((col) => ({
+      ...typedColumn(col.name, col.cells.map((v) => (isUnitCell(v) ? v.value : v)), rows, col.type ?? null),
+      ...(col.format ? { format: col.format } : {}),
+    })),
   };
 }
 

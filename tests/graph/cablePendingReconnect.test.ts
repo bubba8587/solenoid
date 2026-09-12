@@ -85,4 +85,29 @@ describe("reattachPending — same key, then same label, only when compatible", 
     expect(ed._conns).toHaveLength(0);
     expect(cablePendingStore.all()).toHaveLength(0); // target vanished → ghost dies
   });
+
+  it("drops the ghost when another source took the single-cable input meanwhile", async () => {
+    const ed = stubEditor({
+      sw: { id: "sw", inputs: {}, outputs: { out: { socket: new SolenoidSocket("trueany") } } },
+      other: { id: "other", inputs: {}, outputs: { out: { socket: new SolenoidSocket("number") } } },
+      d: { id: "d", inputs: { in: inputSock("number", "In") }, outputs: {} },
+    });
+    await ed.addConnection({ source: "other", sourceOutput: "out", target: "d", targetInput: "in" });
+    cablePendingStore.mark({ source: "sw", sourceOutput: "out", target: "d", targetInput: "in", label: "In" });
+    await reattachPending(ed as never, null, "sw", "out");
+    expect(ed._conns).toHaveLength(1);                 // never a second cable on the input
+    expect(ed._conns[0].source).toBe("other");         // the user's rewire wins
+    expect(cablePendingStore.all()).toHaveLength(0);
+  });
+
+  it("an ambiguous label (two inputs share it) keeps the ghost waiting", async () => {
+    const ed = stubEditor({
+      sw: { id: "sw", inputs: {}, outputs: { out: { socket: new SolenoidSocket("trueany") } } },
+      d: { id: "d", inputs: { a: inputSock("number", "Value"), b: inputSock("number", "Value") }, outputs: {} },
+    });
+    cablePendingStore.mark({ source: "sw", sourceOutput: "out", target: "d", targetInput: "gone", label: "Value" });
+    await reattachPending(ed as never, null, "sw", "out");
+    expect(ed._conns).toHaveLength(0);
+    expect(cablePendingStore.all()).toHaveLength(1);
+  });
 });

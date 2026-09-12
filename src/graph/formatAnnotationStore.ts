@@ -587,11 +587,7 @@ export function formatNumberWithAnnotation(n: number, ann: FormatAnnotation): st
   if (!Number.isFinite(n)) return String(n);
   // Date styles render the value as a date serial; units don't apply.
   if (isDateStyle(ann.format)) {
-    const pattern = ann.format === "date_custom"
-      ? (ann.customPattern || DEFAULT_DATE_FORMAT)
-      // Guarded by isDateStyle, so format is a built-in date style here.
-      : (DATE_STYLE_PATTERNS[ann.format as FormatStyle] ?? DEFAULT_DATE_FORMAT);
-    return formatDateSerial(n, pattern);
+    return formatDateSerial(n, dateAnnotationPattern(ann) ?? DEFAULT_DATE_FORMAT);
   }
   const scale: ScaleMode = ann.scaleMode && scaleApplies(ann.format) ? ann.scaleMode : "none";
   const paren = (ann.negativeStyle === "paren" || ann.negativeStyle === "redparen") &&

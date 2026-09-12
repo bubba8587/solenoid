@@ -793,7 +793,7 @@ export class GroupByFrameNode extends ClassicPreset.Node {
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
 
   async data(inputs: { frame?: (FrameInput | CubeValue | null)[]; keys?: string[][]; column?: string[] }) {
-    const raw = inputs.frame?.[0] ?? null;
+    const raw = rowVerbInput(inputs.frame?.[0]);
     // A flat cube is rows; a nested cell is the loud #SHAPE! (the lattice never narrows a cube).
     const flat = isCubeValue(raw) ? flatCubeToFrame(raw) : raw;
     if (isSolError(flat)) return emitFrame(this, beginPass(this), flat);
@@ -2520,7 +2520,8 @@ export class AddColumnNode extends ClassicPreset.Node {
   data(inputs: { frame?: unknown[]; values?: FrameCell[][]; name?: string[] }) {
     const rawF = inputs.frame?.[0] ?? null;
     const isCube = isCubeValue(rawF);
-    const f: FrameValue | null = rawF == null ? null : isCube ? null : (isFrameValue(rawF) ? rawF : null);
+    // A bare list/matrix widens like the old frameIn (Computed Column does the same).
+    const f: FrameValue | null = rawF == null ? null : isCube ? null : (isFrameValue(rawF) ? rawF : widenToFrame(rawF));
     const values = inputs.values?.[0] ?? null;
     const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");
     // A wired blank name is unknown (value-semantics.md, "Reading an input").
@@ -3193,7 +3194,7 @@ export class WindowNode extends ClassicPreset.Node {
   noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
 
   async data(inputs: { frame?: (FrameInput | CubeValue | null)[]; keys?: string[][]; orderBy?: string[]; column?: string[]; n?: number[]; name?: string[] }) {
-    const raw = inputs.frame?.[0] ?? null;
+    const raw = rowVerbInput(inputs.frame?.[0]);
     const flat = isCubeValue(raw) ? flatCubeToFrame(raw) : raw;
     if (isSolError(flat)) return emitFrame(this, beginPass(this), flat);
     const f = flat;
