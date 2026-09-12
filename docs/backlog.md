@@ -133,10 +133,8 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 - [ ] **Minutes-mode cells show times**: a date column formats date-only, so a 13:00 start reads
   as its day; the FC's datetime format is the workaround. Consider stamping a datetime format
   on Start / Finish when precision is Minutes.
-- [ ] **Adjacent packs, by author promotion** (§ 12): XER and `.gan` read; MSPDI write as a sink;
-  earned value; resources + effort-driven recalculation; inactive and recurring tasks; the
-  by-row portfolio mode. Reopen only when a user arrives with such a file.
-- [ ] **Calendar figure** (the sibling): the same date-keyed layout code drawing a month grid.
+- [ ] **Still adjacent** (§ 12): recurring tasks; resource leveling (ruled out by the plan); the
+  by-row portfolio mode (needs composite by-row iteration over a cube); XER's `clndr_data`.
 
 ## Canvas chrome (queued by the author 2026-09-07, "not top priority")
 

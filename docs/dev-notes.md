@@ -60,7 +60,9 @@ Everything landed on `develop`; nothing pushed. The plan's § 10 calls were take
   remainders with an Actual start (Project's split-or-move option as the card's fourth toggle),
   MSPDI's ALAP / elapsed / ActualStart / CalendarUID; Agent 3 built the § 10 call-2 alternative
   (a Links frame input) and found Unnest lacked a list-cell branch (the plan assumed it); Agent
-  2 built split bars and minutes-mode midnight finishes.
+  2 built split bars, minutes-mode midnight finishes and the calendar month-grid sibling.
+  Then the formats: GanttProject and Primavera XER read, MSPDI write with a pinned round trip;
+  P6's longest path on the card, Work ÷ Units durations, inactive rows.
 - Test lock between agents moved from a doc line (per-worktree, signals nobody) to the shared
   file `.dev/test-lock` in the main checkout.
 - Open for the author: the eyeball list and the engine follow-ups in `backlog.md` § Gantt;

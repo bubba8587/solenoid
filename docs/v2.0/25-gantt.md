@@ -818,11 +818,15 @@ provider seam) and § Pointer gestures (`nokeys`)):
 by instant), elapsed durations and lags (rule 5), ALAP with a deadline pulling it earlier (rules
 7, 10), split remainders and actual starts (rule 13, both of Project's options on the card),
 multiple critical paths on the card, a summary's SS/SF late-start bound, the § 10 call-2
-alternative (a flat Links frame as a second input), the figure's split bars, minutes-mode
-midnight finishes, the tree grid keyboard map. **Not built, by name:** Project-exported goldens
+alternative (a flat Links frame as a second input) with Unnest exploding list cells for the
+tasks → links direction, the figure's split bars, minutes-mode midnight finishes, the tree grid
+keyboard map, the calendar month-grid sibling (`layout=calendar`), GanttProject `.gan` and
+Primavera XER read, MSPDI write (Schedule's `mspdi` output), P6's longest-path critical
+definition, effort-driven durations (Work ÷ Units), inactive rows. **Not built, by name:**
+Project-exported goldens
 (the author's trial — the corpus is hand-authored until then); a Rust twin (not planned, § 7.4);
-the § 12 adjacent packs (XER / `.gan` read, MSPDI write, earned value, resources, inactive and
-recurring tasks, P6 float definitions, a by-row portfolio mode); the calendar figure sibling.
+recurring tasks, resource leveling, a by-row portfolio mode (composite by-row iteration over a
+cube is the prerequisite); XER's `clndr_data` calendar blob.
 
 ## 10. Author calls
 
