@@ -825,7 +825,10 @@ Primavera XER read, MSPDI write (Schedule's `mspdi` output), P6's longest-path c
 definition, effort-driven durations (Work ÷ Units), inactive rows, recurring rows (Repeat +
 Every), XER's calendar blob, the figure's resource histogram (`histogram=on` over Resource /
 Units columns, over-allocation cued), `fit=page` export fit, and the by-row portfolio mode
-(a composite's By-Row iterates a cube's rows, nested cells kept). **Not built, by name:**
+(a composite's By-Row iterates a cube's rows, nested cells kept), an Earned Value node (BCWS /
+BCWP / ACWP / SV / CV / SPI / CPI / EAC / VAC / TCPI over a schedule, a baseline joined by name,
+a status date and a Cost column, currency carried; Write File's Text target as the MSPDI
+write sink). **Not built, by name:**
 Project-exported goldens
 (the author's trial — the corpus is hand-authored until then); a Rust twin (not planned, § 7.4);
 resource leveling (ruled out: § 12).
