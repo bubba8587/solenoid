@@ -52,6 +52,37 @@ describe("ScheduleNode", () => {
     expect(new ScheduleNode({ precision: "bogus" as never }).precision).toBe("days");
   });
 
+  it("Every path marks an independent short chain critical; the field round-trips", () => {
+    // A long chain A→B drives the finish; C is an independent one-day task that ends
+    // early, so it is critical only when every chain is measured on its own.
+    const chains = cubeFromColumns([
+      { name: "Task", cells: ["A", "B", "C"], type: "string" },
+      { name: "Duration", cells: [3, 3, 1], type: "number" },
+      { name: "Predecessors", cells: [[], ["A"], []] },
+    ]);
+    const criticalOf = (cube: CubeValue, task: string): unknown => {
+      const taskCol = cube.columns.find((col) => col.name.toLowerCase() === "task");
+      const critCol = cube.columns.find((col) => col.name.toLowerCase() === "critical");
+      const i = taskCol?.cells.findIndex((v) => String(v) === task) ?? -1;
+      return i >= 0 ? critCol?.cells[i] : undefined;
+    };
+
+    const one = new ScheduleNode(); // default: "one"
+    const oneOut = one.data({ tasks: [chains], start: [MON] });
+    if (!isCubeValue(oneOut.cube)) throw new Error("expected a cube");
+    expect(criticalOf(oneOut.cube, "B")).toBe(true);
+    expect(criticalOf(oneOut.cube, "C")).toBe(false);
+
+    const many = new ScheduleNode({ criticalPaths: "many" });
+    const manyOut = many.data({ tasks: [chains], start: [MON] });
+    if (!isCubeValue(manyOut.cube)) throw new Error("expected a cube");
+    expect(criticalOf(manyOut.cube, "B")).toBe(true);
+    expect(criticalOf(manyOut.cube, "C")).toBe(true);
+
+    expect(extractInit(many as never).criticalPaths).toBe("many");
+    expect(new ScheduleNode({ criticalPaths: "bogus" as never }).criticalPaths).toBe("one");
+  });
+
   it("a verb error comes out every socket as the one #VALUE! and is cached", () => {
     const n = new ScheduleNode();
     const bad = cubeFromColumns([{ name: "Task", cells: ["A"], type: "string" }, { name: "Duration", cells: [1], type: "number" }, { name: "Predecessors", cells: [["A"]] }]);

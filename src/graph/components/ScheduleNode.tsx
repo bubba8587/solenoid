@@ -1,5 +1,5 @@
 import type { ScheduleNode as ScheduleNodeType } from "../rete-nodes";
-import { SCHEDULE_MODE_OPTIONS, SCHEDULE_PRECISION_OPTIONS } from "../nodes/schedule";
+import { SCHEDULE_MODE_OPTIONS, SCHEDULE_PRECISION_OPTIONS, SCHEDULE_CRITICAL_OPTIONS } from "../nodes/schedule";
 import { NodeShell, InlineOutputRows, useNodeField, type NodeProps, type OutputRowValue } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";
 import { SegToggle } from "./SegToggle";
@@ -31,12 +31,14 @@ function diagnosticsSummary(data: ScheduleNodeType): OutputRowValue {
 export function ScheduleComponent({ data, emit }: NodeProps<ScheduleNodeType>) {
   const [mode, setMode] = useNodeField(data, "mode");
   const [precision, setPrecision] = useNodeField(data, "precision");
+  const [criticalPaths, setCriticalPaths] = useNodeField(data, "criticalPaths");
   const cubeOut = data.outputs.cube;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <InlineInputs node={data} emit={emit} />
       <SegToggle value={mode} options={SCHEDULE_MODE_OPTIONS} onChange={setMode} />
       <SegToggle value={precision} options={SCHEDULE_PRECISION_OPTIONS} onChange={setPrecision} />
+      <SegToggle value={criticalPaths} options={SCHEDULE_CRITICAL_OPTIONS} onChange={setCriticalPaths} />
       {cubeOut && (
         <MeasuredSocketRow hero side="output" socketKey="cube" nodeId={data.id} emit={emit} payload={cubeOut.socket}>
           <div style={{ width: "100%" }}>
