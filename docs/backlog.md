@@ -138,9 +138,8 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 - [ ] **Minutes-mode cells show times**: a date column formats date-only, so a 13:00 start reads
   as its day; the FC's datetime format is the workaround. Consider stamping a datetime format
   on Start / Finish when precision is Minutes.
-- [ ] **Multiple critical paths on the card** (the engine option `multipleCriticalPaths` exists,
-  tested; no control reaches it yet — a third toggle or an options key). ALAP (rule 10) stays a
-  named `unsupported` at import.
+- [ ] **ALAP** (rule 10) stays a named `unsupported` at import; the multiple-critical-paths option
+  is on the card (One path | Every path).
 - [ ] **Adjacent packs, by author promotion** (§ 12): XER and `.gan` read; MSPDI write as a sink;
   earned value; resources + effort-driven recalculation; inactive and recurring tasks; the
   by-row portfolio mode. Reopen only when a user arrives with such a file.
