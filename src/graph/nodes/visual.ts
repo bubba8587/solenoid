@@ -1157,6 +1157,20 @@ export function parseRecordLayout(text: string): RecordPlacement[] {
       }
     }),
   );
+  // A crossed repeat ("A | B" over "B | A") bounds two names onto one area; the later one
+  // shrinks to the cell it first appeared in, so no box ever hides another.
+  const placed: Array<{ r0: number; c0: number; r1: number; c1: number }> = [];
+  const firstCell = new Map<string, { r: number; c: number }>();
+  rows.forEach((cells, r) => cells.forEach(({ name }, c) => {
+    const key = name.toLowerCase();
+    if (name !== "" && name !== "." && !firstCell.has(key)) firstCell.set(key, { r, c });
+  }));
+  for (const key of order) {
+    const t = rects.get(key)!;
+    const hits = (a: typeof t) => placed.some((p) => a.r0 <= p.r1 && p.r0 <= a.r1 && a.c0 <= p.c1 && p.c0 <= a.c1);
+    if (hits(t)) { const f = firstCell.get(key)!; t.r0 = t.r1 = f.r; t.c0 = t.c1 = f.c; }
+    placed.push({ r0: t.r0, c0: t.c0, r1: t.r1, c1: t.c1 });
+  }
   return order.map((key) => {
     const t = rects.get(key)!;
     return {

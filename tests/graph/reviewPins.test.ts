@@ -82,3 +82,15 @@ describe("review pins: analytics batch", () => {
     expect(ntileList([1, 1, 1, 1, 2, 2], 2)).toEqual([1, 1, 1, 1, 2, 2]);
   });
 });
+
+describe("review pins: Record layout", () => {
+  it("a crossed repeat never draws two boxes on one area", async () => {
+    const { parseRecordLayout } = await import("../../src/graph/nodes/visual");
+    const p = parseRecordLayout("A | B\nB | A");
+    const a = p.find((x) => x.name === "A")!, b = p.find((x) => x.name === "B")!;
+    expect([a.row, a.col, a.rowSpan, a.colSpan]).toEqual([1, 1, 2, 2]);
+    expect([b.row, b.col, b.rowSpan, b.colSpan]).toEqual([1, 2, 1, 1]);
+    const ok = parseRecordLayout("A*2\nB | C");
+    expect(ok.map((x) => [x.name, x.row, x.col, x.colSpan])).toEqual([["A", 1, 1, 2], ["B", 2, 1, 1], ["C", 2, 2, 1]]);
+  });
+});
