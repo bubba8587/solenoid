@@ -655,3 +655,12 @@ describe("textPredicateNeedsText — a text predicate reads a TEXT column, or er
     expect(out.columns[0].values).toEqual([2]);
   });
 });
+
+describe("unnestCube: an empty [] beside tables", () => {
+  it("is an empty nested value, not a list vote", () => {
+    const kids = cubeFromColumns([{ name: "k", cells: [1, 2], type: "number" }]);
+    const c = cubeFromColumns([{ name: "p", cells: ["a", "b"], type: "string" }, { name: "kids", cells: [kids, []] }]);
+    const out = unnestCube(c, "kids");
+    expect(isCubeValue(out) && out.columns.find((x) => x.name === "p")!.cells).toEqual(["a", "a"]); // no children, no rows (like null)
+  });
+});

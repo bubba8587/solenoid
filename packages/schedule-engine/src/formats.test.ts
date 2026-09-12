@@ -97,3 +97,29 @@ describe("MSPDI write", () => {
     }
   });
 });
+
+describe("format border edge cases", () => {
+  it("XER: a Sun-Thu week with 07:00-15:00 hours reads its weekend code and intervals", () => {
+    const day = (n: number, on: boolean) => `(0||${n}()(${on ? "(0||0(s|07:00|f|15:00)())" : ""}))`;
+    const blob = `(0||CalendarData()((0||DaysOfWeek()(${[1, 2, 3, 4, 5].map((n) => day(n, true)).join("")}${day(6, false)}${day(7, false)}))(0||Exceptions()())))`;
+    const xer = XER.replace(/\(0\|\|CalendarData\(\)\(.*$/m, blob);
+    const p = readXer(xer);
+    expect(p.calendar.weekendCode).toBe(7);
+    expect(p.calendar.intervals).toEqual([[420, 900]]);
+  });
+
+  it("GanttProject: two tasks with one name import as distinct tasks and the links follow", () => {
+    const gan = GAN.replace(/name="Paint"/, 'name="Foundation"');
+    const p = readGan(gan);
+    const names = p.tasks.flatMap((t) => [t.name, ...(t.children ?? []).map((c) => c.name)]);
+    expect(new Set(names).size).toBe(names.length);
+    expect(names).toContain("Foundation (2)");
+    expect(() => schedule({ tasks: p.tasks, start: p.start!, calendar: p.calendar })).not.toThrow();
+  });
+
+  it("MSPDI: a Minutes-mode finish on the stroke of midnight is written on the day it ended", () => {
+    const o = schedule({ tasks: [{ name: "A", duration: 1, predecessors: [] }], start: isoToSerial("2026-03-02")!, calendar: { workingDays: true, precision: "minutes" } });
+    const xml = writeMspdi(o, { title: "T", formatIso: iso, minutes: true });
+    expect(xml).toContain("<Finish>2026-03-02T");
+  });
+});

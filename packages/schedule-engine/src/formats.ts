@@ -59,9 +59,12 @@ export function readGan(xml: string): ImportedPlanFile {
   const byId = new Map<string, PlanTask>();
   const links: Array<{ from: string; to: string; type: LinkType; lag: number }> = [];
   type N = typeof root;
+  // Names are the engine's keys; a file with two "Review" tasks gets "Review (2)".
+  const seen = new Set<string>();
+  const uniq = (n: string) => { let k = n, i = 2; while (seen.has(k.toLowerCase())) k = `${n} (${i++})`; seen.add(k.toLowerCase()); return k; };
   const readTask = (el: N, depth: number): PlanTask => {
     const id = attr(el, "id") ?? "";
-    const name = (attr(el, "name") ?? `Task ${id}`).trim();
+    const name = uniq((attr(el, "name") ?? `Task ${id}`).trim());
     const days = Number(attr(el, "duration") ?? 0);
     const start = isoToSerial(attr(el, "start"));
     const complete = Number(attr(el, "complete") ?? 0);
@@ -202,15 +205,29 @@ export function readXer(text: string): ImportedPlanFile {
  *  (0||Exceptions()( (0||0(d|46023)()) … )) ))`. A weekday with no work times is off; an
  *  exception with no work times is a holiday (`d|` is the day serial, P6's epoch being Excel's).
  *  Work times become the intervals. Anything unparsable leaves the standard week. */
+/** The balanced `(…)` body whose opening paren sits at `open`, without the outer parens. */
+function parenBody(s: string, open: number): string {
+  let depth = 0;
+  for (let i = open; i < s.length; i++) {
+    if (s[i] === "(") depth++;
+    else if (s[i] === ")" && --depth === 0) return s.slice(open + 1, i);
+  }
+  return s.slice(open + 1);
+}
+
 function xerCalendar(blob: string, unsupported: string[]): CalendarSpec {
   const cal: CalendarSpec = { workingDays: true, weekendCode: 1 };
-  const days = /\(0\|\|DaysOfWeek\(\)\(([\s\S]*?)\)\)\s*(?=\(0\|\||\)|$)/.exec(blob);
-  if (days) {
+  // The blob nests parens (each day holds its own `(0||0(s|..|f|..)())` groups), so a lazy
+  // regex stops at the first day's `))`; walk the balanced groups instead.
+  const daysAt = blob.indexOf("DaysOfWeek()(");
+  if (daysAt >= 0) {
+    const week = parenBody(blob, daysAt + "DaysOfWeek()".length);
     const off: number[] = [];
     let intervals: Array<[number, number]> | undefined;
-    for (const m of days[1].matchAll(/\(0\|\|([1-7])\(\)\(([\s\S]*?)\)\)/g)) {
+    for (const m of week.matchAll(/\(0\|\|([1-7])\(\)\(/g)) {
       const day = Number(m[1]) - 1; // P6: 1 = Sunday
-      const times = [...m[2].matchAll(/s\|(\d{2}):(\d{2})\|f\|(\d{2}):(\d{2})/g)].map((w) => [Number(w[1]) * 60 + Number(w[2]), Number(w[3]) * 60 + Number(w[4])] as [number, number]);
+      const body = parenBody(week, (m.index ?? 0) + m[0].length - 1);
+      const times = [...body.matchAll(/s\|(\d{2}):(\d{2})\|f\|(\d{2}):(\d{2})/g)].map((w) => [Number(w[1]) * 60 + Number(w[2]), Number(w[3]) * 60 + Number(w[4])] as [number, number]);
       if (!times.length) off.push(day);
       else if (!intervals) intervals = times;
     }
@@ -253,12 +270,14 @@ export function writeMspdi(out: ScheduleOutput, opts: { title?: string; hoursPer
   const stamp = (serial: number, end: boolean) => {
     const day = Math.floor(serial + 1e-9);
     const frac = serial - day;
-    const iso = opts.formatIso(day);
     if (opts.minutes && frac > 0) {
       const mins = Math.round(frac * 1440);
-      return `${iso}T${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}:00`;
+      return `${opts.formatIso(day)}T${String(Math.floor(mins / 60)).padStart(2, "0")}:${String(mins % 60).padStart(2, "0")}:00`;
     }
-    return `${iso}T${end ? "17:00:00" : "08:00:00"}`;
+    // Minutes mode: a finish on the stroke of midnight is the END of the previous day (the
+    // figure and the cells draw it there); a whole-day serial otherwise reads as its day.
+    const onDay = opts.minutes && end && frac === 0 ? day - 1 : day;
+    return `${opts.formatIso(onDay)}T${end ? "17:00:00" : "08:00:00"}`;
   };
   const dur = (days: number) => `PT${Math.round(days * H)}H0M0S`;
   const uidOf = new Map(out.tasks.map((t, i) => [t.name.toLowerCase(), i + 1]));

@@ -259,7 +259,9 @@ function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: L
     // held no earlier than the previous one's start plus k days (Project's recurring task).
     const repeat = cols.repeat && isNum(cols.repeat.cells[i]) ? Math.floor(cols.repeat.cells[i] as number) : 0;
     const every = cols.every && isNum(cols.every.cells[i]) ? (cols.every.cells[i] as number) : 7;
+    let generated = false;
     if (!kids && repeat > 1) {
+      generated = true;
       const base = readDate(cols.start?.cells[i], name, "Start");
       const dur = readDuration(duration?.cells[i] ?? null, hoursPerDay, name);
       const preds = pred ? readPredecessors(pred.cells[i] ?? null, name) : [];
@@ -287,7 +289,7 @@ function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: L
       name,
       duration: kids ? 0 : hasDuration || !isNum(workCell) ? readDuration(duration?.cells[i] ?? null, hoursPerDay, name) : (workCell as number) / (Math.max(0.01, isNum(unitsCell) ? unitsCell : 1) * hoursPerDay),
       ...(isNum(workCell) ? { work: workCell } : {}), ...(isNum(unitsCell) ? { units: unitsCell } : {}),
-      predecessors: kids && repeat > 1 ? [] : pred ? readPredecessors(pred.cells[i] ?? null, name) : [],
+      predecessors: generated ? [] : pred ? readPredecessors(pred.cells[i] ?? null, name) : [],
       start: readDate(cols.start?.cells[i], name, "Start"), finish: readDate(cols.finish?.cells[i], name, "Finish"), deadline: readDate(cols.deadline?.cells[i], name, "Deadline"),
       manual: cols.manual ? readBool(cols.manual.cells[i]) : false,
       complete: cols.complete ? (isNum(cols.complete.cells[i]) ? (cols.complete.cells[i] as number) : 0) : 0,

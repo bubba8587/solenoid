@@ -177,7 +177,7 @@ function splitFrontmatter(text: string): { fm: string; body: string } {
   if (lines[0]?.trim() !== FENCE) return { fm: "", body: text };
   for (let i = 1; i < lines.length; i++) {
     if (lines[i].trim() === FENCE) {
-      return { fm: lines.slice(0, i + 1).join("\n"), body: lines.slice(i + 1).join("\n").replace(/^\n+/, "") };
+      return { fm: lines.slice(0, i + 1).join("\n"), body: lines.slice(i + 1).join("\n").replace(/^(\r?\n)+/, "") };
     }
   }
   return { fm: "", body: text }; // unterminated fence — treat as no block
@@ -187,7 +187,11 @@ function splitFrontmatter(text: string): { fm: string; body: string } {
  *  byte-identical (a note with no block becomes just the body). */
 export function setBody(text: string, newBody: string): string {
   const { fm } = splitFrontmatter(text);
-  return fm === "" ? newBody : `${fm}\n\n${newBody}\n`;
+  if (fm === "") return newBody;
+  // One trailing newline whatever the cell carried (a Vault Folder body ends in one already),
+  // so a read → write → read cycle is a fixed point; a CRLF note stays CRLF.
+  const nl = text.includes("\r\n") ? "\r\n" : "\n";
+  return `${fm.replace(/\r$/, "")}${nl}${nl}${newBody.replace(/(\r?\n)+$/, "")}${nl}`;
 }
 
 /** A one-line display of a body for the plan. */

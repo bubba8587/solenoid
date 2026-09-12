@@ -109,7 +109,7 @@ export function byRowValues(v: unknown): unknown[] {
   if (isCubeValue(v)) {
     const n = cubeRowCount(v);
     const out: unknown[] = [];
-    for (let i = 0; i < n; i++) out.push(cubeFromColumns(v.columns.map((c) => ({ name: c.name, type: c.type, cells: [c.cells[i] ?? null] }))));
+    for (let i = 0; i < n; i++) out.push(cubeFromColumns(v.columns.map((c) => ({ name: c.name, type: c.type, ...(c.format ? { format: c.format } : {}), cells: [c.cells[i] ?? null] }))));
     return out;
   }
   if (isFrameValue(v)) {

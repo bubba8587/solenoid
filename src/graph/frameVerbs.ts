@@ -1370,13 +1370,15 @@ export function unnestCube(c: CubeValue, nestedColumn: string): FrameValue | Cub
   // unresolvable.
   let sawList = false, sawFrame = false, sawCube = false;
   for (const cell of nested.cells) {
-    if (Array.isArray(cell)) sawList = true;
+    // An empty [] is "nothing nested" on any path (a row with no children), not a list vote.
+    if (Array.isArray(cell)) sawList ||= cell.length > 0;
     else if (isFrameValue(cell)) sawFrame = true;
     else if (isCubeValue(cell)) sawCube = true;
   }
   if ([sawList, sawFrame, sawCube].filter(Boolean).length > 1) {
     throw solError("#TYPE!", "nested cells must all be lists, all tables, or all cubes");
   }
+  if (!sawList && !sawFrame && !sawCube) sawList = nested.cells.some(Array.isArray);
 
   if (sawList) {
     // ── EXPLODE a list column: one row per element, the element under the SAME name. ──

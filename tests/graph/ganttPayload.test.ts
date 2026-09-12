@@ -56,3 +56,20 @@ describe("ganttPayloadFromSchedule", () => {
     expect(isSolError(bad) && bad.message).toMatch(/"X"/);
   });
 });
+
+describe("Schedule rows with a Repeat column", () => {
+  it("a phase that carries a Repeat value keeps its own predecessors", () => {
+    const plan2: CubeValue = cubeFromColumns([
+      { name: "Task", cells: ["A", "Phase"], type: "string" },
+      { name: "Duration", cells: [2, null], type: "number" },
+      { name: "Tasks", cells: [null, cubeFromColumns([{ name: "Task", cells: ["K"], type: "string" }, { name: "Duration", cells: [1], type: "number" }])] },
+      { name: "Repeat", cells: [null, 3], type: "number" },
+      { name: "Predecessors", cells: [null, ["A"]] },
+    ]);
+    const r = scheduleTasks(plan2, { start: MON, workingDays: true });
+    const phase = r.cube.columns.find((c) => c.name === "Task")!.cells.indexOf("Phase");
+    const a = r.cube.columns.find((c) => c.name === "Task")!.cells.indexOf("A");
+    const start = r.cube.columns.find((c) => c.name === "Start")!.cells;
+    expect((start[phase] as number) > (start[a] as number)).toBe(true);
+  });
+});

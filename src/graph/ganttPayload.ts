@@ -104,10 +104,12 @@ export function ganttPayloadFromSchedule(schedule: CubeValue | FrameValue, opts:
 
     const tasks: GanttTask[] = [];
     const predecessorText_: Record<string, string> = {};
-    for (const r of rows) {
+    rows.forEach((r, ri) => {
       const start = num(r.cells.start), finish = num(r.cells.finish);
       if (start === null || finish === null) throw solError("#VALUE!", `Gantt: "${r.name}" has no Start or Finish; it needs a Schedule node's output`);
-      const summary = bool(r.cells.summary) || rows.some((x) => x.level === r.level + 1 && rows.indexOf(x) > rows.indexOf(r) && isChildOf(rows, r, x));
+      // Depth-first order: a row's children follow it directly, so it is a summary exactly
+      // when the next row sits one level deeper.
+      const summary = bool(r.cells.summary) || rows[ri + 1]?.level === r.level + 1;
       const dur = num(r.cells.duration) ?? num(r.cells.days);
       const fl = num(r.cells.float);
       const base = baseByKey.get(norm(r.name));
@@ -144,7 +146,7 @@ export function ganttPayloadFromSchedule(schedule: CubeValue | FrameValue, opts:
       }
       tasks.push(t);
       if (r.deps.length) predecessorText_[r.name] = predecessorText(r.deps);
-    }
+    });
     const links: GanttLink[] = [];
     for (const r of rows) {
       const succ = byKey.get(norm(r.name))!;
@@ -186,14 +188,6 @@ export function ganttPayloadFromSchedule(schedule: CubeValue | FrameValue, opts:
     if (isSolError(e)) return e;
     throw e;
   }
-}
-
-/** True when `x` sits under `r` in the depth-first row list (the rows between are deeper). */
-function isChildOf(rows: Row[], r: Row, x: Row): boolean {
-  const a = rows.indexOf(r), b = rows.indexOf(x);
-  if (b <= a) return false;
-  for (let i = a + 1; i < b; i++) if (rows[i].level <= r.level) return false;
-  return true;
 }
 
 function linkViolated(d: PlanDependency, pred: Row, succ: Row): boolean {

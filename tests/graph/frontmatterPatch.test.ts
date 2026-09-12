@@ -191,3 +191,18 @@ describe("resolveKey — what a write would do + the current value", () => {
     expect(resolveKey(nested, "meta", "x").action).toBe("refused");
   });
 })
+
+describe("setBody round trips", () => {
+  const NOTE = "---\nstatus: active\n---\n\n# Old body\n\ntext";
+  it("a body cell that already ends in a newline does not grow one per write", () => {
+    const once = setBody(NOTE, "X\n");
+    expect(once.endsWith("X\n")).toBe(true);
+    expect(setBody(once, "X\n")).toBe(once);
+  });
+  it("a CRLF note stays CRLF and the body reads without a leading blank line", () => {
+    const crlf = "---\r\ntitle: A\r\n---\r\n\r\nHello\r\n";
+    expect(resolveBody(crlf, "Hello").action).toBe("unchanged");
+    const out = setBody(crlf, "New");
+    expect(out).toBe("---\r\ntitle: A\r\n---\r\n\r\nNew\r\n");
+  });
+});
