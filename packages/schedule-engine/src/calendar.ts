@@ -52,6 +52,11 @@ export function intervalsForHours(hours: number): Array<[number, number]> {
   return [[480, Math.min(MINUTES_PER_DAY, 480 + minutes)]];
 }
 
+/** A stable key for a spec, so equal specs share one calendar (and one index space). */
+export function calendarKey(spec: CalendarSpec): string {
+  return JSON.stringify([spec.workingDays, spec.weekendCode ?? 1, [...(spec.holidays ?? [])].filter((h): h is number => typeof h === "number").sort((a, b) => a - b), spec.precision ?? "days", spec.intervals ?? null]);
+}
+
 export class Calendar {
   readonly working: boolean;
   readonly weekend: ReadonlySet<number>;
@@ -174,6 +179,30 @@ export class Calendar {
     if (clock === 0) return (dayIdx + 1) * this.unitsPerDay - 1;
     const off = this.offsetFloor(clock);
     return off < 0 ? dayIdx * this.unitsPerDay - 1 : dayIdx * this.unitsPerDay + off;
+  }
+
+  /** Index of the last counted unit that STARTS at or before `serial` (a link's late-start
+   *  bound). Days: the day's own index; Minutes: the minute beginning at that clock time. */
+  indexFloorStart(serial: number): number {
+    if (!this.minutes) return this.dayIndexFloor(serial);
+    const dayIdx = this.dayIndexFloor(serial);
+    if (this.dayDate(dayIdx) !== dayKey(serial)) return (dayIdx + 1) * this.unitsPerDay - 1;
+    const clock = Math.round((serial - dayKey(serial)) * MINUTES_PER_DAY);
+    let acc = 0, last = -1;
+    for (const [a, b] of this.intervals) {
+      if (clock < a) return last < 0 ? dayIdx * this.unitsPerDay - 1 : dayIdx * this.unitsPerDay + last;
+      if (clock < b) return dayIdx * this.unitsPerDay + acc + (clock - a);
+      acc += b - a;
+      last = acc - 1;
+    }
+    return dayIdx * this.unitsPerDay + last;
+  }
+
+  /** The instant work on unit k is over: the next day in Days mode, the following clock
+   *  minute in Minutes mode. The successor of a task ending at unit k may begin at the first
+   *  unit at or after this instant on ITS calendar. */
+  exclusiveEnd(k: number): number {
+    return this.minutes ? this.dateEnd(k) : this.dayDate(k) + 1;
   }
 
   /** Counted units from `a` to `b` inclusive of both ends, 0 when b < a. */

@@ -56,7 +56,7 @@ function flatten(c: CubeValue, level: number, out: Row[]): void {
   const task = col(c, ...TASK_NAMES) ?? c.columns.find((x) => x.cells.some(isText));
   if (!task) throw solError("#VALUE!", "Gantt needs a Task column naming each task");
   const pred = col(c, ...PRED_NAMES);
-  const children = col(c, ...CHILD_NAMES) ?? c.columns.find((x) => x !== pred && x.cells.some((v) => isTable(v)));
+  const children = col(c, ...CHILD_NAMES) ?? c.columns.find((x) => x !== pred && norm(x.name) !== "segments" && x.cells.some((v) => isTable(v) && !!col(asCube(v), ...TASK_NAMES)));
   const rows = c.columns.reduce((m, x) => Math.max(m, x.cells.length), 0);
   for (let i = 0; i < rows; i++) {
     const name = String(task.cells[i] ?? "").trim();
@@ -115,7 +115,7 @@ export function ganttPayloadFromSchedule(schedule: CubeValue | FrameValue, opts:
       const t: GanttTask = {
         id: r.name, name: r.name, level: r.level, summary,
         milestone: !summary && (dur === 0 || (dur === null && start === finish && !summary)),
-        start: Math.floor(start), finish: Math.floor(finish),
+        start, finish,
         complete: Math.max(0, Math.min(100, num(r.cells.complete) ?? num(r.cells["% complete"]) ?? 0)),
         critical: bool(r.cells.critical),
         late: bool(r.cells.late),
@@ -123,6 +123,13 @@ export function ganttPayloadFromSchedule(schedule: CubeValue | FrameValue, opts:
         float: summary ? null : fl,
       };
       if (dur !== null && dur >= 0) t.duration = dur;
+      const seg = r.cells.segments;
+      if (isTable(seg)) {
+        const sc = asCube(seg);
+        const ss = col(sc, "start")?.cells ?? [], sf = col(sc, "finish")?.cells ?? [];
+        const parts = ss.map((a, k) => [num(a), num(sf[k])] as const).filter((x): x is readonly [number, number] => x[0] !== null && x[1] !== null).map(([a, b]) => [a, b] as [number, number]);
+        if (parts.length > 1) t.segments = parts;
+      }
       if (bool(r.cells.manual)) t.manual = true;
       if (deadline !== null) t.deadline = Math.floor(deadline);
       const group = r.cells.project ?? r.cells.section ?? r.cells.group;
@@ -167,7 +174,11 @@ export function ganttPayloadFromSchedule(schedule: CubeValue | FrameValue, opts:
       projectStart, projectFinish,
       predecessorText: predecessorText_,
       // An ambiguous or unreadable window bound is no window (a view option, not a value).
-      view: parseGanttViewOptions(opts.options, (s) => { const v = parseDate(s); return typeof v === "number" ? v : null; }),
+      view: {
+        // Minutes-mode serials carry a clock fraction; the figure then reads a midnight finish as the previous day.
+        ...(tasks.some((t) => !Number.isInteger(t.start) || !Number.isInteger(t.finish)) ? { minutes: true } : {}),
+        ...parseGanttViewOptions(opts.options, (s) => { const v = parseDate(s); return typeof v === "number" ? v : null; }),
+      },
     };
   } catch (e) {
     if (isSolError(e)) return e;

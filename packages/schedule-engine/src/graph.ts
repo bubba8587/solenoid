@@ -4,7 +4,7 @@
 // parent bounds every leaf beneath it (rule 12). A cycle names a member and refuses the run.
 // A Manual task keeps its edges (they are drawn and checked) but the pass ignores them.
 
-import { ScheduleError, type LinkType, type PlanDependency, type PlanTask } from "./types";
+import { ScheduleError, type CalendarSpec, type LinkType, type PlanDependency, type PlanTask } from "./types";
 
 export const LINK_TYPES: readonly LinkType[] = ["FS", "SS", "FF", "SF"];
 
@@ -26,6 +26,10 @@ export interface FlatTask {
   manual: boolean;
   complete: number;
   group: string | null;
+  alap: boolean;
+  actualStart: number | null;
+  elapsed: boolean;
+  calendar: Partial<CalendarSpec> | null;
   /** As authored (a parent's own predecessors are kept for the DAG; its duration is not). */
   predecessors: PlanDependency[];
   row: number;
@@ -36,8 +40,9 @@ export interface Edge {
   to: number;
   type: LinkType;
   lag: number;
+  elapsed: boolean;
   /** The authored link this edge came from; a summary-successor expansion shares one. */
-  source: { from: string; to: string; type: LinkType; lag: number };
+  source: { from: string; to: string; type: LinkType; lag: number; elapsed: boolean };
 }
 
 export interface Graph {
@@ -70,7 +75,8 @@ function flatten(tasks: PlanTask[]): FlatTask[] {
       duration: dur,
       start: t.start ?? null, finish: t.finish ?? null, deadline: t.deadline ?? null,
       manual: t.manual === true, complete, group: t.group == null || t.group === "" ? null : String(t.group),
-      predecessors: (t.predecessors ?? []).map((p) => ({ task: String(p.task ?? "").trim(), type: LINK_TYPES.includes(p.type) ? p.type : "FS", lag: Number.isFinite(p.lag) ? p.lag : 0 })),
+      alap: t.alap === true, actualStart: t.actualStart ?? null, elapsed: t.elapsed === true, calendar: t.calendar ?? null,
+      predecessors: (t.predecessors ?? []).map((p) => ({ task: String(p.task ?? "").trim(), type: LINK_TYPES.includes(p.type) ? p.type : "FS", lag: Number.isFinite(p.lag) ? p.lag : 0, elapsed: p.elapsed === true })),
       row,
     };
     out.push(ft);
@@ -103,11 +109,11 @@ export function buildGraph(plan: PlanTask[]): Graph {
       if (!p.task) continue;
       const j = byKey.get(nameKey(p.task));
       if (j === undefined) throw new ScheduleError(`task "${t.name}" waits on "${p.task}", which is not a task`, t.name);
-      const source = { from: tasks[j].name, to: t.name, type: p.type, lag: p.lag };
+      const source = { from: tasks[j].name, to: t.name, type: p.type, lag: p.lag, elapsed: p.elapsed === true };
       // Successor is a summary → every leaf beneath it takes the link (rule 12).
       for (const leaf of leavesUnder(tasks, t.index)) {
         if (leaf === j) throw new ScheduleError(`"${t.name}" is in a dependency loop`, t.name);
-        addEdge({ from: j, to: leaf, type: p.type, lag: p.lag, source });
+        addEdge({ from: j, to: leaf, type: p.type, lag: p.lag, elapsed: p.elapsed === true, source });
       }
     }
   }

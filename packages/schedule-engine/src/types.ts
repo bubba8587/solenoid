@@ -9,8 +9,10 @@ export interface PlanDependency {
   /** The predecessor's name. */
   task: string;
   type: LinkType;
-  /** Working days; negative = lead. */
+  /** Working days on the successor's calendar (calendar days when `elapsed`); negative = lead. */
   lag: number;
+  /** An elapsed lag counts every day (Project's `ed`). */
+  elapsed?: boolean;
 }
 
 export interface PlanTask {
@@ -30,6 +32,15 @@ export interface PlanTask {
   complete?: number;
   /** The section / project label. */
   group?: string | null;
+  /** As late as possible: the task starts at its late start (rule 10); a deadline moves it. */
+  alap?: boolean;
+  /** The day work actually began; pins the early start and starts the done part (rule 13). */
+  actualStart?: number | null;
+  /** The duration counts every day (Project's `ed`), on a 24-hour calendar. */
+  elapsed?: boolean;
+  /** This task's own calendar, over the project's (a different weekend, its own holidays,
+   *  its own working hours). Rule 1: every task has a calendar. */
+  calendar?: Partial<CalendarSpec> | null;
   /** Children (the WBS); a parent's own duration/predecessors are ignored — it rolls up. */
   children?: PlanTask[];
   /** The source row's position in the flattened order, set by the caller for error messages. */
@@ -64,6 +75,10 @@ export interface ScheduleInput {
    *  tail (its late finish is its own early finish), so each independent chain is critical.
    *  Default off: one project finish. */
   multipleCriticalPaths?: boolean;
+  /** Project's "Split in-progress tasks" (default on): a started task's remaining work is a
+   *  second segment after the status date, the done part staying where it was; off, the whole
+   *  task runs contiguously from where its remainder can start. */
+  splitInProgress?: boolean;
 }
 
 export interface ScheduledTask {
@@ -87,6 +102,9 @@ export interface ScheduledTask {
   critical: boolean;
   /** The predecessor that set the start, else null. */
   driving: string | null;
+  /** Work segments [start, finish] inclusive when the task is split around the status date. */
+  segments?: Array<[number, number]>;
+  alap: boolean;
   /** Finish past the Deadline. */
   late: boolean;
   /** A typed Start held this task. */

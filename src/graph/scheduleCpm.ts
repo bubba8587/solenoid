@@ -35,6 +35,9 @@ export interface ScheduleOptions {
   /** A flat Dependencies frame (the § 10 two-frame form): each row adds one predecessor to a
    *  task, so links can live beside a tasks frame that can't carry a list cell. */
   links?: FrameValue | null;
+  /** A started task's remainder after the status date: split from its done part (default,
+   *  Project's) or the whole task moved. */
+  progress?: "split" | "move";
 }
 
 export interface ScheduleResult {
@@ -65,6 +68,12 @@ const DEADLINE_NAMES = ["deadline", "due"];
 const MANUAL_NAMES = ["manual", "pinned"];
 const COMPLETE_NAMES = ["complete", "% complete", "percent complete", "done", "progress"];
 const GROUP_NAMES = ["project", "section", "group"];
+const ALAP_NAMES = ["alap", "as late as possible", "late as possible"];
+const ACTUAL_NAMES = ["actual start", "started", "started on"];
+const ELAPSED_NAMES = ["elapsed"];
+const TASK_WEEKEND_NAMES = ["weekend", "weekend code"];
+const TASK_HOURS_NAMES = ["hours", "hours per day"];
+const TASK_HOLIDAY_NAMES = ["holidays", "days off"];
 
 /** The column named one of `names` (case-insensitive), else the first whose cells fit `pick`. */
 function findColumn(c: CubeValue, names: string[], pick?: (col: CubeColumn) => boolean): CubeColumn | undefined {
@@ -136,7 +145,8 @@ function readPredecessors(cell: CubeCell, taskName: string): PlanDependency[] {
       const lagCell = lagCol?.cells[i];
       const lag = lagCell == null || lagCell === "" ? 0 : isNum(lagCell) ? lagCell : Number(lagCell);
       if (!Number.isFinite(lag)) throw solError("#VALUE!", `Schedule: task "${taskName}" waits on "${task}" with a lag that is not a number`);
-      out.push({ task, type, lag });
+      const elapsedCol = findColumn(t, ELAPSED_NAMES);
+      out.push({ task, type, lag, ...(elapsedCol && readBool(elapsedCol.cells[i]) ? { elapsed: true } : {}) });
     }
     return out;
   }
@@ -183,6 +193,7 @@ interface Level {
   cols: {
     task: CubeColumn; duration?: CubeColumn; pred?: CubeColumn; children?: CubeColumn;
     start?: CubeColumn; finish?: CubeColumn; deadline?: CubeColumn; manual?: CubeColumn; complete?: CubeColumn; group?: CubeColumn;
+    alap?: CubeColumn; actual?: CubeColumn; elapsed?: CubeColumn; weekend?: CubeColumn; hours?: CubeColumn; holidays?: CubeColumn;
   };
   rows: number;
   /** Each row's child level (null for a leaf row). */
@@ -202,6 +213,8 @@ function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: L
     task, duration, pred, children,
     start: findColumn(c, START_NAMES), finish: findColumn(c, FINISH_NAMES), deadline: findColumn(c, DEADLINE_NAMES),
     manual: findColumn(c, MANUAL_NAMES), complete: findColumn(c, COMPLETE_NAMES), group: findColumn(c, GROUP_NAMES),
+    alap: findColumn(c, ALAP_NAMES), actual: findColumn(c, ACTUAL_NAMES), elapsed: findColumn(c, ELAPSED_NAMES),
+    weekend: findColumn(c, TASK_WEEKEND_NAMES), hours: findColumn(c, TASK_HOURS_NAMES), holidays: findColumn(c, TASK_HOLIDAY_NAMES),
   };
   const rows = c.columns.reduce((m, col) => Math.max(m, col.cells.length), 0);
   const tasks: PlanTask[] = [];
@@ -228,11 +241,27 @@ function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: L
       manual: cols.manual ? readBool(cols.manual.cells[i]) : false,
       complete: cols.complete ? (isNum(cols.complete.cells[i]) ? (cols.complete.cells[i] as number) : 0) : 0,
       group: groupCell == null ? null : String(groupCell).trim() || null,
+      alap: cols.alap ? readBool(cols.alap.cells[i]) : false,
+      actualStart: readDate(cols.actual?.cells[i], name, "Actual start"),
+      elapsed: cols.elapsed ? readBool(cols.elapsed.cells[i]) : false,
+      calendar: taskCalendar(cols, i, hoursPerDay),
       children: kids,
       row: i + 1,
     });
   }
   return { level: { cube: c, cols, rows, childLevels, names }, tasks };
+}
+
+/** A row's own calendar from its Weekend / Hours / Holidays cells, or null when it has none. */
+function taskCalendar(cols: Level["cols"], i: number, hoursPerDay: number): PlanTask["calendar"] {
+  const spec: NonNullable<PlanTask["calendar"]> = {};
+  const w = cols.weekend?.cells[i];
+  if (isNum(w)) spec.weekendCode = w;
+  const h = cols.hours?.cells[i];
+  if (isNum(h) && h > 0 && h !== hoursPerDay) spec.intervals = intervalsForHours(h);
+  const hol = cols.holidays?.cells[i];
+  if (Array.isArray(hol)) spec.holidays = hol.filter((x): x is number => isNum(x));
+  return Object.keys(spec).length ? spec : null;
 }
 
 /** Rebuild a level's cube with the computed columns appended (and child tables rebuilt). */
@@ -252,6 +281,13 @@ function writeLevel(level: Level, byName: Map<string, ScheduledTask>, nested: bo
     { name: "Driving", type: "string", cells: cells((t) => t.driving) },
     { name: "Late", type: "logical", cells: cells((t) => t.late) },
   ];
+  // A split task's parts, as a nested Start · Finish table, only when some row is split.
+  if (rows.some((t) => t.segments)) {
+    appended.push({ name: "Segments", cells: cells((t) => (t.segments ? cubeFromColumns([
+      { name: "Start", type: "date", cells: t.segments.map((s) => s[0]) },
+      { name: "Finish", type: "date", cells: t.segments.map((s) => s[1]) },
+    ]) : null)) });
+  }
   if (nested) {
     appended.push(
       { name: "WBS", type: "string", cells: cells((t) => t.wbs) },
@@ -310,6 +346,7 @@ export function scheduleTasks(c: CubeValue, opts: ScheduleOptions): ScheduleResu
         precision: opts.precision ?? "days", intervals: intervalsForHours(hoursPerDay),
       },
       statusDate: opts.statusDate ?? null,
+      splitInProgress: opts.progress !== "move",
       multipleCriticalPaths: opts.multipleCriticalPaths,
     });
   } catch (e) {

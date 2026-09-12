@@ -151,9 +151,10 @@ describe("schedule — the forward and backward passes", () => {
 
   it("progress with a status date: remaining work moves past the status date; a finished task is never critical", () => {
     const o = run([t("A", 4, [], { complete: 50 }), t("B", 2, ["A"]), t("C", 1, [], { complete: 100 })], { statusDate: S(2026, 1, 8) });
-    // 2 of 4 days done; the remaining 2 start after 8 Jan (Thu) → the whole span shifts so its remainder starts Fri 9.
-    expect(iso(byName(o, "A").start)).toBe("2026-01-07");
+    // 2 of 4 days done stay Mon–Tue; the remaining 2 start after 8 Jan (Thu): a split, Fri 9 + Mon 12.
+    expect(iso(byName(o, "A").start)).toBe("2026-01-05");
     expect(iso(byName(o, "A").finish)).toBe("2026-01-12");
+    expect(byName(o, "A").segments?.length).toBe(2);
     expect(iso(byName(o, "B").start)).toBe("2026-01-13");
     expect(byName(o, "C").critical).toBe(false);
     expect(byName(o, "C").freeFloat).toBe(0);

@@ -55,12 +55,16 @@ export function xsdDurationToHours(s: string | undefined): number | null {
 const num = (s: string | undefined) => (s == null || s === "" ? null : Number.isFinite(Number(s)) ? Number(s) : null);
 const flag = (s: string | undefined) => (s == null ? null : s === "1" || s.toLowerCase() === "true");
 
-function readCalendar(root: XmlNode, unsupported: string[]): CalendarSpec {
+function readCalendar(root: XmlNode, unsupported: string[], wantUid?: string): CalendarSpec {
   const cals = child(root, "Calendars");
-  const uid = text(root, "CalendarUID");
+  const uid = wantUid ?? text(root, "CalendarUID");
   const list = cals ? children(cals, "Calendar") : [];
-  const cal = list.find((c) => text(c, "UID") === uid) ?? list.find((c) => text(c, "IsBaseCalendar") === "1") ?? list[0];
+  let cal = list.find((c) => text(c, "UID") === uid) ?? (wantUid ? undefined : list.find((c) => text(c, "IsBaseCalendar") === "1") ?? list[0]);
   if (!cal) return { workingDays: true };
+  // A derived calendar inherits its base's week; its own WeekDays / Exceptions override.
+  const baseUid = text(cal, "BaseCalendarUID");
+  const base = baseUid && baseUid !== "-1" ? list.find((c) => text(c, "UID") === baseUid) : undefined;
+  if (base && !child(cal, "WeekDays")) cal = { ...cal, children: [...base.children.filter((c) => c.name === "WeekDays"), ...cal.children] };
   const off: number[] = [];
   const holidays: number[] = [];
   let intervals: Array<[number, number]> | undefined;
@@ -146,11 +150,20 @@ export function readMspdi(xml: string): MspdiPlan {
       else if (ct === 3) { task.finish = cd; task.manual = true; task.start = manual ? isoToSerial(text(el, "Start")) : null; unsupported.push(`must-finish-on for "${name}" pins the start from the file`); }
       else if (ct === 5 || ct === 7) task.finish = cd;
       else if (ct === 6) unsupported.push(`finish-no-earlier-than on "${name}"`);
-      else if (ct === 1) unsupported.push(`as-late-as-possible on "${name}"`);
+      else if (ct === 1) task.alap = true;
     }
+    if (ct === 1 && cd == null) task.alap = true;
     if (manual) { task.manual = true; task.start = isoToSerial(text(el, "ManualStart") ?? text(el, "Start")); task.finish = isoToSerial(text(el, "ManualFinish") ?? text(el, "Finish")); }
     const deadline = isoToSerial(text(el, "Deadline"));
     if (deadline != null) task.deadline = deadline;
+    const actual = isoToSerial(text(el, "ActualStart"));
+    if (actual != null) task.actualStart = actual;
+    if (/^-?P.*T?.*$/.test(text(el, "Duration") ?? "") && num(text(el, "DurationFormat")) != null && [4, 6, 8, 10, 12, 14, 16, 18, 20, 36, 38, 40, 42, 44, 46, 48, 50, 52].includes(num(text(el, "DurationFormat"))!)) task.elapsed = true;
+    const taskCalUid = text(el, "CalendarUID");
+    if (taskCalUid && taskCalUid !== "-1" && taskCalUid !== text(root, "CalendarUID")) {
+      const own = readCalendar(root, unsupported, taskCalUid);
+      task.calendar = { weekendCode: own.weekendCode, holidays: own.holidays, intervals: own.intervals };
+    }
     const pct = num(text(el, "PercentComplete"));
     if (pct != null && pct > 0) task.complete = pct;
     for (const link of children(el, "PredecessorLink")) {
@@ -158,11 +171,11 @@ export function readMspdi(xml: string): MspdiPlan {
       const type = LINK_CODES[text(link, "Type") ?? "1"] ?? "FS";
       const lagTenths = num(text(link, "LinkLag")) ?? 0;
       const lagFormat = num(text(link, "LagFormat"));
-      // Tenths of a minute → working days; an elapsed format (odd codes ≥ 35) is calendar time.
-      let lag = lagTenths / 10 / 60 / hoursPerDay;
-      if (lagFormat != null && lagFormat >= 35) unsupported.push(`elapsed lag on "${name}"`);
+      // Tenths of a minute → working days; an elapsed format (codes ≥ 35) is calendar time.
+      const elapsed = lagFormat != null && lagFormat >= 35 && lagFormat !== 51;
+      let lag = elapsed ? lagTenths / 10 / 60 / 24 : lagTenths / 10 / 60 / hoursPerDay;
       if (lagFormat === 19 || lagFormat === 51) lag = lagTenths / 100 * (task.duration || 1); // percent lag
-      task.predecessors.push({ task: puid, type, lag: Math.round(lag) });
+      task.predecessors.push({ task: puid, type, lag: Math.round(lag * 1000) / 1000, ...(elapsed ? { elapsed: true } : {}) });
     }
     recs.push({
       task, level, uid, summary,

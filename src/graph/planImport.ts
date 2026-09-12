@@ -25,11 +25,12 @@ const GRAMMAR_TOKEN = /^\s*\d+\s*(FS|SS|FF|SF)?\s*([+-]\s*\d+(\.\d+)?\s*(e?d|w|w
  *  nested Task · Type · Lag table (the cube ruling: never a grammar string in a cell). */
 function predecessorCell(deps: PlanDependency[]): CubeCell {
   if (deps.length === 0) return [];
-  if (deps.every((d) => d.type === "FS" && d.lag === 0)) return deps.map((d) => d.task);
+  if (deps.every((d) => d.type === "FS" && d.lag === 0 && !d.elapsed)) return deps.map((d) => d.task);
   return cubeFromColumns([
     { name: "Task", cells: deps.map((d) => d.task), type: "string" },
     { name: "Type", cells: deps.map((d) => d.type), type: "string" },
     { name: "Lag", cells: deps.map((d) => d.lag), type: "number" },
+    ...(deps.some((d) => d.elapsed) ? [{ name: "Elapsed", cells: deps.map((d) => d.elapsed === true), type: "logical" as const }] : []),
   ]);
 }
 
@@ -50,6 +51,12 @@ export function planToCube(tasks: PlanTask[]): CubeValue {
   if (has((t) => t.deadline != null)) cols.push({ name: "Deadline", cells: tasks.map((t) => t.deadline ?? null), type: "date" });
   if (has((t) => t.manual === true)) cols.push({ name: "Manual", cells: tasks.map((t) => t.manual === true), type: "logical" });
   if (has((t) => (t.complete ?? 0) > 0)) cols.push({ name: "Complete", cells: tasks.map((t) => t.complete ?? 0), type: "number" });
+  if (has((t) => t.actualStart != null)) cols.push({ name: "Actual start", cells: tasks.map((t) => t.actualStart ?? null), type: "date" });
+  if (has((t) => t.alap === true)) cols.push({ name: "ALAP", cells: tasks.map((t) => t.alap === true), type: "logical" });
+  if (has((t) => t.elapsed === true)) cols.push({ name: "Elapsed", cells: tasks.map((t) => t.elapsed === true), type: "logical" });
+  if (has((t) => t.calendar?.weekendCode != null)) cols.push({ name: "Weekend", cells: tasks.map((t) => t.calendar?.weekendCode ?? null), type: "number" });
+  if (has((t) => !!t.calendar?.intervals)) cols.push({ name: "Hours", cells: tasks.map((t) => (t.calendar?.intervals ? t.calendar.intervals.reduce((m, [a, b]) => m + (b - a), 0) / 60 : null)), type: "number" });
+  if (has((t) => !!t.calendar?.holidays?.length)) cols.push({ name: "Holidays", cells: tasks.map((t) => (t.calendar?.holidays?.length ? [...t.calendar.holidays] as CubeCell[] : null)) });
   if (has((t) => t.group != null)) cols.push({ name: "Project", cells: tasks.map((t) => t.group ?? null), type: "string" });
   if (has((t) => !!t.children?.length)) cols.push({ name: "Tasks", cells: tasks.map((t) => (t.children?.length ? planToCube(t.children) : null)) });
   return cubeFromColumns(cols);
