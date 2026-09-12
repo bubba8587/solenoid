@@ -261,3 +261,13 @@ describe("review pins: SORTBY length, COMBINA at zero", () => {
     expect(card(4, 2)).toBe(10);
   });
 });
+
+describe("review pins: copy skips composite markers", () => {
+  it("copySelected filters the boundary marker classes like deleteSelection does", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync("src/graph/copyPaste.ts", "utf8");
+    expect(src).toMatch(/CompositeInputNode/);
+    expect(src).toMatch(/CompositeOutputNode/);
+    expect(src).toMatch(/n\.selected && !isMarker\(n\)/);
+  });
+});

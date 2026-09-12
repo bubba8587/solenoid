@@ -203,8 +203,12 @@ export function NodeCard({ selected, node, className, accentOverride, collapsibl
   const wide = !collapsed && !!node && nodeWide(node as unknown as ClassicPreset.Node);
   // Medium card for date-outputting nodes (roomier than standard); wide wins over it.
   const medium = !collapsed && !wide && !!node && nodeMedium(node as unknown as ClassicPreset.Node);
-  // Manual size is ignored while collapsed (collapse owns the layout then).
-  const size = collapsed || !node ? undefined : nodeSizeStore.get(node.id);
+  // Manual size is ignored while collapsed (collapse owns the layout then). A stored size
+  // is clamped to the CURRENT content's minimum: a Display sized for a scalar that now
+  // shows a chart must not draw the chart in a 40px box (the grip clamps only live drags).
+  const stored = collapsed || !node ? undefined : nodeSizeStore.get(node.id);
+  const min = stored && node ? nodeSizeStore.getMin(node.id) : undefined;
+  const size = stored && min ? { w: Math.max(stored.w, min.w), h: Math.max(stored.h, min.h) } : stored;
 
   const style: CSSProperties = {};
   if (accent) (style as Record<string, string>)["--node-accent"] = accent;

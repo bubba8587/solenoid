@@ -33,7 +33,10 @@ export function copySelected() {
   const view = getActiveView();
   if (!editor || !view) return;
 
-  const directly = editor.getNodes().filter((n) => n.selected) as SolenoidNode[];
+  // A composite's boundary markers are the composite's ports, not nodes to copy: a pasted
+  // marker would be an orphan with no port (deleteSelection refuses them the same way).
+  const isMarker = (n: { constructor: { name: string } }) => n.constructor.name === "CompositeInputNode" || n.constructor.name === "CompositeOutputNode";
+  const directly = editor.getNodes().filter((n) => n.selected && !isMarker(n)) as SolenoidNode[];
   if (directly.length === 0) return;
   // A selected group brings its members along, so paste reproduces the contents.
   const ids = new Set(directly.map((n) => n.id));
