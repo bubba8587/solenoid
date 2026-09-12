@@ -94,3 +94,22 @@ describe("review pins: Record layout", () => {
     expect(ok.map((x) => [x.name, x.row, x.col, x.colSpan])).toEqual([["A", 1, 1, 2], ["B", 2, 1, 1], ["C", 2, 2, 1]]);
   });
 });
+
+describe("review pins: formula surface parity", () => {
+  it("the T-bill formulas run the actual/360 kernel (Microsoft's worked examples)", () => {
+    const s = 45382, m = 45444; // 2024-03-31, 2024-06-01
+    expect(resolveExcelFunction("TBILLYIELD")!(s, m, 98.45) as number).toBeCloseTo(0.09141696, 6);
+    expect(resolveExcelFunction("TBILLEQ")!(s, m, 0.0914) as number).toBeCloseTo(0.09415149, 6);
+    expect(resolveExcelFunction("TBILLPRICE")!(s, m, 0.09) as number).toBeCloseTo(98.45, 2);
+  });
+  it("WORKDAY.INTL takes the seven-character weekend mask", () => {
+    const mon = 46027; // 2026-01-05
+    expect(resolveExcelFunction("WORKDAY.INTL")!(mon, 5, "0000011")).toBe(mon + 7);
+    expect(resolveExcelFunction("WORKDAY.INTL")!(mon, 5, "0000011", [mon + 1])).toBe(mon + 8);
+    expect(resolveExcelFunction("WORKDAY.INTL")!(mon, 1, 1)).toBe(mon + 1); // the numeric code still works
+  });
+  it("SUBSTITUTE truncates its instance like Excel", () => {
+    expect(resolveExcelFunction("SUBSTITUTE")!("aaa", "a", "b", 1.5)).toBe("baa");
+    expect(resolveExcelFunction("SUBSTITUTE")!("aaa", "a", "b")).toBe("bbb");
+  });
+});

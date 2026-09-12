@@ -30,7 +30,7 @@ import {
   takeSlice, dropSlice, filterByMask, modeMult, frequencyBins,
   concatLists, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, type Cell as ListCell, argsortList, whichPositions } from "./nodes/listOps";
 import {
-  couponValue, accrintM, securityDisc, priceDisc, priceMat,
+  couponValue, accrintM, securityDisc, priceDisc, priceMat, tbill,
   durationValue, bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr, returnsOp } from "./nodes/financeOps";
 import { coerceNumber as toNum, coerceLogical, kleeneAnd, kleeneOr, kleeneNot, type Tri } from "./valueKinds";
 import {
@@ -621,6 +621,9 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   RECEIVED:   { returns: "number", arity: [4, 5], family: "finance", native: true },
   YIELDDISC:  { returns: "number", arity: [3, 5], family: "finance", native: true },
   PRICEMAT:   { returns: "number", arity: [5, 6], family: "finance", native: true },
+  TBILLEQ:    { returns: "number", arity: [3, 3], family: "finance", native: true },
+  TBILLPRICE: { returns: "number", arity: [3, 3], family: "finance", native: true },
+  TBILLYIELD: { returns: "number", arity: [3, 3], family: "finance", native: true },
   YIELDMAT:   { returns: "number", arity: [5, 6], family: "finance", native: true },
   DURATION:   { returns: "number", arity: [4, 6], family: "finance", native: true },
   MDURATION:  { returns: "number", arity: [4, 6], family: "finance", native: true },
@@ -954,13 +957,25 @@ registerInternal("TEXTJOIN", (delim, ignoreEmpty, ...xs) => {
 // (the numberToText 15-sig-digit contract), then delegate to FX for the semantics.
 const TEXT_ARG_POSITIONS: Record<string, number[]> = {
   LEFT: [0], RIGHT: [0], MID: [0], UPPER: [0], LOWER: [0], PROPER: [0],
-  TRIM: [0], REPT: [0], SUBSTITUTE: [0, 1, 2], REPLACE: [0, 3],
+  TRIM: [0], REPT: [0], REPLACE: [0, 3], // SUBSTITUTE is registered below (its instance truncates)
   EXACT: [0, 1], FIND: [0, 1], SEARCH: [0, 1],
 };
 for (const [name, idxs] of Object.entries(TEXT_ARG_POSITIONS)) {
   const f = (FX as unknown as Record<string, (...a: unknown[]) => unknown>)[name];
   registerInternal(name, (...a) => f(...a.map((x, i) => (idxs.includes(i) ? toStr(x) : x))));
 }
+// SUBSTITUTE is ours: formulajs replaces the (instance + 1)th match, and Excel truncates
+// the instance like every numeric argument.
+registerInternal("SUBSTITUTE", (text, old, neu, instance) => {
+  const t = toStr(text), o = toStr(old), n = toStr(neu);
+  if (o === "") return t;
+  if (instance == null) return t.split(o).join(n);
+  const k = Math.trunc(toNum(instance));
+  if (!(k >= 1)) return VALUE("SUBSTITUTE");
+  let at = -1;
+  for (let i = 0; i < k; i++) { at = t.indexOf(o, at < 0 ? 0 : at + o.length); if (at < 0) return t; }
+  return t.slice(0, at) + n + t.slice(at + o.length);
+});
 
 // Read OUR serial through `serialToJsDate` with getUTC*, exactly like DatePartNode —
 // one serial/UTC model, NOT Formula.js's Date/1900 conventions.
@@ -1308,7 +1323,26 @@ registerInternal("DATEDIF",  (start, end, unit) => {
 // any serial arithmetic downstream.
 {
   const f = (FX as unknown as { WORKDAY?: { INTL?: (...a: unknown[]) => unknown } }).WORKDAY?.INTL;
-  if (typeof f === "function") registerInternal("WORKDAY.INTL", (...a) => toSerialIfDate(f(...a)));
+  // FX takes only the numeric weekend codes; Excel also takes the 7-character "0000011"
+  // mask (Mon..Sun, 1 = off), so a mask walks the days here.
+  const maskWalk = (start: number, days: number, mask: string, holidays: unknown): number | SolError => {
+    if (!/^[01]{7}$/.test(mask) || mask === "1111111") return solError("#VALUE!", "WORKDAY.INTL weekend mask must be seven 0/1 characters with a working day");
+    const off = new Set<number>();
+    for (let i = 0; i < 7; i++) if (mask[i] === "1") off.add((i + 1) % 7); // JS day: Mon = 1 … Sun = 0
+    const hol = new Set((Array.isArray(holidays) ? holidays.flat() : holidays == null ? [] : [holidays]).map((h) => Math.floor(toNum(h))).filter(Number.isFinite));
+    const working = (d: number) => !off.has(serialToJsDate(d).getUTCDay()) && !hol.has(d);
+    let d = Math.floor(start), left = Math.trunc(days);
+    const step = left < 0 ? -1 : 1;
+    while (left !== 0) { d += step; if (working(d)) left -= step; }
+    return d;
+  };
+  if (typeof f === "function") registerInternal("WORKDAY.INTL", (start, days, weekend, holidays) => {
+    if (typeof weekend === "string" && weekend.length === 7) {
+      const s = toNum(start), n = toNum(days);
+      return badNum(s, n) ? VALUE("WORKDAY.INTL") : maskWalk(s, n, weekend, holidays);
+    }
+    return toSerialIfDate(f(start, days, weekend, holidays));
+  });
 }
 // FX's NETWORKDAYS miscounts a REVERSED (start > end) span, but Excel defines it as exactly
 // the negation of the forward count — so swap-and-negate and never touch FX's broken path.
@@ -1408,6 +1442,11 @@ registerInternal("RECEIVED", (settle, maturity, investment, discount, basis) =>
   securityDisc("received", toNum(settle), toNum(maturity), toNum(investment), toNum(discount), optNum(basis, 0)));
 registerInternal("YIELDDISC", (settle, maturity, pr, redemption, basis) =>
   priceDisc("yielddisc", toNum(settle), toNum(maturity), toNum(pr), optNum(redemption, 100), optNum(basis, 0)));
+// The T-bill trio runs the card's actual/360 kernel (capabilityParity); formulajs counts
+// 30/360 and misses Microsoft's worked examples by a day.
+registerInternal("TBILLEQ",    (settle, maturity, discount) => tbill("tbilleq",    toNum(settle), toNum(maturity), toNum(discount)));
+registerInternal("TBILLPRICE", (settle, maturity, discount) => tbill("tbillprice", toNum(settle), toNum(maturity), toNum(discount)));
+registerInternal("TBILLYIELD", (settle, maturity, pr)       => tbill("tbillyield", toNum(settle), toNum(maturity), toNum(pr)));
 registerInternal("PRICEMAT", (settle, maturity, issue, rate, yld, basis) =>
   priceMat("pricemat", toNum(settle), toNum(maturity), toNum(issue), toNum(rate), toNum(yld), optNum(basis, 0)));
 registerInternal("YIELDMAT", (settle, maturity, issue, rate, pr, basis) =>
