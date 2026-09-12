@@ -69,6 +69,15 @@ function barFor(t: GanttTask, row: FrameRow, scale: FrameScale, payload: GanttPa
     // the view/serializer). Keep the full height so the legs are unmistakable; no progress fill.
     base.y = yTop;
     base.h = barH;
+  } else if (t.segments && t.segments.length > 1) {
+    // A split bar (out-of-sequence progress): draw each part, a dotted gap between them, and no
+    // separate progress overlay (the split itself conveys the actual/remaining parts).
+    base.segments = t.segments.map(([s, f]) => {
+      const sx = xOf(s, scale);
+      const ex = xOf(f + 1, scale);
+      return { x: sx, w: Math.max(ex - sx, 1) };
+    });
+    base.progressW = 0;
   } else {
     base.progressW = t.complete > 0 ? Math.round(w * Math.min(100, Math.max(0, t.complete)) / 100) : 0;
   }

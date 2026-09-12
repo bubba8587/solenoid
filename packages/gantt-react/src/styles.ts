@@ -64,6 +64,7 @@ export const ganttStyles = `
 .solenoid-gantt__progress { fill: color-mix(in srgb, var(--accent, #56b4e9) 55%, #000); }
 .solenoid-gantt__progress.is-critical { fill: color-mix(in srgb, var(--sol-error, #e0473a) 45%, #000); }
 .solenoid-gantt__bar-flag { fill: none; stroke: var(--sol-error, #e0473a); stroke-width: 1.5; }
+.solenoid-gantt__split-gap { stroke: var(--text-dim, #9aa0a6); stroke-width: 1; stroke-dasharray: 2 2; }
 .solenoid-gantt__hatch { stroke: rgba(0, 0, 0, 0.32); stroke-width: 1.2; }
 .solenoid-gantt__crit-hatch { pointer-events: none; }
 .solenoid-gantt__crit-outline { fill: none; stroke: color-mix(in srgb, var(--sol-error, #e0473a) 45%, #000); stroke-width: 1; }
