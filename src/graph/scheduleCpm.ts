@@ -81,6 +81,8 @@ const TASK_HOLIDAY_NAMES = ["holidays", "days off"];
 const WORK_NAMES = ["work", "effort", "work (h)", "hours of work"];
 const UNITS_NAMES = ["units", "assignment", "fte"];
 const ACTIVE_NAMES = ["active", "included"];
+const REPEAT_NAMES = ["repeat", "occurrences", "times"];
+const EVERY_NAMES = ["every", "every (days)", "interval", "period"];
 
 /** The column named one of `names` (case-insensitive), else the first whose cells fit `pick`. */
 function findColumn(c: CubeValue, names: string[], pick?: (col: CubeColumn) => boolean): CubeColumn | undefined {
@@ -203,7 +205,7 @@ interface Level {
     task: CubeColumn; duration?: CubeColumn; pred?: CubeColumn; children?: CubeColumn;
     start?: CubeColumn; finish?: CubeColumn; deadline?: CubeColumn; manual?: CubeColumn; complete?: CubeColumn; group?: CubeColumn;
     alap?: CubeColumn; actual?: CubeColumn; elapsed?: CubeColumn; weekend?: CubeColumn; hours?: CubeColumn; holidays?: CubeColumn;
-    work?: CubeColumn; units?: CubeColumn; active?: CubeColumn;
+    work?: CubeColumn; units?: CubeColumn; active?: CubeColumn; repeat?: CubeColumn; every?: CubeColumn;
   };
   rows: number;
   /** Each row's child level (null for a leaf row). */
@@ -229,6 +231,7 @@ function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: L
     alap: findColumn(c, ALAP_NAMES), actual: findColumn(c, ACTUAL_NAMES), elapsed: findColumn(c, ELAPSED_NAMES),
     weekend: findColumn(c, TASK_WEEKEND_NAMES), hours: findColumn(c, TASK_HOURS_NAMES), holidays: findColumn(c, TASK_HOLIDAY_NAMES),
     work: findColumn(c, WORK_NAMES), units: findColumn(c, UNITS_NAMES), active: findColumn(c, ACTIVE_NAMES),
+    repeat: findColumn(c, REPEAT_NAMES), every: findColumn(c, EVERY_NAMES),
   };
   const rows = c.columns.reduce((m, col) => Math.max(m, col.cells.length), 0);
   const tasks: PlanTask[] = [];
@@ -251,6 +254,30 @@ function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: L
       kids = sub.tasks; childLevel = sub.level;
     }
     childLevels.push(childLevel);
+    // A recurring row (Repeat = N, Every = k calendar days): a phase of N occurrences, each
+    // held no earlier than the previous one's start plus k days (Project's recurring task).
+    const repeat = cols.repeat && isNum(cols.repeat.cells[i]) ? Math.floor(cols.repeat.cells[i] as number) : 0;
+    const every = cols.every && isNum(cols.every.cells[i]) ? (cols.every.cells[i] as number) : 7;
+    if (!kids && repeat > 1) {
+      const base = readDate(cols.start?.cells[i], name, "Start");
+      const dur = readDuration(duration?.cells[i] ?? null, hoursPerDay, name);
+      const preds = pred ? readPredecessors(pred.cells[i] ?? null, name) : [];
+      // The occurrences as a generated child table, so the output nests them like any phase.
+      const names = Array.from({ length: repeat }, (_, k) => `${name} ${k + 1}`);
+      const gen = cubeFromColumns([
+        { name: "Task", type: "string", cells: names },
+        { name: "Duration", type: "number", cells: names.map(() => dur) },
+        { name: "Predecessors", cells: names.map((_, k) => (k === 0
+          ? (preds.every((d) => d.type === "FS" && d.lag === 0 && !d.elapsed) ? preds.map((d) => d.task) : cubeFromColumns([
+              { name: "Task", type: "string", cells: preds.map((d) => d.task) }, { name: "Type", type: "string", cells: preds.map((d) => d.type) }, { name: "Lag", type: "number", cells: preds.map((d) => d.lag) },
+            ]))
+          : cubeFromColumns([{ name: "Task", type: "string", cells: [names[k - 1]] }, { name: "Type", type: "string", cells: ["SS"] }, { name: "Lag", type: "number", cells: [every] }, { name: "Elapsed", type: "logical", cells: [true] }]))) },
+        ...(base != null ? [{ name: "Start", type: "date" as const, cells: names.map((_, k) => base + k * every) }] : []),
+      ]);
+      const sub = readLevel(gen, hoursPerDay, depth + 1);
+      kids = sub.tasks;
+      childLevels[childLevels.length - 1] = sub.level;
+    }
     const groupCell = cols.group?.cells[i];
     const workCell = cols.work?.cells[i];
     const unitsCell = cols.units?.cells[i];
@@ -259,7 +286,7 @@ function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: L
       name,
       duration: kids ? 0 : hasDuration || !isNum(workCell) ? readDuration(duration?.cells[i] ?? null, hoursPerDay, name) : (workCell as number) / (Math.max(0.01, isNum(unitsCell) ? unitsCell : 1) * hoursPerDay),
       ...(isNum(workCell) ? { work: workCell } : {}), ...(isNum(unitsCell) ? { units: unitsCell } : {}),
-      predecessors: pred ? readPredecessors(pred.cells[i] ?? null, name) : [],
+      predecessors: kids && repeat > 1 ? [] : pred ? readPredecessors(pred.cells[i] ?? null, name) : [],
       start: readDate(cols.start?.cells[i], name, "Start"), finish: readDate(cols.finish?.cells[i], name, "Finish"), deadline: readDate(cols.deadline?.cells[i], name, "Deadline"),
       manual: cols.manual ? readBool(cols.manual.cells[i]) : false,
       complete: cols.complete ? (isNum(cols.complete.cells[i]) ? (cols.complete.cells[i] as number) : 0) : 0,
@@ -321,6 +348,10 @@ function writeLevel(level: Level, byName: Map<string, ScheduledTask>, nested: bo
   // A level with no Duration column (phases whose rows are only names + children) gets one
   // appended, so a summary's rolled-up working days reach the grid.
   if (!level.cols.duration && rows.some((t) => t?.summary)) appended.unshift({ name: "Duration", type: "number", cells: cells((t) => t.duration) });
+  // Generated children (a recurring row's occurrences) get a Tasks column the input lacked.
+  if (!level.cols.children && level.childLevels.some(Boolean)) {
+    appended.unshift({ name: "Tasks", cells: level.childLevels.map((l) => (l ? writeLevel(l, byName, nested) : null)) });
+  }
   const taken = new Set(appended.map((col) => col.name));
   const kept = level.cube.columns.filter((col) => !taken.has(col.name) || col === level.cols.start || col === level.cols.finish);
   // A typed Start / Finish column is replaced in place by the scheduled one (a floor that

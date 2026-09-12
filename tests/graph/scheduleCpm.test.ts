@@ -198,6 +198,22 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
     expect(() => scheduleTasks(bad, { start: MON, workingDays: true })).toThrow(/"A"/);
   });
 
+  it("a recurring row (Repeat, Every) becomes a phase of occurrences a week apart", () => {
+    const c = cubeFromColumns([
+      { name: "Task", cells: ["Kickoff", "Standup", "Wrap"], type: "string" },
+      { name: "Duration", cells: [1, 0.5, 1], type: "number" },
+      { name: "Repeat", cells: [null, 3, null], type: "number" },
+      { name: "Every", cells: [null, 7, null], type: "number" },
+      { name: "Predecessors", cells: [[], ["Kickoff"], ["Standup"]] },
+    ]);
+    const r = scheduleTasks(c, { start: MON, workingDays: true });
+    const inner = col(r.cube, "Tasks")[1] as CubeValue;
+    expect(col(inner, "Task")).toEqual(["Standup 1", "Standup 2", "Standup 3"]);
+    expect(col(inner, "Start").map(iso)).toEqual(["2026-01-06", "2026-01-13", "2026-01-20"]);
+    expect(col(r.cube, "Summary")).toEqual([false, true, false]);
+    expect(col(r.cube, "Start").map(iso)[2]).toBe("2026-01-21"); // Wrap follows the last occurrence
+  });
+
   it("an empty tasks cube schedules nothing and finishes on the start", () => {
     const r = scheduleTasks(tasks([]), { start: MON, workingDays: true });
     expect(col(r.cube, "Start")).toEqual([]);

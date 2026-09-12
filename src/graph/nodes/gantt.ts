@@ -21,7 +21,7 @@ export class GanttNode extends ClassicPreset.Node {
     holidays: "Dates to shade as non-working, alongside the weekend.",
     weekend_code: "Excel's WORKDAY.INTL codes for which days shade as the weekend: 1 = Sat+Sun, 2 = Sun+Mon, … 7 = Fri+Sat; 11–17 = a single day off.",
     status: "The day progress is measured on, drawn as the status line. Unwired, no line.",
-    options: "zoom=week;tiers=2;critical=on;baseline=on;arrows=on;today=on;weekends=on;labels=on. zoom is day, week, month, quarter or year; window=1-Jun,31-Aug frames the dates; collapse=1 folds nesting; columns=name,start,finish,duration picks the grid columns. title and fontsize also apply.",
+    options: "zoom=week;tiers=2;critical=on;baseline=on;arrows=on;today=on;weekends=on;labels=on. zoom is day, week, month, quarter, year or fit; window=1-Jun,31-Aug frames the dates; collapse=1 folds nesting; columns=name,start,finish,duration,float,complete,predecessors picks the grid columns; layout=calendar draws the plan as a month grid; histogram=on adds a resource band under the timeline when rows carry a Resource column; fit=page lays the whole plan out to one width for export; minutes=on reads finishes to the minute. title and fontsize also apply.",
     chart: "The Gantt figure: the scheduled bars, the milestones, the dependency arrows and the critical path. It draws at full size in the Display, the popup, or a Report.",
   };
 
