@@ -1,4 +1,5 @@
 import { ClassicPreset } from "rete";
+import { sourceHasLayer } from "../svgLayer";
 import {
   numberSocket, stringSocket, logicalSocket, dateSocket,
   listSocket, strListSocket, logicalListSocket, dateListSocket, frameSocket,
@@ -373,7 +374,8 @@ export class SvgPickerNode extends ClassicPreset.Node {
 
   data(): { chart: SvgValue | null; layer: string | null } {
     const source = this.source;
-    const layer = this.selectedLayer || null;
+    // A pick names a layer of THIS picture; after the source changes it reads blank.
+    const layer = this.selectedLayer && sourceHasLayer(source, this.selectedLayer) ? this.selectedLayer : null;
     const chart: SvgValue | null = source
       ? { __svg: true, source, selected: layer, hoverColor: this.hoverColor, height: this.height, title: this.label }
       : null;

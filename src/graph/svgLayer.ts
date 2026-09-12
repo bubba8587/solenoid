@@ -32,6 +32,16 @@ export function resolveLayer<T extends SvgLike>(target: T, root: T): { el: T; na
   return null;
 }
 
+/** Whether the SOURCE text still names `name` on some element (the same attributes the
+ *  resolver reads), so a persisted pick never outlives the picture it was made on. Text-level
+ *  on purpose: the headless graph has no DOM. */
+export function sourceHasLayer(source: string, name: string): boolean {
+  if (!name) return false;
+  const re = /\b(?:inkscape:label|data-name|aria-label|id)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
+  for (const m of source.matchAll(re)) if ((m[1] ?? m[2] ?? "").trim() === name) return true;
+  return false;
+}
+
 /** Just the resolved layer name (see resolveLayer), or null. */
 export function resolveLayerName(target: SvgLike, root: SvgLike): string | null {
   return resolveLayer(target, root)?.name ?? null;
