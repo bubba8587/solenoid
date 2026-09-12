@@ -194,3 +194,14 @@ describe("review pins: one-element lists into list-consuming matrix nodes", () =
     expect(solved.map((v) => Math.round(v * 1e9) / 1e9)).toEqual([2]);
   });
 });
+
+describe("review pins: Slider bounds", () => {
+  it("inverted wired bounds swap; a non-finite bound is the card's own", async () => {
+    const { SliderInputNode } = await import("../../src/graph/nodes/input");
+    const n = new SliderInputNode() as unknown as { data: (i: Record<string, unknown[]>) => { value: number }; effectiveMin: number; effectiveMax: number; literals: Record<string, number> };
+    n.data({ min: [50], max: [10] });
+    expect([n.effectiveMin, n.effectiveMax]).toEqual([10, 50]);
+    n.data({ min: [NaN] });
+    expect(n.effectiveMin).toBe(n.literals.min ?? 0);
+  });
+});

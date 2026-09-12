@@ -224,9 +224,16 @@ export class SliderInputNode extends ClassicPreset.Node {
     const litMin  = this.literals.min  ?? 0;
     const litMax  = this.literals.max  ?? 100;
     const litStep = this.literals.step ?? 1;
-    this.effectiveMin  = readInput(inputs.min,  litMin)  ?? litMin;
-    this.effectiveMax  = readInput(inputs.max,  litMax)  ?? litMax;
-    this.effectiveStep = readInput(inputs.step, litStep) ?? litStep;
+    // A non-finite bound is no bound (the card's own); inverted bounds swap so the
+    // control still spans them instead of pinning the value to one end silently.
+    const finite = (v: number | null, lit: number) => (v != null && Number.isFinite(v) ? v : lit);
+    let lo = finite(readInput(inputs.min, litMin), litMin);
+    let hi = finite(readInput(inputs.max, litMax), litMax);
+    if (lo > hi) [lo, hi] = [hi, lo];
+    this.effectiveMin  = lo;
+    this.effectiveMax  = hi;
+    const step = finite(readInput(inputs.step, litStep), litStep);
+    this.effectiveStep = step > 0 ? step : litStep;
     this.value = Math.min(Math.max(this.value, this.effectiveMin), this.effectiveMax);
     return { value: this.value };
   }
