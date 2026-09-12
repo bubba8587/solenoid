@@ -63,7 +63,10 @@ function flatten(tasks: PlanTask[]): FlatTask[] {
     if (!name) throw new ScheduleError(`row ${row} has no task name`);
     const k = nameKey(name);
     if (seen.has(k)) throw new ScheduleError(`task "${name}" is named twice`, name);
-    const dur = t.duration == null ? 0 : t.duration;
+    // Effort-driven (rule 16): hours of work over units of assignment, when no duration is given.
+    const hoursPerDay = 8;
+    const fromWork = t.work != null && Number.isFinite(t.work) ? t.work / (Math.max(0.01, t.units ?? 1) * hoursPerDay) : null;
+    const dur = t.duration == null ? (fromWork ?? 0) : t.duration;
     if (!Number.isFinite(dur) || dur < 0) throw new ScheduleError(`task "${name}" needs a duration of 0 or more days`, name);
     const complete = t.complete == null ? 0 : Math.max(0, Math.min(100, t.complete));
     if (!Number.isFinite(complete)) throw new ScheduleError(`task "${name}" has a Complete that is not a number`, name);

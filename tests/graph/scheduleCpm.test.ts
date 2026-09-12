@@ -176,6 +176,28 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
     expect(col(r2.cube, "Finish").map(iso)).toEqual(col(r1.cube, "Finish").map(iso));
   });
 
+  it("Work and Units set a blank duration; an inactive row keeps its place with no dates", () => {
+    const c = cubeFromColumns([
+      { name: "Task", cells: ["A", "B", "Skip", "C"], type: "string" },
+      { name: "Duration", cells: [null, 1, 1, 1], type: "number" },
+      { name: "Work", cells: [16, null, null, null], type: "number" },
+      { name: "Units", cells: [2, null, null, null], type: "number" },
+      { name: "Active", cells: [true, true, false, true], type: "logical" },
+      { name: "Predecessors", cells: [[], ["A"], ["B"], ["B"]] },
+    ]);
+    const r = scheduleTasks(c, { start: MON, workingDays: true });
+    expect(col(r.cube, "Task")).toEqual(["A", "B", "Skip", "C"]);
+    expect(col(r.cube, "Start").map((v) => (v == null ? null : iso(v)))).toEqual(["2026-01-05", "2026-01-06", null, "2026-01-07"]);
+    expect(col(r.cube, "Critical")).toEqual([true, true, null, true]);
+    expect(r.output.tasks.map((t) => t.name)).toEqual(["A", "B", "C"]);
+    // Nothing may wait on an inactive row.
+    const bad = cubeFromColumns([
+      { name: "Task", cells: ["A", "B"], type: "string" }, { name: "Duration", cells: [1, 1], type: "number" },
+      { name: "Active", cells: [false, true], type: "logical" }, { name: "Predecessors", cells: [[], ["A"]] },
+    ]);
+    expect(() => scheduleTasks(bad, { start: MON, workingDays: true })).toThrow(/"A"/);
+  });
+
   it("an empty tasks cube schedules nothing and finishes on the start", () => {
     const r = scheduleTasks(tasks([]), { start: MON, workingDays: true });
     expect(col(r.cube, "Start")).toEqual([]);

@@ -32,6 +32,8 @@ export interface ScheduleOptions {
   precision?: "days" | "minutes";
   /** Mark every independent longest chain critical, not just the one to the project finish. */
   multipleCriticalPaths?: boolean;
+  /** P6's longest-path critical definition instead of float ≤ 0. */
+  longestPath?: boolean;
   /** A flat Dependencies frame (the § 10 two-frame form): each row adds one predecessor to a
    *  task, so links can live beside a tasks frame that can't carry a list cell. */
   links?: FrameValue | null;
@@ -76,6 +78,9 @@ const ELAPSED_NAMES = ["elapsed"];
 const TASK_WEEKEND_NAMES = ["weekend", "weekend code"];
 const TASK_HOURS_NAMES = ["hours", "hours per day"];
 const TASK_HOLIDAY_NAMES = ["holidays", "days off"];
+const WORK_NAMES = ["work", "effort", "work (h)", "hours of work"];
+const UNITS_NAMES = ["units", "assignment", "fte"];
+const ACTIVE_NAMES = ["active", "included"];
 
 /** The column named one of `names` (case-insensitive), else the first whose cells fit `pick`. */
 function findColumn(c: CubeValue, names: string[], pick?: (col: CubeColumn) => boolean): CubeColumn | undefined {
@@ -198,11 +203,14 @@ interface Level {
     task: CubeColumn; duration?: CubeColumn; pred?: CubeColumn; children?: CubeColumn;
     start?: CubeColumn; finish?: CubeColumn; deadline?: CubeColumn; manual?: CubeColumn; complete?: CubeColumn; group?: CubeColumn;
     alap?: CubeColumn; actual?: CubeColumn; elapsed?: CubeColumn; weekend?: CubeColumn; hours?: CubeColumn; holidays?: CubeColumn;
+    work?: CubeColumn; units?: CubeColumn; active?: CubeColumn;
   };
   rows: number;
   /** Each row's child level (null for a leaf row). */
   childLevels: (Level | null)[];
   names: string[];
+  /** Rows with Active = FALSE: kept in place, every computed cell blank. */
+  inactive: boolean[];
 }
 
 /** Read one level of the cube into PlanTasks (recursing into child tables). */
@@ -211,23 +219,30 @@ function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: L
   if (!task) throw solError("#VALUE!", "Schedule needs a Task column (text) naming each task");
   const pred = findColumn(c, PRED_NAMES);
   const children = findColumn(c, CHILD_NAMES, (col) => col !== pred && col.cells.some((v) => isTable(v) && !!findColumn(asCube(v), TASK_NAMES, (cc) => cc.cells.some(isText))));
-  const duration = findColumn(c, DURATION_NAMES, (col) => col !== task && col !== children && col.cells.some((v) => isNum(v) || isUnitCell(v)));
-  if (!duration && !children) throw solError("#VALUE!", "Schedule needs a Duration column (number of days)");
+  const duration = findColumn(c, DURATION_NAMES, (col) => col !== task && col !== children && !WORK_NAMES.includes(norm(col.name)) && !UNITS_NAMES.includes(norm(col.name)) && col.cells.some((v) => isNum(v) || isUnitCell(v)));
+  const work = findColumn(c, WORK_NAMES);
+  if (!duration && !children && !work) throw solError("#VALUE!", "Schedule needs a Duration column (number of days) or a Work column (hours)");
   const cols: Level["cols"] = {
     task, duration, pred, children,
     start: findColumn(c, START_NAMES), finish: findColumn(c, FINISH_NAMES), deadline: findColumn(c, DEADLINE_NAMES),
     manual: findColumn(c, MANUAL_NAMES), complete: findColumn(c, COMPLETE_NAMES), group: findColumn(c, GROUP_NAMES),
     alap: findColumn(c, ALAP_NAMES), actual: findColumn(c, ACTUAL_NAMES), elapsed: findColumn(c, ELAPSED_NAMES),
     weekend: findColumn(c, TASK_WEEKEND_NAMES), hours: findColumn(c, TASK_HOURS_NAMES), holidays: findColumn(c, TASK_HOLIDAY_NAMES),
+    work: findColumn(c, WORK_NAMES), units: findColumn(c, UNITS_NAMES), active: findColumn(c, ACTIVE_NAMES),
   };
   const rows = c.columns.reduce((m, col) => Math.max(m, col.cells.length), 0);
   const tasks: PlanTask[] = [];
   const childLevels: (Level | null)[] = [];
   const names: string[] = [];
+  const inactive: boolean[] = [];
   for (let i = 0; i < rows; i++) {
     const name = String(task.cells[i] ?? "").trim();
     if (!name) throw solError("#VALUE!", `Schedule: row ${i + 1} has no task name`);
     names.push(name);
+    // An inactive row (Active = FALSE) keeps its place and gets no dates; nothing may wait on it.
+    const off = cols.active ? cols.active.cells[i] != null && !readBool(cols.active.cells[i]) : false;
+    inactive.push(off);
+    if (off) { childLevels.push(null); continue; }
     const kidCell = children?.cells[i];
     let kids: PlanTask[] | undefined;
     let childLevel: Level | null = null;
@@ -237,9 +252,13 @@ function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: L
     }
     childLevels.push(childLevel);
     const groupCell = cols.group?.cells[i];
+    const workCell = cols.work?.cells[i];
+    const unitsCell = cols.units?.cells[i];
+    const hasDuration = duration && duration.cells[i] != null && duration.cells[i] !== "";
     tasks.push({
       name,
-      duration: kids ? 0 : readDuration(duration?.cells[i] ?? null, hoursPerDay, name),
+      duration: kids ? 0 : hasDuration || !isNum(workCell) ? readDuration(duration?.cells[i] ?? null, hoursPerDay, name) : (workCell as number) / (Math.max(0.01, isNum(unitsCell) ? unitsCell : 1) * hoursPerDay),
+      ...(isNum(workCell) ? { work: workCell } : {}), ...(isNum(unitsCell) ? { units: unitsCell } : {}),
       predecessors: pred ? readPredecessors(pred.cells[i] ?? null, name) : [],
       start: readDate(cols.start?.cells[i], name, "Start"), finish: readDate(cols.finish?.cells[i], name, "Finish"), deadline: readDate(cols.deadline?.cells[i], name, "Deadline"),
       manual: cols.manual ? readBool(cols.manual.cells[i]) : false,
@@ -253,7 +272,7 @@ function readLevel(c: CubeValue, hoursPerDay: number, depth: number): { level: L
       row: i + 1,
     });
   }
-  return { level: { cube: c, cols, rows, childLevels, names }, tasks };
+  return { level: { cube: c, cols, rows, childLevels, names, inactive }, tasks };
 }
 
 /** A row's own calendar from its Weekend / Hours / Holidays cells, or null when it has none. */
@@ -270,8 +289,8 @@ function taskCalendar(cols: Level["cols"], i: number, hoursPerDay: number): Plan
 
 /** Rebuild a level's cube with the computed columns appended (and child tables rebuilt). */
 function writeLevel(level: Level, byName: Map<string, ScheduledTask>, nested: boolean): CubeValue {
-  const rows = level.names.map((n) => byName.get(n.toLowerCase())!);
-  const cells = <T extends CubeCell>(f: (t: ScheduledTask) => T): T[] => rows.map(f);
+  const rows = level.names.map((n, i) => (level.inactive[i] ? null : byName.get(n.toLowerCase())!)) as ScheduledTask[];
+  const cells = <T extends CubeCell>(f: (t: ScheduledTask) => T): (T | null)[] => rows.map((t) => (t ? f(t) : null));
   const appended: Array<{ name: string; type?: "date" | "number" | "logical" | "string"; cells: CubeCell[] }> = [
     { name: "Start", type: "date", cells: cells((t) => t.start) },
     { name: "Finish", type: "date", cells: cells((t) => t.finish) },
@@ -286,7 +305,7 @@ function writeLevel(level: Level, byName: Map<string, ScheduledTask>, nested: bo
     { name: "Late", type: "logical", cells: cells((t) => t.late) },
   ];
   // A split task's parts, as a nested Start · Finish table, only when some row is split.
-  if (rows.some((t) => t.segments)) {
+  if (rows.some((t) => t?.segments)) {
     appended.push({ name: "Segments", cells: cells((t) => (t.segments ? cubeFromColumns([
       { name: "Start", type: "date", cells: t.segments.map((s) => s[0]) },
       { name: "Finish", type: "date", cells: t.segments.map((s) => s[1]) },
@@ -301,7 +320,7 @@ function writeLevel(level: Level, byName: Map<string, ScheduledTask>, nested: bo
   }
   // A level with no Duration column (phases whose rows are only names + children) gets one
   // appended, so a summary's rolled-up working days reach the grid.
-  if (!level.cols.duration && rows.some((t) => t.summary)) appended.unshift({ name: "Duration", type: "number", cells: cells((t) => t.duration) });
+  if (!level.cols.duration && rows.some((t) => t?.summary)) appended.unshift({ name: "Duration", type: "number", cells: cells((t) => t.duration) });
   const taken = new Set(appended.map((col) => col.name));
   const kept = level.cube.columns.filter((col) => !taken.has(col.name) || col === level.cols.start || col === level.cols.finish);
   // A typed Start / Finish column is replaced in place by the scheduled one (a floor that
@@ -315,7 +334,7 @@ function writeLevel(level: Level, byName: Map<string, ScheduledTask>, nested: bo
     // A summary row's Duration is derived (the working days its children span); the input
     // leaves it blank, so the output fills it.
     if (col === level.cols.duration) {
-      return { name: col.name, type: col.type, cells: col.cells.map((cell, i) => (rows[i]?.summary ? rows[i].duration : cell)) };
+      return { name: col.name, type: col.type, cells: col.cells.map((cell, i) => (rows[i]?.summary ? rows[i]!.duration : cell)) };
     }
     return { name: col.name, type: col.type, cells: col.cells };
   }).filter((c): c is NonNullable<typeof c> => c !== null);
@@ -352,6 +371,7 @@ export function scheduleTasks(c: CubeValue, opts: ScheduleOptions): ScheduleResu
       statusDate: opts.statusDate ?? null,
       splitInProgress: opts.progress !== "move",
       multipleCriticalPaths: opts.multipleCriticalPaths,
+      longestPath: opts.longestPath,
     });
   } catch (e) {
     if (e instanceof ScheduleError) throw solError("#VALUE!", `Schedule: ${e.message}`);

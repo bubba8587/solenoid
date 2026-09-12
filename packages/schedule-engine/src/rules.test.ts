@@ -65,6 +65,29 @@ describe("ALAP (rules 7, 10)", () => {
   });
 });
 
+describe("longest path (P6) and effort-driven durations (rule 16)", () => {
+  it("longest path: the driving chain to the finish is critical even when a floor gives it float", () => {
+    // B is held by a typed Start so it has float against C's chain, but it still DRIVES the finish.
+    const tasks = [t("A", 1), t("B", 2, ["A"], { start: S(2026, 1, 12) }), t("C", 3), t("End", 0, ["B", "C"])];
+    const byFloat = run(tasks);
+    const byPath = run(tasks, { longestPath: true });
+    expect(byFloat.tasks.map((x) => x.critical)).toEqual([false, true, false, true]);
+    expect(byPath.tasks.map((x) => x.critical)).toEqual([false, true, false, true]);
+    // A drives nothing (B's floor won) → not on the longest path either way; the float rule and
+    // the path rule differ when a task with float lies on the driving chain:
+    const gap = [t("A", 1), t("B", 1, ["A"], { deadline: S(2026, 1, 30) }), t("C", 5)];
+    expect(run(gap).tasks.map((x) => x.critical)).toEqual([false, false, true]);
+    expect(run(gap, { longestPath: true }).tasks.map((x) => x.critical)).toEqual([false, false, true]);
+  });
+
+  it("work over units gives the duration when none is typed", () => {
+    const o = run([t("A", 0, [], { duration: undefined as never, work: 40, units: 1 }), t("B", 0, [], { duration: undefined as never, work: 40, units: 2 })]);
+    expect(by(o, "A").duration).toBe(5);
+    expect(by(o, "B").duration).toBe(2.5);
+    expect(iso(by(o, "B").finish)).toBe("2026-01-07"); // 2.5 days rounds up to 3 whole days
+  });
+});
+
 describe("progress (rule 13)", () => {
   it("splits a started task around the status date, keeping the done part where it was", () => {
     const o = run([t("A", 4, [], { complete: 50 }), t("B", 1, ["A"])], { statusDate: S(2026, 1, 8) });

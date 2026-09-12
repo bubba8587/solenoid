@@ -38,6 +38,11 @@ export interface PlanTask {
   actualStart?: number | null;
   /** The duration counts every day (Project's `ed`), on a 24-hour calendar. */
   elapsed?: boolean;
+  /** Effort-driven: hours of work; with `units` the duration is work ÷ (units × hours per day)
+   *  when no duration is given (rule 16, Fixed Work). */
+  work?: number | null;
+  /** Assignment units, 1 = one full-time resource (rule 16). */
+  units?: number | null;
   /** This task's own calendar, over the project's (a different weekend, its own holidays,
    *  its own working hours). Rule 1: every task has a calendar. */
   calendar?: Partial<CalendarSpec> | null;
@@ -75,6 +80,10 @@ export interface ScheduleInput {
    *  tail (its late finish is its own early finish), so each independent chain is critical.
    *  Default off: one project finish. */
   multipleCriticalPaths?: boolean;
+  /** P6's longest-path definition of critical: the driving chains that end at the project
+   *  finish, whatever their float (a task with float from a constraint can still be on it).
+   *  Default off: critical = total float ≤ `criticalSlack`. */
+  longestPath?: boolean;
   /** Project's "Split in-progress tasks" (default on): a started task's remaining work is a
    *  second segment after the status date, the done part staying where it was; off, the whole
    *  task runs contiguously from where its remainder can start. */

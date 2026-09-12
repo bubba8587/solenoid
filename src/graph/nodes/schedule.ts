@@ -21,11 +21,12 @@ export const SCHEDULE_PROGRESS_OPTIONS: ReadonlyArray<{ value: ScheduleProgress;
   { value: "split", label: "Split the rest", title: "A started task keeps its done part where it was; the unfinished part is a second piece after the status date" },
   { value: "move",  label: "Move the whole", title: "A started task moves as one piece so its unfinished part follows the status date" },
 ];
-export type ScheduleCriticalPaths = "one" | "many";
+export type ScheduleCriticalPaths = "one" | "many" | "longest";
 
 export const SCHEDULE_CRITICAL_OPTIONS: ReadonlyArray<{ value: ScheduleCriticalPaths; label: string; title: string }> = [
   { value: "one",  label: "One path",   title: "Float is measured against the project finish, so only the chain that drives it is critical" },
   { value: "many", label: "Every path", title: "Every independent chain is critical on its own, each measured against its own last task" },
+  { value: "longest", label: "Longest path", title: "Critical is the chain that drives the project finish, whatever its float: Primavera's definition" },
 ];
 
 export const SCHEDULE_PRECISION_OPTIONS: ReadonlyArray<{ value: SchedulePrecision; label: string; title: string }> = [
@@ -46,7 +47,7 @@ export function todaySerial(): number {
 
 export class ScheduleNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    tasks: "One row per task. Optional per-task columns: ALAP starts a task as late as possible, Actual start pins the day work began, Elapsed counts every day, and Weekend, Hours or Holidays give a task its own calendar. Task is the first text column with unique names; Duration the first number column in days, where blank or 0 marks a milestone; Predecessors a list cell naming the tasks that must finish first, or a nested table of Task, Type (FS, SS, FF or SF) and Lag in days for typed links and leads. Optional columns: Start holds a task no earlier than a date, Finish caps it and shows negative float, Deadline flags a late finish, Manual pins a task to its dates, Complete is 0 to 100, Project groups the gantt into sections. A row whose Tasks cell holds a table is a summary of those rows.",
+    tasks: "One row per task. Optional per-task columns: ALAP starts a task as late as possible, Actual start pins the day work began, Elapsed counts every day, Weekend, Hours or Holidays give a task its own calendar, Work in hours with Units (1 = one person full time) sets the duration when Duration is blank, Resource names who does it, and Active = FALSE leaves a row in place with no dates. Task is the first text column with unique names; Duration the first number column in days, where blank or 0 marks a milestone; Predecessors a list cell naming the tasks that must finish first, or a nested table of Task, Type (FS, SS, FF or SF) and Lag in days for typed links and leads. Optional columns: Start holds a task no earlier than a date, Finish caps it and shows negative float, Deadline flags a late finish, Manual pins a task to its dates, Complete is 0 to 100, Project groups the gantt into sections. A row whose Tasks cell holds a table is a summary of those rows.",
     start: "The project start. Unwired, the schedule starts today.",
     holidays: "Dates to skip alongside the weekend. Only read in Working days mode.",
     links: "A flat list of dependencies, one row per link: Successor (or Task, or To), Predecessor (or From), an optional Type (FS, SS, FF or SF) and Lag in days. Its links add to each task's Predecessors, so a plain tasks table with no list column can still carry dependencies. A row naming a task that isn't in the plan is an error.",
@@ -95,7 +96,7 @@ export class ScheduleNode extends ClassicPreset.Node {
     this.label = init?.label ?? "Schedule";
     this.mode = init?.mode === "calendar" ? "calendar" : "working";
     this.precision = init?.precision === "minutes" ? "minutes" : "days";
-    this.criticalPaths = init?.criticalPaths === "many" ? "many" : "one";
+    this.criticalPaths = init?.criticalPaths === "many" ? "many" : init?.criticalPaths === "longest" ? "longest" : "one";
     this.progress = init?.progress === "move" ? "move" : "split";
     this.addInput("tasks", cubeIn("Tasks"));
     this.addInput("links", frameIn("Links"));
@@ -132,7 +133,7 @@ export class ScheduleNode extends ClassicPreset.Node {
         start, workingDays: this.mode === "working", weekendCode, holidays: inputs.holidays?.[0],
         statusDate: statusDate != null && Number.isFinite(statusDate) ? statusDate : null, hoursPerDay,
         precision: this.precision, progress: this.progress,
-        multipleCriticalPaths: this.criticalPaths === "many",
+        multipleCriticalPaths: this.criticalPaths === "many", longestPath: this.criticalPaths === "longest",
         links,
       });
       this.cachedResult = r.cube; this.cachedFinish = r.projectFinish; this.cachedGantt = r.gantt; this.cachedDiagnostics = r.diagnostics; this.cachedOutput = r.output;

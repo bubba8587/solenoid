@@ -111,6 +111,13 @@ describe("ScheduleNode", () => {
     expect(isSolError(out.cube) && out.cube.message).toMatch(/Nope/);
   });
 
+  it("the Longest path value round-trips and reaches the engine", () => {
+    const n = new ScheduleNode({ criticalPaths: "longest" });
+    expect(extractInit(n as never).criticalPaths).toBe("longest");
+    const out = n.data({ tasks: [c], start: [MON] });
+    expect(isCubeValue(out.cube)).toBe(true);
+  });
+
   it("a verb error comes out every socket as the one #VALUE! and is cached", () => {
     const n = new ScheduleNode();
     const bad = cubeFromColumns([{ name: "Task", cells: ["A"], type: "string" }, { name: "Duration", cells: [1], type: "number" }, { name: "Predecessors", cells: [["A"]] }]);

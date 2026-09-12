@@ -219,6 +219,20 @@ export function schedule(input: ScheduleInput): ScheduleOutput {
       critical[i] = t.children.some((c) => critical[c]) || totalDays[i] <= critLimitDays;
     } else critical[i] = (totalDays[i] <= critLimitDays || t.alap) && t.complete < 100;
   }
+  if (input.longestPath) {
+    // P6: critical = on a driving chain that ends at the project finish, whatever the float.
+    const endAll = n ? Math.max(...order.map(endInstant)) : 0;
+    const onPath = tasks.map(() => false);
+    const walk = (i: number) => {
+      if (onPath[i]) return;
+      onPath[i] = true;
+      const d = p.driver[i];
+      if (d) walk(d.from);
+    };
+    for (let i = 0; i < n; i++) if (!tasks[i].summary && endInstant(i) >= endAll) walk(i);
+    for (let i = 0; i < n; i++) if (!tasks[i].summary) critical[i] = onPath[i] && tasks[i].complete < 100;
+    for (const i of order) if (tasks[i].summary) critical[i] = tasks[i].children.some((c) => critical[c]);
+  }
   const freeDays = tasks.map((t, i) => {
     if (t.summary) return totalDays[i];
     if (t.complete >= 100) return 0;
