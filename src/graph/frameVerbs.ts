@@ -8,6 +8,7 @@ import {
   isCubeValue, frameFromRows, formatFrameCell, selectCubeRows,
 } from "./frame";
 import { isSolError, solError } from "./errorValue";
+import { sameColumnUnit } from "./unitValue";
 import { forAggregate, coerceLogical, guardFinite } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 import { compareOp, type ComparisonOp } from "./nodes/logic";
@@ -523,6 +524,9 @@ function sumGroup(values: FrameCell[]): FrameCell {
   return prep.nums.filter((n) => Number.isFinite(n)).reduce((a, b) => a + b, 0);
 }
 
+/** Aggregates whose result is in the source column's unit (a count or a spread ratio isn't). */
+const UNIT_KEEPING_AGGS: ReadonlySet<string> = new Set(["sum", "avg", "min", "max", "median", "first", "last"]);
+
 /** GROUP BY: one output row per unique combination of `keys` (first-seen order),
  *  carrying the key columns plus each aggregation as its own `as`-named numeric
  *  column. Generalizes the 1-D GroupByNode to a frame with multi-key + multi-agg. */
@@ -538,7 +542,7 @@ export function groupByFrame(f: FrameValue, keys: readonly string[], aggs: reado
     rows.push(i);
   }
   const keyOut: FrameColumn[] = keyCols.map((c) => ({
-    name: c.name, type: c.type,
+    name: c.name, type: c.type, ...(c.unit ? { unit: c.unit } : {}),
     values: keyOrder.map((k) => cellAt(c, buckets.get(k)![0])), // every row in a bucket shares the key
   }));
   const aggOut: FrameColumn[] = aggCols.map(({ spec, col }) => {
@@ -556,6 +560,8 @@ export function groupByFrame(f: FrameValue, keys: readonly string[], aggs: reado
       // min/max preserve the SOURCE type (a min over a date column IS a date,
       // not a bare serial); sum/avg/count are always numeric.
       type: preserves ? col.type : "number",
+      // The column's unit rides an aggregate in the same unit (unitFlow); a count has none.
+      ...(col.unit && UNIT_KEEPING_AGGS.has(spec.op) ? { unit: col.unit } : {}),
       values,
     };
   });
@@ -1056,10 +1062,11 @@ export function unpivotFrame(
     [...idCols.map((c) => c.name), opts?.variableName ?? "variable", opts?.valueName ?? "value"],
     idCols.length + 2,
   );
+  const sharedUnit = valCols.length > 0 && valCols.every((c) => sameColumnUnit(c.unit, valCols[0].unit)) ? valCols[0].unit : undefined;
   return frame([
-    ...idCols.map((c, k) => ({ name: names[k], type: c.type, values: idVals[k] })),
+    ...idCols.map((c, k) => ({ name: names[k], type: c.type, ...(c.unit ? { unit: c.unit } : {}), values: idVals[k] })),
     { name: names[idCols.length], type: "string" as const, values: varVals },
-    { name: names[idCols.length + 1], type: valCols[0]?.type ?? "number", values: valVals },
+    { name: names[idCols.length + 1], type: valCols[0]?.type ?? "number", ...(sharedUnit ? { unit: sharedUnit } : {}), values: valVals },
   ]);
 }
 
@@ -1307,6 +1314,7 @@ export function pivotFrame(f: FrameValue, spec: PivotSpec): FrameValue {
   const bodyNames = makeHeaders(rawHeaders, rawHeaders.length);
   const bodyColumns: FrameColumn[] = bodySpecs.map(({ co, v }, bi) => ({
     name: bodyNames[bi], type: "number",
+    ...(valCols[v].unit && UNIT_KEEPING_AGGS.has(funcs[v]) ? { unit: valCols[v].unit } : {}),
     values: rowOut.map((ro) => cellValue(v, ro.span, co.span)),
   }));
 
@@ -2235,6 +2243,14 @@ export type WindowFn =
   | "rolling_sum" | "rolling_avg" | "rolling_min" | "rolling_max"
   | "group_sum" | "group_avg" | "group_min" | "group_max" | "group_count" | "share" | "first" | "last";
 
+/** Window functions whose output is in the value column's unit (ranks, counts, shares and
+ *  percent changes are not). */
+const WINDOW_UNIT_KEEPING: ReadonlySet<WindowFn> = new Set([
+  "cumsum", "cumavg", "cummin", "cummax", "lag", "lead", "diff",
+  "rolling_sum", "rolling_avg", "rolling_min", "rolling_max",
+  "group_sum", "group_avg", "group_min", "group_max", "first", "last",
+]);
+
 export interface WindowSpec {
   /** Partition columns; empty = the whole frame is one group. */
   partitionBy: string[];
@@ -2389,5 +2405,6 @@ export function windowFrame(f: FrameValue, spec: WindowSpec): FrameValue {
   const outType: FrameColType =
     (spec.fn === "lag" || spec.fn === "lead" || spec.fn === "first" || spec.fn === "last") && valCol ? valCol.type : "number";
   const name = spec.as.trim() || spec.fn;
-  return { __frame: true, columns: [...f.columns.filter((c) => c.name !== name), { name, type: outType, values: out }] };
+  const unit = valCol?.unit && WINDOW_UNIT_KEEPING.has(spec.fn) ? { unit: valCol.unit } : {};
+  return { __frame: true, columns: [...f.columns.filter((c) => c.name !== name), { name, type: outType, ...unit, values: out }] };
 }

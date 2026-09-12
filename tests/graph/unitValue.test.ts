@@ -238,3 +238,35 @@ describe("homogeneous matrix unit (unitGranularity) — one tag on the array, ce
     expect(matrixUnitOf(m)).toBeUndefined();
   });
 });
+
+describe("affine temperatures (review pins)", () => {
+  const degC = (v: number) => fromUnit(v, U("degC"), "degC");
+  it("two absolutes subtract to a delta in the base unit, never an absolute reading", () => {
+    const d = arithmeticCell("sub", degC(25), degC(20));
+    expect(isUnitCell(d) && d.display).toBeUndefined();
+    expect(magnitudeOf(d as UnitCell)).toBeCloseTo(5, 9); // 5 K
+    const f = arithmeticCell("sub", fromUnit(50, U("degF"), "degF"), fromUnit(32, U("degF"), "degF"));
+    expect(isUnitCell(f) && f.display).toBeUndefined();
+    expect(magnitudeOf(f as UnitCell)).toBeCloseTo(10, 9); // 10 K
+  });
+  it("an absolute plus a bare delta keeps the reading", () => {
+    const r = arithmeticCell("add", degC(20), 5);
+    expect(isUnitCell(r) && r.display).toBe("degC");
+    expect(magnitudeOf(r as UnitCell)).toBeCloseTo(298.15, 9); // 25 °C
+  });
+  it("×, ÷ and ^ on an absolute temperature are refused", () => {
+    expect(isSolError(arithmeticCell("mul", degC(20), 2))).toBe(true);
+    expect(isSolError(arithmeticCell("div", degC(20), 2))).toBe(true);
+    expect(isSolError(arithmeticCell("pow", degC(20), 2))).toBe(true);
+    expect(isUnitCell(arithmeticCell("mul", fromUnit(20, U("K"), "K"), 2))).toBe(true); // kelvin is linear
+  });
+});
+
+describe("the Arithmetic card's unit path classifies a non-finite result (review pin)", () => {
+  it("(-5 km) ^ 0.5 is #DOMAIN!, never a NaN-valued unit cell", async () => {
+    const { ArithmeticNode } = await import("../../src/graph/nodes/scalar");
+    const { applyFcUnit } = await import("../../src/graph/unitBridge");
+    const r = new ArithmeticNode({ op: "pow" }).data({ a: [applyFcUnit(-5, "km") as never], b: [0.5] }).result;
+    expect(isSolError(r) && r.code).toBe("#DOMAIN!");
+  });
+});

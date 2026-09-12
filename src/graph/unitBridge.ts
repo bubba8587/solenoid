@@ -1,6 +1,6 @@
 import { type Unit, type Dim, parseUnit, dimEqual, DIMENSIONLESS, formatDim, customDim } from "./dimension";
 import { UNIT_ANNOTATIONS } from "./formatAnnotationStore";
-import { fromUnit, isUnitCell, isRatio, withDisplay, unitError, withMatrixUnit, setDisplayScaleResolver, type UnitCell as UnitCellT } from "./unitValue";
+import { fromUnit, isUnitCell, isRatio, withDisplay, unitError, withMatrixUnit, setDisplayScaleResolver, setDisplayOffsetResolver, type UnitCell as UnitCellT } from "./unitValue";
 import { isSolError } from "./errorValue";
 
 // Units `parseUnit` can't spell; FX is out of scope, so every currency collapses
@@ -145,3 +145,4 @@ export function fcUnitIdForUnit(u: Unit): string | undefined {
 // Upgrade unitValue's adoption resolver to the FULL FC unit table (its default
 // knows only the dimension.ts spellings); unitBridge is on every compute path.
 setDisplayScaleResolver((id) => fcUnitToUnit(id)?.scale ?? null);
+setDisplayOffsetResolver((id) => fcUnitToUnit(id)?.offset ?? null);

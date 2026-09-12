@@ -676,3 +676,39 @@ describe("replaceValues: a non-numeric replacement never writes NaN", () => {
     expect(out.columns[1].values).toEqual([1, 1.5, 2]);
   });
 });
+
+describe("column units ride the reshaping verbs (unitFlow, review pins)", () => {
+  const km = { dim: { length: 1 }, display: "km" };
+  const src = (): FrameValue => ({ __frame: true, columns: [
+    { name: "Region", type: "string", values: ["N", "N", "S"] },
+    { name: "Dist", type: "number", unit: km, values: [1000, 2000, 500] },
+  ] });
+  it("GROUPBY keeps the key's and a sum/avg/min/max's unit, never a count's", () => {
+    const out = groupByFrame(src(), ["Region"], [
+      { column: "Dist", op: "sum", as: "Total" }, { column: "Dist", op: "count", as: "N" },
+    ]);
+    expect(out.columns.find((c) => c.name === "Total")!.unit).toEqual(km);
+    expect(out.columns.find((c) => c.name === "N")!.unit).toBeUndefined();
+  });
+  it("PIVOTBY body keeps the value column's unit for a sum", () => {
+    const out = pivotFrame(src(), { rowFields: ["Region"], colFields: [], values: ["Dist"], funcs: ["sum"] } as never);
+    const body = out.columns.find((c) => c.name !== "Region")!;
+    expect(body.unit).toEqual(km);
+  });
+  it("UNPIVOT keeps an id column's unit and a shared value unit", () => {
+    const wide: FrameValue = { __frame: true, columns: [
+      { name: "Region", type: "string", values: ["N"] },
+      { name: "A", type: "number", unit: km, values: [1] },
+      { name: "B", type: "number", unit: km, values: [2] },
+    ] };
+    const out = unpivotFrame(wide, ["Region"], ["A", "B"]);
+    expect(out.columns[2].unit).toEqual(km);
+  });
+  it("Window keeps the unit on a running sum, not on a rank", async () => {
+    const { windowFrame } = await import("../../src/graph/frameVerbs");
+    const sum = windowFrame(src(), { partitionBy: [], fn: "cumsum", column: "Dist", as: "Run" });
+    expect(sum.columns.find((c) => c.name === "Run")!.unit).toEqual(km);
+    const rank = windowFrame(src(), { partitionBy: [], orderBy: "Dist", fn: "rank", as: "R" });
+    expect(rank.columns.find((c) => c.name === "R")!.unit).toBeUndefined();
+  });
+});

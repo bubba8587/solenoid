@@ -32,6 +32,20 @@ export function setDisplayScaleResolver(fn: (id: string) => number | null): void
   _displayScale = fn;
 }
 
+// An AFFINE display (°C, °F) is an absolute reading: two of them subtract to a delta in
+// the base unit, and none may take ×/÷/^ (dimension.ts). Resolved the same way as scale.
+let _displayOffset: (id: string) => number | null = (id) => parseUnit(id)?.offset ?? null;
+
+export function setDisplayOffsetResolver(fn: (id: string) => number | null): void {
+  _displayOffset = fn;
+}
+
+export function isAffineDisplay(id: string | undefined): boolean {
+  if (id === undefined || id === "") return false;
+  const o = _displayOffset(id);
+  return o != null && o !== 0;
+}
+
 /** A bare face value adopted into a united operand's display unit, as base-SI. */
 export function adoptMagnitude(face: number, display: string | undefined): number {
   if (display === undefined || display === "") return face;
@@ -144,12 +158,21 @@ export function arithmeticCell(
   // ×/÷ keep the face value (a bare factor is a factor: `$5 × 2 = $10`).
   const xc = isDimensionless(da) && !isDimensionless(db) ? adoptMagnitude(x, dispB) : x;
   const yc = isDimensionless(db) && !isDimensionless(da) ? adoptMagnitude(y, dispA) : y;
+  // Two absolute temperatures combine to a DELTA: 25 °C − 20 °C is 5 K, never −268 °C, so
+  // the affine display drops and the base unit renders. One absolute ± a bare delta keeps
+  // the reading (20 °C + 5 = 25 °C through adoptMagnitude's scale-only rule).
+  const affine = isUnitCell(a) && isUnitCell(b) && (isAffineDisplay(dispA) || isAffineDisplay(dispB));
   const combine = (r: number): number | UnitCell | SolError => {
-    if (dimEqual(da, db)) return tagDim(r, da, dispA ?? dispB);
+    if (dimEqual(da, db)) return tagDim(r, da, affine ? undefined : dispA ?? dispB);
     if (isDimensionless(da)) return tagDim(r, db, dispB);
     if (isDimensionless(db)) return tagDim(r, da, dispA);
     return unitError();
   };
+  // An offset unit can't take ×/÷/^ (dimension.ts): the reading is not a magnitude.
+  const affineRefused = (): SolError | null =>
+    isAffineDisplay(dispA) || isAffineDisplay(dispB)
+      ? unitError("Convert the temperature to kelvin first — an offset unit can't take ×, ÷ or ^.")
+      : null;
   // ×/÷ keep a display unit ONLY when the result stays in an operand's dimension;
   // `5 m × 3 s` fits neither, so it reverts to the derived symbol.
   const carry = (rd: Dim): string | undefined =>
@@ -160,10 +183,12 @@ export function arithmeticCell(
     case "sub":
       return combine(xc - yc);
     case "mul": {
+      const refused = affineRefused(); if (refused) return refused;
       const rd = dimMul(da, db);
       return tagDim(x * y, rd, carry(rd));
     }
     case "div": {
+      const refused = affineRefused(); if (refused) return refused;
       if (y === 0) return divZero();
       const rd = dimDiv(da, db);
       // Cancellation mints a PURE RATIO so an FC can't re-label it; bare ÷ bare stays bare.
@@ -173,14 +198,17 @@ export function arithmeticCell(
     case "mod":
       return yc === 0 ? divZero() : combine(xc - yc * Math.floor(xc / yc));
     case "quotient": {
+      const refused = affineRefused(); if (refused) return refused;
       if (y === 0) return divZero();
       const rd = dimDiv(da, db);
       if (isDimensionless(rd) && (isUnitCell(a) || isUnitCell(b))) return tagRatio(Math.trunc(x / y));
       return tagDim(Math.trunc(x / y), rd, carry(rd));
     }
-    case "pow":
+    case "pow": {
+      const refused = affineRefused(); if (refused) return refused;
       if (!isDimensionless(db)) return unitError("An exponent must be a plain number, not a dimensioned quantity.");
       return tagDim(Math.pow(x, y), dimPow(da, y));
+    }
   }
 }
 
