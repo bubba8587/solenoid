@@ -117,6 +117,21 @@ export interface ChartBuilderFields {
   radarscale?: string;
   /** The Gantt's time-scale preset (`zoom=week`); read by the figure's own view parser. */
   zoom?: string;
+  // The rest of the Gantt figure's view keys (parseGanttViewOptions); each rides the
+  // options string under the same name the figure reads.
+  layout?: string;
+  tiers?: string;
+  fit?: string;
+  critical?: string;
+  baseline?: string;
+  arrows?: string;
+  today?: string;
+  weekends?: string;
+  labels?: string;
+  histogram?: string;
+  minutes?: string;
+  window?: string;
+  columns?: string;
   ymin?: number | null;
   ymax?: number | null;
   linewidth?: number | null;
@@ -144,6 +159,19 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
   str("pielabels", f.pielabels);
   str("radarscale", f.radarscale);
   str("zoom", f.zoom);
+  str("layout", f.layout);
+  str("tiers", f.tiers);
+  str("fit", f.fit);
+  str("critical", f.critical);
+  str("baseline", f.baseline);
+  str("arrows", f.arrows);
+  str("today", f.today);
+  str("weekends", f.weekends);
+  str("labels", f.labels);
+  str("histogram", f.histogram);
+  str("minutes", f.minutes);
+  str("window", f.window);
+  str("columns", f.columns);
   if ((f.ymin != null && Number.isFinite(f.ymin)) || (f.ymax != null && Number.isFinite(f.ymax))) {
     const lo = f.ymin != null && Number.isFinite(f.ymin) ? f.ymin : "";
     const hi = f.ymax != null && Number.isFinite(f.ymax) ? f.ymax : "";
@@ -170,6 +198,7 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
 
 export type ChartBuilderKey =
   | "title" | "xlabel" | "ylabel" | "color" | "grid" | "marker" | "pielabels" | "radarscale" | "zoom"
+  | "layout" | "tiers" | "fit" | "critical" | "baseline" | "arrows" | "today" | "weekends" | "labels" | "histogram" | "minutes" | "window" | "columns"
   | "ymin" | "ymax" | "linewidth" | "markersize" | "alpha" | "fontsize";
 
 // The Chart node's own ops are first-class targets so the form can show ONLY the options
@@ -200,7 +229,11 @@ const AXED_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "alpha", "fontsize"];
 const STAT_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];
 const TITLE_ONLY: readonly ChartBuilderKey[] = ["title"];
-const GANTT_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize", "zoom"];
+// The hand-rolled Gantt figure (chart op "gantt", the Gantt node), not the Schedule
+// node's Mermaid text: every view key the figure's parser reads, so the builder can
+// drive it without the options string.
+const GANTT_KEYS: readonly ChartBuilderKey[] =
+  ["title", "fontsize", "zoom", "tiers", "layout", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns"];
 
 export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group: string; keys: readonly ChartBuilderKey[] }> = {
   column:    { label: "Column",           group: "Cartesian",    keys: XY_KEYS },

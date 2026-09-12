@@ -87,7 +87,7 @@ function SelectInputRow({ node, emit, socketKey, label, options, clearValue }: {
 
 const TARGET_OPTS = CHART_TARGET_LIST.map((t) => ({ value: t.id, label: t.label, group: t.group }));
 
-const STR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "color"];
+const STR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "color", "window", "columns"];
 const TOGGLE_KEYS: readonly { key: ChartBuilderKey; label: string }[] =
   [{ key: "grid", label: "Grid" }, { key: "marker", label: "Markers" }];
 const SELECT_KEYS: readonly {
@@ -114,14 +114,36 @@ const SELECT_KEYS: readonly {
   {
     key: "zoom", label: "Zoom", clearValue: "fit",
     options: [
-      { value: "fit", label: "Zoom: fit the width" },
-      { value: "day", label: "Zoom: days" },
-      { value: "week", label: "Zoom: weeks" },
-      { value: "month", label: "Zoom: months" },
-      { value: "quarter", label: "Zoom: quarters" },
-      { value: "year", label: "Zoom: years" },
+      { value: "fit", label: "Fit the width" },
+      { value: "day", label: "Days" },
+      { value: "week", label: "Weeks" },
+      { value: "month", label: "Months" },
+      { value: "quarter", label: "Quarters" },
+      { value: "year", label: "Years" },
     ],
   },
+  // The Gantt figure's remaining view keys. The first option of each is the figure's own
+  // default and stores as "" (clearValue), so an untouched row adds nothing to the string.
+  {
+    key: "tiers", label: "Header rows", clearValue: "2",
+    options: [{ value: "2", label: "Two rows" }, { value: "1", label: "One row" }],
+  },
+  {
+    key: "layout", label: "Layout", clearValue: "gantt",
+    options: [{ value: "gantt", label: "Timeline" }, { value: "calendar", label: "Month calendar" }],
+  },
+  {
+    key: "fit", label: "Fit", clearValue: "off",
+    options: [{ value: "off", label: "The zoom preset" }, { value: "page", label: "Whole plan, one width" }],
+  },
+  { key: "critical", label: "Critical path", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
+  { key: "baseline", label: "Baseline", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
+  { key: "arrows", label: "Arrows", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
+  { key: "today", label: "Today line", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
+  { key: "weekends", label: "Weekend shading", clearValue: "on", options: [{ value: "on", label: "Shaded" }, { value: "off", label: "Plain" }] },
+  { key: "labels", label: "Bar labels", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
+  { key: "histogram", label: "Resource band", clearValue: "off", options: [{ value: "off", label: "Hidden" }, { value: "on", label: "Shown" }] },
+  { key: "minutes", label: "Times", clearValue: "off", options: [{ value: "off", label: "Whole days" }, { value: "on", label: "To the minute" }] },
 ];
 const NUM_KEYS: readonly ChartBuilderKey[] = ["ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 

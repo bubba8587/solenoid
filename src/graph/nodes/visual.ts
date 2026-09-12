@@ -1391,7 +1391,7 @@ export class QuiverNode extends ClassicPreset.Node {
 
 // ─── Chart Builder ────────────────────────────────────────────────────────────
 
-const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "zoom"] as const;
+const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns"] as const;
 const CB_NUM_FIELDS = ["ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"] as const;
 
 export class ChartBuilderNode extends ClassicPreset.Node {
@@ -1422,6 +1422,19 @@ export class ChartBuilderNode extends ClassicPreset.Node {
     this.addInput("pielabels", strIn("Pie labels"));
     this.addInput("radarscale", strIn("Radar scale"));
     this.addInput("zoom",      strIn("Zoom"));
+    this.addInput("layout",    strIn("Layout"));
+    this.addInput("tiers",     strIn("Header rows"));
+    this.addInput("fit",       strIn("Fit"));
+    this.addInput("critical",  strIn("Critical path"));
+    this.addInput("baseline",  strIn("Baseline"));
+    this.addInput("arrows",    strIn("Arrows"));
+    this.addInput("today",     strIn("Today line"));
+    this.addInput("weekends",  strIn("Weekend shading"));
+    this.addInput("labels",    strIn("Bar labels"));
+    this.addInput("histogram", strIn("Resource band"));
+    this.addInput("minutes",   strIn("Times"));
+    this.addInput("window",    strIn("Window"));
+    this.addInput("columns",   strIn("Columns"));
     this.addInput("ymin",      numIn("Y min"));
     this.addInput("ymax",      numIn("Y max"));
     this.addInput("linewidth", numIn("Line width"));
@@ -1446,6 +1459,19 @@ export class ChartBuilderNode extends ClassicPreset.Node {
       pielabels: str("pielabels"),
       radarscale: str("radarscale"),
       zoom:      str("zoom"),
+      layout: str("layout"),
+      tiers: str("tiers"),
+      fit: str("fit"),
+      critical: str("critical"),
+      baseline: str("baseline"),
+      arrows: str("arrows"),
+      today: str("today"),
+      weekends: str("weekends"),
+      labels: str("labels"),
+      histogram: str("histogram"),
+      minutes: str("minutes"),
+      window: str("window"),
+      columns: str("columns"),
       ymin:      num("ymin"),
       ymax:      num("ymax"),
       linewidth: num("linewidth"),
