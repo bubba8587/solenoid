@@ -45,7 +45,7 @@ const d = (s: string) => parseDateToSerial(s);
 describe("NTILE / Bin quantiles mode (dplyr ntile, pandas qcut)", () => {
   it("splits into equal-count buckets 1..n, blanks stay blank, errors ride", () => {
     expect(ntileList([1, 2, 3, 4, 5, 6, 7, 8], 4)).toEqual([1, 1, 2, 2, 3, 3, 4, 4]);
-    expect(ntileList([10, null, 30, 20], 2)).toEqual([1, null, 2, 2]);
+    expect(ntileList([10, null, 30, 20], 2)).toEqual([1, null, 2, 1]); // 20 sits ON the median cut: lower bucket (qcut)
     expect(isSolError(ntileList([1, 2], 0))).toBe(true);
     expect(ev("NTILE(x, 4)", { x: [1, 2, 3, 4, 5, 6, 7, 8] })).toEqual([1, 1, 2, 2, 3, 3, 4, 4]);
   });
