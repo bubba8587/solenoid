@@ -11,7 +11,7 @@
       "y": 191,
       "init": {
         "label": "Daily notes as a time series",
-        "body": "# Your daily notes as a time series\nWith the daily-notes date format set, **Vault Folder** reads each file name into a `date` column, so a folder of daily notes sorts like a series. Here a 7-day **rolling average** smooths the nightly sleep, and the line shows the trend under the noise.\n\nThe **Daily** table is a snapshot so this runs on the web. On desktop, point the **Vault Folder** below at your vault: Sort and Filter run straight on it, and this same chain takes over once the columns match.",
+        "body": "# Your daily notes as a time series\nWith the daily-notes date format set, **Vault Folder** reads each file name into a `date` column, so a folder of daily notes sorts like a series. Here a 7-day **rolling average** smooths the nightly sleep, and the line shows the trend under the noise.\n\nThe **Daily** table is a snapshot so this runs on the web. On desktop, point the **Vault Folder** below at your vault: Sort, Filter, the rolling average and the chart all run straight on the live folder, with no snapshot step in between.",
         "color": "violet",
         "width": 380,
         "height": 250
