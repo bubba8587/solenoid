@@ -56,6 +56,7 @@ export function ScheduleComponent({ data, emit }: NodeProps<ScheduleNodeType>) {
           { key: "diagnostics", label: "Diagnostics", value: diagnosticsSummary(data) },
           // The socket carries the full Mermaid source; the row says what it holds.
           { key: "gantt", label: "Gantt", value: ganttSummary(data) },
+          { key: "mspdi", label: "Project XML", value: typeof data.cachedMspdi === "string" ? `${Math.round(data.cachedMspdi.length / 1024)} kB` : data.cachedMspdi },
         ]}
       />
     </NodeShell>

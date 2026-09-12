@@ -20,7 +20,7 @@ import { parseCsvRows } from "../csv";
 import { engineAvailable, ipcInvoke } from "../ipcBridge";
 import { readCsvFrame, dropFrameRef, collectPreview, type FrameRef, type FrameHandle } from "../frameBackend";
 import { solError, isSolError, type SolError } from "../errorValue";
-import { isMspdiText, mspdiToPlan, csvPlanToCube } from "../planImport";
+import { planFileToPlan, csvPlanToCube } from "../planImport";
 
 // ─── External-data connection nodes ─────────────────────────────────────────────
 // A connection node holds only a reference and fetches a Frame on refresh — the data
@@ -283,7 +283,7 @@ export class ImportXmlNode extends ClassicPreset.Node {
 export class LocalFileNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frame: "Reads the named file from the folder chosen in Settings. Rows are never saved into the project file.",
-    plan: "The same file as a project plan, when it is one: a Project XML file, or a CSV whose Predecessors column uses row numbers such as 3FS+2d. Tasks nest as the outline, and each row's predecessors become a list of names, or a table of Task, Type and Lag when a link has a type or a lag. Feeds Schedule. Empty for any other file.",
+    plan: "The same file as a project plan, when it is one: a Project XML file, a GanttProject file, a Primavera XER export, or a CSV whose Predecessors column uses row numbers such as 3FS+2d. Tasks nest as the outline, and each row's predecessors become a list of names, or a table of Task, Type and Lag when a link has a type or a lag. Feeds Schedule. Empty for any other file.",
   };
   label: string;
   /** File name relative to the Settings target folder (not a full path). */
@@ -318,8 +318,9 @@ export class LocalFileNode extends ClassicPreset.Node {
     return name.toLowerCase().endsWith(".parquet");
   }
 
-  private static isXml(name: string): boolean {
-    return name.toLowerCase().endsWith(".xml");
+  /** A plan file by extension: Project XML, GanttProject, Primavera. */
+  private static isPlanFile(name: string): boolean {
+    return /\.(xml|gan|xer)$/i.test(name);
   }
 
   async data(): Promise<{ frame: FrameValue | FrameRef | SolError | null; plan: CubeValue | null }> {
@@ -371,11 +372,11 @@ export class LocalFileNode extends ClassicPreset.Node {
       }
       // A Parquet handle from a previous file is stale now — drop it.
       if (this.ref) { dropFrameRef(this.ref); this.ref = null; }
-      if (LocalFileNode.isXml(name)) {
-        // Project XML: the plan cube, with the flat outline beside it on the frame socket.
+      if (LocalFileNode.isPlanFile(name)) {
+        // A plan file: the plan cube, with the flat outline beside it on the frame socket.
         const text = await readFileText(folder, name);
-        if (!isMspdiText(text)) throw new Error("Not a Project XML file");
-        const plan = mspdiToPlan(text);
+        const plan = planFileToPlan(text);
+        if (!plan) throw new Error("Not a Project XML, GanttProject or Primavera file");
         this.cachedResult = plan.frame;
         this.cachedPlan = plan.cube;
         this.planNotes = plan.unsupported;

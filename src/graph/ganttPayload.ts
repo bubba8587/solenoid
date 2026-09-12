@@ -136,6 +136,8 @@ export function ganttPayloadFromSchedule(schedule: CubeValue | FrameValue, opts:
       if (group != null && String(group).trim()) t.group = String(group).trim();
       const color = r.cells.color;
       if (isText(color) && color.trim()) t.color = color.trim();
+      const resource = r.cells.resource ?? r.cells.who ?? r.cells.owner ?? r.cells.assignee;
+      if (isText(resource) && resource.trim()) { const rt = t as GanttTask & { resource?: string; units?: number }; rt.resource = resource.trim(); const u = num(r.cells.units); rt.units = u !== null && u >= 0 ? u : 1; }
       if (base) {
         const bs = num(base.cells.start), bf = num(base.cells.finish);
         if (bs !== null && bf !== null) { t.baselineStart = Math.floor(bs); t.baselineFinish = Math.floor(bf); }

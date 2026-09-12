@@ -57,6 +57,7 @@ export class ScheduleNode extends ClassicPreset.Node {
     finish: "The last finish.",
     diagnostics: "One row per finding, under plain names: tasks with no predecessor or successor, negative float, a typed start that held, leads and lags, long tasks, work that should have started.",
     gantt: "Mermaid gantt source for the schedule: a Mermaid node draws it, and a Report or Write to Obsidian embeds it as a fence.",
+    mspdi: "The schedule as a Project XML file, the format Microsoft Project and every desktop scheduler open. Write File saves it as .xml.",
   };
 
   label: string;
@@ -69,6 +70,7 @@ export class ScheduleNode extends ClassicPreset.Node {
   cachedResult: CubeValue | SolError | null = null;
   cachedFinish: number | SolError | null = null;
   cachedGantt: string | SolError | null = null;
+  cachedMspdi: string | SolError | null = null;
   cachedDiagnostics: FrameValue | SolError | null = null;
   cachedOutput: ScheduleOutput | null = null;
   width = 240; height = 300;
@@ -106,6 +108,7 @@ export class ScheduleNode extends ClassicPreset.Node {
     this.addOutput("finish", dateOut("Project finish"));
     this.addOutput("diagnostics", frameOut("Diagnostics"));
     this.addOutput("gantt", strOut("Gantt"));
+    this.addOutput("mspdi", strOut("Project XML"));
   }
 
   data(inputs: {
@@ -115,9 +118,9 @@ export class ScheduleNode extends ClassicPreset.Node {
     const tasks = inputs.tasks?.[0] ?? null;
     // A wired blank start is "no start yet": nothing to schedule. Unwired = today.
     const start = inputs.start ? inputs.start[0] : todaySerial();
-    const empty = { cube: null, finish: null, diagnostics: null, gantt: null };
+    const empty = { cube: null, finish: null, diagnostics: null, gantt: null, mspdi: null };
     if (!isCubeValue(tasks) || start == null || !Number.isFinite(start)) {
-      this.cachedResult = null; this.cachedFinish = null; this.cachedGantt = null; this.cachedDiagnostics = null; this.cachedOutput = null;
+      this.cachedResult = null; this.cachedFinish = null; this.cachedGantt = null; this.cachedDiagnostics = null; this.cachedOutput = null; this.cachedMspdi = null;
       return empty;
     }
     const weekendCode = readInput(inputs.weekend_code, this.literals.weekend_code ?? 1) ?? 1;
@@ -133,12 +136,13 @@ export class ScheduleNode extends ClassicPreset.Node {
         links,
       });
       this.cachedResult = r.cube; this.cachedFinish = r.projectFinish; this.cachedGantt = r.gantt; this.cachedDiagnostics = r.diagnostics; this.cachedOutput = r.output;
-      return { cube: r.cube, finish: r.projectFinish, diagnostics: r.diagnostics, gantt: r.gantt };
+      this.cachedMspdi = r.mspdi;
+      return { cube: r.cube, finish: r.projectFinish, diagnostics: r.diagnostics, gantt: r.gantt, mspdi: r.mspdi };
     } catch (e) {
       const err = isSolError(e) ? e : null;
       if (!err) throw e;
-      this.cachedResult = err; this.cachedFinish = err; this.cachedGantt = err; this.cachedDiagnostics = err; this.cachedOutput = null;
-      return { cube: err, finish: err, diagnostics: err, gantt: err };
+      this.cachedResult = err; this.cachedFinish = err; this.cachedGantt = err; this.cachedDiagnostics = err; this.cachedOutput = null; this.cachedMspdi = err;
+      return { cube: err, finish: err, diagnostics: err, gantt: err, mspdi: err };
     }
   }
 }

@@ -10,7 +10,7 @@ import { formatDateSerial, parseDate } from "./nodes/dateSerial";
 import { cubeFromColumns, isCubeValue, isFrameValue, frameToCube, type CubeValue, type CubeCell, type CubeColumn, type FrameValue } from "./frame";
 import { isUnitCell } from "./unitValue";
 import {
-  schedule, mermaidGantt, ScheduleError, predecessorText, LINK_TYPES, intervalsForHours,
+  schedule, mermaidGantt, writeMspdi, ScheduleError, predecessorText, LINK_TYPES, intervalsForHours,
   type PlanTask, type PlanDependency, type LinkType, type ScheduleOutput, type ScheduledTask,
 } from "@solenoid/schedule-engine";
 
@@ -48,6 +48,8 @@ export interface ScheduleResult {
   projectFinish: number;
   /** Mermaid `gantt` source for the schedule. */
   gantt: string;
+  /** The schedule as Project XML (MSPDI). */
+  mspdi: string;
   /** One row per finding: Check · Task · Detail. */
   diagnostics: FrameValue;
   /** The engine's output, for the figure. */
@@ -363,6 +365,7 @@ export function scheduleTasks(c: CubeValue, opts: ScheduleOptions): ScheduleResu
     cube,
     projectFinish: output.projectFinish,
     gantt: mermaidGantt(output, (s) => formatDateSerial(s, ISO)),
+    mspdi: writeMspdi(output, { title: "Schedule", hoursPerDay, formatIso: (s) => formatDateSerial(s, ISO), minutes: opts.precision === "minutes", holidays: opts.workingDays ? opts.holidays : [] }),
     diagnostics: diagnosticsFrame(output),
     output,
   };

@@ -16,7 +16,7 @@ describe("ScheduleNode", () => {
   it("takes a cube and a wired start; the three outputs agree; the schedule is a cube", () => {
     const n = new ScheduleNode();
     expect(Object.keys(n.inputs)).toEqual(["tasks", "links", "start", "holidays", "weekend_code", "status", "hours"]);
-    expect(Object.keys(n.outputs)).toEqual(["cube", "finish", "diagnostics", "gantt"]);
+    expect(Object.keys(n.outputs)).toEqual(["cube", "finish", "diagnostics", "gantt", "mspdi"]);
     const out = n.data({ tasks: [c], start: [MON] });
     expect(isCubeValue(out.cube)).toBe(true);
     expect(formatDateSerial(out.finish as number, "YYYY-MM-DD")).toBe("2026-01-07");

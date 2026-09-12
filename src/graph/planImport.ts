@@ -4,7 +4,7 @@
 // (25-gantt.md § 6.1). Pure: no I/O, no rete.
 
 import { cubeFromColumns, type CubeValue, type CubeCell, type FrameValue } from "./frame";
-import { readMspdi, parsePredecessorText, predecessorText, type PlanTask, type PlanDependency, type CalendarSpec } from "@solenoid/schedule-engine";
+import { readMspdi, readGan, isGanText, readXer, isXerText, parsePredecessorText, predecessorText, type PlanTask, type PlanDependency, type CalendarSpec } from "@solenoid/schedule-engine";
 
 export interface ImportedPlan {
   cube: CubeValue;
@@ -70,6 +70,17 @@ export function isMspdiText(text: string): boolean {
 export function mspdiToPlan(text: string): ImportedPlan {
   const plan = readMspdi(text);
   return { cube: planToCube(plan.tasks), frame: planToFrame(plan.tasks), start: plan.start || null, calendar: plan.calendar, title: plan.title, unsupported: plan.unsupported };
+}
+
+/** Any plan file by its text: Project XML, GanttProject `.gan`, or Primavera XER. Null when
+ *  the text is none of them. */
+export function planFileToPlan(text: string): ImportedPlan | null {
+  if (isMspdiText(text)) return mspdiToPlan(text);
+  if (isGanText(text) || isXerText(text)) {
+    const plan = isXerText(text) ? readXer(text) : readGan(text);
+    return { cube: planToCube(plan.tasks), frame: planToFrame(plan.tasks), start: plan.start, calendar: plan.calendar, title: plan.title, unsupported: plan.unsupported };
+  }
+  return null;
 }
 
 /** A CSV plan: Task / Duration / Predecessors columns where Predecessors uses the row-number
