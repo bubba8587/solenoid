@@ -3,7 +3,7 @@ import { ScheduleNode } from "../../../src/graph/rete-nodes";
 import { extractInit } from "../../../src/graph/copyPaste";
 import { parseDateToSerial, formatDateSerial } from "../../../src/graph/nodes/dateSerial";
 import { isSolError } from "../../../src/graph/errorValue";
-import { cubeFromColumns, isCubeValue, type CubeValue } from "../../../src/graph/frame";
+import { cubeFromColumns, isCubeValue, type CubeValue, type FrameValue } from "../../../src/graph/frame";
 
 const MON = parseDateToSerial("2026-01-05");
 const c: CubeValue = cubeFromColumns([
@@ -15,7 +15,7 @@ const c: CubeValue = cubeFromColumns([
 describe("ScheduleNode", () => {
   it("takes a cube and a wired start; the three outputs agree; the schedule is a cube", () => {
     const n = new ScheduleNode();
-    expect(Object.keys(n.inputs)).toEqual(["tasks", "start", "holidays", "weekend_code", "status", "hours"]);
+    expect(Object.keys(n.inputs)).toEqual(["tasks", "links", "start", "holidays", "weekend_code", "status", "hours"]);
     expect(Object.keys(n.outputs)).toEqual(["cube", "finish", "diagnostics", "gantt"]);
     const out = n.data({ tasks: [c], start: [MON] });
     expect(isCubeValue(out.cube)).toBe(true);
@@ -81,6 +81,34 @@ describe("ScheduleNode", () => {
 
     expect(extractInit(many as never).criticalPaths).toBe("many");
     expect(new ScheduleNode({ criticalPaths: "bogus" as never }).criticalPaths).toBe("one");
+  });
+
+  it("a wired Links frame adds predecessors to a tasks table that carries none", () => {
+    const tasksNoPred = cubeFromColumns([
+      { name: "Task", cells: ["A", "B"], type: "string" },
+      { name: "Duration", cells: [2, 1], type: "number" },
+    ]);
+    const links: FrameValue = { __frame: true, columns: [
+      { name: "Successor", type: "string", values: ["B"] },
+      { name: "Predecessor", type: "string", values: ["A"] },
+      { name: "Type", type: "string", values: ["FS"] },
+      { name: "Lag", type: "number", values: [0] },
+    ] };
+    const n = new ScheduleNode();
+    const withLinks = n.data({ tasks: [tasksNoPred], links: [links], start: [MON] });
+    expect(formatDateSerial(withLinks.finish as number, "YYYY-MM-DD")).toBe("2026-01-07"); // B follows A
+    const without = n.data({ tasks: [tasksNoPred], start: [MON] });
+    expect(formatDateSerial(without.finish as number, "YYYY-MM-DD")).toBe("2026-01-06"); // A and B in parallel
+  });
+
+  it("a Links row naming a task not in the plan is the schedule #VALUE! naming it", () => {
+    const links: FrameValue = { __frame: true, columns: [
+      { name: "Successor", type: "string", values: ["Nope"] },
+      { name: "Predecessor", type: "string", values: ["A"] },
+    ] };
+    const out = new ScheduleNode().data({ tasks: [c], links: [links], start: [MON] });
+    expect(isSolError(out.cube) && out.cube.code).toBe("#VALUE!");
+    expect(isSolError(out.cube) && out.cube.message).toMatch(/Nope/);
   });
 
   it("a verb error comes out every socket as the one #VALUE! and is cached", () => {

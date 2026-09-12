@@ -32,6 +32,9 @@ export interface ScheduleOptions {
   precision?: "days" | "minutes";
   /** Mark every independent longest chain critical, not just the one to the project finish. */
   multipleCriticalPaths?: boolean;
+  /** A flat Dependencies frame (the § 10 two-frame form): each row adds one predecessor to a
+   *  task, so links can live beside a tasks frame that can't carry a list cell. */
+  links?: FrameValue | null;
 }
 
 export interface ScheduleResult {
@@ -74,6 +77,40 @@ function findColumn(c: CubeValue, names: string[], pick?: (col: CubeColumn) => b
 
 const isTable = (v: unknown): v is CubeValue | FrameValue => isCubeValue(v) || isFrameValue(v);
 const asCube = (v: CubeValue | FrameValue): CubeValue => (isCubeValue(v) ? v : frameToCube(v));
+
+// The flat Dependencies frame's columns: which task the row is FOR (the successor), what it
+// waits on (the predecessor), and the optional link type + lag. Task doubles as Successor.
+const LINK_SUCC_NAMES = ["successor", "task", "to"];
+const LINK_PRED_NAMES = ["predecessor", "from", "after", "depends on"];
+
+/** Merge a flat Dependencies frame into the tasks' predecessor lists (names resolve across
+ *  the whole WBS). A row naming a successor that isn't a task is a #VALUE! naming it; an
+ *  unknown PREDECESSOR is caught by the engine's own unknown-predecessor check. */
+function applyLinksFrame(tasks: PlanTask[], links: FrameValue): void {
+  const succCol = links.columns.find((c) => LINK_SUCC_NAMES.includes(norm(c.name)));
+  const predCol = links.columns.find((c) => LINK_PRED_NAMES.includes(norm(c.name)));
+  if (!succCol || !predCol) throw solError("#VALUE!", "Schedule: the Links frame needs a Successor (or Task, To) column and a Predecessor (or From) column");
+  const typeCol = links.columns.find((c) => ["type", "link", "kind"].includes(norm(c.name)));
+  const lagCol = links.columns.find((c) => ["lag", "lead", "offset"].includes(norm(c.name)));
+  const byName = new Map<string, PlanTask>();
+  const collect = (ts: PlanTask[]): void => { for (const t of ts) { byName.set(t.name.trim().toLowerCase(), t); if (t.children) collect(t.children); } };
+  collect(tasks);
+  const rows = links.columns.reduce((m, c) => Math.max(m, c.values.length), 0);
+  for (let i = 0; i < rows; i++) {
+    const succ = String(succCol.values[i] ?? "").trim();
+    const pred = String(predCol.values[i] ?? "").trim();
+    if (!succ || !pred) continue; // a blank or half row names no link
+    const task = byName.get(succ.toLowerCase());
+    if (!task) throw solError("#VALUE!", `Schedule: the Links frame names task "${succ}", which isn't in the plan`);
+    const typeRaw = String(typeCol?.values[i] ?? "FS").trim().toUpperCase();
+    const type = (LINK_TYPES as readonly string[]).includes(typeRaw) ? (typeRaw as LinkType) : null;
+    if (type === null) throw solError("#VALUE!", `Schedule: the Links frame links "${succ}" with type "${typeRaw}"; use FS, SS, FF or SF`);
+    const lagCell = lagCol?.values[i];
+    const lag = lagCell == null || lagCell === "" ? 0 : isNum(lagCell) ? lagCell : Number(lagCell);
+    if (!Number.isFinite(lag)) throw solError("#VALUE!", `Schedule: the Links frame links "${succ}" with a lag that is not a number`);
+    task.predecessors.push({ task: pred, type, lag });
+  }
+}
 
 /** A Predecessors cell → typed dependencies: a list cell holds zero or more names (FS/0);
  *  a text cell is ONE name (never split); a nested Task · Type · Lag table carries types
@@ -263,6 +300,7 @@ const ISO = "YYYY-MM-DD";
 export function scheduleTasks(c: CubeValue, opts: ScheduleOptions): ScheduleResult {
   const hoursPerDay = opts.hoursPerDay && opts.hoursPerDay > 0 ? opts.hoursPerDay : 8;
   const { level, tasks } = readLevel(c, hoursPerDay, 0);
+  if (opts.links && isFrameValue(opts.links)) applyLinksFrame(tasks, opts.links);
   let output: ScheduleOutput;
   try {
     output = schedule({

@@ -164,4 +164,30 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
     expect(col(r.cube, "Start")).toEqual([]);
     expect(iso(r.projectFinish)).toBe("2026-01-05");
   });
+
+  it("a flat Links frame adds typed, lagged predecessors on top of any in-cell ones", () => {
+    // A and B carry no predecessors in the cube; the links frame supplies B-after-A (FS)
+    // and C-with-A (SS + 1 day lag) — merged into each task's list before scheduling.
+    const plan = tasks([["A", 2, []], ["B", 1, []], ["C", 1, []]]);
+    const links = {
+      __frame: true as const,
+      columns: [
+        { name: "Successor", type: "string" as const, values: ["B", "C"] },
+        { name: "Predecessor", type: "string" as const, values: ["A", "A"] },
+        { name: "Type", type: "string" as const, values: ["FS", "SS"] },
+        { name: "Lag", type: "number" as const, values: [0, 1] },
+      ],
+    };
+    const r = scheduleTasks(plan, { start: MON, workingDays: true, links });
+    // A: Mon–Tue. B (FS) starts Wed. C (SS +1) starts the day after A starts = Tue.
+    expect(col(r.cube, "Start").map(iso)).toEqual(["2026-01-05", "2026-01-07", "2026-01-06"]);
+    // An unknown successor is the schedule's #VALUE! naming it.
+    expect(() => scheduleTasks(plan, {
+      start: MON, workingDays: true,
+      links: { __frame: true as const, columns: [
+        { name: "Successor", type: "string" as const, values: ["Ghost"] },
+        { name: "Predecessor", type: "string" as const, values: ["A"] },
+      ] },
+    })).toThrow(/Ghost/);
+  });
 });

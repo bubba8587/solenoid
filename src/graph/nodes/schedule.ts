@@ -1,10 +1,11 @@
 import { ClassicPreset } from "rete";
-import { cubeIn, cubeOut, dateIn, dateOut, strOut, dateListIn, numIn, frameOut, readInput } from "./shared";
+import { cubeIn, cubeOut, dateIn, dateOut, strOut, dateListIn, numIn, frameIn, frameOut, readInput } from "./shared";
 import { isSolError, type SolError } from "../errorValue";
-import { isCubeValue, type CubeValue, type FrameValue } from "../frame";
+import { isCubeValue, isFrameValue, type CubeValue, type FrameValue } from "../frame";
 import { scheduleTasks } from "../scheduleCpm";
 import type { ScheduleOutput } from "@solenoid/schedule-engine";
 import type { Shape } from "../frameShape";
+import type { FrameHint } from "../frameHint";
 
 // The Schedule node: one eager verb over a tasks CUBE — the critical-path pass lives in
 // `@solenoid/schedule-engine` behind scheduleCpm.ts; this class only reads its inputs and
@@ -42,6 +43,7 @@ export class ScheduleNode extends ClassicPreset.Node {
     tasks: "One row per task. Task is the first text column with unique names; Duration the first number column in days, where blank or 0 marks a milestone; Predecessors a list cell naming the tasks that must finish first, or a nested table of Task, Type (FS, SS, FF or SF) and Lag in days for typed links and leads. Optional columns: Start holds a task no earlier than a date, Finish caps it and shows negative float, Deadline flags a late finish, Manual pins a task to its dates, Complete is 0 to 100, Project groups the gantt into sections. A row whose Tasks cell holds a table is a summary of those rows.",
     start: "The project start. Unwired, the schedule starts today.",
     holidays: "Dates to skip alongside the weekend. Only read in Working days mode.",
+    links: "A flat list of dependencies, one row per link: Successor (or Task, or To), Predecessor (or From), an optional Type (FS, SS, FF or SF) and Lag in days. Its links add to each task's Predecessors, so a plain tasks table with no list column can still carry dependencies. A row naming a task that isn't in the plan is an error.",
     weekend_code: "Excel's WORKDAY.INTL codes: 1 = Sat+Sun, 2 = Sun+Mon, … 7 = Fri+Sat; 11–17 = a single day off.",
     status: "The day progress is measured on. With it set, the unfinished part of a started task is scheduled after this day. Unwired, Complete only fills the bars.",
     hours: "Hours in a working day: converts a Duration column in hours, and in Minutes mode is the length of the working day, which starts at 08:00.",
@@ -64,6 +66,15 @@ export class ScheduleNode extends ClassicPreset.Node {
   cachedOutput: ScheduleOutput | null = null;
   width = 240; height = 300;
 
+  static frameHints: Record<string, FrameHint> = {
+    links: { columns: [
+      { name: "Successor", type: "string", cells: ["Drywall", "Paint", "Paint"] },
+      { name: "Predecessor", type: "string", cells: ["Plumbing", "Drywall", "Electrical"] },
+      { name: "Type", type: "string", cells: ["FS", "FS", "FS"] },
+      { name: "Lag", type: "number", cells: [0, 0, 2] },
+    ] },
+  };
+
   /** The diagnostics frame is fixed-shape; the schedule cube has no static shape. */
   frameShape(outKey: string): Shape | null {
     if (outKey !== "diagnostics") return null;
@@ -77,6 +88,7 @@ export class ScheduleNode extends ClassicPreset.Node {
     this.precision = init?.precision === "minutes" ? "minutes" : "days";
     this.criticalPaths = init?.criticalPaths === "many" ? "many" : "one";
     this.addInput("tasks", cubeIn("Tasks"));
+    this.addInput("links", frameIn("Links"));
     this.addInput("start", dateIn("Start"));
     this.addInput("holidays", dateListIn("Holidays"));
     this.addInput("weekend_code", numIn("Weekend"));
@@ -89,7 +101,7 @@ export class ScheduleNode extends ClassicPreset.Node {
   }
 
   data(inputs: {
-    tasks?: (CubeValue | null)[]; start?: (number | null)[]; holidays?: (number | null)[][];
+    tasks?: (CubeValue | null)[]; links?: (FrameValue | null)[]; start?: (number | null)[]; holidays?: (number | null)[][];
     weekend_code?: number[]; status?: (number | null)[]; hours?: number[];
   }) {
     const tasks = inputs.tasks?.[0] ?? null;
@@ -103,12 +115,14 @@ export class ScheduleNode extends ClassicPreset.Node {
     const weekendCode = readInput(inputs.weekend_code, this.literals.weekend_code ?? 1) ?? 1;
     const hoursPerDay = readInput(inputs.hours, this.literals.hours ?? 8) ?? 8;
     const statusDate = inputs.status ? inputs.status[0] : null;
+    const links = isFrameValue(inputs.links?.[0]) ? inputs.links![0] : null;
     try {
       const r = scheduleTasks(tasks, {
         start, workingDays: this.mode === "working", weekendCode, holidays: inputs.holidays?.[0],
         statusDate: statusDate != null && Number.isFinite(statusDate) ? statusDate : null, hoursPerDay,
         precision: this.precision,
         multipleCriticalPaths: this.criticalPaths === "many",
+        links,
       });
       this.cachedResult = r.cube; this.cachedFinish = r.projectFinish; this.cachedGantt = r.gantt; this.cachedDiagnostics = r.diagnostics; this.cachedOutput = r.output;
       return { cube: r.cube, finish: r.projectFinish, diagnostics: r.diagnostics, gantt: r.gantt };
