@@ -51,6 +51,10 @@ Everything landed on `develop`; nothing pushed. The plan's § 10 calls were take
 - Engine additions after the ledger was first written: `multipleCriticalPaths` (every
   successor-less leaf is its own tail; no card control yet) and a summary's SS/SF successors
   bounding the summary's own late start (its float, never a child's late dates).
+- Late slices: the Schedule card's One path | Every path toggle (Agent 3) and the tree grid's
+  keyboard map (Agent 2: roving tabindex, arrows / Home / End, Left / Right fold and unfold a
+  phase, Enter / Space toggle, the active row's bar scrolled into view, aria-level / -selected /
+  -expanded, all behind `.nokeys`).
 - Test lock between agents moved from a doc line (per-worktree, signals nobody) to the shared
   file `.dev/test-lock` in the main checkout.
 - Open for the author: the eyeball list and the engine follow-ups in `backlog.md` § Gantt;
