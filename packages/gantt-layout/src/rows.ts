@@ -9,9 +9,16 @@ export const DEFAULT_ROW_HEIGHT = 24;
 /** Left indent per nesting level, in px (the grid pane also uses this). */
 export const INDENT_PER_LEVEL = 16;
 
-export function buildRows(payload: GanttPayload, rowHeight: number): FrameRow[] {
-  const collapse = payload.view.collapse;
-  const groupBy = payload.view.group_by !== false && payload.tasks.some((t) => t.group);
+/** Build the visible rows. Two collapse modes: the coarse `view.collapse` LEVEL (used by the
+ *  headless serializer and tests), or an ephemeral set of collapsed summary ids (the interactive
+ *  figure's per-row expand/collapse). When `collapsedIds` is given it takes over entirely and
+ *  `view.collapse` is ignored, so the keyboard can expand past the option's floor. */
+export function buildRows(payload: GanttPayload, rowHeight: number, collapsedIds?: ReadonlySet<string>): FrameRow[] {
+  const tasks = payload.tasks;
+  const collapseLevel = payload.view.collapse;
+  const groupBy = payload.view.group_by !== false && tasks.some((t) => t.group);
+  // A task is a parent (phase) when the next task nests one level deeper.
+  const hasChildren = tasks.map((t, i) => i + 1 < tasks.length && tasks[i + 1].level > t.level);
 
   const out: FrameRow[] = [];
   let y = 0;
@@ -20,28 +27,35 @@ export function buildRows(payload: GanttPayload, rowHeight: number): FrameRow[] 
     y += r.h;
   };
 
-  // When collapse is set, a task deeper than the level is hidden AND its subtree is skipped;
-  // a summary at exactly the level is still shown (as a collapsed parent).
+  // Ancestry stack (only consulted in the collapsedIds mode): a row is hidden when any ancestor
+  // is collapsed. In the level mode, a row deeper than the level is simply skipped.
+  const stack: Array<{ level: number; collapsed: boolean }> = [];
   let lastGroup: string | undefined;
-  for (let i = 0; i < payload.tasks.length; i++) {
-    const t = payload.tasks[i];
-    if (collapse != null && t.level > collapse) continue;
+  for (let i = 0; i < tasks.length; i++) {
+    const t = tasks[i];
+    while (stack.length && stack[stack.length - 1].level >= t.level) stack.pop();
+    const hiddenByAncestor = collapsedIds ? stack.some((s) => s.collapsed) : false;
+    const hiddenByLevel = collapsedIds ? false : collapseLevel != null && t.level > collapseLevel;
+    const visible = !hiddenByAncestor && !hiddenByLevel;
 
-    if (groupBy && t.group !== lastGroup && t.level === 0) {
-      lastGroup = t.group;
-      if (t.group) {
-        push({ id: `__section:${t.group}`, h: rowHeight, level: 0, summary: false, milestone: false, section: true, taskIndex: -1 });
+    if (visible) {
+      if (groupBy && t.group !== lastGroup && t.level === 0) {
+        lastGroup = t.group;
+        if (t.group) {
+          push({ id: `__section:${t.group}`, h: rowHeight, level: 0, summary: false, milestone: false, section: true, taskIndex: -1 });
+        }
       }
+      push({
+        id: t.id,
+        h: rowHeight,
+        level: t.level,
+        summary: t.summary,
+        milestone: t.milestone,
+        hasChildren: hasChildren[i],
+        taskIndex: i,
+      });
     }
-
-    push({
-      id: t.id,
-      h: rowHeight,
-      level: t.level,
-      summary: t.summary,
-      milestone: t.milestone,
-      taskIndex: i,
-    });
+    stack.push({ level: t.level, collapsed: !!(collapsedIds && hasChildren[i] && collapsedIds.has(t.id)) });
   }
   return out;
 }

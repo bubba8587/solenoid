@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from "react";
-import type { UIEvent, PointerEvent as ReactPointerEvent, ReactElement } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent, UIEvent, PointerEvent as ReactPointerEvent, ReactElement } from "react";
 import {
   buildRows,
   buildScale,
@@ -50,7 +50,17 @@ export function GanttFigure({ payload, width, height, virtualize, fontScale = 1 
   const visibleCols = useMemo(() => fitColumns(columns, gridW), [columns, gridW]);
   const timelineW = Math.max(80, width - gridW - 1);
 
-  const rows = useMemo(() => buildRows(payload, rowHeight), [payload, rowHeight]);
+  // Ephemeral per-row collapse (the treegrid's expand/collapse), seeded from the view.collapse
+  // floor: every phase at or below that level starts collapsed. Keyboard/click toggles from there.
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => {
+    const s = new Set<string>();
+    const lvl = payload.view.collapse;
+    if (lvl != null) for (const t of payload.tasks) if (t.summary && t.level >= lvl) s.add(t.id);
+    return s;
+  });
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+
+  const rows = useMemo(() => buildRows(payload, rowHeight, collapsed), [payload, rowHeight, collapsed]);
   const scale = useMemo(() => buildScale(payload, timelineW), [payload, timelineW]);
   const allBars = useMemo(() => buildBars(payload, rows, scale), [payload, rows, scale]);
   const allLinks = useMemo(() => buildLinks(payload, rows, [], scale, rowHeight), [payload, rows, scale, rowHeight]);
@@ -125,6 +135,80 @@ export function GanttFigure({ payload, width, height, virtualize, fontScale = 1 
 
   const rowsToShow = virtualize ? visibleRows : cappedRows;
 
+  // ── Treegrid keyboard ──
+  // The focusable rows are the task rows (section bands are skipped by navigation).
+  const navRows = useMemo(() => rows.filter((r) => !r.section && r.taskIndex >= 0), [rows]);
+  const activeId = focusedId != null && navRows.some((r) => r.id === focusedId) ? focusedId : navRows[0]?.id;
+
+  const collapse = useCallback((id: string) => setCollapsed((s) => (s.has(id) ? s : new Set(s).add(id))), []);
+  const expand = useCallback((id: string) => setCollapsed((s) => { if (!s.has(id)) return s; const n = new Set(s); n.delete(id); return n; }), []);
+  const toggle = useCallback((id: string) => setCollapsed((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; }), []);
+
+  const onGridKeyDown = useCallback((e: ReactKeyboardEvent<HTMLDivElement>) => {
+    const nav = navRows;
+    if (!nav.length) return;
+    let idx = nav.findIndex((r) => r.id === activeId);
+    if (idx < 0) idx = 0;
+    const row = nav[idx];
+    const isParent = !!row?.hasChildren;
+    const isCollapsed = row ? collapsed.has(row.id) : false;
+    const go = (n: number) => { e.preventDefault(); setFocusedId(nav[Math.max(0, Math.min(nav.length - 1, n))].id); };
+    switch (e.key) {
+      case "ArrowDown": go(idx + 1); break;
+      case "ArrowUp": go(idx - 1); break;
+      case "Home": go(0); break;
+      case "End": go(nav.length - 1); break;
+      case "ArrowRight":
+        if (isParent && isCollapsed) { e.preventDefault(); expand(row.id); }
+        else if (isParent) go(idx + 1); // already expanded → step to the first child
+        break;
+      case "ArrowLeft":
+        if (isParent && !isCollapsed) { e.preventDefault(); collapse(row.id); }
+        else {
+          // Leaf or collapsed parent → move focus to the parent row.
+          e.preventDefault();
+          for (let j = idx - 1; j >= 0; j--) if (nav[j].level < row.level) { setFocusedId(nav[j].id); break; }
+        }
+        break;
+      case "Enter": case " ":
+        if (isParent) { e.preventDefault(); toggle(row.id); }
+        break;
+      default: break;
+    }
+  }, [navRows, activeId, collapsed, expand, collapse, toggle]);
+
+  // Bring the focused row into view: vertical in both panes, and the bar horizontally in the
+  // timeline. Instant scroll (no smooth animation) — nothing to gate on reduced-motion.
+  useEffect(() => {
+    if (activeId == null) return;
+    const r = rows.find((x) => x.id === activeId);
+    if (!r) return;
+    let next = scrollTop;
+    if (r.y < scrollTop) next = r.y;
+    else if (r.y + r.h > scrollTop + bodyH) next = r.y + r.h - bodyH;
+    if (next !== scrollTop) {
+      setScrollTop(next);
+      if (gridScrollRef.current) gridScrollRef.current.scrollTop = next;
+      if (timeScrollRef.current) timeScrollRef.current.scrollTop = next;
+    }
+    const bar = barsByRow.get(activeId);
+    const tl = timeScrollRef.current;
+    if (bar && tl) {
+      const sl = tl.scrollLeft, vw = tl.clientWidth;
+      if (bar.x < sl) tl.scrollLeft = Math.max(0, bar.x - 20);
+      else if (bar.x + bar.w > sl + vw) tl.scrollLeft = bar.x + bar.w - vw + 20;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId]);
+
+  // Move DOM focus onto the active row once it is rendered (it may have just scrolled in). Keyed
+  // only on focusedId/scrollTop so it never steals focus back on an unrelated re-render.
+  useEffect(() => {
+    if (focusedId == null) return;
+    const el = gridScrollRef.current?.querySelector<HTMLElement>(`[data-row-id="${cssEscape(focusedId)}"]`);
+    if (el && document.activeElement !== el) el.focus({ preventScroll: true });
+  }, [focusedId, scrollTop]);
+
   return (
     <div
       className="solenoid-gantt nowheel nodrag nokeys"
@@ -144,7 +228,7 @@ export function GanttFigure({ payload, width, height, virtualize, fontScale = 1 
             </div>
           ))}
         </div>
-        <div className="solenoid-gantt__grid-scroll" ref={gridScrollRef} onScroll={onScroll("grid")} style={{ height: bodyH }}>
+        <div className="solenoid-gantt__grid-scroll" ref={gridScrollRef} onScroll={onScroll("grid")} onKeyDown={onGridKeyDown} style={{ height: bodyH }}>
           <div style={{ height: contentH, position: "relative" }}>
             {rowsToShow.map((row) => {
               if (row.section) {
@@ -156,8 +240,22 @@ export function GanttFigure({ payload, width, height, virtualize, fontScale = 1 
               }
               const t = row.taskIndex >= 0 ? payload.tasks[row.taskIndex] : undefined;
               if (!t) return null;
+              const isActive = row.id === activeId;
+              const isCollapsed = collapsed.has(row.id);
               return (
-                <div key={row.id} className={`solenoid-gantt__row${row.summary ? " is-summary" : ""}`} role="row" aria-level={row.level + 1} style={{ top: row.y, height: row.h }}>
+                <div
+                  key={row.id}
+                  data-row-id={row.id}
+                  className={`solenoid-gantt__row${row.summary ? " is-summary" : ""}${isActive ? " is-focused" : ""}`}
+                  role="row"
+                  aria-level={row.level + 1}
+                  aria-selected={isActive}
+                  aria-expanded={row.hasChildren ? !isCollapsed : undefined}
+                  tabIndex={isActive ? 0 : -1}
+                  onFocus={() => setFocusedId(row.id)}
+                  onClick={() => setFocusedId(row.id)}
+                  style={{ top: row.y, height: row.h }}
+                >
                   {visibleCols.map((c) => (
                     <div
                       key={c.key}
@@ -166,6 +264,15 @@ export function GanttFigure({ payload, width, height, virtualize, fontScale = 1 
                       style={{ width: c.width, textAlign: c.align, paddingLeft: c.key === "name" ? 6 + row.level * 16 : undefined }}
                       title={c.key === "name" ? t.name : undefined}
                     >
+                      {c.key === "name" && (
+                        <span
+                          className="solenoid-gantt__caret"
+                          aria-hidden="true"
+                          onClick={row.hasChildren ? (ev) => { ev.stopPropagation(); toggle(row.id); setFocusedId(row.id); } : undefined}
+                        >
+                          {row.hasChildren ? (isCollapsed ? "▸" : "▾") : ""}
+                        </span>
+                      )}
                       {formatCell(c.key, t, payload)}
                     </div>
                   ))}
@@ -356,6 +463,11 @@ function arrowPath(x: number, y: number, dir: "left" | "right"): string {
   const s = 4;
   const dx = dir === "right" ? -s : s;
   return `M${x} ${y} L${x + dx} ${y - s} L${x + dx} ${y + s} Z`;
+}
+
+function cssEscape(s: string): string {
+  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") return CSS.escape(s);
+  return s.replace(/["\\]/g, "\\$&");
 }
 
 /** The prefix of `cols` that fits `avail` px; the name column is always kept even if it alone
