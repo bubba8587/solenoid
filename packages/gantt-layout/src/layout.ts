@@ -10,6 +10,7 @@ import { buildRows, DEFAULT_ROW_HEIGHT } from "./rows";
 import { buildBars } from "./bars";
 import { buildLinks } from "./links";
 import { buildColumns } from "./columns";
+import { buildHistogram } from "./histogram";
 
 export interface LayoutOptions {
   /** Timeline width in px (the grid pane is separate). Drives pxPerDay unless zoom is fixed. */
@@ -59,6 +60,7 @@ export function layoutGantt(payload: GanttPayload, opts: LayoutOptions): RenderF
     contentHeight,
     headerHeight,
     columns: buildColumns(payload),
+    histogram: payload.view.histogram ? buildHistogram(payload, scale) : undefined,
   };
 }
 

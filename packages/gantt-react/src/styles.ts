@@ -103,6 +103,13 @@ export const ganttStyles = `
 .solenoid-gantt-cal__chip-label { fill: var(--text, #e8e8e8); font-size: 10px; pointer-events: none; }
 .solenoid-gantt-cal__overflow { fill: var(--text-dim, #9aa0a6); font-size: 9px; }
 
+/* Resource histogram band */
+.solenoid-gantt__histo { position: absolute; left: 0; }
+.solenoid-gantt__histo-top { stroke: var(--border-strong, #3a3a3a); stroke-width: 1; }
+.solenoid-gantt__histo-legend { fill: var(--text-dim, #9aa0a6); font-size: 10px; }
+.solenoid-gantt__histo-over { fill: var(--sol-error, #e0473a); }
+.solenoid-gantt__histo-capacity { stroke: var(--text-dim, #9aa0a6); stroke-width: 1; stroke-dasharray: 3 2; }
+
 @media (prefers-reduced-motion: reduce) {
   .solenoid-gantt * { transition: none !important; animation: none !important; }
 }

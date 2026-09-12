@@ -91,6 +91,30 @@ export interface FrameShadeRect {
   kind: "weekend" | "holiday";
 }
 
+export interface HistoSegment {
+  resourceIndex: number;
+  units: number;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** > 1 unit for this resource on this day: an over-allocation. */
+  over: boolean;
+}
+
+export interface FrameHistogram {
+  resources: string[];
+  segments: HistoSegment[];
+  maxUnits: number;
+  /** Y (within the band) of the 1-unit capacity line. */
+  capacityY: number;
+  legend: Array<{ resourceIndex: number; x: number; label: string }>;
+  legendH: number;
+  bodyTop: number;
+  bodyH: number;
+  height: number;
+}
+
 export interface GridColumn {
   key: "name" | "start" | "finish" | "duration" | "float" | "complete" | "predecessors";
   label: string;
@@ -120,6 +144,8 @@ export interface RenderFrame {
   headerHeight: number;
   /** The grid columns for the tree pane (from view.columns). */
   columns: GridColumn[];
+  /** The resource histogram band, when `view.histogram` and the payload carries resources. */
+  histogram?: FrameHistogram;
 }
 
 /** Theme colors the pure SVG serializer needs (it cannot read CSS variables). The React

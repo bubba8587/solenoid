@@ -6,12 +6,15 @@ import {
   buildBars,
   buildLinks,
   buildColumns,
+  buildHistogram,
   formatCell,
+  RESOURCE_RAMP,
   DEFAULT_ROW_HEIGHT,
   TIER_HEIGHT,
   type GanttPayload,
   type FrameBar,
   type FrameLink,
+  type FrameHistogram,
   type GanttColors,
 } from "@solenoid/gantt-layout";
 import { ganttStyles } from "./styles";
@@ -80,6 +83,9 @@ function GanttTimeline({ payload, width, height, virtualize, fontScale = 1 }: Ga
     for (const b of allBars) m.set(b.rowId, b);
     return m;
   }, [allBars]);
+
+  const histogram = useMemo(() => (payload.view.histogram ? buildHistogram(payload, scale) : undefined), [payload, scale]);
+  const histoH = histogram?.height ?? 0;
 
   const contentW = (scale.to - scale.from) * scale.pxPerDay;
   const contentH = rows.length ? rows[rows.length - 1].y + rows[rows.length - 1].h : 0;
@@ -310,7 +316,7 @@ function GanttTimeline({ payload, width, height, virtualize, fontScale = 1 }: Ga
 
       {/* ── Timeline pane ── */}
       <div className="solenoid-gantt__timeline" ref={timeScrollRef} onScroll={onScroll("time")} style={{ height }}>
-        <div style={{ width: contentW, height: headerH + contentH, position: "relative" }}>
+        <div style={{ width: contentW, height: headerH + contentH + histoH, position: "relative" }}>
           {/* Sticky header */}
           <div className="solenoid-gantt__thead" style={{ height: headerH, width: contentW }}>
             {scale.tiers.map((tier, ti) => (
@@ -350,9 +356,53 @@ function GanttTimeline({ payload, width, height, virtualize, fontScale = 1 }: Ga
               <Link key={`${l.from}->${l.to}:${i}`} link={l} />
             ))}
           </svg>
+
+          {/* Resource histogram band, under the rows */}
+          {histogram && <HistogramBand histogram={histogram} contentW={contentW} top={headerH + contentH} />}
         </div>
       </div>
     </div>
+  );
+}
+
+/** The resource histogram: stacked unit columns per day, a legend, a 1-unit capacity line, and
+ *  an over-allocation cue (error color + hatch) — mirrors the headless serializer. */
+function HistogramBand({ histogram, contentW, top }: { histogram: FrameHistogram; contentW: number; top: number }) {
+  const h = histogram;
+  let lx = 4;
+  return (
+    <svg className="solenoid-gantt__histo" width={contentW} height={h.height} style={{ top }}>
+      <defs>
+        <pattern id="gantt-histo-hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <line className="solenoid-gantt__hatch" x1="0" y1="0" x2="0" y2="5" />
+        </pattern>
+      </defs>
+      <line className="solenoid-gantt__histo-top" x1={0} y1={0} x2={contentW} y2={0} />
+      {h.legend.map((lg) => {
+        const x = lx;
+        lx += 18 + Math.min(90, lg.label.length * 6);
+        return (
+          <g key={lg.resourceIndex}>
+            <rect x={x} y={5} width={9} height={9} rx={2} fill={RESOURCE_RAMP[lg.resourceIndex % RESOURCE_RAMP.length]} />
+            <text className="solenoid-gantt__histo-legend" x={x + 12} y={13}>{lg.label}</text>
+          </g>
+        );
+      })}
+      {h.segments.map((seg, i) => (
+        <g key={i}>
+          <rect
+            x={seg.x}
+            y={seg.y}
+            width={Math.max(seg.w - 0.5, 0.5)}
+            height={seg.h}
+            className={seg.over ? "solenoid-gantt__histo-over" : undefined}
+            fill={seg.over ? undefined : RESOURCE_RAMP[seg.resourceIndex % RESOURCE_RAMP.length]}
+          />
+          {seg.over && <rect x={seg.x} y={seg.y} width={Math.max(seg.w - 0.5, 0.5)} height={seg.h} fill="url(#gantt-histo-hatch)" />}
+        </g>
+      ))}
+      <line className="solenoid-gantt__histo-capacity" x1={0} y1={h.capacityY} x2={contentW} y2={h.capacityY} />
+    </svg>
   );
 }
 
