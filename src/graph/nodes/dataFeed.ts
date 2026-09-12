@@ -1,6 +1,6 @@
 import { ClassicPreset } from "rete";
 import { frameOut } from "./shared";
-import { connectionStore, scheduleConnectionRecalc } from "../connectionStore";
+import { connectionStore, scheduleConnectionRecalc, requestNetwork } from "../connectionStore";
 import { fetchText } from "../httpBridge";
 import { frameRowCount, type FrameValue } from "../frame";
 import { apiKeyStore } from "../apiKeyStore";
@@ -66,6 +66,7 @@ export class DataFeedNode extends ClassicPreset.Node {
       end: this.stringLiterals.end?.trim() || undefined,
       freq: this.stringLiterals.freq?.trim() || undefined,
     });
+    if (!requestNetwork(this.id)) return { frame: this.cachedResult }; // C2 gate: foreign doc not yet allowed
     // The key folds in the provider so switching provider re-fetches.
     const cacheKey = connectionStore.key(this.id, `${this.provider}:${url}`);
     if (cacheKey === this.lastKey) return { frame: this.cachedResult };

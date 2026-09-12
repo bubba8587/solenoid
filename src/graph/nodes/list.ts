@@ -1694,6 +1694,10 @@ export class ShuffleNode extends ClassicPreset.Node {
       this.cachedList = [];
       return { result: solError("#SHAPE!", `The weights list has ${w.length} values but the list has ${arr.length}`) };
     }
+    if (Array.isArray(w) && !arr.some((_, i) => typeof w[i] === "number" && (w[i] as number) > 0)) {
+      this.cachedList = [];
+      return { result: solError("#VALUE!", "The weights are all zero, so nothing can be drawn") };
+    }
     const keys = Array.isArray(w)
       ? this.keys.map((u, i) => weightedShuffleKey(u, typeof w[i] === "number" ? (w[i] as number) : 0))
       : this.keys;

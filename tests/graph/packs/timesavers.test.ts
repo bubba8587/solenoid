@@ -87,9 +87,11 @@ describe("Timesaver date idioms with config (C5)", () => {
       'DATEDIF(dob,end,"Y")&"y "&DATEDIF(dob,end,"YM")&"m "&DATEDIF(dob,end,"MD")&"d"',
       { dob, end },
     )).toBe("30y 2m 5d");
-    // The documented MD edge (31 Jan → 1 Mar, a whole February skipped): Excel is
-    // unreliable, Solenoid's borrow is deterministic — pin OUR value (parity: false).
-    expect(evalPackFormula('DATEDIF(a,b,"MD")', { a: ser(2024, 1, 31), b: ser(2024, 3, 1) })).toBe(-1);
+    // The documented MD edge (31 Jan → 1 Mar): Excel gives a negative day count; ours
+    // counts from the start day carried forward a month and clamped (29 Feb 2024 → 1 day,
+    // 28 Feb 2026 → 1 day), never negative (parity: false).
+    expect(evalPackFormula('DATEDIF(a,b,"MD")', { a: ser(2024, 1, 31), b: ser(2024, 3, 1) })).toBe(1);
+    expect(evalPackFormula('DATEDIF(a,b,"MD")', { a: ser(2026, 1, 31), b: ser(2026, 3, 1) })).toBe(1);
   });
 
   it("Nth Weekday: default is the 2nd Tuesday; n and weekday select the occurrence", () => {

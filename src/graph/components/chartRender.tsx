@@ -70,7 +70,8 @@ export function sanitizeChartLabel(raw: string, cap = 16): string {
     clean += (c !== undefined && (c < 0x20 || (c >= 0x7f && c <= 0x9f))) ? " " : ch;
   }
   clean = clean.replace(/\s+/g, " ").trim();
-  return clean.length > cap ? `${clean.slice(0, cap - 1).trimEnd()}…` : clean;
+  const cps = [...clean]; // code points, so the cap never splits a surrogate pair
+  return cps.length > cap ? `${cps.slice(0, cap - 1).join("").trimEnd()}…` : clean;
 }
 
 // Reads the datum off payload[0].payload so it works whether the x axis is a real

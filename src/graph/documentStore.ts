@@ -383,7 +383,9 @@ export const documentStore = {
     const prevId = _lib.currentId;
     // Adopted from outside the app → foreign: its connection nodes stay gated until the
     // user allows (C2). A prior grant (networkAllowed) rides along in the file's meta.
-    graph.meta = { ...graph.meta, foreign: true };
+    // The file's own grant never rides in: a shared .json could carry networkAllowed
+    // and skip the prompt. Only the user's Allow (written back afterwards) counts.
+    graph.meta = { ...graph.meta, foreign: true, networkAllowed: undefined };
     const doc = makeDoc(name, graph);
     if (filePath) doc.filePath = filePath;
     // The file's own write stamp seeds BOTH clocks: saveToDisk captures right before

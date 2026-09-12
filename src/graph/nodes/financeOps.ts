@@ -96,6 +96,8 @@ export function bondPrice(
   const N = bondCouponCount(next, maturity, freq);
   const C = couponRate / freq * 100;
   const y = yld / freq;
+  // One coupon period or less to maturity: Excel's PRICE switches to simple interest.
+  if (N === 1) return (redemption + C) / (1 + (DSC / E) * y) - C * A / E;
   let dirty = redemption / Math.pow(1 + y, N - 1 + DSC / E);
   for (let k = 1; k <= N; k++) dirty += C / Math.pow(1 + y, k - 1 + DSC / E);
   return dirty - C * A / E;
@@ -305,7 +307,7 @@ export function securityDisc(
     case "intrate": return ((b - a) / a) * (bd / dsm);
     case "received": {
       const denom = 1 - b * dsm / bd;
-      return denom <= 0 ? 0 : a / denom;
+      return denom <= 0 ? null : a / denom; // Excel: #NUM!, never a fabricated 0
     }
   }
 }

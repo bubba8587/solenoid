@@ -1208,7 +1208,7 @@ registerInternal("XLOOKUP", (lookup, keys, values, ifNotFound, matchMode, search
   const ks = asOneDim(keys), vs = asOneDim(values);
   if (!ks) return solError("#VALUE!", "XLOOKUP's lookup array must be a single row or a single column");
   if (!vs) return solError("#VALUE!", "XLOOKUP's return array must be a single row or a single column");
-  if (isGrid(values) && vs.length !== ks.length) return solError("#VALUE!", "XLOOKUP's return array must match the lookup array's length");
+  if (Array.isArray(values) && vs.length !== ks.length) return solError("#VALUE!", "XLOOKUP's return array must match the lookup array's length");
   const pick = (l: unknown) => {
     const idx = xmatchIndex(l, ks, mm, sm);
     if (isSolError(idx)) return idx;
