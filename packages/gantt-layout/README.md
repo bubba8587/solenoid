@@ -16,7 +16,13 @@ is integer, so no timezone or DST can shift a column.
   this; nothing in this package parses dates (a `parseDate` is injected for window bounds).
 - `layoutGantt(payload, { width, height?, rowHeight?, scrollTop?, viewportHeight? })` →
   `RenderFrame` (`frame.ts`): scale tiers, rows, bars, links, shading, grid lines, today/status
-  x, in plain pixels. Viewport culling when `scrollTop`/`viewportHeight` are given.
+  x, in plain pixels, and — when `view.histogram` — a resource histogram band (`buildHistogram`:
+  units summed per day per resource into stacked columns aligned to the day scale, a legend, a
+  1-unit capacity line, and an over-allocation flag where a resource exceeds one unit on a day).
+  Viewport culling when `scrollTop`/`viewportHeight` are given.
+- Options of note: `layout=calendar` (the month grid), `minutes` (§ 6.5 finish rule), `histogram`
+  (the resource band), and `fit=page` (export: fit the whole span to one width with the finest
+  tier whose labels still read, overriding any `zoom` preset).
 - `ganttSvg(payload, { width, height?, colors? })` → a standalone SVG string (the popup's
   "copy as SVG", the webpage export, a Report snapshot). Colors are passed in because an SVG can
   not read CSS variables; omitted, a light-legible default is used so text is never invisible.

@@ -8,6 +8,7 @@ import type { GanttColors, GridColumn } from "./frame";
 import { DEFAULT_COLORS } from "./frame";
 import { layoutGantt, TIER_HEIGHT } from "./layout";
 import { layoutCalendar } from "./calendar";
+import { RESOURCE_RAMP } from "./histogram";
 import { civilFromSerial, MONTH_NAMES } from "./serial";
 import { formatCell } from "./cell";
 
@@ -34,7 +35,8 @@ export function ganttSvg(payload: GanttPayload, opts: GanttSvgOptions): string {
   const frame = layoutGantt(payload, { width: timelineWidth, rowHeight: opts.rowHeight });
   const headerH = frame.headerHeight;
   const bodyH = frame.contentHeight;
-  const totalH = headerH + bodyH;
+  const histoH = frame.histogram?.height ?? 0;
+  const totalH = headerH + bodyH + histoH;
   const font = opts.fontFamily ?? "system-ui, sans-serif";
 
   const parts: string[] = [];
@@ -159,6 +161,30 @@ export function ganttSvg(payload: GanttPayload, opts: GanttSvgOptions): string {
   }
   if (frame.statusX != null) {
     parts.push(`<line x1="${r(frame.statusX)}" y1="${headerH}" x2="${r(frame.statusX)}" y2="${r(totalH)}" stroke="${colors.status}" stroke-width="1.5" stroke-dasharray="2 2"/>`);
+  }
+
+  // ── Resource histogram band, under the rows ──
+  if (frame.histogram) {
+    const h = frame.histogram;
+    const bandY = headerH + bodyH;
+    const timelineW = (frame.scale.to - frame.scale.from) * frame.scale.pxPerDay;
+    parts.push(`<line x1="0" y1="${r(bandY)}" x2="${r(timelineW)}" y2="${r(bandY)}" stroke="${colors.borderStrong}" stroke-width="1"/>`);
+    // Legend.
+    let lx = 4;
+    for (const lg of h.legend) {
+      const col = RESOURCE_RAMP[lg.resourceIndex % RESOURCE_RAMP.length];
+      parts.push(`<rect x="${r(lx)}" y="${r(bandY + 5)}" width="9" height="9" rx="2" fill="${col}"/>`);
+      parts.push(`<text x="${r(lx + 12)}" y="${r(bandY + 13)}" fill="${colors.textDim}" font-size="10">${esc(clip(lg.label, 90))}</text>`);
+      lx += 18 + Math.min(90, lg.label.length * 6);
+    }
+    // Columns.
+    for (const seg of h.segments) {
+      const col = seg.over ? colors.violated : RESOURCE_RAMP[seg.resourceIndex % RESOURCE_RAMP.length];
+      parts.push(`<rect x="${r(seg.x)}" y="${r(bandY + seg.y)}" width="${r(Math.max(seg.w - 0.5, 0.5))}" height="${r(seg.h)}" fill="${col}"/>`);
+      if (seg.over) parts.push(`<rect x="${r(seg.x)}" y="${r(bandY + seg.y)}" width="${r(Math.max(seg.w - 0.5, 0.5))}" height="${r(seg.h)}" fill="url(#gantt-crit-hatch)"/>`);
+    }
+    // Capacity line at 1 unit.
+    parts.push(`<line x1="0" y1="${r(bandY + h.capacityY)}" x2="${r(timelineW)}" y2="${r(bandY + h.capacityY)}" stroke="${colors.textDim}" stroke-width="1" stroke-dasharray="3 2"/>`);
   }
 
   parts.push(`</g>`); // end timeline

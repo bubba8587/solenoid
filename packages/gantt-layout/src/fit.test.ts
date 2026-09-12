@@ -41,6 +41,20 @@ describe("fit zoom fills the width without tier-label collisions", () => {
     expect(scale.tiers.length).toBe(2);
   });
 
+  it("fit=page overrides a zoom preset so a 2-year plan still fits one width", () => {
+    // zoom=day would be far too dense; fit=page ignores it and fills the width with a coarse tier.
+    const p = payload({ zoom: "day", fit: "page", window: [S(2026, 1, 1), S(2027, 12, 31)] });
+    const width = 900;
+    const zoom = resolveZoom(p, width);
+    expect(["month", "quarter", "year"]).toContain(zoom);
+    const scale = buildScale(p, width);
+    const days = scale.to - scale.from;
+    expect(scale.pxPerDay * days).toBeCloseTo(width, 3); // fills one page
+    for (const tier of scale.tiers) {
+      for (const c of tier.cells) expect(c.w).toBeGreaterThanOrEqual(MIN_LABEL_PX);
+    }
+  });
+
   it("a decade-long plan fits at year granularity", () => {
     const p = payload({ zoom: "fit", window: [S(2020, 1, 1), S(2029, 12, 31)] });
     const width = 900;

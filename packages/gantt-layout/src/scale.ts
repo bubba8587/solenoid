@@ -54,18 +54,28 @@ export function resolveWindow(payload: GanttPayload): { from: number; to: number
 
 /** The effective zoom: an explicit preset, or the coarsest preset whose whole span fits the
  *  width when `fit`/absent. */
+/** Approx days per cell for each tier, for the fit=page granularity choice. */
+const DAYS_PER_CELL: Record<Zoom, number> = { day: 1, week: 7, month: 30.4, quarter: 91.3, year: 365 };
+/** Minimum cell width (px) for a tier label to read at the export. */
+const MIN_FIT_CELL = 24;
+
 export function resolveZoom(payload: GanttPayload, width: number): Zoom {
   const z = payload.view.zoom;
-  if (z && z !== "fit") return z;
+  const fitPage = payload.view.fit === "page";
+  // `fit=page` (export) overrides any zoom preset: pick the tier that fits the width.
+  if (!fitPage && z && z !== "fit") return z;
   const { from, to } = resolveWindow(payload);
   const days = Math.max(1, to - from);
   const want = width / days; // px-per-day the width affords
-  // Pick the finest preset that still fits (its px-per-day ≤ what the width affords), so a
-  // short plan zooms in and a multi-year plan zooms out.
   const order: Zoom[] = ["day", "week", "month", "quarter", "year"];
-  for (const zoom of order) {
-    if (PX_PER_DAY[zoom] <= want) return zoom;
+  if (fitPage) {
+    // Export: the FINEST tier whose cells stay label-wide at the fill density, so a long plan
+    // still shows a detailed, legible axis (month over quarter, not one year label).
+    for (const zoom of order) if (DAYS_PER_CELL[zoom] * want >= MIN_FIT_CELL) return zoom;
+    return "year";
   }
+  // On-screen fit: the finest preset whose density the width affords (the shipped look).
+  for (const zoom of order) if (PX_PER_DAY[zoom] <= want) return zoom;
   return "year";
 }
 
@@ -74,9 +84,9 @@ export function buildScale(payload: GanttPayload, width: number): FrameScale {
   const days = Math.max(1, to - from);
   const zoom = resolveZoom(payload, width);
 
-  // px-per-day: when the window fits the width (fit/absent zoom), stretch to fill; otherwise
-  // use the preset and let the caller scroll.
-  const fit = !payload.view.zoom || payload.view.zoom === "fit";
+  // px-per-day: when the window fits the width (fit/absent zoom, or the fit=page export directive),
+  // stretch to fill; otherwise use the preset and let the caller scroll.
+  const fit = payload.view.fit === "page" || !payload.view.zoom || payload.view.zoom === "fit";
   const pxPerDay = fit ? width / days : PX_PER_DAY[zoom];
 
   const scale = { from, to, pxPerDay };

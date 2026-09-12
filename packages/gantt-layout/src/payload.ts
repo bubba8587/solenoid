@@ -47,6 +47,11 @@ export interface GanttTask {
   group?: string;
   /** A passthrough color column, any CSS color. */
   color?: string;
+  /** A passthrough Resource column (the assignee/machine). Drives the resource histogram. */
+  resource?: string;
+  /** Assignment units on this task, 0..N (default 1). Summed per day per resource for the
+   *  histogram; > 1 on one resource on one day is an over-allocation. */
+  units?: number;
 }
 
 export interface GanttLink {
@@ -98,6 +103,11 @@ export interface GanttViewOptions {
    *  whole-day serial (midnight) draws on the PREVIOUS day (§ 6.5). Absent/false: Days mode,
    *  finish is the inclusive whole day. */
   minutes?: boolean;
+  /** Draw the resource histogram band under the timeline (option key `histogram=on`). */
+  histogram?: boolean;
+  /** Export directive: `fit=page` forces the whole span to fit one width with a legible axis,
+   *  overriding any `zoom` preset (§ 4.2, print/export). */
+  fit?: "page";
   /** Grid columns to show, in order. Default: name, start, finish, duration. */
   columns?: Array<"name" | "start" | "finish" | "duration" | "float" | "complete" | "predecessors">;
 }
@@ -147,6 +157,7 @@ export function parseGanttViewOptions(input: string | null | undefined, parseDat
     const val = part.slice(eq + 1).trim();
     switch (key) {
       case "layout": { const l = val.toLowerCase(); if (l === "gantt" || l === "calendar") v.layout = l; break; }
+      case "fit": { if (val.toLowerCase() === "page") v.fit = "page"; break; }
       case "zoom": { const z = val.toLowerCase(); if (ZOOMS.has(z)) v.zoom = z as GanttViewOptions["zoom"]; break; }
       case "tiers": { const n = Number(val); if (n === 1 || n === 2) v.tiers = n; break; }
       case "collapse": { const n = Number(val); if (Number.isInteger(n) && n >= 0) v.collapse = n; break; }
@@ -163,7 +174,7 @@ export function parseGanttViewOptions(input: string | null | undefined, parseDat
         if (cols.length) v.columns = cols as GanttViewOptions["columns"];
         break;
       }
-      case "critical": case "baseline": case "arrows": case "today": case "status": case "weekends": case "group_by": case "labels": case "minutes": {
+      case "critical": case "baseline": case "arrows": case "today": case "status": case "weekends": case "group_by": case "labels": case "minutes": case "histogram": {
         const b = toBool(val);
         if (b !== undefined) v[key] = b;
         break;
