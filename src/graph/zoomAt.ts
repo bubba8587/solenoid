@@ -11,6 +11,17 @@ export type ZoomView = Pick<View, "position" | "nodeElement" | "measured" | "con
 /** RF's padding is a fraction of the framed bounds; 0.1 leaves the rete-era 0.9 margin. */
 const FRAME_PADDING = 0.1;
 
+/** Measured → live → declared, the tier order nodeSize.measuredBox uses: the class
+ *  default must never outrank RF's measure, or a collapsed card frames at its expanded
+ *  height. */
+export function frameSize(surface: Pick<ZoomView, "measured" | "nodeElement">, node: NodeLike): { width: number; height: number } {
+  const m = surface.measured?.(node.id);
+  if (m && m.w > 0 && m.h > 0) return { width: m.w, height: m.h };
+  const el = surface.nodeElement(node.id);
+  if (el && el.offsetWidth > 0 && el.offsetHeight > 0) return { width: el.offsetWidth, height: el.offsetHeight };
+  return { width: node.width ?? 0, height: node.height ?? 0 };
+}
+
 export async function zoomAt(
   surface: ZoomView,
   nodes: ReadonlyArray<NodeLike>,
@@ -22,10 +33,7 @@ export async function zoomAt(
     .map(({ node, position }) => ({
       id: node.id,
       position: { x: position.x, y: position.y },
-      measured: {
-        width: node.width ?? surface.measured?.(node.id)?.w ?? surface.nodeElement(node.id)?.offsetWidth ?? 0,
-        height: node.height ?? surface.measured?.(node.id)?.h ?? surface.nodeElement(node.id)?.offsetHeight ?? 0,
-      },
+      measured: frameSize(surface, node),
       data: {},
     }));
   if (lites.length === 0) return;

@@ -587,6 +587,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   const onBeforeDelete: OnBeforeDelete<SolFlowNode, SolFlowEdge> = useCallback(async () => {
     if (computeOverlayStore.visible() || presentationStore.isActive() || modalOwnsKeyboard()) return false;
     if (hooksRef.current.standsDownWhenDrilled && compositeEditorStore.isOpen()) return false;
+    if (canvasLockStore.get()) return false; // view-only when locked
     await hooksRef.current.deleteSelected();
     return false;
   }, []);
@@ -893,7 +894,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         onNodeDragStop={onNodeDragStop}
         onMove={onMove}
         isValidConnection={isValidConnection}
-        deleteKeyCode={DELETE_KEYS}
+        deleteKeyCode={locked ? null : DELETE_KEYS}
         selectionKeyCode={null}
         // The canvas keyboard nudges the SELECTION on the dot grid (RF's own arrow
         // move needs a focused card and steps 5px) — one arrow handler, not two.

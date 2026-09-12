@@ -29,6 +29,7 @@ import { expandMoveSet } from "./selectionOps";
 import { scheduleAutosave } from "./persistence";
 import { saveToDisk, openFromDisk } from "./fileSession";
 import { DOT_SPACING } from "./gridSnapStore";
+import { canvasLockStore } from "./canvasLock";
 import { computeOverlayStore } from "./computeOverlayStore";
 import { documentStore } from "./documentStore";
 
@@ -173,12 +174,16 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       if (e.key === "Backspace") { drawModeStore.undoPoint(); e.preventDefault(); return; }
     }
 
+    // A locked canvas is view-only: the keys that move, add or remove stand down
+    // (canvasLock.ts); the view keys below (palette, isolate, chrome, Tab) keep working.
+    const locked = canvasLockStore.get();
     if (!editable && !e.ctrlKey && !e.metaKey && !e.altKey) {
       // A selected drawn cable or standoff is not React Flow's selection, so RF never
       // fires its delete hook for it; route the key to the app's delete, which answers
       // them first (deleteSelection).
       if ((e.key === "Delete" || e.key === "Backspace") && (drawnCableStore.selected() || standoffStore.selected())) {
-        void deleteSelected(); e.preventDefault(); return;
+        if (!locked) void deleteSelected();
+        e.preventDefault(); return;
       }
       // Bare Enter opens the palette — gated on `editable` so committing a field
       // never opens it (the modal gate above covers every overlay).
@@ -192,7 +197,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       if (e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "ArrowLeft" || e.key === "ArrowRight") {
         const editor = editorRef.current;
         const hasSel = !!editor && editor.getNodes().some((n) => (n as { selected?: boolean }).selected === true);
-        if (hasSel) {
+        if (hasSel && !locked) {
           const step = e.shiftKey ? DOT_SPACING * 4 : DOT_SPACING;
           const dx = e.key === "ArrowRight" ? step : e.key === "ArrowLeft" ? -step : 0;
           const dy = e.key === "ArrowDown" ? step : e.key === "ArrowUp" ? -step : 0;
@@ -225,18 +230,22 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
             addMenuRequest.open(screenMouseRef.current.x, screenMouseRef.current.y);
             e.preventDefault(); return;
           case "KeyG":
-            if (editor && view && editor.getNodes().some((n) => (n as { selected?: boolean }).selected)) {
+            if (!locked && editor && view && editor.getNodes().some((n) => (n as { selected?: boolean }).selected)) {
               void createGroupFromSelection(editor, view).then(() => processGraph());
             }
             e.preventDefault(); return;
           case "KeyT":
-            void tidyGraph(); e.preventDefault(); return;
+            if (!locked) void tidyGraph();
+            e.preventDefault(); return;
           case "KeyC":
-            void cleanupGraph(); e.preventDefault(); return;
+            if (!locked) void cleanupGraph();
+            e.preventDefault(); return;
           case "KeyE":
-            expandCollapseGroups(); e.preventDefault(); return;
+            if (!locked) expandCollapseGroups();
+            e.preventDefault(); return;
           case "KeyF":
-            autofitGroups(); e.preventDefault(); return;
+            if (!locked) autofitGroups();
+            e.preventDefault(); return;
           case "KeyN":
             toggleChrome("navigator"); e.preventDefault(); return;
           case "KeyD":
@@ -289,7 +298,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
         copySelected(); e.preventDefault(); return;
       }
       if (e.code === "KeyV") {
-        if (isolateStore.isActive()) { e.preventDefault(); return; } // no new nodes while isolating
+        if (isolateStore.isActive() || locked) { e.preventDefault(); return; } // no new nodes while isolating or locked
         const view = viewRef.current;
         const container = containerRef.current;
         if (view && container) {

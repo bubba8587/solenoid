@@ -12,7 +12,8 @@ import { valueChipFor } from "./ValueChip";
 import { groupCollapseStore, syncGroupCollapse, COLLAPSE_LAYOUT, pillY, type RetainedTerminal } from "../groupCollapse";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
 import { socketHighlightStore, dragSocketKey } from "../cableState";
-import { reconcileGroupBox, autofitGroupWithHistory, setGroupLocked, GROUP_MIN_W, GROUP_MIN_H } from "../groupLogic";
+import { reconcileGroupBox, autofitGroupWithHistory, setGroupLocked, GROUP_MIN_W, GROUP_MIN_H, GROUP_PAD } from "../groupLogic";
+import { measuredBox } from "../nodeSize";
 import { standoffStore, settleStandoffs } from "../standoffs";
 import { setGroupsCollapsed } from "../groupPush";
 import { rebuildGroupMembership } from "../groupMembership";
@@ -122,9 +123,22 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
 
   const Grip = useFlowResizeGrip();
   function onResize(size: { width: number; height: number }) {
-    node.width = Math.max(GROUP_MIN_W, size.width);
-    node.height = Math.max(GROUP_MIN_H, size.height);
-    void getOwningView(node.id)?.rerenderNode(node.id);
+    // The right/bottom edges never cross a member: a shrink past the members' extent
+    // would drop them from the group while the box still covered them (no overlaps).
+    const view = getOwningView(node.id);
+    const gv = view?.position(node.id);
+    let minW = GROUP_MIN_W, minH = GROUP_MIN_H;
+    if (view && gv && !node.collapsed) {
+      for (const id of node.members) {
+        const b = measuredBox(view, id);
+        if (!b) continue;
+        minW = Math.max(minW, b.x + b.w + GROUP_PAD - gv.x);
+        minH = Math.max(minH, b.y + b.h + GROUP_PAD - gv.y);
+      }
+    }
+    node.width = Math.max(minW, size.width);
+    node.height = Math.max(minH, size.height);
+    void view?.rerenderNode(node.id);
   }
   function onResizeEnd() {
     const editor = getOwningEditor(node.id);

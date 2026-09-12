@@ -21,16 +21,18 @@ export function StandoffLinkMenu({ target, onLink, onClose }: Props) {
   const ref = useMenuClamp<HTMLDivElement>(target.screenX, target.screenY);
 
   useEffect(() => {
-    function onDown(e: MouseEvent) {
+    // Capture-phase pointerdown: a press inside a card field stops mousedown at the
+    // flow wrapper (guardEditable), which never reaches a bubble document listener.
+    function onDown(e: PointerEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
     }
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
-    document.addEventListener("mousedown", onDown);
+    document.addEventListener("pointerdown", onDown, true);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("pointerdown", onDown, true);
       document.removeEventListener("keydown", onKey);
     };
   }, [onClose]);
