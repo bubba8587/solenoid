@@ -148,6 +148,15 @@ describe("scheduleTasks — the CPM pass over a cube", () => {
     expect(col(inner, "WBS")).toEqual(["1.1", "1.2"]);
     expect(n.output.tasks.map((t) => t.name)).toEqual(["Phase 1", "A", "B", "Wrap"]);
     expect(n.gantt).toContain("      A :");
+    // A level with no Duration column at all (only names + children) gets one appended.
+    const phasesOnly = cubeFromColumns([
+      { name: "Task", cells: ["Phase 1", "Phase 2"], type: "string" },
+      { name: "Tasks", cells: [tasks([["A", 2, []]]), tasks([["B", 3, []]])] },
+      { name: "Predecessors", cells: [null, ["Phase 1"]] },
+    ]);
+    const po = scheduleTasks(phasesOnly, { start: MON, workingDays: true });
+    expect(col(po.cube, "Duration")).toEqual([2, 3]);
+    expect(col(po.cube, "Start").map(iso)).toEqual(["2026-01-05", "2026-01-07"]);
   });
 
   it("an empty tasks cube schedules nothing and finishes on the start", () => {

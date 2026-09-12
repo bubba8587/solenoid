@@ -220,6 +220,9 @@ function writeLevel(level: Level, byName: Map<string, ScheduledTask>, nested: bo
       { name: "Summary", type: "logical", cells: cells((t) => t.summary) },
     );
   }
+  // A level with no Duration column (phases whose rows are only names + children) gets one
+  // appended, so a summary's rolled-up working days reach the grid.
+  if (!level.cols.duration && rows.some((t) => t.summary)) appended.unshift({ name: "Duration", type: "number", cells: cells((t) => t.duration) });
   const taken = new Set(appended.map((col) => col.name));
   const kept = level.cube.columns.filter((col) => !taken.has(col.name) || col === level.cols.start || col === level.cols.finish);
   // A typed Start / Finish column is replaced in place by the scheduled one (a floor that
