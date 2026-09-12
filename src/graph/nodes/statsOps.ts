@@ -39,9 +39,10 @@ export function aggregate(op: AggregateOp, arr: readonly number[]): number | Sol
       const m = Math.floor(s.length / 2);
       return s.length % 2 === 0 ? (s[m - 1] + s[m]) / 2 : s[m];
     }
-    case "stdev":   return n < 2 ? null : Math.sqrt(ssd(arr, mean(arr)) / (n - 1));
+    // A sample spread of ONE value is Excel's #DIV/0!; no values stays blank.
+    case "stdev":   return n === 0 ? null : n < 2 ? solError("#DIV/0!", "A sample standard deviation needs at least two values") : Math.sqrt(ssd(arr, mean(arr)) / (n - 1));
     case "stdev_p": return Math.sqrt(ssd(arr, mean(arr)) / n);
-    case "var_s":   return n < 2 ? null : ssd(arr, mean(arr)) / (n - 1);
+    case "var_s":   return n === 0 ? null : n < 2 ? solError("#DIV/0!", "A sample variance needs at least two values") : ssd(arr, mean(arr)) / (n - 1);
     case "var_p":   return ssd(arr, mean(arr)) / n;
     case "geomean": return arr.some((v) => v <= 0) ? solError("#DOMAIN!", "GEOMEAN needs every value > 0") : Math.exp(arr.reduce((a, b) => a + Math.log(b), 0) / n);
     case "harmean": return arr.some((v) => v <= 0) ? solError("#DOMAIN!", "HARMEAN needs every value > 0") : n / arr.reduce((a, b) => a + 1 / b, 0);

@@ -1314,6 +1314,8 @@ registerInternal("DATETRUNC", (d, unit, ceiling) => {
 registerInternal("DATEDIF",  (start, end, unit) => {
   const s = toNum(start), e = toNum(end);
   if (badNum(s, e)) return VALUE("DATEDIF");
+  // Excel refuses a start after the end for EVERY unit (the DateDiff card's Days op keeps its sign).
+  if (s > e) return solError("#DOMAIN!", "DATEDIF needs the start date on or before the end date");
   const op = dateDiffOpForUnit(toStr(unit));
   if (op === null) return solError("#DOMAIN!", "DATEDIF unit must be Y, M, D, YM, MD or YD");
   return dateDiff(op, s, e) ?? solError("#DOMAIN!", "DATEDIF needs the start date on or before the end date");
@@ -1740,7 +1742,10 @@ registerInternal("SHARPE",      (list, rf, periods) => returnsOp("sharpe", numLi
 registerInternal("SORTINO",     (list, rf, periods) => returnsOp("sortino", numList(list), optNum(rf, 0), optNum(periods, 1)));
 registerInternal("WHICH",    (list) => whichPositions(toList(list)));
 registerInternal("ARGMIN",   (list) => argMinMax("argmin", numList(list)));
-registerInternal("CONTAINS", (list, v) => containsValue(toList(list), v));
+registerInternal("CONTAINS", (list, v) => {
+  if (Array.isArray(list) && list.some(Array.isArray)) return solError("#SHAPE!", "CONTAINS takes a list");
+  return containsValue(toList(list), v);
+});
 registerInternal("WAVG",     (x, w) => weighted("wavg",   numList(x), numList(w)));
 registerInternal("WVAR",     (x, w) => weighted("wvar",   numList(x), numList(w)));
 registerInternal("WSTDEV",   (x, w) => weighted("wstdev", numList(x), numList(w)));

@@ -139,3 +139,20 @@ describe("review pins: Nest Join blank keys", () => {
     expect(frameRowCount(cube.columns[1].cells[1] as never)).toBe(0);
   });
 });
+
+describe("review pins: STDEV.S of one value, DATEDIF order, CONTAINS rank", () => {
+  it("a sample spread of one value is #DIV/0!, of none is blank", () => {
+    expect(isSolError(resolveExcelFunction("STDEV.S")!([5]))).toBe(true);
+    expect(isSolError(resolveExcelFunction("VAR.S")!([5]))).toBe(true);
+    expect(resolveExcelFunction("STDEV.S")!([])).toBeNull();
+    expect(resolveExcelFunction("STDEV.S")!([1, 3]) as number).toBeCloseTo(Math.SQRT2, 10);
+  });
+  it("DATEDIF refuses a start after the end for every unit", () => {
+    expect(isSolError(resolveExcelFunction("DATEDIF")!(46030, 46027, "D"))).toBe(true);
+    expect(resolveExcelFunction("DATEDIF")!(46027, 46030, "D")).toBe(3);
+  });
+  it("CONTAINS over a matrix is #SHAPE!, never a silent FALSE", () => {
+    expect(isSolError(resolveExcelFunction("CONTAINS")!([[1, 2], [3, 4]], 2))).toBe(true);
+    expect(resolveExcelFunction("CONTAINS")!([1, 2, 3], 2)).toBe(true);
+  });
+});
