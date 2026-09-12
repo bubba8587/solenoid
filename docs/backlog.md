@@ -106,10 +106,6 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   toggle in the button row, 26px controls), a **template note** showing its tags literal (not empty),
   and the **Personal Finance** letter's inline `{% if %}` verdicts flipping as a slider moves. The
   dev-notes 09-10 "holes at close" + the 09-11 digest are the checklist.
-- [ ] **Knap help page** (`src/graph/help/`, DESIGN § 7): the syntax, the bare-tag rule, the
-  Template/Records inputs, the `{{ "{" }}{ x }}` escape, the upstream gotchas a user will hit.
-- [ ] **Batch cap surfaced**: `MAX_PAGES` truncates silently; the overlay stepper and the sink
-  status should say "500 of N".
 - [ ] **File the Knap upstream PRs** (`knap-upstream.md`): the typed-value bug first (its three
   repros), then whitespace control, filters in comparisons, the `sort` validator; the API
   asks as issues. Retire the noted workarounds as each lands.
