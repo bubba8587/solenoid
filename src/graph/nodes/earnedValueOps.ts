@@ -2,30 +2,19 @@
 // layer carries the Cost column's currency unit onto the money columns). Terms are the PM
 // standard: BCWS/PV planned value, BCWP/EV earned value, ACWP/AC actual cost.
 
-/** Whole weekdays (Mon–Fri) from `from` to `to` inclusive of both ends; 0 when to < from.
- *  Holidays are not subtracted — the Earned Value node has no calendar of its own, so the
- *  planned fraction counts the working week only (a documented simplification). */
-export function networkDays(from: number, to: number): number {
-  const a = Math.floor(from), b = Math.floor(to);
-  if (b < a) return 0;
-  let count = 0;
-  for (let s = a; s <= b; s++) {
-    const dow = ((s - 25569) % 7 + 7) % 7; // serial 25569 = 1970-01-01, a Thursday
-    // JS day: 25569 → Thu(4). Sat = when (s-25569)%7 === 2, Sun === 3.
-    const jsDay = (dow + 4) % 7;
-    if (jsDay !== 0 && jsDay !== 6) count++;
-  }
-  return count;
-}
+/** Working days from `from` to `to` inclusive of both ends. The node injects the engine's
+ *  `Calendar.countBetween`, so the count honors the same weekend + holidays as the schedule. */
+export type CountWorkingDays = (from: number, to: number) => number;
 
-/** The fraction of a task's baseline work planned to be done by the status date. */
-export function plannedFraction(plannedStart: number | null, plannedFinish: number | null, status: number): number {
+/** The fraction of a task's baseline work planned to be done by the status date, measured
+ *  in working days over the baseline span. */
+export function plannedFraction(plannedStart: number | null, plannedFinish: number | null, status: number, count: CountWorkingDays): number {
   if (plannedStart == null || plannedFinish == null) return 0;
   if (status <= plannedStart) return 0;
   if (status >= plannedFinish) return 1;
-  const total = networkDays(plannedStart, plannedFinish);
+  const total = count(plannedStart, plannedFinish);
   if (total <= 0) return status >= plannedStart ? 1 : 0;
-  return Math.min(1, networkDays(plannedStart, status) / total);
+  return Math.min(1, count(plannedStart, status) / total);
 }
 
 export interface EvTaskInput {
@@ -77,10 +66,10 @@ function metricsFor(bac: number, bcws: number, bcwp: number, acwp: number): {
 
 /** Per-task metrics plus the project totals (each total ratio computed from the summed
  *  components, never averaged — the PM convention). */
-export function earnedValue(tasks: EvTaskInput[], status: number): { tasks: EvTaskMetrics[]; totals: EvTotals } {
+export function earnedValue(tasks: EvTaskInput[], status: number, count: CountWorkingDays): { tasks: EvTaskMetrics[]; totals: EvTotals } {
   const rows: EvTaskMetrics[] = tasks.map((t) => {
     const bac = t.cost;
-    const bcws = bac * plannedFraction(t.plannedStart, t.plannedFinish, status);
+    const bcws = bac * plannedFraction(t.plannedStart, t.plannedFinish, status, count);
     const bcwp = bac * (t.complete / 100);
     const acwp = t.actualCost != null ? t.actualCost : bcwp;
     return { name: t.name, bcws, bcwp, acwp, ...metricsFor(bac, bcws, bcwp, acwp) };

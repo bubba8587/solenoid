@@ -59,6 +59,22 @@ describe("EarnedValueNode", () => {
     expect(isUnitCell(out.eac)).toBe(true);                 // the EAC scalar carries the unit too
   });
 
+  it("a holiday inside the baseline span lowers the planned value (BCWS)", () => {
+    const sched = cubeFromColumns([
+      { name: "Task", cells: ["A"], type: "string" },
+      { name: "Cost", cells: [1000], type: "number" },
+      { name: "Complete", cells: [0], type: "number" },
+      { name: "Start", cells: [d("2026-01-05")], type: "date" },   // Mon
+      { name: "Finish", cells: [d("2026-01-09")], type: "date" },  // Fri
+    ]);
+    const status = d("2026-01-07"); // Wed
+    const plain = new EarnedValueNode().data({ schedule: [sched], status: [status] });
+    const withHol = new EarnedValueNode().data({ schedule: [sched], status: [status], holidays: [[d("2026-01-06")]] }); // Tue off
+    if (!isFrameValue(plain.frame) || !isFrameValue(withHol.frame)) throw new Error("expected frames");
+    expect(col(plain.frame, "BCWS").values[0]).toBeCloseTo(600, 6);   // 3 of 5 working days elapsed
+    expect(col(withHol.frame, "BCWS").values[0]).toBeCloseTo(500, 6); // Tue skipped: 2 of 4
+  });
+
   it("nulls without a cube; a Task-less cube is a #VALUE!", () => {
     expect(new EarnedValueNode().data({}).frame).toBeNull();
     const noTask = cubeFromColumns([{ name: "Cost", cells: [1], type: "number" }]);

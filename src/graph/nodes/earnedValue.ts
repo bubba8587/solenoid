@@ -1,5 +1,5 @@
 import { ClassicPreset } from "rete";
-import { cubeIn, dateIn, strIn, frameOut, numOut, readInput } from "./shared";
+import { cubeIn, dateIn, dateListIn, strIn, numIn, frameOut, numOut, readInput } from "./shared";
 import { isCubeValue, isFrameValue, frameToCube, type CubeValue, type FrameValue, type CubeColumn, type CubeCell, type FrameCell } from "../frame";
 import { isUnitCell, type ColumnUnit } from "../unitValue";
 import { displayMagnitudeOf } from "../unitBridge";
@@ -7,6 +7,7 @@ import { tagFrameCellUnit } from "../unitColumn";
 import { isSolError, solError, type SolError } from "../errorValue";
 import { earnedValue, type EvTaskInput } from "./earnedValueOps";
 import { todaySerial } from "./schedule";
+import { Calendar } from "@solenoid/schedule-engine";
 import type { Shape } from "../frameShape";
 import type { FrameHint } from "../frameHint";
 
@@ -42,6 +43,8 @@ export class EarnedValueNode extends ClassicPreset.Node {
     schedule: "A scheduled project: Task, Complete (0 to 100) and a Cost column, plus Start and Finish. Cost carries its currency onto the money columns. An Actual cost column, when present, is the real spend; without one the actual cost equals the earned value, so cost never varies.",
     baseline: "The plan as it was, a second scheduled project. Its Cost is the budget and its Start and Finish set the planned pace, matched to the current tasks by name. Unwired, the current schedule is its own baseline.",
     status: "The day progress is measured on. Unwired, today.",
+    holidays: "Dates to skip when working out how much of the plan should be done by the status date, alongside the weekend.",
+    weekend_code: "Excel's WORKDAY.INTL codes for the working week: 1 = Sat+Sun, 2 = Sun+Mon, … 7 = Fri+Sat; 11–17 = a single day off.",
     cost: "The Cost column's name, when it isn't called Cost, Budget or BAC.",
     frame: "Task, then BCWS (planned value), BCWP (earned value), ACWP (actual cost), SV and CV (schedule and cost variance), SPI and CPI (the indices), EAC (estimate at completion), VAC (variance at completion) and TCPI.",
     spi: "The project schedule performance index: earned over planned value.",
@@ -50,6 +53,10 @@ export class EarnedValueNode extends ClassicPreset.Node {
   };
 
   label: string;
+  // The Cost column arrives as UnitCells, so the per-input unit strip must be OFF or the
+  // currency the money columns carry would be gone before data() runs (perInputUnitBlind).
+  unitAware = true;
+  literals: Record<string, number> = { weekend_code: 1 };
   stringLiterals: Record<string, string> = { cost: "" };
   cachedResult: FrameValue | SolError | null = null;
   cachedSpi: FrameCell | SolError | null = null;
@@ -77,6 +84,8 @@ export class EarnedValueNode extends ClassicPreset.Node {
     this.addInput("schedule", cubeIn("Schedule"));
     this.addInput("baseline", cubeIn("Baseline"));
     this.addInput("status", dateIn("Status date"));
+    this.addInput("holidays", dateListIn("Holidays"));
+    this.addInput("weekend_code", numIn("Weekend"));
     this.addInput("cost", strIn("Cost column"));
     this.addOutput("frame", frameOut("Summary"));
     this.addOutput("spi", numOut("SPI"));
@@ -93,6 +102,8 @@ export class EarnedValueNode extends ClassicPreset.Node {
     schedule?: (CubeValue | FrameValue | SolError | null)[];
     baseline?: (CubeValue | FrameValue | SolError | null)[];
     status?: (number | null)[];
+    holidays?: (number | null)[][];
+    weekend_code?: number[];
     cost?: string[];
   }) {
     const sched = inputs.schedule?.[0] ?? null;
@@ -137,7 +148,12 @@ export class EarnedValueNode extends ClassicPreset.Node {
       tasks.push({ name, cost, complete, plannedStart, plannedFinish, actualCost });
     }
 
-    const { tasks: rowsM, totals } = earnedValue(tasks, status);
+    // The planned fraction counts working days on the same calendar the schedule used, so a
+    // holiday inside a task's span doesn't count as planned progress (anchor is irrelevant to
+    // countBetween — it returns an index difference).
+    const weekendCode = readInput(inputs.weekend_code, this.literals.weekend_code ?? 1) ?? 1;
+    const calendar = new Calendar(status, { workingDays: true, weekendCode, holidays: inputs.holidays?.[0] ?? undefined, precision: "days" });
+    const { tasks: rowsM, totals } = earnedValue(tasks, status, (a, b) => calendar.countBetween(a, b));
     const money = costUnit ? { unit: costUnit } : {};
     const col = (name: string, values: FrameCell[]) => ({ name, type: "number" as const, values, ...(RATIO_COLS.has(name) ? {} : money) });
     const frame: FrameValue = {
