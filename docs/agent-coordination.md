@@ -4,7 +4,7 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 
 **Protocol.** Agents message each other directly for live coordination; this board is only the durable claim list (one line per claim, delete on land) so a late-joining or restarted agent knows what's taken. Agent 1 is Lead. The durable role split, shared-file policy, and commit/push rules live in the agent's memory.
 
-**Session 2026-09-13 (author present).** A1 = Lead = `solenoid-0f` (main checkout, `develop`). Peers: `solenoid-41` = Agent 2 in `.claude/worktrees/be` (branch `be`); Agent 3 = the next session to join, in `.claude/worktrees/fe` (branch `fe`). Same protocol as 09-12 below.
+**Session 2026-09-13 (author present).** A1 = Lead = `solenoid-0f` (main checkout, `develop`). Peers: `solenoid-41` = Agent 2 in `.claude/worktrees/be` (branch `be`); `solenoid-b3` = Agent 3 in `.claude/worktrees/fe` (branch `fe`). Same protocol as 09-12 below.
 
 **Session 2026-09-12.** A1 = Lead = `solenoid-9d` (main checkout, `develop`). Peers: `solenoid-35` = Agent 2 in `.claude/worktrees/be` (branch `be`), `solenoid-0d` = Agent 3 in `.claude/worktrees/fe` (branch `fe`); each merges `develop` in at start, commits freely there, messages the Lead a hash when green; the Lead merges into `develop`. Nobody pushes. Lead runs a half-hourly cron check-in.
 
@@ -15,3 +15,4 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 ## Claims
 
 - Agent 2 (solenoid-41, `be`) — 2026-09-13 compositesHoldUntilSolve: heavy composites never solve until Solve/Refresh (composite.ts data() gate, pins, decisions.md, backlog line).
+- Agent 3 (solenoid-b3, `fe`) — 2026-09-13 formatCarryPerOp: display format carries only through meaning-preserving ops (unitFlow carriedFormat + per-node op tables; formatCarryReadability table grows + prints a report).
