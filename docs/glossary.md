@@ -231,6 +231,20 @@ Geometry (offsets, z-index, reflow) is `layout-chrome.md`; this is term → hand
 - **Nodes** — the cards. `NodeCard.tsx` (NodeShell). NO single wrapper class — roots vary
   (`.solenoid-node` / `.solenoid-note` / `.solenoid-group` / `.solenoid-conduit`); map a DOM
   event → node via `view.nodeElement` containment, never a class.
+- **Header label** — the user-editable text in a node's header (`node.label`); blank falls back
+  to the family name as its placeholder. "Label" not "title", so it never reads as the HTML
+  `title=`/tooltip. Rendered `.solenoid-node__label-display`, edited via `useDraftCommit` (the raw
+  text shows while editing). A global display-only case setting (`settingsStore` `headerTitleCase`
+  → an `html.hdr-case-*` class → a `text-transform` on the display) can force UPPER or Proper case;
+  the stored label stays raw.
+- **Family name** — a node's op-agnostic, class-derived display name (`nodeTypeName` — "Series",
+  "Math FX"). The *string*; distinct from the type-hint that shows it. (`catalogUtils.ts`; NAME-3.)
+- **Type-hint** — the hover-revealed chip on the card's right edge that *shows* the family name.
+  `.solenoid-node__type-hint` (`typeHint()` in `nodeKit.tsx`).
+- **Op name** — the op-specific display (`nodeName`) used by the header, Inspector, Navigator,
+  popups and the cable-source label — the family name's op-level counterpart. (`catalogUtils.ts`.)
+- **Node blurb** (description tooltip) — the node's description as plain text, surfaced as the
+  header's HTML `title`. `headerTooltip()` in `nodeKit.tsx` (from `describeNode`).
 - **Sockets** — typed dots on node edges. `NodeSocket.tsx` (`MeasuredSocketRow`);
   `.input-socket` / `.output-socket`, locked 12×12 (rules socketBox12).
 - **Cables** — `flow/FlowCableEdge.tsx` (a `<g>` in RF's shared edge svg); paths from

@@ -514,7 +514,9 @@
   line-height: 1.3;
   font-weight: 600;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  /* While editing you see the RAW typed text (like every other draft field); the
+     Header-title case setting only transforms the display below, on blur. */
+  text-transform: none;
   padding: 3px 0; /* symmetric, matching .solenoid-node__label-display */
   display: block;
 }
@@ -523,8 +525,10 @@
   color: var(--text);
 }
 
-/* Static title (not editing): clamped to 4 lines with an ellipsis. Matches the
-   label-input's type so swapping in/out is seamless. */
+/* Static title (not editing): clamped to 4 lines with an ellipsis. Shares the
+   label-input's box (height/padding) so swapping in/out doesn't shift sockets;
+   its CASE is set by the Header-title case setting (html.hdr-case-* below), so the
+   raw text you type renders transformed once you blur. */
 .solenoid-node__label-display {
   /* Shrink to the title text (not the full header) so it sits flush left and
      leaves the reserved right strip for the type hint — mirrors group headers.
@@ -551,6 +555,19 @@
   overflow: hidden;
   word-break: break-word;
 }
+
+/* Header-title case (settingsStore `headerTitleCase`, global). The display block
+   above defaults to uppercase; these override it per the chosen mode. The editing
+   input stays `none` (raw). Group titles get the mirror of this in GroupNode.css. */
+html.hdr-case-as-typed .solenoid-node__label-display { text-transform: none; }
+html.hdr-case-proper .solenoid-node__label-display { text-transform: capitalize; }
+html.hdr-case-upper .solenoid-node__label-display { text-transform: uppercase; }
+/* The 0.08em tracking (and the input's 0.08em) is eyebrow-label spacing tuned for
+   all-caps; on lowercase it reads loose, so the non-upper modes tighten it. */
+html.hdr-case-as-typed .solenoid-node__label-display,
+html.hdr-case-proper .solenoid-node__label-display,
+html.hdr-case-as-typed .solenoid-node__label-input,
+html.hdr-case-proper .solenoid-node__label-input { letter-spacing: 0.01em; }
 
 /* The content wrapper — everything below the header. It is the SOCKET POSITIONING
    CONTEXT (the nearest positioned ancestor for the sockets, pills and the value

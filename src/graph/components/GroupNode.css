@@ -81,8 +81,16 @@
   cursor: text;
 }
 /* While editing, the textarea fills the header so there's room to type (the
-   shrink-to-text sizing above is only for the display title's drag surface). */
-textarea.solenoid-group__label { flex: 1 1 auto; }
+   shrink-to-text sizing above is only for the display title's drag surface), and
+   shows the RAW typed text — the Header-title case setting only transforms the
+   display title below, on blur (mirrors .solenoid-node__label-* in nodeCard.css). */
+textarea.solenoid-group__label { flex: 1 1 auto; text-transform: none; }
+html.hdr-case-as-typed .solenoid-group__label--display { text-transform: none; }
+html.hdr-case-proper .solenoid-group__label--display { text-transform: capitalize; }
+html.hdr-case-upper .solenoid-group__label--display { text-transform: uppercase; }
+/* Drop the caps tracking on lowercase, like the node label (nodeCard.css). */
+html.hdr-case-as-typed .solenoid-group__label,
+html.hdr-case-proper .solenoid-group__label { letter-spacing: 0.1px; }
 .solenoid-group__label::placeholder { color: currentColor; opacity: 0.6; }
 
 /* Tidy + color-swatch controls cluster on the header's right side. The label's

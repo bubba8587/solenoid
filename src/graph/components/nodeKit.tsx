@@ -16,8 +16,10 @@ import { useDraftCommit } from "./inlineInput";
 import { describeNode, nodeName, nodeTypeName } from "../catalogUtils";
 import { descriptionText } from "../descriptionMd";
 
-// Tooltips render no markup, so the description's markdown marks strip.
-function headerTitle(node: object): string | undefined {
+// The header's hover blurb — the node's description as plain text. Tooltips render no
+// markup, so the description's markdown marks strip. (Not the title itself, which is
+// `node.label`; see the glossary's Node blurb / Header label entries.)
+function headerTooltip(node: object): string | undefined {
   const d = describeNode(node);
   return d ? descriptionText(d) : undefined;
 }
@@ -353,7 +355,7 @@ export function NodeShell({
       <NodeCard selected={node.selected} node={node} collapsible={collapsible} squareCollapse={squareCollapse} className={className} accentOverride={accentOverride}>
         {/* The label display's own title (the untruncated label) wins inside its
             own bounds. */}
-        <div className="solenoid-node__header" ref={headerRef} title={headerTitle(node)}>
+        <div className="solenoid-node__header" ref={headerRef} title={headerTooltip(node)}>
           {editing ? (
             // A textarea can't ellipsize, so it's only mounted while editing;
             // otherwise a clamped (2-line, ellipsis) display element stands in.

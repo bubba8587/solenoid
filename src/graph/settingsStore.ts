@@ -3,6 +3,10 @@
 
 import { createNotifier, createToggleStore } from "./storeKit";
 
+/** Rendered case of a typed node header label (display-only; the stored label is raw).
+ *  Maps to a CSS `text-transform` on `.solenoid-node__label-display`. */
+export type HeaderTitleCase = "as-typed" | "upper" | "proper";
+
 const LS_KEY = "solenoid.settings";
 
 export interface Settings {
@@ -46,6 +50,9 @@ export interface Settings {
   quickWire: boolean;
   /** Swap node cards for simplified placeholders once zoomed far out. */
   semanticZoom: boolean;
+  /** Force the case of every typed node header label at render — UPPER or Proper,
+   *  display-only (the stored label is untouched). Default names are never transformed. */
+  headerTitleCase: HeaderTitleCase;
   /** Keep the command palette docked instead of opening on Enter; desktop only. */
   commandPaletteAlwaysOn: boolean;
   /** Date Input reads relative phrases (today / next friday / in 3 days), re-resolved on every
@@ -71,6 +78,7 @@ const DEFAULTS: Settings = {
   tablePopupFrozen: true,
   quickWire: false,
   semanticZoom: false,
+  headerTitleCase: "upper",
   commandPaletteAlwaysOn: false,
   relativeDates: false,
 };
@@ -152,6 +160,16 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         key: "semanticZoom",
         label: "Semantic zoom",
         help: "Simplify node cards when zoomed far out",
+      },
+      {
+        key: "headerTitleCase",
+        label: "Header title case",
+        type: "segment",
+        options: [
+          { value: "as-typed", label: "As typed" },
+          { value: "upper", label: "UPPER" },
+          { value: "proper", label: "Proper" },
+        ],
       },
     ],
   },
@@ -269,6 +287,11 @@ function syncPerfClasses(): void {
   for (const [key, cls] of PERF_CLASS_MAP) html.classList.toggle(cls, Boolean(_settings[key]));
   html.classList.toggle("minimap-top", _settings.minimapPosition === "top");
   html.classList.toggle("minimap-hidden", _settings.minimapPosition === "hide");
+  // Header-title case is a CSS text-transform on the label DISPLAY (never the editing
+  // input, which shows the raw text); one class carries the chosen mode.
+  html.classList.toggle("hdr-case-upper", _settings.headerTitleCase === "upper");
+  html.classList.toggle("hdr-case-proper", _settings.headerTitleCase === "proper");
+  html.classList.toggle("hdr-case-as-typed", _settings.headerTitleCase === "as-typed");
 }
 subscribe(syncPerfClasses);
 
