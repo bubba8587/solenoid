@@ -6,6 +6,27 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-13 — parallel agents; author present)
+
+- **formatCarryPerOp (Agent 3).** A transform no longer carries a display style through
+  everything: it carries only where the node DECLARES its current op preserves the value's
+  meaning. New duck-typed `formatCarry()` (src/graph/nodes/formatCarry.ts, shaped like
+  `passthrough()`); `unitFlow.ts` `carriedFormat` consults it and returns undefined when
+  absent, keeps the family gate + `unit:"none"`, and drops when ≥2 date-styled operands
+  (a span). `compute` now FALLS THROUGH `annotationFor` when it produces no lock, so
+  MathFn abs/round carry while a Triangle side stays bare. Declarations: Arithmetic
+  (add/sub via op-table `carry`), MathFn (MATHFN_PRESERVE), RoundN/MRound/Clamp (value),
+  Aggregate/Running (dimension-preserve ops, reusing `aggregateResultDim`), EWMA, DateAdd
+  (EDATE/EOMONTH), Workdays (WORKDAY only, via family gate). Everything else — mul/div/pow,
+  count/variance/product, stats, all finance, Expression, Convert — carries nothing.
+  Acceptance: `formatCarryReadability.test.ts` grown to 70 rows (all `it`, no `fails`) and
+  it writes `.dev/format-carry-report.txt` (the author's eyeball list). `unitFlowSeed` C
+  flipped: a × carries the value's UNIT but not the format. Rule/decisions/subsystem/
+  format-model reconciled; backlog percent-carry line deleted (Triangle-Solver bare-degrees
+  line kept). **Open for the author:** whether currency × a scalar should keep its
+  2-decimal format (today it drops, per the blanket mul→no-carry ruling) — flip that op's
+  `carry` to regrade.
+
 ### SESSION DIGEST (2026-09-12b — adversarial review of the whole history; 59 fix commits)
 
 The author's order: "adversarial review mode, walk commits backward, don't stop." Every

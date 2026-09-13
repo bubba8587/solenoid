@@ -150,12 +150,8 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 ## Formatting & units
 
-- [ ] **A percent style carries through arithmetic — review with the author** (2026-09-12b).
-  `carriedFormat` forwards the FIRST annotated input's format (rules formatFlowsDownstream as
-  written), so `100 × 5%` displays `500%` and a division by a percent-formatted rate likewise. Either
-  carry only when every annotated input agrees, or exempt scale-bearing styles (percent) from
-  carrying across ×/÷. The Triangle Solver's angle inputs are bare degrees (a rad-tagged trig
-  output wired in reads as degrees); a per-input unit read would close it.
+- [ ] **Triangle Solver's angle inputs are bare degrees** (a rad-tagged trig output wired in
+  reads as degrees); a per-input unit read would close it.
 - [ ] **TEXTJOIN with a blank ignore_empty** treats it as TRUE (formulajs); Excel reads the blank
   argument as FALSE. Document or map. Older long tooltips / descriptions (Decision Matrix,
   Sensitivity, Allocator, Record layout, Chart values, Slider bounds, 200-plus-character catalog

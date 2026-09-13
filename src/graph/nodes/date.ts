@@ -5,6 +5,7 @@ import { convertZone, worldClockRows, worldClockFrame } from "../timeZone";
 import { type FrameValue } from "../frame";
 import { type Shape } from "../frameShape";
 import { serialToJsDate, jsDateToSerial } from "./dateSerial";
+import type { FormatCarrySpec } from "./formatCarry";
 import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffNeedsBasis, epochToSerial, serialToEpoch, dateTrunc, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
 export { dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
 export { serialToJsDate, jsDateToSerial, parseDateToSerial, parseDate, isRelativeDateText, formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "./dateSerial";
@@ -354,6 +355,12 @@ export class DateAddNode extends ClassicPreset.Node {
     this.addOutput("result", dateComboOut("Date"));
   }
 
+  /** EDATE / EOMONTH shift a date but the result is still a date, so Start's date style
+   *  carries; Months is a plain count (different family, dropped) (formatFlowsDownstream). */
+  formatCarry(): FormatCarrySpec[] {
+    return [{ output: "result", inputs: ["start"] }];
+  }
+
   data(inputs: { start?: (number | number[])[]; months?: (number | number[])[] }): { result: BroadcastResult } {
     const result = broadcast((s, rawM) => {
     const d = serialToJsDate(s);
@@ -412,6 +419,13 @@ export class WorkdaysNode extends ClassicPreset.Node {
     this.addInput("holidays",     dateListIn("Holidays"));
     this.addOutput("result", this.op === "workday" ? dateComboOut("Date") : numListOut("Working days"));
     this.seedLiterals();
+  }
+
+  /** WORKDAY returns a date, so Start's date style carries; NETWORKDAYS returns a count
+   *  (a number output, so the date family is dropped by the family gate). One declaration
+   *  covers both ops (formatFlowsDownstream). */
+  formatCarry(): FormatCarrySpec[] {
+    return [{ output: "result", inputs: ["start"] }];
   }
 
   private seedLiterals(): void {
