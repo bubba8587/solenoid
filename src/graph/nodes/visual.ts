@@ -445,8 +445,8 @@ export class MermaidNode extends ClassicPreset.Node {
   height = 240;
 
   constructor(init?: { label?: string }) {
-    super("Mermaid");
-    this.label = init?.label ?? "Mermaid";
+    super("Mermaid Charts");
+    this.label = init?.label ?? "Mermaid Charts";
     this.stringLiterals.source = DEFAULT_MERMAID;
     this.addInput("source", strIn("Source"));
     this.addOutput("diagram", chartOut("Diagram"));
