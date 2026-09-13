@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
-import { nodeDisplayName } from "../../../src/graph/catalogUtils";
+import { nodeDisplayName, nodeTypeName } from "../../../src/graph/catalogUtils";
 import { BinNode, OutliersNode } from "../../../src/graph/nodes/list";
 import { EpochNode, DateTruncNode } from "../../../src/graph/nodes/date";
 import { ntileList, outlierFlags } from "../../../src/graph/nodes/listOps";
@@ -673,7 +673,8 @@ describe("Hash / UUID / Base64 (hashlib, uuid4, base64 — digests pinned in has
   it("ENCODEBASE64 / DECODEBASE64 ride the url-encode card; bad base64 passes through", () => {
     expect(new UrlEncodeNode({ op: "base64" }).data({ text: ["hello world"] }).result).toBe("aGVsbG8gd29ybGQ=");
     expect(new UrlEncodeNode({ op: "unbase64" }).data({ text: ["aGVsbG8gd29ybGQ="] }).result).toBe("hello world");
-    expect(nodeDisplayName(new UrlEncodeNode({ op: "unbase64" }))).toBe("DECODEBASE64");
+    const dec = new UrlEncodeNode({ op: "unbase64" }); // card shows the family name, not the op
+    expect(nodeDisplayName(dec)).toBe(nodeTypeName(dec));
     expect(ev('ENCODEBASE64("abc")')).toBe("YWJj");
     expect(ev('DECODEBASE64("YWJj")')).toBe("abc");
     expect(ev('DECODEBASE64("not base64!")')).toBe("not base64!");
