@@ -4,12 +4,12 @@ import {
   SparklineNode, ChartNode, MergePlotsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, GanttNode,
   FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode, WindowNode,
-  NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFnNode,
+  NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFXNode,
   FormatControllerNode, ExpressionNode, ScriptNode, EquationNode, RegexNode, GroupByNode,
   ClampNode, BooleanOpNode, NotNode, IfNode, ConduitNode, CastNode, ConstantNode, MRoundNode,
   ListInputNode, AggregateNode, SeriesNode, SERIES_OP_META, type SeriesOp, ListLengthNode, ListIndexNode,
   SortNode, ReverseNode, SliceNode, FilterNode, SumIfsNode, FillNode, XLookupNode,
-  GcdNode, IFErrorNode, NaNode, RandBetweenNode, RoundNNode, ConvertNode,
+  GCDNode, IFErrorNode, NaNode, RandBetweenNode, RoundNNode, ConvertNode,
   UniqueNode, SetNode, ConcatListsNode, FrameFromListsNode, QuadraticRootsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode, RankPercentileNode, RANK_PERCENTILE_OP_META, type RankPercentileOp,
   CorrelNode, CombinatoricsNode, TwoInputMathNode,
@@ -19,7 +19,7 @@ import {
   ShuffleNode, NthElementNode, InterleaveNode, PadNode,
   StandardizeNode, CovarianceNode, FisherNode, BitwiseNode,
   DepreciationNode,
-  TvmNode, PaymentBreakdownNode, NpvNode, IrrNode, MirrNode, AmortizationNode, ReturnsNode,
+  TvmNode, PaymentBreakdownNode, NPVNode, IRRNode, MirrNode, AmortizationNode, ReturnsNode,
   FvScheduleNode, IspmtNode, DollarNode, ProbNode,
   WeightedNode, BaseConvertNode,
   TextInputNode, TextTransformNode, TextLenNode, ConcatNode, TextSliceNode,
@@ -90,7 +90,7 @@ import type { NodeCatalogEntry, CatalogEntry } from "./AddNodeMenu";
 // Label + description come from OP_META; tree structure and ordering are hand-authored.
 
 const arithLeaf    = (op: ArithmeticOp):   NodeCatalogEntry => ({ type: `arith-${op}`,     label: ARITHMETIC_OP_META[op].label,     description: ARITHMETIC_OP_META[op].description,     keywords: "arithmetic", create: () => new ArithmeticNode({ op }), ...(op === "pow" ? { parity: false as const } : {}) });
-const mathLeaf     = (op: MathFnOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: `math-${op}`, label: MATH_FN_OP_META[op].label, description: MATH_FN_OP_META[op].description, create: () => new MathFnNode({ op }), ...overrides, keywords: ["math", overrides?.keywords].filter(Boolean).join(" ") });
+const mathLeaf     = (op: MathFnOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: `math-${op}`, label: MATH_FN_OP_META[op].label, description: MATH_FN_OP_META[op].description, create: () => new MathFXNode({ op }), ...overrides, keywords: ["math", overrides?.keywords].filter(Boolean).join(" ") });
 const booleanLeaf  = (op: BooleanOp):      NodeCatalogEntry => ({ type: `bool-${op}`,      label: BOOLEAN_OP_META[op].label,        description: BOOLEAN_OP_META[op].description,        create: () => new BooleanOpNode({ op })     });
 const reduceLeaf   = (op: ReduceOp):       NodeCatalogEntry => ({ type: `reduce-${op}`,    label: REDUCE_OP_META[op].label,         description: REDUCE_OP_META[op].description,         keywords: "aggregate", create: () => new AggregateNode({ op }), ...((REDUCE_OP_META[op] as { fx?: string }).fx ? { fx: [(REDUCE_OP_META[op] as { fx?: string }).fx!] } : {})     });
 const combLeaf     = (op: CombinatoricsOp):NodeCatalogEntry => ({ type: `comb-${op}`,      label: COMBINATORICS_OP_META[op].label,  description: COMBINATORICS_OP_META[op].description,  keywords: "combinatorics", create: () => new CombinatoricsNode({ op }) });
@@ -337,8 +337,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [arithLeaf("mod"), arithLeaf("quotient")] },
           arithLeaf("pow"),
           { type: "pair", children: [
-            { type: "gcd-lcm", label: "GCD", description: "Greatest common divisor of two integers. Excel: `GCD`.", create: () => new GcdNode() },
-            { type: "lcm", label: "LCM", description: "Least common multiple of two integers. Excel: `LCM`.", create: () => new GcdNode({ op: "lcm" }) },
+            { type: "gcd-lcm", label: "GCD", description: "Greatest common divisor of two integers. Excel: `GCD`.", create: () => new GCDNode() },
+            { type: "lcm", label: "LCM", description: "Least common multiple of two integers. Excel: `LCM`.", create: () => new GCDNode({ op: "lcm" }) },
           ]},
         ],
       },
@@ -727,11 +727,11 @@ export const NODE_CATALOG: CatalogEntry[] = [
       {
         type: "category", label: "Cash flow analysis", description: "NPV, IRR, MIRR for irregular cash flows.",
         children: [
-          { type: "npv",  label: "NPV",  description: "Net present value of cash flows discounted at a given rate. The first flow is period 1. Excel: `NPV`.", create: () => new NpvNode() },
-          { type: "irr",  label: "IRR",  description: "Internal rate of return: the rate at which `NPV = 0`. Excel: `IRR`.", create: () => new IrrNode() },
+          { type: "npv",  label: "NPV",  description: "Net present value of cash flows discounted at a given rate. The first flow is period 1. Excel: `NPV`.", create: () => new NPVNode() },
+          { type: "irr",  label: "IRR",  description: "Internal rate of return: the rate at which `NPV = 0`. Excel: `IRR`.", create: () => new IRRNode() },
           { type: "mirr", label: "MIRR", description: "Modified IRR accounting for reinvestment rate and cost of capital. Excel: `MIRR`.", create: () => new MirrNode() },
-          { type: "xirr", label: "XIRR", description: "IRR for cash flows at irregular dates, from a list of flows and a parallel list of dates. Excel: `XIRR`.", create: () => new IrrNode({ op: "dates" }), parity: false },
-          { type: "xnpv", label: "XNPV", description: "Net present value of cash flows, each with an explicit date. Excel: `XNPV`.", create: () => new NpvNode({ op: "dates" }), parity: false },
+          { type: "xirr", label: "XIRR", description: "IRR for cash flows at irregular dates, from a list of flows and a parallel list of dates. Excel: `XIRR`.", create: () => new IRRNode({ op: "dates" }), parity: false },
+          { type: "xnpv", label: "XNPV", description: "Net present value of cash flows, each with an explicit date. Excel: `XNPV`.", create: () => new NPVNode({ op: "dates" }), parity: false },
         ],
       },
       {

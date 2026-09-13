@@ -669,7 +669,7 @@
     },
     {
       "id": "p_dom",
-      "type": "MathFnNode",
+      "type": "MathFXNode",
       "x": 495,
       "y": 893,
       "init": {
@@ -861,7 +861,7 @@
     },
     {
       "id": "p_conv",
-      "type": "IrrNode",
+      "type": "IRRNode",
       "x": 796,
       "y": 1471,
       "init": {

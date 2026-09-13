@@ -1084,7 +1084,7 @@ registerInternal("TRIMMEAN", (vals, pct) => excelTrimmean((vals as number[]) ?? 
 // Excel arg order PERCENTRANK(array, x, [significance]); range arg passes whole.
 registerInternal("PERCENTRANK", (arr, x, sig) => excelPercentRank((arr as number[]) ?? [], toNum(x), sig == null ? 3 : Math.trunc(toNum(sig)), false));
 
-// Owned to match MathFnNode `compute()` exactly: MOD takes the DIVISOR's sign, Excel's
+// Owned to match MathFXNode `compute()` exactly: MOD takes the DIVISOR's sign, Excel's
 // ATAN2(x, y) = atan2(y, x), ÷0 is #DIV/0!, out-of-domain is #DOMAIN! not a blank.
 const domErr = () => solError("#DOMAIN!", "Input is outside this function's domain");
 const num1 = (fn: string, f: (x: number) => number | SolError) =>

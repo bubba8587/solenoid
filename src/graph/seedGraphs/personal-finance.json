@@ -381,7 +381,7 @@
     },
     {
       "id": "abs-spend",
-      "type": "MathFnNode",
+      "type": "MathFXNode",
       "x": 1258,
       "y": 181,
       "init": {

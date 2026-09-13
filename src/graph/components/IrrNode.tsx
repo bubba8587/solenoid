@@ -1,5 +1,5 @@
 import { CASHFLOW_OP_OPTIONS } from "../rete-nodes";
-import type { IrrNode as IrrNodeType, CashflowOp } from "../rete-nodes";
+import type { IRRNode as IRRNodeType, CashflowOp } from "../rete-nodes";
 import { useState } from "react";
 import { processGraph } from "../process";
 import { getActiveView } from "../activeGraph";
@@ -8,7 +8,7 @@ import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { OpToggle } from "./SegToggle";
 import { dropInputCables } from "./cablePrune";
 
-export function IrrComponent({ data, emit }: NodeProps<IrrNodeType>) {
+export function IrrComponent({ data, emit }: NodeProps<IRRNodeType>) {
   const [op, setOp] = useState<CashflowOp>(data.op);
 
   async function pickOp(next: CashflowOp) {

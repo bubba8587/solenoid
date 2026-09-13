@@ -226,7 +226,7 @@
     },
     {
       "id": "sin",
-      "type": "MathFnNode",
+      "type": "MathFXNode",
       "x": -5709,
       "y": -1895,
       "init": {

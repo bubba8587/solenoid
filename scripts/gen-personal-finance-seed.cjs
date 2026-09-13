@@ -133,7 +133,7 @@ n("slicer-exp","SlicerNode",   60, -300, { label: "Expenses only", selectedColum
 // pulls the lists the chart/sparkline need. Coords in the TUNED frame.
 n("gbf-spend","GroupByFrameNode", 900, -150, { label: "Spend by category", agg: "sum" }, { stringLiterals: { keys: "Category", column: "Amount" } });
 n("col-ptotal","GetColumnNode", 1230,  60, { label: "Category totals", readAs: "number" }, { stringLiterals: { name: "Amount" } });
-n("abs-spend","MathFnNode",   600, -180, { label: "Magnitude", op: "abs" });
+n("abs-spend","MathFXNode",   600, -180, { label: "Magnitude", op: "abs" });
 n("disp-pivot","DisplayNode", 1889, 207, { label: "Spend by category" });
 n("chart-cat","ChartNode",   1120,  -40, { label: "Spending by category", op: "column" });
 n("gbf-cnt", "GroupByFrameNode",  900, 140, { label: "Count by category", agg: "count" }, { stringLiterals: { keys: "Category", column: "Amount" } });

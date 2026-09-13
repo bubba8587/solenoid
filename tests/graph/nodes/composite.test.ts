@@ -12,7 +12,7 @@ import { alertStore } from "../../../src/graph/alertStore";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode, stopConditionMet, byRowValues, BY_ROW_MAX_ROWS } from "../../../src/graph/nodes/composite";
 import { frameFromCells, isFrameValue, frameRowCount, type FrameValue } from "../../../src/graph/frame";
 import { NumberInputNode } from "../../../src/graph/nodes/input";
-import { ArithmeticNode, MathFnNode } from "../../../src/graph/nodes/scalar";
+import { ArithmeticNode, MathFXNode } from "../../../src/graph/nodes/scalar";
 import { ComparisonNode } from "../../../src/graph/nodes/logic";
 
 function connect(
@@ -275,7 +275,7 @@ describe("CompositeNode Auto-trig reads the internal unit plane", () => {
     const angle = new NumberInputNode({ value: 90 });
     (angle as unknown as { annotationFor: (k: string) => unknown }).annotationFor =
       (k: string) => (k === "value" ? { format: "auto", unit: "deg" } : undefined);
-    const sin = new MathFnNode({ op: "sin" }); // auto angle mode
+    const sin = new MathFXNode({ op: "sin" }); // auto angle mode
     const outMarker = new CompositeOutputNode({ label: "S" });
     for (const n of [angle, sin, outMarker]) await c.internalEditor.addNode(n as unknown as Schemes["Node"]);
     await connect(c.internalEditor, angle, "value", sin, "in");

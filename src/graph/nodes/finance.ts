@@ -281,7 +281,7 @@ export const CASHFLOW_OP_OPTIONS: { value: CashflowOp; label: string }[] = [
   { value: "dates", label: "Dated" },
 ];
 
-export class NpvNode extends ClassicPreset.Node {
+export class NPVNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     list: "A blank cell counts as zero. Dropping it would shift every later flow.",
     dates: "Values discount back to the first date. A blank date makes the whole result blank.",
@@ -348,7 +348,7 @@ export class NpvNode extends ClassicPreset.Node {
 
 // ─── IRR ──────────────────────────────────────────────────────────────────────
 
-export class IrrNode extends ClassicPreset.Node {
+export class IRRNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     list: "A blank cell counts as zero. Dropping it would shift every later flow.",
   };

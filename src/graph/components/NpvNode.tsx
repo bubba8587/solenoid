@@ -1,5 +1,5 @@
 import { CASHFLOW_OP_OPTIONS } from "../rete-nodes";
-import type { NpvNode as NpvNodeType, CashflowOp } from "../rete-nodes";
+import type { NPVNode as NPVNodeType, CashflowOp } from "../rete-nodes";
 import { useState } from "react";
 import { processGraph } from "../process";
 import { getActiveView } from "../activeGraph";
@@ -8,7 +8,7 @@ import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { OpToggle } from "./SegToggle";
 import { dropInputCables } from "./cablePrune";
 
-export function NpvComponent({ data, emit }: NodeProps<NpvNodeType>) {
+export function NpvComponent({ data, emit }: NodeProps<NPVNodeType>) {
   const [op, setOp] = useState<CashflowOp>(data.op);
 
   async function pickOp(next: CashflowOp) {

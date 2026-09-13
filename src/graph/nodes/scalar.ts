@@ -260,7 +260,7 @@ export function mathFnResultDim(op: MathFnOp, dim: Dim): Dim | SolError | "strip
   return unitError(`${op.toUpperCase()} needs a dimensionless argument.`);
 }
 
-export class MathFnNode extends ClassicPreset.Node {
+export class MathFXNode extends ClassicPreset.Node {
   /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
   unitAware = true;
   label: string;
@@ -646,7 +646,7 @@ export const GCD_OP_META = {
 } satisfies Record<GcdOp, { label: string; description: string }>;
 
 // Inputs are rounded to integers; gcd(0,0)=0.
-export class GcdNode extends ClassicPreset.Node {
+export class GCDNode extends ClassicPreset.Node {
   label: string;
   op: GcdOp;
   cachedResult: BroadcastResult = null;

@@ -14,9 +14,9 @@ import { writeFileSync, mkdirSync } from "node:fs";
 import { NodeEditor, ClassicPreset } from "rete";
 import { makeAnnotationResolver } from "../../src/graph/unitFlow";
 import { formatNumberWithAnnotation, type FormatAnnotation } from "../../src/graph/formatAnnotationStore";
-import { ArithmeticNode, MathFnNode, RoundNNode, MRoundNode, ClampNode, TwoInputMathNode, SumProductNode } from "../../src/graph/nodes/scalar";
+import { ArithmeticNode, MathFXNode, RoundNNode, MRoundNode, ClampNode, TwoInputMathNode, SumProductNode } from "../../src/graph/nodes/scalar";
 import { StandardizeNode, CorrelNode } from "../../src/graph/nodes/stats";
-import { NpvNode, TvmNode, ReturnsNode } from "../../src/graph/nodes/finance";
+import { NPVNode, TvmNode, ReturnsNode } from "../../src/graph/nodes/finance";
 import { AggregateNode, RunningNode, EwmaNode, ConvolveNode, BinNode, SortNode, ReverseNode } from "../../src/graph/nodes/list";
 import { DateAddNode, WorkdaysNode, DateDiffNode } from "../../src/graph/nodes/date";
 import { MatDetNode, TableTransposeNode } from "../../src/graph/nodes/matrix";
@@ -82,14 +82,14 @@ const rows: Row[] = [
   { name: "MOD(7%, 2%)", make: () => new ArithmeticNode({ op: "mod" }), wire: { a: "pct", b: "pct" }, value: 0.01, want: "auto" },
   { name: "5% − 2% is still a percent", make: () => new ArithmeticNode({ op: "sub" }), wire: { a: "pct", b: "pct" }, value: 0.03, want: "3.00%" },
   // ── Math functions: abs / round-family keep it; the rest make a new value ──
-  { name: "abs(−5%) keeps the percent", make: () => new MathFnNode({ op: "abs" }), wire: { in: "pct" }, value: 0.05, want: "5.00%" },
-  { name: "int(5.7%) keeps the percent", make: () => new MathFnNode({ op: "int" }), wire: { in: "pct" }, value: 0.05, want: "5.00%" },
-  { name: "trunc(5.7%) keeps the percent", make: () => new MathFnNode({ op: "trunc" }), wire: { in: "pct" }, value: 0.05, want: "5.00%" },
-  { name: "sqrt(16%)", make: () => new MathFnNode({ op: "sqrt" }), wire: { in: "pct" }, value: 0.4, want: "auto" },
-  { name: "exp(5%)", make: () => new MathFnNode({ op: "exp" }), wire: { in: "pct" }, value: 1.0513, want: "auto" },
-  { name: "ln(105%)", make: () => new MathFnNode({ op: "log" }), wire: { in: "pct" }, value: 0.0488, want: "auto" },
-  { name: "sin(30%)", make: () => new MathFnNode({ op: "sin" }), wire: { in: "pct" }, value: 0.2955, want: "auto" },
-  { name: "sqrt(integer 10)", make: () => new MathFnNode({ op: "sqrt" }), wire: { in: "int" }, value: 3.1623, want: "auto" },
+  { name: "abs(−5%) keeps the percent", make: () => new MathFXNode({ op: "abs" }), wire: { in: "pct" }, value: 0.05, want: "5.00%" },
+  { name: "int(5.7%) keeps the percent", make: () => new MathFXNode({ op: "int" }), wire: { in: "pct" }, value: 0.05, want: "5.00%" },
+  { name: "trunc(5.7%) keeps the percent", make: () => new MathFXNode({ op: "trunc" }), wire: { in: "pct" }, value: 0.05, want: "5.00%" },
+  { name: "sqrt(16%)", make: () => new MathFXNode({ op: "sqrt" }), wire: { in: "pct" }, value: 0.4, want: "auto" },
+  { name: "exp(5%)", make: () => new MathFXNode({ op: "exp" }), wire: { in: "pct" }, value: 1.0513, want: "auto" },
+  { name: "ln(105%)", make: () => new MathFXNode({ op: "log" }), wire: { in: "pct" }, value: 0.0488, want: "auto" },
+  { name: "sin(30%)", make: () => new MathFXNode({ op: "sin" }), wire: { in: "pct" }, value: 0.2955, want: "auto" },
+  { name: "sqrt(integer 10)", make: () => new MathFXNode({ op: "sqrt" }), wire: { in: "int" }, value: 3.1623, want: "auto" },
   { name: "round(5.678%, 2)", make: () => new RoundNNode({ op: "round" }), wire: { value: "pct", digits: "bare" }, value: 0.06, want: "6.00%" },
   { name: "roundup(5.6%, 2)", make: () => new RoundNNode({ op: "roundup" }), wire: { value: "pct", digits: "bare" }, value: 0.06, want: "6.00%" },
   { name: "rounddown(5.6%, 2)", make: () => new RoundNNode({ op: "rounddown" }), wire: { value: "pct", digits: "bare" }, value: 0.05, want: "5.00%" },
@@ -131,7 +131,7 @@ const rows: Row[] = [
   { name: "TRANSPOSE a percent matrix", make: () => new TableTransposeNode(), wire: { matrix: "pct" }, value: 0.05, want: "5.00%" },
   { name: "MDETERM of a percent matrix", make: () => new MatDetNode({ op: "mdeterm" }), wire: { matrix: "pct" }, value: 0.0025, want: "auto" },
   // ── Finance: the rate's style never describes the money ──
-  { name: "NPV(rate 5%, flows)", make: () => new NpvNode({ op: "periods" }), wire: { rate: "pct", list: "bare" }, value: 1234.56, want: "auto" },
+  { name: "NPV(rate 5%, flows)", make: () => new NPVNode({ op: "periods" }), wire: { rate: "pct", list: "bare" }, value: 1234.56, want: "auto" },
   { name: "TVM payment (rate 5% wired first)", make: () => new TvmNode(), wire: { rate: "pct", nper: "bare", pv: "bare" }, out: "pmt", value: -1295.05, want: "auto" },
   { name: "TVM payment (pv wired first, then rate 5%)", make: () => new TvmNode(), wire: { pv: "dec2", rate: "pct", nper: "bare" }, out: "pmt", value: -1295.05, want: "auto" },
   { name: "TVM rate from money inputs", make: () => new TvmNode(), wire: { pv: "dec2", pmt: "dec2", nper: "bare" }, out: "rate", value: 0.05, want: "auto" },

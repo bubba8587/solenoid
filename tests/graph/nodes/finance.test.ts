@@ -4,8 +4,8 @@ import {
   PaymentBreakdownNode,
   IspmtNode,
   DiscountSecurityNode,
-  NpvNode,
-  IrrNode,
+  NPVNode,
+  IRRNode,
   MirrNode,
   DepreciationNode,
 } from "../../../src/graph/nodes/finance";
@@ -225,7 +225,7 @@ describe("securityDisc — DSM honors the day-count basis", () => {
 
 describe("NPV", () => {
   it("matches =NPV(0.1, 100, 200, 300)", () => {
-    const r = new NpvNode().data({ rate: [0.1], list: [[100, 200, 300]] });
+    const r = new NPVNode().data({ rate: [0.1], list: [[100, 200, 300]] });
     expect(r.result).toBeCloseTo(481.59, 2);
   });
 });
@@ -233,12 +233,12 @@ describe("NPV", () => {
 describe("IRR", () => {
   it("finds the rate where NPV = 0", () => {
     // -100 now, 146.41 in 4 periods → exactly 10%
-    const r = new IrrNode().data({ list: [[-100, 0, 0, 0, 146.41]] });
+    const r = new IRRNode().data({ list: [[-100, 0, 0, 0, 146.41]] });
     expect(r.result).toBeCloseTo(0.1, 4);
   });
 
   it("matches a typical project IRR", () => {
-    const r = new IrrNode().data({ list: [[-1000, 300, 400, 500, 600]] });
+    const r = new IRRNode().data({ list: [[-1000, 300, 400, 500, 600]] });
     expect(r.result).toBeCloseTo(0.248886, 4);
   });
 });
@@ -302,7 +302,7 @@ describe("Depreciation — VDB absorbed as an op", () => {
 
 describe("NPV / IRR — the Dated toggle (old XNPV / XIRR)", () => {
   it("dated NPV discounts by explicit dates", () => {
-    const r = new NpvNode({ op: "dates" }).data({
+    const r = new NPVNode({ op: "dates" }).data({
       rate: [0.1],
       list: [[-1000, 600, 600]],
       dates: [[45000, 45365, 45730]],
@@ -311,7 +311,7 @@ describe("NPV / IRR — the Dated toggle (old XNPV / XIRR)", () => {
   });
 
   it("dated IRR recovers the rate NPV used", () => {
-    const r = new IrrNode({ op: "dates" }).data({
+    const r = new IRRNode({ op: "dates" }).data({
       list: [[-1000, 1100]],
       dates: [[45000, 45365]],
     }).result as number;
@@ -319,13 +319,13 @@ describe("NPV / IRR — the Dated toggle (old XNPV / XIRR)", () => {
   });
 
   it("the toggle adds/removes only the Dates socket", () => {
-    const n = new NpvNode();
+    const n = new NPVNode();
     expect(Object.keys(n.inputs)).toEqual(["rate", "list"]);
     n.setOp("dates");
     expect(Object.keys(n.inputs)).toEqual(["rate", "list", "dates"]);
     n.setOp("periods");
     expect(Object.keys(n.inputs)).toEqual(["rate", "list"]);
-    const i = new IrrNode({ op: "dates" });
+    const i = new IRRNode({ op: "dates" });
     expect(Object.keys(i.inputs)).toEqual(["list", "dates"]);
   });
 });

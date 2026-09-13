@@ -19,14 +19,14 @@ import { DATE_DIFF_OP_META, DateTimeValueNode, WorkdaysNode } from "./nodes/date
 import { IFErrorNode } from "./nodes/logic";
 import { ByAxisNode, BY_AXIS_OP_META } from "./nodes/tableLambda";
 import { StackNode, STACK_OP_META } from "./nodes/matrix";
-import { NpvNode, IrrNode, NPV_OP_META, IRR_OP_META } from "./nodes/finance";
+import { NPVNode, IRRNode, NPV_OP_META, IRR_OP_META } from "./nodes/finance";
 import {
   IsEvenOddNode, ComparisonNode, IsTestNode,
   PARITY_OP_META, COMPARISON_OP_META, IS_TEST_OP_META,
 } from "./nodes/logic";
 import { RegressionNode, CorrelNode, ForecastNode, LinestNode, REGRESSION_OP_META, CORREL_OP_META, FORECAST_OP_META, FIT_OP_META } from "./nodes/stats";
 import {
-  TwoInputMathNode, GcdNode, RoundNNode,
+  TwoInputMathNode, GCDNode, RoundNNode,
   TWO_INPUT_MATH_OP_META, GCD_OP_META, ROUNDN_OP_META,
 } from "./nodes/scalar";
 // Families whose every op has its own hand-written leaf, via the node barrel — they
@@ -42,7 +42,7 @@ import {
   ESeriesNode, 
   FisherNode,
   MRoundNode,
-  MatDetNode, MathFnNode, 
+  MatDetNode, MathFXNode, 
   PhysicsConstantNode,
   DiscountSecurityNode, AccruedInterestNode, ACCRUED_INTEREST_OP_META,
   PaymentBreakdownNode, PAYMENT_BREAKDOWN_OP_META,
@@ -160,10 +160,10 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new StackNode({ op: op as never }) },
   { type: "by-axis", ctor: ByAxisNode, ops: fromMeta(BY_AXIS_OP_META),
     create: (op) => new ByAxisNode({ op: op as never }), leafOps: ["row", "col"] },
-  { type: "npv", ctor: NpvNode, ops: fromMeta(NPV_OP_META),
-    create: (op) => new NpvNode({ op: op as never }), leafOps: ["periods", "dates"] },
-  { type: "irr", ctor: IrrNode, ops: fromMeta(IRR_OP_META),
-    create: (op) => new IrrNode({ op: op as never }), leafOps: ["periods", "dates"] },
+  { type: "npv", ctor: NPVNode, ops: fromMeta(NPV_OP_META),
+    create: (op) => new NPVNode({ op: op as never }), leafOps: ["periods", "dates"] },
+  { type: "irr", ctor: IRRNode, ops: fromMeta(IRR_OP_META),
+    create: (op) => new IRRNode({ op: op as never }), leafOps: ["periods", "dates"] },
   { type: "keep-columns", ctor: ColumnsNode, ops: fromMeta(COLUMNS_OP_META),
     create: (op) => new ColumnsNode({ op: op as never }), leafOps: ["keep", "drop"] },
   { type: "list-pad", ctor: PadNode, ops: fromMeta(PAD_OP_META),
@@ -201,8 +201,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "is-test", ctor: IsTestNode, ops: fromMeta(IS_TEST_OP_META),
     create: (op) => new IsTestNode({ op: op as never }) },
   // Label already names both ops, so the marker would only echo it.
-  { type: "gcd-lcm", ctor: GcdNode, ops: fromMeta(GCD_OP_META),
-    create: (op) => new GcdNode({ op: op as never }), leafOps: ["gcd", "lcm"] },
+  { type: "gcd-lcm", ctor: GCDNode, ops: fromMeta(GCD_OP_META),
+    create: (op) => new GCDNode({ op: op as never }), leafOps: ["gcd", "lcm"] },
 
   // ── Partially exposed: some ops already have leaves, the rest ride in search ──
   { type: "twomath-log", ctor: TwoInputMathNode, ops: fromMeta(TWO_INPUT_MATH_OP_META),
@@ -248,7 +248,7 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "fisher-fisher", ctor: FisherNode },
   { type: "math-ceiling", ctor: MRoundNode },
   { type: "matdet-mdeterm", ctor: MatDetNode },
-  { type: "math-abs", ctor: MathFnNode },
+  { type: "math-abs", ctor: MathFXNode },
   // ONE Rank & Percentile class hosts all ten order-statistic ops; the .EXC forms
   // have no leaf of their own, so each family leaf declares its pair and the
   // search rows ride the right host ("PERCENTILE: PERCENTILE.EXC"). The card
