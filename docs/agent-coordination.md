@@ -14,5 +14,4 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 
 ## Claims
 
-- Agent 2 (solenoid-41, `be`) — 2026-09-13 compositesHoldUntilSolve: heavy composites never solve until Solve/Refresh (composite.ts data() gate, pins, decisions.md, backlog line).
 - Agent 3 (solenoid-b3, `fe`) — 2026-09-13 formatCarryPerOp: display format carries only through meaning-preserving ops (unitFlow carriedFormat + per-node op tables; formatCarryReadability table grows + prints a report).
