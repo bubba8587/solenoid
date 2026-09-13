@@ -175,6 +175,22 @@
   min-width: 120px;
   font-family: var(--font-sans);
 }
+/* Chip text style (B2.2) in an EDITABLE cell: the CategoryChip overlays the live
+   <input> while the cell is unfocused, matching the input's own padding so the pill
+   sits where the text would. pointer-events: none lets a click reach the input beneath
+   (which enters edit and hides the chip); the input's own text is painted transparent
+   under it. Same chipCols + CategoryChip as the read-only path, no second mechanism. */
+.table-popup__cell--chip { position: relative; }
+.table-popup__chip-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 4px 8px;
+  overflow: hidden;
+  pointer-events: none;
+}
 
 /* Editable column-name inputs in the header row (frame editor) — sized to the
    header cell and accent-tinted/bold to match the static .colhead--name look. */

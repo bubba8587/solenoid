@@ -147,6 +147,12 @@ Which controls exist per family (popup rows AND resolution axes):
 | · render as markdown | — | — | ✔ (inline markdown, sanitized) | — | — |
 | · monospace | — | — | ✔ (text is sans by default) | — | — |
 
+The text case dropdown's **Chip** value (B2.2) colors each distinct string by category (the
+shared chart palette, one `CategoryChip`, keyed by first appearance in source row order): the
+on-canvas grid, read-only popups, and an editable popup cell all render the pill, and in the
+editable popup a cell shows the pill while unfocused and swaps to the raw text on focus (Source
+mode keeps raw text throughout).
+
 The two object families each carry exactly ONE control (not in the matrix above —
 they'd be a column of dashes):
 

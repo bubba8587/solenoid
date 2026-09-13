@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
 import { FormatControllerNode } from "../../src/graph/nodes/formatController";
 import { extractInit } from "../../src/graph/copyPaste";
 import { columnFormatRow } from "../../src/graph/frameFormatStore";
@@ -28,5 +29,18 @@ describe("Chip text style (B2.2)", () => {
     expect(columnFormatRow(chipAnn, undefined, "string").value).toBe("chip");
     // Inherited chip (no local pick) → the muted column-row hint reads "← Chip".
     expect(columnFormatRow(undefined, chipAnn, "string").hint).toBe("← Chip");
+  });
+
+  // An EDITABLE popup cell must render the chip while unfocused (the render bug: it stayed
+  // plain text where the read-only path chips). Node env can't render, so pin the source
+  // branch: it reuses the ONE chipCols + CategoryChip mechanism, only in Formatted mode.
+  it("the editable popup cell shows the chip while unfocused, via the shared chipCols/CategoryChip", () => {
+    const src = readFileSync("src/graph/components/TablePopup.tsx", "utf8");
+    // Gated to Formatted mode (fmtEdit) — Source mode keeps raw text.
+    expect(src).toMatch(/const chipHere = fmtEdit && chipCols\.has\(c\)/);
+    // Shown only while the cell is not being edited (swaps to the raw input on focus).
+    expect(src).toMatch(/const chipShown = chipHere && !editingHere/);
+    // Same component + same chipCols keying as readOnlyCell, not a second mechanism.
+    expect(src).toMatch(/chipShown && \([\s\S]*?<CategoryChip value=\{row\[c\] \?\? ""\} index=\{chipCols\.get\(c\)!\.get\(row\[c\] \?\? ""\) \?\? 0\}/);
   });
 });
