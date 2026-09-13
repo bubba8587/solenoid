@@ -69,20 +69,6 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
   text fields; TZ Convert result defaulting to a datetime format on the card. Tier 2 (`v2.0/16`):
   Air Quality/Pollen preset of Weather, Ticking Now timer.
 
-## Finance
-
-- [ ] **Payment breakdown: ONE card (1.4 D2, author 2026-09-04c: in; designed, not started).**
-  `PaymentBreakdownNode`, one `op` = ipmt | ppmt | cumipmt | cumprinc; two toggles SET it — Share
-  (Interest | Principal) flips within the pair, Span (One period | Range) flips the pair AND drives
-  the reshape; payment timing stays an arg toggle. Keys: single = [rate, per, nper, pv, fv];
-  range = [rate, nper, pv, start, end]; shared sockets keep cables via `keysDroppedBySwitch` +
-  `reshapeInputs` (`finance.ts` § Spec-table op cards), component hand-rolled like
-  AccruedInterest. Math copied VERBATIM from `IpmtPpmtNode.data()` / `CumPmtNode.data()` (goldens
-  byte-identical); nodeExcel merges the four names under one key; the two catalog pairs
-  (`ipmtPpmtLeaf` / `cumPmtLeaf`) become one "Payment Breakdown" leaf; retired names "IpmtPpmt" /
-  "CumPmt" → Placeholder (registry test). Suites: financeInvariants, parity, nodeOps,
-  formulaNodeCoverage, seeds, catalogRegistry, uiCopy.
-
 ## Obsidian + TaskNotes (author 2026-09-07: THE adoption bet — correct, great, useful)
 
 The bundle `v2.0/24-obsidian-vault.md` is promoted to the flagship track; its § Defaults are the
