@@ -321,6 +321,13 @@
   align-items: center;
   justify-content: center;
 }
+/* A collapsed-only box that is ALSO a chip hero keeps the chip right-aligned (the
+   --chip rule's flex-end), which the centering above would otherwise override — so a
+   collapsed Chart/Gauge chip sits right like an expanded one, while bespoke minis
+   (dial arc, slicer summary) stay centered. */
+.solenoid-node--collapsed .solenoid-node__collapsed-only.solenoid-node__display-value--chip {
+  justify-content: flex-end;
+}
 
 /* A collapsed table node drops its grid preview and shows just the chip — the
    table analogue of a scalar node collapsing to its value box. The chip centers
