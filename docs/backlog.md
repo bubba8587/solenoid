@@ -10,11 +10,16 @@ ruled-out ideas: `out-of-scope.md`; settled rationale: `decisions.md`.
 
 ## Dependency updates (walking them one at a time; TypeScript 7 landed 2026-08-11a)
 
-Current state (2026-09-04): the walkable set is on latest in-range (`react` 19.2.8,
-`vite` 8, `@xyflow/react` 12.11.6, the Tauri plugins, etc. — git has the walk), and
-`@anthropic-ai/sdk` is on 0.123 (the palette's `beta.messages` surface, error classes
-and client options were untouched across those majors). Remaining major: `vitest` 5
-(4.1.11 stands). The rete RENDER packages and `styled-components` were removed outright
+Current state (2026-09-13): the walkable set is on latest in-range (`react` 19.3,
+`vite` 8.3, `@xyflow/react` 12.11.6, the Tauri plugins, `@anthropic-ai/sdk` 0.125 — git
+has the walk), and **`vitest` 5 landed** (5.0.0; the whole suite is green, and it now
+transforms with Oxc — the `esbuild: { keepNames: true }` in `vite.config.ts` is only for
+the production `minify: "esbuild"` path, so vitest 5's "esbuild options ignored" warning
+is expected and harmless). **Held major: `mermaid` 12** — it hard-depends on
+`chevrotain` 11, which bundles a `lodash-es` with two unfixed high-severity advisories
+(`_.template` code injection, `_.unset`/`_.omit` prototype pollution); no patched
+`lodash-es` is published, so an `overrides` pin can't clear it. Stay on 11.17.2 until
+chevrotain ships a fixed lodash-es. The rete RENDER packages and `styled-components` were removed outright
 by the React Flow cutover (rete core 2.0.6 + rete-engine + elkjs 0.12 + `@xyflow/react`
 remain). The `.npmrc` `legacy-peer-deps` workaround is REMOVED — the old
 elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
