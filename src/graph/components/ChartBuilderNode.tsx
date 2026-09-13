@@ -1,5 +1,5 @@
 import type { ChartBuilderNode as ChartBuilderNodeType } from "../rete-nodes";
-import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST, type ChartBuilderKey } from "../nodes/chartOptions";
+import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST, chartBuilderKeys, type ChartBuilderKey } from "../nodes/chartOptions";
 import { NodeShell, ArgSelect, useNodeField, type NodeProps, type ShellNode, type Emit } from "./nodeKit";
 import { InlineInputs, useConnectedInputs, useIncomingSources } from "./inlineInput";
 import { MeasuredSocketRow } from "./NodeSocket";
@@ -155,7 +155,10 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
   const [target, setTarget] = useNodeField(data, "target");
   const connected = useConnectedInputs(data.id);
   const spec = CHART_BUILDER_TARGETS[target] ?? CHART_BUILDER_TARGETS.column;
-  const accepted = new Set<string>(spec.keys);
+  // The Gantt target's offered set narrows by its layout — the month calendar reads far
+  // fewer keys than the timeline. A layout change alters the serialized output, so the
+  // node re-renders and the form reshapes without any extra subscription.
+  const accepted = new Set<string>(chartBuilderKeys(target, data.stringLiterals["layout"]));
   // Wired or valued — stays on screen even when inert.
   const live = (k: ChartBuilderKey) =>
     connected.has(k) || (data.stringLiterals[k] ?? "") !== "" || data.literals[k] !== undefined;
@@ -166,6 +169,8 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
   const inertSelects = SELECT_KEYS.filter(({ key }) => !accepted.has(key) && live(key));
   const inertNum = inert(NUM_KEYS);
   const anyInert = inertStr.length > 0 || inertToggles.length > 0 || inertSelects.length > 0 || inertNum.length > 0;
+  const inertLabel = target === "gantt" && (data.stringLiterals["layout"] ?? "").trim().toLowerCase() === "calendar"
+    ? "the Gantt calendar" : spec.label;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <div style={{ padding: "2px 0 4px" }}>
@@ -180,7 +185,7 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
       ))}
       <InlineInputs node={data} emit={emit} keys={acc(NUM_KEYS) as string[]} />
       {anyInert && (
-        <div style={{ opacity: 0.45 }} title={`Not read by ${spec.label}`}>
+        <div style={{ opacity: 0.45 }} title={`Not read by ${inertLabel}`}>
           <InlineInputs node={data} emit={emit} keys={inertStr as string[]} />
           {inertToggles.map(({ key, label }) => (
             <ToggleInputRow key={key} node={data} emit={emit} socketKey={key} label={label} />

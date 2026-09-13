@@ -231,9 +231,16 @@ const STAT_KEYS: readonly ChartBuilderKey[] = ["title", "fontsize"];
 const TITLE_ONLY: readonly ChartBuilderKey[] = ["title"];
 // The hand-rolled Gantt figure (chart op "gantt", the Gantt node), not the Schedule
 // node's Mermaid text: every view key the figure's parser reads, so the builder can
-// drive it without the options string.
-const GANTT_KEYS: readonly ChartBuilderKey[] =
+// drive it without the options string. The two layouts read DIFFERENT keys, so the
+// builder offers different sets (see chartBuilderKeys): the timeline honors the full
+// list; the month-calendar (layout=calendar) draws its own grid and ignores the scale,
+// bars, links and grid pane — it honors only critical, minutes, window (plus title +
+// fontsize + the layout switch itself), and outlines today / shades weekends / labels
+// its chips unconditionally, so those toggles are timeline-only too.
+const GANTT_TIMELINE_KEYS: readonly ChartBuilderKey[] =
   ["title", "fontsize", "zoom", "tiers", "layout", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns"];
+const GANTT_CALENDAR_KEYS: readonly ChartBuilderKey[] =
+  ["title", "fontsize", "layout", "critical", "minutes", "window"];
 
 export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group: string; keys: readonly ChartBuilderKey[] }> = {
   column:    { label: "Column",           group: "Cartesian",    keys: XY_KEYS },
@@ -256,8 +263,16 @@ export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group
   candle:    { label: "Candlestick",      group: "Figures",      keys: TITLE_ONLY },
   boxplot:   { label: "Boxplot",          group: "Figures",      keys: TITLE_ONLY },
   calheat:   { label: "Calendar Heatmap", group: "Figures",      keys: TITLE_ONLY },
-  gantt:     { label: "Gantt",            group: "Figures",      keys: GANTT_KEYS },
+  gantt:     { label: "Gantt",            group: "Figures",      keys: GANTT_TIMELINE_KEYS },
 };
 
 export const CHART_TARGET_LIST = (Object.keys(CHART_BUILDER_TARGETS) as ChartTargetId[])
   .map((id) => ({ id, ...CHART_BUILDER_TARGETS[id] }));
+
+/** Which option keys the builder OFFERS for a target, narrowed by any layout-like mode.
+ *  Only the Gantt target splits today: its month-calendar layout reads a smaller set than
+ *  the timeline, so offering the timeline's scale/bar/link options there would be inert. */
+export function chartBuilderKeys(target: ChartTargetId, layout: string | undefined): readonly ChartBuilderKey[] {
+  if (target === "gantt" && (layout ?? "").trim().toLowerCase() === "calendar") return GANTT_CALENDAR_KEYS;
+  return (CHART_BUILDER_TARGETS[target] ?? CHART_BUILDER_TARGETS.column).keys;
+}
