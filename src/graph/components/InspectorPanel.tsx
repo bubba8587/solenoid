@@ -94,6 +94,9 @@ export function InspectorPanel() {
     // (i) is not immediately retired by it on the first tick.
     prevSel.current = selectedNode();
     const t = setInterval(() => {
+      // Hold while the dev copy-edit freeze has an edit open: a re-render here can repaint the
+      // description's rendered markup over the raw text under the caret. Never set in prod.
+      if (document.documentElement.classList.contains("sol-copyediting")) return;
       const sel = selectedNode();
       // A NEW selection retires an explicit context-menu focus; until then the
       // focused node outranks whatever selection the menu left behind.

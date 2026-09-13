@@ -94,6 +94,11 @@ function beginEdit(el: HTMLElement): void {
       el.setAttribute("contenteditable", "plaintext-only");
       el.classList.add("sol-copyedit-editing");
       el.focus();
+      // Hold app polls (the Inspector re-renders its selection every 150ms) while the edit is
+      // open: a re-render can repaint a dangerouslySetInnerHTML element's rendered markup back
+      // over the raw text under the caret, and the next commit would then save the flattened
+      // form. Dev-only — the class is never added in a production build.
+      document.documentElement.classList.add("sol-copyediting");
       flash(`Editing ${placeLabel(Number(d.count), d.files as string[])}`);
     })
     .catch(() => flash("Copy-edit endpoint unreachable"));
@@ -102,6 +107,7 @@ function beginEdit(el: HTMLElement): void {
 function endEdit(revert: boolean): void {
   lookupToken++;
   if (!editing) return;
+  document.documentElement.classList.remove("sol-copyediting"); // polls resume; save-driven HMR repaints
   const { el, rendered, raw, html } = editing;
   editing = null;
   el.removeAttribute("contenteditable");
