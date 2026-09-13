@@ -719,9 +719,10 @@ export function TablePopup() {
   // ~2.5× the per-cell DOM cost (the popup-virtualize Finding, dev-notes) and read-only
   // popups paid it for nothing. Stays keyboard-navigable: tabIndex -1 + data-vi/data-c so
   // focusGridCell lands here, and the same column-skipping arrow mover an editable cell uses.
-  // Chip columns (B2.2): a string column set to "Chip" colors its READ-ONLY cells by
-  // category. Keyed by first appearance in SOURCE row order (not the sorted view), so a
-  // column sort in the popup never recolors the categories; editing cells stay raw text.
+  // Chip columns (B2.2): a string column set to "Chip" colors its cells by category. Keyed by
+  // first appearance in SOURCE row order (not the sorted view), so a column sort in the popup
+  // never recolors the categories. Read-only cells render the chip here; an editable cell shows
+  // it while unfocused and the raw text on focus (the fmtEdit chip overlay below).
   const chipCols = new Map<number, Map<string, number>>();
   if (!vertical) {
     for (let cc = 0; cc < viewCols; cc++) {
@@ -1010,6 +1011,13 @@ export function TablePopup() {
                     // A computed column is read-only — no raw text behind its cells.
                     const computedHere = !vertical && (!!colLambdas[c] || colExprs[c] !== undefined);
                     const canEdit = !computedHere && editable && !(formattedPreview && !fmtEdit); // = !readOnly below
+                    // A chipped string column (B2.2) shows its CategoryChip while unfocused in
+                    // Formatted mode and swaps to the raw <input> on focus, exactly like a
+                    // formatted number cell. Same chipCols keying + CategoryChip as readOnlyCell;
+                    // Source mode (fmtEdit false) keeps raw text. The chip overlays the live input
+                    // (pointer-events none), so editing/keyboard-nav/commit stay untouched.
+                    const chipHere = fmtEdit && chipCols.has(c) && (row[c] ?? "") !== "";
+                    const chipShown = chipHere && !editingHere;
                     if (computedHere) {
                       // Derived values render through the same controlledCell path as
                       // literal ones, so the format row applies here too.
@@ -1030,7 +1038,7 @@ export function TablePopup() {
                     return (
                     <td
                       key={c}
-                      className={`table-popup__cell${nan ? " table-popup__cell--nan" : ""}`}
+                      className={`table-popup__cell${nan ? " table-popup__cell--nan" : ""}${chipHere ? " table-popup__cell--chip" : ""}`}
                       style={colMinWidths[c] !== undefined ? { minWidth: colMinWidths[c] } : undefined}
                       title={nan ? "Not a number: an undefined value in the data"
                         : isErrCell ? ERROR_EXPLANATIONS[errCode as keyof typeof ERROR_EXPLANATIONS]
@@ -1041,8 +1049,15 @@ export function TablePopup() {
                         `${isTextType(type) ? "table-popup__input table-popup__input--text" : "table-popup__input"}${isErrCell ? " sol-error-chip" : ""}`,
                         vi, c,
                       ) : (
+                      <>
+                      {chipShown && (
+                        <span className="table-popup__chip-overlay" aria-hidden="true">
+                          <CategoryChip value={row[c] ?? ""} index={chipCols.get(c)!.get(row[c] ?? "") ?? 0} />
+                        </span>
+                      )}
                       <input
                         className={`${isTextType(type) ? "table-popup__input table-popup__input--text" : "table-popup__input"}${isErrCell ? " sol-error-chip" : ""}`}
+                        style={chipShown ? { color: "transparent" } : undefined}
                         value={editingHere ? editDraft.current : row[c] ?? ""}
                         readOnly={!editable || (formattedPreview && !fmtEdit)}
                         inputMode={isTextType(type) ? "text" : "decimal"}
@@ -1076,6 +1091,7 @@ export function TablePopup() {
                           focusGridCell(target);
                         } : undefined}
                       />
+                      </>
                       )}
                     </td>
                     );
