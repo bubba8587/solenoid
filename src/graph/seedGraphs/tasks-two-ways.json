@@ -1,0 +1,156 @@
+{
+  "v": 2,
+  "order": 51,
+  "label": "Tasks: list and tracked time",
+  "group": "Obsidian",
+  "nodes": [
+    {
+      "id": "note0",
+      "type": "NoteNode",
+      "x": -40,
+      "y": -230,
+      "init": {
+        "label": "Tasks: list and tracked time",
+        "body": "# The same tasks, both readers\n\nA tasks folder read as a Vault Folder already gives each task's title, status, priority, due and tags: they are just frontmatter, straight from the files. TaskNotes is for the rest that lives only in the plugin. Here it sums each task's timeEntries into minutes tracked, a total the files can't give you.\n\nThe two snapshots stand in for the live reads so this computes offline. Swap in the Vault Folder and TaskNotes nodes beside them, on the desktop app.",
+        "color": "violet",
+        "width": 430,
+        "height": 190
+      }
+    },
+    {
+      "id": "vfSnap",
+      "type": "CubeInputNode",
+      "x": 0,
+      "y": 60,
+      "init": {
+        "label": "Tasks folder (snapshot)",
+        "cubeText": "[\n  {\"title\": \"Write Q3 report\", \"status\": \"in-progress\", \"priority\": \"high\", \"due\": \"2026-09-18\", \"tags\": [\"work\", \"writing\"]},\n  {\"title\": \"Book dentist\", \"status\": \"todo\", \"priority\": \"normal\", \"due\": \"2026-09-15\", \"tags\": [\"health\"]},\n  {\"title\": \"Plan next sprint\", \"status\": \"done\", \"priority\": \"normal\", \"due\": \"2026-09-10\", \"tags\": [\"work\"]}\n]"
+      }
+    },
+    {
+      "id": "vfLive",
+      "type": "VaultFolderNode",
+      "x": 0,
+      "y": 300,
+      "init": {
+        "label": "Vault Folder (live)",
+        "folder": "Tasks"
+      }
+    },
+    {
+      "id": "listDisplay",
+      "type": "DisplayNode",
+      "x": 330,
+      "y": 140,
+      "init": {
+        "label": "Task list"
+      }
+    },
+    {
+      "id": "tnSnap",
+      "type": "CubeInputNode",
+      "x": 740,
+      "y": 60,
+      "init": {
+        "label": "TaskNotes (snapshot)",
+        "cubeText": "[\n  {\"title\": \"Write Q3 report\", \"timeEntries\": [{\"minutes\": 45}, {\"minutes\": 30}, {\"minutes\": 60}]},\n  {\"title\": \"Book dentist\", \"timeEntries\": [{\"minutes\": 10}]},\n  {\"title\": \"Plan next sprint\", \"timeEntries\": [{\"minutes\": 25}, {\"minutes\": 50}]}\n]"
+      }
+    },
+    {
+      "id": "tnLive",
+      "type": "TaskNotesNode",
+      "x": 740,
+      "y": 300,
+      "init": {
+        "label": "TaskNotes (live)",
+        "provider": "tasks"
+      }
+    },
+    {
+      "id": "rollup",
+      "type": "CubeRollupNode",
+      "x": 1060,
+      "y": 60,
+      "init": {
+        "label": "Sum timeEntries minutes",
+        "agg": "sum"
+      },
+      "stringLiterals": {
+        "nested": "timeEntries",
+        "column": "minutes",
+        "as": "Tracked (min)"
+      }
+    },
+    {
+      "id": "minDisplay",
+      "type": "DisplayNode",
+      "x": 1380,
+      "y": 110,
+      "init": {
+        "label": "Minutes per task"
+      }
+    },
+    {
+      "id": "grp-list",
+      "type": "GroupNode",
+      "x": -30,
+      "y": 20,
+      "init": {
+        "label": "The list, from the files",
+        "members": ["vfSnap", "vfLive", "listDisplay"],
+        "color": "sky",
+        "collapsed": false,
+        "width": 620,
+        "height": 560
+      }
+    },
+    {
+      "id": "grp-time",
+      "type": "GroupNode",
+      "x": 710,
+      "y": 20,
+      "init": {
+        "label": "Tracked time, from TaskNotes",
+        "members": ["tnSnap", "tnLive", "rollup", "minDisplay"],
+        "color": "amber",
+        "collapsed": false,
+        "width": 1010,
+        "height": 520
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "vfSnap",
+      "sourceOutput": "cube",
+      "target": "listDisplay",
+      "targetInput": "in"
+    },
+    {
+      "source": "tnSnap",
+      "sourceOutput": "cube",
+      "target": "rollup",
+      "targetInput": "cube"
+    },
+    {
+      "source": "rollup",
+      "sourceOutput": "frame",
+      "target": "minDisplay",
+      "targetInput": "in"
+    }
+  ],
+  "standoffs": [
+    {
+      "a": {
+        "nodeId": "vfSnap",
+        "anchor": "n"
+      },
+      "b": {
+        "nodeId": "note0",
+        "anchor": "s"
+      },
+      "min": 40,
+      "max": 240
+    }
+  ]
+}
