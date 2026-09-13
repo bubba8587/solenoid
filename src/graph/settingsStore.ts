@@ -96,6 +96,9 @@ export interface SettingField {
   placeholder?: string;
   /** Choices for a "segment" field. */
   options?: { value: string; label: string }[];
+  /** Fold this field into a collapsible accordion with the given title; consecutive
+   *  fields sharing the title render inside one <details>. */
+  accordion?: string;
   /** No mobile counterpart exists: consumers must BOTH gray the control and skip
    *  the behavior, never silently do nothing. */
   disabledOnMobile?: boolean;
@@ -116,6 +119,7 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         key: "tidyAlign",
         label: "Tidy alignment",
         type: "segment",
+        accordion: "Tidy",
         options: [
           { value: "center", label: "Center" },
           { value: "top", label: "Top" },
@@ -125,6 +129,7 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         key: "tidyDirection",
         label: "Tidy direction",
         type: "segment",
+        accordion: "Tidy",
         options: [
           { value: "right", label: "Right" },
           { value: "down", label: "Down" },
@@ -134,6 +139,7 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         key: "tidyDensity",
         label: "Tidy density",
         type: "segment",
+        accordion: "Tidy",
         options: [
           { value: "compact", label: "Compact" },
           { value: "normal", label: "Normal" },
@@ -144,6 +150,7 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         key: "tidyWidthCap",
         label: "Tidy width cap",
         type: "segment",
+        accordion: "Tidy",
         options: [
           { value: "off", label: "Off" },
           { value: "2", label: "2" },
