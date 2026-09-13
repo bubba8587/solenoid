@@ -466,13 +466,23 @@ export const NODE_CATALOG: CatalogEntry[] = [
     ],
   },
 
-  // ── DOCUMENTS ────────────────────────────────────────────────────────────────
+  // ── DOCS & FILES ─────────────────────────────────────────────────────────────
+  // Also the pack fallback bucket (catalogUtils placementPath, packShared): an
+  // uncategorized pack node lands here, so it is never empty.
   {
-    type: "category", label: "Documents", description: "Free-form documents: markdown notes and reports, and your Obsidian vault as data and back.",
+    type: "category", label: "Docs & Files", description: "Documents and files: markdown notes and reports, your Obsidian vault, and attached pictures, files and graphics.",
     children: [
       { type: "pair", children: [
         { type: "note", label: "Note", description: "A free-floating markdown note, any position, any tint. Open the body with a ----fenced YAML block to turn each key into a typed output, a note doubling as a constants source. The body is a Knap template over those fields: `{{ title }}`, `{% if %}`, `{% for %}` and the standard filters.", create: () => new NoteNode(), parity: false },
         { type: "report", label: "Report", description: "A standalone markdown document written as a Knap template. A bare `{{ name }}` embeds the wired value as the canvas shows it; `{% for %}` repeats over a frame, `{% if %}` gates a section, and filters shape the text. A Note on Template supplies the text instead. Records makes it a mail merge, one page per row. The Knap tab in Help has the syntax.", keywords: "mail merge merge fields letters one note per row batch template document markdown knap", create: () => new ReportNode(), parity: false },
+      ]},
+      { type: "pair", children: [
+        { type: "image", label: "Image", description: "A free-floating picture: attach a local file or paste a web URL, and set its height. Annotation only. Carries no data. Web URLs persist in the save. Local files are session-only, not yet embedded.", create: () => new ImageNode(), parity: false },
+        { type: "file-link", label: "File Link", description: "A link to a file on your computer: the path, not the file. Shows a title and preview with an Open button that launches it in its default app. Annotation only, no data. On desktop the link persists in the save; on the web an attach is session-only.", create: () => new FileLinkNode(), parity: false, keywords: "file link attachment attach open path shortcut document local disk launch reference external" },
+      ]},
+      { type: "pair", children: [
+        { type: "svg", label: "SVG", description: "An interactive SVG: attach a local `.svg` or paste a URL. The selected shape or layer outputs its name (label or id): a map, floorplan, or schematic as a data selector. Adjustable highlight color.", create: () => new SvgPickerNode(), parity: false, keywords: "svg map picker region layer shape hotspot clickable diagram floorplan schematic slice filter select vector" },
+        { type: "promo", label: "✨ Promo", description: "A random Solenoid tagline. Re-rolls on recalc (F9). Pure easter egg.", create: () => new PromoNode() },
       ]},
       {
         type: "category", label: "Obsidian", description: "Your vault as data and back: notes and tasks in, notes and properties out. A folder of tasks read as a Vault Folder gives title, status, priority, due and tags; TaskNotes adds the rest. Set the vault in Settings ▸ Obsidian. Desktop only.",
@@ -1039,21 +1049,11 @@ export const NODE_CATALOG: CatalogEntry[] = [
     ],
   },
 
-  // Declared EMPTY so it sits before "Other": the catalog builder fills it per active
-  // pack and prunes the row when no pack targets it. Cross-woven pack nodes stay put.
+  // Declared EMPTY so it sits last among the core rows: the catalog builder fills it
+  // per active pack and prunes the row when no pack targets it. Cross-woven pack nodes
+  // stay put. Uncategorized pack nodes fall to "Docs & Files" (the placement fallback).
   {
     type: "category", label: "Packs", description: "Nodes from your enabled packs, by domain. Manage packs in Settings.",
     children: [],
-  },
-
-  // Pruned only if it ends up empty — it won't, since Promo is a permanent member.
-  {
-    type: "category", label: "Other", description: "Catch-all for odd one-offs and uncategorized pack nodes.",
-    children: [
-      { type: "image", label: "Image", description: "A free-floating picture: attach a local file or paste a web URL, and set its height. Annotation only. Carries no data. Web URLs persist in the save. Local files are session-only, not yet embedded.", create: () => new ImageNode(), parity: false },
-      { type: "file-link", label: "File Link", description: "A link to a file on your computer: the path, not the file. Shows a title and preview with an Open button that launches it in its default app. Annotation only, no data. On desktop the link persists in the save; on the web an attach is session-only.", create: () => new FileLinkNode(), parity: false, keywords: "file link attachment attach open path shortcut document local disk launch reference external" },
-      { type: "svg", label: "SVG", description: "An interactive SVG: attach a local `.svg` or paste a URL. The selected shape or layer outputs its name (label or id): a map, floorplan, or schematic as a data selector. Adjustable highlight color.", create: () => new SvgPickerNode(), parity: false, keywords: "svg map picker region layer shape hotspot clickable diagram floorplan schematic slice filter select vector" },
-      { type: "promo", label: "✨ Promo", description: "A random Solenoid tagline. Re-rolls on recalc (F9). Pure easter egg.", create: () => new PromoNode() },
-    ],
   },
 ];

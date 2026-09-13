@@ -130,7 +130,7 @@ export function buildCatalog(activeOnly: boolean): CatalogEntry[] {
       }
       continue;
     }
-    const path = placement.path && placement.path.length ? placement.path : ["Other"];
+    const path = placement.path && placement.path.length ? placement.path : ["Docs & Files"];
     const cat = ensureCategory(root, path);
     const leaf: NodeCatalogEntry = { ...placement.entry, packs: [packId] };
     cat.children.push(leaf);

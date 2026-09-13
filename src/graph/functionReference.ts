@@ -80,7 +80,7 @@ export function buildFunctionReference(): FnRefRow[] {
   const emitted = new Set<string>();
 
   const isDep = (packs: string[]) => packs.some((p) => dependedOn.has(p));
-  const topGroup = (path: string[]) => (path.length ? path[0] : "Other");
+  const topGroup = (path: string[]) => (path.length ? path[0] : "Docs & Files");
 
   const nodeRow = (
     excel: string | null, syntax: string, type: string, info: LeafInfo,

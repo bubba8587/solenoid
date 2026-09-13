@@ -131,7 +131,7 @@ describe("Add menu — a disabled pack's node leaves leave the tree (packsStore 
     builtin: true,
     defaultActive: false,
     nodes: [{
-      path: ["Other"],
+      path: ["Docs & Files"],
       entry: { type: "__testPackLeaf", label: "Test Pack Leaf", create: () => ({}) } as NodeCatalogEntry,
     }],
   };

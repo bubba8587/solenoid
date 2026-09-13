@@ -81,7 +81,7 @@ export function placeFormulas(path: string[], entries: FormulaPackEntry[]): Pack
 }
 
 // A pack node + where it lands in the core category tree. `path` is the chain of
-// category labels to insert under (created if missing); omitted/empty → "Other".
+// category labels to insert under (created if missing); omitted/empty → "Docs & Files".
 export interface PackPlacement {
   path?: string[];
   entry: NodeCatalogEntry;

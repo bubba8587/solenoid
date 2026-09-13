@@ -209,7 +209,7 @@ export function buildGroundingSpec(): string {
   for (const ctorName of order) {
     const info = classes.get(ctorName)!;
     if (info.hidden) continue; // deprecated: loads, but must not be authored
-    const top = info.path[0] ?? "Other";
+    const top = info.path[0] ?? "Docs & Files";
     if (top !== lastTop) {
       w();
       w(`### ${top}`);

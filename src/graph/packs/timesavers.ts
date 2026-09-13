@@ -95,7 +95,7 @@ export const TIMESAVERS_PACK: Pack = {
       },
     },
     {
-      path: ["Other"],
+      path: ["Docs & Files"],
       entry: {
         type: "ts-qr-code",
         label: "QR Code",
