@@ -511,4 +511,12 @@ describe("per-output producer annotations (annotationFor) — Triangle degrees, 
     expect(el.annotationFor("mass")?.customUnit).toBe(" g/mol");
     expect(el.annotationFor("number")).toBeUndefined();
   });
+
+  it("Time Zone Convert's result defaults to a datetime style so a Display shows the wall clock", async () => {
+    const { TimeZoneConvertNode } = await import("../../src/graph/nodes/date");
+    const tz = new TimeZoneConvertNode();
+    expect(tz.annotationFor("result")?.format).toBe("datetime");
+    expect(tz.annotationFor("result")?.unit).toBe("none");
+    expect(tz.annotationFor("other")).toBeUndefined();
+  });
 });

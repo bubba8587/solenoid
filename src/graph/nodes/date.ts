@@ -6,6 +6,7 @@ import { type FrameValue } from "../frame";
 import { type Shape } from "../frameShape";
 import { serialToJsDate, jsDateToSerial } from "./dateSerial";
 import type { FormatCarrySpec } from "./formatCarry";
+import type { FormatAnnotation } from "../formatAnnotationStore";
 import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffNeedsBasis, epochToSerial, serialToEpoch, dateTrunc, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
 export { dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
 export { serialToJsDate, jsDateToSerial, parseDateToSerial, parseDate, isRelativeDateText, formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "./dateSerial";
@@ -598,6 +599,13 @@ export class TimeZoneConvertNode extends ClassicPreset.Node {
     this.addInput("from", strIn("From"));
     this.addInput("to", strIn("To"));
     this.addOutput("result", dateOut("Converted"));
+  }
+
+  /** The converted value is a wall-clock moment, so an undocked Display shows the full
+   *  datetime (2026-06-03 14:30), not a bare date or a serial; a docked FC still overrides
+   *  (composes with formatCarryPerOp — compute falls through when this produces a lock). */
+  annotationFor(outKey: string): FormatAnnotation | undefined {
+    return outKey === "result" ? { format: "datetime", unit: "none" } : undefined;
   }
 
   data(inputs: { datetime?: number[]; from?: string[]; to?: string[] }): { result: number | SolError | null } {

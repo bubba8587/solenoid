@@ -78,3 +78,31 @@ export function parseFxRate(text: string, to: string): FxRate {
   const r = o.rates?.[to.trim().toUpperCase()];
   return { date, serial: date ? parseDateToSerial(date) : NaN, rate: typeof r === "number" ? r : null };
 }
+
+/** The time-series endpoint for one From→To pair over an inclusive date range (ISO
+ *  YYYY-MM-DD). Frankfurter: `/v1/{start}..{end}?base=X&symbols=Y`. */
+export function fxRangeUrl(from: string, to: string, start: string, end: string): string {
+  const f = encodeURIComponent(from.trim().toUpperCase());
+  const t = encodeURIComponent(to.trim().toUpperCase());
+  return `https://api.frankfurter.dev/v1/${start}..${end}?base=${f}&symbols=${t}`;
+}
+
+/** One day of the time series. */
+export interface FxPoint { date: string; serial: number; rate: number; }
+
+/** Parse the time-series response into rows sorted by date, pulling each day's `to`
+ *  rate. Days without the rate (weekends/holidays have no entry) and a malformed body
+ *  yield an empty run rather than gaps of null. */
+export function parseFxSeries(text: string, to: string): FxPoint[] {
+  let data: unknown;
+  try { data = JSON.parse(text); } catch { return []; }
+  const rates = (data as { rates?: Record<string, unknown> } | null)?.rates;
+  if (!rates || typeof rates !== "object") return [];
+  const sym = to.trim().toUpperCase();
+  const out: FxPoint[] = [];
+  for (const [date, day] of Object.entries(rates)) {
+    const r = (day as Record<string, unknown> | null)?.[sym];
+    if (typeof r === "number") out.push({ date, serial: parseDateToSerial(date), rate: r });
+  }
+  return out.sort((a, b) => a.serial - b.serial);
+}

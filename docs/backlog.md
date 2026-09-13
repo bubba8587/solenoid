@@ -47,12 +47,7 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Sources
 
-- [ ] **Widget nodes Tier 1 — follow-ups (1.4 C1).** All six shipped (Geocode, Weather,
-  Holidays, Time Zone Convert, World Clock, Currency/FX, QR Code) + the Garden Dashboard seed.
-  Left for the author to rule on (Lead is surfacing): FX time-series/Chart frame (Frankfurter has
-  it, dropped for v1); Time Zone Convert From/To as curated zone pickers vs the current wireable
-  text fields; TZ Convert result defaulting to a datetime format on the card. Tier 2 (`v2.0/16`):
-  Air Quality/Pollen preset of Weather, Ticking Now timer.
+- [ ] **Widget nodes Tier 2 (`v2.0/16`):** Air Quality/Pollen preset of Weather, Ticking Now timer.
 
 ## Obsidian + TaskNotes (author 2026-09-07: THE adoption bet — correct, great, useful)
 

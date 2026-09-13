@@ -8,6 +8,21 @@ specific item.
 
 ### SESSION DIGEST (2026-09-13 — parallel agents; author present)
 
+- **Widget Tier 1 follow-ups (Agent 3).** (1) **Currency gains a Spot/History `mode`** (`FxNode`,
+  `connection.ts`; named `mode` not `op` — Spot/History isn't a formula op family, so opArgDistinct
+  keeps it off NODE_OPS) — the op-card recipe (`keysDroppedBySwitch {inputs,outputs}` + `setMode` + the
+  component prunes input AND output cables via the new `dropOutputCables`, then `retypeOutputCables`
+  is unneeded since sockets are added/removed, not retyped). History drops the roleless Amount, adds
+  typeable From/To date inputs (default last 90 days), and emits ONE Date·Rate `frame` (fixed
+  `frameShape`) to chart; `fxRangeUrl`/`parseFxSeries` added to `fxProvider.ts` behind the C2 gate,
+  fixture-tested. (2) **Time Zone From/To + World Clock Zones get an IANA `<datalist>`** —
+  `timeZone.ts` `IANA_ZONES` (`Intl.supportedValuesOf` + static fallback); `InlineInputs` gained a
+  `suggest` prop threading a `list=` id into the existing text/CSV fields (commits on blur as before).
+  (3) **Time Zone Convert result defaults to `datetime`** via `annotationFor("result")` — composes
+  with formatCarryPerOp (compute falls through when a lock is produced); a docked FC still overrides.
+  Author eyeball: the Currency card's Spot/History toggle (History → a chartable frame), the zone
+  type-ahead on Time Zone Convert / World Clock, and an undocked Display on Time Zone Convert showing
+  `2026-06-03 14:30`.
 - **formatCarryPerOp (Agent 3).** A transform no longer carries a display style through
   everything: it carries only where the node DECLARES its current op preserves the value's
   meaning. New duck-typed `formatCarry()` (src/graph/nodes/formatCarry.ts, shaped like
