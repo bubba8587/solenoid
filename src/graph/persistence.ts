@@ -34,9 +34,10 @@ import { loadRevealStore } from "./loadReveal";
 import { zoomAt } from "./zoomAt";
 
 
-/** Curtain threshold in nodes+connections across BOTH sides, so a small doc swaps
- *  with no flash. */
-const SWITCH_CURTAIN_MIN_WORK = 60;
+/** Curtain threshold in nodes+connections across BOTH sides (teardown + build), so
+ *  only a genuinely big load flashes the overlay. Undo/redo restores never curtain
+ *  regardless (they pass curtain:false) — this governs opens/switches/pastes. */
+const SWITCH_CURTAIN_MIN_WORK = 300;
 
 // A node serializes as { type, init } where `type` is the CLASS NAME — production
 // depends on esbuild `keepNames` to keep it stable.
@@ -206,8 +207,10 @@ export function getLastLoadIdMap(): ReadonlyMap<string, string> {
   return _lastLoadIdMap;
 }
 
-/** False = refused or rolled back, with the existing graph left intact. */
-export async function loadGraph(g: SavedGraph): Promise<boolean> {
+/** False = refused or rolled back, with the existing graph left intact.
+ *  `curtain: false` suppresses the "Loading graph" overlay — an undo/redo restore is
+ *  a reload under the hood, but it must feel like an edit, not a document open. */
+export async function loadGraph(g: SavedGraph, opts?: { curtain?: boolean }): Promise<boolean> {
   const editor = getEditor();
   const view = getView();
   if (!editor || !view) return false;
@@ -240,7 +243,7 @@ export async function loadGraph(g: SavedGraph): Promise<boolean> {
   suspendAutosave();
   beginGraphRebuild(); // suppress live-creation behaviors (group absorb) while loading
   try {
-    const { placeholdered } = await rebuildGraph(g, editor, view);
+    const { placeholdered } = await rebuildGraph(g, editor, view, opts?.curtain ?? true);
     if (placeholdered.length > 0) {
       const types = [...new Set(placeholdered)].join(", ");
       pushNotice(
@@ -287,12 +290,13 @@ async function rebuildGraph(
   g: SavedGraph,
   editor: NonNullable<ReturnType<typeof getEditor>>,
   view: NonNullable<ReturnType<typeof getView>>,
+  allowCurtain = true,
 ): Promise<{ placeholdered: string[] }> {
   // Build mode must be entered FIRST so the node-by-node construction is never seen;
   // a doc switch gets the same overlay as a plain curtain over teardown + rebuild.
   const oldWork = editor.getNodes().length + editor.getConnections().length;
   const newWork = (g.nodes?.length ?? 0) + (g.connections?.length ?? 0);
-  const curtain = oldWork + newWork > SWITCH_CURTAIN_MIN_WORK;
+  const curtain = allowCurtain && oldWork + newWork > SWITCH_CURTAIN_MIN_WORK;
   // A paint boundary (rAF, then a task after it): the build below yields only to
   // microtasks, so without this the curtain never shows and the bar never moves.
   const paint = () => new Promise<void>((r) => requestAnimationFrame(() => setTimeout(r, 0)));

@@ -33,7 +33,9 @@ async function restore(json: string): Promise<void> {
   try {
     const view = getView();
     const t = view ? { ...view.transform } : null;
-    await loadGraph(JSON.parse(json) as SavedGraph);
+    // An undo/redo is a reload under the hood, but must feel like an edit — never
+    // flash the "Loading graph" curtain, whatever the doc size.
+    await loadGraph(JSON.parse(json) as SavedGraph, { curtain: false });
     // loadGraph frames the graph (zoomAt); an undo must NOT move the camera.
     if (view && t) {
       await view.pan(t.x, t.y);
