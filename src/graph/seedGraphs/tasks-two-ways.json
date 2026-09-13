@@ -7,8 +7,8 @@
     {
       "id": "note0",
       "type": "NoteNode",
-      "x": -40,
-      "y": -230,
+      "x": 90,
+      "y": 224,
       "init": {
         "label": "Tasks: list and tracked time",
         "body": "# The same tasks, both readers\n\nA tasks folder read as a Vault Folder already gives each task's title, status, priority, due and tags: they are just frontmatter, straight from the files. TaskNotes is for the rest that lives only in the plugin. Here it sums each task's timeEntries into minutes tracked, a total the files can't give you.\n\nThe two snapshots stand in for the live reads so this computes offline. Swap in the Vault Folder and TaskNotes nodes beside them, on the desktop app.",
@@ -20,8 +20,8 @@
     {
       "id": "vfSnap",
       "type": "CubeInputNode",
-      "x": 0,
-      "y": 60,
+      "x": 183,
+      "y": 627,
       "init": {
         "label": "Tasks folder (snapshot)",
         "cubeText": "[\n  {\"title\": \"Write Q3 report\", \"status\": \"in-progress\", \"priority\": \"high\", \"due\": \"2026-09-18\", \"tags\": [\"work\", \"writing\"]},\n  {\"title\": \"Book dentist\", \"status\": \"todo\", \"priority\": \"normal\", \"due\": \"2026-09-15\", \"tags\": [\"health\"]},\n  {\"title\": \"Plan next sprint\", \"status\": \"done\", \"priority\": \"normal\", \"due\": \"2026-09-10\", \"tags\": [\"work\"]}\n]"
@@ -30,8 +30,8 @@
     {
       "id": "vfLive",
       "type": "VaultFolderNode",
-      "x": 0,
-      "y": 300,
+      "x": 21,
+      "y": 510,
       "init": {
         "label": "Vault Folder (live)",
         "folder": "Tasks"
@@ -40,8 +40,8 @@
     {
       "id": "listDisplay",
       "type": "DisplayNode",
-      "x": 330,
-      "y": 140,
+      "x": 346,
+      "y": 696,
       "init": {
         "label": "Task list"
       }
@@ -49,8 +49,8 @@
     {
       "id": "tnSnap",
       "type": "CubeInputNode",
-      "x": 740,
-      "y": 60,
+      "x": -45,
+      "y": -85,
       "init": {
         "label": "TaskNotes (snapshot)",
         "cubeText": "[\n  {\"title\": \"Write Q3 report\", \"timeEntries\": [{\"minutes\": 45}, {\"minutes\": 30}, {\"minutes\": 60}]},\n  {\"title\": \"Book dentist\", \"timeEntries\": [{\"minutes\": 10}]},\n  {\"title\": \"Plan next sprint\", \"timeEntries\": [{\"minutes\": 25}, {\"minutes\": 50}]}\n]"
@@ -59,8 +59,8 @@
     {
       "id": "tnLive",
       "type": "TaskNotesNode",
-      "x": 740,
-      "y": 300,
+      "x": -45,
+      "y": -353,
       "init": {
         "label": "TaskNotes (live)",
         "provider": "tasks"
@@ -69,8 +69,8 @@
     {
       "id": "rollup",
       "type": "CubeRollupNode",
-      "x": 1060,
-      "y": 60,
+      "x": 280,
+      "y": -137,
       "init": {
         "label": "Sum timeEntries minutes",
         "agg": "sum"
@@ -84,8 +84,8 @@
     {
       "id": "minDisplay",
       "type": "DisplayNode",
-      "x": 1380,
-      "y": 110,
+      "x": 605,
+      "y": -62,
       "init": {
         "label": "Minutes per task"
       }
@@ -93,29 +93,38 @@
     {
       "id": "grp-list",
       "type": "GroupNode",
-      "x": -30,
-      "y": 20,
+      "x": -3,
+      "y": 452,
       "init": {
         "label": "The list, from the files",
-        "members": ["vfSnap", "vfLive", "listDisplay"],
+        "members": [
+          "vfSnap",
+          "vfLive",
+          "listDisplay"
+        ],
         "color": "sky",
         "collapsed": false,
-        "width": 620,
-        "height": 560
+        "width": 879,
+        "height": 415
       }
     },
     {
       "id": "grp-time",
       "type": "GroupNode",
-      "x": 710,
-      "y": 20,
+      "x": -69,
+      "y": -411,
       "init": {
         "label": "Tracked time, from TaskNotes",
-        "members": ["tnSnap", "tnLive", "rollup", "minDisplay"],
+        "members": [
+          "tnSnap",
+          "tnLive",
+          "rollup",
+          "minDisplay"
+        ],
         "color": "amber",
         "collapsed": false,
-        "width": 1010,
-        "height": 520
+        "width": 1012,
+        "height": 597
       }
     }
   ],
