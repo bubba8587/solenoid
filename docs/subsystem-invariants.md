@@ -364,10 +364,12 @@ records path). The stored truth is always TEXT on the node (`tableText`, `frameT
 literal source grows its own editor widget instead of binding the popup, or if an editor writes
 a derived value back.
 
-**List Input is NOT one of them** (author, 2026-09-12): its rows are typed on the card, every
-row's values concatenate into one flat list, and the value box's chip opens the ordinary list
-value popup. 758a2d70 bolted a raw-row editor and a dummy chip onto it without an ask; four
-fixes later the card went back to its original form (`tests/graph/listInputChip.test.ts` pins it).
+**List Input is NOT one of them** (author, 2026-09-12; reaffirmed 2026-09-13): its rows are typed
+on the card and are the ONLY editor, every row's values concatenate into one flat list, and the
+value box's chip opens the ordinary list value popup **view-only** (no save callback; it keeps the
+shell's resize grip, the Row / Column switcher and copy). 758a2d70 bolted a raw-row editor and a
+dummy chip onto it without an ask; four fixes later the card went back to its original form
+(`tests/graph/listInputChip.test.ts` pins it). Reopens if the popup gains a save callback for it.
 
 ## Inline literal maps — declaration gates restore (2026-07-19)
 
