@@ -181,6 +181,34 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
     ],
   },
   {
+    title: "View",
+    fields: [
+      {
+        key: "minimapPosition",
+        label: "Minimap position",
+        type: "segment",
+        // The minimap isn't rendered on mobile at all, so every position is a no-op.
+        disabledOnMobile: true,
+        options: [
+          { value: "bottom", label: "Bottom" },
+          { value: "top", label: "Top" },
+          { value: "hide", label: "Hide" },
+        ],
+      },
+      {
+        key: "hideGridDots",
+        label: "Hide grid dots",
+      },
+      {
+        key: "commandPaletteAlwaysOn",
+        label: "Always show Command Palette",
+        help: "",
+        // The palette is top-anchored on mobile — no bottom strip to dock to.
+        disabledOnMobile: true,
+      },
+    ],
+  },
+  {
     title: "Data",
     fields: [
       {
@@ -228,34 +256,6 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         help: "The TaskNotes plugin's HTTP API. Turn it on in the plugin's settings; the token goes on the TaskNotes card.",
         type: "text",
         placeholder: "http://localhost:8080",
-      },
-    ],
-  },
-  {
-    title: "View",
-    fields: [
-      {
-        key: "minimapPosition",
-        label: "Minimap position",
-        type: "segment",
-        // The minimap isn't rendered on mobile at all, so every position is a no-op.
-        disabledOnMobile: true,
-        options: [
-          { value: "bottom", label: "Bottom" },
-          { value: "top", label: "Top" },
-          { value: "hide", label: "Hide" },
-        ],
-      },
-      {
-        key: "hideGridDots",
-        label: "Hide grid dots",
-      },
-      {
-        key: "commandPaletteAlwaysOn",
-        label: "Always show Command Palette",
-        help: "",
-        // The palette is top-anchored on mobile — no bottom strip to dock to.
-        disabledOnMobile: true,
       },
     ],
   },

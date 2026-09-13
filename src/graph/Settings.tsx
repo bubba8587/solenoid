@@ -425,7 +425,11 @@ export function Settings() {
           <span className="solenoid-settings__title">Settings</span>
           <button className="solenoid-settings__close" onClick={() => settingsPanel.close()} aria-label="Close">×</button>
         </div>
+        {/* Section order: Appearance, Canvas, View, Data, Obsidian (the schema, in
+            array order), Renderer, Packs — then the credential sections (AI, API
+            keys) trail at the bottom. */}
         <div className="solenoid-settings__body">
+          <PaletteSection />
           {SETTINGS_SCHEMA.map((section) => (
             <div key={section.title} className="solenoid-settings__section">
               <div className="solenoid-settings__section-title">{section.title}</div>
@@ -433,11 +437,10 @@ export function Settings() {
               {section.title === "Data" && <NetworkDocRow />}
             </div>
           ))}
-          <PaletteSection />
           <RendererSection />
+          <PacksSection />
           {AI_ENABLED && <AiSection />}
           <ApiKeysSection />
-          <PacksSection />
         </div>
       </div>
     </div>
