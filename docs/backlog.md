@@ -60,11 +60,6 @@ The bundle `v2.0/24-obsidian-vault.md` is promoted to the flagship track; its §
 build rules and § Sequencing the order (A′ → A → B → D → C → F → I → J → E). Every item ships
 verified in the desktop app against the demo vault. Landed ledger: the bundle's § What stands today.
 
-- [ ] **TaskNotes read vs a plain vault query** (author, review): the TaskNotes read node overlaps
-  Vault Folder for the common case — title/status/priority/due/tags are just frontmatter. The HTTP
-  API earns its keep only for recurrence expansion, `timeEntries` totals, user-remapped field names,
-  and write-back-with-webhooks. Consider whether the read node stays, or folds into a `tags contains
-  task` recipe over Vault Folder. (dev-notes 2026-09-11.)
 - [ ] **Daily-notes targeting** (author, keep — the removed `{{daily}}` successor): a way to write
   today's daily note in its configured folder + format, wireable (a source node emitting the
   daily-note path from `.obsidian/daily-notes.json`, not inline template syntax). Not necessarily a

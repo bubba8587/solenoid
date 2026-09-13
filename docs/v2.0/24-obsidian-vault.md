@@ -228,7 +228,11 @@ description`) and `complete_instances` (`date`) as nested frames. **Calendar eve
 `frame` (`title · start · end · source`; `from`/`to` date inputs). **Stats** → scalars
 (KPI-shaped). No time-entries provider: Unnest `timeEntries`; Cube Rollup (sum `minutes`) is
 `trackedMinutes` recomputed. Pure core `taskNotesApi.ts` (paging + cube mapping over a fetch
-stub; one fixture per endpoint). Ranked by what Bases cannot do:
+stub; one fixture per endpoint). **Ruling (author 2026-09-13): the read node STAYS.** A tasks
+folder read as a Vault Folder covers the plain frontmatter (title, status, priority, due, tags);
+TaskNotes earns its keep on the rest (tracked minutes, recurrence and completed instances, the
+calendar, the stats). The seed `tasks-two-ways` shows both halves side by side. Ranked by what
+Bases cannot do:
 
 - **F1 Schedule from dependencies.** Tasks → H6 (Duration = `timeEstimate` ÷ an hours-per-day
   literal) → `PUT scheduled` back (F6). Gate: the Track H pick; the feed ships without it.
