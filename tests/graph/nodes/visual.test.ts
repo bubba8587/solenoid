@@ -125,7 +125,7 @@ describe("visual nodes", () => {
   });
 
   it("Gauge (Bar) emits a bar payload with target and 0→Max track (the former Bullet)", () => {
-    const g = new GaugeNode({ op: "bar" });
+    const g = new GaugeNode({ mode: "bar" });
     const out = g.data({ value: [42], target: [80], max: [200] }).chart;
     expect(out.payload).toMatchObject({ kind: "scale", style: "bar", value: 42, target: 80, min: 0, max: 200 });
   });
@@ -141,10 +141,10 @@ describe("visual nodes", () => {
     const sp2 = new SparklineNode(extractInit(sp));
     expect(sp2.op).toBe("column");
 
-    const g = new GaugeNode({ op: "bar" });
+    const g = new GaugeNode({ mode: "bar" });
     const init = extractInit(g);
-    expect(init.op).toBe("bar");
-    expect(new GaugeNode(init as { op: "bar" }).op).toBe("bar");
+    expect(init.mode).toBe("bar");
+    expect(new GaugeNode(init as { mode: "bar" }).mode).toBe("bar");
   });
 });
 

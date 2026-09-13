@@ -471,11 +471,15 @@ export class MermaidNode extends ClassicPreset.Node {
 // Target tick. Emits a chart VALUE, not a pass-through, so a Report can embed the readout
 // (author call; node-coverage records the contract change).
 export type GaugeStyle = "dial" | "bar";
-export const GAUGE_OP_META = {
+// Dial/Bar is an ARGUMENT (a view of the one "value on a scale" card), not an op:
+// nobody searches the Add menu for "dial" or "bar", and there is no formula surface.
+// So it is a `mode` selector picked with a SegToggle (opArgDistinct); `mode` is an
+// already-whitelisted init key, so nothing is added to the save format.
+export const GAUGE_STYLE_META = {
   dial: { label: "Dial" },
   bar:  { label: "Bar" },
 } satisfies Record<GaugeStyle, { label: string }>;
-export const GAUGE_STYLE_OPTIONS = Object.entries(GAUGE_OP_META).map(([value, m]) => ({ value: value as GaugeStyle, label: m.label }));
+export const GAUGE_STYLE_OPTIONS = Object.entries(GAUGE_STYLE_META).map(([value, m]) => ({ value: value as GaugeStyle, label: m.label }));
 
 export class GaugeNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -485,7 +489,7 @@ export class GaugeNode extends ClassicPreset.Node {
   };
 
   label: string;
-  op: GaugeStyle = "dial";
+  mode: GaugeStyle = "dial";
   literals: Record<string, number> = { value: 0, target: 80, max: 100 };
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
@@ -493,12 +497,12 @@ export class GaugeNode extends ClassicPreset.Node {
   width = 200;
   height = 200;
 
-  constructor(init?: { label?: string; op?: GaugeStyle }) {
+  constructor(init?: { label?: string; mode?: GaugeStyle }) {
     super("Gauge");
     this.label = init?.label ?? "";
-    if (init?.op === "bar") this.op = "bar";
+    if (init?.mode === "bar") this.mode = "bar";
     this.addInput("value", numIn("Value"));
-    if (this.op === "bar") this.addBarInputs();
+    if (this.mode === "bar") this.addBarInputs();
     this.addOutput("chart", chartOut("Chart"));
   }
 
@@ -511,12 +515,12 @@ export class GaugeNode extends ClassicPreset.Node {
   /** The bar-only input keys a switch to `next` would remove — the component drops
    *  their cables first (onePrunePath) before calling setOp. */
   keysDropped(next: GaugeStyle): string[] {
-    return next === "dial" && this.op === "bar" ? ["target", "max", "options"] : [];
+    return next === "dial" && this.mode === "bar" ? ["target", "max", "options"] : [];
   }
 
-  setOp(next: GaugeStyle): void {
-    if (next === this.op) return;
-    this.op = next;
+  setMode(next: GaugeStyle): void {
+    if (next === this.mode) return;
+    this.mode = next;
     if (next === "dial") {
       for (const k of ["target", "max", "options"]) if (this.inputs[k]) this.removeInput(k);
     } else {
@@ -529,7 +533,7 @@ export class GaugeNode extends ClassicPreset.Node {
     if (inputs.value?.[0] === undefined) this.literals.value = value ?? 0;
     let payload: ScalePayload;
     let title: string;
-    if (this.op === "bar") {
+    if (this.mode === "bar") {
       const target = readInput(inputs.target, this.literals.target ?? null);
       // `max` is the track SCALE, so it keeps the card bound like a Slider; value/target are data.
       const max = readInput(inputs.max, this.literals.max ?? 100) ?? (this.literals.max ?? 100);
