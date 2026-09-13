@@ -9,6 +9,8 @@ import { NodeShell, type NodeProps } from "./nodeKit";
 import { SegToggle } from "./SegToggle";
 import { ScaleDial, GaugeArc, useChartColors } from "./chartView";
 import { BulletBar } from "./chartCards";
+import { ChartChip } from "./ChartChip";
+import type { ChartValue } from "../chartValue";
 import { dropInputCables } from "./cablePrune";
 
 // Minified (square-collapse) dial — a tiny axis-less arc filling the square.
@@ -35,6 +37,13 @@ export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
   const v = payload?.value;
   const frac = typeof v === "number" && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0;
   const empty = <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
+  // The collapsed bar shows the [Chart] chip (opens the popup, which renders the bar
+  // via ChartFigure's scale branch) — the same hero-box chip Chart/Histogram collapse to.
+  const cv: ChartValue = {
+    __chart: true, op: "scale", values: v ?? null,
+    payload: payload ?? undefined, options: data.chartOptions,
+    title: data.chartOptions.title || data.label || "Gauge",
+  };
 
   return (
     // Dial square-collapses to a mini arc; the bar keeps its width and collapses
@@ -54,7 +63,14 @@ export function GaugeComponent({ data, emit }: NodeProps<GaugeNodeType>) {
           </div>
         </>
       ) : (
-        !collapsed && (payload ? <BulletBar payload={payload} /> : empty)
+        <>
+          {!collapsed && (payload ? <BulletBar payload={payload} /> : empty)}
+          {/* Collapsed → the standard hero box + [Chart] chip (opens the popup), like
+              Chart/Histogram — not a shrunken bar. */}
+          <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip">
+            {payload && <ChartChip value={cv} />}
+          </div>
+        </>
       )}
     </NodeShell>
   );
