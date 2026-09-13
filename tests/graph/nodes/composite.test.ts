@@ -325,6 +325,7 @@ describe("CompositeNode Scenarios run mode", () => {
     // Outer wiring still feeds A=2,B=3 — irrelevant to a scenario that overrides
     // both, but proves the "no override → fall back to the wired value" path
     // isn't exercised here (both ports are overridden in every scenario).
+    c.requestSolve();
     const out = await c.data({ [inAId]: [2], [inBId]: [3] });
     expect(out[outId]).toEqual([11, 102]); // 10+1, 100+2 — in scenario order
   });
@@ -334,6 +335,7 @@ describe("CompositeNode Scenarios run mode", () => {
     const id1 = c.addScenario();
     c.setScenarioOverride(id1, inAId, 1000); // B is left alone → uses the wired 3
 
+    c.requestSolve();
     const out = await c.data({ [inAId]: [2], [inBId]: [3] });
     expect(out[outId]).toEqual([1003]);
   });
@@ -392,6 +394,7 @@ describe("CompositeNode Data Table run mode", () => {
   it("one varying port sweeps a simple list (Excel's one-variable Data Table)", async () => {
     const { c, inAId, inBId, outId } = await makeAdder();
     c.setDataTableValues(inAId, [1, 2, 3]);
+    c.requestSolve();
     const out = await c.data({ [inAId]: [999], [inBId]: [10] }); // B stays wired at 10
     expect(out[outId]).toEqual([11, 12, 13]);
   });
@@ -400,6 +403,7 @@ describe("CompositeNode Data Table run mode", () => {
     const { c, inAId, inBId, outId } = await makeAdder();
     c.setDataTableValues(inAId, [1, 2]);
     c.setDataTableValues(inBId, [10, 20, 30]);
+    c.requestSolve();
     const out = await c.data({});
     // 2 × 3 = 6 combinations, first axis slowest: (1,10)(1,20)(1,30)(2,10)(2,20)(2,30)
     expect(out[outId]).toEqual([11, 21, 31, 12, 22, 32]);
@@ -460,6 +464,7 @@ describe("CompositeNode Simulation run mode", () => {
 
   it("runs a bounded number of steps and returns a growth time series, not a hang or #CIRC!", async () => {
     const { c, popOutId } = await makePopulationModel(5);
+    c.requestSolve();
     const out = await c.data({});
     const series = out[popOutId] as number[];
     expect(series).toHaveLength(5);
@@ -478,6 +483,7 @@ describe("CompositeNode Simulation run mode", () => {
 
   it("a longer run compounds further — simulationSteps genuinely drives the loop", async () => {
     const { c, popOutId } = await makePopulationModel(10);
+    c.requestSolve();
     const out = await c.data({});
     const series = out[popOutId] as number[];
     expect(series).toHaveLength(10);
@@ -490,6 +496,7 @@ describe("CompositeNode Simulation run mode", () => {
     // data() never runs — so runSimulation must mirror the result into
     // cachedResult itself, or the drill-in editor's value box shows "—".
     const { c, popOutId } = await makePopulationModel(5);
+    c.requestSolve();
     const out = await c.data({});
     const port = c.outputPorts.find((p) => p.id === popOutId)!;
     const marker = c.internalEditor.getNode(port.internalNodeId) as CompositeOutputNode;
@@ -516,6 +523,7 @@ describe("CompositeNode Simulation run mode", () => {
     await connect(c.internalEditor, add, "result", outMarker, "value");
     const outId = c.addOutputPort({ label: "Sum", tier: "basic", internalNodeId: outMarker.id });
 
+    c.requestSolve();
     const out = await c.data({});
     expect(out[outId]).toBe(5); // a scalar, not a 5-element array
   });
@@ -546,6 +554,7 @@ describe("CompositeNode Simulation run mode", () => {
     // 100 → 110 → 121 → 133.1; Population > 130 first holds at index 3.
     const { c, popOutId } = await makePopulationModel(10);
     c.stopWhenPortId = popOutId; c.stopWhenOp = "gt"; c.stopWhenValue = 130;
+    c.requestSolve();
     const series = (await c.data({}))[popOutId] as number[];
     expect(series).toHaveLength(4);            // stopped at round 3, not the 10 cap
     expect(series[2]).toBeCloseTo(121, 5);     // last round the condition was false
@@ -565,6 +574,7 @@ describe("CompositeNode Simulation run mode", () => {
     const stopId = c.addOutputPort({ label: "Reached", tier: "basic", internalNodeId: stopMarker.id });
     c.stopWhenPortId = stopId; c.stopWhenOp = "eq"; c.stopWhenValue = 1; // stop when TRUE
 
+    c.requestSolve();
     const out = await c.data({});
     expect(out[popOutId] as number[]).toHaveLength(4);
     expect(out[stopId]).toBe(true); // the stop output reads true at the end
@@ -573,6 +583,7 @@ describe("CompositeNode Simulation run mode", () => {
   it("runs the full cap when the condition never holds", async () => {
     const { c, popOutId } = await makePopulationModel(3);
     c.stopWhenPortId = popOutId; c.stopWhenOp = "gt"; c.stopWhenValue = 1000;
+    c.requestSolve();
     const series = (await c.data({}))[popOutId] as number[];
     expect(series).toHaveLength(3);
   });
@@ -580,6 +591,7 @@ describe("CompositeNode Simulation run mode", () => {
   it("a cleared stop port runs the full step count (no early stop)", async () => {
     const { c, popOutId } = await makePopulationModel(5);
     c.stopWhenPortId = ""; c.stopWhenOp = "gt"; c.stopWhenValue = 1;
+    c.requestSolve();
     const series = (await c.data({}))[popOutId] as number[];
     expect(series).toHaveLength(5);
   });
@@ -587,11 +599,13 @@ describe("CompositeNode Simulation run mode", () => {
   it("records simLastSteps — the rounds actually run (< cap = stopped early)", async () => {
     const early = await makePopulationModel(10); // 100→110→121→133.1; >130 at step 4
     early.c.stopWhenPortId = early.popOutId; early.c.stopWhenOp = "gt"; early.c.stopWhenValue = 130;
+    early.c.requestSolve();
     await early.c.data({});
     expect(early.c.simLastSteps).toBe(4); // halted early — the editor reads "stopped at step 4"
 
     const full = await makePopulationModel(3); // never exceeds 1000 in 3 steps
     full.c.stopWhenPortId = full.popOutId; full.c.stopWhenOp = "gt"; full.c.stopWhenValue = 1000;
+    full.c.requestSolve();
     await full.c.data({});
     expect(full.c.simLastSteps).toBe(3); // ran the full cap
   });
@@ -660,6 +674,7 @@ describe("CompositeNode By-Row run mode", () => {
 
   it("runs the subgraph once per row of the chosen port, collecting a per-output series", async () => {
     const { c, aId, outId } = await makeDoubler();
+    c.requestSolve();
     const out = await c.data({ [aId]: [[1, 2, 3]] }); // the port's wired value is the list [1,2,3]
     expect(out[outId]).toEqual([2, 4, 6]);
   });
@@ -674,6 +689,7 @@ describe("CompositeNode By-Row run mode", () => {
   it("caps the number of rows at BY_ROW_MAX_ROWS", async () => {
     const { c, aId, outId } = await makeDoubler();
     const big = Array.from({ length: BY_ROW_MAX_ROWS + 100 }, (_, i) => i);
+    c.requestSolve();
     const out = await c.data({ [aId]: [big] });
     expect((out[outId] as number[]).length).toBe(BY_ROW_MAX_ROWS);
   });
@@ -714,6 +730,7 @@ describe("CompositeNode By-Row run mode", () => {
     // cachedResult — collectMultiple must mirror the series there or the inside
     // shows only the last pass's value.
     const { c, aId, outId } = await makeDoubler();
+    c.requestSolve();
     const out = await c.data({ [aId]: [[1, 2, 3]] });
     const port = c.outputPorts.find((p) => p.id === outId)!;
     const marker = c.internalEditor.getNode(port.internalNodeId) as CompositeOutputNode;
@@ -823,6 +840,7 @@ describe("CompositeNode Goal Seek run mode", () => {
   it("drives the input until the output reaches the target, and emits the solution", async () => {
     const { c, inAId, inBId, outId } = await makeAdder();
     c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 15 });
+    c.requestSolve();
     const out = await c.data({ [inBId]: [10] }); // Sum = A + 10, want 15 → A = 5
     // The composite's OUTPUT is its solution (the solved driver), not the achieved
     // output — so the Solution hero's socket wires the answer downstream.
@@ -833,6 +851,7 @@ describe("CompositeNode Goal Seek run mode", () => {
   it("solves a negative driver too, emitting the solution", async () => {
     const { c, inAId, inBId, outId } = await makeAdder();
     c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 4 });
+    c.requestSolve();
     const out = await c.data({ [inBId]: [10] }); // want 4 → A = -6
     expect(c.goalSeekResult as number).toBeCloseTo(-6, 4);
     expect(out[outId] as number).toBeCloseTo(-6, 4);
@@ -850,15 +869,24 @@ describe("CompositeNode Goal Seek run mode", () => {
     const inBId = c.addInputPort({ label: "B", exposure: "exposed", tier: "basic", internalNodeId: inB.id });
     const outId = c.addOutputPort({ label: "Out", tier: "basic", internalNodeId: outMarker.id });
     c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 99 });
+    c.requestSolve();
     const out = await c.data({ [inBId]: [10] }); // Out is 10 for any A, target 99 unreachable
     expect(isSolError(out[outId])).toBe(true);
     expect((out[outId] as { code: string }).code).toBe("#CONV!");
   });
 
-  it("arm-and-run: holds the solution and flags stale until Solve", async () => {
+  it("arm-and-run: first pass holds blank and stale, Solve solves, then holds again", async () => {
     const { c, inAId, inBId, outId } = await makeAdder();
     c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 15 });
-    const out1 = await c.data({ [inBId]: [10] }); // first call solves: A = 5
+    // Never solved (create/load): reads blank and stale until the user clicks Solve —
+    // people expect to watch it compute on Solve (decisions compositesHoldUntilSolve).
+    const held0 = await c.data({ [inBId]: [10] });
+    expect(held0[outId]).toBeUndefined();
+    expect(c.goalSeekResult).toBeNull();
+    expect(c.stale).toBe(true);
+    // Solve runs it: Sum = A + 10, want 15 → A = 5.
+    c.requestSolve();
+    const out1 = await c.data({ [inBId]: [10] });
     expect(out1[outId] as number).toBeCloseTo(5, 4);
     expect(c.stale).toBe(false);
     // An input change does NOT re-solve — it holds the old solution and flags stale.
@@ -875,6 +903,7 @@ describe("CompositeNode Goal Seek run mode", () => {
   it("arm-and-run: an INTERNAL edit flags the held solve stale (dot must not lie)", async () => {
     const { c, inAId, inBId, outId } = await makeAdder();
     c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 15 });
+    c.requestSolve();
     await c.data({ [inBId]: [10] }); // solves: A = 5
     expect(c.stale).toBe(false);
     // A drill-in edit to the SUBGRAPH (value edits arrive via process.ts's
@@ -888,6 +917,7 @@ describe("CompositeNode Goal Seek run mode", () => {
   it("arm-and-run: an internal TOPOLOGY change (editor pipe) flags stale too", async () => {
     const { c, inAId, inBId, outId } = await makeAdder();
     c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 15 });
+    c.requestSolve();
     await c.data({ [inBId]: [10] });
     expect(c.stale).toBe(false);
     const anyConn = c.internalEditor.getConnections()[0]!;
@@ -967,6 +997,7 @@ describe("CompositeNode Goal Seek run mode", () => {
     // the constrained search finds no sign change and reports #CONV!.
     const { c, inAId, inBId, outId } = await makeAdder();
     c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 5, boundsLo: 0, boundsHi: 100 });
+    c.requestSolve();
     const bounded = await c.data({ [inBId]: [10] });
     expect(isSolError(bounded[outId])).toBe(true);
     expect((bounded[outId] as { code: string }).code).toBe("#CONV!");
@@ -1009,6 +1040,7 @@ describe("CompositeNode Monte Carlo run mode", () => {
   it("samples the uncertain input and surfaces the output as mean ± sd", async () => {
     const { c, inBId, outId } = await makeAdder(10);
     c.setMonteCarlo({ samples: 4000, seed: 1 });
+    c.requestSolve();
     const out = await c.data({ [inBId]: [0] }); // Sum = A (mean 100, σ 10) + 0
     const u = out[outId] as { kind: string; value: number; error: number; samples?: number[] };
     expect(u.kind).toBe("uncertain");
@@ -1022,6 +1054,7 @@ describe("CompositeNode Monte Carlo run mode", () => {
     const runOnce = async () => {
       const { c, inBId, outId } = await makeAdder(10);
       c.setMonteCarlo({ samples: 500, seed: 7 });
+      c.requestSolve();
       const out = await c.data({ [inBId]: [0] });
       return out[outId] as { value: number; error: number };
     };
@@ -1034,6 +1067,7 @@ describe("CompositeNode Monte Carlo run mode", () => {
   it("a different seed gives a different draw", async () => {
     const { c, inBId, outId } = await makeAdder(10);
     c.setMonteCarlo({ samples: 500, seed: 1 });
+    c.requestSolve();
     const a = (await c.data({ [inBId]: [0] }))[outId] as { value: number };
     c.setMonteCarlo({ seed: 2 });
     c.requestSolve();
@@ -1051,6 +1085,7 @@ describe("CompositeNode Monte Carlo run mode", () => {
   it("mirrors the summary into the output marker's cachedResult (drill-in box)", async () => {
     const { c, inBId, outId } = await makeAdder(10);
     c.setMonteCarlo({ samples: 300, seed: 5 });
+    c.requestSolve();
     const out = await c.data({ [inBId]: [0] });
     const marker = c.internalEditor.getNode(c.outputPorts.find((p) => p.id === outId)!.internalNodeId) as CompositeOutputNode;
     expect(marker.cachedResult).toBe(out[outId]);
@@ -1059,6 +1094,7 @@ describe("CompositeNode Monte Carlo run mode", () => {
   it("arm-and-run: holds and flags stale when a marker's spread changes", async () => {
     const { c, inA, inBId, outId } = await makeAdder(10);
     c.setMonteCarlo({ samples: 300, seed: 1 });
+    c.requestSolve();
     const first = (await c.data({ [inBId]: [0] }))[outId] as { error: number };
     expect(c.stale).toBe(false);
     inA.uncertainty = 20; // widen the error bar inside the drill-in
@@ -1104,11 +1140,16 @@ describe("CompositeNode manual refresh mode", () => {
     expect(c.isHeavyMode()).toBe(true);
   });
 
-  it("computes once, then holds and flags stale until Refresh", async () => {
+  it("holds blank until Refresh, then holds and flags stale", async () => {
     const { c, inId, outId } = await makePassthrough();
     const f1 = frameFromCells(["A"], [[1], [2]]);
     const f2 = frameFromCells(["A"], [[1], [2], [3]]);
-    // First pass solves (never-solved container), like the load-reveal compute.
+    // Never refreshed (create/load): reads blank and stale — no solve until Refresh.
+    const held0 = await c.data({ [inId]: [f1] });
+    expect(held0[outId]).toBeUndefined();
+    expect(c.stale).toBe(true);
+    // Refresh computes it.
+    c.requestSolve();
     const out1 = await c.data({ [inId]: [f1] });
     expect(out1[outId]).toBe(f1);
     expect(c.stale).toBe(false);
@@ -1125,6 +1166,7 @@ describe("CompositeNode manual refresh mode", () => {
 
   it("an internal edit (a new verb spliced into the chain) flags the hold stale", async () => {
     const { c, inId } = await makePassthrough();
+    c.requestSolve();
     await c.data({ [inId]: [5] });
     expect(c.stale).toBe(false);
     c.markInternalEdit(); // value edits arrive via process.ts's retargeted pass
@@ -1150,6 +1192,40 @@ describe("CompositeNode manual refresh mode", () => {
     expect(clone.runMode).toBe("manual");
     expect(clone.isHeavyMode()).toBe(true);
   });
+
+  it("a heavy composite loaded from JSON reads blank and stale until Solve", async () => {
+    // extractInit → new → hydrate is the exact path persistence.ts and paste take, so a
+    // fresh load starts unsolved: no solve on load (decisions compositesHoldUntilSolve).
+    const src = (await makePassthrough()).c;
+    const loaded = new CompositeNode(extractInit(src as unknown as ClassicPreset.Node) as ConstructorParameters<typeof CompositeNode>[0]);
+    await loaded.hydrate(ctorRegistry());
+    const inId = loaded.inputPorts[0].id;
+    const outId = loaded.outputPorts[0].id;
+    const f = frameFromCells(["A"], [[1], [2]]);
+    const held = await loaded.data({ [inId]: [f] });
+    expect(held[outId]).toBeUndefined(); // blank
+    expect(loaded.stale).toBe(true);
+    loaded.requestSolve();
+    const out = await loaded.data({ [inId]: [f] });
+    expect(out[outId]).toBe(f);
+    expect(loaded.stale).toBe(false);
+  });
+
+  it("switching a live single composite into manual holds it blank until Refresh", async () => {
+    const { c, inId, outId } = await makePassthrough();
+    c.runMode = "single"; // start fully live
+    const live = await c.data({ [inId]: [5] });
+    expect(live[outId]).toBe(5); // single passes through, no Solve needed
+    // A switch INTO a heavy mode reads unsolved — not the leftover single-pass value.
+    c.runMode = "manual";
+    const held = await c.data({ [inId]: [5] });
+    expect(held[outId]).toBeUndefined(); // blank, not 5
+    expect(c.stale).toBe(true);
+    c.requestSolve();
+    const out = await c.data({ [inId]: [5] });
+    expect(out[outId]).toBe(5);
+    expect(c.stale).toBe(false);
+  });
 });
 
 describe("Query catalog preset", () => {
@@ -1167,6 +1243,7 @@ describe("Query catalog preset", () => {
     expect(q.inputs[q.inputPorts[0].id]).toBeDefined();
     expect(q.outputs[q.outputPorts[0].id]).toBeDefined();
     const frame = frameFromCells(["A", "B"], [[1, "x"], [2, "y"]]);
+    q.requestSolve();
     const out = await q.data({ [q.inputPorts[0].id]: [frame] });
     expect(out[q.outputPorts[0].id]).toBe(frame);
   });
@@ -1192,6 +1269,7 @@ describe("CompositeNode run modes — review pins", () => {
     const inBId = c.addInputPort({ label: "B", exposure: "exposed", tier: "basic", internalNodeId: inB.id });
     const outId = c.addOutputPort({ label: "Out", tier: "basic", internalNodeId: outMarker.id });
     c.setGoalSeek({ inputPortId: inAId, outputPortId: outId, target: 0.225211, tolerance: 1e-9 });
+    c.requestSolve();
     const out = await c.data({ [inBId]: [7] });
     expect(out[outId] as number).toBeCloseTo(0.032173, 6);
     expect(out[outId]).not.toBe(0.0322);
@@ -1205,9 +1283,10 @@ describe("CompositeNode run modes — review pins", () => {
     await connect(c.internalEditor, inA, "value", outMarker, "value");
     const aId = c.addInputPort({ label: "A", exposure: "exposed", tier: "basic", internalNodeId: inA.id });
     const outId = c.addOutputPort({ label: "Out", tier: "basic", internalNodeId: outMarker.id });
+    c.requestSolve(); // heavy modes hold until asked to solve
     const out = await c.data({ [aId]: [null] });
     expect(out[outId]).toBeNull();
-    c.requestSolve(); // heavy modes hold until asked to solve again
+    c.requestSolve();
     const ok = await c.data({ [aId]: [10] });
     expect(isUncertain(ok[outId])).toBe(true);
   });

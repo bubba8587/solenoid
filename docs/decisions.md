@@ -232,6 +232,17 @@ Query = the same `CompositeNode`, pre-seeded Table→Result, `runMode: "manual"`
 the frame verbs are the steps. No new persistence shape. **Reopen if:** genuine
 per-step preview/caching needs, or boundary typing adoption can't express.
 
+### compositesHoldUntilSolve — A heavy composite stays UNSOLVED until Solve/Refresh
+A composite in any Solve-button (heavy) run mode — Manual/Query, Goal Seek, Monte
+Carlo, Scenarios, Data Table, By-Row, Simulation — reads blank and stale until the
+user clicks Solve/Refresh. NO solve on load, paste, create, or a switch into a heavy
+mode; people expect the value already blank so they see it compute on Solve (author
+2026-09-13). `isHeavyMode()` is the boundary; plain `single` stays fully live. **Where:**
+`composite.ts` `data()` (a never-solved heavy pass returns `{}`, clears `cachedOutputs`
+/ goal-seek readouts, and a mode switch into heavy forgets the prior solve);
+`composite.test.ts` pins "first pass holds, Solve solves" + the load/mode-switch cases.
+**Reopen if:** the author wants a load-reveal compute back for a specific mode.
+
 ### matricesInFormulas — Formulas accept matrices and complex; frames/cubes stay out (Tier 4 resolved)
 Matrices with Excel dynamic-array semantics; tagged Cx through the owned IM*
 family. Frames/cubes rejected on record: no Excel semantics to copy, competes
