@@ -16,4 +16,3 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 
 - Agent 3 (solenoid-b3, `fe`) — 2026-09-13 blankArgIsExcelBlank — a blank formula argument slot (`null`) is Excel's blank (0 / FALSE / ""), an omitted one (`undefined`) the default; one typed table at the formulajs boundary + internal overrides audited; TEXTJOIN ignore_empty is the first row.
 
-- Agent 2 (solenoid-41, `be`) — 2026-09-13 Chip style renders in the editable table popup (unfocused cells; raw on focus).
