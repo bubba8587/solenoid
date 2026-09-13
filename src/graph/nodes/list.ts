@@ -10,6 +10,7 @@ import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
 import { readInput, listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut } from "./shared";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
+import type { FormatCarrySpec } from "./formatCarry";
 import { pairIdsFromKeys, pickSlot } from "./logic";
 import { passesFilter, requireTextColumn, requireTextList, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
@@ -716,6 +717,13 @@ export class EwmaNode extends ClassicPreset.Node {
     this.addInput("list", listIn("List"));
     this.addInput("alpha", numIn("Alpha"));
     this.addOutput("result", listOut("Smoothed"));
+  }
+
+  /** An exponentially-weighted moving average is a mean, so it keeps the value's kind
+   *  (a smoothed percent series is still percents); the format rides the List, not Alpha
+   *  (formatFlowsDownstream). */
+  formatCarry(): FormatCarrySpec[] {
+    return [{ output: "result", inputs: ["list"] }];
   }
 
   data(inputs: { list?: ListCell[][]; alpha?: number[] }) {
@@ -1485,6 +1493,13 @@ export class RunningNode extends ClassicPreset.Node {
     this.addOutput("result", listOut("Result"));
   }
 
+  /** A windowed sum/mean/min/max/median/stdev keeps the value's kind, like the Aggregate
+   *  it slides; product derives a new dimension. Same dimension test (formatFlowsDownstream). */
+  formatCarry(): FormatCarrySpec[] {
+    const probe: Dim = { length: 1 };
+    return dimEqual(aggregateResultDim(this.agg, probe, 2), probe) ? [{ output: "result", inputs: ["list"] }] : [];
+  }
+
   data(inputs: { list?: ListCell[][]; window?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
     const w = readInput(inputs.window, this.literals.window ?? 0);
@@ -1919,6 +1934,14 @@ export class AggregateNode extends ClassicPreset.Node {
     this.op = init?.op ?? "sum";
     this.addInput("list",    listIn("List"));
     this.addOutput("result", numOut("Result"));
+  }
+
+  /** The format carries only where the op PRESERVES the value's dimension — the SAME
+   *  test as the unit (a percent's mean/min/max/stdev is a percent; its variance, count
+   *  and product are a new kind of value). formatFlowsDownstream. */
+  formatCarry(): FormatCarrySpec[] {
+    const probe: Dim = { length: 1 };
+    return dimEqual(aggregateResultDim(this.op, probe, 2), probe) ? [{ output: "result", inputs: ["list"] }] : [];
   }
 
   data(inputs: { list?: (number | null | SolError)[][] }) {

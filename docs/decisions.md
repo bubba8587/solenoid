@@ -279,14 +279,31 @@ Join-key equality for dimensioned values: dimension symbol + base-SI magnitude
 Author ruling 2026-09-04: "Generally, we want formatting to carry down the stream if
 possible, but it's always possible to override. Units are LOCKED in contrast." The
 display FORMAT (style / precision / grouping / negatives / scale / text attrs / logical
-show-as) now crosses TRANSFORMS as well as passthroughs, within one element family,
-first wired input winning, until a nearer FC overrides it; the UNIT never travels in an
-annotation (unitOnValue, firstClassUnits) and Convert still drops, having rescaled the
-magnitude. **Where:** the MUST + its tests are `rules.md` formatFlowsDownstream;
-mechanism in `subsystem-invariants.md` § Unit flow (`unitFlow.ts` `carriedFormat`).
-**Reopen if:** the author finds an inherited format reading wrong on a value whose scale
-the transform changed (a sum, a ratio) — the narrower rule is passthroughs-only, which
-is what this replaced.
+show-as) crosses TRANSFORMS as well as passthroughs, minus the unit, until a nearer FC
+overrides it; the UNIT never travels in an annotation (unitOnValue, firstClassUnits) and
+Convert still drops, having rescaled the magnitude. **"If possible" was scoped per-op
+2026-09-13 — see formatCarryPerOp.** **Where:** the MUST + its tests are `rules.md`
+formatFlowsDownstream; mechanism in `subsystem-invariants.md` § Unit flow (`unitFlow.ts`
+`carriedFormat`). **Reopen if:** nothing — the "reads wrong on a scale-changing
+transform" case this once predicted is now handled by formatCarryPerOp.
+
+### formatCarryPerOp — A transform carries a style ONLY where its op preserves the meaning
+Author ruling 2026-09-13, scoping formatFlowsDownstream's "if possible". A display style
+says what a value MEANS, so it crosses a transform only when the op keeps that meaning:
+the blanket "first annotated input, any transform, same family" was wrong (NPV of a 5%
+rate showed `123,456.00%`, integer `7 ÷ 2` showed `4`, `date − date` showed a date). A
+transform now carries NOTHING unless it DECLARES which inputs' style may reach which
+output for the CURRENT op (`formatCarry()`, duck-typed like `passthrough()`, its per-op
+map in the node's op table). Carries: add/sub, mean/min/max/median/stdev/spread,
+moving-window/EWMA, abs/round/mround/clamp, EDATE/WORKDAY (still a date). Drops:
+mul/div/pow/mod, count/variance/product, z-score/correlation, every finance output, a
+wildcard Expression; two date-styled operands are a span (date − date, NETWORKDAYS).
+Passthroughs (Sort/Reverse/Slice/Filter/INDEX/TRANSPOSE) still forward unchanged — they
+are not transforms. **Where:** `unitFlow.ts` `carriedFormat` + each node's `formatCarry`;
+`rules.md` formatFlowsDownstream; `tests/graph/formatCarryReadability.test.ts` (the table
++ `.dev/format-carry-report.txt`). **Reopen if:** the author wants a specific op regraded
+(e.g. currency × a scalar keeping its 2-decimal format) — flip that op's `carry` in its
+op table and add a row.
 
 ### aiInScope — The AI layer is IN scope; marketing stays minimal
 Reverses the old #7/#19 ruled-OUT. The cage framing survives as the design rule:

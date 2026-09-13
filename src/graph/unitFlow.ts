@@ -1,8 +1,9 @@
 import type { ClassicPreset } from "rete";
 import type { NodeEditor } from "rete";
-import { type FormatAnnotation } from "./formatAnnotationStore";
+import { type FormatAnnotation, isDateStyle } from "./formatAnnotationStore";
 import { elementFamilyOf, type SocketDataType } from "./sockets";
 import { isPassthroughNode, isPurePassthroughNode, passInputKeys, selectedPassInput } from "./nodes/passthrough";
+import { formatCarryForOutput } from "./nodes/formatCarry";
 
 type AnyEditor = NodeEditor<{
   Node: ClassicPreset.Node;
@@ -74,8 +75,8 @@ export type AnnotationResolver = {
 };
 
 /** An FC LOCKS its format+unit onto the value, a passthrough carries it across
- *  UNCHANGED, a same-family transform carries the FORMAT alone (formatFlowsDownstream),
- *  and Convert DROPS it. */
+ *  UNCHANGED, a transform carries the FORMAT alone and ONLY where it DECLARES a
+ *  meaning-preserving op (formatCarry / formatFlowsDownstream), and Convert DROPS it. */
 export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
   const memo = new Map<string, FormatAnnotation | null>();
   const visiting = new Set<string>();
@@ -104,7 +105,10 @@ export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
   function compute(nodeId: string, outKey: string): FormatAnnotation | undefined {
     const n = editor.getNode(nodeId);
     if (isConvert(n)) return undefined;
-    if (hasAnnotationFor(n)) return n.annotationFor(outKey);
+    // A produced lock (a Triangle angle's °, an inverse-trig deg result) wins; when the
+    // op produces no lock for THIS output, fall through so a meaning-preserving op can
+    // still carry an input's format (abs / round of a percent).
+    if (hasAnnotationFor(n)) { const produced = n.annotationFor(outKey); if (produced) return produced; }
     // An FC that may inherit reads the format arriving at its `in`; a plain FC just
     // publishes its own. `resolveAnnotation` covers both, so it wins where present.
     if (hasResolveAnnotation(n)) return n.resolveAnnotation(inAnnotation(nodeId, "in"));
@@ -123,25 +127,32 @@ export function makeAnnotationResolver(editor: AnyEditor): AnnotationResolver {
     }
     return carriedFormat(n, nodeId, outKey);
   }
-  /** A TRANSFORM passes the display FORMAT on and NOTHING else (formatFlowsDownstream):
-   *  the first wired input carrying an annotation wins, the output must stay in that
-   *  input's element family, and the unit is stripped — it is value-level (unitOnValue),
-   *  riding the `UnitCell` or breaking at the transform on its own. Inputs carrying the
-   *  SAME lock resolve to that same annotation, so agreement needs no separate case. */
+  /** A TRANSFORM passes the display FORMAT on and NOTHING else (formatFlowsDownstream),
+   *  but ONLY where the node DECLARES it (formatCarry) — a transform with no declaration
+   *  for this output carries nothing, so the op that MEANS a new kind of value (mul, div,
+   *  count, a rate, a z-score) shows plain. Among the declared inputs the first wired,
+   *  annotated, same-element-family one wins; the unit is stripped — it is value-level
+   *  (unitOnValue), riding the `UnitCell` or breaking at the transform on its own. Two or
+   *  more date-styled operands are a SPAN, not a date (date − date), so they carry nothing. */
   function carriedFormat(
     n: ClassicPreset.Node | undefined,
     nodeId: string,
     outKey: string,
   ): FormatAnnotation | undefined {
+    const spec = formatCarryForOutput(n, outKey);
+    if (!spec) return undefined;
     const outFamily = portFamily(n?.outputs?.[outKey] as AnyPort);
     if (!outFamily) return undefined;
-    for (const inKey of Object.keys(n?.inputs ?? {})) {
+    const eligible: FormatAnnotation[] = [];
+    for (const inKey of spec.inputs) {
       const ann = inAnnotation(nodeId, inKey);
       if (!ann) continue;
-      if (portFamily(n?.inputs?.[inKey] as AnyPort) !== outFamily) return undefined;
-      return { ...ann, unit: "none", customUnit: "" };
+      if (portFamily(n?.inputs?.[inKey] as AnyPort) !== outFamily) continue;
+      eligible.push(ann);
     }
-    return undefined;
+    if (eligible.length === 0) return undefined;
+    if (eligible.filter((a) => isDateStyle(a.format)).length >= 2) return undefined;
+    return { ...eligible[0], unit: "none", customUnit: "" };
   }
   function outAnnotation(nodeId: string, outKey: string): FormatAnnotation | undefined {
     const key = `${nodeId}::${outKey}`;

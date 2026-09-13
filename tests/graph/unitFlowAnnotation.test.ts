@@ -57,13 +57,16 @@ function ifNode(label: string, selected: string | null | undefined) {
   return n;
 }
 /** A transform with REAL socket types — the format carry is family-gated, so a mock
- *  with the untyped `sock` above would carry nothing whatever the rule says. */
+ *  with the untyped `sock` above would carry nothing whatever the rule says. It stands in
+ *  for a meaning-preserving op (an Add), so it DECLARES a carry from its value inputs
+ *  (formatCarry); without the declaration a transform now carries nothing (formatCarryPerOp). */
 function xformNode(label: string, inputs: Record<string, SocketDataType>, outType: SocketDataType) {
   const n = new ClassicPreset.Node(label) as ClassicPreset.Node & Record<string, unknown>;
   for (const [k, t] of Object.entries(inputs)) {
     n.addInput(k, new ClassicPreset.Input(new SolenoidSocket(t), k));
   }
   n.addOutput("result", new ClassicPreset.Output(new SolenoidSocket(outType), "Result"));
+  n.formatCarry = () => [{ output: "result", inputs: Object.keys(inputs) }];
   return n;
 }
 const connect = async (e: AnyEditor, s: ClassicPreset.Node, t: ClassicPreset.Node, tIn = "in") =>

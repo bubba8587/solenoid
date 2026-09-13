@@ -70,22 +70,21 @@ describe("Unit Flow seed — the captioned behaviors actually hold (FC A4 value-
     expect(formatAnnotationStore.get(id("B_num"), "value")).toBeUndefined();
   });
 
-  it("C · a transform carries the number FORMAT, and the unit ($ dimension + display) rides", () => {
+  it("C · a × carries the value's UNIT, but NOT the format — a multiply is a new value (formatCarryPerOp)", () => {
     // The FC tags the price ($10) → a base-SI currency UnitCell.
     const priced = (real.get("C_fc") as FormatControllerNode).data({ in: [10] }).out as number;
     expect(isUnitCell(priced) && (priced as UnitCell).dim).toEqual({ currency: 1 });
     expect(isUnitCell(priced) && (priced as UnitCell).display).toBe("usd");
     expect(ann().inAnnotation(id("C_d1"), "in")?.unit).toBe("usd");        // before the ×100
-    // ×100 by a bare number keeps the result IN the currency dimension, so the $
-    // DISPLAY unit rides the value ($10 × 100 = $1000, still shown as money). Since
-    // formatFlowsDownstream the 2-decimal FORMAT crosses the ×100 too, minus its unit
-    // (unitOnValue — the unit is the value's, and the annotation never re-states it).
+    // ×100 by a bare number keeps the result IN the currency dimension, so the $ DISPLAY
+    // unit — a property of the VALUE (unitOnValue) — rides the UnitCell through ($10 × 100
+    // = $1000, still shown as money). The display FORMAT does NOT: a multiply MEANS a new
+    // value (formatCarryPerOp), so the 2-decimal style does not cross the ×, and only a
+    // nearer FC could restate it.
     const lot = (real.get("C_mul") as ArithmeticNode).data({ a: [priced], b: [100] }).result;
     expect(isUnitCell(lot) && (lot as UnitCell).dim).toEqual({ currency: 1 });
     expect(isUnitCell(lot) && (lot as UnitCell).display).toBe("usd");      // $ label rides through
-    const after = ann().inAnnotation(id("C_d2"), "in");
-    expect(after?.decimalDigits).toBe(2);                                  // FORMAT carried
-    expect(after?.unit).toBe("none");                                      // unit NOT carried
+    expect(ann().inAnnotation(id("C_d2"), "in")).toBeUndefined();          // FORMAT does NOT cross a ×
     expect(ann().downstreamAnnotation(id("C_d2"), "out")).toBeUndefined();
   });
 
