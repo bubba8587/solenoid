@@ -244,6 +244,10 @@
   height: 100%;
 }
 .sol-record-card__grid {
+  /* Take the height left after the flex:none pager below, so a definite-height host
+     (the popup, a resized Display) sizes the grid to host - pager and never lets the
+     grid grow under the stepper. flex-grow is inert on an auto-height host. */
+  flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
 }

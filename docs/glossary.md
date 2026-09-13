@@ -224,8 +224,14 @@ Geometry (offsets, z-index, reflow) is `layout-chrome.md`; this is term → hand
   `.solenoid-conduit-toolbar`.
 - **Chips** — compact value previews in a value box. `ArrayChip.tsx` variants (frame/cube/chart);
   one chip registry `ValueChip.tsx` `valueChipFor`; errors → `ErrorChip`.
-- **List / Frame / Cube popups** — click-to-open viewers. `TablePopup.tsx` / `CubePopup.tsx` /
-  `ChartPopup.tsx`.
+- **Popups** — the floating full-size viewers/editors, opened from a value **chip** or the
+  **Display** node (never from the source node's own component — don't start a popup search
+  there). Each is a `*PopupStore` (the open/close + payload state) rendered by a `*Popup.tsx`
+  built on the shared **`PopupShell.tsx`** (drag, resize grip, pin, overflow menu). To find one,
+  grep `PopupShell` (the roster) or the relevant `*popupStore`. The set: **ChartPopup** (charts,
+  Sparkline, **Record** cards — figure drawn by `ChartFigure` in `chartView.tsx`, record pager via
+  `recordNav.ts`), **TablePopup** (list/frame), **CubePopup**, **FormulaPopup**, **ScriptPopup**,
+  **PivotEditorPopup**. (`chartPopupStore.ts` / `tablePopupStore.ts` / `cubePopupStore.ts` / …)
 - **Problems / Alerts / Pins / Comments** — the right-side HUD stack. `HudStack.tsx` +
   `alertStore` / `pinStore` / `problemsStore` / `commentStore`.
 - **Nodes** — the cards. `NodeCard.tsx` (NodeShell). NO single wrapper class — roots vary
