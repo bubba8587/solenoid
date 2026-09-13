@@ -274,7 +274,10 @@ export class CompositeNode extends ClassicPreset.Node {
    *  condition halted it early; null when no stepped loop has run. Transient. */
   simLastSteps: number | null = null;
 
-  // Arm-and-run state for the HEAVY modes — session-transient, so a fresh load solves once.
+  // Arm-and-run state for the HEAVY modes: a heavy composite holds UNSOLVED until the user
+  // clicks Solve/Refresh — no solve on load, paste, create, or a switch into a heavy mode
+  // (decisions compositesHoldUntilSolve). All session-transient (never persisted), so a fresh
+  // load starts unsolved by construction.
   /** Set by the Solve button; consumed by the next data() to force one solve. */
   solveRequested = false;
   /** A solve triggered INSIDE the drill-in runs on the markers' own seeds, ignoring
@@ -291,6 +294,9 @@ export class CompositeNode extends ClassicPreset.Node {
    *  can move without one, so an open drill-in re-renders its views only when this
    *  advances, instead of on every pass the surrounding document happens to run. */
   runSeq = 0;
+  /** The runMode `data()` last ran under; a change into a heavy mode forgets the prior
+   *  solve so the card reads unsolved (decisions compositesHoldUntilSolve). Transient. */
+  private _lastRunMode: CompositeRunMode | null = null;
   private _refIds = new WeakMap<object, number>();
   private _refSeq = 0;
   /** Internal-graph layout keyed by LIVE internal node id (remapped on hydrate,
@@ -837,9 +843,14 @@ export class CompositeNode extends ClassicPreset.Node {
     // Auto-mode trig nodes must resolve from their incoming unit BEFORE the internal
     // engine pull, or a deg/rad trig node inside a composite computes in radians.
     resolveTrigModes(this.internalEditor);
-    if (this.isHeavyMode()) {
+    const heavy = this.isHeavyMode();
+    // A switch INTO a heavy mode reads unsolved: forget any prior solve (a heavy solve left
+    // over from a mode round-trip) so the hold branch below blanks the card.
+    if (heavy && this.runMode !== this._lastRunMode) this.lastSolveKey = null;
+    this._lastRunMode = this.runMode;
+    if (heavy) {
       const key = this.solveKey(inputs);
-      if (this.solveRequested || this.lastSolveKey === null) {
+      if (this.solveRequested) {
         // An inside-the-drill-in Solve runs on the markers' seeds (empty inputs → runPass
         // falls back to defaultValue).
         const solveInputs = this.solveInsideOnly ? {} : inputs;
@@ -853,6 +864,21 @@ export class CompositeNode extends ClassicPreset.Node {
         this.stale = false;
         compositeStaleStore.set(this.id, false);
         return outputs;
+      }
+      if (this.lastSolveKey === null) {
+        // Never solved since becoming heavy (load, paste, create, mode switch): read
+        // genuinely blank — not a stale light-mode pass — and stale, so the user sees it
+        // compute on the first Solve (decisions compositesHoldUntilSolve). The goal-seek
+        // readouts read unsolved too.
+        this.cachedOutputs = {};
+        this.goalSeekResult = null;
+        for (const port of this.inputPorts) {
+          const m = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode | undefined;
+          if (m) m.solvedValue = null;
+        }
+        this.stale = true;
+        compositeStaleStore.set(this.id, true);
+        return {};
       }
       this.stale = key !== this.lastSolveKey;
       compositeStaleStore.set(this.id, this.stale);

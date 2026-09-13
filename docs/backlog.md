@@ -32,12 +32,6 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Composites
 
-- [ ] **Heavy composites solve on first load — review with the author** (2026-09-12b). A never-solved
-  Manual-refresh Query or goal-seek container runs its solve on the first pass after load / paste
-  (`composite.test.ts` pins "first pass solves"). For a Manual Query that is one network round trip
-  per document open. If the intent is hold-until-Solve, a null solve key should read as held for
-  the heavy modes; the pin changes with it.
-
 - [ ] **LATER — Optimize run mode on composites (1.4 A6; author 2026-09-04c: in, not now).** Excel
   Solver's shape as a sixth composite run mode beside Goal Seek; spec + steps in `1.4-plan.md`
   § A6. Gate: the author says go (and settles the constraint forms; integer no).
