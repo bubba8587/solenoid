@@ -6,6 +6,41 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-14 — solo with author; deps, settings, gauge, polish)
+
+Rapid author-driven pass; all on `develop`, pushed at close.
+
+- **Dependencies walked forward.** `vitest` 4.1.11 → 5.0.0 (suite green; it transforms with Oxc
+  now, so the `esbuild: { keepNames: true }` in `vite.config.ts` — which only guards the production
+  `minify: "esbuild"` path — prints a harmless "esbuild options ignored" warning in tests).
+  `@anthropic-ai/sdk` 0.123 → 0.125, `@tauri-apps/plugin-http` → 2.6.0, plus in-range react/vite/
+  katex/marked/dompurify/yaml. **`mermaid` held at 11.17.2** — 12 pulls chevrotain 11 with an
+  unfixed high-severity `lodash-es` and no patched release to override to (backlog deps section).
+- **Header-title case setting** (`settingsStore` `headerTitleCase`, global): UPPER (default) / As typed
+  / Proper, a CSS `text-transform` via an `html.hdr-case-*` class on the label DISPLAY only — the
+  editing input shows raw text, rendered cased on blur (draft-commit convention). Covers node cards
+  and group titles. Non-upper modes drop the all-caps 0.08em tracking so Atkinson's lowercase isn't
+  loose. The labels were hardcoded `text-transform: uppercase`, which is why case couldn't change.
+- **Node-header vocabulary named** (glossary): Header label (`node.label`), Family name
+  (`nodeTypeName`), Type-hint, Op name (`nodeName`), Node blurb — and the misleading `headerTitle()`
+  in `nodeKit.tsx` (it returns the description tooltip) renamed `headerTooltip()`. Also a **Popups**
+  glossary entry: popups open from a chip or the Display node, each a `*PopupStore` on the shared
+  `PopupShell` (grep `PopupShell` for the roster), never the source-node component.
+- **Undo/redo never flashes the load curtain.** A restore is a full `loadGraph`, so any graph past
+  the curtain threshold flashed "Loading graph" on every undo (32 nodes tripped the old 60-work bar).
+  Restores pass `curtain: false`; `SWITCH_CURTAIN_MIN_WORK` 60 → 300 (`persistence.ts`, `flowHistory.ts`).
+- **Settings**: the four Tidy fields fold under a collapsible "Tidy" (new `accordion` field option);
+  the per-doc "Network for this document" row shows ONLY for a foreign, undecided doc (Always-allow
+  covers the rest); section order → Appearance, Canvas, View, Data, Obsidian, Renderer, Packs (AI +
+  API keys trail).
+- **Gauge Dial/Bar demoted from op to argument** (opArgDistinct; author: nobody searches "dial"/"bar",
+  no formula surface — DESIGN § Op pickers corrected). Field `op` → `mode` (reusing the whitelisted
+  init key, no save-format growth), `OpToggle` → `SegToggle`, out of `NODE_OPS` (no `{ }` marker, no
+  "Gauge: Dial/Bar" rows; keywords carry search). Bar now collapses with the standard chevron to the
+  standard hero-box `[Chart]` chip (opens the popup, which draws it via `ChartFigure`'s scale branch);
+  dial keeps its mini arc. A collapsed-only box that is also a chip hero now right-aligns (was centered
+  by the minis rule). Add-menu `{ }` marker gained a hover highlight + generic tooltip.
+
 ### SESSION DIGEST (2026-09-13b — solo with author; Chart Builder, catalog, family names)
 
 Rapid author-driven pass; all on `develop`, nothing pushed.
