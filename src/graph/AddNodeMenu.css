@@ -141,6 +141,17 @@
   color: var(--text-dim);
   opacity: 0.7;
   letter-spacing: -0.06em;
+  /* Padding is always present so the hover highlight below adds no layout shift. */
+  padding: 0 3px;
+  border-radius: 3px;
+  cursor: help;
+}
+/* Hovering the marker itself (not the whole row) lifts it and boxes it, cueing the
+   tooltip that the node holds more than one operation. */
+.solenoid-add-menu__ops-mark:hover {
+  opacity: 1;
+  color: var(--text);
+  background: var(--border-subtle);
 }
 
 .solenoid-add-menu__pack-dot {

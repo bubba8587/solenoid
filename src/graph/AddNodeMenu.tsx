@@ -47,7 +47,9 @@ export type ExcelEquiv = {
 // syntax, so hidden-op cards take braces. Rendered, not baked into the label, so search and
 // the node header keep the clean name.
 function OpsMark() {
-  return <span className="solenoid-add-menu__ops-mark" aria-hidden="true">{"{ }"}</span>;
+  // aria-hidden keeps the glyph out of the announced name; the title is a mouse-hover
+  // hint for the marker, generic by design (no op names — tooltips are structural).
+  return <span className="solenoid-add-menu__ops-mark" aria-hidden="true" title="Node contains multiple operations">{"{ }"}</span>;
 }
 
 function PackDot({ packs }: { packs: string[] }) {
