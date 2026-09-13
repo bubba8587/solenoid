@@ -9,6 +9,23 @@ import type { FrameValue } from "./frame";
 const MS_PER_DAY = 86400000;
 const EPOCH_OFFSET = 25569; // Excel serial of 1970-01-01
 
+/** The IANA zone names for the card suggestion lists (a `<datalist>`). Runtime
+ *  `Intl.supportedValuesOf` where available (every current engine), with a small static
+ *  fallback of the common zones so the list is never empty. */
+export const IANA_ZONES: readonly string[] = (() => {
+  try {
+    const withValues = Intl as unknown as { supportedValuesOf?: (k: string) => string[] };
+    const zones = withValues.supportedValuesOf?.("timeZone");
+    if (zones && zones.length > 0) return zones;
+  } catch { /* fall through to the static list */ }
+  return [
+    "UTC", "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles",
+    "America/Sao_Paulo", "Europe/London", "Europe/Paris", "Europe/Berlin", "Europe/Moscow",
+    "Africa/Cairo", "Asia/Dubai", "Asia/Kolkata", "Asia/Shanghai", "Asia/Tokyo",
+    "Asia/Singapore", "Australia/Sydney", "Pacific/Auckland",
+  ];
+})();
+
 /** True when `zone` resolves as an IANA name. */
 export function isValidZone(zone: string): boolean {
   try {

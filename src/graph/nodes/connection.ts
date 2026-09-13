@@ -1,9 +1,10 @@
 import { ClassicPreset } from "rete";
-import { frameOut, strListOut, strIn, numIn, numOut, strOut, dateOut, dateListOut, cubeOut, readInput } from "./shared";
+import { frameOut, strListOut, strIn, numIn, numOut, strOut, dateOut, dateIn, dateListOut, cubeOut, readInput } from "./shared";
+import { serialToJsDate } from "./dateSerial";
 import { geocodeUrl, parseGeocode, pickGeocodeMatch, type GeocodeMatch } from "../geocodeProvider";
 import { weatherUrl, parseWeather, type TempUnit, type WeatherResult } from "../weatherProvider";
 import { holidaysUrl, parseHolidays, filterHolidays, holidaysFrame, daysToNextHoliday, type Holiday } from "../holidaysProvider";
-import { fxLatestUrl, parseFxRate, type FxRate } from "../fxProvider";
+import { fxLatestUrl, parseFxRate, fxRangeUrl, parseFxSeries, type FxRate, type FxPoint } from "../fxProvider";
 import { notesToCube, type VaultNote, type VaultTypeSources } from "../vaultCube";
 import { parseMdbaseCollection, mdbaseTypeFor, type MdbaseCollection } from "../mdbaseTypes";
 import { parseObsidianTypes } from "../obsidianTypes";
@@ -657,41 +658,125 @@ export class HolidaysNode extends ClassicPreset.Node {
 // is AUTHORED with the target currency via applyFcUnit — the same value-side path Convert
 // uses (firstClassUnits) — and every code is registered with the display bridge in
 // fxProvider. Amount applies per compute (no re-fetch); From/To key the fetch.
+export type FxMode = "spot" | "history";
+
+export const FX_MODE_META: Record<FxMode, { label: string }> = {
+  spot:    { label: "Spot" },
+  history: { label: "History" },
+};
+
+// Spot inputs stay; History drops the roleless Amount and adds the date range (the
+// output is a rate series, so an amount has nothing to scale).
+const FX_INPUTS: Record<FxMode, string[]> = {
+  spot:    ["amount", "from", "to"],
+  history: ["from", "to", "from_date", "to_date"],
+};
+const FX_OUTPUTS: Record<FxMode, string[]> = {
+  spot:    ["converted", "rate", "asof"],
+  history: ["frame"],
+};
+
+/** A UTC-midnight Excel serial → ISO YYYY-MM-DD (Frankfurter's date grammar). */
+function fxSerialToIso(serial: number): string {
+  return serialToJsDate(serial).toISOString().slice(0, 10);
+}
+/** Today ± days, ISO — the History range's default endpoints. */
+function isoDaysFromNow(days: number): string {
+  return new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
+}
+
 export class FxNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     amount: "How much, in the From currency.",
     from: "The currency to convert out of.",
     to: "The currency to convert into.",
+    from_date: "The history range's start. Blank means 90 days back.",
+    to_date: "The history range's end. Blank means today.",
     converted: "The amount in the To currency, carrying that currency downstream.",
     rate: "Units of To per one From, on the as-of date.",
     asof: "The date these ECB reference rates are from.",
+    frame: "One row per business day in the range: the date and the rate.",
   };
   label: string;
+  mode: FxMode;
   literals: Record<string, number> = { amount: 1 };
-  stringLiterals: Record<string, string> = { from: "", to: "" };
+  stringLiterals: Record<string, string> = { from: "", to: "", from_date: "", to_date: "" };
   /** Minutes, 0 = off — the component runs the timer. */
   refreshMinutes: number;
   width = 240; height = 250;
   /** Read by the component's output rows; never persisted. */
   cached: FxRate | null = null;
+  cachedSeries: FxPoint[] | null = null;
   private _lastKey: string | undefined;
 
-  constructor(init?: { label?: string; refreshMinutes?: number }) {
+  constructor(init?: { label?: string; mode?: FxMode; refreshMinutes?: number }) {
     super("Fx");
     this.label = init?.label ?? "Currency";
+    this.mode = init?.mode ?? "spot";
     this.refreshMinutes = init?.refreshMinutes ?? 0;
-    this.addInput("amount", numIn("Amount"));
-    this.addInput("from", strIn("From"));
-    this.addInput("to", strIn("To"));
-    this.addOutput("converted", numOut("Converted"));
-    this.addOutput("rate", numOut("Rate"));
-    this.addOutput("asof", dateOut("As of"));
+    for (const k of FX_INPUTS[this.mode]) this.addInput(k, this.makeInput(k));
+    for (const k of FX_OUTPUTS[this.mode]) this.addOutput(k, this.makeOutput(k));
+    if (this.mode === "history") this.seedDefaultRange();
   }
 
-  data(inputs: { amount?: number[]; from?: string[]; to?: string[] }): { converted: unknown; rate: number | null; asof: number | null } {
-    const amount = readInput(inputs.amount, this.literals.amount ?? 1);
-    const fromRaw = readInput(inputs.from, this.stringLiterals.from ?? "");
-    const toRaw = readInput(inputs.to, this.stringLiterals.to ?? "");
+  private makeInput(key: string): ClassicPreset.Input<ClassicPreset.Socket> {
+    switch (key) {
+      case "amount":    return numIn("Amount");
+      case "from":      return strIn("From");
+      case "to":        return strIn("To");
+      case "from_date": return dateIn("From date");
+      default:          return dateIn("To date");
+    }
+  }
+  private makeOutput(key: string): ClassicPreset.Output<ClassicPreset.Socket> {
+    switch (key) {
+      case "converted": return numOut("Converted");
+      case "rate":      return numOut("Rate");
+      case "asof":      return dateOut("As of");
+      default:          return frameOut("Rates");
+    }
+  }
+
+  /** History's frame columns are FIXED (declareOnce), so a Chart wired to it knows them
+   *  before any fetch lands. */
+  frameShape(): Shape {
+    return { columns: [{ name: "Date", type: "date" }, { name: "Rate", type: "number" }] };
+  }
+
+  /** The keys a switch to `next` removes. Callers on a live graph prune their cables
+   *  BEFORE calling setMode (onePrunePath). */
+  keysDroppedBySwitch(next: FxMode): { inputs: string[]; outputs: string[] } {
+    return {
+      inputs: FX_INPUTS[this.mode].filter((k) => !FX_INPUTS[next].includes(k)),
+      outputs: FX_OUTPUTS[this.mode].filter((k) => !FX_OUTPUTS[next].includes(k)),
+    };
+  }
+
+  setMode(next: FxMode): void {
+    if (next === this.mode) return;
+    this.mode = next;
+    for (const k of Object.keys(this.inputs)) if (!FX_INPUTS[next].includes(k)) this.removeInput(k);
+    for (const k of Object.keys(this.outputs)) if (!FX_OUTPUTS[next].includes(k)) this.removeOutput(k);
+    for (const k of FX_INPUTS[next]) if (!this.inputs[k]) this.addInput(k, this.makeInput(k));
+    for (const k of FX_OUTPUTS[next]) if (!this.outputs[k]) this.addOutput(k, this.makeOutput(k));
+    if (next === "history") this.seedDefaultRange();
+    this._lastKey = undefined;
+  }
+
+  /** Last 90 days, but only for blank fields — a user's or saved value stands. */
+  private seedDefaultRange(): void {
+    if (!this.stringLiterals.to_date) this.stringLiterals.to_date = isoDaysFromNow(0);
+    if (!this.stringLiterals.from_date) this.stringLiterals.from_date = isoDaysFromNow(-90);
+  }
+
+  data(inputs: Record<string, unknown[] | undefined>): Record<string, unknown> {
+    return this.mode === "history" ? this.dataHistory(inputs) : this.dataSpot(inputs);
+  }
+
+  private dataSpot(inputs: Record<string, unknown[] | undefined>): { converted: unknown; rate: number | null; asof: number | null } {
+    const amount = readInput(inputs.amount as (number | number[])[] | undefined, this.literals.amount ?? 1);
+    const fromRaw = readInput(inputs.from as (string | string[])[] | undefined, this.stringLiterals.from ?? "");
+    const toRaw = readInput(inputs.to as (string | string[])[] | undefined, this.stringLiterals.to ?? "");
     const from = (typeof fromRaw === "string" ? fromRaw : "").trim().toUpperCase();
     const to = (typeof toRaw === "string" ? toRaw : "").trim().toUpperCase();
     const have = from !== "" && to !== "";
@@ -714,6 +799,47 @@ export class FxNode extends ClassicPreset.Node {
     return { converted: tagged, rate, asof };
   }
 
+  private dataHistory(inputs: Record<string, unknown[] | undefined>): { frame: FrameValue } {
+    const fromRaw = readInput(inputs.from as (string | string[])[] | undefined, this.stringLiterals.from ?? "");
+    const toRaw = readInput(inputs.to as (string | string[])[] | undefined, this.stringLiterals.to ?? "");
+    const from = (typeof fromRaw === "string" ? fromRaw : "").trim().toUpperCase();
+    const to = (typeof toRaw === "string" ? toRaw : "").trim().toUpperCase();
+    const start = this.readDate(inputs.from_date, this.stringLiterals.from_date, -90);
+    const end = this.readDate(inputs.to_date, this.stringLiterals.to_date, 0);
+    const have = from !== "" && to !== "" && start !== "" && end !== "";
+    const key = connectionStore.key(this.id, have ? `${from},${to},${start},${end}` : "");
+    if (key !== this._lastKey) {
+      if (!have) {
+        this._lastKey = key;
+        this.cachedSeries = null;
+        connectionStore.setState(this.id, { status: "idle" });
+      } else if (requestNetwork(this.id)) {
+        this._lastKey = key;
+        void this.fetchSeries(from, to, start, end).then(() => scheduleConnectionRecalc());
+      }
+    }
+    return { frame: this.seriesFrame() };
+  }
+
+  /** A wired date (serial) wins; else the typed ISO literal; else today ± `dayOffset`. A
+   *  wired blank/error is unknown → "" (blanks the result, value-semantics.md). */
+  private readDate(wired: unknown[] | undefined, literal: string | undefined, dayOffset: number): string {
+    if (wired && wired.length > 0) {
+      const s = wired[0];
+      return typeof s === "number" && Number.isFinite(s) ? fxSerialToIso(s) : "";
+    }
+    const iso = (literal ?? "").trim();
+    return iso !== "" ? iso : isoDaysFromNow(dayOffset);
+  }
+
+  private seriesFrame(): FrameValue {
+    const pts = this.cachedSeries ?? [];
+    return { __frame: true, columns: [
+      { name: "Date", type: "date", values: pts.map((p) => p.serial) },
+      { name: "Rate", type: "number", values: pts.map((p) => p.rate) },
+    ] };
+  }
+
   private async fetchRate(from: string, to: string): Promise<void> {
     connectionStore.setState(this.id, { status: "loading" });
     try {
@@ -725,6 +851,21 @@ export class FxNode extends ClassicPreset.Node {
         : { status: "ok", rows: 1, cols: 1, fetchedAt: Date.now() });
     } catch (e) {
       this.cached = null;
+      connectionStore.setState(this.id, { status: "error", message: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
+  private async fetchSeries(from: string, to: string, start: string, end: string): Promise<void> {
+    connectionStore.setState(this.id, { status: "loading" });
+    try {
+      const { text } = await fetchText(fxRangeUrl(from, to, start, end));
+      const pts = parseFxSeries(text, to);
+      this.cachedSeries = pts;
+      connectionStore.setState(this.id, pts.length === 0
+        ? { status: "error", message: `No ${from}→${to} history` }
+        : { status: "ok", rows: pts.length, cols: 2, fetchedAt: Date.now() });
+    } catch (e) {
+      this.cachedSeries = null;
       connectionStore.setState(this.id, { status: "error", message: e instanceof Error ? e.message : String(e) });
     }
   }

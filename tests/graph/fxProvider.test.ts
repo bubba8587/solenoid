@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fxLatestUrl, parseFxRate, FX_CURRENCIES } from "../../src/graph/fxProvider";
+import { fxLatestUrl, parseFxRate, fxRangeUrl, parseFxSeries, FX_CURRENCIES } from "../../src/graph/fxProvider";
 import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 import { applyFcUnit } from "../../src/graph/unitBridge";
 import { isUnitCell, dimOf } from "../../src/graph/unitValue";
@@ -27,6 +27,31 @@ describe("parseFxRate", () => {
   });
   it("a malformed body is a null rate with no date", () => {
     expect(parseFxRate("not json", "EUR")).toEqual({ date: "", serial: NaN, rate: null });
+  });
+});
+
+describe("fxRangeUrl", () => {
+  it("builds the {start}..{end} time-series endpoint, upper-casing the currencies", () => {
+    expect(fxRangeUrl(" usd ", "eur", "2026-06-01", "2026-08-30"))
+      .toBe("https://api.frankfurter.dev/v1/2026-06-01..2026-08-30?base=USD&symbols=EUR");
+  });
+});
+
+describe("parseFxSeries", () => {
+  const series = JSON.stringify({
+    amount: 1, base: "USD", start_date: "2026-06-01", end_date: "2026-06-03",
+    rates: { "2026-06-03": { EUR: 0.862 }, "2026-06-01": { EUR: 0.860 }, "2026-06-02": { EUR: 0.861 } },
+  });
+  it("returns one row per day, sorted ascending by date, with the target rate", () => {
+    const rows = parseFxSeries(series, "EUR");
+    expect(rows.map((r) => r.date)).toEqual(["2026-06-01", "2026-06-02", "2026-06-03"]);
+    expect(rows.map((r) => r.rate)).toEqual([0.860, 0.861, 0.862]);
+    expect(rows[0].serial).toBe(parseDateToSerial("2026-06-01"));
+  });
+  it("skips days missing the target rate and empties on a malformed body", () => {
+    const holey = JSON.stringify({ rates: { "2026-06-01": { EUR: 0.86 }, "2026-06-02": { GBP: 0.79 } } });
+    expect(parseFxSeries(holey, "EUR").map((r) => r.date)).toEqual(["2026-06-01"]);
+    expect(parseFxSeries("not json", "EUR")).toEqual([]);
   });
 });
 

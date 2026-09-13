@@ -36,9 +36,10 @@ import { FX_CURRENCIES } from "../fxProvider";
 import { frameRowCount, cubeRowCount } from "../frame";
 import { useVaultWatch } from "./useVaultWatch";
 import { TASKNOTES_KEY_ID, TASKNOTES_PROVIDER_META, statsToFrame, type TaskNotesProvider } from "../taskNotesApi";
-import { dropInputCables } from "./cablePrune";
+import { dropInputCables, dropOutputCables } from "./cablePrune";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { getActiveView } from "../activeGraph";
+import { FX_MODE_META, type FxMode } from "../rete-nodes";
 
 function statusText(s: ConnectionState): string {
   switch (s.status) {
@@ -657,34 +658,101 @@ function CurrencyRow({ data, emit, socketKey, label }: {
   );
 }
 
+// A typeable date range row: the native date field commits on blur/Enter; a cable
+// overrides it (↩ wired), mirroring CurrencyRow.
+function FxDateRow({ data, emit, socketKey, label }: {
+  data: FxNodeType; emit: NodeProps<FxNodeType>["emit"]; socketKey: "from_date" | "to_date"; label: string;
+}) {
+  const connected = useConnectedInputs(data.id);
+  const incoming = useIncomingSources(data.id);
+  const wired = connected.has(socketKey);
+  const socket = data.inputs[socketKey]!.socket;
+  const [val, setVal] = useState(data.stringLiterals[socketKey] ?? "");
+  useEffect(() => { setVal(data.stringLiterals[socketKey] ?? ""); }, [data.stringLiterals[socketKey]]);
+  function commit() {
+    const v = val.trim();
+    if (v !== (data.stringLiterals[socketKey] ?? "")) { data.stringLiterals[socketKey] = v; void processGraph(); }
+  }
+  return (
+    <MeasuredSocketRow side="input" socketKey={socketKey} nodeId={data.id} emit={emit} payload={socket}>
+      <span className="solenoid-node__io-label">{label}</span>
+      {wired ? (
+        <span className="solenoid-node__io-wired" title="Driven by the incoming cable named here">↩ {incoming.get(socketKey)?.label || "wired"}</span>
+      ) : (
+        <input
+          className="sol-conn__num" type="date" value={val}
+          onChange={(e) => setVal(e.target.value)} onBlur={commit}
+          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+          onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
+        />
+      )}
+    </MeasuredSocketRow>
+  );
+}
+
+const FX_MODE_OPTIONS = (Object.keys(FX_MODE_META) as FxMode[]).map((k) => ({ value: k, label: FX_MODE_META[k].label }));
+
+// Spot ↔ History swaps sockets in place (the mode-card recipe): prune departing input AND
+// output cables first (onePrunePath), then setMode, then re-render + recompute.
+async function pickFxMode(data: FxNodeType, next: FxMode, set: (o: FxMode) => void) {
+  if (next === data.mode) return;
+  const departing = data.keysDroppedBySwitch(next);
+  if (departing.inputs.length > 0) await dropInputCables(data.id, departing.inputs);
+  if (departing.outputs.length > 0) await dropOutputCables(data.id, departing.outputs);
+  data.setMode(next);
+  set(next);
+  await getActiveView()?.rerenderNode(data.id);
+  await processGraph();
+}
+
 export function FxComponent({ data, emit }: NodeProps<FxNodeType>) {
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version); // fill rows when a fetch lands
   const [minutes, setMinutes] = useState(data.refreshMinutes);
+  const [mode, setMode] = useState<FxMode>(data.mode);
+  useEffect(() => { setMode(data.mode); }, [data.mode]);
   useAutoRefresh(data.id, minutes);
 
   const rate = data.cached?.rate ?? null;
   // A preview off the typed amount; the socket carries the true (possibly wired) value.
   const preview = rate != null ? (data.literals.amount ?? 1) * rate : null;
+  const seriesRows = data.cachedSeries?.length ?? 0;
+  const frame = data.outputs.frame;
 
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
-      <InlineInputs node={data} emit={emit} keys={["amount"]} />
+      <div className="sol-conn">
+        <SegToggle value={mode} options={FX_MODE_OPTIONS} onChange={(o) => void pickFxMode(data, o, setMode)} />
+      </div>
+      {mode === "spot" && <InlineInputs node={data} emit={emit} keys={["amount"]} />}
       <CurrencyRow data={data} emit={emit} socketKey="from" label="FROM" />
       <CurrencyRow data={data} emit={emit} socketKey="to" label="TO" />
+      {mode === "history" && (
+        <>
+          <FxDateRow data={data} emit={emit} socketKey="from_date" label="FROM DATE" />
+          <FxDateRow data={data} emit={emit} socketKey="to_date" label="TO DATE" />
+        </>
+      )}
       <div className="sol-conn">
         <div className="sol-conn__note">Frankfurter: ECB reference rates, once per business day.</div>
         <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
         <RefreshIntervalField minutes={minutes} onCommit={(n) => { data.refreshMinutes = n; setMinutes(n); }} />
       </div>
-      <InlineOutputRows
-        node={data}
-        emit={emit}
-        rows={[
-          { key: "converted", label: `CONVERTED ${data.stringLiterals.to || ""}`.trim(), value: preview },
-          { key: "rate",      label: "RATE",  value: rate },
-          { key: "asof",      label: "AS OF", value: data.cached?.date || null },
-        ]}
-      />
+      {mode === "spot" ? (
+        <InlineOutputRows
+          node={data}
+          emit={emit}
+          rows={[
+            { key: "converted", label: `CONVERTED ${data.stringLiterals.to || ""}`.trim(), value: preview },
+            { key: "rate",      label: "RATE",  value: rate },
+            { key: "asof",      label: "AS OF", value: data.cached?.date || null },
+          ]}
+        />
+      ) : frame ? (
+        <MeasuredSocketRow side="output" socketKey="frame" nodeId={data.id} emit={emit} payload={frame.socket}>
+          <span className="solenoid-node__io-label">RATES</span>
+          <span className="solenoid-node__output-value">{seriesRows > 0 ? `${seriesRows} days` : "—"}</span>
+        </MeasuredSocketRow>
+      ) : null}
     </NodeShell>
   );
 }

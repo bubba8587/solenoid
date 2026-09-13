@@ -24,6 +24,7 @@ import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from 
 import { FrameDisplay } from "./FrameDisplay";
 import { nodeDisplayName } from "../catalogUtils";
 import { dropInputCables } from "./cablePrune";
+import { IANA_ZONES } from "../timeZone";
 
 // Date nodes never format their own serials — ValueDisplay does it for any date-typed
 // output socket, so scalars and lists format consistently.
@@ -216,7 +217,7 @@ export function WorkdaysComponent({ data, emit }: NodeProps<WorkdaysNodeType>) {
 export function TimeZoneConvertComponent({ data, emit }: NodeProps<TimeZoneConvertNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
+      <InlineInputs node={data} emit={emit} suggest={{ from: IANA_ZONES, to: IANA_ZONES }} />
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>
   );
@@ -225,7 +226,7 @@ export function TimeZoneConvertComponent({ data, emit }: NodeProps<TimeZoneConve
 export function WorldClockComponent({ data, emit }: NodeProps<WorldClockNodeType>) {
   return (
     <NodeShell node={data} emit={emit}>
-      <InlineInputs node={data} emit={emit} />
+      <InlineInputs node={data} emit={emit} suggest={{ zones: IANA_ZONES }} />
       <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
     </NodeShell>
   );
