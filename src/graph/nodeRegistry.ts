@@ -6,7 +6,7 @@ import type { JSXElementConstructor } from "react";
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, FileLinkNode, SvgPickerNode, QrCodeNode,
   SparklineNode, ChartNode, MergePlotsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, DateInputNode, DateRangeNode, XYPadNode,
-  WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, SevenSegNode, RecordNode, GanttNode,
+  WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, GanttNode,
   PointPlotterNode, CurveNode, GridPainterNode,
   FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode, WindowNode,
   NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFnNode,
@@ -82,7 +82,7 @@ import {
 import {
   AngleDialComponent, SlicerComponent, CableSwitchComponent, NoteComponent, ReportComponent, SessionHistoryComponent, PresentationComponent, ImageComponent, FileLinkComponent, SvgPickerComponent, QrCodeComponent,
   SparklineComponent, ChartComponent, MergePlotsComponent, HistogramComponent, KpiComponent, ProportionComponent, SankeyComponent, SurfaceComponent, MermaidComponent, GaugeComponent, HeatmapCellComponent, ChartBuilderComponent, DateInputComponent, DateRangeComponent, XYPadComponent,
-  WaterfallComponent, CandlestickComponent, BoxplotComponent, CalendarHeatmapComponent, QuiverComponent, SevenSegComponent, RecordComponent, GanttComponent,
+  WaterfallComponent, CandlestickComponent, BoxplotComponent, CalendarHeatmapComponent, QuiverComponent, RecordComponent, GanttComponent,
   PointPlotterComponent, CurveComponent, GridPainterComponent,
   FillBlanksComponent, ReplaceValuesComponent, MergeColumnsComponent, HeadersComponent, DropBlankRowsComponent,
   NumberInputComponent, ArithmeticComponent, DisplayComponent, ComparisonComponent,
@@ -196,7 +196,6 @@ export const NODE_COMPONENTS: ReadonlyArray<readonly [NodeCtor, AnyNodeComponent
   [BoxplotNode,     comp(BoxplotComponent)],
   [CalendarHeatmapNode, comp(CalendarHeatmapComponent)],
   [QuiverNode,      comp(QuiverComponent)],
-  [SevenSegNode,    comp(SevenSegComponent)],
   [RecordNode,      comp(RecordComponent)],
   [GanttNode,       comp(GanttComponent)],
   [PointPlotterNode, comp(PointPlotterComponent)],

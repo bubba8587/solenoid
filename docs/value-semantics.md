@@ -165,7 +165,7 @@ Decide by the input's ROLE, not by its type:
 | a **check's parameter** — Expect's bound or pattern | that check cannot be EVALUATED | **skips THAT CHECK** and passes the data through | Expect keeps flowing, reports no violation |
 | a **control's bound** — Slider min/max/step | the control still has to work | **falls back to the card's own value** | Slider keeps clamping to its typed bound |
 | a **column reference** — which column to sort/group/split/look up by | the target is unknown | **PROPAGATES** — a blank frame out, NOT the frame unchanged | Frame Sort, Get Column, XLOOKUP |
-| a **figure's datum** — a chart's values, a KPI's number, a Mermaid source | there is nothing to draw | **PROPAGATES**: renders an EMPTY figure, never a SolError out a `chart` socket | Gauge, KPI, 7-Segment |
+| a **figure's datum** — a chart's values, a KPI's number, a Mermaid source | there is nothing to draw | **PROPAGATES**: renders an EMPTY figure, never a SolError out a `chart` socket | Gauge, KPI |
 | a **presentation annotation** — an options string, decimals, a colour | no styling was given | **falls back to the NEUTRAL default**, never to the card's styling | chart Options, Chart Options builder |
 | a **filter predicate** | that row is not known to match | **DROPS the row** | Filter |
 | a **filter condition's column or comparison value** | that condition cannot be evaluated, so which rows survive is unknown | **PROPAGATES** — the whole result is blank | Filter, SUMIFS |

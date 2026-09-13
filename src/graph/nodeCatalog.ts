@@ -2,7 +2,7 @@ import {
   AngleDialNode, SlicerNode, CableSwitchNode, DateInputNode, DateRangeNode, XYPadNode,
   PointPlotterNode, CurveNode, GridPainterNode,
   SparklineNode, ChartNode, MergePlotsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode,
-  WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, SevenSegNode, RecordNode, GanttNode,
+  WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, GanttNode,
   FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode, WindowNode,
   NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFnNode,
   FormatControllerNode, ExpressionNode, ScriptNode, EquationNode, RegexNode, GroupByNode,
@@ -256,7 +256,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "chart-builder", label: "Chart Builder", description: "Styles any chart, producing an options string. Per chart type (Chart, Histogram, KPI, Proportion, Waterfall…) it offers just that type's options: title, axes, color, grid, range, line, markers. Fields follow `matplotlib`.", create: () => new ChartBuilderNode(), parity: false, keywords: "chart builder options style title axes color grid range markers histogram kpi proportion treemap waffle sankey waterfall" },
           { type: "merge-plots", label: "Merge Plots", description: "Overlays several x/y charts on one plot with shared axes. Each input takes a line, area, column, bar, or scatter chart, and its series carry over keeping the color and marker size they arrived with. The legend names each source. Pie, radar, gauge, and the other non-plot figures are refused. Options takes a Chart Builder for the merged plot's title and axes.", create: () => new MergePlotsNode(), parity: false, keywords: "merge plots overlay combine superimpose layer stack multi series legend line scatter area column bar composed matplotlib" },
           { type: "mermaid",   label: "Mermaid",   description: "Draws text-based Mermaid.js diagrams.", create: () => new MermaidNode(), parity: false, keywords: "mermaid diagram flowchart flow chart graph sequence class state gantt pie mindmap uml erd tree" },
-          { type: "seven-seg", label: "7-Segment", description: "A flat seven-segment readout of a number, with a Decimals setting. The meter-face look.", create: () => new SevenSegNode(), parity: false, keywords: "seven segment display digital readout meter lcd led digits retro" },
           {
             type: "category", label: "Distribution", description: "How a sample spreads: binned counts and five-number summaries.",
             children: [

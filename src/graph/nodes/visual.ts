@@ -7,7 +7,7 @@ export { histogram2d } from "./visualOps";
 import { isChartValue } from "../chartValue";
 import type {
   ChartValue, KpiPayload, ScalePayload, ProportionPayload, SankeyPayload, SurfacePayload,
-  ContourPayload, WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, QuiverPayload, SevenSegPayload,
+  ContourPayload, WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, QuiverPayload,
   RecordPayload, RecordField, RecordSize, OverlaySeries, OverlayPayload,
 } from "../chartValue";
 import { solError, type SolError } from "../errorValue";
@@ -468,8 +468,8 @@ export class MermaidNode extends ClassicPreset.Node {
 // ─── Gauge — a value on a fixed scale (Dial or Bar) ─────────────────────────────
 // One card, a style selector. DIAL reads Value as a fraction of 1 (0.75 → 75% on a
 // fixed 0→100% arc); BAR (the former Bullet graph) plots Value on a 0→Max track with a
-// Target tick. Emits a chart VALUE, not a pass-through — like 7-Segment, so a Report can
-// embed the readout (author call; node-coverage records the contract change).
+// Target tick. Emits a chart VALUE, not a pass-through, so a Report can embed the readout
+// (author call; node-coverage records the contract change).
 export type GaugeStyle = "dial" | "bar";
 export const GAUGE_OP_META = {
   dial: { label: "Dial" },
@@ -548,46 +548,6 @@ export class GaugeNode extends ClassicPreset.Node {
   }
 }
 
-
-export class SevenSegNode extends ClassicPreset.Node {
-  label: string;
-  literals: Record<string, number> = { value: 0, decimals: 0 };
-  cachedChart: ChartValue | null = null;
-  width = 200;
-  height = 130;
-
-  constructor(init?: { label?: string }) {
-    super("SevenSeg");
-    this.label = init?.label ?? "7-Segment";
-    this.addInput("value", numIn("Value"));
-    this.addInput("decimals", numIn("Decimals"));
-    this.addOutput("chart", chartOut("Chart"));
-  }
-
-  data(inputs: { value?: number[]; decimals?: number[] }): { chart: ChartValue } {
-    const v = readInput(inputs.value, this.literals.value ?? null);
-    // `decimals` is PRESENTATION: a wired blank is the neutral 0, not the card's number.
-    const d = clamp(Math.round(readInput(inputs.decimals, this.literals.decimals ?? 0) ?? 0), 0, 6);
-    // Mirror to the card only when unwired — never clobber the typed literal.
-    if (inputs.decimals?.[0] === undefined) this.literals.decimals = d;
-    if (inputs.value?.[0] === undefined) this.literals.value = v ?? 0;
-    const payload: SevenSegPayload = { kind: "sevenseg", text: sevenSegText(v, d) };
-    const chart: ChartValue = { __chart: true, op: "sevenseg", values: v, payload, options: {}, title: this.label || "7-Segment" };
-    this.cachedChart = chart;
-    return { chart };
-  }
-}
-
-/** The characters a 7-seg readout shows for a value: a fixed-decimals string, or
- *  the classic all-dashes overflow when it doesn't fit the display width. */
-export function sevenSegText(v: number | null, decimals: number, maxDigits = 10): string {
-  if (v == null || !Number.isFinite(v)) return "";
-  const fixed = v.toFixed(clamp(Math.round(decimals), 0, 6));
-  const s = /^-0(\.0+)?$/.test(fixed) ? fixed.slice(1) : fixed; // a negative that rounds to zero shows no sign
-  // Count digit CELLS (a '.' rides its neighbor, '-' takes a cell).
-  const cells = s.replace(/\./g, "").length;
-  return cells > maxDigits ? "-".repeat(maxDigits) : s;
-}
 
 // ─── KPI / Stat card ──────────────────────────────────────────────────────────
 

@@ -103,12 +103,6 @@ export interface QuiverPayload {
   u: (number | null)[][];
   v: (number | null)[][];
 }
-// A seven-segment readout: the display TEXT (digits / '-' / '.', already
-// fixed-decimals or the all-dash overflow), rendered as flat SVG segments.
-export interface SevenSegPayload {
-  kind: "sevenseg";
-  text: string;
-}
 // One labeled box of a record card, pre-placed on the grid (1-based CSS grid
 // lines, resolved from the layout text in the node so the view stays dumb).
 export interface RecordField {
@@ -192,7 +186,7 @@ export interface OverlayPayload {
 export type ChartPayload =
   | KpiPayload | ScalePayload | ProportionPayload | SankeyPayload | SurfacePayload
   | ContourPayload | WaterfallPayload | CandlePayload | BoxplotPayload
-  | CalHeatPayload | QuiverPayload | SevenSegPayload | RecordPayload | OverlayPayload
+  | CalHeatPayload | QuiverPayload | RecordPayload | OverlayPayload
   | GanttPayload;
 
 /** The payload / special-figure ops beyond the ChartNode's own selectable ChartOps.
@@ -201,7 +195,7 @@ export type ChartPayload =
  *  can't ship without going through the shared popup path. */
 export const CHART_SPECIAL_OPS = [
   "kpi", "scale", "proportion", "sankey", "surface", "contour", "waterfall",
-  "candle", "boxplot", "calheat", "quiver", "sevenseg", "record", "overlay", "gantt",
+  "candle", "boxplot", "calheat", "quiver", "record", "overlay", "gantt",
 ] as const;
 
 /** Every op the `chart` socket can carry. */

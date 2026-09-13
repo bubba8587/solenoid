@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   SparklineNode, ChartNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, SurfaceNode, histogramBins, histogram2d,
   WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, ProportionNode, QuiverNode,
-  SevenSegNode, sevenSegText, boxplotStats, quantileSorted,
+  boxplotStats, quantileSorted,
   RecordNode, parseRecordLayout, recordImageSrc,
 } from "../../../src/graph/nodes/visual";
 import { CHART_BUILDER_FIELDS } from "../../../src/graph/nodes/visual";
@@ -437,33 +437,6 @@ describe("chart-wave nodes emit their payloads", () => {
     const p = n.data({ u: [[[1, null], [0, 2]]], v: [[[0, 1], [null, 2]]] }).chart.payload as QuiverPayload;
     expect(p.u).toEqual([[1, null], [0, 2]]);
     expect(p.v).toEqual([[0, 1], [null, 2]]);
-  });
-});
-
-describe("SevenSeg", () => {
-  it("emits a chart value carrying the rendered text; clamps decimals", () => {
-    const n = new SevenSegNode();
-    const out = n.data({ value: [42.5], decimals: [1] });
-    expect(out.chart).toMatchObject({ __chart: true, op: "sevenseg", values: 42.5, payload: { kind: "sevenseg", text: "42.5" } });
-    // A WIRED decimals renders with the wired value but never clobbers the card's
-    // typed literal (the KPI/Bullet mirror-only-when-unwired pattern).
-    expect(n.literals.decimals).toBe(0);
-    // Unwired: the card's own out-of-range literal normalizes (clamped to 6).
-    n.literals.decimals = 99;
-    n.data({ value: [1] });
-    expect(n.literals.decimals).toBe(6);
-  });
-
-  it("sevenSegText: fixed decimals; overflow → all dashes; blank when no value", () => {
-    expect(sevenSegText(42.5, 1)).toBe("42.5");
-    expect(sevenSegText(-3, 0)).toBe("-3");
-    expect(sevenSegText(-0.4, 0)).toBe("0");     // a negative that rounds to zero shows no sign
-    expect(sevenSegText(-0.004, 2)).toBe("0.00");
-    expect(sevenSegText(null, 2)).toBe("");
-    // 12345678901 = 11 digit cells > 10 → the classic overflow dashes.
-    expect(sevenSegText(12345678901, 0)).toBe("----------");
-    // The decimal point rides its neighbor cell, so 8 digits + dp still fits.
-    expect(sevenSegText(1234567.8, 1)).toBe("1234567.8");
   });
 });
 
