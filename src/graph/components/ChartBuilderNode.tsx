@@ -89,7 +89,7 @@ const TARGET_OPTS = CHART_TARGET_LIST.map((t) => ({ value: t.id, label: t.label,
 
 const STR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "color", "window", "columns"];
 const TOGGLE_KEYS: readonly { key: ChartBuilderKey; label: string }[] =
-  [{ key: "grid", label: "Grid" }, { key: "marker", label: "Markers" }];
+  [{ key: "grid", label: "Grid" }, { key: "marker", label: "Markers" }, { key: "clamp", label: "Clamp tiles" }];
 const SELECT_KEYS: readonly {
   key: ChartBuilderKey;
   label: string;
@@ -144,6 +144,10 @@ const SELECT_KEYS: readonly {
   { key: "labels", label: "Bar labels", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
   { key: "histogram", label: "Resource band", clearValue: "off", options: [{ value: "off", label: "Hidden" }, { value: "on", label: "Shown" }] },
   { key: "minutes", label: "Times", clearValue: "off", options: [{ value: "off", label: "Whole days" }, { value: "on", label: "To the minute" }] },
+  {
+    key: "cardsize", label: "Tile size", clearValue: "m",
+    options: [{ value: "s", label: "Small" }, { value: "m", label: "Medium" }, { value: "l", label: "Large" }],
+  },
 ];
 const NUM_KEYS: readonly ChartBuilderKey[] = ["ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 

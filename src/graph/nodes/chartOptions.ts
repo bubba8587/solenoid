@@ -132,6 +132,9 @@ export interface ChartBuilderFields {
   minutes?: string;
   window?: string;
   columns?: string;
+  // The Record figure's own option keys (readCardSize / readClamp in visual.ts).
+  cardsize?: string;
+  clamp?: string;
   ymin?: number | null;
   ymax?: number | null;
   linewidth?: number | null;
@@ -172,6 +175,8 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
   str("minutes", f.minutes);
   str("window", f.window);
   str("columns", f.columns);
+  str("cardsize", f.cardsize);
+  str("clamp", f.clamp);
   if ((f.ymin != null && Number.isFinite(f.ymin)) || (f.ymax != null && Number.isFinite(f.ymax))) {
     const lo = f.ymin != null && Number.isFinite(f.ymin) ? f.ymin : "";
     const hi = f.ymax != null && Number.isFinite(f.ymax) ? f.ymax : "";
@@ -199,6 +204,7 @@ export function serializeChartOptions(f: ChartBuilderFields): string {
 export type ChartBuilderKey =
   | "title" | "xlabel" | "ylabel" | "color" | "grid" | "marker" | "pielabels" | "radarscale" | "zoom"
   | "layout" | "tiers" | "fit" | "critical" | "baseline" | "arrows" | "today" | "weekends" | "labels" | "histogram" | "minutes" | "window" | "columns"
+  | "cardsize" | "clamp"
   | "ymin" | "ymax" | "linewidth" | "markersize" | "alpha" | "fontsize";
 
 // The Chart node's own ops are first-class targets so the form can show ONLY the options
@@ -209,7 +215,7 @@ export type ChartTargetId =
   | "pie" | "radar" | "radialbar" | "funnel"
   | "composed" | "bubble"
   | "histogram" | "kpi" | "scale" | "proportion" | "sankey"
-  | "waterfall" | "candle" | "boxplot" | "calheat" | "gantt";
+  | "waterfall" | "candle" | "boxplot" | "calheat" | "gantt" | "record";
 
 const XY_KEYS: readonly ChartBuilderKey[] =
   ["title", "xlabel", "ylabel", "color", "grid", "ymin", "ymax", "alpha", "fontsize"];
@@ -241,6 +247,9 @@ const GANTT_TIMELINE_KEYS: readonly ChartBuilderKey[] =
   ["title", "fontsize", "zoom", "tiers", "layout", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns"];
 const GANTT_CALENDAR_KEYS: readonly ChartBuilderKey[] =
   ["title", "fontsize", "layout", "critical", "minutes", "window"];
+// The Record figure: title/fontsize plus its own gallery-tile keys (cardsize, clamp).
+const RECORD_KEYS: readonly ChartBuilderKey[] =
+  ["title", "fontsize", "cardsize", "clamp"];
 
 export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group: string; keys: readonly ChartBuilderKey[] }> = {
   column:    { label: "Column",           group: "Cartesian",    keys: XY_KEYS },
@@ -264,6 +273,7 @@ export const CHART_BUILDER_TARGETS: Record<ChartTargetId, { label: string; group
   boxplot:   { label: "Boxplot",          group: "Figures",      keys: TITLE_ONLY },
   calheat:   { label: "Calendar Heatmap", group: "Figures",      keys: TITLE_ONLY },
   gantt:     { label: "Gantt",            group: "Figures",      keys: GANTT_TIMELINE_KEYS },
+  record:    { label: "Record",           group: "Figures",      keys: RECORD_KEYS },
 };
 
 export const CHART_TARGET_LIST = (Object.keys(CHART_BUILDER_TARGETS) as ChartTargetId[])

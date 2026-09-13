@@ -1408,7 +1408,7 @@ export class QuiverNode extends ClassicPreset.Node {
 
 // ─── Chart Builder ────────────────────────────────────────────────────────────
 
-const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns"] as const;
+const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "cardsize", "clamp"] as const;
 const CB_NUM_FIELDS = ["ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"] as const;
 
 export class ChartBuilderNode extends ClassicPreset.Node {
@@ -1452,6 +1452,8 @@ export class ChartBuilderNode extends ClassicPreset.Node {
     this.addInput("minutes",   strIn("Times"));
     this.addInput("window",    strIn("Window"));
     this.addInput("columns",   strIn("Columns"));
+    this.addInput("cardsize",  strIn("Tile size"));
+    this.addInput("clamp",     strIn("Clamp tiles"));
     this.addInput("ymin",      numIn("Y min"));
     this.addInput("ymax",      numIn("Y max"));
     this.addInput("linewidth", numIn("Line width"));
@@ -1489,6 +1491,8 @@ export class ChartBuilderNode extends ClassicPreset.Node {
       minutes: str("minutes"),
       window: str("window"),
       columns: str("columns"),
+      cardsize: str("cardsize"),
+      clamp: str("clamp"),
       ymin:      num("ymin"),
       ymax:      num("ymax"),
       linewidth: num("linewidth"),
