@@ -10,7 +10,7 @@ import {
   type MathFnOp,
 } from "../../../src/graph/nodes/scalar";
 import { isSolError } from "../../../src/graph/errorValue";
-import { nodeDisplayName, nodeTypeName } from "../../../src/graph/catalogUtils";
+import { nodeDisplayName } from "../../../src/graph/catalogUtils";
 
 describe("Arithmetic", () => {
   it("does the four ops", () => {
@@ -132,15 +132,13 @@ describe("MROUND", () => {
     expect(new MRoundNode({ op: "up" }).data({ value: [10], multiple: [3] }).result).toBe(12);
     expect(new MRoundNode({ op: "up" }).data({ value: [2.1], multiple: [1] }).result).toBe(3);
     expect(new MRoundNode({ op: "up" }).data({ value: [-2.1], multiple: [1] }).result).toBe(-2); // toward +∞
-    const up = new MRoundNode({ op: "up" }); // card shows the family name, not the op
-    expect(nodeDisplayName(up)).toBe(nodeTypeName(up));
+    expect(nodeDisplayName(new MRoundNode({ op: "up" }))).toBe("CEILING");
   });
   it("op down = FLOOR toward −∞", () => {
     expect(new MRoundNode({ op: "down" }).data({ value: [10], multiple: [3] }).result).toBe(9);
     expect(new MRoundNode({ op: "down" }).data({ value: [2.9], multiple: [1] }).result).toBe(2);
     expect(new MRoundNode({ op: "down" }).data({ value: [-2.1], multiple: [1] }).result).toBe(-3); // toward −∞
-    const down = new MRoundNode({ op: "down" });
-    expect(nodeDisplayName(down)).toBe(nodeTypeName(down));
+    expect(nodeDisplayName(new MRoundNode({ op: "down" }))).toBe("FLOOR");
   });
   it("MROUND with opposite signs is #DOMAIN! (Excel #NUM!), same-sign computes", () => {
     const r = new MRoundNode().data({ value: [-10], multiple: [3] }).result;

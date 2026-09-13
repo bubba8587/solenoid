@@ -285,13 +285,12 @@ export function nodeName(node: object): string | null {
 }
 
 /** The name a placed node shows everywhere (card title, Navigator, Inspector, cable
- *  inspector, popups): the user's own label if typed, else the node's FAMILY name
- *  (class-derived), op-agnostic — so an op family's card reads "Series", not the op the
- *  dropdown already shows (NAME-3). The op-specific catalog label lives in search and the
- *  Inspector's reference line (nodeName). */
+ *  inspector, popups): the user's own label if typed, else the catalog name of its
+ *  current op — so an op family's card is named by its op (NAME-3). The op-agnostic
+ *  FAMILY name (nodeTypeName) is shown only on the card's hover type-hint. */
 export function nodeDisplayName(node: object): string {
   const label = ((node as { label?: string }).label ?? "").trim();
-  return label || nodeTypeName(node as { constructor: { name: string } });
+  return label || nodeName(node) || nodeTypeName(node as { constructor: { name: string } });
 }
 setNodeNamer(nodeDisplayName);
 export { nodeTypeName };

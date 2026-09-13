@@ -8,7 +8,7 @@ import { scheduleAutosave } from "../persistence";
 import { connectionVersionStore } from "../graphSignals";
 import { getOwningEditor, getOwningView } from "../activeGraph";
 import { reconcileTypesAfterEdit } from "../fcReconcile";
-import { nodeDisplayName } from "../catalogUtils";
+import { nodeName } from "../catalogUtils";
 import { collapseStore } from "../collapseStore";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
@@ -50,7 +50,7 @@ export function useIncomingSources(nodeId: string): Map<string, IncomingSource> 
     map.set(c.targetInput, {
       sourceId: c.source,
       sourceOutput: c.sourceOutput as string,
-      label: srcLabel || (src ? nodeDisplayName(src) : ""),
+      label: srcLabel || (src ? (nodeName(src) ?? "") : ""),
     });
   }
   return map;

@@ -817,9 +817,10 @@ RoundN at digits 0 is the same capability).
 nowhere else:
 | Name | Home | Shown on |
 |---|---|---|
-| **Name** | the class-derived FAMILY name (`nodeTypeName`), op-agnostic (NAME-3) | card title (default), header hover, Navigator, Inspector title, Problems / Pins / Comments / Status bar / Isolate / cable inspector / history, popup titles — all via `nodeDisplayName` (own label wins) |
+| **Name** | the catalog leaf label (`nodeCatalog.ts`); for an op family the CURRENT op's leaf/op label (NAME-3) | card title (default), Navigator, Inspector title, Problems / Pins / Comments / Status bar / Isolate / cable inspector / history, popup titles — all via `nodeDisplayName` (own label wins) |
+| **Family name** | the class name de-suffixed + spaced (`nodeTypeName`), op-agnostic | ONLY the card's hover-revealed right-side type-hint (`.solenoid-node__type-hint`) — "Series" for any Series op, "Math FX" for any math op; a wrong-reading family is fixed by renaming the class |
 | **Excel names** | `NODE_EXCEL[type]` | Inspector Excel rows; the description sign-off "Excel: X."; and the Add-menu SEARCH as a row that shows the name — "Table Size: ROWS" (`excelEntry`, the hidden-op row shape) whenever the Excel name is not already the row's own name or one of its ops |
-| **Op names** | the family's `OP_META` label (`nodeOps` reads it, one home) | the card's op dropdown; the Add-menu leaf label and search rows "Host: Op"; the Inspector reference line (`nodeName`) — never the card title |
+| **Op names** | the family's `OP_META` label (`nodeOps` reads it, one home) | the dropdown; hidden-op search rows "Host: Op"; the card title when the op has its own leaf |
 | **Formula name** | `fx ?? despace(label)` (`nodeOps`) | the formula surface; casing per NAME-4 |
 | **Socket labels** | `addInput/addOutput` | the card rows; bare nouns, hints in `socketDocs` (`socket-reference.md` §8) |
 | **Description** | the catalog / `OP_META` description | menu row, header hover, Inspector; voice per DESIGN §7 |
@@ -851,26 +852,30 @@ count/structural function" — a denylist ({ROWS, COLUMNS, ROW, COLUMN}) because
 (its two outputs are ROWS and COLUMNS).
 *Origin:* ROWS/COLUMNS — the D5 columns merge first shipped as a bare "Columns" node (author 2026-08-25).
 
-### NAME-3 — A placed card shows its FAMILY name, op-agnostic; the op lives in the dropdown and search **[author 2026-09-13, revised]**
-**MUST:** a placed node's default title is its class-derived FAMILY name (`nodeTypeName`) — the same
-for every op of the family: a Series card reads "Series" whether it is Range or Fibonacci, a math
-card reads "Math FX" for SIN or COS. The card's own op dropdown carries the op, so the header must
-NOT repeat it. The op-specific catalog label appears only in the Add-menu (the leaf/search rows,
-including the generated `Family: Op` search form) and the Inspector's reference line (`nodeName`),
-never as a card title. The ONE display derivation is `nodeDisplayName` (`catalogUtils.ts`): the
-user's own label if typed, else `nodeTypeName`; every surface that names a node (card header,
-Navigator, Inspector title, cable inspector, popup titles) reads it. Because the family name is the
-class name de-suffixed and spaced, a family that reads wrong is fixed by RENAMING THE CLASS (e.g.
-`MathFnNode` → `MathFXNode`), never an override map. No class hardcodes an op-specific title
-(`this.label = init?.label ?? ""` for every operation family) and no component syncs a label on op
-change. A leaf is still a card-shaped name: no glyph prefixes ("+ Add"), no hints, and an "X / Y"
-row that creates only X is split into two leaves (`leafOps`).
+### NAME-3 — The Add-menu row and the card it creates share one name; an op family's card is named by its op **[author 2026-08-25]**
+**MUST:** a placed node's default title is the catalog name of what the user clicked — for an op
+family (`kind: "operation"`), the name of its CURRENT op, live: a placed ABS reads "ABS", never
+"Math"; switching XNPV's toggle to Periodic retitles it "NPV". No class hardcodes a family title
+(`this.label = init?.label ?? ""` for every operation family) and no component syncs a label on
+op change; the ONE derivation is `nodeDisplayName` (`catalogUtils.ts`): the user's own label if
+typed, else `nodeName` (the op-aware catalog index, which skips the generated `Host: Op` search
+rows), else the class name. Every surface that names a node (card header, Navigator, Inspector,
+cable inspector, history digest, popup titles) reads it. A leaf name is therefore a card title:
+no glyph prefixes ("+ Add"), no hints ("ROUND to N digits"), and a "X / Y" row that creates only
+X is split into two leaves (`leafOps`).
 
-*Why:* the op dropdown pinned to the card already shows the op, so a header that repeats it printed
-the same string three times; the family name instead says what KIND of node it is, once, and the
-dropdown says which op.
-*Enforced by:* `cardTitle.test.ts` → the unlabeled op leaves of one class all resolve to a single
-card name (op-agnostic), and no card title carries the search-only `Family: Op` form.
+**The card's hover type-hint is the exception (author 2026-09-13):** the small right-side hint
+(`.solenoid-node__type-hint`, revealed on hover) shows the op-agnostic FAMILY name (`nodeTypeName`
+— "Series", "Math FX"), NOT the op the header and dropdown already carry. Because that name is the
+class name de-suffixed and spaced, a family that reads wrong is fixed by RENAMING THE CLASS (e.g.
+`MathFnNode` → `MathFXNode`), never an override map.
+
+*Why:* the name on the canvas is the only thing a reader has; a card titled by its family
+("Aggregate", "Arithmetic") or by a sibling op ("IRR" on a dated XIRR) misreports what it
+computes, and the Add menu then names things the canvas never shows. The hover type-hint says the
+KIND once without duplicating the op dropdown.
+*Enforced by:* `cardTitle.test.ts` → every non-generated catalog leaf's `nodeDisplayName(create())`
+equals the leaf label (Conduit's serial and the composite boundary's "Input"/"Output" exempt).
 
 ### NAME-4 — An ALL-CAPS label claims a callable function name; anything else is Title Case **[author 2026-08-25]**
 **MUST:** a catalog leaf label or a `NODE_OPS` op label written ALL CAPS (incl. dotted, e.g.

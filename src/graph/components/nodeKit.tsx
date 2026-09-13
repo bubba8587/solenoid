@@ -13,7 +13,7 @@ import { NodeCard, HEADER_TAP_SLOP, useHeaderHeightVar } from "./NodeCard";
 import { LazySelect } from "./LazySelect";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { useDraftCommit } from "./inlineInput";
-import { describeNode, nodeDisplayName } from "../catalogUtils";
+import { describeNode, nodeName, nodeTypeName } from "../catalogUtils";
 import { descriptionText } from "../descriptionMd";
 
 // Tooltips render no markup, so the description's markdown marks strip.
@@ -232,8 +232,10 @@ function textOffsetAtPoint(root: HTMLElement, x: number, y: number): number | nu
 // the editing textarea and the static title agree.
 const LABEL_MAX_HEIGHT = 60;
 
+// The hover-revealed right-side hint (.solenoid-node__type-hint): the op-agnostic FAMILY
+// name (Series, Math FX), never the op — the op dropdown and the header carry that.
 function typeHint(node: ShellNode): string {
-  return nodeDisplayName(node);
+  return nodeTypeName(node as { constructor: { name: string } });
 }
 
 // Lucide "message-square" — matches NodeContextMenu's Add-comment icon.
@@ -317,7 +319,7 @@ export function NodeShell({
 
   // An explicit placeholder wins, else the catalog name — so a cleared title
   // never collapses the header to a zero-height sliver.
-  const effectivePlaceholder = labelPlaceholder ?? nodeDisplayName(node);
+  const effectivePlaceholder = labelPlaceholder ?? nodeName(node) ?? undefined;
 
   // The SETTING, not the zoom state — changes only on a Settings click, so the
   // full-graph re-render it triggers is fine; see the semantic div below.
