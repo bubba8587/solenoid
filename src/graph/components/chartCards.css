@@ -253,6 +253,15 @@
 }
 .sol-record-card > .sol-record-figtitle,
 .sol-record-card > .sol-record-nav { flex: none; }
+/* Fill the grid AREA the pager leaves: the tile grid takes the whole height and its
+   rows stretch to share it (align-items:stretch already stretches each box). On an
+   auto-height host the 100% resolves to auto and the 1fr rows fall back to content,
+   so the node card / unsized Display are unchanged. Card view only — gallery, board
+   and list own their sizing. */
+.sol-record-card__grid > .sol-record {
+  height: 100%;
+  grid-auto-rows: minmax(0, 1fr);
+}
 
 /* Row pager under a drawn card (Display / popup); mirrors the node card's pager. */
 .sol-record-nav {
