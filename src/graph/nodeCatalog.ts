@@ -232,7 +232,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
     type: "category", label: "Output", description: "Display, convert, and visualize values at the end of a chain.",
     children: [
       { type: "display",   label: "Display",  description: "Shows a value. Pass-through, so wiring continues after it.", create: () => new DisplayNode(), accent: NODE_KIND_ACCENTS.util },
-      { type: "format-controller", label: "Format", description: "Sets a docked socket's number format (decimal, fraction, %, currency…) and a unit label like `°C`, `m`, or `kg`. Units must match on connected cables.", create: () => new FormatControllerNode() },
+      { type: "format-controller", label: "Format Controller", description: "Sets a docked socket's number format (decimal, fraction, %, currency…) and a unit label like `°C`, `m`, or `kg`. Units must match on connected cables.", create: () => new FormatControllerNode() },
       {
         // General plotters stay top-level; specialist figures cluster by what they show.
         type: "category", label: "Visuals", description: "Inline charts and readouts: plot or visualize a value at the end of a chain. All pass-through.",

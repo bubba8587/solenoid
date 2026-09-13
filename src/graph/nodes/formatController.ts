@@ -137,7 +137,7 @@ export class FormatControllerNode extends ClassicPreset.Node {
     socketDataType?: SocketDataType;
   }) {
     super("FormatController");
-    this.label = init?.label ?? "Format";
+    this.label = init?.label ?? "Format Controller";
     this.hostNodeId = init?.hostNodeId ?? "";
     this.socketKey  = init?.socketKey  ?? "";
     this.side       = init?.side       ?? "output";
