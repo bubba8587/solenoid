@@ -203,7 +203,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
         ],
       },
       {
-        type: "category", label: "Connections", description: "Data from outside the graph: web and local files, live feeds, keyless lookups, and your Obsidian vault, plus the sinks that write back. Stores the source, not the data. Refresh to re-pull.",
+        type: "category", label: "Connections", description: "Data from outside the graph: web and local files, live feeds, and keyless lookups, plus the sinks that write back. Stores the source, not the data. Refresh to re-pull.",
         children: [
           { type: "web-source",    label: "Web Source",  description: "Loads a Frame from a CSV or JSON URL. Columns are auto-typed. Stores the URL, not the data: refresh to re-pull. Desktop fetches any URL. The browser only fetches CORS-enabled ones.", create: () => new WebSourceNode(), parity: false },
           { type: "data-feed",     label: "Data Feed",   description: "Live economic and market data as a Frame: FRED series with no key, stock history through Alpha Vantage with a free key. Stores the series id or ticker, not the data. Refresh re-pulls. Desktop works with arbitrary URLs. The browser is CORS-limited.", create: () => new DataFeedNode(), parity: false },
@@ -222,16 +222,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
             { type: "holidays",      label: "Holidays",    description: "Public holidays for a country and year: a frame of date, name and local name, the dates on their own for NETWORKDAYS and WORKDAY, and the days until the next one. Add a region like US-CA for subdivision holidays. No key needed.", create: () => new HolidaysNode(), parity: false, keywords: "holiday holidays public bank national country region nager networkdays workday calendar days off" },
             { type: "fx",            label: "Currency",    description: "Converts an amount between currencies at the latest ECB reference rate (Frankfurter, about 30 currencies, updated once per business day). The result carries the target currency as a unit, the way Convert does, alongside the rate and its as-of date. Switch to History for a date range's daily rates as a table to chart. No key needed.", create: () => new FxNode(), parity: false, keywords: "currency fx exchange rate money forex frankfurter ecb usd eur gbp dollar euro convert conversion history time series chart" },
           ]},
-          {
-            type: "category", label: "Obsidian", description: "Your vault as data and back: notes and tasks in, notes and properties out. A folder of tasks read as a Vault Folder gives title, status, priority, due and tags; TaskNotes adds the rest. Set the vault in Settings ▸ Obsidian. Desktop only.",
-            children: [
-              { type: "vault-folder", label: "Vault Folder", description: "Reads an Obsidian vault folder as one cube: a row per note, the file columns plus every frontmatter key, lists and nested tables kept in the cells. Types come from an mdbase schema or types.json when present. Stores the folder, not the notes. Desktop only.", create: () => new VaultFolderNode(), parity: false, keywords: "obsidian vault notes markdown frontmatter cube folder mdbase bases properties tags links daily notes tasknotes" },
-              { type: "import-obsidian", label: "Import Obsidian Note", description: "Picks a `.md` note from your Obsidian vault as a read-only Note: frontmatter becomes typed outputs, the body renders inline. Reload re-reads from disk. Set the vault in Settings ▸ Obsidian. Desktop only.", create: () => new ImportObsidianNode(), parity: false, keywords: "obsidian vault markdown md note import read source frontmatter" },
-              { type: "tasknotes", label: "TaskNotes", description: "Reads what a folder of files can't total: time tracked per task, recurring and completed instances, the calendar of events between two dates, the task-count stats. Through the TaskNotes plugin's local API. Turn the API on in the plugin; the address is in Settings ▸ Obsidian, the token on the card.", create: () => new TaskNotesNode(), parity: false, keywords: "tasknotes task notes obsidian plugin api tasks todo due scheduled projects calendar events stats time tracking timeEntries" },
-              { type: "write-obsidian", label: "Write to Obsidian", description: "Writes a Note, a Report, or a cube of rows into your Obsidian vault. A Note or Report becomes one markdown note with its tables, diagrams, math and charts; a mail-merge Report writes one note per page. Rows write each note's frontmatter and body, keyed by a path column and patched line by line. Preview shows what Run would do. Never writes on its own. Desktop only.", create: () => new WriteObsidianNode(), parity: false, keywords: "obsidian vault markdown md note export sink write document properties frontmatter yaml note-body cube patch bases plan preview" },
-              { type: "write-tasks", label: "Write Tasks", description: "Creates or updates TaskNotes tasks from rows: a row with a path updates that task, one without creates it from its title. Sends the writable task fields present, or the ones you list. Preview marks the rows that would not change; Run sends the rest. Never writes on its own.", create: () => new WriteTasksNode(), parity: false, keywords: "write tasks tasknotes obsidian create update sink api post put plan preview" },
-            ],
-          },
         ],
       },
     ],
@@ -293,10 +283,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
         { type: "convert", label: "Convert", description: "Converts between measurement units: degrees ↔ radians, length, mass, temperature, time, area, volume, speed, energy, pressure. Excel: `CONVERT`.", create: () => new ConvertNode() },
         { type: "cast", label: "Cast", description: "Change a value's data type: number, text, date serial, Boolean `TRUE` or `FALSE`, or complex. Works element-wise on lists. Excel: `TEXT`, `VALUE`.", create: () => new CastNode(), parity: false },
       ]},
-      { type: "pair", children: [
-        { type: "note", label: "Note", description: "A free-floating markdown note, any position, any tint. Open the body with a ----fenced YAML block to turn each key into a typed output, a note doubling as a constants source. The body is a Knap template over those fields: `{{ title }}`, `{% if %}`, `{% for %}` and the standard filters.", create: () => new NoteNode(), parity: false },
-        { type: "report", label: "Report", description: "A standalone markdown document written as a Knap template. A bare `{{ name }}` embeds the wired value as the canvas shows it; `{% for %}` repeats over a frame, `{% if %}` gates a section, and filters shape the text. A Note on Template supplies the text instead. Records makes it a mail merge, one page per row. The Knap tab in Help has the syntax.", keywords: "mail merge merge fields letters one note per row batch template document markdown knap", create: () => new ReportNode(), parity: false },
-      ]},
       { type: "group", label: "Group", description: "A container: drop it around nodes, or select them and press Ctrl+G. Its header moves them together. Collapse it to a summary.", create: () => new GroupNode(), parity: false },
       // Query ships a PENDING internal snapshot, so every add path must hydrate the
       // CompositeNode right after create().
@@ -338,8 +324,10 @@ export const NODE_CATALOG: CatalogEntry[] = [
   {
     type: "category", label: "Numbers", description: "Scalar math: arithmetic, functions, rounding, and trigonometry.",
     children: [
-      { type: "expression", label: "Expression", description: "A formula like `a*b+1`: named variables become input sockets. Math functions, constants `pi` / `tau` / `e` / `phi`, element-wise broadcasting over lists and matrices, the dynamic-array core (`TRANSPOSE`, `MMULT`, `SEQUENCE`…), complex numbers, `LAMBDA` as a value. Any function loops over arrays (`UPPER(name)`). A name here computes what its visual node computes. Frames and cubes stay out by design: the table verbs are nodes. Row formulas live in Computed Column.", create: () => new ExpressionNode(), accent: NODE_KIND_ACCENTS.math },
-      { type: "equation", label: "Equation", description: "A relation like `V = I * R`: every variable is an input and an output. Leave one unwired and it solves: algebraically where the equation inverts, numerically otherwise. A quadratic returns every real root as a list. All wired → Check turns `TRUE` or `FALSE`. Numbers and 1-D lists. √ and trig inversions take the principal branch.", create: () => new EquationNode(), accent: NODE_KIND_ACCENTS.math, keywords: "solve rearrange unknown goal seek formula bidirectional check quadratic roots" },
+      { type: "pair", children: [
+        { type: "expression", label: "Expression", description: "A formula like `a*b+1`: named variables become input sockets. Math functions, constants `pi` / `tau` / `e` / `phi`, element-wise broadcasting over lists and matrices, the dynamic-array core (`TRANSPOSE`, `MMULT`, `SEQUENCE`…), complex numbers, `LAMBDA` as a value. Any function loops over arrays (`UPPER(name)`). A name here computes what its visual node computes. Frames and cubes stay out by design: the table verbs are nodes. Row formulas live in Computed Column.", create: () => new ExpressionNode(), accent: NODE_KIND_ACCENTS.math },
+        { type: "equation", label: "Equation", description: "A relation like `V = I * R`: every variable is an input and an output. Leave one unwired and it solves: algebraically where the equation inverts, numerically otherwise. A quadratic returns every real root as a list. All wired → Check turns `TRUE` or `FALSE`. Numbers and 1-D lists. √ and trig inversions take the principal branch.", create: () => new EquationNode(), accent: NODE_KIND_ACCENTS.math, keywords: "solve rearrange unknown goal seek formula bidirectional check quadratic roots" },
+      ]},
       { type: "script", label: "Script", description: "A node for JavaScript input. `[ ]` returns a List, `[[ ]]` a Table, `[{name: value}, …]` a Frame, `[{name: [rows]}, …]` a Cube; `Solenoid.date(serial)` returns a Date. Runs sandboxed and time-gated to 1 second.", keywords: "script javascript js code function program custom", create: () => new ScriptNode(), accent: NODE_KIND_ACCENTS.math },
       {
         type: "category", label: "Arithmetic", description: "Two-input operations on numbers.",
@@ -463,6 +451,37 @@ export const NODE_CATALOG: CatalogEntry[] = [
               { type: "cx-quadratic", label: "Quadratic Roots", description: "Both roots of `ax² + bx + c = 0` as complex numbers. A negative discriminant gives the conjugate pair. The Equation node covers the real-root case.", create: () => new QuadraticRootsNode(), parity: false, keywords: "quadratic formula discriminant complex roots polynomial" },
             ],
           },
+        ],
+      },
+      {
+        type: "category", label: "Distributions", description: "Probability distributions and related helpers.",
+        children: [
+          { type: "distribution", label: "Distribution", description: "Every probability distribution in one node: pick the distribution (normal, t, chi-squared, F, beta, gamma, lognormal, Weibull, exponential, binomial, Poisson, hypergeometric, negative binomial), then the form: CDF, PDF or PMF, a tail, or the inverse (quantile). The inverse trades the x input for a probability. Excel: the `NORM.DIST` / `T.INV` / `BINOM.DIST` families.", create: () => new DistributionNode(), keywords: "distribution probability cdf pdf pmf inverse quantile percentile critical value tail gaussian bell curve critbinom phi gauss standard normal density" },
+          { type: "pair", children: [
+            { type: "stat-standardize", label: "STANDARDIZE", description: "z-score: `(value − mean) ÷ std dev`. Excel: `STANDARDIZE`.", create: () => new StandardizeNode(), keywords: "probability z score normalize" },
+            { type: "binomdistrng", label: "BINOM.DIST.RANGE", description: "`P(lo ≤ X ≤ hi)`: the sum of binomial PMFs over a range. Excel: `BINOM.DIST.RANGE`.", create: () => new BinomDistRangeNode(), keywords: "binom.dist.range" },
+          ]},
+        ],
+      },
+    ],
+  },
+
+  // ── DOCUMENTS ────────────────────────────────────────────────────────────────
+  {
+    type: "category", label: "Documents", description: "Free-form documents: markdown notes and reports, and your Obsidian vault as data and back.",
+    children: [
+      { type: "pair", children: [
+        { type: "note", label: "Note", description: "A free-floating markdown note, any position, any tint. Open the body with a ----fenced YAML block to turn each key into a typed output, a note doubling as a constants source. The body is a Knap template over those fields: `{{ title }}`, `{% if %}`, `{% for %}` and the standard filters.", create: () => new NoteNode(), parity: false },
+        { type: "report", label: "Report", description: "A standalone markdown document written as a Knap template. A bare `{{ name }}` embeds the wired value as the canvas shows it; `{% for %}` repeats over a frame, `{% if %}` gates a section, and filters shape the text. A Note on Template supplies the text instead. Records makes it a mail merge, one page per row. The Knap tab in Help has the syntax.", keywords: "mail merge merge fields letters one note per row batch template document markdown knap", create: () => new ReportNode(), parity: false },
+      ]},
+      {
+        type: "category", label: "Obsidian", description: "Your vault as data and back: notes and tasks in, notes and properties out. A folder of tasks read as a Vault Folder gives title, status, priority, due and tags; TaskNotes adds the rest. Set the vault in Settings ▸ Obsidian. Desktop only.",
+        children: [
+          { type: "vault-folder", label: "Vault Folder", description: "Reads an Obsidian vault folder as one cube: a row per note, the file columns plus every frontmatter key, lists and nested tables kept in the cells. Types come from an mdbase schema or types.json when present. Stores the folder, not the notes. Desktop only.", create: () => new VaultFolderNode(), parity: false, keywords: "obsidian vault notes markdown frontmatter cube folder mdbase bases properties tags links daily notes tasknotes" },
+          { type: "import-obsidian", label: "Import Obsidian Note", description: "Picks a `.md` note from your Obsidian vault as a read-only Note: frontmatter becomes typed outputs, the body renders inline. Reload re-reads from disk. Set the vault in Settings ▸ Obsidian. Desktop only.", create: () => new ImportObsidianNode(), parity: false, keywords: "obsidian vault markdown md note import read source frontmatter" },
+          { type: "tasknotes", label: "TaskNotes", description: "Reads what a folder of files can't total: time tracked per task, recurring and completed instances, the calendar of events between two dates, the task-count stats. Through the TaskNotes plugin's local API. Turn the API on in the plugin; the address is in Settings ▸ Obsidian, the token on the card.", create: () => new TaskNotesNode(), parity: false, keywords: "tasknotes task notes obsidian plugin api tasks todo due scheduled projects calendar events stats time tracking timeEntries" },
+          { type: "write-obsidian", label: "Write to Obsidian", description: "Writes a Note, a Report, or a cube of rows into your Obsidian vault. A Note or Report becomes one markdown note with its tables, diagrams, math and charts; a mail-merge Report writes one note per page. Rows write each note's frontmatter and body, keyed by a path column and patched line by line. Preview shows what Run would do. Never writes on its own. Desktop only.", create: () => new WriteObsidianNode(), parity: false, keywords: "obsidian vault markdown md note export sink write document properties frontmatter yaml note-body cube patch bases plan preview" },
+          { type: "write-tasks", label: "Write Tasks", description: "Creates or updates TaskNotes tasks from rows: a row with a path updates that task, one without creates it from its title. Sends the writable task fields present, or the ones you list. Preview marks the rows that would not change; Run sends the rest. Never writes on its own.", create: () => new WriteTasksNode(), parity: false, keywords: "write tasks tasknotes obsidian create update sink api post put plan preview" },
         ],
       },
     ],
@@ -739,18 +758,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
           },
         ],
       },
-    ],
-  },
-
-  // ── DISTRIBUTIONS ────────────────────────────────────────────────────────────
-  {
-    type: "category", label: "Distributions", description: "Probability distributions and related helpers.",
-    children: [
-      { type: "distribution", label: "Distribution", description: "Every probability distribution in one node: pick the distribution (normal, t, chi-squared, F, beta, gamma, lognormal, Weibull, exponential, binomial, Poisson, hypergeometric, negative binomial), then the form: CDF, PDF or PMF, a tail, or the inverse (quantile). The inverse trades the x input for a probability. Excel: the `NORM.DIST` / `T.INV` / `BINOM.DIST` families.", create: () => new DistributionNode(), keywords: "distribution probability cdf pdf pmf inverse quantile percentile critical value tail gaussian bell curve critbinom phi gauss standard normal density" },
-      { type: "pair", children: [
-        { type: "stat-standardize", label: "STANDARDIZE", description: "z-score: `(value − mean) ÷ std dev`. Excel: `STANDARDIZE`.", create: () => new StandardizeNode(), keywords: "probability z score normalize" },
-        { type: "binomdistrng", label: "BINOM.DIST.RANGE", description: "`P(lo ≤ X ≤ hi)`: the sum of binomial PMFs over a range. Excel: `BINOM.DIST.RANGE`.", create: () => new BinomDistRangeNode(), keywords: "binom.dist.range" },
-      ]},
     ],
   },
 
