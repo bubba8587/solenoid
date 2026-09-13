@@ -14,4 +14,4 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 
 ## Claims
 
-- (none yet — 2026-09-13: peers take only work the author rules on in the decision chat.)
+- Agent 2 (solenoid-41, `be`) — 2026-09-13 compositesHoldUntilSolve: heavy composites never solve until Solve/Refresh (composite.ts data() gate, pins, decisions.md, backlog line).
