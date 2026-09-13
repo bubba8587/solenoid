@@ -14,4 +14,4 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 
 ## Claims
 
-- Agent 2 (solenoid-41, `be`) — 2026-09-13 Payment Breakdown ONE card (backlog § Finance, 1.4 D2).
+- (none yet — 2026-09-13: peers take only work the author rules on in the decision chat.)
