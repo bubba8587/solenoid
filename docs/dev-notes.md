@@ -6,6 +6,34 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-13b — solo with author; Chart Builder, catalog, family names)
+
+Rapid author-driven pass; all on `develop`, nothing pushed.
+
+- **Chart Builder.** Gantt's timeline and month-calendar layouts now offer different option
+  sets — `chartBuilderKeys(target, layout)` narrows the calendar to what it actually reads
+  (title, fontsize, layout, critical, minutes, window); timeline keeps the full set, inert
+  rows still show dimmed. **Record** gained a Chart Builder target (title / fontsize / cardsize
+  / clamp) — it had an Options socket the builder never covered.
+- **Copy-edit freeze** (`devCopyEdit.ts`). Restores the element's `innerHTML` on exit instead
+  of `textContent` (a markdown-rendered description no longer flattens to plain text and stick),
+  and flags `.sol-copyediting` while an edit is open so the Inspector's 150ms poll holds — a
+  re-render can't repaint rendered markup over the raw source under the caret. A corrupted List
+  Input description (backticks stripped by the old bug) was restored.
+- **7-Segment node removed** entirely (class, view, payload, `sevenseg` op, catalog + registry).
+- **Add menu reorg.** New **Docs & Files** category (Note, Report, the Obsidian group nested,
+  Image / File Link / SVG / Promo, QR) — it absorbed the old **Other**, whose pack-fallback role
+  moved with it (`catalogUtils` placement fallback, `packShared`, function-reference / AI-grounding
+  top-group). **Distributions** folded under **Numbers**; **Expression | Equation** paired; the
+  **Format** node is now **Format Controller**.
+- **NAME-3 revised** (rules.md). A placed card shows its class-derived FAMILY name (`nodeTypeName`),
+  op-agnostic — the op dropdown on the card carries the op, so the header no longer repeats it. Every
+  display surface (`nodeDisplayName`, plus the header placeholder / typeHint / Navigator / cable-source
+  label that called `nodeName` directly) now reads the family; the op label lives only in search and the
+  Inspector reference line. Classes renamed for clean names: `MathFnNode`→`MathFXNode` ("Math FX"),
+  `NpvNode`→`NPVNode`, `IrrNode`→`IRRNode`, `GcdNode`→`GCDNode` (type = class name, so seeds + the
+  personal-finance generator moved too). Remaining awkward names backlogged (family-name polish).
+
 ### SESSION DIGEST (2026-09-13 — the decision walk; author present, two agents)
 
 The author walked the "review with the author" backlog items one per turn; the Lead

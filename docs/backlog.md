@@ -147,3 +147,15 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   loose expression chain was wrapped beside two pre-existing groups rather than merged. Not swept:
   sudoku-solver, composite-workbench, zz-scratch-new-nodes (not teaching galleries),
   personal-finance and live-market-data (held from tuning, see the 09-03 digest).
+
+## Family-name polish (NAME-3 revised 2026-09-13 — card shows the class-derived family name)
+
+A few families still read awkwardly as `nodeTypeName` output. Fix = rename the class
+(no override map, NAME-3), verifying seeds + the generator (type = class name):
+- [ ] `IFErrorNode` → "If Error"; `MatDetNode` → a real family name (covers MDETERM /
+  MINVERSE / TRACE / NORM / MATRIXRANK — "Matrix"?); `MRoundNode` → a name for the
+  MROUND / CEILING / FLOOR family. Author picks the two names.
+- [ ] "URL Encode" / "E-Series" can't come from a class rename: `nodeTypeName` only
+  splits camelCase (lower→upper), so `URLEncode` and `ESeries` don't gain the space/hyphen.
+  Either teach `nodeTypeName` acronym/hyphen handling (a derivation tweak, author to okay)
+  or accept "Url Encode" / "ESeries".
