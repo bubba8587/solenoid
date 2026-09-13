@@ -14,4 +14,5 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 
 ## Claims
 
+- Agent 2 (solenoid-41, `be`) — 2026-09-13 Chip style renders in the editable table popup (unfocused cells; raw on focus).
 - Agent 3 (solenoid-b3, `fe`) — 2026-09-13 widget follow-ups: Currency history op (frame), TZ Convert zone datalist, TZ result defaults to datetime.
