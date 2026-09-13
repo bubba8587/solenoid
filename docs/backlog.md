@@ -36,15 +36,6 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
   Solver's shape as a sixth composite run mode beside Goal Seek; spec + steps in `1.4-plan.md`
   § A6. Gate: the author says go (and settles the constraint forms; integer no).
 
-## Tables
-
-- [ ] **Chip + case compose (1.4 B2.2 follow-up).** The Chip style (LANDED B2.2) shares the
-  text-family style dropdown with letter-case, so it's exclusive with UPPER/lower/Proper this
-  tranche. If wanted, let a chip also carry a case — a separate `chip` toggle beside the case
-  dropdown rather than a fifth dropdown value (`chip` is already its own annotation flag).
-  Record color-by and conditional formatting still inherit the one chip mechanism; enum column
-  TYPE stays 2.0 (author).
-
 ## Sources
 
 - [ ] **Widget nodes Tier 2 (`v2.0/16`):** Air Quality/Pollen preset of Weather, Ticking Now timer.
@@ -127,10 +118,20 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 - [ ] **Triangle Solver's angle inputs are bare degrees** (a rad-tagged trig output wired in
   reads as degrees); a per-input unit read would close it.
-- [ ] **TEXTJOIN with a blank ignore_empty** treats it as TRUE (formulajs); Excel reads the blank
-  argument as FALSE. Document or map. Older long tooltips / descriptions (Decision Matrix,
-  Sensitivity, Allocator, Record layout, Chart values, Slider bounds, 200-plus-character catalog
-  entries) are the same copy class the 2026-09-12b cut fixed for the new nodes; a separate sweep.
+- [ ] **blankArgIsExcelBlank — RULED 2026-09-13, not started.** A blank formula argument slot
+  (`null` from the parser) is Excel's blank (0 / FALSE / ""); an omitted one (`undefined`) is the
+  default. One typed table `{FN: {argIndex: number|logical|text}}` wrapping the fn `fxLookup`
+  returns (`excelFunctions.ts` ~220); the `registerInternal` overrides bypass it and are audited
+  separately: TEXTJOIN (~969) treats a blank `ignore_empty` as TRUE → must give `a,,b`; ROUND/MOD
+  already read a blank as 0 (keep); XLOOKUP/XMATCH `xMatchModeArg`/`xSearchModeArg` (~1261) carry the
+  "blank = omitted" SEQUENCE convention to remove (match_mode blank→0 = exact, no behavior change;
+  search_mode blank is likely #VALUE! in Excel, verify against the Microsoft reference before
+  adding). formulajs candidates to verify empirically: VLOOKUP/HLOOKUP range_lookup (logical),
+  MATCH match_type (number). Table-driven parity test, a `rules.md` MUST, a decisions line; remaining
+  divergences → `formulajs-divergences.md` + catalog parity:false.
+- [ ] **Older long tooltips / descriptions** (Decision Matrix, Sensitivity, Allocator, Record
+  layout, Chart values, Slider bounds, 200-plus-character catalog entries) are the copy class the
+  2026-09-12b cut fixed for the new nodes; a separate sweep. Author call pending: now or release tail.
 
 - [ ] **LATER (author, 2026-09-04): fold the Format Controller into the Display** — format and
   unit set at sources and displays, flowing downstream only; the docking subsystem and the

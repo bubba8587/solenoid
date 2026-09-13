@@ -4,7 +4,7 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 
 **Protocol.** Agents message each other directly for live coordination; this board is only the durable claim list (one line per claim, delete on land) so a late-joining or restarted agent knows what's taken. Agent 1 is Lead. The durable role split, shared-file policy, and commit/push rules live in the agent's memory.
 
-**Session 2026-09-13 (author present).** A1 = Lead = `solenoid-0f` (main checkout, `develop`). Peers: `solenoid-41` = Agent 2 in `.claude/worktrees/be` (branch `be`); `solenoid-b3` = Agent 3 in `.claude/worktrees/fe` (branch `fe`). Same protocol as 09-12 below.
+**Session 2026-09-13 (author present; wrapped).** A1 = Lead = `solenoid-0f`; `solenoid-41` = Agent 2 (`be`), `solenoid-b3` = Agent 3 (`fe`). Everything ruled that day merged into `develop`; be / fe level and clean at close. Same protocol as 09-12 below.
 
 **Session 2026-09-12.** A1 = Lead = `solenoid-9d` (main checkout, `develop`). Peers: `solenoid-35` = Agent 2 in `.claude/worktrees/be` (branch `be`), `solenoid-0d` = Agent 3 in `.claude/worktrees/fe` (branch `fe`); each merges `develop` in at start, commits freely there, messages the Lead a hash when green; the Lead merges into `develop`. Nobody pushes. Lead runs a half-hourly cron check-in.
 
@@ -14,5 +14,4 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 
 ## Claims
 
-- Agent 3 (solenoid-b3, `fe`) — 2026-09-13 blankArgIsExcelBlank — a blank formula argument slot (`null`) is Excel's blank (0 / FALSE / ""), an omitted one (`undefined`) the default; one typed table at the formulajs boundary + internal overrides audited; TEXTJOIN ignore_empty is the first row.
 
