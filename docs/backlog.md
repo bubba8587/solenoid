@@ -104,11 +104,12 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 ## Landing pages
 
-- [ ] **Finish the landing/Obsidian scene rebuild.** Most feature scenes are now real locked canvases
-  (`landing/SceneStage.tsx`); what remains hand-built DOM/SVG: MonteCarlo + Presenter (landing) and the
-  Obsidian page's Pipeline / VaultFolder / ImportObsidian illustrations. The last three can now become
-  real canvases reading the **demo vault** (`demoVault.ts`) — TaskNotes still needs its HTTP API, and
-  LocalFile would need a bundled CSV. MonteCarlo/Presenter don't map cleanly to a single locked pass.
+- [ ] **Finish the landing/Obsidian scene rebuild.** Feature scenes are now real canvases: the
+  Obsidian hero is a live interactive `LiveGraph` (report pipeline, `ReportOverlay` mounted), the
+  "vault as a table" scene reads the demo vault (`VaultTableScene`), and Import-a-Note is real
+  (`NoteImportScene`). Still hand-built DOM/SVG: MonteCarlo + Presenter (landing) — neither maps to a
+  single locked pass — and the Obsidian page's TaskNotes + LocalFile illustrations (TaskNotes needs its
+  HTTP API, LocalFile a bundled CSV).
 
 ## Cables
 
