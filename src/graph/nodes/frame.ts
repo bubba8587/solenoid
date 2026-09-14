@@ -175,7 +175,11 @@ export class FrameInputNode extends ClassicPreset.Node {
   // Return the SAME FrameValue object while the text is unchanged — a fresh one per
   // data() defeats the backend's identity source-cache (re-uploads the frame to Rust).
   private _builtFrom: string | undefined;
-  width = 240; height = 220;
+  // Reserves the full default card: header, the "+ Add lambda" and "+ Add Form layout"
+  // rows, and the 3-row-capped table preview (with its overflow "…" row + chip). The
+  // old 220 predated the two add-buttons, so Tidy/ELK under-reserved and stacked a
+  // neighbor into the card. Cap-bounded, so a static height stays correct.
+  width = 240; height = 280;
 
   constructor(init?: { label?: string; frameText?: string; lambdaKeys?: string[]; layoutHidden?: boolean }) {
     super("FrameInput");
