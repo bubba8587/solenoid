@@ -411,6 +411,17 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     };
   }, [s, getViewport, setViewport]);
 
+  // noContextMenu: kill the context menu at the DOM in capture phase too, so a
+  // TOUCH long-press (which RF's onPaneContextMenu does not reliably see) can't
+  // raise the Add menu or the native menu on the demo canvas.
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el || !hooksRef.current.noContextMenu) return;
+    const eat = (e: Event) => e.preventDefault();
+    el.addEventListener("contextmenu", eat, true);
+    return () => el.removeEventListener("contextmenu", eat, true);
+  }, [s]);
+
   // Isolate: view-only focus — positions snapshot on enter, restored on exit;
   // receded nodes dim via the live RF elements.
   useEffect(() => {
