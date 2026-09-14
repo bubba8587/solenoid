@@ -1,0 +1,3 @@
+# Retired decision ids. Never reissued. Text lives in git history.  dte:C11
+# id	date	action	successor	by	authorized_by	title
+C4	2026-09-14	reverted	-	Claude Opus 4.8	-	A WHY-comment migrates into a node's Why and is replaced by a dte:ID citation; HOW-comments stay

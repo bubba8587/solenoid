@@ -1,66 +1,41 @@
-<!-- dte:B4,C4 -->
+<!-- dte:B4 -->
 # Decision provenance — DTE
 
 This repo tracks the *why* behind its code as a **DTE** (Decision Tree Engineering)
 tree, governed by B4 "Solenoid tracks decision provenance with DTE; rules.md and
-decisions.md remain and are cited from the tree". The tool is vendored at
-`tools/dte.py` (one file, stdlib Python 3.8+); run `python tools/dte.py --help`. The
-format spec lives in the DTE repo's `SPEC.md`.
+decisions.md remain and are cited from the tree". The tool is vendored at `tools/dte.py`
+(one file, stdlib Python 3.8+); run `python tools/dte.py --help`.
+
+**DTE's own rules are vendored, not duplicated here.** The canonical DTE spec, agent
+protocol, and overview live in `dte-rules/` (`SPEC.md`, `PROTOCOL.md`, `README.md`) —
+verbatim copies so an agent can load the real rule text into context. Read
+`dte-rules/PROTOCOL.md` before creating or changing decisions. Do NOT re-create DTE's
+own format/protocol/usage decisions as nodes in this tree; this tree holds only
+Solenoid's own decisions. (`dte-rules/` is `.dteignore`d — its `dte:` tokens belong to
+DTE's tree; note it describes DTE's OWN rings A/B/C, which are not Solenoid's rings below.)
 
 **This does NOT replace the existing spec docs.** `docs/rules.md` (normative MUST +
 enforcing test) and `docs/decisions.md` (what stands / reopen-if) stay authoritative;
-their entries are lifted into the tree and cited from it over time. DTE adds structured
-provenance, `dte:ID` citations joined to files, and `blast`/`trace` queries.
+their entries are lifted into the tree and cited from it over time.
 
-## The rings here
+## Solenoid's rings
 
-- **A — core goals** (owned by the author; only the author ratifies A). A1 product
+- **A — core goals** (owned by the author; only the author ratifies A): A1 product
   identity, A2 Excel parity, A3 type/unit honesty, A4 pre-alpha break-freely.
-- **B — strategy** under a goal (the Obsidian bet, web-vs-desktop, marketing-on-real-canvases, this adoption).
-- **C — subsystem architecture** under a strategy.
-- **D+ — implementation decisions** under an architecture. Deeper = caused-by, and a
-  parent is always strictly shallower.
+- **B — strategy** under a goal (the Obsidian bet, web-vs-desktop, marketing-on-real-canvases, adopting DTE).
+- **C — subsystem architecture** under a strategy; **D+ — implementation** under an architecture.
 
-## Agent protocol (adapted from the DTE repo's CLAUDE.md)
+Authority (`dte.cfg`): **A:human, B:orchestrator, C+:subagent**. Assume ring B unless told
+otherwise. The map binds agents, not the author.
 
-Authority map (`dte.cfg`): **A:human, B:orchestrator, C+:subagent**. It binds agents,
-not the author. Assume ring **B** unless told otherwise; spawned subagents get C+.
+## Everyday use
 
-- **Cite what you build.** `python tools/dte.py cite <file> <ID>` inserts the token in
-  the file's comment syntax; hand-write a line-level `dte:ID` when a block's reason
-  differs from the file's. Cite the most specific node.
-- **A choice a reviewer would ask "why?" about is a decision.** At your ring or deeper,
-  `dte new <ring> --title ... --by <model> --parents ... --decision ... --why ...`
-  (`--confidence low|medium` when guessing the author's preference). Shallower than your
-  ring, or unsure: write `decisions/inbox/<slug>.md` and ask the author in plain chat.
-- **Never hand-edit frontmatter or hand-delete a node.** Use `set` / `move` / `retire`
-  (they write the `decisions/RETIRED` ledger). Never resolve a contradiction by editing
-  the loser — precedence is ring position; the fix is a `move`.
-- **Human-held nodes are protected** (made or ratified by a human): you may not
-  supersede/revert/move/reword them without a human name in `authorized_by`.
-- **Before acting under an unratified node, run one `contest`** (build/cost/judge the
-  alternatives against its parents, record the verdict); then it is settled.
-- **Talk in ID + title, never a bare ID.** Report every built artifact with the node
-  that governs it (`ID "title"`).
-- **Before you finish:** `python tools/dte.py validate --as <ring>` must print `OK`;
-  copy the "Nodes changed" list into your report so the author can ratify.
-
-## Comments become citations (C4)
-
-Per C4 "a WHY-comment migrates into a node's Why and is replaced by a dte:ID citation;
-HOW-comments stay": when you find (or would write) a comment explaining *why* code
-exists, move that rationale into the governing node's `## Why` and leave a `dte:ID` in
-its place. Comments explaining *how* — mechanics, gotchas, non-obvious control flow —
-stay. This is `commentMinimalism` (docs/decisions.md) reaching the WHY: the node is the
-one home, the citation is the pointer, and the prose can no longer drift from the
-decision.
-
-## Everyday queries
-
-- `python tools/dte.py trace <path>` — why does this file exist (up to the core)?
+- Cite what you build: `python tools/dte.py cite <file> <ID>` (line-level by hand when a
+  block's reason differs from the file's).
+- `python tools/dte.py trace <path>` — why does this file exist, up to the core?
 - `python tools/dte.py blast <ID>` — what does changing this decision touch?
-- `python tools/dte.py tree` — the whole tree (the index); `show <ID>` for one node.
-- `python tools/dte.py coverage` — the adoption gauge (cited artifacts).
+- `python tools/dte.py tree` — the index; `show <ID>` for one node; `coverage` — the gauge.
+- Before you finish: `python tools/dte.py validate --as <ring>` must print `OK`.
 
 ## Feedback
 

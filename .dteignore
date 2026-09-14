@@ -13,8 +13,10 @@ __pycache__
 coverage
 # Bundled sample data, not artifacts that serve a decision.
 demo-vault
-# The vendored DTE tool: its dte: tokens belong to DTE's own tree, not this one.
+# The vendored DTE tool + its canonical rule copies: their dte: tokens belong to
+# DTE's own tree, not this one. Kept in-repo so agents can load the rule text.
 tools/dte.py
+dte-rules
 *.min.js
 *.lock
 *.png
