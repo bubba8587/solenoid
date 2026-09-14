@@ -184,7 +184,6 @@ export function AnatomyScene() {
     <Diagram w={W} h={H}>
       <svg className="sol-diagram__cables" width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
         <g className="sol-callout__lines">
-          <path d={`M 178 84 H ${nx - 6}`} />
           <path d={`M 178 168 H ${nx - 12}`} />
           <path d={`M 502 108 H ${nx + 246}`} />
           <path d={`M 502 236 L ${nx + 246} 236`} />
@@ -213,9 +212,6 @@ export function AnatomyScene() {
         </div>
       </MNode>
 
-      <div className="sol-callout" style={{ left: 8, top: 56, width: 168 }}>
-        The header is tinted by the node&apos;s category. The body stays neutral.
-      </div>
       <div className="sol-callout" style={{ left: 8, top: 142, width: 168 }}>
         Sockets sit on the card edge. Shape is the dimension: a dot, a list square, a matrix grid. Color is the type.
       </div>
