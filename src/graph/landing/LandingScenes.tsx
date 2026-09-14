@@ -16,7 +16,7 @@ import { ListInputNode } from "../nodes/list";
 import { DisplayNode } from "../nodes/display";
 import { NoteNode } from "../nodes/annotation";
 import { TvmNode } from "../nodes/finance";
-import { VaultFolderNode } from "../nodes/connection";
+import { VaultFolderNode, LocalFileNode } from "../nodes/connection";
 import { WriteObsidianNode } from "../nodes/obsidian";
 import { ReportNode } from "../nodes/report";
 import { type SurfaceStack } from "../flow/FlowSurface";
@@ -503,6 +503,29 @@ export function VaultTableScene() {
         await wire(notes, "cube", filter, "frame");
         await wire(filter, "frame", sort, "frame");
         await wire(sort, "frame", disp, "in");
+      }}
+    />
+  );
+}
+
+// ─── Scene: Excel over CSV (a real Local File reading a bundled CSV) ─────────────
+// A real Local File node reads the demo vault's bundled expenses.csv as a typed
+// frame, shown in a Display. The Obsidian page forces the Local File data folder to
+// the demo vault, so this reads a real CSV on the web too (desktop reads real disk).
+export function LocalFileScene() {
+  return (
+    <SceneStage
+      className="sol-scene-stage--obs-csv"
+      build={async (s) => {
+        const file = new LocalFileNode({ label: "expenses.csv", fileName: "expenses.csv" });
+        const disp = new DisplayNode({ label: "Expenses" });
+        for (const n of [file, disp]) {
+          await s.editor.addNode(asNode(n));
+          nodeNameStore.ensure(n.id, n.constructor.name);
+        }
+        await s.editor.addConnection(
+          new ClassicPreset.Connection(asNode(file), "frame", asNode(disp), "in") as SolenoidConnection,
+        );
       }}
     />
   );

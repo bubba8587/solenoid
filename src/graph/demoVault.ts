@@ -36,6 +36,21 @@ export function getVaultRoot(): string {
   return settingsStore.get("useDemoVault") ? DEMO_VAULT_ROOT : settingsStore.get("obsidianVault");
 }
 
+// The same non-persisted override for the Local File node's data folder, so the
+// marketing pages can point it at a bundled CSV inside the demo vault.
+let _forcedCsvFolder: string | null = null;
+
+/** Pin the Local File data folder every read resolves (null clears). Never persisted. */
+export function forceCsvFolder(folder: string | null): void {
+  _forcedCsvFolder = folder;
+}
+
+/** The Local File data folder: a forced folder wins (the marketing pages), else the
+ *  user's configured folder. */
+export function getCsvFolder(): string {
+  return _forcedCsvFolder !== null ? _forcedCsvFolder : settingsStore.get("csvFolder");
+}
+
 // A path under the sentinel → its vault-relative POSIX key ("" for the root itself).
 function relOf(path: string): string {
   if (path === DEMO_VAULT_ROOT) return "";

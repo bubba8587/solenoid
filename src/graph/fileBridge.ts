@@ -114,8 +114,8 @@ export function listLocalFiles(folder: string): Promise<string[]> {
 
 /** Read one file (by name) from the target folder as text. */
 export async function readFileText(folder: string, name: string): Promise<string> {
-  const path = await join(folder, name);
-  return readTextFile(path);
+  const path = await fs().join(folder, name);
+  return fs().readTextFile(path);
 }
 
 /** List the `.md` file names directly inside `folder` (a vault subfolder). */

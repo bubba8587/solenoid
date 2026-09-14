@@ -4,6 +4,6 @@
 // main bundle for users who don't turn the demo vault on. `.obsidian/` is excluded by
 // extension (json/js/css), and the vault readers skip dot-folders regardless.
 export const DEMO_VAULT_FILES = import.meta.glob(
-  "../../demo-vault/**/*.{md,base,yaml}",
+  "../../demo-vault/**/*.{md,base,yaml,csv}",
   { query: "?raw", import: "default", eager: true },
 ) as Record<string, string>;

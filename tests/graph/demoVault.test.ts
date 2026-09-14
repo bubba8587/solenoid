@@ -7,6 +7,9 @@ import {
   demoVaultFs,
 } from "../../src/graph/demoVault";
 import { settingsStore } from "../../src/graph/settingsStore";
+import { forceCsvFolder } from "../../src/graph/demoVault";
+import { LocalFileNode } from "../../src/graph/nodes/connection";
+import { isFrameValue, type FrameValue } from "../../src/graph/frame";
 
 // The bundled read-only demo vault seam: the sentinel root, the resolver (setting +
 // force override), and the in-memory FsProvider read against the real demo-vault files.
@@ -88,12 +91,26 @@ describe("demoVaultFs — reads against the bundled files", () => {
 
   it("is read-only: every writer throws", async () => {
     await expect(demoVaultFs.writeTextFile(p("x.md"), "y")).rejects.toThrow();
-    await expect(demoVaultFs.mkdir(p("x"))).rejects.toThrow();
+    await expect(demoVaultFs.mkdir(p("x"), true)).rejects.toThrow();
     await expect(demoVaultFs.rename(p("a"), p("b"))).rejects.toThrow();
     await expect(demoVaultFs.readBinary(p("x"))).rejects.toThrow();
   });
 
   it("stat carries no timestamps (the bundle has none)", async () => {
     expect(await demoVaultFs.stat(p("Notes/Deep Work.md"))).toEqual({ mtimeMs: null, birthtimeMs: null });
+  });
+});
+
+describe("Local File over the demo seam (works without desktop)", () => {
+  afterEach(() => forceCsvFolder(null));
+
+  it("reads a bundled CSV as a typed frame", async () => {
+    forceCsvFolder(`${R}/Data`);
+    const node = new LocalFileNode({ label: "expenses.csv", fileName: "expenses.csv" });
+    const { frame } = await node.data();
+    expect(isFrameValue(frame)).toBe(true);
+    const f = frame as FrameValue;
+    expect(f.columns.map((c) => c.name)).toEqual(["date", "category", "vendor", "amount"]);
+    expect(f.columns[0].values.length).toBe(6);
   });
 });

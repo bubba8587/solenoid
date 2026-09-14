@@ -13,9 +13,8 @@ import { type TypeMap } from "../vaultTypes";
 import { applyFcUnit } from "../unitBridge";
 import { type Shape } from "../frameShape";
 import { connectionStore, scheduleConnectionRecalc, requestNetwork, trackInflight } from "../connectionStore";
-import { settingsStore } from "../settingsStore";
 import { isDesktop, hasFs, readFileText, joinPath, listVaultMarkdownFiles, listMarkdownFiles, readVaultFile, statVaultFile } from "../fileBridge";
-import { getVaultRoot, isDemoVaultPath } from "../demoVault";
+import { getVaultRoot, getCsvFolder, isDemoVaultPath } from "../demoVault";
 import { fetchText } from "../httpBridge";
 import { frameFromCells, frameFromRecords, frameFromRows, frameFromColumnar, frameRowCount, cubeRowCount, type FrameValue, type CubeValue } from "../frame";
 import { parseCsvRows } from "../csv";
@@ -326,7 +325,7 @@ export class LocalFileNode extends ClassicPreset.Node {
   }
 
   async data(): Promise<{ frame: FrameValue | FrameRef | SolError | null; plan: CubeValue | null }> {
-    const folder = settingsStore.get("csvFolder");
+    const folder = getCsvFolder();
     const name = this.fileName.trim();
     const key = connectionStore.key(this.id, `${folder}\u0000${name}`);
     if (key === this.lastKey) return { frame: this.ref ?? this.cachedResult, plan: this.cachedPlan };
@@ -350,7 +349,9 @@ export class LocalFileNode extends ClassicPreset.Node {
       connectionStore.setState(this.id, { status, message });
       return { frame: out, plan: null };
     };
-    if (parquet ? (!isDesktop() || !engineAvailable()) : !isDesktop()) {
+    // Reading needs the desktop app, EXCEPT the bundled demo vault, which the web app
+    // reads through the in-memory FsProvider (CSV only — Parquet needs the native engine).
+    if (parquet ? (!isDesktop() || !engineAvailable()) : (!isDesktop() && !isDemoVaultPath(folder))) {
       return fail(parquet ? "Desktop app (native engine) only" : "Desktop app only");
     }
     if (folder === "") return fail("Set a target folder in Settings", "idle");

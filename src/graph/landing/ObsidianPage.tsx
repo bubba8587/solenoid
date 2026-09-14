@@ -2,11 +2,11 @@ import { useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore } f
 import { appThemeStore } from "../appTheme";
 import wordmark from "../../logo/solenoidwordmark.svg";
 import pkg from "../../../package.json";
-import { Reveal, Diagram, MNode, NoteImportScene, VaultTableScene, buildReportPipeline } from "./LandingScenes";
+import { Reveal, Diagram, MNode, NoteImportScene, VaultTableScene, LocalFileScene, buildReportPipeline } from "./LandingScenes";
 import { LiveGraph } from "./LandingGraph";
 import { ReportOverlay } from "../components/ReportOverlay";
 import { SOCKET_COLORS } from "../sockets";
-import { forceVaultRoot, DEMO_VAULT_ROOT } from "../demoVault";
+import { forceVaultRoot, forceCsvFolder, DEMO_VAULT_ROOT } from "../demoVault";
 import "./LandingPage.css";
 import "./ObsidianPage.css";
 
@@ -125,28 +125,6 @@ function TaskNotesNodeScene() {
   );
 }
 
-// The real Local File node: a CSV exported from Excel, read as a frame.
-function LocalFileScene() {
-  const W = 320;
-  const H = 150;
-  const frame = { kind: "frame" as const, color: C.frame, tip: "Frame" };
-  return (
-    <Diagram w={W} h={H}>
-      <MNode
-        x={60}
-        y={26}
-        w={200}
-        accent={C.frame}
-        title="sales.csv"
-        socks={[{ cy: 52, side: "out", glyph: frame }]}
-      >
-        <div className="sol-mnode__row"><span className="sol-mnode__label">table</span><span className="sol-mnode__val obs-node-dim">frame</span></div>
-        <p className="sol-mnode__prose">Read from your data folder, columns typed for you.</p>
-      </MNode>
-    </Diagram>
-  );
-}
-
 // A static write "plan": the frame a writer emits before Run, one row per change.
 function PlanScene() {
   return (
@@ -182,8 +160,11 @@ export default function ObsidianPage() {
   // so every reader scene resolves to it regardless of the user's setting (never
   // persisted). Set during render so it is in place before the scene children mount
   // and read it; cleared on unmount. Plain-anchor navigation to the app reloads anyway.
-  useMemo(() => forceVaultRoot(DEMO_VAULT_ROOT), []);
-  useEffect(() => () => forceVaultRoot(null), []);
+  useMemo(() => {
+    forceVaultRoot(DEMO_VAULT_ROOT);
+    forceCsvFolder(`${DEMO_VAULT_ROOT}/Data`);
+  }, []);
+  useEffect(() => () => { forceVaultRoot(null); forceCsvFolder(null); }, []);
 
   return (
     <div className={`sol-landing${anim ? " sol-landing--anim" : ""}`}>
