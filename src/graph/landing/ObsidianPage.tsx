@@ -349,9 +349,7 @@ export default function ObsidianPage() {
               <PipelineScene />
               <p className="sol-landing__demo-note">
                 A graph that reads a vault folder, keeps the notes tagged{" "}
-                <code>book</code>, and writes a score back to their frontmatter. Every
-                step is a card on a canvas, and the violet cable carries the whole table
-                of notes from one to the next.
+                <code>book</code>, and writes a score back to their frontmatter.
               </p>
             </Reveal>
           </section>
@@ -398,28 +396,25 @@ export default function ObsidianPage() {
             <Reveal delay={100}>
               <div className="obs-cards">
                 <div className="obs-card">
-                  <h3>Write Properties</h3>
+                  <h3>Update note properties</h3>
                   <p>
-                    Writes rows back into notes&apos; frontmatter, keyed by a{" "}
-                    <code>path</code> column. Each column becomes a property in the form
-                    its type asks for: dates unquoted, lists as blocks, note names as
-                    links.
+                    Write a table of values back into your notes&apos; frontmatter, one
+                    row per note. Each column lands as a properly typed property, so
+                    dates, lists and links come out right.
                   </p>
                 </div>
                 <div className="obs-card">
-                  <h3>Write to Obsidian</h3>
+                  <h3>Create notes and reports</h3>
                   <p>
-                    Writes a note or report into the vault as portable markdown:
-                    frontmatter, tables, mermaid, math, and rasterized chart images, under
-                    a vault-relative subfolder.
+                    Write a note or report into your vault as portable markdown, with
+                    frontmatter, tables, diagrams, math and chart images baked in.
                   </p>
                 </div>
                 <div className="obs-card">
-                  <h3>Write Tasks</h3>
+                  <h3>Create and update tasks</h3>
                   <p>
-                    Creates or updates TaskNotes tasks from rows. A row with a{" "}
-                    <code>path</code> updates that task; a row without one creates a task
-                    from its title.
+                    Create or update TaskNotes tasks from a table. A row matched to an
+                    existing task updates it; a new row becomes a new task.
                   </p>
                 </div>
               </div>
@@ -466,8 +461,8 @@ export default function ObsidianPage() {
 
           <Feature title="Excel too, over CSV" flip scene={<LocalFileScene />}>
             <p>
-              Export a sheet to CSV and Local File reads it as a table with columns typed
-              for you. Write File sends a table back out as CSV for Excel to open. The
+              Export a sheet to CSV and Solenoid reads it as a table with columns typed
+              for you, then sends a table back out as CSV for Excel to open. The
               functions you know come along: Solenoid keeps Excel&apos;s names and
               Excel&apos;s answers.
             </p>
@@ -477,17 +472,15 @@ export default function ObsidianPage() {
             </p>
           </Feature>
 
-          <Feature title="Preview, then Run" scene={<PlanScene />}>
+          <Feature title="Preview every change" scene={<PlanScene />}>
             <p>
-              Every writer shows a plan before it writes. Preview reads the current notes
-              or tasks and marks each row as add, change, or leave alone, and the status
-              line summarizes it. Run applies only the resolved plan, through an atomic
-              write.
+              Every writer shows you a plan before it touches a file, marking each note
+              or task as add, change, or leave alone. Nothing is written until you
+              approve it.
             </p>
             <p>
-              Property writes patch the YAML one line at a time and never re-serialize the
-              note, and a value that fails its mdbase type is refused rather than written.
-              Your notes change the way you would change them by hand.
+              Your notes change the way you would change them by hand, one property at a
+              time, and a value that does not fit its type is refused rather than written.
             </p>
           </Feature>
 
@@ -517,7 +510,7 @@ export default function ObsidianPage() {
                   <div>
                     <strong>For TaskNotes, turn on the HTTP API</strong> in the
                     plugin&apos;s settings, then set the address (localhost:8080 by
-                    default) and paste the token onto the card.
+                    default) and paste the token into Solenoid.
                   </div>
                 </li>
               </ol>

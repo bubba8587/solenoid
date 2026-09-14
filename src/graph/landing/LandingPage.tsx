@@ -108,8 +108,8 @@ export default function LandingPage() {
               <Reveal delay={110}>
                 <p>
                   Each node is one operation, and typed cables carry values between them:
-                  scalars, lists, tables, and frames. The graph recomputes as its inputs
-                  change, so the steps of a calculation stay visible on the canvas.
+                  numbers, text, lists, and whole tables. The graph recomputes as its
+                  inputs change, so the steps of a calculation stay visible on the canvas.
                 </p>
               </Reveal>
               <Reveal delay={220}>
@@ -133,10 +133,9 @@ export default function LandingPage() {
             <Reveal>
               <LandingGraph />
               <p className="sol-landing__demo-note">
-                This graph is live. Grid Interpolate fills the holes in the sparse survey
-                grid; Surface draws the mesh and Contour the map view. Drag a card, rotate
-                the view from the pad on the Surface card, or open the table and edit a
-                height.
+                This graph is live: it fills a sparse survey grid, then draws the surface
+                and a contour map from it. Drag a card, rotate the surface, or open a
+                table and edit a height, and everything downstream recomputes.
               </p>
             </Reveal>
           </section>
@@ -180,25 +179,24 @@ export default function LandingPage() {
             </p>
           </Feature>
 
-          <Feature title="The Equation node" flip scene={<EquationScene />}>
+          <Feature title="Solve for any variable" flip scene={<EquationScene />}>
             <p>
-              Type a relation and every variable is both an input and an output. Wire
-              any two of <code>V = I × R</code> and the third is solved: symbolically
-              where isolation works, numerically where it doesn&apos;t. A quadratic
-              returns every real root.
+              Type an equation and any variable can be the unknown. Give{" "}
+              <code>V = I × R</code> any two values and it solves for the third, exactly
+              where it can and numerically where it can&apos;t. A quadratic returns every
+              real root.
             </p>
             <p>
-              When everything is known, the Check output reports whether the values
-              actually satisfy the relation. Domain packs ship locked equations for
-              circuits, gases, chemistry and finance; the TVM node is one of them, so
-              PMT, PV, FV, NPER and RATE are one card with the unknown solved.
+              Domain packs bring ready-made equations for circuits, gases, chemistry and
+              finance. The time-value-of-money pack solves for payment, present value,
+              future value, term or rate, whichever you leave blank.
             </p>
           </Feature>
 
           <Feature title="Relational verbs" scene={<VerbsScene />}>
             <p>
               Filter, Sort, Join, Group By, Append, Distinct, Pivot, Unpivot: the full
-              verb set as nodes, with as-of joins for nearest-match on time. The desktop
+              relational verb set, plus as-of joins for nearest-match on time. The desktop
               build runs on Rust and Polars, so it handles million-row operations with
               ease.
             </p>
@@ -206,49 +204,49 @@ export default function LandingPage() {
 
           <Feature title="Draw your data" flip scene={<DrawScene />}>
             <p>
-              Point Plotter turns clicks on a plane into X and Y lists. Curve samples a
-              draggable spline into a list. Grid Painter fills a matrix with a value
-              brush. Sketch the shape, then run the math on it.
+              Draw your inputs by hand. Click points on a plane to make X and Y lists,
+              drag a spline and sample it into a list, or paint values onto a grid.
+              Sketch the shape, then run the math on it.
             </p>
           </Feature>
 
           <Feature title="What-if analysis" scene={<MonteCarloScene />}>
             <p>
               Give a model&apos;s inputs a ± spread and its outputs come back as
-              distributions: mean, deviation and a histogram, from a seeded,
-              reproducible sampler. Goal Seek drives an input until an output hits a
-              target. Scenarios save named input sets, and Data Table sweeps a range.
+              distributions, with a mean, a spread and a histogram. Drive an input until
+              an output hits a target you set. Save named sets of inputs as scenarios, or
+              sweep one input across a range.
             </p>
             <p>
-              A model check fuzzes the leaf inputs and reports where the model breaks,
-              and a Tornado node sweeps each input one at a time to show which one the
-              result actually depends on.
+              Fuzz the inputs to find where a model breaks, and sweep each one in turn to
+              see which the result really depends on.
             </p>
           </Feature>
 
           <Feature title="Obsidian, both directions" flip scene={<ObsidianScene />}>
             <p>
               Import a note from your vault: it renders in the graph, and its
-              frontmatter properties become values you can use as inputs. Reload re-reads
-              from disk, and any note that opens with a YAML block works without a schema.
+              frontmatter properties become values you can use as inputs. It re-reads
+              from disk on demand, and any note that opens with a YAML block works
+              without a schema.
             </p>
             <p>
-              Notes and Reports write back into the vault as portable markdown with
-              tables, math and rendered chart images.
+              Results write back into the vault as portable markdown, with tables, math
+              and rendered chart images.
             </p>
           </Feature>
 
-          <Feature title="Reports and presenter mode" scene={<PresenterScene />}>
+          <Feature title="Live documents and slideshows" scene={<PresenterScene />}>
             <p>
-              A Report is a markdown document that embeds live values: an inline{" "}
-              <code>{"{{ name }}"}</code> renders a scalar, a scrollable table, a chart or a
-              typeset equation, and updates when the graph does. It is a Knap template,
-              so loops, conditions and filters shape the prose. Dock it to the right
-              and the canvas stays live beside it.
+              Write a markdown document that embeds live values: an inline{" "}
+              <code>{"{{ value }}"}</code> renders a number, a scrollable table, a chart or a
+              typeset equation, and updates whenever the graph does. Loops and conditions
+              shape the prose, so the document rewrites itself as the data changes. Dock
+              it beside the canvas and both stay live.
             </p>
             <p>
-              A Presentation node runs the canvas as a slideshow: the camera flies to
-              each step&apos;s nodes, the chrome hides, and a click advances.
+              Or present the canvas itself as a slideshow: the view flies from one step
+              to the next, the chrome falls away, and a click advances.
             </p>
           </Feature>
 
@@ -270,7 +268,7 @@ export default function LandingPage() {
             <Reveal className="sol-landing__strip-in">
               <p>
                 Free and open source. Runs in the browser, or as a Windows desktop app
-                with the native Polars engine.
+                powered by a native Rust and Polars engine.
               </p>
               <div className="sol-landing__actions">
                 <a className="sol-landing__cta sol-landing__cta--primary" href="./">Open Solenoid</a>
