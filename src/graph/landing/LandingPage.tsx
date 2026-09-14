@@ -169,16 +169,14 @@ export default function LandingPage() {
 
           <Feature title="Real units" scene={<UnitsScene />}>
             <p>
-              A value carries its unit. <code>5 km</code> is stored as a base-SI
-              quantity with a display unit, so <code>SUM(5 km, 3)</code> is{" "}
-              <code>8 km</code> and m × m is m². The Format Controller sets a unit,
-              Convert changes it, and the unit carries through every passthrough.
+              Values carry real units, and the math comes out right:{" "}
+              <code>SUM(5 km, 3)</code> is <code>8 km</code>, m × m is m², and adding
+              meters to seconds fails with{" "}
+              <code className="sol-landing__err">#UNIT!</code>.
             </p>
             <p>
-              Adding meters to seconds fails with{" "}
-              <code className="sol-landing__err">#UNIT!</code> at the node where it
-              happens. Frame columns carry units too: a <code>Price ($)</code> header
-              locks the column, and joins match 5 km against 5,000 m.
+              Units flow through tables and joins too, so a <code>Price ($)</code> column
+              stays money and 5 km matches 5,000 m.
             </p>
           </Feature>
 
