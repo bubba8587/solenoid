@@ -102,11 +102,11 @@ export default function LandingPage() {
           <section className="sol-landing__hero">
             <div className="sol-landing__hero-copy">
               <Reveal>
-                <h1>Your spreadsheets as a node graph.</h1>
+                <h1>Your workbooks, now in node-graph form.</h1>
               </Reveal>
               <Reveal delay={110}>
                 <p>
-                  Build your workbooks piece by piece. Solenoid makes wiring up complex spreadsheet operations fast 
+                  Build your spreadsheets piece by piece. Solenoid makes wiring up complex spreadsheet operations fast 
                   and easy to understand. 
                 </p>
               </Reveal>
