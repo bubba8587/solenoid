@@ -1,7 +1,7 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
-import { ReactFlowProvider } from "@xyflow/react";
+import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
 import { FlowSurfaceContext } from "../flowSurface";
 import { FlowSurface, idleHandlers, type SurfaceStack, type SurfaceHooks } from "../flow/FlowSurface";
@@ -124,8 +124,30 @@ const LANDING_HOOKS: SurfaceHooks = {
   fitViewOnInit: true,
 };
 
+// Inside the provider so it can reach fitView. FlowSurface frames the graph once
+// (fitViewOnInit); this re-frames after every Reset, once the rebuilt cards have
+// re-measured (two frames), so Reset restores the camera as well as the graph.
+function LandingStage({ stack, resetNonce }: { stack: SurfaceStack; resetNonce: number }) {
+  const { fitView } = useReactFlow();
+  const firstRun = useRef(true);
+  useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false;
+      return;
+    }
+    const raf = requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        void fitView({ padding: 0.15, duration: 320 });
+      }),
+    );
+    return () => cancelAnimationFrame(raf);
+  }, [resetNonce, fitView]);
+  return <FlowSurface stack={stack} hooks={LANDING_HOOKS} />;
+}
+
 export function LandingGraph() {
   const stack = useMemo(makeLandingStack, []);
+  const [resetNonce, setResetNonce] = useState(0);
 
   useEffect(() => {
     setEditorRefs(stack.editor, stack.engine, stack.view);
@@ -133,13 +155,13 @@ export function LandingGraph() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stack]);
 
-  const reset = () => void buildDemoGraph(stack);
+  const reset = () => void buildDemoGraph(stack).then(() => setResetNonce((n) => n + 1));
 
   return (
     <div className="sol-landing__stage">
       <ReactFlowProvider>
         <FlowSurfaceContext.Provider value={true}>
-          <FlowSurface stack={stack} hooks={LANDING_HOOKS} />
+          <LandingStage stack={stack} resetNonce={resetNonce} />
         </FlowSurfaceContext.Provider>
       </ReactFlowProvider>
       <button className="sol-landing__stage-reset" onClick={reset} title="Rebuild the demo graph">
