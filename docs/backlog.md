@@ -102,6 +102,13 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   cube). Design first (DESIGN.md, `subsystem-invariants.md` § Conduit faces); stage after the
   Obsidian track.
 
+## Landing pages
+
+- [ ] **Rebuild the landing + Obsidian pages for the React Flow surface** (`src/graph/landing/`) —
+  the scene diagrams are hand-built DOM/SVG replicas of rete-era node chrome; regenerate them to
+  match React Flow nodes. Copy was leaned out 2026-09-14 (voice pass, DESIGN §7); the visuals want
+  the real rebuild.
+
 ## Cables
 
 - [ ] **Mode-change ghost cable — render layer (the last piece).** Option B's LOGIC landed for the
