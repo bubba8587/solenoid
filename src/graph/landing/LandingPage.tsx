@@ -255,8 +255,8 @@ export default function LandingPage() {
               <h2>Excel parity</h2>
               <p className="sol-landing__lede">
                 Functions keep their Excel names and their Excel answers. The built-in
-                reference lists every function with its Excel equivalent, and search
-                scores against the names you already know.
+                reference lists every function with its Excel equivalent, and you search
+                by the names you already know.
               </p>
             </Reveal>
             <Reveal delay={100}>

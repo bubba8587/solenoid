@@ -214,16 +214,16 @@ export function AnatomyScene() {
       </MNode>
 
       <div className="sol-callout" style={{ left: 8, top: 56, width: 168 }}>
-        The header carries the node&apos;s category color as a tint. The card itself stays neutral.
+        The header is tinted by the node&apos;s category. The body stays neutral.
       </div>
       <div className="sol-callout" style={{ left: 8, top: 142, width: 168 }}>
-        Sockets straddle the card edge. Shape is dimension: circle, list square, matrix grid. Color is the element type.
+        Sockets sit on the card edge. Shape is the dimension: a dot, a list square, a matrix grid. Color is the type.
       </div>
       <div className="sol-callout" style={{ left: 506, top: 82, width: 166 }}>
-        The result box renders in the type&apos;s default format. A date reads as a date, a unit rides its number.
+        The result box shows the value in its natural format: a date reads as a date, a measurement keeps its unit.
       </div>
       <div className="sol-callout" style={{ left: 506, top: 212, width: 166 }}>
-        Chips are the compact preview of a list, frame or chart. Click one and the full grid opens.
+        Chips preview a list, table or chart. Open one to see it in full.
       </div>
     </Diagram>
   );
@@ -620,7 +620,7 @@ export function ObsidianScene() {
         <pre className="sol-mnode__front">
           {"---\nrate: 0.045\nyears: 25\n---"}
         </pre>
-        <p className="sol-mnode__prose">Assumptions live in the vault; Reload re-reads them from disk.</p>
+        <p className="sol-mnode__prose">Assumptions live in the vault, and re-read from disk on demand.</p>
       </MNode>
       <MNode
         x={356}
