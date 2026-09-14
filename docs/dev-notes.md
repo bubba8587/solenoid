@@ -28,12 +28,22 @@ All on `develop`.
   `slicedArray.length === 1` branch that returns `.toString()`. The fix is mechanical: port
   them onto `arrayInputValue`/`collectionInputValue` the way #14 did the rest. A `{% for %}`
   re-parses the JSON, so only `set`-then-index and a singleton `slice` show the gap, which is
-  why it survived #14. Entry 5 was wrong and is restated:
+  why it survived #14. Three more entries were wrong or stale and are restated. **5:**
   `sort:"Paid,desc"` is not "silently ascending", it is a lookup of a key literally named
   `Paid,desc`, so the rows come back in INPUT order with no warning — same as `sort:"Nope"`.
-  2, 3, 4 and all six API asks stand unchanged. Entry 8's count is 50 of 80 filters with no
-  metadata at all, not 22. **None of the ten are filed upstream** (knap has one open issue,
-  #10, and one open PR, #13, both unrelated), so the backlog item is still the whole list.
+  **3:** the README does NOT document whitespace control (it did at 0.4.0); the real finding
+  is that `trimRight` is hardwired on for block tags while `trimLeft` exists and is never set,
+  so half the plumbing is unreachable. **8** and **6** both got much cheaper asks once the
+  source was read: `src/docs/filter-docs.ts` already documents 61 filters in full (summary,
+  syntax, parameters, notes, examples, groups) but is exported only to the CLI, so the ask is
+  "re-export it from `index.ts`", not "add a `description` field"; and `parser.ts`'s internal
+  `collectVariables` already computes exactly what `extractKnapVariables` does, so ask 6 is
+  "export what `validateVariables` throws away". 2, 4, 7, 9 and 10 stand. **None of the ten
+  are filed upstream** (knap has one open issue, #10, and one open PR, #13, both unrelated),
+  so the backlog item is still the whole list.
+- **The doc is now written to be filed, not just to be right.** Every entry is a plain-language
+  issue/PR body with a "why it matters" paragraph and the repros in a fenced block, down to a
+  "Solenoid side" line the author cuts before posting. The author files them by hand.
 - **The edges are pinned now.** `knapTemplate.test.ts` § "the Knap engine edges the help doc
   names" asserts each gotcha `src/graph/help/knap.md` tells the author about, so the next bump
   fails instead of leaving the help copy stale. The help doc's § Gotchas was rewritten for
