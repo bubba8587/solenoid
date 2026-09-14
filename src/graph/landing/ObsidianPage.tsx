@@ -368,11 +368,6 @@ export default function ObsidianPage() {
           <section className="sol-landing__section">
             <Reveal>
               <h2>Reading the vault</h2>
-              <p className="sol-landing__lede">
-                Solenoid reads a whole folder as a table, a single note as a source, or a
-                TaskNotes board through its API. Each arrives as typed data you can
-                compute on.
-              </p>
             </Reveal>
           </section>
 
