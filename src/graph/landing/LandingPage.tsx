@@ -145,8 +145,7 @@ export default function LandingPage() {
             <Reveal>
               <h2>How a node reads</h2>
               <p className="sol-landing__lede">
-                Every node is the same small card, and every part of the card means one
-                thing. The card that reads a file looks like the card that runs a formula.
+                Every node is the same small card, and every part of it means one thing.
               </p>
             </Reveal>
             <Reveal delay={100}>
@@ -241,9 +240,9 @@ export default function LandingPage() {
 
           <Feature title="Obsidian, both directions" flip scene={<ObsidianScene />}>
             <p>
-              Import a vault note as a live, typed source: its frontmatter keys become
-              output sockets, and Reload re-reads from disk. A plain note works too;
-              any note whose body opens with a YAML block is a typed record.
+              Import a note from your vault: it renders in the graph, and its
+              frontmatter properties become values you can use as inputs. Reload re-reads
+              from disk, and any note that opens with a YAML block works without a schema.
             </p>
             <p>
               Notes and Reports write back into the vault as portable markdown with
