@@ -128,6 +128,11 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 ## Formatting & units
 
+- [ ] **Display unit lost on a computed result — shows base SI (regression).** A divide that
+  should read `60 km/hr` displays `16.667 m/s`: the magnitude is right (base-SI stored value) but
+  the carried/derived display unit isn't applied, so a compound-unit result renders in raw SI.
+  Surfaced on the landing units scene (300 km ÷ 5 hr); recently introduced. Fix the display-unit
+  carry, then the scene reads `60 km/hr` with no change to it.
 - [ ] **Triangle Solver's angle inputs are bare degrees** (a rad-tagged trig output wired in
   reads as degrees); a per-input unit read would close it.
 - [ ] **blankArgIsExcelBlank — RULED 2026-09-13, not started.** A blank formula argument slot
