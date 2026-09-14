@@ -620,7 +620,7 @@ export function ObsidianScene() {
         <pre className="sol-mnode__front">
           {"---\nrate: 0.045\nyears: 25\n---"}
         </pre>
-        <p className="sol-mnode__prose">Assumptions live in the vault, and re-read from disk on demand.</p>
+        <p className="sol-mnode__prose">Assumptions live in the vault; Reload re-reads them from disk.</p>
       </MNode>
       <MNode
         x={356}
