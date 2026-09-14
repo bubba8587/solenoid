@@ -10,7 +10,7 @@ import { NumberInputNode } from "../nodes/input";
 import { FormatControllerNode } from "../nodes/formatController";
 import { ArithmeticNode } from "../nodes/scalar";
 import { EquationNode } from "../nodes/equation";
-import { FrameInputNode, JoinNode, GroupByFrameNode, XLookupNode } from "../nodes/frame";
+import { FrameInputNode, JoinNode, GroupByFrameNode } from "../nodes/frame";
 import { PointPlotterNode, CurveNode, DateInputNode } from "../nodes/control";
 import { ListInputNode } from "../nodes/list";
 import { DisplayNode } from "../nodes/display";
@@ -187,86 +187,39 @@ const Hero = ({ children }: { children: ReactNode }) => (
 
 const C = SOCKET_COLORS;
 
-// ─── Scene: how a node reads (real XLOOKUP + Note annotations) ──────────────────
-// The real XLookup node reading a small frame (East → Ann), with Note nodes placed
-// beside the parts they explain. manualLayout keeps the placement; no standoffs
-// (they can't scope to a locked scene), so the Notes annotate by proximity.
-export function AnatomyScene() {
-  return (
-    <SceneStage
-      className="sol-scene-stage--anatomy"
-      manualLayout
-      build={async (s) => {
-        const regions = new FrameInputNode({
-          label: "Regions",
-          frameText: "region, manager\nEast, Ann\nWest, Bo\nNorth, Cy",
-        });
-        const xl = new XLookupNode({ label: "XLOOKUP" });
-        xl.stringLiterals.lookup = "East";
-        xl.stringLiterals.inColumn = "region";
-        xl.stringLiterals.returnColumn = "manager";
-        const noteHeader = new NoteNode({
-          body: "The header names the operation.",
-          width: 210,
-          height: 64,
-        });
-        const noteSockets = new NoteNode({
-          body: "Sockets are colored by value type and shaped by dimension: the grid takes a whole table, the split square a value or a list, the dots single text values.",
-          width: 250,
-          height: 150,
-        });
-        const noteValue = new NoteNode({
-          body: "The value output carries the result out.",
-          width: 210,
-          height: 64,
-        });
-        const place: [ClassicPreset.Node, number, number][] = [
-          [regions, 20, 60],
-          [xl, 360, 40],
-          [noteHeader, 360, -60],
-          [noteSockets, 20, 360],
-          [noteValue, 620, 300],
-        ];
-        for (const [n] of place) {
-          await s.editor.addNode(asNode(n));
-          nodeNameStore.ensure(n.id, n.constructor.name);
-        }
-        for (const [n, x, y] of place) await s.view.moveNode(n.id, { x, y });
-        await s.editor.addConnection(
-          new ClassicPreset.Connection(asNode(regions), "frame", asNode(xl), "frame") as SolenoidConnection,
-        );
-      }}
-    />
-  );
-}
-
 // ─── Scene: the typed cable board (real nodes, computed once) ────────────────────
 // A source of each value TYPE wired into a Display, so the cables show their real
-// per-type colors: a number, a text list, a date, a frame.
+// per-type colors: a number, a text list, a date, a frame. Manual layout: half the
+// pairs sit on the left, half on the right, each Display a fixed span to its source.
 export function CableBoardScene() {
   return (
     <SceneStage
       className="sol-scene-stage--sockets"
+      manualLayout
       build={async (s) => {
         const num = new NumberInputNode({ label: "Number", value: 42 });
         const list = new ListInputNode({ label: "Text list", dataType: "string" });
         list.stringLiterals.v0 = "red, green, blue";
         const date = new DateInputNode({ label: "Date" });
         const frame = new FrameInputNode({ label: "Frame", frameText: "a, b\n1, 2\n3, 4" });
-        const sources: [ClassicPreset.Node, string][] = [
-          [num, "value"],
-          [list, "list"],
-          [date, "result"],
-          [frame, "frame"],
+        // [source, outputKey, sourceX, sourceY]; the Display sits SPAN to the right.
+        const SPAN = 240;
+        const pairs: [ClassicPreset.Node, string, number, number][] = [
+          [num, "value", 0, 0],
+          [list, "list", 0, 260],
+          [date, "result", 660, 0],
+          [frame, "frame", 660, 260],
         ];
         const wire = (src: ClassicPreset.Node, o: string, tgt: ClassicPreset.Node, i: string) =>
           s.editor.addConnection(new ClassicPreset.Connection(asNode(src), o, asNode(tgt), i) as SolenoidConnection);
-        for (const [src, outKey] of sources) {
+        for (const [src, outKey, x, y] of pairs) {
           await s.editor.addNode(asNode(src));
           nodeNameStore.ensure(src.id, src.constructor.name);
+          await s.view.moveNode(src.id, { x, y });
           const disp = new DisplayNode({ label: "Display" });
           await s.editor.addNode(asNode(disp));
           nodeNameStore.ensure(disp.id, disp.constructor.name);
+          await s.view.moveNode(disp.id, { x: x + SPAN, y });
           await wire(src, outKey, disp, "in");
         }
       }}
@@ -502,30 +455,42 @@ export function PresenterScene() {
 }
 
 // ─── The function wall ──────────────────────────────────────────────────────────
+// Two marquee rows, each a rainbow of node kinds rather than one domain per row —
+// lookup (violet), text (lime), math (blue), date (pink), array (gold), logic
+// (purple), lambda (green) and complex (sky) interleave so the color varies as it
+// scrolls. Every name is a real Excel function Solenoid answers.
 const FN_ROW_A = [
-  "SUM", "AVERAGE", "XLOOKUP", "SUMIFS", "INDEX", "LAMBDA", "MAKEARRAY", "REDUCE",
-  "BYROW", "FILTER", "TAKE", "DROP", "VSTACK", "HSTACK", "WRAPROWS", "PIVOTBY",
-  "CHOOSE", "IFS", "SWITCH", "IFERROR",
+  "XLOOKUP", "TEXTJOIN", "NPV", "EOMONTH", "FILTER", "IFS", "REDUCE", "IMSQRT",
+  "INDEX", "LEFT", "PMT", "NETWORKDAYS", "SORT", "SWITCH", "MAKEARRAY", "IMABS",
+  "XMATCH", "SUBSTITUTE", "SUMIFS", "WEEKDAY", "UNIQUE", "IFERROR",
 ];
 const FN_ROW_B = [
-  "PMT", "PV", "FV", "NPER", "RATE", "EFFECT", "PDURATION", "RRI", "NORM.DIST",
-  "NORM.INV", "BINOM.DIST", "POISSON.DIST", "ROUND", "MOD", "SQRT", "LN", "EXP",
-  "SIN", "COS", "COUNTIFS",
+  "PIVOTBY", "CONCAT", "FV", "WORKDAY", "SORTBY", "AND", "MAP", "IMLN", "TRIM",
+  "STDEV.S", "EDATE", "DROP", "NOT", "SCAN", "IMEXP", "MID", "FORECAST.LINEAR",
+  "DATEDIF", "VSTACK", "OR", "BYCOL", "UPPER",
 ];
 
-// Each function reads in the accent of the node kind that provides it (finance and
-// stats functions are the math kind, so they share its blue); an unmapped name keeps
-// the neutral color.
+// Each function reads in the accent of the node kind that provides it.
 const FN_KIND: Record<string, NodeKind> = {
-  SUM: "math", AVERAGE: "math", SUMIFS: "math", COUNTIFS: "math",
-  ROUND: "math", MOD: "math", SQRT: "math", LN: "math", EXP: "math", SIN: "math", COS: "math",
-  PMT: "math", PV: "math", FV: "math", NPER: "math", RATE: "math", EFFECT: "math",
-  PDURATION: "math", RRI: "math",
-  "NORM.DIST": "math", "NORM.INV": "math", "BINOM.DIST": "math", "POISSON.DIST": "math",
-  XLOOKUP: "frame", INDEX: "frame", PIVOTBY: "frame",
-  FILTER: "list", TAKE: "list", DROP: "list", VSTACK: "list", HSTACK: "list", WRAPROWS: "list",
-  MAKEARRAY: "lambda", REDUCE: "lambda", BYROW: "lambda", LAMBDA: "lambda",
-  IFS: "logic", SWITCH: "logic", IFERROR: "logic", CHOOSE: "logic",
+  // lookup / reference (frame)
+  XLOOKUP: "frame", INDEX: "frame", XMATCH: "frame", PIVOTBY: "frame",
+  // text (string)
+  TEXTJOIN: "string", LEFT: "string", SUBSTITUTE: "string", CONCAT: "string",
+  TRIM: "string", MID: "string", UPPER: "string",
+  // math / stats / finance
+  NPV: "math", PMT: "math", SUMIFS: "math", FV: "math", "STDEV.S": "math",
+  "FORECAST.LINEAR": "math",
+  // date / time
+  EOMONTH: "date", NETWORKDAYS: "date", WEEKDAY: "date", WORKDAY: "date",
+  EDATE: "date", DATEDIF: "date",
+  // dynamic arrays (list)
+  FILTER: "list", SORT: "list", UNIQUE: "list", SORTBY: "list", DROP: "list", VSTACK: "list",
+  // logical
+  IFS: "logic", SWITCH: "logic", IFERROR: "logic", AND: "logic", NOT: "logic", OR: "logic",
+  // lambda helpers
+  REDUCE: "lambda", MAKEARRAY: "lambda", MAP: "lambda", SCAN: "lambda", BYCOL: "lambda",
+  // complex numbers
+  IMSQRT: "complex", IMABS: "complex", IMLN: "complex", IMEXP: "complex",
 };
 
 function FnRow({ names, reverse }: { names: string[]; reverse?: boolean }) {

@@ -232,9 +232,6 @@
 .sol-scene-stage--sockets {
   height: 440px;
 }
-.sol-scene-stage--anatomy {
-  height: 520px;
-}
 .sol-scene-stage--obsidian {
   height: 460px;
 }
@@ -607,20 +604,6 @@
   font-size: 11px;
   line-height: 1.4;
   color: var(--text-muted);
-}
-
-/* ── Callouts (the anatomy scene) ── */
-.sol-callout {
-  position: absolute;
-  font-size: 11px;
-  line-height: 1.45;
-  color: var(--text-muted);
-}
-
-.sol-callout__lines path {
-  fill: none;
-  stroke: var(--border-strong);
-  stroke-dasharray: 2 3;
 }
 
 /* ── Cable board ── */

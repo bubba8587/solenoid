@@ -7,7 +7,6 @@ import wordmark from "../../logo/solenoidwordmark.svg";
 import pkg from "../../../package.json";
 import {
   Reveal,
-  AnatomyScene,
   CableBoardScene,
   UnitsScene,
   EquationScene,
@@ -136,15 +135,6 @@ export default function LandingPage() {
                 This graph is live. Drag a card, rotate the surface, or open a table and
                 edit a value, and everything downstream recomputes.
               </p>
-            </Reveal>
-          </section>
-
-          <section className="sol-landing__section">
-            <Reveal>
-              <h2>How a node reads</h2>
-            </Reveal>
-            <Reveal delay={100}>
-              <AnatomyScene />
             </Reveal>
           </section>
 
