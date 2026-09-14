@@ -19,6 +19,7 @@ import { TvmNode } from "../nodes/finance";
 import { VaultFolderNode } from "../nodes/connection";
 import { WriteObsidianNode } from "../nodes/obsidian";
 import { ReportNode } from "../nodes/report";
+import { type SurfaceStack } from "../flow/FlowSurface";
 import { SceneStage } from "./SceneStage";
 
 const asNode = (n: ClassicPreset.Node) => n as unknown as SolenoidNode;
@@ -507,43 +508,41 @@ export function VaultTableScene() {
   );
 }
 
-// ─── Scene: compose a note and write it back (real nodes) ────────────────────────
-// The Obsidian page's hero: two plain values flow into a Report — a markdown note
-// whose `{{ }}` tags embed them (Knap) — and Write to Obsidian previews creating it
-// in the vault. The reports surface, no formula to parse: values in, a note out.
-// Nothing is written (locked scene, no Run); the status is a read-only preview.
-export function PipelineScene() {
-  return (
-    <SceneStage
-      className="sol-scene-stage--obs-pipeline"
-      postCompute={async (s) => {
-        const write = s.editor.getNodes().find((n) => n instanceof WriteObsidianNode);
-        if (write instanceof WriteObsidianNode) await write.preview();
-      }}
-      build={async (s) => {
-        const focus = new NumberInputNode({ label: "Focus hours", value: 18.5 });
-        const tasks = new NumberInputNode({ label: "Tasks done", value: 12 });
-        const report = new ReportNode({
-          label: "Weekly review",
-          body:
-            "# Weekly review\n\n" +
-            "Logged **{{ focus }} h** of deep work across **{{ tasks }}** finished tasks. " +
-            "Nice momentum — keep the streak going.",
-        });
-        const write = new WriteObsidianNode({ label: "Write to Obsidian", target: "note" });
-        write.stringLiterals.path = "Weekly review";
-        for (const n of [focus, tasks, report, write]) {
-          await s.editor.addNode(asNode(n));
-          nodeNameStore.ensure(n.id, n.constructor.name);
-        }
-        const wire = (src: ClassicPreset.Node, o: string, tgt: ClassicPreset.Node, i: string) =>
-          s.editor.addConnection(new ClassicPreset.Connection(asNode(src), o, asNode(tgt), i) as SolenoidConnection);
-        await wire(focus, "value", report, "focus");
-        await wire(tasks, "value", report, "tasks");
-        await wire(report, "document", write, "in");
-      }}
-    />
-  );
+// ─── The Obsidian page's live hero graph (interactive, not a locked scene) ───────
+// Two plain values flow into a Report — a markdown note whose `{{ }}` tags embed them
+// (Knap) — and Write to Obsidian. Driven by LiveGraph, so it claims the page globals:
+// edit an input and the Report re-renders, open its Document chip to read the note.
+// The reports surface, no formula to parse — values in, a note out. Clears first so
+// LiveGraph's Reset rebuilds it.
+export async function buildReportPipeline(s: SurfaceStack): Promise<void> {
+  await s.editor.clear();
+  const focus = new NumberInputNode({ label: "Focus hours", value: 18.5 });
+  const tasks = new NumberInputNode({ label: "Tasks done", value: 12 });
+  const report = new ReportNode({
+    label: "Weekly review",
+    body:
+      "# Weekly review\n\n" +
+      "Logged **{{ focus }} h** of deep work across **{{ tasks }}** finished tasks. " +
+      "Nice momentum — keep the streak going.",
+  });
+  const write = new WriteObsidianNode({ label: "Write to Obsidian", target: "note" });
+  write.stringLiterals.path = "Weekly review";
+  const at: [ClassicPreset.Node, number, number][] = [
+    [focus, 20, 40],
+    [tasks, 20, 230],
+    [report, 360, 110],
+    [write, 720, 140],
+  ];
+  for (const [n] of at) {
+    await s.editor.addNode(asNode(n));
+    nodeNameStore.ensure(n.id, n.constructor.name);
+  }
+  for (const [n, x, y] of at) await s.view.moveNode(n.id, { x, y });
+  const wire = (src: ClassicPreset.Node, o: string, tgt: ClassicPreset.Node, i: string) =>
+    s.editor.addConnection(new ClassicPreset.Connection(asNode(src), o, asNode(tgt), i) as SolenoidConnection);
+  await wire(focus, "value", report, "focus");
+  await wire(tasks, "value", report, "tasks");
+  await wire(report, "document", write, "in");
 }
 
 // ─── Scene: presenter mode (the camera flies) ───────────────────────────────────

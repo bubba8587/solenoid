@@ -146,18 +146,22 @@ function LandingStage({ stack, resetNonce }: { stack: SurfaceStack; resetNonce: 
   return <FlowSurface stack={stack} hooks={LANDING_HOOKS} />;
 }
 
-export function LandingGraph() {
+// The page's ONE live canvas. `build` (stable, module-level) lays out the graph; it
+// claims the process.ts + activeGraph globals so drag, selection, the table popup and
+// the report overlay all drive it — the locked SceneStage cards only borrow the
+// globals for a compute. A page mounts at most one (only one global slot to hold).
+export function LiveGraph({ build }: { build: (s: SurfaceStack) => Promise<void> }) {
   const stack = useMemo(makeLandingStack, []);
   const [resetNonce, setResetNonce] = useState(0);
 
   useEffect(() => {
     setEditorRefs(stack.editor, stack.engine, stack.view);
-    void buildDemoGraph(stack).then(() => computeStack(stack, true));
+    void build(stack).then(() => computeStack(stack, true));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stack]);
 
   const reset = () =>
-    void buildDemoGraph(stack)
+    void build(stack)
       .then(() => computeStack(stack, true))
       .then(() => setResetNonce((n) => n + 1));
 
@@ -173,4 +177,8 @@ export function LandingGraph() {
       </button>
     </div>
   );
+}
+
+export function LandingGraph() {
+  return <LiveGraph build={buildDemoGraph} />;
 }

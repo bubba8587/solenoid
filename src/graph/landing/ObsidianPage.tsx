@@ -2,7 +2,9 @@ import { useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore } f
 import { appThemeStore } from "../appTheme";
 import wordmark from "../../logo/solenoidwordmark.svg";
 import pkg from "../../../package.json";
-import { Reveal, Diagram, MNode, NoteImportScene, VaultTableScene, PipelineScene } from "./LandingScenes";
+import { Reveal, Diagram, MNode, NoteImportScene, VaultTableScene, buildReportPipeline } from "./LandingScenes";
+import { LiveGraph } from "./LandingGraph";
+import { ReportOverlay } from "../components/ReportOverlay";
 import { SOCKET_COLORS } from "../sockets";
 import { forceVaultRoot, DEMO_VAULT_ROOT } from "../demoVault";
 import "./LandingPage.css";
@@ -246,7 +248,11 @@ export default function ObsidianPage() {
 
           <section className="sol-landing__demo">
             <Reveal>
-              <PipelineScene />
+              <LiveGraph build={buildReportPipeline} />
+              <p className="sol-landing__demo-note">
+                This graph is live. Edit an input, or open the report to read the note it
+                writes — everything downstream recomputes.
+              </p>
             </Reveal>
           </section>
 
@@ -430,6 +436,9 @@ export default function ObsidianPage() {
           <a href={GITHUB_URL} target="_blank" rel="noreferrer">GitHub</a>
         </footer>
       </div>
+      {/* The live hero's Report chip opens its rendered note here (App mounts this for
+          the main canvas; the standalone page mounts its own, as with TablePopup). */}
+      <ReportOverlay />
     </div>
   );
 }

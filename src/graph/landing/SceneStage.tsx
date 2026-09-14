@@ -93,7 +93,6 @@ export function SceneStage({
   className,
   manualLayout,
   awaitConnections,
-  postCompute,
 }: {
   build: (s: SurfaceStack) => Promise<void>;
   className?: string;
@@ -104,10 +103,6 @@ export function SceneStage({
    *  async read and returns empty, so wait for every in-flight read to land and
    *  recompute before measuring — the headless-run pattern (whenConnectionsSettled). */
   awaitConnections?: boolean;
-  /** Runs once the graph has fully computed (connections settled), for a side effect
-   *  that needs resolved inputs — a Write node's preview() reading the vault to fill
-   *  its plan. A recompute follows so the result shows before measuring. */
-  postCompute?: (s: SurfaceStack) => Promise<void>;
 }) {
   const stack = useMemo(makeSceneStack, []);
   const rfId = useId();
@@ -143,7 +138,6 @@ export function SceneStage({
             hooks={hooks}
             manualLayout={manualLayout}
             awaitConnections={awaitConnections}
-            postCompute={postCompute}
           />
         </FlowSurfaceContext.Provider>
       </ReactFlowProvider>
@@ -160,14 +154,12 @@ function SceneInner({
   hooks,
   manualLayout,
   awaitConnections,
-  postCompute,
 }: {
   stack: SurfaceStack;
   build: (s: SurfaceStack) => Promise<void>;
   hooks: SurfaceHooks;
   manualLayout?: boolean;
   awaitConnections?: boolean;
-  postCompute?: (s: SurfaceStack) => Promise<void>;
 }) {
   const { fitView } = useReactFlow();
   // Make the scene's nodes resolvable by the render-time cross-node resolvers (output
@@ -195,14 +187,6 @@ function SceneInner({
           await computeStack(stack, false);
           if (cancelled) return;
         }
-      }
-      // A side effect that needs resolved inputs (a Write node previewing its plan
-      // against the vault), then recompute so the result is on the cards.
-      if (postCompute) {
-        await postCompute(stack);
-        if (cancelled) return;
-        await computeStack(stack, false);
-        if (cancelled) return;
       }
       if (!manualLayout) {
         await waitForMeasured(stack);
