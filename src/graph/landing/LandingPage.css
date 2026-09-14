@@ -229,6 +229,9 @@
 .sol-scene-stage--equation {
   height: 380px;
 }
+.sol-scene-stage--sockets {
+  height: 440px;
+}
 .sol-scene-stage--obsidian {
   height: 460px;
 }

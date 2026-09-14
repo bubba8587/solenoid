@@ -10,7 +10,9 @@ import { FormatControllerNode } from "../nodes/formatController";
 import { ArithmeticNode } from "../nodes/scalar";
 import { EquationNode } from "../nodes/equation";
 import { FrameInputNode, JoinNode, GroupByFrameNode } from "../nodes/frame";
-import { PointPlotterNode, CurveNode } from "../nodes/control";
+import { PointPlotterNode, CurveNode, DateInputNode } from "../nodes/control";
+import { ListInputNode } from "../nodes/list";
+import { DisplayNode } from "../nodes/display";
 import { NoteNode } from "../nodes/annotation";
 import { TvmNode } from "../nodes/finance";
 import { SceneStage } from "./SceneStage";
@@ -239,36 +241,37 @@ export function AnatomyScene() {
   );
 }
 
-// ─── Scene: the typed cable board ───────────────────────────────────────────────
+// ─── Scene: the typed cable board (real nodes, computed once) ────────────────────
+// A source of each value TYPE wired into a Display, so the cables show their real
+// per-type colors: a number, a text list, a date, a frame.
 export function CableBoardScene() {
-  const W = 680;
-  const H = 210;
-  const lanes: { y0: number; y1: number; glyph: SocketGlyph; name: string }[] = [
-    { y0: 30, y1: 22, glyph: { kind: "circle", color: C.number, tip: "Numeric" }, name: "Number" },
-    { y0: 68, y1: 64, glyph: { kind: "square", color: C.strlist, tip: "String List" }, name: "Text list" },
-    { y0: 106, y1: 106, glyph: { kind: "circle", color: C.date, tip: "Date" }, name: "Date" },
-    { y0: 144, y1: 148, glyph: { kind: "frame", color: C.frame, tip: "Frame" }, name: "Frame" },
-    { y0: 182, y1: 190, glyph: { kind: "lambda", color: C.lambda, tip: "LAMBDA" }, name: "Lambda" },
-  ];
   return (
-    <Diagram w={W} h={H}>
-      <Cables
-        w={W}
-        h={H}
-        runs={lanes.map((l) => ({ from: [34, l.y0], to: [560, l.y1], color: l.glyph.color }))}
-      />
-      {lanes.map((l) => (
-        <span key={`src-${l.name}`} className="sol-board__dot" style={{ left: 27, top: l.y0 - 7 }}>
-          <SocketDot entry={l.glyph} />
-        </span>
-      ))}
-      {lanes.map((l) => (
-        <span key={`end-${l.name}`} className="sol-board__end" style={{ left: 553, top: l.y1 - 7 }}>
-          <SocketDot entry={l.glyph} />
-          <span className="sol-board__name">{l.name}</span>
-        </span>
-      ))}
-    </Diagram>
+    <SceneStage
+      className="sol-scene-stage--sockets"
+      build={async (s) => {
+        const num = new NumberInputNode({ label: "Number", value: 42 });
+        const list = new ListInputNode({ label: "Text list", dataType: "string" });
+        list.stringLiterals.v0 = "red, green, blue";
+        const date = new DateInputNode({ label: "Date" });
+        const frame = new FrameInputNode({ label: "Frame", frameText: "a, b\n1, 2\n3, 4" });
+        const sources: [ClassicPreset.Node, string][] = [
+          [num, "value"],
+          [list, "list"],
+          [date, "result"],
+          [frame, "frame"],
+        ];
+        const wire = (src: ClassicPreset.Node, o: string, tgt: ClassicPreset.Node, i: string) =>
+          s.editor.addConnection(new ClassicPreset.Connection(asNode(src), o, asNode(tgt), i) as SolenoidConnection);
+        for (const [src, outKey] of sources) {
+          await s.editor.addNode(asNode(src));
+          nodeNameStore.ensure(src.id, src.constructor.name);
+          const disp = new DisplayNode({ label: "Display" });
+          await s.editor.addNode(asNode(disp));
+          nodeNameStore.ensure(disp.id, disp.constructor.name);
+          await wire(src, outKey, disp, "in");
+        }
+      }}
+    />
   );
 }
 
