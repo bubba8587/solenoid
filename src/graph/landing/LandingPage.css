@@ -220,6 +220,15 @@
 .sol-scene-stage--units {
   height: 480px;
 }
+.sol-scene-stage--verbs {
+  height: 440px;
+}
+.sol-scene-stage--draw {
+  height: 400px;
+}
+.sol-scene-stage--equation {
+  height: 380px;
+}
 .sol-scene-stage .react-flow__minimap {
   display: none;
 }
