@@ -232,6 +232,9 @@
 .sol-scene-stage--sockets {
   height: 440px;
 }
+.sol-scene-stage--anatomy {
+  height: 520px;
+}
 .sol-scene-stage--obsidian {
   height: 460px;
 }

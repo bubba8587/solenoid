@@ -9,7 +9,7 @@ import { NumberInputNode } from "../nodes/input";
 import { FormatControllerNode } from "../nodes/formatController";
 import { ArithmeticNode } from "../nodes/scalar";
 import { EquationNode } from "../nodes/equation";
-import { FrameInputNode, JoinNode, GroupByFrameNode } from "../nodes/frame";
+import { FrameInputNode, JoinNode, GroupByFrameNode, XLookupNode } from "../nodes/frame";
 import { PointPlotterNode, CurveNode, DateInputNode } from "../nodes/control";
 import { ListInputNode } from "../nodes/list";
 import { DisplayNode } from "../nodes/display";
@@ -184,60 +184,58 @@ const Hero = ({ children }: { children: ReactNode }) => (
   <div className="sol-mnode__hero">{children}</div>
 );
 
-const Chip = ({ kind, children }: { kind: "array" | "frame" | "chart"; children: ReactNode }) => (
-  <span className={`solenoid-array-chip solenoid-array-chip--${kind} sol-mnode__chip`}>{children}</span>
-);
-
 const C = SOCKET_COLORS;
 
-// ─── Scene: how a node reads (annotated anatomy) ────────────────────────────────
+// ─── Scene: how a node reads (real XLOOKUP + Note annotations) ──────────────────
+// The real XLookup node reading a small frame (East → Ann), with Note nodes placed
+// beside the parts they explain. manualLayout keeps the placement; no standoffs
+// (they can't scope to a locked scene), so the Notes annotate by proximity.
 export function AnatomyScene() {
-  const W = 680;
-  const H = 330;
-  const nx = 240;
-  const ny = 60;
   return (
-    <Diagram w={W} h={H}>
-      <svg className="sol-diagram__cables" width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
-        <g className="sol-callout__lines">
-          <path d={`M 178 168 H ${nx - 12}`} />
-          <path d={`M 502 108 H ${nx + 246}`} />
-          <path d={`M 502 236 L ${nx + 246} 236`} />
-        </g>
-      </svg>
-
-      <MNode
-        x={nx}
-        y={ny}
-        w={240}
-        accent={C.frame}
-        title="XLOOKUP"
-        socks={[
-          { cy: 42, side: "in", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 66, side: "in", glyph: { kind: "frame", color: C.frame, tip: "Frame" } },
-          { cy: 90, side: "in", glyph: { kind: "square", color: C.strlist, tip: "String List" } },
-          { cy: 152, side: "out", glyph: { kind: "circle", color: C.string, tip: "String" } },
-        ]}
-      >
-        <Row label="lookup" value="1042" />
-        <Row label="within" value={<Chip kind="frame">Frame 5,000×6</Chip>} />
-        <Row label="return" value="name" />
-        <Hero>&quot;Meridian Cable Co.&quot;</Hero>
-        <div className="sol-mnode__chiprow">
-          <Chip kind="array">List ×1</Chip>
-        </div>
-      </MNode>
-
-      <div className="sol-callout" style={{ left: 8, top: 142, width: 168 }}>
-        Sockets sit on the card edge. Shape is the dimension: a dot, a list square, a matrix grid. Color is the type.
-      </div>
-      <div className="sol-callout" style={{ left: 506, top: 82, width: 166 }}>
-        The result box shows the value in its natural format: a date reads as a date, a measurement keeps its unit.
-      </div>
-      <div className="sol-callout" style={{ left: 506, top: 212, width: 166 }}>
-        Chips preview a list, table or chart. Open one to see it in full.
-      </div>
-    </Diagram>
+    <SceneStage
+      className="sol-scene-stage--anatomy"
+      manualLayout
+      build={async (s) => {
+        const regions = new FrameInputNode({
+          label: "Regions",
+          frameText: "region, manager\nEast, Ann\nWest, Bo\nNorth, Cy",
+        });
+        const xl = new XLookupNode({ label: "XLOOKUP" });
+        xl.stringLiterals.lookup = "East";
+        xl.stringLiterals.inColumn = "region";
+        xl.stringLiterals.returnColumn = "manager";
+        const noteHeader = new NoteNode({
+          body: "The header names the operation.",
+          width: 210,
+          height: 64,
+        });
+        const noteSockets = new NoteNode({
+          body: "Sockets are colored by value type and shaped by dimension: the grid takes a whole table, the split square a value or a list, the dots single text values.",
+          width: 250,
+          height: 150,
+        });
+        const noteValue = new NoteNode({
+          body: "The value output carries the result out.",
+          width: 210,
+          height: 64,
+        });
+        const place: [ClassicPreset.Node, number, number][] = [
+          [regions, 20, 60],
+          [xl, 360, 40],
+          [noteHeader, 360, -60],
+          [noteSockets, 20, 360],
+          [noteValue, 620, 300],
+        ];
+        for (const [n] of place) {
+          await s.editor.addNode(asNode(n));
+          nodeNameStore.ensure(n.id, n.constructor.name);
+        }
+        for (const [n, x, y] of place) await s.view.moveNode(n.id, { x, y });
+        await s.editor.addConnection(
+          new ClassicPreset.Connection(asNode(regions), "frame", asNode(xl), "frame") as SolenoidConnection,
+        );
+      }}
+    />
   );
 }
 
