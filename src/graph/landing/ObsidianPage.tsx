@@ -2,7 +2,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
 import wordmark from "../../logo/solenoidwordmark.svg";
 import pkg from "../../../package.json";
-import { Reveal, Diagram, Cables, MNode } from "./LandingScenes";
+import { Reveal, Diagram, Cables, MNode, NoteImportScene } from "./LandingScenes";
 import { SOCKET_COLORS } from "../sockets";
 import "./LandingPage.css";
 import "./ObsidianPage.css";
@@ -172,35 +172,6 @@ finished: 2026-08-21
         </tbody>
       </table>
     </div>
-  );
-}
-
-// The real Import Obsidian Note node: one note in, its frontmatter keys as typed
-// output sockets plus a document output. Replaces the old made-up example node.
-function NoteImportScene() {
-  const W = 320;
-  const H = 168;
-  const num = { kind: "circle" as const, color: C.number, tip: "Numeric" };
-  const doc = { kind: "document" as const, color: C.document, tip: "Document" };
-  return (
-    <Diagram w={W} h={H}>
-      <MNode
-        x={60}
-        y={22}
-        w={200}
-        accent={C.number}
-        title="assumptions.md"
-        socks={[
-          { cy: 52, side: "out", glyph: num },
-          { cy: 70, side: "out", glyph: num },
-          { cy: 92, side: "out", glyph: doc },
-        ]}
-      >
-        <div className="sol-mnode__row"><span className="sol-mnode__label">rate</span><span className="sol-mnode__val">0.045</span></div>
-        <div className="sol-mnode__row"><span className="sol-mnode__label">years</span><span className="sol-mnode__val">25</span></div>
-        <div className="sol-mnode__row"><span className="sol-mnode__label">document</span><span className="sol-mnode__val obs-node-dim">note</span></div>
-      </MNode>
-    </Diagram>
   );
 }
 

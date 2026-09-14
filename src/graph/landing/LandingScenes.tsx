@@ -208,7 +208,7 @@ export function CableBoardScene() {
           [num, "value", 0, 0],
           [list, "list", 0, 260],
           [date, "result", 660, 0],
-          [frame, "frame", 660, 260],
+          [frame, "frame", 650, 260],
         ];
         const wire = (src: ClassicPreset.Node, o: string, tgt: ClassicPreset.Node, i: string) =>
           s.editor.addConnection(new ClassicPreset.Connection(asNode(src), o, asNode(tgt), i) as SolenoidConnection);
@@ -219,7 +219,7 @@ export function CableBoardScene() {
           const disp = new DisplayNode({ label: "Display" });
           await s.editor.addNode(asNode(disp));
           nodeNameStore.ensure(disp.id, disp.constructor.name);
-          await s.view.moveNode(disp.id, { x: x + SPAN, y });
+          await s.view.moveNode(disp.id, { x: x + SPAN + 50, y: y + 30 });
           await wire(src, outKey, disp, "in");
         }
       }}
@@ -430,6 +430,40 @@ export function ObsidianScene() {
         await wire("rate", "rate");
         await wire("months", "nper");
         await wire("balance", "fv");
+      }}
+    />
+  );
+}
+
+// ─── Scene: import a note — frontmatter as typed outputs (Obsidian page) ─────────
+// The real Note node parsing a YAML frontmatter block: each key becomes a typed
+// output (numbers, dates), and one is wired into a Display to show a property in use.
+// No vault and no IO — unlike the vault-reader nodes, a Note lives on the canvas.
+export function NoteImportScene() {
+  return (
+    <SceneStage
+      className="sol-scene-stage--obs-note"
+      build={async (s) => {
+        const note = new NoteNode({
+          label: "Deep Work.md",
+          height: 250,
+          body:
+            "---\n" +
+            "rating: 4.5\n" +
+            "pages: 296\n" +
+            "started: 2026-07-30\n" +
+            "finished: 2026-08-21\n" +
+            "---\n" +
+            "Every frontmatter property is exposed as a typed value you can wire as an input.",
+        });
+        const disp = new DisplayNode({ label: "rating" });
+        for (const n of [note, disp]) {
+          await s.editor.addNode(asNode(n));
+          nodeNameStore.ensure(n.id, n.constructor.name);
+        }
+        await s.editor.addConnection(
+          new ClassicPreset.Connection(asNode(note), "rating", asNode(disp), "in") as SolenoidConnection,
+        );
       }}
     />
   );
