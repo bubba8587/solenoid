@@ -74,9 +74,10 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   toggle in the button row, 26px controls), a **template note** showing its tags literal (not empty),
   and the **Personal Finance** letter's inline `{% if %}` verdicts flipping as a slider moves. The
   dev-notes 09-10 "holes at close" + the 09-11 digest are the checklist.
-- [ ] **File the Knap upstream PRs** (`knap-upstream.md`): the typed-value bug first (its three
-  repros), then whitespace control, filters in comparisons, the `sort` validator; the API
-  asks as issues. Retire the noted workarounds as each lands.
+- [ ] **File the Knap upstream PRs** (`knap-upstream.md`, re-verified on 0.6.0): the typed-value
+  bug first (its two remaining repros, `slice` singletons and `set`), then whitespace control,
+  filters in comparisons, the `sort` parameter; the API asks as issues. Retire the noted
+  workarounds as each lands.
 - [ ] **Author's desktop eyeball** of the flagship cards against `demo-vault/` (Settings ▸ Obsidian
   → the repo's demo-vault): Vault Folder (be's ten-step checklist in the 09-07 digest), Write
   Properties Preview/Run on a copy, TaskNotes with the plugin's API on, Write to Obsidian block mode

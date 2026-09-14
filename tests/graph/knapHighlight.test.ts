@@ -38,6 +38,13 @@ describe("highlightKnap", () => {
     expect(html).toContain('<span class="md-code">**not** bold</span>'); // fenced: no inline marks
   });
 
+  it("a `{# … #}` comment greys out whole and is not a tag", () => {
+    const html = highlightKnap("a {# {{ x }} #} b");
+    expect(html).toContain('<span class="fx-comment">{# {{ x }} #}</span>');
+    expect(html).not.toContain('knap-tag');
+    expect(text(html)).toBe("a {# {{ x }} #} b\n");
+  });
+
   it("a tag inside a heading keeps the heading; a tag spanning lines is one tag", () => {
     const html = highlightKnap("# Hi {{ name }}\n{{\n a\n}}");
     expect(html).toContain('<span class="md-heading"># Hi <span class="knap-tag">');

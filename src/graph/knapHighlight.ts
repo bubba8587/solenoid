@@ -1,11 +1,11 @@
 // Syntax highlight for a Report's source pane: Markdown structure (headings, list
 // markers, quotes, fences, emphasis, inline code, links) and, inside every `{{ … }}`
 // and `{% … %}` tag, Knap's own tokens on the formula surface's `.fx-tokens` classes
-// (keyword, filter, string, number, constant, variable, operator). Output is HTML for
-// the highlighted backdrop a transparent textarea sits over, so EVERY character of the
-// source is preserved (spans only), escaped first.
+// (keyword, filter, string, number, constant, variable, operator). A `{# … #}` comment
+// greys out whole. Output is HTML for the highlighted backdrop a transparent textarea
+// sits over, so EVERY character of the source is preserved (spans only), escaped first.
 
-const TAG_RE = /(\{\{[\s\S]*?\}\}|\{%[\s\S]*?%\})/g;
+const TAG_RE = /(\{\{[\s\S]*?\}\}|\{%[\s\S]*?%\}|\{#[\s\S]*?#\})/g;
 const HOLD = "\u0000";
 
 function esc(s: string): string {
@@ -79,5 +79,8 @@ export function highlightKnap(source: string): string {
   const tags: string[] = [];
   const held = source.replace(TAG_RE, (tag) => { tags.push(tag); return `${HOLD}${tags.length - 1}${HOLD}`; });
   const md = highlightMarkdown(esc(held));
-  return md.replace(/\u0000(\d+)\u0000/g, (_m, i: string) => highlightTag(tags[Number(i)])) + "\n";
+  return md.replace(/\u0000(\d+)\u0000/g, (_m, i: string) => {
+    const tag = tags[Number(i)];
+    return tag.startsWith("{#") ? span("fx-comment", esc(tag)) : highlightTag(tag);
+  }) + "\n";
 }

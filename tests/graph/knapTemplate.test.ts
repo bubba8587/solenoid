@@ -11,10 +11,11 @@ import type { FrameValue } from "../../src/graph/frame";
 const serial = (iso: string) => Math.round(parseDateToSerial(iso));
 
 describe("hasKnapSyntax", () => {
-  it("only a `{{` or `{%` tag makes a body a template — the internal ref span does not", () => {
+  it("only a `{{`, `{%` or `{#` tag makes a body a template — the internal ref span does not", () => {
     expect(hasKnapSyntax("plain `=x` text")).toBe(false);
     expect(hasKnapSyntax("{{ x }}")).toBe(true);
     expect(hasKnapSyntax("{% if x %}{% endif %}")).toBe(true);
+    expect(hasKnapSyntax("body {# aside #}")).toBe(true);
   });
 });
 
@@ -35,6 +36,9 @@ describe("extractKnapVariables", () => {
   it("a tag-less body has no variables (and never parses)", () => {
     expect(extractKnapVariables("just `=ref` prose")).toEqual([]);
   });
+  it("a name only a comment mentions is not a variable", () => {
+    expect(extractKnapVariables("{# {{ ghost }} #}{{ real }}")).toEqual(["real"]);
+  });
 });
 
 describe("embedBareVariables", () => {
@@ -45,6 +49,9 @@ describe("embedBareVariables", () => {
   it("with no inputs or no tag the body is untouched", () => {
     expect(embedBareVariables("{{ a }}", [])).toBe("{{ a }}");
     expect(embedBareVariables("plain", ["a"])).toBe("plain");
+  });
+  it("a commented-out block binds nothing: the tag after it still embeds", () => {
+    expect(embedBareVariables("{# {% for a in xs %} #}{{ a }}", ["a"])).toBe("{# {% for a in xs %} #}`=a`");
   });
 });
 
@@ -109,6 +116,11 @@ describe("renderKnap", () => {
     expect(r.errors.length).toBeGreaterThan(0);
     expect(knapErrorText(r.errors)).toMatch(/^2:\d+ .*endif/);
   });
+  it("a `{# … #}` comment is stripped, over one line or many; an unclosed one is a syntax error", async () => {
+    expect((await renderKnap("Hello {# aside #}world", {})).output).toBe("Hello world");
+    expect((await renderKnap("A{#\nmany\nlines\n#}B", {})).output).toBe("AB");
+    expect(knapErrorText((await renderKnap("A {# oops", {})).errors)).toMatch(/comment/i);
+  });
 });
 
 describe("renderKnap keepUnknown (a Note's mode)", () => {
@@ -118,6 +130,10 @@ describe("renderKnap keepUnknown (a Note's mode)", () => {
   });
   it("a block over an unknown name still renders empty, as Knap does", async () => {
     const r = await renderKnap("a{% if person %}X{% endif %}b", {}, { keepUnknown: true });
+    expect(r.output).toBe("ab");
+  });
+  it("a comment is stripped even when it wraps an unknown tag", async () => {
+    const r = await renderKnap("a{# {{ person }} #}b", {}, { keepUnknown: true });
     expect(r.output).toBe("ab");
   });
 });
@@ -131,6 +147,61 @@ describe("renderKnap {% if %} comparisons", () => {
     expect(await at("{% if a >= b %}y{% else %}n{% endif %}", { a: 1, b: 2 })).toBe("n");
     expect(await at("{% if a <= b %}y{% else %}n{% endif %}", { a: 2, b: 2 })).toBe("y");
     expect(await at("{% if a <= b %}y{% else %}n{% endif %}", { a: 3, b: 2 })).toBe("n");
+  });
+});
+
+// The engine edges `help/knap.md` § Gotchas tells the author about, and the ones
+// `knap-upstream.md` is filed on. Pinned here so a `knap` bump that fixes or breaks
+// one fails loudly and the help copy follows (knap 0.6.0).
+describe("the Knap engine edges the help doc names", () => {
+  const rows = [{ Name: "Bob", Paid: 40 }, { Name: "Ada", Paid: 120 }, { Name: "Cy", Paid: 10 }];
+  const at = async (body: string) => renderKnap(body, { rows });
+  const names = (body: string) => at(body).then((r) => (r.errors.length ? knapErrorText(r.errors) : r.output));
+
+  it("a filter cannot sit inside a condition; `set` first works", async () => {
+    expect((await at("{% if rows | length > 0 %}y{% endif %}")).errors.length).toBeGreaterThan(0);
+    expect((await at("{% if (rows | length) > 0 %}y{% endif %}")).errors.length).toBeGreaterThan(0);
+    expect(await names("{% set n = rows | length %}{% if n > 0 %}{{ n }}{% endif %}")).toBe("3");
+  });
+
+  it("a comma-joined `sort` parameter reads as ONE property name, so the order is untouched and nothing warns", async () => {
+    expect(await names('{{ rows | sort:"Paid" | map:x => x.Name | join:"," }}')).toBe("Cy,Bob,Ada");
+    expect(await names('{{ rows | sort:("Paid","desc") | map:x => x.Name | join:"," }}')).toBe("Ada,Bob,Cy");
+    // Input order, the same as sorting on a key no row has.
+    expect(await names('{{ rows | sort:"Paid,desc" | map:x => x.Name | join:"," }}')).toBe("Bob,Ada,Cy");
+    expect(await names('{{ rows | sort:"Nope" | map:x => x.Name | join:"," }}')).toBe("Bob,Ada,Cy");
+  });
+
+  it("`slice` down to ONE item loses the array; two or more survive", async () => {
+    expect(await names("{% for r in rows | slice:0,1 %}{{ r.Name }}{% endfor %}")).toMatch(/not an array/);
+    expect(await names("{% for r in rows | slice:0,2 %}{{ r.Name }};{% endfor %}")).toBe("Bob;\nAda;");
+  });
+
+  it("`reverse`, `unique` and arrow-form `map` hand on serialized text, so indexing a `set` reads JSON", async () => {
+    expect(await names("{% set x = rows | reverse %}{{ x[0] }}")).toBe("[");
+    expect(await names("{% set x = rows | unique %}{{ x[0] }}")).toBe("[");
+    expect(await names("{% set x = rows | map:x => x.Name %}{{ x[0] }}")).toBe("[");
+    // The ported ones: property-shorthand map, sort, where, compact.
+    expect(await names("{% set x = rows | map:Name %}{{ x[0] }}")).toBe("Bob");
+    expect(await names("{% set x = rows | sort %}{{ x[0].Name }}")).toBe("Ada");
+    // A `{% for %}` re-parses the JSON, which is what makes the gap easy to miss.
+    expect(await names("{% for r in rows | reverse %}{{ r.Name }};{% endfor %}")).toBe("Cy;\nAda;\nBob;");
+  });
+
+  it("`first`, `last` and `nth` after a sort keep the row", async () => {
+    expect(await names('{% set top = rows | sort:"Paid" | last %}{{ top.Name }}')).toBe("Ada");
+    expect(await names('{% set low = rows | sort:"Paid" | first %}{{ low.Name }}')).toBe("Cy");
+    expect(await names('{% set every3rd = rows | nth:3 %}{{ every3rd[0].Name }}')).toBe("Cy");
+  });
+
+  it("there is no whitespace control and no raw block", async () => {
+    expect(await names("a{{- 1 -}}b")).toMatch(/Unexpected character/);
+    expect(await names("{% raw %}{{ x }}{% endraw %}")).toMatch(/Unknown tag/);
+    expect(await names('{{ "{" }}{ x }}')).toBe("{{ x }}");
+  });
+
+  it("a number reaching `date` is read as a date literal, never as a serial or epoch", async () => {
+    expect(await names('{{ 46000 | date:"YYYY" }}')).toBe("4599");
   });
 });
 

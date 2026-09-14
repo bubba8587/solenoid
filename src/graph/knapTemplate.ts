@@ -20,10 +20,11 @@ import { formatDateSerial } from "./nodes/dateSerial";
 import { mermaidToMarkdown, lambdaToMarkdown } from "./obsidianMarkdown";
 import { isDateType, type SocketDataType } from "./sockets";
 
-const TAG_RE = /\{\{|\{%/;
+const TAG_RE = /\{\{|\{%|\{#/;
 
 /** True when the body carries a Knap tag at all: a plain body skips the (async)
- *  render entirely, so a Note or Report without templating stays synchronous. */
+ *  render entirely, so a Note or Report without templating stays synchronous. A
+ *  `{# comment #}` counts — the engine strips it, so the body is not plain. */
 export function hasKnapSyntax(body: string): boolean {
   return TAG_RE.test(body);
 }
@@ -105,7 +106,9 @@ export function embedBareVariables(body: string, inputs: readonly string[]): str
   // once seen), so `{{ item }}` inside `{% for item in list %}` stays the loop's own.
   const shadow: string[] = [];
   const setNames = new Set<string>();
-  return body.replace(/\{%\s*([\s\S]*?)\s*%\}|\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*(\|\s*highlight\s*)?\}\}/g, (tag, block?: string, name?: string, hl?: string) => {
+  // A `{# … #}` comment matches first and returns verbatim, so a commented-out
+  // `{% for %}` never pushes an iterator the rest of the body would then shadow.
+  return body.replace(/\{#[\s\S]*?#\}|\{%\s*([\s\S]*?)\s*%\}|\{\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*(\|\s*highlight\s*)?\}\}/g, (tag, block?: string, name?: string, hl?: string) => {
     if (block !== undefined) {
       const forM = /^for\s+([A-Za-z_][A-Za-z0-9_]*)\s+in\b/.exec(block);
       if (forM) shadow.push(forM[1]);

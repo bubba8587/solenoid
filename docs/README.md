@@ -51,8 +51,9 @@ is parked there.
   writing a new node. All shipped.
 - **`node-coverage.md`** — the node inventory + the arity/labeled-slots rules;
   `nodeCatalog.ts` is the real source of truth.
-- **`knap-upstream.md`** — the `knap` 0.4 bugs (with repros) and API asks found
-  integrating it, each with the workaround it would retire. The list to file upstream.
+- **`knap-upstream.md`** — the `knap` bugs (with repros) and API asks found
+  integrating it, each with the workaround it would retire, re-verified on every
+  bump. The list to file upstream.
 - **`formulajs-divergences.md`** — why Solenoid owns each `registerInternal`
   override instead of falling through to Formula.js. Read before deleting an
   override or widening the fallthrough; the library being wrong is the whole

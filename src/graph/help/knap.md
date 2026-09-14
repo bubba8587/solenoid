@@ -13,6 +13,7 @@ A bare `{{ name }}` embeds the wired value the way the canvas shows it: a format
 - `{% if x %}` … `{% elseif y %}` … `{% else %}` … `{% endif %}` gates a section.
 - `{% for row in table %}` … `{% endfor %}` repeats over a frame's rows. Inside, `loop` holds the position and `row` is one row's `column: value` map.
 - `{% set n = rows | length %}` names a value for later in the template.
+- `{# … #}` is a comment. It can run over several lines and never reaches the page.
 - A filter shapes a value: `{{ paid | number_format:2 }}`, `{{ when | date:"D MMM YYYY" }}`, `{{ names | join:", " }}`. The Report overlay lists the available filters.
 
 A name the template does not know renders empty. An object with no display form prints as JSON.
@@ -30,8 +31,8 @@ Knap has no raw block and no backslash escape. To print a literal `{{ x }}` (in 
 A few edges from the underlying engine:
 
 - A filter cannot sit inside a condition. Set it first: `{% set n = rows | length %}{% if n > 0 %}`.
-- After `sort`, read the list with `map`, `where`, or `list`. `first`, `nth`, and `slice` return text, not rows.
-- For a descending sort, pass the parameters as a pair: `sort:("Paid", "desc")`. The comma form `sort:"Paid,desc"` sorts ascending.
+- `slice` down to a single item returns text, not a row. Keep two or more, or use `first`, `last`, or `nth`.
+- For a descending sort, pass the parameters as a pair: `sort:("Paid", "desc")`. The comma form `sort:"Paid,desc"` reads as one property name, so the rows come back in the order they went in.
 - Quote a keyword filter argument: `list:"numbered"`, not `list:numbered`.
 - Whitespace trimming (`{{- x -}}`) is not supported.
 - A `date` filter reads text, so a date already crosses in as ISO text. A plain number passed to `date` does not work.

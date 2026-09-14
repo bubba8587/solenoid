@@ -6,6 +6,40 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-14c — Knap 0.4.2 → 0.6.0)
+
+All on `develop`.
+
+- **`knap` bumped 0.4.2 → 0.6.0.** Nothing in `src/` had to change for the breaking list
+  (typed `calc`/`round`/`length`, quoted `yaml` strings, `[42] | length` now 1): Solenoid
+  never calls `yaml`/`yaml_property` from a template and no seed leans on the old text forms.
+  `tsc` + 5951 tests green on the bump alone.
+- **`{# … #}` comments wired up** (landed in knap 0.4.2, never adopted). `hasKnapSyntax`'s
+  TAG_RE missed `{#`, so a Note or Report body whose only tag was a comment skipped the render
+  and printed the comment verbatim. `embedBareVariables` now matches a comment first so a
+  commented-out `{% for %}` cannot push an iterator the rest of the body shadows;
+  `knapHighlight` greys a comment whole on `.fx-comment`. An unclosed `{#` is now a `#SYNTAX!`,
+  the same as an unclosed `{%`.
+- **`knap-upstream.md` re-verified against 0.6.0 and rewritten**, against the upstream source
+  (shallow clone of obsidianmd/knap at the 0.6.0 tag), not just black-box probes. Entry 1
+  shrank and sharpened: upstream PR #14 put the collection filters on a `TemplateValue` path
+  but missed FOUR — `slice`, `reverse`, `unique` and `map`'s ARROW form (`map:Name` was ported,
+  `map:x => x.Name` was not), all still `: string`. `slice` additionally has an explicit
+  `slicedArray.length === 1` branch that returns `.toString()`. The fix is mechanical: port
+  them onto `arrayInputValue`/`collectionInputValue` the way #14 did the rest. A `{% for %}`
+  re-parses the JSON, so only `set`-then-index and a singleton `slice` show the gap, which is
+  why it survived #14. Entry 5 was wrong and is restated:
+  `sort:"Paid,desc"` is not "silently ascending", it is a lookup of a key literally named
+  `Paid,desc`, so the rows come back in INPUT order with no warning — same as `sort:"Nope"`.
+  2, 3, 4 and all six API asks stand unchanged. Entry 8's count is 50 of 80 filters with no
+  metadata at all, not 22. **None of the ten are filed upstream** (knap has one open issue,
+  #10, and one open PR, #13, both unrelated), so the backlog item is still the whole list.
+- **The edges are pinned now.** `knapTemplate.test.ts` § "the Knap engine edges the help doc
+  names" asserts each gotcha `src/graph/help/knap.md` tells the author about, so the next bump
+  fails instead of leaving the help copy stale. The help doc's § Gotchas was rewritten for
+  0.6.0 (the `first`/`nth` line was wrong, the `sort` comma-form line was wrong) and § Blocks
+  and filters gained the comment line.
+
 ### SESSION DIGEST (2026-09-14b — Obsidian hero interactive, LocalFile CSV, DTE integration)
 
 Author-driven; all on `develop`, not pushed (local HMR verify).
