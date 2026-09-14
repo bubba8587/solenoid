@@ -1,12 +1,12 @@
-import { useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
 import wordmark from "../../logo/solenoidwordmark.svg";
 import pkg from "../../../package.json";
-import { Reveal, Diagram, MNode, NoteImportScene, VaultTableScene, LocalFileScene, buildReportPipeline } from "./LandingScenes";
+import { Reveal, useRevealAnim, Diagram, MNode, NoteImportScene, VaultTableScene, LocalFileScene, buildReportPipeline } from "./LandingScenes";
 import { LiveGraph } from "./LandingGraph";
 import { ReportOverlay } from "../components/ReportOverlay";
 import { SOCKET_COLORS } from "../sockets";
-import { forceVaultRoot, forceCsvFolder, DEMO_VAULT_ROOT } from "../demoVault";
+import { forceDemoVault } from "../demoVault";
 import "./LandingPage.css";
 import "./ObsidianPage.css";
 
@@ -145,14 +145,7 @@ function PlanScene() {
 }
 
 export default function ObsidianPage() {
-  const [anim, setAnim] = useState(false);
-  // Apply the reveal gate BEFORE the first paint (layout effect, not passive), so the
-  // hidden state paints once and the IntersectionObserver's reveal a frame later has a
-  // committed frame to transition FROM. A passive effect flips it after paint, so above-
-  // the-fold reveals collapse straight to visible with no animation on reload.
-  useLayoutEffect(() => {
-    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) setAnim(true);
-  }, []);
+  const anim = useRevealAnim();
   useEffect(() => {
     document.title = "Solenoid · The computation layer for your vault";
   }, []);
@@ -160,11 +153,8 @@ export default function ObsidianPage() {
   // so every reader scene resolves to it regardless of the user's setting (never
   // persisted). Set during render so it is in place before the scene children mount
   // and read it; cleared on unmount. Plain-anchor navigation to the app reloads anyway.
-  useMemo(() => {
-    forceVaultRoot(DEMO_VAULT_ROOT);
-    forceCsvFolder(`${DEMO_VAULT_ROOT}/Data`);
-  }, []);
-  useEffect(() => () => { forceVaultRoot(null); forceCsvFolder(null); }, []);
+  useMemo(() => forceDemoVault(true), []);
+  useEffect(() => () => forceDemoVault(false), []);
 
   return (
     <div className={`sol-landing${anim ? " sol-landing--anim" : ""}`}>

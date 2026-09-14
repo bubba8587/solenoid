@@ -12,7 +12,7 @@ import { reconcileFcTypes } from "../fcReconcile";
 import { makeEnsureElk, elkTidyLayout, tidyOptionsFromSettings } from "../tidyArrange";
 import { measuredBox } from "../nodeSize";
 import { registerOwnedGraph } from "../activeGraph";
-import { whenConnectionsSettled } from "../connectionStore";
+import { whenConnectionsSettled, hasInflightConnections } from "../connectionStore";
 import { computeStack } from "./landingCompute";
 
 // ELK is loaded once, shared by every scene card (makeEnsureElk caches the instance).
@@ -179,14 +179,16 @@ function SceneInner({
       if (cancelled) return;
       // A connection node's first compute returns empty and kicks off an async read;
       // wait for every read to land, then recompute so the real value is present
-      // before measuring. Two rounds cover a reader feeding a downstream reader.
+      // before measuring. Loop to a fixed point — a recompute can start a new read (a
+      // reader feeding another reader) — settling once more each time, until a compute
+      // starts nothing new.
       if (awaitConnections) {
-        for (let round = 0; round < 2; round++) {
+        do {
           await whenConnectionsSettled();
           if (cancelled) return;
           await computeStack(stack, false);
           if (cancelled) return;
-        }
+        } while (hasInflightConnections());
       }
       if (!manualLayout) {
         await waitForMeasured(stack);

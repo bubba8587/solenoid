@@ -3,11 +3,11 @@ import {
   DEMO_VAULT_ROOT,
   isDemoVaultPath,
   getVaultRoot,
-  forceVaultRoot,
+  getCsvFolder,
+  forceDemoVault,
   demoVaultFs,
 } from "../../src/graph/demoVault";
 import { settingsStore } from "../../src/graph/settingsStore";
-import { forceCsvFolder } from "../../src/graph/demoVault";
 import { LocalFileNode } from "../../src/graph/nodes/connection";
 import { isFrameValue, type FrameValue } from "../../src/graph/frame";
 
@@ -31,19 +31,23 @@ describe("isDemoVaultPath", () => {
   });
 });
 
-describe("getVaultRoot / forceVaultRoot", () => {
+describe("getVaultRoot / getCsvFolder / forceDemoVault", () => {
   afterEach(() => {
-    forceVaultRoot(null);
+    forceDemoVault(false);
     settingsStore.set("useDemoVault", false);
     settingsStore.set("obsidianVault", "");
+    settingsStore.set("csvFolder", "");
   });
 
-  it("a forced root wins over the setting", () => {
+  it("the force wins over the settings and pins both root and data folder", () => {
     settingsStore.set("obsidianVault", "C:/real");
-    forceVaultRoot(R);
+    settingsStore.set("csvFolder", "C:/data");
+    forceDemoVault(true);
     expect(getVaultRoot()).toBe(R);
-    forceVaultRoot(null);
+    expect(getCsvFolder()).toBe(`${R}/Data`);
+    forceDemoVault(false);
     expect(getVaultRoot()).toBe("C:/real");
+    expect(getCsvFolder()).toBe("C:/data");
   });
 
   it("the demo-vault setting returns the sentinel, else the configured folder", () => {
@@ -102,10 +106,10 @@ describe("demoVaultFs — reads against the bundled files", () => {
 });
 
 describe("Local File over the demo seam (works without desktop)", () => {
-  afterEach(() => forceCsvFolder(null));
+  afterEach(() => forceDemoVault(false));
 
   it("reads a bundled CSV as a typed frame", async () => {
-    forceCsvFolder(`${R}/Data`);
+    forceDemoVault(true);
     const node = new LocalFileNode({ label: "expenses.csv", fileName: "expenses.csv" });
     const { frame } = await node.data();
     expect(isFrameValue(frame)).toBe(true);

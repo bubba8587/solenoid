@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { SocketDot, type SocketGlyph } from "../components/SocketLegend";
 import { SOCKET_COLORS } from "../sockets";
@@ -24,9 +24,39 @@ import { SceneStage } from "./SceneStage";
 
 const asNode = (n: ClassicPreset.Node) => n as unknown as SolenoidNode;
 
+// ── Scene build helpers (every scene adds nodes and wires them the same way) ──
+/** Add each node to the scene's editor and register its class-derived family name. */
+async function addNodes(s: SurfaceStack, nodes: ClassicPreset.Node[]): Promise<void> {
+  for (const n of nodes) {
+    await s.editor.addNode(asNode(n));
+    nodeNameStore.ensure(n.id, n.constructor.name);
+  }
+}
+
+/** Wire one output socket to one input socket — the scenes' one cable-adding idiom. */
+function wire(s: SurfaceStack, src: ClassicPreset.Node, out: string, tgt: ClassicPreset.Node, inp: string) {
+  return s.editor.addConnection(
+    new ClassicPreset.Connection(asNode(src), out, asNode(tgt), inp) as SolenoidConnection,
+  );
+}
+
 // ─── Landing scene primitives ───────────────────────────────────────────────────
 // STATIC vignettes rebuilding the app's design recipes in plain DOM+SVG — the page
 // allows only ONE live rete stage (LandingGraph), so scenes must never mount one.
+
+// ── Reveal animation gate ──
+// Entrance/loop motion lives only under `.sol-landing--anim`, and only when the OS
+// isn't asking for reduced motion. Applied in a LAYOUT effect (before paint), so the
+// hidden reveal state paints once and the IntersectionObserver's reveal a frame later
+// has a committed frame to transition FROM — a passive effect flips it after paint, so
+// above-the-fold reveals collapse straight to visible with no animation on reload.
+export function useRevealAnim(): boolean {
+  const [anim, setAnim] = useState(false);
+  useLayoutEffect(() => {
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) setAnim(true);
+  }, []);
+  return anim;
+}
 
 // ── Reveal: scroll-triggered entrance ──
 // The hidden state exists only under `.sol-landing--anim`, so content is never
@@ -214,17 +244,12 @@ export function CableBoardScene() {
           [date, "result", 660, 0],
           [frame, "frame", 650, 260],
         ];
-        const wire = (src: ClassicPreset.Node, o: string, tgt: ClassicPreset.Node, i: string) =>
-          s.editor.addConnection(new ClassicPreset.Connection(asNode(src), o, asNode(tgt), i) as SolenoidConnection);
         for (const [src, outKey, x, y] of pairs) {
-          await s.editor.addNode(asNode(src));
-          nodeNameStore.ensure(src.id, src.constructor.name);
-          await s.view.moveNode(src.id, { x, y });
           const disp = new DisplayNode({ label: "Display" });
-          await s.editor.addNode(asNode(disp));
-          nodeNameStore.ensure(disp.id, disp.constructor.name);
+          await addNodes(s, [src, disp]);
+          await s.view.moveNode(src.id, { x, y });
           await s.view.moveNode(disp.id, { x: x + SPAN + 50, y: y + 30 });
-          await wire(src, outKey, disp, "in");
+          await wire(s, src, outKey, disp, "in");
         }
       }}
     />
@@ -246,16 +271,11 @@ export function UnitsScene() {
         const time = new NumberInputNode({ label: "Time", value: 5 });
         const fcHr = new FormatControllerNode({ label: "hr", unit: "hr", side: "output" });
         const speed = new ArithmeticNode({ label: "Speed", op: "div" });
-        for (const n of [dist, fcKm, time, fcHr, speed]) {
-          await s.editor.addNode(asNode(n));
-          nodeNameStore.ensure(n.id, n.constructor.name);
-        }
-        const wire = (src: ClassicPreset.Node, o: string, tgt: ClassicPreset.Node, i: string) =>
-          s.editor.addConnection(new ClassicPreset.Connection(asNode(src), o, asNode(tgt), i) as SolenoidConnection);
-        await wire(dist, "value", fcKm, "in");
-        await wire(fcKm, "out", speed, "a");
-        await wire(time, "value", fcHr, "in");
-        await wire(fcHr, "out", speed, "b");
+        await addNodes(s, [dist, fcKm, time, fcHr, speed]);
+        await wire(s, dist, "value", fcKm, "in");
+        await wire(s, fcKm, "out", speed, "a");
+        await wire(s, time, "value", fcHr, "in");
+        await wire(s, fcHr, "out", speed, "b");
       }}
     />
   );
@@ -272,14 +292,9 @@ export function EquationScene() {
         const volts = new NumberInputNode({ label: "Volts", value: 12 });
         const ohms = new NumberInputNode({ label: "Ohms", value: 240 });
         const eq = new EquationNode({ label: "Ohm's law", expr: "V = I * R" });
-        for (const n of [volts, ohms, eq]) {
-          await s.editor.addNode(asNode(n));
-          nodeNameStore.ensure(n.id, n.constructor.name);
-        }
-        const wire = (src: ClassicPreset.Node, o: string, tgt: ClassicPreset.Node, i: string) =>
-          s.editor.addConnection(new ClassicPreset.Connection(asNode(src), o, asNode(tgt), i) as SolenoidConnection);
-        await wire(volts, "value", eq, "V");
-        await wire(ohms, "value", eq, "R");
+        await addNodes(s, [volts, ohms, eq]);
+        await wire(s, volts, "value", eq, "V");
+        await wire(s, ohms, "value", eq, "R");
       }}
     />
   );
@@ -306,15 +321,10 @@ export function VerbsScene() {
         const gb = new GroupByFrameNode({ label: "GROUPBY", agg: "sum" });
         gb.stringLiterals.keys = "region";
         gb.stringLiterals.column = "sales";
-        for (const n of [sales, regions, join, gb]) {
-          await s.editor.addNode(asNode(n));
-          nodeNameStore.ensure(n.id, n.constructor.name);
-        }
-        const wire = (src: ClassicPreset.Node, o: string, tgt: ClassicPreset.Node, i: string) =>
-          s.editor.addConnection(new ClassicPreset.Connection(asNode(src), o, asNode(tgt), i) as SolenoidConnection);
-        await wire(sales, "frame", join, "left");
-        await wire(regions, "frame", join, "right");
-        await wire(join, "frame", gb, "frame");
+        await addNodes(s, [sales, regions, join, gb]);
+        await wire(s, sales, "frame", join, "left");
+        await wire(s, regions, "frame", join, "right");
+        await wire(s, join, "frame", gb, "frame");
       }}
     />
   );
@@ -341,10 +351,7 @@ export function DrawScene() {
           xmax: 10,
           ymax: 10,
         });
-        for (const n of [plot, curve]) {
-          await s.editor.addNode(asNode(n));
-          nodeNameStore.ensure(n.id, n.constructor.name);
-        }
+        await addNodes(s, [plot, curve]);
         // Unwired cards: place them side by side (ELK has no edges to arrange them by).
         await s.view.moveNode(plot.id, { x: 20, y: 20 });
         await s.view.moveNode(curve.id, { x: 300, y: 20 });
@@ -424,16 +431,11 @@ export function ObsidianScene() {
             "`balance` is the payoff target. Edit any figure and the payment re-solves.",
         });
         const pmt = new TvmNode({ label: "Payment" });
-        for (const n of [note, pmt]) {
-          await s.editor.addNode(asNode(n));
-          nodeNameStore.ensure(n.id, n.constructor.name);
-        }
-        const wire = (out: string, inp: string) =>
-          s.editor.addConnection(new ClassicPreset.Connection(asNode(note), out, asNode(pmt), inp) as SolenoidConnection);
-        await wire("principal", "pv");
-        await wire("rate", "rate");
-        await wire("months", "nper");
-        await wire("balance", "fv");
+        await addNodes(s, [note, pmt]);
+        await wire(s, note, "principal", pmt, "pv");
+        await wire(s, note, "rate", pmt, "rate");
+        await wire(s, note, "months", pmt, "nper");
+        await wire(s, note, "balance", pmt, "fv");
       }}
     />
   );
@@ -461,13 +463,8 @@ export function NoteImportScene() {
             "Every frontmatter property is exposed as a typed value you can wire as an input.",
         });
         const disp = new DisplayNode({ label: "rating" });
-        for (const n of [note, disp]) {
-          await s.editor.addNode(asNode(n));
-          nodeNameStore.ensure(n.id, n.constructor.name);
-        }
-        await s.editor.addConnection(
-          new ClassicPreset.Connection(asNode(note), "rating", asNode(disp), "in") as SolenoidConnection,
-        );
+        await addNodes(s, [note, disp]);
+        await wire(s, note, "rating", disp, "in");
       }}
     />
   );
@@ -494,15 +491,10 @@ export function VaultTableScene() {
         const sort = new SortFrameNode({ label: "by rating", dir: "desc" });
         sort.stringLiterals.column = "rating";
         const disp = new DisplayNode({ label: "Book notes" });
-        for (const n of [notes, filter, sort, disp]) {
-          await s.editor.addNode(asNode(n));
-          nodeNameStore.ensure(n.id, n.constructor.name);
-        }
-        const wire = (src: ClassicPreset.Node, o: string, tgt: ClassicPreset.Node, i: string) =>
-          s.editor.addConnection(new ClassicPreset.Connection(asNode(src), o, asNode(tgt), i) as SolenoidConnection);
-        await wire(notes, "cube", filter, "frame");
-        await wire(filter, "frame", sort, "frame");
-        await wire(sort, "frame", disp, "in");
+        await addNodes(s, [notes, filter, sort, disp]);
+        await wire(s, notes, "cube", filter, "frame");
+        await wire(s, filter, "frame", sort, "frame");
+        await wire(s, sort, "frame", disp, "in");
       }}
     />
   );
@@ -519,13 +511,8 @@ export function LocalFileScene() {
       build={async (s) => {
         const file = new LocalFileNode({ label: "expenses.csv", fileName: "expenses.csv" });
         const disp = new DisplayNode({ label: "Expenses" });
-        for (const n of [file, disp]) {
-          await s.editor.addNode(asNode(n));
-          nodeNameStore.ensure(n.id, n.constructor.name);
-        }
-        await s.editor.addConnection(
-          new ClassicPreset.Connection(asNode(file), "frame", asNode(disp), "in") as SolenoidConnection,
-        );
+        await addNodes(s, [file, disp]);
+        await wire(s, file, "frame", disp, "in");
       }}
     />
   );
@@ -556,16 +543,11 @@ export async function buildReportPipeline(s: SurfaceStack): Promise<void> {
     [report, 360, 110],
     [write, 720, 140],
   ];
-  for (const [n] of at) {
-    await s.editor.addNode(asNode(n));
-    nodeNameStore.ensure(n.id, n.constructor.name);
-  }
+  await addNodes(s, at.map(([n]) => n));
   for (const [n, x, y] of at) await s.view.moveNode(n.id, { x, y });
-  const wire = (src: ClassicPreset.Node, o: string, tgt: ClassicPreset.Node, i: string) =>
-    s.editor.addConnection(new ClassicPreset.Connection(asNode(src), o, asNode(tgt), i) as SolenoidConnection);
-  await wire(focus, "value", report, "focus");
-  await wire(tasks, "value", report, "tasks");
-  await wire(report, "document", write, "in");
+  await wire(s, focus, "value", report, "focus");
+  await wire(s, tasks, "value", report, "tasks");
+  await wire(s, report, "document", write, "in");
 }
 
 // ─── Scene: presenter mode (the camera flies) ───────────────────────────────────

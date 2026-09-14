@@ -18,37 +18,30 @@ export function isDemoVaultPath(p: string | null | undefined): boolean {
   return !!p && (p === DEMO_VAULT_ROOT || p.startsWith(`${DEMO_VAULT_ROOT}/`));
 }
 
-// A non-persisted override forcing every reader onto a given root, regardless of the
-// setting. The marketing pages set it to the demo vault so their real scene canvases
-// read the bundled notes on web, without touching (or persisting) the user's setting.
-let _forcedRoot: string | null = null;
+// A non-persisted switch that pins every reader to the bundled demo vault, regardless
+// of the user's settings. The marketing pages turn it on so their real scene canvases
+// read the bundled notes (and CSV) on web, without touching or persisting the setting.
+// One switch so a page forces and clears the vault root + data folder together, and the
+// demo vault's own folder layout stays in here rather than leaking into the page.
+let _forced = false;
 
-/** Pin the vault root every reader resolves (null clears). Never persisted. */
-export function forceVaultRoot(root: string | null): void {
-  _forcedRoot = root;
+/** Pin every reader to the bundled demo vault (true), or clear the pin (false). */
+export function forceDemoVault(on: boolean): void {
+  _forced = on;
 }
 
-/** The vault root the Obsidian nodes read: a forced root wins (the marketing pages),
+/** The vault root the Obsidian nodes read: the forced demo vault (the marketing pages),
  *  else the bundled demo vault when the setting is on, else the user's configured
  *  folder. One resolver so every reader agrees. */
 export function getVaultRoot(): string {
-  if (_forcedRoot !== null) return _forcedRoot;
+  if (_forced) return DEMO_VAULT_ROOT;
   return settingsStore.get("useDemoVault") ? DEMO_VAULT_ROOT : settingsStore.get("obsidianVault");
 }
 
-// The same non-persisted override for the Local File node's data folder, so the
-// marketing pages can point it at a bundled CSV inside the demo vault.
-let _forcedCsvFolder: string | null = null;
-
-/** Pin the Local File data folder every read resolves (null clears). Never persisted. */
-export function forceCsvFolder(folder: string | null): void {
-  _forcedCsvFolder = folder;
-}
-
-/** The Local File data folder: a forced folder wins (the marketing pages), else the
- *  user's configured folder. */
+/** The Local File data folder: the demo vault's Data folder when forced (the marketing
+ *  pages), else the user's configured folder. */
 export function getCsvFolder(): string {
-  return _forcedCsvFolder !== null ? _forcedCsvFolder : settingsStore.get("csvFolder");
+  return _forced ? `${DEMO_VAULT_ROOT}/Data` : settingsStore.get("csvFolder");
 }
 
 // A path under the sentinel → its vault-relative POSIX key ("" for the root itself).

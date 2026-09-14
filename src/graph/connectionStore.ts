@@ -136,6 +136,11 @@ export async function whenConnectionsSettled(): Promise<void> {
   while (_inflight.size > 0) await Promise.allSettled([..._inflight]);
 }
 
+/** True while any background load registered via trackInflight is still pending. */
+export function hasInflightConnections(): boolean {
+  return _inflight.size > 0;
+}
+
 export function scheduleConnectionRecalc(): void {
   if (_recalcQueued) return;
   _recalcQueued = true;
