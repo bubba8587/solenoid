@@ -375,8 +375,15 @@
   position: absolute;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   box-shadow: var(--shadow-card);
+}
+
+/* Light mode frames the card in a darker shade of its own accent, matching the
+   real node's frame-body stroke (nodeCard.css: accent-dark in light, neutral in
+   dark). Keeps the scene card reading as a current React Flow node. */
+:root[data-theme="light"] .sol-mnode {
+  border-color: color-mix(in srgb, var(--node-accent) 70%, #000);
 }
 
 /* The real header formula: accent tint at the themed strength, 2px accent edge
