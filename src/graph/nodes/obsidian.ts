@@ -8,6 +8,7 @@ import { isDocumentValue, type DocumentValue } from "../documentValue";
 import { isSolError, type SolError } from "../errorValue";
 import { hasFs, readVaultFile, writeTextFilePath, joinPath, listMarkdownFiles, readFileText } from "../fileBridge";
 import { settingsStore } from "../settingsStore";
+import { getVaultRoot, isDemoVaultPath } from "../demoVault";
 import { trackInflight, scheduleConnectionRecalc } from "../connectionStore";
 import { planPropertyWrites, propertyPlanFrame, resolveKey, resolveBody, patchFrontmatter, setBody, writableKeys, NOTE_BODY, type PlanRow } from "../frontmatterPatch";
 import { buildBaseView, baseRelPath } from "../baseView";
@@ -183,8 +184,9 @@ export class WriteObsidianNode extends ClassicPreset.Node {
   async run(): Promise<void> {
     if (this.status === "writing" || this.status === "previewing") return;
     if (!this.enabled) { this.status = "error"; this.statusMessage = "Disabled. Arm it first."; return; }
+    const vault = getVaultRoot().trim();
+    if (isDemoVaultPath(vault)) { this.status = "error"; this.statusMessage = "The demo vault is read-only"; return; }
     if (!hasFs()) { this.status = "error"; this.statusMessage = "Writing needs the desktop app"; return; }
-    const vault = settingsStore.get("obsidianVault").trim();
     if (!vault) { this.status = "error"; this.statusMessage = "Set the vault folder in Settings"; return; }
     if (this.resolveMode() === "properties") { await this.runProperties(vault); return; }
     await this.runNote(vault);
@@ -193,8 +195,8 @@ export class WriteObsidianNode extends ClassicPreset.Node {
   /** Preview: Properties resolves the plan against the notes; Note reports the target action. */
   async preview(): Promise<void> {
     if (this.status === "writing" || this.status === "previewing") return;
-    if (!hasFs()) { this.status = "error"; this.statusMessage = "Preview needs the desktop app"; return; }
-    const vault = settingsStore.get("obsidianVault").trim();
+    const vault = getVaultRoot().trim();
+    if (!hasFs() && !isDemoVaultPath(vault)) { this.status = "error"; this.statusMessage = "Preview needs the desktop app"; return; }
     if (!vault) { this.status = "error"; this.statusMessage = "Set the vault folder in Settings"; return; }
     if (this.resolveMode() === "properties") { await this.previewProperties(vault); return; }
     await this.previewNote(vault);
@@ -481,7 +483,7 @@ export class ImportObsidianNode extends NoteNode {
    *  sockets, then recompute. Mirrors the component's picker commit. */
   private async loadFromWire(path: string): Promise<void> {
     try {
-      const vault = settingsStore.get("obsidianVault").trim();
+      const vault = getVaultRoot().trim();
       const { readVaultFile, listVaultMarkdownFiles } = await import("../fileBridge");
       // Resolve a full vault-relative path OR a bare note name — Obsidian resolves
       // `[[Name]]` from anywhere in the vault, case-insensitively.

@@ -5,6 +5,7 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { join, dirname } from "@tauri-apps/api/path";
 import { requestConfirm } from "./confirmStore";
 import { docMetaStore } from "./docMetaStore";
+import { demoVaultFs, isDemoVaultPath } from "./demoVault";
 
 const JSON_FILTER = [{ name: "Solenoid graph", extensions: ["json"] }];
 const HTML_FILTER = [{ name: "Web page", extensions: ["html"] }];
@@ -57,8 +58,34 @@ const tauriFs: FsProvider = {
   writeBinary: (path, bytes) => writeFile(path, bytes),
 };
 
-/** The live provider: the installed one, else Tauri's. */
-function fs(): FsProvider { return _provider ?? tauriFs; }
+/** The real provider: the installed one, else Tauri's. */
+function baseFs(): FsProvider { return _provider ?? tauriFs; }
+
+// Path-aware dispatch: a demo-vault path routes to the in-memory read-only provider
+// (so the bundled vault works with no filesystem — the web included), everything else
+// to the real provider. join/dirname key on the first part. Desktop file ops (graph
+// save, CSV) never touch demo paths, so they stay on the real provider untouched.
+const fsDispatch: FsProvider = {
+  readTextFile: (p) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).readTextFile(p),
+  readDir: (p) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).readDir(p),
+  writeTextFile: (p, c) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).writeTextFile(p, c),
+  rename: (f, t) => (isDemoVaultPath(f) || isDemoVaultPath(t) ? demoVaultFs : baseFs()).rename(f, t),
+  mkdir: (p, r) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).mkdir(p, r),
+  exists: (p) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).exists(p),
+  stat: (p) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).stat(p),
+  join: (...parts) => (isDemoVaultPath(parts[0]) ? demoVaultFs : baseFs()).join(...parts),
+  dirname: (p) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).dirname(p),
+  readBinary: (p) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).readBinary(p),
+  writeBinary: (p, b) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).writeBinary(p, b),
+};
+
+/** The live provider used by every file call — path-aware, so demo-vault reads work
+ *  even with no filesystem. */
+function fs(): FsProvider { return fsDispatch; }
+
+/** Can this root be read — the desktop shell / an installed provider, or the bundled
+ *  demo vault (which needs no filesystem at all)? */
+function canReadRoot(root: string): boolean { return hasFs() || isDemoVaultPath(root); }
 
 /** Open the OS folder picker; returns the chosen absolute path, or null if the
  *  user canceled (or we're not on desktop). */
@@ -70,8 +97,8 @@ export async function pickFolderDialog(): Promise<string | null> {
 
 /** File names directly inside `folder` matching any of `extensions` (sorted, case-insensitive). */
 async function listFilesByExt(folder: string, extensions: string | string[]): Promise<string[]> {
-  if (!isDesktop() || !folder) return [];
-  const entries = await readDir(folder);
+  if (!folder || (!isDesktop() && !isDemoVaultPath(folder))) return [];
+  const entries = await fs().readDir(folder);
   const re = new RegExp(`\\.(${(Array.isArray(extensions) ? extensions : [extensions]).join("|")})$`, "i");
   return entries
     .filter((e) => e.isFile && re.test(e.name))
@@ -99,7 +126,7 @@ export function listMarkdownFiles(folder: string): Promise<string[]> {
 /** Vault-relative subfolder paths under `root` (POSIX-style, sorted), EXCLUDING the
  *  root itself; dot-folders skipped and depth bounded. Desktop only. */
 export async function listVaultFolders(root: string, maxDepth = 6): Promise<string[]> {
-  if (!hasFs() || !root) return [];
+  if (!root || !canReadRoot(root)) return [];
   const out: string[] = [];
   async function walk(abs: string, rel: string, depth: number): Promise<void> {
     if (depth > maxDepth) return;
@@ -119,7 +146,7 @@ export async function listVaultFolders(root: string, maxDepth = 6): Promise<stri
 /** Recursively collect the vault-relative `.md` file paths under `root` (POSIX-style,
  *  sorted). Same dot-folder skip + depth bound as listVaultFolders. Desktop only. */
 export async function listVaultMarkdownFiles(root: string, maxDepth = 6): Promise<string[]> {
-  if (!hasFs() || !root) return [];
+  if (!root || !canReadRoot(root)) return [];
   const out: string[] = [];
   async function walk(abs: string, rel: string, depth: number): Promise<void> {
     if (depth > maxDepth) return;
@@ -154,7 +181,7 @@ export async function readVaultFile(root: string, relPath: string): Promise<stri
  *  platform omits one, or off desktop). Used for the Vault Folder cube's
  *  `modified` / `created` columns (needs `fs:allow-stat`). */
 export async function statVaultFile(root: string, relPath: string): Promise<{ mtimeMs: number | null; birthtimeMs: number | null } | null> {
-  if (!hasFs()) return null;
+  if (!canReadRoot(root)) return null;
   try {
     const path = await fs().join(root, ...relPath.split("/"));
     return await fs().stat(path);

@@ -15,6 +15,7 @@ import { type Shape } from "../frameShape";
 import { connectionStore, scheduleConnectionRecalc, requestNetwork, trackInflight } from "../connectionStore";
 import { settingsStore } from "../settingsStore";
 import { isDesktop, hasFs, readFileText, joinPath, listVaultMarkdownFiles, listMarkdownFiles, readVaultFile, statVaultFile } from "../fileBridge";
+import { getVaultRoot, isDemoVaultPath } from "../demoVault";
 import { fetchText } from "../httpBridge";
 import { frameFromCells, frameFromRecords, frameFromRows, frameFromColumnar, frameRowCount, cubeRowCount, type FrameValue, type CubeValue } from "../frame";
 import { parseCsvRows } from "../csv";
@@ -947,13 +948,13 @@ export class VaultFolderNode extends ClassicPreset.Node {
   data(inputs?: { folder?: (string | null)[]; glob?: (string | null)[] }): { cube: CubeValue | null } {
     const folder = (readInput(inputs?.folder, this.folder) ?? "").trim().replace(/^\/+|\/+$/g, "");
     const glob = (readInput(inputs?.glob, this.glob) ?? "").trim();
-    const vault = settingsStore.get("obsidianVault"); // the one vault (singleVaultFromSetting)
+    const vault = getVaultRoot(); // the one vault (singleVaultFromSetting; demo vault when set)
     const key = connectionStore.key(this.id, `${vault}\u0000${folder}\u0000${glob}\u0000${this.nameFormat}\u0000${this.includeBody ? 1 : 0}`);
     if (key !== this._lastKey) {
       this._lastKey = key;
       this._folder = folder;
       this._glob = glob;
-      if (!hasFs()) {
+      if (!hasFs() && !isDemoVaultPath(vault)) {
         this.cached = null;
         connectionStore.setState(this.id, { status: "error", message: "Reading a vault is available in the desktop app only" });
       } else if (vault.trim() === "") {
@@ -969,7 +970,7 @@ export class VaultFolderNode extends ClassicPreset.Node {
   private async load(): Promise<void> {
     connectionStore.setState(this.id, { status: "loading" });
     try {
-      const vault = settingsStore.get("obsidianVault").trim();
+      const vault = getVaultRoot().trim();
       const folder = this._folder; // resolved in data() (wired input, else the card field)
       const readRoot = folder ? await joinPath(vault, ...folder.split("/")) : vault;
       const globRe = this._glob ? nameGlobToRegExp(this._glob) : null;

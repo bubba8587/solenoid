@@ -17,6 +17,7 @@ import { processGraph } from "../process";
 import { connectionStore, refreshConnection, type ConnectionState } from "../connectionStore";
 import { settingsStore } from "../settingsStore";
 import { isDesktop, listLocalFiles, listVaultFolders, openExternal } from "../fileBridge";
+import { getVaultRoot, isDemoVaultPath } from "../demoVault";
 import { obsidianOpenUrl } from "../obsidianLinks";
 import { apiKeyStore } from "../apiKeyStore";
 import { PROVIDER_LIST, getProvider, type ProviderId } from "../dataProviders";
@@ -764,7 +765,7 @@ const VAULT_CABLE_ONLY = new Set(["folder", "glob"]);
 
 export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeType>) {
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version); // fill the preview when a read lands
-  const vault = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("obsidianVault")); // the one vault
+  const vault = useSyncExternalStore(settingsStore.subscribe, () => getVaultRoot()); // the one vault (demo vault when set)
   const connected = useConnectedInputs(data.id);
   const [folder, setFolder] = useState(data.folder);
   const [glob, setGlob] = useState(data.glob);
@@ -772,6 +773,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
   const [minutes, setMinutes] = useState(data.refreshMinutes);
   const [folders, setFolders] = useState<string[]>([]);
   const desktop = isDesktop();
+  const canRead = desktop || isDemoVaultPath(vault); // the demo vault reads with no filesystem
   useAutoRefresh(data.id, minutes);
   // Obsidian saved under this folder → re-read (bundle E; the cadence stays the stopgap).
   useVaultWatch(vault, folder, () => { void refreshConnection(data.id); }, desktop);
@@ -805,7 +807,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
           the card controls below stay the editor. */}
       <InlineInputs node={data} emit={emit} keys={["folder", "glob"]} cableOnlyKeys={VAULT_CABLE_ONLY} />
       <div className="sol-conn">
-        {!desktop ? (
+        {!canRead ? (
           <div className="sol-conn__note">Reading a vault is available in the desktop app only.</div>
         ) : (
           <>

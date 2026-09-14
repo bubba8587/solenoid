@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { WriteFileNode as WriteFileNodeType, WriteObsidianNode as WriteObsidianNodeType, WriteTasksNode as WriteTasksNodeType, WriteFormat } from "../rete-nodes";
 import { isDesktop, listVaultFolders, listVaultMarkdownFiles, openExternal } from "../fileBridge";
+import { getVaultRoot } from "../demoVault";
 import { obsidianOpenUrl } from "../obsidianLinks";
 import { settingsStore } from "../settingsStore";
 import { documentStore } from "../documentStore";
@@ -185,7 +186,7 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
   const [files, setFiles] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const desktop = isDesktop();
-  const vault = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("obsidianVault"));
+  const vault = useSyncExternalStore(settingsStore.subscribe, () => getVaultRoot());
 
   const activeMode = d.resolveMode(); // "note" | "properties"
   const inputKeys = activeMode === "properties" ? ["in", "rows"] : ["in", "path", "rows"];

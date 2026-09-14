@@ -14,6 +14,7 @@ import { useKnapRender } from "./useKnapRender";
 import { parseNoteFrontmatter } from "../noteFrontmatter";
 import { useEditableLabel } from "./inlineInput";
 import { isDesktop, listVaultMarkdownFiles, readVaultFile, openExternal } from "../fileBridge";
+import { getVaultRoot, isDemoVaultPath } from "../demoVault";
 import { obsidianOpenUrl } from "../obsidianLinks";
 import { useVaultWatch } from "./useVaultWatch";
 import { touches } from "../vaultWatch";
@@ -59,7 +60,8 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   useDismissOnOutside(colorOpen, () => setColorOpen(false), [swatchRef, paletteRef]);
 
   const desktop = isDesktop();
-  const vault = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("obsidianVault"));
+  const vault = useSyncExternalStore(settingsStore.subscribe, () => getVaultRoot());
+  const canRead = desktop || isDemoVaultPath(vault);
 
   // The shared header title-edit mechanic (click-to-edit, Enter/blur, Escape revert).
   const title = useEditableLabel(data, () => { void getActiveView()?.rerenderNode(data.id); });
@@ -243,7 +245,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
 
       {pickerOpen && (
         <div className="sol-import__picker" onPointerDown={stop} onMouseDown={stop}>
-          {!desktop ? (
+          {!canRead ? (
             <div className="sol-import__empty">Reading a vault is available in the desktop app only.</div>
           ) : vault.trim() === "" ? (
             <div className="sol-import__empty">Set the Obsidian vault folder in Settings.</div>

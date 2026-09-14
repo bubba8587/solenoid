@@ -27,6 +27,9 @@ export interface Settings {
   docsFolder: string;
   /** Bypass the per-document network gate (C2): opened/imported docs fetch without asking. */
   alwaysAllowNetwork: boolean;
+  /** Read the bundled, read-only demo vault instead of a real folder — so the Obsidian
+   *  nodes work with no vault set, the web app included. Overrides obsidianVault. */
+  useDemoVault: boolean;
   /** Obsidian vault root the Obsidian nodes read/write `.md` under; desktop only. */
   obsidianVault: string;
   /** Vault-relative subfolder for written image assets; empty = beside the note. */
@@ -69,6 +72,7 @@ const DEFAULTS: Settings = {
   csvFolder: "",
   docsFolder: "",
   alwaysAllowNetwork: false,
+  useDemoVault: false,
   obsidianVault: "",
   obsidianAssetSubfolder: "",
   taskNotesUrl: "",
@@ -237,6 +241,11 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
   {
     title: "Obsidian",
     fields: [
+      {
+        key: "useDemoVault",
+        label: "Use demo vault (works in the web demo)",
+        help: "Read a bundled, read-only sample vault instead of a folder, so the Import and Vault Folder nodes work with no real vault — including in the browser.",
+      },
       {
         key: "obsidianVault",
         label: "Vault folder",
