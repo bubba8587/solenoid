@@ -16,6 +16,15 @@
   color: var(--text);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+
+  /* The marketing pages lock their chrome to the brand coil gold regardless of the
+     accent the visitor has chosen in the app — the page is Solenoid's storefront, not
+     their workbench. Scoped to the wrapper so only chrome reading --accent retints;
+     the scene canvases' node and socket colors ride their own vars, untouched. */
+  --accent: #f5b914;
+  --accent-soft: rgba(245, 185, 20, 0.14);
+  --accent-mid: rgba(245, 185, 20, 0.4);
+  --accent-ink: #1a1a1a;
 }
 
 .sol-landing__inner {
