@@ -10,6 +10,7 @@ import { FormatControllerNode } from "../nodes/formatController";
 import { ArithmeticNode } from "../nodes/scalar";
 import { EquationNode } from "../nodes/equation";
 import { FrameInputNode, JoinNode, GroupByFrameNode } from "../nodes/frame";
+import { PointPlotterNode, CurveNode } from "../nodes/control";
 import { SceneStage } from "./SceneStage";
 
 const asNode = (n: ClassicPreset.Node) => n as unknown as SolenoidNode;
@@ -358,53 +359,32 @@ export function VerbsScene() {
   );
 }
 
-// ─── Scene: draw your data ──────────────────────────────────────────────────────
-const SCATTER: [number, number][] = [
-  [14, 96], [30, 78], [44, 88], [58, 62], [74, 68], [90, 44],
-  [104, 52], [120, 30], [136, 38], [152, 18], [166, 26],
-];
-
+// ─── Scene: draw your data (real nodes, computed once) ──────────────────────────
+// Two real input nodes whose value is their own drawn data: a Point Plotter seeded
+// with a scatter and a Curve seeded with control points. No wiring; each stands alone.
 export function DrawScene() {
-  const W = 600;
-  const H = 270;
   return (
-    <Diagram w={W} h={H}>
-      <MNode
-        x={26}
-        y={22}
-        w={216}
-        accent={C.table}
-        title="Point Plotter"
-        socks={[
-          { cy: 168, side: "out", glyph: { kind: "square", color: C.list, tip: "Numeric List" } },
-          { cy: 190, side: "out", glyph: { kind: "square", color: C.list, tip: "Numeric List" } },
-        ]}
-      >
-        <svg className="sol-mnode__pad" viewBox="0 0 180 110" aria-hidden="true">
-          {SCATTER.map(([px, py], i) => (
-            <circle key={i} cx={px} cy={py * 0.92} r="3" className="sol-pad__dot" style={{ animationDelay: `${i * 60}ms` }} />
-          ))}
-        </svg>
-        <Row label="X" value={<Chip kind="array">List ×11</Chip>} />
-        <Row label="Y" value={<Chip kind="array">List ×11</Chip>} />
-      </MNode>
-      <MNode
-        x={340}
-        y={44}
-        w={216}
-        accent={C.table}
-        title="Curve"
-        socks={[{ cy: 168, side: "out", glyph: { kind: "square", color: C.list, tip: "Numeric List" } }]}
-      >
-        <svg className="sol-mnode__pad" viewBox="0 0 180 110" aria-hidden="true">
-          <path className="sol-pad__curve" d="M 10 92 C 50 88, 62 30, 96 34 S 150 74, 172 22" />
-          {[[10, 92], [96, 34], [172, 22]].map(([px, py], i) => (
-            <circle key={i} cx={px} cy={py} r="3.4" className="sol-pad__handle" />
-          ))}
-        </svg>
-        <Row label="samples" value={<Chip kind="array">List ×64</Chip>} />
-      </MNode>
-    </Diagram>
+    <SceneStage
+      className="sol-scene-stage--draw"
+      build={async (s) => {
+        const plot = new PointPlotterNode({
+          label: "Point Plotter",
+          pointsText: "1, 2\n2, 3\n3, 3\n4, 5\n5, 4\n6, 6\n7, 8\n8, 7\n9, 9",
+          xmax: 10,
+          ymax: 10,
+        });
+        const curve = new CurveNode({
+          label: "Curve",
+          pointsText: "0, 1\n3, 6\n6, 4\n10, 9",
+          xmax: 10,
+          ymax: 10,
+        });
+        for (const n of [plot, curve]) {
+          await s.editor.addNode(asNode(n));
+          nodeNameStore.ensure(n.id, n.constructor.name);
+        }
+      }}
+    />
   );
 }
 
