@@ -312,10 +312,16 @@ export default function ObsidianPage() {
               </Reveal>
               <Reveal delay={110}>
                 <p>
-                  Your vault is already full of numbers: ratings in frontmatter,
-                  estimates and due dates in TaskNotes, tables inside your notes.
-                  Solenoid reads them, runs spreadsheet math over them, and writes the
-                  answers back. There is no plugin to install.
+                  Solenoid turbocharges your Obsidian notes with real spreadsheet
+                  capabilities. You can manage frontmatter properties, read{" "}
+                  <a href="https://tasknotes.dev/" target="_blank" rel="noreferrer">
+                    TaskNotes
+                  </a>{" "}
+                  data, and insert values into your notes via{" "}
+                  <a href="https://github.com/obsidianmd/knap" target="_blank" rel="noreferrer">
+                    Knap
+                  </a>{" "}
+                  + Reports.
                 </p>
               </Reveal>
               <Reveal delay={220}>
@@ -352,12 +358,7 @@ export default function ObsidianPage() {
 
           <section className="sol-landing__section obs-flow-section">
             <Reveal>
-              <h2>Everything stays where it lives</h2>
-              <p className="sol-landing__lede">
-                Notes and tasks come into Solenoid; results go back to the vault.
-                Spreadsheets move the same way over CSV. Nothing is locked into a new
-                format, and the vault stays the source of truth.
-              </p>
+              <h2>A knowledge management system bridge</h2>
             </Reveal>
             <Reveal delay={100}>
               <FlowScene />
@@ -376,46 +377,22 @@ export default function ObsidianPage() {
           </section>
 
           <Feature title="Your vault as a table" scene={<VaultTableScene />}>
+            <p>A folder of notes, read as one table.</p>
+          </Feature>
+
+          <Feature title="Import a Note" flip scene={<NoteImportScene />}>
             <p>
-              Vault Folder reads a folder of notes as one table. The built-in file
-              columns come first (<code>path</code>, <code>name</code>,{" "}
-              <code>tags</code>, <code>links</code>, <code>created</code>,{" "}
-              <code>modified</code>), then every frontmatter key in first-seen order. A
-              list property stays a list in its cell, and a table-shaped property stays a
-              nested table.
-            </p>
-            <p>
-              Types come from an mdbase schema when the folder has one, then from{" "}
-              <code>.obsidian/types.json</code>, then a guesser. Filter, Sort and Distinct
-              read it directly, so <em>notes tagged book, newest first</em> is two nodes.
+              Selecting a note from your vault not only renders it in your Solenoid graph
+              but also exposes all of its frontmatter properties as values you can use as
+              inputs.
             </p>
           </Feature>
 
-          <Feature title="A single note as a source" flip scene={<NoteImportScene />}>
+          <Feature title="TaskNotes API and .mdbase" scene={<TaskNotesNodeScene />}>
             <p>
-              Import Obsidian Note picks one <code>.md</code> file as a read-only source.
-              Its frontmatter keys become typed outputs and the body renders inline.
-              Reload re-reads it from disk.
-            </p>
-            <p>
-              Any note whose body opens with a YAML block is a typed record, so a plain
-              note works without a schema. Keep a model&apos;s assumptions in the vault
-              and the numbers follow when you edit them there.
-            </p>
-          </Feature>
-
-          <Feature title="TaskNotes over its API" scene={<TaskNotesNodeScene />}>
-            <p>
-              The TaskNotes node reads the plugin through its local HTTP API, not the
-              files, so recurrence expansion and time totals stay the plugin&apos;s own
-              logic. Tasks gives every task as a row: status, priority, due, scheduled,
-              estimate and tracked minutes, with projects, contexts, tags and blocked-by
-              as lists and time entries as nested tables.
-            </p>
-            <p>
-              Calendar gives the events between two dates, and Stats gives the counts.
-              Turn the API on in the plugin&apos;s settings, then set the address and
-              token.
+              Solenoid connects to the local TaskNotes HTTP API for advanced task and
+              calendar data. Solenoid also uses .mdbase schema to determine value types
+              where possible.
             </p>
           </Feature>
 
@@ -527,17 +504,6 @@ export default function ObsidianPage() {
               Your notes change the way you would change them by hand.
             </p>
           </Feature>
-
-          <section className="sol-landing__strip">
-            <Reveal className="sol-landing__strip-in">
-              <p>
-                Bases and Dataview query and display your notes. Solenoid computes over
-                them: joins across notes, a schedule from task dependencies, a
-                simulation, a formula, then the result written back. The vault stays your
-                database, and a spreadsheet is one CSV away.
-              </p>
-            </Reveal>
-          </section>
 
           <section className="sol-landing__section">
             <Reveal>
