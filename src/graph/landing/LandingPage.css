@@ -159,31 +159,39 @@
   margin-top: 24px;
 }
 
+/* The app's own button system (DESIGN §Buttons). Default is the neutral, recessive
+   button — sunken fill, 1px neutral border, lifting to --btn-hover / --border-strong.
+   The primary is the app's "confirming action": filled with the accent + its matching
+   ink, one per pair, so Open Solenoid reads as the app's commit button and Download
+   stays its neutral sibling. */
 .sol-landing__cta {
   display: inline-block;
   padding: 8px 18px;
   border-radius: 999px;
-  background: var(--btn-bg);
-  border: 1px solid var(--btn-border);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
   color: var(--text);
   font-size: 13px;
+  font-weight: 600;
   text-decoration: none;
+  transition: background 80ms ease, border-color 80ms ease;
 }
 
 .sol-landing__cta:hover {
   background: var(--btn-hover);
-  border-color: var(--btn-border-hover);
+  border-color: var(--border-strong);
 }
 
-/* Primary action: the accent marks it the way it marks a focused field — a
-   colored border edge, never a fill (the Quiet Accent Rule). */
 .sol-landing__cta--primary {
+  background: var(--accent);
   border-color: var(--accent);
-  color: var(--text-bright);
+  color: var(--accent-ink);
 }
 
 .sol-landing__cta--primary:hover {
+  background: var(--accent);
   border-color: var(--accent);
+  filter: brightness(1.1);
 }
 
 /* ── Live demo stage ── */
