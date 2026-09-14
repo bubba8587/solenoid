@@ -1,3 +1,4 @@
+// dte:C2
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { SocketDot, type SocketGlyph } from "../components/SocketLegend";

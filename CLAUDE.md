@@ -1,3 +1,4 @@
+<!-- dte:B4 -->
 # Claude Code Notes
 
 Standing orders and the pointer map. Mechanisms, rulings and invariants live in `docs/`
@@ -49,6 +50,10 @@ invented vocabulary + the author's names for the on-screen chrome).
   (sockets, formula surface, value handling, persistence, engine, effects, stores). Read before
   changing sockets, names or value handling; cite rule names in comments and commits.
 - **`docs/decisions.md` — the relapse guard.** What stands and what would reopen it.
+- **`docs/dte.md` — decision provenance (DTE).** This repo tracks the *why* as a DTE
+  ring tree (`tools/dte.py`, nodes under `decisions/`, `dte:ID` citations). Read it
+  before creating/changing decisions; run `python tools/dte.py validate` before you
+  finish. rules.md/decisions.md stay authoritative and are cited from the tree (B4).
 - **`docs/subsystem-invariants.md` — the mechanics.** Read the section IN FULL before touching
   its subsystem: **React Flow surface contract** (anything on the canvas — what RF owns, groups
   as sub-flows, cables, sockets, overlays, boundaries), Pointer gestures (with

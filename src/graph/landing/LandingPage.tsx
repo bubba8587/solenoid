@@ -1,3 +1,4 @@
+// dte:C2
 import { useSyncExternalStore } from "react";
 import { LandingGraph } from "./LandingGraph";
 import { SocketLegendRows, DimensionalityFlow } from "../components/SocketLegend";

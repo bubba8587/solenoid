@@ -1,3 +1,4 @@
+// dte:D1,C2
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
 import wordmark from "../../logo/solenoidwordmark.svg";

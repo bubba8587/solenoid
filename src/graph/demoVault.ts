@@ -1,3 +1,4 @@
+// dte:C1,D1
 // The bundled, read-only demo vault, served through the fileBridge FsProvider seam so
 // the Obsidian vault readers (Vault Folder, Import Obsidian Note) work with no real
 // vault — the web app included. It is selected by a SENTINEL vault root: when the

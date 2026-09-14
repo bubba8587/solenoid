@@ -113,6 +113,7 @@ export function listLocalFiles(folder: string): Promise<string[]> {
 }
 
 /** Read one file (by name) from the target folder as text. */
+// dte:D2 — routes through fs() so a demo-vault path reaches the in-memory provider.
 export async function readFileText(folder: string, name: string): Promise<string> {
   const path = await fs().join(folder, name);
   return fs().readTextFile(path);
