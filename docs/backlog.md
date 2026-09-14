@@ -126,13 +126,26 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   moves, Tidy runs, or a group expands. An optional per-END anchor to a node id would fix it and is
   the natural v2; deliberately out of v1 (they take no part in layout).
 
+## Layout / Tidy
+
+- [ ] **Main-app Tidy reserves DECLARED, not measured, height for a plain node.** `elkTidyLayout`
+  reads `node.width/height` for an ordinary card (`tidyArrange.ts` ~473 `return n`); only groups,
+  standoff clusters and docked-FC hosts get a `measuredBox`. So a stale constructor height (the
+  FrameInput 220→280 case, 2026-09-14) or a collapsed card (reserves the expanded height) mis-spaces
+  and can overlap. Scenes already lay out on measured sizes (`SceneStage`). Fix = size a plain node's
+  ELK proxy from `measuredBox`, declared height as the unpainted fallback. **COMPARE FIRST:** likely
+  was measured once and changed to declared on purpose — find the commit + reason (perf? fixed-point?
+  paint timing) before re-introducing. Read subsystem-invariants § Tidy; run the tidy fixed-point tests.
+
 ## Formatting & units
 
 - [ ] **Display unit lost on a computed result — shows base SI (regression).** A divide that
   should read `60 km/hr` displays `16.667 m/s`: the magnitude is right (base-SI stored value) but
   the carried/derived display unit isn't applied, so a compound-unit result renders in raw SI.
-  Surfaced on the landing units scene (300 km ÷ 5 hr); recently introduced. Fix the display-unit
-  carry, then the scene reads `60 km/hr` with no change to it.
+  Surfaced on the landing units scene (300 km ÷ 5 hr); recently introduced. The SCENE reading was
+  traced to the `getOwningEditor` scene-ownership gap and fixed 2026-09-14 (`activeGraph.ts` owned-graph
+  registry) — VERIFY a MAIN-app computed result still loses its unit before treating this as live; if
+  the main app is clean, delete this. Else fix the display-unit carry.
 - [ ] **Triangle Solver's angle inputs are bare degrees** (a rad-tagged trig output wired in
   reads as degrees); a per-input unit read would close it.
 - [ ] **blankArgIsExcelBlank — RULED 2026-09-13, not started.** A blank formula argument slot
