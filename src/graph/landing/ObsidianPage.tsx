@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
 import wordmark from "../../logo/solenoidwordmark.svg";
 import pkg from "../../../package.json";
@@ -166,7 +166,11 @@ function PlanScene() {
 
 export default function ObsidianPage() {
   const [anim, setAnim] = useState(false);
-  useEffect(() => {
+  // Apply the reveal gate BEFORE the first paint (layout effect, not passive), so the
+  // hidden state paints once and the IntersectionObserver's reveal a frame later has a
+  // committed frame to transition FROM. A passive effect flips it after paint, so above-
+  // the-fold reveals collapse straight to visible with no animation on reload.
+  useLayoutEffect(() => {
     if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) setAnim(true);
   }, []);
   useEffect(() => {

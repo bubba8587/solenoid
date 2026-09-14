@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useLayoutEffect, useState, useSyncExternalStore } from "react";
 import { LandingGraph } from "./LandingGraph";
 import { SocketLegendRows, DimensionalityFlow } from "../components/SocketLegend";
 import { TablePopup } from "../components/TablePopup";
@@ -75,9 +75,12 @@ function Feature({
 
 export default function LandingPage() {
   // Entrance/loop motion exists only under this class, and only when the OS isn't
-  // asking for reduced motion.
+  // asking for reduced motion. Applied in a layout effect (before paint), so the hidden
+  // reveal state paints once and the IntersectionObserver's reveal a frame later has a
+  // committed frame to transition FROM — a passive effect flips it after paint, so
+  // above-the-fold reveals collapse straight to visible with no animation on reload.
   const [anim, setAnim] = useState(false);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) setAnim(true);
   }, []);
 
