@@ -67,9 +67,13 @@ const ASYNC_NOOP = async () => {};
 export function SceneStage({
   build,
   className,
+  manualLayout,
 }: {
   build: (s: SurfaceStack) => Promise<void>;
   className?: string;
+  /** Skip the headless ELK/Tidy pass — the build fn positions the nodes itself (for
+   *  a scene ELK can't arrange well, e.g. unwired cards that should sit side by side). */
+  manualLayout?: boolean;
 }) {
   const stack = useMemo(makeSceneStack, []);
   const rfId = useId();
@@ -99,7 +103,7 @@ export function SceneStage({
     <div className={`sol-scene-stage${className ? ` ${className}` : ""}`}>
       <ReactFlowProvider>
         <FlowSurfaceContext.Provider value={true}>
-          <SceneInner stack={stack} build={build} hooks={hooks} />
+          <SceneInner stack={stack} build={build} hooks={hooks} manualLayout={manualLayout} />
         </FlowSurfaceContext.Provider>
       </ReactFlowProvider>
     </div>
@@ -113,10 +117,12 @@ function SceneInner({
   stack,
   build,
   hooks,
+  manualLayout,
 }: {
   stack: SurfaceStack;
   build: (s: SurfaceStack) => Promise<void>;
   hooks: SurfaceHooks;
+  manualLayout?: boolean;
 }) {
   const { fitView } = useReactFlow();
   useEffect(() => {
@@ -125,15 +131,17 @@ function SceneInner({
       await build(stack);
       if (cancelled) return;
       reconcileFcTypes(stack.editor, stack.view);
-      const elk = await ensureElk();
-      if (cancelled) return;
-      if (elk) {
-        await elkTidyLayout(elk, {
-          nodes: stack.editor.getNodes(),
-          connections: stack.editor.getConnections(),
-          options: tidyOptionsFromSettings(),
-          translate: (id, x, y) => stack.view.moveNode(id, { x, y }),
-        });
+      if (!manualLayout) {
+        const elk = await ensureElk();
+        if (cancelled) return;
+        if (elk) {
+          await elkTidyLayout(elk, {
+            nodes: stack.editor.getNodes(),
+            connections: stack.editor.getConnections(),
+            options: tidyOptionsFromSettings(),
+            translate: (id, x, y) => stack.view.moveNode(id, { x, y }),
+          });
+        }
       }
       await computeStack(stack, false);
       if (cancelled) return;

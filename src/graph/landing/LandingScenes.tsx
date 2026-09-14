@@ -366,6 +366,7 @@ export function DrawScene() {
   return (
     <SceneStage
       className="sol-scene-stage--draw"
+      manualLayout
       build={async (s) => {
         const plot = new PointPlotterNode({
           label: "Point Plotter",
@@ -383,6 +384,9 @@ export function DrawScene() {
           await s.editor.addNode(asNode(n));
           nodeNameStore.ensure(n.id, n.constructor.name);
         }
+        // Unwired cards: place them side by side (ELK has no edges to arrange them by).
+        await s.view.moveNode(plot.id, { x: 20, y: 20 });
+        await s.view.moveNode(curve.id, { x: 300, y: 20 });
       }}
     />
   );
