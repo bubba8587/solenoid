@@ -106,10 +106,22 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 - [ ] **Finish the landing/Obsidian scene rebuild.** Feature scenes are now real canvases: the
   Obsidian hero is a live interactive `LiveGraph` (report pipeline, `ReportOverlay` mounted), the
-  "vault as a table" scene reads the demo vault (`VaultTableScene`), and Import-a-Note is real
-  (`NoteImportScene`). Still hand-built DOM/SVG: MonteCarlo + Presenter (landing) — neither maps to a
-  single locked pass — and the Obsidian page's TaskNotes + LocalFile illustrations (TaskNotes needs its
-  HTTP API, LocalFile a bundled CSV).
+  "vault as a table" and "Excel over CSV" scenes read the demo vault (`VaultTableScene`,
+  `LocalFileScene`), and Import-a-Note is real (`NoteImportScene`). Still hand-built DOM/SVG:
+  MonteCarlo + Presenter (landing) — neither maps to a single locked pass — and the Obsidian page's
+  TaskNotes illustration (needs the live HTTP API).
+
+## DTE — decision provenance (integrated 2026-09-14b; `docs/dte.md`, B4)
+
+The tree (`decisions/`) covers the demo-vault/marketing subsystem; adoption is incremental.
+- [ ] **Author ratifies the tree** — every node is `made_by: ai, unratified`; A1–A4 are
+  owner-only. `python tools/dte.py validate` prints the unratified list; `ratify <ID>... --by`.
+- [ ] **Grow the tree** to a second subsystem, and/or lift `rules.md`/`decisions.md` entries into
+  nodes cited from the code.
+- [ ] **Apply the WHY-comment→citation practice** (was C4, retired here as DTE-generic → DTE
+  FEEDBACK I4): migrate rationale comments into node `## Why`, leave a `dte:ID`.
+- [ ] **Optional:** `python tools/dte.py hook` (pre-commit validate) — not installed (touches the
+  commit flow). Deferred: the 5 DTE-tool findings live in the DTE repo's `FEEDBACK.md`.
 
 ## Cables
 

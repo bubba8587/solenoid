@@ -6,6 +6,44 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-14b — Obsidian hero interactive, LocalFile CSV, DTE integration)
+
+Author-driven; all on `develop`, not pushed (local HMR verify).
+
+- **Obsidian page hero is now a LIVE interactive canvas.** `LandingGraph` generalized to
+  `LiveGraph({ build })` (the page's one live stage that keeps the process globals);
+  `LandingGraph` is a thin wrapper. The `/obsidian` hero is `LiveGraph build={buildReportPipeline}`
+  — a real reports/Knap chain (two Number inputs → Report note embedding them → Write to
+  Obsidian), NOT the old properties-writer with its dense nested-IF ComputedColumn (author:
+  reports/notes/Knap is the valued surface, properties reader/writer is least differentiated).
+  `ReportOverlay` is mounted on the page (as LandingPage mounts TablePopup) so the Report's
+  Document chip opens the rendered note.
+- **Two more Obsidian scenes went real over the demo vault.** `VaultTableScene` (VaultFolder
+  Notes → Filter tags∋book → Sort rating → Display) and `LocalFileScene` (a real Local File
+  reads bundled `demo-vault/Data/expenses.csv`). Enablers: `SceneStage.awaitConnections`
+  (compute → `whenConnectionsSettled` → recompute to a FIXED POINT via `hasInflightConnections`,
+  was a magic 2 rounds); `demoVault.forceDemoVault(on)` (one non-persisted switch pinning
+  `getVaultRoot`+`getCsvFolder` to the demo vault for the marketing pages, unifies the old
+  forceVaultRoot/forceCsvFolder pair); the demo glob gained `csv`. **Latent bug fixed:**
+  `fileBridge.readFileText` bypassed the path-aware `fs()` dispatch (raw Tauri imports) so demo
+  paths never routed — now via `fs()` (no-op for real desktop paths). LocalFile allows a
+  demo-vault folder off-desktop (CSV only). Covered by `tests/graph/demoVault.test.ts`.
+- **Marketing chrome locked to the brand gold** (`.sol-landing` overrides the four `--accent*`
+  vars); node/socket colors untouched. **Reveal animations play on reload** (the `--anim` gate
+  moved to a `useLayoutEffect` so the hidden state paints before the IO reveal; extracted
+  `useRevealAnim`, was duplicated in both pages).
+- **DTE integrated (decision-tree-engineering).** The author's DTE tool is vendored at
+  `tools/dte.py`; `decisions/` holds Solenoid's tree (A1–A4 goals, B1–B4 strategy incl. B4
+  "adopt DTE", C1–C3 arch, D1–D2 impl for the demo-vault/marketing subsystem), `dte:ID`
+  citations on ~12 files. DTE's OWN rules are vendored verbatim in `dte-rules/` (SPEC/PROTOCOL/
+  README, `.dteignore`d) — the adopting repo does NOT re-create DTE-specific decisions as nodes.
+  `docs/dte.md` + a `CLAUDE.md` pointer. `validate --as B` OK. **Open (author):** ratify the
+  tree (A is owner-only); grow it to more subsystems; apply the WHY-comment→citation practice;
+  optional pre-commit `hook`. Adoption friction logged to the DTE repo's `FEEDBACK.md` (I1–I5,
+  uncommitted for the author): vendored-tool tokens fail validate after init (I1), agent-can't-
+  create-A tension (I2), day-one warning noise (I3), DTE never says to replace WHY-comments with
+  citations (I4, the headline), ADOPTING invites duplicating the protocol (I5).
+
 ### SESSION DIGEST (2026-09-14 — landing/Obsidian pages on real canvases + demo vault)
 
 Author-driven; all on `develop`, not pushed (local HMR verify).
