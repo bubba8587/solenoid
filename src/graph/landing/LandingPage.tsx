@@ -144,9 +144,6 @@ export default function LandingPage() {
           <section className="sol-landing__section">
             <Reveal>
               <h2>How a node reads</h2>
-              <p className="sol-landing__lede">
-                Every node is the same small card, and every part of it means one thing.
-              </p>
             </Reveal>
             <Reveal delay={100}>
               <AnatomyScene />
