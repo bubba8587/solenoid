@@ -39,7 +39,7 @@ Author-driven; all on `develop`, not pushed (local HMR verify).
   README, `.dteignore`d) — the adopting repo does NOT re-create DTE-specific decisions as nodes.
   `docs/dte.md` + a `CLAUDE.md` pointer. `validate --as B` OK. **Open (author):** ratify the
   tree (A is owner-only); grow it to more subsystems; apply the WHY-comment→citation practice;
-  optional pre-commit `hook`. Adoption friction logged to the DTE repo's `FEEDBACK.md` (I1–I5,
+  optional pre-commit `hook`. Adoption friction logged to the DTE repo's FEEDBACK file (I1–I5,
   uncommitted for the author): vendored-tool tokens fail validate after init (I1), agent-can't-
   create-A tension (I2), day-one warning noise (I3), DTE never says to replace WHY-comments with
   citations (I4, the headline), ADOPTING invites duplicating the protocol (I5).

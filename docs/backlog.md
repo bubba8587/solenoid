@@ -121,7 +121,7 @@ The tree (`decisions/`) covers the demo-vault/marketing subsystem; adoption is i
 - [ ] **Apply the WHY-comment→citation practice** (was C4, retired here as DTE-generic → DTE
   FEEDBACK I4): migrate rationale comments into node `## Why`, leave a `dte:ID`.
 - [ ] **Optional:** `python tools/dte.py hook` (pre-commit validate) — not installed (touches the
-  commit flow). Deferred: the 5 DTE-tool findings live in the DTE repo's `FEEDBACK.md`.
+  commit flow). Deferred: the 5 DTE-tool findings live in the DTE repo's FEEDBACK file.
 
 ## Cables
 

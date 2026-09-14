@@ -72,6 +72,9 @@ is parked there.
 - **`renderer-performance.md`** — the settled renderer-perf policies: zoom settle,
   GPU layer promotion (pan never / desktop pinch only), the semantic-zoom gate, the
   HIC capture pipeline. The OPEN choppy-band investigation stays in `dev-notes.md`.
+- **`dte.md`** — decision provenance: the vendored DTE tool (`tools/dte.py`), Solenoid's
+  ring map and everyday commands. Read before creating or changing a decision node;
+  `python tools/dte.py validate` must print `OK` before you finish.
 - **`code-comments.md`** — the comment policy (commentMinimalism): comments are the last-resort
   home for knowledge; the cut rules, compression rules, the blast-radius test, and
   the homes hierarchy. Read before writing (or reviewing) comment prose.

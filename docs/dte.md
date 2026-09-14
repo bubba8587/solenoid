@@ -7,8 +7,9 @@ decisions.md remain and are cited from the tree". The tool is vendored at `tools
 (one file, stdlib Python 3.8+); run `python tools/dte.py --help`.
 
 **DTE's own rules are vendored, not duplicated here.** The canonical DTE spec, agent
-protocol, and overview live in `dte-rules/` (`SPEC.md`, `PROTOCOL.md`, `README.md`) —
-verbatim copies so an agent can load the real rule text into context. Read
+protocol, and overview live in `dte-rules/SPEC.md`, `dte-rules/PROTOCOL.md` and
+`dte-rules/README.md` — verbatim copies so an agent can load the real rule text
+into context. Read
 `dte-rules/PROTOCOL.md` before creating or changing decisions. Do NOT re-create DTE's
 own format/protocol/usage decisions as nodes in this tree; this tree holds only
 Solenoid's own decisions. (`dte-rules/` is `.dteignore`d — its `dte:` tokens belong to
@@ -40,4 +41,4 @@ otherwise. The map binds agents, not the author.
 ## Feedback
 
 DTE is unfinished; problems found while using it here are logged to the DTE repo's
-`FEEDBACK.md` for the author's review (see the memory note `dte-feedback-channel`).
+FEEDBACK file for the author's review (see the memory note `dte-feedback-channel`).
