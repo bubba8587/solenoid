@@ -10,6 +10,7 @@ import { installInputCoercion } from "../coerceInputs";
 import { installErrorGuards } from "../errorValue";
 import { reconcileFcTypes } from "../fcReconcile";
 import { makeEnsureElk, elkTidyLayout, tidyOptionsFromSettings } from "../tidyArrange";
+import { registerOwnedGraph } from "../activeGraph";
 import { computeStack } from "./landingCompute";
 
 // ELK is loaded once, shared by every scene card (makeEnsureElk caches the instance).
@@ -125,6 +126,11 @@ function SceneInner({
   manualLayout?: boolean;
 }) {
   const { fitView } = useReactFlow();
+  // Make the scene's nodes resolvable by the render-time cross-node resolvers (output
+  // socket type → date formatting, docked FC → unit annotation). Without this a scene
+  // Display shows a date as its raw serial and a united result as base SI. Registered
+  // for the life of the mount; never the action target.
+  useEffect(() => registerOwnedGraph({ editor: stack.editor, view: stack.view }), [stack]);
   useEffect(() => {
     let cancelled = false;
     void (async () => {
