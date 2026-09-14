@@ -12,6 +12,7 @@ import { reconcileFcTypes } from "../fcReconcile";
 import { makeEnsureElk, elkTidyLayout, tidyOptionsFromSettings } from "../tidyArrange";
 import { measuredBox } from "../nodeSize";
 import { registerOwnedGraph } from "../activeGraph";
+import { whenConnectionsSettled } from "../connectionStore";
 import { computeStack } from "./landingCompute";
 
 // ELK is loaded once, shared by every scene card (makeEnsureElk caches the instance).
@@ -91,12 +92,22 @@ export function SceneStage({
   build,
   className,
   manualLayout,
+  awaitConnections,
+  postCompute,
 }: {
   build: (s: SurfaceStack) => Promise<void>;
   className?: string;
   /** Skip the headless ELK/Tidy pass — the build fn positions the nodes itself (for
    *  a scene ELK can't arrange well, e.g. unwired cards that should sit side by side). */
   manualLayout?: boolean;
+  /** The scene reads a connection (a Vault Folder). Its first compute kicks off an
+   *  async read and returns empty, so wait for every in-flight read to land and
+   *  recompute before measuring — the headless-run pattern (whenConnectionsSettled). */
+  awaitConnections?: boolean;
+  /** Runs once the graph has fully computed (connections settled), for a side effect
+   *  that needs resolved inputs — a Write node's preview() reading the vault to fill
+   *  its plan. A recompute follows so the result shows before measuring. */
+  postCompute?: (s: SurfaceStack) => Promise<void>;
 }) {
   const stack = useMemo(makeSceneStack, []);
   const rfId = useId();
@@ -126,7 +137,14 @@ export function SceneStage({
     <div className={`sol-scene-stage${className ? ` ${className}` : ""}`}>
       <ReactFlowProvider>
         <FlowSurfaceContext.Provider value={true}>
-          <SceneInner stack={stack} build={build} hooks={hooks} manualLayout={manualLayout} />
+          <SceneInner
+            stack={stack}
+            build={build}
+            hooks={hooks}
+            manualLayout={manualLayout}
+            awaitConnections={awaitConnections}
+            postCompute={postCompute}
+          />
         </FlowSurfaceContext.Provider>
       </ReactFlowProvider>
     </div>
@@ -141,11 +159,15 @@ function SceneInner({
   build,
   hooks,
   manualLayout,
+  awaitConnections,
+  postCompute,
 }: {
   stack: SurfaceStack;
   build: (s: SurfaceStack) => Promise<void>;
   hooks: SurfaceHooks;
   manualLayout?: boolean;
+  awaitConnections?: boolean;
+  postCompute?: (s: SurfaceStack) => Promise<void>;
 }) {
   const { fitView } = useReactFlow();
   // Make the scene's nodes resolvable by the render-time cross-node resolvers (output
@@ -163,6 +185,25 @@ function SceneInner({
       // measured heights (fed to ELK below) are the true card sizes, not empty stubs.
       await computeStack(stack, false);
       if (cancelled) return;
+      // A connection node's first compute returns empty and kicks off an async read;
+      // wait for every read to land, then recompute so the real value is present
+      // before measuring. Two rounds cover a reader feeding a downstream reader.
+      if (awaitConnections) {
+        for (let round = 0; round < 2; round++) {
+          await whenConnectionsSettled();
+          if (cancelled) return;
+          await computeStack(stack, false);
+          if (cancelled) return;
+        }
+      }
+      // A side effect that needs resolved inputs (a Write node previewing its plan
+      // against the vault), then recompute so the result is on the cards.
+      if (postCompute) {
+        await postCompute(stack);
+        if (cancelled) return;
+        await computeStack(stack, false);
+        if (cancelled) return;
+      }
       if (!manualLayout) {
         await waitForMeasured(stack);
         if (cancelled) return;

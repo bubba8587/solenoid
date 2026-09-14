@@ -10,12 +10,14 @@ import { NumberInputNode } from "../nodes/input";
 import { FormatControllerNode } from "../nodes/formatController";
 import { ArithmeticNode } from "../nodes/scalar";
 import { EquationNode } from "../nodes/equation";
-import { FrameInputNode, JoinNode, GroupByFrameNode } from "../nodes/frame";
+import { FrameInputNode, JoinNode, GroupByFrameNode, FilterFrameNode, SortFrameNode, ComputedColumnNode } from "../nodes/frame";
 import { PointPlotterNode, CurveNode, DateInputNode } from "../nodes/control";
 import { ListInputNode } from "../nodes/list";
 import { DisplayNode } from "../nodes/display";
 import { NoteNode } from "../nodes/annotation";
 import { TvmNode } from "../nodes/finance";
+import { VaultFolderNode } from "../nodes/connection";
+import { WriteObsidianNode } from "../nodes/obsidian";
 import { SceneStage } from "./SceneStage";
 
 const asNode = (n: ClassicPreset.Node) => n as unknown as SolenoidNode;
@@ -464,6 +466,80 @@ export function NoteImportScene() {
         await s.editor.addConnection(
           new ClassicPreset.Connection(asNode(note), "rating", asNode(disp), "in") as SolenoidConnection,
         );
+      }}
+    />
+  );
+}
+
+// ─── Scene: the vault as a table (real nodes reading the demo vault) ─────────────
+// A real Vault Folder reads the bundled demo vault's Notes folder as one cube, Filter
+// keeps the notes tagged `book`, Sort orders by rating, Display shows the table. The
+// Obsidian page forces the demo-vault root, so this reads real notes on the web too.
+export function VaultTableScene() {
+  return (
+    <SceneStage
+      className="sol-scene-stage--vault-table"
+      awaitConnections
+      build={async (s) => {
+        const notes = new VaultFolderNode({ label: "Vault Folder", folder: "Notes" });
+        const filter = new FilterFrameNode({
+          label: "tags contains book",
+          condConfig: { "0": { op: "listContains" } },
+          valueKeys: ["frame", "column0", "value0"],
+        });
+        filter.stringLiterals.column0 = "tags";
+        filter.stringLiterals.value0 = "book";
+        const sort = new SortFrameNode({ label: "by rating", dir: "desc" });
+        sort.stringLiterals.column = "rating";
+        const disp = new DisplayNode({ label: "Book notes" });
+        for (const n of [notes, filter, sort, disp]) {
+          await s.editor.addNode(asNode(n));
+          nodeNameStore.ensure(n.id, n.constructor.name);
+        }
+        const wire = (src: ClassicPreset.Node, o: string, tgt: ClassicPreset.Node, i: string) =>
+          s.editor.addConnection(new ClassicPreset.Connection(asNode(src), o, asNode(tgt), i) as SolenoidConnection);
+        await wire(notes, "cube", filter, "frame");
+        await wire(filter, "frame", sort, "frame");
+        await wire(sort, "frame", disp, "in");
+      }}
+    />
+  );
+}
+
+// ─── Scene: the write-back pipeline (real nodes reading the demo vault) ───────────
+// The Obsidian page's hero: a real Vault Folder reads the demo vault's Projects, a
+// Computed Column adds a `health` label from status + priority, and Write Properties
+// previews the plan — one row per note, what it would change — against the vault.
+// Nothing is written (locked scene, no Run); the plan is a read-only preview.
+export function PipelineScene() {
+  return (
+    <SceneStage
+      className="sol-scene-stage--obs-pipeline"
+      awaitConnections
+      postCompute={async (s) => {
+        const write = s.editor.getNodes().find((n) => n instanceof WriteObsidianNode);
+        if (write instanceof WriteObsidianNode) await write.preview();
+      }}
+      build={async (s) => {
+        const notes = new VaultFolderNode({ label: "Vault Folder", folder: "Projects" });
+        const health = new ComputedColumnNode({
+          label: "health from status + priority",
+          expr: 'IF(@status="done","done",IF(@status="blocked","at risk",IF(@priority>=4,"push","steady")))',
+          addAs: "text",
+        });
+        health.stringLiterals.name = "health";
+        const write = new WriteObsidianNode({ label: "Write Properties", target: "properties", addMissing: true });
+        write.stringLiterals.keys = "health";
+        const disp = new DisplayNode({ label: "The plan" });
+        for (const n of [notes, health, write, disp]) {
+          await s.editor.addNode(asNode(n));
+          nodeNameStore.ensure(n.id, n.constructor.name);
+        }
+        const wire = (src: ClassicPreset.Node, o: string, tgt: ClassicPreset.Node, i: string) =>
+          s.editor.addConnection(new ClassicPreset.Connection(asNode(src), o, asNode(tgt), i) as SolenoidConnection);
+        await wire(notes, "cube", health, "frame");
+        await wire(health, "frame", write, "rows");
+        await wire(write, "plan", disp, "in");
       }}
     />
   );

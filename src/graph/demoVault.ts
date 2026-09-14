@@ -18,9 +18,21 @@ export function isDemoVaultPath(p: string | null | undefined): boolean {
   return !!p && (p === DEMO_VAULT_ROOT || p.startsWith(`${DEMO_VAULT_ROOT}/`));
 }
 
-/** The vault root the Obsidian nodes read: the bundled demo vault when the setting is
- *  on, else the user's configured folder. One resolver so every reader agrees. */
+// A non-persisted override forcing every reader onto a given root, regardless of the
+// setting. The marketing pages set it to the demo vault so their real scene canvases
+// read the bundled notes on web, without touching (or persisting) the user's setting.
+let _forcedRoot: string | null = null;
+
+/** Pin the vault root every reader resolves (null clears). Never persisted. */
+export function forceVaultRoot(root: string | null): void {
+  _forcedRoot = root;
+}
+
+/** The vault root the Obsidian nodes read: a forced root wins (the marketing pages),
+ *  else the bundled demo vault when the setting is on, else the user's configured
+ *  folder. One resolver so every reader agrees. */
 export function getVaultRoot(): string {
+  if (_forcedRoot !== null) return _forcedRoot;
   return settingsStore.get("useDemoVault") ? DEMO_VAULT_ROOT : settingsStore.get("obsidianVault");
 }
 

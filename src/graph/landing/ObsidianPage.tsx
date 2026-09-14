@@ -1,9 +1,10 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { appThemeStore } from "../appTheme";
 import wordmark from "../../logo/solenoidwordmark.svg";
 import pkg from "../../../package.json";
-import { Reveal, Diagram, Cables, MNode, NoteImportScene } from "./LandingScenes";
+import { Reveal, Diagram, MNode, NoteImportScene, VaultTableScene, PipelineScene } from "./LandingScenes";
 import { SOCKET_COLORS } from "../sockets";
+import { forceVaultRoot, DEMO_VAULT_ROOT } from "../demoVault";
 import "./LandingPage.css";
 import "./ObsidianPage.css";
 
@@ -64,62 +65,6 @@ function Feature({
   );
 }
 
-// The concrete showcase: an actual node chain on the canvas ground, so a cold
-// visitor sees the product shape (cards + typed cables) before any prose. The cube
-// socket (violet hexagon) is what every vault reader emits.
-function PipelineScene() {
-  const W = 660;
-  const H = 220;
-  const cube = { kind: "cube" as const, color: C.cube, tip: "Cube" };
-  return (
-    <Diagram w={W} h={H}>
-      <Cables
-        w={W}
-        h={H}
-        runs={[
-          { from: [190, 100], to: [262, 100], color: C.cube },
-          { from: [416, 100], to: [486, 100], color: C.cube },
-        ]}
-      />
-      <MNode
-        x={14}
-        y={48}
-        w={176}
-        accent={C.cube}
-        title="Vault Folder"
-        socks={[{ cy: 52, side: "out", glyph: cube }]}
-      >
-        <span className="obs-node-chip">Notes/</span>
-        <p className="sol-mnode__prose">One row per note, typed from the frontmatter.</p>
-      </MNode>
-      <MNode
-        x={262}
-        y={48}
-        w={154}
-        accent={C.cube}
-        title="Filter"
-        socks={[
-          { cy: 52, side: "in", glyph: cube },
-          { cy: 52, side: "out", glyph: cube },
-        ]}
-      >
-        <pre className="sol-mnode__front">{"tags contains\n\"book\""}</pre>
-      </MNode>
-      <MNode
-        x={486}
-        y={48}
-        w={162}
-        accent={C.cube}
-        title="Write Properties"
-        socks={[{ cy: 52, side: "in", glyph: cube }]}
-      >
-        <p className="sol-mnode__prose">Writes a score back to each note.</p>
-        <span className="obs-node-run">Run</span>
-      </MNode>
-    </Diagram>
-  );
-}
-
 // The round trip: vault on the left, spreadsheets on the right, Solenoid computing
 // in the middle, data moving both ways. The centerpiece of the page's framing.
 function FlowScene() {
@@ -145,32 +90,6 @@ function FlowScene() {
         <span className="obs-flow__name">Excel</span>
         <small>spreadsheets</small>
       </div>
-    </div>
-  );
-}
-
-// A static "frontmatter in, columns out" vignette for the Vault Folder feature.
-function VaultTableScene() {
-  return (
-    <div className="obs-illus">
-      <pre className="obs-yaml">
-{`---
-title: Deep Work
-tags: [book, focus]
-rating: 4.5
-finished: 2026-08-21
----`}
-      </pre>
-      <div className="obs-arrow" aria-hidden="true">→</div>
-      <table className="obs-table">
-        <thead>
-          <tr><th>name</th><th>tags</th><th>rating</th><th>finished</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>Deep Work</td><td>book, focus</td><td>4.5</td><td>2026-08-21</td></tr>
-          <tr><td>Spanish course</td><td>course</td><td>3.0</td><td></td></tr>
-        </tbody>
-      </table>
     </div>
   );
 }
@@ -253,6 +172,12 @@ export default function ObsidianPage() {
   useEffect(() => {
     document.title = "Solenoid · The computation layer for your vault";
   }, []);
+  // The whole page demonstrates the vault integration against the bundled demo vault,
+  // so every reader scene resolves to it regardless of the user's setting (never
+  // persisted). Set during render so it is in place before the scene children mount
+  // and read it; cleared on unmount. Plain-anchor navigation to the app reloads anyway.
+  useMemo(() => forceVaultRoot(DEMO_VAULT_ROOT), []);
+  useEffect(() => () => forceVaultRoot(null), []);
 
   return (
     <div className={`sol-landing${anim ? " sol-landing--anim" : ""}`}>
