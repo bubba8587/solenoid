@@ -10,6 +10,7 @@ import { installInputCoercion } from "../coerceInputs";
 import { installErrorGuards } from "../errorValue";
 import { reconcileFcTypes } from "../fcReconcile";
 import { makeEnsureElk, elkTidyLayout, tidyOptionsFromSettings } from "../tidyArrange";
+import { measuredBox } from "../nodeSize";
 import { registerOwnedGraph } from "../activeGraph";
 import { computeStack } from "./landingCompute";
 
@@ -64,6 +65,27 @@ function makeSceneStack(): SurfaceStack {
 
 const NOOP = () => {};
 const ASYNC_NOOP = async () => {};
+
+// Resolve once every card has reported a real measured size (RF's onNodesChange
+// `dimensions` → view.setSize), or after a frame budget. ELK then lays out on the
+// cards' TRUE heights instead of the declared estimate — a content-sized card (a
+// Frame preview, a Note) renders taller than its constructor height, and a headless
+// layout that trusts the estimate stacks a neighbor into it. Cards must be COMPUTED
+// first: an unfilled Frame preview measures short.
+function waitForMeasured(stack: SurfaceStack, budget = 30): Promise<void> {
+  return new Promise((resolve) => {
+    let frames = 0;
+    const tick = () => {
+      const ids = stack.editor.getNodes().map((n) => n.id);
+      if (ids.every((id) => stack.view.measured?.(id)) || frames++ >= budget) {
+        resolve();
+        return;
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+}
 
 export function SceneStage({
   build,
@@ -137,7 +159,18 @@ function SceneInner({
       await build(stack);
       if (cancelled) return;
       reconcileFcTypes(stack.editor, stack.view);
+      // Compute BEFORE laying out: the cards then render their real content, so their
+      // measured heights (fed to ELK below) are the true card sizes, not empty stubs.
+      await computeStack(stack, false);
+      if (cancelled) return;
       if (!manualLayout) {
+        await waitForMeasured(stack);
+        if (cancelled) return;
+        // Stamp each node's box from its rendered size so ELK reserves the real space.
+        for (const n of stack.editor.getNodes()) {
+          const b = measuredBox(stack.view, n.id, stack.editor);
+          if (b) Object.assign(n as unknown as { width: number; height: number }, { width: b.w, height: b.h });
+        }
         const elk = await ensureElk();
         if (cancelled) return;
         if (elk) {
@@ -149,8 +182,6 @@ function SceneInner({
           });
         }
       }
-      await computeStack(stack, false);
-      if (cancelled) return;
       // Two frames for the moved cards to re-measure, then frame them.
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
