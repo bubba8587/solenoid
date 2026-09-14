@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { SocketDot, type SocketGlyph } from "../components/SocketLegend";
 import { SOCKET_COLORS } from "../sockets";
+import { NODE_KIND_ACCENTS, type NodeKind } from "../nodes/shared";
 import { ClassicPreset } from "rete";
 import type { SolenoidNode, SolenoidConnection } from "../schemes";
 import { nodeNameStore } from "../nodeNameStore";
@@ -512,16 +513,39 @@ const FN_ROW_B = [
   "SIN", "COS", "COUNTIFS",
 ];
 
+// Each function reads in the accent of the node kind that provides it (finance and
+// stats functions are the math kind, so they share its blue); an unmapped name keeps
+// the neutral color.
+const FN_KIND: Record<string, NodeKind> = {
+  SUM: "math", AVERAGE: "math", SUMIFS: "math", COUNTIFS: "math",
+  ROUND: "math", MOD: "math", SQRT: "math", LN: "math", EXP: "math", SIN: "math", COS: "math",
+  PMT: "math", PV: "math", FV: "math", NPER: "math", RATE: "math", EFFECT: "math",
+  PDURATION: "math", RRI: "math",
+  "NORM.DIST": "math", "NORM.INV": "math", "BINOM.DIST": "math", "POISSON.DIST": "math",
+  XLOOKUP: "frame", INDEX: "frame", PIVOTBY: "frame",
+  FILTER: "list", TAKE: "list", DROP: "list", VSTACK: "list", HSTACK: "list", WRAPROWS: "list",
+  MAKEARRAY: "lambda", REDUCE: "lambda", BYROW: "lambda", LAMBDA: "lambda",
+  IFS: "logic", SWITCH: "logic", IFERROR: "logic", CHOOSE: "logic",
+};
+
 function FnRow({ names, reverse }: { names: string[]; reverse?: boolean }) {
   const track = [...names, ...names];
   return (
     <div className="sol-fnwall__lane">
       <div className={`sol-fnwall__track${reverse ? " sol-fnwall__track--rev" : ""}`}>
-        {track.map((n, i) => (
-          <span key={i} className="sol-fnwall__fn" aria-hidden={i >= names.length}>
-            {n}
-          </span>
-        ))}
+        {track.map((n, i) => {
+          const kind = FN_KIND[n];
+          return (
+            <span
+              key={i}
+              className="sol-fnwall__fn"
+              aria-hidden={i >= names.length}
+              style={kind ? { color: NODE_KIND_ACCENTS[kind] } : undefined}
+            >
+              {n}
+            </span>
+          );
+        })}
       </div>
     </div>
   );
