@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo } from "react";
 import { NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
-import { ReactFlowProvider } from "@xyflow/react";
+import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import type { Schemes } from "../schemes";
 import { FlowSurfaceContext } from "../flowSurface";
 import { FlowSurface, idleHandlers, type SurfaceStack, type SurfaceHooks } from "../flow/FlowSurface";
@@ -74,27 +74,6 @@ export function SceneStage({
   const stack = useMemo(makeSceneStack, []);
   const rfId = useId();
 
-  useEffect(() => {
-    void (async () => {
-      await build(stack);
-      // Mutable sockets (FC / Convert / adoptive) reconcile against the wired types,
-      // then lay the graph out headlessly with the app's own ELK/Tidy, then compute
-      // the values once.
-      reconcileFcTypes(stack.editor, stack.view);
-      const elk = await ensureElk();
-      if (elk) {
-        await elkTidyLayout(elk, {
-          nodes: stack.editor.getNodes(),
-          connections: stack.editor.getConnections(),
-          options: tidyOptionsFromSettings(),
-          translate: (id, x, y) => stack.view.moveNode(id, { x, y }),
-        });
-      }
-      await computeStack(stack, false);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stack]);
-
   const hooks: SurfaceHooks = useMemo(
     () => ({
       rfId: `scene${rfId}`,
@@ -104,7 +83,8 @@ export function SceneStage({
       noContextMenu: true,
       standoffs: false,
       drawnCables: false,
-      fitViewOnInit: true,
+      // No fitViewOnInit: SceneInner frames AFTER the ELK layout has moved the cards,
+      // so the one-shot init fit can't fire on the pre-layout (origin-stacked) graph.
       history: { undo: ASYNC_NOOP, redo: ASYNC_NOOP },
       deleteSelected: ASYNC_NOOP,
       afterMove: NOOP,
@@ -119,9 +99,55 @@ export function SceneStage({
     <div className={`sol-scene-stage${className ? ` ${className}` : ""}`}>
       <ReactFlowProvider>
         <FlowSurfaceContext.Provider value={true}>
-          <FlowSurface stack={stack} hooks={hooks} />
+          <SceneInner stack={stack} build={build} hooks={hooks} />
         </FlowSurfaceContext.Provider>
       </ReactFlowProvider>
     </div>
   );
+}
+
+// Inside the provider, so it can frame with fitView once the real work has landed:
+// build the graph, reconcile the mutable sockets, lay it out headlessly with the
+// app's ELK/Tidy, compute the values once, then fit to the laid-out cards.
+function SceneInner({
+  stack,
+  build,
+  hooks,
+}: {
+  stack: SurfaceStack;
+  build: (s: SurfaceStack) => Promise<void>;
+  hooks: SurfaceHooks;
+}) {
+  const { fitView } = useReactFlow();
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      await build(stack);
+      if (cancelled) return;
+      reconcileFcTypes(stack.editor, stack.view);
+      const elk = await ensureElk();
+      if (cancelled) return;
+      if (elk) {
+        await elkTidyLayout(elk, {
+          nodes: stack.editor.getNodes(),
+          connections: stack.editor.getConnections(),
+          options: tidyOptionsFromSettings(),
+          translate: (id, x, y) => stack.view.moveNode(id, { x, y }),
+        });
+      }
+      await computeStack(stack, false);
+      if (cancelled) return;
+      // Two frames for the moved cards to re-measure, then frame them.
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          if (!cancelled) void fitView({ padding: 0.16, duration: 0 });
+        }),
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stack]);
+  return <FlowSurface stack={stack} hooks={hooks} />;
 }
