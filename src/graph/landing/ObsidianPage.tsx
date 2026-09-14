@@ -394,11 +394,6 @@ export default function ObsidianPage() {
           <section className="sol-landing__section">
             <Reveal>
               <h2>Writing it back</h2>
-              <p className="sol-landing__lede">
-                When the math is done, the writer nodes put the results where you will
-                read them. Each loads disarmed, previews before it touches a file, and
-                writes only when you press Run.
-              </p>
             </Reveal>
             <Reveal delay={100}>
               <div className="obs-cards">
@@ -433,11 +428,7 @@ export default function ObsidianPage() {
 
           <section className="sol-landing__section">
             <Reveal>
-              <h2>What you can build</h2>
-              <p className="sol-landing__lede">
-                A few jobs you can build from the readers and writers above, each a small
-                graph.
-              </p>
+              <h2>Examples</h2>
             </Reveal>
             <Reveal delay={100}>
               <div className="obs-recipes">
