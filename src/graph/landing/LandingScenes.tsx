@@ -10,7 +10,7 @@ import { NumberInputNode } from "../nodes/input";
 import { FormatControllerNode } from "../nodes/formatController";
 import { ArithmeticNode } from "../nodes/scalar";
 import { EquationNode } from "../nodes/equation";
-import { FrameInputNode, JoinNode, GroupByFrameNode, FilterFrameNode, SortFrameNode, ComputedColumnNode } from "../nodes/frame";
+import { FrameInputNode, JoinNode, GroupByFrameNode, FilterFrameNode, SortFrameNode } from "../nodes/frame";
 import { PointPlotterNode, CurveNode, DateInputNode } from "../nodes/control";
 import { ListInputNode } from "../nodes/list";
 import { DisplayNode } from "../nodes/display";
@@ -18,6 +18,7 @@ import { NoteNode } from "../nodes/annotation";
 import { TvmNode } from "../nodes/finance";
 import { VaultFolderNode } from "../nodes/connection";
 import { WriteObsidianNode } from "../nodes/obsidian";
+import { ReportNode } from "../nodes/report";
 import { SceneStage } from "./SceneStage";
 
 const asNode = (n: ClassicPreset.Node) => n as unknown as SolenoidNode;
@@ -506,40 +507,40 @@ export function VaultTableScene() {
   );
 }
 
-// ─── Scene: the write-back pipeline (real nodes reading the demo vault) ───────────
-// The Obsidian page's hero: a real Vault Folder reads the demo vault's Projects, a
-// Computed Column adds a `health` label from status + priority, and Write Properties
-// previews the plan — one row per note, what it would change — against the vault.
-// Nothing is written (locked scene, no Run); the plan is a read-only preview.
+// ─── Scene: compose a note and write it back (real nodes) ────────────────────────
+// The Obsidian page's hero: two plain values flow into a Report — a markdown note
+// whose `{{ }}` tags embed them (Knap) — and Write to Obsidian previews creating it
+// in the vault. The reports surface, no formula to parse: values in, a note out.
+// Nothing is written (locked scene, no Run); the status is a read-only preview.
 export function PipelineScene() {
   return (
     <SceneStage
       className="sol-scene-stage--obs-pipeline"
-      awaitConnections
       postCompute={async (s) => {
         const write = s.editor.getNodes().find((n) => n instanceof WriteObsidianNode);
         if (write instanceof WriteObsidianNode) await write.preview();
       }}
       build={async (s) => {
-        const notes = new VaultFolderNode({ label: "Vault Folder", folder: "Projects" });
-        const health = new ComputedColumnNode({
-          label: "health from status + priority",
-          expr: 'IF(@status="done","done",IF(@status="blocked","at risk",IF(@priority>=4,"push","steady")))',
-          addAs: "text",
+        const focus = new NumberInputNode({ label: "Focus hours", value: 18.5 });
+        const tasks = new NumberInputNode({ label: "Tasks done", value: 12 });
+        const report = new ReportNode({
+          label: "Weekly review",
+          body:
+            "# Weekly review\n\n" +
+            "Logged **{{ focus }} h** of deep work across **{{ tasks }}** finished tasks. " +
+            "Nice momentum — keep the streak going.",
         });
-        health.stringLiterals.name = "health";
-        const write = new WriteObsidianNode({ label: "Write Properties", target: "properties", addMissing: true });
-        write.stringLiterals.keys = "health";
-        const disp = new DisplayNode({ label: "The plan" });
-        for (const n of [notes, health, write, disp]) {
+        const write = new WriteObsidianNode({ label: "Write to Obsidian", target: "note" });
+        write.stringLiterals.path = "Weekly review";
+        for (const n of [focus, tasks, report, write]) {
           await s.editor.addNode(asNode(n));
           nodeNameStore.ensure(n.id, n.constructor.name);
         }
         const wire = (src: ClassicPreset.Node, o: string, tgt: ClassicPreset.Node, i: string) =>
           s.editor.addConnection(new ClassicPreset.Connection(asNode(src), o, asNode(tgt), i) as SolenoidConnection);
-        await wire(notes, "cube", health, "frame");
-        await wire(health, "frame", write, "rows");
-        await wire(write, "plan", disp, "in");
+        await wire(focus, "value", report, "focus");
+        await wire(tasks, "value", report, "tasks");
+        await wire(report, "document", write, "in");
       }}
     />
   );
