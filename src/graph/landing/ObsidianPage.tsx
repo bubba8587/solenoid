@@ -314,15 +314,15 @@ export default function ObsidianPage() {
                 <p>
                   Your vault is already full of numbers: ratings in frontmatter,
                   estimates and due dates in TaskNotes, tables inside your notes.
-                  Solenoid reads them, runs real spreadsheet math over them, and writes
-                  the answers back. There is no plugin to install.
+                  Solenoid reads them, runs spreadsheet math over them, and writes the
+                  answers back. There is no plugin to install.
                 </p>
               </Reveal>
               <Reveal delay={220}>
                 <p className="obs-note">
-                  New to Solenoid? It is a visual alternative to Excel. Values flow
-                  through cards you can see, and every Excel function works by its own
-                  name. This page is the Obsidian half of it.
+                  New to Solenoid? It is a visual alternative to Excel: values flow
+                  through cards on a canvas, and every Excel function works by its own
+                  name. This page covers the Obsidian side.
                 </p>
               </Reveal>
               <Reveal delay={300}>
@@ -368,9 +368,9 @@ export default function ObsidianPage() {
             <Reveal>
               <h2>Reading the vault</h2>
               <p className="sol-landing__lede">
-                Solenoid reads the vault three ways: a whole folder as a table, a single
-                note as a source, and a TaskNotes board through its API. Each one arrives
-                as typed data you can compute on.
+                Solenoid reads a whole folder as a table, a single note as a source, or a
+                TaskNotes board through its API. Each arrives as typed data you can
+                compute on.
               </p>
             </Reveal>
           </section>
@@ -423,9 +423,9 @@ export default function ObsidianPage() {
             <Reveal>
               <h2>Writing it back</h2>
               <p className="sol-landing__lede">
-                When the math is done, three sinks put the results where you will read
-                them. Each loads disarmed, previews before it touches a file, and writes
-                only when you press Run.
+                When the math is done, the writer nodes put the results where you will
+                read them. Each loads disarmed, previews before it touches a file, and
+                writes only when you press Run.
               </p>
             </Reveal>
             <Reveal delay={100}>
@@ -463,8 +463,8 @@ export default function ObsidianPage() {
             <Reveal>
               <h2>What you can build</h2>
               <p className="sol-landing__lede">
-                A few jobs the readers and writers add up to, each a small graph of the
-                cards above.
+                A few jobs you can build from the readers and writers above, each a small
+                graph.
               </p>
             </Reveal>
             <Reveal delay={100}>
@@ -510,7 +510,7 @@ export default function ObsidianPage() {
             </p>
             <p>
               So a number can start in a spreadsheet, get joined against your notes, and
-              land back in a task, without leaving a trail of one-off exports behind it.
+              land back in a task, without a pile of one-off exports in between.
             </p>
           </Feature>
 
@@ -531,10 +531,10 @@ export default function ObsidianPage() {
           <section className="sol-landing__strip">
             <Reveal className="sol-landing__strip-in">
               <p>
-                Bases and Dataview query and display your notes. Solenoid is the piece
-                that computes over them: joins across notes, a schedule from task
-                dependencies, a simulation, a real formula, then the result written back.
-                Your vault stays your database, and your spreadsheets are one CSV away.
+                Bases and Dataview query and display your notes. Solenoid computes over
+                them: joins across notes, a schedule from task dependencies, a
+                simulation, a formula, then the result written back. The vault stays your
+                database, and a spreadsheet is one CSV away.
               </p>
             </Reveal>
           </section>

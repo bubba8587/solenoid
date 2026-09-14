@@ -146,7 +146,7 @@ export default function LandingPage() {
               <h2>How a node reads</h2>
               <p className="sol-landing__lede">
                 Every node is the same small card, and every part of the card means one
-                thing. Once you can read one node, you can read a whole model.
+                thing. The card that reads a file looks like the card that runs a formula.
               </p>
             </Reveal>
             <Reveal delay={100}>
@@ -158,10 +158,10 @@ export default function LandingPage() {
             <Reveal>
               <h2>Typed sockets and cables</h2>
               <p className="sol-landing__lede">
-                A cable&apos;s color tells you what flows through it, and endpoints only
-                connect where the types agree. Element families never cross silently:
-                text never becomes a number without a Cast, and a table never collapses
-                into a scalar. The one bridge is boolean to number, because TRUE is 1.
+                A cable&apos;s color tells you what flows through it, and two sockets
+                connect only where their types agree. Text does not turn into a number
+                without a Cast, and a table does not collapse into a scalar. The one
+                automatic conversion is boolean to number, since TRUE is 1.
               </p>
             </Reveal>
             <Reveal delay={100}>
@@ -174,17 +174,16 @@ export default function LandingPage() {
 
           <Feature title="Real units" scene={<UnitsScene />}>
             <p>
-              Values carry units, not labels. <code>5 km</code> is stored as a base-SI
+              A value carries its unit. <code>5 km</code> is stored as a base-SI
               quantity with a display unit, so <code>SUM(5 km, 3)</code> is{" "}
               <code>8 km</code> and m × m is m². The Format Controller sets a unit,
-              Convert changes it, and the unit rides the value through every passthrough.
+              Convert changes it, and the unit carries through every passthrough.
             </p>
             <p>
               Adding meters to seconds fails with{" "}
               <code className="sol-landing__err">#UNIT!</code> at the node where it
-              happened, not three steps later as a plausible-looking number. Frame
-              columns carry units too: a <code>Price ($)</code> header locks the column,
-              and joins match 5 km against 5,000 m.
+              happens. Frame columns carry units too: a <code>Price ($)</code> header
+              locks the column, and joins match 5 km against 5,000 m.
             </p>
           </Feature>
 
@@ -222,7 +221,7 @@ export default function LandingPage() {
             <p>
               Point Plotter turns clicks on a plane into X and Y lists. Curve samples a
               draggable spline into a list. Grid Painter fills a matrix with a value
-              brush. Sketch the shape you have in mind, then run real math on it.
+              brush. Sketch the shape, then run the math on it.
             </p>
           </Feature>
 
@@ -247,8 +246,8 @@ export default function LandingPage() {
               any note whose body opens with a YAML block is a typed record.
             </p>
             <p>
-              Notes and Reports write back as portable markdown with real tables, math
-              and rendered chart images, so the vault stays the home of the numbers.
+              Notes and Reports write back into the vault as portable markdown with
+              tables, math and rendered chart images.
             </p>
           </Feature>
 
@@ -261,9 +260,8 @@ export default function LandingPage() {
               and the canvas stays live beside it.
             </p>
             <p>
-              A Presentation node runs the canvas as a slideshow. The camera flies to
-              each step&apos;s nodes, the chrome hides, and a click advances. The canvas
-              is the slide.
+              A Presentation node runs the canvas as a slideshow: the camera flies to
+              each step&apos;s nodes, the chrome hides, and a click advances.
             </p>
           </Feature>
 
