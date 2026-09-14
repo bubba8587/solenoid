@@ -8,6 +8,7 @@ import { nodeNameStore } from "../nodeNameStore";
 import { NumberInputNode } from "../nodes/input";
 import { FormatControllerNode } from "../nodes/formatController";
 import { ArithmeticNode } from "../nodes/scalar";
+import { EquationNode } from "../nodes/equation";
 import { SceneStage } from "./SceneStage";
 
 const asNode = (n: ClassicPreset.Node) => n as unknown as SolenoidNode;
@@ -297,66 +298,27 @@ export function UnitsScene() {
   );
 }
 
-// ─── Scene: the Equation node ───────────────────────────────────────────────────
+// ─── Scene: the Equation node (real nodes, computed once) ───────────────────────
+// Two knowns feed an Equation node holding V = I × R; the third variable is left
+// unwired, so the node solves for it (I = 12 / 240).
 export function EquationScene() {
-  const W = 600;
-  const H = 250;
   return (
-    <Diagram w={W} h={H}>
-      <Cables
-        w={W}
-        h={H}
-        runs={[
-          { from: [166, 74], to: [266, 88], color: C.number },
-          { from: [166, 194], to: [266, 136], color: C.number },
-        ]}
-      />
-      <MNode
-        x={26}
-        y={28}
-        w={140}
-        accent={C.number}
-        title="Volts"
-        socks={[{ cy: 46, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } }]}
-      >
-        <Hero>12 V</Hero>
-      </MNode>
-      <MNode
-        x={26}
-        y={148}
-        w={140}
-        accent={C.number}
-        title="Ohms"
-        socks={[{ cy: 46, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } }]}
-      >
-        <Hero>240 Ω</Hero>
-      </MNode>
-      <MNode
-        x={266}
-        y={26}
-        w={250}
-        accent={C.lambda}
-        title="Ohm's law"
-        socks={[
-          { cy: 62, side: "in", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 62, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 86, side: "in", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 86, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 110, side: "in", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 110, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 138, side: "out", glyph: { kind: "circle", color: C.logical, tip: "Boolean" } },
-        ]}
-      >
-        <div className="sol-mnode__formula">V = I × R</div>
-        <Row label="V" value="12 V" />
-        <Row label="I" value="50 mA" solved />
-        <Row label="R" value="240 Ω" />
-        <Row label="Check" value={<span className="sol-mnode__true">TRUE</span>} />
-      </MNode>
-      <div className="sol-callout" style={{ left: 536, top: 66, width: 60 }}>
-        solved
-      </div>
-    </Diagram>
+    <SceneStage
+      className="sol-scene-stage--equation"
+      build={async (s) => {
+        const volts = new NumberInputNode({ label: "Volts", value: 12 });
+        const ohms = new NumberInputNode({ label: "Ohms", value: 240 });
+        const eq = new EquationNode({ label: "Ohm's law", expr: "V = I * R" });
+        for (const n of [volts, ohms, eq]) {
+          await s.editor.addNode(asNode(n));
+          nodeNameStore.ensure(n.id, n.constructor.name);
+        }
+        const wire = (src: ClassicPreset.Node, o: string, tgt: ClassicPreset.Node, i: string) =>
+          s.editor.addConnection(new ClassicPreset.Connection(asNode(src), o, asNode(tgt), i) as SolenoidConnection);
+        await wire(volts, "value", eq, "V");
+        await wire(ohms, "value", eq, "R");
+      }}
+    />
   );
 }
 
