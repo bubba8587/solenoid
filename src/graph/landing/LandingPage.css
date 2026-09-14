@@ -191,25 +191,15 @@
   margin-top: 34px;
 }
 
+/* The live FlowSurface fills the stage (position:relative + a definite height);
+   the surface paints its own dot background and minimap. */
 .sol-landing__stage {
   position: relative;
+  height: clamp(360px, 56vh, 560px);
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
   background-color: var(--canvas-bg);
-}
-
-/* The rete mount fills the stage; the dot grid matches the app canvas (24px,
-   scaled with the stage's fixed zoom via inline background-size). */
-.sol-landing__stage-canvas {
-  position: absolute;
-  inset: 0;
-  background-color: var(--canvas-bg);
-  background-image: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--canvas-dot) 85%, transparent) 1px,
-    transparent 1px
-  );
 }
 
 .sol-landing__stage-reset {
