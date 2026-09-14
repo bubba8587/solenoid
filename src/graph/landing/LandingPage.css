@@ -211,11 +211,14 @@
    the surface fills it; no minimap (SceneStage locks it, this hides the chrome). */
 .sol-scene-stage {
   position: relative;
-  height: 260px;
+  height: 300px;
   border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
   background-color: var(--canvas-bg);
+}
+.sol-scene-stage--units {
+  height: 480px;
 }
 .sol-scene-stage .react-flow__minimap {
   display: none;

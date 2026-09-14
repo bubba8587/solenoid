@@ -8,7 +8,6 @@ import { nodeNameStore } from "../nodeNameStore";
 import { NumberInputNode } from "../nodes/input";
 import { ConvertNode } from "../nodes/convert";
 import { FormatControllerNode } from "../nodes/formatController";
-import { ArithmeticNode } from "../nodes/scalar";
 import { SceneStage } from "./SceneStage";
 
 const asNode = (n: ClassicPreset.Node) => n as unknown as SolenoidNode;
@@ -269,9 +268,10 @@ export function CableBoardScene() {
 }
 
 // ─── Scene: real units (real nodes, computed once) ──────────────────────────────
-// The first card rebuilt onto a real locked FlowSurface. Two chains: a value takes a
-// unit from an undocked Format Controller then Converts (5 km → ~3.107 mi), and a
-// metres-plus-seconds Add that lands #UNIT! — the dimension check, at the node.
+// The first card rebuilt onto a real locked FlowSurface: a plain number takes a unit
+// from an undocked Format Controller, then Convert relabels it (5 km → ~3.107 mi).
+// Positions come from the app's own Tidy/ELK; SceneStage reconciles the FC's mutable
+// socket and computes the value once.
 export function UnitsScene() {
   return (
     <SceneStage
@@ -280,28 +280,14 @@ export function UnitsScene() {
         const len = new NumberInputNode({ label: "Length", value: 5 });
         const fcKm = new FormatControllerNode({ label: "Set unit", unit: "km", side: "output" });
         const conv = new ConvertNode({ label: "Convert", fromUnit: "km", toUnit: "mi" });
-        const dist = new NumberInputNode({ label: "Distance", value: 3 });
-        const fcM = new FormatControllerNode({ label: "Metres", unit: "m", side: "output" });
-        const time = new NumberInputNode({ label: "Time", value: 4 });
-        const fcS = new FormatControllerNode({ label: "Seconds", unit: "s", side: "output" });
-        const add = new ArithmeticNode({ label: "Add", op: "add" });
-        const at: [ClassicPreset.Node, number, number][] = [
-          [len, 20, 20], [fcKm, 230, 20], [conv, 440, 20],
-          [dist, 20, 190], [fcM, 230, 165], [time, 20, 320], [fcS, 230, 300], [add, 450, 230],
-        ];
-        for (const [n] of at) {
+        for (const n of [len, fcKm, conv]) {
           await s.editor.addNode(asNode(n));
           nodeNameStore.ensure(n.id, n.constructor.name);
         }
-        for (const [n, x, y] of at) await s.view.moveNode(n.id, { x, y });
         const wire = (src: ClassicPreset.Node, o: string, tgt: ClassicPreset.Node, i: string) =>
           s.editor.addConnection(new ClassicPreset.Connection(asNode(src), o, asNode(tgt), i) as SolenoidConnection);
         await wire(len, "value", fcKm, "in");
         await wire(fcKm, "out", conv, "in");
-        await wire(dist, "value", fcM, "in");
-        await wire(fcM, "out", add, "a");
-        await wire(time, "value", fcS, "in");
-        await wire(fcS, "out", add, "b");
       }}
     />
   );

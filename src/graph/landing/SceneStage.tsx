@@ -8,7 +8,12 @@ import { FlowSurface, idleHandlers, type SurfaceStack, type SurfaceHooks } from 
 import { makeFlowView } from "../flow/flowView";
 import { installInputCoercion } from "../coerceInputs";
 import { installErrorGuards } from "../errorValue";
+import { reconcileFcTypes } from "../fcReconcile";
+import { makeEnsureElk, elkTidyLayout, tidyOptionsFromSettings } from "../tidyArrange";
 import { computeStack } from "./landingCompute";
+
+// ELK is loaded once, shared by every scene card (makeEnsureElk caches the instance).
+const ensureElk = makeEnsureElk(() => false);
 
 // A locked, self-contained real canvas for a landing feature card: the actual node
 // components (so they can never drift from the app), over a LOCAL stack, computed
@@ -72,6 +77,19 @@ export function SceneStage({
   useEffect(() => {
     void (async () => {
       await build(stack);
+      // Mutable sockets (FC / Convert / adoptive) reconcile against the wired types,
+      // then lay the graph out headlessly with the app's own ELK/Tidy, then compute
+      // the values once.
+      reconcileFcTypes(stack.editor, stack.view);
+      const elk = await ensureElk();
+      if (elk) {
+        await elkTidyLayout(elk, {
+          nodes: stack.editor.getNodes(),
+          connections: stack.editor.getConnections(),
+          options: tidyOptionsFromSettings(),
+          translate: (id, x, y) => stack.view.moveNode(id, { x, y }),
+        });
+      }
       await computeStack(stack, false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
