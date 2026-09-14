@@ -209,15 +209,10 @@ export default function LandingPage() {
             </p>
           </Feature>
 
-          <Feature title="Obsidian, both directions" flip scene={<ObsidianScene />}>
+          <Feature title="YAML Frontmatter Inputs" flip scene={<ObsidianScene />}>
             <p>
-              Any note whose body opens with a YAML block is a typed record: its
-              frontmatter becomes values you can wire into a calculation. Import one from
-              your vault, or keep it as a plain Note on the canvas.
-            </p>
-            <p>
-              Results write back into the vault as portable markdown, with tables, math
-              and rendered chart images.
+              Author or import Markdown documents with frontmatter properties to use them
+              as real inputs in your graph.
             </p>
           </Feature>
 
