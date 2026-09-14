@@ -200,10 +200,9 @@ export default function LandingPage() {
           <Feature title="Relational verbs" scene={<VerbsScene />}>
             <p>
               Filter, Sort, Join, Group By, Append, Distinct, Pivot, Unpivot: the full
-              verb set as nodes, with as-of joins for nearest-match on time. On the
-              desktop build the verbs run on native Polars, and a chain is fused into
-              one lazy plan, so a million-row frame costs one round trip instead of one
-              per node.
+              verb set as nodes, with as-of joins for nearest-match on time. The desktop
+              build runs on Rust and Polars, so it handles million-row operations with
+              ease.
             </p>
             <p>
               On the web the same verbs run a reference engine with identical answers.
