@@ -107,9 +107,9 @@ export default function LandingPage() {
               </Reveal>
               <Reveal delay={110}>
                 <p>
-                  Each node is one operation, and typed cables carry values between them:
-                  numbers, text, lists, and whole tables. The graph recomputes as its
-                  inputs change, so the steps of a calculation stay visible on the canvas.
+                  Each node is one operation, and typed cables carry values between them.
+                  The graph recomputes as its inputs change, so the steps of a
+                  calculation stay visible on the canvas.
                 </p>
               </Reveal>
               <Reveal delay={220}>
@@ -133,9 +133,8 @@ export default function LandingPage() {
             <Reveal>
               <LandingGraph />
               <p className="sol-landing__demo-note">
-                This graph is live: it fills a sparse survey grid, then draws the surface
-                and a contour map from it. Drag a card, rotate the surface, or open a
-                table and edit a height, and everything downstream recomputes.
+                This graph is live. Drag a card, rotate the surface, or open a table and
+                edit a value, and everything downstream recomputes.
               </p>
             </Reveal>
           </section>
@@ -186,49 +185,34 @@ export default function LandingPage() {
               where it can and numerically where it can&apos;t. A quadratic returns every
               real root.
             </p>
-            <p>
-              Domain packs bring ready-made equations for circuits, gases, chemistry and
-              finance. The time-value-of-money pack solves for payment, present value,
-              future value, term or rate, whichever you leave blank.
-            </p>
           </Feature>
 
           <Feature title="Relational verbs" scene={<VerbsScene />}>
             <p>
               Filter, Sort, Join, Group By, Append, Distinct, Pivot, Unpivot: the full
-              relational verb set, plus as-of joins for nearest-match on time. The desktop
-              build runs on Rust and Polars, so it handles million-row operations with
-              ease.
+              relational verb set. The desktop build runs on Rust and Polars, so it
+              handles million-row operations with ease.
             </p>
           </Feature>
 
           <Feature title="Draw your data" flip scene={<DrawScene />}>
             <p>
-              Draw your inputs by hand. Click points on a plane to make X and Y lists,
-              drag a spline and sample it into a list, or paint values onto a grid.
-              Sketch the shape, then run the math on it.
+              Draw your inputs by hand: plot points, sketch a curve, or paint a grid.
+              Then run the math on them.
             </p>
           </Feature>
 
           <Feature title="What-if analysis" scene={<MonteCarloScene />}>
             <p>
               Give a model&apos;s inputs a ± spread and its outputs come back as
-              distributions, with a mean, a spread and a histogram. Drive an input until
-              an output hits a target you set. Save named sets of inputs as scenarios, or
-              sweep one input across a range.
-            </p>
-            <p>
-              Fuzz the inputs to find where a model breaks, and sweep each one in turn to
-              see which the result really depends on.
+              distributions, with a mean, a spread and a histogram.
             </p>
           </Feature>
 
           <Feature title="Obsidian, both directions" flip scene={<ObsidianScene />}>
             <p>
               Import a note from your vault: it renders in the graph, and its
-              frontmatter properties become values you can use as inputs. It re-reads
-              from disk on demand, and any note that opens with a YAML block works
-              without a schema.
+              frontmatter properties become values you can use as inputs.
             </p>
             <p>
               Results write back into the vault as portable markdown, with tables, math
@@ -238,15 +222,12 @@ export default function LandingPage() {
 
           <Feature title="Live documents and slideshows" scene={<PresenterScene />}>
             <p>
-              Write a markdown document that embeds live values: an inline{" "}
-              <code>{"{{ value }}"}</code> renders a number, a scrollable table, a chart or a
-              typeset equation, and updates whenever the graph does. Loops and conditions
-              shape the prose, so the document rewrites itself as the data changes. Dock
-              it beside the canvas and both stay live.
+              Write a live document that pulls values from the graph: a number, a table,
+              a chart or a typeset equation, each updating as the data changes.
             </p>
             <p>
-              Or present the canvas itself as a slideshow: the view flies from one step
-              to the next, the chrome falls away, and a click advances.
+              Or present the canvas itself as a slideshow, the view flying from one step
+              to the next.
             </p>
           </Feature>
 
@@ -254,9 +235,7 @@ export default function LandingPage() {
             <Reveal>
               <h2>Excel parity</h2>
               <p className="sol-landing__lede">
-                Functions keep their Excel names and their Excel answers. The built-in
-                reference lists every function with its Excel equivalent, and you search
-                by the names you already know.
+                Functions keep their Excel names and their Excel answers.
               </p>
             </Reveal>
             <Reveal delay={100}>
@@ -267,8 +246,7 @@ export default function LandingPage() {
           <section className="sol-landing__strip">
             <Reveal className="sol-landing__strip-in">
               <p>
-                Free and open source. Runs in the browser, or as a Windows desktop app
-                powered by a native Rust and Polars engine.
+                Free and open source. Runs in the browser, or as a Windows desktop app.
               </p>
               <div className="sol-landing__actions">
                 <a className="sol-landing__cta sol-landing__cta--primary" href="./">Open Solenoid</a>

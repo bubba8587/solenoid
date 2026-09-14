@@ -347,10 +347,6 @@ export default function ObsidianPage() {
           <section className="sol-landing__demo">
             <Reveal>
               <PipelineScene />
-              <p className="sol-landing__demo-note">
-                A graph that reads a vault folder, keeps the notes tagged{" "}
-                <code>book</code>, and writes a score back to their frontmatter.
-              </p>
             </Reveal>
           </section>
 
@@ -398,23 +394,22 @@ export default function ObsidianPage() {
                 <div className="obs-card">
                   <h3>Update note properties</h3>
                   <p>
-                    Write a table of values back into your notes&apos; frontmatter, one
-                    row per note. Each column lands as a properly typed property, so
-                    dates, lists and links come out right.
+                    Each column becomes a properly typed property, so dates, lists and
+                    links come out right.
                   </p>
                 </div>
                 <div className="obs-card">
                   <h3>Create notes and reports</h3>
                   <p>
-                    Write a note or report into your vault as portable markdown, with
-                    frontmatter, tables, diagrams, math and chart images baked in.
+                    As portable markdown, with frontmatter, tables, diagrams, math and
+                    chart images baked in.
                   </p>
                 </div>
                 <div className="obs-card">
                   <h3>Create and update tasks</h3>
                   <p>
-                    Create or update TaskNotes tasks from a table. A row matched to an
-                    existing task updates it; a new row becomes a new task.
+                    From a table: a row matched to an existing task updates it, a new row
+                    creates one.
                   </p>
                 </div>
               </div>
@@ -466,21 +461,16 @@ export default function ObsidianPage() {
               functions you know come along: Solenoid keeps Excel&apos;s names and
               Excel&apos;s answers.
             </p>
-            <p>
-              So a number can start in a spreadsheet, get joined against your notes, and
-              land back in a task, without a pile of one-off exports in between.
-            </p>
           </Feature>
 
           <Feature title="Preview every change" scene={<PlanScene />}>
             <p>
-              Every writer shows you a plan before it touches a file, marking each note
-              or task as add, change, or leave alone. Nothing is written until you
-              approve it.
+              Every writer shows you a plan before it touches a file. Nothing is written
+              until you approve it.
             </p>
             <p>
-              Your notes change the way you would change them by hand, one property at a
-              time, and a value that does not fit its type is refused rather than written.
+              Your notes change the way you would change them by hand, and a value that
+              does not fit its type is refused rather than written.
             </p>
           </Feature>
 
