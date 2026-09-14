@@ -122,6 +122,9 @@ const LANDING_HOOKS: SurfaceHooks = {
   standoffs: false,
   drawnCables: false,
   fitViewOnInit: true,
+  // A marketing demo: gestures only. No app hotkeys, no right-click menus.
+  noKeyboard: true,
+  noContextMenu: true,
 };
 
 // Inside the provider so it can reach fitView. FlowSurface frames the graph once

@@ -194,6 +194,13 @@ export type SurfaceHooks = {
   drawnCables?: boolean;
   /** The main canvas stands down while the drill-in owns the keyboard. */
   standsDownWhenDrilled?: boolean;
+  /** Skip the global canvas keyboard entirely — no F9, Ctrl+S/O, palette, nudge,
+   *  copy/paste, group verbs, or Delete key. The landing / showcase mounts run the
+   *  canvas for its gestures alone and want none of the app hotkeys. */
+  noKeyboard?: boolean;
+  /** Suppress every right-click menu — the Add menu on the pane and the node /
+   *  edge / socket context menus (and the native menu with them). */
+  noContextMenu?: boolean;
   /** Frame the graph once the first mounted cards have measured. */
   fitViewOnInit?: boolean;
   /** Escape with nothing of the surface's own open (menu, isolate). */
@@ -457,6 +464,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   // edge, so it can sit on either) resolves first on nodes and the pane.
   const onNodeContextMenu: NodeMouseHandler<SolFlowNode> = useCallback(
     (e, node) => {
+      if (hooksRef.current.noContextMenu) { e.preventDefault(); return; }
       if (keepsNativeMenu(e)) return;
       e.preventDefault();
       const el = wrapperRef.current;
@@ -469,6 +477,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   );
   const onEdgeContextMenu: EdgeMouseHandler<SolFlowEdge> = useCallback(
     (e, edge) => {
+      if (hooksRef.current.noContextMenu) { e.preventDefault(); return; }
       if (keepsNativeMenu(e)) return;
       e.preventDefault();
       const t = cableTargetFor(s.editor, edge.id, e);
@@ -477,6 +486,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     [s],
   );
   const onPaneContextMenu = useCallback((e: React.MouseEvent | MouseEvent) => {
+    if (hooksRef.current.noContextMenu) { e.preventDefault(); return; }
     if (keepsNativeMenu(e)) return;
     e.preventDefault();
     const el = wrapperRef.current;
@@ -490,7 +500,9 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   // The full canvas keyboard (F9, palette, nudge, copy/paste, group verbs,
   // Ctrl+S/O…) over this surface's refs; Escape falls through to the host.
   useEffect(() => {
-    const unKeys = installCanvasKeyboard({
+    const unKeys = hooksRef.current.noKeyboard
+      ? () => {}
+      : installCanvasKeyboard({
       editorRef: { current: s.editor },
       viewRef: { current: s.view as unknown as View },
       historyRef: {
@@ -901,7 +913,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         onNodeDragStop={onNodeDragStop}
         onMove={onMove}
         isValidConnection={isValidConnection}
-        deleteKeyCode={locked ? null : DELETE_KEYS}
+        deleteKeyCode={locked || hooks.noKeyboard ? null : DELETE_KEYS}
         selectionKeyCode={null}
         // The canvas keyboard nudges the SELECTION on the dot grid (RF's own arrow
         // move needs a focused card and steps 5px) — one arrow handler, not two.

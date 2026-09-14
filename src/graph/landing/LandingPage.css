@@ -192,7 +192,7 @@
 }
 
 /* The live FlowSurface fills the stage (position:relative + a definite height);
-   the surface paints its own dot background and minimap. */
+   the surface paints its own dot background. */
 .sol-landing__stage {
   position: relative;
   height: clamp(360px, 56vh, 560px);
@@ -200,6 +200,11 @@
   border-radius: 12px;
   overflow: hidden;
   background-color: var(--canvas-bg);
+}
+
+/* No minimap on the marketing hero — it's editor chrome. */
+.sol-landing__stage .react-flow__minimap {
+  display: none;
 }
 
 .sol-landing__stage-reset {
