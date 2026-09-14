@@ -9,6 +9,7 @@ import { NumberInputNode } from "../nodes/input";
 import { FormatControllerNode } from "../nodes/formatController";
 import { ArithmeticNode } from "../nodes/scalar";
 import { EquationNode } from "../nodes/equation";
+import { FrameInputNode, JoinNode, GroupByFrameNode } from "../nodes/frame";
 import { SceneStage } from "./SceneStage";
 
 const asNode = (n: ClassicPreset.Node) => n as unknown as SolenoidNode;
@@ -322,81 +323,38 @@ export function EquationScene() {
   );
 }
 
-// ─── Scene: relational verbs ────────────────────────────────────────────────────
+// ─── Scene: relational verbs (real nodes, computed once) ────────────────────────
+// A sales frame joined to a regions frame on `region`, then grouped by region
+// summing sales — the real Join and Group By nodes over inline literal frames.
 export function VerbsScene() {
-  const W = 660;
-  const H = 280;
   return (
-    <Diagram w={W} h={H}>
-      <Cables
-        w={W}
-        h={H}
-        runs={[
-          { from: [176, 63], to: [250, 122], color: C.frame },
-          { from: [176, 233], to: [250, 140], color: C.frame },
-          { from: [420, 172], to: [488, 84], color: C.frame },
-        ]}
-      />
-      <MNode
-        x={16}
-        y={18}
-        w={160}
-        accent={C.frame}
-        title="sales.csv"
-        socks={[{ cy: 45, side: "out", glyph: { kind: "frame", color: C.frame, tip: "Frame" } }]}
-      >
-        <div className="sol-mnode__chiprow">
-          <Chip kind="frame">Frame 5,000×6</Chip>
-        </div>
-      </MNode>
-      <MNode
-        x={16}
-        y={188}
-        w={160}
-        accent={C.frame}
-        title="regions.csv"
-        socks={[{ cy: 45, side: "out", glyph: { kind: "frame", color: C.frame, tip: "Frame" } }]}
-      >
-        <div className="sol-mnode__chiprow">
-          <Chip kind="frame">Frame 12×2</Chip>
-        </div>
-      </MNode>
-      <MNode
-        x={250}
-        y={80}
-        w={170}
-        accent={C.frame}
-        title="Join"
-        socks={[
-          { cy: 42, side: "in", glyph: { kind: "frame", color: C.frame, tip: "Frame" } },
-          { cy: 60, side: "in", glyph: { kind: "frame", color: C.frame, tip: "Frame" } },
-          { cy: 92, side: "out", glyph: { kind: "frame", color: C.frame, tip: "Frame" } },
-        ]}
-      >
-        <Row label="on" value="region" />
-        <Row label="how" value="left" />
-        <div className="sol-mnode__chiprow">
-          <Chip kind="frame">Frame 5,000×7</Chip>
-        </div>
-      </MNode>
-      <MNode
-        x={488}
-        y={26}
-        w={160}
-        accent={C.frame}
-        title="GROUPBY"
-        socks={[
-          { cy: 58, side: "in", glyph: { kind: "frame", color: C.frame, tip: "Frame" } },
-          { cy: 92, side: "out", glyph: { kind: "frame", color: C.frame, tip: "Frame" } },
-        ]}
-      >
-        <Row label="by" value="region" />
-        <Row label="agg" value="SUM(sales)" />
-        <div className="sol-mnode__chiprow">
-          <Chip kind="frame">Frame 12×2</Chip>
-        </div>
-      </MNode>
-    </Diagram>
+    <SceneStage
+      className="sol-scene-stage--verbs"
+      build={async (s) => {
+        const sales = new FrameInputNode({
+          label: "Sales",
+          frameText: "region, sales\nEast, 100\nWest, 200\nEast, 50\nWest, 80\nEast, 40",
+        });
+        const regions = new FrameInputNode({
+          label: "Regions",
+          frameText: "region, manager\nEast, Ann\nWest, Bo",
+        });
+        const join = new JoinNode({ label: "Join", how: "left" });
+        join.stringLiterals.leftKey = "region";
+        const gb = new GroupByFrameNode({ label: "GROUPBY", agg: "sum" });
+        gb.stringLiterals.keys = "region";
+        gb.stringLiterals.column = "sales";
+        for (const n of [sales, regions, join, gb]) {
+          await s.editor.addNode(asNode(n));
+          nodeNameStore.ensure(n.id, n.constructor.name);
+        }
+        const wire = (src: ClassicPreset.Node, o: string, tgt: ClassicPreset.Node, i: string) =>
+          s.editor.addConnection(new ClassicPreset.Connection(asNode(src), o, asNode(tgt), i) as SolenoidConnection);
+        await wire(sales, "frame", join, "left");
+        await wire(regions, "frame", join, "right");
+        await wire(join, "frame", gb, "frame");
+      }}
+    />
   );
 }
 
