@@ -453,7 +453,19 @@ export function ObsidianScene() {
       build={async (s) => {
         const note = new NoteNode({
           label: "refi.md",
-          body: "---\nprincipal: 250000\nrate: 0.005\nmonths: 360\nbalance: 0\n---\nRefinance assumptions.",
+          height: 280,
+          body:
+            "---\n" +
+            "lender: First National\n" +
+            "principal: 250000\n" +
+            "rate: 0.005\n" +
+            "months: 360\n" +
+            "balance: 0\n" +
+            "apr: 6.0%\n" +
+            "opened: 2026-01-15\n" +
+            "---\n" +
+            "Refinancing the 30-year fixed. `rate` is the monthly rate (APR / 12) and\n" +
+            "`balance` is the payoff target. Edit any figure and the payment re-solves.",
         });
         const pmt = new TvmNode({ label: "Payment" });
         for (const n of [note, pmt]) {
