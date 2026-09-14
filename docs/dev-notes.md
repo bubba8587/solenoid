@@ -6,6 +6,44 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-14 — landing/Obsidian pages on real canvases + demo vault)
+
+Author-driven; all on `develop`, not pushed (local HMR verify).
+
+- **Landing + Obsidian feature scenes are real locked canvases** (`landing/SceneStage.tsx`,
+  `landingCompute.ts`, `LandingScenes.tsx`): the actual node components over a LOCAL rete stack,
+  computed once. Converted: units (300 km ÷ 5 hr → 60 km/hr), equation (V=I·R solve), relational
+  verbs (Join→GroupBy), draw (Point Plotter + Curve), typed cables (Input→Display per type, manual
+  two-column), Obsidian note (Note frontmatter → TVM), and the Obsidian page's "Import a Note"
+  (`NoteImportScene`: real NoteNode → Display). Function wall colored by node-kind accent. The "How a
+  node reads" section/AnatomyScene was DELETED (author). Left as hand-built illustrations: MonteCarlo,
+  Presenter (landing); Pipeline / TaskNotes / LocalFile (Obsidian — their real nodes do IO).
+- **`activeGraph.ts` gained an OWNED-GRAPH registry** (`registerOwnedGraph`, ownership-only, never the
+  action target). A scene's nodes live in its own editor, which `getOwningEditor`/`getOwningView` never
+  knew, so render-time cross-node resolvers failed: a scene Display showed a date as its raw serial
+  (date-ness is read off the output socket via `getOwningEditor`) and a united result as base SI (the
+  docked FC couldn't resolve). Now resolved after main, before fallback. This was the real cause of the
+  units scene's "16.667 m/s" — NOT the display-unit regression it was filed under (backlog reconciled).
+- **Scenes lay out on MEASURED card heights** (`SceneInner`): compute → wait for RF to report sizes →
+  stamp them onto the nodes → ELK, so a content-sized card can't be under-reserved. Main-app
+  `FrameInputNode` height `220→280` (stale; predated the +Add lambda / +Add Form layout rows, so Tidy
+  under-reserved and overlapped a neighbor). Backlog: main-app `elkTidyLayout` reserves DECLARED height
+  for plain nodes (`tidyArrange.ts:473 return n`) — measure them too, but COMPARE git history first
+  (likely measured once, changed deliberately).
+- **Landing chrome onto current DESIGN tokens** (its designs predate the DESIGN.md overhaul): CTAs are
+  the app's filled-accent "confirming action" + neutral default (were the pre-overhaul quiet-accent
+  BORDER); theme/reset buttons off the `--btn-*` aliases onto `--surface-sunken`/`--border`.
+- **Demo vault — a bundled read-only vault the web app reads** (`demoVault.ts`, `demoVaultData.ts`).
+  Served through the `fileBridge` `FsProvider` seam behind a SENTINEL root `solenoid:demo-vault`:
+  `getVaultRoot()` returns it when the new "Use demo vault (works in the web demo)" setting is on, the
+  vault readers recognise it (their `hasFs()` gates allow the sentinel), and `fileBridge`'s path-aware
+  dispatch routes those paths to an in-memory provider — desktop file ops stay on the real fs. Vault
+  Folder + Import Obsidian Note now work with no vault, browser included. Writes throw (not editable);
+  Write to Obsidian refuses with a read-only message. Files lazily code-split (`demoVaultData` chunk,
+  ~10 KB gz); `.obsidian/` excluded by extension. FOLLOW-UP: the Obsidian page's Pipeline / VaultFolder /
+  ImportObsidian illustrations could now become real canvases reading the demo vault (TaskNotes still
+  needs its HTTP API; LocalFile would need a bundled CSV).
+
 ### SESSION DIGEST (2026-09-14 — solo with author; deps, settings, gauge, polish)
 
 Rapid author-driven pass; all on `develop`, pushed at close.

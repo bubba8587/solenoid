@@ -85,7 +85,7 @@ src/
 | `graphCompute.ts` | THE model-level pass, one definition for every caller (rules targetedEqualsFull): `loopMembers` (Tarjan SCC), `downstreamClosure`, `invalidate` (cone or full), `seedLoopErrors` (`#CIRC!` cache + value-box seeding), `fetchAll`, `computeAll`. Used by `processGraph`, the composite's internal engine, `scripts/run-graph.ts` and the seed tests |
 | `canvasCommands.ts` | The chrome → surface command slots (select/unselect, Tidy/Cleanup, delete, dock reposition, clear history) the mounted FlowSurface registers and the drill-in swaps (`swapSelectionSlots`/`swapArrangeSlots`) |
 | `seedStore.ts`, `graphSignals.ts`, `ctorProvider.ts` | Seed selection (`custom` once edited) + the load slot; the tiny version/flag stores cards subscribe to (connection version, cable-drag, conduit angle); the ctor-registry provider copyPaste reads (a cycle-breaker) |
-| `activeGraph.ts` (+`.test.ts`) | The canvas-substitution SEAM: `setActiveGraph(ctx\|null)` registers a substituting surface (composite drill-in), `getActive*`/`getOwningEditor` resolve override-else-main. Chrome/actions read these so a drill-in is first-class; `getEditor()`/persistence stay MAIN (locked by the test). Register on mount / clear on unmount; nested surfaces REPLACE (breadcrumb stack lives in compositeEditorStore) |
+| `activeGraph.ts` (+`.test.ts`) | The canvas-substitution SEAM: `setActiveGraph(ctx\|null)` registers a substituting surface (composite drill-in), `getActive*`/`getOwningEditor` resolve override-else-main. Chrome/actions read these so a drill-in is first-class; `getEditor()`/persistence stay MAIN (locked by the test). Register on mount / clear on unmount; nested surfaces REPLACE (breadcrumb stack lives in compositeEditorStore). Also an OWNERSHIP-only registry (`registerOwnedGraph`, distinct from the action-target override) so locked landing scene canvases resolve their OWN nodes for render-time cross-node resolvers (output-socket type → date/unit rendering); scenes are never the action target |
 | `viewPresets.ts` | The pure zoom module both surfaces share: `MIN_ZOOM`/`MAX_ZOOM`, `clampZoom`, `wheelZoomDelta` (the proportional wheel curve — px slope, step cap, line/page normalization) |
 | `view.ts` | THE canvas-view seam, `View`: what model-side code may ask of the view — `position(id)`/`nodeElement(id)`/`connectionElement(id)`/`hasNode(id)` (position reads `node.position`, the model's one source of truth; elements resolve to the live RF DOM per call), `container`/`viewport`, the camera (`transform`, `zoom`, `pan`), `moveNode`, `rerenderNode`/`rerenderCables`, `onRender`, `measured`; `flow/flowView.ts` is the one implementation |
 | `zoomAt.ts` | Frame a node set over a `Pick` of the `View` seam (`ZoomView`): RF's `getNodesBounds` + `getViewportForBounds` (padding 0.1, never zooms IN past 1), zoom floored to the snap step |
@@ -324,7 +324,12 @@ shared by the voice lint (`uiCopy.test.ts`) and the hand-rewrite tool
 ### External data
 
 `connectionStore.ts` (cached async fetch + refresh generation),
-`fileBridge.ts` (Tauri fs/dialog behind an `isDesktop()` guard),
+`fileBridge.ts` (Tauri fs/dialog behind an `isDesktop()` guard, plus a
+path-aware dispatch so a demo-vault path routes to the in-memory provider),
+`demoVault.ts` + `demoVaultData.ts` (the bundled read-only demo vault behind
+the sentinel root `solenoid:demo-vault`, so the vault readers work with no
+filesystem — web included; `getVaultRoot()` selects it via the "Use demo
+vault" setting, files lazily code-split from `/demo-vault`),
 `httpBridge.ts` (proxy-aware fetch), `csv.ts` (parse/serialize),
 `nodes/connection.ts` (Web Source, Local File (CSV/Parquet), Import HTML/XML),
 `dataProviders.ts` + `nodes/dataFeed.ts` (the keyed data-feed providers),

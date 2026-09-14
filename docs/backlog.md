@@ -104,10 +104,11 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 ## Landing pages
 
-- [ ] **Rebuild the landing + Obsidian pages for the React Flow surface** (`src/graph/landing/`) —
-  the scene diagrams are hand-built DOM/SVG replicas of rete-era node chrome; regenerate them to
-  match React Flow nodes. Copy was leaned out 2026-09-14 (voice pass, DESIGN §7); the visuals want
-  the real rebuild.
+- [ ] **Finish the landing/Obsidian scene rebuild.** Most feature scenes are now real locked canvases
+  (`landing/SceneStage.tsx`); what remains hand-built DOM/SVG: MonteCarlo + Presenter (landing) and the
+  Obsidian page's Pipeline / VaultFolder / ImportObsidian illustrations. The last three can now become
+  real canvases reading the **demo vault** (`demoVault.ts`) — TaskNotes still needs its HTTP API, and
+  LocalFile would need a bundled CSV. MonteCarlo/Presenter don't map cleanly to a single locked pass.
 
 ## Cables
 
