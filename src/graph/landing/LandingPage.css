@@ -91,8 +91,8 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--btn-bg);
-  border: 1px solid var(--btn-border);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
   color: var(--text-dim);
   cursor: pointer;
   padding: 0;
@@ -100,7 +100,7 @@
 
 .sol-landing__theme:hover {
   background: var(--btn-hover);
-  border-color: var(--btn-border-hover);
+  border-color: var(--border-strong);
   color: var(--text);
 }
 
@@ -253,8 +253,8 @@
   right: 10px;
   padding: 4px 12px;
   border-radius: 999px;
-  background: var(--btn-bg);
-  border: 1px solid var(--btn-border);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
   color: var(--text-dim);
   font-size: 11px;
   font-family: var(--font-sans);
@@ -263,7 +263,7 @@
 
 .sol-landing__stage-reset:hover {
   background: var(--btn-hover);
-  border-color: var(--btn-border-hover);
+  border-color: var(--border-strong);
   color: var(--text);
 }
 
