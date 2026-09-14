@@ -229,6 +229,9 @@
 .sol-scene-stage--equation {
   height: 380px;
 }
+.sol-scene-stage--obsidian {
+  height: 460px;
+}
 .sol-scene-stage .react-flow__minimap {
   display: none;
 }

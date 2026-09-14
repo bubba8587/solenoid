@@ -211,8 +211,9 @@ export default function LandingPage() {
 
           <Feature title="Obsidian, both directions" flip scene={<ObsidianScene />}>
             <p>
-              Import a note from your vault: it renders in the graph, and its
-              frontmatter properties become values you can use as inputs.
+              Any note whose body opens with a YAML block is a typed record: its
+              frontmatter becomes values you can wire into a calculation. Import one from
+              your vault, or keep it as a plain Note on the canvas.
             </p>
             <p>
               Results write back into the vault as portable markdown, with tables, math

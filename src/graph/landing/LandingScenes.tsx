@@ -11,6 +11,8 @@ import { ArithmeticNode } from "../nodes/scalar";
 import { EquationNode } from "../nodes/equation";
 import { FrameInputNode, JoinNode, GroupByFrameNode } from "../nodes/frame";
 import { PointPlotterNode, CurveNode } from "../nodes/control";
+import { NoteNode } from "../nodes/annotation";
+import { TvmNode } from "../nodes/finance";
 import { SceneStage } from "./SceneStage";
 
 const asNode = (n: ClassicPreset.Node) => n as unknown as SolenoidNode;
@@ -437,53 +439,32 @@ export function MonteCarloScene() {
   );
 }
 
-// ─── Scene: Obsidian round trip ─────────────────────────────────────────────────
+// ─── Scene: Obsidian — a plain note's frontmatter as typed values ───────────────
+// A real Note whose body opens with a YAML block is a typed record: its frontmatter
+// keys become typed outputs, wired here into a Time Value of Money node that solves
+// the monthly payment. No vault needed — the note lives on the canvas.
 export function ObsidianScene() {
-  const W = 600;
-  const H = 250;
   return (
-    <Diagram w={W} h={H}>
-      <Cables
-        w={W}
-        h={H}
-        runs={[
-          { from: [256, 78], to: [356, 82], color: C.number },
-          { from: [256, 96], to: [356, 100], color: C.number },
-        ]}
-      />
-      <MNode
-        x={26}
-        y={26}
-        w={230}
-        accent={C.string}
-        title="refi-assumptions.md"
-        socks={[
-          { cy: 52, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 70, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-        ]}
-      >
-        <pre className="sol-mnode__front">
-          {"---\nrate: 0.045\nyears: 25\n---"}
-        </pre>
-        <p className="sol-mnode__prose">Assumptions live in the vault; Reload re-reads them from disk.</p>
-      </MNode>
-      <MNode
-        x={356}
-        y={30}
-        w={190}
-        accent={C.number}
-        title="Payment"
-        socks={[
-          { cy: 52, side: "in", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 70, side: "in", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 104, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-        ]}
-      >
-        <Row label="rate" value="0.045" />
-        <Row label="nper" value="300" />
-        <Hero>$1,213 / mo</Hero>
-      </MNode>
-    </Diagram>
+    <SceneStage
+      className="sol-scene-stage--obsidian"
+      build={async (s) => {
+        const note = new NoteNode({
+          label: "refi.md",
+          body: "---\nprincipal: 250000\nrate: 0.005\nmonths: 360\nbalance: 0\n---\nRefinance assumptions.",
+        });
+        const pmt = new TvmNode({ label: "Payment" });
+        for (const n of [note, pmt]) {
+          await s.editor.addNode(asNode(n));
+          nodeNameStore.ensure(n.id, n.constructor.name);
+        }
+        const wire = (out: string, inp: string) =>
+          s.editor.addConnection(new ClassicPreset.Connection(asNode(note), out, asNode(pmt), inp) as SolenoidConnection);
+        await wire("principal", "pv");
+        await wire("rate", "rate");
+        await wire("months", "nper");
+        await wire("balance", "fv");
+      }}
+    />
   );
 }
 
