@@ -154,10 +154,9 @@ export default function LandingPage() {
             <Reveal>
               <h2>Typed sockets and cables</h2>
               <p className="sol-landing__lede">
-                A cable&apos;s color tells you what flows through it, and two sockets
-                connect only where their types agree. Text does not turn into a number
-                without a Cast, and a table does not collapse into a scalar. The one
-                automatic conversion is boolean to number, since TRUE is 1.
+                Sockets and cables are all colored according to their value type. Value
+                types and dimensions are preserved so that, unlike Excel, you&apos;ll
+                never confuse a date with a number or text string.
               </p>
             </Reveal>
             <Reveal delay={100}>
