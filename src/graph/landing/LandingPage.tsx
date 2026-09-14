@@ -102,13 +102,12 @@ export default function LandingPage() {
           <section className="sol-landing__hero">
             <div className="sol-landing__hero-copy">
               <Reveal>
-                <h1>A node-graph alternative to Excel for data tables.</h1>
+                <h1>Your spreadsheets as a node graph.</h1>
               </Reveal>
               <Reveal delay={110}>
                 <p>
-                  Each node is one operation, and typed cables carry values between them.
-                  The graph recomputes as its inputs change, so the steps of a
-                  calculation stay visible on the canvas.
+                  Build your workbooks piece by piece. Solenoid makes wiring up complex spreadsheet operations fast 
+                  and easy to understand. 
                 </p>
               </Reveal>
               <Reveal delay={220}>
