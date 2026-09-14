@@ -204,11 +204,6 @@ export default function LandingPage() {
               build runs on Rust and Polars, so it handles million-row operations with
               ease.
             </p>
-            <p>
-              On the web the same verbs run a reference engine with identical answers.
-              Sketch mode samples 10,000 rows while you edit and marks approximate
-              results with ≈; F9 runs the exact pass.
-            </p>
           </Feature>
 
           <Feature title="Draw your data" flip scene={<DrawScene />}>
