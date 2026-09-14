@@ -2,6 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { SocketDot, type SocketGlyph } from "../components/SocketLegend";
 import { SOCKET_COLORS } from "../sockets";
+import { ClassicPreset } from "rete";
+import type { SolenoidNode, SolenoidConnection } from "../schemes";
+import { nodeNameStore } from "../nodeNameStore";
+import { NumberInputNode } from "../nodes/input";
+import { ConvertNode } from "../nodes/convert";
+import { FormatControllerNode } from "../nodes/formatController";
+import { ArithmeticNode } from "../nodes/scalar";
+import { SceneStage } from "./SceneStage";
+
+const asNode = (n: ClassicPreset.Node) => n as unknown as SolenoidNode;
 
 // ─── Landing scene primitives ───────────────────────────────────────────────────
 // STATIC vignettes rebuilding the app's design recipes in plain DOM+SVG — the page
@@ -258,97 +268,42 @@ export function CableBoardScene() {
   );
 }
 
-// ─── Scene: real units ──────────────────────────────────────────────────────────
+// ─── Scene: real units (real nodes, computed once) ──────────────────────────────
+// The first card rebuilt onto a real locked FlowSurface. Two chains: a value takes a
+// unit from an undocked Format Controller then Converts (5 km → ~3.107 mi), and a
+// metres-plus-seconds Add that lands #UNIT! — the dimension check, at the node.
 export function UnitsScene() {
-  const W = 620;
-  const H = 310;
   return (
-    <Diagram w={W} h={H}>
-      <Cables
-        w={W}
-        h={H}
-        runs={[
-          { from: [186, 95], to: [240, 136], color: C.number },
-          { from: [416, 136], to: [466, 67], color: C.number },
-          { from: [156, 237], to: [406, 227], color: C.number },
-          { from: [336, 237], to: [406, 245], color: C.number },
-        ]}
-      />
-      <MNode
-        x={16}
-        y={18}
-        w={170}
-        accent={C.number}
-        title="Format Controller"
-        socks={[{ cy: 77, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } }]}
-      >
-        <Row label="unit" value="km" />
-        <Hero>5 km</Hero>
-      </MNode>
-      <MNode
-        x={240}
-        y={62}
-        w={176}
-        accent={C.number}
-        title="Convert"
-        socks={[
-          { cy: 74, side: "in", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 74, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-        ]}
-      >
-        <Row label="to" value="mi" />
-        <Hero>3.107 mi</Hero>
-      </MNode>
-      <MNode
-        x={466}
-        y={20}
-        w={140}
-        accent={C.number}
-        title="Display"
-        socks={[{ cy: 47, side: "in", glyph: { kind: "circle", color: C.number, tip: "Numeric" } }]}
-      >
-        <Hero>3.107 mi</Hero>
-      </MNode>
-
-      <MNode
-        x={16}
-        y={190}
-        w={140}
-        accent={C.number}
-        title="Length"
-        socks={[{ cy: 47, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } }]}
-      >
-        <Hero>3 m</Hero>
-      </MNode>
-      <MNode
-        x={196}
-        y={190}
-        w={140}
-        accent={C.number}
-        title="Duration"
-        socks={[{ cy: 47, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } }]}
-      >
-        <Hero>4 s</Hero>
-      </MNode>
-      <MNode
-        x={406}
-        y={185}
-        w={170}
-        accent={C.number}
-        title="Add"
-        socks={[
-          { cy: 42, side: "in", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 60, side: "in", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 92, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-        ]}
-      >
-        <Row label="a" value="3 m" />
-        <Row label="b" value="4 s" />
-        <Hero>
-          <span className="sol-error-chip">#UNIT!</span>
-        </Hero>
-      </MNode>
-    </Diagram>
+    <SceneStage
+      className="sol-scene-stage--units"
+      build={async (s) => {
+        const len = new NumberInputNode({ label: "Length", value: 5 });
+        const fcKm = new FormatControllerNode({ label: "Set unit", unit: "km", side: "output" });
+        const conv = new ConvertNode({ label: "Convert", fromUnit: "km", toUnit: "mi" });
+        const dist = new NumberInputNode({ label: "Distance", value: 3 });
+        const fcM = new FormatControllerNode({ label: "Metres", unit: "m", side: "output" });
+        const time = new NumberInputNode({ label: "Time", value: 4 });
+        const fcS = new FormatControllerNode({ label: "Seconds", unit: "s", side: "output" });
+        const add = new ArithmeticNode({ label: "Add", op: "add" });
+        const at: [ClassicPreset.Node, number, number][] = [
+          [len, 20, 20], [fcKm, 230, 20], [conv, 440, 20],
+          [dist, 20, 190], [fcM, 230, 165], [time, 20, 320], [fcS, 230, 300], [add, 450, 230],
+        ];
+        for (const [n] of at) {
+          await s.editor.addNode(asNode(n));
+          nodeNameStore.ensure(n.id, n.constructor.name);
+        }
+        for (const [n, x, y] of at) await s.view.moveNode(n.id, { x, y });
+        const wire = (src: ClassicPreset.Node, o: string, tgt: ClassicPreset.Node, i: string) =>
+          s.editor.addConnection(new ClassicPreset.Connection(asNode(src), o, asNode(tgt), i) as SolenoidConnection);
+        await wire(len, "value", fcKm, "in");
+        await wire(fcKm, "out", conv, "in");
+        await wire(dist, "value", fcM, "in");
+        await wire(fcM, "out", add, "a");
+        await wire(time, "value", fcS, "in");
+        await wire(fcS, "out", add, "b");
+      }}
+    />
   );
 }
 

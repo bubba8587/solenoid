@@ -207,6 +207,20 @@
   display: none;
 }
 
+/* A locked scene card: a real FlowSurface for one feature's nodes. Fixed height so
+   the surface fills it; no minimap (SceneStage locks it, this hides the chrome). */
+.sol-scene-stage {
+  position: relative;
+  height: 260px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background-color: var(--canvas-bg);
+}
+.sol-scene-stage .react-flow__minimap {
+  display: none;
+}
+
 .sol-landing__stage-reset {
   position: absolute;
   top: 10px;

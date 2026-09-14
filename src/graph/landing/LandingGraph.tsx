@@ -9,6 +9,7 @@ import { makeFlowView } from "../flow/flowView";
 import { installInputCoercion } from "../coerceInputs";
 import { installErrorGuards } from "../errorValue";
 import { setEditorRefs, processGraph } from "../process";
+import { computeStack } from "./landingCompute";
 import { nodeNameStore } from "../nodeNameStore";
 import { TableInputNode } from "../nodes/matrix";
 import { InterpolateNode } from "../nodes/stats";
@@ -66,7 +67,6 @@ function makeLandingStack(): SurfaceStack {
         queueMicrotask(() => {
           queued = false;
           handlers.syncTopology();
-          void processGraph();
         });
       }
     }
@@ -100,8 +100,6 @@ async function buildDemoGraph(s: SurfaceStack) {
   await wire(survey, "table", interp, "z");
   await wire(interp, "result", surface, "z");
   await wire(interp, "result", contour, "z");
-
-  await processGraph();
 }
 
 // No document, no autosave, no undo stack on the landing page: the hooks that
@@ -154,11 +152,14 @@ export function LandingGraph() {
 
   useEffect(() => {
     setEditorRefs(stack.editor, stack.engine, stack.view);
-    void buildDemoGraph(stack);
+    void buildDemoGraph(stack).then(() => computeStack(stack, true));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stack]);
 
-  const reset = () => void buildDemoGraph(stack).then(() => setResetNonce((n) => n + 1));
+  const reset = () =>
+    void buildDemoGraph(stack)
+      .then(() => computeStack(stack, true))
+      .then(() => setResetNonce((n) => n + 1));
 
   return (
     <div className="sol-landing__stage">

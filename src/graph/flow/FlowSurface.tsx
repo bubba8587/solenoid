@@ -201,6 +201,14 @@ export type SurfaceHooks = {
   /** Suppress every right-click menu — the Add menu on the pane and the node /
    *  edge / socket context menus (and the native menu with them). */
   noContextMenu?: boolean;
+  /** Lock this mount view-only (no drag / connect / select / delete), on top of
+   *  the global canvasLockStore. A landing scene card locks itself so it stays a
+   *  static, pre-computed showcase while the hero canvas stays live. */
+  locked?: boolean;
+  /** No camera gestures either: no pan, no wheel/pinch zoom, and the page scrolls
+   *  over the card instead of the card eating the wheel. For a fixed illustration
+   *  (a landing scene) framed once by fitViewOnInit. Pair with `locked`. */
+  staticView?: boolean;
   /** Frame the graph once the first mounted cards have measured. */
   fitViewOnInit?: boolean;
   /** Escape with nothing of the surface's own open (menu, isolate). */
@@ -399,9 +407,13 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     };
     el.addEventListener("mousedown", guardEditable, true);
     el.addEventListener("touchstart", guardEditable, { capture: true, passive: true });
-    const unPinch = installFlowPinch(el, { getViewport, setViewport: drive });
-    const unPan = installTouchCardPan(el, { getViewport, setViewport: drive });
-    const unWheel = installWheelZoom(el, { getViewport, setViewport: drive });
+    // staticView: no camera gestures at all, and the page keeps its wheel/touch
+    // (so a landing card doesn't trap the scroll).
+    const noop = () => {};
+    const stat = hooksRef.current.staticView === true;
+    const unPinch = stat ? noop : installFlowPinch(el, { getViewport, setViewport: drive });
+    const unPan = stat ? noop : installTouchCardPan(el, { getViewport, setViewport: drive });
+    const unWheel = stat ? noop : installWheelZoom(el, { getViewport, setViewport: drive });
     return () => {
       el.removeEventListener("mousedown", guardEditable, true);
       el.removeEventListener("touchstart", guardEditable, true);
@@ -856,7 +868,8 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     [menu, s, screenToFlowPosition],
   );
 
-  const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
+  const globalLocked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
+  const locked = hooks.locked || globalLocked;
   // Cabling mode on the canvas root: socket.css grows every socket's catch zone and
   // re-arms mobile's drop targets off this class, so the surface must wear it for the
   // pickup → drop window (the rete connection plugin used to set it).
@@ -904,8 +917,9 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         nodesDraggable={!locked}
         nodesConnectable={!locked}
         elementsSelectable={!locked}
-        panOnDrag={!(IS_COARSE && touchSelect)}
+        panOnDrag={!(IS_COARSE && touchSelect) && !hooks.staticView}
         zoomOnScroll={false}
+        preventScrolling={!hooks.staticView}
         onNodeDragStart={onNodeDragStart}
         onNodeDrag={onNodeDrag}
         onNodesChange={onNodesChange}

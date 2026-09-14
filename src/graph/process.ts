@@ -38,6 +38,10 @@ export function getEditor() {
   return _editor;
 }
 
+export function getEngine() {
+  return _engine;
+}
+
 // "Graph is being rebuilt wholesale" guard: behaviors meant only for live user creation
 // (e.g. absorbing a dropped node into a group) must NOT run for a load/seed's addNode.
 let _rebuilding = 0;
