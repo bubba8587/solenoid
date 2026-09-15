@@ -439,15 +439,15 @@ export function MultiSeriesView({
   // extra bottom margin (that was the dead space below the legend).
   const margin = { top: axes ? PLOT_TOP : 6, right: 8, bottom: axes ? 4 : 2, left: 0 };
   const catInterval = n <= ALL_TICKS_UPTO ? 0 : undefined;
-  // With an x-axis label the legend drops below it (paddingTop) and centers on the PLOT
-  // area (padding to the axis gutters), so it lines up under the centered xlabel.
-  const legendH = LEGEND_H + (xLabel ? 10 : 0);
+  // Center the legend on the PLOT area (pad to the axis gutters) so it sits under the
+  // centered xlabel. ONLY horizontal padding, and the reserved height stays LEGEND_H: any
+  // vertical padding or extra reserved height makes recharts' measured legend height differ
+  // from the reservation, and it re-reserves on the click re-render — the chart jumps.
   const legend = (
     <Legend
-      verticalAlign="bottom" height={legendH} iconSize={8}
+      verticalAlign="bottom" height={LEGEND_H} iconSize={8}
       wrapperStyle={{
         fontSize: 9 * fs, color: axis, cursor: "pointer",
-        paddingTop: xLabel ? 10 : 0,
         ...(axes ? { paddingLeft: yAxisW, paddingRight: 8, boxSizing: "border-box" as const } : {}),
       }}
       onClick={(e) => { const j = series.findIndex((s) => s.name === e.value); if (j >= 0) setFocus((f) => (f === j ? null : j)); }}
