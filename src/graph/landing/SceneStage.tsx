@@ -2,7 +2,7 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
-import { ReactFlowProvider, useReactFlow, useUpdateNodeInternals } from "@xyflow/react";
+import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import type { Schemes } from "../schemes";
 import { FlowSurfaceContext, FlowRevealContext } from "../flowSurface";
 import { FlowSurface, idleHandlers, type SurfaceStack, type SurfaceHooks } from "../flow/FlowSurface";
@@ -172,7 +172,6 @@ function SceneInner({
   onReady: () => void;
 }) {
   const { fitView } = useReactFlow();
-  const updateNodeInternals = useUpdateNodeInternals();
   // Make the scene's nodes resolvable by the render-time cross-node resolvers (output
   // socket type → date formatting, docked FC → unit annotation). Without this a scene
   // Display shows a date as its raw serial and a united result as base SI. Registered
@@ -225,13 +224,20 @@ function SceneInner({
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
           if (cancelled) return;
-          // Re-measure every node's handles now that the cards sit at their laid-out
-          // positions and hold their real content. Without this the edges keep the early
-          // (pre-layout) handle offsets and cables meet sockets at the top edge, not the
-          // center — the same thing a manual collapse/expand fixes.
-          updateNodeInternals(stack.editor.getNodes().map((n) => n.id));
-          void fitView({ padding: 0.16, duration: 0 });
-          onReady();
+          // Bump every node so it re-renders and re-measures its handles now that the cards
+          // sit at their laid-out positions with real content — routed through the version
+          // bump so updateNodeInternals runs in the adapter's effect AFTER the DOM commits
+          // (a bare imperative call fired too early and left the cables a pixel high). This
+          // is exactly what a manual collapse/expand does. Frame + reveal on the next frame,
+          // once the re-measure has landed.
+          for (const n of stack.editor.getNodes()) void stack.view.rerenderNode(n.id);
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+              if (cancelled) return;
+              void fitView({ padding: 0.16, duration: 0 });
+              onReady();
+            }),
+          );
         }),
       );
     })();
