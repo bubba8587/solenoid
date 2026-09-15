@@ -1,4 +1,4 @@
-<!-- dte:B4 -->
+<!-- dte:B8 -->
 # Claude Code Notes
 
 Standing orders and the pointer map. Mechanisms, rulings and invariants live in `docs/`

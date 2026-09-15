@@ -1,9 +1,9 @@
-<!-- dte:B4 -->
+<!-- dte:B8 -->
 # Decision provenance — DTE
 
 This repo tracks the *why* behind its code as a **DTE** (Decision Tree Engineering)
-tree, governed by B4 "Solenoid tracks decision provenance with DTE; rules.md and
-decisions.md remain and are cited from the tree". The tool is vendored at `tools/dte.py`
+tree, governed by B8 "Solenoid's decisions and rules live only as DTE nodes; rules.md and
+decisions.md retire". The tool is vendored at `tools/dte.py`
 (one file, stdlib Python 3.8+); run `python tools/dte.py --help`.
 
 **DTE's own rules are vendored, not duplicated here.** The canonical DTE spec, agent
@@ -15,9 +15,13 @@ own format/protocol/usage decisions as nodes in this tree; this tree holds only
 Solenoid's own decisions. (`dte-rules/` is `.dteignore`d — its `dte:` tokens belong to
 DTE's tree; note it describes DTE's OWN rings A/B/C, which are not Solenoid's rings below.)
 
-**This does NOT replace the existing spec docs.** `docs/rules.md` (normative MUST +
-enforcing test) and `docs/decisions.md` (what stands / reopen-if) stay authoritative;
-their entries are lifted into the tree and cited from it over time.
+**The tree is the one home.** Every rule in `docs/rules.md` and decision in
+`docs/decisions.md` is being lifted into a node; the documents are deleted once empty.
+While an entry exists in both, the node wins. B8 carries the field mapping (MUST →
+Decision, Why/Origin → Why, Enforced by/Exceptions/Where/Reopen if → Consequences) and
+the naming convention: a node lifted from a named rule keeps the name as its title
+prefix (`shareImpl: ...`), so `python tools/dte.py find shareImpl` finds it and a
+citation may read `dte:<ID> shareImpl`.
 
 ## Solenoid's rings
 
