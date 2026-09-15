@@ -21,9 +21,10 @@ their entries are lifted into the tree and cited from it over time.
 
 ## Solenoid's rings
 
-- **A — core goals** (owned by the author; only the author ratifies A): A1 product
-  identity, A2 Excel parity, A3 type/unit honesty, A4 pre-alpha break-freely.
-- **B — strategy** under a goal (the Obsidian bet, web-vs-desktop, marketing-on-real-canvases, adopting DTE).
+- **A — core goals of the delivered product** (owned by the author; only the author
+  ratifies A). A means is never A: Excel parity and type/unit honesty serve A1, so they are B.
+- **B — high-level strategy** that helps deliver A (Excel parity, the deliberate
+  divergences from Excel, the Obsidian bet, web-vs-desktop, adopting DTE).
 - **C — subsystem architecture** under a strategy; **D+ — implementation** under an architecture.
 
 Authority (`dte.cfg`): **A:human, B:orchestrator, C+:subagent**. Assume ring B unless told
