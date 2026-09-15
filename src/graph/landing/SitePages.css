@@ -135,8 +135,33 @@
   opacity: 1;
 }
 
+/* Touch devices have no hover, so the Open hint would never show. Reveal it there and
+   give the tile a pressed state instead. */
+@media (hover: none) {
+  .sol-gallery__card-open {
+    opacity: 1;
+    color: var(--text-muted);
+  }
+  .sol-gallery__card:active {
+    border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+    background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  }
+}
+
 @media (max-width: 720px) {
   .sol-get__grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 580px) {
+  .sol-get__card {
+    padding: 18px 18px 20px;
+  }
+  .sol-get__card h2 {
+    font-size: 17px;
+  }
+  .sol-gallery {
+    margin-top: 40px;
   }
 }

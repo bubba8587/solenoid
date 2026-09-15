@@ -13,6 +13,9 @@
   position: fixed;
   inset: 0;
   overflow-y: auto;
+  /* Guard against any child overflowing sideways on a phone; the page never scrolls
+     horizontally. Keeps the sticky header (this is the scroll container). */
+  overflow-x: hidden;
   background: var(--app-bg);
   color: var(--text);
   font-family: var(--font-sans);
@@ -856,9 +859,64 @@
   }
 }
 
+/* The nav grew past a phone's width: let the header wrap so the wordmark keeps its
+   row and the nav flows onto the next, and tighten the nav's own spacing. */
+@media (max-width: 640px) {
+  .sol-landing__top {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+  .sol-landing__nav {
+    flex-wrap: wrap;
+    gap: 8px 14px;
+  }
+}
+
 @media (max-width: 580px) {
+  .sol-landing__inner {
+    padding: 0 18px;
+  }
+
+  .sol-landing__hero {
+    padding-top: 34px;
+  }
+
   .sol-landing__hero h1 {
     font-size: 24px;
+  }
+
+  .sol-landing__hero p {
+    font-size: 13.5px;
+  }
+
+  /* The section rhythm is tuned for a wide page; halve it so a phone is not mostly
+     empty space between blocks. */
+  .sol-landing__section {
+    margin-top: 52px;
+  }
+
+  .sol-landing__deep,
+  .sol-landing__deep--flip {
+    margin-top: 48px;
+  }
+
+  .sol-landing__section h2,
+  .sol-landing__deep h2 {
+    font-size: 20px;
+  }
+
+  .sol-landing__strip {
+    margin: 72px 0 56px;
+  }
+
+  /* Full-width CTAs are an easier tap target than side-by-side pills at phone width. */
+  .sol-landing__actions {
+    gap: 8px;
+  }
+
+  .sol-landing__cta {
+    flex: 1 1 auto;
+    text-align: center;
   }
 }
 

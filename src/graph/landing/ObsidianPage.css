@@ -325,4 +325,22 @@
   .obs-arrow {
     transform: rotate(90deg);
   }
+  /* The YAML sample is pre-formatted and can be wider than a phone; let it scroll on
+     its own rather than push the page sideways. */
+  .obs-yaml {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+
+/* The plan table's cells are nowrap for the wide layout; on a phone let them wrap so
+   the whole table fits the column instead of overflowing. */
+@media (max-width: 560px) {
+  .obs-table th,
+  .obs-table td {
+    white-space: normal;
+  }
+  .obs-flow__node {
+    min-width: 0;
+  }
 }
