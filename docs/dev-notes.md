@@ -6,6 +6,29 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-15 — marketing site expansion)
+
+All on `develop`; local dev server, pushes held.
+
+- **Shared site chrome (`landing/siteNav.tsx`).** Header, nav, footer, theme toggle and the
+  `Feature` row were duplicated across `LandingPage`/`ObsidianPage`; factored into one module.
+  Nav = Obsidian/Examples/Download + GitHub + Open the app, active route marked, wordmark = Home.
+  Adding a page is now a route entry + a page file.
+- **Two new pages.** `/download` (web vs Windows build, copy lifted from the README) and
+  `/examples` (a gallery of the seed library, grouped by the seeds' own labels). `App.tsx` routes
+  both by pathname off the Vercel catch-all rewrite.
+- **Examples deep-link.** Each tile is `/?seed=<id>`; `FlowCanvas` boot opens it via
+  `documentStore.newFromTemplate` (a NEW doc, never clobbering restored ones) then strips the param.
+- **`siteChrome.ts`** (reusable): a marketing page suppresses app-only overlay chrome. The Obsidian
+  page hides the Report popup's Export + Dock.
+- **Design + mobile pass.** In-prose links styled to the accent (were UA blue), `:focus-visible`
+  rings on page chrome, `text-wrap-style: pretty` on running prose. Mobile: nav wraps, hero/section
+  rhythm tightens, CTAs go full-width, the plan table wraps + the YAML sample scrolls, `overflow-x`
+  guarded, touch (`hover: none`) gets the gallery Open hint. `index.html` gained a description +
+  OG/Twitter tags (static, SPA has no per-route prerender).
+- **Open:** new-page copy is placeholder in the author's voice, marked `NEW COPY` — awaits an author
+  pass. `MonteCarloScene` orphaned when the author cut the landing What-if section (prune or re-add).
+
 ### SESSION DIGEST (2026-09-14c — Knap 0.4.2 → 0.6.0)
 
 All on `develop`.

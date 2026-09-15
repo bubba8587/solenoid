@@ -406,8 +406,17 @@ the app's bindings are `scheduleCpm.ts` / `ganttPayload.ts` / `planImport.ts` ab
 
 ### Landing & showcase (`src/graph/landing/`)
 
-The web landing page (`LandingPage.tsx` + `LandingGraph.tsx` +
-`LandingScenes.tsx`) and the dev node gallery `showcase/NodeShowcase.tsx`.
+The marketing site: four pages sharing one chrome. `siteNav.tsx` owns the header, nav,
+footer, theme toggle and `Feature` row (the nav lists Obsidian/Examples/Download, marks
+the active route, and the wordmark covers Home). Pages: `LandingPage.tsx` (overview, the
+one live rete hero) + `ObsidianPage.tsx` (integration) + `DownloadPage.tsx` +
+`ExamplesPage.tsx` (a gallery of the seed library; each tile deep-links `/?seed=<id>`,
+which `flow/FlowCanvas.tsx` boot opens as a new document). Scenes live in
+`LandingScenes.tsx` (+ `LandingGraph.tsx`, `SceneStage.tsx`); styles in `LandingPage.css`
++ `ObsidianPage.css` + `SitePages.css`. `App.tsx` routes each page by pathname (`/obsidian`,
+`/download`, `/examples`) or `?landing`, off the Vercel catch-all rewrite. `siteChrome.ts`
+lets a page suppress app-only overlay chrome (the Report's Export/Dock). The dev node
+gallery is `showcase/NodeShowcase.tsx`.
 
 ---
 
