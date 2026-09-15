@@ -34,6 +34,34 @@
   padding: 0 24px;
 }
 
+/* Inline links in running copy (e.g. the Obsidian hero's TaskNotes / Knap links).
+   The nav, CTA, footer and wordmark anchors carry their own styles; this catches the
+   in-prose ones that would otherwise fall back to the UA blue that clashes with the
+   workbench. Accent, the page's one interactive color. */
+.sol-landing main p a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: var(--accent-mid);
+  text-underline-offset: 2px;
+  transition: text-decoration-color 80ms ease;
+}
+
+.sol-landing main p a:hover {
+  text-decoration-color: var(--accent);
+}
+
+/* Keyboard focus. Chrome only (not the live scene stages, which carry the app's own
+   node focus): the accent ring the app uses for focus, kept off pointer clicks. */
+.sol-landing__nav a:focus-visible,
+.sol-landing__theme:focus-visible,
+.sol-landing__cta:focus-visible,
+.sol-landing__footer a:focus-visible,
+.sol-landing main p a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
 /* ── Scroll reveal ── */
 .sol-landing--anim .sol-reveal {
   opacity: 0;
@@ -160,6 +188,7 @@
   font-size: 14px;
   line-height: 1.55;
   color: var(--text-dim);
+  text-wrap-style: pretty;
 }
 
 .sol-landing__actions {
@@ -309,6 +338,7 @@
   font-size: 13.5px;
   line-height: 1.6;
   color: var(--text-dim);
+  text-wrap-style: pretty;
 }
 
 .sol-landing__err {
@@ -765,6 +795,7 @@
   font-size: 14px;
   line-height: 1.55;
   color: var(--text-dim);
+  text-wrap-style: pretty;
 }
 
 .sol-landing__strip .sol-landing__actions {

@@ -18,6 +18,7 @@
   color: var(--text-dim);
   font-size: 14px;
   line-height: 1.6;
+  text-wrap-style: pretty;
 }
 
 /* ── Pipeline showcase node bits ── */
@@ -250,6 +251,7 @@
   font-size: 13.5px;
   line-height: 1.6;
   color: var(--text-dim);
+  text-wrap-style: pretty;
 }
 
 .obs-card code {
@@ -290,6 +292,7 @@
   font-size: 14.5px;
   line-height: 1.6;
   color: var(--text-dim);
+  text-wrap-style: pretty;
 }
 
 .obs-steps strong {
