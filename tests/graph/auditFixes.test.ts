@@ -1,3 +1,4 @@
+// dte:C17,D24
 import { describe, it, expect } from "vitest";
 import { SeriesNode, RandArrayNode, AggregateNode, NestJoinNode, CorrelNode, ModeNode, RankPercentileNode, NPVNode } from "../../src/graph/rete-nodes";
 import { extractInit } from "../../src/graph/copyPaste";

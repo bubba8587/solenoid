@@ -1,3 +1,4 @@
+// dte:C17,D19,D54
 // Nothing here may import a module that reaches rete — the formula path stays
 // headless (dte:D19 implReteFree, enforced by formulaPathIsReteFree.test.ts). chrono-node and
 // errorValue are both headless, so they're allowed.

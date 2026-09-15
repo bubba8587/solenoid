@@ -1,3 +1,4 @@
+// dte:C17,C20,D4,D24,D48,E1
 import { describe, it, expect } from "vitest";
 import { compileEvaluator, RANGE_FUNCTIONS } from "../../src/graph/excelFormula";
 import { ForecastNode, LinestNode } from "../../src/graph/nodes/stats";

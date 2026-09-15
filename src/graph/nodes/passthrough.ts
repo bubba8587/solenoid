@@ -1,3 +1,4 @@
+// dte:E4
 import type { SocketDataType } from "../sockets";
 import type { Shape } from "../frameShape";
 

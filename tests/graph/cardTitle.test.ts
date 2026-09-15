@@ -1,3 +1,4 @@
+// dte:C19,D22
 import { describe, expect, it } from "vitest";
 import { FLAT_CATALOG, nodeDisplayName } from "../../src/graph/catalogUtils";
 

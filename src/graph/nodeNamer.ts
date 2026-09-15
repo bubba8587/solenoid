@@ -1,3 +1,4 @@
+// dte:C19
 // The ONE home of a node's display name for modules that cannot import catalogUtils
 // (errorValue, groupCollapse sit below it in the import graph). catalogUtils binds the
 // real derivation (nodeDisplayName) at load; until then the class-derived fallback stands.

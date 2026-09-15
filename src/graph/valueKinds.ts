@@ -1,3 +1,4 @@
+// dte:C24
 import { isSolError, solError, type SolError } from "./errorValue";
 
 // Call sites use the predicate rather than `=== null` so a representation change

@@ -1,3 +1,4 @@
+// dte:C45
 // ─── Relational verbs — the pure engine ───────────────────────────────────────
 // Also the reference oracle the Polars backend is parity-tested against. Verbs never
 // mutate their input; a structural failure THROWS a tagged SolError (#REF!).

@@ -1,3 +1,4 @@
+// dte:E8
 import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
 import { FrameInputNode } from "../../src/graph/nodes/frame";

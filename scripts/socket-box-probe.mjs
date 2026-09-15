@@ -1,3 +1,4 @@
+// dte:C11
 // socketBox12's RENDERING half (dte:C11 socketBox12). React Flow reads a cable endpoint
 // from the Handle's measured box, so the rule holds only if, on the real page, every
 // Handle box IS the glyph box at --socket-size and the drawn cable lands on that box

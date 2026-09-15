@@ -1,3 +1,4 @@
+// dte:C62
 import { describe, it, expect, afterEach } from "vitest";
 import { BUILTIN_PALETTES, BUILTIN_CHROME, CHROME_HOME, CHROME_KEYS, type ChromeKey, type PaletteName, type PaletteSlot, CHROME_VARS, DERIVED_CHROME_VARS, DEFAULT_CHROME, adaptChrome, chromeCssVars, hexToOklch, PALETTE_NAMES, COLOR_PALETTE, paletteStore, reportPaletteStore, resolveColor, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, nextNeutral, isNeutralShade, PALETTE, themeAccent, contrastInk } from "../../src/graph/palette";
 

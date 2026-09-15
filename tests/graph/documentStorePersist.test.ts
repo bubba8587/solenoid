@@ -1,3 +1,4 @@
+// dte:C32
 import { describe, it, expect } from "vitest";
 
 // Per-doc autosave keys (2026-07-05): each document persists under its own

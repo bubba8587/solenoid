@@ -1,3 +1,4 @@
+// dte:C17
 // Numerical analysis helpers shared across statistical distribution nodes.
 // All functions are pure and domain-checked — return NaN for invalid inputs.
 

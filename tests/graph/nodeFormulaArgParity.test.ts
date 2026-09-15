@@ -1,3 +1,4 @@
+// dte:C17
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";

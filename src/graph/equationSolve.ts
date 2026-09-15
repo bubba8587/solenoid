@@ -1,3 +1,4 @@
+// dte:C47
 import { parseFormula, compileEvaluator, type Ast, type ExprEvaluator } from "./excelFormula";
 import { solError, type SolError } from "./errorValue";
 

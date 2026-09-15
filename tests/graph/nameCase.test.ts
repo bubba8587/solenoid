@@ -1,3 +1,4 @@
+// dte:C19,D23,E12
 import { describe, it, expect } from "vitest";
 import { buildCatalog } from "../../src/graph/catalogUtils";
 import { formulaFunctionNames } from "../../src/graph/excelFormula";

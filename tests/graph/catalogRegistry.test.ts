@@ -1,3 +1,4 @@
+// dte:C28,C34,C38,D12,E6,E7
 import { describe, it, expect } from "vitest";
 import { NODE_EXCEL } from "../../src/graph/nodeExcel";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";

@@ -1,3 +1,4 @@
+// dte:E2
 import { describe, it, expect } from "vitest";
 import { WindowNode, GroupByFrameNode, ChartNode, AddColumnNode } from "../../src/graph/rete-nodes";
 import { wrapNodeData } from "../../src/graph/coerceInputs";

@@ -1,3 +1,4 @@
+// dte:D54
 // Persisted app-wide settings, a module singleton so any React root can read them.
 // A new toggle = `Settings` + `DEFAULTS` + a SETTINGS_SCHEMA entry.
 

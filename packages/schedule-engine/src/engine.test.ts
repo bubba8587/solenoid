@@ -1,3 +1,4 @@
+// dte:C70
 import { describe, it, expect } from "vitest";
 import { schedule, Calendar, dayOfWeek, parsePredecessorText, predecessorText, mermaidGantt, ScheduleError, type PlanTask, type ScheduleInput } from "./index";
 

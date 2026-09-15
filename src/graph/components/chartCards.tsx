@@ -1,3 +1,4 @@
+// dte:C63
 // Structured-payload figures, so they render as plain CSS/SVG rather than going
 // through the lazy recharts chunk.
 import { useLayoutEffect, useRef, useState } from "react";

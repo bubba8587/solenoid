@@ -1,3 +1,4 @@
+// dte:C17,C18,C20,C21,D3,D4,D20,D24
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { EXCEL_IMPL_META, listReturningNames, wholeArgNames, resolveExcelFunction } from "../../src/graph/excelFunctions";

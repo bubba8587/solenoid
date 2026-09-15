@@ -1,3 +1,4 @@
+// dte:C22,D43
 import { describe, it, expect } from "vitest";
 import { ComputedColumnNode, FrameInputNode } from "../../../src/graph/nodes/frame";
 import { LambdaNode } from "../../../src/graph/nodes/lambda";

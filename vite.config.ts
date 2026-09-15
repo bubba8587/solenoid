@@ -1,3 +1,4 @@
+// dte:C34
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import license from "rollup-plugin-license";

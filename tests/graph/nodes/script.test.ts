@@ -1,3 +1,4 @@
+// dte:C66
 import { describe, it, expect } from "vitest";
 import { ScriptNode, DEFAULT_SCRIPT } from "../../../src/graph/nodes/script";
 import { scriptParams, toClonable, invokeScript, scriptIsVolatile } from "../../../src/graph/nodes/scriptRun";

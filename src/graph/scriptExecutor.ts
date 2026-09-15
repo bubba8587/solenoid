@@ -1,3 +1,4 @@
+// dte:C66
 // Main-thread client of the Script sandbox (`scriptWorker.ts`): one shared worker,
 // one in-flight call per request id, and the wall clock. A call past
 // SCRIPT_TIMEOUT_MS gets its answer here (the worker is stuck inside it, so only

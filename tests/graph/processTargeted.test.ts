@@ -1,3 +1,4 @@
+// dte:C23,D30
 import { describe, it, expect } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";

@@ -1,3 +1,4 @@
+// dte:D7
 // Run with: npx tsx scripts/formula-node-parity.ts
 // Measures the NODE ↔ FORMULA parity gap in both directions (author direction
 // 2026-07-14: the node set and the expression/equation formula language should
