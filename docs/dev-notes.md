@@ -26,6 +26,13 @@ All on `develop`; local dev server, pushes held.
   rhythm tightens, CTAs go full-width, the plan table wraps + the YAML sample scrolls, `overflow-x`
   guarded, touch (`hover: none`) gets the gallery Open hint. `index.html` gained a description +
   OG/Twitter tags (static, SPA has no per-route prerender).
+- **Document menu accordion.** New from example groups are collapsible (one open at a time, Start
+  here open by default), so a long seed list no longer floods the menu (`DocumentTitle.tsx`).
+- **OAuth/cloud-save scoped (plan-only).** Author asked to scope sign-in with Google/Bluesky to save
+  graphs to Drive/PDS. Scoped into bundle 21 as **Stage 1-BYOS** (user-owned storage): a
+  `RemoteStore` seam behind `documentStore`, PKCE on web + loopback on desktop, Drive via
+  `drive.file` (recommended first cut), Bluesky reframed as publish/share because a PDS repo is
+  public. Not built; author calls listed in `v2.0/21-collaboration.md`.
 - **Packs page + site infra.** `/packs` shows the domain packs (grouped as in Settings, descriptions
   from the pack defs, on-by-default marked), added to nav + footer. `public/` gained `robots.txt`,
   `sitemap.xml` and `og-hero.png`; `index.html` gained `og:image` + `summary_large_image`.

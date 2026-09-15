@@ -83,6 +83,66 @@ content hash — `imageAssets.ts` already writes content beside the doc).
 link that opens in a browser). Compute runs on the JS oracle (P4 option (b)); heavy documents
 say so.
 
+## Stage 1-BYOS — User-owned storage (Google Drive / Bluesky PDS)
+
+**Source:** author order 2026-09-15 ("oauth sign-in with Google or Bluesky to save graphs to
+Drive / PDS"). **Scoped:** 2026-09-15, plan-only.
+
+An ALTERNATIVE to Stage 1's managed backend, or a precursor to it: identity AND storage both
+delegated to a provider the user already owns. Solenoid runs no document server, so most of
+§"What it costs" evaporates — no Solenoid storage, no privacy/law/billing/uptime for the
+documents; auth is the provider's. It satisfies the four constraints natively: the file stays
+the product, local-first stays true (localStorage remains the client truth; the provider is a
+second home), and the exit IS the user's own Drive/PDS.
+
+**The seam.** A `RemoteStore` behind `documentStore`, mirroring `fileBridge` / the FrameBackend
+seam: `signIn/signOut/account`, `list`, `pull(cloudId)`, `push(doc) → rev`, `remove(cloudId)`.
+`SolDoc` gains `cloudId?` + `cloudRev?` (etag / record CID) beside `filePath` (Stage 1 already
+anticipated a `cloudId` sibling). Providers implement it (`driveStore`, `pdsStore`). Manual
+first — "Save to Drive / Open from Drive" in the document menu; debounced auto-push on autosave
+is a later toggle. Conflict is `cloudRev`-versioned last-writer-wins with the Stage 0 copy UX.
+
+**Auth per platform.** Web (Vercel SPA): OAuth2 auth-code + PKCE, no client secret; a
+`/auth/callback` route the SPA owns; refresh token in localStorage (acceptable pre-alpha — the
+user's own data). Desktop (Tauri): loopback redirect (`tauri-plugin-oauth` listener) + system
+browser via the already-used `plugin-opener`; API calls over the already-present
+`@tauri-apps/plugin-http` (CORS-free). Google's "Desktop app" client type supports loopback.
+
+**Google Drive.** Scope `drive.file` (only files the app creates — avoids the restricted-scope
+security review full `drive` triggers, and the user can see them), or `drive.appdata` (hidden
+per-app folder) for invisible app-managed sync. One Drive file per `SolDoc` = the text form +
+sidecar JSON; `appProperties` carries the solenoid id + `updatedAt`; the file's etag is
+`cloudRev`. The library list is a Drive query. Drive keeps native file revisions, so Stage 1's
+Versions (P5) come almost free. Maturity: high; PKCE well documented.
+
+**Bluesky / AT Protocol PDS.** Auth is AT Proto OAuth (PKCE + DPoP + PAR; needs a public
+`client_metadata.json`, which Vercel serves). Storage is records in a custom lexicon collection
+(`app.solenoid.graph`) in the user's repo, with a blob for a large graph and a record pointing
+at it; the CID is `cloudRev`. **Caveat that likely disqualifies it as private storage: a PDS
+repo is PUBLIC and federated — anything written is world-readable.** So "save to PDS" means
+publishing the graph. Recommend reframing Bluesky as a future "publish / share a graph to your
+repo" surface, NOT the default private save target. Higher effort than Drive (DPoP, PAR,
+client-metadata hosting, lexicon design) on top of the publicness.
+
+**Fit with the managed Stage 1.** BYOS gives cloud saves + versions with zero Solenoid infra,
+but sharing is the provider's (a Drive share link, less seamless than a Solenoid role link) and
+multiplayer (Stage 3, a relay) is out of its reach. A clean path: BYOS Drive now for
+"my documents on my machines and in a browser," managed backend later when sharing/roles/
+realtime justify running one. Trust-on-open (P2) still applies to any document opened from a
+provider.
+
+**Recommend.** Phase 1 = Google Drive, `drive.file`, PKCE (web) + loopback (desktop), manual
+Save/Open, behind the `RemoteStore` seam. Defer auto-sync, sharing polish, and Bluesky. Effort:
+Drive+manual is moderate and well-trodden (no new client dep strictly required — raw fetch /
+plugin-http; `tauri-plugin-oauth` for desktop loopback); Bluesky is higher and gated on the
+public-data call.
+
+**New author calls (BYOS).** (a) BYOS vs the managed backend, or both (BYOS now, managed
+later)? (b) Positioning against the stated "no accounts, no cloud" (README; and the
+placeholder Download-page line) — sign-in must be strictly opt-in, local-first default; confirm.
+(c) Drive scope: `drive.file` (visible) vs `drive.appdata` (hidden). (d) Bluesky: accept it is
+public (publish/share only) or drop it. (e) Manual save vs auto-sync for v1.
+
 ## Stage 2 — Asynchronous collaboration (the posture out-of-scope §3 always allowed)
 
 - **Comments with identity**: the shipped node-anchored comments (`commentStore.ts`, sidecar-
