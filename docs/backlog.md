@@ -109,8 +109,6 @@ The site is four pages sharing `landing/siteNav.tsx` chrome (see architecture.md
 
 - [ ] **Copy pass on `/download` + `/examples` + `/packs`.** New-page prose is placeholder in the
   author's voice, marked `NEW COPY` in those page files. Author to rewrite.
-- [ ] **`MonteCarloScene` orphaned.** The author cut the landing What-if section; the scene is
-  defined in `LandingScenes.tsx`, used nowhere. Prune it (and dead helpers), or re-add the section.
 - [ ] **Public changelog page (parked, author wants it later).** Would live at `/changelog` off
   `docs/release-notes-features.md` + the What's New slides. Deferred so it does not just mirror
   GitHub Releases; revisit when there is a reason it earns its own surface.
