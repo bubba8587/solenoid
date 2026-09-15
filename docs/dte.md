@@ -27,9 +27,14 @@ citation may read `dte:<ID> shareImpl`.
 
 - **A — core goals of the delivered product** (owned by the author; only the author
   ratifies A). A means is never A: Excel parity and type/unit honesty serve A1, so they are B.
-- **B — high-level strategy** that helps deliver A (Excel parity, the deliberate
-  divergences from Excel, the Obsidian bet, web-vs-desktop, adopting DTE).
-- **C — subsystem architecture** under a strategy; **D+ — implementation** under an architecture.
+- **B — high-level strategy** that helps deliver A: Excel parity (B5), the deliberate
+  divergences from Excel (B6), pre-alpha break-freely (B7), the Obsidian bet (B1),
+  web-vs-desktop (B2), marketing on real canvases (B3), the tree as the one home (B8),
+  rules that hold without memory (B9), the React Flow view (B10), one card per concept
+  (B11), lossless saves (B12), the AI layer (B13), the design system (B14).
+- **C — architecture and the roots of each rule family** under a strategy (socketLattice,
+  arraySemantics, firstClassUnits, calcModes, shareImpl, declareOnce, the save-path rules);
+  **D, E — the rules that refine them**. `python tools/dte.py tree --under B6` shows one family.
 
 Authority (`dte.cfg`): **A:human, B:orchestrator, C+:subagent**. Assume ring B unless told
 otherwise. The map binds agents, not the author.

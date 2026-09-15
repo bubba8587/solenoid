@@ -1,4 +1,4 @@
-// dte:C19
+// dte:C19,C53,E13
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, DateInputNode, DateRangeNode, XYPadNode,
   PointPlotterNode, CurveNode, GridPainterNode,

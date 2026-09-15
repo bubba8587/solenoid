@@ -1,4 +1,4 @@
-// dte:C22
+// dte:C22,C54
 import type { FrameValue, FrameColumn, FrameCell } from "./frame";
 import type { ExprEvaluator } from "./excelFormula";
 import type { LambdaValue } from "./lambdaValue";

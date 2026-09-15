@@ -125,13 +125,15 @@ is parked there.
 
 ## Code → spec routing (grep your file here before editing)
 
-The per-FILE version of the cheat-sheet below. Files listed here carry ZERO comment
-pointers by design (commentMinimalism) — this table IS the pointer. Editing a listed file without
-reading its docs is how recorded negative results get retried and settled rulings
-relapse.
+The per-FILE version of the cheat-sheet below. Files listed here carry no prose comment
+pointers by design (dte:C57 commentMinimalism) — this table IS the pointer; the one line a
+file may carry is its `dte:` citation, which `python tools/dte.py trace <file>` follows to the
+governing nodes. Editing a listed file without reading its docs is how recorded negative
+results get retried and settled rulings relapse.
 
 | Code | Governing docs |
 |---|---|
+| `decisions/**`, `tools/dte.py`, `tests/graph/rules.test.ts` | `dte.md`; `../dte-rules/` (DTE's own SPEC, PROTOCOL, README, ADOPTING) |
 | `groupCollapse.ts` | `subsystem-invariants.md` § Group collapse — the retain rule |
 | `AddNodeMenu.tsx`, `catalogSearch.ts`, `nodeOps.ts` | `subsystem-invariants.md` § Add menu; dte:D5 searchWiderThanLabel, dte:D6 opRowDerivesFromHost |
 | `equationSolve.ts` | `subsystem-invariants.md` § Equation solver |

@@ -31,7 +31,8 @@ the exception that must be argued. Test files (`*.test.ts[x]`) are exempt, for n
    when the site is the natural relapse point.
 3. **Investigations have ONE home.** Experiment narratives, measurements, dates,
    negative-result stories → dev-notes (open problems) or the domain spec. For files
-   in the routing table: ZERO comment residue — the table is the pointer. Content
+   in the routing table: ZERO prose residue — the table is the pointer, and the file's
+   `dte:` citation line (machine-checked by `dte validate`) is the only link a file carries. Content
    that exists ONLY in a comment gets promoted to the doc first, never silently
    deleted.
 4. **Module headers state scope + hard constraints only.** Cite the governing spec;

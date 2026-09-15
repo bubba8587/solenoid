@@ -1,4 +1,4 @@
-// dte:C60
+// dte:C60,C48,C49,C72,E11
 import { ClassicPreset } from "rete";
 import { numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfType, comboOfFamily, listSocket, tableSocket, type SocketDataType, type SolenoidSocket } from "../sockets";
 import { resolveExcelFunction } from "../excelFunctions";

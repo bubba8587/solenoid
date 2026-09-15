@@ -1,4 +1,4 @@
-// dte:C44
+// dte:C44,C72,E11,E13
 import { ClassicPreset } from "rete";
 import { dateOut, dateIn, numIn, numOut, strIn, strListIn, frameOut, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, broadcast, broadcastErr, readInput, BASIS_DOC, type BroadcastResult } from "./shared";
 import { type SolError } from "../errorValue";

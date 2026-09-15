@@ -1,4 +1,4 @@
-// dte:C63
+// dte:C63,C72
 import { ClassicPreset } from "rete";
 import { readInput, numIn, numListIn, tableIn, tableOut, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
 import { parseChartOptions, serializeChartOptions, CHART_BUILDER_TARGETS, type ChartOptions, type ChartTargetId } from "./chartOptions";
@@ -470,7 +470,7 @@ export class MermaidNode extends ClassicPreset.Node {
 // One card, a style selector. DIAL reads Value as a fraction of 1 (0.75 → 75% on a
 // fixed 0→100% arc); BAR (the former Bullet graph) plots Value on a 0→Max track with a
 // Target tick. Emits a chart VALUE, not a pass-through, so a Report can embed the readout
-// (author call; node-coverage records the contract change).
+// (node-coverage records the contract).
 export type GaugeStyle = "dial" | "bar";
 // Dial/Bar is an ARGUMENT (a view of the one "value on a scale" card), not an op:
 // nobody searches the Add menu for "dial" or "bar", and there is no formula surface.

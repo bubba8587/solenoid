@@ -6,6 +6,37 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-15b — rules and decisions become the DTE tree)
+
+Owner-approved, unmonitored run; all on `develop`, not pushed. Governing node: B8 "Solenoid's
+decisions and rules live only as DTE nodes; rules.md and decisions.md retire".
+
+- **Core ring set by the owner.** A1 reworded (scratchpad math to data tables) and RATIFIED; the
+  old A2 parity, A3 type/unit honesty and A4 pre-alpha moved to B5/B6/B7 ("A is the delivered
+  product's goals; means are B"). DTE's ADOPTING.md is now vendored in `dte-rules/`.
+- **The tree is the one home.** 152 nodes: every rules.md rule (MUST → Decision, Why/Origin →
+  Why, Enforced by/Exceptions → Consequences) and every decisions.md entry, placed under new B
+  strategy nodes (B9 agent-built rules, B10 reactFlowView, B11 maximalMerge, B12 lossless saves,
+  B13 aiInScope, B14 design system). Merged duplicates: capabilityParity → shareImpl,
+  tableRefSemantics → rowFormulaRefs, wildcardLadder → wildcardsKeepRank, unitGranularity →
+  unitByGranularity, formatCarryPerOp → formatFlowsDownstream, noFramesInFormulas →
+  matricesInFormulas, noBackCompat → B7. Both documents deleted.
+- **Names survive as title prefixes** (`shareImpl: …`); citations read `dte:<ID> name`.
+  `rules.test.ts` now reads the nodes: MUSTs label enforcement, cited suites exist (packages
+  included; it found a stale `engine.test.ts` gap and a shadowed `rules.test.ts`), quoted test
+  names appear, owner ratifications match `OWNER_RATIFIED`, and `dte:ID name` pairs match titles.
+- **Citations.** Every rules.md/decisions.md pointer across code, tests and docs rewritten to
+  `dte:<ID> name`; file-level `dte:` lines on the ~210 modules and suites the nodes name.
+  Coverage 0.8% → 14%; no-reach nodes 110 → 4 (the process conventions, which DTE cannot count
+  as reached; DTE FEEDBACK K9). A routed file's `dte:` line is the sanctioned exception to "zero
+  comment pointers" (C57 commentMinimalism).
+- **Overrides of DTE, each logged as feedback** (DTE repo FEEDBACK.md, uncommitted): names as a
+  handle (K4), no contest for a lifted rule until new work builds on it (K2). Other findings:
+  no bulk import (K1), retire drops the winner's contested mark (K3), enforcement is prose (K5),
+  code-span example tokens validate (K6), validate output volume (K7), `cite` merges into
+  line-level citations (K8).
+- **Open (owner):** ratify the tree (only A1 is); the 12 new B nodes are the ones most worth reading.
+
 ### SESSION DIGEST (2026-09-15 — marketing site expansion)
 
 All on `develop`; local dev server, pushed at session end.
