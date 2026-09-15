@@ -10,7 +10,9 @@ import { getCablePath, Position } from "../cablePaths";
 // no viewBox, so 1 unit = 1 px and the coordinates never scale. Recomputes as the scenes
 // lay out (async) and on resize.
 
-const STAGE_SELECTOR = ".sol-scene-stage, .sol-landing__stage";
+// Live canvas viewports plus the static diagram scenes (e.g. the presenter slideshow),
+// so the thread runs through every scene, not only the real flow canvases.
+const STAGE_SELECTOR = ".sol-scene-stage, .sol-landing__stage, .sol-diagram";
 
 export function SceneThread() {
   const ref = useRef<SVGSVGElement>(null);
