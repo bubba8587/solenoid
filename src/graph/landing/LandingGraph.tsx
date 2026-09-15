@@ -116,13 +116,46 @@ const connect = (s: SurfaceStack) =>
   (src: ClassicPreset.Node, out: string, tgt: ClassicPreset.Node, inp: string) =>
     s.editor.addConnection(new ClassicPreset.Connection(asNode(src), out, asNode(tgt), inp) as SolenoidConnection);
 
+// A small deterministic PRNG so the demo data is varied but stable across loads.
+function makeRng(seed: number): () => number {
+  let s = seed >>> 0;
+  return () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
+}
+
+// ~30 expense rows across a handful of categories (Group By collapses them to the chart).
+function spendingText(): string {
+  const rng = makeRng(7);
+  const cats: [string, number, number][] = [
+    ["Groceries", 45, 260], ["Dining", 16, 140], ["Transport", 8, 90],
+    ["Utilities", 40, 180], ["Health", 15, 120], ["Fun", 20, 150], ["Shopping", 25, 200],
+  ];
+  const rows = ["Rent, 1800"]; // the one big fixed line
+  for (let i = 0; i < 29; i++) {
+    const [name, lo, hi] = cats[Math.floor(rng() * cats.length)];
+    rows.push(`${name}, ${Math.round(lo + rng() * (hi - lo))}`);
+  }
+  return "category, amount\n" + rows.join("\n");
+}
+
+// 30 days of actuals wiggling around a rising, wavy target.
+function vsTargetText(): { actual: string; target: string } {
+  const rng = makeRng(42);
+  const a: string[] = [], t: string[] = [];
+  for (let i = 1; i <= 30; i++) {
+    const trend = 40 + i * 2.4;
+    t.push(`${i}, ${Math.round(trend + Math.sin(i / 2.5) * 14)}`);
+    a.push(`${i}, ${Math.round(trend + (rng() - 0.5) * 52)}`);
+  }
+  return { actual: "day, actual\n" + a.join("\n"), target: "day, target\n" + t.join("\n") };
+}
+
 // Raw expenses aggregated by category, then charted: Group By sums the amount per category
 // and the ChartNode reads column 0 as the x labels and the number column as the series.
 async function buildSpendingGraph(s: SurfaceStack) {
   await s.editor.clear();
   const expenses = new FrameInputNode({
     label: "Expenses",
-    frameText: "category, amount\nRent, 1800\nGroceries, 240\nGroceries, 180\nTransport, 90\nDining, 150\nGroceries, 95\nTransport, 60\nDining, 85",
+    frameText: spendingText(),
     layoutHidden: true,
   });
   const gb = new GroupByFrameNode({ label: "Sum by category", agg: "sum" });
@@ -139,18 +172,11 @@ async function buildSpendingGraph(s: SurfaceStack) {
 // story — separate sources combined into one chart.
 async function buildVsTargetGraph(s: SurfaceStack) {
   await s.editor.clear();
-  const actual = new FrameInputNode({
-    label: "Actual ($k)",
-    frameText: "month, actual\nJan, 38\nFeb, 72\nMar, 54\nApr, 110\nMay, 96",
-    layoutHidden: true,
-  });
-  const target = new FrameInputNode({
-    label: "Target ($k)",
-    frameText: "month, target\nJan, 62\nFeb, 50\nMar, 88\nApr, 74\nMay, 135",
-    layoutHidden: true,
-  });
-  const join = new JoinNode({ label: "Join on month", how: "left" });
-  join.stringLiterals.leftKey = "month";
+  const data = vsTargetText();
+  const actual = new FrameInputNode({ label: "Actual ($k)", frameText: data.actual, layoutHidden: true });
+  const target = new FrameInputNode({ label: "Target ($k)", frameText: data.target, layoutHidden: true });
+  const join = new JoinNode({ label: "Join on day", how: "left" });
+  join.stringLiterals.leftKey = "day";
   const chart = new ChartNode({ label: "Actual vs target", op: "line" });
   await place(s, [[actual, 40, 40], [target, 40, 380], [join, 440, 210], [chart, 820, 150]]);
   const wire = connect(s);
