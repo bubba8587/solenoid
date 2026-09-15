@@ -162,6 +162,7 @@ async function buildSpendingGraph(s: SurfaceStack) {
   gb.stringLiterals.keys = "category";
   gb.stringLiterals.column = "amount";
   const chart = new ChartNode({ label: "Where it goes", op: "column" });
+  chart.stringLiterals.options = "ylabel=$ / month; grid=true; color=#f5b914";
   await place(s, [[expenses, 40, 60], [gb, 440, 120], [chart, 820, 70]]);
   const wire = connect(s);
   await wire(expenses, "frame", gb, "frame");
@@ -178,6 +179,7 @@ async function buildVsTargetGraph(s: SurfaceStack) {
   const join = new JoinNode({ label: "Join on day", how: "left" });
   join.stringLiterals.leftKey = "day";
   const chart = new ChartNode({ label: "Actual vs target", op: "line" });
+  chart.stringLiterals.options = "xlabel=Day; ylabel=$k; grid=true; lw=2.5";
   await place(s, [[actual, 40, 40], [target, 40, 380], [join, 440, 210], [chart, 820, 150]]);
   const wire = connect(s);
   await wire(actual, "frame", join, "left");
