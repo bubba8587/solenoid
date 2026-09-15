@@ -1,117 +1,26 @@
-# Solenoid — Pack Architecture
+# Solenoid — Pack Architecture (authoring guide)
 
-> **Status (2026-07-05): the framework described here is BUILT** — `packsStore` +
-> pack registration, FC unit/format extensions (`fcExtensions.ts`), dormant-pack
-> persistence (an unknown type loads as a Placeholder, wiring kept), the
-> **Geometry** pack as the worked example, and the **Composite** subgraph
-> container (`nodes/composite.ts`, drill-in editor, the full run-mode set incl.
-> Monte Carlo and manual Refresh). This doc
-> remains the design rationale + the guide for authoring NEW packs; the open pack
-> work (more packs, Timesavers idioms, distribution/deps, variant-switch
-> reconcile, port aliasing) lives in `backlog.md`.
+> **Status: the framework is BUILT** — `packsStore` + pack registration, FC unit/format
+> extensions (`fcExtensions.ts`), dormant-pack persistence, the **Geometry** pack as the worked
+> example, and the **Composite** subgraph container (`nodes/composite.ts`). The settled calls
+> live in the decision tree: dte:B15 leanCore (a lean core plus optional packs; the toolkit is
+> never an add-on) and its children dte:C76 formulaPackDefault, dte:C77 compositeIsSubgraph,
+> dte:C78 packLegibility and dte:C79 packActivationIsPresentation
+> (`python tools/dte.py tree --under B15`). This doc is the guide for authoring packs; the open
+> pack work (more packs, distribution/deps, variant-switch reconcile, port aliasing) lives in
+> `backlog.md`.
 
-The principle: a small, lean core app plus a large library of optional add-ons
-(Packs), most of them off by default (Geometry and Timesavers ship on). Almost everything in the reference-packs
-doc and the big node brainstorm is a Pack, not a core feature.
+## Building a pack node
 
-## The idea in one line
-
-Ship a lean core. Make most node families optional add-ons that the user switches on only
-if they want them. The goal is that someone opening Solenoid for the first time sees a
-clean, simple tool, not a wall of two hundred specialist nodes they will never use.
-
-## What can never be an add-on
-
-Some things are shared foundation. Every pack uses them, but no pack owns them or is
-allowed to ship its own version, because if two packs disagreed on these the whole graph
-would stop fitting together. These stay in the core, always:
-
-- The canvas and the calculation engine (the thing that runs the graph).
-- The unit system. This is the flagship feature and it cuts across everything. A steam
-  pack and a finance pack have to speak the same units, or you could not wire one into the
-  other. Units live in the core.
-- Socket types and the socket legend (the shapes and colors that say what each wire carries).
-- The small formula compiler that already powers the Expression node. A lot of packs will
-  reuse it.
-- The basic look of a node (the card, the sockets, the header) and the save/load system.
-
-Taken together, this list is the "toolkit" that a pack is allowed to build on. Pinning
-down exactly what is in that toolkit is the real design work, because it is the promise the
-core makes to every pack: build on these and we will not break you. If packs are allowed to
-reach past the toolkit and grab at the core's internals, they stop being isolated, and the
-core can never be changed again without breaking them.
-
-## What a pack is mostly made of: pre-set Expression nodes
-
-The default shape of a pack node is a pre-set Expression node. The Expression node already
-takes a formula, turns its named variables into input sockets, and computes the result
-through the core formula compiler. A pack node is usually that same machinery with the
-formula and the sockets fixed and named for a purpose, so the user gets "Antoine vapor
-pressure" instead of having to type the Antoine equation themselves. Nothing new runs at
-calculation time; it is the core compiler evaluating a formula we shipped instead of one the
-user typed.
-
-This is the preferred way to build a pack node, and most of the reference and brainstorm
-nodes can be built this way. It keeps packs cheap, keeps them honest about units (they run
-through the same compiler the unit system already understands), and has a payoff for the
-dormant-pack problem below.
-
-Concretely, the target is that a formula-based pack is one JSON file: a list of formula
-text strings plus their metadata (name, description, socket names and units, Excel mapping
-if any), which base Solenoid compiles. It is not new node code. When we build the example
-domain packs (Geometry, or converting the electromagnetism nodes in the Flux Calculator seed
-into a pack), the default move is to author that JSON, not to write and register new real
-nodes. Reach for actual node code only when a node trips one of the custom-logic cases
-below. The point of this doc is to stop that reflex to build a new node when a formula entry
-in a pack file would do.
-
-A pack must declare when a node needs more than the Expression node can evaluate. Some
-nodes genuinely cannot be a pre-set formula:
-
-- It binds to a native compiled library (steam and water, refrigerants, linear algebra).
-- It root-finds or otherwise iterates (the implicit correlations like Colebrook, property
-  inversions).
-- It interpolates an embedded dataset (the Interpolated Lookup primitive).
-- It needs a custom widget or any behavior the node toolkit does not already provide.
-
-These are fine, but they are the exception and they carry real weight: they ship actual
-code that runs during calculation, they are the nodes that make level-2 isolation and
-eventually level-3 safety hard, and they are usually desktop-only because of the library
-binding (see [reference-packs.md](archive/reference-packs.md) and
-[archive/compute-architecture.md](archive/compute-architecture.md)). So a pack states, per node, whether the
-node is a pre-set formula or custom logic, and the custom-logic ones are the short list that
-gets the scrutiny.
-
-This also sharpens the dormant-pack case below. A pure pre-set-formula node is essentially
-data: a formula string plus its socket declarations. The core compiler can evaluate it even
-when the pack that named it is switched off, so a saved file using only formula-based pack
-nodes can in principle still compute with the pack absent. A custom-logic node cannot; with
-its pack off it can only fall back to a harmless placeholder. The formula-versus-custom line
-is therefore not just a build-cost distinction, it is what decides whether a dormant pack
-degrades gracefully or goes inert.
-
-## One face to the user, two ways to build a pack node
-
-Whatever a pack node is made of, it presents to the person on the canvas the same way:
-declared input sockets (each with restriction metadata and a default), declared output
-sockets, and a locked body. That single contract has two implementations:
-
-- **Simple pack node.** A single compiled expression, optionally with a **variant dropdown**
-  that switches between a few closely-related formulas. This is the op-selector
-  composability pattern the core already uses (Aggregate, Arithmetic), not multi-node internals.
-  Its variables become input sockets exactly as the Expression node already derives them, and
-  its restrictions are metadata validated in `data()`. It must not materialize boolean-gate
-  or clamp sub-nodes to enforce a restriction. That hand-wired approach is the user-land
-  workaround for a plain Expression node; a pack expresses the restriction as data, not as
-  real nodes. This is the pre-set-Expression shape from the section above.
-
-- **Composite pack node (a subgraph / macro node).** An encapsulated subgraph with a declared
-  boundary. Build it as a real subgraph, **not as a Group variant.** A Group has no sockets,
-  no `data()`, spatial/hybrid membership, and an inferred boundary, which is the opposite of a
-  pack node on every axis: a pack node has a declared contract and computes. Ship the simple
-  shape first and grow into the composite one without changing how packs appear, how
-  restrictions attach, or how errors surface. The simple pack is just the degenerate
-  single-node case of the composite one.
+Default to a pre-set formula (dte:C76 formulaPackDefault): author the formula text and its
+metadata (name, description, socket names and units, Excel mapping if any) as pack data, and
+reach for real node code only when the node needs a native library, root-finding or
+iteration, an embedded dataset to interpolate, or a custom widget. State, per node, which of
+the two it is; the custom-logic nodes are the short list that gets the scrutiny (see
+[reference-packs.md](archive/reference-packs.md) and
+[archive/compute-architecture.md](archive/compute-architecture.md) for the library-bound
+cases). A simple node that grows into several internal nodes becomes a composite
+(dte:C77 compositeIsSubgraph), never a Group.
 
 ### Input coercion — the default widens, opting out is one line
 A custom-logic node's `data()` receives every input already coerced to its socket's
@@ -155,9 +64,10 @@ already satisfied by an internal wire, the author sets:
   fallback for an unwired `exposed` port. It lives next to that variable's restriction
   metadata, so restriction and promotion share one per-variable spec.
 
-Aliasing (many internal ports collapsing to one shell parameter, e.g. a single "confidence
-level" feeding several internal nodes rather than N identical ports) is an open follow-up,
-tracked in the backlog.
+How promoted ports and locked internals read on screen is dte:C78 packLegibility. Aliasing
+(many internal ports collapsing to one shell parameter, e.g. a single "confidence level"
+feeding several internal nodes rather than N identical ports) is an open follow-up, tracked
+in the backlog.
 
 ## Input restrictions
 
@@ -173,86 +83,17 @@ restriction and promotion are one piece of metadata, not two.
 
 ## Errors
 
-Two things, orthogonal to the above:
+In a composite pack, an internal error has to **propagate cleanly to the boundary output**
+(error values: `subsystem-invariants.md` § Error values). How a restriction violation should
+read to the user (a typed error out the socket, versus the node flagging the offending input
+locally) is still open, tracked in the backlog.
 
-- **Typed error values** (`#NUM!` and friends) as a foundation. Today an error is a bare `NaN`
-  or `Infinity` (with `null` meaning NA), so a violated input gives no signal of which input or
-  why. Introducing typed errors is a cross-cutting change to every `data()`, to IFERROR and the
-  IS-checks, and to display formatting.
-- In a composite pack, an internal error has to **propagate cleanly to the boundary output**.
+## Saved files that use a pack you do not have on
 
-How a restriction violation should read to the user (a typed error out the socket, versus the
-node flagging the offending input locally) is still open, tracked in the backlog.
-
-## Keeping it legible is the governing constraint
-
-As packs and subgraphs add power, keeping the UI obvious is the top priority, not a polish pass
-at the end. This is the same reason Conduit reroute nodes exist: so bundles do not turn into
-spaghetti. Blender's node graph is the cautionary tale, powerful and illegible. The feature
-bends to the UI, not the reverse. Concretely:
-
-- **Signal the exception, not the rule.** Locked is the silent default with no chrome. Only an
-  exposable or promoted port gets an accent affordance, so the eye lands on the few interactive
-  points instead of a field of padlocks. Never stamp a lock icon on every locked wire or port.
-- **Separate layout from structure.** "Adjust spacing" and "rewire" are different permissions.
-  A subgraph's arrangement can be freely movable while its wiring stays locked. "Can move" is
-  not "can rewire."
-- **Convey the mode at the frame, not per element.** "You are viewing locked internals" is said
-  once, as a tinted inner-canvas frame or a mode pill, reusing the existing canvas-lock and
-  layout-pill chrome, not per-wire badges.
-
-## What "isolated" can mean (three levels, lightest to heaviest)
-
-"Fully isolated" could mean any of three things, and they are very different amounts of work:
-
-1. **On/off switch, with the pack loading only when switched on.** When a pack is off, its
-   code is not loaded into the app at all, and its nodes do not show up in the Add menu or
-   the Function Reference. This is the lightest version and it is enough to get the "clean
-   core, most things dormant" outcome. All packs are still made by us, still in one project.
-
-2. **Each pack is its own self-contained piece.** A pack can only use the shared toolkit and
-   nothing else, enforced by how the project is structured rather than by good manners. Same
-   idea as level 1, but the wall between pack and core is real instead of a convention. Still
-   all made by us.
-
-3. **Packs made by other people, loaded while the app is running.** This is an add-on store.
-   It brings a safety problem: a node runs real code when it calculates, so a pack from a
-   stranger is running a stranger's code on your machine. That needs a way to fence the pack
-   off from the rest of your system, which is a whole project of its own.
-
-Best read of the plan: aim for level 1 now, but draw the wall cleanly enough that getting to
-level 2 later is a tidy-up and not a rewrite. Level 3 is a someday question and is mostly
-about safety and trust, not about how the code is organized.
-
-## The one genuinely tricky part: saved files that use a pack you do not have on
-
-This is the problem a normal spreadsheet never has to deal with. If you save a graph that
-uses a steam node, and later open it with the steam pack switched off, the app has to do
-something sensible instead of crashing or silently throwing your work away. So:
-
-- Saved files record which packs they need (and which version of each).
-- Opening a file checks that list and offers to switch on anything missing, rather than just
-  dropping the nodes it does not recognize.
-- If a pack truly is not available, the missing nodes become harmless placeholders that keep
-  your numbers and your wiring intact, so nothing is lost and nothing crashes.
-- Packs change over time, so a saved file also records the version it was built against.
-
-This is the part that makes a pack system real work rather than just a folder convention. It
-is worth designing before there are saved files out in the world, not after.
-
-### Current state (reconciled 2026-08-07)
-
-- **Placeholder handling SHIPPED (1.0.0):** an unregistered `type` loads as a
-  `PlaceholderNode` — inert, wiring + init data kept, re-serializes as the original
-  type. Lossless; "nothing crashes, nothing is lost" is met. `SavedGraph.packs`
-  rides the sidecar as an activation breadcrumb.
-- **NOT built:** a required-packs/versions record with an offer-to-enable flow on
-  open. Parked with the pack-distribution system (`deferrals.md` "Pushed to
-  1.4/2.0"), which owns it — it must land before the first third-party or code
-  pack ships.
-- **Registration stays eager**; pack activation is a presentation filter only
-  (`packs.ts`). Level-1 "code not loaded when off" is deliberate, not a gap.
-- **Shape nuance:** a formula-data pack node serializes as a core `ExpressionNode`
-  (always registered), so a dormant formula pack reloads as a locked Expression and
-  still computes — the thesis degrades gracefully. The provenance work only truly
-  gates custom-logic / code packs.
+Activation is a presentation filter and every pack stays registered (dte:C79
+packActivationIsPresentation), so a document using an inactive pack still loads and computes;
+a type no build registers at all loads through Placeholder, lossless (dte:C35
+unknownViaPlaceholder). `SavedGraph.packs` rides the sidecar as an activation breadcrumb. NOT
+built: a required-packs/versions record with an offer-to-enable flow on open, parked with the
+pack-distribution system (`deferrals.md` "Pushed to 1.4/2.0"); it must land before the first
+third-party or code pack ships.

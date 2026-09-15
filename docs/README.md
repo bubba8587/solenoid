@@ -60,8 +60,8 @@ is parked there.
   reason the override exists.
 - **`upstream-formulajs.md`** — the subset of those divergences that are genuine
   Formula.js bugs, written up as ready-to-paste upstream issues (author submits).
-- **`pack-architecture.md`** — the lean-core + packs design (framework BUILT;
-  this is the authoring guide + rationale).
+- **`pack-architecture.md`** — the pack authoring guide (framework BUILT); the settled
+  calls are dte:B15 leanCore and its children.
 - **`pack-composite-plans.md`** — queued composite-shaped pack nodes; the pack program
   is `1.4-plan.md` E3 (Materials & Mechanical content) + `2.0-plan.md` Arc 7 (the
   composite pack shape + distribution).

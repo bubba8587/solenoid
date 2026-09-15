@@ -393,7 +393,8 @@ One file per pack on `packs/packShared.ts` (authoring types,
 packShared, `../rete-nodes`, and type-only app seams — never core internals),
 each with a vitest file pinning its formulas (`packs/formulaTestKit.ts`).
 Framework + activation live with the catalog cluster (`packs.ts` /
-`fcExtensions.ts` above); design + isolation levels: `docs/pack-architecture.md`.
+`fcExtensions.ts` above); the settled calls are dte:B15 leanCore and its children, the
+authoring guide `docs/pack-architecture.md`.
 
 ### Packages (`packages/`)
 
@@ -472,7 +473,7 @@ rationale, point-in-time research, the dev-notes history) is indexed in
 | `socket-reference.md` | living | every socket variant in plain English (connection lists machine-checked by `socketReference.test.ts`) |
 | `v2.0/` | living plans | the open build bundles — 08 transpiler, 10 sensitivity, 12 uncertain/money, 16 widgets |
 | `node-coverage.md` | living | node inventory by category (`nodeCatalog.ts` is the real source) |
-| `pack-architecture.md` | design + authoring guide | core-vs-pack line, isolation levels |
+| `pack-architecture.md` | authoring guide | building a pack node, input coercion, per-port promotion, restrictions (settled calls: dte:B15 leanCore) |
 | `pack-composite-plans.md` | plans (parked) | queued composite-shaped pack nodes |
 | `out-of-scope.md` | policy | the standing NO list |
 | `grid-system.md` | future spec | soft-snap grid; unimplemented |

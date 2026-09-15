@@ -1,4 +1,4 @@
-/* dte:C75 */
+/* dte:C75,C78 */
 /* The subgraph canvas fills the SAME region the main canvas occupies, sitting
    ABOVE the main canvas (z-index 0) but BELOW the app chrome (Header/StatusBar z6,
    NavMenu/OutlinePanel z5) — so drilling in swaps only the canvas surface and the

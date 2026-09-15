@@ -1,4 +1,4 @@
-// dte:D52
+// dte:D52,C77
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
@@ -21,7 +21,7 @@ import { compositeStaleStore } from "../compositeStaleStore";
 import { formatScalar } from "../components/format";
 import type { NodeCtor } from "../nodeCtorRegistry";
 
-// Composite node — a subgraph container (docs/pack-architecture.md). Members run in a
+// Composite node — a subgraph container (dte:C77 compositeIsSubgraph). Members run in a
 // private NodeEditor/DataflowEngine; internals never leak into the outer engine or cache.
 
 export type PortTier = "basic" | "advanced";
