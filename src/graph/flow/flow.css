@@ -194,11 +194,15 @@ html.minimap-top .sol-rf-appcanvas .react-flow__minimap.solenoid-minimap {
    cable draw is driven inline by FlowCableEdge (it needs each path's length); this
    file owns the keyframes and the card entrance. */
 
-/* Scale (not transform) so this composes with React Flow's positioning transform on
-   the node rather than fighting it. */
+/* Opacity + blur only — never a transform/scale on the node. React Flow measures each
+   handle's position off the node's box; a scale in flight makes it measure the sockets
+   off-center (it only divides out the viewport zoom, not a per-node scale) and, because
+   ResizeObserver ignores transforms, it never self-corrects — cables then meet sockets
+   at the top edge until a collapse/expand forces a re-measure. A blur-in reads as a soft
+   entrance without touching geometry. */
 @keyframes sol-node-enter {
-  from { opacity: 0; scale: 0.96; }
-  to   { opacity: 1; scale: 1; }
+  from { opacity: 0; filter: blur(3px); }
+  to   { opacity: 1; filter: blur(0); }
 }
 
 .sol-flow-reveal .react-flow__node {
