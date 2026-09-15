@@ -460,9 +460,14 @@ export function TaskNotesScene() {
       awaitConnections
       build={async (s) => {
         const tasks = new TaskNotesNode({ label: "TaskNotes" });
+        // Cap the preview so the Tasks cube does not stretch the Display into a tall card
+        // that forces the scene to zoom out.
+        const top = new HeadNode({ label: "top 4", op: "first" });
+        top.literals.rows = 4;
         const disp = new DisplayNode({ label: "Tasks" });
-        await addNodes(s, [tasks, disp]);
-        await wire(s, tasks, "tasks", disp, "in");
+        await addNodes(s, [tasks, top, disp]);
+        await wire(s, tasks, "tasks", top, "frame");
+        await wire(s, top, "frame", disp, "in");
       }}
     />
   );
