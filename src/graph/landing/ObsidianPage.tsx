@@ -1,16 +1,14 @@
 // dte:D1,C2
 import { useEffect, useMemo } from "react";
-import { Reveal, useRevealAnim, Diagram, MNode, NoteImportScene, VaultTableScene, LocalFileScene, buildReportPipeline } from "./LandingScenes";
+import { Reveal, useRevealAnim, NoteImportScene, VaultTableScene, TaskNotesScene, LocalFileScene, buildReportPipeline } from "./LandingScenes";
 import { LiveGraph } from "./LandingGraph";
 import { ReportOverlay } from "../components/ReportOverlay";
 import { GITHUB_URL, SiteHeader, SiteFooter, Feature } from "./siteNav";
-import { SOCKET_COLORS } from "../sockets";
 import { forceDemoVault } from "../demoVault";
+import { forceDemoTaskNotes } from "../demoTaskNotes";
 import { siteChrome } from "../siteChrome";
 import "./LandingPage.css";
 import "./ObsidianPage.css";
-
-const C = SOCKET_COLORS;
 
 // The /obsidian route: a standalone document on the landing page's design tokens,
 // pitched at Obsidian users who have never opened Solenoid. It frames Solenoid as
@@ -47,35 +45,6 @@ function FlowScene() {
   );
 }
 
-// The real TaskNotes node: three typed outputs off the plugin's API.
-function TaskNotesNodeScene() {
-  const W = 320;
-  const H = 168;
-  const cube = { kind: "cube" as const, color: C.cube, tip: "Cube" };
-  const frame = { kind: "frame" as const, color: C.frame, tip: "Frame" };
-  const num = { kind: "circle" as const, color: C.number, tip: "Numeric" };
-  return (
-    <Diagram w={W} h={H}>
-      <MNode
-        x={65}
-        y={22}
-        w={190}
-        accent={C.cube}
-        title="TaskNotes"
-        socks={[
-          { cy: 52, side: "out", glyph: cube },
-          { cy: 70, side: "out", glyph: frame },
-          { cy: 88, side: "out", glyph: num },
-        ]}
-      >
-        <div className="sol-mnode__row"><span className="sol-mnode__label">Tasks</span><span className="sol-mnode__val obs-node-dim">cube</span></div>
-        <div className="sol-mnode__row"><span className="sol-mnode__label">Calendar</span><span className="sol-mnode__val obs-node-dim">frame</span></div>
-        <div className="sol-mnode__row"><span className="sol-mnode__label">Stats</span><span className="sol-mnode__val obs-node-dim">counts</span></div>
-      </MNode>
-    </Diagram>
-  );
-}
-
 // A static write "plan": the frame a writer emits before Run, one row per change.
 function PlanScene() {
   return (
@@ -108,10 +77,12 @@ export default function ObsidianPage() {
   // Dock (to the canvas) have nothing to act on off the app, so drop them.
   useMemo(() => {
     forceDemoVault(true);
+    forceDemoTaskNotes(true);
     siteChrome.set({ export: false, dock: false });
   }, []);
   useEffect(() => () => {
     forceDemoVault(false);
+    forceDemoTaskNotes(false);
     siteChrome.reset();
   }, []);
 
@@ -198,7 +169,7 @@ export default function ObsidianPage() {
             </p>
           </Feature>
 
-          <Feature title="TaskNotes API and .mdbase" scene={<TaskNotesNodeScene />}>
+          <Feature title="TaskNotes API and .mdbase" scene={<TaskNotesScene />}>
             <p>
               Solenoid connects to the local TaskNotes HTTP API for advanced task and
               calendar data. Solenoid also uses .mdbase schema to determine value types

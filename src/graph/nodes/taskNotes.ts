@@ -4,6 +4,7 @@ import { connectionStore, scheduleConnectionRecalc, requestNetwork, trackInfligh
 import { settingsStore } from "../settingsStore";
 import { apiKeyStore } from "../apiKeyStore";
 import { fetchText } from "../httpBridge";
+import { isDemoTaskNotes, DEMO_TASKS_JSON, DEMO_EVENTS_JSON, DEMO_STATS_JSON } from "../demoTaskNotes";
 import { cubeFromColumns, isCubeValue, type CubeValue, type FrameValue } from "../frame";
 import { isSolError, type SolError } from "../errorValue";
 import {
@@ -116,7 +117,8 @@ export class TaskNotesNode extends ClassicPreset.Node {
       if (!have) {
         this._lastKey = key;
         connectionStore.setState(this.id, { status: "idle" });
-      } else if (requestNetwork(this.id)) {
+      } else if (isDemoTaskNotes() || requestNetwork(this.id)) {
+        // The demo fake needs no network permission — it never touches the network.
         this._lastKey = key;
         void trackInflight(this.fetchProvider(from, to)).then(() => scheduleConnectionRecalc());
       }
@@ -131,6 +133,20 @@ export class TaskNotesNode extends ClassicPreset.Node {
   private async fetchProvider(from: number, to: number): Promise<void> {
     connectionStore.setState(this.id, { status: "loading" });
     const provider = this.provider;
+    // Demo/website: parse the canned replies through the real parsers, no network.
+    if (isDemoTaskNotes()) {
+      if (provider === "tasks") {
+        this.cachedTasks = parseTasksPage(DEMO_TASKS_JSON, 0).tasks;
+        connectionStore.setState(this.id, { status: "ok", rows: this.cachedTasks.length, fetchedAt: Date.now() });
+      } else if (provider === "calendar") {
+        this.cachedEvents = parseEvents(DEMO_EVENTS_JSON);
+        connectionStore.setState(this.id, { status: "ok", rows: this.cachedEvents.columns[0].values.length, fetchedAt: Date.now() });
+      } else {
+        this.cachedStats = parseStats(DEMO_STATS_JSON);
+        connectionStore.setState(this.id, { status: "ok", fetchedAt: Date.now() });
+      }
+      return;
+    }
     try {
       if (provider === "tasks") {
         const all: TaskRecord[] = [];
