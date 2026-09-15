@@ -400,6 +400,14 @@ export function MultiSeriesView({
   const dim = (j: number) => (focus !== null && focus !== j ? 0.18 : 1);
   const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
   const AXIS = { fontSize: 9 * fs, fill: axis } as const;
+  // Axis titles from the options (matches the single-series renderer, which had them).
+  const xLabel = axes && opts?.xlabel
+    ? { value: opts.xlabel, position: "insideBottom" as const, offset: -3, fontSize: 10 * fs, fill: axis }
+    : undefined;
+  const yLabel = axes && opts?.ylabel
+    ? { value: opts.ylabel, angle: -90, position: "insideLeft" as const, fontSize: 10 * fs, fill: axis }
+    : undefined;
+  const yAxisW = yLabel ? 40 : 26;
   const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
   const n = series.reduce((m, s) => Math.max(m, s.values.length), 0);
   const data = Array.from({ length: n }, (_, i) => {
@@ -427,7 +435,7 @@ export function MultiSeriesView({
   const title = opts?.title;
   const titleH = title ? titleHeight(fs) : 0;
   const chartH = height - titleH; // the <Legend height> reserves its own strip within this
-  const margin = { top: axes ? PLOT_TOP : 6, right: 8, bottom: axes ? 4 : 2, left: 0 };
+  const margin = { top: axes ? PLOT_TOP : 6, right: 8, bottom: axes ? (xLabel ? 18 : 4) : 2, left: 0 };
   const catInterval = n <= ALL_TICKS_UPTO ? 0 : undefined;
   const legend = (
     <Legend
@@ -445,8 +453,8 @@ export function MultiSeriesView({
     chart = (
       <Container width={width} height={chartH} data={data} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} />}
-        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={catInterval} />}
-        {axes && <YAxis tick={AXIS} tickLine={false} width={26} domain={yDomain} />}
+        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={catInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
+        {axes && <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
         {tip}{legend}
         {series.map((s, j) => op === "area"
           ? <Area key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? { r: dotR } : false} isAnimationActive={false} />
@@ -457,8 +465,8 @@ export function MultiSeriesView({
     chart = (
       <BarChart width={width} height={chartH} data={data} layout="vertical" margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} horizontal={false} />}
-        {axes && <XAxis type="number" tick={AXIS} tickLine={false} domain={yDomain} />}
-        {axes && <YAxis type="category" dataKey="i" tick={AXIS} tickLine={false} width={40} tickFormatter={tickFmt} interval={catInterval} />}
+        {axes && <XAxis type="number" tick={AXIS} tickLine={false} domain={yDomain} label={xLabel} height={xLabel ? 28 : undefined} />}
+        {axes && <YAxis type="category" dataKey="i" tick={AXIS} tickLine={false} width={yLabel ? 52 : 40} tickFormatter={tickFmt} interval={catInterval} label={yLabel} />}
         {tip}{legend}
         {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} fill={paint(j)} fillOpacity={dim(j)} isAnimationActive={false} />)}
       </BarChart>
@@ -496,8 +504,8 @@ export function MultiSeriesView({
     chart = (
       <ScatterChart width={width} height={chartH} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} />}
-        {axes && <XAxis type="number" dataKey="x" tick={AXIS} tickLine={false} tickFormatter={numericX ? (t) => axisTick(Number(t)) : tickFmt} allowDecimals={numericX ? undefined : false} domain={catX.domain} ticks={catX.ticks} padding={catX.padding} />}
-        {axes && <YAxis type="number" dataKey="y" tick={AXIS} tickLine={false} width={26} domain={yDomain} />}
+        {axes && <XAxis type="number" dataKey="x" tick={AXIS} tickLine={false} tickFormatter={numericX ? (t) => axisTick(Number(t)) : tickFmt} allowDecimals={numericX ? undefined : false} domain={catX.domain} ticks={catX.ticks} padding={catX.padding} label={xLabel} height={xLabel ? 28 : undefined} />}
+        {axes && <YAxis type="number" dataKey="y" tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
         {tip}{legend}
         {series.map((s, j) => (
           <Scatter key={j} name={s.name} fill={paint(j)} fillOpacity={dim(j)} shape={dot} isAnimationActive={false}
@@ -510,8 +518,8 @@ export function MultiSeriesView({
     chart = (
       <BarChart width={width} height={chartH} data={data} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} vertical={false} />}
-        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={catInterval} />}
-        {axes && <YAxis tick={AXIS} tickLine={false} width={26} domain={yDomain} />}
+        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={catInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
+        {axes && <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
         {tip}{legend}
         {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} fill={paint(j)} fillOpacity={dim(j)} isAnimationActive={false} />)}
       </BarChart>
