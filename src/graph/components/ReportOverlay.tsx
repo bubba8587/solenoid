@@ -3,6 +3,7 @@ import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { ClassicPreset } from "rete";
 import { reportStore } from "../reportStore";
+import { siteChrome } from "../siteChrome";
 import { getEditor, getView, processGraph } from "../process";
 import { scheduleAutosave } from "../persistence";
 import { NoteNode, ReportNode } from "../rete-nodes";
@@ -35,6 +36,7 @@ const NO_VARS: Record<string, unknown> = {};
 export function ReportOverlay() {
   const nodeId = useSyncExternalStore(reportStore.subscribe, reportStore.openNodeId);
   const docked = useSyncExternalStore(reportStore.subscribe, reportStore.isDocked);
+  const chrome = useSyncExternalStore(siteChrome.subscribe, siteChrome.get);
   const editor = getEditor();
   const opened = nodeId ? editor?.getNode(nodeId) : undefined;
   const node = opened instanceof ReportNode ? opened : undefined;
@@ -136,18 +138,20 @@ export function ReportOverlay() {
         <div className="report-header">
           <span className="report-title">{note.label?.trim() || "Note"}</span>
           <div className="report-header-actions">
-            <button
-              className={`report-dock-btn${docked ? " report-dock-btn--on" : ""}`}
-              onClick={() => reportStore.toggleDock()}
-              title={docked ? "Undock to a floating panel" : "Dock to the right side"}
-              aria-label={docked ? "Undock note" : "Dock note to the right"}
-              aria-pressed={docked}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect width="18" height="18" x="3" y="3" rx="2" />
-                <path d="M15 3v18" />
-              </svg>
-            </button>
+            {chrome.dock && (
+              <button
+                className={`report-dock-btn${docked ? " report-dock-btn--on" : ""}`}
+                onClick={() => reportStore.toggleDock()}
+                title={docked ? "Undock to a floating panel" : "Dock to the right side"}
+                aria-label={docked ? "Undock note" : "Dock note to the right"}
+                aria-pressed={docked}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect width="18" height="18" x="3" y="3" rx="2" />
+                  <path d="M15 3v18" />
+                </svg>
+              </button>
+            )}
             <button className="report-close" onClick={closeNote} title="Close (Esc)" aria-label="Close">
               <CloseIcon size={16} />
             </button>
@@ -329,30 +333,34 @@ export function ReportOverlay() {
                 </div>
               </div>
             )}
-            <button
-              type="button"
-              className="report-embed-btn"
-              disabled={exporting}
-              onClick={() => void doExport()}
-              title="Export as a self-contained webpage. Refs are frozen to today's values. Charts and a canvas snapshot are inlined."
-            >
-              {exporting ? "Exporting…" : "Export"}
-            </button>
+            {chrome.export && (
+              <button
+                type="button"
+                className="report-embed-btn"
+                disabled={exporting}
+                onClick={() => void doExport()}
+                title="Export as a self-contained webpage. Refs are frozen to today's values. Charts and a canvas snapshot are inlined."
+              >
+                {exporting ? "Exporting…" : "Export"}
+              </button>
+            )}
             {/* Dock to / undock from the right side of the page (desktop only —
                 CSS-hidden on mobile, where the report is already full-screen). */}
-            <button
-              className={`report-dock-btn${docked ? " report-dock-btn--on" : ""}`}
-              onClick={() => reportStore.toggleDock()}
-              title={docked ? "Undock to a floating panel" : "Dock to the right side"}
-              aria-label={docked ? "Undock report" : "Dock report to the right"}
-              aria-pressed={docked}
-            >
-              {/* Lucide panel-right — a box with a right-hand panel. */}
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect width="18" height="18" x="3" y="3" rx="2" />
-                <path d="M15 3v18" />
-              </svg>
-            </button>
+            {chrome.dock && (
+              <button
+                className={`report-dock-btn${docked ? " report-dock-btn--on" : ""}`}
+                onClick={() => reportStore.toggleDock()}
+                title={docked ? "Undock to a floating panel" : "Dock to the right side"}
+                aria-label={docked ? "Undock report" : "Dock report to the right"}
+                aria-pressed={docked}
+              >
+                {/* Lucide panel-right — a box with a right-hand panel. */}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect width="18" height="18" x="3" y="3" rx="2" />
+                  <path d="M15 3v18" />
+                </svg>
+              </button>
+            )}
             <button className="report-close" onClick={() => closeReport()} title="Close (Esc)" aria-label="Close">
               <CloseIcon size={16} />
             </button>

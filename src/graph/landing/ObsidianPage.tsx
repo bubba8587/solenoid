@@ -8,6 +8,7 @@ import { LiveGraph } from "./LandingGraph";
 import { ReportOverlay } from "../components/ReportOverlay";
 import { SOCKET_COLORS } from "../sockets";
 import { forceDemoVault } from "../demoVault";
+import { siteChrome } from "../siteChrome";
 import "./LandingPage.css";
 import "./ObsidianPage.css";
 
@@ -154,8 +155,16 @@ export default function ObsidianPage() {
   // so every reader scene resolves to it regardless of the user's setting (never
   // persisted). Set during render so it is in place before the scene children mount
   // and read it; cleared on unmount. Plain-anchor navigation to the app reloads anyway.
-  useMemo(() => forceDemoVault(true), []);
-  useEffect(() => () => forceDemoVault(false), []);
+  // The Report/Note popup here is a read-only shop window: Export (to a webpage) and
+  // Dock (to the canvas) have nothing to act on off the app, so drop them.
+  useMemo(() => {
+    forceDemoVault(true);
+    siteChrome.set({ export: false, dock: false });
+  }, []);
+  useEffect(() => () => {
+    forceDemoVault(false);
+    siteChrome.reset();
+  }, []);
 
   return (
     <div className={`sol-landing${anim ? " sol-landing--anim" : ""}`}>

@@ -128,8 +128,7 @@ export default function LandingPage() {
             <Reveal>
               <LandingGraph />
               <p className="sol-landing__demo-note">
-                This graph is live. Drag a card, rotate the surface, or open a table and
-                edit a value, and everything downstream recomputes.
+                This graph is live. Try editing the input table or rotating the 3D figure.
               </p>
             </Reveal>
           </section>
@@ -139,8 +138,8 @@ export default function LandingPage() {
               <h2>Typed sockets and cables</h2>
               <p className="sol-landing__lede">
                 Sockets and cables are all colored according to their value type. Value
-                types and dimensions are preserved so that, unlike Excel, you&apos;ll
-                never confuse a date with a number or text string.
+                types and dimensions are preserved so you'll
+                never confuse a date with a number or text value.
               </p>
             </Reveal>
             <Reveal delay={100}>
@@ -151,25 +150,21 @@ export default function LandingPage() {
             </Reveal>
           </section>
 
-          <Feature title="Real units" scene={<UnitsScene />}>
+          <Feature title="Units" scene={<UnitsScene />}>
             <p>
-              Values carry real units, and the math comes out right:{" "}
-              <code>SUM(5 km, 3)</code> is <code>8 km</code>, m × m is m², and adding
-              meters to seconds fails with{" "}
-              <code className="sol-landing__err">#UNIT!</code>.
+              Values carry real units - not just annotations - everywhere they can.
             </p>
-            <p>
-              Units flow through tables and joins too, so a <code>Price ($)</code> column
-              stays money and 5 km matches 5,000 m.
+            <p> 
+              {" "}<code>SUM(5 km, 3)</code> is <code>8 km</code>, <code>2 m × 4 m </code>
+               makes <code>8 m²</code>.
             </p>
           </Feature>
 
           <Feature title="Solve for any variable" flip scene={<EquationScene />}>
             <p>
-              Type an equation and any variable can be the unknown. Give{" "}
-              <code>V = I × R</code> any two values and it solves for the third, exactly
-              where it can and numerically where it can&apos;t. A quadratic returns every
-              real root.
+              Instead of setting up the same equation rearranged 3 different ways, just use
+              Solenoid's Equation node. Plug in all but one variable and it solves for the remaining one.
+              Limited support for multiple quadratic roots.
             </p>
           </Feature>
 
