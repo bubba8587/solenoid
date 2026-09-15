@@ -26,6 +26,13 @@ All on `develop`; local dev server, pushes held.
   rhythm tightens, CTAs go full-width, the plan table wraps + the YAML sample scrolls, `overflow-x`
   guarded, touch (`hover: none`) gets the gallery Open hint. `index.html` gained a description +
   OG/Twitter tags (static, SPA has no per-route prerender).
+- **Flow-canvas entrance animation (marketing stages).** Restored the load-reveal lost in the
+  rete->RF port, opt-in via `FlowRevealContext` + a `sol-flow-reveal` class (the app surface never
+  sets them). Cards pop in (opacity + `scale`, composed with RF's transform), then cables draw
+  socket-to-socket at once (linear `stroke-dashoffset` reel, length inline in `FlowCableEdge`),
+  then the app's flow beads switch on ~1s in — without persisting `cableFlowStore` (shared origin
+  with the app). LandingGraph reveals on mount; SceneStage waits for its ELK layout. Reduced motion
+  disables all of it. Keyframes in `flow/flow.css`.
 - **Document menu accordion.** New from example groups are collapsible (one open at a time, Start
   here open by default), so a long seed list no longer floods the menu (`DocumentTitle.tsx`).
 - **OAuth/cloud-save scoped (plan-only).** Author asked to scope sign-in with Google/Bluesky to save
