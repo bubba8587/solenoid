@@ -28,11 +28,18 @@ All on `develop`; local dev server, pushes held.
   OG/Twitter tags (static, SPA has no per-route prerender).
 - **Flow-canvas entrance animation (marketing stages).** Restored the load-reveal lost in the
   rete->RF port, opt-in via `FlowRevealContext` + a `sol-flow-reveal` class (the app surface never
-  sets them). Cards pop in (opacity + `scale`, composed with RF's transform), then cables draw
-  socket-to-socket at once (linear `stroke-dashoffset` reel, length inline in `FlowCableEdge`),
-  then the app's flow beads switch on ~1s in — without persisting `cableFlowStore` (shared origin
-  with the app). LandingGraph reveals on mount; SceneStage waits for its ELK layout. Reduced motion
-  disables all of it. Keyframes in `flow/flow.css`.
+  sets them). Cards fade/blur in (opacity + `filter` ONLY — **never a transform/scale on the node**:
+  RF measures handle positions off the node box and a per-node scale in flight makes cables meet
+  sockets at the top edge, and ResizeObserver ignores transforms so it never self-corrects). Then
+  cables draw socket-to-socket at once (linear `stroke-dashoffset` reel via `pathLength=1` spread onto
+  BaseEdge in `FlowCableEdge`), then the app's flow beads switch on ~1s in — without persisting
+  `cableFlowStore` (shared origin with the app). LandingGraph reveals on mount; SceneStage waits for
+  its ELK layout. Reduced motion disables all of it. Keyframes in `flow/flow.css`.
+- **Obsidian page scenes upgraded.** TaskNotes is now a live `SceneStage` (real node -> Display), its
+  HTTP API faked behind a demo flag (`demoTaskNotes.ts`, mirrors `forceDemoVault`) so the web shows a
+  real Tasks cube with no server. Vault-table + TaskNotes Displays are collapsed to their 3x3 preview
+  (a full frame/cube grows the card and zooms the scene out). The KMS-bridge graphic's highlight
+  travels between the three cards (presenter-camera style, gated on `--anim`).
 - **Document menu accordion.** New from example groups are collapsible (one open at a time, Start
   here open by default), so a long seed list no longer floods the menu (`DocumentTitle.tsx`).
 - **OAuth/cloud-save scoped (plan-only).** Author asked to scope sign-in with Google/Bluesky to save
