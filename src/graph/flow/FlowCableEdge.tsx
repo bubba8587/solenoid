@@ -506,44 +506,28 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
   const cableOpacity = ghost ? 0.65 : activeHover || selected ? 0.9 : 0.72;
 
   // Entrance draw-on (marketing stages only): reel the dash offset to zero so the stroke
-  // grows from the source socket to the target. `pathLength={1}` normalizes the dash math
-  // to the path's OWN length, so it stays exact even while RF is still settling the
-  // handle positions (a fixed pixel length would stop short or overshoot). Skipped for
-  // ghosts (already dashed) and under reduced motion; the path is otherwise identical to
-  // the BaseEdge stroke it replaces.
+  // grows from the source socket to the target. `pathLength={1}` (spread by BaseEdge onto
+  // its path) normalizes the dash math to the path's OWN length, so it stays exact even
+  // while RF is still settling the handle positions — a fixed pixel length would stop
+  // short or overshoot. Skipped for ghosts (already dashed) and under reduced motion.
   const drawOn = revealStage && !ghost && !PREFERS_REDUCED_MOTION;
 
   return (
     <g style={dimStyle}>
-      {drawOn ? (
-        <path
-          className="react-flow__edge-path"
-          d={pathD}
-          fill="none"
-          pathLength={1}
-          style={{
-            stroke,
-            strokeWidth: baseWidth,
-            strokeDasharray: 1,
-            strokeDashoffset: 1,
-            animation: CABLE_DRAW,
-            opacity: cableOpacity,
-            pointerEvents: "none",
-          }}
-        />
-      ) : (
-        <BaseEdge
-          path={pathD}
-          interactionWidth={0}
-          style={{
-            stroke,
-            strokeWidth: baseWidth,
-            strokeDasharray: ghost ? "6 5" : undefined,
-            opacity: cableOpacity,
-            pointerEvents: "none",
-          }}
-        />
-      )}
+      <BaseEdge
+        path={pathD}
+        interactionWidth={0}
+        pathLength={drawOn ? 1 : undefined}
+        style={{
+          stroke,
+          strokeWidth: baseWidth,
+          ...(drawOn
+            ? { strokeDasharray: 1, strokeDashoffset: 1, animation: CABLE_DRAW }
+            : { strokeDasharray: ghost ? "6 5" : undefined }),
+          opacity: cableOpacity,
+          pointerEvents: "none",
+        }}
+      />
       {flow && !ghost && (
         <path
           className="solenoid-cable-flow"
