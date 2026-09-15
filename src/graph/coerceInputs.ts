@@ -1,3 +1,4 @@
+// dte:C25,D43
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import { SolenoidSocket, AdoptiveSocket, elementFamilyOf, type SocketDataType } from "./sockets";

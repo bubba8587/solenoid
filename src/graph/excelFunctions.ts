@@ -1,4 +1,4 @@
-// dte:C14,D4,E12,E14
+// dte:C14,D4,E12,E14,C22
 import * as FX from "@formulajs/formulajs";
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
 import { serialToJsDate, jsDateToSerial } from "./nodes/dateSerial";

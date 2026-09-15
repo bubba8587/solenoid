@@ -1,4 +1,4 @@
-// dte:C43
+// dte:C43,B10
 // THE React Flow surface, shared by the main canvas (FlowCanvas) and the composite
 // drill-in (FlowCompositeOverlay): one RF element, one set of handlers, gestures,
 // lasso, context menus, keyboard, add menu, HTML-in-Canvas layer and inspector over a

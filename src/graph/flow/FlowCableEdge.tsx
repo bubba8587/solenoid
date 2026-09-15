@@ -1,4 +1,4 @@
-// dte:C65
+// dte:C65,C11
 // React Flow port — Solenoid's cable as an RF custom edge: the FULL behavior
 // of the rete surface's ConnectionComponent (which this file replaces at
 // cutover): walk-router paths, type coloring, collapse-pill redirection,

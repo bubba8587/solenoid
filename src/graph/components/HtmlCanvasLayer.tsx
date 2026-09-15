@@ -1,4 +1,4 @@
-// dte:C42
+// dte:C42,C75,D56
 import { useEffect, useRef, useState } from "react";
 import { useRenderMode } from "../renderMode";
 import { zoomSettleMs } from "../zoomSettle";

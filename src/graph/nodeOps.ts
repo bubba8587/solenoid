@@ -1,4 +1,4 @@
-// dte:C56,C63
+// dte:C56,C63,C26,D5,D6
 // Per OP family (a node class with an `op` field): what ops it has and how they
 // surface. The `{ }` marker is DERIVED, never declared. An ARGUMENT family is not
 // declared here at all (DESIGN.md § Op pickers; nodeOps.test.ts pins both directions).

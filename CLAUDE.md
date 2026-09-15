@@ -63,7 +63,7 @@ invented vocabulary + the author's names for the on-screen chrome).
   controls), `docs/value-semantics.md` ("Reading an input" — before writing a `data()`),
   `docs/formulajs-divergences.md` (before touching a `registerInternal` override),
   `docs/node-coverage.md` (node inventory + the node-design rules), `docs/architecture.md` (file
-  map), `docs/pack-architecture.md`, `docs/out-of-scope.md`, `docs/renderer-performance.md`.
+  map), `docs/pack-architecture.md`, `docs/out-of-scope.md`.
 - Queue: `docs/backlog.md` (OPEN items only), the release plans `docs/1.4-plan.md` /
   `docs/2.0-plan.md` (proposals until the author promotes an item), `docs/deferrals.md`
   (parked, no plan), `docs/dev-notes.md` (open

@@ -1,3 +1,4 @@
+// dte:C69,C70,C71
 // The Schedule verb: binds a tasks CUBE to `@solenoid/schedule-engine` and re-emits the
 // rows with the computed columns. Pure and rete-free (like the frame verbs); the node in
 // nodes/schedule.ts wraps it. The rows arrive as a cube because Predecessors is a LIST cell

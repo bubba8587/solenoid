@@ -35,6 +35,12 @@ decisions and rules live only as DTE nodes; rules.md and decisions.md retire".
   no bulk import (K1), retire drops the winner's contested mark (K3), enforcement is prose (K5),
   code-span example tokens validate (K6), validate output volume (K7), `cite` merges into
   line-level citations (K8).
+- **Other settled-decision docs lift the same way** (B8). The renderer-performance doc became nine
+  nodes (C74 semanticZoomRawScale, C75 gpuTextureBudget, and D55–D61 under C42
+  htmlInCanvasRenderer) and was deleted, every constant re-verified against the code first. The
+  Inspector's static-reference ruling, found only in a code comment, became C73; routing-table
+  files now cite the nodes their rows name. Mechanics and authoring docs (subsystem-invariants,
+  pack-architecture, DESIGN.md) stay and cite the nodes.
 - **Open (owner):** ratify the tree (only A1 is); the 12 new B nodes are the ones most worth reading.
 
 ### SESSION DIGEST (2026-09-15 — marketing site expansion)

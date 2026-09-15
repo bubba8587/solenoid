@@ -461,7 +461,6 @@ rationale, point-in-time research, the dev-notes history) is indexed in
 | `subsystem-invariants.md` | living | the "don't break this" deep-dives — cable routing, group push, standoffs, tidy, error values, unit flow, addressable model, autosave, drill-in |
 | `layout-chrome.md` | living | on-screen chrome map — bar/overlay geometry, offset sync map, z-index ladder; read before adding/moving chrome |
 | `touch-gestures.md` | living | the pointer/touch gesture inventory per device config |
-| `renderer-performance.md` | living | settled renderer-perf policies (zoom settle, semantic-zoom gate, GPU budget, HIC capture) |
 | `code-comments.md` | living | the commentMinimalism comment policy — cut rules, blast-radius test |
 | `dev-notes.md` | living log | open problems + the latest session digests only (history in `archive/dev-notes-history.md`) |
 | `backlog.md` | living | OPEN items only — the 1.3 polish/patch queue (landed items are deleted) |

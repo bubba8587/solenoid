@@ -1,3 +1,4 @@
+/* dte:C75 */
 /* The subgraph canvas fills the SAME region the main canvas occupies, sitting
    ABOVE the main canvas (z-index 0) but BELOW the app chrome (Header/StatusBar z6,
    NavMenu/OutlinePanel z5) — so drilling in swaps only the canvas surface and the
@@ -211,17 +212,8 @@ html.sol-drilled-in .solenoid-composite-editor__host .solenoid-minimap { display
 html.sol-drilled-in .solenoid-outline,
 html.sol-drilled-in .solenoid-outline__open-pill { display: none; }
 
-/* Stop PAINTING the main canvas while it's covered. The backdrop above is opaque and
-   full-viewport, so the outer graph is already invisible — but an occluded subtree is
-   not reliably dropped from raster, which leaves two canvases' worth of layers and
-   textures alive at once. That is the same budget the mobile no-promotion rule protects
-   (renderer-performance.md § GPU layer promotion: bbox × dpr already exceeds the mobile
-   GPU max texture on its own), and a phone has none to spare while a subgraph pans.
-   `visibility`, NOT `display: none`: the main area is still asked to re-render and
-   re-measure a card while drilled in (the +Input/+Output path updates the owning
-   composite's card), and MeasuredSocketRow needs a real layout box to place sockets —
-   `visibility` keeps layout and only drops paint, `display: none` would zero every
-   measurement. The drill-in host also carries .sol-rf-appcanvas, hence the :not(). */
+/* Stop painting the covered main canvas (dte:C75 gpuTextureBudget). The drill-in host
+   also carries .sol-rf-appcanvas, hence the :not(). */
 html.sol-drilled-in .sol-rf-appcanvas:not(.solenoid-composite-editor__host) { visibility: hidden; }
 
 .solenoid-composite-editor__loading {

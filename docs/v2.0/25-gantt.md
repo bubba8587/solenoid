@@ -1205,4 +1205,4 @@ and svar-widgets/gantt `store/src`; `@xyflow/system` 0.0.82 registry entry and R
 bryntum.com javascript-temporal-is-it-finally-here; bundlephobia temporal-polyfill; Solenoid
 `src/graph/canvasKeyboard.ts`, `flow/flowWheel.ts`, `flow/FlowSurface.tsx`, `canvasCapture.ts`,
 `components/inlineRefDisplay.tsx`, `htmlCanvasRenderer.ts`, `nodes/kind.ts`, `nodes/dateSerial.ts`,
-`docs/renderer-performance.md`, `docs/deferrals.md`, and a measured `vite build`.
+the renderer-performance policies (now the decision nodes under htmlInCanvasRenderer), `docs/deferrals.md`, and a measured `vite build`.

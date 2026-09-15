@@ -1,3 +1,4 @@
+// dte:C68
 import { useEffect, useState } from "react";
 import { hasKnapSyntax, knapErrorText, renderKnap, renderKnapPages, type KnapPage } from "../knapTemplate";
 

@@ -1,3 +1,4 @@
+// dte:B10,C43
 // THE View implementation (see ../view.ts): the model-side verbs land here and
 // become React Flow state through late-bound callbacks the surface supplies.
 // Position reads/writes go straight to `node.position` on the editor's nodes —

@@ -1,3 +1,4 @@
+// dte:B10,C43
 // The chrome → surface command slots. Menus, the palette, keyboard and touch bars
 // call these verbs; whichever FlowSurface is mounted registers the implementation,
 // and the composite drill-in swaps the selection / arrange slots while it is open

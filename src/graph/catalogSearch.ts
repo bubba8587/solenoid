@@ -1,3 +1,4 @@
+// dte:D5,D6
 // Add-menu search scoring. A leaf's searchable text is deliberately WIDER than what
 // is shown — label, description, Excel names, category path, kebab type, keywords.
 

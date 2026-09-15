@@ -8,7 +8,7 @@ Wide. **Written:** 2026-09-01, plan-only.
 ## The shared precondition
 
 Every layout consumer sizes cards from MOUNTED elements — Tidy, FC docking, standoffs, lasso
-rects, the minimap fill, the HIC snapshot pipeline (`renderer-performance.md`). That is what
+rects, the minimap fill, the HIC snapshot pipeline (the nodes under htmlInCanvasRenderer). That is what
 blocks React Flow's `onlyRenderVisibleElements` (the memory lever: off-screen cards
 unmount), fit-before-paint, and HIC painting labels itself. The first tier landed 2026-08-27:
 `Surface.measured` (RF's post-layout measure) fronts `measuredBox`, so mounted cards no

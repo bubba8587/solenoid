@@ -1,3 +1,4 @@
+// dte:B10,C43
 // THE app canvas: one editor/engine/view stack lives for the app's lifetime;
 // documents load through the REAL persistence/documentStore path; chrome talks
 // to it through the process.ts slots. The surface itself (RF element, gestures,

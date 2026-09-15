@@ -1,4 +1,4 @@
-// dte:D30
+// dte:D30,D31
 // The model-level compute pass — ONE definition, no view. processGraph (the app),
 // the composite's internal engine, the headless runner and the seed tests all run
 // the same steps: invalidate, seed loops, fetch every node (dte:D30 targetedEqualsFull).

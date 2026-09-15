@@ -1,4 +1,4 @@
-// dte:C17
+// dte:C17,D19
 import { solError, type SolError } from "../errorValue";
 import { indexRefError } from "./indexAccess";
 import type { Cell } from "./coerce";

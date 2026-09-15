@@ -70,9 +70,6 @@ is parked there.
 - **`grid-system.md`** — the (unbuilt) soft-grid design spec; parked in
   `deferrals.md`.
 - **`out-of-scope.md`** — the standing NO list.
-- **`renderer-performance.md`** — the settled renderer-perf policies: zoom settle,
-  GPU layer promotion (pan never / desktop pinch only), the semantic-zoom gate, the
-  HIC capture pipeline. The OPEN choppy-band investigation stays in `dev-notes.md`.
 - **`dte.md`** — decision provenance: the vendored DTE tool (`tools/dte.py`), Solenoid's
   ring map and everyday commands. Read before creating or changing a decision node;
   `python tools/dte.py validate` must print `OK` before you finish.
@@ -137,7 +134,9 @@ results get retried and settled rulings relapse.
 | `groupCollapse.ts` | `subsystem-invariants.md` § Group collapse — the retain rule |
 | `AddNodeMenu.tsx`, `catalogSearch.ts`, `nodeOps.ts` | `subsystem-invariants.md` § Add menu; dte:D5 searchWiderThanLabel, dte:D6 opRowDerivesFromHost |
 | `equationSolve.ts` | `subsystem-invariants.md` § Equation solver |
-| `semanticZoomStore.ts` | `renderer-performance.md` § Semantic zoom gate |
+| `semanticZoomStore.ts` | dte:C74 semanticZoomRawScale |
+| `htmlCanvasRenderer.ts`, `rasterAtlas.ts`, `domSync.ts`, `zoomSettle.ts` | dte:C42 htmlInCanvasRenderer and its policies (`python tools/dte.py tree --under C42`) |
+| `HtmlCanvasLayer.tsx` | dte:C42 htmlInCanvasRenderer and its policies; dte:C75 gpuTextureBudget |
 | `pointerGesture.ts`, `flow/flowPinch.ts`, `flow/flowTouchPan.ts` | `subsystem-invariants.md` § Pointer gestures |
 | `flow/FlowSurface.tsx`, `flow/FlowCanvas.tsx`, `flow/flowModel.ts`, `flow/flowView.ts`, `view.ts`, `canvasCommands.ts` | `subsystem-invariants.md` § React Flow surface contract; dte:B10 reactFlowView, dte:C43 oneFlowSurface |
 | `graphCompute.ts`, `process.ts` (the pass) | dte:D30 targetedEqualsFull, dte:D31 onlyCalcModeSkips; `subsystem-invariants.md` § Error values (`#CIRC!` is engine-level) |
