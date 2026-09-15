@@ -407,13 +407,14 @@ the app's bindings are `scheduleCpm.ts` / `ganttPayload.ts` / `planImport.ts` ab
 ### Landing & showcase (`src/graph/landing/`)
 
 The marketing site: four pages sharing one chrome. `siteNav.tsx` owns the header, nav,
-footer, theme toggle and `Feature` row (the nav lists Obsidian/Examples/Download, marks
+footer, theme toggle and `Feature` row (the nav lists Obsidian/Examples/Packs/Download, marks
 the active route, and the wordmark covers Home). Pages: `LandingPage.tsx` (overview, the
 one live rete hero) + `ObsidianPage.tsx` (integration) + `DownloadPage.tsx` +
 `ExamplesPage.tsx` (a gallery of the seed library; each tile deep-links `/?seed=<id>`,
 which `flow/FlowCanvas.tsx` boot opens as a new document) + `PacksPage.tsx` (the domain
 packs, mirroring `packs.ts` metadata). Scenes live in `LandingScenes.tsx` (+
-`LandingGraph.tsx`, `SceneStage.tsx`); styles in `LandingPage.css` + `ObsidianPage.css` +
+`LandingGraph.tsx` with its hero scene switcher, `SceneStage.tsx`, and `SceneThread.tsx`, the
+decorative bezier joining the scene viewports); styles in `LandingPage.css` + `ObsidianPage.css` +
 `SitePages.css`. `App.tsx` routes each page by pathname (`/obsidian`, `/download`,
 `/examples`, `/packs`) or `?landing`, off the Vercel catch-all rewrite. `public/` carries
 `robots.txt`, `sitemap.xml` and `og-hero.png` (the link-preview image `index.html` points at). `siteChrome.ts`

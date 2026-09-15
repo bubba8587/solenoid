@@ -8,11 +8,11 @@ specific item.
 
 ### SESSION DIGEST (2026-09-15 — marketing site expansion)
 
-All on `develop`; local dev server, pushes held.
+All on `develop`; local dev server, pushed at session end.
 
 - **Shared site chrome (`landing/siteNav.tsx`).** Header, nav, footer, theme toggle and the
   `Feature` row were duplicated across `LandingPage`/`ObsidianPage`; factored into one module.
-  Nav = Obsidian/Examples/Download + GitHub + Open the app, active route marked, wordmark = Home.
+  Nav = Obsidian/Examples/Packs/Download + GitHub + Open the app, active route marked, wordmark = Home.
   Adding a page is now a route entry + a page file.
 - **Two new pages.** `/download` (web vs Windows build, copy lifted from the README) and
   `/examples` (a gallery of the seed library, grouped by the seeds' own labels). `App.tsx` routes
@@ -55,10 +55,27 @@ All on `develop`; local dev server, pushes held.
 - **Principle (author, this session):** the web app loads instantly, so the marketing site must not
   duplicate app/GitHub content. Killed proposed Functions and changelog pages on that basis; a
   changelog page is parked for later only if it earns its own surface.
+- **Scene thread (`landing/SceneThread.tsx`).** A decorative socketless bezier from the bottom-center
+  of each scene viewport (live stages AND the static `.sol-diagram` scenes) to the top of the next,
+  drawn with the app's `getCablePath("spline")` (Bottom -> Top so it leaves/enters vertically).
+  Measured from the DOM into an absolutely positioned SVG sized in px with NO viewBox (a viewBox
+  scaled the coordinates), recomputed on resize/scroll/fonts.ready; fades in after the card entrance.
+- **Hero scene switcher.** `LiveGraph` takes `scenes` (segmented pill) beside `build`: Spending
+  (Frame -> Group by -> column chart), Vs target (two Frames -> Join -> line chart) and the 3D
+  surface. ~30-row generated tables (`makeRng`), inline chart options, Reset kept.
+- **Multi-series chart fixes (`chartRender.tsx`).** `MultiSeriesView` never passed axis labels to
+  its axes (single-series did) — wired. Its legend is now a plain DOM row UNDER the plot, not
+  recharts' `<Legend>`: recharts lays the legend out against the x-axis rect (it sat on the xlabel)
+  and re-reserves height whenever measured != reserved (the chart jumped on a legend click). The
+  row is fixed-height, inset by the y-axis width so it centers on the xlabel, its height taken off
+  the plot. Verified with playwright (card bounds identical before/after a click). `OverlayView` /
+  `ComposedView` still use recharts' legend (no xlabel there).
+- **Playwright works here:** global `playwright-core` (under `openclaw`) + the ms-playwright
+  Chromium 1223 build; scripts live in the session scratchpad. Use it before claiming a layout fix.
 - **Open:** new-page copy (`/download`, `/examples`, `/packs`) is placeholder in the author's voice,
-  marked `NEW COPY` — awaits an author pass. `MonteCarloScene` orphaned when the author cut the
-  landing What-if section (prune or re-add). Reference-overlay gaps (Tables & Data tab, Units &
-  Formats tab, Help sections) proposed, not built.
+  marked `NEW COPY` — awaits an author pass. Reference-overlay gaps (Tables & Data tab, Units &
+  Formats tab, Help sections) proposed, not built. TaskNotes status chip reads `6×0` (rows×cols
+  with no cols reported) on both the real and demo paths — pre-existing.
 
 ### SESSION DIGEST (2026-09-14c — Knap 0.4.2 → 0.6.0)
 

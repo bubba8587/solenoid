@@ -115,12 +115,12 @@ The site is four pages sharing `landing/siteNav.tsx` chrome (see architecture.md
 - [ ] **Per-route meta description.** `index.html` now has a description, OG/Twitter tags and an
   `og:image` (hero), plus `sitemap.xml` + `robots.txt`. Still one static default for every route;
   per-route text needs a small prerender step.
-- [ ] **Finish the landing/Obsidian scene rebuild.** Feature scenes are now real canvases: the
-  Obsidian hero is a live interactive `LiveGraph` (report pipeline, `ReportOverlay` mounted), the
-  "vault as a table" and "Excel over CSV" scenes read the demo vault (`VaultTableScene`,
-  `LocalFileScene`), and Import-a-Note is real (`NoteImportScene`). Still hand-built DOM/SVG:
-  MonteCarlo + Presenter (landing) — neither maps to a single locked pass — and the Obsidian page's
-  TaskNotes illustration (needs the live HTTP API).
+- [ ] **Finish the landing/Obsidian scene rebuild.** Feature scenes are real canvases (Obsidian
+  hero `LiveGraph`, `VaultTableScene`, `LocalFileScene`, `NoteImportScene`, `TaskNotesScene` on the
+  demo API fake). Still hand-built DOM/SVG: the Presenter scene (landing) and the Obsidian page's
+  bridge + Plan vignettes — none maps to a single locked pass.
+- [ ] **TaskNotes status chip shows `rows×0`.** The connection state carries no column count on the
+  tasks/calendar paths (`taskNotes.ts` `setState`), so the chip prints `6×0` beside a 6×18 cube.
 
 ## DTE — decision provenance (integrated 2026-09-14b; `docs/dte.md`, B4)
 
