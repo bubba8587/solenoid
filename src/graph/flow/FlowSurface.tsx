@@ -190,7 +190,7 @@ export type SurfaceHooks = {
   /** Render the standoff layer (a main-graph feature). */
   standoffs?: boolean;
   /** Render the free-drawn cable layer + its tool (a main-graph feature: drawn
-   *  cables persist into SavedGraph, which is main-only — rules saveBindsMain). */
+   *  cables persist into SavedGraph, which is main-only — dte:C33 saveBindsMain). */
   drawnCables?: boolean;
   /** The main canvas stands down while the drill-in owns the keyboard. */
   standsDownWhenDrilled?: boolean;

@@ -7,7 +7,7 @@ plan into [`1.4-plan.md`](1.4-plan.md) (the workbench release) or [`2.0-plan.md`
 + [`v2.0/`](v2.0/README.md) (the structural arcs). An item the author rejects from those plans
 comes back here with a one-line reason; an item promoted from here gets a plan section there
 and its entry deleted. Ruled-out-forever ideas: `out-of-scope.md`; settled rationale:
-`decisions.md`.
+the decision tree (`dte.md`).
 
 ## Needs an author decision before any build
 

@@ -15,9 +15,9 @@ own format/protocol/usage decisions as nodes in this tree; this tree holds only
 Solenoid's own decisions. (`dte-rules/` is `.dteignore`d — its `dte:` tokens belong to
 DTE's tree; note it describes DTE's OWN rings A/B/C, which are not Solenoid's rings below.)
 
-**The tree is the one home.** Every rule in `docs/rules.md` and decision in
-`docs/decisions.md` is being lifted into a node; the documents are deleted once empty.
-While an entry exists in both, the node wins. B8 carries the field mapping (MUST →
+**The tree is the one home.** Every rule that lived in the old rules.md and every decision
+in the old decisions.md is a node now; both documents are deleted (git has them). B8
+carries the field mapping (MUST →
 Decision, Why/Origin → Why, Enforced by/Exceptions/Where/Reopen if → Consequences) and
 the naming convention: a node lifted from a named rule keeps the name as its title
 prefix (`shareImpl: ...`), so `python tools/dte.py find shareImpl` finds it and a

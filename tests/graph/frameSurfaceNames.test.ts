@@ -79,7 +79,7 @@ describe("FRAME_SURFACE_NAMES ← catalog derivation (both ways)", () => {
     expect(ghosts.map(([n, l]) => `${n} → "${l}"`), "redirects must point at real catalog leaves").toEqual([]);
   });
 
-  // NAME-2 (docs/rules.md): a node NAME must never coincide with a core Excel function name —
+  // NAME-2 (dte:D21): a node NAME must never coincide with a core Excel function name —
   // a bare "Columns" reads as COLUMNS() (the count), so the relational leaves are named for the
   // op: "Keep Columns" / "Drop Columns". A general "dispatches?" check can't run here — some node
   // labels ARE the node-form of the like-named function (Group By ↔ GROUPBY) and legitimately

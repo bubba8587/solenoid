@@ -1,7 +1,7 @@
 // The chrome → surface command slots. Menus, the palette, keyboard and touch bars
 // call these verbs; whichever FlowSurface is mounted registers the implementation,
 // and the composite drill-in swaps the selection / arrange slots while it is open
-// (decisions oneFlowSurface). Compute lives in process.ts; this is only routing.
+// (dte:C43 oneFlowSurface). Compute lives in process.ts; this is only routing.
 
 // Node and cable selections are mutually exclusive.
 let _unselectAllNodes: () => void = () => {};

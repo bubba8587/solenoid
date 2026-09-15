@@ -267,7 +267,7 @@ const TEXT_OP_LABEL: Record<string, string> = {
 };
 
 /** A text predicate on a non-text column is a CONFIGURATION error, `#TYPE!` — never a
- *  stringified comparison (rules textPredicateNeedsText, author verdict 2026-08-30).
+ *  stringified comparison (dte:D49 textPredicateNeedsText, author verdict 2026-08-30).
  *  The old `String(cell)` fallback forced the Rust engine to mirror JS number printing
  *  digit-for-digit forever (`js_number_string`, deleted with this rule). */
 export function requireTextColumn(op: FilterOp, type: FrameColType, column: string): void {

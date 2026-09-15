@@ -50,7 +50,7 @@ async function collected(out: Record<string, unknown>): Promise<FrameValue> {
 beforeEach(() => { frameFormatStore.clear(); resetFrameBackendToJs(); clearCollectMemo(); });
 afterEach(() => { frameFormatStore.clear(); });
 
-// rules formatFlowsDownstream: a frame column's DISPLAY format rides the value like its
+// dte:D41 formatFlowsDownstream: a frame column's DISPLAY format rides the value like its
 // unit — stamped at the producer from that node's own picks, overridden by a nearer one.
 describe("a per-column format rides the frame downstream", () => {
   it("survives Sort → Columns and renders through fmtCell", async () => {

@@ -6,7 +6,7 @@ level with it). **The 1.4 cut is PROPOSED, not ratified:** `1.4-plan.md` scores 
 deferred idea and carries the per-item plans; nothing there is scheduled until the author
 promotes it — a promoted item becomes a line here and its plan section is the spec. The
 structural arcs are `2.0-plan.md` + `v2.0/`; parked-with-no-plan items: `deferrals.md`;
-ruled-out ideas: `out-of-scope.md`; settled rationale: `decisions.md`.
+ruled-out ideas: `out-of-scope.md`; settled rationale and rules: the decision tree (`dte.md`).
 
 ## Dependency updates (walking them one at a time; TypeScript 7 landed 2026-08-11a)
 
@@ -32,8 +32,9 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 - [ ] **Ratify `out-of-scope.md`** (DRAFT since July, no ARR anywhere in it) — the deferral
   review's standing ask. Test 3 / §3 / §11 already read the author's 2026-09-01 order
   (collaboration IN); the rest is still the agent's inference awaiting the author's word.
-- [ ] **The `rules.md` ARR pass** (author-present; the author: waits for 1.4) — early in the
-  release, before the track work adds rules (`1.4-plan.md` D3).
+- [ ] **The ARR pass over the tree** (author-present; the author: waits for 1.4) — early in the
+  release, before the track work adds rules: walk `python tools/dte.py tree` and ratify node by
+  node (dte:C7 authorRuled; `1.4-plan.md` D3).
 
 ## Composites
 
@@ -122,17 +123,20 @@ The site is four pages sharing `landing/siteNav.tsx` chrome (see architecture.md
 - [ ] **TaskNotes status chip shows `rows×0`.** The connection state carries no column count on the
   tasks/calendar paths (`taskNotes.ts` `setState`), so the chip prints `6×0` beside a 6×18 cube.
 
-## DTE — decision provenance (integrated 2026-09-14b; `docs/dte.md`, B4)
+## DTE — decision provenance (`docs/dte.md`, dte:B8)
 
-The tree (`decisions/`) covers the demo-vault/marketing subsystem; adoption is incremental.
-- [ ] **Author ratifies the tree** — every node is `made_by: ai, unratified`; A1–A4 are
-  owner-only. `python tools/dte.py validate` prints the unratified list; `ratify <ID>... --by`.
-- [ ] **Grow the tree** to a second subsystem, and/or lift `rules.md`/`decisions.md` entries into
-  nodes cited from the code.
-- [ ] **Apply the WHY-comment→citation practice** (was C4, retired here as DTE-generic → DTE
-  FEEDBACK I4): migrate rationale comments into node `## Why`, leave a `dte:ID`.
+Every rule and settled decision is a node (2026-09-15). DTE-tool findings live in the DTE repo's
+FEEDBACK file.
+- [ ] **Author ratifies the tree** — only A1 is ratified. `python tools/dte.py validate` prints the
+  unratified list; `ratify <ID>... --by`, and the same change adds the ID to `OWNER_RATIFIED` in
+  `rules.test.ts` (dte:C7 authorRuled).
+- [ ] **Apply the WHY-comment→citation practice** (dte:C57 commentMinimalism): migrate rationale
+  comments into the node's `## Why`, leave a `dte:<ID> name` citation.
+- [ ] **Citation coverage is mixed** — bare test-suite citations in node Consequences (21 across 20
+  rules at the 2026-08-09 count) are reading-verified only; quoting the describe/it names buys the
+  `rules.test.ts` check. oneMetricImpl and oneThingPerMetric cite a module, not a suite.
 - [ ] **Optional:** `python tools/dte.py hook` (pre-commit validate) — not installed (touches the
-  commit flow). Deferred: the 5 DTE-tool findings live in the DTE repo's FEEDBACK file.
+  commit flow); `validate` is not in CI either.
 
 ## Cables
 
@@ -182,7 +186,7 @@ The tree (`decisions/`) covers the demo-vault/marketing subsystem; adoption is i
   "blank = omitted" SEQUENCE convention to remove (match_mode blank→0 = exact, no behavior change;
   search_mode blank is likely #VALUE! in Excel, verify against the Microsoft reference before
   adding). formulajs candidates to verify empirically: VLOOKUP/HLOOKUP range_lookup (logical),
-  MATCH match_type (number). Table-driven parity test, a `rules.md` MUST, a decisions line; remaining
+  MATCH match_type (number). Table-driven parity test, a MUST rule node; remaining
   divergences → `formulajs-divergences.md` + catalog parity:false.
 - [ ] **Older long tooltips / descriptions** (Decision Matrix, Sensitivity, Allocator, Record
   layout, Chart values, Slider bounds, 200-plus-character catalog entries) are the copy class the

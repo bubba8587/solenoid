@@ -1,7 +1,7 @@
 # Knap upstream: what to file
 
 Ten things found while making `knap` (obsidianmd/knap, MIT) the Note/Report body syntax
-(node-coverage § Annotation, decisions knapIsTheDocumentSyntax). Five are bugs, five are
+(node-coverage § Annotation, dte:C68 knapIsTheDocumentSyntax). Five are bugs, five are
 requests.
 
 **Each entry is written to be filed as-is.** Everything down to the "Solenoid side" line is

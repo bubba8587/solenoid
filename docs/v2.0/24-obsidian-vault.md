@@ -28,7 +28,7 @@ the vault watcher, **F** TaskNotes feed + **F6** Write Tasks (+ the `which-task-
 **H6 Schedule** cube-in/cube-out with the **Cube Input** literal source; D's stub note +
 `solenoid:` link (opt-in), mdbase validation on write, `writeBase`, and the F1 seed
 (`kitchen-remodel-tasknotes`, Computed Column over a cube). G/K on hold; H is ruled out below
-mdbase 1.0 (`../decisions.md` mdbaseCeiling).
+mdbase 1.0 (dte:C67 mdbaseCeiling).
 
 - **Import Obsidian Note** (`nodes/obsidian.ts`, a `NoteNode` subclass): one `.md` → its
   frontmatter keys as typed output sockets + a `document` output; manual Reload. **Write to
@@ -43,7 +43,7 @@ mdbase 1.0 (`../decisions.md` mdbaseCeiling).
 - **Decision Matrix** is the author's Bases-view plugin, math only (`../node-coverage.md`
   § Decision support). **H6 Schedule** is specced in `../1.4-plan.md` § Scheduling slice,
   gated on the Track H pick (`../backlog.md`).
-- **`relativeDatesOptIn`** (`../decisions.md`): a stored date is a fixed calendar day; relative
+- **dte:D54 relativeDatesOptIn**: a stored date is a fixed calendar day; relative
   phrases resolve only on a Date Input under a setting, re-resolving each pass with an Alert
   when the day moves.
 - Constraints a vault feature meets: (1) the desktop fs allowlist
@@ -270,7 +270,7 @@ reads; revisit if F's API reads need push.
 
 **H. mdbase query passthrough — HOLD.** Shelling out to the native `mdbase … query` binary:
 beta, undocumented JSON shape, no `tauri-plugin-shell`, and Filter/Sort cover the `where`.
-Revisit at mdbase 1.0 (`../decisions.md` mdbaseCeiling — the ceiling covers type-file writing too).
+Revisit at mdbase 1.0 (dte:C67 mdbaseCeiling — the ceiling covers type-file writing too).
 
 **I. Import Obsidian Note stays a Note.** Its value is the per-key sockets + `document` output
 + rendered body (a connection node emits one table). It gains: `refreshMinutes` (the

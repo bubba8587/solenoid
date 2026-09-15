@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
 import { frameHintStore, type FrameHint } from "../../src/graph/frameHint";
 
-// frameLabelHint (rules.md): a role-chain-labeled frame input and its example hint are
+// frameLabelHint (dte:D18): a role-chain-labeled frame input and its example hint are
 // ONE contract — the hint must exist, its column names must match the label's
 // roles, and every hint (role-labeled or not) must stay well-formed: real input
 // key, 3–5 rectangular rows, cells matching the declared types. A drifted hint

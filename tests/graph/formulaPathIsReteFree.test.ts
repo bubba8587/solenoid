@@ -6,7 +6,7 @@ import * as path from "node:path";
 // The headless evaluator (run-graph, the Expression host) loads excelFormula →
 // excelFunctions → the shared op modules. None of that may reach rete or
 // sockets.ts: the shared-impl modules exist precisely so both surfaces call one
-// implementation WITHOUT the formula surface loading the editor (rules.md implReteFree —
+// implementation WITHOUT the formula surface loading the editor (dte:D19 implReteFree —
 // previously UNENFORCED, and violated twice: excelFunctions reached rete through
 // nodes/date.ts and nodes/convert.ts until the serial layer and the unit table
 // were extracted to dateSerial.ts / convertUnits.ts).

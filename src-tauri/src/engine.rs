@@ -1361,7 +1361,7 @@ fn comparison_filter_expr(column: &str, ty: SolType, op: &str, value: &Json) -> 
     Ok(Some(e))
 }
 
-/// rules textPredicateNeedsText (author verdict 2026-08-30): a text predicate on a
+/// dte:D49 textPredicateNeedsText (author verdict 2026-08-30): a text predicate on a
 /// non-text column is `#TYPE!`, mirroring the oracle's `requireTextColumn` — never a
 /// stringified comparison. The old `String(cell)` fallback is what forced this engine
 /// to mirror JS number printing digit-for-digit (`js_number_string`, deleted).

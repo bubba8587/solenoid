@@ -7,7 +7,7 @@ import { NODE_EXCEL } from "../../src/graph/nodeExcel";
 import { opsFor } from "../../src/graph/nodeOps";
 import { despace } from "../../src/graph/formulaNodeParity";
 
-// NAME-1 (docs/rules.md): the naming model. Two of its surfaces are pinned here; the card
+// NAME-1 (dte:C19): the naming model. Two of its surfaces are pinned here; the card
 // title is cardTitle.test.ts, casing is nameCase.test.ts.
 
 describe("NAME-1 — an Excel name a node answers to is a search row that SHOWS the name", () => {

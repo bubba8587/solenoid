@@ -681,7 +681,7 @@ none of them effort:
 - Solenoid's design rules are **enforced by vitest source scans over this tree**
   (`noDataInComponents`, `frameLabelGrammar`, `uiCopy` for DESIGN § 7, `catalogRegistry`,
   `chartPopupCoverage`), the spec is routed by file path in `docs/README.md`, and the
-  relapse guard is `decisions.md`. A `gantt-react` in another repo escapes all of it: its strings,
+  relapse guard is the decision tree (`../dte.md`). A `gantt-react` in another repo escapes all of it: its strings,
   tooltips, CSS variables and node docs would be the first Solenoid mechanisms with no routed
   home and no scan.
 - The **one-corpus discipline** (`fixtures/frame-verbs/`, one fixture directory, two runners) is

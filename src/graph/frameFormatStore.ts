@@ -93,7 +93,7 @@ export function describeAnnotation(ann: FormatAnnotation, type: FrameColType): s
 
 /** No local entry means INHERIT: the dropdown reads blank and the hint names what
  *  arrived, so an upstream format is never silently replaced by a look-alike pick
- *  (rules formatFlowsDownstream). */
+ *  (dte:D41 formatFlowsDownstream). */
 export function columnFormatRow(
   local: FormatAnnotation | undefined,
   inherited: FormatAnnotation | undefined,

@@ -60,7 +60,7 @@ area. When you coin a new load-bearing term, add it here.
   coercing ↔ 1/0. The one cross-family socket bridge. (`sockets.ts`, `nodes/logic.ts`)
 - **Socket lattice** — the ruleset for what can connect to what: type families never
   auto-cross (Cast required); dimensionality flows upward freely. (`sockets.ts`,
-  `socketConnect.test.ts`; see decisions.md socketLattice)
+  `socketConnect.test.ts`; see dte:C10 socketLattice)
 - **Cast** — the explicit node to change a value's type family (the required bridge the
   lattice won't do automatically). (`nodes/cast.ts`)
 - **Fill** — the opt-in node to treat `null` as a real value.
@@ -99,7 +99,7 @@ area. When you coin a new load-bearing term, add it here.
   `nodeCatalog.ts`)
 - **FrameBackend** — the seam with two implementations: `JsFrameBackend` (web/dev, eager)
   and `PolarsBackend` (desktop, native Rust). One interface, chosen at startup.
-  (`frameBackend.ts`; see decisions.md polarsEngine)
+  (`frameBackend.ts`; see dte:C16 polarsEngine)
 - **Frame verbs (`frameVerbs.ts`)** — the pure JS reference implementation ("the oracle")
   of every verb; the correctness standard the Rust engine is tested against.
 - **Materialization boundary** — the point where a lazy `FrameRef` is collected into a
@@ -124,7 +124,7 @@ area. When you coin a new load-bearing term, add it here.
   (an inline formula or a wired λ) instead of typed data. ONE definition per column,
   never per cell (noPerCellFormulas). Two surfaces, one core: the Frame Input popup's per-column
   source picker (**Data | Formula | λ**) and the Computed Column verb node.
-  (`computedColumnCore.ts`, `nodes/frame.ts`, `tablePopupStore.ts`; decisions tableRefSemantics/noPerCellFormulas)
+  (`computedColumnCore.ts`, `nodes/frame.ts`, `tablePopupStore.ts`; dte:C22 rowFormulaRefs/noPerCellFormulas)
 - **Side value** — a non-column value wired into a computed column's definition (a
   scalar or a row-aligned list); surfaces grow/prune side sockets from the expression's
   free names (`sideVars`). `@list` reads a side list's this-row element after a length
@@ -134,7 +134,7 @@ area. When you coin a new load-bearing term, add it here.
 
 - **Expression node** — the in-cell formula node; computes at rank ≤ 2 — scalars, lists,
   matrices, complex (matricesInFormulas lifted the old 1-D cap). Frames/cubes stay out permanently: the
-  verb engine is their surface. (`nodes/expression.ts`; see decisions.md noFramesInFormulas → matricesInFormulas)
+  verb engine is their surface. (`nodes/expression.ts`; see dte:C15 matricesInFormulas)
 - **LAMBDA** — a reusable formula value with named params, plus the 2-D LAMBDA family
   (MAP/BYROW/REDUCE…). In a computed column its PARAMS are row-bound; free names and
   @names in the body become **capture** sockets on the Lambda card. (`nodes/lambda.ts`
@@ -184,7 +184,7 @@ area. When you coin a new load-bearing term, add it here.
 - **DataflowEngine** — rete's PULL-based execution engine (inputs resolve recursively
   before `data()` runs; async ones awaited). (`rete-engine`, `process.ts`)
 - **Calc mode** — manual vs. automatic recompute; F9 forces a recompute in manual mode.
-  (`calcModeStore.ts`; see decisions.md calcModes)
+  (`calcModeStore.ts`; see dte:C23 calcModes)
 - **Compute overlay** — the deferred "Computing…" curtain that blocks interaction during a
   heavy pass. (`computeOverlayStore.ts`, `ComputeOverlay.tsx`)
 - **Render mode** — `dom` (default/fallback) vs. `html` (HTML-in-canvas). (`renderMode.ts`)
@@ -201,7 +201,7 @@ area. When you coin a new load-bearing term, add it here.
   `flow/flowView.ts` is the one implementation and `view` is its variable name
   everywhere. Positions live ON the node (`node.position`, absolute canvas coords) —
   there is no side map. **FlowSurface** is the one React component both canvases
-  render (decisions oneFlowSurface).
+  render (dte:C43 oneFlowSurface).
 
 ## The author's UI vocabulary (chrome name → code handle)
 
@@ -252,7 +252,7 @@ Geometry (offsets, z-index, reflow) is `layout-chrome.md`; this is term → hand
 - **Node blurb** (description tooltip) — the node's description as plain text, surfaced as the
   header's HTML `title`. `headerTooltip()` in `nodeKit.tsx` (from `describeNode`).
 - **Sockets** — typed dots on node edges. `NodeSocket.tsx` (`MeasuredSocketRow`);
-  `.input-socket` / `.output-socket`, locked 12×12 (rules socketBox12).
+  `.input-socket` / `.output-socket`, locked 12×12 (dte:C11 socketBox12).
 - **Cables** — `flow/FlowCableEdge.tsx` (a `<g>` in RF's shared edge svg); paths from
   `cablePaths.ts`, ribbons from `ribbonCable.ts`.
 - **Hero box** — the large result box at a node's bottom. `.solenoid-node__io-row--hero`; value

@@ -8,7 +8,7 @@ import { EXCEL_IMPL_META } from "../../src/graph/excelFunctions";
 // The two surfaces (a NODE's data() and a formula name) share one impl. A node that
 // calls `resolveExcelFunction("X")` but hands it FEWER arguments than X accepts ships a
 // capability the formula has and the node lacks — a node↔formula disparity, a defect
-// regardless of how either compares to Excel (rules.md shareImpl / decisions capabilityParity). Excel /
+// regardless of how either compares to Excel (dte:C17 shareImpl, capability parity). Excel /
 // Formula.js divergence is a judgement call; our OWN two surfaces disagreeing is not.
 //
 // SCOPE, stated honestly: this scan only catches the ONE mechanism where a node dispatches
@@ -18,7 +18,7 @@ import { EXCEL_IMPL_META } from "../../src/graph/excelFunctions";
 // Formula.js fall-through with no arity in EXCEL_IMPL_META (DB's `month`). Those are the real,
 // common shape of the defect, and they are guarded by per-function BEHAVIOURAL node↔formula
 // agreement tests instead (finance.test.ts DB, auditFixes.test.ts RANDARRAY, formulaTier1.test.ts
-// REGEX*, text.test.ts SUBSTITUTE, rangeRouting.test.ts TREND, …). shareImpl in rules.md is the
+// REGEX*, text.test.ts SUBSTITUTE, rangeRouting.test.ts TREND, …). dte:C17 shareImpl is the
 // normative rule; this file is one partial, greppable guard, not the whole enforcement.
 //
 // The scan reads the real node source and classifies every `resolveExcelFunction(…)` call site:

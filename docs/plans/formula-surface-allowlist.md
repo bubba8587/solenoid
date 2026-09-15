@@ -16,7 +16,7 @@ owns. Written by A2 2026-08-25, plan-only, no code touched. Line numbers verifie
 `excelFormula.ts` / `excelFunctions.ts` on 2026-08-25 — grep the symbol if they drift.
 
 ## Read first
-`CLAUDE.md`; `docs/rules.md` (the FX rules + `hideMatrixFromVendor`); `docs/formulajs-divergences.md`
+`CLAUDE.md`; the formula-surface rule nodes (dte:C17 shareImpl and its siblings, dte:D26 hideMatrixFromVendor); `docs/formulajs-divergences.md`
 (why each `registerInternal` override exists — read before deleting a fallthrough);
 `docs/subsystem-invariants.md` § error values.
 
@@ -93,7 +93,7 @@ block B — B later replaces A's guard with the top-level `#NAME?` gate.
    it flips this test, signalling A's guard is now dead and can go).
 3. `npx tsc --noEmit`; `npx vitest run excelFunctions broadcastRules formulaMatrix`; full
    `npx vitest run` before commit.
-4. Rule: add a one-line `FX-n` to `docs/rules.md` ("an undeclared FX name refuses array args")
+4. Rule: add a MUST node under dte:D26 hideMatrixFromVendor ("an undeclared FX name refuses array args")
    citing the test. Dev-notes digest line. This is a containment, not the allowlist — leave the
    backlog "open-by-default" item OPEN, noting A landed and B (the audit) remains.
 

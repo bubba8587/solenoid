@@ -276,7 +276,7 @@ export class CompositeNode extends ClassicPreset.Node {
 
   // Arm-and-run state for the HEAVY modes: a heavy composite holds UNSOLVED until the user
   // clicks Solve/Refresh — no solve on load, paste, create, or a switch into a heavy mode
-  // (decisions compositesHoldUntilSolve). All session-transient (never persisted), so a fresh
+  // (dte:D52 compositesHoldUntilSolve). All session-transient (never persisted), so a fresh
   // load starts unsolved by construction.
   /** Set by the Solve button; consumed by the next data() to force one solve. */
   solveRequested = false;
@@ -295,7 +295,7 @@ export class CompositeNode extends ClassicPreset.Node {
    *  advances, instead of on every pass the surrounding document happens to run. */
   runSeq = 0;
   /** The runMode `data()` last ran under; a change into a heavy mode forgets the prior
-   *  solve so the card reads unsolved (decisions compositesHoldUntilSolve). Transient. */
+   *  solve so the card reads unsolved (dte:D52 compositesHoldUntilSolve). Transient. */
   private _lastRunMode: CompositeRunMode | null = null;
   private _refIds = new WeakMap<object, number>();
   private _refSeq = 0;
@@ -868,7 +868,7 @@ export class CompositeNode extends ClassicPreset.Node {
       if (this.lastSolveKey === null) {
         // Never solved since becoming heavy (load, paste, create, mode switch): read
         // genuinely blank — not a stale light-mode pass — and stale, so the user sees it
-        // compute on the first Solve (decisions compositesHoldUntilSolve). The goal-seek
+        // compute on the first Solve (dte:D52 compositesHoldUntilSolve). The goal-seek
         // readouts read unsolved too.
         this.cachedOutputs = {};
         this.goalSeekResult = null;

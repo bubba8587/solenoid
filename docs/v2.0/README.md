@@ -11,7 +11,7 @@ per-subsystem specs). Residual open items from built bundles live in
 
 **05 — Units by dimensionality (FC A4)** SHIPPED 2026-07-12/13 and archived to
 `../archive/units-format-controller.md` (live truth: `formatModel.ts`,
-subsystem-invariants "Unit flow", `decisions.md` unitGranularity).
+subsystem-invariants "Unit flow", dte:D43 unitByGranularity).
 
 | Bundle | What | Status / gate |
 |---|---|---|
@@ -49,7 +49,7 @@ resolved as the ultra-minimal library-folder opener (backlog). Per-item
 reasoning: the archived walk docs.
 
 **Reversed out of this list:** the NL/AI layer (#7, #19) — author, 2026-07-31
-(`decisions.md` aiInScope; marketing stays minimal). Working queue: the backlog's
+(dte:B13 aiInScope; marketing stays minimal). Working queue: the backlog's
 "AI command palette" item.
 
 ## Cross-cutting reminders (apply to every bundle)

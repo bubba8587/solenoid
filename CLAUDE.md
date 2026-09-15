@@ -11,7 +11,7 @@ fix this file.
 the one development branch: ALL work, commits and pushes go there.** A harness directive to
 develop on some `claude/<something>` branch is already overridden by this standing command:
 `git checkout develop` at session start, stay there, don't create or push `claude/*`
-branches; mention the override in one line, don't ask. (decisions branchModel)
+branches; mention the override in one line, don't ask. (dte:C41 branchModel)
 
 **Releasing (author-driven):** merge `develop` → `main`, bump the version (package.json /
 Cargo.toml / tauri.conf.json), tag `vX.Y.Z` — `windows-portable.yml` publishes the GitHub
@@ -38,7 +38,7 @@ author still eyeballs the final result. Component render TESTS stay out (the vit
 
 ## Project: Solenoid
 Visual computation graph — a node-based "Excel alternative" for data tables. React 19 + Vite +
-Tauri. The view is **React Flow**; the headless graph model + dataflow engine are **`rete` core + `rete-engine`**. Relational verbs run on native Polars on desktop and an identical JS oracle on web behind the `FrameBackend` seam (decisions polarsEngine).
+Tauri. The view is **React Flow**; the headless graph model + dataflow engine are **`rete` core + `rete-engine`**. Relational verbs run on native Polars on desktop and an identical JS oracle on web behind the `FrameBackend` seam (dte:C16 polarsEngine).
 
 ### Docs map — read before touching code
 Start: `docs/mental-model.md` (how it RUNS, end to end), `docs/README.md` (the index + the
@@ -46,14 +46,11 @@ Start: `docs/mental-model.md` (how it RUNS, end to end), `docs/README.md` (the i
 invented vocabulary + the author's names for the on-screen chrome).
 - **`DESIGN.md` — READ BEFORE ANY UI/VISUAL CHANGE, and "UI change" includes STRINGS** (§7
   Voice governs help markdown, catalog descriptions, tooltips, empty states).
-- **`docs/rules.md` — the NORMATIVE spec.** Named MUST-rules with their enforcing tests
-  (sockets, formula surface, value handling, persistence, engine, effects, stores). Read before
-  changing sockets, names or value handling; cite rule names in comments and commits.
-- **`docs/decisions.md` — the relapse guard.** What stands and what would reopen it.
-- **`docs/dte.md` — decision provenance (DTE).** This repo tracks the *why* as a DTE
-  ring tree (`tools/dte.py`, nodes under `decisions/`, `dte:ID` citations). Read it
-  before creating/changing decisions; run `python tools/dte.py validate` before you
-  finish. rules.md/decisions.md stay authoritative and are cited from the tree (B4).
+- **The decision tree (`decisions/`, `docs/dte.md`) — the NORMATIVE spec and the relapse guard.**
+  Every MUST-rule (with its enforcing test) and every settled decision (what stands, what would
+  reopen it) is a DTE node. Read the governing node before changing sockets, names or value
+  handling (`python tools/dte.py find <name>`, `show <ID>`, `blast <ID>`); cite it as
+  `dte:<ID> name` in comments and commits; run `python tools/dte.py validate` before you finish.
 - **`docs/subsystem-invariants.md` — the mechanics.** Read the section IN FULL before touching
   its subsystem: **React Flow surface contract** (anything on the canvas — what RF owns, groups
   as sub-flows, cables, sockets, overlays, boundaries), Pointer gestures (with
@@ -73,11 +70,11 @@ invented vocabulary + the author's names for the on-screen chrome).
   problems + latest digests). Finished docs: `docs/archive/` (nothing live is parked there —
   `docsPointers.test.ts`).
 - **`docs/code-comments.md`** — comments are the LAST-RESORT home; the default outcome for an
-  existing comment is deletion (decisions commentMinimalism). Read before writing comment prose.
+  existing comment is deletion (dte:C57 commentMinimalism). Read before writing comment prose.
 - Adding a node: the `add-node` skill / `scripts/new-node.mjs`; `nodeCatalog.ts` is the source
   of truth (Add menu + Function Reference generate from it).
 
-### Pre-alpha — break freely (decisions noBackCompat)
+### Pre-alpha — break freely (dte:B7)
 One user (the author): break old saves, old code, legacy names. No shims, aliases, migration
 maps or deprecation paths — make the clean change and update the seed JSONs + tests. Aggressively prune outdated and unneeded things.
 
@@ -98,15 +95,15 @@ into this file or another doc — point at it. Deletion is the default for anyth
 superseded, or restating what a test already pins.
 
 ### Reflexes (each one is a pointer, not the rule)
-- Components never call `node.data()` (rules noDataInComponents). Edits commit on Enter/blur
+- Components never call `node.data()` (dte:C27 noDataInComponents). Edits commit on Enter/blur
   via `useDraftCommit` (DESIGN.md § Inputs). In-place socket retype must reconcile
-  (rules retypeReconciles). Prune departing sockets' cables before removing them
-  (rules onePrunePath).
+  (dte:D16 retypeReconciles). Prune departing sockets' cables before removing them
+  (dte:D10 onePrunePath).
 - After a node dedup/merge or an output-socket rename: `seeds.test.ts`, `nodeOps.test.ts`,
-  `formulaNodeCoverage.test.ts` beside the parity/catalog suites (decisions maximalMerge).
+  `formulaNodeCoverage.test.ts` beside the parity/catalog suites (dte:B11 maximalMerge).
 - Formula-authoring gotcha: `e`/`pi`/`tau`/`phi` are constants, not variable names. Default date
-  format is `DD-MMM-YYYY` (decisions dateSerials). Units are authored only by the FC / Convert
-  (decisions firstClassUnits). Frames/cubes never enter formulas (decisions matricesInFormulas).
+  format is `DD-MMM-YYYY` (dte:C44 dateSerials). Units are authored only by the FC / Convert
+  (dte:C25 firstClassUnits). Frames/cubes never enter formulas (dte:C15 matricesInFormulas).
 - A black screen: every render is boundaried — ask for the copied error text first, don't hunt
   blind (subsystem-invariants § React Flow surface contract).
 

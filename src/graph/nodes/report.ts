@@ -125,7 +125,7 @@ export class ReportNode extends ClassicPreset.Node {
   }
 
   /** data()-driven reconcile (a wired template's variables changed): the sockets
-   *  follow via a microtask, departing cables pruned first (rules onePrunePath). */
+   *  follow via a microtask, departing cables pruned first (dte:D10 onePrunePath). */
   private reconcileInputs(desired: string[]): void {
     const added = desired.filter((k) => !this.inputs[k]);
     const removed = Object.keys(this.inputs).filter((k) => !FIXED.has(k) && !desired.includes(k));

@@ -252,7 +252,7 @@ Rapid author-driven pass; all on `develop`, nothing pushed.
   moved with it (`catalogUtils` placement fallback, `packShared`, function-reference / AI-grounding
   top-group). **Distributions** folded under **Numbers**; **Expression | Equation** paired; the
   **Format** node is now **Format Controller**.
-- **NAME-3 — the hover type-hint shows the family name** (rules.md). The card's right-side, hover-revealed
+- **NAME-3 — the hover type-hint shows the family name** (dte:D22 NAME-3). The card's right-side, hover-revealed
   type-hint (`.solenoid-node__type-hint`) now shows the op-agnostic FAMILY name (`nodeTypeName` — "Series",
   "Math FX"), so it stops being a third copy of the op the header and dropdown already show. ONLY the
   type-hint changed; the card title, Inspector, Navigator, popups, cable-source label stay op-specific
@@ -268,12 +268,12 @@ The author walked the "review with the author" backlog items one per turn; the L
 (solenoid-0f) proposed, the author ruled, and every ruling that produced work went to Agent 2
 (`be`) or Agent 3 (`fe`) and merged into `develop` when green. Nothing pushed. Rulings, in order:
 
-- **compositesHoldUntilSolve** (Agent 2; `decisions.md`). A composite in any Solve-button mode
+- **compositesHoldUntilSolve** (Agent 2; the decision log). A composite in any Solve-button mode
   starts UNSOLVED on load, paste, create and a switch into a heavy mode; blank ports, stale dot on,
   driver readouts null, until Solve/Refresh. Plain single-pass composites stay live. Author: "people's
   intuition expects the value to already be blank/unsolved so they can see it work when they hit
   Solve." Pinned in `composite.test.ts`.
-- **formatCarryPerOp** (Agent 3; `decisions.md`, rules formatFlowsDownstream rewritten). The Lead's
+- **formatCarryPerOp** (Agent 3; the decision log, dte:D41 formatFlowsDownstream rewritten). The Lead's
   first proposal (exempt percent from ×/÷/^) was refuted by a 45-row fuzz: NPV of a 5% rate showed
   `123,456.00%`, COUNT inherited its list's style, integer `7 ÷ 2` showed `4`, `date − date` showed a
   1900 date, and the op class was never the axis. Ruling: a style survives only an op the node

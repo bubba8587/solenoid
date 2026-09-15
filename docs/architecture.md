@@ -4,8 +4,8 @@ Living document, kept at **module granularity** (one line per concern, not one
 line per node file — there are ~300 of those and the registry is the real
 index). Update when a new module or concern lands, in the same commit.
 
-Mechanics and gotchas live in `docs/subsystem-invariants.md`; rulings in
-`docs/decisions.md` and `docs/rules.md`; the running log in `docs/dev-notes.md`.
+Mechanics and gotchas live in `docs/subsystem-invariants.md`; rules and rulings in the
+decision tree (`decisions/`, see `docs/dte.md`); the running log in `docs/dev-notes.md`.
 This file is the map.
 
 ---
@@ -55,7 +55,7 @@ This file is the map.
 - **Model/compute spine**: rete core (`rete` — NodeEditor + ClassicPreset, headless)
   + `rete-engine` (DataflowEngine, pull-based recompute). No rete render/area
   plugins exist; `elkjs` is called directly for Tidy. The core stays on purpose
-  (decisions reactFlowView — author-ratified 2026-08-27).
+  (dte:B10 reactFlowView — author-ratified 2026-08-27).
 - **UI**: React + Vite, desktop shell via Tauri. Math helpers: formulajs,
   KaTeX (formula popup), marked (help panel).
 - Cross-surface state stays in module-level singleton stores (`storeKit.ts`
@@ -82,7 +82,7 @@ src/
 | Module | Role |
 |---|---|
 | `process.ts` | The app's recompute ONLY: the MAIN `_editor/_engine/_area` refs, the graph-rebuild guard, `processGraph()` (the `graphCompute` pass + targeted re-render, cable values, perf, the compute overlay, calc mode), recalc generation (volatile nodes), `bulkSettle`. **STAYS MAIN-ONLY** (persistence/serialize read it) |
-| `graphCompute.ts` | THE model-level pass, one definition for every caller (rules targetedEqualsFull): `loopMembers` (Tarjan SCC), `downstreamClosure`, `invalidate` (cone or full), `seedLoopErrors` (`#CIRC!` cache + value-box seeding), `fetchAll`, `computeAll`. Used by `processGraph`, the composite's internal engine, `scripts/run-graph.ts` and the seed tests |
+| `graphCompute.ts` | THE model-level pass, one definition for every caller (dte:D30 targetedEqualsFull): `loopMembers` (Tarjan SCC), `downstreamClosure`, `invalidate` (cone or full), `seedLoopErrors` (`#CIRC!` cache + value-box seeding), `fetchAll`, `computeAll`. Used by `processGraph`, the composite's internal engine, `scripts/run-graph.ts` and the seed tests |
 | `canvasCommands.ts` | The chrome → surface command slots (select/unselect, Tidy/Cleanup, delete, dock reposition, clear history) the mounted FlowSurface registers and the drill-in swaps (`swapSelectionSlots`/`swapArrangeSlots`) |
 | `seedStore.ts`, `graphSignals.ts`, `ctorProvider.ts` | Seed selection (`custom` once edited) + the load slot; the tiny version/flag stores cards subscribe to (connection version, cable-drag, conduit angle); the ctor-registry provider copyPaste reads (a cycle-breaker) |
 | `activeGraph.ts` (+`.test.ts`) | The canvas-substitution SEAM: `setActiveGraph(ctx\|null)` registers a substituting surface (composite drill-in), `getActive*`/`getOwningEditor` resolve override-else-main. Chrome/actions read these so a drill-in is first-class; `getEditor()`/persistence stay MAIN (locked by the test). Register on mount / clear on unmount; nested surfaces REPLACE (breadcrumb stack lives in compositeEditorStore). Also an OWNERSHIP-only registry (`registerOwnedGraph`, distinct from the action-target override) so locked landing scene canvases resolve their OWN nodes for render-time cross-node resolvers (output-socket type → date/unit rendering); scenes are never the action target |
@@ -181,7 +181,7 @@ src/
 | `presentationStore.ts` + `components/PresentationOverlay.tsx` | Presenter mode: full-screen slideshow, hides chrome (`html.solenoid-presenting`), flies the camera per step (click/Space/→/←/Esc) |
 | `cxValue.ts` | Tagged complex values (tagSpecialScalars), rete-free (implReteFree) — kernels shared with the IM* formulas |
 | `lambdaValue.ts` | Lambda values, rete-free (implReteFree) so the formula path runs editor-less |
-| `scriptWorker.ts` + `scriptExecutor.ts` | The Script node's sandbox (decisions scriptNode): a module Worker whose only import is the app-free evaluator `nodes/scriptRun.ts`, and its main-thread client with the wall clock |
+| `scriptWorker.ts` + `scriptExecutor.ts` | The Script node's sandbox (dte:C66 scriptNode): a module Worker whose only import is the app-free evaluator `nodes/scriptRun.ts`, and its main-thread client with the wall clock |
 | `documentValue.ts` / `imageValue.ts` / `svgValue.ts` | The other first-class content values: a Note/Report's renderable content on a cable, images (a chart-socket sibling), inline SVG markup (never a URL — the picker hovers inner elements) |
 | `valueKindLabel.ts` | value → display-kind label, one classifier for chips and popups |
 | `stringOrder.ts` | The ONE string comparator (sorts and dedups share it) |
@@ -398,7 +398,7 @@ Framework + activation live with the catalog cluster (`packs.ts` /
 ### Packages (`packages/`)
 
 Three separately publishable MIT packages the app consumes by alias, extracted only on a
-second consumer (decisions ganttPackages): `schedule-engine` (calendar in unit index space,
+second consumer (dte:C69 ganttPackages): `schedule-engine` (calendar in unit index space,
 WBS graph, the CPM passes, diagnostics, Mermaid, the predecessor grammar, MSPDI read),
 `gantt-layout` (payload → render frame at a width; the headless SVG serializer),
 `gantt-react` (the read-only figure). Tests live beside the source (`packages/**/*.test.ts`);
@@ -457,7 +457,7 @@ rationale, point-in-time research, the dev-notes history) is indexed in
 | `mental-model.md` | living | how the system runs, end to end — the onboarding story |
 | `architecture.md` | living | (this file) module map |
 | `glossary.md` | living | the invented vocabulary |
-| `decisions.md` | living | the decision log — what stands / where / what would reopen it |
+| `dte.md` | living | the decision tree how-to — every rule (MUST + enforcing test) and settled decision is a node under `decisions/` |
 | `subsystem-invariants.md` | living | the "don't break this" deep-dives — cable routing, group push, standoffs, tidy, error values, unit flow, addressable model, autosave, drill-in |
 | `layout-chrome.md` | living | on-screen chrome map — bar/overlay geometry, offset sync map, z-index ladder; read before adding/moving chrome |
 | `touch-gestures.md` | living | the pointer/touch gesture inventory per device config |
@@ -470,7 +470,6 @@ rationale, point-in-time research, the dev-notes history) is indexed in
 | `release-notes-features.md` | living | curated feature list — release-notes source + What's-New slide content |
 | `format-model.md` | living | the FC function model — control truth table + precision rule (mirrored in `formatModel.ts`) |
 | `value-semantics.md` | living | null/NaN/Infinity/SolError semantics per computation context |
-| `rules.md` | living | the NORMATIVE architecture spec — numbered MUST-rules with their enforcing tests |
 | `socket-reference.md` | living | every socket variant in plain English (connection lists machine-checked by `socketReference.test.ts`) |
 | `v2.0/` | living plans | the open build bundles — 08 transpiler, 10 sensitivity, 12 uncertain/money, 16 widgets |
 | `node-coverage.md` | living | node inventory by category (`nodeCatalog.ts` is the real source) |

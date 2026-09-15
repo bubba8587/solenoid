@@ -1024,7 +1024,7 @@ export class FilterNode extends ClassicPreset.Node {
       return { result: this.cachedResult, dropped: null };
     }
     // Same rule as the frame Filter: a text predicate on a non-text list is #TYPE!
-    // (rules textPredicateNeedsText); the error guards surface the throw.
+    // (dte:D49 textPredicateNeedsText); the error guards surface the throw.
     for (const c of conds) requireTextList(c.op, type);
     const kept: unknown[] = [];
     const dropped: unknown[] = [];
