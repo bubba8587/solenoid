@@ -26,8 +26,18 @@ All on `develop`; local dev server, pushes held.
   rhythm tightens, CTAs go full-width, the plan table wraps + the YAML sample scrolls, `overflow-x`
   guarded, touch (`hover: none`) gets the gallery Open hint. `index.html` gained a description +
   OG/Twitter tags (static, SPA has no per-route prerender).
-- **Open:** new-page copy is placeholder in the author's voice, marked `NEW COPY` — awaits an author
-  pass. `MonteCarloScene` orphaned when the author cut the landing What-if section (prune or re-add).
+- **Packs page + site infra.** `/packs` shows the domain packs (grouped as in Settings, descriptions
+  from the pack defs, on-by-default marked), added to nav + footer. `public/` gained `robots.txt`,
+  `sitemap.xml` and `og-hero.png`; `index.html` gained `og:image` + `summary_large_image`.
+- **In-app link to the site.** Help ▸ Solenoid website (also a palette command) opens the hosted
+  `/?landing` on desktop, the current origin's landing on web.
+- **Principle (author, this session):** the web app loads instantly, so the marketing site must not
+  duplicate app/GitHub content. Killed proposed Functions and changelog pages on that basis; a
+  changelog page is parked for later only if it earns its own surface.
+- **Open:** new-page copy (`/download`, `/examples`, `/packs`) is placeholder in the author's voice,
+  marked `NEW COPY` — awaits an author pass. `MonteCarloScene` orphaned when the author cut the
+  landing What-if section (prune or re-add). Reference-overlay gaps (Tables & Data tab, Units &
+  Formats tab, Help sections) proposed, not built.
 
 ### SESSION DIGEST (2026-09-14c — Knap 0.4.2 → 0.6.0)
 

@@ -411,10 +411,12 @@ footer, theme toggle and `Feature` row (the nav lists Obsidian/Examples/Download
 the active route, and the wordmark covers Home). Pages: `LandingPage.tsx` (overview, the
 one live rete hero) + `ObsidianPage.tsx` (integration) + `DownloadPage.tsx` +
 `ExamplesPage.tsx` (a gallery of the seed library; each tile deep-links `/?seed=<id>`,
-which `flow/FlowCanvas.tsx` boot opens as a new document). Scenes live in
-`LandingScenes.tsx` (+ `LandingGraph.tsx`, `SceneStage.tsx`); styles in `LandingPage.css`
-+ `ObsidianPage.css` + `SitePages.css`. `App.tsx` routes each page by pathname (`/obsidian`,
-`/download`, `/examples`) or `?landing`, off the Vercel catch-all rewrite. `siteChrome.ts`
+which `flow/FlowCanvas.tsx` boot opens as a new document) + `PacksPage.tsx` (the domain
+packs, mirroring `packs.ts` metadata). Scenes live in `LandingScenes.tsx` (+
+`LandingGraph.tsx`, `SceneStage.tsx`); styles in `LandingPage.css` + `ObsidianPage.css` +
+`SitePages.css`. `App.tsx` routes each page by pathname (`/obsidian`, `/download`,
+`/examples`, `/packs`) or `?landing`, off the Vercel catch-all rewrite. `public/` carries
+`robots.txt`, `sitemap.xml` and `og-hero.png` (the link-preview image `index.html` points at). `siteChrome.ts`
 lets a page suppress app-only overlay chrome (the Report's Export/Dock). The dev node
 gallery is `showcase/NodeShowcase.tsx`.
 

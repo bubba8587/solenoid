@@ -107,13 +107,16 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
 
 The site is four pages sharing `landing/siteNav.tsx` chrome (see architecture.md). Open items:
 
-- [ ] **Copy pass on `/download` + `/examples`.** New-page prose is placeholder in the author's
-  voice, marked `NEW COPY` in `DownloadPage.tsx` / `ExamplesPage.tsx`. Author to rewrite.
+- [ ] **Copy pass on `/download` + `/examples` + `/packs`.** New-page prose is placeholder in the
+  author's voice, marked `NEW COPY` in those page files. Author to rewrite.
 - [ ] **`MonteCarloScene` orphaned.** The author cut the landing What-if section; the scene is
   defined in `LandingScenes.tsx`, used nowhere. Prune it (and dead helpers), or re-add the section.
-- [ ] **Link previews are one static default.** `index.html` carries a description + OG/Twitter
-  tags for every route; no per-route text and no `og:image` (SPA, no prerender). Add an image and,
-  if wanted, per-route meta via a small prerender step.
+- [ ] **Public changelog page (parked, author wants it later).** Would live at `/changelog` off
+  `docs/release-notes-features.md` + the What's New slides. Deferred so it does not just mirror
+  GitHub Releases; revisit when there is a reason it earns its own surface.
+- [ ] **Per-route meta description.** `index.html` now has a description, OG/Twitter tags and an
+  `og:image` (hero), plus `sitemap.xml` + `robots.txt`. Still one static default for every route;
+  per-route text needs a small prerender step.
 - [ ] **Finish the landing/Obsidian scene rebuild.** Feature scenes are now real canvases: the
   Obsidian hero is a live interactive `LiveGraph` (report pipeline, `ReportOverlay` mounted), the
   "vault as a table" and "Excel over CSV" scenes read the demo vault (`VaultTableScene`,
