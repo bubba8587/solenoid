@@ -10,7 +10,8 @@ import { NumberInputNode } from "../nodes/input";
 import { FormatControllerNode } from "../nodes/formatController";
 import { ArithmeticNode } from "../nodes/scalar";
 import { EquationNode } from "../nodes/equation";
-import { FrameInputNode, JoinNode, GroupByFrameNode, FilterFrameNode, SortFrameNode, HeadNode } from "../nodes/frame";
+import { FrameInputNode, JoinNode, GroupByFrameNode, FilterFrameNode, SortFrameNode } from "../nodes/frame";
+import { collapseStore } from "../collapseStore";
 import { PointPlotterNode, CurveNode, DateInputNode } from "../nodes/control";
 import { ListInputNode } from "../nodes/list";
 import { DisplayNode } from "../nodes/display";
@@ -433,26 +434,24 @@ export function VaultTableScene() {
         filter.stringLiterals.value0 = "book";
         const sort = new SortFrameNode({ label: "by rating", dir: "desc" });
         sort.stringLiterals.column = "rating";
-        // Cap the preview so the whole vault does not stretch the Display into a tall
-        // card that forces the scene to zoom out to fit.
-        const top = new HeadNode({ label: "top 6", op: "first" });
-        top.literals.rows = 6;
         const disp = new DisplayNode({ label: "Book notes" });
-        await addNodes(s, [notes, filter, sort, top, disp]);
+        await addNodes(s, [notes, filter, sort, disp]);
         await wire(s, notes, "cube", filter, "frame");
         await wire(s, filter, "frame", sort, "frame");
-        await wire(s, sort, "frame", top, "frame");
-        await wire(s, top, "frame", disp, "in");
+        await wire(s, sort, "frame", disp, "in");
+        // Compact 3x3 preview, not the full table: a full frame grows the card to fit
+        // every row and column and blows the scene's zoom out.
+        collapseStore.set(disp.id, true);
       }}
     />
   );
 }
 
 // ─── Scene: TaskNotes (the real connection node on a live canvas) ────────────────
-// The real TaskNotes node in its "tasks" mode, feeding a Display. On the web (no local
-// TaskNotes HTTP API) the connection reads "Not connected" and the table is empty; the
-// point of the scene is the real node, its op selector and its typed Tasks cube output
-// on a proper canvas, not live data.
+// The real TaskNotes node in its "tasks" mode, feeding a Display. The /obsidian page
+// fakes the TaskNotes HTTP API behind the demo flag (demoTaskNotes.ts), so this shows a
+// real Tasks cube on the web with no server. The Display is collapsed to its compact
+// preview — the full cube is very wide and would zoom the scene out.
 export function TaskNotesScene() {
   return (
     <SceneStage
@@ -460,14 +459,10 @@ export function TaskNotesScene() {
       awaitConnections
       build={async (s) => {
         const tasks = new TaskNotesNode({ label: "TaskNotes" });
-        // Cap the preview so the Tasks cube does not stretch the Display into a tall card
-        // that forces the scene to zoom out.
-        const top = new HeadNode({ label: "top 4", op: "first" });
-        top.literals.rows = 4;
         const disp = new DisplayNode({ label: "Tasks" });
-        await addNodes(s, [tasks, top, disp]);
-        await wire(s, tasks, "tasks", top, "frame");
-        await wire(s, top, "frame", disp, "in");
+        await addNodes(s, [tasks, disp]);
+        await wire(s, tasks, "tasks", disp, "in");
+        collapseStore.set(disp.id, true);
       }}
     />
   );
