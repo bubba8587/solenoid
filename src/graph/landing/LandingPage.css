@@ -31,6 +31,14 @@
   --accent-ink: #1a1a1a;
 }
 
+/* Light theme: the marketing page reads nearly white, brighter than the app's cooler
+   canvas gray. Scoped to the landing subtree (redefining --app-bg reaches both the
+   wrapper and the sticky header, which both paint it); cards stay lifted by their
+   borders and the slightly brighter --surface. The scene canvases keep --canvas-bg. */
+:root[data-theme="light"] .sol-landing {
+  --app-bg: #fdfdfe;
+}
+
 .sol-landing__inner {
   max-width: 960px;
   margin: 0 auto;

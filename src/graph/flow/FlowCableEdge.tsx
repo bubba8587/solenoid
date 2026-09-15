@@ -505,28 +505,45 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
   // The 0.72 idle value is mirrored by the gesture canvas — change together.
   const cableOpacity = ghost ? 0.65 : activeHover || selected ? 0.9 : 0.72;
 
-  // Entrance draw-on (marketing stages only): dash the whole path, then reel the
-  // offset to zero so the stroke grows from the source socket to the target. Skipped
-  // for ghosts (already dashed) and under reduced motion.
+  // Entrance draw-on (marketing stages only): reel the dash offset to zero so the stroke
+  // grows from the source socket to the target. `pathLength={1}` normalizes the dash math
+  // to the path's OWN length, so it stays exact even while RF is still settling the
+  // handle positions (a fixed pixel length would stop short or overshoot). Skipped for
+  // ghosts (already dashed) and under reduced motion; the path is otherwise identical to
+  // the BaseEdge stroke it replaces.
   const drawOn = revealStage && !ghost && !PREFERS_REDUCED_MOTION;
-  const drawLen = drawOn ? pathLength(pathD, cs, ce) : 0;
-  const drawStyle = drawOn
-    ? { strokeDasharray: drawLen, strokeDashoffset: drawLen, animation: CABLE_DRAW }
-    : { strokeDasharray: ghost ? "6 5" : undefined };
 
   return (
     <g style={dimStyle}>
-      <BaseEdge
-        path={pathD}
-        interactionWidth={0}
-        style={{
-          stroke,
-          strokeWidth: baseWidth,
-          ...drawStyle,
-          opacity: cableOpacity,
-          pointerEvents: "none",
-        }}
-      />
+      {drawOn ? (
+        <path
+          className="react-flow__edge-path"
+          d={pathD}
+          fill="none"
+          pathLength={1}
+          style={{
+            stroke,
+            strokeWidth: baseWidth,
+            strokeDasharray: 1,
+            strokeDashoffset: 1,
+            animation: CABLE_DRAW,
+            opacity: cableOpacity,
+            pointerEvents: "none",
+          }}
+        />
+      ) : (
+        <BaseEdge
+          path={pathD}
+          interactionWidth={0}
+          style={{
+            stroke,
+            strokeWidth: baseWidth,
+            strokeDasharray: ghost ? "6 5" : undefined,
+            opacity: cableOpacity,
+            pointerEvents: "none",
+          }}
+        />
+      )}
       {flow && !ghost && (
         <path
           className="solenoid-cable-flow"
