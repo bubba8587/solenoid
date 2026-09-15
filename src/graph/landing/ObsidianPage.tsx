@@ -4,6 +4,7 @@ import { Reveal, useRevealAnim, NoteImportScene, VaultTableScene, TaskNotesScene
 import { LiveGraph } from "./LandingGraph";
 import { ReportOverlay } from "../components/ReportOverlay";
 import { GITHUB_URL, SiteHeader, SiteFooter, Feature } from "./siteNav";
+import { SceneThread } from "./SceneThread";
 import { forceDemoVault } from "../demoVault";
 import { forceDemoTaskNotes } from "../demoTaskNotes";
 import { siteChrome } from "../siteChrome";
@@ -89,6 +90,7 @@ export default function ObsidianPage() {
   return (
     <div className={`sol-landing${anim ? " sol-landing--anim" : ""}`}>
       <div className="sol-landing__inner">
+        <SceneThread />
         <SiteHeader current="/obsidian" />
 
         <main>

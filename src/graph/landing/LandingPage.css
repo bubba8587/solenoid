@@ -43,6 +43,27 @@
   max-width: 960px;
   margin: 0 auto;
   padding: 0 24px;
+  /* Anchor the decorative scene thread (absolute, full scroll height). */
+  position: relative;
+}
+
+/* The scene thread: soft, socketless bezier cables joining each live canvas viewport to
+   the next. Behind the content (opaque scene cards hide it under themselves; it shows in
+   the gaps between them). Transparent gray, so it reads as a quiet connective line. */
+.sol-scene-thread {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.sol-scene-thread path {
+  fill: none;
+  stroke: color-mix(in srgb, var(--text-muted) 30%, transparent);
+  stroke-width: 2;
+  stroke-linecap: round;
 }
 
 /* Inline links in running copy (e.g. the Obsidian hero's TaskNotes / Knap links).

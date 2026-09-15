@@ -3,6 +3,7 @@ import { LandingGraph } from "./LandingGraph";
 import { SocketLegendRows } from "../components/SocketLegend";
 import { TablePopup } from "../components/TablePopup";
 import { GITHUB_URL, HOME_HREF, SiteHeader, SiteFooter, Feature } from "./siteNav";
+import { SceneThread } from "./SceneThread";
 import {
   Reveal,
   useRevealAnim,
@@ -27,6 +28,7 @@ export default function LandingPage() {
   return (
     <div className={`sol-landing${anim ? " sol-landing--anim" : ""}`}>
       <div className="sol-landing__inner">
+        <SceneThread />
         <SiteHeader current={HOME_HREF} />
 
         <main>
