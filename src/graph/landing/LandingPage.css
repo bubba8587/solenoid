@@ -29,7 +29,7 @@
 }
 
 .sol-landing__inner {
-  max-width: 1060px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 0 24px;
 }
@@ -346,7 +346,7 @@
 
 .sol-landing__deep-copy p {
   margin: 10px 0 0;
-  font-size: 13px;
+  font-size: 14.5px;
   line-height: 1.62;
   color: var(--text-dim);
   text-wrap-style: pretty;

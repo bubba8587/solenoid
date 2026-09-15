@@ -1,7 +1,7 @@
 // dte:C2
 import { useSyncExternalStore } from "react";
 import { LandingGraph } from "./LandingGraph";
-import { SocketLegendRows, DimensionalityFlow } from "../components/SocketLegend";
+import { SocketLegendRows } from "../components/SocketLegend";
 import { TablePopup } from "../components/TablePopup";
 import { appThemeStore } from "../appTheme";
 import wordmark from "../../logo/solenoidwordmark.svg";
@@ -14,7 +14,6 @@ import {
   EquationScene,
   VerbsScene,
   DrawScene,
-  MonteCarloScene,
   ObsidianScene,
   PresenterScene,
   FnWall,
@@ -145,9 +144,6 @@ export default function LandingPage() {
             <Reveal delay={100}>
               <CableBoardScene />
             </Reveal>
-            <Reveal delay={140} className="sol-landing__dimflow">
-              <DimensionalityFlow />
-            </Reveal>
           </section>
 
           <Feature title="Units" scene={<UnitsScene />}>
@@ -170,34 +166,26 @@ export default function LandingPage() {
 
           <Feature title="Relational verbs" scene={<VerbsScene />}>
             <p>
-              Filter, Sort, Join, Group By, Append, Distinct, Pivot, Unpivot: the full
-              relational verb set. The desktop build runs on Rust and Polars, so it
-              handles million-row operations with ease.
+              Filter, Sort, Join, Group By, Append, Distinct, Pivot, Unpivot. 
+               The desktop build runs data table functions via Rust + Polars,
+              handling million-row operations with ease.
             </p>
           </Feature>
 
           <Feature title="Draw your data" flip scene={<DrawScene />}>
             <p>
-              Draw your inputs by hand: plot points, sketch a curve, or paint a grid.
-              Then run the math on them.
+              Solenoid includes a variety of interactive, visual widget nodes for data input. 
             </p>
           </Feature>
 
-          <Feature title="What-if analysis" scene={<MonteCarloScene />}>
-            <p>
-              Give a model&apos;s inputs a ± spread and its outputs come back as
-              distributions, with a mean, a spread and a histogram.
-            </p>
-          </Feature>
-
-          <Feature title="YAML Frontmatter Inputs" flip scene={<ObsidianScene />}>
+          <Feature title="YAML Frontmatter Inputs" scene={<ObsidianScene />}>
             <p>
               Author or import Markdown documents with frontmatter properties to use them
               as real inputs in your graph.
             </p>
           </Feature>
 
-          <Feature title="Live documents and slideshows" scene={<PresenterScene />}>
+          <Feature title="Live documents and slideshows" flip scene={<PresenterScene />}>
             <p>
               Write a live document that pulls values from the graph: a number, a table,
               a chart or a typeset equation, each updating as the data changes.
@@ -212,7 +200,7 @@ export default function LandingPage() {
             <Reveal>
               <h2>Excel parity</h2>
               <p className="sol-landing__lede">
-                Functions keep their Excel names and their Excel answers.
+                Solenoid functions use Excel names, syntax, and math.  
               </p>
             </Reveal>
             <Reveal delay={100}>
