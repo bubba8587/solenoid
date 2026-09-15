@@ -435,22 +435,15 @@ export function MultiSeriesView({
   const title = opts?.title;
   const titleH = title ? titleHeight(fs) : 0;
   const chartH = height - titleH; // the <Legend height> reserves its own strip within this
-  // The bottom margin is the gap between the x-axis band (with its xlabel) and the bottom
-  // legend strip. It is a static prop (not re-measured on click), so it adds the gap without
-  // the resize the legend height caused. No dead space now that the legend height is matched.
-  const margin = { top: axes ? PLOT_TOP : 6, right: 8, bottom: axes ? (xLabel ? 18 : 4) : 2, left: 0 };
+  const margin = { top: axes ? PLOT_TOP : 6, right: 8, bottom: axes ? 4 : 2, left: 0 };
   const catInterval = n <= ALL_TICKS_UPTO ? 0 : undefined;
-  // Center the legend on the PLOT area (pad to the axis gutters) so it sits under the
-  // centered xlabel. ONLY horizontal padding, and the reserved height stays LEGEND_H: any
-  // vertical padding or extra reserved height makes recharts' measured legend height differ
-  // from the reservation, and it re-reserves on the click re-render — the chart jumps.
+  // The legend sits at the TOP of the plot (below the title), so it can never collide with
+  // the x-axis label at the bottom. Reserved height is exactly LEGEND_H (measured == reserved)
+  // so a legend click never re-reserves and the chart holds still.
   const legend = (
     <Legend
-      verticalAlign="bottom" height={LEGEND_H} iconSize={8}
-      wrapperStyle={{
-        fontSize: 9 * fs, color: axis, cursor: "pointer",
-        ...(axes ? { paddingLeft: yAxisW, paddingRight: 8, boxSizing: "border-box" as const } : {}),
-      }}
+      verticalAlign="top" height={LEGEND_H} iconSize={8}
+      wrapperStyle={{ fontSize: 9 * fs, color: axis, cursor: "pointer" }}
       onClick={(e) => { const j = series.findIndex((s) => s.name === e.value); if (j >= 0) setFocus((f) => (f === j ? null : j)); }}
       formatter={(value, _entry, idx) => <span style={{ opacity: dim(idx) }}>{value}</span>}
     />
