@@ -435,12 +435,21 @@ export function MultiSeriesView({
   const title = opts?.title;
   const titleH = title ? titleHeight(fs) : 0;
   const chartH = height - titleH; // the <Legend height> reserves its own strip within this
-  const margin = { top: axes ? PLOT_TOP : 6, right: 8, bottom: axes ? (xLabel ? 18 : 4) : 2, left: 0 };
+  // The XAxis height already reserves the xlabel; the legend reserves its own strip. So no
+  // extra bottom margin (that was the dead space below the legend).
+  const margin = { top: axes ? PLOT_TOP : 6, right: 8, bottom: axes ? 4 : 2, left: 0 };
   const catInterval = n <= ALL_TICKS_UPTO ? 0 : undefined;
+  // With an x-axis label the legend drops below it (paddingTop) and centers on the PLOT
+  // area (padding to the axis gutters), so it lines up under the centered xlabel.
+  const legendH = LEGEND_H + (xLabel ? 10 : 0);
   const legend = (
     <Legend
-      verticalAlign="bottom" height={LEGEND_H} iconSize={8}
-      wrapperStyle={{ fontSize: 9 * fs, color: axis, cursor: "pointer" }}
+      verticalAlign="bottom" height={legendH} iconSize={8}
+      wrapperStyle={{
+        fontSize: 9 * fs, color: axis, cursor: "pointer",
+        paddingTop: xLabel ? 10 : 0,
+        ...(axes ? { paddingLeft: yAxisW, paddingRight: 8, boxSizing: "border-box" as const } : {}),
+      }}
       onClick={(e) => { const j = series.findIndex((s) => s.name === e.value); if (j >= 0) setFocus((f) => (f === j ? null : j)); }}
       formatter={(value, _entry, idx) => <span style={{ opacity: dim(idx) }}>{value}</span>}
     />
