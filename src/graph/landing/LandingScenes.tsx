@@ -2,7 +2,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { SocketDot, type SocketGlyph } from "../components/SocketLegend";
-import { SOCKET_COLORS } from "../sockets";
 import { NODE_KIND_ACCENTS, type NodeKind } from "../nodes/shared";
 import { ClassicPreset } from "rete";
 import type { SolenoidNode, SolenoidConnection } from "../schemes";
@@ -209,19 +208,6 @@ export function MNode({
   );
 }
 
-const Row = ({ label, value, solved }: { label: string; value: ReactNode; solved?: boolean }) => (
-  <div className={`sol-mnode__row${solved ? " sol-mnode__row--solved" : ""}`}>
-    <span className="sol-mnode__label">{label}</span>
-    <span className="sol-mnode__val">{value}</span>
-  </div>
-);
-
-const Hero = ({ children }: { children: ReactNode }) => (
-  <div className="sol-mnode__hero">{children}</div>
-);
-
-const C = SOCKET_COLORS;
-
 // ─── Scene: the typed cable board (real nodes, computed once) ────────────────────
 // A source of each value TYPE wired into a Display, so the cables show their real
 // per-type colors: a number, a text list, a date, a frame. Manual layout: half the
@@ -358,51 +344,6 @@ export function DrawScene() {
         await s.view.moveNode(curve.id, { x: 300, y: 20 });
       }}
     />
-  );
-}
-
-// ─── Scene: Monte Carlo ─────────────────────────────────────────────────────────
-const HIST = [4, 9, 16, 26, 40, 54, 62, 57, 44, 30, 18, 10, 5];
-
-export function MonteCarloScene() {
-  const W = 600;
-  const H = 250;
-  return (
-    <Diagram w={W} h={H}>
-      <Cables
-        w={W}
-        h={H}
-        runs={[{ from: [216, 138], to: [316, 96], color: C.number }]}
-      />
-      <MNode
-        x={26}
-        y={42}
-        w={190}
-        accent={C.any}
-        title="Loan model"
-        socks={[{ cy: 96, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } }]}
-      >
-        <Row label="rate" value="4.5 ± 0.5 %" />
-        <Row label="price" value="$310k ± 20k" />
-        <Row label="term" value="25 y" />
-      </MNode>
-      <MNode x={316} y={28} w={240} accent={C.number} title="Monthly payment">
-        <svg className="sol-mnode__pad sol-mnode__pad--hist" viewBox="0 0 204 92" aria-hidden="true">
-          {HIST.map((v, i) => (
-            <rect
-              key={i}
-              className="sol-hist__bar"
-              x={8 + i * 15}
-              y={86 - v * 1.25}
-              width={11}
-              height={v * 1.25}
-              style={{ transitionDelay: `${120 + i * 45}ms` }}
-            />
-          ))}
-        </svg>
-        <Hero>$1,213 ± $86</Hero>
-      </MNode>
-    </Diagram>
   );
 }
 

@@ -630,26 +630,6 @@
   stroke-width: 1.5;
 }
 
-/* Histogram bars grow up when the scene reveals. */
-.sol-mnode__pad--hist {
-  padding: 2px 0 0;
-}
-
-.sol-hist__bar {
-  fill: color-mix(in srgb, var(--sock-number) 78%, transparent);
-}
-
-.sol-landing--anim .sol-reveal .sol-hist__bar {
-  transform: scaleY(0);
-  transform-box: fill-box;
-  transform-origin: bottom;
-  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.sol-landing--anim .sol-reveal.is-in .sol-hist__bar {
-  transform: scaleY(1);
-}
-
 /* Note-frontmatter block (the Obsidian scene). */
 .sol-mnode__front {
   margin: 0 0 4px;
@@ -934,8 +914,7 @@
     animation: none;
   }
 
-  .sol-landing--anim .sol-reveal .sol-pad__dot,
-  .sol-landing--anim .sol-reveal .sol-hist__bar {
+  .sol-landing--anim .sol-reveal .sol-pad__dot {
     transform: none;
     transition: none;
   }
