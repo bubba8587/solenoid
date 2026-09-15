@@ -39,8 +39,11 @@ decisions and rules live only as DTE nodes; rules.md and decisions.md retire".
   nodes (C74 semanticZoomRawScale, C75 gpuTextureBudget, and D55–D61 under C42
   htmlInCanvasRenderer) and was deleted, every constant re-verified against the code first. The
   Inspector's static-reference ruling, found only in a code comment, became C73; routing-table
-  files now cite the nodes their rows name. Mechanics and authoring docs (subsystem-invariants,
-  pack-architecture, DESIGN.md) stay and cite the nodes.
+  files now cite the nodes their rows name. `pack-architecture.md`'s settled calls became B15
+  leanCore + C76–C79 and the doc shrank to the authoring guide. Mechanics and guide docs
+  (subsystem-invariants, pack-architecture, DESIGN.md) stay and cite the nodes; `out-of-scope.md`
+  is an unratified DRAFT the author walks, so it was left alone. Final count: 167 nodes, 568
+  citations in 252 files, 0 errors; only the 4 process nodes lack reach.
 - **Open (owner):** ratify the tree (only A1 is); the 12 new B nodes are the ones most worth reading.
 
 ### SESSION DIGEST (2026-09-15 — marketing site expansion)
