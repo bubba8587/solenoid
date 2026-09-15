@@ -224,20 +224,8 @@ function SceneInner({
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
           if (cancelled) return;
-          // Bump every node so it re-renders and re-measures its handles now that the cards
-          // sit at their laid-out positions with real content — routed through the version
-          // bump so updateNodeInternals runs in the adapter's effect AFTER the DOM commits
-          // (a bare imperative call fired too early and left the cables a pixel high). This
-          // is exactly what a manual collapse/expand does. Frame + reveal on the next frame,
-          // once the re-measure has landed.
-          for (const n of stack.editor.getNodes()) void stack.view.rerenderNode(n.id);
-          requestAnimationFrame(() =>
-            requestAnimationFrame(() => {
-              if (cancelled) return;
-              void fitView({ padding: 0.16, duration: 0 });
-              onReady();
-            }),
-          );
+          void fitView({ padding: 0.16, duration: 0 });
+          onReady();
         }),
       );
     })();

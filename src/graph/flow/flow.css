@@ -191,7 +191,7 @@ html.minimap-top .sol-rf-appcanvas .react-flow__minimap.solenoid-minimap {
 /* ── Entrance choreography (marketing stages: .sol-flow-reveal opts in) ─────────
    The cards pop in first, then every cable draws itself socket-to-socket. Only the
    stages that carry .sol-flow-reveal animate; the working canvas never does. The
-   cable draw is driven inline by FlowCableEdge (it needs each path's length); this
+   cable draw is driven inline by FlowCableEdge (a normalized pathLength dash); this
    file owns the keyframes and the card entrance. */
 
 /* Opacity + blur only — never a transform/scale on the node. React Flow measures each
