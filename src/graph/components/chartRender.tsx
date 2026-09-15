@@ -379,6 +379,34 @@ function MultiTooltip({ active, payload, label, tickFmt, rawFromNorm }: {
 }
 
 const LEGEND_H = 16;
+// The multi-series legend is a plain DOM row UNDER the plot, not recharts' <Legend>: recharts
+// reserves a strip inside the plot, lays it out against the x-axis rect (so it lands on the
+// xlabel) and re-reserves whenever its measured height differs (the click jump). A fixed-height
+// row below the SVG cannot collide, cannot move and adds no dead space (its height is taken
+// off the plot). Inset by the y-axis width so it centers on the plot area, i.e. on the xlabel.
+const MULTI_LEGEND_H = 18;
+
+function SeriesLegend({ series, paint, dim, onPick, fs, color, insetLeft, insetRight, lines }: {
+  series: { name: string }[];
+  paint: (j: number) => string;
+  dim: (j: number) => number;
+  onPick: (j: number) => void;
+  fs: number; color: string; insetLeft: number; insetRight: number; lines: boolean;
+}) {
+  return (
+    <div
+      className="sol-chart-legend"
+      style={{ height: MULTI_LEGEND_H, paddingLeft: insetLeft, paddingRight: insetRight, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontSize: 9 * fs, color, lineHeight: 1, overflow: "hidden", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}
+    >
+      {series.map((s, j) => (
+        <span key={j} onClick={() => onPick(j)} style={{ display: "inline-flex", alignItems: "center", gap: 4, opacity: dim(j) }}>
+          <span aria-hidden="true" style={{ width: 8, height: lines ? 2 : 8, borderRadius: lines ? 1 : 2, background: paint(j), flex: "none" }} />
+          {s.name}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 /** Multi-series cartesian render (column/bar/line/area/scatter/radar) with a legend —
  *  the C2 frame path: each numeric column after the label is one named series, colored
@@ -434,18 +462,18 @@ export function MultiSeriesView({
     : undefined;
   const title = opts?.title;
   const titleH = title ? titleHeight(fs) : 0;
-  const chartH = height - titleH; // the <Legend height> reserves its own strip within this
+  const chartH = height - titleH - MULTI_LEGEND_H; // the legend row below takes the rest
   const margin = { top: axes ? PLOT_TOP : 6, right: 8, bottom: axes ? 4 : 2, left: 0 };
   const catInterval = n <= ALL_TICKS_UPTO ? 0 : undefined;
-  // The legend sits at the TOP of the plot (below the title), so it can never collide with
-  // the x-axis label at the bottom. Reserved height is exactly LEGEND_H (measured == reserved)
-  // so a legend click never re-reserves and the chart holds still.
+  // Horizontal bars put the categories on the y axis, so that axis is wider; radar has no
+  // axes at all, so its legend centers on the whole figure.
+  const legendInsetLeft = op === "radar" ? 0 : op === "bar" ? (yLabel ? 52 : 40) : yAxisW;
   const legend = (
-    <Legend
-      verticalAlign="top" height={LEGEND_H} iconSize={8}
-      wrapperStyle={{ fontSize: 9 * fs, color: axis, cursor: "pointer" }}
-      onClick={(e) => { const j = series.findIndex((s) => s.name === e.value); if (j >= 0) setFocus((f) => (f === j ? null : j)); }}
-      formatter={(value, _entry, idx) => <span style={{ opacity: dim(idx) }}>{value}</span>}
+    <SeriesLegend
+      series={series} paint={paint} dim={dim} fs={fs} color={axis}
+      insetLeft={legendInsetLeft} insetRight={op === "radar" ? 0 : margin.right}
+      lines={op === "line"}
+      onPick={(j) => setFocus((f) => (f === j ? null : j))}
     />
   );
   const tip = <Tooltip isAnimationActive={false} cursor={{ fill: "rgba(128,128,128,0.12)" }} content={<MultiTooltip tickFmt={tickFmt} />} />;
@@ -458,7 +486,7 @@ export function MultiSeriesView({
         {showGrid && <CartesianGrid stroke={grid} />}
         {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={catInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
-        {tip}{legend}
+        {tip}
         {series.map((s, j) => op === "area"
           ? <Area key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? { r: dotR } : false} isAnimationActive={false} />
           : <Line key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} strokeWidth={lw} dot={showMarkers ? { r: dotR } : false} isAnimationActive={false} />)}
@@ -470,7 +498,7 @@ export function MultiSeriesView({
         {showGrid && <CartesianGrid stroke={grid} horizontal={false} />}
         {axes && <XAxis type="number" tick={AXIS} tickLine={false} domain={yDomain} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis type="category" dataKey="i" tick={AXIS} tickLine={false} width={yLabel ? 52 : 40} tickFormatter={tickFmt} interval={catInterval} label={yLabel} />}
-        {tip}{legend}
+        {tip}
         {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} fill={paint(j)} fillOpacity={dim(j)} isAnimationActive={false} />)}
       </BarChart>
     );
@@ -496,7 +524,7 @@ export function MultiSeriesView({
         <PolarAngleAxis dataKey="i" tick={AXIS} tickFormatter={tickFmt} />
         {/* Radial ticks print rotated ON the polygons; the tooltip carries the raw value. */}
         <PolarRadiusAxis tick={false} axisLine={false} tickCount={4} domain={radarNorm ? [0, 1] : yDomain} />
-        {radarTip}{legend}
+        {radarTip}
         {series.map((s, j) => <Radar key={j} dataKey={key(j)} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} isAnimationActive={false} />)}
       </RadarChart>
     );
@@ -509,7 +537,7 @@ export function MultiSeriesView({
         {showGrid && <CartesianGrid stroke={grid} />}
         {axes && <XAxis type="number" dataKey="x" tick={AXIS} tickLine={false} tickFormatter={numericX ? (t) => axisTick(Number(t)) : tickFmt} allowDecimals={numericX ? undefined : false} domain={catX.domain} ticks={catX.ticks} padding={catX.padding} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis type="number" dataKey="y" tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
-        {tip}{legend}
+        {tip}
         {series.map((s, j) => (
           <Scatter key={j} name={s.name} fill={paint(j)} fillOpacity={dim(j)} shape={dot} isAnimationActive={false}
             data={data.map((d) => ({ x: numericX ? Number(labels![d.i as number]) : (d.i as number), y: d[`s${j}`] }))} />
@@ -523,7 +551,7 @@ export function MultiSeriesView({
         {showGrid && <CartesianGrid stroke={grid} vertical={false} />}
         {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={catInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
-        {tip}{legend}
+        {tip}
         {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} fill={paint(j)} fillOpacity={dim(j)} isAnimationActive={false} />)}
       </BarChart>
     );
@@ -533,17 +561,14 @@ export function MultiSeriesView({
   // deliver the click to the node instead of the legend item — so a press that starts on
   // the legend never reaches rete (the same swallow every in-card control uses).
   const legendPress = (e: SyntheticEvent) => {
-    if ((e.target as Element | null)?.closest?.(".recharts-legend-wrapper")) e.stopPropagation();
+    if ((e.target as Element | null)?.closest?.(".sol-chart-legend")) e.stopPropagation();
   };
-  const withLegendGuard = (el: ReactElement) => (
-    <div style={{ width }} onPointerDown={legendPress} onMouseDown={legendPress}>{el}</div>
-  );
-  if (!title) return withLegendGuard(chart);
-  return withLegendGuard(
-    <>
-      <ChartTitle text={title} fs={fs} />
+  return (
+    <div style={{ width, height }} onPointerDown={legendPress} onMouseDown={legendPress}>
+      {title && <ChartTitle text={title} fs={fs} />}
       {chart}
-    </>,
+      {legend}
+    </div>
   );
 }
 
