@@ -278,7 +278,7 @@ export function LiveGraph({ build, scenes }: { build?: (s: SurfaceStack) => Prom
           </FlowRevealContext.Provider>
         </FlowSurfaceContext.Provider>
       </ReactFlowProvider>
-      {scenes ? (
+      {scenes && (
         <div className="sol-landing__stage-scenes" role="tablist" aria-label="Example graphs">
           {scenes.map((sc, i) => (
             <button
@@ -293,11 +293,10 @@ export function LiveGraph({ build, scenes }: { build?: (s: SurfaceStack) => Prom
             </button>
           ))}
         </div>
-      ) : (
-        <button className="sol-landing__stage-reset" onClick={() => rebuild(activeBuild)} title="Rebuild the demo graph">
-          Reset
-        </button>
       )}
+      <button className="sol-landing__stage-reset" onClick={() => rebuild(activeBuild)} title="Rebuild the graph">
+        Reset
+      </button>
     </div>
   );
 }
