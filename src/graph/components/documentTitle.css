@@ -102,16 +102,44 @@
   padding: 6px 8px 4px;
 }
 
-/* Sub-head for a group of example templates: one step quieter than the
-   section head so the two-level hierarchy reads at a glance. */
+/* Sub-head for a group of example templates: an accordion toggle, one step quieter
+   than the section head so the two-level hierarchy reads at a glance. */
 .solenoid-doctitle__group-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 5px;
+  font: inherit;
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-muted, var(--text));
-  opacity: 0.55;
-  padding: 8px 8px 3px;
+  opacity: 0.6;
+  padding: 7px 8px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.solenoid-doctitle__group-head:hover {
+  background: var(--border-subtle);
+  opacity: 0.85;
+}
+
+.solenoid-doctitle__group-head--open {
+  opacity: 0.85;
+}
+
+.solenoid-doctitle__group-chev {
+  flex: none;
+  transition: transform 120ms ease;
+}
+
+.solenoid-doctitle__group-head--open .solenoid-doctitle__group-chev {
+  transform: rotate(90deg);
 }
 
 .solenoid-doctitle__docs {

@@ -16,6 +16,9 @@ export function DocumentTitle() {
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(name);
   const [menuOpen, setMenuOpen] = useState(false);
+  // The example groups are an accordion: one open at a time keeps a long list of seeds
+  // from flooding the menu. Default to the first group ("Start here").
+  const [openGroup, setOpenGroup] = useState<string | null>(SEED_GROUPS[0]?.head ?? null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [rowDraft, setRowDraft] = useState("");
   // Portaled to <body> to escape the app bar's stacking context, which otherwise traps
@@ -186,21 +189,34 @@ export function DocumentTitle() {
 
           <div className="solenoid-doctitle__sep" />
           <div className="solenoid-doctitle__section-head">New from example</div>
-          {SEED_GROUPS.map((group) => (
-            <div key={group.head} className="solenoid-doctitle__docs">
-              <div className="solenoid-doctitle__group-head">{group.head}</div>
-              {group.ids.map((id) => (
+          {SEED_GROUPS.map((group) => {
+            const open = openGroup === group.head;
+            return (
+              <div key={group.head} className="solenoid-doctitle__docs">
                 <button
-                  key={id}
                   type="button"
-                  className="solenoid-doctitle__action solenoid-doctitle__template"
-                  onClick={() => { setMenuOpen(false); void documentStore.newFromTemplate(id); }}
+                  className={`solenoid-doctitle__group-head${open ? " solenoid-doctitle__group-head--open" : ""}`}
+                  aria-expanded={open}
+                  onClick={() => setOpenGroup(open ? null : group.head)}
                 >
-                  {SEEDS[id].label}
+                  <svg className="solenoid-doctitle__group-chev" viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M6 4l4 4-4 4" />
+                  </svg>
+                  <span>{group.head}</span>
                 </button>
-              ))}
-            </div>
-          ))}
+                {open && group.ids.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    className="solenoid-doctitle__action solenoid-doctitle__template"
+                    onClick={() => { setMenuOpen(false); void documentStore.newFromTemplate(id); }}
+                  >
+                    {SEEDS[id].label}
+                  </button>
+                ))}
+              </div>
+            );
+          })}
         </div>,
         document.body,
       )}
