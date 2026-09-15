@@ -7,8 +7,9 @@
 // Visible strokes are RF BaseEdges styled inline (RF's edge CSS would otherwise
 // recolor a selected path); the named hit path stays the ONE pointer target.
 // Not ported: the load-reveal draw-on animation (rete-holder based — ledger).
-import { useLayoutEffect, useState, useSyncExternalStore } from "react";
+import { useContext, useLayoutEffect, useState, useSyncExternalStore } from "react";
 import { BaseEdge, type Edge, type EdgeProps } from "@xyflow/react";
+import { FlowRevealContext } from "../flowSurface";
 import { getCablePath, Position as CablePosition } from "../cablePaths";
 import { cableShapeStore, type CableShape } from "../cableShape";
 import { cableAngleStore } from "../cableAngleStore";
@@ -39,6 +40,13 @@ const SELECTED_COLOR = "var(--cable-selected)";
 const RIBBON_COLOR = "#8a909c";
 const RIBBON_WIDTH = 7.2;
 const RIBBON_SPLIT = 24;
+
+// The marketing stages draw each cable on at mount (socket to socket, all at once,
+// linear). Honor reduced motion — read once; the flag never changes mid-session.
+const PREFERS_REDUCED_MOTION =
+  typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+// After the cards pop in.
+const CABLE_DRAW = "sol-cable-draw 0.72s linear 0.28s both";
 
 const CABLE_HIT_W = IS_COARSE ? 28 : 20;
 const TRUNK_HIT_W = IS_COARSE ? 30 : 22;
@@ -132,6 +140,7 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
     sourceX, sourceY, targetX, targetY,
   } = props;
   const [hovered, setHovered] = useState(false);
+  const revealStage = useContext(FlowRevealContext);
   // Owning, not main: inside the flow drill-in this edge belongs to the
   // composite's internal editor.
   const editor = getOwningEditor(source);
@@ -486,6 +495,15 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
   // The 0.72 idle value is mirrored by the gesture canvas — change together.
   const cableOpacity = ghost ? 0.65 : activeHover || selected ? 0.9 : 0.72;
 
+  // Entrance draw-on (marketing stages only): dash the whole path, then reel the
+  // offset to zero so the stroke grows from the source socket to the target. Skipped
+  // for ghosts (already dashed) and under reduced motion.
+  const drawOn = revealStage && !ghost && !PREFERS_REDUCED_MOTION;
+  const drawLen = drawOn ? pathLength(pathD, cs, ce) : 0;
+  const drawStyle = drawOn
+    ? { strokeDasharray: drawLen, strokeDashoffset: drawLen, animation: CABLE_DRAW }
+    : { strokeDasharray: ghost ? "6 5" : undefined };
+
   return (
     <g style={dimStyle}>
       <BaseEdge
@@ -494,7 +512,7 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
         style={{
           stroke,
           strokeWidth: baseWidth,
-          strokeDasharray: ghost ? "6 5" : undefined,
+          ...drawStyle,
           opacity: cableOpacity,
           pointerEvents: "none",
         }}

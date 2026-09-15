@@ -1,10 +1,10 @@
 // dte:C2
-import { useEffect, useId, useMemo } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import type { Schemes } from "../schemes";
-import { FlowSurfaceContext } from "../flowSurface";
+import { FlowSurfaceContext, FlowRevealContext } from "../flowSurface";
 import { FlowSurface, idleHandlers, type SurfaceStack, type SurfaceHooks } from "../flow/FlowSurface";
 import { makeFlowView } from "../flow/flowView";
 import { installInputCoercion } from "../coerceInputs";
@@ -107,6 +107,10 @@ export function SceneStage({
 }) {
   const stack = useMemo(makeSceneStack, []);
   const rfId = useId();
+  // The scene lays out headlessly (ELK) AFTER mount, so the cards start stacked at the
+  // origin and move. Hold the entrance choreography until that has settled, or it would
+  // play at the wrong place — SceneInner flips this once the cards are framed.
+  const [ready, setReady] = useState(false);
 
   const hooks: SurfaceHooks = useMemo(
     () => ({
@@ -130,16 +134,19 @@ export function SceneStage({
   );
 
   return (
-    <div className={`sol-scene-stage${className ? ` ${className}` : ""}`}>
+    <div className={`sol-scene-stage${ready ? " sol-flow-reveal" : ""}${className ? ` ${className}` : ""}`}>
       <ReactFlowProvider>
         <FlowSurfaceContext.Provider value={true}>
-          <SceneInner
-            stack={stack}
-            build={build}
-            hooks={hooks}
-            manualLayout={manualLayout}
-            awaitConnections={awaitConnections}
-          />
+          <FlowRevealContext.Provider value={ready}>
+            <SceneInner
+              stack={stack}
+              build={build}
+              hooks={hooks}
+              manualLayout={manualLayout}
+              awaitConnections={awaitConnections}
+              onReady={() => setReady(true)}
+            />
+          </FlowRevealContext.Provider>
         </FlowSurfaceContext.Provider>
       </ReactFlowProvider>
     </div>
@@ -155,12 +162,14 @@ function SceneInner({
   hooks,
   manualLayout,
   awaitConnections,
+  onReady,
 }: {
   stack: SurfaceStack;
   build: (s: SurfaceStack) => Promise<void>;
   hooks: SurfaceHooks;
   manualLayout?: boolean;
   awaitConnections?: boolean;
+  onReady: () => void;
 }) {
   const { fitView } = useReactFlow();
   // Make the scene's nodes resolvable by the render-time cross-node resolvers (output
@@ -210,10 +219,13 @@ function SceneInner({
           });
         }
       }
-      // Two frames for the moved cards to re-measure, then frame them.
+      // Two frames for the moved cards to re-measure, then frame them and start the
+      // entrance choreography (cards are now at their laid-out positions).
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
-          if (!cancelled) void fitView({ padding: 0.16, duration: 0 });
+          if (cancelled) return;
+          void fitView({ padding: 0.16, duration: 0 });
+          onReady();
         }),
       );
     })();

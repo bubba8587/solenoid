@@ -4,7 +4,7 @@ import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
-import { FlowSurfaceContext } from "../flowSurface";
+import { FlowSurfaceContext, FlowRevealContext } from "../flowSurface";
 import { FlowSurface, idleHandlers, type SurfaceStack, type SurfaceHooks } from "../flow/FlowSurface";
 import { makeFlowView } from "../flow/flowView";
 import { installInputCoercion } from "../coerceInputs";
@@ -167,10 +167,12 @@ export function LiveGraph({ build }: { build: (s: SurfaceStack) => Promise<void>
       .then(() => setResetNonce((n) => n + 1));
 
   return (
-    <div className="sol-landing__stage">
+    <div className="sol-landing__stage sol-flow-reveal">
       <ReactFlowProvider>
         <FlowSurfaceContext.Provider value={true}>
-          <LandingStage stack={stack} resetNonce={resetNonce} />
+          <FlowRevealContext.Provider value={true}>
+            <LandingStage stack={stack} resetNonce={resetNonce} />
+          </FlowRevealContext.Provider>
         </FlowSurfaceContext.Provider>
       </ReactFlowProvider>
       <button className="sol-landing__stage-reset" onClick={reset} title="Rebuild the demo graph">
