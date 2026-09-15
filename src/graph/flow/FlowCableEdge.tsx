@@ -7,7 +7,7 @@
 // Visible strokes are RF BaseEdges styled inline (RF's edge CSS would otherwise
 // recolor a selected path); the named hit path stays the ONE pointer target.
 // Not ported: the load-reveal draw-on animation (rete-holder based — ledger).
-import { useContext, useLayoutEffect, useState, useSyncExternalStore } from "react";
+import { useContext, useEffect, useLayoutEffect, useState, useSyncExternalStore } from "react";
 import { BaseEdge, type Edge, type EdgeProps } from "@xyflow/react";
 import { FlowRevealContext } from "../flowSurface";
 import { getCablePath, Position as CablePosition } from "../cablePaths";
@@ -168,7 +168,17 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
     () => ribbon !== null && ribbon.members.some((m) => cableSelectionStore.has(m.id)),
   );
   const ghost = useSyncExternalStore(cableGhostStore.subscribe, () => cableGhostStore.isGhost(id));
-  const flow = useSyncExternalStore(cableFlowStore.subscribe, cableFlowStore.get);
+  // The persisted user setting (app). The marketing stages also want beads, but must
+  // not touch the stored setting (the site shares the app's origin + localStorage), so
+  // a reveal stage forces them on locally — after the draw-on has finished.
+  const flowSetting = useSyncExternalStore(cableFlowStore.subscribe, cableFlowStore.get);
+  const [revealBeads, setRevealBeads] = useState(false);
+  useEffect(() => {
+    if (!revealStage || PREFERS_REDUCED_MOTION) return;
+    const t = setTimeout(() => setRevealBeads(true), 1050);
+    return () => clearTimeout(t);
+  }, [revealStage]);
+  const flow = flowSetting || revealBeads;
   const isoDim = useSyncExternalStore(
     isolateStore.subscribe,
     () => isolateStore.isActive() && (!isolateStore.isVisible(source) || !isolateStore.isVisible(target)),
