@@ -14,7 +14,8 @@ import { computeStack } from "./landingCompute";
 import { nodeNameStore } from "../nodeNameStore";
 import { TableInputNode } from "../nodes/matrix";
 import { InterpolateNode } from "../nodes/stats";
-import { SurfaceNode } from "../nodes/visual";
+import { SurfaceNode, ChartNode } from "../nodes/visual";
+import { FrameInputNode, GroupByFrameNode, JoinNode } from "../nodes/frame";
 
 // The landing page's live canvas: a REAL interactive FlowSurface over a LOCAL
 // stack, built like the composite drill-in (FlowCompositeOverlay's getDrillStack)
@@ -103,6 +104,69 @@ async function buildDemoGraph(s: SurfaceStack) {
   await wire(interp, "result", contour, "z");
 }
 
+// ── Shared build helpers (add + place; wire) ──
+async function place(s: SurfaceStack, at: [ClassicPreset.Node, number, number][]) {
+  for (const [node] of at) {
+    await s.editor.addNode(asNode(node));
+    nodeNameStore.ensure(node.id, node.constructor.name);
+  }
+  for (const [node, x, y] of at) await s.view.moveNode(node.id, { x, y });
+}
+const connect = (s: SurfaceStack) =>
+  (src: ClassicPreset.Node, out: string, tgt: ClassicPreset.Node, inp: string) =>
+    s.editor.addConnection(new ClassicPreset.Connection(asNode(src), out, asNode(tgt), inp) as SolenoidConnection);
+
+// Raw expenses aggregated by category, then charted: Group By sums the amount per category
+// and the ChartNode reads column 0 as the x labels and the number column as the series.
+async function buildSpendingGraph(s: SurfaceStack) {
+  await s.editor.clear();
+  const expenses = new FrameInputNode({
+    label: "Expenses",
+    frameText: "category, amount\nRent, 1800\nGroceries, 240\nGroceries, 180\nTransport, 90\nDining, 150\nGroceries, 95\nTransport, 60\nDining, 85",
+    layoutHidden: true,
+  });
+  const gb = new GroupByFrameNode({ label: "Sum by category", agg: "sum" });
+  gb.stringLiterals.keys = "category";
+  gb.stringLiterals.column = "amount";
+  const chart = new ChartNode({ label: "Where it goes", op: "column" });
+  await place(s, [[expenses, 40, 60], [gb, 440, 120], [chart, 820, 70]]);
+  const wire = connect(s);
+  await wire(expenses, "frame", gb, "frame");
+  await wire(gb, "frame", chart, "values");
+}
+
+// Two tables (actuals and plan) joined on the month, then a two-series line: the wiring
+// story — separate sources combined into one chart.
+async function buildVsTargetGraph(s: SurfaceStack) {
+  await s.editor.clear();
+  const actual = new FrameInputNode({
+    label: "Actual ($k)",
+    frameText: "month, actual\nJan, 42\nFeb, 55\nMar, 61\nApr, 78\nMay, 96",
+    layoutHidden: true,
+  });
+  const target = new FrameInputNode({
+    label: "Target ($k)",
+    frameText: "month, target\nJan, 40\nFeb, 52\nMar, 66\nApr, 72\nMay, 90",
+    layoutHidden: true,
+  });
+  const join = new JoinNode({ label: "Join on month", how: "left" });
+  join.stringLiterals.leftKey = "month";
+  const chart = new ChartNode({ label: "Actual vs target", op: "line" });
+  await place(s, [[actual, 40, 40], [target, 40, 380], [join, 440, 210], [chart, 820, 150]]);
+  const wire = connect(s);
+  await wire(actual, "frame", join, "left");
+  await wire(target, "frame", join, "right");
+  await wire(join, "frame", chart, "values");
+}
+
+// The scenes the landing hero swaps between: two everyday workbooks (an aggregation and a
+// join, each ending in a chart) and the grid-interpolate -> Surface showpiece.
+const LANDING_SCENES: { label: string; build: (s: SurfaceStack) => Promise<void> }[] = [
+  { label: "Spending", build: buildSpendingGraph },
+  { label: "Vs target", build: buildVsTargetGraph },
+  { label: "3D surface", build: buildDemoGraph },
+];
+
 // No document, no autosave, no undo stack on the landing page: the hooks that
 // would persist or record are no-ops; a topology change still recomputes through
 // the stack pipe above, and the demo rebuilds from the Reset button.
@@ -151,20 +215,31 @@ function LandingStage({ stack, resetNonce }: { stack: SurfaceStack; resetNonce: 
 // claims the process.ts + activeGraph globals so drag, selection, the table popup and
 // the report overlay all drive it — the locked SceneStage cards only borrow the
 // globals for a compute. A page mounts at most one (only one global slot to hold).
-export function LiveGraph({ build }: { build: (s: SurfaceStack) => Promise<void> }) {
+export type LiveScene = { label: string; build: (s: SurfaceStack) => Promise<void> };
+
+export function LiveGraph({ build, scenes }: { build?: (s: SurfaceStack) => Promise<void>; scenes?: LiveScene[] }) {
   const stack = useMemo(makeLandingStack, []);
   const [resetNonce, setResetNonce] = useState(0);
+  const [sceneIdx, setSceneIdx] = useState(0);
+  const activeBuild = scenes ? scenes[sceneIdx].build : build!;
 
   useEffect(() => {
     setEditorRefs(stack.editor, stack.engine, stack.view);
-    void build(stack).then(() => computeStack(stack, true));
+    void activeBuild(stack).then(() => computeStack(stack, true));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stack]);
 
-  const reset = () =>
-    void build(stack)
+  // Rebuild with `b`, recompute, then re-frame (LandingStage watches resetNonce).
+  const rebuild = (b: (s: SurfaceStack) => Promise<void>) =>
+    void b(stack)
       .then(() => computeStack(stack, true))
       .then(() => setResetNonce((n) => n + 1));
+
+  const selectScene = (i: number) => {
+    if (i === sceneIdx) { rebuild(scenes![i].build); return; }
+    setSceneIdx(i);
+    rebuild(scenes![i].build);
+  };
 
   return (
     <div className="sol-landing__stage sol-flow-reveal">
@@ -175,13 +250,30 @@ export function LiveGraph({ build }: { build: (s: SurfaceStack) => Promise<void>
           </FlowRevealContext.Provider>
         </FlowSurfaceContext.Provider>
       </ReactFlowProvider>
-      <button className="sol-landing__stage-reset" onClick={reset} title="Rebuild the demo graph">
-        Reset
-      </button>
+      {scenes ? (
+        <div className="sol-landing__stage-scenes" role="tablist" aria-label="Example graphs">
+          {scenes.map((sc, i) => (
+            <button
+              key={sc.label}
+              type="button"
+              role="tab"
+              aria-selected={i === sceneIdx}
+              className={`sol-landing__stage-scene${i === sceneIdx ? " is-active" : ""}`}
+              onClick={() => selectScene(i)}
+            >
+              {sc.label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <button className="sol-landing__stage-reset" onClick={() => rebuild(activeBuild)} title="Rebuild the demo graph">
+          Reset
+        </button>
+      )}
     </div>
   );
 }
 
 export function LandingGraph() {
-  return <LiveGraph build={buildDemoGraph} />;
+  return <LiveGraph scenes={LANDING_SCENES} />;
 }
