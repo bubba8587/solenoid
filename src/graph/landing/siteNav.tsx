@@ -18,6 +18,7 @@ export const HOME_HREF = "/?landing";
 export const SITE_NAV: { href: string; label: string }[] = [
   { href: "/obsidian", label: "Obsidian" },
   { href: "/examples", label: "Examples" },
+  { href: "/packs", label: "Packs" },
   { href: "/download", label: "Download" },
 ];
 
@@ -89,6 +90,8 @@ export function SiteFooter() {
       <a href="/obsidian">Obsidian</a>
       <span aria-hidden="true">·</span>
       <a href="/examples">Examples</a>
+      <span aria-hidden="true">·</span>
+      <a href="/packs">Packs</a>
       <span aria-hidden="true">·</span>
       <a href="/download">Download</a>
       <span aria-hidden="true">·</span>

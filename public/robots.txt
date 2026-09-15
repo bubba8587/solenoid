@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://solenoid-ngc.vercel.app/sitemap.xml

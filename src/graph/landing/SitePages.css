@@ -148,6 +148,64 @@
   }
 }
 
+/* ── Packs ── */
+.sol-packs {
+  margin-top: 52px;
+}
+
+.sol-packs h2 {
+  margin-bottom: 16px;
+}
+
+.sol-packs__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.sol-packs__card {
+  padding: 18px 18px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+}
+
+.sol-packs__card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.sol-packs__card h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-bright);
+}
+
+/* The on-by-default marker: a quiet accent pill, not a loud badge. */
+.sol-packs__badge {
+  flex: 0 0 auto;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  white-space: nowrap;
+}
+
+.sol-packs__card p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  text-wrap-style: pretty;
+}
+
 @media (max-width: 720px) {
   .sol-get__grid {
     grid-template-columns: 1fr;

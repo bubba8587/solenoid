@@ -53,6 +53,8 @@ const IS_DOWNLOAD = SITE_PATH === "/download";
 const DownloadPage = lazy(() => import("./graph/landing/DownloadPage"));
 const IS_EXAMPLES = SITE_PATH === "/examples";
 const ExamplesPage = lazy(() => import("./graph/landing/ExamplesPage"));
+const IS_PACKS = SITE_PATH === "/packs";
+const PacksPage = lazy(() => import("./graph/landing/PacksPage"));
 
 function App() {
   if (IS_OBSIDIAN) {
@@ -73,6 +75,13 @@ function App() {
     return (
       <Suspense fallback={null}>
         <ExamplesPage />
+      </Suspense>
+    );
+  }
+  if (IS_PACKS) {
+    return (
+      <Suspense fallback={null}>
+        <PacksPage />
       </Suspense>
     );
   }
