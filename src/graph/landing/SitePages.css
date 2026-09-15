@@ -85,17 +85,54 @@
   gap: 12px;
 }
 
+/* Each tile is a link that deep-links its seed. Flat at rest; the border steps and the
+   "Open" hint fades in on hover, so the whole card reads as one target. */
 .sol-gallery__card {
-  padding: 16px 16px;
+  padding: 15px 16px;
   min-height: 58px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   background: var(--surface);
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
+  text-decoration: none;
+  transition: border-color 90ms ease, background 90ms ease;
+}
+
+.sol-gallery__card-name {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-bright);
+}
+
+.sol-gallery__card-open {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  opacity: 0;
+  transition: opacity 90ms ease;
+}
+
+.sol-gallery__card:hover {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+}
+
+.sol-gallery__card:hover .sol-gallery__card-open {
+  opacity: 1;
+}
+
+.sol-gallery__card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* Keyboard users get the hint too, since they cannot hover. */
+.sol-gallery__card:focus-visible .sol-gallery__card-open {
+  opacity: 1;
 }
 
 @media (max-width: 720px) {

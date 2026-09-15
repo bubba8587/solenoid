@@ -23,6 +23,7 @@ import { installErrorGuards } from "../errorValue";
 import { ctorRegistry } from "../nodeCtorRegistry";
 import { scheduleAutosave } from "../persistence";
 import { documentStore, ensureFirstDocument } from "../documentStore";
+import { SEEDS } from "../seeds";
 import { paletteStore } from "../paletteStore";
 import { CommandPalette } from "../CommandPalette";
 import { CableFlourish } from "../components/CableFlourish";
@@ -303,7 +304,17 @@ function FlowCanvasInner() {
       // snapshot history that IS the new document's baseline.
       setClearHistory(() => flowHistory.reset());
       void (async () => {
-        if (!(await documentStore.restore())) await ensureFirstDocument();
+        const restored = await documentStore.restore();
+        // The Examples page deep-links a seed as /?seed=<id>. Open it as a NEW document
+        // (never clobbering restored ones), then strip the param so a reload or autosave
+        // doesn't keep minting fresh copies.
+        const seedId = new URLSearchParams(window.location.search).get("seed");
+        if (seedId && SEEDS[seedId]) {
+          await documentStore.newFromTemplate(seedId);
+          window.history.replaceState({}, "", window.location.pathname);
+        } else if (!restored) {
+          await ensureFirstDocument();
+        }
       })();
     }
     return () => unsubFmt();

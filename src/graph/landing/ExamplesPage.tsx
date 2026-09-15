@@ -6,73 +6,76 @@ import "./SitePages.css";
 
 // The /examples route: a gallery of the graphs that ship in the app under the New from
 // example menu. Group heads and item names are the seeds' own labels (seeds.ts), so the
-// page and the in-app menu read the same. Static DOM only; chrome comes from siteNav.
-// Note: not yet deep-linked into the app; a ?seed= entry point is the obvious next step.
+// page and the in-app menu read the same. Each tile deep-links /?seed=<id>, which opens
+// the template as a new document (FlowCanvas boot). Static DOM; chrome comes from siteNav.
 
-// Curated from the seed library (src/graph/seedGraphs). Labels and group heads are the
-// seeds' own; internal seeds (Getting started, Scratch, Script tour) are left out.
-const GALLERY: { head: string; items: string[] }[] = [
+// Curated from the seed library (src/graph/seedGraphs); the id is the JSON file's stem.
+// Internal seeds (Getting started, Scratch, Script tour) are left out.
+const GALLERY: { head: string; items: { id: string; label: string }[] }[] = [
   {
     head: "Obsidian",
     items: [
-      "Your vault as a table",
-      "Tasks: list and tracked time",
-      "Write it back to Obsidian",
-      "Daily notes as a time series",
-      "Kitchen remodel from TaskNotes",
+      { id: "vault-as-a-table", label: "Your vault as a table" },
+      { id: "tasks-two-ways", label: "Tasks: list and tracked time" },
+      { id: "write-back-to-obsidian", label: "Write it back to Obsidian" },
+      { id: "daily-habits", label: "Daily notes as a time series" },
+      { id: "kitchen-remodel-tasknotes", label: "Kitchen remodel from TaskNotes" },
     ],
   },
   {
     head: "Tables",
     items: [
-      "Pivot tables",
-      "Table verbs",
-      "Computed columns & @",
-      "LAMBDA helpers",
-      "Record cards",
-      "Cubes: nested tables",
+      { id: "pivot-tables", label: "Pivot tables" },
+      { id: "table-verbs", label: "Table verbs" },
+      { id: "computed-columns", label: "Computed columns & @" },
+      { id: "lambda-helpers", label: "LAMBDA helpers" },
+      { id: "record-cards", label: "Record cards" },
+      { id: "cubes", label: "Cubes: nested tables" },
     ],
   },
   {
     head: "Values & units",
     items: [
-      "Types & shapes",
-      "Errors, null & logic",
-      "Trust & data quality",
-      "Units by dimension",
-      "Unit flow",
+      { id: "dimensional-flow", label: "Types & shapes" },
+      { id: "null-and-logical", label: "Errors, null & logic" },
+      { id: "trust-data-quality", label: "Trust & data quality" },
+      { id: "units-by-dimension", label: "Units by dimension" },
+      { id: "unit-flow", label: "Unit flow" },
     ],
   },
   {
     head: "Modeling",
-    items: ["Equation: solve either way", "Composite workbench"],
+    items: [
+      { id: "equation-solver", label: "Equation: solve either way" },
+      { id: "composite-workbench", label: "Composite workbench" },
+    ],
   },
   {
     head: "Charts & reports",
     items: [
-      "Charts & visuals",
-      "Live market data",
-      "Garden dashboard",
-      "Report showcase",
-      "Mail merge",
+      { id: "chart-showcase", label: "Charts & visuals" },
+      { id: "live-market-data", label: "Live market data" },
+      { id: "garden-dashboard", label: "Garden dashboard" },
+      { id: "report-showcase", label: "Report showcase" },
+      { id: "mail-merge", label: "Mail merge" },
     ],
   },
   {
     head: "Worked examples",
     items: [
-      "Personal finance",
-      "Decision Matrix",
-      "Which task next?",
-      "Budget Allocator",
-      "Balance a team's hours",
-      "Trip split",
-      "Debt payoff",
-      "Remodel (Gantt)",
-      "Famous math",
-      "Project (two frames)",
-      "Earned Value",
-      "Product launch (Gantt)",
-      "Sudoku solver",
+      { id: "personal-finance", label: "Personal finance" },
+      { id: "decision-matrix", label: "Decision Matrix" },
+      { id: "which-task-next", label: "Which task next?" },
+      { id: "allocator", label: "Budget Allocator" },
+      { id: "team-hours", label: "Balance a team's hours" },
+      { id: "trip-split", label: "Trip split" },
+      { id: "debt-payoff", label: "Debt payoff" },
+      { id: "remodel-gantt", label: "Remodel (Gantt)" },
+      { id: "famous-math", label: "Famous math" },
+      { id: "project-links-frame", label: "Project (two frames)" },
+      { id: "earned-value", label: "Earned Value" },
+      { id: "product-launch-gantt", label: "Product launch (Gantt)" },
+      { id: "sudoku-solver", label: "Sudoku solver" },
     ],
   },
 ];
@@ -95,10 +98,10 @@ export default function ExamplesPage() {
                 <h1>Examples</h1>
               </Reveal>
               <Reveal delay={110}>
-                {/* NEW COPY. "New from example" is the in-app menu label. */}
+                {/* NEW COPY. */}
                 <p>
-                  Every graph below ships in the app. Open one from the New from example menu and
-                  take it apart.
+                  Every graph below ships in the app. Open one to load it on your canvas and take
+                  it apart. Your own documents stay where they are.
                 </p>
               </Reveal>
               <Reveal delay={220}>
@@ -116,10 +119,11 @@ export default function ExamplesPage() {
               </Reveal>
               <Reveal delay={i === 0 ? 90 : 0}>
                 <div className="sol-gallery__grid">
-                  {group.items.map((name) => (
-                    <div key={name} className="sol-gallery__card">
-                      {name}
-                    </div>
+                  {group.items.map((item) => (
+                    <a key={item.id} href={`/?seed=${item.id}`} className="sol-gallery__card">
+                      <span className="sol-gallery__card-name">{item.label}</span>
+                      <span className="sol-gallery__card-open" aria-hidden="true">Open →</span>
+                    </a>
                   ))}
                 </div>
               </Reveal>
