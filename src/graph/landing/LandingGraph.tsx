@@ -141,12 +141,12 @@ async function buildVsTargetGraph(s: SurfaceStack) {
   await s.editor.clear();
   const actual = new FrameInputNode({
     label: "Actual ($k)",
-    frameText: "month, actual\nJan, 42\nFeb, 55\nMar, 61\nApr, 78\nMay, 96",
+    frameText: "month, actual\nJan, 38\nFeb, 72\nMar, 54\nApr, 110\nMay, 96",
     layoutHidden: true,
   });
   const target = new FrameInputNode({
     label: "Target ($k)",
-    frameText: "month, target\nJan, 40\nFeb, 52\nMar, 66\nApr, 72\nMay, 90",
+    frameText: "month, target\nJan, 62\nFeb, 50\nMar, 88\nApr, 74\nMay, 135",
     layoutHidden: true,
   });
   const join = new JoinNode({ label: "Join on month", how: "left" });
