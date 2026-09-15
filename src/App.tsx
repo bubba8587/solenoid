@@ -44,16 +44,35 @@ const NodeShowcase = lazy(() => import("./graph/showcase/NodeShowcase"));
 const IS_LANDING = new URLSearchParams(window.location.search).has("landing");
 const LandingPage = lazy(() => import("./graph/landing/LandingPage"));
 
-// /obsidian is the integration page — a pathname route (every path rewrites to
-// index.html on Vercel), read once at module load like the query-param routes above.
-const IS_OBSIDIAN = window.location.pathname.replace(/\/+$/, "") === "/obsidian";
+// The marketing site's pathname routes (every path rewrites to index.html on Vercel),
+// read once at module load like the query-param routes above.
+const SITE_PATH = window.location.pathname.replace(/\/+$/, "");
+const IS_OBSIDIAN = SITE_PATH === "/obsidian";
 const ObsidianPage = lazy(() => import("./graph/landing/ObsidianPage"));
+const IS_DOWNLOAD = SITE_PATH === "/download";
+const DownloadPage = lazy(() => import("./graph/landing/DownloadPage"));
+const IS_EXAMPLES = SITE_PATH === "/examples";
+const ExamplesPage = lazy(() => import("./graph/landing/ExamplesPage"));
 
 function App() {
   if (IS_OBSIDIAN) {
     return (
       <Suspense fallback={null}>
         <ObsidianPage />
+      </Suspense>
+    );
+  }
+  if (IS_DOWNLOAD) {
+    return (
+      <Suspense fallback={null}>
+        <DownloadPage />
+      </Suspense>
+    );
+  }
+  if (IS_EXAMPLES) {
+    return (
+      <Suspense fallback={null}>
+        <ExamplesPage />
       </Suspense>
     );
   }

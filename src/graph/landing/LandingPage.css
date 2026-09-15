@@ -122,6 +122,17 @@
   color: var(--text-bright);
 }
 
+/* The active route. Accent so the visitor can see where they are; the wordmark
+   covers Home, which is why it is not in the nav list. */
+.sol-landing__nav a.is-current {
+  color: var(--accent);
+}
+
+/* "Open the app" reads as the one always-present way back into Solenoid. */
+.sol-landing__nav-app {
+  color: var(--text-bright);
+}
+
 .sol-landing__theme {
   display: flex;
   align-items: center;

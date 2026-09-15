@@ -1,0 +1,105 @@
+/* ─── Site pages (/download, /examples) ────────────────────────────────────────
+   Content pages built on LandingPage.css: the wrapper, header, hero, section, CTA,
+   strip and footer are shared. This file adds the blocks unique to these pages.
+   All colors ride the theme vars, so light theme mirrors for free. */
+
+/* A hero with no side scene: copy alone, so it does not stretch to the space-between
+   layout the two-column hero uses. */
+.sol-landing__hero--solo {
+  display: block;
+  padding-bottom: 4px;
+}
+
+/* ── Download: the two build cards ── */
+.sol-get__grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.sol-get__card {
+  display: flex;
+  flex-direction: column;
+  padding: 22px 22px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+}
+
+.sol-get__card h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-bright);
+}
+
+.sol-get__card p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  text-wrap-style: pretty;
+}
+
+/* Push the action to the card's foot so the two cards' buttons line up. */
+.sol-get__card .sol-landing__actions {
+  margin-top: auto;
+  padding-top: 18px;
+}
+
+.sol-get__list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 720px;
+}
+
+.sol-get__list li {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  text-wrap-style: pretty;
+}
+
+.sol-get__list strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* ── Examples: the gallery ── */
+.sol-gallery {
+  margin-top: 52px;
+}
+
+.sol-gallery h2 {
+  margin-bottom: 16px;
+}
+
+.sol-gallery__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.sol-gallery__card {
+  padding: 16px 16px;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-bright);
+}
+
+@media (max-width: 720px) {
+  .sol-get__grid {
+    grid-template-columns: 1fr;
+  }
+}

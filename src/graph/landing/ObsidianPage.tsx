@@ -1,11 +1,9 @@
 // dte:D1,C2
-import { useEffect, useMemo, useSyncExternalStore } from "react";
-import { appThemeStore } from "../appTheme";
-import wordmark from "../../logo/solenoidwordmark.svg";
-import pkg from "../../../package.json";
+import { useEffect, useMemo } from "react";
 import { Reveal, useRevealAnim, Diagram, MNode, NoteImportScene, VaultTableScene, LocalFileScene, buildReportPipeline } from "./LandingScenes";
 import { LiveGraph } from "./LandingGraph";
 import { ReportOverlay } from "../components/ReportOverlay";
+import { GITHUB_URL, SiteHeader, SiteFooter, Feature } from "./siteNav";
 import { SOCKET_COLORS } from "../sockets";
 import { forceDemoVault } from "../demoVault";
 import { siteChrome } from "../siteChrome";
@@ -18,56 +16,7 @@ const C = SOCKET_COLORS;
 // pitched at Obsidian users who have never opened Solenoid. It frames Solenoid as
 // the computation layer for a vault, with the Obsidian <-> Solenoid <-> Excel round
 // trip as the centerpiece. No live rete stage here; every vignette is static DOM+SVG.
-
-const GITHUB_URL = "https://github.com/bubba8587/solenoid";
-
-function ThemeToggle() {
-  const mode = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.getMode);
-  const dark = mode === "dark";
-  return (
-    <button
-      className="sol-landing__theme"
-      onClick={() => appThemeStore.toggleMode()}
-      title={dark ? "Switch to light theme" : "Switch to dark theme"}
-      aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
-    >
-      {dark ? (
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-          <circle cx="8" cy="8" r="3.25" />
-          <path d="M8 1.2v1.8 M8 13v1.8 M1.2 8h1.8 M13 8h1.8 M3.2 3.2l1.3 1.3 M11.5 11.5l1.3 1.3 M12.8 3.2l-1.3 1.3 M4.5 11.5l-1.3 1.3" />
-        </svg>
-      ) : (
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M13.4 9.6A5.8 5.8 0 0 1 6.4 2.6a5.8 5.8 0 1 0 7 7Z" />
-        </svg>
-      )}
-    </button>
-  );
-}
-
-function Feature({
-  title,
-  flip,
-  scene,
-  children,
-}: {
-  title: string;
-  flip?: boolean;
-  scene: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className={`sol-landing__deep${flip ? " sol-landing__deep--flip" : ""}`}>
-      <Reveal className="sol-landing__deep-copy">
-        <h2>{title}</h2>
-        {children}
-      </Reveal>
-      <Reveal className="sol-landing__deep-scene" delay={90}>
-        {scene}
-      </Reveal>
-    </section>
-  );
-}
+// Header, nav and footer come from siteNav.
 
 // The round trip: vault on the left, spreadsheets on the right, Solenoid computing
 // in the middle, data moving both ways. The centerpiece of the page's framing.
@@ -169,22 +118,7 @@ export default function ObsidianPage() {
   return (
     <div className={`sol-landing${anim ? " sol-landing--anim" : ""}`}>
       <div className="sol-landing__inner">
-        <header className="sol-landing__top">
-          <a href="/?landing" aria-label="Solenoid">
-            <span
-              className="sol-landing__wordmark"
-              role="img"
-              aria-label="Solenoid"
-              style={{ WebkitMaskImage: `url("${wordmark}")`, maskImage: `url("${wordmark}")` }}
-            />
-          </a>
-          <nav className="sol-landing__nav">
-            <a href="/?landing">What is Solenoid?</a>
-            <a href={GITHUB_URL} target="_blank" rel="noreferrer">GitHub</a>
-            <a href="/">Open the app</a>
-            <ThemeToggle />
-          </nav>
-        </header>
+        <SiteHeader current="/obsidian" />
 
         <main>
           <section className="sol-landing__hero">
@@ -407,15 +341,7 @@ export default function ObsidianPage() {
           </section>
         </main>
 
-        <footer className="sol-landing__footer">
-          <span>Solenoid {pkg.version}</span>
-          <span aria-hidden="true">·</span>
-          <span>MIT license</span>
-          <span aria-hidden="true">·</span>
-          <a href="/?landing">What is Solenoid?</a>
-          <span aria-hidden="true">·</span>
-          <a href={GITHUB_URL} target="_blank" rel="noreferrer">GitHub</a>
-        </footer>
+        <SiteFooter />
       </div>
       {/* The live hero's Report chip opens its rendered note here (App mounts this for
           the main canvas; the standalone page mounts its own, as with TablePopup). */}
