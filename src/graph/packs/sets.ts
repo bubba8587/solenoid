@@ -25,7 +25,7 @@ export const SETS_PACK: Pack = {
   id: "sets",
   group: "Everyday",
   name: "Sets & Membership",
-  description: "List membership and counting: Is In (the ISNUMBER(MATCH()) idiom), Tally (value counts as a table) and COUNT DISTINCT. Join's semi and anti modes are the table-level counterparts.",
+  description: "List membership and counting: Is In (the ISNUMBER(MATCH()) idiom), Tally (value counts) and COUNT DISTINCT. Join's semi and anti modes cover tables.",
   builtin: true,
   defaultActive: false,
   nodes: [

@@ -55,7 +55,7 @@ export class ScheduleNode extends ClassicPreset.Node {
     weekend_code: "Which days are the weekend. Excel: WORKDAY.INTL codes, 1 = Sat+Sun, 2 = Sun+Mon, 11 to 17 = a single day off.",
     status: "The day progress is measured on. Work left on a started task is scheduled after it. Unwired, Complete only fills the bars.",
     hours: "Hours in a working day. Converts a Duration column given in hours; in Minutes mode it is the length of the working day, from 08:00.",
-    cube: "The rows in order, with Start, Finish, Float, Critical, Free Float, the early and late dates, Driving and Late appended. Float is the days a task can slip without moving the finish.",
+    cube: "The rows plus Start, Finish, Float, Critical, Free Float, early and late dates, Driving and Late. Float is the slip that keeps the finish.",
     finish: "The last finish.",
     diagnostics: "One row per finding: a task with no predecessor or successor, negative float, a start that held, leads and lags, long tasks, work that should have started.",
     gantt: "Mermaid gantt source for the schedule.",

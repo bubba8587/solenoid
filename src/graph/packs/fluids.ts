@@ -100,7 +100,7 @@ export const FLUIDS_PACK: Pack = {
   id: "fluids",
   group: "Science & Engineering",
   name: "Fluid Mechanics",
-  description: "Reynolds number, pipe roughness, Colebrook and Swamee–Jain friction, Darcy–Weisbach and Hazen–Williams losses, Bernoulli, pump power, Stokes settling, drag, speed of sound. SI units.",
+  description: "Reynolds, Colebrook and Swamee–Jain friction, Darcy–Weisbach and Hazen–Williams losses, Bernoulli, pumps, settling, drag, sound speed. SI units.",
   builtin: true,
   defaultActive: false,
   nodes: [

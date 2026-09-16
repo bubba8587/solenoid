@@ -286,7 +286,7 @@ export class ImportXmlNode extends ClassicPreset.Node {
 export class LocalFileNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frame: "Reads the named file from the folder chosen in Settings. Rows are never saved into the project file.",
-    plan: "The file as a project plan: Project XML, GanttProject, Primavera XER, or a CSV whose Predecessors use row numbers such as 3FS+2d. Tasks nest as the outline. Empty for any other file.",
+    plan: "A project plan: Project XML, GanttProject, Primavera XER, or a CSV with Predecessors like 3FS+2d. Tasks nest as the outline. Empty otherwise.",
   };
   label: string;
   /** File name relative to the Settings target folder (not a full path). */

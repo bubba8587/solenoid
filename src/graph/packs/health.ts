@@ -101,7 +101,7 @@ export const HEALTH_PACK: Pack = {
   id: "health",
   group: "Everyday",
   name: "Health & Fitness",
-  description: "BMI, body surface area, BMR and TDEE, body-fat estimates, heart-rate zones, VO₂max, ideal weight, creatinine clearance. Metric inputs. Estimates, not medical advice.",
+  description: "BMI, BSA, BMR and TDEE, body fat, heart-rate zones, VO₂max, ideal weight, creatinine clearance. Metric inputs. Estimates, not medical advice.",
   builtin: true,
   defaultActive: false,
   nodes: [

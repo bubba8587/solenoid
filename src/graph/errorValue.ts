@@ -72,14 +72,14 @@ export const ERROR_EXPLANATIONS: Record<SolErrorCode, string> = {
   "#OVERFLOW!": "The result is too large or small to represent. Reduce the input magnitudes.",
   "#SYNTAX!": "A formula couldn't be parsed. Check for unbalanced parentheses, doubled operators, or a missing argument.",
   "#VALUE!": "A value had the wrong type, or a formula failed while evaluating. Check each input is the kind of data the node expects.",
-  "#TYPE!":  "The element type is wrong: text where a number is expected, or a number where a date is. Number, text, date and complex stay separate, so this is narrower than #VALUE!. Cast or reshape the input.",
+  "#TYPE!":  "The element type is wrong: text where a number is expected, or a number where a date is. Narrower than #VALUE!. Cast or reshape the input.",
   "#SHAPE!": "List or matrix dimensions don't line up. Check the connected lists/tables have compatible lengths.",
   "#UNIT!":  "The units don't match dimensionally, like adding meters to seconds. Convert one side first, or check the unit an upstream Format Controller assigned.",
   "#NAME?":  "A name wasn't recognized as a function or variable. Check the spelling in the formula.",
   "#REF!":   "A reference points at something that no longer exists, usually a deleted node or column.",
   "#CIRC!":  "A circular dependency: the calculation feeds back into itself. Remove one cable in the cycle to break it.",
   "#SOLVE!": "The Equation node found no value that satisfies the equation. Check the known values, or rearrange the equation.",
-  "#AMBIGUOUS!": "A date like 3/4/2026 could mean either 3 April or March 4 — Solenoid won't guess. Write the month as a name (3-Apr-2026), use an unambiguous day (13/4/2026), or the ISO form (2026-04-03).",
+  "#AMBIGUOUS!": "A date like 3/4/2026 could mean 3 April or March 4. Write the month as a name (3-Apr-2026) or use the ISO form (2026-04-03).",
   "#ERROR!": "The node failed unexpectedly. If it persists, it's likely a Solenoid bug worth reporting.",
 };
 

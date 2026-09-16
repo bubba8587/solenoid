@@ -108,7 +108,7 @@ export const COMPARISON_OP_META = {
 
 export class ComparisonNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    result: "Ordering values that measure different things is #UNIT!, while equal answers FALSE and not equal TRUE. A plain number compared against a value with a unit is read in that value's display unit.",
+    result: "Ordering different dimensions is #UNIT!; equal is FALSE, not equal TRUE. A plain number against a unit value is read in that value's display unit.",
   };
 
   /** Keeps `UnitCell` tags so the comparison runs on BASE-SI magnitudes and

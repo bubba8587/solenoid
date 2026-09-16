@@ -93,7 +93,7 @@ export const CHART_OP_META = {
 
 export class ChartNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    values: "A list plots by position. In a frame, the first column labels the x-axis and each later number column is a series. Radar: number columns are spokes, each row a polygon. Bubble: x, y, size columns.",
+    values: "A list plots by position; a frame's first column is x, later number columns are series. Radar: columns are spokes, rows polygons. Bubble: x, y, size.",
     options: "Accepts key=value pairs separated by semicolons, using matplotlib names such as title, ylim, and grid. Unknown keys are ignored.",
   };
 
@@ -1239,7 +1239,7 @@ export class RecordNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     row: "Selects the 1-based record. Blank or out of range shows the boxes empty.",
     by: "Names the column whose values become the board's lanes. Blank or unmatched draws nothing.",
-    layout: "One line per grid row, names split by |. Repeat a name to merge cells. Photo*2 spans two columns, #Name is the title, Qty: 40 is placeholder text, a dot is blank. Empty stacks the columns.",
+    layout: "A line per row, names split by |. Repeat to merge. Photo*2 spans two, #Name titles, Qty: 40 is placeholder, a dot is blank. Empty stacks columns.",
     options: "title=Parts;fontsize=12;cardsize=l. Gallery tiles size s, m or l; clamp=on caps long tile values at three lines.",
   };
 

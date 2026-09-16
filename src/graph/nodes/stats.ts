@@ -179,7 +179,7 @@ export type CorrelOp = "correl" | "rsq" | "spearman" | "kendall";
 export const CORREL_OP_META = {
   correl: { label: "CORREL", description: "Pearson correlation r between two lists. Excel: `CORREL`." },
   rsq:    { label: "RSQ",    description: "R², the square of the correlation coefficient. Excel: `RSQ`." },
-  spearman: { label: "SPEARMAN", description: "Spearman's rank correlation ρ: Pearson over the ranks, so it follows any monotone relation and shrugs off outliers. scipy `spearmanr`, R `cor` with `method = spearman`." },
+  spearman: { label: "SPEARMAN", description: "Spearman's ρ: Pearson over the ranks, so it follows any monotone relation and ignores outliers. scipy `spearmanr`, R `cor(method = spearman)`." },
   kendall:  { label: "KENDALL",  description: "Kendall's τ-b: concordant minus discordant pairs, tie-corrected. scipy `kendalltau`, R `cor` with `method = kendall`." },
 } satisfies Record<CorrelOp, { label: string; description: string }>;
 
@@ -631,7 +631,7 @@ export const HYPOTHESIS_TEST_OP_META = {
   f:          { label: "F.TEST",             description: "Two-tailed F-test for equal variances. Excel: `F.TEST`." },
   chisq:      { label: "CHISQ.TEST",         description: "Chi-square goodness-of-fit test (observed vs. expected). Excel: `CHISQ.TEST`." },
   anova:      { label: "ANOVA",              description: "One-way ANOVA: do k groups share a mean? Each table column is a group (blanks skipped); the upper-tail F p-value. scipy `f_oneway`, R `aov`. No Excel function, only the Data Analysis add-in." },
-  mannwhitney:{ label: "Mann–Whitney U",     description: "Rank-sum test for two independent samples, two-sided (the nonparametric t-test). Normal approximation with tie and continuity corrections. R `wilcox.test`, scipy `mannwhitneyu`." },
+  mannwhitney:{ label: "Mann–Whitney U",     description: "Two-sided rank-sum test, two independent samples; normal approximation, tie and continuity corrected. R `wilcox.test`, scipy `mannwhitneyu`." },
   wilcoxon:   { label: "Wilcoxon signed-rank", description: "Paired nonparametric test: ranks of the paired differences, zeros dropped, two-sided with continuity correction. R `wilcox.test` with `paired = TRUE`." },
   kruskal:    { label: "Kruskal–Wallis",     description: "Nonparametric one-way ANOVA over k groups (table columns), tie-corrected H against χ². scipy `kruskal`, R `kruskal.test`." },
   fisher:     { label: "Fisher exact",       description: "Fisher's exact test on a 2×2 table of counts, two-sided: the small-sample answer where `CHISQ.TEST` is unreliable. R `fisher.test`, scipy `fisher_exact`." },

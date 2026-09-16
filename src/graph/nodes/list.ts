@@ -172,7 +172,7 @@ export type SeriesOp = "range" | "sequence" | "linspace" | "geometric" | "fibona
 
 export const SERIES_OP_META = {
   range:    { label: "Range",    description: "Generates a sequence from Start to Stop inclusive, Step apart. `numpy arange` stops before Stop; Excel's count-first equivalent is the Sequence op." },
-  sequence: { label: "SEQUENCE", description: "A grid of Rows × Columns numbers starting at Start with Step between each, filled row by row. Columns 1 (the default) gives a plain list, like Range but count-first. Excel: `SEQUENCE`." },
+  sequence: { label: "SEQUENCE", description: "A Rows × Columns grid starting at Start with Step between each, filled row by row. Columns 1 (the default) gives a plain list. Excel: `SEQUENCE`." },
   linspace: { label: "LinSpace", description: "Generates Count evenly spaced values from Start to End inclusive." },
   geometric: { label: "Geometric", description: "Geometric series: `start × ratio^0`, `start × ratio^1`, …" },
   fibonacci: { label: "Fibonacci", description: "First N Fibonacci numbers: 1, 1, 2, 3, 5, 8, …" },
@@ -636,7 +636,7 @@ export const OUTLIER_METHOD_META = {
 
 export class OutliersNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    result: "One row per input value: Value (the list with outliers blanked, so aggregates skip them and positions hold) and Outlier, TRUE where the rule flags it, though a blank stays blank.",
+    result: "A row per input value: Value (outliers blanked so aggregates skip them, positions hold) and Outlier, TRUE where flagged; blank stays blank.",
     threshold: "Leave unwired for the rule's conventional cutoff: 3 for z, 1.5 for IQR, 3.5 for MAD.",
   };
   label: string;
@@ -1475,7 +1475,7 @@ export const RUNNING_OP_META = {
 
 export class RunningNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    window: "0 (the default) is cumulative: every element from the start through this one. 1 or more slides: only the last N elements ending here, running short at the start.",
+    window: "0 (the default) is cumulative from the start through this element. 1 or more slides: the last N elements ending here, running short at the start.",
   };
 
   label: string;
@@ -1675,7 +1675,7 @@ export class NormalizeNode extends ClassicPreset.Node {
 export class ShuffleNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     result: "The order holds until a recalculation. Changed values flow through without reshuffling.",
-    weights: "Optional, one per element and at least as long as the list. Higher weight tends to land earlier, a weighted draw without replacement. Unwired is a uniform shuffle.",
+    weights: "Optional, at least as long as the list. Higher weight tends to land earlier: a weighted draw without replacement. Otherwise a uniform shuffle.",
   };
 
   /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */

@@ -85,7 +85,7 @@ export const CHEMISTRY_PACK: Pack = {
   id: "chemistry",
   group: "Science & Engineering",
   name: "Chemistry Basics",
-  description: "The periodic table, molar mass from a typed formula (hydrates included), and the lab bench: moles, molarity, dilution, pH, Nernst, Arrhenius, Gibbs, Beer–Lambert, radioactive decay.",
+  description: "Periodic table, molar mass from a formula (hydrates too), moles, molarity, dilution, pH, Nernst, Arrhenius, Gibbs, Beer–Lambert, decay.",
   builtin: true,
   defaultActive: false,
   nodes: [

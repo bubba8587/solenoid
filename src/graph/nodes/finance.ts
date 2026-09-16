@@ -83,7 +83,7 @@ export const DEPRECIATION_OP_META = {
   sln: { label: "SLN", description: "Straight-line depreciation: the asset loses the same amount every period. Excel: `SLN`." },
   syd: { label: "SYD", description: "Sum-of-years'-digits depreciation, accelerated: writes off more in the early periods, tapering each year. Excel: `SYD`." },
   ddb: { label: "DDB", description: "Double-declining-balance depreciation, accelerated: takes twice the straight-line rate off the remaining value each period. Excel: `DDB`." },
-  db:  { label: "DB",  description: "Fixed-declining-balance depreciation, accelerated: a constant rate applied to the remaining value each period. `Month` sets the number of months in the first year (default `12`). Excel: `DB`." },
+  db:  { label: "DB",  description: "Fixed-declining-balance depreciation, a constant rate on the remaining value. `Month`: months in the first year (default `12`). Excel: `DB`." },
   vdb: { label: "VDB", description: "Variable declining balance depreciation over a period range. Uses `DDB` and switches to straight-line when `SL` gives a higher deduction. Excel: `VDB`." },
 } satisfies Record<DepreciationOp, { label: string; description: string }>;
 

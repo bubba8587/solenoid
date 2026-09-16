@@ -630,7 +630,7 @@ export class CompositeNode extends ClassicPreset.Node {
       this.internalEditor,
       this.internalEngine,
       loopMembers(this.internalEditor),
-      "This node is part of a circular dependency inside the composite: the calculation feeds back into itself. Switch the container to Simulation mode to run it as a feedback loop instead.",
+      "Part of a circular dependency: the calculation feeds itself. Switch the container to Simulation mode to run it as a feedback loop.",
     );
   }
 

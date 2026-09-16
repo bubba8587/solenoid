@@ -251,7 +251,7 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
       {
         key: "useDemoVault",
         label: "Use demo vault",
-        help: "Enable the demo vault for usage on the web app and when no other vault is selected. Without this setting, if no other vault has been configured, several nodes will not work.",
+        help: "Use the demo vault on the web app and whenever no other vault is selected. Off with no vault configured, several nodes will not work.",
       },
       {
         key: "obsidianAssetSubfolder",

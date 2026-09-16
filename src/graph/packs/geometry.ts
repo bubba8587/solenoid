@@ -134,7 +134,7 @@ export const GEOMETRY_PACK: Pack = {
       entry: {
         type: "geo-triangle-solver",
         label: "Triangle Solver",
-        description: "Any three parts, at least one side, solve the rest: sides, angles in degrees, area and perimeter, drawn to scale. Extra parts are checked for agreement. An ambiguous SSA says so instead of guessing.",
+        description: "Any three parts, one a side, solves the rest: sides, degrees, area, perimeter, drawn to scale. Extra parts are checked; an ambiguous SSA says so.",
         keywords: "triangle solve sides angles law sines cosines sss sas asa aas ssa",
         create: () => new TriangleSolverNode(),
       },
