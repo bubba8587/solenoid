@@ -35,8 +35,8 @@ The Frame Input node allows you to define a custom Form Input layout for inputti
 ## Document Surface
 
 - The Note node is a free-floating in-canvas markdown text box node which takes YAML frontmatter and exposes the values as output sockets. 
-- The Report node allows you to write a markdown document and define input sockets via `=inputname` which are rendered inline with the text. You can input values, lists, tables, and even Charts directly into a markdown document for easy report generation.
-- On the desktop version of the app, define an Obsidian vault folder to import and write notes directly to the vault. 
+- The Report node allows you to write a markdown document in Knap, Obsidian's template language: `{{ name }}` defines an input socket and renders the wired value inline with the text. You can input values, lists, tables, and even Charts directly into a markdown document for easy report generation, or wire a table into the Records socket to generate one page per row.
+- On the desktop version of the app, define an Obsidian vault folder to import and write notes directly to the vault, read a whole folder of notes as one table, and pull tasks from the TaskNotes plugin. The web version bundles a demo vault so you can try it without one.
 
 ## Try it
 
