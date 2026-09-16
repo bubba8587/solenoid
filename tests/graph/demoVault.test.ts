@@ -50,12 +50,14 @@ describe("getVaultRoot / getCsvFolder / forceDemoVault", () => {
     expect(getCsvFolder()).toBe("C:/data");
   });
 
-  it("the demo-vault setting returns the sentinel, else the configured folder", () => {
+  it("a configured folder always wins; the demo is the fallback only while the setting allows it (dte:D62 noSetupMeansDemo)", () => {
     settingsStore.set("obsidianVault", "C:/real");
     settingsStore.set("useDemoVault", true);
+    expect(getVaultRoot()).toBe("C:/real");
+    settingsStore.set("obsidianVault", "");
     expect(getVaultRoot()).toBe(R);
     settingsStore.set("useDemoVault", false);
-    expect(getVaultRoot()).toBe("C:/real");
+    expect(getVaultRoot()).toBe("");
   });
 });
 

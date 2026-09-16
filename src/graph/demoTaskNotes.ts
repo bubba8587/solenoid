@@ -1,6 +1,7 @@
 // dte:D62
 // Fake TaskNotes replies, the way demoVault fakes the vault: the marketing /obsidian page
-// forces them, and an app with no TaskNotes URL configured reads them (noSetupMeansDemo),
+// forces them, and an app with no TaskNotes URL configured reads them while the "Use demo
+// vault" setting allows it (noSetupMeansDemo),
 // so the TaskNotes node shows a real Tasks cube (and events/stats) without a running
 // TaskNotes HTTP API. The node routes to these canned replies — parsed by the SAME
 // taskNotesApi parsers as the real API — instead of the network. Writes are never faked.
@@ -12,7 +13,9 @@ let _forced = false;
 export function forceDemoTaskNotes(on: boolean): void { _forced = on; }
 
 /** Is the TaskNotes node reading the canned demo data instead of the network? */
-export function isDemoTaskNotes(): boolean { return _forced || settingsStore.get("taskNotesUrl").trim() === ""; }
+export function isDemoTaskNotes(): boolean {
+  return _forced || (settingsStore.get("useDemoVault") && settingsStore.get("taskNotesUrl").trim() === "");
+}
 
 // Shaped exactly like a real `GET /api/tasks` page; the parser reads `.tasks` +
 // `.pagination`. Fixed dates so the demo is stable across sessions.
