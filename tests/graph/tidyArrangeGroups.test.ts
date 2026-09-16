@@ -649,3 +649,28 @@ describe("Tidy with a flipped node (predecessor layering, real ELK)", () => {
     }
   });
 });
+
+describe("Tidy reserves a plain card's MEASURED box, not its declared size", () => {
+  it("a card whose constructor height went stale does not overlap its neighbour", async () => {
+    const editor = new NodeEditor<Schemes>();
+    const { view, addView } = makeFakeView();
+    const src = new ArithmeticNode({ op: "add" });
+    const tall = new DisplayNode();
+    const other = new DisplayNode();
+    for (const n of [src, tall, other]) await editor.addNode(n as never);
+    await connect(editor, src, "result", tall, "in");
+    await connect(editor, src, "result", other, "in");
+    // Declared 80 high; the DOM measures 280 (a card that grew after construction).
+    for (const n of [src, tall, other]) { (n as unknown as { width: number; height: number }).width = 180; (n as unknown as { height: number }).height = 80; }
+    addView(src.id, 60, 200, 180, 80);
+    addView(tall.id, 400, 100, 180, 280);
+    addView(other.id, 400, 300, 180, 80);
+    const arrangeFn = makeArrangeFn({
+      editor, view, container: {} as HTMLElement, ensureElk: makeEnsureElk(() => false),
+      repositionDockedTo: () => {}, isDestroyed: () => false,
+    });
+    await arrangeFn({ skipConfirm: true });
+    await flushRafs();
+    expect(overlaps(boxOf(view, tall.id), boxOf(view, other.id))).toBe(false);
+  });
+});

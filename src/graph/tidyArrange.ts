@@ -470,7 +470,19 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       // The Conduit declares all its lanes up front; expose only the in-use ports
       // so ELK doesn't treat it as a tall multi-port node.
       const isBundler = n instanceof ConduitNode;
-      if (!fp && !isBundler) return n;
+      if (!fp && !isBundler) {
+        // A plain card reserves its MEASURED box (a collapsed card, a card whose
+        // constructor height went stale), declared size only before first paint.
+        const b = measuredBox(view, n.id, editor);
+        if (!b || (b.w === n.width && b.h === n.height)) return n;
+        return new Proxy(n, {
+          get(target, prop) {
+            if (prop === "width") return b.w;
+            if (prop === "height") return b.h;
+            return Reflect.get(target, prop);
+          },
+        });
+      }
       let filteredInputs:  Record<string, unknown> | undefined;
       let filteredOutputs: Record<string, unknown> | undefined;
       if (isBundler) {
