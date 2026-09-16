@@ -106,6 +106,7 @@ import { computeDockedCanvasPos, dockedRenderedDims, findDockTarget, insertFcInl
 import { groupPushStore } from "../groupPush";
 import { CableInspector } from "../components/CableInspector";
 import { DrawnCableLayer } from "../components/DrawnCableLayer";
+import { PendingCableLayer } from "../components/PendingCableLayer";
 import { DrawnCableCapture } from "../components/DrawnCableCapture";
 import { DrawnCableInspector } from "../components/DrawnCableInspector";
 import { drawnCableStore } from "../drawnCables";
@@ -971,6 +972,9 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
             <DrawnCableLayer />
           </ViewportPortal>
         )}
+        <ViewportPortal>
+          <PendingCableLayer />
+        </ViewportPortal>
         <MiniMap<SolFlowNode>
           className="solenoid-minimap"
           style={MINIMAP_STYLE}

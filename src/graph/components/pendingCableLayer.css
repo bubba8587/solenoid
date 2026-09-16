@@ -1,0 +1,21 @@
+/* Pending-reconnect ghosts: the Option A ghost stroke (dashed 6 5, 0.65), inert, under the cards. */
+
+.solenoid-pending-cable-svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 9999px;
+  height: 9999px;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.solenoid-pending-cable {
+  fill: none;
+  stroke-width: 1.8;
+  stroke-dasharray: 6 5;
+  stroke-linecap: round;
+  opacity: 0.65;
+  pointer-events: none;
+}
