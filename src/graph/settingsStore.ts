@@ -28,11 +28,11 @@ export interface Settings {
   docsFolder: string;
   /** Bypass the per-document network gate (C2): opened/imported docs fetch without asking. */
   alwaysAllowNetwork: boolean;
-  /** Read the bundled, read-only demo vault instead of a real folder — so the Obsidian
-   *  nodes work with no vault set, the web app included. Overrides obsidianVault. */
-  useDemoVault: boolean;
   /** Obsidian vault root the Obsidian nodes read/write `.md` under; desktop only. */
   obsidianVault: string;
+  /** With no vault folder (and no TaskNotes URL) configured, the Obsidian nodes read the
+   *  bundled, read-only demo instead of failing; the web app relies on it (dte:D62). */
+  useDemoVault: boolean;
   /** Vault-relative subfolder for written image assets; empty = beside the note. */
   obsidianAssetSubfolder: string;
   /** The TaskNotes plugin's local HTTP API; empty = http://localhost:8080. The bearer
@@ -73,7 +73,7 @@ const DEFAULTS: Settings = {
   csvFolder: "",
   docsFolder: "",
   alwaysAllowNetwork: false,
-  useDemoVault: false,
+  useDemoVault: true,
   obsidianVault: "",
   obsidianAssetSubfolder: "",
   taskNotesUrl: "",
@@ -243,15 +243,15 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
     title: "Obsidian",
     fields: [
       {
-        key: "useDemoVault",
-        label: "Use demo vault (works in the web demo)",
-        help: "Read a bundled, read-only sample vault instead of a folder, so the Import and Vault Folder nodes work with no real vault — including in the browser.",
-      },
-      {
         key: "obsidianVault",
         label: "Vault folder",
         help: "For the Import from and Write To Obsidian nodes",
         type: "folder",
+      },
+      {
+        key: "useDemoVault",
+        label: "Use demo vault",
+        help: "Use the demo vault on the web app and whenever no other vault is selected. Off with no vault configured, several nodes will not work.",
       },
       {
         key: "obsidianAssetSubfolder",

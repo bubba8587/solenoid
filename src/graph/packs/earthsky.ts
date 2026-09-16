@@ -121,7 +121,7 @@ export const EARTHSKY_PACK: Pack = {
   id: "earthsky",
   group: "Science & Engineering",
   name: "Earth & Sky",
-  description: "Navigation and astronomy: great-circle distance and bearing, gravity by latitude, horizon distance, orbital mechanics (Kepler, escape velocity), sun position and sunrise/sunset (NOAA), and moon phase.",
+  description: "Great-circle distance and bearing, gravity by latitude, horizon, Kepler orbits, escape velocity, NOAA sun position and rise/set, moon phase.",
   builtin: true,
   defaultActive: false,
   nodes: [

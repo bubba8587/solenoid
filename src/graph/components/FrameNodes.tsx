@@ -162,7 +162,7 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
     <NodeShell node={data} emit={emit}>
       {/* Addable λ inputs (column-source model, slice 1): each wired λ can
           define a column — pick it per column in the grid editor. */}
-      <ExtensibleInputs node={data} emit={emit} valueKeys={data.lambdaKeys} minRows={0} addLabel="+ Add lambda" />
+      <ExtensibleInputs node={data} emit={emit} valueKeys={data.lambdaKeys} minRows={0} addLabel="Add LAMBDA" />
       {!layoutHidden && (hasLayout || showLayout) ? (
         <div className="solenoid-layout-field">
           <RecordLayoutField value={data.stringLiterals.layout ?? ""} onCommit={commitLayout} />
@@ -184,7 +184,7 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
           className="solenoid-node__add-input"
           onClick={(e) => { e.stopPropagation(); if (layoutHidden) setHidden(false); setShowLayout(true); }}
         >
-          {layoutHidden && hasLayout ? "Show Form layout" : "+ Add Form layout"}
+          {layoutHidden && hasLayout ? "Show Form Layout" : "Form Layout"}
         </button>
       )}
       <FrameDisplay
@@ -297,6 +297,28 @@ export const VALUELESS_OPS: ReadonlySet<FilterOp> = VALUELESS_FILTER_OPS;
 // Numeric/date/logical comparisons ignore the flag, so the checkbox hides.
 export const TEXT_MATCH_OPS: ReadonlySet<FilterOp> = new Set(["eq", "neq", "contains", "startsWith", "endsWith"]);
 
+/** The Aa toggle beside a text-matching condition, tinted with the card's family colour. */
+export function MatchCaseButton({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      title="Match case. Off matches text like Excel's = does."
+      aria-pressed={on}
+      onClick={(e) => { e.stopPropagation(); onToggle(); }}
+      onPointerDown={stopDragStart}
+      onMouseDown={(e) => e.stopPropagation()}
+      style={{
+        flexShrink: 0, fontSize: 11, lineHeight: 1, padding: "3px 5px",
+        border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer",
+        background: on ? "var(--node-accent, var(--accent))" : "transparent",
+        color: on ? "var(--surface)" : "var(--text-muted)",
+      }}
+    >
+      Aa
+    </button>
+  );
+}
+
 export const FILTER_COMBINE_OPTIONS: { value: FilterCombine; label: string; title: string }[] = [
   { value: "and", label: "AND", title: "Keep rows matching every condition" },
   { value: "or", label: "OR", title: "Keep rows matching any condition" },
@@ -381,22 +403,7 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
                     <InlineTextField value={strLiterals[valKey]} onChange={(v) => setStr(valKey, v)} />
                   )}
                   {TEXT_MATCH_OPS.has(c.op) && (
-                    <button
-                      type="button"
-                      title="Match case. Off matches text like Excel's = does."
-                      aria-pressed={c.matchCase ?? false}
-                      onClick={(e) => { e.stopPropagation(); updateCfg(id, { matchCase: !c.matchCase }); }}
-                      onPointerDown={stopDragStart}
-                      onMouseDown={(e) => e.stopPropagation()}
-                      style={{
-                        flexShrink: 0, fontSize: 11, lineHeight: 1, padding: "3px 5px",
-                        border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer",
-                        background: c.matchCase ? "var(--accent)" : "transparent",
-                        color: c.matchCase ? "var(--surface)" : "var(--text-muted)",
-                      }}
-                    >
-                      Aa
-                    </button>
+                    <MatchCaseButton on={c.matchCase ?? false} onToggle={() => updateCfg(id, { matchCase: !c.matchCase })} />
                   )}
                 </MeasuredSocketRow>
                 )}
@@ -408,7 +415,7 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
             className="solenoid-node__add-input"
             onClick={(e) => { e.stopPropagation(); void addPair(); }}
           >
-            + Add condition
+            Add Condition
           </button>
         </>
       )}

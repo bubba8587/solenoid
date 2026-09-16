@@ -1,0 +1,247 @@
+{
+  "v": 2,
+  "order": 51,
+  "label": "Tasks from TaskNotes",
+  "group": "Obsidian",
+  "nodes": [
+    {
+      "id": "note0",
+      "type": "NoteNode",
+      "x": 90,
+      "y": 224,
+      "init": {
+        "label": "Tasks: list and tracked time",
+        "body": "# The same tasks, from the files and from the plugin\n\nA tasks folder read as a **Vault Folder** already gives each task's title, status, priority, due and tags: they are frontmatter, straight from the files. **TaskNotes** is for what lives only in the plugin. Here it sums each task's timeEntries into minutes tracked, a total the files can't give you.\n\nThe third group scores the unfinished tasks through a **Decision Matrix**: a short estimate and time already tracked both count (a negative weight means lower is better), every task gets a score, and the podium is the answer.\n\nWith no vault folder or TaskNotes URL set in Settings, both readers use the bundled sample, so this runs anywhere.",
+        "color": "violet",
+        "width": 430,
+        "height": 190
+      }
+    },
+    {
+      "id": "vfLive",
+      "type": "VaultFolderNode",
+      "x": 21,
+      "y": 510,
+      "init": {
+        "label": "Vault Folder",
+        "folder": "Tasks"
+      }
+    },
+    {
+      "id": "listDisplay",
+      "type": "DisplayNode",
+      "x": 346,
+      "y": 696,
+      "init": {
+        "label": "Task list"
+      }
+    },
+    {
+      "id": "tnLive",
+      "type": "TaskNotesNode",
+      "x": -45,
+      "y": -353,
+      "init": {
+        "label": "TaskNotes",
+        "provider": "tasks"
+      }
+    },
+    {
+      "id": "rollup",
+      "type": "CubeRollupNode",
+      "x": 280,
+      "y": -137,
+      "init": {
+        "label": "Sum timeEntries minutes",
+        "agg": "sum"
+      },
+      "stringLiterals": {
+        "nested": "timeEntries",
+        "column": "Minutes",
+        "as": "Tracked (min)"
+      }
+    },
+    {
+      "id": "minDisplay",
+      "type": "DisplayNode",
+      "x": 605,
+      "y": -62,
+      "init": {
+        "label": "Minutes per task"
+      }
+    },
+    {
+      "id": "grp-list",
+      "type": "GroupNode",
+      "x": -3,
+      "y": 452,
+      "init": {
+        "label": "The list, from the files",
+        "members": [
+          "vfLive",
+          "listDisplay"
+        ],
+        "color": "sky",
+        "collapsed": false,
+        "width": 879,
+        "height": 415
+      }
+    },
+    {
+      "id": "grp-time",
+      "type": "GroupNode",
+      "x": -69,
+      "y": -411,
+      "init": {
+        "label": "Tracked time, from TaskNotes",
+        "members": [
+          "tnLive",
+          "rollup",
+          "minDisplay"
+        ],
+        "color": "amber",
+        "collapsed": false,
+        "width": 1012,
+        "height": 597
+      }
+    },
+    {
+      "id": "open",
+      "type": "FilterFrameNode",
+      "x": 3000,
+      "y": 3000,
+      "init": {
+        "label": "status is not done",
+        "condConfig": {
+          "0": {
+            "op": "neq"
+          }
+        },
+        "valueKeys": [
+          "frame",
+          "column0",
+          "value0"
+        ]
+      },
+      "stringLiterals": {
+        "column0": "status",
+        "value0": "done"
+      }
+    },
+    {
+      "id": "weights",
+      "type": "FrameInputNode",
+      "x": 3300,
+      "y": 3000,
+      "init": {
+        "label": "Weights",
+        "frameText": "[{\"name\": \"Criterion\", \"type\": \"string\", \"values\": [\"timeEstimate\", \"trackedMinutes\", \"archived\"]}, {\"name\": \"Weight\", \"type\": \"number\", \"values\": [-1, 2, 0]}, {\"name\": \"Norm\", \"type\": \"string\", \"values\": [\"Rank\", \"Rank\", \"\"]}]"
+      }
+    },
+    {
+      "id": "dm",
+      "type": "DecisionMatrixNode",
+      "x": 3600,
+      "y": 3000,
+      "init": {
+        "label": "Decision Matrix",
+        "normalize": "max",
+        "detail": "summary"
+      }
+    },
+    {
+      "id": "select",
+      "type": "ColumnsNode",
+      "x": 3900,
+      "y": 3000,
+      "init": {
+        "label": "Keep path, Score"
+      },
+      "stringLiterals": {
+        "columns": "path,Score"
+      }
+    },
+    {
+      "id": "chart",
+      "type": "ChartNode",
+      "x": 4200,
+      "y": 3000,
+      "init": {
+        "label": "Podium",
+        "op": "bar"
+      },
+      "stringLiterals": {
+        "options": "title=What to do next;xlabel=Score"
+      }
+    },
+    {
+      "id": "grp-score",
+      "type": "GroupNode",
+      "x": 2950,
+      "y": 2940,
+      "init": {
+        "label": "Which task next?",
+        "members": [
+          "open",
+          "weights",
+          "dm",
+          "select",
+          "chart"
+        ],
+        "width": 1600,
+        "height": 400
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "rollup",
+      "sourceOutput": "frame",
+      "target": "minDisplay",
+      "targetInput": "in"
+    },
+    {
+      "source": "vfLive",
+      "sourceOutput": "cube",
+      "target": "listDisplay",
+      "targetInput": "in"
+    },
+    {
+      "source": "tnLive",
+      "sourceOutput": "tasks",
+      "target": "rollup",
+      "targetInput": "cube"
+    },
+    {
+      "source": "tnLive",
+      "sourceOutput": "tasks",
+      "target": "open",
+      "targetInput": "frame"
+    },
+    {
+      "source": "open",
+      "sourceOutput": "frame",
+      "target": "dm",
+      "targetInput": "frame"
+    },
+    {
+      "source": "weights",
+      "sourceOutput": "frame",
+      "target": "dm",
+      "targetInput": "weights"
+    },
+    {
+      "source": "dm",
+      "sourceOutput": "frame",
+      "target": "select",
+      "targetInput": "frame"
+    },
+    {
+      "source": "select",
+      "sourceOutput": "frame",
+      "target": "chart",
+      "targetInput": "values"
+    }
+  ],
+  "standoffs": []
+}

@@ -248,8 +248,6 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
             e.preventDefault(); return;
           case "KeyN":
             toggleChrome("navigator"); e.preventDefault(); return;
-          case "KeyD":
-            drawModeStore.toggle(); e.preventDefault(); return;
           case "BracketLeft":
           case "BracketRight":
             if (rotateSelection(e.code === "BracketRight" ? 1 : -1) > 0) {

@@ -16,7 +16,7 @@ registerDisplayUnits(Object.fromEntries(Object.entries(CONVERT_UNIT_DEFS).map(([
 
 export class ConvertNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    in: "The From unit applies only to plain numbers. A value that already carries a unit keeps its magnitude and is relabeled when the dimensions match, or is #UNIT! when they differ.",
+    in: "From applies only to plain numbers. A value with a unit keeps its magnitude and is relabeled when the dimensions match, #UNIT! when they differ.",
   };
 
   /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */

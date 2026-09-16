@@ -8,7 +8,7 @@
 // (serializeGraph would rewrite ids to names).
 //
 //   node scripts/tune-seeds.mjs             # all seeds
-//   node scripts/tune-seeds.mjs cubes pivot-tables   # a subset
+//   node scripts/tune-seeds.mjs cubes table-verbs   # a subset
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

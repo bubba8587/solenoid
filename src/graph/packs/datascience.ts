@@ -27,14 +27,14 @@ const testEntry = (op: HypothesisTestOp, type: string, keywords: string): PackPl
 export const DATA_SCIENCE_PACK: Pack = {
   id: "datascience",
   name: "Data Science",
-  description: "Machine learning and nonparametric statistics: K-Means, PCA, logistic regression, and the Kruskal-Wallis, Mann-Whitney, Wilcoxon, Fisher exact, and Kolmogorov-Smirnov tests.",
+  description: "K-Means, PCA and logistic regression; Kruskal-Wallis, Mann-Whitney, Wilcoxon, Fisher exact and Kolmogorov-Smirnov tests.",
   builtin: true,
   defaultActive: false,
   group: "Analysis",
   nodes: [
-    { path: PATH, entry: { type: "kmeans", label: "K-Means", description: "Groups the rows into k clusters by their number columns (k-means++ seeding, the best of ten runs): a cluster id per row and a centers frame. sklearn `KMeans`, R `kmeans`.", create: () => new KMeansNode(), parity: false, keywords: "kmeans k-means cluster clustering segment centroid unsupervised group rows" } },
-    { path: PATH, entry: { type: "pca", label: "PCA", description: "Principal components of the number columns: the rows in the new axes (scores), how each feature loads on each axis, and the share of variance each axis explains, centered or standardized first. sklearn `PCA`, R `prcomp`.", create: () => new PcaNode(), parity: false, keywords: "pca principal component analysis dimensionality reduction loadings scores explained variance prcomp eigen" } },
-    { path: PATH, entry: { type: "logistic", label: "Logistic Regression", description: "Fits a 0/1 target on the other number columns: log-odds coefficients with standard errors, z and p, plus the fitted probability per row. Unregularized maximum likelihood (IRLS). R `glm(binomial)`, statsmodels `Logit`.", create: () => new LogisticNode(), parity: false, keywords: "logistic regression logit glm binomial classification probability odds ratio irls sigmoid" } },
+    { path: PATH, entry: { type: "kmeans", label: "K-Means", description: "k clusters over the number columns (k-means++, best of ten runs): a cluster id per row and a centers frame. sklearn `KMeans`, R `kmeans`.", create: () => new KMeansNode(), parity: false, keywords: "kmeans k-means cluster clustering segment centroid unsupervised group rows" } },
+    { path: PATH, entry: { type: "pca", label: "PCA", description: "Principal components of the number columns: scores, loadings, variance share per axis; centered or standardized. sklearn `PCA`, R `prcomp`.", create: () => new PcaNode(), parity: false, keywords: "pca principal component analysis dimensionality reduction loadings scores explained variance prcomp eigen" } },
+    { path: PATH, entry: { type: "logistic", label: "Logistic Regression", description: "Unregularized 0/1 fit on the number columns: log-odds coefficients, SE, z, p, and a probability per row. R `glm(binomial)`, statsmodels `Logit`.", create: () => new LogisticNode(), parity: false, keywords: "logistic regression logit glm binomial classification probability odds ratio irls sigmoid" } },
     testEntry("kruskal", "kruskal-test", "kruskal wallis nonparametric anova ranks"),
     testEntry("mannwhitney", "mannwhitney-test", "mann whitney wilcoxon rank sum nonparametric u test"),
     testEntry("wilcoxon", "wilcoxon-test", "wilcoxon signed rank paired nonparametric"),

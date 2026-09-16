@@ -11,7 +11,7 @@
 import { useContext, useEffect, useLayoutEffect, useState, useSyncExternalStore } from "react";
 import { BaseEdge, type Edge, type EdgeProps } from "@xyflow/react";
 import { FlowRevealContext } from "../flowSurface";
-import { getCablePath, Position as CablePosition } from "../cablePaths";
+import { getCablePath, intoSocket, Position as CablePosition } from "../cablePaths";
 import { cableShapeStore, type CableShape } from "../cableShape";
 import { cableAngleStore } from "../cableAngleStore";
 import { socketFlipStore } from "../socketFlipStore";
@@ -226,10 +226,10 @@ export function FlowCableEdge(props: EdgeProps<SolFlowEdge>) {
   };
   const cs = pillPoint(groupCollapseStore.outPillFor(source, conn.sourceOutput))
     ?? conduitLanePoint(source, "out", conn.sourceOutput)
-    ?? { x: sourceX, y: sourceY };
+    ?? { x: intoSocket(sourceX, sourceFlipped ? CablePosition.Left : CablePosition.Right), y: sourceY };
   const ce = pillPoint(groupCollapseStore.inPillFor(target, conn.targetInput))
     ?? conduitLanePoint(target, "in", conn.targetInput)
-    ?? { x: targetX, y: targetY };
+    ?? { x: intoSocket(targetX, targetFlipped ? CablePosition.Right : CablePosition.Left), y: targetY };
 
   const stroke = selected ? SELECTED_COLOR : typeColor;
   const activeHover = hovered || socketHovered;

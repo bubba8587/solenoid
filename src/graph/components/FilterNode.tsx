@@ -10,9 +10,8 @@ import { SegToggle } from "./SegToggle";
 import { MeasuredSocketRow } from "./NodeSocket";
 import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { ArrayChip } from "./ArrayChip";
-import { FILTER_OP_OPTIONS_WITH_ERROR, TEXT_MATCH_OPS, VALUELESS_OPS, FILTER_COMBINE_OPTIONS } from "./FrameNodes";
+import { FILTER_OP_OPTIONS_WITH_ERROR, TEXT_MATCH_OPS, VALUELESS_OPS, FILTER_COMBINE_OPTIONS, MatchCaseButton } from "./FrameNodes";
 import type { DisplayValue } from "./valueDisplayFormat";
-import { stopDragStart } from "../coarse";
 import { dropInputCables } from "./cablePrune";
 import { nodeDisplayName } from "../catalogUtils";
 
@@ -71,22 +70,7 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
                 <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} />
               ) : null}
               {TEXT_MATCH_OPS.has(c.op) && (
-                <button
-                  type="button"
-                  title="Match case. Off matches text like Excel's = does."
-                  aria-pressed={c.matchCase ?? false}
-                  onClick={(e) => { e.stopPropagation(); updateCfg(id, { matchCase: !c.matchCase }); }}
-                  onPointerDown={stopDragStart}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  style={{
-                    flexShrink: 0, fontSize: 11, lineHeight: 1, padding: "3px 5px",
-                    border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer",
-                    background: c.matchCase ? "var(--accent)" : "transparent",
-                    color: c.matchCase ? "var(--surface)" : "var(--text-muted)",
-                  }}
-                >
-                  Aa
-                </button>
+                <MatchCaseButton on={c.matchCase ?? false} onToggle={() => updateCfg(id, { matchCase: !c.matchCase })} />
               )}
               {keys.length > 1 && (
                 <button
@@ -107,7 +91,7 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
         className="solenoid-node__add-input"
         onClick={(e) => { e.stopPropagation(); void addRow(); }}
       >
-        + Add condition
+        Add Condition
       </button>
       <MeasuredSocketRow side="output" socketKey="result" nodeId={data.id} emit={emit} payload={data.outputs.result!.socket} hero>
         <ValueDisplay value={data.cachedResult as DisplayValue} />

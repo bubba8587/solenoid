@@ -6,7 +6,7 @@ import type { Schemes } from "../../src/graph/schemes";
 import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { installErrorGuards } from "../../src/graph/errorValue";
 import { isFrameValue, type FrameValue, type FrameCell } from "../../src/graph/frame";
-import seed from "../../src/graph/seedGraphs/pivot-tables.json";
+import seed from "../fixtures/pivot-tables.json"; // the retired seed, kept as the Pivot fixture (2026-09-16)
 
 // Runs the "Pivot tables (one source, many views)" seed through a real editor +
 // DataflowEngine and checks each pivot computes the numbers it claims — so a bad

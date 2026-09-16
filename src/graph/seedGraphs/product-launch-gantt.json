@@ -8,10 +8,10 @@
       "id": "noteIntro",
       "type": "NoteNode",
       "x": -40,
-      "y": -257,
+      "y": 1548,
       "init": {
         "label": "Product launch (Gantt)",
-        "body": "# Phases, typed links, and the one rule\nThe plan is a **Cube Input** with three phases. Each phase's **tasks** cell is a nested table, so a phase is a bracket that rolls up its children. A predecessor is a name (finish-to-start) or a small table of **task · type · lag**: Frontend starts two days after Design *starts* (SS+2), and Marketing starts three days before QA *finishes* (FS-3).\n\nDates never move on their own. A **start** cell holds a task no earlier than that day, **deadline** flags a late finish without moving it, and **manual** pins a task to its dates. The **status date** measures progress: Interviews is done, Synthesis is 60% done, and the unfinished part is scheduled after that day.\n\nEach task names **who** does it, so the first Gantt shows a resource band under the timeline (`histogram=on`); Ana is double-booked where Design and Synthesis overlap. Open the Gantt's chart chip, or watch the Display; the second Gantt draws the same plan as a month calendar (`layout=calendar`). **Diagnostics** lists what to look at: the lead, the SS link, the pinned task, and anything past its deadline.",
+        "body": "# Phases, typed links, and the one rule\nThe plan is a **Cube Input** with three phases. Each phase's **tasks** cell is a nested table, so a phase is a bracket that rolls up its children. A predecessor is a name (finish-to-start) or a small table of **task · type · lag**: Frontend starts two days after Design *starts* (SS+2), and Marketing starts three days before QA *finishes* (FS-3).\n\nDates never move on their own. A **start** cell holds a task no earlier than that day, **deadline** flags a late finish without moving it, and **manual** pins a task to its dates. The **status date** measures progress: Interviews is done, Synthesis is 60% done, and the unfinished part is scheduled after that day.\n\nEach task names **who** does it, so the first Gantt shows a resource band under the timeline (`histogram=on`); Ana is double-booked where Design and Synthesis overlap. Open the Gantt's chart chip, or watch the Display; the second Gantt draws the same plan as a month calendar (`layout=calendar`). **Diagnostics** lists what to look at: the lead, the SS link, the pinned task, and anything past its deadline.\n\nA **Holidays** node feeds the days to skip. **Earned Value** reads the scheduled plan with a **cost** per task and how far each is complete: as of the status date it works out the planned value, the earned value and the actual cost, then the schedule and cost variances and the **SPI** and **CPI** indices. An index below 1.0 is behind plan or over budget; **EAC** is the projected total at this pace.",
         "color": "violet",
         "width": 400,
         "height": 300
@@ -21,17 +21,17 @@
       "id": "tasks",
       "type": "CubeInputNode",
       "x": 92,
-      "y": 256,
+      "y": 1218,
       "init": {
         "label": "Plan",
-        "cubeText": "[\n  {\n    \"task\": \"Discovery\",\n    \"tasks\": [\n      {\n        \"task\": \"Interviews\",\n        \"days\": 5,\n        \"after\": [],\n        \"complete\": 100,\n        \"who\": \"Ana\"\n      },\n      {\n        \"task\": \"Synthesis\",\n        \"days\": 3,\n        \"after\": [\n          \"Interviews\"\n        ],\n        \"complete\": 60,\n        \"who\": \"Ana\"\n      }\n    ]\n  },\n  {\n    \"task\": \"Build\",\n    \"after\": [\n      \"Discovery\"\n    ],\n    \"tasks\": [\n      {\n        \"task\": \"Design\",\n        \"days\": 5,\n        \"after\": [],\n        \"who\": \"Ana\"\n      },\n      {\n        \"task\": \"Frontend\",\n        \"days\": 8,\n        \"after\": [\n          {\n            \"task\": \"Design\",\n            \"type\": \"SS\",\n            \"lag\": 2\n          }\n        ],\n        \"who\": \"Bo\"\n      },\n      {\n        \"task\": \"Backend\",\n        \"days\": 8,\n        \"after\": [\n          \"Design\"\n        ],\n        \"who\": \"Cy\"\n      },\n      {\n        \"task\": \"QA\",\n        \"days\": 4,\n        \"after\": [\n          \"Frontend\",\n          \"Backend\"\n        ],\n        \"who\": \"Bo\"\n      }\n    ]\n  },\n  {\n    \"task\": \"Launch\",\n    \"tasks\": [\n      {\n        \"task\": \"Marketing\",\n        \"days\": 6,\n        \"after\": [\n          {\n            \"task\": \"QA\",\n            \"type\": \"FS\",\n            \"lag\": -3\n          }\n        ],\n        \"who\": \"Dee\"\n      },\n      {\n        \"task\": \"Board review\",\n        \"days\": 1,\n        \"after\": [],\n        \"manual\": true,\n        \"start\": \"2026-03-10\",\n        \"who\": \"Dee\"\n      },\n      {\n        \"task\": \"Press day\",\n        \"days\": 0,\n        \"after\": [\n          \"Marketing\",\n          \"QA\",\n          \"Board review\"\n        ],\n        \"deadline\": \"2026-03-20\",\n        \"who\": \"Dee\"\n      },\n      {\n        \"task\": \"Retrospective\",\n        \"days\": 1,\n        \"after\": [\n          \"Press day\"\n        ],\n        \"who\": \"Ana\"\n      }\n    ]\n  }\n]"
+        "cubeText": "[\n  {\n    \"task\": \"Discovery\",\n    \"tasks\": [\n      {\n        \"task\": \"Interviews\",\n        \"days\": 5,\n        \"after\": [],\n        \"complete\": 100,\n        \"who\": \"Ana\",\n        \"cost\": 1200\n      },\n      {\n        \"task\": \"Synthesis\",\n        \"days\": 3,\n        \"after\": [\n          \"Interviews\"\n        ],\n        \"complete\": 60,\n        \"who\": \"Ana\",\n        \"cost\": 900\n      }\n    ]\n  },\n  {\n    \"task\": \"Build\",\n    \"after\": [\n      \"Discovery\"\n    ],\n    \"tasks\": [\n      {\n        \"task\": \"Design\",\n        \"days\": 5,\n        \"after\": [],\n        \"who\": \"Ana\",\n        \"cost\": 1500\n      },\n      {\n        \"task\": \"Frontend\",\n        \"days\": 8,\n        \"after\": [\n          {\n            \"task\": \"Design\",\n            \"type\": \"SS\",\n            \"lag\": 2\n          }\n        ],\n        \"who\": \"Bo\",\n        \"cost\": 2400\n      },\n      {\n        \"task\": \"Backend\",\n        \"days\": 8,\n        \"after\": [\n          \"Design\"\n        ],\n        \"who\": \"Cy\",\n        \"cost\": 1800\n      },\n      {\n        \"task\": \"QA\",\n        \"days\": 4,\n        \"after\": [\n          \"Frontend\",\n          \"Backend\"\n        ],\n        \"who\": \"Bo\",\n        \"cost\": 1000\n      }\n    ]\n  },\n  {\n    \"task\": \"Launch\",\n    \"tasks\": [\n      {\n        \"task\": \"Marketing\",\n        \"days\": 6,\n        \"after\": [\n          {\n            \"task\": \"QA\",\n            \"type\": \"FS\",\n            \"lag\": -3\n          }\n        ],\n        \"who\": \"Dee\",\n        \"cost\": 800\n      },\n      {\n        \"task\": \"Board review\",\n        \"days\": 1,\n        \"after\": [],\n        \"manual\": true,\n        \"start\": \"2026-03-10\",\n        \"who\": \"Dee\",\n        \"cost\": 600\n      },\n      {\n        \"task\": \"Press day\",\n        \"days\": 0,\n        \"after\": [\n          \"Marketing\",\n          \"QA\",\n          \"Board review\"\n        ],\n        \"deadline\": \"2026-03-20\",\n        \"who\": \"Dee\",\n        \"cost\": 700\n      },\n      {\n        \"task\": \"Retrospective\",\n        \"days\": 1,\n        \"after\": [\n          \"Press day\"\n        ],\n        \"who\": \"Ana\",\n        \"cost\": 500\n      }\n    ]\n  }\n]"
       }
     },
     {
       "id": "start",
       "type": "DateInputNode",
       "x": 115,
-      "y": 437,
+      "y": 1403,
       "init": {
         "label": "Project start"
       },
@@ -43,7 +43,7 @@
       "id": "status",
       "type": "DateInputNode",
       "x": 115,
-      "y": 139,
+      "y": 1097,
       "init": {
         "label": "Status date"
       },
@@ -54,8 +54,8 @@
     {
       "id": "schedule",
       "type": "ScheduleNode",
-      "x": 451,
-      "y": -240,
+      "x": 521,
+      "y": 756,
       "init": {
         "label": "Schedule",
         "mode": "working"
@@ -64,8 +64,8 @@
     {
       "id": "gantt",
       "type": "GanttNode",
-      "x": 1067,
-      "y": 547,
+      "x": 1226,
+      "y": 1283,
       "init": {
         "label": "Gantt"
       },
@@ -76,8 +76,8 @@
     {
       "id": "ganttDisplay",
       "type": "DisplayNode",
-      "x": 1392,
-      "y": 448,
+      "x": 1555,
+      "y": 1184,
       "size": {
         "w": 760,
         "h": 420
@@ -86,8 +86,8 @@
     {
       "id": "diagDisplay",
       "type": "DisplayNode",
-      "x": 787,
-      "y": 198,
+      "x": 946,
+      "y": 930,
       "init": {
         "label": "Diagnostics"
       },
@@ -99,8 +99,8 @@
     {
       "id": "finishDisplay",
       "type": "DisplayNode",
-      "x": 957,
-      "y": 75,
+      "x": 1116,
+      "y": 803,
       "init": {
         "label": "Project finish"
       }
@@ -109,7 +109,7 @@
       "id": "grp-plan",
       "type": "GroupNode",
       "x": 68,
-      "y": 81,
+      "y": 1039,
       "init": {
         "label": "The plan",
         "members": [
@@ -120,14 +120,14 @@
         "color": "amber",
         "collapsed": false,
         "width": 292,
-        "height": 463
+        "height": 471
       }
     },
     {
       "id": "grp-figure",
       "type": "GroupNode",
-      "x": 763,
-      "y": 17,
+      "x": 922,
+      "y": 745,
       "init": {
         "label": "Schedule + Gantt",
         "members": [
@@ -140,15 +140,15 @@
         ],
         "color": "green",
         "collapsed": false,
-        "width": 1417,
-        "height": 1439
+        "width": 1421,
+        "height": 1451
       }
     },
     {
       "id": "ganttCal",
       "type": "GanttNode",
-      "x": 1067,
-      "y": 1056,
+      "x": 1226,
+      "y": 1796,
       "init": {
         "label": "Calendar"
       },
@@ -159,11 +159,54 @@
     {
       "id": "calDisplay",
       "type": "DisplayNode",
-      "x": 1392,
-      "y": 957,
+      "x": 1555,
+      "y": 1697,
       "size": {
         "w": 760,
         "h": 420
+      }
+    },
+    {
+      "id": "ev",
+      "type": "EarnedValueNode",
+      "x": 946,
+      "y": 2311,
+      "init": {
+        "label": "Earned Value"
+      }
+    },
+    {
+      "id": "evDisplay",
+      "type": "DisplayNode",
+      "x": 1275,
+      "y": 2292,
+      "size": {
+        "w": 660,
+        "h": 340
+      }
+    },
+    {
+      "id": "holidays",
+      "type": "HolidaysNode",
+      "x": 118,
+      "y": 449,
+      "init": {
+        "label": "Holidays"
+      }
+    },
+    {
+      "id": "grp-ev",
+      "type": "GroupNode",
+      "x": 922,
+      "y": 2234,
+      "init": {
+        "label": "Earned value",
+        "members": [
+          "ev",
+          "evDisplay"
+        ],
+        "width": 1041,
+        "height": 506
       }
     }
   ],
@@ -220,6 +263,42 @@
       "source": "ganttCal",
       "sourceOutput": "chart",
       "target": "calDisplay",
+      "targetInput": "in"
+    },
+    {
+      "source": "holidays",
+      "sourceOutput": "dates",
+      "target": "schedule",
+      "targetInput": "holidays"
+    },
+    {
+      "source": "holidays",
+      "sourceOutput": "dates",
+      "target": "gantt",
+      "targetInput": "holidays"
+    },
+    {
+      "source": "schedule",
+      "sourceOutput": "cube",
+      "target": "ev",
+      "targetInput": "schedule"
+    },
+    {
+      "source": "schedule",
+      "sourceOutput": "cube",
+      "target": "ev",
+      "targetInput": "baseline"
+    },
+    {
+      "source": "status",
+      "sourceOutput": "result",
+      "target": "ev",
+      "targetInput": "status"
+    },
+    {
+      "source": "ev",
+      "sourceOutput": "frame",
+      "target": "evDisplay",
       "targetInput": "in"
     }
   ],

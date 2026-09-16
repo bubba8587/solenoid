@@ -33,7 +33,7 @@ export function MergePlotsComponent({ data, emit }: NodeProps<MergePlotsNodeType
 
   return (
     <NodeShell node={data} emit={emit}>
-      <ExtensibleInputs node={data} emit={emit} valueKeys={data.plotKeys()} addLabel="+ Add plot" />
+      <ExtensibleInputs node={data} emit={emit} valueKeys={data.plotKeys()} addLabel="Add Plot" />
       <div className="solenoid-node__figure" style={{ position: "relative", marginTop: 4, height: H }}>
         {err ? (
           <div className="solenoid-node__display-value solenoid-node__display-value--chip"><ErrorChip err={err} /></div>

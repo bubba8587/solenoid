@@ -132,7 +132,7 @@ export function SumIfsComponent({ data, emit }: NodeProps<SumIfsNodeType>) {
         className="solenoid-node__add-input"
         onClick={(e) => { e.stopPropagation(); void addPair(); }}
       >
-        + Add criterion
+        Add Criterion
       </button>
       <ValueDisplay value={data.cachedResult} />
     </NodeShell>

@@ -3,7 +3,7 @@
 Everything the author has parked, ruled reopen-only, or left waiting on a trigger, in ONE
 place — with the notes needed to reopen it without re-deriving. **Planned items are not
 here:** the 2026-09-01 planning pass scored every deferred idea and moved the ones with a
-plan into [`1.4-plan.md`](1.4-plan.md) (the workbench release) or [`2.0-plan.md`](2.0-plan.md)
+plan into [`archive/1.4-plan.md`](archive/1.4-plan.md) (the workbench release) or [`2.0-plan.md`](2.0-plan.md)
 + [`v2.0/`](v2.0/README.md) (the structural arcs). An item the author rejects from those plans
 comes back here with a one-line reason; an item promoted from here gets a plan section there
 and its entry deleted. Ruled-out-forever ideas: `out-of-scope.md`; settled rationale:
@@ -17,7 +17,7 @@ the decision tree (`dte.md`).
 - **Feature/value copy doc** for landing/marketing — author will initiate; ranked candidate
   copy lines per feature, author ranks value.
 - **Table/cube popup virtualization for wide EDITABLE frames** (author 2026-08-30: "don't
-  really care" — parked; `1.4-plan.md` B9 HOLD). Read-only cells already render plain text
+  really care" — parked; `archive/1.4-plan.md` B9 HOLD). Read-only cells already render plain text
   (~50% off every read-only popup, landed 2026-08-24; `scripts/table-popup-probe.mjs` has the
   measurements). The open call is Path A (keep the `<table>`, window the `<tr>`s ourselves,
   ~60 lines) vs Path B (div-grid rewrite on `react-window` — settled: react-window CANNOT wrap
@@ -26,7 +26,7 @@ the decision tree (`dte.md`).
   checking. 1.4's frozen-header lift (B3) is `position: sticky` and does not prejudge this.
 - **INDEX — marked for later (2026-07-01, `archive/cube-node-scope.md`)**: output socket
   should express Cube (today singular `any`); Excel range forms (`row=0`/`col=0` whole
-  row/col, the reference form) — Solenoid INDEX is cell-only. (`1.4-plan.md` D6 HOLD.)
+  row/col, the reference form) — Solenoid INDEX is cell-only. (`archive/1.4-plan.md` D6 HOLD.)
 
 ## Reopen only if the trigger returns
 
@@ -35,9 +35,9 @@ the decision tree (`dte.md`).
   instanced per surface, a store seam through the layer / capture / inspector, per-composite
   commit routing, and storage in `CompositeInternalSnapshot`. Reopen only on the author's word.
 - **H7 Common free time** (author 2026-09-06: wait until Solenoid can connect to a person's calendar;
-  TaskNotes might be the bridge — "could be good"). Spec stays in `1.4-plan.md` § H7.
+  TaskNotes might be the bridge — "could be good"). Spec stays in `archive/1.4-plan.md` § H7.
 - **1.4 walk deferrals, 2026-09-06** (the author: "defer for later" / "defer"; plan sections in
-  `1.4-plan.md` stay the spec): **D9** AI palette re-enable + verification tail; **D10**
+  `archive/1.4-plan.md` stay the spec): **D9** AI palette re-enable + verification tail; **D10**
   document-level FC defaults; **E1** composite aliasing / hidden-port promotion UI (the model
   half is what the 2.0 pack-node shape needs — build it there); **E3** Materials & Mechanical pack
   content; **F1** obstacle-avoiding
@@ -76,8 +76,8 @@ the decision tree (`dte.md`).
   argument is why 1.4's categorical columns (B2) ship as sugar, not a type.
 - **Data Feed widening** — real symbol-search picker + more providers (shipped baseline:
   FRED keyless / Alpha Vantage keyed). Stays Excel STOCKHISTORY scope — no crypto/FX/
-  real-time/options/fundamentals (FX itself is the widget-node call, `1.4-plan.md` C1).
-  Reopen on a user ask. (`1.4-plan.md` C3 HOLD.)
+  real-time/options/fundamentals (FX itself is the widget-node call, `archive/1.4-plan.md` C1).
+  Reopen on a user ask. (`archive/1.4-plan.md` C3 HOLD.)
 - **Lazy handles, the ruled-out tail** (Slicer went lazy 7c34d874; plan doc deleted): Rust
   store as `LazyFrame` plans (would make an intermediate flush free but breaks the eager-
   independent-frames drop rule) and `WireOp::pivot` — both out-of-scope separate calls.
@@ -86,7 +86,7 @@ the decision tree (`dte.md`).
 - **Pack variant-switch reconciles the socket set** — a variant dropdown would add/remove
   sockets like Cast/read-as do. (The existing custom nodes all keep fixed sockets across
   their dropdowns, deliberately — nothing waits on this; the Materials & Mechanical pack,
-  `1.4-plan.md` E3, uses fixed sockets.)
+  `archive/1.4-plan.md` E3, uses fixed sockets.)
 - **MMULT dimension algebra** — only if a dimensioned-linear-algebra use case ever appears;
   documented-strip is the deliberate stance (unitGranularity).
 - **Provenance Tier 2 — on-demand "why is this?" walk** — backward-derivation trace for any
@@ -108,7 +108,7 @@ the decision tree (`dte.md`).
 - **Blend / mix to a spec** — Allocator-family (2026-09-04 domain sweep, parked). Rows are
   ingredients with a cost + one attribute (protein %, octane, ABV); find the cheapest blend that
   hits a target attribute. Closed-form for the two-source case (alligation), greedy beyond.
-  Reopen on a real mixing use case. Sibling to `1.4-plan.md` Track H (Allocator family).
+  Reopen on a real mixing use case. Sibling to `archive/1.4-plan.md` Track H (Allocator family).
 - **Loan / annuity term solver** — Allocator-family (parked same sweep). principal + rate +
   payment → months to payoff (closed-form log), the inverse of an amortization; or the payment
   for a given term. Small — likely a formula or a composite run mode (A6), not its own node;
@@ -116,7 +116,7 @@ the decision tree (`dte.md`).
 - **Shift Assignment (best one-to-one matching)** — scheduling sweep 2026-09-04b, parked. A
   people × shifts score matrix → the best matching + total (Hungarian: exact, but it reads as a
   solver and answers a question a simple user rarely asks). If it returns, it is the Optimize
-  run mode (A6), not a node. The calendar-shaped siblings are `1.4-plan.md` Track H H4–H7.
+  run mode (A6), not a node. The calendar-shaped siblings are `archive/1.4-plan.md` Track H H4–H7.
 - **Staffing requirement (Erlang C)** — same sweep, parked: demand per interval + a service
   target → minimum staff per interval. Closed-form but call-centre specific; the schedule that
   covers it is set-cover (solver). Reopen on a real contact-centre use case.
@@ -134,9 +134,9 @@ the decision tree (`dte.md`).
 
 - **UI-scale toggle (Default / Larger)** — subsumes all per-panel resize asks; don't build
   per-panel resize. **Moveable / resizable / hideable toolbar chrome** is the same
-  customization slice (`1.4-plan.md` F3 HOLD; `layout-chrome.md` shows the cost).
+  customization slice (`archive/1.4-plan.md` F3 HOLD; `layout-chrome.md` shows the cost).
 - **Cable collision avoidance** — spec: `archive/cable-routing.md` §2. Superseded by the
-  obstacle-router shape if the author accepts its license (`1.4-plan.md` F1); delete this
+  obstacle-router shape if the author accepts its license (`archive/1.4-plan.md` F1); delete this
   entry when F1 lands.
 - **Grid system** — spec: `grid-system.md`.
 - **Floor-plan bridge (author 2026-09-03, "chew on it"; ruled: don't build a plan editor, in

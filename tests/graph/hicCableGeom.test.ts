@@ -2,12 +2,13 @@ import { describe, it, expect } from "vitest";
 import { cablePolyline } from "../../src/graph/hicCableGeom";
 
 describe("cablePolyline", () => {
-  it("returns a polyline whose ends match the sockets", () => {
+  it("returns a polyline whose ends reach SOCKET_OVERLAP into the sockets (no seam at the handle edge)", async () => {
+    const { SOCKET_OVERLAP } = await import("../../src/graph/cablePaths");
     const pts = cablePolyline("diagonal", { sx: 0, sy: 0, ex: 200, ey: 100 });
     expect(pts.length).toBeGreaterThanOrEqual(2);
-    expect(pts[0].x).toBeCloseTo(0, 0);
+    expect(pts[0].x).toBeCloseTo(-SOCKET_OVERLAP, 0);
     expect(pts[0].y).toBeCloseTo(0, 0);
-    expect(pts[pts.length - 1].x).toBeCloseTo(200, 0);
+    expect(pts[pts.length - 1].x).toBeCloseTo(200 + SOCKET_OVERLAP, 0);
     expect(pts[pts.length - 1].y).toBeCloseTo(100, 0);
   });
 
@@ -32,13 +33,13 @@ describe("cablePolyline", () => {
 
 describe("cablePolyline — flipped endpoints route like the DOM cable", () => {
   it("a flipped source leaves on its LEFT: the snapshot path equals getCablePath's Left route", async () => {
-    const { getCablePath, Position } = await import("../../src/graph/cablePaths");
+    const { getCablePath, intoSocket, Position } = await import("../../src/graph/cablePaths");
     const { parsePathPoints } = await import("../../src/graph/pathPoints");
     const ends = { sx: 100, sy: 100, ex: 300, ey: 200 };
     const flipped = cablePolyline("spline", { ...ends, sourceFlipped: true });
     const dom = parsePathPoints(getCablePath("spline", {
-      sourceX: 100, sourceY: 100, sourcePosition: Position.Left, sourceAngleDeg: null,
-      targetX: 300, targetY: 200, targetPosition: Position.Left, targetAngleDeg: null,
+      sourceX: intoSocket(100, Position.Left), sourceY: 100, sourcePosition: Position.Left, sourceAngleDeg: null,
+      targetX: intoSocket(300, Position.Left), targetY: 200, targetPosition: Position.Left, targetAngleDeg: null,
     }));
     expect(flipped).toEqual(dom);
     const plain = cablePolyline("spline", ends);

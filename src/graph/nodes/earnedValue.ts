@@ -46,7 +46,7 @@ export class EarnedValueNode extends ClassicPreset.Node {
     holidays: "Dates to skip when measuring planned progress, alongside the weekend.",
     weekend_code: "Which days are the weekend. Excel: WORKDAY.INTL codes, 1 = Sat+Sun, 2 = Sun+Mon, 11 to 17 = a single day off.",
     cost: "The Cost column's name, when it isn't called Cost, Budget or BAC.",
-    frame: "A row per task: planned value BCWS, earned value BCWP, actual cost ACWP, the variances SV and CV, the indices SPI and CPI, the estimate at completion EAC, then VAC and TCPI.",
+    frame: "A row per task: BCWS, BCWP, ACWP, the SV and CV variances, the SPI and CPI indices, the EAC estimate at completion, then VAC and TCPI.",
     spi: "The project schedule performance index: earned over planned value.",
     cpi: "The project cost performance index: earned value over actual cost.",
     eac: "The estimate at completion: the budget over the cost performance index.",

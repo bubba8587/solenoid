@@ -21,7 +21,7 @@ export class ExpectNode extends ClassicPreset.Node {
     min: "A blank on the cable skips this bound's check instead of falling back to the card. The other bound still applies.",
     max: "A blank on the cable skips this bound's check instead of falling back to the card. The other bound still applies.",
     pattern: "The pattern is a regular expression and tests text cells only. An empty or invalid pattern skips the check.",
-    allowed: "A blank on the cable skips this check instead of falling back to the card's list. Membership compares by text form, so the number 5 matches the text 5. Blank cells pass, since the not-null check covers them.",
+    allowed: "A blank input skips this check instead of falling back to the card's list. Membership compares by text, so number 5 matches text 5. Blank cells pass; the not-null check covers them.",
   };
   label: string;
   checkNotNull: boolean;

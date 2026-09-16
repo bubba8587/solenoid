@@ -14,7 +14,7 @@ export const TASKS_PAGE = 200;
 export type TaskNotesProvider = "tasks" | "calendar" | "stats";
 
 export const TASKNOTES_PROVIDER_META = {
-  tasks:    { label: "Tasks",    description: "Every task as one row of a Cube: path, title, status, priority, due, scheduled, estimate, tracked minutes, archived, then projects, contexts, tags and blocked-by as lists, time entries and completed instances as nested tables, and each user field." },
+  tasks:    { label: "Tasks",    description: "One Cube row per task: path, title, status, priority, dates, estimate, tracked minutes, archived, user fields; projects, contexts, tags, blocked-by as lists; time entries and completions as tables." },
   calendar: { label: "Calendar", description: "Calendar events between two dates as a Frame: title, start, end, source." },
   stats:    { label: "Stats",    description: "Task counts: total, completed, active, overdue, archived." },
 } satisfies Record<TaskNotesProvider, { label: string; description: string }>;

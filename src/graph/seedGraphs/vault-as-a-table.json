@@ -5,33 +5,131 @@
   "group": "Obsidian",
   "nodes": [
     {
-      "id": "note0",
+      "id": "noteIntro",
       "type": "NoteNode",
-      "x": -120,
-      "y": 68,
+      "x": 1150,
+      "y": 1296,
       "init": {
-        "label": "Your vault as a table",
-        "body": "# Your vault as a table\n\nVault Folder reads a folder of notes as one table: a row per note, a column per frontmatter key, with lists and sub-tables kept in the cells. Filter keeps the notes whose tags contain `book`. Sort orders them by rating. Display shows the result.\n\nPoint the Vault Folder at your own vault, or at the bundled demo-vault. Reading a vault works in the desktop app only.",
+        "label": "Write it back to Obsidian",
+        "body": "# Your vault as a table\n\n**Vault Folder** reads a folder of notes as one table: a row per note, a column per frontmatter key, with lists and sub-tables kept in the cells. Filter keeps the notes whose tags contain `book`; Sort orders them by rating.\n\nThe second chain writes back. Read the project notes, add a **health** label from status and priority, and **Write to Obsidian** puts it on each note as a property; a Bases view over the folder then shows the new column. It loads disarmed and previews every change, so nothing is written until you press Run.\n\nWith no vault folder set in Settings, the readers use the bundled sample vault (which refuses writes); point them at your own to write for real.\n\nThe last group reads the **Daily** folder: with the daily-notes date format set, each file name becomes a `date`, so the notes sort like a series and a 7-day rolling average smooths the nightly sleep into a trend.",
         "color": "violet",
-        "width": 420,
-        "height": 210
+        "width": 380,
+        "height": 260
+      }
+    },
+    {
+      "id": "health",
+      "type": "ComputedColumnNode",
+      "x": 2798,
+      "y": 2214,
+      "init": {
+        "label": "health from status + priority",
+        "expr": "IF(@status=\"done\",\"done\",IF(@status=\"blocked\",\"at risk\",IF(@priority>=4,\"push\",\"steady\")))",
+        "addAs": "text"
+      },
+      "stringLiterals": {
+        "name": "health",
+        "after": ""
+      }
+    },
+    {
+      "id": "write",
+      "type": "WriteObsidianNode",
+      "x": 3145,
+      "y": 2214,
+      "init": {
+        "label": "Write to Obsidian",
+        "target": "properties",
+        "addMissing": true,
+        "writeBase": false
+      },
+      "stringLiterals": {
+        "keys": "health"
+      }
+    },
+    {
+      "id": "planDisplay",
+      "type": "DisplayNode",
+      "x": 3474,
+      "y": 2311,
+      "init": {
+        "label": "The plan"
+      }
+    },
+    {
+      "id": "vault",
+      "type": "VaultFolderNode",
+      "x": 2436,
+      "y": 2214,
+      "init": {
+        "label": "Projects",
+        "folder": "Projects"
+      }
+    },
+    {
+      "id": "grp-compute",
+      "type": "GroupNode",
+      "x": 2774,
+      "y": 2156,
+      "init": {
+        "label": "Compute",
+        "members": [
+          "health"
+        ],
+        "color": "amber",
+        "collapsed": false,
+        "width": 292,
+        "height": 478
+      }
+    },
+    {
+      "id": "grp-write",
+      "type": "GroupNode",
+      "x": 3121,
+      "y": 2156,
+      "init": {
+        "label": "Write back",
+        "members": [
+          "write",
+          "planDisplay"
+        ],
+        "color": "green",
+        "collapsed": false,
+        "width": 1013,
+        "height": 489
+      }
+    },
+    {
+      "id": "grp-live",
+      "type": "GroupNode",
+      "x": 2412,
+      "y": 2156,
+      "init": {
+        "label": "Read the folder",
+        "members": [
+          "vault"
+        ],
+        "color": "slate",
+        "collapsed": false,
+        "width": 292,
+        "height": 505
       }
     },
     {
       "id": "notes",
       "type": "VaultFolderNode",
-      "x": 360,
-      "y": 125,
+      "x": -16,
+      "y": 2757,
       "init": {
-        "label": "Vault Folder",
+        "label": "Notes",
         "folder": "Notes"
       }
     },
     {
-      "id": "filter",
+      "id": "bookFilter",
       "type": "FilterFrameNode",
-      "x": 627,
-      "y": -57,
+      "x": 313,
+      "y": 2829,
       "init": {
         "label": "tags contains book",
         "condConfig": {
@@ -51,10 +149,10 @@
       }
     },
     {
-      "id": "sort",
+      "id": "bookSort",
       "type": "SortFrameNode",
-      "x": 892,
-      "y": -11,
+      "x": 642,
+      "y": 2869,
       "init": {
         "label": "by rating",
         "dir": "desc"
@@ -64,47 +162,178 @@
       }
     },
     {
-      "id": "display",
+      "id": "bookDisplay",
       "type": "DisplayNode",
-      "x": 1157,
-      "y": 31,
+      "x": 971,
+      "y": 2911,
       "init": {
         "label": "Book notes"
+      }
+    },
+    {
+      "id": "grp-read",
+      "type": "GroupNode",
+      "x": -40,
+      "y": 2699,
+      "init": {
+        "label": "A folder is a table",
+        "members": [
+          "notes",
+          "bookFilter",
+          "bookSort",
+          "bookDisplay"
+        ],
+        "width": 2759,
+        "height": 505
+      }
+    },
+    {
+      "id": "dh-vault",
+      "type": "VaultFolderNode",
+      "x": 560,
+      "y": 1652,
+      "init": {
+        "label": "Vault Folder",
+        "folder": "Daily",
+        "nameFormat": "YYYY-MM-DD"
+      }
+    },
+    {
+      "id": "dh-sort",
+      "type": "SortFrameNode",
+      "x": 889,
+      "y": 1748,
+      "init": {
+        "label": "by date",
+        "dir": "asc"
+      },
+      "stringLiterals": {
+        "column": "date"
+      }
+    },
+    {
+      "id": "dh-window",
+      "type": "WindowNode",
+      "x": 1218,
+      "y": 1767,
+      "init": {
+        "label": "7-day rolling average",
+        "agg": "rolling_avg"
+      },
+      "literals": {
+        "n": 7
+      },
+      "stringLiterals": {
+        "orderBy": "date",
+        "column": "sleep",
+        "name": "7-day avg"
+      }
+    },
+    {
+      "id": "dh-columns",
+      "type": "ColumnsNode",
+      "x": 1547,
+      "y": 1831,
+      "init": {
+        "label": "Keep sleep + trend"
+      },
+      "stringLiterals": {
+        "columns": "date,sleep,7-day avg"
+      }
+    },
+    {
+      "id": "dh-chart",
+      "type": "ChartNode",
+      "x": 1876,
+      "y": 1761,
+      "init": {
+        "label": "Sleep, smoothed",
+        "op": "line"
+      },
+      "stringLiterals": {
+        "options": "title=Sleep with a 7-day trend;xlabel=date"
+      }
+    },
+    {
+      "id": "dh-grp",
+      "type": "GroupNode",
+      "x": 536,
+      "y": 1594,
+      "init": {
+        "label": "Daily notes as a time series",
+        "members": [
+          "dh-vault",
+          "dh-sort",
+          "dh-window",
+          "dh-columns",
+          "dh-chart"
+        ],
+        "width": 1608,
+        "height": 524
       }
     }
   ],
   "connections": [
     {
+      "source": "vault",
+      "sourceOutput": "cube",
+      "target": "health",
+      "targetInput": "frame"
+    },
+    {
+      "source": "health",
+      "sourceOutput": "frame",
+      "target": "write",
+      "targetInput": "rows"
+    },
+    {
+      "source": "write",
+      "sourceOutput": "plan",
+      "target": "planDisplay",
+      "targetInput": "in"
+    },
+    {
       "source": "notes",
       "sourceOutput": "cube",
-      "target": "filter",
+      "target": "bookFilter",
       "targetInput": "frame"
     },
     {
-      "source": "filter",
+      "source": "bookFilter",
       "sourceOutput": "frame",
-      "target": "sort",
+      "target": "bookSort",
       "targetInput": "frame"
     },
     {
-      "source": "sort",
+      "source": "bookSort",
       "sourceOutput": "frame",
-      "target": "display",
+      "target": "bookDisplay",
       "targetInput": "in"
+    },
+    {
+      "source": "dh-window",
+      "sourceOutput": "frame",
+      "target": "dh-columns",
+      "targetInput": "frame"
+    },
+    {
+      "source": "dh-columns",
+      "sourceOutput": "frame",
+      "target": "dh-chart",
+      "targetInput": "values"
+    },
+    {
+      "source": "dh-vault",
+      "sourceOutput": "cube",
+      "target": "dh-sort",
+      "targetInput": "frame"
+    },
+    {
+      "source": "dh-sort",
+      "sourceOutput": "frame",
+      "target": "dh-window",
+      "targetInput": "frame"
     }
   ],
-  "standoffs": [
-    {
-      "a": {
-        "nodeId": "notes",
-        "anchor": "w"
-      },
-      "b": {
-        "nodeId": "note0",
-        "anchor": "e"
-      },
-      "min": 40,
-      "max": 240
-    }
-  ]
+  "standoffs": []
 }

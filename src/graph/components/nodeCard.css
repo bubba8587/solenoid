@@ -520,7 +520,7 @@
   font-size: 10px;
   line-height: 1.3;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
   /* While editing you see the RAW typed text (like every other draft field); the
      Header-title case setting only transforms the display below, on blur. */
   text-transform: none;
@@ -548,7 +548,7 @@
   font-size: 10px;
   line-height: 1.3;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   /* Symmetric vertical padding so the title is centered in the header — the same
      effective box the editing textarea ends up with (its content-box height =

@@ -26,14 +26,22 @@
 .sol-conn__select {
   box-sizing: border-box;
   width: 100%;
-  padding: 4px 7px;
-  background: var(--surface-sunken);
+  padding: 4px 24px 4px 7px; /* right padding leaves room for the chevron */
+  background-color: var(--surface-sunken);
+  /* The app-standard chevron (.solenoid-node__select), not WebView2's native arrow. */
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%239aa0a6' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 10px 6px;
   border: 1px solid var(--border);
   border-radius: 5px;
   color: var(--text-bright);
   font-size: 11px;
   outline: none;
   cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
 }
 .sol-conn__select:focus {
   border-color: var(--node-accent, var(--accent));
@@ -70,6 +78,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
   font-size: 11px;
   color: var(--text-dim);
 }

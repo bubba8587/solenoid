@@ -109,7 +109,7 @@ export const ELECTROMAGNETISM_PACK: Pack = {
   id: "electromagnetism",
   group: "Science & Engineering",
   name: "Electromagnetism",
-  description: "Fields, forces, waves, and induction: Coulomb's law, capacitance and inductance from geometry, magnetic fields, Lorentz force, photons, skin depth, Faraday's law, the EM spectrum band namer, and the CODATA physical-constants node. Builds on Electricity & Circuits.",
+  description: "Coulomb, Lorentz, Faraday, capacitance and inductance from geometry, skin depth, spectrum bands, CODATA constants. Builds on Electricity & Circuits.",
   builtin: true,
   defaultActive: false,
   dependsOn: ["electricity"],
@@ -119,7 +119,7 @@ export const ELECTROMAGNETISM_PACK: Pack = {
       entry: {
         type: "em-spectrum-band",
         label: "EM Spectrum Band",
-        description: "Name the band for a frequency or wavelength: Radio, Microwave, Infrared, Visible (with its color), Ultraviolet, X-ray, Gamma. Also emits both quantities through c",
+        description: "Names the band, Radio through Gamma, for a frequency or wavelength, with the color when Visible, and gives both quantities through c.",
         keywords: "spectrum band radio microwave infrared visible ultraviolet xray gamma light classify",
         create: () => new EmSpectrumNode(),
       },

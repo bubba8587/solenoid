@@ -42,7 +42,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <strong>{this.props.label ?? "Node"} failed to render</strong>
           <span>{error.message}</span>
           <button type="button" onClick={() => void navigator.clipboard?.writeText(this.report())}>
-            Copy details
+            Copy Details
           </button>
         </div>
       );
@@ -58,7 +58,7 @@ export class ErrorBoundary extends Component<Props, State> {
         <pre>{this.report()}</pre>
         <div className="solenoid-errbound__actions">
           <button type="button" onClick={() => void navigator.clipboard?.writeText(this.report())}>
-            Copy details
+            Copy Details
           </button>
           <button type="button" onClick={() => window.location.reload()}>Reload</button>
         </div>

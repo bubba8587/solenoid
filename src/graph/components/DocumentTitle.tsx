@@ -184,7 +184,7 @@ export function DocumentTitle() {
 
           <div className="solenoid-doctitle__sep" />
           <button type="button" className="solenoid-doctitle__action" onClick={() => { setMenuOpen(false); void documentStore.newBlank(); }}>
-            New blank document
+            New Blank Document
           </button>
 
           <div className="solenoid-doctitle__sep" />

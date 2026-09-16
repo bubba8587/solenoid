@@ -45,7 +45,7 @@ export const TIMESAVER_DATE: FormulaPackEntry[] = [
   { type: "ts-age", label: "Age", resultAs: "text",
     expr: "DATEDIF(dob,TODAY(),\"Y\")&\"y \"&DATEDIF(dob,TODAY(),\"YM\")&\"m \"&DATEDIF(dob,TODAY(),\"MD\")&\"d\"",
     varDescriptions: { dob: "The birth date (or any start date). Age is measured to today." },
-    description: "Age from a date to today, as \"34y 2m 5d\". Built on DATEDIF. The days part uses DATEDIF's \"MD\", which Excel itself computes unreliably when a whole month is skipped, the classic 31 Jan → 1 Mar. Solenoid borrows from the month before the end date for a consistent, repeatable result, so that edge case can read differently from Excel.",
+    description: "Age to today as \"34y 2m 5d\" via DATEDIF. The days (\"MD\") borrow from the month before the end date, so month-end cases can differ from Excel.",
     keywords: "birthday dob datedif years months days duration elapsed how old" },
   { type: "ts-nth-weekday", label: "Nth Weekday", resultAs: "date",
     expr: "DATE(YEAR(date),MONTH(date),1+MOD(weekday-WEEKDAY(DATE(YEAR(date),MONTH(date),1))+7,7)+(n-1)*7)",
@@ -54,7 +54,7 @@ export const TIMESAVER_DATE: FormulaPackEntry[] = [
       n: "Which occurrence: 1 = first, 2 = second, … A 5th rolls into the next month when the month has only four.",
       weekday: "Day of the week, Excel WEEKDAY numbering: 1 = Sunday, 2 = Monday … 7 = Saturday.",
     },
-    description: "The date of the Nth weekday of a month. The default is the 2nd Tuesday. Give any date in the target month, then pick the occurrence and the weekday. No single Excel function.",
+    description: "The Nth weekday of a month, default the 2nd Tuesday: any date in the month, then the occurrence and the weekday. No single Excel function.",
     keywords: "nth first second third fourth tuesday monday meeting recurring day of week payday" },
 ];
 
@@ -66,7 +66,7 @@ export const TIMESAVERS_PACK: Pack = {
   id: "timesavers",
   group: "Everyday",
   name: "Common Excel Timesavers",
-  description: "Solenoid conveniences that aren't single Excel functions (rolling aggregates, weighted stats, list utilities, extended logic, percent change and CAGR, text cleanup, Reverse Text, Spell Number…). On by default. Turn off to declutter.",
+  description: "Conveniences that aren't single Excel functions: rolling aggregates, weighted stats, list utilities, percent change, CAGR, text cleanup, Spell Number. On by default; turn off to declutter.",
   builtin: true,
   defaultActive: true,
   nodes: [
@@ -79,7 +79,7 @@ export const TIMESAVERS_PACK: Pack = {
       entry: {
         type: "ts-timezone-convert",
         label: "Time Zone Convert",
-        description: "Moves a date and time from one time zone to another, daylight saving included. Name the zones the IANA way, like America/New_York and Asia/Tokyo. No single Excel function.",
+        description: "Moves a date and time between time zones, daylight saving included. IANA zone names like America/New_York. No single Excel function.",
         keywords: "timezone tz utc gmt offset dst daylight saving meeting convert iana city",
         create: () => new TimeZoneConvertNode(),
       },
@@ -89,7 +89,7 @@ export const TIMESAVERS_PACK: Pack = {
       entry: {
         type: "ts-world-clock",
         label: "World Clock",
-        description: "The current local time in a list of time zones, as a table of place and time for a Report. Name the zones the IANA way, like Europe/London. No Excel equivalent.",
+        description: "The current local time in a list of time zones, as a table of place and time. IANA zone names like Europe/London. No Excel equivalent.",
         keywords: "world clock timezone tz local time cities dashboard meeting planner iana",
         create: () => new WorldClockNode(),
       },

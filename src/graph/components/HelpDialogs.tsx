@@ -9,40 +9,36 @@ import "./helpDialogs.css";
 type Slide = { title: string; body: string };
 const SLIDES: Slide[] = [
   {
-    title: "Your Obsidian vault is a table",
-    body: "Point Solenoid at a vault and the Vault Folder node reads a folder of notes as one cube: every property a column, the note body when you ask. Filter, group, chart and compute over your notes, then write back. Write to Obsidian turns a Document into a note or a cube of rows into each note's properties, with a Preview before Run. Import Obsidian Note reads one note's properties as sockets. A bundled demo vault shows all of it on the web with no vault of your own.",
+    title: "Obsidian integration",
+    body: "Import individual Obsidian markdown notes, vault-wide frontmatter properties, and sync with Tasknotes data. The newly created Knap language and the Report Node's template socket work together to put your spreadsheet values directly into your note contents.",
   },
   {
-    title: "TaskNotes, live",
-    body: "The TaskNotes node feeds your tasks, calendar or stats straight off the plugin's API, and Write Tasks sends rows back as new or updated tasks. The Which task next and Kitchen remodel examples plan a week from a real task list.",
+    title: "TaskNotes",
+    body: "The TaskNotes node reads advanced task, calendar and stats data from the HTTP API. Check out the \"Tasks from TaskNotes\" and \"Kitchen remodel\" example graphs, as well as the Calendar layout of the new Gantt chart node.",
   },
   {
-    title: "Reports are templates",
-    body: "Note and Report bodies speak Knap, Obsidian's template language: {{ name }} embeds a wired value as the canvas shows it, {% if %} and {% for %} build the prose, and a wired template note supplies the text with its variables as sockets. Wire a frame into Records and the Report is a mail merge: one page per row, one note per page in the vault.",
+    title: "Reports Templates and Form-filling",
+    body: "Note and Report bodies now use Knap, Obsidian's new template language. The Report's Record socket generates documents with one page per input row.",
   },
   {
     title: "Schedules and Gantt charts",
-    body: "The Schedule node runs a real critical-path pass over a task table: working days or minutes, weekends and holidays, links with lag and lead, phases that roll up, a status date, float and diagnostics. The Gantt figure draws it with phase brackets, milestones, deadline pennants, a baseline ghost and a month calendar layout. Local File imports a Microsoft Project XML, GanttProject or Primavera XER plan.",
+    body: "The Schedule node runs a critical-path pass over a task table for advanced Gantt chart generation. Local File imports Microsoft Project XML, GanttProject or Primavera XER plans.",
   },
   {
     title: "Everyday sources",
-    body: "Weather, Geocode, Holidays, Currency, Time Zone Convert, World Clock and QR Code: the nodes that make a document worth leaving open. A document from elsewhere loads with the network quiet until you allow it, once, per document. The Garden Dashboard example wires Geocode into Weather and totals the rain either side of today.",
+    body: "Check out the Weather, Geocode, Holidays, Currency, Time Zone Convert, World Clock and QR Code nodes. See the Garden Dashboard example.",
   },
   {
     title: "Planners",
-    body: "Payoff Planner rolls a debt list month by month, avalanche or snowball, with the freed payments cascading. Group Cost Settle turns a shared-expense ledger into who owes whom, by totals or by transaction. Earned Value scores a plan against a status date.",
+    body: "Payoff Planner helps you plan an efficient payoff schedule for various debts. Group Cost Settle helps you calculate who owes whom, by totals or by transaction.",
   },
   {
     title: "Categorical columns",
-    body: "Pick Chip on a text column and its distinct values become tinted chips in the table popup and on the Format Controller. Entry on that column offers the existing values instead of a blank field.",
+    body: "Pick Chip on a text column in a data frame for per-category color formatting.",
   },
   {
     title: "Peek any socket",
-    body: "Hover an output socket and a scaled-down live Display of its value appears: a frame, a cube, a list, a chart or a diagram, without wiring anything.",
-  },
-  {
-    title: "Draw on the canvas",
-    body: "Free-drawn cables annotate a graph point by point in the wired cables' three shapes, with arrowheads, width, color and a 45 degree angle dial per point. Press D.",
+    body: "Hover over an output socket for a preview of its contents.",
   },
 ];
 

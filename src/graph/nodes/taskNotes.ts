@@ -118,8 +118,12 @@ export class TaskNotesNode extends ClassicPreset.Node {
       if (!have) {
         this._lastKey = key;
         connectionStore.setState(this.id, { status: "idle" });
-      } else if (isDemoTaskNotes() || requestNetwork(this.id)) {
-        // The demo fake needs no network permission — it never touches the network.
+      } else if (isDemoTaskNotes()) {
+        // The demo fake needs no network and no wait: the canned reply parses in this pass,
+        // so a seed computes on its first fetch (dte:D62 demoVaultResolution).
+        this._lastKey = key;
+        this.loadDemo();
+      } else if (requestNetwork(this.id)) {
         this._lastKey = key;
         void trackInflight(this.fetchProvider(from, to)).then(() => scheduleConnectionRecalc());
       }
@@ -135,23 +139,23 @@ export class TaskNotesNode extends ClassicPreset.Node {
     connectionStore.setState(this.id, { status: "ok", rows, cols, fetchedAt: Date.now() });
   }
 
+  /** The canned replies through the real parsers, synchronously. */
+  private loadDemo(): void {
+    if (this.provider === "tasks") {
+      this.cachedTasks = parseTasksPage(DEMO_TASKS_JSON, 0).tasks;
+      this.reportOk(this.cachedTasks.length, tasksToCube(this.cachedTasks).columns.length);
+    } else if (this.provider === "calendar") {
+      this.cachedEvents = parseEvents(DEMO_EVENTS_JSON);
+      this.reportOk(this.cachedEvents.columns[0].values.length, this.cachedEvents.columns.length);
+    } else {
+      this.cachedStats = parseStats(DEMO_STATS_JSON);
+      this.reportOk(this.cachedStats ? statsToFrame(this.cachedStats).columns[0].values.length : 0, EMPTY_STATS.columns.length);
+    }
+  }
+
   private async fetchProvider(from: number, to: number): Promise<void> {
     connectionStore.setState(this.id, { status: "loading" });
     const provider = this.provider;
-    // Demo/website: parse the canned replies through the real parsers, no network.
-    if (isDemoTaskNotes()) {
-      if (provider === "tasks") {
-        this.cachedTasks = parseTasksPage(DEMO_TASKS_JSON, 0).tasks;
-        this.reportOk(this.cachedTasks.length, tasksToCube(this.cachedTasks).columns.length);
-      } else if (provider === "calendar") {
-        this.cachedEvents = parseEvents(DEMO_EVENTS_JSON);
-        this.reportOk(this.cachedEvents.columns[0].values.length, this.cachedEvents.columns.length);
-      } else {
-        this.cachedStats = parseStats(DEMO_STATS_JSON);
-        this.reportOk(this.cachedStats ? statsToFrame(this.cachedStats).columns[0].values.length : 0, EMPTY_STATS.columns.length);
-      }
-      return;
-    }
     try {
       if (provider === "tasks") {
         const all: TaskRecord[] = [];

@@ -368,7 +368,7 @@ export type StackOp = "vstack" | "hstack";
 
 export const STACK_OP_META = {
   vstack: { label: "VSTACK", description: "Stacks tables top-to-bottom, in row order. A list counts as one row, so two lists make a 2-row table. A narrower table pads right with `#N/A`. Excel: `VSTACK`." },
-  hstack: { label: "HSTACK", description: "Concatenates tables side by side, in row order. A list counts as one row, so two lists make one long row. A shorter table pads down with `#N/A`. Excel: `HSTACK`." },
+  hstack: { label: "HSTACK", description: "Concatenates tables side by side. A list counts as one row, so two lists make one long row. A shorter table pads down with `#N/A`. Excel: `HSTACK`." },
 } satisfies Record<StackOp, { label: string; description: string }>;
 
 // XSTACK: one stacker, the axis is the op. VSTACK is also the lists→table path: a bare

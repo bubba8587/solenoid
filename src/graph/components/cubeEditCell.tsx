@@ -180,11 +180,11 @@ export function CubeEditRows({ edit, view, rows }: { edit: CubeEditBinding; view
   };
   return (
     <>
-      <button className="table-popup__btn" onClick={add} title={isList ? "Append an item" : "Append an empty record"}>+ Row</button>
+      <button className="table-popup__btn" onClick={add} title={isList ? "Append an item" : "Append an empty record"}>Add Row</button>
       <button className="table-popup__btn" onClick={remove} disabled={rows === 0} title="Remove the last row">− Row</button>
       {!isList && (
         <>
-          <button className="table-popup__btn" onClick={addColumn} title="Add a column to every row">+ Col</button>
+          <button className="table-popup__btn" onClick={addColumn} title="Add a column to every row">Add Column</button>
           <button className="table-popup__btn" onClick={removeColumn} disabled={keys.length === 0} title="Remove the last column from every row">− Col</button>
         </>
       )}

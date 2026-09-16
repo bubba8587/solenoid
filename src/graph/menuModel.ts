@@ -131,7 +131,6 @@ export function buildMenus(): Menu[] {
         { sep: true },
         {
           label: "Draw a cable",
-          shortcut: "D",
           checked: drawArmed,
           onClick: () => drawModeStore.toggle(),
         },

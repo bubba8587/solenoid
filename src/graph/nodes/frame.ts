@@ -176,7 +176,7 @@ export class FrameInputNode extends ClassicPreset.Node {
   // Return the SAME FrameValue object while the text is unchanged — a fresh one per
   // data() defeats the backend's identity source-cache (re-uploads the frame to Rust).
   private _builtFrom: string | undefined;
-  // Reserves the full default card: header, the "+ Add lambda" and "+ Add Form layout"
+  // Reserves the full default card: header, the "Add LAMBDA" and "Form Layout"
   // rows, and the 3-row-capped table preview (with its overflow "…" row + chip). The
   // old 220 predated the two add-buttons, so Tidy/ELK under-reserved and stacked a
   // neighbor into the card. Cap-bounded, so a static height stays correct.
@@ -1556,7 +1556,7 @@ export type DecisionDetail = "summary" | "breakdown";
 export class DecisionMatrixNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frame: "Rows are options. Number and logical columns are the criteria, and the first text column names the options. Date columns are skipped.",
-    weights: "One row per criterion: a Criterion name, its Weight (negative = lower is better, like cost), and optionally a Norm (Raw / ÷Max / Rank). A criterion you leave out weighs 1 at the default normalize. Build it with a Frame Input.",
+    weights: "A row per criterion: name, Weight (negative when lower is better), optional Norm (Raw, ÷Max, Rank). A missing criterion weighs 1 at the default Norm.",
   };
 
   label: string;
@@ -1672,7 +1672,7 @@ export const ALLOCATE_MODE_META = {
 
 export class AllocatorNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    categories: "Rows are categories. A min and a max number column set each range, whether a price, hours, or anything else you spread, the first text column names them, and a Weight or Value column says how much you value each. With no such column every category weighs the same.",
+    categories: "Rows are categories: the first text column names them, min and max columns set the range, Weight or Value ranks them. Without one, equal weights.",
     amount: "The budget to spend under Fit budget, or the value target to reach under Min for target. Ignored by Min proportional.",
   };
 
@@ -1842,7 +1842,7 @@ export type SettleMode = "totals" | "transactions";
 
 export class SettleNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    in: "The group's data. Totals: one row per person with Paid and an optional Share weight, blank counting as 1. Transactions: a ledger cube, one expense per row with Amount, Paid by and For, where a blank For means the whole group.",
+    in: "Totals: a row per person, Paid and optional Share (blank is 1). Transactions: a row per expense, Amount, Paid by and For; blank For is everyone.",
     transfers: "The settle-up, and the node's main output: who pays whom in the fewest transfers, From · To · Amount. Amounts carry the Amount column's currency.",
     net: "Each person's true cost: Paid, Owes (still due to the group), Owed (coming back from it) and Net, their fair share.",
   };

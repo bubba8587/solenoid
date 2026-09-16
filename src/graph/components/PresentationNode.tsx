@@ -142,7 +142,7 @@ export function PresentationComponent({ data }: NodeProps<PresentationNodeType>)
           ))
         )}
         <button type="button" className="solenoid-pres__add" onClick={addStep} title="Capture the current canvas selection as a new step">
-          + Add a step
+          Add Step
         </button>
       </div>
 

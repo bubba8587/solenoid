@@ -762,6 +762,8 @@ export function FxComponent({ data, emit }: NodeProps<FxNodeType>) {
 // An Obsidian folder → one cube. The vault is a per-node path (a chip, defaulting from
 // Settings ▸ Obsidian); folder / glob / name-format / include-body commit on blur/Enter.
 const VAULT_CABLE_ONLY = new Set(["folder", "glob"]);
+// A labelled text field: the label carries the name, the box only the example.
+const FIELD_INPUT = { flex: 1, width: "auto", minWidth: 0 } as const;
 
 export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeType>) {
   useSyncExternalStore(connectionStore.subscribe, connectionStore.version); // fill the preview when a read lands
@@ -788,7 +790,11 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
     setFolder(next);
     if (next !== data.folder) { data.folder = next; void processGraph(); }
   }
-  function refreshFolders() { void listVaultFolders(vault).then(setFolders); }
+  // One refresh: rescan the vault's folders, then re-read the notes.
+  function refresh() {
+    void listVaultFolders(vault).then(setFolders);
+    void refreshConnection(data.id);
+  }
 
   function commitField(next: string, current: string, set: (v: string) => void, apply: (v: string) => void) {
     const v = next.trim();
@@ -843,32 +849,29 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
                 {folder && !folders.includes(folder) && <option value={folder}>{folder}</option>}
                 {folders.map((f) => <option key={f} value={f}>{f}</option>)}
               </select>
-              <button
-                type="button"
-                className="sol-conn__refresh"
-                title="Rescan vault folders"
-                onClick={(e) => { e.stopPropagation(); refreshFolders(); }}
-                onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
-              >
-                ⟳
-              </button>
             </div>
-            <input
-              className="sol-conn__url" type="text" value={connected.has("glob") ? "" : glob}
-              placeholder={connected.has("glob") ? "Driven by the Filter cable" : "Name filter, e.g. 2026-* (optional)"}
-              spellCheck={false} disabled={connected.has("glob")}
-              onChange={(e) => setGlob(e.target.value)}
-              onBlur={(e) => commitField(e.target.value, data.glob, setGlob, (v) => { data.glob = v; })}
-              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-              onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
-            />
-            <input
-              className="sol-conn__url" type="text" value={nameFormat} placeholder="Date-from-name, e.g. YYYY-MM-DD (auto)" spellCheck={false}
-              onChange={(e) => setNameFormat(e.target.value)}
-              onBlur={(e) => commitField(e.target.value, data.nameFormat, setNameFormat, (v) => { data.nameFormat = v; })}
-              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-              onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
-            />
+            <label className="sol-conn__field" title="Only notes whose name matches. * stands for anything.">
+              Filter
+              <input
+                className="sol-conn__url" style={FIELD_INPUT} type="text" value={connected.has("glob") ? "" : glob}
+                placeholder={connected.has("glob") ? "Driven by the cable" : "2026-*"}
+                spellCheck={false} disabled={connected.has("glob")}
+                onChange={(e) => setGlob(e.target.value)}
+                onBlur={(e) => commitField(e.target.value, data.glob, setGlob, (v) => { data.glob = v; })}
+                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
+              />
+            </label>
+            <label className="sol-conn__field" title="Reads a date out of each note's name. Blank detects the format.">
+              Date in name
+              <input
+                className="sol-conn__url" style={FIELD_INPUT} type="text" value={nameFormat} placeholder="auto" spellCheck={false}
+                onChange={(e) => setNameFormat(e.target.value)}
+                onBlur={(e) => commitField(e.target.value, data.nameFormat, setNameFormat, (v) => { data.nameFormat = v; })}
+                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
+              />
+            </label>
             <label className="sol-conn__field" title="Add a body column with each note's markdown">
               <input
                 type="checkbox" checked={data.includeBody}
@@ -877,7 +880,7 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
               />
               Include body
             </label>
-            <ConnectionStatusRow nodeId={data.id} onRefresh={() => void refreshConnection(data.id)} />
+            <ConnectionStatusRow nodeId={data.id} onRefresh={refresh} />
             <RefreshIntervalField minutes={minutes} onCommit={(n) => { data.refreshMinutes = n; setMinutes(n); }} />
             {cols.length > 0 && (
               <div className="sol-conn__preview" title={`${cols.length} columns`}>

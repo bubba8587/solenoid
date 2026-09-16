@@ -7,7 +7,7 @@ import { installInputCoercion } from "../../src/graph/coerceInputs";
 import { installErrorGuards } from "../../src/graph/errorValue";
 import { isDocumentValue, type DocumentValue } from "../../src/graph/documentValue";
 import type { ReportNode } from "../../src/graph/nodes/report";
-import seed from "../../src/graph/seedGraphs/mail-merge.json";
+import seed from "../fixtures/mail-merge.json"; // the retired seed, kept as the Report mail-merge fixture (2026-09-16)
 
 // The Mail Merge seed is the worked example of the Report's two fixed inputs: a
 // template NOTE wired into Template (its tags the inputs, its frontmatter the

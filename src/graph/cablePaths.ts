@@ -21,6 +21,17 @@ type PathArgs = {
 
 type Pt = { x: number; y: number };
 
+/** How far a cable end reaches INTO its socket glyph. React Flow anchors an edge at the
+ *  handle box's outer edge, which sits on a half-pixel; a stroke that merely abuts the
+ *  glyph there leaves a lighter seam (two anti-aliased edges never sum to a solid pixel).
+ *  2px is under every glyph, the hollow "any" ring's stroke band included. */
+export const SOCKET_OVERLAP = 2;
+
+/** A handle-edge endpoint pulled SOCKET_OVERLAP into the socket, against the stub direction. */
+export function intoSocket(x: number, position: Position): number {
+  return position === Position.Right ? x - SOCKET_OVERLAP : position === Position.Left ? x + SOCKET_OVERLAP : x;
+}
+
 const STRAIGHT_THRESHOLD = 15;
 
 const straightLine = (sx: number, sy: number, tx: number, ty: number) =>

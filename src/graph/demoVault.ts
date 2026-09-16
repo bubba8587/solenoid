@@ -1,10 +1,10 @@
-// dte:C1,D1
+// dte:C1,D62
 // The bundled, read-only demo vault, served through the fileBridge FsProvider seam so
 // the Obsidian vault readers (Vault Folder, Import Obsidian Note) work with no real
-// vault — the web app included. It is selected by a SENTINEL vault root: when the
-// "Use demo vault" setting is on, getVaultRoot() returns DEMO_VAULT_ROOT, the readers
-// recognise it, and fileBridge's path-aware dispatch routes those paths here instead
-// of the OS filesystem. Writes throw (the demo is not editable). The file contents are
+// vault — the web app included. It is selected by a SENTINEL vault root: with no vault
+// folder configured and the "Use demo vault" setting on, getVaultRoot() returns
+// DEMO_VAULT_ROOT, the readers recognise it, and fileBridge's path-aware dispatch routes
+// those paths here instead of the OS filesystem. Writes throw (the demo is not editable). The file contents are
 // lazily code-split (demoVaultData.ts) so they never weigh down the main bundle.
 import type { FsProvider } from "./fileBridge";
 import { settingsStore } from "./settingsStore";
@@ -32,11 +32,14 @@ export function forceDemoVault(on: boolean): void {
 }
 
 /** The vault root the Obsidian nodes read: the forced demo vault (the marketing pages),
- *  else the bundled demo vault when the setting is on, else the user's configured
- *  folder. One resolver so every reader agrees. */
+ *  else the user's folder, else the bundled demo vault when the setting allows it
+ *  (dte:D62 demoVaultResolution), else "" (the readers say to set the folder). One resolver
+ *  so every reader agrees. */
 export function getVaultRoot(): string {
   if (_forced) return DEMO_VAULT_ROOT;
-  return settingsStore.get("useDemoVault") ? DEMO_VAULT_ROOT : settingsStore.get("obsidianVault");
+  const own = settingsStore.get("obsidianVault").trim();
+  if (own !== "") return own;
+  return settingsStore.get("useDemoVault") ? DEMO_VAULT_ROOT : "";
 }
 
 /** The Local File data folder: the demo vault's Data folder when forced (the marketing

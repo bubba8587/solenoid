@@ -2,8 +2,8 @@
 
 **OPEN items only, kept terse.** When an item lands, DELETE its line — git history and
 the dev-notes digests are the record. **1.4 is built** (2026-09-16: every promoted item in
-`1.4-plan.md` landed, the selling list + What's New deck are written, `develop` is merged to
-`main` at 1.4.0 — the tag is the author's; `1.4-plan.md` archives with it). The
+`archive/1.4-plan.md` landed, the selling list + What's New deck are written and the author rewrote the deck
+2026-09-16; the tag is the author's; the plan is archived). The
 structural arcs are `2.0-plan.md` + `v2.0/`; parked-with-no-plan items: `deferrals.md`;
 ruled-out ideas: `out-of-scope.md`; settled rationale and rules: the decision tree (`dte.md`).
 
@@ -25,18 +25,19 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Release planning (author-run)
 
-- [ ] **Tag v1.4.0** on `main` (the merge + bump landed 2026-09-16); then walk `2.0-plan.md`.
+- [ ] **Re-merge `develop` → `main`, then tag v1.4.0** (the 1.4.0 bump is on both; `main` lacks the
+  button-case sweep and the seed cuts); then walk `2.0-plan.md`.
 - [ ] **Ratify `out-of-scope.md`** (DRAFT since July, no ARR anywhere in it) — the deferral
   review's standing ask. Test 3 / §3 / §11 already read the author's 2026-09-01 order
   (collaboration IN); the rest is still the agent's inference awaiting the author's word.
 - [ ] **The ARR pass over the tree** (author-present; the author: waits for 1.4) — early in the
   release, before the track work adds rules: walk `python tools/dte.py tree` and ratify node by
-  node (dte:C7 authorRuled; `1.4-plan.md` D3).
+  node (dte:C7 authorRuled; `archive/1.4-plan.md` D3).
 
 ## Composites
 
 - [ ] **LATER — Optimize run mode on composites (1.4 A6; author 2026-09-04c: in, not now).** Excel
-  Solver's shape as a sixth composite run mode beside Goal Seek; spec + steps in `1.4-plan.md`
+  Solver's shape as a sixth composite run mode beside Goal Seek; spec + steps in `archive/1.4-plan.md`
   § A6. Gate: the author says go (and settles the constraint forms; integer no).
 
 ## Sources
@@ -104,7 +105,8 @@ The site is four pages sharing `landing/siteNav.tsx` chrome (see architecture.md
 
 Every rule and settled decision is a node (2026-09-15). DTE-tool findings live in the DTE repo's
 FEEDBACK file.
-- [ ] **Author ratifies the tree** — only A1 is ratified. `python tools/dte.py validate` prints the
+- [ ] **Author ratifies the tree** — A1 and C80 are ratified; D62 is the author's to reword first (two agent
+  drafts rejected 2026-09-16), then D42 / E11 (contested, kept), then the B ring. `python tools/dte.py validate` prints the
   unratified list; `ratify <ID>... --by`, and the same change adds the ID to `OWNER_RATIFIED` in
   `rules.test.ts` (dte:C7 authorRuled).
 - [ ] **Apply the WHY-comment→citation practice** (dte:C57 commentMinimalism): migrate rationale
@@ -124,13 +126,9 @@ FEEDBACK file.
 
 ## Formatting & units
 
-- [ ] **Older long tooltips / descriptions** (Decision Matrix, Sensitivity, Allocator, Record
-  layout, Chart values, Slider bounds, 200-plus-character catalog entries) are the copy class the
-  2026-09-12b cut fixed for the new nodes; a separate sweep. Author call pending: now or release tail.
-
 - [ ] **LATER (author, 2026-09-04): fold the Format Controller into the Display** — format and
   unit set at sources and displays, flowing downstream only; the docking subsystem and the
-  upstream walk go. Analysis + scope in `1.4-plan.md` Track I. Gate: the author's go after the
+  upstream walk go. Analysis + scope in `archive/1.4-plan.md` Track I. Gate: the author's go after the
   downstream-flow work has been lived with, plus the source-node control design.
 
 ## Family-name polish (NAME-3 revised 2026-09-13 — card shows the class-derived family name)

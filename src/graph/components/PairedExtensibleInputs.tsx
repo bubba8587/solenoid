@@ -162,7 +162,7 @@ export function PairedExtensibleInputs({
         className="solenoid-node__add-input"
         onClick={(e) => { e.stopPropagation(); void addPair(); }}
       >
-        + Add {rowNoun}
+        Add {rowNoun[0].toUpperCase() + rowNoun.slice(1)}
       </button>
       {/* The fallback's "N/A" is a state cue, not a typed value: no match with an
           unset fallback yields #N/A. */}

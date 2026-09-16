@@ -4,6 +4,7 @@ import { WriteObsidianNode, ImportObsidianNode } from "../../../src/graph/nodes/
 import { NoteNode } from "../../../src/graph/nodes/annotation";
 import { extractInit } from "../../../src/graph/copyPaste";
 import { makeDocument, isDocumentValue } from "../../../src/graph/documentValue";
+import { settingsStore } from "../../../src/graph/settingsStore";
 
 // The vitest env is `node` — isDesktop() is false, so run() short-circuits at the
 // "Desktop app only" guard and never touches obsidianWrite / the filesystem. These
@@ -45,14 +46,23 @@ describe("WriteObsidianNode.run() guards", () => {
     expect(n.statusMessage).toMatch(/arm/i);
   });
 
-  it("armed but off-desktop → the desktop-only guard", async () => {
+  it("armed but off-desktop → the desktop-only guard; with no vault set, the demo's read-only guard (dte:D62 demoVaultResolution)", async () => {
     const n = new WriteObsidianNode();
     n.stringLiterals.path = "x";
     n.enabled = true;
     n.data({ in: [makeDocument("body")] });
     await n.run();
     expect(n.status).toBe("error");
-    expect(n.statusMessage).toMatch(/desktop/i);
+    expect(n.statusMessage).toMatch(/read-only/i);
+    const prev = settingsStore.get("obsidianVault");
+    settingsStore.set("obsidianVault", "C:/vault");
+    try {
+      await n.run();
+      expect(n.status).toBe("error");
+      expect(n.statusMessage).toMatch(/desktop/i);
+    } finally {
+      settingsStore.set("obsidianVault", prev);
+    }
   });
 });
 

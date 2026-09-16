@@ -3,7 +3,7 @@
 // then flattens the SVG path to a polyline (`parsePathPoints`) for Pixi to draw.
 // Pure (no Pixi/DOM) → unit-testable.
 
-import { getCablePath, Position } from "./cablePaths";
+import { getCablePath, intoSocket, Position } from "./cablePaths";
 import type { CableShape } from "./cableShape";
 import { parsePathPoints } from "./pathPoints";
 
@@ -21,14 +21,16 @@ export interface CableEnds {
 /** World-space polyline for a cable between an output and an input socket, using the
  *  chosen shape. An output exits Right and an input enters Left unless its node is flipped. */
 export function cablePolyline(shape: CableShape, ends: CableEnds): { x: number; y: number }[] {
+  const sourcePosition = ends.sourceFlipped ? Position.Left : Position.Right;
+  const targetPosition = ends.targetFlipped ? Position.Right : Position.Left;
   const d = getCablePath(shape, {
-    sourceX: ends.sx,
+    sourceX: intoSocket(ends.sx, sourcePosition),
     sourceY: ends.sy,
-    sourcePosition: ends.sourceFlipped ? Position.Left : Position.Right,
+    sourcePosition,
     sourceAngleDeg: ends.sourceAngleDeg ?? null,
-    targetX: ends.ex,
+    targetX: intoSocket(ends.ex, targetPosition),
     targetY: ends.ey,
-    targetPosition: ends.targetFlipped ? Position.Right : Position.Left,
+    targetPosition,
     targetAngleDeg: ends.targetAngleDeg ?? null,
   });
   return parsePathPoints(d);

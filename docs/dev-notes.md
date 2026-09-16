@@ -6,6 +6,42 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-16c — the deck, ruled; author present)
+
+On `develop`, nothing pushed.
+- **What's New is eight slides in the author's own copy** (`HelpDialogs.tsx`); the drawn-cables slide is cut
+  and the author ruled the tool too minor for chrome or a key: **no toolbar button, no D hotkey**; Insert →
+  Draw a cable (and the palette) is the one way in (`subsystem-invariants.md` § Reach). Nothing else from the
+  since-v1.3 log earns a slide (author).
+- **Long-copy sweep** (author delegated, unchecked): the 76 UI prose strings over 200 chars (mean 89) compressed to
+  under 200; library citations restored where the cut untagged a Reference chip (`functionReferenceLibs.test.ts`
+  caught it). The scan: string-editor's `scanSource` over `src/**` minus help/landing, prose literals only.
+- Left for 1.4 beyond the release process and ratification: the `NEW COPY` placeholder prose on the
+  Download / Examples / Packs pages goes live with the merge (Vercel serves `main`); the older-long-tooltip
+  sweep landed the same day (below).
+
+### SESSION DIGEST (2026-09-16b — the walk, cut short; author present)
+
+On `develop`, nothing pushed. The author ordered one item per turn for every walk (memory).
+
+- **C80 ratified** by the author (`OWNER_RATIFIED` = A1, C80).
+- **Demo vault is a fallback, not an override** (author): Settings ▸ Obsidian lists the vault folder first, "Use demo
+  vault" second (on by default; the author's help text). A configured vault or TaskNotes URL always wins; the demo
+  is used only with nothing configured and the switch on; off + nothing = "set the folder". TaskNotes' canned
+  replies follow the same switch. **D1 folded into D62** (now `demoVaultResolution`, under C1 + C2). The author
+  rejected two rewrites of D62's prose ("gobbledygook", "horrible writer") and ended the session unratified; the
+  node's wording is the author's to fix. Do not re-present agent prose for it.
+- **Cables reach 2px into their sockets** (`SOCKET_OVERLAP` / `intoSocket`, `cablePaths.ts`): RF anchors an edge
+  at the handle's outer edge on a half-pixel, and the abutting anti-aliased stroke and glyph read as a 1px gap
+  (worst on square sockets). Applied to the drawn edge, the drag line and the GPU geometry; pills and lanes exempt
+  (the author saw no seam there). `subsystem-invariants.md` § surface contract.
+- Chrome: the Filter Aa toggle takes `--node-accent` (one `MatchCaseButton` for Filter + Frame filter); header
+  label letter-spacing 0.08 → 0.05em; connection-card selects wear the app chevron; Vault Folder has one refresh
+  (status row rescans folders too) and labelled Filter / Date in name fields.
+- DTE tool: `show` crashes under cp1252 on `→` (logged in the DTE repo's FEEDBACK #4); use `PYTHONIOENCODING=utf-8`.
+- **Open (owner):** the walk — D62 (author's wording), D42, E11, the deck (nine slides, none ruled), the B ring;
+  everything else in the 2026-09-16 digest below still stands.
+
 ### SESSION DIGEST (2026-09-16 — the 1.4 release tail; solo, author delegated)
 
 All on `develop`, merged to `main` at 1.4.0, nothing pushed; the tag is the author's.
@@ -34,11 +70,41 @@ controlDrivenRetype: keep), and the new rule landed as a node before its code (C
   headliners: the vault as a table, TaskNotes, Knap reports, Schedule + Gantt, everyday sources,
   planners, categorical columns, socket peek, drawn cables); the What's New deck rewritten,
   `WHATS_NEW_VERSION` 1.4; version 1.4.0 in package.json / tauri.conf.json / Cargo.toml (+ locks);
-  `develop` merged to `main`. `1.4-plan.md` stays live until the author tags (its sections are
+  `develop` merged to `main`. `archive/1.4-plan.md` stays live until the author tags (its sections are
   still the spec the deferrals point at); it archives with the tag.
 - **Verified, then deleted from the backlog:** the "display unit lost on a computed result" line
   (the 09-14 digest traced the only sighting to the scene-ownership gap; the unit display suites
   are green on the main path).
-- **Open (owner):** ratify the tree (validate lists C80 new, D42 + E11 contested); Track G's
-  ratification; the family-name picks; `out-of-scope.md`.
+- **Buttons are Title Case, no `+` glyph** (author; DESIGN.md § Buttons): Add LAMBDA, Form Layout, Add
+  Condition / Criterion / Plot / Step / Input, Add Row / Column / Record, New Blank Document, Copy Details,
+  Run Sensitivity. Tooltips stay sentence case.
+- **Seed library cut 40 → 35** (author: "your instinct is right on all of them"). Deleted: Remodel (Gantt),
+  Project (two frames), Earned Value (folded into Product launch with a Holidays node and a cost per task),
+  Balance a team's hours (the Allocator card is the lesson), Tasks: list and tracked time + Which task next?
+  (merged as `tasks-from-tasknotes`: Vault Folder list, TaskNotes rollup, Decision Matrix over the open
+  tasks), Write it back to Obsidian (folded into `vault-as-a-table`: read, filter, write back). The scratch
+  sheet carries `hidden: true` (in `SEEDS` by id, out of the menus). NEW `whats-new` (Start here, order 5):
+  one group per 1.4 slide, tuned.
+- **dte:D62 demoVaultResolution (NEW, under C1 + C2; absorbs D1):** the one resolution order: forced demo (marketing pages), else the configured vault or URL, else the bundled demo while `useDemoVault` allows (on by default, the web app's path), else "set the folder". The author's ruling: the folder setting first, the demo switch second and a fallback, never an override.
+  The canned TaskNotes replies parse synchronously in `data()`, so a seed computes on its first pass. Every
+  Obsidian seed lost its "(snapshot)" Frame/Cube Input and wires the live reader only. The demo tasks gained
+  the five kitchen-remodel tasks (a chain with a diamond) so the kitchen seed schedules them.
+- **Second cut, 35 → 26** (author: "more aggressive"; Sudoku stays). Absorbed as ONE lean group each: Units by
+  dimension → Unit flow (K, the column-locks-to-its-header case; its algebra group was already F),
+  Trust & data quality → Errors, null & logic (the Expect check only), LAMBDA helpers → Computed columns
+  (BYROW + MAP), Pivot tables → Table verbs (share-of-grand + subtotals), Daily notes → Your vault as a
+  table. Trip split + Debt payoff → `planners`. Live market data deleted (keyed, CORS-blocked, never tuned).
+  Mail merge deleted (Report showcase already carries a merge group). `pivot-tables.json` and
+  `mail-merge.json` moved to `tests/fixtures/` so `pivotSeed.test.ts` / `mailMergeSeed.test.ts` keep
+  pinning the eight cross-tabs and the Knap merge.
+- **Tuner gotcha:** `tune-seeds.mjs` with several ids dies after the first patch ("Execution context was
+  destroyed"): the JSON write triggers Vite's full reload under the open page. One id per run.
+- **Power features seed reviewed, unchanged** (author: "don't like any of that"). Its five clusters are
+  current; a proposal to add six clusters (peek + hints, draw + flip, isolate/pin/where-used, group
+  lock, the switch ghost, a shortcuts note) was rejected outright. Do not re-propose.
+- **`main` is behind `develop` again** (the button sweep and the two seed cuts landed after the merge).
+  Re-merge before the tag.
+- **Open (owner):** the What's New slide walk (paused after slide 1 was presented); ratify the tree (validate
+  lists C80 + D62 new, D42 + E11 contested); Track G's ratification; the family-name picks;
+  `out-of-scope.md`.
 
