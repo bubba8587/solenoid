@@ -11,20 +11,10 @@
       "y": 232,
       "init": {
         "label": "Kitchen remodel from TaskNotes",
-        "body": "# Kitchen remodel, from your tasks\n\nThe Cube Input stands in for a live TaskNotes feed (swap in the TaskNotes node beside it). Filter keeps the tasks whose projects contain \"Kitchen remodel\". Computed Column turns each task's timeEstimate into a Duration in days. Schedule works out Start, Finish, and the critical path, and the Gantt draws it, as Mermaid text and as the figure.\n\nReading TaskNotes live needs the desktop app and its local API; the snapshot computes anywhere.",
+        "body": "# Kitchen remodel, from your tasks\n\n**TaskNotes** reads every task off the plugin's API. Filter keeps the ones whose projects contain \"Kitchen remodel\". Computed Column turns each task's timeEstimate into a Duration in days. **Schedule** works out Start, Finish and the critical path, and the **Gantt** draws it, as Mermaid text and as the figure.\n\nWith no TaskNotes URL set in Settings, the node reads a bundled sample of tasks, so this runs anywhere.",
         "color": "violet",
         "width": 400,
         "height": 210
-      }
-    },
-    {
-      "id": "tasks",
-      "type": "CubeInputNode",
-      "x": -68,
-      "y": 480,
-      "init": {
-        "label": "Tasks (snapshot)",
-        "cubeText": "[\n  {\"title\": \"Demolition\", \"projects\": [\"Kitchen remodel\"], \"timeEstimate\": 960, \"blockedBy\": []},\n  {\"title\": \"Plumbing rough-in\", \"projects\": [\"Kitchen remodel\"], \"timeEstimate\": 1440, \"blockedBy\": [\"Demolition\"]},\n  {\"title\": \"Electrical rough-in\", \"projects\": [\"Kitchen remodel\"], \"timeEstimate\": 960, \"blockedBy\": [\"Demolition\"]},\n  {\"title\": \"Drywall\", \"projects\": [\"Kitchen remodel\"], \"timeEstimate\": 960, \"blockedBy\": [\"Plumbing rough-in\", \"Electrical rough-in\"]},\n  {\"title\": \"Cabinets & counters\", \"projects\": [\"Kitchen remodel\"], \"timeEstimate\": 1440, \"blockedBy\": [\"Drywall\"]},\n  {\"title\": \"Fix leaky faucet\", \"projects\": [\"Home\"], \"timeEstimate\": 60, \"blockedBy\": []}\n]"
       }
     },
     {
@@ -33,7 +23,7 @@
       "x": -68,
       "y": -36,
       "init": {
-        "label": "TaskNotes (live)",
+        "label": "TaskNotes",
         "provider": "tasks"
       }
     },
@@ -127,7 +117,6 @@
         "label": "From TaskNotes",
         "members": [
           "note0",
-          "tasks",
           "tasknotes"
         ],
         "color": "amber",
@@ -184,8 +173,8 @@
   ],
   "connections": [
     {
-      "source": "tasks",
-      "sourceOutput": "cube",
+      "source": "tasknotes",
+      "sourceOutput": "tasks",
       "target": "kitchen",
       "targetInput": "frame"
     },
@@ -231,5 +220,6 @@
       "target": "ganttDisplay",
       "targetInput": "in"
     }
-  ]
+  ],
+  "standoffs": []
 }

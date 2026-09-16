@@ -5,7 +5,7 @@ import type { SavedGraph } from "./persistence";
 // plus three menu-only fields (`label`, `order`, `group`) that loadGraph ignores.
 // seeds.test.ts requires all three on every seed, so the fallbacks below are
 // load-safety only, not an authoring path.
-type SeedFile = SavedGraph & { label?: string; order?: number; group?: string };
+type SeedFile = SavedGraph & { label?: string; order?: number; group?: string; hidden?: boolean };
 const DEFAULT_ORDER = 1000;
 const DEFAULT_GROUP = "More";
 
@@ -37,6 +37,7 @@ const ordered = Object.entries(modules)
 for (const { id, mod } of ordered) {
   const group = mod.group ?? DEFAULT_GROUP;
   SEEDS[id] = { label: mod.label ?? labelFromId(id), group, graph: mod };
+  if (mod.hidden) continue; // a developer sheet: loadable by id, absent from the menus
   const bucket = SEED_GROUPS.find((g) => g.head === group);
   if (bucket) bucket.ids.push(id);
   else SEED_GROUPS.push({ head: group, ids: [id] });

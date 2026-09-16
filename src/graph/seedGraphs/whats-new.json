@@ -1,0 +1,454 @@
+{
+  "v": 2,
+  "order": 5,
+  "label": "What's new in 1.4",
+  "group": "Start here",
+  "standoffs": [],
+  "frameFormats": [
+    {
+      "nodeId": "chipDisplay",
+      "column": "Status",
+      "ann": {
+        "format": "auto",
+        "unit": "none",
+        "chip": true
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "intro",
+      "type": "NoteNode",
+      "x": 1058,
+      "y": 3009,
+      "init": {
+        "label": "What's new in 1.4",
+        "body": "# What's new in 1.4\n\nOne group per headline. Hover any **output socket** for a live peek of its value: the frames, cubes and charts below all show one. Press **D** to draw a cable of your own.\n\nThe vault and task readers use the bundled sample until you set a vault folder or a TaskNotes URL in Settings."
+      }
+    },
+    {
+      "id": "vault",
+      "type": "VaultFolderNode",
+      "x": 24,
+      "y": 3255,
+      "init": {
+        "label": "Notes",
+        "folder": "Notes"
+      }
+    },
+    {
+      "id": "byRating",
+      "type": "SortFrameNode",
+      "x": 353,
+      "y": 3351,
+      "init": {
+        "label": "by rating",
+        "dir": "desc"
+      },
+      "stringLiterals": {
+        "column": "rating"
+      }
+    },
+    {
+      "id": "vaultDisplay",
+      "type": "DisplayNode",
+      "x": 682,
+      "y": 3361,
+      "init": {
+        "label": "Your notes"
+      }
+    },
+    {
+      "id": "grp-vault",
+      "type": "GroupNode",
+      "x": 0,
+      "y": 3197,
+      "init": {
+        "label": "Your Obsidian vault is a table",
+        "members": [
+          "vault",
+          "byRating",
+          "vaultDisplay"
+        ],
+        "width": 2460,
+        "height": 505
+      }
+    },
+    {
+      "id": "tasknotes",
+      "type": "TaskNotesNode",
+      "x": 51,
+      "y": 326,
+      "init": {
+        "label": "TaskNotes",
+        "provider": "tasks"
+      }
+    },
+    {
+      "id": "tasksDisplay",
+      "type": "DisplayNode",
+      "x": 380,
+      "y": 290,
+      "init": {
+        "label": "Your tasks"
+      }
+    },
+    {
+      "id": "grp-tasks",
+      "type": "GroupNode",
+      "x": 27,
+      "y": 232,
+      "init": {
+        "label": "TaskNotes, live",
+        "members": [
+          "tasknotes",
+          "tasksDisplay"
+        ],
+        "width": 2406,
+        "height": 388
+      }
+    },
+    {
+      "id": "rain",
+      "type": "SliderInputNode",
+      "x": 974,
+      "y": 1068,
+      "init": {
+        "label": "Rain this week (mm)",
+        "value": 12,
+        "min": 0,
+        "max": 60,
+        "step": 1
+      }
+    },
+    {
+      "id": "report",
+      "type": "ReportNode",
+      "x": 1243,
+      "y": 1060,
+      "init": {
+        "label": "Watering call",
+        "width": 300,
+        "height": 200,
+        "sideVars": [
+          "rain"
+        ],
+        "body": "# Watering call\n\nRain this week: **{{ rain }} mm**.\n\n{% if rain < 25 %}**Water today.** Under 25 mm is dry ground.{% else %}**Hold off.** The week had it covered.{% endif %}\n\nThe verdict is an if-tag in the report itself: move the slider."
+      }
+    },
+    {
+      "id": "grp-report",
+      "type": "GroupNode",
+      "x": 950,
+      "y": 1002,
+      "init": {
+        "label": "Reports are templates",
+        "members": [
+          "rain",
+          "report"
+        ],
+        "width": 561,
+        "height": 304
+      }
+    },
+    {
+      "id": "plan",
+      "type": "CubeInputNode",
+      "x": 617,
+      "y": 1970,
+      "init": {
+        "label": "Plan",
+        "cubeText": "[\n  {\"task\": \"Design\", \"days\": 4, \"after\": []},\n  {\"task\": \"Build\", \"days\": 6, \"after\": [\"Design\"]},\n  {\"task\": \"Write the docs\", \"days\": 3, \"after\": [\"Design\"]},\n  {\"task\": \"Test\", \"days\": 3, \"after\": [\"Build\", \"Write the docs\"]},\n  {\"task\": \"Launch\", \"days\": 0, \"after\": [\"Test\"], \"deadline\": \"2026-10-16\"}\n]"
+      }
+    },
+    {
+      "id": "start",
+      "type": "DateInputNode",
+      "x": 647,
+      "y": 2170,
+      "init": {
+        "label": "Project start"
+      },
+      "stringLiterals": {
+        "date": "28-Sep-2026"
+      }
+    },
+    {
+      "id": "schedule",
+      "type": "ScheduleNode",
+      "x": 951,
+      "y": 1873,
+      "init": {
+        "label": "Schedule",
+        "mode": "working"
+      }
+    },
+    {
+      "id": "gantt",
+      "type": "GanttNode",
+      "x": 1280,
+      "y": 2034,
+      "init": {
+        "label": "Gantt"
+      }
+    },
+    {
+      "id": "ganttDisplay",
+      "type": "DisplayNode",
+      "x": 1609,
+      "y": 2079,
+      "init": {}
+    },
+    {
+      "id": "grp-gantt",
+      "type": "GroupNode",
+      "x": 593,
+      "y": 1815,
+      "init": {
+        "label": "Schedules and Gantt charts",
+        "members": [
+          "plan",
+          "start",
+          "schedule",
+          "gantt",
+          "ganttDisplay"
+        ],
+        "width": 1274,
+        "height": 664
+      }
+    },
+    {
+      "id": "geocode",
+      "type": "GeocodeNode",
+      "x": 612,
+      "y": 2639,
+      "init": {
+        "label": "Boise"
+      },
+      "stringLiterals": {
+        "place": "Boise"
+      }
+    },
+    {
+      "id": "weather",
+      "type": "WeatherNode",
+      "x": 941,
+      "y": 2575,
+      "init": {
+        "label": "Boise weather",
+        "unit": "C",
+        "pastDays": 3,
+        "forecastDays": 5,
+        "refreshMinutes": 360
+      }
+    },
+    {
+      "id": "weatherDisplay",
+      "type": "DisplayNode",
+      "x": 1270,
+      "y": 2618,
+      "init": {
+        "label": "Daily"
+      }
+    },
+    {
+      "id": "grp-sources",
+      "type": "GroupNode",
+      "x": 588,
+      "y": 2517,
+      "init": {
+        "label": "Everyday sources",
+        "members": [
+          "geocode",
+          "weather",
+          "weatherDisplay"
+        ],
+        "width": 1285,
+        "height": 454
+      }
+    },
+    {
+      "id": "debts",
+      "type": "FrameInputNode",
+      "x": 695,
+      "y": 1402,
+      "init": {
+        "label": "Debts",
+        "frameText": "[{\"name\": \"Debt\", \"type\": \"string\", \"values\": [\"Credit card\", \"Car loan\", \"Store card\"]}, {\"name\": \"Balance\", \"type\": \"number\", \"unit\": \"usd\", \"values\": [3200, 8500, 650]}, {\"name\": \"APR\", \"type\": \"number\", \"values\": [0.24, 0.06, 0.19]}, {\"name\": \"Min\", \"type\": \"number\", \"unit\": \"usd\", \"values\": [95, 260, 30]}]"
+      }
+    },
+    {
+      "id": "extra",
+      "type": "NumberInputNode",
+      "x": 755,
+      "y": 1649,
+      "init": {
+        "label": "Extra per month",
+        "value": 200
+      }
+    },
+    {
+      "id": "payoff",
+      "type": "PayoffPlannerNode",
+      "x": 1030,
+      "y": 1460,
+      "init": {
+        "label": "Avalanche",
+        "order": "avalanche",
+        "mode": "summary"
+      }
+    },
+    {
+      "id": "payoffDisplay",
+      "type": "DisplayNode",
+      "x": 1359,
+      "y": 1532,
+      "init": {
+        "label": "Months to clear"
+      }
+    },
+    {
+      "id": "grp-planners",
+      "type": "GroupNode",
+      "x": 671,
+      "y": 1344,
+      "init": {
+        "label": "Planners",
+        "members": [
+          "debts",
+          "extra",
+          "payoff",
+          "payoffDisplay"
+        ],
+        "width": 1118,
+        "height": 433
+      }
+    },
+    {
+      "id": "chipFrame",
+      "type": "FrameInputNode",
+      "x": 946,
+      "y": 716,
+      "init": {
+        "label": "Orders",
+        "frameText": "[{\"name\": \"Order\", \"type\": \"string\", \"values\": [\"A-1041\", \"A-1042\", \"A-1043\", \"A-1044\", \"A-1045\"]}, {\"name\": \"Status\", \"type\": \"string\", \"values\": [\"shipped\", \"packing\", \"shipped\", \"on hold\", \"packing\"]}, {\"name\": \"Total\", \"type\": \"number\", \"unit\": \"usd\", \"values\": [120, 85, 40, 260, 15]}]"
+      }
+    },
+    {
+      "id": "chipDisplay",
+      "type": "DisplayNode",
+      "x": 1275,
+      "y": 726,
+      "init": {
+        "label": "Status as chips"
+      }
+    },
+    {
+      "id": "grp-chips",
+      "type": "GroupNode",
+      "x": 922,
+      "y": 658,
+      "init": {
+        "label": "Categorical columns",
+        "members": [
+          "chipFrame",
+          "chipDisplay"
+        ],
+        "width": 617,
+        "height": 306
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "vault",
+      "sourceOutput": "cube",
+      "target": "byRating",
+      "targetInput": "frame"
+    },
+    {
+      "source": "byRating",
+      "sourceOutput": "frame",
+      "target": "vaultDisplay",
+      "targetInput": "in"
+    },
+    {
+      "source": "tasknotes",
+      "sourceOutput": "tasks",
+      "target": "tasksDisplay",
+      "targetInput": "in"
+    },
+    {
+      "source": "rain",
+      "sourceOutput": "value",
+      "target": "report",
+      "targetInput": "rain"
+    },
+    {
+      "source": "plan",
+      "sourceOutput": "cube",
+      "target": "schedule",
+      "targetInput": "tasks"
+    },
+    {
+      "source": "start",
+      "sourceOutput": "result",
+      "target": "schedule",
+      "targetInput": "start"
+    },
+    {
+      "source": "schedule",
+      "sourceOutput": "cube",
+      "target": "gantt",
+      "targetInput": "schedule"
+    },
+    {
+      "source": "gantt",
+      "sourceOutput": "chart",
+      "target": "ganttDisplay",
+      "targetInput": "in"
+    },
+    {
+      "source": "geocode",
+      "sourceOutput": "lat",
+      "target": "weather",
+      "targetInput": "lat"
+    },
+    {
+      "source": "geocode",
+      "sourceOutput": "lon",
+      "target": "weather",
+      "targetInput": "lon"
+    },
+    {
+      "source": "weather",
+      "sourceOutput": "daily",
+      "target": "weatherDisplay",
+      "targetInput": "in"
+    },
+    {
+      "source": "debts",
+      "sourceOutput": "frame",
+      "target": "payoff",
+      "targetInput": "debts"
+    },
+    {
+      "source": "extra",
+      "sourceOutput": "value",
+      "target": "payoff",
+      "targetInput": "extra"
+    },
+    {
+      "source": "payoff",
+      "sourceOutput": "frame",
+      "target": "payoffDisplay",
+      "targetInput": "in"
+    },
+    {
+      "source": "chipFrame",
+      "sourceOutput": "frame",
+      "target": "chipDisplay",
+      "targetInput": "in"
+    }
+  ]
+}

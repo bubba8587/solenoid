@@ -244,8 +244,8 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
     fields: [
       {
         key: "useDemoVault",
-        label: "Use demo vault (works in the web demo)",
-        help: "Read a bundled, read-only sample vault instead of a folder, so the Import and Vault Folder nodes work with no real vault — including in the browser.",
+        label: "Use demo vault",
+        help: "Read the bundled, read-only sample vault instead of your folder. With no vault folder set, the readers use it anyway; this keeps it on beside a real vault.",
       },
       {
         key: "obsidianVault",

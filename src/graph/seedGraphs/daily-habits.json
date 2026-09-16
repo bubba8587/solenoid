@@ -7,31 +7,21 @@
     {
       "id": "noteIntro",
       "type": "NoteNode",
-      "x": 241,
-      "y": 191,
+      "x": 81,
+      "y": 102,
       "init": {
         "label": "Daily notes as a time series",
-        "body": "# Your daily notes as a time series\nWith the daily-notes date format set, **Vault Folder** reads each file name into a `date` column, so a folder of daily notes sorts like a series. Here a 7-day **rolling average** smooths the nightly sleep, and the line shows the trend under the noise.\n\nThe **Daily** table is a snapshot so this runs on the web. On desktop, point the **Vault Folder** below at your vault: Sort and Filter run straight on it, and this same chain takes over once the columns match.",
+        "body": "# Your daily notes as a time series\n\nWith the daily-notes date format set, **Vault Folder** reads each file name into a `date` column, so a folder of daily notes sorts like a series. A 7-day **rolling average** smooths the nightly sleep, and the line shows the trend under the noise.\n\nWith no vault folder set in Settings, the reader uses the bundled sample vault; point it at your own and the same chain takes over once the columns match.",
         "color": "violet",
         "width": 380,
         "height": 250
       }
     },
     {
-      "id": "daily",
-      "type": "FrameInputNode",
-      "x": 294,
-      "y": 569,
-      "init": {
-        "label": "Daily (snapshot)",
-        "frameText": "[{\"name\":\"Day\",\"type\":\"string\",\"values\":[\"2026-08-25\",\"2026-08-26\",\"2026-08-27\",\"2026-08-28\",\"2026-08-29\",\"2026-08-30\",\"2026-08-31\",\"2026-09-01\",\"2026-09-02\",\"2026-09-03\",\"2026-09-04\",\"2026-09-05\",\"2026-09-06\",\"2026-09-07\"]},{\"name\":\"Sleep h\",\"type\":\"number\",\"values\":[7.2,7.9,6.3,8.1,8.3,7.0,6.5,7.5,6.0,8.0,7.8,7.0,7.6,8.2]},{\"name\":\"Weight\",\"type\":\"number\",\"values\":[179.4,179.1,179.3,178.9,178.7,178.8,178.9,178.2,178.6,177.9,177.5,177.8,177.6,177.4]}]"
-      }
-    },
-    {
       "id": "window",
       "type": "WindowNode",
-      "x": 619,
-      "y": 537,
+      "x": 660,
+      "y": 448,
       "init": {
         "label": "7-day rolling average",
         "agg": "rolling_avg"
@@ -40,41 +30,41 @@
         "n": 7
       },
       "stringLiterals": {
-        "orderBy": "Day",
-        "column": "Sleep h",
+        "orderBy": "date",
+        "column": "sleep",
         "name": "7-day avg"
       }
     },
     {
       "id": "columns",
       "type": "ColumnsNode",
-      "x": 1110,
-      "y": 951,
+      "x": 1007,
+      "y": 573,
       "init": {
         "label": "Keep sleep + trend"
       },
       "stringLiterals": {
-        "columns": "Day,Sleep h,7-day avg"
+        "columns": "date,sleep,7-day avg"
       }
     },
     {
       "id": "chart",
       "type": "ChartNode",
-      "x": 1435,
-      "y": 943,
+      "x": 1336,
+      "y": 502,
       "init": {
         "label": "Sleep, smoothed",
         "op": "line"
       },
       "stringLiterals": {
-        "options": "title=Sleep with a 7-day trend;xlabel=Day"
+        "options": "title=Sleep with a 7-day trend;xlabel=date"
       }
     },
     {
       "id": "logTable",
       "type": "DisplayNode",
-      "x": 981,
-      "y": 537,
+      "x": 1007,
+      "y": 448,
       "init": {
         "label": "The log"
       }
@@ -83,9 +73,9 @@
       "id": "vault",
       "type": "VaultFolderNode",
       "x": -16,
-      "y": -16,
+      "y": 448,
       "init": {
-        "label": "Vault Folder (live)",
+        "label": "Vault Folder",
         "folder": "Daily",
         "nameFormat": "YYYY-MM-DD"
       }
@@ -93,8 +83,8 @@
     {
       "id": "sort",
       "type": "SortFrameNode",
-      "x": 309,
-      "y": -48,
+      "x": 313,
+      "y": 544,
       "init": {
         "label": "by date",
         "dir": "asc"
@@ -104,36 +94,26 @@
       }
     },
     {
-      "id": "liveDisplay",
-      "type": "DisplayNode",
-      "x": 634,
-      "y": -6,
-      "init": {
-        "label": "Your daily notes"
-      }
-    },
-    {
       "id": "grp-series",
       "type": "GroupNode",
-      "x": 270,
-      "y": 479,
+      "x": 636,
+      "y": 390,
       "init": {
-        "label": "Read + smooth",
+        "label": "Smooth",
         "members": [
-          "daily",
           "window"
         ],
         "color": "amber",
         "collapsed": false,
-        "width": 617,
-        "height": 451
+        "width": 292,
+        "height": 370
       }
     },
     {
       "id": "grp-chart",
       "type": "GroupNode",
-      "x": 957,
-      "y": 479,
+      "x": 983,
+      "y": 390,
       "init": {
         "label": "The trend",
         "members": [
@@ -143,36 +123,29 @@
         ],
         "color": "green",
         "collapsed": false,
-        "width": 746,
-        "height": 777
+        "width": 621,
+        "height": 470
       }
     },
     {
       "id": "grp-live",
       "type": "GroupNode",
       "x": -40,
-      "y": -106,
+      "y": 390,
       "init": {
-        "label": "Live from your vault",
+        "label": "Read the folder",
         "members": [
           "vault",
-          "sort",
-          "liveDisplay"
+          "sort"
         ],
         "color": "slate",
         "collapsed": false,
-        "width": 942,
-        "height": 259
+        "width": 621,
+        "height": 505
       }
     }
   ],
   "connections": [
-    {
-      "source": "daily",
-      "sourceOutput": "frame",
-      "target": "window",
-      "targetInput": "frame"
-    },
     {
       "source": "window",
       "sourceOutput": "frame",
@@ -200,8 +173,8 @@
     {
       "source": "sort",
       "sourceOutput": "frame",
-      "target": "liveDisplay",
-      "targetInput": "in"
+      "target": "window",
+      "targetInput": "frame"
     }
   ],
   "standoffs": []

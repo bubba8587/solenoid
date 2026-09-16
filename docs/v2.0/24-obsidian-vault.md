@@ -23,7 +23,7 @@ states what stands.
 outcome is in `../node-coverage.md`, cited here by name): **A** Vault Folder → Cube (+ R3, the
 demo vault at `demo-vault/`), **A′** the row verbs take cubes, **B** Write Properties, **C** Write
 to Obsidian modes + templates (R1/R2), **D** Open in Obsidian (the stub note is in progress), **E**
-the vault watcher, **F** TaskNotes feed + **F6** Write Tasks (+ the `which-task-next` seed = F4),
+the vault watcher, **F** TaskNotes feed + **F6** Write Tasks (+ the `tasks-from-tasknotes` seed = F4),
 **I** the Import Note's reload cadence, **J** the headless seam, **R5** midnight rollover, and
 **H6 Schedule** cube-in/cube-out with the **Cube Input** literal source; D's stub note +
 `solenoid:` link (opt-in), mdbase validation on write, `writeBase`, and the F1 seed
@@ -231,7 +231,7 @@ description`) and `complete_instances` (`date`) as nested frames. **Calendar eve
 stub; one fixture per endpoint). **Ruling (author 2026-09-13): the read node STAYS.** A tasks
 folder read as a Vault Folder covers the plain frontmatter (title, status, priority, due, tags);
 TaskNotes earns its keep on the rest (tracked minutes, recurrence and completed instances, the
-calendar, the stats). The seed `tasks-two-ways` shows both halves side by side. Ranked by what
+calendar, the stats). The seed `tasks-from-tasknotes` shows both halves side by side, plus a Decision Matrix over the open tasks. Ranked by what
 Bases cannot do:
 
 - **F1 Schedule from dependencies.** Tasks → H6 (Duration = `timeEstimate` ÷ an hours-per-day
