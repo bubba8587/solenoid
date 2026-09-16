@@ -45,7 +45,7 @@ export const TIMESAVER_DATE: FormulaPackEntry[] = [
   { type: "ts-age", label: "Age", resultAs: "text",
     expr: "DATEDIF(dob,TODAY(),\"Y\")&\"y \"&DATEDIF(dob,TODAY(),\"YM\")&\"m \"&DATEDIF(dob,TODAY(),\"MD\")&\"d\"",
     varDescriptions: { dob: "The birth date (or any start date). Age is measured to today." },
-    description: "Age from a date to today, as \"34y 2m 5d\". Built on DATEDIF. The days part uses DATEDIF's \"MD\", which Excel itself computes unreliably when a whole month is skipped, the classic 31 Jan → 1 Mar. Solenoid borrows from the month before the end date for a consistent, repeatable result, so that edge case can read differently from Excel.",
+    description: "Age from a date to today, as \"34y 2m 5d\", built on DATEDIF. The days part (\"MD\") borrows from the month before the end date, so month-end cases like 31 Jan to 1 Mar can differ from Excel.",
     keywords: "birthday dob datedif years months days duration elapsed how old" },
   { type: "ts-nth-weekday", label: "Nth Weekday", resultAs: "date",
     expr: "DATE(YEAR(date),MONTH(date),1+MOD(weekday-WEEKDAY(DATE(YEAR(date),MONTH(date),1))+7,7)+(n-1)*7)",
@@ -66,7 +66,7 @@ export const TIMESAVERS_PACK: Pack = {
   id: "timesavers",
   group: "Everyday",
   name: "Common Excel Timesavers",
-  description: "Solenoid conveniences that aren't single Excel functions (rolling aggregates, weighted stats, list utilities, extended logic, percent change and CAGR, text cleanup, Reverse Text, Spell Number…). On by default. Turn off to declutter.",
+  description: "Conveniences that aren't single Excel functions: rolling aggregates, weighted stats, list utilities, percent change, CAGR, text cleanup, Spell Number. On by default; turn off to declutter.",
   builtin: true,
   defaultActive: true,
   nodes: [

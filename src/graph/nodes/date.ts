@@ -146,7 +146,7 @@ export class TimeConstructNode extends ClassicPreset.Node {
 export type DateTimeValueOp = "date" | "time";
 
 export const DATE_TIME_VALUE_OP_META = {
-  date: { label: "DATEVALUE", description: "Parses a date string into a date serial: ISO, day-first numeric, ordinals and month names (`15 March 1996`, `3rd Apr 2026`). A numeric date that could read as day/month or month/day gives `#AMBIGUOUS!` rather than a guess. Excel: `DATEVALUE`." },
+  date: { label: "DATEVALUE", description: "Parses a date string to a date serial: ISO, day-first numeric, ordinals and month names. A numeric date readable as both day/month and month/day gives `#AMBIGUOUS!`. Excel: `DATEVALUE`." },
   time: { label: "TIMEVALUE", description: "Parses a time string such as `\"14:30:00\"` into a fraction of a day, 0 to 1. Excel: `TIMEVALUE`." },
 } satisfies Record<DateTimeValueOp, { label: string; description: string }>;
 

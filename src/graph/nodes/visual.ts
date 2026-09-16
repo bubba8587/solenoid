@@ -93,7 +93,7 @@ export const CHART_OP_META = {
 
 export class ChartNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    values: "A list plots by position. In a frame, column 0 supplies the x-axis labels and every number column after it is a series. Radar flips this: the number columns are the spokes and each row is one polygon, named by column 0. Bubble reads three number columns as x, y, and size.",
+    values: "A list plots by position. In a frame, the first column labels the x-axis and each later number column is a series. Radar: number columns are spokes, each row a polygon. Bubble: x, y, size columns.",
     options: "Accepts key=value pairs separated by semicolons, using matplotlib names such as title, ylim, and grid. Unknown keys are ignored.",
   };
 
@@ -1239,7 +1239,7 @@ export class RecordNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     row: "Selects the 1-based record. Blank or out of range shows the boxes empty.",
     by: "Names the column whose values become the board's lanes. Blank or unmatched draws nothing.",
-    layout: "One line per grid row, names split by | marks. Repeating a name merges its cells into one box. Photo*2 widens a box two columns. Qty: for example 40 gives an empty box muted placeholder text. Prefix a name with # to make it the title, drawn big and without its label. A dot or an empty cell stays blank. Left empty, the columns stack.",
+    layout: "One line per grid row, names split by |. Repeat a name to merge cells. Photo*2 spans two columns, #Name is the title, Qty: 40 is placeholder text, a dot is blank. Empty stacks the columns.",
     options: "title=Parts;fontsize=12;cardsize=l. Gallery tiles size s, m or l; clamp=on caps long tile values at three lines.",
   };
 
