@@ -131,6 +131,10 @@ export class TaskNotesNode extends ClassicPreset.Node {
     }
   }
 
+  private reportOk(rows: number, cols: number): void {
+    connectionStore.setState(this.id, { status: "ok", rows, cols, fetchedAt: Date.now() });
+  }
+
   private async fetchProvider(from: number, to: number): Promise<void> {
     connectionStore.setState(this.id, { status: "loading" });
     const provider = this.provider;
@@ -138,13 +142,13 @@ export class TaskNotesNode extends ClassicPreset.Node {
     if (isDemoTaskNotes()) {
       if (provider === "tasks") {
         this.cachedTasks = parseTasksPage(DEMO_TASKS_JSON, 0).tasks;
-        connectionStore.setState(this.id, { status: "ok", rows: this.cachedTasks.length, fetchedAt: Date.now() });
+        this.reportOk(this.cachedTasks.length, tasksToCube(this.cachedTasks).columns.length);
       } else if (provider === "calendar") {
         this.cachedEvents = parseEvents(DEMO_EVENTS_JSON);
-        connectionStore.setState(this.id, { status: "ok", rows: this.cachedEvents.columns[0].values.length, fetchedAt: Date.now() });
+        this.reportOk(this.cachedEvents.columns[0].values.length, this.cachedEvents.columns.length);
       } else {
         this.cachedStats = parseStats(DEMO_STATS_JSON);
-        connectionStore.setState(this.id, { status: "ok", fetchedAt: Date.now() });
+        this.reportOk(this.cachedStats ? statsToFrame(this.cachedStats).columns[0].values.length : 0, EMPTY_STATS.columns.length);
       }
       return;
     }
@@ -160,15 +164,15 @@ export class TaskNotesNode extends ClassicPreset.Node {
           offset = page.nextOffset;
         }
         this.cachedTasks = all;
-        connectionStore.setState(this.id, { status: "ok", rows: all.length, fetchedAt: Date.now() });
+        this.reportOk(all.length, tasksToCube(all).columns.length);
       } else if (provider === "calendar") {
         const { text } = await fetchText(eventsUrl(this.apiUrl(), from, to), { headers: this.headers() });
         this.cachedEvents = parseEvents(text);
-        connectionStore.setState(this.id, { status: "ok", rows: this.cachedEvents.columns[0].values.length, fetchedAt: Date.now() });
+        this.reportOk(this.cachedEvents.columns[0].values.length, this.cachedEvents.columns.length);
       } else {
         const { text } = await fetchText(statsUrl(this.apiUrl()), { headers: this.headers() });
         this.cachedStats = parseStats(text);
-        connectionStore.setState(this.id, { status: "ok", fetchedAt: Date.now() });
+        this.reportOk(this.cachedStats ? statsToFrame(this.cachedStats).columns[0].values.length : 0, EMPTY_STATS.columns.length);
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
