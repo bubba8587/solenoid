@@ -1,3 +1,4 @@
+// dte:C34
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 

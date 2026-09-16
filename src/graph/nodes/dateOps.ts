@@ -134,11 +134,13 @@ export function dateDiff(op: DateDiffOp, s: number, e: number, basis = 0): numbe
     case "months": return (ey - sy) * 12 + (em - sm) - (eday < sday ? 1 : 0);
     case "ym":     return ((ey - sy) * 12 + (em - sm) - (eday < sday ? 1 : 0)) % 12;
     case "md": {
-      // Excel's MD is documented unreliable when the borrow goes negative
-      // (Jan 31 → Mar 1); we return the consistent borrow result.
+      // Excel's MD goes negative when the borrow crosses a short month (Jan 31 → Mar 1
+      // gives -2). Count from the start day advanced by the whole months, clamped to
+      // that month's length (31 Jan + 1 month = 28 Feb), so the days are never negative.
       if (eday >= sday) return eday - sday;
-      const daysInPrevMonth = new Date(Date.UTC(ey, em, 0)).getUTCDate(); // day 0 = last of previous month
-      return eday - sday + daysInPrevMonth;
+      const prevLen = new Date(Date.UTC(ey, em, 0)).getUTCDate(); // day 0 = last of previous month
+      const anchor = Date.UTC(ey, em - 1, Math.min(sday, prevLen));
+      return Math.round((ed.getTime() - anchor) / 86400000);
     }
     case "yd": {
       const base = new Date(Date.UTC(ey, sm, sday));

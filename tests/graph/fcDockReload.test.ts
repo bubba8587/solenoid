@@ -1,8 +1,11 @@
+// dte:E8
 import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
 import { FrameInputNode } from "../../src/graph/nodes/frame";
 import { ListIndexNode } from "../../src/graph/nodes/list";
 import { FormatControllerNode } from "../../src/graph/nodes/formatController";
+import { DisplayNode } from "../../src/graph/nodes/display";
+import { TodayNowNode } from "../../src/graph/nodes/date";
 import { settleWildcardTypes } from "../../src/graph/trueAnyAdopt";
 import { frameSourceToText, type FrameValue } from "../../src/graph/frame";
 import type { Schemes } from "../../src/graph/schemes";
@@ -39,6 +42,61 @@ async function buildChain() {
   await editor.addConnection(new ClassicPreset.Connection(fi as never, "frame", idx as never, "list") as never);
   return { editor, fi, idx, fc };
 }
+
+describe("a docked FC keeps its saved date style through load-time type hops", () => {
+  // The author's chain: Script → Display → FC set to "Wed, Jun 3, 2026". A Script's
+  // output type is only known after the data pass: at load the Display's `out` reads
+  // the wildcard, then the Script's construction-time NUMBER family, then the real date
+  // family. Re-defaulting the pick on each hop turned the saved date style into "auto"
+  // and then into the FIRST date style. The pick is never rewritten now; a pick outside
+  // the socket's family is inert (`effectiveFormat()`) until the family comes back.
+  it("resolving through trueany leaves the pick alone; the real date type keeps it", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const disp = new DisplayNode();
+    const fc = new FormatControllerNode({ format: "date_dow", socketDataType: "datelist" });
+    for (const n of [disp, fc]) await editor.addNode(n as never);
+    fc.hostNodeId = disp.id;
+    fc.socketKey = "out";
+    fc.side = "output";
+    await editor.addConnection(new ClassicPreset.Connection(disp as never, "out", fc as never, "in") as never);
+
+    // Load order with an unfed host: the type resolves to the wildcard.
+    settleWildcardTypes(editor as never);
+    fc.dockSelf(editor as never);
+    expect(fc.socketDataType).toBe("trueany");
+    expect(fc.format).toBe("date_dow");
+
+    // The value's type arrives (here statically, a date source) — the pick stands.
+    const today = new TodayNowNode();
+    await editor.addNode(today as never);
+    await editor.addConnection(new ClassicPreset.Connection(today as never, "result", disp as never, "in") as never);
+    settleWildcardTypes(editor as never);
+    fc.adaptTypeFromConnections(editor as never);
+    expect(fc.socketDataType).toBe("date");
+    expect(fc.format).toBe("date_dow");
+  });
+
+  it("a date pick on a number socket is INERT (effective auto), not rewritten — it returns with the family", async () => {
+    const editor = new NodeEditor() as unknown as AnyEditor;
+    const fi = new FrameInputNode({ frameText: frameSourceToText([{ name: "n", type: "number", cells: ["1", "2"] }]) });
+    const idx = new ListIndexNode();
+    idx.literals.index = 1;
+    idx.literals.column = 1;
+    const fc = new FormatControllerNode({ format: "date_dow", socketDataType: "date" });
+    for (const n of [fi, idx, fc]) await editor.addNode(n as never);
+    fc.hostNodeId = idx.id;
+    fc.socketKey = "result";
+    fc.side = "output";
+    await editor.addConnection(new ClassicPreset.Connection(idx as never, "result", fc as never, "in") as never);
+    await editor.addConnection(new ClassicPreset.Connection(fi as never, "frame", idx as never, "list") as never);
+    settleWildcardTypes(editor as never);
+    fc.dockSelf(editor as never);
+    expect(fc.socketDataType).toBe("numlist");
+    expect(fc.format).toBe("date_dow");          // the pick survives
+    expect(fc.effectiveFormat()).toBe("auto");    // but does not apply to a number
+    expect(fc.annotation().format).toBe("auto");
+  });
+});
 
 describe("docked FC survives a reload of the computed-column → INDEX chain", () => {
   it("MECHANISM: docking before the settle is exactly the bug — the FC adopts the raw upstream frame", async () => {

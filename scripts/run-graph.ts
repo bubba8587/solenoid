@@ -14,6 +14,8 @@
 // with zero Tauri dependency.
 
 import { readFileSync } from "node:fs";
+import { promises as nodeFs } from "node:fs";
+import nodePath from "node:path";
 import { pathToFileURL } from "node:url";
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
@@ -24,6 +26,9 @@ import { installErrorGuards } from "../src/graph/errorValue";
 import { isFrameRef, readFrame } from "../src/graph/frameBackend";
 import { computeAll } from "../src/graph/graphCompute";
 import { validateGraph, validateText, formatIssues, hardIssues } from "../src/graph/graphValidate";
+import { setFsProvider, type FsProvider } from "../src/graph/fileBridge";
+import { settingsStore } from "../src/graph/settingsStore";
+import { whenConnectionsSettled } from "../src/graph/connectionStore";
 
 type SavedNode = {
   id: string;
@@ -53,9 +58,37 @@ async function resolveFrameRefs(v: unknown): Promise<unknown> {
   return v;
 }
 
+/** The Node file provider a headless run installs behind fileBridge (bundle 24 J). */
+export const nodeFsProvider: FsProvider = {
+  readTextFile: (p) => nodeFs.readFile(p, "utf8"),
+  readDir: async (p) => (await nodeFs.readdir(p, { withFileTypes: true })).map((e) => ({ name: e.name, isDirectory: e.isDirectory(), isFile: e.isFile() })),
+  writeTextFile: (p, content) => nodeFs.writeFile(p, content, "utf8"),
+  rename: (from, to) => nodeFs.rename(from, to),
+  mkdir: async (p, recursive) => { await nodeFs.mkdir(p, { recursive }); },
+  exists: async (p) => { try { await nodeFs.access(p); return true; } catch { return false; } },
+  stat: async (p) => { const st = await nodeFs.stat(p); return { mtimeMs: st.mtimeMs, birthtimeMs: st.birthtimeMs }; },
+  join: async (...parts) => nodePath.join(...parts),
+  dirname: async (p) => nodePath.dirname(p),
+  readBinary: async (p) => new Uint8Array(await nodeFs.readFile(p)),
+  writeBinary: (p, bytes) => nodeFs.writeFile(p, bytes),
+};
+
+export interface RunOptions {
+  /** Absolute vault path: installs the Node file provider and points the Obsidian nodes at it. */
+  vault?: string;
+  /** The TaskNotes API base url (Node's fetch reaches it). */
+  tasknotes?: string;
+  /** Arm and run ONE named sink after the compute — the Run button's headless equivalent. */
+  run?: string;
+}
+
 /** Build a real editor + engine from a saved graph and run it — the reusable
- *  half of the CLI, also exercised directly by run-graph.test.ts. */
-export async function runGraph(g: SavedGraph): Promise<Record<string, unknown>> {
+ *  half of the CLI, also exercised directly by run-graph.test.ts. With a vault or a
+ *  TaskNotes url the connection nodes' background loads are awaited and the graph
+ *  computed again, so the printed values include what they read. */
+export async function runGraph(g: SavedGraph, opts: RunOptions = {}): Promise<Record<string, unknown>> {
+  if (opts.vault) { setFsProvider(nodeFsProvider); settingsStore.set("obsidianVault", opts.vault); }
+  if (opts.tasknotes) settingsStore.set("taskNotesUrl", opts.tasknotes);
   const editor = new NodeEditor<Schemes>();
   installInputCoercion(editor);
   editor.addPipe((ctx) => {
@@ -92,7 +125,21 @@ export async function runGraph(g: SavedGraph): Promise<Record<string, unknown>> 
   // Print every node's output, keyed by its label — falling back to its type,
   // disambiguated with a #n suffix on a repeat — the same "what does each box
   // show" a human gets from opening the app, minus the canvas.
-  const values = await computeAll(editor, engine);
+  let values = await computeAll(editor, engine);
+  if (opts.vault || opts.tasknotes) {
+    await whenConnectionsSettled();
+    values = await computeAll(editor, engine);
+  }
+  if (opts.run) {
+    const want = opts.run.trim().toLowerCase();
+    const sink = [...byId.values()].find((n) => ((n as unknown as { label?: string }).label ?? "").trim().toLowerCase() === want) as
+      (ClassicPreset.Node & { enabled?: boolean; run?: () => Promise<void>; status?: string; statusMessage?: string }) | undefined;
+    if (!sink || typeof sink.run !== "function") throw new Error(`--run: no sink named "${opts.run}" in the graph.`);
+    sink.enabled = true; // the CLI's explicit flag is the Run button (sinkRunButtonOnly)
+    await sink.run();
+    if (sink.status === "error") throw new Error(`--run ${opts.run}: ${sink.statusMessage ?? "failed"}`);
+    console.error(`${opts.run}: ${sink.statusMessage ?? sink.status ?? "ran"}`);
+  }
   const seen = new Map<string, number>();
   const out: Record<string, unknown> = {};
   for (const sn of g.nodes) {
@@ -110,9 +157,13 @@ export async function runGraph(g: SavedGraph): Promise<Record<string, unknown>> 
 async function main() {
   const args = process.argv.slice(2);
   const force = args.includes("--force");
-  const file = args.find((a) => a !== "--force");
+  const flag = (name: string): string | undefined => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
+  const opts: RunOptions = { vault: flag("--vault"), tasknotes: flag("--tasknotes"), run: flag("--run") };
+  const consumed = new Set<string>(["--force"]);
+  for (const name of ["--vault", "--tasknotes", "--run"]) { const i = args.indexOf(name); if (i >= 0) { consumed.add(args[i]); if (args[i + 1]) consumed.add(args[i + 1]); } }
+  const file = args.find((a) => !consumed.has(a));
   if (!file) {
-    console.error("Usage: npx tsx scripts/run-graph.ts <graph.json|graph.txt> [--force]");
+    console.error("Usage: npx tsx scripts/run-graph.ts <graph.json|graph.txt> [--force] [--vault <path>] [--tasknotes <url>] [--run <sink name>]");
     process.exit(1);
   }
   // Either surface of the same document runs: a saved JSON graph or the text
@@ -140,7 +191,7 @@ async function main() {
     }
     g = graph as unknown as SavedGraph;
   }
-  const out = await runGraph(g);
+  const out = await runGraph(g, opts);
   console.log(JSON.stringify(out, null, 2));
 }
 

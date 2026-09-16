@@ -2,7 +2,10 @@ import type { View } from "../../src/graph/view";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { ClassicPreset, NodeEditor } from "rete";
 import type { Schemes } from "../../src/graph/schemes";
-import { makeArrangeFn, makeCleanupFn, makeEnsureElk } from "../../src/graph/tidyArrange";
+import {
+  makeArrangeFn, makeCleanupFn, makeEnsureElk, elkTidyLayout,
+  ELK_ROOT_OPTIONS, FLIPPED_MODEL_ORDER_OPTIONS,
+} from "../../src/graph/tidyArrange";
 import { settingsStore } from "../../src/graph/settingsStore";
 import { GroupNode } from "../../src/graph/nodes/group";
 import { ArithmeticNode } from "../../src/graph/nodes/scalar";
@@ -11,6 +14,9 @@ import { FormatControllerNode } from "../../src/graph/nodes/formatController";
 import { dockedNodeStore } from "../../src/graph/dockedNodeStore";
 import { GROUP_PAD, GROUP_HEADER, autofitGroupWithHistory } from "../../src/graph/groupLogic";
 import { COLLAPSE_LAYOUT, groupCollapseStore } from "../../src/graph/groupCollapse";
+import { socketFlipStore } from "../../src/graph/socketFlipStore";
+import { collapseStore } from "../../src/graph/collapseStore";
+import { nodeSizeStore } from "../../src/graph/nodeSizeStore";
 
 // ─── Headless Tidy/Cleanup harness ──────────────────────────────────────────────
 // The real arrangeFn is DOM-coupled: it measures node sizes off view.nodeViews
@@ -36,7 +42,7 @@ interface FakeView {
   element: {
     offsetWidth: number;
     offsetHeight: number;
-    querySelector: (sel: string) => { classList: { contains: (c: string) => boolean }; style: { removeProperty: (p: string) => void } };
+    querySelector: (sel: string) => { classList: { contains: (c: string) => boolean }; style: { removeProperty: (p: string) => void; width: string } };
     style: Record<string, string>;
   };
   /** test-side handle: the size resize() stamped (null = content-driven) */
@@ -44,6 +50,8 @@ interface FakeView {
   /** content-driven size (what the DOM would measure with no stamp) */
   natural: { w: number; h: number };
   heightPinned: boolean;
+  /** the width the tidy pin-drop stamped on the card (null = removed/none) */
+  stampedWidth: string | null;
 }
 
 /** The fake exposes its per-node handles as `fakes` beside the real View API. */
@@ -73,6 +81,7 @@ function makeFakeView() {
       stamped: null,
       natural: { w, h },
       heightPinned: false,
+      stampedWidth: null,
       element: {
         get offsetWidth() { return view.stamped?.w ?? natural().w; },
         get offsetHeight() {
@@ -88,7 +97,12 @@ function makeFakeView() {
             : {
                 classList: { contains: (c: string) => c === "solenoid-node" },
                 style: {
-                  removeProperty: (p: string) => { if (p === "height") view.heightPinned = false; },
+                  removeProperty: (p: string) => {
+                    if (p === "height") view.heightPinned = false;
+                    if (p === "width") view.stampedWidth = null;
+                  },
+                  set width(v: string) { view.stampedWidth = v; },
+                  get width() { return view.stampedWidth ?? ""; },
                 },
               },
         style: {},
@@ -243,6 +257,27 @@ describe("global Tidy with an expanded group (headless, real ELK + real arrangeF
       const b = boxOf(view, id);
       expect(overlaps(g, b), `${id} overlaps the group box`).toBe(false);
     }
+  });
+
+  it("a position-locked group stays put and nothing lands on it", async () => {
+    const { editor, view, arrangeFn, src, sink, m1, m2, group } = await buildScene();
+    group.lockedPosition = true;
+    const gBefore = { ...view.fakes.get(group.id)!.position };
+    const m1Before = { ...view.fakes.get(m1.id)!.position };
+    const m2Before = { ...view.fakes.get(m2.id)!.position };
+    await arrangeFn({ skipConfirm: true });
+    await flushRafs();
+    // The locked group and its members never moved.
+    expect(view.fakes.get(group.id)!.position).toEqual(gBefore);
+    expect(view.fakes.get(m1.id)!.position).toEqual(m1Before);
+    expect(view.fakes.get(m2.id)!.position).toEqual(m2Before);
+    // No tidied loose node overlaps the fixed group.
+    const g = boxOf(view, group.id);
+    for (const id of [src.id, sink.id]) {
+      expect(overlaps(g, boxOf(view, id)), `${id} overlaps the locked group`).toBe(false);
+    }
+    // Sanity: the pass still ran (loose nodes are the layout targets).
+    expect(editor.getNodes().length).toBe(5);
   });
 
   it("the group's rendered box is unchanged by the pass (rigid unit, not resized)", async () => {
@@ -482,5 +517,160 @@ describe("Cleanup with an expanded group (headless)", () => {
       expect(inY, `${id} left the group box vertically`).toBe(true);
     }
     expect(group.collapsed).toBe(true);
+  });
+});
+
+describe("Tidy with a flipped node (predecessor layering, real ELK)", () => {
+  afterEach(() => { socketFlipStore.clear(); settingsStore.set("tidyDirection", "right"); });
+
+  async function buildPair() {
+    settingsStore.set("tidyDirection", "right");
+    const editor = new NodeEditor<Schemes>();
+    const { view, addView } = makeFakeView();
+    const a = new ArithmeticNode({ op: "add" });
+    const b = new DisplayNode();
+    for (const n of [a, b]) await editor.addNode(n as never);
+    await connect(editor, a, "result", b, "in");
+    (a as unknown as { width: number; height: number }).width = 180;
+    (a as unknown as { width: number; height: number }).height = 100;
+    (b as unknown as { width: number; height: number }).width = 180;
+    (b as unknown as { width: number; height: number }).height = 80;
+    addView(a.id, 100, 100, 180, 100);
+    addView(b.id, 400, 100, 180, 80);
+    const ensureElk = makeEnsureElk(() => false);
+    const arrangeFn = makeArrangeFn({
+      editor, view, container: {} as HTMLElement, ensureElk,
+      repositionDockedTo: () => {}, isDestroyed: () => false,
+    });
+    return { view, arrangeFn, a, b };
+  }
+
+  it("lays the sink to the RIGHT of its source with no flip (normal flow)", async () => {
+    const { view, arrangeFn, a, b } = await buildPair();
+    await arrangeFn({ skipConfirm: true });
+    await flushRafs();
+    expect(view.fakes.get(b.id)!.position.x).toBeGreaterThan(view.fakes.get(a.id)!.position.x);
+  });
+
+  it("lays a FLIPPED sink to the LEFT of its source (acts as a predecessor)", async () => {
+    const { view, arrangeFn, a, b } = await buildPair();
+    socketFlipStore.set(b.id, true);
+    await arrangeFn({ skipConfirm: true });
+    await flushRafs();
+    expect(view.fakes.get(b.id)!.position.x).toBeLessThan(view.fakes.get(a.id)!.position.x);
+  });
+
+  // src → mid → sink, sink flipped: the flipped sink joins src's LAYER, so its
+  // within-layer order (not the edge reversal) decides above vs below.
+  async function buildChain() {
+    settingsStore.set("tidyDirection", "right");
+    const editor = new NodeEditor<Schemes>();
+    const { view, addView } = makeFakeView();
+    const src = new ArithmeticNode({ op: "add" });
+    const mid = new ArithmeticNode({ op: "add" });
+    const sink = new DisplayNode();
+    for (const n of [src, mid, sink]) await editor.addNode(n as never);
+    await connect(editor, src, "result", mid, "a");
+    await connect(editor, mid, "result", sink, "in");
+    for (const n of [src, mid] as Array<{ width: number; height: number }>) { n.width = 180; n.height = 100; }
+    (sink as unknown as { width: number; height: number }).width = 180;
+    (sink as unknown as { width: number; height: number }).height = 80;
+    addView(src.id, 100, 100, 180, 100);
+    addView(mid.id, 400, 100, 180, 100);
+    addView(sink.id, 700, 100, 180, 80);
+    const arrangeFn = makeArrangeFn({
+      editor, view, container: {} as HTMLElement, ensureElk: makeEnsureElk(() => false),
+      repositionDockedTo: () => {}, isDestroyed: () => false,
+    });
+    return { view, arrangeFn, src, mid, sink };
+  }
+
+  it("puts a FLIPPED sink DOWN-and-left, not up-and-left", async () => {
+    const { view, arrangeFn, src, mid, sink } = await buildChain();
+    socketFlipStore.set(sink.id, true);
+    await arrangeFn({ skipConfirm: true });
+    await flushRafs();
+    const s = view.fakes.get(src.id)!.position;
+    const m = view.fakes.get(mid.id)!.position;
+    const d = view.fakes.get(sink.id)!.position;
+    expect(d.x, "flipped sink should sit left of its source").toBeLessThan(m.x);
+    expect(d.y, "flipped sink should sit BELOW its layer-mate").toBeGreaterThan(s.y);
+  });
+
+  it("model-order options and children order are untouched without a flip", async () => {
+    const { src, mid, sink } = await buildChain();
+    const seen: Array<{ ids: string[]; options: Record<string, string> }> = [];
+    const recorder = {
+      async layout(graph: unknown) {
+        const g = graph as { children: Array<{ id: string }>; layoutOptions: Record<string, string> };
+        seen.push({ ids: g.children.map((c) => c.id), options: g.layoutOptions });
+        return { children: [] };
+      },
+    };
+    // sink FIRST, so the flipped reorder is visible.
+    const nodes = [sink, src, mid] as unknown as Array<Schemes["Node"]>;
+    const run = () => elkTidyLayout(recorder, {
+      nodes, connections: [], options: { "elk.direction": "RIGHT" }, translate: () => {},
+    });
+    await run();
+    socketFlipStore.set(sink.id, true);
+    await run();
+
+    const [plain, flipped] = seen;
+    // No flip: the graph is exactly the pre-model-order one.
+    expect(plain.ids).toEqual([sink.id, src.id, mid.id]);
+    expect(plain.options).toEqual({ ...ELK_ROOT_OPTIONS, "elk.direction": "RIGHT" });
+    // A flip turns the lever on and moves the flipped node last.
+    expect(flipped.ids).toEqual([src.id, mid.id, sink.id]);
+    expect(flipped.options).toEqual({
+      ...ELK_ROOT_OPTIONS, "elk.direction": "RIGHT", ...FLIPPED_MODEL_ORDER_OPTIONS,
+    });
+  });
+
+  it("does NOT stamp a manual (expanded) width onto a COLLAPSED node", async () => {
+    const { view, arrangeFn, a, b } = await buildPair();
+    // b was resized wider than its collapsed form while expanded, then collapsed.
+    nodeSizeStore.set(b.id, { w: 420, h: 200 });
+    collapseStore.set(b.id, true);
+    try {
+      await arrangeFn({ skipConfirm: true });
+      await flushRafs();
+      // The collapsed card must keep its compact width — the pin-drop skips the
+      // manual stamp (mirrors NodeCard dropping the manual size while collapsed).
+      expect(view.fakes.get(b.id)!.stampedWidth).toBeNull();
+      // A non-collapsed sized node still gets its manual width.
+      nodeSizeStore.set(a.id, { w: 300, h: 100 });
+      await arrangeFn({ skipConfirm: true });
+      await flushRafs();
+      expect(view.fakes.get(a.id)!.stampedWidth).toBe("300px");
+    } finally {
+      collapseStore.clear();
+      nodeSizeStore.clear();
+    }
+  });
+});
+
+describe("Tidy reserves a plain card's MEASURED box, not its declared size", () => {
+  it("a card whose constructor height went stale does not overlap its neighbour", async () => {
+    const editor = new NodeEditor<Schemes>();
+    const { view, addView } = makeFakeView();
+    const src = new ArithmeticNode({ op: "add" });
+    const tall = new DisplayNode();
+    const other = new DisplayNode();
+    for (const n of [src, tall, other]) await editor.addNode(n as never);
+    await connect(editor, src, "result", tall, "in");
+    await connect(editor, src, "result", other, "in");
+    // Declared 80 high; the DOM measures 280 (a card that grew after construction).
+    for (const n of [src, tall, other]) { (n as unknown as { width: number; height: number }).width = 180; (n as unknown as { height: number }).height = 80; }
+    addView(src.id, 60, 200, 180, 80);
+    addView(tall.id, 400, 100, 180, 280);
+    addView(other.id, 400, 300, 180, 80);
+    const arrangeFn = makeArrangeFn({
+      editor, view, container: {} as HTMLElement, ensureElk: makeEnsureElk(() => false),
+      repositionDockedTo: () => {}, isDestroyed: () => false,
+    });
+    await arrangeFn({ skipConfirm: true });
+    await flushRafs();
+    expect(overlaps(boxOf(view, tall.id), boxOf(view, other.id))).toBe(false);
   });
 });

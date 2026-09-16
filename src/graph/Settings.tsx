@@ -1,4 +1,4 @@
-import { useRef, useState, useSyncExternalStore } from "react";
+import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useFocusTrap } from "./components/useFocusTrap";
 import { useEscapeToClose } from "./components/useEscapeToClose";
 import { settingsStore, settingsPanel, SETTINGS_SCHEMA, type SettingField } from "./settingsStore";
@@ -11,6 +11,8 @@ import { paletteStore, paletteEditorPanel, type PaletteChoice } from "./palette"
 import { useRenderMode, renderModeStore } from "./renderMode";
 import { supportsHtmlInCanvas } from "./htmlCanvasSupport";
 import { getEditor } from "./process";
+import { docMetaStore } from "./docMetaStore";
+import { networkAllowed, allowNetwork } from "./connectionStore";
 import { rebuildGroupMembership } from "./groupMembership";
 import { SwatchGrid } from "./components/SwatchGrid";
 import "./Settings.css";
@@ -120,6 +122,27 @@ function FolderRow({ field }: { field: SettingField }) {
         <button type="button" className="solenoid-settings__store-btn" disabled={!desktop} onClick={choose}>Choose…</button>
         {value && desktop && <button type="button" className="solenoid-settings__store-btn" onClick={() => void openInFileManager(value)}>Open</button>}
         {value && <button type="button" className="solenoid-settings__store-btn" onClick={() => settingsStore.set(field.key, "")}>Clear</button>}
+      </span>
+    </div>
+  );
+}
+
+// The open document's network permission (C2). Own docs connect freely and the
+// "Always allow network" toggle above covers the standing choice, so this appears
+// ONLY for a foreign, still-undecided doc — the way back to Allow after its notice
+// is dismissed. No row otherwise (it carried no control).
+function NetworkDocRow() {
+  useSyncExternalStore(docMetaStore.subscribe, docMetaStore.version);
+  useSyncExternalStore(settingsStore.subscribe, settingsStore.version);
+  if (!docMetaStore.isForeign() || networkAllowed()) return null;
+  return (
+    <div className="solenoid-settings__row solenoid-settings__row--folder">
+      <span className="solenoid-settings__row-text">
+        <span className="solenoid-settings__row-label">Network for this document</span>
+        <span className="solenoid-settings__row-help">This document is waiting for permission to connect.</span>
+      </span>
+      <span className="solenoid-settings__folder-actions">
+        <button type="button" className="solenoid-settings__store-btn" onClick={() => allowNetwork()}>Allow</button>
       </span>
     </div>
   );
@@ -354,6 +377,37 @@ function AiSection() {
   );
 }
 
+function renderField(f: SettingField): ReactNode {
+  return f.type === "folder" ? <FolderRow key={f.key} field={f} />
+    : f.type === "segment" ? <SegmentRow key={f.key} field={f} />
+    : f.type === "text" ? <TextRow key={f.key} field={f} />
+    : <Toggle key={f.key} field={f} />;
+}
+
+// Render a section's fields, folding consecutive fields that share an `accordion`
+// title into one collapsible <details> (same chrome as the Packs accordion).
+function SectionFields({ fields }: { fields: SettingField[] }) {
+  const out: ReactNode[] = [];
+  for (let i = 0; i < fields.length; ) {
+    const acc = fields[i].accordion;
+    if (!acc) { out.push(renderField(fields[i])); i++; continue; }
+    const run: SettingField[] = [];
+    while (i < fields.length && fields[i].accordion === acc) { run.push(fields[i]); i++; }
+    out.push(
+      <details key={`acc-${acc}`} className="solenoid-settings__acc">
+        <summary className="solenoid-settings__acc-head">
+          <span className="solenoid-settings__acc-chevron" aria-hidden="true">
+            <svg width="10" height="10" viewBox="0 0 10 10"><path d="M3 1.5 L7 5 L3 8.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </span>
+          <span className="solenoid-settings__acc-name">{acc}</span>
+        </summary>
+        <div className="solenoid-settings__acc-body">{run.map(renderField)}</div>
+      </details>,
+    );
+  }
+  return <>{out}</>;
+}
+
 export function Settings() {
   const open = useSyncExternalStore(settingsPanel.subscribe, settingsPanel.get);
   useSyncExternalStore(settingsStore.subscribe, settingsStore.version);
@@ -371,22 +425,22 @@ export function Settings() {
           <span className="solenoid-settings__title">Settings</span>
           <button className="solenoid-settings__close" onClick={() => settingsPanel.close()} aria-label="Close">×</button>
         </div>
+        {/* Section order: Appearance, Canvas, View, Data, Obsidian (the schema, in
+            array order), Renderer, Packs — then the credential sections (AI, API
+            keys) trail at the bottom. */}
         <div className="solenoid-settings__body">
+          <PaletteSection />
           {SETTINGS_SCHEMA.map((section) => (
             <div key={section.title} className="solenoid-settings__section">
               <div className="solenoid-settings__section-title">{section.title}</div>
-              {section.fields.map((f) =>
-                f.type === "folder" ? <FolderRow key={f.key} field={f} />
-                : f.type === "segment" ? <SegmentRow key={f.key} field={f} />
-                : f.type === "text" ? <TextRow key={f.key} field={f} />
-                : <Toggle key={f.key} field={f} />)}
+              <SectionFields fields={section.fields} />
+              {section.title === "Data" && <NetworkDocRow />}
             </div>
           ))}
-          <PaletteSection />
           <RendererSection />
+          <PacksSection />
           {AI_ENABLED && <AiSection />}
           <ApiKeysSection />
-          <PacksSection />
         </div>
       </div>
     </div>

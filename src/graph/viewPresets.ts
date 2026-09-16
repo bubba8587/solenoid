@@ -33,7 +33,7 @@ export const MAX_ZOOM = 2.5;
 export const ZOOM_SNAP = 0.1;
 const snap = (k: number, round: (v: number) => number): number => round(k / ZOOM_SNAP + 1e-9) * ZOOM_SNAP;
 /** Clamp to [MIN_ZOOM, MAX_ZOOM], no snapping — for continuous gestures. */
-export const boundZoom = (k: number): number => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, k));
+export const boundZoom = (k: number): number => (Number.isNaN(k) ? MIN_ZOOM : Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, k)));
 /** Clamp to [MIN_ZOOM, MAX_ZOOM] and snap to the nearest ZOOM_SNAP step. */
 export const clampZoom = (k: number): number => boundZoom(snap(boundZoom(k), Math.round));
 /** Clamp and snap DOWN — for fits, so the framed content still fits after snapping. */

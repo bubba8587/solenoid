@@ -1,3 +1,4 @@
+// dte:C56,C63,C26,D5,D6
 // Per OP family (a node class with an `op` field): what ops it has and how they
 // surface. The `{ }` marker is DERIVED, never declared. An ARGUMENT family is not
 // declared here at all (DESIGN.md § Op pickers; nodeOps.test.ts pins both directions).
@@ -5,8 +6,8 @@
 import type { NodeCatalogEntry } from "./AddNodeMenu";
 import { DIST_SPECS, DistributionNode, type DistKey } from "./nodes/distribution";
 
-import { ChartNode, SparklineNode, SurfaceNode, GaugeNode, ProportionNode, RecordNode } from "./nodes/visual";
-import { CHART_OP_META, SPARKLINE_OP_META, GAUGE_OP_META, PROPORTION_OP_META, RECORD_OP_META } from "./nodes/visual";
+import { ChartNode, SparklineNode, SurfaceNode, ProportionNode, RecordNode } from "./nodes/visual";
+import { CHART_OP_META, SPARKLINE_OP_META, PROPORTION_OP_META, RECORD_OP_META } from "./nodes/visual";
 import {
   FillNode, SetNode, SumIfsNode,
   FILL_OP_META, COND_AGG_OP_META,
@@ -19,14 +20,14 @@ import { DATE_DIFF_OP_META, DateTimeValueNode, WorkdaysNode } from "./nodes/date
 import { IFErrorNode } from "./nodes/logic";
 import { ByAxisNode, BY_AXIS_OP_META } from "./nodes/tableLambda";
 import { StackNode, STACK_OP_META } from "./nodes/matrix";
-import { NpvNode, IrrNode, NPV_OP_META, IRR_OP_META } from "./nodes/finance";
+import { NPVNode, IRRNode, NPV_OP_META, IRR_OP_META } from "./nodes/finance";
 import {
   IsEvenOddNode, ComparisonNode, IsTestNode,
   PARITY_OP_META, COMPARISON_OP_META, IS_TEST_OP_META,
 } from "./nodes/logic";
 import { RegressionNode, CorrelNode, ForecastNode, LinestNode, REGRESSION_OP_META, CORREL_OP_META, FORECAST_OP_META, FIT_OP_META } from "./nodes/stats";
 import {
-  TwoInputMathNode, GcdNode, RoundNNode,
+  TwoInputMathNode, GCDNode, RoundNNode,
   TWO_INPUT_MATH_OP_META, GCD_OP_META, ROUNDN_OP_META,
 } from "./nodes/scalar";
 // Families whose every op has its own hand-written leaf, via the node barrel — they
@@ -34,20 +35,20 @@ import {
 import {
   AggregateNode, ArgMinMaxNode, ArithmeticNode,
   BesselNode, BitwiseNode,
-  BondPriceNode, BooleanOpNode, CharCodeNode, 
+  BondPricingNode, BOND_PRICING_META, BooleanOpNode, CharCodeNode, 
   CombinatoricsNode, ComplexBinaryNode, ComplexUnaryNode,
   ConfidenceNode, ConstantNode, CouponNode, CovarianceNode,
-  CumPmtNode, DateAddNode, DateDiffNode, EpochNode, SmoothNode, SMOOTH_OP_META, type SmoothOp, ReturnsNode, RETURNS_OP_META, type ReturnsOp,
+  DateAddNode, DateDiffNode, EpochNode, SmoothNode, SMOOTH_OP_META, type SmoothOp, ReturnsNode, RETURNS_OP_META, type ReturnsOp, DISCOUNT_SECURITY_META,
   DatePartNode, DepreciationNode, DollarNode, DurationNode,
   ESeriesNode, 
   FisherNode,
-  IpmtPpmtNode, MRoundNode,
-  MatDetNode, MathFnNode, 
-  OddCouponNode,
+  MRoundNode,
+  MatDetNode, MathFXNode, 
   PhysicsConstantNode,
-  PriceDiscNode, PriceMatNode,
-  RankPercentileNode, RomanArabicNode, SecurityDiscNode,
-  SumProductNode, TBillNode, 
+  DiscountSecurityNode, AccruedInterestNode, ACCRUED_INTEREST_OP_META,
+  PaymentBreakdownNode, PAYMENT_BREAKDOWN_OP_META,
+  RankPercentileNode, RomanArabicNode,
+  SumProductNode,
   HypothesisTestNode, TableReshapeNode, TableSelectNode, TakeDropNode, TAKEDROP_OP_META,
   TextAfterBeforeNode, TextFindNode, TextSliceNode, TextTransformNode,
   TodayNowNode, UrlEncodeNode, WeekInfoNode, 
@@ -125,10 +126,9 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new ChartNode({ op: op as never }) },
   { type: "sparkline", ctor: SparklineNode, ops: fromMeta(SPARKLINE_OP_META),
     create: (op) => new SparklineNode({ op: op as never }) },
-  // A figure's drawing is likewise a thing you search for by name — "treemap", "kanban",
-  // "bullet graph" — so each is an op row ("Proportion: Treemap"), like a chart type.
-  { type: "gauge", ctor: GaugeNode, ops: fromMeta(GAUGE_OP_META),
-    create: (op) => new GaugeNode({ op: op as never }) },
+  // A figure's drawing is likewise a thing you search for by name — "treemap",
+  // "kanban" — so each is an op row ("Proportion: Treemap"), like a chart type.
+  // (Gauge's Dial/Bar is NOT one of these — it's a view argument, `style`, not an op.)
   { type: "proportion", ctor: ProportionNode, ops: fromMeta(PROPORTION_OP_META),
     create: (op) => new ProportionNode({ op: op as never }) },
   { type: "record", ctor: RecordNode, ops: fromMeta(RECORD_OP_META),
@@ -160,10 +160,10 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new StackNode({ op: op as never }) },
   { type: "by-axis", ctor: ByAxisNode, ops: fromMeta(BY_AXIS_OP_META),
     create: (op) => new ByAxisNode({ op: op as never }), leafOps: ["row", "col"] },
-  { type: "npv", ctor: NpvNode, ops: fromMeta(NPV_OP_META),
-    create: (op) => new NpvNode({ op: op as never }), leafOps: ["periods", "dates"] },
-  { type: "irr", ctor: IrrNode, ops: fromMeta(IRR_OP_META),
-    create: (op) => new IrrNode({ op: op as never }), leafOps: ["periods", "dates"] },
+  { type: "npv", ctor: NPVNode, ops: fromMeta(NPV_OP_META),
+    create: (op) => new NPVNode({ op: op as never }), leafOps: ["periods", "dates"] },
+  { type: "irr", ctor: IRRNode, ops: fromMeta(IRR_OP_META),
+    create: (op) => new IRRNode({ op: op as never }), leafOps: ["periods", "dates"] },
   { type: "keep-columns", ctor: ColumnsNode, ops: fromMeta(COLUMNS_OP_META),
     create: (op) => new ColumnsNode({ op: op as never }), leafOps: ["keep", "drop"] },
   { type: "list-pad", ctor: PadNode, ops: fromMeta(PAD_OP_META),
@@ -201,8 +201,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "is-test", ctor: IsTestNode, ops: fromMeta(IS_TEST_OP_META),
     create: (op) => new IsTestNode({ op: op as never }) },
   // Label already names both ops, so the marker would only echo it.
-  { type: "gcd-lcm", ctor: GcdNode, ops: fromMeta(GCD_OP_META),
-    create: (op) => new GcdNode({ op: op as never }), leafOps: ["gcd", "lcm"] },
+  { type: "gcd-lcm", ctor: GCDNode, ops: fromMeta(GCD_OP_META),
+    create: (op) => new GCDNode({ op: op as never }), leafOps: ["gcd", "lcm"] },
 
   // ── Partially exposed: some ops already have leaves, the rest ride in search ──
   { type: "twomath-log", ctor: TwoInputMathNode, ops: fromMeta(TWO_INPUT_MATH_OP_META),
@@ -219,7 +219,6 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "arith-add", ctor: ArithmeticNode },
   { type: "bessel-besselj", ctor: BesselNode },
   { type: "bitwise-bitand", ctor: BitwiseNode },
-  { type: "bondprice-price", ctor: BondPriceNode },
   { type: "bool-and", ctor: BooleanOpNode },
   { type: "char-code-char", ctor: CharCodeNode },
   { type: "comb-fact", ctor: CombinatoricsNode },
@@ -229,7 +228,6 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "constant", ctor: ConstantNode },
   { type: "coupon-coupdaybs", ctor: CouponNode },
   { type: "cov-pop", ctor: CovarianceNode },
-  { type: "cumpmt-cumipmt", ctor: CumPmtNode },
   { type: "date-add-edate", ctor: DateAddNode },
   { type: "date-epoch-from", ctor: EpochNode },
   // Each op is the operation (Sharpe IS the card); fx rides in RETURNS_OP_META.
@@ -248,11 +246,9 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "dollar-dollarde", ctor: DollarNode },
   { type: "duration-duration", ctor: DurationNode },
   { type: "fisher-fisher", ctor: FisherNode },
-  { type: "ipmt-ipmt", ctor: IpmtPpmtNode },
   { type: "math-ceiling", ctor: MRoundNode },
   { type: "matdet-mdeterm", ctor: MatDetNode },
-  { type: "math-abs", ctor: MathFnNode },
-  { type: "oddcoupon-oddfprice", ctor: OddCouponNode },
+  { type: "math-abs", ctor: MathFXNode },
   // ONE Rank & Percentile class hosts all ten order-statistic ops; the .EXC forms
   // have no leaf of their own, so each family leaf declares its pair and the
   // search rows ride the right host ("PERCENTILE: PERCENTILE.EXC"). The card
@@ -265,16 +261,20 @@ export const NODE_OPS: NodeOpsDecl[] = [
     ops: [{ op: "percentrank-inc", label: "PERCENTRANK.INC" }, { op: "percentrank-exc", label: "PERCENTRANK.EXC" }],
     leafOps: RANK_PERCENTILE_LEAF_OPS,
     create: (op) => new RankPercentileNode({ op: op as never }) },
-  { type: "pricedisc-pricedisc", ctor: PriceDiscNode },
-  { type: "pricemat-pricemat", ctor: PriceMatNode },
   { type: "stat-quartile", ctor: RankPercentileNode,
     ops: [{ op: "quartile-inc", label: "QUARTILE.INC" }, { op: "quartile-exc", label: "QUARTILE.EXC" }],
     leafOps: RANK_PERCENTILE_LEAF_OPS,
     create: (op) => new RankPercentileNode({ op: op as never }) },
+  { type: "bond-pricing", ctor: BondPricingNode, ops: fromMeta(BOND_PRICING_META),
+    create: (op) => new BondPricingNode({ op: op as never }) },
+  { type: "accrued-interest", ctor: AccruedInterestNode, ops: fromMeta(ACCRUED_INTEREST_OP_META),
+    create: (op) => new AccruedInterestNode({ op: op as never }) },
+  { type: "payment-breakdown", ctor: PaymentBreakdownNode, ops: fromMeta(PAYMENT_BREAKDOWN_OP_META),
+    create: (op) => new PaymentBreakdownNode({ op: op as never }) },
+  { type: "discount-security", ctor: DiscountSecurityNode, ops: fromMeta(DISCOUNT_SECURITY_META),
+    create: (op) => new DiscountSecurityNode({ op: op as never }) },
   { type: "roman-arabic-roman", ctor: RomanArabicNode },
-  { type: "secdesc-disc", ctor: SecurityDiscNode },
   { type: "sp-sumproduct", ctor: SumProductNode },
-  { type: "tbill-tbilleq", ctor: TBillNode },
   { type: "z-test", ctor: HypothesisTestNode },
   { type: "reshape-wraprows", ctor: TableReshapeNode },
   { type: "tblsel-chooserows", ctor: TableSelectNode },

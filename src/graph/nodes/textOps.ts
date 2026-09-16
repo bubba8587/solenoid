@@ -1,3 +1,4 @@
+// dte:C17,D19
 import { base64Encode, base64Decode } from "./hashOps";
 import { solError, isSolError, type SolError } from "../errorValue";
 // The ONE implementation behind both the visual node and the formula registration.

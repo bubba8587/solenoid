@@ -592,3 +592,11 @@ describe("Rank & Percentile — one node, op-switch mechanics", () => {
     expect(Object.keys(clone.inputs).sort()).toEqual(["list", "significance", "value"]);
   });
 });
+
+describe("fillGrid: a degenerate-row box is contested only by data on that row (review pin)", () => {
+  it("a blank between two knowns on a row interpolates along the row even when other rows carry data", () => {
+    const z = [[0, null, 2], [null, null, null], [0, 5, 2]];
+    const out = fillGrid(z, [0, 1, 2], [0, 1, 2], true);
+    expect(out[0][1]).toBeCloseTo(1, 9);
+  });
+});

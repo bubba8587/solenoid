@@ -4,8 +4,8 @@ Living document, kept at **module granularity** (one line per concern, not one
 line per node file — there are ~300 of those and the registry is the real
 index). Update when a new module or concern lands, in the same commit.
 
-Mechanics and gotchas live in `docs/subsystem-invariants.md`; rulings in
-`docs/decisions.md` and `docs/rules.md`; the running log in `docs/dev-notes.md`.
+Mechanics and gotchas live in `docs/subsystem-invariants.md`; rules and rulings in the
+decision tree (`decisions/`, see `docs/dte.md`); the running log in `docs/dev-notes.md`.
 This file is the map.
 
 ---
@@ -21,10 +21,15 @@ This file is the map.
 │                             #     suite lives at the mirrored path)
 ├── src-tauri/                # Tauri (Rust) shell: window, fs/dialog plugins
 ├── public/                   # Static assets served by Vite
-├── fixtures/                 # frame-verbs/ — the shared JS↔Rust verb corpus (oneVerbCorpus)
-├── scripts/                  # new-node.mjs (scaffold), undo-drift-probe.mjs + socket-box-probe.mjs
-│                             #     (live-page probes on the dev server: undo position fidelity,
-│                             #     socketBox12's rendering half), run-graph.ts (headless runner; takes
+├── fixtures/                 # frame-verbs/ — the shared JS↔Rust verb corpus (oneVerbCorpus);
+│                             #     schedule/ — MSPDI goldens + divergences.json for the scheduling engine
+├── packages/                 # In-repo MIT workspaces resolved by alias (tsconfig paths, vite, vitest):
+│                             #     schedule-engine, gantt-layout, gantt-react (packages/README.md)
+├── scripts/                  # new-node.mjs (scaffold), undo-drift-probe.mjs + socket-box-probe.mjs +
+│                             #     socket-drag-probe.mjs + tidy-drift-probe.mjs (live-page probes on the
+│                             #     dev server: undo position fidelity, socketBox12's rendering half, a
+│                             #     cable starts from either socket end, Tidy is a fixed point + the
+│                             #     confirm's Enter stays modal), run-graph.ts (`--vault / --tasknotes / --run`, the headless seam; `run-graph-vault.test.ts`) (headless runner; takes
 │                             #     JSON or the text form, gated on graphValidate),
 │                             #     validate-graph.ts (strict-reader CLI), ai-grounding.ts
 │                             #     (model-facing spec CLI), ai-prompt.ts (the palette's AI
@@ -32,7 +37,8 @@ This file is the map.
 │                             #     formula-node-parity.ts (oneMetricImpl gap report), op-exposure.ts,
 │                             #     socket-inventory.ts (regenerates socket-reference counts),
 │                             #     copy-inventory.ts (shipped-string extract/apply),
-│                             #     fuzz-frame-verbs.ts, tune-seeds.mjs, parity.ts, release-build.ps1
+│                             #     fuzz-frame-verbs.ts, tune-seeds.mjs, gantt-shots.mjs (headed Edge: every Gantt seed's
+│                             #     canvas / Display / popup PNGs in both themes to .dev/shots/gantt/), parity.ts, release-build.ps1
 ├── .claude/                  # Claude Code project config: skills/ (add-node), commands/, settings.json
 ├── .github/workflows/        # CI: test.yml (tsc+vitest), windows-portable.yml (solenoid.exe),
 │                             #     cargo-audit.yml (src-tauri/Cargo.lock advisories)
@@ -49,7 +55,7 @@ This file is the map.
 - **Model/compute spine**: rete core (`rete` — NodeEditor + ClassicPreset, headless)
   + `rete-engine` (DataflowEngine, pull-based recompute). No rete render/area
   plugins exist; `elkjs` is called directly for Tidy. The core stays on purpose
-  (decisions reactFlowView — author-ratified 2026-08-27).
+  (dte:B10 reactFlowView — author-ratified 2026-08-27).
 - **UI**: React + Vite, desktop shell via Tauri. Math helpers: formulajs,
   KaTeX (formula popup), marked (help panel).
 - Cross-surface state stays in module-level singleton stores (`storeKit.ts`
@@ -76,10 +82,10 @@ src/
 | Module | Role |
 |---|---|
 | `process.ts` | The app's recompute ONLY: the MAIN `_editor/_engine/_area` refs, the graph-rebuild guard, `processGraph()` (the `graphCompute` pass + targeted re-render, cable values, perf, the compute overlay, calc mode), recalc generation (volatile nodes), `bulkSettle`. **STAYS MAIN-ONLY** (persistence/serialize read it) |
-| `graphCompute.ts` | THE model-level pass, one definition for every caller (rules targetedEqualsFull): `loopMembers` (Tarjan SCC), `downstreamClosure`, `invalidate` (cone or full), `seedLoopErrors` (`#CIRC!` cache + value-box seeding), `fetchAll`, `computeAll`. Used by `processGraph`, the composite's internal engine, `scripts/run-graph.ts` and the seed tests |
+| `graphCompute.ts` | THE model-level pass, one definition for every caller (dte:D30 targetedEqualsFull): `loopMembers` (Tarjan SCC), `downstreamClosure`, `invalidate` (cone or full), `seedLoopErrors` (`#CIRC!` cache + value-box seeding), `fetchAll`, `computeAll`. Used by `processGraph`, the composite's internal engine, `scripts/run-graph.ts` and the seed tests |
 | `canvasCommands.ts` | The chrome → surface command slots (select/unselect, Tidy/Cleanup, delete, dock reposition, clear history) the mounted FlowSurface registers and the drill-in swaps (`swapSelectionSlots`/`swapArrangeSlots`) |
 | `seedStore.ts`, `graphSignals.ts`, `ctorProvider.ts` | Seed selection (`custom` once edited) + the load slot; the tiny version/flag stores cards subscribe to (connection version, cable-drag, conduit angle); the ctor-registry provider copyPaste reads (a cycle-breaker) |
-| `activeGraph.ts` (+`.test.ts`) | The canvas-substitution SEAM: `setActiveGraph(ctx\|null)` registers a substituting surface (composite drill-in), `getActive*`/`getOwningEditor` resolve override-else-main. Chrome/actions read these so a drill-in is first-class; `getEditor()`/persistence stay MAIN (locked by the test). Register on mount / clear on unmount; nested surfaces REPLACE (breadcrumb stack lives in compositeEditorStore) |
+| `activeGraph.ts` (+`.test.ts`) | The canvas-substitution SEAM: `setActiveGraph(ctx\|null)` registers a substituting surface (composite drill-in), `getActive*`/`getOwningEditor` resolve override-else-main. Chrome/actions read these so a drill-in is first-class; `getEditor()`/persistence stay MAIN (locked by the test). Register on mount / clear on unmount; nested surfaces REPLACE (breadcrumb stack lives in compositeEditorStore). Also an OWNERSHIP-only registry (`registerOwnedGraph`, distinct from the action-target override) so locked landing scene canvases resolve their OWN nodes for render-time cross-node resolvers (output-socket type → date/unit rendering); scenes are never the action target |
 | `viewPresets.ts` | The pure zoom module both surfaces share: `MIN_ZOOM`/`MAX_ZOOM`, `clampZoom`, `wheelZoomDelta` (the proportional wheel curve — px slope, step cap, line/page normalization) |
 | `view.ts` | THE canvas-view seam, `View`: what model-side code may ask of the view — `position(id)`/`nodeElement(id)`/`connectionElement(id)`/`hasNode(id)` (position reads `node.position`, the model's one source of truth; elements resolve to the live RF DOM per call), `container`/`viewport`, the camera (`transform`, `zoom`, `pan`), `moveNode`, `rerenderNode`/`rerenderCables`, `onRender`, `measured`; `flow/flowView.ts` is the one implementation |
 | `zoomAt.ts` | Frame a node set over a `Pick` of the `View` seam (`ZoomView`): RF's `getNodesBounds` + `getViewportForBounds` (padding 0.1, never zooms IN past 1), zoom floored to the snap step |
@@ -87,6 +93,7 @@ src/
 | `rete-nodes.ts` | Node class re-exports for the editor |
 | `nodeRegistry.ts` | `NODE_COMPONENTS`: `[Ctor, Component]` rows — the one place a node binds its React component |
 | `coerceInputs.ts` | `nodecreated` pipe wrapping every `data()` — normalizes incoming shapes to the socket's declared type (`#SHAPE!` on coercion failure); widens scalar/list/matrix → `frame` (list = ROW), bridges logical↔number. Per-input policy: a node lists `rawInputs` (a `ReadonlySet<string>`) to receive an input UNCOERCED and branch on the runtime shape itself (XLOOKUP's `frame` — a polymorphic frame-or-cube source); ACCEPTANCE stays lattice-driven, COERCION is the node's call |
+| `scheduleCpm.ts`, `ganttPayload.ts`, `planImport.ts` | The scheduling bindings: a tasks cube → `@solenoid/schedule-engine` and back with the computed columns at every level (Schedule); a scheduled table → the Gantt figure's data-only payload (`GanttPayload`, contract in `packages/gantt-layout/src/payload.ts`); a Project XML / grammar CSV → the plan cube (Local File's `plan` socket) |
 | `persistence.ts` (+`persistenceCore.ts`) | JSON save/load (format v2), localStorage autosave, export/import; ctor lookup derived from the catalog; `rebuildGraph` one-commit rebuild behind the load curtain. ORDER MATTERS in the rebuild tail: `settleWildcardTypes` runs BEFORE the FC dock loop (waitForTypeSettle, pinned by `fcDockReload.test.ts`). `persistenceCore` holds the pure validate/version helpers (`validateSavedGraph`, `CURRENT_SAVE_VERSION`) |
 | `loadReveal.ts`, `components/LoadOverlay.tsx` | The load-curtain store (idle/building + progress) + the build-phase progress overlay |
 | `copyPaste.ts` (+`clipboard.ts`) | Ctrl+C/V with topology, id remap (own `cloneNode`/`pasteClipboard` path); ALSO the home of `extractInit`/`INIT_FIELD_ORDER` — imported by persistence/aiGrounding/composite; `clipboard.ts` is the execCommand-fallback text copy |
@@ -117,6 +124,7 @@ src/
 | `flow/StaticFlowStage.tsx` | Non-interactive RF stage (landing demo, node showcase): `makeStaticStack` + controlled viewport |
 | `flow/flowSeeds.ts`, `flow/preview.ts` | Own seed glob (no persistence import — headless-harness-safe); generic-card value previews |
 | `canvasKeyboard.ts` | `installCanvasKeyboard(deps)` — the whole keyboard map (single-key graph actions, Ctrl chords, F9, arrows/nudge, rotate, Tab chrome toggle) + its helpers (resolveGroupTargets, rotateSelection, nudgeSelection) |
+| `modalGuard.ts` | `modalOwnsKeyboard()` — the one gate every canvas-level key handler (canvasKeyboard, the surface's Escape, RF's delete hook) asks first: an `aria-modal` dialog / pop-up overlay in the DOM, or an open palette / reference / settings / shortcuts, and the canvas shortcuts stand down (F9 excepted) |
 | `canvasLasso.ts` | `installLassoSelection(deps)` — shift-drag / touch-select lasso: winding-direction touch vs enclose modes, cached node rects, frame-coalesced live apply, release-time cable path sampling |
 | `canvasContextMenu.ts` | Right-click TARGET resolvers behind RF's node/edge/pane handlers: socket (with near-miss radius), cable (ribbon/selection expansion), node body (pin/standoff offers) |
 | `canvasActions.ts` | The graph actions those menus/keys invoke: `deleteSelection` (ghost-splicing bulk delete), `insertConduitForCables` (lane-bundled Conduit splice), `linkStandoffBetween`, `deleteCables`, `attachFormatController` |
@@ -131,7 +139,8 @@ src/
 | `fileSession.ts` | Disk save/open: native dialogs on desktop, download / file-input on web; a path-bound doc saves through documentStore |
 | `saveTimeStore.ts` | The save-clock read seam (per-doc autosave + file-save stamps) documentStore injects, since node classes can't import it |
 | `noteFrontmatterSync.ts` | THE one cable-drop for cables stranded by a frontmatter re-sync (Note on-blur commit + Import file-load share it) |
-| `noteInlineRefs.ts` | Note-body `` `=name` `` refs → minted INPUT sockets (Expression's identifier grammar; trailing `!` is display-only) |
+| `noteInlineRefs.ts` | The INTERNAL `` `=name` `` ref span (Expression's identifier grammar; trailing `!` is display-only tinting). Nobody types it: the Report's render emits it for a bare `{{ name }}` |
+| `knapTemplate.ts` | Knap (knap.md) IS the Note/Report body syntax: `hasKnapSyntax` gates the async render, `extractKnapVariables` walks the AST for the ROOT names a Report mints as inputs, `embedBareVariables` rewrites a bare `{{ input }}` to the ref span so it embeds by kind, `toTemplateValue` flattens frames/cubes to rows and date serials to ISO text by SOURCE socket type, `renderKnap` wraps the `knap` engine (standard filters) |
 | `reportStore.ts` + `reportExport.ts` | Report chrome seam (open/docked state) and the static HTML export (document-valued refs render as embed blocks) |
 
 ### Typing / sockets / units
@@ -172,7 +181,7 @@ src/
 | `presentationStore.ts` + `components/PresentationOverlay.tsx` | Presenter mode: full-screen slideshow, hides chrome (`html.solenoid-presenting`), flies the camera per step (click/Space/→/←/Esc) |
 | `cxValue.ts` | Tagged complex values (tagSpecialScalars), rete-free (implReteFree) — kernels shared with the IM* formulas |
 | `lambdaValue.ts` | Lambda values, rete-free (implReteFree) so the formula path runs editor-less |
-| `scriptWorker.ts` + `scriptExecutor.ts` | The Script node's sandbox (decisions scriptNode): a module Worker whose only import is the app-free evaluator `nodes/scriptRun.ts`, and its main-thread client with the wall clock |
+| `scriptWorker.ts` + `scriptExecutor.ts` | The Script node's sandbox (dte:C66 scriptNode): a module Worker whose only import is the app-free evaluator `nodes/scriptRun.ts`, and its main-thread client with the wall clock |
 | `documentValue.ts` / `imageValue.ts` / `svgValue.ts` | The other first-class content values: a Note/Report's renderable content on a cable, images (a chart-socket sibling), inline SVG markup (never a URL — the picker hovers inner elements) |
 | `valueKindLabel.ts` | value → display-kind label, one classifier for chips and popups |
 | `stringOrder.ts` | The ONE string comparator (sorts and dedups share it) |
@@ -186,7 +195,8 @@ src/
 | `frameBackend.ts` (+`.test.ts`) | The engine seam: a `FrameBackend` interface (`source`/`apply`/`join`/`append`/`collect`/`preview`/`column`/`drop`) over opaque `FrameHandle`s, so the frame layer runs on either the in-process `JsFrameBackend` (web/dev) or the **`PolarsBackend`** (desktop, over `ipcBridge`; selected by `initFrameBackend()` when `engine_ping` says `"polars"`). Also holds the node-facing **runners** `runFrameUnary`/`runFrameJoin`/`runFrameAppend` (which now return a **lazy `FrameRef`** that chains in the backend), `readFrame`/`collectPreview` (the materialization boundary — full / head-N), `flushRef` (a plan → handle, ONE `applyMany`, rebased onto the longest prefix already flushed this pass so a chain of previewing cards costs one op per card), `dropFrameRef` (lifecycle: only an empty-plan ref owns its handle), and `materialize()` (error-as-value bridge). Data crosses back at `collect`/`preview`/`column`; verb cards use `collectPreview` (head-N for a large frame); a no-op verb forwards its input as a non-owning ref (empty `drop`). `coerceInputs` collects a ref to a `FrameValue` for every consumer not in `LAZY_FRAME_NODES` (pinned complete by `lazyChain.test.ts`); consumers that need less than the frame read through `column`/`preview` instead. Module-singleton; `setFrameBackend` swaps it |
 | `frameVerbs.ts` (+`.test.ts`) | The pure relational verb engine — ONE definition of each verb (FrameValue→FrameValue), shared by the JS backend's `apply`, the Polars parity oracle, and (later) the verb nodes. Unary (`applyVerb`): select/drop/rename/sort/distinct/head/filter/groupBy/pivot/unpivot; binary: join (inner/left/right/outer, fan-out, key-coalesce, null≠null), append (union-by-name); cube bridge: nest/unnest; `reconcileFrames` (two-frame key diff, surfaces blank/invalid-key rows + a PVM price/volume/mix breakdown that excludes errored cells — `reconcile.test.ts`). Reuses `compareOp` + `forAggregate` so semantics can't drift from the nodes |
 | `ipcBridge.ts` (+`.test.ts`) | Web→Rust door: `engineAvailable`/`ipcInvoke`/`enginePing` (guarded by `isDesktop()`), `toSolError` maps a rejected `invoke` to a tagged `SolError`. Lazy `@tauri-apps/api/core` import → node/web-safe |
-| `frameShape.ts` (+`.test.ts`), `frameShapeResolver.ts` | Static frame shape: column names/types computed AHEAD of running anything, mirroring each verb's column-reshaping logic without touching row data (a mismatch with the real JS/Rust output is a caught test failure, not a silent divergence). The resolver walks the graph forward from literal frame sources so a downstream node can show its shape before data flows. Nest/Unnest and Frame Lookup fall outside this on purpose (their outputs aren't a Frame shape) |
+| `frameShape.ts` (+`.test.ts`) | Static frame shape: column names/types computed AHEAD of running anything, mirroring each verb's column-reshaping logic without touching row data (a mismatch with the real JS/Rust output is a caught test failure, not a silent divergence). `emptyFrameOf` is the other route — a zero-row frame a producer runs its OWN verb over. Nest/Unnest and Frame Lookup fall outside this on purpose (their outputs aren't a Frame shape) |
+| `frameShapeResolver.ts` | The graph walk alone (`makeFrameShapeResolver(editor)` → `outShape(nodeId, outKey)`, memoized + cycle-guarded): resolve the input shapes, then read the producer's own `frameShape()` declaration (`nodes/frameShapeHook.ts`). Node-agnostic — it names only the Conduit lane case and reads `passthrough()` for forwarders; anything undeclared is unknown (`null`) |
 
 ### Cables
 
@@ -237,6 +247,7 @@ and the 2026-08-26 cutover; git has it). Do not rebuild a third path.
 | `groupCollapse.ts` | Visual-only collapse: retain rules, pill sockets, readouts |
 | `groupPush.ts` + `groupPushCore.ts` (+`.test.ts`) | Expand-push displacement (rails/clear/cascade) + snap-back records; pure core is unit-tested |
 | `standoffs.ts`, `standoffSolver.ts` (+`.test.ts`), `components/StandoffLayer.tsx` | User-declared axis-band constraints; iterative-projection solver runs after every layout pass |
+| `drawnCables.ts`, `drawnCablePath.ts` (+`.test.ts`), `components/DrawnCableLayer.tsx` + `DrawnCableCapture.tsx` + `DrawnCableInspector.tsx` | Free-drawn annotation curves: the store + draw-mode store, the pure span-chaining geometry over `getCablePath`, the world-space layer ABOVE the graph, the armed tool's capture sheet, and the selected cable's shape / ends / width / head / color panel |
 | `layoutInvariants.test.ts` | Seeded-PRNG property tests over the pure layout cores (`groupPushCore`'s `separateOverlaps`, a `computeExpandPush` NaN fuzz, `distributeDeltas`, `solveStandoffs`) machine-checking the "nodes/groups never overlap after a layout op" rule. `alignDeltas` is pinned per arm in `selectionOps.test.ts`; ELK Tidy integration lives in `tidyArrangeGroups.test.ts` |
 | `lasso.ts`, `canvasLock.ts`, `nodeSizeStore.ts`, `collapseStore.ts`, `dockedNodeStore.ts` | Box-select, lock, per-node size/collapse, FC docking |
 | `selectionOps.ts` + `components/SelectionActionsBar.tsx`/`selectionActions.css` | Align/distribute deltas (pure) + the bottom-center overlay pill (≥2 nodes selected) that surfaces them outside the Command Palette |
@@ -313,7 +324,12 @@ shared by the voice lint (`uiCopy.test.ts`) and the hand-rewrite tool
 ### External data
 
 `connectionStore.ts` (cached async fetch + refresh generation),
-`fileBridge.ts` (Tauri fs/dialog behind an `isDesktop()` guard),
+`fileBridge.ts` (Tauri fs/dialog behind an `isDesktop()` guard, plus a
+path-aware dispatch so a demo-vault path routes to the in-memory provider),
+`demoVault.ts` + `demoVaultData.ts` (the bundled read-only demo vault behind
+the sentinel root `solenoid:demo-vault`, so the vault readers work with no
+filesystem — web included; `getVaultRoot()` selects it via the "Use demo
+vault" setting, files lazily code-split from `/demo-vault`),
 `httpBridge.ts` (proxy-aware fetch), `csv.ts` (parse/serialize),
 `nodes/connection.ts` (Web Source, Local File (CSV/Parquet), Import HTML/XML),
 `dataProviders.ts` + `nodes/dataFeed.ts` (the keyed data-feed providers),
@@ -330,11 +346,15 @@ One file per family, pure `data()` classes: `scalar`, `list`, `listOps`,
 `display`, `group`, `conduit` (block bundler), `formatController`, `composite`,
 `annotation` (Note — its body's YAML frontmatter becomes typed OUTPUT sockets,
 parsed by `noteFrontmatter.ts`), `report` (Report — plain-markdown sink with
-`` `=name` `` inline embeds; the mirror-image counterpart to Note), `visual`
+Knap template body whose root variables mint inputs and whose bare `{{ name }}`
+embeds by kind, with a fixed Template input (a wired Note as the text) and Records
+input (a mail merge, one page per row); the mirror-image counterpart to Note — both render
+through `knapTemplate.ts`, async only when a tag is left for the engine), `visual`
 (the figure family incl. Mermaid), `surfaceFit`, `presentation`, `tornado`,
 `quality` (Expect — data-quality checks, frame-cell-aware), `sink` (Write
 CSV/JSON), `obsidian`, `dataFeed`, `history`, `chartOptions`, `cast`,
 `coerce`, `connection`, `passthrough` (the appendLadder passthrough declarations),
+`frameShapeHook` (the producer sibling: `frameShape(outKey, ctx)` + `frameShapeOf`, node-class-free),
 `placeholder`, plus `shared.ts` (port factories,
 broadcast + `NODE_KIND_ACCENTS`), `mathUtils.ts`, and `kind.ts` (the node → kind classifier).
 Composite run modes live one level up (`src/graph/monteCarlo.ts` + `tornadoRun.ts` —
@@ -373,12 +393,34 @@ One file per pack on `packs/packShared.ts` (authoring types,
 packShared, `../rete-nodes`, and type-only app seams — never core internals),
 each with a vitest file pinning its formulas (`packs/formulaTestKit.ts`).
 Framework + activation live with the catalog cluster (`packs.ts` /
-`fcExtensions.ts` above); design + isolation levels: `docs/pack-architecture.md`.
+`fcExtensions.ts` above); the settled calls are dte:B15 leanCore and its children, the
+authoring guide `docs/pack-architecture.md`.
+
+### Packages (`packages/`)
+
+Three separately publishable MIT packages the app consumes by alias, extracted only on a
+second consumer (dte:C69 ganttPackages): `schedule-engine` (calendar in unit index space,
+WBS graph, the CPM passes, diagnostics, Mermaid, the predecessor grammar, MSPDI read),
+`gantt-layout` (payload → render frame at a width; the headless SVG serializer),
+`gantt-react` (the read-only figure). Tests live beside the source (`packages/**/*.test.ts`);
+the app's bindings are `scheduleCpm.ts` / `ganttPayload.ts` / `planImport.ts` above.
 
 ### Landing & showcase (`src/graph/landing/`)
 
-The web landing page (`LandingPage.tsx` + `LandingGraph.tsx` +
-`LandingScenes.tsx`) and the dev node gallery `showcase/NodeShowcase.tsx`.
+The marketing site: four pages sharing one chrome. `siteNav.tsx` owns the header, nav,
+footer, theme toggle and `Feature` row (the nav lists Obsidian/Examples/Packs/Download, marks
+the active route, and the wordmark covers Home). Pages: `LandingPage.tsx` (overview, the
+one live rete hero) + `ObsidianPage.tsx` (integration) + `DownloadPage.tsx` +
+`ExamplesPage.tsx` (a gallery of the seed library; each tile deep-links `/?seed=<id>`,
+which `flow/FlowCanvas.tsx` boot opens as a new document) + `PacksPage.tsx` (the domain
+packs, mirroring `packs.ts` metadata). Scenes live in `LandingScenes.tsx` (+
+`LandingGraph.tsx` with its hero scene switcher, `SceneStage.tsx`, and `SceneThread.tsx`, the
+decorative bezier joining the scene viewports); styles in `LandingPage.css` + `ObsidianPage.css` +
+`SitePages.css`. `App.tsx` routes each page by pathname (`/obsidian`, `/download`,
+`/examples`, `/packs`) or `?landing`, off the Vercel catch-all rewrite. `public/` carries
+`robots.txt`, `sitemap.xml` and `og-hero.png` (the link-preview image `index.html` points at). `siteChrome.ts`
+lets a page suppress app-only overlay chrome (the Report's Export/Dock). The dev node
+gallery is `showcase/NodeShowcase.tsx`.
 
 ---
 
@@ -388,7 +430,7 @@ The web landing page (`LandingPage.tsx` + `LandingGraph.tsx` +
 src-tauri/
 ├── Cargo.toml                # Crate manifest (+ fs/dialog plugin deps)
 ├── tauri.conf.json           # Window, identifier, build hooks
-├── capabilities/default.json # Permissions: dialog + fs read/write scoped to $HOME/** + http(s) fetch + opener + window/decorum commands
+├── capabilities/default.json # Permissions: dialog + fs read/write scoped to $HOME/** + http(s) fetch + opener + window/decorum commands. Read-text also allows `.yaml`/`.yml` (mdbase schemas, bundle 24) and `fs:allow-stat` ($HOME/**) backs the Vault Folder cube's created/modified columns (`statVaultFile`); `opener:allow-open-url` is widened to `obsidian://**` for Open in Obsidian (bundle 24 D). The http scope also lists `http://localhost:*` / `http://127.0.0.1:*`: a URL pattern with no port matches only the scheme's default port, and TaskNotes serves on 8080
 ├── src/ipc.rs                # IPC command surface (WS1): `engine_ping` (reports backend "polars") + `IpcError` (serializes SolError-shaped).
 ├── src/engine.rs (+engine/tests.rs) # WS2 native Polars engine: handle table (HashMap<String, SolFrame> = DataFrame + per-column SolType tags) + the relational verbs over polars 0.46; `engine_source/apply/join/append/collect/preview/column/drop` commands. Verb parity vs the frameVerbs JS oracle runs from the shared corpus (`fixtures/frame-verbs/`, oneVerbCorpus): `corpus_cases` in engine/tests.rs + `frameVerbCorpus.test.ts` read the same wire-format fixture files.
 └── src/lib.rs                # Plugin registration + `invoke_handler`: window commands (`open_devtools`, `set_window_border`, `toggle_fullscreen`) + `engine_ping` + the `engine_*` command set
@@ -416,11 +458,10 @@ rationale, point-in-time research, the dev-notes history) is indexed in
 | `mental-model.md` | living | how the system runs, end to end — the onboarding story |
 | `architecture.md` | living | (this file) module map |
 | `glossary.md` | living | the invented vocabulary |
-| `decisions.md` | living | the decision log — what stands / where / what would reopen it |
+| `dte.md` | living | the decision tree how-to — every rule (MUST + enforcing test) and settled decision is a node under `decisions/` |
 | `subsystem-invariants.md` | living | the "don't break this" deep-dives — cable routing, group push, standoffs, tidy, error values, unit flow, addressable model, autosave, drill-in |
 | `layout-chrome.md` | living | on-screen chrome map — bar/overlay geometry, offset sync map, z-index ladder; read before adding/moving chrome |
 | `touch-gestures.md` | living | the pointer/touch gesture inventory per device config |
-| `renderer-performance.md` | living | settled renderer-perf policies (zoom settle, semantic-zoom gate, GPU budget, HIC capture) |
 | `code-comments.md` | living | the commentMinimalism comment policy — cut rules, blast-radius test |
 | `dev-notes.md` | living log | open problems + the latest session digests only (history in `archive/dev-notes-history.md`) |
 | `backlog.md` | living | OPEN items only — the 1.3 polish/patch queue (landed items are deleted) |
@@ -429,11 +470,10 @@ rationale, point-in-time research, the dev-notes history) is indexed in
 | `release-notes-features.md` | living | curated feature list — release-notes source + What's-New slide content |
 | `format-model.md` | living | the FC function model — control truth table + precision rule (mirrored in `formatModel.ts`) |
 | `value-semantics.md` | living | null/NaN/Infinity/SolError semantics per computation context |
-| `rules.md` | living | the NORMATIVE architecture spec — numbered MUST-rules with their enforcing tests |
 | `socket-reference.md` | living | every socket variant in plain English (connection lists machine-checked by `socketReference.test.ts`) |
 | `v2.0/` | living plans | the open build bundles — 08 transpiler, 10 sensitivity, 12 uncertain/money, 16 widgets |
 | `node-coverage.md` | living | node inventory by category (`nodeCatalog.ts` is the real source) |
-| `pack-architecture.md` | design + authoring guide | core-vs-pack line, isolation levels |
+| `pack-architecture.md` | authoring guide | building a pack node, input coercion, per-port promotion, restrictions (settled calls: dte:B15 leanCore) |
 | `pack-composite-plans.md` | plans (parked) | queued composite-shaped pack nodes |
 | `out-of-scope.md` | policy | the standing NO list |
 | `grid-system.md` | future spec | soft-snap grid; unimplemented |

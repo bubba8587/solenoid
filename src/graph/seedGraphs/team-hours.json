@@ -1,0 +1,158 @@
+{
+  "v": 2,
+  "order": 516,
+  "label": "Balance a team's hours",
+  "group": "Worked examples",
+  "nodes": [
+    {
+      "id": "note",
+      "type": "NoteNode",
+      "x": 439,
+      "y": -95,
+      "init": {
+        "label": "Balance a team's hours",
+        "body": "# Spread the shift hours\nA roster with a **Min** and **Max** of hours each person can take, and a **Weight** for who should carry more. The **Allocator** spreads the week's total across them in proportion to the weights, kept inside every band; the slack a capped person leaves flows to the rest.\n\nThe same node splits a budget across price ranges: a band of hours is just another range. Change the total, or someone's Max, and watch the shares move.",
+        "color": "violet",
+        "width": 380,
+        "height": 250
+      }
+    },
+    {
+      "id": "roster",
+      "type": "FrameInputNode",
+      "x": 344,
+      "y": 259,
+      "init": {
+        "label": "Roster",
+        "frameText": "[{\"name\":\"Person\",\"type\":\"string\",\"values\":[\"Ada\",\"Bo\",\"Cy\",\"Di\",\"Eli\"]},{\"name\":\"Min\",\"type\":\"number\",\"unit\":\"hr\",\"values\":[16,20,8,24,12]},{\"name\":\"Max\",\"type\":\"number\",\"unit\":\"hr\",\"values\":[40,32,24,40,20]},{\"name\":\"Weight\",\"type\":\"number\",\"values\":[2,1,1,3,1]}]"
+      }
+    },
+    {
+      "id": "alloc",
+      "type": "AllocatorNode",
+      "x": 669,
+      "y": 251,
+      "init": {
+        "label": "Spread the hours",
+        "mode": "budget"
+      },
+      "literals": {
+        "amount": 120
+      }
+    },
+    {
+      "id": "share",
+      "type": "GetColumnNode",
+      "x": 1020,
+      "y": 560,
+      "init": {
+        "label": "Share",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "Share"
+      }
+    },
+    {
+      "id": "shareFc",
+      "type": "FormatControllerNode",
+      "x": 1203,
+      "y": 650,
+      "init": {
+        "label": "Format",
+        "hostNodeId": "share",
+        "socketKey": "values",
+        "side": "output",
+        "format": "percent",
+        "decimalDigits": 0,
+        "decimalMode": "places",
+        "socketDataType": "number"
+      }
+    },
+    {
+      "id": "shareDisplay",
+      "type": "DisplayNode",
+      "x": 1461,
+      "y": 574,
+      "init": {
+        "label": "Share of the week"
+      }
+    },
+    {
+      "id": "hoursDisplay",
+      "type": "DisplayNode",
+      "x": 1016,
+      "y": 251,
+      "init": {
+        "label": "Hours each"
+      },
+      "size": {
+        "w": 360,
+        "h": 220
+      }
+    },
+    {
+      "id": "grp-roster",
+      "type": "GroupNode",
+      "x": 320,
+      "y": 193,
+      "init": {
+        "label": "The roster",
+        "members": [
+          "roster",
+          "alloc"
+        ],
+        "color": "amber",
+        "collapsed": false,
+        "width": 617,
+        "height": 339
+      }
+    },
+    {
+      "id": "grp-out",
+      "type": "GroupNode",
+      "x": 992,
+      "y": 193,
+      "init": {
+        "label": "Hours and shares",
+        "members": [
+          "hoursDisplay",
+          "share",
+          "shareFc",
+          "shareDisplay"
+        ],
+        "color": "green",
+        "collapsed": false,
+        "width": 677,
+        "height": 588
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "roster",
+      "sourceOutput": "frame",
+      "target": "alloc",
+      "targetInput": "categories"
+    },
+    {
+      "source": "alloc",
+      "sourceOutput": "frame",
+      "target": "hoursDisplay",
+      "targetInput": "in"
+    },
+    {
+      "source": "alloc",
+      "sourceOutput": "frame",
+      "target": "share",
+      "targetInput": "frame"
+    },
+    {
+      "source": "share",
+      "sourceOutput": "values",
+      "target": "shareDisplay",
+      "targetInput": "in"
+    }
+  ],
+  "standoffs": []
+}

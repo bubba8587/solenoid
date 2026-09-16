@@ -44,3 +44,17 @@ describe("DataFeedNode gating", () => {
     expect(new DataFeedNode({ provider: "fred" }).needsKey()).toBe(false);
   });
 });
+
+describe("DataFeedNode date range", () => {
+  it("a reversed range is refused before any fetch, with the reason on the card", () => {
+    const n = new DataFeedNode();
+    n.stringLiterals.input = "GDP";
+    n.stringLiterals.start = "2026-06-01";
+    n.stringLiterals.end = "2026-01-01";
+    const out = n.data();
+    expect(out.frame).toBeNull();
+    const st = connectionStore.getState(n.id);
+    expect(st.status).toBe("error");
+    expect(st.message).toMatch(/End is before Start/);
+  });
+});

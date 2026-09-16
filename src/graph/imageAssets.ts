@@ -9,8 +9,7 @@ import {
   pathExists,
   ensureDir,
   readBinaryFilePath,
-  writeBinaryFilePath,
-} from "./fileBridge";
+  writeBinaryFilePath, isInsideVault } from "./fileBridge";
 import { getEditor, getView, processGraph } from "./process";
 import { documentStore } from "./documentStore";
 
@@ -170,6 +169,9 @@ export async function hydrateImageAsset(node: unknown): Promise<void> {
   if (!n.assetPath || n.dataUrl || n.url) return;
   const docPath = documentStore.currentFilePath();
   if (!docPath) return;
+  // A saved document can carry any string here: a path that climbs out of the document's
+  // folder is never read (the same rule as a vault-relative read).
+  if (!isInsideVault(n.assetPath)) return;
   try {
     const dir = await dirOfPath(docPath);
     const p = await joinPath(dir, ...n.assetPath.split("/"));

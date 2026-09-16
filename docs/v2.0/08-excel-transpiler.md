@@ -71,8 +71,19 @@ the original text even if inert."
    still be inert; that's fine, same as any Placeholder).
 5. Layout: call the same `arrangeFn({skipConfirm: true})` accessor the Tidy button uses
    (`process.ts` `setAutoArrange` slot) on the emitted graph.
-6. Sheets → Groups: each source sheet becomes a `GroupNode` (`nodes/group.ts:11-40`,
-   `members: string[]`).
+6. Sheets → PAGES: each source sheet becomes a page of the one document
+   (`20-pages.md` — Arc 1 lands first; cross-sheet references become cross-page
+   connections rendered as portal stubs). Before pages exist, a `GroupNode` per sheet
+   (`nodes/group.ts`, `members: string[]`) is the interim.
+7. Excel Tables (ListObjects) → Frame Inputs with COMPUTED COLUMNS: structured references
+   (`[@Price] * [@Qty]`, `SUM(Table1[Total])`) map onto tableRefSemantics (`@name` = this
+   row, bare name = the column) — the transpiler's best-fidelity path; build it second,
+   right after the arithmetic spike. Named ranges → node names; data-validation lists →
+   categorical columns (`../1.4-plan.md` B2).
+8. Fidelity report: per formula — mapped / redirected / fallback Expression / dropped — as
+   a frame the user can filter, plus Problems entries. Parser dependency: an xlsx reader
+   (SheetJS community edition or exceljs; license + bundle size are the gate; desktop-only
+   import is acceptable for v1). Evaluation + sequencing: `../2.0-plan.md` Arc 3.
 
 ## Exit criteria
 

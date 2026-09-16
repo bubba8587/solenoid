@@ -1,0 +1,14 @@
+{
+  "types": {
+    "sleep": "number",
+    "weight": "number",
+    "mood": "text",
+    "exercised": "checkbox",
+    "rating": "number",
+    "read": "checkbox",
+    "author": "text",
+    "started": "date",
+    "finished": "date",
+    "aliases": "aliases"
+  }
+}

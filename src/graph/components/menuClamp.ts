@@ -12,11 +12,13 @@ export function useMenuClamp<T extends HTMLElement>(x: number, y: number): RefOb
     const el = ref.current;
     if (!el) return;
     const pad = 8;
-    const bottomChrome =
-      parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--chrome-bottom")) || 0;
+    const rootStyle = getComputedStyle(document.documentElement);
+    const bottomChrome = parseFloat(rootStyle.getPropertyValue("--chrome-bottom")) || 0;
+    const topChrome = parseFloat(rootStyle.getPropertyValue("--chrome-top")) || 0;
     const r = el.getBoundingClientRect();
     const left = Math.min(Math.max(x + 6, pad), window.innerWidth - r.width - pad);
-    const top = Math.min(Math.max(y - 4, pad), window.innerHeight - bottomChrome - r.height - pad);
+    // Below the header band and above the bottom bars, so a menu never covers either.
+    const top = Math.min(Math.max(y - 4, topChrome + pad), window.innerHeight - bottomChrome - r.height - pad);
     el.style.left = `${Math.round(left)}px`;
     el.style.top = `${Math.round(top)}px`;
   }, [x, y]);

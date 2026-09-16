@@ -1,7 +1,10 @@
+// dte:D54
 import { ClassicPreset } from "rete";
 import { numberSocket, AdoptiveSocket, MutableSocket, type SocketDataType } from "../sockets";
 import { frameIn, frameOut, dateOut, numOut, tableOut } from "./shared";
 import type { PassthroughSpec } from "./passthrough";
+import { shapeOfFrameValue, type Shape } from "../frameShape";
+import type { FrameShapeContext } from "./frameShapeHook";
 import { isFrameValue, getColumn, frameRowCount, cubeFromColumns, type FrameValue, type FrameColumn, type FrameCell, type FrameColType, type CubeCell } from "../frame";
 import { runFrameUnary, collectPreview, isFrameRef, flushRef, materialize, frameBackend, type FrameRef } from "../frameBackend";
 import { beginPass, passFrame, emitFrame } from "./frame";
@@ -218,8 +221,10 @@ export class DateRangeNode extends ClassicPreset.Node {
   }
 
   data(): { start: number | null; end: number | null } {
-    const start = this.literals.start ?? 0;
-    const end = this.literals.end ?? 0;
+    let start = this.literals.start ?? 0;
+    let end = this.literals.end ?? 0;
+    // A range runs forward: picked out of order, the two swap (the Slider's bound rule).
+    if (start > 0 && end > 0 && start > end) [start, end] = [end, start];
     return { start: start > 0 ? start : null, end: end > 0 ? end : null };
   }
 }
@@ -310,6 +315,10 @@ export class SlicerNode extends ClassicPreset.Node {
     this.addOutput("result", frameOut("Filtered"));
   }
 
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    return ctx.inputShape("frame");
+  }
+
   private async emitResult(gen: number, out: FrameRef | FrameValue | SolError | null): Promise<{ result: FrameRef | FrameValue | SolError | null }> {
     const { frame } = await emitFrame(this, gen, out);
     return { result: frame };
@@ -338,7 +347,7 @@ export class SlicerNode extends ClassicPreset.Node {
       if (col && isSolError(col)) return this.emitResult(gen, col);
       // No column resolved, or "all" selected → forward the frame unchanged (no-op).
       if (!colName || this.selectedValues.length === 0) return this.emitResult(gen, await passFrame(raw));
-      const conditions: FilterCond[] = this.selectedValues.map((v) => ({ column: colName, op: "eq", value: String(v), matchCase: false }));
+      const conditions: FilterCond[] = this.selectedValues.map((v) => ({ column: colName, op: "eq", value: String(v), matchCase: true })); // the buttons ARE the exact values (the eager path matches exactly too)
       return this.emitResult(gen, await runFrameUnary(raw, { kind: "filterMulti", combine: "or", conditions }));
     }
 
@@ -403,6 +412,10 @@ export class PointPlotterNode extends ClassicPreset.Node {
       if (typeof init?.[k] === "number") this.literals[k] = init[k]!;
     }
     this.addOutput("result", frameOut("Points"));
+  }
+
+  frameShape(): Shape {
+    return shapeOfFrameValue(pointsToFrame([]));
   }
 
   data(): { result: FrameValue } {
@@ -503,6 +516,10 @@ export class CurveNode extends ClassicPreset.Node {
       if (typeof init?.[k] === "number") this.literals[k] = init[k]!;
     }
     this.addOutput("result", frameOut("Curve"));
+  }
+
+  frameShape(): Shape {
+    return shapeOfFrameValue(curveToFrame([], []));
   }
 
   data(): { result: FrameValue } {

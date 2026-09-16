@@ -3,7 +3,7 @@
 The one-stop spec for the value model's special kinds: what each one MEANS, what
 produces it, how it propagates through each computation context, and how it renders.
 Consolidates the 2026-06-22 array-semantics build (decision arraySemantics) and the 2026-07-02
-step-by-step rulings (decisions currentExcelParity–consistencyOverQuirks), all shipped by the 2026-07-04/05 tail
+step-by-step rulings (dte:C14 currentExcelParity–consistencyOverQuirks), all shipped by the 2026-07-04/05 tail
 pass. Mechanics/invariants live in `subsystem-invariants.md` "Error values"; this
 doc is the SEMANTICS reference.
 
@@ -165,7 +165,7 @@ Decide by the input's ROLE, not by its type:
 | a **check's parameter** — Expect's bound or pattern | that check cannot be EVALUATED | **skips THAT CHECK** and passes the data through | Expect keeps flowing, reports no violation |
 | a **control's bound** — Slider min/max/step | the control still has to work | **falls back to the card's own value** | Slider keeps clamping to its typed bound |
 | a **column reference** — which column to sort/group/split/look up by | the target is unknown | **PROPAGATES** — a blank frame out, NOT the frame unchanged | Frame Sort, Get Column, XLOOKUP |
-| a **figure's datum** — a chart's values, a KPI's number, a Mermaid source | there is nothing to draw | **PROPAGATES**: renders an EMPTY figure, never a SolError out a `chart` socket | Gauge, KPI, 7-Segment |
+| a **figure's datum** — a chart's values, a KPI's number, a Mermaid source | there is nothing to draw | **PROPAGATES**: renders an EMPTY figure, never a SolError out a `chart` socket | Gauge, KPI |
 | a **presentation annotation** — an options string, decimals, a colour | no styling was given | **falls back to the NEUTRAL default**, never to the card's styling | chart Options, Chart Options builder |
 | a **filter predicate** | that row is not known to match | **DROPS the row** | Filter |
 | a **filter condition's column or comparison value** | that condition cannot be evaluated, so which rows survive is unknown | **PROPAGATES** — the whole result is blank | Filter, SUMIFS |
@@ -330,9 +330,9 @@ guarded once, up top.
 
 ## Pointers
 
-Decisions: arraySemantics (the value model), currentExcelParity (current-Excel-only parity), oneAnswerOneDivergence (surface
-harmony + the reduction/element-wise line), excelComparisons (comparisons vs identity; list vs
-relational), consistencyOverQuirks (engine consistency over Excel quirks) in `decisions.md`.
+Decisions: dte:C24 arraySemantics (the value model), dte:C14 currentExcelParity (current-Excel-only parity), dte:D51 oneAnswerOneDivergence (surface
+harmony + the reduction/element-wise line), dte:C45 excelComparisons (comparisons vs identity; list vs
+relational), dte:C46 consistencyOverQuirks (engine consistency over Excel quirks).
 Mechanics: `subsystem-invariants.md` "Error values". Known open divergence: the
 mode-selector-on-a-wired-blank AUTHOR CALL in `backlog.md` (text.ts/date.ts
 literal fallback vs this doc's propagate row).

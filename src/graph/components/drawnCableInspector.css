@@ -1,0 +1,212 @@
+/* Rows layered onto the cable-inspector chrome (cableInspector.css owns the panel box,
+   its corner and the Navigator slide). Segments mirror the top bar's cable-shape
+   selector so "pick a cable shape" is one control everywhere. */
+
+/* More rows than the wired-cable panel, so it caps its height on a short window.
+   Scoped by the dialog label: cableInspector.css is shared. */
+.solenoid-cable-inspector[aria-label="Drawn cable"] {
+  max-height: calc(100dvh - var(--chrome-top, 66px) - var(--chrome-bottom, 19px) - 24px);
+  overflow-y: auto;
+}
+
+
+.solenoid-drawn-inspector__row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.solenoid-drawn-inspector__row--color {
+  align-items: flex-start;
+}
+
+.solenoid-drawn-inspector__segmented {
+  display: flex;
+  flex: 1;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.solenoid-drawn-inspector__segment {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 4px;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 80ms ease, color 80ms ease;
+  /* Fills the shape icon's open input ring so it reads hollow. */
+  --icon-bg: var(--btn-bg);
+}
+
+@media (hover: hover) {
+  .solenoid-drawn-inspector__segment:hover {
+    color: var(--accent);
+    background: var(--btn-hover);
+    --icon-bg: var(--btn-hover);
+  }
+}
+
+.solenoid-drawn-inspector__segment--active,
+.solenoid-drawn-inspector__segment--active:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+  --icon-bg: var(--accent);
+}
+
+.solenoid-drawn-inspector__shape-icon {
+  display: block;
+  width: 17px;
+  height: 15px;
+}
+
+.solenoid-drawn-inspector__arrow-icon {
+  display: block;
+  width: 21px;
+  height: 12px;
+}
+
+.solenoid-drawn-inspector__remove {
+  display: block;
+  width: 100%;
+  margin-top: 2px;
+  padding: 5px 8px;
+  background: none;
+  border: 1px solid var(--border-strong, #3a3f49);
+  border-radius: 5px;
+  color: var(--text, #e6e9ee);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.solenoid-drawn-inspector__remove:hover {
+  border-color: #c25b5b;
+  color: #e08a8a;
+}
+
+.solenoid-drawn-inspector__select {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 5px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  color: var(--text, #e6e9ee);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.solenoid-drawn-inspector__select:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.solenoid-drawn-inspector__stepper {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  padding: 1px 2px;
+}
+
+.solenoid-drawn-inspector__stepper button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 18px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 999px;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.solenoid-drawn-inspector__stepper button:hover {
+  color: var(--accent);
+  background: var(--btn-hover);
+}
+
+.solenoid-drawn-inspector__point {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.solenoid-drawn-inspector__row--dial {
+  gap: 10px;
+  padding: 1px 0;
+}
+
+.solenoid-drawn-inspector__auto {
+  padding: 3px 10px;
+  background: none;
+  border: 1px solid var(--border-strong, #3a3f49);
+  border-radius: 999px;
+  color: var(--text, #e6e9ee);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.solenoid-drawn-inspector__auto:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.solenoid-drawn-inspector__auto:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Add / remove the active point (the finger's version of double-click and alt-click). */
+.solenoid-drawn-inspector__pointbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: none;
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  color: var(--text-dim, #9aa0a6);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.solenoid-drawn-inspector__pointbtn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.solenoid-drawn-inspector__pointbtn--drop:hover:not(:disabled) {
+  border-color: #c25b5b;
+  color: #e08a8a;
+}
+
+.solenoid-drawn-inspector__pointbtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}

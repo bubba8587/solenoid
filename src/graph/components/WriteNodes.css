@@ -30,4 +30,22 @@
 .sol-write__run:hover:not(:disabled) { border-color: var(--node-accent, var(--accent)); }
 .sol-write__run:disabled { opacity: 0.4; cursor: default; }
 
+/* Browse the vault: a full-width button (the Import chooser's folder glyph + label). */
+.sol-write__browse {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  padding: 4px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.sol-write__browse:hover { border-color: var(--node-accent, var(--accent)); }
+
 .sol-conn__status-text--error { color: #e0566b; }

@@ -104,24 +104,18 @@ export { ConfidenceComponent } from "./ConfidenceNode";
 // ─── Finance ──────────────────────────────────────────────────────────────────
 export { DepreciationComponent } from "./DepreciationNode";
 export { TvmComponent } from "./TvmNode";
-export { IpmtPpmtComponent } from "./IpmtPpmtNode";
+export { PaymentBreakdownComponent } from "./PaymentBreakdownNode";
 export { NpvComponent } from "./NpvNode";
 export { IrrComponent } from "./IrrNode";
 export { MirrComponent } from "./MirrNode";
-export { CumPmtComponent } from "./CumPmtNode";
 export { FvScheduleComponent } from "./FvScheduleNode";
 export { IspmtComponent } from "./IspmtNode";
 export { DollarComponent } from "./DollarNode";
-export { TBillComponent } from "./TBillNode";
-export { SecurityDiscComponent } from "./SecurityDiscNode";
+export { DiscountSecurityComponent } from "./DiscountSecurityNode";
 export { CouponComponent } from "./CouponNode";
-export { AccrintComponent } from "./AccrintNode";
-export { AccrintMComponent } from "./AccrintMNode";
-export { PriceDiscComponent } from "./PriceDiscNode";
-export { PriceMatComponent } from "./PriceMatNode";
+export { AccruedInterestComponent } from "./AccruedInterestNode";
 export { DurationComponent } from "./DurationNode";
-export { BondPriceComponent } from "./BondPriceNode";
-export { OddCouponComponent } from "./OddCouponNode";
+export { BondPricingComponent } from "./BondPricingNode";
 
 // ─── Currency formatting ──────────────────────────────────────────────────────
 export { FormatDollarComponent } from "./TypeCoerceNodes";
@@ -144,7 +138,7 @@ export {
   DistinctComponent, HeadComponent, SortFrameComponent, FilterFrameComponent, JoinComponent, XLookupComponent,
   ColumnsComponent, GroupByFrameComponent, PivotComponent, UnpivotComponent,
   NestComponent, UnnestComponent, AppendComponent, BindColumnsComponent, RenameComponent,
-  SplitColumnComponent, AddIndexComponent, DecisionMatrixComponent, DecisionSensitivityComponent,
+  SplitColumnComponent, AddIndexComponent, DecisionMatrixComponent, DecisionSensitivityComponent, SettleComponent, PayoffPlannerComponent, AllocatorComponent,
   ReconcileComponent,
   FillBlanksComponent, ReplaceValuesComponent, MergeColumnsComponent, HeadersComponent, DropBlankRowsComponent,
   DescribeComponent, CorrMatrixComponent, KMeansComponent, PcaComponent, LogisticComponent, WindowComponent,
@@ -158,10 +152,11 @@ export { TornadoComponent } from "./TornadoNode";
 export { BuildCubeComponent, NestJoinComponent, CubeColumnsComponent, CubeRollupComponent } from "./CubeNodes";
 
 // ─── External-data connections (Web Source, CSV folder, Parquet folder) ─────────
-export { WebSourceComponent, LocalFileComponent, ImportHtmlComponent, ImportXmlComponent, DataFeedComponent } from "./ConnectionNodes";
+export { WebSourceComponent, LocalFileComponent, ImportHtmlComponent, ImportXmlComponent, DataFeedComponent, GeocodeComponent, WeatherComponent, HolidaysComponent, FxComponent, VaultFolderComponent, TaskNotesComponent } from "./ConnectionNodes";
+export { QrCodeComponent } from "./QrNode";
 
 // ─── File sinks (Write File — CSV/JSON, Write to Obsidian) ────────────────────────
-export { WriteFileComponent, WriteObsidianComponent } from "./WriteNodes";
+export { WriteFileComponent, WriteObsidianComponent, WriteTasksComponent } from "./WriteNodes";
 
 // ─── Import from Obsidian Vault (read a .md into a read-only Note) ────────────────
 export { ImportObsidianComponent } from "./ImportObsidianNode";
@@ -250,7 +245,7 @@ export {
   TodayNowComponent, DateConstructComponent, TimeConstructComponent,
   DateTimeValueComponent, DatePartComponent,
   WeekInfoComponent, DateDiffComponent, DateAddComponent,
-  WorkdaysComponent,
+  WorkdaysComponent, TimeZoneConvertComponent, WorldClockComponent,
 } from "./DateNodes";
 
 // ─── Stats (extended) ─────────────────────────────────────────────────────────
@@ -276,8 +271,8 @@ export {
   WaterfallComponent, CandlestickComponent, BoxplotComponent,
   CalendarHeatmapComponent, ProportionComponent, QuiverComponent,
 } from "./FigureNodes";
-export { SevenSegComponent } from "./SevenSegNode";
 export { RecordComponent } from "./RecordNode";
+export { GanttComponent } from "./GanttNode";
 export { PointPlotterComponent } from "./PointPlotterNode";
 export { CurveComponent } from "./CurveNode";
 export { GridPainterComponent } from "./GridPainterNode";
@@ -361,3 +356,6 @@ export { EtsForecastComponent } from "./EtsForecastNode";
 export { DecomposeComponent } from "./DecomposeNode";
 export { OdeIntegrateComponent } from "./OdeIntegrateNode";
 export { FitDistributionComponent } from "./FitDistributionNode";
+export { ScheduleComponent } from "./ScheduleNode";
+export { EarnedValueComponent } from "./EarnedValueNode";
+export { CubeInputComponent } from "./CubeInputNode";

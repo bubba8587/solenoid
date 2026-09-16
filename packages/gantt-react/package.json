@@ -1,0 +1,11 @@
+{
+  "name": "@solenoid/gantt-react",
+  "version": "0.1.0",
+  "description": "React 19 Gantt figure over @solenoid/gantt-layout: a tree grid beside a virtualized timeline, read-only.",
+  "license": "MIT",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "sideEffects": false,
+  "peerDependencies": { "react": "^19", "react-dom": "^19" }
+}

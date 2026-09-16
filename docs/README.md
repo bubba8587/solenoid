@@ -16,11 +16,11 @@ dev-notes per-item history) live in `archive/` — see `archive/README.md`.
    flow…) plus the author's names for the on-screen chrome. Read before the
    deep-dive docs or their terms won't parse.
 4. **`architecture.md`** — the file map: where things live.
-5. **`rules.md`** — the NORMATIVE spec: what must remain true, and the test that
-   enforces each rule. Sockets, formula surface + naming, value handling — the
-   architecture that can't be checked by looking at the app.
-6. **`decisions.md`** — the big WHYs and what would reverse them; read before
-   proposing anything that touches a settled call.
+5. **`dte.md`** — the decision tree: every NORMATIVE rule (what must remain true, and
+   the test that enforces it) and every settled decision (the WHY and what would
+   reverse it) is a node under `../decisions/`. Read the governing node before touching
+   sockets, formula names or value handling, or proposing anything that touches a
+   settled call.
 
 Pointer hygiene is machine-checked: `docsPointers.test.ts` fails CI on a dead
 `.md` citation anywhere in the live docs, a live doc missing from this index, an
@@ -51,23 +51,28 @@ is parked there.
   writing a new node. All shipped.
 - **`node-coverage.md`** — the node inventory + the arity/labeled-slots rules;
   `nodeCatalog.ts` is the real source of truth.
+- **`knap-upstream.md`** — the `knap` bugs (with repros) and API asks found
+  integrating it, each with the workaround it would retire, re-verified on every
+  bump. The list to file upstream.
 - **`formulajs-divergences.md`** — why Solenoid owns each `registerInternal`
   override instead of falling through to Formula.js. Read before deleting an
   override or widening the fallthrough; the library being wrong is the whole
   reason the override exists.
 - **`upstream-formulajs.md`** — the subset of those divergences that are genuine
   Formula.js bugs, written up as ready-to-paste upstream issues (author submits).
-- **`pack-architecture.md`** — the lean-core + packs design (framework BUILT;
-  this is the authoring guide + rationale).
-- **`pack-composite-plans.md`** — queued composite-shaped pack nodes (parked —
-  the pack program is 1.4/2.0, see `deferrals.md`).
-- **`release-notes-features.md`** — the curated selling list / What's-New source.
+- **`pack-architecture.md`** — the pack authoring guide (framework BUILT); the settled
+  calls are dte:B15 leanCore and its children.
+- **`pack-composite-plans.md`** — queued composite-shaped pack nodes; the pack program
+  is `1.4-plan.md` E3 (Materials & Mechanical content) + `2.0-plan.md` Arc 7 (the
+  composite pack shape + distribution).
+- **`release-notes-features.md`** — the curated selling list / What's-New source for
+  the release in progress (1.4; the 1.3 list is at the v1.3.0 tag).
 - **`grid-system.md`** — the (unbuilt) soft-grid design spec; parked in
   `deferrals.md`.
 - **`out-of-scope.md`** — the standing NO list.
-- **`renderer-performance.md`** — the settled renderer-perf policies: zoom settle,
-  GPU layer promotion (pan never / desktop pinch only), the semantic-zoom gate, the
-  HIC capture pipeline. The OPEN choppy-band investigation stays in `dev-notes.md`.
+- **`dte.md`** — decision provenance: the vendored DTE tool (`tools/dte.py`), Solenoid's
+  ring map and everyday commands. Read before creating or changing a decision node;
+  `python tools/dte.py validate` must print `OK` before you finish.
 - **`code-comments.md`** — the comment policy (commentMinimalism): comments are the last-resort
   home for knowledge; the cut rules, compression rules, the blast-radius test, and
   the homes hierarchy. Read before writing (or reviewing) comment prose.
@@ -78,21 +83,30 @@ is parked there.
 ## Work queue (forward-looking — verify against code; these rot)
 
 - **`backlog.md`** — OPEN items only; **the single source of truth for tasks.**
-  Landed items get DELETED (git + digests are the record). Since the 2026-08-07
-  pivot: 1.3 ships as-is — the queue is bugs, patches, and polish sweeps; feature
-  work lives in `deferrals.md` "Pushed to 1.4/2.0". The release tail lives here.
-- **`plans/`** — per-task execution plans for the backlog's Execution queue, written
-  so a smaller model can do the routine work (index + protocol in `plans/README.md`).
+  Landed items get DELETED (git + digests are the record). 1.3 shipped; the 1.4 cut
+  is proposed in `1.4-plan.md` and items land here as the author promotes them. The
+  release tail lives here.
+- **`1.4-plan.md`** — the 1.4 release plan (PROPOSAL 2026-09-01): the workbench release.
+  Every deferred idea scored on one rubric (strength / relevance / complexity / blast
+  radius — no time estimates) and, where planned, its grounded per-item plan; the
+  consolidated author-call list. Archive when 1.4 ships.
+- **`plans/`** — per-task execution plans for promoted backlog items, written so a
+  smaller model can do the routine work (index + protocol in `plans/README.md`).
   A plan is deleted with its backlog line.
 - **`python-r-gap.md`** — the 2026-08-23 survey of numpy/pandas/scipy/R functions with no
   Solenoid node (ranked; Tier 1 = build next). Delete a line when its node lands.
-- **`deferrals.md`** — everything the author has deferred/parked/author-gated,
-  in one reviewable list; the backlog carries a single Deferral-review item
-  pointing at it. Nothing there is scheduled until that review promotes it.
-- **`2.0-plan.md`** — the author-present flagships (Excel `.xlsx` transpiler, compositeToolbarReroute, conditionalFormatting;
-  FC A4 units already shipped), the release view over `v2.0/`.
+- **`deferrals.md`** — the parked set WITHOUT a plan (reopen-only, trigger-gated,
+  parked bugs and features), with the notes needed to reopen each. Planned items live
+  in `1.4-plan.md` / `2.0-plan.md`, never here too.
+- **`2.0-plan.md`** — the 2.0 release plan (PROPOSAL 2026-09-01): the arcs that change
+  what a document is — pages, collaboration (accounts / cloud saves / multiplayer), the
+  Excel transpiler, conditional formatting, canvas at scale, value-model extensions,
+  packs, Gantt — plus the cross-cutting prerequisites (save-format freeze, trust on
+  open, updater, the web-target decision) and the decisions it reopens.
 - **`v2.0/`** — the live plan bundles: 08 Excel transpiler, 10 decision sensitivity,
-  12 uncertain/money, 16 widget nodes. Built bundles are archived (05 units →
+  12 uncertain/money, 16 widget nodes (proposed for 1.4), 20 pages, 21 collaboration,
+  22 canvas at scale, 23 conditional formatting; 25 Gantt is BUILT (2026-09-12) and stays live as
+  the engine + figure spec. Built bundles are archived (05 units →
   `archive/units-format-controller.md`; 17 matrix formulas, 18 parity corpus,
   19 computed-column surface → `archive/`); see `v2.0/README.md`.
 - **`dev-notes.md`** — session DIGESTS + open problems only; per-item history in
@@ -108,52 +122,59 @@ is parked there.
 
 ## Code → spec routing (grep your file here before editing)
 
-The per-FILE version of the cheat-sheet below. Files listed here carry ZERO comment
-pointers by design (commentMinimalism) — this table IS the pointer. Editing a listed file without
-reading its docs is how recorded negative results get retried and settled rulings
-relapse.
+The per-FILE version of the cheat-sheet below. Files listed here carry no prose comment
+pointers by design (dte:C57 commentMinimalism) — this table IS the pointer; the one line a
+file may carry is its `dte:` citation, which `python tools/dte.py trace <file>` follows to the
+governing nodes. Editing a listed file without reading its docs is how recorded negative
+results get retried and settled rulings relapse.
 
 | Code | Governing docs |
 |---|---|
+| `decisions/**`, `tools/dte.py`, `tests/graph/rules.test.ts` | `dte.md`; `../dte-rules/` (DTE's own SPEC, PROTOCOL, README, ADOPTING) |
 | `groupCollapse.ts` | `subsystem-invariants.md` § Group collapse — the retain rule |
-| `AddNodeMenu.tsx`, `catalogSearch.ts`, `nodeOps.ts` | `subsystem-invariants.md` § Add menu; `rules.md` searchWiderThanLabel, opRowDerivesFromHost |
+| `AddNodeMenu.tsx`, `catalogSearch.ts`, `nodeOps.ts` | `subsystem-invariants.md` § Add menu; dte:D5 searchWiderThanLabel, dte:D6 opRowDerivesFromHost |
 | `equationSolve.ts` | `subsystem-invariants.md` § Equation solver |
-| `semanticZoomStore.ts` | `renderer-performance.md` § Semantic zoom gate |
+| `semanticZoomStore.ts` | dte:C74 semanticZoomRawScale |
+| `htmlCanvasRenderer.ts`, `rasterAtlas.ts`, `domSync.ts`, `zoomSettle.ts` | dte:C42 htmlInCanvasRenderer and its policies (`python tools/dte.py tree --under C42`) |
+| `HtmlCanvasLayer.tsx` | dte:C42 htmlInCanvasRenderer and its policies; dte:C75 gpuTextureBudget |
 | `pointerGesture.ts`, `flow/flowPinch.ts`, `flow/flowTouchPan.ts` | `subsystem-invariants.md` § Pointer gestures |
-| `flow/FlowSurface.tsx`, `flow/FlowCanvas.tsx`, `flow/flowModel.ts`, `flow/flowView.ts`, `view.ts`, `canvasCommands.ts` | `subsystem-invariants.md` § React Flow surface contract; decisions reactFlowView, oneFlowSurface |
-| `graphCompute.ts`, `process.ts` (the pass) | `rules.md` targetedEqualsFull, onlyCalcModeSkips; `subsystem-invariants.md` § Error values (`#CIRC!` is engine-level) |
-| `flow/FlowCableEdge.tsx`, `flow/FlowSocketHandle.tsx`, `NodeSocket.tsx`, `NodeCard.tsx` | `subsystem-invariants.md` § React Flow surface contract; `rules.md` socketBox12; `../DESIGN.md` § Cards |
+| `flow/FlowSurface.tsx`, `flow/FlowCanvas.tsx`, `flow/flowModel.ts`, `flow/flowView.ts`, `view.ts`, `canvasCommands.ts` | `subsystem-invariants.md` § React Flow surface contract; dte:B10 reactFlowView, dte:C43 oneFlowSurface |
+| `graphCompute.ts`, `process.ts` (the pass) | dte:D30 targetedEqualsFull, dte:D31 onlyCalcModeSkips; `subsystem-invariants.md` § Error values (`#CIRC!` is engine-level) |
+| `flow/FlowCableEdge.tsx`, `flow/FlowSocketHandle.tsx`, `NodeSocket.tsx`, `NodeCard.tsx` | `subsystem-invariants.md` § React Flow surface contract; dte:C11 socketBox12; `../DESIGN.md` § Cards |
 | `connectionStore.ts`, `httpBridge.ts`, live-source fetch | `subsystem-invariants.md` § Live connections |
 | `flyToNode.ts`, any camera `zoomAt` caller | `subsystem-invariants.md` § Group collapse (camera targets) |
 | `activeGraph.ts` | `subsystem-invariants.md` § Composite drill-in (canvas-substitution seam) |
 | `mathUtils.ts` `fillBorderedGrid` | `subsystem-invariants.md` § Bordered-grid fill |
 | `excelFunctions.ts` overrides / dispatch walk | `formulajs-divergences.md` (why each override exists) |
 | `applyOp` scalar operators (`excelFormula.ts`) | `value-semantics.md` § Scalar operators (P6) |
-| `stringOrder.ts` | byteStringOrder (byte order, not locale) |
-| `nodes/matrix.ts` Table Input parse, `TablePopup.tsx` | tableInputRawText (raw text is the stored truth) |
+| `stringOrder.ts` | dte:C59 byteStringOrder (byte order, not locale) |
+| `nodes/matrix.ts` Table Input parse, `TablePopup.tsx` | dte:C58 tableInputRawText (raw text is the stored truth) |
 | `palette.ts` socket-color siblings | `../DESIGN.md` § Tertiary (Typed Socket Palette) |
 | `cablePaths.ts`, `ribbonCable.ts` | `subsystem-invariants.md` § Cable routing |
 | `groupPushCore.ts`, group expand/collapse | `subsystem-invariants.md` § Group expand push |
 | `standoffSolver.ts`, `standoffs.ts` | `subsystem-invariants.md` § Standoffs |
+| `drawnCables.ts`, `drawnCablePath.ts`, `components/DrawnCable*.tsx` | `subsystem-invariants.md` § Drawn cables |
 | `tidyArrange.ts` (ELK) | `subsystem-invariants.md` § Auto-arrange |
 | `errorValue.ts`, `valueKinds.ts` | `value-semantics.md`; `subsystem-invariants.md` § Error values |
 | `fcReconcile.ts`, in-place socket retype | `subsystem-invariants.md` § Type propagation |
-| `unitFlow.ts`, `unitBridge.ts`, `unitValue.ts`, `coerceInputs.ts` | `subsystem-invariants.md` § Unit flow; unitGranularity, firstClassUnits |
+| `unitFlow.ts`, `unitBridge.ts`, `unitValue.ts`, `coerceInputs.ts` | `subsystem-invariants.md` § Unit flow; dte:D43 unitByGranularity, dte:C25 firstClassUnits |
 | `formatModel.ts`, `formatController.ts`, FC controls | `format-model.md` |
 | `alertStore.ts` | `subsystem-invariants.md` § Alert node + HUD |
 | `nodeNameStore.ts`, `textForm.ts` | `subsystem-invariants.md` § Addressable model |
 | `documentStore.ts`, `documentStoreCore.ts` | `subsystem-invariants.md` § Per-doc autosave |
 | `persistence.ts` (load gate, literal maps) | `subsystem-invariants.md` § Inline literal maps |
 | `flow/FlowCompositeOverlay.tsx`, drill-in lifecycle | `subsystem-invariants.md` § Composite drill-in |
-| `sockets.ts`, `accepts()`, `trueAnyAdopt.ts` | `subsystem-invariants.md` § Socket lattice; `socket-reference.md`; wildcardLadder |
+| `sockets.ts`, `accepts()`, `trueAnyAdopt.ts` | `subsystem-invariants.md` § Socket lattice; `socket-reference.md`; dte:D15 wildcardsKeepRank |
 | `nodes/cube.ts` | `subsystem-invariants.md` § Socket lattice (the Cube is the recursive lattice supremum) |
-| `nodes/script.ts`, `nodes/scriptRun.ts`, `nodes/scriptCoerce.ts`, `scriptWorker.ts`, `scriptExecutor.ts`, `jsSyntax.ts`, `components/JsEditor.tsx`, `components/ScriptPopup.tsx` | decisions scriptNode; `out-of-scope.md` §4 (the bounded form); `subsystem-invariants.md` § Script sandbox |
-| `excelFunctions.ts`, `excelFormula.ts`, Expression/LAMBDA | `formulajs-divergences.md`; `rules.md` FX rules; tableRefSemantics |
-| `nodes/listOps.ts`, `textOps.ts`, `financeOps.ts`, `matrixOps.ts`, `indexAccess.ts`, `dateSerial.ts`, `convertUnits.ts` — and ANY new shared node↔formula module | `rules.md` shareImpl (one impl, two surfaces), implReteFree (rete-free; what not to extract) |
-| `computedColumnCore.ts` | tableRefSemantics, noPerCellFormulas; `rules.md` rowFormulaRefs |
-| `frameVerbs.ts`, `frameBackend.ts`, `frame.ts` | `glossary.md` (FrameRef); polarsEngine, arraySemantics; cargo parity tests |
-| `nodeOps.ts`, any `op` field, `OpSelect`/`ArgSelect`/`SegToggle`/`OpToggle` | `rules.md` opArgDistinct; `../DESIGN.md` § Op pickers; aggregatorsAreArguments; `node-coverage.md` |
-| `nodeCatalog.ts` | `node-coverage.md`; currentExcelParity (eliminated functions stay eliminated) |
+| `knapTemplate.ts`, `nodes/report.ts`, `nodes/annotation.ts` NoteNode.data, `components/useKnapRender.ts` | `node-coverage.md` § Annotation (Note and Report bodies are Knap templates: what mints an input, what a bare `{{ name }}` embeds); dte:C68 knapIsTheDocumentSyntax; `knap-upstream.md` (which workarounds are upstream bugs) |
+| `nodes/script.ts`, `nodes/scriptRun.ts`, `nodes/scriptCoerce.ts`, `scriptWorker.ts`, `scriptExecutor.ts`, `jsSyntax.ts`, `components/JsEditor.tsx`, `components/ScriptPopup.tsx` | dte:C66 scriptNode; `out-of-scope.md` §4 (the bounded form); `subsystem-invariants.md` § Script sandbox |
+| `excelFunctions.ts`, `excelFormula.ts`, Expression/LAMBDA | `formulajs-divergences.md`; the formula-surface nodes (`python tools/dte.py tree --under B5`); dte:C22 rowFormulaRefs |
+| `nodes/listOps.ts`, `textOps.ts`, `financeOps.ts`, `matrixOps.ts`, `indexAccess.ts`, `dateSerial.ts`, `convertUnits.ts` — and ANY new shared node↔formula module | dte:C17 shareImpl (one impl, two surfaces), dte:D19 implReteFree (rete-free; what not to extract) |
+| `computedColumnCore.ts` | dte:C22 rowFormulaRefs, dte:C54 noPerCellFormulas; dte:C22 rowFormulaRefs |
+| `scheduleCpm.ts`, `ganttPayload.ts`, `planImport.ts`, `nodes/schedule.ts`, `nodes/gantt.ts`, `packages/*` | `node-coverage.md` § Schedule and § Gantt (what stands); `v2.0/25-gantt.md` § 4.1 (the one rule), § 6 (the cube contract, the figure payload, the figure never writes); dte:C69 ganttPackages, dte:C70 oneScheduleRule, dte:C71 noBarEditing |
+| `frameVerbs.ts`, `frameBackend.ts`, `frame.ts` | `glossary.md` (FrameRef); dte:C16 polarsEngine, dte:C24 arraySemantics; cargo parity tests |
+| `nodeOps.ts`, any `op` field, `OpSelect`/`ArgSelect`/`SegToggle`/`OpToggle` | dte:C26 opArgDistinct; `../DESIGN.md` § Op pickers; dte:C56 aggregatorsAreArguments; `node-coverage.md` |
+| `nodeCatalog.ts` | `node-coverage.md`; dte:C14 currentExcelParity (eliminated functions stay eliminated) |
 | any `.css`, any visual change | `../DESIGN.md` |
 | any bar/overlay position or z-index | `layout-chrome.md` |
 | `ConduitComponent.tsx`, conduit faces/lanes | `subsystem-invariants.md` § Conduit perpendicular-face sign |
@@ -162,7 +183,7 @@ relapse.
 
 - **Adding/changing a node:** `node-coverage.md` (inventory + the node-design rules)
   + `glossary.md`; `nodeCatalog.ts` is the source of truth (Add menu + Function
-  Reference generate from it). Merging nodes: decisions maximalMerge.
+  Reference generate from it). Merging nodes: dte:B11 maximalMerge.
 - **Anything on the canvas surface (a gesture, a key, a menu, a layer, a cable or
   socket change):** `subsystem-invariants.md` § React Flow surface contract first;
   `touch-gestures.md` for gestures.
@@ -170,11 +191,11 @@ relapse.
   `socket-reference.md` (the per-variant tables) + subsystem-invariants "Socket
   lattice".
 - **Touching the FC / formats / units:** `format-model.md` + subsystem-invariants
-  "Unit flow" + decisions unitGranularity (units granularity).
-- **Touching frames/the engine:** `glossary.md` + `decisions.md` polarsEngine/arraySemantics + the
+  "Unit flow" + dte:D43 unitByGranularity (units granularity).
+- **Touching frames/the engine:** `glossary.md` + dte:C16 polarsEngine/arraySemantics + the
   `frameVerbs.ts` oracle and cargo parity tests.
 - **A visual/UI change:** `../DESIGN.md` (the design-system rulebook) first, always.
-- **Proposing a feature or scope change:** `out-of-scope.md` + `decisions.md` +
+- **Proposing a feature or scope change:** `out-of-scope.md` + the decision tree (`dte.md`) +
   `v2.0/README.md` (verdict-pending + ruled-out lists) — most of the idea space
   has already been walked and ruled; don't re-litigate.
 - **Wrapping up a session:** the reconcile ritual in `CLAUDE.md` — extend the

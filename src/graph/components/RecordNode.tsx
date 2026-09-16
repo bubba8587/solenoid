@@ -125,7 +125,7 @@ export function RecordComponent({ data, emit }: NodeProps<RecordNodeType>) {
           the drawn card lives wherever the chart output lands: a resizable
           Display, a Report embed, the popup. */}
       {hasBoxes && cv
-        ? <div className="solenoid-node__display-value" style={{ justifyContent: "flex-end" }}><ChartChip value={cv} /></div>
+        ? <div className="solenoid-node__display-value solenoid-node__display-value--chip"><ChartChip value={cv} /></div>
         : <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>}
     </NodeShell>
   );

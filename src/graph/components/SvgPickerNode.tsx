@@ -2,7 +2,9 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { SvgPickerNode as SvgPickerNodeType } from "../rete-nodes";
 import { scheduleAutosave } from "../persistence";
 import { processGraph } from "../process";
-import { resolveLayer, elementName } from "../svgLayer";
+import { resolveLayer, elementName, sourceHasLayer } from "../svgLayer";
+import { sanitizeSvg } from "../svgSanitize";
+import { requestNetwork } from "../connectionStore";
 import type { NodeProps } from "./nodeKit";
 import { NodeSocket } from "./NodeSocket";
 import { useDraftCommit, INVALID_DRAFT, useEditableLabel } from "./inlineInput";
@@ -56,7 +58,14 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
 
   // Mirror external changes (undo / paste / load replace the node instance).
   useEffect(() => { setUrl(data.url); }, [data.url]);
-  useEffect(() => { setSource(data.stringLiterals.source ?? ""); }, [data.stringLiterals.source]);
+  // A loaded document's markup is scrubbed once here too (an older file, or one shared
+  // in), so every later innerHTML reads clean text; the clean form is written back.
+  useEffect(() => {
+    const raw = data.stringLiterals.source ?? "";
+    const clean = sanitizeSvg(raw);
+    if (clean !== raw) { data.stringLiterals.source = clean; scheduleAutosave(); }
+    setSource(clean);
+  }, [data.stringLiterals.source]);
   useEffect(() => { setHoverColor(data.hoverColor); }, [data.hoverColor]);
   useEffect(() => { setSelectedLayer(data.selectedLayer); }, [data.selectedLayer]);
   useEffect(() => { setHeight(data.height); }, [data.height]);
@@ -188,18 +197,24 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
   // block the fetch (CORS), so the local-file path is the primary route.
   async function loadFromUrl(u: string) {
     if (!u) { setLoadError(null); return; }
+    if (!requestNetwork(data.id)) return; // C2 gate: a foreign document fetches nothing until allowed
     try {
       const res = await fetch(u);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = await res.text();
+      const text = sanitizeSvg(await res.text());
       if (!/<svg[\s>]/i.test(text)) throw new Error("not an SVG");
-      setSource(text); data.stringLiterals.source = text;
+      adoptSource(text);
       setLoadError(null);
       scheduleAutosave();
       void processGraph(data.id);
     } catch {
       setLoadError("Couldn't load an SVG from that URL");
     }
+  }
+  // A new picture: the stored markup swaps and a pick that names nothing in it clears.
+  function adoptSource(text: string) {
+    setSource(text); data.stringLiterals.source = text;
+    if (data.selectedLayer && !sourceHasLayer(text, data.selectedLayer)) { data.selectedLayer = ""; setSelectedLayer(""); }
   }
   function onUrl(v: string) { setUrl(v); data.url = v; scheduleAutosave(); }
   function onUrlCommit() { void loadFromUrl(url); }
@@ -212,8 +227,8 @@ export function SvgPickerComponent({ data, emit }: NodeProps<SvgPickerNodeType>)
     if (!file) return;
     const reader = new FileReader();
     reader.onload = () => {
-      const text = String(reader.result);
-      setSource(text); data.stringLiterals.source = text;
+      const text = sanitizeSvg(String(reader.result));
+      adoptSource(text);
       if (url) { setUrl(""); data.url = ""; }
       setLoadError(null);
       scheduleAutosave();

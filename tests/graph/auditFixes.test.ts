@@ -1,5 +1,6 @@
+// dte:C17,D24
 import { describe, it, expect } from "vitest";
-import { SeriesNode, RandArrayNode, AggregateNode, NestJoinNode, CorrelNode, ModeNode, RankPercentileNode, NpvNode } from "../../src/graph/rete-nodes";
+import { SeriesNode, RandArrayNode, AggregateNode, NestJoinNode, CorrelNode, ModeNode, RankPercentileNode, NPVNode } from "../../src/graph/rete-nodes";
 import { extractInit } from "../../src/graph/copyPaste";
 import { isSolError, solError } from "../../src/graph/errorValue";
 import type { FrameValue } from "../../src/graph/frame";
@@ -85,10 +86,10 @@ describe("list reducers honor null / error (#3)", () => {
   });
 
   it("NPV propagates an embedded error; a null period counts as 0", () => {
-    const e = new NpvNode().data({ rate: [0], list: [[100, err]] });
+    const e = new NPVNode().data({ rate: [0], list: [[100, err]] });
     if (!isSolError(e.result)) throw new Error("expected SolError");
     expect(e.result.code).toBe("#DIV/0!");
-    const r = new NpvNode().data({ rate: [0], list: [[100, null, 100]] });
+    const r = new NPVNode().data({ rate: [0], list: [[100, null, 100]] });
     expect(r.result).toBe(200); // null period → 0; 100 + 0 + 100
   });
 });

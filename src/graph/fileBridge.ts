@@ -1,8 +1,11 @@
 // Thin wrapper over Tauri's fs + dialog plugins. In the browser (no Tauri runtime)
 // every call is a guarded no-op rather than a throw.
-import { readTextFile, readDir, writeTextFile, rename, readFile, writeFile, mkdir, exists } from "@tauri-apps/plugin-fs";
+import { readTextFile, readDir, writeTextFile, rename, readFile, writeFile, mkdir, exists, stat } from "@tauri-apps/plugin-fs";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { join, dirname } from "@tauri-apps/api/path";
+import { requestConfirm } from "./confirmStore";
+import { docMetaStore } from "./docMetaStore";
+import { demoVaultFs, isDemoVaultPath } from "./demoVault";
 
 const JSON_FILTER = [{ name: "Solenoid graph", extensions: ["json"] }];
 const HTML_FILTER = [{ name: "Web page", extensions: ["html"] }];
@@ -12,6 +15,77 @@ const CSV_FILTER = [{ name: "CSV", extensions: ["csv"] }];
 export function isDesktop(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 }
+
+// ─── The headless seam (bundle 24 J) ─────────────────────────────────────────────
+// The vault readers / writers go through these few file calls. On desktop they are
+// the Tauri plugins; a headless runner (scripts/run-graph.ts --vault) installs a Node
+// provider instead, so the same nodes read and write a vault with no window at all.
+// Dialogs and the OS opener stay desktop-only.
+
+export interface FsProvider {
+  readTextFile(path: string): Promise<string>;
+  readDir(path: string): Promise<{ name: string; isDirectory: boolean; isFile: boolean }[]>;
+  writeTextFile(path: string, content: string): Promise<void>;
+  rename(from: string, to: string): Promise<void>;
+  mkdir(path: string, recursive: boolean): Promise<void>;
+  exists(path: string): Promise<boolean>;
+  stat(path: string): Promise<{ mtimeMs: number | null; birthtimeMs: number | null }>;
+  join(...parts: string[]): Promise<string>;
+  dirname(path: string): Promise<string>;
+  readBinary(path: string): Promise<Uint8Array>;
+  writeBinary(path: string, bytes: Uint8Array): Promise<void>;
+}
+
+let _provider: FsProvider | null = null;
+
+/** Install (or clear, with null) the file provider a headless run uses. */
+export function setFsProvider(p: FsProvider | null): void { _provider = p; }
+
+/** Can this process touch files — the desktop shell, or an installed provider? */
+export function hasFs(): boolean { return isDesktop() || _provider !== null; }
+
+const tauriFs: FsProvider = {
+  readTextFile: (path) => readTextFile(path),
+  readDir: async (path) => (await readDir(path)).map((e) => ({ name: e.name, isDirectory: e.isDirectory, isFile: e.isFile })),
+  writeTextFile: (path, content) => writeTextFile(path, content),
+  rename: (from, to) => rename(from, to),
+  mkdir: (path, recursive) => mkdir(path, { recursive }),
+  exists: (path) => exists(path),
+  stat: async (path) => { const i = await stat(path); return { mtimeMs: i.mtime ? i.mtime.getTime() : null, birthtimeMs: i.birthtime ? i.birthtime.getTime() : null }; },
+  join: (...parts) => join(...parts),
+  dirname: (path) => dirname(path),
+  readBinary: (path) => readFile(path),
+  writeBinary: (path, bytes) => writeFile(path, bytes),
+};
+
+/** The real provider: the installed one, else Tauri's. */
+function baseFs(): FsProvider { return _provider ?? tauriFs; }
+
+// Path-aware dispatch: a demo-vault path routes to the in-memory read-only provider
+// (so the bundled vault works with no filesystem — the web included), everything else
+// to the real provider. join/dirname key on the first part. Desktop file ops (graph
+// save, CSV) never touch demo paths, so they stay on the real provider untouched.
+const fsDispatch: FsProvider = {
+  readTextFile: (p) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).readTextFile(p),
+  readDir: (p) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).readDir(p),
+  writeTextFile: (p, c) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).writeTextFile(p, c),
+  rename: (f, t) => (isDemoVaultPath(f) || isDemoVaultPath(t) ? demoVaultFs : baseFs()).rename(f, t),
+  mkdir: (p, r) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).mkdir(p, r),
+  exists: (p) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).exists(p),
+  stat: (p) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).stat(p),
+  join: (...parts) => (isDemoVaultPath(parts[0]) ? demoVaultFs : baseFs()).join(...parts),
+  dirname: (p) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).dirname(p),
+  readBinary: (p) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).readBinary(p),
+  writeBinary: (p, b) => (isDemoVaultPath(p) ? demoVaultFs : baseFs()).writeBinary(p, b),
+};
+
+/** The live provider used by every file call — path-aware, so demo-vault reads work
+ *  even with no filesystem. */
+function fs(): FsProvider { return fsDispatch; }
+
+/** Can this root be read — the desktop shell / an installed provider, or the bundled
+ *  demo vault (which needs no filesystem at all)? */
+function canReadRoot(root: string): boolean { return hasFs() || isDemoVaultPath(root); }
 
 /** Open the OS folder picker; returns the chosen absolute path, or null if the
  *  user canceled (or we're not on desktop). */
@@ -23,8 +97,8 @@ export async function pickFolderDialog(): Promise<string | null> {
 
 /** File names directly inside `folder` matching any of `extensions` (sorted, case-insensitive). */
 async function listFilesByExt(folder: string, extensions: string | string[]): Promise<string[]> {
-  if (!isDesktop() || !folder) return [];
-  const entries = await readDir(folder);
+  if (!folder || (!isDesktop() && !isDemoVaultPath(folder))) return [];
+  const entries = await fs().readDir(folder);
   const re = new RegExp(`\\.(${(Array.isArray(extensions) ? extensions : [extensions]).join("|")})$`, "i");
   return entries
     .filter((e) => e.isFile && re.test(e.name))
@@ -39,9 +113,10 @@ export function listLocalFiles(folder: string): Promise<string[]> {
 }
 
 /** Read one file (by name) from the target folder as text. */
+// dte:D2 — routes through fs() so a demo-vault path reaches the in-memory provider.
 export async function readFileText(folder: string, name: string): Promise<string> {
-  const path = await join(folder, name);
-  return readTextFile(path);
+  const path = await fs().join(folder, name);
+  return fs().readTextFile(path);
 }
 
 /** List the `.md` file names directly inside `folder` (a vault subfolder). */
@@ -52,17 +127,17 @@ export function listMarkdownFiles(folder: string): Promise<string[]> {
 /** Vault-relative subfolder paths under `root` (POSIX-style, sorted), EXCLUDING the
  *  root itself; dot-folders skipped and depth bounded. Desktop only. */
 export async function listVaultFolders(root: string, maxDepth = 6): Promise<string[]> {
-  if (!isDesktop() || !root) return [];
+  if (!root || !canReadRoot(root)) return [];
   const out: string[] = [];
   async function walk(abs: string, rel: string, depth: number): Promise<void> {
     if (depth > maxDepth) return;
     let entries;
-    try { entries = await readDir(abs); } catch { return; }
+    try { entries = await fs().readDir(abs); } catch { return; }
     for (const e of entries) {
       if (!e.isDirectory || e.name.startsWith(".")) continue;
       const childRel = rel ? `${rel}/${e.name}` : e.name;
       out.push(childRel);
-      await walk(await join(abs, e.name), childRel, depth + 1);
+      await walk(await fs().join(abs, e.name), childRel, depth + 1);
     }
   }
   await walk(root, "", 0);
@@ -72,16 +147,16 @@ export async function listVaultFolders(root: string, maxDepth = 6): Promise<stri
 /** Recursively collect the vault-relative `.md` file paths under `root` (POSIX-style,
  *  sorted). Same dot-folder skip + depth bound as listVaultFolders. Desktop only. */
 export async function listVaultMarkdownFiles(root: string, maxDepth = 6): Promise<string[]> {
-  if (!isDesktop() || !root) return [];
+  if (!root || !canReadRoot(root)) return [];
   const out: string[] = [];
   async function walk(abs: string, rel: string, depth: number): Promise<void> {
     if (depth > maxDepth) return;
     let entries;
-    try { entries = await readDir(abs); } catch { return; }
+    try { entries = await fs().readDir(abs); } catch { return; }
     for (const e of entries) {
       if (e.name.startsWith(".")) continue;
       const childRel = rel ? `${rel}/${e.name}` : e.name;
-      if (e.isDirectory) await walk(await join(abs, e.name), childRel, depth + 1);
+      if (e.isDirectory) await walk(await fs().join(abs, e.name), childRel, depth + 1);
       else if (/\.md$/i.test(e.name)) out.push(childRel);
     }
   }
@@ -89,10 +164,36 @@ export async function listVaultMarkdownFiles(root: string, maxDepth = 6): Promis
   return out.sort((a, b) => a.localeCompare(b));
 }
 
+/** True when a vault-relative path stays inside the vault: no empty, "." or ".." segment,
+ *  no drive or root prefix. A saved document can carry any string here. */
+export function isInsideVault(relPath: string): boolean {
+  if (relPath === "" || /^[\/]/.test(relPath) || /^[A-Za-z]:/.test(relPath)) return false;
+  return relPath.split(/[\/]/).every((seg) => seg !== "" && seg !== "." && seg !== "..");
+}
+
 /** Read a vault-relative file ("notes/weekly.md") as text. Desktop only. */
 export async function readVaultFile(root: string, relPath: string): Promise<string> {
-  const path = await join(root, ...relPath.split("/"));
-  return readTextFile(path);
+  if (!isInsideVault(relPath)) throw new Error(`"${relPath}" is not inside the vault`);
+  const path = await fs().join(root, ...relPath.split("/"));
+  return fs().readTextFile(path);
+}
+
+/** A vault-relative file's modified + created times, in epoch ms (null when the
+ *  platform omits one, or off desktop). Used for the Vault Folder cube's
+ *  `modified` / `created` columns (needs `fs:allow-stat`). */
+export async function statVaultFile(root: string, relPath: string): Promise<{ mtimeMs: number | null; birthtimeMs: number | null } | null> {
+  if (!canReadRoot(root)) return null;
+  try {
+    const path = await fs().join(root, ...relPath.split("/"));
+    return await fs().stat(path);
+  } catch {
+    return null;
+  }
+}
+
+/** Read an absolute path as text (desktop only). */
+export async function readTextFilePath(path: string): Promise<string> {
+  return fs().readTextFile(path);
 }
 
 /** Temp + rename so a crash mid-write can't destroy the previous good file; falls
@@ -100,10 +201,10 @@ export async function readVaultFile(root: string, relPath: string): Promise<stri
 async function writeTextFileAtomic(path: string, content: string): Promise<void> {
   const tmp = `${path}.tmp`;
   try {
-    await writeTextFile(tmp, content);
-    await rename(tmp, path);
+    await fs().writeTextFile(tmp, content);
+    await fs().rename(tmp, path);
   } catch {
-    await writeTextFile(path, content);
+    await fs().writeTextFile(path, content);
   }
 }
 
@@ -113,27 +214,29 @@ export async function writeTextFilePath(path: string, content: string): Promise<
 }
 
 export function dirOfPath(path: string): Promise<string> {
-  return dirname(path);
+  return fs().dirname(path);
 }
 
 export function joinPath(...parts: string[]): Promise<string> {
-  return join(...parts);
+  return fs().join(...parts);
 }
 
 export async function pathExists(path: string): Promise<boolean> {
-  return exists(path);
+  try { return await fs().exists(path); } catch { return false; }
 }
 
 /** Create a directory (no-op if it already exists). */
 export async function ensureDir(path: string): Promise<void> {
-  if (!(await exists(path))) await mkdir(path, { recursive: true });
+  if (!(await pathExists(path))) await fs().mkdir(path, true);
 }
 
 export function readBinaryFilePath(path: string): Promise<Uint8Array> {
+  if (_provider) return _provider.readBinary(path);
   return readFile(path);
 }
 
 export function writeBinaryFilePath(path: string, bytes: Uint8Array): Promise<void> {
+  if (_provider) return _provider.writeBinary(path, bytes);
   return writeFile(path, bytes);
 }
 
@@ -288,10 +391,27 @@ export async function pickFileLinkDialog(): Promise<string | null> {
   return typeof res === "string" ? res : null;
 }
 
+const EXECUTABLE_EXT = new Set(["exe", "bat", "cmd", "com", "msi", "ps1", "vbs", "js", "jse", "wsf", "scr", "lnk", "hta", "reg"]);
+
+/** Does the path end in an extension the OS would RUN rather than open in a viewer? */
+export function isExecutablePath(path: string): boolean {
+  const ext = baseNameOf(path).split(".").pop()?.toLowerCase() ?? "";
+  return EXECUTABLE_EXT.has(ext);
+}
+
 /** Open a file in its OS default app (desktop only). Needs `opener:allow-open-path`
- *  in the capability set — reveal-in-dir alone wouldn't launch the file. */
+ *  in the capability set — reveal-in-dir alone wouldn't launch the file. A link that
+ *  runs a program, or any link in a document adopted from outside, asks first: a
+ *  shared .solenoid file can carry any path. */
 export async function openFilePath(path: string): Promise<void> {
   if (!isDesktop() || !path) return;
+  if (isExecutablePath(path) || docMetaStore.isForeign()) {
+    const ok = await requestConfirm({
+      message: isExecutablePath(path) ? "This link runs a program. Open it?" : "This link came with a shared document. Open it?",
+      confirmLabel: "Open",
+    });
+    if (!ok) return;
+  }
   try {
     const { openPath } = await import("@tauri-apps/plugin-opener");
     await openPath(path);

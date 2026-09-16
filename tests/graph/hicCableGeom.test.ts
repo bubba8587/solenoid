@@ -29,3 +29,20 @@ describe("cablePolyline", () => {
     expect(pts[1].x).toBeGreaterThan(pts[0].x);
   });
 });
+
+describe("cablePolyline — flipped endpoints route like the DOM cable", () => {
+  it("a flipped source leaves on its LEFT: the snapshot path equals getCablePath's Left route", async () => {
+    const { getCablePath, Position } = await import("../../src/graph/cablePaths");
+    const { parsePathPoints } = await import("../../src/graph/pathPoints");
+    const ends = { sx: 100, sy: 100, ex: 300, ey: 200 };
+    const flipped = cablePolyline("spline", { ...ends, sourceFlipped: true });
+    const dom = parsePathPoints(getCablePath("spline", {
+      sourceX: 100, sourceY: 100, sourcePosition: Position.Left, sourceAngleDeg: null,
+      targetX: 300, targetY: 200, targetPosition: Position.Left, targetAngleDeg: null,
+    }));
+    expect(flipped).toEqual(dom);
+    const plain = cablePolyline("spline", ends);
+    const mid = (pts: { x: number; y: number }[]) => pts[Math.floor(pts.length / 2)];
+    expect(Math.abs(mid(flipped).x - mid(plain).x)).toBeGreaterThan(1);
+  });
+});

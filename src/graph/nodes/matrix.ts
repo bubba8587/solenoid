@@ -1,7 +1,8 @@
+// dte:C58,C48,C72
 import { ClassicPreset } from "rete";
 import { matRows, matCols, matTranspose, matUnit, matDiag, outerProduct, asNumericMatrix, matMul, matDet, matInverse, matTrace, matRank, matNorm, matSolve, matEigh, wrapCells, stackH, stackV, chooseAxis, expandMat, setCells } from "./matrixOps";
 import { takeSlice, dropSlice } from "./listOps";
-import { numIn, numOut, listIn, numListIn, numListOut, anyIn, anyDataIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, adoptiveDataOut, tableIn, tableOut, frameIn, readInput } from "./shared";
+import { numIn, numOut, listIn, numListOut, anyIn, anyDataIn, anyListIn, anyTableIn, adoptiveTableIn, adoptiveTableOut, adoptiveListOut, adoptiveDataOut, tableIn, tableOut, frameIn, readInput } from "./shared";
 import { pickSlot, pairIdsFromKeys } from "./logic";
 import type { PassthroughSpec } from "./passthrough";
 import { toAnyMatrix, matrixShape, type Cell } from "./coerce";
@@ -278,7 +279,7 @@ export class TableDiagNode extends ClassicPreset.Node {
     super("TableDiag");
     this.label = init?.label ?? "DIAGONAL";
     if (init?.offDiag) this.offDiag = init.offDiag;
-    this.addInput("diag", numListIn("Diagonal"));
+    this.addInput("diag", listIn("Diagonal")); // a LIST is consumed whole: the strict rung, never the combo's singleton collapse
     this.addOutput("result", tableOut("Diagonal matrix"));
   }
 
@@ -301,8 +302,8 @@ export class TableOuterNode extends ClassicPreset.Node {
   constructor(init?: { label?: string }) {
     super("TableOuter");
     this.label = init?.label ?? "OUTER";
-    this.addInput("a", numListIn("A"));
-    this.addInput("b", numListIn("B"));
+    this.addInput("a", listIn("A")); // list-consuming: the strict rung re-widens a scalar
+    this.addInput("b", listIn("B"));
     this.addOutput("result", tableOut("Outer product"));
   }
 
@@ -619,8 +620,15 @@ export class TakeDropNode extends ClassicPreset.Node {
     const nRows = Math.round(rRaw);
     const nCols = Math.round(cRaw);
     // MATRIX: a genuine 2-D array — cut both axes, carry the grid's unit.
+    // DROP of everything is Excel's #CALC!, never a silent empty result.
+    const gone = (len: number, k: number) => this.op === "drop" && len > 0 && Math.abs(k) >= len;
     if (Array.isArray(raw) && raw.length > 0 && Array.isArray(raw[0])) {
       const m = raw as CellMat;
+      if (gone(m.length, nRows) || gone(m[0].length, nCols)) {
+        const err = solError("#DOMAIN!", "DROP would leave nothing (Excel: #CALC!)");
+        this.cachedResult = err;
+        return { result: err };
+      }
       const result = carryMatrixUnit(this.slice(m, nRows).map((r) => [...this.slice(r, nCols)]), m);
       this.cachedResult = result;
       return { result };
@@ -634,6 +642,11 @@ export class TakeDropNode extends ClassicPreset.Node {
       return { result: err };
     }
     const arr = Array.isArray(raw) ? (raw as unknown[]) : [raw];
+    if (gone(arr.length, nRows)) {
+      const err = solError("#DOMAIN!", "DROP would leave nothing (Excel: #CALC!)");
+      this.cachedResult = err;
+      return { result: err };
+    }
     const result = this.slice(arr, nRows);
     this.cachedResult = result;
     return { result };
@@ -815,7 +828,7 @@ export class MatSolveNode extends ClassicPreset.Node {
     super("MatSolve");
     this.label = init?.label ?? "Solve A·x = b";
     this.addInput("matrix", tableIn("A"));
-    this.addInput("b", numListIn("b"));
+    this.addInput("b", listIn("b")); // the right-hand side is a list, even of one
     this.addOutput("result", numListOut("x"));
   }
 

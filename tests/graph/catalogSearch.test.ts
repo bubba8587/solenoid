@@ -131,7 +131,7 @@ describe("Add menu — a disabled pack's node leaves leave the tree (packsStore 
     builtin: true,
     defaultActive: false,
     nodes: [{
-      path: ["Other"],
+      path: ["Docs & Files"],
       entry: { type: "__testPackLeaf", label: "Test Pack Leaf", create: () => ({}) } as NodeCatalogEntry,
     }],
   };
@@ -182,5 +182,18 @@ describe("op leaves are findable by their family's name", () => {
       }
     }
     expect(broken, "Op leaves that the family name would not find (add the family name to keywords):\n" + broken.join("\n")).toEqual([]);
+  });
+});
+
+describe("Add-menu search — hyphenated tokens and word hits over description noise", () => {
+  it("'savitzky-golay' finds Smooth, whose keyword is spelled with an en dash", () => {
+    const all = flattenLeaves(buildCatalog(false));
+    expect(searchLeaves(all, "savitzky-golay")[0]?.type).toBe("list-smooth");
+    expect(searchLeaves(all, "savitzky golay")[0]?.type).toBe("list-smooth");
+  });
+
+  it("'sunm' ranks SUM ahead of leaves whose descriptions merely contain the letters", () => {
+    const top = types("sunm", 3);
+    expect(top[0]).toBe("reduce-sum");
   });
 });

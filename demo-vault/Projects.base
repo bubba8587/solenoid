@@ -1,0 +1,23 @@
+filters:
+  and:
+    - file.inFolder("Projects")
+    - '!file.name.startsWith("_")'
+properties:
+  status:
+    displayName: Status
+  priority:
+    displayName: Priority
+  due:
+    displayName: Due
+views:
+  - type: table
+    name: All projects
+    order:
+      - file.name
+      - status
+      - priority
+      - budget
+      - due
+    sort:
+      - property: priority
+        direction: DESC

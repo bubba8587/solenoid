@@ -1,11 +1,15 @@
-/* Import-from-Obsidian file picker — a small file explorer that drops into the
-   note card's body area. Styled to sit inside the .solenoid-note chrome. */
+/* Import-from-Obsidian file picker — a small file explorer that takes the note
+   card's body area while open (the body is unmounted, not stacked under it). The
+   card has a fixed height and no overflow clip, so the picker must shrink to fit:
+   it and its list are min-height:0 flex items and the list scrolls. Collapsed, the
+   card is auto-height and the list caps at its max. */
 .sol-import__picker {
   display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
   flex-direction: column;
   gap: 5px;
   padding: 6px 8px;
-  border-bottom: 1px solid var(--note-color, var(--border));
 }
 .sol-import__search {
   box-sizing: border-box;
@@ -23,6 +27,8 @@
   box-shadow: inset 0 0 0 1px var(--note-color, var(--accent));
 }
 .sol-import__list {
+  flex: 1 1 auto;
+  min-height: 0;
   max-height: 148px;
   overflow-y: auto;
   display: flex;
@@ -33,6 +39,7 @@
 }
 .sol-import__row {
   display: block;
+  flex: none; /* flex-column child with overflow:hidden would shrink to 0 under a long list */
   width: 100%;
   text-align: left;
   padding: 4px 7px;
@@ -80,3 +87,32 @@
   cursor: pointer;
 }
 .sol-import__reload:hover { border-color: var(--note-color, var(--accent)); color: var(--text-bright); }
+.sol-import__every {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+/* The imported note's title, shown at the top of the body — the human name whose
+   wireable identity is the `path` socket row above. */
+.sol-import__doc-title {
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--text-bright);
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sol-import__minutes {
+  width: 38px;
+  padding: 2px 4px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  font-size: 11px;
+  text-align: right;
+}

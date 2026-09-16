@@ -1,19 +1,17 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+// dte:C2
 import { LandingGraph } from "./LandingGraph";
-import { SocketLegendRows, DimensionalityFlow } from "../components/SocketLegend";
+import { SocketLegendRows } from "../components/SocketLegend";
 import { TablePopup } from "../components/TablePopup";
-import { appThemeStore } from "../appTheme";
-import wordmark from "../../logo/solenoidwordmark.svg";
-import pkg from "../../../package.json";
+import { GITHUB_URL, HOME_HREF, SiteHeader, SiteFooter, Feature } from "./siteNav";
+import { SceneThread } from "./SceneThread";
 import {
   Reveal,
-  AnatomyScene,
+  useRevealAnim,
   CableBoardScene,
   UnitsScene,
   EquationScene,
   VerbsScene,
   DrawScene,
-  MonteCarloScene,
   ObsidianScene,
   PresenterScene,
   FnWall,
@@ -22,94 +20,27 @@ import "./LandingPage.css";
 
 // A standalone route App.tsx swaps the whole app for under ?landing. The hero is the
 // ONE live rete stage; motion is gated on a `--anim` class set after mount, so content
-// never depends on a transition firing.
-
-const GITHUB_URL = "https://github.com/bubba8587/solenoid";
-
-function ThemeToggle() {
-  const mode = useSyncExternalStore(appThemeStore.subscribe, appThemeStore.getMode);
-  const dark = mode === "dark";
-  return (
-    <button
-      className="sol-landing__theme"
-      onClick={() => appThemeStore.toggleMode()}
-      title={dark ? "Switch to light theme" : "Switch to dark theme"}
-      aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}
-    >
-      {dark ? (
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-          <circle cx="8" cy="8" r="3.25" />
-          <path d="M8 1.2v1.8 M8 13v1.8 M1.2 8h1.8 M13 8h1.8 M3.2 3.2l1.3 1.3 M11.5 11.5l1.3 1.3 M12.8 3.2l-1.3 1.3 M4.5 11.5l-1.3 1.3" />
-        </svg>
-      ) : (
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M13.4 9.6A5.8 5.8 0 0 1 6.4 2.6a5.8 5.8 0 1 0 7 7Z" />
-        </svg>
-      )}
-    </button>
-  );
-}
-
-function Feature({
-  title,
-  flip,
-  scene,
-  children,
-}: {
-  title: string;
-  flip?: boolean;
-  scene: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className={`sol-landing__deep${flip ? " sol-landing__deep--flip" : ""}`}>
-      <Reveal className="sol-landing__deep-copy">
-        <h2>{title}</h2>
-        {children}
-      </Reveal>
-      <Reveal className="sol-landing__deep-scene" delay={90}>
-        {scene}
-      </Reveal>
-    </section>
-  );
-}
+// never depends on a transition firing. Header, nav and footer come from siteNav.
 
 export default function LandingPage() {
-  // Entrance/loop motion exists only under this class, and only when the OS isn't
-  // asking for reduced motion.
-  const [anim, setAnim] = useState(false);
-  useEffect(() => {
-    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) setAnim(true);
-  }, []);
+  const anim = useRevealAnim();
 
   return (
     <div className={`sol-landing${anim ? " sol-landing--anim" : ""}`}>
       <div className="sol-landing__inner">
-        <header className="sol-landing__top">
-          <span
-            className="sol-landing__wordmark"
-            role="img"
-            aria-label="Solenoid"
-            style={{ WebkitMaskImage: `url("${wordmark}")`, maskImage: `url("${wordmark}")` }}
-          />
-          <nav className="sol-landing__nav">
-            <a href={GITHUB_URL} target="_blank" rel="noreferrer">GitHub</a>
-            <a href="./">Open the app</a>
-            <ThemeToggle />
-          </nav>
-        </header>
+        <SceneThread />
+        <SiteHeader current={HOME_HREF} />
 
         <main>
           <section className="sol-landing__hero">
             <div className="sol-landing__hero-copy">
               <Reveal>
-                <h1>A node-graph alternative to Excel for data tables.</h1>
+                <h1>Your workbooks, now in node-graph form.</h1>
               </Reveal>
               <Reveal delay={110}>
                 <p>
-                  Each node is one operation, and typed cables carry values between them:
-                  scalars, lists, tables, and frames. The graph recomputes as its inputs
-                  change, so the steps of a calculation stay visible on the canvas.
+                  Build your spreadsheets piece by piece. Solenoid makes wiring up complex spreadsheet operations fast 
+                  and easy to understand. 
                 </p>
               </Reveal>
               <Reveal delay={220}>
@@ -133,24 +64,8 @@ export default function LandingPage() {
             <Reveal>
               <LandingGraph />
               <p className="sol-landing__demo-note">
-                This graph is live. Grid Interpolate fills the holes in the sparse survey
-                grid; Surface draws the mesh and Contour the map view. Drag a card, rotate
-                the view from the pad on the Surface card, or open the table and edit a
-                height.
+                This graph is live. Try editing the input table or rotating the 3D figure.
               </p>
-            </Reveal>
-          </section>
-
-          <section className="sol-landing__section">
-            <Reveal>
-              <h2>How a node reads</h2>
-              <p className="sol-landing__lede">
-                Every node is the same small card, and every part of the card means one
-                thing. Once you can read one node, you can read a whole model.
-              </p>
-            </Reveal>
-            <Reveal delay={100}>
-              <AnatomyScene />
             </Reveal>
           </section>
 
@@ -158,111 +73,63 @@ export default function LandingPage() {
             <Reveal>
               <h2>Typed sockets and cables</h2>
               <p className="sol-landing__lede">
-                A cable&apos;s color tells you what flows through it, and endpoints only
-                connect where the types agree. Element families never cross silently:
-                text never becomes a number without a Cast, and a table never collapses
-                into a scalar. The one bridge is boolean to number, because TRUE is 1.
+                Sockets and cables are all colored according to their value type. Value
+                types and dimensions are preserved so you'll
+                never confuse a date with a number or text value.
               </p>
             </Reveal>
             <Reveal delay={100}>
               <CableBoardScene />
             </Reveal>
-            <Reveal delay={140} className="sol-landing__dimflow">
-              <DimensionalityFlow />
-            </Reveal>
           </section>
 
-          <Feature title="Real units" scene={<UnitsScene />}>
+          <Feature title="Units" scene={<UnitsScene />}>
             <p>
-              Values carry units, not labels. <code>5 km</code> is stored as a base-SI
-              quantity with a display unit, so <code>SUM(5 km, 3)</code> is{" "}
-              <code>8 km</code> and m × m is m². The Format Controller sets a unit,
-              Convert changes it, and the unit rides the value through every passthrough.
+              Values carry real units - not just annotations - everywhere they can.
             </p>
-            <p>
-              Adding meters to seconds fails with{" "}
-              <code className="sol-landing__err">#UNIT!</code> at the node where it
-              happened, not three steps later as a plausible-looking number. Frame
-              columns carry units too: a <code>Price ($)</code> header locks the column,
-              and joins match 5 km against 5,000 m.
+            <p> 
+              {" "}<code>SUM(5 km, 3)</code> is <code>8 km</code>, <code>2 m × 4 m </code>
+               makes <code>8 m²</code>.
             </p>
           </Feature>
 
-          <Feature title="The Equation node" flip scene={<EquationScene />}>
+          <Feature title="Solve for any variable" flip scene={<EquationScene />}>
             <p>
-              Type a relation and every variable is both an input and an output. Wire
-              any two of <code>V = I × R</code> and the third is solved: symbolically
-              where isolation works, numerically where it doesn&apos;t. A quadratic
-              returns every real root.
-            </p>
-            <p>
-              When everything is known, the Check output reports whether the values
-              actually satisfy the relation. Domain packs ship locked equations for
-              circuits, gases, chemistry and finance; the TVM node is one of them, so
-              PMT, PV, FV, NPER and RATE are one card with the unknown solved.
+              Instead of setting up the same equation rearranged 3 different ways, just use
+              Solenoid's Equation node. Plug in all but one variable and it solves for the remaining one.
+              Limited support for multiple quadratic roots.
             </p>
           </Feature>
 
           <Feature title="Relational verbs" scene={<VerbsScene />}>
             <p>
-              Filter, Sort, Join, Group By, Append, Distinct, Pivot, Unpivot: the full
-              verb set as nodes, with as-of joins for nearest-match on time. On the
-              desktop build the verbs run on native Polars, and a chain is fused into
-              one lazy plan, so a million-row frame costs one round trip instead of one
-              per node.
-            </p>
-            <p>
-              On the web the same verbs run a reference engine with identical answers.
-              Sketch mode samples 10,000 rows while you edit and marks approximate
-              results with ≈; F9 runs the exact pass.
+              Filter, Sort, Join, Group By, Append, Distinct, Pivot, Unpivot. 
+               The desktop build runs data table functions via Rust + Polars,
+              handling million-row operations with ease.
             </p>
           </Feature>
 
           <Feature title="Draw your data" flip scene={<DrawScene />}>
             <p>
-              Point Plotter turns clicks on a plane into X and Y lists. Curve samples a
-              draggable spline into a list. Grid Painter fills a matrix with a value
-              brush. Sketch the shape you have in mind, then run real math on it.
+              Solenoid includes a variety of interactive, visual widget nodes for data input. 
             </p>
           </Feature>
 
-          <Feature title="What-if analysis" scene={<MonteCarloScene />}>
+          <Feature title="YAML Frontmatter Inputs" scene={<ObsidianScene />}>
             <p>
-              Give a model&apos;s inputs a ± spread and its outputs come back as
-              distributions: mean, deviation and a histogram, from a seeded,
-              reproducible sampler. Goal Seek drives an input until an output hits a
-              target. Scenarios save named input sets, and Data Table sweeps a range.
-            </p>
-            <p>
-              A model check fuzzes the leaf inputs and reports where the model breaks,
-              and a Tornado node sweeps each input one at a time to show which one the
-              result actually depends on.
+              Author or import Markdown documents with frontmatter properties to use them
+              as real inputs in your graph.
             </p>
           </Feature>
 
-          <Feature title="Obsidian, both directions" flip scene={<ObsidianScene />}>
+          <Feature title="Live documents and slideshows" flip scene={<PresenterScene />}>
             <p>
-              Import a vault note as a live, typed source: its frontmatter keys become
-              output sockets, and Reload re-reads from disk. A plain note works too;
-              any note whose body opens with a YAML block is a typed record.
+              Write a live document that pulls values from the graph: a number, a table,
+              a chart or a typeset equation, each updating as the data changes.
             </p>
             <p>
-              Notes and Reports write back as portable markdown with real tables, math
-              and rendered chart images, so the vault stays the home of the numbers.
-            </p>
-          </Feature>
-
-          <Feature title="Reports and presenter mode" scene={<PresenterScene />}>
-            <p>
-              A Report is a markdown document that embeds live values: an inline{" "}
-              <code>`=name`</code> renders a scalar, a scrollable table, a chart or a
-              typeset equation, and updates when the graph does. Dock it to the right
-              and the canvas stays live beside it.
-            </p>
-            <p>
-              A Presentation node runs the canvas as a slideshow. The camera flies to
-              each step&apos;s nodes, the chrome hides, and a click advances. The canvas
-              is the slide.
+              Or present the canvas itself as a slideshow, the view flying from one step
+              to the next.
             </p>
           </Feature>
 
@@ -270,9 +137,7 @@ export default function LandingPage() {
             <Reveal>
               <h2>Excel parity</h2>
               <p className="sol-landing__lede">
-                Functions keep their Excel names and their Excel answers. The built-in
-                reference lists every function with its Excel equivalent, and search
-                scores against the names you already know.
+                Solenoid functions use Excel names, syntax, and math.  
               </p>
             </Reveal>
             <Reveal delay={100}>
@@ -283,8 +148,7 @@ export default function LandingPage() {
           <section className="sol-landing__strip">
             <Reveal className="sol-landing__strip-in">
               <p>
-                Free and open source. Runs in the browser, or as a Windows desktop app
-                with the native Polars engine.
+                Free and open source. Runs in the browser, or as a Windows desktop app.
               </p>
               <div className="sol-landing__actions">
                 <a className="sol-landing__cta sol-landing__cta--primary" href="./">Open Solenoid</a>
@@ -296,15 +160,7 @@ export default function LandingPage() {
           </section>
         </main>
 
-        <footer className="sol-landing__footer">
-          <span>Solenoid {pkg.version}</span>
-          <span aria-hidden="true">·</span>
-          <span>MIT license</span>
-          <span aria-hidden="true">·</span>
-          <a href={GITHUB_URL} target="_blank" rel="noreferrer">GitHub</a>
-          <span aria-hidden="true">·</span>
-          <span>Built with Rete, Polars and Tauri.</span>
-        </footer>
+        <SiteFooter />
       </div>
       <TablePopup />
     </div>

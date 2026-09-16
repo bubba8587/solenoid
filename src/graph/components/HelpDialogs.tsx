@@ -9,36 +9,40 @@ import "./helpDialogs.css";
 type Slide = { title: string; body: string };
 const SLIDES: Slide[] = [
   {
-    title: "Computed columns",
-    body: "Pick Formula on any table column and define it: @price * @qty computes per row. A bare column name is the whole column and @name is this row's cell, so @revenue / SUM(revenue) is a share of total and SUMIFS(amt, cat, @cat) is a per-group subtotal. Computed columns reference each other and take units and number formats like any typed column. Mid-pipeline, the Computed Column node does the same over any incoming frame.",
+    title: "Your Obsidian vault is a table",
+    body: "Point Solenoid at a vault and the Vault Folder node reads a folder of notes as one cube: every property a column, the note body when you ask. Filter, group, chart and compute over your notes, then write back. Write to Obsidian turns a Document into a note or a cube of rows into each note's properties, with a Preview before Run. Import Obsidian Note reads one note's properties as sockets. A bundled demo vault shows all of it on the web with no vault of your own.",
   },
   {
-    title: "Script node",
-    body: "Write a JavaScript function; it runs as a node. The value types itself from what you return: a number, text, [ ] for a list, [[ ]] for a table, rows of {name: value} for a frame. Wired frames arrive the same way. Scripts run sandboxed and time-capped, a volatile one gets a Recalculate button, and the worked-examples canvas in the Examples menu tours Monte Carlo, Collatz, an amortization table, and Friday the 13ths.",
+    title: "TaskNotes, live",
+    body: "The TaskNotes node feeds your tasks, calendar or stats straight off the plugin's API, and Write Tasks sends rows back as new or updated tasks. The Which task next and Kitchen remodel examples plan a week from a real task list.",
   },
   {
-    title: "Query",
-    body: "Drop a Query node, drill in, and chain the table verbs inside. Refresh runs it on demand: upstream changes mark the result stale and never silently recompute.",
+    title: "Reports are templates",
+    body: "Note and Report bodies speak Knap, Obsidian's template language: {{ name }} embeds a wired value as the canvas shows it, {% if %} and {% for %} build the prose, and a wired template note supplies the text with its variables as sockets. Wire a frame into Records and the Report is a mail merge: one page per row, one note per page in the vault.",
   },
   {
-    title: "The analytics shelf",
-    body: "The numpy, pandas, scipy and R toolkit as nodes: Forecast with Holt-Winters intervals, per-group Window columns, K-Means, PCA, FFT, LOWESS smoothing, seasonal decomposition, and Monte Carlo with correlated inputs. The deeper science tools ship as the Scientific Computing and Data Science packs in Settings. The Function Reference gains numpy, pandas, R, SQL and Excel filters, so you can search by whichever name you already know.",
+    title: "Schedules and Gantt charts",
+    body: "The Schedule node runs a real critical-path pass over a task table: working days or minutes, weekends and holidays, links with lag and lead, phases that roll up, a status date, float and diagnostics. The Gantt figure draws it with phase brackets, milestones, deadline pennants, a baseline ghost and a month calendar layout. Local File imports a Microsoft Project XML, GanttProject or Primavera XER plan.",
   },
   {
-    title: "Records and forms",
-    body: "The Record node draws one table row as a card you lay out yourself: labeled boxes on a text-defined grid, with Gallery and Board views over the whole frame. A table popup's Form view makes that layout editable; page through rows and enter data in fields that follow each column's type.",
+    title: "Everyday sources",
+    body: "Weather, Geocode, Holidays, Currency, Time Zone Convert, World Clock and QR Code: the nodes that make a document worth leaving open. A document from elsewhere loads with the network quiet until you allow it, once, per document. The Garden Dashboard example wires Geocode into Weather and totals the rain either side of today.",
   },
   {
-    title: "The Node Inspector",
-    body: "Press the (i) and a reference panel docks beside the canvas: what the selected node computes, its Excel equivalent, and each socket described under its own glyph. Frame inputs include an example table showing the columns they expect.",
+    title: "Planners",
+    body: "Payoff Planner rolls a debt list month by month, avalanche or snowball, with the freed payments cascading. Group Cost Settle turns a shared-expense ledger into who owes whom, by totals or by transaction. Earned Value scores a plan against a status date.",
   },
   {
-    title: "Frame hints",
-    body: "Hover a frame input's socket and a miniature example table shows the exact columns it expects, with sample data. On touch, tap the row.",
+    title: "Categorical columns",
+    body: "Pick Chip on a text column and its distinct values become tinted chips in the table popup and on the Format Controller. Entry on that column offers the existing values instead of a blank field.",
   },
   {
-    title: "Type any date",
-    body: "Date Input reads a date in about any format and renders it as DD-MMM-YYYY. An ambiguous one answers #AMBIGUOUS! instead of guessing. Opt in to relative dates and today, next friday, or in 3 days resolve on the spot.",
+    title: "Peek any socket",
+    body: "Hover an output socket and a scaled-down live Display of its value appears: a frame, a cube, a list, a chart or a diagram, without wiring anything.",
+  },
+  {
+    title: "Draw on the canvas",
+    body: "Free-drawn cables annotate a graph point by point in the wired cables' three shapes, with arrowheads, width, color and a 45 degree angle dial per point. Press D.",
   },
 ];
 

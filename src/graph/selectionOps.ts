@@ -1,3 +1,4 @@
+// dte:C52
 // Align / distribute / batch collapse over the selection. Uses the process.ts
 // singletons rather than Canvas-local refs, so it is callable from anywhere.
 

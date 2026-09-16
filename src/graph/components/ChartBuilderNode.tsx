@@ -1,5 +1,5 @@
 import type { ChartBuilderNode as ChartBuilderNodeType } from "../rete-nodes";
-import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST, type ChartBuilderKey } from "../nodes/chartOptions";
+import { CHART_BUILDER_TARGETS, CHART_TARGET_LIST, chartBuilderKeys, type ChartBuilderKey } from "../nodes/chartOptions";
 import { NodeShell, ArgSelect, useNodeField, type NodeProps, type ShellNode, type Emit } from "./nodeKit";
 import { InlineInputs, useConnectedInputs, useIncomingSources } from "./inlineInput";
 import { MeasuredSocketRow } from "./NodeSocket";
@@ -50,11 +50,105 @@ function ToggleInputRow({ node, emit, socketKey, label }: {
   );
 }
 
-const TARGET_OPTS = CHART_TARGET_LIST.map((t) => ({ value: t.id, label: t.label }));
+/** A wireable <select> writing its value into the options string (a cable replaces it with
+ *  its source). `clearValue` is stored as "" so an untouched default doesn't clutter the
+ *  serialized string. */
+function SelectInputRow({ node, emit, socketKey, label, options, clearValue }: {
+  node: ShellNode & { stringLiterals: Record<string, string> };
+  emit: Emit;
+  socketKey: string;
+  label: string;
+  options: readonly { value: string; label: string }[];
+  clearValue?: string;
+}) {
+  const connected = useConnectedInputs(node.id);
+  const incoming = useIncomingSources(node.id);
+  const port = node.inputs[socketKey];
+  if (!port) return null;
+  const wired = connected.has(socketKey);
+  const value = node.stringLiterals[socketKey] || clearValue || options[0].value;
+  const set = (v: string) => {
+    node.stringLiterals[socketKey] = v === clearValue ? "" : v;
+    void processGraph();
+  };
+  return (
+    <MeasuredSocketRow side="input" socketKey={socketKey} nodeId={node.id} emit={emit} payload={port.socket}>
+      <span className="solenoid-node__io-label">{label}</span>
+      {wired ? (
+        <span className="solenoid-node__io-wired" title="Driven by the incoming cable named here">
+          ↩ {incoming.get(socketKey)?.label || "wired"}
+        </span>
+      ) : (
+        <ArgSelect value={value} onChange={set} options={options} />
+      )}
+    </MeasuredSocketRow>
+  );
+}
 
-const STR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "color"];
+const TARGET_OPTS = CHART_TARGET_LIST.map((t) => ({ value: t.id, label: t.label, group: t.group }));
+
+const STR_KEYS: readonly ChartBuilderKey[] = ["title", "xlabel", "ylabel", "color", "window", "columns"];
 const TOGGLE_KEYS: readonly { key: ChartBuilderKey; label: string }[] =
-  [{ key: "grid", label: "Grid" }, { key: "marker", label: "Markers" }];
+  [{ key: "grid", label: "Grid" }, { key: "marker", label: "Markers" }, { key: "clamp", label: "Clamp tiles" }];
+const SELECT_KEYS: readonly {
+  key: ChartBuilderKey;
+  label: string;
+  options: readonly { value: string; label: string }[];
+  clearValue: string;
+}[] = [
+  {
+    key: "pielabels", label: "Pie labels", clearValue: "outside",
+    options: [
+      { value: "outside", label: "Labels: outside" },
+      { value: "inside", label: "Labels: on slice" },
+      { value: "off", label: "Labels: off" },
+    ],
+  },
+  {
+    key: "radarscale", label: "Radar scale", clearValue: "axis",
+    options: [
+      { value: "axis", label: "Scale: per axis" },
+      { value: "shared", label: "Scale: shared" },
+    ],
+  },
+  {
+    key: "zoom", label: "Zoom", clearValue: "fit",
+    options: [
+      { value: "fit", label: "Fit the width" },
+      { value: "day", label: "Days" },
+      { value: "week", label: "Weeks" },
+      { value: "month", label: "Months" },
+      { value: "quarter", label: "Quarters" },
+      { value: "year", label: "Years" },
+    ],
+  },
+  // The Gantt figure's remaining view keys. The first option of each is the figure's own
+  // default and stores as "" (clearValue), so an untouched row adds nothing to the string.
+  {
+    key: "tiers", label: "Header rows", clearValue: "2",
+    options: [{ value: "2", label: "Two rows" }, { value: "1", label: "One row" }],
+  },
+  {
+    key: "layout", label: "Layout", clearValue: "gantt",
+    options: [{ value: "gantt", label: "Timeline" }, { value: "calendar", label: "Month calendar" }],
+  },
+  {
+    key: "fit", label: "Fit", clearValue: "off",
+    options: [{ value: "off", label: "The zoom preset" }, { value: "page", label: "Whole plan, one width" }],
+  },
+  { key: "critical", label: "Critical path", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
+  { key: "baseline", label: "Baseline", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
+  { key: "arrows", label: "Arrows", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
+  { key: "today", label: "Today line", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
+  { key: "weekends", label: "Weekend shading", clearValue: "on", options: [{ value: "on", label: "Shaded" }, { value: "off", label: "Plain" }] },
+  { key: "labels", label: "Bar labels", clearValue: "on", options: [{ value: "on", label: "Shown" }, { value: "off", label: "Hidden" }] },
+  { key: "histogram", label: "Resource band", clearValue: "off", options: [{ value: "off", label: "Hidden" }, { value: "on", label: "Shown" }] },
+  { key: "minutes", label: "Times", clearValue: "off", options: [{ value: "off", label: "Whole days" }, { value: "on", label: "To the minute" }] },
+  {
+    key: "cardsize", label: "Tile size", clearValue: "m",
+    options: [{ value: "s", label: "Small" }, { value: "m", label: "Medium" }, { value: "l", label: "Large" }],
+  },
+];
 const NUM_KEYS: readonly ChartBuilderKey[] = ["ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"];
 
 /** The chart-type dropdown shapes the form, but a WIRED or valued row stays
@@ -64,8 +158,11 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
   const out = data.outputs.result;
   const [target, setTarget] = useNodeField(data, "target");
   const connected = useConnectedInputs(data.id);
-  const spec = CHART_BUILDER_TARGETS[target] ?? CHART_BUILDER_TARGETS.chart;
-  const accepted = new Set<string>(spec.keys);
+  const spec = CHART_BUILDER_TARGETS[target] ?? CHART_BUILDER_TARGETS.column;
+  // The Gantt target's offered set narrows by its layout — the month calendar reads far
+  // fewer keys than the timeline. A layout change alters the serialized output, so the
+  // node re-renders and the form reshapes without any extra subscription.
+  const accepted = new Set<string>(chartBuilderKeys(target, data.stringLiterals["layout"]));
   // Wired or valued — stays on screen even when inert.
   const live = (k: ChartBuilderKey) =>
     connected.has(k) || (data.stringLiterals[k] ?? "") !== "" || data.literals[k] !== undefined;
@@ -73,8 +170,11 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
   const inert = (keys: readonly ChartBuilderKey[]) => keys.filter((k) => !accepted.has(k) && live(k));
   const inertStr = inert(STR_KEYS);
   const inertToggles = TOGGLE_KEYS.filter(({ key }) => !accepted.has(key) && live(key));
+  const inertSelects = SELECT_KEYS.filter(({ key }) => !accepted.has(key) && live(key));
   const inertNum = inert(NUM_KEYS);
-  const anyInert = inertStr.length > 0 || inertToggles.length > 0 || inertNum.length > 0;
+  const anyInert = inertStr.length > 0 || inertToggles.length > 0 || inertSelects.length > 0 || inertNum.length > 0;
+  const inertLabel = target === "gantt" && (data.stringLiterals["layout"] ?? "").trim().toLowerCase() === "calendar"
+    ? "the Gantt calendar" : spec.label;
   return (
     <NodeShell node={data} emit={emit} hideOutputSockets>
       <div style={{ padding: "2px 0 4px" }}>
@@ -84,12 +184,18 @@ export function ChartBuilderComponent({ data, emit }: NodeProps<ChartBuilderNode
       {TOGGLE_KEYS.filter(({ key }) => accepted.has(key)).map(({ key, label }) => (
         <ToggleInputRow key={key} node={data} emit={emit} socketKey={key} label={label} />
       ))}
+      {SELECT_KEYS.filter(({ key }) => accepted.has(key)).map(({ key, label, options, clearValue }) => (
+        <SelectInputRow key={key} node={data} emit={emit} socketKey={key} label={label} options={options} clearValue={clearValue} />
+      ))}
       <InlineInputs node={data} emit={emit} keys={acc(NUM_KEYS) as string[]} />
       {anyInert && (
-        <div style={{ opacity: 0.45 }} title={`Not read by ${spec.label}`}>
+        <div style={{ opacity: 0.45 }} title={`Not read by ${inertLabel}`}>
           <InlineInputs node={data} emit={emit} keys={inertStr as string[]} />
           {inertToggles.map(({ key, label }) => (
             <ToggleInputRow key={key} node={data} emit={emit} socketKey={key} label={label} />
+          ))}
+          {inertSelects.map(({ key, label, options, clearValue }) => (
+            <SelectInputRow key={key} node={data} emit={emit} socketKey={key} label={label} options={options} clearValue={clearValue} />
           ))}
           <InlineInputs node={data} emit={emit} keys={inertNum as string[]} />
         </div>

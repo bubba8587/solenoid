@@ -1,10 +1,14 @@
+// dte:C64,C48
 import { ClassicPreset } from "rete";
-import { readInput, numIn, numListIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
+import { readInput, numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
+import { flatCubeToFrame } from "../frame";
+import type { PassthroughSpec } from "./passthrough";
 import { extractVariables, compileEvaluator, rowRefNames, type ExprEvaluator } from "../excelFormula";
 import { isLambdaValue } from "../lambdaValue";
 import { computeColumnCells } from "../computedColumnCore";
 import { dropInputCables } from "../components/cablePrune";
-import { getActiveView } from "../activeGraph";
+import { getActiveView, getOwningEditor } from "../activeGraph";
+import { cableGhostStore } from "../cableState";
 import { readFilterValue } from "./list";
 import type { FrameHint } from "../frameHint";
 import { toAnyMatrix } from "./coerce";
@@ -18,25 +22,37 @@ import {
   splitFrame, getColumn, addColumn, frameRowCount, frameHasTextColumns, makeHeaders,
   frameFromInputText, parseFrameSource, frameSourceToText, deriveFrame,
   formatFrameCell, isCubeValue, isFrameValue, inferColumn, frameToCube,
+  selectCubeRows, cubeRowCount, frameFromRows, cubeFromColumns,
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType, type FrameSourceColumn,
 } from "../frame";
 import {
   pivotFrame, nestFrame, unnestCube,
-  splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity,
+  splitColumn, addIndexColumn, decisionMatrix, decisionCriteria, decisionSensitivity, resolveDecisionWeights, allocateFrame,
   mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows,
   lookupCell, lookupRowIndex,
   frameRowAt, cubeRowAt, asLookupSource, reconcileFrames,
-  filterRowsMulti, VALUELESS_FILTER_OPS, ERROR_FILTER_OPS,
+  filterRowsMulti, VALUELESS_FILTER_OPS, ERROR_FILTER_OPS, LIST_FILTER_OPS,
+  sortCube, distinctCube, sliceCube, filterCube,
   type FilterCond, type FilterCombine, type JoinHow, type AsofDirection, type AggOp, type DecisionNormalize, type LookupMatchMode, type LookupSearchMode, type ReconcileSummary,
 } from "../frameVerbs";
 import { pairIdsFromKeys } from "./logic";
 import type { PivotSpec, FilterCondConfig } from "../frameVerbs";
+import type { AllocateMode } from "./allocateOps";
+import { settleGroup, settleLedger, type Expense } from "./settleOps";
+import { payoffPlan, type PayoffOrder } from "./payoffOps";
 import { describeFrame, correlationMatrix, WINDOW_FN_NEEDS_COLUMN, WINDOW_FN_NEEDS_N, type CorrMethod, type WindowFn } from "../frameVerbs";
 export type { WindowFn } from "../frameVerbs";
 export type { CorrMethod } from "../frameVerbs";
 import { runFrameUnary, runFrameJoin, runFrameAppend, runFrameBindColumns, readFrame, collectPreview, dropFrameRef, isFrameRef, frameBackend, materialize, flushRef, type FrameInput, type FrameRef } from "../frameBackend";
-import type { CubeValue, CubeCell } from "../frame";
-import { type UnitCell } from "../unitValue";
+import { bindColumns } from "../frameVerbs";
+import {
+  shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
+  emptyFrameOf, type Shape, type ShapeColumn,
+} from "../frameShape";
+import { csvList, type FrameShapeContext } from "./frameShapeHook";
+import type { ColumnPickerSpec } from "./columnPickerHook";
+import type { CubeValue, CubeCell, CubeColumn } from "../frame";
+import { type UnitCell, type ColumnUnit, isUnitCell } from "../unitValue";
 import { tagFrameCellUnit, columnUnitFromSpec } from "../unitColumn";
 
 // A thrown SolError must be returned as a VALUE — letting it escape data() flattens
@@ -50,7 +66,68 @@ function runVerb<T>(fn: () => T): T | SolError {
 }
 
 // ─── Lazy verb-node output ──────────────────────────────────────────────────────
-export interface FrameVerbNode { _ref?: FrameRef | null; _gen?: number; cachedResult: FrameValue | SolError | null }
+// cachedResult carries a CubeValue too since A′: a row verb fed a cube caches the cube it
+// passes through (the frame path still caches a FrameValue preview via emitFrame).
+export interface FrameVerbNode { _ref?: FrameRef | null; _gen?: number; cachedResult: FrameValue | CubeValue | SolError | null }
+
+// A′: the row verbs' table port is `cubeAdoptIn` + `noWidenInputs`, so the value arrives
+// un-widened. A Cube is returned as-is for the caller's cube branch; a bare list/scalar is
+// widened to a 1-row frame (the old `frameIn` coercion, kept byte-identical for the frame
+// path); a Frame / FrameRef passes through.
+/** The frame-socket widening (coerceInputs' `case "frame"`), replicated for the row verbs
+ *  whose cube-adopting port skips it: a matrix → its rows, a bare 1-D list → one row, a
+ *  scalar → a 1×1 frame. */
+function widenToFrame(v: unknown): FrameValue {
+  if (Array.isArray(v)) return Array.isArray((v as unknown[])[0]) ? frameFromRows(v as unknown[][]) : frameFromRows([v as unknown[]]);
+  return frameFromRows([[v]]);
+}
+
+function rowVerbInput(v: unknown): FrameInput | CubeValue | null {
+  if (v == null) return null;
+  if (isCubeValue(v) || isFrameValue(v) || isFrameRef(v)) return v;
+  return widenToFrame(v);
+}
+
+/** A cube read as a scalar frame: columns whose cells are all scalar become typed frame
+ *  columns; a column with any list or sub-table cell is DROPPED (A′ — Decision Matrix
+ *  ignores them like date columns). inferColumn types the cells and recovers per-cell units. */
+function cubeToScalarFrame(cube: CubeValue): FrameValue {
+  const columns = cube.columns
+    .filter((c) => c.cells.every((cell) => !Array.isArray(cell) && !isFrameValue(cell) && !isCubeValue(cell)))
+    .map((c) => inferColumn(c.name, c.cells));
+  return { __frame: true, columns };
+}
+
+/** A cube read as a frame FOR A FORMULA (Computed Column, A′): a scalar column types via
+ *  inferColumn; a list/sub-table column becomes a column of #SHAPE! cells, so referencing
+ *  it in the expression is a #SHAPE! (a nested cell is opaque to the formula) while
+ *  leaving it out just carries it through untouched on the cube. */
+function cubeToExprFrame(cube: CubeValue): FrameValue {
+  const columns = cube.columns.map((c) => {
+    if (c.cells.every((cell) => !Array.isArray(cell) && !isFrameValue(cell) && !isCubeValue(cell))) {
+      return inferColumn(c.name, c.cells);
+    }
+    const err = solError("#SHAPE!", `"${c.name}" has list or table cells; a formula reads scalar columns`);
+    return { name: c.name, type: "string" as FrameColType, values: c.cells.map(() => err) };
+  });
+  return { __frame: true, columns };
+}
+
+/** Append (or replace by name) a scalar column on a cube, with the frame's `after`
+ *  placement — the cube twin of addColumn. Nested cells on every other column ride by
+ *  reference. Throws #REF! for an unknown `after` anchor (matching addColumn's node). */
+function cubeWithColumn(cube: CubeValue, name: string, cells: CubeCell[], type: FrameColType | undefined, after: string): CubeValue {
+  const col: CubeColumn = { name, cells, ...(type ? { type } : {}) };
+  const at = cube.columns.findIndex((c) => c.name === name);
+  if (at >= 0) { const cols = cube.columns.slice(); cols[at] = col; return cubeFromColumns(cols); }
+  const cols = [...cube.columns, col];
+  if (after) {
+    const a = cols.findIndex((c) => c.name === after);
+    if (a < 0) throw solError("#REF!", `No column "${after}" to place after`);
+    cols.splice(a + 1, 0, cols.pop()!);
+  }
+  return cubeFromColumns(cols);
+}
 
 /** Stamp a new compute pass — the out-of-order-pass guard; MUST be evaluated BEFORE
  *  the verb's await, which the `emitFrame(this, beginPass(this), await …)` order gives. */
@@ -90,21 +167,34 @@ export class FrameInputNode extends ClassicPreset.Node {
   /** `layout` = the popup Form view's field placement (the Record layout text);
    *  the declaration is the persistence load gate. */
   stringLiterals: Record<string, string> = {};
+  /** Hiding the layout box KEEPS its text and only makes it inert; every reader
+   *  takes `activeLayout`, never `stringLiterals.layout`. */
+  layoutHidden: boolean;
   /** The addable λ input keys (fn1, fn2, …); a source column with `lambda: "fn1"`
    *  computes its cells per row from the λ wired there. */
   lambdaKeys: string[] = [];
   // Return the SAME FrameValue object while the text is unchanged — a fresh one per
   // data() defeats the backend's identity source-cache (re-uploads the frame to Rust).
   private _builtFrom: string | undefined;
-  width = 240; height = 220;
+  // Reserves the full default card: header, the "+ Add lambda" and "+ Add Form layout"
+  // rows, and the 3-row-capped table preview (with its overflow "…" row + chip). The
+  // old 220 predated the two add-buttons, so Tidy/ELK under-reserved and stacked a
+  // neighbor into the card. Cap-bounded, so a static height stays correct.
+  width = 240; height = 280;
 
-  constructor(init?: { label?: string; frameText?: string; lambdaKeys?: string[] }) {
+  constructor(init?: { label?: string; frameText?: string; lambdaKeys?: string[]; layoutHidden?: boolean }) {
     super("FrameInput");
     this.label = init?.label ?? "Frame Input";
     this.frameText = init?.frameText ?? "A, B\n1, 2\n3, 4";
+    this.layoutHidden = init?.layoutHidden ?? false;
     if (Array.isArray(init?.lambdaKeys)) this.lambdaKeys = init.lambdaKeys.filter((k) => typeof k === "string");
     for (const k of this.lambdaKeys) this.addInput(k, lambdaIn(`λ${k.replace(/^fn/, "")}`));
     this.addOutput("frame", frameOut("Frame"));
+  }
+
+  /** The Form layout in force: the typed text, or nothing while it is hidden. */
+  get activeLayout(): string | undefined {
+    return this.layoutHidden ? undefined : this.stringLiterals.layout;
   }
 
   /** Add one λ input row (the ExtensibleInputs contract). */
@@ -133,6 +223,10 @@ export class FrameInputNode extends ClassicPreset.Node {
   /** What the last computed frame was built from — text plus each λ input's value
    *  identity, so an unchanged pass returns the SAME frame object. */
   private _computedFrom: { text: string; lams: unknown[] } | null = null;
+
+  frameShape(): Shape {
+    return shapeOfFrameValue(frameFromInputText(this.frameText));
+  }
 
   data(inputs: Record<string, unknown[] | undefined> = {}) {
     const source = parseFrameSource(this.frameText);
@@ -252,18 +346,24 @@ export class FrameInputNode extends ClassicPreset.Node {
 
 export class DistinctNode extends ClassicPreset.Node {
   label: string;
-  cachedResult: FrameValue | SolError | null = null;
+  cachedResult: FrameValue | CubeValue | SolError | null = null;
+  noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   width = 180; height = 120;
 
   constructor(init?: { label?: string }) {
     super("Distinct");
     this.label = init?.label ?? "Distinct";
-    this.addInput("frame", frameIn("Frame"));
-    this.addOutput("frame", frameOut("Unique"));
+    this.addInput("frame", cubeAdoptIn("Table / Cube"));
+    this.addOutput("frame", tableAdoptOut("Unique"));
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[] }) {
-    const f = inputs.frame?.[0] ?? null;
+  // A cube in → a cube out, a frame in → a frame out; the output type adopts the input's
+  // (A′). frameShape flows through the passthrough for the frame path.
+  passthrough(): PassthroughSpec[] { return [{ output: "frame", inputs: ["frame"], combine: "single" }]; }
+
+  async data(inputs: { frame?: unknown[] }) {
+    const f = rowVerbInput(inputs.frame?.[0] ?? null);
+    if (isCubeValue(f)) { const r = runVerb(() => distinctCube(f)); this.cachedResult = r; return { frame: r }; }
     return emitFrame(this, beginPass(this), f != null ? await runFrameUnary(f, { kind: "distinct" }) : null);
   }
 }
@@ -287,7 +387,8 @@ export class HeadNode extends ClassicPreset.Node {
 
   label: string;
   op: HeadOp;
-  cachedResult: FrameValue | SolError | null = null;
+  cachedResult: FrameValue | CubeValue | SolError | null = null;
+  noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   literals: Record<string, number> = { rows: 10, to: 20 };
   width = 180; height = 175;
 
@@ -295,20 +396,25 @@ export class HeadNode extends ClassicPreset.Node {
     super("Head");
     this.label = init?.label ?? "";
     this.op = init?.op ?? "first";
-    this.addInput("frame", frameIn("Frame"));
+    this.addInput("frame", cubeAdoptIn("Table / Cube"));
     this.addInput("rows", numIn("Rows"));
     this.addInput("to", numIn("To"));
-    this.addOutput("frame", frameOut("Head"));
+    this.addOutput("frame", tableAdoptOut("Head"));
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; rows?: number[]; to?: number[] }) {
-    const f = inputs.frame?.[0] ?? null;
+  passthrough(): PassthroughSpec[] { return [{ output: "frame", inputs: ["frame"], combine: "single" }]; }
+
+  async data(inputs: { frame?: unknown[]; rows?: number[]; to?: number[] }) {
+    const f = rowVerbInput(inputs.frame?.[0] ?? null);
     const n = readInput(inputs.rows, this.literals.rows ?? 10);
     // `to` is read by the "range" op ALONE, so a wired blank To must not blank a First-N slice.
     const to = this.op === "range" ? readInput(inputs.to, this.literals.to ?? n) : 0;
     const gen = beginPass(this);
     // A wired blank row count leaves the slice unknown (value-semantics.md, "Reading an input").
     if (f == null || n === null || to === null) return emitFrame(this, gen, null);
+    // A cube reorders/keeps whole rows in JS (sliceCube covers first/last/skip/range);
+    // Polars never sees a nested cell.
+    if (isCubeValue(f)) { const r = runVerb(() => sliceCube(f, this.op, n, this.op === "range" ? to : undefined)); this.cachedResult = r; return { frame: r }; }
     // Every slice is a LAZY verb now — First-N as `head`, the rest as `sliceRows`
     // (Polars tail / slice on desktop, the oracle on web).
     if (this.op === "first") return emitFrame(this, gen, await runFrameUnary(f, { kind: "head", n }));
@@ -323,7 +429,8 @@ export type FrameSortDir = "asc" | "desc";
 export class SortFrameNode extends ClassicPreset.Node {
   label: string;
   dir: FrameSortDir;
-  cachedResult: FrameValue | SolError | null = null;
+  cachedResult: FrameValue | CubeValue | SolError | null = null;
+  noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   stringLiterals: Record<string, string> = { column: "" };
   width = 190; height = 175;
 
@@ -331,16 +438,23 @@ export class SortFrameNode extends ClassicPreset.Node {
     super("SortFrame");
     this.label = init?.label ?? "Frame Sort";
     this.dir = init?.dir ?? "asc";
-    this.addInput("frame", frameIn("Frame"));
+    this.addInput("frame", cubeAdoptIn("Table / Cube"));
     this.addInput("column", strIn("Column"));
-    this.addOutput("frame", frameOut("Sorted"));
+    this.addOutput("frame", tableAdoptOut("Sorted"));
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; column?: string[] }) {
-    const f = inputs.frame?.[0] ?? null;
+  passthrough(): PassthroughSpec[] { return [{ output: "frame", inputs: ["frame"], combine: "single" }]; }
+
+  columnPickers(): ColumnPickerSpec[] { return [{ key: "column", frameInput: "frame" }]; }
+
+  async data(inputs: { frame?: unknown[]; column?: string[] }) {
+    const f = rowVerbInput(inputs.frame?.[0] ?? null);
     const col = readInput(inputs.column, this.stringLiterals.column ?? "");
     // A wired blank column names no column — unknown, not "not chosen yet".
     if (f == null || col === null) return emitFrame(this, beginPass(this), null);
+    // A cube sorts on a scalar column (a list column → #SHAPE! from sortCube); a blank
+    // column passes the cube through unchanged.
+    if (isCubeValue(f)) { const r = runVerb(() => col.trim() === "" ? f : sortCube(f, col.trim(), this.dir)); this.cachedResult = r; return { frame: r }; }
     return emitFrame(this, beginPass(this), col.trim() === "" ? await passFrame(f) : await runFrameUnary(f, { kind: "sort", by: col.trim(), dir: this.dir }));
   }
 }
@@ -356,7 +470,8 @@ export class FilterFrameNode extends ClassicPreset.Node {
   condConfig: Record<string, FilterCondConfig> = {};
   nextPairId = 0;
   readonly pairLabels: [string, string] = ["Column", "Value"];
-  cachedResult: FrameValue | SolError | null = null;
+  cachedResult: FrameValue | CubeValue | SolError | null = null;
+  noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   stringLiterals: Record<string, string> = {};
   // emitFrame's pass-guard fields, declared because the Dropped ref lifecycle reads them.
   _gen?: number;
@@ -372,7 +487,7 @@ export class FilterFrameNode extends ClassicPreset.Node {
     super("FilterFrame");
     this.label = init?.label ?? "Frame Filter";
     this.combine = init?.combine ?? "and";
-    this.addInput("frame", frameIn("Frame"));
+    this.addInput("frame", cubeAdoptIn("Table / Cube"));
     const ids = pairIdsFromKeys(init?.valueKeys, "column");
     if (ids.length) {
       // Copy only LIVE ids' config — removal keeps orphaned entries for undo, reload prunes them.
@@ -384,9 +499,9 @@ export class FilterFrameNode extends ClassicPreset.Node {
     } else {
       this.addValuePair();
     }
-    this.addOutput("frame", frameOut("Kept"));
+    this.addOutput("frame", tableAdoptOut("Kept"));
     // The complement is a permanent socket, never a mode (same rule as the list Filter).
-    this.addOutput("dropped", frameOut("Dropped"));
+    this.addOutput("dropped", tableAdoptOut("Dropped"));
   }
 
   private addPairWithId(id: number): void {
@@ -418,6 +533,15 @@ export class FilterFrameNode extends ClassicPreset.Node {
     // condConfig[id] is kept so row-removal undo restores its op/matchCase; reload prunes orphans.
   }
 
+  /** Kept and Dropped are both row selections — same columns/rank as the input, so both
+   *  outputs adopt it (cube in → cube out, frame in → frame out; shape flows through). */
+  passthrough(): PassthroughSpec[] {
+    return [
+      { output: "frame", inputs: ["frame"], combine: "single" },
+      { output: "dropped", inputs: ["frame"], combine: "single" },
+    ];
+  }
+
   /** emitFrame's stale-pass + previous-ref lifecycle for the secondary output, minus
    *  the preview — Dropped stays a lazy ref until a consumer collects it. */
   private publishDropped(gen: number, out: FrameRef | FrameValue | SolError | null): FrameRef | FrameValue | SolError | null {
@@ -430,8 +554,8 @@ export class FilterFrameNode extends ClassicPreset.Node {
     return out;
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; [k: string]: unknown[] | undefined }) {
-    const f = inputs.frame?.[0] ?? null;
+  async data(inputs: { frame?: unknown[]; [k: string]: unknown[] | undefined }) {
+    const f = rowVerbInput(inputs.frame?.[0] ?? null);
     const gen = beginPass(this);
     if (f == null) return { ...(await emitFrame(this, gen, null)), dropped: this.publishDropped(gen, null) };
     const conditions: FilterCond[] = [];
@@ -450,6 +574,21 @@ export class FilterFrameNode extends ClassicPreset.Node {
       const col = String(colRaw).trim();
       if (col === "" || (!valueless && val!.trim() === "")) continue;
       conditions.push({ column: col, op, value: val as FrameCell, matchCase: cfg?.matchCase ?? false });
+    }
+    // A cube filters row-wise in JS (filterCube covers the scalar ops AND the list-cell
+    // ops — listContains/…; Polars never sees a nested cell). Both outputs are cubes.
+    if (isCubeValue(f)) {
+      const kept = runVerb(() => filterCube(f, this.combine, conditions));
+      const dropped = runVerb(() => filterCube(f, this.combine, conditions, true));
+      this.cachedResult = kept;
+      return { frame: kept, dropped };
+    }
+    // A list-cell op needs a cube (a frame column holds no list) — #SHAPE! rather than
+    // handing Polars an operator it can't run.
+    const listOp = conditions.find((c) => LIST_FILTER_OPS.has(c.op));
+    if (listOp) {
+      const err = solError("#SHAPE!", `${listOp.op} needs a list column — connect a cube, not a frame`);
+      return { ...(await emitFrame(this, gen, err)), dropped: this.publishDropped(gen, err) };
     }
     if (conditions.length === 0) {
       // Pass-through ("not written yet"): Kept = everything, Dropped = blank.
@@ -504,6 +643,20 @@ export class JoinNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Joined"));
   }
 
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const left = ctx.inputShape("left");
+    const right = ctx.inputShape("right");
+    if (!left || !right || ctx.wired("leftKey") || ctx.wired("rightKey")) return null;
+    const lk = (this.stringLiterals.leftKey ?? "").trim();
+    const rk = (this.stringLiterals.rightKey ?? "").trim() || lk;
+    if (lk === "") return null;
+    return shapeOfJoin(left, right, { leftKey: lk, rightKey: rk, how: this.how });
+  }
+
+  columnPickers(): ColumnPickerSpec[] {
+    return [{ key: "leftKey", frameInput: "left" }, { key: "rightKey", frameInput: "right" }];
+  }
+
   async data(inputs: {
     left?: (FrameInput | null)[]; right?: (FrameInput | null)[];
     leftKey?: string[]; rightKey?: string[]; tolerance?: number[];
@@ -548,7 +701,7 @@ export const COLUMNS_OP_META: Record<ColumnsOp, { label: string; description: st
 };
 
 // The op names the card ("Keep Columns" / "Drop Columns") — a bare "Columns" would read as
-// Excel's COLUMNS count function (docs/rules.md NAME-2, author 2026-08-25).
+// Excel's COLUMNS count function (dte:D21 NAME-2, author 2026-08-25).
 
 export class ColumnsNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -568,6 +721,14 @@ export class ColumnsNode extends ClassicPreset.Node {
     this.addInput("frame", frameIn("Frame"));
     this.addInput("columns", strListIn("Columns"));
     this.addOutput("frame", frameOut("Frame"));
+  }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input || ctx.wired("columns")) return null;
+    const cols = csvList(this.stringLiterals.columns);
+    if (this.op === "keep") return cols.length ? shapeOf({ kind: "select", columns: cols }, input) : input;
+    return shapeOf({ kind: "drop", columns: cols }, input);
   }
 
   async data(inputs: { frame?: (FrameInput | null)[]; columns?: string[][] }) {
@@ -619,14 +780,29 @@ export class GroupByFrameNode extends ClassicPreset.Node {
     this.label = init?.label ?? "GROUPBY";
     this.agg = init?.agg ?? "sum";
     this.totalDepth = init?.totalDepth ?? 0;
-    this.addInput("frame", frameIn("Frame"));
+    this.addInput("frame", cubeAdoptIn("Frame / Cube"));
     this.addInput("keys", strListIn("Group by"));
     this.addInput("column", strIn("Aggregate"));
     this.addOutput("frame", frameOut("Grouped"));
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; keys?: string[][]; column?: string[] }) {
-    const f = inputs.frame?.[0] ?? null;
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input || ctx.wired("keys") || ctx.wired("column")) return null;
+    const keys = csvList(this.stringLiterals.keys);
+    const col = (this.stringLiterals.column ?? "").trim();
+    if (!keys.length || !col) return input;
+    return shapeOf({ kind: "groupBy", keys, aggs: [{ column: col, op: this.agg, as: col }] }, input);
+  }
+
+  noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
+
+  async data(inputs: { frame?: (FrameInput | CubeValue | null)[]; keys?: string[][]; column?: string[] }) {
+    const raw = rowVerbInput(inputs.frame?.[0]);
+    // A flat cube is rows; a nested cell is the loud #SHAPE! (the lattice never narrows a cube).
+    const flat = isCubeValue(raw) ? flatCubeToFrame(raw) : raw;
+    if (isSolError(flat)) return emitFrame(this, beginPass(this), flat);
+    const f = flat;
     const keys = readColumnList(inputs.keys);
     const colRaw = readInput(inputs.column, this.stringLiterals.column ?? "");
     // A wired blank names no column/keys — unknown, not "not chosen yet".
@@ -711,6 +887,18 @@ export class PivotNode extends ClassicPreset.Node {
     this.addInput("values", strListIn("Values"));
     this.addInput("filter", logicalListIn("Filter"));
     this.addOutput("frame", frameOut("Wide"));
+  }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input || ctx.wired("rowFields") || ctx.wired("colFields") || ctx.wired("values")) return null;
+    const valid = new Set(input.columns.map((c) => c.name));
+    const rowFields = csvList(this.stringLiterals.rowFields).filter((f) => valid.has(f));
+    const colFields = csvList(this.stringLiterals.colFields).filter((f) => valid.has(f));
+    const values = csvList(this.stringLiterals.values).filter((f) => valid.has(f));
+    if (!values.length) return input;
+    const funcs = values.map((name) => this.funcs[name] ?? this.agg);
+    return shapeOf({ kind: "pivot", rowFields, colFields, values, funcs }, input);
   }
 
   data(inputs: {
@@ -830,6 +1018,14 @@ export class UnpivotNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Long"));
   }
 
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input || ctx.wired("idColumns") || ctx.wired("valueColumns")) return null;
+    const vals = csvList(this.stringLiterals.valueColumns);
+    if (!vals.length) return input;
+    return shapeOf({ kind: "unpivot", idColumns: csvList(this.stringLiterals.idColumns), valueColumns: vals }, input);
+  }
+
   async data(inputs: { frame?: (FrameInput | null)[]; idColumns?: string[][]; valueColumns?: string[][] }) {
     const f = inputs.frame?.[0] ?? null;
     const ids = readColumnList(inputs.idColumns);
@@ -937,6 +1133,20 @@ export class AppendNode extends ClassicPreset.Node {
     this.removeInput(key);
   }
 
+  /** Union by name over the WIRED rows; one unresolvable row could contribute unseen
+   *  columns, so it makes the whole stack unknown. */
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const shapes: Shape[] = [];
+    for (const k of this.valueInputKeys()) {
+      if (!ctx.wired(k)) continue;
+      const s = ctx.inputShape(k);
+      if (!s) return null;
+      shapes.push(s);
+    }
+    if (shapes.length === 0) return null;
+    return shapes.length === 1 ? shapes[0] : shapeOfAppend(shapes);
+  }
+
   async data(inputs: Record<string, (FrameInput | null)[] | undefined>) {
     const frames = this.valueInputKeys()
       .map((k) => inputs[k]?.[0] ?? null)
@@ -989,6 +1199,19 @@ export class BindColumnsNode extends ClassicPreset.Node {
     this.removeInput(key);
   }
 
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const shapes: Shape[] = [];
+    for (const k of this.valueInputKeys()) {
+      if (!ctx.wired(k)) continue;
+      const s = ctx.inputShape(k);
+      if (!s) return null;
+      shapes.push(s);
+    }
+    if (shapes.length === 0) return null;
+    if (shapes.length === 1) return shapes[0];
+    return shapeOfFrameValue(bindColumns(shapes.map(emptyFrameOf)));
+  }
+
   async data(inputs: Record<string, (FrameInput | null)[] | undefined>) {
     const frames = this.valueInputKeys()
       .map((k) => inputs[k]?.[0] ?? null)
@@ -1013,6 +1236,16 @@ export class RenameNode extends ClassicPreset.Node {
     this.addInput("from", strListIn("From"));
     this.addInput("to", strListIn("To"));
     this.addOutput("frame", frameOut("Frame"));
+  }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input || ctx.wired("from") || ctx.wired("to")) return null;
+    const from = csvList(this.stringLiterals.from);
+    const to = csvList(this.stringLiterals.to);
+    const map: Record<string, string> = {};
+    for (let i = 0; i < Math.min(from.length, to.length); i++) if (from[i] && to[i]) map[from[i]] = to[i];
+    return Object.keys(map).length ? shapeOf({ kind: "rename", map }, input) : input;
   }
 
   async data(inputs: { frame?: (FrameInput | null)[]; from?: string[][]; to?: string[][] }) {
@@ -1050,6 +1283,15 @@ export class SplitColumnNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Frame"));
   }
 
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input || ctx.wired("column")) return null;
+    const column = (this.stringLiterals.column ?? "").trim();
+    if (!column) return input;
+    if (ctx.wired("delimiter")) return null;
+    return shapeOfSplitColumn(input, column, this.stringLiterals.delimiter ?? "");
+  }
+
   data(inputs: { frame?: (FrameValue | null)[]; column?: string[]; delimiter?: string[]; into?: string[][] }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
@@ -1078,6 +1320,12 @@ export class AddIndexNode extends ClassicPreset.Node {
     this.addInput("start", numIn("Start"));
     this.addInput("name", strIn("Name"));
     this.addOutput("frame", frameOut("Frame"));
+  }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input || ctx.wired("name")) return null;
+    return shapeOfAddIndex(input, this.stringLiterals.name || "Index");
   }
 
   data(inputs: { frame?: (FrameValue | null)[]; start?: number[]; name?: string[] }) {
@@ -1112,6 +1360,13 @@ export class FillBlanksNode extends ClassicPreset.Node {
     this.addInput("frame", frameIn("Frame"));
     this.addInput("columns", strListIn("Columns"));
     this.addOutput("frame", frameOut("Frame"));
+  }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input || ctx.wired("columns")) return null;
+    const columns = csvList(this.stringLiterals.columns).map((c) => c.trim()).filter(Boolean);
+    return shapeOf({ kind: "fillBlanks", columns, dir: this.dir }, input);
   }
 
   async data(inputs: { frame?: (FrameInput | null)[]; columns?: string[][] }) {
@@ -1161,6 +1416,15 @@ export class ReplaceValuesNode extends ClassicPreset.Node {
     return n !== undefined ? String(n) : "";
   }
 
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input || ctx.wired("column")) return null;
+    return shapeOf({
+      kind: "replaceValues", column: this.stringLiterals.column ?? "",
+      find: this.findReplaceLiteral("find"), replaceWith: this.findReplaceLiteral("replace"), mode: this.mode,
+    }, input);
+  }
+
   async data(inputs: { frame?: (FrameInput | null)[]; column?: string[]; find?: unknown[]; replace?: unknown[] }) {
     const f = inputs.frame?.[0] ?? null;
     const column = readInput(inputs.column, this.stringLiterals.column ?? "");
@@ -1191,6 +1455,14 @@ export class MergeColumnsNode extends ClassicPreset.Node {
     this.addInput("separator", strIn("Separator"));
     this.addInput("name", strIn("Name"));
     this.addOutput("frame", frameOut("Frame"));
+  }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input || ctx.wired("columns") || ctx.wired("name")) return null;
+    const columns = csvList(this.stringLiterals.columns).map((c) => c.trim()).filter(Boolean);
+    if (columns.length < 2) return input;
+    return shapeOfFrameValue(mergeColumns(emptyFrameOf(input), columns, "", this.stringLiterals.name ?? ""));
   }
 
   data(inputs: { frame?: (FrameValue | null)[]; columns?: string[][]; separator?: string[]; name?: string[] }) {
@@ -1229,6 +1501,13 @@ export class HeadersNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Frame"));
   }
 
+  /** Demote is Col1…ColN text; PROMOTE takes its names from the first ROW, which is data. */
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input || this.action === "promote") return null;
+    return shapeOfFrameValue(demoteHeaders(emptyFrameOf(input)));
+  }
+
   data(inputs: { frame?: (FrameValue | null)[] }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
@@ -1258,6 +1537,10 @@ export class DropBlankRowsNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Frame"));
   }
 
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    return ctx.inputShape("frame");
+  }
+
   data(inputs: { frame?: (FrameValue | null)[] }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
@@ -1273,24 +1556,14 @@ export type DecisionDetail = "summary" | "breakdown";
 export class DecisionMatrixNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frame: "Rows are options. Number and logical columns are the criteria, and the first text column names the options. Date columns are skipped.",
-    weights: "A wired list pairs with the criteria columns in order and overrides the weights typed on the card.",
+    weights: "One row per criterion: a Criterion name, its Weight (negative = lower is better, like cost), and optionally a Norm (Raw / ÷Max / Rank). A criterion you leave out weighs 1 at the default normalize. Build it with a Frame Input.",
   };
 
   label: string;
   normalize: DecisionNormalize;
   detail: DecisionDetail;
-  // Inline weights (criterion name → weight, default 1); a wired `weights` list overrides
-  // this positionally.
-  weightMap: Record<string, number>;
-  // Per-criterion normalize OVERRIDE; absent = inherit the node default `normalize`.
-  normMap: Record<string, DecisionNormalize>;
-  // Refreshed each compute, in the order the weights align to.
-  criteria: string[] = [];
-  // The wired weights list as of the last compute (null when unwired) — the card
-  // shows these read-only in place of the typed weight boxes.
-  wiredWeights: number[] | null = null;
   cachedResult: FrameValue | SolError | null = null;
-  width = 248; height = 235;
+  width = 240; height = 205;
 
   static frameHints: Record<string, FrameHint> = {
     frame: { columns: [
@@ -1299,33 +1572,50 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
       { name: "Speed", type: "number", cells: [9, 6, 4] },
       { name: "Risk", type: "number", cells: [4, 8, 6] },
     ] },
+    weights: { columns: [
+      { name: "Criterion", type: "string", cells: ["Cost", "Speed", "Risk"] },
+      { name: "Weight", type: "number", cells: [-1, 2, -1] },
+      { name: "Norm", type: "string", cells: ["Rank", "÷Max", "Rank"] },
+    ] },
   };
 
-  constructor(init?: { label?: string; normalize?: DecisionNormalize; detail?: DecisionDetail; weightMap?: Record<string, number>; normMap?: Record<string, DecisionNormalize> }) {
+  constructor(init?: { label?: string; normalize?: DecisionNormalize; detail?: DecisionDetail }) {
     super("DecisionMatrix");
     this.label = init?.label ?? "Decision Matrix";
     this.normalize = init?.normalize ?? "max";
     this.detail = init?.detail ?? "summary";
-    this.weightMap = init?.weightMap ? { ...init.weightMap } : {};
-    this.normMap = init?.normMap ? { ...init.normMap } : {};
-    this.addInput("frame", frameIn("Scores"));
-    this.addInput("weights", numListIn("Weights"));
+    // Scores may be a Frame OR a Cube (its scalar columns are the criteria; list/nested
+    // columns are ignored like dates). The output is a fresh ranking frame, never adopting.
+    this.addInput("frame", cubeIn("Scores / Cube"));
+    this.addInput("weights", frameIn("Weights"));
     this.addOutput("frame", frameOut("Ranking"));
   }
+  noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
 
-  data(inputs: { frame?: (FrameValue | null)[]; weights?: (number[] | number | null)[] }) {
-    const f = inputs.frame?.[0] ?? null;
-    if (!f) { this.cachedResult = null; this.criteria = []; this.wiredWeights = null; return { frame: null }; }
-    this.criteria = decisionCriteria(f);
-    const wRaw = inputs.weights?.[0];
-    const wired = Array.isArray(wRaw) ? wRaw : typeof wRaw === "number" ? [wRaw] : null;
-    this.wiredWeights = wired;
-    // Wired list wins (positional); otherwise the inline name-keyed weights, default 1.
-    const weights = wired ?? this.criteria.map((name) => {
-      const w = this.weightMap[name];
-      return typeof w === "number" && Number.isFinite(w) ? w : 1;
-    });
-    this.cachedResult = runVerb(() => decisionMatrix(f, weights, this.normalize, this.detail === "breakdown", this.normMap));
+  /** label (string) · [criteria if breakdown] · Score · Rank: the label and Score/Rank types
+   *  are fixed; criteria mirror the input columns (deduped like the verb). */
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input) return null;
+    const label = input.columns.find((c) => c.type === "string");
+    const criteria = input.columns.filter((c) => c !== label && (c.type === "number" || c.type === "logical"));
+    if (criteria.length === 0) return null; // a runtime #VALUE!, no shape to offer
+    const cols: ShapeColumn[] = [{ name: label?.name ?? "Option", type: "string" }];
+    if (this.detail === "breakdown") for (const c of criteria) cols.push({ name: c.name, type: "number" });
+    cols.push({ name: "Score", type: "number" }, { name: "Rank", type: "number" });
+    const names = makeHeaders(cols.map((c) => c.name), cols.length);
+    return { columns: cols.map((c, i) => ({ name: names[i], type: c.type })), dynamic: input.dynamic };
+  }
+
+  data(inputs: { frame?: unknown[]; weights?: (FrameValue | null)[] }) {
+    const raw = inputs.frame?.[0] ?? null;
+    if (raw == null) { this.cachedResult = null; return { frame: null }; }
+    // A cube reads through its SCALAR columns (list/nested dropped); a frame is itself.
+    const f = isCubeValue(raw) ? cubeToScalarFrame(raw) : (isFrameValue(raw) ? raw : widenToFrame(raw));
+    // Weights and per-criterion Norm ride a criterion-keyed frame, aligned to the Scores
+    // criteria by name (orderedColumnsAreFrames); unwired → all weights 1, default normalize.
+    const { weights, normOverrides } = resolveDecisionWeights(inputs.weights?.[0] ?? null, decisionCriteria(f));
+    this.cachedResult = runVerb(() => decisionMatrix(f, weights, this.normalize, this.detail === "breakdown", normOverrides));
     return { frame: this.cachedResult };
   }
 }
@@ -1335,7 +1625,7 @@ export class DecisionMatrixNode extends ClassicPreset.Node {
 export class DecisionSensitivityNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     scores: "The options frame a Decision Matrix takes: rows are options, number columns criteria.",
-    scenarios: "One row per scenario, named by the first text column. A number column named after a criterion carries that weight; a criterion with no column weighs 1.",
+    scenarios: "The Decision Matrix weights frame widened to many scenarios: one row per Criterion, and a number column per scenario (its header names it) carrying that scenario's weight. An optional Norm column applies per criterion across every scenario; a criterion a scenario omits weighs 1.",
   };
 
   label: string;
@@ -1346,10 +1636,10 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
   static frameHints: Record<string, FrameHint> = {
     scores: DecisionMatrixNode.frameHints.frame,
     scenarios: { columns: [
-      { name: "Scenario", type: "string", cells: ["Balanced", "Cost-first", "Speed-first"] },
-      { name: "Cost", type: "number", cells: [-1, -3, -1] },
-      { name: "Speed", type: "number", cells: [1, 1, 3] },
-      { name: "Risk", type: "number", cells: [-1, -1, -1] },
+      { name: "Criterion", type: "string", cells: ["Cost", "Speed", "Risk"] },
+      { name: "Balanced", type: "number", cells: [-1, 1, -1] },
+      { name: "Cost-first", type: "number", cells: [-3, 1, -1] },
+      { name: "Speed-first", type: "number", cells: [-1, 3, -1] },
     ] },
   };
 
@@ -1369,6 +1659,399 @@ export class DecisionSensitivityNode extends ClassicPreset.Node {
     this.cachedResult = runVerb(() => decisionSensitivity(scores, scenarios, this.normalize));
     return { cube: this.cachedResult };
   }
+}
+
+// ─── BUDGET ALLOCATOR ───────────────────────────────────────────────────────────
+// `mode` is a parameter of the one verb (not an op family), picked with ArgSelect. The
+// table names each mode once (declareOnce): the card select reads it.
+export const ALLOCATE_MODE_META = {
+  budget:          { label: "Fit budget",       description: "Spend a fixed budget across the categories in proportion to their weights, held inside each range." },
+  minTarget:       { label: "Min for target",   description: "The least spend that reaches a weighted-value target, buying the most-valued categories first." },
+  minProportional: { label: "Min proportional", description: "The least spend that keeps each category in proportion to its weight while covering its floor." },
+} satisfies Record<AllocateMode, { label: string; description: string }>;
+
+export class AllocatorNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    categories: "Rows are categories. A min and a max number column set each range, whether a price, hours, or anything else you spread, the first text column names them, and a Weight or Value column says how much you value each. With no such column every category weighs the same.",
+    amount: "The budget to spend under Fit budget, or the value target to reach under Min for target. Ignored by Min proportional.",
+  };
+
+  label: string;
+  mode: AllocateMode;
+  // The budget / target typed on the card; a wired `amount` overrides it.
+  literals: Record<string, number> = { amount: 60000 };
+  cachedResult: FrameValue | SolError | null = null;
+  width = 240; height = 191;
+
+  static frameHints: Record<string, FrameHint> = {
+    categories: { columns: [
+      { name: "Category", type: "string", cells: ["Car", "Housing", "Other"] },
+      { name: "Min", type: "number", cells: [20000, 15000, 10000] },
+      { name: "Max", type: "number", cells: [50000, 45000, 40000] },
+      { name: "Weight", type: "number", cells: [1, 2, 1] },
+    ] },
+  };
+
+  constructor(init?: { label?: string; mode?: AllocateMode }) {
+    super("Allocator");
+    this.label = init?.label ?? "Allocator";
+    this.mode = init?.mode && init.mode in ALLOCATE_MODE_META ? init.mode : "budget";
+    this.addInput("categories", frameIn("Categories"));
+    this.addInput("amount", numIn("Budget / Target"));
+    this.addOutput("frame", frameOut("Allocation"));
+  }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("categories");
+    return input ? shapeOfFrameValue(allocateFrame(emptyFrameOf(input), this.mode, 0)) : null;
+  }
+
+  data(inputs: { categories?: (FrameValue | null)[]; amount?: (number | null)[] }) {
+    const f = inputs.categories?.[0] ?? null;
+    if (!f) { this.cachedResult = null; return { frame: null }; }
+    const amount = readInput(inputs.amount, this.literals.amount ?? 0) ?? 0;
+    this.cachedResult = runVerb(() => allocateFrame(f, this.mode, amount));
+    return { frame: this.cachedResult };
+  }
+}
+
+// ─── PAYOFF PLANNER (1.4 H1) ─────────────────────────────────────────────────
+// Debts (Balance · APR · Min payment) + an extra monthly amount → when each clears and what
+// it costs, paying the head debt first: avalanche (highest APR) or snowball (smallest).
+export type PayoffView = "summary" | "schedule";
+
+export const PAYOFF_ORDER_META = {
+  avalanche: { label: "Avalanche", description: "Extra goes to the highest APR first: the least interest overall." },
+  snowball:  { label: "Snowball",  description: "Extra goes to the smallest balance first: the quickest first win." },
+} satisfies Record<PayoffOrder, { label: string; description: string }>;
+
+export class PayoffPlannerNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    debts: "Rows are debts: a name, Balance, APR as 0.24 or 24, and Min, the minimum monthly payment. Balance's currency rides onto the result.",
+    extra: "The extra paid every month on top of the minimums; it moves to the next debt as each one clears.",
+    start: "The month the plan starts. Unwired, this month.",
+    frame: "Summary: Debt · Months · Interest · Payoff date. Schedule: Month · a balance column per debt.",
+  };
+
+  label: string;
+  order: PayoffOrder;
+  mode: PayoffView;
+  literals: Record<string, number> = { extra: 0 };
+  cachedResult: FrameValue | SolError | null = null;
+  width = 240; height = 220;
+
+  static frameHints: Record<string, FrameHint> = {
+    debts: { columns: [
+      { name: "Debt", type: "string", cells: ["Card", "Car", "Store"] },
+      { name: "Balance", type: "number", cells: [3000, 8000, 500] },
+      { name: "APR", type: "number", cells: [0.24, 0.06, 0.18] },
+      { name: "Min", type: "number", cells: [90, 250, 25] },
+    ] },
+  };
+
+  constructor(init?: { label?: string; order?: PayoffOrder; mode?: PayoffView }) {
+    super("PayoffPlanner");
+    this.label = init?.label ?? "Payoff Planner";
+    this.order = init?.order === "snowball" ? "snowball" : "avalanche";
+    this.mode = init?.mode === "schedule" ? "schedule" : "summary";
+    this.addInput("debts", frameIn("Debts"));
+    this.addInput("extra", numIn("Extra per month"));
+    this.addInput("start", dateIn("Start"));
+    this.addOutput("frame", frameOut("Plan"));
+  }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("debts");
+    if (!input) return null;
+    if (this.mode === "summary") {
+      const name = input.columns.find((c) => c.type === "string")?.name ?? "Debt";
+      return { columns: [{ name, type: "string" }, { name: "Months", type: "number" }, { name: "Interest", type: "number" }, { name: "Payoff date", type: "date" }] };
+    }
+    return null; // a balance column per debt — the count is the frame's row count
+  }
+
+  data(inputs: { debts?: (FrameValue | null)[]; extra?: (number | null)[]; start?: (number | null)[] }) {
+    const f = inputs.debts?.[0] ?? null;
+    if (!f) { this.cachedResult = null; return { frame: null }; }
+    const extra = readInput(inputs.extra, this.literals.extra ?? 0) ?? 0;
+    const start = inputs.start ? inputs.start[0] : localMonthStartSerial();
+    this.cachedResult = runVerb(() => payoffFrame(f, extra, this.order, this.mode, start));
+    return { frame: this.cachedResult };
+  }
+}
+
+function localMonthStartSerial(): number {
+  const d = new Date();
+  return Date.UTC(d.getFullYear(), d.getMonth(), 1) / 86400000 + 25569;
+}
+
+/** The serial `months` calendar months after `start` (same day-of-month, JS rollover). */
+function addMonthsSerial(start: number, months: number): number {
+  const d = new Date(Math.round((start - 25569) * 86400000));
+  d.setUTCMonth(d.getUTCMonth() + months);
+  return Math.floor(d.getTime() / 86400000 + 25569);
+}
+
+/** The frame half of the Payoff Planner: read the debts, run the plan, shape the view. */
+export function payoffFrame(f: FrameValue, extra: number, order: PayoffOrder, view: PayoffView, start: number | null): FrameValue {
+  const byName = (...names: string[]) => { const set = new Set(names); return f.columns.find((c) => set.has(c.name.trim().toLowerCase())); };
+  const nameCol = f.columns.find((c) => c.type === "string");
+  const nums = f.columns.filter((c) => c.type === "number");
+  const balCol = byName("balance", "owed", "principal") ?? nums[0];
+  const aprCol = byName("apr", "rate", "interest") ?? nums.filter((c) => c !== balCol)[0];
+  const minCol = byName("min", "minimum", "min payment", "payment") ?? nums.filter((c) => c !== balCol && c !== aprCol)[0];
+  if (!balCol || !aprCol || !minCol) throw solError("#VALUE!", "Payoff Planner needs Balance, APR and Min payment number columns");
+  const rows = frameRowCount(f);
+  const num = (col: FrameColumn, i: number, what: string): number => {
+    const v = col.values[i];
+    if (isSolError(v)) throw v;
+    if (v == null) return 0;
+    if (typeof v !== "number" || !Number.isFinite(v)) throw solError("#VALUE!", `Payoff Planner: every ${what} must be a number`);
+    return v;
+  };
+  const debts = Array.from({ length: rows }, (_, i) => ({
+    name: String(nameCol?.values[i] ?? `Debt ${i + 1}`),
+    balance: num(balCol, i, "balance"), apr: num(aprCol, i, "APR"), min: num(minCol, i, "minimum payment"),
+  }));
+  let plan;
+  try { plan = payoffPlan(debts, extra, order); }
+  catch (e) { throw solError("#VALUE!", `Payoff Planner: ${e instanceof Error ? e.message : String(e)}`); }
+  const money = { ...(balCol.unit ? { unit: balCol.unit } : {}), ...(balCol.format ? { format: balCol.format } : {}) };
+  if (view === "schedule") {
+    const months = plan.schedule.length;
+    return { __frame: true, columns: [
+      { name: "Month", type: "number", values: Array.from({ length: months }, (_, m) => m) },
+      ...debts.map((d, j) => ({ name: d.name, type: "number" as const, values: plan.schedule.map((row) => row[j]), ...money })),
+    ] };
+  }
+  return { __frame: true, columns: [
+    { name: nameCol?.name ?? "Debt", type: "string", values: debts.map((d) => d.name) },
+    { name: "Months", type: "number", values: plan.perDebt.map((d) => d.months) },
+    { name: "Interest", type: "number", values: plan.perDebt.map((d) => d.interest), ...money },
+    { name: "Payoff date", type: "date", values: plan.perDebt.map((d) => (start == null ? null : addMonthsSerial(start, d.months))) },
+  ] };
+}
+
+// ─── GROUP COST SETTLE (1.4 H3) ──────────────────────────────────────────────
+// People paid uneven amounts; the minimum set of transfers that squares everyone up.
+// TWO modes: `totals` reads a people frame (Paid total + optional Share weight); `transactions`
+// reads a CUBE ledger — one row per expense, split equally among a nested list of beneficiaries
+// (author 2026-09-08). `split` is the totals-mode weighting; transactions is equal-split only.
+export type SettleSplit = "equal" | "weighted";
+export type SettleMode = "totals" | "transactions";
+
+export class SettleNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    in: "The group's data. Totals: one row per person with Paid and an optional Share weight, blank counting as 1. Transactions: a ledger cube, one expense per row with Amount, Paid by and For, where a blank For means the whole group.",
+    transfers: "The settle-up, and the node's main output: who pays whom in the fewest transfers, From · To · Amount. Amounts carry the Amount column's currency.",
+    net: "Each person's true cost: Paid, Owes (still due to the group), Owed (coming back from it) and Net, their fair share.",
+  };
+
+  label: string;
+  mode: SettleMode;
+  split: SettleSplit;
+  /** Reads per-cell currency off the Amount column in transactions mode (settleLedgerCube). */
+  unitAware = true;
+  cachedResult: FrameValue | SolError | null = null;
+  cachedNet: FrameValue | SolError | null = null;
+  width = 240; height = 220;
+
+  static frameHints: Record<string, FrameHint> = {
+    in: { columns: [
+      { name: "Person", type: "string", cells: ["Ada", "Bo", "Cy"] },
+      { name: "Paid", type: "number", cells: [300, 100, 0] },
+      { name: "Share", type: "number", cells: [1, 1, 2] },
+    ] },
+  };
+
+  constructor(init?: { label?: string; mode?: SettleMode; split?: SettleSplit }) {
+    super("Settle");
+    this.label = init?.label ?? "Group Cost Settle";
+    this.mode = init?.mode === "transactions" ? "transactions" : "totals";
+    this.split = init?.split === "weighted" ? "weighted" : "equal";
+    this.addInput("in", this.inputPort());
+    this.addOutput("transfers", frameOut("Transfers"));
+    this.addOutput("net", frameOut("Net"));
+  }
+
+  private inputPort() {
+    return this.mode === "transactions" ? cubeIn("Ledger") : frameIn("People");
+  }
+
+  /** True while the "in" cable is a ghost (a mode-change left it type-incompatible, awaiting
+   *  a one-click reconnect) — its value must not feed compute. */
+  private inGhosted(): boolean {
+    const c = getOwningEditor(this.id)?.getConnections().find((c) => c.target === this.id && c.targetInput === "in");
+    return !!c && cableGhostStore.isGhost(c.id);
+  }
+
+  /** Retype the SINGLE input socket in place (People frame ↔ Ledger cube) on a mode
+   *  change — the key stays "in", so a wired cable survives the swap. The component then
+   *  ghosts a now-incompatible cable rather than dropping it (one-click reconnect). Outputs
+   *  are the same two frames in both modes, so no output retype. */
+  setMode(next: SettleMode): void {
+    if (next === this.mode) return;
+    this.mode = next;
+    const input = this.inputs.in;
+    if (!input) return;
+    const port = this.inputPort();
+    input.socket = port.socket;
+    input.label = port.label;
+  }
+
+  frameShape(outKey: string, ctx: FrameShapeContext): Shape | null {
+    if (outKey === "transfers") return { columns: [{ name: "From", type: "string" }, { name: "To", type: "string" }, { name: "Amount", type: "number" }] };
+    // net: the person column takes the input's name in totals mode, else "Person".
+    const name = this.mode === "totals"
+      ? (ctx.inputShape("in")?.columns.find((c) => c.type === "string")?.name ?? "Person")
+      : "Person";
+    return { columns: [{ name, type: "string" }, { name: "Paid", type: "number" }, { name: "Owes", type: "number" }, { name: "Owed", type: "number" }, { name: "Net", type: "number" }] };
+  }
+
+  data(inputs: { in?: (FrameValue | CubeValue | null)[] }) {
+    const none = () => { this.cachedResult = null; this.cachedNet = null; return { transfers: null, net: null }; };
+    const emit = (r: { transfers: FrameValue; net: FrameValue } | SolError) => {
+      if (isSolError(r)) { this.cachedResult = r; this.cachedNet = r; return { transfers: r, net: r }; }
+      this.cachedResult = r.transfers; this.cachedNet = r.net;
+      return { transfers: r.transfers, net: r.net };
+    };
+    // A GHOSTED input cable (its source no longer fits the retyped socket after a mode
+    // change) does not feed: show empty, not a #VALUE! from coercing the wrong type.
+    const raw = this.inGhosted() ? null : (inputs.in?.[0] ?? null);
+    if (this.mode === "transactions") {
+      const cube = isCubeValue(raw) ? raw : isFrameValue(raw) ? frameToCube(raw) : null;
+      if (!cube) return none();
+      return emit(runVerb(() => settleLedgerCube(cube)));
+    }
+    const f = isFrameValue(raw) ? raw : isCubeValue(raw) ? cubeToScalarFrame(raw) : null;
+    if (!f) return none();
+    return emit(runVerb(() => settleFrame(f, this.split)));
+  }
+}
+
+/** The transactions half of Group Cost Settle: read the expense cube into an equal-split
+ *  ledger, run settleLedger, shape the two frames. Amount's currency rides onto the outputs. */
+export function settleLedgerCube(cube: CubeValue): { transfers: FrameValue; net: FrameValue } {
+  const norm = (s: string) => s.trim().toLowerCase();
+  const col = (...names: string[]) => { const set = new Set(names); return cube.columns.find((c) => set.has(norm(c.name))); };
+  const amountCol = col("amount", "cost", "total", "price", "spend");
+  const payerCol = col("paid by", "paidby", "payer", "paid", "by", "who paid", "from");
+  const forCol = col("for", "split", "split between", "participants", "shared", "shared by", "shared with", "with", "beneficiaries", "owed by");
+  if (!amountCol) throw solError("#VALUE!", "Group Cost Settle (Transactions) needs an Amount column");
+  if (!payerCol) throw solError("#VALUE!", "Group Cost Settle (Transactions) needs a Paid by column");
+
+  // A cell's names: a list cell → its entries; a scalar → itself; a comma string → its parts.
+  // "ada" and "Ada" are one person: the first spelling seen is the display name.
+  const canon = new Map<string, string>();
+  const person = (raw: string): string => { const k = norm(raw); const seen = canon.get(k); if (seen) return seen; canon.set(k, raw.trim()); return raw.trim(); };
+  const namesOf = (cell: CubeCell | undefined): string[] => {
+    if (cell == null) return [];
+    if (Array.isArray(cell)) return cell.flatMap(namesOf);
+    if (isUnitCell(cell) || isFrameValue(cell) || isCubeValue(cell)) return [];
+    return String(cell).split(/\s*,\s*/).map((x) => x.trim()).filter(Boolean).map(person);
+  };
+  const amountOf = (cell: CubeCell | undefined): number => {
+    if (isUnitCell(cell)) return Number.isFinite(cell.value) ? cell.value : 0;
+    if (typeof cell === "number") return Number.isFinite(cell) ? cell : 0;
+    if (typeof cell === "string") { const n = Number(cell.replace(/[,$£€\s]/g, "")); return Number.isFinite(n) ? n : 0; }
+    return 0;
+  };
+
+  const rows = cubeRowCount(cube);
+  const expenses: Expense[] = [];
+  for (let i = 0; i < rows; i++) {
+    const amount = amountOf(amountCol.cells[i]);
+    const payers = namesOf(payerCol.cells[i]);
+    // A refund is a negative row and settles like any other; only a payerless row can't be placed.
+    if (payers.length === 0) continue;
+    const named = forCol ? namesOf(forCol.cells[i]) : [];
+    expenses.push({ amount, payers, beneficiaries: named.length ? named : null }); // blank For = the whole group
+  }
+  const r = settleLedger(expenses);
+  // Carry the Amount column's currency (a per-cell UnitCell) onto the money columns.
+  const unit = ledgerMoney(amountCol.cells);
+  const money = unit ? { unit } : {};
+  return {
+    transfers: { __frame: true, columns: [
+      { name: "From", type: "string", values: r.transfers.map((t) => t.from) },
+      { name: "To", type: "string", values: r.transfers.map((t) => t.to) },
+      { name: "Amount", type: "number", values: r.transfers.map((t) => t.amount), ...money },
+    ] },
+    net: settleNetFrame(r.people, r.paid, r.shares, money),
+  };
+}
+
+const r2 = (x: number) => Math.round(x * 100) / 100;
+
+/** The Net table: Paid (fronted, external) + Owes (still owed to the group, +) + Owed (coming
+ *  back from the group, −) = Net, which is each person's fair share (their true cost). A
+ *  creditor's balance comes back as Owed; a debtor's is paid out as Owes; one is always 0. In
+ *  equal-split totals every Net matches. */
+function settleNetFrame(
+  names: string[], paidRaw: readonly number[], sharesRaw: readonly number[],
+  money: Partial<Pick<FrameColumn, "unit" | "format">>, personLabel = "Person",
+): FrameValue {
+  const paid = paidRaw.map(r2);
+  const net = sharesRaw.map(r2); // Net = the fair share / true cost
+  const owes: number[] = [];
+  const owed: number[] = [];
+  net.forEach((n, i) => {
+    const diff = r2(n - paid[i]); // Net − Paid: > 0 you still owe out, < 0 it comes back
+    owes.push(diff > 0 ? diff : 0);
+    owed.push(diff < 0 ? diff : 0);
+  });
+  return { __frame: true, columns: [
+    { name: personLabel, type: "string", values: names },
+    { name: "Paid", type: "number", values: paid, ...money },
+    { name: "Owes", type: "number", values: owes, ...money },
+    { name: "Owed", type: "number", values: owed, ...money },
+    { name: "Net", type: "number", values: net, ...money },
+  ] };
+}
+
+/** The currency of an Amount column when its cells carry a per-cell unit (a UnitCell) — the
+ *  first one wins; a mixed-currency ledger is out of scope. */
+function ledgerMoney(cells: CubeCell[]): ColumnUnit | undefined {
+  for (const c of cells) if (isUnitCell(c)) return c.display ? { dim: c.dim, display: c.display } : { dim: c.dim };
+  return undefined;
+}
+
+/** The frame half of Group Cost Settle: read the people rows, run settleGroup, shape the
+ *  two frames. Paid's unit and format ride onto Amount / Paid / Net (unit-honest). */
+export function settleFrame(f: FrameValue, split: SettleSplit): { transfers: FrameValue; net: FrameValue } {
+  const byName = (...names: string[]) => { const set = new Set(names); return f.columns.find((c) => set.has(c.name.trim().toLowerCase())); };
+  const nameCol = f.columns.find((c) => c.type === "string");
+  const nums = f.columns.filter((c) => c.type === "number");
+  const shareCol = byName("share", "weight", "shares");
+  const paidCol = byName("paid", "amount", "spent") ?? nums.find((c) => c !== shareCol);
+  if (!paidCol) throw solError("#VALUE!", "Group Cost Settle needs a Paid number column");
+  const rows = frameRowCount(f);
+  // One person per name (trimmed, case-insensitive; first spelling shown): two rows for "Ada"
+  // sum their Paid and Share instead of settling Ada against herself.
+  const people: { name: string; paid: number; share: number | null }[] = [];
+  const at = new Map<string, number>();
+  for (let i = 0; i < rows; i++) {
+    const paid = paidCol.values[i];
+    if (isSolError(paid)) throw paid;
+    const share = shareCol ? shareCol.values[i] : null;
+    const raw = String(nameCol?.values[i] ?? `Person ${i + 1}`).trim() || `Person ${i + 1}`;
+    const p = typeof paid === "number" && Number.isFinite(paid) ? paid : 0;
+    const s = typeof share === "number" && Number.isFinite(share) ? share : null;
+    const key = raw.toLowerCase();
+    const j = at.get(key);
+    if (j === undefined) { at.set(key, people.length); people.push({ name: raw, paid: p, share: s }); }
+    else { people[j].paid += p; if (s !== null) people[j].share = (people[j].share ?? 0) + s; }
+  }
+  const r = settleGroup(people, { weighted: split === "weighted" && !!shareCol });
+  const money = { ...(paidCol.unit ? { unit: paidCol.unit } : {}), ...(paidCol.format ? { format: paidCol.format } : {}) };
+  return {
+    transfers: { __frame: true, columns: [
+      { name: "From", type: "string", values: r.transfers.map((t) => t.from) },
+      { name: "To", type: "string", values: r.transfers.map((t) => t.to) },
+      { name: "Amount", type: "number", values: r.transfers.map((t) => t.amount), ...money },
+    ] },
+    net: settleNetFrame(people.map((p) => p.name), people.map((p) => p.paid), r.shares, money, nameCol?.name ?? "Person"),
+  };
 }
 
 // ─── RECONCILE ───────────────────────────────────────────────────────────────
@@ -1395,6 +2078,16 @@ export class ReconcileNode extends ClassicPreset.Node {
     this.addInput("qtyColumn", strIn("Qty column"));
     this.addOutput("frame", frameOut("Reconciliation"));
     this.addOutput("summary", strOut("Summary"));
+  }
+
+  frameShape(outKey: string, ctx: FrameShapeContext): Shape | null {
+    if (outKey !== "frame") return null;
+    const left = ctx.inputShape("left");
+    const right = ctx.inputShape("right");
+    const key = (this.stringLiterals.key ?? "").trim();
+    if (!left || !right || !key || ctx.wired("key")) return null;
+    // The price/qty columns drive the summary, never the column set.
+    return shapeOfFrameValue(reconcileFrames(emptyFrameOf(left), emptyFrameOf(right), { leftKey: key, rightKey: key }).frame);
   }
 
   data(inputs: {
@@ -1549,6 +2242,23 @@ export class FrameFromListsNode extends ClassicPreset.Node {
     delete this.stringLiterals[`name${id}`];
   }
 
+  /** One column per WIRED row, typed by the port's adopted family — an untyped port infers
+   *  from the values at run time, which is no static answer. */
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const cols: ShapeColumn[] = [];
+    for (const [nameKey, valsKey] of this.valuePairKeys()) {
+      if (!ctx.wired(valsKey)) continue;
+      if (ctx.wired(nameKey)) return null;
+      const sock = this.inputs[valsKey]?.socket;
+      const known = colTypeForSocket(sock instanceof SolenoidSocket ? sock.dataType : undefined);
+      if (!known) return null;
+      cols.push({ name: (this.stringLiterals[nameKey] ?? "").trim(), type: known });
+    }
+    if (cols.length === 0) return null;
+    const names = makeHeaders(cols.map((c) => c.name), cols.length);
+    return { columns: cols.map((c, i) => ({ name: names[i], type: c.type })) };
+  }
+
   data(inputs: Record<string, unknown[]>) {
     const cols: { name: string; cells: unknown[]; known: FrameColType | null }[] = [];
     const sig: unknown[] = [];
@@ -1677,6 +2387,7 @@ export class GetColumnNode extends ClassicPreset.Node {
   label: string;
   readAs: GetColumnReadAs;
   cachedResult: (number | UnitCell | null | SolError)[] | string[] | (boolean | null | SolError)[] | null = null;
+  noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   stringLiterals: Record<string, string> = { name: "" };
   width = 200; height = 205;
 
@@ -1684,27 +2395,47 @@ export class GetColumnNode extends ClassicPreset.Node {
     super("GetColumn");
     this.label = init?.label ?? "Get Column";
     this.readAs = init?.readAs ?? "number";
-    this.addInput("frame", frameIn("Frame"));
+    // A Frame OR a Cube: Get Column reads one SCALAR column off either (a cube's list
+    // column → #SHAPE! in data()). The output is a list, so it never adopts.
+    this.addInput("frame", cubeIn("Table / Cube"));
     this.addInput("name", strIn("Column"));
     this.addOutput("values", getColumnOutput(this.readAs));
   }
 
-  data(inputs: { frame?: (FrameInput | null)[]; name?: string[] }): { values: GetColumnValues } {
+  columnPickers(): ColumnPickerSpec[] { return [{ key: "name", frameInput: "frame" }]; }
+
+  data(inputs: { frame?: unknown[]; name?: string[] }): { values: GetColumnValues } {
     const f = inputs.frame?.[0] ?? null;
     const name = readInput(inputs.name, this.stringLiterals.name ?? "");
     // A wired blank names no column — unknown (value-semantics.md, "Reading an input").
     if (!f || name === null || name.trim() === "") { this.cachedResult = null; return { values: null }; }
+    // A cube: read the named SCALAR column (missing → null, like a frame; a list or
+    // sub-table column → #SHAPE!). inferColumn types the cells and recovers per-cell units.
+    if (isCubeValue(f)) {
+      const cc = f.columns.find((c) => c.name === name);
+      if (!cc) { this.cachedResult = null; return { values: null }; }
+      for (const cell of cc.cells) {
+        if (Array.isArray(cell) || isFrameValue(cell) || isCubeValue(cell)) {
+          this.cachedResult = null;
+          return { values: solError("#SHAPE!", `"${name}" has list or table cells; Get Column reads a scalar column`) };
+        }
+      }
+      return { values: this.readColumn(inferColumn(name, cc.cells)) };
+    }
+    // A Frame / FrameRef stays as-is; a bare list/scalar widens to a 1-row frame (the old
+    // frameIn coercion).
+    const fr: FrameInput = isFrameValue(f) || isFrameRef(f) ? f : widenToFrame(f);
     // A LAZY upstream fetches the ONE column instead of forcing a full-frame collect; the
     // engine awaits a promise-returning data(), and the cast keeps the sync signature.
-    if (isFrameRef(f)) {
+    if (isFrameRef(fr)) {
       return (async () => {
-        const col = await materialize((async () => frameBackend().column(await flushRef(f), name))());
+        const col = await materialize((async () => frameBackend().column(await flushRef(fr), name))());
         if (isSolError(col)) { this.cachedResult = null; return { values: col }; }
         if (!col) { this.cachedResult = null; return { values: null }; }
         return { values: this.readColumn(col) };
       })() as unknown as { values: GetColumnValues };
     }
-    const col = getColumn(f, name);
+    const col = getColumn(fr, name);
     if (!col) { this.cachedResult = null; return { values: null }; }
     return { values: this.readColumn(col) };
   }
@@ -1757,6 +2488,11 @@ export class GetColumnNode extends ClassicPreset.Node {
 
 export type AddColumnAddAs = "number" | "text" | "date" | "logical";
 
+/** The frame column type an add-as choice writes. */
+export function colTypeForAddAs(addAs: AddColumnAddAs): FrameColType {
+  return addAs === "text" ? "string" : addAs;
+}
+
 /** Values input port for an add-as choice. */
 export function addColumnInput(addAs: AddColumnAddAs) {
   return addAs === "text" ? strListIn("Values")
@@ -1768,7 +2504,10 @@ export function addColumnInput(addAs: AddColumnAddAs) {
 export class AddColumnNode extends ClassicPreset.Node {
   label: string;
   addAs: AddColumnAddAs;
-  cachedResult: FrameValue | null = null;
+  cachedResult: FrameValue | CubeValue | null = null;
+  // A′: the table port is cube-adoptive but keeps the cube un-widened, so a cube arrives AS
+  // a cube and the new column appends per row with the nested cells riding by reference.
+  noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   stringLiterals: Record<string, string> = { name: "" };
   width = 200; height = 235;
 
@@ -1776,25 +2515,42 @@ export class AddColumnNode extends ClassicPreset.Node {
     super("AddColumn");
     this.label = init?.label ?? "Add Column";
     this.addAs = init?.addAs ?? "number";
-    this.addInput("frame", frameIn("Frame"));
+    this.addInput("frame", cubeAdoptIn("Table / Cube"));
     this.addInput("name", strIn("Name"));
     this.addInput("values", addColumnInput(this.addAs));
-    this.addOutput("frame", frameOut("Frame"));
+    this.addOutput("frame", tableAdoptOut("Frame"));
   }
 
-  data(inputs: { frame?: (FrameValue | null)[]; values?: FrameCell[][]; name?: string[] }) {
-    const f = inputs.frame?.[0] ?? null;
+  // Rank-adopts the table (cube in → cube out); the ADDED column is declared in frameShape,
+  // which wins over this passthrough in the shape resolver (like Computed Column).
+  passthrough(): PassthroughSpec[] { return [{ output: "frame", inputs: ["frame"], combine: "single" }]; }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame"); // null for a cube — the shape rides the passthrough
+    if (!input || ctx.wired("name")) return null;
+    const name = (this.stringLiterals.name ?? "").trim() || "Col";
+    return shapeOfFrameValue(addColumn(emptyFrameOf(input), name, [], colTypeForAddAs(this.addAs)));
+  }
+
+  data(inputs: { frame?: unknown[]; values?: FrameCell[][]; name?: string[] }) {
+    const rawF = inputs.frame?.[0] ?? null;
+    const isCube = isCubeValue(rawF);
+    // A bare list/matrix widens like the old frameIn (Computed Column does the same).
+    const f: FrameValue | null = rawF == null ? null : isCube ? null : (isFrameValue(rawF) ? rawF : widenToFrame(rawF));
     const values = inputs.values?.[0] ?? null;
     const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");
     // A wired blank name is unknown (value-semantics.md, "Reading an input").
-    if (!f || !values || nameRaw === null) { this.cachedResult = null; return { frame: null }; }
+    if ((!f && !isCube) || !values || nameRaw === null) { this.cachedResult = null; return { frame: null }; }
     const name = nameRaw.trim() || "Col";
-    // Pad the new column to the frame's row count so columns stay aligned.
-    const rows = Math.max(frameRowCount(f), values.length);
-    const padded: FrameCell[] = Array.from({ length: rows }, (_, i) =>
-      i < values.length ? values[i] : null,
-    );
-    this.cachedResult = addColumn(f, name, padded, this.addAs === "text" ? "string" : this.addAs === "date" ? "date" : this.addAs === "logical" ? "logical" : "number");
+    const colType = colTypeForAddAs(this.addAs);
+    // Pad the new column to the table's row count so columns stay aligned.
+    const rows = Math.max(isCube ? cubeRowCount(rawF as CubeValue) : frameRowCount(f!), values.length);
+    const padded: FrameCell[] = Array.from({ length: rows }, (_, i) => (i < values.length ? values[i] : null));
+    // A cube: append the column onto the ORIGINAL cube so its nested columns ride by
+    // reference (A′). A frame stays a frame.
+    this.cachedResult = isCube
+      ? cubeWithColumn(rawF as CubeValue, name, padded, colType, "")
+      : addColumn(f!, name, padded, colType);
     return { frame: this.cachedResult };
   }
 }
@@ -1814,7 +2570,8 @@ export class ComputedColumnNode extends ClassicPreset.Node {
   label: string;
   expr: string;
   addAs: ComputedColumnAs;
-  cachedResult: FrameValue | SolError | null = null;
+  cachedResult: FrameValue | CubeValue | SolError | null = null;
+  noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   stringLiterals: Record<string, string> = { name: "computed", after: "" };
   /** Inline defaults for the side-input sockets (Expression convention: 0). */
   literals: Record<string, number> = {};
@@ -1844,13 +2601,18 @@ export class ComputedColumnNode extends ClassicPreset.Node {
       this.sideVars = init.sideVars.filter((v) => typeof v === "string");
       for (const v of this.sideVars) this.addInput(v, anyDataIn(v));
     }
-    this.addInput("frame", frameIn("Frame"));
+    this.addInput("frame", cubeAdoptIn("Table / Cube"));
     this.addInput("name", strIn("Name"));
     // Blank = append; a column name = insert after it. A replaced column keeps its position.
     this.addInput("after", strIn("After"));
     this.addInput("fn", lambdaIn("λ"));
-    this.addOutput("frame", frameOut("Frame"));
+    this.addOutput("frame", tableAdoptOut("Frame"));
   }
+
+  // Rank-adopts the table input (cube in → cube out, frame in → frame out); the new column
+  // it ADDS is declared in frameShape (which wins over this passthrough in the shape
+  // resolver, A′), so downstream still sees the new column on the frame path.
+  passthrough(): PassthroughSpec[] { return [{ output: "frame", inputs: ["frame"], combine: "single" }]; }
 
   /** Grow/shrink the side-input sockets to match `needed`; driven by the FRAME SCHEMA, so
    *  it must reconcile from data() via a microtask, and cables on a removed socket drop. */
@@ -1871,13 +2633,37 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     });
   }
 
-  data(inputs: { frame?: (FrameValue | null)[]; name?: string[]; after?: string[]; fn?: unknown[] } & Record<string, unknown[] | undefined>) {
-    const f = inputs.frame?.[0] ?? null;
+  /** Static only when the type is DECLARED — `auto` infers it from the computed cells. */
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input) return null;
+    if (!ctx.wired("fn") && !this.expr.trim()) return input; // nothing defined yet — a passthrough
+    if (this.addAs === "auto" || ctx.wired("name") || ctx.wired("after")) return null;
+    const name = (this.stringLiterals.name ?? "").trim() || "computed";
+    const after = (this.stringLiterals.after ?? "").trim();
+    const result = addColumn(emptyFrameOf(input), name, [], colTypeForAddAs(this.addAs));
+    const replacing = result.columns.length === input.columns.length;
+    if (!after || replacing) return shapeOfFrameValue(result);
+    const anchorIdx = result.columns.findIndex((c) => c.name === after);
+    if (anchorIdx < 0) throw solError("#REF!", `No column "${after}" to place after`);
+    const cols = [...result.columns];
+    cols.splice(anchorIdx + 1, 0, cols.pop()!);
+    return shapeOfFrameValue({ __frame: true, columns: cols });
+  }
+
+  data(inputs: { frame?: unknown[]; name?: string[]; after?: string[]; fn?: unknown[] } & Record<string, unknown[] | undefined>) {
+    // A cube reads its SCALAR columns for the formula (a list/nested cell is opaque →
+    // #SHAPE! if referenced), then the new column is appended back onto the CUBE with the
+    // nested columns riding by reference (A′). A frame stays a frame; a bare list/matrix
+    // widens like the old frameIn.
+    const rawF = inputs.frame?.[0] ?? null;
+    const isCube = isCubeValue(rawF);
+    const f: FrameValue | null = rawF == null ? null : isCube ? cubeToExprFrame(rawF) : (isFrameValue(rawF) ? rawF : widenToFrame(rawF));
     const nameRaw = readInput(inputs.name, this.stringLiterals.name ?? "");
     const afterRaw = readInput(inputs.after, this.stringLiterals.after ?? "");
     const lam = inputs.fn?.[0];
-    const out = (frame: FrameValue | SolError | null) => { this.cachedResult = frame; return { frame }; };
-    this.sourceColumns = f ? f.columns.map((c) => c.name) : [];
+    const out = (frame: FrameValue | CubeValue | SolError | null) => { this.cachedResult = frame; return { frame }; };
+    this.sourceColumns = isCube ? rawF.columns.map((c) => c.name) : (f ? f.columns.map((c) => c.name) : []);
     if (!f || nameRaw === null) { this.defVars = []; this._reconcileSideSockets([]); return out(null); }
     const name = nameRaw.trim() || "computed";
     const after = (afterRaw ?? "").trim();
@@ -1891,7 +2677,7 @@ export class ComputedColumnNode extends ClassicPreset.Node {
         this._rowRefs = this._evaluator ? rowRefNames(this.expr) : [];
         this._compiledFor = this.expr;
       }
-      if (!this.expr.trim()) { this.defVars = []; this._reconcileSideSockets([]); return out(f); } // nothing defined yet
+      if (!this.expr.trim()) { this.defVars = []; this._reconcileSideSockets([]); return out(isCube ? rawF : f); } // nothing defined yet
       if (!this._evaluator) { this.defVars = []; this._reconcileSideSockets([]); return out(solError("#VALUE!", "The formula does not parse")); }
     }
 
@@ -1902,14 +2688,14 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     const k = this._lastKey;
     if (
       this.cachedResult && !isSolError(this.cachedResult) && k &&
-      Object.is(k.f, f) && Object.is(k.lam, wired) && k.expr === this.expr && k.addAs === this.addAs &&
+      Object.is(k.f, rawF) && Object.is(k.lam, wired) && k.expr === this.expr && k.addAs === this.addAs &&
       k.name === name && k.after === after && k.bindings === bindJson &&
       k.sideVals.length === sideVals.length && k.sideVals.every((v, i) => Object.is(v, sideVals[i]))
     ) {
       return { frame: this.cachedResult };
     }
-    const remember = (frame: FrameValue) => {
-      this._lastKey = { f, lam: wired, expr: this.expr, addAs: this.addAs, name, after, bindings: bindJson, sideVals };
+    const remember = (frame: FrameValue | CubeValue) => {
+      this._lastKey = { f: rawF, lam: wired, expr: this.expr, addAs: this.addAs, name, after, bindings: bindJson, sideVals };
       return out(frame);
     };
 
@@ -1935,7 +2721,14 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     const values = computed.cells;
     const colType: FrameColType = this.addAs === "auto"
       ? inferColumn(name, values).type
-      : this.addAs === "text" ? "string" : this.addAs;
+      : colTypeForAddAs(this.addAs);
+
+    // A cube: append (or replace) the computed column back onto the ORIGINAL cube, so its
+    // list/nested columns ride through by reference; the placement follows `after`.
+    if (isCube) {
+      const cubeOut = runVerb(() => cubeWithColumn(rawF as CubeValue, name, values, colType, after));
+      return isSolError(cubeOut) ? out(cubeOut) : remember(cubeOut);
+    }
 
     // Replacement is detected by the column COUNT — exact, and avoids a second copy of
     // addColumn's `Name (unit)` header parsing.
@@ -1952,9 +2745,10 @@ export class ComputedColumnNode extends ClassicPreset.Node {
     return remember(result);
   }
 
-  /** What the last successful frame was built from (identity memo). */
+  /** What the last successful frame was built from (identity memo; `f` is the RAW table
+   *  input — a Frame or a Cube — keyed by identity). */
   private _lastKey: {
-    f: FrameValue; lam: unknown; expr: string; addAs: ComputedColumnAs;
+    f: unknown; lam: unknown; expr: string; addAs: ComputedColumnAs;
     name: string; after: string; bindings: string; sideVals: unknown[];
   } | null = null;
 }
@@ -1963,7 +2757,8 @@ export class ComputedColumnNode extends ClassicPreset.Node {
 
 export class GetRowNode extends ClassicPreset.Node {
   label: string;
-  cachedResult: FrameValue | null = null;
+  cachedResult: FrameValue | CubeValue | null = null;
+  noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
   literals: Record<string, number> = { index: 1 };
   width = 200; height = 175;
 
@@ -1971,17 +2766,28 @@ export class GetRowNode extends ClassicPreset.Node {
     super("GetRow");
     this.label = init?.label ?? "Get Row";
     if (init?.index !== undefined) this.literals.index = init.index;
-    this.addInput("frame", frameIn("Frame"));
+    this.addInput("frame", cubeAdoptIn("Table / Cube"));
     this.addInput("index", numIn("Row"));
-    this.addOutput("frame", frameOut("Row"));
+    this.addOutput("frame", tableAdoptOut("Row"));
   }
 
-  data(inputs: { frame?: (FrameValue | null)[]; index?: number[] }) {
-    const f = inputs.frame?.[0] ?? null;
+  passthrough(): PassthroughSpec[] { return [{ output: "frame", inputs: ["frame"], combine: "single" }]; }
+
+  data(inputs: { frame?: unknown[]; index?: number[] }) {
+    const raw = inputs.frame?.[0] ?? null;
     const idx1 = readInput(inputs.index, this.literals.index ?? 1);
     // A wired blank index picks no row — unknown (value-semantics.md, "Reading an input").
-    if (!f || idx1 === null) { this.cachedResult = null; return { frame: null }; }
+    if (raw == null || idx1 === null) { this.cachedResult = null; return { frame: null }; }
     const i = Math.round(idx1) - 1; // 1-based row number → 0-based index
+    // A cube keeps the whole row (nested cells ride along); Polars never sees it.
+    if (isCubeValue(raw)) {
+      if (i < 0 || i >= cubeRowCount(raw)) { this.cachedResult = null; return { frame: null }; }
+      const r = selectCubeRows(raw, [i]);
+      this.cachedResult = r;
+      return { frame: r };
+    }
+    // A bare matrix/list/scalar widens to a frame (the old frameIn behavior).
+    const f = isFrameValue(raw) ? raw : widenToFrame(raw);
     if (i < 0 || i >= frameRowCount(f)) { this.cachedResult = null; return { frame: null }; }
     const columns: FrameColumn[] = f.columns.map((c) => ({
       ...c, values: [c.values[i] ?? null], raw: c.raw ? [c.raw[i] ?? ""] : undefined, // keep the source for the picked row
@@ -2103,6 +2909,11 @@ export class DescribeNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Summary"));
   }
 
+  /** The profile's own columns are fixed: one output ROW per input column. */
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    return ctx.wired("frame") ? shapeOfFrameValue(describeFrame(emptyFrameOf({ columns: [] }))) : null;
+  }
+
   data(inputs: { frame?: (FrameValue | null)[] }) {
     const f = inputs.frame?.[0] ?? null;
     if (!f) { this.cachedResult = null; return { frame: null }; }
@@ -2134,6 +2945,11 @@ export class CorrMatrixNode extends ClassicPreset.Node {
     if (init?.method) this.method = init.method;
     this.addInput("frame", frameIn("Frame"));
     this.addOutput("frame", frameOut("Matrix"));
+  }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    return input ? shapeOfFrameValue(correlationMatrix(emptyFrameOf(input), this.method)) : null;
   }
 
   data(inputs: { frame?: (FrameValue | null)[] }) {
@@ -2360,7 +3176,7 @@ export class WindowNode extends ClassicPreset.Node {
     super("Window");
     this.label = init?.label ?? "Window";
     if (init?.agg) this.agg = init.agg;
-    this.addInput("frame", frameIn("Frame"));
+    this.addInput("frame", cubeAdoptIn("Frame / Cube"));
     this.addInput("keys", strListIn("Partition by"));
     this.addInput("orderBy", strIn("Order by"));
     this.addInput("column", strIn("Value"));
@@ -2369,8 +3185,34 @@ export class WindowNode extends ClassicPreset.Node {
     this.addOutput("frame", frameOut("Frame"));
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; keys?: string[][]; orderBy?: string[]; column?: string[]; n?: number[]; name?: string[] }) {
-    const f = inputs.frame?.[0] ?? null;
+  /** The output column's name: the typed one, else derived from the function and Value. */
+  private outColumnName(name: string, column: string): string {
+    return name.trim() || `${WINDOW_FN_META[this.agg].label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/_$/, "")}${column.trim() ? "_" + column.trim() : ""}`;
+  }
+
+  frameShape(_outKey: string, ctx: FrameShapeContext): Shape | null {
+    const input = ctx.inputShape("frame");
+    if (!input) return null;
+    if (ctx.wired("keys") || ctx.wired("orderBy") || ctx.wired("column") || ctx.wired("name")) return null;
+    const column = (this.stringLiterals.column ?? "").trim();
+    if (WINDOW_FN_NEEDS_COLUMN.has(this.agg) && !column) return input;
+    const orderBy = (this.stringLiterals.orderBy ?? "").trim();
+    return shapeOf({
+      kind: "window", partitionBy: csvList(this.stringLiterals.keys), orderBy: orderBy || undefined, orderDir: "asc",
+      fn: this.agg, column: column || undefined, as: this.outColumnName(this.stringLiterals.name ?? "", column),
+      n: WINDOW_FN_NEEDS_N.has(this.agg) ? this.literals.n ?? 3 : undefined,
+    }, input);
+  }
+
+  // A cube arrives AS a cube (noWidenInputs) and flattens here: a flat cube is rows, a nested
+  // cell is the loud #SHAPE! — the lattice never lets a cube into a frame socket.
+  noWidenInputs: ReadonlySet<string> = new Set(["frame"]);
+
+  async data(inputs: { frame?: (FrameInput | CubeValue | null)[]; keys?: string[][]; orderBy?: string[]; column?: string[]; n?: number[]; name?: string[] }) {
+    const raw = rowVerbInput(inputs.frame?.[0]);
+    const flat = isCubeValue(raw) ? flatCubeToFrame(raw) : raw;
+    if (isSolError(flat)) return emitFrame(this, beginPass(this), flat);
+    const f = flat;
     const keys = readColumnList(inputs.keys);
     const orderBy = readInput(inputs.orderBy, this.stringLiterals.orderBy ?? "");
     const column = readInput(inputs.column, this.stringLiterals.column ?? "");
@@ -2379,7 +3221,7 @@ export class WindowNode extends ClassicPreset.Node {
     if (f == null || keys === null || orderBy === null || column === null || name === null || n === null) return emitFrame(this, beginPass(this), null);
     // A value-reading function with no Value column yet is a passthrough, not an error.
     if (WINDOW_FN_NEEDS_COLUMN.has(this.agg) && !column.trim()) return emitFrame(this, beginPass(this), await passFrame(f));
-    const as = name.trim() || `${WINDOW_FN_META[this.agg].label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/_$/, "")}${column.trim() ? "_" + column.trim() : ""}`;
+    const as = this.outColumnName(name, column);
     // Lazy: Polars `.over()` on desktop, the oracle's windowFrame on web (one FrameOp).
     return emitFrame(this, beginPass(this), await runFrameUnary(f, {
       kind: "window", partitionBy: keys, orderBy: orderBy.trim() || undefined, orderDir: "asc", fn: this.agg,

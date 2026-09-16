@@ -32,6 +32,8 @@ const SKIPPED: Record<string, string> = {
     "the error-codes tour, incl. a #CIRC! loop — errorSeed.test.ts runs it with the cycle cache-seeding a plain fetch loop lacks",
   "composite-workbench":
     "7 composites on goal-seek / 500-sample Monte Carlo / data-table run modes; minutes here, and a bare constructor never hydrates their internal graphs",
+  "garden-dashboard":
+    "the C1 widget showcase: Geocode + Weather fetch, so offline the daily frame is empty and Get Column on the pre-fetch shape is #REF! — it computes once the document is allowed to connect",
 };
 
 type SavedNode = {

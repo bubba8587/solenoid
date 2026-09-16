@@ -1,3 +1,4 @@
+// dte:C73
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import type { ClassicPreset } from "rete";
 import { inspectorStore } from "../inspectorStore";
@@ -16,12 +17,8 @@ import "./InspectorPanel.css";
 
 // The node Inspector: a right-docked panel (the pinned Report's chrome pattern
 // — fixed column between the measured chrome envelopes, canvas squeezed by
-// `html.sol-inspector-docked`) reading the ACTIVE surface's selected node.
-// STATIC reference for the selected node and its current configuration, by
-// author call (2026-08-17): the Function Reference derivation plus the node's
-// socket roster described in plain English (SOCKET_TYPE_LABELS) — never live
-// values (the card and its popups) and never live connections (the canvas and
-// the Cable inspector). Selection has no push store (same as
+// `html.sol-inspector-docked`) reading the ACTIVE surface's selected node; what it
+// shows is dte:C73 inspectorIsStatic. Selection has no push store (same as
 // SelectionActionsBar), so a light poll tracks it.
 
 const POLL_MS = 150;
@@ -94,6 +91,9 @@ export function InspectorPanel() {
     // (i) is not immediately retired by it on the first tick.
     prevSel.current = selectedNode();
     const t = setInterval(() => {
+      // Hold while the dev copy-edit freeze has an edit open: a re-render here can repaint the
+      // description's rendered markup over the raw text under the caret. Never set in prod.
+      if (document.documentElement.classList.contains("sol-copyediting")) return;
       const sel = selectedNode();
       // A NEW selection retires an explicit context-menu focus; until then the
       // focused node outranks whatever selection the menu left behind.

@@ -1,3 +1,4 @@
+// dte:D4,C22,C80
 import { solError, isSolError, isNaError } from "./errorValue";
 import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, isInternalFunction, ELIMINATED_FUNCTIONS, LEGACY_ALIASES, FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES, registryGeneration } from "./excelFunctions";
 import { isMissing, guardFinite } from "./valueKinds";
@@ -320,17 +321,25 @@ export function extractVariables(expr: string): string[] {
 
 // The column names read through the row context — not variables; this is the
 // dependency feed for a computed-column topo sort.
-function collectRowRefs(n: Ast, out: Set<string>): void {
+function collectRowRefs(n: Ast, out: Set<string>, bound: ReadonlySet<string> = new Set()): void {
   switch (n.t) {
-    case "atcol": out.add(n.name); break;
-    case "wholecol": out.add(n.name); break;
+    case "atcol": if (!bound.has(n.name)) out.add(n.name); break;
+    case "wholecol": if (!bound.has(n.name)) out.add(n.name); break;
     case "call": {
-      n.args.forEach((a) => collectRowRefs(a, out));
+      // A LAMBDA literal binds its params: `@x` inside LAMBDA(x, …) is the param's
+      // this-row read, never a side name the surface should grow a port for.
+      if (n.name === "LAMBDA" && n.args.length >= 1) {
+        const inner = new Set(bound);
+        for (const a of n.args.slice(0, -1)) if (a.t === "name") inner.add(a.name);
+        collectRowRefs(n.args[n.args.length - 1], out, inner);
+        break;
+      }
+      n.args.forEach((a) => collectRowRefs(a, out, bound));
       break;
     }
-    case "apply": collectRowRefs(n.fn, out); n.args.forEach((a) => collectRowRefs(a, out)); break;
-    case "unary": case "percent": collectRowRefs(n.arg, out); break;
-    case "bin": collectRowRefs(n.l, out); collectRowRefs(n.r, out); break;
+    case "apply": collectRowRefs(n.fn, out, bound); n.args.forEach((a) => collectRowRefs(a, out, bound)); break;
+    case "unary": case "percent": collectRowRefs(n.arg, out, bound); break;
+    case "bin": collectRowRefs(n.l, out, bound); collectRowRefs(n.r, out, bound); break;
   }
 }
 
@@ -390,7 +399,10 @@ export const RANGE_FUNCTIONS = new Set<string>([
   "ANOVA", "KRUSKAL", "MANNWHITNEY", "WILCOXON", "KSTEST",
   "PERCENTILE", "PERCENTILE.INC", "PERCENTILE.EXC",
   "QUARTILE", "QUARTILE.INC", "QUARTILE.EXC",
-  "RANK", "RANK.EQ", "RANK.AVG", "PERCENTRANK",
+  "RANK", "RANK.EQ", "RANK.AVG", "PERCENTRANK", "PERCENTRANK.INC", "PERCENTRANK.EXC",
+  // whole-list integer functions; a holiday list is a whole argument of the workday trio
+  "GCD", "LCM", "MULTINOMIAL",
+  "NETWORKDAYS", "NETWORKDAYS.INTL", "WORKDAY", "WORKDAY.INTL",
   "CORREL", "COVAR", "COVARIANCE.P", "COVARIANCE.S",
   "SLOPE", "INTERCEPT", "RSQ", "STEYX", "FORECAST.LINEAR",
   "AND", "OR", "XOR",
@@ -415,15 +427,18 @@ export const RANGE_FUNCTIONS = new Set<string>([
 
 // COUNT-family sees the raw array — COUNTBLANK counts the nulls, COUNT/COUNTA
 // classify errors themselves (Excel: COUNT skips them, COUNTA counts them).
-const RANGE_RAW = new Set(["COUNT", "COUNTA", "COUNTBLANK"]);
+const RANGE_RAW = new Set([
+  "COUNT", "COUNTA", "COUNTBLANK",
+  // The criteria family reads blanks (a blank criterion matches a blank cell) and decides
+  // per cell what an error means, so its ranges arrive untouched.
+  "SUMIF", "SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF", "AVERAGEIFS", "MAXIFS", "MINIFS",
+]);
 // Index-ALIGNED multi-range functions: a null drops its whole ROW across every
 // range, since per-array dropping would shear the pairing; the min-length zip on
 // ragged ranges IS the pad-with-null policy (padded rows would drop anyway).
 const RANGE_PAIRED = new Set([
   "SUMPRODUCT", "CORREL", "SPEARMAN", "KENDALL", "WILCOXON", "COVAR", "COVARIANCE.P", "COVARIANCE.S",
   "SLOPE", "INTERCEPT", "RSQ", "STEYX", "FORECAST.LINEAR", "XNPV",
-  "SUMIF", "SUMIFS", "COUNTIF", "COUNTIFS", "AVERAGEIF", "AVERAGEIFS",
-  "MAXIFS", "MINIFS",
   // term-by-term / cell-for-cell definitions: these must stay index-aligned.
   "SUMX2MY2", "SUMX2PY2", "SUMXMY2", "CHISQ.TEST", "PROB",
 ]);
@@ -461,6 +476,8 @@ const NULLABLE_SCALARS_OK = new Set([
   "MAP", "BYROW", "BYCOL", "REDUCE", "SCAN", "MAKEARRAY", "GROUPBY",
   // The regression quartet: blank xs / new_xs each mean an Excel default.
   "TREND", "GROWTH", "LINEST", "LOGEST",
+  // A blank criterion matches blank cells (Excel), so it must reach the kernel.
+  "SUMIFS", "COUNTIFS", "AVERAGEIFS", "MINIFS", "MAXIFS", "COUNTIF", "AVERAGEIF",
 ]);
 
 // Lambda HOSTS whose fn argument may be a bare function name (eta) — MAKEARRAY is
@@ -717,6 +734,22 @@ function applyCxOp(op: string, a: unknown, b: unknown): unknown {
   }
 }
 
+// dte:C80 blankArgIsExcelBlank — a BLANK slot reads as Excel's typed blank; an omitted
+// trailing argument stays `undefined` (the default). Declared per parameter, applied
+// once at the dispatch boundary for natives and Formula.js alike.
+type BlankType = "number" | "logical" | "text";
+const EXCEL_BLANK: Record<BlankType, unknown> = { number: 0, logical: false, text: "" };
+export const BLANK_ARG_TYPES: Record<string, Record<number, BlankType>> = {
+  TEXTJOIN: { 1: "logical" },
+  XMATCH: { 2: "number", 3: "number" },
+  XLOOKUP: { 4: "number", 5: "number" },
+};
+function excelBlanks(name: string, args: Ast[], argv: unknown[]): unknown[] {
+  const types = BLANK_ARG_TYPES[name];
+  if (!types) return argv;
+  return argv.map((v, i) => (args[i]?.t === "blank" && types[i] ? EXCEL_BLANK[types[i]] : v));
+}
+
 // Functions whose result DEPENDS ON a blank operand: `null` flows INTO them
 // (ISBLANK(null) is TRUE) while every other function propagates missing; errors
 // still short-circuit, and IF is listed so an `IF(x,,y)` branch can flow.
@@ -866,6 +899,7 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       let argv = ETA_HOSTS.has(name)
         ? n.args.map((a) => etaOrEval(a, env))
         : n.args.map((a) => evalAst(a, env));
+      argv = excelBlanks(name, n.args, argv);
       // The IFERROR family must SEE the error, so it precedes the propagate check.
       if (ERROR_HANDLER_FUNCTIONS.has(name)) return applyErrorHandler(name, argv);
       // A tagged error doesn't survive a trip through Formula.js, so surface it here.

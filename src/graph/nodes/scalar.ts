@@ -1,9 +1,11 @@
+// dte:C46
 import { ClassicPreset } from "rete";
 import { broadcast, broadcastErr, broadcastUnit, anyDimensioned, readInput, numListIn, numListOut, numIn, numOut, listIn, type BroadcastResult, type UnitOperand } from "./shared";
 import { lnGamma } from "./mathUtils";
 import { solError, type SolError } from "../errorValue";
 import type { FormatAnnotation } from "../formatAnnotationStore";
-import { type UnitCell, dimOf, magnitudeOf, tagDim, unitError, arithmeticCell, type ArithmeticOp } from "../unitValue";
+import type { FormatCarrySpec } from "./formatCarry";
+import { type UnitCell, dimOf, magnitudeOf, tagDim, unitError, arithmeticCell, isUnitCell, type ArithmeticOp } from "../unitValue";
 import { type Dim, DIMENSIONLESS, dimEqual, dimPow, isDimensionless } from "../dimension";
 
 // ─── Bessel helpers ───────────────────────────────────────────────────────────
@@ -96,15 +98,18 @@ function _besselK(x: number, n: number): number {
 // re-exported here as the family's home module.
 export { arithmeticCell, type ArithmeticOp } from "../unitValue";
 
+// `carry`: the op PRESERVES the kind of value, so a styled operand's format flows on
+// (formatFlowsDownstream). Only add/sub keep it — 5% + 3% is still a percent, a date +
+// days is still a date; a product / quotient / power / remainder is a new kind of value.
 export const ARITHMETIC_OP_META = {
-  add:      { label: "Add",        description: "`A + B`" },
-  sub:      { label: "Subtract"  , description: "`A − B`" },
-  mul:      { label: "Multiply"  , description: "`A × B`" },
-  div:      { label: "Divide",     description: "`A ÷ B`. `#DIV/0!` when `B = 0`." },
-  mod:      { label: "MOD",        description: "Remainder of `A ÷ B`. Excel: `MOD`." },
-  quotient: { label: "QUOTIENT",   description: "Integer part of `A ÷ B`, truncated toward zero. Excel: `QUOTIENT`." },
-  pow:      { label: "POWER",      description: "A raised to the power B. `0^0 = 1` (JS/Python/Polars convention. Excel gives `#NUM!`). A finite result too large to represent → `#OVERFLOW!`. Excel: `POWER` / `A^B`." },
-} satisfies Record<ArithmeticOp, { label: string; description: string }>;
+  add:      { label: "Add",        carry: true,  description: "`A + B`" },
+  sub:      { label: "Subtract"  , carry: true,  description: "`A − B`" },
+  mul:      { label: "Multiply"  , carry: false, description: "`A × B`" },
+  div:      { label: "Divide",     carry: false, description: "`A ÷ B`. `#DIV/0!` when `B = 0`." },
+  mod:      { label: "MOD",        carry: false, description: "Remainder of `A ÷ B`. Excel: `MOD`." },
+  quotient: { label: "QUOTIENT",   carry: false, description: "Integer part of `A ÷ B`, truncated toward zero. Excel: `QUOTIENT`." },
+  pow:      { label: "POWER",      carry: false, description: "A raised to the power B. `0^0 = 1` (JS/Python/Polars convention. Excel gives `#NUM!`). A finite result too large to represent → `#OVERFLOW!`. Excel: `POWER` / `A^B`." },
+} satisfies Record<ArithmeticOp, { label: string; description: string; carry: boolean }>;
 
 export class ArithmeticNode extends ClassicPreset.Node {
   /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
@@ -124,6 +129,12 @@ export class ArithmeticNode extends ClassicPreset.Node {
     this.addInput("a", numListIn("A"));
     this.addInput("b", numListIn("B"));
     this.addOutput("result", numListOut("Result"));
+  }
+
+  /** add / sub keep the operands' kind of value, so a styled operand's format carries
+   *  (formatFlowsDownstream); the source of truth is the op table's `carry` flag. */
+  formatCarry(): FormatCarrySpec[] {
+    return ARITHMETIC_OP_META[this.op].carry ? [{ output: "result", inputs: ["a", "b"] }] : [];
   }
 
   data(inputs: { a?: (number | number[])[]; b?: (number | number[])[] }) {
@@ -250,7 +261,7 @@ export function mathFnResultDim(op: MathFnOp, dim: Dim): Dim | SolError | "strip
   return unitError(`${op.toUpperCase()} needs a dimensionless argument.`);
 }
 
-export class MathFnNode extends ClassicPreset.Node {
+export class MathFXNode extends ClassicPreset.Node {
   /** Keeps `UnitCell` tags on its inputs — runs the dimension algebra itself (FC A4; see coerceInputs). */
   unitAware = true;
   label: string;
@@ -287,6 +298,13 @@ export class MathFnNode extends ClassicPreset.Node {
     return outKey === "result" && INVERSE_TRIG_OPS.has(this.op) && this.effectiveAngleMode() === "deg"
       ? { format: "auto", unit: "deg" }
       : undefined;
+  }
+
+  /** The DIMENSION-preserving ops (abs / trunc / int / even / odd) also preserve the
+   *  MEANING, so a percent stays a percent; sqrt / log / trig / exp make a new value
+   *  (formatFlowsDownstream). Same set as MATHFN_PRESERVE, its one home. */
+  formatCarry(): FormatCarrySpec[] {
+    return MATHFN_PRESERVE.has(this.op) ? [{ output: "result", inputs: ["in"] }] : [];
   }
 
   data(inputs: { in?: (number | number[])[] }) {
@@ -360,14 +378,21 @@ export class MathFnNode extends ClassicPreset.Node {
     let result: number | UnitCell | (number | UnitCell | SolError | null)[] | SolError | null = null;
     if (input !== null) {
       if (anyDimensioned(input as UnitOperand | UnitOperand[])) {
-        // mathFnResultDim gates a dimensioned argument. A UnitCell angle is already in
-        // base radians, so trig computes on the magnitude with no deg conversion.
+        // Per-cell unit interpretation over a mixed list. mathFnResultDim gates a
+        // dimensioned argument. A UnitCell angle is already base RADIANS, so it computes
+        // on its magnitude with NO deg conversion — it carries its own unit. A BARE cell
+        // has no unit of its own, so it follows the node's resolved angle mode (the deg
+        // conversion the all-plain path applies) — so one list can mix tagged-radian
+        // angle cells with bare degree numbers and read each correctly.
         result = broadcastUnit((cell) => {
           const rd = mathFnResultDim(this.op, dimOf(cell));
           if (typeof rd !== "string" && (rd as SolError).code) return rd as SolError;
-          const raw = computeRaw(magnitudeOf(cell));
+          const bare = !isUnitCell(cell);
+          const x = magnitudeOf(cell);
+          const raw = computeRaw(bare && fwdDeg ? x * DEG2RAD : x);
           if (raw === null) return domainErr();
-          return rd === "strip" ? raw : tagDim(raw, rd as Dim);
+          const out = bare && invDeg ? raw * RAD2DEG : raw;
+          return rd === "strip" ? out : tagDim(out, rd as Dim);
         }, input as UnitOperand | UnitOperand[]);
       } else {
         result = broadcastErr((x) => compute(x) ?? domainErr(), input);
@@ -474,6 +499,12 @@ export class ClampNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("Result"));
   }
 
+  /** Clamping keeps the value's kind (a clamped percent is still a percent); the format
+   *  rides Value, never the bounds (formatFlowsDownstream). */
+  formatCarry(): FormatCarrySpec[] {
+    return [{ output: "result", inputs: ["value"] }];
+  }
+
   data(inputs: { value?: (number | number[])[]; min?: (number | number[])[]; max?: (number | number[])[] }) {
     const value = readInput(inputs.value, this.literals.value);
     // "Absent" is not "unknown": an UNWIRED bound means no floor/ceiling, but a WIRED
@@ -524,6 +555,12 @@ export class MRoundNode extends ClassicPreset.Node {
     this.addOutput("result",  numListOut("Result"));
   }
 
+  /** Rounding to a multiple keeps the value's kind; the format rides Value, not the
+   *  multiple (formatFlowsDownstream). */
+  formatCarry(): FormatCarrySpec[] {
+    return [{ output: "result", inputs: ["value"] }];
+  }
+
   data(inputs: { value?: (number | number[])[]; multiple?: (number | number[])[] }) {
     const value    = readInput(inputs.value,    this.literals.value);
     const multiple = readInput(inputs.multiple, this.literals.multiple);
@@ -572,6 +609,12 @@ export class RoundNNode extends ClassicPreset.Node {
     this.addOutput("result", numListOut("Result"));
   }
 
+  /** Rounding keeps the value's kind (a rounded percent is still a percent); the format
+   *  rides Value, not Digits (formatFlowsDownstream). */
+  formatCarry(): FormatCarrySpec[] {
+    return [{ output: "result", inputs: ["value"] }];
+  }
+
   data(inputs: { value?: (number | number[])[]; digits?: (number | number[])[] }) {
     const value  = readInput(inputs.value, this.literals.value);
     // UNWIRED → 0 places; a WIRED blank is an unknown precision and propagates.
@@ -604,7 +647,7 @@ export const GCD_OP_META = {
 } satisfies Record<GcdOp, { label: string; description: string }>;
 
 // Inputs are rounded to integers; gcd(0,0)=0.
-export class GcdNode extends ClassicPreset.Node {
+export class GCDNode extends ClassicPreset.Node {
   label: string;
   op: GcdOp;
   cachedResult: BroadcastResult = null;
@@ -701,8 +744,12 @@ export class CombinatoricsNode extends ClassicPreset.Node {
         else domainOk = false;
         break;
       case "combina":
-        if (n >= 0 && k >= 0) result = factorial(n + k - 1) / (factorial(k) * factorial(n - 1));
-        else domainOk = false;
+        // C(n+k-1, k) as a product, never a negative factorial: COMBINA(0,0) = 1 (Excel),
+        // COMBINA(0,k>0) = 0.
+        if (n >= 0 && k >= 0) {
+          if (n === 0) result = k === 0 ? 1 : 0;
+          else { let r = 1; for (let i = 1; i <= k; i++) r = r * (n + k - i) / i; result = r; }
+        } else domainOk = false;
         break;
       case "permut":
         if (n >= 0 && k >= 0 && k <= n) result = factorial(n) / factorial(n - k);

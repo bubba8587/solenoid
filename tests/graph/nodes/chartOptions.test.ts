@@ -27,6 +27,23 @@ describe("parseChartOptions", () => {
     expect(parseChartOptions("markersize=0")).toEqual({});
   });
 
+  it("parses pielabels as off/outside/inside, with on and center aliased", () => {
+    expect(parseChartOptions("pielabels=off").pielabels).toBe("off");
+    expect(parseChartOptions("pielabels=on").pielabels).toBe("outside");
+    expect(parseChartOptions("pielabels=outside").pielabels).toBe("outside");
+    expect(parseChartOptions("pielabels=inside").pielabels).toBe("inside");
+    expect(parseChartOptions("pielabels=center").pielabels).toBe("inside");
+    expect(parseChartOptions("pielabels=nonsense").pielabels).toBeUndefined();
+  });
+
+  it("parses radarscale as axis/shared, with normalize and raw aliased", () => {
+    expect(parseChartOptions("radarscale=axis").radarscale).toBe("axis");
+    expect(parseChartOptions("radarscale=normalize").radarscale).toBe("axis");
+    expect(parseChartOptions("radarscale=shared").radarscale).toBe("shared");
+    expect(parseChartOptions("radarscale=raw").radarscale).toBe("shared");
+    expect(parseChartOptions("radarscale=nonsense").radarscale).toBeUndefined();
+  });
+
   it("ignores unknown keys, blank values, and junk", () => {
     expect(parseChartOptions("bogus=1;title=;color=red;nope")).toEqual({ color: "red" });
     expect(parseChartOptions("")).toEqual({});
@@ -48,5 +65,11 @@ describe("serializeChartOptions", () => {
   it("round-trips back through the parser", () => {
     const s = serializeChartOptions({ title: "Q1", ylabel: "$", grid: "on", linewidth: 2, ymin: 0, ymax: 100 });
     expect(parseChartOptions(s)).toEqual({ title: "Q1", ylabel: "$", grid: true, linewidth: 2, ymin: 0, ymax: 100 });
+  });
+
+  it("serializes the pielabels mode and round-trips it", () => {
+    expect(serializeChartOptions({ pielabels: "inside" })).toBe("pielabels=inside");
+    expect(parseChartOptions(serializeChartOptions({ pielabels: "off" }))).toEqual({ pielabels: "off" });
+    expect(parseChartOptions(serializeChartOptions({ pielabels: "inside" }))).toEqual({ pielabels: "inside" });
   });
 });

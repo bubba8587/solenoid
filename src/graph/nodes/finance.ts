@@ -1,25 +1,25 @@
+// dte:C72,E11
 ﻿import { ClassicPreset } from "rete";
 import { numIn, numOut, listIn, listOut, dateIn, dateListIn, frameOut, readInput, BASIS_DOC } from "./shared";
 import type { FrameValue } from "../frame";
-import { serialToJsDate } from "./date";
+import type { Shape } from "../frameShape";
 import { solError, type SolError } from "../errorValue";
 import { resolveExcelFunction } from "../excelFunctions";
 import { EquationNode } from "./equation";
 // The pure bond/security math, shared verbatim with the formula surface
 // (financeOps.ts). The op types stay re-exported so the node barrel keeps its shape.
 import {
-  coupAddMonths, days30_360, actualDays,
-  couponValue, accrintM, securityDisc, priceDisc, priceMat, durationValue,
+  couponValue, accrint, accrintM, tbill, securityDisc, priceDisc, priceMat, durationValue,
   bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr, amortizationSchedule,
   returnsOp, RETURNS_OP_META, type ReturnsOp,
 } from "./financeOps";
 export { RETURNS_OP_META } from "./financeOps";
 export type { ReturnsOp } from "./financeOps";
 import type {
-  CouponOp, SecurityDiscOp, PriceDiscOp, PriceMatOp, DurationOp, BondPriceOp, OddCouponOp,
+  CouponOp, TBillOp, SecurityDiscOp, PriceDiscOp, PriceMatOp, DurationOp, BondPriceOp, OddCouponOp,
 } from "./financeOps";
 export type {
-  CouponOp, SecurityDiscOp, PriceDiscOp, PriceMatOp, DurationOp, BondPriceOp, OddCouponOp,
+  CouponOp, TBillOp, SecurityDiscOp, PriceDiscOp, PriceMatOp, DurationOp, BondPriceOp, OddCouponOp,
 } from "./financeOps";
 
 export type PaymentTiming = "end" | "beg";
@@ -262,78 +262,6 @@ export class TvmNode extends EquationNode {
   }
 }
 
-// ─── IPMT / PPMT ──────────────────────────────────────────────────────────────
-export type IpmtPpmtOp = "ipmt" | "ppmt";
-
-export const IPMT_PPMT_OP_META = {
-  ipmt: { label: "IPMT", description: "Interest portion of a periodic payment. Excel: `IPMT`." },
-  ppmt: { label: "PPMT", description: "Principal portion of a periodic payment. Excel: `PPMT`." },
-} satisfies Record<IpmtPpmtOp, { label: string; description: string }>;
-
-export class IpmtPpmtNode extends ClassicPreset.Node {
-  static socketDocs: Record<string, string> = {
-    rate: "The rate for a single period. Divide an annual rate by the number of periods per year.",
-    per: "The single period to report, counted from 1.",
-  };
-
-  label: string;
-  op: IpmtPpmtOp;
-  paymentTiming: PaymentTiming;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = { rate: 0.05, per: 1, nper: 12, pv: 1000, fv: 0 };
-  width = 180; height = 340;
-
-  constructor(init?: { label?: string; op?: IpmtPpmtOp; paymentTiming?: PaymentTiming }) {
-    super("IpmtPpmt");
-    this.label         = init?.label         ?? "";
-    this.op            = init?.op            ?? "ipmt";
-    this.paymentTiming = init?.paymentTiming ?? "end";
-    this.addInput("rate", numIn("Rate"));
-    this.addInput("per",  numIn("Period"));
-    this.addInput("nper", numIn("Nper"));
-    this.addInput("pv",   numIn("PV"));
-    this.addInput("fv",   numIn("FV"));
-    this.addOutput("result", numOut("Result"));
-  }
-
-  data(inputs: { rate?: number[]; per?: number[]; nper?: number[]; pv?: number[]; fv?: number[] }) {
-    const rate = readInput(inputs.rate, this.literals.rate ?? 0);
-    const per  = readInput(inputs.per, this.literals.per ?? 1);
-    const nper = readInput(inputs.nper, this.literals.nper ?? 0);
-    const pv   = readInput(inputs.pv, this.literals.pv ?? 0);
-    const fv   = readInput(inputs.fv, this.literals.fv ?? 0);
-    if (rate === null || per === null || nper === null || pv === null || fv === null) { this.cachedResult = null; return { result: null }; }
-    const type = this.paymentTiming === "beg" ? 1 : 0;
-
-    let result: number | null = null;
-
-    let pmt: number;
-    if (Math.abs(rate) < 1e-12) {
-      pmt = nper !== 0 ? -(pv + fv) / nper : 0;
-    } else {
-      const rN = Math.pow(1 + rate, nper);
-      pmt = -(pv * rN + fv) * rate / ((1 + rate * type) * (rN - 1));
-    }
-
-    if (Number.isFinite(pmt)) {
-      // The rate≈0 case stays hand-rolled (trivially 0 interest either way).
-      let ipmt: number;
-      if (Math.abs(rate) < 1e-12) {
-        ipmt = 0;
-      } else {
-        ipmt = resolveExcelFunction("IPMT")!(rate, per, nper, pv, fv, type) as number;
-      }
-      if (Number.isFinite(ipmt)) {
-        result = this.op === "ipmt" ? ipmt : pmt - ipmt;
-      }
-    }
-
-    if (result !== null && !Number.isFinite(result)) result = null;
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
 // ─── NPV ──────────────────────────────────────────────────────────────────────
 export const NPV_META = {
   label: "NPV",
@@ -354,7 +282,7 @@ export const CASHFLOW_OP_OPTIONS: { value: CashflowOp; label: string }[] = [
   { value: "dates", label: "Dated" },
 ];
 
-export class NpvNode extends ClassicPreset.Node {
+export class NPVNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     list: "A blank cell counts as zero. Dropping it would shift every later flow.",
     dates: "Values discount back to the first date. A blank date makes the whole result blank.",
@@ -421,7 +349,7 @@ export class NpvNode extends ClassicPreset.Node {
 
 // ─── IRR ──────────────────────────────────────────────────────────────────────
 
-export class IrrNode extends ClassicPreset.Node {
+export class IRRNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     list: "A blank cell counts as zero. Dropping it would shift every later flow.",
   };
@@ -677,227 +605,144 @@ export class DollarNode extends ClassicPreset.Node {
 
 
 
-// ─── CUMIPMT / CUMPRINC ───────────────────────────────────────────────────────
-export type CumPmtOp = "cumipmt" | "cumprinc";
+// ─── Spec-table op cards ──────────────────────────────────────────────────────
+// A multi-op card whose sockets follow a per-op key table (Discount Security, Accrued
+// Interest, Bond Pricing): the switch keeps the inputs both ops share (their cables and
+// literals ride along), drops the rest, and orders the sockets per the new op.
 
-export const CUM_PMT_OP_META = {
-  cumipmt:  { label: "CUMIPMT",  description: "Cumulative interest paid between two periods. Excel: `CUMIPMT`." },
-  cumprinc: { label: "CUMPRINC", description: "Cumulative principal paid between two periods. Excel: `CUMPRINC`." },
-} satisfies Record<CumPmtOp, { label: string; description: string }>;
-
-export class CumPmtNode extends ClassicPreset.Node {
-  static socketDocs: Record<string, string> = {
-    rate: "The rate for a single period. Divide an annual rate by the number of periods per year.",
-    end: "The sum includes both the start and end periods.",
-  };
-
-  label: string;
-  op: CumPmtOp;
-  paymentTiming: PaymentTiming;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = { rate: 0.05, nper: 12, pv: 1000, start: 1, end: 12 };
-  width = 180; height = 340;
-
-  constructor(init?: { label?: string; op?: CumPmtOp; paymentTiming?: PaymentTiming }) {
-    super("CumPmt");
-    this.label         = init?.label         ?? "";
-    this.op            = init?.op            ?? "cumipmt";
-    this.paymentTiming = init?.paymentTiming ?? "end";
-    this.addInput("rate",  numIn("Rate"));
-    this.addInput("nper",  numIn("Nper"));
-    this.addInput("pv",    numIn("PV"));
-    this.addInput("start", numIn("Start period"));
-    this.addInput("end",   numIn("End period"));
-    this.addOutput("result", numOut("Result"));
-  }
-
-  data(inputs: { rate?: number[]; nper?: number[]; pv?: number[]; start?: number[]; end?: number[] }) {
-    const rate  = readInput(inputs.rate, this.literals.rate ?? 0);
-    const nper  = readInput(inputs.nper, this.literals.nper ?? 0);
-    const pv    = readInput(inputs.pv, this.literals.pv ?? 0);
-    const startRaw = readInput(inputs.start, this.literals.start ?? 1);
-    const endRaw   = readInput(inputs.end, this.literals.end ?? 1);
-    if (rate === null || nper === null || pv === null || startRaw === null || endRaw === null) {
-      this.cachedResult = null; return { result: null };
-    }
-    const start = Math.round(startRaw);
-    const end   = Math.round(endRaw);
-    const type  = this.paymentTiming === "beg" ? 1 : 0;
-
-    let result: number | null = null;
-
-    if (start >= 1 && end >= start && nper > 0) {
-      let pmt: number;
-      if (Math.abs(rate) < 1e-12) {
-        pmt = nper !== 0 ? -(pv + 0) / nper : 0; // fv = 0 assumed
-      } else {
-        const rN = Math.pow(1 + rate, nper);
-        pmt = -(pv * rN) * rate / ((1 + rate * type) * (rN - 1));
-      }
-
-      if (Number.isFinite(pmt)) {
-        let cumSum = 0;
-        for (let per = start; per <= end; per++) {
-          let ipmt: number;
-          if (Math.abs(rate) < 1e-12) {
-            ipmt = 0;
-          } else {
-            const rPer1 = Math.pow(1 + rate, per - 1);
-            const B = pv * rPer1 + pmt * (1 + rate * type) * (rPer1 - 1) / rate;
-            if (type === 0) {
-              ipmt = B * rate;
-            } else {
-              ipmt = (B - pmt) * rate;
-            }
-          }
-          cumSum += this.op === "cumipmt" ? ipmt : pmt - ipmt;
-        }
-        result = Number.isFinite(cumSum) ? cumSum : null;
-      }
-    }
-
-    this.cachedResult = result;
-    return { result };
-  }
+/** The keys a switch from `before` to `after` removes — pruned by the caller first
+ *  (onePrunePath). */
+function keysDroppedBy(before: string[], after: string[]): string[] {
+  const keep = new Set(after);
+  return before.filter((k) => !keep.has(k));
 }
 
-// ─── TBILL ────────────────────────────────────────────────────────────────────
+function reshapeInputs(node: ClassicPreset.Node, after: string[], make: (key: string) => ClassicPreset.Input<ClassicPreset.Socket>): void {
+  for (const k of Object.keys(node.inputs)) if (!after.includes(k)) node.removeInput(k);
+  const ordered: typeof node.inputs = {};
+  for (const k of after) ordered[k] = node.inputs[k] ?? make(k);
+  node.inputs = ordered;
+}
 
-export type TBillOp = "tbilleq" | "tbillprice" | "tbillyield";
+// ─── Discount securities: ONE card ───────────────────────────────────────────
 
-export const TBILL_OP_META = {
-  tbilleq:    { label: "TBILLEQ",    description: "T-bill bond-equivalent yield from settle, maturity, and discount rate. Excel: `TBILLEQ`." },
-  tbillprice: { label: "TBILLPRICE", description: "T-bill price per $100 face value from settle, maturity, and discount rate. Excel: `TBILLPRICE`." },
-  tbillyield: { label: "TBILLYIELD", description: "T-bill yield from settle, maturity, and price. Excel: `TBILLYIELD`." },
-} satisfies Record<TBillOp, { label: string; description: string }>;
+export type DiscountSecurityOp = TBillOp | SecurityDiscOp | PriceDiscOp | PriceMatOp;
 
-export class TBillNode extends ClassicPreset.Node {
+/** The op dropdown: label = the Excel name, `keys` = the inputs that follow the shared
+ *  settlement/maturity pair (the card and the switch read the same table). */
+export const DISCOUNT_SECURITY_META: Record<DiscountSecurityOp, { label: string; description: string; group: string; keys: readonly string[] }> = {
+  tbilleq:    { group: "Treasury bill", label: "TBILLEQ",    keys: ["discount"], description: "T-bill bond-equivalent yield from settle, maturity, and discount rate. Excel: `TBILLEQ`." },
+  tbillprice: { group: "Treasury bill", label: "TBILLPRICE", keys: ["discount"], description: "T-bill price per $100 face value from settle, maturity, and discount rate. Excel: `TBILLPRICE`." },
+  tbillyield: { group: "Treasury bill", label: "TBILLYIELD", keys: ["pr"], description: "T-bill yield from settle, maturity, and price. Excel: `TBILLYIELD`." },
+  disc:       { group: "Discounted",    label: "DISC",       keys: ["pr", "redemption", "basis"], description: "Discount rate for a fully-invested security (`redemption>price`). Excel: `DISC`." },
+  pricedisc:  { group: "Discounted",    label: "PRICEDISC",  keys: ["discount", "redemption", "basis"], description: "Price per $100 of a discounted security (such as a T-bill). Excel: `PRICEDISC`." },
+  yielddisc:  { group: "Discounted",    label: "YIELDDISC",  keys: ["pr", "redemption", "basis"], description: "Annual yield of a discounted security. Excel: `YIELDDISC`." },
+  intrate:    { group: "Discounted",    label: "INTRATE",    keys: ["investment", "redemption", "basis"], description: "Interest rate for a fully-invested security. Excel: `INTRATE`." },
+  received:   { group: "Discounted",    label: "RECEIVED",   keys: ["investment", "discount", "basis"], description: "Amount received at maturity for a fully-invested security. Excel: `RECEIVED`." },
+  pricemat:   { group: "Interest at maturity", label: "PRICEMAT", keys: ["issue", "rate", "yld", "basis"], description: "Price per $100 of a security that pays interest at maturity. Excel: `PRICEMAT`." },
+  yieldmat:   { group: "Interest at maturity", label: "YIELDMAT", keys: ["issue", "rate", "pr", "basis"], description: "Annual yield of a security that pays interest at maturity. Excel: `YIELDMAT`." },
+};
+
+const DISCOUNT_SECURITY_INPUTS: Record<string, () => ClassicPreset.Input<ClassicPreset.Socket>> = {
+  settle:     () => dateIn("Settlement date"),
+  maturity:   () => dateIn("Maturity date"),
+  issue:      () => dateIn("Issue date"),
+  discount:   () => numIn("Discount rate"),
+  pr:         () => numIn("Price"),
+  redemption: () => numIn("Redemption"),
+  investment: () => numIn("Investment"),
+  rate:       () => numIn("Coupon rate"),
+  yld:        () => numIn("Yield"),
+  basis:      () => numIn("Basis"),
+};
+
+function discountSecurityKeys(op: DiscountSecurityOp): string[] {
+  return ["settle", "maturity", ...DISCOUNT_SECURITY_META[op].keys];
+}
+
+export class DiscountSecurityNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    price: "Per $100 of face value.",
+    pr: "Per $100 of face value.",
     discount: "As a decimal, e.g. 0.05 for 5%.",
-  };
-  label: string;
-  op: TBillOp;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = { discount: 0.05, price: 97.5 };
-  width = 180; height = 230;
-
-  constructor(init?: { label?: string; op?: TBillOp }) {
-    super("TBill");
-    this.op    = init?.op    ?? "tbilleq";
-    this.label = init?.label ?? "";
-    this.addInput("settle",   dateIn("Settlement date"));
-    this.addInput("maturity", dateIn("Maturity date"));
-    if (this.op === "tbillyield") {
-      this.addInput("price",    numIn("Price"));
-    } else {
-      this.addInput("discount", numIn("Discount rate"));
-    }
-    this.addOutput("result", numOut("Result"));
-  }
-
-  data(inputs: { settle?: number[]; maturity?: number[]; discount?: number[]; price?: number[] }): { result: number | null } {
-    const s = inputs.settle?.[0];
-    const m = inputs.maturity?.[0];
-    if (s == null || m == null || m <= s) { this.cachedResult = null; return { result: null }; }
-    const dsm = Math.round(m - s);
-    let result: number;
-    switch (this.op) {
-      case "tbilleq": {
-        const d = readInput(inputs.discount, this.literals.discount ?? 0.05);
-        if (d === null) { this.cachedResult = null; return { result: null }; }
-        if (dsm <= 182) {
-          result = (365 * d) / (360 - d * dsm);
-        } else {
-          // Over 182 days Excel switches to the bond-equivalent (coupon-equivalent)
-          // yield, solving the semiannual-compounding price equation in closed form
-          // (SIA). Verified against real Excel: =TBILLEQ(DATE(2024,1,15),
-          // DATE(2024,12,15),0.05) = 0.052539935.
-          const t = dsm / 365;
-          const price = 1 - d * dsm / 360; // TBILLPRICE per $1
-          result = (-t + Math.sqrt(t * t - (2 * t - 1) * (1 - 1 / price))) / (t - 0.5);
-        }
-        break;
-      }
-      case "tbillprice": {
-        const d = readInput(inputs.discount, this.literals.discount ?? 0.05);
-        if (d === null) { this.cachedResult = null; return { result: null }; }
-        result = 100 * (1 - d * dsm / 360);
-        break;
-      }
-      case "tbillyield": {
-        const pr = readInput(inputs.price, this.literals.price ?? 97.5);
-        if (pr === null) { this.cachedResult = null; return { result: null }; }
-        // Excel's TBILLYIELD is a money-market yield on a 360-day basis (verified against
-        // real Excel: =TBILLYIELD(DATE(2024,1,15),DATE(2024,7,15),97.5) = 0.050718512).
-        // The 365 that was here is TBILLEQ's bond-equivalent basis, not this one.
-        result = ((100 - pr) / pr) * (360 / dsm);
-        break;
-      }
-    }
-    this.cachedResult = result!;
-    return { result: result! };
-  }
-}
-
-// ─── DISC / INTRATE / RECEIVED ────────────────────────────────────────────────
-
-export const SECURITY_DISC_OP_META = {
-  disc:     { label: "DISC",     description: "Discount rate for a fully-invested security (`redemption>price`). Excel: `DISC`." },
-  intrate:  { label: "INTRATE",  description: "Interest rate for a fully-invested security. Excel: `INTRATE`." },
-  received: { label: "RECEIVED", description: "Amount received at maturity for a fully-invested security. Excel: `RECEIVED`." },
-} satisfies Record<SecurityDiscOp, { label: string; description: string }>;
-
-export class SecurityDiscNode extends ClassicPreset.Node {
-  static socketDocs: Record<string, string> = {
+    redemption: "Face value redeemed at maturity. Defaults to 100, the par value.",
     basis: BASIS_DOC,
   };
   label: string;
-  op: SecurityDiscOp;
+  op: DiscountSecurityOp;
   cachedResult: number | null = null;
-  literals: Record<string, number> = { pr: 95, redemption: 100, investment: 1000, discount: 0.05, basis: 0 };
-  width = 180; height = 280;
+  literals: Record<string, number> = { discount: 0.05, pr: 97.5, redemption: 100, investment: 1000, rate: 0.06, yld: 0.065, basis: 0 };
+  width = 180; height = 230;
 
-  constructor(init?: { label?: string; op?: SecurityDiscOp }) {
-    super("SecurityDisc");
-    this.op    = init?.op    ?? "disc";
+  constructor(init?: { label?: string; op?: DiscountSecurityOp }) {
+    super("DiscountSecurity");
     this.label = init?.label ?? "";
-    this.addInput("settle",   dateIn("Settlement date"));
-    this.addInput("maturity", dateIn("Maturity date"));
-    if (this.op === "disc") {
-      this.addInput("pr",         numIn("Price"));
-      this.addInput("redemption", numIn("Redemption"));
-    } else if (this.op === "intrate") {
-      this.addInput("investment", numIn("Investment"));
-      this.addInput("redemption", numIn("Redemption"));
-    } else {
-      this.addInput("investment", numIn("Investment"));
-      this.addInput("discount",   numIn("Discount rate"));
-    }
-    this.addInput("basis", numIn("Basis"));
+    this.op = init?.op && init.op in DISCOUNT_SECURITY_META ? init.op : "tbillprice";
+    for (const k of discountSecurityKeys(this.op)) this.addInput(k, DISCOUNT_SECURITY_INPUTS[k]());
     this.addOutput("result", numOut("Result"));
+    this.height = 149 + 27 * discountSecurityKeys(this.op).length;
   }
 
-  data(inputs: { settle?: number[]; maturity?: number[]; pr?: number[]; redemption?: number[]; investment?: number[]; discount?: number[]; basis?: number[] }): { result: number | null } {
+  /** The keys a switch to `next` would remove. Callers on a live graph prune these
+   *  BEFORE calling setOp (onePrunePath). */
+  keysDroppedBySwitch(next: DiscountSecurityOp): string[] {
+    return keysDroppedBy(discountSecurityKeys(this.op), discountSecurityKeys(next));
+  }
+
+  setOp(next: DiscountSecurityOp): void {
+    if (next === this.op) return;
+    const after = discountSecurityKeys(next);
+    reshapeInputs(this, after, (k) => DISCOUNT_SECURITY_INPUTS[k]());
+    this.op = next;
+    this.height = 149 + 27 * after.length;
+  }
+
+  data(inputs: Record<string, number[] | undefined>): { result: number | null } {
     const s = inputs.settle?.[0];
     const m = inputs.maturity?.[0];
-    if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
-    const basis = readInput(inputs.basis, this.literals.basis ?? 0);
-    if (basis === null) { this.cachedResult = null; return { result: null }; }
-    // `a` is the price (DISC) or the investment (INTRATE/RECEIVED); `b` the
-    // redemption (DISC/INTRATE) or the discount rate (RECEIVED).
-    const a = this.op === "disc"
-      ? (readInput(inputs.pr, this.literals.pr ?? 95))
-      : (readInput(inputs.investment, this.literals.investment ?? 1000));
-    const b = this.op === "received"
-      ? (readInput(inputs.discount, this.literals.discount ?? 0.05))
-      : (readInput(inputs.redemption, this.literals.redemption ?? 100));
-    if (a === null || b === null) { this.cachedResult = null; return { result: null }; }
-    const result = securityDisc(this.op, s, m, a, b, basis);
+    const fail = () => { this.cachedResult = null; return { result: null }; };
+    if (s == null || m == null) return fail();
+    const read = (k: string) => readInput(inputs[k], this.literals[k] ?? 0);
+    let result: number | null;
+    switch (this.op) {
+      case "tbilleq": case "tbillprice": case "tbillyield": {
+        const x = read(this.op === "tbillyield" ? "pr" : "discount");
+        if (x === null) return fail();
+        result = tbill(this.op, s, m, x);
+        break;
+      }
+      case "disc": case "intrate": case "received": {
+        // `a` is the price (DISC) or the investment; `b` the redemption or the discount rate.
+        const a = read(this.op === "disc" ? "pr" : "investment");
+        const b = read(this.op === "received" ? "discount" : "redemption");
+        const basis = read("basis");
+        if (a === null || b === null || basis === null) return fail();
+        result = securityDisc(this.op, s, m, a, b, basis);
+        break;
+      }
+      case "pricedisc": case "yielddisc": {
+        const rateOrPrice = read(this.op === "pricedisc" ? "discount" : "pr");
+        const redemption = read("redemption");
+        const basis = read("basis");
+        if (rateOrPrice === null || redemption === null || basis === null) return fail();
+        result = priceDisc(this.op, s, m, rateOrPrice, redemption, basis);
+        break;
+      }
+      case "pricemat": case "yieldmat": {
+        const is = inputs.issue?.[0];
+        if (is == null) return fail();
+        const rate = read("rate");
+        const yldOrPrice = read(this.op === "pricemat" ? "yld" : "pr");
+        const basis = read("basis");
+        if (rate === null || yldOrPrice === null || basis === null) return fail();
+        result = priceMat(this.op, s, m, is, rate, yldOrPrice, basis);
+        break;
+      }
+    }
     this.cachedResult = result;
     return { result };
   }
 }
+
 
 // ─── COUPON functions (COUPDAYBS / COUPDAYS / COUPDAYSNC / COUPNCD / COUPPCD / COUPNUM) ─
 
@@ -945,189 +790,246 @@ export class CouponNode extends ClassicPreset.Node {
   }
 }
 
-// ─── ACCRINT ─────────────────────────────────────────────────────────────────
+// ─── Accrued interest: ONE card ──────────────────────────────────────────────
 
-export class AccrintNode extends ClassicPreset.Node {
+export type AccruedInterestOp = "periodic" | "maturity";
+
+export const ACCRUED_INTEREST_OP_META: Record<AccruedInterestOp, { label: string; description: string }> = {
+  periodic: { label: "ACCRINT",  description: "Accrued interest for a security that pays periodic interest. Excel: `ACCRINT`." },
+  maturity: { label: "ACCRINTM", description: "Accrued interest for a security that pays interest at maturity. Excel: `ACCRINTM`." },
+};
+
+export const ACCRUED_INTEREST_OP_OPTIONS: { value: AccruedInterestOp; label: string }[] = [
+  { value: "periodic", label: "Periodic" },
+  { value: "maturity", label: "At maturity" },
+];
+
+const ACCRUED_INTEREST_KEYS = ["issue", "settle", "rate", "par", "frequency", "basis"] as const;
+function accruedInterestKeys(op: AccruedInterestOp): string[] {
+  return ACCRUED_INTEREST_KEYS.filter((k) => k !== "frequency" || op === "periodic");
+}
+
+/** ACCRINT and ACCRINTM on one card: the coupon schedule is the op, `frequency` is the
+ *  one socket only the periodic form shows. */
+export class AccruedInterestNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
     basis: BASIS_DOC,
   };
   label: string;
+  op: AccruedInterestOp;
   cachedResult: number | null = null;
   literals: Record<string, number> = { rate: 0.06, par: 1000, frequency: 2, basis: 0 };
   width = 180; height = 280;
 
-  constructor(init?: { label?: string }) {
-    super("Accrint");
-    this.label = init?.label ?? "ACCRINT";
-    this.addInput("issue",     dateIn("Issue date"));
-    this.addInput("settle",    dateIn("Settlement date"));
-    this.addInput("rate",      numIn("Annual coupon rate"));
-    this.addInput("par",       numIn("Par value"));
-    this.addInput("frequency", numIn("Frequency"));
-    this.addInput("basis",     numIn("Basis"));
+  constructor(init?: { label?: string; op?: AccruedInterestOp }) {
+    super("AccruedInterest");
+    this.label = init?.label ?? "";
+    this.op = init?.op === "maturity" ? "maturity" : "periodic";
+    for (const k of accruedInterestKeys(this.op)) this.addInput(k, this.makeInput(k));
     this.addOutput("result", numOut("Accrued interest"));
+    this.height = this.op === "periodic" ? 280 : 245;
+  }
+
+  private makeInput(key: string) {
+    switch (key) {
+      case "issue":     return dateIn("Issue date");
+      case "settle":    return dateIn("Settlement date");
+      case "rate":      return numIn("Annual coupon rate");
+      case "par":       return numIn("Par value");
+      case "frequency": return numIn("Frequency");
+      default:          return numIn("Basis");
+    }
+  }
+
+  /** Callers on a live graph prune these BEFORE calling setOp (onePrunePath). */
+  keysDroppedBySwitch(next: AccruedInterestOp): string[] {
+    return keysDroppedBy(accruedInterestKeys(this.op), accruedInterestKeys(next));
+  }
+
+  setOp(next: AccruedInterestOp): void {
+    if (next === this.op) return;
+    const after = accruedInterestKeys(next);
+    reshapeInputs(this, after, (k) => this.makeInput(k));
+    this.op = next;
+    this.height = next === "periodic" ? 280 : 245;
   }
 
   data(inputs: { issue?: number[]; settle?: number[]; rate?: number[]; par?: number[]; frequency?: number[]; basis?: number[] }): { result: number | null } {
-    const is = inputs.issue?.[0];
-    const ss = inputs.settle?.[0];
-    if (is == null || ss == null) { this.cachedResult = null; return { result: null }; }
-    const rate  = readInput(inputs.rate, this.literals.rate ?? 0.06);
-    const par   = readInput(inputs.par, this.literals.par ?? 1000);
-    const freqRaw = readInput(inputs.frequency, this.literals.frequency ?? 2);
-    const basisRaw = readInput(inputs.basis, this.literals.basis ?? 0);
-    if (rate === null || par === null || freqRaw === null || basisRaw === null) { this.cachedResult = null; return { result: null }; }
-    const freq = Math.round(freqRaw);
-    const basis = Math.round(basisRaw);
-    if (![1, 2, 4].includes(freq)) { this.cachedResult = null; return { result: null }; }
-    const issue  = serialToJsDate(is);
-    const settle = serialToJsDate(ss);
-    const use30  = basis === 0 || basis === 4;
-    const a = use30 ? days30_360(issue, settle) : actualDays(issue, settle);
-    // Period length E per basis: only actual/actual (1) measures the real period;
-    // 2 is actual/360 and 3 actual/365 (real-Excel golden values, 2026-08-31).
-    const e = basis === 1 ? actualDays(issue, coupAddMonths(issue, 12 / freq))
-      : basis === 3 ? 365 / freq : 360 / freq;
-    const result = par * (rate / freq) * (a / e);
-    this.cachedResult = result;
-    return { result };
-  }
-}
-
-// ─── ACCRINTM ─────────────────────────────────────────────────────────────────
-
-export class AccrintMNode extends ClassicPreset.Node {
-  static socketDocs: Record<string, string> = {
-    basis: BASIS_DOC,
-  };
-  label: string;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = { rate: 0.06, par: 1000, basis: 0 };
-  width = 180; height = 245;
-
-  constructor(init?: { label?: string }) {
-    super("AccrintM");
-    this.label = init?.label ?? "ACCRINTM";
-    this.addInput("issue",  dateIn("Issue date"));
-    this.addInput("settle", dateIn("Settlement date"));
-    this.addInput("rate",   numIn("Annual coupon rate"));
-    this.addInput("par",    numIn("Par value"));
-    this.addInput("basis",  numIn("Basis"));
-    this.addOutput("result", numOut("Accrued interest"));
-  }
-
-  data(inputs: { issue?: number[]; settle?: number[]; rate?: number[]; par?: number[]; basis?: number[] }): { result: number | null } {
     const is = inputs.issue?.[0], ss = inputs.settle?.[0];
-    if (is == null || ss == null) { this.cachedResult = null; return { result: null }; }
+    const fail = () => { this.cachedResult = null; return { result: null }; };
+    if (is == null || ss == null) return fail();
     const rate  = readInput(inputs.rate, this.literals.rate ?? 0.06);
     const par   = readInput(inputs.par, this.literals.par ?? 1000);
     const basis = readInput(inputs.basis, this.literals.basis ?? 0);
-    if (rate === null || par === null || basis === null) { this.cachedResult = null; return { result: null }; }
-    const result = accrintM(is, ss, rate, par, basis);
+    if (rate === null || par === null || basis === null) return fail();
+    let result: number | null;
+    if (this.op === "periodic") {
+      const freq = readInput(inputs.frequency, this.literals.frequency ?? 2);
+      if (freq === null) return fail();
+      result = accrint(is, ss, rate, par, freq, basis);
+    } else {
+      result = accrintM(is, ss, rate, par, basis);
+    }
     this.cachedResult = result;
     return { result };
   }
 }
 
-// ─── PRICEDISC / YIELDDISC ────────────────────────────────────────────────────
+// ─── Payment breakdown: ONE card ─────────────────────────────────────────────
 
-export const PRICE_DISC_OP_META = {
-  pricedisc: { label: "PRICEDISC", description: "Price per $100 of a discounted security (such as a T-bill). Excel: `PRICEDISC`." },
-  yielddisc: { label: "YIELDDISC", description: "Annual yield of a discounted security. Excel: `YIELDDISC`." },
-} satisfies Record<PriceDiscOp, { label: string; description: string }>;
+export type PaymentBreakdownOp = "ipmt" | "ppmt" | "cumipmt" | "cumprinc";
 
-export class PriceDiscNode extends ClassicPreset.Node {
+export const PAYMENT_BREAKDOWN_OP_META: Record<PaymentBreakdownOp, { label: string; description: string }> = {
+  ipmt:     { label: "IPMT",     description: "Interest portion of a periodic payment. Excel: `IPMT`." },
+  ppmt:     { label: "PPMT",     description: "Principal portion of a periodic payment. Excel: `PPMT`." },
+  cumipmt:  { label: "CUMIPMT",  description: "Cumulative interest paid between two periods. Excel: `CUMIPMT`." },
+  cumprinc: { label: "CUMPRINC", description: "Cumulative principal paid between two periods. Excel: `CUMPRINC`." },
+};
+
+// The single-period ops (IPMT/PPMT) take per/fv; the range ops (CUMIPMT/CUMPRINC) take
+// start/end. Switching the op across that boundary drives the socket reshape.
+const PAYMENT_BREAKDOWN_SINGLE_KEYS = ["rate", "per", "nper", "pv", "fv"];
+const PAYMENT_BREAKDOWN_RANGE_KEYS  = ["rate", "nper", "pv", "start", "end"];
+function paymentBreakdownKeys(op: PaymentBreakdownOp): string[] {
+  return op === "ipmt" || op === "ppmt" ? [...PAYMENT_BREAKDOWN_SINGLE_KEYS] : [...PAYMENT_BREAKDOWN_RANGE_KEYS];
+}
+const PAYMENT_BREAKDOWN_INPUTS: Record<string, () => ClassicPreset.Input<ClassicPreset.Socket>> = {
+  rate:  () => numIn("Rate"),
+  per:   () => numIn("Period"),
+  nper:  () => numIn("Nper"),
+  pv:    () => numIn("PV"),
+  fv:    () => numIn("FV"),
+  start: () => numIn("Start period"),
+  end:   () => numIn("End period"),
+};
+
+/** IPMT / PPMT (one period) and CUMIPMT / CUMPRINC (a range) on one card. The op switch
+ *  flips the pair and reshapes the sockets; the shared rate/nper/pv keep their cables.
+ *  IPMT/PPMT math is verbatim from the former IpmtPpmt node; CUMIPMT/CUMPRINC come from the
+ *  former CumPmt node with the interest sign corrected to Excel's convention. */
+export class PaymentBreakdownNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    pr: "Read in YIELDDISC mode: the price to solve the yield from.",
-    redemption: "Face value redeemed at maturity. Defaults to 100, the par value.",
-    basis: BASIS_DOC,
+    rate: "The rate for a single period. Divide an annual rate by the number of periods per year.",
+    per: "The single period to report, counted from 1.",
+    end: "The sum includes both the start and end periods.",
   };
-  label: string;
-  op: PriceDiscOp;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = { discount: 0.05, pr: 97, redemption: 100, basis: 0 };
-  width = 180; height = 255;
 
-  constructor(init?: { label?: string; op?: PriceDiscOp }) {
-    super("PriceDisc");
-    this.op    = init?.op    ?? "pricedisc";
-    this.label = init?.label ?? "";
-    this.addInput("settle",     dateIn("Settlement date"));
-    this.addInput("maturity",   dateIn("Maturity date"));
-    this.addInput("discount",   numIn("Discount rate"));
-    this.addInput("pr",         numIn("Price"));
-    this.addInput("redemption", numIn("Redemption"));
-    this.addInput("basis",      numIn("Basis"));
+  label: string;
+  op: PaymentBreakdownOp;
+  paymentTiming: PaymentTiming;
+  cachedResult: number | null = null;
+  literals: Record<string, number> = { rate: 0.05, per: 1, nper: 12, pv: 1000, fv: 0, start: 1, end: 12 };
+  width = 180; height = 367;
+
+  constructor(init?: { label?: string; op?: PaymentBreakdownOp; paymentTiming?: PaymentTiming }) {
+    super("PaymentBreakdown");
+    this.label         = init?.label         ?? "";
+    this.op            = init?.op && init.op in PAYMENT_BREAKDOWN_OP_META ? init.op : "ipmt";
+    this.paymentTiming = init?.paymentTiming ?? "end";
+    for (const k of paymentBreakdownKeys(this.op)) this.addInput(k, PAYMENT_BREAKDOWN_INPUTS[k]());
     this.addOutput("result", numOut("Result"));
   }
 
-  data(inputs: { settle?: number[]; maturity?: number[]; discount?: number[]; pr?: number[]; redemption?: number[]; basis?: number[] }): { result: number | null } {
-    const s = inputs.settle?.[0], m = inputs.maturity?.[0];
-    if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
-    const basis      = readInput(inputs.basis, this.literals.basis ?? 0);
-    const redemption = readInput(inputs.redemption, this.literals.redemption ?? 100);
-    if (basis === null || redemption === null) { this.cachedResult = null; return { result: null }; }
-    // The discount rate for PRICEDISC, the market price for YIELDDISC.
-    const rateOrPrice = this.op === "pricedisc"
-      ? (readInput(inputs.discount, this.literals.discount ?? 0.05))
-      : (readInput(inputs.pr, this.literals.pr ?? 97));
-    if (rateOrPrice === null) { this.cachedResult = null; return { result: null }; }
-    const result = priceDisc(this.op, s, m, rateOrPrice, redemption, basis);
+  /** Callers on a live graph prune these BEFORE calling setOp (onePrunePath). */
+  keysDroppedBySwitch(next: PaymentBreakdownOp): string[] {
+    return keysDroppedBy(paymentBreakdownKeys(this.op), paymentBreakdownKeys(next));
+  }
+
+  setOp(next: PaymentBreakdownOp): void {
+    if (next === this.op) return;
+    reshapeInputs(this, paymentBreakdownKeys(next), (k) => PAYMENT_BREAKDOWN_INPUTS[k]());
+    this.op = next;
+  }
+
+  data(inputs: { rate?: number[]; per?: number[]; nper?: number[]; pv?: number[]; fv?: number[]; start?: number[]; end?: number[] }) {
+    if (this.op === "ipmt" || this.op === "ppmt") {
+      // VERBATIM from the former IpmtPpmtNode.data().
+      const rate = readInput(inputs.rate, this.literals.rate ?? 0);
+      const per  = readInput(inputs.per, this.literals.per ?? 1);
+      const nper = readInput(inputs.nper, this.literals.nper ?? 0);
+      const pv   = readInput(inputs.pv, this.literals.pv ?? 0);
+      const fv   = readInput(inputs.fv, this.literals.fv ?? 0);
+      if (rate === null || per === null || nper === null || pv === null || fv === null) { this.cachedResult = null; return { result: null }; }
+      const type = this.paymentTiming === "beg" ? 1 : 0;
+
+      let result: number | null = null;
+
+      let pmt: number;
+      if (Math.abs(rate) < 1e-12) {
+        pmt = nper !== 0 ? -(pv + fv) / nper : 0;
+      } else {
+        const rN = Math.pow(1 + rate, nper);
+        pmt = -(pv * rN + fv) * rate / ((1 + rate * type) * (rN - 1));
+      }
+
+      if (Number.isFinite(pmt)) {
+        // The rate≈0 case stays hand-rolled (trivially 0 interest either way).
+        let ipmt: number;
+        if (Math.abs(rate) < 1e-12) {
+          ipmt = 0;
+        } else {
+          ipmt = resolveExcelFunction("IPMT")!(rate, per, nper, pv, fv, type) as number;
+        }
+        if (Number.isFinite(ipmt)) {
+          result = this.op === "ipmt" ? ipmt : pmt - ipmt;
+        }
+      }
+
+      if (result !== null && !Number.isFinite(result)) result = null;
+      this.cachedResult = result;
+      return { result };
+    }
+
+    // From the former CumPmtNode.data(), with the interest SIGN corrected to Excel's
+    // convention (the old node summed +balance·rate; Excel's IPMT/CUMIPMT are negative for
+    // a positive PV). CUMIPMT(0.05,12,1000,1,12) = -353.90, CUMPRINC = -1000.
+    const rate  = readInput(inputs.rate, this.literals.rate ?? 0);
+    const nper  = readInput(inputs.nper, this.literals.nper ?? 0);
+    const pv    = readInput(inputs.pv, this.literals.pv ?? 0);
+    const startRaw = readInput(inputs.start, this.literals.start ?? 1);
+    const endRaw   = readInput(inputs.end, this.literals.end ?? 1);
+    if (rate === null || nper === null || pv === null || startRaw === null || endRaw === null) {
+      this.cachedResult = null; return { result: null };
+    }
+    const start = Math.round(startRaw);
+    const end   = Math.round(endRaw);
+    const type  = this.paymentTiming === "beg" ? 1 : 0;
+
+    let result: number | null = null;
+
+    if (start >= 1 && end >= start && nper > 0) {
+      let pmt: number;
+      if (Math.abs(rate) < 1e-12) {
+        pmt = nper !== 0 ? -(pv + 0) / nper : 0; // fv = 0 assumed
+      } else {
+        const rN = Math.pow(1 + rate, nper);
+        pmt = -(pv * rN) * rate / ((1 + rate * type) * (rN - 1));
+      }
+
+      if (Number.isFinite(pmt)) {
+        let cumSum = 0;
+        for (let per = start; per <= end; per++) {
+          let ipmt: number;
+          if (Math.abs(rate) < 1e-12) {
+            ipmt = 0;
+          } else {
+            const rPer1 = Math.pow(1 + rate, per - 1);
+            const B = pv * rPer1 + pmt * (1 + rate * type) * (rPer1 - 1) / rate;
+            // Negated for Excel's sign: interest on a positive-PV loan is an outflow.
+            ipmt = -(type === 0 ? B * rate : (B - pmt) * rate);
+          }
+          cumSum += this.op === "cumipmt" ? ipmt : pmt - ipmt;
+        }
+        result = Number.isFinite(cumSum) ? cumSum : null;
+      }
+    }
+
     this.cachedResult = result;
     return { result };
   }
 }
 
-// ─── PRICEMAT / YIELDMAT ──────────────────────────────────────────────────────
-
-export const PRICE_MAT_OP_META = {
-  pricemat: { label: "PRICEMAT", description: "Price per $100 of a security that pays interest at maturity. Excel: `PRICEMAT`." },
-  yieldmat: { label: "YIELDMAT", description: "Annual yield of a security that pays interest at maturity. Excel: `YIELDMAT`." },
-} satisfies Record<PriceMatOp, { label: string; description: string }>;
-
-export class PriceMatNode extends ClassicPreset.Node {
-  static socketDocs: Record<string, string> = {
-    yld: "Read in PRICEMAT mode: the yield to price from.",
-    pr: "Read in YIELDMAT mode: the price to solve the yield from.",
-    basis: BASIS_DOC,
-  };
-  label: string;
-  op: PriceMatOp;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = { rate: 0.06, yld: 0.065, pr: 99, basis: 0 };
-  width = 180; height = 280;
-
-  constructor(init?: { label?: string; op?: PriceMatOp }) {
-    super("PriceMat");
-    this.op    = init?.op    ?? "pricemat";
-    this.label = init?.label ?? "";
-    this.addInput("settle",   dateIn("Settlement date"));
-    this.addInput("maturity", dateIn("Maturity date"));
-    this.addInput("issue",    dateIn("Issue date"));
-    this.addInput("rate",     numIn("Coupon rate"));
-    this.addInput("yld",      numIn("Yield"));
-    this.addInput("pr",       numIn("Price"));
-    this.addInput("basis",    numIn("Basis"));
-    this.addOutput("result", numOut("Result"));
-  }
-
-  data(inputs: { settle?: number[]; maturity?: number[]; issue?: number[]; rate?: number[]; yld?: number[]; pr?: number[]; basis?: number[] }): { result: number | null } {
-    const s = inputs.settle?.[0], m = inputs.maturity?.[0], is = inputs.issue?.[0];
-    if (s == null || m == null || is == null) { this.cachedResult = null; return { result: null }; }
-    const rate  = readInput(inputs.rate, this.literals.rate ?? 0.06);
-    const basis = readInput(inputs.basis, this.literals.basis ?? 0);
-    if (rate === null || basis === null) { this.cachedResult = null; return { result: null }; }
-    // The yield for PRICEMAT, the market price for YIELDMAT.
-    const yldOrPrice = this.op === "pricemat"
-      ? (readInput(inputs.yld, this.literals.yld ?? 0.065))
-      : (readInput(inputs.pr, this.literals.pr ?? 99));
-    if (yldOrPrice === null) { this.cachedResult = null; return { result: null }; }
-    const result = priceMat(this.op, s, m, is, rate, yldOrPrice, basis);
-    this.cachedResult = result;
-    return { result };
-  }
-}
 
 // ─── DURATION / MDURATION ─────────────────────────────────────────────────────
 
@@ -1174,128 +1076,106 @@ export class DurationNode extends ClassicPreset.Node {
   }
 }
 
-// ─── PRICE / YIELD ────────────────────────────────────────────────────────────
+// ─── Bond pricing: ONE card ──────────────────────────────────────────────────
 
-export const BOND_PRICE_OP_META = {
-  price: { label: "PRICE", description: "Clean price per $100 face for a coupon bond (`30/360` basis). Excel: `PRICE`." },
-  yield: { label: "YIELD", description: "Annual yield of a coupon bond given its market price (`30/360` basis). Excel: `YIELD`." },
-} satisfies Record<BondPriceOp, { label: string; description: string }>;
+export type BondPricingOp = BondPriceOp | OddCouponOp;
 
-export class BondPriceNode extends ClassicPreset.Node {
+/** The op dropdown: label = the Excel name, `keys` = the inputs that follow the shared
+ *  settlement/maturity pair. The odd-coupon ops add their own date; a first-coupon date
+ *  and a last-interest date are different facts, so they are different sockets. */
+export const BOND_PRICING_META: Record<BondPricingOp, { label: string; description: string; group: string; keys: readonly string[] }> = {
+  price:     { group: "Regular coupons",  label: "PRICE",     keys: ["rate", "yld", "redemption", "frequency"], description: "Clean price per $100 face for a coupon bond (`30/360` basis). Excel: `PRICE`." },
+  yield:     { group: "Regular coupons",  label: "YIELD",     keys: ["rate", "pr", "redemption", "frequency"], description: "Annual yield of a coupon bond given its market price (`30/360` basis). Excel: `YIELD`." },
+  oddfprice: { group: "Odd first coupon", label: "ODDFPRICE", keys: ["issue", "firstcoupon", "rate", "yld", "redemption", "frequency"], description: "Price of a bond with an irregular first coupon period. Excel: `ODDFPRICE`." },
+  oddfyield: { group: "Odd first coupon", label: "ODDFYIELD", keys: ["issue", "firstcoupon", "rate", "pr", "redemption", "frequency"], description: "Yield of a bond with an irregular first coupon period. Excel: `ODDFYIELD`." },
+  oddlprice: { group: "Odd last coupon",  label: "ODDLPRICE", keys: ["lastinterest", "rate", "yld", "redemption", "frequency"], description: "Price of a bond with an irregular last coupon period. Excel: `ODDLPRICE`." },
+  oddlyield: { group: "Odd last coupon",  label: "ODDLYIELD", keys: ["lastinterest", "rate", "pr", "redemption", "frequency"], description: "Yield of a bond with an irregular last coupon period. Excel: `ODDLYIELD`." },
+};
+
+const BOND_PRICING_INPUTS: Record<string, () => ClassicPreset.Input<ClassicPreset.Socket>> = {
+  settle:       () => dateIn("Settlement date"),
+  maturity:     () => dateIn("Maturity date"),
+  issue:        () => dateIn("Issue date"),
+  firstcoupon:  () => dateIn("First coupon date"),
+  lastinterest: () => dateIn("Last interest date"),
+  rate:         () => numIn("Coupon rate"),
+  yld:          () => numIn("Yield"),
+  pr:           () => numIn("Price"),
+  redemption:   () => numIn("Redemption"),
+  frequency:    () => numIn("Frequency"),
+};
+
+function bondPricingKeys(op: BondPricingOp): string[] {
+  return ["settle", "maturity", ...BOND_PRICING_META[op].keys];
+}
+const isOddFirst = (op: BondPricingOp) => op === "oddfprice" || op === "oddfyield";
+const isOddLast  = (op: BondPricingOp) => op === "oddlprice" || op === "oddlyield";
+
+export class BondPricingNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
+    issue: "Left unwired, the issue date falls back to the settlement date.",
     frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
-    yld: "Read in PRICE mode: the yield to price from.",
-    pr: "Read in YIELD mode: the price to solve the yield from.",
     redemption: "Face value redeemed at maturity. Defaults to 100, the par value.",
   };
   label: string;
-  op: BondPriceOp;
+  op: BondPricingOp;
   cachedResult: number | null = null;
   literals: Record<string, number> = { rate: 0.065, yld: 0.07, pr: 97.5, redemption: 100, frequency: 2 };
   width = 180; height = 280;
 
-  constructor(init?: { label?: string; op?: BondPriceOp }) {
-    super("BondPrice");
-    this.op    = init?.op    ?? "price";
+  constructor(init?: { label?: string; op?: BondPricingOp }) {
+    super("BondPricing");
     this.label = init?.label ?? "";
-    this.addInput("settle",     dateIn("Settlement date"));
-    this.addInput("maturity",   dateIn("Maturity date"));
-    this.addInput("rate",       numIn("Coupon rate"));
-    this.addInput("yld",        numIn("Yield"));
-    this.addInput("pr",         numIn("Price"));
-    this.addInput("redemption", numIn("Redemption"));
-    this.addInput("frequency",  numIn("Frequency"));
+    this.op = init?.op && init.op in BOND_PRICING_META ? init.op : "price";
+    for (const k of bondPricingKeys(this.op)) this.addInput(k, BOND_PRICING_INPUTS[k]());
     this.addOutput("result", numOut("Result"));
+    this.height = 149 + 27 * bondPricingKeys(this.op).length;
   }
 
-  data(inputs: { settle?: number[]; maturity?: number[]; rate?: number[]; yld?: number[]; pr?: number[]; redemption?: number[]; frequency?: number[] }): { result: number | null } {
+  /** Callers on a live graph prune these BEFORE calling setOp (onePrunePath). */
+  keysDroppedBySwitch(next: BondPricingOp): string[] {
+    return keysDroppedBy(bondPricingKeys(this.op), bondPricingKeys(next));
+  }
+
+  setOp(next: BondPricingOp): void {
+    if (next === this.op) return;
+    const after = bondPricingKeys(next);
+    reshapeInputs(this, after, (k) => BOND_PRICING_INPUTS[k]());
+    this.op = next;
+    this.height = 149 + 27 * after.length;
+  }
+
+  data(inputs: Record<string, number[] | undefined>): { result: number | null } {
     const s = inputs.settle?.[0], m = inputs.maturity?.[0];
-    if (s == null || m == null) { this.cachedResult = null; return { result: null }; }
+    const fail = () => { this.cachedResult = null; return { result: null }; };
+    if (s == null || m == null) return fail();
     const rate       = readInput(inputs.rate, this.literals.rate ?? 0.065);
     const redemption = readInput(inputs.redemption, this.literals.redemption ?? 100);
     const freq       = readInput(inputs.frequency, this.literals.frequency ?? 2);
-    if (rate === null || redemption === null || freq === null) { this.cachedResult = null; return { result: null }; }
-    // The yield for PRICE, the market price for YIELD.
-    const yldOrPrice = this.op === "price"
-      ? (readInput(inputs.yld, this.literals.yld ?? 0.07))
-      : (readInput(inputs.pr, this.literals.pr ?? 97.5));
-    if (yldOrPrice === null) { this.cachedResult = null; return { result: null }; }
-    const result = bondPriceYield(this.op, s, m, rate, yldOrPrice, redemption, freq);
+    if (rate === null || redemption === null || freq === null) return fail();
+    // The yield for the *PRICE ops, the market price for the *YIELD ops.
+    const isPrice = this.op === "price" || this.op === "oddfprice" || this.op === "oddlprice";
+    const yldOrPrice = isPrice
+      ? readInput(inputs.yld, this.literals.yld ?? 0.07)
+      : readInput(inputs.pr, this.literals.pr ?? 97.5);
+    if (yldOrPrice === null) return fail();
+    let result: number | null;
+    if (isOddFirst(this.op) || isOddLast(this.op)) {
+      const fl = isOddFirst(this.op) ? inputs.firstcoupon?.[0] : inputs.lastinterest?.[0];
+      if (fl == null) return fail();
+      // UNWIRED `issue` keeps the settlement-date fallback; a WIRED blank is unknown,
+      // since pricing as if issued at settlement would fabricate an answer.
+      const issue = isOddFirst(this.op) ? readInput(inputs.issue, s) : s;
+      if (issue === null) return fail();
+      result = oddCoupon(this.op as OddCouponOp, s, m, issue, fl, rate, yldOrPrice, redemption, freq);
+    } else {
+      result = bondPriceYield(this.op as BondPriceOp, s, m, rate, yldOrPrice, redemption, freq);
+    }
     this.cachedResult = result;
     return { result };
   }
 }
 
-
-// ─── ODD COUPON — ODDFPRICE / ODDFYIELD / ODDLPRICE / ODDLYIELD ───────────────
-
-export const ODD_COUPON_OP_META = {
-  oddfprice: { label: "ODDFPRICE", description: "Price of a bond with an irregular first coupon period. Excel: `ODDFPRICE`." },
-  oddfyield: { label: "ODDFYIELD", description: "Yield of a bond with an irregular first coupon period. Excel: `ODDFYIELD`." },
-  oddlprice: { label: "ODDLPRICE", description: "Price of a bond with an irregular last coupon period. Excel: `ODDLPRICE`." },
-  oddlyield: { label: "ODDLYIELD", description: "Yield of a bond with an irregular last coupon period. Excel: `ODDLYIELD`." },
-} satisfies Record<OddCouponOp, { label: string; description: string }>;
-
-export class OddCouponNode extends ClassicPreset.Node {
-  static socketDocs: Record<string, string> = {
-    issue: "Left unwired, the issue date falls back to the settlement date.",
-    frequency: "1 = annual, 2 = semi-annual, 4 = quarterly.",
-    yld: "Read by the PRICE ops: the yield to price from.",
-    pr: "Read by the YIELD ops: the price to solve the yield from.",
-    redemption: "Face value redeemed at maturity. Defaults to 100, the par value.",
-  };
-
-  label: string;
-  op: OddCouponOp;
-  cachedResult: number | null = null;
-  literals: Record<string, number> = { rate: 0.0775, yld: 0.085, pr: 99.5, redemption: 100, frequency: 2 };
-  width = 180; height = 300;
-
-  constructor(init?: { label?: string; op?: OddCouponOp }) {
-    super("OddCoupon");
-    this.op    = init?.op    ?? "oddfprice";
-    this.label = init?.label ?? "";
-    const isFirst = this.op === "oddfprice" || this.op === "oddfyield";
-    this.addInput("settle",     dateIn("Settlement date"));
-    this.addInput("maturity",   dateIn("Maturity date"));
-    if (isFirst) {
-      this.addInput("issue",      dateIn("Issue date"));
-      this.addInput("firstlast",  dateIn("First coupon date"));
-    } else {
-      this.addInput("firstlast",  dateIn("Last interest date"));
-    }
-    this.addInput("rate",       numIn("Coupon rate"));
-    this.addInput("yld",        numIn("Yield"));
-    this.addInput("pr",         numIn("Price"));
-    this.addInput("redemption", numIn("Redemption"));
-    this.addInput("frequency",  numIn("Frequency"));
-    this.addOutput("result", numOut("Result"));
-  }
-
-  data(inputs: { settle?: number[]; maturity?: number[]; issue?: number[]; firstlast?: number[]; rate?: number[]; yld?: number[]; pr?: number[]; redemption?: number[]; frequency?: number[] }): { result: number | null } {
-    const s = inputs.settle?.[0], m = inputs.maturity?.[0], fl = inputs.firstlast?.[0];
-    if (s == null || m == null || fl == null) { this.cachedResult = null; return { result: null }; }
-    const rate       = readInput(inputs.rate, this.literals.rate ?? 0.0775);
-    const redemption = readInput(inputs.redemption, this.literals.redemption ?? 100);
-    const freq       = readInput(inputs.frequency, this.literals.frequency ?? 2);
-    if (rate === null || redemption === null || freq === null) { this.cachedResult = null; return { result: null }; }
-    // The yield for the *PRICE ops, the market price for the *YIELD ops (which
-    // Newton-solve for the yield that reproduces it).
-    const isPrice = this.op === "oddfprice" || this.op === "oddlprice";
-    const yldOrPrice = isPrice
-      ? (readInput(inputs.yld, this.literals.yld ?? 0.085))
-      : (readInput(inputs.pr, this.literals.pr ?? 99.5));
-    if (yldOrPrice === null) { this.cachedResult = null; return { result: null }; }
-    // UNWIRED `issue` keeps the settlement-date fallback; a WIRED blank is unknown,
-    // since pricing as if issued at settlement would fabricate an answer.
-    const isFirst = this.op === "oddfprice" || this.op === "oddfyield";
-    const issue = isFirst ? readInput(inputs.issue, s) : s;
-    if (issue === null) { this.cachedResult = null; return { result: null }; }
-    const result = oddCoupon(this.op, s, m, issue, fl, rate, yldOrPrice, redemption, freq);
-    this.cachedResult = result;
-    return { result: this.cachedResult };
-  }
-}
 
 // ─── AMORTIZATION SCHEDULE ───────────────────────────────────────────────────
 export class AmortizationNode extends ClassicPreset.Node {
@@ -1318,6 +1198,13 @@ export class AmortizationNode extends ClassicPreset.Node {
     this.addInput("pv",   numIn("PV"));
     this.addInput("fv",   numIn("FV"));
     this.addOutput("frame", frameOut("Schedule"));
+  }
+
+  frameShape(): Shape {
+    return { columns: [
+      { name: "Period", type: "number" }, { name: "Payment", type: "number" }, { name: "Interest", type: "number" },
+      { name: "Principal", type: "number" }, { name: "Balance", type: "number" },
+    ] };
   }
 
   data(inputs: { rate?: number[]; nper?: number[]; pv?: number[]; fv?: number[] }): { frame: FrameValue | null } {

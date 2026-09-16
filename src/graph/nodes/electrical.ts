@@ -1,5 +1,6 @@
+// dte:C76
 // The Electricity pack's declared exceptions to the formula-preset default
-// (docs/pack-architecture.md); registered always, so saved graphs survive pack-off.
+// (dte:C76 formulaPackDefault); registered always (dte:C79 packActivationIsPresentation).
 
 import { ClassicPreset } from "rete";
 import { listIn, numIn, numOut, readInput } from "./shared";

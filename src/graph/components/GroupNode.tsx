@@ -1,3 +1,4 @@
+// dte:C65
 import { useFlowResizeGrip } from "../flowSurface";
 import { Fragment, useState, useRef, useLayoutEffect, useSyncExternalStore, type CSSProperties } from "react";
 import type { GroupNode as GroupNodeType } from "../rete-nodes";
@@ -12,14 +13,15 @@ import { valueChipFor } from "./ValueChip";
 import { groupCollapseStore, syncGroupCollapse, COLLAPSE_LAYOUT, pillY, type RetainedTerminal } from "../groupCollapse";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
 import { socketHighlightStore, dragSocketKey } from "../cableState";
-import { reconcileGroupBox, autofitGroupWithHistory, GROUP_MIN_W, GROUP_MIN_H } from "../groupLogic";
+import { reconcileGroupBox, autofitGroupWithHistory, setGroupLocked, GROUP_MIN_W, GROUP_MIN_H, GROUP_PAD } from "../groupLogic";
+import { measuredBox } from "../nodeSize";
 import { standoffStore, settleStandoffs } from "../standoffs";
 import { setGroupsCollapsed } from "../groupPush";
 import { rebuildGroupMembership } from "../groupMembership";
 import { scheduleAutosave } from "../persistence";
 import { ArrayChip, isArrayValue } from "./ArrayChip";
-import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
-import { formatListCell, nodeOutputElemFamily } from "./valueDisplayFormat";
+import { formatAnnotationStore, formatNumberWithAnnotation, applyLogicalStyle, applyTextCase } from "../formatAnnotationStore";
+import { formatListCell, nodeOutputElemFamily, dateFormatDisplay, resolveDisplayAnnotation } from "./valueDisplayFormat";
 import { isSolError } from "../errorValue";
 import { ErrorChip } from "./ErrorChip";
 import { formatScalar } from "./format";
@@ -30,20 +32,30 @@ import "./GroupNode.css";
 import { stopDragStart } from "../coarse";
 import { getOwningView, getOwningEditor } from "../activeGraph";
 
-// Honors the FC annotation keyed by `annNodeId`.
-function formatReadout(v: unknown, annNodeId: string): string {
+// Honors the FC annotation resolved for `annNodeId`'s output.
+function formatReadout(v: unknown, annNodeId: string, outKey?: string): string {
   if (v === undefined || v === null) return "—";
   if (isSolError(v)) return v.code;
-  const ann = formatAnnotationStore.getForNode(annNodeId);
+  const ann = resolveDisplayAnnotation(annNodeId, outKey);
+  // Unannotated date serials render as DD-MMM-YYYY, exactly as the Display surface does
+  // (dateFormatDisplay); without this the readout showed the raw serial. The FC-annotated
+  // case falls through — formatNumberWithAnnotation formats dates itself.
+  if (ann == null && nodeOutputElemFamily(annNodeId, outKey) === "date") {
+    const d = dateFormatDisplay(v as Parameters<typeof dateFormatDisplay>[0], true, false);
+    if (typeof d === "string") return d;
+    if (Array.isArray(d)) return d.join(", ");
+  }
   const one = (x: number) => (ann ? formatNumberWithAnnotation(x, ann) : formatScalar(x));
   if (typeof v === "number") return one(v);
+  if (typeof v === "boolean") return applyLogicalStyle(v, ann?.logicalStyle);
+  if (typeof v === "string") return ann ? applyTextCase(v, ann.textCase) : v;
   // Per-cell through the shared formatter: Cx, UnitCell, errors, blanks and
   // logicals all have a text form — String(x) turned them into [object Object].
-  if (Array.isArray(v)) return v.map((x) => formatListCell(x as Parameters<typeof formatListCell>[0], one)).join(", ");
+  if (Array.isArray(v)) return v.map((x) => formatListCell(x as Parameters<typeof formatListCell>[0], one, ann)).join(", ");
   // Object-valued kinds get a compact label instead of "[object Object]".
   const kind = describeValueKind(v);
   if (kind != null) return kind;
-  if (typeof v === "object") return formatListCell(v as Parameters<typeof formatListCell>[0], one); // scalar Cx / UnitCell
+  if (typeof v === "object") return formatListCell(v as Parameters<typeof formatListCell>[0], one, ann); // scalar Cx / UnitCell
   return String(v);
 }
 
@@ -61,7 +73,9 @@ function readoutValue(t: RetainedTerminal): unknown {
 }
 
 function readoutText(t: RetainedTerminal): string {
-  return formatReadout(readoutValue(t), t.kind === "display" ? t.displayId : t.effNodeId);
+  return t.kind === "display"
+    ? formatReadout(readoutValue(t), t.displayId)
+    : formatReadout(readoutValue(t), t.effNodeId, t.effSocketKey);
 }
 
 // A chip renders as a DIRECT flex child so the row's align-items:center centers it —
@@ -94,6 +108,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
   useSyncExternalStore(cableValueStore.subscribe, cableValueStore.version);
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   useSyncExternalStore(socketHighlightStore.subscribe, socketHighlightStore.version);
+  useSyncExternalStore(formatAnnotationStore.subscribe, formatAnnotationStore.version);
   const mode = appThemeStore.getMode();
   // Group tint reads heavier on a light canvas — give it a touch more fill.
   const fillAlpha = mode === "light" ? 0.14 : 0.08;
@@ -109,9 +124,22 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
 
   const Grip = useFlowResizeGrip();
   function onResize(size: { width: number; height: number }) {
-    node.width = Math.max(GROUP_MIN_W, size.width);
-    node.height = Math.max(GROUP_MIN_H, size.height);
-    void getOwningView(node.id)?.rerenderNode(node.id);
+    // The right/bottom edges never cross a member: a shrink past the members' extent
+    // would drop them from the group while the box still covered them (no overlaps).
+    const view = getOwningView(node.id);
+    const gv = view?.position(node.id);
+    let minW = GROUP_MIN_W, minH = GROUP_MIN_H;
+    if (view && gv && !node.collapsed) {
+      for (const id of node.members) {
+        const b = measuredBox(view, id);
+        if (!b) continue;
+        minW = Math.max(minW, b.x + b.w + GROUP_PAD - gv.x);
+        minH = Math.max(minH, b.y + b.h + GROUP_PAD - gv.y);
+      }
+    }
+    node.width = Math.max(minW, size.width);
+    node.height = Math.max(minH, size.height);
+    void view?.rerenderNode(node.id);
   }
   function onResizeEnd() {
     const editor = getOwningEditor(node.id);
@@ -164,6 +192,14 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
     void setGroupsCollapsed(editor, view, [node], !node.collapsed);
   }
 
+  function unlockPosition(e: React.MouseEvent) {
+    e.stopPropagation();
+    const editor = getOwningEditor(node.id);
+    const view = getOwningView(node.id);
+    if (!editor || !view) return;
+    setGroupLocked(editor, view, node, false);
+  }
+
   // `node.color` stays the canonical value — a palette SLOT id, resolved here.
   const baseHex = resolveColor(node.color);
   const color = themeAccent(baseHex, mode);
@@ -189,7 +225,7 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
 
   return (
     <div
-      className={`solenoid-group${node.selected ? " solenoid-group--selected" : ""}${collapsed ? " solenoid-group--collapsed" : ""}`}
+      className={`solenoid-group${node.selected ? " solenoid-group--selected" : ""}${collapsed ? " solenoid-group--collapsed" : ""}${node.lockedPosition ? " solenoid-group--locked" : ""}`}
       style={rootStyle}
     >
       <div className="solenoid-group__header" style={{ background: color, borderColor: borderCol, color: ink }}>
@@ -223,6 +259,22 @@ export function GroupComponent({ data, emit }: NodeProps<GroupNodeType>) {
           >
             {node.label || "Group"}
           </div>
+        )}
+        {node.lockedPosition && (
+          <button
+            type="button"
+            className="solenoid-group__lock"
+            title="Unlock the group's position"
+            aria-label="Unlock the group's position"
+            onClick={unlockPosition}
+            onPointerDown={stop}
+            onMouseDown={stop}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={ink} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </button>
         )}
         {node.members.length > 1 && (
           <button

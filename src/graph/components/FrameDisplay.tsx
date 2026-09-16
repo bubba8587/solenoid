@@ -2,6 +2,8 @@
 // TableDisplay (same classes) so the collapse-to-chip CSS applies unchanged.
 import { useSyncExternalStore } from "react";
 import { FrameChip } from "./FrameChip";
+import { CategoryChip } from "./CategoryChip";
+import { categoryColorIndex } from "../categoryColor";
 import { frameRowCount, formatFrameCell, type FrameCell, type FrameColType, type FrameValue, type FrameSourceColumn } from "../frame";
 import type { FramePopupColumn, SourceCommitRefresh } from "../tablePopupStore";
 import { isSolError, type SolError } from "../errorValue";
@@ -17,7 +19,7 @@ function isNanCell(v: FrameCell): boolean {
   return typeof v === "number" && Number.isNaN(v);
 }
 
-function fmtCell(v: FrameCell, type: FrameColType = "number", ann?: FormatAnnotation): string {
+export function fmtCell(v: FrameCell, type: FrameColType = "number", ann?: FormatAnnotation): string {
   // A persisted format applies by column KIND, so a stale cross-type one left by a
   // number↔date switch falls through to the type default rather than misrendering.
   if (ann) {
@@ -34,9 +36,12 @@ function fmtCell(v: FrameCell, type: FrameColType = "number", ann?: FormatAnnota
   return Number.isInteger(c) ? String(c) : c.toFixed(3).replace(/\.?0+$/, "");
 }
 
-export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCommitSource, full, previewRows, previewCols, scroll, formatNodeId, lambdaOptions, formLayout }: {
+export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCommitSource, full, previewRows, previewCols, scroll, formatNodeId, lambdaOptions, formLayout, peek }: {
   frame: FrameValue | SolError | null;
   label?: string;
+  /** Socket hover-peek: a compact preview like `!full`, but with NO chip (read-only,
+   *  no popup). Pair with `previewRows` for the peek's row cap. */
+  peek?: boolean;
   /** Whose persisted per-column formats to read; defaults to the host node. A Report
    *  embed passes the SOURCE frame node so it shows that frame's formats. */
   formatNodeId?: string;
@@ -66,8 +71,9 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
   const ctxNodeId = useHostNodeId();
   const hostNodeId = formatNodeId ?? ctxNodeId;
   useSyncExternalStore(frameFormatStore.subscribe, frameFormatStore.version);
-  const annFor = (colName: string): FormatAnnotation | undefined =>
-    hostNodeId ? frameFormatStore.get(hostNodeId, colName) : undefined;
+  // A local pick overrides the format the column carried in (dte:D41 formatFlowsDownstream).
+  const annFor = (col: { name: string; format?: FormatAnnotation }): FormatAnnotation | undefined =>
+    (hostNodeId ? frameFormatStore.get(hostNodeId, col.name) : undefined) ?? col.format;
 
   if (isSolError(frame)) {
     return (
@@ -83,6 +89,19 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
     );
   }
   if (!frame || frame.columns.length === 0) {
+    // An EDITABLE input must never lose its chip: text that parses to nothing would blank
+    // the node to "—" and make it wholly uneditable (mirrors TableDisplay).
+    if (onSave || source || onSaveSource || onCommitSource) {
+      const stub: FrameValue = frame ?? { __frame: true, columns: [] };
+      return (
+        <div className="solenoid-node__display-value solenoid-table-display" style={{ padding: "4px 8px", userSelect: "text" }}>
+          <div style={{ color: "var(--text-muted)", fontSize: 11, fontStyle: "italic" }}>empty</div>
+          <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
+            <FrameChip value={stub} label={label} size="sm" onSave={onSave} source={source} onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={lambdaOptions} formLayout={formLayout} />
+          </div>
+        </div>
+      );
+    }
     return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
   }
   const rows = frameRowCount(frame);
@@ -90,6 +109,12 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
   const maxR = full ? Math.min(rows, 100) : Math.min(rows, previewRows ?? 3);
   const maxC = full ? frame.columns.length : Math.min(frame.columns.length, previewCols ?? 3);
   const extraCols = !full && frame.columns.length > maxC;
+  // A string column set to the Chip style renders its cells as categorical color chips,
+  // keyed by the FULL column so colors are stable across the preview cut (B2.2).
+  const chipCols = new Map<number, Map<string, number>>();
+  frame.columns.forEach((c, j) => {
+    if (c.type === "string" && annFor(c)?.chip) chipCols.set(j, categoryColorIndex(c.values as (string | null)[]));
+  });
 
   return (
     <div
@@ -115,7 +140,9 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
                 const nan = isNanCell(cell);
                 return (
                 <td key={j} className={nan ? "solenoid-nan-cell" : undefined} title={nan ? "Not a number: an undefined value in the data" : undefined} style={{ padding: full ? "2px 8px" : "1px 4px", textAlign: c.type === "string" ? "left" : "right", fontSize: full ? 13 : 12, fontFamily: "var(--font-mono)", color: "var(--text)", borderRight: "1px solid var(--border)", whiteSpace: full ? "nowrap" : undefined, ...(full ? {} : { overflow: "hidden", textOverflow: "ellipsis" }) }}>
-                  {fmtCell(cell, c.type, annFor(c.name))}
+                  {cell !== null && chipCols.has(j)
+                    ? <CategoryChip value={String(cell)} index={chipCols.get(j)!.get(String(cell)) ?? 0} />
+                    : fmtCell(cell, c.type, annFor(c))}
                 </td>
                 );
               })}
@@ -129,7 +156,7 @@ export function FrameDisplay({ frame, label, onSave, source, onSaveSource, onCom
           )}
         </tbody>
       </table>
-      {!full && (
+      {!full && !peek && (
         <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
           <FrameChip value={frame} label={label} size="sm" onSave={onSave} source={source} onSaveSource={onSaveSource} onCommitSource={onCommitSource} lambdaOptions={lambdaOptions} formLayout={formLayout} />
         </div>

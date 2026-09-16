@@ -1,12 +1,13 @@
 import { parseCsvRows } from "./csv";
 import { parseDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/dateSerial";
-import { isSolError, type SolError } from "./errorValue";
+import { isSolError, solError, type SolError } from "./errorValue";
 import { coerceLogical } from "./valueKinds";
 import { type ColumnUnit, type UnitCell, isUnitCell } from "./unitValue";
 import { formatDim, dimEqual, type Dim } from "./dimension";
 import { parseColumnUnitFromHeader, columnUnitFromSpec, tagFrameCellUnit, matrixCellsFromList } from "./unitColumn";
 import { displayMagnitudeOf } from "./unitBridge";
 import { elementFamilyOf, type SocketDataType } from "./sockets";
+import { dateAnnotationPattern, type FormatAnnotation } from "./formatAnnotationStore";
 
 // A date column stores Excel serials — the `type: "date"` tag is the only signal
 // those numbers are dates.
@@ -22,6 +23,9 @@ export interface FrameColumn {
   /** A numeric column LOCKED to a dimensional unit: cells stay bare AS-TYPED
    *  magnitudes (the display unit's, NOT base-SI — `tagFrameCellUnit` converts). */
   unit?: ColumnUnit;
+  /** The DISPLAY format riding downstream from the node that picked it, stamped at
+   *  the producer (`coerceInputs`); never serialized, and a nearer pick overrides. */
+  format?: FormatAnnotation;
   /** The INPUTTED source text per cell, BEFORE type inference rewrote it. Present
    *  only on SOURCE frames; a computed/transformed column drops it. */
   raw?: string[];
@@ -175,11 +179,12 @@ export function frameHasTextColumns(f: FrameValue): boolean {
 /** Format one cell for DISPLAY by column type (serials → date strings, booleans →
  *  TRUE/FALSE, errors → #CODE!); the popup editor uses raw `values` so editing stays
  *  literal. */
-export function formatFrameCell(type: FrameColType, v: FrameCell): number | string | null {
+export function formatFrameCell(type: FrameColType, v: FrameCell, format?: FormatAnnotation): number | string | null {
   if (isSolError(v)) return v.code;
   if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
   if (type === "date" && typeof v === "number" && Number.isFinite(v)) {
-    return formatDateSerial(v, DEFAULT_DATE_FORMAT);
+    const pattern = (format && dateAnnotationPattern(format)) || DEFAULT_DATE_FORMAT;
+    return formatDateSerial(v, pattern);
   }
   return v;
 }
@@ -443,6 +448,35 @@ export function frameFromRecords(records: ReadonlyArray<Record<string, unknown>>
   return { __frame: true, columns };
 }
 
+/** Records → a Cube: columns are the keys in first-appearance order; a scalar column keeps a
+ *  type hint, a list value is a LIST cell (never joined into text), a nested record list a
+ *  nested frame/cube via the same rule. The rows-of-objects shape frontmatter and the vault
+ *  readers share. */
+export function recordsToCube(records: ReadonlyArray<Record<string, unknown>>): CubeValue {
+  const keys: string[] = [];
+  for (const rec of records) for (const k of Object.keys(rec)) if (!keys.includes(k)) keys.push(k);
+  const names = makeHeaders(keys, keys.length);
+  const toCell = (v: unknown): CubeCell => {
+    if (v == null) return null;
+    if (Array.isArray(v)) {
+      // Records with a null beside them are still records; the null is an empty row.
+      const present = v.filter((x) => x != null);
+      const objs = present.filter((x) => typeof x === "object" && !Array.isArray(x));
+      if (present.length > 0 && objs.length === present.length) return recordsToCube(v.map((x) => (x ?? {}) as Record<string, unknown>));
+      return v.map(toCell);
+    }
+    if (typeof v === "object") return recordsToCube([v as Record<string, unknown>]);
+    return v as FrameCell;
+  };
+  return cubeFromColumns(keys.map((key, j) => {
+    const cells = records.map((r) => toCell(r[key]));
+    const scalarOnly = cells.every((c) => c == null || (typeof c !== "object"));
+    if (!scalarOnly) return { name: names[j], cells };
+    const inferred = inferColumn(names[j], cells);
+    return { name: names[j], cells, type: inferred.type };
+  }));
+}
+
 /** Build a Frame from JSON array-of-arrays (positional columns). */
 export function frameFromRows(rows: ReadonlyArray<ReadonlyArray<unknown>>, headers?: ReadonlyArray<string>): FrameValue {
   const ncols = rows.reduce((m, r) => Math.max(m, r.length), 0);
@@ -464,6 +498,10 @@ export interface CubeColumn {
   /** OPTIONAL element type carried from a source frame column, so a flat cube still
    *  renders dates/logicals. A DISPLAY hint, not a homogeneity guarantee. */
   type?: FrameColType;
+  /** OPTIONAL per-column display format, the cube analogue of `FrameColumn.format`: a
+   *  producing verb can stamp it so date cells read with a chosen pattern (a Minutes-mode
+   *  Schedule stamps `DD-MMM-YYYY HH:mm` on its Start/Finish columns). */
+  format?: FormatAnnotation;
 }
 
 export interface CubeValue {
@@ -521,7 +559,7 @@ export function cubeCellsFromColumn(col: FrameColumn): CubeCell[] {
 /** A Frame is a Cube of flat cells — element TYPE carried, unit-locked cells tagged;
  *  depth is always 1. */
 export function frameToCube(f: FrameValue): CubeValue {
-  return makeCube(f.columns.map((col) => ({ name: col.name, type: col.type, cells: cubeCellsFromColumn(col) })));
+  return makeCube(f.columns.map((col) => ({ name: col.name, type: col.type, ...(col.format ? { format: col.format } : {}), cells: cubeCellsFromColumn(col) })));
 }
 
 /** Cube from a row-major grid + optional headers; ragged rows pad short with `null`. */
@@ -535,9 +573,30 @@ export function cubeFromRows(
 }
 
 /** Build a Cube from named columns of arbitrary cells (the general constructor). */
-export function cubeFromColumns(cols: ReadonlyArray<{ name?: string; cells: CubeCell[]; type?: FrameColType }>): CubeValue {
+export function cubeFromColumns(cols: ReadonlyArray<{ name?: string; cells: CubeCell[]; type?: FrameColType; format?: FormatAnnotation }>): CubeValue {
   const names = makeHeaders(cols.map((c) => c.name ?? ""), cols.length);
-  return makeCube(names.map((name, j) => ({ name, cells: cols[j].cells, ...(cols[j].type ? { type: cols[j].type } : {}) })));
+  return makeCube(names.map((name, j) => ({ name, cells: cols[j].cells, ...(cols[j].type ? { type: cols[j].type } : {}), ...(cols[j].format ? { format: cols[j].format } : {}) })));
+}
+
+/** A FLAT cube as a frame (declared column types kept; a unit cell reads as its magnitude).
+ *  A nested table or list cell is a loud `#SHAPE!` naming the column. This is the NODE-side
+ *  answer to "a cube where a frame verb wants one": a verb that takes a cube declares a
+ *  cube-adoptive input and flattens here inside data(); the lattice never lets a cube into
+ *  a frame socket (the author's ruling, 2026-09-12). */
+export function flatCubeToFrame(c: CubeValue): FrameValue | SolError {
+  for (const col of c.columns) {
+    if (col.cells.some((v) => isCubeValue(v) || isFrameValue(v) || Array.isArray(v))) {
+      return solError("#SHAPE!", `Column "${col.name}" holds nested cells; this reads flat rows`);
+    }
+  }
+  const rows = cubeRowCount(c);
+  return {
+    __frame: true,
+    columns: c.columns.map((col) => ({
+      ...typedColumn(col.name, col.cells.map((v) => (isUnitCell(v) ? v.value : v)), rows, col.type ?? null),
+      ...(col.format ? { format: col.format } : {}),
+    })),
+  };
 }
 
 /** Widen any value into a Cube (mirrors the frame widening in coerceInputs): a 2-D
@@ -579,12 +638,11 @@ function keyIdInColumn(v: FrameCell, unit: ColumnUnit | undefined): string {
   return keyId(v);
 }
 
-/** Key id for a CUBE cell; a nested frame/cube/list cell can't be a join key
- *  (→ null, unmatched). */
+/** Key id for a CUBE cell; a blank or error cell never matches (the Join verb's rule and
+ *  the socket doc's), and a nested frame/cube/list cell can't be a join key (→ null). */
 function cellKeyId(cell: CubeCell, unit?: ColumnUnit): string | null {
-  if (cell === null) return keyId(null);
+  if (cell === null || isSolError(cell)) return null;
   if (typeof cell === "number" || typeof cell === "string" || typeof cell === "boolean") return keyIdInColumn(cell as FrameCell, unit);
-  if (isSolError(cell)) return keyId(cell);
   if (isUnitCell(cell)) return keyId(cell);
   return null;
 }
@@ -597,20 +655,29 @@ function subFrame(child: FrameValue, rowIdxs: number[]): FrameValue {
       name: c.name,
       type: c.type,
       ...(c.unit ? { unit: c.unit } : {}),
+      ...(c.format ? { format: c.format } : {}),
       values: rowIdxs.map((i) => c.values[i] ?? null),
       ...(c.raw ? { raw: rowIdxs.map((i) => c.raw![i] ?? "") } : {}),
     })),
   };
 }
 
+/** Row subset of a cube by row index — the `subFrame` analogue. Nested cells (lists,
+ *  sub-tables) ride along BY REFERENCE, so the row verbs (A′) reorder/keep whole rows
+ *  without Polars ever seeing a nested cell. Out-of-range indices become blank rows. */
+export function selectCubeRows(cube: CubeValue, indices: readonly number[]): CubeValue {
+  return makeCube(cube.columns.map((c) => ({
+    name: c.name,
+    ...(c.type ? { type: c.type } : {}),
+    ...(c.format ? { format: c.format } : {}),
+    cells: indices.map((i) => c.cells[i] ?? null),
+  })));
+}
+
 /** Row subset of a cube — the `subFrame` analogue, so a pre-built cube keeps its
  *  own nesting when nested. */
 function subCube(child: CubeValue, rowIdxs: number[]): CubeValue {
-  return makeCube(child.columns.map((c) => ({
-    name: c.name,
-    ...(c.type ? { type: c.type } : {}),
-    cells: rowIdxs.map((i) => c.cells[i] ?? null),
-  })));
+  return selectCubeRows(child, rowIdxs);
 }
 
 /** Relate parent + child on a shared key into a Cube: one NESTED column whose cells

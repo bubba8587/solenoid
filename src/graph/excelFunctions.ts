@@ -1,6 +1,9 @@
+// dte:C14,D4,E12,E14,C22
 import * as FX from "@formulajs/formulajs";
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
 import { serialToJsDate, jsDateToSerial } from "./nodes/dateSerial";
+import { convertZone } from "./timeZone";
+import { criteriaAggregate } from "./excelCriteria";
 import { bisectionInv, tCDF, tPDF, chiSqCDF, fCDF, gammaCDF, gammaPDF, linearFit, linearFitR2, expFit, pairPresent, tTestP, fTestP, probBetween, type TTestKind, polyRoots } from "./nodes/mathUtils";
 import { convertValue } from "./nodes/convertUnits";
 import { aggregate, nthExtreme, percentile, quartile, modeSingle, pearson, spearman, kendallTau, covariance, regression, fisher, anovaP, mannWhitneyP, wilcoxonSignedRankP, kruskalP, fisherExactP, ksTwoSampleP, twoProportionP, binomTestP, type AggregateOp } from "./nodes/statsOps";
@@ -9,7 +12,7 @@ import { fitEts, etsForecast, etsInterval, detectSeason } from "./nodes/forecast
 import { fitAll, fitDistribution, FIT_FAMILIES, type FitFamily } from "./nodes/fitOps";
 import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffOpForUnit, epochToSerial, serialToEpoch, dateTrunc, dateTruncUnitFor, type EpochUnit } from "./nodes/dateOps";
 import { hashText, uuidV4, HASH_ALGORITHM_META, type HashAlgorithm } from "./nodes/hashOps";
-import { savgol, gaussianSmooth, lowess, findPeaks } from "./nodes/signalOps";
+import { savgol, savgolProblem, gaussianSmooth, lowess, findPeaks } from "./nodes/signalOps";
 import { seasonalDecompose, stlDecompose } from "./nodes/forecastOps";
 import { splitText, textAfterBefore, urlEncode, regexApply, regexGroups, replaceNth, spellNumber, ordinalText, reverseText, textSimilarity, fuzzyBest, unaccent, slugify, padText, truncateText, wrapText, templatePlaceholders, renderTemplate, templateFormat, type TemplateFormatters, type SimilarityMethod, type PadSide } from "./nodes/textOps";
 import { interpolateLinear, gridAxes, fillGrid } from "./nodes/mathUtils";
@@ -29,7 +32,7 @@ import {
   takeSlice, dropSlice, filterByMask, modeMult, frequencyBins,
   concatLists, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, type Cell as ListCell, argsortList, whichPositions } from "./nodes/listOps";
 import {
-  couponValue, accrintM, securityDisc, priceDisc, priceMat,
+  couponValue, accrintM, securityDisc, priceDisc, priceMat, tbill,
   durationValue, bondPriceYield, oddCoupon, vdb, solveDiscountRate, cashPrep, datedPrep, mirr, returnsOp } from "./nodes/financeOps";
 import { coerceNumber as toNum, coerceLogical, kleeneAnd, kleeneOr, kleeneNot, type Tri } from "./valueKinds";
 import {
@@ -265,7 +268,7 @@ export const FRAME_SURFACE_NAMES: Readonly<Record<string, string>> = {
   // Table verbs › Clean
   FILLDOWN: "Fill Down", REPLACEVALUES: "Replace Values", DROPBLANKROWS: "Drop Blank Rows",
   // Table verbs › Analyze
-  DECISIONMATRIX: "Decision Matrix", SENSITIVITY: "Sensitivity", RECONCILE: "Reconcile", DESCRIBE: "Describe", CORRELATIONMATRIX: "Correlation Matrix", KMEANS: "K-Means", PCA: "PCA", LOGISTICREGRESSION: "Logistic Regression", WINDOW: "Window",
+  DECISIONMATRIX: "Decision Matrix", SCHEDULE: "Schedule", EARNEDVALUE: "Earned Value", CUBEINPUT: "Cube Input", GROUPCOSTSETTLE: "Group Cost Settle", PAYOFFPLANNER: "Payoff Planner", SENSITIVITY: "Sensitivity", ALLOCATOR: "Allocator", RECONCILE: "Reconcile", DESCRIBE: "Describe", CORRELATIONMATRIX: "Correlation Matrix", KMEANS: "K-Means", PCA: "PCA", LOGISTICREGRESSION: "Logistic Regression", WINDOW: "Window",
   // Cubes (nested tables)
   NESTJOIN: "Nest Join", BUILDCUBE: "Build Cube", CUBECOLUMNS: "Cube Columns",
   CUBEROLLUP: "Cube Rollup",
@@ -467,6 +470,15 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   FISHER:      { returns: "number", arity: [1, 1], family: "statistics" },
   FISHERINV:   { returns: "number", arity: [1, 1], family: "statistics" },
   // numpy / pandas / R one-liners (python-r-gap.md) — Solenoid-native names
+  // The criteria family runs one Excel criteria grammar (excelCriteria.ts): comparison
+  // prefixes, ? / * wildcards with ~, date-shaped text against serials, blank matches blank.
+  SUMIFS:      { returns: "number", arity: [3, 255], native: true },
+  COUNTIFS:    { returns: "number", arity: [2, 255], native: true },
+  AVERAGEIFS:  { returns: "number", arity: [3, 255], native: true },
+  MINIFS:      { returns: "number", arity: [3, 255], native: true },
+  MAXIFS:      { returns: "number", arity: [3, 255], native: true },
+  COUNTIF:     { returns: "number", arity: [2, 2], native: true },
+  AVERAGEIF:   { returns: "number", arity: [2, 3], native: true },
   PTP:         { returns: "number", arity: [1, 255], native: true },
   IQR:         { returns: "number", arity: [1, 255], native: true },
   MAD:         { returns: "number", arity: [1, 255], native: true },
@@ -603,6 +615,7 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   "WORKDAY.INTL": { returns: "date", arity: [2, 4], family: "datetime" },
   NETWORKDAYS: { returns: "number", arity: [2, 3], family: "datetime" },
   "NETWORKDAYS.INTL": { returns: "number", arity: [2, 4], family: "datetime" },
+  TIMEZONECONVERT: { returns: "date", arity: [3, 3], family: "datetime", native: true },
   "FORECAST.LINEAR": { returns: "number", arity: [3, 3], family: "statistics", native: true },
   "FORECAST.ETS": { returns: "number", listArgs: true, arity: [3, 6], family: "statistics" },
   FITDIST:     { returns: "any", rank: "list", listArgs: true, arity: [1, 2], native: true },
@@ -619,6 +632,9 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
   RECEIVED:   { returns: "number", arity: [4, 5], family: "finance", native: true },
   YIELDDISC:  { returns: "number", arity: [3, 5], family: "finance", native: true },
   PRICEMAT:   { returns: "number", arity: [5, 6], family: "finance", native: true },
+  TBILLEQ:    { returns: "number", arity: [3, 3], family: "finance", native: true },
+  TBILLPRICE: { returns: "number", arity: [3, 3], family: "finance", native: true },
+  TBILLYIELD: { returns: "number", arity: [3, 3], family: "finance", native: true },
   YIELDMAT:   { returns: "number", arity: [5, 6], family: "finance", native: true },
   DURATION:   { returns: "number", arity: [4, 6], family: "finance", native: true },
   MDURATION:  { returns: "number", arity: [4, 6], family: "finance", native: true },
@@ -837,7 +853,16 @@ export const EXCEL_IMPL_META: Record<string, ExcelImplMeta> = {
  *  `(0.1+0.2) & " kg"` is "0.3 kg". Non-finite falls back to `String`. */
 export function numberToText(x: number): string {
   if (!Number.isFinite(x)) return String(x);
-  return parseFloat(x.toPrecision(15)).toString();
+  const v = parseFloat(x.toPrecision(15));
+  const mag = Math.abs(v);
+  // Excel's General text form goes scientific at 1E+21 and below 0.0001, written as
+  // "1E+21" / "1E-07" (uppercase E, signed, two-digit exponent); JS says "1e+21" / "1e-7".
+  if (mag !== 0 && (mag >= 1e21 || mag < 1e-4)) {
+    const [m, e] = v.toExponential().split("e");
+    const exp = Number(e);
+    return `${parseFloat(Number(m).toPrecision(15))}E${exp < 0 ? "-" : "+"}${String(Math.abs(exp)).padStart(2, "0")}`;
+  }
+  return v.toString();
 }
 
 function toStr(x: unknown): string {
@@ -848,6 +873,7 @@ function toStr(x: unknown): string {
   return String(x);
 }
 const badNum = (...xs: number[]) => xs.some(Number.isNaN);
+const optNum = (v: unknown, dflt: number) => (v == null ? dflt : toNum(v));
 const VALUE = (fn: string) => solError("#VALUE!", `${fn} needs a number`);
 
 /** Excel ROUND: round half AWAY from zero — JS `Math.round` is half-UP, so they
@@ -909,7 +935,7 @@ export function excelQuartileInc(nums: ReadonlyArray<number>, q: number): number
 }
 
 registerInternal("ROUND", (x, d) => {
-  const n = toNum(x), digits = toNum(d);
+  const n = toNum(x), digits = optNum(d, 0); // a blank digits slot is 0, like ROUNDUP / TRUNC and Excel
   return badNum(n, digits) ? VALUE("ROUND") : excelRound(n, digits);
 });
 registerInternal("SQRT", (x) => {
@@ -943,7 +969,7 @@ registerInternal("CONCAT", (...xs) => flat(xs).map(toStr).join(""));
 registerInternal("CONCATENATE", (...xs) => flat(xs).map(toStr).join(""));
 registerInternal("TEXTJOIN", (delim, ignoreEmpty, ...xs) => {
   const parts = flat(xs).map(toStr);
-  // ignore_empty defaults to TRUE (Excel); only an explicit FALSE/0 keeps empties.
+  // Only FALSE/0 keeps empties; a blank slot arrives as FALSE (dte:C80 blankArgIsExcelBlank).
   const kept = ignoreEmpty === false || ignoreEmpty === 0 ? parts : parts.filter((s) => s !== "");
   return kept.join(toStr(delim));
 });
@@ -952,13 +978,25 @@ registerInternal("TEXTJOIN", (delim, ignoreEmpty, ...xs) => {
 // (the numberToText 15-sig-digit contract), then delegate to FX for the semantics.
 const TEXT_ARG_POSITIONS: Record<string, number[]> = {
   LEFT: [0], RIGHT: [0], MID: [0], UPPER: [0], LOWER: [0], PROPER: [0],
-  TRIM: [0], REPT: [0], SUBSTITUTE: [0, 1, 2], REPLACE: [0, 3],
+  TRIM: [0], REPT: [0], REPLACE: [0, 3], // SUBSTITUTE is registered below (its instance truncates)
   EXACT: [0, 1], FIND: [0, 1], SEARCH: [0, 1],
 };
 for (const [name, idxs] of Object.entries(TEXT_ARG_POSITIONS)) {
   const f = (FX as unknown as Record<string, (...a: unknown[]) => unknown>)[name];
   registerInternal(name, (...a) => f(...a.map((x, i) => (idxs.includes(i) ? toStr(x) : x))));
 }
+// SUBSTITUTE is ours: formulajs replaces the (instance + 1)th match, and Excel truncates
+// the instance like every numeric argument.
+registerInternal("SUBSTITUTE", (text, old, neu, instance) => {
+  const t = toStr(text), o = toStr(old), n = toStr(neu);
+  if (o === "") return t;
+  if (instance == null) return t.split(o).join(n);
+  const k = Math.trunc(toNum(instance));
+  if (!(k >= 1)) return VALUE("SUBSTITUTE");
+  let at = -1;
+  for (let i = 0; i < k; i++) { at = t.indexOf(o, at < 0 ? 0 : at + o.length); if (at < 0) return t; }
+  return t.slice(0, at) + n + t.slice(at + o.length);
+});
 
 // Read OUR serial through `serialToJsDate` with getUTC*, exactly like DatePartNode —
 // one serial/UTC model, NOT Formula.js's Date/1900 conventions.
@@ -991,6 +1029,29 @@ registerInternal("AVERAGEA", (...a) => {
   const cells = a.flatMap((x) => (Array.isArray(x) ? x : [x])).filter((v) => v != null);
   return aggregate("avg", cells.map((v) => { const n = toNum(v); return Number.isFinite(n) ? n : 0; }));
 });
+// The *IFS family: (values, range1, crit1, range2, crit2, …); COUNTIFS has no values range.
+const asRange = (v: unknown): unknown[] => (Array.isArray(v) ? v : [v]);
+const ifsPairs = (rest: unknown[]): Array<[unknown[], unknown]> | SolError => {
+  if (rest.length === 0 || rest.length % 2 !== 0) return solError("#VALUE!", "Criteria come in range, criterion pairs");
+  const pairs: Array<[unknown[], unknown]> = [];
+  for (let i = 0; i < rest.length; i += 2) pairs.push([asRange(rest[i]), rest[i + 1]]);
+  return pairs;
+};
+const ifs = (kind: "sum" | "average" | "min" | "max") => (values: unknown, ...rest: unknown[]) => {
+  const pairs = ifsPairs(rest);
+  return isSolError(pairs) ? pairs : criteriaAggregate(kind, asRange(values), pairs);
+};
+registerInternal("SUMIFS", ifs("sum"));
+registerInternal("AVERAGEIFS", ifs("average"));
+registerInternal("MINIFS", ifs("min"));
+registerInternal("MAXIFS", ifs("max"));
+registerInternal("COUNTIFS", (...rest) => {
+  const pairs = ifsPairs(rest);
+  return isSolError(pairs) ? pairs : criteriaAggregate("count", null, pairs);
+});
+// The singular forms: (range, criterion[, values]); the values range defaults to the range.
+registerInternal("COUNTIF", (range, crit) => criteriaAggregate("count", null, [[asRange(range), crit]]));
+registerInternal("AVERAGEIF", (range, crit, values) => criteriaAggregate("average", asRange(values === undefined ? range : values), [[asRange(range), crit]]));
 registerInternal("LARGE",  (arr, k) => nthExtreme(numsOf(arr), toNum(k), true));
 registerInternal("SMALL",  (arr, k) => nthExtreme(numsOf(arr), toNum(k), false));
 registerInternal("PERCENTILE",     (arr, p) => percentile(numsOf(arr), toNum(p), false));
@@ -1024,13 +1085,13 @@ registerInternal("TRIMMEAN", (vals, pct) => excelTrimmean((vals as number[]) ?? 
 // Excel arg order PERCENTRANK(array, x, [significance]); range arg passes whole.
 registerInternal("PERCENTRANK", (arr, x, sig) => excelPercentRank((arr as number[]) ?? [], toNum(x), sig == null ? 3 : Math.trunc(toNum(sig)), false));
 
-// Owned to match MathFnNode `compute()` exactly: MOD takes the DIVISOR's sign, Excel's
+// Owned to match MathFXNode `compute()` exactly: MOD takes the DIVISOR's sign, Excel's
 // ATAN2(x, y) = atan2(y, x), ÷0 is #DIV/0!, out-of-domain is #DOMAIN! not a blank.
 const domErr = () => solError("#DOMAIN!", "Input is outside this function's domain");
 const num1 = (fn: string, f: (x: number) => number | SolError) =>
   registerInternal(fn, (x) => { const n = toNum(x); return Number.isNaN(n) ? VALUE(fn) : f(n); });
 registerInternal("MOD", (a, b) => {
-  const x = toNum(a), y = toNum(b);
+  const x = toNum(a), y = optNum(b, 0); // a blank divisor is 0 → #DIV/0! (Excel)
   return badNum(x, y) ? VALUE("MOD") : y === 0 ? solError("#DIV/0!", "Division by zero") : x - y * Math.floor(x / y);
 });
 registerInternal("QUOTIENT", (a, b) => {
@@ -1146,12 +1207,11 @@ registerInternal("CONVERT", (x, from, to) => {
 });
 
 // Lookup family, against OUR 1-D list model — the same `xmatchIndex` kernel the
-// XMATCH node runs, plus Excel's numeric mode arguments. A blank mode argument
-// (like an omitted one) means the Excel default — the SEQUENCE convention for
-// formula-authored blanks, not the node contract's wired-blank.
+// XMATCH node runs, plus Excel's numeric mode arguments (dte:C80 blankArgIsExcelBlank:
+// only an OMITTED mode is the default).
 const NA_NO_MATCH = () => solError("#N/A", "No match found in the lookup list");
 const xMatchModeArg = (v: unknown): XMatchMatchMode | SolError => {
-  if (v === undefined || v === null) return "exact";
+  if (v === undefined) return "exact";
   switch (toNum(v)) {
     case 0: return "exact";
     case 1: return "next_larger";
@@ -1161,7 +1221,7 @@ const xMatchModeArg = (v: unknown): XMatchMatchMode | SolError => {
   }
 };
 const xSearchModeArg = (v: unknown): XMatchSearchMode | SolError => {
-  if (v === undefined || v === null) return "first";
+  if (v === undefined) return "first";
   switch (toNum(v)) {
     case 1: return "first";
     case -1: return "last";
@@ -1172,15 +1232,16 @@ const xSearchModeArg = (v: unknown): XMatchSearchMode | SolError => {
 // An ARRAY lookup value SPILLS in Excel — one result per element — and we match that:
 // the result is a rank-1 list (still within the formula rank cap), and RANGE_FUNCTIONS
 // return a non-number as-is, so the array flows back cleanly. This is the SCOPED spill
-// for the lookup family only; the general per-argument spill (backlog wholeArrayArgs,
-// which also settles the deferred 1×N matrix orientation) stays deferred. Do NOT read
-// this as other RANGE functions spilling — a matrix lookup value is still #SHAPE!
-// upstream. `keys`/`values` are lists or scalars here (a matrix arg errors before us).
-// Excel's lookup_array / return_array are 1-D but ORIENTATION-FREE: a single row or a single
-// column both work, a true grid is #VALUE!. Both registrations declare `matrixArgs` so a
-// matrix reaches them whole, and guard EACH slot themselves: the lookup VALUE may be a
-// scalar or a list (the spill) but never a matrix (#SHAPE!), the arrays flatten when one
-// of their dimensions is 1, and XLOOKUP's return array must be the lookup array's length.
+// for the lookup family only; the general per-argument spill (backlog wholeArrayArgs)
+// stays deferred. Do NOT read this as other RANGE functions spilling — a matrix reaching
+// any other RANGE function is still #SHAPE! upstream. `keys`/`values` are lists or scalars
+// here (a matrix arg errors before us). Excel's lookup_array / return_array are 1-D but
+// ORIENTATION-FREE: a single row or a single column both work, a true grid is #VALUE!.
+// Both registrations declare `matrixArgs` so a matrix reaches them whole, and guard EACH
+// slot themselves: the lookup VALUE may be a scalar, a list, or an orientation-free 1×N /
+// N×1 matrix (all spill over the cells) — only a true 2-D grid is #SHAPE! (mirrors the
+// lookup array); the arrays flatten when one of their dimensions is 1, and XLOOKUP's
+// return array must be the lookup array's length.
 const isGrid = (v: unknown): v is unknown[][] => Array.isArray(v) && v.length > 0 && Array.isArray(v[0]);
 /** A 1×N / N×1 matrix → its N cells; a list → itself; a scalar → [scalar]; a grid → null. */
 const asOneDim = (v: unknown): unknown[] | null => {
@@ -1189,30 +1250,36 @@ const asOneDim = (v: unknown): unknown[] | null => {
   if (v.every((row) => row.length === 1)) return v.map((row) => row[0]);
   return null;
 };
+const spillLookup = (fnName: string, lookup: unknown, pick: (l: unknown) => unknown): unknown => {
+  if (isGrid(lookup)) {
+    const cells = asOneDim(lookup);
+    if (!cells) return solError("#SHAPE!", `${fnName}'s lookup value is one value or a list, not a 2-D grid`);
+    return cells.map(pick);
+  }
+  return Array.isArray(lookup) ? lookup.map(pick) : pick(lookup);
+};
 registerInternal("XLOOKUP", (lookup, keys, values, ifNotFound, matchMode, searchMode) => {
   const mm = xMatchModeArg(matchMode);
   if (isSolError(mm)) return mm;
   const sm = xSearchModeArg(searchMode);
   if (isSolError(sm)) return sm;
-  if (isGrid(lookup)) return solError("#SHAPE!", "XLOOKUP's lookup value is one value or a list, not a matrix");
   const ks = asOneDim(keys), vs = asOneDim(values);
   if (!ks) return solError("#VALUE!", "XLOOKUP's lookup array must be a single row or a single column");
   if (!vs) return solError("#VALUE!", "XLOOKUP's return array must be a single row or a single column");
-  if (isGrid(values) && vs.length !== ks.length) return solError("#VALUE!", "XLOOKUP's return array must match the lookup array's length");
+  if (Array.isArray(values) && vs.length !== ks.length) return solError("#VALUE!", "XLOOKUP's return array must match the lookup array's length");
   const pick = (l: unknown) => {
     const idx = xmatchIndex(l, ks, mm, sm);
     if (isSolError(idx)) return idx;
     if (idx >= 0 && idx < vs.length) return vs[idx];
     return ifNotFound !== undefined ? ifNotFound : NA_NO_MATCH();
   };
-  return Array.isArray(lookup) ? lookup.map(pick) : pick(lookup);
+  return spillLookup("XLOOKUP", lookup, pick);
 });
 registerInternal("XMATCH", (lookup, keys, matchMode, searchMode) => {
   const mm = xMatchModeArg(matchMode);
   if (isSolError(mm)) return mm;
   const sm = xSearchModeArg(searchMode);
   if (isSolError(sm)) return sm;
-  if (isGrid(lookup)) return solError("#SHAPE!", "XMATCH's lookup value is one value or a list, not a matrix");
   const ks = asOneDim(keys);
   if (!ks) return solError("#VALUE!", "XMATCH's lookup array must be a single row or a single column");
   const pick = (l: unknown) => {
@@ -1220,7 +1287,7 @@ registerInternal("XMATCH", (lookup, keys, matchMode, searchMode) => {
     if (isSolError(idx)) return idx;
     return idx >= 0 ? idx + 1 : solError("#N/A", "No match found");
   };
-  return Array.isArray(lookup) ? lookup.map(pick) : pick(lookup);
+  return spillLookup("XMATCH", lookup, pick);
 });
 // A blank branch (`IF(x,,y)`) arrives as null and STAYS null — a deliberate deviation;
 // real Excel's omitted arg is 0. IF(test, then) with a false test → FALSE.
@@ -1263,7 +1330,7 @@ for (const fn of ["EDATE", "WORKDAY"]) {
 // date-parsing definition across DATEVALUE, Frame/Table columns, Date Input, Cast, read-as),
 // the week-info trio and the DAYS / DAYS360 / YEARFRAC / DATEDIF family.
 registerInternal("DATE", (y, m, d) => {
-  const yn = toNum(y), mn = toNum(m), dn = toNum(d);
+  const yn = toNum(y), mn = toNum(m), dn = optNum(d, 0); // a blank day is 0: the last day of the month before (Excel)
   return badNum(yn, mn, dn) ? VALUE("DATE") : dateFromParts(yn, mn, dn);
 });
 registerInternal("TIME", (h, m, s) => {
@@ -1290,6 +1357,8 @@ registerInternal("DATETRUNC", (d, unit, ceiling) => {
 registerInternal("DATEDIF",  (start, end, unit) => {
   const s = toNum(start), e = toNum(end);
   if (badNum(s, e)) return VALUE("DATEDIF");
+  // Excel refuses a start after the end for EVERY unit (the DateDiff card's Days op keeps its sign).
+  if (s > e) return solError("#DOMAIN!", "DATEDIF needs the start date on or before the end date");
   const op = dateDiffOpForUnit(toStr(unit));
   if (op === null) return solError("#DOMAIN!", "DATEDIF unit must be Y, M, D, YM, MD or YD");
   return dateDiff(op, s, e) ?? solError("#DOMAIN!", "DATEDIF needs the start date on or before the end date");
@@ -1299,7 +1368,26 @@ registerInternal("DATEDIF",  (start, end, unit) => {
 // any serial arithmetic downstream.
 {
   const f = (FX as unknown as { WORKDAY?: { INTL?: (...a: unknown[]) => unknown } }).WORKDAY?.INTL;
-  if (typeof f === "function") registerInternal("WORKDAY.INTL", (...a) => toSerialIfDate(f(...a)));
+  // FX takes only the numeric weekend codes; Excel also takes the 7-character "0000011"
+  // mask (Mon..Sun, 1 = off), so a mask walks the days here.
+  const maskWalk = (start: number, days: number, mask: string, holidays: unknown): number | SolError => {
+    if (!/^[01]{7}$/.test(mask) || mask === "1111111") return solError("#VALUE!", "WORKDAY.INTL weekend mask must be seven 0/1 characters with a working day");
+    const off = new Set<number>();
+    for (let i = 0; i < 7; i++) if (mask[i] === "1") off.add((i + 1) % 7); // JS day: Mon = 1 … Sun = 0
+    const hol = new Set((Array.isArray(holidays) ? holidays.flat() : holidays == null ? [] : [holidays]).map((h) => Math.floor(toNum(h))).filter(Number.isFinite));
+    const working = (d: number) => !off.has(serialToJsDate(d).getUTCDay()) && !hol.has(d);
+    let d = Math.floor(start), left = Math.trunc(days);
+    const step = left < 0 ? -1 : 1;
+    while (left !== 0) { d += step; if (working(d)) left -= step; }
+    return d;
+  };
+  if (typeof f === "function") registerInternal("WORKDAY.INTL", (start, days, weekend, holidays) => {
+    if (typeof weekend === "string" && weekend.length === 7) {
+      const s = toNum(start), n = toNum(days);
+      return badNum(s, n) ? VALUE("WORKDAY.INTL") : maskWalk(s, n, weekend, holidays);
+    }
+    return toSerialIfDate(f(start, days, weekend, holidays));
+  });
 }
 // FX's NETWORKDAYS miscounts a REVERSED (start > end) span, but Excel defines it as exactly
 // the negation of the forward count — so swap-and-negate and never touch FX's broken path.
@@ -1385,7 +1473,6 @@ registerInternal("NUMBERVALUE", (text, dec, grp) => {
 
 // The node's own compute (financeOps.ts) in Excel's argument order. An out-of-range
 // argument yields null, never a fabricated number; `basis` defaults to 0 (30/360).
-const optNum = (v: unknown, dflt: number) => (v == null ? dflt : toNum(v));
 
 for (const op of ["coupdaybs", "coupdaysnc", "coupncd", "couppcd", "coupnum"] as const) {
   registerInternal(op, (settle, maturity, freq, basis) =>
@@ -1399,6 +1486,11 @@ registerInternal("RECEIVED", (settle, maturity, investment, discount, basis) =>
   securityDisc("received", toNum(settle), toNum(maturity), toNum(investment), toNum(discount), optNum(basis, 0)));
 registerInternal("YIELDDISC", (settle, maturity, pr, redemption, basis) =>
   priceDisc("yielddisc", toNum(settle), toNum(maturity), toNum(pr), optNum(redemption, 100), optNum(basis, 0)));
+// The T-bill trio runs the card's actual/360 kernel (capabilityParity); formulajs counts
+// 30/360 and misses Microsoft's worked examples by a day.
+registerInternal("TBILLEQ",    (settle, maturity, discount) => tbill("tbilleq",    toNum(settle), toNum(maturity), toNum(discount)));
+registerInternal("TBILLPRICE", (settle, maturity, discount) => tbill("tbillprice", toNum(settle), toNum(maturity), toNum(discount)));
+registerInternal("TBILLYIELD", (settle, maturity, pr)       => tbill("tbillyield", toNum(settle), toNum(maturity), toNum(pr)));
 registerInternal("PRICEMAT", (settle, maturity, issue, rate, yld, basis) =>
   priceMat("pricemat", toNum(settle), toNum(maturity), toNum(issue), toNum(rate), toNum(yld), optNum(basis, 0)));
 registerInternal("YIELDMAT", (settle, maturity, issue, rate, pr, basis) =>
@@ -1438,6 +1530,9 @@ registerInternal("XIRR", (values, dates) => {
   const n = Math.min(prep.values.length, prep.dates.length);
   if (n < 2) return null;
   const d0 = prep.dates[0];
+  // Excel: every date must be on or after the first (#NUM!); a negative exponent would
+  // otherwise break the solver and blame the sign pattern.
+  if (prep.dates.slice(1, n).some((d) => d < d0)) return solError("#DOMAIN!", "A cash-flow date comes before the first date");
   return solveDiscountRate(prep.values.slice(0, n), prep.dates.slice(0, n).map((d) => (d - d0) / 365)) ?? IRR_CONV("XIRR");
 });
 // CHOOSE runs the Choose node's rule: a blank index is unknown (null), a known index
@@ -1445,15 +1540,18 @@ registerInternal("XIRR", (values, dates) => {
 // CHOOSE is NULL_INSPECTING on the evaluator side so an unchosen blank can't poison it).
 registerInternal("CHOOSE", (index, ...values) => {
   if (index == null) return null;
-  const idx = Math.round(toNum(index));
+  const idx = Math.trunc(toNum(index)); // Excel truncates: CHOOSE(2.7, ...) is the second
   if (Number.isNaN(idx)) return VALUE("CHOOSE");
   if (idx < 1 || idx > values.length) return solError("#VALUE!", `CHOOSE index ${idx} is outside the range 1–${values.length}`);
   return values[idx - 1] ?? null;
 });
 // Excel's VDB carries a trailing no_switch flag; ours always switches to
 // straight-line when that is the larger charge, which is Excel's DEFAULT.
-registerInternal("VDB", (cost, salvage, life, start, end, factor) =>
-  vdb(toNum(cost), toNum(salvage), toNum(life), toNum(start), toNum(end), optNum(factor, 2)));
+registerInternal("VDB", (cost, salvage, life, start, end, factor, noSwitch) => {
+  // The card always switches to straight-line; a no_switch of TRUE is refused, not ignored.
+  if (noSwitch === true || (typeof noSwitch === "number" && noSwitch !== 0)) return solError("#VALUE!", "VDB's no_switch isn't supported; the depreciation always switches to straight-line");
+  return vdb(toNum(cost), toNum(salvage), toNum(life), toNum(start), toNum(end), optNum(factor, 2));
+});
 // ODDF* read an issue date and a FIRST-coupon date; ODDL* read only a LAST-interest
 // date, so their argument lists differ in shape, not just in name.
 registerInternal("ODDFPRICE", (settle, maturity, issue, firstCoupon, rate, yld, redemption, freq) =>
@@ -1641,9 +1739,12 @@ registerInternal("RUNNING", (op, list, w) => {
   if (op == null || list == null) return null;
   const key = RUNNING_ARG_OPS[String(op).trim().toUpperCase()];
   if (!key) return solError("#VALUE!", `RUNNING's aggregator must be one of SUM, AVERAGE, MIN, MAX, MEDIAN, PRODUCT, STDEV — got "${String(op)}"`);
-  return w === undefined ? running(key, numList(list), null)
-    : w == null ? null
-    : running(key, numList(list), Number(w));
+  if (w === undefined) return running(key, numList(list), null);
+  if (w == null) return null;
+  const n = Number(w);
+  // The Running card's rule: 0 is cumulative, a positive count is the window, nothing else.
+  if (!Number.isFinite(n) || n < 0) return solError("#DOMAIN!", "Window must be 0 (cumulative) or a positive count");
+  return running(key, numList(list), n);
 });
 
 // LENGTH counts every slot including the missing ones, which is exactly why these
@@ -1663,7 +1764,11 @@ registerInternal("DECOMPOSE", (list, period, component, model) => {
   const d = mdl === "stl" ? stlDecompose(y, toNum(period)) : seasonalDecompose(y, toNum(period), mdl);
   return d ? d[comp] : null;
 });
-registerInternal("SAVGOL",      (list, window, order) => savgol(numList(list), toNum(window), toNum(order)));
+registerInternal("SAVGOL",      (list, window, order) => {
+  const xs = numList(list);
+  const why = savgolProblem(xs.length, toNum(window), toNum(order));
+  return why ? solError("#DOMAIN!", why) : savgol(xs, toNum(window), toNum(order));
+});
 registerInternal("LOWESS",      (list, frac) => lowess(numList(list), optNum(frac, 2 / 3)));
 registerInternal("GAUSSIANSMOOTH", (list, sigma) => gaussianSmooth(numList(list), toNum(sigma)));
 registerInternal("FINDPEAKS",   (list, height, distance, prominence) => findPeaks(numList(list), {
@@ -1679,7 +1784,10 @@ registerInternal("SHARPE",      (list, rf, periods) => returnsOp("sharpe", numLi
 registerInternal("SORTINO",     (list, rf, periods) => returnsOp("sortino", numList(list), optNum(rf, 0), optNum(periods, 1)));
 registerInternal("WHICH",    (list) => whichPositions(toList(list)));
 registerInternal("ARGMIN",   (list) => argMinMax("argmin", numList(list)));
-registerInternal("CONTAINS", (list, v) => containsValue(toList(list), v));
+registerInternal("CONTAINS", (list, v) => {
+  if (Array.isArray(list) && list.some(Array.isArray)) return solError("#SHAPE!", "CONTAINS takes a list");
+  return containsValue(toList(list), v);
+});
 registerInternal("WAVG",     (x, w) => weighted("wavg",   numList(x), numList(w)));
 registerInternal("WVAR",     (x, w) => weighted("wvar",   numList(x), numList(w)));
 registerInternal("WSTDEV",   (x, w) => weighted("wstdev", numList(x), numList(w)));
@@ -1892,6 +2000,11 @@ registerInternal("MUNIT", (n) => (n == null ? null : matUnit(Number(n), 0)));
 // numpy.diag: a list becomes a square matrix's diagonal (off-diagonal 0). The blank/null
 // off-diagonal is a NODE-only affordance (there's no toggle in a formula).
 registerInternal("DIAGONAL", (list) => {
+  // numpy.diag's dual: a matrix argument gives its diagonal as a list.
+  if (Array.isArray(list) && list.length > 0 && Array.isArray(list[0])) {
+    const m = list as unknown[][];
+    return m.map((row, i) => (row[i] == null ? null : Number(row[i])));
+  }
   const vs = numList(list).map((c) => (c == null ? null : Number(c)));
   return vs.length === 0 ? null : matDiag(vs, 0);
 });
@@ -1990,7 +2103,10 @@ registerInternal("SORT", (v, sortIndex, order) => {
 });
 registerInternal("SORTBY", (v, by) => {
   if (v == null || by == null) return null;
-  return sortByKeys(toList(v), numList(by));
+  const arr = toList(v), keys = numList(by);
+  // A key list of another length pads nothing (the Sort card and Excel refuse it).
+  if (keys.length !== arr.length) return solError("#SHAPE!", `SORTBY's key list has ${keys.length} values but the list has ${arr.length}`);
+  return sortByKeys(arr, keys);
 });
 registerInternal("FILTER", (v, include, ifEmpty) => {
   if (v == null || include == null) return null;
@@ -2017,12 +2133,18 @@ registerInternal("TAKE", (v, rows, cols) => {
 registerInternal("DROP", (v, rows, cols) => {
   if (v == null || rows == null) return null;
   const n = Math.round(Number(rows));
+  // Dropping everything is Excel's #CALC!, never a silent empty array.
+  const gone = (len: number, k: number) => len > 0 && Math.abs(k) >= len;
   if (Array.isArray(v) && v.length > 0 && Array.isArray(v[0])) {
-    const m = (v as unknown[][]).map((r) => (cols == null ? [...r] : dropSlice(r, Math.round(Number(cols)))));
+    const c = cols == null ? 0 : Math.round(Number(cols));
+    if (gone(v.length, n) || gone((v[0] as unknown[]).length, c)) return solError("#DOMAIN!", "DROP would leave nothing (Excel: #CALC!)");
+    const m = (v as unknown[][]).map((r) => (cols == null ? [...r] : dropSlice(r, c)));
     return dropSlice(m, n);
   }
   if (cols != null) return solError("#SHAPE!", "DROP of a list has no columns — pass one count");
-  return dropSlice(toList(v), n);
+  const list = toList(v);
+  if (gone(list.length, n)) return solError("#DOMAIN!", "DROP would leave nothing (Excel: #CALC!)");
+  return dropSlice(list, n);
 });
 registerInternal("MODE.MULT", (v) => (v == null ? null : modeMult(toList(v))));
 registerInternal("FREQUENCY", (data, bins) => {
@@ -2171,6 +2293,10 @@ registerInternal("GROUPBY", (keys, values, fn) => {
 // A stub so the name is REGISTERED and a direct resolveExcelFunction caller gets an
 // honest answer instead of a Formula.js fallthrough.
 registerInternal("LAMBDA", () => solError("#VALUE!", "LAMBDA is a special form — write it inline: MAP(x, LAMBDA(v, v*2))"));
+
+// The Time Zone Convert node's kernel (`timeZone.ts` convertZone): a datetime serial read on
+// one IANA zone's wall clock, rebuilt on another's.
+registerInternal("TIMEZONECONVERT", (dt, from, to) => (dt == null || from == null || to == null ? null : convertZone(toNum(dt), toStr(from), toStr(to))));
 
 registerInternal("REVERSETEXT", (t) => (t == null ? null : reverseText(toStr(t))));
 registerInternal("UNACCENT", (t) => (t == null ? null : unaccent(toStr(t))));

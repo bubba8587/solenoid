@@ -1,3 +1,4 @@
+// dte:C29,C37,D50
 import { describe, it, expect } from "vitest";
 import type { ClassicPreset } from "rete";
 import { FLAT_CATALOG } from "../../src/graph/catalogUtils";
@@ -147,6 +148,13 @@ describe("everyFieldClassified — every own field is persisted or deliberately 
 
   /** name → why this field must NOT persist. Grouped by mechanism. */
   const DELIBERATELY_TRANSIENT: Record<string, string> = {
+    resolved: "Write Tasks' Preview resolutions; re-derived by the next Preview, meaningless across loads",
+    resolvedPath: "Write to Obsidian's last-resolved target path; re-read from the `path` input/literal on every compute",
+    templateVars: "Report's last Knap render variables, for the overlay's live preview; rebuilt from the cables on every compute",
+    lastWritten: "Write to Obsidian's last written note path, for Open in Obsidian; a load has written nothing",
+    planRows: "Write Tasks' plan, derived from the cached rows on every compute",
+    planNotes: "Local File's list of what an MSPDI read could not carry over, for the status line; re-read with the file",
+    droppedLoops: "Sankey's count of flows dropped for closing a loop, for the card; re-derived from the input on every compute",
     // ── derived from persisted fields at construction / _rebuild ──
     ast: "compiled from expr", evaluator: "compiled from expr", varNames: "extracted from expr",
     captured: "derived from expr − params", compiled: "compiled from expr/params",
@@ -157,8 +165,6 @@ describe("everyFieldClassified — every own field is persisted or deliberately 
     effectiveMin: "derived from literals", effectiveMax: "derived from literals", effectiveStep: "derived from literals",
     // ── recomputed from inputs every engine pass ──
     chartOptions: "parsed per data() from the persisted options input/literal",
-    criteria: "detected from the input frame per compute",
-    wiredWeights: "mirror of the wired weights list per compute, for the card's read-only rows",
     sourceColumns: "detected from the input frame per compute",
     defVars: "the definition's variables/params, re-stashed per compute for the binding pickers",
     rawInputs: "the pass's raw wired values (chart/lookup diagnostics)",
@@ -167,11 +173,14 @@ describe("everyFieldClassified — every own field is persisted or deliberately 
     violations: "per-pass check results", results: "per-pass sweep results",
     cachedHolds: "per-pass hold state", solvedFor: "per-pass solve marker",
     solvedKeys: "per-pass solve marker", lastResultRank: "anydataWildcard runtime rank tracker",
+    lastRank: "Series: SEQUENCE list↔matrix runtime rank tracker",
     lastResultFamily: "Script: value-typed result socket, runtime family tracker",
     syntaxError: "Script: re-derived from expr by _rebuild",
     // ── FC / unit adoption state, re-derived by the reconcile passes ──
     forwarding: "re-derived by fcReconcile each pass", lockedByConvert: "re-derived by fcReconcile each pass",
     unitLocked: "re-derived by fcReconcile each pass", dictatedFromUnit: "re-derived by fcReconcile each pass",
+    inheritedAnnotation: "the upstream format the `—` pick carries; re-resolved in refreshAnnotation each pass",
+    matches: "Geocode's last-fetch matches for the card's pick list; re-fetched, never saved",
     imposesUp: "re-derived from the unit config", imposesDown: "re-derived from the unit config",
     // ── freezeVolatilePerCalc volatile roll state (freezes per recalc generation, never saved) ──
     rolls: "freezeVolatilePerCalc frozen rolls", rawRoll: "freezeVolatilePerCalc frozen roll", keys: "freezeVolatilePerCalc frozen shuffle keys",

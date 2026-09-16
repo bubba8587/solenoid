@@ -2,7 +2,10 @@
 // Tree-shaken out of production builds (import.meta.env.DEV guard).
 import { documentStore } from "./documentStore";
 import { loadRevealStore } from "./loadReveal";
-import { getEditor, getView } from "./process";
+import { getEditor, getView, processGraph } from "./process";
+import { attachFormatController } from "./canvasActions";
+import { frameFormatStore } from "./frameFormatStore";
+import type { FormatAnnotation } from "./formatAnnotationStore";
 if (import.meta.env.DEV) {
   (window as unknown as { __spike: unknown }).__spike = {
     seed: (id: string) => documentStore.newFromTemplate(id),
@@ -21,6 +24,44 @@ if (import.meta.env.DEV) {
       return true;
     },
     nodeCount: () => getEditor()?.getNodes().length ?? 0,
+    // Retarget one node by id (frameText, stringLiterals, …) and recompute — the chart
+    // contact sheet re-feeds one Chart node instead of authoring a seed per variant.
+    patch: async (id: string, fields: Record<string, unknown>) => {
+      const n = getEditor()?.getNode(id);
+      if (!n) return false;
+      Object.assign(n, fields);
+      // An FC's popup re-registers its annotation on every pick; mirror that.
+      const ed = getEditor();
+      const fc = n as unknown as { refreshAnnotation?: (e: unknown) => void };
+      if (ed && typeof fc.refreshAnnotation === "function") fc.refreshAnnotation(ed);
+      await processGraph();
+      return true;
+    },
+    // The table popup's per-column format pick, which `patch` can't reach (a store, not
+    // a node field) — the format-flow probe sets it on the AUTHORING node.
+    setColumnFormat: async (nodeId: string, column: string, ann: FormatAnnotation) => {
+      frameFormatStore.set(nodeId, column, ann);
+      await processGraph();
+      return true;
+    },
+    // The blank pick in that row: no entry, so the column keeps the format it carries in.
+    clearColumnFormat: async (nodeId: string, column: string) => {
+      frameFormatStore.delete(nodeId, column);
+      await processGraph();
+      return true;
+    },
+    // Attach a docked Format Controller the way the socket menu does (the FC probes).
+    attachFc: async (hostNodeId: string, socketKey: string, side: "input" | "output") => {
+      const ed = getEditor(), vw = getView();
+      if (!ed || !vw) return false;
+      await attachFormatController(ed, vw, vw.container, { nodeId: hostNodeId, socketKey, side, screenX: 0, screenY: 0 });
+      return true;
+    },
+    // Read plain fields off a node (the reload probes compare a node before/after).
+    fields: (id: string, keys: string[]): Record<string, unknown> | null => {
+      const n = getEditor()?.getNode(id) as unknown as Record<string, unknown> | undefined;
+      return n ? Object.fromEntries(keys.map((k) => [k, n[k]])) : null;
+    },
     // Group membership (the layout probe asserts members follow a dragged group).
     groups: () => (getEditor()?.getNodes() ?? [])
       .filter((n) => n.constructor.name === "GroupNode")

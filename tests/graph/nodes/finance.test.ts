@@ -1,11 +1,12 @@
+// dte:C17
 import { describe, it, expect } from "vitest";
 import {
   TvmNode,
-  IpmtPpmtNode,
+  PaymentBreakdownNode,
   IspmtNode,
-  TBillNode,
-  NpvNode,
-  IrrNode,
+  DiscountSecurityNode,
+  NPVNode,
+  IRRNode,
   MirrNode,
   DepreciationNode,
 } from "../../../src/graph/nodes/finance";
@@ -111,35 +112,61 @@ describe("Compound Growth / Effective Rate presets", () => {
   });
 });
 
-describe("IPMT / PPMT", () => {
+describe("Payment Breakdown (IPMT / PPMT / CUMIPMT / CUMPRINC)", () => {
   // =IPMT(0.05, 1, 12, 1000) = -50.00, =PPMT(0.05, 1, 12, 1000) = -62.83
   it("IPMT period 1 is the first-period interest, sharing PMT's sign", () => {
-    const r = new IpmtPpmtNode({ op: "ipmt" }).data({ rate: [0.05], per: [1], nper: [12], pv: [1000], fv: [0] });
+    const r = new PaymentBreakdownNode({ op: "ipmt" }).data({ rate: [0.05], per: [1], nper: [12], pv: [1000], fv: [0] });
     expect(r.result).toBeCloseTo(-50, 2);
   });
 
   it("IPMT period 2 matches Excel", () => {
-    const r = new IpmtPpmtNode({ op: "ipmt" }).data({ rate: [0.05], per: [2], nper: [12], pv: [1000], fv: [0] });
+    const r = new PaymentBreakdownNode({ op: "ipmt" }).data({ rate: [0.05], per: [2], nper: [12], pv: [1000], fv: [0] });
     expect(r.result).toBeCloseTo(-46.86, 2);
   });
 
   it("PPMT period 1 matches Excel", () => {
-    const r = new IpmtPpmtNode({ op: "ppmt" }).data({ rate: [0.05], per: [1], nper: [12], pv: [1000], fv: [0] });
+    const r = new PaymentBreakdownNode({ op: "ppmt" }).data({ rate: [0.05], per: [1], nper: [12], pv: [1000], fv: [0] });
     expect(r.result).toBeCloseTo(-62.83, 2);
   });
 
   it("annuity-due IPMT is zero in period 1 (payment is up front)", () => {
-    const r = new IpmtPpmtNode({ op: "ipmt", paymentTiming: "beg" })
+    const r = new PaymentBreakdownNode({ op: "ipmt", paymentTiming: "beg" })
       .data({ rate: [0.05], per: [1], nper: [12], pv: [1000], fv: [0] });
     expect(r.result).toBeCloseTo(0, 9);
   });
 
   it("IPMT + PPMT = PMT for the period", () => {
     const args = { rate: [0.05], per: [3], nper: [12], pv: [1000], fv: [0] };
-    const ipmt = new IpmtPpmtNode({ op: "ipmt" }).data(args).result!;
-    const ppmt = new IpmtPpmtNode({ op: "ppmt" }).data(args).result!;
+    const ipmt = new PaymentBreakdownNode({ op: "ipmt" }).data(args).result!;
+    const ppmt = new PaymentBreakdownNode({ op: "ppmt" }).data(args).result!;
     const pmt = new TvmNode().data({ rate: [0.05], nper: [12], pv: [1000], fv: [0] }).pmt as number;
     expect(ipmt + ppmt).toBeCloseTo(pmt, 6);
+  });
+
+  // The Range span (CUMIPMT / CUMPRINC) reads rate/nper/pv/start/end.
+  const cumArgs = { rate: [0.05], nper: [12], pv: [1000], start: [1], end: [12] };
+
+  // =CUMIPMT(0.05,12,1000,1,12) = -353.90, =CUMPRINC(0.05,12,1000,1,12) = -1000 (Excel).
+  it("CUMIPMT equals the sum of each period's IPMT and matches Excel", () => {
+    const cum = new PaymentBreakdownNode({ op: "cumipmt" }).data(cumArgs).result!;
+    let sum = 0;
+    for (let per = 1; per <= 12; per++) {
+      sum += new PaymentBreakdownNode({ op: "ipmt" }).data({ rate: [0.05], per: [per], nper: [12], pv: [1000], fv: [0] }).result!;
+    }
+    expect(cum).toBeCloseTo(sum, 6);
+    expect(cum).toBeCloseTo(-353.90, 2);
+  });
+
+  it("CUMPRINC repays the whole principal over the full term (Excel -1000)", () => {
+    const cum = new PaymentBreakdownNode({ op: "cumprinc" }).data(cumArgs).result!;
+    expect(cum).toBeCloseTo(-1000, 6);
+  });
+
+  it("CUMIPMT + CUMPRINC over all periods equals total payments", () => {
+    const ci = new PaymentBreakdownNode({ op: "cumipmt" }).data(cumArgs).result!;
+    const cp = new PaymentBreakdownNode({ op: "cumprinc" }).data(cumArgs).result!;
+    const pmt = new TvmNode().data({ rate: [0.05], nper: [12], pv: [1000], fv: [0] }).pmt as number;
+    expect(ci + cp).toBeCloseTo(pmt * 12, 6);
   });
 });
 
@@ -162,22 +189,22 @@ describe("TBILL — money-market day-count conventions", () => {
   it("TBILLYIELD is a 360-day yield (verified against real Excel = 0.050718512)", () => {
     // NOT 365: that basis belongs to TBILLEQ. Formula.js also diverges here (it uses a
     // 30/360 day count), so this value is ours-owned and must not drift toward either.
-    expect(new TBillNode({ op: "tbillyield" }).data({ settle: [settle], maturity: [maturity], price: [97.5] }).result)
+    expect(new DiscountSecurityNode({ op: "tbillyield" }).data({ settle: [settle], maturity: [maturity], pr: [97.5] }).result)
       .toBeCloseTo(0.050718512, 9);
   });
   it("TBILLPRICE discounts on a 360-day basis (Excel's documented formula)", () => {
     // 100 × (1 − 0.05 × 182/360).
-    expect(new TBillNode({ op: "tbillprice" }).data({ settle: [settle], maturity: [maturity], discount: [0.05] }).result)
+    expect(new DiscountSecurityNode({ op: "tbillprice" }).data({ settle: [settle], maturity: [maturity], discount: [0.05] }).result)
       .toBeCloseTo(100 * (1 - 0.05 * 182 / 360), 9);
   });
   it("TBILLEQ is the bond-equivalent 365-day yield (Excel's documented formula, DSM ≤ 182)", () => {
     // (365 × 0.05) / (360 − 0.05 × 182).
-    expect(new TBillNode({ op: "tbilleq" }).data({ settle: [settle], maturity: [maturity], discount: [0.05] }).result)
+    expect(new DiscountSecurityNode({ op: "tbilleq" }).data({ settle: [settle], maturity: [maturity], discount: [0.05] }).result)
       .toBeCloseTo((365 * 0.05) / (360 - 0.05 * 182), 9);
   });
   it("TBILLEQ switches to the compounding form past 182 days (real Excel = 0.052539935)", () => {
     // =TBILLEQ(DATE(2024,1,15), DATE(2024,12,15), 0.05); DSM = 335 > 182.
-    expect(new TBillNode({ op: "tbilleq" }).data({ settle: [d("2024-01-15")], maturity: [d("2024-12-15")], discount: [0.05] }).result)
+    expect(new DiscountSecurityNode({ op: "tbilleq" }).data({ settle: [d("2024-01-15")], maturity: [d("2024-12-15")], discount: [0.05] }).result)
       .toBeCloseTo(0.052539935, 9);
   });
 });
@@ -199,7 +226,7 @@ describe("securityDisc — DSM honors the day-count basis", () => {
 
 describe("NPV", () => {
   it("matches =NPV(0.1, 100, 200, 300)", () => {
-    const r = new NpvNode().data({ rate: [0.1], list: [[100, 200, 300]] });
+    const r = new NPVNode().data({ rate: [0.1], list: [[100, 200, 300]] });
     expect(r.result).toBeCloseTo(481.59, 2);
   });
 });
@@ -207,12 +234,12 @@ describe("NPV", () => {
 describe("IRR", () => {
   it("finds the rate where NPV = 0", () => {
     // -100 now, 146.41 in 4 periods → exactly 10%
-    const r = new IrrNode().data({ list: [[-100, 0, 0, 0, 146.41]] });
+    const r = new IRRNode().data({ list: [[-100, 0, 0, 0, 146.41]] });
     expect(r.result).toBeCloseTo(0.1, 4);
   });
 
   it("matches a typical project IRR", () => {
-    const r = new IrrNode().data({ list: [[-1000, 300, 400, 500, 600]] });
+    const r = new IRRNode().data({ list: [[-1000, 300, 400, 500, 600]] });
     expect(r.result).toBeCloseTo(0.248886, 4);
   });
 });
@@ -276,7 +303,7 @@ describe("Depreciation — VDB absorbed as an op", () => {
 
 describe("NPV / IRR — the Dated toggle (old XNPV / XIRR)", () => {
   it("dated NPV discounts by explicit dates", () => {
-    const r = new NpvNode({ op: "dates" }).data({
+    const r = new NPVNode({ op: "dates" }).data({
       rate: [0.1],
       list: [[-1000, 600, 600]],
       dates: [[45000, 45365, 45730]],
@@ -285,7 +312,7 @@ describe("NPV / IRR — the Dated toggle (old XNPV / XIRR)", () => {
   });
 
   it("dated IRR recovers the rate NPV used", () => {
-    const r = new IrrNode({ op: "dates" }).data({
+    const r = new IRRNode({ op: "dates" }).data({
       list: [[-1000, 1100]],
       dates: [[45000, 45365]],
     }).result as number;
@@ -293,13 +320,13 @@ describe("NPV / IRR — the Dated toggle (old XNPV / XIRR)", () => {
   });
 
   it("the toggle adds/removes only the Dates socket", () => {
-    const n = new NpvNode();
+    const n = new NPVNode();
     expect(Object.keys(n.inputs)).toEqual(["rate", "list"]);
     n.setOp("dates");
     expect(Object.keys(n.inputs)).toEqual(["rate", "list", "dates"]);
     n.setOp("periods");
     expect(Object.keys(n.inputs)).toEqual(["rate", "list"]);
-    const i = new IrrNode({ op: "dates" });
+    const i = new IRRNode({ op: "dates" });
     expect(Object.keys(i.inputs)).toEqual(["list", "dates"]);
   });
 });

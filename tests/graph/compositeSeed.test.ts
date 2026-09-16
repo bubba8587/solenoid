@@ -42,7 +42,12 @@ async function loadSeed(editor: NodeEditor<Schemes>) {
     const anyNode = node as unknown as Record<string, unknown>;
     if (sn.literals) anyNode.literals = { ...sn.literals };
     if (sn.stringLiterals) anyNode.stringLiterals = { ...sn.stringLiterals };
-    if (node instanceof CompositeNode) await node.hydrate(ctorRegistry()); // persistence.ts does the same
+    if (node instanceof CompositeNode) {
+      await node.hydrate(ctorRegistry()); // persistence.ts does the same
+      // A heavy composite loads UNSOLVED (dte:D52 compositesHoldUntilSolve); arm the
+      // Solve these value-pins expect (the light single-run container ignores it).
+      node.requestSolve();
+    }
     byId.set(sn.id, node);
     await editor.addNode(node as unknown as Schemes["Node"]);
   }

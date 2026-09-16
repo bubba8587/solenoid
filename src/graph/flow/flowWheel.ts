@@ -7,6 +7,20 @@ import { clampZoom, wheelZoomDelta, MIN_ZOOM, MAX_ZOOM } from "../viewPresets";
 
 type Viewport = { x: number; y: number; zoom: number };
 
+type ScrollBox = { scrollHeight: number; clientHeight: number; scrollWidth: number; clientWidth: number; parentElement: ScrollBox | null };
+
+/** Does some element from `target` up to and including `stop` scroll in the wheel's
+ *  direction? A `.nowheel` body that has nothing to scroll (a card sized taller than
+ *  its content) must not swallow the zoom. */
+export function scrollsInDirection(target: ScrollBox | null, stop: ScrollBox, dx: number, dy: number): boolean {
+  for (let el: ScrollBox | null = target; el; el = el === stop ? null : el.parentElement) {
+    if (dy !== 0 && el.scrollHeight > el.clientHeight + 1) return true;
+    if (dx !== 0 && el.scrollWidth > el.clientWidth + 1) return true;
+    if (el === stop) break;
+  }
+  return false;
+}
+
 export function installWheelZoom(
   el: HTMLElement,
   opts: {
@@ -24,7 +38,9 @@ export function installWheelZoom(
     // Only the canvas proper: the minimap zooms itself, and overlays (panels,
     // inspectors) sit outside the pane on the rete surface too — no zoom there.
     if (!target?.closest?.(".react-flow")) return;
-    if (target.closest(".react-flow__minimap, .react-flow__panel, .nowheel")) return;
+    if (target.closest(".react-flow__minimap, .react-flow__panel")) return;
+    const nowheel = target.closest<HTMLElement>(".nowheel");
+    if (nowheel && scrollsInDirection(target, nowheel, e.deltaX, e.deltaY)) return;
     e.preventDefault();
     e.stopPropagation();
     const vp = opts.getViewport();

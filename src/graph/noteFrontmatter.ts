@@ -1,7 +1,9 @@
 import { parseDateToSerial } from "./nodes/dateSerial";
 
 // The PURE frontmatter parser + type guesser, over a deliberately small YAML subset:
-// scalar `key: value`, inline flow arrays, and block lists. Keep it graph/DOM-free.
+// scalar `key: value`, inline flow arrays, block lists, and rows of inline objects
+// (`- {k: v}` block or `[{k: v}, …]` flow) → a `frame`. Keep it graph/DOM-free. The frame
+// row shape mirrors the Script node's `{name: value}` rows, so what one emits the other reads.
 
 // A SUBSET of SocketDataType with IDENTICAL names, so the node maps field type → socket
 // by identity (FIELD_SOCKETS in annotation.ts).
@@ -13,11 +15,15 @@ export type FrontmatterFieldType =
   | "list"
   | "strlist"
   | "logicallist"
-  | "datelist";
+  | "datelist"
+  | "frame"
+  | "cube";
 
 // Dates emit as serials, like the rest of Solenoid.
 export type FrontmatterScalar = number | string | boolean | null;
-export type FrontmatterValue = FrontmatterScalar | FrontmatterScalar[];
+/** A row's value may itself be a list (`after: [A, B]` inside `- {…}`); such rows make a cube. */
+export type FrontmatterRow = Record<string, FrontmatterScalar | FrontmatterScalar[]>;
+export type FrontmatterValue = FrontmatterScalar | FrontmatterScalar[] | FrontmatterRow[];
 
 export interface FrontmatterField {
   key: string;
@@ -63,11 +69,13 @@ function parseScalar(raw: string): { value: FrontmatterScalar; kind: ScalarKind 
   return { value: t, kind: "string" };
 }
 
-/** Split a flow-array body (`a, b, "c, d"`) on TOP-LEVEL commas, honoring quotes. */
+/** Split a flow body (`a, b, "c, d"`, or `{k: v}, {k: v}`) on TOP-LEVEL commas, honoring
+ *  quotes AND `{…}` object nesting so a comma inside a row object doesn't split it. */
 function splitFlow(inner: string): string[] {
   const out: string[] = [];
   let buf = "";
   let quote: '"' | "'" | null = null;
+  let depth = 0;
   for (const ch of inner) {
     if (quote) {
       buf += ch;
@@ -75,7 +83,13 @@ function splitFlow(inner: string): string[] {
     } else if (ch === '"' || ch === "'") {
       quote = ch;
       buf += ch;
-    } else if (ch === ",") {
+    } else if (ch === "{" || ch === "[") {
+      depth++;
+      buf += ch;
+    } else if (ch === "}" || ch === "]") {
+      depth = Math.max(0, depth - 1);
+      buf += ch;
+    } else if (ch === "," && depth === 0) {
       out.push(buf);
       buf = "";
     } else {
@@ -84,6 +98,31 @@ function splitFlow(inner: string): string[] {
   }
   if (buf.trim() !== "" || out.length > 0) out.push(buf);
   return out;
+}
+
+/** `{k: v, k: v}` → a row object; null when the token isn't a brace-wrapped inline map.
+ *  Keys split on the FIRST colon; values run through the same scalar parser as everything. */
+function parseInlineObject(raw: string): FrontmatterRow | null {
+  const t = raw.trim();
+  if (!(t.startsWith("{") && t.endsWith("}"))) return null;
+  const inner = t.slice(1, -1).trim();
+  const row: FrontmatterRow = {};
+  if (inner === "") return row;
+  for (const part of splitFlow(inner)) {
+    const c = part.indexOf(":");
+    if (c < 0) continue;
+    const k = part.slice(0, c).trim();
+    if (k === "") continue;
+    const v = part.slice(c + 1).trim();
+    // A flow list inside a row (`after: [A, B]`) stays a list — the row then makes a CUBE.
+    if (v.startsWith("[") && v.endsWith("]")) {
+      const inner = v.slice(1, -1);
+      row[k] = inner.trim() === "" ? [] : splitFlow(inner).map((x) => parseScalar(x).value);
+    } else {
+      row[k] = parseScalar(v).value;
+    }
+  }
+  return row;
 }
 
 /** Type a (possibly mixed) array from its first non-null element. */
@@ -105,6 +144,21 @@ function fieldFromScalar(key: string, raw: string): FrontmatterField {
 function fieldFromArray(key: string, values: FrontmatterScalar[]): FrontmatterField {
   // A date inside an array stays a serial number, so the list types as `list`.
   return { key, value: values, guessed: listType(values) };
+}
+
+/** Rows of inline objects → a `frame` field, or a `cube` when any row value is a list
+ *  (a frame cell is scalar; a list belongs in a cube cell). */
+function fieldFromRows(key: string, rows: FrontmatterRow[]): FrontmatterField {
+  const hasList = rows.some((r) => Object.values(r).some((v) => Array.isArray(v)));
+    return { key, value: rows, guessed: hasList ? "cube" : "frame" };
+}
+
+/** Items (flow or block) → a frame field iff EVERY item is an inline object; else a scalar
+ *  array. Empty → a scalar array (an empty frame would have no columns). */
+function fieldFromItems(key: string, items: string[]): FrontmatterField {
+  const rows = items.map(parseInlineObject);
+  if (rows.length > 0 && rows.every((r) => r !== null)) return fieldFromRows(key, rows as FrontmatterRow[]);
+  return fieldFromArray(key, items.map((s) => parseScalar(s).value));
 }
 
 /** With no valid top-of-file `---…---` block: no fields, `body` unchanged, `hasBlock` false. */
@@ -139,15 +193,15 @@ export function parseNoteFrontmatter(text: string): ParsedFrontmatter {
 
     if (rest.trim() === "") {
       // A bare `key:` may introduce a block list, so look ahead for `- item` lines.
-      const items: FrontmatterScalar[] = [];
+      const items: string[] = [];
       let j = i + 1;
       for (; j < yamlLines.length; j++) {
         const lm = /^\s*-\s+(.*)$/.exec(yamlLines[j]);
         if (!lm) break;
-        items.push(parseScalar(lm[1]).value);
+        items.push(lm[1]);
       }
       if (items.length > 0) {
-        fields.push(fieldFromArray(key, items));
+        fields.push(fieldFromItems(key, items));
         i = j - 1;
       } else {
         fields.push({ key, value: null, guessed: "string" });
@@ -158,9 +212,8 @@ export function parseNoteFrontmatter(text: string): ParsedFrontmatter {
     const trimmed = rest.trim();
     if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
       const inner = trimmed.slice(1, -1);
-      const values =
-        inner.trim() === "" ? [] : splitFlow(inner).map((s) => parseScalar(s).value);
-      fields.push(fieldFromArray(key, values));
+      const items = inner.trim() === "" ? [] : splitFlow(inner);
+      fields.push(fieldFromItems(key, items));
     } else {
       fields.push(fieldFromScalar(key, rest));
     }
@@ -184,9 +237,26 @@ export function toggleTaskMarker(body: string, index: number): string {
   // The exact shape `marked` treats as a checkbox: a bullet item whose text opens
   // with `[ ]`/`[x]` followed by a space or the line end.
   const marker = /^(\s*[-*+]\s+)\[([ xX])\](?=\s|$)/;
+  // The rendered boxes index into the source, so lines marked renders as CODE (a ```/~~~
+  // fence, or a 4-space block opened after a blank line outside a list) must not count.
   let count = -1;
+  let fence: string | null = null;
+  let prevBlank = true, prevItem = false;
   for (let i = start; i < lines.length; i++) {
-    const m = marker.exec(lines[i]);
+    const line = lines[i];
+    const f = /^\s{0,3}(`{3,}|~{3,})/.exec(line);
+    if (f) {
+      if (fence === null) fence = f[1][0];
+      else if (f[1][0] === fence) fence = null;
+      prevBlank = false; prevItem = false;
+      continue;
+    }
+    if (fence !== null) continue;
+    const blank = line.trim() === "";
+    const indentedCode: boolean = !blank && /^(?: {4,}|\t)/.test(line) && prevBlank && !prevItem;
+    const m = indentedCode ? null : marker.exec(line);
+    prevBlank = blank;
+    if (!blank) prevItem = indentedCode ? prevItem : /^\s*(?:[-*+]|\d+[.)])\s/.test(line);
     if (!m) continue;
     count++;
     if (count === index) {

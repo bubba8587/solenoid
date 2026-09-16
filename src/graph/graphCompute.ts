@@ -1,6 +1,7 @@
+// dte:D30,D31
 // The model-level compute pass — ONE definition, no view. processGraph (the app),
 // the composite's internal engine, the headless runner and the seed tests all run
-// the same steps: invalidate, seed loops, fetch every node (rules targetedEqualsFull).
+// the same steps: invalidate, seed loops, fetch every node (dte:D30 targetedEqualsFull).
 import type { NodeEditor } from "rete";
 import type { DataflowEngine } from "rete-engine";
 import { Cancelled } from "rete-engine";

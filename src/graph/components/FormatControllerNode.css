@@ -101,6 +101,22 @@
   text-align: left;
 }
 
+/* The `—` (inherit) pick's muted upstream-style hint, sitting tight under the style
+   dropdown in the column row's own words (← Decimal · 3 places). */
+.solenoid-fc__inherit-hint {
+  padding-top: 0;
+}
+.solenoid-fc__inherit-hint span:not(.solenoid-fc__arrow-spacer) {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 10px;
+  color: var(--text-dim);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .solenoid-fc__note {
   font-size: 10px;
   color: var(--text-dim);

@@ -1,3 +1,4 @@
+// dte:D39
 import { describe, it, expect } from "vitest";
 import type { CondAggOp } from "../../../src/graph/nodes/list";
 import {
@@ -801,10 +802,11 @@ describe("Fill / Coalesce — missing-value strategies (array-semantics policy)"
   });
 });
 
-describe("Aggregate — n<2 stdev blanks; empty-list identities (audit finding 30)", () => {
-  it("sample stdev of a single value is blank, matching var_s", () => {
-    expect(new AggregateNode({ op: "stdev" }).data({ list: [[5]] }).result).toBeNull();
-    expect(new AggregateNode({ op: "var_s" }).data({ list: [[5]] }).result).toBeNull();
+describe("Aggregate — n<2 sample spreads are #DIV/0!; empty-list identities (audit finding 30)", () => {
+  it("sample stdev / variance of a single value is #DIV/0! (Excel), of none is blank", () => {
+    expect((new AggregateNode({ op: "stdev" }).data({ list: [[5]] }).result as { code?: string })?.code).toBe("#DIV/0!");
+    expect((new AggregateNode({ op: "var_s" }).data({ list: [[5]] }).result as { code?: string })?.code).toBe("#DIV/0!");
+    expect(new AggregateNode({ op: "stdev" }).data({ list: [[]] }).result).toBeNull();
   });
   it("empty list: sum 0, product 1, count 0, avg blank", () => {
     expect(new AggregateNode({ op: "sum" }).data({ list: [[]] }).result).toBe(0);
@@ -889,7 +891,7 @@ describe("Series — one arithmetic-progression node, op-switch mechanics", () =
     n.setOp("linspace");
     expect(Object.keys(n.inputs).sort()).toEqual(["count", "end", "start"]);
     n.setOp("sequence");
-    expect(Object.keys(n.inputs).sort()).toEqual(["count", "start", "step"]);
+    expect(Object.keys(n.inputs).sort()).toEqual(["cols", "count", "start", "step"]);
     expect(n.inputs.start!.label).toBe("Start (default 1)");
   });
 
@@ -898,5 +900,16 @@ describe("Series — one arithmetic-progression node, op-switch mechanics", () =
     n.setOp("range");
     expect(n.literals.stop).toBeUndefined();
     expect(n.data({}).list).toEqual([]);
+  });
+});
+
+describe("Running — the window's domain", () => {
+  it("a negative or non-finite window is #DOMAIN!, never silently cumulative", () => {
+    const n = new RunningNode({ agg: "sum" });
+    const neg = n.data({ list: [[1, 2, 3, 4]], window: [-2] }).result;
+    expect(isSolError(neg) && neg.code).toBe("#DOMAIN!");
+    const nan = n.data({ list: [[1, 2, 3, 4]], window: [NaN] }).result;
+    expect(isSolError(nan) && nan.code).toBe("#DOMAIN!");
+    expect(n.data({ list: [[1, 2, 3, 4]], window: [0] }).result).toEqual([1, 3, 6, 10]);
   });
 });

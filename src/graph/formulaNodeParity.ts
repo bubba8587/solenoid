@@ -1,3 +1,4 @@
+// dte:D7,D8
 // Node ↔ formula parity measurement, shared by the report script and the ratchet
 // test — keep it here, or the two compute the gap differently and stop ratcheting.
 
@@ -60,7 +61,7 @@ function walk(entries: CatalogEntry[], path: string[], out: ParityRow[], formula
     if (leaf.hidden) continue;
     const excel = (leaf.excel ?? NODE_EXCEL[leaf.type] ?? []).map((x) => x.excel.toUpperCase());
     // An op family's leaf label names the family, so it is covered when every OP is
-    // callable. Argument families are not in NODE_OPS (rules opArgDistinct), so an
+    // callable. Argument families are not in NODE_OPS (dte:C26 opArgDistinct), so an
     // aggregator VALUE like Group By's SUM never counts GROUPBY as callable.
     const decl = opsFor(leaf.type);
     const ops = decl?.ops;

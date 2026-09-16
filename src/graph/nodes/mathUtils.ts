@@ -1,3 +1,4 @@
+// dte:C17
 // Numerical analysis helpers shared across statistical distribution nodes.
 // All functions are pure and domain-checked — return NaN for invalid inputs.
 
@@ -557,9 +558,11 @@ export function fillGrid(z: (number | null)[][], xs: number[], ys: number[], for
       let contested = false;
       for (const p of knownPts) {
         if ((p.i === rLo || p.i === rHi) && (p.j === cLo || p.j === cHi)) continue; // a corner
+        // A degenerate box is a SEGMENT on one row (or column): only known data on that
+        // same line contests it; data on other rows is not "inside" a row segment.
         const hit =
-          degenRow && !degenCol ? p.x > xA && p.x < xB :
-          degenCol && !degenRow ? p.y > yA && p.y < yB :
+          degenRow && !degenCol ? p.i === rLo && p.x > xA && p.x < xB :
+          degenCol && !degenRow ? p.j === cLo && p.y > yA && p.y < yB :
           p.x >= xA && p.x <= xB && p.y >= yA && p.y <= yB;
         if (hit) { contested = true; break; }
       }
@@ -645,9 +648,11 @@ export function polyRoots(coeffs: readonly number[]): [number, number][] | null 
     }
     roots[i] = [zr, zi];
   }
-  // clean: snap tiny imaginary parts / components relative to the root's size
+  // clean: snap tiny imaginary parts / components relative to the root's size. A multiple
+  // root converges only linearly, leaving ~1e-9 residuals, so the imaginary snap is 1e-7:
+  // a double root reads as two reals (numpy.roots), not a conjugate pair.
   return roots.map(([r, i]) => {
     const scale = Math.max(1, Math.hypot(r, i));
-    return [Math.abs(r) < 1e-12 * scale ? 0 : r, Math.abs(i) < 1e-10 * scale ? 0 : i];
+    return [Math.abs(r) < 1e-12 * scale ? 0 : r, Math.abs(i) < 1e-7 * scale ? 0 : i];
   });
 }

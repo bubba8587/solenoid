@@ -1,0 +1,342 @@
+{
+  "v": 2,
+  "order": 415,
+  "label": "Garden dashboard",
+  "group": "Charts & reports",
+  "nodes": [
+    {
+      "id": "geocode",
+      "type": "GeocodeNode",
+      "x": 139,
+      "y": 222,
+      "init": {
+        "label": "Boise"
+      },
+      "stringLiterals": {
+        "place": "Boise"
+      }
+    },
+    {
+      "id": "weather",
+      "type": "WeatherNode",
+      "x": 464,
+      "y": 156,
+      "init": {
+        "label": "Boise weather",
+        "unit": "C",
+        "pastDays": 14,
+        "forecastDays": 7,
+        "refreshMinutes": 360
+      }
+    },
+    {
+      "id": "note-a",
+      "type": "NoteNode",
+      "x": 34,
+      "y": 34,
+      "init": {
+        "label": "Where & the weather",
+        "body": "Type a place. Geocode turns it into latitude, longitude and a time zone, and Weather pulls the daily forecast. Allow the document to connect in Settings, Data, and it fills in.",
+        "color": "sky",
+        "width": 345,
+        "height": 150,
+        "collapsed": false
+      }
+    },
+    {
+      "id": "today",
+      "type": "TodayNowNode",
+      "x": 946,
+      "y": 323,
+      "init": {
+        "label": "Today",
+        "op": "today"
+      }
+    },
+    {
+      "id": "filterPast",
+      "type": "FilterFrameNode",
+      "x": 1254,
+      "y": 34,
+      "init": {
+        "label": "Days behind",
+        "condConfig": {
+          "0": {
+            "op": "lt"
+          }
+        },
+        "valueKeys": [
+          "frame",
+          "column0",
+          "value0"
+        ]
+      },
+      "stringLiterals": {
+        "column0": "Date"
+      }
+    },
+    {
+      "id": "colPast",
+      "type": "GetColumnNode",
+      "x": 1579,
+      "y": 115,
+      "init": {
+        "label": "Rain (behind)",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "Rain mm"
+      }
+    },
+    {
+      "id": "aggPast",
+      "type": "AggregateNode",
+      "x": 1844,
+      "y": 117,
+      "init": {
+        "label": "Rain last 14 days",
+        "op": "sum"
+      }
+    },
+    {
+      "id": "filterFuture",
+      "type": "FilterFrameNode",
+      "x": 1254,
+      "y": 400,
+      "init": {
+        "label": "Days ahead",
+        "condConfig": {
+          "0": {
+            "op": "gte"
+          }
+        },
+        "valueKeys": [
+          "frame",
+          "column0",
+          "value0"
+        ]
+      },
+      "stringLiterals": {
+        "column0": "Date"
+      }
+    },
+    {
+      "id": "colFuture",
+      "type": "GetColumnNode",
+      "x": 1579,
+      "y": 481,
+      "init": {
+        "label": "Rain (ahead)",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "Rain mm"
+      }
+    },
+    {
+      "id": "aggFuture",
+      "type": "AggregateNode",
+      "x": 1844,
+      "y": 489,
+      "init": {
+        "label": "Rain next 7 days",
+        "op": "sum"
+      }
+    },
+    {
+      "id": "note-b",
+      "type": "NoteNode",
+      "x": 811,
+      "y": 135,
+      "init": {
+        "label": "Rain math",
+        "body": "Split the forecast at today: the days behind and the days ahead, then total the rain in each. Your own rule over the data, not a fixed number off a website.",
+        "color": "amber",
+        "width": 345,
+        "height": 150,
+        "collapsed": false
+      }
+    },
+    {
+      "id": "note-c",
+      "type": "NoteNode",
+      "x": 2131,
+      "y": 34,
+      "init": {
+        "label": "The dashboard",
+        "body": "A docked Report reads the two totals; the Alert watches the coming week's rain. Leave the document open and Weather's refresh keeps it live.",
+        "color": "green",
+        "width": 345,
+        "height": 150,
+        "collapsed": false
+      }
+    },
+    {
+      "id": "report",
+      "type": "ReportNode",
+      "x": 2161,
+      "y": 222,
+      "init": {
+        "label": "Watering call",
+        "width": 300,
+        "height": 200,
+        "body": "# Watering call\n\nRain over the **last 14 days**: {{ rainPast }} mm. Rain forecast for the **next 7 days**: {{ rainNext }} mm.\n\n{% if rainPast < 25 and rainNext < 10 %}**Water today.** Under 25 mm behind and under 10 mm ahead.{% else %}**Hold off.** The ground or the forecast has it covered.{% endif %}\n\nThe verdict above is a `{% if %}` in the report itself; the Alert on the canvas makes the same call with nodes."
+      }
+    },
+    {
+      "id": "alert",
+      "type": "AlertNode",
+      "x": 2221,
+      "y": 460,
+      "init": {
+        "label": "Water the garden?",
+        "mode": "range"
+      },
+      "literals": {
+        "value": 0,
+        "low": 10,
+        "high": 1000000,
+        "target": 0
+      }
+    },
+    {
+      "id": "grp-where",
+      "type": "GroupNode",
+      "x": 10,
+      "y": -24,
+      "init": {
+        "label": "Where & the weather",
+        "members": [
+          "geocode",
+          "weather",
+          "note-a"
+        ],
+        "color": "sky",
+        "collapsed": false,
+        "width": 722,
+        "height": 580
+      }
+    },
+    {
+      "id": "grp-rain",
+      "type": "GroupNode",
+      "x": 787,
+      "y": -24,
+      "init": {
+        "label": "Rain math",
+        "members": [
+          "today",
+          "filterPast",
+          "colPast",
+          "aggPast",
+          "filterFuture",
+          "colFuture",
+          "aggFuture",
+          "note-b"
+        ],
+        "color": "amber",
+        "collapsed": false,
+        "width": 1265,
+        "height": 780
+      }
+    },
+    {
+      "id": "grp-dash",
+      "type": "GroupNode",
+      "x": 2107,
+      "y": -24,
+      "init": {
+        "label": "The dashboard",
+        "members": [
+          "report",
+          "alert",
+          "note-c"
+        ],
+        "color": "green",
+        "collapsed": false,
+        "width": 393,
+        "height": 731
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "geocode",
+      "sourceOutput": "lat",
+      "target": "weather",
+      "targetInput": "lat"
+    },
+    {
+      "source": "geocode",
+      "sourceOutput": "lon",
+      "target": "weather",
+      "targetInput": "lon"
+    },
+    {
+      "source": "weather",
+      "sourceOutput": "daily",
+      "target": "filterPast",
+      "targetInput": "frame"
+    },
+    {
+      "source": "weather",
+      "sourceOutput": "daily",
+      "target": "filterFuture",
+      "targetInput": "frame"
+    },
+    {
+      "source": "today",
+      "sourceOutput": "result",
+      "target": "filterPast",
+      "targetInput": "value0"
+    },
+    {
+      "source": "today",
+      "sourceOutput": "result",
+      "target": "filterFuture",
+      "targetInput": "value0"
+    },
+    {
+      "source": "filterPast",
+      "sourceOutput": "frame",
+      "target": "colPast",
+      "targetInput": "frame"
+    },
+    {
+      "source": "colPast",
+      "sourceOutput": "values",
+      "target": "aggPast",
+      "targetInput": "list"
+    },
+    {
+      "source": "filterFuture",
+      "sourceOutput": "frame",
+      "target": "colFuture",
+      "targetInput": "frame"
+    },
+    {
+      "source": "colFuture",
+      "sourceOutput": "values",
+      "target": "aggFuture",
+      "targetInput": "list"
+    },
+    {
+      "source": "aggPast",
+      "sourceOutput": "result",
+      "target": "report",
+      "targetInput": "rainPast"
+    },
+    {
+      "source": "aggFuture",
+      "sourceOutput": "result",
+      "target": "report",
+      "targetInput": "rainNext"
+    },
+    {
+      "source": "aggFuture",
+      "sourceOutput": "result",
+      "target": "alert",
+      "targetInput": "value"
+    }
+  ]
+}

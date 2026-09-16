@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
-  BondPriceNode, PriceMatNode, DurationNode, OddCouponNode, CouponNode, AccrintNode,
+  BondPricingNode, DiscountSecurityNode, DurationNode, CouponNode, AccruedInterestNode,
+  PaymentBreakdownNode,
 } from "../../../src/graph/nodes/finance";
 import { vdb, accrintM } from "../../../src/graph/nodes/financeOps";
 import { parseDateToSerial } from "../../../src/graph/nodes/date";
@@ -16,25 +17,25 @@ const settle = d("2024-01-15"), maturity = d("2029-01-15");
 describe("real-Excel golden values (author-verified 2026-08-31)", () => {
   it("ODDFPRICE / ODDFYIELD — the first coupon accrues from ISSUE across quasi periods", () => {
     // =ODDFPRICE(DATE(2024,1,25),DATE(2031,1,1),DATE(2023,11,11),DATE(2024,7,1),0.0575,0.06,100,2,0)
-    const args = { settle: [d("2024-01-25")], maturity: [d("2031-01-01")], issue: [d("2023-11-11")], firstlast: [d("2024-07-01")], rate: [0.0575], redemption: [100], frequency: [2] };
-    expect(new OddCouponNode({ op: "oddfprice" }).data({ ...args, yld: [0.06] }).result!)
+    const args = { settle: [d("2024-01-25")], maturity: [d("2031-01-01")], issue: [d("2023-11-11")], firstcoupon: [d("2024-07-01")], rate: [0.0575], redemption: [100], frequency: [2] };
+    expect(new BondPricingNode({ op: "oddfprice" }).data({ ...args, yld: [0.06] }).result!)
       .toBeCloseTo(98.5737779, 6);
     // =ODDFYIELD(DATE(2024,1,25),DATE(2031,1,1),DATE(2023,11,11),DATE(2024,7,1),0.0575,98,100,2,0)
-    expect(new OddCouponNode({ op: "oddfyield" }).data({ ...args, pr: [98] }).result!)
+    expect(new BondPricingNode({ op: "oddfyield" }).data({ ...args, pr: [98] }).result!)
       .toBeCloseTo(0.061035365, 8);
   });
   it("ODDLPRICE / ODDLYIELD — the odd-last period discounts with SIMPLE interest", () => {
     // =ODDLPRICE(DATE(2024,2,7),DATE(2024,6,15),DATE(2023,10,15),0.0375,0.0405,100,2,0)
-    const args = { settle: [d("2024-02-07")], maturity: [d("2024-06-15")], firstlast: [d("2023-10-15")], rate: [0.0375], redemption: [100], frequency: [2] };
-    expect(new OddCouponNode({ op: "oddlprice" }).data({ ...args, yld: [0.0405] }).result!)
+    const args = { settle: [d("2024-02-07")], maturity: [d("2024-06-15")], lastinterest: [d("2023-10-15")], rate: [0.0375], redemption: [100], frequency: [2] };
+    expect(new BondPricingNode({ op: "oddlprice" }).data({ ...args, yld: [0.0405] }).result!)
       .toBeCloseTo(99.87828601, 7);
     // =ODDLYIELD(DATE(2024,2,7),DATE(2024,6,15),DATE(2023,10,15),0.0375,99.8,100,2,0)
-    expect(new OddCouponNode({ op: "oddlyield" }).data({ ...args, pr: [99.8] }).result!)
+    expect(new BondPricingNode({ op: "oddlyield" }).data({ ...args, pr: [99.8] }).result!)
       .toBeCloseTo(0.042712116, 8);
   });
   it("ACCRINT per basis — E is 360/freq for actual/360, actual only for actual/actual", () => {
     // =ACCRINT(DATE(2023,7,15),DATE(2024,1,15),DATE(2024,1,15),0.06,1000,2,basis)
-    const acc = (basis: number) => new AccrintNode().data({
+    const acc = (basis: number) => new AccruedInterestNode().data({
       issue: [d("2023-07-15")], settle: [d("2024-01-15")], rate: [0.06], par: [1000], frequency: [2], basis: [basis],
     }).result!;
     expect(acc(0)).toBeCloseTo(30, 9);
@@ -67,9 +68,9 @@ describe("real-Excel golden values (author-verified 2026-08-31)", () => {
 
 describe("PRICE ↔ YIELD are inverses", () => {
   it("YIELD recovers the yield that PRICE was given", () => {
-    const price = new BondPriceNode({ op: "price" })
+    const price = new BondPricingNode({ op: "price" })
       .data({ settle: [settle], maturity: [maturity], rate: [0.06], yld: [0.065], redemption: [100], frequency: [2] }).result!;
-    const yld = new BondPriceNode({ op: "yield" })
+    const yld = new BondPricingNode({ op: "yield" })
       .data({ settle: [settle], maturity: [maturity], rate: [0.06], pr: [price], redemption: [100], frequency: [2] }).result!;
     expect(yld).toBeCloseTo(0.065, 6);
   });
@@ -79,14 +80,14 @@ describe("PRICEMAT ↔ YIELDMAT are inverses", () => {
   const issue = d("2023-07-15");
   it("PRICEMAT matches real Excel (absolute value, not just the round-trip)", () => {
     // =PRICEMAT(DATE(2024,1,15), DATE(2029,1,15), DATE(2023,7,15), 0.06, 0.065) = 97.37735849.
-    expect(new PriceMatNode({ op: "pricemat" })
+    expect(new DiscountSecurityNode({ op: "pricemat" })
       .data({ settle: [settle], maturity: [maturity], issue: [issue], rate: [0.06], yld: [0.065], basis: [0] }).result!)
       .toBeCloseTo(97.37735849, 6);
   });
   it("YIELDMAT recovers the yield that PRICEMAT was given", () => {
-    const price = new PriceMatNode({ op: "pricemat" })
+    const price = new DiscountSecurityNode({ op: "pricemat" })
       .data({ settle: [settle], maturity: [maturity], issue: [issue], rate: [0.06], yld: [0.065], basis: [0] }).result!;
-    const yld = new PriceMatNode({ op: "yieldmat" })
+    const yld = new DiscountSecurityNode({ op: "yieldmat" })
       .data({ settle: [settle], maturity: [maturity], issue: [issue], rate: [0.06], pr: [price], basis: [0] }).result!;
     expect(yld).toBeCloseTo(0.065, 6);
   });
@@ -94,15 +95,15 @@ describe("PRICEMAT ↔ YIELDMAT are inverses", () => {
 
 describe("ODDFPRICE ↔ ODDFYIELD and ODDLPRICE ↔ ODDLYIELD are inverses", () => {
   it("odd-FIRST price/yield round-trip", () => {
-    const args = { settle: [d("2024-01-25")], maturity: [d("2031-01-01")], issue: [d("2023-11-11")], firstlast: [d("2024-07-01")], rate: [0.0575], redemption: [100], frequency: [2] };
-    const price = new OddCouponNode({ op: "oddfprice" }).data({ ...args, yld: [0.06] }).result!;
-    const yld = new OddCouponNode({ op: "oddfyield" }).data({ ...args, pr: [price] }).result!;
+    const args = { settle: [d("2024-01-25")], maturity: [d("2031-01-01")], issue: [d("2023-11-11")], firstcoupon: [d("2024-07-01")], rate: [0.0575], redemption: [100], frequency: [2] };
+    const price = new BondPricingNode({ op: "oddfprice" }).data({ ...args, yld: [0.06] }).result!;
+    const yld = new BondPricingNode({ op: "oddfyield" }).data({ ...args, pr: [price] }).result!;
     expect(yld).toBeCloseTo(0.06, 5);
   });
   it("odd-LAST price/yield round-trip", () => {
-    const args = { settle: [d("2024-02-07")], maturity: [d("2024-06-15")], firstlast: [d("2023-10-15")], rate: [0.0375], redemption: [100], frequency: [2] };
-    const price = new OddCouponNode({ op: "oddlprice" }).data({ ...args, yld: [0.0405] }).result!;
-    const yld = new OddCouponNode({ op: "oddlyield" }).data({ ...args, pr: [price] }).result!;
+    const args = { settle: [d("2024-02-07")], maturity: [d("2024-06-15")], lastinterest: [d("2023-10-15")], rate: [0.0375], redemption: [100], frequency: [2] };
+    const price = new BondPricingNode({ op: "oddlprice" }).data({ ...args, yld: [0.0405] }).result!;
+    const yld = new BondPricingNode({ op: "oddlyield" }).data({ ...args, pr: [price] }).result!;
     expect(yld).toBeCloseTo(0.0405, 5);
   });
 });
@@ -187,5 +188,82 @@ describe("VDB depreciation is total-conserving and additive", () => {
     const a = vdb(10000, 1000, 5, 0, 2, 2)!;
     const b = vdb(10000, 1000, 5, 2, 5, 2)!;
     expect(a + b).toBeCloseTo(whole, 6);
+  });
+});
+
+describe("ONE Discount Security card: the op table drives the sockets", () => {
+  it("a switch keeps the inputs both ops share (cables and literals stay), drops the rest, and orders the sockets per the new op", () => {
+    const node = new DiscountSecurityNode({ op: "disc" });
+    expect(Object.keys(node.inputs)).toEqual(["settle", "maturity", "pr", "redemption", "basis"]);
+    const kept = node.inputs.pr;
+    expect(node.keysDroppedBySwitch("received").sort()).toEqual(["pr", "redemption"]);
+    node.setOp("received");
+    expect(Object.keys(node.inputs)).toEqual(["settle", "maturity", "investment", "discount", "basis"]);
+    node.setOp("yieldmat");
+    expect(Object.keys(node.inputs)).toEqual(["settle", "maturity", "issue", "rate", "pr", "basis"]);
+    expect(node.inputs.pr).not.toBe(kept); // it left and came back — a fresh socket
+    expect(node.inputs.basis).toBeDefined();
+  });
+  it("every op reads only its own inputs: a blank on a socket the op does not show is not a blank answer", () => {
+    const settle = d("2024-01-15"), maturity = d("2024-07-15");
+    const n = new DiscountSecurityNode({ op: "pricedisc" });
+    expect(typeof n.data({ settle: [settle], maturity: [maturity], pr: [null as unknown as number] }).result).toBe("number");
+    expect(n.data({ settle: [settle], maturity: [maturity], discount: [null as unknown as number] }).result).toBeNull();
+  });
+});
+
+describe("ONE Accrued Interest card: frequency is the periodic form's socket", () => {
+  it("switching to At maturity drops frequency (and nothing else); switching back restores it in place", () => {
+    const node = new AccruedInterestNode();
+    expect(Object.keys(node.inputs)).toEqual(["issue", "settle", "rate", "par", "frequency", "basis"]);
+    expect(node.keysDroppedBySwitch("maturity")).toEqual(["frequency"]);
+    node.setOp("maturity");
+    expect(Object.keys(node.inputs)).toEqual(["issue", "settle", "rate", "par", "basis"]);
+    expect(node.keysDroppedBySwitch("periodic")).toEqual([]);
+    node.setOp("periodic");
+    expect(Object.keys(node.inputs)).toEqual(["issue", "settle", "rate", "par", "frequency", "basis"]);
+  });
+  it("At maturity is ACCRINTM: the kernel the formula uses", () => {
+    const issue = d("2023-07-15"), settle = d("2024-01-15");
+    const viaNode = new AccruedInterestNode({ op: "maturity" }).data({ issue: [issue], settle: [settle], rate: [0.06], par: [1000], basis: [0] }).result;
+    expect(viaNode).toBeCloseTo(accrintM(issue, settle, 0.06, 1000, 0)!, 12);
+  });
+});
+
+describe("ONE Payment Breakdown card: Span drives the socket reshape", () => {
+  it("One period ↔ Range keeps the shared rate/nper/pv (cables and literals), swaps per/fv for start/end", () => {
+    const node = new PaymentBreakdownNode({ op: "ipmt" });
+    expect(Object.keys(node.inputs)).toEqual(["rate", "per", "nper", "pv", "fv"]);
+    const keptRate = node.inputs.rate, keptNper = node.inputs.nper, keptPv = node.inputs.pv;
+    // Share flip stays within the pair — no socket change.
+    expect(node.keysDroppedBySwitch("ppmt")).toEqual([]);
+    // Span flip to the Range pair drops per/fv, adds start/end.
+    expect(node.keysDroppedBySwitch("cumipmt").sort()).toEqual(["fv", "per"]);
+    node.setOp("cumipmt");
+    expect(Object.keys(node.inputs)).toEqual(["rate", "nper", "pv", "start", "end"]);
+    expect(node.inputs.rate).toBe(keptRate); // shared sockets are the SAME objects (cables ride along)
+    expect(node.inputs.nper).toBe(keptNper);
+    expect(node.inputs.pv).toBe(keptPv);
+    node.setOp("ipmt");
+    expect(Object.keys(node.inputs)).toEqual(["rate", "per", "nper", "pv", "fv"]);
+  });
+  it("each op reads only its own inputs: the same rate/nper/pv, different span keys", () => {
+    const single = new PaymentBreakdownNode({ op: "ipmt" }).data({ rate: [0.05], per: [1], nper: [12], pv: [1000], fv: [0] });
+    expect(single.result).toBeCloseTo(-50, 2);
+    // The range op reads start/end, not per/fv — CUMPRINC over the full term repays the principal.
+    const range = new PaymentBreakdownNode({ op: "cumprinc" }).data({ rate: [0.05], nper: [12], pv: [1000], start: [1], end: [12] });
+    expect(range.result).toBeCloseTo(-1000, 6);
+  });
+});
+
+describe("ONE Bond Pricing card: the odd-coupon dates are their own sockets", () => {
+  it("PRICE shows yield not price; the odd-first ops add issue + first coupon; the odd-last ops swap in last interest", () => {
+    const node = new BondPricingNode();
+    expect(Object.keys(node.inputs)).toEqual(["settle", "maturity", "rate", "yld", "redemption", "frequency"]);
+    node.setOp("oddfyield");
+    expect(Object.keys(node.inputs)).toEqual(["settle", "maturity", "issue", "firstcoupon", "rate", "pr", "redemption", "frequency"]);
+    expect(node.keysDroppedBySwitch("oddlyield").sort()).toEqual(["firstcoupon", "issue"]);
+    node.setOp("oddlyield");
+    expect(Object.keys(node.inputs)).toEqual(["settle", "maturity", "lastinterest", "rate", "pr", "redemption", "frequency"]);
   });
 });

@@ -108,7 +108,7 @@ describe("XMATCH — the match-mode family (first match wins)", () => {
 describe("Get Row — 1-based row pick", () => {
   const f = frame([["a", "string", ["x", "y", "z"]], ["n", "number", [1, 2, 3]]]);
   it("picks the 1-based row as a one-row frame", () => {
-    const out = new GetRowNode().data({ frame: [f], index: [2] }).frame;
+    const out = new GetRowNode().data({ frame: [f], index: [2] }).frame as FrameValue | null;
     expect(out?.columns.map((c) => c.values)).toEqual([["y"], [2]]);
   });
   it("out-of-range (0 or past the end) is blank", () => {

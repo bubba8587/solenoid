@@ -134,6 +134,9 @@
 .sol-conn__dot--ok      { background: #2fae7a; }
 .sol-conn__dot--error   { background: #e0566b; }
 .sol-conn__dot--loading { background: #d9a93b; animation: sol-conn-pulse 1s ease-in-out infinite; }
+/* Gated (network permission not granted): a hollow, muted ring — armed but not fired,
+   the disarmed-sink idle look. */
+.sol-conn__dot--gated   { background: transparent; box-shadow: inset 0 0 0 1.5px var(--text-dim); }
 
 @keyframes sol-conn-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
 
@@ -164,3 +167,38 @@
 }
 .sol-conn__refresh:hover:not(:disabled) { border-color: var(--node-accent, var(--accent)); }
 .sol-conn__refresh:disabled { opacity: 0.4; cursor: default; }
+
+/* QR Code preview: centered, on white so the code stays scannable in dark theme. */
+.sol-conn__qr-preview {
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  background: #ffffff;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+.sol-conn__qr-preview img {
+  width: 160px;
+  height: 160px;
+  image-rendering: pixelated;
+}
+
+/* Vault Folder: the vault-path chip + its Choose button. */
+.sol-conn__vault {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sol-conn__chip {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 2px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

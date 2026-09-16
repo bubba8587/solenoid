@@ -1,132 +1,80 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import type { ReportNode as ReportNodeType } from "../rete-nodes";
-import { hexToRgba, themeAccent, resolveColor } from "../palette";
-import { appThemeStore } from "../appTheme";
-import { SwatchGrid } from "./SwatchGrid";
-import { useDismissOnOutside } from "./useDismissOnOutside";
-import { reportStore } from "../reportStore";
-import { scheduleAutosave } from "../persistence";
-import { RefInputRow } from "./inlineRefDisplay";
-import { NodeSocket } from "./NodeSocket";
-import type { NodeProps } from "./nodeKit";
-import { stopDragStart } from "../coarse";
+import { NodeShell, type NodeProps, type Emit } from "./nodeKit";
+import { MeasuredSocketRow } from "./NodeSocket";
+import { CollapsedInputPill } from "./CollapsedInputPill";
+import { refPreview, useRefAnnotation } from "./inlineRefDisplay";
+import { valueChipFor } from "./ValueChip";
+import { makeDocument, isDocumentValue } from "../documentValue";
+import { isSolError } from "../errorValue";
+import { errorTip } from "./ErrorChip";
+import { flyToNode } from "../flyToNode";
+import { collapseStore } from "../collapseStore";
+import { cableValueStore } from "../cableValueStore";
 import "./ReportNode.css";
 
-const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
+/** One inline-ref INPUT row, laid out as a standard measured socket row so its dot
+ *  straddles the card edge at the row's own vertical center. */
+function ReportRefRow({ data, emit, refKey, label, value }: {
+  data: ReportNodeType;
+  emit: Emit;
+  refKey: string;
+  label: string;
+  value: unknown;
+}) {
+  const input = data.inputs[refKey];
+  const ann = useRefAnnotation(data.id, refKey);
+  if (!input) return null;
+  const preview = refPreview(value, ann);
+  return (
+    <MeasuredSocketRow side="input" socketKey={refKey} nodeId={data.id} emit={emit} payload={input.socket}>
+      <span className="solenoid-node__io-label">{label}</span>
+      <span className="solenoid-report__ref-value" title={preview}>{preview}</span>
+    </MeasuredSocketRow>
+  );
+}
 
-/** A small anchor card, deliberately NOT an editing surface: it exists so the
- *  report's refs have somewhere for their INPUT sockets to live. */
+/** The Report's canvas card — a standard node. The body wires the template, the
+ *  mail-merge records and each template variable; the hero box is the Document chip,
+ *  which opens the full-screen editor (ReportOverlay). The real editing surface is
+ *  that overlay, so this card is deliberately an anchor, not an editor. */
 export function ReportComponent({ data, emit }: NodeProps<ReportNodeType>) {
-  const [label, setLabel] = useState(data.label);
-  const [color, setColor] = useState(data.color);
-  const [editingLabel, setEditingLabel] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const swatchRef = useRef<HTMLButtonElement>(null);
-  const paletteRef = useRef<HTMLDivElement>(null);
-  useDismissOnOutside(pickerOpen, () => setPickerOpen(false), [swatchRef, paletteRef]);
-
-  useEffect(() => { setLabel(data.label); }, [data.label]);
-  useEffect(() => { setColor(data.color); }, [data.color]);
-
-  function onLabel(v: string) { setLabel(v); data.label = v; scheduleAutosave(); }
-  function pick(c: string) { setColor(c); data.color = c; scheduleAutosave(); }
-
-  // The tint resolves through the ACTIVE palette, so a palette switch must re-render.
-  useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   const refKeys = data.refKeys();
-  const mode = appThemeStore.getMode();
-  const themed = themeAccent(resolveColor(color), mode);
-  const vars = {
-    "--report-color": themed,
-    "--report-bg": hexToRgba(themed, 0.3),
-  } as React.CSSProperties;
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
+  // The live `document` output: a DocumentValue (an openable chip) or a #SYNTAX! error.
+  const doc = useSyncExternalStore(cableValueStore.subscribe, () => cableValueStore.get(data.id, "document"));
+  const err = isSolError(doc) ? doc : null;
 
   return (
-    <div className={`solenoid-report${data.selected ? " solenoid-report--selected" : ""}`} style={{ width: data.width, ...vars }}>
-      <div className="solenoid-report__bar">
-        {editingLabel ? (
-          <input
-            className="solenoid-report__name"
-            value={label}
-            placeholder="Report"
-            spellCheck={false}
-            autoFocus
-            onChange={(e) => onLabel(e.target.value)}
-            onBlur={() => setEditingLabel(false)}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") e.currentTarget.blur(); }}
-            onPointerDown={stop}
-            onMouseDown={stop}
-          />
-        ) : (
-          <div
-            className={`solenoid-report__name-display${label.trim() ? "" : " solenoid-report__name-display--empty"}`}
-            title={label || "Report"}
-            onClick={() => setEditingLabel(true)}
-            onPointerDown={stop}
-            onMouseDown={stop}
-          >
-            {label.trim() || "Report"}
-          </div>
-        )}
-        <button
-          ref={swatchRef}
-          type="button"
-          className="solenoid-report__swatch"
-          title="Report color"
-          onClick={(e) => { e.stopPropagation(); setPickerOpen((o) => !o); }}
-          onPointerDown={stopDragStart}
-          onMouseDown={stopDragStart}
-        >
-          <svg width="13" height="13" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4">
-            <circle cx="6" cy="6" r="4.5" />
-          </svg>
-        </button>
-        {pickerOpen && (
-          <div ref={paletteRef} className="solenoid-report__palette" onPointerDown={stop} onMouseDown={stop}>
-            <SwatchGrid value={color} onPick={pick} />
-          </div>
-        )}
-      </div>
-      {refKeys.length > 0 && (
-        <div className="solenoid-report__refs">
-          {refKeys.map((key) => {
-            const input = data.inputs[key];
-            if (!input) return null;
-            return (
-              <RefInputRow
-                key={key}
-                nodeId={data.id}
-                emit={emit}
-                refKey={key}
-                value={data.refValue(key)}
-                socket={input.socket}
-                rowClassName="solenoid-report__ref-row"
-                keyClassName="solenoid-report__ref-key"
-                valClassName="solenoid-report__ref-val"
-              />
-            );
-          })}
-        </div>
+    <NodeShell node={data} emit={emit}>
+      {collapsed ? (
+        // Collapsed cleanly: the input rows fold away and every socket converges on one
+        // pill, so their cables survive; only the pill + the document chip remain.
+        <CollapsedInputPill node={data} emit={emit} keys={Object.keys(data.inputs)} />
+      ) : (
+        <>
+          {/* The two STRUCTURAL inputs, each its own full row so their sockets read as
+              distinct wiring points — the mail-merge records sit under the template. */}
+          <ReportRefRow data={data} emit={emit} refKey="template" label="Template" value={data.templateDoc} />
+          <ReportRefRow data={data} emit={emit} refKey="records" label="Records" value={data.recordsValue} />
+          {refKeys.length > 0 && <div className="solenoid-node__section-divider" />}
+          {refKeys.map((key) => (
+            <ReportRefRow key={key} data={data} emit={emit} refKey={key} label={key} value={data.refValue(key)} />
+          ))}
+          <div className="solenoid-node__section-divider" />
+        </>
       )}
-      <div className="solenoid-report__content" style={{ position: "relative" }}>
-        <button
-          type="button"
-          className="solenoid-report__open"
-          onClick={(e) => { e.stopPropagation(); reportStore.open(data.id); }}
-          onPointerDown={stop}
-          onMouseDown={stop}
-        >
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M2 3h5l1.5 2H14v8H2z" />
-          </svg>
-          Open the report
-        </button>
-        {/* Hosted in the content row: the row is the positioning context, so its
-            50% centers the dot on the "Open report" button. */}
-        {data.outputs.document && (
-          <NodeSocket side="output" socketKey="document" nodeId={data.id} emit={emit} payload={data.outputs.document.socket} />
-        )}
+      {/* Hero: the standard Document chip (opens the report) or the render error. The
+          `document` output socket centers on this box (NodeCard's --out-socket-top). */}
+      <div
+        className={`solenoid-node__display-value${err ? " solenoid-node__display-value--error" : ""}`}
+        style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}
+        title={err ? errorTip(err) : undefined}
+        onClick={err?.origin ? () => flyToNode(err.origin!.nodeId) : undefined}
+        onPointerDown={err ? (e) => e.stopPropagation() : undefined}
+      >
+        {err ? err.code : valueChipFor(isDocumentValue(doc) ? doc : makeDocument("", {}, undefined, data.id), { size: "sm" })}
       </div>
-    </div>
+    </NodeShell>
   );
 }

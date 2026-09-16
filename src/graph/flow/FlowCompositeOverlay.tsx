@@ -1,3 +1,4 @@
+// dte:C43
 // The composite drill-in: a full-viewport FlowSurface over the composite's
 // INTERNAL editor (the same surface as the main canvas), plus the one piece of
 // drill-in-specific chrome (breadcrumb strip, port promotion, run controls) and
@@ -13,7 +14,8 @@ import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "../rete-
 import type { SolenoidNode } from "../schemes";
 import { compositeEditorStore, compositePassStore } from "../compositeEditorStore";
 import { getEditor, getView, processGraph } from "../process";
-import { swapSelectionSlots, swapArrangeSlots } from "../canvasCommands";
+import { swapSelectionSlots, swapArrangeSlots, swapDeleteSlot, swapRepositionDockedSlot } from "../canvasCommands";
+import { repositionDockedFor } from "../fcDocking";
 import { setActiveGraph } from "../activeGraph";
 import { syncSemanticZoomFor } from "../semanticZoomStore";
 import { scheduleAutosave } from "../persistence";
@@ -159,6 +161,8 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     let canceled = false;
     let restoreSelection: (() => void) | null = null;
     let restoreArrange: (() => void) | null = null;
+    let restoreDelete: (() => void) | null = null;
+    let restoreReposition: (() => void) | null = null;
     s.rebuilding = true;
     void (async () => {
       await comp.hydrate(ctorRegistry());
@@ -194,12 +198,20 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
         autoArrange: (opts) => tidyRef.current(opts),
         cleanup: () => cleanupRef.current(),
       });
+      // The keyboard-less delete button (mobile / tablet) goes through the slot, not RF's
+      // per-surface Delete key — swap it to this level's delete so it can't hit MAIN.
+      restoreDelete = swapDeleteSlot(() => deleteSelection());
+      // Docked-FC reposition: the component/keyboard callers go through the slot, which
+      // otherwise stays pointed at MAIN (a no-op for a host inside the drill-in).
+      restoreReposition = swapRepositionDockedSlot(repositionDockedTo);
       if (s.history.stack.length === 0) recordNow(comp, s);
     })();
     return () => {
       canceled = true;
       restoreSelection?.();
       restoreArrange?.();
+      restoreDelete?.();
+      restoreReposition?.();
       isolateStore.exit();
       setActiveGraph(null);
       syncPositionsToComp(comp, s);
@@ -322,6 +334,10 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
   /** Undo/redo over the per-composite snapshot stack. */
   const historyStep = useCallback(
     async (redo: boolean) => {
+      // One restore at a time: a second Ctrl+Z / Ctrl+Y during the awaited re-hydrate
+      // would interleave two restores on the same internal editor (flowHistory's
+      // _restoring rule).
+      if (s.rebuilding) return;
       const h = s.history;
       if (h.timer) recordNow(comp, s);
       const target = redo ? h.index + 1 : h.index - 1;
@@ -344,6 +360,12 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
     [comp, s, recomputeTarget],
   );
 
+  // Docked FCs at THIS level follow their host, over the drill-in's own editor/view — the
+  // same reposition the main canvas uses, bound to this surface (fixes the drill-in no-op).
+  const repositionDockedTo = useCallback(
+    (hostId: string) => repositionDockedFor(comp.internalEditor, s.view as unknown as View, s.handlers.getContainer(), hostId),
+    [comp, s],
+  );
   // The SAME arrange factory as the main canvas (groups as blocks, members re-placed,
   // docked FCs re-homed) over this level; a bare ELK pass moved group bodies without
   // their members.
@@ -354,11 +376,11 @@ function FlowDrillInner({ composite: comp }: { composite: CompositeNode }) {
       view: s.view as unknown as View,
       container: s.handlers.getContainer() ?? document.body,
       ensureElk,
-      repositionDockedTo: () => {},
+      repositionDockedTo,
       isDestroyed: () => false,
     });
     return { tidy: arrangeFn, cleanup: makeCleanupFn(comp.internalEditor, s.view as unknown as View, arrangeFn) };
-  }, [comp, s]);
+  }, [comp, s, repositionDockedTo]);
   const settleArrange = useCallback((fit = true) => {
     if (fit) void fitView({ padding: 0.15, duration: 0 });
     void processGraph(recomputeTarget());

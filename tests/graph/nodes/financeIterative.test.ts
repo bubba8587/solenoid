@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { NpvNode, IrrNode, MirrNode } from "../../../src/graph/nodes/finance";
+import { NPVNode, IRRNode, MirrNode } from "../../../src/graph/nodes/finance";
 import { parseDateToSerial } from "../../../src/graph/nodes/date";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 import { isSolError } from "../../../src/graph/errorValue";
@@ -14,13 +14,13 @@ const flows = [-1000, 300, 400, 500, 200];
 
 describe("IRR zeroes NPV (its defining equation)", () => {
   it("NPV at the IRR is ~0", () => {
-    const irr = new IrrNode().data({ list: [flows] }).result as number;
+    const irr = new IRRNode().data({ list: [flows] }).result as number;
     expect(typeof irr).toBe("number");
-    const npvAtIrr = new NpvNode().data({ rate: [irr], list: [flows] }).result as number;
+    const npvAtIrr = new NPVNode().data({ rate: [irr], list: [flows] }).result as number;
     expect(npvAtIrr).toBeCloseTo(0, 5);
   });
   it("a same-sign series has no IRR (#CONV!), not a fabricated number", () => {
-    const r = new IrrNode().data({ list: [[100, 200, 300]] }).result;
+    const r = new IRRNode().data({ list: [[100, 200, 300]] }).result;
     expect(r && typeof r === "object" && "code" in r ? (r as { code: string }).code : r).toBe("#CONV!");
   });
 });
@@ -29,9 +29,9 @@ describe("XIRR zeroes XNPV (dated, actual/365 from the first date)", () => {
   const d = (s: string) => parseDateToSerial(s);
   const dates = [d("2020-01-01"), d("2020-06-01"), d("2021-01-01"), d("2021-06-01"), d("2022-01-01")];
   it("XNPV at the XIRR is ~0", () => {
-    const xirr = new IrrNode({ op: "dates" }).data({ list: [flows], dates: [dates] }).result as number;
+    const xirr = new IRRNode({ op: "dates" }).data({ list: [flows], dates: [dates] }).result as number;
     expect(typeof xirr).toBe("number");
-    const xnpvAtXirr = new NpvNode({ op: "dates" }).data({ rate: [xirr], list: [flows], dates: [dates] }).result as number;
+    const xnpvAtXirr = new NPVNode({ op: "dates" }).data({ rate: [xirr], list: [flows], dates: [dates] }).result as number;
     expect(xnpvAtXirr).toBeCloseTo(0, 4);
   });
 });
@@ -54,7 +54,7 @@ describe("the discount-rate solver holds its floor and scales its tolerance", ()
     [[-4689, -332, 1789, 120, -697, 716], -0.29199810606564947],
     [[-4175, 1273, -561, 351, -371, 873], -0.2562888967693534],
   ])("solves %j to its real root, not #CONV!", (cf, root) => {
-    const r = new IrrNode().data({ list: [cf as number[]] }).result;
+    const r = new IRRNode().data({ list: [cf as number[]] }).result;
     expect(typeof r).toBe("number");
     expect(r as number).toBeCloseTo(root as number, 10);
     expect(npvAt(cf as number[], r as number)).toBeCloseTo(0, 6);
@@ -69,7 +69,7 @@ describe("the discount-rate solver holds its floor and scales its tolerance", ()
     [[45, 4730, -325], -0.9313344974219845],
     [[-1688, -3813, 432], -0.891878604425277],
   ])("finds a near-floor root Newton overshoots (%j)", (cf, root) => {
-    const r = new IrrNode().data({ list: [cf as number[]] }).result;
+    const r = new IRRNode().data({ list: [cf as number[]] }).result;
     expect(typeof r).toBe("number");
     expect(r as number).toBeCloseTo(root as number, 9);
     expect(npvAt(cf as number[], r as number)).toBeCloseTo(0, 6);
@@ -77,7 +77,7 @@ describe("the discount-rate solver holds its floor and scales its tolerance", ()
 
   it("never answers with the floor itself — a pinned solve is #CONV!", () => {
     // Same-sign flows have no root at all; the floor must not read as a settled one.
-    const r = new IrrNode().data({ list: [[100, 200, 300]] }).result;
+    const r = new IRRNode().data({ list: [[100, 200, 300]] }).result;
     expect(r).not.toBe(-0.9999);
     expect((r as { code: string }).code).toBe("#CONV!");
   });
@@ -87,7 +87,7 @@ describe("the discount-rate solver holds its floor and scales its tolerance", ()
     // An absolute epsilon tight enough for a 5% root refuses this one outright.
     const values = [-444, 852, 696, 152, 52, 1545];
     const dates = [45000, 45023, 45541, 46060, 46503, 46599];
-    const r = new IrrNode({ op: "dates" }).data({ list: [values], dates: [dates] }).result;
+    const r = new IRRNode({ op: "dates" }).data({ list: [values], dates: [dates] }).result;
     expect(typeof r).toBe("number");
     expect(r as number).toBeGreaterThan(1000);
     const d0 = dates[0];
@@ -126,12 +126,12 @@ describe("IRR / XIRR / NPV / MIRR formulas agree with their nodes", () => {
     [[-1688, -3813, 432]],
     [flows],
   ])("IRR(%j) is the node's root", (cf) => {
-    const node = new IrrNode().data({ list: [cf as number[]] }).result as number;
+    const node = new IRRNode().data({ list: [cf as number[]] }).result as number;
     expect(ev("IRR(c)", { c: cf })).toBeCloseTo(node, 12);
     expect(ev("IRR(c, 0.2)", { c: cf })).toBeCloseTo(node, 12); // guess accepted, ignored
   });
   it("XIRR formula is the node's dated root", () => {
-    const node = new IrrNode({ op: "dates" }).data({ list: [flows], dates: [dates] }).result as number;
+    const node = new IRRNode({ op: "dates" }).data({ list: [flows], dates: [dates] }).result as number;
     expect(ev("XIRR(c, d)", { c: flows, d: dates })).toBeCloseTo(node, 12);
   });
   it("a same-sign series is #CONV! on both surfaces; too few points is blank", () => {
@@ -141,8 +141,8 @@ describe("IRR / XIRR / NPV / MIRR formulas agree with their nodes", () => {
   });
   it("a blank cash flow is a ZERO period on both surfaces, never a dropped one", () => {
     const cf = [-100, null, 60, 60];
-    expect(ev("IRR(c)", { c: cf })).toBeCloseTo(new IrrNode().data({ list: [cf] }).result as number, 12);
-    expect(ev("NPV(0.1, c)", { c: cf })).toBeCloseTo(new NpvNode().data({ list: [cf], rate: [0.1] }).result as number, 12);
+    expect(ev("IRR(c)", { c: cf })).toBeCloseTo(new IRRNode().data({ list: [cf] }).result as number, 12);
+    expect(ev("NPV(0.1, c)", { c: cf })).toBeCloseTo(new NPVNode().data({ list: [cf], rate: [0.1] }).result as number, 12);
     expect(ev("MIRR(c, 0.1, 0.12)", { c: cf })).toBeCloseTo(
       new MirrNode().data({ list: [cf], finrate: [0.1], reinrate: [0.12] }).result as number, 12);
   });
@@ -156,6 +156,6 @@ describe("IRR / XIRR / NPV / MIRR formulas agree with their nodes", () => {
   it("a blank DATE makes XIRR blank on both surfaces (the schedule is unknown)", () => {
     const ds = [dates[0], null, dates[2], dates[3], dates[4]];
     expect(ev("XIRR(c, d)", { c: flows, d: ds })).toBeNull();
-    expect(new IrrNode({ op: "dates" }).data({ list: [flows], dates: [ds as number[]] }).result).toBeNull();
+    expect(new IRRNode({ op: "dates" }).data({ list: [flows], dates: [ds as number[]] }).result).toBeNull();
   });
 });

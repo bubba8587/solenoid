@@ -1,3 +1,4 @@
+// dte:C65
 import { SocketComponent } from "./SocketComponent";
 import type { Emit } from "./nodeKit";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";

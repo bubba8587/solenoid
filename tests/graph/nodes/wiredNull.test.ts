@@ -7,8 +7,8 @@ import { RandBetweenNode } from "../../../src/graph/nodes/display";
 import { ComplexFromNode, QuadraticRootsNode } from "../../../src/graph/nodes/complex";
 import { CableSwitchNode } from "../../../src/graph/nodes/control";
 import { ExpressionNode } from "../../../src/graph/nodes/expression";
-import { ClampNode, ArithmeticNode, MathFnNode, MRoundNode, CombinatoricsNode } from "../../../src/graph/nodes/scalar";
-import { MirrNode, TBillNode, IrrNode, OddCouponNode, NpvNode, DepreciationNode } from "../../../src/graph/nodes/finance";
+import { ClampNode, ArithmeticNode, MathFXNode, MRoundNode, CombinatoricsNode } from "../../../src/graph/nodes/scalar";
+import { MirrNode, DiscountSecurityNode, IRRNode, BondPricingNode, NPVNode, DepreciationNode } from "../../../src/graph/nodes/finance";
 import { SortFrameNode, JoinNode, HeadNode, ColumnsNode, XLookupNode } from "../../../src/graph/nodes/frame";
 import { ListIndexNode, SliceNode, FilterNode, SeriesNode, AggregateNode } from "../../../src/graph/nodes/list";
 import { GaugeNode, KpiNode, HistogramNode } from "../../../src/graph/nodes/visual";
@@ -219,7 +219,7 @@ describe("NPV — a positional list blanks to zero, the rate operand propagates"
   // A cash-flow list is POSITIONAL: a blank cell counts as 0 (holds its period) rather
   // than being skipped like an aggregate. The rate is an operand and propagates.
   it("a blank cash flow counts as zero; a wired blank rate blanks the result", () => {
-    const node = new NpvNode();
+    const node = new NPVNode();
     node.literals.rate = 0.1;
     expect(node.data({ rate: [null as unknown as number], list: [[100, 200]] }).result).toBeNull();
     const withBlank = node.data({ list: [[100, null, 300]] }).result;
@@ -255,15 +255,15 @@ describe("where the blank check GOES", () => {
   it("the guard is scoped to the ACTIVE op: TBILLYIELD ignores a blank discount", () => {
     // `discount` belongs to TBILLEQ/TBILLPRICE. A guard hoisted above the switch would
     // have nulled this, because it ANDs together inputs this op never reads.
-    const node = new TBillNode({ op: "tbillyield" });
-    node.literals.price = 97.5;
+    const node = new DiscountSecurityNode({ op: "tbillyield" });
+    node.literals.pr = 97.5;
     const out = node.data({
       settle: [46096], maturity: [46187], discount: [null as unknown as number],
     }).result;
     expect(typeof out).toBe("number");
     // Its OWN input still propagates.
     expect(node.data({
-      settle: [46096], maturity: [46187], price: [null as unknown as number],
+      settle: [46096], maturity: [46187], pr: [null as unknown as number],
     }).result).toBeNull();
   });
 });
@@ -341,7 +341,7 @@ describe("the THIRD state — undefined is omitted, null is unknown", () => {
 
 describe("figure sinks — empty figure for a datum, neutral default for styling", () => {
   it("Gauge (Bar style): value and target go blank, but the track's scale keeps the card's bound", () => {
-    const node = new GaugeNode({ op: "bar" });
+    const node = new GaugeNode({ mode: "bar" });
     node.literals.value = 42;
     node.literals.target = 80;
     node.literals.max = 250;
@@ -495,11 +495,11 @@ describe("the guard is scoped to the ACTIVE op — second pass", () => {
   });
 
   it("ODDLPRICE ignores `issue` entirely; ODDFPRICE blanks on a wired blank issue", () => {
-    const f2 = new OddCouponNode({ op: "oddfprice" });
+    const f2 = new BondPricingNode({ op: "oddfprice" });
     const s = 45000, m = 48000, fl = 45100;
-    const withIssue = f2.data({ settle: [s], maturity: [m], firstlast: [fl], issue: [44900] }).result;
+    const withIssue = f2.data({ settle: [s], maturity: [m], firstcoupon: [fl], issue: [44900] }).result;
     expect(withIssue).not.toBeNull();
-    expect(f2.data({ settle: [s], maturity: [m], firstlast: [fl], issue: [null as unknown as number] }).result).toBeNull();
+    expect(f2.data({ settle: [s], maturity: [m], firstcoupon: [fl], issue: [null as unknown as number] }).result).toBeNull();
   });
 });
 
@@ -539,7 +539,7 @@ describe("per-cell contract in hand-rolled broadcasts", () => {
 
   it("XIRR: an error cell in the cash flows surfaces as ITSELF, not #CONV!", () => {
     const err = solError("#DIV/0!", "upstream");
-    const node = new IrrNode({ op: "dates" });
+    const node = new IRRNode({ op: "dates" });
     const out = node.data({
       list: [[-1000, err as unknown as number, 600]],
       dates: [[45000, 45180, 45365]],
@@ -548,7 +548,7 @@ describe("per-cell contract in hand-rolled broadcasts", () => {
   });
 
   it("XIRR: a missing DATE leaves the schedule unknown", () => {
-    const node = new IrrNode({ op: "dates" });
+    const node = new IRRNode({ op: "dates" });
     expect(node.data({ list: [[-1000, 600]], dates: [[45000, null as unknown as number]] }).result).toBeNull();
   });
 });
@@ -719,7 +719,7 @@ describe("Numbers ▸ Arithmetic/Functions/Rounding — operands propagate", () 
   });
 
   it("Math function: a wired blank input propagates; unwired uses the literal", () => {
-    const node = new MathFnNode({ op: "abs" });
+    const node = new MathFXNode({ op: "abs" });
     node.literals.in = -5;
     expect(node.data({ in: [null as unknown as number] }).result).toBeNull();
     expect(node.data({}).result).toBe(5);

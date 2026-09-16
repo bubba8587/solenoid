@@ -1,0 +1,149 @@
+import { useEffect } from "react";
+import { SiteHeader, SiteFooter } from "./siteNav";
+import { Reveal, useRevealAnim } from "./LandingScenes";
+import "./LandingPage.css";
+import "./SitePages.css";
+
+// The /examples route: a gallery of the graphs that ship in the app under the New from
+// example menu. Group heads and item names are the seeds' own labels (seeds.ts), so the
+// page and the in-app menu read the same. Each tile deep-links /?seed=<id>, which opens
+// the template as a new document (FlowCanvas boot). Static DOM; chrome comes from siteNav.
+
+// Curated from the seed library (src/graph/seedGraphs); the id is the JSON file's stem.
+// Internal seeds (Getting started, Scratch, Script tour) are left out.
+const GALLERY: { head: string; items: { id: string; label: string }[] }[] = [
+  {
+    head: "Obsidian",
+    items: [
+      { id: "vault-as-a-table", label: "Your vault as a table" },
+      { id: "tasks-two-ways", label: "Tasks: list and tracked time" },
+      { id: "write-back-to-obsidian", label: "Write it back to Obsidian" },
+      { id: "daily-habits", label: "Daily notes as a time series" },
+      { id: "kitchen-remodel-tasknotes", label: "Kitchen remodel from TaskNotes" },
+    ],
+  },
+  {
+    head: "Tables",
+    items: [
+      { id: "pivot-tables", label: "Pivot tables" },
+      { id: "table-verbs", label: "Table verbs" },
+      { id: "computed-columns", label: "Computed columns & @" },
+      { id: "lambda-helpers", label: "LAMBDA helpers" },
+      { id: "record-cards", label: "Record cards" },
+      { id: "cubes", label: "Cubes: nested tables" },
+    ],
+  },
+  {
+    head: "Values & units",
+    items: [
+      { id: "dimensional-flow", label: "Types & shapes" },
+      { id: "null-and-logical", label: "Errors, null & logic" },
+      { id: "trust-data-quality", label: "Trust & data quality" },
+      { id: "units-by-dimension", label: "Units by dimension" },
+      { id: "unit-flow", label: "Unit flow" },
+    ],
+  },
+  {
+    head: "Modeling",
+    items: [
+      { id: "equation-solver", label: "Equation: solve either way" },
+      { id: "composite-workbench", label: "Composite workbench" },
+    ],
+  },
+  {
+    head: "Charts & reports",
+    items: [
+      { id: "chart-showcase", label: "Charts & visuals" },
+      { id: "live-market-data", label: "Live market data" },
+      { id: "garden-dashboard", label: "Garden dashboard" },
+      { id: "report-showcase", label: "Report showcase" },
+      { id: "mail-merge", label: "Mail merge" },
+    ],
+  },
+  {
+    head: "Worked examples",
+    items: [
+      { id: "personal-finance", label: "Personal finance" },
+      { id: "decision-matrix", label: "Decision Matrix" },
+      { id: "which-task-next", label: "Which task next?" },
+      { id: "allocator", label: "Budget Allocator" },
+      { id: "team-hours", label: "Balance a team's hours" },
+      { id: "trip-split", label: "Trip split" },
+      { id: "debt-payoff", label: "Debt payoff" },
+      { id: "remodel-gantt", label: "Remodel (Gantt)" },
+      { id: "famous-math", label: "Famous math" },
+      { id: "project-links-frame", label: "Project (two frames)" },
+      { id: "earned-value", label: "Earned Value" },
+      { id: "product-launch-gantt", label: "Product launch (Gantt)" },
+      { id: "sudoku-solver", label: "Sudoku solver" },
+    ],
+  },
+];
+
+export default function ExamplesPage() {
+  const anim = useRevealAnim();
+  useEffect(() => {
+    document.title = "Solenoid · Examples";
+  }, []);
+
+  return (
+    <div className={`sol-landing${anim ? " sol-landing--anim" : ""}`}>
+      <div className="sol-landing__inner">
+        <SiteHeader current="/examples" />
+
+        <main>
+          <section className="sol-landing__hero sol-landing__hero--solo">
+            <div className="sol-landing__hero-copy">
+              <Reveal>
+                <h1>Examples</h1>
+              </Reveal>
+              <Reveal delay={110}>
+                {/* NEW COPY. */}
+                <p>
+                  Every graph below ships in the app. Open one to load it on your canvas and take
+                  it apart. Your own documents stay where they are.
+                </p>
+              </Reveal>
+              <Reveal delay={220}>
+                <div className="sol-landing__actions">
+                  <a className="sol-landing__cta sol-landing__cta--primary" href="/">Open Solenoid</a>
+                </div>
+              </Reveal>
+            </div>
+          </section>
+
+          {GALLERY.map((group, i) => (
+            <section key={group.head} className="sol-landing__section sol-gallery">
+              <Reveal>
+                <h2>{group.head}</h2>
+              </Reveal>
+              <Reveal delay={i === 0 ? 90 : 0}>
+                <div className="sol-gallery__grid">
+                  {group.items.map((item) => (
+                    <a key={item.id} href={`/?seed=${item.id}`} className="sol-gallery__card">
+                      <span className="sol-gallery__card-name">{item.label}</span>
+                      <span className="sol-gallery__card-open" aria-hidden="true">Open →</span>
+                    </a>
+                  ))}
+                </div>
+              </Reveal>
+            </section>
+          ))}
+
+          <section className="sol-landing__strip">
+            <Reveal className="sol-landing__strip-in">
+              {/* NEW COPY. */}
+              <p>Open any of these from New from example, or start from a blank canvas.</p>
+              <div className="sol-landing__actions">
+                <a className="sol-landing__cta sol-landing__cta--primary" href="/">Open Solenoid</a>
+                <a className="sol-landing__cta" href="/download">Download</a>
+              </div>
+            </Reveal>
+          </section>
+        </main>
+
+        <SiteFooter />
+      </div>
+    </div>
+  );
+}

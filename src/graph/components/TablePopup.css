@@ -43,6 +43,16 @@
   top: 0;
   z-index: 2;
 }
+/* The "Freeze header" toggle OFF (settingsStore tablePopupFrozen): the header row and
+   the row-number first column scroll with the body. Equal/higher specificity than the
+   sticky rules above (and placed after them) so `static` wins without !important. The
+   summary footer keeps its own sticky behavior — it is a separate toggle. */
+.table-popup__grid--unfrozen thead th,
+.table-popup__grid--unfrozen .table-popup__rowhead,
+.table-popup__grid--unfrozen thead th.table-popup__corner,
+.table-popup__grid--unfrozen .table-popup__fmtbody th.table-popup__corner {
+  position: static;
+}
 .table-popup__corner,
 .table-popup__colhead,
 .table-popup__rowhead {
@@ -164,6 +174,22 @@
   text-align: left;
   min-width: 120px;
   font-family: var(--font-sans);
+}
+/* Chip text style (B2.2) in an EDITABLE cell: the CategoryChip overlays the live
+   <input> while the cell is unfocused, matching the input's own padding so the pill
+   sits where the text would. pointer-events: none lets a click reach the input beneath
+   (which enters edit and hides the chip); the input's own text is painted transparent
+   under it. Same chipCols + CategoryChip as the read-only path, no second mechanism. */
+.table-popup__cell--chip { position: relative; }
+.table-popup__chip-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 4px 8px;
+  overflow: hidden;
+  pointer-events: none;
 }
 
 /* Editable column-name inputs in the header row (frame editor) — sized to the
@@ -349,6 +375,20 @@
   cursor: pointer;
   outline: none;
 }
+/* What the column carries in while the style dropdown reads blank — a reading, not a
+   pick, so it stays muted and never looks like the control's value. */
+.table-popup__fmthint {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  line-height: 1.3;
+  color: var(--text-muted);
+  padding: 1px 2px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.table-popup__matrix-fmt .table-popup__fmthint { display: inline-block; padding: 0; }
 .table-popup__fmtinline .table-popup__fmtselect { width: auto; min-width: 92px; }
 .table-popup__fmtselect:hover { border-color: var(--node-accent, var(--accent)); }
 .table-popup__fmtselect:focus { box-shadow: inset 0 0 0 1px var(--node-accent, var(--accent)); }
@@ -547,6 +587,8 @@
 /* Touch: the drill-path breadcrumb links need tappable room. */
 @media (pointer: coarse) {
   .cube-popup__crumb { padding: 5px 8px; font-size: 13px; }
+  /* The Cube Input's nested-cell chips drill too; a 10px chip is not a finger target. */
+  .table-popup__cell .solenoid-array-chip--sm { padding: 5px 10px; font-size: 13px; }
 }
 
 /* Form view: one record as stacked labeled fields (the record-entry editor). */

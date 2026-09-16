@@ -131,7 +131,11 @@ export function ExtensibleInputs({
         const isTextField = dt === "string" || dt === "numlist" || dt === "strlist" || dt === "datelist" || dt === "logicallist";
         // A container-typed row is WIRE-ONLY — a typed literal has no meaning for a
         // list/table/frame operand. Logical operands are wire-only too, matching IfNode.
-        const isWireOnly = dt === "anylist" || dt === "anytable" || dt === "table" || dt === "frame" || dt === "cube" || dt === "logicalcombo" || dt === "lambda" || dt === "chart";
+        // A WILDCARD row is wire-only unless the node opts into auto literals: the number
+        // field is for number rows only, never a fallback (it forces the numeric keyboard).
+        const isWildcard = dt === "any" || dt === "anydata" || dt === "trueany";
+        const isWireOnly = dt === "anylist" || dt === "anytable" || dt === "table" || dt === "frame" || dt === "cube" || dt === "logicalcombo" || dt === "lambda" || dt === "chart"
+          || (isWildcard && !takesAutoLiteral(node, dt));
         return (
           <MeasuredSocketRow key={key} side="input" socketKey={key} nodeId={node.id} emit={emit} payload={input.socket}>
             {isWireOnly ? (

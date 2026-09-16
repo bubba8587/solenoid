@@ -47,6 +47,13 @@ function renderMarkdown(md: string): string {
 
 /** The export's CSS. `accent` tints the title + heading rules ONLY when the doc
  *  declares a report palette — branding never alters an export that didn't ask. */
+/** Text that lands in the exported page's markup outside a sanitized body (a title, a card's
+ *  name, a ref name): every user-typed string is escaped, so a name like <img onerror=…>
+ *  is text in the viewer's browser, never markup. */
+export function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
 export function buildExportCss(branded: boolean, accent: string): string {
   const titleColor = branded ? accent : "#f3f4f5";
   const ruleColor = branded ? accent : "#2d2d2d";
@@ -91,16 +98,17 @@ export function reportReferencedNodeIds(
 }
 
 /** Build the self-contained HTML document string; the caller captures the canvas
- *  image and passes it in, keeping this half synchronous and DOM-free. */
+ *  image and renders the template body, passing both in, keeping this half
+ *  synchronous and DOM-free. */
 export function buildReportExportHtml(
   report: ReportNode,
-  opts: { canvasImage: string | null },
+  opts: { canvasImage: string | null; body: string },
 ): string {
   const editor = getEditor();
   const allNodes = editor?.getNodes() ?? [];
   const names = nodeDisplayNames(allNodes);
 
-  const bodyFrozen = freezeInlineRefs(report.id, report.body, report.refKeys(), (k) => report.refValue(k));
+  const bodyFrozen = freezeInlineRefs(report.id, opts.body, report.refKeys(), (k) => report.refValue(k));
 
   // A DOCUMENT-valued ref (a wired Note) is substituted INLINE as an embed block;
   // splitting at the span keeps each surrounding markdown segment valid.
@@ -113,7 +121,7 @@ export function buildReportExportHtml(
     const value = report.refValue(name);
     if (!isDocumentValue(value)) continue; // frozen already, or an unwired span
     parts.push(renderMarkdown(bodyFrozen.slice(last, m.index)));
-    parts.push(`<div class="report-export__embed"><div class="report-export__embed-name">${name}</div>${renderMarkdown(parseNoteFrontmatter(value.body).body)}</div>`);
+    parts.push(`<div class="report-export__embed"><div class="report-export__embed-name">${escapeHtml(name)}</div>${renderMarkdown(parseNoteFrontmatter(value.body).body)}</div>`);
     last = m.index + m[0].length;
   }
   parts.push(renderMarkdown(bodyFrozen.slice(last)));
@@ -123,14 +131,14 @@ export function buildReportExportHtml(
   const refIds = reportReferencedNodeIds(report, editor?.getConnections() ?? [], noteIds);
   const charts = captureChartSvgs(names, refIds);
   const chartsHtml = charts.map((c) =>
-    `<div class="report-export__chart"><div class="report-export__chart-label">${c.name}</div>${c.svg}</div>`,
+    `<div class="report-export__chart"><div class="report-export__chart-label">${escapeHtml(c.name)}</div>${c.svg}</div>`,
   ).join("\n");
 
   const snapshotHtml = opts.canvasImage
     ? `<section><h2>Canvas snapshot</h2><img class="report-export__snapshot" src="${opts.canvasImage}" alt="Canvas snapshot" /></section>`
     : "";
 
-  const title = report.label?.trim() || "Report";
+  const title = escapeHtml(report.label?.trim() || "Report");
   const exportedAt = new Date().toLocaleString(APP_LOCALE);
   const branded = reportPaletteStore.reportPalette() !== undefined;
   const accent = reportPaletteStore.resolve("sky");
@@ -159,7 +167,7 @@ export function buildReportExportHtml(
 export async function exportReportAsWebpage(report: ReportNode): Promise<void> {
   try {
     const canvasImage = await captureCanvasImage();
-    const html = buildReportExportHtml(report, { canvasImage });
+    const html = buildReportExportHtml(report, { canvasImage, body: await report.renderedBody() });
     const name = `${(report.label?.trim() || "report").replace(/[^\w -]/g, "")}.html`;
     const chosen = await saveHtmlFileDialog(name, html);
     // Desktop: null = canceled. Web: the download always fires (the helper

@@ -116,6 +116,14 @@
   width: 240px;
 }
 
+/* Geocode reads long strings at the 180px base — an IANA zone ("America/Boise") and a
+   full match label ("Boise, Idaho, United States") in both its picker and its output
+   rows. Matched to the wide tier its Weather partner already sits at, so the pair reads
+   as one set. */
+.solenoid-node--geocode {
+  width: 240px;
+}
+
 /* Cast carries a 5-segment type selector (Number/Text/Date/Complex/Boolean) in a
    full-width SegToggle; the base 180px card clips the last segments (they don't
    wrap — see SegToggle.css). Wider so all five fit. */
@@ -313,6 +321,13 @@
   align-items: center;
   justify-content: center;
 }
+/* A collapsed-only box that is ALSO a chip hero keeps the chip right-aligned (the
+   --chip rule's flex-end), which the centering above would otherwise override — so a
+   collapsed Chart/Gauge chip sits right like an expanded one, while bespoke minis
+   (dial arc, slicer summary) stay centered. */
+.solenoid-node--collapsed .solenoid-node__collapsed-only.solenoid-node__display-value--chip {
+  justify-content: flex-end;
+}
 
 /* A collapsed table node drops its grid preview and shows just the chip — the
    table analogue of a scalar node collapsing to its value box. The chip centers
@@ -420,6 +435,13 @@
   opacity: 0.4;
 }
 
+/* The Display's value expand button reuses the shared expand-pill look but drops its
+   absolute offset — the corner-badge slot already positions it (and stays put over a
+   body that scrolls, unlike an in-body button). */
+.solenoid-node__corner-badge .solenoid-expr__expand {
+  position: static;
+}
+
 /* Comment indicator (#14): a quiet round badge peeking out of the top-left
    corner — mirrors cornerBadge's top-right slot without colliding with it.
    Fixed offset (not header-relative): it marks the CARD, not a header detail. */
@@ -499,7 +521,9 @@
   line-height: 1.3;
   font-weight: 600;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
+  /* While editing you see the RAW typed text (like every other draft field); the
+     Header-title case setting only transforms the display below, on blur. */
+  text-transform: none;
   padding: 3px 0; /* symmetric, matching .solenoid-node__label-display */
   display: block;
 }
@@ -508,8 +532,10 @@
   color: var(--text);
 }
 
-/* Static title (not editing): clamped to 4 lines with an ellipsis. Matches the
-   label-input's type so swapping in/out is seamless. */
+/* Static title (not editing): clamped to 4 lines with an ellipsis. Shares the
+   label-input's box (height/padding) so swapping in/out doesn't shift sockets;
+   its CASE is set by the Header-title case setting (html.hdr-case-* below), so the
+   raw text you type renders transformed once you blur. */
 .solenoid-node__label-display {
   /* Shrink to the title text (not the full header) so it sits flush left and
      leaves the reserved right strip for the type hint — mirrors group headers.
@@ -536,6 +562,19 @@
   overflow: hidden;
   word-break: break-word;
 }
+
+/* Header-title case (settingsStore `headerTitleCase`, global). The display block
+   above defaults to uppercase; these override it per the chosen mode. The editing
+   input stays `none` (raw). Group titles get the mirror of this in GroupNode.css. */
+html.hdr-case-as-typed .solenoid-node__label-display { text-transform: none; }
+html.hdr-case-proper .solenoid-node__label-display { text-transform: capitalize; }
+html.hdr-case-upper .solenoid-node__label-display { text-transform: uppercase; }
+/* The 0.08em tracking (and the input's 0.08em) is eyebrow-label spacing tuned for
+   all-caps; on lowercase it reads loose, so the non-upper modes tighten it. */
+html.hdr-case-as-typed .solenoid-node__label-display,
+html.hdr-case-proper .solenoid-node__label-display,
+html.hdr-case-as-typed .solenoid-node__label-input,
+html.hdr-case-proper .solenoid-node__label-input { letter-spacing: 0.01em; }
 
 /* The content wrapper — everything below the header. It is the SOCKET POSITIONING
    CONTEXT (the nearest positioned ancestor for the sockets, pills and the value
@@ -650,6 +689,20 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
   font-weight: 500;
   text-align: right;
   box-sizing: border-box;
+}
+
+/* A hero box that holds a CHIP (chart, frame, cube, document, diagram, error) instead
+   of text. The plain box is a block whose 18px line box baseline-aligns an inline chip,
+   which lands it a few px low; that is why "center the chip" kept coming back as a
+   per-card inline style. This ONE rule makes the row a flex row: the chip centers on the
+   cross axis and sits at the end like a right-aligned value, and min-height keeps the
+   box the height of a text value box so chip cards line up with value cards. Cards
+   never restate this inline (sourceInvariants pins it). */
+.solenoid-node__display-value--chip {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-height: calc(1lh + 14px);
 }
 
 .solenoid-node__display-value--empty {
@@ -806,7 +859,8 @@ html.solenoid-semantic-zoom .solenoid-node__semantic span {
 /* The shared corner-grip mark (ResizeHandle + FieldResizeGrip), drawn as a
    masked ::before instead of an inline <svg>. */
 .solenoid-node__resize-handle::before,
-.solenoid-field-resize::before {
+.solenoid-field-resize::before,
+.sol-popup__resize::before {
   content: "";
   width: 12px;
   height: 12px;
@@ -1298,72 +1352,14 @@ body.solenoid-scrubbing * {
   -webkit-box-orient: vertical;
 }
 
-/* Decision Matrix — per-criterion weight boxes (one labeled, default-1 number
-   field per detected criterion). A compact name → value row, matching the io-row
-   rhythm so the weights read as a small panel under the toggles. */
-.solenoid-node__dm-weights {
-  margin-top: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.solenoid-node__dm-weight-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-/* Three aligned columns: criterion name (fills), then the right-aligned Weight and
-   Norm controls at fixed widths so they line up across rows AND under the header. */
-.solenoid-node__dm-col-crit {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.solenoid-node__dm-col-weight { flex: 0 0 46px; text-align: right; }
-.solenoid-node__dm-col-norm { flex: 0 0 62px; }
-.solenoid-node__dm-weight-row .solenoid-node__inline-input {
-  flex: 0 0 46px;
-  width: 46px;
-  text-align: right;
-}
-/* The per-column normalize override — compact, just wide enough for "÷Max" + chevron
-   (it's full-width by default). */
-.solenoid-node__dm-weight-row .solenoid-node__select {
-  flex: 0 0 62px;
-  width: 62px;
-  font-size: 12px;
-  padding: 3px 22px 3px 6px;
-}
-/* Column-header row: the small uppercase labels over Weight / Norm. */
-.solenoid-node__dm-weights-head {
-  margin-top: 2px;
-}
-.solenoid-node__dm-weights-head span {
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-muted, #9aa0a6);
-}
-/* Read-only weight cell when the Weights socket is wired — the wired value shows
-   where the typed box would be. */
-.solenoid-node__dm-weight-ro {
-  font-size: 12px;
-  color: var(--text-muted, #9aa0a6);
-  font-variant-numeric: tabular-nums;
-}
+/* Decision Matrix / Sensitivity — the small muted caption over each default toggle
+   (Normalize, Output). The per-criterion weight + Norm now live on the wired Weights
+   frame, so the on-card weight table and its header/read-only styles are gone. */
 .solenoid-node__dm-caption {
   margin-top: 4px;
   font-size: 10px;
   line-height: 1.3;
   color: var(--text-muted, #9aa0a6);
-}
-.solenoid-node__dm-hint {
-  font-size: 11px;
-  line-height: 1.35;
-  color: var(--text-muted, #9aa0a6);
-  font-style: italic;
 }
 
 /* Native option list (the OS popup). Chromium / WebView2 paints the
@@ -1439,6 +1435,7 @@ body.solenoid-scrubbing * {
   bottom: 2px;
   width: 14px;
   height: 14px;
+  touch-action: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1449,6 +1446,31 @@ body.solenoid-scrubbing * {
 .solenoid-field-resize:hover {
   opacity: 0.9;
   color: var(--node-accent, var(--accent));
+}
+/* Frame Input's Form layout: the hide mark sits in the box's top-right, the corner
+   the resize grip leaves free. Hiding keeps the text; the card offers it back. */
+.solenoid-layout-field {
+  position: relative;
+}
+.solenoid-layout-field__hide {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--text-dim);
+  background: none;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.solenoid-layout-field__hide:hover {
+  color: var(--text-bright);
+  background: var(--btn-hover);
 }
 
 .solenoid-mermaid-template {

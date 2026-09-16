@@ -1,4014 +1,4014 @@
 {
- "v": 2,
- "order": 9999,
- "label": "Scratch: new nodes",
- "group": "More",
- "nodes": [
-  {
-   "id": "src_a",
-   "type": "ListInputNode",
-   "x": 24,
-   "y": 58,
-   "init": {
-    "label": "Data A",
-    "valueKeys": [
-     "v0"
-    ]
-   },
-   "stringLiterals": {
-    "v0": "10, 12, 9, 20, 8, 15, 22, 11"
-   }
-  },
-  {
-   "id": "src_breaks",
-   "type": "ListInputNode",
-   "x": 24,
-   "y": 288,
-   "init": {
-    "label": "Breaks",
-    "valueKeys": [
-     "v0"
-    ]
-   },
-   "stringLiterals": {
-    "v0": "10, 15, 20"
-   }
-  },
-  {
-   "id": "src_va",
-   "type": "ListInputNode",
-   "x": 24,
-   "y": 518,
-   "init": {
-    "label": "Vector A",
-    "valueKeys": [
-     "v0"
-    ]
-   },
-   "stringLiterals": {
-    "v0": "1, 2, 3"
-   }
-  },
-  {
-   "id": "src_vb",
-   "type": "ListInputNode",
-   "x": 24,
-   "y": 748,
-   "init": {
-    "label": "Vector B",
-    "valueKeys": [
-     "v0"
-    ]
-   },
-   "stringLiterals": {
-    "v0": "10, 20"
-   }
-  },
-  {
-   "id": "n_shift",
-   "type": "ShiftNode",
-   "x": 356,
-   "y": 58,
-   "init": {
-    "label": "Shift",
-    "wrap": "wrap"
-   },
-   "literals": {
-    "by": 2
-   }
-  },
-  {
-   "id": "n_pct",
-   "type": "DiffNode",
-   "x": 356,
-   "y": 288,
-   "init": {
-    "label": "DIFF (% mode)",
-    "mode": "percent"
-   }
-  },
-  {
-   "id": "n_z",
-   "type": "NormalizeNode",
-   "x": 356,
-   "y": 490,
-   "init": {
-    "label": "Normalize (z mode)",
-    "mode": "zscore"
-   }
-  },
-  {
-   "id": "n_bin",
-   "type": "BinNode",
-   "x": 356,
-   "y": 705,
-   "init": {
-    "label": "Bin"
-   }
-  },
-  {
-   "id": "n_comb",
-   "type": "CombinationsNode",
-   "x": 356,
-   "y": 935,
-   "init": {
-    "label": "Combinations",
-    "mode": "combinations"
-   },
-   "literals": {
-    "k": 2
-   }
-  },
-  {
-   "id": "n_outer",
-   "type": "TableOuterNode",
-   "x": 356,
-   "y": 1215,
-   "init": {
-    "label": "Outer"
-   }
-  },
-  {
-   "id": "d_shift",
-   "type": "DisplayNode",
-   "x": 748,
-   "y": 58,
-   "init": {
-    "label": "Shifted"
-   }
-  },
-  {
-   "id": "d_pct",
-   "type": "DisplayNode",
-   "x": 748,
-   "y": 240,
-   "init": {
-    "label": "% change"
-   }
-  },
-  {
-   "id": "d_z",
-   "type": "DisplayNode",
-   "x": 748,
-   "y": 494,
-   "init": {
-    "label": "z-scores"
-   }
-  },
-  {
-   "id": "d_bin",
-   "type": "DisplayNode",
-   "x": 748,
-   "y": 766,
-   "init": {
-    "label": "bins"
-   }
-  },
-  {
-   "id": "d_comb",
-   "type": "DisplayNode",
-   "x": 748,
-   "y": 930,
-   "init": {
-    "label": "combinations"
-   }
-  },
-  {
-   "id": "d_outer",
-   "type": "DisplayNode",
-   "x": 748,
-   "y": 1117,
-   "init": {
-    "label": "outer product"
-   }
-  },
-  {
-   "id": "src_vc",
-   "type": "ListInputNode",
-   "x": 1178,
-   "y": 260,
-   "init": {
-    "label": "Vector C",
-    "valueKeys": [
-     "v0"
-    ]
-   },
-   "stringLiterals": {
-    "v0": "0, 1, 0"
-   }
-  },
-  {
-   "id": "src_px",
-   "type": "ListInputNode",
-   "x": 1178,
-   "y": 692,
-   "init": {
-    "label": "x",
-    "valueKeys": [
-     "v0"
-    ]
-   },
-   "stringLiterals": {
-    "v0": "0, 1, 2, 3, 4"
-   }
-  },
-  {
-   "id": "src_py",
-   "type": "ListInputNode",
-   "x": 1178,
-   "y": 922,
-   "init": {
-    "label": "y (x^2)",
-    "valueKeys": [
-     "v0"
-    ]
-   },
-   "stringLiterals": {
-    "v0": "0, 1, 4, 9, 16"
-   }
-  },
-  {
-   "id": "src_rle",
-   "type": "ListInputNode",
-   "x": 1178,
-   "y": 1152,
-   "init": {
-    "label": "Repeats",
-    "valueKeys": [
-     "v0"
-    ]
-   },
-   "stringLiterals": {
-    "v0": "1, 1, 2, 2, 2, 3"
-   }
-  },
-  {
-   "id": "n_ewma",
-   "type": "EwmaNode",
-   "x": 1178,
-   "y": 58,
-   "init": {
-    "label": "EWMA"
-   },
-   "literals": {
-    "alpha": 0.3
-   }
-  },
-  {
-   "id": "n_conv",
-   "type": "ConvolveNode",
-   "x": 1178,
-   "y": 490,
-   "init": {
-    "label": "Convolve"
-   }
-  },
-  {
-   "id": "n_cross",
-   "type": "CrossNode",
-   "x": 1510,
-   "y": 476,
-   "init": {
-    "label": "Cross Product"
-   }
-  },
-  {
-   "id": "n_poly",
-   "type": "PolyfitNode",
-   "x": 1510,
-   "y": 678,
-   "init": {
-    "label": "Poly Fit"
-   },
-   "literals": {
-    "degree": 2
-   }
-  },
-  {
-   "id": "n_trapz",
-   "type": "TrapzNode",
-   "x": 1510,
-   "y": 908,
-   "init": {
-    "label": "Integrate"
-   },
-   "literals": {
-    "dx": 1
-   }
-  },
-  {
-   "id": "n_rle",
-   "type": "RleNode",
-   "x": 1510,
-   "y": 1116,
-   "init": {
-    "label": "Run Lengths"
-   }
-  },
-  {
-   "id": "n_between",
-   "type": "BetweenNode",
-   "x": 2332,
-   "y": 58,
-   "init": {
-    "label": "Between"
-   },
-   "literals": {
-    "value": 5,
-    "lo": 1,
-    "hi": 10
-   }
-  },
-  {
-   "id": "n_isclose",
-   "type": "IsCloseNode",
-   "x": 2332,
-   "y": 294,
-   "init": {
-    "label": "Is Close"
-   },
-   "literals": {
-    "a": 1,
-    "b": 1.0000001,
-    "tol": 0.001
-   }
-  },
-  {
-   "id": "d_ewma",
-   "type": "DisplayNode",
-   "x": 1510,
-   "y": 58,
-   "init": {
-    "label": "ewma"
-   }
-  },
-  {
-   "id": "d_conv",
-   "type": "DisplayNode",
-   "x": 1510,
-   "y": 312,
-   "init": {
-    "label": "convolution"
-   }
-  },
-  {
-   "id": "d_cross",
-   "type": "DisplayNode",
-   "x": 1902,
-   "y": 58,
-   "init": {
-    "label": "cross"
-   }
-  },
-  {
-   "id": "d_poly",
-   "type": "DisplayNode",
-   "x": 1902,
-   "y": 204,
-   "init": {
-    "label": "fitted y"
-   }
-  },
-  {
-   "id": "d_trapz",
-   "type": "DisplayNode",
-   "x": 1902,
-   "y": 368,
-   "init": {
-    "label": "integral"
-   }
-  },
-  {
-   "id": "d_rle",
-   "type": "DisplayNode",
-   "x": 1902,
-   "y": 520,
-   "init": {
-    "label": "run lengths"
-   }
-  },
-  {
-   "id": "d_between",
-   "type": "DisplayNode",
-   "x": 2664,
-   "y": 58,
-   "init": {
-    "label": "5 in [1,10]?"
-   }
-  },
-  {
-   "id": "d_isclose",
-   "type": "DisplayNode",
-   "x": 2664,
-   "y": 210,
-   "init": {
-    "label": "close?"
-   }
-  },
-  {
-   "id": "src_c",
-   "type": "ListInputNode",
-   "x": 3094,
-   "y": 58,
-   "init": {
-    "label": "Data C (one outlier)",
-    "valueKeys": [
-     "v0"
-    ]
-   },
-   "stringLiterals": {
-    "v0": "10, 11, 9, 10, 12, 10, 11, 100"
-   }
-  },
-  {
-   "id": "src_rank",
-   "type": "ListInputNode",
-   "x": 3094,
-   "y": 301,
-   "init": {
-    "label": "Rank B",
-    "valueKeys": [
-     "v0"
-    ]
-   },
-   "stringLiterals": {
-    "v0": "5, 6, 7, 8, 7, 9, 12, 10"
-   }
-  },
-  {
-   "id": "src_epoch",
-   "type": "NumberInputNode",
-   "x": 24,
-   "y": 1716,
-   "init": {
-    "label": "Unix seconds",
-    "value": 1700000000,
-    "width": 180,
-    "height": 76
-   }
-  },
-  {
-   "id": "agg_ptp",
-   "type": "AggregateNode",
-   "x": 3426,
-   "y": 58,
-   "init": {
-    "label": "PTP (max−min)",
-    "op": "ptp"
-   }
-  },
-  {
-   "id": "d_ptp",
-   "type": "DisplayNode",
-   "x": 4090,
-   "y": 58,
-   "init": {
-    "label": "PTP (max−min)"
-   }
-  },
-  {
-   "id": "agg_iqr",
-   "type": "AggregateNode",
-   "x": 3426,
-   "y": 271,
-   "init": {
-    "label": "IQR",
-    "op": "iqr"
-   }
-  },
-  {
-   "id": "d_iqr",
-   "type": "DisplayNode",
-   "x": 4090,
-   "y": 210,
-   "init": {
-    "label": "IQR"
-   }
-  },
-  {
-   "id": "agg_mad",
-   "type": "AggregateNode",
-   "x": 3426,
-   "y": 484,
-   "init": {
-    "label": "MAD",
-    "op": "mad"
-   }
-  },
-  {
-   "id": "d_mad",
-   "type": "DisplayNode",
-   "x": 4090,
-   "y": 362,
-   "init": {
-    "label": "MAD"
-   }
-  },
-  {
-   "id": "agg_sem",
-   "type": "AggregateNode",
-   "x": 3426,
-   "y": 697,
-   "init": {
-    "label": "SEM",
-    "op": "sem"
-   }
-  },
-  {
-   "id": "d_sem",
-   "type": "DisplayNode",
-   "x": 4090,
-   "y": 514,
-   "init": {
-    "label": "SEM"
-   }
-  },
-  {
-   "id": "agg_cv",
-   "type": "AggregateNode",
-   "x": 3426,
-   "y": 910,
-   "init": {
-    "label": "CV",
-    "op": "cv"
-   }
-  },
-  {
-   "id": "d_cv",
-   "type": "DisplayNode",
-   "x": 4090,
-   "y": 666,
-   "init": {
-    "label": "CV"
-   }
-  },
-  {
-   "id": "agg_rms",
-   "type": "AggregateNode",
-   "x": 3426,
-   "y": 1123,
-   "init": {
-    "label": "RMS",
-    "op": "rms"
-   }
-  },
-  {
-   "id": "d_rms",
-   "type": "DisplayNode",
-   "x": 4090,
-   "y": 818,
-   "init": {
-    "label": "RMS"
-   }
-  },
-  {
-   "id": "cor_spearman",
-   "type": "CorrelNode",
-   "x": 3758,
-   "y": 58,
-   "init": {
-    "label": "SPEARMAN",
-    "op": "spearman"
-   }
-  },
-  {
-   "id": "d_spearman",
-   "type": "DisplayNode",
-   "x": 4090,
-   "y": 970,
-   "init": {
-    "label": "spearman"
-   }
-  },
-  {
-   "id": "cor_kendall",
-   "type": "CorrelNode",
-   "x": 3758,
-   "y": 299,
-   "init": {
-    "label": "KENDALL",
-    "op": "kendall"
-   }
-  },
-  {
-   "id": "d_kendall",
-   "type": "DisplayNode",
-   "x": 4090,
-   "y": 1122,
-   "init": {
-    "label": "kendall"
-   }
-  },
-  {
-   "id": "bin_q",
-   "type": "BinNode",
-   "x": 3094,
-   "y": 531,
-   "init": {
-    "label": "Bin (quartiles)",
-    "mode": "quantiles"
-   },
-   "literals": {
-    "n": 4
-   }
-  },
-  {
-   "id": "d_binq",
-   "type": "DisplayNode",
-   "x": 3758,
-   "y": 540,
-   "init": {
-    "label": "bucket 1..4"
-   }
-  },
-  {
-   "id": "outl",
-   "type": "OutliersNode",
-   "x": 3758,
-   "y": 704,
-   "init": {
-    "label": "Outliers (IQR)",
-    "method": "iqr"
-   }
-  },
-  {
-   "id": "d_outl_flags",
-   "type": "DisplayNode",
-   "x": 4090,
-   "y": 1274,
-   "init": {
-    "label": "Value / Outlier"
-   }
-  },
-  {
-   "id": "ep_from",
-   "type": "EpochNode",
-   "x": 356,
-   "y": 1716,
-   "init": {
-    "op": "from",
-    "unit": "s"
-   }
-  },
-  {
-   "id": "d_epfrom",
-   "type": "DisplayNode",
-   "x": 688,
-   "y": 1716,
-   "init": {
-    "label": "date"
-   }
-  },
-  {
-   "id": "trunc",
-   "type": "DateTruncNode",
-   "x": 688,
-   "y": 1868,
-   "init": {
-    "label": "Truncate (month)",
-    "unit": "month"
-   }
-  },
-  {
-   "id": "d_trunc",
-   "type": "DisplayNode",
-   "x": 1051,
-   "y": 1716,
-   "init": {
-    "label": "month start"
-   }
-  },
-  {
-   "id": "ep_to",
-   "type": "EpochNode",
-   "x": 688,
-   "y": 2122,
-   "init": {
-    "label": "Date → Epoch (ms)",
-    "op": "to",
-    "unit": "ms"
-   }
-  },
-  {
-   "id": "d_epto",
-   "type": "DisplayNode",
-   "x": 1051,
-   "y": 1868,
-   "init": {
-    "label": "epoch ms"
-   }
-  },
-  {
-   "id": "hav",
-   "type": "ExpressionNode",
-   "x": 1507,
-   "y": 1716,
-   "init": {
-    "label": "Haversine London→Paris km",
-    "expr": "2*6371.0088*ASIN(SQRT(SIN((lat2-lat1)*PI()/360)^2+COS(lat1*PI()/180)*COS(lat2*PI()/180)*SIN((lon2-lon1)*PI()/360)^2))"
-   },
-   "literals": {
-    "lat1": 51.5074,
-    "lon1": -0.1278,
-    "lat2": 48.8566,
-    "lon2": 2.3522
-   }
-  },
-  {
-   "id": "d_hav",
-   "type": "DisplayNode",
-   "x": 1839,
-   "y": 1716,
-   "init": {
-    "label": "≈343.5 km"
-   }
-  },
-  {
-   "id": "src_frame",
-   "type": "FrameInputNode",
-   "x": 2269,
-   "y": 1716,
-   "init": {
-    "label": "Sales table",
-    "frameText": "[{\"name\": \"Region\", \"type\": \"string\", \"values\": [\"N\", \"S\", \"E\", \"W\", \"N\", \"S\", \"E\", \"W\"]}, {\"name\": \"Sales\", \"type\": \"number\", \"values\": [120, 95, 140, 80, 130, null, 150, 90]}, {\"name\": \"Ads\", \"type\": \"number\", \"values\": [10, 8, 12, 6, 11, 7, 13, 7]}, {\"name\": \"Returns\", \"type\": \"number\", \"values\": [5, 9, 3, 12, 4, 10, 2, 11]}]"
-   }
-  },
-  {
-   "id": "desc",
-   "type": "DescribeNode",
-   "x": 2661,
-   "y": 1716,
-   "init": {
-    "label": "Describe"
-   }
-  },
-  {
-   "id": "d_desc",
-   "type": "DisplayNode",
-   "x": 3053,
-   "y": 1716,
-   "init": {
-    "label": "describe"
-   }
-  },
-  {
-   "id": "corrm",
-   "type": "CorrMatrixNode",
-   "x": 2661,
-   "y": 1971,
-   "init": {
-    "label": "Correlation Matrix",
-    "method": "pearson"
-   }
-  },
-  {
-   "id": "d_corrm",
-   "type": "DisplayNode",
-   "x": 3053,
-   "y": 1945,
-   "init": {
-    "label": "corr matrix"
-   }
-  },
-  {
-   "id": "amort",
-   "type": "AmortizationNode",
-   "x": 4030,
-   "y": 1716,
-   "init": {
-    "label": "Amortization (12 × 0.5%)"
-   },
-   "literals": {
-    "rate": 0.005,
-    "nper": 12,
-    "pv": 10000,
-    "fv": 0
-   }
-  },
-  {
-   "id": "d_amort",
-   "type": "DisplayNode",
-   "x": 4422,
-   "y": 1716,
-   "init": {
-    "label": "schedule"
-   }
-  },
-  {
-   "id": "src_g1",
-   "type": "ListInputNode",
-   "x": 24,
-   "y": 2585,
-   "init": {
-    "label": "Group 1",
-    "valueKeys": [
-     "v0"
-    ]
-   },
-   "stringLiterals": {
-    "v0": "6.9, 5.4, 5.8, 4.6, 4.0"
-   }
-  },
-  {
-   "id": "src_g2",
-   "type": "ListInputNode",
-   "x": 24,
-   "y": 2815,
-   "init": {
-    "label": "Group 2",
-    "valueKeys": [
-     "v0"
-    ]
-   },
-   "stringLiterals": {
-    "v0": "8.3, 6.8, 7.8, 9.2, 6.5"
-   }
-  },
-  {
-   "id": "src_groups",
-   "type": "TableInputNode",
-   "x": 24,
-   "y": 3045,
-   "init": {
-    "label": "Groups (3 columns)",
-    "tableText": "6.9, 8.3, 8.0\n5.4, 6.8, 10.5\n5.8, 7.8, 8.1\n4.6, 9.2, 6.9\n4.0, 6.5, 9.3"
-   }
-  },
-  {
-   "id": "src_2x2",
-   "type": "TableInputNode",
-   "x": 24,
-   "y": 3302,
-   "init": {
-    "label": "2×2 counts",
-    "tableText": "3, 1\n1, 3"
-   }
-  },
-  {
-   "id": "ht_mannwhitney",
-   "type": "HypothesisTestNode",
-   "x": 416,
-   "y": 2585,
-   "init": {
-    "label": "Mann–Whitney U",
-    "op": "mannwhitney"
-   }
-  },
-  {
-   "id": "d_mannwhitney",
-   "type": "DisplayNode",
-   "x": 1140,
-   "y": 2585,
-   "init": {
-    "label": "p-value"
-   }
-  },
-  {
-   "id": "ht_wilcoxon",
-   "type": "HypothesisTestNode",
-   "x": 416,
-   "y": 2826,
-   "init": {
-    "label": "Wilcoxon signed-rank",
-    "op": "wilcoxon"
-   }
-  },
-  {
-   "id": "d_wilcoxon",
-   "type": "DisplayNode",
-   "x": 1140,
-   "y": 2737,
-   "init": {
-    "label": "p-value"
-   }
-  },
-  {
-   "id": "ht_ks",
-   "type": "HypothesisTestNode",
-   "x": 416,
-   "y": 3080,
-   "init": {
-    "label": "KS (2-sample)",
-    "op": "ks"
-   }
-  },
-  {
-   "id": "d_ks",
-   "type": "DisplayNode",
-   "x": 1140,
-   "y": 2889,
-   "init": {
-    "label": "p-value"
-   }
-  },
-  {
-   "id": "ht_anova",
-   "type": "HypothesisTestNode",
-   "x": 416,
-   "y": 3321,
-   "init": {
-    "label": "ANOVA",
-    "op": "anova"
-   }
-  },
-  {
-   "id": "d_anova",
-   "type": "DisplayNode",
-   "x": 1140,
-   "y": 3041,
-   "init": {
-    "label": "p-value"
-   }
-  },
-  {
-   "id": "ht_kruskal",
-   "type": "HypothesisTestNode",
-   "x": 416,
-   "y": 3534,
-   "init": {
-    "label": "Kruskal–Wallis",
-    "op": "kruskal"
-   }
-  },
-  {
-   "id": "d_kruskal",
-   "type": "DisplayNode",
-   "x": 1140,
-   "y": 3193,
-   "init": {
-    "label": "p-value"
-   }
-  },
-  {
-   "id": "ht_fisher",
-   "type": "HypothesisTestNode",
-   "x": 416,
-   "y": 3747,
-   "init": {
-    "label": "Fisher exact",
-    "op": "fisher"
-   }
-  },
-  {
-   "id": "d_fisher",
-   "type": "DisplayNode",
-   "x": 1140,
-   "y": 3345,
-   "init": {
-    "label": "p-value"
-   }
-  },
-  {
-   "id": "ht_prop",
-   "type": "HypothesisTestNode",
-   "x": 24,
-   "y": 3508,
-   "init": {
-    "label": "Two-proportion z",
-    "op": "proptest"
-   },
-   "literals": {
-    "x1": 45,
-    "n1": 100,
-    "x2": 30,
-    "n2": 100
-   }
-  },
-  {
-   "id": "d_prop",
-   "type": "DisplayNode",
-   "x": 808,
-   "y": 2585,
-   "init": {
-    "label": "p-value"
-   }
-  },
-  {
-   "id": "ht_binom",
-   "type": "HypothesisTestNode",
-   "x": 24,
-   "y": 3818,
-   "init": {
-    "label": "Binomial test",
-    "op": "binomtest"
-   },
-   "literals": {
-    "k": 7,
-    "n": 20,
-    "p0": 0.5
-   }
-  },
-  {
-   "id": "d_binom",
-   "type": "DisplayNode",
-   "x": 808,
-   "y": 2737,
-   "init": {
-    "label": "p-value"
-   }
-  },
-  {
-   "id": "src_A",
-   "type": "TableInputNode",
-   "x": 2883,
-   "y": 2585,
-   "init": {
-    "label": "A (symmetric 3×3)",
-    "tableText": "4, 1, 2\n1, 3, 0\n2, 0, 5"
-   }
-  },
-  {
-   "id": "src_b",
-   "type": "ListInputNode",
-   "x": 2883,
-   "y": 2809,
-   "init": {
-    "label": "b",
-    "valueKeys": [
-     "v0"
-    ]
-   },
-   "stringLiterals": {
-    "v0": "7, 5, 9"
-   }
-  },
-  {
-   "id": "src_sig",
-   "type": "ListInputNode",
-   "x": 4140,
-   "y": 2585,
-   "init": {
-    "label": "Signal (5 Hz sine + 1)",
-    "valueKeys": [
-     "v0"
-    ]
-   },
-   "stringLiterals": {
-    "v0": "1.0, 2.4142, 3.4944, 3.9856, 3.7716, 2.9032, 1.5853, 0.1291, -1.1213, -1.8708, -1.9424, -1.319, -0.1481, 1.2941, 2.6667, 3.6458, 4.0, 3.6458, 2.6667, 1.2941, -0.1481, -1.319, -1.9424, -1.8708, -1.1213, 0.1291, 1.5853, 2.9032, 3.7716, 3.9856, 3.4944, 2.4142, 1.0, -0.4142, -1.4944, -1.9856, -1.7716, -0.9032, 0.4147, 1.8709, 3.1213, 3.8708, 3.9424, 3.319, 2.1481, 0.7059, -0.6667, -1.6458, -2.0, -1.6458, -0.6667, 0.7059, 2.1481, 3.319, 3.9424, 3.8708, 3.1213, 1.8709, 0.4147, -0.9032, -1.7716, -1.9856, -1.4944, -0.4142"
-   }
-  },
-  {
-   "id": "md_trace",
-   "type": "MatDetNode",
-   "x": 3275,
-   "y": 2585,
-   "init": {
-    "op": "trace"
-   }
-  },
-  {
-   "id": "d_trace",
-   "type": "DisplayNode",
-   "x": 3667,
-   "y": 2585,
-   "init": {
-    "label": "TRACE"
-   }
-  },
-  {
-   "id": "md_rank",
-   "type": "MatDetNode",
-   "x": 3275,
-   "y": 2798,
-   "init": {
-    "op": "rank"
-   }
-  },
-  {
-   "id": "d_rank",
-   "type": "DisplayNode",
-   "x": 3667,
-   "y": 2737,
-   "init": {
-    "label": "MATRIXRANK"
-   }
-  },
-  {
-   "id": "md_norm",
-   "type": "MatDetNode",
-   "x": 3275,
-   "y": 3011,
-   "init": {
-    "op": "norm"
-   }
-  },
-  {
-   "id": "d_norm",
-   "type": "DisplayNode",
-   "x": 3667,
-   "y": 2889,
-   "init": {
-    "label": "NORM"
-   }
-  },
-  {
-   "id": "solve",
-   "type": "MatSolveNode",
-   "x": 3275,
-   "y": 3224,
-   "init": {
-    "label": "Solve A·x = b"
-   }
-  },
-  {
-   "id": "d_solve",
-   "type": "DisplayNode",
-   "x": 3667,
-   "y": 3041,
-   "init": {
-    "label": "x"
-   }
-  },
-  {
-   "id": "eigen",
-   "type": "MatEigenNode",
-   "x": 3275,
-   "y": 3426,
-   "init": {
-    "label": "Eigen (symmetric)"
-   }
-  },
-  {
-   "id": "d_eigv",
-   "type": "DisplayNode",
-   "x": 3667,
-   "y": 3223,
-   "init": {
-    "label": "eigenvalues"
-   }
-  },
-  {
-   "id": "d_eigvec",
-   "type": "DisplayNode",
-   "x": 3667,
-   "y": 3405,
-   "init": {
-    "label": "eigenvectors"
-   }
-  },
-  {
-   "id": "spec",
-   "type": "SpectrumNode",
-   "x": 4472,
-   "y": 2585,
-   "init": {
-    "label": "Spectrum (FFT)"
-   },
-   "literals": {
-    "rate": 64
-   }
-  },
-  {
-   "id": "d_spec",
-   "type": "DisplayNode",
-   "x": 4864,
-   "y": 2585,
-   "init": {
-    "label": "bin 5 → 3 at 5 Hz"
-   }
-  },
-  {
-   "id": "src_typos",
-   "type": "ListInputNode",
-   "x": 24,
-   "y": 4329,
-   "init": {
-    "label": "Typos",
-    "valueKeys": [
-     "v0"
-    ],
-    "dataType": "string"
-   },
-   "stringLiterals": {
-    "v0": "Chicgo, Houstin, New Yrok, Zurich"
-   }
-  },
-  {
-   "id": "src_cities",
-   "type": "ListInputNode",
-   "x": 24,
-   "y": 4813,
-   "init": {
-    "label": "Cities",
-    "valueKeys": [
-     "v0"
-    ],
-    "dataType": "string"
-   },
-   "stringLiterals": {
-    "v0": "New York, Los Angeles, Chicago, Houston"
-   }
-  },
-  {
-   "id": "sim",
-   "type": "TextSimilarityNode",
-   "x": 24,
-   "y": 4559,
-   "init": {
-    "label": "Text Similarity (ratio)",
-    "method": "ratio"
-   },
-   "stringLiterals": {
-    "a": "kitten",
-    "b": "sitting"
-   }
-  },
-  {
-   "id": "d_sim",
-   "type": "DisplayNode",
-   "x": 356,
-   "y": 4329,
-   "init": {
-    "label": "1 − 3/7"
-   }
-  },
-  {
-   "id": "fuzzy",
-   "type": "FuzzyMatchNode",
-   "x": 356,
-   "y": 4481,
-   "init": {
-    "label": "Fuzzy Match",
-    "method": "ratio"
-   },
-   "literals": {
-    "threshold": 0.6
-   }
-  },
-  {
-   "id": "d_fuzzy_m",
-   "type": "DisplayNode",
-   "x": 688,
-   "y": 4329,
-   "init": {
-    "label": "best match"
-   }
-  },
-  {
-   "id": "d_fuzzy_s",
-   "type": "DisplayNode",
-   "x": 688,
-   "y": 4511,
-   "init": {
-    "label": "score"
-   }
-  },
-  {
-   "id": "src_series",
-   "type": "ListInputNode",
-   "x": 1118,
-   "y": 4329,
-   "init": {
-    "label": "Monthly series (36)",
-    "valueKeys": [
-     "v0"
-    ]
-   },
-   "stringLiterals": {
-    "v0": "100.0, 107.0, 112.66, 116.0, 116.66, 115.0, 112.0, 109.0, 107.34, 108.0, 111.34, 117.0, 124.0, 131.0, 136.66, 140.0, 140.66, 139.0, 136.0, 133.0, 131.34, 132.0, 135.34, 141.0, 148.0, 155.0, 160.66, 164.0, 164.66, 163.0, 160.0, 157.0, 155.34, 156.0, 159.34, 165.0"
-   }
-  },
-  {
-   "id": "ets",
-   "type": "EtsForecastNode",
-   "x": 1450,
-   "y": 4329,
-   "init": {
-    "label": "Forecast (ETS)"
-   },
-   "literals": {
-    "horizon": 6,
-    "season": 1
-   }
-  },
-  {
-   "id": "d_ets_f",
-   "type": "DisplayNode",
-   "x": 1782,
-   "y": 4329,
-   "init": {
-    "label": "Forecast / Interval"
-   }
-  },
-  {
-   "id": "d_ets_s",
-   "type": "DisplayNode",
-   "x": 1782,
-   "y": 4765,
-   "init": {
-    "label": "season used"
-   }
-  },
-  {
-   "id": "src_win",
-   "type": "FrameInputNode",
-   "x": 1570,
-   "y": 2585,
-   "init": {
-    "label": "Sales by region/month",
-    "frameText": "[{\"name\": \"Region\", \"type\": \"string\", \"values\": [\"N\", \"S\", \"N\", \"S\", \"N\", \"S\"]}, {\"name\": \"Month\", \"type\": \"number\", \"values\": [1, 1, 2, 2, 3, 3]}, {\"name\": \"Sales\", \"type\": \"number\", \"values\": [120, 95, 140, 80, 130, 110]}]"
-   }
-  },
-  {
-   "id": "win_cumsum",
-   "type": "WindowNode",
-   "x": 1962,
-   "y": 2585,
-   "init": {
-    "label": "Window: running sum",
-    "agg": "cumsum"
-   },
-   "stringLiterals": {
-    "orderBy": "Month",
-    "column": "Sales",
-    "name": "YTD"
-   }
-  },
-  {
-   "id": "src_win_keys",
-   "type": "ListInputNode",
-   "x": 1570,
-   "y": 2868,
-   "init": {
-    "label": "Partition keys",
-    "valueKeys": [
-     "v0"
-    ],
-    "dataType": "string"
-   },
-   "stringLiterals": {
-    "v0": "Region"
-   }
-  },
-  {
-   "id": "d_win_cumsum",
-   "type": "DisplayNode",
-   "x": 2354,
-   "y": 2585,
-   "init": {
-    "label": "YTD per region"
-   }
-  },
-  {
-   "id": "win_share",
-   "type": "WindowNode",
-   "x": 1962,
-   "y": 3013,
-   "init": {
-    "label": "Window: share of group",
-    "agg": "share"
-   },
-   "stringLiterals": {
-    "orderBy": "",
-    "column": "Sales",
-    "name": "Share"
-   }
-  },
-  {
-   "id": "d_win_share",
-   "type": "DisplayNode",
-   "x": 2354,
-   "y": 2856,
-   "init": {
-    "label": "share of region"
-   }
-  },
-  {
-   "id": "win_rank",
-   "type": "WindowNode",
-   "x": 1962,
-   "y": 3441,
-   "init": {
-    "label": "Window: rank by Sales",
-    "agg": "rank"
-   },
-   "stringLiterals": {
-    "orderBy": "Sales",
-    "column": "",
-    "name": "Rank"
-   }
-  },
-  {
-   "id": "d_win_rank",
-   "type": "DisplayNode",
-   "x": 2354,
-   "y": 3127,
-   "init": {
-    "label": "rank within region"
-   }
-  },
-  {
-   "id": "src_gamma",
-   "type": "ListInputNode",
-   "x": 2212,
-   "y": 4329,
-   "init": {
-    "label": "Sample (gamma-ish)",
-    "valueKeys": [
-     "v0"
-    ]
-   },
-   "stringLiterals": {
-    "v0": "7.4389, 7.0784, 4.2628, 11.3314, 2.2322, 9.7956, 4.6617, 13.7808, 5.1595, 5.4566, 4.7872, 8.1846, 5.6672, 6.4493, 13.129, 6.394, 5.1117, 6.4762, 2.3036, 5.246, 7.2517, 3.4755, 7.4499, 5.7517, 10.1216, 2.9205, 6.6571, 7.7163, 11.8068, 6.9024, 5.9902, 2.6746, 0.9033, 3.4356, 7.0956, 13.7236, 6.2137, 5.8193, 12.6582, 6.2766, 4.1088, 13.7812, 11.7664, 3.8905, 4.3267, 15.2916, 5.2635, 3.5484, 3.9636, 8.1063, 1.9613, 4.0894, 10.3154, 6.8206, 8.7222, 5.8892, 2.473, 4.508, 6.3519, 4.505"
-   }
-  },
-  {
-   "id": "fitd",
-   "type": "FitDistributionNode",
-   "x": 2544,
-   "y": 4329,
-   "init": {
-    "label": "Fit Distribution"
-   }
-  },
-  {
-   "id": "d_fit_rank",
-   "type": "DisplayNode",
-   "x": 2936,
-   "y": 4329,
-   "init": {
-    "label": "ranking"
-   }
-  },
-  {
-   "id": "d_fit_best",
-   "type": "DisplayNode",
-   "x": 2936,
-   "y": 4600,
-   "init": {
-    "label": "best"
-   }
-  },
-  {
-   "id": "d_fit_params",
-   "type": "DisplayNode",
-   "x": 2936,
-   "y": 4752,
-   "init": {
-    "label": "params"
-   }
-  },
-  {
-   "id": "dsample",
-   "type": "DistributionNode",
-   "x": 2212,
-   "y": 4572,
-   "init": {
-    "label": "Distribution: sample",
-    "op": "gamma",
-    "form": "sample"
-   },
-   "literals": {
-    "count": 200,
-    "alpha": 2,
-    "beta": 2
-   }
-  },
-  {
-   "id": "d_dsample",
-   "type": "DisplayNode",
-   "x": 2544,
-   "y": 4666,
-   "init": {
-    "label": "200 gamma draws"
-   },
-   "collapsed": true
-  },
-  {
-   "id": "fit2",
-   "type": "FitDistributionNode",
-   "x": 2544,
-   "y": 4786,
-   "init": {
-    "label": "Fit the draws"
-   }
-  },
-  {
-   "id": "d_fit2",
-   "type": "DisplayNode",
-   "x": 2936,
-   "y": 4916,
-   "init": {
-    "label": "best family of the draws"
-   }
-  },
-  {
-   "id": "t_unaccent",
-   "type": "TextTransformNode",
-   "x": 3960,
-   "y": 4329,
-   "init": {
-    "label": "UNACCENT",
-    "op": "unaccent"
-   },
-   "stringLiterals": {
-    "text": "Crème Brûlée à Zürich"
-   }
-  },
-  {
-   "id": "d_unaccent",
-   "type": "DisplayNode",
-   "x": 4292,
-   "y": 4329,
-   "init": {
-    "label": "Creme Brulee a Zurich"
-   }
-  },
-  {
-   "id": "t_slug",
-   "type": "TextTransformNode",
-   "x": 3960,
-   "y": 4542,
-   "init": {
-    "label": "SLUGIFY",
-    "op": "slugify"
-   },
-   "stringLiterals": {
-    "text": "  Hello, World! Été 2026 "
-   }
-  },
-  {
-   "id": "d_slug",
-   "type": "DisplayNode",
-   "x": 4292,
-   "y": 4481,
-   "init": {
-    "label": "hello-world-ete-2026"
-   }
-  },
-  {
-   "id": "t_pad",
-   "type": "PadTextNode",
-   "x": 3960,
-   "y": 4755,
-   "init": {
-    "label": "Pad Text (left, zeros)",
-    "side": "left"
-   },
-   "stringLiterals": {
-    "text": "42",
-    "fill": "0"
-   },
-   "literals": {
-    "width": 6
-   }
-  },
-  {
-   "id": "d_pad",
-   "type": "DisplayNode",
-   "x": 4292,
-   "y": 4633,
-   "init": {
-    "label": "000042"
-   }
-  },
-  {
-   "id": "t_trunc",
-   "type": "TruncateTextNode",
-   "x": 3960,
-   "y": 5032,
-   "init": {
-    "label": "Truncate Text"
-   },
-   "stringLiterals": {
-    "text": "The quick brown fox jumps over the lazy dog",
-    "ellipsis": "…"
-   },
-   "literals": {
-    "width": 16
-   }
-  },
-  {
-   "id": "d_trunc_t",
-   "type": "DisplayNode",
-   "x": 4292,
-   "y": 4785,
-   "init": {
-    "label": "The quick brown…"
-   }
-  },
-  {
-   "id": "a_argsort",
-   "type": "ArgMinMaxNode",
-   "x": 24,
-   "y": 5510,
-   "init": {
-    "label": "ARGSORT",
-    "op": "argsort"
-   }
-  },
-  {
-   "id": "d_argsort",
-   "type": "DisplayNode",
-   "x": 356,
-   "y": 5510,
-   "init": {
-    "label": "positions that sort Data A"
-   }
-  },
-  {
-   "id": "a_between",
-   "type": "BetweenNode",
-   "x": 24,
-   "y": 5717,
-   "init": {
-    "label": "Between 10 and 15"
-   },
-   "literals": {
-    "lo": 10,
-    "hi": 15
-   }
-  },
-  {
-   "id": "a_which",
-   "type": "ArgMinMaxNode",
-   "x": 356,
-   "y": 5687,
-   "init": {
-    "label": "WHICH",
-    "op": "which"
-   }
-  },
-  {
-   "id": "d_which",
-   "type": "DisplayNode",
-   "x": 688,
-   "y": 5510,
-   "init": {
-    "label": "positions in [10,15]"
-   }
-  },
-  {
-   "id": "src_prices",
-   "type": "ListInputNode",
-   "x": 1118,
-   "y": 5510,
-   "init": {
-    "label": "Prices",
-    "valueKeys": [
-     "v0"
-    ]
-   },
-   "stringLiterals": {
-    "v0": "100, 102, 101, 105, 103, 108, 110, 107"
-   }
-  },
-  {
-   "id": "ret_log",
-   "type": "ReturnsNode",
-   "x": 1450,
-   "y": 5510,
-   "init": {
-    "op": "log"
-   }
-  },
-  {
-   "id": "d_ret_log",
-   "type": "DisplayNode",
-   "x": 1782,
-   "y": 5510,
-   "init": {
-    "label": "log returns"
-   }
-  },
-  {
-   "id": "ret_dd",
-   "type": "ReturnsNode",
-   "x": 1450,
-   "y": 5717,
-   "init": {
-    "op": "drawdown"
-   }
-  },
-  {
-   "id": "d_ret_dd",
-   "type": "DisplayNode",
-   "x": 1782,
-   "y": 5764,
-   "init": {
-    "label": "drawdown"
-   }
-  },
-  {
-   "id": "ret_mdd",
-   "type": "ReturnsNode",
-   "x": 1450,
-   "y": 5924,
-   "init": {
-    "op": "maxdrawdown"
-   }
-  },
-  {
-   "id": "d_ret_mdd",
-   "type": "DisplayNode",
-   "x": 1782,
-   "y": 5964,
-   "init": {
-    "label": "max drawdown"
-   }
-  },
-  {
-   "id": "ret_simple",
-   "type": "ReturnsNode",
-   "x": 1450,
-   "y": 6137,
-   "init": {
-    "op": "simple"
-   }
-  },
-  {
-   "id": "ret_sharpe",
-   "type": "ReturnsNode",
-   "x": 1782,
-   "y": 6116,
-   "init": {
-    "op": "sharpe"
-   },
-   "literals": {
-    "rf": 0,
-    "periods": 252
-   }
-  },
-  {
-   "id": "d_ret_sharpe",
-   "type": "DisplayNode",
-   "x": 2114,
-   "y": 5510,
-   "init": {
-    "label": "annualised Sharpe"
-   }
-  },
-  {
-   "id": "ret_cagr",
-   "type": "ReturnsNode",
-   "x": 1450,
-   "y": 6344,
-   "init": {
-    "op": "cagr"
-   },
-   "literals": {
-    "rf": 0,
-    "periods": 252
-   }
-  },
-  {
-   "id": "d_ret_cagr",
-   "type": "DisplayNode",
-   "x": 1782,
-   "y": 6385,
-   "init": {
-    "label": "CAGR (252/yr)"
-   }
-  },
-  {
-   "id": "src_sizes",
-   "type": "FrameInputNode",
-   "x": 2544,
-   "y": 5510,
-   "init": {
-    "label": "Sizes",
-    "frameText": "[{\"name\": \"Size\", \"type\": \"string\", \"values\": [\"S\", \"M\", \"L\"]}]"
-   }
-  },
-  {
-   "id": "src_colors",
-   "type": "FrameInputNode",
-   "x": 2544,
-   "y": 5778,
-   "init": {
-    "label": "Colors",
-    "frameText": "[{\"name\": \"Color\", \"type\": \"string\", \"values\": [\"red\", \"blue\"]}, {\"name\": \"Code\", \"type\": \"number\", \"values\": [1, 2]}]"
-   }
-  },
-  {
-   "id": "j_cross",
-   "type": "JoinNode",
-   "x": 2936,
-   "y": 5510,
-   "init": {
-    "label": "Cross join",
-    "how": "cross"
-   }
-  },
-  {
-   "id": "d_crossjoin",
-   "type": "DisplayNode",
-   "x": 3328,
-   "y": 5510,
-   "init": {
-    "label": "every size x every color (6 rows)"
-   }
-  },
-  {
-   "id": "src_week",
-   "type": "FrameInputNode",
-   "x": 2544,
-   "y": 6028,
-   "init": {
-    "label": "Week index",
-    "frameText": "[{\"name\": \"Week\", \"type\": \"number\", \"values\": [1, 2, 3]}]"
-   }
-  },
-  {
-   "id": "bind_cols",
-   "type": "BindColumnsNode",
-   "x": 2936,
-   "y": 5910,
-   "init": {
-    "label": "Bind Columns"
-   }
-  },
-  {
-   "id": "d_bind",
-   "type": "DisplayNode",
-   "x": 3328,
-   "y": 5794,
-   "init": {
-    "label": "Week | Size (side by side)"
-   }
-  },
-  {
-   "id": "h_sha",
-   "type": "HashNode",
-   "x": 3819,
-   "y": 5510,
-   "init": {
-    "label": "Hash (SHA-256)",
-    "algorithm": "sha256"
-   },
-   "stringLiterals": {
-    "text": "customer-0042"
-   }
-  },
-  {
-   "id": "d_hsha",
-   "type": "DisplayNode",
-   "x": 4151,
-   "y": 5510,
-   "init": {
-    "label": "sha256 hex"
-   }
-  },
-  {
-   "id": "h_md5",
-   "type": "HashNode",
-   "x": 3819,
-   "y": 5723,
-   "init": {
-    "label": "Hash (MD5)",
-    "algorithm": "md5"
-   },
-   "stringLiterals": {
-    "text": "abc"
-   }
-  },
-  {
-   "id": "d_hmd5",
-   "type": "DisplayNode",
-   "x": 4151,
-   "y": 5662,
-   "init": {
-    "label": "900150983cd24fb0d6963f7d28e17f72"
-   }
-  },
-  {
-   "id": "b64e",
-   "type": "UrlEncodeNode",
-   "x": 3819,
-   "y": 5936,
-   "init": {
-    "op": "base64"
-   },
-   "stringLiterals": {
-    "text": "hello world"
-   }
-  },
-  {
-   "id": "b64d",
-   "type": "UrlEncodeNode",
-   "x": 4151,
-   "y": 5814,
-   "init": {
-    "op": "unbase64"
-   }
-  },
-  {
-   "id": "d_b64",
-   "type": "DisplayNode",
-   "x": 4663,
-   "y": 5510,
-   "init": {
-    "label": "round trip"
-   }
-  },
-  {
-   "id": "uuid1",
-   "type": "UuidNode",
-   "x": 3819,
-   "y": 6116,
-   "init": {
-    "label": "UUID"
-   }
-  },
-  {
-   "id": "d_uuid",
-   "type": "DisplayNode",
-   "x": 4151,
-   "y": 5994,
-   "init": {
-    "label": "new on F9"
-   }
-  },
-  {
-   "id": "src_names",
-   "type": "ListInputNode",
-   "x": 24,
-   "y": 6827,
-   "init": {
-    "label": "Names",
-    "valueKeys": [
-     "v0"
-    ],
-    "dataType": "string"
-   },
-   "stringLiterals": {
-    "v0": "Ada, Bob, Cy"
-   }
-  },
-  {
-   "id": "tmpl",
-   "type": "TemplateNode",
-   "x": 356,
-   "y": 6827,
-   "init": {
-    "label": "Template",
-    "sideVars": [
-     "name",
-     "total"
-    ]
-   },
-   "stringLiterals": {
-    "template": "Hello {name}, you owe {total:$#,##0.00}"
-   }
-  },
-  {
-   "id": "d_tmpl",
-   "type": "DisplayNode",
-   "x": 688,
-   "y": 6827,
-   "init": {
-    "label": "one line per name"
-   }
-  },
-  {
-   "id": "src_noisy",
-   "type": "ListInputNode",
-   "x": 1118,
-   "y": 6827,
-   "init": {
-    "label": "Noisy signal",
-    "valueKeys": [
-     "v0"
-    ]
-   },
-   "stringLiterals": {
-    "v0": "1, 3, 2, 5, 4, 6, 8, 7, 9, 12, 10, 11, 9, 6, 7, 4, 5, 2, 3, 1"
-   }
-  },
-  {
-   "id": "sm_sg",
-   "type": "SmoothNode",
-   "x": 1450,
-   "y": 6827,
-   "init": {
-    "op": "savgol"
-   },
-   "literals": {
-    "window": 5,
-    "order": 2
-   }
-  },
-  {
-   "id": "d_sm_sg",
-   "type": "DisplayNode",
-   "x": 1782,
-   "y": 6827,
-   "init": {
-    "label": "savgol 5/2"
-   }
-  },
-  {
-   "id": "sm_lo",
-   "type": "SmoothNode",
-   "x": 1450,
-   "y": 7090,
-   "init": {
-    "op": "lowess"
-   },
-   "literals": {
-    "frac": 0.5
-   }
-  },
-  {
-   "id": "d_sm_lo",
-   "type": "DisplayNode",
-   "x": 1782,
-   "y": 7297,
-   "init": {
-    "label": "lowess 0.5"
-   }
-  },
-  {
-   "id": "sm_ga",
-   "type": "SmoothNode",
-   "x": 1450,
-   "y": 7325,
-   "init": {
-    "op": "gaussian"
-   },
-   "literals": {
-    "sigma": 1.5
-   }
-  },
-  {
-   "id": "d_sm_ga",
-   "type": "DisplayNode",
-   "x": 1782,
-   "y": 7785,
-   "init": {
-    "label": "gaussian σ1.5"
-   }
-  },
-  {
-   "id": "pk",
-   "type": "FindPeaksNode",
-   "x": 1450,
-   "y": 7573,
-   "init": {
-    "label": "Find Peaks"
-   },
-   "literals": {
-    "prominence": 1.5
-   }
-  },
-  {
-   "id": "d_pk_pos",
-   "type": "DisplayNode",
-   "x": 2114,
-   "y": 6827,
-   "init": {
-    "label": "Position / Height"
-   }
-  },
-  {
-   "id": "src_season",
-   "type": "ListInputNode",
-   "x": 2544,
-   "y": 6827,
-   "init": {
-    "label": "Quarterly sales (3 yrs)",
-    "valueKeys": [
-     "v0"
-    ]
-   },
-   "stringLiterals": {
-    "v0": "10, 14, 8, 12, 11, 15, 9, 13, 12, 16, 10, 14"
-   }
-  },
-  {
-   "id": "decomp",
-   "type": "DecomposeNode",
-   "x": 2876,
-   "y": 6827,
-   "init": {
-    "label": "Decompose",
-    "model": "additive"
-   },
-   "literals": {
-    "period": 4
-   }
-  },
-  {
-   "id": "d_dc_t",
-   "type": "DisplayNode",
-   "x": 3208,
-   "y": 6827,
-   "init": {
-    "label": "Trend / Seasonal / Residual"
-   }
-  },
-  {
-   "id": "src_coef",
-   "type": "ListInputNode",
-   "x": 3638,
-   "y": 6827,
-   "init": {
-    "label": "x³ − 6x² + 11x − 6",
-    "valueKeys": [
-     "v0"
-    ]
-   },
-   "stringLiterals": {
-    "v0": "1, -6, 11, -6"
-   }
-  },
-  {
-   "id": "proots",
-   "type": "PolyRootsNode",
-   "x": 3970,
-   "y": 6827,
-   "init": {
-    "label": "Polynomial Roots"
-   }
-  },
-  {
-   "id": "d_proots",
-   "type": "DisplayNode",
-   "x": 4302,
-   "y": 6827,
-   "init": {
-    "label": "roots 1, 2, 3"
-   }
-  },
-  {
-   "id": "src_coef2",
-   "type": "ListInputNode",
-   "x": 3638,
-   "y": 7057,
-   "init": {
-    "label": "x³ − 1",
-    "valueKeys": [
-     "v0"
-    ]
-   },
-   "stringLiterals": {
-    "v0": "1, 0, 0, -1"
-   }
-  },
-  {
-   "id": "proots2",
-   "type": "PolyRootsNode",
-   "x": 3970,
-   "y": 7047,
-   "init": {
-    "label": "Polynomial Roots"
-   }
-  },
-  {
-   "id": "d_proots2",
-   "type": "DisplayNode",
-   "x": 4302,
-   "y": 6973,
-   "init": {
-    "label": "1 and a conjugate pair"
-   }
-  },
-  {
-   "id": "src_pts",
-   "type": "FrameInputNode",
-   "x": 24,
-   "y": 8515,
-   "init": {
-    "label": "Points (3 blobs)",
-    "frameText": "[{\"name\": \"x\", \"type\": \"number\", \"values\": [1, 1.2, 0.8, 5, 5.2, 4.8, 1.1, 4.9, 9, 9.3, 8.8]}, {\"name\": \"y\", \"type\": \"number\", \"values\": [1, 0.8, 1.1, 5, 4.9, 5.1, 1.2, 5.3, 2, 2.2, 1.9]}]"
-   }
-  },
-  {
-   "id": "km",
-   "type": "KMeansNode",
-   "x": 416,
-   "y": 8515,
-   "init": {
-    "label": "K-Means"
-   },
-   "literals": {
-    "k": 3
-   }
-  },
-  {
-   "id": "d_km_l",
-   "type": "DisplayNode",
-   "x": 808,
-   "y": 8515,
-   "init": {
-    "label": "cluster per row"
-   }
-  },
-  {
-   "id": "d_km_c",
-   "type": "DisplayNode",
-   "x": 808,
-   "y": 8697,
-   "init": {
-    "label": "centers"
-   }
-  },
-  {
-   "id": "pca1",
-   "type": "PcaNode",
-   "x": 416,
-   "y": 8821,
-   "init": {
-    "label": "PCA"
-   }
-  },
-  {
-   "id": "d_pca_s",
-   "type": "DisplayNode",
-   "x": 808,
-   "y": 8905,
-   "init": {
-    "label": "scores"
-   }
-  },
-  {
-   "id": "d_pca_e",
-   "type": "DisplayNode",
-   "x": 808,
-   "y": 9281,
-   "init": {
-    "label": "explained variance"
-   }
-  },
-  {
-   "id": "src_study",
-   "type": "FrameInputNode",
-   "x": 24,
-   "y": 8798,
-   "init": {
-    "label": "Hours studied → pass",
-    "frameText": "[{\"name\": \"hours\", \"type\": \"number\", \"values\": [0.5, 0.75, 1, 1.25, 1.5, 1.75, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5, 4, 4.25, 4.5, 4.75, 5, 5.5]}, {\"name\": \"pass\", \"type\": \"number\", \"values\": [0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1]}]"
-   }
-  },
-  {
-   "id": "logit",
-   "type": "LogisticNode",
-   "x": 416,
-   "y": 9228,
-   "init": {
-    "label": "Logistic Regression"
-   },
-   "stringLiterals": {
-    "target": "pass"
-   }
-  },
-  {
-   "id": "d_logit_c",
-   "type": "DisplayNode",
-   "x": 808,
-   "y": 9458,
-   "init": {
-    "label": "intercept −4.08, slope 1.50"
-   }
-  },
-  {
-   "id": "d_logit_p",
-   "type": "DisplayNode",
-   "x": 1428,
-   "y": 8515,
-   "init": {
-    "label": "P(pass) per row"
-   }
-  },
-  {
-   "id": "grp_list_transforms",
-   "type": "GroupNode",
-   "x": 0,
-   "y": 0,
-   "init": {
-    "label": "List transforms",
-    "members": [
-     "src_a",
-     "src_breaks",
-     "src_va",
-     "src_vb",
-     "n_shift",
-     "n_pct",
-     "n_z",
-     "n_bin",
-     "n_comb",
-     "n_outer",
-     "d_shift",
-     "d_pct",
-     "d_z",
-     "d_bin",
-     "d_comb",
-     "d_outer"
-    ],
-    "color": "gold",
-    "collapsed": false,
-    "width": 954,
-    "height": 1431
-   }
-  },
-  {
-   "id": "grp_signals_vectors",
-   "type": "GroupNode",
-   "x": 1154,
-   "y": 0,
-   "init": {
-    "label": "Signals & vectors",
-    "members": [
-     "src_vc",
-     "src_px",
-     "src_py",
-     "src_rle",
-     "n_ewma",
-     "n_conv",
-     "n_cross",
-     "n_poly",
-     "n_trapz",
-     "n_rle",
-     "d_ewma",
-     "d_conv",
-     "d_cross",
-     "d_poly",
-     "d_trapz",
-     "d_rle"
-    ],
-    "color": "gold",
-    "collapsed": false,
-    "width": 954,
-    "height": 1346
-   }
-  },
-  {
-   "id": "grp_tolerance_checks",
-   "type": "GroupNode",
-   "x": 2308,
-   "y": 0,
-   "init": {
-    "label": "Tolerance checks",
-    "members": [
-     "n_between",
-     "n_isclose",
-     "d_between",
-     "d_isclose"
-    ],
-    "color": "gold",
-    "collapsed": false,
-    "width": 562,
-    "height": 494
-   }
-  },
-  {
-   "id": "grp_robust_stats",
-   "type": "GroupNode",
-   "x": 3070,
-   "y": 0,
-   "init": {
-    "label": "Robust stats",
-    "members": [
-     "src_c",
-     "src_rank",
-     "agg_ptp",
-     "agg_iqr",
-     "agg_mad",
-     "agg_sem",
-     "agg_cv",
-     "agg_rms",
-     "cor_spearman",
-     "cor_kendall",
-     "bin_q",
-     "outl",
-     "d_ptp",
-     "d_iqr",
-     "d_mad",
-     "d_sem",
-     "d_cv",
-     "d_rms",
-     "d_spearman",
-     "d_kendall",
-     "d_binq",
-     "d_outl_flags"
-    ],
-    "color": "blue",
-    "collapsed": false,
-    "width": 1558,
-    "height": 1438
-   }
-  },
-  {
-   "id": "grp_dates_epochs",
-   "type": "GroupNode",
-   "x": 0,
-   "y": 1658,
-   "init": {
-    "label": "Dates & epochs",
-    "members": [
-     "src_epoch",
-     "ep_from",
-     "trunc",
-     "ep_to",
-     "d_epfrom",
-     "d_trunc",
-     "d_epto"
-    ],
-    "color": "pink",
-    "collapsed": false,
-    "width": 1283,
-    "height": 649
-   }
-  },
-  {
-   "id": "grp_haversine",
-   "type": "GroupNode",
-   "x": 1483,
-   "y": 1658,
-   "init": {
-    "label": "Haversine",
-    "members": [
-     "hav",
-     "d_hav"
-    ],
-    "color": "teal",
-    "collapsed": false,
-    "width": 562,
-    "height": 456
-   }
-  },
-  {
-   "id": "grp_profiling",
-   "type": "GroupNode",
-   "x": 2245,
-   "y": 1658,
-   "init": {
-    "label": "Profiling",
-    "members": [
-     "src_frame",
-     "desc",
-     "corrm",
-     "d_desc",
-     "d_corrm"
-    ],
-    "color": "violet",
-    "collapsed": false,
-    "width": 1561,
-    "height": 550
-   }
-  },
-  {
-   "id": "grp_amortization",
-   "type": "GroupNode",
-   "x": 4006,
-   "y": 1658,
-   "init": {
-    "label": "Amortization",
-    "members": [
-     "amort",
-     "d_amort"
-    ],
-    "color": "green",
-    "collapsed": false,
-    "width": 885,
-    "height": 419
-   }
-  },
-  {
-   "id": "grp_hypothesis_tests",
-   "type": "GroupNode",
-   "x": 0,
-   "y": 2527,
-   "init": {
-    "label": "Hypothesis tests",
-    "members": [
-     "src_g1",
-     "src_g2",
-     "src_groups",
-     "src_2x2",
-     "ht_mannwhitney",
-     "ht_wilcoxon",
-     "ht_ks",
-     "ht_anova",
-     "ht_kruskal",
-     "ht_fisher",
-     "ht_prop",
-     "ht_binom",
-     "d_mannwhitney",
-     "d_wilcoxon",
-     "d_ks",
-     "d_anova",
-     "d_kruskal",
-     "d_fisher",
-     "d_prop",
-     "d_binom"
-    ],
-    "color": "blue",
-    "collapsed": false,
-    "width": 1346,
-    "height": 1524
-   }
-  },
-  {
-   "id": "grp_window_functions",
-   "type": "GroupNode",
-   "x": 1546,
-   "y": 2527,
-   "init": {
-    "label": "Window functions",
-    "members": [
-     "src_win",
-     "src_win_keys",
-     "win_cumsum",
-     "win_share",
-     "win_rank",
-     "d_win_cumsum",
-     "d_win_share",
-     "d_win_rank"
-    ],
-    "color": "violet",
-    "collapsed": false,
-    "width": 1113,
-    "height": 1306
-   }
-  },
-  {
-   "id": "grp_matrix_ops",
-   "type": "GroupNode",
-   "x": 2859,
-   "y": 2527,
-   "init": {
-    "label": "Matrix ops",
-    "members": [
-     "src_A",
-     "src_b",
-     "md_trace",
-     "md_rank",
-     "md_norm",
-     "solve",
-     "eigen",
-     "d_trace",
-     "d_rank",
-     "d_norm",
-     "d_solve",
-     "d_eigv",
-     "d_eigvec"
-    ],
-    "color": "sky",
-    "collapsed": false,
-    "width": 1057,
-    "height": 1125
-   }
-  },
-  {
-   "id": "grp_spectrum",
-   "type": "GroupNode",
-   "x": 4116,
-   "y": 2527,
-   "init": {
-    "label": "Spectrum",
-    "members": [
-     "src_sig",
-     "spec",
-     "d_spec"
-    ],
-    "color": "gold",
-    "collapsed": false,
-    "width": 1046,
-    "height": 839
-   }
-  },
-  {
-   "id": "grp_fuzzy_text",
-   "type": "GroupNode",
-   "x": 0,
-   "y": 4271,
-   "init": {
-    "label": "Fuzzy text",
-    "members": [
-     "src_typos",
-     "src_cities",
-     "sim",
-     "fuzzy",
-     "d_sim",
-     "d_fuzzy_m",
-     "d_fuzzy_s"
-    ],
-    "color": "lime",
-    "collapsed": false,
-    "width": 894,
-    "height": 736
-   }
-  },
-  {
-   "id": "grp_forecast",
-   "type": "GroupNode",
-   "x": 1094,
-   "y": 4271,
-   "init": {
-    "label": "Forecast",
-    "members": [
-     "src_series",
-     "ets",
-     "d_ets_f",
-     "d_ets_s"
-    ],
-    "color": "blue",
-    "collapsed": false,
-    "width": 894,
-    "height": 610
-   }
-  },
-  {
-   "id": "grp_distribution_fitting",
-   "type": "GroupNode",
-   "x": 2188,
-   "y": 4271,
-   "init": {
-    "label": "Distribution fitting",
-    "members": [
-     "src_gamma",
-     "fitd",
-     "dsample",
-     "fit2",
-     "d_fit_rank",
-     "d_fit_best",
-     "d_fit_params",
-     "d_dsample",
-     "d_fit2"
-    ],
-    "color": "blue",
-    "collapsed": false,
-    "width": 1548,
-    "height": 816
-   }
-  },
-  {
-   "id": "grp_text_transforms",
-   "type": "GroupNode",
-   "x": 3936,
-   "y": 4271,
-   "init": {
-    "label": "Text transforms",
-    "members": [
-     "t_unaccent",
-     "t_slug",
-     "t_pad",
-     "t_trunc",
-     "d_unaccent",
-     "d_slug",
-     "d_pad",
-     "d_trunc_t"
-    ],
-    "color": "lime",
-    "collapsed": false,
-    "width": 623,
-    "height": 961
-   }
-  },
-  {
-   "id": "grp_positions",
-   "type": "GroupNode",
-   "x": 0,
-   "y": 5452,
-   "init": {
-    "label": "Positions",
-    "members": [
-     "a_between",
-     "a_which",
-     "a_argsort",
-     "d_which",
-     "d_argsort"
-    ],
-    "color": "gold",
-    "collapsed": false,
-    "width": 894,
-    "height": 472
-   }
-  },
-  {
-   "id": "grp_returns_risk",
-   "type": "GroupNode",
-   "x": 1094,
-   "y": 5452,
-   "init": {
-    "label": "Returns & risk",
-    "members": [
-     "src_prices",
-     "ret_log",
-     "ret_dd",
-     "ret_mdd",
-     "ret_simple",
-     "ret_sharpe",
-     "ret_cagr",
-     "d_ret_log",
-     "d_ret_dd",
-     "d_ret_mdd",
-     "d_ret_sharpe",
-     "d_ret_cagr"
-    ],
-    "color": "green",
-    "collapsed": false,
-    "width": 1226,
-    "height": 1097
-   }
-  },
-  {
-   "id": "grp_combine_frames",
-   "type": "GroupNode",
-   "x": 2520,
-   "y": 5452,
-   "init": {
-    "label": "Combine frames",
-    "members": [
-     "src_sizes",
-     "src_colors",
-     "src_week",
-     "j_cross",
-     "bind_cols",
-     "d_crossjoin",
-     "d_bind"
-    ],
-    "color": "violet",
-    "collapsed": false,
-    "width": 1075,
-    "height": 808
-   }
-  },
-  {
-   "id": "grp_codecs_ids",
-   "type": "GroupNode",
-   "x": 3795,
-   "y": 5452,
-   "init": {
-    "label": "Codecs & ids",
-    "members": [
-     "h_sha",
-     "h_md5",
-     "b64e",
-     "b64d",
-     "uuid1",
-     "d_hsha",
-     "d_hmd5",
-     "d_b64",
-     "d_uuid"
-    ],
-    "color": "gray",
-    "collapsed": false,
-    "width": 1074,
-    "height": 810
-   }
-  },
-  {
-   "id": "grp_template",
-   "type": "GroupNode",
-   "x": 0,
-   "y": 6769,
-   "init": {
-    "label": "Template",
-    "members": [
-     "src_names",
-     "tmpl",
-     "d_tmpl"
-    ],
-    "color": "lime",
-    "collapsed": false,
-    "width": 894,
-    "height": 487
-   }
-  },
-  {
-   "id": "grp_smoothing_peaks",
-   "type": "GroupNode",
-   "x": 1094,
-   "y": 6769,
-   "init": {
-    "label": "Smoothing & peaks",
-    "members": [
-     "src_noisy",
-     "sm_sg",
-     "sm_lo",
-     "sm_ga",
-     "pk",
-     "d_sm_sg",
-     "d_sm_lo",
-     "d_sm_ga",
-     "d_pk_pos"
-    ],
-    "color": "gold",
-    "collapsed": false,
-    "width": 1226,
-    "height": 1468
-   }
-  },
-  {
-   "id": "grp_seasonal_decomposition",
-   "type": "GroupNode",
-   "x": 2520,
-   "y": 6769,
-   "init": {
-    "label": "Seasonal decomposition",
-    "members": [
-     "src_season",
-     "decomp",
-     "d_dc_t"
-    ],
-    "color": "blue",
-    "collapsed": false,
-    "width": 894,
-    "height": 874
-   }
-  },
-  {
-   "id": "grp_polynomial_roots",
-   "type": "GroupNode",
-   "x": 3614,
-   "y": 6769,
-   "init": {
-    "label": "Polynomial roots",
-    "members": [
-     "src_coef",
-     "src_coef2",
-     "proots",
-     "proots2",
-     "d_proots",
-     "d_proots2"
-    ],
-    "color": "sky",
-    "collapsed": false,
-    "width": 894,
-    "height": 482
-   }
-  },
-  {
-   "id": "grp_multivariate",
-   "type": "GroupNode",
-   "x": 0,
-   "y": 8457,
-   "init": {
-    "label": "Multivariate",
-    "members": [
-     "src_pts",
-     "km",
-     "pca1",
-     "src_study",
-     "logit",
-     "d_km_l",
-     "d_km_c",
-     "d_pca_s",
-     "d_pca_e",
-     "d_logit_c",
-     "d_logit_p"
-    ],
-    "color": "amber",
-    "collapsed": false,
-    "width": 1634,
-    "height": 1152
-   }
-  },
-  {
-   "id": "n_wrap",
-   "type": "WrapTextNode",
-   "x": 356,
-   "y": 9650,
-   "init": {
-    "label": "Wrap Text"
-   },
-   "stringLiterals": {
-    "text": "the quick brown fox jumps over the lazy dog"
-   },
-   "literals": {
-    "width": 16
-   }
-  },
-  {
-   "id": "d_wrap",
-   "type": "DisplayNode",
-   "x": 748,
-   "y": 9650,
-   "init": {
-    "label": "Wrapped lines"
-   }
-  },
-  {
-   "id": "n_hist2d",
-   "type": "HistogramNode",
-   "x": 356,
-   "y": 9880,
-   "init": {
-    "label": "Histogram",
-    "mode": "2d"
-   },
-   "literals": {
-    "bins": 4,
-    "ybins": 4
-   }
-  },
-  {
-   "id": "n_ode",
-   "type": "OdeIntegrateNode",
-   "x": 356,
-   "y": 10120,
-   "init": {
-    "label": "ODE Integrate"
-   },
-   "stringLiterals": {
-    "formula": "y"
-   },
-   "literals": {
-    "y0": 1,
-    "t0": 0,
-    "t1": 1,
-    "steps": 20
-   }
-  },
-  {
-   "id": "d_ode",
-   "type": "ChartNode",
-   "x": 748,
-   "y": 10120,
-   "init": {
-    "label": "y(t): dy/dt = y",
-    "op": "line"
-   }
-  }
- ],
- "connections": [
-  {
-   "source": "src_a",
-   "sourceOutput": "list",
-   "target": "n_shift",
-   "targetInput": "list"
-  },
-  {
-   "source": "src_a",
-   "sourceOutput": "list",
-   "target": "n_pct",
-   "targetInput": "list"
-  },
-  {
-   "source": "src_a",
-   "sourceOutput": "list",
-   "target": "n_z",
-   "targetInput": "list"
-  },
-  {
-   "source": "src_a",
-   "sourceOutput": "list",
-   "target": "n_bin",
-   "targetInput": "list"
-  },
-  {
-   "source": "src_breaks",
-   "sourceOutput": "list",
-   "target": "n_bin",
-   "targetInput": "breaks"
-  },
-  {
-   "source": "src_va",
-   "sourceOutput": "list",
-   "target": "n_outer",
-   "targetInput": "a"
-  },
-  {
-   "source": "src_vb",
-   "sourceOutput": "list",
-   "target": "n_outer",
-   "targetInput": "b"
-  },
-  {
-   "source": "src_va",
-   "sourceOutput": "list",
-   "target": "n_comb",
-   "targetInput": "list"
-  },
-  {
-   "source": "n_shift",
-   "sourceOutput": "result",
-   "target": "d_shift",
-   "targetInput": "in"
-  },
-  {
-   "source": "n_pct",
-   "sourceOutput": "result",
-   "target": "d_pct",
-   "targetInput": "in"
-  },
-  {
-   "source": "n_z",
-   "sourceOutput": "result",
-   "target": "d_z",
-   "targetInput": "in"
-  },
-  {
-   "source": "n_bin",
-   "sourceOutput": "result",
-   "target": "d_bin",
-   "targetInput": "in"
-  },
-  {
-   "source": "n_comb",
-   "sourceOutput": "result",
-   "target": "d_comb",
-   "targetInput": "in"
-  },
-  {
-   "source": "n_outer",
-   "sourceOutput": "result",
-   "target": "d_outer",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_a",
-   "sourceOutput": "list",
-   "target": "n_ewma",
-   "targetInput": "list"
-  },
-  {
-   "source": "src_va",
-   "sourceOutput": "list",
-   "target": "n_conv",
-   "targetInput": "a"
-  },
-  {
-   "source": "src_vb",
-   "sourceOutput": "list",
-   "target": "n_conv",
-   "targetInput": "b"
-  },
-  {
-   "source": "src_va",
-   "sourceOutput": "list",
-   "target": "n_cross",
-   "targetInput": "a"
-  },
-  {
-   "source": "src_vc",
-   "sourceOutput": "list",
-   "target": "n_cross",
-   "targetInput": "b"
-  },
-  {
-   "source": "src_px",
-   "sourceOutput": "list",
-   "target": "n_poly",
-   "targetInput": "x"
-  },
-  {
-   "source": "src_py",
-   "sourceOutput": "list",
-   "target": "n_poly",
-   "targetInput": "y"
-  },
-  {
-   "source": "src_py",
-   "sourceOutput": "list",
-   "target": "n_trapz",
-   "targetInput": "list"
-  },
-  {
-   "source": "src_rle",
-   "sourceOutput": "list",
-   "target": "n_rle",
-   "targetInput": "list"
-  },
-  {
-   "source": "n_ewma",
-   "sourceOutput": "result",
-   "target": "d_ewma",
-   "targetInput": "in"
-  },
-  {
-   "source": "n_conv",
-   "sourceOutput": "result",
-   "target": "d_conv",
-   "targetInput": "in"
-  },
-  {
-   "source": "n_cross",
-   "sourceOutput": "result",
-   "target": "d_cross",
-   "targetInput": "in"
-  },
-  {
-   "source": "n_poly",
-   "sourceOutput": "result",
-   "target": "d_poly",
-   "targetInput": "in"
-  },
-  {
-   "source": "n_trapz",
-   "sourceOutput": "result",
-   "target": "d_trapz",
-   "targetInput": "in"
-  },
-  {
-   "source": "n_rle",
-   "sourceOutput": "result",
-   "target": "d_rle",
-   "targetInput": "in"
-  },
-  {
-   "source": "n_between",
-   "sourceOutput": "result",
-   "target": "d_between",
-   "targetInput": "in"
-  },
-  {
-   "source": "n_isclose",
-   "sourceOutput": "result",
-   "target": "d_isclose",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_c",
-   "sourceOutput": "list",
-   "target": "agg_ptp",
-   "targetInput": "list"
-  },
-  {
-   "source": "agg_ptp",
-   "sourceOutput": "result",
-   "target": "d_ptp",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_c",
-   "sourceOutput": "list",
-   "target": "agg_iqr",
-   "targetInput": "list"
-  },
-  {
-   "source": "agg_iqr",
-   "sourceOutput": "result",
-   "target": "d_iqr",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_c",
-   "sourceOutput": "list",
-   "target": "agg_mad",
-   "targetInput": "list"
-  },
-  {
-   "source": "agg_mad",
-   "sourceOutput": "result",
-   "target": "d_mad",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_c",
-   "sourceOutput": "list",
-   "target": "agg_sem",
-   "targetInput": "list"
-  },
-  {
-   "source": "agg_sem",
-   "sourceOutput": "result",
-   "target": "d_sem",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_c",
-   "sourceOutput": "list",
-   "target": "agg_cv",
-   "targetInput": "list"
-  },
-  {
-   "source": "agg_cv",
-   "sourceOutput": "result",
-   "target": "d_cv",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_c",
-   "sourceOutput": "list",
-   "target": "agg_rms",
-   "targetInput": "list"
-  },
-  {
-   "source": "agg_rms",
-   "sourceOutput": "result",
-   "target": "d_rms",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_a",
-   "sourceOutput": "list",
-   "target": "cor_spearman",
-   "targetInput": "x"
-  },
-  {
-   "source": "src_rank",
-   "sourceOutput": "list",
-   "target": "cor_spearman",
-   "targetInput": "y"
-  },
-  {
-   "source": "cor_spearman",
-   "sourceOutput": "result",
-   "target": "d_spearman",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_a",
-   "sourceOutput": "list",
-   "target": "cor_kendall",
-   "targetInput": "x"
-  },
-  {
-   "source": "src_rank",
-   "sourceOutput": "list",
-   "target": "cor_kendall",
-   "targetInput": "y"
-  },
-  {
-   "source": "cor_kendall",
-   "sourceOutput": "result",
-   "target": "d_kendall",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_a",
-   "sourceOutput": "list",
-   "target": "bin_q",
-   "targetInput": "list"
-  },
-  {
-   "source": "bin_q",
-   "sourceOutput": "result",
-   "target": "d_binq",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_c",
-   "sourceOutput": "list",
-   "target": "outl",
-   "targetInput": "list"
-  },
-  {
-   "source": "outl",
-   "sourceOutput": "result",
-   "target": "d_outl_flags",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_epoch",
-   "sourceOutput": "value",
-   "target": "ep_from",
-   "targetInput": "value"
-  },
-  {
-   "source": "ep_from",
-   "sourceOutput": "result",
-   "target": "d_epfrom",
-   "targetInput": "in"
-  },
-  {
-   "source": "ep_from",
-   "sourceOutput": "result",
-   "target": "trunc",
-   "targetInput": "date"
-  },
-  {
-   "source": "trunc",
-   "sourceOutput": "result",
-   "target": "d_trunc",
-   "targetInput": "in"
-  },
-  {
-   "source": "ep_from",
-   "sourceOutput": "result",
-   "target": "ep_to",
-   "targetInput": "value"
-  },
-  {
-   "source": "ep_to",
-   "sourceOutput": "result",
-   "target": "d_epto",
-   "targetInput": "in"
-  },
-  {
-   "source": "hav",
-   "sourceOutput": "result",
-   "target": "d_hav",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_frame",
-   "sourceOutput": "frame",
-   "target": "desc",
-   "targetInput": "frame"
-  },
-  {
-   "source": "desc",
-   "sourceOutput": "frame",
-   "target": "d_desc",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_frame",
-   "sourceOutput": "frame",
-   "target": "corrm",
-   "targetInput": "frame"
-  },
-  {
-   "source": "corrm",
-   "sourceOutput": "frame",
-   "target": "d_corrm",
-   "targetInput": "in"
-  },
-  {
-   "source": "amort",
-   "sourceOutput": "frame",
-   "target": "d_amort",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_g1",
-   "sourceOutput": "list",
-   "target": "ht_mannwhitney",
-   "targetInput": "a"
-  },
-  {
-   "source": "src_g2",
-   "sourceOutput": "list",
-   "target": "ht_mannwhitney",
-   "targetInput": "b"
-  },
-  {
-   "source": "ht_mannwhitney",
-   "sourceOutput": "result",
-   "target": "d_mannwhitney",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_g1",
-   "sourceOutput": "list",
-   "target": "ht_wilcoxon",
-   "targetInput": "a"
-  },
-  {
-   "source": "src_g2",
-   "sourceOutput": "list",
-   "target": "ht_wilcoxon",
-   "targetInput": "b"
-  },
-  {
-   "source": "ht_wilcoxon",
-   "sourceOutput": "result",
-   "target": "d_wilcoxon",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_g1",
-   "sourceOutput": "list",
-   "target": "ht_ks",
-   "targetInput": "a"
-  },
-  {
-   "source": "src_g2",
-   "sourceOutput": "list",
-   "target": "ht_ks",
-   "targetInput": "b"
-  },
-  {
-   "source": "ht_ks",
-   "sourceOutput": "result",
-   "target": "d_ks",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_groups",
-   "sourceOutput": "table",
-   "target": "ht_anova",
-   "targetInput": "groups"
-  },
-  {
-   "source": "ht_anova",
-   "sourceOutput": "result",
-   "target": "d_anova",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_groups",
-   "sourceOutput": "table",
-   "target": "ht_kruskal",
-   "targetInput": "groups"
-  },
-  {
-   "source": "ht_kruskal",
-   "sourceOutput": "result",
-   "target": "d_kruskal",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_2x2",
-   "sourceOutput": "table",
-   "target": "ht_fisher",
-   "targetInput": "table"
-  },
-  {
-   "source": "ht_fisher",
-   "sourceOutput": "result",
-   "target": "d_fisher",
-   "targetInput": "in"
-  },
-  {
-   "source": "ht_prop",
-   "sourceOutput": "result",
-   "target": "d_prop",
-   "targetInput": "in"
-  },
-  {
-   "source": "ht_binom",
-   "sourceOutput": "result",
-   "target": "d_binom",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_A",
-   "sourceOutput": "table",
-   "target": "md_trace",
-   "targetInput": "matrix"
-  },
-  {
-   "source": "md_trace",
-   "sourceOutput": "result",
-   "target": "d_trace",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_A",
-   "sourceOutput": "table",
-   "target": "md_rank",
-   "targetInput": "matrix"
-  },
-  {
-   "source": "md_rank",
-   "sourceOutput": "result",
-   "target": "d_rank",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_A",
-   "sourceOutput": "table",
-   "target": "md_norm",
-   "targetInput": "matrix"
-  },
-  {
-   "source": "md_norm",
-   "sourceOutput": "result",
-   "target": "d_norm",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_A",
-   "sourceOutput": "table",
-   "target": "solve",
-   "targetInput": "matrix"
-  },
-  {
-   "source": "src_b",
-   "sourceOutput": "list",
-   "target": "solve",
-   "targetInput": "b"
-  },
-  {
-   "source": "solve",
-   "sourceOutput": "result",
-   "target": "d_solve",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_A",
-   "sourceOutput": "table",
-   "target": "eigen",
-   "targetInput": "matrix"
-  },
-  {
-   "source": "eigen",
-   "sourceOutput": "values",
-   "target": "d_eigv",
-   "targetInput": "in"
-  },
-  {
-   "source": "eigen",
-   "sourceOutput": "vectors",
-   "target": "d_eigvec",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_sig",
-   "sourceOutput": "list",
-   "target": "spec",
-   "targetInput": "list"
-  },
-  {
-   "source": "spec",
-   "sourceOutput": "result",
-   "target": "d_spec",
-   "targetInput": "in"
-  },
-  {
-   "source": "sim",
-   "sourceOutput": "result",
-   "target": "d_sim",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_typos",
-   "sourceOutput": "list",
-   "target": "fuzzy",
-   "targetInput": "needle"
-  },
-  {
-   "source": "src_cities",
-   "sourceOutput": "list",
-   "target": "fuzzy",
-   "targetInput": "candidates"
-  },
-  {
-   "source": "fuzzy",
-   "sourceOutput": "match",
-   "target": "d_fuzzy_m",
-   "targetInput": "in"
-  },
-  {
-   "source": "fuzzy",
-   "sourceOutput": "score",
-   "target": "d_fuzzy_s",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_series",
-   "sourceOutput": "list",
-   "target": "ets",
-   "targetInput": "values"
-  },
-  {
-   "source": "ets",
-   "sourceOutput": "forecast",
-   "target": "d_ets_f",
-   "targetInput": "in"
-  },
-  {
-   "source": "ets",
-   "sourceOutput": "detected",
-   "target": "d_ets_s",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_win",
-   "sourceOutput": "frame",
-   "target": "win_cumsum",
-   "targetInput": "frame"
-  },
-  {
-   "source": "src_win_keys",
-   "sourceOutput": "list",
-   "target": "win_cumsum",
-   "targetInput": "keys"
-  },
-  {
-   "source": "win_cumsum",
-   "sourceOutput": "frame",
-   "target": "d_win_cumsum",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_win",
-   "sourceOutput": "frame",
-   "target": "win_share",
-   "targetInput": "frame"
-  },
-  {
-   "source": "src_win_keys",
-   "sourceOutput": "list",
-   "target": "win_share",
-   "targetInput": "keys"
-  },
-  {
-   "source": "win_share",
-   "sourceOutput": "frame",
-   "target": "d_win_share",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_win",
-   "sourceOutput": "frame",
-   "target": "win_rank",
-   "targetInput": "frame"
-  },
-  {
-   "source": "src_win_keys",
-   "sourceOutput": "list",
-   "target": "win_rank",
-   "targetInput": "keys"
-  },
-  {
-   "source": "win_rank",
-   "sourceOutput": "frame",
-   "target": "d_win_rank",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_gamma",
-   "sourceOutput": "list",
-   "target": "fitd",
-   "targetInput": "list"
-  },
-  {
-   "source": "fitd",
-   "sourceOutput": "ranking",
-   "target": "d_fit_rank",
-   "targetInput": "in"
-  },
-  {
-   "source": "fitd",
-   "sourceOutput": "best",
-   "target": "d_fit_best",
-   "targetInput": "in"
-  },
-  {
-   "source": "fitd",
-   "sourceOutput": "params",
-   "target": "d_fit_params",
-   "targetInput": "in"
-  },
-  {
-   "source": "dsample",
-   "sourceOutput": "result",
-   "target": "d_dsample",
-   "targetInput": "in"
-  },
-  {
-   "source": "dsample",
-   "sourceOutput": "result",
-   "target": "fit2",
-   "targetInput": "list"
-  },
-  {
-   "source": "fit2",
-   "sourceOutput": "best",
-   "target": "d_fit2",
-   "targetInput": "in"
-  },
-  {
-   "source": "t_unaccent",
-   "sourceOutput": "result",
-   "target": "d_unaccent",
-   "targetInput": "in"
-  },
-  {
-   "source": "t_slug",
-   "sourceOutput": "result",
-   "target": "d_slug",
-   "targetInput": "in"
-  },
-  {
-   "source": "t_pad",
-   "sourceOutput": "result",
-   "target": "d_pad",
-   "targetInput": "in"
-  },
-  {
-   "source": "t_trunc",
-   "sourceOutput": "result",
-   "target": "d_trunc_t",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_a",
-   "sourceOutput": "list",
-   "target": "a_argsort",
-   "targetInput": "list"
-  },
-  {
-   "source": "a_argsort",
-   "sourceOutput": "result",
-   "target": "d_argsort",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_a",
-   "sourceOutput": "list",
-   "target": "a_between",
-   "targetInput": "value"
-  },
-  {
-   "source": "a_between",
-   "sourceOutput": "result",
-   "target": "a_which",
-   "targetInput": "list"
-  },
-  {
-   "source": "a_which",
-   "sourceOutput": "result",
-   "target": "d_which",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_prices",
-   "sourceOutput": "list",
-   "target": "ret_log",
-   "targetInput": "list"
-  },
-  {
-   "source": "ret_log",
-   "sourceOutput": "result",
-   "target": "d_ret_log",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_prices",
-   "sourceOutput": "list",
-   "target": "ret_dd",
-   "targetInput": "list"
-  },
-  {
-   "source": "ret_dd",
-   "sourceOutput": "result",
-   "target": "d_ret_dd",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_prices",
-   "sourceOutput": "list",
-   "target": "ret_mdd",
-   "targetInput": "list"
-  },
-  {
-   "source": "ret_mdd",
-   "sourceOutput": "result",
-   "target": "d_ret_mdd",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_prices",
-   "sourceOutput": "list",
-   "target": "ret_simple",
-   "targetInput": "list"
-  },
-  {
-   "source": "ret_simple",
-   "sourceOutput": "result",
-   "target": "ret_sharpe",
-   "targetInput": "list"
-  },
-  {
-   "source": "ret_sharpe",
-   "sourceOutput": "result",
-   "target": "d_ret_sharpe",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_prices",
-   "sourceOutput": "list",
-   "target": "ret_cagr",
-   "targetInput": "list"
-  },
-  {
-   "source": "ret_cagr",
-   "sourceOutput": "result",
-   "target": "d_ret_cagr",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_sizes",
-   "sourceOutput": "frame",
-   "target": "j_cross",
-   "targetInput": "left"
-  },
-  {
-   "source": "src_colors",
-   "sourceOutput": "frame",
-   "target": "j_cross",
-   "targetInput": "right"
-  },
-  {
-   "source": "j_cross",
-   "sourceOutput": "frame",
-   "target": "d_crossjoin",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_week",
-   "sourceOutput": "frame",
-   "target": "bind_cols",
-   "targetInput": "f0"
-  },
-  {
-   "source": "src_sizes",
-   "sourceOutput": "frame",
-   "target": "bind_cols",
-   "targetInput": "f1"
-  },
-  {
-   "source": "bind_cols",
-   "sourceOutput": "frame",
-   "target": "d_bind",
-   "targetInput": "in"
-  },
-  {
-   "source": "h_sha",
-   "sourceOutput": "result",
-   "target": "d_hsha",
-   "targetInput": "in"
-  },
-  {
-   "source": "h_md5",
-   "sourceOutput": "result",
-   "target": "d_hmd5",
-   "targetInput": "in"
-  },
-  {
-   "source": "b64e",
-   "sourceOutput": "result",
-   "target": "b64d",
-   "targetInput": "text"
-  },
-  {
-   "source": "b64d",
-   "sourceOutput": "result",
-   "target": "d_b64",
-   "targetInput": "in"
-  },
-  {
-   "source": "uuid1",
-   "sourceOutput": "result",
-   "target": "d_uuid",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_names",
-   "sourceOutput": "list",
-   "target": "tmpl",
-   "targetInput": "name"
-  },
-  {
-   "source": "src_prices",
-   "sourceOutput": "list",
-   "target": "tmpl",
-   "targetInput": "total"
-  },
-  {
-   "source": "tmpl",
-   "sourceOutput": "result",
-   "target": "d_tmpl",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_noisy",
-   "sourceOutput": "list",
-   "target": "sm_sg",
-   "targetInput": "list"
-  },
-  {
-   "source": "sm_sg",
-   "sourceOutput": "result",
-   "target": "d_sm_sg",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_noisy",
-   "sourceOutput": "list",
-   "target": "sm_lo",
-   "targetInput": "list"
-  },
-  {
-   "source": "sm_lo",
-   "sourceOutput": "result",
-   "target": "d_sm_lo",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_noisy",
-   "sourceOutput": "list",
-   "target": "sm_ga",
-   "targetInput": "list"
-  },
-  {
-   "source": "sm_ga",
-   "sourceOutput": "result",
-   "target": "d_sm_ga",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_noisy",
-   "sourceOutput": "list",
-   "target": "pk",
-   "targetInput": "list"
-  },
-  {
-   "source": "pk",
-   "sourceOutput": "result",
-   "target": "d_pk_pos",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_season",
-   "sourceOutput": "list",
-   "target": "decomp",
-   "targetInput": "values"
-  },
-  {
-   "source": "decomp",
-   "sourceOutput": "decomposition",
-   "target": "d_dc_t",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_coef",
-   "sourceOutput": "list",
-   "target": "proots",
-   "targetInput": "coeffs"
-  },
-  {
-   "source": "proots",
-   "sourceOutput": "real",
-   "target": "d_proots",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_coef2",
-   "sourceOutput": "list",
-   "target": "proots2",
-   "targetInput": "coeffs"
-  },
-  {
-   "source": "proots2",
-   "sourceOutput": "roots",
-   "target": "d_proots2",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_pts",
-   "sourceOutput": "frame",
-   "target": "km",
-   "targetInput": "frame"
-  },
-  {
-   "source": "km",
-   "sourceOutput": "labels",
-   "target": "d_km_l",
-   "targetInput": "in"
-  },
-  {
-   "source": "km",
-   "sourceOutput": "centers",
-   "target": "d_km_c",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_pts",
-   "sourceOutput": "frame",
-   "target": "pca1",
-   "targetInput": "frame"
-  },
-  {
-   "source": "pca1",
-   "sourceOutput": "scores",
-   "target": "d_pca_s",
-   "targetInput": "in"
-  },
-  {
-   "source": "pca1",
-   "sourceOutput": "explained",
-   "target": "d_pca_e",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_study",
-   "sourceOutput": "frame",
-   "target": "logit",
-   "targetInput": "frame"
-  },
-  {
-   "source": "logit",
-   "sourceOutput": "coefficients",
-   "target": "d_logit_c",
-   "targetInput": "in"
-  },
-  {
-   "source": "logit",
-   "sourceOutput": "probabilities",
-   "target": "d_logit_p",
-   "targetInput": "in"
-  },
-  {
-   "source": "n_wrap",
-   "sourceOutput": "result",
-   "target": "d_wrap",
-   "targetInput": "in"
-  },
-  {
-   "source": "src_va",
-   "sourceOutput": "list",
-   "target": "n_hist2d",
-   "targetInput": "values"
-  },
-  {
-   "source": "src_vb",
-   "sourceOutput": "list",
-   "target": "n_hist2d",
-   "targetInput": "y"
-  },
-  {
-   "source": "n_ode",
-   "sourceOutput": "solution",
-   "target": "d_ode",
-   "targetInput": "values"
-  }
- ]
+  "v": 2,
+  "order": 9999,
+  "label": "Scratch: new nodes",
+  "group": "More",
+  "nodes": [
+    {
+      "id": "src_a",
+      "type": "ListInputNode",
+      "x": 604,
+      "y": 13474,
+      "init": {
+        "label": "Data A",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "10, 12, 9, 20, 8, 15, 22, 11"
+      }
+    },
+    {
+      "id": "src_breaks",
+      "type": "ListInputNode",
+      "x": 604,
+      "y": 13784,
+      "init": {
+        "label": "Breaks",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "10, 15, 20"
+      }
+    },
+    {
+      "id": "src_va",
+      "type": "ListInputNode",
+      "x": 604,
+      "y": 12733,
+      "init": {
+        "label": "Vector A",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "1, 2, 3"
+      }
+    },
+    {
+      "id": "src_vb",
+      "type": "ListInputNode",
+      "x": 604,
+      "y": 12990,
+      "init": {
+        "label": "Vector B",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "10, 20"
+      }
+    },
+    {
+      "id": "n_shift",
+      "type": "ShiftNode",
+      "x": 920,
+      "y": 13377,
+      "init": {
+        "label": "Shift",
+        "wrap": "wrap"
+      },
+      "literals": {
+        "by": 2
+      }
+    },
+    {
+      "id": "n_pct",
+      "type": "DiffNode",
+      "x": 920,
+      "y": 13198,
+      "init": {
+        "label": "DIFF (% mode)",
+        "mode": "percent"
+      }
+    },
+    {
+      "id": "n_z",
+      "type": "NormalizeNode",
+      "x": 920,
+      "y": 13586,
+      "init": {
+        "label": "Normalize (z mode)",
+        "mode": "zscore"
+      }
+    },
+    {
+      "id": "n_bin",
+      "type": "BinNode",
+      "x": 910,
+      "y": 13776,
+      "init": {
+        "label": "Bin"
+      }
+    },
+    {
+      "id": "n_comb",
+      "type": "CombinationsNode",
+      "x": 890,
+      "y": 12716,
+      "init": {
+        "label": "Combinations",
+        "mode": "combinations"
+      },
+      "literals": {
+        "k": 2
+      }
+    },
+    {
+      "id": "n_outer",
+      "type": "TableOuterNode",
+      "x": 890,
+      "y": 12971,
+      "init": {
+        "label": "Outer"
+      }
+    },
+    {
+      "id": "d_shift",
+      "type": "DisplayNode",
+      "x": 1215,
+      "y": 13401,
+      "init": {
+        "label": "Shifted"
+      }
+    },
+    {
+      "id": "d_pct",
+      "type": "DisplayNode",
+      "x": 1215,
+      "y": 13172,
+      "init": {
+        "label": "% change"
+      }
+    },
+    {
+      "id": "d_z",
+      "type": "DisplayNode",
+      "x": 1215,
+      "y": 13558,
+      "init": {
+        "label": "z-scores"
+      }
+    },
+    {
+      "id": "d_bin",
+      "type": "DisplayNode",
+      "x": 1215,
+      "y": 13809,
+      "init": {
+        "label": "bins"
+      }
+    },
+    {
+      "id": "d_comb",
+      "type": "DisplayNode",
+      "x": 1215,
+      "y": 12762,
+      "init": {
+        "label": "combinations"
+      }
+    },
+    {
+      "id": "d_outer",
+      "type": "DisplayNode",
+      "x": 1215,
+      "y": 13003,
+      "init": {
+        "label": "outer product"
+      }
+    },
+    {
+      "id": "src_vc",
+      "type": "ListInputNode",
+      "x": 1737,
+      "y": 11600,
+      "init": {
+        "label": "Vector C",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "0, 1, 0"
+      }
+    },
+    {
+      "id": "src_px",
+      "type": "ListInputNode",
+      "x": 1737,
+      "y": 12220,
+      "init": {
+        "label": "x",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "0, 1, 2, 3, 4"
+      }
+    },
+    {
+      "id": "src_py",
+      "type": "ListInputNode",
+      "x": 1737,
+      "y": 12425,
+      "init": {
+        "label": "y (x^2)",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "0, 1, 4, 9, 16"
+      }
+    },
+    {
+      "id": "src_rle",
+      "type": "ListInputNode",
+      "x": 1737,
+      "y": 11805,
+      "init": {
+        "label": "Repeats",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "1, 1, 2, 2, 2, 3"
+      }
+    },
+    {
+      "id": "n_ewma",
+      "type": "EwmaNode",
+      "x": 1737,
+      "y": 12033,
+      "init": {
+        "label": "EWMA"
+      },
+      "literals": {
+        "alpha": 0.3
+      }
+    },
+    {
+      "id": "n_conv",
+      "type": "ConvolveNode",
+      "x": 1737,
+      "y": 11423,
+      "init": {
+        "label": "Convolve"
+      }
+    },
+    {
+      "id": "n_cross",
+      "type": "CrossNode",
+      "x": 2046,
+      "y": 11606,
+      "init": {
+        "label": "Cross Product"
+      }
+    },
+    {
+      "id": "n_poly",
+      "type": "PolyfitNode",
+      "x": 2036,
+      "y": 12236,
+      "init": {
+        "label": "Poly Fit"
+      },
+      "literals": {
+        "degree": 2
+      }
+    },
+    {
+      "id": "n_trapz",
+      "type": "TrapzNode",
+      "x": 2046,
+      "y": 12444,
+      "init": {
+        "label": "Integrate"
+      },
+      "literals": {
+        "dx": 1
+      }
+    },
+    {
+      "id": "n_rle",
+      "type": "RleNode",
+      "x": 2016,
+      "y": 11808,
+      "init": {
+        "label": "Run Lengths"
+      }
+    },
+    {
+      "id": "n_between",
+      "type": "BetweenNode",
+      "x": 495,
+      "y": -694,
+      "init": {
+        "label": "Between"
+      },
+      "literals": {
+        "value": 5,
+        "lo": 1,
+        "hi": 10
+      }
+    },
+    {
+      "id": "n_isclose",
+      "type": "IsCloseNode",
+      "x": 495,
+      "y": -483,
+      "init": {
+        "label": "Is Close"
+      },
+      "literals": {
+        "a": 1,
+        "b": 1.0000001,
+        "tol": 0.001
+      }
+    },
+    {
+      "id": "d_ewma",
+      "type": "DisplayNode",
+      "x": 2016,
+      "y": 12007,
+      "init": {
+        "label": "ewma"
+      }
+    },
+    {
+      "id": "d_conv",
+      "type": "DisplayNode",
+      "x": 2016,
+      "y": 11442,
+      "init": {
+        "label": "convolution"
+      }
+    },
+    {
+      "id": "d_cross",
+      "type": "DisplayNode",
+      "x": 2341,
+      "y": 11634,
+      "init": {
+        "label": "cross"
+      }
+    },
+    {
+      "id": "d_poly",
+      "type": "DisplayNode",
+      "x": 2341,
+      "y": 12269,
+      "init": {
+        "label": "fitted y"
+      }
+    },
+    {
+      "id": "d_trapz",
+      "type": "DisplayNode",
+      "x": 2341,
+      "y": 12472,
+      "init": {
+        "label": "integral"
+      }
+    },
+    {
+      "id": "d_rle",
+      "type": "DisplayNode",
+      "x": 2341,
+      "y": 11826,
+      "init": {
+        "label": "run lengths"
+      }
+    },
+    {
+      "id": "d_between",
+      "type": "DisplayNode",
+      "x": 760,
+      "y": -652,
+      "init": {
+        "label": "5 in [1,10]?"
+      }
+    },
+    {
+      "id": "d_isclose",
+      "type": "DisplayNode",
+      "x": 760,
+      "y": -441,
+      "init": {
+        "label": "close?"
+      }
+    },
+    {
+      "id": "src_c",
+      "type": "ListInputNode",
+      "x": 1722,
+      "y": 13996,
+      "init": {
+        "label": "Data C (one outlier)",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "10, 11, 9, 10, 12, 10, 11, 100"
+      }
+    },
+    {
+      "id": "src_rank",
+      "type": "ListInputNode",
+      "x": 1722,
+      "y": 13011,
+      "init": {
+        "label": "Rank B",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "5, 6, 7, 8, 7, 9, 12, 10"
+      }
+    },
+    {
+      "id": "src_epoch",
+      "type": "NumberInputNode",
+      "x": 179,
+      "y": -4792,
+      "init": {
+        "label": "Unix seconds",
+        "value": 1700000000,
+        "width": 180,
+        "height": 76
+      }
+    },
+    {
+      "id": "agg_ptp",
+      "type": "AggregateNode",
+      "x": 2067,
+      "y": 13517,
+      "init": {
+        "label": "PTP (max−min)",
+        "op": "ptp"
+      }
+    },
+    {
+      "id": "d_ptp",
+      "type": "DisplayNode",
+      "x": 2362,
+      "y": 13548,
+      "init": {
+        "label": "PTP (max−min)"
+      }
+    },
+    {
+      "id": "agg_iqr",
+      "type": "AggregateNode",
+      "x": 2067,
+      "y": 14387,
+      "init": {
+        "label": "IQR",
+        "op": "iqr"
+      }
+    },
+    {
+      "id": "d_iqr",
+      "type": "DisplayNode",
+      "x": 2362,
+      "y": 14418,
+      "init": {
+        "label": "IQR"
+      }
+    },
+    {
+      "id": "agg_mad",
+      "type": "AggregateNode",
+      "x": 2067,
+      "y": 14575,
+      "init": {
+        "label": "MAD",
+        "op": "mad"
+      }
+    },
+    {
+      "id": "d_mad",
+      "type": "DisplayNode",
+      "x": 2362,
+      "y": 14606,
+      "init": {
+        "label": "MAD"
+      }
+    },
+    {
+      "id": "agg_sem",
+      "type": "AggregateNode",
+      "x": 2067,
+      "y": 14011,
+      "init": {
+        "label": "SEM",
+        "op": "sem"
+      }
+    },
+    {
+      "id": "d_sem",
+      "type": "DisplayNode",
+      "x": 2362,
+      "y": 14042,
+      "init": {
+        "label": "SEM"
+      }
+    },
+    {
+      "id": "agg_cv",
+      "type": "AggregateNode",
+      "x": 2067,
+      "y": 14199,
+      "init": {
+        "label": "CV",
+        "op": "cv"
+      }
+    },
+    {
+      "id": "d_cv",
+      "type": "DisplayNode",
+      "x": 2362,
+      "y": 14230,
+      "init": {
+        "label": "CV"
+      }
+    },
+    {
+      "id": "agg_rms",
+      "type": "AggregateNode",
+      "x": 2067,
+      "y": 13329,
+      "init": {
+        "label": "RMS",
+        "op": "rms"
+      }
+    },
+    {
+      "id": "d_rms",
+      "type": "DisplayNode",
+      "x": 2362,
+      "y": 13360,
+      "init": {
+        "label": "RMS"
+      }
+    },
+    {
+      "id": "cor_spearman",
+      "type": "CorrelNode",
+      "x": 2067,
+      "y": 12897,
+      "init": {
+        "label": "SPEARMAN",
+        "op": "spearman"
+      }
+    },
+    {
+      "id": "d_spearman",
+      "type": "DisplayNode",
+      "x": 2362,
+      "y": 12942,
+      "init": {
+        "label": "spearman"
+      }
+    },
+    {
+      "id": "cor_kendall",
+      "type": "CorrelNode",
+      "x": 2067,
+      "y": 13113,
+      "init": {
+        "label": "KENDALL",
+        "op": "kendall"
+      }
+    },
+    {
+      "id": "d_kendall",
+      "type": "DisplayNode",
+      "x": 2362,
+      "y": 13158,
+      "init": {
+        "label": "kendall"
+      }
+    },
+    {
+      "id": "bin_q",
+      "type": "BinNode",
+      "x": 1722,
+      "y": 12716,
+      "init": {
+        "label": "Bin (quartiles)",
+        "mode": "quantiles"
+      },
+      "literals": {
+        "n": 4
+      }
+    },
+    {
+      "id": "d_binq",
+      "type": "DisplayNode",
+      "x": 2037,
+      "y": 12749,
+      "init": {
+        "label": "bucket 1..4"
+      }
+    },
+    {
+      "id": "outl",
+      "type": "OutliersNode",
+      "x": 2037,
+      "y": 13705,
+      "init": {
+        "label": "Outliers (IQR)",
+        "method": "iqr"
+      }
+    },
+    {
+      "id": "d_outl_flags",
+      "type": "DisplayNode",
+      "x": 2362,
+      "y": 13714,
+      "init": {
+        "label": "Value / Outlier"
+      }
+    },
+    {
+      "id": "ep_from",
+      "type": "EpochNode",
+      "x": 444,
+      "y": -4823,
+      "init": {
+        "op": "from",
+        "unit": "s"
+      }
+    },
+    {
+      "id": "d_epfrom",
+      "type": "DisplayNode",
+      "x": 754,
+      "y": -4962,
+      "init": {
+        "label": "date"
+      }
+    },
+    {
+      "id": "trunc",
+      "type": "DateTruncNode",
+      "x": 754,
+      "y": -4839,
+      "init": {
+        "label": "Truncate (month)",
+        "unit": "month"
+      }
+    },
+    {
+      "id": "d_trunc",
+      "type": "DisplayNode",
+      "x": 1049,
+      "y": -4795,
+      "init": {
+        "label": "month start"
+      }
+    },
+    {
+      "id": "ep_to",
+      "type": "EpochNode",
+      "x": 769,
+      "y": -4627,
+      "init": {
+        "label": "Date → Epoch (ms)",
+        "op": "to",
+        "unit": "ms"
+      }
+    },
+    {
+      "id": "d_epto",
+      "type": "DisplayNode",
+      "x": 1049,
+      "y": -4593,
+      "init": {
+        "label": "epoch ms"
+      }
+    },
+    {
+      "id": "hav",
+      "type": "ExpressionNode",
+      "x": 465,
+      "y": -3620,
+      "init": {
+        "label": "Haversine London→Paris km",
+        "expr": "2*6371.0088*ASIN(SQRT(SIN((lat2-lat1)*PI()/360)^2+COS(lat1*PI()/180)*COS(lat2*PI()/180)*SIN((lon2-lon1)*PI()/360)^2))"
+      },
+      "literals": {
+        "lat1": 51.5074,
+        "lon1": -0.1278,
+        "lat2": 48.8566,
+        "lon2": 2.3522
+      }
+    },
+    {
+      "id": "d_hav",
+      "type": "DisplayNode",
+      "x": 790,
+      "y": -3492,
+      "init": {
+        "label": "≈343.5 km"
+      }
+    },
+    {
+      "id": "src_frame",
+      "type": "FrameInputNode",
+      "x": 24,
+      "y": 3947,
+      "init": {
+        "label": "Sales table",
+        "frameText": "[{\"name\": \"Region\", \"type\": \"string\", \"values\": [\"N\", \"S\", \"E\", \"W\", \"N\", \"S\", \"E\", \"W\"]}, {\"name\": \"Sales\", \"type\": \"number\", \"values\": [120, 95, 140, 80, 130, null, 150, 90]}, {\"name\": \"Ads\", \"type\": \"number\", \"values\": [10, 8, 12, 6, 11, 7, 13, 7]}, {\"name\": \"Returns\", \"type\": \"number\", \"values\": [5, 9, 3, 12, 4, 10, 2, 11]}]"
+      }
+    },
+    {
+      "id": "desc",
+      "type": "DescribeNode",
+      "x": 358,
+      "y": 3842,
+      "init": {
+        "label": "Describe"
+      }
+    },
+    {
+      "id": "d_desc",
+      "type": "DisplayNode",
+      "x": 683,
+      "y": 3855,
+      "init": {
+        "label": "describe"
+      }
+    },
+    {
+      "id": "corrm",
+      "type": "CorrMatrixNode",
+      "x": 358,
+      "y": 4072,
+      "init": {
+        "label": "Correlation Matrix",
+        "method": "pearson"
+      }
+    },
+    {
+      "id": "d_corrm",
+      "type": "DisplayNode",
+      "x": 683,
+      "y": 4104,
+      "init": {
+        "label": "corr matrix"
+      }
+    },
+    {
+      "id": "amort",
+      "type": "AmortizationNode",
+      "x": 333,
+      "y": 5296,
+      "init": {
+        "label": "Amortization (12 × 0.5%)"
+      },
+      "literals": {
+        "rate": 0.005,
+        "nper": 12,
+        "pv": 10000,
+        "fv": 0
+      }
+    },
+    {
+      "id": "d_amort",
+      "type": "DisplayNode",
+      "x": 658,
+      "y": 5284,
+      "init": {
+        "label": "schedule"
+      }
+    },
+    {
+      "id": "src_g1",
+      "type": "ListInputNode",
+      "x": 350,
+      "y": 6923,
+      "init": {
+        "label": "Group 1",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "6.9, 5.4, 5.8, 4.6, 4.0"
+      }
+    },
+    {
+      "id": "src_g2",
+      "type": "ListInputNode",
+      "x": 350,
+      "y": 7161,
+      "init": {
+        "label": "Group 2",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "8.3, 6.8, 7.8, 9.2, 6.5"
+      }
+    },
+    {
+      "id": "src_groups",
+      "type": "TableInputNode",
+      "x": 290,
+      "y": 6313,
+      "init": {
+        "label": "Groups (3 columns)",
+        "tableText": "6.9, 8.3, 8.0\n5.4, 6.8, 10.5\n5.8, 7.8, 8.1\n4.6, 9.2, 6.9\n4.0, 6.5, 9.3"
+      }
+    },
+    {
+      "id": "src_2x2",
+      "type": "TableInputNode",
+      "x": 290,
+      "y": 6631,
+      "init": {
+        "label": "2×2 counts",
+        "tableText": "3, 1\n1, 3"
+      }
+    },
+    {
+      "id": "ht_mannwhitney",
+      "type": "HypothesisTestNode",
+      "x": 659,
+      "y": 7260,
+      "init": {
+        "label": "Mann–Whitney U",
+        "op": "mannwhitney"
+      }
+    },
+    {
+      "id": "d_mannwhitney",
+      "type": "DisplayNode",
+      "x": 964,
+      "y": 7305,
+      "init": {
+        "label": "p-value"
+      }
+    },
+    {
+      "id": "ht_wilcoxon",
+      "type": "HypothesisTestNode",
+      "x": 659,
+      "y": 7031,
+      "init": {
+        "label": "Wilcoxon signed-rank",
+        "op": "wilcoxon"
+      }
+    },
+    {
+      "id": "d_wilcoxon",
+      "type": "DisplayNode",
+      "x": 964,
+      "y": 7082,
+      "init": {
+        "label": "p-value"
+      }
+    },
+    {
+      "id": "ht_ks",
+      "type": "HypothesisTestNode",
+      "x": 659,
+      "y": 6815,
+      "init": {
+        "label": "KS (2-sample)",
+        "op": "ks"
+      }
+    },
+    {
+      "id": "d_ks",
+      "type": "DisplayNode",
+      "x": 964,
+      "y": 6860,
+      "init": {
+        "label": "p-value"
+      }
+    },
+    {
+      "id": "ht_anova",
+      "type": "HypothesisTestNode",
+      "x": 639,
+      "y": 6430,
+      "init": {
+        "label": "ANOVA",
+        "op": "anova"
+      }
+    },
+    {
+      "id": "d_anova",
+      "type": "DisplayNode",
+      "x": 964,
+      "y": 6461,
+      "init": {
+        "label": "p-value"
+      }
+    },
+    {
+      "id": "ht_kruskal",
+      "type": "HypothesisTestNode",
+      "x": 639,
+      "y": 6242,
+      "init": {
+        "label": "Kruskal–Wallis",
+        "op": "kruskal"
+      }
+    },
+    {
+      "id": "d_kruskal",
+      "type": "DisplayNode",
+      "x": 964,
+      "y": 6273,
+      "init": {
+        "label": "p-value"
+      }
+    },
+    {
+      "id": "ht_fisher",
+      "type": "HypothesisTestNode",
+      "x": 639,
+      "y": 6627,
+      "init": {
+        "label": "Fisher exact",
+        "op": "fisher"
+      }
+    },
+    {
+      "id": "d_fisher",
+      "type": "DisplayNode",
+      "x": 964,
+      "y": 6658,
+      "init": {
+        "label": "p-value"
+      }
+    },
+    {
+      "id": "ht_prop",
+      "type": "HypothesisTestNode",
+      "x": 350,
+      "y": 5986,
+      "init": {
+        "label": "Two-proportion z",
+        "op": "proptest"
+      },
+      "literals": {
+        "x1": 45,
+        "n1": 100,
+        "x2": 30,
+        "n2": 100
+      }
+    },
+    {
+      "id": "d_prop",
+      "type": "DisplayNode",
+      "x": 639,
+      "y": 6065,
+      "init": {
+        "label": "p-value"
+      }
+    },
+    {
+      "id": "ht_binom",
+      "type": "HypothesisTestNode",
+      "x": 350,
+      "y": 5742,
+      "init": {
+        "label": "Binomial test",
+        "op": "binomtest"
+      },
+      "literals": {
+        "k": 7,
+        "n": 20,
+        "p0": 0.5
+      }
+    },
+    {
+      "id": "d_binom",
+      "type": "DisplayNode",
+      "x": 639,
+      "y": 5800,
+      "init": {
+        "label": "p-value"
+      }
+    },
+    {
+      "id": "src_A",
+      "type": "TableInputNode",
+      "x": 260,
+      "y": 1479,
+      "init": {
+        "label": "A (symmetric 3×3)",
+        "tableText": "4, 1, 2\n1, 3, 0\n2, 0, 5"
+      }
+    },
+    {
+      "id": "src_b",
+      "type": "ListInputNode",
+      "x": 320,
+      "y": 1996,
+      "init": {
+        "label": "b",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "7, 5, 9"
+      }
+    },
+    {
+      "id": "src_sig",
+      "type": "ListInputNode",
+      "x": 286,
+      "y": 4685,
+      "init": {
+        "label": "Signal (5 Hz sine + 1)",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "1.0, 2.4142, 3.4944, 3.9856, 3.7716, 2.9032, 1.5853, 0.1291, -1.1213, -1.8708, -1.9424, -1.319, -0.1481, 1.2941, 2.6667, 3.6458, 4.0, 3.6458, 2.6667, 1.2941, -0.1481, -1.319, -1.9424, -1.8708, -1.1213, 0.1291, 1.5853, 2.9032, 3.7716, 3.9856, 3.4944, 2.4142, 1.0, -0.4142, -1.4944, -1.9856, -1.7716, -0.9032, 0.4147, 1.8709, 3.1213, 3.8708, 3.9424, 3.319, 2.1481, 0.7059, -0.6667, -1.6458, -2.0, -1.6458, -0.6667, 0.7059, 2.1481, 3.319, 3.9424, 3.8708, 3.1213, 1.8709, 0.4147, -0.9032, -1.7716, -1.9856, -1.4944, -0.4142"
+      }
+    },
+    {
+      "id": "md_trace",
+      "type": "MatDetNode",
+      "x": 621,
+      "y": 1109,
+      "init": {
+        "op": "trace"
+      }
+    },
+    {
+      "id": "d_trace",
+      "type": "DisplayNode",
+      "x": 952,
+      "y": 1139,
+      "init": {
+        "label": "TRACE"
+      }
+    },
+    {
+      "id": "md_rank",
+      "type": "MatDetNode",
+      "x": 621,
+      "y": 1297,
+      "init": {
+        "op": "rank"
+      }
+    },
+    {
+      "id": "d_rank",
+      "type": "DisplayNode",
+      "x": 952,
+      "y": 1327,
+      "init": {
+        "label": "MATRIXRANK"
+      }
+    },
+    {
+      "id": "md_norm",
+      "type": "MatDetNode",
+      "x": 621,
+      "y": 1485,
+      "init": {
+        "op": "norm"
+      }
+    },
+    {
+      "id": "d_norm",
+      "type": "DisplayNode",
+      "x": 952,
+      "y": 1515,
+      "init": {
+        "label": "NORM"
+      }
+    },
+    {
+      "id": "solve",
+      "type": "MatSolveNode",
+      "x": 621,
+      "y": 2002,
+      "init": {
+        "label": "Solve A·x = b"
+      }
+    },
+    {
+      "id": "d_solve",
+      "type": "DisplayNode",
+      "x": 952,
+      "y": 2012,
+      "init": {
+        "label": "x"
+      }
+    },
+    {
+      "id": "eigen",
+      "type": "MatEigenNode",
+      "x": 621,
+      "y": 1716,
+      "init": {
+        "label": "Eigen (symmetric)"
+      }
+    },
+    {
+      "id": "d_eigv",
+      "type": "DisplayNode",
+      "x": 952,
+      "y": 1673,
+      "init": {
+        "label": "eigenvalues"
+      }
+    },
+    {
+      "id": "d_eigvec",
+      "type": "DisplayNode",
+      "x": 952,
+      "y": 1830,
+      "init": {
+        "label": "eigenvectors"
+      }
+    },
+    {
+      "id": "spec",
+      "type": "SpectrumNode",
+      "x": 551,
+      "y": 4672,
+      "init": {
+        "label": "Spectrum (FFT)"
+      },
+      "literals": {
+        "rate": 64
+      }
+    },
+    {
+      "id": "d_spec",
+      "type": "DisplayNode",
+      "x": 876,
+      "y": 4406,
+      "init": {
+        "label": "bin 5 → 3 at 5 Hz"
+      }
+    },
+    {
+      "id": "src_typos",
+      "type": "ListInputNode",
+      "x": 356,
+      "y": -4345,
+      "init": {
+        "label": "Typos",
+        "valueKeys": [
+          "v0"
+        ],
+        "dataType": "string"
+      },
+      "stringLiterals": {
+        "v0": "Chicgo, Houstin, New Yrok, Zurich"
+      }
+    },
+    {
+      "id": "src_cities",
+      "type": "ListInputNode",
+      "x": 356,
+      "y": -4140,
+      "init": {
+        "label": "Cities",
+        "valueKeys": [
+          "v0"
+        ],
+        "dataType": "string"
+      },
+      "stringLiterals": {
+        "v0": "New York, Los Angeles, Chicago, Houston"
+      }
+    },
+    {
+      "id": "sim",
+      "type": "TextSimilarityNode",
+      "x": 356,
+      "y": -3935,
+      "init": {
+        "label": "Text Similarity (ratio)",
+        "method": "ratio"
+      },
+      "stringLiterals": {
+        "a": "kitten",
+        "b": "sitting"
+      }
+    },
+    {
+      "id": "d_sim",
+      "type": "DisplayNode",
+      "x": 628,
+      "y": -3884,
+      "init": {
+        "label": "1 − 3/7"
+      }
+    },
+    {
+      "id": "fuzzy",
+      "type": "FuzzyMatchNode",
+      "x": 628,
+      "y": -4268,
+      "init": {
+        "label": "Fuzzy Match",
+        "method": "ratio"
+      },
+      "literals": {
+        "threshold": 0.6
+      }
+    },
+    {
+      "id": "d_fuzzy_m",
+      "type": "DisplayNode",
+      "x": 898,
+      "y": -4289,
+      "init": {
+        "label": "best match"
+      }
+    },
+    {
+      "id": "d_fuzzy_s",
+      "type": "DisplayNode",
+      "x": 898,
+      "y": -4132,
+      "init": {
+        "label": "score"
+      }
+    },
+    {
+      "id": "src_series",
+      "type": "ListInputNode",
+      "x": 318,
+      "y": 10344,
+      "init": {
+        "label": "Monthly series (36)",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "100.0, 107.0, 112.66, 116.0, 116.66, 115.0, 112.0, 109.0, 107.34, 108.0, 111.34, 117.0, 124.0, 131.0, 136.66, 140.0, 140.66, 139.0, 136.0, 133.0, 131.34, 132.0, 135.34, 141.0, 148.0, 155.0, 160.66, 164.0, 164.66, 163.0, 160.0, 157.0, 155.34, 156.0, 159.34, 165.0"
+      }
+    },
+    {
+      "id": "ets",
+      "type": "EtsForecastNode",
+      "x": 583,
+      "y": 10304,
+      "init": {
+        "label": "Forecast (ETS)"
+      },
+      "literals": {
+        "horizon": 6,
+        "season": 1
+      }
+    },
+    {
+      "id": "d_ets_f",
+      "type": "DisplayNode",
+      "x": 914,
+      "y": 10253,
+      "init": {
+        "label": "Forecast / Interval"
+      }
+    },
+    {
+      "id": "d_ets_s",
+      "type": "DisplayNode",
+      "x": 914,
+      "y": 10499,
+      "init": {
+        "label": "season used"
+      }
+    },
+    {
+      "id": "src_win",
+      "type": "FrameInputNode",
+      "x": 231,
+      "y": 48,
+      "init": {
+        "label": "Sales by region/month",
+        "frameText": "[{\"name\": \"Region\", \"type\": \"string\", \"values\": [\"N\", \"S\", \"N\", \"S\", \"N\", \"S\"]}, {\"name\": \"Month\", \"type\": \"number\", \"values\": [1, 1, 2, 2, 3, 3]}, {\"name\": \"Sales\", \"type\": \"number\", \"values\": [120, 95, 140, 80, 130, 110]}]"
+      }
+    },
+    {
+      "id": "win_cumsum",
+      "type": "WindowNode",
+      "x": 599,
+      "y": -186,
+      "init": {
+        "label": "Window: running sum",
+        "agg": "cumsum"
+      },
+      "stringLiterals": {
+        "orderBy": "Month",
+        "column": "Sales",
+        "name": "YTD"
+      }
+    },
+    {
+      "id": "src_win_keys",
+      "type": "ListInputNode",
+      "x": 291,
+      "y": 399,
+      "init": {
+        "label": "Partition keys",
+        "valueKeys": [
+          "v0"
+        ],
+        "dataType": "string"
+      },
+      "stringLiterals": {
+        "v0": "Region"
+      }
+    },
+    {
+      "id": "d_win_cumsum",
+      "type": "DisplayNode",
+      "x": 924,
+      "y": -108,
+      "init": {
+        "label": "YTD per region"
+      }
+    },
+    {
+      "id": "win_share",
+      "type": "WindowNode",
+      "x": 599,
+      "y": 217,
+      "init": {
+        "label": "Window: share of group",
+        "agg": "share"
+      },
+      "stringLiterals": {
+        "orderBy": "",
+        "column": "Sales",
+        "name": "Share"
+      }
+    },
+    {
+      "id": "d_win_share",
+      "type": "DisplayNode",
+      "x": 924,
+      "y": 295,
+      "init": {
+        "label": "share of region"
+      }
+    },
+    {
+      "id": "win_rank",
+      "type": "WindowNode",
+      "x": 599,
+      "y": 620,
+      "init": {
+        "label": "Window: rank by Sales",
+        "agg": "rank"
+      },
+      "stringLiterals": {
+        "orderBy": "Sales",
+        "column": "",
+        "name": "Rank"
+      }
+    },
+    {
+      "id": "d_win_rank",
+      "type": "DisplayNode",
+      "x": 924,
+      "y": 698,
+      "init": {
+        "label": "rank within region"
+      }
+    },
+    {
+      "id": "src_gamma",
+      "type": "ListInputNode",
+      "x": 25,
+      "y": 12318,
+      "init": {
+        "label": "Sample (gamma-ish)",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "7.4389, 7.0784, 4.2628, 11.3314, 2.2322, 9.7956, 4.6617, 13.7808, 5.1595, 5.4566, 4.7872, 8.1846, 5.6672, 6.4493, 13.129, 6.394, 5.1117, 6.4762, 2.3036, 5.246, 7.2517, 3.4755, 7.4499, 5.7517, 10.1216, 2.9205, 6.6571, 7.7163, 11.8068, 6.9024, 5.9902, 2.6746, 0.9033, 3.4356, 7.0956, 13.7236, 6.2137, 5.8193, 12.6582, 6.2766, 4.1088, 13.7812, 11.7664, 3.8905, 4.3267, 15.2916, 5.2635, 3.5484, 3.9636, 8.1063, 1.9613, 4.0894, 10.3154, 6.8206, 8.7222, 5.8892, 2.473, 4.508, 6.3519, 4.505"
+      }
+    },
+    {
+      "id": "fitd",
+      "type": "FitDistributionNode",
+      "x": 298,
+      "y": 12271,
+      "init": {
+        "label": "Fit Distribution"
+      }
+    },
+    {
+      "id": "d_fit_rank",
+      "type": "DisplayNode",
+      "x": 636,
+      "y": 12117,
+      "init": {
+        "label": "ranking"
+      }
+    },
+    {
+      "id": "d_fit_best",
+      "type": "DisplayNode",
+      "x": 636,
+      "y": 12363,
+      "init": {
+        "label": "best"
+      }
+    },
+    {
+      "id": "d_fit_params",
+      "type": "DisplayNode",
+      "x": 636,
+      "y": 12490,
+      "init": {
+        "label": "params"
+      }
+    },
+    {
+      "id": "dsample",
+      "type": "DistributionNode",
+      "x": 25,
+      "y": 11957,
+      "init": {
+        "label": "Distribution: sample",
+        "op": "gamma",
+        "form": "sample"
+      },
+      "literals": {
+        "count": 200,
+        "alpha": 2,
+        "beta": 2
+      }
+    },
+    {
+      "id": "d_dsample",
+      "type": "DisplayNode",
+      "x": 298,
+      "y": 12137,
+      "init": {
+        "label": "200 gamma draws"
+      },
+      "collapsed": true
+    },
+    {
+      "id": "fit2",
+      "type": "FitDistributionNode",
+      "x": 298,
+      "y": 11823,
+      "init": {
+        "label": "Fit the draws"
+      }
+    },
+    {
+      "id": "d_fit2",
+      "type": "DisplayNode",
+      "x": 636,
+      "y": 11909,
+      "init": {
+        "label": "best family of the draws"
+      }
+    },
+    {
+      "id": "t_unaccent",
+      "type": "TextTransformNode",
+      "x": 464,
+      "y": 11361,
+      "init": {
+        "label": "UNACCENT",
+        "op": "unaccent"
+      },
+      "stringLiterals": {
+        "text": "Crème Brûlée à Zürich"
+      }
+    },
+    {
+      "id": "d_unaccent",
+      "type": "DisplayNode",
+      "x": 729,
+      "y": 11391,
+      "init": {
+        "label": "Creme Brulee a Zurich"
+      }
+    },
+    {
+      "id": "t_slug",
+      "type": "TextTransformNode",
+      "x": 464,
+      "y": 11549,
+      "init": {
+        "label": "SLUGIFY",
+        "op": "slugify"
+      },
+      "stringLiterals": {
+        "text": "  Hello, World! Été 2026 "
+      }
+    },
+    {
+      "id": "d_slug",
+      "type": "DisplayNode",
+      "x": 729,
+      "y": 11579,
+      "init": {
+        "label": "hello-world-ete-2026"
+      }
+    },
+    {
+      "id": "t_pad",
+      "type": "PadTextNode",
+      "x": 464,
+      "y": 10898,
+      "init": {
+        "label": "Pad Text (left, zeros)",
+        "side": "left"
+      },
+      "stringLiterals": {
+        "text": "42",
+        "fill": "0"
+      },
+      "literals": {
+        "width": 6
+      }
+    },
+    {
+      "id": "d_pad",
+      "type": "DisplayNode",
+      "x": 729,
+      "y": 10960,
+      "init": {
+        "label": "000042"
+      }
+    },
+    {
+      "id": "t_trunc",
+      "type": "TruncateTextNode",
+      "x": 464,
+      "y": 11150,
+      "init": {
+        "label": "Truncate Text"
+      },
+      "stringLiterals": {
+        "text": "The quick brown fox jumps over the lazy dog",
+        "ellipsis": "…"
+      },
+      "literals": {
+        "width": 16
+      }
+    },
+    {
+      "id": "d_trunc_t",
+      "type": "DisplayNode",
+      "x": 729,
+      "y": 11192,
+      "init": {
+        "label": "The quick brown…"
+      }
+    },
+    {
+      "id": "a_argsort",
+      "type": "ArgMinMaxNode",
+      "x": 1737,
+      "y": 14850,
+      "init": {
+        "label": "ARGSORT",
+        "op": "argsort"
+      }
+    },
+    {
+      "id": "d_argsort",
+      "type": "DisplayNode",
+      "x": 2002,
+      "y": 14865,
+      "init": {
+        "label": "positions that sort Data A"
+      }
+    },
+    {
+      "id": "a_between",
+      "type": "BetweenNode",
+      "x": 1737,
+      "y": 15032,
+      "init": {
+        "label": "Between 10 and 15"
+      },
+      "literals": {
+        "lo": 10,
+        "hi": 15
+      }
+    },
+    {
+      "id": "a_which",
+      "type": "ArgMinMaxNode",
+      "x": 2002,
+      "y": 15050,
+      "init": {
+        "label": "WHICH",
+        "op": "which"
+      }
+    },
+    {
+      "id": "d_which",
+      "type": "DisplayNode",
+      "x": 2267,
+      "y": 15074,
+      "init": {
+        "label": "positions in [10,15]"
+      }
+    },
+    {
+      "id": "src_prices",
+      "type": "ListInputNode",
+      "x": 390,
+      "y": 8787,
+      "init": {
+        "label": "Prices",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "100, 102, 101, 105, 103, 108, 110, 107"
+      }
+    },
+    {
+      "id": "ret_log",
+      "type": "ReturnsNode",
+      "x": 685,
+      "y": 8608,
+      "init": {
+        "op": "log"
+      }
+    },
+    {
+      "id": "d_ret_log",
+      "type": "DisplayNode",
+      "x": 950,
+      "y": 8584,
+      "init": {
+        "label": "log returns"
+      }
+    },
+    {
+      "id": "ret_dd",
+      "type": "ReturnsNode",
+      "x": 685,
+      "y": 8406,
+      "init": {
+        "op": "drawdown"
+      }
+    },
+    {
+      "id": "d_ret_dd",
+      "type": "DisplayNode",
+      "x": 950,
+      "y": 8409,
+      "init": {
+        "label": "drawdown"
+      }
+    },
+    {
+      "id": "ret_mdd",
+      "type": "ReturnsNode",
+      "x": 685,
+      "y": 9204,
+      "init": {
+        "op": "maxdrawdown"
+      }
+    },
+    {
+      "id": "d_ret_mdd",
+      "type": "DisplayNode",
+      "x": 950,
+      "y": 9235,
+      "init": {
+        "label": "max drawdown"
+      }
+    },
+    {
+      "id": "ret_simple",
+      "type": "ReturnsNode",
+      "x": 685,
+      "y": 9006,
+      "init": {
+        "op": "simple"
+      }
+    },
+    {
+      "id": "ret_sharpe",
+      "type": "ReturnsNode",
+      "x": 950,
+      "y": 8991,
+      "init": {
+        "op": "sharpe"
+      },
+      "literals": {
+        "rf": 0,
+        "periods": 252
+      }
+    },
+    {
+      "id": "d_ret_sharpe",
+      "type": "DisplayNode",
+      "x": 1215,
+      "y": 9043,
+      "init": {
+        "label": "annualised Sharpe"
+      }
+    },
+    {
+      "id": "ret_cagr",
+      "type": "ReturnsNode",
+      "x": 685,
+      "y": 8790,
+      "init": {
+        "op": "cagr"
+      },
+      "literals": {
+        "rf": 0,
+        "periods": 252
+      }
+    },
+    {
+      "id": "d_ret_cagr",
+      "type": "DisplayNode",
+      "x": 950,
+      "y": 8834,
+      "init": {
+        "label": "CAGR (252/yr)"
+      }
+    },
+    {
+      "id": "src_sizes",
+      "type": "FrameInputNode",
+      "x": 268,
+      "y": -1281,
+      "init": {
+        "label": "Sizes",
+        "frameText": "[{\"name\": \"Size\", \"type\": \"string\", \"values\": [\"S\", \"M\", \"L\"]}]"
+      }
+    },
+    {
+      "id": "src_colors",
+      "type": "FrameInputNode",
+      "x": 268,
+      "y": -1006,
+      "init": {
+        "label": "Colors",
+        "frameText": "[{\"name\": \"Color\", \"type\": \"string\", \"values\": [\"red\", \"blue\"]}, {\"name\": \"Code\", \"type\": \"number\", \"values\": [1, 2]}]"
+      }
+    },
+    {
+      "id": "j_cross",
+      "type": "JoinNode",
+      "x": 603,
+      "y": -1174,
+      "init": {
+        "label": "Cross join",
+        "how": "cross"
+      }
+    },
+    {
+      "id": "d_crossjoin",
+      "type": "DisplayNode",
+      "x": 928,
+      "y": -1116,
+      "init": {
+        "label": "every size x every color (6 rows)"
+      }
+    },
+    {
+      "id": "src_week",
+      "type": "FrameInputNode",
+      "x": 268,
+      "y": -1552,
+      "init": {
+        "label": "Week index",
+        "frameText": "[{\"name\": \"Week\", \"type\": \"number\", \"values\": [1, 2, 3]}]"
+      }
+    },
+    {
+      "id": "bind_cols",
+      "type": "BindColumnsNode",
+      "x": 603,
+      "y": -1445,
+      "init": {
+        "label": "Bind Columns"
+      }
+    },
+    {
+      "id": "d_bind",
+      "type": "DisplayNode",
+      "x": 928,
+      "y": -1407,
+      "init": {
+        "label": "Week | Size (side by side)"
+      }
+    },
+    {
+      "id": "h_sha",
+      "type": "HashNode",
+      "x": 272,
+      "y": 9667,
+      "init": {
+        "label": "Hash (SHA-256)",
+        "algorithm": "sha256"
+      },
+      "stringLiterals": {
+        "text": "customer-0042"
+      }
+    },
+    {
+      "id": "d_hsha",
+      "type": "DisplayNode",
+      "x": 537,
+      "y": 9697,
+      "init": {
+        "label": "sha256 hex"
+      }
+    },
+    {
+      "id": "h_md5",
+      "type": "HashNode",
+      "x": 272,
+      "y": 9479,
+      "init": {
+        "label": "Hash (MD5)",
+        "algorithm": "md5"
+      },
+      "stringLiterals": {
+        "text": "abc"
+      }
+    },
+    {
+      "id": "d_hmd5",
+      "type": "DisplayNode",
+      "x": 537,
+      "y": 9509,
+      "init": {
+        "label": "900150983cd24fb0d6963f7d28e17f72"
+      }
+    },
+    {
+      "id": "b64e",
+      "type": "UrlEncodeNode",
+      "x": 272,
+      "y": 9855,
+      "init": {
+        "op": "base64"
+      },
+      "stringLiterals": {
+        "text": "hello world"
+      }
+    },
+    {
+      "id": "b64d",
+      "type": "UrlEncodeNode",
+      "x": 627,
+      "y": 9855,
+      "init": {
+        "op": "unbase64"
+      }
+    },
+    {
+      "id": "d_b64",
+      "type": "DisplayNode",
+      "x": 982,
+      "y": 9869,
+      "init": {
+        "label": "round trip"
+      }
+    },
+    {
+      "id": "uuid1",
+      "type": "UuidNode",
+      "x": 272,
+      "y": 10010,
+      "init": {
+        "label": "UUID"
+      }
+    },
+    {
+      "id": "d_uuid",
+      "type": "DisplayNode",
+      "x": 537,
+      "y": 10025,
+      "init": {
+        "label": "new on F9"
+      }
+    },
+    {
+      "id": "src_names",
+      "type": "ListInputNode",
+      "x": 1737,
+      "y": 8523,
+      "init": {
+        "label": "Names",
+        "valueKeys": [
+          "v0"
+        ],
+        "dataType": "string"
+      },
+      "stringLiterals": {
+        "v0": "Ada, Bob, Cy"
+      }
+    },
+    {
+      "id": "tmpl",
+      "type": "TemplateNode",
+      "x": 2002,
+      "y": 8523,
+      "init": {
+        "label": "Template",
+        "sideVars": [
+          "name",
+          "total"
+        ]
+      },
+      "stringLiterals": {
+        "template": "Hello {name}, you owe {total:$#,##0.00}"
+      }
+    },
+    {
+      "id": "d_tmpl",
+      "type": "DisplayNode",
+      "x": 2267,
+      "y": 8406,
+      "init": {
+        "label": "one line per name"
+      }
+    },
+    {
+      "id": "src_noisy",
+      "type": "ListInputNode",
+      "x": 306,
+      "y": -2593,
+      "init": {
+        "label": "Noisy signal",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "1, 3, 2, 5, 4, 6, 8, 7, 9, 12, 10, 11, 9, 6, 7, 4, 5, 2, 3, 1"
+      }
+    },
+    {
+      "id": "sm_sg",
+      "type": "SmoothNode",
+      "x": 646,
+      "y": -2443,
+      "init": {
+        "op": "savgol"
+      },
+      "literals": {
+        "window": 5,
+        "order": 2
+      }
+    },
+    {
+      "id": "d_sm_sg",
+      "type": "DisplayNode",
+      "x": 941,
+      "y": -2546,
+      "init": {
+        "label": "savgol 5/2"
+      }
+    },
+    {
+      "id": "sm_lo",
+      "type": "SmoothNode",
+      "x": 646,
+      "y": -1975,
+      "init": {
+        "op": "lowess"
+      },
+      "literals": {
+        "frac": 0.5
+      }
+    },
+    {
+      "id": "d_sm_lo",
+      "type": "DisplayNode",
+      "x": 941,
+      "y": -2101,
+      "init": {
+        "label": "lowess 0.5"
+      }
+    },
+    {
+      "id": "sm_ga",
+      "type": "SmoothNode",
+      "x": 646,
+      "y": -3024,
+      "init": {
+        "op": "gaussian"
+      },
+      "literals": {
+        "sigma": 1.5
+      }
+    },
+    {
+      "id": "d_sm_ga",
+      "type": "DisplayNode",
+      "x": 941,
+      "y": -3150,
+      "init": {
+        "label": "gaussian σ1.5"
+      }
+    },
+    {
+      "id": "pk",
+      "type": "FindPeaksNode",
+      "x": 616,
+      "y": -2756,
+      "init": {
+        "label": "Find Peaks"
+      },
+      "literals": {
+        "prominence": 1.5
+      }
+    },
+    {
+      "id": "d_pk_pos",
+      "type": "DisplayNode",
+      "x": 941,
+      "y": -2687,
+      "init": {
+        "label": "Position / Height"
+      }
+    },
+    {
+      "id": "src_season",
+      "type": "ListInputNode",
+      "x": 287,
+      "y": 7632,
+      "init": {
+        "label": "Quarterly sales (3 yrs)",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "10, 14, 8, 12, 11, 15, 9, 13, 12, 16, 10, 14"
+      }
+    },
+    {
+      "id": "decomp",
+      "type": "DecomposeNode",
+      "x": 552,
+      "y": 7603,
+      "init": {
+        "label": "Decompose",
+        "model": "additive"
+      },
+      "literals": {
+        "period": 4
+      }
+    },
+    {
+      "id": "d_dc_t",
+      "type": "DisplayNode",
+      "x": 877,
+      "y": 7563,
+      "init": {
+        "label": "Trend / Seasonal / Residual"
+      }
+    },
+    {
+      "id": "src_coef",
+      "type": "ListInputNode",
+      "x": 362,
+      "y": 14076,
+      "init": {
+        "label": "x³ − 6x² + 11x − 6",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "1, -6, 11, -6"
+      }
+    },
+    {
+      "id": "proots",
+      "type": "PolyRootsNode",
+      "x": 627,
+      "y": 14081,
+      "init": {
+        "label": "Polynomial Roots"
+      }
+    },
+    {
+      "id": "d_proots",
+      "type": "DisplayNode",
+      "x": 892,
+      "y": 14126,
+      "init": {
+        "label": "roots 1, 2, 3"
+      }
+    },
+    {
+      "id": "src_coef2",
+      "type": "ListInputNode",
+      "x": 362,
+      "y": 14281,
+      "init": {
+        "label": "x³ − 1",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "1, 0, 0, -1"
+      }
+    },
+    {
+      "id": "proots2",
+      "type": "PolyRootsNode",
+      "x": 627,
+      "y": 14286,
+      "init": {
+        "label": "Polynomial Roots"
+      }
+    },
+    {
+      "id": "d_proots2",
+      "type": "DisplayNode",
+      "x": 892,
+      "y": 14290,
+      "init": {
+        "label": "1 and a conjugate pair"
+      }
+    },
+    {
+      "id": "src_pts",
+      "type": "FrameInputNode",
+      "x": 143,
+      "y": 3198,
+      "init": {
+        "label": "Points (3 blobs)",
+        "frameText": "[{\"name\": \"x\", \"type\": \"number\", \"values\": [1, 1.2, 0.8, 5, 5.2, 4.8, 1.1, 4.9, 9, 9.3, 8.8]}, {\"name\": \"y\", \"type\": \"number\", \"values\": [1, 0.8, 1.1, 5, 4.9, 5.1, 1.2, 5.3, 2, 2.2, 1.9]}]"
+      }
+    },
+    {
+      "id": "km",
+      "type": "KMeansNode",
+      "x": 487,
+      "y": 2936,
+      "init": {
+        "label": "K-Means"
+      },
+      "literals": {
+        "k": 3
+      }
+    },
+    {
+      "id": "d_km_l",
+      "type": "DisplayNode",
+      "x": 823,
+      "y": 2913,
+      "init": {
+        "label": "cluster per row"
+      }
+    },
+    {
+      "id": "d_km_c",
+      "type": "DisplayNode",
+      "x": 823,
+      "y": 3070,
+      "init": {
+        "label": "centers"
+      }
+    },
+    {
+      "id": "pca1",
+      "type": "PcaNode",
+      "x": 487,
+      "y": 3363,
+      "init": {
+        "label": "PCA"
+      }
+    },
+    {
+      "id": "d_pca_s",
+      "type": "DisplayNode",
+      "x": 823,
+      "y": 3253,
+      "init": {
+        "label": "scores"
+      }
+    },
+    {
+      "id": "d_pca_e",
+      "type": "DisplayNode",
+      "x": 823,
+      "y": 3604,
+      "init": {
+        "label": "explained variance"
+      }
+    },
+    {
+      "id": "src_study",
+      "type": "FrameInputNode",
+      "x": 143,
+      "y": 2388,
+      "init": {
+        "label": "Hours studied → pass",
+        "frameText": "[{\"name\": \"hours\", \"type\": \"number\", \"values\": [0.5, 0.75, 1, 1.25, 1.5, 1.75, 1.75, 2, 2.25, 2.5, 2.75, 3, 3.25, 3.5, 4, 4.25, 4.5, 4.75, 5, 5.5]}, {\"name\": \"pass\", \"type\": \"number\", \"values\": [0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1]}]"
+      }
+    },
+    {
+      "id": "logit",
+      "type": "LogisticNode",
+      "x": 487,
+      "y": 2393,
+      "init": {
+        "label": "Logistic Regression"
+      },
+      "stringLiterals": {
+        "target": "pass"
+      }
+    },
+    {
+      "id": "d_logit_c",
+      "type": "DisplayNode",
+      "x": 823,
+      "y": 2288,
+      "init": {
+        "label": "intercept −4.08, slope 1.50"
+      }
+    },
+    {
+      "id": "d_logit_p",
+      "type": "DisplayNode",
+      "x": 823,
+      "y": 2450,
+      "init": {
+        "label": "P(pass) per row"
+      }
+    },
+    {
+      "id": "grp_list_transforms",
+      "type": "GroupNode",
+      "x": 580,
+      "y": 12658,
+      "init": {
+        "label": "List transforms",
+        "members": [
+          "src_a",
+          "src_breaks",
+          "src_va",
+          "src_vb",
+          "n_shift",
+          "n_pct",
+          "n_z",
+          "n_bin",
+          "n_comb",
+          "n_outer",
+          "d_shift",
+          "d_pct",
+          "d_z",
+          "d_bin",
+          "d_comb",
+          "d_outer"
+        ],
+        "color": "gold",
+        "collapsed": false,
+        "width": 843,
+        "height": 1322
+      }
+    },
+    {
+      "id": "grp_signals_vectors",
+      "type": "GroupNode",
+      "x": 1713,
+      "y": 11365,
+      "init": {
+        "label": "Signals & vectors",
+        "members": [
+          "src_vc",
+          "src_px",
+          "src_py",
+          "src_rle",
+          "n_ewma",
+          "n_conv",
+          "n_cross",
+          "n_poly",
+          "n_trapz",
+          "n_rle",
+          "d_ewma",
+          "d_conv",
+          "d_cross",
+          "d_poly",
+          "d_trapz",
+          "d_rle"
+        ],
+        "color": "gold",
+        "collapsed": false,
+        "width": 836,
+        "height": 1255
+      }
+    },
+    {
+      "id": "grp_tolerance_checks",
+      "type": "GroupNode",
+      "x": 471,
+      "y": -752,
+      "init": {
+        "label": "Tolerance checks",
+        "members": [
+          "n_between",
+          "n_isclose",
+          "d_between",
+          "d_isclose"
+        ],
+        "color": "gold",
+        "collapsed": false,
+        "width": 497,
+        "height": 470
+      }
+    },
+    {
+      "id": "grp_robust_stats",
+      "type": "GroupNode",
+      "x": 1698,
+      "y": 12658,
+      "init": {
+        "label": "Robust stats",
+        "members": [
+          "src_c",
+          "src_rank",
+          "agg_ptp",
+          "agg_iqr",
+          "agg_mad",
+          "agg_sem",
+          "agg_cv",
+          "agg_rms",
+          "cor_spearman",
+          "cor_kendall",
+          "bin_q",
+          "outl",
+          "d_ptp",
+          "d_iqr",
+          "d_mad",
+          "d_sem",
+          "d_cv",
+          "d_rms",
+          "d_spearman",
+          "d_kendall",
+          "d_binq",
+          "d_outl_flags"
+        ],
+        "color": "blue",
+        "collapsed": false,
+        "width": 872,
+        "height": 2096
+      }
+    },
+    {
+      "id": "grp_dates_epochs",
+      "type": "GroupNode",
+      "x": 155,
+      "y": -5020,
+      "init": {
+        "label": "Dates & epochs",
+        "members": [
+          "src_epoch",
+          "ep_from",
+          "trunc",
+          "ep_to",
+          "d_epfrom",
+          "d_trunc",
+          "d_epto"
+        ],
+        "color": "pink",
+        "collapsed": false,
+        "width": 1128,
+        "height": 579
+      }
+    },
+    {
+      "id": "grp_haversine",
+      "type": "GroupNode",
+      "x": 441,
+      "y": -3678,
+      "init": {
+        "label": "Haversine",
+        "members": [
+          "hav",
+          "d_hav"
+        ],
+        "color": "teal",
+        "collapsed": false,
+        "width": 557,
+        "height": 432
+      }
+    },
+    {
+      "id": "grp_profiling",
+      "type": "GroupNode",
+      "x": 0,
+      "y": 3784,
+      "init": {
+        "label": "Profiling",
+        "members": [
+          "src_frame",
+          "desc",
+          "corrm",
+          "d_desc",
+          "d_corrm"
+        ],
+        "color": "violet",
+        "collapsed": false,
+        "width": 1438,
+        "height": 526
+      }
+    },
+    {
+      "id": "grp_amortization",
+      "type": "GroupNode",
+      "x": 309,
+      "y": 5226,
+      "init": {
+        "label": "Amortization",
+        "members": [
+          "amort",
+          "d_amort"
+        ],
+        "color": "green",
+        "collapsed": false,
+        "width": 820,
+        "height": 420
+      }
+    },
+    {
+      "id": "grp_hypothesis_tests",
+      "type": "GroupNode",
+      "x": 266,
+      "y": 5684,
+      "init": {
+        "label": "Hypothesis tests",
+        "members": [
+          "src_g1",
+          "src_g2",
+          "src_groups",
+          "src_2x2",
+          "ht_mannwhitney",
+          "ht_wilcoxon",
+          "ht_ks",
+          "ht_anova",
+          "ht_kruskal",
+          "ht_fisher",
+          "ht_prop",
+          "ht_binom",
+          "d_mannwhitney",
+          "d_wilcoxon",
+          "d_ks",
+          "d_anova",
+          "d_kruskal",
+          "d_fisher",
+          "d_prop",
+          "d_binom"
+        ],
+        "color": "blue",
+        "collapsed": false,
+        "width": 906,
+        "height": 1783
+      }
+    },
+    {
+      "id": "grp_window_functions",
+      "type": "GroupNode",
+      "x": 207,
+      "y": -244,
+      "init": {
+        "label": "Window functions",
+        "members": [
+          "src_win",
+          "src_win_keys",
+          "win_cumsum",
+          "win_share",
+          "win_rank",
+          "d_win_cumsum",
+          "d_win_share",
+          "d_win_rank"
+        ],
+        "color": "violet",
+        "collapsed": false,
+        "width": 1025,
+        "height": 1257
+      }
+    },
+    {
+      "id": "grp_matrix_ops",
+      "type": "GroupNode",
+      "x": 236,
+      "y": 1051,
+      "init": {
+        "label": "Matrix ops",
+        "members": [
+          "src_A",
+          "src_b",
+          "md_trace",
+          "md_rank",
+          "md_norm",
+          "solve",
+          "eigen",
+          "d_trace",
+          "d_rank",
+          "d_norm",
+          "d_solve",
+          "d_eigv",
+          "d_eigvec"
+        ],
+        "color": "sky",
+        "collapsed": false,
+        "width": 967,
+        "height": 1141
+      }
+    },
+    {
+      "id": "grp_spectrum",
+      "type": "GroupNode",
+      "x": 262,
+      "y": 4348,
+      "init": {
+        "label": "Spectrum",
+        "members": [
+          "src_sig",
+          "spec",
+          "d_spec"
+        ],
+        "color": "gold",
+        "collapsed": false,
+        "width": 914,
+        "height": 840
+      }
+    },
+    {
+      "id": "grp_fuzzy_text",
+      "type": "GroupNode",
+      "x": 332,
+      "y": -4403,
+      "init": {
+        "label": "Fuzzy text",
+        "members": [
+          "src_typos",
+          "src_cities",
+          "sim",
+          "fuzzy",
+          "d_sim",
+          "d_fuzzy_m",
+          "d_fuzzy_s"
+        ],
+        "color": "lime",
+        "collapsed": false,
+        "width": 774,
+        "height": 687
+      }
+    },
+    {
+      "id": "grp_forecast",
+      "type": "GroupNode",
+      "x": 294,
+      "y": 10195,
+      "init": {
+        "label": "Forecast",
+        "members": [
+          "src_series",
+          "ets",
+          "d_ets_f",
+          "d_ets_s"
+        ],
+        "color": "blue",
+        "collapsed": false,
+        "width": 851,
+        "height": 429
+      }
+    },
+    {
+      "id": "grp_distribution_fitting",
+      "type": "GroupNode",
+      "x": 1,
+      "y": 11765,
+      "init": {
+        "label": "Distribution fitting",
+        "members": [
+          "src_gamma",
+          "fitd",
+          "dsample",
+          "fit2",
+          "d_fit_rank",
+          "d_fit_best",
+          "d_fit_params",
+          "d_dsample",
+          "d_fit2"
+        ],
+        "color": "blue",
+        "collapsed": false,
+        "width": 1437,
+        "height": 855
+      }
+    },
+    {
+      "id": "grp_text_transforms",
+      "type": "GroupNode",
+      "x": 440,
+      "y": 10840,
+      "init": {
+        "label": "Text transforms",
+        "members": [
+          "t_unaccent",
+          "t_slug",
+          "t_pad",
+          "t_trunc",
+          "d_unaccent",
+          "d_slug",
+          "d_pad",
+          "d_trunc_t"
+        ],
+        "color": "lime",
+        "collapsed": false,
+        "width": 558,
+        "height": 887
+      }
+    },
+    {
+      "id": "grp_positions",
+      "type": "GroupNode",
+      "x": 1713,
+      "y": 14792,
+      "init": {
+        "label": "Positions",
+        "members": [
+          "a_between",
+          "a_which",
+          "a_argsort",
+          "d_which",
+          "d_argsort"
+        ],
+        "color": "gold",
+        "collapsed": false,
+        "width": 762,
+        "height": 448
+      }
+    },
+    {
+      "id": "grp_returns_risk",
+      "type": "GroupNode",
+      "x": 366,
+      "y": 8348,
+      "init": {
+        "label": "Returns & risk",
+        "members": [
+          "src_prices",
+          "ret_log",
+          "ret_dd",
+          "ret_mdd",
+          "ret_simple",
+          "ret_sharpe",
+          "ret_cagr",
+          "d_ret_log",
+          "d_ret_dd",
+          "d_ret_mdd",
+          "d_ret_sharpe",
+          "d_ret_cagr"
+        ],
+        "color": "green",
+        "collapsed": false,
+        "width": 1057,
+        "height": 1035
+      }
+    },
+    {
+      "id": "grp_combine_frames",
+      "type": "GroupNode",
+      "x": 244,
+      "y": -1610,
+      "init": {
+        "label": "Combine frames",
+        "members": [
+          "src_sizes",
+          "src_colors",
+          "src_week",
+          "j_cross",
+          "bind_cols",
+          "d_crossjoin",
+          "d_bind"
+        ],
+        "color": "violet",
+        "collapsed": false,
+        "width": 951,
+        "height": 820
+      }
+    },
+    {
+      "id": "grp_codecs_ids",
+      "type": "GroupNode",
+      "x": 248,
+      "y": 9421,
+      "init": {
+        "label": "Codecs & ids",
+        "members": [
+          "h_sha",
+          "h_md5",
+          "b64e",
+          "b64d",
+          "uuid1",
+          "d_hsha",
+          "d_hmd5",
+          "d_b64",
+          "d_uuid"
+        ],
+        "color": "gray",
+        "collapsed": false,
+        "width": 942,
+        "height": 736
+      }
+    },
+    {
+      "id": "grp_template",
+      "type": "GroupNode",
+      "x": 1713,
+      "y": 8348,
+      "init": {
+        "label": "Template",
+        "members": [
+          "src_names",
+          "tmpl",
+          "d_tmpl"
+        ],
+        "color": "lime",
+        "collapsed": false,
+        "width": 762,
+        "height": 488
+      }
+    },
+    {
+      "id": "grp_smoothing_peaks",
+      "type": "GroupNode",
+      "x": 282,
+      "y": -3208,
+      "init": {
+        "label": "Smoothing & peaks",
+        "members": [
+          "src_noisy",
+          "sm_sg",
+          "sm_lo",
+          "sm_ga",
+          "pk",
+          "d_sm_sg",
+          "d_sm_lo",
+          "d_sm_ga",
+          "d_pk_pos"
+        ],
+        "color": "gold",
+        "collapsed": false,
+        "width": 874,
+        "height": 1560
+      }
+    },
+    {
+      "id": "grp_seasonal_decomposition",
+      "type": "GroupNode",
+      "x": 263,
+      "y": 7505,
+      "init": {
+        "label": "Seasonal decomposition",
+        "members": [
+          "src_season",
+          "decomp",
+          "d_dc_t"
+        ],
+        "color": "blue",
+        "collapsed": false,
+        "width": 912,
+        "height": 420
+      }
+    },
+    {
+      "id": "grp_polynomial_roots",
+      "type": "GroupNode",
+      "x": 338,
+      "y": 14018,
+      "init": {
+        "label": "Polynomial roots",
+        "members": [
+          "src_coef",
+          "src_coef2",
+          "proots",
+          "proots2",
+          "d_proots",
+          "d_proots2"
+        ],
+        "color": "sky",
+        "collapsed": false,
+        "width": 762,
+        "height": 458
+      }
+    },
+    {
+      "id": "grp_multivariate",
+      "type": "GroupNode",
+      "x": 119,
+      "y": 2230,
+      "init": {
+        "label": "Multivariate",
+        "members": [
+          "src_pts",
+          "km",
+          "pca1",
+          "src_study",
+          "logit",
+          "d_km_l",
+          "d_km_c",
+          "d_pca_s",
+          "d_pca_e",
+          "d_logit_c",
+          "d_logit_p"
+        ],
+        "color": "amber",
+        "collapsed": false,
+        "width": 1200,
+        "height": 1516
+      }
+    },
+    {
+      "id": "n_wrap",
+      "type": "WrapTextNode",
+      "x": 1243,
+      "y": 10662,
+      "init": {
+        "label": "Wrap Text"
+      },
+      "stringLiterals": {
+        "text": "the quick brown fox jumps over the lazy dog"
+      },
+      "literals": {
+        "width": 16
+      }
+    },
+    {
+      "id": "d_wrap",
+      "type": "DisplayNode",
+      "x": 1713,
+      "y": 10663,
+      "init": {
+        "label": "Wrapped lines"
+      }
+    },
+    {
+      "id": "n_hist2d",
+      "type": "HistogramNode",
+      "x": 1713,
+      "y": 15278,
+      "init": {
+        "label": "Histogram",
+        "mode": "2d"
+      },
+      "literals": {
+        "bins": 4,
+        "ybins": 4
+      }
+    },
+    {
+      "id": "n_ode",
+      "type": "OdeIntegrateNode",
+      "x": 1183,
+      "y": 7963,
+      "init": {
+        "label": "ODE Integrate"
+      },
+      "stringLiterals": {
+        "formula": "y"
+      },
+      "literals": {
+        "y0": 1,
+        "t0": 0,
+        "t1": 1,
+        "steps": 20
+      }
+    },
+    {
+      "id": "d_ode",
+      "type": "ChartNode",
+      "x": 1713,
+      "y": 8001,
+      "init": {
+        "label": "y(t): dy/dt = y",
+        "op": "line"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "src_a",
+      "sourceOutput": "list",
+      "target": "n_shift",
+      "targetInput": "list"
+    },
+    {
+      "source": "src_a",
+      "sourceOutput": "list",
+      "target": "n_pct",
+      "targetInput": "list"
+    },
+    {
+      "source": "src_a",
+      "sourceOutput": "list",
+      "target": "n_z",
+      "targetInput": "list"
+    },
+    {
+      "source": "src_a",
+      "sourceOutput": "list",
+      "target": "n_bin",
+      "targetInput": "list"
+    },
+    {
+      "source": "src_breaks",
+      "sourceOutput": "list",
+      "target": "n_bin",
+      "targetInput": "breaks"
+    },
+    {
+      "source": "src_va",
+      "sourceOutput": "list",
+      "target": "n_outer",
+      "targetInput": "a"
+    },
+    {
+      "source": "src_vb",
+      "sourceOutput": "list",
+      "target": "n_outer",
+      "targetInput": "b"
+    },
+    {
+      "source": "src_va",
+      "sourceOutput": "list",
+      "target": "n_comb",
+      "targetInput": "list"
+    },
+    {
+      "source": "n_shift",
+      "sourceOutput": "result",
+      "target": "d_shift",
+      "targetInput": "in"
+    },
+    {
+      "source": "n_pct",
+      "sourceOutput": "result",
+      "target": "d_pct",
+      "targetInput": "in"
+    },
+    {
+      "source": "n_z",
+      "sourceOutput": "result",
+      "target": "d_z",
+      "targetInput": "in"
+    },
+    {
+      "source": "n_bin",
+      "sourceOutput": "result",
+      "target": "d_bin",
+      "targetInput": "in"
+    },
+    {
+      "source": "n_comb",
+      "sourceOutput": "result",
+      "target": "d_comb",
+      "targetInput": "in"
+    },
+    {
+      "source": "n_outer",
+      "sourceOutput": "result",
+      "target": "d_outer",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_a",
+      "sourceOutput": "list",
+      "target": "n_ewma",
+      "targetInput": "list"
+    },
+    {
+      "source": "src_va",
+      "sourceOutput": "list",
+      "target": "n_conv",
+      "targetInput": "a"
+    },
+    {
+      "source": "src_vb",
+      "sourceOutput": "list",
+      "target": "n_conv",
+      "targetInput": "b"
+    },
+    {
+      "source": "src_va",
+      "sourceOutput": "list",
+      "target": "n_cross",
+      "targetInput": "a"
+    },
+    {
+      "source": "src_vc",
+      "sourceOutput": "list",
+      "target": "n_cross",
+      "targetInput": "b"
+    },
+    {
+      "source": "src_px",
+      "sourceOutput": "list",
+      "target": "n_poly",
+      "targetInput": "x"
+    },
+    {
+      "source": "src_py",
+      "sourceOutput": "list",
+      "target": "n_poly",
+      "targetInput": "y"
+    },
+    {
+      "source": "src_py",
+      "sourceOutput": "list",
+      "target": "n_trapz",
+      "targetInput": "list"
+    },
+    {
+      "source": "src_rle",
+      "sourceOutput": "list",
+      "target": "n_rle",
+      "targetInput": "list"
+    },
+    {
+      "source": "n_ewma",
+      "sourceOutput": "result",
+      "target": "d_ewma",
+      "targetInput": "in"
+    },
+    {
+      "source": "n_conv",
+      "sourceOutput": "result",
+      "target": "d_conv",
+      "targetInput": "in"
+    },
+    {
+      "source": "n_cross",
+      "sourceOutput": "result",
+      "target": "d_cross",
+      "targetInput": "in"
+    },
+    {
+      "source": "n_poly",
+      "sourceOutput": "result",
+      "target": "d_poly",
+      "targetInput": "in"
+    },
+    {
+      "source": "n_trapz",
+      "sourceOutput": "result",
+      "target": "d_trapz",
+      "targetInput": "in"
+    },
+    {
+      "source": "n_rle",
+      "sourceOutput": "result",
+      "target": "d_rle",
+      "targetInput": "in"
+    },
+    {
+      "source": "n_between",
+      "sourceOutput": "result",
+      "target": "d_between",
+      "targetInput": "in"
+    },
+    {
+      "source": "n_isclose",
+      "sourceOutput": "result",
+      "target": "d_isclose",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_c",
+      "sourceOutput": "list",
+      "target": "agg_ptp",
+      "targetInput": "list"
+    },
+    {
+      "source": "agg_ptp",
+      "sourceOutput": "result",
+      "target": "d_ptp",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_c",
+      "sourceOutput": "list",
+      "target": "agg_iqr",
+      "targetInput": "list"
+    },
+    {
+      "source": "agg_iqr",
+      "sourceOutput": "result",
+      "target": "d_iqr",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_c",
+      "sourceOutput": "list",
+      "target": "agg_mad",
+      "targetInput": "list"
+    },
+    {
+      "source": "agg_mad",
+      "sourceOutput": "result",
+      "target": "d_mad",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_c",
+      "sourceOutput": "list",
+      "target": "agg_sem",
+      "targetInput": "list"
+    },
+    {
+      "source": "agg_sem",
+      "sourceOutput": "result",
+      "target": "d_sem",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_c",
+      "sourceOutput": "list",
+      "target": "agg_cv",
+      "targetInput": "list"
+    },
+    {
+      "source": "agg_cv",
+      "sourceOutput": "result",
+      "target": "d_cv",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_c",
+      "sourceOutput": "list",
+      "target": "agg_rms",
+      "targetInput": "list"
+    },
+    {
+      "source": "agg_rms",
+      "sourceOutput": "result",
+      "target": "d_rms",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_a",
+      "sourceOutput": "list",
+      "target": "cor_spearman",
+      "targetInput": "x"
+    },
+    {
+      "source": "src_rank",
+      "sourceOutput": "list",
+      "target": "cor_spearman",
+      "targetInput": "y"
+    },
+    {
+      "source": "cor_spearman",
+      "sourceOutput": "result",
+      "target": "d_spearman",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_a",
+      "sourceOutput": "list",
+      "target": "cor_kendall",
+      "targetInput": "x"
+    },
+    {
+      "source": "src_rank",
+      "sourceOutput": "list",
+      "target": "cor_kendall",
+      "targetInput": "y"
+    },
+    {
+      "source": "cor_kendall",
+      "sourceOutput": "result",
+      "target": "d_kendall",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_a",
+      "sourceOutput": "list",
+      "target": "bin_q",
+      "targetInput": "list"
+    },
+    {
+      "source": "bin_q",
+      "sourceOutput": "result",
+      "target": "d_binq",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_c",
+      "sourceOutput": "list",
+      "target": "outl",
+      "targetInput": "list"
+    },
+    {
+      "source": "outl",
+      "sourceOutput": "result",
+      "target": "d_outl_flags",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_epoch",
+      "sourceOutput": "value",
+      "target": "ep_from",
+      "targetInput": "value"
+    },
+    {
+      "source": "ep_from",
+      "sourceOutput": "result",
+      "target": "d_epfrom",
+      "targetInput": "in"
+    },
+    {
+      "source": "ep_from",
+      "sourceOutput": "result",
+      "target": "trunc",
+      "targetInput": "date"
+    },
+    {
+      "source": "trunc",
+      "sourceOutput": "result",
+      "target": "d_trunc",
+      "targetInput": "in"
+    },
+    {
+      "source": "ep_from",
+      "sourceOutput": "result",
+      "target": "ep_to",
+      "targetInput": "value"
+    },
+    {
+      "source": "ep_to",
+      "sourceOutput": "result",
+      "target": "d_epto",
+      "targetInput": "in"
+    },
+    {
+      "source": "hav",
+      "sourceOutput": "result",
+      "target": "d_hav",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_frame",
+      "sourceOutput": "frame",
+      "target": "desc",
+      "targetInput": "frame"
+    },
+    {
+      "source": "desc",
+      "sourceOutput": "frame",
+      "target": "d_desc",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_frame",
+      "sourceOutput": "frame",
+      "target": "corrm",
+      "targetInput": "frame"
+    },
+    {
+      "source": "corrm",
+      "sourceOutput": "frame",
+      "target": "d_corrm",
+      "targetInput": "in"
+    },
+    {
+      "source": "amort",
+      "sourceOutput": "frame",
+      "target": "d_amort",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_g1",
+      "sourceOutput": "list",
+      "target": "ht_mannwhitney",
+      "targetInput": "a"
+    },
+    {
+      "source": "src_g2",
+      "sourceOutput": "list",
+      "target": "ht_mannwhitney",
+      "targetInput": "b"
+    },
+    {
+      "source": "ht_mannwhitney",
+      "sourceOutput": "result",
+      "target": "d_mannwhitney",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_g1",
+      "sourceOutput": "list",
+      "target": "ht_wilcoxon",
+      "targetInput": "a"
+    },
+    {
+      "source": "src_g2",
+      "sourceOutput": "list",
+      "target": "ht_wilcoxon",
+      "targetInput": "b"
+    },
+    {
+      "source": "ht_wilcoxon",
+      "sourceOutput": "result",
+      "target": "d_wilcoxon",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_g1",
+      "sourceOutput": "list",
+      "target": "ht_ks",
+      "targetInput": "a"
+    },
+    {
+      "source": "src_g2",
+      "sourceOutput": "list",
+      "target": "ht_ks",
+      "targetInput": "b"
+    },
+    {
+      "source": "ht_ks",
+      "sourceOutput": "result",
+      "target": "d_ks",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_groups",
+      "sourceOutput": "table",
+      "target": "ht_anova",
+      "targetInput": "groups"
+    },
+    {
+      "source": "ht_anova",
+      "sourceOutput": "result",
+      "target": "d_anova",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_groups",
+      "sourceOutput": "table",
+      "target": "ht_kruskal",
+      "targetInput": "groups"
+    },
+    {
+      "source": "ht_kruskal",
+      "sourceOutput": "result",
+      "target": "d_kruskal",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_2x2",
+      "sourceOutput": "table",
+      "target": "ht_fisher",
+      "targetInput": "table"
+    },
+    {
+      "source": "ht_fisher",
+      "sourceOutput": "result",
+      "target": "d_fisher",
+      "targetInput": "in"
+    },
+    {
+      "source": "ht_prop",
+      "sourceOutput": "result",
+      "target": "d_prop",
+      "targetInput": "in"
+    },
+    {
+      "source": "ht_binom",
+      "sourceOutput": "result",
+      "target": "d_binom",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_A",
+      "sourceOutput": "table",
+      "target": "md_trace",
+      "targetInput": "matrix"
+    },
+    {
+      "source": "md_trace",
+      "sourceOutput": "result",
+      "target": "d_trace",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_A",
+      "sourceOutput": "table",
+      "target": "md_rank",
+      "targetInput": "matrix"
+    },
+    {
+      "source": "md_rank",
+      "sourceOutput": "result",
+      "target": "d_rank",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_A",
+      "sourceOutput": "table",
+      "target": "md_norm",
+      "targetInput": "matrix"
+    },
+    {
+      "source": "md_norm",
+      "sourceOutput": "result",
+      "target": "d_norm",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_A",
+      "sourceOutput": "table",
+      "target": "solve",
+      "targetInput": "matrix"
+    },
+    {
+      "source": "src_b",
+      "sourceOutput": "list",
+      "target": "solve",
+      "targetInput": "b"
+    },
+    {
+      "source": "solve",
+      "sourceOutput": "result",
+      "target": "d_solve",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_A",
+      "sourceOutput": "table",
+      "target": "eigen",
+      "targetInput": "matrix"
+    },
+    {
+      "source": "eigen",
+      "sourceOutput": "values",
+      "target": "d_eigv",
+      "targetInput": "in"
+    },
+    {
+      "source": "eigen",
+      "sourceOutput": "vectors",
+      "target": "d_eigvec",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_sig",
+      "sourceOutput": "list",
+      "target": "spec",
+      "targetInput": "list"
+    },
+    {
+      "source": "spec",
+      "sourceOutput": "result",
+      "target": "d_spec",
+      "targetInput": "in"
+    },
+    {
+      "source": "sim",
+      "sourceOutput": "result",
+      "target": "d_sim",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_typos",
+      "sourceOutput": "list",
+      "target": "fuzzy",
+      "targetInput": "needle"
+    },
+    {
+      "source": "src_cities",
+      "sourceOutput": "list",
+      "target": "fuzzy",
+      "targetInput": "candidates"
+    },
+    {
+      "source": "fuzzy",
+      "sourceOutput": "match",
+      "target": "d_fuzzy_m",
+      "targetInput": "in"
+    },
+    {
+      "source": "fuzzy",
+      "sourceOutput": "score",
+      "target": "d_fuzzy_s",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_series",
+      "sourceOutput": "list",
+      "target": "ets",
+      "targetInput": "values"
+    },
+    {
+      "source": "ets",
+      "sourceOutput": "forecast",
+      "target": "d_ets_f",
+      "targetInput": "in"
+    },
+    {
+      "source": "ets",
+      "sourceOutput": "detected",
+      "target": "d_ets_s",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_win",
+      "sourceOutput": "frame",
+      "target": "win_cumsum",
+      "targetInput": "frame"
+    },
+    {
+      "source": "src_win_keys",
+      "sourceOutput": "list",
+      "target": "win_cumsum",
+      "targetInput": "keys"
+    },
+    {
+      "source": "win_cumsum",
+      "sourceOutput": "frame",
+      "target": "d_win_cumsum",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_win",
+      "sourceOutput": "frame",
+      "target": "win_share",
+      "targetInput": "frame"
+    },
+    {
+      "source": "src_win_keys",
+      "sourceOutput": "list",
+      "target": "win_share",
+      "targetInput": "keys"
+    },
+    {
+      "source": "win_share",
+      "sourceOutput": "frame",
+      "target": "d_win_share",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_win",
+      "sourceOutput": "frame",
+      "target": "win_rank",
+      "targetInput": "frame"
+    },
+    {
+      "source": "src_win_keys",
+      "sourceOutput": "list",
+      "target": "win_rank",
+      "targetInput": "keys"
+    },
+    {
+      "source": "win_rank",
+      "sourceOutput": "frame",
+      "target": "d_win_rank",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_gamma",
+      "sourceOutput": "list",
+      "target": "fitd",
+      "targetInput": "list"
+    },
+    {
+      "source": "fitd",
+      "sourceOutput": "ranking",
+      "target": "d_fit_rank",
+      "targetInput": "in"
+    },
+    {
+      "source": "fitd",
+      "sourceOutput": "best",
+      "target": "d_fit_best",
+      "targetInput": "in"
+    },
+    {
+      "source": "fitd",
+      "sourceOutput": "params",
+      "target": "d_fit_params",
+      "targetInput": "in"
+    },
+    {
+      "source": "dsample",
+      "sourceOutput": "result",
+      "target": "d_dsample",
+      "targetInput": "in"
+    },
+    {
+      "source": "dsample",
+      "sourceOutput": "result",
+      "target": "fit2",
+      "targetInput": "list"
+    },
+    {
+      "source": "fit2",
+      "sourceOutput": "best",
+      "target": "d_fit2",
+      "targetInput": "in"
+    },
+    {
+      "source": "t_unaccent",
+      "sourceOutput": "result",
+      "target": "d_unaccent",
+      "targetInput": "in"
+    },
+    {
+      "source": "t_slug",
+      "sourceOutput": "result",
+      "target": "d_slug",
+      "targetInput": "in"
+    },
+    {
+      "source": "t_pad",
+      "sourceOutput": "result",
+      "target": "d_pad",
+      "targetInput": "in"
+    },
+    {
+      "source": "t_trunc",
+      "sourceOutput": "result",
+      "target": "d_trunc_t",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_a",
+      "sourceOutput": "list",
+      "target": "a_argsort",
+      "targetInput": "list"
+    },
+    {
+      "source": "a_argsort",
+      "sourceOutput": "result",
+      "target": "d_argsort",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_a",
+      "sourceOutput": "list",
+      "target": "a_between",
+      "targetInput": "value"
+    },
+    {
+      "source": "a_between",
+      "sourceOutput": "result",
+      "target": "a_which",
+      "targetInput": "list"
+    },
+    {
+      "source": "a_which",
+      "sourceOutput": "result",
+      "target": "d_which",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_prices",
+      "sourceOutput": "list",
+      "target": "ret_log",
+      "targetInput": "list"
+    },
+    {
+      "source": "ret_log",
+      "sourceOutput": "result",
+      "target": "d_ret_log",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_prices",
+      "sourceOutput": "list",
+      "target": "ret_dd",
+      "targetInput": "list"
+    },
+    {
+      "source": "ret_dd",
+      "sourceOutput": "result",
+      "target": "d_ret_dd",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_prices",
+      "sourceOutput": "list",
+      "target": "ret_mdd",
+      "targetInput": "list"
+    },
+    {
+      "source": "ret_mdd",
+      "sourceOutput": "result",
+      "target": "d_ret_mdd",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_prices",
+      "sourceOutput": "list",
+      "target": "ret_simple",
+      "targetInput": "list"
+    },
+    {
+      "source": "ret_simple",
+      "sourceOutput": "result",
+      "target": "ret_sharpe",
+      "targetInput": "list"
+    },
+    {
+      "source": "ret_sharpe",
+      "sourceOutput": "result",
+      "target": "d_ret_sharpe",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_prices",
+      "sourceOutput": "list",
+      "target": "ret_cagr",
+      "targetInput": "list"
+    },
+    {
+      "source": "ret_cagr",
+      "sourceOutput": "result",
+      "target": "d_ret_cagr",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_sizes",
+      "sourceOutput": "frame",
+      "target": "j_cross",
+      "targetInput": "left"
+    },
+    {
+      "source": "src_colors",
+      "sourceOutput": "frame",
+      "target": "j_cross",
+      "targetInput": "right"
+    },
+    {
+      "source": "j_cross",
+      "sourceOutput": "frame",
+      "target": "d_crossjoin",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_week",
+      "sourceOutput": "frame",
+      "target": "bind_cols",
+      "targetInput": "f0"
+    },
+    {
+      "source": "src_sizes",
+      "sourceOutput": "frame",
+      "target": "bind_cols",
+      "targetInput": "f1"
+    },
+    {
+      "source": "bind_cols",
+      "sourceOutput": "frame",
+      "target": "d_bind",
+      "targetInput": "in"
+    },
+    {
+      "source": "h_sha",
+      "sourceOutput": "result",
+      "target": "d_hsha",
+      "targetInput": "in"
+    },
+    {
+      "source": "h_md5",
+      "sourceOutput": "result",
+      "target": "d_hmd5",
+      "targetInput": "in"
+    },
+    {
+      "source": "b64e",
+      "sourceOutput": "result",
+      "target": "b64d",
+      "targetInput": "text"
+    },
+    {
+      "source": "b64d",
+      "sourceOutput": "result",
+      "target": "d_b64",
+      "targetInput": "in"
+    },
+    {
+      "source": "uuid1",
+      "sourceOutput": "result",
+      "target": "d_uuid",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_names",
+      "sourceOutput": "list",
+      "target": "tmpl",
+      "targetInput": "name"
+    },
+    {
+      "source": "src_prices",
+      "sourceOutput": "list",
+      "target": "tmpl",
+      "targetInput": "total"
+    },
+    {
+      "source": "tmpl",
+      "sourceOutput": "result",
+      "target": "d_tmpl",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_noisy",
+      "sourceOutput": "list",
+      "target": "sm_sg",
+      "targetInput": "list"
+    },
+    {
+      "source": "sm_sg",
+      "sourceOutput": "result",
+      "target": "d_sm_sg",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_noisy",
+      "sourceOutput": "list",
+      "target": "sm_lo",
+      "targetInput": "list"
+    },
+    {
+      "source": "sm_lo",
+      "sourceOutput": "result",
+      "target": "d_sm_lo",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_noisy",
+      "sourceOutput": "list",
+      "target": "sm_ga",
+      "targetInput": "list"
+    },
+    {
+      "source": "sm_ga",
+      "sourceOutput": "result",
+      "target": "d_sm_ga",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_noisy",
+      "sourceOutput": "list",
+      "target": "pk",
+      "targetInput": "list"
+    },
+    {
+      "source": "pk",
+      "sourceOutput": "result",
+      "target": "d_pk_pos",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_season",
+      "sourceOutput": "list",
+      "target": "decomp",
+      "targetInput": "values"
+    },
+    {
+      "source": "decomp",
+      "sourceOutput": "decomposition",
+      "target": "d_dc_t",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_coef",
+      "sourceOutput": "list",
+      "target": "proots",
+      "targetInput": "coeffs"
+    },
+    {
+      "source": "proots",
+      "sourceOutput": "real",
+      "target": "d_proots",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_coef2",
+      "sourceOutput": "list",
+      "target": "proots2",
+      "targetInput": "coeffs"
+    },
+    {
+      "source": "proots2",
+      "sourceOutput": "roots",
+      "target": "d_proots2",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_pts",
+      "sourceOutput": "frame",
+      "target": "km",
+      "targetInput": "frame"
+    },
+    {
+      "source": "km",
+      "sourceOutput": "labels",
+      "target": "d_km_l",
+      "targetInput": "in"
+    },
+    {
+      "source": "km",
+      "sourceOutput": "centers",
+      "target": "d_km_c",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_pts",
+      "sourceOutput": "frame",
+      "target": "pca1",
+      "targetInput": "frame"
+    },
+    {
+      "source": "pca1",
+      "sourceOutput": "scores",
+      "target": "d_pca_s",
+      "targetInput": "in"
+    },
+    {
+      "source": "pca1",
+      "sourceOutput": "explained",
+      "target": "d_pca_e",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_study",
+      "sourceOutput": "frame",
+      "target": "logit",
+      "targetInput": "frame"
+    },
+    {
+      "source": "logit",
+      "sourceOutput": "coefficients",
+      "target": "d_logit_c",
+      "targetInput": "in"
+    },
+    {
+      "source": "logit",
+      "sourceOutput": "probabilities",
+      "target": "d_logit_p",
+      "targetInput": "in"
+    },
+    {
+      "source": "n_wrap",
+      "sourceOutput": "result",
+      "target": "d_wrap",
+      "targetInput": "in"
+    },
+    {
+      "source": "src_va",
+      "sourceOutput": "list",
+      "target": "n_hist2d",
+      "targetInput": "values"
+    },
+    {
+      "source": "src_vb",
+      "sourceOutput": "list",
+      "target": "n_hist2d",
+      "targetInput": "y"
+    },
+    {
+      "source": "n_ode",
+      "sourceOutput": "solution",
+      "target": "d_ode",
+      "targetInput": "values"
+    }
+  ]
 }

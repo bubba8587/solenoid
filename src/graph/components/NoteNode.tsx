@@ -9,6 +9,7 @@ import { SwatchGrid } from "./SwatchGrid";
 import { SocketDot, type SocketGlyph } from "./SocketLegend";
 import { NodeSocket } from "./NodeSocket";
 import { useDismissOnOutside } from "./useDismissOnOutside";
+import { useKnapRender } from "./useKnapRender";
 import { useEditableLabel } from "./inlineInput";
 // getActiveEditor/getActiveView, NOT getEditor/getView: a Note inside a composite
 // drill-in must prune/reconcile/refresh on its OWN graph.
@@ -23,11 +24,14 @@ import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { parseNoteFrontmatter, toggleTaskMarker, type FrontmatterFieldType, type FrontmatterValue } from "../noteFrontmatter";
+import { isFrameValue, isCubeValue, type FrameValue, type CubeValue } from "../frame";
 import type { NodeProps, Emit } from "./nodeKit";
 import type { ClassicPreset } from "rete";
 import { stopDragStart } from "../coarse";
 import "./Markdown.css";
 import "./NoteNode.css";
+
+type FieldValue = FrontmatterValue | FrameValue | CubeValue;
 
 // Grouped by dimensionality — the override picker offers the four element families at
 // the field's CURRENT dimension; glyphs reuse the Socket Legend vocabulary.
@@ -36,15 +40,26 @@ const LIST_FIELD_TYPES: FrontmatterFieldType[] = ["list", "strlist", "datelist",
 const FIELD_TYPE_LABEL: Record<FrontmatterFieldType, string> = {
   number: "Number", string: "Text", date: "Date", logical: "Boolean",
   list: "Number list", strlist: "Text list", datelist: "Date list", logicallist: "Boolean list",
+  frame: "Frame", cube: "Cube",
 };
 const isListFieldType = (t: FrontmatterFieldType) => LIST_FIELD_TYPES.includes(t);
 
 function glyphFor(t: FrontmatterFieldType): SocketGlyph {
-  return { kind: isListFieldType(t) ? "square" : "circle", color: SOCKET_COLORS[t] };
+  return { kind: isListFieldType(t) || t === "frame" || t === "cube" ? "square" : "circle", color: SOCKET_COLORS[t] };
 }
 
 /** A short, human-readable preview of a field's value for the row. */
-function previewValue(value: FrontmatterValue, t: FrontmatterFieldType): string {
+function previewValue(value: FieldValue, t: FrontmatterFieldType): string {
+  if (t === "frame") {
+    if (!isFrameValue(value)) return "table";
+    const rows = value.columns[0]?.values.length ?? 0;
+    return `⊞ ${rows}×${value.columns.length}`;
+  }
+  if (t === "cube") {
+    if (!isCubeValue(value)) return "cube";
+    const rows = value.columns[0]?.cells.length ?? 0;
+    return `⧈ ${rows}×${value.columns.length}`;
+  }
   const one = (v: number | string | boolean | null): string => {
     if (v === null) return "null";
     if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
@@ -52,10 +67,10 @@ function previewValue(value: FrontmatterValue, t: FrontmatterFieldType): string 
     return String(v);
   };
   if (Array.isArray(value)) {
-    const shown = value.slice(0, 4).map(one);
+    const shown = value.slice(0, 4).map((e) => one(e as number | string | boolean | null));
     return `[${shown.join(", ")}${value.length > 4 ? ", …" : ""}]`;
   }
-  return one(value);
+  return one(value as number | string | boolean | null);
 }
 
 // The body edit gets its OWN undo entry, pushed AFTER the cable removals: syncFields
@@ -75,7 +90,8 @@ const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
  *  fires no click. Strip `disabled` from the checkbox inputs — the only `<input>`
  *  marked emits — so the read view's boxes are tickable. Runs on already-sanitized
  *  HTML (post-DOMPurify), so it only ever sees marked's own markup. */
-function enableTaskCheckboxes(html: string): string {
+function enableTaskCheckboxes(html: string, live: boolean): string {
+  if (!live) return html; // a Knap-rendered body's boxes map onto no source line
   return html.replace(/<input\b[^>]*\btype="checkbox"[^>]*>/g, (tag) =>
     tag.replace(/\s+disabled(="[^"]*")?/g, ""),
   );
@@ -95,7 +111,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   const title = useEditableLabel(data);
   // Bumped whenever the frontmatter fields change (body commit / type override)
   // to re-render the strip + markdown off the node's freshly-synced derived state.
-  const [, setFieldsVersion] = useState(0);
+  const [fieldsVersion, setFieldsVersion] = useState(0);
   const swatchRef = useRef<HTMLButtonElement>(null);
   const paletteRef = useRef<HTMLDivElement>(null);
   useDismissOnOutside(pickerOpen, () => setPickerOpen(false), [swatchRef, paletteRef]);
@@ -176,12 +192,18 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
 
   // Derived LIVE from `body`, not `data.renderBody` — the RENDER is deliberately
   // decoupled from the blur-driven socket-commit cycle, which would go stale.
-  const renderBody = useMemo(() => parseNoteFrontmatter(body).body, [body]);
+  // The template reads the fields last committed (blur), so the preview follows the
+  // YAML edits one commit behind, like the sockets do.
+  const templateVars = useMemo(() => data.templateVariables(), [data, fieldsVersion]);
+  // keepUnknown: a Note has no inputs, so a tag naming no frontmatter field stays
+  // literal on the card (a template note reads as a template), never rendered empty.
+  const { text: rendered, errors: templateErrors } = useKnapRender(body, templateVars, 0, null, true);
+  const renderBody = useMemo(() => parseNoteFrontmatter(rendered).body, [rendered]);
   // NOT trusted content — a body arrives in shared .solenoid files and marked does no
   // sanitizing, so sanitize EVERY render (the CSP is only the second layer).
   const bodyHtml = useMemo(
-    () => enableTaskCheckboxes(DOMPurify.sanitize(marked.parse(renderBody || "", { async: false, gfm: true, breaks: true }) as string)),
-    [renderBody],
+    () => enableTaskCheckboxes(DOMPurify.sanitize(marked.parse(renderBody || "", { async: false, gfm: true, breaks: true }) as string), rendered === body),
+    [renderBody, rendered, body],
   );
   // The read body's task-list checkboxes index into it in document order (= source
   // order, since a nested item's box still comes after its parent's).
@@ -323,9 +345,11 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
               onPointerDown={stop}
               onMouseDown={stop}
             />
+          ) : templateErrors ? (
+            <pre className="solenoid-note__rendered solenoid-note__template-error" onClick={startEdit} onPointerDown={stopDragStart} onMouseDown={stopDragStart}>{templateErrors}</pre>
           ) : renderBody.trim() ? (
-            // Plain markdown — a Note is output-only, so a `` `=name` `` span stays
-            // literal inline code (no ref swap). bodyHtml is already sanitized.
+            // Plain markdown — a Note is output-only: its template reads its own
+            // fields, and no ref span is swapped. bodyHtml is already sanitized.
             <div
               ref={renderedRef}
               className="solenoid-note__rendered sol-md nowheel"
@@ -368,7 +392,7 @@ export function FieldRow({
   emit: Emit;
   fieldKey: string;
   type: FrontmatterFieldType;
-  value: FrontmatterValue;
+  value: FieldValue;
   socket: ClassicPreset.Socket;
   onPickType: (t: FrontmatterFieldType) => void;
 }) {
@@ -377,7 +401,9 @@ export function FieldRow({
   const popRef = useRef<HTMLDivElement>(null);
   useDismissOnOutside(open, () => setOpen(false), [btnRef, popRef]);
   // Offer the four element families at this field's current dimensionality — its
-  // value already fixed scalar vs list; the override only swaps the element type.
+  // value already fixed scalar vs list; the override only swaps the element type. A
+  // frame field has no element-type to swap, so its glyph is inert (no picker).
+  const canRetype = type !== "frame" && type !== "cube";
   const options = isListFieldType(type) ? LIST_FIELD_TYPES : SCALAR_FIELD_TYPES;
 
   // An FC fed by this field formats the box BEHIND it — this row — so render its locked
@@ -395,8 +421,8 @@ export function FieldRow({
         ref={btnRef}
         type="button"
         className="solenoid-note__field-glyph"
-        title={`${FIELD_TYPE_LABEL[type]}. Change the type.`}
-        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+        title={canRetype ? `${FIELD_TYPE_LABEL[type]}. Change the type.` : FIELD_TYPE_LABEL[type]}
+        onClick={(e) => { e.stopPropagation(); if (canRetype) setOpen((o) => !o); }}
         onPointerDown={stop}
         onMouseDown={stop}
       >
@@ -404,7 +430,7 @@ export function FieldRow({
       </button>
       <span className="solenoid-note__field-key" title={fieldKey}>{fieldKey}</span>
       <span className="solenoid-note__field-val" title={preview}>{preview}</span>
-      {open && (
+      {open && canRetype && (
         <div ref={popRef} className="solenoid-note__field-picker" onPointerDown={stop} onMouseDown={stop}>
           {options.map((opt) => (
             <button

@@ -12,6 +12,7 @@ import { nodeAccent } from "./nodes/kind";
 import { appThemeStore } from "./appTheme";
 import { parseColor, mixSrgb, type RGBA } from "./cssColor";
 import { cableAngleStore } from "./cableAngleStore";
+import { socketFlipStore } from "./socketFlipStore";
 import { pickTextColor } from "./hicColors";
 import { SOCKET_COLORS } from "./sockets";
 import { socketGlyphKind, COMBO_PAIRS, type GlyphKind } from "./hicSocketGlyph";
@@ -70,6 +71,9 @@ export interface SnapCable {
   sx: number; sy: number; ex: number; ey: number;
   sourceAngleDeg: number | null;
   targetAngleDeg: number | null;
+  /** The endpoint's node is flipped: its socket sits on the opposite edge. */
+  sourceFlipped: boolean;
+  targetFlipped: boolean;
   color: number; // source socket's data-type color (0xRRGGBB) — matches the DOM cable hue
 }
 export interface SnapGroup {
@@ -440,8 +444,11 @@ export function snapshotGraph(editor: NodeEditor<Schemes> | null, view: View | n
         if (!key || (sideAttr !== "input" && sideAttr !== "output")) continue;
         // React Flow anchors an edge at the HANDLE box's outer edge (right for a source,
         // left for a target), not its center; measure the handle so the routed ends match.
+        // A flipped node's handles sit on the mirrored edge (FlowSocketHandle), so the
+        // anchor follows the VISUAL side, not the semantic one.
         const r = (se.querySelector<HTMLElement>(".react-flow__handle") ?? se).getBoundingClientRect();
-        const cx = sideAttr === "output" ? r.right : r.left, cy = r.top + r.height / 2;
+        const onRight = (sideAttr === "output") !== socketFlipStore.get(node.id);
+        const cx = onRight ? r.right : r.left, cy = r.top + r.height / 2;
         const dataType = (sideAttr === "input" ? inputs[key]?.socket : outputs[key]?.socket)?.dataType;
         const kind = socketGlyphKind(dataType);
         let color = resolveSockColor(dataType), color2: number | null = null;
@@ -504,6 +511,8 @@ export function snapshotGraph(editor: NodeEditor<Schemes> | null, view: View | n
         sx: src.x, sy: src.y, ex: tgt.x, ey: tgt.y,
         sourceAngleDeg: cableAngleStore.get(conn.source, conn.sourceOutput),
         targetAngleDeg: cableAngleStore.get(conn.target, conn.targetInput),
+        sourceFlipped: socketFlipStore.get(conn.source),
+        targetFlipped: socketFlipStore.get(conn.target),
         color: src.color,
       });
     }

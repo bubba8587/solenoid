@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
-  frontmatterToYaml, yamlScalar, frameToMarkdownTable, mermaidToMarkdown, mathToMarkdown, valueToObsidianBlock,
-  assembleDocumentMarkdown,
+  frontmatterToYaml, yamlScalar, frameToMarkdownTable, mermaidToMarkdown, mathToMarkdown, lambdaToMarkdown,
+  valueToObsidianBlock, assembleDocumentMarkdown,
 } from "../../src/graph/obsidianMarkdown";
+import { type LambdaValue } from "../../src/graph/lambdaValue";
 import { buildFrame } from "../../src/graph/frame";
 import { type MermaidValue } from "../../src/graph/mermaidValue";
 import { makeDocument } from "../../src/graph/documentValue";
@@ -75,6 +76,25 @@ describe("mermaid / math", () => {
   });
   it("math → a $$ display block", () => {
     expect(mathToMarkdown("E = mc^2")).toBe("$$\nE = mc^2\n$$");
+  });
+});
+
+describe("lambdaToMarkdown", () => {
+  const lam = (init: Partial<LambdaValue>): LambdaValue => ({ __lambda: true, params: ["t"], expr: "", fn: () => 0, ...init });
+  it("a lambda → $$ display math in the Report's f(params) = body form", () => {
+    const md = lambdaToMarkdown(lam({ expr: "base * (1 + growth) ^ t" }));
+    expect(md.startsWith("$$\nf(t) = ")).toBe(true);
+    expect(md.endsWith("\n$$")).toBe(true);
+    expect(md).not.toContain("[object Object]");
+  });
+  it("descriptions follow as a plain where-legend; an unparsable body falls back to code", () => {
+    const md = lambdaToMarkdown(lam({ expr: "base * t", descriptions: { t: "months ahead", base: "latest run-rate" } }));
+    expect(md).toContain("\n\nwhere\n- *t* — months ahead\n- *base* — latest run-rate");
+    expect(lambdaToMarkdown(lam({ expr: "((" }))).toBe("`λ(t) = ((`");
+    expect(lambdaToMarkdown(lam({ params: ["x", "y"] }))).toBe("`λ(x, y)`");
+  });
+  it("dispatches through valueToObsidianBlock as markdown (never String(value))", () => {
+    expect(valueToObsidianBlock(lam({ expr: "t + 1" }))).toEqual({ kind: "md", md: lambdaToMarkdown(lam({ expr: "t + 1" })) });
   });
 });
 

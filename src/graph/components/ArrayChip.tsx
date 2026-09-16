@@ -1,30 +1,15 @@
-import { tablePopup, type Cell, type TablePopupState } from "../tablePopupStore";
+import { type Cell, type TablePopupState } from "../tablePopupStore";
 import { useHostNodeId } from "./nodeContext";
 import { readChipPopupStyle } from "./chipStyle";
-import { isSolError } from "../errorValue";
-import { isCx } from "../cxValue";
-import { matrixUnitOf, isUnitCell } from "../unitValue";
+import { openArrayPopup, isArrayValue, is2D, elemFamilyOfCells, type ElemFamily } from "../valuePopup";
 import "./ArrayChip.css";
 import { stopDragStart } from "../coarse";
 
+// The popup openers and value classification live beside the popup store (valuePopup.ts);
+// re-exported here so the chip's long-standing consumers keep their import path.
+export { isArrayValue, type ElemFamily };
+
 type ArrayValue = Cell[] | Cell[][];
-
-function is2D(v: ArrayValue): v is Cell[][] {
-  return Array.isArray(v[0]);
-}
-function to2D(v: ArrayValue): Cell[][] {
-  // A list is orientation-less; a single ROW matches the result box and CSV line.
-  return is2D(v) ? v : [v as Cell[]];
-}
-// The declared socket FAMILY decides this when known; the fallback reads the FIRST
-// cell only, so a leading `null` misreads a text list as numeric.
-function cellTypeOf(v: ArrayValue, family?: ElemFamily): "number" | "string" | "date" | "logical" {
-  if (family) return family === "complex" ? "string" : family; // Cx cells arrive pre-stringified
-  const first = is2D(v) ? (v[0] as Cell[])[0] : (v as Cell[])[0];
-  return typeof first === "string" ? "string" : typeof first === "boolean" ? "logical" : "number";
-}
-
-export type ElemFamily = "number" | "string" | "date" | "logical" | "complex";
 
 /** Mirrors the `--elem-*` classes in ArrayChip.css; `undefined` (a genuine wildcard)
  *  falls back to the plain list/table color. */
@@ -37,26 +22,6 @@ export function arrayAccentFor(family: ElemFamily | undefined, twoD: boolean): s
     case "complex": return `var(--sock-complex${suffix})`;
     default:        return twoD ? "var(--sock-table)" : "var(--sock-list)";
   }
-}
-
-/** Only answers for a HOMOGENEOUS container; mixed/unknown → undefined, since a chip
- *  must not guess (dates are indistinguishable from numbers by value). */
-function elemFamilyOfCells(v: ArrayValue): ElemFamily | undefined {
-  let fam: ElemFamily | undefined;
-  for (const cell of (is2D(v) ? (v as Cell[][]).flat() : (v as Cell[]))) {
-    if (cell === null || cell === undefined || isSolError(cell)) continue; // blanks/errors don't vote
-    const f: ElemFamily | undefined =
-      typeof cell === "number" ? "number"
-      : typeof cell === "string" ? "string"
-      : typeof cell === "boolean" ? "logical"
-      : isCx(cell) ? "complex"
-      : isUnitCell(cell) ? "number" // a united number is still numeric
-      : undefined;
-    if (!f) return undefined;
-    if (fam && fam !== f) return undefined; // mixed — no tint
-    fam = f;
-  }
-  return fam;
 }
 
 /** A clickable chip that opens the full grid in the table popup; `label` titles it. */
@@ -94,8 +59,6 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
     ? ` solenoid-array-chip--elem-${family}${table ? "-table" : ""}`
     : "";
 
-  // A homogeneous numeric matrix carries ONE unit for the whole grid (unitGranularity).
-  const matUnit = table ? matrixUnitOf(value) : undefined;
   const chipLabel = table ? `${rows}×${cols} Table` : "List";
   const verb = onSave ? "Edit" : "View";
   const titleText = table ? `${rows}×${cols} table. ${verb}.` : `${rows}-item list. ${verb}.`;
@@ -108,21 +71,9 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
       onClick={(e) => {
         e.stopPropagation();
         const st = readChipPopupStyle(e.currentTarget, "--sock-list");
-        tablePopup.open({
-          title: label || (table ? "Table" : "List"),
-          data: to2D(value),
-          cellType: cellTypeOf(value, family),
-          list: !table,
-          // A homogeneous matrix gets ONE format+unit pair; the popup renders it only
-          // when the grid isn't editable.
-          formatControls: table && cellTypeOf(value, family) === "number" ? "matrix" : undefined,
-          columnUnits: matUnit ? [matUnit] : undefined,
-          accent: accent || st.accent,
-          groupColor: st.groupColor,
-          groupColorDark: st.groupColorDark,
-          pinNodeId: hostId ?? undefined,
-          onSave,
-          ...popupOverrides,
+        openArrayPopup(value, {
+          label, hostId, elem: family, onSave, popupOverrides,
+          accent: accent || st.accent, groupColor: st.groupColor, groupColorDark: st.groupColorDark,
         });
       }}
       onPointerDown={stopDragStart}
@@ -131,9 +82,4 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
       [{chipLabel}]
     </button>
   );
-}
-
-/** True for any value the ArrayChip handles (a non-empty list or table). */
-export function isArrayValue(v: unknown): v is ArrayValue {
-  return Array.isArray(v) && v.length > 0;
 }

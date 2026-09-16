@@ -1,3 +1,4 @@
+// dte:C66
 import { ClassicPreset } from "rete";
 import { trueAnyIn, resultOut, readInput } from "./shared";
 import { isSolError, solError, type SolError } from "../errorValue";

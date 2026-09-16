@@ -1,3 +1,4 @@
+// dte:C24
 // `SolError` is a tagged plain object, not a class: it survives structuredClone and
 // avoids cross-module instanceof pitfalls. The code set is more specific than Excel's
 // seven, tracking SQLSTATE class 22 and OpenFormula Err:5xx:
@@ -96,6 +97,8 @@ export function isNaError(v: unknown): v is SolError {
 }
 
 function fromThrown(e: unknown): SolError {
+  // A verb that throws a SolError (a missing column, a bad shape) is reporting, not crashing.
+  if (isSolError(e)) return e;
   // A ShapeError is a genuine dimension mismatch, not an internal bug; matched by
   // name so this foundational module stays decoupled from the coercion layer.
   if (e instanceof Error && e.name === "ShapeError") {

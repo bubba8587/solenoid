@@ -3,7 +3,7 @@ import { IS_MOBILE } from "../coarse";
 import { commentStore, commentAuthorStore, commentsPanelUi, type Comment } from "../commentStore";
 import { registerChrome } from "../chromeToggle";
 import { flyToNodeAndFlash } from "../flyToNode";
-import { getEditor } from "../process";
+import { getOwningEditor } from "../activeGraph";
 import { nodeDisplayName } from "../catalogUtils";
 import "./commentsPanel.css";
 import { CloseIcon } from "./CloseIcon";
@@ -83,9 +83,8 @@ export function CommentsPanel() {
   }, [collapsed, all.length, composeFor]);
   if (all.length === 0 && !composeFor) return null;
 
-  const editor = getEditor();
   const nodeLabel = (nodeId: string) => {
-    const node = editor?.getNode(nodeId);
+    const node = getOwningEditor(nodeId)?.getNode(nodeId); // a drill-in node's id is its own graph's
     return node ? nodeDisplayName(node) : "(deleted node)";
   };
 

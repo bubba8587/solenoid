@@ -1,9 +1,11 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { MermaidNode as MermaidNodeType } from "../rete-nodes";
 import { LazySelect } from "./LazySelect";
 import { NodeShell, type NodeProps } from "./nodeKit";
+import { collapseStore } from "../collapseStore";
+import { DiagramChip } from "./DiagramChip";
 import { NodeSocket } from "./NodeSocket";
-import { useConnectedInputs } from "./inlineInput";
+import { useConnectedInputs, InlineInputs } from "./inlineInput";
 import { MermaidView } from "./MermaidView";
 import { processGraph } from "../process";
 import { FieldResizeGrip } from "./FieldResizeGrip";
@@ -23,6 +25,7 @@ const MERMAID_TEMPLATES: ReadonlyArray<{ label: string; source: string }> = [
 
 export function MermaidComponent({ data, emit }: NodeProps<MermaidNodeType>) {
   const connected = useConnectedInputs(data.id);
+  const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(data.id));
   const sourceWired = connected.has("source");
   const source = sourceWired ? data.cachedSource : (data.stringLiterals.source ?? "");
 
@@ -57,8 +60,7 @@ export function MermaidComponent({ data, emit }: NodeProps<MermaidNodeType>) {
     <NodeShell
       node={data}
       emit={emit}
-      collapsible={false}
-      leading={sourcePort && top !== undefined
+      leading={!collapsed && sourcePort && top !== undefined
         ? <NodeSocket side="input" socketKey="source" nodeId={data.id} emit={emit} payload={sourcePort.socket} top={top} />
         : null}
     >
@@ -96,6 +98,12 @@ export function MermaidComponent({ data, emit }: NodeProps<MermaidNodeType>) {
       </div>
       <div className="solenoid-node__section-divider" />
       <MermaidView source={source} className="solenoid-mermaid--card" />
+      {/* Collapsed: the leading socket is gone, so the pill's input dot comes from the
+          collapsed InlineInputs (the Chart card's pattern), and the Diagram chip sits beside it. */}
+      {collapsed && <InlineInputs node={data} emit={emit} keys={["source"]} />}
+      <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip">
+        <DiagramChip value={{ __mermaid: true, source, title: data.label }} pinNodeId={data.id} />
+      </div>
     </NodeShell>
   );
 }

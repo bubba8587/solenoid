@@ -4,12 +4,14 @@ Shared scratchpad for when several agents work this repo in parallel. Dormant in
 
 **Protocol.** Agents message each other directly for live coordination; this board is only the durable claim list (one line per claim, delete on land) so a late-joining or restarted agent knows what's taken. Agent 1 is Lead. The durable role split, shared-file policy, and commit/push rules live in the agent's memory.
 
-**Sessions (ListAgents names): A1 = solenoid-f9; peers solenoid-c7 / solenoid-ca (A2/A3 self-identify below). Message directly via SendMessage; the board is the durable record only.**
+**Session 2026-09-13 (author present; wrapped).** A1 = Lead = `solenoid-0f`; `solenoid-41` = Agent 2 (`be`), `solenoid-b3` = Agent 3 (`fe`). Everything ruled that day merged into `develop`; be / fe level and clean at close. Same protocol as 09-12 below.
 
-**Standing order (author, 2026-08-25): every agent runs a session cron `*/10 * * * *` → `/continue` (CronCreate on your first sync; A1 has cc889131).**
+**Session 2026-09-12.** A1 = Lead = `solenoid-9d` (main checkout, `develop`). Peers: `solenoid-35` = Agent 2 in `.claude/worktrees/be` (branch `be`), `solenoid-0d` = Agent 3 in `.claude/worktrees/fe` (branch `fe`); each merges `develop` in at start, commits freely there, messages the Lead a hash when green; the Lead merges into `develop`. Nobody pushes. Lead runs a half-hourly cron check-in.
+
+**Test lock (one `tsc` / `vitest` run at a time — a second run crashes the author's machine).** The lock is the file `.dev/test-lock` in the MAIN checkout (worktrees have their own copy of this doc, so a line here signals nobody). Before running either: read it; if it says `free`, write your session name; run; write `free` back. If it names someone else, do something else and retry — never run alongside the holder.
+
+(The repo-local `/continue` command was deleted 2026-09-01 by the author — it duplicated a generic. Board sync is by reading this file.)
 
 ## Claims
 
-(none — session 2026-08-25b closed by the author; develop clean, unpushed)
 
-**Awaiting the author's eyeball from this session:** Set card (8d77cf7f: 8-op merge, result-socket-driven accent) — the three finance merges (discount securities, ACCRINT/ACCRINTM, BondPrice/OddCoupon; specs in git 68bf5679) stay HELD on that verdict; the anydata hollow-square glyph + Socket Legend row; the catalog description sweep (8d5c8f74); Merge Plots figure + expand button; Vite 8 (desktop `tauri build` ride-along result per A3's last message).

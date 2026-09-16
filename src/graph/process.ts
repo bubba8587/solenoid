@@ -1,3 +1,4 @@
+// dte:B10,D30,D31
 // The app's recompute: the MAIN editor/engine/view refs, the rebuild guard, and
 // processGraph — the model pass (graphCompute.ts) plus what the view needs around
 // it (targeted re-render, cable values, perf, the compute overlay, calc mode).
@@ -36,6 +37,10 @@ export function getView() {
 
 export function getEditor() {
   return _editor;
+}
+
+export function getEngine() {
+  return _engine;
 }
 
 // "Graph is being rebuilt wholesale" guard: behaviors meant only for live user creation

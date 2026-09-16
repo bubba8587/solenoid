@@ -27,3 +27,10 @@ describe("zoom snap", () => {
     expect(Math.round(MAX_ZOOM / ZOOM_SNAP) * ZOOM_SNAP).toBeCloseTo(MAX_ZOOM, 10);
   });
 });
+
+describe("boundZoom on a non-finite input", () => {
+  it("never returns NaN (a zero-distance pinch must not write a NaN camera)", () => {
+    expect(boundZoom(NaN)).toBe(MIN_ZOOM);
+    expect(boundZoom(Infinity)).toBe(MAX_ZOOM);
+  });
+});

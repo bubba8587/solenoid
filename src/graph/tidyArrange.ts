@@ -9,7 +9,10 @@ import { ConduitNode, FormatControllerNode, GroupNode } from "./rete-nodes";
 import { autofitGroupBox, GROUP_PAD, GROUP_HEADER } from "./groupLogic";
 import { measuredBox } from "./nodeSize";
 import { nodeSizeStore } from "./nodeSizeStore";
-import { pushForGrownGroups } from "./groupPush";
+import { pushForGrownGroups, translateEntityBy } from "./groupPush";
+import { separateOverlaps, PUSH_GAP, type PushBox } from "./groupPushCore";
+import { socketFlipStore } from "./socketFlipStore";
+import { collapseStore } from "./collapseStore";
 import { standoffStore, standoffClusters, settleStandoffs } from "./standoffs";
 import { rebuildGroupMembership } from "./groupMembership";
 import { syncGroupCollapse, settleCollapse } from "./groupCollapse";
@@ -98,6 +101,18 @@ export const ELK_ROOT_OPTIONS = {
   "elk.edgeRouting": "POLYLINE",
 } as const;
 
+/** Within-layer ordering lever, added ONLY when the layout holds a flipped node.
+ *  `elkTidyLayout` emits flipped nodes LAST in the children array; forcing model order
+ *  through crossing minimization then sorts them to the trailing edge of their layer
+ *  (BELOW under RIGHT), so a flipped node lands down-and-left of its neighbor instead of
+ *  up-and-left. ELK wants `considerModelOrder.strategy` set alongside the force flag —
+ *  the flag assumes model order already survived into crossing minimization.
+ *  With no flipped node these options are absent, so ordinary layouts are unchanged. */
+export const FLIPPED_MODEL_ORDER_OPTIONS = {
+  "elk.layered.considerModelOrder.strategy": "NODES_AND_EDGES",
+  "elk.layered.crossingMinimization.forceNodeModelOrder": "true",
+} as const;
+
 /** The ELK layout options for the three Tidy knobs, read at layout time by BOTH call
  *  sites (main canvas + composite drill-in). `elk.algorithm`/`hierarchyHandling`/
  *  `edgeRouting` come from `ELK_ROOT_OPTIONS`; this only sets what
@@ -148,6 +163,8 @@ export function makeEnsureElk(isDestroyed: () => boolean): () => Promise<Elk | n
       elk = new ELK() as unknown as Elk;
       return elk;
     })();
+    // A failed fetch must not stick: clear the cached promise so the next Tidy retries.
+    loading.catch(() => { loading = null; });
     return loading;
   };
 }
@@ -170,7 +187,14 @@ export async function elkTidyLayout(
   const portId = (id: string, key: string, side: string) => [id, key, side].join("_");
   const byIndex = (rec: Record<string, { index?: number } | undefined>) =>
     Object.entries(rec).sort((a, b) => (a[1]?.index ?? 0) - (b[1]?.index ?? 0));
-  const children = args.nodes.map((n) => {
+  // Flipped nodes go LAST so ELK's forced model order drops them to the trailing edge
+  // of their layer; the order is otherwise untouched (see FLIPPED_MODEL_ORDER_OPTIONS).
+  const isFlipped = (n: Schemes["Node"]) => socketFlipStore.get(n.id);
+  const anyFlipped = args.nodes.some(isFlipped);
+  const ordered = anyFlipped
+    ? [...args.nodes.filter((n) => !isFlipped(n)), ...args.nodes.filter(isFlipped)]
+    : args.nodes;
+  const children = ordered.map((n) => {
     const node = n as unknown as {
       id: string; width: number; height: number;
       inputs?: Record<string, { index?: number } | undefined>;
@@ -202,7 +226,11 @@ export async function elkTidyLayout(
   }));
   const result = await elk.layout({
     id: "root",
-    layoutOptions: { ...ELK_ROOT_OPTIONS, ...args.options },
+    layoutOptions: {
+      ...ELK_ROOT_OPTIONS,
+      ...args.options,
+      ...(anyFlipped ? FLIPPED_MODEL_ORDER_OPTIONS : {}),
+    },
     children,
     edges,
   });
@@ -276,8 +304,13 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
     // Global tidy keeps GROUPS as rigid units and excludes their members;
     // within-group tidy keeps exactly that group's members.
     const memberIds = new Set(memberOf.keys());
+    // A position-locked group (and its members) sits out global tidy entirely — it
+    // stays exactly where the user pinned it. Within-group tidy is that group's own
+    // Tidy button, which still arranges its members.
     const layoutTargets = tidyNodes.filter(
-      (n) => !dockedFcIds.has(n.id) && (withinGroup ? true : !memberIds.has(n.id)),
+      (n) =>
+        !dockedFcIds.has(n.id) &&
+        (withinGroup ? true : !memberIds.has(n.id) && !(n instanceof GroupNode && n.lockedPosition)),
     );
 
     // Standoff clusters lay out as ONE rigid block: collapse each fully-loose
@@ -359,6 +392,20 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       const s = elkId(c.source);
       const t = elkId(c.target);
       if (s === t || !elkVisible.has(s) || !elkVisible.has(t)) return [];
+      // A flipped node reads from its right and emits to its left, so for the layout
+      // it "acts as a predecessor" — its neighbor should sit one layer the other way.
+      // Reverse the ELK edge direction when either end is flipped, and drop the ports
+      // (node-level edge) so the mirrored side never fights the symmetric port preset.
+      // (Grouped members remap to their group, which is never flipped — so this reads
+      // the ELK-visible id, not the raw endpoint.)
+      const flipEdge = socketFlipStore.get(s) || socketFlipStore.get(t);
+      if (flipEdge) {
+        return [{
+          ...c,
+          source: t, sourceOutput: "",
+          target: s, targetInput: "",
+        } as unknown as Schemes["Connection"]];
+      }
       return [{
         ...c,
         source: s, sourceOutput: s !== c.source ? "" : c.sourceOutput,
@@ -423,7 +470,19 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       // The Conduit declares all its lanes up front; expose only the in-use ports
       // so ELK doesn't treat it as a tall multi-port node.
       const isBundler = n instanceof ConduitNode;
-      if (!fp && !isBundler) return n;
+      if (!fp && !isBundler) {
+        // A plain card reserves its MEASURED box (a collapsed card, a card whose
+        // constructor height went stale), declared size only before first paint.
+        const b = measuredBox(view, n.id, editor);
+        if (!b || (b.w === n.width && b.h === n.height)) return n;
+        return new Proxy(n, {
+          get(target, prop) {
+            if (prop === "width") return b.w;
+            if (prop === "height") return b.h;
+            return Reflect.get(target, prop);
+          },
+        });
+      }
       let filteredInputs:  Record<string, unknown> | undefined;
       let filteredOutputs: Record<string, unknown> | undefined;
       if (isBundler) {
@@ -574,6 +633,32 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       }
     }
 
+    // Position-locked groups sat OUT of the layout (fixed), so the fresh arrangement
+    // can land on top of one. Treat each as a pinned obstacle and separate any node
+    // that overlaps it (monotonic +x/+y, so it terminates and — once clear — stays a
+    // fixed point on re-run). A pushed group carries its members. Global tidy only:
+    // a within-group tidy never touches external groups.
+    if (!withinGroup) {
+      const lockedBoxes: PushBox[] = [];
+      for (const n of editor.getNodes()) {
+        if (n instanceof GroupNode && n.lockedPosition) {
+          const b = measuredBox(view, n.id, editor);
+          if (b) lockedBoxes.push({ id: n.id, x: b.x, y: b.y, w: b.w, h: b.h });
+        }
+      }
+      if (lockedBoxes.length > 0) {
+        const freeBoxes: PushBox[] = [];
+        for (const n of layoutTargets) {
+          const b = measuredBox(view, n.id, editor);
+          if (b) freeBoxes.push({ id: n.id, x: b.x, y: b.y, w: b.w, h: b.h });
+        }
+        const pinned = new Set(lockedBoxes.map((b) => b.id));
+        const disp = separateOverlaps([...lockedBoxes, ...freeBoxes], undefined, PUSH_GAP, pinned);
+        // translateEntityBy tows a pushed group's members AND a pushed host's docked FCs.
+        for (const [id, d] of disp) translateEntityBy(editor, view, id, d.dx, d.dy);
+      }
+    }
+
     // Drop the inline height/width the applier stamped, re-applying a manually-sized
     // width from nodeSizeStore (React won't re-diff what the imperative pin wrote).
     // ONLY `.solenoid-node` roots — every other root sets its inline size from React's
@@ -582,7 +667,10 @@ export function makeArrangeFn(deps: TidyDeps): ArrangeFn {
       const card = view.nodeElement(n.id)?.querySelector<HTMLElement>("*:not(span):not([fragment])");
       if (!card || !card.classList.contains("solenoid-node")) continue;
       card.style.removeProperty("height");
-      const manual = nodeSizeStore.get(n.id);
+      // A collapsed card owns its own (compact) width — re-stamping the manual
+      // expanded width here stretched a collapsed, resized node (NodeCard drops the
+      // manual size while collapsed for the same reason).
+      const manual = collapseStore.get(n.id) ? undefined : nodeSizeStore.get(n.id);
       if (manual) card.style.width = `${Math.round(manual.w)}px`;
       else card.style.removeProperty("width");
     }
@@ -674,8 +762,9 @@ export function makeCleanupFn(
 
     const nextFrame = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
 
-    // 1. Tidy every group's members.
-    const groups = groupsNow();
+    // 1. Tidy every group's members. Locked groups are left untouched: no member
+    //    tidy, no autofit, no collapse below — they stay exactly as pinned.
+    const groups = groupsNow().filter((g) => !g.lockedPosition);
     for (const g of groups) await arrangeFn({ groupId: g.id, skipPush: true });
     // Two frames (rAF fire, then translate guard) so the within-group tidy's deferred
     // FC snap-backs land — else autofit pads the box around stale far-right FC spots.
@@ -683,7 +772,7 @@ export function makeCleanupFn(
     for (const g of groups) await autofitGroupBox(editor, view, g);
 
     // 2. Collapse every still-expanded group.
-    const toCollapse = groupsNow().filter((g) => !g.collapsed);
+    const toCollapse = groupsNow().filter((g) => !g.collapsed && !g.lockedPosition);
     if (toCollapse.length) {
       for (const g of toCollapse) g.collapsed = true;
       syncGroupCollapse(editor, view);

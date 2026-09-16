@@ -1,0 +1,360 @@
+// ganttSvg(payload, opts) → a standalone SVG string. This is the headless export (the popup's
+// "copy as SVG", the webpage export, a Report snapshot). It draws the tree grid AND the
+// timeline so the file stands alone. Colors are passed in (an SVG cannot read CSS variables);
+// omitted, a light-legible default is used so text is never invisible.
+
+import type { GanttPayload } from "./payload";
+import type { GanttColors, GridColumn } from "./frame";
+import { DEFAULT_COLORS } from "./frame";
+import { layoutGantt, TIER_HEIGHT } from "./layout";
+import { layoutCalendar } from "./calendar";
+import { RESOURCE_RAMP } from "./histogram";
+import { civilFromSerial, MONTH_NAMES } from "./serial";
+import { formatCell } from "./cell";
+
+export interface GanttSvgOptions {
+  width: number;
+  height?: number;
+  colors?: Partial<GanttColors>;
+  /** Grid pane width in px; default: the sum of the columns' widths. */
+  gridWidth?: number;
+  rowHeight?: number;
+  fontFamily?: string;
+}
+
+const MONO = "ui-monospace, SFMono-Regular, Menlo, monospace";
+
+export function ganttSvg(payload: GanttPayload, opts: GanttSvgOptions): string {
+  const colors: GanttColors = { ...DEFAULT_COLORS, ...(opts.colors ?? {}) };
+  if (payload.view.layout === "calendar") return calendarSvg(payload, opts, colors);
+  const columns = payload.view.columns ?? ["name", "start", "finish", "duration"];
+  const gridCols = colsFor(columns);
+  const gridWidth = opts.gridWidth ?? gridCols.reduce((s, c) => s + c.width, 0);
+
+  const timelineWidth = Math.max(120, opts.width - gridWidth);
+  const frame = layoutGantt(payload, { width: timelineWidth, rowHeight: opts.rowHeight });
+  const headerH = frame.headerHeight;
+  const bodyH = frame.contentHeight;
+  const histoH = frame.histogram?.height ?? 0;
+  const totalH = headerH + bodyH + histoH;
+  const font = opts.fontFamily ?? "system-ui, sans-serif";
+
+  const parts: string[] = [];
+  parts.push(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${opts.width}" height="${totalH}" ` +
+      `viewBox="0 0 ${opts.width} ${totalH}" font-family="${esc(font)}" font-size="12">`,
+  );
+  parts.push(`<rect width="${opts.width}" height="${totalH}" fill="${colors.surface}"/>`);
+  parts.push(
+    `<defs><pattern id="gantt-crit-hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">` +
+      `<line x1="0" y1="0" x2="0" y2="5" stroke="rgba(0,0,0,0.32)" stroke-width="1.2"/></pattern></defs>`,
+  );
+
+  // ── Timeline group, offset right of the grid pane ──
+  parts.push(`<g transform="translate(${gridWidth},0)">`);
+
+  // Non-working shading (behind everything), full body height.
+  for (const s of frame.shading) {
+    const fill = s.kind === "holiday" ? colors.holiday : colors.weekend;
+    parts.push(`<rect x="${r(s.x)}" y="${headerH}" width="${r(s.w)}" height="${r(bodyH)}" fill="${fill}"/>`);
+  }
+  // Vertical grid lines.
+  for (const x of frame.gridColumns) {
+    parts.push(`<line x1="${r(x)}" y1="${headerH}" x2="${r(x)}" y2="${r(totalH)}" stroke="${colors.gridLine}" stroke-width="1"/>`);
+  }
+  // Header tiers.
+  let ty = 0;
+  for (const tier of frame.scale.tiers) {
+    for (const c of tier.cells) {
+      parts.push(`<rect x="${r(c.x)}" y="${ty}" width="${r(c.w)}" height="${TIER_HEIGHT}" fill="none" stroke="${colors.border}" stroke-width="1"/>`);
+      if (c.w > 8) {
+        parts.push(
+          `<text x="${r(c.x + 4)}" y="${ty + TIER_HEIGHT / 2 + 4}" fill="${colors.textDim}" font-size="11">${esc(clip(c.label, c.w))}</text>`,
+        );
+      }
+    }
+    ty += TIER_HEIGHT;
+  }
+  parts.push(`<line x1="0" y1="${headerH}" x2="${r((frame.scale.to - frame.scale.from) * frame.scale.pxPerDay)}" y2="${headerH}" stroke="${colors.borderStrong}" stroke-width="1"/>`);
+
+  // Row baselines (faint).
+  for (const row of frame.rows) {
+    parts.push(`<line x1="0" y1="${r(headerH + row.y + row.h)}" x2="${r((frame.scale.to - frame.scale.from) * frame.scale.pxPerDay)}" y2="${r(headerH + row.y + row.h)}" stroke="${colors.gridLine}" stroke-width="1"/>`);
+  }
+
+  // Baseline ghosts (under the bars).
+  for (const bar of frame.bars) {
+    if (!bar.baseline) continue;
+    parts.push(
+      `<rect x="${r(bar.baseline.x)}" y="${r(headerH + bar.y + bar.h)}" width="${r(bar.baseline.w)}" height="3" rx="1" fill="${colors.baseline}"/>`,
+    );
+  }
+
+  // Bars / diamonds / brackets.
+  for (const bar of frame.bars) {
+    const y = headerH + bar.y;
+    if (bar.kind === "milestone") {
+      const cx = bar.x + bar.w / 2;
+      const cy = y + bar.h / 2;
+      const rr = bar.w / 2;
+      const fill = bar.critical ? colors.critical : colors.milestone;
+      parts.push(`<path d="M${r(cx)} ${r(cy - rr)} L${r(cx + rr)} ${r(cy)} L${r(cx)} ${r(cy + rr)} L${r(cx - rr)} ${r(cy)} Z" fill="${fill}" stroke="${strokeFor(bar, colors)}" stroke-width="${bar.violated ? 1.5 : 0}"/>`);
+    } else if (bar.kind === "summary") {
+      const fill = bar.critical ? colors.critical : colors.summary;
+      // A bracket: a bar with downward end-caps.
+      parts.push(`<path d="${bracketPath(bar.x, y, bar.w, bar.h)}" fill="${fill}"/>`);
+    } else {
+      const fill = bar.color ?? (bar.critical ? colors.critical : colors.bar);
+      const prog = bar.critical ? colors.criticalProgress : colors.barProgress;
+      const segs = bar.segments ?? [{ x: bar.x, w: bar.w }];
+      // Dotted connectors across a split bar's gaps.
+      if (bar.segments) {
+        for (let s = 0; s < bar.segments.length - 1; s++) {
+          const a = bar.segments[s], b = bar.segments[s + 1];
+          parts.push(`<line x1="${r(a.x + a.w)}" y1="${r(y + bar.h / 2)}" x2="${r(b.x)}" y2="${r(y + bar.h / 2)}" stroke="${colors.textDim}" stroke-width="1" stroke-dasharray="2 2"/>`);
+        }
+      }
+      for (const seg of segs) {
+        parts.push(`<rect x="${r(seg.x)}" y="${r(y)}" width="${r(seg.w)}" height="${r(bar.h)}" rx="2" fill="${fill}" opacity="${bar.color ? 1 : 0.85}"/>`);
+        if (bar.critical && !bar.color) {
+          // Non-color cue for the critical path (WCAG 1.4.1): a hatch texture + darker outline.
+          parts.push(`<rect x="${r(seg.x)}" y="${r(y)}" width="${r(seg.w)}" height="${r(bar.h)}" rx="2" fill="url(#gantt-crit-hatch)"/>`);
+          parts.push(`<rect x="${r(seg.x)}" y="${r(y)}" width="${r(seg.w)}" height="${r(bar.h)}" rx="2" fill="none" stroke="${darken(colors.critical, 0.45)}" stroke-width="1"/>`);
+        }
+        if (bar.violated || bar.late) {
+          parts.push(`<rect x="${r(seg.x)}" y="${r(y)}" width="${r(seg.w)}" height="${r(bar.h)}" rx="2" fill="none" stroke="${colors.violated}" stroke-width="1.5" stroke-dasharray="${bar.violated ? "3 2" : "0"}"/>`);
+        }
+      }
+      if (bar.progressW > 0 && !bar.segments) {
+        parts.push(`<rect x="${r(bar.x)}" y="${r(y)}" width="${r(bar.progressW)}" height="${r(bar.h)}" rx="2" fill="${prog}"/>`);
+      }
+    }
+    if (bar.deadlineX != null) {
+      const dc = bar.late ? colors.violated : colors.textDim;
+      const top = y - 2, dh = bar.h + 4, dx = bar.deadlineX;
+      parts.push(`<line x1="${r(dx)}" y1="${r(top)}" x2="${r(dx)}" y2="${r(top + dh)}" stroke="${dc}" stroke-width="1"/>`);
+      parts.push(`<path d="M${r(dx)} ${r(top)} L${r(dx + 6)} ${r(top + 3)} L${r(dx)} ${r(top + 6)} Z" fill="${dc}"/>`);
+    }
+    if (payload.tasks[bar.taskIndex]?.manual) {
+      // Pushpin at the bar start: a manually pinned task, its own cue.
+      parts.push(`<line x1="${r(bar.x)}" y1="${r(y - 6)}" x2="${r(bar.x)}" y2="${r(y + 1)}" stroke="${colors.text}" stroke-width="1"/>`);
+      parts.push(`<circle cx="${r(bar.x)}" cy="${r(y - 6)}" r="2.6" fill="${colors.text}" stroke="${colors.surface}" stroke-width="0.75"/>`);
+    }
+    if (bar.label) {
+      const lx = bar.label.anchor === "end" ? bar.x - 4 : bar.x + bar.w + 4;
+      parts.push(`<text x="${r(lx)}" y="${r(y + bar.h / 2 + 4)}" fill="${colors.text}" font-size="11" text-anchor="${bar.label.anchor}" paint-order="stroke" stroke="${colors.surface}" stroke-width="3" stroke-linejoin="round">${esc(bar.label.text)}</text>`);
+    }
+  }
+
+  // Dependency links.
+  for (const link of frame.links) {
+    const d = link.points.map((p, i) => `${i === 0 ? "M" : "L"}${r(p.x)} ${r(headerH + p.y)}`).join(" ");
+    const stroke = link.violated ? colors.violated : link.critical ? colors.critical : colors.link;
+    const dash = link.violated ? ` stroke-dasharray="4 3"` : "";
+    parts.push(`<path d="${d}" fill="none" stroke="${stroke}" stroke-width="1.3"${dash}/>`);
+    parts.push(arrowHead(link.arrow.x, headerH + link.arrow.y, link.arrow.dir, stroke));
+  }
+
+  // Today / status lines.
+  if (frame.todayX != null) {
+    parts.push(`<line x1="${r(frame.todayX)}" y1="${headerH}" x2="${r(frame.todayX)}" y2="${r(totalH)}" stroke="${colors.today}" stroke-width="1.5"/>`);
+  }
+  if (frame.statusX != null) {
+    parts.push(`<line x1="${r(frame.statusX)}" y1="${headerH}" x2="${r(frame.statusX)}" y2="${r(totalH)}" stroke="${colors.status}" stroke-width="1.5" stroke-dasharray="2 2"/>`);
+  }
+
+  // ── Resource histogram band, under the rows ──
+  if (frame.histogram) {
+    const h = frame.histogram;
+    const bandY = headerH + bodyH;
+    const timelineW = (frame.scale.to - frame.scale.from) * frame.scale.pxPerDay;
+    parts.push(`<line x1="0" y1="${r(bandY)}" x2="${r(timelineW)}" y2="${r(bandY)}" stroke="${colors.borderStrong}" stroke-width="1"/>`);
+    // Legend.
+    let lx = 4;
+    for (const lg of h.legend) {
+      const col = RESOURCE_RAMP[lg.resourceIndex % RESOURCE_RAMP.length];
+      parts.push(`<rect x="${r(lx)}" y="${r(bandY + 5)}" width="9" height="9" rx="2" fill="${col}"/>`);
+      parts.push(`<text x="${r(lx + 12)}" y="${r(bandY + 13)}" fill="${colors.textDim}" font-size="11">${esc(clip(lg.label, 90))}</text>`);
+      lx += 18 + Math.min(90, lg.label.length * 6);
+    }
+    // Columns.
+    for (const seg of h.segments) {
+      const col = seg.over ? colors.violated : RESOURCE_RAMP[seg.resourceIndex % RESOURCE_RAMP.length];
+      parts.push(`<rect x="${r(seg.x)}" y="${r(bandY + seg.y)}" width="${r(Math.max(seg.w - 0.5, 0.5))}" height="${r(seg.h)}" fill="${col}"/>`);
+      if (seg.over) parts.push(`<rect x="${r(seg.x)}" y="${r(bandY + seg.y)}" width="${r(Math.max(seg.w - 0.5, 0.5))}" height="${r(seg.h)}" fill="url(#gantt-crit-hatch)"/>`);
+    }
+    // Capacity line at 1 unit.
+    parts.push(`<line x1="0" y1="${r(bandY + h.capacityY)}" x2="${r(timelineW)}" y2="${r(bandY + h.capacityY)}" stroke="${colors.textDim}" stroke-width="1" stroke-dasharray="3 2"/>`);
+  }
+
+  parts.push(`</g>`); // end timeline
+
+  // ── Grid pane (left) ──
+  parts.push(gridPane(payload, frame.rows, gridCols, gridWidth, headerH, colors));
+
+  // Divider between panes.
+  parts.push(`<line x1="${gridWidth}" y1="0" x2="${gridWidth}" y2="${r(totalH)}" stroke="${colors.borderStrong}" stroke-width="1"/>`);
+
+  parts.push(`</svg>`);
+  return parts.join("");
+}
+
+/** The calendar month-grid serializer (§ 6.3). Same payload as the Gantt, drawn as months. */
+function calendarSvg(payload: GanttPayload, opts: GanttSvgOptions, colors: GanttColors): string {
+  const frame = layoutCalendar(payload, { width: opts.width });
+  const totalH = frame.height;
+  const font = opts.fontFamily ?? "system-ui, sans-serif";
+  const cellW = opts.width / 7;
+  const parts: string[] = [];
+  parts.push(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${opts.width}" height="${totalH}" ` +
+      `viewBox="0 0 ${opts.width} ${totalH}" font-family="${esc(font)}" font-size="12">`,
+  );
+  parts.push(`<rect width="${opts.width}" height="${totalH}" fill="${colors.surface}"/>`);
+
+  for (const m of frame.months) {
+    // Title.
+    parts.push(`<text x="4" y="${r(m.y + 16)}" fill="${colors.text}" font-size="13" font-weight="600">${esc(m.label)}</text>`);
+    // Weekday header.
+    const wdY = m.y + m.headerH;
+    for (let c = 0; c < 7; c++) {
+      parts.push(`<text x="${r(c * cellW + 4)}" y="${r(wdY + 13)}" fill="${colors.textDim}" font-size="10">${esc(frame.weekdayLabels[c])}</text>`);
+    }
+    // Cells.
+    for (const cell of m.cells) {
+      if (cell.weekend || cell.holiday) {
+        parts.push(`<rect x="${r(cell.x)}" y="${r(cell.y)}" width="${r(cell.w)}" height="${r(cell.h)}" fill="${cell.holiday ? colors.holiday : colors.weekend}"/>`);
+      }
+      parts.push(`<rect x="${r(cell.x)}" y="${r(cell.y)}" width="${r(cell.w)}" height="${r(cell.h)}" fill="none" stroke="${colors.gridLine}" stroke-width="1"/>`);
+      if (cell.today) {
+        parts.push(`<rect x="${r(cell.x + 1)}" y="${r(cell.y + 1)}" width="${r(cell.w - 2)}" height="${r(cell.h - 2)}" fill="none" stroke="${colors.today}" stroke-width="1.5"/>`);
+      }
+      parts.push(`<text x="${r(cell.x + 4)}" y="${r(cell.y + 12)}" fill="${cell.inMonth ? colors.text : colors.textDim}" font-size="10" opacity="${cell.inMonth ? 1 : 0.5}">${cell.day}</text>`);
+    }
+    // Chips.
+    for (const ch of m.chips) {
+      const fill = ch.color ?? (ch.critical ? colors.critical : colors.bar);
+      parts.push(`<rect x="${r(ch.x)}" y="${r(ch.y)}" width="${r(ch.w)}" height="${r(ch.h)}" rx="2" fill="${fill}" opacity="${ch.color ? 1 : 0.85}"/>`);
+      if (ch.critical && !ch.color) parts.push(`<rect x="${r(ch.x)}" y="${r(ch.y)}" width="${r(ch.w)}" height="${r(ch.h)}" rx="2" fill="url(#gantt-crit-hatch)"/>`);
+      if (ch.violated || ch.late) parts.push(`<rect x="${r(ch.x)}" y="${r(ch.y)}" width="${r(ch.w)}" height="${r(ch.h)}" rx="2" fill="none" stroke="${colors.violated}" stroke-width="1.2" stroke-dasharray="${ch.violated ? "3 2" : "0"}"/>`);
+      if (ch.w > 24) parts.push(`<text x="${r(ch.x + 4)}" y="${r(ch.y + ch.h - 3)}" fill="${colors.text}" font-size="10">${esc(clip(ch.label, ch.w - 6))}</text>`);
+    }
+    // Milestones.
+    for (const ms of m.milestones) {
+      const fill = ms.critical ? colors.critical : colors.milestone;
+      parts.push(`<circle cx="${r(ms.cx)}" cy="${r(ms.cy)}" r="3.2" fill="${fill}"/>`);
+    }
+    // Overflow markers.
+    for (const o of m.overflow) {
+      parts.push(`<text x="${r(o.x)}" y="${r(o.y)}" fill="${colors.textDim}" font-size="9">+${o.count}</text>`);
+    }
+  }
+
+  // Reuse the critical hatch pattern for the calendar too.
+  parts.splice(1, 0, `<defs><pattern id="gantt-crit-hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="rgba(0,0,0,0.32)" stroke-width="1.2"/></pattern></defs>`);
+  parts.push(`</svg>`);
+  return parts.join("");
+}
+
+function gridPane(
+  payload: GanttPayload,
+  rows: ReturnType<typeof layoutGantt>["rows"],
+  cols: GridColumn[],
+  gridWidth: number,
+  headerH: number,
+  colors: GanttColors,
+): string {
+  const parts: string[] = [];
+  // Column headers on the bottom tier row.
+  let x = 0;
+  for (const c of cols) {
+    parts.push(`<text x="${r(c.align === "right" ? x + c.width - 6 : x + 6)}" y="${headerH - 6}" fill="${colors.textDim}" font-size="11" text-anchor="${c.align === "right" ? "end" : "start"}">${esc(c.label)}</text>`);
+    x += c.width;
+  }
+  parts.push(`<line x1="0" y1="${headerH}" x2="${gridWidth}" y2="${headerH}" stroke="${colors.borderStrong}" stroke-width="1"/>`);
+
+  for (const row of rows) {
+    const yMid = headerH + row.y + row.h / 2 + 4;
+    if (row.section) {
+      parts.push(`<rect x="0" y="${r(headerH + row.y)}" width="${gridWidth}" height="${r(row.h)}" fill="${colors.gridLine}"/>`);
+      parts.push(`<text x="8" y="${r(yMid)}" fill="${colors.text}" font-size="11" font-weight="600">${esc(row.id.replace(/^__section:/, ""))}</text>`);
+      continue;
+    }
+    const t = row.taskIndex >= 0 ? payload.tasks[row.taskIndex] : undefined;
+    if (!t) continue;
+    let cx = 0;
+    for (const c of cols) {
+      const val = formatCell(c.key, t, payload);
+      const indent = c.key === "name" ? row.level * 16 + 6 : 6;
+      const tx = c.align === "right" ? cx + c.width - 6 : cx + indent;
+      const weight = c.key === "name" && t.summary ? ' font-weight="600"' : "";
+      const fam = c.align === "right" ? ` font-family="${MONO}"` : "";
+      parts.push(`<text x="${r(tx)}" y="${r(yMid)}" fill="${colors.text}" font-size="12" text-anchor="${c.align === "right" ? "end" : "start"}"${weight}${fam}>${esc(clip(val, c.width - indent - 6, 12))}</text>`);
+      cx += c.width;
+    }
+  }
+  return parts.join("");
+}
+
+function bracketPath(x: number, y: number, w: number, h: number): string {
+  // A thin top rail with triangular legs dropping the full height at each end.
+  const rail = 3;
+  const legW = Math.min(8, w / 2);
+  return (
+    `M${r(x)} ${r(y)} L${r(x + w)} ${r(y)} L${r(x + w)} ${r(y + h)} L${r(x + w - legW)} ${r(y + rail)} ` +
+    `L${r(x + legW)} ${r(y + rail)} L${r(x)} ${r(y + h)} Z`
+  );
+}
+
+function arrowHead(x: number, y: number, dir: "left" | "right", fill: string): string {
+  const s = 4;
+  const dx = dir === "right" ? -s : s;
+  return `<path d="M${r(x)} ${r(y)} L${r(x + dx)} ${r(y - s)} L${r(x + dx)} ${r(y + s)} Z" fill="${fill}"/>`;
+}
+
+function strokeFor(bar: { violated: boolean }, colors: GanttColors): string {
+  return bar.violated ? colors.violated : "none";
+}
+
+function colsFor(keys: GanttPayload["view"]["columns"] & {}): GridColumn[] {
+  const table: Record<string, GridColumn> = {
+    name: { key: "name", label: "Task", width: 190, align: "left" },
+    start: { key: "start", label: "Start", width: 86, align: "left" },
+    finish: { key: "finish", label: "Finish", width: 86, align: "left" },
+    duration: { key: "duration", label: "Days", width: 50, align: "right" },
+    float: { key: "float", label: "Float", width: 50, align: "right" },
+    complete: { key: "complete", label: "%", width: 42, align: "right" },
+    predecessors: { key: "predecessors", label: "Predecessors", width: 150, align: "left" },
+  };
+  const out: GridColumn[] = [];
+  for (const k of keys ?? ["name", "start", "finish", "duration"]) {
+    if (table[k] && !out.some((c) => c.key === k)) out.push({ ...table[k] });
+  }
+  if (!out.some((c) => c.key === "name")) out.unshift({ ...table.name });
+  return out;
+}
+
+// Rounding + escaping helpers.
+function r(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+/** Scale a #rrggbb toward black by `factor` (0.45 → 45% of the original). Non-hex passes through. */
+function darken(hex: string, factor: number): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  const ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => Math.round(c * factor));
+  return `#${ch.map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+}
+function esc(s: string): string {
+  return s.replace(/[&<>"]/g, (ch) => (ch === "&" ? "&amp;" : ch === "<" ? "&lt;" : ch === ">" ? "&gt;" : "&quot;"));
+}
+/** Truncate text to roughly fit `px` at a font size (drop, don't overflow). */
+function clip(s: string, px: number, fontPx = 11): string {
+  const max = Math.max(0, Math.floor(px / (fontPx * 0.6)));
+  return s.length <= max ? s : s.slice(0, Math.max(0, max - 1)).trimEnd() + "…";
+}
+
+// Keep MONTH_NAMES/civilFromSerial imported for potential future header polish without churn.
+void MONTH_NAMES;
+void civilFromSerial;

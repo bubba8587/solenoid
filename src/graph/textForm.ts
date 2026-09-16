@@ -168,13 +168,14 @@ export function writeTextForm(g: SavedGraph): string {
     lines.push(parts.join(" "));
   }
 
-  const positions: Record<string, { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean }> = {};
+  const positions: Record<string, { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean; flipped?: boolean }> = {};
   for (const id of order) {
     const sn = byId.get(id);
     if (!sn) continue;
-    const p: { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean } = { x: sn.x, y: sn.y };
+    const p: { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean; flipped?: boolean } = { x: sn.x, y: sn.y };
     if (sn.size) p.size = { w: sn.size.w, h: sn.size.h };
     if (sn.collapsed) p.collapsed = true;
+    if (sn.flipped) p.flipped = true;
     positions[nameOf(id)] = p;
   }
 
@@ -188,6 +189,8 @@ export function writeTextForm(g: SavedGraph): string {
       ...(s.locked ? { locked: true } : {}),
     }));
   }
+  // No name-addressing: a drawn cable is pure canvas geometry, it names no node.
+  if (g.drawnCables && g.drawnCables.length > 0) sidecar.drawnCables = g.drawnCables;
   if (g.pins && g.pins.length > 0) {
     sidecar.pins = g.pins.map((p) => ({ nodeId: nameOf(p.nodeId), outputKey: p.outputKey }));
   }
@@ -237,7 +240,7 @@ export function readTextForm(text: string): SavedGraph {
   // Names ARE the ids in the reconstructed SavedGraph, so `hostNodeId`/`members`
   // inside `init` need no further translation.
   const nodes: SavedNode[] = parsed.map((p) => {
-    const pos = (sidecar.positions?.[p.name] ?? { x: 0, y: 0 }) as { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean };
+    const pos = (sidecar.positions?.[p.name] ?? { x: 0, y: 0 }) as { x: number; y: number; size?: { w: number; h: number }; collapsed?: boolean; flipped?: boolean };
     const sn: SavedNode = {
       id: p.name,
       type: p.type,
@@ -250,6 +253,7 @@ export function readTextForm(text: string): SavedGraph {
     if (Object.keys(p.stringLiterals).length > 0) sn.stringLiterals = p.stringLiterals;
     if (pos.size) sn.size = pos.size;
     if (pos.collapsed) sn.collapsed = true;
+    if (pos.flipped) sn.flipped = true;
     return sn;
   });
 
@@ -263,6 +267,9 @@ export function readTextForm(text: string): SavedGraph {
   const g: SavedGraph = { v: typeof sidecar.v === "number" ? sidecar.v : 2, nodes, connections };
   if (Array.isArray(sidecar.standoffs) && sidecar.standoffs.length > 0) {
     g.standoffs = sidecar.standoffs as SavedStandoff[];
+  }
+  if (Array.isArray(sidecar.drawnCables) && sidecar.drawnCables.length > 0) {
+    g.drawnCables = sidecar.drawnCables as SavedGraph["drawnCables"];
   }
   if (Array.isArray(sidecar.pins) && sidecar.pins.length > 0) {
     g.pins = sidecar.pins as Pin[];

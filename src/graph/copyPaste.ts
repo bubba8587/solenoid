@@ -6,6 +6,7 @@ import { markGraphCustom } from "./seedStore";
 import { getCtorRegistry } from "./ctorProvider";
 import { getActiveEditor, getActiveView, isSubgraphActive } from "./activeGraph";
 import { collapseStore } from "./collapseStore";
+import { socketFlipStore } from "./socketFlipStore";
 import { nodeNameStore } from "./nodeNameStore";
 
 interface ClipboardEntry {
@@ -32,7 +33,10 @@ export function copySelected() {
   const view = getActiveView();
   if (!editor || !view) return;
 
-  const directly = editor.getNodes().filter((n) => n.selected) as SolenoidNode[];
+  // A composite's boundary markers are the composite's ports, not nodes to copy: a pasted
+  // marker would be an orphan with no port (deleteSelection refuses them the same way).
+  const isMarker = (n: { constructor: { name: string } }) => n.constructor.name === "CompositeInputNode" || n.constructor.name === "CompositeOutputNode";
+  const directly = editor.getNodes().filter((n) => n.selected && !isMarker(n)) as SolenoidNode[];
   if (directly.length === 0) return;
   // A selected group brings its members along, so paste reproduces the contents.
   const ids = new Set(directly.map((n) => n.id));
@@ -74,21 +78,32 @@ export function copySelected() {
 // across writes; appending is safe, reordering rewrites every existing save.
 export const INIT_FIELD_ORDER = [
   "label", "op", "form", "value", "unitSuffix", "fromUnit", "toUnit", "lanes", "matchMode", "matchCase", "searchMode", "paymentTiming", "ignoreEmpty", "noCommas", "hostNodeId", "socketKey", "side", "format", "customPattern", "decimalDigits", "decimalMode", "unit", "customUnit", "socketDataType", "expr", "params", "locked", "axis", "op2", "combine", "textCase", "bold", "italic", "textScale", "textAlign", "textMarkdown", "textMono", "logicalStyle", "lambdaView", "chartFontScale", "grouping", "negativeStyle", "scaleMode", "advancedOpen", "match",
-  "tableText", "frameText", "pointsText", "url", "fileName", "assetPath", "path", "subfolder", "refreshMinutes", "tableIndex", "query", "dir", "how", "asofDirection", "mode", "inFormat", "outFormat", "provider",
+  "tableText", "frameText", "pointsText", "url", "fileName", "assetPath", "path", "subfolder", "refreshMinutes", "tableIndex", "query", "dir", "how", "asofDirection", "mode", "precision", "progress", "criticalPaths", "inFormat", "outFormat", "provider",
   "inputAngle", "outputAngle", "inputTightness", "outputTightness", "angle",
   "selectedColumn", "selectedValues", "selectedLayer", "multiSelect", "forecast", "offDiag", "readAs", "addAs", "activeIndex", "target", "resultAs", "colType", "dataType", "angleMode", "lambdaKeys", "sideVars",
   "hoverColor",
   "totalDepth", "rowTotalDepth", "colTotalDepth", "rowSort", "colSort", "relativeTo", "normalize", "detail",
-  "members", "color", "collapsed", "width", "height", "title", "body", "seq", "defaultValue",
+  "members", "color", "collapsed", "width", "height", "lockedPosition", "title", "body", "seq", "defaultValue",
   "checkNotNull", "checkUnique", "checkRange", "checkRegex", "checkAllowed", "integer",
   "runMode", "simulationSteps", "stopWhenPortId", "stopWhenOp", "stopWhenValue", "byRowPortId", "embeds", "steps",
   "wrap", "method", "ceiling", "model", "standardize",
   "action", "agg", "order", "condition", "algorithm", "substance", "bands", "material", "symbol",
+  "layoutHidden",
+  "inheritFormat",
+  "chip",
+  "pickedLabel",
+  "pastDays", "forecastDays",
+  "country", "region", "year",
+  "qrTemplate",
+  "vault", "folder", "glob", "nameFormat", "includeBody", "addMissing", "writeBase",
+  "cubeText",
+  "stamp", "split",
+  "pageName",
 ] as const;
 
 // Object-valued extras, appended after INIT_FIELD_ORDER in this fixed order.
 export const INIT_EXTRA_FIELD_ORDER = [
-  "funcs", "filterExclude", "condConfig", "fieldTypes", "weightMap", "normMap", "titles", "selectedKeys", "varDescriptions", "bindings",
+  "funcs", "filterExclude", "condConfig", "fieldTypes", "titles", "selectedKeys", "varDescriptions", "bindings",
 ] as const;
 
 export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
@@ -120,12 +135,6 @@ export function extractInit(src: ClassicPreset.Node): Record<string, unknown> {
   }
   if (n.fieldTypes && typeof n.fieldTypes === "object") {
     init.fieldTypes = { ...(n.fieldTypes as object) };
-  }
-  if (n.weightMap && typeof n.weightMap === "object") {
-    init.weightMap = { ...(n.weightMap as object) };
-  }
-  if (n.normMap && typeof n.normMap === "object") {
-    init.normMap = { ...(n.normMap as object) };
   }
   // Keep only LIVE input keys, else an orphan title breaks the text form's
   // byte-identical second write.
@@ -271,6 +280,8 @@ export async function pasteClipboard(canvasX: number, canvasY: number) {
     if (!clone) continue;
     // Body collapse lives in collapseStore, not on the instance, so carry it across.
     if (collapseStore.get(_clipboard.entries[i].node.id)) collapseStore.set(clone.id, true);
+    // The socket flip lives in socketFlipStore the same way.
+    if (socketFlipStore.get(_clipboard.entries[i].node.id)) socketFlipStore.set(clone.id, true);
     // Sequenced identities must not duplicate — the clone re-claims a fresh number.
     const fresh = (clone as unknown as { assignFreshSeq?: () => void }).assignFreshSeq;
     if (typeof fresh === "function") fresh.call(clone);

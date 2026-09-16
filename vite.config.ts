@@ -1,9 +1,10 @@
+// dte:C34,C69
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import license from "rollup-plugin-license";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { readdir } from "node:fs/promises";
+import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
 const host = process.env.TAURI_DEV_HOST;
 
 /** Dev-only endpoint for the in-app copy-edit freeze (`src/devCopyEdit.ts`): maps an
@@ -140,9 +141,40 @@ function copyEditEndpoint(): Plugin {
   };
 }
 
+/** Dev-only mirror of the document being edited: the app POSTs every autosave here
+ *  (`documentStore.captureCurrent`) and it lands in `.dev/current-graph.json` (ignored),
+ *  so an agent working beside the running app can read the author's live graph instead
+ *  of rebuilding it. Serve-mode only. */
+function devGraphMirror(): Plugin {
+  const OUT_DIR = path.resolve(".dev");
+  const OUT = path.join(OUT_DIR, "current-graph.json");
+  return {
+    name: "solenoid-dev-graph-mirror",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use("/__dev-graph", (req, res) => {
+        void (async () => {
+          if (req.method === "GET") {
+            res.setHeader("content-type", "application/json");
+            try { res.end(await readFile(OUT, "utf8")); } catch { res.statusCode = 404; res.end("{}"); }
+            return;
+          }
+          if (req.method !== "POST") { res.statusCode = 405; res.end(); return; }
+          let body = "";
+          for await (const chunk of req) body += chunk;
+          await mkdir(OUT_DIR, { recursive: true });
+          await writeFile(OUT, body, "utf8");
+          res.statusCode = 204;
+          res.end();
+        })().catch(() => { res.statusCode = 500; res.end(); });
+      });
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [react(), copyEditEndpoint()],
+  plugins: [react(), copyEditEndpoint(), devGraphMirror()],
 
   // Preserve class / function names through minification. Node components
   // derive their human-readable type hint from `constructor.name` (see
@@ -152,6 +184,13 @@ export default defineConfig(async () => ({
   // defaults to the Oxc minifier, which has no keepNames equivalent, so pin
   // the esbuild minifier explicitly and keep its keepNames option.
   esbuild: { keepNames: true },
+  resolve: {
+    alias: {
+      "@solenoid/schedule-engine": path.resolve("packages/schedule-engine/src/index.ts"),
+      "@solenoid/gantt-layout": path.resolve("packages/gantt-layout/src/index.ts"),
+      "@solenoid/gantt-react": path.resolve("packages/gantt-react/src/index.ts"),
+    },
+  },
 
   build: {
     minify: "esbuild",

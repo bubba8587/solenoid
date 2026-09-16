@@ -1,0 +1,8 @@
+# Retired decision ids. Never reissued. Text lives in git history.  dte:C11
+# id	date	action	successor	by	authorized_by	title
+C4	2026-09-14	reverted	-	Claude Opus 4.8	-	A WHY-comment migrates into a node's Why and is replaced by a dte:ID citation; HOW-comments stay
+A2	2026-09-15	moved	B5	Claude Opus 5	-	Excel compatibility is a promise: every Excel function works by its own name and returns Excel's answer
+A3	2026-09-15	moved	B6	Claude Opus 5	-	Values carry their type and unit honestly end to end; a date, number, text, or wrong unit is never confused
+A4	2026-09-15	moved	B7	Claude Opus 5	-	Pre-alpha, single user: break freely, with no back-compat or migration paths
+B4	2026-09-15	superseded	B8	Claude Opus 5	-	Solenoid tracks decision provenance with DTE; rules.md and decisions.md remain and are cited from the tree
+D53	2026-09-15	moved	C72	Claude Opus 5	-	nodeCombiningRound1: the eight approved round-1 merges and what each card now holds

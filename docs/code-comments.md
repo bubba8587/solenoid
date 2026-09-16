@@ -11,7 +11,7 @@ the exception that must be argued. Test files (`*.test.ts[x]`) are exempt, for n
 2. **Machine checks** — a "do NOT do X" that a test can enforce becomes a test
    (the `socketConnect.test.ts` / `coerceInputs.test.ts` pattern). A comment-guard
    is a plea; a test is a wall.
-3. **Specs / decisions.md / dev-notes** — semantics, rulings, investigations,
+3. **Specs / decision nodes (`dte.md`) / dev-notes** — semantics, rulings, investigations,
    measurements, negative results. Routed via the table in `README.md`
    ("Code → spec routing").
 4. **Commit messages** — all revision history: what the old code did, what changed,
@@ -25,13 +25,14 @@ the exception that must be argued. Test files (`*.test.ts[x]`) are exempt, for n
 1. **Revision history → commit message.** "The old code…", "previously…",
    "formerly named…" — delete. If the comment fuses history with a live constraint,
    the present-tense constraint sentence survives alone.
-2. **Formal rulings → decisions.md or the domain spec.** A dated ruling, "author
+2. **Formal rulings → a decision node or the domain spec.** A dated ruling, "author
    decided", "we decided" in a comment is a decision misfiled. Record it in the doc,
    delete the comment. Residue at the code site: at most a doc reference, and only
    when the site is the natural relapse point.
 3. **Investigations have ONE home.** Experiment narratives, measurements, dates,
    negative-result stories → dev-notes (open problems) or the domain spec. For files
-   in the routing table: ZERO comment residue — the table is the pointer. Content
+   in the routing table: ZERO prose residue — the table is the pointer, and the file's
+   `dte:` citation line (machine-checked by `dte validate`) is the only link a file carries. Content
    that exists ONLY in a comment gets promoted to the doc first, never silently
    deleted.
 4. **Module headers state scope + hard constraints only.** Cite the governing spec;

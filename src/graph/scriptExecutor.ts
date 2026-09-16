@@ -1,3 +1,4 @@
+// dte:C66
 // Main-thread client of the Script sandbox (`scriptWorker.ts`): one shared worker,
 // one in-flight call per request id, and the wall clock. A call past
 // SCRIPT_TIMEOUT_MS gets its answer here (the worker is stuck inside it, so only
@@ -56,7 +57,9 @@ function onTimeout(p: Pending): void {
 }
 
 export function executeScript(src: string, args: unknown[]): Promise<ScriptOutcome> {
-  if (typeof Worker === "undefined") return invokeScript(src, args);
+  // No Worker (headless, tests): clone like postMessage would, so a script that mutates
+  // its argument never edits the upstream node's cached value for every consumer.
+  if (typeof Worker === "undefined") return invokeScript(src, structuredClone(args));
   return new Promise((resolve) => {
     worker ??= spawn();
     const p: Pending = { req: { id: ++seq, src, args }, resolve, timer: null };

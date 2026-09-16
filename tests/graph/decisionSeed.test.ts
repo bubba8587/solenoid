@@ -1,10 +1,11 @@
+// dte:C64
 import { describe, it, expect } from "vitest";
 import seed from "../../src/graph/seedGraphs/decision-matrix.json";
-import { decisionMatrix, decisionCriteria, decisionSensitivity } from "../../src/graph/frameVerbs";
+import { decisionMatrix, decisionCriteria, decisionSensitivity, resolveDecisionWeights } from "../../src/graph/frameVerbs";
 import { isCubeValue, type FrameValue, type FrameColumn } from "../../src/graph/frame";
 import type { DecisionNormalize } from "../../src/graph/frameVerbs";
-import { parseNoteFrontmatter } from "../../src/graph/noteFrontmatter";
-import { extractInlineRefs } from "../../src/graph/noteInlineRefs";
+import { NoteNode } from "../../src/graph/nodes/annotation";
+import { extractKnapVariables } from "../../src/graph/knapTemplate";
 import { joinFrames } from "../../src/graph/frameVerbs";
 
 // Runtime check for the Decision Matrix seed: the notes state concrete outcomes
@@ -28,48 +29,37 @@ const frameOf = (id: string): FrameValue => ({
   columns: JSON.parse(byId(id).init!.frameText as string) as FrameColumn[],
 });
 
-// The graph assembles the Scores frame the keyed way: the Note's two frontmatter
-// lists become a (Laptop, Screen) frame, left-joined onto the score table by
-// laptop name — row order in either table cannot misalign a score.
-const noteFields = parseNoteFrontmatter(byId("noteScreen").init!.body as string).fields;
-const laptopField = noteFields.find((f) => f.key === "laptop")!;
-const screenField = noteFields.find((f) => f.key === "screen")!;
-const screenFrame: FrameValue = {
-  __frame: true,
-  columns: [
-    { name: byId("screenframe").stringLiterals!.name0, type: "string", values: laptopField.value as string[] },
-    { name: byId("screenframe").stringLiterals!.name1, type: "number", values: screenField.value as number[] },
-  ],
-};
+// The graph assembles the Scores frame the keyed way: the Note's frontmatter emits a
+// (Laptop, Screen) FRAME directly (rows-of-objects frontmatter), left-joined onto the
+// score table by laptop name — row order in either table cannot misalign a score.
+const screenNote = new NoteNode({ body: byId("noteScreen").init!.body as string });
+const screenFrame = screenNote.fieldValues().screen as FrameValue;
 const joinLits = byId("join").stringLiterals!;
 const scores: FrameValue = joinFrames(frameOf("scores"), screenFrame, {
   leftKey: joinLits.leftKey, rightKey: joinLits.rightKey,
   how: byId("join").init!.how as "left",
 });
 const scenarios = frameOf("scenarios");
-const dmInit = byId("dm").init as {
-  normalize: DecisionNormalize;
-  weightMap: Record<string, number>;
-  normMap: Record<string, DecisionNormalize>;
-};
-const weights = decisionCriteria(scores).map((name) => dmInit.weightMap[name] ?? 1);
+const dmInit = byId("dm").init as { normalize: DecisionNormalize };
+// Weights + per-criterion Norm ride a wired Frame Input, keyed by criterion name.
+const weightsFrame = frameOf("weights");
+const { weights, normOverrides } = resolveDecisionWeights(weightsFrame, decisionCriteria(scores));
 
 describe("decision-matrix seed", () => {
-  it("the Note's lists are keyed: every laptop in the score table gets a screen score", () => {
-    expect(laptopField.guessed).toBe("strlist");
-    expect(screenField.guessed).toBe("list");
-    expect((screenField.value as number[]).length).toBe((laptopField.value as string[]).length);
-    for (const v of screenField.value as number[]) expect(typeof v).toBe("number");
+  it("the Note emits a keyed (Laptop, Screen) frame covering every score-table laptop", () => {
+    // The frontmatter rows-of-objects give a real frame, not two parallel lists.
+    expect(screenFrame.columns.map((c) => c.name)).toEqual(["Laptop", "Screen"]);
+    expect(screenFrame.columns[1].type).toBe("number");
     // set equality with the score table's key column — the join must match every row
     const tableNames = [...(frameOf("scores").columns[0].values as string[])].sort();
-    expect([...(laptopField.value as string[])].sort()).toEqual(tableNames);
+    expect([...(screenFrame.columns[0].values as string[])].sort()).toEqual(tableNames);
     // and the joined frame carries a complete numeric Screen column
     const screenCol = scores.columns.find((c) => c.name === "Screen")!;
     for (const v of screenCol.values) expect(typeof v).toBe("number");
   });
 
-  it("every =ref in the report body is wired, and the winner INDEX reads row 1 col 1", () => {
-    const refs = extractInlineRefs(byId("report").init!.body as string);
+  it("every template variable in the report body is wired, and the winner INDEX reads row 1 col 1", () => {
+    const refs = extractKnapVariables(byId("report").init!.body as string);
     expect(refs.length).toBeGreaterThan(0);
     const wired = connections.filter((c) => c.target === "report").map((c) => c.targetInput);
     expect([...refs].sort()).toEqual([...wired].sort());
@@ -79,17 +69,19 @@ describe("decision-matrix seed", () => {
     expect(conn.source).toBe("dm");
   });
 
-  it("the weightMap and normMap name real criteria, and every scenario column does too", () => {
+  it("the Weights frame lists the criteria by name, and the Scenarios frame does too", () => {
     const criteria = decisionCriteria(scores);
-    expect(Object.keys(dmInit.weightMap).sort()).toEqual([...criteria].sort());
-    for (const name of Object.keys(dmInit.normMap)) expect(criteria).toContain(name);
-    for (const c of scenarios.columns) {
-      if (c.type === "number") expect(criteria).toContain(c.name);
-    }
+    // Weights frame: its Criterion column is exactly the criteria set
+    const wCrit = weightsFrame.columns.find((c) => c.type === "string")!.values as string[];
+    expect([...wCrit].sort()).toEqual([...criteria].sort());
+    // Scenarios frame (inverted): the Criterion column names criteria, number columns are scenarios
+    const sCrit = scenarios.columns.find((c) => c.type === "string")!.values as string[];
+    for (const name of sCrit) expect(criteria).toContain(name);
+    expect(scenarios.columns.some((c) => c.type === "number")).toBe(true);
   });
 
   it("main matrix: UltraSlim wins, and the breakdown contributions sum to the Score", () => {
-    const out = decisionMatrix(scores, weights, dmInit.normalize, true, dmInit.normMap);
+    const out = decisionMatrix(scores, weights, dmInit.normalize, true, normOverrides);
     expect(out.columns[0].values).toEqual(["UltraSlim", "ProBook", "Budget", "PowerLifter"]);
     const score = out.columns.find((c) => c.name === "Score")!.values as number[];
     const crit = decisionCriteria(scores).map((n) => out.columns.find((c) => c.name === n)!.values as number[]);
@@ -101,7 +93,7 @@ describe("decision-matrix seed", () => {
 
   it("the chart feed keeps the option labels: Select Columns names exist in the ranking", () => {
     const keep = byId("select").stringLiterals!.columns.split(",");
-    const out = decisionMatrix(scores, weights, dmInit.normalize, true, dmInit.normMap);
+    const out = decisionMatrix(scores, weights, dmInit.normalize, true, normOverrides);
     const names = out.columns.map((c) => c.name);
     for (const k of keep) expect(names).toContain(k);
     expect(keep[0]).toBe(out.columns[0].name); // labels first, values second

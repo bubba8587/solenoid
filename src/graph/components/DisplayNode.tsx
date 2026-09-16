@@ -2,17 +2,19 @@ import { useSyncExternalStore, useLayoutEffect, useRef, useState } from "react";
 import type { DisplayNode as DisplayNodeType } from "../rete-nodes";
 import { formatWithUnit } from "../unitFormat";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
-import { sharedAnnotationResolver } from "../unitFlow";
-import { getOwningEditor } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
 import { NodeShell, PortSockets, ValueDisplay, type NodeProps } from "./nodeKit";
 import { TableDisplay } from "./TableDisplay";
-import { nodeOutputElemFamily } from "./valueDisplayFormat";
+import { nodeOutputElemFamily, resolveDisplayAnnotation } from "./valueDisplayFormat";
 import { FrameDisplay } from "./FrameDisplay";
 import { CubeDisplay } from "./CubeDisplay";
-import { ChartFigure } from "./chartView";
+import { ChartFigure, type ChartShape } from "./chartView";
 import { ChartChip } from "./ChartChip";
+import { ChartExpandButton } from "./ChartExpandButton";
+import { ValueExpandButton } from "./ValueExpandButton";
+import { popOutKindFor } from "../valuePopup";
 import { MermaidView } from "./MermaidView";
+import { DiagramChip } from "./DiagramChip";
 import { SvgFigure } from "./SvgFigure";
 import { isFrameValue, isCubeValue } from "../frame";
 import { isChartValue, type ChartValue } from "../chartValue";
@@ -60,17 +62,7 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
   const manualSize = useSyncExternalStore(nodeSizeStore.subscribe, () => nodeSizeStore.get(data.id));
   const sized = !collapsed && !!manualSize;
 
-  // A direct (docked) annotation wins; otherwise resolve the FC's lock in EITHER
-  // direction, both breaking at a transform:
-  //   • inAnnotation — an FC UPSTREAM, its lock riding the value down into here.
-  //   • downstreamAnnotation — an FC DOWNSTREAM through a run of passthroughs, so
-  //     `…→Disp1→Disp2→FC` formats Disp1 too.
-  const editor = getOwningEditor(data.id); // internal drill-in nodes resolve their FC in the internal editor
-  const resolver = editor ? sharedAnnotationResolver(editor) : undefined;
-  const ann =
-    formatAnnotationStore.getForNode(data.id) ??
-    resolver?.inAnnotation(data.id, "in") ??
-    resolver?.downstreamAnnotation(data.id, "out");
+  const ann = resolveDisplayAnnotation(data.id);
 
   function fmt(v: number): string {
     // Backstop: a stray non-number reaching formatWithUnit (.toFixed) crashes the node.
@@ -110,8 +102,22 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
     return () => nodeSizeStore.setMin(data.id, undefined);
   }, [data.id, minSize.w, minSize.h]);
 
+  // A chart / svg / scalar scales to the card; only a table/frame/cube actually
+  // scrolls, so only those need the sized-body wheel trap.
+  const scrolls = isTable || isFrame || isCube;
+
+  // An EXPANDED frame / cube / table / list drops its chip (full mode omits it), so give
+  // it the same corner expand affordance every chart gets — a pop-out into its popup.
+  // It rides NodeShell's non-scrolling cornerBadge slot so it stays pinned when the
+  // body scrolls; charts keep their own in-body button. Coverage pinned by
+  // displayPopupCoverage.test.ts.
+  const popKind = popOutKindFor(v);
+  const expandBadge = full && popKind !== null
+    ? <ValueExpandButton value={v} label={nodeDisplayName(data)} elem={popKind === "frame" ? undefined : nodeOutputElemFamily(data.id)} />
+    : undefined;
+
   return (
-    <NodeShell node={data} emit={emit} className={growClass} leading={<PortSockets node={data} emit={emit} side="input" />}>
+    <NodeShell node={data} emit={emit} className={growClass} nonScrollingBody={!scrolls} cornerBadge={expandBadge} leading={<PortSockets node={data} emit={emit} side="input" />}>
       {isError ? (
         <ValueDisplay value={v} full={full} />
       ) : isFrame ? (
@@ -119,17 +125,31 @@ export function DisplayComponent({ data, emit }: NodeProps<DisplayNodeType>) {
       ) : isCube ? (
         <CubeDisplay cube={v} label={nodeDisplayName(data)} full={full} />
       ) : isChart ? (
-        !full ? <div className="solenoid-node__display-value" style={{ display: "flex", justifyContent: "flex-end" }}><ChartChip value={v} /></div>
-              : sized ? <MeasuredChart value={v} fontScale={ann?.chartFontScale} recordNav={recordStep} />
-              : <ChartFigure value={v} width={210} height={130} fontScale={ann?.chartFontScale} recordNav={recordStep} />
+        !full ? (
+          <div className="solenoid-node__display-value solenoid-node__display-value--chip"><ChartChip value={v} /></div>
+        ) : (
+          // Every full chart (record included) gets the same expand affordance — the
+          // popup renders the value through the SAME ChartFigure path, so no op is left
+          // without a pop-out. Pinned by chartPopupCoverage.test.ts.
+          <div style={{ position: "relative", width: sized ? "100%" : undefined, height: sized ? "100%" : undefined }}>
+            {sized
+              ? <MeasuredChart value={v} fontScale={ann?.chartFontScale} recordNav={recordStep} />
+              : <ChartFigure value={v} width={210} height={130} fontScale={ann?.chartFontScale} recordNav={recordStep} />}
+            <ChartExpandButton value={v} op={v.op as ChartShape} axes series={[]} title={v.title || nodeDisplayName(data)} />
+          </div>
+        )
       ) : isMermaid ? (
-        <MermaidView source={v.source} />
+        !full ? (
+          <div className="solenoid-node__display-value solenoid-node__display-value--chip"><DiagramChip value={v} /></div>
+        ) : (
+          <MermaidView source={v.source} />
+        )
       ) : isSvg ? (
         <SvgFigure value={v} height={full ? 200 : 120} />
       ) : isLambda ? (
         <LambdaValueView value={v} view={ann?.lambdaView} />
       ) : isTable ? (
-        <TableDisplay table={v as number[][]} label={nodeDisplayName(data)} full={full} elem={nodeOutputElemFamily(data.id)} />
+        <TableDisplay table={v as number[][]} label={nodeDisplayName(data)} full={full} elem={nodeOutputElemFamily(data.id)} ann={ann} />
       ) : (
         <ValueDisplay
           value={v as number | number[] | string | string[] | null}

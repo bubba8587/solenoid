@@ -1,3 +1,4 @@
+// dte:C43,B10
 // THE React Flow surface, shared by the main canvas (FlowCanvas) and the composite
 // drill-in (FlowCompositeOverlay): one RF element, one set of handlers, gestures,
 // lasso, context menus, keyboard, add menu, HTML-in-Canvas layer and inspector over a
@@ -83,7 +84,9 @@ import { commentsPanelUi } from "../commentStore";
 import { pinNodeValue } from "../pinStore";
 import { unpackComposite } from "../compositeLogic";
 import { compositeEditorStore } from "../compositeEditorStore";
-import { moveGroupMembers, reconcileGroupMembership, absorbIntoContainingGroup } from "../groupLogic";
+import { moveGroupMembers, reconcileGroupMembership, absorbIntoContainingGroup, setGroupLocked } from "../groupLogic";
+import { socketFlipStore } from "../socketFlipStore";
+import { modalOwnsKeyboard, keyUnderModal } from "../modalGuard";
 import { rebuildGroupMembership, groupMembershipStore } from "../groupMembership";
 import { syncGroupCollapse } from "../groupCollapse";
 import { isGraphRebuilding } from "../process";
@@ -102,9 +105,12 @@ import { minimapFillForNode } from "../components/Minimap";
 import { computeDockedCanvasPos, dockedRenderedDims, findDockTarget, insertFcInline, removeFcInline } from "../fcDocking";
 import { groupPushStore } from "../groupPush";
 import { CableInspector } from "../components/CableInspector";
-import { paletteStore } from "../paletteStore";
-import { frStore } from "../frStore";
-import { settingsPanel, settingsStore } from "../settingsStore";
+import { DrawnCableLayer } from "../components/DrawnCableLayer";
+import { PendingCableLayer } from "../components/PendingCableLayer";
+import { DrawnCableCapture } from "../components/DrawnCableCapture";
+import { DrawnCableInspector } from "../components/DrawnCableInspector";
+import { drawnCableStore } from "../drawnCables";
+import { settingsStore } from "../settingsStore";
 import { IS_COARSE } from "../coarse";
 import { touchSelectStore } from "../touchSelectStore";
 import "../canvas.css";
@@ -185,8 +191,26 @@ export type SurfaceHooks = {
   afterConnect?: () => void;
   /** Render the standoff layer (a main-graph feature). */
   standoffs?: boolean;
+  /** Render the free-drawn cable layer + its tool (a main-graph feature: drawn
+   *  cables persist into SavedGraph, which is main-only — dte:C33 saveBindsMain). */
+  drawnCables?: boolean;
   /** The main canvas stands down while the drill-in owns the keyboard. */
   standsDownWhenDrilled?: boolean;
+  /** Skip the global canvas keyboard entirely — no F9, Ctrl+S/O, palette, nudge,
+   *  copy/paste, group verbs, or Delete key. The landing / showcase mounts run the
+   *  canvas for its gestures alone and want none of the app hotkeys. */
+  noKeyboard?: boolean;
+  /** Suppress every right-click menu — the Add menu on the pane and the node /
+   *  edge / socket context menus (and the native menu with them). */
+  noContextMenu?: boolean;
+  /** Lock this mount view-only (no drag / connect / select / delete), on top of
+   *  the global canvasLockStore. A landing scene card locks itself so it stays a
+   *  static, pre-computed showcase while the hero canvas stays live. */
+  locked?: boolean;
+  /** No camera gestures either: no pan, no wheel/pinch zoom, and the page scrolls
+   *  over the card instead of the card eating the wheel. For a fixed illustration
+   *  (a landing scene) framed once by fitViewOnInit. Pair with `locked`. */
+  staticView?: boolean;
   /** Frame the graph once the first mounted cards have measured. */
   fitViewOnInit?: boolean;
   /** Escape with nothing of the surface's own open (menu, isolate). */
@@ -245,7 +269,8 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           old.position.y === n.position.y &&
           old.parentId === n.parentId &&
           old.zIndex === n.zIndex &&
-          old.className === n.className
+          old.className === n.className &&
+          old.draggable === n.draggable
         ) {
           return old;
         }
@@ -384,9 +409,13 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     };
     el.addEventListener("mousedown", guardEditable, true);
     el.addEventListener("touchstart", guardEditable, { capture: true, passive: true });
-    const unPinch = installFlowPinch(el, { getViewport, setViewport: drive });
-    const unPan = installTouchCardPan(el, { getViewport, setViewport: drive });
-    const unWheel = installWheelZoom(el, { getViewport, setViewport: drive });
+    // staticView: no camera gestures at all, and the page keeps its wheel/touch
+    // (so a landing card doesn't trap the scroll).
+    const noop = () => {};
+    const stat = hooksRef.current.staticView === true;
+    const unPinch = stat ? noop : installFlowPinch(el, { getViewport, setViewport: drive });
+    const unPan = stat ? noop : installTouchCardPan(el, { getViewport, setViewport: drive });
+    const unWheel = stat ? noop : installWheelZoom(el, { getViewport, setViewport: drive });
     return () => {
       el.removeEventListener("mousedown", guardEditable, true);
       el.removeEventListener("touchstart", guardEditable, true);
@@ -395,6 +424,17 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       unWheel();
     };
   }, [s, getViewport, setViewport]);
+
+  // noContextMenu: kill the context menu at the DOM in capture phase too, so a
+  // TOUCH long-press (which RF's onPaneContextMenu does not reliably see) can't
+  // raise the Add menu or the native menu on the demo canvas.
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el || !hooksRef.current.noContextMenu) return;
+    const eat = (e: Event) => e.preventDefault();
+    el.addEventListener("contextmenu", eat, true);
+    return () => el.removeEventListener("contextmenu", eat, true);
+  }, [s]);
 
   // Isolate: view-only focus — positions snapshot on enter, restored on exit;
   // receded nodes dim via the live RF elements.
@@ -449,6 +489,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   // edge, so it can sit on either) resolves first on nodes and the pane.
   const onNodeContextMenu: NodeMouseHandler<SolFlowNode> = useCallback(
     (e, node) => {
+      if (hooksRef.current.noContextMenu) { e.preventDefault(); return; }
       if (keepsNativeMenu(e)) return;
       e.preventDefault();
       const el = wrapperRef.current;
@@ -461,6 +502,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   );
   const onEdgeContextMenu: EdgeMouseHandler<SolFlowEdge> = useCallback(
     (e, edge) => {
+      if (hooksRef.current.noContextMenu) { e.preventDefault(); return; }
       if (keepsNativeMenu(e)) return;
       e.preventDefault();
       const t = cableTargetFor(s.editor, edge.id, e);
@@ -469,6 +511,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     [s],
   );
   const onPaneContextMenu = useCallback((e: React.MouseEvent | MouseEvent) => {
+    if (hooksRef.current.noContextMenu) { e.preventDefault(); return; }
     if (keepsNativeMenu(e)) return;
     e.preventDefault();
     const el = wrapperRef.current;
@@ -482,7 +525,9 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   // The full canvas keyboard (F9, palette, nudge, copy/paste, group verbs,
   // Ctrl+S/O…) over this surface's refs; Escape falls through to the host.
   useEffect(() => {
-    const unKeys = installCanvasKeyboard({
+    const unKeys = hooksRef.current.noKeyboard
+      ? () => {}
+      : installCanvasKeyboard({
       editorRef: { current: s.editor },
       viewRef: { current: s.view as unknown as View },
       historyRef: {
@@ -501,8 +546,8 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!target?.isContentEditable) return;
-      // An open overlay (palette, reference, settings, add menu, isolate) takes it.
-      if (paletteStore.get() || frStore.get() || settingsPanel.get() || menuRef.current || isolateStore.isActive()) return;
+      // An open overlay (any modal / pop-up, add menu, isolate) takes it.
+      if (keyUnderModal(e) || menuRef.current || isolateStore.isActive()) return;
       hooksRef.current.onEscape();
     };
     window.addEventListener("keydown", onKeyDown);
@@ -549,6 +594,8 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
       const ids = new Set(sel.map((n) => n.id));
       for (const n of s.editor.getNodes()) (n as { selected?: boolean }).selected = ids.has(n.id);
       cableSelectionStore.replaceAll(selEdges.map((e) => e.id));
+      // Drawn-cable selection is exclusive with the graph's own (§ Standoffs' rule).
+      if (ids.size > 0 || selEdges.length > 0) drawnCableStore.select(null);
     },
     [s],
   );
@@ -575,8 +622,9 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
   // selection from the MODEL and RF state follows the topology pipe — so RF is told
   // to remove nothing itself (it would also take a deleted group's members).
   const onBeforeDelete: OnBeforeDelete<SolFlowNode, SolFlowEdge> = useCallback(async () => {
-    if (computeOverlayStore.visible() || presentationStore.isActive()) return false;
+    if (computeOverlayStore.visible() || presentationStore.isActive() || modalOwnsKeyboard()) return false;
     if (hooksRef.current.standsDownWhenDrilled && compositeEditorStore.isOpen()) return false;
+    if (canvasLockStore.get()) return false; // view-only when locked
     await hooksRef.current.deleteSelected();
     return false;
   }, []);
@@ -587,7 +635,19 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     ]);
   }, []);
   const onEdgeMouseLeave = useCallback(() => socketHighlightStore.setCableHover([]), []);
-  const onPaneClick = useCallback(() => cableSelectionStore.set(null), []);
+  // Screen-space camera nudge, for the drawn-cable tool's own drag-to-pan: while its
+  // sheet is armed the pane never sees the press, so the tool moves the camera itself.
+  const panBy = useCallback(
+    (dx: number, dy: number) => {
+      const v = getViewport();
+      void setViewport({ x: v.x + dx, y: v.y + dy, zoom: v.zoom });
+    },
+    [getViewport, setViewport],
+  );
+  const onPaneClick = useCallback(() => {
+    cableSelectionStore.set(null);
+    drawnCableStore.select(null);
+  }, []);
   const onMove = useCallback(
     (_e: unknown, viewport: Viewport) => {
       s.view.setTransform({ x: viewport.x, y: viewport.y, k: viewport.zoom });
@@ -684,8 +744,15 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         if (dx !== 0 || dy !== 0) void moveGroupMembers(s.editor, s.view, model, dx, dy, true);
       }
       for (const n of dragged) dragLastPos.current.set(n.id, { ...n.position });
-      // Tow standoff-tied neighbors live, one solve per frame.
-      if (s.standoffSettle && !standoffStore.isEmpty() && !standoffRaf.current) {
+      // Tow standoff-tied neighbors live, one solve per frame — only when a dragged node (or
+      // a member of a dragged group) is tied; ties are sparse, so a plain drag costs nothing.
+      const tied = standoffStore.participants();
+      const touchesTie = !standoffStore.isEmpty() && dragged.some((n) => {
+        if (tied.has(n.id)) return true;
+        const model = s.editor.getNode(n.id);
+        return model instanceof GroupNode && model.members.some((m) => tied.has(m));
+      });
+      if (s.standoffSettle && touchesTie && !standoffRaf.current) {
         const pinned = new Set(dragged.map((n) => n.id));
         standoffRaf.current = requestAnimationFrame(() => {
           standoffRaf.current = 0;
@@ -803,7 +870,8 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
     [menu, s, screenToFlowPosition],
   );
 
-  const locked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
+  const globalLocked = useSyncExternalStore(canvasLockStore.subscribe, canvasLockStore.get);
+  const locked = hooks.locked || globalLocked;
   // Cabling mode on the canvas root: socket.css grows every socket's catch zone and
   // re-arms mobile's drop targets off this class, so the surface must wear it for the
   // pickup → drop window (the rete connection plugin used to set it).
@@ -851,8 +919,9 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         nodesDraggable={!locked}
         nodesConnectable={!locked}
         elementsSelectable={!locked}
-        panOnDrag={!(IS_COARSE && touchSelect)}
+        panOnDrag={!(IS_COARSE && touchSelect) && !hooks.staticView}
         zoomOnScroll={false}
+        preventScrolling={!hooks.staticView}
         onNodeDragStart={onNodeDragStart}
         onNodeDrag={onNodeDrag}
         onNodesChange={onNodesChange}
@@ -871,7 +940,7 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
         onNodeDragStop={onNodeDragStop}
         onMove={onMove}
         isValidConnection={isValidConnection}
-        deleteKeyCode={DELETE_KEYS}
+        deleteKeyCode={locked || hooks.noKeyboard ? null : DELETE_KEYS}
         selectionKeyCode={null}
         // The canvas keyboard nudges the SELECTION on the dot grid (RF's own arrow
         // move needs a focused card and steps 5px) — one arrow handler, not two.
@@ -898,6 +967,14 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
             <StandoffLayer />
           </ViewportPortal>
         )}
+        {hooks.drawnCables && (
+          <ViewportPortal>
+            <DrawnCableLayer />
+          </ViewportPortal>
+        )}
+        <ViewportPortal>
+          <PendingCableLayer />
+        </ViewportPortal>
         <MiniMap<SolFlowNode>
           className="solenoid-minimap"
           style={MINIMAP_STYLE}
@@ -964,6 +1041,15 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
             else compositeEditorStore.open(n);
           }}
           onUnpackComposite={(id) => void unpackComposite(s.editor, s.view as unknown as View, id)}
+          onToggleLock={(id) => {
+            const n = s.editor.getNode(id);
+            if (n instanceof GroupNode) setGroupLocked(s.editor, s.view as unknown as View, n, !n.lockedPosition);
+          }}
+          onToggleFlip={(id) => {
+            socketFlipStore.toggle(id);
+            // Nudge the node so RF re-measures its moved handles and cables re-route.
+            void (s.view as unknown as View).rerenderNode(id);
+          }}
           onClose={() => setNodeCtx(null)}
         />
       )}
@@ -981,7 +1067,9 @@ export function FlowSurface({ stack: s, hooks, children }: { stack: SurfaceStack
           />
         </svg>
       )}
+      {hooks.drawnCables && <DrawnCableCapture toFlow={screenToFlowPosition} panBy={panBy} zoom={() => getViewport().zoom} />}
       <CableInspector />
+      {hooks.drawnCables && <DrawnCableInspector />}
       {children}
     </div>
   );

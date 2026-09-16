@@ -1,3 +1,4 @@
+// dte:C42,D57,D59
 export interface AtlasItem {
   id: string;
   /** Natural (padded) capture size in raster px. */

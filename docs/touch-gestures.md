@@ -82,12 +82,41 @@ Other add paths (not gestures): mobile bar ➕ FAB, the `A` key, Insert ▸ Add 
 | Gesture | Config | Action | Where |
 |---|---|---|---|
 | drag from socket | all (mobile: selected node, or any during `--cabling`) | pick/drop cable | RF Handle drag (`FlowSocketHandle`, `onConnect` in FlowSurface) |
-| hover dot (300ms intent) | mouse | frame-input EXAMPLE hint | `NodeSocket.tsx` + `frameHint.ts` |
+| hover dot (300ms intent) | mouse | frame-input EXAMPLE hint (unwired frame input only) | `NodeSocket.tsx` + `frameHint.ts` |
+| hover dot (400ms intent) | mouse | VALUE peek — an output socket or a wired input pops the socket's live value as a scaled-down Display beside it (`SocketValuePeek`, the frameHint layer's second payload kind); leave / wheel / cable-pick hides it. Never both with the example hint. Desktop pointer only (touch has no hover). | `NodeSocket.tsx` + `frameHint.ts` + `FrameHintLayer.tsx` |
 | tap the input ROW | touch | frame-input EXAMPLE hint — the INTENTIONAL touch trigger; next tap or 4s dismisses. The dot itself deliberately has none: a touch press on the dot begins the cable pick, which captures the pointer (the tap's up never reaches the dot), and the dot scales with the canvas transform anyway (a few px at overview zoom). | `MeasuredSocketRow` / `FrameHintLayer` |
 | long-press socket | touch | socket context menu | `canvasContextMenu.ts` |
 | touch hit areas | coarse | dot targets inflate to ~28px (Conduit sockets deliberately small so its body stays grabbable); every socket grows further while cabling (coarse −8px → −14px inset; a specificity bug once SHRANK it, fixed 2026-08-09) | `socket.css` |
 | click cable / tap | all | select cable (ribbons select the run) | `flow/FlowCableEdge.tsx` |
 | double-click cable | mouse | select the whole RUN (via click `detail` count, NOT onDoubleClick) | `flow/FlowCableEdge.tsx` |
+
+### Drawn cables — the armed draw tool (`components/DrawnCableCapture.tsx`)
+
+The tool is MODAL: while armed a full-window sheet sits over the pane, so these replace the
+canvas gestures above until it is disarmed. It owns pan itself (the sheet is a SIBLING of the
+pane). Finishing disarms and selects the new cable.
+
+| Gesture | Config | Action | Where |
+|---|---|---|---|
+| tap / click | all | place a point (only inside `TAP_SLOP`; a repeat tap on the last point is dropped) | `DrawnCableCapture.tsx` |
+| 1-finger / left-mouse drag | all | pan the camera, place nothing | `DrawnCableCapture.tsx` `panBy` |
+| 2-finger pinch | touch | zoom, place nothing (`flowPinch` listens in CAPTURE, through the sheet) | `flowPinch.ts` |
+| double-click | **mouse only** | finish (click `detail`; click 1 places the last point) | `DrawnCableCapture.tsx` |
+| right-click | mouse | finish (no click is raised, so it is handled on pointerdown) | `DrawnCableCapture.tsx` |
+| Undo / Finish / Cancel buttons | coarse | the touch way out — double-tap is NOT a finish gesture, and there is no Esc | the strip, at the THUMB end |
+
+### Drawn cables — a finished cable (`components/DrawnCableLayer.tsx`)
+
+| Gesture | Config | Action | Where |
+|---|---|---|---|
+| tap the body | touch | select (via the tap's click) | `DrawnCableLayer.tsx` `onBodyClick` |
+| drag the body of an UNSELECTED cable | touch | **pan** (the body is pan surface until selected) | RF pane drag |
+| click / drag the body | mouse; touch only when SELECTED | select and move the whole cable (`nopan`) | `DrawnCableLayer.tsx` |
+| drag a point handle | all (handles show only when selected) | move the point, never pan (`nopan`); a second finger hands off to pinch | `DrawnCableLayer.tsx` |
+| tap / click a handle | all | make it the angle dial's active point | `DrawnCableLayer.tsx` |
+| alt-click a handle | mouse | remove the point (the panel's ✕ is the finger's version) | `DrawnCableLayer.tsx` / `DrawnCableInspector.tsx` |
+| double-click the body | mouse | insert a point on the nearest span (the panel's + is the finger's version) | `DrawnCableLayer.tsx` |
+| touch hit areas | coarse | hit band 40px; each handle gets an invisible ~44px ring behind its disc | `DrawnCableLayer.tsx` |
 
 ### Chrome (bars, popups)
 

@@ -1,4 +1,4 @@
-import type { GcdNode as GcdNodeType, GcdOp } from "../rete-nodes";
+import type { GCDNode as GCDNodeType, GcdOp } from "../rete-nodes";
 import { GCD_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
@@ -8,7 +8,7 @@ const OPS = (Object.keys(GCD_OP_META) as GcdOp[]).map((op) => ({
   label: GCD_OP_META[op].label,
 }));
 
-export function GcdComponent({ data, emit }: NodeProps<GcdNodeType>) {
+export function GcdComponent({ data, emit }: NodeProps<GCDNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
   return (
     <NodeShell node={data} emit={emit}>

@@ -14,6 +14,9 @@ export type FlowSocketProps = {
   shape: "circle" | "square" | "cube";
   /** Already lit by the app's own highlight store (no second ring). */
   lit: boolean;
+  /** The node's sockets are flipped left<->right — the Handle draws on the opposite
+   *  edge. The `type` (target/source) stays semantic; only the visual side moves. */
+  flipped?: boolean;
 };
 
 /** A resize grip on a card corner (RF NodeResizeControl): the host reports canvas-unit
@@ -35,6 +38,11 @@ let _grip: ComponentType<FlowResizeGripProps> | null = null;
 
 /** True only under FlowCanvas's provider — i.e. inside the RF tree. */
 export const FlowSurfaceContext = createContext(false);
+
+/** True on the marketing stages (landing hero, scene stages) that want the entrance
+ *  choreography: cards pop in, then every cable draws itself socket-to-socket. The main
+ *  app surface leaves it false so working edits never animate. */
+export const FlowRevealContext = createContext(false);
 
 export function registerFlowSocket(socket: ComponentType<FlowSocketProps>): void {
   _socket = socket;

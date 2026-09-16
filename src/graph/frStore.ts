@@ -1,7 +1,7 @@
 // Open/close + active-tab state for the Reference overlay.
 import { createNotifier } from "./storeKit";
 
-export type FrTab = "reference" | "sockets" | "help" | "notes";
+export type FrTab = "reference" | "sockets" | "help" | "knap" | "notes";
 
 let _open = false;
 let _tab: FrTab = "reference";

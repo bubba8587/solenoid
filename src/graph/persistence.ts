@@ -1,3 +1,4 @@
+// dte:E8
 import { ClassicPreset } from "rete";
 import type { SolenoidNode, SolenoidConnection } from "./schemes";
 import { getEditor, getView, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";
@@ -13,7 +14,9 @@ import { syncGroupCollapse } from "./groupCollapse";
 import { nodeSizeStore } from "./nodeSizeStore";
 import { forgetAllNodes } from "./nodeStoreRegistry";
 import { collapseStore } from "./collapseStore";
+import { socketFlipStore } from "./socketFlipStore";
 import { standoffStore, type StandoffEnd } from "./standoffs";
+import { drawnCableStore, type SavedDrawnCable } from "./drawnCables";
 import { nodeNameStore } from "./nodeNameStore";
 import { writeTextForm, readTextForm } from "./textForm";
 import { validateSavedGraph, CURRENT_SAVE_VERSION, deriveMissingNodeSockets } from "./persistenceCore";
@@ -32,9 +35,10 @@ import { loadRevealStore } from "./loadReveal";
 import { zoomAt } from "./zoomAt";
 
 
-/** Curtain threshold in nodes+connections across BOTH sides, so a small doc swaps
- *  with no flash. */
-const SWITCH_CURTAIN_MIN_WORK = 60;
+/** Curtain threshold in nodes+connections across BOTH sides (teardown + build), so
+ *  only a genuinely big load flashes the overlay. Undo/redo restores never curtain
+ *  regardless (they pass curtain:false) — this governs opens/switches/pastes. */
+const SWITCH_CURTAIN_MIN_WORK = 300;
 
 // A node serializes as { type, init } where `type` is the CLASS NAME — production
 // depends on esbuild `keepNames` to keep it stable.
@@ -53,6 +57,7 @@ export interface SavedNode {
   size?: { w: number; h: number };           // manual resize (resizable nodes)
   collapsed?: boolean;                       // per-node body collapse (collapseStore —
                                              // distinct from init.collapsed, the Group field)
+  flipped?: boolean;                         // sockets mirrored left<->right (socketFlipStore)
 }
 
 export interface SavedConnection {
@@ -77,6 +82,9 @@ export interface SavedGraph {
   nodes: SavedNode[];
   connections: SavedConnection[];
   standoffs?: SavedStandoff[];
+  // Free-drawn annotation curves; they reference no node, so they carry no name
+  // addressing through the text form.
+  drawnCables?: SavedDrawnCable[];
   pins?: Pin[];
   comments?: SavedCommentData[];
   frameFormats?: FrameColumnFormat[];
@@ -88,7 +96,8 @@ export interface SavedGraph {
   // Scoped to report/export rendering surfaces, never the editing canvas.
   reportPalette?: { base?: string; overrides?: Record<string, string> };
   // Author + tags; the document TITLE is the documentStore name, not carried here.
-  meta?: { author?: string; tags?: string[] };
+  // `foreign`/`networkAllowed` carry the C2 per-document network permission (docMetaStore).
+  meta?: { author?: string; tags?: string[]; foreign?: boolean; networkAllowed?: boolean };
   // Epoch ms of the write that produced this file — stamped by the FILE-WRITE path
   // (fileSession) only, never by serializeGraph, so autosave captures and seed
   // fixtures stay stable. Read once, at adoption: importAsDocument seeds BOTH save
@@ -132,6 +141,7 @@ function buildRawSavedGraph(): SavedGraph | null {
       const sz = nodeSizeStore.get(n.id);
       if (sz) sn.size = { w: Math.round(sz.w), h: Math.round(sz.h) };
       if (collapseStore.get(n.id)) sn.collapsed = true;
+      if (socketFlipStore.get(n.id)) sn.flipped = true;
       return sn;
     }
     const anyN = n as unknown as Record<string, unknown>;
@@ -152,6 +162,7 @@ function buildRawSavedGraph(): SavedGraph | null {
     const sz = nodeSizeStore.get(n.id);
     if (sz) sn.size = { w: Math.round(sz.w), h: Math.round(sz.h) };
     if (collapseStore.get(n.id)) sn.collapsed = true;
+    if (socketFlipStore.get(n.id)) sn.flipped = true;
     return sn;
   });
 
@@ -172,6 +183,8 @@ function buildRawSavedGraph(): SavedGraph | null {
 
   const g: SavedGraph = { v: 2, nodes, connections, seedId: getCurrentSeedId() };
   if (standoffs.length > 0) g.standoffs = standoffs;
+  const drawnCables = drawnCableStore.serialize();
+  if (drawnCables.length > 0) g.drawnCables = drawnCables;
   const pins = pinStore.serialize();
   if (pins.length > 0) g.pins = pins;
   const comments = commentStore.serialize();
@@ -195,8 +208,10 @@ export function getLastLoadIdMap(): ReadonlyMap<string, string> {
   return _lastLoadIdMap;
 }
 
-/** False = refused or rolled back, with the existing graph left intact. */
-export async function loadGraph(g: SavedGraph): Promise<boolean> {
+/** False = refused or rolled back, with the existing graph left intact.
+ *  `curtain: false` suppresses the "Loading graph" overlay — an undo/redo restore is
+ *  a reload under the hood, but it must feel like an edit, not a document open. */
+export async function loadGraph(g: SavedGraph, opts?: { curtain?: boolean }): Promise<boolean> {
   const editor = getEditor();
   const view = getView();
   if (!editor || !view) return false;
@@ -229,7 +244,7 @@ export async function loadGraph(g: SavedGraph): Promise<boolean> {
   suspendAutosave();
   beginGraphRebuild(); // suppress live-creation behaviors (group absorb) while loading
   try {
-    const { placeholdered } = await rebuildGraph(g, editor, view);
+    const { placeholdered } = await rebuildGraph(g, editor, view, opts?.curtain ?? true);
     if (placeholdered.length > 0) {
       const types = [...new Set(placeholdered)].join(", ");
       pushNotice(
@@ -276,12 +291,13 @@ async function rebuildGraph(
   g: SavedGraph,
   editor: NonNullable<ReturnType<typeof getEditor>>,
   view: NonNullable<ReturnType<typeof getView>>,
+  allowCurtain = true,
 ): Promise<{ placeholdered: string[] }> {
   // Build mode must be entered FIRST so the node-by-node construction is never seen;
   // a doc switch gets the same overlay as a plain curtain over teardown + rebuild.
   const oldWork = editor.getNodes().length + editor.getConnections().length;
   const newWork = (g.nodes?.length ?? 0) + (g.connections?.length ?? 0);
-  const curtain = oldWork + newWork > SWITCH_CURTAIN_MIN_WORK;
+  const curtain = allowCurtain && oldWork + newWork > SWITCH_CURTAIN_MIN_WORK;
   // A paint boundary (rAF, then a task after it): the build below yields only to
   // microtasks, so without this the curtain never shows and the bar never moves.
   const paint = () => new Promise<void>((r) => requestAnimationFrame(() => setTimeout(r, 0)));
@@ -360,6 +376,7 @@ async function rebuildGraph(
     nodeNameStore.claim(node.id, sn.name, sn.type);
     if (sn.size) nodeSizeStore.set(node.id, { ...sn.size });
     if (sn.collapsed) collapseStore.set(node.id, true);
+    if (sn.flipped) socketFlipStore.set(node.id, true);
     created.push(node);
     toBuild.push({ node, x: sn.x ?? 0, y: sn.y ?? 0 });
   }
@@ -440,6 +457,8 @@ async function rebuildGraph(
       ss.locked ?? false,
     );
   }
+
+  drawnCableStore.load(g.drawnCables ?? []);
 
   pinStore.load(
     (g.pins ?? [])

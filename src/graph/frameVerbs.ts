@@ -1,3 +1,4 @@
+// dte:C45,C16,C24
 // ─── Relational verbs — the pure engine ───────────────────────────────────────
 // Also the reference oracle the Polars backend is parity-tested against. Verbs never
 // mutate their input; a structural failure THROWS a tagged SolError (#REF!).
@@ -5,13 +6,15 @@ import {
   type FrameValue, type FrameColumn, type FrameCell, type FrameColType,
   type CubeValue, type CubeColumn, type CubeCell,
   frameRowCount, makeHeaders, cubeFromColumns, cubeRowCount, inferColumn, isFrameValue,
-  isCubeValue, frameFromRows, formatFrameCell,
+  isCubeValue, frameFromRows, formatFrameCell, selectCubeRows,
 } from "./frame";
 import { isSolError, solError } from "./errorValue";
+import { sameColumnUnit } from "./unitValue";
 import { forAggregate, coerceLogical, guardFinite } from "./valueKinds";
 import { compareStrings } from "./stringOrder";
 import { compareOp, type ComparisonOp } from "./nodes/logic";
 import { xmatchIndex, type XMatchMatchMode } from "./nodes/listOps";
+import { allocate, type AllocateMode } from "./nodes/allocateOps";
 import { aggregate, percentile, pearson, spearman, kendallTau, covariance } from "./nodes/statsOps";
 import { parseDateToSerial } from "./nodes/dateSerial";
 
@@ -32,15 +35,24 @@ export type AggOp =
  *  #DIV/0!/#N/A/… out of a list/frame). The error pair is JS-oracle only: the
  *  native Polars engine degrades a per-cell error to null on upload, so the frame
  *  Filter routes an error-predicate through the oracle rather than the plan. */
-export type FilterOp = ComparisonOp | "contains" | "startsWith" | "endsWith" | "isblank" | "notblank" | "iserror" | "noterror";
+export type FilterOp =
+  | ComparisonOp | "contains" | "startsWith" | "endsWith" | "isblank" | "notblank" | "iserror" | "noterror"
+  // A′ list-cell predicates (cube only): membership on a list cell — "notes tagged x" is
+  // THE vault query. Bases' trio (contains / any / all, comma-separated) plus is-empty.
+  | "listContains" | "listContainsAny" | "listContainsAll" | "listEmpty";
 
 /** The value-less filter ops — no comparison value (the Value field hides). Shared
  *  so the node data() paths and the UI agree. */
-export const VALUELESS_FILTER_OPS: ReadonlySet<FilterOp> = new Set<FilterOp>(["isblank", "notblank", "iserror", "noterror"]);
+export const VALUELESS_FILTER_OPS: ReadonlySet<FilterOp> = new Set<FilterOp>(["isblank", "notblank", "iserror", "noterror", "listEmpty"]);
 
 /** The error predicates — the frame Filter runs these in the JS oracle (the native
  *  engine can't hold per-cell errors). */
 export const ERROR_FILTER_OPS: ReadonlySet<FilterOp> = new Set<FilterOp>(["iserror", "noterror"]);
+
+/** The list-cell predicates — they read a cube cell that IS a list, so they run only in
+ *  the cube JS branch (Polars never holds a list cell). A scalar/other op on a list cell,
+ *  and any list op on a frame column, is a #SHAPE! at the call site. */
+export const LIST_FILTER_OPS: ReadonlySet<FilterOp> = new Set<FilterOp>(["listContains", "listContainsAny", "listContainsAll", "listEmpty"]);
 
 /** One predicate of a multi-condition filter (B-2). `matchCase` rides
  *  PER-CONDITION — "Region eq west (any case) AND Code contains X (exact)". */
@@ -138,36 +150,70 @@ function encodeCell(v: FrameCell): unknown {
 /** Order rows by one column. Blanks (`null`) and per-cell errors sort LAST in
  *  both directions (Excel's blanks-last), stably; present values flip with dir.
  *  Stable on ties. */
-export function sortByColumn(f: FrameValue, by: string, dir: "asc" | "desc"): FrameValue {
-  const col = requireColumn(f, by);
-  const cmp = comparatorFor(col.type);
+/** The sorted row order over a column read through `cellAt` — the shared index math the
+ *  frame path (sortByColumn) and the cube path (sortCube) both call, so a frame and a cube
+ *  of the same data sort identically. */
+function sortedIndexOrder(len: number, cellAt: (i: number) => FrameCell, type: FrameColType, dir: "asc" | "desc"): number[] {
+  const cmp = comparatorFor(type);
   // NaN joins the tail: a `(a-b)` comparator makes NaN ordering depend on input
   // order (every comparison is false). ±Inf sorts normally (a real magnitude).
   const isTail = (i: number) => {
-    const v = cellAt(col, i);
+    const v = cellAt(i);
     return v === null || isSolError(v) || (typeof v === "number" && Number.isNaN(v));
   };
-  const idx = Array.from({ length: frameRowCount(f) }, (_, i) => i);
+  const idx = Array.from({ length: len }, (_, i) => i);
   idx.sort((i, j) => {
     const ti = isTail(i), tj = isTail(j);
     if (ti || tj) return ti && tj ? i - j : ti ? 1 : -1; // tail last, stable
-    const c = cmp(cellAt(col, i), cellAt(col, j));
+    const c = cmp(cellAt(i), cellAt(j));
     return c !== 0 ? (dir === "desc" ? -c : c) : i - j;  // stable on ties
   });
-  return reorderRows(f, idx);
+  return idx;
+}
+
+export function sortByColumn(f: FrameValue, by: string, dir: "asc" | "desc"): FrameValue {
+  const col = requireColumn(f, by);
+  return reorderRows(f, sortedIndexOrder(frameRowCount(f), (i) => cellAt(col, i), col.type, dir));
+}
+
+/** The first-seen unique row order for keys read through `keyAt` — shared by distinctRows
+ *  (frame) and distinctCube (cube). */
+function distinctIndexOrder(len: number, keyAt: (i: number) => string): number[] {
+  const seen = new Set<string>();
+  const keep: number[] = [];
+  for (let i = 0; i < len; i++) {
+    const key = keyAt(i);
+    if (!seen.has(key)) { seen.add(key); keep.push(i); }
+  }
+  return keep;
 }
 
 /** Keep the first occurrence of each unique row (on `columns`, or all columns).
  *  Two `null`s are equal; an error keys by its code. */
 export function distinctRows(f: FrameValue, columns?: readonly string[]): FrameValue {
   const cols = (columns ?? f.columns.map((c) => c.name)).map((n) => requireColumn(f, n));
+  return reorderRows(f, distinctIndexOrder(frameRowCount(f),
+    (i) => JSON.stringify(cols.map((c) => encodeCell(cellAt(c, i))))));
+}
+
+/** The distinct non-blank cell TEXTS of one column, in first-seen order — the
+ *  constrained-entry datalist source (B2.1). Blanks (`null`/`""`) and cells the optional
+ *  `isExcluded` predicate rejects (error codes at the call site) are dropped; the rest
+ *  dedupe by exact text. Pure. */
+export function distinctColumnValues(
+  cells: readonly (string | null | undefined)[],
+  isExcluded?: (v: string) => boolean,
+): string[] {
   const seen = new Set<string>();
-  const keep: number[] = [];
-  for (let i = 0; i < frameRowCount(f); i++) {
-    const key = JSON.stringify(cols.map((c) => encodeCell(cellAt(c, i))));
-    if (!seen.has(key)) { seen.add(key); keep.push(i); }
+  const out: string[] = [];
+  for (const c of cells) {
+    if (c == null || c === "") continue;
+    if (isExcluded?.(c)) continue;
+    if (seen.has(c)) continue;
+    seen.add(c);
+    out.push(c);
   }
-  return reorderRows(f, keep);
+  return out;
 }
 
 /** The first `n` rows (n ≤ 0 → empty; n ≥ rowCount → unchanged). */
@@ -222,7 +268,7 @@ const TEXT_OP_LABEL: Record<string, string> = {
 };
 
 /** A text predicate on a non-text column is a CONFIGURATION error, `#TYPE!` — never a
- *  stringified comparison (rules textPredicateNeedsText, author verdict 2026-08-30).
+ *  stringified comparison (dte:D49 textPredicateNeedsText, author verdict 2026-08-30).
  *  The old `String(cell)` fallback forced the Rust engine to mirror JS number printing
  *  digit-for-digit forever (`js_number_string`, deleted with this rule). */
 export function requireTextColumn(op: FilterOp, type: FrameColType, column: string): void {
@@ -244,6 +290,10 @@ export function requireTextList(op: FilterOp, type: FrameColType): void {
 }
 
 export function passesFilter(cell: FrameCell, op: FilterOp, value: FrameCell, type: FrameColType, matchCase: boolean): boolean {
+  // List-cell predicates run only on the cube path (passesListFilter); a frame column
+  // never holds a list, so they never match here (the Filter UI offers them only for a
+  // cube input).
+  if (op === "listContains" || op === "listContainsAny" || op === "listContainsAll" || op === "listEmpty") return false;
   // These run BEFORE the null/error guard below, since they exist to SELECT on those
   // states; `noterror` keeps a null — pair it with `notblank` to drop both.
   if (op === "iserror")  return isSolError(cell);
@@ -303,6 +353,98 @@ export function filterRowsMulti(f: FrameValue, combine: FilterCombine, condition
     if (kept !== complement) keep.push(i);
   }
   return reorderRows(f, keep);
+}
+
+// ─── Cube row verbs (A′) ──────────────────────────────────────────────────────
+// The row verbs reorder or keep WHOLE cube rows, computed off the cube's scalar columns;
+// list and sub-table cells ride along by reference (selectCubeRows), so Polars never sees
+// a nested cell. Row indices come from the SAME selectors the frame path uses, so a cube
+// and a frame of the same data order identically. Errors THROW a tagged SolError like the
+// frame verbs; the calling node turns the throw into a value.
+
+/** A structural key for a cube cell — distinct on a cube keys on every column, list and
+ *  sub-table cells included. Scalars reuse encodeCell; a list encodes its elements; a
+ *  nested frame/cube encodes its columns × cells. Bounded by the cube's depth. */
+export function encodeCubeCell(v: CubeCell): unknown {
+  if (Array.isArray(v)) return ["l", v.map(encodeCubeCell)];
+  if (isCubeValue(v)) return ["c", v.columns.map((c) => [c.name, c.cells.map(encodeCubeCell)])];
+  if (isFrameValue(v)) return ["f", v.columns.map((c) => [c.name, c.values.map(encodeCell)])];
+  return encodeCell(v as FrameCell);
+}
+
+/** Read a cube column AS A SCALAR frame column (typed via inferColumn, which also recovers
+ *  per-cell units). A list or sub-table cell makes it non-scalar → #SHAPE!. */
+function cubeScalarColumn(cube: CubeValue, name: string): FrameColumn {
+  const col = cube.columns.find((c) => c.name === name);
+  if (!col) throw solError("#REF!", `column "${name}" not found`);
+  for (const cell of col.cells) {
+    if (Array.isArray(cell) || isFrameValue(cell) || isCubeValue(cell)) {
+      throw solError("#SHAPE!", `"${name}" has list or table cells; this needs a scalar column`);
+    }
+  }
+  return inferColumn(name, col.cells);
+}
+
+/** Bases' list-cell predicates (A′). A non-list cell is treated as a one-element list (a
+ *  scalar tag), a blank as the empty list. Membership is case-folded unless matchCase;
+ *  contains-any / contains-all split the value on commas. */
+export function passesListFilter(cell: CubeCell, op: FilterOp, value: FrameCell, matchCase: boolean): boolean {
+  const items = Array.isArray(cell) ? cell : cell === null ? [] : [cell];
+  if (op === "listEmpty") return items.length === 0;
+  const fold = (s: string) => (matchCase ? s : s.toLowerCase());
+  const has = (needle: string) =>
+    items.some((it) => !Array.isArray(it) && !isFrameValue(it) && !isCubeValue(it) && it !== null && fold(String(it)) === fold(needle));
+  if (op === "listContains") return has(String(value ?? "").trim());
+  const needles = String(value ?? "").split(",").map((s) => s.trim()).filter((s) => s !== "");
+  if (op === "listContainsAny") return needles.some(has);
+  if (op === "listContainsAll") return needles.every(has);
+  return false;
+}
+
+/** Sort a cube by a scalar column (list column → #SHAPE!). */
+export function sortCube(cube: CubeValue, by: string, dir: "asc" | "desc"): CubeValue {
+  const col = cubeScalarColumn(cube, by);
+  return selectCubeRows(cube, sortedIndexOrder(cubeRowCount(cube), (i) => cellAt(col, i), col.type, dir));
+}
+
+/** Keep the first occurrence of each unique cube row (all columns, list/nested included). */
+export function distinctCube(cube: CubeValue): CubeValue {
+  return selectCubeRows(cube, distinctIndexOrder(cubeRowCount(cube),
+    (i) => JSON.stringify(cube.columns.map((c) => encodeCubeCell(c.cells[i] ?? null)))));
+}
+
+/** A contiguous cube row window (first / last / skip / range), matching sliceRows. */
+export function sliceCube(cube: CubeValue, mode: "first" | "last" | "skip" | "range", n: number, to?: number): CubeValue {
+  const [start, end] = sliceBounds(cubeRowCount(cube), mode, n, to);
+  return selectCubeRows(cube, Array.from({ length: end - start }, (_, k) => start + k));
+}
+
+/** Keep cube rows passing ALL/ANY of the conditions (the filterRowsMulti twin). A list op
+ *  reads the raw list cell; a scalar op reads the inferred scalar column. */
+export function filterCube(cube: CubeValue, combine: FilterCombine, conditions: readonly FilterCond[], complement = false): CubeValue {
+  if (conditions.length === 0) return complement ? selectCubeRows(cube, []) : cube;
+  const resolved = conditions.map((c) => {
+    if (LIST_FILTER_OPS.has(c.op)) {
+      const raw = cube.columns.find((cc) => cc.name === c.column);
+      if (!raw) throw solError("#REF!", `column "${c.column}" not found`);
+      return { list: true as const, cells: raw.cells };
+    }
+    const col = cubeScalarColumn(cube, c.column);
+    requireTextColumn(c.op, col.type, c.column);
+    return { list: false as const, col };
+  });
+  const keep: number[] = [];
+  for (let i = 0; i < cubeRowCount(cube); i++) {
+    const passOne = (c: FilterCond, j: number) => {
+      const r = resolved[j];
+      return r.list
+        ? passesListFilter(r.cells[i] ?? null, c.op, c.value, c.matchCase ?? false)
+        : passesFilter(cellAt(r.col, i), c.op, c.value, r.col.type, c.matchCase ?? false);
+    };
+    const kept = combine === "and" ? conditions.every(passOne) : conditions.some(passOne);
+    if (kept !== complement) keep.push(i);
+  }
+  return selectCubeRows(cube, keep);
 }
 
 /** Most-frequent finite number; ties broken by first occurrence (Excel MODE.SNGL). */
@@ -383,6 +525,9 @@ function sumGroup(values: FrameCell[]): FrameCell {
   return prep.nums.filter((n) => Number.isFinite(n)).reduce((a, b) => a + b, 0);
 }
 
+/** Aggregates whose result is in the source column's unit (a count or a spread ratio isn't). */
+const UNIT_KEEPING_AGGS: ReadonlySet<string> = new Set(["sum", "avg", "min", "max", "median", "first", "last"]);
+
 /** GROUP BY: one output row per unique combination of `keys` (first-seen order),
  *  carrying the key columns plus each aggregation as its own `as`-named numeric
  *  column. Generalizes the 1-D GroupByNode to a frame with multi-key + multi-agg. */
@@ -398,7 +543,7 @@ export function groupByFrame(f: FrameValue, keys: readonly string[], aggs: reado
     rows.push(i);
   }
   const keyOut: FrameColumn[] = keyCols.map((c) => ({
-    name: c.name, type: c.type,
+    name: c.name, type: c.type, ...(c.unit ? { unit: c.unit } : {}),
     values: keyOrder.map((k) => cellAt(c, buckets.get(k)![0])), // every row in a bucket shares the key
   }));
   const aggOut: FrameColumn[] = aggCols.map(({ spec, col }) => {
@@ -416,6 +561,8 @@ export function groupByFrame(f: FrameValue, keys: readonly string[], aggs: reado
       // min/max preserve the SOURCE type (a min over a date column IS a date,
       // not a bare serial); sum/avg/count are always numeric.
       type: preserves ? col.type : "number",
+      // The column's unit rides an aggregate in the same unit (unitFlow); a count has none.
+      ...(col.unit && UNIT_KEEPING_AGGS.has(spec.op) ? { unit: col.unit } : {}),
       values,
     };
   });
@@ -916,10 +1063,11 @@ export function unpivotFrame(
     [...idCols.map((c) => c.name), opts?.variableName ?? "variable", opts?.valueName ?? "value"],
     idCols.length + 2,
   );
+  const sharedUnit = valCols.length > 0 && valCols.every((c) => sameColumnUnit(c.unit, valCols[0].unit)) ? valCols[0].unit : undefined;
   return frame([
-    ...idCols.map((c, k) => ({ name: names[k], type: c.type, values: idVals[k] })),
+    ...idCols.map((c, k) => ({ name: names[k], type: c.type, ...(c.unit ? { unit: c.unit } : {}), values: idVals[k] })),
     { name: names[idCols.length], type: "string" as const, values: varVals },
-    { name: names[idCols.length + 1], type: valCols[0]?.type ?? "number", values: valVals },
+    { name: names[idCols.length + 1], type: valCols[0]?.type ?? "number", ...(sharedUnit ? { unit: sharedUnit } : {}), values: valVals },
   ]);
 }
 
@@ -1142,14 +1290,21 @@ export function pivotFrame(f: FrameValue, spec: PivotSpec): FrameValue {
   // ── Key columns (one per rowField). Subtotal rows fill the prefix + a "Total"
   //    marker in the next column; the grand row is "Grand Total" in column 0. ──
   const keyNames = makeHeaders(rowFields, rowFields.length);
-  const keyColumns: FrameColumn[] = rowCols.map((c, k) => ({
-    name: keyNames[k], type: c.type,
-    values: rowOut.map((ro) => {
+  // A total marker is a LABEL in a key column: once one is emitted the column is text
+  // (a "Grand Total" string inside a number-typed column breaks the frame's own contract
+  // and every downstream verb).
+  const hasTotals = rowOut.some((ro) => ro.kind !== "leaf");
+  const keyColumns: FrameColumn[] = rowCols.map((c, k) => {
+    const marked = hasTotals && rowOut.some((ro) => (ro.kind === "grand" && k === 0) || (ro.kind === "sub" && k === ro.fill));
+    const values = rowOut.map((ro) => {
       if (ro.kind === "grand") return k === 0 ? "Grand Total" : null;
       if (ro.kind === "sub")   return k < ro.fill ? ro.tuple[k] : k === ro.fill ? "Total" : null;
       return ro.tuple[k];
-    }),
-  }));
+    });
+    return marked && c.type !== "string"
+      ? { name: keyNames[k], type: "string" as const, values: values.map((v) => (v == null ? null : String(formatFrameCell(c.type, v as FrameCell) ?? v))) }
+      : { name: keyNames[k], type: c.type, values };
+  });
 
   // ── Body columns: colSlot × value. Header = colTuple joined " | " (+ value name
   //    when >1 value), collapsing to the plain Excel layout for the simple case. ──
@@ -1167,6 +1322,7 @@ export function pivotFrame(f: FrameValue, spec: PivotSpec): FrameValue {
   const bodyNames = makeHeaders(rawHeaders, rawHeaders.length);
   const bodyColumns: FrameColumn[] = bodySpecs.map(({ co, v }, bi) => ({
     name: bodyNames[bi], type: "number",
+    ...(valCols[v].unit && UNIT_KEEPING_AGGS.has(funcs[v]) ? { unit: valCols[v].unit } : {}),
     values: rowOut.map((ro) => cellValue(v, ro.span, co.span)),
   }));
 
@@ -1202,7 +1358,7 @@ export function nestFrame(f: FrameValue, keyColumns: readonly string[], nestedNa
     return {
       __frame: true,
       columns: childCols.map((c) => ({
-        name: c.name, type: c.type, ...(c.unit ? { unit: c.unit } : {}),
+        name: c.name, type: c.type, ...(c.unit ? { unit: c.unit } : {}), ...(c.format ? { format: c.format } : {}),
         values: rowIdx.map((i) => cellAt(c, i)),
       })),
     } as FrameValue;
@@ -1212,24 +1368,50 @@ export function nestFrame(f: FrameValue, keyColumns: readonly string[], nestedNa
 
 /** UNNEST: peel a Cube's nested column ONE level — each parent row repeats once per
  *  child row, with the child's columns appended. Nested FRAMES flatten to a flat Frame;
- *  nested CUBES peel to a shallower Cube (a child's own nested column stays nested). A
- *  column mixing frames and cubes is a `#TYPE!`. Parent rows whose nested value is
- *  empty/missing are dropped (standard unnest). Parent (flat) column types are re-inferred
- *  on the frame path; nested column types are preserved. */
+ *  nested CUBES peel to a shallower Cube (a child's own nested column stays nested); a
+ *  LIST column explodes to one row per element, the element kept under the SAME column
+ *  name (so a Predecessors list round-trips into the Schedule Links input). A column
+ *  mixing lists, frames and cubes is a `#TYPE!`. On the table paths, parent rows whose
+ *  nested value is empty/missing are dropped (standard unnest); on the LIST path an empty
+ *  or missing list keeps the row with a blank, so a task with no predecessors survives.
+ *  Parent (flat) column types are re-inferred on the frame/list paths. */
 export function unnestCube(c: CubeValue, nestedColumn: string): FrameValue | CubeValue {
   const nestedIdx = c.columns.findIndex((col) => col.name === nestedColumn);
   if (nestedIdx < 0) throw solError("#REF!", `column "${nestedColumn}" not found`);
   const flatCols = c.columns.filter((_, j) => j !== nestedIdx);
   const nested = c.columns[nestedIdx];
 
-  // The child kind decides the output rank: all frames → flat Frame; all cubes → peel one
-  // level to a shallower Cube; a mix is unresolvable.
-  let sawFrame = false, sawCube = false;
+  // The child kind decides the output rank: all lists → flat Frame (one row per element);
+  // all frames → flat Frame; all cubes → peel one level to a shallower Cube; a mix is
+  // unresolvable.
+  let sawList = false, sawFrame = false, sawCube = false;
   for (const cell of nested.cells) {
-    if (isFrameValue(cell)) sawFrame = true;
+    // An empty [] is "nothing nested" on any path (a row with no children), not a list vote.
+    if (Array.isArray(cell)) sawList ||= cell.length > 0;
+    else if (isFrameValue(cell)) sawFrame = true;
     else if (isCubeValue(cell)) sawCube = true;
   }
-  if (sawFrame && sawCube) throw solError("#TYPE!", "nested cells must all be tables or all be cubes");
+  if ([sawList, sawFrame, sawCube].filter(Boolean).length > 1) {
+    throw solError("#TYPE!", "nested cells must all be lists, all tables, or all cubes");
+  }
+  if (!sawList && !sawFrame && !sawCube) sawList = nested.cells.some(Array.isArray);
+
+  if (sawList) {
+    // ── EXPLODE a list column: one row per element, the element under the SAME name. ──
+    const flatValsL: CubeCell[][] = flatCols.map(() => []);
+    const explodedL: CubeCell[] = [];
+    for (let i = 0; i < cubeRowCount(c); i++) {
+      const cell = nested.cells[i];
+      const items = Array.isArray(cell) ? cell : [];
+      const pushParent = () => flatCols.forEach((fc, k) => flatValsL[k].push(cubeCellAt(fc, i)));
+      if (items.length === 0) { pushParent(); explodedL.push(null); }
+      else for (const item of items) { pushParent(); explodedL.push((item ?? null) as CubeCell); }
+    }
+    return frame([
+      ...flatCols.map((fc, k) => ({ ...inferColumn(fc.name, flatValsL[k]), name: fc.name })),
+      { ...inferColumn(nested.name, explodedL), name: nested.name },
+    ]);
+  }
 
   if (sawCube) {
     // ── PEEL: nested cells are cubes → a depth-(n−1) cube. ──
@@ -1517,7 +1699,7 @@ const round4 = (n: number): number => {
 
 // Date columns are deliberately NOT criteria — a date's serial is never a
 // meaningful "score". One definition, shared by the verb and the node (which needs
-// the criteria NAMES, in this order, to render a labeled weight box per criterion).
+// the criteria NAMES, in this order, to align a weights frame to them by name).
 export function decisionColumns(f: FrameValue): { labelCol: FrameColumn | null; criteriaCols: FrameColumn[] } {
   const labelCol = f.columns.find((c) => c.type === "string") ?? null;
   const criteriaCols = f.columns.filter(
@@ -1529,6 +1711,124 @@ export function decisionColumns(f: FrameValue): { labelCol: FrameColumn | null; 
 /** The criteria column names, in the order the weights list aligns to. */
 export function decisionCriteria(f: FrameValue): string[] {
   return decisionColumns(f).criteriaCols.map((c) => c.name);
+}
+
+// ─── Criterion-keyed weights (a frame, not a list) ──────────────────────────────
+// The DM weights and the Sensitivity scenarios both key BY CRITERION NAME off a frame's
+// first text column (orderedColumnsAreFrames — the label rides the data, not a positional
+// list). A criterion the frame omits weighs 1 and inherits the default normalize.
+
+const critKey = (s: string): string => s.trim().toLowerCase();
+
+/** The first text column: the Criterion names of a criterion-keyed frame. */
+const criterionColumn = (f: FrameValue): FrameColumn | undefined => f.columns.find((c) => c.type === "string");
+
+/** criterion name (trimmed, lower-cased) → its row index in a criterion-keyed frame. */
+function criterionRowIndex(f: FrameValue): Map<string, number> {
+  const m = new Map<string, number>();
+  criterionColumn(f)?.values.forEach((v, i) => {
+    if (typeof v === "string") { const k = critKey(v); if (k && !m.has(k)) m.set(k, i); }
+  });
+  return m;
+}
+
+const numOrNull = (v: FrameCell): number | null =>
+  typeof v === "number" && Number.isFinite(v) ? v : typeof v === "boolean" ? (v ? 1 : 0) : null;
+
+/** A Norm cell → a normalize mode; blank / unrecognized → null (inherit the default).
+ *  Accepts the card's labels (Raw / ÷Max / Rank) and the raw enum (none / max / rank). */
+export function parseNormalize(v: FrameCell): DecisionNormalize | null {
+  if (typeof v !== "string") return null;
+  const s = v.trim().toLowerCase().replace(/[÷\s]/g, "");
+  if (s === "raw" || s === "none") return "none";
+  if (s === "max" || s === "divmax") return "max";
+  if (s === "rank") return "rank";
+  return null;
+}
+
+/** Per-criterion normalize overrides read from an optional `Norm` text column. */
+function normOverridesFrom(f: FrameValue, criteria: string[], rowIndex: Map<string, number>): Record<string, DecisionNormalize> {
+  const critCol = criterionColumn(f);
+  const normCol = f.columns.find((c) => c !== critCol && critKey(c.name) === "norm");
+  const out: Record<string, DecisionNormalize> = {};
+  if (!normCol) return out;
+  for (const name of criteria) {
+    const r = rowIndex.get(critKey(name));
+    const m = r != null ? parseNormalize(normCol.values[r]) : null;
+    if (m) out[name] = m;
+  }
+  return out;
+}
+
+/** A DM weights frame → weights aligned to `criteria` + per-criterion normalize overrides.
+ *  First text column = Criterion; a number column named Weight/Value (else the first number
+ *  column) = the weight; an optional Norm text column sets the per-criterion mode. Unwired
+ *  (or a criterion the frame omits) → weight 1, default normalize. */
+export function resolveDecisionWeights(
+  wf: FrameValue | null, criteria: string[],
+): { weights: number[] | null; normOverrides: Record<string, DecisionNormalize> } {
+  if (!wf) return { weights: null, normOverrides: {} };
+  const rowIndex = criterionRowIndex(wf);
+  const nums = wf.columns.filter((c) => c.type === "number");
+  const weightCol = nums.find((c) => ["weight", "weights", "value"].includes(critKey(c.name))) ?? nums[0] ?? null;
+  const weights = criteria.map((name) => {
+    const r = rowIndex.get(critKey(name));
+    const v = r != null && weightCol ? numOrNull(weightCol.values[r]) : null;
+    return v ?? 1;
+  });
+  return { weights, normOverrides: normOverridesFrom(wf, criteria, rowIndex) };
+}
+
+/** Allocator: read each category's [min, max] and value weight from `f`, run the chosen
+ *  allocation mode (`allocateOps.ts`, no solver), and return a `Category · Allocation` frame.
+ *  Columns are found by name (min / max / weight·value) with a fallback to the first two
+ *  number columns for the range; ordered weights ride the frame's Weight column, not a wired
+ *  list (orderedColumnsAreFrames). The allocation carries the min column's unit when it has one. */
+export function allocateFrame(
+  f: FrameValue, mode: AllocateMode, amount: number,
+): FrameValue {
+  const rows = frameRowCount(f);
+  const byName = (...names: string[]): FrameColumn | undefined => {
+    const set = new Set(names.map((n) => n.toLowerCase()));
+    return f.columns.find((c) => set.has(c.name.trim().toLowerCase()));
+  };
+  const nums = f.columns.filter((c) => c.type === "number");
+  const weightCol = byName("weight", "weights", "value");
+  const priceNums = nums.filter((c) => c !== weightCol);
+  const minCol = byName("min") ?? priceNums[0];
+  const maxCol = byName("max") ?? priceNums.filter((c) => c !== minCol)[0];
+  if (!minCol || !maxCol) {
+    throw solError("#VALUE!", "Allocator needs a min and a max number column");
+  }
+  const nameCol = f.columns.find((c) => c.type === "string");
+  const asNum = (cell: FrameCell, what: string): number => {
+    if (isSolError(cell)) throw cell;
+    if (typeof cell === "number" && Number.isFinite(cell)) return cell;
+    throw solError("#VALUE!", `Allocator: every ${what} must be a number`);
+  };
+  const mins: number[] = [], maxs: number[] = [], weights: number[] = [], names: FrameCell[] = [];
+  for (let i = 0; i < rows; i++) {
+    mins.push(asNum(minCol.values[i] ?? null, "min"));
+    maxs.push(asNum(maxCol.values[i] ?? null, "max"));
+    const w = weightCol && typeof weightCol.values[i] === "number" ? (weightCol.values[i] as number) : 1;
+    weights.push(typeof w === "number" && Number.isFinite(w) ? w : 1);
+    names.push(nameCol ? (nameCol.values[i] ?? `Item ${i + 1}`) : `Item ${i + 1}`);
+  }
+  const alloc = allocate(mode, mins, maxs, weights, amount);
+  const total = alloc.reduce((s, a) => s + a, 0);
+  // Allocation is the first number column so a wired pie/chart plots it; Share is the raw
+  // FRACTION of the spend (format it as a percent downstream, not by scaling here). Any
+  // price comparison (the range, headroom) is a join/computed column downstream, not the
+  // allocator's job. Allocation carries the min column's unit and format.
+  const share = alloc.map((a) => (total > 0 ? a / total : 0));
+  return {
+    __frame: true,
+    columns: [
+      { name: nameCol?.name ?? "Category", type: "string", values: names },
+      { name: "Allocation", type: "number", values: alloc, ...(minCol.unit ? { unit: minCol.unit } : {}), ...(minCol.format ? { format: minCol.format } : {}) },
+      { name: "Share", type: "number", values: share },
+    ],
+  };
 }
 
 export function decisionMatrix(
@@ -1607,10 +1907,11 @@ export function decisionMatrix(
 }
 
 // ─── Decision matrix sensitivity (weight scenarios → a Cube of rankings) ────────
-// `scenarios`: each ROW is a scenario — its first text column names it, and a numeric
-// column named after a criterion gives that criterion's weight (missing/blank → 1).
-// Output Cube row: Scenario · Winner · Margin · Ranking (the full Option·Score·Rank
-// table nested in the cell). Margin = top score − runner-up.
+// `scenarios` is the DM weights frame widened to many scenarios: the first text column is
+// the Criterion (rows), each NUMBER column is one scenario (its header names it) carrying
+// that scenario's weight per criterion; an optional Norm column applies per criterion across
+// every scenario. A criterion a scenario omits weighs 1. Output Cube row: Scenario · Winner ·
+// Margin · Ranking (the full Option·Score·Rank table nested in the cell). Margin = top − runner-up.
 export function decisionSensitivity(
   scores: FrameValue,
   scenarios: FrameValue,
@@ -1621,26 +1922,30 @@ export function decisionSensitivity(
     throw solError("#VALUE!", "Decision Matrix needs at least one numeric criterion column");
   }
 
-  const nScen = frameRowCount(scenarios);
-  const scenLabelCol = scenarios.columns.find((c) => c.type === "string") ?? null;
-  const weightColFor = (name: string) => scenarios.columns.find((c) => c.name === name) ?? null;
-  // With zero matching columns every weight defaults to 1 and all scenarios come out
-  // identical — a naming mismatch (renamed criteria), not a sensitivity run.
-  if (!criteria.some((name) => weightColFor(name))) {
-    throw solError("#VALUE!", "No Scenarios column is named after a criterion");
+  const rowIndex = criterionRowIndex(scenarios);
+  const scenarioCols = scenarios.columns.filter((c) => c.type === "number");
+  if (scenarioCols.length === 0) {
+    throw solError("#VALUE!", "Scenarios needs a number column per scenario");
   }
+  // With no criterion row matched, every weight defaults to 1 and all scenarios come out
+  // identical — a naming mismatch (renamed criteria), not a sensitivity run.
+  if (!criteria.some((name) => rowIndex.has(critKey(name)))) {
+    throw solError("#VALUE!", "No Scenarios row is named after a criterion");
+  }
+  const normOverrides = normOverridesFrom(scenarios, criteria, rowIndex);
 
   const scenarioCells: CubeCell[] = [];
   const winnerCells: CubeCell[] = [];
   const marginCells: CubeCell[] = [];
   const rankingCells: CubeCell[] = [];
 
-  for (let i = 0; i < nScen; i++) {
+  for (const scenCol of scenarioCols) {
     const weights = criteria.map((name) => {
-      const v = weightColFor(name)?.values[i];
-      return typeof v === "number" && Number.isFinite(v) ? v : 1; // missing weight → 1
+      const r = rowIndex.get(critKey(name));
+      const v = r != null ? numOrNull(scenCol.values[r]) : null;
+      return v ?? 1; // missing weight → 1
     });
-    const ranking = decisionMatrix(scores, weights, normalize, false);
+    const ranking = decisionMatrix(scores, weights, normalize, false, normOverrides);
     // Positional: breakdown=false fixes the shape to label · Score · Rank (a
     // criterion NAMED "Score" would defeat a find-by-name here).
     const scoreCol = ranking.columns[1];
@@ -1648,7 +1953,7 @@ export function decisionSensitivity(
     const top = typeof scoreCol.values[0] === "number" ? (scoreCol.values[0] as number) : null;
     const second = typeof scoreCol.values[1] === "number" ? (scoreCol.values[1] as number) : null;
 
-    scenarioCells.push(scenLabelCol ? (scenLabelCol.values[i] ?? `Scenario ${i + 1}`) : `Scenario ${i + 1}`);
+    scenarioCells.push(scenCol.name); // the scenario is the column header
     // Every option tied at rank 1 (best-first, so they lead the frame) — a dead
     // tie names them all rather than silently picking whichever sorted first.
     const tied = ranking.columns[0].values.filter((_, k) => rankCol.values[k] === 1);
@@ -1658,7 +1963,7 @@ export function decisionSensitivity(
   }
 
   return cubeFromColumns([
-    { name: scenLabelCol?.name ?? "Scenario", cells: scenarioCells },
+    { name: "Scenario", cells: scenarioCells },
     { name: "Winner", cells: winnerCells },
     { name: "Margin", cells: marginCells },
     { name: "Ranking", cells: rankingCells },
@@ -1696,14 +2001,16 @@ export function fillBlanks(f: FrameValue, columns: readonly string[], dir: "down
   return { __frame: true, columns: cols };
 }
 
-/** Coerce a replacement string to a column's type (the quiet-dirty-data rule:
- *  blank → null, unparseable → NaN for numbers / null otherwise). */
-function coerceReplacement(t: FrameColType, text: string): FrameCell {
+/** Coerce a replacement string to a column's type (the quiet-dirty-data rule: blank →
+ *  null, an unparseable logical → null, text verbatim). A number or date column with a
+ *  replacement that is not a number is `undefined`: the cell stays as it was (a NaN cell
+ *  is neither a value, a blank nor an error, so nothing downstream could read it). */
+function coerceReplacement(t: FrameColType, text: string): FrameCell | undefined {
   const s = text.trim();
   if (s === "") return null;
   switch (t) {
-    case "number": { const n = Number(s); return Number.isFinite(n) ? n : NaN; }
-    case "date": { const n = Number(s); return Number.isFinite(n) ? n : null; }
+    case "number":
+    case "date": { const n = Number(s); return Number.isFinite(n) ? n : undefined; }
     case "logical": {
       const l = s.toLowerCase();
       return l === "true" || l === "1" ? true : l === "false" || l === "0" ? false : null;
@@ -1734,6 +2041,7 @@ export function replaceValues(
       };
     }
     const replacement = coerceReplacement(col.type, replaceWith);
+    if (replacement === undefined) return col; // nothing a number/date cell could become
     return {
       ...col,
       values: col.values.map((v) => {
@@ -1824,8 +2132,9 @@ export function dropBlankRows(f: FrameValue, mode: "all" | "any"): FrameValue {
 
 /** Row slices beyond head's first-N: last N, skip the first N, or a 1-based
  *  inclusive range — Power Query's Keep/Remove Rows family on one op. */
-export function sliceRows(f: FrameValue, mode: "first" | "last" | "skip" | "range", n: number, to?: number): FrameValue {
-  const rows = frameRowCount(f);
+/** The [start, end) row window for a slice mode — shared by sliceRows (frame) and
+ *  sliceCube (cube), so both take the same contiguous rows. */
+export function sliceBounds(rows: number, mode: "first" | "last" | "skip" | "range", n: number, to?: number): [number, number] {
   const N = Math.max(0, Math.trunc(n));
   let start = 0, end = rows;
   if (mode === "first") end = Math.min(rows, N);
@@ -1833,6 +2142,11 @@ export function sliceRows(f: FrameValue, mode: "first" | "last" | "skip" | "rang
   else if (mode === "skip") start = Math.min(rows, N);
   else { start = Math.max(0, Math.trunc(n) - 1); end = Math.min(rows, Math.trunc(to ?? n)); }
   if (end < start) end = start;
+  return [start, end];
+}
+
+export function sliceRows(f: FrameValue, mode: "first" | "last" | "skip" | "range", n: number, to?: number): FrameValue {
+  const [start, end] = sliceBounds(frameRowCount(f), mode, n, to);
   return { __frame: true, columns: f.columns.map((c) => ({ ...c, values: c.values.slice(start, end) })) };
 }
 
@@ -1936,6 +2250,14 @@ export type WindowFn =
   | "lag" | "lead" | "diff" | "pct_change"
   | "rolling_sum" | "rolling_avg" | "rolling_min" | "rolling_max"
   | "group_sum" | "group_avg" | "group_min" | "group_max" | "group_count" | "share" | "first" | "last";
+
+/** Window functions whose output is in the value column's unit (ranks, counts, shares and
+ *  percent changes are not). */
+const WINDOW_UNIT_KEEPING: ReadonlySet<WindowFn> = new Set([
+  "cumsum", "cumavg", "cummin", "cummax", "lag", "lead", "diff",
+  "rolling_sum", "rolling_avg", "rolling_min", "rolling_max",
+  "group_sum", "group_avg", "group_min", "group_max", "first", "last",
+]);
 
 export interface WindowSpec {
   /** Partition columns; empty = the whole frame is one group. */
@@ -2091,5 +2413,6 @@ export function windowFrame(f: FrameValue, spec: WindowSpec): FrameValue {
   const outType: FrameColType =
     (spec.fn === "lag" || spec.fn === "lead" || spec.fn === "first" || spec.fn === "last") && valCol ? valCol.type : "number";
   const name = spec.as.trim() || spec.fn;
-  return { __frame: true, columns: [...f.columns.filter((c) => c.name !== name), { name, type: outType, values: out }] };
+  const unit = valCol?.unit && WINDOW_UNIT_KEEPING.has(spec.fn) ? { unit: valCol.unit } : {};
+  return { __frame: true, columns: [...f.columns.filter((c) => c.name !== name), { name, type: outType, ...unit, values: out }] };
 }

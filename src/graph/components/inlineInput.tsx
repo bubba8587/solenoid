@@ -12,6 +12,8 @@ import { nodeName } from "../catalogUtils";
 import { collapseStore } from "../collapseStore";
 import { NodeSocket, MeasuredSocketRow } from "./NodeSocket";
 import { CollapsedInputPill } from "./CollapsedInputPill";
+import { ColumnPickerField } from "./ColumnPickerField";
+import { columnPickersOf } from "../nodes/columnPickerHook";
 import { stopDragStart } from "../coarse";
 
 // Sizes nodes whose body grows by row count; socket PLACEMENT never uses it — each
@@ -280,15 +282,17 @@ export function QuotedTextInput(props: {
   placeholder?: string;
   // When set, the field shows a resize grip.
   nodeId?: string;
+  /** A `<datalist>` id for type-ahead suggestions (the caller renders the list). */
+  listId?: string;
 }) {
   // The value variant is a MULTI-LINE textarea: a single-line <input> silently strips
   // newlines on paste, flattening a multi-line literal.
   return props.variant === "value"
     ? <QuotedValueTextarea value={props.value} onChange={props.onChange} autoFocus={props.autoFocus} />
-    : <QuotedInlineInput value={props.value} onChange={props.onChange} autoFocus={props.autoFocus} placeholder={props.placeholder} />;
+    : <QuotedInlineInput value={props.value} onChange={props.onChange} autoFocus={props.autoFocus} placeholder={props.placeholder} listId={props.listId} />;
 }
 
-function QuotedInlineInput({ value, onChange, autoFocus, placeholder }: { value: string; onChange: (v: string) => void; autoFocus?: boolean; placeholder?: string }) {
+function QuotedInlineInput({ value, onChange, autoFocus, placeholder, listId }: { value: string; onChange: (v: string) => void; autoFocus?: boolean; placeholder?: string; listId?: string }) {
   const field = useDraftCommit(value, (v) => v, (t) => t, onChange);
   return (
     <span className="solenoid-node__quoted solenoid-node__quoted--inline">
@@ -299,6 +303,7 @@ function QuotedInlineInput({ value, onChange, autoFocus, placeholder }: { value:
           className="solenoid-node__quoted-input"
           value={field.draft}
           placeholder={placeholder}
+          list={listId}
           onChange={(e) => field.setDraft(e.target.value)}
           onBlur={field.onBlur}
           onKeyDown={field.onKeyDown}
@@ -362,12 +367,14 @@ export function InlineTextField({
   value,
   onChange,
   placeholder,
+  listId,
 }: {
   value: string | undefined;
   onChange: (v: string) => void;
   placeholder?: string;
+  listId?: string;
 }) {
-  return <QuotedTextInput value={value ?? ""} onChange={onChange} placeholder={placeholder} />;
+  return <QuotedTextInput value={value ?? ""} onChange={onChange} placeholder={placeholder} listId={listId} />;
 }
 
 /** A wildcard slot's literal, kept in whichever of the two maps fits. `Number(t)` and
@@ -436,8 +443,9 @@ export function InlineAutoField({
   );
 }
 
-/** Opted in by the VALUE SELECTORS, whose wildcard rows are value branches. A wildcard
- *  SINK or relay (Display, Cast, Report, Cube) leaves it off and stays wire-only. */
+/** Opted in by the VALUE SELECTORS, whose wildcard rows are value branches, and the cube
+ *  builders, whose rows are cells. A wildcard SINK or relay (Display, Cast, Report) leaves
+ *  it off and stays wire-only. */
 export interface AutoLiteralHost {
   autoLiterals?: boolean;
   stringLiterals?: Record<string, string>;
@@ -464,9 +472,11 @@ export function splitDefaultLabel(label: string): { label: string; placeholder?:
 export function InlineCsvField({
   value,
   onChange,
+  listId,
 }: {
   value: string | undefined;
   onChange: (v: string) => void;
+  listId?: string;
 }) {
   const field = useDraftCommit(value ?? "", (v) => v, (t) => t, onChange);
   return (
@@ -475,6 +485,7 @@ export function InlineCsvField({
       className="solenoid-node__inline-input"
       value={field.draft}
       placeholder="a, b, c"
+      list={listId}
       onChange={(e: ChangeEvent<HTMLInputElement>) => field.setDraft(e.target.value)}
       onBlur={field.onBlur}
       onKeyDown={field.onKeyDown}
@@ -511,6 +522,10 @@ type Props = {
   /** Input keys whose label is a math expression (e.g. a LAMBDA's `f(r,c)`),
    *  rendered with KaTeX so it reads as a proper function signature. */
   mathLabelKeys?: ReadonlySet<string>;
+  /** Type-ahead suggestions per string/CSV input key — rendered as a native `<datalist>`
+   *  the field points at, so typing offers matches but any value still commits (e.g. the
+   *  Time Zone nodes' IANA zone names). */
+  suggest?: Record<string, readonly string[]>;
 };
 
 /** A row label rendered as math (KaTeX), falling back to plain text. */
@@ -531,17 +546,23 @@ function MathLabel({ text }: { text: string }) {
 
 /** Default renderer for a node's input rows; each dot centers on its own row, so rows
  *  can sit anywhere in the body with no fixed-offset assumption about the header. */
-export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKeys, mathLabelKeys }: Props) {
+export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKeys, mathLabelKeys, suggest }: Props) {
   const connected = useConnectedInputs(node.id);
   const incoming = useIncomingSources(node.id);
   const collapsed = useSyncExternalStore(collapseStore.subscribe, () => collapseStore.get(node.id));
   const literals = (node.literals ??= {});
+  // ONE datalist per card carries the union of every suggested key's options (they share
+  // it — the zone fields all suggest the same names); each suggested field points at it.
+  const suggestId = suggest ? `sol-suggest-${node.id}` : undefined;
+  const suggestOptions = suggest ? Array.from(new Set(Object.values(suggest).flat())) : [];
 
   const entries: [string, InputPort][] = (keys ?? Object.keys(node.inputs))
     .map((k) => [k, node.inputs[k]] as [string, InputPort | undefined])
     .filter((e): e is [string, InputPort] => !!e[1]);
 
   const strLiterals = (node.stringLiterals ??= {});
+  // Column-name literals this node declares as frame-column pickers (B4): key → frame input.
+  const pickerKeys = new Map(columnPickersOf(node).map((p) => [p.key, p.frameInput]));
 
   // A literal can move a derived SOCKET type and no connection event fires on this
   // path, so the wildcard types must be re-settled after a literal edit.
@@ -626,13 +647,22 @@ export function InlineInputs({ node, emit, keys, labelFor, titleFor, cableOnlyKe
             ) : isNumber ? (
               <InlineNumberField value={literals[key]} onChange={(v) => set(key, v)} placeholder={placeholder} />
             ) : isStr ? (
-              <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} />
+              pickerKeys.has(key) ? (
+                <ColumnPickerField nodeId={node.id} frameInput={pickerKeys.get(key)!} value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} />
+              ) : (
+                <InlineTextField value={strLiterals[key]} onChange={(v) => setStr(key, v)} placeholder={placeholder} listId={suggest && key in suggest ? suggestId : undefined} />
+              )
             ) : isCsvList ? (
-              <InlineCsvField value={strLiterals[key]} onChange={(v) => setStr(key, v)} />
+              <InlineCsvField value={strLiterals[key]} onChange={(v) => setStr(key, v)} listId={suggest && key in suggest ? suggestId : undefined} />
             ) : null}
           </MeasuredSocketRow>
         );
       })}
+      {suggestId && (
+        <datalist id={suggestId}>
+          {suggestOptions.map((o) => <option key={o} value={o} />)}
+        </datalist>
+      )}
     </>
   );
 }

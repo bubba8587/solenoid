@@ -1,5 +1,6 @@
 import { useSyncExternalStore, type ReactNode } from "react";
 import { cubePopup, type DrillView } from "../cubePopupStore";
+import { CubeEditCell, ListEditCell, CubeEditRows, CubeEditHeader } from "./cubeEditCell";
 import { appThemeStore } from "../appTheme";
 import { cubeRowCount, cubeDepth, frameRowCount, type CubeCell } from "../frame";
 import { CubeCellChip, frameCellNode, cubeCellToken } from "./cubeCell";
@@ -29,7 +30,7 @@ function describe(view: DrillView): {
       rows: cubeRowCount(cube),
       cols: cube.columns.length,
       depth: cubeDepth(cube),
-      cell: (r, c) => <CubeCellChip cell={cube.columns[c].cells[r] ?? null} crumb={cube.columns[c].name} size="sm" type={cube.columns[c].type} />,
+      cell: (r, c) => <CubeCellChip cell={cube.columns[c].cells[r] ?? null} crumb={cube.columns[c].name} size="sm" type={cube.columns[c].type} format={cube.columns[c].format} />,
       sortKey: (r, c) => sortKeyOf(cube.columns[c].cells[r] ?? null),
     };
   }
@@ -42,6 +43,17 @@ function describe(view: DrillView): {
       depth: null,
       cell: (r, c) => frameCellNode(f.columns[c].type, f.columns[c].values[r] ?? null),
       sortKey: (r, c) => sortKeyOf(f.columns[c].values[r] ?? null),
+    };
+  }
+  if (view.kind === "list") {
+    const items = view.items;
+    return {
+      headers: [view.label],
+      rows: items.length,
+      cols: 1,
+      depth: null,
+      cell: (r) => <CubeCellChip cell={(items[r] ?? null) as CubeCell} crumb="item" size="sm" />,
+      sortKey: (r) => sortKeyOf((items[r] ?? null) as CubeCell),
     };
   }
   const g = view.cells;
@@ -67,6 +79,7 @@ function tokenAt(view: DrillView, r: number, c: number): string {
     const col = view.frame.columns[c];
     return cubeCellToken((col.values[r] ?? null) as CubeCell, col.type);
   }
+  if (view.kind === "list") return cubeCellToken((view.items[r] ?? null) as CubeCell);
   return cubeCellToken(view.cells[r]?.[c] ?? null);
 }
 
@@ -100,6 +113,9 @@ function levelText(view: DrillView, headers: string[] | null, order: readonly nu
  *  DEEPER IN PLACE via the breadcrumb, so a second window never opens. */
 export function CubePopup() {
   const state = useSyncExternalStore(cubePopup.subscribe, cubePopup.get);
+  // An editing level: the Cube Input's records at this level's path back the cells.
+  const last = state?.stack[state.stack.length - 1];
+  const editView = state?.edit && last && last.path ? last : null;
   useSyncExternalStore(appThemeStore.subscribe, appThemeStore.version);
   // Keyed on the DRILL LEVEL, so the sort drops instead of carrying a column
   // index across to an unrelated table.
@@ -133,6 +149,7 @@ export function CubePopup() {
       cardClassName="table-popup"
       grouped={grouped}
       cardStyle={cardStyle}
+      resizable={{ min: { w: 320, h: 220 } }}
       headerExtra={
         <>
           <span className="table-popup__dims">{rows}×{cols}{rowsTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>
@@ -180,7 +197,7 @@ export function CubePopup() {
         </div>
       )}
 
-      <div className="table-popup__grid-scroll">
+      <div className="table-popup__grid-scroll sol-popup__scroll">
         <table className="table-popup__grid">
           <thead>
             <tr>
@@ -192,7 +209,9 @@ export function CubePopup() {
                   onClick={() => cycleSort(c)}
                   className={`${headers ? "table-popup__colhead table-popup__colhead--name" : "table-popup__colhead"} table-popup__colhead--sortable`}
                 >
-                  {headers ? headers[c] : c + 1}
+                  {editView && state.edit && headers && editView.kind !== "list"
+                    ? <CubeEditHeader edit={state.edit} path={editView.path!} column={headers[c]} />
+                    : (headers ? headers[c] : c + 1)}
                   <SortIndicator dir={sortDirOf(sort, c)} />
                 </th>
               ))}
@@ -204,7 +223,11 @@ export function CubePopup() {
                 <th className="table-popup__rowhead">{r + 1}</th>
                 {Array.from({ length: cols }, (_, c) => (
                   <td key={c} className="table-popup__cell" style={{ padding: "2px 6px", textAlign: "left" }}>
-                    {cell(r, c)}
+                    {editView && state.edit
+                      ? (editView.kind === "list"
+                          ? <ListEditCell edit={state.edit} path={editView.path!} row={r} />
+                          : <CubeEditCell edit={state.edit} path={editView.path!} row={r} column={headers?.[c] ?? String(c)} />)
+                      : cell(r, c)}
                   </td>
                 ))}
               </tr>
@@ -214,6 +237,7 @@ export function CubePopup() {
       </div>
 
       <div className="table-popup__footer">
+        {editView && state.edit && <CubeEditRows edit={state.edit} view={editView} rows={rows} />}
         <div className="table-popup__spacer" />
         <button className="table-popup__btn table-popup__btn--primary" onClick={() => cubePopup.close()}>Done</button>
       </div>

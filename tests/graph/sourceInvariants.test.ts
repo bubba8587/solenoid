@@ -1,10 +1,11 @@
+// dte:C11,C13,C26,C27,C30,C34,C36,C38,C39,C40,D10,D16,D42,D46
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-// ─── Source-scan enforcement for the grep-shaped rules (rules.md) ─────────────
+// ─── Source-scan enforcement for the grep-shaped rules (decisions/) ───────────
 // Two rules whose BEHAVIOUR was tested but whose COMPLETENESS was not — nothing
-// failed when a NEW file forgot them, which rules.md flags as precisely the shape
+// failed when a NEW file forgot them, which dte:C9 labelUnenforced flags as precisely the shape
 // of every Origin incident. These scans close the completeness half the same way
 // formulaPathIsReteFree.test.ts closes implReteFree: statically, over the real source, so
 // a new offender fails CI with the rule's name in the message.
@@ -54,6 +55,7 @@ describe("retypeReconciles — a file that retypes sockets in place must reconci
     "sockets.ts": "defines MutableSocket.setType — the primitive itself",
     "nodes/formatController.ts": "the FC's own sockets; retyped BY the fcReconcile pass (and at construction)",
     "nodes/control.ts": "syncOutputType returns `changed` — its component (CableSwitchNode.tsx) does the retype",
+    "nodes/frame.ts": "SettleNode.setMode retypes its own INPUT socket per mode; its component (FrameNodes.tsx SettleComponent) calls reconcileTypesAfterEdit, and an input retype changes what the node ACCEPTS, not its output type — no downstream FC restale",
     "nodes/composite.ts": "port adoption synced by its own pass; the end-of-process settle runs reconcileFcTypes (process.ts)",
     "conduitTrace.ts": "conduit lane adoption — driven from the same central settle",
   };
@@ -117,6 +119,10 @@ describe("dateAmbiguitySurfaces — a value-carrying text→date conversion keep
     "nodes/dateOps.ts": "TIMEVALUE's datetime fallback — already answers #VALUE! on failure",
     "frameVerbs.ts": "lookupNeedle parses a lookup value; a bad date lookup just fails to match — no error channel (backlogged)",
     "components/TablePopup.tsx": "date-picker seed + CSV import, both best-effort UI with no error channel",
+    "weatherProvider.ts": "Open-Meteo daily.time is machine ISO YYYY-MM-DD — never ambiguous; a bad row is a blank date cell",
+    "holidaysProvider.ts": "Nager.Date PublicHolidays.date is machine ISO YYYY-MM-DD — never ambiguous; an undated row is dropped",
+    "fxProvider.ts": "Frankfurter's date is machine ISO YYYY-MM-DD — never ambiguous; a missing date is NaN",
+    "taskNotesApi.ts": "TaskNotes' API dates are machine ISO YYYY-MM-DD / ISO datetimes — never ambiguous; a malformed one is a blank cell (a cube column has no error channel)",
   };
 
   it("no new file flattens #AMBIGUOUS! away without a sanction", () => {
@@ -153,7 +159,7 @@ describe("perInputUnitBlind — a node file that runs the dimension algebra decl
   // per-cell algebra — isUnitCell / dimOf / magnitudeOf / the *Units combinators
   // / broadcastUnit — without the flag never sees a tag: the algebra silently
   // no-ops on display magnitudes. The BEHAVIOUR is covered by unitCoercion.test;
-  // THIS is the completeness half (rules.md known-violation 2): a new algebra
+  // THIS is the completeness half (dte:D42 perInputUnitBlind): a new algebra
   // node whose file forgets the flag fails here by name.
   //
   // Deliberately EXCLUDED from the consuming set: the matrix-unit family
@@ -821,6 +827,37 @@ describe("frameLabelGrammar — frame-input labels follow the column-role gramma
         }
       }
     }
-    expect(offenders, "labels violating the frameLabelGrammar grammar (rules.md)").toEqual([]);
+    expect(offenders, "labels violating the frameLabelGrammar grammar (dte:C13 frameLabelGrammar)").toEqual([]);
+  });
+});
+
+// ─── heroChipRow: a chip in a hero box rides the shared flex row ─────────────
+// `.solenoid-node__display-value` is a BLOCK sized for an 18px text line; an inline chip
+// baseline-aligns in it and lands ~3px low. Five separate "center the chip" fixes were
+// per-card inline styles (a `justifyContent` without `display: flex` does nothing), and
+// each new chart card copied a broken one. The ONE home is the
+// `solenoid-node__display-value--chip` modifier (nodeCard.css); no card restates it.
+describe("heroChipRow: hero-box chips use the shared --chip row, never an inline alignment", () => {
+  const COMPONENTS = path.join(SRC, "components");
+  const CHIP_TAG = /<(ChartChip|DiagramChip|DocumentChip|ErrorChip)[\s/>]/;
+  const INLINE_ALIGN = /style=\{\{[^}]*\b(justifyContent|alignItems|display)\b/;
+  it("no component sets justifyContent / alignItems / display inline on a display-value box", () => {
+    const offenders: string[] = [];
+    for (const file of walk(COMPONENTS)) {
+      fs.readFileSync(file, "utf8").split(/\r?\n/).forEach((line, i) => {
+        if (line.includes("solenoid-node__display-value") && INLINE_ALIGN.test(line)) offenders.push(`${path.relative(SRC, file)}:${i + 1}`);
+      });
+    }
+    expect(offenders, "use className solenoid-node__display-value--chip (heroChipRow)").toEqual([]);
+  });
+  it("every chart-kind card's chip row carries the --chip modifier", () => {
+    const missing: string[] = [];
+    for (const file of walk(COMPONENTS)) {
+      fs.readFileSync(file, "utf8").split(/\r?\n/).forEach((line, i) => {
+        if (!line.includes("solenoid-node__display-value") || !CHIP_TAG.test(line)) return;
+        if (!line.includes("solenoid-node__display-value--chip")) missing.push(`${path.relative(SRC, file)}:${i + 1}`);
+      });
+    }
+    expect(missing, "a chip row without the --chip modifier (heroChipRow)").toEqual([]);
   });
 });

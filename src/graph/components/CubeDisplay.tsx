@@ -5,13 +5,18 @@ import { cubeCellToken } from "./cubeCell";
 import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { flyToNode } from "../flyToNode";
+import type { CubeEditBinding } from "../cubePopupStore";
 
-export function CubeDisplay({ cube, label, full }: {
+export function CubeDisplay({ cube, label, full, peek, edit }: {
   cube: CubeValue | SolError | null;
   label?: string;
+  /** A Cube Input's records seam: the chip opens the popup as an editor. */
+  edit?: CubeEditBinding;
   /** Render every column/row instead of the compact 3×3 preview. MUST switch tableLayout to
    *  `auto` — a `fixed` width:100% table inside a `width:max-content` card sizes runaway. */
   full?: boolean;
+  /** Socket hover-peek: a compact head-5 preview with NO chip (read-only, no popup). */
+  peek?: boolean;
 }) {
   if (isSolError(cube)) {
     return (
@@ -31,7 +36,7 @@ export function CubeDisplay({ cube, label, full }: {
   }
   const rows = cubeRowCount(cube);
   // Cap rendered rows even when "full" — a Display card is not a browser.
-  const maxR = full ? Math.min(rows, 100) : Math.min(rows, 3);
+  const maxR = full ? Math.min(rows, 100) : Math.min(rows, peek ? 5 : 3);
   const maxC = full ? cube.columns.length : Math.min(cube.columns.length, 3);
   const extraCols = !full && cube.columns.length > maxC;
 
@@ -53,7 +58,7 @@ export function CubeDisplay({ cube, label, full }: {
             <tr key={i}>
               {cube.columns.slice(0, maxC).map((c, j) => (
                 <td key={j} style={{ padding: full ? "2px 8px" : "1px 4px", textAlign: "left", fontSize: full ? 12 : 11, fontFamily: "var(--font-mono)", color: "var(--text)", borderRight: "1px solid var(--border)", whiteSpace: "nowrap", ...(full ? {} : { overflow: "hidden", textOverflow: "ellipsis" }) }}>
-                  {cubeCellToken(c.cells[i] ?? null, c.type)}
+                  {cubeCellToken(c.cells[i] ?? null, c.type, c.format)}
                 </td>
               ))}
               {extraCols && <td style={{ color: "var(--text-muted)", fontSize: 10 }}>…</td>}
@@ -66,9 +71,11 @@ export function CubeDisplay({ cube, label, full }: {
           )}
         </tbody>
       </table>
-      <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
-        <CubeChip value={cube} label={label} size="sm" />
-      </div>
+      {!full && !peek && (
+        <div className="solenoid-table-display__chip" style={{ display: "flex", justifyContent: "flex-end", marginTop: 3 }}>
+          <CubeChip value={cube} label={label} size="sm"  edit={edit} />
+        </div>
+      )}
     </div>
   );
 }

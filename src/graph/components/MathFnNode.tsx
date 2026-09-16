@@ -1,4 +1,4 @@
-import type { MathFnNode as MathFnNodeType, MathFnOp, AngleMode } from "../rete-nodes";
+import type { MathFXNode as MathFXNodeType, MathFnOp, AngleMode } from "../rete-nodes";
 import { MATH_FN_OP_META, isTrigOp } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
@@ -16,7 +16,7 @@ const ANGLE_MODES: { value: AngleMode; label: string }[] = [
   { value: "deg", label: "Deg" },
 ];
 
-export function MathFnComponent({ data, emit }: NodeProps<MathFnNodeType>) {
+export function MathFnComponent({ data, emit }: NodeProps<MathFXNodeType>) {
   const [op, setOp] = useNodeField(data, "op");
   const [angleMode, setAngleMode] = useNodeField(data, "angleMode");
   return (

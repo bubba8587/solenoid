@@ -1,3 +1,4 @@
+// dte:C17,D19
 // The ONE implementation behind both the visual node and the formula registration;
 // it must not import rete or `finance.ts` (that would cycle).
 // Entry points take Solenoid DATE SERIALS; INVALID INPUT is `null`, never a throw
@@ -96,6 +97,8 @@ export function bondPrice(
   const N = bondCouponCount(next, maturity, freq);
   const C = couponRate / freq * 100;
   const y = yld / freq;
+  // One coupon period or less to maturity: Excel's PRICE switches to simple interest.
+  if (N === 1) return (redemption + C) / (1 + (DSC / E) * y) - C * A / E;
   let dirty = redemption / Math.pow(1 + y, N - 1 + DSC / E);
   for (let k = 1; k <= N; k++) dirty += C / Math.pow(1 + y, k - 1 + DSC / E);
   return dirty - C * A / E;
@@ -230,6 +233,23 @@ export function couponValue(
   }
 }
 
+/** ACCRINT — accrued interest for a security paying periodic coupons, over the
+ *  issue→settlement span. Period length E per basis: only actual/actual (1) measures the
+ *  real period; 2 is actual/360 and 3 actual/365 (real-Excel goldens, 2026-08-31). Excel's
+ *  first_interest and calc_method arguments aren't modeled. */
+export function accrint(
+  issueSerial: number, settleSerial: number, rate: number, par = 1000, frequency = 2, basis = 0,
+): number | null {
+  if (!Number.isFinite(issueSerial) || !Number.isFinite(settleSerial)) return null;
+  const freq = Math.round(frequency);
+  if (![1, 2, 4].includes(freq)) return null;
+  const b = Math.round(basis);
+  const issue = serialToJsDate(issueSerial), settle = serialToJsDate(settleSerial);
+  const a = b === 0 || b === 4 ? days30_360(issue, settle) : actualDays(issue, settle);
+  const e = b === 1 ? actualDays(issue, coupAddMonths(issue, 12 / freq)) : b === 3 ? 365 / freq : 360 / freq;
+  return par * (rate / freq) * (a / e);
+}
+
 /** ACCRINTM — accrued interest for a security that pays at maturity. */
 export function accrintM(
   issueSerial: number, settleSerial: number, rate: number, par = 1000, basis = 0,
@@ -240,6 +260,32 @@ export function accrintM(
   const a = dayCount(b, issue, settle);
   const d = b === 3 ? 365 : b === 1 ? actualDays(issue, coupAddMonths(issue, 12)) : 360;
   return par * rate * a / d;
+}
+
+export type TBillOp = "tbilleq" | "tbillprice" | "tbillyield";
+
+/** TBILLEQ / TBILLPRICE / TBILLYIELD on actual days over 360. `x` is the discount rate
+ *  (TBILLEQ / TBILLPRICE) or the price per $100 (TBILLYIELD). Real-Excel goldens sit in
+ *  finance.test.ts. */
+export function tbill(op: TBillOp, settleSerial: number, maturitySerial: number, x: number): number | null {
+  if (!Number.isFinite(settleSerial) || !Number.isFinite(maturitySerial)) return null;
+  if (maturitySerial <= settleSerial) return null;
+  const dsm = Math.round(maturitySerial - settleSerial);
+  switch (op) {
+    case "tbillprice": return 100 * (1 - x * dsm / 360);
+    // A money-market yield on a 360-day basis (=TBILLYIELD(2024-01-15, 2024-07-15, 97.5) = 0.050718512);
+    // the 365 belongs to TBILLEQ's bond-equivalent basis.
+    case "tbillyield": return ((100 - x) / x) * (360 / dsm);
+    case "tbilleq": {
+      if (dsm <= 182) return (365 * x) / (360 - x * dsm);
+      // Past 182 days Excel switches to the bond-equivalent (coupon-equivalent) yield: the
+      // semiannual-compounding price equation in closed form (SIA).
+      // =TBILLEQ(2024-01-15, 2024-12-15, 0.05) = 0.052539935.
+      const t = dsm / 365;
+      const price = 1 - x * dsm / 360;
+      return (-t + Math.sqrt(t * t - (2 * t - 1) * (1 - 1 / price))) / (t - 0.5);
+    }
+  }
 }
 
 export type SecurityDiscOp = "disc" | "intrate" | "received";
@@ -262,7 +308,7 @@ export function securityDisc(
     case "intrate": return ((b - a) / a) * (bd / dsm);
     case "received": {
       const denom = 1 - b * dsm / bd;
-      return denom <= 0 ? 0 : a / denom;
+      return denom <= 0 ? null : a / denom; // Excel: #NUM!, never a fabricated 0
     }
   }
 }

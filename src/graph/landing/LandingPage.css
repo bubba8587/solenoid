@@ -1,3 +1,4 @@
+/* dte:C3 */
 /* ─── Landing page (?landing) ─────────────────────────────────────────────────
    A standalone scrollable document over the app's design tokens: dark workbench
    chrome, hyperlegible type, quiet accent. The app root locks overflow, so the
@@ -12,16 +13,97 @@
   position: fixed;
   inset: 0;
   overflow-y: auto;
+  /* Guard against any child overflowing sideways on a phone; the page never scrolls
+     horizontally. Keeps the sticky header (this is the scroll container). */
+  overflow-x: hidden;
   background: var(--app-bg);
   color: var(--text);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+
+  /* The marketing pages lock their chrome to the brand coil gold regardless of the
+     accent the visitor has chosen in the app — the page is Solenoid's storefront, not
+     their workbench. Scoped to the wrapper so only chrome reading --accent retints;
+     the scene canvases' node and socket colors ride their own vars, untouched. */
+  --accent: #f5b914;
+  --accent-soft: rgba(245, 185, 20, 0.14);
+  --accent-mid: rgba(245, 185, 20, 0.4);
+  --accent-ink: #1a1a1a;
+}
+
+/* Light theme: the marketing page reads nearly white, brighter than the app's cooler
+   canvas gray. Scoped to the landing subtree (redefining --app-bg reaches both the
+   wrapper and the sticky header, which both paint it); cards stay lifted by their
+   borders and the slightly brighter --surface. The scene canvases keep --canvas-bg. */
+:root[data-theme="light"] .sol-landing {
+  --app-bg: #fdfdfe;
 }
 
 .sol-landing__inner {
-  max-width: 1060px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 0 24px;
+  /* Anchor the decorative scene thread (absolute, full scroll height). */
+  position: relative;
+}
+
+/* The scene thread: soft, socketless bezier cables joining each live canvas viewport to
+   the next. Behind the content (opaque scene cards hide it under themselves; it shows in
+   the gaps between them). Transparent gray, so it reads as a quiet connective line. */
+.sol-scene-thread {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* Draw the thread only after the viewport cards have animated in — a delayed fade on the
+   container (not the paths, which recompute on scroll/resize and would restart). Reduced
+   motion skips the reveal entirely, so the thread is simply present. */
+.sol-landing--anim .sol-scene-thread {
+  animation: sol-thread-in 0.6s ease 0.85s both;
+}
+
+@keyframes sol-thread-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.sol-scene-thread path {
+  fill: none;
+  stroke: color-mix(in srgb, var(--text-muted) 30%, transparent);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+/* Inline links in running copy (e.g. the Obsidian hero's TaskNotes / Knap links).
+   The nav, CTA, footer and wordmark anchors carry their own styles; this catches the
+   in-prose ones that would otherwise fall back to the UA blue that clashes with the
+   workbench. Accent, the page's one interactive color. */
+.sol-landing main p a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: var(--accent-mid);
+  text-underline-offset: 2px;
+  transition: text-decoration-color 80ms ease;
+}
+
+.sol-landing main p a:hover {
+  text-decoration-color: var(--accent);
+}
+
+/* Keyboard focus. Chrome only (not the live scene stages, which carry the app's own
+   node focus): the accent ring the app uses for focus, kept off pointer clicks. */
+.sol-landing__nav a:focus-visible,
+.sol-landing__theme:focus-visible,
+.sol-landing__cta:focus-visible,
+.sol-landing__footer a:focus-visible,
+.sol-landing main p a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 2px;
 }
 
 /* ── Scroll reveal ── */
@@ -84,6 +166,17 @@
   color: var(--text-bright);
 }
 
+/* The active route. Accent so the visitor can see where they are; the wordmark
+   covers Home, which is why it is not in the nav list. */
+.sol-landing__nav a.is-current {
+  color: var(--accent);
+}
+
+/* "Open the app" reads as the one always-present way back into Solenoid. */
+.sol-landing__nav-app {
+  color: var(--text-bright);
+}
+
 .sol-landing__theme {
   display: flex;
   align-items: center;
@@ -91,8 +184,8 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--btn-bg);
-  border: 1px solid var(--btn-border);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
   color: var(--text-dim);
   cursor: pointer;
   padding: 0;
@@ -100,7 +193,7 @@
 
 .sol-landing__theme:hover {
   background: var(--btn-hover);
-  border-color: var(--btn-border-hover);
+  border-color: var(--border-strong);
   color: var(--text);
 }
 
@@ -150,6 +243,7 @@
   font-size: 14px;
   line-height: 1.55;
   color: var(--text-dim);
+  text-wrap-style: pretty;
 }
 
 .sol-landing__actions {
@@ -159,31 +253,39 @@
   margin-top: 24px;
 }
 
+/* The app's own button system (DESIGN §Buttons). Default is the neutral, recessive
+   button — sunken fill, 1px neutral border, lifting to --btn-hover / --border-strong.
+   The primary is the app's "confirming action": filled with the accent + its matching
+   ink, one per pair, so Open Solenoid reads as the app's commit button and Download
+   stays its neutral sibling. */
 .sol-landing__cta {
   display: inline-block;
   padding: 8px 18px;
   border-radius: 999px;
-  background: var(--btn-bg);
-  border: 1px solid var(--btn-border);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
   color: var(--text);
   font-size: 13px;
+  font-weight: 600;
   text-decoration: none;
+  transition: background 80ms ease, border-color 80ms ease;
 }
 
 .sol-landing__cta:hover {
   background: var(--btn-hover);
-  border-color: var(--btn-border-hover);
+  border-color: var(--border-strong);
 }
 
-/* Primary action: the accent marks it the way it marks a focused field — a
-   colored border edge, never a fill (the Quiet Accent Rule). */
 .sol-landing__cta--primary {
+  background: var(--accent);
   border-color: var(--accent);
-  color: var(--text-bright);
+  color: var(--accent-ink);
 }
 
 .sol-landing__cta--primary:hover {
+  background: var(--accent);
   border-color: var(--accent);
+  filter: brightness(1.1);
 }
 
 /* ── Live demo stage ── */
@@ -191,25 +293,55 @@
   margin-top: 34px;
 }
 
+/* The live FlowSurface fills the stage (position:relative + a definite height);
+   the surface paints its own dot background. */
 .sol-landing__stage {
   position: relative;
+  height: clamp(360px, 56vh, 560px);
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
   background-color: var(--canvas-bg);
 }
 
-/* The rete mount fills the stage; the dot grid matches the app canvas (24px,
-   scaled with the stage's fixed zoom via inline background-size). */
-.sol-landing__stage-canvas {
-  position: absolute;
-  inset: 0;
+/* No minimap on the marketing hero — it's editor chrome. */
+.sol-landing__stage .react-flow__minimap {
+  display: none;
+}
+
+/* A locked scene card: a real FlowSurface for one feature's nodes. Fixed height so
+   the surface fills it; no minimap (SceneStage locks it, this hides the chrome). */
+.sol-scene-stage {
+  position: relative;
+  height: 300px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
   background-color: var(--canvas-bg);
-  background-image: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--canvas-dot) 85%, transparent) 1px,
-    transparent 1px
-  );
+}
+.sol-scene-stage--units {
+  height: 480px;
+}
+.sol-scene-stage--verbs {
+  height: 440px;
+}
+.sol-scene-stage--draw {
+  height: 400px;
+}
+.sol-scene-stage--equation {
+  height: 380px;
+}
+.sol-scene-stage--sockets {
+  height: 440px;
+}
+.sol-scene-stage--obsidian {
+  height: 460px;
+}
+.sol-scene-stage--obs-note {
+  height: 360px;
+}
+.sol-scene-stage .react-flow__minimap {
+  display: none;
 }
 
 .sol-landing__stage-reset {
@@ -218,8 +350,8 @@
   right: 10px;
   padding: 4px 12px;
   border-radius: 999px;
-  background: var(--btn-bg);
-  border: 1px solid var(--btn-border);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
   color: var(--text-dim);
   font-size: 11px;
   font-family: var(--font-sans);
@@ -228,8 +360,45 @@
 
 .sol-landing__stage-reset:hover {
   background: var(--btn-hover);
-  border-color: var(--btn-border-hover);
+  border-color: var(--border-strong);
   color: var(--text);
+}
+
+/* The hero's scene switcher: a segmented pill group (the app's SegToggle look). */
+.sol-landing__stage-scenes {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+}
+
+.sol-landing__stage-scene {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: background 80ms ease, color 80ms ease;
+}
+
+.sol-landing__stage-scene:hover {
+  color: var(--text);
+}
+
+.sol-landing__stage-scene.is-active {
+  background: var(--accent);
+  color: var(--accent-ink);
 }
 
 .sol-landing__demo-note {
@@ -261,6 +430,7 @@
   font-size: 13.5px;
   line-height: 1.6;
   color: var(--text-dim);
+  text-wrap-style: pretty;
 }
 
 .sol-landing__err {
@@ -298,7 +468,7 @@
 
 .sol-landing__deep-copy p {
   margin: 10px 0 0;
-  font-size: 13px;
+  font-size: 14.5px;
   line-height: 1.62;
   color: var(--text-dim);
   text-wrap-style: pretty;
@@ -375,8 +545,15 @@
   position: absolute;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 6px;
   box-shadow: var(--shadow-card);
+}
+
+/* Light mode frames the card in a darker shade of its own accent, matching the
+   real node's frame-body stroke (nodeCard.css: accent-dark in light, neutral in
+   dark). Keeps the scene card reading as a current React Flow node. */
+:root[data-theme="light"] .sol-mnode {
+  border-color: color-mix(in srgb, var(--node-accent) 70%, #000);
 }
 
 /* The real header formula: accent tint at the themed strength, 2px accent edge
@@ -531,26 +708,6 @@
   stroke-width: 1.5;
 }
 
-/* Histogram bars grow up when the scene reveals. */
-.sol-mnode__pad--hist {
-  padding: 2px 0 0;
-}
-
-.sol-hist__bar {
-  fill: color-mix(in srgb, var(--sock-number) 78%, transparent);
-}
-
-.sol-landing--anim .sol-reveal .sol-hist__bar {
-  transform: scaleY(0);
-  transform-box: fill-box;
-  transform-origin: bottom;
-  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.sol-landing--anim .sol-reveal.is-in .sol-hist__bar {
-  transform: scaleY(1);
-}
-
 /* Note-frontmatter block (the Obsidian scene). */
 .sol-mnode__front {
   margin: 0 0 4px;
@@ -570,20 +727,6 @@
   font-size: 11px;
   line-height: 1.4;
   color: var(--text-muted);
-}
-
-/* ── Callouts (the anatomy scene) ── */
-.sol-callout {
-  position: absolute;
-  font-size: 11px;
-  line-height: 1.45;
-  color: var(--text-muted);
-}
-
-.sol-callout__lines path {
-  fill: none;
-  stroke: var(--border-strong);
-  stroke-dasharray: 2 3;
 }
 
 /* ── Cable board ── */
@@ -724,6 +867,7 @@
   font-size: 14px;
   line-height: 1.55;
   color: var(--text-dim);
+  text-wrap-style: pretty;
 }
 
 .sol-landing__strip .sol-landing__actions {
@@ -773,9 +917,64 @@
   }
 }
 
+/* The nav grew past a phone's width: let the header wrap so the wordmark keeps its
+   row and the nav flows onto the next, and tighten the nav's own spacing. */
+@media (max-width: 640px) {
+  .sol-landing__top {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+  .sol-landing__nav {
+    flex-wrap: wrap;
+    gap: 8px 14px;
+  }
+}
+
 @media (max-width: 580px) {
+  .sol-landing__inner {
+    padding: 0 18px;
+  }
+
+  .sol-landing__hero {
+    padding-top: 34px;
+  }
+
   .sol-landing__hero h1 {
     font-size: 24px;
+  }
+
+  .sol-landing__hero p {
+    font-size: 13.5px;
+  }
+
+  /* The section rhythm is tuned for a wide page; halve it so a phone is not mostly
+     empty space between blocks. */
+  .sol-landing__section {
+    margin-top: 52px;
+  }
+
+  .sol-landing__deep,
+  .sol-landing__deep--flip {
+    margin-top: 48px;
+  }
+
+  .sol-landing__section h2,
+  .sol-landing__deep h2 {
+    font-size: 20px;
+  }
+
+  .sol-landing__strip {
+    margin: 72px 0 56px;
+  }
+
+  /* Full-width CTAs are an easier tap target than side-by-side pills at phone width. */
+  .sol-landing__actions {
+    gap: 8px;
+  }
+
+  .sol-landing__cta {
+    flex: 1 1 auto;
+    text-align: center;
   }
 }
 
@@ -793,8 +992,7 @@
     animation: none;
   }
 
-  .sol-landing--anim .sol-reveal .sol-pad__dot,
-  .sol-landing--anim .sol-reveal .sol-hist__bar {
+  .sol-landing--anim .sol-reveal .sol-pad__dot {
     transform: none;
     transition: none;
   }

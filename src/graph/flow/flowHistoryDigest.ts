@@ -19,6 +19,22 @@ function editBody(n: SavedNode): string {
   return JSON.stringify({ ...rest, init: initRest });
 }
 
+/** True when two snapshots differ only by the cards' measured init.width/height (which
+ *  re-stamp after a restore mounts the cards); such a drift is not an edit, so recording
+ *  it would truncate the redo tail for nothing. */
+export function sameIgnoringDims(prev: SavedGraph, next: SavedGraph): boolean {
+  if (prev.nodes.length !== next.nodes.length) return false;
+  const strip = (g: SavedGraph) => JSON.stringify({
+    ...g,
+    nodes: g.nodes.map((n) => {
+      const { init, ...rest } = n;
+      const { width: _w, height: _h, ...initRest } = (init ?? {}) as Record<string, unknown>;
+      return { ...rest, init: initRest };
+    }),
+  });
+  return strip(prev) === strip(next);
+}
+
 /** One human-readable line for what changed between two consecutive snapshots.
  *  A snapshot can carry several kinds of change at once (a paste adds nodes AND
  *  cables); the parts join into one line, most significant first. Moves are
@@ -66,8 +82,14 @@ export function describeGraphDelta(prev: SavedGraph, next: SavedGraph): string {
   if (!parts.length && moved.length)
     parts.push(moved.length === 1 ? `Moved node: ${nodeName(moved[0])}` : `Moved ${moved.length} nodes`);
   if (!parts.length) {
+    const pd = prev.drawnCables?.length ?? 0;
+    const nd = next.drawnCables?.length ?? 0;
     if (JSON.stringify(prev.standoffs ?? []) !== JSON.stringify(next.standoffs ?? []))
       parts.push("Changed standoffs");
+    else if (nd > pd) parts.push(nd - pd === 1 ? "Drew a cable" : `Drew ${nd - pd} cables`);
+    else if (nd < pd) parts.push(pd - nd === 1 ? "Removed a drawn cable" : `Removed ${pd - nd} drawn cables`);
+    else if (JSON.stringify(prev.drawnCables ?? []) !== JSON.stringify(next.drawnCables ?? []))
+      parts.push("Edited a drawn cable");
     else parts.push("Edited document");
   }
   return parts.join("; ");

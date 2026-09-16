@@ -12,19 +12,23 @@ export interface CableEnds {
   ex: number; ey: number;
   sourceAngleDeg?: number | null;
   targetAngleDeg?: number | null;
+  /** A flipped endpoint's socket sits on the opposite edge (socketFlipStore): the stub
+   *  then leaves/enters that side, exactly as FlowCableEdge routes the DOM cable. */
+  sourceFlipped?: boolean;
+  targetFlipped?: boolean;
 }
 
-/** World-space polyline for a cable between an output (right) and input (left)
- *  socket, using the chosen shape. Defaults match the app's horizontal flow. */
+/** World-space polyline for a cable between an output and an input socket, using the
+ *  chosen shape. An output exits Right and an input enters Left unless its node is flipped. */
 export function cablePolyline(shape: CableShape, ends: CableEnds): { x: number; y: number }[] {
   const d = getCablePath(shape, {
     sourceX: ends.sx,
     sourceY: ends.sy,
-    sourcePosition: Position.Right,
+    sourcePosition: ends.sourceFlipped ? Position.Left : Position.Right,
     sourceAngleDeg: ends.sourceAngleDeg ?? null,
     targetX: ends.ex,
     targetY: ends.ey,
-    targetPosition: Position.Left,
+    targetPosition: ends.targetFlipped ? Position.Right : Position.Left,
     targetAngleDeg: ends.targetAngleDeg ?? null,
   });
   return parsePathPoints(d);

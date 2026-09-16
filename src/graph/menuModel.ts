@@ -18,11 +18,21 @@ import { inspectorStore } from "./inspectorStore";
 import { addMenuRequest } from "./addMenuStore";
 import { connectionDialog } from "./connectionDialogStore";
 import { settingsPanel, settingsStore } from "./settingsStore";
-import { pickFolderDialog, openInFileManager, isDesktop } from "./fileBridge";
+import { pickFolderDialog, openInFileManager, openExternal, isDesktop } from "./fileBridge";
 import { docPropertiesPanel } from "./docMetaStore";
 import { helpDialogStore } from "./helpDialogStore";
 import { gridSnapStore } from "./gridSnapStore";
 import { APP_LOCALE } from "./locale";
+import { drawModeStore } from "./drawnCables";
+
+// The public marketing site. Desktop has no address bar, so this is the only way there;
+// on web the current origin serves the same route (dev/preview/prod each land on their
+// own landing), so open that and fall back to the hosted site off-origin.
+const HOSTED_SITE = "https://solenoid-ngc.vercel.app";
+function openWebsite(): void {
+  const onOrigin = /^https?:$/.test(window.location.protocol);
+  void openExternal(isDesktop() || !onOrigin ? `${HOSTED_SITE}/?landing` : `${window.location.origin}/?landing`);
+}
 
 export type MenuItem =
   | { sep: true }
@@ -48,6 +58,7 @@ export function buildMenus(): Menu[] {
   const locked = canvasLockStore.get();
   const snap = gridSnapStore.get();
   const calcMode = calcModeStore.mode();
+  const drawArmed = drawModeStore.armed();
 
   return [
     {
@@ -117,6 +128,13 @@ export function buildMenus(): Menu[] {
       items: [
         { label: "Add node…", shortcut: "A", onClick: () => addMenuRequest.open(window.innerWidth / 2, 140) },
         { label: "Add connection…", onClick: () => connectionDialog.open() },
+        { sep: true },
+        {
+          label: "Draw a cable",
+          shortcut: "D",
+          checked: drawArmed,
+          onClick: () => drawModeStore.toggle(),
+        },
       ],
     },
     {
@@ -172,6 +190,7 @@ export function buildMenus(): Menu[] {
         { sep: true },
         { label: "Keyboard shortcuts…", onClick: () => shortcutsStore.toggle() },
         { sep: true },
+        { label: "Solenoid website", onClick: openWebsite },
         { label: "What's new…", onClick: () => helpDialogStore.openWhatsNew() },
         { label: "About Solenoid", onClick: () => helpDialogStore.openAbout() },
       ],

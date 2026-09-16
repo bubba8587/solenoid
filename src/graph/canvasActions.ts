@@ -20,6 +20,7 @@ import {
   standoffStore, settleStandoffs, anchorPoint, anchorFromVector,
   OPPOSITE_ANCHOR, ANCHOR_DIR, type Box as StandoffBox,
 } from "./standoffs";
+import { drawnCableStore, commitDrawn } from "./drawnCables";
 import { PUSH_GAP } from "./groupPushCore";
 import { measuredBox } from "./nodeSize";
 import { scheduleAutosave } from "./persistence";
@@ -166,6 +167,11 @@ export function linkStandoffBetween(
   view: View,
   t: { aId: string; bId: string },
 ): void {
+  // A standoff links top-level items only (subsystem-invariants, Standoffs): a group
+  // member rides its group. The menu gates this; a stale target must not slip past.
+  for (const n of editor.getNodes()) {
+    if (n instanceof GroupNode && (n.members.includes(t.aId) || n.members.includes(t.bId))) return;
+  }
   // The same size read the standoff SOLVER uses, so the band matches its boxes.
   const boxOf = (id: string): StandoffBox | null => measuredBox(view, id, editor);
   const ba = boxOf(t.aId);
@@ -200,6 +206,14 @@ export async function deleteSelection(
   editor: NodeEditor<Schemes>,
   view: View | null,
 ): Promise<void> {
+  // A selected drawn cable is its own deletion target (exclusive selection).
+  const drawnSel = drawnCableStore.selected();
+  if (drawnSel) {
+    drawnCableStore.remove(drawnSel);
+    commitDrawn();
+    return;
+  }
+
   // A selected standoff is its own deletion target (exclusive selection).
   const standoffSel = standoffStore.selected();
   if (standoffSel) {

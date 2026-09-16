@@ -23,6 +23,10 @@ area. When you coin a new load-bearing term, add it here.
   membership derived fresh per render. (`ribbonCable.ts`)
 - **Standoff** — a rigid spacing constraint between nodes (axis-band; LOCKED = rigid 45°);
   a standoff-connected cluster moves as one block. (`standoffSolver.ts`)
+- **Drawn cable** — a free-drawn annotation curve over the canvas: user-placed points
+  rendered through the wired cables' three drawers, with its own shape, width,
+  arrowheads, color and a per-point heading dial. Carries no value and joins no
+  socket. (`drawnCables.ts`)
 - **Group** — a container box around member nodes; expand/collapse pushes surrounding
   nodes out of the way. (`groupPushCore.ts`, `GroupNode.tsx`)
 - **Tidy / auto-arrange** — ELK-based layout with a custom symmetric port preset.
@@ -56,7 +60,7 @@ area. When you coin a new load-bearing term, add it here.
   coercing ↔ 1/0. The one cross-family socket bridge. (`sockets.ts`, `nodes/logic.ts`)
 - **Socket lattice** — the ruleset for what can connect to what: type families never
   auto-cross (Cast required); dimensionality flows upward freely. (`sockets.ts`,
-  `socketConnect.test.ts`; see decisions.md socketLattice)
+  `socketConnect.test.ts`; see dte:C10 socketLattice)
 - **Cast** — the explicit node to change a value's type family (the required bridge the
   lattice won't do automatically). (`nodes/cast.ts`)
 - **Fill** — the opt-in node to treat `null` as a real value.
@@ -95,7 +99,7 @@ area. When you coin a new load-bearing term, add it here.
   `nodeCatalog.ts`)
 - **FrameBackend** — the seam with two implementations: `JsFrameBackend` (web/dev, eager)
   and `PolarsBackend` (desktop, native Rust). One interface, chosen at startup.
-  (`frameBackend.ts`; see decisions.md polarsEngine)
+  (`frameBackend.ts`; see dte:C16 polarsEngine)
 - **Frame verbs (`frameVerbs.ts`)** — the pure JS reference implementation ("the oracle")
   of every verb; the correctness standard the Rust engine is tested against.
 - **Materialization boundary** — the point where a lazy `FrameRef` is collected into a
@@ -107,11 +111,20 @@ area. When you coin a new load-bearing term, add it here.
 - **Cube** — the recursive nested-table container (a frame whose cells can be frames);
   the anti-flat-grid feature, with cached depth and a drill-in popup. (`CubeValue` in
   `frame.ts`; nodes in `nodes/cube.ts`, `cubePopupStore.ts`)
+- **Plan (tasks cube)** — the Schedule node's input shape: one row per task, Predecessors a
+  list cell or a nested Task · Type · Lag table, nesting as the work breakdown, the optional
+  Start / Finish / Deadline / Manual / Complete columns; a Local File's Project XML or
+  grammar CSV arrives in this shape. (`scheduleCpm.ts`, `planImport.ts`; `v2.0/25-gantt.md` § 6.1)
+- **Gantt figure** — the read-only `chart`-socket figure of a scheduled plan: bars, milestone
+  diamonds, summary brackets, dependency arrows, the critical path, today / status lines,
+  shaded non-working days. Data-only payload (`packages/gantt-layout/src/payload.ts`), laid
+  out at its width by `@solenoid/gantt-layout`, drawn by `@solenoid/gantt-react`; it never
+  writes to its source.
 - **Computed column** — a frame column whose cells come from a per-row computation
   (an inline formula or a wired λ) instead of typed data. ONE definition per column,
   never per cell (noPerCellFormulas). Two surfaces, one core: the Frame Input popup's per-column
   source picker (**Data | Formula | λ**) and the Computed Column verb node.
-  (`computedColumnCore.ts`, `nodes/frame.ts`, `tablePopupStore.ts`; decisions tableRefSemantics/noPerCellFormulas)
+  (`computedColumnCore.ts`, `nodes/frame.ts`, `tablePopupStore.ts`; dte:C22 rowFormulaRefs/noPerCellFormulas)
 - **Side value** — a non-column value wired into a computed column's definition (a
   scalar or a row-aligned list); surfaces grow/prune side sockets from the expression's
   free names (`sideVars`). `@list` reads a side list's this-row element after a length
@@ -121,7 +134,7 @@ area. When you coin a new load-bearing term, add it here.
 
 - **Expression node** — the in-cell formula node; computes at rank ≤ 2 — scalars, lists,
   matrices, complex (matricesInFormulas lifted the old 1-D cap). Frames/cubes stay out permanently: the
-  verb engine is their surface. (`nodes/expression.ts`; see decisions.md noFramesInFormulas → matricesInFormulas)
+  verb engine is their surface. (`nodes/expression.ts`; see dte:C15 matricesInFormulas)
 - **LAMBDA** — a reusable formula value with named params, plus the 2-D LAMBDA family
   (MAP/BYROW/REDUCE…). In a computed column its PARAMS are row-bound; free names and
   @names in the body become **capture** sockets on the Lambda card. (`nodes/lambda.ts`
@@ -149,6 +162,18 @@ area. When you coin a new load-bearing term, add it here.
   (`packs.ts`, `pack-architecture.md`)
 - **Note frontmatter** — a `---`-fenced YAML block at the top of a Note that turns keys
   into typed output sockets (a Note as a typed-record source). (`noteFrontmatter.ts`)
+- **Knap template** — Obsidian's template language (knap.md), THE Note and Report body
+  syntax: `{{ name }}`, `{% if %}`, `{% for %}` and filters, rendered at compute; a
+  Report's root variables are inputs, a Note's are its frontmatter. (`knapTemplate.ts`)
+- **Embed** — a bare `{{ name }}` in a Report: the wired value drawn as the canvas shows
+  it (formatted scalar, grid, chart, KaTeX, a Note block). Internally the render emits
+  the `` `=name` `` ref span, which resolves by kind. (`noteInlineRefs.ts`)
+- **Template note** — a Note whose body has tags naming no field of its own; they stay
+  literal on the card, and wired into a Report's Template input they become that
+  report's inputs. (`nodes/report.ts`)
+- **Mail merge / Records** — a Report's Records input: one rendering (a **page**) per
+  row, `record` and `index` in scope, named by the page name; the pages write as one
+  note each. (`nodes/report.ts`, `documentValue.ts`)
 - **Document / library** — the multi-doc model; each doc persists to its OWN
   two-slot localStorage pair plus a light index. (`documentStore.ts`, `persistence.ts`)
 
@@ -159,7 +184,7 @@ area. When you coin a new load-bearing term, add it here.
 - **DataflowEngine** — rete's PULL-based execution engine (inputs resolve recursively
   before `data()` runs; async ones awaited). (`rete-engine`, `process.ts`)
 - **Calc mode** — manual vs. automatic recompute; F9 forces a recompute in manual mode.
-  (`calcModeStore.ts`; see decisions.md calcModes)
+  (`calcModeStore.ts`; see dte:C23 calcModes)
 - **Compute overlay** — the deferred "Computing…" curtain that blocks interaction during a
   heavy pass. (`computeOverlayStore.ts`, `ComputeOverlay.tsx`)
 - **Render mode** — `dom` (default/fallback) vs. `html` (HTML-in-canvas). (`renderMode.ts`)
@@ -176,7 +201,7 @@ area. When you coin a new load-bearing term, add it here.
   `flow/flowView.ts` is the one implementation and `view` is its variable name
   everywhere. Positions live ON the node (`node.position`, absolute canvas coords) —
   there is no side map. **FlowSurface** is the one React component both canvases
-  render (decisions oneFlowSurface).
+  render (dte:C43 oneFlowSurface).
 
 ## The author's UI vocabulary (chrome name → code handle)
 
@@ -199,19 +224,40 @@ Geometry (offsets, z-index, reflow) is `layout-chrome.md`; this is term → hand
   `.solenoid-conduit-toolbar`.
 - **Chips** — compact value previews in a value box. `ArrayChip.tsx` variants (frame/cube/chart);
   one chip registry `ValueChip.tsx` `valueChipFor`; errors → `ErrorChip`.
-- **List / Frame / Cube popups** — click-to-open viewers. `TablePopup.tsx` / `CubePopup.tsx` /
-  `ChartPopup.tsx`.
+- **Popups** — the floating full-size viewers/editors, opened from a value **chip** or the
+  **Display** node (never from the source node's own component — don't start a popup search
+  there). Each is a `*PopupStore` (the open/close + payload state) rendered by a `*Popup.tsx`
+  built on the shared **`PopupShell.tsx`** (drag, resize grip, pin, overflow menu). To find one,
+  grep `PopupShell` (the roster) or the relevant `*popupStore`. The set: **ChartPopup** (charts,
+  Sparkline, **Record** cards — figure drawn by `ChartFigure` in `chartView.tsx`, record pager via
+  `recordNav.ts`), **TablePopup** (list/frame), **CubePopup**, **FormulaPopup**, **ScriptPopup**,
+  **PivotEditorPopup**. (`chartPopupStore.ts` / `tablePopupStore.ts` / `cubePopupStore.ts` / …)
 - **Problems / Alerts / Pins / Comments** — the right-side HUD stack. `HudStack.tsx` +
   `alertStore` / `pinStore` / `problemsStore` / `commentStore`.
 - **Nodes** — the cards. `NodeCard.tsx` (NodeShell). NO single wrapper class — roots vary
   (`.solenoid-node` / `.solenoid-note` / `.solenoid-group` / `.solenoid-conduit`); map a DOM
   event → node via `view.nodeElement` containment, never a class.
+- **Header label** — the user-editable text in a node's header (`node.label`); blank falls back
+  to the family name as its placeholder. "Label" not "title", so it never reads as the HTML
+  `title=`/tooltip. Rendered `.solenoid-node__label-display`, edited via `useDraftCommit` (the raw
+  text shows while editing). A global display-only case setting (`settingsStore` `headerTitleCase`
+  → an `html.hdr-case-*` class → a `text-transform` on the display) can force UPPER or Proper case;
+  the stored label stays raw.
+- **Family name** — a node's op-agnostic, class-derived display name (`nodeTypeName` — "Series",
+  "Math FX"). The *string*; distinct from the type-hint that shows it. (`catalogUtils.ts`; NAME-3.)
+- **Type-hint** — the hover-revealed chip on the card's right edge that *shows* the family name.
+  `.solenoid-node__type-hint` (`typeHint()` in `nodeKit.tsx`).
+- **Op name** — the op-specific display (`nodeName`) used by the header, Inspector, Navigator,
+  popups and the cable-source label — the family name's op-level counterpart. (`catalogUtils.ts`.)
+- **Node blurb** (description tooltip) — the node's description as plain text, surfaced as the
+  header's HTML `title`. `headerTooltip()` in `nodeKit.tsx` (from `describeNode`).
 - **Sockets** — typed dots on node edges. `NodeSocket.tsx` (`MeasuredSocketRow`);
-  `.input-socket` / `.output-socket`, locked 12×12 (rules socketBox12).
+  `.input-socket` / `.output-socket`, locked 12×12 (dte:C11 socketBox12).
 - **Cables** — `flow/FlowCableEdge.tsx` (a `<g>` in RF's shared edge svg); paths from
   `cablePaths.ts`, ribbons from `ribbonCable.ts`.
 - **Hero box** — the large result box at a node's bottom. `.solenoid-node__io-row--hero`; value
-  renders as `.solenoid-node__display-value`.
+  renders as `.solenoid-node__display-value`; a chip in it (chart, frame, diagram, error) adds
+  `--chip`, the one flex row that centers it (`heroChipRow` in sourceInvariants; never inline).
 - **Pills** — (1) button-group pills (radius-999 clusters, segmented toggles); (2) merged-socket
   pills on a collapsed group (`.solenoid-node__output-pill` etc.).
 - **App menu** (mobile) — the round ⋯ overflow button opening the File sheet.

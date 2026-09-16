@@ -1,5 +1,5 @@
 import type { NodeEditor, ClassicPreset } from "rete";
-import { MathFnNode, isTrigOp } from "./nodes/scalar";
+import { MathFXNode, isTrigOp } from "./nodes/scalar";
 import { makeAnnotationResolver } from "./unitFlow";
 
 type AnyEditor = NodeEditor<{
@@ -19,15 +19,15 @@ function isDegreeUnit(unit: string): boolean {
 
 /** Stamp every auto-mode trig MathFn's `_resolvedAngleMode` from its input's
  *  resolved unit. Returns only the nodes whose resolved mode CHANGED. */
-export function resolveTrigModes(editor: AnyEditor): MathFnNode[] {
-  const autos: MathFnNode[] = [];
+export function resolveTrigModes(editor: AnyEditor): MathFXNode[] {
+  const autos: MathFXNode[] = [];
   for (const n of editor.getNodes()) {
-    if (n instanceof MathFnNode && n.angleMode === "auto" && isTrigOp(n.op)) autos.push(n);
+    if (n instanceof MathFXNode && n.angleMode === "auto" && isTrigOp(n.op)) autos.push(n);
   }
   if (autos.length === 0) return [];
 
   const resolver = makeAnnotationResolver(editor);
-  const changed: MathFnNode[] = [];
+  const changed: MathFXNode[] = [];
   for (const n of autos) {
     const unit = resolver.inAnnotation(n.id, "in")?.unit ?? "none";
     const mode = isDegreeUnit(unit) ? "deg" : "rad";

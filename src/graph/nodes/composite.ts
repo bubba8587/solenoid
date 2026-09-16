@@ -1,3 +1,4 @@
+// dte:D52,C77
 import { ClassicPreset, NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
 import type { Schemes, SolenoidNode, SolenoidConnection } from "../schemes";
@@ -12,7 +13,7 @@ import {
   DEFAULT_MC_SAMPLES, DEFAULT_MC_SEED, type DistributionKind,
 } from "../monteCarlo";
 import { installInputCoercion } from "../coerceInputs";
-import { isFrameValue, frameRowCount, frameFromRows } from "../frame";
+import { isFrameValue, frameRowCount, frameFromRows, isCubeValue, cubeRowCount, cubeFromColumns } from "../frame";
 import { isGraphRebuilding } from "../process";
 import { loopMembers, seedLoopErrors } from "../graphCompute";
 import { fireAlert } from "../alertStore";
@@ -20,7 +21,7 @@ import { compositeStaleStore } from "../compositeStaleStore";
 import { formatScalar } from "../components/format";
 import type { NodeCtor } from "../nodeCtorRegistry";
 
-// Composite node — a subgraph container (docs/pack-architecture.md). Members run in a
+// Composite node — a subgraph container (dte:C77 compositeIsSubgraph). Members run in a
 // private NodeEditor/DataflowEngine; internals never leak into the outer engine or cache.
 
 export type PortTier = "basic" | "advanced";
@@ -100,11 +101,18 @@ export interface CompositeMonteCarlo {
 export type CompositeStopOp = "gt" | "ge" | "lt" | "le" | "eq" | "ne";
 
 /** By-Row iterates a WIRED input value into its rows. A frame → one single-row
- *  frame per row (keeps the port frame-typed for downstream frame ops); an array
- *  → its outer elements (a 1-D list yields scalars, a 2-D matrix yields its rows);
- *  a scalar → itself (one row); null/undefined → no rows. */
+ *  frame per row (keeps the port frame-typed for downstream frame ops); a cube → one
+ *  single-row cube per row, nested cells kept (a portfolio of projects schedules row by
+ *  row: 25-gantt.md § 6.1); an array → its outer elements (a 1-D list yields scalars,
+ *  a 2-D matrix yields its rows); a scalar → itself (one row); null/undefined → no rows. */
 export function byRowValues(v: unknown): unknown[] {
   if (v === null || v === undefined) return [];
+  if (isCubeValue(v)) {
+    const n = cubeRowCount(v);
+    const out: unknown[] = [];
+    for (let i = 0; i < n; i++) out.push(cubeFromColumns(v.columns.map((c) => ({ name: c.name, type: c.type, ...(c.format ? { format: c.format } : {}), cells: [c.cells[i] ?? null] }))));
+    return out;
+  }
   if (isFrameValue(v)) {
     const n = frameRowCount(v);
     const headers = v.columns.map((c) => c.name);
@@ -267,7 +275,10 @@ export class CompositeNode extends ClassicPreset.Node {
    *  condition halted it early; null when no stepped loop has run. Transient. */
   simLastSteps: number | null = null;
 
-  // Arm-and-run state for the HEAVY modes — session-transient, so a fresh load solves once.
+  // Arm-and-run state for the HEAVY modes: a heavy composite holds UNSOLVED until the user
+  // clicks Solve/Refresh — no solve on load, paste, create, or a switch into a heavy mode
+  // (dte:D52 compositesHoldUntilSolve). All session-transient (never persisted), so a fresh
+  // load starts unsolved by construction.
   /** Set by the Solve button; consumed by the next data() to force one solve. */
   solveRequested = false;
   /** A solve triggered INSIDE the drill-in runs on the markers' own seeds, ignoring
@@ -284,6 +295,9 @@ export class CompositeNode extends ClassicPreset.Node {
    *  can move without one, so an open drill-in re-renders its views only when this
    *  advances, instead of on every pass the surrounding document happens to run. */
   runSeq = 0;
+  /** The runMode `data()` last ran under; a change into a heavy mode forgets the prior
+   *  solve so the card reads unsolved (dte:D52 compositesHoldUntilSolve). Transient. */
+  private _lastRunMode: CompositeRunMode | null = null;
   private _refIds = new WeakMap<object, number>();
   private _refSeq = 0;
   /** Internal-graph layout keyed by LIVE internal node id (remapped on hydrate,
@@ -830,9 +844,14 @@ export class CompositeNode extends ClassicPreset.Node {
     // Auto-mode trig nodes must resolve from their incoming unit BEFORE the internal
     // engine pull, or a deg/rad trig node inside a composite computes in radians.
     resolveTrigModes(this.internalEditor);
-    if (this.isHeavyMode()) {
+    const heavy = this.isHeavyMode();
+    // A switch INTO a heavy mode reads unsolved: forget any prior solve (a heavy solve left
+    // over from a mode round-trip) so the hold branch below blanks the card.
+    if (heavy && this.runMode !== this._lastRunMode) this.lastSolveKey = null;
+    this._lastRunMode = this.runMode;
+    if (heavy) {
       const key = this.solveKey(inputs);
-      if (this.solveRequested || this.lastSolveKey === null) {
+      if (this.solveRequested) {
         // An inside-the-drill-in Solve runs on the markers' seeds (empty inputs → runPass
         // falls back to defaultValue).
         const solveInputs = this.solveInsideOnly ? {} : inputs;
@@ -846,6 +865,21 @@ export class CompositeNode extends ClassicPreset.Node {
         this.stale = false;
         compositeStaleStore.set(this.id, false);
         return outputs;
+      }
+      if (this.lastSolveKey === null) {
+        // Never solved since becoming heavy (load, paste, create, mode switch): read
+        // genuinely blank — not a stale light-mode pass — and stale, so the user sees it
+        // compute on the first Solve (dte:D52 compositesHoldUntilSolve). The goal-seek
+        // readouts read unsolved too.
+        this.cachedOutputs = {};
+        this.goalSeekResult = null;
+        for (const port of this.inputPorts) {
+          const m = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode | undefined;
+          if (m) m.solvedValue = null;
+        }
+        this.stale = true;
+        compositeStaleStore.set(this.id, true);
+        return {};
       }
       this.stale = key !== this.lastSolveKey;
       compositeStaleStore.set(this.id, this.stale);
@@ -1032,16 +1066,27 @@ export class CompositeNode extends ClassicPreset.Node {
     const rng = mulberry32((cfg.seed | 0) >>> 0);
 
     // Each uncertain port's mean: the wired value if exposed+wired, else the marker's
-    // seed, else the port default.
-    const meanOf = (port: CompositeInputPort, marker: CompositeInputNode): number => {
-      const wired = port.exposure === "exposed" ? inputs[port.id]?.[0] : undefined;
-      const raw = wired ?? marker.defaultValue ?? port.default ?? 0;
+    // seed, else the port default. A wired blank or error is UNKNOWN (value-semantics,
+    // "Reading an input"), never a 0 to sample around.
+    const meanOf = (port: CompositeInputPort, marker: CompositeInputNode): number | null => {
+      const wired = port.exposure === "exposed" && port.id in inputs ? inputs[port.id]?.[0] : undefined;
+      const raw = wired === undefined ? (marker.defaultValue ?? port.default ?? 0) : wired;
       const n = toNumber(raw);
-      return Number.isFinite(n) ? n : 0;
+      return Number.isFinite(n) ? n : null;
     };
-    const specs = uncertainPorts.map((port) => {
+    const means = uncertainPorts.map((port) => meanOf(port, this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode));
+    if (means.some((m) => m === null)) {
+      const outputs: Record<string, unknown> = {};
+      for (const port of this.outputPorts) {
+        outputs[port.id] = null;
+        const marker = this.internalEditor.getNode(port.internalNodeId);
+        if (marker instanceof CompositeOutputNode) marker.cachedResult = null;
+      }
+      return outputs;
+    }
+    const specs = uncertainPorts.map((port, i) => {
       const marker = this.internalEditor.getNode(port.internalNodeId) as CompositeInputNode;
-      return { port, marker, mean: meanOf(port, marker), spread: marker.uncertainty as number, kind: marker.distribution };
+      return { port, marker, mean: means[i] as number, spread: marker.uncertainty as number, kind: marker.distribution };
     });
 
     // Correlated inputs: resolve the card's pairs (labels or ids) onto the uncertain
@@ -1108,9 +1153,10 @@ export class CompositeNode extends ClassicPreset.Node {
       row[gs.outputPortId] = err;
       return row;
     }
-    // Clean the raw solver float to the precision the app exposes (formatScalar), so the
-    // driver never shows a 19.999999998 tail.
-    const solved = Number(formatScalar(solvedRaw));
+    // Strip the float tail only (12 significant digits): display rounding is the readout's
+    // job, and a driver that needs more than four decimals (a monthly rate 0.032173) must
+    // survive to the final pass.
+    const solved = Number(solvedRaw.toPrecision(12));
     this.goalSeekResult = solved;
     // The answer goes to a dedicated readout (solvedValue), NOT back onto the seed, so
     // the driver's editable seed stays the user's starting guess.
@@ -1157,8 +1203,9 @@ async function solveGoalSeek(
     const step = Math.abs(c - b);
     a = b; fa = fb;
     b = c; fb = await f(c);
-    // A tiny step with a LARGE residual means secant stalled — fall through to bracketing.
-    if (step < XTOL) { if (Number.isFinite(fb) && Math.abs(fb) <= 1e-4) return c; break; }
+    // A tiny step means secant stalled: solved only if the residual meets the tolerance,
+    // else fall through to bracketing (never a looser "close enough").
+    if (step < XTOL) { if (Number.isFinite(fb) && Math.abs(fb) <= FTOL) return c; break; }
   }
 
   // ── Bracket-expand + bisection fallback ──

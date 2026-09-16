@@ -1,3 +1,4 @@
+// dte:C62
 import { hexToRgba, contrastInk, themeAccent, resolveColor, paletteStore, initPalette, SOCKET_VARS, socketArrayShade, socketMatrixShade, socketRingShade, chromeCssVars, adaptChrome, CHROME_VARS, DERIVED_CHROME_VARS } from "./palette";
 import { createNotifier } from "./storeKit";
 import { syncNativeAccent } from "./nativeAccent";

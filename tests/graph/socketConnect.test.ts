@@ -1,3 +1,4 @@
+// dte:C10,D11,D13,D14,D15,E5
 import { describe, it, expect } from "vitest";
 import { canConnect, areCompatible, adoptTypeForBase, projectTypeToBase, type SocketDataType } from "../../src/graph/sockets";
 

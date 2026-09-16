@@ -12,16 +12,16 @@ const typeOf = (n: NoteNode, key: string) => {
 };
 
 describe("NoteNode frontmatter outputs", () => {
-  it("a plain note has no FRONTMATTER outputs — just the fixed `document` output", () => {
+  it("a plain note has no FRONTMATTER outputs — just the fixed `document` output", async () => {
     const n = new NoteNode({ body: "just a sticky note" });
     expect(n.fieldKeys()).toEqual([]);
     expect(Object.keys(n.outputs)).toEqual(["document"]);
     expect(n.fieldValues()).toEqual({});             // no frontmatter fields
-    expect(isDocumentValue(n.data().document)).toBe(true); // the whole-note document value
+    expect(isDocumentValue((await n.data()).document)).toBe(true); // the whole-note document value
     expect(n.renderBody).toBe("just a sticky note");
   });
 
-  it("builds typed outputs from frontmatter and emits values via data()", () => {
+  it("builds typed outputs from frontmatter and emits values via data()", async () => {
     const n = new NoteNode({
       body: ["---", "title: Budget", "count: 42", "active: true", "due: 2026-03-01", "tags: [a, b]", "---", "# Body"].join("\n"),
     });
@@ -39,8 +39,22 @@ describe("NoteNode frontmatter outputs", () => {
       due: Math.round(parseDateToSerial("2026-03-01")),
       tags: ["a", "b"],
     });
-    expect(isDocumentValue(n.data().document)).toBe(true);
+    expect(isDocumentValue((await n.data()).document)).toBe(true);
     expect(n.renderBody).toBe("# Body");
+  });
+
+  it("a frame frontmatter field emits a frame output, columns from the row keys", () => {
+    const n = new NoteNode({
+      body: ["---", "screen:", "  - {Laptop: ProBook, Screen: 8}", "  - {Laptop: UltraSlim, Screen: 9}", "---"].join("\n"),
+    });
+    expect(typeOf(n, "screen")).toBe("frame");
+    expect(n.fieldValues().screen).toEqual({
+      __frame: true,
+      columns: [
+        { name: "Laptop", type: "string", values: ["ProBook", "UltraSlim"] },
+        { name: "Screen", type: "number", values: [8, 9] },
+      ],
+    });
   });
 
   it("syncFields adds, removes, and reports dropped keys when the body changes", () => {
@@ -79,6 +93,44 @@ describe("NoteNode frontmatter outputs", () => {
     const n = new NoteNode({ body: "---\nid: 42\n---", fieldTypes: { id: "string" } });
     expect(typeOf(n, "id")).toBe("string");
     expect(n.fieldValues()).toEqual({ id: "42" });
+  });
+
+  it("drops a pin when the value becomes rows of objects (the frame survives)", () => {
+    const n = new NoteNode({ body: "---\nscreen: [a, b]\n---", fieldTypes: { screen: "strlist" } });
+    expect(typeOf(n, "screen")).toBe("strlist");
+    n.body = ["---", "screen:", "  - {Laptop: ProBook, Screen: 8}", "  - {Laptop: UltraSlim, Screen: 9}", "---"].join("\n");
+    const { retyped } = n.syncFields();
+    expect(retyped).toEqual([{ key: "screen", type: "frame" }]);
+    expect(n.fieldType("screen")).toBe("frame");
+    expect(n.fieldValues().screen).toEqual({
+      __frame: true,
+      columns: [
+        { name: "Laptop", type: "string", values: ["ProBook", "UltraSlim"] },
+        { name: "Screen", type: "number", values: [8, 9] },
+      ],
+    });
+    expect(n.fieldTypes.screen).toBeUndefined();
+  });
+
+  it("carries a scalar pin onto a list value, keeping every element", () => {
+    const n = new NoteNode({ body: "---\nk: 1\n---", fieldTypes: { k: "string" } });
+    expect(typeOf(n, "k")).toBe("string");
+    n.body = "---\nk: [1, 2]\n---";
+    const { retyped } = n.syncFields();
+    expect(retyped).toEqual([{ key: "k", type: "strlist" }]);
+    expect(n.fieldType("k")).toBe("strlist");
+    expect(n.fieldValues()).toEqual({ k: ["1", "2"] });
+    expect(n.fieldTypes.k).toBe("strlist");
+  });
+
+  it("carries a list pin onto a scalar value", () => {
+    const n = new NoteNode({ body: "---\nk: [a, b]\n---", fieldTypes: { k: "strlist" } });
+    n.body = "---\nk: 7\n---";
+    const { retyped } = n.syncFields();
+    expect(retyped).toEqual([{ key: "k", type: "string" }]);
+    expect(n.fieldType("k")).toBe("string");
+    expect(n.fieldValues()).toEqual({ k: "7" });
+    expect(n.fieldTypes.k).toBe("string");
   });
 
   it("prunes overrides for keys no longer in the body", () => {
@@ -138,5 +190,44 @@ describe("toggleTaskMarker — checkable task-list boxes", () => {
   it("leaves the body unchanged when the index is out of range", () => {
     const body = "- [ ] only";
     expect(toggleTaskMarker(body, 5)).toBe(body);
+  });
+});
+
+describe("NoteNode — Knap template over its own frontmatter", () => {
+  it("renders {{ field }} from the block above; dates read as ISO; the document carries the render", async () => {
+    const n = new NoteNode({
+      body: ["---", "title: Budget", "due: 2026-03-01", "tags: [a, b]", "---", "# {{ title }}", "Due {{ due | date:\"D MMM\" }}: {{ tags | join:\", \" }}"].join("\n"),
+    });
+    expect(n.templateVariables()).toEqual({ title: "Budget", due: "2026-03-01", tags: ["a", "b"] });
+    const out = await n.data();
+    expect(out.title).toBe("Budget"); // the typed outputs are untouched
+    const doc = out.document;
+    expect(isDocumentValue(doc)).toBe(true);
+    expect((doc as { body: string }).body).toBe("---\ntitle: Budget\ndue: 2026-03-01\ntags: [a, b]\n---\n# Budget\nDue 1 Mar: a, b");
+  });
+  it("a tag-less note stays synchronous", () => {
+    expect(new NoteNode({ body: "plain" }).data() instanceof Promise).toBe(false);
+  });
+});
+
+describe("NoteNode — a template note", () => {
+  it("keeps a tag naming no field literal (a template reads as a template), and carries its raw source", async () => {
+    const n = new NoteNode({ body: "---\ntitle: Letter\n---\nDear {{ person }}, re {{ title }}" });
+    const doc = (await n.data()).document as { body: string; source?: string };
+    expect(doc.body).toBe("---\ntitle: Letter\n---\nDear {{ person }}, re Letter");
+    expect(doc.source).toBe("---\ntitle: Letter\n---\nDear {{ person }}, re {{ title }}");
+  });
+});
+
+describe("toggleTaskMarker — code is not a checkbox", () => {
+  it("skips a fenced task-shaped line and an indented code block", () => {
+    const body = "```\n- [ ] fake\n```\n- [ ] real\n\npara\n\n    - [ ] code\n- [ ] last";
+    expect(toggleTaskMarker(body, 0)).toBe("```\n- [ ] fake\n```\n- [x] real\n\npara\n\n    - [ ] code\n- [ ] last");
+    expect(toggleTaskMarker(body, 1)).toBe("```\n- [ ] fake\n```\n- [ ] real\n\npara\n\n    - [ ] code\n- [x] last");
+  });
+
+  it("a nested item indented four spaces under a list still counts", () => {
+    const body = "- [ ] top\n    - [ ] nested";
+    expect(toggleTaskMarker(body, 1)).toBe("- [ ] top\n    - [x] nested");
   });
 });

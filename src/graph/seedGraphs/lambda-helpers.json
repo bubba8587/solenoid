@@ -8,7 +8,7 @@
       "id": "vals",
       "type": "TableInputNode",
       "x": -16,
-      "y": 99,
+      "y": -387,
       "init": {
         "label": "Values",
         "tableText": "12\n55\n78\n90\n64\n51"
@@ -17,8 +17,8 @@
     {
       "id": "map",
       "type": "MapTableNode",
-      "x": 364,
-      "y": 632,
+      "x": 433,
+      "y": 251,
       "init": {
         "label": "MAP — between 50 and 80"
       },
@@ -30,7 +30,7 @@
       "id": "temps",
       "type": "TableInputNode",
       "x": -16,
-      "y": 331,
+      "y": -155,
       "init": {
         "label": "Temperatures °F (week × day)",
         "tableText": "82, 84, 80, 79, 85\n88, 90, 92, 89, 91\n86, 88, 84, 83, 85\n70, 72, 75, 73, 71"
@@ -39,8 +39,8 @@
     {
       "id": "byrow",
       "type": "ByAxisNode",
-      "x": 364,
-      "y": 1050,
+      "x": 433,
+      "y": 643,
       "init": {
         "label": "BYROW — avg temp per week",
         "op": "row"
@@ -52,8 +52,8 @@
     {
       "id": "bycol",
       "type": "ByAxisNode",
-      "x": 364,
-      "y": -70,
+      "x": 433,
+      "y": -387,
       "init": {
         "label": "BYCOL — avg temp per day",
         "op": "col"
@@ -65,8 +65,8 @@
     {
       "id": "mk",
       "type": "MakeArrayNode",
-      "x": 364,
-      "y": 242,
+      "x": 433,
+      "y": -107,
       "init": {
         "label": "MAKEARRAY — r × c grid"
       },
@@ -81,8 +81,8 @@
     {
       "id": "grp",
       "type": "GroupNode",
-      "x": 340,
-      "y": -128,
+      "x": 409,
+      "y": -445,
       "init": {
         "label": "Array lambdas",
         "members": [
@@ -94,14 +94,14 @@
         "color": "green",
         "collapsed": false,
         "width": 292,
-        "height": 1493
+        "height": 1371
       }
     },
     {
       "id": "hotmask",
       "type": "ByAxisNode",
-      "x": 741,
-      "y": 232,
+      "x": 433,
+      "y": 1022,
       "init": {
         "label": "BYROW — hot week? (avg > 85)",
         "op": "row"
@@ -113,8 +113,8 @@
     {
       "id": "tocelsius",
       "type": "MapTableNode",
-      "x": 741,
-      "y": 557,
+      "x": 433,
+      "y": 1321,
       "init": {
         "label": "MAP — °F → °C"
       },
@@ -125,8 +125,8 @@
     {
       "id": "grphero",
       "type": "GroupNode",
-      "x": 717,
-      "y": 174,
+      "x": 409,
+      "y": 964,
       "init": {
         "label": "LAMBDA as argument: BYROW + MAP",
         "members": [
@@ -136,14 +136,14 @@
         "color": "amber",
         "collapsed": false,
         "width": 292,
-        "height": 776
+        "height": 718
       }
     },
     {
       "id": "grpsrc",
       "type": "GroupNode",
       "x": -40,
-      "y": 41,
+      "y": -445,
       "init": {
         "label": "Source tables",
         "members": [

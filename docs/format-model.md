@@ -54,10 +54,11 @@ value ──▶ 1 TYPE GATE ──▶ 2 STYLE (scale-divide, then precision+grou
    `unitLocked = lockedByConvert || forwarding`; the popup renders the dropdown
    present-but-disabled under a lock (`disabled={node.unitLocked}`) — the value
    HAS a unit, so the control shows it; it just isn't this FC's to change. The rest of this pipeline
-   (style / precision / negatives / K-M-B) stays a DISPLAY annotation the FC locks
-   onto the box behind it (`unitFlow.ts` `makeAnnotationResolver` carries it to a
-   downstream passthrough box). So the unit computes and clashes honestly; the
-   number format is pure presentation.
+   (style / precision / negatives / K-M-B) stays a DISPLAY annotation, and it FLOWS
+   DOWNSTREAM through the MEANING-preserving transforms a node declares (add/sub, a mean,
+   a rounding — not multiply, count or a rate), minus the unit, until a nearer FC
+   overrides it (dte:D41 formatFlowsDownstream, formatCarryPerOp). So the unit computes and
+   clashes honestly; the number format is pure presentation, inherited and overridable.
 4. **Text attributes.** Case / bold / italic / size apply as display-only
    transforms (the underlying value is never mutated). Text family only.
 
@@ -90,6 +91,40 @@ source column's unit tag rides onto the derived column (`nodes/frame.ts`), gated
 on the derived cells inferring as `number`: a computed column whose cells come
 out non-numeric silently drops its authored unit.
 
+The per-column FORMAT rides `FrameColumn.format` downstream exactly like the unit
+(formatFlowsDownstream): the coercion wrapper's OUTPUT step (`coerceInputs.ts`)
+stamps every emitted frame with that node's own `frameFormatStore` picks, and the
+nearer node's pick overrides what arrived. `frameFormatStore` stays the one
+PERSISTED home, keyed by the node that picked — `format` is derived per compute
+and never serialized. A column BUILT by a verb carries a source column's format
+only where that verb already carries its unit (nest, the Allocator's Allocation);
+every other derived column starts blank. In the popup, a column with no entry of
+its own reads `—` (inherit) with the arriving format as a muted hint beside it,
+and every concrete style — `auto` included — is a real local override that
+deletes back to `—` (`columnFormatRow`, `frameFormatStore.ts`).
+
+A **cube** column carries the same optional `format` (`CubeColumn.format`); the cube
+renderers (`formatFrameCell`'s `format` arg, threaded through `cubeCell.tsx` from
+`CubeDisplay`/`CubePopup`) read it like the frame path. A producing verb may author one:
+the **Schedule** verb stamps the app datetime pattern (`DD-MMM-YYYY HH:mm`) on its Start /
+Finish / Early / Late date columns in Minutes mode, so a `13:00` start reads with its
+clock time; Days mode leaves them blank. This is a verb authoring a fresh format, the same
+kind of exception to "every other derived column starts blank" as the nest / Allocator carry.
+
+**Every family's primary style dropdown carries the SAME `—` pick** (`inheritFormat`) —
+the number/complex/date format dropdown, the text case dropdown, and the logical show-as
+dropdown: with it, the FC carries the display format arriving at `in` through unchanged
+(style + precision + advanced tier, or case / show-as) and authors its own unit alone, so
+a second FC docked only for a unit no longer resets the style to `auto`
+(formatFlowsDownstream). While inheriting, the FC's own dependent rows collapse to the
+column row's muted hint — `← Decimal · 3 places` for a number, `← UPPER` / `← Yes / No`
+for text / logical (`describeInheritedStyle`, per family, in the column row's words).
+`FormatControllerNode.resolveAnnotation(inherited)` does the merge (own `unit`/`customUnit`,
+every display axis from upstream); `makeAnnotationResolver.compute` calls it in place of
+`annotation()`, so the carried-downstream and box-behind paths agree. The node's `format`
+field stays a concrete `FormatStyleId` — `inheritFormat` is the separate flag, and `""` is
+the dropdown's inherit value.
+
 ## The control truth table
 
 Which controls exist per family (popup rows AND resolution axes):
@@ -111,6 +146,12 @@ Which controls exist per family (popup rows AND resolution axes):
 | · alignment (L / C / R) | — | — | ✔ (box is right-aligned by default) | — | — |
 | · render as markdown | — | — | ✔ (inline markdown, sanitized) | — | — |
 | · monospace | — | — | ✔ (text is sans by default) | — | — |
+
+The text case dropdown's **Chip** value (B2.2) colors each distinct string by category (the
+shared chart palette, one `CategoryChip`, keyed by first appearance in source row order): the
+on-canvas grid, read-only popups, and an editable popup cell all render the pill, and in the
+editable popup a cell shows the pill while unfocused and swaps to the raw text on focus (Source
+mode keeps raw text throughout).
 
 The two object families each carry exactly ONE control (not in the matrix above —
 they'd be a column of dashes):
@@ -145,15 +186,20 @@ Notes:
     styles are meaningless on a complex, so they aren't offered — and an
     annotation still carrying one (from before the socket was retyped) falls back
     to `auto` rather than rendering nonsense.
-  - **The unit wraps the WHOLE value**: `(3 + 2i) V`, never `3 V + 2i V`.
-    Parenthesised only in the two-term form, where `3 + 2i V` would read as the
-    unit attaching to the imaginary term alone.
+  - **The unit wraps the WHOLE value**: `(3 + 2i) V`, never `3 V + 2i V` — where
+    `3 + 2i V` would read as the unit attaching to the imaginary term alone. The
+    display form is always two-term (below), so the unit is always parenthesised.
   The advanced tier (grouping/negative/scale) is number-and-text only per
   `controlsFor` and is deliberately not consulted: a complex has no single sign
   to parenthesise and no magnitude to scale. A `Cx` reaches the value box RAW —
   the display layer formats it, so the annotation can act (cards that
   pre-formatted in their own components were exactly why it never could).
-  `assembleCx` (cxValue.ts) owns the written form for both formatters.
+  `assembleCx` (cxValue.ts) owns the written form. Its `bothParts` flag splits the
+  two forms: **display always shows both components** — `0 + 4i`, `23 + 0i`, never a
+  dropped zero part — via `formatCxDisplay` and `formatCxWithAnnotation` (the value
+  box, chips, readouts, clipboard). The **Excel/coercion form** (`formatCx`, the `&`
+  operator, cast-to-text, the `IM*` functions) keeps dropping a zero component
+  (`23`, `4i`) for Excel parity and round-trips with `parseCx`.
 - **Advanced-tier composition order** (2026-07-05): scale divides the magnitude
   and appends its suffix inside the number (`1.2M`); the unit wraps that
   (`$1.2M`); a paren negative wraps OUTSIDE the unit, Excel accounting style
@@ -204,10 +250,17 @@ compat shim.
   `format === "decimal"` gates. The unit dropdown's `disabled` under a lock state
   is the one sanctioned non-`controlsFor` modifier (presence is still the
   family's call; only editability is the lock's).
-- Render surfaces (`ValueDisplay`, `DisplayNode`, `CableInspector`,
-  `inlineRefDisplay`, Report embeds) — booleans route through
-  `applyLogicalStyle` when an annotation is present; numbers keep routing through
-  `formatNumberWithAnnotation` (already the single entry).
+- Render surfaces — every one asks ONE question, `resolveDisplayAnnotation(nodeId,
+  socketKey?)` (`valueDisplayFormat.ts`: direct FC ?? carried `outAnnotation` ??
+  trailing-FC `downstreamAnnotation`, on the owning editor): `ValueDisplay` (any card,
+  scalars and list cells), `InlineOutputRows` (per socket), `DisplayNode` + `TableDisplay`
+  (matrix cells), `inlineRefDisplay` (Note/Report refs), `CableInspector`, `PinLayer`,
+  the collapsed-group readouts. Booleans route through `applyLogicalStyle`, text through
+  `applyTextCase`, numbers through `formatNumberWithAnnotation` (the single entry); a
+  `UnitCell` under an annotation whose `unit` is `none` keeps the CELL's own display unit
+  (`annotationForValue`) — the annotation supplies the style, the value owns the unit.
+  Frames/cubes and the table popup grid stay per-column (a separate representation).
+  Pinned by `valueDisplayAnnotation.test.ts`.
 
 ## Non-goals (this spec deliberately excludes)
 

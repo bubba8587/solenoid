@@ -4,7 +4,7 @@ import type { MutableRefObject } from "react";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import { processGraph, requestRecalc, withGraphRebuild } from "./process";
-import { repositionDockedNodes, unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess, cleanup as cleanupGraph, autoArrange as tidyGraph } from "./canvasCommands";
+import { repositionDockedNodes, unselectAllNodes as unselectAllNodesFromProcess, selectNode as selectNodeFromProcess, cleanup as cleanupGraph, autoArrange as tidyGraph, deleteSelected } from "./canvasCommands";
 import { bumpConduitAngle } from "./graphSignals";
 import { copySelected, pasteClipboard } from "./copyPaste";
 import { createCompositeFromSelection } from "./compositeLogic";
@@ -12,8 +12,8 @@ import { compositeEditorStore } from "./compositeEditorStore";
 import { presentationStore } from "./presentationStore";
 import { paletteStore } from "./paletteStore";
 import { frStore } from "./frStore";
-import { shortcutsStore } from "./shortcutsStore";
 import { settingsPanel } from "./settingsStore";
+import { keyUnderModal } from "./modalGuard";
 import { cableSelectionStore } from "./cableState";
 import { ConduitNode, AngleDialNode, GroupNode } from "./rete-nodes";
 import { toggleAllChrome, toggleChrome } from "./chromeToggle";
@@ -21,6 +21,7 @@ import { createGroupFromSelection, autofitGroupWithHistory } from "./groupLogic"
 import { setGroupsCollapsed } from "./groupPush";
 import { groupCollapseStore } from "./groupCollapse";
 import { standoffStore, settleStandoffs, anchorFromVector, ANCHOR_DIR } from "./standoffs";
+import { drawModeStore, drawnCableStore, finishDrawing } from "./drawnCables";
 import { isolateStore } from "./isolateStore";
 import { isolateSelection } from "./isolate";
 import { addMenuRequest } from "./addMenuStore";
@@ -28,6 +29,7 @@ import { expandMoveSet } from "./selectionOps";
 import { scheduleAutosave } from "./persistence";
 import { saveToDisk, openFromDisk } from "./fileSession";
 import { DOT_SPACING } from "./gridSnapStore";
+import { canvasLockStore } from "./canvasLock";
 import { computeOverlayStore } from "./computeOverlayStore";
 import { documentStore } from "./documentStore";
 
@@ -150,17 +152,42 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
     // the still-selected node on the hidden canvas.
     if (presentationStore.isActive() && e.key !== "F9") return;
 
-    // F9 stays live while typing, presenting and drilled in — under those overlays
-    // it is the only remaining recompute path. Only the compute gate outranks it.
+    // A modal / pop-up owns the keyboard (modalGuard): Enter in a confirm must not
+    // also open the palette, A under a Frame Input pop-up must not open the Add menu.
+    if (keyUnderModal(e) && e.key !== "F9") return;
+
+    // A focused cell inside a figure that owns its own keyboard (the Gantt tree grid)
+    // marks itself `.nokeys`, so its arrow / letter keys aren't stolen to nudge nodes
+    // or open the Add menu — the keyboard mirror of `.nowheel` (subsystem-invariants,
+    // React Flow surface contract). F9 still recomputes.
+    if (target?.closest?.(".nokeys") && e.key !== "F9") return;
+
+    // F9 stays live while typing, presenting, drilled in and under a modal — there it
+    // is the only remaining recompute path. Only the compute gate outranks it.
     if (e.key === "F9") { e.preventDefault(); void requestRecalc(); return; }
 
+    // The armed draw tool is modal: it owns Enter / Escape / Backspace before the
+    // palette and isolate claim them.
+    if (drawModeStore.armed() && !editable && !e.ctrlKey && !e.metaKey) {
+      if (e.key === "Escape") { drawModeStore.disarm(); e.preventDefault(); return; }
+      if (e.key === "Enter") { finishDrawing(); e.preventDefault(); return; }
+      if (e.key === "Backspace") { drawModeStore.undoPoint(); e.preventDefault(); return; }
+    }
+
+    // A locked canvas is view-only: the keys that move, add or remove stand down
+    // (canvasLock.ts); the view keys below (palette, isolate, chrome, Tab) keep working.
+    const locked = canvasLockStore.get();
     if (!editable && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // A selected drawn cable or standoff is not React Flow's selection, so RF never
+      // fires its delete hook for it; route the key to the app's delete, which answers
+      // them first (deleteSelection).
+      if ((e.key === "Delete" || e.key === "Backspace") && (drawnCableStore.selected() || standoffStore.selected())) {
+        if (!locked) void deleteSelected();
+        e.preventDefault(); return;
+      }
       // Bare Enter opens the palette — gated on `editable` so committing a field
-      // never opens it, and on every other modal that `editable` wouldn't catch.
-      if (
-        e.key === "Enter" && !paletteStore.get() && !isAddMenuOpen() &&
-        !frStore.get() && !settingsPanel.get() && !shortcutsStore.get()
-      ) {
+      // never opens it (the modal gate above covers every overlay).
+      if (e.key === "Enter" && !isAddMenuOpen()) {
         paletteStore.open(); e.preventDefault(); return;
       }
       if (e.key === "Escape" && isolateStore.isActive()) {
@@ -170,7 +197,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       if (e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "ArrowLeft" || e.key === "ArrowRight") {
         const editor = editorRef.current;
         const hasSel = !!editor && editor.getNodes().some((n) => (n as { selected?: boolean }).selected === true);
-        if (hasSel) {
+        if (hasSel && !locked) {
           const step = e.shiftKey ? DOT_SPACING * 4 : DOT_SPACING;
           const dx = e.key === "ArrowRight" ? step : e.key === "ArrowLeft" ? -step : 0;
           const dy = e.key === "ArrowDown" ? step : e.key === "ArrowUp" ? -step : 0;
@@ -203,20 +230,26 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
             addMenuRequest.open(screenMouseRef.current.x, screenMouseRef.current.y);
             e.preventDefault(); return;
           case "KeyG":
-            if (editor && view && editor.getNodes().some((n) => (n as { selected?: boolean }).selected)) {
+            if (!locked && editor && view && editor.getNodes().some((n) => (n as { selected?: boolean }).selected)) {
               void createGroupFromSelection(editor, view).then(() => processGraph());
             }
             e.preventDefault(); return;
           case "KeyT":
-            void tidyGraph(); e.preventDefault(); return;
+            if (!locked) void tidyGraph();
+            e.preventDefault(); return;
           case "KeyC":
-            void cleanupGraph(); e.preventDefault(); return;
+            if (!locked) void cleanupGraph();
+            e.preventDefault(); return;
           case "KeyE":
-            expandCollapseGroups(); e.preventDefault(); return;
+            if (!locked) expandCollapseGroups();
+            e.preventDefault(); return;
           case "KeyF":
-            autofitGroups(); e.preventDefault(); return;
+            if (!locked) autofitGroups();
+            e.preventDefault(); return;
           case "KeyN":
             toggleChrome("navigator"); e.preventDefault(); return;
+          case "KeyD":
+            drawModeStore.toggle(); e.preventDefault(); return;
           case "BracketLeft":
           case "BracketRight":
             if (rotateSelection(e.code === "BracketRight" ? 1 : -1) > 0) {
@@ -265,7 +298,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
         copySelected(); e.preventDefault(); return;
       }
       if (e.code === "KeyV") {
-        if (isolateStore.isActive()) { e.preventDefault(); return; } // no new nodes while isolating
+        if (isolateStore.isActive() || locked) { e.preventDefault(); return; } // no new nodes while isolating or locked
         const view = viewRef.current;
         const container = containerRef.current;
         if (view && container) {

@@ -20,7 +20,7 @@ backlog line is deleted; git is the record.
 4. `npx tsc --noEmit` and `npx vitest run <the test files the plan names>` after every
    step; the full `npx vitest run` before the final commit of a plan.
 5. Comments: none unless the plan says so (`docs/code-comments.md`). Rulings go in
-   `docs/rules.md` / `docs/decisions.md` only where the plan says.
+   decision nodes (`docs/dte.md`) only where the plan says.
 6. Stay on scope. A tempting adjacent fix → one line under "Findings" in the plan's
    digest entry, not a change.
 7. When the plan is done: one terse line in the current `docs/dev-notes.md` digest,
@@ -37,8 +37,9 @@ the record.
 |------|------|-------|
 | `formula-surface-allowlist.md` | S (Option A) / L (Option B) | **AUTHOR-GATED PROPOSAL — do not start.** Carries the Option A vs B decision the author owns; the doc is the artifact for raising it with them. |
 
-Not planned here (author-present or needs a device): everything under "Bugs &
-verifications" in `../backlog.md`; the table-popup virtualization (Path A vs B is the
-author's call). The formula-surface allowlist now has a written PROPOSAL
+Not planned here: the 1.4 candidates — their plans live in `../1.4-plan.md` until the
+author promotes them to `../backlog.md` lines, at which point a routine one may get an
+execution plan in this folder; the table-popup virtualization (Path A vs B is the
+author's call, `../deferrals.md`). The formula-surface allowlist now has a written PROPOSAL
 (`formula-surface-allowlist.md`) for the author's decision — still "raise with the author
 first"; do not execute until greenlit.

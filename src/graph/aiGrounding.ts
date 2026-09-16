@@ -18,6 +18,8 @@ const FILTER_OP_DOC: Record<FilterOp, string> = {
   contains: "contains", startsWith: "starts with", endsWith: "ends with",
   isblank: "is blank (no value field)", notblank: "not blank (no value field)",
   iserror: "has error (no value field)", noterror: "no error (no value field)",
+  listContains: "list contains", listContainsAny: "list contains any", listContainsAll: "list contains all",
+  listEmpty: "list is empty (no value field)",
 };
 const FRAME_COL_TYPES: Record<FrameColType, true> = { number: true, string: true, date: true, logical: true };
 
@@ -207,7 +209,7 @@ export function buildGroundingSpec(): string {
   for (const ctorName of order) {
     const info = classes.get(ctorName)!;
     if (info.hidden) continue; // deprecated: loads, but must not be authored
-    const top = info.path[0] ?? "Other";
+    const top = info.path[0] ?? "Docs & Files";
     if (top !== lastTop) {
       w();
       w(`### ${top}`);

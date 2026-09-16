@@ -3,6 +3,7 @@ import { GEOMETRY_CIRCLES, GEOMETRY_SOLIDS } from "../../../src/graph/packs/geom
 import { auditFormulaPack, entryByType, evalFormula, evalPackFormula } from "../../../src/graph/packs/formulaTestKit";
 import { solveTriangle, TriangleSolverNode, type TriangleSolved } from "../../../src/graph/nodes/triangle";
 import { isSolError } from "../../../src/graph/errorValue";
+import { tagDim } from "../../../src/graph/unitValue";
 
 const ALL = [...GEOMETRY_CIRCLES, ...GEOMETRY_SOLIDS];
 
@@ -115,6 +116,22 @@ describe("Triangle Solver", () => {
     const bad = n.data({ a: [1], b: [1], c: [5] });
     expect(isSolError(bad.area)).toBe(true);
     expect(bad.valid).toBe(false);
+  });
+
+  it("an angle input in ANY angle unit reads in degrees; a dimensioned side takes its display magnitude", () => {
+    const n = new TriangleSolverNode();
+    // An FC-tagged radian angle (base π/2) is a right angle, not 1.57°.
+    const right = tagDim(Math.PI / 2, { angle: 1 }, "rad");
+    const out = n.data({ a: [3], b: [4], C: [right] });
+    expect(out.c as number).toBeCloseTo(5, 9);
+    // Degrees-tagged reads the same; a km side reads as its km magnitude.
+    const deg90 = tagDim(Math.PI / 2, { angle: 1 }, "deg");
+    const km3 = tagDim(3000, { length: 1 }, "km");
+    const out2 = n.data({ a: [km3], b: [4], C: [deg90] });
+    expect(out2.c as number).toBeCloseTo(5, 9);
+    // The broadcast path reads each cell the same way.
+    const out3 = n.data({ a: [[3, 6]], b: [[4, 8]], C: [[right, deg90]] });
+    expect((out3.c as number[]).map((x) => Math.round(x))).toEqual([5, 10]);
   });
 
   it("broadcasts over parallel lists: three triangles, Valid a logical list", () => {

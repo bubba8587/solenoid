@@ -6,6 +6,8 @@ import { FrameChip } from "./FrameChip";
 import { CubeChip } from "./CubeChip";
 import { ChartChip } from "./ChartChip";
 import { DocumentChip } from "./DocumentChip";
+import { DiagramChip } from "./DiagramChip";
+import { isMermaidValue } from "../mermaidValue";
 
 /** The ONE chip registry for object kinds with a click affordance; null for
  *  everything else. describeValueKind is the TEXT net behind it for chip-less
@@ -19,5 +21,6 @@ export function valueChipFor(
   if (isCubeValue(value)) return <CubeChip value={value} label={label} pinNodeId={pinNodeId} size={size} />;
   if (isChartValue(value)) return <ChartChip value={value} label={label} pinNodeId={pinNodeId} size={size} />;
   if (isDocumentValue(value)) return <DocumentChip value={value} size={size} />;
+  if (isMermaidValue(value)) return <DiagramChip value={value} pinNodeId={pinNodeId} size={size} />;
   return null;
 }

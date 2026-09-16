@@ -15,6 +15,19 @@
          note blamed it for killing the accent status bar — wrong: the tint "loss" was
          the PHONE's dark mode. Chrome for Android ignores theme-color on its toolbar
          whenever the browser UI is dark, meta or no meta; see appTheme.apply().) -->
+    <!-- Site metadata for link previews. Static defaults for every route (the SPA has
+         no per-route prerender); each page still sets its own document.title at runtime.
+         The description is the canonical one-liner from DESIGN.md. -->
+    <meta name="description" content="A node-graph alternative to Excel for data tables." />
+    <meta property="og:title" content="Solenoid" />
+    <meta property="og:description" content="A node-graph alternative to Excel for data tables." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://solenoid-ngc.vercel.app" />
+    <meta property="og:image" content="https://solenoid-ngc.vercel.app/og-hero.png" />
+    <meta property="og:image:width" content="2560" />
+    <meta property="og:image:height" content="1392" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://solenoid-ngc.vercel.app/og-hero.png" />
     <title>Solenoid</title>
   </head>
 

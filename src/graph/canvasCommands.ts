@@ -1,7 +1,8 @@
+// dte:B10,C43
 // The chrome → surface command slots. Menus, the palette, keyboard and touch bars
 // call these verbs; whichever FlowSurface is mounted registers the implementation,
 // and the composite drill-in swaps the selection / arrange slots while it is open
-// (decisions oneFlowSurface). Compute lives in process.ts; this is only routing.
+// (dte:C43 oneFlowSurface). Compute lives in process.ts; this is only routing.
 
 // Node and cable selections are mutually exclusive.
 let _unselectAllNodes: () => void = () => {};
@@ -79,6 +80,26 @@ export function swapArrangeSlots(fns: { autoArrange: (opts?: { groupId?: string 
     _autoArrange = prevArrange;
     _cleanup = prevCleanup;
   };
+}
+
+/** Point the docked-FC reposition at a substitute surface (the composite drill-in) while
+ *  it is open, so a Format Controller docked inside the drill-in follows its host on resize
+ *  / format change / Tidy instead of hitting the MAIN no-op. The returned restorer hands it
+ *  back to the main canvas. */
+export function swapRepositionDockedSlot(fn: (hostId: string) => void): () => void {
+  const prev = _repositionDocked;
+  _repositionDocked = fn;
+  return () => { _repositionDocked = prev; };
+}
+
+/** Point the delete verb (the keyboard-less mobile / tablet delete button) at a substitute
+ *  surface (the composite drill-in) while it is open; the returned restorer hands it back.
+ *  The Delete KEY is already per-surface through RF's onBeforeDelete — this covers the chrome
+ *  button that goes through the slot instead. */
+export function swapDeleteSlot(fn: () => Promise<void>): () => void {
+  const prev = _deleteSelected;
+  _deleteSelected = fn;
+  return () => { _deleteSelected = prev; };
 }
 
 /** Point the selection verbs at a substitute surface (the composite drill-in) while it is

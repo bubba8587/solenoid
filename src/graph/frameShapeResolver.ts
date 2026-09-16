@@ -1,36 +1,16 @@
 import type { NodeEditor, ClassicPreset } from "rete";
-import { parseListLiteral } from "./coerceInputs";
-import { frameFromInputText } from "./frame";
-import {
-  shapeOf, shapeOfJoin, shapeOfAppend, shapeOfAddIndex, shapeOfSplitColumn, shapeOfFrameValue,
-  type Shape,
-} from "./frameShape";
-import {
-  FrameInputNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode,
-  ColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode,
-  AppendNode, RenameNode, SplitColumnNode, AddIndexNode, GetRowNode,
-} from "./nodes/frame";
+import type { Shape } from "./frameShape";
 import { ConduitNode, conduitLaneOf, conduitInKey } from "./nodes/conduit";
 import { passthroughForOutput, type PassthroughSpec } from "./nodes/passthrough";
+import { frameShapeOf } from "./nodes/frameShapeHook";
 
-// Propagates `shapeOf` forward from literal frame sources — pure, no engine call, no IPC.
-// A wired-in dynamic config can't be resolved without running the graph, so it reads as
-// unconfigured here; `null` = unknown.
+// The graph walk over the per-node `frameShape()` declarations (nodes/frameShapeHook.ts) —
+// node-agnostic, pure, no engine call, no IPC; `null` = unknown.
 
 type AnyEditor = NodeEditor<{
   Node: ClassicPreset.Node;
   Connection: ClassicPreset.Connection<ClassicPreset.Node, ClassicPreset.Node>;
 }>;
-
-/** The `stringLiterals` bag is created lazily on first edit and most classes don't declare
- *  it as a field, so read it duck-typed the way coerceInputs.ts does. */
-function lit(n: unknown, key: string): string {
-  return (n as { stringLiterals?: Record<string, string> }).stringLiterals?.[key] ?? "";
-}
-function csvList(n: unknown, key: string): string[] {
-  const raw = lit(n, key);
-  return raw ? (parseListLiteral(raw, "strlist") as string[]) : [];
-}
 
 export type FrameShapeResolver = {
   /** The static shape on this OUTPUT socket, or null when it's unknown. */
@@ -53,6 +33,10 @@ export function makeFrameShapeResolver(editor: AnyEditor): FrameShapeResolver {
       if (c.targetInput === inKey) return outShape(c.source, c.sourceOutput);
     }
     return null;
+  }
+
+  function isWired(nodeId: string, inKey: string): boolean {
+    return (byTarget.get(nodeId) ?? []).some((c) => c.targetInput === inKey);
   }
 
   /** A misconfigured verb throws the same error a real run would; swallow it to "unknown",
@@ -89,89 +73,19 @@ export function makeFrameShapeResolver(editor: AnyEditor): FrameShapeResolver {
         const lane = conduitLaneOf(outKey, "out");
         return lane < 0 ? null : inputShape(nodeId, conduitInKey(lane));
       }
-      // Everything else declares its forwarding; skip this and a frame routed through a
-      // Display / IF / Expect loses its static shape and every verb downstream goes unknown.
+      // A node that declares BOTH — a rank-adopting passthrough AND its own frameShape —
+      // ADDS or reshapes columns while still forwarding the input's rank (ComputedColumn /
+      // Add Column over a cube, A′): its OWN columns win over the forwarded input shape.
+      const hook = frameShapeOf(n);
       const pass = passthroughForOutput(n, outKey);
+      const runHook = () => hook!(outKey, { inputShape: (k) => inputShape(nodeId, k), wired: (k) => isWired(nodeId, k) });
+      if (hook && pass) return runHook();
+      // Otherwise a pure forwarder flows the input shape; skip this and a frame routed
+      // through a Display / IF / Expect loses its static shape and every verb downstream
+      // goes unknown.
       if (pass) return passthroughShape(nodeId, pass);
-
-      if (n instanceof FrameInputNode) return shapeOfFrameValue(frameFromInputText(n.frameText));
-      if (n instanceof GetRowNode) return inputShape(nodeId, "frame");
-      if (n instanceof DistinctNode) return inputShape(nodeId, "frame");
-      if (n instanceof HeadNode) return inputShape(nodeId, "frame");
-      if (n instanceof SortFrameNode) return inputShape(nodeId, "frame");
-      if (n instanceof FilterFrameNode) return inputShape(nodeId, "frame");
-
-      if (n instanceof ColumnsNode) {
-        const input = inputShape(nodeId, "frame");
-        if (!input) return null;
-        const cols = csvList(n, "columns");
-        if (n.op === "keep") return cols.length ? shapeOf({ kind: "select", columns: cols }, input) : input;
-        return shapeOf({ kind: "drop", columns: cols }, input);
-      }
-      if (n instanceof RenameNode) {
-        const input = inputShape(nodeId, "frame");
-        if (!input) return null;
-        const from = csvList(n, "from");
-        const to = csvList(n, "to");
-        const map: Record<string, string> = {};
-        for (let i = 0; i < Math.min(from.length, to.length); i++) if (from[i] && to[i]) map[from[i]] = to[i];
-        return Object.keys(map).length ? shapeOf({ kind: "rename", map }, input) : input;
-      }
-      if (n instanceof GroupByFrameNode) {
-        const input = inputShape(nodeId, "frame");
-        if (!input) return null;
-        const keys = csvList(n, "keys");
-        const col = lit(n, "column").trim();
-        if (!keys.length || !col) return input;
-        return shapeOf({ kind: "groupBy", keys, aggs: [{ column: col, op: n.agg, as: col }] }, input);
-      }
-      if (n instanceof UnpivotNode) {
-        const input = inputShape(nodeId, "frame");
-        if (!input) return null;
-        const vals = csvList(n, "valueColumns");
-        if (!vals.length) return input;
-        return shapeOf({ kind: "unpivot", idColumns: csvList(n, "idColumns"), valueColumns: vals }, input);
-      }
-      if (n instanceof PivotNode) {
-        const input = inputShape(nodeId, "frame");
-        if (!input) return null;
-        const valid = new Set(input.columns.map((c) => c.name));
-        const rowFields = csvList(n, "rowFields").filter((f) => valid.has(f));
-        const colFields = csvList(n, "colFields").filter((f) => valid.has(f));
-        const values = csvList(n, "values").filter((f) => valid.has(f));
-        if (!values.length) return input;
-        const funcs = values.map((name) => n.funcs[name] ?? n.agg);
-        return shapeOf({ kind: "pivot", rowFields, colFields, values, funcs }, input);
-      }
-      if (n instanceof JoinNode) {
-        const left = inputShape(nodeId, "left");
-        const right = inputShape(nodeId, "right");
-        const lk = lit(n, "leftKey").trim();
-        const rk = lit(n, "rightKey").trim() || lk;
-        if (!left || !right || lk === "") return null;
-        return shapeOfJoin(left, right, { leftKey: lk, rightKey: rk, how: n.how });
-      }
-      if (n instanceof AppendNode) {
-        const shapes = [inputShape(nodeId, "top"), inputShape(nodeId, "bottom")]
-          .filter((s): s is Shape => s != null);
-        if (shapes.length === 0) return null;
-        return shapes.length === 1 ? shapes[0] : shapeOfAppend(shapes);
-      }
-      if (n instanceof SplitColumnNode) {
-        const input = inputShape(nodeId, "frame");
-        if (!input) return null;
-        const column = lit(n, "column").trim();
-        if (!column) return input;
-        return shapeOfSplitColumn(input, column, lit(n, "delimiter") || ",");
-      }
-      if (n instanceof AddIndexNode) {
-        const input = inputShape(nodeId, "frame");
-        if (!input) return null;
-        return shapeOfAddIndex(input, lit(n, "name") || "Index");
-      }
-
-      // A runtime-loaded source, or a node outside this walk's scope.
-      return null;
+      // Every producer declares its own columns; a node with neither declaration is unknown.
+      return hook ? runHook() : null;
     });
   }
 

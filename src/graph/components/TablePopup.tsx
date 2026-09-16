@@ -1,3 +1,5 @@
+// dte:C58
+import { neutralizeFormulaCell } from "../csvSafety";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { copyText } from "../clipboard";
 import { tablePopup, type TablePopupState, type Cell as CellValue, type FramePopupColumn } from "../tablePopupStore";
@@ -7,21 +9,28 @@ import { parseCsvRows } from "../csv";
 import { isSolError, ERROR_EXPLANATIONS } from "../errorValue";
 import { formatDateSerial, parseDateToSerial, serialToJsDate, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { coerceFrameCell, formatFrameCell, type FrameSourceColumn } from "../frame";
-import { describeColumn, type ColumnProfile } from "../frameVerbs";
+import { describeColumn, distinctColumnValues } from "../frameVerbs";
 import { aggregate } from "../nodes/statsOps";
 import { formatNumberWithAnnotation, isDateStyle, applyLogicalStyle, type FormatAnnotation, type FormatStyleId } from "../formatAnnotationStore";
 import { isUnitCell } from "../unitValue";
 import { columnUnitLabel } from "../unitColumn";
-import { frameFormatStore } from "../frameFormatStore";
+import { frameFormatStore, columnFormatRow, type ColumnFormatRow } from "../frameFormatStore";
+import { scheduleAutosave } from "../persistence";
+import { processGraph } from "../process";
 import { formatListCell } from "./valueDisplayFormat";
 import { FormatStyleSelect, DateStyleSelect, UnitSelect, LogicalStyleSelect, TextCaseSelect } from "./fcControls";
-import { applyTextCase } from "../formatAnnotationStore";
+import { CategoryChip } from "./CategoryChip";
+import { categoryColorIndex } from "../categoryColor";
+import { applyTextCase, type TextCase } from "../formatAnnotationStore";
 import { PopupShell, popupCardVars } from "./PopupShell";
 import { settingsStore } from "../settingsStore";
 import { gridKeyOf, nextCell } from "./gridKeyboard";
 import { useColumnSort, sortedOrder, sortKeyOf, sortDirOf, SortIndicator, stopSortTrigger } from "./columnSort";
-import { parseRecordLayout } from "../nodes/visual";
+import { parseRecordLayout, recordImageSrc } from "../nodes/visual";
+import { RecordGrid } from "./chartCards";
+import type { RecordField } from "../chartValue";
 import { PopupOverflowMenu } from "./PopupOverflowMenu";
+import { type FooterStat, type ColSummary, FOOTER_STAT_LABEL, STATS_BY_TYPE, defaultFooterStat, footerStatValue, formatFooterStat } from "./tableFooterStats";
 import { saveCsvFileDialog } from "../fileBridge";
 import { APP_LOCALE } from "../locale";
 import "./errorChip.css";
@@ -76,9 +85,7 @@ function cell(c: string, cellType: CellType): string {
 // it; editable grids skip it because their CSV view must round-trip typed text exactly.
 function csvField(c: string, cellType: CellType, escapeFormulas = false): string {
   let out = cell(c, cellType);
-  if (escapeFormulas && cellType === "string" && /^[=+\-@\t\r]/.test(out) && Number.isNaN(Number(out))) {
-    out = `'${out}`;
-  }
+  if (escapeFormulas && cellType === "string") out = neutralizeFormulaCell(out); // csvSafety, shared with Write File
   if (cellType === "string" && /[",\n]/.test(out)) return `"${out.replace(/"/g, '""')}"`;
   return out;
 }
@@ -128,26 +135,10 @@ function colLabel(i: number): string {
  * Mode is set by which save callback the opener passes: `onSave` → numeric matrix,
  * `onSaveFrame`/`onSaveSource`/`onSaveRaw` → frame editor, none → read-only viewer.
  */
-type ColSummary = { profile: ColumnProfile; sum: number | null };
-type FooterStat = "sum" | "avg" | "min" | "max" | "median" | "count" | "distinct" | "blank" | "error";
-const NUMERIC_STATS: ReadonlyArray<FooterStat> = ["sum", "avg", "min", "max", "median"];
-const FOOTER_STAT_LABEL: Record<FooterStat, string> = {
-  sum: "Sum", avg: "Average", min: "Min", max: "Max", median: "Median",
-  count: "Count", distinct: "Distinct", blank: "Empty", error: "Errors",
-};
-function footerStatValue(stat: FooterStat, s: ColSummary): number | null {
-  const p = s.profile;
-  switch (stat) {
-    case "sum": return s.sum;
-    case "avg": return p.mean;
-    case "min": return p.min;
-    case "max": return p.max;
-    case "median": return p.median;
-    case "count": return p.count;
-    case "distinct": return p.distinct;
-    case "blank": return p.blank;
-    case "error": return p.error;
-  }
+// The format row's fallback where neither a local pick nor an inherited format exists.
+function typeDefaultAnn(st: TablePopupState, j: number): FormatAnnotation {
+  const unit = st.columnUnits?.[st.formatControls === "matrix" ? 0 : j]?.display ?? "none";
+  return { format: st.formatControls !== "matrix" && st.columnTypes?.[j] === "date" ? "date_dmy" : "auto", unit };
 }
 
 export function TablePopup() {
@@ -180,12 +171,17 @@ export function TablePopup() {
   // One stat per column in the summary footer; unset = Sum for a number column, else Count.
   const [colStat, setColStat] = useState<Record<number, FooterStat>>({});
   const showSummary = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupSummary"));
+  const frozen = useSyncExternalStore(settingsStore.subscribe, () => settingsStore.get("tablePopupFrozen"));
   // DISPLAY-ONLY list orientation — the value stays the flat row; copy/CSV/Markdown
   // must keep flattening to the same list.
   const [listVertical, setListVertical] = useState(false);
   // Indexed by column; a "matrix" popup uses index 0 for the whole grid. Display-only —
   // never the value or Copy/CSV.
   const [colFmt, setColFmt] = useState<FormatAnnotation[]>([]);
+  // Parallel to `colFmt`: whether THIS node picked the format (the dropdown shows a
+  // style), and what the column carried in when it didn't (the row's muted hint).
+  const [colLocal, setColLocal] = useState<boolean[]>([]);
+  const [colInherited, setColInherited] = useState<(FormatAnnotation | undefined)[]>([]);
   // undefined = Data, else the host's λ input key defining the column.
   const [colLambdas, setColLambdas] = useState<(string | undefined)[]>([]);
   // undefined = not a Formula column; a string (possibly empty, mid-authoring) = the
@@ -213,10 +209,12 @@ export function TablePopup() {
     setColExprs(Array.from({ length: ncols }, (_, j) => state.sourceExprs?.[j]));
     committedExprs.current = Array.from({ length: ncols }, (_, j) => state.sourceExprs?.[j]);
     setLiveComputed(null);
-    // A persisted per-column format (keyed by node+column) wins over the type default.
     const fmtNodeId = state.pinNodeId;
-    const seedFormat = (colName: string | undefined, dflt: FormatAnnotation): FormatAnnotation => {
-      const saved = fmtNodeId && colName ? frameFormatStore.get(fmtNodeId, colName) : undefined;
+    const localAt = (colName: string | undefined): FormatAnnotation | undefined =>
+      fmtNodeId && colName ? frameFormatStore.get(fmtNodeId, colName) : undefined;
+    // The effective annotation the grid renders: a local pick, else what the column
+    // carried in, else the type default (dte:D41 formatFlowsDownstream).
+    const seedFormat = (saved: FormatAnnotation | undefined, dflt: FormatAnnotation): FormatAnnotation => {
       if (!saved) return dflt;
       // A saved format left cross-type by a column type switch resets to the type default.
       const fmt = isDateStyle(saved.format) === isDateStyle(dflt.format) ? saved.format : dflt.format;
@@ -224,15 +222,23 @@ export function TablePopup() {
     };
     if (state.formatControls === "matrix") {
       // A matrix has no column names — one whole-sheet format under a fixed key.
-      setColFmt([seedFormat("*", { format: "auto", unit: state.columnUnits?.[0]?.display ?? "none" })]);
+      const local = localAt("*");
+      setColFmt([seedFormat(local, typeDefaultAnn(state, 0))]);
+      setColLocal([!!local]);
+      setColInherited([undefined]);
     } else if (state.formatControls === "columns") {
+      const locals = Array.from({ length: ncols }, (_, j) => localAt(state.headers?.[j]));
+      // The value's stamp IS this node's own pick wherever it made one, so it reports an
+      // UPSTREAM format only for a column with no local entry.
+      const inherited = locals.map((l, j) => (l ? undefined : state.columnFormats?.[j]));
       setColFmt(Array.from({ length: ncols }, (_, j) =>
-        seedFormat(state.headers?.[j], {
-          format: state.columnTypes?.[j] === "date" ? "date_dmy" : "auto",
-          unit: state.columnUnits?.[j]?.display ?? "none",
-        })));
+        seedFormat(locals[j] ?? inherited[j], typeDefaultAnn(state, j))));
+      setColLocal(locals.map((l) => !!l));
+      setColInherited(inherited);
     } else {
       setColFmt([]);
+      setColLocal([]);
+      setColInherited([]);
     }
     setView("grid");
     setDisplayMode("formatted");
@@ -334,14 +340,54 @@ export function TablePopup() {
     return state?.formatControls === "matrix" ? "*" : state?.headers?.[c];
   }
   // The UNIT does NOT persist here — a column's unit belongs to its value, saved on
-  // the source column.
+  // the source column. `annFor(c)` is the INHERITED annotation until this node picks,
+  // so editing one axis materializes the rest of the upstream format rather than
+  // resetting the style to Auto.
   function persistColFmt(c: number, patch: Partial<FormatAnnotation>) {
     const idx = state?.formatControls === "matrix" ? 0 : c;
     setColFmtAt(idx, patch);
+    setColLocalAt(idx, true);
     const nodeId = state?.pinNodeId;
     const col = colFmtKey(c);
-    if (nodeId && col) frameFormatStore.set(nodeId, col, { ...annFor(c), ...patch, unit: "none" });
+    if (!nodeId || !col) return;
+    frameFormatStore.set(nodeId, col, { ...annFor(c), ...patch, unit: "none" });
+    // The pick lives in a sidecar store, so nothing else marks the document dirty; and
+    // the stamp onto FrameColumn.format happens at COMPUTE, so downstream frames only
+    // pick it up on a recompute (dte:D41 formatFlowsDownstream).
+    scheduleAutosave();
+    void processGraph(nodeId);
   }
+  function setColLocalAt(i: number, on: boolean) {
+    setColLocal((l) => { const next = l.slice(); while (next.length <= i) next.push(false); next[i] = on; return next; });
+  }
+  // The blank pick: drop this node's entry so the column renders whatever arrives.
+  function clearColFmt(c: number) {
+    const idx = state?.formatControls === "matrix" ? 0 : c;
+    const fallback = colInherited[idx] ?? typeDefaultAnn(state!, idx);
+    setColFmt((f) => {
+      const next = f.slice();
+      while (next.length <= idx) next.push({ format: "auto", unit: "none" });
+      // The unit is the SOURCE column's own choice, not part of the format pick.
+      next[idx] = { ...fallback, unit: next[idx].unit };
+      return next;
+    });
+    setColLocalAt(idx, false);
+    const nodeId = state?.pinNodeId;
+    const col = colFmtKey(c);
+    if (!nodeId || !col) return;
+    frameFormatStore.delete(nodeId, col);
+    scheduleAutosave();
+    void processGraph(nodeId);
+  }
+  function fmtRow(c: number): ColumnFormatRow {
+    const idx = state?.formatControls === "matrix" ? 0 : c;
+    const type = state?.formatControls === "matrix" ? cellType : colTypeAt(c);
+    return columnFormatRow(colLocal[idx] ? annFor(c) : undefined, colInherited[idx], type);
+  }
+  const fmtHint = (c: number) => {
+    const { hint } = fmtRow(c);
+    return hint ? <span className="table-popup__fmthint">{hint}</span> : null;
+  };
   // Takes either a read-only frame's typed value or an editable source's raw text.
   function controlledCell(raw: CellValue, c: number): string {
     if (raw === null || raw === undefined || raw === "") return "";
@@ -388,6 +434,25 @@ export function TablePopup() {
   };
   const viewCols = vertical ? 1 : cols;
   const viewRows = vertical ? listLen : rows;
+
+  // Constrained entry (B2.1): a TEXT column's distinct existing values, offered as a
+  // datalist while a cell is edited — anything new still types. Plain computation, not a
+  // hook (below the guard); the distinct list is pure (frameVerbs), blanks + error codes
+  // excluded, first-seen order. TEXT only (logical/date/number have their own entry).
+  const isErrCode = (s: string): boolean => Object.prototype.hasOwnProperty.call(ERROR_EXPLANATIONS, s.trim());
+  const textColDistinct = new Map<number, string[]>();
+  for (let c = 0; c < viewCols; c++) {
+    // Same type the cell input reads (a list popup carries its element type on `cellType`).
+    if ((vertical ? cellType : colTypeAt(c)) === "string") {
+      textColDistinct.set(c, distinctColumnValues(grid.map((r) => r[c]), isErrCode));
+    }
+  }
+  const dlId = (c: number) => `tp-dl-${c}`;
+  const datalists = (
+    <>{[...textColDistinct].map(([c, vals]) => (
+      <datalist key={c} id={dlId(c)}>{vals.map((v) => <option key={v} value={v} />)}</datalist>
+    ))}</>
+  );
 
   // `sortOrder` holds SOURCE row indices over the WHOLE dataset, so every index it hands
   // on stays the source row and `grid` is never touched; the render shows the first
@@ -534,13 +599,15 @@ export function TablePopup() {
           const r = aggregate("sum", values.filter((v): v is number => typeof v === "number" && Number.isFinite(v)));
           sum = typeof r === "number" ? r : null;
         }
-        return { profile, sum };
+        // A logical column tallies its TRUE / FALSE cells (blanks and errors are neither).
+        const checked = type === "logical" ? values.filter((v) => v === true).length : null;
+        const unchecked = type === "logical" ? values.filter((v) => v === false).length : null;
+        return { profile, sum, checked, unchecked };
       });
     })() : null;
     summaryCache.current = { deps: summaryDeps, value };
   }
   const colSummaries = summaryCache.current.value;
-  const fmtStat = (n: number | null): string => (n == null ? "—" : formatScalar(n));
 
   const headers = editableHeaders ? headerNames : state.headers;
   // A frame's CSV view prepends a header line (below); a plain table/list doesn't.
@@ -653,6 +720,20 @@ export function TablePopup() {
   // ~2.5× the per-cell DOM cost (the popup-virtualize Finding, dev-notes) and read-only
   // popups paid it for nothing. Stays keyboard-navigable: tabIndex -1 + data-vi/data-c so
   // focusGridCell lands here, and the same column-skipping arrow mover an editable cell uses.
+  // Chip columns (B2.2): a string column set to "Chip" colors its cells by category. Keyed by
+  // first appearance in SOURCE row order (not the sorted view), so a column sort in the popup
+  // never recolors the categories. Read-only cells render the chip here; an editable cell shows
+  // it while unfocused and the raw text on focus (the fmtEdit chip overlay below).
+  const chipCols = new Map<number, Map<string, number>>();
+  if (!vertical) {
+    for (let cc = 0; cc < viewCols; cc++) {
+      if (colTypeAt(cc) === "string" && annFor(cc).chip) {
+        const col: (string | null)[] = [];
+        for (let r = 0; r < viewRows; r++) { const rv = rawAt(r, cc); col.push(rv == null || rv === "" ? null : String(rv)); }
+        chipCols.set(cc, categoryColorIndex(col));
+      }
+    }
+  }
   const readOnlyCell = (content: string, className: string, vi: number, c: number) => (
     <div
       className={`${className} table-popup__input--ro`}
@@ -668,7 +749,7 @@ export function TablePopup() {
         focusGridCell(target);
       }}
     >
-      {content === "" ? " " : content}
+      {chipCols.has(c) && content !== "" ? <CategoryChip value={content} index={chipCols.get(c)!.get(content) ?? 0} /> : content === "" ? " " : content}
     </div>
   );
   // Escape mid-edit reverts the cell being edited and keeps the popup open (the shell's
@@ -692,6 +773,7 @@ export function TablePopup() {
       cardClassName="table-popup"
       grouped={grouped}
       cardStyle={cardStyle}
+      resizable={{ min: { w: 320, h: 220 } }}
       headerExtra={<span className="table-popup__dims">{vertical ? `${listLen}×1` : `${rows}×${cols}`}{rowsTruncated || listTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>}
       pinNodeId={state.pinNodeId}
       headerActions={
@@ -701,6 +783,7 @@ export function TablePopup() {
             { label: "Copy as Markdown", onClick: copyMarkdown },
             { label: "Export CSV…", onClick: exportCsv },
             ...(isFramePopup ? [{ label: showSummary ? "Hide summary footer" : "Show summary footer", onClick: () => settingsStore.set("tablePopupSummary", !showSummary) }] : []),
+            ...(view === "grid" ? [{ label: frozen ? "Unfreeze header" : "Freeze header", onClick: () => settingsStore.set("tablePopupFrozen", !frozen) }] : []),
           ]}
         />
       }
@@ -710,14 +793,15 @@ export function TablePopup() {
         // ABOVE the grid rather than inside it as a column row.
         <div className="table-popup__matrix-fmt">
           {cellType === "logical" ? (
-            <LogicalStyleSelect className="table-popup__fmtselect" value={annFor(0).logicalStyle} onChange={(s) => persistColFmt(0, { logicalStyle: s })} />
+            <LogicalStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(0).value} onChange={(s) => (s ? persistColFmt(0, { logicalStyle: s }) : clearColFmt(0))} />
           ) : cellType === "date" ? (
-            <DateStyleSelect className="table-popup__fmtselect" value={annFor(0).format} onChange={(f) => persistColFmt(0, { format: f })} />
+            <DateStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(0).value} onChange={(f) => (f ? persistColFmt(0, { format: f }) : clearColFmt(0))} />
           ) : cellType === "string" ? (
-            <TextCaseSelect className="table-popup__fmtselect" value={annFor(0).textCase} onChange={(tc) => persistColFmt(0, { textCase: tc })} />
+            <TextCaseSelect className="table-popup__fmtselect" inherit value={fmtRow(0).value} onChange={(tc) => tc === "chip" ? persistColFmt(0, { chip: true, textCase: "none" }) : tc ? persistColFmt(0, { textCase: tc as TextCase, chip: false }) : clearColFmt(0)} />
           ) : (
-            <FormatStyleSelect className="table-popup__fmtselect" value={annFor(0).format} onChange={(f) => persistColFmt(0, { format: f })} />
+            <FormatStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(0).value} onChange={(f) => (f ? persistColFmt(0, { format: f }) : clearColFmt(0))} />
           )}
+          {fmtHint(0)}
           {state.unitTaggable && cellType === "number" ? (
             <UnitSelect
               className="table-popup__fmtselect"
@@ -737,8 +821,9 @@ export function TablePopup() {
         </div>
       )}
       {view === "grid" ? (
-        <div className="table-popup__grid-scroll">
-          <table className="table-popup__grid" ref={gridRef}>
+        <div className="table-popup__grid-scroll sol-popup__scroll">
+          {datalists}
+          <table className={`table-popup__grid${frozen ? "" : " table-popup__grid--unfrozen"}`} ref={gridRef}>
             <thead>
               <tr>
                 <th className="table-popup__corner" />
@@ -861,15 +946,19 @@ export function TablePopup() {
                     const type = colTypeAt(c);
                     return (
                       <td key={c} className="table-popup__fmtcell">
-                        {type === "date" ? (
-                          <DateStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => persistColFmt(c, { format: f })} />
-                        ) : type === "logical" ? (
-                          <LogicalStyleSelect className="table-popup__fmtselect" value={annFor(c).logicalStyle} onChange={(s) => persistColFmt(c, { logicalStyle: s })} />
-                        ) : type === "string" ? (
-                          <TextCaseSelect className="table-popup__fmtselect" value={annFor(c).textCase} onChange={(tc) => persistColFmt(c, { textCase: tc })} />
-                        ) : type === "number" ? (
+                        {type === "date" ? (<>
+                          <DateStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(f) => (f ? persistColFmt(c, { format: f }) : clearColFmt(c))} />
+                          {fmtHint(c)}
+                        </>) : type === "logical" ? (<>
+                          <LogicalStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(s) => (s ? persistColFmt(c, { logicalStyle: s }) : clearColFmt(c))} />
+                          {fmtHint(c)}
+                        </>) : type === "string" ? (<>
+                          <TextCaseSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(tc) => tc === "chip" ? persistColFmt(c, { chip: true, textCase: "none" }) : tc ? persistColFmt(c, { textCase: tc as TextCase, chip: false }) : clearColFmt(c)} />
+                          {fmtHint(c)}
+                        </>) : type === "number" ? (
                           <div className="table-popup__fmtstack">
-                            <FormatStyleSelect className="table-popup__fmtselect" value={annFor(c).format} onChange={(f) => persistColFmt(c, { format: f })} />
+                            <FormatStyleSelect className="table-popup__fmtselect" inherit value={fmtRow(c).value} onChange={(f) => (f ? persistColFmt(c, { format: f }) : clearColFmt(c))} />
+                            {fmtHint(c)}
                             {state.unitTaggable ? (
                               <UnitSelect
                                 className="table-popup__fmtselect"
@@ -923,6 +1012,13 @@ export function TablePopup() {
                     // A computed column is read-only — no raw text behind its cells.
                     const computedHere = !vertical && (!!colLambdas[c] || colExprs[c] !== undefined);
                     const canEdit = !computedHere && editable && !(formattedPreview && !fmtEdit); // = !readOnly below
+                    // A chipped string column (B2.2) shows its CategoryChip while unfocused in
+                    // Formatted mode and swaps to the raw <input> on focus, exactly like a
+                    // formatted number cell. Same chipCols keying + CategoryChip as readOnlyCell;
+                    // Source mode (fmtEdit false) keeps raw text. The chip overlays the live input
+                    // (pointer-events none), so editing/keyboard-nav/commit stay untouched.
+                    const chipHere = fmtEdit && chipCols.has(c) && (row[c] ?? "") !== "";
+                    const chipShown = chipHere && !editingHere;
                     if (computedHere) {
                       // Derived values render through the same controlledCell path as
                       // literal ones, so the format row applies here too.
@@ -943,7 +1039,7 @@ export function TablePopup() {
                     return (
                     <td
                       key={c}
-                      className={`table-popup__cell${nan ? " table-popup__cell--nan" : ""}`}
+                      className={`table-popup__cell${nan ? " table-popup__cell--nan" : ""}${chipHere ? " table-popup__cell--chip" : ""}`}
                       style={colMinWidths[c] !== undefined ? { minWidth: colMinWidths[c] } : undefined}
                       title={nan ? "Not a number: an undefined value in the data"
                         : isErrCell ? ERROR_EXPLANATIONS[errCode as keyof typeof ERROR_EXPLANATIONS]
@@ -954,8 +1050,15 @@ export function TablePopup() {
                         `${isTextType(type) ? "table-popup__input table-popup__input--text" : "table-popup__input"}${isErrCell ? " sol-error-chip" : ""}`,
                         vi, c,
                       ) : (
+                      <>
+                      {chipShown && (
+                        <span className="table-popup__chip-overlay" aria-hidden="true">
+                          <CategoryChip value={row[c] ?? ""} index={chipCols.get(c)!.get(row[c] ?? "") ?? 0} />
+                        </span>
+                      )}
                       <input
                         className={`${isTextType(type) ? "table-popup__input table-popup__input--text" : "table-popup__input"}${isErrCell ? " sol-error-chip" : ""}`}
+                        style={chipShown ? { color: "transparent" } : undefined}
                         value={editingHere ? editDraft.current : row[c] ?? ""}
                         readOnly={!editable || (formattedPreview && !fmtEdit)}
                         inputMode={isTextType(type) ? "text" : "decimal"}
@@ -970,6 +1073,7 @@ export function TablePopup() {
                           else setEditCell({ r, c });
                         }}
                         onBlur={canEdit ? () => { if (editingHere) { setCell(r, c, editDraft.current); setEditCell(null); } } : undefined}
+                        list={canEdit && type === "string" ? dlId(c) : undefined}
                         data-vi={vi}
                         data-c={c}
                         onKeyDown={canEdit ? (e) => {
@@ -988,6 +1092,7 @@ export function TablePopup() {
                           focusGridCell(target);
                         } : undefined}
                       />
+                      </>
                       )}
                     </td>
                     );
@@ -1000,9 +1105,9 @@ export function TablePopup() {
                 <tr>
                   <th className="table-popup__corner" />
                   {Array.from({ length: viewCols }, (_, c) => {
-                    const numeric = colTypeAt(c) === "number";
-                    const stat: FooterStat = colStat[c] ?? (numeric ? "sum" : "count");
-                    const choices = (Object.keys(FOOTER_STAT_LABEL) as FooterStat[]).filter((k) => numeric || !NUMERIC_STATS.includes(k));
+                    const type = colTypeAt(c);
+                    const stat: FooterStat = colStat[c] ?? defaultFooterStat(type);
+                    const choices = STATS_BY_TYPE[type];
                     return (
                       <td key={c} className="table-popup__statcell">
                         {/* The visible picker is the stat's word (sized to itself); the real
@@ -1018,7 +1123,7 @@ export function TablePopup() {
                             {choices.map((k) => <option key={k} value={k}>{FOOTER_STAT_LABEL[k]}</option>)}
                           </select>
                         </span>
-                        <span className="table-popup__statvalue">{fmtStat(footerStatValue(stat, colSummaries[c]))}</span>
+                        <span className="table-popup__statvalue">{formatFooterStat(stat, footerStatValue(stat, colSummaries[c]))}</span>
                       </td>
                     );
                   })}
@@ -1028,7 +1133,8 @@ export function TablePopup() {
           </table>
         </div>
       ) : view === "form" ? (
-        <div className="table-popup__form-scroll">
+        <div className="table-popup__form-scroll sol-popup__scroll">
+          {datalists}
           <div className="table-popup__form">
             <div className="table-popup__form-nav">
               <button type="button" className="table-popup__btn" onClick={() => setFormRow(Math.max(0, fRow - 1))} disabled={fRow <= 0} title="Previous record">
@@ -1043,6 +1149,34 @@ export function TablePopup() {
               <button type="button" className="table-popup__btn" onClick={removeRecord} disabled={rows <= 1} title="Delete this record">− Record</button>
             </div>
             {rows > 0 && (() => {
+              // Source OFF renders the row through the SAME RecordGrid the Record chart
+              // type uses — one look for the figure and the form, images included. Source
+              // ON is the editable version below.
+              if (formattedPreview) {
+                const shownAt = (c: number): string | null => {
+                  if (c === -1) return null;
+                  if (isComputedCol(c)) {
+                    const s = controlledCell((liveComputed ?? state.computedCells)?.[fRow]?.[c] ?? null, c);
+                    return s === "" ? null : s;
+                  }
+                  const raw = grid[fRow]?.[c] ?? "";
+                  if (raw.trim() === "") return null;
+                  const f = formatFrameCell(colTypeAt(c), coerceFrameCell(colTypeAt(c), raw));
+                  return f == null ? null : String(f);
+                };
+                const toField = (c: number, name: string, at: { row: number; col: number; rowSpan: number; colSpan: number }, hint?: string): RecordField => {
+                  const label = c === -1 ? name : (headerNames[c] ?? "").trim() || colLabel(c);
+                  const shown = shownAt(c);
+                  const image = shown != null ? recordImageSrc(shown) : null;
+                  const f: RecordField = { label, value: shown, ...(image ? { image } : {}), ...at };
+                  if (shown == null && hint) f.hint = hint;
+                  return f;
+                };
+                const fields = formPlaced.length > 0
+                  ? formPlaced.map((pl) => toField(formColIndex(pl.name), pl.name, { row: pl.row, col: pl.col, rowSpan: pl.rowSpan, colSpan: pl.colSpan }, pl.hint))
+                  : Array.from({ length: cols }, (_, c) => toField(c, "", { row: c + 1, col: 1, rowSpan: 1, colSpan: 1 }));
+                return <RecordGrid fields={fields} cols={formPlaced.length > 0 ? formCols : 1} />;
+              }
               // Record-look boxes: touching, square, label-in-box; the input is
               // the box's value line (the figure look, made editable).
               const box = (c: number, name: string, key: number | string, at?: React.CSSProperties, hint?: string) => {
@@ -1094,6 +1228,7 @@ export function TablePopup() {
                         value={editingHere ? editDraft.current : grid[fRow]?.[c] ?? ""}
                         placeholder={hint}
                         inputMode={isTextType(type) ? "text" : "decimal"}
+                        list={type === "string" ? dlId(c) : undefined}
                         spellCheck={false}
                         onFocus={() => { editDraft.current = grid[fRow]?.[c] ?? ""; setEditCell({ r: fRow, c }); }}
                         onChange={(e) => {
@@ -1124,7 +1259,7 @@ export function TablePopup() {
         </div>
       ) : (
         <textarea
-          className="table-popup__csv"
+          className="table-popup__csv sol-popup__scroll"
           value={csvText}
           readOnly={!editable || formattedPreview}
           spellCheck={false}
@@ -1169,7 +1304,7 @@ export function TablePopup() {
             >Column</button>
           </div>
         )}
-        {showFmtToggle && view !== "form" && (
+        {showFmtToggle && (
           <label
             className="table-popup__source-check"
             title={literalSource
@@ -1188,8 +1323,8 @@ export function TablePopup() {
           <div className="table-popup__dim-controls">
             <button className="table-popup__btn" onClick={addRow} title="Add row">+ Row</button>
             <button className="table-popup__btn" onClick={removeRow} title="Remove last row" disabled={rows <= 1}>− Row</button>
-            <button className="table-popup__btn" onClick={addCol} title="Add column">+ Col</button>
-            <button className="table-popup__btn" onClick={removeCol} title="Remove last column" disabled={cols <= 1}>− Col</button>
+            {!state.fixedCols && <button className="table-popup__btn" onClick={addCol} title="Add column">+ Col</button>}
+            {!state.fixedCols && <button className="table-popup__btn" onClick={removeCol} title="Remove last column" disabled={cols <= 1}>− Col</button>}
           </div>
         )}
         <div className="table-popup__spacer" />

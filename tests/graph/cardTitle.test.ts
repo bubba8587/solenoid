@@ -1,9 +1,11 @@
+// dte:C19,D22
 import { describe, expect, it } from "vitest";
 import { FLAT_CATALOG, nodeDisplayName } from "../../src/graph/catalogUtils";
 
 // NAME-3: the Add-menu row and the card it creates share one name, and an op family's
 // card is named by its op — a placed ABS never reads "Math", a placed XIRR never "IRR".
-// A user-typed label still wins (nodeDisplayName prefers it).
+// A user-typed label still wins (nodeDisplayName prefers it). The op-agnostic FAMILY name
+// (nodeTypeName) is shown only on the card's hover type-hint, not tested here.
 describe("card title", () => {
   // A Conduit is serial-numbered; the composite boundary cards read "Input"/"Output"
   // inside the composite they belong to.

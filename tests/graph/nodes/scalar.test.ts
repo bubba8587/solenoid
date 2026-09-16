@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
   ArithmeticNode,
-  MathFnNode,
+  MathFXNode,
   RoundNNode,
   MRoundNode,
-  GcdNode,
+  GCDNode,
   CombinatoricsNode,
   TwoInputMathNode,
   type MathFnOp,
@@ -53,7 +53,7 @@ describe("Arithmetic", () => {
 
 describe("MathFn — rounding family", () => {
   const fn = (op: MathFnOp, x: number) =>
-    new MathFnNode({ op }).data({ in: [x] }).result;
+    new MathFXNode({ op }).data({ in: [x] }).result;
 
   it("INT floors toward -inf, TRUNC toward zero", () => {
     expect(fn("int", -3.7)).toBe(-4);
@@ -79,7 +79,7 @@ describe("MathFn — rounding family", () => {
 
 describe("MathFn — selected functions", () => {
   const fn = (op: MathFnOp, x: number) =>
-    new MathFnNode({ op }).data({ in: [x] }).result as number;
+    new MathFXNode({ op }).data({ in: [x] }).result as number;
 
   it("GAMMA(5) = 4! = 24", () => {
     expect(fn("gamma", 5)).toBeCloseTo(24, 5);
@@ -92,13 +92,13 @@ describe("MathFn — selected functions", () => {
     expect(fn("erf", 3)).toBeCloseTo(1, 4);
   });
   it("domain guards produce #DOMAIN!", () => {
-    const sqrt = new MathFnNode({ op: "sqrt" }).data({ in: [-1] }).result;
-    const log = new MathFnNode({ op: "log" }).data({ in: [0] }).result;
+    const sqrt = new MathFXNode({ op: "sqrt" }).data({ in: [-1] }).result;
+    const log = new MathFXNode({ op: "log" }).data({ in: [0] }).result;
     expect(isSolError(sqrt) && sqrt.code === "#DOMAIN!").toBe(true);
     expect(isSolError(log) && log.code === "#DOMAIN!").toBe(true);
   });
   it("a domain miss in a LIST carries a per-cell #DOMAIN! (matches the scalar case)", () => {
-    const r = new MathFnNode({ op: "sqrt" }).data({ in: [[4, -1, 9]] }).result as Array<number | { code: string }>;
+    const r = new MathFXNode({ op: "sqrt" }).data({ in: [[4, -1, 9]] }).result as Array<number | { code: string }>;
     expect(r[0]).toBe(2);
     expect(isSolError(r[1]) && r[1].code === "#DOMAIN!").toBe(true);
     expect(r[2]).toBe(3);
@@ -190,40 +190,40 @@ describe("ATAN2 (Excel argument order)", () => {
 
 describe("GCD / LCM", () => {
   it("GCD", () => {
-    expect(new GcdNode({ op: "gcd" }).data({ a: [12], b: [18] }).result).toBe(6);
+    expect(new GCDNode({ op: "gcd" }).data({ a: [12], b: [18] }).result).toBe(6);
   });
   it("LCM", () => {
-    expect(new GcdNode({ op: "lcm" }).data({ a: [4], b: [6] }).result).toBe(12);
+    expect(new GCDNode({ op: "lcm" }).data({ a: [4], b: [6] }).result).toBe(12);
   });
 });
 
 describe("MathFn — deg/rad/auto angle modes", () => {
   it("default (auto, no unit resolved) computes radians — Excel parity", () => {
     // A fresh SIN node is angleMode:"auto" with _resolvedAngleMode:"rad".
-    expect(new MathFnNode({ op: "sin" }).data({ in: [Math.PI / 2] }).result as number).toBeCloseTo(1, 9);
+    expect(new MathFXNode({ op: "sin" }).data({ in: [Math.PI / 2] }).result as number).toBeCloseTo(1, 9);
   });
 
   it("forward trig in deg mode converts the input: SIN(90°) = 1, COS(60°) = 0.5", () => {
-    expect(new MathFnNode({ op: "sin", angleMode: "deg" }).data({ in: [90] }).result as number).toBeCloseTo(1, 9);
-    expect(new MathFnNode({ op: "cos", angleMode: "deg" }).data({ in: [60] }).result as number).toBeCloseTo(0.5, 9);
+    expect(new MathFXNode({ op: "sin", angleMode: "deg" }).data({ in: [90] }).result as number).toBeCloseTo(1, 9);
+    expect(new MathFXNode({ op: "cos", angleMode: "deg" }).data({ in: [60] }).result as number).toBeCloseTo(0.5, 9);
     // Rad pin ignores the degree reading: SIN(90 rad) is not 1.
-    expect(new MathFnNode({ op: "sin", angleMode: "rad" }).data({ in: [90] }).result as number).toBeCloseTo(Math.sin(90), 9);
+    expect(new MathFXNode({ op: "sin", angleMode: "rad" }).data({ in: [90] }).result as number).toBeCloseTo(Math.sin(90), 9);
   });
 
   it("inverse trig in deg mode converts the RESULT to degrees + tags the deg unit", () => {
-    const n = new MathFnNode({ op: "asin", angleMode: "deg" });
+    const n = new MathFXNode({ op: "asin", angleMode: "deg" });
     expect(n.data({ in: [1] }).result as number).toBeCloseTo(90, 9);
     expect(n.data({ in: [0.5] }).result as number).toBeCloseTo(30, 9);
     expect(n.annotationFor("result")?.unit).toBe("deg");
     // Rad mode: radians out, no unit.
-    const r = new MathFnNode({ op: "asin", angleMode: "rad" });
+    const r = new MathFXNode({ op: "asin", angleMode: "rad" });
     expect(r.data({ in: [1] }).result as number).toBeCloseTo(Math.PI / 2, 9);
     expect(r.annotationFor("result")).toBeUndefined();
   });
 
   it("the mode only touches trig ops (SQRT/EXP ignore it) and broadcasts over lists", () => {
-    expect(new MathFnNode({ op: "sqrt", angleMode: "deg" }).data({ in: [9] }).result as number).toBe(3);
-    const list = new MathFnNode({ op: "sin", angleMode: "deg" }).data({ in: [[0, 90, 180]] }).result as number[];
+    expect(new MathFXNode({ op: "sqrt", angleMode: "deg" }).data({ in: [9] }).result as number).toBe(3);
+    const list = new MathFXNode({ op: "sin", angleMode: "deg" }).data({ in: [[0, 90, 180]] }).result as number[];
     expect(list[0]).toBeCloseTo(0, 9);
     expect(list[1]).toBeCloseTo(1, 9);
     expect(list[2]).toBeCloseTo(0, 9);

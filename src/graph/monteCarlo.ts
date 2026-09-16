@@ -50,11 +50,13 @@ export function sampleUncertain(mean: number, spec: UncertaintySpec, rng: () => 
 export function summarizeSamples(draws: readonly number[]): UncertainNumber {
   const nums = draws.filter((d) => Number.isFinite(d));
   const n = nums.length;
-  if (n === 0) return uncertain(NaN, 0, []);
+  const dropped = draws.length - n;
+  const withDropped = (u: UncertainNumber): UncertainNumber => (dropped > 0 ? { ...u, dropped } : u);
+  if (n === 0) return withDropped(uncertain(NaN, 0, []));
   const mean = nums.reduce((s, d) => s + d, 0) / n;
-  if (n === 1) return uncertain(mean, 0, nums);
+  if (n === 1) return withDropped(uncertain(mean, 0, nums));
   const variance = nums.reduce((s, d) => s + (d - mean) * (d - mean), 0) / (n - 1);
-  return uncertain(mean, Math.sqrt(variance), nums);
+  return withDropped(uncertain(mean, Math.sqrt(variance), nums));
 }
 
 /** An empty or zero-range set yields a single full bucket, so the caller never divides

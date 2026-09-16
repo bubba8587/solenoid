@@ -63,6 +63,31 @@
   color: var(--text-muted);
 }
 
+/* Socket hover-peek — a live value rendered as a small, scaled-down Display floating
+   beside the socket. Same overlay chrome + band as the example hint; the value views
+   inside keep the app-neutral chrome (no --node-accent set here → their accent falls
+   back to --text-dim, DESIGN's Quiet Accent). Scaled from the top-left so the layer's
+   rect-based positioning stays exact; size-capped so a big frame stays a glance. */
+.solenoid-socket-peek {
+  position: fixed;
+  z-index: 120;
+  pointer-events: none; /* a tooltip — leaving the socket hides it, never a hover target */
+  transform: scale(0.8);
+  transform-origin: top left;
+  max-width: 260px;
+  max-height: 240px;
+  overflow: hidden;
+  background: var(--overlay-bg);
+  border: 1px solid var(--overlay-border);
+  border-radius: 6px;
+  box-shadow: var(--overlay-shadow);
+}
+/* The value views assume a node body's padding; give the peek its own so a bare
+   scalar/frame isn't flush to the border. */
+.solenoid-socket-peek > * {
+  padding: 4px 6px;
+}
+
 /* Inline variant — the Inspector renders the same mini-table in flow. */
 .solenoid-frame-hint--inline {
   position: static;

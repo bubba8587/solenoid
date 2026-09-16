@@ -2,16 +2,19 @@
 // LIVE svg, so this runs only from the Write node's Run click.
 
 import {
-  isDesktop, joinPath, ensureDir, writeTextFilePath, writeBinaryFilePath,
+  hasFs, joinPath, ensureDir, writeTextFilePath, writeBinaryFilePath, readTextFilePath,
 } from "./fileBridge";
-import { getView } from "./process";
-import { serializeSvgWithComputedStyles } from "./canvasCapture";
+import { nodeChartSvg, nodeChartSvgProvided, serializeSvgWithComputedStyles } from "./canvasCapture";
 import { dataUrlToBytes, sanitizeName } from "./imageAssets";
 import { assembleDocumentMarkdown, valueToObsidianBlock } from "./obsidianMarkdown";
 import { isImageValue, type ImageValue } from "./imageValue";
 import { type DocumentValue } from "./documentValue";
+import { spliceBlock } from "./managedBlock";
 
 const EXT_MIME: Record<string, string> = { png: "image/png", jpeg: "image/jpeg", jpg: "image/jpeg", gif: "image/gif", webp: "image/webp", svg: "image/svg+xml" };
+
+/** The narrowest PNG worth embedding in a note. */
+const MIN_RASTER_W = 640;
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -22,20 +25,31 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-/** Rasterize a live `<svg>` to PNG bytes at 2×, baking computed styles in first —
- *  the vault has none of our CSS. Null if the SVG is too small or the raster fails. */
-async function rasterizeSvg(svgEl: SVGSVGElement): Promise<Uint8Array | null> {
-  const box = svgEl.getBoundingClientRect();
-  const w = Math.max(1, Math.round(box.width));
-  const h = Math.max(1, Math.round(box.height));
-  if (w < 8 || h < 8) return null;
-  const markup = serializeSvgWithComputedStyles(svgEl);
-  // Size the root through the DOM, not a string prepend: a recharts root already has
+/** The SVG's own pixel size — a width/height attribute (stripping a unit), else the
+ *  viewBox's extent; 0 when neither is stated. */
+function svgIntrinsic(root: Element, dim: "width" | "height"): number {
+  const attr = parseFloat(root.getAttribute(dim) ?? "");
+  if (Number.isFinite(attr) && attr > 0) return attr;
+  const vb = (root.getAttribute("viewBox") ?? "").split(/[\s,]+/).map(Number);
+  const v = dim === "width" ? vb[2] : vb[3];
+  return Number.isFinite(v) && v > 0 ? v : 0;
+}
+
+/** Rasterize SVG markup to PNG bytes — the vault has none of our CSS, so styles are
+ *  already baked in by the caller. The chart is small, so the raster scales it up to a
+ *  note-sized width (vector all the way). `size` gives a live element's measured box; a
+ *  provider's SVG (Gantt) carries its own width/height, read off the root. Null if the
+ *  SVG is too small or the raster fails. */
+async function rasterizeSvgMarkup(markup: string, size?: { w: number; h: number }): Promise<Uint8Array | null> {
+  // Size the root through the DOM, not a string prepend: a root may already have
   // width/height, and a duplicated attribute is a fatal XML parse error.
   const holder = document.createElement("div");
   holder.innerHTML = markup;
   const root = holder.querySelector("svg");
   if (!root) return null;
+  const w = Math.max(1, Math.round(size?.w ?? svgIntrinsic(root, "width")));
+  const h = Math.max(1, Math.round(size?.h ?? svgIntrinsic(root, "height")));
+  if (w < 8 || h < 8) return null;
   root.setAttribute("width", String(w));
   root.setAttribute("height", String(h));
   const sized = new XMLSerializer().serializeToString(root);
@@ -43,7 +57,7 @@ async function rasterizeSvg(svgEl: SVGSVGElement): Promise<Uint8Array | null> {
   const url = URL.createObjectURL(blob);
   try {
     const img = await loadImage(url);
-    const scale = 2;
+    const scale = Math.min(4, Math.max(2, MIN_RASTER_W / w));
     const canvas = document.createElement("canvas");
     canvas.width = w * scale;
     canvas.height = h * scale;
@@ -59,20 +73,31 @@ async function rasterizeSvg(svgEl: SVGSVGElement): Promise<Uint8Array | null> {
   }
 }
 
-/** The live `<svg>` element of a node (its main chart art, not a socket glyph). */
-function nodeChartSvg(nodeId: string): SVGSVGElement | null {
-  const el = getView()?.nodeElement(nodeId);
-  if (!el) return null;
-  const svgs = Array.from(el.querySelectorAll("svg"));
-  // The chart is the node's biggest SVG; glyphs are ~≤20px.
-  let best: SVGSVGElement | null = null;
-  let bestView = 40 * 40; // ignore anything glyph-sized
-  for (const s of svgs) {
-    const b = s.getBoundingClientRect();
-    const a = b.width * b.height;
-    if (a > bestView) { bestView = a; best = s as SVGSVGElement; }
+/** Rasterize a live `<svg>`, baking its computed styles in first and sizing from its
+ *  measured box (a recharts root has no reliable intrinsic size until it's drawn). */
+async function rasterizeSvg(svgEl: SVGSVGElement): Promise<Uint8Array | null> {
+  const box = svgEl.getBoundingClientRect();
+  return rasterizeSvgMarkup(serializeSvgWithComputedStyles(svgEl), { w: box.width, h: box.height });
+}
+
+/** overwrite = the note is the document; append = the document is added at the end;
+ *  block = the writer owns one `%% solenoid:begin <name> %%` span (managedBlock.ts). */
+export type ObsidianWriteMode = "overwrite" | "append" | "block";
+
+/** The note's next text from its current text (null = no note yet) and the assembled
+ *  markdown, per mode. Pure; throws on a refused block splice. */
+export function mergeNoteText(existing: string | null, md: string, mode: ObsidianWriteMode, blockName: string): string {
+  if (mode === "overwrite" || existing === null) {
+    if (mode === "block") return spliceBlock("", blockName, md).text;
+    return md;
   }
-  return best;
+  if (mode === "append") {
+    const body = existing.replace(/\s+$/, "");
+    return (body ? body + "\n\n" : "") + md;
+  }
+  const r = spliceBlock(existing, blockName, md);
+  if (r.refused) throw new Error(`Refused: ${r.refused}`);
+  return r.text;
 }
 
 export interface WriteVaultOptions {
@@ -86,19 +111,25 @@ export interface WriteVaultOptions {
   name: string;
   /** ref name → the source node id feeding it (for chart rasterization). */
   refSources: Map<string, string>;
+  /** How the note takes the document; default overwrite. */
+  mode?: ObsidianWriteMode;
+  /** The managed block's name (mode block); the writer's node name. */
+  blockName?: string;
 }
 
 export interface WriteVaultResult {
-  /** The written note's vault-relative path. */
+  /** The written note's vault-relative path (a batch's FIRST page). */
   file: string;
   /** How many image assets were written. */
   assets: number;
+  /** How many notes a batch document wrote (1 for a single document). */
+  pages: number;
 }
 
 /** Desktop only — THROWS off-desktop (the node guards first); overwrites an existing
  *  note of the same name. */
 export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultOptions): Promise<WriteVaultResult> {
-  if (!isDesktop()) throw new Error("Desktop app only");
+  if (!hasFs()) throw new Error("Desktop app only");
   // Drop empty / "." / ".." segments so a stray ".." can't climb out of the vault.
   const cleanParts = (p: string) =>
     p.split("/").map((s) => s.trim()).filter((s) => s && s !== "." && s !== "..");
@@ -110,7 +141,10 @@ export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultO
   const assetDir = assetParts.length ? await joinPath(opts.vault, ...assetParts) : noteDir;
 
   let assetCount = 0;
-  const base = sanitizeName(opts.name) || "note";
+  // A batch document writes one note per page, each named by its page; a single
+  // document writes under the sink's name.
+  const pages = doc.pages?.length ? doc.pages : [{ name: opts.name, body: doc.body }];
+  let base = sanitizeName(opts.name) || "note";
 
   // Returns the Obsidian embed token, which resolves by FILENAME across the vault.
   async function writeAsset(refName: string, bytes: Uint8Array, ext: string): Promise<string> {
@@ -134,19 +168,34 @@ export async function writeDocumentToVault(doc: DocumentValue, opts: WriteVaultO
     }
     const block = valueToObsidianBlock(value);
     if (block.kind === "md") return block.md;
-    // A chart — rasterize the source node's live SVG to a PNG asset.
+    // A chart — rasterize the source node's SVG to a PNG asset. A figure that serializes
+    // itself (the Gantt grid + banded SVGs) supplies its own markup; every other chart is
+    // its live element, measured. Either way, null = not on the live canvas.
     const srcId = opts.refSources.get(name);
-    const svg = srcId ? nodeChartSvg(srcId) : null;
-    if (!svg) return ""; // chart not on the live canvas (nothing to rasterize)
-    const bytes = await rasterizeSvg(svg);
+    const provided = srcId ? nodeChartSvgProvided(srcId) : null;
+    const bytes = provided
+      ? await rasterizeSvgMarkup(provided)
+      : await (async () => {
+          const svg = srcId ? nodeChartSvg(srcId) : null;
+          return svg ? rasterizeSvg(svg) : null;
+        })();
     if (!bytes) return "";
     return writeAsset(name, bytes, "png");
   }
 
-  const md = await assembleDocumentMarkdown(doc, resolveRef);
-  const notePath = await joinPath(noteDir, `${base}.md`);
-  await writeTextFilePath(notePath, md);
-
-  const rel = subParts.length ? `${subParts.join("/")}/${base}.md` : `${base}.md`;
-  return { file: rel, assets: assetCount };
+  const mode = opts.mode ?? "overwrite";
+  let first = "";
+  for (const page of pages) {
+    base = sanitizeName(page.name) || "note";
+    const md = await assembleDocumentMarkdown({ ...doc, body: page.body }, resolveRef);
+    const notePath = await joinPath(noteDir, `${base}.md`);
+    let existing: string | null = null;
+    if (mode !== "overwrite") {
+      try { existing = await readTextFilePath(notePath); } catch { existing = null; }
+    }
+    await writeTextFilePath(notePath, mergeNoteText(existing, md, mode, opts.blockName ?? "Solenoid"));
+    const rel = subParts.length ? `${subParts.join("/")}/${base}.md` : `${base}.md`;
+    if (!first) first = rel;
+  }
+  return { file: first, assets: assetCount, pages: pages.length };
 }

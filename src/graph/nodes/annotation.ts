@@ -1,23 +1,37 @@
+// dte:C68
 import { ClassicPreset } from "rete";
+import { sourceHasLayer } from "../svgLayer";
 import {
   numberSocket, stringSocket, logicalSocket, dateSocket,
-  listSocket, strListSocket, logicalListSocket, dateListSocket,
-  SolenoidSocket,
+  listSocket, strListSocket, logicalListSocket, dateListSocket, frameSocket,
+  SolenoidSocket, cubeSocket,
 } from "../sockets";
 import { parseDateToSerial } from "./date";
 import { chartOut, strOut, documentOut } from "./shared";
 import { makeDocument, type DocumentValue } from "../documentValue";
+import { hasKnapSyntax, knapErrorText, renderKnap, toTemplateValue } from "../knapTemplate";
+import { solError, type SolError } from "../errorValue";
+import { isFrameValue, recordsToCube, type FrameValue, type FrameColumn, type FrameColType, type FrameCell, type CubeValue } from "../frame";
+import { shapeOfFrameValue, type Shape } from "../frameShape";
 import type { ImageValue } from "../imageValue";
 import type { SvgValue } from "../svgValue";
 import {
   parseNoteFrontmatter,
   type FrontmatterFieldType,
   type FrontmatterScalar,
+  type FrontmatterRow,
   type FrontmatterValue,
 } from "../noteFrontmatter";
 
+/** The value a frontmatter key emits: a scalar/list (FrontmatterValue) or, for a `frame`
+ *  field, a built FrameValue. */
+type EmittedValue = FrontmatterValue | FrameValue | CubeValue;
+
 // A Note is a pure SOURCE: `---`-fenced frontmatter keys become typed OUTPUT
 // sockets, and it deliberately mints no inputs — that is the Report node's job.
+
+/** The one output every Note reserves from frontmatter reconciliation. */
+const NOTE_RESERVED: ReadonlySet<string> = new Set(["document"]);
 
 const FIELD_SOCKETS: Record<FrontmatterFieldType, SolenoidSocket> = {
   number: numberSocket,
@@ -28,13 +42,55 @@ const FIELD_SOCKETS: Record<FrontmatterFieldType, SolenoidSocket> = {
   strlist: strListSocket,
   logicallist: logicalListSocket,
   datelist: dateListSocket,
+  frame: frameSocket,
+  cube: cubeSocket,
 };
 
-const FIELD_BASE: Record<FrontmatterFieldType, "number" | "string" | "logical" | "date"> = {
+const FIELD_BASE: Record<Exclude<FrontmatterFieldType, "frame" | "cube">, "number" | "string" | "logical" | "date"> = {
   number: "number", string: "string", logical: "logical", date: "date",
   list: "number", strlist: "string", logicallist: "logical", datelist: "date",
 };
 const LIST_TYPES = new Set<FrontmatterFieldType>(["list", "strlist", "logicallist", "datelist"]);
+const LIST_OF: Record<"number" | "string" | "logical" | "date", FrontmatterFieldType> = {
+  number: "list", string: "strlist", logical: "logicallist", date: "datelist",
+};
+
+/** A pin carries only its ELEMENT family: reshape it onto the guess's dimensionality, or
+ *  drop it when either side is a frame (a frame has no element family to pin). */
+function reshapePin(
+  pinned: FrontmatterFieldType | undefined,
+  guessed: FrontmatterFieldType,
+): FrontmatterFieldType | undefined {
+  if (!pinned || pinned === "frame" || guessed === "frame" || pinned === "cube" || guessed === "cube") return undefined;
+  if (LIST_TYPES.has(pinned) === LIST_TYPES.has(guessed)) return pinned;
+  const base = FIELD_BASE[pinned];
+  return LIST_TYPES.has(guessed) ? LIST_OF[base] : base;
+}
+
+/** A frame column's type from its cells, first non-null wins (dates already collapsed to
+ *  serials, so they type as number — a Note frame is plain data, no per-column date pick). */
+function frameColType(cells: FrontmatterScalar[]): FrameColType {
+  for (const v of cells) {
+    if (v === null) continue;
+    if (typeof v === "boolean") return "logical";
+    if (typeof v === "number") return "number";
+    return "string";
+  }
+  return "string";
+}
+
+/** Rows of `{name: value}` → a FrameValue: columns are the keys in first-appearance order
+ *  (the mirror of the Script node's frame form). A missing key in a row is a null cell. */
+function rowsToFrame(rows: FrontmatterRow[]): FrameValue {
+  const names: string[] = [];
+  for (const r of rows) for (const k of Object.keys(r)) if (!names.includes(k)) names.push(k);
+  const columns: FrameColumn[] = names.map((name) => {
+    // A frame cell is scalar; a list that slipped in keeps its first element.
+    const cells = rows.map((r) => { const v = name in r ? r[name] : null; return Array.isArray(v) ? (v[0] ?? null) : v; });
+    return { name, type: frameColType(cells), values: cells as FrameCell[] };
+  });
+  return { __frame: true, columns };
+}
 
 // Only bites when a per-key TYPE override disagrees with the guessed value.
 function coerceScalar(v: FrontmatterScalar, base: "number" | "string" | "logical" | "date"): FrontmatterScalar {
@@ -55,7 +111,10 @@ function coerceScalar(v: FrontmatterScalar, base: "number" | "string" | "logical
   }
 }
 
-function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType): FrontmatterValue {
+function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType): EmittedValue {
+  if (type === "frame") return rowsToFrame(Array.isArray(value) ? (value as FrontmatterRow[]) : []);
+  // A row list with a list value is a cube (recordsToCube keeps the list as a list cell).
+  if (type === "cube") return recordsToCube(Array.isArray(value) ? (value as Record<string, unknown>[]) : []);
   const base = FIELD_BASE[type];
   if (LIST_TYPES.has(type)) {
     const arr = Array.isArray(value) ? value : value === null ? [] : [value];
@@ -67,7 +126,7 @@ function coerceValue(value: FrontmatterValue, type: FrontmatterFieldType): Front
 
 export class NoteNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    document: "Carries the note's full text, frontmatter included, for a document sink such as Write to Obsidian.",
+    document: "Carries the note's full text, frontmatter included and the template rendered, for a document sink such as Write to Obsidian.",
   };
 
   body: string;        // markdown — may open with a `---`-fenced YAML frontmatter block
@@ -75,14 +134,14 @@ export class NoteNode extends ClassicPreset.Node {
   width: number;
   height: number;
   collapsed: boolean;  // when true, only the header bar shows
-  // A field's type is GUESSED on first sight; a user pick pins it here so editing
-  // the value later can't silently re-type the socket. Persisted.
+  // A user's per-key type pick, persisted. The pin holds the ELEMENT family only; the
+  // value's dimensionality (scalar / list / frame) always comes from the body.
   fieldTypes: Record<string, FrontmatterFieldType>;
 
   // Derived from `body` on every sync (NOT persisted — the body is the source).
   private _renderBody = "";                              // markdown below the block
   private _fieldKeys: string[] = [];                     // output keys in source order
-  private _fieldValues = new Map<string, FrontmatterValue>();
+  private _fieldValues = new Map<string, EmittedValue>();
 
   constructor(init?: {
     label?: string; body?: string; color?: string; width?: number; height?: number;
@@ -101,6 +160,10 @@ export class NoteNode extends ClassicPreset.Node {
     // after node creation then find their outputs present.
     this.syncFields();
   }
+
+  /** Output keys `syncFields` must never treat as a (removable) frontmatter key. The
+   *  base reserves only `document`; Import adds its `path` identity output. */
+  protected reservedOutputs(): ReadonlySet<string> { return NOTE_RESERVED; }
 
   /** The markdown to render — the body with any frontmatter block stripped. */
   get renderBody(): string { return this._renderBody; }
@@ -131,9 +194,15 @@ export class NoteNode extends ClassicPreset.Node {
     const parsed = parseNoteFrontmatter(this.body);
     this._renderBody = parsed.body;
 
-    const wanted = new Map<string, { value: FrontmatterValue; type: FrontmatterFieldType }>();
+    const wanted = new Map<string, { value: EmittedValue; type: FrontmatterFieldType }>();
     for (const f of parsed.fields) {
-      const type = this.fieldTypes[f.key] ?? f.guessed;
+      const pinned: FrontmatterFieldType | undefined = this.fieldTypes[f.key];
+      const pin = reshapePin(pinned, f.guessed);
+      if (pinned !== undefined && pin !== pinned) {
+        if (pin === undefined) delete this.fieldTypes[f.key];
+        else this.fieldTypes[f.key] = pin;
+      }
+      const type = pin ?? f.guessed;
       wanted.set(f.key, { value: coerceValue(f.value, type), type });
     }
     // Prune overrides for keys no longer present (keep the save lean).
@@ -141,8 +210,9 @@ export class NoteNode extends ClassicPreset.Node {
 
     const removed: string[] = [];
     const retyped: { key: string; type: FrontmatterFieldType }[] = [];
+    const reserved = this.reservedOutputs();
     for (const key of Object.keys(this.outputs)) {
-      if (key === "document") continue; // the fixed document output isn't a frontmatter key
+      if (reserved.has(key)) continue; // fixed outputs (document, a subclass's path) aren't frontmatter keys
       const w = wanted.get(key);
       const cur = this.outputs[key]!.socket;
       if (!w) {
@@ -164,14 +234,38 @@ export class NoteNode extends ClassicPreset.Node {
     return { removed, retyped };
   }
 
-  data(): Record<string, FrontmatterValue | DocumentValue> {
-    return { ...this.fieldValues(), document: makeDocument(this.body, {}, undefined, this.id) };
+  /** A rows-of-objects frontmatter key emits a built frame, so its columns are known. */
+  frameShape(outKey: string): Shape | null {
+    const v = this.fieldValues()[outKey];
+    return isFrameValue(v) ? shapeOfFrameValue(v) : null;
+  }
+
+  /** The frontmatter fields as template data: a Note's Knap variables are its OWN
+   *  fields (dates as ISO text), so `{{ title }}` in the body reads the block above. */
+  templateVariables(): Record<string, unknown> {
+    const vars: Record<string, unknown> = {};
+    for (const [k, v] of this._fieldValues) vars[k] = toTemplateValue(v, this.fieldType(k));
+    return vars;
+  }
+
+  // Async ONLY when the body carries a template tag; a plain note stays synchronous.
+  // The document carries the RAW body as `source` beside the render, so a Report
+  // wired to this note can use it as its template. A tag naming no field stays
+  // literal (renderKnap keepUnknown): a template note reads as one.
+  data(): Record<string, EmittedValue | DocumentValue> | Promise<Record<string, EmittedValue | DocumentValue | SolError>> {
+    const fields = this.fieldValues();
+    const extra = { source: this.body };
+    if (!hasKnapSyntax(this.body)) return { ...fields, document: makeDocument(this.body, {}, undefined, this.id, extra) };
+    return renderKnap(this.body, this.templateVariables(), { keepUnknown: true }).then((r) => ({
+      ...fields,
+      document: r.errors.length ? solError("#SYNTAX!", knapErrorText(r.errors)) : makeDocument(r.output, {}, undefined, this.id, extra),
+    }));
   }
 
 /** Use this from the UI: the installErrorGuards wrapper calls `firstInputError`
  *  OUTSIDE its try/catch, so calling `data()` with no args throws. */
-  fieldValues(): Record<string, FrontmatterValue> {
-    const out: Record<string, FrontmatterValue> = {};
+  fieldValues(): Record<string, EmittedValue> {
+    const out: Record<string, EmittedValue> = {};
     for (const [k, v] of this._fieldValues) out[k] = v;
     return out;
   }
@@ -281,7 +375,8 @@ export class SvgPickerNode extends ClassicPreset.Node {
 
   data(): { chart: SvgValue | null; layer: string | null } {
     const source = this.source;
-    const layer = this.selectedLayer || null;
+    // A pick names a layer of THIS picture; after the source changes it reads blank.
+    const layer = this.selectedLayer && sourceHasLayer(source, this.selectedLayer) ? this.selectedLayer : null;
     const chart: SvgValue | null = source
       ? { __svg: true, source, selected: layer, hoverColor: this.hoverColor, height: this.height, title: this.label }
       : null;

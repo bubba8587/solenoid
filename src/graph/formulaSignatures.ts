@@ -152,6 +152,7 @@ export const FORMULA_SIGNATURES: Record<string, string> = {
   TIMEVALUE: "text",
   NETWORKDAYS: "start, end, [holidays]",
   WORKDAY: "start, days, [holidays]",
+  TIMEZONECONVERT: "datetime, from_zone, to_zone",
   // ── finance ──
   PMT: "rate, nper, pv, [fv], [type]",
   PV: "rate, nper, pmt, [fv], [type]",

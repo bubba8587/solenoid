@@ -28,7 +28,7 @@ export function SankeyComponent({ data, emit }: NodeProps<SankeyNodeType>) {
           ? <SankeyView sources={p!.sources} targets={p!.targets} values={p!.values} width={W} height={H} />
           : !has && <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>}
       </div>
-      <div className="solenoid-node__collapsed-only solenoid-node__display-value" style={{ justifyContent: "flex-end" }}><ChartChip value={chartValue} /></div>
+      <div className="solenoid-node__collapsed-only solenoid-node__display-value solenoid-node__display-value--chip"><ChartChip value={chartValue} /></div>
     </NodeShell>
   );
 }

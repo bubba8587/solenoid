@@ -1,11 +1,17 @@
+// dte:C60,C48,C49,C72,E11
 import { ClassicPreset } from "rete";
-import { numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfType, comboOfFamily, type SocketDataType, type SolenoidSocket } from "../sockets";
+import { numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfType, comboOfFamily, listSocket, tableSocket, type SocketDataType, type SolenoidSocket } from "../sockets";
+import { resolveExcelFunction } from "../excelFunctions";
+import { getActiveEditor, getActiveView } from "../activeGraph";
+import { retypeOutputCables } from "../fcReconcile";
 import { parseListLiteral } from "../coerceInputs";
+import type { Shape } from "../frameShape";
 import { parseDate } from "./date";
 import type { Cell as AnyCell } from "./coerce";
 import { getRecalcGen } from "../process";
-import { readInput, listIn, listOut, numIn, numOut, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut } from "./shared";
+import { readInput, listIn, listOut, numIn, numOut, numListIn, numListOut, logicalListIn, anyIn, anyComboIn, trueAnyIn, trueAnyOut, strIn, logicalOut, logicalListOut, frameIn, frameOut, anyListIn, adoptiveListIn, adoptiveListOut, tableOut } from "./shared";
 import type { PassthroughSpec, ProjectContext } from "./passthrough";
+import type { FormatCarrySpec } from "./formatCarry";
 import { pairIdsFromKeys, pickSlot } from "./logic";
 import { passesFilter, requireTextColumn, requireTextList, VALUELESS_FILTER_OPS, type FilterOp, type FilterCondConfig } from "../frameVerbs";
 import { solError, isSolError, type SolError } from "../errorValue";
@@ -16,7 +22,7 @@ import { stripUnitCells } from "../unitBridge";
 import { type Dim, DIMENSIONLESS, dimPow, dimEqual, isDimensionless } from "../dimension";
 import { iterMin, iterMax } from "./mathUtils";
 import { aggregate, type AggregateOp } from "./statsOps";
-import { MAX_GENERATED, sequenceList, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS } from "./listOps";
+import { MAX_GENERATED, shuffleList, setKey, uniqueList, sortNumericList, sortByKeys, setOperation, setRelation, fillList, rangeList, rangeCount, concatLists, reverseList, sliceList, nthElement, interleave, padList, diffList, normalizeList, shiftList, pctChangeList, zscoreList, binIndex, ntileList, outlierFlags, OUTLIER_DEFAULT_THRESHOLD, type OutlierMethod, spectrum, combinationsOf, gradientList, ewmaList, trapzList, convolveList, rleEncode, crossProduct, polyfitEval, running, type RunningOp, argMinMax, containsValue, xmatchIndex, type XMatchMatchMode, type XMatchSearchMode, weighted, weightedShuffleKey, linspace, repeatValue, geometric, fibonacci, type Cell as ListCell, argsortList, whichPositions, ARG_LIST_OPS } from "./listOps";
 import { isFrameRef, flushRef, frameBackend, materialize } from "../frameBackend";
 import { isFrameValue, isCubeValue, cubeRowCount, cubeFromColumns, frameRowCount, inferColumn, getColumn, type FrameValue, type FrameColumn, type CubeValue, type CubeCell, type FrameCell, type FrameColType } from "../frame";
 import { indexInto, resolveAxes, indexRefError, type IndexAxis } from "./indexAccess";
@@ -70,7 +76,7 @@ function coerceElem(dt: ListElemType, v: unknown): AnyCell {
 
 export class ListInputNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    list: "Rows concatenate in order, and a wired row replaces its typed text.",
+    list: "Rows concatenate in order.",
   };
 
   label: string;
@@ -166,7 +172,7 @@ export type SeriesOp = "range" | "sequence" | "linspace" | "geometric" | "fibona
 
 export const SERIES_OP_META = {
   range:    { label: "Range",    description: "Generates a sequence from Start to Stop inclusive, Step apart. `numpy arange` stops before Stop; Excel's count-first equivalent is the Sequence op." },
-  sequence: { label: "SEQUENCE", description: "List of N numbers starting at Start with Step between each. Like Range but count-first. Excel: `SEQUENCE`." },
+  sequence: { label: "SEQUENCE", description: "A grid of Rows × Columns numbers starting at Start with Step between each, filled row by row. Columns 1 (the default) gives a plain list, like Range but count-first. Excel: `SEQUENCE`." },
   linspace: { label: "LinSpace", description: "Generates Count evenly spaced values from Start to End inclusive." },
   geometric: { label: "Geometric", description: "Geometric series: `start × ratio^0`, `start × ratio^1`, …" },
   fibonacci: { label: "Fibonacci", description: "First N Fibonacci numbers: 1, 1, 2, 3, 5, 8, …" },
@@ -175,7 +181,7 @@ export const SERIES_OP_META = {
 
 const SERIES_SPECS: Record<SeriesOp, ReadonlyArray<{ key: string; label: string; def?: number }>> = {
   range:    [{ key: "start", label: "Start", def: 0 }, { key: "stop", label: "Stop" }, { key: "step", label: "Step", def: 1 }],
-  sequence: [{ key: "count", label: "Count", def: 10 }, { key: "start", label: "Start (default 1)" }, { key: "step", label: "Step (default 1)" }],
+  sequence: [{ key: "count", label: "Rows", def: 10 }, { key: "cols", label: "Columns (default 1)" }, { key: "start", label: "Start (default 1)" }, { key: "step", label: "Step (default 1)" }],
   linspace: [{ key: "start", label: "Start", def: 0 }, { key: "end", label: "End", def: 1 }, { key: "count", label: "Count", def: 10 }],
   geometric: [{ key: "start", label: "Start", def: 1 }, { key: "ratio", label: "Ratio", def: 2 }, { key: "count", label: "Count", def: 8 }],
   fibonacci: [{ key: "count", label: "Count", def: 10 }],
@@ -185,8 +191,12 @@ const SERIES_SPECS: Record<SeriesOp, ReadonlyArray<{ key: string; label: string;
 export class SeriesNode extends ClassicPreset.Node {
   label: string;
   op: SeriesOp;
-  cachedList: number[] | SolError | null = [];
+  // A 2-D value only for the SEQUENCE op with Columns > 1 (matching the formula); every
+  // other op stays 1-D. Named cachedList for the component's value box.
+  cachedList: number[] | number[][] | SolError | null = [];
   literals: Record<string, number> = {};
+  /** Output rank the socket last settled to (sequenceRankReconcile); transient. */
+  private lastRank: 1 | 2 = 1;
   width = 180;
   height = 248;
 
@@ -224,11 +234,17 @@ export class SeriesNode extends ClassicPreset.Node {
       if (!live) this.addInput(i.key, numIn(i.label));
       else live.label = i.label; // a kept key keeps its cable; the label follows the op
     }
+    // Only SEQUENCE (Columns > 1) can go 2-D; every other op is a list, so reset the
+    // output socket a prior sequence may have swapped to a table (reconcileRank re-swaps).
+    if (next !== "sequence" && this.outputs.list) {
+      this.outputs.list.socket = listSocket;
+      this.lastRank = 1;
+    }
     this.seedLiterals();
   }
 
-  data(inputs: { start?: number[]; stop?: number[]; step?: number[]; end?: number[]; count?: number[]; ratio?: number[]; value?: number[] }): { list: number[] | SolError | null } {
-    let list: number[] | SolError | null;
+  data(inputs: { start?: number[]; stop?: number[]; step?: number[]; end?: number[]; count?: number[]; cols?: number[]; ratio?: number[]; value?: number[] }): { list: number[] | number[][] | SolError | null } {
+    let list: number[] | number[][] | SolError | null;
     if (this.op === "range") {
       const start = readInput(inputs.start, this.literals.start ?? 0);
       // `stop` is legitimately UNSET: undefined is unset, null is a cable carrying blank.
@@ -245,16 +261,16 @@ export class SeriesNode extends ClassicPreset.Node {
         else list = rangeList(start, stop, step);
       }
     } else if (this.op === "sequence") {
-      const countRaw = readInput(inputs.count, this.literals.count ?? 10);
+      // ONE impl with the formula (shareImpl): dispatch straight to =SEQUENCE, so Rows ×
+      // Columns, the 2-D wrap, and the overflow guard can never drift from the formula
+      // surface. Columns default 1 → a flat list, exactly the formula's cols=1 return.
+      const rows  = readInput(inputs.count, this.literals.count ?? 10);
+      const cols  = readInput(inputs.cols,  this.literals.cols  ?? 1);
       const start = readInput(inputs.start, this.literals.start ?? 1);
-      const step  = readInput(inputs.step, this.literals.step ?? 1);
-      if (countRaw === null || start === null || step === null) list = null;
-      else {
-        const count = Math.max(0, Math.floor(countRaw));
-        list = count > MAX_GENERATED
-          ? solError("#OVERFLOW!", `SEQUENCE count ${count} exceeds the ${MAX_GENERATED} element limit`)
-          : sequenceList(count, start, step);
-      }
+      const step  = readInput(inputs.step,  this.literals.step  ?? 1);
+      list = rows === null || cols === null || start === null || step === null
+        ? null
+        : resolveExcelFunction("SEQUENCE")!(rows, cols, start, step) as number[] | number[][] | SolError;
     } else if (this.op === "linspace") {
       const start = readInput(inputs.start, this.literals.start ?? 0);
       const end   = readInput(inputs.end, this.literals.end ?? 1);
@@ -281,7 +297,31 @@ export class SeriesNode extends ClassicPreset.Node {
         : repeatValue(v, nRaw);
     }
     this.cachedList = list;
+    this.reconcileRank(list);
     return { list };
+  }
+
+  /** SEQUENCE with Columns > 1 returns a matrix; every other case a list. Swap the
+   *  output socket to match the computed rank (value-driven, so it runs OUTSIDE data()
+   *  via a microtask; headless runs — no active editor — keep the last socket). */
+  private reconcileRank(result: unknown): void {
+    // An error, a wired blank or an empty result says nothing about shape: a transient
+    // blank on Rows must not flip a 2-D SEQUENCE to rank 1 and sever its table cables.
+    if (isSolError(result) || result == null || (Array.isArray(result) && result.length === 0)) return;
+    const want: 1 | 2 = Array.isArray(result) && result.length > 0 && Array.isArray(result[0]) ? 2 : 1;
+    if (want === this.lastRank) return;
+    this.lastRank = want;
+    queueMicrotask(() => {
+      void (async () => {
+        const editor = getActiveEditor();
+        const view = getActiveView();
+        const out = this.outputs.list;
+        if (!editor || !view || !out || !editor.getNode(this.id)) return;
+        out.socket = want === 2 ? tableSocket : listSocket;
+        await retypeOutputCables(editor, view, this.id, "list");
+        await view.rerenderNode(this.id);
+      })();
+    });
   }
 }
 
@@ -372,7 +412,7 @@ export class ListIndexNode extends ClassicPreset.Node {
     // A DYNAMIC shape grows columns at compute time and shifts the ones after them, so
     // a POSITIONAL index into it isn't trustworthy.
     if (!shape || shape.dynamic) return "trueany";
-    const c = shape.columns[Math.round(col) - 1]; // 1-based, Excel INDEX
+    const c = shape.columns[Math.trunc(col) - 1]; // 1-based; Excel truncates (indexAccess.resolveAxes)
     if (!c) return "trueany"; // out of range — a #REF! at runtime, no family to adopt
     return comboOfFamily(c.type) ?? "trueany";
   }
@@ -680,6 +720,13 @@ export class EwmaNode extends ClassicPreset.Node {
     this.addOutput("result", listOut("Smoothed"));
   }
 
+  /** An exponentially-weighted moving average is a mean, so it keeps the value's kind
+   *  (a smoothed percent series is still percents); the format rides the List, not Alpha
+   *  (formatFlowsDownstream). */
+  formatCarry(): FormatCarrySpec[] {
+    return [{ output: "result", inputs: ["list"] }];
+  }
+
   data(inputs: { list?: ListCell[][]; alpha?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
     const alpha = readInput(inputs.alpha, this.literals.alpha ?? 0.3);
@@ -978,7 +1025,7 @@ export class FilterNode extends ClassicPreset.Node {
       return { result: this.cachedResult, dropped: null };
     }
     // Same rule as the frame Filter: a text predicate on a non-text list is #TYPE!
-    // (rules textPredicateNeedsText); the error guards surface the throw.
+    // (dte:D49 textPredicateNeedsText); the error guards surface the throw.
     for (const c of conds) requireTextList(c.op, type);
     const kept: unknown[] = [];
     const dropped: unknown[] = [];
@@ -1447,11 +1494,19 @@ export class RunningNode extends ClassicPreset.Node {
     this.addOutput("result", listOut("Result"));
   }
 
+  /** A windowed sum/mean/min/max/median/stdev keeps the value's kind, like the Aggregate
+   *  it slides; product derives a new dimension. Same dimension test (formatFlowsDownstream). */
+  formatCarry(): FormatCarrySpec[] {
+    const probe: Dim = { length: 1 };
+    return dimEqual(aggregateResultDim(this.agg, probe, 2), probe) ? [{ output: "result", inputs: ["list"] }] : [];
+  }
+
   data(inputs: { list?: ListCell[][]; window?: number[] }) {
     const arr = inputs.list?.[0] ?? [];
     const w = readInput(inputs.window, this.literals.window ?? 0);
     // A wired blank leaves the result unknown (value-semantics.md, "Reading an input").
     if (w === null) { this.cachedList = null; return { result: null }; }
+    if (!Number.isFinite(w) || w < 0) { this.cachedList = []; return { result: solError("#DOMAIN!", "Window must be 0 (cumulative) or a positive count") }; }
     const result = running(this.agg, arr, w);
     this.cachedList = result;
     return { result };
@@ -1496,7 +1551,7 @@ export class DiffNode extends ClassicPreset.Node {
 }
 
 import type { ArgMinMaxOp } from "./listOps";
-import { savgol, gaussianSmooth, lowess, findPeaks } from "./signalOps";
+import { savgol, savgolProblem, gaussianSmooth, lowess, findPeaks } from "./signalOps";
 export type { ArgMinMaxOp } from "./listOps";
 
 export const ARG_MIN_MAX_OP_META = {
@@ -1620,6 +1675,7 @@ export class NormalizeNode extends ClassicPreset.Node {
 export class ShuffleNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     result: "The order holds until a recalculation. Changed values flow through without reshuffling.",
+    weights: "Optional, one per element and at least as long as the list. Higher weight tends to land earlier, a weighted draw without replacement. Unwired is a uniform shuffle.",
   };
 
   /** Element-preserving: the output adopts the input\'s type (passthrough.ts). */
@@ -1627,8 +1683,8 @@ export class ShuffleNode extends ClassicPreset.Node {
   label: string;
   cachedList: unknown[] = [];
   width = 180; height = 150;
-  // Volatile: per-slot sort keys, not a fixed permutation, so live values flow
-  // through while the order holds until a recalc.
+  // Volatile: per-slot UNIFORMS, not a fixed permutation, so live values flow
+  // through while the order holds until a recalc. Weighted keys derive from these.
   private keys: number[] = [];
   private lastGen = -1;
 
@@ -1636,17 +1692,33 @@ export class ShuffleNode extends ClassicPreset.Node {
     super("Shuffle");
     this.label = init?.label ?? "Shuffle";
     this.addInput("list",    adoptiveListIn("List"));
+    this.addInput("weights", numListIn("Weights"));
     this.addOutput("result", adoptiveListOut("Shuffled"));
   }
 
-  data(inputs: { list?: unknown[][] }) {
+  data(inputs: { list?: unknown[][]; weights?: unknown[][] }) {
     const arr = [...(inputs.list?.[0] ?? [])];
     const gen = getRecalcGen();
     if (this.lastGen !== gen || this.keys.length !== arr.length) {
       this.keys = arr.map(() => Math.random());
       this.lastGen = gen;
     }
-    const order = shuffleList(arr, this.keys);
+    // Weighted draw when a per-element weight list is wired; each element's sort key
+    // becomes -ln(u)/w so P(first) ∝ weight. A list that doesn't cover every element is
+    // a misaligned input, not a request for a uniform shuffle (the Sort-by rule).
+    const w = inputs.weights?.[0];
+    if (Array.isArray(w) && w.length < arr.length) {
+      this.cachedList = [];
+      return { result: solError("#SHAPE!", `The weights list has ${w.length} values but the list has ${arr.length}`) };
+    }
+    if (Array.isArray(w) && !arr.some((_, i) => typeof w[i] === "number" && (w[i] as number) > 0)) {
+      this.cachedList = [];
+      return { result: solError("#VALUE!", "The weights are all zero, so nothing can be drawn") };
+    }
+    const keys = Array.isArray(w)
+      ? this.keys.map((u, i) => weightedShuffleKey(u, typeof w[i] === "number" ? (w[i] as number) : 0))
+      : this.keys;
+    const order = shuffleList(arr, keys);
     this.cachedList = order;
     return { result: order };
   }
@@ -1863,6 +1935,14 @@ export class AggregateNode extends ClassicPreset.Node {
     this.op = init?.op ?? "sum";
     this.addInput("list",    listIn("List"));
     this.addOutput("result", numOut("Result"));
+  }
+
+  /** The format carries only where the op PRESERVES the value's dimension — the SAME
+   *  test as the unit (a percent's mean/min/max/stdev is a percent; its variance, count
+   *  and product are a new kind of value). formatFlowsDownstream. */
+  formatCarry(): FormatCarrySpec[] {
+    const probe: Dim = { length: 1 };
+    return dimEqual(aggregateResultDim(this.op, probe, 2), probe) ? [{ output: "result", inputs: ["list"] }] : [];
   }
 
   data(inputs: { list?: (number | null | SolError)[][] }) {
@@ -2292,7 +2372,15 @@ export class SmoothNode extends ClassicPreset.Node {
     const prm = (k: "window" | "order" | "frac" | "sigma", def: number) => readInput(inputs[k], this.literals[k] ?? def);
     let out: ListCell[] | null;
     if (arr === null) out = null;
-    else if (this.op === "savgol") { const w = prm("window", 5), o = prm("order", 2); out = w === null || o === null ? null : savgol(arr, w, o); }
+    else if (this.op === "savgol") {
+      const w = prm("window", 5), o = prm("order", 2);
+      if (w === null || o === null) out = null;
+      else {
+        const why = savgolProblem(arr.length, w, o);
+        if (why) { this.cachedList = []; return { result: solError("#DOMAIN!", why) }; }
+        out = savgol(arr, w, o);
+      }
+    }
     else if (this.op === "lowess") { const f = prm("frac", 0.67); out = f === null ? null : lowess(arr, f); }
     else { const sg = prm("sigma", 1); out = sg === null ? null : gaussianSmooth(arr, sg); }
     this.cachedList = out ?? [];
@@ -2322,6 +2410,10 @@ export class FindPeaksNode extends ClassicPreset.Node {
     this.addInput("prominence", numIn("Min prominence"));
     // Position + Height are index-aligned, so they leave as ONE frame (C5).
     this.addOutput("result", frameOut("Peaks"));
+  }
+
+  frameShape(): Shape {
+    return { columns: [{ name: "Position", type: "number" }, { name: "Height", type: "number" }] };
   }
 
   data(inputs: { list?: ListCell[][]; height?: number[]; distance?: number[]; prominence?: number[] }): { result: FrameValue | null } {

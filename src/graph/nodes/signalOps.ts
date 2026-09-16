@@ -33,10 +33,19 @@ function polyFitW(xs: readonly number[], ys: readonly number[], ws: readonly num
  *  `window` (odd) of neighbours, evaluated there. Edges use the nearest full window
  *  evaluated off-centre (scipy's mode = "interp"). Blank / error cells are left out of the
  *  fits and stay blank in the output. */
+/** Why a Savitzky–Golay call cannot run, or null when it can (the callers make it loud). */
+export function savgolProblem(n: number, window: number, order: number): string | null {
+  const m = Math.max(1, Math.floor(window));
+  if (m % 2 === 0) return "Window must be odd";
+  if (order < 0 || order >= m) return "Order must be below the window";
+  if (m > n) return "Window is longer than the list";
+  return null;
+}
+
 export function savgol(values: readonly Cell[], window: number, order: number): Cell[] {
   const n = values.length;
   const m = Math.max(1, Math.floor(window));
-  if (m % 2 === 0 || order < 0 || order >= m || m > n) return values.map((v) => (isSolError(v) ? v : null));
+  if (savgolProblem(n, window, order)) return values.map((v) => (isSolError(v) ? v : null));
   const h = (m - 1) >> 1;
   return values.map((v, i) => {
     if (isSolError(v)) return v;

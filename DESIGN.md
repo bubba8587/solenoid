@@ -82,6 +82,7 @@ components:
     textColor: "{colors.text}"
     rounded: "{rounded.pill}"
 ---
+<!-- dte:B14 -->
 
 # Design System: Solenoid
 
@@ -234,7 +235,7 @@ The system is flat at rest and uses elevation only to communicate state. Cards s
 - **Edits commit on Enter / clickaway, never per keystroke** (like an Excel cell). Drafts stay local while typing; Escape reverts. `useDraftCommit` (`inlineInput.tsx`) is the mechanism; never call `processGraph()` from a text field's `onChange`. Discrete picks (dropdowns, checkboxes, sliders) apply immediately.
 
 ### Op pickers (the accent's one home on a card body)
-A card body holds two kinds of pick, and they are different things all the way down (rules opArgDistinct):
+A card body holds two kinds of pick, and they are different things all the way down (dte:C26 opArgDistinct):
 
 | | **OP** | **ARG** |
 |---|---|---|
@@ -248,7 +249,7 @@ A card body holds two kinds of pick, and they are different things all the way d
 
 A family has at most one OP; the op picker is the only body control that spends the accent, and it is the only control that hoists. Everything else in the body stays neutral. There is no flag, `kind` or attribute that moves a control from one column to the other: the field name and the component are the whole classification, and the tests hold both directions (a string `op` field ⇔ a `NODE_OPS` family; `OpSelect`/`OpToggle` ⇔ bound to `op`; `ArgSelect`/`SegToggle` never bound to `op`).
 
-The sorting question for a new pick: *would the user search the Add menu for this value by name, and call it as a function?* Yes → OP. No → ARG, whatever it looks like on the card. Chart's type is an OP (Column, Line, Scatter are things you search for), and so are Proportion's Treemap/Waffle, Gauge's Dial/Bar and Record's Card/Gallery/Board: "treemap" or "kanban" typed into the Add menu must land on a row that says so ("Proportion: Treemap"). A figure family has no formula surface, so its ops are search names only; that is still an OP. Running's aggregator is an ARG (`RUNNING(op, …)`), while Aggregate's is the OP (SUM *is* the card). Neither per-op names (`RUNNINGSUM`, …) nor zero names is the argument form; both were tried on 2026-08-10 and both were wrong.
+The sorting question for a new pick: *would the user search the Add menu for this value by name, and call it as a function?* Yes → OP. No → ARG, whatever it looks like on the card. Chart's type is an OP (Column, Line, Scatter are things you search for), and so are Proportion's Treemap/Waffle, and Record's Card/Gallery/Board: "treemap" or "kanban" typed into the Add menu must land on a row that says so ("Proportion: Treemap"). A figure family has no formula surface, so its ops are search names only; that is still an OP. Running's aggregator is an ARG (`RUNNING(op, …)`), while Aggregate's is the OP (SUM *is* the card). Neither per-op names (`RUNNINGSUM`, …) nor zero names is the argument form; both were tried on 2026-08-10 and both were wrong.
 
 ### Cards / Containers (the Node Card, signature component)
 - **Corner Style:** 8px radius.

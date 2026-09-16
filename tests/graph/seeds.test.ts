@@ -232,8 +232,11 @@ for (const [path, mod] of Object.entries(seedModules)) {
     // between paragraphs and one line per list item / table row are structure
     // and stay. 13 such breaks shipped across three seeds before this ran.
     it("prose bodies have no hard-wrapped lines mid-paragraph", () => {
+      // A Knap tag line (`{% for %}`, `{% endif %}`) is template logic, not prose: it
+      // renders to nothing, and the newline after it is eaten.
       const startsBlock = (line: string) =>
-        /^\s*(#{1,6}\s|[-*+]\s|\d+[.)]\s|>\s?|\||```|~~~|!\[\[)/.test(line) || line.startsWith("    ");
+        /^\s*(#{1,6}\s|[-*+]\s|\d+[.)]\s|>\s?|\||```|~~~|!\[\[|\{%)/.test(line) || line.startsWith("    ");
+      const tagOnly = (line: string) => /^\s*(\{%.*?%\}\s*)+$/.test(line);
       const problems: string[] = [];
       for (const sn of g.nodes) {
         if (!PROSE_TYPES.has(sn.type)) continue;
@@ -251,7 +254,7 @@ for (const [path, mod] of Object.entries(seedModules)) {
           // A blank line ends the paragraph; a heading closes its own block; a
           // block marker on the NEXT line means that line is not a continuation.
           if (!cur.trim() || !next.trim()) continue;
-          if (/^\s*#{1,6}\s/.test(cur) || startsBlock(next)) continue;
+          if (/^\s*#{1,6}\s/.test(cur) || tagOnly(cur) || startsBlock(next)) continue;
           problems.push(
             `${sn.id} line ${i + 1} wraps mid-paragraph (renders as <br>):\n` +
               `      ...${cur.slice(-56)}\n    + ${next.slice(0, 56)}...`,

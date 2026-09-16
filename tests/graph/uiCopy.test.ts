@@ -1,3 +1,4 @@
+// dte:B14
 import { describe, it, expect } from "vitest";
 import { uiStrings, attrStrings, collectCopyRecords, type Unit } from "../../src/graph/copyCorpus";
 import { NODE_EXCEL, EXCEL_GAP } from "../../src/graph/nodeExcel";

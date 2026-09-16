@@ -5,6 +5,7 @@ import { ClassicPreset, type NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import { FormatControllerNode } from "./rete-nodes";
 import { getSocketScreenCenter, screenToCanvas } from "./canvasGeometry";
+import { dockedNodeStore } from "./dockedNodeStore";
 
 type SolenoidConnection = import("./schemes").SolenoidConnection;
 
@@ -62,6 +63,29 @@ export function dockedRenderedDims(
 ): { w: number; h: number } {
   const el = view.nodeElement(nodeId);
   return { w: el?.offsetWidth || fallbackW, h: el?.offsetHeight || fallbackH };
+}
+
+// Re-home every FC docked to `hostId` onto its host socket, over the GIVEN surface
+// (editor + view + container) — pure, so the main canvas and a composite drill-in share
+// one implementation. A selected FC is skipped (the user is dragging it). The main
+// canvas registers this into the `repositionDocked` slot; the drill-in swaps in its own
+// bound copy while open, so a docked FC follows its host on resize / format change / Tidy
+// at any level.
+export function repositionDockedFor(
+  editor: NodeEditor<Schemes>,
+  view: View,
+  container: HTMLElement | null,
+  hostId: string,
+): void {
+  if (!container) return;
+  for (const rel of dockedNodeStore.getDockedTo(hostId)) {
+    const dockedNode = editor.getNode(rel.id);
+    if (!dockedNode) continue;
+    if ((dockedNode as { selected?: boolean }).selected) continue;
+    const { w, h } = dockedRenderedDims(view, rel.id, dockedNode.width, dockedNode.height);
+    const pos = computeDockedCanvasPos(view, container, rel.hostNodeId, rel.socketKey, rel.side, w, h);
+    if (pos) void view.moveNode(rel.id, pos);
+  }
 }
 
 // Snap radius in CANVAS units (screen ÷ zoom) — comparing raw SCREEN px would let a

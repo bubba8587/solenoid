@@ -69,20 +69,21 @@ export class CorsLikelyError extends Error {
   }
 }
 
-export async function fetchText(url: string): Promise<FetchedText> {
+export async function fetchText(url: string, init?: { headers?: Record<string, string> }): Promise<FetchedText> {
+  const extra = init?.headers ?? {};
   // Only ABSOLUTE urls may take the Tauri path: its Rust client has no base origin, so
   // a relative one (a bundled seed asset) fails there but resolves under plain fetch.
   const absolute = /^https?:\/\//i.test(url.trim());
   if (isDesktop() && absolute) {
     // Dynamic import so the browser bundle never pulls the Tauri plugin.
     const { fetch: tauriFetch } = await import("@tauri-apps/plugin-http");
-    const res = await tauriFetch(url, { headers: { "User-Agent": DATA_FETCH_UA } });
+    const res = await tauriFetch(url, { headers: { "User-Agent": DATA_FETCH_UA, ...extra } });
     if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`.trim());
     return { text: await readCappedText(res), contentType: res.headers.get("content-type") ?? "" };
   }
   let res: Response;
   try {
-    res = await fetch(url);
+    res = Object.keys(extra).length ? await fetch(url, { headers: extra }) : await fetch(url);
   } catch (e) {
     // On the web build a cross-origin block is a bare TypeError with no Response;
     // on desktop this path is same-origin only, so a TypeError there is not CORS.
@@ -91,4 +92,22 @@ export async function fetchText(url: string): Promise<FetchedText> {
   }
   if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`.trim());
   return { text: await readCappedText(res), contentType: res.headers.get("content-type") ?? "" };
+}
+
+/** A JSON request (POST / PUT / DELETE) — the write half of the local-API nodes. Same
+ *  desktop/browser split as fetchText; the reply body comes back as text. */
+export async function fetchJson(url: string, init: { method: "POST" | "PUT" | "DELETE"; headers?: Record<string, string>; body?: unknown }): Promise<FetchedText> {
+  const headers: Record<string, string> = { "Content-Type": "application/json", ...(init.headers ?? {}) };
+  const body = init.body === undefined ? undefined : JSON.stringify(init.body);
+  const absolute = /^https?:\/\//i.test(url.trim());
+  let res: Response;
+  if (isDesktop() && absolute) {
+    const { fetch: tauriFetch } = await import("@tauri-apps/plugin-http");
+    res = await tauriFetch(url, { method: init.method, headers: { "User-Agent": DATA_FETCH_UA, ...headers }, body });
+  } else {
+    res = await fetch(url, { method: init.method, headers, body });
+  }
+  const text = await readCappedText(res);
+  if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`.trim() + (text ? `: ${text.slice(0, 200)}` : ""));
+  return { text, contentType: res.headers.get("content-type") ?? "" };
 }

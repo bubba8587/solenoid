@@ -28,6 +28,9 @@ import { HudStack } from "./graph/components/HudStack";
 import { FrameHintLayer } from "./graph/components/FrameHintLayer";
 import { SelectionActionsBar } from "./graph/components/SelectionActionsBar";
 import { WebDemoBanner } from "./graph/WebDemoBanner";
+import { installExternalLinkGuard } from "./graph/externalLinks";
+import { armMidnightRollover } from "./graph/volatileDates";
+import { getEditor, requestRecalc } from "./graph/process";
 import "./App.css";
 import "./graph/StatusBar.css";
 import "./mobile.css";
@@ -41,7 +44,47 @@ const NodeShowcase = lazy(() => import("./graph/showcase/NodeShowcase"));
 const IS_LANDING = new URLSearchParams(window.location.search).has("landing");
 const LandingPage = lazy(() => import("./graph/landing/LandingPage"));
 
+// The marketing site's pathname routes (every path rewrites to index.html on Vercel),
+// read once at module load like the query-param routes above.
+const SITE_PATH = window.location.pathname.replace(/\/+$/, "");
+const IS_OBSIDIAN = SITE_PATH === "/obsidian";
+const ObsidianPage = lazy(() => import("./graph/landing/ObsidianPage"));
+const IS_DOWNLOAD = SITE_PATH === "/download";
+const DownloadPage = lazy(() => import("./graph/landing/DownloadPage"));
+const IS_EXAMPLES = SITE_PATH === "/examples";
+const ExamplesPage = lazy(() => import("./graph/landing/ExamplesPage"));
+const IS_PACKS = SITE_PATH === "/packs";
+const PacksPage = lazy(() => import("./graph/landing/PacksPage"));
+
 function App() {
+  if (IS_OBSIDIAN) {
+    return (
+      <Suspense fallback={null}>
+        <ObsidianPage />
+      </Suspense>
+    );
+  }
+  if (IS_DOWNLOAD) {
+    return (
+      <Suspense fallback={null}>
+        <DownloadPage />
+      </Suspense>
+    );
+  }
+  if (IS_EXAMPLES) {
+    return (
+      <Suspense fallback={null}>
+        <ExamplesPage />
+      </Suspense>
+    );
+  }
+  if (IS_PACKS) {
+    return (
+      <Suspense fallback={null}>
+        <PacksPage />
+      </Suspense>
+    );
+  }
   if (IS_LANDING) {
     return (
       <Suspense fallback={null}>
@@ -65,6 +108,9 @@ function MainApp() {
     const t = setTimeout(autoShowWhatsNewOnce, 1400);
     return () => clearTimeout(t);
   }, []);
+  useEffect(installExternalLinkGuard, []);
+  // TODAY / NOW / relative Date Inputs recompute once at each local midnight (R5).
+  useEffect(() => armMidnightRollover(() => getEditor()?.getNodes() ?? [], () => { void requestRecalc(); }), []);
 
   return (
     <div className="solenoid-app">

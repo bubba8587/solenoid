@@ -216,11 +216,14 @@ export function computeExpandPush(
 }
 
 // Backstop under the heuristic pushes. Moves are ALWAYS +x or +y, hence monotonic and
-// terminating; `baseline` pairs are left alone. Returns extra displacements to add.
+// terminating; `baseline` pairs are left alone. `pinned` boxes never move (a locked
+// group is a fixed obstacle) — its partner is always the one that yields, and a pair
+// of two pinned boxes is skipped. Returns extra displacements to add.
 export function separateOverlaps(
   boxes: PushBox[],
   baseline: Set<string> = new Set(),
   gap = PUSH_GAP,
+  pinned: Set<string> = new Set(),
 ): Map<string, Disp> {
   const disp = new Map<string, Disp>();
   const at = (b: PushBox): Rect => {
@@ -240,6 +243,8 @@ export function separateOverlaps(
     for (let i = 0; i < boxes.length; i++) {
       for (let j = i + 1; j < boxes.length; j++) {
         if (baseline.has(pairKey(boxes[i].id, boxes[j].id))) continue;
+        // Two fixed obstacles can't resolve against each other — leave them be.
+        if (pinned.has(boxes[i].id) && pinned.has(boxes[j].id)) continue;
         const a = at(boxes[i]);
         const b = at(boxes[j]);
         const ox = xOverlap(a, b);
@@ -251,11 +256,14 @@ export function separateOverlaps(
       }
     }
     if (!worst) break;
-    // The top-left box stays put, preserving the anchor corner.
+    // A pinned box holds; otherwise the top-left box stays put, preserving the
+    // anchor corner.
     const ra = at(worst.a);
     const rb = at(worst.b);
-    const [mover, other] =
-      ra.x + ra.y >= rb.x + rb.y ? [worst.a, worst.b] : [worst.b, worst.a];
+    let mover: PushBox, other: PushBox;
+    if (pinned.has(worst.a.id)) { mover = worst.b; other = worst.a; }
+    else if (pinned.has(worst.b.id)) { mover = worst.a; other = worst.b; }
+    else [mover, other] = ra.x + ra.y >= rb.x + rb.y ? [worst.a, worst.b] : [worst.b, worst.a];
     const m = at(mover);
     const o = at(other);
     // Cheaper positive (down/right) shift to clear: right vs down.

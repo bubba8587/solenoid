@@ -1,8 +1,1974 @@
 # Solenoid dev notes — archive
 
-Relegated from `dev-notes.md` to keep the live log lean. Entries keep their original heading level and text verbatim (a pure move, not a rewrite), so heading styles and ordering vary by sweep; grep by date or keyword. Current notes live in `docs/dev-notes.md` (open problems + the latest session window only). Sweep blocks are newest-first; latest sweep 2026-08-31 (the 2026-08-29b and 2026-08-30 digests, verbatim).
+Relegated from `dev-notes.md` to keep the live log lean. Entries keep their original heading level and text verbatim (a pure move, not a rewrite), so heading styles and ordering vary by sweep; grep by date or keyword. Current notes live in `docs/dev-notes.md` (open problems + the latest session window only). Sweep blocks are newest-first; latest sweep 2026-09-12 (the 09-07 → 09-11 digests, verbatim).
 
 ---
+
+## Sweep 2026-09-13 — session digests 2026-09-12 and 2026-09-12b (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-15b — rules and decisions become the DTE tree)
+
+Owner-approved, unmonitored run; all on `develop`, not pushed. Governing node: B8 "Solenoid's
+decisions and rules live only as DTE nodes; rules.md and decisions.md retire".
+
+- **Core ring set by the owner.** A1 reworded (scratchpad math to data tables) and RATIFIED; the
+  old A2 parity, A3 type/unit honesty and A4 pre-alpha moved to B5/B6/B7 ("A is the delivered
+  product's goals; means are B"). DTE's ADOPTING.md is now vendored in `dte-rules/`.
+- **The tree is the one home.** 152 nodes: every rules.md rule (MUST → Decision, Why/Origin →
+  Why, Enforced by/Exceptions → Consequences) and every decisions.md entry, placed under new B
+  strategy nodes (B9 agent-built rules, B10 reactFlowView, B11 maximalMerge, B12 lossless saves,
+  B13 aiInScope, B14 design system). Merged duplicates: capabilityParity → shareImpl,
+  tableRefSemantics → rowFormulaRefs, wildcardLadder → wildcardsKeepRank, unitGranularity →
+  unitByGranularity, formatCarryPerOp → formatFlowsDownstream, noFramesInFormulas →
+  matricesInFormulas, noBackCompat → B7. Both documents deleted.
+- **Names survive as title prefixes** (`shareImpl: …`); citations read `dte:<ID> name`.
+  `rules.test.ts` now reads the nodes: MUSTs label enforcement, cited suites exist (packages
+  included; it found a stale `engine.test.ts` gap and a shadowed `rules.test.ts`), quoted test
+  names appear, owner ratifications match `OWNER_RATIFIED`, and `dte:ID name` pairs match titles.
+- **Citations.** Every rules.md/decisions.md pointer across code, tests and docs rewritten to
+  `dte:<ID> name`; file-level `dte:` lines on the ~210 modules and suites the nodes name.
+  Coverage 0.8% → 14%; no-reach nodes 110 → 4 (the process conventions, which DTE cannot count
+  as reached; DTE FEEDBACK K9). A routed file's `dte:` line is the sanctioned exception to "zero
+  comment pointers" (C57 commentMinimalism).
+- **Overrides of DTE, each logged as feedback** (DTE repo FEEDBACK.md, uncommitted): names as a
+  handle (K4), no contest for a lifted rule until new work builds on it (K2). Other findings:
+  no bulk import (K1), retire drops the winner's contested mark (K3), enforcement is prose (K5),
+  code-span example tokens validate (K6), validate output volume (K7), `cite` merges into
+  line-level citations (K8).
+- **Other settled-decision docs lift the same way** (B8). The renderer-performance doc became nine
+  nodes (C74 semanticZoomRawScale, C75 gpuTextureBudget, and D55–D61 under C42
+  htmlInCanvasRenderer) and was deleted, every constant re-verified against the code first. The
+  Inspector's static-reference ruling, found only in a code comment, became C73; routing-table
+  files now cite the nodes their rows name. `pack-architecture.md`'s settled calls became B15
+  leanCore + C76–C79 and the doc shrank to the authoring guide. Mechanics and guide docs
+  (subsystem-invariants, pack-architecture, DESIGN.md) stay and cite the nodes; `out-of-scope.md`
+  is an unratified DRAFT the author walks, so it was left alone. Final count: 167 nodes, 568
+  citations in 252 files, 0 errors; only the 4 process nodes lack reach.
+- **Open (owner):** ratify the tree (only A1 is); the 12 new B nodes are the ones most worth reading.
+
+### SESSION DIGEST (2026-09-15 — marketing site expansion)
+
+All on `develop`; local dev server, pushed at session end.
+
+- **Shared site chrome (`landing/siteNav.tsx`).** Header, nav, footer, theme toggle and the
+  `Feature` row were duplicated across `LandingPage`/`ObsidianPage`; factored into one module.
+  Nav = Obsidian/Examples/Packs/Download + GitHub + Open the app, active route marked, wordmark = Home.
+  Adding a page is now a route entry + a page file.
+- **Two new pages.** `/download` (web vs Windows build, copy lifted from the README) and
+  `/examples` (a gallery of the seed library, grouped by the seeds' own labels). `App.tsx` routes
+  both by pathname off the Vercel catch-all rewrite.
+- **Examples deep-link.** Each tile is `/?seed=<id>`; `FlowCanvas` boot opens it via
+  `documentStore.newFromTemplate` (a NEW doc, never clobbering restored ones) then strips the param.
+- **`siteChrome.ts`** (reusable): a marketing page suppresses app-only overlay chrome. The Obsidian
+  page hides the Report popup's Export + Dock.
+- **Design + mobile pass.** In-prose links styled to the accent (were UA blue), `:focus-visible`
+  rings on page chrome, `text-wrap-style: pretty` on running prose. Mobile: nav wraps, hero/section
+  rhythm tightens, CTAs go full-width, the plan table wraps + the YAML sample scrolls, `overflow-x`
+  guarded, touch (`hover: none`) gets the gallery Open hint. `index.html` gained a description +
+  OG/Twitter tags (static, SPA has no per-route prerender).
+- **Flow-canvas entrance animation (marketing stages).** Restored the load-reveal lost in the
+  rete->RF port, opt-in via `FlowRevealContext` + a `sol-flow-reveal` class (the app surface never
+  sets them). Cards fade/blur in (opacity + `filter` ONLY — **never a transform/scale on the node**:
+  RF measures handle positions off the node box and a per-node scale in flight makes cables meet
+  sockets at the top edge, and ResizeObserver ignores transforms so it never self-corrects). Then
+  cables draw socket-to-socket at once (linear `stroke-dashoffset` reel via `pathLength=1` spread onto
+  BaseEdge in `FlowCableEdge`), then the app's flow beads switch on ~1s in — without persisting
+  `cableFlowStore` (shared origin with the app). LandingGraph reveals on mount; SceneStage waits for
+  its ELK layout. Reduced motion disables all of it. Keyframes in `flow/flow.css`.
+- **Obsidian page scenes upgraded.** TaskNotes is now a live `SceneStage` (real node -> Display), its
+  HTTP API faked behind a demo flag (`demoTaskNotes.ts`, mirrors `forceDemoVault`) so the web shows a
+  real Tasks cube with no server. Vault-table + TaskNotes Displays are collapsed to their 3x3 preview
+  (a full frame/cube grows the card and zooms the scene out). The KMS-bridge graphic's highlight
+  travels between the three cards (presenter-camera style, gated on `--anim`).
+- **Document menu accordion.** New from example groups are collapsible (one open at a time, Start
+  here open by default), so a long seed list no longer floods the menu (`DocumentTitle.tsx`).
+- **OAuth/cloud-save scoped (plan-only).** Author asked to scope sign-in with Google/Bluesky to save
+  graphs to Drive/PDS. Scoped into bundle 21 as **Stage 1-BYOS** (user-owned storage): a
+  `RemoteStore` seam behind `documentStore`, PKCE on web + loopback on desktop, Drive via
+  `drive.file` (recommended first cut), Bluesky reframed as publish/share because a PDS repo is
+  public. Not built; author calls listed in `v2.0/21-collaboration.md`.
+- **Packs page + site infra.** `/packs` shows the domain packs (grouped as in Settings, descriptions
+  from the pack defs, on-by-default marked), added to nav + footer. `public/` gained `robots.txt`,
+  `sitemap.xml` and `og-hero.png`; `index.html` gained `og:image` + `summary_large_image`.
+- **In-app link to the site.** Help ▸ Solenoid website (also a palette command) opens the hosted
+  `/?landing` on desktop, the current origin's landing on web.
+- **Principle (author, this session):** the web app loads instantly, so the marketing site must not
+  duplicate app/GitHub content. Killed proposed Functions and changelog pages on that basis; a
+  changelog page is parked for later only if it earns its own surface.
+- **Scene thread (`landing/SceneThread.tsx`).** A decorative socketless bezier from the bottom-center
+  of each scene viewport (live stages AND the static `.sol-diagram` scenes) to the top of the next,
+  drawn with the app's `getCablePath("spline")` (Bottom -> Top so it leaves/enters vertically).
+  Measured from the DOM into an absolutely positioned SVG sized in px with NO viewBox (a viewBox
+  scaled the coordinates), recomputed on resize/scroll/fonts.ready; fades in after the card entrance.
+- **Hero scene switcher.** `LiveGraph` takes `scenes` (segmented pill) beside `build`: Spending
+  (Frame -> Group by -> column chart), Vs target (two Frames -> Join -> line chart) and the 3D
+  surface. ~30-row generated tables (`makeRng`), inline chart options, Reset kept.
+- **Multi-series chart fixes (`chartRender.tsx`).** `MultiSeriesView` never passed axis labels to
+  its axes (single-series did) — wired. Its legend is now a plain DOM row UNDER the plot, not
+  recharts' `<Legend>`: recharts lays the legend out against the x-axis rect (it sat on the xlabel)
+  and re-reserves height whenever measured != reserved (the chart jumped on a legend click). The
+  row is fixed-height, inset by the y-axis width so it centers on the xlabel, its height taken off
+  the plot. Verified with playwright (card bounds identical before/after a click). `OverlayView` /
+  `ComposedView` still use recharts' legend (no xlabel there).
+- **Playwright works here:** global `playwright-core` (under `openclaw`) + the ms-playwright
+  Chromium 1223 build; scripts live in the session scratchpad. Use it before claiming a layout fix.
+- **Open:** new-page copy (`/download`, `/examples`, `/packs`) is placeholder in the author's voice,
+  marked `NEW COPY` — awaits an author pass. Reference-overlay gaps (Tables & Data tab, Units &
+  Formats tab, Help sections) proposed, not built. TaskNotes status chip reads `6×0` (rows×cols
+  with no cols reported) on both the real and demo paths — pre-existing.
+
+### SESSION DIGEST (2026-09-14c — Knap 0.4.2 → 0.6.0)
+
+All on `develop`.
+
+- **`knap` bumped 0.4.2 → 0.6.0.** Nothing in `src/` had to change for the breaking list
+  (typed `calc`/`round`/`length`, quoted `yaml` strings, `[42] | length` now 1): Solenoid
+  never calls `yaml`/`yaml_property` from a template and no seed leans on the old text forms.
+  `tsc` + 5951 tests green on the bump alone.
+- **`{# … #}` comments wired up** (landed in knap 0.4.2, never adopted). `hasKnapSyntax`'s
+  TAG_RE missed `{#`, so a Note or Report body whose only tag was a comment skipped the render
+  and printed the comment verbatim. `embedBareVariables` now matches a comment first so a
+  commented-out `{% for %}` cannot push an iterator the rest of the body shadows;
+  `knapHighlight` greys a comment whole on `.fx-comment`. An unclosed `{#` is now a `#SYNTAX!`,
+  the same as an unclosed `{%`.
+- **`knap-upstream.md` re-verified against 0.6.0 and rewritten**, against the upstream source
+  (shallow clone of obsidianmd/knap at the 0.6.0 tag), not just black-box probes. Entry 1
+  shrank and sharpened: upstream PR #14 put the collection filters on a `TemplateValue` path
+  but missed FOUR — `slice`, `reverse`, `unique` and `map`'s ARROW form (`map:Name` was ported,
+  `map:x => x.Name` was not), all still `: string`. `slice` additionally has an explicit
+  `slicedArray.length === 1` branch that returns `.toString()`. The fix is mechanical: port
+  them onto `arrayInputValue`/`collectionInputValue` the way #14 did the rest. A `{% for %}`
+  re-parses the JSON, so only `set`-then-index and a singleton `slice` show the gap, which is
+  why it survived #14. Three more entries were wrong or stale and are restated. **5:**
+  `sort:"Paid,desc"` is not "silently ascending", it is a lookup of a key literally named
+  `Paid,desc`, so the rows come back in INPUT order with no warning — same as `sort:"Nope"`.
+  **3:** the README does NOT document whitespace control (it did at 0.4.0); the real finding
+  is that `trimRight` is hardwired on for block tags while `trimLeft` exists and is never set,
+  so half the plumbing is unreachable. **8** and **6** both got much cheaper asks once the
+  source was read: `src/docs/filter-docs.ts` already documents 61 filters in full (summary,
+  syntax, parameters, notes, examples, groups) but is exported only to the CLI, so the ask is
+  "re-export it from `index.ts`", not "add a `description` field"; and `parser.ts`'s internal
+  `collectVariables` already computes exactly what `extractKnapVariables` does, so ask 6 is
+  "export what `validateVariables` throws away". 2, 4, 7, 9 and 10 stand. **None of the ten
+  are filed upstream** (knap has one open issue, #10, and one open PR, #13, both unrelated),
+  so the backlog item is still the whole list.
+- **The doc is now written to be filed, not just to be right.** Every entry is a plain-language
+  issue/PR body with a "why it matters" paragraph and the repros in a fenced block, down to a
+  "Solenoid side" line the author cuts before posting. The author files them by hand.
+- **The edges are pinned now.** `knapTemplate.test.ts` § "the Knap engine edges the help doc
+  names" asserts each gotcha `src/graph/help/knap.md` tells the author about, so the next bump
+  fails instead of leaving the help copy stale. The help doc's § Gotchas was rewritten for
+  0.6.0 (the `first`/`nth` line was wrong, the `sort` comma-form line was wrong) and § Blocks
+  and filters gained the comment line.
+
+### SESSION DIGEST (2026-09-14b — Obsidian hero interactive, LocalFile CSV, DTE integration)
+
+Author-driven; all on `develop`, not pushed (local HMR verify).
+
+- **Obsidian page hero is now a LIVE interactive canvas.** `LandingGraph` generalized to
+  `LiveGraph({ build })` (the page's one live stage that keeps the process globals);
+  `LandingGraph` is a thin wrapper. The `/obsidian` hero is `LiveGraph build={buildReportPipeline}`
+  — a real reports/Knap chain (two Number inputs → Report note embedding them → Write to
+  Obsidian), NOT the old properties-writer with its dense nested-IF ComputedColumn (author:
+  reports/notes/Knap is the valued surface, properties reader/writer is least differentiated).
+  `ReportOverlay` is mounted on the page (as LandingPage mounts TablePopup) so the Report's
+  Document chip opens the rendered note.
+- **Two more Obsidian scenes went real over the demo vault.** `VaultTableScene` (VaultFolder
+  Notes → Filter tags∋book → Sort rating → Display) and `LocalFileScene` (a real Local File
+  reads bundled `demo-vault/Data/expenses.csv`). Enablers: `SceneStage.awaitConnections`
+  (compute → `whenConnectionsSettled` → recompute to a FIXED POINT via `hasInflightConnections`,
+  was a magic 2 rounds); `demoVault.forceDemoVault(on)` (one non-persisted switch pinning
+  `getVaultRoot`+`getCsvFolder` to the demo vault for the marketing pages, unifies the old
+  forceVaultRoot/forceCsvFolder pair); the demo glob gained `csv`. **Latent bug fixed:**
+  `fileBridge.readFileText` bypassed the path-aware `fs()` dispatch (raw Tauri imports) so demo
+  paths never routed — now via `fs()` (no-op for real desktop paths). LocalFile allows a
+  demo-vault folder off-desktop (CSV only). Covered by `tests/graph/demoVault.test.ts`.
+- **Marketing chrome locked to the brand gold** (`.sol-landing` overrides the four `--accent*`
+  vars); node/socket colors untouched. **Reveal animations play on reload** (the `--anim` gate
+  moved to a `useLayoutEffect` so the hidden state paints before the IO reveal; extracted
+  `useRevealAnim`, was duplicated in both pages).
+- **DTE integrated (decision-tree-engineering).** The author's DTE tool is vendored at
+  `tools/dte.py`; `decisions/` holds Solenoid's tree (A1–A4 goals, B1–B4 strategy incl. B4
+  "adopt DTE", C1–C3 arch, D1–D2 impl for the demo-vault/marketing subsystem), `dte:ID`
+  citations on ~12 files. DTE's OWN rules are vendored verbatim in `dte-rules/` (SPEC/PROTOCOL/
+  README, `.dteignore`d) — the adopting repo does NOT re-create DTE-specific decisions as nodes.
+  `docs/dte.md` + a `CLAUDE.md` pointer. `validate --as B` OK. **Open (author):** ratify the
+  tree (A is owner-only); grow it to more subsystems; apply the WHY-comment→citation practice;
+  optional pre-commit `hook`. Adoption friction logged to the DTE repo's FEEDBACK file (I1–I5,
+  uncommitted for the author): vendored-tool tokens fail validate after init (I1), agent-can't-
+  create-A tension (I2), day-one warning noise (I3), DTE never says to replace WHY-comments with
+  citations (I4, the headline), ADOPTING invites duplicating the protocol (I5).
+
+### SESSION DIGEST (2026-09-14 — landing/Obsidian pages on real canvases + demo vault)
+
+Author-driven; all on `develop`, not pushed (local HMR verify).
+
+- **Landing + Obsidian feature scenes are real locked canvases** (`landing/SceneStage.tsx`,
+  `landingCompute.ts`, `LandingScenes.tsx`): the actual node components over a LOCAL rete stack,
+  computed once. Converted: units (300 km ÷ 5 hr → 60 km/hr), equation (V=I·R solve), relational
+  verbs (Join→GroupBy), draw (Point Plotter + Curve), typed cables (Input→Display per type, manual
+  two-column), Obsidian note (Note frontmatter → TVM), and the Obsidian page's "Import a Note"
+  (`NoteImportScene`: real NoteNode → Display). Function wall colored by node-kind accent. The "How a
+  node reads" section/AnatomyScene was DELETED (author). Left as hand-built illustrations: MonteCarlo,
+  Presenter (landing); Pipeline / TaskNotes / LocalFile (Obsidian — their real nodes do IO).
+- **`activeGraph.ts` gained an OWNED-GRAPH registry** (`registerOwnedGraph`, ownership-only, never the
+  action target). A scene's nodes live in its own editor, which `getOwningEditor`/`getOwningView` never
+  knew, so render-time cross-node resolvers failed: a scene Display showed a date as its raw serial
+  (date-ness is read off the output socket via `getOwningEditor`) and a united result as base SI (the
+  docked FC couldn't resolve). Now resolved after main, before fallback. This was the real cause of the
+  units scene's "16.667 m/s" — NOT the display-unit regression it was filed under (backlog reconciled).
+- **Scenes lay out on MEASURED card heights** (`SceneInner`): compute → wait for RF to report sizes →
+  stamp them onto the nodes → ELK, so a content-sized card can't be under-reserved. Main-app
+  `FrameInputNode` height `220→280` (stale; predated the +Add lambda / +Add Form layout rows, so Tidy
+  under-reserved and overlapped a neighbor). Backlog: main-app `elkTidyLayout` reserves DECLARED height
+  for plain nodes (`tidyArrange.ts:473 return n`) — measure them too, but COMPARE git history first
+  (likely measured once, changed deliberately).
+- **Landing chrome onto current DESIGN tokens** (its designs predate the DESIGN.md overhaul): CTAs are
+  the app's filled-accent "confirming action" + neutral default (were the pre-overhaul quiet-accent
+  BORDER); theme/reset buttons off the `--btn-*` aliases onto `--surface-sunken`/`--border`.
+- **Demo vault — a bundled read-only vault the web app reads** (`demoVault.ts`, `demoVaultData.ts`).
+  Served through the `fileBridge` `FsProvider` seam behind a SENTINEL root `solenoid:demo-vault`:
+  `getVaultRoot()` returns it when the new "Use demo vault (works in the web demo)" setting is on, the
+  vault readers recognise it (their `hasFs()` gates allow the sentinel), and `fileBridge`'s path-aware
+  dispatch routes those paths to an in-memory provider — desktop file ops stay on the real fs. Vault
+  Folder + Import Obsidian Note now work with no vault, browser included. Writes throw (not editable);
+  Write to Obsidian refuses with a read-only message. Files lazily code-split (`demoVaultData` chunk,
+  ~10 KB gz); `.obsidian/` excluded by extension. FOLLOW-UP: the Obsidian page's Pipeline / VaultFolder /
+  ImportObsidian illustrations could now become real canvases reading the demo vault (TaskNotes still
+  needs its HTTP API; LocalFile would need a bundled CSV).
+
+### SESSION DIGEST (2026-09-14 — solo with author; deps, settings, gauge, polish)
+
+Rapid author-driven pass; all on `develop`, pushed at close.
+
+- **Dependencies walked forward.** `vitest` 4.1.11 → 5.0.0 (suite green; it transforms with Oxc
+  now, so the `esbuild: { keepNames: true }` in `vite.config.ts` — which only guards the production
+  `minify: "esbuild"` path — prints a harmless "esbuild options ignored" warning in tests).
+  `@anthropic-ai/sdk` 0.123 → 0.125, `@tauri-apps/plugin-http` → 2.6.0, plus in-range react/vite/
+  katex/marked/dompurify/yaml. **`mermaid` held at 11.17.2** — 12 pulls chevrotain 11 with an
+  unfixed high-severity `lodash-es` and no patched release to override to (backlog deps section).
+- **Header-title case setting** (`settingsStore` `headerTitleCase`, global): UPPER (default) / As typed
+  / Proper, a CSS `text-transform` via an `html.hdr-case-*` class on the label DISPLAY only — the
+  editing input shows raw text, rendered cased on blur (draft-commit convention). Covers node cards
+  and group titles. Non-upper modes drop the all-caps 0.08em tracking so Atkinson's lowercase isn't
+  loose. The labels were hardcoded `text-transform: uppercase`, which is why case couldn't change.
+- **Node-header vocabulary named** (glossary): Header label (`node.label`), Family name
+  (`nodeTypeName`), Type-hint, Op name (`nodeName`), Node blurb — and the misleading `headerTitle()`
+  in `nodeKit.tsx` (it returns the description tooltip) renamed `headerTooltip()`. Also a **Popups**
+  glossary entry: popups open from a chip or the Display node, each a `*PopupStore` on the shared
+  `PopupShell` (grep `PopupShell` for the roster), never the source-node component.
+- **Undo/redo never flashes the load curtain.** A restore is a full `loadGraph`, so any graph past
+  the curtain threshold flashed "Loading graph" on every undo (32 nodes tripped the old 60-work bar).
+  Restores pass `curtain: false`; `SWITCH_CURTAIN_MIN_WORK` 60 → 300 (`persistence.ts`, `flowHistory.ts`).
+- **Settings**: the four Tidy fields fold under a collapsible "Tidy" (new `accordion` field option);
+  the per-doc "Network for this document" row shows ONLY for a foreign, undecided doc (Always-allow
+  covers the rest); section order → Appearance, Canvas, View, Data, Obsidian, Renderer, Packs (AI +
+  API keys trail).
+- **Gauge Dial/Bar demoted from op to argument** (opArgDistinct; author: nobody searches "dial"/"bar",
+  no formula surface — DESIGN § Op pickers corrected). Field `op` → `mode` (reusing the whitelisted
+  init key, no save-format growth), `OpToggle` → `SegToggle`, out of `NODE_OPS` (no `{ }` marker, no
+  "Gauge: Dial/Bar" rows; keywords carry search). Bar now collapses with the standard chevron to the
+  standard hero-box `[Chart]` chip (opens the popup, which draws it via `ChartFigure`'s scale branch);
+  dial keeps its mini arc. A collapsed-only box that is also a chip hero now right-aligns (was centered
+  by the minis rule). Add-menu `{ }` marker gained a hover highlight + generic tooltip.
+
+### SESSION DIGEST (2026-09-13b — solo with author; Chart Builder, catalog, family names)
+
+Rapid author-driven pass; all on `develop`, nothing pushed.
+
+- **Chart Builder.** Gantt's timeline and month-calendar layouts now offer different option
+  sets — `chartBuilderKeys(target, layout)` narrows the calendar to what it actually reads
+  (title, fontsize, layout, critical, minutes, window); timeline keeps the full set, inert
+  rows still show dimmed. **Record** gained a Chart Builder target (title / fontsize / cardsize
+  / clamp) — it had an Options socket the builder never covered.
+- **Copy-edit freeze** (`devCopyEdit.ts`). Restores the element's `innerHTML` on exit instead
+  of `textContent` (a markdown-rendered description no longer flattens to plain text and stick),
+  and flags `.sol-copyediting` while an edit is open so the Inspector's 150ms poll holds — a
+  re-render can't repaint rendered markup over the raw source under the caret. A corrupted List
+  Input description (backticks stripped by the old bug) was restored.
+- **7-Segment node removed** entirely (class, view, payload, `sevenseg` op, catalog + registry).
+- **Add menu reorg.** New **Docs & Files** category (Note, Report, the Obsidian group nested,
+  Image / File Link / SVG / Promo, QR) — it absorbed the old **Other**, whose pack-fallback role
+  moved with it (`catalogUtils` placement fallback, `packShared`, function-reference / AI-grounding
+  top-group). **Distributions** folded under **Numbers**; **Expression | Equation** paired; the
+  **Format** node is now **Format Controller**.
+- **NAME-3 — the hover type-hint shows the family name** (dte:D22 NAME-3). The card's right-side, hover-revealed
+  type-hint (`.solenoid-node__type-hint`) now shows the op-agnostic FAMILY name (`nodeTypeName` — "Series",
+  "Math FX"), so it stops being a third copy of the op the header and dropdown already show. ONLY the
+  type-hint changed; the card title, Inspector, Navigator, popups, cable-source label stay op-specific
+  (`nodeName`) as before. Because the family name is the class name de-suffixed + spaced, classes were
+  renamed for clean output: `MathFnNode`→`MathFXNode` ("Math FX"), `NpvNode`→`NPVNode`, `IrrNode`→`IRRNode`,
+  `GcdNode`→`GCDNode` (type = class name, so the three seeds + the personal-finance generator moved too).
+  Remaining awkward family names backlogged (family-name polish). (A first pass wrongly pushed the family
+  name through `nodeDisplayName` globally — reverted; family belongs only on the type-hint.)
+
+### SESSION DIGEST (2026-09-13 — the decision walk; author present, two agents)
+
+The author walked the "review with the author" backlog items one per turn; the Lead
+(solenoid-0f) proposed, the author ruled, and every ruling that produced work went to Agent 2
+(`be`) or Agent 3 (`fe`) and merged into `develop` when green. Nothing pushed. Rulings, in order:
+
+- **compositesHoldUntilSolve** (Agent 2; the decision log). A composite in any Solve-button mode
+  starts UNSOLVED on load, paste, create and a switch into a heavy mode; blank ports, stale dot on,
+  driver readouts null, until Solve/Refresh. Plain single-pass composites stay live. Author: "people's
+  intuition expects the value to already be blank/unsolved so they can see it work when they hit
+  Solve." Pinned in `composite.test.ts`.
+- **formatCarryPerOp** (Agent 3; the decision log, dte:D41 formatFlowsDownstream rewritten). The Lead's
+  first proposal (exempt percent from ×/÷/^) was refuted by a 45-row fuzz: NPV of a 5% rate showed
+  `123,456.00%`, COUNT inherited its list's style, integer `7 ÷ 2` showed `4`, `date − date` showed a
+  1900 date, and the op class was never the axis. Ruling: a style survives only an op the node
+  DECLARES meaning-preserving (`formatCarry()` in `src/graph/nodes/formatCarry.ts`, shaped like
+  `passthrough()`; `unitFlow.ts` `carriedFormat` consults it, drops on ≥2 date-styled operands, and
+  `compute` falls through `annotationFor` so MathFn abs/round carry). Declared: Arithmetic add/sub,
+  the MathFn preserve set, RoundN/MRound/Clamp, Aggregate/Running dimension-preserving ops, EWMA,
+  DateAdd, WORKDAY. Everything else (mul/div/pow, count/variance/product, stats, finance,
+  Expression, Convert) carries nothing. **The harness stays** (author): `formatCarryReadability.test.ts`,
+  70 rows, writes `.dev/format-carry-report.txt` for the author's eyeball on every run; grow it with
+  every unit/format change. `unitFlowSeed` C flipped (× carries the value's unit, not the format).
+- **List Input popup stays view-only** (Lead; `subsystem-invariants.md` § Literal input editors).
+  Rows are the only editor; the chip's list popup keeps the shell resize grip, the orientation
+  switcher and copy. The author's CSV-table idea (rows stored as CSV lines, CSV view = rows, grid =
+  the flat list, output = the list) was discussed and set aside as a second editor for a node whose
+  value is being simple.
+- **TaskNotes read node stays** (Agent 2; `24-obsidian-vault.md` § F). The files cover
+  title/status/priority/due/tags through Vault Folder; the API earns tracked time, recurrence and
+  completed instances, the calendar, the stats, and Write Tasks needs it anyway. The Obsidian category
+  copy carries the split; the TaskNotes description leads with what the files can't total. New seed
+  `tasks-two-ways` (both reads side by side; tuned with `tune-seeds.mjs`).
+- **Daily-notes targeting: skipped** (author disliked all three shapes: a Daily Note source node,
+  a target choice on Write to Obsidian, Knap). The backlog line stays as "still shaping".
+- **Widget Tier 1 follow-ups, all three** (Agent 3): Currency gains a Spot/History `mode` (named
+  `mode`, not `op`: opArgDistinct keeps non-formula selectors off NODE_OPS) emitting ONE Date·Rate
+  frame to chart, `fxRangeUrl`/`parseFxSeries` fixture-tested behind the C2 gate, sockets swapped via
+  the op-card recipe plus a new generic `dropOutputCables`; Time Zone Convert From/To and World Clock
+  Zones get an IANA `<datalist>` (`timeZone.ts` `IANA_ZONES`; `InlineInputs` `suggest` prop, still
+  commit-on-blur); Time Zone Convert's result defaults to `datetime` via `annotationFor`, composing
+  with formatCarryPerOp, a docked FC still overrides.
+- **Chip + letter case stay exclusive** (author: "leave it alone"); backlog line deleted.
+- **Chips were never tested — and were invisible where you set them** (Agent 2). An editable
+  popup rendered every cell as a raw input with no chip branch. Now a chipped string cell shows its
+  CategoryChip while unfocused (an overlay on the live input, `pointer-events:none`) and the raw text
+  on focus, like a formatted number cell; Source mode stays raw. One `chipCols` + CategoryChip
+  mechanism (B2.2); `chipStyle.test.ts` source-grep pin. Found by the Lead screenshotting the cubes
+  seed's Regions column with a puppeteer script over the dev server in a fresh profile.
+- **blankArgIsExcelBlank** (author: "map to Excel on optional arguments"; Agent 3 investigated, wrote no
+  code before the wrap; the backlog line carries the handoff). A blank formula argument slot (`null`) is Excel's blank (0 / FALSE / ""), an omitted one
+  (`undefined`) the default; one typed table at the formulajs boundary, internal overrides audited,
+  TEXTJOIN ignore_empty the first row; the lookup family's "blank = omitted" convention goes.
+- **Payment Breakdown** was already built (90903af4, 2026-09-07); its stale backlog line deleted.
+
+**Open for the author (surfaced, unruled):** currency × a scalar now drops its 2-place format
+(per the rule; a Display Format restores it; a unit-aware exception is possible but special-cases
+the rule on the day it was made general); the older long-copy sweep (Decision Matrix, Sensitivity,
+Allocator, Record layout, Chart values, Slider bounds, 200-plus-character catalog entries: run now or
+at the release tail); ratifying `out-of-scope.md`; whether a seed should ship a chip column (cubes
+Regions is the natural one); the exported webpage's rendering of a chipped column is untested.
+Author eyeball list: the composites' blank-until-Solve on a saved document; the Currency
+Spot/History toggle and its chartable frame; zone type-ahead on Time Zone Convert / World Clock;
+an undocked Display on Time Zone Convert reading `2026-06-03 14:30`; cubes → Regions → Chip in the
+popup (pill alignment); `tasks-two-ways` on desktop with the TaskNotes API on; the format-carry
+report.
+
+### SESSION DIGEST (2026-09-12b — adversarial review of the whole history; 59 fix commits)
+
+The author's order: "adversarial review mode, walk commits backward, don't stop." Every
+substantive commit from HEAD down to 1.0.0 was reviewed in chunks by read-only forks (each
+confirming a finding with a throwaway probe where it could), findings were fixed by the Lead or
+a fixer fork, and every fix carries a pin in `tests/graph/reviewPins.test.ts` or the nearest
+suite. Nothing pushed. The suite is green (tsc + vitest) on the combined tree.
+
+- **What stands, by class.** Security: an imported file can never grant itself network access;
+  Data Feed and the SVG Picker's URL fetch go through the per-document gate; vault-relative
+  and image-asset paths refuse `..` / roots; the SVG Picker scrubs markup at intake; the
+  exported webpage escapes every user-typed name; Mermaid renders strict; Write File CSV
+  neutralizes formula-trigger cells (one rule in `csvSafety.ts`); a File Link to a program or
+  from a foreign document asks first. Value semantics: a wired blank is never 0 (computed-column
+  side values, Monte Carlo ports, Waterfall / Candlestick / Calendar / Sparkline gaps); a
+  sample spread of one value, a non-positive exponential fit, DROP of everything, SAVGOL with an
+  even window, EWMA outside (0, 1], a negative RUNNING window are loud. Excel parity on the
+  formula surface: CHOOSE / INDEX / SUBSTITUTE truncate; the T-bill trio, the *IFS family
+  (wildcards, `~`, date-shaped criteria), WORKDAY.INTL masks, GCD / LCM / MULTINOMIAL /
+  PERCENTRANK.* and the workday trio's holiday list, SORTBY length, COMBINA(0,0), DIAGONAL of a
+  matrix, XIRR's date-order error, STDEV.S of one value, DATEDIF order, CONTAINS on a matrix, a
+  blank optional argument as Excel's 0, numberToText's General thresholds. Engines: the Window
+  verb's zero denominator and Replace Values' NaN agree across JS and Polars; the aggregate
+  guard rides a rebased flush; Slicer's lazy path matches exactly. Schedule engine: milestone
+  dates, empty splits, elapsed lags, MSPDI start / minutes finish, the XER calendar parser,
+  GanttProject duplicate names, Repeat phases. Layout: a locked group's members hold under a
+  standoff; Lock canvas gates every mutator; group shrink clamps to members; a stored card size
+  clamps to the content minimum; drawn cables delete from the keyboard; the HIC snapshot routes
+  flipped endpoints like the DOM. Units: two absolute temperatures combine to a delta, ×/÷/^ on
+  an offset unit is refused, the reshaping verbs keep column units. Composite: goal seek keeps
+  solver precision, Monte Carlo over a blank is blank, drill-in undo runs one at a time, chrome
+  acts on the active graph, a marker is never copied. Nest Join blank keys never match. Knap
+  template locals render. Cube Rollup takes a cube child. Write JSON dates are ISO.
+- **List Input** — the popup-editor commit (758a2d70) was an unasked-for generalization; four
+  fixes in one day each broke the card a new way. The card is back to its pre-editor form
+  (`listInputChip.test.ts` pins rows-concatenate + the plain value box); the invariant and the
+  backlog carry the author's later ruling (harmonize only if the behaviors hold; Save-to-rows is
+  the open question).
+- **Also this session:** the Gantt figure pass (type on the design rungs, fontsize scales text,
+  the popup minimum, the grid pane follows the width; the hero chip centred through ONE shared
+  row, `heroChipRow` pins it) and the Gantt Chart Builder target with every view key; the copy
+  cut of every tooltip and description the new nodes added (63 strings; the Schedule column
+  vocabulary and the Gantt option grammar moved to Help › Plans).
+- **Documented, not changed (author's rules):** the three-valued logic cards vs Excel's AND/OR/
+  NOT/IF, the distribution inverses' blank outside (0,1), UNIQUE 1-D only, SEQUENCE ≤ 0.
+- **Surfaced for the author (backlog):** the List Input editor design; Manual / goal-seek
+  composites solving on first load; the percent format carrying through arithmetic
+  (formatFlowsDownstream as written); the Triangle Solver's bare-degree angle inputs; TEXTJOIN's
+  blank ignore_empty; older long strings (the same copy class, a separate sweep).
+
+### SESSION DIGEST (2026-09-12 — the Gantt surface: engine, figure, nodes, import; three agents)
+
+The author's order at 01:15: build the entirety of the Gantt surface from `v2.0/25-gantt.md`,
+no questions, all night. Three agents: the Lead (engine + Schedule binding + import + seeds +
+docs), Agent 2 (the layout and React packages), Agent 3 (the Gantt node and every app surface).
+Everything landed on `develop`; nothing pushed. The plan's § 10 calls were taken as recommended.
+
+- **`packages/`** — three in-repo MIT workspaces resolved by alias (tsconfig `paths` relative,
+  the TypeScript 7 rule; Vite + vitest aliases), so `npm ci` and the desktop build are untouched
+  (decisions ganttPackages). `schedule-engine`: calendar in unit index space (negative indices
+  for leads; a day layer and a minute layer), WBS flatten + Kahn, the CPM passes with the one
+  rule (decisions oneScheduleRule), typed links with lag and lead, summary roll-ups with links
+  both ways, Complete against a status date, total + free float per link, the driving
+  predecessor, plain-named diagnostics, Mermaid, the predecessor grammar (border only), MSPDI
+  read with its own small XML reader. **Days and Minutes modes** — Minutes is Project's
+  08:00–17:00 model; the hand-authored MSPDI in `fixtures/schedule/` reproduces in both.
+  `gantt-layout` / `gantt-react`: the data-only payload contract (`payload.ts`), fit zoom,
+  tiers, brackets, diamonds, pennants, hatch + outline cues, arrows, virtualized popup rows, the
+  headless SVG.
+- **Schedule** rebound to the engine: new inputs `weekend_code` / `status` / `hours`, a
+  `diagnostics` frame, the Days | Minutes toggle (`precision` persists), fifteen appended
+  columns (+ WBS / Level / Summary when nested), a typed Start / Finish replaced in place, text
+  dates through `parseDate` (an ambiguous one is the schedule's error). **Gantt** node (Agent 3):
+  the chip-on-card figure with Holidays / Weekend / Status inputs, the `gantt` Chart Builder
+  target, `.nokeys`, the `data-chart-svg-provider` seam so a Report's webpage export and Write
+  to Obsidian pull the figure's SVG even though the card draws nothing. **Local File** gained a
+  `plan` cube socket: a Project XML or a row-number-grammar CSV comes out as the nested tasks
+  cube (`planImport.ts`), the flat outline on `frame`.
+- Seeds: `product-launch-gantt` (phases, SS+2, FS−3, deadline, pin, status date), a Gantt in
+  `remodel-gantt` and `kitchen-remodel-tasknotes`; all three tuned. Screenshots of the live app
+  (dev server, headed Edge) drove three review rounds on the figure: columns drop instead of
+  clipping, content-width split, critical hatch, brackets, the Days column from the payload's
+  working-days duration. Found by looking, not by tests: the Cube Input's ISO date strings were
+  not parsed (Board review fell to the project start) and Diagnostics called a phase's children
+  unlinked.
+- Export verified on the live app by probing the app's own module instance (a Vite dev
+  server serves an HMR-invalidated module under a `?t=` URL, so a bare dynamic import from a
+  probe is a SECOND instance with an empty provider map — the first probe's false alarm): the
+  Gantt node and its Display both serve the whole-chart SVG through the provider seam. Two
+  more mapper fixes from looking: a milestone on its predecessor's finish day is not a broken
+  link (the calendar-day rule was too strict), and a phase's Duration is filled with its
+  rolled-up working days so the grid's Days column is right.
+- Engine additions after the ledger was first written: `multipleCriticalPaths` (every
+  successor-less leaf is its own tail; no card control yet) and a summary's SS/SF successors
+  bounding the summary's own late start (its float, never a child's late dates).
+- Late slices: the Schedule card's One path | Every path toggle (Agent 3) and the tree grid's
+  keyboard map (Agent 2: roving tabindex, arrows / Home / End, Left / Right fold and unfold a
+  phase, Enter / Space toggle, the active row's bar scrolled into view, aria-level / -selected /
+  -expanded, all behind `.nokeys`).
+- Second wind (the author: "the entirety, both solutions"): the engine gained per-task calendars
+  (each task its own index space, links crossing by instant), elapsed time, ALAP, split
+  remainders with an Actual start (Project's split-or-move option as the card's fourth toggle),
+  MSPDI's ALAP / elapsed / ActualStart / CalendarUID; Agent 3 built the § 10 call-2 alternative
+  (a Links frame input) and found Unnest lacked a list-cell branch (the plan assumed it); Agent
+  2 built split bars, minutes-mode midnight finishes and the calendar month-grid sibling.
+  Then the formats: GanttProject and Primavera XER read, MSPDI write with a pinned round trip;
+  P6's longest path on the card, Work ÷ Units durations, inactive rows, recurring rows, XER's
+  calendar blob; the known-bug regression list and DCMA checks over the corpus as tests; Agent
+  2's resource histogram and fit=page export; the launch seed names who does each task; Agent 3's
+  Earned Value node (holidays honored through the engine's Calendar; `unitAware` so the Cost
+  currency carries) and Write File's Text target (the MSPDI sink), the By-Row cube branch for
+  portfolios. Wrapped 02:55: full suite 5676 green, tsc clean, 90-odd commits on develop, nothing
+  pushed. After the wrap, two backlog items off the Obsidian list (Agent 2): the mail-merge batch
+  cap surfaced ("Wrote 500 of N" on the sink, "first 500 of N" on the stepper) and the Knap help tab
+  (`src/graph/help/knap.md`). Agent 3: frame-only verbs (Window / GROUPBY / Chart) now take a live cube —
+  the LATTICE allows cube→frame and coerceInputs flattens a flat cube (a nested cell is a loud
+  #SHAPE! naming the column). The author REFUSED the lattice change ("upgrade the sockets on each
+  node, not vice versa"): reverted, and the three nodes got cube-adoptive inputs instead, the
+  flatten inside data() (rules cubeNeverNarrowsToFrame). Last, Agent 3's Input Switch
+  pending-reconnect store: a One↔Many retype-drop is remembered and the cable re-materializes on
+  the flip back (same key, else label); the dashed ghost RENDER layer is the deferred last piece
+  (backlog). Then
+  Add Column made cube-adoptive like Computed Column (cube in → cube out, nested cells by reference);
+  Minutes-mode date cells show their clock (a `CubeColumn.format` seam, the cube twin of the frame
+  column's; Schedule stamps the datetime pattern in Minutes mode).
+- Test lock between agents moved from a doc line (per-worktree, signals nobody) to the shared
+  file `.dev/test-lock` in the main checkout.
+- Open for the author: the eyeball list and the engine follow-ups in `backlog.md` § Gantt;
+  Project-exported goldens for the corpus; whether Minutes-mode cells should carry a datetime
+  format.
+
+## Sweep 2026-09-12 — session digests 2026-09-07 → 2026-09-11 (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-11 — Obsidian surface: the note identity is a wireable value)
+
+Made the vault nodes honour the wire-in/out principle — the paths and titles the readers
+emit are now values you can wire back into the writers and importer.
+
+- **Write to Obsidian:** the note-name field + the `{{date}}`/`{{daily}}` template grammar are
+  gone, replaced by a wireable `path` (a `string` input, InlineInputs literal else a cable) plus
+  a **Browse** chooser (the Import file picker). A `folder/name` path splits — the folder
+  prepends to the subfolder. The `date` input and **`nameTemplate.ts`** (only this node used it)
+  are deleted; a formatted date wired into `path` replaces `{{date}}`. `run()` resolves the
+  target from the path (blank name still batches — `writeDocumentToVault` names each page).
+- **Import Obsidian:** exposes its identity — a `path` **output** (vault-relative, `.md`
+  included so it joins a Vault Folder cube's `path` column) and a `path` **input** that loads
+  that note in the background (`data()` reads the wire, `loadFromWire` reads the file, adopts the
+  body + frontmatter sockets, recomputes — the VaultFolder guard pattern). The note's own title
+  (its file name) renders at the top of the card body. `NoteNode` gained `reservedOutputs()` so
+  `syncFields` keeps the path output; `FieldRow` joined the `socketRowCoverage` row renderers.
+- **Vault Folder:** `folder` + `glob` are wireable string inputs (cable-only dots via
+  InlineInputs; the dropdown/field disable when wired); `data()` resolves them, `load()` reads
+  the resolved values. (The status count reads 48×44 = the cube's rows×cols; no bug.)
+- Verified headless against `demo-vault/` (`run-graph-vault.test.ts`: a wired path loads a note,
+  a wired folder scopes the read) and on the live desktop app.
+**Follow-on (author calls, same day):**
+- **The writer MERGE LANDED:** Write to Obsidian is the one vault sink — `WritePropertiesNode` +
+  its component are deleted, absorbed into `WriteObsidianNode` (`nodes/obsidian.ts`). A Target
+  dropdown (Auto / Note / Properties) picks by the wired input: a Document → a note
+  (overwrite/append/block), a cube of rows → frontmatter + a `note-body` column → the body. Both
+  Preview before Run (`plan` frame on the Properties side, a target-action line on the Note side).
+  The `write-back-to-obsidian` seed switched to `target:"properties"`. Write File + Write Tasks
+  stay separate for now (backlog mega-merge). Rendered fixes: Browse is a real full-width button
+  (folder glyph), the subfolder rescan uses `RefreshIcon` not a unicode ⟳.
+- **`note-body`** is the reserved property that round-trips a note's body: Vault Folder's
+  include-body column is `note-body` (was `body`), and the Properties target writes a `note-body`
+  cube column as each note's BODY, every other column its frontmatter (`frontmatterPatch.ts`
+  `setBody`/`resolveBody`, the block stays byte-identical).
+- **Single vault** (`singleVaultFromSetting`): Vault Folder + Write Properties read the app-wide
+  `obsidianVault` setting (per-node chip gone; a `get vault()` getter leaked the abs path into
+  saves via extractInit, so it reads the setting inline instead).
+- **Name-resolving Import:** a wired `path` resolves a bare note name Obsidian-style — a full
+  vault-relative path matches directly, else the basename, case-insensitive.
+- **TaskNotes:** stats is now **one `{ Status | Count }` frame** (`statsToFrame`), not five number
+  sockets — fixes the mode-switch width oddity. The unwired calendar window is a year either side
+  of today (was `today..today+7`). `/api/calendars/events` only surfaces external calendar sources
+  (ICS/Google/Microsoft), never task scheduled/due, so the demo vault gained `Team Calendar.ics`
+  (a local ICS subscription, plugin config is per-machine + gitignored, so only the `.ics` ships).
+- **Date Input:** a valid relative phrase reads white (was red — the card validated without the
+  `relative` opt-in the node uses); an (i) button beside the picker shows a "Supported Formats"
+  example popup when Relative dates is on. Year-first dates stay ISO (never `#AMBIGUOUS!`; no
+  country uses YDM).
+
+**Still open (author calls):** daily-notes targeting (retain, not necessarily a node — the removed
+`{{daily}}` successor); fold Write File + Write Tasks into the one sink; Knap for dynamic write
+paths / content; the TaskNotes read node's overlap with a plain Vault Folder query. All in
+`backlog.md`.
+
+### SESSION DIGEST (2026-09-11 — Report card rebuilt as a standard node; Note holds Knap tags literal)
+
+- **The Report card is a standard node** (`ReportNode.tsx`/`.css` on `NodeShell`), not the
+  Note-family frame. Template + Records are two standard measured input rows (`ReportRefRow` →
+  `MeasuredSocketRow`) with a divider before the variable refs; the hero box is the Document chip
+  (`valueChipFor`, opens the overlay), the `document` output socket centers on it; collapse folds
+  the rows into one `CollapsedInputPill` so cables survive. New green **`document` node kind**
+  (`nodes/shared.ts`, `nodes/kind.ts`) — the Report was falling through to math blue. Per-node
+  color dropped (field gone from `report.ts`; the 3 hand seeds + the PF generator updated; overlay
+  and webpage export never read it). `RefInputRow` pruned (the Report was its last user);
+  `socketRowCoverage` whitelist now names `ReportRefRow`.
+- **A Note holds unresolved Knap tags LITERAL, never empty** (`knapTemplate.ts` `holdUnknownTags`
+  widened from bare-only to ANY unknown-rooted `{{ … }}` — bare, dotted, filtered — parked behind
+  an index sentinel and restored after render; `useKnapRender` gained `keepUnknown`, passed true by
+  NoteNode + ImportObsidianNode). A tag naming no frontmatter field reads as its placeholder so a
+  template note reads as a template; blocks (`{% if %}`) over an unknown name still render empty, as
+  Knap does. Fixes template-note variables vanishing on the card.
+- **Report overlay polish:** the wired-Template read-only pane is syntax-highlighted
+  (`highlightKnap`); the batch **Page-name** field moved out of the header to the page-stepper strip
+  (compact, right-aligned, wraps); the docked header stacks (title row + wrapping action row) with a
+  compact segmented Draft/Preview toggle IN the button row, all controls matched at 26px; **"Embed
+  Note" / "Export"** are the labels in both docked and floating. Report embeds use the node-header
+  chevron (masked `M3 1l4 4-4 4`, 8px), not a text triangle.
+- **Seeds:** `report-showcase` gained a Template + Records mail-merge cluster (a regions frame + a
+  per-region template Note → a `merge` Report, one page per region; layout baked with tune-seeds;
+  the showcase test pins the three pages). **Personal Finance** advisor verdicts are inline Knap
+  `{% if %}` reading the raw operand pairs the old Compare→IF→text circuits used — same thresholds,
+  −8 nodes (162→154). `knapTemplate.test` pins `>=`/`<=`. Records stays a **cube** input (the
+  lattice supremum accepts a frame or a cube; a frame socket would reject a cube).
+
+### SESSION DIGEST (2026-09-10 — Knap replaces the `=name` syntax in Note and Report bodies)
+
+- **Knap is THE document syntax** (knap.md, Obsidian's template language; the `knap` npm
+  package, MIT, dayjs its one dependency; decisions knapIsTheDocumentSyntax). `{{ name }}`,
+  `{% if %}`, `{% for %}`, `{% set %}` and the standard filters render at compute into the
+  `document` output. Spec in `node-coverage.md` § Annotation; mechanics in `knapTemplate.ts`
+  (AST walk for the root names, the bare-tag rewrite, value flattening, the engine wrapper).
+  Pinned by `knapTemplate.test.ts`, `knapEngine.test.ts` (the real DataflowEngine awaits the
+  async render through both Canvas wrappers), the Report/Note node suites and the seed tests.
+- **The rule:** a Report's root template variables mint `trueany` inputs (one per name,
+  first-use order). A BARE `{{ name }}` embeds the wired value as the canvas shows it (FC
+  scalar, grid, chart, KaTeX, Note block) and `{{ name | highlight }}` is the tinted text
+  form: both rewrite to the internal `` `=name` `` / `` `=name!` `` span before the render, so
+  `inlineRefDisplay.tsx`, `obsidianMarkdown.ts` and `reportExport.ts` are unchanged. Any
+  other use reads the data form: frames/cubes as rows, a document as its body, a date serial
+  as ISO only when the SOURCE socket type says date, a chart as null. A Note's variables are
+  its own frontmatter (no inputs). `data()` is async only when a tag is left for the engine.
+- **Swept:** the five seeds with Report refs (`=x` → `{{ x }}`, `=x!` → `{{ x | highlight }}`),
+  the Report overlay's Embed-a-Note token, the export (renders the template first), landing
+  and catalog copy, decisionSeed/reportShowcase tests. `noteInlineRefs.ts` stays as the
+  internal grammar (the machine-checked twin of `obsidianMarkdown.ts`'s regex).
+- **Preview:** `useKnapRender` renders the live draft against the node's last variables on
+  the Note card, the Import Obsidian card and the Report overlay; a syntax error replaces the
+  preview with `line:column message` lines and lands as `#SYNTAX!` on the document. Knap eats
+  the newline after a block tag, and 0.4 rejects the `{{-` trim dashes its README lists.
+- The Write to Obsidian NAME field's `{{date}}` / `{{daily}}` tokens are `nameTemplate.ts`, a
+  separate mini-language for file names. Unrelated syntaxes.
+- **Template + Records on the Report (09-10b):** a wired Note is the text (its raw `source` rides
+  the document; tags naming no field stay literal on a Note so a template note reads as one),
+  its variables the sockets (`sideVars` persisted, `data()` reconciles via `dropInputCables`),
+  its frontmatter the defaults; Records is the MAIL MERGE (the author's keyword; "Rows" said
+  nothing): a wired frame/cube renders one page per row (`record`, `index`, the `pageName`
+  Knap names each), and Write to Obsidian writes one note per page. Spec in
+  node-coverage § Annotation; `mail-merge.json` is the worked seed; the report seeds gained a
+  loop (showcase, decision memo) and an `{% if %}` verdict (garden). Pinned by the Report and
+  knapTemplate suites; `seeds.test.ts` treats a Knap tag line as a block, not prose.
+- **The follow-ups landed the same day (09-10c):** the Report overlay highlights the source
+  (`knapHighlight.ts`: Markdown structure + Knap keywords, filters, strings, variables), lists
+  the filters with examples, and steps a merge page by page. Write File taking a document
+  (a merge as one `.md` per page into a folder) was built in `ec715ed` and BACKED OUT the
+  same day (author): it lands as part of the Write mega-merge (backlog), not as a bolt-on.
+- **Seeds exercise Knap's shaping filters** (author 2026-09-10): `sort:("col","desc")`, `slice`,
+  `where:("col", v)`, `map:x => x.col`, `unique`, `sum:"col"`, `list:"numbered"`, `join` — the
+  showcase's top-three months and ledger sum, the decision memo's sliced podium, the mail
+  merge's paid-most-first roll and who-still-owes line. The knap 0.4 bugs and API asks the
+  probing surfaced, with repros and the workaround each would retire, are `knap-upstream.md`
+  (the author files them; backlog line). The one host-side rule they forced: an unwired
+  Report input is ABSENT to the template, never null, so a bare filter word
+  (`list:numbered`) still falls through to Knap's literal.
+- **Holes at close (2026-09-10, for tomorrow):** nothing below is verified in a browser —
+  every check this session was tsc/vitest/build. (1) The Report overlay's highlighted
+  backdrop vs the transparent textarea: glyph alignment, scroll sync, mobile `data-tab`
+  stacking, the wired-template read-only pane, the page stepper, the Filters popover.
+  (2) The Report card's two fixed rows (Template, Records) via `RefInputRow`: the value
+  preview for a frame/document and the dot placement. (3) A wired template whose Note
+  changes its tags: `reconcileInputs` drops cables through a microtask — works in the
+  engine tests, unseen on the canvas. (4) Write to Obsidian batch: per-page chart assets and
+  block/append modes per page, desktop only, no test. (5) `MAX_PAGES` (500) truncates
+  silently. (6) A literal `{{` in prose is now template syntax: knap has no raw block, the
+  only escape is `{{ "{" }}{ x }}` (upstream item 10). (7) The Note card previews against
+  the fields of the LAST commit (one blur behind while typing YAML) — by design, may read
+  as stale. (8) No in-app help page for the template syntax: the catalog descriptions and
+  the Filters cheat-sheet are all a user gets. (9) `first`/`nth` after `sort` are broken
+  upstream (knap-upstream 1), so seeds route around them; a user will hit it.
+
+### SESSION DIGEST (2026-09-09 — Personal Finance seed trimmed, 171→162 nodes)
+
+Two functionality-preserving simplifications to the Personal Finance seed (generated by
+`scripts/gen-personal-finance-seed.cjs` — edit the GENERATOR, then `node` it to re-emit the JSON;
+`pfSeedCheck.test.ts` asserts exact lockstep). **(1) FV curve → a real TVM node.** The retirement
+sparkline hand-rolled `pv*(1+i)^(12*c)+…` in an Expression over a years list; replaced by a `TvmNode`
+that broadcasts a **months** list on `nper` into an FV curve (the `Years 1…N` Series now emits
+12,24,… via literals start/step=12), reusing the scalar Projected-nest-egg node's own outflow
+helpers (`expr-pmt`, `expr-pv`, `expr-mrate`). Verified the TVM broadcast equals the old formula
+exactly (EquationNode outputs `numListOut`, so a list `nper` yields a list `fv` that feeds the
+Sparkline). **(2) 8 report Text Input nodes → If-node literals.** Each verdict IF had a good/bad
+`TextInputNode` wired to then/else; folded the words into the IF's own `stringLiterals` (autoLiterals
++ `pickSlot`/`typedLiteral` read them when the slot is unwired) and deleted all 8 inputs. Full suite
+green. **(3) Dropped the one true orphan** `Inflation %/yr` (NumberInput, no in/out edges) and
+tightened the Assumptions column + Advisor cluster it left (coords re-flowed in the generator;
+tune-seeds can't run here — the JSON is generator-locked, so layout lives in the .cjs). The earlier
+"orphan" `Sum by category` (GroupByFrame) is NOT dead — it and `fill-cat`/the Waterfall/Calendar
+nodes are intentional self-displaying demos in the **New in 1.2** scene (terminal, shown on their
+own cards). No other safe fold found: the remaining helper Expressions are shared or presentation
+sign-flips, and the SumIfs/GroupBy/GetColumn/Aggregate primitives each demonstrate a technique.
+
+### SESSION DIGEST (2026-09-09 — SEQUENCE node↔formula divergence killed at the source)
+
+The Series `sequence` op diverged from the `=SEQUENCE` formula: node was `(count, start, step)`
+1-D only, formula is Excel's `(rows, cols, start, step)` 2-D — arg 2 flipped meaning, and the node
+couldn't make a grid. **Why nothing caught it:** the arity guard (`nodeFormulaArgParity.test.ts`,
+the shareImpl ratchet) only scans nodes that dispatch through `resolveExcelFunction`; a node on its
+own kernel is invisible to it, and its header defers those to per-function BEHAVIOURAL agreement
+tests — which for SEQUENCE never existed. The `parity:false` note was the only marker, and it
+understated the divergence. **Fix (convergence at the source):** the sequence op now adds a
+`Columns` input (default 1) and dispatches straight to `resolveExcelFunction("SEQUENCE")(rows,
+cols, start, step)` — ONE impl with the formula, so 2-D wrap and overflow can't drift; a
+value-driven `reconcileRank` swaps the output socket list↔table (the Expression pattern; headless
+keeps the last socket). Non-breaking: cols=1 is the old flat-list return, and the 3 seeds using the
+op don't set cols. Routing through `resolveExcelFunction` also pulls the node INTO the arity guard
+(4-arg call site), so it's now statically enforced too. `NODE_EXCEL` flipped to `parity:true`.
+**Backstop added:** `tests/graph/nodes/arrayShapeParity.test.ts` — behavioural node↔formula parity
+for the SHAPE-PARAMETRIC family (SEQUENCE, WRAPROWS/WRAPCOLS, TOCOL/TOROW), the class where the two
+surfaces drift on capability. **Deliberately NOT built:** a blanket "every parity claim needs a
+test" ratchet — 211 parity-claiming pairs are unverified, almost all trivially-correct scalar math
+(SIN, ABS, SUM…), and the node↔formula arg mapping isn't machine-derivable, which is why the repo
+uses targeted behavioural tests, not a universal harness. The durable pattern is: a node that
+stands for one Excel function should compute by dispatching to that function (auto-guarded by the
+arity scan, can't drift); the shape-parametric family is the priority for behavioural coverage.
+
+### SESSION DIGEST (2026-09-09 — Sudoku seed rebuilt on 2-D Expression)
+
+Rebuilt `sudoku-solver.json` now that the Expression node handles 2-D array formulas. The two
+hand-typed incidence matrices are GONE — the 81×81 peer table and the 27×81 unit table are each
+one Expression that broadcasts a cell-index column against its row (`SEQUENCE`/`TRANSPOSE`, with
+`QUOTIENT`/`MOD` for row/col/box; `INT` and `FLOOR` reject a 2-D arg, `QUOTIENT` is the matrix-safe
+floor-divide). Each MMULT+MAP stage folded into a single Expression, so the three techniques read
+as one node each (naked singles, hidden singles, naked pairs). File 935→388 lines, internal nodes
+44→24. **Gotcha (why the tails aren't pure Expression):** an Expression's output socket only
+reconciles to `matrix` via a microtask that needs an active editor/view, so HEADLESS its socket
+stays rank-1 `number`; a CompositeOutput's MutableSocket then adapts to that and mis-coerces the
+real matrix (#SHAPE! on the 9×9, `true`→`1` on the flag). Fix: end each output tail on a
+genuine-socket node — a TableReshape (wraprows) for the grid, a Comparison (=0) for Solved —
+fed by folded Expressions. The feedback merge stays a MapTable (`IF(value2=value2, value2, value)`):
+on sim round 0 the feedback edge is unresolved, and MapTable falls back to its primary table while
+an Expression would default the unwired var to scalar 0. `sudokuSeed.test.ts` unchanged and green.
+
+### SESSION DIGEST (2026-09-08 — display fixes: collapsed-group dates, complex both-parts, socket peek gating)
+
+Three display-layer fixes, each behind its own test:
+- **Collapsed-group readout renders a date as a date, not a serial.** A Display member of a
+  collapsed group fell through `formatReadout`'s numeric text path, so a singular Date showed its
+  raw serial. Now routes the unannotated-date case through `dateFormatDisplay` (the Display
+  surface's own helper), keyed off the `nodeOutputElemFamily("date")` lookup the row already uses
+  for date arrays. `GroupNode.tsx`.
+- **Complex DISPLAY always shows both parts** (`0 + 4i`, `23 + 0i`). `assembleCx` gained a
+  `bothParts` flag; `formatCxDisplay` (new) + `formatCxWithAnnotation` pass it, and every display
+  seam (value box, chips, readouts, clipboard) routes through them, so the unit always wraps the
+  two-term form `(0 + 2i) V`. The Excel/coercion form (`formatCx`, `&`, cast-to-text, `IM*`) still
+  drops a zero part for parity and round-trips with `parseCx`. Pinned in `format-model.md`.
+- **Socket hover value-peek arms only on chip-summary kinds** (`isChipSummaryPeek` in
+  `valuePeekKind.ts`): frame/cube/table/list/chart/diagram/svg/lambda — the values whose face is a
+  summary chip hiding content. A scalar/string/error is already shown in full, so its peek was pure
+  repetition. One gate in `NodeSocket.tsx`; the example-hint path is untouched.
+- **Group Cost Settle gains a Transactions mode** (`SettleMode` "totals" | "transactions", author
+  2026-09-08). Totals is unchanged (people frame, Paid + optional Share weight). Transactions reads
+  a CUBE ledger — one row per expense: an Amount, a Paid by (a name or a list for a shared bill), and
+  a For list of beneficiaries, split EQUALLY (no weights); blank For = the whole roster. Payers and
+  beneficiaries are independent sets, so a bill one person fronts redistributes to a different group.
+  `settleLedger` (pure, `settleOps.ts`) aggregates per-person Paid/Owes and feeds the shared
+  `minTransfers` greedy core (extracted from `settleGroup`); `settleLedgerCube` (`frame.ts`) reads
+  the cube and shapes the same Transfers/Net frames, carrying the Amount column's currency.
+  The `mode` toggle retypes the SINGLE input socket "in" IN PLACE (People frame ↔ Ledger cube,
+  `setMode` reassigns `input.socket`); the key never changes, so a wired cable survives the swap.
+  Outputs never change, no output retype. Node is `unitAware`.
+  **Ghost cable on an incompatible mode change (author 2026-09-08d):** the component does NOT drop
+  the cable — if the source no longer fits the retyped socket it MARKS it a ghost (`cableGhostStore`,
+  reusing the splice-ghost dashed render + click-to-commit); a ghosted "in" does not feed
+  (`SettleNode.inGhosted` → empty, not a #VALUE! from coercing the wrong type). Flip the upstream
+  source back to a compatible type and one click on the dashed cable commits it (FlowCableEdge gates
+  the commit on `canConnectTo`, then `processGraph(target)` to recompute). Verified live end-to-end.
+  **Net frame is a TRUE-COST balance (author 2026-09-08c, final):** Person · Paid · Owes · Owed ·
+  Net, where **Net = Paid + Owes + Owed = the fair share** (a person's real cost, NOT their
+  balance). Paid = fronted/external; Owes = still owed to the group (+); Owed = coming back from
+  the group (−). One of Owes/Owed is 0 per person (the settlement is a pure payer or receiver).
+  In equal-split totals every Net matches (everyone's true cost is the same). `settleNetFrame`
+  (frame.ts) derives Owes/Owed from `diff = share − paid`; `settleGroup`/`settleLedger` just return
+  paid + fair share (the earlier gross-cross-flow model was overcomplicated and dropped). The **transfers** frame is the main output, now the labelled
+  hero at the BOTTOM of the card ("WHO PAYS WHOM") with the Net breakdown on top.
+  Seed "Trip split" rebuilt: 5 people, 8 expenses (multi-payer, sub-groups, a reimbursement to a
+  different person), a totals frame AND a cube ledger through an Input Switch into one Settle, plus a
+  **Sankey** of the transfers (`SankeyNode` reads From·To·Amount by position) beside the Net table.
+- **Input Switch** (`CableSwitchNode`): the one-way Cycle button is now a bidirectional stepper
+  (Record pager); `select()` re-settles wildcard types (`reconcileTypesAfterEdit`) so the passthrough
+  output re-adopts on an active-input change (cube ↔ frame) instead of keeping the stale type; card
+  widened to 250 for the stepper.
+
+### SESSION DIGEST (2026-09-07e — demo vault deepened, two Obsidian seeds added)
+
+Widened the `demo-vault/` fixture and added two seeds to the **Obsidian** group. Vault: Projects
+now 6 notes (all four `status` values), Notes has 3 books (one with no `finished`, so a null
+column) + a second meeting, Daily runs `2026-08-25`→`2026-09-07` (14 days, enough for a rolling
+average), Tasks is 8 (open/in-progress/done, recurrence + `complete_instances` + block
+`timeEntries`), People gains Priya, and a `Solenoid/` stub note shows item D's shape. The pinned
+fixtures (`vaultCube.test.ts`, `run-graph-vault.test.ts`, `frontmatterPatch.test.ts`) were left
+untouched — additions only — so all 254 tests still pass. Seeds: **`write-back-to-obsidian`** (B
+loop — a Projects snapshot → Computed Column `health` from status+priority → a disarmed Write
+Properties) and **`daily-habits`** (R3 — a Daily snapshot → Window rolling_avg → smoothed line
+chart), both on the snapshot-plus-disarmed-live-node shape so they run on web. Geometry baked by
+`tune-seeds.mjs`. **Gotcha noted, not fixed:** a Vault Folder emits a `cube`, and the row verbs
+adopt it, but the frame-only verbs (Window, GROUPBY, Chart's frame input) still refuse a cube —
+so the daily time-series compute runs on the snapshot, not the live cube. Charting/smoothing a
+live vault folder needs A′ extended to a cube→frame step (or those verbs made cube-adoptive);
+that's the honest gap behind the seed's "swap in the Vault Folder" note wording.
+
+### SESSION DIGEST (2026-09-07e — Gantt research: the landscape, the spec, the separate-repo plan)
+
+The author asked for a big outside-in research pass on Gantt and project-planning software, not
+built on the existing Schedule node: which open / free / embeddable libraries exist, whether one
+standout repo should be adopted or matched, and whether a separate repo combining the best of the
+mid-tier ones is the right call. Six research passes (libraries; scheduling semantics, engines and
+formats; open-source and data-first apps; commercial benchmarks and UX; text and plotting
+approaches; library internals and headless precedents) landed in **`v2.0/25-gantt.md`** (PROPOSAL,
+Arc 8). Verdict: no permissive repo to adopt whole (every vendor's seam is "anything that computes
+dates"); the standout to match is Microsoft Project's semantics with MPXJ's `MicrosoftScheduler` as
+the open oracle and Project-authored MSPDI files as golden tests; recommend a separate MIT headless
+toolkit (`schedule-engine` · `gantt-layout` · `gantt-dom` · `gantt-react` · `project-io`) that
+Solenoid binds through a Plan node family and a `chart`-socket Gantt figure. Findings that matter:
+DHTMLX 10 relicensed to MIT with readable sources (its scale manager and link router are
+vendorable); SVAR is a hand-written React mirror over a framework-free MIT store; Huly carries the
+one modern TypeScript CPM core (EPL, read-only); the consumer "auto-shift" switch dissolves in a
+pure-function model (gap = lag, typed date = SNET, manual = flag); Excel serials are already the
+zone-less day representation a scheduling engine wants. Ten author calls in the doc's § 10; the
+"no bar editing" ruling stays the default until its phase 5.
+**Revised the same day** after the author asked for an adversarial review, a sweep of online
+user pain points, and a scope: two red teams (product fit against the repo's rules; engineering
+claims verified against live sources and clones) and a ~95-source user sweep. What changed
+(`25-gantt.md` § 13): the data model is the author's Cube (nesting = WBS, Predecessors a list or
+a nested Task · Type · Lag table; the flat two-frame form is `Unnest` and the import shape), the
+figure never writes and "no bar editing ever" is no longer softened, MPXJ is a second opinion
+not an oracle and its `junit/data` is mostly binary `.mpp` (the corpus is authored on a Project
+trial), four of the sixteen rules were corrected (free slack per link on the predecessor
+calendar; a deadline moves an ALAP task; out-of-sequence progress; tenths of a minute), the
+packages live as npm workspaces inside this repo (every cited precedent is a monorepo; the
+source-scan tests and the corpus directory cannot reach a second repo), Days and Minutes are
+engine modes with an inclusive Finish on the cell, and one rule (Start = floor, Finish =
+ceiling, Deadline = flag, Manual = pin) replaces the consumer shift switch. The sweep's top
+complaint is dates moving from hidden state; the keepers are cascade, typed predecessors, a
+kept gap, flagging anchors, calendars, milestones, today line, baseline ghost, printing. Scope
+(§ 12): the spreadsheet user's and tinkerer's Gantt; not a PMO tool (no leveling, no XER, no
+bar dragging).
+
+### SESSION DIGEST (2026-09-07d — the pitch read: the Obsidian + TaskNotes surface verified, the mdbase ceiling)
+
+The author is writing the pitch copy and asked for the integration surface as it stands, verified
+against `develop` (a stale local `develop` was three days behind origin; hard-reset). The surface
+matches `node-coverage.md` § Connections & sinks and the per-item entries — nothing to correct in
+the code; the reading is the pitch's fact sheet. Doc drift fixed: the bundle doc's § What stands
+today still listed the stub note, mdbase validation, `writeBase` and the F1 seed as open (all
+landed, per the code and the 09-07b digest), and two node-coverage "Not yet" clauses (the stub
+note, Write Tasks) pointed at items that had landed in the same file. **mdbase ruling**
+(decisions mdbaseCeiling): mdbase is an optional schema beside the notes, not TaskNotes' storage;
+what stands (schema-first typing in Vault Folder, refuse-on-violation in Write Properties, silent
+fallthrough) is the whole integration — no type-file writer, no query passthrough, one clause in
+the pitch. A blended Solenoid + TaskNotes `_types/` schema is the user's to write and works today;
+untested: how mdbase resolves two types matching one glob, and whether a TaskNotes upgrade
+rewrites its shipped type file. Not-to-claim list for the copy: no `![[Note]]` transclusion on
+write (inlined; deferrals), no `/api/nlp/create`, checkbox ticks in an imported note never write
+back, nothing runs in the browser build.
+
+### SESSION DIGEST (2026-09-07c — the new nodes' formula surface + the Add menu after the bundle)
+
+**Formula surface:** of the nodes the Obsidian / Track H / C1 sessions added, only Time Zone
+Convert is a scalar function both surfaces can hold, so it now registers as `TIMEZONECONVERT`
+(the node's own `convertZone`, node↔formula agreement pinned in `timeZone.test.ts`; `timeZone.ts`
+imports the frame TYPE only, so the rete-free walk stays clean). Everything else is excluded by
+the parity rule itself, not by omission: Geocode / Weather / Holidays / Currency / Vault Folder /
+TaskNotes are sources, the Write nodes are sinks, QR Code and World Clock are figures, and
+Allocator / Schedule / Payoff Planner / Group Cost Settle are frame verbs (frames stay out of
+formulas — matricesInFormulas). Node → formula stands at 100% of in-scope leaves.
+**Add menu:** the bundle had pushed Connections to 16 flat rows (the panel scrolled) and Analyze to
+9. Connections is now sources → an Import HTML / XML pair → Write File → the keyless lookups as
+two pairs (Geocode · Weather, Holidays · Currency) → an **Obsidian** submenu holding the six vault
+nodes; the four planners moved from Analyze to a sibling **Plan** submenu (rows in, a plan out);
+Cube Input joined the literal sources in Input under Frame Input (frame accent) instead of the
+Cubes submenu; COMPLEX · LAMBDA and Append · Bind Columns pair up so Input and Table verbs stay at
+the validator's soft row max. Every new node ranks first for its obvious search word. Still over
+the soft max, unchanged: Date & Time (17 rows, five of them pack rows appended after Save Times)
+and Visuals (QR Code lands after the sub-categories) — pack placements push to the end of a
+category, so a pack leaf always trails the core rows; a fix would be an insertion policy in
+`catalogUtils`, not a catalog edit.
+
+### SESSION DIGEST (2026-09-07b — three agents: the Obsidian bundle lands, Track H, the Cube Input editor)
+
+**Obsidian + TaskNotes** is the author's adoption bet (backlog § Obsidian + TaskNotes). Landed
+across the three agents, ledger in the bundle doc's § What stands today: A (Vault Folder → cube),
+A′ (row verbs take cubes, `recordsToCube` the one rows-of-objects → cube shape), B (Write
+Properties with plan / Preview / Run + mdbase validation), C (widgets), D (Open in Obsidian, the
+graph stub note + `solenoid:` backlink), E (vault watch), F (TaskNotes node: tasks / calendar /
+stats; Write Tasks), F6, I, J, R5, the Weather and Holidays nodes, the headless `run-graph`
+seam (`FsProvider` + `--vault` / `--tasknotes` / `--run`). Seeds: vault-as-a-table,
+kitchen-remodel-tasknotes, garden-dashboard, which-task-next. **Track H**: Payoff Planner (H1),
+Group Cost Settle (H3), the hours allocator seed (H3.5), Schedule (H6) over a tasks CUBE — the
+author's ruling that nothing is designed around an in-cell string list. **Cube Input** is the
+fourth literal source; its popup edits every level in ONE window (drill, never a popup above a
+popup), and List Input got the same popup (subsystem-invariants § Literal input editors).
+**Review pass** (author: "so much added, all three go and review"): the error guard now passes a
+THROWN SolError through with its code (a Filter on an empty frame read `#ERROR! [object Object]`);
+the Schedule catalog copy caught up with list-cell Predecessors; seed note copy fixed
+(trip-split's escaped newlines, remodel-gantt's repetition). Peers' findings: be stripped agent-speak from four demo notes, made Vault Folder's folder the same subfolder dropdown Write to Obsidian uses, and the stamp (Link to graph) is now OPT-IN by the author's ruling (Preview names the `Solenoid/<doc>.md` stub when on); fe folded doubled parentheticals in Schedule / Allocator socketDocs, made Payoff's order picker a SegToggle, kept the chip on an empty Frame Input, and renumbered the seeds into group bands (Obsidian right after Start here). Open for the author: the Cube Input editor commits per cell while Table / Frame Input hold a draft with Save.
+
+### SESSION DIGEST (2026-09-07 — Obsidian bundle 24 item A: Vault Folder → Cube)
+
+A **demo vault** (`demo-vault/`, committed) is the single-source fixture + the author's eyeball
+vault: an mdbase collection (Projects, list + nested-milestone cells), a plain Notes folder typed
+via `.obsidian/types.json` + guesser, a daily-notes folder, TaskNotes-shaped tasks, People link
+targets, one Bases view, wikilinks/embeds/tags. The pure-core tests read it directly (no
+`tests/fixtures/vault/` mirror). **Item A shipped:** `vaultCube.ts` `notesToCube` → ONE cube, a
+row per note: the Bases `file.*` built-ins + the frontmatter union; scalars typed, lists as list
+cells, rows-of-objects as nested frames. Typing per key mdbase → `.obsidian/types.json` → guesser
+widened across rows (`mdbaseTypes.ts` via the new `yaml` dep, `obsidianTypes.ts`, `vaultTypes.ts`);
+ISO datetimes upgrade to fractional serials in the reader (kept local, noteFrontmatter untouched).
+R3 `dateFromName` parses the file name into the `date` column; `dailyNotesConfig.ts` gives its
+default format. `VaultFolderNode` (first cube-emitting connection node, Connections menu): desktop
+-only local read (no C2 network gate), sync `data()` + a background read that walks up for
+`mdbase.yaml`/`_types`, reads `.obsidian/types.json` + `daily-notes.json`, calls notesToCube;
+per-node vault chip. `statVaultFile` bridge + `fs:allow-stat` / `.yaml` read for created/modified +
+mdbase schemas (architecture.md desktop note). Left: the "Your vault as a table" seed (waits on
+fe's A′ so the cube can Filter/Sort). Sequenced with fe (A′) and the Lead (F TaskNotes) on develop.
+
+
+## Sweep 2026-09-10 — session digests 2026-09-07 → 2026-09-08 (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-08 — display fixes: collapsed-group dates, complex both-parts, socket peek gating)
+
+Three display-layer fixes, each behind its own test:
+- **Collapsed-group readout renders a date as a date, not a serial.** A Display member of a
+  collapsed group fell through `formatReadout`'s numeric text path, so a singular Date showed its
+  raw serial. Now routes the unannotated-date case through `dateFormatDisplay` (the Display
+  surface's own helper), keyed off the `nodeOutputElemFamily("date")` lookup the row already uses
+  for date arrays. `GroupNode.tsx`.
+- **Complex DISPLAY always shows both parts** (`0 + 4i`, `23 + 0i`). `assembleCx` gained a
+  `bothParts` flag; `formatCxDisplay` (new) + `formatCxWithAnnotation` pass it, and every display
+  seam (value box, chips, readouts, clipboard) routes through them, so the unit always wraps the
+  two-term form `(0 + 2i) V`. The Excel/coercion form (`formatCx`, `&`, cast-to-text, `IM*`) still
+  drops a zero part for parity and round-trips with `parseCx`. Pinned in `format-model.md`.
+- **Socket hover value-peek arms only on chip-summary kinds** (`isChipSummaryPeek` in
+  `valuePeekKind.ts`): frame/cube/table/list/chart/diagram/svg/lambda — the values whose face is a
+  summary chip hiding content. A scalar/string/error is already shown in full, so its peek was pure
+  repetition. One gate in `NodeSocket.tsx`; the example-hint path is untouched.
+- **Group Cost Settle gains a Transactions mode** (`SettleMode` "totals" | "transactions", author
+  2026-09-08). Totals is unchanged (people frame, Paid + optional Share weight). Transactions reads
+  a CUBE ledger — one row per expense: an Amount, a Paid by (a name or a list for a shared bill), and
+  a For list of beneficiaries, split EQUALLY (no weights); blank For = the whole roster. Payers and
+  beneficiaries are independent sets, so a bill one person fronts redistributes to a different group.
+  `settleLedger` (pure, `settleOps.ts`) aggregates per-person Paid/Owes and feeds the shared
+  `minTransfers` greedy core (extracted from `settleGroup`); `settleLedgerCube` (`frame.ts`) reads
+  the cube and shapes the same Transfers/Net frames, carrying the Amount column's currency.
+  The `mode` toggle retypes the SINGLE input socket "in" IN PLACE (People frame ↔ Ledger cube,
+  `setMode` reassigns `input.socket`); the key never changes, so a wired cable survives the swap.
+  Outputs never change, no output retype. Node is `unitAware`.
+  **Ghost cable on an incompatible mode change (author 2026-09-08d):** the component does NOT drop
+  the cable — if the source no longer fits the retyped socket it MARKS it a ghost (`cableGhostStore`,
+  reusing the splice-ghost dashed render + click-to-commit); a ghosted "in" does not feed
+  (`SettleNode.inGhosted` → empty, not a #VALUE! from coercing the wrong type). Flip the upstream
+  source back to a compatible type and one click on the dashed cable commits it (FlowCableEdge gates
+  the commit on `canConnectTo`, then `processGraph(target)` to recompute). Verified live end-to-end.
+  **Net frame is a TRUE-COST balance (author 2026-09-08c, final):** Person · Paid · Owes · Owed ·
+  Net, where **Net = Paid + Owes + Owed = the fair share** (a person's real cost, NOT their
+  balance). Paid = fronted/external; Owes = still owed to the group (+); Owed = coming back from
+  the group (−). One of Owes/Owed is 0 per person (the settlement is a pure payer or receiver).
+  In equal-split totals every Net matches (everyone's true cost is the same). `settleNetFrame`
+  (frame.ts) derives Owes/Owed from `diff = share − paid`; `settleGroup`/`settleLedger` just return
+  paid + fair share (the earlier gross-cross-flow model was overcomplicated and dropped). The **transfers** frame is the main output, now the labelled
+  hero at the BOTTOM of the card ("WHO PAYS WHOM") with the Net breakdown on top.
+  Seed "Trip split" rebuilt: 5 people, 8 expenses (multi-payer, sub-groups, a reimbursement to a
+  different person), a totals frame AND a cube ledger through an Input Switch into one Settle, plus a
+  **Sankey** of the transfers (`SankeyNode` reads From·To·Amount by position) beside the Net table.
+- **Input Switch** (`CableSwitchNode`): the one-way Cycle button is now a bidirectional stepper
+  (Record pager); `select()` re-settles wildcard types (`reconcileTypesAfterEdit`) so the passthrough
+  output re-adopts on an active-input change (cube ↔ frame) instead of keeping the stale type; card
+  widened to 250 for the stepper.
+
+### SESSION DIGEST (2026-09-07e — Gantt research: the landscape, the spec, the separate-repo plan)
+
+The author asked for a big outside-in research pass on Gantt and project-planning software, not
+built on the existing Schedule node: which open / free / embeddable libraries exist, whether one
+standout repo should be adopted or matched, and whether a separate repo combining the best of the
+mid-tier ones is the right call. Six research passes (libraries; scheduling semantics, engines and
+formats; open-source and data-first apps; commercial benchmarks and UX; text and plotting
+approaches; library internals and headless precedents) landed in **`v2.0/25-gantt.md`** (PROPOSAL,
+Arc 8). Verdict: no permissive repo to adopt whole (every vendor's seam is "anything that computes
+dates"); the standout to match is Microsoft Project's semantics with MPXJ's `MicrosoftScheduler` as
+the open oracle and Project-authored MSPDI files as golden tests; recommend a separate MIT headless
+toolkit (`schedule-engine` · `gantt-layout` · `gantt-dom` · `gantt-react` · `project-io`) that
+Solenoid binds through a Plan node family and a `chart`-socket Gantt figure. Findings that matter:
+DHTMLX 10 relicensed to MIT with readable sources (its scale manager and link router are
+vendorable); SVAR is a hand-written React mirror over a framework-free MIT store; Huly carries the
+one modern TypeScript CPM core (EPL, read-only); the consumer "auto-shift" switch dissolves in a
+pure-function model (gap = lag, typed date = SNET, manual = flag); Excel serials are already the
+zone-less day representation a scheduling engine wants. Ten author calls in the doc's § 10; the
+"no bar editing" ruling stays the default until its phase 5.
+**Revised the same day** after the author asked for an adversarial review, a sweep of online
+user pain points, and a scope: two red teams (product fit against the repo's rules; engineering
+claims verified against live sources and clones) and a ~95-source user sweep. What changed
+(`25-gantt.md` § 13): the data model is the author's Cube (nesting = WBS, Predecessors a list or
+a nested Task · Type · Lag table; the flat two-frame form is `Unnest` and the import shape), the
+figure never writes and "no bar editing ever" is no longer softened, MPXJ is a second opinion
+not an oracle and its `junit/data` is mostly binary `.mpp` (the corpus is authored on a Project
+trial), four of the sixteen rules were corrected (free slack per link on the predecessor
+calendar; a deadline moves an ALAP task; out-of-sequence progress; tenths of a minute), the
+packages live as npm workspaces inside this repo (every cited precedent is a monorepo; the
+source-scan tests and the corpus directory cannot reach a second repo), Days and Minutes are
+engine modes with an inclusive Finish on the cell, and one rule (Start = floor, Finish =
+ceiling, Deadline = flag, Manual = pin) replaces the consumer shift switch. The sweep's top
+complaint is dates moving from hidden state; the keepers are cascade, typed predecessors, a
+kept gap, flagging anchors, calendars, milestones, today line, baseline ghost, printing. Scope
+(§ 12): the spreadsheet user's and tinkerer's Gantt; not a PMO tool (no leveling, no XER, no
+bar dragging).
+
+### SESSION DIGEST (2026-09-07d — the pitch read: the Obsidian + TaskNotes surface verified, the mdbase ceiling)
+
+The author is writing the pitch copy and asked for the integration surface as it stands, verified
+against `develop` (a stale local `develop` was three days behind origin; hard-reset). The surface
+matches `node-coverage.md` § Connections & sinks and the per-item entries — nothing to correct in
+the code; the reading is the pitch's fact sheet. Doc drift fixed: the bundle doc's § What stands
+today still listed the stub note, mdbase validation, `writeBase` and the F1 seed as open (all
+landed, per the code and the 09-07b digest), and two node-coverage "Not yet" clauses (the stub
+note, Write Tasks) pointed at items that had landed in the same file. **mdbase ruling**
+(decisions mdbaseCeiling): mdbase is an optional schema beside the notes, not TaskNotes' storage;
+what stands (schema-first typing in Vault Folder, refuse-on-violation in Write Properties, silent
+fallthrough) is the whole integration — no type-file writer, no query passthrough, one clause in
+the pitch. A blended Solenoid + TaskNotes `_types/` schema is the user's to write and works today;
+untested: how mdbase resolves two types matching one glob, and whether a TaskNotes upgrade
+rewrites its shipped type file. Not-to-claim list for the copy: no `![[Note]]` transclusion on
+write (inlined; deferrals), no `/api/nlp/create`, checkbox ticks in an imported note never write
+back, nothing runs in the browser build.
+
+### SESSION DIGEST (2026-09-07c — the new nodes' formula surface + the Add menu after the bundle)
+
+**Formula surface:** of the nodes the Obsidian / Track H / C1 sessions added, only Time Zone
+Convert is a scalar function both surfaces can hold, so it now registers as `TIMEZONECONVERT`
+(the node's own `convertZone`, node↔formula agreement pinned in `timeZone.test.ts`; `timeZone.ts`
+imports the frame TYPE only, so the rete-free walk stays clean). Everything else is excluded by
+the parity rule itself, not by omission: Geocode / Weather / Holidays / Currency / Vault Folder /
+TaskNotes are sources, the Write nodes are sinks, QR Code and World Clock are figures, and
+Allocator / Schedule / Payoff Planner / Group Cost Settle are frame verbs (frames stay out of
+formulas — matricesInFormulas). Node → formula stands at 100% of in-scope leaves.
+**Add menu:** the bundle had pushed Connections to 16 flat rows (the panel scrolled) and Analyze to
+9. Connections is now sources → an Import HTML / XML pair → Write File → the keyless lookups as
+two pairs (Geocode · Weather, Holidays · Currency) → an **Obsidian** submenu holding the six vault
+nodes; the four planners moved from Analyze to a sibling **Plan** submenu (rows in, a plan out);
+Cube Input joined the literal sources in Input under Frame Input (frame accent) instead of the
+Cubes submenu; COMPLEX · LAMBDA and Append · Bind Columns pair up so Input and Table verbs stay at
+the validator's soft row max. Every new node ranks first for its obvious search word. Still over
+the soft max, unchanged: Date & Time (17 rows, five of them pack rows appended after Save Times)
+and Visuals (QR Code lands after the sub-categories) — pack placements push to the end of a
+category, so a pack leaf always trails the core rows; a fix would be an insertion policy in
+`catalogUtils`, not a catalog edit.
+
+### SESSION DIGEST (2026-09-07b — three agents: the Obsidian bundle lands, Track H, the Cube Input editor)
+
+**Obsidian + TaskNotes** is the author's adoption bet (backlog § Obsidian + TaskNotes). Landed
+across the three agents, ledger in the bundle doc's § What stands today: A (Vault Folder → cube),
+A′ (row verbs take cubes, `recordsToCube` the one rows-of-objects → cube shape), B (Write
+Properties with plan / Preview / Run + mdbase validation), C (widgets), D (Open in Obsidian, the
+graph stub note + `solenoid:` backlink), E (vault watch), F (TaskNotes node: tasks / calendar /
+stats; Write Tasks), F6, I, J, R5, the Weather and Holidays nodes, the headless `run-graph`
+seam (`FsProvider` + `--vault` / `--tasknotes` / `--run`). Seeds: vault-as-a-table,
+kitchen-remodel-tasknotes, garden-dashboard, which-task-next. **Track H**: Payoff Planner (H1),
+Group Cost Settle (H3), the hours allocator seed (H3.5), Schedule (H6) over a tasks CUBE — the
+author's ruling that nothing is designed around an in-cell string list. **Cube Input** is the
+fourth literal source; its popup edits every level in ONE window (drill, never a popup above a
+popup), and List Input got the same popup (subsystem-invariants § Literal input editors).
+**Review pass** (author: "so much added, all three go and review"): the error guard now passes a
+THROWN SolError through with its code (a Filter on an empty frame read `#ERROR! [object Object]`);
+the Schedule catalog copy caught up with list-cell Predecessors; seed note copy fixed
+(trip-split's escaped newlines, remodel-gantt's repetition). Peers' findings: be stripped agent-speak from four demo notes, made Vault Folder's folder the same subfolder dropdown Write to Obsidian uses, and the stamp (Link to graph) is now OPT-IN by the author's ruling (Preview names the `Solenoid/<doc>.md` stub when on); fe folded doubled parentheticals in Schedule / Allocator socketDocs, made Payoff's order picker a SegToggle, kept the chip on an empty Frame Input, and renumbered the seeds into group bands (Obsidian right after Start here). Open for the author: the Cube Input editor commits per cell while Table / Frame Input hold a draft with Save.
+
+### SESSION DIGEST (2026-09-07 — Obsidian bundle 24 item A: Vault Folder → Cube)
+
+A **demo vault** (`demo-vault/`, committed) is the single-source fixture + the author's eyeball
+vault: an mdbase collection (Projects, list + nested-milestone cells), a plain Notes folder typed
+via `.obsidian/types.json` + guesser, a daily-notes folder, TaskNotes-shaped tasks, People link
+targets, one Bases view, wikilinks/embeds/tags. The pure-core tests read it directly (no
+`tests/fixtures/vault/` mirror). **Item A shipped:** `vaultCube.ts` `notesToCube` → ONE cube, a
+row per note: the Bases `file.*` built-ins + the frontmatter union; scalars typed, lists as list
+cells, rows-of-objects as nested frames. Typing per key mdbase → `.obsidian/types.json` → guesser
+widened across rows (`mdbaseTypes.ts` via the new `yaml` dep, `obsidianTypes.ts`, `vaultTypes.ts`);
+ISO datetimes upgrade to fractional serials in the reader (kept local, noteFrontmatter untouched).
+R3 `dateFromName` parses the file name into the `date` column; `dailyNotesConfig.ts` gives its
+default format. `VaultFolderNode` (first cube-emitting connection node, Connections menu): desktop
+-only local read (no C2 network gate), sync `data()` + a background read that walks up for
+`mdbase.yaml`/`_types`, reads `.obsidian/types.json` + `daily-notes.json`, calls notesToCube;
+per-node vault chip. `statVaultFile` bridge + `fs:allow-stat` / `.yaml` read for created/modified +
+mdbase schemas (architecture.md desktop note). Left: the "Your vault as a table" seed (waits on
+fe's A′ so the cube can Filter/Sort). Sequenced with fe (A′) and the Lead (F TaskNotes) on develop.
+
+---
+
+## Sweep 2026-09-07b — session digests 2026-09-04c → 2026-09-06b (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-06b — three agents: exports fixed, C1 done, the 1.4 walk finished, H6 built)
+
+Lead + two peers (`agent-coordination.md`: worktrees `be` / `fe`, one tsc/vitest at a time via the
+board's test lock). **Obsidian export bugs (author-reported):** the vault chart PNG was blank and
+the webpage export's Charts block empty because both captured a card's FIRST/largest `<svg>` — the
+`solenoid-node__frame` border overlay, which paints nothing off-canvas; one `nodeChartSvg()`
+(`canvasCapture.ts`) skips frame SVGs and glyphs, and the vault raster scales to ≥640px wide. A
+lambda ref exported as `[object Object]`; `lambdaToMarkdown` (`obsidianMarkdown.ts`) emits the
+Report's `f(params) = body` as `$$` math (via `formulaToLatex`) + a where-legend, inline-code
+fallback. **Import Obsidian Note:** the picker rows collapsed to dots under a long vault (flex
+column + overflow:hidden → min-height 0) and the picker overflowed the fixed-height card; rows are
+`flex:none`, the picker replaces the body while open and its list is a shrinkable scroller.
+**Off-app links** navigated the desktop webview away with no way back: `externalLinks.ts` (a
+capture-phase document click guard installed by App) hands every off-origin http(s)/mailto link to
+`openExternal`. **Build Cube numeric keyboard:** `ExtensibleInputs` fell back to the number field
+for any non-text, non-wire-only row; a wildcard row is now wire-only unless the node opts into
+`autoLiterals` — Build Cube / Cube Columns opt in (a typed cell may be number or text).
+**C1 widget bundle complete** (be): Holidays, Time Zone Convert, World Clock, Currency (FX, unit
+forwarded the Convert way), QR Code (`qrcode` dep, lazy) beside Weather + Geocode; Garden
+Dashboard seed pending. **fe:** table popup footer type-aware stats; docked FCs recenter inside a
+drill-in (`repositionDockedFor` + `swapRepositionDockedSlot`); per-element mixed-unit trig (D7:
+a tagged cell in its own unit, a bare cell follows the node's angle mode). **The 1.4 walk is
+finished** (D9–F6 + Track H ruled; Call column + Track H headings; deferrals: D9, D10, E1, E3,
+F1–F4, H7, drill-in drawn cables). E4's premise was outdated (op cards already reshape sockets;
+packs don't). **H6 Schedule** built by the lead: `scheduleCpm.ts` (pure CPM in working-day index
+space) + `nodes/schedule.ts` + `remodel-gantt` seed — see `node-coverage.md`. Author then:
+"go nuts with the Obsidian integration as planned" — be takes A (Vault Folder → Cube) after the
+Garden seed, fe takes A′ (row verbs take cubes) then B (Write Properties) after D2. Then (author,
+2026-09-07): the Obsidian + TaskNotes integration "is going to be our user adoption breakthrough"
+— promoted to THE flagship track (`backlog.md` § Obsidian + TaskNotes; a demo vault at
+`demo-vault/` is the fixture set AND the author's eyeball surface). Lead built on develop:
+**TaskNotes** feed node (F: Tasks cube / Calendar frame / Stats, `taskNotesApi.ts`), **Write
+Tasks** sink (F6, plan frame + Preview + Run), the **which-task-next** seed (F4), **Write to
+Obsidian modes + templates** (C: overwrite | append | block via `managedBlock.ts`; `{{date}}`
+`{{daily}}` `{{name}}` `{{doc}}` via `nameTemplate.ts`, a `date` input, live name preview),
+**Open in Obsidian** (D first half: `obsidianLinks.ts`, opener capability widened to
+`obsidian://**`), **Import Note reload cadence** (I) and the **midnight rollover** (R5,
+`volatileDates.ts`). The Mermaid card now collapses (it was `collapsible={false}`) and a
+collapsed Display holding a diagram shows a Diagram chip (`DiagramChip.tsx`; click re-expands).
+Then: **Schedule became cube-in/cube-out** (author: "no in-cell string lists — that is what
+the cube is for"; Predecessors a list cell, `recordsToCube` in `frame.ts` as the shared
+rows→cube shape, a Note's frontmatter rows with list values emit a `cube` socket, the Remodel
+seed's tasks authored as such a Note) and **J the headless seam** landed (`fileBridge`
+FsProvider + `run-graph --vault / --tasknotes / --run`, `run-graph-vault.test.ts` over the
+demo vault). be's Vault Folder → Cube node merged (08ef0dbe); B moved to be to unstick them
+while fe wires A′. Then A′ merged (bfc010a3), **E the vault watcher** landed (`vaultWatch.ts`),
+and the author asked for a **Cube Input** ("vs a standard cube input" — with drill-down into the
+OTHER popup input editors, and a List Input editor for coherency): `CubeInputNode` + the cube popup
+as an editor bound to a records path (`cubeEditCell.tsx`, `literalEditors.ts`), List Input's chip
+→ the table popup as one raw column; the invariant is `subsystem-invariants.md` § Literal input
+editors. The Remodel seed's tasks are now a Cube Input and its critical-path Filter is back (A′).
+D's stub note + `solenoid:` link landed (be, 10a9f4c5); be is on mdbase validation for B; fe on
+the computed column over a cube (then the F1 seed). Lead: **Track H** — the `team-hours` seed
+(Allocator copy loosened to "range"), **H3 Group Cost Settle** + the `trip-split` seed. **H1
+Payoff Planner** + the `debt-payoff` seed landed too — Track H is complete (H2/H4/H5 stay
+uncalled, H7 waits on a calendar). Author: the cube editor's nested cells must DRILL, not open a
+popup above a popup — done (editable list / table levels on the breadcrumb); checked on a phone
+viewport. **Vault Folder eyeball checklist** (be, for
+the author, Settings ▸ Obsidian → `demo-vault/`): add a Vault Folder → the vault chip defaults from
+the setting; blank folder → Refresh → column preview lists path/name/folder/ext/size/created/
+modified/tags/links/embeds/date then frontmatter keys; folder = Projects → typed columns (mdbase:
+priority number, due date, tags list, milestones nested); folder = Notes → "Deep Work" rating
+number, read checkbox, dates (types.json); folder = Daily → the date column from file names, sleep/
+weight numeric (R3); glob `2026-09-0*` narrows; Include body ON adds `body`; created/modified are
+real dates; auto-refresh 1 min + manual Refresh work; on web / no vault: the desktop-only hint, no
+red.
+Also: fetcher cards name their data source; the remodel seed is Remodel (Gantt) fed by a
+Holidays node; `yaml` (mdbase schemas) + `qrcode` deps added on the author's word; CUMIPMT /
+CUMPRINC sign bug fixed with D2 (author: no op-picker exception). Queued by the author: collapsed
+pill hover preview, Mermaid node can't collapse, Display+Mermaid collapsed chip.
+### SESSION DIGEST (2026-09-06 — C1 widget nodes, all six shipped)
+
+Built the rest of the Tier-1 widget bundle (`v2.0/16-widget-nodes.md`) on the Weather/Geocode
+pattern: **Holidays** (Nager.Date; provider `holidaysProvider.ts`, frame + Dates list feeding
+NETWORKDAYS/WORKDAY + days-to-next, region filter applied per-compute like Geocode's pick),
+**Time Zone Convert** + **World Clock** (pure Intl in `timeZone.ts`, DST read at the instant;
+Timesavers ▸ Date & Time), **Currency/FX** (Frankfurter; `fxProvider.ts` registers every
+currency code with the display bridge and the node authors the target currency on Converted via
+`applyFcUnit` — Convert's path, per firstClassUnits), **QR Code** (`qrCode.ts` payload+SVG;
+`qrcode` imported lazily in `data()`, ImageValue out the chart socket; Timesavers ▸ Output ▸
+Visuals). Fetchers sit beside the Connections nodes and ride the C2 gate; pure ones are Timesavers
+pack entries (custom-logic `create:` nodes). Each has a fixture-tested pure provider; the ISO-date
+providers are sanctioned in `sourceInvariants`. **Garden Dashboard seed** (`garden-dashboard.json`,
+generator `scripts/gen-garden-dashboard-seed.cjs`): Geocode→Weather→split at TODAY→total rain each
+side→Report+Alert; SKIPPED in seedsCompute (needs live network) and NOT yet baked with tune-seeds
+(no worktree dev server — geometry is generator-computed to pass seeds.test, wants a tune pass).
+Open author calls (Lead surfacing): FX time-series/Chart frame (dropped v1), TZ From/To pickers vs
+text, TZ datetime default on the card. See `backlog.md` § Sources.
+
+### SESSION DIGEST (2026-09-06 — Obsidian vault bundle, docs only)
+
+Author ask: a tighter Obsidian integration, not a plugin, then "explore TaskNotes and mdbase by
+the same developer". Outcome is one proposal bundle, `v2.0/24-obsidian-vault.md` (Arc 9 in
+`2.0-plan.md`; row in `v2.0/README.md`); no code. The reading: the author's ecosystem
+(TaskNotes 5.0-beta, the mdbase v0.3 spec + native `mdbase` binary + `mdbase-obsidian`) is
+converging on typed markdown collections whose query execution is deliberately left to companion
+tools — Solenoid is that companion. Keystone item is a Vault Folder → Frame connection node
+(columns typed from mdbase `_types` when present), then Write Properties with a dry run.
+Constraints found on the way and recorded in the bundle: the desktop fs allowlist is by
+EXTENSION (`.md/.json/.csv` only), the vault root is an app-wide setting so graphs don't travel,
+the Import node is a NoteNode not a connection node, ISO datetimes in frontmatter land as strings.
+`deferrals.md`'s Obsidian follow-ups now point at the bundle. The author has no strong opinion on its calls, so the bundle's § Recommendations are the
+build defaults (per-node vault, typing mdbase → `.obsidian/types.json` → guesser, YAML patch
+for properties + the API for tasks, feed before H6). Follow-ups on the author's "do everything":
+**H6 Schedule** is specced to the row in `1.4-plan.md` (Kahn order, forward/backward pass on
+serials, an eager `FrameValue → FrameValue` verb like `decisionMatrix` — no `FrameOp`, so
+`oneVerbCorpus` does not apply; still Track-H-gated), and **Import Obsidian Note stays a
+NoteNode** (bundle item I) — it borrows `refreshMinutes` + the watcher hook instead of becoming
+a connection node, because its value is the per-key sockets + document output a frame can't carry.
+**Cube/Frame audit** (author ask): frame columns are number/string/logical/date only, so
+list-valued properties and nested objects had nowhere honest to go — readers now emit `frame`
+(flat: lists joined, nested as raw text) AND `cube` (list cells, nested frames), writers take
+`cube` and write a nested frame as a `- {k: v}` block (lossless round trip), the Tasks provider's
+cube nests `timeEntries`/`complete_instances` (the separate time-entries provider is gone —
+Unnest / Cube Rollup), multi-project Schedule is a by-row composite over a Nest Join cube, and a
+write sink's preview is a `plan` frame output, not a status string. Then ("keep going"): H6 gains a
+`gantt` Mermaid-source output so Write to Obsidian renders a Gantt natively with no figure code;
+F2 gets an Alert on overload; item **J headless seam** (`run-graph --vault / --tasknotes /
+--run <sink>` — the CLI's explicit flag is the Run button's headless equivalent; the one
+`sinkRunButtonOnly` wording change) makes the Obsidian-triggered recompute (G's reverse path) real. Author: "Vault Folder → cube instead? properties can be
+lists" — adopted: readers emit ONE `cube` (the `frame` twin output is gone; the lattice already
+refuses cube → frame), then the author asked what Flatten was FOR — "to reach the 39 frame-only
+verbs" — so A′ is now **the row verbs take cubes** (Filter / Sort / Head / Distinct / Get Row /
+Get Column / Decision Matrix / H6 via `cubeIn`, output adopting through the passthrough
+declaration, one `selectCubeRows` helper on the eager JS branch); no Flatten node, and the only
+list-to-text join left is Write File's CSV mode. Sequenced first: a cube nothing can filter is
+not a product. A cold reviewer pass then fixed what the drafts left behind: the reader
+is an EAGER cube (no `FrameRef` — nested cells never reach Polars), Filter gains `contains` /
+`is empty` on list cells because "notes tagged x" is the vault query, `tags` is the property
+not a built-in, the write plan is `pending` until Preview reads the notes, a `%%` in managed-
+block content is refused rather than invisibly escaped, and the provenance stamp is opt-in on
+property writes. **Monte Carlo corrected** against `composite.ts`: the run mode samples SCALAR
+ports and summarises scalar outputs (mean ± sd) — it cannot sample a column per row, and
+by-row iterates a frame's rows or a list (not a cube) into a plain series per port; F2 is now
+analytic (PERT variance sum + `NORM.DIST`), per-row uncertainty proper waits on bundle 12 #21,
+and multi-project Schedule is by-row over a Projects frame with Filter inside + Build Cube to
+stack the series. **Bases syntax read** (author ask): A's built-ins become the `file.*` set
+(`ext · size · tags · links · embeds` added, content+frontmatter tags merged, `backlinks`
+skipped as a Filter on `links`), Filter's list ops become Bases' `contains / containsAny /
+containsAll / isEmpty`, the footer's missing stats (Range, Stddev, Earliest/Latest,
+Checked/Unchecked) went to the backlog, and the "never write `.base`" call is reversed into B's
+`writeBase` toggle — a `![[x.base#View]]` inside a managed block is a LIVE table in the note.
+Not taken: the formula language, view types, reading a `.base` as a query. Last
+additions ("anything else?"): the provenance stamp is a WIKILINK to a graph stub note
+(`Solenoid/<doc>.md`) so backlinks answer "which graph wrote this"; B registers a new key's type
+in `.obsidian/types.json` and writes note references as `[[links]]`; Write to Obsidian gets a
+`{{today}}` file-name template for daily notes; "graphs as notes" (text form in the vault) is
+item K, HOLD until the save-format freeze. **Relative dates** (author ask, incl. `{{today}}`): section R —
+built ON `relativeDatesOptIn`, not against it. Obsidian's `{{date:FORMAT}}` is the template
+grammar (offsets `+7d` are ours), resolved against a writer's optional `date` input or the
+wall clock at Run; `{{daily}}` reads `.obsidian/daily-notes.json`; Vault Folder parses a `date`
+built-in out of daily-note names (journaling as a time series); "next 7 days" is `TODAY()+7` in
+an Expression, Filter's value stays literal; a midnight timer calls `requestRecalc()` so an open
+dashboard rolls the day and the existing "day moved" Alert fires; B bumps `dateModified` /
+mdbase `updated` when a note has one. Final pass: the bundle rewritten as OUTCOMES (563 → 396 lines) per
+the doc rule — build history dropped (it is here and in git), every decision and reopen-guard
+kept, plus a § Rejected shapes relapse guard and § Defaults standing in for author calls. Follow-up ask ("what about TaskNotes itself?") grew item F
+into six sub-items — the ranking is by what Bases formulas cannot do (dependency traversal,
+Monte Carlo, pivots), read via the API so field mapping stays the plugin's job.
+
+### SESSION DIGEST (2026-09-05 — free-drawn cables)
+
+**Drawn cables landed** (author-ordered): free-drawn annotation curves, point by point, through
+the wired cables' three drawers, with their own shape / ends / width / head size / color and a
+per-point 45° angle dial. Spec: `subsystem-invariants.md` § Drawn cables; term: `glossary.md`.
+
+- Two rulings: the dial steps 45° only (a 15° step was proposed and refused); the mobile action
+  bar gets NO draw button (one shipped and was removed). Reach is the Cable group toggle,
+  Insert → Draw a cable / the palette, and `D`.
+- Fixed after review: handle drags panned on touch (RF's d3 pan listens to native events, so
+  the grabbable parts carry `nopan`); the stroke ran under the head to the tip (it now stops at
+  the base); drawing recorded no undo entry, so Ctrl+Z deleted the cable with no redo (edits go
+  through `commitDrawn` → autosave + history); finishing left the tool armed, so the next click
+  on the new cable placed a point (it now disarms and selects the cable).
+- **Touch resize grips resized one step and stopped** (pre-existing, every card surface):
+  RF's `NodeResizeControl` rebinds its d3 drag whenever a callback prop changes identity,
+  and `FlowResizeGrip` passed per-render arrows; each resize step re-rendered the card and the
+  rebind dropped the touch gesture (a mouse's move listener lives on the window and survived).
+  The wrapper now keeps stable callbacks behind a ref. The grip is also in `flowTouchPan`'s
+  control list, so an UNSELECTED card's grip resizes on touch as socket.css promises.
+- **Popup and text-field grips died a few px into a touch drag** (pre-existing): neither carried
+  `touch-action: none`, so the browser reclaimed the finger for scrolling and fired
+  `pointercancel`. Both now set it and take pointer capture.
+- Open, pre-existing: an undo that lands on the load baseline re-records "Moved 2 nodes" from
+  the post-load settle and truncates the redo stack.
+
+### SESSION DIGEST (2026-09-04c — three agents in worktrees; the finance merges land)
+
+Three Opus agents (Han = Lead on `develop`, Chewie and Lando on their own branches in git
+worktrees, merged by Han); the author remote, one docs point per turn.
+
+**The 1.4 cut walk (author, one item per turn, from the phone).** Track A: A1 pin, A2 mute, A4
+cone brush DEFERRED; A0 badge pass dropped with them; A3 peek PROMOTED as a hover peek (landed);
+A6 Optimize run mode IN but LATER (author's go). Track B: B1 trimmed + landed (gallery size
+presets, indented List view, `#field` title row, clamp; cover image / hide-empty / grouped lanes
+out); B2 both halves PROMOTED + landed (constrained entry; Chip style on the popup column row AND
+the FC — enum column type stays 2.0); B3 trimmed + landed (frozen header via the popup menu with
+the summary-footer row leaving Settings; record arrow-key nav; lightbox + chip hover out); B4 =
+the column picker, landed (card-side format/unit out, λ view-as deferred). Track C: C1 widget
+nodes + C2 network permission PROMOTED (C2 landed; Geocode landed; Weather in flight; the four
+sub-calls default to the plan's recommendations); C4 embed deferred; C5 landed. Track D: D1
+Option A withdrawn on step-0 findings (Option B = the author session); D2 payment breakdown
+PROMOTED (in flight), paired-list aggregate still waits; D4 = incremental improvements only, no
+big change to the error surface; D7 cube popup controls deferred (the author questions typed cube
+columns), mixed-unit trig IN (open); D8 deferred (sockets untouched). **The walk stopped at D9**
+(AI palette re-enable) — resume there: D9, D10, D12, D13, Track E (E1, E3), Track F (F1, F2, F4),
+Track H, G. Every ruling is in the `1.4-plan.md` table's Call column; promoted items are backlog
+lines; deferred ones sit in `deferrals.md`.
+
+**Geocode / Weather could not be wired to each other (socketRows, fixed 2026-09-04).** Both
+widget cards rendered a bare `NodeShell`, which lays out OUTPUT dots only and gives an unrowed
+socket no `top` — so Geocode's `lat`/`lon`/`timezone`/`label` stacked on one pixel and Weather's
+declared `lat`/`lon` inputs drew no dot at all. Both now follow the widget pattern the Astro
+cards set: `hideOutputSockets` + `InlineInputs` for the wireable inputs (Geocode's Place is a
+string socket row, Weather's Lat/Lon are number rows with their typed fallbacks) +
+`InlineOutputRows` for the labelled outputs, with `daily` on its own `MeasuredSocketRow` showing
+its day count. `WeatherNode.cached` is public so the Now rows can read it; Geocode takes the wide
+card (`--geocode`, matching Weather) because an IANA zone and a full match label overrun 180px.
+New rule socketRows + `socketRowCoverage.test.ts` closes the completeness half — it walks the
+catalog, pairs each class to its component through `nodeRegistry`, and fails any side carrying
+2+ sockets with no measured row. **Author eyeball:** add both, type a place, drag Geocode's Lat
+and Lon into Weather's — the Now/Condition/Daily rows fill.
+
+**The three finance merges, released by the author's Set-card verdict.** Discount Security
+(TBILLEQ/TBILLPRICE/TBILLYIELD, DISC/PRICEDISC/YIELDDISC/INTRATE/RECEIVED, PRICEMAT/YIELDMAT),
+Accrued Interest (ACCRINT / ACCRINTM as a Periodic / At-maturity toggle, the Irr precedent) and
+Bond Pricing (PRICE/YIELD + the four ODD* ops). Each card's sockets follow a per-op key table
+after the shared settlement/maturity pair; the switch prunes departing cables first
+(onePrunePath), keeps shared inputs' cables and literals, and reorders sockets per the new
+op. One mechanism for all three: `keysDroppedBy` + `reshapeInputs` (`finance.ts` § Spec-table
+op cards) and `makeSpecOpComponent` (`components/specOpNode.tsx`). Side effects: PriceDisc and
+BondPrice no longer show a dead price socket beside their yield; the odd-coupon date is two
+sockets (`firstcoupon` / `lastinterest`) because they are different facts; the T-bill and
+ACCRINT math moved to `financeOps` as kernels (`tbill`, `accrint`). Ten + two + six catalog
+leaves collapsed to three, each carrying its Excel equivalents in `nodeExcel`; old saves of the
+merged types load as Placeholders (noBackCompat). **Author eyeball:** Finance > Other has
+Discount Security + Accrued Interest, Finance > Bonds has Bond Pricing; switch ops and watch
+the sockets reshape with the shared ones keeping their cables.
+
+**The FC `—` inherit pick (Lando, landed 7f904f54 + 11950fe0).** Every family's primary style
+dropdown gets a leading `—` ("Inherit the upstream format"): the FC carries the upstream display
+cluster through and authors its unit alone, so a 2nd FC docked only for a unit no longer resets
+the style to Auto. `inheritFormat` flag + `FormatControllerNode.resolveAnnotation`, which
+`makeAnnotationResolver` calls in place of `annotation()`. Enforced in `unitFlowAnnotation.test.ts`;
+spec in rules.md formatFlowsDownstream + format-model.md. **Author eyeball:** dock two FCs, set
+the 2nd's style to `—` + a unit → upstream style survives, muted `← Decimal · 3 places` hint shows.
+
+**F5 — memory heap-snapshot investigation (Lando; `scripts/heap-probe.mjs`, CDP on a worktree dev
+server).** Finding: **no product memory leak; the "high memory for a light app" is mostly a
+DEV-build artifact.** The light seed's real footprint is ~20MB.
+
+| getting-started | JS heap | DOM nodes | listeners |
+|---|---|---|---|
+| dev (`vite`, :5199) | 49.1 MB | 2733 | 1932 |
+| prod (`vite build` + preview) | **20.1 MB** | 2575 | 1918 |
+
+Same DOM/listeners; the ~29 MB dev gap is unminified source + per-module `code` objects + React
+19 dev perf-track marks. Other findings:
+- **No teardown/rebuild leak.** 5× full reload (Ctrl+Shift+L) of chart-showcase: heap 67.6→68.3 MB,
+  DOM flat 5315, listeners flat 8095, snapshot detached-DOM = **0 MB**. Node clones / HIC atlas /
+  React Flow internals all release on teardown.
+- **Per-doc tabs are bounded**, not a leak. Seeding a doc 5× (5 library tabs): +1.3 MB total
+  (~0.25 MB/tab = the serialized `SavedGraph` JSON), DOM/listeners flat — only the current doc
+  renders; background docs keep no DOM/listeners resident.
+- **Where the bytes are** (chart-showcase snapshot, ~140 MB incl. shared): `ExternalStringData`
+  66 + `string` 26 + `code` 18 = ~110 MB (78%) is the dev bundle's source/code; `FiberNode` 1.9,
+  `Object` 4.1, arrays 7 are the modest runtime. `PerformanceMeasure` grew 3.3→5.7 MB across
+  reloads = React/Vite dev perf-track entries (no `performance.measure` in src), dev-only.
+- **DOM at scale** is frame/table cards, not node count: personal-finance is 14.5k DOM at 82 MB.
+  The `onlyRenderVisibleElements` virtualization lever stays the 2.0 canvas-at-scale item; the
+  table/cube popup already caps at 1000 rows.
+
+Proposal for the author (no code changed): the app is memory-clean — measure prod, not dev, if a
+real number is wanted. Nothing here is a contained fix; F5's output is this finding.
+
+**E2 — compositeToolbarReroute audit + close (Lando).** Walked every top-toolbar / menu-bar /
+mobile-bar / keyboard verb with a drill-in open. Already correct via the seam: keyboard (the
+drill-in installs its own instance over its refs, MAIN stands down), undo/redo (per-surface
+history), Tidy/Cleanup and select/unselect/Ctrl+A (`swapArrangeSlots` / `swapSelectionSlots`
+already swap them), add-node placement + copy/paste + isolate (`getActiveEditor/View`), Navigator
++ Minimap + fit/zoom (`getActiveView`), the Delete KEY (RF per-surface `onBeforeDelete`). The ONE
+genuine gap: the keyboard-less **delete button** (mobile / tablet `MobileControls` /
+`TabletActions` → `canvasCommands.deleteSelected()`) went to MAIN because the drill-in swapped
+selection + arrange but not delete. Fixed by adding `swapDeleteSlot` and having the drill-in swap
+`deleteSelected` → its own level (restored on unmount) — the existing pattern, not a rebuild.
+Pinned by `canvasCommandsSwap.test.ts`. Known limitation logged (backlog § Composites): docked FCs
+inside a drill-in don't recenter (`repositionDockedTo` is a no-op) — component reflow, out of E2's
+verb scope. `compositeToolbarReroute` flagship closed (2.0-plan) + its decisions pointer; E2 marked
+done in the 1.4 table.
+
+**Author ruling (2026-09-04c) on the FC `—` pick with nothing upstream:** it falls back to the FC's own
+style, and that is correct — the FC's DEFAULT is Auto (a real pick), the frame column row's default
+is blank (inherit); the two defaults work together. Not a bug; don't reopen.
+
+**B1 (trimmed) — Record gallery size preset + List view (Lando).** Two lifts on the one Record
+node (`nodes/visual.ts` + `chartCards.tsx`): (a) a `cardsize=s|m|l` OPTIONS key (default m) read
+in `data()` and carried on `RecordPayload.size`, scaling the gallery track band only (S 130/110/190
+· M 170/140/260 · L 230/190/340); card/board/list ignore it. (b) a fourth `RecordOp` "list" — one
+indented outline block per record, the title field on its own line and the trailing fields as
+"label: value" rows beneath, drawn text-only with per-line ellipsis. WHICH field is the title lives
+behind ONE seam, `titleIndexFor(fields)` in `chartValue.ts` (today the first field; the per-card
+`#field` title-row marker plugs in there and every view follows). List reuses the gallery row build
+(cap `RECORD_CARD_CAP`, no row/by socket). Catalog description + `cardsize` socketDoc updated. Pinned
+by `recordViews.test.ts`. Then title row + wrap/clamp (author promoted both back IN 2026-09-04c):
+a `#name` layout marker (one parser change in `parseRecordLayout`) flags a field `isTitle`, drawn
+big + label-less in every view; `titleIndexFor` reads the flag and still falls back to field[0].
+A `clamp=on` option line-clamps long gallery-tile values to 3 lines (the popup shows the whole
+card). Pinned by `recordViews.test.ts`. Still OUT of the trim: cover image, hide-empty, grouped
+gallery / lane summaries. Follow-through (Done line): the record-cards seed gained four exhibits
+(List view, a `#`-marked title, `cardsize=s`, `clamp=on`), each a group with its Note inside off
+the shared Parts frame (a new long Notes column feeds the clamp exhibit), re-baked with
+`tune-seeds.mjs` (given a `URL`/`CHROME` env so a worktree tunes its own edited seeds against its
+own dev server); catalog description + `#`/`cardsize`/`clamp` socketDocs carry the four lifts.
+
+**B2.1 — constrained entry (Lando).** Editing a TEXT cell in the table popup (grid or Form view)
+now offers the column's distinct existing values as a `<datalist>`; anything new still types.
+The list is a pure helper `distinctColumnValues(cells, isExcluded?)` in `frameVerbs.ts` (first-seen
+order, blanks + error codes excluded), fed from the grid text and gated to `string` columns only
+(logical/date/number keep their own entry). No new commit path — a datalist pick populates the
+same `<input>`, so it commits on Enter/blur exactly like a keystroke; no `FormatAnnotation` field.
+Pinned by `constrainedEntry.test.ts` (the distinct list; a suggestion coerces identically to a
+typed value). Renders one `<datalist>` per text column in the active view's scroll container.
+
+**B3 — table popup polish (Lando, two commits).** (1) The always-on sticky header + row-number
+first column became a toggle: `settingsStore.tablePopupFrozen` (default on, persisted, NOT in the
+Settings panel), flipped from `PopupOverflowMenu` beside the summary-footer item; an `--unfrozen`
+class reverts the sticky cells to static. Same commit removed the "Table popup summary footer"
+row from the Settings panel — popup chrome is set in the popup (the author's rule). (2) A Record
+CARD popup now pages with ←/→ (the on-screen prev/next by keyboard): `ChartPopup` binds the arrows
+to the existing `stepRecordRow`/`recordNavTarget` (recordNav.ts, same path the Display pager uses),
+swapping the fresh chart into the popup snapshot without closing; `canvasKeyboard` already stands
+down under the `.sol-popup-overlay` (modalGuard), so the arrows reach only the popup. Pinned by
+`recordNav.test.ts` (the pager gate: card + >1 row + unwired Row, else none).
+
+**C2 — per-document network permission (Lando).** A FOREIGN document (opened / imported) fetches
+nothing until the user allows it — the sinkRunButtonOnly mirror. Model: `importAsDocument` stamps
+`meta.foreign` at adoption; the grant is `meta.networkAllowed`, both persisted in the sidecar and
+held per-open-doc by `docMetaStore`. Own docs (template/blank/saveAs) carry no `foreign` → never
+gated. Gate: `connectionStore.networkAllowed()` = own || `settingsStore.alwaysAllowNetwork` || the
+per-doc grant; the connection fetch triggers (`WebSourceNode.data`, the import `fetchParsed`) call
+`requestNetwork(id)` BEFORE `fetchText` — blocked → status `"gated"`, zero network. The first gated
+recompute pushes ONE sticky notice ("connects to N services. Allow?") with an **Allow** action
+(`noticeStore` gained an optional `NoticeAction`); after dismissal the way back is the connection
+card's hollow "Waiting for permission" dot and Settings ▸ Data ("Network for this document" + Allow,
+plus the global "Always allow network"). Allow → `docMetaStore.setNetworkAllowed(true)` (persists) +
+`refreshAllConnections`. LocalFile (disk) is not network → not gated. Pinned by
+`connectionStore.test.ts` (own never gated, foreign gated until allowed, always-allow bypass).
+
+**C1 widget nodes — Geocode (Lando, first of the bundle).** Place name → lat / lon / IANA timezone /
+label, via Open-Meteo geocoding (keyless, CORS-open). Reuses the WebSource fetch pattern verbatim
+(sync data() + one background fetch per place through connectionStore, so it rides the C2 gate for
+free) — `geocodeProvider.ts` is the pure, fixture-tested parse. Ambiguity is a per-node pick stored
+by the match's LABEL (indexes swap cities when the API reorders on refresh), default = top match.
+Files: provider + `GeocodeNode` (connection.ts) + `GeocodeComponent` (ConnectionNodes) + catalog
+(Connections) + registry; `pickedLabel` serialized, `matches` transient. Pinned by
+`geocodeProvider.test.ts`. Next: Weather (consumes it; brings the garden-watering seed), then
+Holidays, TZ/QR, FX last (FX recorded IN for the bundle per Han).
+
+**D1 — formula-surface allowlist: Option A DROPPED on step-0 findings (Chewie).** Option A
+(one guard before `broadcastCall`: an undeclared FX name refuses ARRAY args) was greenlit on
+the proposal's premise that only "a handful" of undeclared names broadcast fine. Step 0
+refutes it. Method: enumerate `FX_FUNCTION_NAMES` minus (declared `EXCEL_IMPL_META` ∪ internal ∪
+legacy-alias ∪ frame-verb ∪ node-verb ∪ eliminated ∪ non-resolving), then classify each
+survivor by evaluating `NAME(x)` with `x=[1,2,3]` through `compileEvaluator`. Of **174**
+undeclared names: **127 broadcast a CLEAN element-wise array today** — the guard would refuse
+every one (`COS({1,2,3})` → SolError instead of three cosines), a large regression of correct
+behaviour, not a handful. 33 are `RANGE_FUNCTIONS` (SUM etc.) that never reach the guard. Only
+14 error on the one-arg probe, and that set is arity-contaminated (multi-arg fns flagged only
+because the probe passed a single arg). The genuinely broadcast-WRONG set can't be separated
+mechanically — arity confounds any uniform probe — and that separation IS the Option B
+per-name audit. **Author's call (via Han, 2026-09-04c): Option A does NOT ship; Option B (D1b)
+is the path, author-present.** No code landed; the proposal keeps its top note pointing here.
+
+- **IMPROVE (the Option B starting set — 14, VERIFY each before declaring):** ACOTH, CLEAN,
+  CODE, CONFIDENCE.NORM, CONFIDENCE.T, ERROR.TYPE, IPMT, ISPMT, NPER, PDURATION, PEARSON, PMT,
+  PPMT, UNICODE. Caveat: these merely errored on a ONE-arg list probe. PMT/IPMT/PPMT/NPER/
+  PDURATION/ISPMT are multi-arg financials that almost certainly broadcast fine with real args
+  (probe artifact, not a real hole); CLEAN/CODE/UNICODE/CONFIDENCE.*/PEARSON/ERROR.TYPE/ACOTH
+  are the names actually worth an author look. So the real hole is a handful — but a DIFFERENT
+  handful than the surface count implied, and only the audit tells which.
+- **REGRESS (127 — broadcast correctly today, Option A would wrongly refuse):** ACCRINT, ACOT,
+  ARABIC, ASINH, ATAN, BASE, BESSELI, BESSELJ, BESSELK, BESSELY, BIN2DEC, BIN2HEX, BIN2OCT,
+  BINOM.DIST.RANGE, BITAND, BITLSHIFT, BITOR, BITRSHIFT, BITXOR, CEILING, CEILING.MATH, CHAR,
+  COMBIN, COMBINA, COS, COSH, COT, COTH, COUPDAYS, CSC, CSCH, CUMIPMT, CUMPRINC, DB, DDB,
+  DEC2BIN, DEC2HEX, DEC2OCT, DECIMAL, DEGREES, DELTA, DISC, DOLLARDE, DOLLARFR, EFFECT, ERF,
+  ERFC, EVEN, EXP, FACT, FACTDOUBLE, FALSE, FIXED, FLOOR, FLOOR.MATH, FV, FVSCHEDULE, GAMMA,
+  GAMMALN, GAMMALN.PRECISE, GAUSS, GCD, GESTEP, HEX2BIN, HEX2DEC, HEX2OCT, IFERROR, IFNA, IFS,
+  INT, ISBLANK, ISERR, ISERROR, ISEVEN, ISLOGICAL, ISNA, ISNONTEXT, ISNUMBER, ISODD, ISTEXT,
+  LCM, LOG, MROUND, MULTINOMIAL, N, NA, NOMINAL, NOT, OCT2BIN, OCT2DEC, OCT2HEX, ODD,
+  PERCENTRANK.EXC, PERCENTRANK.INC, PERMUT, PERMUTATIONA, PHI, PI, POWER, PRICEDISC, PV,
+  RADIANS, RAND, RANDBETWEEN, RATE, ROMAN, ROUNDDOWN, ROUNDUP, RRI, SEC, SECH, SIGN, SIN, SINH,
+  SLN, SWITCH, SYD, T, TAN, TANH, TBILLEQ, TBILLPRICE, TBILLYIELD, TRUE, TRUNC, TYPE, UNICHAR.
+  (IFERROR/IFNA/IFS/SWITCH/NA/TRUE/FALSE/IS* land here as probe quirks — control/predicate
+  names, not broadcast math; they too resolve their own way. The audit sorts them.)
+- **RANGE_FUNCTIONS (33 — never reach the guard, handled at the range gate; for completeness):**
+  AND, AVERAGEIF, AVERAGEIFS, CHISQ.TEST, COUNT, COUNTA, COUNTBLANK, COUNTIF, COUNTIFS, MAX,
+  MAXA, MAXIFS, MIN, MINA, MINIFS, NPV, OR, PRODUCT, SERIESSUM, STDEVA, STDEVPA, SUM, SUMIFS,
+  SUMPRODUCT, SUMSQ, SUMX2MY2, SUMX2PY2, SUMXMY2, VARA, VARPA, XNPV, XOR, Z.TEST.
+
+---
+
+## Sweep 2026-09-04c — session digests 2026-09-03 → 2026-09-04b (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-04b — backward commit review: fixes, reconciles, the input-cable regression)
+
+Walked `develop` backward from `5b3004ac` to `1fd16b6c` (the whole post-1.3 tail) for correctness
+and refactor findings; baseline and end state both `tsc` clean, full vitest green.
+
+**Input→output cable regression — ROOT CAUSE + FIX (`flow.css`).** Probed live (a puppeteer DOM
+probe, now `scripts/socket-drag-probe.mjs`): at rest the INPUT socket wrapper carries the
+pointer-catch halo (`socket.css` `[data-socket-side="input"]::before`, absolutely positioned),
+and the RF Handle reset made the Handle `position: static` — a positioned pseudo paints OVER a
+static sibling, so `elementFromPoint` on an input dot returned the classless wrapper, the press
+went to RF's node drag, and the cursor was the node's `grab`. Outputs carry no rest halo, hence
+one-sided. Fix: the Handle reset is `position: relative` (same box, paints above the halo);
+every input now starts a cable with the crosshair, an input-started drag lands on an output, and
+`socket-box-probe.mjs` (socketBox12) stays clean. React Flow itself already allowed target-first
+drags (`connectablestart` on both handle types) — the block was purely the paint order.
+
+**Fixes landed from the review.** (1) Note frontmatter type PINS now respect the value's
+dimensionality (`reshapePin` in `annotation.ts`): a pinned `strlist` on a key that becomes
+rows-of-objects no longer stringifies each row to `[object Object]`, and a scalar pin on a key
+that becomes a list no longer truncates it to its first element — the pin keeps the element
+family, the body owns scalar/list/frame; a `frame` guess drops the pin. (2) The DM criterion-key
+normalization (`critKey` / `criterionColumn`) has one home in `frameVerbs.ts`; XLOOKUP/XMATCH share
+one `spillLookup`. (3) Catalog copy caught up with the redesigns: Sensitivity's Scenarios sentence
+was still the row-per-scenario shape, Decision Matrix said nothing about the weights table, the
+Allocator listed a two-column output. (4) Chart Builder's select rows are table-driven
+(`SELECT_KEYS`, like `TOGGLE_KEYS`); the radar `color` comment no longer claims radar is one series.
+
+**Decision-matrix seed re-cut to the author's seed rule** (groups liberally, standoffs sparingly:
+a standoff ONLY pins an unwired explanatory Note to what it explains; a Note wired through its
+frontmatter exports needs none; data nodes never standoff to consumers). Dropped `weights→dm`,
+`noteScreen→join` (frame-wired) and `radar→join`; added the expanded `grp-dm` (Weights + Decision
+Matrix) and retargeted the DM note to it; 4 note standoffs + 3 groups; re-baked with `tune-seeds`.
+The backlog sweep item carries the rule.
+
+**Modal keystroke guard (`modalGuard.ts`).** The author hit Enter on the Tidy confirm opening the
+Command Palette (the confirm's capture handler prevented default but the canvas's bubble handler
+still ran). One predicate, `modalOwnsKeyboard()` — an `aria-modal` dialog / pop-up overlay root in
+the DOM, or an open palette / reference / settings / shortcuts — is asked first by
+`canvasKeyboard` (F9 excepted), the surface's Escape handler and RF's `onBeforeDelete`; the
+per-store checks those handlers each carried are gone. **Timing gotcha:** the overlay answers
+in the CAPTURE phase and closes on the same key, and React has removed it from the DOM before
+the canvas's bubble handler runs — so a bubble-time DOM check still opened the palette. The
+answer is taken by a load-time capture listener and pinned on the event (`keyUnderModal(e)`).
+Pinned live by `scripts/tidy-drift-probe.mjs` (T → confirm → Enter → no palette). Backlog item
+deleted.
+
+**Tidy converges.** The same probe presses T twice and diffs every model position: no drift on
+getting-started / table-verbs / unit-flow / decision-matrix (run while no other tune was writing
+seed JSONs — a concurrent `tune-seeds` write HMR-reloads the page and fakes drift). The optional
+convergence-loop backlog item is deleted on that evidence.
+
+**Frame shapes are declared per node (the backlog item, landed 6f41d140 by an Opus agent).**
+`nodes/frameShapeHook.ts` is the producer sibling of `passthrough()`: a node states its own
+output columns via `frameShape(outKey, ctx)` (`ctx.inputShape`, `ctx.wired`); the resolver keeps
+only the walk, the Conduit lane case and passthrough forwarding — the `instanceof` chain is
+gone. The 17 old rules moved verbatim (two dead spots fixed on the way: Append read sockets it
+no longer has; Split Column substituted `,` for a cleared delimiter), and ~23 more producers
+gained rules, so ~40 frame outputs carry a static shape instead of 17. Where a verb's columns
+provably don't depend on row data the node runs its OWN verb over `emptyFrameOf(shape)` rather
+than a second mirror that could drift (Reconcile, Describe, CorrMatrix, Merge Columns,
+Allocator, Bind Columns, Headers-demote, Add/Computed Column). `frameShapeCoverage.test.ts`
+fails any frame output with no rule unless it is a NAMED data-dependent producer (BuildFrame,
+KMeans, PCA, Logistic, the imports/feeds, Cube Rollup, Outliers, list Group By, Tally);
+`frameShapeRules.test.ts` pins one case per rule. Follow-up in the backlog: the migrated rules
+still read a card literal on a WIRED socket; the new ones gate on `ctx.wired`.
+
+**Two more backlog items landed by the same agent lane.** (1) `857e757c` — the eight migrated
+frame-shape rules (Columns, Rename, Group By, Unpivot, Pivot, Join, Split Column, Add Index)
+return `null` when their config socket is WIRED instead of projecting the card literal (unwired
+paths byte-identical; 8 tests). (2) `f01f6287` — the **Frame Input form-layout hide toggle**:
+`FrameInputNode.layoutHidden` (persisted via `INIT_FIELD_ORDER`), a `get activeLayout()` that is
+the ONE reader the card and `FrameDisplay`'s `formLayout` share (hidden → the popup Form view
+falls back to stacked), a ✕ top-right of the layout box, and the add button reading "Show Form
+layout" while a hidden text exists. **Author eyeball:** type a layout, ✕ → box collapses to the
+Show button and the popup Form view is stacked; Show (and a reload while hidden) → the exact
+text is back, the state survives. End state of the session: `tsc` clean, 285 files / 4888 tests
+green; `tidy-drift-probe` clean on cubes / unit-flow / null-and-logical / decision-matrix.
+
+**Seed-layout sweep, batch one (the backlog item, under the rule above; an Opus agent per
+batch).** getting-started (the Budget exhibit now wraps its Display + FC; no Notes there),
+table-verbs (a Nearest-match group holding the as-of/XLOOKUP exhibit + its Note; the intro Note's
+one standoff to Sales), computed-columns (2 exhibit groups, Notes inside; intro standoff to the
+first group), pivot-tables (Reshape-the-source group; intro standoff to Orders), cubes (6 exhibit
+groups each holding its Note; intro standoff), chart-showcase (9 groups, one per exhibit; no
+Notes). Pattern that held everywhere: every unwired explanatory Note became a group MEMBER; the
+only standoffs are whole-canvas intro Notes; shared source frames that fan out stay loose. All
+re-baked + seed suites green. Gotcha: a peer agent's `src/` saves HMR-reload the tune page
+("Execution context was destroyed") — retry the seed on a quiet window. **Batch two** (12 seeds,
+one commit each): dimensional-flow 5 groups, equation-solver 7, famous-math 1 (the loose
+expression chain + its Note, beside its two pre-existing groups), lambda-helpers unchanged
+(already grouped, no Notes), null-and-logical 10, power-features 4 (KEPT its `in-sb ↔ grp-mon`
+data standoff — a Note narrates that bar, and Note bodies are the author's; so the three sensors
+stay loose), record-cards 2, report-showcase 1 (its `method` Note is frontmatter-wired, no
+standoff), script-tour 5, trust-data-quality 3, unit-flow 10 (one per lane, caption Notes
+inside), units-by-dimension 2. Every standoff left is a whole-canvas intro Note (plus the
+narrated demo bar). sudoku-solver / composite-workbench / zz-scratch / the two held seeds are out
+of the sweep. **The author eyeballs the results** — the rule was applied blind; the backlog line
+carries the two open calls.
+
+**A frame column's FORMAT now flows downstream like its unit** (the author's Allocator report:
+Headroom set to Decimal in the popup, and neither the downstream Display's card frame nor its
+popup showed it). `FrameColumn.format` is the carrier; the stamp is ONE seam — the coercion
+wrapper's new OUTPUT step in `coerceInputs.ts`, which every node's `data()` result passes,
+composites included — reading that node's own `frameFormatStore` picks. Shallow-copies (a cached
+frame is shared) and memoizes on the frame's identity, which the backend's upload cache and the
+nodes' own identity memos depend on. A verb-BUILT column takes a source column's format only
+where it already takes the unit — nest and the Allocator's Allocation, per an exhaustive audit
+of every `FrameColumn` construction in `frameVerbs.ts`; everything that spreads carries it free.
+Readers take the local pick first (`FrameDisplay.annFor`, the popup's format row).
+**Limit, same as the unit's:** a LAZY verb emits a
+`FrameRef`, so its own pick can't be stamped into the value — it renders on that node's card but
+travels no further; and `previewToFrame` / the Polars wire structs carry neither field.
+**Second defect, same area:** a popup format pick wrote to the store with no `scheduleAutosave()`
+and no recompute, so it survived a reload only by luck — both now fire, and Frame Input's
+`onSaveSource`/`onCommitSource` (where a popup UNIT pick lands) autosave too.
+**Third defect (author): Auto silently overrode an inherited format**, because the row's dropdown
+had no way to say "no pick of mine". Every per-column style dropdown now leads with `—` (delete
+the entry), the row carries a muted `← Decimal · 3 places` reading of what arrives, and Auto is a
+real override — `columnFormatRow` in `frameFormatStore.ts`. The blank option is an `<option>`
+ELEMENT, not a component: `LazySelect`'s collapsed render walks children for `type === "option"`
+and skipped a wrapper, showing the next option's label instead.
+
+**Docs reconciled:** `node-coverage.md` § Decision support (weights frame, inverted scenarios,
+the Note-frame seed), `v2.0/10` grounding, `architecture.md` (modalGuard row), `format-model.md`
++ `rules.md` formatFlowsDownstream + subsystem-invariants § Unit flow (the frame-column format
+carrier), backlog (canvas cursor + popup 1px + keystroke-guard + frame-format lines deleted as
+landed).
+
+**Third mechanical lane (author: "any other mechanical backlog work?").** (1) `04262401` +
+`5dfcb29d` — the dependency walk: in-range moves (Tauri plugins, `@xyflow/react` 12.11.6,
+mermaid, katex, plugin-react, puppeteer-core) and the long-skipped `@anthropic-ai/sdk` major
+(0.115 → 0.123, zero call-site changes; `aiDemo.test.ts` drives the real client over the demo
+transport); `vitest` 5 is the one remaining major, untouched; `npm audit --omit=dev` clean. (2)
+`e0da2250` — **a flipped node lays out down-and-left**: `elk.layered.considerModelOrder.strategy
+= NODES_AND_EDGES` + `crossingMinimization.forceNodeModelOrder` are added to the root options ONLY
+when an ELK-visible node is flipped, and flipped nodes are emitted last in `children`; measured
+src y 41 / flipped sink y 179 (was 159 / 41); an unflipped layout's options + children order are
+pinned byte-identical by a recording-stub test. (3) `b29a71ce` — the sanctioned **chart
+screenshot pass**: `scripts/chart-contact-sheet.mjs` (+ a dev-only `__spike.patch(id, fields)`
+hook) renders every Chart op × option variant × theme off the chart-showcase seed (46 PNGs).
+Reviewed by eye; defects handed to a fix lane (composed drops the label column + title + line
+width; radar radial tick labels smear into the polygon; stacked area fills hide the first
+series; the expand button + top tick sit on the plot's top edge; bar/scatter thin their category
+ticks, scatter leaves a right gutter; radialbar has no legend; bubble names no column). Left
+as-is: `color` is inert on a multi-series radar (palette-painted) but works single-series — the
+Builder keeps offering it; a question for the author below. **Fixed in `427c1e29`** (verified on
+the re-rendered PNGs): Composed takes `labels` + `opts` (col 0 ticks, the title strip,
+`linewidth`/`marker` on its line, `MultiTooltip`); `PolarRadiusAxis tick={false}` on every
+radar; multi-series area fill alpha 0.18 (two fills overlap to ≈0.33, so the first series
+shows; `alpha=` still wins); `PLOT_TOP = 14` on every axed cartesian margin incl. Merge Plots;
+row-index category axes `interval={0}` up to 12 rows and categorical scatter x pinned to
+`[0, n−1]` with a tick per index; radialbar ring data carries `name`/`fill` so a `Legend`
+draws; bubble defaults `xlabel`/`ylabel` to its first two number columns, names x/y/size in
+its tooltip, and draws its title (also silently dropped before).
+
+**Author call — Shuffle weights.** A wired `weights` list shorter than the list is now
+`#SHAPE!` ("The weights list has N values but the list has M", the Sort-by rule), not a silent
+uniform shuffle; a longer list is fine (extras ignored). `#SHAPE!` over `#VALUE!` because the
+house vocabulary reserves `#SHAPE!` for a length/dimension mismatch (`errorValue.ts`).
+
+**Author call — radar negatives.** Under the per-axis scale a negative value plots at the centre
+(clamped to 0; the spoke's max is the max VALUE, not |value|): "there's no sensible correct way"
+to place a negative on a radar. The raw value still rides the tooltip.
+
+**Author call — the Allocator seed** keeps its "Budget Allocator" title and Note (the seed is
+about a budget; the node is the general Allocator).
+
+**Author call — radar `color`.** Dropped from the Chart Builder's radar target (`RADAR_KEYS`),
+and the single-series radar now paints from the palette like every categorical op, so `color`
+is inert on radar in both shapes.
+
+**FC lost its date style on reload (author: Script → Display → FC "Wed, Jun 3" → reload →
+default date).** Not persistence — every FC field is whitelisted and the autosave rides
+`processGraph`'s graph-changed hook. The pick was REWRITTEN by `_applyType` on every family hop:
+at load a Script-fed Display resolves through the wildcard, then the Script's construction-time
+NUMBER family, then the real date type, and "date style on a non-date → auto, then auto on a
+date → first date style" ate the pick. `9738f145`: `_applyType` only mirrors the type; a pick
+outside the socket's family is INERT via `effectiveFormat()` (the family default applies, the
+popup shows it) and returns with its family. Replayed live by `scripts/fc-attach-probe.mjs`
+(`__spike.attachFc`, and `patch()` re-registers an FC annotation); the seed-level
+`fc-reload-probe.mjs` had passed because no seed FC sits on a run-time-typed value.
+
+**Format flows downstream through transforms (author ruling, `3edeb031`, `formatFlowsDownstream`
+in rules.md).** The resolver's transform case: the first wired input carrying an annotation
+wins, gated on the output socket's element family matching, the copy stripped to `unit:"none"`
+— the unit stays value-level and locked (`unitOnValue`); a nearer FC overrides; Convert still
+drops (it rescales the magnitude, so the old precision no longer describes the number); the
+UPSTREAM walk stays bounded by transforms. Unit-flow seed lane C's copy now reads "keeps the
+FORMAT; the unit COMPUTES" (author's strings, rewritten because the old caption became false —
+eyeball). **Surfaces sweep (`f08482b6`):** every render surface asks one question,
+`resolveDisplayAnnotation(nodeId, socketKey?)` (direct ?? carried ?? trailing FC) — ordinary
+card value boxes (the passthrough-only guard is gone), list cells (logical show-as, text case,
+complex and united cells too), `TableDisplay` matrix cells (had no annotation at all), inline
+refs (united/complex refs rendered `[object Object]` before), the cable inspector, pins, the
+collapsed-group readouts. `annotationForValue`: an annotation with `unit:"none"` over a
+`UnitCell` keeps the cell's unit and supplies only the style. Unchanged by design: the array
+chip shows no cells; frames/cubes/the table popup grid are per-column. Verified on the unit-flow
+lanes A/B/C: an FC moved 2 → 3 places re-formats every downstream surface, units kept, and the
+Multiply card's own box after the transform now reads `$1,000.000`.
+
+**Dev graph mirror (`f2827631`).** The author asked whether the live graph is readable. Now
+it is: each autosave POSTs the document to `/__dev-graph` (vite.config.ts `devGraphMirror`) →
+`.dev/current-graph.json` (ignored); automated pages (`navigator.webdriver`) skip it. CLAUDE.md
+carries the pointer. Track I (`1.4-plan.md`): the author's later proposal to fold the FC into
+the Display (format/unit set at sources + displays, downstream only) — analysis + scope there.
+
+**Walk stop point.** Below `main` the walk covered `af410b48` down to `45130f0c` (the Add-menu
+per-word search + one-edit matcher, the env.ts dissolve, the minimap recolor, the four RF-port
+fixes: collapsed-group tow, the FlowCableEdge hook order, the FC chip 1px step + caret
+placement, the delete verb + removed-node skip in the pass) — all clean; older is the
+author-smoked 1.3 release tail, not re-walked.
+
+**Reviewed clean (no action):** frame-shape resolver DM/Note rules (match `decisionColumns`;
+scaffolding for the declarative-shape backlog item), radar transpose + ÷max normalization, the
+Allocator verb + `allocateOps` modes, weighted Shuffle key, XLOOKUP matrix spill, locked-group
+obstacle separation, flip-edge reversal (OR is right: both ends flipped still puts the reader
+left), pop-up one-basis frame, the elk import retry.
+
+**Scheduling slice, reworked (AUTHOR-GATED — `1.4-plan.md` Track H § Scheduling slice).** The
+author: the first pass was decent but wanted calendar/schedule-shaped, solver-free where
+possible, useful to a simplistic user. Now: **hours balancing is the Allocator** (a seed + "range"
+copy, no node); **H4 Rota** (Shifts × People → Assignments + Load, round-robin or
+fewest-hours-first, explicit Unfilled rows, greedy and says so); **H5 Spread over dates** (a total
+phased over a date range: every day / working days + holidays / weekday weights / ramp / month
+length → Date · Amount · Cumulative); **H6 Schedule** (Tasks with durations + predecessors →
+Start · Finish · Float · Critical, CPM passes on working days — the data half of the 2.0 Gantt);
+**H7 Common free time** (availability windows → when everyone, or any N, is free ≥ M minutes).
+Hungarian matching and Erlang staffing parked to `deferrals.md`. Nothing starts until the author
+picks; a backlog line carries the gate.
+
+**Questions for the author** (not blocking, answered whenever):
+
+### SESSION DIGEST (2026-09-04 — Allocator rename, weights-row removal, domain sweep)
+
+**Renamed Budget Allocator → Allocator**, whole identity: class `AllocatorNode`, kind
+`super("Allocator")`, catalog `type:"allocator"`, refused formula token `ALLOCATOR`
+(`FRAME_SURFACE_NAMES`), seed `allocator.json`, test `allocator.test.ts`. Standing rule: "rename"
+means the type too, not just the label.
+
+**Removed the Allocator's `weights` list socket** — an ordered per-row list wired as a socket
+violates orderedColumnsAreFrames (node-coverage §Node design rules: aligned parallel columns →
+ONE frame, not parallel list sockets). Weights now come ONLY from the categories frame's Weight
+(or Value) column; no column = equal weights. `allocateFrame` lost its `wiredWeights` param; the
+card's `BUDGET_CABLE_ONLY` set is gone (only `amount` is cable-only, in Min proportional); height
+215→191. Seed already fed weights by column, unchanged. **NOT the same as DecisionMatrix:** its
+wired `weights` list is correct and stays — those weights are ORTHOGONAL to the frame (one per
+criterion COLUMN, not per row), so they aren't row-aligned parallel data and the aligned-columns
+rule doesn't apply. The Allocator's weights were per-ROW (parallel to the category rows), which is
+exactly why they belong in a column.
+
+**Allocator-domain sweep.** Author promoted three same-DNA nodes (closed-form linear, solver-free,
+tedious by hand), each to ship with a seed → specs in `1.4-plan.md` Track H: **H1 Payoff Planner**
+(debt avalanche/snowball, cascade freed payments), **H2 Apportionment** (integer exact-sum split;
+recommended a NEW node over an Allocator mode — different inputs/invariant), **H3 Group Cost
+Settle** (net + greedy min-transfers). Parked to `deferrals.md`: blend/mix (alligation), loan-term
+solver. Break-even ruled a composite run mode (A6), not a node.
+
+**Personnel scheduling** — the author's ask (shift fill-in / balancing hours over a roster) got a
+first pass this session (Hours Balancer as an Allocator mode, Hungarian Shift Assignment, a
+round-robin Rotation generator, Erlang staffing), unanswered here; reworked in 09-04b below.
+
+**Decision Matrix / Sensitivity — weights as a criterion-keyed frame.** The DM `weights` socket
+went from a positional number list (+ on-card weightMap/normMap boxes) to a `frameIn`: a
+`Criterion | Weight | Norm` frame keyed by criterion NAME (orderedColumnsAreFrames). The whole
+per-criterion card section, `weightMap`, `normMap`, `criteria`, `wiredWeights`, and the
+positional-override path are gone; the card keeps only the fallback Normalize + Summary/Breakdown
+toggles. Sensitivity's Scenarios frame is INVERTED to the same shape: rows are criteria, each
+number column is one scenario's weights, one optional shared `Norm` column. `decisionMatrix`
+(the engine) is unchanged — the node resolves the frame to its existing `(weights[],
+normOverrides)` args via `resolveDecisionWeights` / `parseNormalize` in `frameVerbs.ts`. Unwired
+DM → all weights 1, default normalize. Seed rewired (a Weights Frame Input, transposed scenarios)
++ retuned; copyPaste + persistenceSweep transient/extra entries pruned; orphan `dm-*` CSS removed.
+
+**Radar reads a frame transposed (chartRadarTranspose).** A frame-fed radar was inverting the
+intuitive mapping. Now the number COLUMNS are the spokes and each ROW is one overlaid polygon
+named by column 0 (`ChartNode.data()` in `visual.ts`, radar-only; cartesian charts and list-fed
+radars untouched). **Per-axis normalization (chartRender):** mixed-unit spokes let the big axis
+own the radius, so each spoke is scaled to [0,1] by its own MAX (÷max, not min/max — min/max
+pinned the weakest option to the centre), raw value kept on the tooltip, radial ticks hidden. A
+new `radarscale` option (axis | shared, on the string and the Chart Builder) opts back to a raw
+shared radius. Single-series radars can't self-normalize (one value per spoke), left as-is. Added
+a radar off the DM seed's Join output.
+
+**Note frontmatter → frame output.** A frontmatter key whose value is rows of inline objects
+(`- {k: v}` block or `[{k: v}, …]` flow) now emits a single `frame` output, columns from the row
+keys — the Script node's `{name: value}` row shape (so what one emits the other reads).
+`noteFrontmatter.ts` gained brace-aware flow splitting + inline-object parsing + a "frame" field
+type; `annotation.ts` builds the FrameValue; NoteNode's field row shows a frame glyph, no retype
+picker. Applied to the decision-matrix seed: the screen-scores Note wires its one frame straight
+into the Join, dropping the two parallel lists + the Frame from Lists node.
+
+**DM seed layout for whole-canvas Tidy.** Tidy scattered the seed's free-floating Notes, so the
+decision-matrix seed got 2 groups (collapsed Podium, expanded Sensitivity) + 7 note-standoffs
+(each Note pinned to the node/group it explains; Weights/radar inputs to their consumers), then
+re-tuned. Exemplar for the backlogged sweep across the rest of the seed library.
+
+### SESSION DIGEST (2026-09-03 — charts, pie labels, Budget Allocator seed)
+
+Shipped on `develop`: **Pie category labels** reworked to a hand-drawn two-segment leader
+(radial stub + horizontal run to a fixed column per side, so a side's labels share one x and
+the line meets the text; recharts' own `labelLine` is off). **`pielabels` option** is now
+off/outside/inside — inside centres a backing-plated label on the slice, a thin slice (<6%)
+keeps the outside leader (`chartRender.tsx`; parse aliases on->outside, center->inside).
+**Chart node type picker** is two selects: a family filter + the type OpSelect (the type stays
+`op`). **Chart Builder target** is one grouped two-level dropdown whose entries are the Chart
+ops + the figure nodes, and the form shows only the keys that type reads (`CHART_BUILDER_TARGETS`
+per-op in `chartOptions.ts`); pie gets a Labels select, `color` dropped from pie/radial/funnel
+(palette-painted, so it was inert). **Budget Allocator** slimmed to Category + Allocation +
+Share (raw fraction); the price comparison moved into the seed — a Join pulls Min/Max back in,
+a Computed Column adds Headroom, Share shows as a percent via a per-column `frameFormats` entry;
+the pie Chart is minimized and routed to a large Display, styled by a wired Chart Builder.
+
+**Seed layout == Tidy.** The Allocator seed groups its intermediaries (Join+Computed Column,
+Chart Builder+minimized Chart) collapsed and standoffs a rectangular note off the allocator's
+south face. Authoring rule learned: don't hand-place seed geometry — run `scripts/tune-seeds.mjs
+<id>` to bake the app's real tidy/autofit. `seedTune.ts` was UPGRADED to run a **whole-canvas
+Tidy** (`autoArrange({skipConfirm})`, the press-T pass) after the per-group fit, so a seed's
+shipped layout equals the tidied one. Ran it across the library: 22 seeds re-baked. Held back
+**personal-finance** (a full tidy lands its docked FCs + displays inside the expanded
+`grp-advisor` box → absorb-on-reconcile; kept hand-composed) and **live-market-data** (FRED
+charts CORS-block headless, tuned empty). Survey finding: the abstract-the-intermediaries
+pattern only fits pipeline-shaped seeds (the Allocator); the other worked examples are teaching
+GALLERIES whose "intermediary" nodes ARE the exhibit and are named by their notes, so grouping
+them would hide the lesson.
+
+**FYI carried forward:** `color` applies to radar only for a SINGLE-series radar (multi-series
+uses the palette, like pie); verify in the screenshot pass and decide whether to keep offering
+it. Author sanctioned a screenshot pass over the chart ops + options.
+
+### SESSION DIGEST (2026-09-03 — group lock, socket flip, popup chrome)
+
+Shipped on `develop`: **Group "Lock position"** (right-click / header icon; `lockedPosition`
+persisted; drag off + exempt from Tidy/Cleanup, which treat it as a fixed obstacle via a
+pinned `separateOverlaps`; the lock also wins over a Standoff band — every `solveStandoffs`
+call site pins locked groups, `withLockedGroupsPinned`). **Flip sockets** — a reusable
+per-node left↔right socket mirror (`socketFlipStore` + `flippableNodes.ts`; Display is the
+first adopter; the cable path threads each flipped endpoint's `CablePosition` into
+`getCablePath`; a flipped node lays out as a *predecessor* — `subsetConns` reverses its ELK
+edge, portless). **Chart pop-out on every Display chart** + a mechanical `chartPopupCoverage`
+sweep so no op ships without one. **Frame Input Form** carries the Source toggle; Source Off
+renders through the shared `RecordGrid` (Record chart view, images). **Pop-ups: resize grip**
+(centered, `PopupShell` `resizable`) and **canvas cursor** (plain pointer on hover, grab only
+while panning; Lock keeps the grab-hand). Small fix: chart-in-Display wheel trap; tidy no
+longer stamps a manual width on a collapsed card.
+
+**Pop-up frame alignment (root cause + fix).** The accent header (a child overhanging the
+card border) and the card's own border derived from DIFFERENT boxes (content box vs border
+box); Chromium rounds each element's border independently at paint, so at a fractional DPR
+(Windows 125%/150% scaling) OR a fractional `transform: scale()` the two edges split by ~1px,
+width-dependent. Same-width does NOT fix it (still two elements) — this is why the node cards
+went to SVG. Fix (`popupChrome.css` + `PopupShell`): the card draws NO border; the body
+border is `::after` starting at `--header-h` (published via `useHeaderHeightVar`); the header
+carries the real accent border with no overhang — both edges now share the card box (one
+rounding basis) so they can't crack. Verified in isolation across fractional widths at DPR 2.5
+AND `scale(1.37)`.
+
+**Plan-pull (mechanical items from `1.4-plan.md`).** Landed: **B5** — XLOOKUP/XMATCH accept
+an orientation-free 1×N/N×1 matrix as the lookup VALUE (spills over its cells, mirroring the
+lookup array; a true 2-D grid stays `#SHAPE!`). **D12** — an optional `weights` socket on the
+Shuffle node for a weighted draw without replacement (Efraimidis–Spirakis `-ln(u)/w`; the last
+open `python-r-gap` Tier-2 item; the positional `TakeDrop` isn't random, so weights apply to
+Shuffle only). **D13 HELD by the author** (2026-09-03): the "perturb ±N%" sensitivity affordance
+needs a base-weight source (the node has only `scores` + `scenarios`; each scenario is a full
+weight set); left alone pending a base-weights decision.
+
+**OPEN — revert NodeCard's SVG frame (`CardFrame`) to CSS, same principle.** Verified viable:
+the one-basis CSS holds under a fractional `transform: scale()` (the canvas zoom, the exact
+case the SVG was built for). Plan:
+- Card `border: none`; header gets the REAL accent border (2px top+sides), `width:100%`,
+  `box-sizing:border-box`, `margin:0` (drop the `-1px` overhang), `box-shadow: inset 0 -1px 0`
+  divider. Body border becomes ONE absolute overlay div `.solenoid-node__frame-body`
+  (`top:var(--header-h)`, sides+bottom) — a div, not a pseudo, since `::after`=selection ring
+  and `::before`=group corner are taken. Both header + overlay derive from the card box → align.
+- Move the `__frame-body/cap/divider` color states (hover→`border-strong`, selected/grouped
+  exclusions, grouped `2px`+group-color, light `--node-accent-dark`) onto the header + overlay.
+- Adjustments the border removal forces: bump `--node-socket-x` (`-6.5px`→`-5.5px`) + input-pill
+  (`-7px`→`-6px`) so dots keep straddling the edge (verify cable endpoints); carry the
+  `--frame-outset` math onto the overlay (isolate endpoints, palette sample); group-corner
+  `::before` inset/radius correction (as the popup needed); `--header-h:0` cards (headerless /
+  square-collapse) wrap all four sides — verify Sparkline + collapsed readout; `frameless` FC
+  nodes unchanged.
+- Sequence: (1) author confirms the POPUP fix at their scaling first; (2) apply to nodes,
+  verify live across zoom levels × states (hover/selected/grouped/collapsed/square/FC/resized);
+  (3) delete `CardFrame` + `__frame-*` CSS. Net: −1 component, ~−60 lines SVG CSS, node+popup
+  framing unified.
+
+---
+
+## Sweep 2026-09-04 — session digest 2026-09-01 (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-09-01 — 1.3 shipped; the 1.4 / 2.0 planning pass)
+
+**1.3 is released** (v1.3.0 on `main`; the author: `develop` is level with it). The backlog's
+"Cut 1.3" tail is deleted; the backlog is retitled to 1.4 and carries only the two
+ratifications (the 1.4 cut, `out-of-scope.md`) plus the ARR pass.
+**The deferral review ran as a planning pass.** Every parked, deferred and author-gated idea
+(deferrals, the 2.0 flagships, the v2.0 bundles, the pack-composite queue, the open
+python-r-gap item) was walked and scored on one rubric — strength, relevance,
+complexity, blast radius; no time estimates by order — and placed: **`1.4-plan.md`** (new: the
+workbench release — what-if surgery pin/mute/peek/cone + an Optimize run mode, the Record and
+table lifts, the widget nodes behind a per-document network permission, the surface
+hardening: allowlist A, node-combining round 2, ARR, AI palette back on; every item with a
+grounded plan, tests, gate and done-definition; a consolidated author-call list), and
+**`2.0-plan.md`** (rewritten: pages, collaboration, the transpiler, conditional formatting,
+canvas at scale, value-model extensions, packs as a program, Gantt; the cross-cutting
+prerequisites it surfaces — save-format freeze + migration seam, trust on open, desktop
+updater, the web-target decision, version history + diff, an accessibility baseline).
+Four new bundle docs: `v2.0/20-pages.md` (one editor/engine, pages as view scopes, cross-page
+cables as portal stubs), `v2.0/21-collaboration.md` (the author's new surface — accounts,
+cloud saves, multiplayer — staged 0→3, Stage 0 serverless and 1.4-pullable; states plainly
+what a service costs; the CRDT keyed by the addressable model's names; the trust-on-open security
+work), `v2.0/22-canvas-at-scale.md` (headless card metrics → virtualization → worker HIC),
+`v2.0/23-conditional-formatting.md` (design-pass prep: a rule is a graph value).
+**Reconciles:** `deferrals.md` shrunk to parked-with-no-plan (planned entries moved into the
+plans — one home per fact); `release-notes-features.md` reset to the 1.4 shell (the 1.3 list
+is at the v1.3.0 tag); **`out-of-scope.md` test 3 / §3 / §11 and decisions R5 rewritten to
+the collaboration order** — first framed as "the order reverses them", corrected same
+session on the author's point: that doc carries no ARR (`authorRuled`: nothing outside
+`rules.md` does) and is a DRAFT, so the "stay out" was agent inference and the order is
+the first ruling on that ground — nothing to reverse, only an inference to correct; bundle 08's
+"sheets → Groups" becomes "sheets → pages"; bundle 16's status points at 1.4 C1; the docs
+index and the v2.0 index list the new docs. Findings from the pass worth a line: the
+compositeToolbarReroute flagship is mostly delivered by the RF port's `activeGraph` seam —
+1.4 E2 is an audit, not a build; Solver parity fits as a composite RUN MODE (Goal Seek
+generalized), not a node; the Excel transpiler's best-fidelity path is Excel Tables →
+Frame Inputs with computed columns (structured refs ≈ tableRefSemantics).
+**Awaiting the author:** the 1.4 cut; the out-of-scope ratification (now a rewrite of three
+sections); the calls listed at the end of `1.4-plan.md` and in `v2.0/21` § Open author calls.
+
+---
+
+## Sweep 2026-09-01 — session digest 2026-08-31 (moved verbatim from the live window)
+
+### SESSION DIGEST (2026-08-31 — the finance golden run + the 1.3 release tail)
+
+**The bond/coupon family is real-Excel-verified** (the author ran the golden list by
+hand; the last backlog "awaiting the author" item is CLOSED). The run confirmed COUP*,
+ACCRINT b0/b1, ACCRINTM, VDB (fractional windows included) and MDURATION — where it
+also settled the doc question: real Excel returns our 5.7356698, so Microsoft's
+published 5.7355689 IS a typo. It caught **three real bugs, all fixed** in the shared
+ops (nodes + formulas move together): ACCRINT basis 2 divided by the actual period
+length instead of 360/freq; ODDLPRICE compounded the odd-last discount where Excel
+uses SIMPLE interest (the PRICEMAT convention); ODDFPRICE sized the first coupon from
+the quasi-period start instead of ISSUE — a long odd first coupon carried a full
+extra period of interest (103.82 vs Excel's 98.57). Rewritten to Excel's documented
+quasi-coupon form (DC/NL, A/NL per quasi period, exponents N + Nq + DSC/E). Every
+confirmed value is pinned in `financeInvariants.test.ts`'s golden block. One noted
+divergence (nodeExcel parity:false): Excel #NUM!s a first coupon off the maturity's
+cycle; we compute.
+**Release tail executed:** tsc + vitest green, `release:desktop` built clean (exe +
+MSI + NSIS), the author smoked Script-on-desktop (CSP `'unsafe-eval'` holds: 42, no
+refusal), Known Issues finalized in `release-notes-features.md`, and `develop` was
+merged to `main` (6227956a; local main first fast-forwarded from origin — it had sat
+339 commits stale since 1.1). Left to the author: push both branches, tag `v1.3.0`.
+The deferral review's ratification of `out-of-scope.md` (DRAFT since July) was
+presented and is still awaiting the author's word.
+**Same day, second wave (author: all of it ships IN 1.3; the tag waits).**
+**Minimap palette bug fixed**: RF's MiniMap recomputes node fills only when the
+nodeColor callback identity changes; the callbacks keyed on light/dark alone, so a
+palette switch kept stale accents — the palette store version is now a dep
+(FlowSurface). **Function Reference reworked** (author asks): the structurally-empty
+To-do tier is deleted; gap rows now partition two-way into **Superseded** (VLOOKUP
+family, MATCH, SUMIF, the D* dozen, and — second author ruling, the Composable tier
+retired — SUBTOTAL/AGGREGATE/CEILING.PRECISE/FLOOR.PRECISE/ISO.CEILING, all five
+newly LEGACY_ALIASES-blocked with live redirects) and **Out of scope**;
+`functionReferenceLibs.test.ts` pins the partition and that superseded ⇒ blocked.
+The two chip rows collapsed to two dropdowns (Category with a By-pack optgroup
+filtering on membership; Library) and light mode got real contrast: the panel's
+semantic colors are `--fr-*` custom props with a light re-tune (was dark-tuned
+hexes and border-strong-as-text). **The analytics shelf split into two
+off-by-default packs**: Scientific Computing (Spectrum, Smooth, Find Peaks, Convolve,
+ODE Integrate, Solve, Eigen, Polynomial Roots, Fit Distribution, Decompose) and Data
+Science (K-Means, PCA, Logistic Regression, the five nonparametric tests). Everything
+Excel-named and the mainstream tests stay core. First cut used tags (cross-woven);
+the author then ruled the Add menu must show what a pack added, so the 18 leaves
+moved out of nodeCatalog into real placements under Packs › <name> (type strings/
+labels/descriptions verbatim — saves, ops, formula dispatch, parity suites all hold;
+frameSurfaceNames' ghost check widened to the whole tree for the pack-homed frame
+verbs). **Docked Inspector + Report tuck under the header now** (z 90 → 5, the heavy
+side shadow deleted — a dock pushes the canvas, nothing sits beneath it;
+layout-chrome.md reconciled). **Settings packs are an accordion** now: `Pack.group`
+(Everyday / Analysis / Science & Engineering), details/summary per group with an
+on-count, descriptions on the rows. What's-New slide + release-notes follow.
+**Third wave.** **Add-menu search scores per query word with one-edit typo tolerance**
+(author: "frane input" surfaced nothing — it ranked 19th under description noise):
+each word lands as a haystack subsequence or within one Damerau-Levenshtein edit of
+a leaf word; word order free; pinned in `catalogSearch.test.ts` + new `fuzzy.test.ts`
+(subsystem-invariants § Add menu reconciled). **Add-menu leaves reordered
+significance-first** within Output / Visuals / Tables & Frames / Lists / Logic /
+Text / Date & Time — pure reorder of `nodeCatalog.ts`, no entries changed.
+**Attribution shipped**: THIRD-PARTY-NOTICES.md gains React Flow (MIT text, watermark
+stays on) + a bundled-libraries section naming the non-MIT ones (elkjs, dompurify,
+OFL fonts); README License line credits React Flow / Rete.js / Polars. README
+rewritten by the author; factual audit delivered in-session (verbs are frame-only,
+Cube isn't "3D", Record outputs on the chart socket rather than "renders as a
+Chart", logical↔number is a deliberate bridge) — copy fixes are the author's.
+
 
 ## Sweep 2026-08-31 — session digests 2026-08-30 and 2026-08-29b (moved verbatim from the live window)
 

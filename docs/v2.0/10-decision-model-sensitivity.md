@@ -8,21 +8,20 @@ pick, not a gate.
 ## Grounding — the exact existing nodes
 
 **Decision Matrix node** — `src/graph/nodes/frame.ts` (find by class name — line refs rot), class
-`DecisionMatrixNode`, registers as `"DecisionMatrix"`. Fields: `weightMap:
-Record<string,number>` (name-keyed inline weights), `normMap: Record<string,
-DecisionNormalize>`, `criteria: string[]` (detected each compute), `normalize`, `detail:
+`DecisionMatrixNode`, registers as `"DecisionMatrix"`. Fields: `normalize`, `detail:
 "summary"|"breakdown"`. Sockets: input `frame` (`frameIn("Scores")`), input `weights`
-(`numListIn("Weights")`, optional positional override), output `frame`
-(`frameOut("Ranking")`). `data()` (lines 712-725) resolves weights (wired list wins over
-inline map, default 1 each) then calls `decisionMatrix(f, weights, normalize,
-detail==="breakdown", normMap)` (verb in `frameVerbs.ts`).
+(`frameIn("Weights")`, a `Criterion · Weight · Norm` frame keyed by criterion name), output
+`frame` (`frameOut("Ranking")`). `data()` resolves the weights frame against the detected
+criteria via `resolveDecisionWeights` (unwired or omitted criterion → 1, default normalize)
+then calls `decisionMatrix(f, weights, normalize, detail==="breakdown", normOverrides)`
+(verbs in `frameVerbs.ts`; mechanics in `node-coverage.md` § Decision support).
 
 **Existing Sensitivity node — confirms it's Decision-Matrix-specific, not a generic
 sweep:** `DecisionSensitivityNode` (`nodes/frame.ts`), registers as
 `"DecisionSensitivity"`, label `"Sensitivity"`. Inputs: `scores` (`frameIn`),
-`scenarios` (`frameIn`, each row = one weight scenario). Output: `cube` via
-`decisionSensitivity(scores, scenarios, this.normalize)`. Component:
-`src/graph/components/FrameNodes.tsx:414`, `DecisionSensitivityComponent`. **This node
+`scenarios` (`frameIn`, the weights frame widened: rows = criteria, one number column per
+scenario). Output: `cube` via `decisionSensitivity(scores, scenarios, this.normalize)`.
+Component: `DecisionSensitivityComponent` in `src/graph/components/FrameNodes.tsx`. **This node
 already IS a form of "run the ranking under different weight scenarios" — the "wiggle
 the weights" feature is extending this node's UX (or wiring it to bundle 09's Monte
 Carlo mode for continuous perturbation rather than discrete named scenarios), not

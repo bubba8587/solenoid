@@ -1,3 +1,4 @@
+// dte:D42
 // Triangle Solver: any three parts (at least one side; angles in degrees) solve the
 // rest, plus area and perimeter.
 
@@ -6,6 +7,8 @@ import { numListIn, numListOut, logicalComboOut, readInput } from "./shared";
 import { isSolError, solError, type SolError } from "../errorValue";
 import { clamp } from "./mathUtils";
 import type { FormatAnnotation } from "../formatAnnotationStore";
+import { isUnitCell, dimOf } from "../unitValue";
+import { displayMagnitudeOf } from "../unitBridge";
 
 export interface TriangleGiven {
   a?: number; b?: number; c?: number; // sides (opposite the same-letter angle)
@@ -193,6 +196,13 @@ export function solveGivenParts(given: TriangleGiven, cellErr?: SolError): Trian
 type PartCell = number | SolError | null;
 type PartOut = PartCell | PartCell[];
 
+/** A dimensioned angle is base radians whatever its display unit — the solver wants
+ *  degrees; anything else reads as the plain number the unit-blind path would give. */
+function readPart(k: PartKey, cell: unknown): unknown {
+  if (!isUnitCell(cell)) return cell;
+  return k === k.toUpperCase() && dimOf(cell).angle === 1 ? cell.value * R2D : displayMagnitudeOf(cell);
+}
+
 export class TriangleSolverNode extends ClassicPreset.Node {
   label: string;
   /** Per-part displayed value (given passthrough or solved) — a scalar, or a
@@ -227,10 +237,17 @@ export class TriangleSolverNode extends ClassicPreset.Node {
     this.addOutput("valid", logicalComboOut("Valid"));
   }
 
-  data(inputs: Record<string, (number | number[] | null)[] | undefined>) {
+  /** Keeps `UnitCell` tags so an angle input in ANY angle unit (an FC's rad, grad) is
+   *  read in degrees; a side takes its display magnitude, as the unit-blind strip would. */
+  unitAware = true;
+
+  data(inputs: Record<string, unknown[] | undefined>) {
     // Parts are known only through their cables — wire-driven, like the Equation card.
     const raw = {} as Record<PartKey, number | number[] | null>;
-    for (const k of PART_KEYS) raw[k] = readInput(inputs[k], null);
+    for (const k of PART_KEYS) {
+      const v = readInput(inputs[k], null);
+      raw[k] = (Array.isArray(v) ? v.map((c) => readPart(k, c)) : readPart(k, v)) as number | number[] | null;
+    }
     const listKeys = PART_KEYS.filter((k) => Array.isArray(raw[k]));
 
     if (listKeys.length === 0) {

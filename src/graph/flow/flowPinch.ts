@@ -36,7 +36,11 @@ export function installFlowPinch(
   const touchStart = (e: TouchEvent) => {
     dbg(`start:${e.touches.length}`);
     if (e.touches.length === 2) {
-      start = { ...measure(e), vp: opts.getViewport() };
+      const m = measure(e);
+      // Two contacts on one point (a palm, a stylus beside a finger) have no scale to
+      // track: arming would divide by zero and write a NaN camera.
+      if (!(m.dist > 0)) { start = null; return; }
+      start = { ...m, vp: opts.getViewport() };
       dbg(`armed:${JSON.stringify(start.vp)}`);
     } else if (e.touches.length > 2) {
       start = null;
@@ -50,6 +54,7 @@ export function installFlowPinch(
     e.preventDefault();
     e.stopImmediatePropagation();
     const m = measure(e);
+    if (!(m.dist > 0)) return;
     const rect = el.getBoundingClientRect();
     // Bound, never snapped: the scale tracks the fingers continuously. Snapping here
     // walks the canvas in 10% jumps mid-pinch, and there is no device test to gate on

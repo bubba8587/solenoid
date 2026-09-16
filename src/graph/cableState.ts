@@ -1,6 +1,8 @@
 // Cable state that lives OUTSIDE rete's editor: cable selection, socket highlight, and
 // ghost cables (the dashed stub left after splicing a node out of a chain).
 
+import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
+
 type Listener = () => void;
 
 let _selectedConnIds = new Set<string>();
@@ -158,3 +160,54 @@ export const cableGhostStore = {
     return () => { _ghostListeners.delete(l); };
   },
 };
+
+// PENDING-RECONNECT ghosts (Option B). When an Input Switch's output RETYPE (One↔Many)
+// drops a downstream cable the new type can't feed (`retypeOutputCables`), the real rete
+// connection is gone — so this store remembers it as a NON-connection ghost keyed by
+// source·output·target·input, drawn by its own layer, and `cablePendingReconnect.ts`
+// re-materialises the real cable when the output type fits that socket again (same key,
+// else same label). Persist NOTHING: cleared on load and when either node is removed.
+export interface PendingReconnect {
+  /** Stable id from the four endpoint fields, so a re-mark of the same drop is idempotent. */
+  id: string;
+  source: string; sourceOutput: string;
+  target: string; targetInput: string;
+  /** The target socket's label at drop time — the fallback match when the key changed. */
+  label: string;
+}
+const _pending = new Map<string, PendingReconnect>();
+const _pendingListeners = new Set<Listener>();
+function notifyPending() { for (const l of _pendingListeners) l(); }
+const pendingKey = (s: string, so: string, t: string, ti: string) => `${s}\u0000${so}\u0000${t}\u0000${ti}`;
+
+export const cablePendingStore = {
+  all: (): PendingReconnect[] => [..._pending.values()],
+  forSource: (nodeId: string): PendingReconnect[] => [..._pending.values()].filter((p) => p.source === nodeId),
+  mark: (e: Omit<PendingReconnect, "id">): string => {
+    const id = pendingKey(e.source, e.sourceOutput, e.target, e.targetInput);
+    if (_pending.has(id)) return id;
+    _pending.set(id, { id, ...e });
+    notifyPending();
+    return id;
+  },
+  drop: (id: string): void => { if (_pending.delete(id)) notifyPending(); },
+  /** Both directions: a removed node's ghosts as a source AND as a target both die. */
+  dropForNode: (nodeId: string): void => {
+    let changed = false;
+    for (const [id, p] of _pending) if (p.source === nodeId || p.target === nodeId) { _pending.delete(id); changed = true; }
+    if (changed) notifyPending();
+  },
+  clear: (): void => { if (_pending.size) { _pending.clear(); notifyPending(); } },
+  // Membership-size version: every mark/drop changes it, so subscribers re-render.
+  version: (): number => _pending.size,
+  subscribe: (l: Listener): (() => void) => {
+    _pendingListeners.add(l);
+    return () => { _pendingListeners.delete(l); };
+  },
+};
+
+// A ghost dies when either end goes (noderemoved) and on every load (rebuildGraph) —
+// persist nothing. The store-registry pattern (alertStore / cableValueStore), so no
+// cleanup threads into the canvas.
+registerNodeForget((nodeId) => cablePendingStore.dropForNode(nodeId));
+registerNodeForgetAll(() => cablePendingStore.clear());

@@ -1,7 +1,12 @@
+// dte:D54
 // Persisted app-wide settings, a module singleton so any React root can read them.
 // A new toggle = `Settings` + `DEFAULTS` + a SETTINGS_SCHEMA entry.
 
 import { createNotifier, createToggleStore } from "./storeKit";
+
+/** Rendered case of a typed node header label (display-only; the stored label is raw).
+ *  Maps to a CSS `text-transform` on `.solenoid-node__label-display`. */
+export type HeaderTitleCase = "as-typed" | "upper" | "proper";
 
 const LS_KEY = "solenoid.settings";
 
@@ -21,10 +26,18 @@ export interface Settings {
   csvFolder: string;
   /** Bookmark for the "open in file manager" action; never indexed or scanned. */
   docsFolder: string;
+  /** Bypass the per-document network gate (C2): opened/imported docs fetch without asking. */
+  alwaysAllowNetwork: boolean;
+  /** Read the bundled, read-only demo vault instead of a real folder — so the Obsidian
+   *  nodes work with no vault set, the web app included. Overrides obsidianVault. */
+  useDemoVault: boolean;
   /** Obsidian vault root the Obsidian nodes read/write `.md` under; desktop only. */
   obsidianVault: string;
   /** Vault-relative subfolder for written image assets; empty = beside the note. */
   obsidianAssetSubfolder: string;
+  /** The TaskNotes plugin's local HTTP API; empty = http://localhost:8080. The bearer
+   *  token lives in apiKeyStore under "tasknotes", never in the settings file. */
+  taskNotesUrl: string;
 
   /** Minimap corner: "bottom" (default), "top", or "hide"; the socket legend slides
    *  down into the freed corner whenever this isn't "bottom". */
@@ -33,12 +46,17 @@ export interface Settings {
   hideGridDots: boolean;
   /** The table popup's per-column summary/profile footer. */
   tablePopupSummary: boolean;
+  /** The table popup's frozen header row + frozen first column (both sticky). */
+  tablePopupFrozen: boolean;
 
   /** Drop a cable on empty canvas → the Add menu opens filtered to compatible
    *  node types, pre-wired to whichever one gets picked. */
   quickWire: boolean;
   /** Swap node cards for simplified placeholders once zoomed far out. */
   semanticZoom: boolean;
+  /** Force the case of every typed node header label at render — UPPER or Proper,
+   *  display-only (the stored label is untouched). Default names are never transformed. */
+  headerTitleCase: HeaderTitleCase;
   /** Keep the command palette docked instead of opening on Enter; desktop only. */
   commandPaletteAlwaysOn: boolean;
   /** Date Input reads relative phrases (today / next friday / in 3 days), re-resolved on every
@@ -54,13 +72,18 @@ const DEFAULTS: Settings = {
   tidyWidthCap: "off",
   csvFolder: "",
   docsFolder: "",
+  alwaysAllowNetwork: false,
+  useDemoVault: false,
   obsidianVault: "",
   obsidianAssetSubfolder: "",
+  taskNotesUrl: "",
   minimapPosition: "bottom",
   hideGridDots: false,
   tablePopupSummary: true,
+  tablePopupFrozen: true,
   quickWire: false,
   semanticZoom: false,
+  headerTitleCase: "upper",
   commandPaletteAlwaysOn: false,
   relativeDates: false,
 };
@@ -78,6 +101,9 @@ export interface SettingField {
   placeholder?: string;
   /** Choices for a "segment" field. */
   options?: { value: string; label: string }[];
+  /** Fold this field into a collapsible accordion with the given title; consecutive
+   *  fields sharing the title render inside one <details>. */
+  accordion?: string;
   /** No mobile counterpart exists: consumers must BOTH gray the control and skip
    *  the behavior, never silently do nothing. */
   disabledOnMobile?: boolean;
@@ -98,6 +124,7 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         key: "tidyAlign",
         label: "Tidy alignment",
         type: "segment",
+        accordion: "Tidy",
         options: [
           { value: "center", label: "Center" },
           { value: "top", label: "Top" },
@@ -107,6 +134,7 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         key: "tidyDirection",
         label: "Tidy direction",
         type: "segment",
+        accordion: "Tidy",
         options: [
           { value: "right", label: "Right" },
           { value: "down", label: "Down" },
@@ -116,6 +144,7 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         key: "tidyDensity",
         label: "Tidy density",
         type: "segment",
+        accordion: "Tidy",
         options: [
           { value: "compact", label: "Compact" },
           { value: "normal", label: "Normal" },
@@ -126,6 +155,7 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         key: "tidyWidthCap",
         label: "Tidy width cap",
         type: "segment",
+        accordion: "Tidy",
         options: [
           { value: "off", label: "Off" },
           { value: "2", label: "2" },
@@ -143,44 +173,15 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         label: "Semantic zoom",
         help: "Simplify node cards when zoomed far out",
       },
-    ],
-  },
-  {
-    title: "Data",
-    fields: [
       {
-        key: "csvFolder",
-        label: "Target data folder",
-        type: "folder",
-      },
-      {
-        key: "docsFolder",
-        label: "Documents folder",
-        help: "",
-        type: "folder",
-      },
-      {
-        key: "relativeDates",
-        label: "Relative dates",
-        help: "Date Input fields can parse \"next Tuesday\". WARNING: this adds volatility!",
-      },
-    ],
-  },
-  {
-    title: "Obsidian",
-    fields: [
-      {
-        key: "obsidianVault",
-        label: "Vault folder",
-        help: "For the Import from and Write To Obsidian nodes",
-        type: "folder",
-      },
-      {
-        key: "obsidianAssetSubfolder",
-        label: "Asset subfolder",
-        help: "Charts and images are saved here.",
-        type: "text",
-        placeholder: "assets",
+        key: "headerTitleCase",
+        label: "Header title case",
+        type: "segment",
+        options: [
+          { value: "as-typed", label: "As typed" },
+          { value: "upper", label: "UPPER" },
+          { value: "proper", label: "Proper" },
+        ],
       },
     ],
   },
@@ -204,15 +205,67 @@ export const SETTINGS_SCHEMA: SettingsSection[] = [
         label: "Hide grid dots",
       },
       {
-        key: "tablePopupSummary",
-        label: "Table popup summary footer",
-      },
-      {
         key: "commandPaletteAlwaysOn",
         label: "Always show Command Palette",
         help: "",
         // The palette is top-anchored on mobile — no bottom strip to dock to.
         disabledOnMobile: true,
+      },
+    ],
+  },
+  {
+    title: "Data",
+    fields: [
+      {
+        key: "csvFolder",
+        label: "Target data folder",
+        type: "folder",
+      },
+      {
+        key: "docsFolder",
+        label: "Documents folder",
+        help: "",
+        type: "folder",
+      },
+      {
+        key: "relativeDates",
+        label: "Relative dates",
+        help: "Date Input fields can parse \"next Tuesday\". WARNING: this adds volatility!",
+      },
+      {
+        key: "alwaysAllowNetwork",
+        label: "Always allow network",
+        help: "Opened and imported documents fetch without asking. Off: each foreign document asks once.",
+      },
+    ],
+  },
+  {
+    title: "Obsidian",
+    fields: [
+      {
+        key: "useDemoVault",
+        label: "Use demo vault (works in the web demo)",
+        help: "Read a bundled, read-only sample vault instead of a folder, so the Import and Vault Folder nodes work with no real vault — including in the browser.",
+      },
+      {
+        key: "obsidianVault",
+        label: "Vault folder",
+        help: "For the Import from and Write To Obsidian nodes",
+        type: "folder",
+      },
+      {
+        key: "obsidianAssetSubfolder",
+        label: "Asset subfolder",
+        help: "Charts and images are saved here.",
+        type: "text",
+        placeholder: "assets",
+      },
+      {
+        key: "taskNotesUrl",
+        label: "TaskNotes API",
+        help: "The TaskNotes plugin's HTTP API. Turn it on in the plugin's settings; the token goes on the TaskNotes card.",
+        type: "text",
+        placeholder: "http://localhost:8080",
       },
     ],
   },
@@ -251,6 +304,11 @@ function syncPerfClasses(): void {
   for (const [key, cls] of PERF_CLASS_MAP) html.classList.toggle(cls, Boolean(_settings[key]));
   html.classList.toggle("minimap-top", _settings.minimapPosition === "top");
   html.classList.toggle("minimap-hidden", _settings.minimapPosition === "hide");
+  // Header-title case is a CSS text-transform on the label DISPLAY (never the editing
+  // input, which shows the raw text); one class carries the chosen mode.
+  html.classList.toggle("hdr-case-upper", _settings.headerTitleCase === "upper");
+  html.classList.toggle("hdr-case-proper", _settings.headerTitleCase === "proper");
+  html.classList.toggle("hdr-case-as-typed", _settings.headerTitleCase === "as-typed");
 }
 subscribe(syncPerfClasses);
 

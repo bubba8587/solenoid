@@ -63,6 +63,29 @@ describe("parseNoteFrontmatter", () => {
     ]);
   });
 
+  it("parses a block list of inline objects into a frame field", () => {
+    const r = parseNoteFrontmatter(["---", "screen:", "  - {Laptop: ProBook, Screen: 8}", "  - {Laptop: UltraSlim, Screen: 9}", "---"].join("\n"));
+    expect(r.fields).toEqual([
+      { key: "screen", guessed: "frame", value: [
+        { Laptop: "ProBook", Screen: 8 },
+        { Laptop: "UltraSlim", Screen: 9 },
+      ] },
+    ]);
+  });
+
+  it("parses a flow array of inline objects into a frame field (commas inside braces held)", () => {
+    const r = parseNoteFrontmatter('---\nrows: [{a: 1, b: x}, {a: 2, b: y}]\n---');
+    expect(r.fields[0]).toEqual({ key: "rows", guessed: "frame", value: [
+      { a: 1, b: "x" },
+      { a: 2, b: "y" },
+    ] });
+  });
+
+  it("a mix of objects and scalars is NOT a frame — falls back to a list", () => {
+    const r = parseNoteFrontmatter('---\nmix: [{a: 1}, 2]\n---');
+    expect(r.fields[0].guessed).not.toBe("frame");
+  });
+
   it("honors quotes when splitting flow arrays", () => {
     const r = parseNoteFrontmatter('---\nitems: ["a, b", c]\n---');
     expect(r.fields[0].value).toEqual(["a, b", "c"]);

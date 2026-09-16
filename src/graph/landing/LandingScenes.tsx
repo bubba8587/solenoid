@@ -1,11 +1,64 @@
-import { useEffect, useRef, useState } from "react";
+// dte:C2
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { SocketDot, type SocketGlyph } from "../components/SocketLegend";
-import { SOCKET_COLORS } from "../sockets";
+import { NODE_KIND_ACCENTS, type NodeKind } from "../nodes/shared";
+import { ClassicPreset } from "rete";
+import type { SolenoidNode, SolenoidConnection } from "../schemes";
+import { nodeNameStore } from "../nodeNameStore";
+import { NumberInputNode } from "../nodes/input";
+import { FormatControllerNode } from "../nodes/formatController";
+import { ArithmeticNode } from "../nodes/scalar";
+import { EquationNode } from "../nodes/equation";
+import { FrameInputNode, JoinNode, GroupByFrameNode, FilterFrameNode, SortFrameNode } from "../nodes/frame";
+import { collapseStore } from "../collapseStore";
+import { PointPlotterNode, CurveNode, DateInputNode } from "../nodes/control";
+import { ListInputNode } from "../nodes/list";
+import { DisplayNode } from "../nodes/display";
+import { NoteNode } from "../nodes/annotation";
+import { TvmNode } from "../nodes/finance";
+import { VaultFolderNode, LocalFileNode } from "../nodes/connection";
+import { TaskNotesNode } from "../nodes/taskNotes";
+import { WriteObsidianNode } from "../nodes/obsidian";
+import { ReportNode } from "../nodes/report";
+import { type SurfaceStack } from "../flow/FlowSurface";
+import { SceneStage } from "./SceneStage";
+
+const asNode = (n: ClassicPreset.Node) => n as unknown as SolenoidNode;
+
+// ── Scene build helpers (every scene adds nodes and wires them the same way) ──
+/** Add each node to the scene's editor and register its class-derived family name. */
+async function addNodes(s: SurfaceStack, nodes: ClassicPreset.Node[]): Promise<void> {
+  for (const n of nodes) {
+    await s.editor.addNode(asNode(n));
+    nodeNameStore.ensure(n.id, n.constructor.name);
+  }
+}
+
+/** Wire one output socket to one input socket — the scenes' one cable-adding idiom. */
+function wire(s: SurfaceStack, src: ClassicPreset.Node, out: string, tgt: ClassicPreset.Node, inp: string) {
+  return s.editor.addConnection(
+    new ClassicPreset.Connection(asNode(src), out, asNode(tgt), inp) as SolenoidConnection,
+  );
+}
 
 // ─── Landing scene primitives ───────────────────────────────────────────────────
 // STATIC vignettes rebuilding the app's design recipes in plain DOM+SVG — the page
 // allows only ONE live rete stage (LandingGraph), so scenes must never mount one.
+
+// ── Reveal animation gate ──
+// Entrance/loop motion lives only under `.sol-landing--anim`, and only when the OS
+// isn't asking for reduced motion. Applied in a LAYOUT effect (before paint), so the
+// hidden reveal state paints once and the IntersectionObserver's reveal a frame later
+// has a committed frame to transition FROM — a passive effect flips it after paint, so
+// above-the-fold reveals collapse straight to visible with no animation on reload.
+export function useRevealAnim(): boolean {
+  const [anim, setAnim] = useState(false);
+  useLayoutEffect(() => {
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) setAnim(true);
+  }, []);
+  return anim;
+}
 
 // ── Reveal: scroll-triggered entrance ──
 // The hidden state exists only under `.sol-landing--anim`, so content is never
@@ -157,489 +210,312 @@ export function MNode({
   );
 }
 
-const Row = ({ label, value, solved }: { label: string; value: ReactNode; solved?: boolean }) => (
-  <div className={`sol-mnode__row${solved ? " sol-mnode__row--solved" : ""}`}>
-    <span className="sol-mnode__label">{label}</span>
-    <span className="sol-mnode__val">{value}</span>
-  </div>
-);
-
-const Hero = ({ children }: { children: ReactNode }) => (
-  <div className="sol-mnode__hero">{children}</div>
-);
-
-const Chip = ({ kind, children }: { kind: "array" | "frame" | "chart"; children: ReactNode }) => (
-  <span className={`solenoid-array-chip solenoid-array-chip--${kind} sol-mnode__chip`}>{children}</span>
-);
-
-const C = SOCKET_COLORS;
-
-// ─── Scene: how a node reads (annotated anatomy) ────────────────────────────────
-export function AnatomyScene() {
-  const W = 680;
-  const H = 330;
-  const nx = 240;
-  const ny = 60;
-  return (
-    <Diagram w={W} h={H}>
-      <svg className="sol-diagram__cables" width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
-        <g className="sol-callout__lines">
-          <path d={`M 178 84 H ${nx - 6}`} />
-          <path d={`M 178 168 H ${nx - 12}`} />
-          <path d={`M 502 108 H ${nx + 246}`} />
-          <path d={`M 502 236 L ${nx + 246} 236`} />
-        </g>
-      </svg>
-
-      <MNode
-        x={nx}
-        y={ny}
-        w={240}
-        accent={C.frame}
-        title="XLOOKUP"
-        socks={[
-          { cy: 42, side: "in", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 66, side: "in", glyph: { kind: "frame", color: C.frame, tip: "Frame" } },
-          { cy: 90, side: "in", glyph: { kind: "square", color: C.strlist, tip: "String List" } },
-          { cy: 152, side: "out", glyph: { kind: "circle", color: C.string, tip: "String" } },
-        ]}
-      >
-        <Row label="lookup" value="1042" />
-        <Row label="within" value={<Chip kind="frame">Frame 5,000×6</Chip>} />
-        <Row label="return" value="name" />
-        <Hero>&quot;Meridian Cable Co.&quot;</Hero>
-        <div className="sol-mnode__chiprow">
-          <Chip kind="array">List ×1</Chip>
-        </div>
-      </MNode>
-
-      <div className="sol-callout" style={{ left: 8, top: 56, width: 168 }}>
-        The header carries the node&apos;s category color as a tint. The card itself stays neutral.
-      </div>
-      <div className="sol-callout" style={{ left: 8, top: 142, width: 168 }}>
-        Sockets straddle the card edge. Shape is dimension: circle, list square, matrix grid. Color is the element type.
-      </div>
-      <div className="sol-callout" style={{ left: 506, top: 82, width: 166 }}>
-        The result box renders in the type&apos;s default format. A date reads as a date, a unit rides its number.
-      </div>
-      <div className="sol-callout" style={{ left: 506, top: 212, width: 166 }}>
-        Chips are the compact preview of a list, frame or chart. Click one and the full grid opens.
-      </div>
-    </Diagram>
-  );
-}
-
-// ─── Scene: the typed cable board ───────────────────────────────────────────────
+// ─── Scene: the typed cable board (real nodes, computed once) ────────────────────
+// A source of each value TYPE wired into a Display, so the cables show their real
+// per-type colors: a number, a text list, a date, a frame. Manual layout: half the
+// pairs sit on the left, half on the right, each Display a fixed span to its source.
 export function CableBoardScene() {
-  const W = 680;
-  const H = 210;
-  const lanes: { y0: number; y1: number; glyph: SocketGlyph; name: string }[] = [
-    { y0: 30, y1: 22, glyph: { kind: "circle", color: C.number, tip: "Numeric" }, name: "Number" },
-    { y0: 68, y1: 64, glyph: { kind: "square", color: C.strlist, tip: "String List" }, name: "Text list" },
-    { y0: 106, y1: 106, glyph: { kind: "circle", color: C.date, tip: "Date" }, name: "Date" },
-    { y0: 144, y1: 148, glyph: { kind: "frame", color: C.frame, tip: "Frame" }, name: "Frame" },
-    { y0: 182, y1: 190, glyph: { kind: "lambda", color: C.lambda, tip: "LAMBDA" }, name: "Lambda" },
-  ];
   return (
-    <Diagram w={W} h={H}>
-      <Cables
-        w={W}
-        h={H}
-        runs={lanes.map((l) => ({ from: [34, l.y0], to: [560, l.y1], color: l.glyph.color }))}
-      />
-      {lanes.map((l) => (
-        <span key={`src-${l.name}`} className="sol-board__dot" style={{ left: 27, top: l.y0 - 7 }}>
-          <SocketDot entry={l.glyph} />
-        </span>
-      ))}
-      {lanes.map((l) => (
-        <span key={`end-${l.name}`} className="sol-board__end" style={{ left: 553, top: l.y1 - 7 }}>
-          <SocketDot entry={l.glyph} />
-          <span className="sol-board__name">{l.name}</span>
-        </span>
-      ))}
-    </Diagram>
+    <SceneStage
+      className="sol-scene-stage--sockets"
+      manualLayout
+      build={async (s) => {
+        const num = new NumberInputNode({ label: "Number", value: 42 });
+        const list = new ListInputNode({ label: "Text list", dataType: "string" });
+        list.stringLiterals.v0 = "red, green, blue";
+        const date = new DateInputNode({ label: "Date" });
+        const frame = new FrameInputNode({ label: "Frame", frameText: "a, b\n1, 2\n3, 4" });
+        // [source, outputKey, sourceX, sourceY]; the Display sits SPAN to the right.
+        const SPAN = 240;
+        const pairs: [ClassicPreset.Node, string, number, number][] = [
+          [num, "value", 0, 0],
+          [list, "list", 0, 260],
+          [date, "result", 660, 0],
+          [frame, "frame", 650, 260],
+        ];
+        for (const [src, outKey, x, y] of pairs) {
+          const disp = new DisplayNode({ label: "Display" });
+          await addNodes(s, [src, disp]);
+          await s.view.moveNode(src.id, { x, y });
+          await s.view.moveNode(disp.id, { x: x + SPAN + 50, y: y + 30 });
+          await wire(s, src, outKey, disp, "in");
+        }
+      }}
+    />
   );
 }
 
-// ─── Scene: real units ──────────────────────────────────────────────────────────
+// ─── Scene: real units (real nodes, computed once) ──────────────────────────────
+// A real locked FlowSurface: two plain numbers take units from undocked Format
+// Controllers, and dividing them carries the dimensions — 300 km ÷ 5 hr = 60 km/hr.
+// Positions come from the app's own Tidy/ELK; SceneStage reconciles the FCs' mutable
+// sockets and computes the value once.
 export function UnitsScene() {
-  const W = 620;
-  const H = 310;
   return (
-    <Diagram w={W} h={H}>
-      <Cables
-        w={W}
-        h={H}
-        runs={[
-          { from: [186, 95], to: [240, 136], color: C.number },
-          { from: [416, 136], to: [466, 67], color: C.number },
-          { from: [156, 237], to: [406, 227], color: C.number },
-          { from: [336, 237], to: [406, 245], color: C.number },
-        ]}
-      />
-      <MNode
-        x={16}
-        y={18}
-        w={170}
-        accent={C.number}
-        title="Format Controller"
-        socks={[{ cy: 77, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } }]}
-      >
-        <Row label="unit" value="km" />
-        <Hero>5 km</Hero>
-      </MNode>
-      <MNode
-        x={240}
-        y={62}
-        w={176}
-        accent={C.number}
-        title="Convert"
-        socks={[
-          { cy: 74, side: "in", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 74, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-        ]}
-      >
-        <Row label="to" value="mi" />
-        <Hero>3.107 mi</Hero>
-      </MNode>
-      <MNode
-        x={466}
-        y={20}
-        w={140}
-        accent={C.number}
-        title="Display"
-        socks={[{ cy: 47, side: "in", glyph: { kind: "circle", color: C.number, tip: "Numeric" } }]}
-      >
-        <Hero>3.107 mi</Hero>
-      </MNode>
-
-      <MNode
-        x={16}
-        y={190}
-        w={140}
-        accent={C.number}
-        title="Length"
-        socks={[{ cy: 47, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } }]}
-      >
-        <Hero>3 m</Hero>
-      </MNode>
-      <MNode
-        x={196}
-        y={190}
-        w={140}
-        accent={C.number}
-        title="Duration"
-        socks={[{ cy: 47, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } }]}
-      >
-        <Hero>4 s</Hero>
-      </MNode>
-      <MNode
-        x={406}
-        y={185}
-        w={170}
-        accent={C.number}
-        title="Add"
-        socks={[
-          { cy: 42, side: "in", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 60, side: "in", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 92, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-        ]}
-      >
-        <Row label="a" value="3 m" />
-        <Row label="b" value="4 s" />
-        <Hero>
-          <span className="sol-error-chip">#UNIT!</span>
-        </Hero>
-      </MNode>
-    </Diagram>
+    <SceneStage
+      className="sol-scene-stage--units"
+      build={async (s) => {
+        const dist = new NumberInputNode({ label: "Distance", value: 300 });
+        const fcKm = new FormatControllerNode({ label: "km", unit: "km", side: "output" });
+        const time = new NumberInputNode({ label: "Time", value: 5 });
+        const fcHr = new FormatControllerNode({ label: "hr", unit: "hr", side: "output" });
+        const speed = new ArithmeticNode({ label: "Speed", op: "div" });
+        await addNodes(s, [dist, fcKm, time, fcHr, speed]);
+        await wire(s, dist, "value", fcKm, "in");
+        await wire(s, fcKm, "out", speed, "a");
+        await wire(s, time, "value", fcHr, "in");
+        await wire(s, fcHr, "out", speed, "b");
+      }}
+    />
   );
 }
 
-// ─── Scene: the Equation node ───────────────────────────────────────────────────
+// ─── Scene: the Equation node (real nodes, computed once) ───────────────────────
+// Two knowns feed an Equation node holding V = I × R; the third variable is left
+// unwired, so the node solves for it (I = 12 / 240).
 export function EquationScene() {
-  const W = 600;
-  const H = 250;
   return (
-    <Diagram w={W} h={H}>
-      <Cables
-        w={W}
-        h={H}
-        runs={[
-          { from: [166, 74], to: [266, 88], color: C.number },
-          { from: [166, 194], to: [266, 136], color: C.number },
-        ]}
-      />
-      <MNode
-        x={26}
-        y={28}
-        w={140}
-        accent={C.number}
-        title="Volts"
-        socks={[{ cy: 46, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } }]}
-      >
-        <Hero>12 V</Hero>
-      </MNode>
-      <MNode
-        x={26}
-        y={148}
-        w={140}
-        accent={C.number}
-        title="Ohms"
-        socks={[{ cy: 46, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } }]}
-      >
-        <Hero>240 Ω</Hero>
-      </MNode>
-      <MNode
-        x={266}
-        y={26}
-        w={250}
-        accent={C.lambda}
-        title="Ohm's law"
-        socks={[
-          { cy: 62, side: "in", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 62, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 86, side: "in", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 86, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 110, side: "in", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 110, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 138, side: "out", glyph: { kind: "circle", color: C.logical, tip: "Boolean" } },
-        ]}
-      >
-        <div className="sol-mnode__formula">V = I × R</div>
-        <Row label="V" value="12 V" />
-        <Row label="I" value="50 mA" solved />
-        <Row label="R" value="240 Ω" />
-        <Row label="Check" value={<span className="sol-mnode__true">TRUE</span>} />
-      </MNode>
-      <div className="sol-callout" style={{ left: 536, top: 66, width: 60 }}>
-        solved
-      </div>
-    </Diagram>
+    <SceneStage
+      className="sol-scene-stage--equation"
+      build={async (s) => {
+        const volts = new NumberInputNode({ label: "Volts", value: 12 });
+        const ohms = new NumberInputNode({ label: "Ohms", value: 240 });
+        const eq = new EquationNode({ label: "Ohm's law", expr: "V = I * R" });
+        await addNodes(s, [volts, ohms, eq]);
+        await wire(s, volts, "value", eq, "V");
+        await wire(s, ohms, "value", eq, "R");
+      }}
+    />
   );
 }
 
-// ─── Scene: relational verbs ────────────────────────────────────────────────────
+// ─── Scene: relational verbs (real nodes, computed once) ────────────────────────
+// A sales frame joined to a regions frame on `region`, then grouped by region
+// summing sales — the real Join and Group By nodes over inline literal frames.
 export function VerbsScene() {
-  const W = 660;
-  const H = 280;
   return (
-    <Diagram w={W} h={H}>
-      <Cables
-        w={W}
-        h={H}
-        runs={[
-          { from: [176, 63], to: [250, 122], color: C.frame },
-          { from: [176, 233], to: [250, 140], color: C.frame },
-          { from: [420, 172], to: [488, 84], color: C.frame },
-        ]}
-      />
-      <MNode
-        x={16}
-        y={18}
-        w={160}
-        accent={C.frame}
-        title="sales.csv"
-        socks={[{ cy: 45, side: "out", glyph: { kind: "frame", color: C.frame, tip: "Frame" } }]}
-      >
-        <div className="sol-mnode__chiprow">
-          <Chip kind="frame">Frame 5,000×6</Chip>
-        </div>
-      </MNode>
-      <MNode
-        x={16}
-        y={188}
-        w={160}
-        accent={C.frame}
-        title="regions.csv"
-        socks={[{ cy: 45, side: "out", glyph: { kind: "frame", color: C.frame, tip: "Frame" } }]}
-      >
-        <div className="sol-mnode__chiprow">
-          <Chip kind="frame">Frame 12×2</Chip>
-        </div>
-      </MNode>
-      <MNode
-        x={250}
-        y={80}
-        w={170}
-        accent={C.frame}
-        title="Join"
-        socks={[
-          { cy: 42, side: "in", glyph: { kind: "frame", color: C.frame, tip: "Frame" } },
-          { cy: 60, side: "in", glyph: { kind: "frame", color: C.frame, tip: "Frame" } },
-          { cy: 92, side: "out", glyph: { kind: "frame", color: C.frame, tip: "Frame" } },
-        ]}
-      >
-        <Row label="on" value="region" />
-        <Row label="how" value="left" />
-        <div className="sol-mnode__chiprow">
-          <Chip kind="frame">Frame 5,000×7</Chip>
-        </div>
-      </MNode>
-      <MNode
-        x={488}
-        y={26}
-        w={160}
-        accent={C.frame}
-        title="GROUPBY"
-        socks={[
-          { cy: 58, side: "in", glyph: { kind: "frame", color: C.frame, tip: "Frame" } },
-          { cy: 92, side: "out", glyph: { kind: "frame", color: C.frame, tip: "Frame" } },
-        ]}
-      >
-        <Row label="by" value="region" />
-        <Row label="agg" value="SUM(sales)" />
-        <div className="sol-mnode__chiprow">
-          <Chip kind="frame">Frame 12×2</Chip>
-        </div>
-      </MNode>
-    </Diagram>
+    <SceneStage
+      className="sol-scene-stage--verbs"
+      build={async (s) => {
+        const sales = new FrameInputNode({
+          label: "Sales",
+          frameText: "region, sales\nEast, 100\nWest, 200\nEast, 50\nWest, 80\nEast, 40",
+        });
+        const regions = new FrameInputNode({
+          label: "Regions",
+          frameText: "region, manager\nEast, Ann\nWest, Bo",
+        });
+        const join = new JoinNode({ label: "Join", how: "left" });
+        join.stringLiterals.leftKey = "region";
+        const gb = new GroupByFrameNode({ label: "GROUPBY", agg: "sum" });
+        gb.stringLiterals.keys = "region";
+        gb.stringLiterals.column = "sales";
+        await addNodes(s, [sales, regions, join, gb]);
+        await wire(s, sales, "frame", join, "left");
+        await wire(s, regions, "frame", join, "right");
+        await wire(s, join, "frame", gb, "frame");
+      }}
+    />
   );
 }
 
-// ─── Scene: draw your data ──────────────────────────────────────────────────────
-const SCATTER: [number, number][] = [
-  [14, 96], [30, 78], [44, 88], [58, 62], [74, 68], [90, 44],
-  [104, 52], [120, 30], [136, 38], [152, 18], [166, 26],
-];
-
+// ─── Scene: draw your data (real nodes, computed once) ──────────────────────────
+// Two real input nodes whose value is their own drawn data: a Point Plotter seeded
+// with a scatter and a Curve seeded with control points. No wiring; each stands alone.
 export function DrawScene() {
-  const W = 600;
-  const H = 270;
   return (
-    <Diagram w={W} h={H}>
-      <MNode
-        x={26}
-        y={22}
-        w={216}
-        accent={C.table}
-        title="Point Plotter"
-        socks={[
-          { cy: 168, side: "out", glyph: { kind: "square", color: C.list, tip: "Numeric List" } },
-          { cy: 190, side: "out", glyph: { kind: "square", color: C.list, tip: "Numeric List" } },
-        ]}
-      >
-        <svg className="sol-mnode__pad" viewBox="0 0 180 110" aria-hidden="true">
-          {SCATTER.map(([px, py], i) => (
-            <circle key={i} cx={px} cy={py * 0.92} r="3" className="sol-pad__dot" style={{ animationDelay: `${i * 60}ms` }} />
-          ))}
-        </svg>
-        <Row label="X" value={<Chip kind="array">List ×11</Chip>} />
-        <Row label="Y" value={<Chip kind="array">List ×11</Chip>} />
-      </MNode>
-      <MNode
-        x={340}
-        y={44}
-        w={216}
-        accent={C.table}
-        title="Curve"
-        socks={[{ cy: 168, side: "out", glyph: { kind: "square", color: C.list, tip: "Numeric List" } }]}
-      >
-        <svg className="sol-mnode__pad" viewBox="0 0 180 110" aria-hidden="true">
-          <path className="sol-pad__curve" d="M 10 92 C 50 88, 62 30, 96 34 S 150 74, 172 22" />
-          {[[10, 92], [96, 34], [172, 22]].map(([px, py], i) => (
-            <circle key={i} cx={px} cy={py} r="3.4" className="sol-pad__handle" />
-          ))}
-        </svg>
-        <Row label="samples" value={<Chip kind="array">List ×64</Chip>} />
-      </MNode>
-    </Diagram>
+    <SceneStage
+      className="sol-scene-stage--draw"
+      manualLayout
+      build={async (s) => {
+        const plot = new PointPlotterNode({
+          label: "Point Plotter",
+          pointsText: "1, 2\n2, 3\n3, 3\n4, 5\n5, 4\n6, 6\n7, 8\n8, 7\n9, 9",
+          xmax: 10,
+          ymax: 10,
+        });
+        const curve = new CurveNode({
+          label: "Curve",
+          pointsText: "0, 1\n3, 6\n6, 4\n10, 9",
+          xmax: 10,
+          ymax: 10,
+        });
+        await addNodes(s, [plot, curve]);
+        // Unwired cards: place them side by side (ELK has no edges to arrange them by).
+        await s.view.moveNode(plot.id, { x: 20, y: 20 });
+        await s.view.moveNode(curve.id, { x: 300, y: 20 });
+      }}
+    />
   );
 }
 
-// ─── Scene: Monte Carlo ─────────────────────────────────────────────────────────
-const HIST = [4, 9, 16, 26, 40, 54, 62, 57, 44, 30, 18, 10, 5];
-
-export function MonteCarloScene() {
-  const W = 600;
-  const H = 250;
-  return (
-    <Diagram w={W} h={H}>
-      <Cables
-        w={W}
-        h={H}
-        runs={[{ from: [216, 138], to: [316, 96], color: C.number }]}
-      />
-      <MNode
-        x={26}
-        y={42}
-        w={190}
-        accent={C.any}
-        title="Loan model"
-        socks={[{ cy: 96, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } }]}
-      >
-        <Row label="rate" value="4.5 ± 0.5 %" />
-        <Row label="price" value="$310k ± 20k" />
-        <Row label="term" value="25 y" />
-      </MNode>
-      <MNode x={316} y={28} w={240} accent={C.number} title="Monthly payment">
-        <svg className="sol-mnode__pad sol-mnode__pad--hist" viewBox="0 0 204 92" aria-hidden="true">
-          {HIST.map((v, i) => (
-            <rect
-              key={i}
-              className="sol-hist__bar"
-              x={8 + i * 15}
-              y={86 - v * 1.25}
-              width={11}
-              height={v * 1.25}
-              style={{ transitionDelay: `${120 + i * 45}ms` }}
-            />
-          ))}
-        </svg>
-        <Hero>$1,213 ± $86</Hero>
-      </MNode>
-    </Diagram>
-  );
-}
-
-// ─── Scene: Obsidian round trip ─────────────────────────────────────────────────
+// ─── Scene: Obsidian — a plain note's frontmatter as typed values ───────────────
+// A real Note whose body opens with a YAML block is a typed record: its frontmatter
+// keys become typed outputs, wired here into a Time Value of Money node that solves
+// the monthly payment. No vault needed — the note lives on the canvas.
 export function ObsidianScene() {
-  const W = 600;
-  const H = 250;
   return (
-    <Diagram w={W} h={H}>
-      <Cables
-        w={W}
-        h={H}
-        runs={[
-          { from: [256, 78], to: [356, 82], color: C.number },
-          { from: [256, 96], to: [356, 100], color: C.number },
-        ]}
-      />
-      <MNode
-        x={26}
-        y={26}
-        w={230}
-        accent={C.string}
-        title="refi-assumptions.md"
-        socks={[
-          { cy: 52, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 70, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-        ]}
-      >
-        <pre className="sol-mnode__front">
-          {"---\nrate: 0.045\nyears: 25\n---"}
-        </pre>
-        <p className="sol-mnode__prose">Assumptions live in the vault; Reload re-reads them from disk.</p>
-      </MNode>
-      <MNode
-        x={356}
-        y={30}
-        w={190}
-        accent={C.number}
-        title="Payment"
-        socks={[
-          { cy: 52, side: "in", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 70, side: "in", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-          { cy: 104, side: "out", glyph: { kind: "circle", color: C.number, tip: "Numeric" } },
-        ]}
-      >
-        <Row label="rate" value="0.045" />
-        <Row label="nper" value="300" />
-        <Hero>$1,213 / mo</Hero>
-      </MNode>
-    </Diagram>
+    <SceneStage
+      className="sol-scene-stage--obsidian"
+      build={async (s) => {
+        const note = new NoteNode({
+          label: "refi.md",
+          height: 280,
+          body:
+            "---\n" +
+            "lender: First National\n" +
+            "principal: 250000\n" +
+            "rate: 0.005\n" +
+            "months: 360\n" +
+            "balance: 0\n" +
+            "apr: 6.0%\n" +
+            "opened: 2026-01-15\n" +
+            "---\n" +
+            "Refinancing the 30-year fixed. `rate` is the monthly rate (APR / 12) and\n" +
+            "`balance` is the payoff target. Edit any figure and the payment re-solves.",
+        });
+        const pmt = new TvmNode({ label: "Payment" });
+        await addNodes(s, [note, pmt]);
+        await wire(s, note, "principal", pmt, "pv");
+        await wire(s, note, "rate", pmt, "rate");
+        await wire(s, note, "months", pmt, "nper");
+        await wire(s, note, "balance", pmt, "fv");
+      }}
+    />
   );
+}
+
+// ─── Scene: import a note — frontmatter as typed outputs (Obsidian page) ─────────
+// The real Note node parsing a YAML frontmatter block: each key becomes a typed
+// output (numbers, dates), and one is wired into a Display to show a property in use.
+// No vault and no IO — unlike the vault-reader nodes, a Note lives on the canvas.
+export function NoteImportScene() {
+  return (
+    <SceneStage
+      className="sol-scene-stage--obs-note"
+      build={async (s) => {
+        const note = new NoteNode({
+          label: "Deep Work.md",
+          height: 250,
+          body:
+            "---\n" +
+            "rating: 4.5\n" +
+            "pages: 296\n" +
+            "started: 2026-07-30\n" +
+            "finished: 2026-08-21\n" +
+            "---\n" +
+            "Every frontmatter property is exposed as a typed value you can wire as an input.",
+        });
+        const disp = new DisplayNode({ label: "rating" });
+        await addNodes(s, [note, disp]);
+        await wire(s, note, "rating", disp, "in");
+      }}
+    />
+  );
+}
+
+// ─── Scene: the vault as a table (real nodes reading the demo vault) ─────────────
+// A real Vault Folder reads the bundled demo vault's Notes folder as one cube, Filter
+// keeps the notes tagged `book`, Sort orders by rating, Display shows the table. The
+// Obsidian page forces the demo-vault root, so this reads real notes on the web too.
+export function VaultTableScene() {
+  return (
+    <SceneStage
+      className="sol-scene-stage--vault-table"
+      awaitConnections
+      build={async (s) => {
+        const notes = new VaultFolderNode({ label: "Vault Folder", folder: "Notes" });
+        const filter = new FilterFrameNode({
+          label: "tags contains book",
+          condConfig: { "0": { op: "listContains" } },
+          valueKeys: ["frame", "column0", "value0"],
+        });
+        filter.stringLiterals.column0 = "tags";
+        filter.stringLiterals.value0 = "book";
+        const sort = new SortFrameNode({ label: "by rating", dir: "desc" });
+        sort.stringLiterals.column = "rating";
+        const disp = new DisplayNode({ label: "Book notes" });
+        await addNodes(s, [notes, filter, sort, disp]);
+        await wire(s, notes, "cube", filter, "frame");
+        await wire(s, filter, "frame", sort, "frame");
+        await wire(s, sort, "frame", disp, "in");
+        // Compact 3x3 preview, not the full table: a full frame grows the card to fit
+        // every row and column and blows the scene's zoom out.
+        collapseStore.set(disp.id, true);
+      }}
+    />
+  );
+}
+
+// ─── Scene: TaskNotes (the real connection node on a live canvas) ────────────────
+// The real TaskNotes node in its "tasks" mode, feeding a Display. The /obsidian page
+// fakes the TaskNotes HTTP API behind the demo flag (demoTaskNotes.ts), so this shows a
+// real Tasks cube on the web with no server. The Display is collapsed to its compact
+// preview — the full cube is very wide and would zoom the scene out.
+export function TaskNotesScene() {
+  return (
+    <SceneStage
+      className="sol-scene-stage--tasknotes"
+      awaitConnections
+      build={async (s) => {
+        const tasks = new TaskNotesNode({ label: "TaskNotes" });
+        const disp = new DisplayNode({ label: "Tasks" });
+        await addNodes(s, [tasks, disp]);
+        await wire(s, tasks, "tasks", disp, "in");
+        collapseStore.set(disp.id, true);
+      }}
+    />
+  );
+}
+
+// ─── Scene: Excel over CSV (a real Local File reading a bundled CSV) ─────────────
+// A real Local File node reads the demo vault's bundled expenses.csv as a typed
+// frame, shown in a Display. The Obsidian page forces the Local File data folder to
+// the demo vault, so this reads a real CSV on the web too (desktop reads real disk).
+export function LocalFileScene() {
+  return (
+    <SceneStage
+      className="sol-scene-stage--obs-csv"
+      build={async (s) => {
+        const file = new LocalFileNode({ label: "expenses.csv", fileName: "expenses.csv" });
+        const disp = new DisplayNode({ label: "Expenses" });
+        await addNodes(s, [file, disp]);
+        await wire(s, file, "frame", disp, "in");
+      }}
+    />
+  );
+}
+
+// ─── The Obsidian page's live hero graph (interactive, not a locked scene) ───────
+// Two plain values flow into a Report — a markdown note whose `{{ }}` tags embed them
+// (Knap) — and Write to Obsidian. Driven by LiveGraph, so it claims the page globals:
+// edit an input and the Report re-renders, open its Document chip to read the note.
+// The reports surface, no formula to parse — values in, a note out. Clears first so
+// LiveGraph's Reset rebuilds it.
+export async function buildReportPipeline(s: SurfaceStack): Promise<void> {
+  await s.editor.clear();
+  const focus = new NumberInputNode({ label: "Focus hours", value: 18.5 });
+  const tasks = new NumberInputNode({ label: "Tasks done", value: 12 });
+  const report = new ReportNode({
+    label: "Weekly review",
+    body:
+      "# Weekly review\n\n" +
+      "Logged **{{ focus }} h** of deep work across **{{ tasks }}** finished tasks. " +
+      "Nice momentum — keep the streak going.",
+  });
+  const write = new WriteObsidianNode({ label: "Write to Obsidian", target: "note" });
+  write.stringLiterals.path = "Weekly review";
+  const at: [ClassicPreset.Node, number, number][] = [
+    [focus, 20, 40],
+    [tasks, 20, 230],
+    [report, 360, 110],
+    [write, 720, 140],
+  ];
+  await addNodes(s, at.map(([n]) => n));
+  for (const [n, x, y] of at) await s.view.moveNode(n.id, { x, y });
+  await wire(s, focus, "value", report, "focus");
+  await wire(s, tasks, "value", report, "tasks");
+  await wire(s, report, "document", write, "in");
 }
 
 // ─── Scene: presenter mode (the camera flies) ───────────────────────────────────
@@ -662,27 +538,62 @@ export function PresenterScene() {
 }
 
 // ─── The function wall ──────────────────────────────────────────────────────────
+// Two marquee rows, each a rainbow of node kinds rather than one domain per row —
+// lookup (violet), text (lime), math (blue), date (pink), array (gold), logic
+// (purple), lambda (green) and complex (sky) interleave so the color varies as it
+// scrolls. Every name is a real Excel function Solenoid answers.
 const FN_ROW_A = [
-  "SUM", "AVERAGE", "XLOOKUP", "SUMIFS", "INDEX", "LAMBDA", "MAKEARRAY", "REDUCE",
-  "BYROW", "FILTER", "TAKE", "DROP", "VSTACK", "HSTACK", "WRAPROWS", "PIVOTBY",
-  "CHOOSE", "IFS", "SWITCH", "IFERROR",
+  "XLOOKUP", "TEXTJOIN", "NPV", "EOMONTH", "FILTER", "IFS", "REDUCE", "IMSQRT",
+  "INDEX", "LEFT", "PMT", "NETWORKDAYS", "SORT", "SWITCH", "MAKEARRAY", "IMABS",
+  "XMATCH", "SUBSTITUTE", "SUMIFS", "WEEKDAY", "UNIQUE", "IFERROR",
 ];
 const FN_ROW_B = [
-  "PMT", "PV", "FV", "NPER", "RATE", "EFFECT", "PDURATION", "RRI", "NORM.DIST",
-  "NORM.INV", "BINOM.DIST", "POISSON.DIST", "ROUND", "MOD", "SQRT", "LN", "EXP",
-  "SIN", "COS", "COUNTIFS",
+  "PIVOTBY", "CONCAT", "FV", "WORKDAY", "SORTBY", "AND", "MAP", "IMLN", "TRIM",
+  "STDEV.S", "EDATE", "DROP", "NOT", "SCAN", "IMEXP", "MID", "FORECAST.LINEAR",
+  "DATEDIF", "VSTACK", "OR", "BYCOL", "UPPER",
 ];
+
+// Each function reads in the accent of the node kind that provides it.
+const FN_KIND: Record<string, NodeKind> = {
+  // lookup / reference (frame)
+  XLOOKUP: "frame", INDEX: "frame", XMATCH: "frame", PIVOTBY: "frame",
+  // text (string)
+  TEXTJOIN: "string", LEFT: "string", SUBSTITUTE: "string", CONCAT: "string",
+  TRIM: "string", MID: "string", UPPER: "string",
+  // math / stats / finance
+  NPV: "math", PMT: "math", SUMIFS: "math", FV: "math", "STDEV.S": "math",
+  "FORECAST.LINEAR": "math",
+  // date / time
+  EOMONTH: "date", NETWORKDAYS: "date", WEEKDAY: "date", WORKDAY: "date",
+  EDATE: "date", DATEDIF: "date",
+  // dynamic arrays (list)
+  FILTER: "list", SORT: "list", UNIQUE: "list", SORTBY: "list", DROP: "list", VSTACK: "list",
+  // logical
+  IFS: "logic", SWITCH: "logic", IFERROR: "logic", AND: "logic", NOT: "logic", OR: "logic",
+  // lambda helpers
+  REDUCE: "lambda", MAKEARRAY: "lambda", MAP: "lambda", SCAN: "lambda", BYCOL: "lambda",
+  // complex numbers
+  IMSQRT: "complex", IMABS: "complex", IMLN: "complex", IMEXP: "complex",
+};
 
 function FnRow({ names, reverse }: { names: string[]; reverse?: boolean }) {
   const track = [...names, ...names];
   return (
     <div className="sol-fnwall__lane">
       <div className={`sol-fnwall__track${reverse ? " sol-fnwall__track--rev" : ""}`}>
-        {track.map((n, i) => (
-          <span key={i} className="sol-fnwall__fn" aria-hidden={i >= names.length}>
-            {n}
-          </span>
-        ))}
+        {track.map((n, i) => {
+          const kind = FN_KIND[n];
+          return (
+            <span
+              key={i}
+              className="sol-fnwall__fn"
+              aria-hidden={i >= names.length}
+              style={kind ? { color: NODE_KIND_ACCENTS[kind] } : undefined}
+            >
+              {n}
+            </span>
+          );
+        })}
       </div>
     </div>
   );

@@ -61,19 +61,16 @@
   align-items: center;
   margin: 4px 0 2px;
 }
-.sol-switch__cycle {
+/* The controls row: + Add shrinks to a comfortable minimum (it is width:100% by
+   default) and the One-mode stepper GROWS into the rest of the row. The stepper reuses
+   the Record pager styles (.solenoid-record__pager*), spread full-width here. */
+.sol-switch__controls .solenoid-node__add-input {
+  width: auto;
   flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 22px;
-  padding: 0 8px;
-  font-family: inherit;
-  font-size: 11px;
-  background: var(--btn-bg);
-  border: 1px solid var(--btn-border);
-  border-radius: 6px;
-  color: var(--text);
-  cursor: pointer;
+  padding: 3px 10px;
 }
-.sol-switch__cycle:hover { border-color: var(--node-accent, var(--accent)); color: var(--accent); }
+.sol-switch__pager {
+  flex: 1 1 auto;
+  margin: 0;
+  justify-content: space-between;
+}

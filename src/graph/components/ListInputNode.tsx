@@ -42,7 +42,6 @@ export function ListInputComponent({ data, emit }: NodeProps<ListInputNodeType>)
   // Local mirror so the toggle re-renders on change; the handler swaps the socket types.
   const [dt, setDt] = useState<ListElemType>(data.dataType);
   useEffect(() => { setDt(data.dataType); }, [data.dataType]);
-
   return (
     <NodeShell node={data} emit={emit}>
       <SegToggle

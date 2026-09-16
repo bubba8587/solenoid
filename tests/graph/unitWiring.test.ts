@@ -1,3 +1,4 @@
+// dte:D40
 import { describe, it, expect } from "vitest";
 import { ArithmeticNode, arithmeticCell } from "../../src/graph/nodes/scalar";
 import { fromUnit, isUnitCell, isRatio, magnitudeOf, unitLabelOf, formatUnitCell, type UnitCell } from "../../src/graph/unitValue";
@@ -86,27 +87,27 @@ describe("ArithmeticNode.data — units flow through the live node", () => {
 
 describe("MathFn — dimensional signatures (avoid garbage + correct dims)", () => {
   it("SQRT of an area (m²) is a length (m)", async () => {
-    const { MathFnNode } = await import("../../src/graph/nodes/scalar");
+    const { MathFXNode } = await import("../../src/graph/nodes/scalar");
     const area = fromUnit(9, { dim: { length: 2 }, scale: 1 }) as UnitCell;
-    const r = new MathFnNode({ op: "sqrt" }).data({ in: [area] as never }).result;
+    const r = new MathFXNode({ op: "sqrt" }).data({ in: [area] as never }).result;
     expect(magnitudeOf(r)).toBe(3);
     expect(unitLabelOf(r)).toBe("m");
   });
   it("ABS preserves the unit", async () => {
-    const { MathFnNode } = await import("../../src/graph/nodes/scalar");
-    const r = new MathFnNode({ op: "abs" }).data({ in: [cell(-5, "m")] as never }).result;
+    const { MathFXNode } = await import("../../src/graph/nodes/scalar");
+    const r = new MathFXNode({ op: "abs" }).data({ in: [cell(-5, "m")] as never }).result;
     expect(magnitudeOf(r)).toBe(5);
     expect(unitLabelOf(r)).toBe("m");
   });
   it("LOG of a dimensioned value is #UNIT!", async () => {
-    const { MathFnNode } = await import("../../src/graph/nodes/scalar");
-    const r = new MathFnNode({ op: "log" }).data({ in: [cell(5, "m")] as never }).result;
+    const { MathFXNode } = await import("../../src/graph/nodes/scalar");
+    const r = new MathFXNode({ op: "log" }).data({ in: [cell(5, "m")] as never }).result;
     expect(isSolError(r)).toBe(true);
     expect((r as { code: string }).code).toBe("#UNIT!");
   });
   it("SIGN of a dimensioned value is a plain number", async () => {
-    const { MathFnNode } = await import("../../src/graph/nodes/scalar");
-    expect(new MathFnNode({ op: "sign" }).data({ in: [cell(-5, "m")] as never }).result).toBe(-1);
+    const { MathFXNode } = await import("../../src/graph/nodes/scalar");
+    expect(new MathFXNode({ op: "sign" }).data({ in: [cell(-5, "m")] as never }).result).toBe(-1);
   });
 });
 

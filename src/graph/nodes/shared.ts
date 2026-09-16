@@ -1,3 +1,4 @@
+// dte:D51
 import { ClassicPreset } from "rete";
 import { numberSocket, listSocket, numListSocket, tableSocket, strTableSocket, dateTableSocket, anyTableSocket, anyComboSocket, stringSocket, strListSocket, strComboSocket, dateSocket, dateListSocket, dateComboSocket, complexSocket, complexListSocket, complexComboSocket, complexTableSocket, logicalSocket, logicalListSocket, logicalComboSocket, logicalTableSocket, frameSocket, cubeSocket, lambdaSocket, chartSocket, documentSocket, anySocket, trueAnySocket, AdoptiveSocket } from "../sockets";
 import { resolveColor, paletteStore, type PaletteSlot } from "../palette";
@@ -41,6 +42,14 @@ export const adoptiveDataOut  = (label: string) => new ClassicPreset.Output(new 
 /** A NON-adoptive `trueany` output for a generative result whose type can't be
  *  derived from any input; an EXTRACTION uses `trueAnyOut` + `passthrough()`. */
 export const staticTrueAnyOut = (label: string) => new ClassicPreset.Output(trueAnySocket, label);
+// The cube-family adoptive ports (A′): a row verb's table INPUT accepts a Frame OR a Cube
+// (base "cube", which accepts both); with a `single` passthrough over it the OUTPUT hands
+// the SAME rank back — a Frame in yields a Frame out, a Cube in a Cube out. The output base
+// is "frame" (NOT "cube") so that unadopted — a fresh node, or a static validateText check
+// before adoption runs — the output reads as a Frame, which feeds a frame-only consumer
+// (GroupBy / Pivot / Join) as well as a cube one; a cube wired in adopts it to `cube`.
+export const cubeAdoptIn  = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("cube"), label);
+export const tableAdoptOut = (label: string) => new ClassicPreset.Output(new AdoptiveSocket("frame"), label);
 // Adoption here is purely informative: acceptance is unchanged and coerceInputs
 // treats an adopted concrete type identically to the neutral rung.
 export const anyTableIn = (label: string) => new ClassicPreset.Input(new AdoptiveSocket("anytable"), label);
@@ -302,7 +311,7 @@ export { dimOf, magnitudeOf };
 // ─── Node kind → header accent ─────────────────────────────────────────────────
 // A kind is the node's FAMILY (what it does), distinct from socket type.
 
-export type NodeKind = "input" | "math" | "convert" | "logic" | "list" | "lambda" | "util" | "display" | "string" | "date" | "complex" | "table" | "frame" | "format" | "boundary" | "chart";
+export type NodeKind = "input" | "math" | "convert" | "logic" | "list" | "lambda" | "util" | "display" | "string" | "date" | "complex" | "table" | "frame" | "format" | "boundary" | "chart" | "document";
 
 // A kind picks a palette SLOT, not a raw hex, so retuning a color in palette.ts
 // moves every use of it together.
@@ -324,6 +333,7 @@ export const NODE_KIND_SLOTS: Record<NodeKind, PaletteSlot> = {
   frame:   "violet",    // matches frame socket
   format:  "gold",
   boundary: "green",    // green = "special"
+  document: "green",    // the Report — a document sink, green to stand apart from Note's util gray
 };
 
 // Kept LIVE by mutating in place: consumers index this object, so swapping the
@@ -356,4 +366,5 @@ export const NODE_KIND_LABELS: Record<NodeKind, string> = {
   frame:   "Frame",
   format:  "Format",
   boundary: "Boundary",
+  document: "Document",
 };

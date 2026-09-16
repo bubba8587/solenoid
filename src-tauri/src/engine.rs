@@ -1,3 +1,4 @@
+// dte:C45
 // ─── The Polars relational engine (WS2) ────────────────────────────────────────
 // The native side of the `FrameBackend` seam (`src/graph/frameBackend.ts`). Data
 // lives HERE: a frame is stored in a Polars `DataFrame` behind an opaque string
@@ -310,6 +311,7 @@ fn num_to_json(n: f64) -> Json {
         match n.to_bits() {
             ERR_DOMAIN_BITS => return serde_json::json!({"__err": "#DOMAIN!"}),
             ERR_OVERFLOW_BITS => return serde_json::json!({"__err": "#OVERFLOW!"}),
+            ERR_DIV0_BITS => return serde_json::json!({"__err": "#DIV/0!"}),
             _ => return serde_json::json!({"__nf": "nan"}),
         }
     }
@@ -1063,7 +1065,8 @@ fn lazy_window(
         "pct_change" => {
             let prev = over(vnum().shift(lit(1)));
             let cur = vnum();
-            when(prev.clone().eq(lit(0.0))).then(lit(NULL)).otherwise((cur - prev.clone()) / prev)
+            // The oracle's #DIV/0! cell: "Percent change from zero is undefined".
+            when(prev.clone().eq(lit(0.0))).then(lit(f64::from_bits(ERR_DIV0_BITS))).otherwise((cur - prev.clone()) / prev)
         }
         "rolling_sum" | "rolling_avg" | "rolling_min" | "rolling_max" => {
             let opts = RollingOptionsFixedWindow { window_size: nn as usize, min_periods: 1, ..Default::default() };
@@ -1083,7 +1086,8 @@ fn lazy_window(
         "group_count" => nonnull_present(),
         "share" => {
             let total = over(vnum().sum());
-            when(total.clone().eq(lit(0.0))).then(lit(NULL)).otherwise(vnum() / total)
+            // The oracle's #DIV/0! cell: "The group total is 0".
+            when(total.clone().eq(lit(0.0))).then(lit(f64::from_bits(ERR_DIV0_BITS))).otherwise(vnum() / total)
         }
         "first" => over(vraw().first()),
         "last" => over(vraw().last()),
@@ -1126,26 +1130,23 @@ fn lazy_fill_blanks(plan: Plan, columns: &[String], dir: &str) -> Result<Plan, I
     Ok(Plan { lf: plan.lf.with_columns(exprs), ..plan })
 }
 
-/// The oracle's `coerceReplacement`: blank → null, an unparseable number → NaN, an
-/// unparseable date / logical → null, text verbatim.
-fn replacement_lit(ty: SolType, text: &str) -> Expr {
+/// The oracle's `coerceReplacement`: blank → null, an unparseable logical → null, text
+/// verbatim. A number or date column with a replacement that is not a number is `None`:
+/// the column is left as it was (the oracle skips it too; a NaN cell reads as nothing).
+fn replacement_lit(ty: SolType, text: &str) -> Option<Expr> {
     let t = text.trim();
-    match ty {
+    Some(match ty {
         SolType::Str => lit(text.to_string()),
-        SolType::Number => {
-            if t.is_empty() { return lit(NULL).cast(DataType::Float64); }
-            match t.parse::<f64>() { Ok(n) if n.is_finite() => lit(n), _ => lit(f64::NAN) }
-        }
-        SolType::Date => {
-            if t.is_empty() { return lit(NULL).cast(DataType::Float64); }
-            match t.parse::<f64>() { Ok(n) if n.is_finite() => lit(n), _ => lit(NULL).cast(DataType::Float64) }
+        SolType::Number | SolType::Date => {
+            if t.is_empty() { return Some(lit(NULL).cast(DataType::Float64)); }
+            match t.parse::<f64>() { Ok(n) if n.is_finite() => lit(n), _ => return None }
         }
         SolType::Logical => match t.to_ascii_lowercase().as_str() {
             "true" | "1" => lit(true),
             "false" | "0" => lit(false),
             _ => lit(NULL).cast(DataType::Boolean),
         },
-    }
+    })
 }
 
 fn lazy_replace_values(plan: Plan, column: &str, find: &str, replace_with: &str, mode: &str) -> Result<Plan, IpcError> {
@@ -1162,7 +1163,7 @@ fn lazy_replace_values(plan: Plan, column: &str, find: &str, replace_with: &str,
             // String columns only; case-sensitive, literal (no regex).
             return if ty == SolType::Str { c.str().replace_all(lit(find.to_string()), lit(replace_with.to_string()), true).alias(n.as_str()) } else { c };
         }
-        let rep = replacement_lit(ty, replace_with);
+        let Some(rep) = replacement_lit(ty, replace_with) else { return c; };
         let hit: Option<Expr> = match ty {
             SolType::Str => Some(c.clone().eq(lit(find.to_string()))),
             // Numbers match numerically (so "5" hits 5); a non-numeric find text matches no number cell.
@@ -1361,7 +1362,7 @@ fn comparison_filter_expr(column: &str, ty: SolType, op: &str, value: &Json) -> 
     Ok(Some(e))
 }
 
-/// rules textPredicateNeedsText (author verdict 2026-08-30): a text predicate on a
+/// dte:D49 textPredicateNeedsText (author verdict 2026-08-30): a text predicate on a
 /// non-text column is `#TYPE!`, mirroring the oracle's `requireTextColumn` — never a
 /// stringified comparison. The old `String(cell)` fallback is what forced this engine
 /// to mirror JS number printing digit-for-digit (`js_number_string`, deleted).
@@ -1513,6 +1514,9 @@ fn verb_filter_multi(frame: &SolFrame, combine: &str, conditions: &[WireFilterCo
 // propagate the original code — an accepted, chain-only approximation).
 const ERR_DOMAIN_BITS: u64 = 0x7ff8_0000_0000_0d01;
 const ERR_OVERFLOW_BITS: u64 = 0x7ff8_0000_0000_0f02;
+/// The window verb's zero-denominator cells (pct_change from 0, share of a 0 total): the
+/// oracle's #DIV/0! error cell, on the same reserved-NaN wire.
+const ERR_DIV0_BITS: u64 = 0x7ff8_0000_0000_0d03;
 
 /// Wrap an aggregate expression with the B-1b verdicts, in the oracle's exact
 /// order: NaN input → #DOMAIN!; NaN result → #DOMAIN!; ±Inf result with no

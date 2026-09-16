@@ -4,6 +4,7 @@ import { createValueStore } from "./storeKit";
 import type { SolError } from "./errorValue";
 import type { FrameSourceColumn } from "./frame";
 import type { ColumnUnit } from "./unitValue";
+import type { FormatAnnotation } from "./formatAnnotationStore";
 
 /** A grid cell; `null` is MISSING and a SolError is a per-cell error. */
 export type Cell = number | string | boolean | null | SolError;
@@ -60,11 +61,16 @@ export interface TablePopupState {
   groupColorDark?: string;
   /** A 1-D list shown as one row; Copy joins with ", " instead of CSV lines. */
   list?: boolean;
+  /** The column count is fixed (a List Input is one column); hides + Col / − Col. */
+  fixedCols?: boolean;
   /** An FC controls row: `"columns"` per column, `"matrix"` one pair. Display-only —
    *  it never touches the value or what Copy/CSV export. */
   formatControls?: "columns" | "matrix";
   /** Per-column unit driving the base-SI → display conversion; aligned with `headers`. */
   columnUnits?: (ColumnUnit | undefined)[];
+  /** Per-column format INHERITED on the value (dte:D41 formatFlowsDownstream); the row
+   *  shows it as its current value until this node makes its own pick. */
+  columnFormats?: (FormatAnnotation | undefined)[];
   /** A unit-TAGGABLE source: the unit choice is written back on Save and rides the
    *  value downstream. Derived frames leave this off (display-only formats). */
   unitTaggable?: boolean;

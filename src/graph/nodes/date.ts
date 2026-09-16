@@ -1,10 +1,16 @@
+// dte:C44,C72,E11,E13
 import { ClassicPreset } from "rete";
-import { dateOut, numIn, numOut, strIn, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, broadcast, broadcastErr, readInput, BASIS_DOC, type BroadcastResult } from "./shared";
+import { dateOut, dateIn, numIn, numOut, strIn, strListIn, frameOut, dateListIn, dateComboIn, dateComboOut, numListIn, numListOut, broadcast, broadcastErr, readInput, BASIS_DOC, type BroadcastResult } from "./shared";
 import { type SolError } from "../errorValue";
+import { convertZone, worldClockRows, worldClockFrame } from "../timeZone";
+import { type FrameValue } from "../frame";
+import { type Shape } from "../frameShape";
 import { serialToJsDate, jsDateToSerial } from "./dateSerial";
+import type { FormatCarrySpec } from "./formatCarry";
+import type { FormatAnnotation } from "../formatAnnotationStore";
 import { dateFromParts, timeFraction, parseDateOnly, parseTimeOfDay, weekInfo, dateDiff, dateDiffNeedsBasis, epochToSerial, serialToEpoch, dateTrunc, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
 export { dateDiffNeedsBasis, type WeekInfoOp, type DateDiffOp, type EpochUnit, type DateTruncUnit } from "./dateOps";
-export { serialToJsDate, jsDateToSerial, parseDateToSerial, parseDate, formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "./dateSerial";
+export { serialToJsDate, jsDateToSerial, parseDateToSerial, parseDate, isRelativeDateText, formatDateSerial, DEFAULT_DATE_FORMAT, DEFAULT_DATETIME_FORMAT } from "./dateSerial";
 
 /** The whole-day key of a date serial, so a holiday matches regardless of
  *  time-of-day; `+1e-9` absorbs float drift from serial↔ms round-tripping. */
@@ -146,7 +152,7 @@ export const DATE_TIME_VALUE_OP_META = {
 
 export class DateTimeValueNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    text: "A date needs a four-digit year (two-digit years don't parse). ISO, day-first numeric, ordinals and month names all work; a numeric date that could go either way (3/4/2026) is #AMBIGUOUS!; write the month as a name.",
+    text: "A date with a four-digit year: ISO, day-first numeric, an ordinal, or a month name. A numeric date that reads both ways, 3/4/2026, is #AMBIGUOUS!; write the month as a name.",
   };
 
   label: string;
@@ -351,6 +357,12 @@ export class DateAddNode extends ClassicPreset.Node {
     this.addOutput("result", dateComboOut("Date"));
   }
 
+  /** EDATE / EOMONTH shift a date but the result is still a date, so Start's date style
+   *  carries; Months is a plain count (different family, dropped) (formatFlowsDownstream). */
+  formatCarry(): FormatCarrySpec[] {
+    return [{ output: "result", inputs: ["start"] }];
+  }
+
   data(inputs: { start?: (number | number[])[]; months?: (number | number[])[] }): { result: BroadcastResult } {
     const result = broadcast((s, rawM) => {
     const d = serialToJsDate(s);
@@ -409,6 +421,13 @@ export class WorkdaysNode extends ClassicPreset.Node {
     this.addInput("holidays",     dateListIn("Holidays"));
     this.addOutput("result", this.op === "workday" ? dateComboOut("Date") : numListOut("Working days"));
     this.seedLiterals();
+  }
+
+  /** WORKDAY returns a date, so Start's date style carries; NETWORKDAYS returns a count
+   *  (a number output, so the date family is dropped by the family gate). One declaration
+   *  covers both ops (formatFlowsDownstream). */
+  formatCarry(): FormatCarrySpec[] {
+    return [{ output: "result", inputs: ["start"] }];
   }
 
   private seedLiterals(): void {
@@ -554,5 +573,89 @@ export class DateTruncNode extends ClassicPreset.Node {
     const result = broadcast((s) => dateTrunc(s, this.unit, this.ceiling), inputs.date?.[0] ?? null);
     this.cachedResult = result;
     return { result };
+  }
+}
+
+// ─── TIME ZONE CONVERT ────────────────────────────────────────────────────────
+// "3pm ET in Tokyo": a datetime read in one zone, expressed in another. Pure Intl,
+// DST-correct (the offset is read at the instant). From/To take Geocode's time-zone
+// output or a typed IANA name.
+
+export class TimeZoneConvertNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    datetime: "The date and time to convert.",
+    from: "The zone the date/time is in now, an IANA name like America/New_York.",
+    to: "The zone to express it in, an IANA name like Asia/Tokyo.",
+    result: "The same moment, on the To zone's wall clock.",
+  };
+  label: string;
+  stringLiterals: Record<string, string> = { from: "", to: "" };
+  cachedResult: number | SolError | null = null;
+  width = 220; height = 200;
+
+  constructor(init?: { label?: string }) {
+    super("TimeZoneConvert");
+    this.label = init?.label ?? "Time Zone Convert";
+    this.addInput("datetime", dateIn("Date & time"));
+    this.addInput("from", strIn("From"));
+    this.addInput("to", strIn("To"));
+    this.addOutput("result", dateOut("Converted"));
+  }
+
+  /** The converted value is a wall-clock moment, so an undocked Display shows the full
+   *  datetime (2026-06-03 14:30), not a bare date or a serial; a docked FC still overrides
+   *  (composes with formatCarryPerOp — compute falls through when this produces a lock). */
+  annotationFor(outKey: string): FormatAnnotation | undefined {
+    return outKey === "result" ? { format: "datetime", unit: "none" } : undefined;
+  }
+
+  data(inputs: { datetime?: number[]; from?: string[]; to?: string[] }): { result: number | SolError | null } {
+    const serial = readInput(inputs.datetime, NaN);
+    const from = readInput(inputs.from, this.stringLiterals.from ?? "");
+    const to = readInput(inputs.to, this.stringLiterals.to ?? "");
+    // Nothing to convert until every part is present — stay quiet rather than erroring.
+    if (typeof serial !== "number" || !Number.isFinite(serial)
+        || typeof from !== "string" || from.trim() === ""
+        || typeof to !== "string" || to.trim() === "") {
+      this.cachedResult = null;
+      return { result: null };
+    }
+    const result = convertZone(serial, from, to);
+    this.cachedResult = result;
+    return { result };
+  }
+}
+
+// ─── WORLD CLOCK ──────────────────────────────────────────────────────────────
+// A list of zones → the current local time in each, as a frame for a docked Report.
+// Recomputes with the graph; a live tick is the Tier-2 "Ticking Now" item.
+
+export class WorldClockNode extends ClassicPreset.Node {
+  static socketDocs: Record<string, string> = {
+    zones: "One IANA zone per entry, like America/New_York or Asia/Tokyo.",
+    clock: "A row per zone: the place and its current local time.",
+  };
+  label: string;
+  stringLiterals: Record<string, string> = { zones: "" };
+  cachedResult: FrameValue | null = null;
+  width = 220; height = 210;
+
+  constructor(init?: { label?: string }) {
+    super("WorldClock");
+    this.label = init?.label ?? "World Clock";
+    this.addInput("zones", strListIn("Zones"));
+    this.addOutput("clock", frameOut("World Clock"));
+  }
+
+  // Fixed columns (declareOnce) so downstream pickers know them before a compute.
+  frameShape(): Shape {
+    return { columns: [{ name: "Place", type: "string" }, { name: "Local", type: "string" }] };
+  }
+
+  data(inputs: { zones?: string[][] }): { clock: FrameValue } {
+    const zones = inputs.zones?.[0] ?? [];
+    const frame = worldClockFrame(worldClockRows(zones, Date.now()));
+    this.cachedResult = frame;
+    return { clock: frame };
   }
 }

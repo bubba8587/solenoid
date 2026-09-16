@@ -10,6 +10,11 @@ import type { OverlayPayload } from "../chartValue";
 
 const LINE_DOT_R = 2;
 const SCATTER_DOT_R = 3;
+// The expand ⛶ button sits over the figure's top-right corner: every cartesian plot
+// leaves this much headroom so neither the button nor the top tick lands on the plot rect.
+const PLOT_TOP = 14;
+// All the labels fit while there are few enough of them; past that recharts thins them.
+const ALL_TICKS_UPTO = 12;
 // recharts' Scatter has no size prop: its default Symbols circle is a fixed 64 px² (r ≈ 4.5).
 const scatterDot = (r: number) => (p: ScatterShapeProps) => <Symbols {...(p as unknown as SymbolsProps)} type="circle" size={Math.PI * r * r} />;
 
@@ -54,6 +59,21 @@ function SliceTooltip({ active, payload }: { active?: boolean; payload?: { value
 }
 const SLICE_TIP = <Tooltip isAnimationActive={false} content={<SliceTooltip />} />;
 
+const RADIAN = Math.PI / 180;
+/** Slice labels can be user text (a Frame's category names): strip control characters,
+ *  collapse whitespace, and cap the length so a long or hostile name can't smear across
+ *  the figure or break its layout. */
+export function sanitizeChartLabel(raw: string, cap = 16): string {
+  let clean = "";
+  for (const ch of raw) {
+    const c = ch.codePointAt(0);
+    clean += (c !== undefined && (c < 0x20 || (c >= 0x7f && c <= 0x9f))) ? " " : ch;
+  }
+  clean = clean.replace(/\s+/g, " ").trim();
+  const cps = [...clean]; // code points, so the cap never splits a surrogate pair
+  return cps.length > cap ? `${cps.slice(0, cap - 1).join("").trimEnd()}…` : clean;
+}
+
 // Reads the datum off payload[0].payload so it works whether the x axis is a real
 // coordinate (dataKey "x") or the row index ("i").
 function ScatterTooltip({ active, payload }: { active?: boolean; payload?: { payload?: { x?: number; i?: number; v?: number } }[] }) {
@@ -70,6 +90,31 @@ function ScatterTooltip({ active, payload }: { active?: boolean; payload?: { pay
   );
 }
 const SCATTER_TIP = <Tooltip isAnimationActive={false} cursor={{ strokeDasharray: "3 3", stroke: "rgba(128,128,128,0.5)" }} content={<ScatterTooltip />} />;
+
+/** A numeric axis that really carries ROW INDICES: pinned to exactly [0, n−1], one tick
+ *  per index while they fit, and padded so the first and last marks don't straddle the
+ *  frame. An empty list (a real coordinate x) keeps recharts' own rounded "nice" domain. */
+function catDomain(indices: number[]): { domain?: [number, number]; ticks?: number[]; padding?: { left: number; right: number } } {
+  const hi = indices.reduce((m, i) => Math.max(m, i), 0);
+  if (hi <= 0) return {};
+  return {
+    domain: [0, hi],
+    ticks: indices.length <= ALL_TICKS_UPTO ? indices : undefined,
+    padding: { left: 8, right: 8 },
+  };
+}
+
+/** The figure title strip every view draws above its chart; `titleHeight` reserves
+ *  the same band out of the chart's own height. */
+const titleHeight = (fs: number) => Math.ceil(16 * fs);
+function ChartTitle({ text, fs }: { text: string; fs: number }) {
+  const h = titleHeight(fs);
+  return (
+    <div style={{ height: h, lineHeight: `${h}px`, textAlign: "center", fontSize: 11 * fs, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      {text}
+    </div>
+  );
+}
 
 /** One renderer for both the inline node charts and the expand popup; without
  *  `axes` it is a clean Sparkline. */
@@ -127,18 +172,19 @@ export function ChartView({
     ? { value: opts.ylabel, angle: -90, position: "insideLeft" as const, fontSize: 10 * fs, fill: axis }
     : undefined;
   const title = opts?.title;
-  const titleH = title ? Math.ceil(16 * fs) : 0;
+  const titleH = title ? titleHeight(fs) : 0;
   const chartH = height - titleH;
   const yAxisW = axes ? (yLabel ? 40 : 26) : 0;
   const bottomM = axes ? (xLabel ? 18 : 4) : 2;
-  const margin = axes ? { top: 6, right: 8, bottom: bottomM, left: 0 } : { top: 2, right: 2, bottom: 2, left: 2 };
+  const margin = axes ? { top: PLOT_TOP, right: 8, bottom: bottomM, left: 0 } : { top: 2, right: 2, bottom: 2, left: 2 };
+  const catInterval = series.length <= ALL_TICKS_UPTO ? 0 : undefined;
 
   let chart;
   if (op === "line") {
     chart = (
       <LineChart width={width} height={chartH} data={series} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} />}
-        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} label={xLabel} height={xLabel ? 28 : undefined} />}
+        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={catInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
         {TIP}
         <Line dataKey="v" stroke={color} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: dotR } : false} />
@@ -148,7 +194,7 @@ export function ChartView({
     chart = (
       <AreaChart width={width} height={chartH} data={series} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} />}
-        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} label={xLabel} height={xLabel ? 28 : undefined} />}
+        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={catInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
         {TIP}
         <Area dataKey="v" stroke={color} fill={color} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: dotR } : false} />
@@ -164,16 +210,62 @@ export function ChartView({
       <BarChart width={width} height={chartH} data={series} layout="vertical" margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} horizontal={false} />}
         {axes && <XAxis type="number" tick={AXIS} tickLine={false} domain={yDomain} label={xLabel} height={xLabel ? 28 : undefined} />}
-        {axes && <YAxis type="category" dataKey="i" tick={AXIS} tickLine={false} width={yLabel ? Math.max(32, catW) : catW} tickFormatter={tickFmt} label={yLabel} />}
+        {axes && <YAxis type="category" dataKey="i" tick={AXIS} tickLine={false} width={yLabel ? Math.max(32, catW) : catW} tickFormatter={tickFmt} interval={catInterval} label={yLabel} />}
         {TIP}
         <Bar dataKey="v" fill={color} fillOpacity={fillAlpha < 1 && opts?.alpha !== undefined ? fillAlpha : 1} isAnimationActive={false} />
       </BarChart>
     );
   } else if (op === "pie") {
-    const r = Math.max(20, Math.min(width, chartH) / 2 - 6);
+    // Category labels ride a hand-drawn two-segment leader (a radial stub, then a
+    // horizontal run to a fixed column per side) so every label on a side shares one x —
+    // no arc-following, and the line meets the text instead of stopping short. On by
+    // default when the frame supplies names; `pielabels=off` (or the Chart Builder
+    // toggle) turns them off, and then the pie fills the whole box. Names are sanitized +
+    // length-capped (untrusted text); vanishingly thin slices skip their label.
+    const pieMode = opts?.pielabels ?? "outside";
+    const labeled = !!labels && pieMode !== "off";
+    // Inside labels ride the slice, so only the small ones spill outside — the box barely
+    // shrinks. Outside labels need the full margin for their leaders.
+    const pad = !labeled ? 6 : pieMode === "inside" ? Math.min(16, width * 0.07) : Math.min(30, width * 0.12);
+    const r = Math.max(18, Math.min(width, chartH) / 2 - pad);
+    const cap = width < 260 ? 10 : 16;
+    const stub = 7;
+    const font = 9 * fs;
+    const pieLabel = (p: { cx?: number; cy?: number; midAngle?: number; outerRadius?: number; index?: number; percent?: number; payload?: unknown }) => {
+      const cx = p.cx ?? 0, cy = p.cy ?? 0, mid = p.midAngle ?? 0, outerR = p.outerRadius ?? 0, index = p.index ?? 0;
+      const rowI = (p.payload as { i?: number } | undefined)?.i ?? series[index]?.i ?? index;
+      const name = sanitizeChartLabel(tickFmt(rowI), cap);
+      const pct = p.percent ?? 0;
+      if (!name || pct < 0.03) return null;
+      const cos = Math.cos(-mid * RADIAN), sin = Math.sin(-mid * RADIAN);
+      // Inside: centre a backing-plated label on the slice, but a thin slice (< 6%) can't
+      // hold it, so it keeps the outside leader.
+      if (pieMode === "inside" && pct >= 0.06) {
+        const rr = outerR * 0.62;
+        const x = cx + rr * cos, y = cy + rr * sin;
+        const w = name.length * font * 0.6 + 6, h = font + 4;
+        return (
+          <g>
+            <rect x={x - w / 2} y={y - h / 2} width={w} height={h} rx={3} fill="var(--surface)" opacity={0.72} />
+            <text x={x} y={y} fill={axis} fontSize={font} textAnchor="middle" dominantBaseline="central">{name}</text>
+          </g>
+        );
+      }
+      const side = cos >= 0 ? 1 : -1;
+      const sx = cx + outerR * cos, sy = cy + outerR * sin;                // slice edge
+      const mx = cx + (outerR + stub) * cos, my = cy + (outerR + stub) * sin; // elbow
+      const colX = cx + (outerR + stub) * side;                            // shared column x
+      return (
+        <g>
+          <polyline points={`${sx},${sy} ${mx},${my} ${colX},${my}`} stroke={grid} fill="none" />
+          <text x={colX + side * 3} y={my} fill={axis} fontSize={font} textAnchor={side > 0 ? "start" : "end"} dominantBaseline="central">{name}</text>
+        </g>
+      );
+    };
     chart = (
       <PieChart width={width} height={chartH}>
-        <Pie data={series} dataKey="v" nameKey="i" cx="50%" cy="50%" outerRadius={r} stroke="var(--surface)" isAnimationActive={false}>
+        <Pie data={series} dataKey="v" nameKey="i" cx="50%" cy="50%" outerRadius={r} stroke="var(--surface)" isAnimationActive={false}
+             label={labeled ? pieLabel : undefined} labelLine={false}>
           {series.map((_, i) => <Cell key={i} fill={paint(i)} />)}
         </Pie>
         {SLICE_TIP}
@@ -184,17 +276,23 @@ export function ChartView({
       <RadarChart width={width} height={chartH} data={series} cx="50%" cy="50%" outerRadius="72%">
         <PolarGrid stroke={grid} />
         <PolarAngleAxis dataKey="i" tick={AXIS} tickFormatter={tickFmt} />
-        <PolarRadiusAxis tick={AXIS} axisLine={false} tickCount={4} domain={yDomain} />
+        {/* Radial ticks print rotated ON the polygon; the tooltip carries the raw value. */}
+        <PolarRadiusAxis tick={false} axisLine={false} tickCount={4} domain={yDomain} />
         {TIP}
-        <Radar dataKey="v" stroke={color} fill={color} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: dotR } : false} />
+        {/* Palette-painted like every other categorical op (`color` is not offered for radar). */}
+        <Radar dataKey="v" stroke={paint(0)} fill={paint(0)} fillOpacity={fillAlpha} strokeWidth={lw} isAnimationActive={false} dot={showMarkers ? { r: dotR } : false} />
       </RadarChart>
     );
   } else if (op === "radialbar") {
+    // Nothing else names a ring, so the legend is the only key: recharts reads each
+    // entry's `name`/`fill` off the chart DATA for a radial legend.
+    const rings = series.map((d, i) => ({ ...d, name: sanitizeChartLabel(tickFmt(d.i)), fill: paint(i) }));
     chart = (
-      <RadialBarChart width={width} height={chartH} cx="50%" cy="50%" innerRadius="18%" outerRadius="92%" data={series} startAngle={90} endAngle={-270}>
+      <RadialBarChart width={width} height={chartH} cx="50%" cy="50%" innerRadius="18%" outerRadius="92%" data={rings} startAngle={90} endAngle={-270}>
         <RadialBar dataKey="v" background={{ fill: grid }} cornerRadius={3} isAnimationActive={false}>
           {series.map((_, i) => <Cell key={i} fill={paint(i)} />)}
         </RadialBar>
+        {labels && <Legend verticalAlign="bottom" height={LEGEND_H} iconSize={8} wrapperStyle={{ fontSize: 9 * fs, color: axis }} />}
         {SLICE_TIP}
       </RadialBarChart>
     );
@@ -213,11 +311,14 @@ export function ChartView({
     // x spacing and order; category labels or a plain list keep the index x.
     const numericX = !!labels && series.length > 0 && series.every((d) => typeof labels![d.i] === "number");
     const scatterData = numericX ? series.map((d) => ({ i: d.i, x: Number(labels![d.i]), v: d.v })) : series;
+    // A row-index x is a CATEGORY axis wearing a number's clothes: pinned to [0, n−1] the
+    // points span the plot instead of huddling inside recharts' rounded-up nice domain.
+    const catX = catDomain(numericX ? [] : series.map((d) => d.i));
     chart = (
       <ScatterChart width={width} height={chartH} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} />}
         {/* allowDecimals=false stops recharts inventing fractional "nice" ticks. */}
-        {axes && <XAxis type="number" dataKey={numericX ? "x" : "i"} tick={AXIS} tickLine={false} tickFormatter={numericX ? (t) => axisTick(Number(t)) : tickFmt} allowDecimals={numericX ? undefined : false} label={xLabel} height={xLabel ? 28 : undefined} />}
+        {axes && <XAxis type="number" dataKey={numericX ? "x" : "i"} tick={AXIS} tickLine={false} tickFormatter={numericX ? (t) => axisTick(Number(t)) : tickFmt} allowDecimals={numericX ? undefined : false} domain={catX.domain} ticks={catX.ticks} padding={catX.padding} label={xLabel} height={xLabel ? 28 : undefined} />}
         {axes && <YAxis type="number" dataKey="v" tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
         {SCATTER_TIP}
         <Scatter data={scatterData} fill={color} shape={dot} isAnimationActive={false} />
@@ -242,9 +343,7 @@ export function ChartView({
   if (!title) return chart;
   return (
     <div style={{ width }}>
-      <div style={{ height: titleH, lineHeight: `${titleH}px`, textAlign: "center", fontSize: 11 * fs, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {title}
-      </div>
+      <ChartTitle text={title} fs={fs} />
       {chart}
     </div>
   );
@@ -252,13 +351,19 @@ export function ChartView({
 
 // Lists every series' value at the hovered index (the multi-series counterpart of
 // ChartTooltip); the swatch color comes from each recharts payload entry.
-function MultiTooltip({ active, payload, label, tickFmt }: {
+function MultiTooltip({ active, payload, label, tickFmt, rawFromNorm }: {
   active?: boolean;
-  payload?: { name?: string; value?: number; color?: string }[];
+  payload?: { name?: string; value?: number; color?: string; dataKey?: string; payload?: Record<string, number | null> }[];
   label?: number | string;
   tickFmt: (i: number | string) => string;
+  // Radar plots the per-axis-normalized `_n{j}`; show the RAW `s{j}` from the row instead.
+  rawFromNorm?: boolean;
 }) {
   if (!active || !payload || !payload.length) return null;
+  const shown = (p: { value?: number; dataKey?: string; payload?: Record<string, number | null> }) =>
+    rawFromNorm && typeof p.dataKey === "string" && p.dataKey.startsWith("_n") && p.payload
+      ? p.payload[`s${p.dataKey.slice(2)}`]
+      : p.value;
   return (
     <div style={{ fontSize: 11, padding: "3px 6px", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)" }}>
       <div style={{ color: "var(--text-dim)", marginBottom: 2 }}>{tickFmt(label ?? "")}</div>
@@ -266,7 +371,7 @@ function MultiTooltip({ active, payload, label, tickFmt }: {
         <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <span style={{ width: 8, height: 8, borderRadius: 2, background: p.color, flex: "0 0 auto" }} />
           <span style={{ color: "var(--text-dim)" }}>{p.name}</span>
-          <span style={{ marginLeft: "auto" }}>{tipValue(p.value)}</span>
+          <span style={{ marginLeft: "auto" }}>{tipValue(shown(p) ?? undefined)}</span>
         </div>
       ))}
     </div>
@@ -274,6 +379,34 @@ function MultiTooltip({ active, payload, label, tickFmt }: {
 }
 
 const LEGEND_H = 16;
+// The multi-series legend is a plain DOM row UNDER the plot, not recharts' <Legend>: recharts
+// reserves a strip inside the plot, lays it out against the x-axis rect (so it lands on the
+// xlabel) and re-reserves whenever its measured height differs (the click jump). A fixed-height
+// row below the SVG cannot collide, cannot move and adds no dead space (its height is taken
+// off the plot). Inset by the y-axis width so it centers on the plot area, i.e. on the xlabel.
+const MULTI_LEGEND_H = 18;
+
+function SeriesLegend({ series, paint, dim, onPick, fs, color, insetLeft, insetRight, lines }: {
+  series: { name: string }[];
+  paint: (j: number) => string;
+  dim: (j: number) => number;
+  onPick: (j: number) => void;
+  fs: number; color: string; insetLeft: number; insetRight: number; lines: boolean;
+}) {
+  return (
+    <div
+      className="sol-chart-legend"
+      style={{ height: MULTI_LEGEND_H, paddingLeft: insetLeft, paddingRight: insetRight, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontSize: 9 * fs, color, lineHeight: 1, overflow: "hidden", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}
+    >
+      {series.map((s, j) => (
+        <span key={j} onClick={() => onPick(j)} style={{ display: "inline-flex", alignItems: "center", gap: 4, opacity: dim(j) }}>
+          <span aria-hidden="true" style={{ width: 8, height: lines ? 2 : 8, borderRadius: lines ? 1 : 2, background: paint(j), flex: "none" }} />
+          {s.name}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 /** Multi-series cartesian render (column/bar/line/area/scatter/radar) with a legend —
  *  the C2 frame path: each numeric column after the label is one named series, colored
@@ -295,6 +428,14 @@ export function MultiSeriesView({
   const dim = (j: number) => (focus !== null && focus !== j ? 0.18 : 1);
   const fs = (fontScale ?? 1) * ((opts?.fontsize ?? 10) / 10);
   const AXIS = { fontSize: 9 * fs, fill: axis } as const;
+  // Axis titles from the options (matches the single-series renderer, which had them).
+  const xLabel = axes && opts?.xlabel
+    ? { value: opts.xlabel, position: "insideBottom" as const, offset: -3, fontSize: 10 * fs, fill: axis }
+    : undefined;
+  const yLabel = axes && opts?.ylabel
+    ? { value: opts.ylabel, angle: -90, position: "insideLeft" as const, fontSize: 10 * fs, fill: axis }
+    : undefined;
+  const yAxisW = yLabel ? 40 : 26;
   const num = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? v : null);
   const n = series.reduce((m, s) => Math.max(m, s.values.length), 0);
   const data = Array.from({ length: n }, (_, i) => {
@@ -313,20 +454,26 @@ export function MultiSeriesView({
   const showMarkers = opts?.marker ?? false;
   const dotR = opts?.markersize ?? LINE_DOT_R;
   const dot = scatterDot(opts?.markersize ?? SCATTER_DOT_R);
-  const fillAlpha = opts?.alpha ?? 0.25;
+  // Overlaid area fills stack, so a shared default would paint the pair into one mass;
+  // thinner fills keep both readable and let the overlap read as a blend.
+  const fillAlpha = opts?.alpha ?? (op === "area" && series.length >= 2 ? 0.18 : 0.25);
   const yDomain = opts?.ymin !== undefined || opts?.ymax !== undefined
     ? [opts?.ymin ?? "auto", opts?.ymax ?? "auto"] as [number | string, number | string]
     : undefined;
   const title = opts?.title;
-  const titleH = title ? Math.ceil(16 * fs) : 0;
-  const chartH = height - titleH; // the <Legend height> reserves its own strip within this
-  const margin = { top: 6, right: 8, bottom: axes ? 4 : 2, left: 0 };
+  const titleH = title ? titleHeight(fs) : 0;
+  const chartH = height - titleH - MULTI_LEGEND_H; // the legend row below takes the rest
+  const margin = { top: axes ? PLOT_TOP : 6, right: 8, bottom: axes ? 4 : 2, left: 0 };
+  const catInterval = n <= ALL_TICKS_UPTO ? 0 : undefined;
+  // Horizontal bars put the categories on the y axis, so that axis is wider; radar has no
+  // axes at all, so its legend centers on the whole figure.
+  const legendInsetLeft = op === "radar" ? 0 : op === "bar" ? (yLabel ? 52 : 40) : yAxisW;
   const legend = (
-    <Legend
-      verticalAlign="bottom" height={LEGEND_H} iconSize={8}
-      wrapperStyle={{ fontSize: 9 * fs, color: axis, cursor: "pointer" }}
-      onClick={(e) => { const j = series.findIndex((s) => s.name === e.value); if (j >= 0) setFocus((f) => (f === j ? null : j)); }}
-      formatter={(value, _entry, idx) => <span style={{ opacity: dim(idx) }}>{value}</span>}
+    <SeriesLegend
+      series={series} paint={paint} dim={dim} fs={fs} color={axis}
+      insetLeft={legendInsetLeft} insetRight={op === "radar" ? 0 : margin.right}
+      lines={op === "line"}
+      onPick={(j) => setFocus((f) => (f === j ? null : j))}
     />
   );
   const tip = <Tooltip isAnimationActive={false} cursor={{ fill: "rgba(128,128,128,0.12)" }} content={<MultiTooltip tickFmt={tickFmt} />} />;
@@ -337,9 +484,9 @@ export function MultiSeriesView({
     chart = (
       <Container width={width} height={chartH} data={data} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} />}
-        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} />}
-        {axes && <YAxis tick={AXIS} tickLine={false} width={26} domain={yDomain} />}
-        {tip}{legend}
+        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={catInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
+        {axes && <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
+        {tip}
         {series.map((s, j) => op === "area"
           ? <Area key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} dot={showMarkers ? { r: dotR } : false} isAnimationActive={false} />
           : <Line key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} strokeWidth={lw} dot={showMarkers ? { r: dotR } : false} isAnimationActive={false} />)}
@@ -349,31 +496,48 @@ export function MultiSeriesView({
     chart = (
       <BarChart width={width} height={chartH} data={data} layout="vertical" margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} horizontal={false} />}
-        {axes && <XAxis type="number" tick={AXIS} tickLine={false} domain={yDomain} />}
-        {axes && <YAxis type="category" dataKey="i" tick={AXIS} tickLine={false} width={40} tickFormatter={tickFmt} />}
-        {tip}{legend}
+        {axes && <XAxis type="number" tick={AXIS} tickLine={false} domain={yDomain} label={xLabel} height={xLabel ? 28 : undefined} />}
+        {axes && <YAxis type="category" dataKey="i" tick={AXIS} tickLine={false} width={yLabel ? 52 : 40} tickFormatter={tickFmt} interval={catInterval} label={yLabel} />}
+        {tip}
         {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} fill={paint(j)} fillOpacity={dim(j)} isAnimationActive={false} />)}
       </BarChart>
     );
   } else if (op === "radar") {
+    // Radar spokes carry incommensurable units (a $ column beside /10 scores), so unless the
+    // author asked for a shared radius, normalize each spoke (data row) to [0,1] by its own
+    // MAX (÷max, not min/max) and plot `_n{j}`; proportional, so the weakest option keeps its
+    // real fraction of the axis rather than collapsing to the centre. A negative value plots
+    // at the centre (author's call: a radar has no sensible place for one). Raw `s{j}` stays
+    // on the row for the tooltip.
+    const radarNorm = (opts?.radarscale ?? "axis") === "axis";
+    const rData = !radarNorm ? data : data.map((row) => {
+      const hi = series.reduce((m, _, j) => { const x = row[`s${j}`]; return x == null ? m : Math.max(m, x); }, 0);
+      const out = { ...row };
+      series.forEach((_, j) => { const rv = row[`s${j}`]; out[`_n${j}`] = rv == null ? null : hi > 0 ? Math.max(0, rv / hi) : 0; });
+      return out;
+    });
+    const key = (j: number) => (radarNorm ? `_n${j}` : `s${j}`);
+    const radarTip = <Tooltip isAnimationActive={false} content={<MultiTooltip tickFmt={tickFmt} rawFromNorm={radarNorm} />} />;
     chart = (
-      <RadarChart width={width} height={chartH} data={data} cx="50%" cy="50%" outerRadius="68%">
+      <RadarChart width={width} height={chartH} data={rData} cx="50%" cy="50%" outerRadius="68%">
         <PolarGrid stroke={grid} />
         <PolarAngleAxis dataKey="i" tick={AXIS} tickFormatter={tickFmt} />
-        <PolarRadiusAxis tick={AXIS} axisLine={false} tickCount={4} domain={yDomain} />
-        {tip}{legend}
-        {series.map((s, j) => <Radar key={j} dataKey={`s${j}`} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} isAnimationActive={false} />)}
+        {/* Radial ticks print rotated ON the polygons; the tooltip carries the raw value. */}
+        <PolarRadiusAxis tick={false} axisLine={false} tickCount={4} domain={radarNorm ? [0, 1] : yDomain} />
+        {radarTip}
+        {series.map((s, j) => <Radar key={j} dataKey={key(j)} name={s.name} stroke={paint(j)} strokeOpacity={dim(j)} fill={paint(j)} fillOpacity={fillAlpha * dim(j)} strokeWidth={lw} isAnimationActive={false} />)}
       </RadarChart>
     );
   } else if (op === "scatter") {
     // Each series a cloud; a numeric label column places points at their real x.
     const numericX = !!labels && data.length > 0 && data.every((d) => typeof labels![d.i as number] === "number");
+    const catX = catDomain(numericX ? [] : data.map((d) => d.i as number));
     chart = (
       <ScatterChart width={width} height={chartH} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} />}
-        {axes && <XAxis type="number" dataKey="x" tick={AXIS} tickLine={false} tickFormatter={numericX ? (t) => axisTick(Number(t)) : tickFmt} allowDecimals={numericX ? undefined : false} />}
-        {axes && <YAxis type="number" dataKey="y" tick={AXIS} tickLine={false} width={26} domain={yDomain} />}
-        {tip}{legend}
+        {axes && <XAxis type="number" dataKey="x" tick={AXIS} tickLine={false} tickFormatter={numericX ? (t) => axisTick(Number(t)) : tickFmt} allowDecimals={numericX ? undefined : false} domain={catX.domain} ticks={catX.ticks} padding={catX.padding} label={xLabel} height={xLabel ? 28 : undefined} />}
+        {axes && <YAxis type="number" dataKey="y" tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
+        {tip}
         {series.map((s, j) => (
           <Scatter key={j} name={s.name} fill={paint(j)} fillOpacity={dim(j)} shape={dot} isAnimationActive={false}
             data={data.map((d) => ({ x: numericX ? Number(labels![d.i as number]) : (d.i as number), y: d[`s${j}`] }))} />
@@ -385,9 +549,9 @@ export function MultiSeriesView({
     chart = (
       <BarChart width={width} height={chartH} data={data} margin={margin}>
         {showGrid && <CartesianGrid stroke={grid} vertical={false} />}
-        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} />}
-        {axes && <YAxis tick={AXIS} tickLine={false} width={26} domain={yDomain} />}
-        {tip}{legend}
+        {axes && <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={catInterval} label={xLabel} height={xLabel ? 28 : undefined} />}
+        {axes && <YAxis tick={AXIS} tickLine={false} width={yAxisW} domain={yDomain} label={yLabel} />}
+        {tip}
         {series.map((s, j) => <Bar key={j} dataKey={`s${j}`} name={s.name} fill={paint(j)} fillOpacity={dim(j)} isAnimationActive={false} />)}
       </BarChart>
     );
@@ -397,19 +561,14 @@ export function MultiSeriesView({
   // deliver the click to the node instead of the legend item — so a press that starts on
   // the legend never reaches rete (the same swallow every in-card control uses).
   const legendPress = (e: SyntheticEvent) => {
-    if ((e.target as Element | null)?.closest?.(".recharts-legend-wrapper")) e.stopPropagation();
+    if ((e.target as Element | null)?.closest?.(".sol-chart-legend")) e.stopPropagation();
   };
-  const withLegendGuard = (el: ReactElement) => (
-    <div style={{ width }} onPointerDown={legendPress} onMouseDown={legendPress}>{el}</div>
-  );
-  if (!title) return withLegendGuard(chart);
-  return withLegendGuard(
-    <>
-      <div style={{ height: titleH, lineHeight: `${titleH}px`, textAlign: "center", fontSize: 11 * fs, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {title}
-      </div>
+  return (
+    <div style={{ width, height }} onPointerDown={legendPress} onMouseDown={legendPress}>
+      {title && <ChartTitle text={title} fs={fs} />}
       {chart}
-    </>,
+      {legend}
+    </div>
   );
 }
 
@@ -449,9 +608,9 @@ export function OverlayView({ payload, width, height, opts, fontScale }: {
     ? [opts?.ymin ?? "auto", opts?.ymax ?? "auto"] as [number | string, number | string]
     : undefined;
   const title = opts?.title;
-  const titleH = title ? Math.ceil(16 * fs) : 0;
+  const titleH = title ? titleHeight(fs) : 0;
   const chartH = height - titleH;
-  const margin = { top: 6, right: 8, bottom: 4, left: 0 };
+  const margin = { top: PLOT_TOP, right: 8, bottom: 4, left: 0 };
   const legend = (
     <Legend
       verticalAlign="bottom" height={LEGEND_H} iconSize={8}
@@ -498,9 +657,7 @@ export function OverlayView({ payload, width, height, opts, fontScale }: {
   if (!title) return wrap(chart);
   return wrap(
     <>
-      <div style={{ height: titleH, lineHeight: `${titleH}px`, textAlign: "center", fontSize: 11 * fs, fontWeight: 600, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {title}
-      </div>
+      <ChartTitle text={title} fs={fs} />
       {chart}
     </>,
   );
@@ -608,8 +765,11 @@ export function SankeyView({ sources, targets, values, width, height, fscale = 1
 // Each COLUMN is a series over the row index: column 0 bars, the rest lines.
 // One BAR series (column 0) plus a LINE per remaining series — the named columns of a
 // frame, the C2 replacement for the old Series matrix socket.
-export function ComposedView({ series, width, height, fscale = 1 }: {
-  series: { name: string; values: (number | null)[] }[]; width: number; height: number; fscale?: number;
+export function ComposedView({ series, labels, width, height, opts, fscale = 1 }: {
+  series: { name: string; values: (number | null)[] }[];
+  /** X-axis category labels (Frame col 0), as every other cartesian op reads them. */
+  labels?: (string | number)[];
+  width: number; height: number; opts?: ChartOptions; fscale?: number;
 }) {
   const { grid, axis } = useChartColors();
   const colors = useSeriesColors();
@@ -621,24 +781,61 @@ export function ComposedView({ series, width, height, fscale = 1 }: {
     series.forEach((s, j) => { o[`s${j}`] = num(s.values[i]); });
     return o;
   });
-  return (
-    <ComposedChart width={width} height={height} data={data} margin={{ top: 6, right: 8, bottom: 4, left: 0 }}>
+  const tickFmt = (i: number | string) => {
+    const idx = Math.round(Number(i));
+    if (!Number.isFinite(idx)) return "";
+    if (labels) { const lab = labels[idx]; return lab == null || typeof lab === "object" ? "" : typeof lab === "number" ? axisTick(lab) : String(lab); }
+    return idx >= 0 ? String(idx + 1) : "";
+  };
+  const lw = opts?.linewidth ?? 1.5;
+  const showMarkers = opts?.marker ?? false;
+  const dotR = opts?.markersize ?? LINE_DOT_R;
+  const title = opts?.title;
+  const chartH = height - (title ? titleHeight(fscale) : 0);
+  const chart = (
+    <ComposedChart width={width} height={chartH} data={data} margin={{ top: PLOT_TOP, right: 8, bottom: 4, left: 0 }}>
       <CartesianGrid stroke={grid} vertical={false} />
-      <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={(i) => String(Number(i) + 1)} />
+      <XAxis dataKey="i" tick={AXIS} tickLine={false} tickFormatter={tickFmt} interval={n <= ALL_TICKS_UPTO ? 0 : undefined} />
       <YAxis tick={AXIS} tickLine={false} width={26} />
-      <Tooltip isAnimationActive={false} cursor={{ fill: "rgba(128,128,128,0.12)" }} />
+      <Tooltip isAnimationActive={false} cursor={{ fill: "rgba(128,128,128,0.12)" }} content={<MultiTooltip tickFmt={tickFmt} />} />
       {series.length > 1 && <Legend verticalAlign="bottom" height={LEGEND_H} iconSize={8} wrapperStyle={{ fontSize: 9 * fscale, color: axis }} />}
       {series.map((s, j) => j === 0
         ? <Bar key={j} dataKey={`s${j}`} name={s.name} fill={colors[j % colors.length]} isAnimationActive={false} />
-        : <Line key={j} dataKey={`s${j}`} name={s.name} stroke={colors[j % colors.length]} strokeWidth={1.5} dot={false} isAnimationActive={false} />)}
+        : <Line key={j} dataKey={`s${j}`} name={s.name} stroke={colors[j % colors.length]} strokeWidth={lw} dot={showMarkers ? { r: dotR } : false} isAnimationActive={false} />)}
     </ComposedChart>
+  );
+  if (!title) return chart;
+  return <div style={{ width }}><ChartTitle text={title} fs={fscale} />{chart}</div>;
+}
+
+// Nothing else on a bubble plot says which column is which: the tooltip names all three.
+function BubbleTooltip({ active, payload, names }: {
+  active?: boolean;
+  payload?: { payload?: { x?: number; y?: number | null; z?: number } }[];
+  names: { x?: string; y?: string; z?: string };
+}) {
+  if (!active || !payload || !payload.length) return null;
+  const d = payload[0]?.payload;
+  if (!d) return null;
+  const row = (name: string | undefined, v: number | null | undefined) => (v == null ? null : (
+    <div style={{ display: "flex", gap: 8 }}>
+      <span style={{ color: "var(--text-dim)" }}>{name}</span>
+      <span style={{ marginLeft: "auto" }}>{tipValue(v)}</span>
+    </div>
+  ));
+  return (
+    <div style={{ fontSize: 11, padding: "3px 6px", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)" }}>
+      {row(names.x, d.x)}
+      {row(names.y, d.y)}
+      {row(names.z, d.z)}
+    </div>
   );
 }
 
 // The first three NUMBER series are x / y / size columns, one dot per row (a frame's
 // first three number columns; a single column plots against itself).
-export function BubbleView({ series, width, height, fscale = 1 }: {
-  series: { name: string; values: (number | null)[] }[]; width: number; height: number; fscale?: number;
+export function BubbleView({ series, width, height, opts, fscale = 1 }: {
+  series: { name: string; values: (number | null)[] }[]; width: number; height: number; opts?: ChartOptions; fscale?: number;
 }) {
   const { grid, axis } = useChartColors();
   const colors = useSeriesColors();
@@ -651,16 +848,23 @@ export function BubbleView({ series, width, height, fscale = 1 }: {
     return { x: x ?? i, y: series.length >= 2 ? num(ys[i]) : x, z: num(zs[i]) ?? 1 };
   }).filter((d) => d.y !== null);
   if (data.length === 0) return <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>;
-  return (
-    <ScatterChart width={width} height={height} margin={{ top: 8, right: 12, bottom: 4, left: 0 }}>
+  const names = { x: opts?.xlabel ?? series[0]?.name, y: opts?.ylabel ?? series[1]?.name, z: series[2]?.name };
+  const xLabel = names.x ? { value: names.x, position: "insideBottom" as const, offset: -3, fontSize: 10 * fscale, fill: axis } : undefined;
+  const yLabel = names.y ? { value: names.y, angle: -90, position: "insideLeft" as const, fontSize: 10 * fscale, fill: axis } : undefined;
+  const title = opts?.title;
+  const chartH = height - (title ? titleHeight(fscale) : 0);
+  const chart = (
+    <ScatterChart width={width} height={chartH} margin={{ top: PLOT_TOP, right: 12, bottom: xLabel ? 18 : 4, left: 0 }}>
       <CartesianGrid stroke={grid} />
-      <XAxis type="number" dataKey="x" tick={AXIS} tickLine={false} />
-      <YAxis type="number" dataKey="y" tick={AXIS} tickLine={false} width={26} />
+      <XAxis type="number" dataKey="x" tick={AXIS} tickLine={false} label={xLabel} height={xLabel ? 28 : undefined} />
+      <YAxis type="number" dataKey="y" tick={AXIS} tickLine={false} width={yLabel ? 40 : 26} label={yLabel} />
       <ZAxis type="number" dataKey="z" range={[40, 420]} />
-      <Tooltip isAnimationActive={false} cursor={{ strokeDasharray: "3 3", stroke: "rgba(128,128,128,0.5)" }} />
+      <Tooltip isAnimationActive={false} cursor={{ strokeDasharray: "3 3", stroke: "rgba(128,128,128,0.5)" }} content={<BubbleTooltip names={names} />} />
       <Scatter data={data} fill={colors[0]} fillOpacity={0.55} isAnimationActive={false} />
     </ScatterChart>
   );
+  if (!title) return chart;
+  return <div style={{ width }}><ChartTitle text={title} fs={fscale} />{chart}</div>;
 }
 
 // `pct` is 0–100; `size` is the square drawn into, cropped to its top half by the caller.

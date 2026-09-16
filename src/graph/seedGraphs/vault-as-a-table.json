@@ -1,0 +1,110 @@
+{
+  "v": 2,
+  "order": 50,
+  "label": "Your vault as a table",
+  "group": "Obsidian",
+  "nodes": [
+    {
+      "id": "note0",
+      "type": "NoteNode",
+      "x": -120,
+      "y": 68,
+      "init": {
+        "label": "Your vault as a table",
+        "body": "# Your vault as a table\n\nVault Folder reads a folder of notes as one table: a row per note, a column per frontmatter key, with lists and sub-tables kept in the cells. Filter keeps the notes whose tags contain `book`. Sort orders them by rating. Display shows the result.\n\nPoint the Vault Folder at your own vault, or at the bundled demo-vault. Reading a vault works in the desktop app only.",
+        "color": "violet",
+        "width": 420,
+        "height": 210
+      }
+    },
+    {
+      "id": "notes",
+      "type": "VaultFolderNode",
+      "x": 360,
+      "y": 125,
+      "init": {
+        "label": "Vault Folder",
+        "folder": "Notes"
+      }
+    },
+    {
+      "id": "filter",
+      "type": "FilterFrameNode",
+      "x": 627,
+      "y": -57,
+      "init": {
+        "label": "tags contains book",
+        "condConfig": {
+          "0": {
+            "op": "listContains"
+          }
+        },
+        "valueKeys": [
+          "frame",
+          "column0",
+          "value0"
+        ]
+      },
+      "stringLiterals": {
+        "column0": "tags",
+        "value0": "book"
+      }
+    },
+    {
+      "id": "sort",
+      "type": "SortFrameNode",
+      "x": 892,
+      "y": -11,
+      "init": {
+        "label": "by rating",
+        "dir": "desc"
+      },
+      "stringLiterals": {
+        "column": "rating"
+      }
+    },
+    {
+      "id": "display",
+      "type": "DisplayNode",
+      "x": 1157,
+      "y": 31,
+      "init": {
+        "label": "Book notes"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "source": "notes",
+      "sourceOutput": "cube",
+      "target": "filter",
+      "targetInput": "frame"
+    },
+    {
+      "source": "filter",
+      "sourceOutput": "frame",
+      "target": "sort",
+      "targetInput": "frame"
+    },
+    {
+      "source": "sort",
+      "sourceOutput": "frame",
+      "target": "display",
+      "targetInput": "in"
+    }
+  ],
+  "standoffs": [
+    {
+      "a": {
+        "nodeId": "notes",
+        "anchor": "w"
+      },
+      "b": {
+        "nodeId": "note0",
+        "anchor": "e"
+      },
+      "min": 40,
+      "max": 240
+    }
+  ]
+}

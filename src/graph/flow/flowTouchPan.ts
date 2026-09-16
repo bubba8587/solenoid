@@ -11,11 +11,12 @@ import { touchSelectStore } from "../touchSelectStore";
 
 type Viewport = { x: number; y: number; zoom: number };
 
-/** Only DISCRETE controls keep their touch meaning (a tap fires them) and
- *  sockets keep the cable pick. Text fields deliberately do NOT veto: a tap
- *  still focuses them, but a DRAG from one pans — on an unselected card every
+/** Only DISCRETE controls keep their touch meaning (a tap fires them), sockets
+ *  keep the cable pick, and the corner resize grip keeps its drag (it is always
+ *  live, selected or not — socket.css). Text fields deliberately do NOT veto: a
+ *  tap still focuses them, but a DRAG from one pans — on an unselected card every
  *  non-actionable pixel is pan surface (the ruling's whole point). */
-const CONTROL_SELECTOR = "button, select, .react-flow__handle, [data-socket-key]";
+const CONTROL_SELECTOR = "button, select, .react-flow__handle, [data-socket-key], .sol-rf-grip";
 
 export function installTouchCardPan(
   el: HTMLElement,

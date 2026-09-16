@@ -3,7 +3,7 @@ import type { View } from "./view";
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import { GroupNode } from "./rete-nodes";
-import { moveGroupMembers } from "./groupLogic";
+import { moveGroupMembers, withLockedGroupsPinned } from "./groupLogic";
 import { COLLAPSE_LAYOUT, groupCollapseStore, syncGroupCollapse, settleCollapse } from "./groupCollapse";
 import { computeExpandPush, separateOverlaps, PushBox, Satellite, Disp, Pt } from "./groupPushCore";
 import { standoffStore, standoffClusters, Box as StandoffBox } from "./standoffs";
@@ -292,7 +292,7 @@ function runExpandPushes(
     const plain = new Map<string, StandoffBox>(
       [...world.boxes].map(([id, b]) => [id, { x: b.x, y: b.y, w: b.w, h: b.h }]),
     );
-    const settle = solveStandoffs(plain, standoffStore.all(), expandedIds, { forceLock: true });
+    const settle = solveStandoffs(plain, standoffStore.all(), withLockedGroupsPinned(editor, expandedIds), { forceLock: true });
     for (const [id, d] of settle) {
       const b = world.boxes.get(id);
       if (!b) continue;
@@ -462,6 +462,6 @@ function settleStandoffsOverWorld(editor: Editor, view: View, pinned: Set<string
   const plain = new Map<string, StandoffBox>(
     [...world.boxes].map(([id, b]) => [id, { x: b.x, y: b.y, w: b.w, h: b.h }]),
   );
-  const disp = solveStandoffs(plain, standoffStore.all(), pinned, { forceLock: true });
+  const disp = solveStandoffs(plain, standoffStore.all(), withLockedGroupsPinned(editor, pinned), { forceLock: true });
   for (const [id, d] of disp) translatePushed(editor, view, id, d.dx, d.dy);
 }

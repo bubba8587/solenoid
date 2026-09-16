@@ -1,5 +1,6 @@
+// dte:C63,C72
 import { ClassicPreset } from "rete";
-import { readInput, numIn, numListIn, tableIn, tableOut, strIn, strOut, chartIn, chartOut, frameIn } from "./shared";
+import { readInput, numIn, numListIn, tableIn, tableOut, strIn, strOut, chartIn, chartOut, frameIn, cubeAdoptIn } from "./shared";
 import { parseChartOptions, serializeChartOptions, CHART_BUILDER_TARGETS, type ChartOptions, type ChartTargetId } from "./chartOptions";
 import { clamp, iterMin, iterMax, gridAxes } from "./mathUtils";
 import { histogram2d } from "./visualOps";
@@ -7,15 +8,16 @@ export { histogram2d } from "./visualOps";
 import { isChartValue } from "../chartValue";
 import type {
   ChartValue, KpiPayload, ScalePayload, ProportionPayload, SankeyPayload, SurfacePayload,
-  ContourPayload, WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, QuiverPayload, SevenSegPayload,
-  RecordPayload, RecordField, OverlaySeries, OverlayPayload,
+  ContourPayload, WaterfallPayload, CandlePayload, BoxplotPayload, CalHeatPayload, QuiverPayload,
+  RecordPayload, RecordField, RecordSize, OverlaySeries, OverlayPayload,
 } from "../chartValue";
 import { solError, type SolError } from "../errorValue";
 import { columnUnitLabel } from "../unitColumn";
 import type { MermaidValue } from "../mermaidValue";
 import { readFrame, type FrameInput } from "../frameBackend";
 import type { FrameHint } from "../frameHint";
-import { formatFrameCell, isFrameValue, type FrameColumn } from "../frame";
+import { formatFrameCell, isFrameValue, isCubeValue, flatCubeToFrame, type FrameColumn } from "../frame";
+import { isSolError } from "../errorValue";
 
 // Terminal figures: each node emits a chart VALUE and is never a pass-through.
 
@@ -50,13 +52,16 @@ export class SparklineNode extends ClassicPreset.Node {
   data(inputs: { values?: (number | number[])[] }): { chart: ChartValue } {
     const raw = inputs.values?.[0] ?? null;
     this.cachedResult = raw;
-    // Finite numbers only — the emitted chart value must never carry a NaN/Infinity/error
-    // the sign / toSeries path would render as garbage (parity with ChartNode.data()).
-    const nums = (Array.isArray(raw) ? raw : raw == null ? [] : [raw]).map((x) => (typeof x === "number" && Number.isFinite(x) ? x : 0));
+    // A blank, error or non-finite cell is a GAP, never a zero (a zero bar, or a win/loss
+    // "draw", would be a fabricated reading). `series` keeps the gaps in place; `values`
+    // (the 1-D summary) carries only the known numbers.
+    const cells = (Array.isArray(raw) ? raw : raw == null ? [] : [raw]).map((x) => (typeof x === "number" && Number.isFinite(x) ? x : null));
+    const signed = this.op === "winloss" ? cells.map((n) => (n === null ? null : Math.sign(n))) : cells;
     const chart: ChartValue = {
       __chart: true,
       op: this.op === "winloss" ? "column" : this.op,
-      values: this.op === "winloss" ? nums.map((n) => Math.sign(n)) : nums,
+      values: signed.filter((n): n is number => n !== null),
+      series: [{ name: this.label || "Sparkline", values: signed }],
       options: this.chartOptions,
       title: this.label || "Sparkline",
     };
@@ -88,7 +93,7 @@ export const CHART_OP_META = {
 
 export class ChartNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
-    values: "A list plots by position. In a frame, column 0 supplies the x-axis labels and every number column after it is a series. Bubble reads three number columns as x, y, and size.",
+    values: "A list plots by position. In a frame, column 0 supplies the x-axis labels and every number column after it is a series. Radar flips this: the number columns are the spokes and each row is one polygon, named by column 0. Bubble reads three number columns as x, y, and size.",
     options: "Accepts key=value pairs separated by semicolons, using matplotlib names such as title, ylim, and grid. Unknown keys are ignored.",
   };
 
@@ -122,7 +127,7 @@ export class ChartNode extends ClassicPreset.Node {
     this.op = init?.op ?? "column";
     // A frame socket kept UNCOERCED by `rawInputs` — coerced, it would widen a wired list
     // into a single ROW instead of leaving it a list.
-    this.addInput("values", frameIn("Data"));
+    this.addInput("values", cubeAdoptIn("Data"));
     this.addInput("options", strIn("Options"));
     this.addOutput("chart", chartOut("Chart"));
   }
@@ -131,7 +136,11 @@ export class ChartNode extends ClassicPreset.Node {
     // A FRAME drives the figure: the numeric columns are named series (a legend at ≥ 2).
     // Every non-finite cell becomes null IN PLACE, so row-indexed labels stay aligned.
     const num = (c: unknown): number | null => (typeof c === "number" && Number.isFinite(c) ? c : null);
-    const raw = inputs.values?.[0] ?? null;
+    const raw0 = inputs.values?.[0] ?? null;
+    // A cube arrives raw (rawInputs); a flat one is the frame the figure reads, a nested
+    // cell reads as nothing to draw (the lattice never lets a cube into a frame socket).
+    const flat = isCubeValue(raw0) ? flatCubeToFrame(raw0) : raw0;
+    const raw = isSolError(flat) ? null : flat;
     this.cachedLabels = null;
     this.cachedSeries = null;
     let v: number | number[] | null = null;
@@ -144,6 +153,21 @@ export class ChartNode extends ClassicPreset.Node {
         const pts = cols.filter((c) => c.type === "number").slice(0, 3).map((c) => ({ name: c.name, values: asNums(c) }));
         this.cachedSeries = pts.length > 0 ? pts : null;
         v = pts.length > 0 ? (pts[0].values as unknown as number[]) : null;
+      } else if (this.op === "radar" && cols.length >= 2) {
+        // Radar reads the frame TRANSPOSED from the cartesian charts (chartRadarTranspose):
+        // the numeric COLUMNS are the spokes (axes) and each ROW is one overlaid polygon,
+        // named by column 0 — so a Decision-Matrix row scores across its criteria, not the
+        // reverse. Cartesian charts keep column-0-as-labels; only radar flips.
+        const labelCol = cols[0];
+        const numCols = cols.slice(1).filter((c) => c.type === "number");
+        this.cachedLabels = numCols.map((c) => c.name);
+        const series = labelCol.values.map((cell, r) => ({
+          name: String(formatFrameCell(labelCol.type, cell) ?? `Row ${r + 1}`),
+          values: numCols.map((c) => num(c.values[r])),
+        }));
+        v = series.length > 0 ? (series[0].values as unknown as number[]) : null;
+        // 2+ rows overlay as a legend; a single row draws one polygon (values + labels).
+        this.cachedSeries = series.length >= 2 ? series : null;
       } else if (cols.length >= 2) {
         // Column 0 is ALWAYS the x-axis label column at ≥ 2 columns (a numeric col 0 —
         // Year, an epoch — is a real axis; scatter promotes it to a coordinate x).
@@ -169,6 +193,13 @@ export class ChartNode extends ClassicPreset.Node {
     const optIn = readInput(inputs.options, this.stringLiterals.options ?? null);
     const optStr = typeof optIn === "string" || optIn === null ? optIn : (this.stringLiterals.options ?? null);
     this.chartOptions = parseChartOptions(optStr);
+    // Bubble's axes ARE two of the frame's columns, so they carry those column names
+    // unless the author labelled them; the size column is named by the tooltip.
+    if (this.op === "bubble" && this.cachedSeries) {
+      const [x, y] = this.cachedSeries;
+      if (this.chartOptions.xlabel === undefined && x) this.chartOptions.xlabel = x.name;
+      if (this.chartOptions.ylabel === undefined && y) this.chartOptions.ylabel = y.name;
+    }
     const chart: ChartValue = {
       __chart: true,
       op: this.op,
@@ -289,9 +320,11 @@ export class MergePlotsNode extends ClassicPreset.Node {
 // ─── Histogram ────────────────────────────────────────────────────────────────
 
 /** Count how many values fall in each of `k` equal-width bins over [min,max]. */
-export function histogramBins(vals: (number | null)[], k: number): number[] {
+export function histogramBins(vals: (number | null)[], k: number): number[] | SolError {
   const nums = vals.filter((x): x is number => typeof x === "number" && Number.isFinite(x));
-  const bins = clamp(Math.floor(k) || 1, 1, 100);
+  // Bins is a shape: 0, a negative or a non-number is a refusal, never a silent one bar.
+  if (!Number.isFinite(k) || Math.floor(k) < 1) return solError("#DOMAIN!", "Bins must be 1 or more");
+  const bins = clamp(Math.floor(k), 1, 100);
   if (nums.length === 0) return [];
   const min = iterMin(nums);
   const max = iterMax(nums);
@@ -368,7 +401,7 @@ export class HistogramNode extends ClassicPreset.Node {
     this.literals.ybins ??= 10;
   }
 
-  data(inputs: { values?: (number | number[])[]; bins?: number[]; y?: (number | number[])[]; ybins?: number[]; options?: string[] }): { chart: ChartValue } {
+  data(inputs: { values?: (number | number[])[]; bins?: number[]; y?: (number | number[])[]; ybins?: number[]; options?: string[] }): { chart: ChartValue | SolError } {
     const xs = listOf(inputs.values?.[0] ?? null);
     // Bins is a SHAPE, not styling — a wired blank empties the figure. Mirror to the card
     // ONLY when unwired; writing a WIRED value into `literals` would overwrite and persist it.
@@ -392,6 +425,7 @@ export class HistogramNode extends ClassicPreset.Node {
     }
 
     const counts = kx === null ? [] : histogramBins(xs, kx);
+    if (isSolError(counts)) { this.cachedResult = null; this.cachedChart = null; return { chart: counts }; }
     this.cachedResult = counts;
     const chart: ChartValue = { __chart: true, op: "column", values: counts, options: this.chartOptions, title };
     this.cachedChart = chart;
@@ -412,8 +446,8 @@ export class MermaidNode extends ClassicPreset.Node {
   height = 240;
 
   constructor(init?: { label?: string }) {
-    super("Mermaid");
-    this.label = init?.label ?? "Mermaid";
+    super("Mermaid Charts");
+    this.label = init?.label ?? "Mermaid Charts";
     this.stringLiterals.source = DEFAULT_MERMAID;
     this.addInput("source", strIn("Source"));
     this.addOutput("diagram", chartOut("Diagram"));
@@ -435,14 +469,18 @@ export class MermaidNode extends ClassicPreset.Node {
 // ─── Gauge — a value on a fixed scale (Dial or Bar) ─────────────────────────────
 // One card, a style selector. DIAL reads Value as a fraction of 1 (0.75 → 75% on a
 // fixed 0→100% arc); BAR (the former Bullet graph) plots Value on a 0→Max track with a
-// Target tick. Emits a chart VALUE, not a pass-through — like 7-Segment, so a Report can
-// embed the readout (author call; node-coverage records the contract change).
+// Target tick. Emits a chart VALUE, not a pass-through, so a Report can embed the readout
+// (node-coverage records the contract).
 export type GaugeStyle = "dial" | "bar";
-export const GAUGE_OP_META = {
+// Dial/Bar is an ARGUMENT (a view of the one "value on a scale" card), not an op:
+// nobody searches the Add menu for "dial" or "bar", and there is no formula surface.
+// So it is a `mode` selector picked with a SegToggle (opArgDistinct); `mode` is an
+// already-whitelisted init key, so nothing is added to the save format.
+export const GAUGE_STYLE_META = {
   dial: { label: "Dial" },
   bar:  { label: "Bar" },
 } satisfies Record<GaugeStyle, { label: string }>;
-export const GAUGE_STYLE_OPTIONS = Object.entries(GAUGE_OP_META).map(([value, m]) => ({ value: value as GaugeStyle, label: m.label }));
+export const GAUGE_STYLE_OPTIONS = Object.entries(GAUGE_STYLE_META).map(([value, m]) => ({ value: value as GaugeStyle, label: m.label }));
 
 export class GaugeNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
@@ -452,7 +490,7 @@ export class GaugeNode extends ClassicPreset.Node {
   };
 
   label: string;
-  op: GaugeStyle = "dial";
+  mode: GaugeStyle = "dial";
   literals: Record<string, number> = { value: 0, target: 80, max: 100 };
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
@@ -460,12 +498,12 @@ export class GaugeNode extends ClassicPreset.Node {
   width = 200;
   height = 200;
 
-  constructor(init?: { label?: string; op?: GaugeStyle }) {
+  constructor(init?: { label?: string; mode?: GaugeStyle }) {
     super("Gauge");
     this.label = init?.label ?? "";
-    if (init?.op === "bar") this.op = "bar";
+    if (init?.mode === "bar") this.mode = "bar";
     this.addInput("value", numIn("Value"));
-    if (this.op === "bar") this.addBarInputs();
+    if (this.mode === "bar") this.addBarInputs();
     this.addOutput("chart", chartOut("Chart"));
   }
 
@@ -478,12 +516,12 @@ export class GaugeNode extends ClassicPreset.Node {
   /** The bar-only input keys a switch to `next` would remove — the component drops
    *  their cables first (onePrunePath) before calling setOp. */
   keysDropped(next: GaugeStyle): string[] {
-    return next === "dial" && this.op === "bar" ? ["target", "max", "options"] : [];
+    return next === "dial" && this.mode === "bar" ? ["target", "max", "options"] : [];
   }
 
-  setOp(next: GaugeStyle): void {
-    if (next === this.op) return;
-    this.op = next;
+  setMode(next: GaugeStyle): void {
+    if (next === this.mode) return;
+    this.mode = next;
     if (next === "dial") {
       for (const k of ["target", "max", "options"]) if (this.inputs[k]) this.removeInput(k);
     } else {
@@ -496,7 +534,7 @@ export class GaugeNode extends ClassicPreset.Node {
     if (inputs.value?.[0] === undefined) this.literals.value = value ?? 0;
     let payload: ScalePayload;
     let title: string;
-    if (this.op === "bar") {
+    if (this.mode === "bar") {
       const target = readInput(inputs.target, this.literals.target ?? null);
       // `max` is the track SCALE, so it keeps the card bound like a Slider; value/target are data.
       const max = readInput(inputs.max, this.literals.max ?? 100) ?? (this.literals.max ?? 100);
@@ -515,45 +553,6 @@ export class GaugeNode extends ClassicPreset.Node {
   }
 }
 
-
-export class SevenSegNode extends ClassicPreset.Node {
-  label: string;
-  literals: Record<string, number> = { value: 0, decimals: 0 };
-  cachedChart: ChartValue | null = null;
-  width = 200;
-  height = 130;
-
-  constructor(init?: { label?: string }) {
-    super("SevenSeg");
-    this.label = init?.label ?? "7-Segment";
-    this.addInput("value", numIn("Value"));
-    this.addInput("decimals", numIn("Decimals"));
-    this.addOutput("chart", chartOut("Chart"));
-  }
-
-  data(inputs: { value?: number[]; decimals?: number[] }): { chart: ChartValue } {
-    const v = readInput(inputs.value, this.literals.value ?? null);
-    // `decimals` is PRESENTATION: a wired blank is the neutral 0, not the card's number.
-    const d = clamp(Math.round(readInput(inputs.decimals, this.literals.decimals ?? 0) ?? 0), 0, 6);
-    // Mirror to the card only when unwired — never clobber the typed literal.
-    if (inputs.decimals?.[0] === undefined) this.literals.decimals = d;
-    if (inputs.value?.[0] === undefined) this.literals.value = v ?? 0;
-    const payload: SevenSegPayload = { kind: "sevenseg", text: sevenSegText(v, d) };
-    const chart: ChartValue = { __chart: true, op: "sevenseg", values: v, payload, options: {}, title: this.label || "7-Segment" };
-    this.cachedChart = chart;
-    return { chart };
-  }
-}
-
-/** The characters a 7-seg readout shows for a value: a fixed-decimals string, or
- *  the classic all-dashes overflow when it doesn't fit the display width. */
-export function sevenSegText(v: number | null, decimals: number, maxDigits = 10): string {
-  if (v == null || !Number.isFinite(v)) return "";
-  const s = v.toFixed(clamp(Math.round(decimals), 0, 6));
-  // Count digit CELLS (a '.' rides its neighbor, '-' takes a cell).
-  const cells = s.replace(/\./g, "").length;
-  return cells > maxDigits ? "-".repeat(maxDigits) : s;
-}
 
 // ─── KPI / Stat card ──────────────────────────────────────────────────────────
 
@@ -610,16 +609,18 @@ function colAsStrings(col: FrameColumn | undefined): string[] {
     return c == null ? "" : String(c);
   });
 }
-/** A column coerced to numbers (numeric text parses; anything else → 0). */
-function colAsNumbers(col: FrameColumn | undefined): number[] {
+/** A column coerced to numbers (numeric text parses); a blank, error or non-numeric cell is
+ *  null — unknown, never 0 (value-semantics), so a figure leaves a gap instead of a zero. */
+function colAsNumbers(col: FrameColumn | undefined): (number | null)[] {
   if (!col) return [];
   return col.values.map((v) => {
     const c = formatFrameCell(col.type, v);
     if (typeof c === "number" && Number.isFinite(c)) return c;
     if (typeof c === "string" && c.trim() !== "") { const n = Number(c); if (Number.isFinite(n)) return n; }
-    return 0;
+    return null;
   });
 }
+const knownOnly = (xs: (number | null)[]): number[] => xs.filter((x): x is number => x !== null);
 
 // ─── Proportion ─────────────────────────────────────────────────────────────────
 
@@ -666,7 +667,7 @@ export class ProportionNode extends ClassicPreset.Node {
     const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
     const names = colAsStrings(cols[0]);
     // Waffle's single-column fallback is a harmless superset for the treemap too.
-    const values = colAsNumbers(cols[1] ?? cols[0]);
+    const values = colAsNumbers(cols[1] ?? cols[0]).map((x) => x ?? 0); // 0 draws nothing on a proportion
     this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const payload: ProportionPayload = { kind: "proportion", layout: this.op, names, values };
     const chart: ChartValue = {
@@ -680,11 +681,43 @@ export class ProportionNode extends ClassicPreset.Node {
 
 // ─── Sankey ───────────────────────────────────────────────────────────────────
 
+/** The flows with every cycle-closing link removed, in first-edge order: a Sankey is a
+ *  DAG (recharts' depth pass recurses forever on a loop). Blank, self and non-positive
+ *  flows are skipped the way the figure skips them, so a loop through one of those never
+ *  counts. `dropped` is how many links closed a cycle. */
+export function acyclicFlows(sources: string[], targets: string[], values: number[]): { sources: string[]; targets: string[]; values: number[]; dropped: number } {
+  const out = { sources: [] as string[], targets: [] as string[], values: [] as number[], dropped: 0 };
+  const adj = new Map<string, Set<string>>();
+  const reaches = (from: string, to: string): boolean => {
+    const seen = new Set<string>();
+    const stack = [from];
+    while (stack.length) {
+      const n = stack.pop()!;
+      if (n === to) return true;
+      if (seen.has(n)) continue;
+      seen.add(n);
+      for (const m of adj.get(n) ?? []) stack.push(m);
+    }
+    return false;
+  };
+  for (let i = 0; i < sources.length; i++) {
+    const s = sources[i] ?? "", t = targets[i] ?? "", v = values[i] ?? 0;
+    if (!s || !t || s === t || !(v > 0)) { out.sources.push(s); out.targets.push(t); out.values.push(v); continue; }
+    if (reaches(t, s)) { out.dropped++; continue; }
+    if (!adj.has(s)) adj.set(s, new Set());
+    adj.get(s)!.add(t);
+    out.sources.push(s); out.targets.push(t); out.values.push(v);
+  }
+  return out;
+}
+
 export class SankeyNode extends ClassicPreset.Node {
   label: string;
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
   cachedPayload: SankeyPayload | null = null;
+  /** Flows dropped because they closed a loop (the card can say so). */
+  droppedLoops = 0;
   width = 260;
   height = 220;
 
@@ -704,12 +737,20 @@ export class SankeyNode extends ClassicPreset.Node {
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue }> {
+  async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue | SolError }> {
     const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
-    const sources = colAsStrings(cols[0]);
-    const targets = colAsStrings(cols[1]);
-    const values = colAsNumbers(cols[2]);
+    const raw = { sources: colAsStrings(cols[0]), targets: colAsStrings(cols[1]), values: colAsNumbers(cols[2]).map((x) => x ?? 0) }; // a blank flow carries nothing
     this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
+    // A loop cannot be drawn; the flows that close one are dropped and the rest draw. When
+    // every real flow closed a loop there is nothing honest to draw.
+    const { sources, targets, values, dropped } = acyclicFlows(raw.sources, raw.targets, raw.values);
+    this.droppedLoops = dropped;
+    const drawable = sources.some((s, i) => !!s && !!targets[i] && s !== targets[i] && values[i] > 0);
+    if (dropped > 0 && !drawable) {
+      const err = solError("#SHAPE!", "The flows form a loop; a Sankey needs a direction");
+      this.cachedPayload = null;
+      return { chart: err };
+    }
     const payload: SankeyPayload = { kind: "sankey", sources, targets, values };
     this.cachedPayload = payload;
     return {
@@ -883,11 +924,11 @@ export class WaterfallNode extends ClassicPreset.Node {
   async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue }> {
     const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
     const names = colAsStrings(cols[0]);
-    const values = colAsNumbers(cols[1]);
+    const values = colAsNumbers(cols[1]); // a blank step is a gap the running total never crosses
     this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const payload: WaterfallPayload = { kind: "waterfall", names, values, total: true };
     const chart: ChartValue = {
-      __chart: true, op: "waterfall", values, payload,
+      __chart: true, op: "waterfall", values: knownOnly(values), payload,
       options: this.chartOptions, title: this.chartOptions.title || this.label || "Waterfall",
     };
     this.cachedChart = chart;
@@ -905,7 +946,7 @@ export class CandlestickNode extends ClassicPreset.Node {
   label: string;
   stringLiterals: Record<string, string> = {};
   chartOptions: ChartOptions = {};
-  cachedChart: ChartValue | null = null;
+  cachedChart: ChartValue | SolError | null = null;
   width = 260;
   height = 220;
 
@@ -927,8 +968,14 @@ export class CandlestickNode extends ClassicPreset.Node {
     this.addOutput("chart", chartOut("Chart"));
   }
 
-  async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue }> {
+  async data(inputs: { frame?: (FrameInput | null)[]; options?: string[] }): Promise<{ chart: ChartValue | SolError | null }> {
     const cols = await readFrameColumns(inputs.frame?.[0] ?? null);
+    if (cols.length === 0) { this.cachedChart = null; return { chart: null }; }
+    if (cols.length < 4) {
+      const err = solError("#SHAPE!", "Candlestick needs Open, High, Low and Close columns (a date column first is optional)");
+      this.cachedChart = err;
+      return { chart: err };
+    }
     // 5+ columns → col 0 is the date/label axis; exactly 4 → all four are OHLC.
     const hasDates = cols.length >= 5;
     const o = colAsNumbers(cols[hasDates ? 1 : 0]);
@@ -943,7 +990,7 @@ export class CandlestickNode extends ClassicPreset.Node {
     };
     this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const chart: ChartValue = {
-      __chart: true, op: "candle", values: payload.close, payload,
+      __chart: true, op: "candle", values: knownOnly(payload.close), payload,
       options: this.chartOptions, title: this.chartOptions.title || this.label || "Candlestick",
     };
     this.cachedChart = chart;
@@ -1056,8 +1103,10 @@ export class CalendarHeatmapNode extends ClassicPreset.Node {
     for (let i = 0; i < serials.length; i++) {
       const d = serials[i];
       if (d == null) continue;
+      const val = vals[i];
+      if (val == null) continue; // a day without a value stays sunken, never a painted 0
       days.push(Math.floor(d));
-      values.push(vals[i] ?? 0);
+      values.push(val);
     }
     this.chartOptions = parseChartOptions(readInput(inputs.options, this.stringLiterals.options ?? null));
     const payload: CalHeatPayload = { kind: "calheat", days, values };
@@ -1081,6 +1130,8 @@ export interface RecordPlacement {
   colSpan: number;
   /** Muted text an EMPTY box shows in place of the value dash. */
   hint?: string;
+  /** The title field (a `#name` marker): drawn big and label-less in every view. */
+  title?: boolean;
 }
 
 /** A layout cell: one line per grid row, cells split on "|", "." or an empty
@@ -1101,34 +1152,53 @@ export function parseRecordLayout(text: string): RecordPlacement[] {
         const hint = ci >= 0 ? cell.slice(ci + 1).trim() : "";
         const head = (ci >= 0 ? cell.slice(0, ci) : cell).trim();
         const m = /^(.*?)\s*\*\s*(\d+)$/.exec(head);
-        const name = m ? m[1].trim() : head;
+        const named = m ? m[1].trim() : head;
+        // A leading `#` marks the title field (drawn big, label-less); the rest is the name.
+        const title = named.startsWith("#");
+        const name = title ? named.slice(1).trim() : named;
         const span = m ? Math.min(12, Math.max(1, Number(m[2]))) : 1;
-        return Array.from({ length: span }, (_, i) => ({ name, hint: i === 0 ? hint : "" }));
+        return Array.from({ length: span }, (_, i) => ({ name, hint: i === 0 ? hint : "", title }));
       }),
     )
     .filter((cells) => cells.some((c) => c.name !== "" && c.name !== "."));
-  const rects = new Map<string, { name: string; hint: string; r0: number; c0: number; r1: number; c1: number }>();
+  const rects = new Map<string, { name: string; hint: string; title: boolean; r0: number; c0: number; r1: number; c1: number }>();
   const order: string[] = [];
   rows.forEach((cells, r) =>
-    cells.forEach(({ name, hint }, c) => {
+    cells.forEach(({ name, hint, title }, c) => {
       if (name === "" || name === ".") return;
       const key = name.toLowerCase();
       const rect = rects.get(key);
       if (!rect) {
-        rects.set(key, { name, hint, r0: r, c0: c, r1: r, c1: c });
+        rects.set(key, { name, hint, title, r0: r, c0: c, r1: r, c1: c });
         order.push(key);
       } else {
         rect.r0 = Math.min(rect.r0, r); rect.c0 = Math.min(rect.c0, c);
         rect.r1 = Math.max(rect.r1, r); rect.c1 = Math.max(rect.c1, c);
         if (!rect.hint) rect.hint = hint;
+        if (title) rect.title = true;
       }
     }),
   );
+  // A crossed repeat ("A | B" over "B | A") bounds two names onto one area; the later one
+  // shrinks to the cell it first appeared in, so no box ever hides another.
+  const placed: Array<{ r0: number; c0: number; r1: number; c1: number }> = [];
+  const firstCell = new Map<string, { r: number; c: number }>();
+  rows.forEach((cells, r) => cells.forEach(({ name }, c) => {
+    const key = name.toLowerCase();
+    if (name !== "" && name !== "." && !firstCell.has(key)) firstCell.set(key, { r, c });
+  }));
+  for (const key of order) {
+    const t = rects.get(key)!;
+    const hits = (a: typeof t) => placed.some((p) => a.r0 <= p.r1 && p.r0 <= a.r1 && a.c0 <= p.c1 && p.c0 <= a.c1);
+    if (hits(t)) { const f = firstCell.get(key)!; t.r0 = t.r1 = f.r; t.c0 = t.c1 = f.c; }
+    placed.push({ r0: t.r0, c0: t.c0, r1: t.r1, c1: t.c1 });
+  }
   return order.map((key) => {
     const t = rects.get(key)!;
     return {
       name: t.name, row: t.r0 + 1, col: t.c0 + 1, rowSpan: t.r1 - t.r0 + 1, colSpan: t.c1 - t.c0 + 1,
       ...(t.hint ? { hint: t.hint } : {}),
+      ...(t.title ? { title: true } : {}),
     };
   });
 }
@@ -1142,14 +1212,25 @@ export function recordImageSrc(text: string): string | null {
   return null;
 }
 
-export type RecordOp = "card" | "gallery" | "board";
+export type RecordOp = "card" | "gallery" | "board" | "list";
 
 // The card dropdown DERIVES from this table (declareOnce) — never hand-write a second list.
 export const RECORD_OP_META = {
   card:    { label: "Card" },
   gallery: { label: "Gallery" },
   board:   { label: "Board" },
+  list:    { label: "List" },
 } satisfies Record<RecordOp, { label: string }>;
+
+// The gallery size preset (`cardsize=s|m|l` option); the three sizes render in `chartCards`.
+function readCardSize(optStr: string | null): RecordSize | undefined {
+  const m = optStr && /(?:^|;)\s*cardsize\s*=\s*([sml])\b/i.exec(optStr);
+  return m ? (m[1].toLowerCase() as RecordSize) : undefined;
+}
+// The `clamp=on` option: line-clamp long values on gallery tiles (the popup still shows all).
+function readClamp(optStr: string | null): boolean {
+  return !!optStr && /(?:^|;)\s*clamp\s*=\s*(on|true|yes|1)\b/i.test(optStr);
+}
 
 // Gallery/board draw at most this many cards; `payload.more` carries the rest.
 export const RECORD_CARD_CAP = 60;
@@ -1158,8 +1239,8 @@ export class RecordNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     row: "Selects the 1-based record. Blank or out of range shows the boxes empty.",
     by: "Names the column whose values become the board's lanes. Blank or unmatched draws nothing.",
-    layout: "One line per grid row, names split by | marks. Repeating a name merges its cells into one box. Photo*2 widens a box two columns. Qty: for example 40 gives an empty box muted placeholder text. A dot or an empty cell stays blank. Left empty, the columns stack.",
-    options: "title=Parts;fontsize=12",
+    layout: "One line per grid row, names split by | marks. Repeating a name merges its cells into one box. Photo*2 widens a box two columns. Qty: for example 40 gives an empty box muted placeholder text. Prefix a name with # to make it the title, drawn big and without its label. A dot or an empty cell stays blank. Left empty, the columns stack.",
+    options: "title=Parts;fontsize=12;cardsize=l. Gallery tiles size s, m or l; clamp=on caps long tile values at three lines.",
   };
 
   label: string;
@@ -1225,7 +1306,11 @@ export class RecordNode extends ClassicPreset.Node {
     const layIn = readInput(inputs.layout, this.stringLiterals.layout ?? null);
     const layStr = typeof layIn === "string" ? layIn : null;
     const optIn = readInput(inputs.options, this.stringLiterals.options ?? null);
-    this.chartOptions = parseChartOptions(typeof optIn === "string" || optIn === null ? optIn : (this.stringLiterals.options ?? null));
+    const optStr = typeof optIn === "string" || optIn === null ? optIn : (this.stringLiterals.options ?? null);
+    this.chartOptions = parseChartOptions(optStr);
+    // Gallery tile size preset + value clamp (gallery only; other views ignore them).
+    const size = readCardSize(optStr);
+    const clampTiles = readClamp(optStr);
 
     // The board's grouping column: a column reference, so a wired blank or an
     // unmatched name draws nothing (never "one lane of everything").
@@ -1234,14 +1319,14 @@ export class RecordNode extends ClassicPreset.Node {
     const byCol = this.op === "board" ? (byKey ? cols.find((c) => c.name.trim().toLowerCase() === byKey) ?? null : null) : null;
 
     const byName = new Map(cols.map((c) => [c.name.trim().toLowerCase(), c]));
-    const field = (name: string, col: FrameColumn | undefined, rowIdx: number | null, at: { row: number; col: number; rowSpan: number; colSpan: number; hint?: string }): RecordField => {
+    const field = (name: string, col: FrameColumn | undefined, rowIdx: number | null, at: { row: number; col: number; rowSpan: number; colSpan: number; hint?: string; title?: boolean }): RecordField => {
       const label = col
         ? (col.unit ? `${col.name} (${columnUnitLabel(col.unit)})` : col.name)
         : name;
       const raw = col && rowIdx !== null ? col.values[rowIdx] ?? null : null;
       const shown = raw === null ? null : formatFrameCell(col!.type, raw);
       const image = typeof shown === "string" ? recordImageSrc(shown) : null;
-      const f: RecordField = { label, value: shown, ...(image ? { image } : {}), row: at.row, col: at.col, rowSpan: at.rowSpan, colSpan: at.colSpan };
+      const f: RecordField = { label, value: shown, ...(image ? { image } : {}), ...(at.title ? { isTitle: true } : {}), row: at.row, col: at.col, rowSpan: at.rowSpan, colSpan: at.colSpan };
       if (shown === null && at.hint) f.hint = at.hint;
       return f;
     };
@@ -1262,7 +1347,7 @@ export class RecordNode extends ClassicPreset.Node {
     let more = 0;
     if (this.op === "card") {
       cards = [cardAt(index >= 1 ? index - 1 : null)];
-    } else if (this.op === "gallery") {
+    } else if (this.op === "gallery" || this.op === "list") {
       const drawn = Math.min(total, RECORD_CARD_CAP);
       cards = Array.from({ length: drawn }, (_, r) => cardAt(r));
       more = total - drawn;
@@ -1286,6 +1371,8 @@ export class RecordNode extends ClassicPreset.Node {
     const payload: RecordPayload = {
       kind: "record", view: this.op, cols: ncols, cards,
       ...(lanes ? { lanes } : {}), ...(more > 0 ? { more } : {}),
+      ...(size ? { size } : {}),
+      ...(clampTiles ? { clamp: true } : {}),
       index, total,
     };
     const chart: ChartValue = {
@@ -1326,7 +1413,7 @@ export class QuiverNode extends ClassicPreset.Node {
 
 // ─── Chart Builder ────────────────────────────────────────────────────────────
 
-const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker"] as const;
+const CB_STR_FIELDS = ["title", "xlabel", "ylabel", "color", "grid", "marker", "pielabels", "radarscale", "zoom", "layout", "tiers", "fit", "critical", "baseline", "arrows", "today", "weekends", "labels", "histogram", "minutes", "window", "columns", "cardsize", "clamp"] as const;
 const CB_NUM_FIELDS = ["ymin", "ymax", "linewidth", "markersize", "alpha", "fontsize"] as const;
 
 export class ChartBuilderNode extends ClassicPreset.Node {
@@ -1347,13 +1434,31 @@ export class ChartBuilderNode extends ClassicPreset.Node {
     super("ChartBuilder");
     this.label = init?.label ?? "Chart Builder";
     // Guard a stale target from an old save — fall back rather than crash.
-    this.target = init?.target && init.target in CHART_BUILDER_TARGETS ? init.target : "chart";
+    this.target = init?.target && init.target in CHART_BUILDER_TARGETS ? init.target : "column";
     this.addInput("title",     strIn("Title"));
     this.addInput("xlabel",    strIn("X label"));
     this.addInput("ylabel",    strIn("Y label"));
     this.addInput("color",     strIn("Color"));
     this.addInput("grid",      strIn("Grid"));
     this.addInput("marker",    strIn("Markers"));
+    this.addInput("pielabels", strIn("Pie labels"));
+    this.addInput("radarscale", strIn("Radar scale"));
+    this.addInput("zoom",      strIn("Zoom"));
+    this.addInput("layout",    strIn("Layout"));
+    this.addInput("tiers",     strIn("Header rows"));
+    this.addInput("fit",       strIn("Fit"));
+    this.addInput("critical",  strIn("Critical path"));
+    this.addInput("baseline",  strIn("Baseline"));
+    this.addInput("arrows",    strIn("Arrows"));
+    this.addInput("today",     strIn("Today line"));
+    this.addInput("weekends",  strIn("Weekend shading"));
+    this.addInput("labels",    strIn("Bar labels"));
+    this.addInput("histogram", strIn("Resource band"));
+    this.addInput("minutes",   strIn("Times"));
+    this.addInput("window",    strIn("Window"));
+    this.addInput("columns",   strIn("Columns"));
+    this.addInput("cardsize",  strIn("Tile size"));
+    this.addInput("clamp",     strIn("Clamp tiles"));
     this.addInput("ymin",      numIn("Y min"));
     this.addInput("ymax",      numIn("Y max"));
     this.addInput("linewidth", numIn("Line width"));
@@ -1375,6 +1480,24 @@ export class ChartBuilderNode extends ClassicPreset.Node {
       color:     str("color"),
       grid:      str("grid"),
       marker:    str("marker"),
+      pielabels: str("pielabels"),
+      radarscale: str("radarscale"),
+      zoom:      str("zoom"),
+      layout: str("layout"),
+      tiers: str("tiers"),
+      fit: str("fit"),
+      critical: str("critical"),
+      baseline: str("baseline"),
+      arrows: str("arrows"),
+      today: str("today"),
+      weekends: str("weekends"),
+      labels: str("labels"),
+      histogram: str("histogram"),
+      minutes: str("minutes"),
+      window: str("window"),
+      columns: str("columns"),
+      cardsize: str("cardsize"),
+      clamp: str("clamp"),
       ymin:      num("ymin"),
       ymax:      num("ymax"),
       linewidth: num("linewidth"),

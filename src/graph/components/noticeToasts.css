@@ -43,6 +43,20 @@
   text-wrap-style: balance;
 }
 
+.solenoid-notice__action {
+  flex: none;
+  background: var(--surface-sunken, rgba(255, 255, 255, 0.08));
+  border: 1px solid var(--border-strong, var(--border));
+  border-radius: 4px;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  padding: 2px 10px;
+  cursor: pointer;
+}
+.solenoid-notice__action:hover {
+  border-color: var(--accent, var(--border-strong));
+}
 .solenoid-notice__close {
   flex: none;
   background: none;

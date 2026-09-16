@@ -1,12 +1,13 @@
+// dte:D34,D35,E9
 import { describe, it, expect } from "vitest";
 import { solError, isSolError, firstInputError, installErrorGuards, type SolError } from "../../src/graph/errorValue";
-import { ArithmeticNode, MathFnNode, CombinatoricsNode } from "../../src/graph/nodes/scalar";
+import { ArithmeticNode, MathFXNode, CombinatoricsNode } from "../../src/graph/nodes/scalar";
 import { IFErrorNode, IsTestNode } from "../../src/graph/nodes/logic";
 import { XLookupNode } from "../../src/graph/nodes/frame";
 import type { FrameValue } from "../../src/graph/frame";
 import { XMatchNode, FilterNode, ListIndexNode } from "../../src/graph/nodes/list";
 import { ExpressionNode } from "../../src/graph/nodes/expression";
-import { IrrNode, TvmNode, MirrNode } from "../../src/graph/nodes/finance";
+import { IRRNode, TvmNode, MirrNode } from "../../src/graph/nodes/finance";
 import { ConvertNode } from "../../src/graph/nodes/convert";
 import { isUnitCell, type UnitCell } from "../../src/graph/unitValue";
 import { ShapeError } from "../../src/graph/nodes/coerce";
@@ -52,6 +53,20 @@ describe("installErrorGuards", () => {
     const out = n.data({}) as { result: unknown };
     expect(isSolError(out.result)).toBe(true);
     expect((out.result as SolError).code).toBe("#ERROR!");
+  });
+
+  it("a thrown SolError keeps its code and message (a verb reporting, not crashing)", async () => {
+    const sync = new ArithmeticNode({ op: "add" });
+    sync.data = () => { throw solError("#REF!", 'column "Date" not found'); };
+    installErrorGuards(sync);
+    const out = sync.data({}) as { result: SolError };
+    expect(out.result.code).toBe("#REF!");
+    expect(out.result.message).toBe('column "Date" not found');
+    const asyncNode = new ArithmeticNode({ op: "add" });
+    asyncNode.data = (async () => { throw solError("#REF!", "gone"); }) as never;
+    installErrorGuards(asyncNode);
+    const late = (await asyncNode.data({})) as { result: SolError };
+    expect(late.result.code).toBe("#REF!");
   });
 
   it("maps a thrown ShapeError to #SHAPE! (central coercion contract)", () => {
@@ -268,10 +283,10 @@ describe("error producers", () => {
   });
 
   it("scalar math-domain failures are #DOMAIN!", () => {
-    const r = new MathFnNode({ op: "sqrt" }).data({ in: [-4] }).result;
+    const r = new MathFXNode({ op: "sqrt" }).data({ in: [-4] }).result;
     expect(isSolError(r)).toBe(true);
     expect((r as SolError).code).toBe("#DOMAIN!");
-    expect(new MathFnNode({ op: "sqrt" }).data({ in: [9] }).result).toBe(3);
+    expect(new MathFXNode({ op: "sqrt" }).data({ in: [9] }).result).toBe(3);
   });
 
   it("XLOOKUP miss is #N/A unless If-not-found is wired", () => {
@@ -352,18 +367,18 @@ describe("error producers", () => {
   it("iterative finance solvers report #CONV! when they can't converge", () => {
     // An all-positive cash flow series has no internal rate of return — NPV is
     // positive at every rate, so Newton never lands on a root.
-    const irr = new IrrNode().data({ list: [[100, 200, 300]] }).result;
+    const irr = new IRRNode().data({ list: [[100, 200, 300]] }).result;
     expect(isSolError(irr)).toBe(true);
     expect((irr as SolError).code).toBe("#CONV!");
     // A real sign-changing series still converges to a number.
-    expect(new IrrNode().data({ list: [[-100, 0, 0, 0, 146.41]] }).result).toBeCloseTo(0.1, 4);
+    expect(new IRRNode().data({ list: [[-100, 0, 0, 0, 146.41]] }).result).toBeCloseTo(0.1, 4);
     // Solving RATE on an unsolvable annuity (all same-sign, no rate balances
     // it) now runs through the Equation TVM's numeric fallback → #SOLVE!.
     const rate = new TvmNode().data({ nper: [10], pmt: [100], pv: [100], fv: [100] }).rate;
     expect(isSolError(rate)).toBe(true);
     expect((rate as SolError).code).toBe("#SOLVE!");
     // An IRR that is wired but has too few points stays a blank, not an error.
-    expect(new IrrNode().data({ list: [[5]] }).result).toBeNull();
+    expect(new IRRNode().data({ list: [[5]] }).result).toBeNull();
   });
 
   it("MIRR needs both signs of cash flow (#DIV/0!)", () => {

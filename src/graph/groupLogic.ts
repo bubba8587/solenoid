@@ -41,6 +41,34 @@ export const GROUP_HEADER = 34;  // header height (matches GroupNode.css)
 export const GROUP_MIN_W = 140;
 export const GROUP_MIN_H = 90;
 
+/** A locked group must sit out the standoff solve as well — the position lock wins
+ *  over the band, so the correction falls entirely on the other endpoint. Returns a
+ *  pinned set that includes every locked group; `solveStandoffs` ignores ids that
+ *  aren't standoff endpoints, so passing them all is harmless. */
+export function withLockedGroupsPinned(editor: Editor, pinned: Set<string> = new Set()): Set<string> {
+  const set = new Set(pinned);
+  for (const g of editor.getNodes()) {
+    if (!(g instanceof GroupNode) || !g.lockedPosition) continue;
+    set.add(g.id);
+    // The solver works on raw endpoint ids, so a member standoff would slide the member
+    // out of the locked box: its members hold too.
+    for (const m of g.members) set.add(m);
+  }
+  return set;
+}
+
+/** Pin / unpin a group's top-left corner. A locked group can't be dragged
+ *  (per-node `draggable: false` in `toFlowNodes`) and is skipped by global Tidy
+ *  and Cleanup; it still resizes. rebuildGroupMembership fires the topology
+ *  re-projection that repaints `draggable`; the rerender refreshes the header lock. */
+export function setGroupLocked(editor: Editor, view: View, node: GroupNode, locked: boolean): void {
+  if (node.lockedPosition === locked) return;
+  node.lockedPosition = locked;
+  rebuildGroupMembership(editor);
+  void view.rerenderNode(node.id);
+  scheduleAutosave();
+}
+
 function nodeBox(view: View, id: string): { x: number; y: number; w: number; h: number } | null {
   // measuredBox guarantees a non-zero size: an unpainted member reading
   // offsetWidth/Height = 0 collapses the wrapped bbox to that member's corner.

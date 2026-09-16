@@ -10,7 +10,10 @@
 // happens at app boot, BEFORE any overlay mounts, so these capture handlers run ahead
 // of every later listener (the Reference overlay's own capture-phase Escape included).
 
-type Editing = { el: HTMLElement; rendered: string; raw: string };
+// `html` is the element's ORIGINAL rendered markup (a description renders markdown via
+// dangerouslySetInnerHTML): restore that on exit, not textContent, or the <strong>/<code>
+// marks flatten to plain text — and a re-render that sees the same __html won't repaint it.
+type Editing = { el: HTMLElement; rendered: string; raw: string; html: string };
 
 let active = false;
 let editing: Editing | null = null;
@@ -79,17 +82,23 @@ const placeLabel = (count: number, files: string[]) =>
 /** Resolve the clicked element's string to its source form, then start the edit. */
 function beginEdit(el: HTMLElement): void {
   const rendered = el.textContent ?? "";
+  const html = el.innerHTML; // original rendered markup, restored verbatim on exit
   const token = ++lookupToken;
   flash("Looking up…");
   void api({ action: "lookup", text: rendered })
     .then((d) => {
       if (token !== lookupToken || !active) return;
       if (d.status !== "found") { flash("Not in source (dynamic or document text)"); return; }
-      editing = { el, rendered, raw: String(d.raw) };
+      editing = { el, rendered, raw: String(d.raw), html };
       el.textContent = String(d.raw); // edit the SOURCE form, markdown marks included
       el.setAttribute("contenteditable", "plaintext-only");
       el.classList.add("sol-copyedit-editing");
       el.focus();
+      // Hold app polls (the Inspector re-renders its selection every 150ms) while the edit is
+      // open: a re-render can repaint a dangerouslySetInnerHTML element's rendered markup back
+      // over the raw text under the caret, and the next commit would then save the flattened
+      // form. Dev-only — the class is never added in a production build.
+      document.documentElement.classList.add("sol-copyediting");
       flash(`Editing ${placeLabel(Number(d.count), d.files as string[])}`);
     })
     .catch(() => flash("Copy-edit endpoint unreachable"));
@@ -98,12 +107,13 @@ function beginEdit(el: HTMLElement): void {
 function endEdit(revert: boolean): void {
   lookupToken++;
   if (!editing) return;
-  const { el, rendered, raw } = editing;
+  document.documentElement.classList.remove("sol-copyediting"); // polls resume; save-driven HMR repaints
+  const { el, rendered, raw, html } = editing;
   editing = null;
   el.removeAttribute("contenteditable");
   el.classList.remove("sol-copyedit-editing");
   const after = el.textContent ?? "";
-  el.textContent = rendered; // HMR re-renders the real thing after a save
+  el.innerHTML = html; // restore the rendered markup; HMR repaints the real thing after a save
   if (revert || after === raw) return; // untouched: no rewrite, no log line
   flash("Saving…");
   void api({ text: rendered, after })

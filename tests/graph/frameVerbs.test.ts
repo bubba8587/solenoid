@@ -1,3 +1,4 @@
+// dte:D29,D49
 import { describe, it, expect } from "vitest";
 import { sortByColumn, distinctRows, filterRows, filterRowsMulti, groupByFrame, unpivotFrame, pivotFrame, nestFrame, unnestCube, splitColumn, addIndexColumn, lookupCell, fillBlanks, replaceValues, mergeColumns, promoteHeaders, demoteHeaders, dropBlankRows, sliceRows, type LookupMatchMode, type LookupSearchMode } from "../../src/graph/frameVerbs";
 import { isSolError, solError } from "../../src/graph/errorValue";
@@ -307,6 +308,29 @@ describe("nest / unnest (flat ⟷ cube)", () => {
     const mixed = cubeFromColumns([
       { name: "k", cells: ["a", "b"], type: "string" },
       { name: "nested", cells: [orders1, repN] }, // one frame, one cube
+    ]);
+    let err: unknown;
+    try { unnestCube(mixed, "nested"); } catch (e) { err = e; }
+    if (!isSolError(err)) throw new Error("expected SolError");
+    expect(err.code).toBe("#TYPE!");
+  });
+
+  it("a LIST column explodes to one row per element, keeping the column name; an empty list keeps a blank row", () => {
+    const c = cubeFromColumns([
+      { name: "Task", cells: ["Drywall", "Paint", "Demolition"], type: "string" },
+      { name: "Predecessors", cells: [["Plumbing", "Electrical"], ["Drywall"], []] },
+    ]);
+    const out = unnestCube(c, "Predecessors");
+    if (!isFrameValue(out)) throw new Error("expected a frame");
+    expect(out.columns.map((col) => col.name)).toEqual(["Task", "Predecessors"]);
+    expect(out.columns[0].values).toEqual(["Drywall", "Drywall", "Paint", "Demolition"]);
+    expect(out.columns[1].values).toEqual(["Plumbing", "Electrical", "Drywall", null]); // empty list → one blank row
+  });
+
+  it("a nested column mixing lists and tables is a #TYPE!", () => {
+    const mixed = cubeFromColumns([
+      { name: "k", cells: ["a", "b"], type: "string" },
+      { name: "nested", cells: [["x"], orders1] }, // one list, one frame
     ]);
     let err: unknown;
     try { unnestCube(mixed, "nested"); } catch (e) { err = e; }
@@ -630,5 +654,62 @@ describe("textPredicateNeedsText — a text predicate reads a TEXT column, or er
   it("text predicates on a STRING column still filter", () => {
     const out = filterRows(f, "name", "contains", "b");
     expect(out.columns[0].values).toEqual([2]);
+  });
+});
+
+describe("unnestCube: an empty [] beside tables", () => {
+  it("is an empty nested value, not a list vote", () => {
+    const kids = cubeFromColumns([{ name: "k", cells: [1, 2], type: "number" }]);
+    const c = cubeFromColumns([{ name: "p", cells: ["a", "b"], type: "string" }, { name: "kids", cells: [kids, []] }]);
+    const out = unnestCube(c, "kids");
+    expect(isCubeValue(out) && out.columns.find((x) => x.name === "p")!.cells).toEqual(["a", "a"]); // no children, no rows (like null)
+  });
+});
+
+describe("replaceValues: a non-numeric replacement never writes NaN", () => {
+  it("leaves a number column alone when the replacement is text; the string column still replaces", () => {
+    const f: FrameValue = { __frame: true, columns: [
+      { name: "s", type: "string", values: ["1", "1.0", "a"] },
+      { name: "n", type: "number", values: [1, 1.5, 2] },
+    ] };
+    const out = replaceValues(f, "", "1", "Z", "cell");
+    expect(out.columns[0].values).toEqual(["Z", "1.0", "a"]);
+    expect(out.columns[1].values).toEqual([1, 1.5, 2]);
+  });
+});
+
+describe("column units ride the reshaping verbs (unitFlow, review pins)", () => {
+  const km = { dim: { length: 1 }, display: "km" };
+  const src = (): FrameValue => ({ __frame: true, columns: [
+    { name: "Region", type: "string", values: ["N", "N", "S"] },
+    { name: "Dist", type: "number", unit: km, values: [1000, 2000, 500] },
+  ] });
+  it("GROUPBY keeps the key's and a sum/avg/min/max's unit, never a count's", () => {
+    const out = groupByFrame(src(), ["Region"], [
+      { column: "Dist", op: "sum", as: "Total" }, { column: "Dist", op: "count", as: "N" },
+    ]);
+    expect(out.columns.find((c) => c.name === "Total")!.unit).toEqual(km);
+    expect(out.columns.find((c) => c.name === "N")!.unit).toBeUndefined();
+  });
+  it("PIVOTBY body keeps the value column's unit for a sum", () => {
+    const out = pivotFrame(src(), { rowFields: ["Region"], colFields: [], values: ["Dist"], funcs: ["sum"] } as never);
+    const body = out.columns.find((c) => c.name !== "Region")!;
+    expect(body.unit).toEqual(km);
+  });
+  it("UNPIVOT keeps an id column's unit and a shared value unit", () => {
+    const wide: FrameValue = { __frame: true, columns: [
+      { name: "Region", type: "string", values: ["N"] },
+      { name: "A", type: "number", unit: km, values: [1] },
+      { name: "B", type: "number", unit: km, values: [2] },
+    ] };
+    const out = unpivotFrame(wide, ["Region"], ["A", "B"]);
+    expect(out.columns[2].unit).toEqual(km);
+  });
+  it("Window keeps the unit on a running sum, not on a rank", async () => {
+    const { windowFrame } = await import("../../src/graph/frameVerbs");
+    const sum = windowFrame(src(), { partitionBy: [], fn: "cumsum", column: "Dist", as: "Run" });
+    expect(sum.columns.find((c) => c.name === "Run")!.unit).toEqual(km);
+    const rank = windowFrame(src(), { partitionBy: [], orderBy: "Dist", fn: "rank", as: "R" });
+    expect(rank.columns.find((c) => c.name === "R")!.unit).toBeUndefined();
   });
 });

@@ -8,6 +8,8 @@ import type {
   DateDiffNode as DateDiffNodeType,
   DateAddNode as DateAddNodeType,
   WorkdaysNode as WorkdaysNodeType,
+  TimeZoneConvertNode as TimeZoneConvertNodeType,
+  WorldClockNode as WorldClockNodeType,
   TodayNowOp, DateTimeValueOp, DatePartOp, WeekInfoOp, DateDiffOp, DateAddOp, WorkdaysOp,
 } from "../rete-nodes";
 import {
@@ -19,7 +21,10 @@ import { retypeOutputCables } from "../fcReconcile";
 import { InlineInputs } from "./inlineInput";
 import { RecalcButton } from "./RecalcButton";
 import { NodeShell, OpSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";
+import { FrameDisplay } from "./FrameDisplay";
+import { nodeDisplayName } from "../catalogUtils";
 import { dropInputCables } from "./cablePrune";
+import { IANA_ZONES } from "../timeZone";
 
 // Date nodes never format their own serials — ValueDisplay does it for any date-typed
 // output socket, so scalars and lists format consistently.
@@ -208,3 +213,21 @@ export function WorkdaysComponent({ data, emit }: NodeProps<WorkdaysNodeType>) {
   );
 }
 
+
+export function TimeZoneConvertComponent({ data, emit }: NodeProps<TimeZoneConvertNodeType>) {
+  return (
+    <NodeShell node={data} emit={emit}>
+      <InlineInputs node={data} emit={emit} suggest={{ from: IANA_ZONES, to: IANA_ZONES }} />
+      <ValueDisplay value={data.cachedResult} />
+    </NodeShell>
+  );
+}
+
+export function WorldClockComponent({ data, emit }: NodeProps<WorldClockNodeType>) {
+  return (
+    <NodeShell node={data} emit={emit}>
+      <InlineInputs node={data} emit={emit} suggest={{ zones: IANA_ZONES }} />
+      <FrameDisplay frame={data.cachedResult} label={nodeDisplayName(data)} />
+    </NodeShell>
+  );
+}

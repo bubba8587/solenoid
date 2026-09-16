@@ -1,3 +1,4 @@
+// dte:C66
 // The Script node's sandbox. A script is a pure map from its inputs to a value, so
 // the worker drops every I/O door from its global scope before the first call: no
 // network, no storage, no spawning. `import()` is syntax and cannot be removed;

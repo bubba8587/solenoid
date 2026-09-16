@@ -1,15 +1,16 @@
+// dte:C19,C53,E13,C14
 import {
   AngleDialNode, SlicerNode, CableSwitchNode, DateInputNode, DateRangeNode, XYPadNode,
   PointPlotterNode, CurveNode, GridPainterNode,
   SparklineNode, ChartNode, MergePlotsNode, HistogramNode, KpiNode, ProportionNode, SankeyNode, SurfaceNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode,
-  WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, SevenSegNode, RecordNode,
+  WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode, GanttNode,
   FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode, WindowNode,
-  NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFnNode,
+  NumberInputNode, ArithmeticNode, DisplayNode, ComparisonNode, MathFXNode,
   FormatControllerNode, ExpressionNode, ScriptNode, EquationNode, RegexNode, GroupByNode,
   ClampNode, BooleanOpNode, NotNode, IfNode, ConduitNode, CastNode, ConstantNode, MRoundNode,
   ListInputNode, AggregateNode, SeriesNode, SERIES_OP_META, type SeriesOp, ListLengthNode, ListIndexNode,
   SortNode, ReverseNode, SliceNode, FilterNode, SumIfsNode, FillNode, XLookupNode,
-  GcdNode, IFErrorNode, NaNode, RandBetweenNode, RoundNNode, ConvertNode,
+  GCDNode, IFErrorNode, NaNode, RandBetweenNode, RoundNNode, ConvertNode,
   UniqueNode, SetNode, ConcatListsNode, FrameFromListsNode, QuadraticRootsNode, RunningNode, DiffNode,
   ArgMinMaxNode, ContainsNode, RankPercentileNode, RANK_PERCENTILE_OP_META, type RankPercentileOp,
   CorrelNode, CombinatoricsNode, TwoInputMathNode,
@@ -19,7 +20,7 @@ import {
   ShuffleNode, NthElementNode, InterleaveNode, PadNode,
   StandardizeNode, CovarianceNode, FisherNode, BitwiseNode,
   DepreciationNode,
-  TvmNode, IpmtPpmtNode, NpvNode, IrrNode, MirrNode, CumPmtNode, AmortizationNode, ReturnsNode,
+  TvmNode, PaymentBreakdownNode, NPVNode, IRRNode, MirrNode, AmortizationNode, ReturnsNode,
   FvScheduleNode, IspmtNode, DollarNode, ProbNode,
   WeightedNode, BaseConvertNode,
   TextInputNode, TextTransformNode, TextLenNode, ConcatNode, TextSliceNode,
@@ -33,12 +34,10 @@ import {
   DateDiffNode, DateAddNode, WorkdaysNode, WORKDAYS_OP_META, EpochNode, DateTruncNode,
   RandArrayNode,
   XMatchNode,
-  TBillNode, SecurityDiscNode, CouponNode, AccrintNode,
-  AccrintMNode, PriceDiscNode, PriceMatNode, DurationNode,
-  BondPriceNode, OddCouponNode,
-  TBILL_OP_META, SECURITY_DISC_OP_META, COUPON_OP_META,
-  PRICE_DISC_OP_META, PRICE_MAT_OP_META, DURATION_OP_META, BOND_PRICE_OP_META, ODD_COUPON_OP_META,
-  type TBillOp, type SecurityDiscOp, type BondPriceOp, type OddCouponOp,
+  DiscountSecurityNode, CouponNode, AccruedInterestNode, DurationNode,
+  BondPricingNode,
+  COUPON_OP_META,
+  DURATION_OP_META,
   ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode, ComplexPowerNode,
   COMPLEX_UNARY_OP_META, COMPLEX_BINARY_OP_META,
   type ComplexUnaryOp, type ComplexBinaryOp,
@@ -47,11 +46,11 @@ import {
   MapTableNode, ByAxisNode, MakeArrayNode, ReduceLambdaNode, ScanLambdaNode, LambdaNode,
   FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode,
   HeadNode, SortFrameNode, FilterFrameNode, JoinNode,
-  ColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, BindColumnsNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode,
+  ColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, BindColumnsNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode, AllocatorNode, SettleNode, PayoffPlannerNode, ScheduleNode, EarnedValueNode,
   ReconcileNode,
-  BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode,
-  WebSourceNode, LocalFileNode, ImportHtmlNode, ImportXmlNode, DataFeedNode,
-  WriteFileNode, WriteObsidianNode, ImportObsidianNode,
+  BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode, CubeInputNode,
+  WebSourceNode, LocalFileNode, ImportHtmlNode, ImportXmlNode, DataFeedNode, GeocodeNode, WeatherNode, HolidaysNode, FxNode, VaultFolderNode,
+  WriteFileNode, WriteObsidianNode, TaskNotesNode, WriteTasksNode, ImportObsidianNode,
   GroupNode, NoteNode, ReportNode, SessionHistoryNode, PresentationNode, ImageNode, FileLinkNode, SvgPickerNode,
   CompositeNode, CompositeInputNode, CompositeOutputNode,
   MAT_DET_OP_META, TABLE_RESHAPE_OP_META, TABLE_SELECT_OP_META, TAKEDROP_OP_META,
@@ -69,7 +68,7 @@ import {
   SUM_PRODUCT_OP_META, CORREL_OP_META, TWO_INPUT_MATH_OP_META,
   COVARIANCE_OP_META, FISHER_OP_META, BITWISE_OP_META,
   DEPRECIATION_OP_META,
-  IPMT_PPMT_OP_META, CUM_PMT_OP_META, DOLLAR_OP_META,
+  DOLLAR_OP_META,
   WEIGHTED_OP_META,
   TEXT_TRANSFORM_OP_META, TEXT_SLICE_OP_META, TEXT_FIND_OP_META, TEXT_AFTER_BEFORE_OP_META,
   BESSEL_OP_META, REGRESSION_OP_META,
@@ -79,8 +78,8 @@ import {
   type SumProductOp, type CorrelOp, type TwoInputMathOp,
   type CovarianceOp, type FisherOp, type BitwiseOp,
   type DepreciationOp,
-  type IpmtPpmtOp, type CumPmtOp, type DollarOp, type WeightedOp,
-  type CouponOp, type PriceDiscOp, type PriceMatOp, type DurationOp,
+  type DollarOp, type WeightedOp,
+  type CouponOp, type DurationOp,
   type TextTransformOp, type TextSliceOp, type TextFindOp, type CharCodeOp, type TextAfterBeforeOp,
   type RomanArabicOp,
   type BesselOp, type RegressionOp,
@@ -92,7 +91,7 @@ import type { NodeCatalogEntry, CatalogEntry } from "./AddNodeMenu";
 // Label + description come from OP_META; tree structure and ordering are hand-authored.
 
 const arithLeaf    = (op: ArithmeticOp):   NodeCatalogEntry => ({ type: `arith-${op}`,     label: ARITHMETIC_OP_META[op].label,     description: ARITHMETIC_OP_META[op].description,     keywords: "arithmetic", create: () => new ArithmeticNode({ op }), ...(op === "pow" ? { parity: false as const } : {}) });
-const mathLeaf     = (op: MathFnOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: `math-${op}`, label: MATH_FN_OP_META[op].label, description: MATH_FN_OP_META[op].description, create: () => new MathFnNode({ op }), ...overrides, keywords: ["math", overrides?.keywords].filter(Boolean).join(" ") });
+const mathLeaf     = (op: MathFnOp, overrides?: Partial<NodeCatalogEntry>): NodeCatalogEntry => ({ type: `math-${op}`, label: MATH_FN_OP_META[op].label, description: MATH_FN_OP_META[op].description, create: () => new MathFXNode({ op }), ...overrides, keywords: ["math", overrides?.keywords].filter(Boolean).join(" ") });
 const booleanLeaf  = (op: BooleanOp):      NodeCatalogEntry => ({ type: `bool-${op}`,      label: BOOLEAN_OP_META[op].label,        description: BOOLEAN_OP_META[op].description,        create: () => new BooleanOpNode({ op })     });
 const reduceLeaf   = (op: ReduceOp):       NodeCatalogEntry => ({ type: `reduce-${op}`,    label: REDUCE_OP_META[op].label,         description: REDUCE_OP_META[op].description,         keywords: "aggregate", create: () => new AggregateNode({ op }), ...((REDUCE_OP_META[op] as { fx?: string }).fx ? { fx: [(REDUCE_OP_META[op] as { fx?: string }).fx!] } : {})     });
 const combLeaf     = (op: CombinatoricsOp):NodeCatalogEntry => ({ type: `comb-${op}`,      label: COMBINATORICS_OP_META[op].label,  description: COMBINATORICS_OP_META[op].description,  keywords: "combinatorics", create: () => new CombinatoricsNode({ op }) });
@@ -112,8 +111,6 @@ const covLeaf      = (op: CovarianceOp):   NodeCatalogEntry => ({ type: `cov-${o
 const fisherLeaf   = (op: FisherOp):       NodeCatalogEntry => ({ type: `fisher-${op}`,    label: FISHER_OP_META[op].label,         description: FISHER_OP_META[op].description,         create: () => new FisherNode({ op })        });
 const bitwiseLeaf  = (op: BitwiseOp):      NodeCatalogEntry => ({ type: `bitwise-${op}`,   label: BITWISE_OP_META[op].label,        description: BITWISE_OP_META[op].description,        create: () => new BitwiseNode({ op })       });
 const deprLeaf     = (op: DepreciationOp): NodeCatalogEntry => ({ type: `depr-${op}`,      label: DEPRECIATION_OP_META[op].label,   description: DEPRECIATION_OP_META[op].description,   create: () => new DepreciationNode({ op })  });
-const ipmtPpmtLeaf = (op: IpmtPpmtOp):    NodeCatalogEntry => ({ type: `ipmt-${op}`,      label: IPMT_PPMT_OP_META[op].label,      description: IPMT_PPMT_OP_META[op].description,      create: () => new IpmtPpmtNode({ op })      });
-const cumPmtLeaf   = (op: CumPmtOp):       NodeCatalogEntry => ({ type: `cumpmt-${op}`,    label: CUM_PMT_OP_META[op].label,        description: CUM_PMT_OP_META[op].description,        create: () => new CumPmtNode({ op })        });
 const regressionLeaf = (op: RegressionOp): NodeCatalogEntry => ({ type: `regression-${op}`,label: REGRESSION_OP_META[op].label,     description: REGRESSION_OP_META[op].description,     keywords: "slope", create: () => new RegressionNode({ op })    });
 // One Hypothesis Test node; the leaf types keep their historical spellings (nodeExcel keys).
 const TEST_LEAF_TYPE: Record<HypothesisTestOp, string> = {
@@ -133,14 +130,10 @@ const dateDiffLeaf  = (op: DateDiffOp):  NodeCatalogEntry => ({ type: `date-diff
 const dateAddLeaf   = (op: DateAddOp):   NodeCatalogEntry => ({ type: `date-add-${op}`,   label: DATE_ADD_OP_META[op].label,   description: DATE_ADD_OP_META[op].description,   create: () => new DateAddNode({ op }),   parity: false });
 const todayNowLeaf  = (op: TodayNowOp):  NodeCatalogEntry => ({ type: `date-${op}`,        label: TODAY_NOW_OP_META[op].label,  description: TODAY_NOW_OP_META[op].description,  create: () => new TodayNowNode({ op }),  parity: false });
 
-const priceDiscLeaf = (op: PriceDiscOp): NodeCatalogEntry => ({ type: `pricedisc-${op}`, label: PRICE_DISC_OP_META[op].label, description: PRICE_DISC_OP_META[op].description, create: () => new PriceDiscNode({ op }), parity: false });
-const priceMatLeaf  = (op: PriceMatOp):  NodeCatalogEntry => ({ type: `pricemat-${op}`,  label: PRICE_MAT_OP_META[op].label,  description: PRICE_MAT_OP_META[op].description,  create: () => new PriceMatNode({ op }),  parity: false });
 const durationLeaf  = (op: DurationOp):  NodeCatalogEntry => ({ type: `duration-${op}`,  label: DURATION_OP_META[op].label,   description: DURATION_OP_META[op].description,   create: () => new DurationNode({ op }),  parity: false });
 
 const couponLeaf = (op: CouponOp): NodeCatalogEntry => ({ type: `coupon-${op}`, label: COUPON_OP_META[op].label, description: COUPON_OP_META[op].description, create: () => new CouponNode({ op }), parity: false });
 
-const bondPriceLeaf = (op: BondPriceOp): NodeCatalogEntry => ({ type: `bondprice-${op}`, label: BOND_PRICE_OP_META[op].label, description: BOND_PRICE_OP_META[op].description, create: () => new BondPriceNode({ op }), parity: false });
-const oddCouponLeaf = (op: OddCouponOp): NodeCatalogEntry => ({ type: `oddcoupon-${op}`, label: ODD_COUPON_OP_META[op].label, description: ODD_COUPON_OP_META[op].description, create: () => new OddCouponNode({ op }), parity: false });
 const CX = NODE_KIND_ACCENTS.complex;
 const complexUnaryLeaf  = (op: ComplexUnaryOp):  NodeCatalogEntry => ({ type: `cx-unary-${op}`,  label: COMPLEX_UNARY_OP_META[op].label,  description: COMPLEX_UNARY_OP_META[op].description,  create: () => new ComplexUnaryNode({ op }),  parity: false });
 const complexBinaryLeaf = (op: ComplexBinaryOp): NodeCatalogEntry => ({ type: `cx-binary-${op}`, label: COMPLEX_BINARY_OP_META[op].label, description: COMPLEX_BINARY_OP_META[op].description, create: () => new ComplexBinaryNode({ op }), parity: false });
@@ -162,8 +155,6 @@ const romanArabicLeaf = (op: RomanArabicOp): NodeCatalogEntry => ({
 });
 
 
-const tbillLeaf    = (op: TBillOp):       NodeCatalogEntry => ({ type: `tbill-${op}`,   label: TBILL_OP_META[op].label,          description: TBILL_OP_META[op].description,          create: () => new TBillNode({ op }),          parity: false });
-const secDiscLeaf  = (op: SecurityDiscOp): NodeCatalogEntry => ({ type: `secdesc-${op}`, label: SECURITY_DISC_OP_META[op].label,  description: SECURITY_DISC_OP_META[op].description,  create: () => new SecurityDiscNode({ op }),   parity: false });
 
 const STR = NODE_KIND_ACCENTS.string;
 const textXformLeaf         = (op: TextTransformOp):   NodeCatalogEntry => ({ type: `text-${op}`,              label: TEXT_TRANSFORM_OP_META[op].label,        description: TEXT_TRANSFORM_OP_META[op].description,        create: () => new TextTransformNode({ op }),     parity: false });
@@ -180,14 +171,17 @@ export const NODE_CATALOG: CatalogEntry[] = [
     type: "category", label: "Input", description: "Source nodes: where values enter your graph.",
     children: [
       { type: "number-input",        label: "Number Input",  description: "A literal number value.", accent: NODE_KIND_ACCENTS.input, keywords: "scalar value literal", create: () => new NumberInputNode() },
-      { type: "list-input",  label: "List Input",    description: "Builds a list from comma-separated values (for example `1, 2, 3`) in each row. Every row concatenates into one output list. Element type: number, text, date, or `TRUE` or `FALSE`. Excel: selecting a range like `A1:A8`.", accent: NODE_KIND_ACCENTS.list, keywords: "literal array csv combine concat number text string date boolean logical type", create: () => new ListInputNode() },
+      { type: "list-input",  label: "List Input",    description: "Concatenates comma-separated values and other wired-in Lists into a single-row List.", accent: NODE_KIND_ACCENTS.list, keywords: "literal array csv combine concat number text string date boolean logical type", create: () => new ListInputNode() },
       { type: "text-input",    label: "Text Input",    description: "A literal string value.", accent: STR, keywords: "string literal", create: () => new TextInputNode() },
       { type: "boolean-input", label: "Boolean Input", description: "A `TRUE` or `FALSE` toggle that outputs a logical. It coerces to `1` or `0` where a number is needed.", accent: NODE_KIND_ACCENTS.logic, create: () => new BooleanInputNode() },
       { type: "date-input",    label: "Date Input",    description: "A single date value.", accent: DT, create: () => new DateInputNode(), parity: false, keywords: "date calendar day picker serial input" },
       { type: "table-input",   label: "Table Input",   description: "A typed-in 2-D table, one row per line, comma-separated. One element type (Num/Text/Date/Bool; mixed columns belong in Frame Input). Typed text is the stored truth: an unparseable cell shows `NaN` and keeps its text.", accent: NODE_KIND_ACCENTS.table, create: () => new TableInputNode() },
       { type: "frame-input",   label: "Frame Input", description: "A typed-in data table with named, typed columns and editable cells.", accent: NODE_KIND_ACCENTS.frame, create: () => new FrameInputNode(), parity: false },
-      { type: "cx-from",       label: "COMPLEX",     description: "Builds a complex number from real and imaginary parts. Excel: `COMPLEX`.", accent: CX, create: () => new ComplexFromNode(), parity: false },
-      { type: "lambda-make",   label: "LAMBDA",      description: "Defines a reusable formula as a value: parameters bound positionally, other variables captured. Evaluates like Expression: standard Excel functions, separate from the visual nodes. Excel: `LAMBDA`.", accent: NODE_KIND_ACCENTS.lambda, create: () => new LambdaNode(), parity: false },
+      { type: "cube-input", label: "Cube Input", description: "Type a Cube directly: rows of records where a value can be a number, text, a list, or a nested table of records. The literal source beside Table, Frame and List Input, edited in the same popup: open a cell to edit its list or nested table in place.", accent: NODE_KIND_ACCENTS.frame, create: () => new CubeInputNode(), parity: false, keywords: "cube input literal type records nested list json source" },
+      { type: "pair", children: [
+        { type: "cx-from",       label: "COMPLEX",     description: "Builds a complex number from real and imaginary parts. Excel: `COMPLEX`.", accent: CX, create: () => new ComplexFromNode(), parity: false },
+        { type: "lambda-make",   label: "LAMBDA",      description: "Defines a reusable formula as a value: parameters bound positionally, other variables captured. Evaluates like Expression: standard Excel functions, separate from the visual nodes. Excel: `LAMBDA`.", accent: NODE_KIND_ACCENTS.lambda, create: () => new LambdaNode(), parity: false },
+      ]},
       { type: "constant",      label: "Constant",    description: "Predefined value: π, e, φ, ∞, 0, 1, true, false …", create: () => new ConstantNode() },
       { type: "pair", children: [
         { type: "randbetween", label: "RAND",        description: "Random float in [Bottom, Top]. Defaults to 0–1 (like Excel `RAND()`). Bottom and Top give a custom range.", create: () => new RandBetweenNode(), parity: false },
@@ -210,16 +204,25 @@ export const NODE_CATALOG: CatalogEntry[] = [
         ],
       },
       {
-        type: "category", label: "Connections", description: "Live external data: load from a URL, a local CSV, or a web page. Stores the source, not the data. Refresh to re-pull.",
+        type: "category", label: "Connections", description: "Data from outside the graph: web and local files, live feeds, and keyless lookups, plus the sinks that write back. Stores the source, not the data. Refresh to re-pull.",
         children: [
           { type: "web-source",    label: "Web Source",  description: "Loads a Frame from a CSV or JSON URL. Columns are auto-typed. Stores the URL, not the data: refresh to re-pull. Desktop fetches any URL. The browser only fetches CORS-enabled ones.", create: () => new WebSourceNode(), parity: false },
           { type: "data-feed",     label: "Data Feed",   description: "Live economic and market data as a Frame: FRED series with no key, stock history through Alpha Vantage with a free key. Stores the series id or ticker, not the data. Refresh re-pulls. Desktop works with arbitrary URLs. The browser is CORS-limited.", create: () => new DataFeedNode(), parity: false },
-          { type: "local-file",   label: "Local File",  description: "Loads a Frame from your data folder (Settings ▸ Data). A `.parquet` reads straight into the native engine, so typed columns arrive intact with no inference. Anything else is read as CSV with columns auto-typed. Stores the file name. Refresh to re-read. Desktop only.", create: () => new LocalFileNode(), parity: false, keywords: "csv parquet arrow column columnar native engine polars file load import" },
-          { type: "import-html",   label: "Import HTML", description: "Grab the Nth HTML table on a page as a Frame, columns auto-typed. Stores the URL. Refresh to re-pull. Desktop any URL, browser CORS-only. Sheets: `IMPORTHTML`.", create: () => new ImportHtmlNode(), parity: false },
-          { type: "import-xml",    label: "Import XML",  description: "Extracts a page's XPath matches (for example `//h2/a`) as a text list. Stores the URL. Refresh to re-pull. Desktop any URL, browser CORS-only. Sheets: `IMPORTXML`.", create: () => new ImportXmlNode(), parity: false },
-          { type: "import-obsidian", label: "Import Obsidian Note", description: "Picks a `.md` note from your Obsidian vault as a read-only Note: frontmatter becomes typed outputs, the body renders inline. Reload re-reads from disk. Set the vault in Settings ▸ Obsidian. Desktop only.", create: () => new ImportObsidianNode(), parity: false, keywords: "obsidian vault markdown md note import read source frontmatter" },
-          { type: "write-file",    label: "Write File",  description: "Writes a Frame to a file: CSV, or JSON as an array of row records. Pick the format, arm it, then press Run. Never writes on its own. A normal recompute only updates the preview. Desktop only.", create: () => new WriteFileNode(), parity: false, keywords: "csv json write export save file sink" },
-          { type: "write-obsidian", label: "Write to Obsidian", description: "Writes a Note or Report (its Document output) into your Obsidian vault as portable markdown: frontmatter, tables, mermaid, math, and rasterized chart/image assets, under a vault-relative subfolder. Arm, then Run. Never writes on its own. Vault: Settings ▸ Obsidian. Desktop only.", create: () => new WriteObsidianNode(), parity: false, keywords: "obsidian vault markdown md note export sink write document" },
+          { type: "local-file",   label: "Local File",  description: "Loads a Frame from your data folder (Settings ▸ Data). Parquet reads straight into the native engine with its types intact; anything else reads as CSV with columns auto-typed. A Project XML, GanttProject, Primavera XER or plan CSV also comes out as a Plan for Schedule. Stores the file name. Refresh to re-read. Desktop only.", create: () => new LocalFileNode(), parity: false, keywords: "csv parquet arrow column columnar native engine polars file load import project xml mspdi plan smartsheet gantt gan primavera xer" },
+          { type: "pair", children: [
+            { type: "import-html",   label: "Import HTML", description: "Grab the Nth HTML table on a page as a Frame, columns auto-typed. Stores the URL. Refresh to re-pull. Desktop any URL, browser CORS-only. Sheets: `IMPORTHTML`.", create: () => new ImportHtmlNode(), parity: false },
+            { type: "import-xml",    label: "Import XML",  description: "Extracts a page's XPath matches (for example `//h2/a`) as a text list. Stores the URL. Refresh to re-pull. Desktop any URL, browser CORS-only. Sheets: `IMPORTXML`.", create: () => new ImportXmlNode(), parity: false },
+          ]},
+          { type: "write-file",    label: "Write File",  description: "Writes a Frame as CSV or JSON rows, or Text as-is: name it plan.xml and it writes XML. Pick the format, arm it, then press Run. Never writes on its own. Desktop only.", create: () => new WriteFileNode(), parity: false, keywords: "csv json text write export save file sink xml mspdi verbatim string" },
+          // Keyless lookups: Geocode feeds Weather; Holidays feeds WORKDAY / NETWORKDAYS and Schedule.
+          { type: "pair", children: [
+            { type: "geocode",       label: "Geocode",     description: "Turns a place name into latitude, longitude and timezone. Pick among matches when a name is ambiguous. Feeds Weather and anything that wants coordinates. No key needed.", create: () => new GeocodeNode(), parity: false, keywords: "geocode place location city coordinates latitude longitude timezone lookup open-meteo" },
+            { type: "weather",       label: "Weather",     description: "A daily forecast frame (date, rain, high, low, ET₀, condition) plus the current temperature, from latitude and longitude. Past and future days in one frame. The °C/°F pick carries its unit downstream. No key needed.", create: () => new WeatherNode(), parity: false, keywords: "weather forecast rain temperature precipitation climate open-meteo garden watering" },
+          ]},
+          { type: "pair", children: [
+            { type: "holidays",      label: "Holidays",    description: "Public holidays for a country and year: a frame of date, name and local name, the dates on their own for NETWORKDAYS and WORKDAY, and the days until the next one. Add a region like US-CA for subdivision holidays. No key needed.", create: () => new HolidaysNode(), parity: false, keywords: "holiday holidays public bank national country region nager networkdays workday calendar days off" },
+            { type: "fx",            label: "Currency",    description: "Converts an amount between currencies at the latest ECB reference rate (Frankfurter, about 30 currencies, updated once per business day). The result carries the target currency as a unit, the way Convert does, alongside the rate and its as-of date. Switch to History for a date range's daily rates as a table to chart. No key needed.", create: () => new FxNode(), parity: false, keywords: "currency fx exchange rate money forex frankfurter ecb usd eur gbp dollar euro convert conversion history time series chart" },
+          ]},
         ],
       },
     ],
@@ -230,7 +233,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
     type: "category", label: "Output", description: "Display, convert, and visualize values at the end of a chain.",
     children: [
       { type: "display",   label: "Display",  description: "Shows a value. Pass-through, so wiring continues after it.", create: () => new DisplayNode(), accent: NODE_KIND_ACCENTS.util },
-      { type: "format-controller", label: "Format", description: "Sets a docked socket's number format (decimal, fraction, %, currency…) and a unit label like `°C`, `m`, or `kg`. Units must match on connected cables.", create: () => new FormatControllerNode() },
+      { type: "format-controller", label: "Format Controller", description: "Sets a docked socket's number format (decimal, fraction, %, currency…) and a unit label like `°C`, `m`, or `kg`. Units must match on connected cables.", create: () => new FormatControllerNode() },
       {
         // General plotters stay top-level; specialist figures cluster by what they show.
         type: "category", label: "Visuals", description: "Inline charts and readouts: plot or visualize a value at the end of a chain. All pass-through.",
@@ -238,12 +241,12 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "chart",     label: "Chart",     description: "Plots a list or a frame as a column, bar, line, area, scatter, pie, radar, radial, or funnel chart; a frame's number columns become named series with a legend, or a composed (bars + lines) or bubble chart.", create: () => new ChartNode(), parity: false, keywords: "chart plot graph column bar line area scatter pie radar radial funnel composed bubble multi-series legend" },
           { type: "kpi",       label: "KPI",  description: "A big-number stat card with a ↑/↓ delta vs a prior value, colored green/red.", create: () => new KpiNode(), parity: false, keywords: "kpi stat card metric scorecard delta variance big number" },
           { type: "sparkline", label: "Sparkline", description: "A small inline chart of a list: line, column, or win/loss. Collapses to a headerless square. Excel puts these in cells via Insert ▸ Sparklines.", create: () => new SparklineNode(), parity: false, keywords: "sparkline spark line column win loss winloss" },
-          { type: "record",    label: "Record",    description: "One frame row as labeled boxes, or every row as a gallery of cards or a board of lanes grouped by a column. A cell holding an image URL shows the picture.", create: () => new RecordNode(), parity: false, keywords: "record card form detail row browse fields layout boxes airtable gallery kanban board lanes" },
-          { type: "gauge",     label: "Gauge",     description: "Shows a value on a fixed scale: a radial Dial reading the value as a fraction (1 = 100%, 1.5 = 150%), or a horizontal Bar on a zero-to-Max track with a target tick. Excel has no equivalent.", create: () => new GaugeNode(), parity: false, keywords: "gauge dial bullet graph target progress goal percent speedometer meter scale kpi" },
+          { type: "record",    label: "Record",    description: "One frame row as labeled boxes, or every row as a gallery of cards, a board of lanes grouped by a column, or an indented list, with an optional title field and sized or clamped gallery tiles. A cell holding an image URL shows the picture.", create: () => new RecordNode(), parity: false, keywords: "record card form detail row browse fields layout boxes airtable gallery kanban board lanes list outline title size clamp" },
+          { type: "gantt",     label: "Gantt",     description: "Draws a scheduled project as a Gantt chart: a bar per task, milestones as diamonds, summary brackets, dependency arrows and the critical path, with a baseline behind the bars and a status line. Reads the rows a Schedule node worked out.", create: () => new GanttNode(), parity: false, keywords: "gantt chart project schedule timeline plan tasks bars milestones critical path dependencies predecessors baseline waterfall roadmap pert cpm" },
+          { type: "gauge",     label: "Gauge",     description: "Shows a value on a fixed scale: a radial Dial reading the value as a fraction (1 = 100%, 1.5 = 150%), or a horizontal Bar on a zero-to-Max track with a target tick. Excel has no equivalent.", create: () => new GaugeNode(), parity: false, keywords: "gauge dial bar bullet graph target progress goal percent speedometer meter scale kpi" },
           { type: "chart-builder", label: "Chart Builder", description: "Styles any chart, producing an options string. Per chart type (Chart, Histogram, KPI, Proportion, Waterfall…) it offers just that type's options: title, axes, color, grid, range, line, markers. Fields follow `matplotlib`.", create: () => new ChartBuilderNode(), parity: false, keywords: "chart builder options style title axes color grid range markers histogram kpi proportion treemap waffle sankey waterfall" },
           { type: "merge-plots", label: "Merge Plots", description: "Overlays several x/y charts on one plot with shared axes. Each input takes a line, area, column, bar, or scatter chart, and its series carry over keeping the color and marker size they arrived with. The legend names each source. Pie, radar, gauge, and the other non-plot figures are refused. Options takes a Chart Builder for the merged plot's title and axes.", create: () => new MergePlotsNode(), parity: false, keywords: "merge plots overlay combine superimpose layer stack multi series legend line scatter area column bar composed matplotlib" },
-          { type: "mermaid",   label: "Mermaid",   description: "Draws text-based Mermaid.js diagrams.", create: () => new MermaidNode(), parity: false, keywords: "mermaid diagram flowchart flow chart graph sequence class state gantt pie mindmap uml erd tree" },
-          { type: "seven-seg", label: "7-Segment", description: "A flat seven-segment readout of a number, with a Decimals setting. The meter-face look.", create: () => new SevenSegNode(), parity: false, keywords: "seven segment display digital readout meter lcd led digits retro" },
+          { type: "mermaid",   label: "Mermaid Charts",   description: "Draws text-based Mermaid.js diagrams.", create: () => new MermaidNode(), parity: false, keywords: "mermaid diagram flowchart flow chart graph sequence class state gantt pie mindmap uml erd tree" },
           {
             type: "category", label: "Distribution", description: "How a sample spreads: binned counts and five-number summaries.",
             children: [
@@ -280,10 +283,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
       { type: "pair", children: [
         { type: "convert", label: "Convert", description: "Converts between measurement units: degrees ↔ radians, length, mass, temperature, time, area, volume, speed, energy, pressure. Excel: `CONVERT`.", create: () => new ConvertNode() },
         { type: "cast", label: "Cast", description: "Change a value's data type: number, text, date serial, Boolean `TRUE` or `FALSE`, or complex. Works element-wise on lists. Excel: `TEXT`, `VALUE`.", create: () => new CastNode(), parity: false },
-      ]},
-      { type: "pair", children: [
-        { type: "note", label: "Note", description: "A free-floating markdown note, any position, any tint. Open the body with a ----fenced YAML block to turn each key into a typed output, a note doubling as a constants source.", create: () => new NoteNode(), parity: false },
-        { type: "report", label: "Report", description: "A standalone markdown document, separate from the graph: prose with inline `=name` refs that render a value or chart formatted in the text, plus Notes embedded as placed objects.", create: () => new ReportNode(), parity: false },
       ]},
       { type: "group", label: "Group", description: "A container: drop it around nodes, or select them and press Ctrl+G. Its header moves them together. Collapse it to a summary.", create: () => new GroupNode(), parity: false },
       // Query ships a PENDING internal snapshot, so every add path must hydrate the
@@ -326,8 +325,10 @@ export const NODE_CATALOG: CatalogEntry[] = [
   {
     type: "category", label: "Numbers", description: "Scalar math: arithmetic, functions, rounding, and trigonometry.",
     children: [
-      { type: "expression", label: "Expression", description: "A formula like `a*b+1`: named variables become input sockets. Math functions, constants `pi` / `tau` / `e` / `phi`, element-wise broadcasting over lists and matrices, the dynamic-array core (`TRANSPOSE`, `MMULT`, `SEQUENCE`…), complex numbers, `LAMBDA` as a value. Any function loops over arrays (`UPPER(name)`). A name here computes what its visual node computes. Frames and cubes stay out by design: the table verbs are nodes. Row formulas live in Computed Column.", create: () => new ExpressionNode(), accent: NODE_KIND_ACCENTS.math },
-      { type: "equation", label: "Equation", description: "A relation like `V = I * R`: every variable is an input and an output. Leave one unwired and it solves: algebraically where the equation inverts, numerically otherwise. A quadratic returns every real root as a list. All wired → Check turns `TRUE` or `FALSE`. Numbers and 1-D lists. √ and trig inversions take the principal branch.", create: () => new EquationNode(), accent: NODE_KIND_ACCENTS.math, keywords: "solve rearrange unknown goal seek formula bidirectional check quadratic roots" },
+      { type: "pair", children: [
+        { type: "expression", label: "Expression", description: "A formula like `a*b+1`: named variables become input sockets. Math functions, constants `pi` / `tau` / `e` / `phi`, element-wise broadcasting over lists and matrices, the dynamic-array core (`TRANSPOSE`, `MMULT`, `SEQUENCE`…), complex numbers, `LAMBDA` as a value. Any function loops over arrays (`UPPER(name)`). A name here computes what its visual node computes. Frames and cubes stay out by design: the table verbs are nodes. Row formulas live in Computed Column.", create: () => new ExpressionNode(), accent: NODE_KIND_ACCENTS.math },
+        { type: "equation", label: "Equation", description: "A relation like `V = I * R`: every variable is an input and an output. Leave one unwired and it solves: algebraically where the equation inverts, numerically otherwise. A quadratic returns every real root as a list. All wired → Check turns `TRUE` or `FALSE`. Numbers and 1-D lists. √ and trig inversions take the principal branch.", create: () => new EquationNode(), accent: NODE_KIND_ACCENTS.math, keywords: "solve rearrange unknown goal seek formula bidirectional check quadratic roots" },
+      ]},
       { type: "script", label: "Script", description: "A node for JavaScript input. `[ ]` returns a List, `[[ ]]` a Table, `[{name: value}, …]` a Frame, `[{name: [rows]}, …]` a Cube; `Solenoid.date(serial)` returns a Date. Runs sandboxed and time-gated to 1 second.", keywords: "script javascript js code function program custom", create: () => new ScriptNode(), accent: NODE_KIND_ACCENTS.math },
       {
         type: "category", label: "Arithmetic", description: "Two-input operations on numbers.",
@@ -337,8 +338,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "pair", children: [arithLeaf("mod"), arithLeaf("quotient")] },
           arithLeaf("pow"),
           { type: "pair", children: [
-            { type: "gcd-lcm", label: "GCD", description: "Greatest common divisor of two integers. Excel: `GCD`.", create: () => new GcdNode() },
-            { type: "lcm", label: "LCM", description: "Least common multiple of two integers. Excel: `LCM`.", create: () => new GcdNode({ op: "lcm" }) },
+            { type: "gcd-lcm", label: "GCD", description: "Greatest common divisor of two integers. Excel: `GCD`.", create: () => new GCDNode() },
+            { type: "lcm", label: "LCM", description: "Least common multiple of two integers. Excel: `LCM`.", create: () => new GCDNode({ op: "lcm" }) },
           ]},
         ],
       },
@@ -453,6 +454,47 @@ export const NODE_CATALOG: CatalogEntry[] = [
           },
         ],
       },
+      {
+        type: "category", label: "Distributions", description: "Probability distributions and related helpers.",
+        children: [
+          { type: "distribution", label: "Distribution", description: "Every probability distribution in one node: pick the distribution (normal, t, chi-squared, F, beta, gamma, lognormal, Weibull, exponential, binomial, Poisson, hypergeometric, negative binomial), then the form: CDF, PDF or PMF, a tail, or the inverse (quantile). The inverse trades the x input for a probability. Excel: the `NORM.DIST` / `T.INV` / `BINOM.DIST` families.", create: () => new DistributionNode(), keywords: "distribution probability cdf pdf pmf inverse quantile percentile critical value tail gaussian bell curve critbinom phi gauss standard normal density" },
+          { type: "pair", children: [
+            { type: "stat-standardize", label: "STANDARDIZE", description: "z-score: `(value − mean) ÷ std dev`. Excel: `STANDARDIZE`.", create: () => new StandardizeNode(), keywords: "probability z score normalize" },
+            { type: "binomdistrng", label: "BINOM.DIST.RANGE", description: "`P(lo ≤ X ≤ hi)`: the sum of binomial PMFs over a range. Excel: `BINOM.DIST.RANGE`.", create: () => new BinomDistRangeNode(), keywords: "binom.dist.range" },
+          ]},
+        ],
+      },
+    ],
+  },
+
+  // ── DOCS & FILES ─────────────────────────────────────────────────────────────
+  // Also the pack fallback bucket (catalogUtils placementPath, packShared): an
+  // uncategorized pack node lands here, so it is never empty.
+  {
+    type: "category", label: "Docs & Files", description: "Documents and files: markdown notes and reports, your Obsidian vault, and attached pictures, files and graphics.",
+    children: [
+      { type: "pair", children: [
+        { type: "note", label: "Note", description: "A free-floating markdown note, any position, any tint. Open the body with a ----fenced YAML block to turn each key into a typed output, a note doubling as a constants source. The body is a Knap template over those fields: `{{ title }}`, `{% if %}`, `{% for %}` and the standard filters.", create: () => new NoteNode(), parity: false },
+        { type: "report", label: "Report", description: "A standalone markdown document written as a Knap template. A bare `{{ name }}` embeds the wired value as the canvas shows it; `{% for %}` repeats over a frame, `{% if %}` gates a section, and filters shape the text. A Note on Template supplies the text instead. Records makes it a mail merge, one page per row. The Knap tab in Help has the syntax.", keywords: "mail merge merge fields letters one note per row batch template document markdown knap", create: () => new ReportNode(), parity: false },
+      ]},
+      { type: "pair", children: [
+        { type: "image", label: "Image", description: "A free-floating picture: attach a local file or paste a web URL, and set its height. Annotation only. Carries no data. Web URLs persist in the save. Local files are session-only, not yet embedded.", create: () => new ImageNode(), parity: false },
+        { type: "file-link", label: "File Link", description: "A link to a file on your computer: the path, not the file. Shows a title and preview with an Open button that launches it in its default app. Annotation only, no data. On desktop the link persists in the save; on the web an attach is session-only.", create: () => new FileLinkNode(), parity: false, keywords: "file link attachment attach open path shortcut document local disk launch reference external" },
+      ]},
+      { type: "pair", children: [
+        { type: "svg", label: "SVG", description: "An interactive SVG: attach a local `.svg` or paste a URL. The selected shape or layer outputs its name (label or id): a map, floorplan, or schematic as a data selector. Adjustable highlight color.", create: () => new SvgPickerNode(), parity: false, keywords: "svg map picker region layer shape hotspot clickable diagram floorplan schematic slice filter select vector" },
+        { type: "promo", label: "✨ Promo", description: "A random Solenoid tagline. Re-rolls on recalc (F9). Pure easter egg.", create: () => new PromoNode() },
+      ]},
+      {
+        type: "category", label: "Obsidian", description: "Your vault as data and back: notes and tasks in, notes and properties out. A folder of tasks read as a Vault Folder gives title, status, priority, due and tags; TaskNotes adds the rest. Set the vault in Settings ▸ Obsidian. Desktop only.",
+        children: [
+          { type: "vault-folder", label: "Vault Folder", description: "Reads an Obsidian vault folder as one cube: a row per note, the file columns plus every frontmatter key, lists and nested tables kept in the cells. Types come from an mdbase schema or types.json when present. Stores the folder, not the notes. Desktop only.", create: () => new VaultFolderNode(), parity: false, keywords: "obsidian vault notes markdown frontmatter cube folder mdbase bases properties tags links daily notes tasknotes" },
+          { type: "import-obsidian", label: "Import Obsidian Note", description: "Picks a `.md` note from your Obsidian vault as a read-only Note: frontmatter becomes typed outputs, the body renders inline. Reload re-reads from disk. Set the vault in Settings ▸ Obsidian. Desktop only.", create: () => new ImportObsidianNode(), parity: false, keywords: "obsidian vault markdown md note import read source frontmatter" },
+          { type: "tasknotes", label: "TaskNotes", description: "Reads what a folder of files can't total: time tracked per task, recurring and completed instances, the calendar of events between two dates, the task-count stats. Through the TaskNotes plugin's local API. Turn the API on in the plugin; the address is in Settings ▸ Obsidian, the token on the card.", create: () => new TaskNotesNode(), parity: false, keywords: "tasknotes task notes obsidian plugin api tasks todo due scheduled projects calendar events stats time tracking timeEntries" },
+          { type: "write-obsidian", label: "Write to Obsidian", description: "Writes a Note, a Report, or a cube of rows into your Obsidian vault. A Note or Report becomes one markdown note with its tables, diagrams, math and charts; a mail-merge Report writes one note per page. Rows write each note's frontmatter and body, keyed by a path column and patched line by line. Preview shows what Run would do. Never writes on its own. Desktop only.", create: () => new WriteObsidianNode(), parity: false, keywords: "obsidian vault markdown md note export sink write document properties frontmatter yaml note-body cube patch bases plan preview" },
+          { type: "write-tasks", label: "Write Tasks", description: "Creates or updates TaskNotes tasks from rows: a row with a path updates that task, one without creates it from its title. Sends the writable task fields present, or the ones you list. Preview marks the rows that would not change; Run sends the rest. Never writes on its own.", create: () => new WriteTasksNode(), parity: false, keywords: "write tasks tasknotes obsidian create update sink api post put plan preview" },
+        ],
+      },
     ],
   },
 
@@ -531,7 +573,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "list-unique",  label: "UNIQUE", description: "Removes duplicates, preserving first-occurrence order. Excel: `UNIQUE`.", create: () => new UniqueNode() },
           { type: "list-set",  label: "Set", description: "Set operations and relations on two lists. Union keeps what's in A or B, intersection what's in both, difference what's in A but not B, and symmetric difference what's in exactly one. The relations equal, subset, superset, and disjoint give `TRUE` or `FALSE`. Excel builds these from `COUNTIF`.", create: () => new SetNode(), parity: false, keywords: "set union intersect intersection difference except minus complement symmetric relation equal same identical subset superset disjoint overlap contains all within compare two lists distinct dedupe subtract exclude common membership issubset issuperset predicate test boolean" },
           { type: "pair", children: [
-            { type: "list-shuffle",    label: "Shuffle",    description: "Randomly reorder the list with a Fisher-Yates shuffle.", create: () => new ShuffleNode() },
+            { type: "list-shuffle",    label: "Shuffle",    description: "Randomly reorder the list with a Fisher-Yates shuffle. Add a weight per element and higher weight tends to land earlier, a weighted draw without replacement. Take the first N for a weighted sample.", create: () => new ShuffleNode(), keywords: "shuffle random reorder permutation weighted weights sample without replacement np.random.choice pick draw lottery" },
             { type: "list-interleave", label: "Interleave", description: "Alternate elements of two lists: `A[0]`, `B[0]`, `A[1]`, `B[1]`, …", create: () => new InterleaveNode() },
           ]},
           { type: "list-nthelement", label: "Nth Element", description: "Every N-th element. Step subsampling.", create: () => new NthElementNode() },
@@ -678,28 +720,25 @@ export const NODE_CATALOG: CatalogEntry[] = [
         ],
       },
       {
-        type: "category", label: "Periodic payment breakdown", description: "Interest vs. principal split for a single period.",
-        children: [
-          { type: "pair", children: [ipmtPpmtLeaf("ipmt"), ipmtPpmtLeaf("ppmt")] },
-          { type: "pair", children: [cumPmtLeaf("cumipmt"), cumPmtLeaf("cumprinc")] },
-        ],
+        type: "payment-breakdown", label: "Payment Breakdown",
+        description: "Splits a loan payment into interest and principal, for one period or cumulatively across a range of periods. Excel: `IPMT`, `PPMT`, `CUMIPMT`, `CUMPRINC`.",
+        create: () => new PaymentBreakdownNode(),
+        keywords: "payment breakdown ipmt ppmt cumipmt cumprinc interest principal loan amortization period cumulative range",
       },
       {
         type: "category", label: "Cash flow analysis", description: "NPV, IRR, MIRR for irregular cash flows.",
         children: [
-          { type: "npv",  label: "NPV",  description: "Net present value of cash flows discounted at a given rate. The first flow is period 1. Excel: `NPV`.", create: () => new NpvNode() },
-          { type: "irr",  label: "IRR",  description: "Internal rate of return: the rate at which `NPV = 0`. Excel: `IRR`.", create: () => new IrrNode() },
+          { type: "npv",  label: "NPV",  description: "Net present value of cash flows discounted at a given rate. The first flow is period 1. Excel: `NPV`.", create: () => new NPVNode() },
+          { type: "irr",  label: "IRR",  description: "Internal rate of return: the rate at which `NPV = 0`. Excel: `IRR`.", create: () => new IRRNode() },
           { type: "mirr", label: "MIRR", description: "Modified IRR accounting for reinvestment rate and cost of capital. Excel: `MIRR`.", create: () => new MirrNode() },
-          { type: "xirr", label: "XIRR", description: "IRR for cash flows at irregular dates, from a list of flows and a parallel list of dates. Excel: `XIRR`.", create: () => new IrrNode({ op: "dates" }), parity: false },
-          { type: "xnpv", label: "XNPV", description: "Net present value of cash flows, each with an explicit date. Excel: `XNPV`.", create: () => new NpvNode({ op: "dates" }), parity: false },
+          { type: "xirr", label: "XIRR", description: "IRR for cash flows at irregular dates, from a list of flows and a parallel list of dates. Excel: `XIRR`.", create: () => new IRRNode({ op: "dates" }), parity: false },
+          { type: "xnpv", label: "XNPV", description: "Net present value of cash flows, each with an explicit date. Excel: `XNPV`.", create: () => new NPVNode({ op: "dates" }), parity: false },
         ],
       },
       {
         type: "category", label: "Bond pricing", description: "Price and yield for coupon bonds.",
         children: [
-          { type: "pair", children: [bondPriceLeaf("price"), bondPriceLeaf("yield")] },
-          { type: "pair", children: [oddCouponLeaf("oddfprice"), oddCouponLeaf("oddfyield")] },
-          { type: "pair", children: [oddCouponLeaf("oddlprice"), oddCouponLeaf("oddlyield")] },
+          { type: "bond-pricing", label: "Bond Pricing", description: "A coupon bond's clean price from its yield, or its yield from a market price, on a `30/360` basis. The odd-coupon forms take a first coupon date or a last interest date for bonds whose first or last period is irregular. Excel: `PRICE`, `YIELD`, `ODDFPRICE`, `ODDFYIELD`, `ODDLPRICE`, `ODDLYIELD`.", create: () => new BondPricingNode(), parity: false, keywords: "bond price yield coupon clean price yield to maturity ytm odd first last irregular period redemption par frequency" },
         ],
       },
       {
@@ -716,16 +755,8 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "fvschedule", label: "FVSCHEDULE", description: "Future value of principal after applying a schedule of interest rates. Excel: `FVSCHEDULE`.", create: () => new FvScheduleNode() },
           { type: "ispmt",      label: "ISPMT",      description: "Interest paid in a specific period of a straight-line-principal loan. Excel: `ISPMT`.", create: () => new IspmtNode() },
           { type: "pair", children: [dollarLeaf("dollarde"), dollarLeaf("dollarfr")] },
-          { type: "pair", children: [tbillLeaf("tbilleq"), tbillLeaf("tbillprice")] },
-          tbillLeaf("tbillyield"),
-          { type: "pair", children: [secDiscLeaf("disc"), secDiscLeaf("intrate")] },
-          secDiscLeaf("received"),
-          { type: "pair", children: [
-            { type: "accrint",  label: "ACCRINT",  description: "Accrued interest for a security that pays periodic interest. Excel: `ACCRINT`.",  create: () => new AccrintNode(),  parity: false },
-            { type: "accrintm", label: "ACCRINTM", description: "Accrued interest for a security that pays interest at maturity. Excel: `ACCRINTM`.", create: () => new AccrintMNode(), parity: false },
-          ]},
-          { type: "pair", children: [priceDiscLeaf("pricedisc"), priceDiscLeaf("yielddisc")] },
-          { type: "pair", children: [priceMatLeaf("pricemat"),  priceMatLeaf("yieldmat")]  },
+          { type: "discount-security", label: "Discount Security", description: "Prices, yields, and discount rates for securities that pay no coupon: Treasury bills, discounted paper, and notes that pay their interest at maturity. Pick the Excel function; the inputs follow. Excel: `TBILLEQ`, `TBILLPRICE`, `TBILLYIELD`, `DISC`, `PRICEDISC`, `YIELDDISC`, `INTRATE`, `RECEIVED`, `PRICEMAT`, `YIELDMAT`.", create: () => new DiscountSecurityNode(), parity: false, keywords: "treasury bill t-bill tbill discount discounted security paper note zero coupon price yield rate redemption investment received interest at maturity money market bond equivalent" },
+          { type: "accrued-interest", label: "Accrued Interest", description: "Interest a security has earned since its issue date but not yet paid out at settlement, whether the coupons come periodically or all at maturity. Excel: `ACCRINT`, `ACCRINTM`.", create: () => new AccruedInterestNode(), parity: false, keywords: "accrued interest accrint accrintm coupon issue settlement periodic maturity bond par" },
           { type: "pair", children: [durationLeaf("duration"),  durationLeaf("mduration")] },
           // XNPV lives in Cash flow analysis beside XIRR, not here.
           {
@@ -738,18 +769,6 @@ export const NODE_CATALOG: CatalogEntry[] = [
           },
         ],
       },
-    ],
-  },
-
-  // ── DISTRIBUTIONS ────────────────────────────────────────────────────────────
-  {
-    type: "category", label: "Distributions", description: "Probability distributions and related helpers.",
-    children: [
-      { type: "distribution", label: "Distribution", description: "Every probability distribution in one node: pick the distribution (normal, t, chi-squared, F, beta, gamma, lognormal, Weibull, exponential, binomial, Poisson, hypergeometric, negative binomial), then the form: CDF, PDF or PMF, a tail, or the inverse (quantile). The inverse trades the x input for a probability. Excel: the `NORM.DIST` / `T.INV` / `BINOM.DIST` families.", create: () => new DistributionNode(), keywords: "distribution probability cdf pdf pmf inverse quantile percentile critical value tail gaussian bell curve critbinom phi gauss standard normal density" },
-      { type: "pair", children: [
-        { type: "stat-standardize", label: "STANDARDIZE", description: "z-score: `(value − mean) ÷ std dev`. Excel: `STANDARDIZE`.", create: () => new StandardizeNode(), keywords: "probability z score normalize" },
-        { type: "binomdistrng", label: "BINOM.DIST.RANGE", description: "`P(lo ≤ X ≤ hi)`: the sum of binomial PMFs over a range. Excel: `BINOM.DIST.RANGE`.", create: () => new BinomDistRangeNode(), keywords: "binom.dist.range" },
-      ]},
     ],
   },
 
@@ -891,7 +910,7 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "split-frame", label: "Split Frame", description: "Takes a Frame apart into its numeric Matrix body and header text-list. The inverse of Build Frame. The type filter (All / Num / Date / Bool / Text) keeps only columns of that type: Num pulls just the numeric columns from a mixed frame. Text → headers only.", create: () => new SplitFrameNode(), parity: false },
           { type: "get-column",  label: "Get Column",  description: "Pulls one column out of a Frame as a list, by name or 1-based number. Read as Number, Text, or Date.", create: () => new GetColumnNode(), parity: false },
           { type: "get-row",     label: "Get Row",     description: "Pulls one row out of a Frame by 1-based number, giving a 1-row Frame: a row mixes types, so it's not a list.", create: () => new GetRowNode(), parity: false },
-          { type: "add-column",  label: "Add Column",  description: "Appends a list to a Frame as a new named column, or replace an existing column of that name. Shorter lists pad with blanks.", create: () => new AddColumnNode(), parity: false },
+          { type: "add-column",  label: "Add Column",  description: "Appends a list to a Frame or Cube as a new named column, or replaces an existing column of that name. Shorter lists pad with blanks. A cube keeps its nested columns.", create: () => new AddColumnNode(), parity: false },
           { type: "computed-column", label: "Computed Column", description: "Adds a column computed row by row: `@name` reads this row's cell, a bare name is the whole column; `@revenue` / `SUM(revenue)` is share-of-total. `[Unit Price]` / `@[Unit Price]` spell names a variable can't. Power Query: Custom Column.", keywords: "custom column calculated field formula derive mutate row-wise index this-row @", create: () => new ComputedColumnNode(), parity: false },
         ],
       },
@@ -904,10 +923,12 @@ export const NODE_CATALOG: CatalogEntry[] = [
           { type: "filter-frame",label: "Frame Filter", description: "Keeps rows passing condition rows (column + test + value, AND/OR). The SQL `WHERE`. Blanks/errors fail a value test and exit the Dropped output ('is blank' or 'has error' select them deliberately). Kept + Dropped is always the whole Frame. 'No error' drops rows holding a `#DIV/0!`-style error. 'Has error' keeps only them. Text tests ignore case like Excel's `=`. Match case per condition. Like Excel's `FILTER`, for a whole frame.", create: () => new FilterFrameNode(), parity: false, keywords: "filter rows where keep drop errors iserror noterror clean" },
           { type: "join",        label: "Join",        description: "Combines two Frames on a key column: inner / left / right / outer, or as-of (nearest match on a sorted number/date key, direction + tolerance). A left row matching several right rows fans out. As-of never does. Keys match case-sensitively, unlike Excel lookups. Excel: `VLOOKUP` or `XLOOKUP` left-join one column at a time.", create: () => new JoinNode(), parity: false },
           { type: "sumifs", label: "SUMIFS", description: "Aggregates one frame column under conditions on the others: sum/count/average/min/max, a Values column, criteria rows (column + test + value), matching all or any of them. Parallel lists go through Frame from Lists first. Excel: `SUMIFS`, `COUNTIFS`, `AVERAGEIFS`, `MINIFS`, `MAXIFS`.", create: () => new SumIfsNode(), keywords: "sumif countif averageif minif maxif criteria conditional aggregate frame all any or" },
-          { type: "window", label: "Window", description: "A per-group column that keeps every row: running sum / average / min / max, rank / dense rank / percent rank / row number, lag / lead / difference / percent change, rolling (N), the group's total / average / count repeated per row, share of group, first / last, partitioned by key columns and ordered within each group. pandas `groupby().transform` / `cumsum` / `shift` / `rank`, dplyr `group_by %>% mutate`, SQL `OVER` with `PARTITION BY` and `ORDER BY`.", create: () => new WindowNode(), parity: false, keywords: "window partition over running cumulative cumsum rank dense_rank row_number lag lead shift diff pct_change rolling moving transform group share percent of total first last ntile sql" },
+          { type: "window", label: "Window", description: "A per-group column that keeps every row: running totals, ranks, lag and lead, rolling windows, group totals and shares, partitioned by key columns and ordered within each group. SQL `OVER` with `PARTITION BY`; pandas `groupby().transform`; dplyr `group_by %>% mutate`.", create: () => new WindowNode(), parity: false, keywords: "window partition over running cumulative cumsum rank dense_rank row_number lag lead shift diff pct_change rolling moving transform group share percent of total first last ntile sql" },
           { type: "group-by-frame", label: "GROUPBY", description: "Groups rows by key columns and aggregates one column (sum / average / min / max / count). Optional grand-total / subtotal rows re-aggregate the source (`GROUPBY`'s `total_depth`). Keys group case-sensitively, with no silent case-merge. Like Excel's `GROUPBY`.", create: () => new GroupByFrameNode(), parity: false },
-          { type: "append",      label: "Append",      description: "Stacks Frames vertically in row order. Columns match by name, a missing column fills blank. A type clash on a shared column is `#TYPE!`. Like Excel's `VSTACK`, for frames.", create: () => new AppendNode(), parity: false },
-          { type: "bind-columns", label: "Bind Columns", description: "Frames side by side by position. Every column carried through, a repeated name gets a suffix, a shorter Frame pads down with blanks. pandas `concat(axis = 1)`, R `bind_cols`. Like Excel's `HSTACK`, for frames.", create: () => new BindColumnsNode(), parity: false, keywords: "bind_cols cbind concat axis 1 side by side zip frames columns hstack horizontal" },
+          { type: "pair", children: [
+            { type: "append",      label: "Append",      description: "Stacks Frames vertically in row order. Columns match by name, a missing column fills blank. A type clash on a shared column is `#TYPE!`. Like Excel's `VSTACK`, for frames.", create: () => new AppendNode(), parity: false },
+            { type: "bind-columns", label: "Bind Columns", description: "Frames side by side by position. Every column carried through, a repeated name gets a suffix, a shorter Frame pads down with blanks. pandas `concat(axis = 1)`, R `bind_cols`. Like Excel's `HSTACK`, for frames.", create: () => new BindColumnsNode(), parity: false, keywords: "bind_cols cbind concat axis 1 side by side zip frames columns hstack horizontal" },
+          ]},
           {
             type: "category", label: "Clean", description: "The everyday cleanup verbs: fill blanks from above, find and replace, drop spacer rows.",
             children: [
@@ -943,13 +964,23 @@ export const NODE_CATALOG: CatalogEntry[] = [
             ],
           },
           {
-            type: "category", label: "Analyze", description: "Score, stress-test, and compare Frames: weighted decisions and version reconciliation.",
+            type: "category", label: "Analyze", description: "Score, profile, and compare Frames: weighted decisions, column summaries and correlations, version reconciliation.",
             children: [
-              { type: "decision-matrix", label: "Decision Matrix", description: "Scores and ranks a Frame of options: rows are options, number columns criteria, an optional leading text column names them. Score = `Σ(value × weight) / Σ|weight|`, then competition rank on the rounded score. A negative weight penalizes a lower-is-better criterion such as cost. Each criterion normalizes Raw (use the numbers as they are), ÷Max (divide by the column's biggest value; the default), or Rank (keep only the order) so dollars and out-of-10 scores compare. Breakdown adds each criterion's signed contribution; the contributions sum to the Score. Output: Option · Score · Rank, best first.", create: () => new DecisionMatrixNode(), parity: false, keywords: "decision matrix weighted score rank ranking criteria weight choose compare options podium dmbv multi-criteria mcda" },
-              { type: "decision-sensitivity", label: "Sensitivity", description: "Re-scores the same options (the Scores frame) under several weight Scenarios to see whether the winner holds. Each Scenarios row is one scenario: a text column names it, and a number column named after a criterion is that weight (missing → 1). Output: a Cube, one row per scenario. Scenario · Winner · Margin · Ranking: Margin is the top score minus the runner-up, Ranking nests the full Option·Score·Rank table to drill into, and options tied for first are listed together in Winner. Pairs with Decision Matrix.", create: () => new DecisionSensitivityNode(), parity: false, keywords: "decision sensitivity robustness scenario weight cube what-if stress test ranking stability mcda" },
+              { type: "decision-matrix", label: "Decision Matrix", description: "Scores and ranks a Frame of options: rows are options, number columns criteria, an optional leading text column names them. Score = `Σ(value × weight) / Σ|weight|`, then competition rank on the rounded score. A negative weight penalizes a lower-is-better criterion such as cost. Weights come from a Weights table: one row per criterion with its Weight and an optional Norm (Raw / ÷Max / Rank); a criterion left out weighs 1. Each criterion normalizes Raw (use the numbers as they are), ÷Max (divide by the column's biggest value; the default), or Rank (keep only the order) so dollars and out-of-10 scores compare. Breakdown adds each criterion's signed contribution; the contributions sum to the Score. Output: Option · Score · Rank, best first.", create: () => new DecisionMatrixNode(), parity: false, keywords: "decision matrix weighted score rank ranking criteria weight choose compare options podium dmbv multi-criteria mcda" },
+              { type: "decision-sensitivity", label: "Sensitivity", description: "Re-scores the same options (the Scores frame) under several weight Scenarios to see whether the winner holds. The Scenarios table is the Decision Matrix weights table widened: one row per criterion, and a number column per scenario, named by its header, holding that scenario\'s weight. An optional Norm column applies per criterion across every scenario; a criterion a scenario leaves out weighs 1. Output: a Cube, one row per scenario. Scenario · Winner · Margin · Ranking: Margin is the top score minus the runner-up, Ranking nests the full Option·Score·Rank table to drill into, and options tied for first are listed together in Winner. Pairs with Decision Matrix.", create: () => new DecisionSensitivityNode(), parity: false, keywords: "decision sensitivity robustness scenario weight cube what-if stress test ranking stability mcda" },
               { type: "describe",    label: "Describe",    description: "One row per column: count, blank, distinct, and for number columns mean / std / min / 25% / 50% / 75% / max (min and max for dates). pandas `describe`, R `summary`.", create: () => new DescribeNode(), parity: false, keywords: "describe summary summarize profile statistics count mean std quartile overview explore eda" },
               { type: "corr-matrix", label: "Correlation Matrix", description: "The pairwise correlation (Pearson / Spearman / Kendall) or sample covariance between every pair of number columns, as a frame with a leading name column. Pairs use the rows where both sides are present. pandas `df.corr` / `df.cov`, R `cor` / `cov`.", create: () => new CorrMatrixNode(), parity: false, keywords: "correlation matrix corr cov covariance pearson spearman kendall pairwise heatmap" },
               { type: "reconcile",   label: "Reconcile",   description: "Compares two versions of a Frame by key: each row Added / Removed / Changed / Unchanged, with before/after/Δ per shared numeric column. Name a Price and Quantity column (on both sides) to decompose the total change into Price / Volume / Mix variance. Outputs the classified Frame + a Summary line.", create: () => new ReconcileNode(), parity: false, keywords: "reconcile compare diff variance price volume mix pvm audit changed added removed data quality trust" },
+            ],
+          },
+          {
+            type: "category", label: "Plan", description: "Rows in, a plan out: spread a budget, schedule a project, pay off debts, and settle who owes whom.",
+            children: [
+              { type: "allocator", label: "Allocator", description: "Spreads a total across categories that each have a min and max (a price range, a band of hours, any range) and a Weight (or Value) column for how much you value each; with no such column every category weighs the same. Fit budget spends the whole budget in proportion to the weights, kept inside every range, and the slack a capped category leaves flows to the rest. Min for target finds the least spend that reaches a weighted-value goal, buying the most-valued categories first. Min proportional finds the least spend that keeps every category in proportion to its weight above its floor. Water-filling, no solver. Output: Category · Allocation · Share, where Share is the raw fraction of the spend.", create: () => new AllocatorNode(), parity: false, keywords: "budget allocator allocate allocation split spend divide categories weights value water-filling waterfilling proportional minimize target knapsack money planner portfolio" },
+              { type: "schedule", label: "Schedule", description: "Works out when each task starts and finishes from its duration and what it waits on: the critical-path method. Rows are tasks: Task, Duration in days (blank or 0 is a milestone) and Predecessors. Working days skips weekends and holidays; Calendar days counts every day. The output is the rows with Start, Finish, Float and Critical appended. Help lists every column under Plans.", create: () => new ScheduleNode(), parity: false, keywords: "schedule cpm critical path gantt project plan timeline tasks predecessors dependencies float slack milestone duration working days finish date pert multiple critical paths" },
+              { type: "earned-value", label: "Earned Value", description: "Measures a project against its plan and budget as of a status date: planned value, earned value, actual cost, the schedule and cost variances, SPI and CPI, and the estimate at completion. A row per task, plus the project's SPI, CPI and EAC. Cost keeps its currency.", create: () => new EarnedValueNode(), parity: false, keywords: "earned value evm bcws bcwp acwp planned earned actual cost variance schedule variance spi cpi eac vac tcpi budget baseline project performance" },
+              { type: "payoff-planner", label: "Payoff Planner", description: "Plans paying off several debts from each Balance, APR and minimum payment, plus an extra amount every month. Every minimum is paid; the extra and each freed minimum go to the head debt, avalanche (highest APR first) or snowball (smallest balance first). Summary gives months, interest and payoff date per debt; Schedule gives each month's balances.", create: () => new PayoffPlannerNode(), parity: false, keywords: "debt payoff planner avalanche snowball loans credit card interest extra payment months schedule" },
+              { type: "settle",      label: "Group Cost Settle", description: "Squares up a group that paid unevenly: who pays whom in the fewest transfers, plus each person's Paid, Owes, Owed and Net. Totals reads one row per person with Paid and an optional Share weight. Transactions reads a ledger of expenses with Amount, who Paid and who it is For.", create: () => new SettleNode(), parity: false, keywords: "settle settlement split bill trip expenses transactions ledger who owes whom debts transfers splitwise group cost share even up payer participants" },
             ],
           },
         ],
@@ -1019,21 +1050,11 @@ export const NODE_CATALOG: CatalogEntry[] = [
     ],
   },
 
-  // Declared EMPTY so it sits before "Other": the catalog builder fills it per active
-  // pack and prunes the row when no pack targets it. Cross-woven pack nodes stay put.
+  // Declared EMPTY so it sits last among the core rows: the catalog builder fills it
+  // per active pack and prunes the row when no pack targets it. Cross-woven pack nodes
+  // stay put. Uncategorized pack nodes fall to "Docs & Files" (the placement fallback).
   {
     type: "category", label: "Packs", description: "Nodes from your enabled packs, by domain. Manage packs in Settings.",
     children: [],
-  },
-
-  // Pruned only if it ends up empty — it won't, since Promo is a permanent member.
-  {
-    type: "category", label: "Other", description: "Catch-all for odd one-offs and uncategorized pack nodes.",
-    children: [
-      { type: "image", label: "Image", description: "A free-floating picture: attach a local file or paste a web URL, and set its height. Annotation only. Carries no data. Web URLs persist in the save. Local files are session-only, not yet embedded.", create: () => new ImageNode(), parity: false },
-      { type: "file-link", label: "File Link", description: "A link to a file on your computer: the path, not the file. Shows a title and preview with an Open button that launches it in its default app. Annotation only, no data. On desktop the link persists in the save; on the web an attach is session-only.", create: () => new FileLinkNode(), parity: false, keywords: "file link attachment attach open path shortcut document local disk launch reference external" },
-      { type: "svg", label: "SVG", description: "An interactive SVG: attach a local `.svg` or paste a URL. The selected shape or layer outputs its name (label or id): a map, floorplan, or schematic as a data selector. Adjustable highlight color.", create: () => new SvgPickerNode(), parity: false, keywords: "svg map picker region layer shape hotspot clickable diagram floorplan schematic slice filter select vector" },
-      { type: "promo", label: "✨ Promo", description: "A random Solenoid tagline. Re-rolls on recalc (F9). Pure easter egg.", create: () => new PromoNode() },
-    ],
   },
 ];

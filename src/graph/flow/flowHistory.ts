@@ -1,3 +1,4 @@
+// dte:B10
 // React Flow port (C5) — snapshot undo/redo for the flow surface, replacing
 // rete-history-plugin. Every settled mutation records the canonical document
 // (serializeGraph — the textForm round-trip), so undo needs no per-action
@@ -6,7 +7,7 @@
 import { serializeGraph, loadGraph, scheduleAutosave } from "../persistence";
 import type { SavedGraph } from "../persistence";
 import { getView, isGraphRebuilding } from "../process";
-import { describeGraphDelta } from "./flowHistoryDigest";
+import { describeGraphDelta, sameIgnoringDims } from "./flowHistoryDigest";
 
 const MAX_DEPTH = 80;
 // Snapshots are whole documents; on a large doc the depth cap alone lets the stack
@@ -33,7 +34,9 @@ async function restore(json: string): Promise<void> {
   try {
     const view = getView();
     const t = view ? { ...view.transform } : null;
-    await loadGraph(JSON.parse(json) as SavedGraph);
+    // An undo/redo is a reload under the hood, but must feel like an edit — never
+    // flash the "Loading graph" curtain, whatever the doc size.
+    await loadGraph(JSON.parse(json) as SavedGraph, { curtain: false });
     // loadGraph frames the graph (zoomAt); an undo must NOT move the camera.
     if (view && t) {
       await view.pan(t.x, t.y);
@@ -83,10 +86,12 @@ export const flowHistory = {
     let label = "Edited document";
     if (top) {
       try {
-        label = describeGraphDelta(
-          JSON.parse(top.json) as SavedGraph,
-          JSON.parse(s) as SavedGraph,
-        );
+        const prev = JSON.parse(top.json) as SavedGraph;
+        const next = JSON.parse(s) as SavedGraph;
+        // Measured dims re-stamped after a restore are not an edit: recording them
+        // would push a new entry and cut off the redo tail.
+        if (sameIgnoringDims(prev, next)) return;
+        label = describeGraphDelta(prev, next);
       } catch { /* a label is cosmetic — never block the record */ }
     }
     _stack = _stack.slice(0, _index + 1);

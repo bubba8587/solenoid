@@ -1,3 +1,4 @@
+// dte:D56
 import { ClassicPreset } from "rete";
 import { type NodeKind, NODE_KIND_ACCENTS } from "./shared";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";
@@ -32,23 +33,27 @@ import {
   StandardizeNode, CovarianceNode, FisherNode,
   RegressionNode, ForecastNode, EtsForecastNode, DecomposeNode, OdeIntegrateNode, FitDistributionNode, ModeNode, TrimMeanNode, FrequencyNode, ConfidenceNode,
 } from "./stats";
-import { BitwiseNode, DepreciationNode, TvmNode, IpmtPpmtNode, NpvNode, IrrNode, MirrNode, CumPmtNode, AmortizationNode, ReturnsNode } from "./finance";
+import { BitwiseNode, DepreciationNode, TvmNode, PaymentBreakdownNode, NPVNode, IRRNode, MirrNode, AmortizationNode, ReturnsNode } from "./finance";
 import { DisplayNode, AlertNode, RandBetweenNode } from "./display";
 import { DistributionNode } from "./distribution";
 import { ConduitNode } from "./conduit";
 import { FrameFromListsNode } from "./frame";
-import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, XLookupNode, ColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, BindColumnsNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode, FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode, WindowNode } from "./frame";
-import { BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode } from "./cube";
+import { ScheduleNode } from "./schedule";
+import { FrameInputNode, BuildFrameNode, SplitFrameNode, GetColumnNode, AddColumnNode, ComputedColumnNode, GetRowNode, DistinctNode, HeadNode, SortFrameNode, FilterFrameNode, JoinNode, XLookupNode, ColumnsNode, GroupByFrameNode, PivotNode, UnpivotNode, NestNode, UnnestNode, AppendNode, BindColumnsNode, RenameNode, SplitColumnNode, AddIndexNode, DecisionMatrixNode, DecisionSensitivityNode, AllocatorNode, SettleNode, PayoffPlannerNode, FillBlanksNode, ReplaceValuesNode, MergeColumnsNode, HeadersNode, DropBlankRowsNode, DescribeNode, CorrMatrixNode, KMeansNode, PcaNode, LogisticNode, WindowNode } from "./frame";
+import { CubeInputNode, BuildCubeNode, NestJoinNode, CubeColumnsNode, CubeRollupNode } from "./cube";
 import { WebSourceNode, LocalFileNode, ImportHtmlNode, ImportXmlNode } from "./connection";
 import { DataFeedNode } from "./dataFeed";
+import { TaskNotesNode, WriteTasksNode } from "./taskNotes";
 import { WriteFileNode } from "./sink";
 import { WriteObsidianNode } from "./obsidian";
 import { ExpectNode } from "./quality";
 import { TornadoNode } from "./tornado";
 import { ReconcileNode } from "./frame";
 import { SlicerNode, CableSwitchNode, DateInputNode, XYPadNode, PointPlotterNode, CurveNode, GridPainterNode } from "./control";
-import { SparklineNode, ChartNode, MergePlotsNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, ProportionNode, SankeyNode, HistogramNode, SurfaceNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, SevenSegNode, RecordNode } from "./visual";
+import { SparklineNode, ChartNode, MergePlotsNode, MermaidNode, GaugeNode, HeatmapCellNode, ChartBuilderNode, ProportionNode, SankeyNode, HistogramNode, SurfaceNode, WaterfallNode, CandlestickNode, BoxplotNode, CalendarHeatmapNode, QuiverNode, RecordNode } from "./visual";
 import { NoteNode, ImageNode, FileLinkNode, SvgPickerNode } from "./annotation";
+import { ReportNode } from "./report";
+import { QrCodeNode } from "./qr";
 import { CompositeNode, CompositeInputNode, CompositeOutputNode } from "./composite";
 import {
   TableInputNode, MatDetNode, MatSolveNode, MatEigenNode, TableMultNode, TableUnitNode, TableDiagNode, TableOuterNode, TableTransposeNode,
@@ -70,6 +75,7 @@ import {
   TodayNowNode, DateConstructNode, TimeConstructNode,
   DateTimeValueNode, DatePartNode, WeekInfoNode,
   DateDiffNode, DateAddNode, WorkdaysNode,
+  TimeZoneConvertNode, WorldClockNode,
 } from "./date";
 
 // Runs at call-time, so forward-referencing every class above is safe; never
@@ -78,12 +84,14 @@ import {
 export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
   // The Composite node itself stays neutral gray (util, below).
   if (node instanceof CompositeInputNode || node instanceof CompositeOutputNode) return "boundary";
-  if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof PhysicsConstantNode || node instanceof ElementNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof LocalFileNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof DataFeedNode || node instanceof XYPadNode || node instanceof ColorPickerNode || node instanceof SvgPickerNode || node instanceof PointPlotterNode || node instanceof CurveNode || node instanceof GridPainterNode) return "input";
+  if (node instanceof ReportNode) return "document";
+  if (node instanceof NumberInputNode || node instanceof ConstantNode || node instanceof PhysicsConstantNode || node instanceof ElementNode || node instanceof SliderInputNode || node instanceof RandBetweenNode || node instanceof WebSourceNode || node instanceof LocalFileNode || node instanceof ImportHtmlNode || node instanceof ImportXmlNode || node instanceof DataFeedNode || node instanceof TaskNotesNode || node instanceof XYPadNode || node instanceof ColorPickerNode || node instanceof SvgPickerNode || node instanceof PointPlotterNode || node instanceof CurveNode || node instanceof GridPainterNode) return "input";
   // Charts wear the chart socket's green; the non-chart figures (a diagram, a builder, a
   // readout, a record card) stay on the display gold.
   if (node instanceof SparklineNode || node instanceof ChartNode || node instanceof MergePlotsNode || node instanceof GaugeNode || node instanceof HeatmapCellNode || node instanceof TornadoNode || node instanceof SurfaceNode) return "chart";
   if (node instanceof WaterfallNode || node instanceof CandlestickNode || node instanceof BoxplotNode || node instanceof CalendarHeatmapNode || node instanceof ProportionNode || node instanceof QuiverNode || node instanceof HistogramNode || node instanceof SankeyNode) return "chart";
-  if (node instanceof MermaidNode || node instanceof ChartBuilderNode || node instanceof SevenSegNode || node instanceof RecordNode) return "display";
+  if (node instanceof QrCodeNode) return "chart";
+  if (node instanceof MermaidNode || node instanceof ChartBuilderNode || node instanceof RecordNode) return "display";
   if (node instanceof ConvertNode || node instanceof CastNode) return "convert";
   if (
     node instanceof ComplexFromNode || node instanceof ComplexUnpackNode ||
@@ -125,9 +133,9 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof SeriesSumNode || node instanceof MultinomialNode
   ) return "math";
   if (
-    node instanceof TvmNode || node instanceof IpmtPpmtNode ||
-    node instanceof NpvNode || node instanceof IrrNode || node instanceof MirrNode ||
-    node instanceof CumPmtNode || node instanceof AmortizationNode || node instanceof ReturnsNode
+    node instanceof TvmNode || node instanceof PaymentBreakdownNode ||
+    node instanceof NPVNode || node instanceof IRRNode || node instanceof MirrNode ||
+    node instanceof AmortizationNode || node instanceof ReturnsNode
   ) return "math";
   if (
     node instanceof DistributionNode
@@ -141,6 +149,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof ImageNode || node instanceof FileLinkNode ||
     node instanceof ExpectNode ||
     node instanceof WriteFileNode ||
+    node instanceof WriteTasksNode ||
     node instanceof WriteObsidianNode ||
     node instanceof CompositeNode
   ) return "util";
@@ -162,7 +171,8 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof DatePartNode ||
     node instanceof WeekInfoNode || node instanceof DateDiffNode ||
     node instanceof DateAddNode || node instanceof WorkdaysNode ||
-    node instanceof DateInputNode || node instanceof SaveTimesNode
+    node instanceof DateInputNode || node instanceof SaveTimesNode ||
+    node instanceof TimeZoneConvertNode || node instanceof WorldClockNode
   ) return "date";
   if (
     node instanceof TableInputNode || node instanceof MatDetNode || node instanceof MatSolveNode || node instanceof MatEigenNode ||
@@ -176,7 +186,7 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof ReduceLambdaNode || node instanceof ScanLambdaNode
   ) return "table";
   if (
-    node instanceof FrameInputNode ||
+    node instanceof FrameInputNode || node instanceof CubeInputNode ||
     node instanceof BuildFrameNode || node instanceof FrameFromListsNode || node instanceof SplitFrameNode ||
     node instanceof GetColumnNode || node instanceof AddColumnNode ||
     node instanceof ComputedColumnNode ||
@@ -206,6 +216,10 @@ export function nodeKindOf(node: ClassicPreset.Node): NodeKind {
     node instanceof DescribeNode || node instanceof CorrMatrixNode || node instanceof KMeansNode || node instanceof PcaNode || node instanceof LogisticNode || node instanceof WindowNode ||
     node instanceof DecisionMatrixNode ||
     node instanceof DecisionSensitivityNode ||
+    node instanceof AllocatorNode ||
+    node instanceof SettleNode ||
+    node instanceof PayoffPlannerNode ||
+    node instanceof ScheduleNode ||
     node instanceof ReconcileNode ||
     node instanceof BuildCubeNode ||
     node instanceof NestJoinNode ||
@@ -281,7 +295,7 @@ export function nodeResizable(node: ClassicPreset.Node): boolean {
   return node instanceof DisplayNode;
 }
 
-// Detected from SOCKETS, so any new table/frame/lambda node is wide automatically;
+// Detected from SOCKETS, so any new table/frame/cube/lambda node is wide automatically;
 // a manual resize still wins (inline width over the class).
 export function nodeWide(node: ClassicPreset.Node): boolean {
   // Inline charts and drawing pads need the wide card to fit their fixed-width plot.
@@ -293,7 +307,7 @@ export function nodeWide(node: ClassicPreset.Node): boolean {
   const ports = [...Object.values(node.inputs ?? {}), ...Object.values(node.outputs ?? {})];
   return ports.some((p) => {
     const s = (p as { socket?: ClassicPreset.Socket } | undefined)?.socket;
-    return s instanceof SolenoidSocket && (s.dataType === "table" || s.dataType === "frame" || s.dataType === "lambda");
+    return s instanceof SolenoidSocket && (s.dataType === "table" || s.dataType === "frame" || s.dataType === "cube" || s.dataType === "lambda");
   });
 }
 
