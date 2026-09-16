@@ -4,7 +4,9 @@
   "version": "1.4.0",
   "license": "MIT",
   "type": "module",
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -32,7 +34,7 @@
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-dialog": "^2.7.3",
     "@tauri-apps/plugin-fs": "^2.5.2",
-    "@tauri-apps/plugin-http": "^2.6.0",
+    "@tauri-apps/plugin-http": "2.5.9",
     "@tauri-apps/plugin-opener": "^2.5.5",
     "@types/katex": "^0.16.8",
     "@types/papaparse": "^5.5.2",
