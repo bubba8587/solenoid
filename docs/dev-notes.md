@@ -13,9 +13,12 @@ On `develop`, nothing pushed.
   and the author ruled the tool too minor for chrome or a key: **no toolbar button, no D hotkey**; Insert →
   Draw a cable (and the palette) is the one way in (`subsystem-invariants.md` § Reach). Nothing else from the
   since-v1.3 log earns a slide (author).
+- **Long-copy sweep** (author delegated, unchecked): the 76 UI prose strings over 200 chars (mean 89) compressed to
+  under 200; library citations restored where the cut untagged a Reference chip (`functionReferenceLibs.test.ts`
+  caught it). The scan: string-editor's `scanSource` over `src/**` minus help/landing, prose literals only.
 - Left for 1.4 beyond the release process and ratification: the `NEW COPY` placeholder prose on the
   Download / Examples / Packs pages goes live with the merge (Vercel serves `main`); the older-long-tooltip
-  sweep is an open author call.
+  sweep landed the same day (below).
 
 ### SESSION DIGEST (2026-09-16b — the walk, cut short; author present)
 

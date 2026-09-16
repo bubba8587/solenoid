@@ -126,10 +126,6 @@ FEEDBACK file.
 
 ## Formatting & units
 
-- [ ] **Older long tooltips / descriptions** (Decision Matrix, Sensitivity, Allocator, Record
-  layout, Chart values, Slider bounds, 200-plus-character catalog entries) are the copy class the
-  2026-09-12b cut fixed for the new nodes; a separate sweep. Author call pending: now or release tail.
-
 - [ ] **LATER (author, 2026-09-04): fold the Format Controller into the Display** — format and
   unit set at sources and displays, flowing downstream only; the docking subsystem and the
   upstream walk go. Analysis + scope in `1.4-plan.md` Track I. Gate: the author's go after the
