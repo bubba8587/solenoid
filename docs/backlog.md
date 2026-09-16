@@ -2,8 +2,8 @@
 
 **OPEN items only, kept terse.** When an item lands, DELETE its line — git history and
 the dev-notes digests are the record. **1.4 is built** (2026-09-16: every promoted item in
-`1.4-plan.md` landed, the selling list + What's New deck are written, `develop` is merged to
-`main` at 1.4.0 — the tag is the author's; `1.4-plan.md` archives with it). The
+`1.4-plan.md` landed, the selling list + What's New deck are written; the deck walk, the
+re-merge and the tag are the author's; `1.4-plan.md` archives with the tag). The
 structural arcs are `2.0-plan.md` + `v2.0/`; parked-with-no-plan items: `deferrals.md`;
 ruled-out ideas: `out-of-scope.md`; settled rationale and rules: the decision tree (`dte.md`).
 
@@ -25,7 +25,11 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Release planning (author-run)
 
-- [ ] **Tag v1.4.0** on `main` (the merge + bump landed 2026-09-16); then walk `2.0-plan.md`.
+- [ ] **Walk the What's New deck** (author, one slide per turn; slide 1 "Your Obsidian vault is a table"
+  was presented 2026-09-16 and not yet ruled). Cuts and rewordings land in `HelpDialogs.tsx` +
+  `release-notes-features.md` together.
+- [ ] **Re-merge `develop` → `main`, then tag v1.4.0** (the 1.4.0 bump is on both; `main` lacks the
+  button-case sweep and the seed cuts); then walk `2.0-plan.md`.
 - [ ] **Ratify `out-of-scope.md`** (DRAFT since July, no ARR anywhere in it) — the deferral
   review's standing ask. Test 3 / §3 / §11 already read the author's 2026-09-01 order
   (collaboration IN); the rest is still the agent's inference awaiting the author's word.

@@ -64,7 +64,12 @@ controlDrivenRetype: keep), and the new rule landed as a node before its code (C
   pinning the eight cross-tabs and the Knap merge.
 - **Tuner gotcha:** `tune-seeds.mjs` with several ids dies after the first patch ("Execution context was
   destroyed"): the JSON write triggers Vite's full reload under the open page. One id per run.
-- **Open (owner):** the What's New slide walk (paused for the seed cleanup); ratify the tree (validate
+- **Power features seed reviewed, unchanged** (author: "don't like any of that"). Its five clusters are
+  current; a proposal to add six clusters (peek + hints, draw + flip, isolate/pin/where-used, group
+  lock, the switch ghost, a shortcuts note) was rejected outright. Do not re-propose.
+- **`main` is behind `develop` again** (the button sweep and the two seed cuts landed after the merge).
+  Re-merge before the tag.
+- **Open (owner):** the What's New slide walk (paused after slide 1 was presented); ratify the tree (validate
   lists C80 + D62 new, D42 + E11 contested); Track G's ratification; the family-name picks;
   `out-of-scope.md`.
 
