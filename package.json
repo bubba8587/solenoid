@@ -38,6 +38,7 @@
     "@tauri-apps/plugin-opener": "^2.5.5",
     "@types/katex": "^0.16.8",
     "@types/papaparse": "^5.5.2",
+    "@vercel/analytics": "^2.0.1",
     "@xyflow/react": "^12.11.6",
     "chrono-node": "^2.10.1",
     "colord": "^2.10.0",

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
+import { Analytics } from "@vercel/analytics/react";
 import { FlowCanvas } from "./graph/flow/FlowCanvas";
 import { FlowCompositeOverlay } from "./graph/flow/FlowCompositeOverlay";
 import { HelpDialogs } from "./graph/components/HelpDialogs";
@@ -142,6 +143,7 @@ function MainApp() {
       <SelectionActionsBar />
       <WebDemoBanner />
       <MobileControls />
+      <Analytics />
     </div>
   );
 }
