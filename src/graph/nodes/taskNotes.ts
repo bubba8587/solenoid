@@ -120,7 +120,7 @@ export class TaskNotesNode extends ClassicPreset.Node {
         connectionStore.setState(this.id, { status: "idle" });
       } else if (isDemoTaskNotes()) {
         // The demo fake needs no network and no wait: the canned reply parses in this pass,
-        // so a seed computes on its first fetch (dte:D62 noSetupMeansDemo).
+        // so a seed computes on its first fetch (dte:D62 demoVaultResolution).
         this._lastKey = key;
         this.loadDemo();
       } else if (requestNetwork(this.id)) {

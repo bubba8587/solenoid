@@ -49,11 +49,10 @@ controlDrivenRetype: keep), and the new rule landed as a node before its code (C
   tasks), Write it back to Obsidian (folded into `vault-as-a-table`: read, filter, write back). The scratch
   sheet carries `hidden: true` (in `SEEDS` by id, out of the menus). NEW `whats-new` (Start here, order 5):
   one group per 1.4 slide, tuned.
-- **dte:D62 noSetupMeansDemo (NEW, under C1):** a blank `obsidianVault` resolves to the demo vault and a
-  blank `taskNotesUrl` to the canned TaskNotes replies (now parsed synchronously in `data()`, so a seed
-  computes on its first pass). Every Obsidian seed lost its "(snapshot)" Frame/Cube Input and wires the
-  live reader only. The demo tasks gained the five kitchen-remodel tasks (a chain with a diamond) so the
-  kitchen seed schedules them. The `useDemoVault` setting is now the override beside a real vault.
+- **dte:D62 demoVaultResolution (NEW, under C1 + C2; absorbs D1):** the one resolution order: forced demo (marketing pages), else the configured vault or URL, else the bundled demo while `useDemoVault` allows (on by default, the web app's path), else "set the folder". The author's ruling: the folder setting first, the demo switch second and a fallback, never an override.
+  The canned TaskNotes replies parse synchronously in `data()`, so a seed computes on its first pass. Every
+  Obsidian seed lost its "(snapshot)" Frame/Cube Input and wires the live reader only. The demo tasks gained
+  the five kitchen-remodel tasks (a chain with a diamond) so the kitchen seed schedules them.
 - **Second cut, 35 → 26** (author: "more aggressive"; Sudoku stays). Absorbed as ONE lean group each: Units by
   dimension → Unit flow (K, the column-locks-to-its-header case; its algebra group was already F),
   Trust & data quality → Errors, null & logic (the Expect check only), LAMBDA helpers → Computed columns

@@ -1,4 +1,4 @@
-// dte:C1,D1,D62
+// dte:C1,D62
 // The bundled, read-only demo vault, served through the fileBridge FsProvider seam so
 // the Obsidian vault readers (Vault Folder, Import Obsidian Note) work with no real
 // vault — the web app included. It is selected by a SENTINEL vault root: with no vault
@@ -33,7 +33,7 @@ export function forceDemoVault(on: boolean): void {
 
 /** The vault root the Obsidian nodes read: the forced demo vault (the marketing pages),
  *  else the user's folder, else the bundled demo vault when the setting allows it
- *  (dte:D62 noSetupMeansDemo), else "" (the readers say to set the folder). One resolver
+ *  (dte:D62 demoVaultResolution), else "" (the readers say to set the folder). One resolver
  *  so every reader agrees. */
 export function getVaultRoot(): string {
   if (_forced) return DEMO_VAULT_ROOT;

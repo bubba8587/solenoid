@@ -1,7 +1,7 @@
 // dte:D62
 // Fake TaskNotes replies, the way demoVault fakes the vault: the marketing /obsidian page
 // forces them, and an app with no TaskNotes URL configured reads them while the "Use demo
-// vault" setting allows it (noSetupMeansDemo),
+// vault" setting allows it (demoVaultResolution),
 // so the TaskNotes node shows a real Tasks cube (and events/stats) without a running
 // TaskNotes HTTP API. The node routes to these canned replies — parsed by the SAME
 // taskNotesApi parsers as the real API — instead of the network. Writes are never faked.

@@ -46,7 +46,7 @@ describe("WriteObsidianNode.run() guards", () => {
     expect(n.statusMessage).toMatch(/arm/i);
   });
 
-  it("armed but off-desktop → the desktop-only guard; with no vault set, the demo's read-only guard (dte:D62 noSetupMeansDemo)", async () => {
+  it("armed but off-desktop → the desktop-only guard; with no vault set, the demo's read-only guard (dte:D62 demoVaultResolution)", async () => {
     const n = new WriteObsidianNode();
     n.stringLiterals.path = "x";
     n.enabled = true;
