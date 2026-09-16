@@ -2,8 +2,8 @@
 
 **OPEN items only, kept terse.** When an item lands, DELETE its line — git history and
 the dev-notes digests are the record. **1.4 is built** (2026-09-16: every promoted item in
-`1.4-plan.md` landed, the selling list + What's New deck are written; the deck walk, the
-re-merge and the tag are the author's; `1.4-plan.md` archives with the tag). The
+`1.4-plan.md` landed, the selling list + What's New deck are written and the author rewrote the deck
+2026-09-16; the re-merge and the tag are the author's; `1.4-plan.md` archives with the tag). The
 structural arcs are `2.0-plan.md` + `v2.0/`; parked-with-no-plan items: `deferrals.md`;
 ruled-out ideas: `out-of-scope.md`; settled rationale and rules: the decision tree (`dte.md`).
 
@@ -25,9 +25,6 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Release planning (author-run)
 
-- [ ] **Walk the What's New deck** (author, one slide per turn; slide 1 "Your Obsidian vault is a table"
-  was presented 2026-09-16 and not yet ruled). Cuts and rewordings land in `HelpDialogs.tsx` +
-  `release-notes-features.md` together.
 - [ ] **Re-merge `develop` → `main`, then tag v1.4.0** (the 1.4.0 bump is on both; `main` lacks the
   button-case sweep and the seed cuts); then walk `2.0-plan.md`.
 - [ ] **Ratify `out-of-scope.md`** (DRAFT since July, no ARR anywhere in it) — the deferral

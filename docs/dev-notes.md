@@ -6,6 +6,17 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-16c — the deck, ruled; author present)
+
+On `develop`, nothing pushed.
+- **What's New is eight slides in the author's own copy** (`HelpDialogs.tsx`); the drawn-cables slide is cut
+  and the author ruled the tool too minor for chrome or a key: **no toolbar button, no D hotkey**; Insert →
+  Draw a cable (and the palette) is the one way in (`subsystem-invariants.md` § Reach). Nothing else from the
+  since-v1.3 log earns a slide (author).
+- Left for 1.4 beyond the release process and ratification: the `NEW COPY` placeholder prose on the
+  Download / Examples / Packs pages goes live with the merge (Vercel serves `main`); the older-long-tooltip
+  sweep is an open author call.
+
 ### SESSION DIGEST (2026-09-16b — the walk, cut short; author present)
 
 On `develop`, nothing pushed. The author ordered one item per turn for every walk (memory).
