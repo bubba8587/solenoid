@@ -969,7 +969,7 @@ registerInternal("CONCAT", (...xs) => flat(xs).map(toStr).join(""));
 registerInternal("CONCATENATE", (...xs) => flat(xs).map(toStr).join(""));
 registerInternal("TEXTJOIN", (delim, ignoreEmpty, ...xs) => {
   const parts = flat(xs).map(toStr);
-  // ignore_empty defaults to TRUE (Excel); only an explicit FALSE/0 keeps empties.
+  // Only FALSE/0 keeps empties; a blank slot arrives as FALSE (dte:C80 blankArgIsExcelBlank).
   const kept = ignoreEmpty === false || ignoreEmpty === 0 ? parts : parts.filter((s) => s !== "");
   return kept.join(toStr(delim));
 });
@@ -1207,12 +1207,11 @@ registerInternal("CONVERT", (x, from, to) => {
 });
 
 // Lookup family, against OUR 1-D list model — the same `xmatchIndex` kernel the
-// XMATCH node runs, plus Excel's numeric mode arguments. A blank mode argument
-// (like an omitted one) means the Excel default — the SEQUENCE convention for
-// formula-authored blanks, not the node contract's wired-blank.
+// XMATCH node runs, plus Excel's numeric mode arguments (dte:C80 blankArgIsExcelBlank:
+// only an OMITTED mode is the default).
 const NA_NO_MATCH = () => solError("#N/A", "No match found in the lookup list");
 const xMatchModeArg = (v: unknown): XMatchMatchMode | SolError => {
-  if (v === undefined || v === null) return "exact";
+  if (v === undefined) return "exact";
   switch (toNum(v)) {
     case 0: return "exact";
     case 1: return "next_larger";
@@ -1222,7 +1221,7 @@ const xMatchModeArg = (v: unknown): XMatchMatchMode | SolError => {
   }
 };
 const xSearchModeArg = (v: unknown): XMatchSearchMode | SolError => {
-  if (v === undefined || v === null) return "first";
+  if (v === undefined) return "first";
   switch (toNum(v)) {
     case 1: return "first";
     case -1: return "last";

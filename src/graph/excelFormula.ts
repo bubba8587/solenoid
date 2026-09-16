@@ -1,4 +1,4 @@
-// dte:D4,C22
+// dte:D4,C22,C80
 import { solError, isSolError, isNaError } from "./errorValue";
 import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, isInternalFunction, ELIMINATED_FUNCTIONS, LEGACY_ALIASES, FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES, registryGeneration } from "./excelFunctions";
 import { isMissing, guardFinite } from "./valueKinds";
@@ -734,6 +734,22 @@ function applyCxOp(op: string, a: unknown, b: unknown): unknown {
   }
 }
 
+// dte:C80 blankArgIsExcelBlank — a BLANK slot reads as Excel's typed blank; an omitted
+// trailing argument stays `undefined` (the default). Declared per parameter, applied
+// once at the dispatch boundary for natives and Formula.js alike.
+type BlankType = "number" | "logical" | "text";
+const EXCEL_BLANK: Record<BlankType, unknown> = { number: 0, logical: false, text: "" };
+export const BLANK_ARG_TYPES: Record<string, Record<number, BlankType>> = {
+  TEXTJOIN: { 1: "logical" },
+  XMATCH: { 2: "number", 3: "number" },
+  XLOOKUP: { 4: "number", 5: "number" },
+};
+function excelBlanks(name: string, args: Ast[], argv: unknown[]): unknown[] {
+  const types = BLANK_ARG_TYPES[name];
+  if (!types) return argv;
+  return argv.map((v, i) => (args[i]?.t === "blank" && types[i] ? EXCEL_BLANK[types[i]] : v));
+}
+
 // Functions whose result DEPENDS ON a blank operand: `null` flows INTO them
 // (ISBLANK(null) is TRUE) while every other function propagates missing; errors
 // still short-circuit, and IF is listed so an `IF(x,,y)` branch can flow.
@@ -883,6 +899,7 @@ function evalAst(n: Ast, env: Record<string, unknown>): unknown {
       let argv = ETA_HOSTS.has(name)
         ? n.args.map((a) => etaOrEval(a, env))
         : n.args.map((a) => evalAst(a, env));
+      argv = excelBlanks(name, n.args, argv);
       // The IFERROR family must SEE the error, so it precedes the propagate check.
       if (ERROR_HANDLER_FUNCTIONS.has(name)) return applyErrorHandler(name, argv);
       // A tagged error doesn't survive a trip through Formula.js, so surface it here.
