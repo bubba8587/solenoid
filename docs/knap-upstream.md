@@ -140,7 +140,7 @@ talks about a missing `%}`, which sends you looking at your brackets rather than
 filter. Parentheses being rejected too is the part that makes it feel broken rather than
 merely limited.
 
-**Solenoid side:** our mail-merge seed sets the value first.
+**Solenoid side:** our mail-merge fixture (`tests/fixtures/mail-merge.json`) sets the value first.
 
 ### 5. A comma-joined `sort` parameter is read as one property name, and nothing warns
 

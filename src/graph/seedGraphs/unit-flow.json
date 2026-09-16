@@ -8,10 +8,10 @@
       "id": "hdr",
       "type": "NoteNode",
       "x": -723,
-      "y": 4174,
+      "y": 4521,
       "init": {
         "label": "Unit Flow: units live on the value; format is display",
-        "body": "A value's **unit** is part of the VALUE: a **Format Controller (FC)** authors it, **Convert** re-expresses it, and it **computes** — `5 m ÷ 1 s` IS `5 m/s`, `$ + 2` adopts the `$`, meters + seconds is a **#UNIT!**. The number **format** ($ places, 2 decimals) is a display lock that flows downstream, through passthroughs and transforms alike, until another FC overrides it. Lanes go simple → complex; watch the value boxes and the FC arrows.",
+        "body": "A value's **unit** is part of the VALUE: a **Format Controller (FC)** authors it, **Convert** re-expresses it, and it **computes** — `5 m ÷ 1 s` IS `5 m/s`, `$ + 2` adopts the `$`, meters + seconds is a **#UNIT!**. The number **format** ($ places, 2 decimals) is a display lock that flows downstream, through passthroughs and transforms alike, until another FC overrides it. Lanes go simple → complex; watch the value boxes and the FC arrows.\n\n**K** is the frame case: a column whose header carries a unit (`Revenue ($0.00)`) locks every cell to it, so Get Column and an Aggregate answer in dollars.",
         "color": "gray",
         "width": 900,
         "height": 190
@@ -20,8 +20,8 @@
     {
       "id": "capA",
       "type": "NoteNode",
-      "x": 261,
-      "y": 4127,
+      "x": 262,
+      "y": 4474,
       "init": {
         "label": "A · Lock once → carries DOWNSTREAM",
         "body": "The FC locks `$` + 2dp on Revenue. Every Display *after* it shows `$1,234.50` with **no trailing FC** of its own; the lock rides the value forward through passthroughs.",
@@ -34,7 +34,7 @@
       "id": "A_num",
       "type": "NumberInputNode",
       "x": 241,
-      "y": 4335,
+      "y": 4682,
       "init": {
         "label": "Revenue",
         "value": 1234.5
@@ -43,8 +43,8 @@
     {
       "id": "A_fc",
       "type": "FormatControllerNode",
-      "x": 423,
-      "y": 4339,
+      "x": 424,
+      "y": 4686,
       "init": {
         "label": "Format",
         "hostNodeId": "A_num",
@@ -61,7 +61,7 @@
       "id": "A_d1",
       "type": "DisplayNode",
       "x": 682,
-      "y": 4345,
+      "y": 4690,
       "init": {
         "label": "Dashboard"
       }
@@ -69,8 +69,8 @@
     {
       "id": "A_d2",
       "type": "DisplayNode",
-      "x": 947,
-      "y": 4345,
+      "x": 951,
+      "y": 4690,
       "init": {
         "label": "Report"
       }
@@ -79,7 +79,7 @@
       "id": "capB",
       "type": "NoteNode",
       "x": -290,
-      "y": 4565,
+      "y": 4912,
       "init": {
         "label": "B · Reaches UPSTREAM too",
         "body": "The FC sits at the **end**. Both Displays in *front* of it, even two hops up, still show `1,200 km`. The raw input box stays unformatted: the lock lives in the passthrough run, between the value's origin and the FC.",
@@ -91,8 +91,8 @@
     {
       "id": "B_num",
       "type": "NumberInputNode",
-      "x": -140,
-      "y": 4783,
+      "x": -144,
+      "y": 5130,
       "init": {
         "label": "Sensor",
         "value": 1200
@@ -102,7 +102,7 @@
       "id": "B_d1",
       "type": "DisplayNode",
       "x": 125,
-      "y": 4778,
+      "y": 5125,
       "init": {
         "label": "Live feed"
       }
@@ -110,8 +110,8 @@
     {
       "id": "B_d2",
       "type": "DisplayNode",
-      "x": 390,
-      "y": 4765,
+      "x": 394,
+      "y": 5114,
       "init": {
         "label": "Logged"
       }
@@ -119,8 +119,8 @@
     {
       "id": "B_fc",
       "type": "FormatControllerNode",
-      "x": 572,
-      "y": 4774,
+      "x": 577,
+      "y": 5123,
       "init": {
         "label": "Format",
         "hostNodeId": "B_d2",
@@ -136,8 +136,8 @@
     {
       "id": "capC",
       "type": "NoteNode",
-      "x": -334,
-      "y": -910,
+      "x": -335,
+      "y": -1250,
       "init": {
         "label": "C · A transform keeps the FORMAT; the unit COMPUTES",
         "body": "Each one costs `$10.00`. The **2-decimal format** is display — it flows on through the ×100 transform, so the lot total shows two places too. The **currency itself is physical**: `$10 × 100` is still money, so the total keeps its `$`. Dock an FC after the transform only to *override* the format from there on.",
@@ -149,8 +149,8 @@
     {
       "id": "C_num",
       "type": "NumberInputNode",
-      "x": -354,
-      "y": -1058,
+      "x": -356,
+      "y": -1398,
       "init": {
         "label": "Item price",
         "value": 10
@@ -159,8 +159,8 @@
     {
       "id": "C_fc",
       "type": "FormatControllerNode",
-      "x": -172,
-      "y": -1054,
+      "x": -173,
+      "y": -1394,
       "init": {
         "label": "Format",
         "hostNodeId": "C_num",
@@ -176,8 +176,8 @@
     {
       "id": "C_d1",
       "type": "DisplayNode",
-      "x": 87,
-      "y": -1048,
+      "x": 85,
+      "y": -1390,
       "init": {
         "label": "Each"
       }
@@ -185,8 +185,8 @@
     {
       "id": "C_mul",
       "type": "ArithmeticNode",
-      "x": 352,
-      "y": -1084,
+      "x": 354,
+      "y": -1426,
       "init": {
         "label": "× 100 (a lot)",
         "op": "mul"
@@ -199,8 +199,8 @@
     {
       "id": "C_d2",
       "type": "DisplayNode",
-      "x": 617,
-      "y": -1040,
+      "x": 623,
+      "y": -1382,
       "init": {
         "label": "Lot total"
       }
@@ -209,7 +209,7 @@
       "id": "capD",
       "type": "NoteNode",
       "x": -290,
-      "y": 756,
+      "y": 1097,
       "init": {
         "label": "D · Convert AUTHORS the new unit",
         "body": "`mi → km` re-expresses the value in kilometers and **tags the value** with that unit. It rides straight through the Display, and the FC on the result **inherits** `km` (→ → arrows) — a marathon reads `42.20 km`.",
@@ -221,8 +221,8 @@
     {
       "id": "D_num",
       "type": "NumberInputNode",
-      "x": -140,
-      "y": 964,
+      "x": -144,
+      "y": 1305,
       "init": {
         "label": "Marathon (mi)",
         "value": 26.21875
@@ -232,7 +232,7 @@
       "id": "D_conv",
       "type": "ConvertNode",
       "x": 125,
-      "y": 857,
+      "y": 1198,
       "init": {
         "label": "mi → km",
         "fromUnit": "mi",
@@ -242,8 +242,8 @@
     {
       "id": "D_d1",
       "type": "DisplayNode",
-      "x": 390,
-      "y": 946,
+      "x": 394,
+      "y": 1289,
       "init": {
         "label": "Metric"
       }
@@ -251,8 +251,8 @@
     {
       "id": "D_fc",
       "type": "FormatControllerNode",
-      "x": 572,
-      "y": 955,
+      "x": 577,
+      "y": 1298,
       "init": {
         "label": "Format",
         "hostNodeId": "D_d1",
@@ -268,8 +268,8 @@
     {
       "id": "capE",
       "type": "NoteNode",
-      "x": -428,
-      "y": 2529,
+      "x": -427,
+      "y": 2871,
       "init": {
         "label": "E · A selector KEEPS the unit",
         "body": "IF picks a branch from the condition (in stock → Sale price). It only *selects* a value, never transforms it, so the chosen branch's `$` rides straight through. The result reads `$80.00` with no trailing FC.",
@@ -281,8 +281,8 @@
     {
       "id": "E_sale",
       "type": "NumberInputNode",
-      "x": -28,
-      "y": 2921,
+      "x": -27,
+      "y": 3267,
       "init": {
         "label": "Sale price",
         "value": 80
@@ -292,7 +292,7 @@
       "id": "E_saleFc",
       "type": "FormatControllerNode",
       "x": 155,
-      "y": 2925,
+      "y": 3271,
       "init": {
         "label": "Format",
         "hostNodeId": "E_sale",
@@ -308,8 +308,8 @@
     {
       "id": "E_list",
       "type": "NumberInputNode",
-      "x": -28,
-      "y": 3069,
+      "x": -27,
+      "y": 3415,
       "init": {
         "label": "List price",
         "value": 100
@@ -319,7 +319,7 @@
       "id": "E_listFc",
       "type": "FormatControllerNode",
       "x": 155,
-      "y": 3073,
+      "y": 3419,
       "init": {
         "label": "Format",
         "hostNodeId": "E_list",
@@ -335,8 +335,8 @@
     {
       "id": "E_units",
       "type": "NumberInputNode",
-      "x": -278,
-      "y": 2747,
+      "x": -281,
+      "y": 3089,
       "init": {
         "label": "Units in stock",
         "value": 5
@@ -345,8 +345,8 @@
     {
       "id": "E_cmp",
       "type": "ComparisonNode",
-      "x": 68,
-      "y": 2705,
+      "x": 66,
+      "y": 3047,
       "init": {
         "label": "in stock? (> 0)",
         "op": "gt"
@@ -359,8 +359,8 @@
     {
       "id": "E_if",
       "type": "IfNode",
-      "x": 425,
-      "y": 2890,
+      "x": 426,
+      "y": 3234,
       "init": {
         "label": "IF in stock"
       },
@@ -373,8 +373,8 @@
     {
       "id": "E_disp",
       "type": "DisplayNode",
-      "x": 690,
-      "y": 2932,
+      "x": 695,
+      "y": 3276,
       "init": {
         "label": "Charged"
       }
@@ -383,7 +383,7 @@
       "id": "capF",
       "type": "NoteNode",
       "x": -288,
-      "y": 3702,
+      "y": 4049,
       "init": {
         "label": "F · Units COMPUTE — and cancel to a RATIO",
         "body": "True dimensional algebra, not labels: divide a length by a time and the result **is** a speed — the `m/s` is derived from the dimensions. Divide meters by meters and the units **cancel to a pure RATIO** — it reads `5:1`, formats naturally as a **percent**, and an FC can't re-label it `$` (**#UNIT!**): a known-dimensionless number isn't money.",
@@ -395,8 +395,8 @@
     {
       "id": "F_dist",
       "type": "NumberInputNode",
-      "x": -309,
-      "y": 3299,
+      "x": -308,
+      "y": 3646,
       "init": {
         "label": "Distance",
         "value": 5
@@ -406,7 +406,7 @@
       "id": "F_distFc",
       "type": "FormatControllerNode",
       "x": -126,
-      "y": 3316,
+      "y": 3663,
       "init": {
         "label": "Format",
         "hostNodeId": "F_dist",
@@ -419,8 +419,8 @@
     {
       "id": "F_time",
       "type": "NumberInputNode",
-      "x": -309,
-      "y": 3433,
+      "x": -308,
+      "y": 3780,
       "init": {
         "label": "Time",
         "value": 1
@@ -430,7 +430,7 @@
       "id": "F_timeFc",
       "type": "FormatControllerNode",
       "x": -126,
-      "y": 3451,
+      "y": 3798,
       "init": {
         "label": "Format",
         "hostNodeId": "F_time",
@@ -444,7 +444,7 @@
       "id": "F_div",
       "type": "ArithmeticNode",
       "x": 144,
-      "y": 3325,
+      "y": 3670,
       "init": {
         "label": "d ÷ t",
         "op": "div"
@@ -457,8 +457,8 @@
     {
       "id": "F_d1",
       "type": "DisplayNode",
-      "x": 409,
-      "y": 3370,
+      "x": 413,
+      "y": 3715,
       "init": {
         "label": "Speed"
       }
@@ -466,8 +466,8 @@
     {
       "id": "F_len",
       "type": "NumberInputNode",
-      "x": -309,
-      "y": 3568,
+      "x": -308,
+      "y": 3915,
       "init": {
         "label": "Rise",
         "value": 10
@@ -477,7 +477,7 @@
       "id": "F_lenFc",
       "type": "FormatControllerNode",
       "x": -126,
-      "y": 3585,
+      "y": 3932,
       "init": {
         "label": "Format",
         "hostNodeId": "F_len",
@@ -490,8 +490,8 @@
     {
       "id": "F_run",
       "type": "NumberInputNode",
-      "x": -309,
-      "y": 3910,
+      "x": -308,
+      "y": 4257,
       "init": {
         "label": "Run",
         "value": 2
@@ -501,7 +501,7 @@
       "id": "F_runFc",
       "type": "FormatControllerNode",
       "x": -126,
-      "y": 3928,
+      "y": 4275,
       "init": {
         "label": "Format",
         "hostNodeId": "F_run",
@@ -515,7 +515,7 @@
       "id": "F_div2",
       "type": "ArithmeticNode",
       "x": 144,
-      "y": 3698,
+      "y": 4043,
       "init": {
         "label": "rise ÷ run",
         "op": "div"
@@ -528,8 +528,8 @@
     {
       "id": "F_d2",
       "type": "DisplayNode",
-      "x": 409,
-      "y": 3730,
+      "x": 413,
+      "y": 4077,
       "init": {
         "label": "Slope"
       }
@@ -537,8 +537,8 @@
     {
       "id": "capG",
       "type": "NoteNode",
-      "x": -209,
-      "y": 2019,
+      "x": -208,
+      "y": 2361,
       "init": {
         "label": "G · A bare number ADOPTS the unit",
         "body": "A plain number in an operation that needs a unit takes the other side's: `$5 + 2` is `$7`, and a `$` list **SUMs to $60**. Only two genuinely different dimensions (meters + seconds) refuse with `#UNIT!`.",
@@ -550,8 +550,8 @@
     {
       "id": "G_price",
       "type": "NumberInputNode",
-      "x": -222,
-      "y": 1871,
+      "x": -221,
+      "y": 2213,
       "init": {
         "label": "Price",
         "value": 5
@@ -561,7 +561,7 @@
       "id": "G_priceFc",
       "type": "FormatControllerNode",
       "x": -39,
-      "y": 1875,
+      "y": 2217,
       "init": {
         "label": "Format",
         "hostNodeId": "G_price",
@@ -577,8 +577,8 @@
     {
       "id": "G_add",
       "type": "ArithmeticNode",
-      "x": 219,
-      "y": 1845,
+      "x": 220,
+      "y": 2185,
       "init": {
         "label": "+ 2 fee",
         "op": "add"
@@ -591,8 +591,8 @@
     {
       "id": "G_d1",
       "type": "DisplayNode",
-      "x": 484,
-      "y": 1883,
+      "x": 489,
+      "y": 2223,
       "init": {
         "label": "Total — adopts $"
       }
@@ -600,8 +600,8 @@
     {
       "id": "G_list",
       "type": "ListInputNode",
-      "x": -222,
-      "y": 2227,
+      "x": -221,
+      "y": 2569,
       "init": {
         "label": "Line items",
         "valueKeys": [
@@ -616,7 +616,7 @@
       "id": "G_listFc",
       "type": "FormatControllerNode",
       "x": -39,
-      "y": 2330,
+      "y": 2672,
       "init": {
         "label": "Format",
         "hostNodeId": "G_list",
@@ -629,8 +629,8 @@
     {
       "id": "G_sum",
       "type": "AggregateNode",
-      "x": 219,
-      "y": 2243,
+      "x": 220,
+      "y": 2583,
       "init": {
         "label": "SUM",
         "op": "sum"
@@ -639,8 +639,8 @@
     {
       "id": "G_d2",
       "type": "DisplayNode",
-      "x": 484,
-      "y": 2273,
+      "x": 489,
+      "y": 2613,
       "init": {
         "label": "Invoice"
       }
@@ -649,7 +649,7 @@
       "id": "capH",
       "type": "NoteNode",
       "x": -201,
-      "y": -387,
+      "y": -44,
       "init": {
         "label": "H · Convert has PRIMACY — or it errors",
         "body": "A Convert **dictates the FC in front of it** (← ← arrows, dropdown locked to `m`) so the value is tagged in the unit it reads. Its `toUnit` rides the value out — the result shows **yards** with no trailing FC. Feed it a value in the wrong DIMENSION (a `$`) and it refuses with `#UNIT!` — primacy or an error, never a silent pass.",
@@ -661,8 +661,8 @@
     {
       "id": "H_num",
       "type": "NumberInputNode",
-      "x": -222,
-      "y": -522,
+      "x": -221,
+      "y": -178,
       "init": {
         "label": "Length",
         "value": 5
@@ -672,7 +672,7 @@
       "id": "H_fc",
       "type": "FormatControllerNode",
       "x": -39,
-      "y": -504,
+      "y": -160,
       "init": {
         "label": "Format",
         "hostNodeId": "H_num",
@@ -685,8 +685,8 @@
     {
       "id": "H_conv",
       "type": "ConvertNode",
-      "x": 219,
-      "y": -620,
+      "x": 220,
+      "y": -278,
       "init": {
         "label": "m → yd",
         "fromUnit": "m",
@@ -696,8 +696,8 @@
     {
       "id": "H_d1",
       "type": "DisplayNode",
-      "x": 484,
-      "y": -518,
+      "x": 489,
+      "y": -176,
       "init": {
         "label": "In yards"
       }
@@ -705,8 +705,8 @@
     {
       "id": "H_bad",
       "type": "NumberInputNode",
-      "x": -222,
-      "y": -139,
+      "x": -221,
+      "y": 204,
       "init": {
         "label": "Budget",
         "value": 5
@@ -716,7 +716,7 @@
       "id": "H_badFc",
       "type": "FormatControllerNode",
       "x": -39,
-      "y": -122,
+      "y": 222,
       "init": {
         "label": "Format",
         "hostNodeId": "H_bad",
@@ -729,8 +729,8 @@
     {
       "id": "H_conv2",
       "type": "ConvertNode",
-      "x": 219,
-      "y": -235,
+      "x": 220,
+      "y": 107,
       "init": {
         "label": "m → km",
         "fromUnit": "m",
@@ -740,8 +740,8 @@
     {
       "id": "H_d2",
       "type": "DisplayNode",
-      "x": 484,
-      "y": -139,
+      "x": 489,
+      "y": 203,
       "init": {
         "label": "$ into a length — #UNIT!"
       }
@@ -750,7 +750,7 @@
       "id": "capI",
       "type": "NoteNode",
       "x": -207,
-      "y": 1420,
+      "y": 1761,
       "init": {
         "label": "I · A CUSTOM unit is a real dimension",
         "body": "The FC's custom unit mints an opaque dimension: `widgets ÷ s` reads **widgets/s**, `widgets + widgets` works, `widgets + s` is `#UNIT!` — the algebra treats your unit like any physical one.",
@@ -762,8 +762,8 @@
     {
       "id": "I_num",
       "type": "NumberInputNode",
-      "x": -243,
-      "y": 1274,
+      "x": -242,
+      "y": 1615,
       "init": {
         "label": "Batch",
         "value": 5
@@ -773,7 +773,7 @@
       "id": "I_fc",
       "type": "FormatControllerNode",
       "x": -60,
-      "y": 1280,
+      "y": 1621,
       "init": {
         "label": "Format",
         "hostNodeId": "I_num",
@@ -787,8 +787,8 @@
     {
       "id": "I_time",
       "type": "NumberInputNode",
-      "x": -213,
-      "y": 1628,
+      "x": -212,
+      "y": 1969,
       "init": {
         "label": "Every",
         "value": 1
@@ -798,7 +798,7 @@
       "id": "I_timeFc",
       "type": "FormatControllerNode",
       "x": -30,
-      "y": 1645,
+      "y": 1986,
       "init": {
         "label": "Format",
         "hostNodeId": "I_time",
@@ -811,8 +811,8 @@
     {
       "id": "I_div",
       "type": "ArithmeticNode",
-      "x": 240,
-      "y": 1413,
+      "x": 241,
+      "y": 1752,
       "init": {
         "label": "rate",
         "op": "div"
@@ -825,8 +825,8 @@
     {
       "id": "I_d1",
       "type": "DisplayNode",
-      "x": 505,
-      "y": 1458,
+      "x": 510,
+      "y": 1796,
       "init": {
         "label": "Throughput"
       }
@@ -834,8 +834,8 @@
     {
       "id": "F_pctFc",
       "type": "FormatControllerNode",
-      "x": 591,
-      "y": 3739,
+      "x": 596,
+      "y": 4086,
       "init": {
         "label": "Format",
         "hostNodeId": "F_d2",
@@ -851,8 +851,8 @@
     {
       "id": "capJ",
       "type": "NoteNode",
-      "x": -238,
-      "y": 311,
+      "x": -237,
+      "y": 652,
       "init": {
         "label": "J · The Equation node derives the unknown's UNIT",
         "body": "Wire `v` in **m/s** and `t` in **s**, leave `d` unwired — the solve isolates `d = v·t` and runs the same dimensional algebra: the answer comes out in **meters**. Inconsistent knowns are a `#UNIT!`; the Check output refuses to compare different dimensions.",
@@ -865,7 +865,7 @@
       "id": "J_v",
       "type": "NumberInputNode",
       "x": -258,
-      "y": 177,
+      "y": 518,
       "init": {
         "label": "Speed",
         "value": 5
@@ -874,8 +874,8 @@
     {
       "id": "J_vFc",
       "type": "FormatControllerNode",
-      "x": -76,
-      "y": 194,
+      "x": -75,
+      "y": 535,
       "init": {
         "label": "Format",
         "hostNodeId": "J_v",
@@ -889,7 +889,7 @@
       "id": "J_t",
       "type": "NumberInputNode",
       "x": -258,
-      "y": 539,
+      "y": 880,
       "init": {
         "label": "For",
         "value": 10
@@ -898,8 +898,8 @@
     {
       "id": "J_tFc",
       "type": "FormatControllerNode",
-      "x": -76,
-      "y": 557,
+      "x": -75,
+      "y": 898,
       "init": {
         "label": "Format",
         "hostNodeId": "J_t",
@@ -912,8 +912,8 @@
     {
       "id": "J_eq",
       "type": "EquationNode",
-      "x": 195,
-      "y": 217,
+      "x": 196,
+      "y": 556,
       "init": {
         "label": "d = v · t",
         "expr": "d = v * t"
@@ -922,8 +922,8 @@
     {
       "id": "J_d",
       "type": "DisplayNode",
-      "x": 520,
-      "y": 339,
+      "x": 525,
+      "y": 678,
       "init": {
         "label": "Distance — derived m"
       }
@@ -932,7 +932,7 @@
       "id": "grp-a",
       "type": "GroupNode",
       "x": 217,
-      "y": 4069,
+      "y": 4416,
       "init": {
         "label": "A · Locks carry downstream",
         "members": [
@@ -944,7 +944,7 @@
         ],
         "color": "gold",
         "collapsed": false,
-        "width": 938,
+        "width": 942,
         "height": 400
       }
     },
@@ -952,7 +952,7 @@
       "id": "grp-b",
       "type": "GroupNode",
       "x": -314,
-      "y": 4507,
+      "y": 4854,
       "init": {
         "label": "B · Locks reach upstream",
         "members": [
@@ -964,15 +964,15 @@
         ],
         "color": "blue",
         "collapsed": false,
-        "width": 1075,
-        "height": 397
+        "width": 1079,
+        "height": 399
       }
     },
     {
       "id": "grp-c",
       "type": "GroupNode",
-      "x": -378,
-      "y": -1142,
+      "x": -380,
+      "y": -1484,
       "init": {
         "label": "C · A transform keeps the format",
         "members": [
@@ -985,15 +985,15 @@
         ],
         "color": "purple",
         "collapsed": false,
-        "width": 1203,
-        "height": 426
+        "width": 1211,
+        "height": 428
       }
     },
     {
       "id": "grp-d",
       "type": "GroupNode",
       "x": -314,
-      "y": 698,
+      "y": 1039,
       "init": {
         "label": "D · Convert authors the unit",
         "members": [
@@ -1005,15 +1005,15 @@
         ],
         "color": "teal",
         "collapsed": false,
-        "width": 1075,
+        "width": 1079,
         "height": 480
       }
     },
     {
       "id": "grp-e",
       "type": "GroupNode",
-      "x": -452,
-      "y": 2471,
+      "x": -451,
+      "y": 2813,
       "init": {
         "label": "E · A selector keeps the unit",
         "members": [
@@ -1029,15 +1029,15 @@
         ],
         "color": "lime",
         "collapsed": false,
-        "width": 1350,
-        "height": 732
+        "width": 1354,
+        "height": 737
       }
     },
     {
       "id": "grp-f",
       "type": "GroupNode",
-      "x": -333,
-      "y": 3241,
+      "x": -332,
+      "y": 3588,
       "init": {
         "label": "F · Units compute and cancel",
         "members": [
@@ -1058,15 +1058,15 @@
         ],
         "color": "pink",
         "collapsed": false,
-        "width": 1112,
+        "width": 1116,
         "height": 790
       }
     },
     {
       "id": "grp-g",
       "type": "GroupNode",
-      "x": -246,
-      "y": 1787,
+      "x": -245,
+      "y": 2127,
       "init": {
         "label": "G · A bare number adopts the unit",
         "members": [
@@ -1082,15 +1082,15 @@
         ],
         "color": "sky",
         "collapsed": false,
-        "width": 938,
-        "height": 646
+        "width": 942,
+        "height": 648
       }
     },
     {
       "id": "grp-h",
       "type": "GroupNode",
-      "x": -246,
-      "y": -678,
+      "x": -245,
+      "y": -336,
       "init": {
         "label": "H · Convert has primacy",
         "members": [
@@ -1106,15 +1106,15 @@
         ],
         "color": "green",
         "collapsed": false,
-        "width": 938,
-        "height": 759
+        "width": 942,
+        "height": 758
       }
     },
     {
       "id": "grp-i",
       "type": "GroupNode",
-      "x": -267,
-      "y": 1216,
+      "x": -266,
+      "y": 1557,
       "init": {
         "label": "I · A custom unit is a real dimension",
         "members": [
@@ -1128,15 +1128,15 @@
         ],
         "color": "amber",
         "collapsed": false,
-        "width": 980,
-        "height": 533
+        "width": 984,
+        "height": 532
       }
     },
     {
       "id": "grp-j",
       "type": "GroupNode",
       "x": -282,
-      "y": 119,
+      "y": 460,
       "init": {
         "label": "J · Equation derives the unit",
         "members": [
@@ -1150,8 +1150,109 @@
         ],
         "color": "violet",
         "collapsed": false,
-        "width": 1011,
+        "width": 1015,
         "height": 541
+      }
+    },
+    {
+      "id": "ub-nB",
+      "type": "NoteNode",
+      "x": -556,
+      "y": -960,
+      "init": {
+        "label": "B · a frame column LOCKS to its header's unit",
+        "body": "Head a Build Frame column `Revenue ($0.00)` and the column is locked to **$**. Get Column carries the unit out as a list, and SUM keeps it — the total reads **$18.00**.",
+        "color": "violet",
+        "width": 360,
+        "height": 150
+      }
+    },
+    {
+      "id": "ub-tblA",
+      "type": "TableInputNode",
+      "x": -440,
+      "y": -772,
+      "init": {
+        "label": "Revenue rows",
+        "tableText": "5\n6\n7",
+        "dataType": "number"
+      }
+    },
+    {
+      "id": "ub-hdrA",
+      "type": "ListInputNode",
+      "x": -380,
+      "y": -569,
+      "init": {
+        "label": "Header",
+        "dataType": "string",
+        "valueKeys": [
+          "v0"
+        ]
+      },
+      "stringLiterals": {
+        "v0": "Revenue ($0.00)"
+      }
+    },
+    {
+      "id": "ub-bfA",
+      "type": "BuildFrameNode",
+      "x": -104,
+      "y": -691,
+      "init": {
+        "label": "Build Frame"
+      }
+    },
+    {
+      "id": "ub-gcA",
+      "type": "GetColumnNode",
+      "x": 225,
+      "y": -664,
+      "init": {
+        "label": "Get Revenue",
+        "readAs": "number"
+      },
+      "stringLiterals": {
+        "name": "Revenue"
+      }
+    },
+    {
+      "id": "ub-aggA",
+      "type": "AggregateNode",
+      "x": 554,
+      "y": -656,
+      "init": {
+        "label": "Total revenue",
+        "op": "sum"
+      }
+    },
+    {
+      "id": "ub-dispA",
+      "type": "DisplayNode",
+      "x": 823,
+      "y": -625,
+      "init": {
+        "label": "= $18.00"
+      }
+    },
+    {
+      "id": "ub-grp",
+      "type": "GroupNode",
+      "x": -580,
+      "y": -1018,
+      "init": {
+        "label": "K · A column locks to its unit",
+        "members": [
+          "ub-nB",
+          "ub-tblA",
+          "ub-hdrA",
+          "ub-bfA",
+          "ub-gcA",
+          "ub-aggA",
+          "ub-dispA"
+        ],
+        "width": 1611,
+        "height": 644
       }
     }
   ],
@@ -1472,6 +1573,36 @@
       "source": "J_eq",
       "sourceOutput": "d",
       "target": "J_d",
+      "targetInput": "in"
+    },
+    {
+      "source": "ub-tblA",
+      "sourceOutput": "table",
+      "target": "ub-bfA",
+      "targetInput": "matrix"
+    },
+    {
+      "source": "ub-hdrA",
+      "sourceOutput": "list",
+      "target": "ub-bfA",
+      "targetInput": "headers"
+    },
+    {
+      "source": "ub-bfA",
+      "sourceOutput": "frame",
+      "target": "ub-gcA",
+      "targetInput": "frame"
+    },
+    {
+      "source": "ub-gcA",
+      "sourceOutput": "values",
+      "target": "ub-aggA",
+      "targetInput": "list"
+    },
+    {
+      "source": "ub-aggA",
+      "sourceOutput": "result",
+      "target": "ub-dispA",
       "targetInput": "in"
     }
   ],

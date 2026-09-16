@@ -54,6 +54,14 @@ controlDrivenRetype: keep), and the new rule landed as a node before its code (C
   computes on its first pass). Every Obsidian seed lost its "(snapshot)" Frame/Cube Input and wires the
   live reader only. The demo tasks gained the five kitchen-remodel tasks (a chain with a diamond) so the
   kitchen seed schedules them. The `useDemoVault` setting is now the override beside a real vault.
+- **Second cut, 35 → 26** (author: "more aggressive"; Sudoku stays). Absorbed as ONE lean group each: Units by
+  dimension → Unit flow (K, the column-locks-to-its-header case; its algebra group was already F),
+  Trust & data quality → Errors, null & logic (the Expect check only), LAMBDA helpers → Computed columns
+  (BYROW + MAP), Pivot tables → Table verbs (share-of-grand + subtotals), Daily notes → Your vault as a
+  table. Trip split + Debt payoff → `planners`. Live market data deleted (keyed, CORS-blocked, never tuned).
+  Mail merge deleted (Report showcase already carries a merge group). `pivot-tables.json` and
+  `mail-merge.json` moved to `tests/fixtures/` so `pivotSeed.test.ts` / `mailMergeSeed.test.ts` keep
+  pinning the eight cross-tabs and the Knap merge.
 - **Tuner gotcha:** `tune-seeds.mjs` with several ids dies after the first patch ("Execution context was
   destroyed"): the JSON write triggers Vite's full reload under the open page. One id per run.
 - **Open (owner):** the What's New slide walk (paused for the seed cleanup); ratify the tree (validate

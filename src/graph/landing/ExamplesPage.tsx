@@ -17,17 +17,14 @@ const GALLERY: { head: string; items: { id: string; label: string }[] }[] = [
     items: [
       { id: "vault-as-a-table", label: "Your vault as a table" },
       { id: "tasks-from-tasknotes", label: "Tasks from TaskNotes" },
-      { id: "daily-habits", label: "Daily notes as a time series" },
       { id: "kitchen-remodel-tasknotes", label: "Kitchen remodel from TaskNotes" },
     ],
   },
   {
     head: "Tables",
     items: [
-      { id: "pivot-tables", label: "Pivot tables" },
       { id: "table-verbs", label: "Table verbs" },
       { id: "computed-columns", label: "Computed columns & @" },
-      { id: "lambda-helpers", label: "LAMBDA helpers" },
       { id: "record-cards", label: "Record cards" },
       { id: "cubes", label: "Cubes: nested tables" },
     ],
@@ -37,8 +34,6 @@ const GALLERY: { head: string; items: { id: string; label: string }[] }[] = [
     items: [
       { id: "dimensional-flow", label: "Types & shapes" },
       { id: "null-and-logical", label: "Errors, null & logic" },
-      { id: "trust-data-quality", label: "Trust & data quality" },
-      { id: "units-by-dimension", label: "Units by dimension" },
       { id: "unit-flow", label: "Unit flow" },
     ],
   },
@@ -53,10 +48,8 @@ const GALLERY: { head: string; items: { id: string; label: string }[] }[] = [
     head: "Charts & reports",
     items: [
       { id: "chart-showcase", label: "Charts & visuals" },
-      { id: "live-market-data", label: "Live market data" },
       { id: "garden-dashboard", label: "Garden dashboard" },
       { id: "report-showcase", label: "Report showcase" },
-      { id: "mail-merge", label: "Mail merge" },
     ],
   },
   {
@@ -65,8 +58,7 @@ const GALLERY: { head: string; items: { id: string; label: string }[] }[] = [
       { id: "personal-finance", label: "Personal finance" },
       { id: "decision-matrix", label: "Decision Matrix" },
       { id: "allocator", label: "Budget Allocator" },
-      { id: "trip-split", label: "Trip split" },
-      { id: "debt-payoff", label: "Debt payoff" },
+      { id: "planners", label: "Planners" },
       { id: "famous-math", label: "Famous math" },
       { id: "product-launch-gantt", label: "Product launch (Gantt)" },
       { id: "sudoku-solver", label: "Sudoku solver" },

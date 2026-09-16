@@ -25,8 +25,8 @@ makes something a slide. **The 1.3 list shipped with v1.3 and lives in git histo
   shows all of it with no vault of your own.
 - **[slide] TaskNotes, live.** The TaskNotes node feeds your tasks (a cube), calendar
   (a frame) or stats straight off the plugin's API; Write Tasks sends rows back as new or
-  updated tasks. The "Which task next" and "Kitchen remodel" examples plan a week from a
-  real task list.
+  updated tasks. The "Tasks from TaskNotes" and "Kitchen remodel" examples plan a week from
+  a real task list.
 - **[slide] Reports are templates.** Note and Report bodies speak Knap, Obsidian's
   template language: `{{ name }}` embeds a wired value as the canvas shows it, `{% if %}`
   and `{% for %}` build the prose, and a wired template note supplies the text with its
@@ -50,7 +50,7 @@ makes something a slide. **The 1.3 list shipped with v1.3 and lives in git histo
 - **[slide] Planners.** Payoff Planner rolls a debt list month by month, avalanche or
   snowball, with the freed payments cascading; Group Cost Settle turns a shared-expense
   ledger into who-owes-whom, by totals or by transaction; Earned Value scores a plan
-  against a status date. The Debt payoff and Trip split examples show each.
+  against a status date. The Planners example shows the first two.
 - **[slide] Categorical columns.** Pick Chip on a text column and its distinct values
   become tinted chips in the table popup and on the Format Controller; entry on that
   column offers the existing values instead of a blank field.

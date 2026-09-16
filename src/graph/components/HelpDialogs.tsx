@@ -14,7 +14,7 @@ const SLIDES: Slide[] = [
   },
   {
     title: "TaskNotes, live",
-    body: "The TaskNotes node feeds your tasks, calendar or stats straight off the plugin's API, and Write Tasks sends rows back as new or updated tasks. The Which task next and Kitchen remodel examples plan a week from a real task list.",
+    body: "The TaskNotes node feeds your tasks, calendar or stats straight off the plugin's API, and Write Tasks sends rows back as new or updated tasks. The Tasks from TaskNotes and Kitchen remodel examples plan a week from a real task list.",
   },
   {
     title: "Reports are templates",
