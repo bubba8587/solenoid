@@ -6,6 +6,28 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-16b — the walk, cut short; author present)
+
+On `develop`, nothing pushed. The author ordered one item per turn for every walk (memory).
+
+- **C80 ratified** by the author (`OWNER_RATIFIED` = A1, C80).
+- **Demo vault is a fallback, not an override** (author): Settings ▸ Obsidian lists the vault folder first, "Use demo
+  vault" second (on by default; the author's help text). A configured vault or TaskNotes URL always wins; the demo
+  is used only with nothing configured and the switch on; off + nothing = "set the folder". TaskNotes' canned
+  replies follow the same switch. **D1 folded into D62** (now `demoVaultResolution`, under C1 + C2). The author
+  rejected two rewrites of D62's prose ("gobbledygook", "horrible writer") and ended the session unratified; the
+  node's wording is the author's to fix. Do not re-present agent prose for it.
+- **Cables reach 2px into their sockets** (`SOCKET_OVERLAP` / `intoSocket`, `cablePaths.ts`): RF anchors an edge
+  at the handle's outer edge on a half-pixel, and the abutting anti-aliased stroke and glyph read as a 1px gap
+  (worst on square sockets). Applied to the drawn edge, the drag line and the GPU geometry; pills and lanes exempt
+  (the author saw no seam there). `subsystem-invariants.md` § surface contract.
+- Chrome: the Filter Aa toggle takes `--node-accent` (one `MatchCaseButton` for Filter + Frame filter); header
+  label letter-spacing 0.08 → 0.05em; connection-card selects wear the app chevron; Vault Folder has one refresh
+  (status row rescans folders too) and labelled Filter / Date in name fields.
+- DTE tool: `show` crashes under cp1252 on `→` (logged in `DTE/FEEDBACK.md` #4); use `PYTHONIOENCODING=utf-8`.
+- **Open (owner):** the walk — D62 (author's wording), D42, E11, the deck (nine slides, none ruled), the B ring;
+  everything else in the 2026-09-16 digest below still stands.
+
 ### SESSION DIGEST (2026-09-16 — the 1.4 release tail; solo, author delegated)
 
 All on `develop`, merged to `main` at 1.4.0, nothing pushed; the tag is the author's.

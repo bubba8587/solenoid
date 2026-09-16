@@ -108,7 +108,8 @@ The site is four pages sharing `landing/siteNav.tsx` chrome (see architecture.md
 
 Every rule and settled decision is a node (2026-09-15). DTE-tool findings live in the DTE repo's
 FEEDBACK file.
-- [ ] **Author ratifies the tree** — only A1 is ratified. `python tools/dte.py validate` prints the
+- [ ] **Author ratifies the tree** — A1 and C80 are ratified; D62 is the author's to reword first (two agent
+  drafts rejected 2026-09-16), then D42 / E11 (contested, kept), then the B ring. `python tools/dte.py validate` prints the
   unratified list; `ratify <ID>... --by`, and the same change adds the ID to `OWNER_RATIFIED` in
   `rules.test.ts` (dte:C7 authorRuled).
 - [ ] **Apply the WHY-comment→citation practice** (dte:C57 commentMinimalism): migrate rationale
