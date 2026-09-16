@@ -24,7 +24,7 @@ On `develop`, nothing pushed. The author ordered one item per turn for every wal
 - Chrome: the Filter Aa toggle takes `--node-accent` (one `MatchCaseButton` for Filter + Frame filter); header
   label letter-spacing 0.08 → 0.05em; connection-card selects wear the app chevron; Vault Folder has one refresh
   (status row rescans folders too) and labelled Filter / Date in name fields.
-- DTE tool: `show` crashes under cp1252 on `→` (logged in `DTE/FEEDBACK.md` #4); use `PYTHONIOENCODING=utf-8`.
+- DTE tool: `show` crashes under cp1252 on `→` (logged in the DTE repo's FEEDBACK #4); use `PYTHONIOENCODING=utf-8`.
 - **Open (owner):** the walk — D62 (author's wording), D42, E11, the deck (nine slides, none ruled), the B ring;
   everything else in the 2026-09-16 digest below still stands.
 
