@@ -63,7 +63,7 @@ is parked there.
 - **`pack-architecture.md`** — the pack authoring guide (framework BUILT); the settled
   calls are dte:B15 leanCore and its children.
 - **`pack-composite-plans.md`** — queued composite-shaped pack nodes; the pack program
-  is `1.4-plan.md` E3 (Materials & Mechanical content) + `2.0-plan.md` Arc 7 (the
+  is `archive/1.4-plan.md` E3 (Materials & Mechanical content) + `2.0-plan.md` Arc 7 (the
   composite pack shape + distribution).
 - **`release-notes-features.md`** — the curated selling list / What's-New source for
   the release in progress (1.4; the 1.3 list is at the v1.3.0 tag).
@@ -83,13 +83,10 @@ is parked there.
 ## Work queue (forward-looking — verify against code; these rot)
 
 - **`backlog.md`** — OPEN items only; **the single source of truth for tasks.**
-  Landed items get DELETED (git + digests are the record). 1.3 shipped; the 1.4 cut
-  is proposed in `1.4-plan.md` and items land here as the author promotes them. The
+  Landed items get DELETED (git + digests are the record). 1.4 shipped (its plan is
+  `archive/1.4-plan.md`); the 2.0 cut is proposed in `2.0-plan.md` and items land here as the
+  author promotes them. The
   release tail lives here.
-- **`1.4-plan.md`** — the 1.4 release plan (PROPOSAL 2026-09-01): the workbench release.
-  Every deferred idea scored on one rubric (strength / relevance / complexity / blast
-  radius — no time estimates) and, where planned, its grounded per-item plan; the
-  consolidated author-call list. Archive when 1.4 ships.
 - **`plans/`** — per-task execution plans for promoted backlog items, written so a
   smaller model can do the routine work (index + protocol in `plans/README.md`).
   A plan is deleted with its backlog line.
@@ -97,7 +94,7 @@ is parked there.
   Solenoid node (ranked; Tier 1 = build next). Delete a line when its node lands.
 - **`deferrals.md`** — the parked set WITHOUT a plan (reopen-only, trigger-gated,
   parked bugs and features), with the notes needed to reopen each. Planned items live
-  in `1.4-plan.md` / `2.0-plan.md`, never here too.
+  in `2.0-plan.md`, never here too.
 - **`2.0-plan.md`** — the 2.0 release plan (PROPOSAL 2026-09-01): the arcs that change
   what a document is — pages, collaboration (accounts / cloud saves / multiplayer), the
   Excel transpiler, conditional formatting, canvas at scale, value-model extensions,

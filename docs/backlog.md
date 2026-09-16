@@ -2,8 +2,8 @@
 
 **OPEN items only, kept terse.** When an item lands, DELETE its line — git history and
 the dev-notes digests are the record. **1.4 is built** (2026-09-16: every promoted item in
-`1.4-plan.md` landed, the selling list + What's New deck are written and the author rewrote the deck
-2026-09-16; the re-merge and the tag are the author's; `1.4-plan.md` archives with the tag). The
+`archive/1.4-plan.md` landed, the selling list + What's New deck are written and the author rewrote the deck
+2026-09-16; the tag is the author's; the plan is archived). The
 structural arcs are `2.0-plan.md` + `v2.0/`; parked-with-no-plan items: `deferrals.md`;
 ruled-out ideas: `out-of-scope.md`; settled rationale and rules: the decision tree (`dte.md`).
 
@@ -32,12 +32,12 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
   (collaboration IN); the rest is still the agent's inference awaiting the author's word.
 - [ ] **The ARR pass over the tree** (author-present; the author: waits for 1.4) — early in the
   release, before the track work adds rules: walk `python tools/dte.py tree` and ratify node by
-  node (dte:C7 authorRuled; `1.4-plan.md` D3).
+  node (dte:C7 authorRuled; `archive/1.4-plan.md` D3).
 
 ## Composites
 
 - [ ] **LATER — Optimize run mode on composites (1.4 A6; author 2026-09-04c: in, not now).** Excel
-  Solver's shape as a sixth composite run mode beside Goal Seek; spec + steps in `1.4-plan.md`
+  Solver's shape as a sixth composite run mode beside Goal Seek; spec + steps in `archive/1.4-plan.md`
   § A6. Gate: the author says go (and settles the constraint forms; integer no).
 
 ## Sources
@@ -128,7 +128,7 @@ FEEDBACK file.
 
 - [ ] **LATER (author, 2026-09-04): fold the Format Controller into the Display** — format and
   unit set at sources and displays, flowing downstream only; the docking subsystem and the
-  upstream walk go. Analysis + scope in `1.4-plan.md` Track I. Gate: the author's go after the
+  upstream walk go. Analysis + scope in `archive/1.4-plan.md` Track I. Gate: the author's go after the
   downstream-flow work has been lived with, plus the source-node control design.
 
 ## Family-name polish (NAME-3 revised 2026-09-13 — card shows the class-derived family name)

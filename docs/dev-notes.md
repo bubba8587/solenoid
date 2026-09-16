@@ -70,7 +70,7 @@ controlDrivenRetype: keep), and the new rule landed as a node before its code (C
   headliners: the vault as a table, TaskNotes, Knap reports, Schedule + Gantt, everyday sources,
   planners, categorical columns, socket peek, drawn cables); the What's New deck rewritten,
   `WHATS_NEW_VERSION` 1.4; version 1.4.0 in package.json / tauri.conf.json / Cargo.toml (+ locks);
-  `develop` merged to `main`. `1.4-plan.md` stays live until the author tags (its sections are
+  `develop` merged to `main`. `archive/1.4-plan.md` stays live until the author tags (its sections are
   still the spec the deferrals point at); it archives with the tag.
 - **Verified, then deleted from the backlog:** the "display unit lost on a computed result" line
   (the 09-14 digest traced the only sighting to the scene-ownership gap; the unit display suites

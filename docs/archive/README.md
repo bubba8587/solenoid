@@ -37,6 +37,7 @@ load-bearing core (noted below); the full originals are likewise in git history.
 - [`io-visual-control-node-proposal.md`](io-visual-control-node-proposal.md) — the custom-widget / input-visual-control pack rule.
 - [`isolate-pin-multiview-scoping.md`](isolate-pin-multiview-scoping.md) — the unbuilt split-screen / multi-window / Portals scoping (§1–2 built).
 - [`release-notes-1.1.md`](release-notes-1.1.md) — the reusable release-notes **bar** (a sell vs a changelog; slide vs body); `../release-notes-features.md` points here.
+- [`1.4-plan.md`](1.4-plan.md) — the 1.4 workbench release plan (shipped 2026-09-16); the rubric and the HOLD/deferred item specs that `../deferrals.md` still cites.
 - [`scope-features.md`](scope-features.md) — the 63-item verdict index (so every `scope-features #NN` citation resolves) + the full #23 (persistent compute cache) & #35 (MCP port) sketches + the Alteryx teardown.
 - [`timesavers-pack-proposal.md`](timesavers-pack-proposal.md) — the [F]/[C]/[M] build-shape taxonomy, the don't-duplicate ledger, and the still-unbuilt remainder.
 - [`v1.0-plan.md`](v1.0-plan.md) — WS2's `FrameBackend` interface rationale (JsFrameBackend oracle vs PolarsBackend desktop); cited as "v1.0-plan.md WS2".
