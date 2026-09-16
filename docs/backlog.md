@@ -1,10 +1,9 @@
 # Solenoid — Backlog (1.4)
 
 **OPEN items only, kept terse.** When an item lands, DELETE its line — git history and
-the dev-notes digests are the record. **1.3 shipped** (v1.3.0 on `main`; `develop` is
-level with it). **The 1.4 cut is PROPOSED, not ratified:** `1.4-plan.md` scores every
-deferred idea and carries the per-item plans; nothing there is scheduled until the author
-promotes it — a promoted item becomes a line here and its plan section is the spec. The
+the dev-notes digests are the record. **1.4 is built** (2026-09-16: every promoted item in
+`1.4-plan.md` landed, the selling list + What's New deck are written, `develop` is merged to
+`main` at 1.4.0 — the tag is the author's; `1.4-plan.md` archives with it). The
 structural arcs are `2.0-plan.md` + `v2.0/`; parked-with-no-plan items: `deferrals.md`;
 ruled-out ideas: `out-of-scope.md`; settled rationale and rules: the decision tree (`dte.md`).
 
@@ -26,9 +25,7 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Release planning (author-run)
 
-- [ ] **Finish ratifying the 1.4 cut** — the author walked `1.4-plan.md` one item per turn on
-  2026-09-04c and 2026-09-06 (Tracks A–H ruled; every ruling is in the table's Call column and
-  the Track H headings). NEXT: G (release tail); then `2.0-plan.md`.
+- [ ] **Tag v1.4.0** on `main` (the merge + bump landed 2026-09-16); then walk `2.0-plan.md`.
 - [ ] **Ratify `out-of-scope.md`** (DRAFT since July, no ARR anywhere in it) — the deferral
   review's standing ask. Test 3 / §3 / §11 already read the author's 2026-09-01 order
   (collaboration IN); the rest is still the agent's inference awaiting the author's word.
@@ -44,7 +41,7 @@ elkjs-vs-rete-auto-arrange peer conflict left with the plugin.
 
 ## Sources
 
-- [ ] **Widget nodes Tier 2 (`v2.0/16`):** Air Quality/Pollen preset of Weather, Ticking Now timer.
+- [ ] **Widget nodes Tier 2 (`v2.0/16`), post-1.4:** Air Quality/Pollen preset of Weather, Ticking Now timer.
 
 ## Obsidian + TaskNotes (author 2026-09-07: THE adoption bet — correct, great, useful)
 
@@ -67,35 +64,17 @@ verified in the desktop app against the demo vault. Landed ledger: the bundle's 
   and the merge-to-folder behavior (`ec715ed` built it on Write File: a document input, one
   `.md` per page into the path as a folder, a frame under MD as a pipe table; backed out
   pending the merge). Write Tasks / Write Properties are candidates for the same card.
-- [ ] **Knap eyeball pass** (author): the overlay's highlighted source pane incl. the wired-Template
-  read-only pane (alignment, scroll, mobile), the page stepper + the Page-name field beside it, the
-  Filters popover, a wired template Note changing its tags, Write to Obsidian writing a batch on
-  desktop. Plus the 09-11 rebuild: the **standard-node Report card** (Template/Records rows, the
-  Document-chip hero, collapse to a pill), the **docked header** (stacked title, tiny Draft/Preview
-  toggle in the button row, 26px controls), a **template note** showing its tags literal (not empty),
-  and the **Personal Finance** letter's inline `{% if %}` verdicts flipping as a slider moves. The
-  dev-notes 09-10 "holes at close" + the 09-11 digest are the checklist.
 - [ ] **File the Knap upstream PRs** (`knap-upstream.md`, re-verified on 0.6.0): the typed-value
   bug first (its two remaining repros, `slice` singletons and `set`), then whitespace control,
   filters in comparisons, the `sort` parameter; the API asks as issues. Retire the noted
   workarounds as each lands.
-- [ ] **Author's desktop eyeball** of the flagship cards against `demo-vault/` (Settings ▸ Obsidian
-  → the repo's demo-vault): Vault Folder (be's ten-step checklist in the 09-07 digest), Write
-  Properties Preview/Run on a copy, TaskNotes with the plugin's API on, Write to Obsidian block mode
-  + `{{daily}}`, Write Properties' `writeBase` view, the Cube Input editor's three drill targets,
-  and the two new Obsidian seeds (`write-back-to-obsidian`, `daily-habits`) with the live Vault
-  Folder swapped in for the snapshot.
 
 ## Gantt + Schedule (BUILT 2026-09-12 — `v2.0/25-gantt.md` § 9 is the ledger; follow-ups)
 
-- [ ] **Author's eyeball** (desktop, the four seeds; `node scripts/gantt-shots.mjs` writes every Gantt seed's canvas / Display / popup PNGs in both themes to `.dev/shots/gantt/`): the Schedule card's two toggles + Diagnostics
-  row; the Gantt card's chip; the figure in a Display, the popup (columns, splitter, Copy SVG),
-  a Report overlay + webpage export + Write to Obsidian raster; light theme; the Product launch
-  seed's pinned Board review and the deadline pennant; Local File on a `.xml` (a Project export)
-  and a Smartsheet CSV.
 - [ ] **Project-exported goldens** (author): export MSPDI from a Project trial / 2024 for the two
   seeds' plans and drop them in `fixtures/schedule/` as `project-*.mspdi.xml`; the parity test
   picks them up; name any disagreement in `divergences.json`. Until then the corpus is authored.
+
 ## Canvas chrome (queued by the author 2026-09-07, "not top priority")
 
 - [ ] **Collapsed stadium pill hover preview** — a collapsed node's input pill shows a hover
@@ -120,8 +99,6 @@ The site is four pages sharing `landing/siteNav.tsx` chrome (see architecture.md
   hero `LiveGraph`, `VaultTableScene`, `LocalFileScene`, `NoteImportScene`, `TaskNotesScene` on the
   demo API fake). Still hand-built DOM/SVG: the Presenter scene (landing) and the Obsidian page's
   bridge + Plan vignettes — none maps to a single locked pass.
-- [ ] **TaskNotes status chip shows `rows×0`.** The connection state carries no column count on the
-  tasks/calendar paths (`taskNotes.ts` `setState`), so the chip prints `6×0` beside a 6×18 cube.
 
 ## DTE — decision provenance (`docs/dte.md`, dte:B8)
 
@@ -138,56 +115,15 @@ FEEDBACK file.
 - [ ] **Optional:** `python tools/dte.py hook` (pre-commit validate) — not installed (touches the
   commit flow); `validate` is not in CI either.
 
-## Cables
-
-- [ ] **Mode-change ghost cable — render layer (the last piece).** Option B's LOGIC landed for the
-  Input Switch: the One↔Many retype's dropped cables are remembered in `cablePendingStore` and
-  re-materialised on the flip back (same key, else same label) — `cablePendingReconnect.ts`,
-  wired into `CableSwitchNode`'s `setMode`, cleared on node-remove/load, `cablePendingReconnect.test.ts`.
-  REMAINING: the visual — a world-space layer (the `DrawnCableLayer` pattern, in the ViewportPortal)
-  that draws each pending ghost dashed from the source `out` socket to the target input socket, in
-  the Option A ghost style. Until it lands the reconnect works but is invisible while in the wrong
-  mode. (Option A = `cableGhostStore`, live-connection ghosts; archive/dev-notes-history.md 2026-09-08d.)
-
 ## Canvas annotation
 
 - [ ] **Drawn cables: nothing tows one.** A drawn arrow annotating a node stays put when that node
   moves, Tidy runs, or a group expands. An optional per-END anchor to a node id would fix it and is
   the natural v2; deliberately out of v1 (they take no part in layout).
 
-## Layout / Tidy
-
-- [ ] **Main-app Tidy reserves DECLARED, not measured, height for a plain node.** `elkTidyLayout`
-  reads `node.width/height` for an ordinary card (`tidyArrange.ts` ~473 `return n`); only groups,
-  standoff clusters and docked-FC hosts get a `measuredBox`. So a stale constructor height (the
-  FrameInput 220→280 case, 2026-09-14) or a collapsed card (reserves the expanded height) mis-spaces
-  and can overlap. Scenes already lay out on measured sizes (`SceneStage`). Fix = size a plain node's
-  ELK proxy from `measuredBox`, declared height as the unpainted fallback. **COMPARE FIRST:** likely
-  was measured once and changed to declared on purpose — find the commit + reason (perf? fixed-point?
-  paint timing) before re-introducing. Read subsystem-invariants § Tidy; run the tidy fixed-point tests.
 
 ## Formatting & units
 
-- [ ] **Display unit lost on a computed result — shows base SI (regression).** A divide that
-  should read `60 km/hr` displays `16.667 m/s`: the magnitude is right (base-SI stored value) but
-  the carried/derived display unit isn't applied, so a compound-unit result renders in raw SI.
-  Surfaced on the landing units scene (300 km ÷ 5 hr); recently introduced. The SCENE reading was
-  traced to the `getOwningEditor` scene-ownership gap and fixed 2026-09-14 (`activeGraph.ts` owned-graph
-  registry) — VERIFY a MAIN-app computed result still loses its unit before treating this as live; if
-  the main app is clean, delete this. Else fix the display-unit carry.
-- [ ] **Triangle Solver's angle inputs are bare degrees** (a rad-tagged trig output wired in
-  reads as degrees); a per-input unit read would close it.
-- [ ] **blankArgIsExcelBlank — RULED 2026-09-13, not started.** A blank formula argument slot
-  (`null` from the parser) is Excel's blank (0 / FALSE / ""); an omitted one (`undefined`) is the
-  default. One typed table `{FN: {argIndex: number|logical|text}}` wrapping the fn `fxLookup`
-  returns (`excelFunctions.ts` ~220); the `registerInternal` overrides bypass it and are audited
-  separately: TEXTJOIN (~969) treats a blank `ignore_empty` as TRUE → must give `a,,b`; ROUND/MOD
-  already read a blank as 0 (keep); XLOOKUP/XMATCH `xMatchModeArg`/`xSearchModeArg` (~1261) carry the
-  "blank = omitted" SEQUENCE convention to remove (match_mode blank→0 = exact, no behavior change;
-  search_mode blank is likely #VALUE! in Excel, verify against the Microsoft reference before
-  adding). formulajs candidates to verify empirically: VLOOKUP/HLOOKUP range_lookup (logical),
-  MATCH match_type (number). Table-driven parity test, a MUST rule node; remaining
-  divergences → `formulajs-divergences.md` + catalog parity:false.
 - [ ] **Older long tooltips / descriptions** (Decision Matrix, Sensitivity, Allocator, Record
   layout, Chart values, Slider bounds, 200-plus-character catalog entries) are the copy class the
   2026-09-12b cut fixed for the new nodes; a separate sweep. Author call pending: now or release tail.
@@ -196,16 +132,6 @@ FEEDBACK file.
   unit set at sources and displays, flowing downstream only; the docking subsystem and the
   upstream walk go. Analysis + scope in `1.4-plan.md` Track I. Gate: the author's go after the
   downstream-flow work has been lived with, plus the source-node control design.
-
-## Seeds
-
-- [ ] **Seed-layout sweep — the author eyeballs the 20 re-cut seeds** (2026-09-04b, two agent
-  batches under the groups-over-standoffs rule in `subsystem-invariants.md` § Standoffs; per-seed
-  outcomes in the dev-notes digest). Open calls: power-features kept its `in-sb ↔ grp-mon` data
-  standoff because a Note narrates that very bar ("cut it and rewrite the Note?"); famous-math's
-  loose expression chain was wrapped beside two pre-existing groups rather than merged. Not swept:
-  sudoku-solver, composite-workbench, zz-scratch-new-nodes (not teaching galleries),
-  personal-finance and live-market-data (held from tuning, see the 09-03 digest).
 
 ## Family-name polish (NAME-3 revised 2026-09-13 — card shows the class-derived family name)
 
