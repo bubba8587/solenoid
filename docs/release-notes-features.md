@@ -56,9 +56,8 @@ makes something a slide. **The 1.3 list shipped with v1.3 and lives in git histo
   column offers the existing values instead of a blank field.
 - **[slide] Peek any socket.** Hover an output socket and a scaled-down live Display of
   its value appears: a frame, a cube, a list, a chart, a diagram, without wiring anything.
-- **[slide] Draw on the canvas.** Free-drawn cables: point-by-point annotation curves in
-  the wired cables' three shapes, with arrowheads, width, color and a 45° angle dial per
-  point. Press D.
+- Free-drawn cables: point-by-point annotation curves in the wired cables' three shapes,
+  with arrowheads, width, color and a 45° angle dial per point (Insert → Draw a cable).
 
 ## Release-notes body
 
