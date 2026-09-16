@@ -107,7 +107,7 @@ export function FilterComponent({ data, emit }: NodeProps<FilterNodeType>) {
         className="solenoid-node__add-input"
         onClick={(e) => { e.stopPropagation(); void addRow(); }}
       >
-        + Add condition
+        Add Condition
       </button>
       <MeasuredSocketRow side="output" socketKey="result" nodeId={data.id} emit={emit} payload={data.outputs.result!.socket} hero>
         <ValueDisplay value={data.cachedResult as DisplayValue} />

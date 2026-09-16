@@ -1145,7 +1145,7 @@ export function TablePopup() {
                 <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M3.5 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </button>
               <div className="table-popup__spacer" />
-              <button type="button" className="table-popup__btn" onClick={addRecord} title="Add a record">+ Record</button>
+              <button type="button" className="table-popup__btn" onClick={addRecord} title="Add a record">Add Record</button>
               <button type="button" className="table-popup__btn" onClick={removeRecord} disabled={rows <= 1} title="Delete this record">− Record</button>
             </div>
             {rows > 0 && (() => {
@@ -1321,9 +1321,9 @@ export function TablePopup() {
         )}
         {editable && view === "grid" && (
           <div className="table-popup__dim-controls">
-            <button className="table-popup__btn" onClick={addRow} title="Add row">+ Row</button>
+            <button className="table-popup__btn" onClick={addRow} title="Add row">Add Row</button>
             <button className="table-popup__btn" onClick={removeRow} title="Remove last row" disabled={rows <= 1}>− Row</button>
-            {!state.fixedCols && <button className="table-popup__btn" onClick={addCol} title="Add column">+ Col</button>}
+            {!state.fixedCols && <button className="table-popup__btn" onClick={addCol} title="Add column">Add Column</button>}
             {!state.fixedCols && <button className="table-popup__btn" onClick={removeCol} title="Remove last column" disabled={cols <= 1}>− Col</button>}
           </div>
         )}

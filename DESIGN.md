@@ -227,6 +227,7 @@ The system is flat at rest and uses elevation only to communicate state. Cards s
 - **Default:** Sunken background (`--surface-sunken`), 1px neutral border (`--border`), body-color icon/text. Quiet and recessive.
 - **Hover / Active:** Background lifts to `--btn-hover`, border steps to `--border-strong`. No color injection; the button stays neutral.
 - **Confirming action** (one per dialog at most — Save, Done): the exception to the neutral rule. Filled with its surface's accent and its matching ink, so the button that commits a change reads as belonging to the thing being changed. Every other button in the same dialog stays neutral; two filled buttons in one footer is the misuse.
+- **Label case (author 2026-09-16):** a button's visible text is Title Case ("Add Condition", "Form Layout", "Copy Details"; a callable function name stays ALL CAPS: "Add LAMBDA"). No `+` glyph and no "Add a …": the verb and the noun are the whole label, and "Add" itself goes when the noun alone names the action (the Frame Input's "Form Layout"). Tooltips and `aria-label`s stay sentence case ("Remove this step").
 - **Icon-only buttons use EVEN-sized icons** (an even content box + an even icon = whole-pixel centering; odd sizes rasterize blurry and shift with browser zoom). Draw dividers with an inset `box-shadow`, never a layout border. Never a text `×`/`✕` for a close button — `components/CloseIcon.tsx`. A genuinely asymmetric glyph gets fixed in the path by ink centroid (an art call, not the parity rule).
 
 ### Inputs / Fields

@@ -247,7 +247,7 @@ export function CableSwitchComponent({ data, emit }: NodeProps<CableSwitchNodeTy
         className="sol-switch__mode"
       />
       <div className="sol-switch__controls">
-        <button type="button" className="solenoid-node__add-input" onClick={(e) => { e.stopPropagation(); void addRow(); }}>+ Add</button>
+        <button type="button" className="solenoid-node__add-input" onClick={(e) => { e.stopPropagation(); void addRow(); }}>Add Input</button>
         {!multi && keys.length > 0 && (
           <div className="solenoid-record__pager sol-switch__pager">
             <button

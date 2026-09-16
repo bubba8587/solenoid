@@ -63,7 +63,7 @@ export function TornadoComponent({ data, emit }: NodeProps<TornadoNodeType>) {
             onPointerDown={stopDragStart}
             onMouseDown={(e) => e.stopPropagation()}
           >
-            {busy ? "Running…" : "Run sensitivity"}
+            {busy ? "Running…" : "Run Sensitivity"}
           </button>
           {results.length === 0 ? (
             <div className="solenoid-node__text-empty" style={{ padding: "6px 2px" }}>

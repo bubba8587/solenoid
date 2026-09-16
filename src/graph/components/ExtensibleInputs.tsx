@@ -37,7 +37,7 @@ export interface ExtensibleNode {
 /** For an arbitrary number of DISTINCT in-node values; interchangeable inputs take a
  *  single multi-connection socket instead. Each input dot centers on its own row. */
 export function ExtensibleInputs({
-  node, emit, leadingKeys, valueKeys, minRows = 1, addLabel = "+ Add",
+  node, emit, leadingKeys, valueKeys, minRows = 1, addLabel = "Add",
 }: {
   node: ExtensibleNode;
   emit: Emit;
@@ -48,7 +48,7 @@ export function ExtensibleInputs({
   // The fewest rows the remove button leaves standing; an OPTIONAL group passes 0.
   minRows?: number;
   // The add-row button's text; names what a row IS on nodes where it isn't a plain value
-  // (Frame Input's rows are λ column-sources, so it reads "+ Add lambda").
+  // (Frame Input's rows are λ column-sources, so it reads "Add LAMBDA").
   addLabel?: string;
 }) {
   const connected = useConnectedInputs(node.id);

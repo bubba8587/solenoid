@@ -162,7 +162,7 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
     <NodeShell node={data} emit={emit}>
       {/* Addable λ inputs (column-source model, slice 1): each wired λ can
           define a column — pick it per column in the grid editor. */}
-      <ExtensibleInputs node={data} emit={emit} valueKeys={data.lambdaKeys} minRows={0} addLabel="+ Add lambda" />
+      <ExtensibleInputs node={data} emit={emit} valueKeys={data.lambdaKeys} minRows={0} addLabel="Add LAMBDA" />
       {!layoutHidden && (hasLayout || showLayout) ? (
         <div className="solenoid-layout-field">
           <RecordLayoutField value={data.stringLiterals.layout ?? ""} onCommit={commitLayout} />
@@ -184,7 +184,7 @@ export function FrameInputComponent({ data, emit }: NodeProps<FrameInputNodeType
           className="solenoid-node__add-input"
           onClick={(e) => { e.stopPropagation(); if (layoutHidden) setHidden(false); setShowLayout(true); }}
         >
-          {layoutHidden && hasLayout ? "Show Form layout" : "+ Add Form layout"}
+          {layoutHidden && hasLayout ? "Show Form Layout" : "Form Layout"}
         </button>
       )}
       <FrameDisplay
@@ -408,7 +408,7 @@ export function FilterFrameComponent({ data, emit }: NodeProps<FilterFrameNodeTy
             className="solenoid-node__add-input"
             onClick={(e) => { e.stopPropagation(); void addPair(); }}
           >
-            + Add condition
+            Add Condition
           </button>
         </>
       )}
