@@ -153,7 +153,7 @@ export function CubeEditHeader({ edit, path, column }: { edit: CubeEditBinding; 
 /** Footer controls for the current level: add / remove a row (a record, or a list item);
  *  a table or cube level also adds / removes a column (the last key on every row). New
  *  columns arrive as "Column N"; the header renames them. */
-export function CubeEditRows({ edit, view, rows }: { edit: CubeEditBinding; view: DrillView; rows: number }): ReactNode {
+export function CubeEditRows({ edit, view }: { edit: CubeEditBinding; view: DrillView }): ReactNode {
   const path = view.path ?? [];
   const records = edit.records();
   const level = (path.length ? getAtPath(records, path) : records) as unknown[] | undefined;
@@ -180,8 +180,8 @@ export function CubeEditRows({ edit, view, rows }: { edit: CubeEditBinding; view
   };
   return (
     <>
-      <button className="table-popup__btn" onClick={add} title={isList ? "Append an item" : "Append an empty record"}>Add Row</button>
-      <button className="table-popup__btn" onClick={remove} disabled={rows === 0} title="Remove the last row">− Row</button>
+      <button className="table-popup__btn" onClick={add} title={isList ? "Append an item" : "Append an empty record"}>{isList ? "Add Item" : "Add Row"}</button>
+      <button className="table-popup__btn" onClick={remove} disabled={list.length === 0} title={isList ? "Remove the last item" : "Remove the last row"}>{isList ? "− Item" : "− Row"}</button>
       {!isList && (
         <>
           <button className="table-popup__btn" onClick={addColumn} title="Add a column to every row">Add Column</button>

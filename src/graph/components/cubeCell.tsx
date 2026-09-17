@@ -111,7 +111,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type, format, at }: {
         title={is2D ? "Drill in" : `${cell.length}-item list. Drill in.`}
         onPointerDown={stop}
         onMouseDown={stop}
-        onClick={(e) => { stop(e); cubePopup.drill({ kind: "grid", cells: (is2D ? cell : [cell]) as CubeCell[][], label: crumb }, at); }}
+        onClick={(e) => { stop(e); cubePopup.drill(is2D ? { kind: "grid", cells: cell as CubeCell[][], label: crumb } : { kind: "list", items: cell, label: crumb }, at); }}
       >
         [{is2D ? `${cell.length}×${(cell[0] as unknown[]).length}` : `${cell.length}× List`}]
       </button>

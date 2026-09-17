@@ -20,9 +20,11 @@ export interface CellRef { r: number; c?: number }
 export type DrillView = (
   | { kind: "cube"; label: string; cube: CubeValue; /** Records path when the popup is an editor. */ path?: CubePath }
   | { kind: "frame"; label: string; frame: FrameValue; path?: CubePath }
+  /** A 2-D array level. */
   | { kind: "grid"; label: string; cells: CubeCell[][]; path?: undefined }
-  /** An editable list level (a Cube Input's list cell), one item per row. */
-  | { kind: "list"; label: string; items: unknown[]; path: CubePath }
+  /** A list level: one row by default (a list is a CSV row), or one item per row by the
+   *  popup's layout switch. `path` is present when it edits a Cube Input's list cell. */
+  | { kind: "list"; label: string; items: unknown[]; path?: CubePath }
 ) & { from?: CellRef; focus?: CellRef };
 
 export interface CubePopupState {
