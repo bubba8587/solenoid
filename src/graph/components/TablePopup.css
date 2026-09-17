@@ -713,6 +713,9 @@
   line-height: 1.2;
 }
 .table-popup__statlabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
   font-family: var(--font-sans);
   font-size: 10px;
   color: var(--text-dim);

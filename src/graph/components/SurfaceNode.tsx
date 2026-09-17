@@ -11,6 +11,7 @@ import { getActiveView } from "../activeGraph";
 import { collapseStore } from "../collapseStore";
 import { processGraph } from "../process";
 import { stopDragStart } from "../coarse";
+import { ArrowIcon } from "./Icons";
 
 const VIEW_OPTIONS = (Object.keys(SURFACE_VIEW_OP_META) as SurfaceViewOp[]).map((op) => ({
   value: op, label: SURFACE_VIEW_OP_META[op].label,
@@ -92,15 +93,15 @@ export function SurfaceComponent({ data, emit }: NodeProps<SurfaceNodeType>) {
           : !has && <div className="solenoid-node__display-value solenoid-node__display-value--empty">—</div>}
         {has && !collapsed && op === "surface" && (
           <div style={{ position: "absolute", right: 4, bottom: 4, display: "grid", gridTemplateColumns: "repeat(3, 16px)", gridTemplateRows: "repeat(3, 16px)", gap: 2, opacity: 0.85 }}>
-            <RotBtn title="Rotate left + tilt up" onClick={() => rotate(-45, 45)}>↖</RotBtn>
-            <RotBtn title="Tilt up" onClick={() => rotate(0, 45)}>↑</RotBtn>
-            <RotBtn title="Rotate right + tilt up" onClick={() => rotate(45, 45)}>↗</RotBtn>
-            <RotBtn title="Rotate left" onClick={() => rotate(-45, 0)}>←</RotBtn>
+            <RotBtn title="Rotate left + tilt up" onClick={() => rotate(-45, 45)}><ArrowIcon dir="up-left" size={11} strokeWidth={2} /></RotBtn>
+            <RotBtn title="Tilt up" onClick={() => rotate(0, 45)}><ArrowIcon dir="up" size={11} strokeWidth={2} /></RotBtn>
+            <RotBtn title="Rotate right + tilt up" onClick={() => rotate(45, 45)}><ArrowIcon dir="up-right" size={11} strokeWidth={2} /></RotBtn>
+            <RotBtn title="Rotate left" onClick={() => rotate(-45, 0)}><ArrowIcon dir="left" size={11} strokeWidth={2} /></RotBtn>
             <RotBtn title="Reset view" onClick={resetView}><HomeIcon /></RotBtn>
-            <RotBtn title="Rotate right" onClick={() => rotate(45, 0)}>→</RotBtn>
-            <RotBtn title="Rotate left + tilt down" onClick={() => rotate(-45, -45)}>↙</RotBtn>
-            <RotBtn title="Tilt down" onClick={() => rotate(0, -45)}>↓</RotBtn>
-            <RotBtn title="Rotate right + tilt down" onClick={() => rotate(45, -45)}>↘</RotBtn>
+            <RotBtn title="Rotate right" onClick={() => rotate(45, 0)}><ArrowIcon dir="right" size={11} strokeWidth={2} /></RotBtn>
+            <RotBtn title="Rotate left + tilt down" onClick={() => rotate(-45, -45)}><ArrowIcon dir="down-left" size={11} strokeWidth={2} /></RotBtn>
+            <RotBtn title="Tilt down" onClick={() => rotate(0, -45)}><ArrowIcon dir="down" size={11} strokeWidth={2} /></RotBtn>
+            <RotBtn title="Rotate right + tilt down" onClick={() => rotate(45, -45)}><ArrowIcon dir="down-right" size={11} strokeWidth={2} /></RotBtn>
           </div>
         )}
       </div>

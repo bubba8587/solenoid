@@ -41,6 +41,7 @@ import { groupCollapseStore } from "../groupCollapse";
 import { scheduleAutosave } from "../persistence";
 import "./conduit.css"; // reuse the docked-toolbar chrome
 import "./StandoffLayer.css";
+import { CloseIcon } from "./CloseIcon";
 
 // Bars render UNDER the graph at z-index -3 (below expanded groups -2, conduits -1,
 // nodes 0). A bar slants to show perpendicular slack — the constrained axis is the line
@@ -159,7 +160,7 @@ function StandoffToolbar({ s }: { s: Standoff }) {
           scheduleAutosave();
         }}
       >
-        ✕ Remove
+        <CloseIcon size={11} /> Remove
       </button>
     </div>,
     document.body,

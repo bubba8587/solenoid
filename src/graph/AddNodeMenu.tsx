@@ -4,6 +4,7 @@ import { flattenLeaves, searchLeaves } from "./catalogSearch";
 import { IS_COARSE } from "./coarse";
 import { descriptionText } from "./descriptionMd";
 import "./AddNodeMenu.css";
+import { ChevronRightIcon } from "./components/Icons";
 
 // Leaf entry — produces a node when selected.
 export type NodeCatalogEntry = {
@@ -208,7 +209,7 @@ function TreeMenu({ entries, depth, path, onHover, onOpenCategory, onSelect, onS
               onClick={(e) => { e.stopPropagation(); onOpenCategory([...prefix, i]); }}
             >
               <span>{it.entry.label}</span>
-              <span className="solenoid-add-menu__arrow">▶</span>
+              <span className="solenoid-add-menu__arrow"><ChevronRightIcon size={12} /></span>
               {open && anchorRefs.current[i] && (
                 <Submenu anchor={anchorRefs.current[i]!} onSide={onSubmenuSide}>
                   <TreeMenu entries={it.entry.children} depth={depth + 1} path={path} onHover={onHover} onOpenCategory={onOpenCategory} onSelect={onSelect} onSubmenuSide={onSubmenuSide} isDim={isDim} />

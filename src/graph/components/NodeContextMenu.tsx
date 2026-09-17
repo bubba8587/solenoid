@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { useMenuClamp } from "./menuClamp";
 import { inspectorStore } from "../inspectorStore";
 import "./SocketContextMenu.css";
+import { FocusIcon, LinkIcon, TetherIcon } from "./Icons";
 
 // The single right-click menu for a node / group body — a node's right-click has
 // one home, so new items land here rather than in a second menu.
@@ -167,15 +168,15 @@ export function NodeContextMenu({ target, onIsolate, onIsolateChain, onWhereUsed
         item(<EditSvg />, "Edit contents", () => onEditComposite!(target.nodeId))}
       {target.isComposite && onUnpackComposite &&
         item(<UnpackSvg />, "Unpack composite", () => onUnpackComposite!(target.nodeId))}
-      {item("⊙", "Isolate", () => onIsolate(target.seedIds))}
-      {item("⛓", "Isolate chain", () => onIsolateChain(target.seedIds),
+      {item(<FocusIcon size={13} />, "Isolate", () => onIsolate(target.seedIds))}
+      {item(<LinkIcon size={13} />, "Isolate chain", () => onIsolateChain(target.seedIds),
         "Isolate everything connected to this, upstream and downstream")}
       {onWhereUsed && item(<WhereUsedSvg />, "Where used", () => onWhereUsed!(target.nodeId),
         "Isolate this node and everything downstream of it")}
       {onPin && target.canPin && item(<PinSvg />, "Pin value", () => onPin!(target.nodeId))}
       {onAddComment && item(<CommentSvg />, "Add comment", () => onAddComment!(target.nodeId))}
       {target.standoff && onLinkStandoff &&
-        item("⊷", "Link with Standoff", () => onLinkStandoff!(target.standoff!))}
+        item(<TetherIcon size={13} />, "Link with Standoff", () => onLinkStandoff!(target.standoff!))}
       {target.isFlippable && onToggleFlip &&
         item(<FlipSvg />, target.flipped ? "Unflip sockets" : "Flip sockets", () => onToggleFlip!(target.nodeId),
           "Swap the inputs and outputs to the opposite sides")}

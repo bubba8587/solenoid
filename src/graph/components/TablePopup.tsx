@@ -35,6 +35,7 @@ import { saveCsvFileDialog } from "../fileBridge";
 import { APP_LOCALE } from "../locale";
 import "./errorChip.css";
 import "./TablePopup.css";
+import { ChevronDownIcon } from "./Icons";
 
 type CellType = "number" | "string" | "date" | "logical"; // "date" edits as its serial (number-ish); "logical" as TRUE/FALSE
 
@@ -1113,7 +1114,7 @@ export function TablePopup() {
                         {/* The visible picker is the stat's word (sized to itself); the real
                             select sits over it invisibly, so it never widens the column. */}
                         <span className="table-popup__statpick">
-                          <span className="table-popup__statlabel">{FOOTER_STAT_LABEL[stat]} ▾</span>
+                          <span className="table-popup__statlabel">{FOOTER_STAT_LABEL[stat]}<ChevronDownIcon size={10} strokeWidth={2} /></span>
                           <select
                             className="table-popup__statselect"
                             value={stat}

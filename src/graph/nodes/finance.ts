@@ -1,5 +1,5 @@
 // dte:C72,E11
-﻿import { ClassicPreset } from "rete";
+import { ClassicPreset } from "rete";
 import { numIn, numOut, listIn, listOut, dateIn, dateListIn, frameOut, readInput, BASIS_DOC } from "./shared";
 import type { FrameValue } from "../frame";
 import type { Shape } from "../frameShape";

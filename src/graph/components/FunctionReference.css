@@ -318,7 +318,8 @@
 }
 .fr-parity-warn {
   color: var(--fr-warn);
-  font-size: 13px;
+  display: inline-flex;
+  vertical-align: middle;
 }
 .fr-parity-miss {
   color: var(--text-muted);

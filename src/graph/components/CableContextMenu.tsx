@@ -1,6 +1,7 @@
 import { useMenuClamp } from "./menuClamp";
 import { useEffect } from "react";
 import "./SocketContextMenu.css";
+import { CloseIcon } from "./CloseIcon";
 
 // `connIds` is every cable the actions operate on: the right-clicked one plus the
 // multi-selection, ribbons already expanded to their member lanes.
@@ -63,7 +64,7 @@ export function CableContextMenu({ target, onInsertConduit, onDelete, onClose }:
         onMouseDown={(e) => e.stopPropagation()}
         onClick={() => { onDelete(target); onClose(); }}
       >
-        <span className="solenoid-socket-ctx__icon">✕</span>
+        <span className="solenoid-socket-ctx__icon"><CloseIcon size={12} /></span>
         {counted("Delete")}
       </button>
     </div>
