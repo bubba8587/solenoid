@@ -20,7 +20,8 @@ On `develop`, nothing pushed.
   changed in Obsidian (notes in `decisions/outbox/`, `ratify`/`retire`/`contest`/`ask` tags (flat, the author's ruling), a typed `ratified_by`,
   never bare diffs) with the command each needs; `--done` clears one; validate prints the count; CLAUDE.md
   makes it the session-start step. Nodes carry `name` (the camelCase handle, split out of the title at the author's request) and `aliases` from it, `null`/block-list rewrites parse,
-  `decisions/DTE.base` holds the Bases views (untested by me: open it and report a syntax error if Obsidian shows one).
+  `decisions/README.md` is the pinnable cheat sheet, `decisions/templates/` the Outbox note and Ask
+  templates (loader skips both), `decisions/DTE.base` holds the Bases views (untested by me: open it and report a syntax error if Obsidian shows one).
 - **Frontmatter reads any YAML, writes Obsidian's block style.** The author found that editing any property in
   Obsidian rewrote the Spanish course note's inline `- {topic: …, tags: [...]}` rows into block style, after which
   the cube read as a one-item string list and Write Properties refused the key. The hand-rolled subset parser is

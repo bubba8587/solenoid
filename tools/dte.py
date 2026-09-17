@@ -107,6 +107,7 @@ NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9]*(?:-\d+)?$")   # a node's readable h
 # or a ratified_by typed into the properties pane. Never a bare diff: an anonymous edit cannot
 # be told from an agent's own unfinished work, and validate already lists changed nodes (B17).
 OUTBOX_DIR = "outbox"
+TEMPLATES_DIR = "templates"   # Obsidian templates for the outbox; never nodes
 ACTION_TAG_RE = re.compile(r"(?<![\w/#])#(ratify|retire|contest|ask)")
 ACTIONS = {
     "ratify": "the author ratifies it: dte ratify <ID> --by <author>, then move the id into the owner-kept list the tests pin",
@@ -369,6 +370,9 @@ class Tree:
                 for fn in sorted(files):
                     if fn.endswith(".md"):
                         self._load_inbox(os.path.join(dirpath, fn))
+                dirs[:] = []
+                continue
+            if os.path.basename(dirpath) == TEMPLATES_DIR and os.path.dirname(dirpath) == self.decisions_dir:
                 dirs[:] = []
                 continue
             if os.path.abspath(dirpath) == os.path.abspath(self.outbox_dir):

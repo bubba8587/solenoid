@@ -58,6 +58,9 @@ already lists changed nodes. An edit the author wants looked at gets a `#ask` be
 | `ask` beside a question or comment | Answers in chat; if it changes the node, makes the change and adds a History line | same |
 | Types a name into `ratified_by` in the Properties pane | `dte ratify <ID> --by "<that name>"` so History records it, then the `OWNER_RATIFIED` move | clears itself |
 
+`decisions/README.md` is the vault-side cheat sheet (pin it in Obsidian); `decisions/templates/`
+holds the Outbox note and Ask templates for one-click buttons, and the loader never reads them as nodes.
+
 The author's word is the authorization (B25): an outbox item is acted on and reported, never
 re-asked. When acting on it touches a human-held node or one above the agent's ring, the agent
 sets `authorized_by` to the author.
