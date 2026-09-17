@@ -32,6 +32,9 @@ export interface FrontmatterField {
   value: FrontmatterValue;
   /** Type inferred from the value (before any per-key user override). */
   guessed: FrontmatterFieldType;
+  /** The value was a bare `{{ … }}` / `{% … %}`, which YAML reads as a flow map: the
+   *  tag must be quoted to be a value. */
+  knapUnquoted?: true;
 }
 
 export interface ParsedFrontmatter {
@@ -44,8 +47,27 @@ export interface ParsedFrontmatter {
 }
 
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+// A plain (unquoted) numeric token: optional sign, digits, optional fraction, exp.
+const NUMERIC = /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/;
 
 type ScalarKind = "number" | "string" | "logical" | "date";
+
+/** Text read as an UNQUOTED YAML scalar would be: a number, true/false, an ISO date
+ *  (as a serial), blank/null → null, else the text. What a rendered Knap field
+ *  re-guesses by, since its render comes back inside the quotes it was written in. */
+export function guessScalarText(text: string): { value: FrontmatterScalar; kind: ScalarKind } {
+  const t = text.trim();
+  if (t === "" || t === "~" || t === "null") return { value: null, kind: "string" };
+  const lower = t.toLowerCase();
+  if (lower === "true") return { value: true, kind: "logical" };
+  if (lower === "false") return { value: false, kind: "logical" };
+  if (NUMERIC.test(t)) return { value: Number(t), kind: "number" };
+  if (DATE_ONLY.test(t)) {
+    const serial = parseDateToSerial(t);
+    if (Number.isFinite(serial)) return { value: Math.round(serial), kind: "date" };
+  }
+  return { value: t, kind: "string" };
+}
 
 /** One YAML scalar node → its value + guessed kind. A quoted scalar is ALWAYS a string
  *  (`"42"`, `'true'`, `"2026-01-01"` stay text); a plain ISO date becomes a serial. */
@@ -115,10 +137,15 @@ function fieldFromSeq(key: string, items: (Node | null)[]): FrontmatterField {
   return { key, value: values, guessed: listType(values) };
 }
 
-function fieldOf(key: string, node: Node | null): FrontmatterField {
+function fieldOf(key: string, node: Node | null, src: string): FrontmatterField {
   if (isSeq(node)) return fieldFromSeq(key, node.items as (Node | null)[]);
-  // A nested map that isn't a row list has no socket shape: the key surfaces as an empty string.
-  if (isMap(node)) return { key, value: null, guessed: "string" };
+  if (isMap(node)) {
+    // A bare Knap tag parses as a map whose key is a map; flag it so the node can say so.
+    const text = node.range ? src.slice(node.range[0], node.range[1]).trim() : "";
+    if (/^\{[{%]/.test(text)) return { key, value: null, guessed: "string", knapUnquoted: true };
+    // A nested map that isn't a row list has no socket shape: the key surfaces as an empty string.
+    return { key, value: null, guessed: "string" };
+  }
   const { value, kind } = readScalar(node);
   return { key, value, guessed: kind };
 }
@@ -140,9 +167,10 @@ export function parseNoteFrontmatter(text: string): ParsedFrontmatter {
   const body = lines.slice(close + 1).join("\n").replace(/^\n+/, "");
   const fields: FrontmatterField[] = [];
   const seen = new Set<string>();
+  const src = lines.slice(1, close).join("\n");
   let doc;
   try {
-    doc = parseDocument(lines.slice(1, close).join("\n"), { uniqueKeys: false, schema: "core" });
+    doc = parseDocument(src, { uniqueKeys: false, schema: "core" });
   } catch {
     return { fields, body, hasBlock: true };
   }
@@ -152,7 +180,7 @@ export function parseNoteFrontmatter(text: string): ParsedFrontmatter {
       const key = keyOf(item);
       if (key === "" || seen.has(key)) continue; // first wins on a dup key
       seen.add(key);
-      fields.push(fieldOf(key, item.value as Node | null));
+      fields.push(fieldOf(key, item.value as Node | null, src));
     }
   }
   return { fields, body, hasBlock: true };

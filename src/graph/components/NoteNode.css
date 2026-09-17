@@ -197,6 +197,9 @@
   padding-right: 4px;
   color: var(--text-muted);
 }
+.solenoid-note__field-val--error {
+  color: var(--error, #d33);
+}
 /* Type-override picker — the four element families at this field's dimensionality,
    each shown with its Socket Legend glyph. Anchored under the glyph button. */
 .solenoid-note__field-picker {

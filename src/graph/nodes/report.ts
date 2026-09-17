@@ -225,6 +225,13 @@ export class ReportNode extends ClassicPreset.Node {
       return { document: makeDocument(src, refs, undefined, this.id) };
     }
     return (async () => {
+      // A template note's quoted Knap fields render first, so an unwired input defaults
+      // to the rendered value (the note's own socket value), not the tag text.
+      if (tplNote && hasKnapSyntax(source)) {
+        await tplNote.data();
+        const fresh = tplNote.fieldValues();
+        for (const k of desired) if (inputs?.[k] === undefined && k in fresh) { refs[k] = fresh[k]; this._refValues.set(k, fresh[k] as never); }
+      }
       this.templateVars = await this.templateVariables(refs, present, fallbackTypes);
       if (this._templateDoc) this.templateVars.template = source;
       if (recordsIn != null) {

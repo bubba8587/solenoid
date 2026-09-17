@@ -25,13 +25,15 @@ import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnno
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { parseNoteFrontmatter, toggleTaskMarker, type FrontmatterFieldType, type FrontmatterValue } from "../noteFrontmatter";
 import { isFrameValue, isCubeValue, type FrameValue, type CubeValue } from "../frame";
+import { isSolError, type SolError } from "../errorValue";
+import { errorTip } from "./ErrorChip";
 import type { NodeProps, Emit } from "./nodeKit";
 import type { ClassicPreset } from "rete";
 import { stopDragStart } from "../coarse";
 import "./Markdown.css";
 import "./NoteNode.css";
 
-type FieldValue = FrontmatterValue | FrameValue | CubeValue;
+type FieldValue = FrontmatterValue | FrameValue | CubeValue | SolError;
 
 // Grouped by dimensionality — the override picker offers the four element families at
 // the field's CURRENT dimension; glyphs reuse the Socket Legend vocabulary.
@@ -50,6 +52,7 @@ function glyphFor(t: FrontmatterFieldType): SocketGlyph {
 
 /** A short, human-readable preview of a field's value for the row. */
 function previewValue(value: FieldValue, t: FrontmatterFieldType): string {
+  if (isSolError(value)) return value.code;
   if (t === "frame") {
     if (!isFrameValue(value)) return "table";
     const rows = value.columns[0]?.values.length ?? 0;
@@ -429,7 +432,9 @@ export function FieldRow({
         <SocketDot entry={glyphFor(type)} />
       </button>
       <span className="solenoid-note__field-key" title={fieldKey}>{fieldKey}</span>
-      <span className="solenoid-note__field-val" title={preview}>{preview}</span>
+      {isSolError(value)
+        ? <span className="solenoid-note__field-val solenoid-note__field-val--error" title={errorTip(value)}>{value.code}</span>
+        : <span className="solenoid-note__field-val" title={preview}>{preview}</span>}
       {open && canRetype && (
         <div ref={popRef} className="solenoid-note__field-picker" onPointerDown={stop} onMouseDown={stop}>
           {options.map((opt) => (

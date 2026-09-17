@@ -11,12 +11,15 @@ import { chartOut, strOut, documentOut } from "./shared";
 import { makeDocument, type DocumentValue } from "../documentValue";
 import { hasKnapSyntax, knapErrorText, renderKnap, toTemplateValue } from "../knapTemplate";
 import { solError, type SolError } from "../errorValue";
+import { getActiveView, getOwningEditor } from "../activeGraph";
+import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { isFrameValue, recordsToCube, type FrameValue, type FrameColumn, type FrameColType, type FrameCell, type CubeValue } from "../frame";
 import { shapeOfFrameValue, type Shape } from "../frameShape";
 import type { ImageValue } from "../imageValue";
 import type { SvgValue } from "../svgValue";
 import {
   parseNoteFrontmatter,
+  guessScalarText,
   type FrontmatterFieldType,
   type FrontmatterScalar,
   type FrontmatterRow,
@@ -25,7 +28,9 @@ import {
 
 /** The value a frontmatter key emits: a scalar/list (FrontmatterValue) or, for a `frame`
  *  field, a built FrameValue. */
-type EmittedValue = FrontmatterValue | FrameValue | CubeValue;
+type EmittedValue = FrontmatterValue | FrameValue | CubeValue | SolError;
+
+const KNAP_UNQUOTED = 'Knap vars in frontmatter require quoted "{{var}}" syntax';
 
 // A Note is a pure SOURCE: `---`-fenced frontmatter keys become typed OUTPUT
 // sockets, and it deliberately mints no inputs — that is the Report node's job.
@@ -142,6 +147,11 @@ export class NoteNode extends ClassicPreset.Node {
   private _renderBody = "";                              // markdown below the block
   private _fieldKeys: string[] = [];                     // output keys in source order
   private _fieldValues = new Map<string, EmittedValue>();
+  /** Keys whose value is a quoted Knap expression (→ its tag text): the socket carries
+   *  the RENDERED value, kept here from the last render with the type it guessed, so a
+   *  re-sync (the retype, a later body edit) keeps it while the tag text is unchanged. */
+  private _knapRaw = new Map<string, string>();
+  private _knapRendered = new Map<string, { raw: string; value: FrontmatterValue; type: FrontmatterFieldType }>();
 
   constructor(init?: {
     label?: string; body?: string; color?: string; width?: number; height?: number;
@@ -195,16 +205,24 @@ export class NoteNode extends ClassicPreset.Node {
     this._renderBody = parsed.body;
 
     const wanted = new Map<string, { value: EmittedValue; type: FrontmatterFieldType }>();
+    this._knapRaw.clear();
     for (const f of parsed.fields) {
+      if (f.knapUnquoted) { wanted.set(f.key, { value: solError("#SYNTAX!", KNAP_UNQUOTED), type: "string" }); continue; }
+      const knap = typeof f.value === "string" && hasKnapSyntax(f.value);
+      if (knap) this._knapRaw.set(f.key, f.value as string);
+      const last = knap ? this._knapRendered.get(f.key) : undefined;
+      const rendered = last && last.raw === f.value ? last : undefined;
+      const guessed = rendered?.type ?? f.guessed;
       const pinned: FrontmatterFieldType | undefined = this.fieldTypes[f.key];
-      const pin = reshapePin(pinned, f.guessed);
+      const pin = reshapePin(pinned, guessed);
       if (pinned !== undefined && pin !== pinned) {
         if (pin === undefined) delete this.fieldTypes[f.key];
         else this.fieldTypes[f.key] = pin;
       }
-      const type = pin ?? f.guessed;
-      wanted.set(f.key, { value: coerceValue(f.value, type), type });
+      const type = pin ?? guessed;
+      wanted.set(f.key, { value: coerceValue(rendered ? rendered.value : f.value, type), type });
     }
+    for (const k of [...this._knapRendered.keys()]) if (!this._knapRaw.has(k)) this._knapRendered.delete(k);
     // Prune overrides for keys no longer present (keep the save lean).
     for (const k of Object.keys(this.fieldTypes)) if (!wanted.has(k)) delete this.fieldTypes[k];
 
@@ -248,18 +266,50 @@ export class NoteNode extends ClassicPreset.Node {
     return vars;
   }
 
+  /** A quoted Knap field's socket carries what the field RENDERS to, typed by the
+   *  render's guess (or the key's pin). Re-parses the rendered block; a key whose
+   *  guess moved retypes its socket through the same reconcile as a body edit. */
+  private renderedFields(rendered: string): void {
+    if (this._knapRaw.size === 0) return;
+    const byKey = new Map(parseNoteFrontmatter(rendered).fields.map((f) => [f.key, f]));
+    let retype = false;
+    for (const [k, raw] of this._knapRaw) {
+      const rf = byKey.get(k);
+      let value: FrontmatterValue = rf?.value ?? null;
+      let type: FrontmatterFieldType = rf?.guessed ?? "string";
+      // The render lands inside the quotes the tag was written in, so read it plain.
+      if (typeof value === "string") { const g = guessScalarText(value); value = g.value; type = g.kind; }
+      if (this.fieldTypes[k] === undefined && this.fieldType(k) !== type) retype = true;
+      this._knapRendered.set(k, { raw, value, type });
+      this._fieldValues.set(k, coerceValue(value, this.fieldTypes[k] ?? type));
+    }
+    if (!retype) return;
+    queueMicrotask(() => {
+      void (async () => {
+        const { removed, retyped } = this.syncFields();
+        await dropStrandedFrontmatterCables(this.id, removed, retyped);
+        const view = getActiveView();
+        await view?.rerenderNode(this.id);
+        const editor = getOwningEditor(this.id);
+        if (editor && view && retyped.length) (await import("../fcReconcile")).reconcileFcTypes(editor, view);
+      })();
+    });
+  }
+
   // Async ONLY when the body carries a template tag; a plain note stays synchronous.
   // The document carries the RAW body as `source` beside the render, so a Report
   // wired to this note can use it as its template. A tag naming no field stays
   // literal (renderKnap keepUnknown): a template note reads as one.
   data(): Record<string, EmittedValue | DocumentValue> | Promise<Record<string, EmittedValue | DocumentValue | SolError>> {
-    const fields = this.fieldValues();
     const extra = { source: this.body };
-    if (!hasKnapSyntax(this.body)) return { ...fields, document: makeDocument(this.body, {}, undefined, this.id, extra) };
-    return renderKnap(this.body, this.templateVariables(), { keepUnknown: true }).then((r) => ({
-      ...fields,
-      document: r.errors.length ? solError("#SYNTAX!", knapErrorText(r.errors)) : makeDocument(r.output, {}, undefined, this.id, extra),
-    }));
+    if (!hasKnapSyntax(this.body)) return { ...this.fieldValues(), document: makeDocument(this.body, {}, undefined, this.id, extra) };
+    return renderKnap(this.body, this.templateVariables(), { keepUnknown: true }).then((r) => {
+      if (!r.errors.length) this.renderedFields(r.output);
+      return {
+        ...this.fieldValues(),
+        document: r.errors.length ? solError("#SYNTAX!", knapErrorText(r.errors)) : makeDocument(r.output, {}, undefined, this.id, extra),
+      };
+    });
   }
 
 /** Use this from the UI: the installErrorGuards wrapper calls `firstInputError`

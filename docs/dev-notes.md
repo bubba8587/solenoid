@@ -23,6 +23,17 @@ On `develop`, nothing pushed.
   the refresh buttons and the minutes cadence are the only re-reads.
 - **Report preview with a wired template and no records** showed the empty state: the show-or-empty check read
   the idle draft body instead of the preview source (`ReportOverlay.tsx`).
+- **Import Obsidian Note** card: the header label and the file-name line above the body both went; the note's own
+  markdown heading is the title. The card reloads on Refresh all connections (the store notifies; it read its
+  file outside the engine). In dev the demo vault reads live from disk through `/__demo-vault` and Vite no longer
+  watches the folder (an Obsidian save reloaded the whole app).
+- **Cube popup + chips:** a return from a drilled level lands on (and flashes) the cell it came from; list chips read
+  `4× List` everywhere (author: object emphasis over `4 items`, which stays only on the header badge); a list level
+  lies across ONE ROW by default (a list is a CSV row) with the Row | Column switch; nested chips tint by element
+  family; a list chip's hover shows its first items; Display tokens spell containers like the chips.
+- **Knap inside frontmatter** (author ask): a quoted tag's socket carries the rendered value; an unquoted tag is
+  `#SYNTAX!` with the author's wording. No `today` built-in and no unquoted pre-parse: both would be the parallel
+  template grammar the `{{daily}}` removal ruled out (`node-coverage.md` § Note).
 
 ### SESSION DIGEST (2026-09-16c — the deck, ruled; author present)
 

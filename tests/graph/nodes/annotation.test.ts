@@ -3,7 +3,7 @@ import { NoteNode } from "../../../src/graph/nodes/annotation";
 import { toggleTaskMarker } from "../../../src/graph/noteFrontmatter";
 import { SolenoidSocket } from "../../../src/graph/sockets";
 import { parseDateToSerial } from "../../../src/graph/nodes/date";
-import { installErrorGuards } from "../../../src/graph/errorValue";
+import { installErrorGuards, isSolError, type SolError } from "../../../src/graph/errorValue";
 import { isDocumentValue } from "../../../src/graph/documentValue";
 
 const typeOf = (n: NoteNode, key: string) => {
@@ -147,6 +147,44 @@ describe("NoteNode frontmatter outputs", () => {
     // choice — it needs no inputs object and matches every node's cached-value read.
     expect(() => (n.data as () => unknown)()).not.toThrow();
     expect(n.fieldValues()).toEqual({ x: 1 });
+  });
+});
+
+describe("NoteNode — Knap inside frontmatter", () => {
+  const tick = () => new Promise((r) => setTimeout(r, 0));
+
+  it("a quoted Knap field's socket carries the RENDERED value, typed by the render", async () => {
+    const n = new NoteNode({ body: '---\nprice: 12.5\nbig: "{{ price > 10 }}"\ntotal: "{{ price | round }}"\n---\n' });
+    expect(typeOf(n, "total")).toBe("string"); // nothing rendered yet
+    const out = await n.data();
+    expect(out.total).toBe(13);
+    expect(out.big).toBe(true);
+    expect((out.document as { body: string }).body).toContain('total: "13"');
+    await tick(); // the retype runs on a microtask, through the body-edit reconcile
+    expect(typeOf(n, "total")).toBe("number");
+    expect(typeOf(n, "big")).toBe("logical");
+    expect(n.fieldValues().total).toBe(13);
+    // A later sync keeps the learned type until the render says otherwise.
+    n.syncFields();
+    expect(typeOf(n, "total")).toBe("number");
+  });
+
+  it("a pinned type wins over the render's guess", async () => {
+    const n = new NoteNode({ body: '---\nqty: 3\ncode: "{{ qty }}"\n---\n', fieldTypes: { code: "string" } });
+    const out = await n.data();
+    expect(out.code).toBe("3");
+    await tick();
+    expect(typeOf(n, "code")).toBe("string");
+  });
+
+  it("an unquoted tag emits #SYNTAX! with the quoting hint on that socket only", async () => {
+    const n = new NoteNode({ body: "---\nprice: 12\ntotal: {{ price }}\n---\n" });
+    const total = n.fieldValues().total;
+    expect(isSolError(total)).toBe(true);
+    expect((total as SolError).code).toBe("#SYNTAX!");
+    expect((total as SolError).message).toBe('Knap vars in frontmatter require quoted "{{var}}" syntax');
+    expect(n.fieldValues().price).toBe(12);
+    expect(typeOf(n, "total")).toBe("string");
   });
 });
 

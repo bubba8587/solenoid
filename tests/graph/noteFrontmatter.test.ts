@@ -91,6 +91,15 @@ describe("parseNoteFrontmatter", () => {
     ]);
   });
 
+  it("a bare Knap tag (YAML reads it as a flow map) is flagged; a quoted one is a string", () => {
+    const r = parseNoteFrontmatter('---\ntotal: {{ price * qty }}\nwhen: {% if x %}y{% endif %}\nok: "{{ price * qty }}"\n---');
+    expect(r.fields).toEqual([
+      { key: "total", value: null, guessed: "string", knapUnquoted: true },
+      { key: "when", value: null, guessed: "string", knapUnquoted: true },
+      { key: "ok", value: "{{ price * qty }}", guessed: "string" },
+    ]);
+  });
+
   it("a nested map that is not a row list surfaces as a blank string key", () => {
     const r = parseNoteFrontmatter("---\nmeta:\n  a: 1\n  b: 2\nafter: x\n---");
     expect(r.fields).toEqual([
