@@ -1,6 +1,5 @@
 import { useFlowResizeGrip } from "../flowSurface";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { marked } from "marked";
 import DOMPurify from "dompurify";
 import type { NoteNode as NoteNodeType } from "../rete-nodes";
 import { hexToRgba, themeAccent, resolveColor } from "../palette";
@@ -32,6 +31,7 @@ import type { ClassicPreset } from "rete";
 import { stopDragStart } from "../coarse";
 import "./Markdown.css";
 import "./NoteNode.css";
+import { renderNoteMarkdown } from "../noteMarkdown";
 
 type FieldValue = FrontmatterValue | FrameValue | CubeValue | SolError;
 
@@ -204,7 +204,7 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   // NOT trusted content — a body arrives in shared .solenoid files and marked does no
   // sanitizing, so sanitize EVERY render (the CSP is only the second layer).
   const bodyHtml = useMemo(
-    () => enableTaskCheckboxes(DOMPurify.sanitize(marked.parse(renderBody || "", { async: false, gfm: true, breaks: true }) as string), rendered === body),
+    () => enableTaskCheckboxes(DOMPurify.sanitize(renderNoteMarkdown(renderBody || "")), rendered === body),
     [renderBody, rendered, body],
   );
   // The read body's task-list checkboxes index into it in document order (= source

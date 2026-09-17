@@ -1,4 +1,3 @@
-import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { getEditor } from "./process";
 import { NoteNode, ReportNode } from "./rete-nodes";
@@ -11,6 +10,7 @@ import { saveHtmlFileDialog, isDesktop } from "./fileBridge";
 import { pushNotice } from "./noticeStore";
 import { reportPaletteStore } from "./palette";
 import { APP_LOCALE } from "./locale";
+import { renderNoteMarkdown } from "./noteMarkdown";
 
 // "Export as webpage" freezes a Report into ONE self-contained .html: everything
 // inlines as data URIs / literal markup, with no external references.
@@ -42,7 +42,7 @@ export function freezeInlineRefs(
 }
 
 function renderMarkdown(md: string): string {
-  return DOMPurify.sanitize(marked.parse(md, { async: false, gfm: true, breaks: true }) as string);
+  return DOMPurify.sanitize(renderNoteMarkdown(md));
 }
 
 /** The export's CSS. `accent` tints the title + heading rules ONLY when the doc
@@ -68,6 +68,8 @@ body { margin: 0; background: #0e0e0e; color: #e8e8e8; font: 14px/1.6 -apple-sys
 .report-export h3 { font-size: 15px; font-weight: 600; margin: 18px 0 6px; }
 .report-export p { margin: 10px 0; }
 .report-export code { font-family: ui-monospace, monospace; background: #1e1e1e; border: 1px solid #2d2d2d; border-radius: 4px; padding: 1px 5px; }
+.report-export .sol-md__wikilink { color: ${accent}; text-decoration: underline dotted; text-underline-offset: 3px; }
+.report-export .sol-md__tag { display: inline-block; padding: 0 6px; border-radius: 5px; font-size: 0.85em; line-height: 1.6; color: ${accent}; background: color-mix(in srgb, ${accent} 16%, transparent); }
 .report-export pre { background: #1e1e1e; border: 1px solid #2d2d2d; border-radius: 6px; padding: 10px 12px; overflow: auto; }
 .report-export table { border-collapse: collapse; margin: 10px 0; }
 .report-export th, .report-export td { border: 1px solid #2d2d2d; padding: 4px 9px; text-align: left; }

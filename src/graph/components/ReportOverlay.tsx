@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { ClassicPreset } from "rete";
 import { reportStore } from "../reportStore";
@@ -26,6 +25,7 @@ const FILTERS = Object.entries(standardFilterMetadata)
 import { exportReportAsWebpage } from "../reportExport";
 import "./Markdown.css";
 import "./ReportOverlay.css";
+import { renderNoteMarkdown } from "../noteMarkdown";
 
 const NO_VARS: Record<string, unknown> = {};
 
@@ -114,9 +114,7 @@ export function ReportOverlay() {
   useEscapeToClose(closeReport, !!nodeId);
 
   const bodyHtml = useMemo(
-    () => DOMPurify.sanitize(
-      marked.parse(previewText || "", { async: false, gfm: true, breaks: true }) as string,
-    ),
+    () => DOMPurify.sanitize(renderNoteMarkdown(previewText || "")),
     [previewText],
   );
 
@@ -125,7 +123,7 @@ export function ReportOverlay() {
   // A Note's body is rendered exactly as its card renders it: frontmatter stripped,
   // sanitized on every render (a body arrives in shared .solenoid files).
   const noteHtml = useMemo(
-    () => note ? DOMPurify.sanitize(marked.parse(parseNoteFrontmatter(note.body).body || "", { async: false, gfm: true, breaks: true }) as string) : "",
+    () => note ? DOMPurify.sanitize(renderNoteMarkdown(parseNoteFrontmatter(note.body).body || "")) : "",
     [note, note?.body],
   );
 

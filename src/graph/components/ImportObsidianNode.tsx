@@ -1,6 +1,5 @@
 import { useFlowResizeGrip } from "../flowSurface";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { marked } from "marked";
 import DOMPurify from "dompurify";
 import type { ImportObsidianNode as ImportObsidianNodeType } from "../rete-nodes";
 import { hexToRgba, themeAccent, resolveColor } from "../palette";
@@ -27,6 +26,7 @@ import type { NodeProps } from "./nodeKit";
 import type { FrontmatterFieldType } from "../noteFrontmatter";
 import "./NoteNode.css";
 import "./ImportObsidianNode.css";
+import { renderNoteMarkdown } from "../noteMarkdown";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
@@ -152,7 +152,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   const { text: rendered, errors: templateErrors } = useKnapRender(body, templateVars, 0, null, true);
   const renderBody = useMemo(() => parseNoteFrontmatter(rendered).body, [rendered]);
   const bodyHtml = useMemo(
-    () => DOMPurify.sanitize(marked.parse(renderBody || "", { async: false, gfm: true, breaks: true }) as string),
+    () => DOMPurify.sanitize(renderNoteMarkdown(renderBody || "")),
     [renderBody],
   );
 

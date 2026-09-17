@@ -1,6 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { marked } from "marked";
 import DOMPurify from "dompurify";
 
 import { cableValueStore } from "../cableValueStore";
@@ -29,6 +28,7 @@ import { ChartFigure } from "./chartView";
 import { isSolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import { getOwningEditor } from "../activeGraph";
+import { renderNoteMarkdown } from "../noteMarkdown";
 
 // The ONE rendering path for a `` `=name` `` inline ref: Note cards and the Report
 // overlay both go through InlineRefBody so a ref renders identically everywhere.
@@ -207,7 +207,7 @@ function DocumentEmbedBody({ value }: { value: DocumentValue }) {
   const html = useMemo(() => {
     const substituted = parseNoteFrontmatter(value.body).body.replace(/`=([A-Za-z_][A-Za-z0-9_]*)!?`/g, (m, name: string) =>
       name in value.refs ? refPreview(value.refs[name], undefined) : m);
-    return DOMPurify.sanitize(marked.parse(substituted, { async: false, gfm: true, breaks: true }) as string);
+    return DOMPurify.sanitize(renderNoteMarkdown(substituted));
   }, [value]);
   return <span className="report-embed__body sol-md" dangerouslySetInnerHTML={{ __html: html }} />;
 }
