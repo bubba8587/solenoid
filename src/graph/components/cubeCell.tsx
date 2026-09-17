@@ -11,24 +11,34 @@ import { isUnitCell } from "../unitValue";
 import { cubePopup, type CellRef } from "../cubePopupStore";
 import { formatScalar } from "./format";
 import { formatListCell } from "./valueDisplayFormat";
+import { elemFamilyOfCells, type ElemFamily } from "../valuePopup";
 import { errorTip } from "./ErrorChip";
 import "./ArrayChip.css";
 
 const LIST_PREVIEW = 3;
-/** A list cell in brackets with its first few items (`[a, b, c…]`); a 2-D cell by
- *  its shape (`[3×4]`). */
-function listToken(cell: unknown[]): string {
-  if (Array.isArray(cell[0])) return `[${cell.length}×${(cell[0] as unknown[]).length}]`;
-  const items = cell.slice(0, LIST_PREVIEW).map((x) => cubeCellToken(x as CubeCell));
-  return `[${items.join(", ")}${cell.length > LIST_PREVIEW ? "…" : ""}]`;
+/** The hover title shows more of a list than the compact token does. */
+const HOVER_PREVIEW = 8;
+/** A list cell in brackets with its first `max` items (`[a, b, c…]`); a 2-D cell by
+ *  its shape (`[3×4 Table]`), like the chips. */
+function listToken(cell: unknown[], max = LIST_PREVIEW): string {
+  if (Array.isArray(cell[0])) return `[${cell.length}×${(cell[0] as unknown[]).length} Table]`;
+  const items = cell.slice(0, max).map((x) => cubeCellToken(x as CubeCell));
+  return `[${items.join(", ")}${cell.length > max ? "…" : ""}]`;
 }
 
-/** A short, drill-free token for the compact preview; `type` renders a flat scalar
- *  cell by its source column's element type. */
+/** The element family a nested list chip tints by: the column's declared type when the
+ *  cube carries one, else the cells (a mixed list stays untinted, like a wildcard). */
+function listFamily(cell: unknown[], type?: FrameColType): ElemFamily | undefined {
+  return type ?? elemFamilyOfCells(cell as Parameters<typeof elemFamilyOfCells>[0]);
+}
+
+/** A short, drill-free token for the compact preview, spelled like the chips
+ *  (`[3×2×1 Cube]`, `[5×2 Frame]`, `[a, b, c…]`); `type` renders a flat scalar cell by
+ *  its source column's element type. */
 export function cubeCellToken(cell: CubeCell, type?: FrameColType, format?: FormatAnnotation): string {
   if (cell === null || cell === undefined) return "";
-  if (isCubeValue(cell)) return `Cube ${cubeRowCount(cell)}x${cell.columns.length}x${cubeDepth(cell)}`;
-  if (isFrameValue(cell)) return `Frame ${frameRowCount(cell)}x${cell.columns.length}`;
+  if (isCubeValue(cell)) return `[${cubeRowCount(cell)}×${cell.columns.length}×${cubeDepth(cell)} Cube]`;
+  if (isFrameValue(cell)) return `[${frameRowCount(cell)}×${cell.columns.length} Frame]`;
   if (isUnitCell(cell)) return formatListCell(cell, formatScalar); // "5 km"
   if (Array.isArray(cell)) return listToken(cell);
   if (isSolError(cell)) return cell.code;
@@ -104,16 +114,19 @@ export function CubeCellChip({ cell, crumb, size = "md", type, format, at }: {
   }
   if (Array.isArray(cell)) {
     const is2D = Array.isArray(cell[0]);
+    // Tinted by element family like the node-level chip (numeric keeps the default).
+    const family = listFamily(cell, type);
+    const famClass = family && family !== "number" ? ` solenoid-array-chip--elem-${family}${is2D ? "-table" : ""}` : "";
     return (
       <button
         type="button"
-        className={chip("array")}
-        title={is2D ? "Drill in" : `${cell.length}-item list. Drill in.`}
+        className={chip("array") + famClass}
+        title={is2D ? `${cell.length}×${(cell[0] as unknown[]).length} table. Drill in.` : `${cell.length}-item list ${listToken(cell, HOVER_PREVIEW)}. Drill in.`}
         onPointerDown={stop}
         onMouseDown={stop}
         onClick={(e) => { stop(e); cubePopup.drill(is2D ? { kind: "grid", cells: cell as CubeCell[][], label: crumb } : { kind: "list", items: cell, label: crumb }, at); }}
       >
-        [{is2D ? `${cell.length}×${(cell[0] as unknown[]).length}` : `${cell.length}× List`}]
+        [{is2D ? `${cell.length}×${(cell[0] as unknown[]).length} Table` : `${cell.length}× List`}]
       </button>
     );
   }

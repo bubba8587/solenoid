@@ -1,11 +1,13 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { cubePopup, type CubeEditBinding, type DrillView } from "../cubePopupStore";
-import { recordsToCube, frameFromRecords, cubeRowCount, cubeDepth } from "../frame";
+import { recordsToCube, frameFromRecords, cubeRowCount, cubeDepth, type CubeCell } from "../frame";
 import {
   getAtPath, setAtPath, recordsShape, parseCellText, cellTextOf,
   type CubePath, type CubeRecord,
 } from "../literalEditors";
 import { stopDragStart } from "../coarse";
+import { elemFamilyOfCells } from "../valuePopup";
+import { cubeCellToken } from "./cubeCell";
 
 // The Cube Input's editing cells (cubePopup edit mode). Every nested cell DRILLS on the
 // breadcrumb, one window: a list cell → an editable list level, a frame-shaped record list
@@ -74,8 +76,10 @@ export function CubeEditCell({ edit, path, row, column }: {
   const shape = recordsShape(value);
   if (shape === "list" || shape === "empty") {
     const list = (value ?? []) as unknown[];
+    const family = list.length ? elemFamilyOfCells(list as Parameters<typeof elemFamilyOfCells>[0]) : undefined;
+    const famClass = family && family !== "number" ? ` solenoid-array-chip--elem-${family}` : "";
     return (
-      <button type="button" className={chipClass("array")} title={`${list.length}-item list. Drill in and edit.`}
+      <button type="button" className={chipClass("array") + famClass} title={`${list.length}-item list ${cubeCellToken(list as CubeCell)}. Drill in and edit.`}
         onPointerDown={stop} onMouseDown={stop} onClick={(e) => { stop(e); cubePopup.drill(listViewAt(records, cellPath, column), { r: row }); }}>
         [{list.length}× List]
       </button>

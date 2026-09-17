@@ -79,7 +79,7 @@ function describe(view: DrillView, listVertical: boolean): {
 
 /** The current level's cell as export text — same reducer as the compact
  *  preview, so a nested container serializes as its chip token
- *  ("Cube 3x2x1", "Frame 5x2"), never expanded. */
+ *  ("[3×2×1 Cube]", "[5×2 Frame]", "[a, b, c…]"), never expanded. */
 function tokenAt(view: DrillView, r: number, c: number, listVertical: boolean): string {
   if (view.kind === "cube") {
     const col = view.cube.columns[c];
