@@ -6,6 +6,24 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-17 — Obsidian round-trip; author present)
+
+On `develop`, nothing pushed.
+- **Frontmatter reads any YAML, writes Obsidian's block style.** The author found that editing any property in
+  Obsidian rewrote the Spanish course note's inline `- {topic: …, tags: [...]}` rows into block style, after which
+  the cube read as a one-item string list and Write Properties refused the key. The hand-rolled subset parser is
+  gone: `noteFrontmatter.ts` reads through the `yaml` package (quoted scalars stay text, plain ISO dates become
+  serials, a list of maps is a frame, a row holding a list a cube, a non-row nested map surfaces as a blank
+  string key). `frontmatterPatch.ts`, the graph stub and every demo-vault note spell rows and lists in block
+  style, the writer's "nested block" refusal is deleted, and the Kitchen remodel round trip now covers tags and
+  milestones byte-for-byte. Author's ruling: the inline form was only ever a parser limitation, block style
+  app-wide is fine.
+- **Vault file watcher removed** (author: "working in Obsidian should not interrupt Solenoid; we have the refresh
+  buttons"). `vaultWatch.ts`, `useVaultWatch`, the `fs:allow-watch`/`unwatch` capability and the test are gone;
+  the refresh buttons and the minutes cadence are the only re-reads.
+- **Report preview with a wired template and no records** showed the empty state: the show-or-empty check read
+  the idle draft body instead of the preview source (`ReportOverlay.tsx`).
+
 ### SESSION DIGEST (2026-09-16c — the deck, ruled; author present)
 
 On `develop`, nothing pushed.
