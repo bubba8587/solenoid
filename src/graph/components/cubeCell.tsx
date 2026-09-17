@@ -14,6 +14,15 @@ import { formatListCell } from "./valueDisplayFormat";
 import { errorTip } from "./ErrorChip";
 import "./ArrayChip.css";
 
+const LIST_PREVIEW = 3;
+/** A list cell in brackets with its first few items (`[a, b, c…]`); a 2-D cell by
+ *  its shape (`[3×4]`). */
+function listToken(cell: unknown[]): string {
+  if (Array.isArray(cell[0])) return `[${cell.length}×${(cell[0] as unknown[]).length}]`;
+  const items = cell.slice(0, LIST_PREVIEW).map((x) => cubeCellToken(x as CubeCell));
+  return `[${items.join(", ")}${cell.length > LIST_PREVIEW ? "…" : ""}]`;
+}
+
 /** A short, drill-free token for the compact preview; `type` renders a flat scalar
  *  cell by its source column's element type. */
 export function cubeCellToken(cell: CubeCell, type?: FrameColType, format?: FormatAnnotation): string {
@@ -21,7 +30,7 @@ export function cubeCellToken(cell: CubeCell, type?: FrameColType, format?: Form
   if (isCubeValue(cell)) return `Cube ${cubeRowCount(cell)}x${cell.columns.length}x${cubeDepth(cell)}`;
   if (isFrameValue(cell)) return `Frame ${frameRowCount(cell)}x${cell.columns.length}`;
   if (isUnitCell(cell)) return formatListCell(cell, formatScalar); // "5 km"
-  if (Array.isArray(cell)) return Array.isArray(cell[0]) ? `${cell.length}x${(cell[0] as unknown[]).length}` : "List";
+  if (Array.isArray(cell)) return listToken(cell);
   if (isSolError(cell)) return cell.code;
   if (type) { const f = formatFrameCell(type, cell as FrameCell, format); return f === null ? "" : String(f); }
   if (typeof cell === "boolean") return cell ? "TRUE" : "FALSE";
