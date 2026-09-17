@@ -386,7 +386,8 @@ export function WriteObsidianComponent({ data, emit }: NodeProps<WriteObsidianNo
         )}
         {activeMode === "note" && d.lastWritten && obsidianOpenUrl(vault, d.lastWritten) && (
           <button
-            type="button" className="sol-write__run" title="Open the note in Obsidian"
+            type="button" className="sol-write__run" title={desktop ? "Open the note in Obsidian" : "Open in Obsidian works in the desktop app"}
+            disabled={!desktop}
             onClick={(e) => { e.stopPropagation(); void openExternal(obsidianOpenUrl(vault, d.lastWritten)!); }}
             {...stopPtr}
           >

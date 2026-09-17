@@ -205,7 +205,8 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
           <button
             type="button"
             className="solenoid-note__swatch"
-            title="Open in Obsidian"
+            title={desktop ? "Open in Obsidian" : "Open in Obsidian works in the desktop app"}
+            disabled={!desktop}
             onClick={(e) => { e.stopPropagation(); void openExternal(obsidianOpenUrl(vault, data.fileName)!); }}
             onPointerDown={stopDragStart}
             onMouseDown={stopDragStart}

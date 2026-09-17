@@ -819,7 +819,8 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
               <div className="sol-conn__note" style={{ flex: 1 }}>Obsidian vault{data.folder ? ` · ${data.folder}` : ""}</div>
               {openUrl && (
                 <button
-                  type="button" className="sol-conn__refresh" title="Open the first note in Obsidian"
+                  type="button" className="sol-conn__refresh" title={desktop ? "Open the first note in Obsidian" : "Open in Obsidian works in the desktop app"}
+                  disabled={!desktop}
                   onClick={(e) => { e.stopPropagation(); void openExternal(openUrl); }}
                   onPointerDown={stopDragStart} onMouseDown={(e) => e.stopPropagation()}
                 >
