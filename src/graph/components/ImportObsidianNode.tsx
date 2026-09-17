@@ -27,6 +27,7 @@ import type { FrontmatterFieldType } from "../noteFrontmatter";
 import "./NoteNode.css";
 import "./ImportObsidianNode.css";
 import { renderNoteMarkdown } from "../noteMarkdown";
+import { useKatexReady } from "./katexLoader";
 
 const stop = (e: React.PointerEvent | React.MouseEvent) => e.stopPropagation();
 
@@ -151,9 +152,11 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   // frontmatter field stays literal on the card rather than rendering empty.
   const { text: rendered, errors: templateErrors } = useKnapRender(body, templateVars, 0, null, true);
   const renderBody = useMemo(() => parseNoteFrontmatter(rendered).body, [rendered]);
+  const tex = useKatexReady(); // math re-renders once KaTeX lands
   const bodyHtml = useMemo(
     () => DOMPurify.sanitize(renderNoteMarkdown(renderBody || "")),
-    [renderBody],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [renderBody, tex],
   );
 
   const mode = appThemeStore.getMode();

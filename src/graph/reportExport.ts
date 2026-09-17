@@ -69,6 +69,14 @@ body { margin: 0; background: #0e0e0e; color: #e8e8e8; font: 14px/1.6 -apple-sys
 .report-export p { margin: 10px 0; }
 .report-export code { font-family: ui-monospace, monospace; background: #1e1e1e; border: 1px solid #2d2d2d; border-radius: 4px; padding: 1px 5px; }
 .report-export .sol-md__wikilink { color: ${accent}; text-decoration: underline dotted; text-underline-offset: 3px; }
+.report-export .sol-md__hl { background: color-mix(in srgb, ${accent} 24%, transparent); color: inherit; border-radius: 3px; padding: 0 3px; }
+.report-export .sol-md__callout { margin: 12px 0; padding: 8px 12px; border: 1px solid color-mix(in srgb, ${accent} 30%, #2d2d2d); border-radius: 8px; background: color-mix(in srgb, ${accent} 12%, transparent); }
+.report-export .sol-md__callout--danger { border-color: color-mix(in srgb, #e0473a 30%, #2d2d2d); background: color-mix(in srgb, #e0473a 8%, transparent); }
+.report-export .sol-md__callout-title { display: flex; align-items: center; gap: 8px; font-weight: 600; color: ${accent}; }
+.report-export .sol-md__callout--danger .sol-md__callout-title { color: #e0473a; }
+.report-export .sol-md__callout-body > :first-child { margin-top: 6px; }
+.report-export .sol-md__callout-body > :last-child { margin-bottom: 0; }
+.report-export .sol-md__math-row { text-align: center; margin: 10px 0; overflow-x: auto; }
 .report-export .sol-md__tag { display: inline-block; padding: 0 6px; border-radius: 5px; font-size: 0.85em; line-height: 1.5; color: ${accent}; background: #1e1e1e; border: 1px solid color-mix(in srgb, ${accent} 40%, transparent); }
 .report-export pre { background: #1e1e1e; border: 1px solid #2d2d2d; border-radius: 6px; padding: 10px 12px; overflow: auto; }
 .report-export table { border-collapse: collapse; margin: 10px 0; }
@@ -167,6 +175,8 @@ export function buildReportExportHtml(
 /** The whole export flow: capture the canvas image, build the document, and hand
  *  it to the save dialog (native on desktop, a browser download otherwise). */
 export async function exportReportAsWebpage(report: ReportNode): Promise<void> {
+  // A formula in the body renders through KaTeX, so the chunk loads first (a no-op once cached).
+  if (/\$/.test(report.body)) await import("./components/katexRender");
   try {
     const canvasImage = await captureCanvasImage();
     const html = buildReportExportHtml(report, { canvasImage, body: await report.renderedBody() });

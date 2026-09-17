@@ -32,6 +32,7 @@ import { stopDragStart } from "../coarse";
 import "./Markdown.css";
 import "./NoteNode.css";
 import { renderNoteMarkdown } from "../noteMarkdown";
+import { useKatexReady } from "./katexLoader";
 
 type FieldValue = FrontmatterValue | FrameValue | CubeValue | SolError;
 
@@ -203,9 +204,11 @@ export function NoteComponent({ data, emit }: NodeProps<NoteNodeType>) {
   const renderBody = useMemo(() => parseNoteFrontmatter(rendered).body, [rendered]);
   // NOT trusted content — a body arrives in shared .solenoid files and marked does no
   // sanitizing, so sanitize EVERY render (the CSP is only the second layer).
+  const tex = useKatexReady(); // math re-renders once KaTeX lands
   const bodyHtml = useMemo(
     () => enableTaskCheckboxes(DOMPurify.sanitize(renderNoteMarkdown(renderBody || "")), rendered === body),
-    [renderBody, rendered, body],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [renderBody, rendered, body, tex],
   );
   // The read body's task-list checkboxes index into it in document order (= source
   // order, since a nested item's box still comes after its parent's).

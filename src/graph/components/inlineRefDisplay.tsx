@@ -10,7 +10,7 @@ import { isCx, formatCxDisplay } from "../cxValue";
 import { isUnitCell } from "../unitValue";
 import { unwrapUnitCells, annotationForValue } from "./valueDisplayFormat";
 import { formatScalar } from "./format";
-import { useKatexRender } from "./katexLoader";
+import { useKatexRender, useKatexReady } from "./katexLoader";
 import { isFrameValue, isCubeValue } from "../frame";
 import { isChartValue, type ChartValue } from "../chartValue";
 import { isMermaidValue } from "../mermaidValue";
@@ -204,11 +204,13 @@ export function CollapsibleFigure({ title, children, defaultOpen = true }: {
  *  `` `=x` `` spans substitute from the CARRIED refs map, and a name the map lacks
  *  (a Note's — Notes carry none) stays a literal span. */
 function DocumentEmbedBody({ value }: { value: DocumentValue }) {
+  const tex = useKatexReady();
   const html = useMemo(() => {
     const substituted = parseNoteFrontmatter(value.body).body.replace(/`=([A-Za-z_][A-Za-z0-9_]*)!?`/g, (m, name: string) =>
       name in value.refs ? refPreview(value.refs[name], undefined) : m);
     return DOMPurify.sanitize(renderNoteMarkdown(substituted));
-  }, [value]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, tex]);
   return <span className="report-embed__body sol-md" dangerouslySetInnerHTML={{ __html: html }} />;
 }
 

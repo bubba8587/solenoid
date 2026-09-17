@@ -31,6 +31,12 @@ const subscribe = (cb: () => void) => {
 };
 const snapshot = () => cached;
 
+/** Re-renders when katex arrives WITHOUT starting the load (a note renderer starts it
+ *  only on meeting a formula), so a plain note never pulls the chunk. */
+export function useKatexReady(): TexRenderer | null {
+  return useSyncExternalStore(subscribe, snapshot);
+}
+
 /** Triggers the load and re-renders when katex arrives; null while loading. */
 export function useKatexRender(): TexRenderer | null {
   const r = useSyncExternalStore(subscribe, snapshot);

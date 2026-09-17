@@ -26,6 +26,7 @@ import { exportReportAsWebpage } from "../reportExport";
 import "./Markdown.css";
 import "./ReportOverlay.css";
 import { renderNoteMarkdown } from "../noteMarkdown";
+import { useKatexReady } from "./katexLoader";
 
 const NO_VARS: Record<string, unknown> = {};
 
@@ -113,9 +114,11 @@ export function ReportOverlay() {
   }
   useEscapeToClose(closeReport, !!nodeId);
 
+  const tex = useKatexReady(); // math in the preview re-renders once KaTeX lands
   const bodyHtml = useMemo(
     () => DOMPurify.sanitize(renderNoteMarkdown(previewText || "")),
-    [previewText],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [previewText, tex],
   );
 
   const sourceRef = useRef<HTMLTextAreaElement>(null);
@@ -124,7 +127,8 @@ export function ReportOverlay() {
   // sanitized on every render (a body arrives in shared .solenoid files).
   const noteHtml = useMemo(
     () => note ? DOMPurify.sanitize(renderNoteMarkdown(parseNoteFrontmatter(note.body).body || "")) : "",
-    [note, note?.body],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [note, note?.body, tex],
   );
 
   if (!nodeId) return null;
