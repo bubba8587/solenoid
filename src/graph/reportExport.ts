@@ -69,7 +69,7 @@ body { margin: 0; background: #0e0e0e; color: #e8e8e8; font: 14px/1.6 -apple-sys
 .report-export p { margin: 10px 0; }
 .report-export code { font-family: ui-monospace, monospace; background: #1e1e1e; border: 1px solid #2d2d2d; border-radius: 4px; padding: 1px 5px; }
 .report-export .sol-md__wikilink { color: ${accent}; text-decoration: underline dotted; text-underline-offset: 3px; }
-.report-export .sol-md__tag { display: inline-block; padding: 0 6px; border-radius: 5px; font-size: 0.85em; line-height: 1.5; color: ${accent}; border: 1px solid color-mix(in srgb, ${accent} 40%, transparent); }
+.report-export .sol-md__tag { display: inline-block; padding: 0 6px; border-radius: 5px; font-size: 0.85em; line-height: 1.5; color: ${accent}; background: #1e1e1e; border: 1px solid color-mix(in srgb, ${accent} 40%, transparent); }
 .report-export pre { background: #1e1e1e; border: 1px solid #2d2d2d; border-radius: 6px; padding: 10px 12px; overflow: auto; }
 .report-export table { border-collapse: collapse; margin: 10px 0; }
 .report-export th, .report-export td { border: 1px solid #2d2d2d; padding: 4px 9px; text-align: left; }

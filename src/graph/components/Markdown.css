@@ -37,7 +37,10 @@
   font-size: 0.85em;
   line-height: 1.5;
   color: color-mix(in srgb, var(--note-color, var(--accent)) var(--mix-ink), var(--text));
-  /* The object chips' edge (ArrayChip.css): a 40% hairline, no fill. */
+  /* An OPAQUE sunken fill (the code-span surface): the note's own background is a
+     wash of the same hue, so a tinted wash would vanish into it. The edge is the
+     object chips' 40% hairline in the note's colour. */
+  background: var(--surface-sunken);
   border: 1px solid color-mix(in srgb, var(--note-color, var(--accent)) 40%, transparent);
   padding: 0 6px;
   white-space: nowrap;
