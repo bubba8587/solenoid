@@ -97,6 +97,11 @@
 }
 /* The imported note's title, shown at the top of the body — the human name whose
    wireable identity is the `path` socket row above. */
+/* The bar carries only controls; the spacer keeps them on the right. */
+.sol-import__bar-spacer {
+  margin-right: auto;
+}
+
 .sol-import__doc-title {
   font-size: 12.5px;
   font-weight: 650;

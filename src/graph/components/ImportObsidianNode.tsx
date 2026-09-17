@@ -12,7 +12,6 @@ import { FieldRow } from "./NoteNode";
 import { useDismissOnOutside } from "./useDismissOnOutside";
 import { useKnapRender } from "./useKnapRender";
 import { parseNoteFrontmatter } from "../noteFrontmatter";
-import { useEditableLabel } from "./inlineInput";
 import { isDesktop, listVaultMarkdownFiles, readVaultFile, openExternal } from "../fileBridge";
 import { getVaultRoot, isDemoVaultPath } from "../demoVault";
 import { obsidianOpenUrl } from "../obsidianLinks";
@@ -61,8 +60,6 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
   const vault = useSyncExternalStore(settingsStore.subscribe, () => getVaultRoot());
   const canRead = desktop || isDemoVaultPath(vault);
 
-  // The shared header title-edit mechanic (click-to-edit, Enter/blur, Escape revert).
-  const title = useEditableLabel(data, () => { void getActiveView()?.rerenderNode(data.id); });
   useEffect(() => { setColor(data.color); }, [data.color]);
   useEffect(() => { setCollapsed(data.collapsed); }, [data.collapsed]);
   useEffect(() => { setBody(data.body); }, [data.body]);
@@ -85,7 +82,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     data.body = content;
     data.fileName = sourcePath;
     if (sourcePath && (data.label === "Import Obsidian Note" || data.label.trim() === "")) {
-      data.label = baseName(sourcePath); // title hook resyncs its display off data.label
+      data.label = baseName(sourcePath); // the card's name elsewhere (stubs, the Inspector)
     }
     const { removed, retyped } = data.syncFields();
     await dropStrandedFrontmatterCables(data.id, removed, retyped);
@@ -179,17 +176,8 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
             <path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        {title.editing ? (
-          <input className="solenoid-note__name" placeholder="Import Obsidian Note" {...title.inputProps} />
-        ) : (
-          <div
-            className={`solenoid-note__name-display${data.label.trim() ? "" : " solenoid-note__name-display--empty"}`}
-            title={data.label || "Import Obsidian Note"}
-            {...title.displayProps}
-          >
-            {data.label.trim() || "Import Obsidian Note"}
-          </div>
-        )}
+        {/* No header name: the note's title lives in the body (sol-import__doc-title). */}
+        <span className="sol-import__bar-spacer" />
         <button
           type="button"
           className="solenoid-note__swatch"
