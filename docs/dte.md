@@ -52,7 +52,7 @@ already lists changed nodes. An edit the author wants looked at gets a `#ask` be
 | The author does | The agent does | Clear it with |
 |---|---|---|
 | Drops or writes a note in `decisions/outbox/` | Reads it. A decision becomes `dte new` (or an inbox item if it is above the agent's ring), a correction becomes an edit, a question gets an answer in chat | `dte outbox --done <slug>` (deletes the note) |
-| Tags a node `ratify` (Properties pane) or types `#ratify` in its body | `dte ratify <ID> --by "the author"`, then moves the ID into `OWNER_RATIFIED` in `rules.test.ts` | `dte outbox --done <ID>` (strips the action tags) |
+| Tags a node `ratify` (Properties pane) or types `#ratify` in its body | `dte ratify <ID> --by "the author"` (drops the contest record; History stays as the activity log), then moves the ID into `OWNER_RATIFIED` in `rules.test.ts` | `dte outbox --done <ID>` (strips the action tags) |
 | `retire` | `dte blast`, then `dte retire <ID> --by <agent> --authorized-by "the author"`, fixes the orphans | same |
 | `contest` | `dte contest <ID> --again`, builds the alternatives, records the verdict, reports | same |
 | `ask` beside a question or comment | Answers in chat; if it changes the node, makes the change and adds a History line | same |

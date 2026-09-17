@@ -9,6 +9,8 @@ specific item.
 ### SESSION DIGEST (2026-09-17 — Obsidian round-trip; author present)
 
 On `develop`, nothing pushed.
+- **Ratification prunes the contest** (owner's ruling: History is an activity log, one line per event; a node is present
+  governance only): `dte ratify` deletes `## Alternatives considered`; B7's went. Stated on B8, logged as DTE feedback 11.
 - **First outbox round processed** (the author's inline `#ask`/`#ratify` comments): B5 and B6 moved back to ring A as
   A5 (Excel parity, in the owner's words) and A6 (the two reasons Solenoid exists), authorized by the author; B7 ratified;
   B1 (body writes matter more than properties), B2 (desktop-only features are built without the web objection), B3

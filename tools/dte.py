@@ -1748,6 +1748,8 @@ def ratify_one(tree, i, by):
     nl = "\r\n" if "\r\n" in text else "\n"
     text = text.replace("\r\n", "\n")
     text = set_field(text, "ratified_by", by)
+    # The contest informed this ratification and is finished; History stays, one line per event.
+    text = re.sub(r"\n## Alternatives considered\n.*?(?=\n## |\Z)", "", text, flags=re.S)
     flipped = node.status == "proposed"
     if flipped:
         text = set_field(text, "status", "active")
