@@ -46,6 +46,14 @@ On `develop`, nothing pushed.
   node is Recharts-specific; the parenthesised label passed every catalog/formula check). Kept singular after
   the sweep: Chart, Sparkline, Record, Proportion, Comparison, Type Check, Fill, Smooth, Regex; Head was flagged
   as naming one op of a row-slicing family and left alone.
+- **Obsidian rendering on note surfaces** (`noteMarkdown.ts`, its own Marked instance so help prose is untouched;
+  Note, Import, Report preview, embeds, webpage export): `[[wikilinks]]` (alias / heading / embed forms) as
+  note-coloured links, `#tags` as chips (opaque sunken fill under a note-coloured hairline; the note bg is a wash
+  of the same hue so a wash chip vanished), `==marks==`, `> [!kind]` callouts (tinted box, kind icon, accent
+  title, danger kinds in error ink; no stripe), `$math$` / `$$math$$` via the lazy KaTeX chunk (loaded only on
+  meeting a formula; `useKatexReady` re-renders the site), `%% comments %%` and `^block-ids` hidden outside
+  fences. Ink at `--mix-ink`. Skipped by the author: footnotes (`marked-footnote` exists), embeds, Mermaid.
+  Tests `noteMarkdown.test.ts`.
 
 ### SESSION DIGEST (2026-09-16c — the deck, ruled; author present)
 
