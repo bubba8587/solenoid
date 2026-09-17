@@ -32,7 +32,8 @@ supersessions and every doc that cites it are followable links, backlinks and gr
 `links = wikilink` in `dte.cfg` is what makes the vendored tool write this form; it reads the
 upstream `dte:ID` token as well, so the vendored spec below is still accurate about upstream and
 only its citation syntax differs here. Code files are invisible to Obsidian, so their `[[ID]]`
-lines serve the tool alone.
+lines serve the tool alone. Titles are double-quoted: the `name: summary` convention puts a
+colon in them, and Obsidian rejects the whole property block when the YAML is invalid.
 
 ## Solenoid's rings
 

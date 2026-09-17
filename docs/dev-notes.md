@@ -14,6 +14,8 @@ On `develop`, nothing pushed.
   repo opened as an Obsidian vault shows the tree's lineage and backlinks. The vendored `tools/dte.py` reads both
   forms and writes per the new `links` key in `dte.cfg`; the patch passes DTE's own 74 tests untouched and is
   logged in DTE's FEEDBACK.md beside a note on how DTE sits against ADR/MADR, RFC 2119 and the spec-kit tools.
+  Node titles are now double-quoted (the `name: summary` colon made 157 frontmatters invalid YAML, so Obsidian
+  showed every property as invalid); the tool quotes titles on write.
 - **Frontmatter reads any YAML, writes Obsidian's block style.** The author found that editing any property in
   Obsidian rewrote the Spanish course note's inline `- {topic: …, tags: [...]}` rows into block style, after which
   the cube read as a one-item string list and Write Properties refused the key. The hand-rolled subset parser is

@@ -207,9 +207,15 @@ def _strip_comment(raw):
 def _scalar(raw):
     raw = _strip_comment(raw.strip())
     if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in "'\"":
-        raw = raw[1:-1]
+        q, raw = raw[0], raw[1:-1]
+        raw = raw.replace("''", "'") if q == "'" else raw.replace('\\"', '"').replace("\\\\", "\\")
     m = LINK_RE.fullmatch(raw)   # "[[B7]]" in a link field reads as B7
     return m.group(1) if m else raw
+
+
+def fm_str(s):
+    """A free-text field, double-quoted so a colon or hash inside it stays valid YAML."""
+    return '"%s"' % s.replace("\\", "\\\\").replace('"', '\\"')
 
 
 def _normalise(data):
@@ -1106,7 +1112,7 @@ def cmd_place(tree, args):
     fm = [
         "---",
         "id: %s" % new_id,
-        "title: %s" % item.title,
+        "title: %s" % fm_str(item.title),
         "status: active",
         "parents: %s" % fm_ids(parents),
         "supersedes: []",
@@ -1457,7 +1463,7 @@ def cmd_new(tree, args):
         return 2
     new_id = next_id(tree, ring)
     fields = [
-        ("id", new_id), ("title", args.title), ("status", args.status), ("parents", parents),
+        ("id", new_id), ("title", fm_str(args.title)), ("status", args.status), ("parents", parents),
         ("supersedes", []), ("superseded_by", ""), ("conflicts_with", []),
         ("made_by", args.made_by), ("by", args.by),
         ("date", datetime.date.today().isoformat()), ("ratified_by", ""),
@@ -1841,7 +1847,7 @@ def cmd_set(tree, args):
     text = read_text(node.path)
     nl = "\r\n" if "\r\n" in text else "\n"
     text = text.replace("\r\n", "\n")
-    text = set_field(text, field, new)
+    text = set_field(text, field, fm_str(new) if field == "title" else new)
     if args.authorized_by:
         text = set_field(text, "authorized_by", args.authorized_by)
     text = append_history(text, '- %s %s changed from "%s" by %s%s.' % (

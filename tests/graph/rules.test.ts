@@ -30,7 +30,10 @@ function readTree(): DecisionNode[] {
       const text = fs.readFileSync(path.join(dir, file), "utf8").replace(/\r\n/g, "\n");
       const fm = text.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
       if (!fm) throw new Error(`${ring}/${file}: no frontmatter`);
-      const field = (key: string) => fm[1].match(new RegExp(`^${key}:[ \\t]*(.*)$`, "m"))?.[1].trim() ?? "";
+      const field = (key: string) => {
+        const raw = fm[1].match(new RegExp(`^${key}:[ \\t]*(.*)$`, "m"))?.[1].trim() ?? "";
+        return /^".*"$/.test(raw) ? raw.slice(1, -1).replace(/\\(["\\])/g, "$1") : raw;
+      };
       const sections: Record<string, string> = {};
       for (const chunk of fm[2].split(/^## /m).slice(1)) {
         const nl = chunk.indexOf("\n");
