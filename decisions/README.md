@@ -17,6 +17,4 @@ Tags go in the `tags` property or inline in the body. Typing your name into `rat
 
 **Never.** Rename or delete a node file, or change `id`, `parents`, `status`. Those go through the tool.
 
-**Buttons.** Templates live in `templates/`. Point Settings → Templates → folder at it, then pin "Templates: Insert template" with Commander to insert *Outbox note* or *Ask* in one click.
-
 **Agent side.** `python tools/dte.py outbox` lists what you left, `--done <ID or note>` clears it, `validate` prints the count. Details: `docs/dte.md`.
