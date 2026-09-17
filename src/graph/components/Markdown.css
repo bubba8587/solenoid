@@ -33,12 +33,13 @@
 .sol-md .sol-md__wikilink--embed::before { content: "⤵ "; opacity: 0.6; }
 .sol-md .sol-md__tag {
   display: inline-block;
-  padding: 0 6px;
   border-radius: 5px;
   font-size: 0.85em;
-  line-height: 1.6;
+  line-height: 1.5;
   color: color-mix(in srgb, var(--note-color, var(--accent)) var(--mix-ink), var(--text));
-  background: color-mix(in srgb, var(--note-color, var(--accent)) 16%, transparent);
+  /* The object chips' edge (ArrayChip.css): a 40% hairline, no fill. */
+  border: 1px solid color-mix(in srgb, var(--note-color, var(--accent)) 40%, transparent);
+  padding: 0 6px;
   white-space: nowrap;
 }
 .sol-md code {
