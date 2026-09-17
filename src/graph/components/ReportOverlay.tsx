@@ -439,7 +439,7 @@ export function ReportOverlay() {
             )}
             {templateErrors ? (
               <pre className="report-preview__error">{templateErrors}</pre>
-            ) : (pages ? pageCount > 0 : previewBody.trim()) ? (
+            ) : (pages ? pageCount > 0 : previewSource.trim()) ? (
               <InlineRefBody
                 nodeId={node.id}
                 bodyHtml={bodyHtml}
