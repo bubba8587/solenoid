@@ -5,7 +5,9 @@
 // folder configured and the "Use demo vault" setting on, getVaultRoot() returns
 // DEMO_VAULT_ROOT, the readers recognise it, and fileBridge's path-aware dispatch routes
 // those paths here instead of the OS filesystem. Writes throw (the demo is not editable). The file contents are
-// lazily code-split (demoVaultData.ts) so they never weigh down the main bundle.
+// lazily code-split (demoVaultData.ts) so they never weigh down the main bundle. Under the
+// dev server they are read live from disk instead (`/__demo-vault`, vite.config.ts), so an
+// Obsidian edit to the repo's vault shows on refresh.
 import type { FsProvider } from "./fileBridge";
 import { settingsStore } from "./settingsStore";
 
@@ -74,6 +76,20 @@ function ensureLoaded(): Promise<Map<string, string>> {
   return _loading;
 }
 
+// The dev server (not vitest, not a build) reads the vault from disk on every call.
+const LIVE = import.meta.env.MODE === "development";
+async function listKeys(): Promise<Iterable<string>> {
+  if (!LIVE) return (await ensureLoaded()).keys();
+  const r = await fetch("/__demo-vault");
+  if (!r.ok) throw new Error("The demo vault listing failed.");
+  return (await r.json()) as string[];
+}
+async function readText(rel: string): Promise<string | undefined> {
+  if (!LIVE) return (await ensureLoaded()).get(rel);
+  const r = await fetch(`/__demo-vault?p=${encodeURIComponent(rel)}`);
+  return r.ok ? await r.text() : undefined;
+}
+
 const readOnly = async (): Promise<never> => {
   throw new Error("The demo vault is read-only.");
 };
@@ -82,18 +98,17 @@ const readOnly = async (): Promise<never> => {
  *  make are meaningful; every write throws, and there are no binaries. */
 export const demoVaultFs: FsProvider = {
   async readTextFile(path) {
-    const files = await ensureLoaded();
-    const content = files.get(relOf(path));
+    const content = await readText(relOf(path));
     if (content === undefined) throw new Error(`Not in the demo vault: ${relOf(path)}`);
     return content;
   },
   async readDir(path) {
-    const files = await ensureLoaded();
+    const keys = await listKeys();
     const base = relOf(path);
     const prefix = base ? `${base}/` : "";
     const fileNames = new Set<string>();
     const dirNames = new Set<string>();
-    for (const key of files.keys()) {
+    for (const key of keys) {
       if (!key.startsWith(prefix)) continue;
       const rest = key.slice(prefix.length);
       const slash = rest.indexOf("/");
@@ -106,11 +121,10 @@ export const demoVaultFs: FsProvider = {
     ];
   },
   async exists(path) {
-    const files = await ensureLoaded();
     const rel = relOf(path);
-    if (rel === "" || files.has(rel)) return true;
+    if (rel === "") return true;
     const prefix = `${rel}/`;
-    for (const key of files.keys()) if (key.startsWith(prefix)) return true;
+    for (const key of await listKeys()) if (key === rel || key.startsWith(prefix)) return true;
     return false;
   },
   // eslint-disable-next-line @typescript-eslint/require-await
