@@ -1,6 +1,8 @@
 ---
 type: solenoid
-nodes: [Sync project health, Daily habits]
+nodes:
+  - Sync project health
+  - Daily habits
 updated: 2026-09-07T09:00:00
 ---
 # Demo vault

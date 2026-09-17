@@ -4,10 +4,16 @@ priority: 3
 budget: 6000
 due: 2026-12-01
 lead: "[[People/Ada]]"
-tags: [work, marketing]
+tags:
+  - work
+  - marketing
 milestones:
-  - {name: Copy draft, due: 2026-10-05, done: false}
-  - {name: Design review, due: 2026-10-25, done: false}
+  - name: Copy draft
+    due: 2026-10-05
+    done: false
+  - name: Design review
+    due: 2026-10-25
+    done: false
 ---
 # Website launch
 

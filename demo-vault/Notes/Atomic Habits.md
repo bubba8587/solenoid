@@ -4,7 +4,9 @@ rating: 5
 read: true
 started: 2026-05-10
 finished: 2026-06-01
-tags: [book, productivity]
+tags:
+  - book
+  - productivity
 ---
 # Atomic Habits
 

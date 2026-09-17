@@ -4,9 +4,14 @@ status: open
 priority: low
 due: 2026-09-14
 scheduled: 2026-09-14
-tags: [task, home, garden]
-contexts: [home]
-projects: ["[[Projects/Garden overhaul]]"]
+tags:
+  - task
+  - home
+  - garden
+contexts:
+  - home
+projects:
+  - "[[Projects/Garden overhaul]]"
 timeEstimate: 15
 timeEntries: []
 recurrence: FREQ=WEEKLY;BYDAY=SU

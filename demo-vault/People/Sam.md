@@ -1,5 +1,6 @@
 ---
-aliases: [Sam Rivera]
+aliases:
+  - Sam Rivera
 role: contractor
 ---
 # Sam

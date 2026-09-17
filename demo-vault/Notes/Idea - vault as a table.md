@@ -1,6 +1,7 @@
 ---
 type: idea
-tags: [idea]
+tags:
+  - idea
 ---
 # Idea: one table for everything I'm tracking
 

@@ -334,7 +334,7 @@ export class WriteObsidianNode extends ClassicPreset.Node {
           const { action, before } = resolveKey(text, r.key, r.value);
           r.before = before;
           r.action = action === "add" && !this.addMissing ? "unchanged" : action;
-          r.reason = action === "refused" ? "nested block" : undefined;
+          r.reason = undefined;
         }
         this.validateRows(rows, await this.schemaFor(vault, p));
       }
@@ -367,7 +367,6 @@ export class WriteObsidianNode extends ClassicPreset.Node {
         for (const r of rows) {
           if (r.key === NOTE_BODY) { if (resolveBody(text, r.value as string).action === "update") { newBody = r.value as string; touched++; } continue; }
           const { action } = resolveKey(text, r.key, r.value);
-          if (action === "refused") continue;
           if (action === "add" && !this.addMissing) continue;
           if (action === "unchanged") continue;
           if (sch) {

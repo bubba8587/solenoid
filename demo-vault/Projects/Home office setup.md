@@ -4,11 +4,19 @@ priority: 3
 budget: 2400
 due: 2026-08-15
 lead: "[[People/Sam]]"
-tags: [home, work]
+tags:
+  - home
+  - work
 milestones:
-  - {name: Desk and chair, due: 2026-07-20, done: true}
-  - {name: Monitor arm, due: 2026-07-28, done: true}
-  - {name: Cable run, due: 2026-08-10, done: true}
+  - name: Desk and chair
+    due: 2026-07-20
+    done: true
+  - name: Monitor arm
+    due: 2026-07-28
+    done: true
+  - name: Cable run
+    due: 2026-08-10
+    done: true
 ---
 # Home office setup
 

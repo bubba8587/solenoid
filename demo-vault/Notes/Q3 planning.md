@@ -1,8 +1,11 @@
 ---
 type: meeting
 date: 2026-09-01
-attendees: [Sam, Ada]
-tags: [meeting]
+attendees:
+  - Sam
+  - Ada
+tags:
+  - meeting
 ---
 # Q3 planning
 

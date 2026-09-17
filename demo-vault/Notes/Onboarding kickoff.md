@@ -1,8 +1,12 @@
 ---
 type: meeting
 date: 2026-09-04
-attendees: [Ada, Priya]
-tags: [meeting, work]
+attendees:
+  - Ada
+  - Priya
+tags:
+  - meeting
+  - work
 ---
 # Onboarding kickoff
 

@@ -4,9 +4,14 @@ status: done
 priority: high
 due: 2026-09-05
 scheduled: 2026-09-03
-tags: [task, home, renovation]
-contexts: [home]
-projects: ["[[Projects/Kitchen remodel]]"]
+tags:
+  - task
+  - home
+  - renovation
+contexts:
+  - home
+projects:
+  - "[[Projects/Kitchen remodel]]"
 timeEstimate: 30
 timeEntries:
   - start: 2026-09-03T10:00:00

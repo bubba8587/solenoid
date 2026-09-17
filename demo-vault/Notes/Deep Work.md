@@ -4,7 +4,9 @@ rating: 4
 read: true
 started: 2026-07-02
 finished: 2026-07-19
-tags: [book, productivity]
+tags:
+  - book
+  - productivity
 ---
 # Deep Work
 

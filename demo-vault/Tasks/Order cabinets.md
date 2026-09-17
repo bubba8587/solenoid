@@ -4,9 +4,15 @@ status: in-progress
 priority: high
 due: 2026-10-10
 scheduled: 2026-09-15
-tags: [task, home, renovation]
-contexts: [home, errands]
-projects: ["[[Projects/Kitchen remodel]]"]
+tags:
+  - task
+  - home
+  - renovation
+contexts:
+  - home
+  - errands
+projects:
+  - "[[Projects/Kitchen remodel]]"
 timeEstimate: 45
 timeEntries:
   - start: 2026-09-09T14:00:00

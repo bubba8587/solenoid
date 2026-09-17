@@ -1,5 +1,6 @@
 ---
-aliases: [Priya Nair]
+aliases:
+  - Priya Nair
 role: manager
 ---
 # Priya

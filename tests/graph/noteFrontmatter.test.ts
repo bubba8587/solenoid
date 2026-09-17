@@ -73,6 +73,40 @@ describe("parseNoteFrontmatter", () => {
     ]);
   });
 
+  it("reads Obsidian's block spelling of rows: the same frame, and a cube when a row holds a list", () => {
+    // What Obsidian's Properties editor writes back for the inline rows above.
+    const r = parseNoteFrontmatter([
+      "---", "screen:", "  - Laptop: ProBook", "    Screen: 8", "  - Laptop: UltraSlim", "    Screen: 9",
+      "sessions:", "  - topic: Greetings", "    minutes: 30", "    tags:", "      - basics", "      - speaking",
+      "  - topic: Past tense", "    minutes: 45", "    tags:", "      - grammar",
+      "next: 2026-10-01", "---",
+    ].join("\n"));
+    expect(r.fields).toEqual([
+      { key: "screen", guessed: "frame", value: [{ Laptop: "ProBook", Screen: 8 }, { Laptop: "UltraSlim", Screen: 9 }] },
+      { key: "sessions", guessed: "cube", value: [
+        { topic: "Greetings", minutes: 30, tags: ["basics", "speaking"] },
+        { topic: "Past tense", minutes: 45, tags: ["grammar"] },
+      ] },
+      { key: "next", guessed: "date", value: Math.round(parseDateToSerial("2026-10-01")) },
+    ]);
+  });
+
+  it("a nested map that is not a row list surfaces as a blank string key", () => {
+    const r = parseNoteFrontmatter("---\nmeta:\n  a: 1\n  b: 2\nafter: x\n---");
+    expect(r.fields).toEqual([
+      { key: "meta", value: null, guessed: "string" },
+      { key: "after", value: "x", guessed: "string" },
+    ]);
+  });
+
+  it("a block scalar and a quoted string with a colon read as plain text", () => {
+    const r = parseNoteFrontmatter('---\nnote: |\n  two\n  lines\ntime: "10:30"\n---');
+    expect(r.fields).toEqual([
+      { key: "note", value: "two\nlines\n", guessed: "string" },
+      { key: "time", value: "10:30", guessed: "string" },
+    ]);
+  });
+
   it("parses a flow array of inline objects into a frame field (commas inside braces held)", () => {
     const r = parseNoteFrontmatter('---\nrows: [{a: 1, b: x}, {a: 2, b: y}]\n---');
     expect(r.fields[0]).toEqual({ key: "rows", guessed: "frame", value: [

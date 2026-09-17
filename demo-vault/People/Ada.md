@@ -1,5 +1,6 @@
 ---
-aliases: [Ada Okonkwo]
+aliases:
+  - Ada Okonkwo
 role: designer
 ---
 # Ada

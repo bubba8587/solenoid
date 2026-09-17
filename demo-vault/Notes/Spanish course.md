@@ -1,9 +1,18 @@
 ---
 type: course
-tags: [learning, spanish]
+tags:
+  - learning
+  - spanish
 sessions:
-  - {topic: Greetings, minutes: 30, tags: [basics, speaking]}
-  - {topic: Past tense, minutes: 45, tags: [grammar]}
+  - topic: Greetings
+    minutes: 30
+    tags:
+      - basics
+      - speaking
+  - topic: Past tense
+    minutes: 45
+    tags:
+      - grammar
 ---
 # Spanish course
 

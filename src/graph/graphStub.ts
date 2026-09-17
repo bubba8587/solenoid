@@ -29,7 +29,7 @@ export function buildStub(doc: string, writes: readonly StubWrite[], updated: st
     "type: solenoid",
     writes.length ? `nodes: [${writes.map((w) => yamlScalar(w.node)).join(", ")}]` : "nodes: []",
     "writes:",
-    ...writes.map((w) => `  - {node: ${yamlScalar(w.node)}, target: ${yamlScalar(w.target)}}`),
+    ...writes.flatMap((w) => [`  - node: ${yamlScalar(w.node)}`, `    target: ${yamlScalar(w.target)}`]),
     `updated: ${updated}`,
     "---",
   ].join("\n");

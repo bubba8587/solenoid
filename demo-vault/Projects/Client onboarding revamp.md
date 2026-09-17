@@ -4,11 +4,19 @@ priority: 4
 budget: 9000
 due: 2026-10-30
 lead: "[[People/Ada]]"
-tags: [work, product]
+tags:
+  - work
+  - product
 milestones:
-  - {name: Map the current flow, due: 2026-09-25, done: true}
-  - {name: Prototype the new steps, due: 2026-10-12, done: false}
-  - {name: Ship to staging, due: 2026-10-28, done: false}
+  - name: Map the current flow
+    due: 2026-09-25
+    done: true
+  - name: Prototype the new steps
+    due: 2026-10-12
+    done: false
+  - name: Ship to staging
+    due: 2026-10-28
+    done: false
 ---
 # Client onboarding revamp
 

@@ -34,7 +34,7 @@
       "y": 959,
       "init": {
         "label": "Screen scores",
-        "body": "---\nscreen:\n  - {Laptop: ProBook, Screen: 8}\n  - {Laptop: UltraSlim, Screen: 9}\n  - {Laptop: PowerLifter, Screen: 7}\n  - {Laptop: Budget, Screen: 5}\n---\n### Screen scores\nProBook 8: 4K panel with an anti-glare coating. UltraSlim 9: brightest of the four. PowerLifter 7: sharp but reflective. Budget 5: a review flagged weak brightness.\n\nThe frontmatter rows emit a keyed table directly, one **frame** output, so each score stays attached to its laptop however the main table is sorted.",
+        "body": "---\nscreen:\n  - Laptop: ProBook\n    Screen: 8\n  - Laptop: UltraSlim\n    Screen: 9\n  - Laptop: PowerLifter\n    Screen: 7\n  - Laptop: Budget\n    Screen: 5\n---\n### Screen scores\nProBook 8: 4K panel with an anti-glare coating. UltraSlim 9: brightest of the four. PowerLifter 7: sharp but reflective. Budget 5: a review flagged weak brightness.\n\nThe frontmatter rows emit a keyed table directly, one **frame** output, so each score stays attached to its laptop however the main table is sorted.",
         "color": "amber",
         "width": 400,
         "height": 250

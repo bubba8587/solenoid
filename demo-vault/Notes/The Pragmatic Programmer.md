@@ -3,7 +3,9 @@ author: Hunt and Thomas
 rating: 4
 read: false
 started: 2026-08-28
-tags: [book, work]
+tags:
+  - book
+  - work
 ---
 # The Pragmatic Programmer
 
