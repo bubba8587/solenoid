@@ -234,8 +234,11 @@ export default defineConfig(async () => ({
         }
       : undefined,
     watch: {
-      // 3. tell Vite to ignore watching `src-tauri`
-      ignored: ["**/src-tauri/**"],
+      // 3. tell Vite to ignore watching `src-tauri`, and the demo vault: it is imported
+      // eagerly as raw text (demoVaultData.ts), so an Obsidian save inside it would
+      // otherwise invalidate the module and reload the whole app. A dev server restart
+      // picks up vault edits.
+      ignored: ["**/src-tauri/**", "**/demo-vault/**"],
     },
   },
 }));
