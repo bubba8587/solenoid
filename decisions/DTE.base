@@ -4,6 +4,8 @@ filters:
 properties:
   file.name:
     displayName: ID
+  name:
+    displayName: Name
   title:
     displayName: Title
   made_by:
@@ -20,10 +22,11 @@ views:
     filters:
       or:
         - file.inFolder("outbox")
-        - file.hasTag("dte")
+        - file.hasTag("ratify", "retire", "contest", "ask")
     order:
       - file.name
-      - note.title
+      - name
+      - title
       - file.tags
       - file.mtime
   - type: table
@@ -39,11 +42,12 @@ views:
       direction: ASC
     order:
       - file.name
-      - note.title
-      - note.made_by
-      - note.by
-      - note.contested_by
-      - note.confidence
+      - name
+      - title
+      - made_by
+      - by
+      - contested_by
+      - confidence
   - type: table
     name: Contested
     filters:
@@ -53,9 +57,10 @@ views:
         - note.ratified_by.isEmpty()
     order:
       - file.name
-      - note.title
-      - note.contested_by
-      - note.date
+      - name
+      - title
+      - contested_by
+      - date
   - type: table
     name: Inbox
     filters:
@@ -63,10 +68,11 @@ views:
         - file.inFolder("inbox")
     order:
       - file.name
-      - note.title
-      - note.proposed_ring
-      - note.ask
-      - note.by
+      - name
+      - title
+      - proposed_ring
+      - ask
+      - by
   - type: table
     name: All nodes
     filters:
@@ -77,8 +83,9 @@ views:
       direction: ASC
     order:
       - file.name
-      - note.title
-      - note.status
-      - note.ratified_by
-      - note.parents
-      - note.date
+      - name
+      - title
+      - status
+      - ratified_by
+      - parents
+      - date

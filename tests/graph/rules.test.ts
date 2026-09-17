@@ -10,7 +10,6 @@ import * as path from "node:path";
 
 const ROOT = path.resolve(__dirname, "../..");
 const TREE = path.join(ROOT, "decisions");
-const NAME = /^([A-Za-z][A-Za-z0-9]*(?:-\d+)?): /;
 
 interface DecisionNode {
   id: string;
@@ -43,7 +42,7 @@ function readTree(): DecisionNode[] {
       nodes.push({
         id: field("id"),
         title,
-        name: title.match(NAME)?.[1] ?? null,
+        name: field("name") || null,
         ratifiedBy: field("ratified_by"),
         sections,
         body: fm[2],

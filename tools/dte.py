@@ -97,17 +97,17 @@ LIST_FIELDS = {"parents", "supersedes", "conflicts_with"}
 # No depends_on or structural fields: that axis belongs to the graph.  dte:B9
 OBSIDIAN_FIELDS = {"aliases", "tags", "cssclasses"}   # Obsidian's own keys; read, never judged
 KNOWN_FIELDS = LIST_FIELDS | OBSIDIAN_FIELDS | {
-    "id", "title", "status", "superseded_by", "made_by", "by", "date",
+    "id", "name", "title", "status", "superseded_by", "made_by", "by", "date",
     "ratified_by", "confidence", "authorized_by", "contested_by",
 }
-INBOX_FIELDS = {"title", "proposed_ring", "ask", "made_by", "by", "date", "parents", "confidence"} | OBSIDIAN_FIELDS
-NAME_RE = re.compile(r"^([A-Za-z][A-Za-z0-9]*(?:-\d+)?): ")   # the name prefix of a titled rule
+INBOX_FIELDS = {"name", "title", "proposed_ring", "ask", "made_by", "by", "date", "parents", "confidence"} | OBSIDIAN_FIELDS
+NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9]*(?:-\d+)?$")   # a node's readable handle, the `name` field
 # The outbox: what a human changes in the vault and an agent must process. A note dropped in
-# decisions/outbox, a dte/<action> tag on a node (frontmatter tags or an inline #dte/<action>),
+# decisions/outbox, an action tag on a node (a tags property or an inline #ratify, #retire, #contest, #ask),
 # or a ratified_by typed into the properties pane. Never a bare diff: an anonymous edit cannot
 # be told from an agent's own unfinished work, and validate already lists changed nodes (B17).
 OUTBOX_DIR = "outbox"
-ACTION_TAG_RE = re.compile(r"(?<![\w/#])#dte/([A-Za-z][\w-]*)")
+ACTION_TAG_RE = re.compile(r"(?<![\w/#])#(ratify|retire|contest|ask)")
 ACTIONS = {
     "ratify": "the author ratifies it: dte ratify <ID> --by <author>, then move the id into the owner-kept list the tests pin",
     "retire": "the author reverts it: dte blast <ID>, then dte retire <ID> --by <author> --authorized-by <author>, fix the orphans",
@@ -116,9 +116,9 @@ ACTIONS = {
 }
 
 
-def name_of(title):
-    m = NAME_RE.match(title or "")
-    return m.group(1) if m else None
+def summary_of(name, title):
+    """How a node is printed: `name: title` when it has a handle, else the title."""
+    return "%s: %s" % (name, title) if name else title
 IN_EFFECT = {"proposed", "active"}
 TITLE_MAX = 100          # dte:B16
 INBOX_DIR = "inbox"      # dte:B14
@@ -254,7 +254,9 @@ class Node:
         self.raw = _normalise(data)
         data = self.raw
         self.id = str(data.get("id") or "")
+        self.name = str(data.get("name") or "")
         self.title = str(data.get("title") or "")
+        self.summary = summary_of(self.name, self.title)
         self.status = str(data.get("status") or "")
         self.made_by = str(data.get("made_by") or "")
         self.by = str(data.get("by") or "")
@@ -265,7 +267,7 @@ class Node:
         self.confidence = data.get("confidence") or None
         tags = data.get("tags") or []
         tags = [str(t).lstrip("#") for t in (tags if isinstance(tags, list) else [tags]) if str(t)]
-        self.actions = sorted({t[4:] for t in tags if t.startswith("dte/")}
+        self.actions = sorted({t for t in tags if t in ACTIONS}
                               | {m.group(1) for m in ACTION_TAG_RE.finditer(body)})
         for f in LIST_FIELDS:
             v = data.get(f)
@@ -305,7 +307,7 @@ class Node:
             if not self.ratified_by and self.contested_by:
                 state += ", contested"   # dte:B28
             tag += " (%s%s)" % (self.made_by, state)
-        return "%s %s%s" % (self.id, self.title, tag)
+        return "%s %s%s" % (self.id, self.summary, tag)
 
 
 class InboxItem:
@@ -316,6 +318,7 @@ class InboxItem:
         self.body = body
         self.raw = _normalise(data)
         self.slug = os.path.splitext(os.path.basename(path))[0]
+        self.name = str(self.raw.get("name") or "")
         self.title = str(self.raw.get("title") or "")
         self.proposed_ring = str(self.raw.get("proposed_ring") or "").upper()
         self.ask = str(self.raw.get("ask") or "")
@@ -412,8 +415,8 @@ class Tree:
                           "a question gets an answer in chat; then dte outbox --done %s" % slug))
         for node in self.ordered_nodes():
             for act in node.actions:
-                items.append(("tag", node.id, "%s  #dte/%s" % (node.label(), act),
-                              (ACTIONS.get(act) or "unknown action; ask the author what #dte/%s means" % act)
+                items.append(("tag", node.id, "%s  #%s" % (node.label(), act),
+                              ACTIONS[act]
                               + "; then dte outbox --done %s" % node.id))
             if node.ratified_by and not re.search(r"ratified by", node.body):
                 items.append(("ratified", node.id, "%s  ratified_by: %s typed in, no History line" % (node.label(), node.ratified_by),
@@ -522,6 +525,7 @@ class Tree:
             return not self.errors
         self._validated = True
         E, W = self.errors, self.warnings
+        names = {}   # handle -> id, for uniqueness
         for node in self.ordered_nodes():
             i = node.id
             expected = os.path.join(self.decisions_dir, node.ring, i + ".md")
@@ -540,6 +544,11 @@ class Tree:
                 E.append("%s: title is required" % i)
             elif len(node.title) > TITLE_MAX:   # dte:B16
                 W.append("%s: title is %d chars; keep the summary under %d" % (i, len(node.title), TITLE_MAX))
+            if node.name and not NAME_RE.match(node.name):
+                E.append("%s: name %r is not an identifier" % (i, node.name))
+            if node.name and names.get(node.name, i) != i:
+                E.append("%s: name %r is already %s's" % (i, node.name, names[node.name]))
+            names.setdefault(node.name, i)
             if "## Decision" not in node.body or "## Why" not in node.body:
                 E.append("%s: body needs '## Decision' and '## Why' sections" % i)
             if re.search(r"^TODO$", node.body, re.M):
@@ -1177,11 +1186,11 @@ def outbox_done(tree, ref):
     text = read_text(node.path)
     nl = "\r\n" if "\r\n" in text else "\n"
     text = text.replace("\r\n", "\n")
-    text = drop_list_items(text, "tags", lambda t: t.lstrip("#").startswith("dte/"))
+    text = drop_list_items(text, "tags", lambda t: t.lstrip("#") in ACTIONS)
     text = ACTION_TAG_RE.sub("", text)
     text = re.sub(r"[ \t]+$", "", text, flags=re.M)
     write_text(node.path, text.replace("\n", nl))
-    print("cleared the dte/ tags on %s" % node.label())
+    print("cleared the action tags on %s" % node.label())
     return 0
 
 
@@ -1261,8 +1270,9 @@ def cmd_place(tree, args):
     ]
     if item.raw.get("confidence"):
         fm.append("confidence: %s" % item.raw["confidence"])
-    if name_of(item.title):
-        fm.append("aliases: [%s]" % name_of(item.title))
+    if item.name:
+        fm.insert(2, "name: %s" % item.name)
+        fm.append("aliases: [%s]" % item.name)
     fm.append("---")
     body = item.body.rstrip("\n")
     history = "\n\n## History\n\n" if "## History" not in body else "\n"
@@ -1310,7 +1320,7 @@ def append_history(text, note):
 
 def retire_node(tree, node, action, successor, by, authorized_by, what):
     """Ledger line, then delete the file (delete mode) or set status (keep mode).  dte:B24,C11"""
-    tree.append_ledger(node.id, action, successor, by, authorized_by, node.title)
+    tree.append_ledger(node.id, action, successor, by, authorized_by, node.summary)
     mode = CONFIG["retire"]
     if mode == "delete" and tree.git_status() is None:
         print("  WARNING: retire = delete needs git for history; keeping the file instead")
@@ -1389,7 +1399,7 @@ def cmd_retire(tree, args):
         rewrite_references(tree, old_id, new_id)
     fate = retire_node(tree, node, action, new_id, args.by, args.authorized_by,
                        ("superseded by %s" % new_id) if new_id else "reverted")
-    print('retired %s "%s"' % (old_id, node.title))
+    print('retired %s "%s"' % (old_id, node.summary))
     print("  " + fate)
     if new_id:
         print("  rewrote %d citing file(s) and %d child(ren) to %s. REVIEW each: they were built under %s."
@@ -1484,7 +1494,7 @@ def cmd_move(tree, args):
     fate = retire_node(tree, node, "moved", new_id, args.by, args.authorized_by,
                        "moved to ring %s as %s" % (ring, new_id))
     files, children = rewrite_references(tree, old_id, new_id)
-    print('moved %s -> %s "%s" at %s' % (old_id, new_id, node.title, tree.rel(dest)))
+    print('moved %s -> %s "%s" at %s' % (old_id, new_id, node.summary, tree.rel(dest)))
     print("  %s %s" % (old_id, fate))
     print("  parents: %s" % ", ".join(parents))
     if dropped:
@@ -1610,8 +1620,9 @@ def cmd_new(tree, args):
         fields.append(("authorized_by", args.authorized_by))
     if args.confidence:
         fields.append(("confidence", args.confidence))
-    if name_of(args.title):
-        fields.append(("aliases", "[%s]" % name_of(args.title)))   # so [[name]] resolves in Obsidian
+    if args.name:
+        fields.insert(1, ("name", args.name))
+        fields.append(("aliases", "[%s]" % args.name))   # so [[name]] resolves in Obsidian
     body = "\n## Decision\n\n%s\n\n## Why\n\n%s\n" % (args.decision or "TODO", args.why or "TODO")
     if args.consequences:
         body += "\n## Consequences\n\n%s\n" % args.consequences
@@ -1689,11 +1700,11 @@ def cmd_find(tree, args):
     q = args.text.lower()
     n = 0
     for node in tree.ordered_nodes():
-        hay = (node.id + " " + node.title + " " + node.body).lower()
+        hay = (node.id + " " + node.summary + " " + node.body).lower()
         if q in hay:
             n += 1
             print(node.label())
-            if q not in (node.id + " " + node.title).lower():
+            if q not in (node.id + " " + node.summary).lower():
                 for line in node.body.splitlines():
                     if q in line.lower():
                         print("    " + line.strip()[:110])
@@ -1740,7 +1751,7 @@ def ratify_one(tree, i, by):
     text = append_history(text, "- %s ratified by %s%s." % (
         datetime.date.today().isoformat(), by, " (proposed -> active)" if flipped else ""))
     write_text(node.path, text.replace("\n", nl))
-    print('ratified %s "%s" by %s%s' % (i, node.title, by,
+    print('ratified %s "%s" by %s%s' % (i, node.summary, by,
                                         "; status proposed -> active" if flipped else ""))
     print("  it is now human-held (B11)")
     return 0
@@ -1936,11 +1947,11 @@ def cmd_reparent(tree, args):
     text = append_history(text, "- %s re-parented from [%s] to [%s] by %s." % (
         datetime.date.today().isoformat(), old, ", ".join(parents), args.by))
     write_text(node.path, text.replace("\n", nl))
-    print('re-parented %s "%s": [%s] -> [%s]' % (args.id, node.title, old, ", ".join(parents)))
+    print('re-parented %s "%s": [%s] -> [%s]' % (args.id, node.summary, old, ", ".join(parents)))
     return 0
 
 
-SETTABLE = ("title", "confidence")       # dte:B29 the fields with no invariant
+SETTABLE = ("title", "name", "confidence")       # dte:B29 the fields with no invariant
 CONFIDENCES = ("low", "medium", "high")
 FIELD_OWNER = {                            # where a refused field is actually changed
     "status": "retire, ratify, or move", "parents": "reparent", "supersedes": "retire --superseded-by",
@@ -1972,10 +1983,13 @@ def cmd_set(tree, args):
     if not new:
         print("the new value is empty")
         return 2
-    old = node.title if field == "title" else (node.confidence or "")
+    old = {"title": node.title, "name": node.name}.get(field, node.confidence or "")
     if new == old:
         print("%s already has %s = %s" % (args.id, field, new))
         return 0
+    if field == "name" and not NAME_RE.match(new):
+        print("a name is an identifier like shareImpl or round-2")
+        return 2
     if field == "confidence" and new not in CONFIDENCES:
         print("confidence is one of: %s" % ", ".join(CONFIDENCES))
         return 2
@@ -1988,9 +2002,8 @@ def cmd_set(tree, args):
     nl = "\r\n" if "\r\n" in text else "\n"
     text = text.replace("\r\n", "\n")
     text = set_field(text, field, fm_str(new) if field == "title" else new)
-    if field == "title":
-        text = (set_field(text, "aliases", "[%s]" % name_of(new)) if name_of(new)
-                else drop_list_items(text, "aliases", lambda a: a == name_of(old)))
+    if field == "name":
+        text = set_field(text, "aliases", "[%s]" % new)
     if args.authorized_by:
         text = set_field(text, "authorized_by", args.authorized_by)
     text = append_history(text, '- %s %s changed from "%s" by %s%s.' % (
@@ -2112,7 +2125,7 @@ def record_contest(tree, node, args):
     text = append_history(text, "- %s contested by %s; %s won." % (today, args.by, args.chosen))
     write_text(node.path, text.replace("\n", nl))
     tool = os.path.relpath(os.path.abspath(__file__), tree.root).replace(os.sep, "/")
-    print('recorded contest on %s "%s": %s wins' % (node.id, node.title, args.chosen))
+    print('recorded contest on %s "%s": %s wins' % (node.id, node.summary, args.chosen))
     if args.chosen == "keep":
         print("  %s is settled; act on it without re-asking until a human ratifies or supersedes it (A7, B28)" % node.id)
     elif args.chosen == "deletion":
@@ -2270,6 +2283,7 @@ def main(argv=None):
     n = sub.add_parser("new")
     n.add_argument("ring")
     n.add_argument("--title", required=True)
+    n.add_argument("--name", default=None, help="readable handle, an identifier; becomes the alias")
     n.add_argument("--by", required=True)
     n.add_argument("--parents", default=None, help="comma-separated parent ids")
     n.add_argument("--made-by", dest="made_by", default="ai", help="ai | human | joint")
