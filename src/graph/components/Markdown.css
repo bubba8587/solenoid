@@ -27,9 +27,9 @@
 .sol-md strong { color: var(--text-bright); font-weight: 600; }
 /* Obsidian inline forms (noteMarkdown.ts): a wikilink reads as a link with a dotted
    underline to tell it from a URL; a tag is a chip — a wash at chip radius. Both take
-   the NOTE's colour (`--note-color`, set by the Note / Import cards); a surface with no
-   note colour (the Report overlay) falls back to the app accent. */
-.sol-md .sol-md__wikilink { color: var(--note-color, var(--accent)); text-decoration: underline dotted; text-underline-offset: 3px; cursor: default; }
+   the NOTE's colour (`--note-color`, set by the Note / Import cards; the Report overlay
+   falls back to the app accent) at the `--mix-ink` rung, like the card's own labels. */
+.sol-md .sol-md__wikilink { color: color-mix(in srgb, var(--note-color, var(--accent)) var(--mix-ink), var(--text)); text-decoration: underline dotted; text-underline-offset: 3px; cursor: default; }
 .sol-md .sol-md__wikilink--embed::before { content: "⤵ "; opacity: 0.6; }
 .sol-md .sol-md__tag {
   display: inline-block;
@@ -37,7 +37,7 @@
   border-radius: 5px;
   font-size: 0.85em;
   line-height: 1.6;
-  color: var(--note-color, var(--accent));
+  color: color-mix(in srgb, var(--note-color, var(--accent)) var(--mix-ink), var(--text));
   background: color-mix(in srgb, var(--note-color, var(--accent)) 16%, transparent);
   white-space: nowrap;
 }
