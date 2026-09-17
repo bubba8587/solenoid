@@ -107,7 +107,7 @@ NAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9]*(?:-\d+)?$")   # a node's readable h
 # or a ratified_by typed into the properties pane. Never a bare diff: an anonymous edit cannot
 # be told from an agent's own unfinished work, and validate already lists changed nodes (B17).
 OUTBOX_DIR = "outbox"
-ACTION_TAG_RE = re.compile(r"(?<![\w/#])#(ratify|retire|contest|ask)")
+ACTION_TAG_RE = re.compile(r"(?<![\w/#])#(ratify|retire|contest|ask)\b")
 ACTIONS = {
     "ratify": "the author ratifies it: dte ratify <ID> --by <author>, then move the id into the owner-kept list the tests pin",
     "retire": "the author reverts it: dte blast <ID>, then dte retire <ID> --by <author> --authorized-by <author>, fix the orphans",
@@ -1187,8 +1187,11 @@ def outbox_done(tree, ref):
     nl = "\r\n" if "\r\n" in text else "\n"
     text = text.replace("\r\n", "\n")
     text = drop_list_items(text, "tags", lambda t: t.lstrip("#") in ACTIONS)
+    # a paragraph that opens with the tag is a message to the agent and goes whole;
+    # a tag inside a sentence marks the author's own text, so only the tag goes
+    text = re.sub(r"(?m)^[ \t]*#(?:ratify|retire|contest|ask)\b[^\n]*\n?(?:(?![ \t]*(?:[-#|>*]|\d+\.|$))[^\n]+\n?)*", "", text)
     text = ACTION_TAG_RE.sub("", text)
-    text = re.sub(r"[ \t]+$", "", text, flags=re.M)
+    text = re.sub(r"[ \t]+$", "", text, flags=re.M).rstrip("\n") + "\n"
     write_text(node.path, text.replace("\n", nl))
     print("cleared the action tags on %s" % node.label())
     return 0

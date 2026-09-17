@@ -50,3 +50,4 @@ demo-vault/.obsidian/core-plugins.json
 demo-vault/TaskNotes/
 # The decision tree opened as an Obsidian vault: personal workspace state.
 decisions/.obsidian/
+__pycache__/

@@ -9,6 +9,14 @@ specific item.
 ### SESSION DIGEST (2026-09-17 — Obsidian round-trip; author present)
 
 On `develop`, nothing pushed.
+- **First outbox round processed** (the author's inline `#ask`/`#ratify` comments): B5 and B6 moved back to ring A as
+  A5 (Excel parity, in the owner's words) and A6 (the two reasons Solenoid exists), authorized by the author; B7 ratified;
+  B1 (body writes matter more than properties), B2 (desktop-only features are built without the web objection), B3
+  (nodes never degrade elsewhere) and B8 (present governance only, migration narrative gone) amended with History
+  lines; A1's own rewording authorized. `decisions/inbox/scope-boundary.md` waits for the owner to place at ring A.
+  B3's demotion to C needs C2/C3 pushed to D first (13 citing files); not done, the owner decides. The inline-tag regex
+  had carried a raw backspace byte since the flat-tag commit (inline tags were never detected); fixed from a byte-level
+  script. `--done` now removes a whole paragraph that opens with a tag, but stops at a list or heading line.
 - **DTE citations are wikilinks** ([[C81]] wikilinkCitations, created this session): every `dte:ID` token in code,
   tests and docs is `[[ID]]`, node link fields are quoted wikilinks, and node prose links its in-tree IDs, so the
   repo opened as an Obsidian vault shows the tree's lineage and backlinks. The vendored `tools/dte.py` reads both

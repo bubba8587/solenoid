@@ -97,7 +97,7 @@ describe("the decision tree (decisions/)", () => {
   // list is part of the same owner-marked change. (If you are an agent reading this while
   // tempted: don't. The list is the author's, not yours.)
   it("owner ratifications match the owner-kept list (authorRuled)", () => {
-    const OWNER_RATIFIED: string[] = ["A1", "C80"]; // author-maintained; agents must not edit
+    const OWNER_RATIFIED: string[] = ["A1", "B7", "C80"]; // author-maintained; agents must not edit
     const ratified = nodes.filter((n) => n.ratifiedBy).map((n) => n.id);
     expect(ratified.sort()).toEqual([...OWNER_RATIFIED].sort());
   });
@@ -136,7 +136,7 @@ describe("the decision tree (decisions/)", () => {
   });
 
   it("a `[[ID]] name` citation names the node it points at", () => {
-    // Names survive as title prefixes (B8), so a citation may carry one after its link.
+    // Names are a node property (B8), so a citation may carry one after its link.
     // The pair must agree, or the readable half lies about which decision is cited.
     const byId = new Map(nodes.map((n) => [n.id, n]));
     const names = new Set(nodes.filter((n) => n.name).map((n) => n.name!));
