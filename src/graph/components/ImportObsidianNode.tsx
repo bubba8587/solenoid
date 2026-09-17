@@ -176,7 +176,7 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
             <path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        {/* No header name: the note's title lives in the body (sol-import__doc-title). */}
+        {/* No header name: the note's body carries its own heading. */}
         <span className="sol-import__bar-spacer" />
         <button
           type="button"
@@ -320,9 +320,6 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
 
       {!collapsed && !pickerOpen && (
         <div ref={bodyRef} className="solenoid-note__content">
-          {/* The imported note's own title (its file name) in the body — Obsidian titles
-              a note by its file. Its socket identity is the `path` row above. */}
-          {data.fileName && <div className="sol-import__doc-title" title={data.fileName}>{baseName(data.fileName)}</div>}
           {templateErrors ? (
             <pre className="solenoid-note__rendered solenoid-note__template-error" onPointerDown={stopDragStart} onMouseDown={stopDragStart}>{templateErrors}</pre>
           ) : renderBody.trim() ? (
