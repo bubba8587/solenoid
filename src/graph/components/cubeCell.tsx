@@ -8,7 +8,7 @@ import {
 import type { FormatAnnotation } from "../formatAnnotationStore";
 import { isSolError } from "../errorValue";
 import { isUnitCell } from "../unitValue";
-import { cubePopup } from "../cubePopupStore";
+import { cubePopup, type CellRef } from "../cubePopupStore";
 import { formatScalar } from "./format";
 import { formatListCell } from "./valueDisplayFormat";
 import { errorTip } from "./ErrorChip";
@@ -53,10 +53,12 @@ export function frameCellNode(type: FrameColType, cell: FrameCell, format?: Form
 
 /** A drillable cell for the viewer grid (cube + grid views). A nested container
  *  drills IN PLACE via the breadcrumb stack; a scalar renders as inline text. */
-export function CubeCellChip({ cell, crumb, size = "md", type, format }: {
+export function CubeCellChip({ cell, crumb, size = "md", type, format, at }: {
   cell: CubeCell;
   /** Breadcrumb label a drilled-into view should carry (the column name). */
   crumb: string;
+  /** This chip's cell in the popup grid, so a return from the drilled level lands on it. */
+  at?: CellRef;
   size?: "sm" | "md";
   /** The source frame column's element type (a flat scalar cell renders by it). */
   type?: FrameColType;
@@ -79,7 +81,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type, format }: {
         title={`Cube ${cubeRowCount(c)}×${c.columns.length}×${cubeDepth(c)} (rows × cols × depth). Drill in.`}
         onPointerDown={stop}
         onMouseDown={stop}
-        onClick={(e) => { stop(e); cubePopup.drill({ kind: "cube", cube: c, label: crumb }); }}
+        onClick={(e) => { stop(e); cubePopup.drill({ kind: "cube", cube: c, label: crumb }, at); }}
       >
         [{cubeRowCount(c)}×{c.columns.length}×{cubeDepth(c)} Cube]
       </button>
@@ -94,7 +96,7 @@ export function CubeCellChip({ cell, crumb, size = "md", type, format }: {
         title={`Frame ${frameRowCount(f)}×${f.columns.length}. Drill in.`}
         onPointerDown={stop}
         onMouseDown={stop}
-        onClick={(e) => { stop(e); cubePopup.drill({ kind: "frame", frame: f, label: crumb }); }}
+        onClick={(e) => { stop(e); cubePopup.drill({ kind: "frame", frame: f, label: crumb }, at); }}
       >
         [{frameRowCount(f)}×{f.columns.length} Frame]
       </button>
@@ -109,9 +111,9 @@ export function CubeCellChip({ cell, crumb, size = "md", type, format }: {
         title={is2D ? "Drill in" : `${cell.length}-item list. Drill in.`}
         onPointerDown={stop}
         onMouseDown={stop}
-        onClick={(e) => { stop(e); cubePopup.drill({ kind: "grid", cells: (is2D ? cell : [cell]) as CubeCell[][], label: crumb }); }}
+        onClick={(e) => { stop(e); cubePopup.drill({ kind: "grid", cells: (is2D ? cell : [cell]) as CubeCell[][], label: crumb }, at); }}
       >
-        [{is2D ? `${cell.length}×${(cell[0] as unknown[]).length}` : "List"}]
+        [{is2D ? `${cell.length}×${(cell[0] as unknown[]).length}` : `${cell.length}× List`}]
       </button>
     );
   }

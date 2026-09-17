@@ -1,4 +1,4 @@
-import { useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { cubePopup, type DrillView } from "../cubePopupStore";
 import { CubeEditCell, ListEditCell, CubeEditRows, CubeEditHeader } from "./cubeEditCell";
 import { appThemeStore } from "../appTheme";
@@ -30,7 +30,7 @@ function describe(view: DrillView): {
       rows: cubeRowCount(cube),
       cols: cube.columns.length,
       depth: cubeDepth(cube),
-      cell: (r, c) => <CubeCellChip cell={cube.columns[c].cells[r] ?? null} crumb={cube.columns[c].name} size="sm" type={cube.columns[c].type} format={cube.columns[c].format} />,
+      cell: (r, c) => <CubeCellChip cell={cube.columns[c].cells[r] ?? null} crumb={cube.columns[c].name} size="sm" type={cube.columns[c].type} format={cube.columns[c].format} at={{ r, c }} />,
       sortKey: (r, c) => sortKeyOf(cube.columns[c].cells[r] ?? null),
     };
   }
@@ -52,7 +52,7 @@ function describe(view: DrillView): {
       rows: items.length,
       cols: 1,
       depth: null,
-      cell: (r) => <CubeCellChip cell={(items[r] ?? null) as CubeCell} crumb="item" size="sm" />,
+      cell: (r) => <CubeCellChip cell={(items[r] ?? null) as CubeCell} crumb="item" size="sm" at={{ r, c: 0 }} />,
       sortKey: (r) => sortKeyOf((items[r] ?? null) as CubeCell),
     };
   }
@@ -62,7 +62,7 @@ function describe(view: DrillView): {
     rows: g.length,
     cols: g.reduce((m, row) => Math.max(m, row.length), 0),
     depth: null,
-    cell: (r, c) => <CubeCellChip cell={g[r]?.[c] ?? null} crumb="item" size="sm" />,
+    cell: (r, c) => <CubeCellChip cell={g[r]?.[c] ?? null} crumb="item" size="sm" at={{ r, c }} />,
     sortKey: (r, c) => sortKeyOf(g[r]?.[c] ?? null),
   };
 }
@@ -121,6 +121,20 @@ export function CubePopup() {
   // index across to an unrelated table.
   const { sort, cycle: cycleSort } = useColumnSort(state?.stack[state.stack.length - 1]);
 
+  // A return from a drilled level scrolls its origin cell into view and flashes it.
+  const gridRef = useRef<HTMLDivElement>(null);
+  const focus = state?.stack[state.stack.length - 1]?.focus;
+  useEffect(() => {
+    if (!focus || !gridRef.current) return;
+    const sel = focus.c === undefined ? `[data-r="${focus.r}"]` : `[data-r="${focus.r}"][data-c="${focus.c}"]`;
+    const el = gridRef.current.querySelector<HTMLElement>(sel);
+    if (!el) return;
+    el.scrollIntoView({ block: "center", inline: "center" });
+    el.classList.add("table-popup__cell--return");
+    const t = setTimeout(() => el.classList.remove("table-popup__cell--return"), 1200);
+    return () => clearTimeout(t);
+  }, [focus]);
+
   if (!state) return null;
   const view = state.stack[state.stack.length - 1];
   const { headers, rows, cols, depth, cell, sortKey } = describe(view);
@@ -152,7 +166,7 @@ export function CubePopup() {
       resizable={{ min: { w: 320, h: 220 } }}
       headerExtra={
         <>
-          <span className="table-popup__dims">{rows}×{cols}{rowsTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>
+          <span className="table-popup__dims">{view.kind === "list" ? `${rows} items` : `${rows}×${cols}`}{rowsTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>
           {depth !== null && (
             <span
               className="table-popup__dims"
@@ -197,7 +211,7 @@ export function CubePopup() {
         </div>
       )}
 
-      <div className="table-popup__grid-scroll sol-popup__scroll">
+      <div ref={gridRef} className="table-popup__grid-scroll sol-popup__scroll">
         <table className="table-popup__grid">
           <thead>
             <tr>
@@ -222,7 +236,7 @@ export function CubePopup() {
               <tr key={r}>
                 <th className="table-popup__rowhead">{r + 1}</th>
                 {Array.from({ length: cols }, (_, c) => (
-                  <td key={c} className="table-popup__cell" style={{ padding: "2px 6px", textAlign: "left" }}>
+                  <td key={c} className="table-popup__cell" data-r={r} data-c={c} style={{ padding: "2px 6px", textAlign: "left" }}>
                     {editView && state.edit
                       ? (editView.kind === "list"
                           ? <ListEditCell edit={state.edit} path={editView.path!} row={r} />

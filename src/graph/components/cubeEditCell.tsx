@@ -76,8 +76,8 @@ export function CubeEditCell({ edit, path, row, column }: {
     const list = (value ?? []) as unknown[];
     return (
       <button type="button" className={chipClass("array")} title={`${list.length}-item list. Drill in and edit.`}
-        onPointerDown={stop} onMouseDown={stop} onClick={(e) => { stop(e); cubePopup.drill(listViewAt(records, cellPath, column)); }}>
-        [List]
+        onPointerDown={stop} onMouseDown={stop} onClick={(e) => { stop(e); cubePopup.drill(listViewAt(records, cellPath, column), { r: row }); }}>
+        [{list.length}× List]
       </button>
     );
   }
@@ -85,7 +85,7 @@ export function CubeEditCell({ edit, path, row, column }: {
     const rows = value as CubeRecord[];
     return (
       <button type="button" className={chipClass("frame")} title={`Frame ${rows.length}×${Object.keys(rows[0] ?? {}).length}. Drill in and edit.`}
-        onPointerDown={stop} onMouseDown={stop} onClick={(e) => { stop(e); cubePopup.drill(frameViewAt(records, cellPath, column)); }}>
+        onPointerDown={stop} onMouseDown={stop} onClick={(e) => { stop(e); cubePopup.drill(frameViewAt(records, cellPath, column), { r: row }); }}>
         [{rows.length}×{Object.keys(rows[0] ?? {}).length} Frame]
       </button>
     );
@@ -96,7 +96,7 @@ export function CubeEditCell({ edit, path, row, column }: {
     const dims = `${cubeRowCount(c)}×${c.columns.length}×${cubeDepth(c)}`;
     return (
       <button type="button" className={chipClass("cube")} title={`Cube ${dims} (rows × cols × depth). Drill in and edit.`}
-        onPointerDown={stop} onMouseDown={stop} onClick={(e) => { stop(e); cubePopup.drill(cubeViewAt(records, cellPath, column)); }}>
+        onPointerDown={stop} onMouseDown={stop} onClick={(e) => { stop(e); cubePopup.drill(cubeViewAt(records, cellPath, column), { r: row }); }}>
         [{dims} Cube]
       </button>
     );

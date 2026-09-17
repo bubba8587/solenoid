@@ -110,6 +110,14 @@
   border-bottom: 1px solid var(--border);
   padding: 0;
 }
+/* The cell a drilled level was opened from, flashed on the way back up. */
+.table-popup__cell--return {
+  animation: table-popup-return 1.2s ease-out;
+}
+@keyframes table-popup-return {
+  from { box-shadow: inset 0 0 0 2px var(--accent); }
+  to { box-shadow: inset 0 0 0 2px transparent; }
+}
 /* A NaN cell (dirty numeric data) — faint neutral tint + muted italic text, so it
    reads as dirty data in place, not error-red and not a normal value. */
 .table-popup__cell--nan {

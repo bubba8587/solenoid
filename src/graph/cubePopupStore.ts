@@ -10,14 +10,20 @@ export interface CubeEditBinding {
   save(records: CubeRecord[]): void;
 }
 
+/** A cell in a level's grid, by SOURCE row (and column when known). */
+export interface CellRef { r: number; c?: number }
+
 /** One drill-stack level; `label` is its breadcrumb crumb (node name at the root,
- *  column name deeper). A `grid` view holds a list (one row) or matrix of cells. */
-export type DrillView =
+ *  column name deeper). A `grid` view holds a list (one row) or matrix of cells.
+ *  `from` is the parent cell this level was drilled out of; `focus` is the cell a
+ *  level should scroll back to after a return from below it. */
+export type DrillView = (
   | { kind: "cube"; label: string; cube: CubeValue; /** Records path when the popup is an editor. */ path?: CubePath }
   | { kind: "frame"; label: string; frame: FrameValue; path?: CubePath }
   | { kind: "grid"; label: string; cells: CubeCell[][]; path?: undefined }
   /** An editable list level (a Cube Input's list cell), one item per row. */
-  | { kind: "list"; label: string; items: unknown[]; path: CubePath };
+  | { kind: "list"; label: string; items: unknown[]; path: CubePath }
+) & { from?: CellRef; focus?: CellRef };
 
 export interface CubePopupState {
   /** [root, ...drilled]; the LAST entry is the view currently shown. */
@@ -38,16 +44,19 @@ export const cubePopup = {
   open(view: DrillView, opts?: Omit<CubePopupState, "stack">) {
     core.open({ stack: [view], ...opts });
   },
-  drill(view: DrillView) {
+  /** Push a level; `from` is the parent cell it was opened from, so a return lands there. */
+  drill(view: DrillView, from?: CellRef) {
     const s = core.get();
     if (!s) return;
-    core.open({ ...s, stack: [...s.stack, view] });
+    core.open({ ...s, stack: [...s.stack, { ...view, from }] });
   },
-  /** Jump back to breadcrumb level `i` (0 = root). */
+  /** Jump back to breadcrumb level `i` (0 = root), focusing the cell the next level came from. */
   backTo(i: number) {
     const s = core.get();
     if (!s || i < 0 || i >= s.stack.length) return;
-    core.open({ ...s, stack: s.stack.slice(0, i + 1) });
+    const stack = s.stack.slice(0, i + 1);
+    stack[i] = { ...stack[i], focus: s.stack[i + 1]?.from };
+    core.open({ ...s, stack });
   },
   /** After an edit saved: rebuild every cube level from the records along its path. */
   refresh() {

@@ -59,7 +59,7 @@ export function ArrayChip({ value, label, size = "md", accent, onSave, pinNodeId
     ? ` solenoid-array-chip--elem-${family}${table ? "-table" : ""}`
     : "";
 
-  const chipLabel = table ? `${rows}×${cols} Table` : "List";
+  const chipLabel = table ? `${rows}×${cols} Table` : `${rows}× List`;
   const verb = onSave ? "Edit" : "View";
   const titleText = table ? `${rows}×${cols} table. ${verb}.` : `${rows}-item list. ${verb}.`;
 
