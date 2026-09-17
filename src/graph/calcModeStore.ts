@@ -1,4 +1,4 @@
-// dte:C23
+// [[C23]]
 // Calculation mode (auto / manual / the Solenoid-only sketch). Must stay
 // dependency-free — process.ts imports IT, one way.
 import { createNotifier } from "./storeKit";

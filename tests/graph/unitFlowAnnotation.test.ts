@@ -1,4 +1,4 @@
-// dte:D17,D40,D41
+// [[D17]], [[D40]], [[D41]]
 import { describe, it, expect } from "vitest";
 import { NodeEditor, ClassicPreset } from "rete";
 import { makeAnnotationResolver, resolveValueOrigin } from "../../src/graph/unitFlow";

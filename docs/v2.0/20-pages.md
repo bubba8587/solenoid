@@ -1,6 +1,6 @@
 # Bundle 20 — Pages: tabs are pages in ONE document
 
-**Source:** the document-tabs audit + the author's 2026-08-30 call (recorded evidence, not ARR — dte:C7 authorRuled) (`../archive/dev-notes-history.md`,
+**Source:** the document-tabs audit + the author's 2026-08-30 call (recorded evidence, not ARR — [[C7]] authorRuled) (`../archive/dev-notes-history.md`,
 sweep 2026-08-31). **Verdict:** IN, whole feature deferred to 2.0. **Score:** Strong · Core ·
 High · Wide. **Written:** 2026-09-01, plan-only.
 
@@ -16,7 +16,7 @@ list of separate documents; the tab strip becomes the page strip of the OPEN doc
 The audit named it: one-doc-one-file means a SINGLE editor/engine can plausibly serve all
 pages. **Recommend: one editor, one engine, pages as view scopes.**
 - FOR: cross-page references are then REAL connections (no bridge machinery, no second
-  recompute path — dte:D30 targetedEqualsFull holds untouched); `nodeNameStore`'s one flat
+  recompute path — [[D30]] targetedEqualsFull holds untouched); `nodeNameStore`'s one flat
   per-document namespace is exactly right (a name is unique in the document, which is what a
   cross-page reference needs); `forgetAllNodes()` wiping node-keyed stores on document switch
   stays correct; save/load stays one `rebuildGraph`; undo stays one snapshot history.
@@ -34,7 +34,7 @@ pages. **Recommend: one editor, one engine, pages as view scopes.**
   VISUAL state → it lives in the text form's sidecar block beside `positions`, never inline in
   the per-node line (subsystem-invariants § Addressable model). New top-level `pages:
   [{id, name, order}]` in `SavedGraph` — add to BOTH `writeTextForm` and `readTextForm`
-  (dte:C30 saveViaTextForm) or it is silently dropped on every save.
+  ([[C30]] saveViaTextForm) or it is silently dropped on every save.
 - **Groups, standoffs, docked FCs, conduits are single-page**: a group's members share its
   page (moving a group moves its page); a standoff between two pages is refused; a docked FC
   lives on its host's page. Enforce in the edit verbs (`flowModel.ts` `moveNode`/`connect`

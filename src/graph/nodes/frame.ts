@@ -1,4 +1,4 @@
-// dte:C64,C48
+// [[C64]], [[C48]]
 import { ClassicPreset } from "rete";
 import { readInput, numIn, dateIn, numListOut, tableOut, strTableOut, dateTableOut, logicalTableOut, listIn, listOut, strIn, strComboIn, strOut, strListIn, strListOut, dateListIn, dateListOut, logicalListIn, logicalListOut, frameIn, frameOut, cubeIn, cubeOut, cubeAdoptIn, tableAdoptOut, anyIn, anyDataIn, staticTrueAnyOut, adoptiveTableIn, adoptiveListIn, lambdaIn } from "./shared";
 import { flatCubeToFrame } from "../frame";
@@ -701,7 +701,7 @@ export const COLUMNS_OP_META: Record<ColumnsOp, { label: string; description: st
 };
 
 // The op names the card ("Keep Columns" / "Drop Columns") — a bare "Columns" would read as
-// Excel's COLUMNS count function (dte:D21 NAME-2, author 2026-08-25).
+// Excel's COLUMNS count function ([[D21]] NAME-2, author 2026-08-25).
 
 export class ColumnsNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {

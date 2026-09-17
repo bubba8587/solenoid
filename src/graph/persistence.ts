@@ -1,4 +1,4 @@
-// dte:E8
+// [[E8]]
 import { ClassicPreset } from "rete";
 import type { SolenoidNode, SolenoidConnection } from "./schemes";
 import { getEditor, getView, processGraph, beginGraphRebuild, endGraphRebuild } from "./process";

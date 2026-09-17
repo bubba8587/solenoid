@@ -1,4 +1,4 @@
-// dte:C2
+// [[C2]]
 import { LandingGraph } from "./LandingGraph";
 import { SocketLegendRows } from "../components/SocketLegend";
 import { TablePopup } from "../components/TablePopup";

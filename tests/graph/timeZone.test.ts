@@ -89,7 +89,7 @@ describe("worldClockRows / worldClockFrame", () => {
 });
 
 // shareImpl capability parity: the node and the formula surface share `convertZone`, and
-// the agreement is asserted, not assumed (the behavioural guard dte:C17 shareImpl names).
+// the agreement is asserted, not assumed (the behavioural guard [[C17]] shareImpl names).
 describe("TIMEZONECONVERT ↔ Time Zone Convert node", () => {
   it("the formula computes what the node computes", async () => {
     const { compileEvaluator } = await import("../../src/graph/excelFormula");

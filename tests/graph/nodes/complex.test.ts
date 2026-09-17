@@ -1,4 +1,4 @@
-// dte:D44,D45
+// [[D44]], [[D45]]
 import { describe, it, expect } from "vitest";
 import {
   ComplexFromNode, ComplexUnpackNode, ComplexUnaryNode, ComplexBinaryNode,

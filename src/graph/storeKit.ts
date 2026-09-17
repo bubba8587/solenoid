@@ -1,4 +1,4 @@
-// dte:B10
+// [[B10]]
 // Rete renders node components in a SEPARATE React root, so any state both roots
 // touch must live in these module singletons rather than React context.
 

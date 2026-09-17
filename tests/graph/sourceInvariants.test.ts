@@ -1,11 +1,11 @@
-// dte:C11,C13,C26,C27,C30,C34,C36,C38,C39,C40,D10,D16,D42,D46
+// [[C11]], [[C13]], [[C26]], [[C27]], [[C30]], [[C34]], [[C36]], [[C38]], [[C39]], [[C40]], [[D10]], [[D16]], [[D42]], [[D46]]
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
 // ─── Source-scan enforcement for the grep-shaped rules (decisions/) ───────────
 // Two rules whose BEHAVIOUR was tested but whose COMPLETENESS was not — nothing
-// failed when a NEW file forgot them, which dte:C9 labelUnenforced flags as precisely the shape
+// failed when a NEW file forgot them, which [[C9]] labelUnenforced flags as precisely the shape
 // of every Origin incident. These scans close the completeness half the same way
 // formulaPathIsReteFree.test.ts closes implReteFree: statically, over the real source, so
 // a new offender fails CI with the rule's name in the message.
@@ -159,7 +159,7 @@ describe("perInputUnitBlind — a node file that runs the dimension algebra decl
   // per-cell algebra — isUnitCell / dimOf / magnitudeOf / the *Units combinators
   // / broadcastUnit — without the flag never sees a tag: the algebra silently
   // no-ops on display magnitudes. The BEHAVIOUR is covered by unitCoercion.test;
-  // THIS is the completeness half (dte:D42 perInputUnitBlind): a new algebra
+  // THIS is the completeness half ([[D42]] perInputUnitBlind): a new algebra
   // node whose file forgets the flag fails here by name.
   //
   // Deliberately EXCLUDED from the consuming set: the matrix-unit family
@@ -827,7 +827,7 @@ describe("frameLabelGrammar — frame-input labels follow the column-role gramma
         }
       }
     }
-    expect(offenders, "labels violating the frameLabelGrammar grammar (dte:C13 frameLabelGrammar)").toEqual([]);
+    expect(offenders, "labels violating the frameLabelGrammar grammar ([[C13]] frameLabelGrammar)").toEqual([]);
   });
 });
 

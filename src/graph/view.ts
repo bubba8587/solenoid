@@ -1,4 +1,4 @@
-// dte:B10,C43
+// [[B10]], [[C43]]
 // THE canvas-view seam: what the model-side code (layout, docking, keyboard,
 // persistence, process.ts) may ask of the React Flow view. flow/flowView.ts is the
 // one implementation (main canvas, drill-in, static stages all build one).

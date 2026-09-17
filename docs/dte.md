@@ -1,4 +1,4 @@
-<!-- dte:B8 -->
+<!-- [[B8]] -->
 # Decision provenance — DTE
 
 This repo tracks the *why* behind its code as a **DTE** (Decision Tree Engineering)
@@ -21,7 +21,18 @@ carries the field mapping (MUST →
 Decision, Why/Origin → Why, Enforced by/Exceptions/Where/Reopen if → Consequences) and
 the naming convention: a node lifted from a named rule keeps the name as its title
 prefix (`shareImpl: ...`), so `python tools/dte.py find shareImpl` finds it and a
-citation may read `dte:<ID> shareImpl`.
+citation may read `[[<ID>]] shareImpl`.
+
+## Wikilinks ([[C81]] wikilinkCitations)
+
+Solenoid writes every citation as an Obsidian wikilink, `[[C41]]` or `[[C41]] branchModel`, and
+the link fields of a node (`parents`, `supersedes`, `superseded_by`, `conflicts_with`) as quoted
+wikilinks, `parents: ["[[B7]]"]`. The author opens `decisions/` itself as a vault (its `.obsidian/` is ignored), and each node's lineage, its
+supersessions and every doc that cites it are followable links, backlinks and graph-view edges.
+`links = wikilink` in `dte.cfg` is what makes the vendored tool write this form; it reads the
+upstream `dte:ID` token as well, so the vendored spec below is still accurate about upstream and
+only its citation syntax differs here. Code files are invisible to Obsidian, so their `[[ID]]`
+lines serve the tool alone.
 
 ## Solenoid's rings
 

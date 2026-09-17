@@ -1,4 +1,4 @@
-// dte:D42
+// [[D42]]
 // Triangle Solver: any three parts (at least one side; angles in degrees) solve the
 // rest, plus area and perimeter.
 

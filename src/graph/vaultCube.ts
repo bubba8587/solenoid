@@ -1,4 +1,4 @@
-// dte:C67
+// [[C67]]
 // The Vault Folder reader's pure core (bundle 24 item A): a folder of notes → ONE cube,
 // one row per note. Built-in columns (the Bases `file.*` set, prefix dropped) + the union
 // of frontmatter keys; a scalar cell is typed, a list is a list cell, rows-of-objects is a

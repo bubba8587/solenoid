@@ -3,7 +3,7 @@
 LIVE reference, routed from `excelFunctions.ts` (docs/README.md). Read before
 deleting an override, widening the Formula.js fallthrough, or "simplifying" a
 registration away: each entry is the evidence that the library's answer is wrong
-for us. A divergence is owned and tripwired (dte:D28 tripwireVendorDrift), never absorbed.
+for us. A divergence is owned and tripwired ([[D28]] tripwireVendorDrift), never absorbed.
 
 - **Scalar math** (full sweep 2026-06-25): MOD — Excel's result takes the DIVISOR's
   sign (`MOD(10,-3) = -2`), FX returns −1. ATAN2 — Excel's `ATAN2(x, y)` is

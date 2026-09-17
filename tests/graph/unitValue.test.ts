@@ -1,4 +1,4 @@
-// dte:D43
+// [[D43]]
 import { describe, it, expect } from "vitest";
 import {
   isUnitCell, dimOf, magnitudeOf, tagDim, fromUnit, unitLabelOf,

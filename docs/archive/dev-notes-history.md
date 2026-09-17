@@ -21,14 +21,14 @@ decisions and rules live only as DTE nodes; rules.md and decisions.md retire".
   tableRefSemantics → rowFormulaRefs, wildcardLadder → wildcardsKeepRank, unitGranularity →
   unitByGranularity, formatCarryPerOp → formatFlowsDownstream, noFramesInFormulas →
   matricesInFormulas, noBackCompat → B7. Both documents deleted.
-- **Names survive as title prefixes** (`shareImpl: …`); citations read `dte:<ID> name`.
+- **Names survive as title prefixes** (`shareImpl: …`); citations read `[[<ID>]] name`.
   `rules.test.ts` now reads the nodes: MUSTs label enforcement, cited suites exist (packages
   included; it found a stale `engine.test.ts` gap and a shadowed `rules.test.ts`), quoted test
-  names appear, owner ratifications match `OWNER_RATIFIED`, and `dte:ID name` pairs match titles.
+  names appear, owner ratifications match `OWNER_RATIFIED`, and `[[ID]] name` pairs match titles.
 - **Citations.** Every rules.md/decisions.md pointer across code, tests and docs rewritten to
-  `dte:<ID> name`; file-level `dte:` lines on the ~210 modules and suites the nodes name.
+  `[[<ID>]] name`; file-level `[[ID]]` lines on the ~210 modules and suites the nodes name.
   Coverage 0.8% → 14%; no-reach nodes 110 → 4 (the process conventions, which DTE cannot count
-  as reached; DTE FEEDBACK K9). A routed file's `dte:` line is the sanctioned exception to "zero
+  as reached; DTE FEEDBACK K9). A routed file's `[[ID]]` line is the sanctioned exception to "zero
   comment pointers" (C57 commentMinimalism).
 - **Overrides of DTE, each logged as feedback** (DTE repo FEEDBACK.md, uncommitted): names as a
   handle (K4), no contest for a lifted rule until new work builds on it (K2). Other findings:
@@ -189,7 +189,7 @@ Author-driven; all on `develop`, not pushed (local HMR verify).
   `useRevealAnim`, was duplicated in both pages).
 - **DTE integrated (decision-tree-engineering).** The author's DTE tool is vendored at
   `tools/dte.py`; `decisions/` holds Solenoid's tree (A1–A4 goals, B1–B4 strategy incl. B4
-  "adopt DTE", C1–C3 arch, D1–D2 impl for the demo-vault/marketing subsystem), `dte:ID`
+  "adopt DTE", C1–C3 arch, D1–D2 impl for the demo-vault/marketing subsystem), `[[ID]]`
   citations on ~12 files. DTE's OWN rules are vendored verbatim in `dte-rules/` (SPEC/PROTOCOL/
   README, `.dteignore`d) — the adopting repo does NOT re-create DTE-specific decisions as nodes.
   `docs/dte.md` + a `CLAUDE.md` pointer. `validate --as B` OK. **Open (author):** ratify the
@@ -292,7 +292,7 @@ Rapid author-driven pass; all on `develop`, nothing pushed.
   moved with it (`catalogUtils` placement fallback, `packShared`, function-reference / AI-grounding
   top-group). **Distributions** folded under **Numbers**; **Expression | Equation** paired; the
   **Format** node is now **Format Controller**.
-- **NAME-3 — the hover type-hint shows the family name** (dte:D22 NAME-3). The card's right-side, hover-revealed
+- **NAME-3 — the hover type-hint shows the family name** ([[D22]] NAME-3). The card's right-side, hover-revealed
   type-hint (`.solenoid-node__type-hint`) now shows the op-agnostic FAMILY name (`nodeTypeName` — "Series",
   "Math FX"), so it stops being a third copy of the op the header and dropdown already show. ONLY the
   type-hint changed; the card title, Inspector, Navigator, popups, cable-source label stay op-specific
@@ -313,7 +313,7 @@ The author walked the "review with the author" backlog items one per turn; the L
   driver readouts null, until Solve/Refresh. Plain single-pass composites stay live. Author: "people's
   intuition expects the value to already be blank/unsolved so they can see it work when they hit
   Solve." Pinned in `composite.test.ts`.
-- **formatCarryPerOp** (Agent 3; the decision log, dte:D41 formatFlowsDownstream rewritten). The Lead's
+- **formatCarryPerOp** (Agent 3; the decision log, [[D41]] formatFlowsDownstream rewritten). The Lead's
   first proposal (exempt percent from ×/÷/^) was refuted by a 45-row fuzz: NPV of a 5% rate showed
   `123,456.00%`, COUNT inherited its list's style, integer `7 ÷ 2` showed `4`, `date − date` showed a
   1900 date, and the op class was never the axis. Ruling: a style survives only an op the node

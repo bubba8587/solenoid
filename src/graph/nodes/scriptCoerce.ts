@@ -1,4 +1,4 @@
-// dte:C66
+// [[C66]]
 // Folds a script's return value onto the value model. Nothing leaves the Script node
 // that is not already a Solenoid value, and the value TYPES ITSELF: numbers, text and
 // booleans are their own families, a `Date` (or `Solenoid.date(serial)`) is a date,

@@ -1,4 +1,4 @@
-// dte:C66
+// [[C66]]
 // The Script node's evaluator. Self-contained on purpose: this module runs inside the
 // sandbox worker (`scriptWorker.ts`) as well as on the main thread (tests, and any
 // host without Workers), so it may import NOTHING from the app. Values leave here as

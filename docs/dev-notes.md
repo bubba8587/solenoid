@@ -9,6 +9,11 @@ specific item.
 ### SESSION DIGEST (2026-09-17 — Obsidian round-trip; author present)
 
 On `develop`, nothing pushed.
+- **DTE citations are wikilinks** ([[C81]] wikilinkCitations, created this session): every `dte:ID` token in code,
+  tests and docs is `[[ID]]`, node link fields are quoted wikilinks, and node prose links its in-tree IDs, so the
+  repo opened as an Obsidian vault shows the tree's lineage and backlinks. The vendored `tools/dte.py` reads both
+  forms and writes per the new `links` key in `dte.cfg`; the patch passes DTE's own 74 tests untouched and is
+  logged in DTE's FEEDBACK.md beside a note on how DTE sits against ADR/MADR, RFC 2119 and the spec-kit tools.
 - **Frontmatter reads any YAML, writes Obsidian's block style.** The author found that editing any property in
   Obsidian rewrote the Spanish course note's inline `- {topic: …, tags: [...]}` rows into block style, after which
   the cube read as a one-item string list and Write Properties refused the key. The hand-rolled subset parser is
@@ -99,18 +104,18 @@ off the release, then ordered "ingest DTE rules and follow them": every change b
 its node, the two nodes acted under got their one contest (D42 perInputUnitBlind, E11
 controlDrivenRetype: keep), and the new rule landed as a node before its code (C6).
 
-- **Input Switch pending ghosts are drawn** (dte:E11): `PendingCableLayer` (a ViewportPortal
+- **Input Switch pending ghosts are drawn** ([[E11]]): `PendingCableLayer` (a ViewportPortal
   layer beside the drawn cables) draws each `cablePendingStore` entry dashed in the Option A
   stroke from RF's measured handle bounds; no edge exists to carry it.
 - **Tidy reserves a plain card's MEASURED box**: the ELK proxy read `node.width/height` for an
   ordinary card (`tidyArrange.ts`), so a stale constructor height or a collapsed card
   mis-spaced. History checked: the 2026-07-16 measuredBox unification simply never reached that
   branch. Regression in `tidyArrangeGroups.test.ts` (fails without the fix).
-- **Triangle Solver is unit-aware** (dte:D42): an angle-dimensioned cell converts base radians
+- **Triangle Solver is unit-aware** ([[D42]]): an angle-dimensioned cell converts base radians
   to degrees whatever its display unit; a side takes its display magnitude as the strip did.
   `geometry.test.ts`.
 - **TaskNotes chip** reports `cols` beside `rows` on every provider (`reportOk`), so `6×0` is gone.
-- **blankArgIsExcelBlank — dte:C80 (NEW, under B5).** `BLANK_ARG_TYPES` + `excelBlanks` in
+- **blankArgIsExcelBlank — [[C80]] (NEW, under B5).** `BLANK_ARG_TYPES` + `excelBlanks` in
   `excelFormula.ts` map a blank slot to 0 / FALSE / "" per declared parameter at the dispatch
   boundary; TEXTJOIN keeps the empties on a blank `ignore_empty`; `xMatchModeArg` /
   `xSearchModeArg` default only on `undefined`. MATCH / VLOOKUP / HLOOKUP are blocked spellings,
@@ -134,7 +139,7 @@ controlDrivenRetype: keep), and the new rule landed as a node before its code (C
   tasks), Write it back to Obsidian (folded into `vault-as-a-table`: read, filter, write back). The scratch
   sheet carries `hidden: true` (in `SEEDS` by id, out of the menus). NEW `whats-new` (Start here, order 5):
   one group per 1.4 slide, tuned.
-- **dte:D62 demoVaultResolution (NEW, under C1 + C2; absorbs D1):** the one resolution order: forced demo (marketing pages), else the configured vault or URL, else the bundled demo while `useDemoVault` allows (on by default, the web app's path), else "set the folder". The author's ruling: the folder setting first, the demo switch second and a fallback, never an override.
+- **[[D62]] demoVaultResolution (NEW, under C1 + C2; absorbs D1):** the one resolution order: forced demo (marketing pages), else the configured vault or URL, else the bundled demo while `useDemoVault` allows (on by default, the web app's path), else "set the folder". The author's ruling: the folder setting first, the demo switch second and a fallback, never an override.
   The canned TaskNotes replies parse synchronously in `data()`, so a seed computes on its first pass. Every
   Obsidian seed lost its "(snapshot)" Frame/Cube Input and wires the live reader only. The demo tasks gained
   the five kitchen-remodel tasks (a chain with a diamond) so the kitchen seed schedules them.

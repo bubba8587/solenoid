@@ -1,4 +1,4 @@
-// dte:C12
+// [[C12]]
 // Maps every node class to its React component — one row per node.
 
 import type { Emit } from "./components/nodeKit";

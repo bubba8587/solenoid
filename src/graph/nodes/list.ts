@@ -1,4 +1,4 @@
-// dte:C60,C48,C49,C72,E11
+// [[C60]], [[C48]], [[C49]], [[C72]], [[E11]]
 import { ClassicPreset } from "rete";
 import { numListSocket, strListSocket, dateListSocket, logicalListSocket, comboOfType, comboOfFamily, listSocket, tableSocket, type SocketDataType, type SolenoidSocket } from "../sockets";
 import { resolveExcelFunction } from "../excelFunctions";
@@ -1025,7 +1025,7 @@ export class FilterNode extends ClassicPreset.Node {
       return { result: this.cachedResult, dropped: null };
     }
     // Same rule as the frame Filter: a text predicate on a non-text list is #TYPE!
-    // (dte:D49 textPredicateNeedsText); the error guards surface the throw.
+    // ([[D49]] textPredicateNeedsText); the error guards surface the throw.
     for (const c of conds) requireTextList(c.op, type);
     const kept: unknown[] = [];
     const dropped: unknown[] = [];

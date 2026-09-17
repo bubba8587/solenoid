@@ -1,4 +1,4 @@
-// dte:C17,D19
+// [[C17]], [[D19]]
 // The INDEX accessor, shared by the INDEX node (nodes/list.ts) and the INDEX
 // formula (excelFunctions.ts) so the two surfaces cannot answer differently.
 // Pure — no React/Rete.

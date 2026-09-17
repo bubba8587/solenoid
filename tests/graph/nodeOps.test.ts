@@ -1,4 +1,4 @@
-// dte:B11,C8,C26,D5,D6
+// [[B11]], [[C8]], [[C26]], [[D5]], [[D6]]
 import { describe, it, expect } from "vitest";
 import { NODE_OPS, opsFor, hiddenOps, exposureOf, opEntry } from "../../src/graph/nodeOps";
 import { buildCatalog } from "../../src/graph/catalogUtils";

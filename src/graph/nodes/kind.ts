@@ -1,4 +1,4 @@
-// dte:D56
+// [[D56]]
 import { ClassicPreset } from "rete";
 import { type NodeKind, NODE_KIND_ACCENTS } from "./shared";
 import { SolenoidSocket, SOCKET_COLORS } from "../sockets";

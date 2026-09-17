@@ -68,7 +68,7 @@ export interface TablePopupState {
   formatControls?: "columns" | "matrix";
   /** Per-column unit driving the base-SI → display conversion; aligned with `headers`. */
   columnUnits?: (ColumnUnit | undefined)[];
-  /** Per-column format INHERITED on the value (dte:D41 formatFlowsDownstream); the row
+  /** Per-column format INHERITED on the value ([[D41]] formatFlowsDownstream); the row
    *  shows it as its current value until this node makes its own pick. */
   columnFormats?: (FormatAnnotation | undefined)[];
   /** A unit-TAGGABLE source: the unit choice is written back on Save and rides the

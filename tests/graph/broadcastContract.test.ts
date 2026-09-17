@@ -1,4 +1,4 @@
-// dte:D33,D36,D37,D48
+// [[D33]], [[D36]], [[D37]], [[D48]]
 import { describe, it, expect } from "vitest";
 import { broadcast, broadcastErr, readInput } from "../../src/graph/nodes/shared";
 import { compileEvaluator } from "../../src/graph/excelFormula";

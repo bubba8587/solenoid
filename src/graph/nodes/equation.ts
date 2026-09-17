@@ -1,4 +1,4 @@
-// dte:C47
+// [[C47]]
 // ACAUSAL: every variable is both an input and an output, and the one UNWIRED
 // variable is solved for. Wire-driven by design — a variable is known ONLY through
 // its cable, so a save/seed can't carry an invisible hardcoded known.

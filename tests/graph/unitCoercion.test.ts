@@ -1,4 +1,4 @@
-// dte:D40,D42
+// [[D40]], [[D42]]
 // The unit-blind boundary (FC A4 regression, 2026-07-13): a `UnitCell` must never
 // leak raw into a node that doesn't run the dimension algebra — it unwraps to its
 // DISPLAY magnitude (the number the user typed) at the central coercion seam, so a

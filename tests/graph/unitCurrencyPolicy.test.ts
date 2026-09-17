@@ -1,4 +1,4 @@
-// dte:D47
+// [[D47]]
 import { describe, it, expect } from "vitest";
 import * as UV from "../../src/graph/unitValue";
 import { arithmeticCell, compareUnits, forAggregateUnits, type ArithmeticOp, type UnitCell } from "../../src/graph/unitValue";

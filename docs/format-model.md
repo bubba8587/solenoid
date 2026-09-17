@@ -57,7 +57,7 @@ value ──▶ 1 TYPE GATE ──▶ 2 STYLE (scale-divide, then precision+grou
    (style / precision / negatives / K-M-B) stays a DISPLAY annotation, and it FLOWS
    DOWNSTREAM through the MEANING-preserving transforms a node declares (add/sub, a mean,
    a rounding — not multiply, count or a rate), minus the unit, until a nearer FC
-   overrides it (dte:D41 formatFlowsDownstream, formatCarryPerOp). So the unit computes and
+   overrides it ([[D41]] formatFlowsDownstream, formatCarryPerOp). So the unit computes and
    clashes honestly; the number format is pure presentation, inherited and overridable.
 4. **Text attributes.** Case / bold / italic / size apply as display-only
    transforms (the underlying value is never mutated). Text family only.

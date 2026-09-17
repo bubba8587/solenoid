@@ -1,4 +1,4 @@
-// dte:C66
+// [[C66]]
 import { useMemo, useRef, type KeyboardEvent, type RefObject } from "react";
 import { highlightJs } from "../jsSyntax";
 import "./FormulaEditor.css";

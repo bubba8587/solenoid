@@ -48,7 +48,49 @@ import sys
 from collections import defaultdict
 
 ID_RE = re.compile(r"^([A-Z])(\d+)$")   # dte:B23
+# Two citation forms, read everywhere: the dte: token and the [[ID]] wikilink
+# (optionally [[ID|alias]]) that Obsidian follows. `links` in dte.cfg picks the written one.
 CITE_RE = re.compile(r"\bdte:([A-Z]\d+(?:\s*,\s*[A-Z]\d+)*)")
+LINK_RE = re.compile(r"\[\[([A-Z]\d+)(?:\|[^\]]*)?\]\]")
+
+
+def cited_ids(line):
+    """Every id cited on a line, in order, from both forms."""
+    found = []
+    for m in CITE_RE.finditer(line):
+        found.extend(re.split(r"\s*,\s*", m.group(1)))
+    found.extend(m.group(1) for m in LINK_RE.finditer(line))
+    return found
+
+
+def wikilinks():
+    return CONFIG.get("links") == "wikilink"
+
+
+def fm_id(i):
+    """One id as written in a frontmatter link field."""
+    return '"[[%s]]"' % i if wikilinks() else i
+
+
+def fm_ids(ids):
+    return "[%s]" % ", ".join(fm_id(i) for i in ids)
+
+
+def cite_text(ids):
+    """The citation as written into an artifact."""
+    if wikilinks():
+        return ", ".join("[[%s]]" % i for i in ids)
+    return "dte:" + ",".join(ids)
+
+
+def sub_citations(text, old_id, new_id):
+    """old_id -> new_id in every citation of either form."""
+    def swap(m):
+        ids = [new_id if x == old_id else x for x in re.split(r"\s*,\s*", m.group(1))]
+        return "dte:" + ",".join(ids)
+    text = CITE_RE.sub(swap, text)
+    return LINK_RE.sub(lambda m: m.group(0).replace("[[" + old_id, "[[" + new_id, 1)
+                       if m.group(1) == old_id else m.group(0), text)
 STATUSES = {"proposed", "active", "superseded", "reverted"}
 MADE_BY = {"human", "ai", "joint"}
 LIST_FIELDS = {"parents", "supersedes", "conflicts_with"}
@@ -65,7 +107,8 @@ LEDGER = "RETIRED"       # dte:C11
 
 DEFAULTS = {"summaries": True, "protect_human": True, "authority": (),
             "docs": ("*.md", "docs/*"), "broad_fraction": 0.3, "broad_min": 5,   # dte:C8
-            "retire": "delete"}   # dte:B24
+            "retire": "delete",   # dte:B24
+            "links": "token"}     # token writes dte:ID; wikilink writes [[ID]] (Obsidian-browsable)
 CONFIG = dict(DEFAULTS)
 
 
@@ -94,6 +137,8 @@ def load_config(root):
                 cfg["broad_min"] = int(val)
             elif key == "retire":
                 cfg["retire"] = "keep" if val.lower() == "keep" else "delete"
+            elif key == "links":
+                cfg["links"] = "wikilink" if val.lower() in ("wikilink", "wiki", "obsidian") else "token"
             elif key == "authority":
                 for item in val.split(","):
                     if ":" in item:
@@ -162,8 +207,9 @@ def _strip_comment(raw):
 def _scalar(raw):
     raw = _strip_comment(raw.strip())
     if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in "'\"":
-        return raw[1:-1]
-    return raw
+        raw = raw[1:-1]
+    m = LINK_RE.fullmatch(raw)   # "[[B7]]" in a link field reads as B7
+    return m.group(1) if m else raw
 
 
 def _normalise(data):
@@ -686,9 +732,8 @@ class Tree:
                     continue
                 self.scanned_files.append(rel)
                 for ln, line in enumerate(lines, 1):
-                    for m in CITE_RE.finditer(line):
-                        for cid in re.split(r"\s*,\s*", m.group(1)):
-                            self.citations.append((rel, ln, cid, self.resolve(cid)))
+                    for cid in cited_ids(line):
+                        self.citations.append((rel, ln, cid, self.resolve(cid)))
 
     # -- queries
     def descendants(self, i):
@@ -1063,7 +1108,7 @@ def cmd_place(tree, args):
         "id: %s" % new_id,
         "title: %s" % item.title,
         "status: active",
-        "parents: [%s]" % ", ".join(parents),
+        "parents: %s" % fm_ids(parents),
         "supersedes: []",
         "superseded_by:",
         "conflicts_with: []",
@@ -1086,7 +1131,7 @@ def cmd_place(tree, args):
         fh.write("\n".join(fm) + "\n" + body)
     os.remove(item.path)
     print('placed %s "%s" at %s' % (new_id, item.title, tree.rel(dest)))
-    print("cite it as dte:%s and re-run validate" % new_id)
+    print("cite it as %s and re-run validate" % cite_text([new_id]))
     return 0
 
 
@@ -1133,7 +1178,7 @@ def retire_node(tree, node, action, successor, by, authorized_by, what):
     nl = "\r\n" if "\r\n" in text else "\n"
     text = text.replace("\r\n", "\n")
     text = set_field(text, "status", "superseded" if successor else "reverted")
-    text = set_field(text, "superseded_by", successor or "")
+    text = set_field(text, "superseded_by", fm_id(successor) if successor else "")
     if authorized_by:
         text = set_field(text, "authorized_by", authorized_by)
     text = append_history(text, "- %s %s by %s." % (datetime.date.today().isoformat(), what, by))
@@ -1144,15 +1189,9 @@ def retire_node(tree, node, action, successor, by, authorized_by, what):
 def rewrite_references(tree, old_id, new_id):
     """dte:OLD -> dte:NEW in artifacts, OLD -> NEW in children's parents.  dte:C9"""
     files = sorted({rel for rel, _, cid, _ in tree.citations if cid == old_id})
-    tok = re.compile(r"\bdte:([A-Z]\d+(?:\s*,\s*[A-Z]\d+)*)")
-
-    def swap(m):
-        ids = [new_id if x == old_id else x for x in re.split(r"\s*,\s*", m.group(1))]
-        return "dte:" + ",".join(ids)
-
     for rel in files:
         path = os.path.join(tree.root, rel)
-        write_text(path, tok.sub(swap, read_text(path)))
+        write_text(path, sub_citations(read_text(path), old_id, new_id))
     children = list(tree.children.get(old_id, []))
     for c in children:
         cpath = tree.nodes[c].path
@@ -1160,7 +1199,7 @@ def rewrite_references(tree, old_id, new_id):
         cnl = "\r\n" if "\r\n" in ctext else "\n"
         ctext = ctext.replace("\r\n", "\n")
         ps = [new_id if p == old_id else p for p in tree.nodes[c].parents]
-        ctext = set_field(ctext, "parents", "[%s]" % ", ".join(ps))
+        ctext = set_field(ctext, "parents", fm_ids(ps))
         write_text(cpath, ctext.replace("\n", cnl))
     return files, children
 
@@ -1197,7 +1236,7 @@ def cmd_retire(tree, args):
         nl = "\r\n" if "\r\n" in t else "\n"
         t = t.replace("\r\n", "\n")
         if old_id not in new.supersedes:
-            t = set_field(t, "supersedes", "[%s]" % ", ".join(new.supersedes + [old_id]))
+            t = set_field(t, "supersedes", fm_ids(new.supersedes + [old_id]))
         carried = _section(node.body, "## Alternatives considered") if node.contested_by else ""
         if carried:   # dte:C17 the contest that produced the successor travels with it
             t = _insert_section(t, "## Alternatives considered",
@@ -1280,8 +1319,8 @@ def cmd_move(tree, args):
     text = text.replace("\r\n", "\n")
     text = set_field(text, "id", new_id)
     text = set_field(text, "status", "active")
-    text = set_field(text, "parents", "[%s]" % ", ".join(parents))
-    text = set_field(text, "supersedes", "[%s]" % old_id)
+    text = set_field(text, "parents", fm_ids(parents))
+    text = set_field(text, "supersedes", fm_ids([old_id]))
     text = set_field(text, "superseded_by", "")
     text = set_field(text, "ratified_by", "")
     text = set_field(text, "authorized_by", args.authorized_by or "")  # the human authorised this file too
@@ -1373,7 +1412,7 @@ def build_frontmatter(fields):
     lines = ["---"]
     for k, v in fields:
         if isinstance(v, list):
-            lines.append("%s: [%s]" % (k, ", ".join(v)))
+            lines.append("%s: %s" % (k, fm_ids(v)))
         elif v is None or v == "":
             lines.append("%s:" % k)
         else:
@@ -1436,7 +1475,7 @@ def cmd_new(tree, args):
     write_text(dest, build_frontmatter(fields) + body)
     print('created %s "%s" at %s' % (new_id, args.title, tree.rel(dest)))
     todo = [] if (args.decision and args.why) else ["fill in the TODO sections"]
-    print("  " + "; ".join(todo + ["cite it as dte:%s from what it governs" % new_id]))
+    print("  " + "; ".join(todo + ["cite it as %s from what it governs" % cite_text([new_id])]))
     return 0
 
 
@@ -1620,18 +1659,22 @@ def cmd_cite(tree, args):
                 break
     # an existing top-of-file citation line: append to it
     for k in range(at, min(at + 3, len(lines))):
-        m = CITE_RE.search(lines[k])
-        if m:
-            have = re.split(r"\s*,\s*", m.group(1))
+        have = cited_ids(lines[k])
+        if have:
             new = [x for x in ids if x not in have]
             if not new:
                 print("%s already cites %s" % (rel, ", ".join(ids)))
                 return 0
-            lines[k] = lines[k][:m.start(1)] + ",".join(have + new) + lines[k][m.end(1):]
+            m = CITE_RE.search(lines[k])
+            if m:
+                lines[k] = lines[k][:m.start(1)] + ",".join(have + new) + lines[k][m.end(1):]
+            else:
+                last = list(LINK_RE.finditer(lines[k]))[-1]
+                lines[k] = lines[k][:last.end()] + ", " + ", ".join("[[%s]]" % x for x in new) + lines[k][last.end():]
             write_text(path, nl.join(lines))
             print("%s: added %s to the existing citation on line %d" % (rel, ",".join(new), k + 1))
             return 0
-    comment = comment_line(ext, "dte:" + ",".join(ids))
+    comment = comment_line(ext, cite_text(ids))
     if comment is None:
         print("%s: %s files have no comments; cite from a sibling file or a README" % (rel, ext))
         return 2
@@ -1743,7 +1786,7 @@ def cmd_reparent(tree, args):
     nl = "\r\n" if "\r\n" in text else "\n"
     text = text.replace("\r\n", "\n")
     old = ", ".join(node.parents) or "none"
-    text = set_field(text, "parents", "[%s]" % ", ".join(parents))
+    text = set_field(text, "parents", fm_ids(parents))
     text = append_history(text, "- %s re-parented from [%s] to [%s] by %s." % (
         datetime.date.today().isoformat(), old, ", ".join(parents), args.by))
     write_text(node.path, text.replace("\n", nl))
@@ -1950,7 +1993,7 @@ def cmd_conflict(tree, args):
             text = read_text(n.path)
             nl = "\r\n" if "\r\n" in text else "\n"
             text = text.replace("\r\n", "\n")
-            text = set_field(text, "conflicts_with", "[%s]" % ", ".join(n.conflicts_with + [y]))
+            text = set_field(text, "conflicts_with", fm_ids(n.conflicts_with + [y]))
             write_text(n.path, text.replace("\n", nl))
     na, nb = tree.nodes[a], tree.nodes[b]
     print("declared: %s  vs  %s" % (na.label(), nb.label()))

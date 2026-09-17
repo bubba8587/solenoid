@@ -1,4 +1,4 @@
-// dte:D4,C22,C80
+// [[D4]], [[C22]], [[C80]]
 import { solError, isSolError, isNaError } from "./errorValue";
 import { resolveExcelFunction, EXCEL_IMPL_META, normalizeFxResult, fxErrorToSol, FX_FUNCTION_NAMES, numberToText, internalFunctionNames, isInternalFunction, ELIMINATED_FUNCTIONS, LEGACY_ALIASES, FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES, registryGeneration } from "./excelFunctions";
 import { isMissing, guardFinite } from "./valueKinds";
@@ -734,7 +734,7 @@ function applyCxOp(op: string, a: unknown, b: unknown): unknown {
   }
 }
 
-// dte:C80 blankArgIsExcelBlank — a BLANK slot reads as Excel's typed blank; an omitted
+// [[C80]] blankArgIsExcelBlank — a BLANK slot reads as Excel's typed blank; an omitted
 // trailing argument stays `undefined` (the default). Declared per parameter, applied
 // once at the dispatch boundary for natives and Formula.js alike.
 type BlankType = "number" | "logical" | "text";

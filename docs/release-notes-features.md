@@ -88,7 +88,7 @@ makes something a slide. **The 1.3 list shipped with v1.3 and lives in git histo
 ## Under the hood — seed list for the GitHub changelog
 
 - Every rule and settled decision is a node in the DTE tree (`decisions/`, 168 nodes);
-  rules.md and decisions.md are retired; code and tests cite `dte:<ID>`.
+  rules.md and decisions.md are retired; code and tests cite `[[<ID>]]`.
 - The scheduling engine and Gantt figure are in-repo packages (`packages/`).
 - Tidy reserves a plain card's measured box, not its declared size.
 - The Input Switch's mode change ghosts the cables it drops and reattaches them on the

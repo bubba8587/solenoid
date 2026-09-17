@@ -1,4 +1,4 @@
-// dte:C11
+// [[C11]]
 // React Flow port (C2) — the socket dot on the flow surface: an RF Handle
 // (connection drag + measurement) drawing the SAME SocketComponent glyphs.
 // Injected into NodeSocket via flowSurface.ts.

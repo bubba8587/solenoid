@@ -1,4 +1,4 @@
-// dte:D22,C79
+// [[D22]], [[C79]]
 import { NODE_CATALOG } from "./nodeCatalog";
 import { nodeTypeName, setNodeNamer } from "./nodeNamer";
 import { packPlacements, packsStore, NODE_PACK_TAGS } from "./packs";

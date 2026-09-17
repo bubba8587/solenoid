@@ -1,4 +1,4 @@
-// dte:D10
+// [[D10]]
 import { getActiveEditor } from "../activeGraph";
 
 // THE input-cable pruning SSOT (`sourceInvariants.test.ts` pins that components don't

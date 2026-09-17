@@ -1,4 +1,4 @@
-// dte:C25,D41,D43
+// [[C25]], [[D41]], [[D43]]
 import type { ClassicPreset } from "rete";
 import type { NodeEditor } from "rete";
 import { type FormatAnnotation, isDateStyle } from "./formatAnnotationStore";

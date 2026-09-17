@@ -1,4 +1,4 @@
-// dte:D34,D35,E9
+// [[D34]], [[D35]], [[E9]]
 import { describe, it, expect } from "vitest";
 import { solError, isSolError, firstInputError, installErrorGuards, type SolError } from "../../src/graph/errorValue";
 import { ArithmeticNode, MathFXNode, CombinatoricsNode } from "../../src/graph/nodes/scalar";

@@ -1,4 +1,4 @@
-// dte:C69
+// [[C69]]
 import { defineConfig } from "vitest/config";
 
 // Headless logic tests — no DOM, no Rete rendering. Node compute lives in

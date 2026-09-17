@@ -1,4 +1,4 @@
-// dte:C68
+// [[C68]]
 // Knap (knap.md, Obsidian's template language) IS the document syntax: `{{ name }}`,
 // `{% if %}`, `{% for %}` and the standard filter set, rendered at compute time. A
 // Report's variables are its wired inputs (each root name mints a `trueany` input); a

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-// dte:C9 labelUnenforced, dte:C7 authorRuled, dte:B8
+// [[C9]] labelUnenforced, [[C7]] authorRuled, [[B8]], [[C81]] wikilinkCitations
 // The decision tree keeps its own claims honest: a MUST that names no test, a cited suite
 // that no longer exists, or a quoted test name that drifted turns the enforcement column
 // back into folklore. The structural checks (parents, citations resolve) are
@@ -133,18 +133,18 @@ describe("the decision tree (decisions/)", () => {
     expect(offenders, `nodes quote test names that do not appear in the cited suite:\n  ${offenders.join("\n  ")}`).toEqual([]);
   });
 
-  it("a `dte:ID name` citation names the node it points at", () => {
-    // Names survive as title prefixes (B8), so a citation may carry one after its token.
+  it("a `[[ID]] name` citation names the node it points at", () => {
+    // Names survive as title prefixes (B8), so a citation may carry one after its link.
     // The pair must agree, or the readable half lies about which decision is cited.
     const byId = new Map(nodes.map((n) => [n.id, n]));
     const names = new Set(nodes.filter((n) => n.name).map((n) => n.name!));
     const offenders: string[] = [];
     const scan = (file: string) => {
       const text = fs.readFileSync(file, "utf8");
-      for (const m of text.matchAll(/dte:([A-Z]\d+) `?([A-Za-z][A-Za-z0-9]*(?:-\d+)?)`?/g)) {
+      for (const m of text.matchAll(/\[\[([A-Z]\d+)\]\] `?([A-Za-z][A-Za-z0-9]*(?:-\d+)?)`?/g)) {
         if (!names.has(m[2])) continue;
         const node = byId.get(m[1]);
-        if (node?.name !== m[2]) offenders.push(`${path.relative(ROOT, file)}: dte:${m[1]} ${m[2]} (${m[1]} is ${node ? `"${node.title}"` : "unknown"})`);
+        if (node?.name !== m[2]) offenders.push(`${path.relative(ROOT, file)}: [[${m[1]}]] ${m[2]} (${m[1]} is ${node ? `"${node.title}"` : "unknown"})`);
       }
     };
     const SKIP = new Set(["node_modules", "archive", "decisions", "dte-rules", "dist", "target"]);

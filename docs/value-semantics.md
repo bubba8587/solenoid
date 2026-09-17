@@ -3,7 +3,7 @@
 The one-stop spec for the value model's special kinds: what each one MEANS, what
 produces it, how it propagates through each computation context, and how it renders.
 Consolidates the 2026-06-22 array-semantics build (decision arraySemantics) and the 2026-07-02
-step-by-step rulings (dte:C14 currentExcelParity–consistencyOverQuirks), all shipped by the 2026-07-04/05 tail
+step-by-step rulings ([[C14]] currentExcelParity–consistencyOverQuirks), all shipped by the 2026-07-04/05 tail
 pass. Mechanics/invariants live in `subsystem-invariants.md` "Error values"; this
 doc is the SEMANTICS reference.
 
@@ -330,9 +330,9 @@ guarded once, up top.
 
 ## Pointers
 
-Decisions: dte:C24 arraySemantics (the value model), dte:C14 currentExcelParity (current-Excel-only parity), dte:D51 oneAnswerOneDivergence (surface
-harmony + the reduction/element-wise line), dte:C45 excelComparisons (comparisons vs identity; list vs
-relational), dte:C46 consistencyOverQuirks (engine consistency over Excel quirks).
+Decisions: [[C24]] arraySemantics (the value model), [[C14]] currentExcelParity (current-Excel-only parity), [[D51]] oneAnswerOneDivergence (surface
+harmony + the reduction/element-wise line), [[C45]] excelComparisons (comparisons vs identity; list vs
+relational), [[C46]] consistencyOverQuirks (engine consistency over Excel quirks).
 Mechanics: `subsystem-invariants.md` "Error values". Known open divergence: the
 mode-selector-on-a-wired-blank AUTHOR CALL in `backlog.md` (text.ts/date.ts
 literal fallback vs this doc's propagate row).

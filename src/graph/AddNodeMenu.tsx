@@ -1,4 +1,4 @@
-// dte:D5,D6
+// [[D5]], [[D6]]
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { flattenLeaves, searchLeaves } from "./catalogSearch";
 import { IS_COARSE } from "./coarse";

@@ -1,4 +1,4 @@
-// dte:E11
+// [[E11]]
 import { ClassicPreset } from "rete";
 import { dateIn, cubeOut, frameOut } from "./shared";
 import { connectionStore, scheduleConnectionRecalc, requestNetwork, trackInflight } from "../connectionStore";
@@ -120,7 +120,7 @@ export class TaskNotesNode extends ClassicPreset.Node {
         connectionStore.setState(this.id, { status: "idle" });
       } else if (isDemoTaskNotes()) {
         // The demo fake needs no network and no wait: the canned reply parses in this pass,
-        // so a seed computes on its first fetch (dte:D62 demoVaultResolution).
+        // so a seed computes on its first fetch ([[D62]] demoVaultResolution).
         this._lastKey = key;
         this.loadDemo();
       } else if (requestNetwork(this.id)) {

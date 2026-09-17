@@ -1,4 +1,4 @@
-// dte:C25
+// [[C25]]
 import { ClassicPreset, type NodeEditor } from "rete";
 import { formatAnnotationStore, isDateStyle, isFcUnit, type FormatStyleId, type FormatAnnotation, type TextCase, type TextAlign, type DecimalMode, type LogicalStyle, type LambdaView, type NegativeStyle, type ScaleMode } from "../formatAnnotationStore";
 import { sharedAnnotationResolver } from "../unitFlow";
@@ -79,7 +79,7 @@ export class FormatControllerNode extends ClassicPreset.Node {
   advancedOpen: boolean;
   // The style dropdown's `—` pick: the FC carries the upstream display format through
   // and authors its unit alone, so a second FC docked only for a unit no longer resets
-  // the style to Auto (dte:D41 formatFlowsDownstream).
+  // the style to Auto ([[D41]] formatFlowsDownstream).
   inheritFormat: boolean;
   // The format arriving at `in` while inheriting — the muted hint the popup shows and the
   // source of the carried style. Recomputed in refreshAnnotation; never serialized.

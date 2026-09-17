@@ -1,4 +1,4 @@
-// dte:C17,D25
+// [[C17]], [[D25]]
 import { describe, it, expect } from "vitest";
 import { resolveExcelFunction, LEGACY_ALIASES } from "../../src/graph/excelFunctions";
 import { compileEvaluator, formulaFunctionNames, RANGE_FUNCTIONS } from "../../src/graph/excelFormula";

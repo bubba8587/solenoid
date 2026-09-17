@@ -1,4 +1,4 @@
-// dte:C14,D4,E12,E14,C22
+// [[C14]], [[D4]], [[E12]], [[E14]], [[C22]]
 import * as FX from "@formulajs/formulajs";
 import { solError, isSolError, type SolError, type SolErrorCode } from "./errorValue";
 import { serialToJsDate, jsDateToSerial } from "./nodes/dateSerial";
@@ -969,7 +969,7 @@ registerInternal("CONCAT", (...xs) => flat(xs).map(toStr).join(""));
 registerInternal("CONCATENATE", (...xs) => flat(xs).map(toStr).join(""));
 registerInternal("TEXTJOIN", (delim, ignoreEmpty, ...xs) => {
   const parts = flat(xs).map(toStr);
-  // Only FALSE/0 keeps empties; a blank slot arrives as FALSE (dte:C80 blankArgIsExcelBlank).
+  // Only FALSE/0 keeps empties; a blank slot arrives as FALSE ([[C80]] blankArgIsExcelBlank).
   const kept = ignoreEmpty === false || ignoreEmpty === 0 ? parts : parts.filter((s) => s !== "");
   return kept.join(toStr(delim));
 });
@@ -1207,7 +1207,7 @@ registerInternal("CONVERT", (x, from, to) => {
 });
 
 // Lookup family, against OUR 1-D list model — the same `xmatchIndex` kernel the
-// XMATCH node runs, plus Excel's numeric mode arguments (dte:C80 blankArgIsExcelBlank:
+// XMATCH node runs, plus Excel's numeric mode arguments ([[C80]] blankArgIsExcelBlank:
 // only an OMITTED mode is the default).
 const NA_NO_MATCH = () => solError("#N/A", "No match found in the lookup list");
 const xMatchModeArg = (v: unknown): XMatchMatchMode | SolError => {

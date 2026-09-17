@@ -1,4 +1,4 @@
-// dte:C34,C69
+// [[C34]], [[C69]]
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import license from "rollup-plugin-license";

@@ -1,4 +1,4 @@
-// dte:D15,E3
+// [[D15]], [[E3]]
 import type { ClassicPreset } from "rete";
 import { AdoptiveSocket, MutableSocket, SolenoidSocket, adoptTypeForBase, projectTypeToBase, type SocketDataType } from "./sockets";
 import { getPassthrough, resolvePassthroughType, agreeTypes, type ProjectContext } from "./nodes/passthrough";

@@ -1,4 +1,4 @@
-// dte:D24
+// [[D24]]
 import { describe, it, expect } from "vitest";
 import {
   extractVariables,

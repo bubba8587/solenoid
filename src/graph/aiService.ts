@@ -1,4 +1,4 @@
-// dte:B13,C55
+// [[B13]], [[C55]]
 // The AI palette's service layer (aiInScope/aiWholeDocRewrite). The cage rule: nothing here touches the
 // document — a validated rewrite only ever reaches the palette's approval diff.
 

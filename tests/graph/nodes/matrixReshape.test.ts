@@ -1,4 +1,4 @@
-// dte:C17
+// [[C17]]
 import { describe, it, expect } from "vitest";
 import { isSolError } from "../../../src/graph/errorValue";
 import { TableTransposeNode, StackNode, TableReshapeNode, TableSelectNode, TakeDropNode, ExpandNode, TableInfoNode, TableMultNode, MatDetNode, TableInputNode, TableUnitNode, tableRawCells, rawCellsToText, deriveTable } from "../../../src/graph/nodes/matrix";

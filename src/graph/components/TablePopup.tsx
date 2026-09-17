@@ -1,4 +1,4 @@
-// dte:C58
+// [[C58]]
 import { neutralizeFormulaCell } from "../csvSafety";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { copyText } from "../clipboard";
@@ -214,7 +214,7 @@ export function TablePopup() {
     const localAt = (colName: string | undefined): FormatAnnotation | undefined =>
       fmtNodeId && colName ? frameFormatStore.get(fmtNodeId, colName) : undefined;
     // The effective annotation the grid renders: a local pick, else what the column
-    // carried in, else the type default (dte:D41 formatFlowsDownstream).
+    // carried in, else the type default ([[D41]] formatFlowsDownstream).
     const seedFormat = (saved: FormatAnnotation | undefined, dflt: FormatAnnotation): FormatAnnotation => {
       if (!saved) return dflt;
       // A saved format left cross-type by a column type switch resets to the type default.
@@ -354,7 +354,7 @@ export function TablePopup() {
     frameFormatStore.set(nodeId, col, { ...annFor(c), ...patch, unit: "none" });
     // The pick lives in a sidecar store, so nothing else marks the document dirty; and
     // the stamp onto FrameColumn.format happens at COMPUTE, so downstream frames only
-    // pick it up on a recompute (dte:D41 formatFlowsDownstream).
+    // pick it up on a recompute ([[D41]] formatFlowsDownstream).
     scheduleAutosave();
     void processGraph(nodeId);
   }

@@ -1,4 +1,4 @@
-// dte:D18
+// [[D18]]
 // Frame-input EXAMPLE hints: a node class declares, per frame input, a tiny
 // example frame (columns + a few sample rows) and hovering that input's socket
 // shows it as a floating mini-table (FrameHintLayer). The declaration lives on

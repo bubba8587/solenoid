@@ -1,4 +1,4 @@
-// dte:E11
+// [[E11]]
 import { ClassicPreset } from "rete";
 import { frameOut, strListOut, strIn, numIn, numOut, strOut, dateOut, dateIn, dateListOut, cubeOut, readInput } from "./shared";
 import { serialToJsDate } from "./dateSerial";
@@ -282,7 +282,7 @@ export class ImportXmlNode extends ClassicPreset.Node {
 // Desktop only (no filesystem in the browser). The cache key folds in folder + file
 // name, so re-pointing either re-reads.
 
-// dte:D2
+// [[D2]]
 export class LocalFileNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     frame: "Reads the named file from the folder chosen in Settings. Rows are never saved into the project file.",

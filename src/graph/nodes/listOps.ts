@@ -1,4 +1,4 @@
-// dte:C17,C60,D19
+// [[C17]], [[C60]], [[D19]]
 import { isSolError, solError, type SolError } from "../errorValue";
 import { isCx } from "../cxValue";
 import { forAggregate, isMissing } from "../valueKinds";

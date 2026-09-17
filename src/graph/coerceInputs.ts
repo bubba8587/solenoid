@@ -1,4 +1,4 @@
-// dte:C25,D43
+// [[C25]], [[D43]]
 import type { NodeEditor } from "rete";
 import type { Schemes } from "./schemes";
 import { SolenoidSocket, AdoptiveSocket, elementFamilyOf, type SocketDataType } from "./sockets";
@@ -215,7 +215,7 @@ function coerceValueNoWiden(dataType: SocketDataType, v: unknown): unknown {
 }
 
 /** Stamp THIS node's per-column format picks onto the frame it emits, so the format
- *  rides the value downstream (dte:D41 formatFlowsDownstream). A column with no local
+ *  rides the value downstream ([[D41]] formatFlowsDownstream). A column with no local
  *  pick keeps whatever arrived on the input frame. Shallow-copies rather than
  *  mutating — a cached frame is shared with every other consumer. */
 function stampFrameFormats(nodeId: string, f: FrameValue): FrameValue {

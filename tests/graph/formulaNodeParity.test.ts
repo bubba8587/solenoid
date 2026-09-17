@@ -1,4 +1,4 @@
-// dte:D7,D9,D25
+// [[D7]], [[D9]], [[D25]]
 import { describe, it, expect } from "vitest";
 import { measureParity, excelNamedGapNames, excelCoverage } from "../../src/graph/formulaNodeParity";
 import { initPackFormulas } from "../../src/graph/formulaExtensions";
@@ -7,7 +7,7 @@ import { initPackFormulas } from "../../src/graph/formulaExtensions";
 // The node set and the formula language drifted apart because NOTHING checked one
 // against the other — a node could ship with an Excel name that no formula could
 // call, and Formula.js could drag in a legacy name nobody decided to support. The
-// ratchet rules are dte:C51 formulaNaming / uniqueNameMap.
+// ratchet rules are [[C51]] formulaNaming / uniqueNameMap.
 //
 // This test pins today's gaps and makes them one-way. Both directions assert
 // live ⊆ pinned (a NEW gap fails) AND pinned ⊆ live (a CLOSED gap must be deleted
@@ -58,7 +58,7 @@ describe("formula ↔ node parity ratchet", () => {
         `These Excel names have a node but are NOT callable in a formula:${fmt(added)}\n` +
           `Register a native impl for each (excelFunctions.ts \`registerInternal\`), sharing the\n` +
           `node's compute (the parity ratchet — an Excel-named node MUST be callable in a formula;\n` +
-          `dte:C51 formulaNaming). If a name genuinely cannot\n` +
+          `[[C51]] formulaNaming). If a name genuinely cannot\n` +
           `be registered (2-D shape under the noFramesInFormulas cap, or a lambda meta-function), add it to\n` +
           `EXCEL_NAMED_GAP here WITH a reason in the comment above.`,
       ).toEqual([]);
@@ -84,7 +84,7 @@ describe("formula ↔ node parity ratchet", () => {
         `These names dispatch in a formula with no node and no recorded decision:${fmt(added)}\n` +
           `Curate each one: block it (LEGACY_ALIASES in excelFunctions.ts) if it is a legacy or\n` +
           `superseded spelling, give it a node, or record it as a deliberate gap in EXCEL_GAP\n` +
-          `(nodeExcel.ts). currentExcelParity applies to the formula surface too — see dte:C51 formulaNaming.`,
+          `(nodeExcel.ts). currentExcelParity applies to the formula surface too — see [[C51]] formulaNaming.`,
       ).toEqual([]);
     });
 

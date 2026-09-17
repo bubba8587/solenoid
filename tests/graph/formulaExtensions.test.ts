@@ -1,4 +1,4 @@
-// dte:C76
+// [[C76]]
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { initPackFormulas, advertisedFunctionNames, packFormulaNames, packFormulaSignature } from "../../src/graph/formulaExtensions";
 import { packsStore, BUILTIN_PACKS } from "../../src/graph/packs";
@@ -11,7 +11,7 @@ import type { Pack } from "../../src/graph/packs/packShared";
 // The load-bearing asymmetry, and the reason this isn't just "hide the names":
 // RESOLUTION is global, ADVERTISING is active-only. A formula pack node
 // serializes as a plain ExpressionNode and reloads with its pack switched off
-// (dte:C76 formulaPackDefault), so the functions its formula calls MUST keep
+// ([[C76]] formulaPackDefault), so the functions its formula calls MUST keep
 // answering — a deactivated pack that turned saved documents into #NAME? would
 // be data loss. Autocomplete, on the other hand, shouldn't teach a name whose
 // pack is off.

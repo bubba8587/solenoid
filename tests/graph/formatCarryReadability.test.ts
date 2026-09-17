@@ -1,4 +1,4 @@
-// dte:D41
+// [[D41]]
 // formatFlowsDownstream readability table: a styled source wired into a real transform,
 // the output formatted exactly as a Display would. `want` is what a reader should see —
 // "auto" = no carried style (a value of a new kind); a string = the style survives.

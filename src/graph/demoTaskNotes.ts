@@ -1,4 +1,4 @@
-// dte:D62
+// [[D62]]
 // Fake TaskNotes replies, the way demoVault fakes the vault: the marketing /obsidian page
 // forces them, and an app with no TaskNotes URL configured reads them while the "Use demo
 // vault" setting allows it (demoVaultResolution),

@@ -1,4 +1,4 @@
-// dte:C69,C70,C71
+// [[C69]], [[C70]], [[C71]]
 // The Gantt figure's payload from a Schedule output: data, never geometry (25-gantt.md
 // § 6.3). The Gantt node reads the schedule CUBE the Schedule node emitted (its computed
 // columns are the contract), so any node between them (Filter, Sort, a pasted frame) still

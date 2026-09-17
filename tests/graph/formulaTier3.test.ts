@@ -1,4 +1,4 @@
-// dte:C17,C18,C20,C21,D3,D4,D20,D24
+// [[C17]], [[C18]], [[C20]], [[C21]], [[D3]], [[D4]], [[D20]], [[D24]]
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
 import { EXCEL_IMPL_META, listReturningNames, wholeArgNames, resolveExcelFunction } from "../../src/graph/excelFunctions";
@@ -323,7 +323,7 @@ describe("the formula namespace stays unambiguous", () => {
   });
 
   it("uniqueNameMap full sweep — every operation-kind op name is unique across families and leaves", () => {
-    // The complete naming-side check (dte:C18 uniqueNameMap, its full sweep): every
+    // The complete naming-side check ([[C18]] uniqueNameMap, its full sweep): every
     // OPERATION-kind op in NODE_OPS claims a formula name (`fx` ?? despaced
     // label). Those names must be injective — across families, and against the
     // catalog leaves — because the parity walk counts a leaf covered when its

@@ -1,4 +1,4 @@
-// dte:C69,C70,C71
+// [[C69]], [[C70]], [[C71]]
 import { ClassicPreset } from "rete";
 import { cubeIn, strIn, numIn, dateIn, dateListIn, chartOut, readInput } from "./shared";
 import { parseChartOptions, type ChartOptions } from "./chartOptions";

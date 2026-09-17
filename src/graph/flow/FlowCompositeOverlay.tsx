@@ -1,4 +1,4 @@
-// dte:C43
+// [[C43]]
 // The composite drill-in: a full-viewport FlowSurface over the composite's
 // INTERNAL editor (the same surface as the main canvas), plus the one piece of
 // drill-in-specific chrome (breadcrumb strip, port promotion, run controls) and

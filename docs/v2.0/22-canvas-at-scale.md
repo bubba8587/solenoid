@@ -48,7 +48,7 @@ jumping). Perf probe: the load/undo timings in subsystem-invariants § Graph loa
 
 The held gesture layer (`HtmlCanvasLayer.tsx`) paints from a worker via
 `transferControlToOffscreen`, keeping the main thread free during gestures. A contained
-HtmlCanvasLayer change — **not a third render path** (dte:B10 reactFlowView,
+HtmlCanvasLayer change — **not a third render path** ([[B10]] reactFlowView,
 htmlInCanvasRenderer): the DOM stays the permanent default, HIC the gesture enhancement.
 With Step 1, HIC can paint labels itself for cards that were never mounted.
 

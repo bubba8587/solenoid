@@ -12,7 +12,7 @@ renders every card, cable, the minimap and the viewport (`flow/FlowSurface.tsx`
 is THE surface, shared by the main canvas and the composite drill-in — decisions
 oneFlowSurface). **rete core** (`NodeEditor` + `ClassicPreset`) plus
 `rete-engine` (`DataflowEngine`) is the headless MODEL and compute spine — kept
-on purpose; no rete render package exists (dte:B10 reactFlowView). `flow/SolNodeAdapter.tsx`
+on purpose; no rete render package exists ([[B10]] reactFlowView). `flow/SolNodeAdapter.tsx`
 binds a rete node instance to its registered card component; `flow/flowView.ts`
 is the one implementation of the `View` seam (`view.ts`), turning the model's
 camera/move/re-render verbs into RF state. The model-level compute pass is
@@ -25,7 +25,7 @@ Module singletons `_editor/_engine/_area` live in `process.ts`. A composite
 drill-in does NOT open a new page — it substitutes the active surface via the
 `activeGraph.ts` seam (`getActive*`/`getOwningEditor`), so the same chrome drives
 whichever canvas is on top. `getEditor()` and persistence always mean the MAIN
-graph (dte:C33 saveBindsMain). The full surface contract — what RF owns, what the
+graph ([[C33]] saveBindsMain). The full surface contract — what RF owns, what the
 model owns, and the conversions at the boundary — is
 `subsystem-invariants.md` § React Flow surface contract.
 
@@ -61,7 +61,7 @@ The compute path, in order:
 5. **Render.** The node stashes its result (`cachedResult` etc.); the adapter
    bumps the card's version and React Flow re-renders that card; value boxes
    format through the display pipeline (below). Components NEVER call `data()`
-   themselves (dte:C27 noDataInComponents) — display logic that needs computation
+   themselves ([[C27]] noDataInComponents) — display logic that needs computation
    gets a pure extracted helper.
 
 ## Where types come from
@@ -143,7 +143,7 @@ The curated selling list is `release-notes-features.md`; the file map is
 ## Reflexes that prevent the recurring bugs
 
 - Check the "Code → spec routing" table (`docs/README.md`) before editing any
-  routed file; cite the governing node (`dte:<ID> name`) in comments and commits.
+  routed file; cite the governing node (`[[<ID>]] name`) in comments and commits.
 - Anything visual: `DESIGN.md` first. Any gesture: `touch-gestures.md` is the
   inventory. Any bar/overlay: `layout-chrome.md`. Anything on the canvas
   surface: `subsystem-invariants.md` § React Flow surface contract.
