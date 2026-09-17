@@ -152,7 +152,10 @@ export async function refreshConnection(id: string): Promise<void> {
   await processGraph();
 }
 
+/** "Refresh all connections": bumps the generation every connection node keys on, and
+ *  notifies subscribers that re-read outside the engine (an Import Obsidian Note). */
 export async function refreshAllConnections(): Promise<void> {
   _gen++;
+  notify();
   await processGraph();
 }
