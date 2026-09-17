@@ -16,8 +16,6 @@ import { useEditableLabel } from "./inlineInput";
 import { isDesktop, listVaultMarkdownFiles, readVaultFile, openExternal } from "../fileBridge";
 import { getVaultRoot, isDemoVaultPath } from "../demoVault";
 import { obsidianOpenUrl } from "../obsidianLinks";
-import { useVaultWatch } from "./useVaultWatch";
-import { touches } from "../vaultWatch";
 import { getActiveView, getActiveEditor } from "../activeGraph";
 import { processGraph } from "../process";
 import { bumpConnectionVersion } from "../graphSignals";
@@ -121,9 +119,6 @@ export function ImportObsidianComponent({ data, emit }: NodeProps<ImportObsidian
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [minutes, desktop, data.fileName, vault]);
-  // Obsidian saved this note → reload (bundle E). Watches the note's folder, filters to the file.
-  const noteFolder = data.fileName.includes("/") ? data.fileName.slice(0, data.fileName.lastIndexOf("/")) : "";
-  useVaultWatch(vault, noteFolder, (paths) => { if (touches(paths, vault, data.fileName)) void reload(); }, desktop && !!data.fileName);
 
   function pick(c: string) { setColor(c); data.color = c; void getActiveView()?.rerenderNode(data.id); scheduleAutosave(); }
   function toggleCollapse() { const v = !collapsed; setCollapsed(v); data.collapsed = v; scheduleAutosave(); }

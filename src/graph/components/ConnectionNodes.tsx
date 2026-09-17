@@ -35,7 +35,6 @@ import { pickGeocodeMatch } from "../geocodeProvider";
 import { NAGER_COUNTRIES, filterHolidays, daysToNextHoliday } from "../holidaysProvider";
 import { FX_CURRENCIES } from "../fxProvider";
 import { frameRowCount, cubeRowCount } from "../frame";
-import { useVaultWatch } from "./useVaultWatch";
 import { TASKNOTES_KEY_ID, TASKNOTES_PROVIDER_META, statsToFrame, type TaskNotesProvider } from "../taskNotesApi";
 import { dropInputCables, dropOutputCables } from "./cablePrune";
 import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
@@ -777,8 +776,6 @@ export function VaultFolderComponent({ data, emit }: NodeProps<VaultFolderNodeTy
   const desktop = isDesktop();
   const canRead = desktop || isDemoVaultPath(vault); // the demo vault reads with no filesystem
   useAutoRefresh(data.id, minutes);
-  // Obsidian saved under this folder → re-read (bundle E; the cadence stays the stopgap).
-  useVaultWatch(vault, folder, () => { void refreshConnection(data.id); }, desktop);
   useEffect(() => { setFolder(data.folder); }, [data.folder]);
   // The subfolder dropdown lists the vault's folders (same control as Write to Obsidian).
   useEffect(() => {

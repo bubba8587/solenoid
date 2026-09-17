@@ -53,11 +53,6 @@
       ]
     },
     {
-      "identifier": "fs:allow-watch",
-      "allow": [{ "path": "$HOME/**" }]
-    },
-    "fs:allow-unwatch",
-    {
       "identifier": "fs:allow-read-dir",
       "allow": [{ "path": "$HOME/**" }]
     },
