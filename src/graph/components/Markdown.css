@@ -26,8 +26,10 @@
 .sol-md a:hover { text-decoration: underline; }
 .sol-md strong { color: var(--text-bright); font-weight: 600; }
 /* Obsidian inline forms (noteMarkdown.ts): a wikilink reads as a link with a dotted
-   underline to tell it from a URL; a tag is a chip — an accent wash at chip radius. */
-.sol-md .sol-md__wikilink { color: var(--accent); text-decoration: underline dotted; text-underline-offset: 3px; cursor: default; }
+   underline to tell it from a URL; a tag is a chip — a wash at chip radius. Both take
+   the NOTE's colour (`--note-color`, set by the Note / Import cards); a surface with no
+   note colour (the Report overlay) falls back to the app accent. */
+.sol-md .sol-md__wikilink { color: var(--note-color, var(--accent)); text-decoration: underline dotted; text-underline-offset: 3px; cursor: default; }
 .sol-md .sol-md__wikilink--embed::before { content: "⤵ "; opacity: 0.6; }
 .sol-md .sol-md__tag {
   display: inline-block;
@@ -35,8 +37,8 @@
   border-radius: 5px;
   font-size: 0.85em;
   line-height: 1.6;
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--note-color, var(--accent));
+  background: color-mix(in srgb, var(--note-color, var(--accent)) 16%, transparent);
   white-space: nowrap;
 }
 .sol-md code {
