@@ -4,12 +4,12 @@
 // declared here at all (DESIGN.md § Op pickers; nodeOps.test.ts pins both directions).
 
 import type { NodeCatalogEntry } from "./AddNodeMenu";
-import { DIST_SPECS, DistributionNode, type DistKey } from "./nodes/distribution";
+import { DIST_SPECS, DistributionsNode, type DistKey } from "./nodes/distribution";
 
 import { ChartNode, SparklineNode, SurfaceNode, ProportionNode, RecordNode } from "./nodes/visual";
 import { CHART_OP_META, SPARKLINE_OP_META, PROPORTION_OP_META, RECORD_OP_META } from "./nodes/visual";
 import {
-  FillNode, SetNode, SumIfsNode,
+  FillNode, SetsNode, SumIfsNode,
   FILL_OP_META, COND_AGG_OP_META,
   SET_META, PAD_OP_META, PadNode,
   SeriesNode,
@@ -137,8 +137,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
   { type: "surface", ctor: SurfaceNode },
   // A distribution is likewise a thing you search for by name; its ops' formula
   // names are the real Excel spellings (fx in DIST_OPS).
-  { type: "distribution", ctor: DistributionNode, ops: DIST_OPS,
-    create: (op) => new DistributionNode({ op: op as never }) },
+  { type: "distributions", ctor: DistributionsNode, ops: DIST_OPS,
+    create: (op) => new DistributionsNode({ op: op as never }) },
 
   // TAKE/DROP are one rank-preserving class (list, matrix or scalar); both ops have
   // their own bare leaf, so neither becomes a "TAKE: Drop" colon row. The sign of the
@@ -168,8 +168,8 @@ export const NODE_OPS: NodeOpsDecl[] = [
     create: (op) => new ColumnsNode({ op: op as never }), leafOps: ["keep", "drop"] },
   { type: "list-pad", ctor: PadNode, ops: fromMeta(PAD_OP_META),
     create: (op) => new PadNode({ op: op as never }) },
-  { type: "list-set", ctor: SetNode, ops: fromMeta(SET_META),
-    create: (op) => new SetNode({ op: op as never }) },
+  { type: "list-sets", ctor: SetsNode, ops: fromMeta(SET_META),
+    create: (op) => new SetsNode({ op: op as never }) },
   { type: "iferror", ctor: IFErrorNode,
     ops: [{ op: "iferror", label: "IFERROR" }, { op: "ifna", label: "IFNA" }],
     create: (op) => new IFErrorNode({ op: op as never }), leafOps: ["iferror", "ifna"] },

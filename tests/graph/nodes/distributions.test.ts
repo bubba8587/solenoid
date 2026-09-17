@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { DistributionNode, formAfterSwitch } from "../../../src/graph/nodes/distribution";
+import { DistributionsNode, formAfterSwitch } from "../../../src/graph/nodes/distribution";
 import { DIST_SPECS } from "../../../src/graph/nodes/distributionOps";
 import { compileEvaluator } from "../../../src/graph/excelFormula";
 
 const dist = (op: string, form: string) =>
-  new DistributionNode({ op: op as never, form: form as never });
+  new DistributionsNode({ op: op as never, form: form as never });
 
 // Each value below is the answer Excel's corresponding function returns, so a
 // regression here means we've drifted from spreadsheet parity.

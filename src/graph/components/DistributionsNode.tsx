@@ -5,14 +5,14 @@ import { dropInputCables } from "./cablePrune";
 import { getActiveView } from "../activeGraph";
 import {
   DIST_SPECS, DIST_FORM_META, isInverseForm,
-  type DistributionNode as DistributionNodeType, type DistKey, type DistForm,
+  type DistributionsNode as DistributionNodeType, type DistKey, type DistForm,
 } from "../nodes/distribution";
 
 const DIST_OPTIONS = (Object.keys(DIST_SPECS) as DistKey[]).map((op) => ({
   value: op, label: DIST_SPECS[op].label, group: DIST_SPECS[op].group,
 }));
 
-export function DistributionComponent({ data, emit }: NodeProps<DistributionNodeType>) {
+export function DistributionsComponent({ data, emit }: NodeProps<DistributionNodeType>) {
   const [op, setOpField] = useNodeField(data, "op");
   const [form, setFormField] = useNodeField(data, "form");
 

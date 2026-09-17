@@ -82,7 +82,7 @@ describe("the ops list is derived, not transcribed", () => {
   // so they use fromMeta too: the meta is the one home.
   it("the derived ops list covers its meta exactly (the Set families included)", () => {
     for (const [type, meta] of [
-      ["list-set", SET_META],
+      ["list-sets", SET_META],
     ] as const) {
       const declared = opsFor(type)!.ops!.map((o) => o.op).sort();
       expect(declared, `${type}: the ops list and its OP_META have drifted`)
@@ -208,8 +208,8 @@ describe("the exposure flag is the whole change", () => {
   });
 
   it("flipping to `leaves` yields one entry per hidden op, each pre-set", () => {
-    const decl = opsFor("list-set")! as Parameters<typeof opEntry>[0];
-    const host = byType.get("list-set")!;
+    const decl = opsFor("list-sets")! as Parameters<typeof opEntry>[0];
+    const host = byType.get("list-sets")!;
     const generated = hiddenOps(decl, host).map((op) => opEntry(decl, host, op));
     expect(generated.length).toBe(decl.ops!.length - 1); // all but the host's own op
     for (const entry of generated) {
@@ -223,8 +223,8 @@ describe("a generated op row is exactly one op", () => {
   it("does not inherit the host's { } marker fields", () => {
     // By search time applyNodeOps has stamped hiddenOps onto the host entry;
     // spreading it into the row put the marker on every generated op row.
-    const decl = opsFor("list-set")! as Parameters<typeof opEntry>[0];
-    const host = { ...byType.get("list-set")!, hiddenOps: [{ op: "x", label: "X" }], hideOpsMark: true };
+    const decl = opsFor("list-sets")! as Parameters<typeof opEntry>[0];
+    const host = { ...byType.get("list-sets")!, hiddenOps: [{ op: "x", label: "X" }], hideOpsMark: true };
     const row = opEntry(decl, host, { op: "union", label: "Union" });
     expect(row.hiddenOps).toBeUndefined();
     expect(row.hideOpsMark).toBeUndefined();
@@ -252,7 +252,7 @@ describe("the one Distribution node is reachable by search without growing the m
   })(catalog);
 
   it("declares one OPERATION per distribution; each op's fx is its primary Excel name", () => {
-    const decl = opsFor("distribution");
+    const decl = opsFor("distributions");
     expect(decl, "distribution has no NODE_OPS declaration").toBeTruthy();
     // The op axis is the distribution; the curve/inverse pick is the arg-tagged
     // `form` field. Each op claims a REAL formula name via fx (NORM.DIST,
@@ -271,8 +271,8 @@ describe("the one Distribution node is reachable by search without growing the m
   });
 
   it("the Add-menu TREE keeps exactly ONE distribution leaf — no leaf per distribution or form", () => {
-    expect(treeTypes.filter((x) => x === "distribution").length).toBe(1);
-    expect(treeTypes.some((x) => x.startsWith("distribution__op-")), "grew per-op leaves").toBe(false);
+    expect(treeTypes.filter((x) => x === "distributions").length).toBe(1);
+    expect(treeTypes.some((x) => x.startsWith("distributions__op-")), "grew per-op leaves").toBe(false);
     for (const gone of ["normdist", "norminv", "tdist", "tinv", "chisqdist", "fdist",
       "betadist", "gammadist", "lognormdist", "weibulldist", "expodist", "binomdist",
       "poissondist", "hypgeomdist", "negbinomdist"]) {
@@ -281,10 +281,10 @@ describe("the one Distribution node is reachable by search without growing the m
   });
 
   it("every distribution has a search row carrying its Excel names", () => {
-    const decl = opsFor("distribution")!;
-    const rows = new Set(leaves.filter((l) => l.leaf.type.startsWith("distribution__op-")).map((l) => l.leaf.type));
+    const decl = opsFor("distributions")!;
+    const rows = new Set(leaves.filter((l) => l.leaf.type.startsWith("distributions__op-")).map((l) => l.leaf.type));
     for (const op of decl.ops!) {
-      expect(rows.has(`distribution__op-${op.op}`) || op.op === "normal", `"${op.op}" is unreachable`).toBe(true);
+      expect(rows.has(`distributions__op-${op.op}`) || op.op === "normal", `"${op.op}" is unreachable`).toBe(true);
     }
   });
 
@@ -295,14 +295,14 @@ describe("the one Distribution node is reachable by search without growing the m
     // than the label: the Excel spellings live in `keywords` now, so a dotted
     // query has to reach the row WITHOUT the names being in what renders.
     const top3 = (q: string) => searchLeaves(leaves, q).slice(0, 3).map((l) => l.type);
-    expect(top3("weibull")).toContain("distribution__op-weibull");
-    expect(top3("poisson")).toContain("distribution__op-poisson");
-    expect(top3("hypergeometric")).toContain("distribution__op-hypgeom");
-    expect(top3("t.inv.2t")).toContain("distribution__op-t");
-    expect(top3("chisq.inv.rt")).toContain("distribution__op-chisq");
+    expect(top3("weibull")).toContain("distributions__op-weibull");
+    expect(top3("poisson")).toContain("distributions__op-poisson");
+    expect(top3("hypergeometric")).toContain("distributions__op-hypgeom");
+    expect(top3("t.inv.2t")).toContain("distributions__op-t");
+    expect(top3("chisq.inv.rt")).toContain("distributions__op-chisq");
     // `normal` is the family's PRIMARY op, so it has no row of its own — the leaf
     // itself is the right landing.
-    expect(top3("norm.inv")).toContain("distribution");
+    expect(top3("norm.inv")).toContain("distributions");
     expect(top3("critbinom").join(" ")).toMatch(/distribution/);
   });
 

@@ -1450,7 +1450,7 @@
     },
     {
       "id": "dsample",
-      "type": "DistributionNode",
+      "type": "DistributionsNode",
       "x": 25,
       "y": 11957,
       "init": {

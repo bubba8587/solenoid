@@ -1364,7 +1364,7 @@ export const SET_META: Record<SetOpAll, { label: string; description: string; fx
 // Frame precedent). Set semantics are shared: compared by VALUE with first-seen order and
 // UNIQUE's dedupe; blanks and errors aren't members; the empty-set cases follow set theory
 // (∅ ⊆ anything, ∅ disjoint with anything, ∅ = ∅). Both sides unwired → the relation is null.
-export class SetNode extends ClassicPreset.Node {
+export class SetsNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     result: "An operation gives a list where duplicates collapse to the first occurrence; a relation gives TRUE or FALSE. Blank cells are never members.",
   };
@@ -1381,7 +1381,7 @@ export class SetNode extends ClassicPreset.Node {
   height = 200;
 
   constructor(init?: { label?: string; op?: SetOpAll }) {
-    super("Set");
+    super("Sets");
     this.label = init?.label ?? "";
     // Guard a stale op from an old save — fall back rather than crash.
     this.op = init?.op && init.op in SET_META ? init.op : "difference";

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { SetNode as SetNodeType, SetOpAll } from "../rete-nodes";
+import type { SetsNode as SetNodeType, SetOpAll } from "../rete-nodes";
 import { SET_META, isSetRelationOp, adoptiveListOut, logicalOut } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { descriptionText } from "../descriptionMd";
@@ -36,7 +36,7 @@ export async function applySetOp(node: SetNodeType, op: SetOpAll): Promise<void>
   await processGraph();
 }
 
-export function SetComponent({ data, emit }: NodeProps<SetNodeType>) {
+export function SetsComponent({ data, emit }: NodeProps<SetNodeType>) {
   const [op, setOpState] = useState<SetOpAll>(data.op);
   // Mirror external changes (undo/paste) back into local state.
   useEffect(() => { setOpState(data.op); }, [data.op]);

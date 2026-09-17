@@ -59,7 +59,7 @@ export { SortComponent } from "./SortNode";
 export { ReverseComponent } from "./ReverseNode";
 export { SliceComponent } from "./SliceNode";
 export { UniqueComponent } from "./UniqueNode";
-export { SetComponent } from "./SetNode";
+export { SetsComponent } from "./SetsNode";
 export { FilterComponent } from "./FilterNode";
 export { SumIfsComponent } from "./SumIfsNode";
 export { FillComponent } from "./FillNode";
@@ -197,7 +197,7 @@ export { ComplexBinaryComponent } from "./ComplexBinaryNode";
 export { ComplexPowerComponent } from "./ComplexPowerNode";
 
 // ─── Distributions — normal / t / chi-squared ─────────────────────────────────
-export { DistributionComponent } from "./DistributionNode";
+export { DistributionsComponent } from "./DistributionsNode";
 
 // ─── Distributions — continuous ───────────────────────────────────────────────
 

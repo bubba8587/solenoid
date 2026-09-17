@@ -17,7 +17,7 @@ function inputKeysFor(op: DistKey, form: DistForm): string[] {
   return [firstKeyFor(op, form), ...spec.params.map((p) => p.key)];
 }
 
-export class DistributionNode extends ClassicPreset.Node {
+export class DistributionsNode extends ClassicPreset.Node {
   static socketDocs: Record<string, string> = {
     k: "The count rounds down to a whole number.",
     result: "A value or parameter outside the distribution's domain gives a blank, not an error.",
@@ -32,7 +32,7 @@ export class DistributionNode extends ClassicPreset.Node {
   height = 200;
 
   constructor(init?: { label?: string; op?: DistKey; form?: DistForm }) {
-    super("Distribution");
+    super("Distributions");
     this.label = init?.label ?? "";
     this.op = init?.op ?? "normal";
     const spec = DIST_SPECS[this.op];

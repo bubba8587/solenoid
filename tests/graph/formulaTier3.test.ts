@@ -6,7 +6,7 @@ import {
   ReverseNode, SliceNode, NthElementNode, InterleaveNode, PadNode, DiffNode, NormalizeNode,
   ListLengthNode, ArgMinMaxNode, ContainsNode, WeightedNode, RunningNode, RUNNING_OP_META,
   SeriesNode,
-  SetNode, FillNode, ConcatListsNode, PAD_OP_META, ARG_MIN_MAX_OP_META, WEIGHTED_OP_META,
+  SetsNode, FillNode, ConcatListsNode, PAD_OP_META, ARG_MIN_MAX_OP_META, WEIGHTED_OP_META,
   SET_OP_META, SET_RELATION_META, FILL_OP_META,
 } from "../../src/graph/nodes/list";
 import { buildCatalog } from "../../src/graph/catalogUtils";
@@ -212,7 +212,7 @@ describe("the SET*/FILL* families — names DECLARED, not despaced", () => {
   it("SET* — one name per Set op", () => {
     const a = [1, 2, 3], b = [3, 4];
     for (const [op, meta] of Object.entries(SET_OP_META)) {
-      const node = new SetNode({ op: op as "union" });
+      const node = new SetsNode({ op: op as "union" });
       expect(ev(`${meta.fx}(a, b)`, { a, b }), meta.fx)
         .toEqual(node.data({ a: [a], b: [b] }).result);
     }
@@ -221,7 +221,7 @@ describe("the SET*/FILL* families — names DECLARED, not despaced", () => {
   it("SET* relations — one name per relation", () => {
     const a = [1, 2], b = [1, 2, 3];
     for (const [op, meta] of Object.entries(SET_RELATION_META)) {
-      const node = new SetNode({ op: op as "equal" });
+      const node = new SetsNode({ op: op as "equal" });
       expect(ev(`${meta.fx}(a, b)`, { a, b }), meta.fx)
         .toEqual(node.data({ a: [a], b: [b] }).result);
     }

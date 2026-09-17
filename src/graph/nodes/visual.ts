@@ -122,7 +122,7 @@ export class ChartNode extends ClassicPreset.Node {
   };
 
   constructor(init?: { label?: string; op?: ChartOp }) {
-    super("Chart");
+    super("Chart (Recharts)");
     this.label = init?.label ?? "";
     this.op = init?.op ?? "column";
     // A frame socket kept UNCOERCED by `rawInputs` — coerced, it would widen a wired list

@@ -5,11 +5,11 @@
 // the agreement is structural — this test guards that nobody re-forks one surface.
 import { describe, it, expect } from "vitest";
 import { compileEvaluator } from "../../src/graph/excelFormula";
-import { DistributionNode } from "../../src/graph/nodes/distribution";
+import { DistributionsNode } from "../../src/graph/nodes/distribution";
 import { sampleQuantile } from "../../src/graph/nodes/distributionOps";
 import { requestRecalc } from "../../src/graph/process";
 const dist = (op: string, form: string) =>
-  new DistributionNode({ op: op as never, form: form as never });
+  new DistributionsNode({ op: op as never, form: form as never });
 describe("registered gap distributions match the NODES", () => {
   const ev = (e: string) => compileEvaluator(e)!({});
   const close = (a: unknown, b: unknown) => expect(Math.abs((a as number) - (b as number))).toBeLessThan(1e-6);

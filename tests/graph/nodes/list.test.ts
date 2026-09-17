@@ -15,7 +15,7 @@ import {
   SortNode,
   InterleaveNode,
   ListInputNode,
-  SetNode,
+  SetsNode,
   SET_OP_META,
   SET_RELATION_META,
   SET_META,
@@ -214,7 +214,7 @@ describe("List Input (multi-type)", () => {
 
 describe("Set operations (two lists)", () => {
   const run = (op: "union" | "intersect" | "difference" | "symdiff", a: unknown[], b: unknown[]) =>
-    new SetNode({ op }).data({ a: [a as number[]], b: [b as number[]] }).result as unknown[];
+    new SetsNode({ op }).data({ a: [a as number[]], b: [b as number[]] }).result as unknown[];
 
   it("difference — in A but not B (the headline op), first-seen order", () => {
     expect(run("difference", [1, 2, 3, 4], [2, 4])).toEqual([1, 3]);
@@ -274,7 +274,7 @@ describe("Set operations (two lists)", () => {
 
 describe("Set relation tests (two lists → TRUE/FALSE)", () => {
   const run = (op: "equal" | "subset" | "superset" | "disjoint", a: unknown[], b: unknown[]) =>
-    new SetNode({ op }).data({ a: [a as number[]], b: [b as number[]] }).result;
+    new SetsNode({ op }).data({ a: [a as number[]], b: [b as number[]] }).result;
 
   it("equal — same set regardless of order or duplicates", () => {
     expect(run("equal", [1, 2, 3], [3, 2, 1])).toBe(true);
@@ -304,7 +304,7 @@ describe("Set relation tests (two lists → TRUE/FALSE)", () => {
     expect(run("subset", [1, e], [1])).toBe(true);            // A's members are just {1}
   });
   it("both inputs unwired → null (indeterminate)", () => {
-    expect(new SetNode({ op: "equal" }).data({}).result).toBe(null);
+    expect(new SetsNode({ op: "equal" }).data({}).result).toBe(null);
   });
   it("every relation's notation is valid KaTeX", () => {
     for (const meta of Object.values(SET_RELATION_META)) {
@@ -315,7 +315,7 @@ describe("Set relation tests (two lists → TRUE/FALSE)", () => {
 
 describe("Set — one merged card across both families", () => {
   const outType = (op: SetOpAll) => {
-    const s = new SetNode({ op }).outputs.result!.socket as { dataType?: string; base?: string };
+    const s = new SetsNode({ op }).outputs.result!.socket as { dataType?: string; base?: string };
     return s.base ?? s.dataType; // adoptive list reports its base; logical its dataType
   };
   it("the result socket is an adoptive list for an operation, a logical for a relation", () => {
@@ -335,7 +335,7 @@ describe("Set — one merged card across both families", () => {
     expect(isSetRelationOp("subset")).toBe(true);
   });
   it("a stale op from an old save falls back to difference", () => {
-    expect(new SetNode({ op: "bogus" as SetOpAll }).op).toBe("difference");
+    expect(new SetsNode({ op: "bogus" as SetOpAll }).op).toBe("difference");
   });
 });
 
