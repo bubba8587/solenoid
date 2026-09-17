@@ -166,7 +166,7 @@ export function CubePopup() {
       resizable={{ min: { w: 320, h: 220 } }}
       headerExtra={
         <>
-          <span className="table-popup__dims">{view.kind === "list" ? `${rows} items` : `${rows}×${cols}`}{rowsTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>
+          <span className="table-popup__dims">{view.kind === "list" ? `${rows}×` : `${rows}×${cols}`}{rowsTruncated ? ` · first ${MAX_VISIBLE_ROWS.toLocaleString(APP_LOCALE)}` : ""}</span>
           {depth !== null && (
             <span
               className="table-popup__dims"
