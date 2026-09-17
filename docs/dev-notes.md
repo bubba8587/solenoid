@@ -34,6 +34,12 @@ On `develop`, nothing pushed.
 - **Knap inside frontmatter** (author ask): a quoted tag's socket carries the rendered value; an unquoted tag is
   `#SYNTAX!` with the author's wording. No `today` built-in and no unquoted pre-parse: both would be the parallel
   template grammar the `{{daily}}` removal ruled out (`node-coverage.md` § Note).
+- **Chrome sweep:** Open in Obsidian is disabled (not hidden) on the web build, every vault; container shapes read
+  `3×2 Frame` / `3×2×1 Cube` / `3×4 Table` on the Note field row and the flow preview (which had the axes swapped
+  and no cube form); text glyphs serving as icons became Lucide SVGs through `components/Icons.tsx` (context
+  menus, Add-menu chevron, Present, standoff Remove, carets, Surface rotate pad, Reference parity ⚠). Left as
+  text: data marks (menu ✓, ✓/✗ logical style, KPI ▲▼▬, Alert ●, legend ◂), math notation, the Promo emoji.
+  Open for the author: the `↩ wired` badge (16 inline sites) as one `WiredTag` component with an icon.
 
 ### SESSION DIGEST (2026-09-16c — the deck, ruled; author present)
 
