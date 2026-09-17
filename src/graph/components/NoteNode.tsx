@@ -24,7 +24,7 @@ import { dropStrandedFrontmatterCables } from "../noteFrontmatterSync";
 import { formatAnnotationStore, formatNumberWithAnnotation } from "../formatAnnotationStore";
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";
 import { parseNoteFrontmatter, toggleTaskMarker, type FrontmatterFieldType, type FrontmatterValue } from "../noteFrontmatter";
-import { isFrameValue, isCubeValue, type FrameValue, type CubeValue } from "../frame";
+import { isFrameValue, isCubeValue, cubeRowCount, cubeDepth, type FrameValue, type CubeValue } from "../frame";
 import { isSolError, type SolError } from "../errorValue";
 import { errorTip } from "./ErrorChip";
 import type { NodeProps, Emit } from "./nodeKit";
@@ -53,15 +53,14 @@ function glyphFor(t: FrontmatterFieldType): SocketGlyph {
 /** A short, human-readable preview of a field's value for the row. */
 function previewValue(value: FieldValue, t: FrontmatterFieldType): string {
   if (isSolError(value)) return value.code;
+  // Containers spell their shape the way the chips do: rows × cols (× depth) Name.
   if (t === "frame") {
-    if (!isFrameValue(value)) return "table";
-    const rows = value.columns[0]?.values.length ?? 0;
-    return `⊞ ${rows}×${value.columns.length}`;
+    if (!isFrameValue(value)) return "Frame";
+    return `${value.columns[0]?.values.length ?? 0}×${value.columns.length} Frame`;
   }
   if (t === "cube") {
-    if (!isCubeValue(value)) return "cube";
-    const rows = value.columns[0]?.cells.length ?? 0;
-    return `⧈ ${rows}×${value.columns.length}`;
+    if (!isCubeValue(value)) return "Cube";
+    return `${cubeRowCount(value)}×${value.columns.length}×${cubeDepth(value)} Cube`;
   }
   const one = (v: number | string | boolean | null): string => {
     if (v === null) return "null";
