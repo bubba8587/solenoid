@@ -40,6 +40,12 @@ On `develop`, nothing pushed.
   menus, Add-menu chevron, Present, standoff Remove, carets, Surface rotate pad, Reference parity ⚠). Left as
   text: data marks (menu ✓, ✓/✗ logical style, KPI ▲▼▬, Alert ●, legend ◂), math notation, the Promo emoji.
   Open for the author: the `↩ wired` badge (16 inline sites) as one `WiredTag` component with an icon.
+- **Family names** (author's rule: a `{ }` card hosting distinct computations is plural; modes of one artifact
+  stay singular; Excel names untouched): Distribution → **Distributions**, Set → **Sets**, whole identity (class,
+  type `distributions` / `list-sets`, component file, seeds, tests). **Chart → Chart (Recharts)** (author: the
+  node is Recharts-specific; the parenthesised label passed every catalog/formula check). Kept singular after
+  the sweep: Chart, Sparkline, Record, Proportion, Comparison, Type Check, Fill, Smooth, Regex; Head was flagged
+  as naming one op of a row-slicing family and left alone.
 
 ### SESSION DIGEST (2026-09-16c — the deck, ruled; author present)
 
