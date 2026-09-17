@@ -1,0 +1,84 @@
+filters:
+  and:
+    - file.ext == "md"
+properties:
+  file.name:
+    displayName: ID
+  title:
+    displayName: Title
+  made_by:
+    displayName: Made by
+  ratified_by:
+    displayName: Ratified by
+  contested_by:
+    displayName: Contested by
+  file.folder:
+    displayName: Ring
+views:
+  - type: table
+    name: Outbox
+    filters:
+      or:
+        - file.inFolder("outbox")
+        - file.hasTag("dte")
+    order:
+      - file.name
+      - note.title
+      - file.tags
+      - file.mtime
+  - type: table
+    name: Unratified
+    filters:
+      and:
+        - file.hasProperty("id")
+        - note.ratified_by.isEmpty()
+        - note.status != "superseded"
+        - note.status != "reverted"
+    groupBy:
+      property: file.folder
+      direction: ASC
+    order:
+      - file.name
+      - note.title
+      - note.made_by
+      - note.by
+      - note.contested_by
+      - note.confidence
+  - type: table
+    name: Contested
+    filters:
+      and:
+        - file.hasProperty("id")
+        - "!note.contested_by.isEmpty()"
+        - note.ratified_by.isEmpty()
+    order:
+      - file.name
+      - note.title
+      - note.contested_by
+      - note.date
+  - type: table
+    name: Inbox
+    filters:
+      and:
+        - file.inFolder("inbox")
+    order:
+      - file.name
+      - note.title
+      - note.proposed_ring
+      - note.ask
+      - note.by
+  - type: table
+    name: All nodes
+    filters:
+      and:
+        - file.hasProperty("id")
+    groupBy:
+      property: file.folder
+      direction: ASC
+    order:
+      - file.name
+      - note.title
+      - note.status
+      - note.ratified_by
+      - note.parents
+      - note.date

@@ -35,6 +35,32 @@ only its citation syntax differs here. Code files are invisible to Obsidian, so 
 lines serve the tool alone. Titles are double-quoted: the `name: summary` convention puts a
 colon in them, and Obsidian rejects the whole property block when the YAML is invalid.
 
+Named nodes also carry `aliases: [name]`, so `[[branchModel]]` resolves and the link
+autocompleter offers names. The tool counts a citation only by ID, so write `[[C41]]` in code and
+docs and use the alias when browsing. `decisions/DTE.base` is the tree as Obsidian Bases views:
+Outbox, Unratified, Contested, Inbox, All nodes.
+
+## Outbox: edits made in the vault ([[C82]] vaultOutbox)
+
+The inbox is how an agent hands a decision up to the author. The outbox is the other direction:
+whatever the author designates in Obsidian is a work list, and **every agent session starts with
+`python tools/dte.py outbox`** (validate prints `OUTBOX (n)` too). Three signals, no watcher, and
+never a bare diff: an anonymous edit cannot be told from an agent's own unfinished work, and validate
+already lists changed nodes. An edit the author wants looked at gets a `#dte/ask` beside it.
+
+| The author does | The agent does | Clear it with |
+|---|---|---|
+| Drops or writes a note in `decisions/outbox/` | Reads it. A decision becomes `dte new` (or an inbox item if it is above the agent's ring), a correction becomes an edit, a question gets an answer in chat | `dte outbox --done <slug>` (deletes the note) |
+| Tags a node `dte/ratify` (Properties pane) or types `#dte/ratify` in its body | `dte ratify <ID> --by "the author"`, then moves the ID into `OWNER_RATIFIED` in `rules.test.ts` | `dte outbox --done <ID>` (strips the `dte/` tags) |
+| `dte/retire` | `dte blast`, then `dte retire <ID> --by <agent> --authorized-by "the author"`, fixes the orphans | same |
+| `dte/contest` | `dte contest <ID> --again`, builds the alternatives, records the verdict, reports | same |
+| `dte/ask` beside a question or comment | Answers in chat; if it changes the node, makes the change and adds a History line | same |
+| Types a name into `ratified_by` in the Properties pane | `dte ratify <ID> --by "<that name>"` so History records it, then the `OWNER_RATIFIED` move | clears itself |
+
+The author's word is the authorization (B25): an outbox item is acted on and reported, never
+re-asked. When acting on it touches a human-held node or one above the agent's ring, the agent
+sets `authorized_by` to the author.
+
 ## Solenoid's rings
 
 - **A — core goals of the delivered product** (owned by the author; only the author

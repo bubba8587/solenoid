@@ -16,6 +16,11 @@ On `develop`, nothing pushed.
   logged in DTE's FEEDBACK.md beside a note on how DTE sits against ADR/MADR, RFC 2119 and the spec-kit tools.
   Node titles are now double-quoted (the `name: summary` colon made 157 frontmatters invalid YAML, so Obsidian
   showed every property as invalid); the tool quotes titles on write.
+- **Vault outbox** ([[C82]] vaultOutbox, created this session): `python tools/dte.py outbox` lists what the author
+  changed in Obsidian (notes in `decisions/outbox/`, `dte/ratify|retire|contest|ask` tags, a typed `ratified_by`,
+  never bare diffs) with the command each needs; `--done` clears one; validate prints the count; CLAUDE.md
+  makes it the session-start step. Nodes carry `aliases` from their name, `null`/block-list rewrites parse,
+  `decisions/DTE.base` holds the Bases views (untested by me: open it and report a syntax error if Obsidian shows one).
 - **Frontmatter reads any YAML, writes Obsidian's block style.** The author found that editing any property in
   Obsidian rewrote the Spanish course note's inline `- {topic: …, tags: [...]}` rows into block style, after which
   the cube read as a one-item string list and Write Properties refused the key. The hand-rolled subset parser is

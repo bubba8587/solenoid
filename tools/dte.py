@@ -95,11 +95,30 @@ STATUSES = {"proposed", "active", "superseded", "reverted"}
 MADE_BY = {"human", "ai", "joint"}
 LIST_FIELDS = {"parents", "supersedes", "conflicts_with"}
 # No depends_on or structural fields: that axis belongs to the graph.  dte:B9
-KNOWN_FIELDS = LIST_FIELDS | {
+OBSIDIAN_FIELDS = {"aliases", "tags", "cssclasses"}   # Obsidian's own keys; read, never judged
+KNOWN_FIELDS = LIST_FIELDS | OBSIDIAN_FIELDS | {
     "id", "title", "status", "superseded_by", "made_by", "by", "date",
     "ratified_by", "confidence", "authorized_by", "contested_by",
 }
-INBOX_FIELDS = {"title", "proposed_ring", "ask", "made_by", "by", "date", "parents", "confidence"}
+INBOX_FIELDS = {"title", "proposed_ring", "ask", "made_by", "by", "date", "parents", "confidence"} | OBSIDIAN_FIELDS
+NAME_RE = re.compile(r"^([A-Za-z][A-Za-z0-9]*(?:-\d+)?): ")   # the name prefix of a titled rule
+# The outbox: what a human changes in the vault and an agent must process. A note dropped in
+# decisions/outbox, a dte/<action> tag on a node (frontmatter tags or an inline #dte/<action>),
+# or a ratified_by typed into the properties pane. Never a bare diff: an anonymous edit cannot
+# be told from an agent's own unfinished work, and validate already lists changed nodes (B17).
+OUTBOX_DIR = "outbox"
+ACTION_TAG_RE = re.compile(r"(?<![\w/#])#dte/([A-Za-z][\w-]*)")
+ACTIONS = {
+    "ratify": "the author ratifies it: dte ratify <ID> --by <author>, then move the id into the owner-kept list the tests pin",
+    "retire": "the author reverts it: dte blast <ID>, then dte retire <ID> --by <author> --authorized-by <author>, fix the orphans",
+    "contest": "the author disputes it: dte contest <ID> --again, build the alternatives, record the verdict, report",
+    "ask": "the author left a question or comment in the body: answer it in chat; if it changes the node, make the change and add a History line",
+}
+
+
+def name_of(title):
+    m = NAME_RE.match(title or "")
+    return m.group(1) if m else None
 IN_EFFECT = {"proposed", "active"}
 TITLE_MAX = 100          # dte:B16
 INBOX_DIR = "inbox"      # dte:B14
@@ -209,6 +228,8 @@ def _scalar(raw):
     if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in "'\"":
         q, raw = raw[0], raw[1:-1]
         raw = raw.replace("''", "'") if q == "'" else raw.replace('\\"', '"').replace("\\\\", "\\")
+    elif raw in ("null", "~", "Null", "NULL"):   # Obsidian writes an emptied property as null
+        return ""
     m = LINK_RE.fullmatch(raw)   # "[[B7]]" in a link field reads as B7
     return m.group(1) if m else raw
 
@@ -242,6 +263,10 @@ class Node:
         self.authorized_by = data.get("authorized_by") or None
         self.contested_by = data.get("contested_by") or None   # dte:B28
         self.confidence = data.get("confidence") or None
+        tags = data.get("tags") or []
+        tags = [str(t).lstrip("#") for t in (tags if isinstance(tags, list) else [tags]) if str(t)]
+        self.actions = sorted({t[4:] for t in tags if t.startswith("dte/")}
+                              | {m.group(1) for m in ACTION_TAG_RE.finditer(body)})
         for f in LIST_FIELDS:
             v = data.get(f)
             if v is None:
@@ -316,8 +341,10 @@ class Tree:
         self.root = os.path.abspath(root)
         self.decisions_dir = os.path.abspath(decisions_dir)
         self.inbox_dir = os.path.join(self.decisions_dir, INBOX_DIR)
+        self.outbox_dir = os.path.join(self.decisions_dir, OUTBOX_DIR)
         self.nodes = {}
         self.inbox = []
+        self.outbox = []           # (slug, title, path) notes the human dropped for an agent
         self.retired = {}          # id -> ledger row  dte:C11
         self.errors = []
         self.warnings = []
@@ -334,10 +361,17 @@ class Tree:
             self.errors.append("decisions dir not found: %s" % self.decisions_dir)
             return
         for dirpath, dirs, files in os.walk(self.decisions_dir):
+            dirs[:] = [d for d in dirs if not d.startswith(".")]   # .obsidian and friends
             if os.path.abspath(dirpath) == os.path.abspath(self.inbox_dir):
                 for fn in sorted(files):
                     if fn.endswith(".md"):
                         self._load_inbox(os.path.join(dirpath, fn))
+                dirs[:] = []
+                continue
+            if os.path.abspath(dirpath) == os.path.abspath(self.outbox_dir):
+                for fn in sorted(files):
+                    if fn.endswith(".md"):
+                        self._load_outbox(os.path.join(dirpath, fn))
                 dirs[:] = []
                 continue
             for fn in sorted(files):
@@ -350,6 +384,42 @@ class Tree:
                 r = self.resolve(p)
                 if r:
                     self.children[r].append(node.id)
+
+    def _load_outbox(self, path):
+        """A human's note: frontmatter optional, title from it, the first heading, or the file name."""
+        text = read_text(path).replace("\r\n", "\n")
+        slug = os.path.splitext(os.path.basename(path))[0]
+        title = None
+        if text.startswith("---"):
+            try:
+                data, body = parse_frontmatter(text)
+                title = str(data.get("title") or "") or None
+            except ValueError:
+                body = text
+        else:
+            body = text
+        if not title:
+            m = re.search(r"^#+\s+(.+)$", body, re.M)
+            title = m.group(1).strip() if m else slug
+        self.outbox.append((slug, title, path))
+
+    def outbox_items(self):
+        """[(kind, ref, label, todo)] everything a human designated in the vault for an agent to process."""
+        items = []
+        for slug, title, path in self.outbox:
+            items.append(("note", slug, '"%s"  (%s)' % (title, self.rel(path)),
+                          "read it and act: a decision becomes dte new or an inbox item, a correction becomes an edit, "
+                          "a question gets an answer in chat; then dte outbox --done %s" % slug))
+        for node in self.ordered_nodes():
+            for act in node.actions:
+                items.append(("tag", node.id, "%s  #dte/%s" % (node.label(), act),
+                              (ACTIONS.get(act) or "unknown action; ask the author what #dte/%s means" % act)
+                              + "; then dte outbox --done %s" % node.id))
+            if node.ratified_by and not re.search(r"ratified by", node.body):
+                items.append(("ratified", node.id, "%s  ratified_by: %s typed in, no History line" % (node.label(), node.ratified_by),
+                              "run dte ratify %s --by \"%s\" so History records it, then move the id into the owner-kept list the tests pin"
+                              % (node.id, node.ratified_by)))
+        return items
 
     # -- ledger  dte:C11
     def ledger_path(self):
@@ -573,6 +643,9 @@ class Tree:
                 E.append("%s: changed by an agent at ring %s but lives at ring %s; escalate to %s"
                          % (node.id, as_ring, node.ring, holder_of(node.ring, CONFIG)))
             if CONFIG["protect_human"] and node.human_held and not node.authorized_by:
+                old = self.node_at_head(rel)
+                if old is not None and not old.human_held:
+                    continue   # this change IS the ratification; the report lists it for the human
                 E.append("%s: human-held node changed without authorized_by (agent at ring %s)"
                          % (node.id, as_ring))
         for code, rel in self.retired_paths():   # deleted this working tree  dte:C11
@@ -849,6 +922,9 @@ def cmd_validate(tree, args):
     ok = tree.validate(as_ring=args.as_ring)
     report(tree)
     print_changed_nodes(tree)
+    n_out = len(tree.outbox_items())
+    if n_out:
+        print("\nOUTBOX (%d): the human designated things in the vault for an agent; run dte outbox" % n_out)
     F = tree.scope_findings()
     if F:
         print("\n%d scope findings (advisory): run dte scope" % len(F))
@@ -1073,6 +1149,66 @@ def cmd_next(tree, args):
     return 0
 
 
+def cmd_outbox(tree, args):
+    """The human's edits in the vault, as a work list; --done clears one item once processed."""
+    if args.done:
+        return outbox_done(tree, args.done)
+    items = tree.outbox_items()
+    if not items:
+        print("Outbox empty. The human has designated nothing for an agent.")
+        return 0
+    print("OUTBOX (%d): process each, then clear it. The author's word is the authorization." % len(items))
+    for kind, ref, label, todo in items:
+        print("  [%s] %s" % (kind, label))
+        print("      %s" % todo)
+    return 0
+
+
+def outbox_done(tree, ref):
+    for slug, title, path in tree.outbox:
+        if slug == ref:
+            os.remove(path)
+            print('removed outbox note "%s" (%s)' % (title, tree.rel(path)))
+            return 0
+    node = tree.nodes.get(ref)
+    if node is None:
+        print("no outbox note or node called %s" % ref)
+        return 2
+    text = read_text(node.path)
+    nl = "\r\n" if "\r\n" in text else "\n"
+    text = text.replace("\r\n", "\n")
+    text = drop_list_items(text, "tags", lambda t: t.lstrip("#").startswith("dte/"))
+    text = ACTION_TAG_RE.sub("", text)
+    text = re.sub(r"[ \t]+$", "", text, flags=re.M)
+    write_text(node.path, text.replace("\n", nl))
+    print("cleared the dte/ tags on %s" % node.label())
+    return 0
+
+
+def drop_list_items(text, key, pred):
+    """Remove items matching pred from a frontmatter list, inline or block form; drop the key when empty."""
+    lines = text.split("\n")
+    end = lines.index("---", 1)
+    for k in range(1, end):
+        name, _, raw = lines[k].partition(":")
+        if name.strip() != key:
+            continue
+        raw = raw.strip()
+        if raw.startswith("["):
+            items = [x for x in (_scalar(i) for i in raw[1:-1].split(",")) if x]
+            span = (k, k + 1)
+        else:
+            j = k + 1
+            while j < end and lines[j].strip().startswith("- "):
+                j += 1
+            items = [_scalar(lines[x].strip()[2:]) for x in range(k + 1, j)]
+            span = (k, j)
+        keep = [x for x in items if not pred(x)]
+        new = ["%s: [%s]" % (key, ", ".join(keep))] if keep else []
+        return "\n".join(lines[:span[0]] + new + lines[span[1]:])
+    return text
+
+
 def cmd_inbox(tree, args):
     """dte:B14"""
     if not tree.inbox:
@@ -1125,6 +1261,8 @@ def cmd_place(tree, args):
     ]
     if item.raw.get("confidence"):
         fm.append("confidence: %s" % item.raw["confidence"])
+    if name_of(item.title):
+        fm.append("aliases: [%s]" % name_of(item.title))
     fm.append("---")
     body = item.body.rstrip("\n")
     history = "\n\n## History\n\n" if "## History" not in body else "\n"
@@ -1472,6 +1610,8 @@ def cmd_new(tree, args):
         fields.append(("authorized_by", args.authorized_by))
     if args.confidence:
         fields.append(("confidence", args.confidence))
+    if name_of(args.title):
+        fields.append(("aliases", "[%s]" % name_of(args.title)))   # so [[name]] resolves in Obsidian
     body = "\n## Decision\n\n%s\n\n## Why\n\n%s\n" % (args.decision or "TODO", args.why or "TODO")
     if args.consequences:
         body += "\n## Consequences\n\n%s\n" % args.consequences
@@ -1848,6 +1988,9 @@ def cmd_set(tree, args):
     nl = "\r\n" if "\r\n" in text else "\n"
     text = text.replace("\r\n", "\n")
     text = set_field(text, field, fm_str(new) if field == "title" else new)
+    if field == "title":
+        text = (set_field(text, "aliases", "[%s]" % name_of(new)) if name_of(new)
+                else drop_list_items(text, "aliases", lambda a: a == name_of(old)))
     if args.authorized_by:
         text = set_field(text, "authorized_by", args.authorized_by)
     text = append_history(text, '- %s %s changed from "%s" by %s%s.' % (
@@ -2102,6 +2245,8 @@ def main(argv=None):
     sub.add_parser("next").add_argument("ring")
     sub.add_parser("scope")
     sub.add_parser("inbox")
+    ob = sub.add_parser("outbox")
+    ob.add_argument("--done", default=None, metavar="ID|slug", help="clear one processed item")
     p = sub.add_parser("place")
     p.add_argument("slug")
     p.add_argument("ring")
@@ -2181,7 +2326,7 @@ def main(argv=None):
     return {
         "validate": cmd_validate, "tree": cmd_tree, "blast": cmd_blast,
         "trace": cmd_trace, "conflicts": cmd_conflicts, "coverage": cmd_coverage,
-        "next": cmd_next, "scope": cmd_scope, "inbox": cmd_inbox, "place": cmd_place,
+        "next": cmd_next, "scope": cmd_scope, "inbox": cmd_inbox, "outbox": cmd_outbox, "place": cmd_place,
         "authority": cmd_authority, "move": cmd_move, "retire": cmd_retire,
         "new": cmd_new, "show": cmd_show, "find": cmd_find, "ratify": cmd_ratify,
         "conflict": cmd_conflict, "reparent": cmd_reparent, "set": cmd_set, "contest": cmd_contest, "retired": cmd_retired, "export": cmd_export,
