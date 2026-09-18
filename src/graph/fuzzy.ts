@@ -1,3 +1,4 @@
+// [[D5]] searchWiderThanLabel. Mechanics: specs/add-menu.md.
 // Subsequence fuzzy match: returns a score (higher = better, consecutive runs
 // weighted) or null when the query isn't a subsequence of the text.
 export function fuzzyScore(query: string, text: string): number | null {

@@ -1,8 +1,8 @@
-<!-- [[D16]] retypeReconciles -->
+<!-- [[D16]] retypeReconciles, [[D17]] relaysTransparent, [[C8]] declareOnce -->
 
 # Spec: Type propagation on in-place socket retype
 
-Serves [[D16]] retypeReconciles. The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Type propagation on in-place socket retype; a WHY that is not in a node belongs in one.
+Serves [[D16]] retypeReconciles; the static shape walk serves [[D17]] relaysTransparent (passthroughs forward the shape) and [[C8]] declareOnce (`frameShape()` and `columnPickers()` are each a node's one declaration). The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Type propagation on in-place socket retype; a WHY that is not in a node belongs in one.
 
 A Format Controller doesn't carry a fixed type — it ADOPTS the concrete type flowing into it (`adaptTypeFromConnections` → `concreteTypeOfOutput`, which walks upstream through passthrough WILDCARD sockets — ALL SIX family-less rungs, via `isWildcardRung`, since a rank with no family is no answer — and reads the live socket `dataType`), and auto-picks a date format for a date type. That re-adaptation runs from the Canvas `connectioncreated`/`connectionremoved` pipe. **The trap:** several nodes change an OUTPUT socket's type IN PLACE via a UI control — **Cast** target, **LAMBDA/Expression** result type (`ResultTypeToggle`), **Get Column** read-as, and a **Note**'s frontmatter retype — and a pure in-place retype fires NO connection event, so without help the downstream FCs keep formatting by the stale type (the reported "date serial retyped to a number still renders as a date" — a broken core promise).
 

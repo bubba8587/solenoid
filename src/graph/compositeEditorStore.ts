@@ -1,3 +1,4 @@
+// [[C77]] compositeIsSubgraph. Mechanics: specs/composite-drill-in-mount-lifecycle.md.
 import { createNotifier } from "./storeKit";
 import type { CompositeNode } from "./nodes/composite";
 

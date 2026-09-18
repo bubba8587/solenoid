@@ -1,3 +1,4 @@
+// [[C43]] oneFlowSurface. Mechanics: specs/react-flow-surface-contract.md.
 // Which node types offer the "flip sockets" control (socketFlipStore). The mechanism
 // itself is node-agnostic — a node opts in by adding its constructor name here (or
 // calling registerFlippable at module load). The right-click menu reads this to decide

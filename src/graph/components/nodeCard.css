@@ -1,3 +1,4 @@
+/* [[C43]] oneFlowSurface, [[C11]] socketBox12. Mechanics: specs/react-flow-surface-contract.md. */
 /* Shared visual chrome for every Solenoid node. Socket sizing lives in
    socket.css (single source of truth via CSS variables). */
 

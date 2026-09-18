@@ -1,3 +1,4 @@
+// [[C94]] formatFamilyGates
 import { describe, it, expect } from "vitest";
 import { familyOf, controlsFor, precisionApplies, COMPLEX_FORMAT_STYLES } from "../../src/graph/formatModel";
 import { applyLogicalStyle } from "../../src/graph/formatAnnotationStore";

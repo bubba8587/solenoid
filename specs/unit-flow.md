@@ -1,8 +1,8 @@
-<!-- [[C25]] firstClassUnits -->
+<!-- [[C25]] firstClassUnits, [[D40]] unitOnValue, [[D41]] formatFlowsDownstream, [[D43]] unitByGranularity, [[D47]] noMixCurrencies -->
 
 # Spec: Unit flow
 
-Serves [[C25]] firstClassUnits. The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Unit flow; a WHY that is not in a node belongs in one.
+Serves [[C25]] firstClassUnits and its policies [[D40]] unitOnValue, [[D41]] formatFlowsDownstream, [[D43]] unitByGranularity, [[D47]] noMixCurrencies. The mechanics a builder implements: what the system does and blocks, with the decision each behaviour serves. Lifted from `docs/subsystem-invariants.md` § Unit flow; a WHY that is not in a node belongs in one.
 
 Two layers since FC A4 (2026-07-13). **The UNIT is a property of the VALUE.** A value carries its dimension + display unit AS DATA — a base-SI `UnitCell` (`unitValue.ts`) with an optional `display` id. It is AUTHORED at the value's origin by an FC (`applyFcUnit` in `FormatControllerNode.data()`), Convert (`data()`), or the column-unit surfaces (a `Name (unit)` header spec / the popup's per-column unit dropdown → `ColumnUnit`, riding onto computed columns — `unitColumn.ts`); Table Input is the one other author (its own unit picker — the `author` policy in `matrixUnitPolicy.test.ts`); the Number node stays a plain literal source. The tag rides the value through anything that passes it along; a TRANSFORM re-derives the dimension through the algebra (`tagDim`), which since noMixCurrencies CARRIES an operand's display when the result's dimension matches it (`$5 + 2 = $7`, `2 × 3 m = 6 m`) — a result whose dimension fits neither operand reverts to its derived-symbol form. **There is no graph unit-walk** (`makeUnitResolver` was deleted 2026-07-13). **The number FORMAT** (style / precision / negatives / K-M-B) is a separate DISPLAY annotation an FC locks onto its own segment and sends down the stream; `makeAnnotationResolver` (pure, duck-typed, memoized + cycle-guarded) resolves THAT forward/back. The one-line "don't break this":
 

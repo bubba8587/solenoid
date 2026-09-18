@@ -1,10 +1,9 @@
-# The Format Model (FC function model) — v1.1 WS-A1
+<!-- [[C94]] formatFamilyGates, [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream -->
+# The Format Model (FC function model)
 
-One coherent definition of how a Format Controller decides what to render, replacing
-the per-style ad-hoc logic (`applyFormatStyle`'s hand-written switch with precision
-duplicated per case, and the popup's scattered `isDate`/`isText` gating). This is the
-spec the code implements (`formatModel.ts` + `formatAnnotationStore.ts`); the FC popup
-lights/hides controls off it, and A2's visual redesign renders THIS control matrix.
+The spec of [[C94]] formatFamilyGates: how a Format Controller decides what to render.
+`formatModel.ts` + `formatAnnotationStore.ts` implement it; the FC popup lights and hides
+controls off it.
 
 ## The pipeline
 
@@ -27,7 +26,7 @@ value ──▶ 1 TYPE GATE ──▶ 2 STYLE (scale-divide, then precision+grou
 3. **Unit affix.** The unit label wraps the formatted string (prefix for
    currencies, suffix otherwise). Number-family only; a date/text/logical value
    never takes a unit. Orthogonal to style — every number style accepts a unit
-   (the unit is a property of the VALUE and a cable constraint, not display sugar).
+   ([[D40]] unitOnValue: the unit is a property of the VALUE, not display sugar).
 
    **Unit = VALUE-level, format = DISPLAY-level (FC A4, 2026-07-13).** The FC is
    VALUE-MUTATING for the unit: `FormatControllerNode.data()` tags the value's
@@ -35,13 +34,13 @@ value ──▶ 1 TYPE GATE ──▶ 2 STYLE (scale-divide, then precision+grou
    branches are: a dimensionless number is authored (`5` + km → 5000 m base,
    display km), a commensurable dimensioned value is re-displayed, an
    incommensurable one is a `#UNIT!`. But the FC as a user-facing tool can only
-   REACH the authoring branch (firstClassUnits): the re-display branch serves the mirror of
+   REACH the authoring branch ([[C25]] firstClassUnits): the re-display branch serves the mirror of
    an inherited unit, never a dropdown pick — re-displaying a dimensioned value
    is Convert's job. Because the unit rides the VALUE (`unitValue.ts`, base-SI +
    `display`), it carries downstream through passthroughs/selectors and DROPS at a
    transform on its own — there is no graph unit-walk.
 
-   **Unit lock states (firstClassUnits — a unit is first-class like the magnitude).** Who
+   **Unit lock states ([[C25]] firstClassUnits).** Who
    owns the FC's unit dropdown (`formatController.ts` `data()` lock block):
    - **authored** (`← →`) — the incoming value carries no unit; the FC's pick
      authors it. The only editable state.
@@ -92,7 +91,7 @@ on the derived cells inferring as `number`: a computed column whose cells come
 out non-numeric silently drops its authored unit.
 
 The per-column FORMAT rides `FrameColumn.format` downstream exactly like the unit
-(formatFlowsDownstream): the coercion wrapper's OUTPUT step (`coerceInputs.ts`)
+([[D41]] formatFlowsDownstream): the coercion wrapper's OUTPUT step (`coerceInputs.ts`)
 stamps every emitted frame with that node's own `frameFormatStore` picks, and the
 nearer node's pick overrides what arrived. `frameFormatStore` stays the one
 PERSISTED home, keyed by the node that picked — `format` is derived per compute
@@ -116,7 +115,7 @@ the number/complex/date format dropdown, the text case dropdown, and the logical
 dropdown: with it, the FC carries the display format arriving at `in` through unchanged
 (style + precision + advanced tier, or case / show-as) and authors its own unit alone, so
 a second FC docked only for a unit no longer resets the style to `auto`
-(formatFlowsDownstream). While inheriting, the FC's own dependent rows collapse to the
+([[D41]] formatFlowsDownstream). While inheriting, the FC's own dependent rows collapse to the
 column row's muted hint — `← Decimal · 3 places` for a number, `← UPPER` / `← Yes / No`
 for text / logical (`describeInheritedStyle`, per family, in the column row's words).
 `FormatControllerNode.resolveAnnotation(inherited)` does the merge (own `unit`/`customUnit`,

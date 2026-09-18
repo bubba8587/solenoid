@@ -1,3 +1,4 @@
+// [[C39]] effectsEdgeTriggered. Mechanics: specs/alert-node-alerts-hud.md.
 import { createPortal } from "react-dom";
 import { PinLayer } from "./PinLayer";
 import { AlertLayer } from "./AlertLayer";
