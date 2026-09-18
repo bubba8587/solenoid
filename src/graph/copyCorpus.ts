@@ -1,3 +1,4 @@
+// [[B14]] oneDesignSystem (DESIGN.md § Voice is the rule the corpus is linted against)
 // The one collector for every shipped UI string — help pages, catalog labels
 // and descriptions, tsx tooltip/aria/placeholder attributes, seed prose.
 // Two consumers, one walk: `uiCopy.test.ts` lints sentence units from it, and

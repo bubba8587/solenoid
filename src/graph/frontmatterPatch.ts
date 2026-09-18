@@ -1,6 +1,6 @@
 // Write Properties' pure core: patch a note's YAML frontmatter LINE-LEVEL over the raw
 // text — never parse-and-reserialize, so every untouched byte stays identical (the
-// write-safety story: onePatchPath, the ONE writer of a note's YAML). Everything renders
+// write-safety story: [[C101]] onePatchPath, the ONE writer of a note's YAML). Everything renders
 // in Obsidian's own block style, so a note Solenoid wrote and one Obsidian's Properties
 // editor rewrote look the same. Graph/DOM-free.
 import { yamlScalar } from "./obsidianMarkdown";

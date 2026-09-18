@@ -1,3 +1,4 @@
+// [[C8]] declareOnce (rendered from SETTINGS_SCHEMA), [[C98]] paletteMirrorsMenubar (a device-greyed setting is greyed here too)
 import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useFocusTrap } from "./components/useFocusTrap";
 import { useEscapeToClose } from "./components/useEscapeToClose";

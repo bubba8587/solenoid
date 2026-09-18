@@ -1,3 +1,4 @@
+// [[C101]] onePatchPath
 import { ClassicPreset } from "rete";
 import { documentIn, strIn, strOut, cubeIn, frameOut, readInput } from "./shared";
 import { formatDateSerial } from "./dateSerial";

@@ -7,7 +7,7 @@ import { parseDateToSerial } from "../../src/graph/nodes/dateSerial";
 import { isFrameValue } from "../../src/graph/frame";
 
 // Bundle 24 item B — the pure frontmatter line-patcher: untouched bytes stay identical,
-// and a cube round-trips through a note unchanged. onePatchPath: the ONE writer of a note's YAML.
+// and a cube round-trips through a note unchanged. [[C101]] onePatchPath: the ONE writer of a note's YAML.
 
 const NO_NAMES = new Set<string>();
 

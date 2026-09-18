@@ -1,3 +1,4 @@
+// [[B12]] losslessSaves, [[C30]] saveViaTextForm
 // STRICT counterpart to the forgiving load path: every condition the loader would
 // silently repair is an issue. Pure + headless; an empty socket record skips key checks.
 

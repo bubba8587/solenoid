@@ -187,7 +187,7 @@ name>.base` beside the notes — `filters: file.inFolder("<folder>")`, one table
 `file.name` + the written keys — so a managed block (C) can embed `![[<node name>.base#View]]`
 and the note shows a **live** table over what B wrote. Pure core `frontmatterPatch.ts`
 (`patchFrontmatter(text, patch): {text, refused[]}`), the ONE writer of a note's YAML
-(`onePatchPath` candidate); tests prove untouched bytes identical and cube → vault → cube equal.
+([[C101]] onePatchPath); tests prove untouched bytes identical and cube → vault → cube equal.
 
 **C. Write to Obsidian: modes + templates.** `mode: overwrite | append | block`. `block`
 splices the assembled markdown between `%% solenoid:begin <node name> %%` and `%%
@@ -359,7 +359,7 @@ step.
 `sinkRunButtonOnly` (every writer; J adds "or the CLI's explicit `--run <name>`"),
 `noDataInComponents` (Preview is a pure plan over the cached cube + reads), `retypeReconciles`
 avoided (one `cube` output; A′'s adoption is derived state, never persisted), `onePrunePath`
-untouched, `relativeDatesOptIn` untouched (R), a new **`onePatchPath`** candidate
+untouched, `relativeDatesOptIn` untouched (R), a new **[[C101]] onePatchPath**
 (`frontmatterPatch.ts` is the only writer of a note's YAML; `obsidianWrite.ts` writes whole
 documents). The fs allowlist gains `.yaml`/`.yml` read (one capability line, noted in
 `../architecture.md`'s desktop section).

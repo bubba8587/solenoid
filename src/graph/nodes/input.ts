@@ -1,3 +1,4 @@
+// [[C28]] literalsIffEditable
 import { ClassicPreset } from "rete";
 import { colord, extend, type Colord } from "colord";
 import namesPlugin from "colord/plugins/names";

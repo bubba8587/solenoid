@@ -1,3 +1,4 @@
+// [[C77]] compositeIsSubgraph
 import type { View } from "./view";
 import { ClassicPreset } from "rete";
 import type { NodeEditor } from "rete";
