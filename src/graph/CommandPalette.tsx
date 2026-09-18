@@ -1,3 +1,4 @@
+// [[C98]] paletteMirrorsMenubar.
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { fieldScore } from "./fuzzy";
 import { IS_MOBILE } from "./coarse";
@@ -59,8 +60,7 @@ function currentTextForm(): string {
 }
 
 function buildCommands(): PaletteItem[] {
-  // EVERY menubar action is a command, so the two surfaces can't drift; individual
-  // node types stay OUT — the Add menu is the one place to browse the catalog.
+  // Every menubar action is a command; node types stay out ([[C98]] paletteMirrorsMenubar).
   const fromMenus = buildMenus()
     .flatMap((m) => m.items)
     .filter((it): it is Extract<MenuItem, { label: string }> => !("sep" in it) && !it.disabled && !!it.onClick)
@@ -89,8 +89,7 @@ function buildSettingToggles(): PaletteItem[] {
   for (const section of SETTINGS_SCHEMA) {
     for (const f of section.fields) {
       if (f.type === "folder" || f.type === "segment") continue;
-      // A setting Settings grays out on this device must not be reachable here
-      // either, or the palette is a back door to flipping it.
+      // Device-disabled settings are unreachable here too ([[C98]]).
       if (IS_MOBILE && f.disabledOnMobile) continue;
       out.push({
         id: `setting:${f.key}`,

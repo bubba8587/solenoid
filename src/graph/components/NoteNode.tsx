@@ -1,3 +1,4 @@
+// [[C68]] knapIsTheDocumentSyntax, [[D10]] onePrunePath.
 import { useFlowResizeGrip } from "../flowSurface";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import DOMPurify from "dompurify";

@@ -1,3 +1,4 @@
+<!-- [[C99]] chromeEnvelopeVars -->
 # Layout & chrome geometry (desktop + mobile)
 
 Notes for future-me. The recurring bug class here is **a floating overlay that overlaps a
@@ -8,7 +9,7 @@ what sits where, what each offset is measured from, and what to check before you
 piece. Citations are FILE + SELECTOR only — never line numbers, which rot on every edit;
 grep the selector.
 
-**BOTH envelopes are now vars.** `--chrome-top` is MEASURED by `Header.tsx` (2026-08-01);
+**BOTH envelopes are vars ([[C99]] chromeEnvelopeVars).** `--chrome-top` is MEASURED by `Header.tsx` (2026-08-01);
 `--chrome-bottom` by `chromeBottom.ts` (2026-08-05) — the status bar and the mobile action
 bar each register with it and the var is the max of the visible bars' heights (a
 display:none bar measures 0, so whichever bar owns the bottom edge wins; the mobile bar's

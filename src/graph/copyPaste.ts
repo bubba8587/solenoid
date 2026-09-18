@@ -1,3 +1,4 @@
+// [[C30]] saveViaTextForm (INIT_FIELD_ORDER is shared with the writer), [[C86]] membershipByGesture, [[D50]] everyFieldClassified.
 import { ClassicPreset } from "rete";
 import type { SolenoidNode, SolenoidConnection } from "./schemes";
 import { beginGraphRebuild, endGraphRebuild, bulkSettle, processGraph } from "./process";

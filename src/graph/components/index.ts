@@ -1,3 +1,4 @@
+// [[C34]] classNameIsType.
 // Barrel re-export — mirrors rete-nodes.ts for node classes.
 
 // ─── Canvas infrastructure ────────────────────────────────────────────────────

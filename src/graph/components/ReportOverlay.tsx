@@ -1,3 +1,4 @@
+// [[C68]] knapIsTheDocumentSyntax.
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import DOMPurify from "dompurify";
 import { ClassicPreset } from "rete";

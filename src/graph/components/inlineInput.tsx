@@ -1,3 +1,4 @@
+// [[C95]] commitOnEnter (useDraftCommit, useEditableTitle). Mechanics: specs/literal-input-editors.md.
 import type { Emit } from "./nodeKit";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ChangeEvent } from "react";
 import { useKatexRender } from "./katexLoader";
@@ -59,8 +60,8 @@ export function useIncomingSources(nodeId: string): Map<string, IncomingSource> 
 /** `parse` result for a draft that can't become a value (commit reverts). */
 export const INVALID_DRAFT = Symbol("invalid-draft");
 
-/** Commit-on-Enter/clickaway editing: typing NEVER propagates into the graph, and one
- *  undo entry per commit. `apply` owns the mirror + processGraph — never onChange. */
+/** [[C95]] commitOnEnter: typing NEVER propagates into the graph, one undo entry per
+ *  commit. `apply` owns the mirror + processGraph — never onChange. */
 export function useDraftCommit<T>(
   committed: T,
   toText: (v: T) => string,

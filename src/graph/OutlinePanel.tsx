@@ -1,3 +1,4 @@
+// [[C88]] collapseIsVisual, [[C85]] groupPushDeterministic (setGroupsCollapsed), [[D64]] oneSizeRead.
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type MouseEvent } from "react";
 import { getActiveEditor as getEditor, getActiveView as getView } from "./activeGraph";
 import { selectNode, unselectAllNodes } from "./canvasCommands";
@@ -141,8 +142,7 @@ export async function focusNode(id: string) {
   if (!node || !box) return;
   const { k } = view.transform;
   const rect = view.container.getBoundingClientRect();
-  // measuredBox reads the LIVE size first — a collapsed group's STORED box is its
-  // expanded one, which would off-center the camera.
+  // measuredBox ([[D64]] oneSizeRead): a collapsed group's stored box is its expanded one.
   const cx = box.x + box.w / 2;
   const cy = box.y + box.h / 2;
   await view.pan(rect.width / 2 - cx * k, rect.height / 2 - cy * k);

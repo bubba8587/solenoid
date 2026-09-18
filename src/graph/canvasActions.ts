@@ -1,3 +1,4 @@
+// [[D17]] relaysTransparent (Insert Conduit), [[C89]] standoffsSolveLast (Link with Standoff).
 import type { View } from "./view";
 import { ClassicPreset, type NodeEditor } from "rete";
 import type { Schemes, SolenoidNode } from "./schemes";

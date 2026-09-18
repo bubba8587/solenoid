@@ -1,3 +1,4 @@
+// [[C51]] formulaNaming.
 import { EXCEL_IMPL_META, FRAME_SURFACE_NAMES, NODE_SURFACE_NAMES } from "./excelFunctions";
 import { packFormulaSignature } from "./formulaExtensions";
 

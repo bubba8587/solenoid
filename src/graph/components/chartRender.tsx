@@ -1,5 +1,5 @@
-// Every recharts-using renderer in ONE module so recharts stays a single lazy
-// chunk — nothing here may be imported statically by the app.
+// [[C97]] rechartsLazyChunk: every recharts-using renderer, in the one module the app
+// never imports statically.
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadialBarChart, RadialBar, PolarAngleAxis, PolarGrid, PolarRadiusAxis, RadarChart, Radar, PieChart, Pie, ScatterChart, Scatter, ZAxis, FunnelChart, Funnel, LabelList, Cell, Treemap, Sankey, ComposedChart, Symbols, type ScatterShapeProps, type SymbolsProps } from "recharts";
 import { useState, type SyntheticEvent, type ReactElement } from "react";
 import "./chartView.css";

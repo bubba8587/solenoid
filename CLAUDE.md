@@ -103,7 +103,7 @@ superseded, or restating what a test already pins.
 
 ### Reflexes (each one is a pointer, not the rule)
 - Components never call `node.data()` ([[C27]] noDataInComponents). Edits commit on Enter/blur
-  via `useDraftCommit` (DESIGN.md § Inputs). In-place socket retype must reconcile
+  via `useDraftCommit` ([[C95]] commitOnEnter). In-place socket retype must reconcile
   ([[D16]] retypeReconciles). Prune departing sockets' cables before removing them
   ([[D10]] onePrunePath).
 - After a node dedup/merge or an output-socket rename: `seeds.test.ts`, `nodeOps.test.ts`,

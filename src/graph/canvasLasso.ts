@@ -1,3 +1,4 @@
+// [[C52]] visibleSelection, [[C92]] pinchUnvetoable.
 // AutoCAD winding rule: CW (positive signed area in screen coords) = touch/crossing,
 // CCW = window/enclose.
 import type { View } from "./view";
@@ -40,10 +41,9 @@ export function installLassoSelection(deps: LassoDeps): () => void {
     if (!view || !editor) return;
     const cr = container.getBoundingClientRect();
     for (const { id } of editor.getNodes()) {
-      // Members of a collapsed group stay LAID OUT at their pre-collapse positions,
-      // so their rects are real and the lasso would select them invisibly.
+      // Hidden members still have real rects ([[C88]] collapseIsVisual); the lasso
+      // reaches only what you can see ([[C52]] visibleSelection).
       if (groupCollapseStore.isNodeHidden(id)) continue;
-      // Same rule as Ctrl+A: the lasso reaches only what you can see.
       if (!isolateStore.isVisible(id)) continue;
       const el = view.nodeElement(id);
       if (!el) continue;
@@ -82,7 +82,7 @@ export function installLassoSelection(deps: LassoDeps): () => void {
     // A plain primary-button drag must fall through to the view pan.
     const selectMode = touchSelectStore.get();
     if ((!e.shiftKey && !selectMode) || e.button !== 0) return;
-    // Multi-touch is a pinch, NEVER a lasso: abort and let the pointer reach the view
+    // Multi-touch is a pinch, NEVER a lasso ([[C92]] pinchUnvetoable): abort and let the pointer reach the view
     // WITHOUT stopPropagation. Must precede the node-target test so a second finger
     // landing on a node still releases the lasso.
     if (active || isPinching()) {

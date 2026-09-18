@@ -1,3 +1,4 @@
+// [[C25]] firstClassUnits: the dimensional algebra.
 // Dimensional algebra — the units foundation: an exponent vector plus a scale to
 // base SI. Must stay free of the editor, React and every node.
 

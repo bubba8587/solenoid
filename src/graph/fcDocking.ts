@@ -1,3 +1,4 @@
+// [[D41]] formatFlowsDownstream (a docked FC formats display only), [[C25]] firstClassUnits.
 // Format Controller docking — snap detection, dock positioning, and the inline
 // splice/unsplice into the host's data path; all pure over (editor, view, container, fc).
 import type { View } from "./view";
