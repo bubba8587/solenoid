@@ -6,6 +6,20 @@ sessions sweep verbatim to `archive/dev-notes-history.md` — read a digest here
 first; drill into the archive (or `git log`) only for the mechanics of a
 specific item.
 
+### SESSION DIGEST (2026-09-18 — DTE re-vendored; core changes absorbed)
+
+On `develop`, pushed.
+- **Tool + rule text refreshed from upstream `3050da4`** via the new `dte vendor --from <checkout> --dir dte-rules`,
+  which is the refresh path from now on (it also rewrites `tools/dte.py`). The upstream PROTOCOL file is gone: the agent
+  protocol is `dte-rules/CLAUDE.md`, and CLAUDE.md now routes agents to it; `dte-rules/DECISIONS.md` is a render of DTE's own tree.
+- **A8 threeLayers absorbed**: the 86 `*Enforced by:*` blocks are deleted (every named test already cited its node, D8's
+  test now does); [[C9]] labelUnenforced inverted (a MUST is cited FROM its test or labelled `*Unenforced:*`);
+  `rules.test.ts` checks the citation direction and no longer pins quoted test names. `dte.cfg` declares the
+  `specs` / `tests` / `agents` layers. `*Where:*` lines remain (backlog).
+- **A5 idPlusName absorbed**: every node has a camelCase `name` (17 were unnamed, four carried `NAME-n`
+  placeholders the new validator rejects); A1 / B7 renamed under the author's instruction (`authorized_by`).
+- **`docs/dte-feedback.md`** is the feedback channel now (nine items from this session).
+
 ### SESSION DIGEST (2026-09-17 — Obsidian round-trip; author present)
 
 On `develop`, nothing pushed.

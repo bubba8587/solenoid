@@ -149,5 +149,5 @@ The curated selling list is `release-notes-features.md`; the file map is
   surface: `subsystem-invariants.md` § React Flow surface contract.
 - Socket/type questions: `socket-reference.md` per-variant tables. New node
   `data()`: `value-semantics.md` "Reading an input" — decide each input's ROLE.
-- Trust tests over prose: a rule node's *Enforced by:* line names what is
-  machine-checked; a doc claim without a test is a claim to verify.
+- Trust tests over prose: `python tools/dte.py show <ID>` derives "enforced by" from the
+  tests that cite a rule node; a doc claim without a test is a claim to verify.

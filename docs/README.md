@@ -73,6 +73,8 @@ is parked there.
 - **`dte.md`** — decision provenance: the vendored DTE tool (`tools/dte.py`), Solenoid's
   ring map and everyday commands. Read before creating or changing a decision node;
   `python tools/dte.py validate` must print `OK` before you finish.
+- **`dte-feedback.md`** — difficulties met with the DTE tool itself, numbered, for the author to
+  carry upstream; delete an item once it is processed there.
 - **`code-comments.md`** — the comment policy (commentMinimalism): comments are the last-resort
   home for knowledge; the cut rules, compression rules, the blast-radius test, and
   the homes hierarchy. Read before writing (or reviewing) comment prose.

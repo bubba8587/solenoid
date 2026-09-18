@@ -47,6 +47,10 @@ invented vocabulary + the author's names for the on-screen chrome).
 - **`DESIGN.md` — READ BEFORE ANY UI/VISUAL CHANGE, and "UI change" includes STRINGS** (§7
   Voice governs help markdown, catalog descriptions, tooltips, empty states).
 - **The decision tree (`decisions/`, `docs/dte.md`) — the NORMATIVE spec and the relapse guard.**
+  The agent protocol is the vendored `dte-rules/CLAUDE.md` (read it once per session; you are
+  ring B unless told otherwise); `docs/dte.md` carries only Solenoid's differences and rings.
+  A new mechanism lands its rule node before its code ([[C6]] specFirst), and a rule's
+  exceptions live under that rule, each naming what would remove it ([[C5]] exceptionsUnderRule).
   Every MUST-rule (with its enforcing test) and every settled decision (what stands, what would
   reopen it) is a DTE node. Read the governing node before changing sockets, names or value
   handling (`python tools/dte.py find <name>`, `show <ID>`, `blast <ID>`); cite it as

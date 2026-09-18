@@ -101,19 +101,21 @@ The site is four pages sharing `landing/siteNav.tsx` chrome (see architecture.md
   demo API fake). Still hand-built DOM/SVG: the Presenter scene (landing) and the Obsidian page's
   bridge + Plan vignettes — none maps to a single locked pass.
 
-## DTE — decision provenance (`docs/dte.md`, [[B8]])
+## DTE — decision provenance (`docs/dte.md`, [[B8]] treeIsTheHome)
 
-Every rule and settled decision is a node (2026-09-15). DTE-tool findings live in the DTE repo's
-FEEDBACK file.
-- [ ] **Author ratifies the tree** — A1 and C80 are ratified; D62 is the author's to reword first (two agent
+Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feedback.md`.
+- [ ] **Author ratifies the tree** — A1, B7 and C80 are ratified; D62 is the author's to reword first (two agent
   drafts rejected 2026-09-16), then D42 / E11 (contested, kept), then the B ring. `python tools/dte.py validate` prints the
   unratified list; `ratify <ID>... --by`, and the same change adds the ID to `OWNER_RATIFIED` in
   `rules.test.ts` ([[C7]] authorRuled).
+- [ ] **Author places `decisions/inbox/scope-boundary.md`** (proposed ring A): `dte place scope-boundary A --by <name>`.
 - [ ] **Apply the WHY-comment→citation practice** ([[C57]] commentMinimalism): migrate rationale
-  comments into the node's `## Why`, leave a `[[<ID>]] name` citation.
-- [ ] **Citation coverage is mixed** — bare test-suite citations in node Consequences (21 across 20
-  rules at the 2026-08-09 count) are reading-verified only; quoting the describe/it names buys the
-  `rules.test.ts` check. oneMetricImpl and oneThingPerMetric cite a module, not a suite.
+  comments into the node's `## Why`, leave a `[[<ID>]] name` citation. `dte scope --comments` lists the start.
+- [ ] **`*Where:*` lines are the last downward pointers** (A8 threeLayers upstream: a node stores nothing from below).
+  Delete each only after the named file cites the node back, so `dte show` still derives "implemented by";
+  the Enforced-by column went this way 2026-09-18.
+- [ ] **20 SKIPPED RING findings under A5 / A6** are the owner's placement (`dte scope`); either B nodes are
+  missing under Excel parity / divergence, or the finding is noise (feedback 4). The author decides.
 - [ ] **Optional:** `python tools/dte.py hook` (pre-commit validate) — not installed (touches the
   commit flow); `validate` is not in CI either.
 

@@ -20,7 +20,8 @@ A/B/C, which are not Solenoid's rings below.)
 **The tree is the one home.** Every rule that lived in the old rules.md and every decision
 in the old decisions.md is a node now; both documents are deleted (git has them). B8
 carries the field mapping (MUST →
-Decision, Why/Origin → Why, Enforced by/Exceptions/Where/Reopen if → Consequences) and
+Decision, Why/Origin → Why, Exceptions/Where/Reopen if → Consequences; the old Enforced-by
+column is derived from citing tests now, never stored) and
 the naming convention: a node lifted from a named rule carries the name in its `name`
 property (`name: shareImpl`, the title is the description alone), so `python tools/dte.py find
 shareImpl` finds it and a citation may read `[[<ID>]] shareImpl`. The tool prints a node as
@@ -94,5 +95,6 @@ otherwise. The map binds agents, not the author.
 
 ## Feedback
 
-DTE is unfinished; problems found while using it here are logged to the DTE repo's
-FEEDBACK file for the author's review (see the memory note `dte-feedback-channel`).
+DTE is unfinished. Difficulties met while using it here go to `docs/dte-feedback.md`, one
+numbered item each with the command, what happened and what would have helped; the author
+carries them to the DTE repo and deletes the item once it is processed upstream.
