@@ -132,3 +132,33 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     is on the local `coverage-store` branch of the DTE checkout. It also corrected the adopter's
     error underneath item 16: an artifact does not have to cite a TREE node; citing (or being
     covered by) the spec it is built to is the three-layer model working as A8 says.
+18. **Coverage should be spec-based, and the rules should say so.** After items 14 and 16 the gauge
+    still reads as "does every file cite a tree node", which is the wrong question: A8's layers make
+    the chain code → spec → tree, and a file citing a tree node directly is the exception (a MUST
+    the file is the one home of), not the norm. What the adopter landed here, proposed as the
+    upstream shape:
+    - **A spec is the scope of the files built to it.** Its header carries `covers: <globs>`
+      (`.dteignore` syntax). A file the glob matches is covered; it needs no header unless it has
+      something specific to say. Coverage then means: every code file is built to a cited spec
+      (covered or citing one), every spec cites the tree, every MUST has a citing test. Three
+      numbers, one per hop, are more honest than one blended percentage; `coverage` should print
+      them (code→spec, spec→tree, MUST→test) rather than "artifacts that cite a decision".
+    - **`show` and `blast` walk both hops.** `show C27` derives "implemented by" through the
+      components spec ("via specs/components.md"); `blast C27` lists the spec, then "Built to" the
+      files it covers. A file's own citations still add to both.
+    - **A stale `covers:` glob is a finding**, like a stale exclusion: it means the class moved and the
+      spec did not.
+    - **The next gauge is thinness, not coverage.** A file covered ONLY by a floor spec (components,
+      node classes, stores) has nothing specific on record; that is fine for a button, wrong for a
+      unit-carrying node. `coverage` could list "covered by a floor spec only, N+ comment lines" as the
+      sweep's worklist, the way `scope --comments` did for uncited files; the adopter's agent pass
+      ran off exactly that list (206 files) and it is where the ten real leaves of the day came from.
+    - **Rule text:** B22 (or wherever coverage is defined) should state that an artifact is covered
+      when it is built to a cited spec, and A8 that a class-wide rule reaches its class through the
+      class's spec, never through a citation per member. Without that sentence an adopter does what
+      this one did first: 265 identical header lines and a leaf whose blast radius is "everything".
+    - What is NOT changed by this: a test still cites the leaf it enforces directly (the spec is not
+      an enforcer), and `.dtecoverage` still holds what needs no spec at all. Patch and tests:
+      `coverage-store` branch of the DTE checkout (`covers:` parsing, `covered_by`/`covered_files`,
+      `cited_by` "via", `blast` "Built to", stale-glob check; comment-line only, so a markdown heading
+      that says "covers:" does not count).
