@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C10]] socketLattice (canConnect gates the pair)
+// [[C10]] socketLattice (canConnect gates the pair)
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ClassicPreset } from "rete";
 import { connectionDialog } from "../connectionDialogStore";

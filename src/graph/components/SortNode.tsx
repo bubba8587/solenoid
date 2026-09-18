@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { SortNode as SortNodeType, SortDir } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ArgSelect, ValueDisplay, useNodeField, type NodeProps } from "./nodeKit";

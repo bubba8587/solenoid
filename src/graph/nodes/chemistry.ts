@@ -1,4 +1,4 @@
-// [[C34]] classNameIsType, [[D50]] everyFieldClassified, [[C76]] formulaPackDefault, [[D40]] unitOnValue
+// [[C76]] formulaPackDefault, [[D40]] unitOnValue
 // Masses are IUPAC abridged/conventional values; an element with no stable isotope carries its bracketed mass number.
 
 import { ClassicPreset } from "rete";

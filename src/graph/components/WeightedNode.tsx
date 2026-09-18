@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { WeightedNode as WeightedNodeType, WeightedOp } from "../rete-nodes";
 import { WEIGHTED_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

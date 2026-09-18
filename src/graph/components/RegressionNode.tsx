@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { REGRESSION_OP_META } from "../rete-nodes";
 import type { RegressionNode as RegressionNodeType, RegressionOp } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

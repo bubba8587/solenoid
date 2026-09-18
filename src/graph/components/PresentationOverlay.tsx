@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { presentationStore } from "../presentationStore";
 import { getEditor } from "../process";

@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { useSyncExternalStore } from "react";
 import { noticeStore, dismissNotice } from "../noticeStore";
 import "./noticeToasts.css";

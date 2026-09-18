@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C44]] dateSerials, [[D54]] relativeDatesOptIn
+// [[C44]] dateSerials, [[D54]] relativeDatesOptIn
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { DateInputNode as DateInputNodeType } from "../rete-nodes";
 import { jsDateToSerial, parseDate, isRelativeDateText, formatDateSerial, DEFAULT_DATE_FORMAT } from "../nodes/date";

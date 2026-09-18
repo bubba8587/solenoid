@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { NotNode as NotNodeType } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";

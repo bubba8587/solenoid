@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C52]] visibleSelection (one selection system), [[C91]] cableWalkRouter
+// [[C52]] visibleSelection (one selection system), [[C91]] cableWalkRouter
 import { measuredSize } from "../nodeSize";
 import { useSyncExternalStore, useState, useRef, useEffect } from "react";
 import { CardFrame } from "./NodeCard";

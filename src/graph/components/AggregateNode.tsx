@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { AggregateNode as AggregateNodeType, ReduceOp } from "../rete-nodes";
 import { REDUCE_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

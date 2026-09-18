@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { cubeRowCount, cubeDepth, type CubeValue } from "../frame";
 import { useHostNodeId } from "./nodeContext";
 import { readChipPopupStyle } from "./chipStyle";

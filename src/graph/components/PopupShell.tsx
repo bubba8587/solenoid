@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[B14]] oneDesignSystem
+// [[B14]] oneDesignSystem
 import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import "./popupChrome.css";
 import { CloseIcon } from "./CloseIcon";

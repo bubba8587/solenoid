@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { documentStore } from "../documentStore";

@@ -1,4 +1,4 @@
-// [[C34]] classNameIsType, [[D50]] everyFieldClassified, [[C87]] groupsAreSubflows, [[C86]] membershipByGesture, [[C88]] collapseIsVisual, [[D63]] lockedGroupIsObstacle, [[C37]] observerOwnsSize
+// [[C87]] groupsAreSubflows, [[C86]] membershipByGesture, [[C88]] collapseIsVisual, [[D63]] lockedGroupIsObstacle, [[C37]] observerOwnsSize
 import { ClassicPreset } from "rete";
 
 export class GroupNode extends ClassicPreset.Node {

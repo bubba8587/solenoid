@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { GCDNode as GCDNodeType, GcdOp } from "../rete-nodes";
 import { GCD_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

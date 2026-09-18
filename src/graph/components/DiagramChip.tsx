@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { collapseStore } from "../collapseStore";
 import { useHostNodeId } from "./nodeContext";
 import { stopDragStart } from "../coarse";

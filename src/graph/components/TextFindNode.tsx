@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { TextFindNode as TextFindNodeType, TextFindOp } from "../rete-nodes";
 import { TEXT_FIND_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

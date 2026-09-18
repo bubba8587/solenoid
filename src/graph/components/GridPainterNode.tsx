@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C95]] commitOnEnter
+// [[C95]] commitOnEnter
 import { useRef, useState, type CSSProperties } from "react";
 import type { GridPainterNode as GridPainterNodeType } from "../rete-nodes";
 import { parsePaintGrid, paintGridToText } from "../nodes/control";

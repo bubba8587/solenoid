@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C59]] byteStringOrder (a UI list keeps natural order)
+// [[C59]] byteStringOrder (a UI list keeps natural order)
 import { useState } from "react";
 
 // A view control, NOT a transform: it reorders RENDERED rows only. Because the

@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C95]] commitOnEnter, [[D17]] relaysTransparent (the static shape resolver)
+// [[C95]] commitOnEnter, [[D17]] relaysTransparent (the static shape resolver)
 import { useMemo, useSyncExternalStore } from "react";
 import { useDraftCommit } from "./inlineInput";
 import { connectionVersionStore } from "../graphSignals";

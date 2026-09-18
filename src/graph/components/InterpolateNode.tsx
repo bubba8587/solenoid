@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { useEffect, useState } from "react";
 import type { InterpolateNode as InterpolateNodeType, InterpolateMode } from "../rete-nodes";
 import { INTERPOLATE_MODE_META } from "../rete-nodes";

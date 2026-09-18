@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { useEffect, useRef, useState } from "react";
 import { useSyncExternalStore } from "react";
 import { elementPicker } from "../elementPickerStore";

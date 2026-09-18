@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C68]] knapIsTheDocumentSyntax, [[C12]] socketRows
+// [[C68]] knapIsTheDocumentSyntax, [[C12]] socketRows
 import { useSyncExternalStore } from "react";
 import type { ReportNode as ReportNodeType } from "../rete-nodes";
 import { NodeShell, type NodeProps, type Emit } from "./nodeKit";

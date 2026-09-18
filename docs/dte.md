@@ -83,9 +83,10 @@ sets `authorized_by` to the author.
   arraySemantics, firstClassUnits, calcModes, shareImpl, declareOnce, the save-path rules);
   **D, E — the rules that refine them**. `python tools/dte.py tree --under B17` shows one family.
   A ring-C leaf whose rule constrains a whole class of files (C27 noDataInComponents, C34
-  classNameIsType) is cited from every member today; that is blast radius, not purpose, so a
-  file's header should add the leaf that is specific to it (feedback 16 asks DTE for a scope
-  declaration on such leaves).
+  classNameIsType) is NOT cited from every member: the class has a floor spec
+  (`specs/components.md`, `specs/node-classes.md`, `specs/stores.md`) whose header carries a
+  `covers:` glob, and blast runs leaf → spec → the files built to it. A file's own header cites
+  only what is specific to it; a file with nothing specific has no header at all.
 
 Authority (`dte.cfg`): **A:human, B:orchestrator, C+:subagent**. Assume ring B unless told
 otherwise. The map binds agents, not the author.
@@ -111,8 +112,13 @@ and the pitch (reader on-ramps); queues, proposals, history and the index; fixtu
 data; dev tooling; stylesheets (a stylesheet implements DESIGN.md); seed documents (JSON cannot
 cite). An excluded file is still
 scanned, so one that cites anyway counts as cited; a glob matching nothing is reported as stale;
-`coverage --excluded` lists the files under each reason; `coverage --check` exits 1 below 100%
-or with a stale exclusion, and `rules.test.ts` runs it (with `validate`) so a push cannot regress
+A spec's header may end with `covers: <globs>` (the `.dteignore` syntax): every file it matches is
+built to that spec and counts as cited through it, `dte show <ID>` lists them as "via" the spec, and
+`dte blast <ID>` lists them under "Built to". That is how a class-wide rule reaches its class without
+a citation per file (the author's ruling, 2026-09-18: a component is built to a spec, not to the
+tree). A `covers:` glob that matches nothing is stale like an exclusion. `coverage --excluded`
+lists the files under each reason; `coverage --check` exits 1 below 100%, with a stale exclusion
+or a stale `covers:` glob, and `rules.test.ts` runs it (with `validate`) so a push cannot regress
 it. Coverage reached 100% on 2026-09-18 (1230 artifacts, 301 excluded). Everything not listed is
 expected to cite, so a new file either cites or is a claim in the store. Adding a group is a claim
 that a whole class of files needs no decision: say why in the `why:` line, and if the reason is

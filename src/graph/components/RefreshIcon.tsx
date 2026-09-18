@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 /** Lucide "refresh-cw" (ISC), shared by every re-read control on a card. An icon, not
  *  a font glyph. */
 export const RefreshIcon = ({ size = 12 }: { size?: number }) => (

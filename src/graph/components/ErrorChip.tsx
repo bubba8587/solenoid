@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { ERROR_EXPLANATIONS, type SolError } from "../errorValue";
 import { flyToNode } from "../flyToNode";
 import "./errorChip.css";

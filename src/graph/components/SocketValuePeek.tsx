@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[B3]] sameNodeEverywhere, [[C100]] chartIsAValue
+// [[B3]] sameNodeEverywhere, [[C100]] chartIsAValue
 import type { ReactNode } from "react";
 import { NodeFormatContext } from "./nodeContext";
 import { peekKindFor } from "../valuePeekKind";

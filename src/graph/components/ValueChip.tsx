@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { ReactElement } from "react";
 import { isFrameValue, isCubeValue } from "../frame";
 import { isChartValue } from "../chartValue";

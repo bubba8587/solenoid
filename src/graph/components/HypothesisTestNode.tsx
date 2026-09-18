@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[D10]] onePrunePath
+// [[D10]] onePrunePath
 import { HYPOTHESIS_TEST_OP_META } from "../rete-nodes";
 import type { HypothesisTestNode as HypothesisTestNodeType, HypothesisTestOp } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

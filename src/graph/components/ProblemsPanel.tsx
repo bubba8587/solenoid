@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { useSyncExternalStore, useState, useRef, useEffect, useMemo } from "react";
 import { IS_MOBILE } from "../coarse";
 import { problemsStore, problemsPanelUi, type ProblemEntry } from "../problemsStore";

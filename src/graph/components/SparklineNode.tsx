@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { useSyncExternalStore } from "react";
 import type { SparklineNode as SparklineNodeType, SparklineOp } from "../rete-nodes";
 import { SPARKLINE_OP_META } from "../rete-nodes";

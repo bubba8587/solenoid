@@ -4,6 +4,12 @@ The index of the subsystem specs. Each subsystem's mechanics live in `../specs/<
 (one spec per subsystem; its first line names the leaves it serves); read the spec in full before touching
 that subsystem. A section here is a pointer, never the mechanics.
 
+## The floor specs (`covers:` globs)
+
+`../specs/components.md` (every React component), `../specs/node-classes.md` (every node class and op
+module), `../specs/stores.md` (every module-singleton store). Each ends its header with a `covers:`
+glob; a file the glob matches is built to that spec and cites nothing class-wide itself.
+
 ## React Flow surface contract (`flow/FlowSurface.tsx`, `flow/FlowCanvas.tsx`, `flow/flowModel.ts`, `flow/flowView.ts`, `flow/FlowCableEdge.tsx`, `flow/FlowSocketHandle.tsx`)
 
 `../specs/react-flow-surface-contract.md`.

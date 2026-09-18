@@ -1,4 +1,4 @@
-// [[C34]] classNameIsType, [[D50]] everyFieldClassified, [[C76]] formulaPackDefault, [[C17]] shareImpl, [[C8]] declareOnce
+// [[C76]] formulaPackDefault, [[C17]] shareImpl, [[C8]] declareOnce
 // Declared custom logic ([[C76]] formulaPackDefault): the formulation, never a transcribed table.
 
 import { ClassicPreset } from "rete";

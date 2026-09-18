@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[D10]] onePrunePath
+// [[D10]] onePrunePath
 import { useState } from "react";
 import type { SumIfsNode as SumIfsNodeType, CondAggOp } from "../rete-nodes";
 import { COND_AGG_OP_META } from "../rete-nodes";

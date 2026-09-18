@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { EarnedValueNode as EarnedValueNodeType } from "../rete-nodes";
 import { NodeShell, InlineOutputRows, type NodeProps, type OutputRowValue } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";

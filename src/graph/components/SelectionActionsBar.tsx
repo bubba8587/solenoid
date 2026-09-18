@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C52]] visibleSelection
+// [[C52]] visibleSelection
 import { useEffect, useState, useSyncExternalStore, type ReactElement } from "react";
 import { getActiveEditor as getEditor, getActiveView as getView, subscribeActiveGraph } from "../activeGraph";
 import { canvasLockStore } from "../canvasLock";

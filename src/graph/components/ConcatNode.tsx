@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { ConcatNode } from "../rete-nodes";
 import { makeExtensibleNodeComponent } from "./standardNode";
 

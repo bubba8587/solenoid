@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { useSyncExternalStore } from "react";
 import type { SaveTimesNode as SaveTimesNodeType } from "../rete-nodes";
 import { saveTimeStore } from "../saveTimeStore";

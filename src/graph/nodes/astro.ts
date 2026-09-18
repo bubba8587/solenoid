@@ -1,4 +1,4 @@
-// [[C34]] classNameIsType, [[D50]] everyFieldClassified, [[C76]] formulaPackDefault, [[C44]] dateSerials, [[D12]] dateValuedPortIsDateTyped
+// [[C76]] formulaPackDefault, [[C44]] dateSerials, [[D12]] dateValuedPortIsDateTyped
 // The NOAA Solar Calculator formulation; date serials and degrees at the sockets.
 
 import { ClassicPreset } from "rete";

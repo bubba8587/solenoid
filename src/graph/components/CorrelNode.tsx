@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { CORREL_OP_META } from "../rete-nodes";
 import type { CorrelNode as CorrelNodeType, CorrelOp } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

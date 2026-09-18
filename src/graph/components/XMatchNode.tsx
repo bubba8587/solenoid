@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { XMatchNode as XMatchNodeType, XMatchMatchMode, XMatchSearchMode } from "../rete-nodes";
 import { XMATCH_MATCH_MODE_META, XMATCH_SEARCH_MODE_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

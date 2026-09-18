@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { TWO_INPUT_MATH_OP_META } from "../rete-nodes";
 import type { TwoInputMathNode as TwoInputMathNodeType, TwoInputMathOp } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

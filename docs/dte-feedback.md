@@ -125,3 +125,10 @@ item once it is processed upstream. Written against DTE `3050da4` (vendored 2026
     hand and writing the History line oneself, which is exactly the kind of edit the tool exists to
     make uniform. Either `move` accepts a same-ring call with `--parents`, or a `set <ID> parents`
     field write exists. Hit while fleshing out the B ring (B16, B17: 21 leaves re-parented by hand).
+    **Answered by the owner the same day, and implemented:** the scope belongs to the SPEC, not the
+    leaf. A component is built to a spec, so the components spec carries `covers: src/graph/
+    components/*.tsx`; `blast C27` runs leaf → spec → the files built to it, `show` lists them "via"
+    the spec, `coverage` counts them, and a stale glob fails `--check`. The patch (tool + five tests)
+    is on the local `coverage-store` branch of the DTE checkout. It also corrected the adopter's
+    error underneath item 16: an artifact does not have to cite a TREE node; citing (or being
+    covered by) the spec it is built to is the three-layer model working as A8 says.

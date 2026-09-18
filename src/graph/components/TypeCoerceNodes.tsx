@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 // T / N / TYPE are covered by Cast + the socket type system + the Test node.
 import type { FormatDollarNode as FormatDollarNodeType } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

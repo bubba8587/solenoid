@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { PolyfitNode } from "../rete-nodes";
 import { makeNodeComponent } from "./standardNode";
 

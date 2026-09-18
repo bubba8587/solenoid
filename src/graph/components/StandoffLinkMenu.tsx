@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { useMenuClamp } from "./menuClamp";
 import { useEffect } from "react";
 import "./SocketContextMenu.css";

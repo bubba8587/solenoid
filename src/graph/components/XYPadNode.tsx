@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { useCallback, useRef, useState } from "react";
 import type { XYPadNode as XYPadNodeType } from "../rete-nodes";
 import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";

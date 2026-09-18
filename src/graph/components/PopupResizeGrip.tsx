@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { clamp } from "../nodes/mathUtils";
 

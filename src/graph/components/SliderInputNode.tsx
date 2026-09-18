@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C28]] literalsIffEditable
+// [[C28]] literalsIffEditable
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import type { SliderInputNode as SliderInputNodeType } from "../rete-nodes";
 import { processGraph } from "../process";

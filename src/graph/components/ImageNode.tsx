@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C95]] commitOnEnter, [[C37]] observerOwnsSize (a size-owner: re-consumes width), [[D50]] everyFieldClassified
+// [[C95]] commitOnEnter, [[C37]] observerOwnsSize (a size-owner: re-consumes width), [[D50]] everyFieldClassified
 import { useEffect, useRef, useState } from "react";
 import type { ImageNode as ImageNodeType } from "../rete-nodes";
 import { scheduleAutosave } from "../persistence";

@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[D10]] onePrunePath
+// [[D10]] onePrunePath
 import { SERIES_OP_META } from "../rete-nodes";
 import type { SeriesNode as SeriesNodeType, SeriesOp } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

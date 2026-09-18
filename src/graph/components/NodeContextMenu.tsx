@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C73]] inspectorIsStatic, [[C77]] compositeIsSubgraph, [[D63]] lockedGroupIsObstacle, [[C89]] standoffsSolveLast
+// [[C73]] inspectorIsStatic, [[C77]] compositeIsSubgraph, [[D63]] lockedGroupIsObstacle, [[C89]] standoffsSolveLast
 import React, { useEffect } from "react";
 import { useMenuClamp } from "./menuClamp";
 import { inspectorStore } from "../inspectorStore";

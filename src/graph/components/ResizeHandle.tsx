@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C37]] observerOwnsSize
+// [[C37]] observerOwnsSize
 import { useRef } from "react";
 // Owning accessors, not getEditor/getView — a node inside a composite drill-in isn't
 // in the MAIN editor, so the grip wouldn't render.

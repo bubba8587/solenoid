@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C38]] sinkRunButtonOnly, [[D10]] onePrunePath, [[E11]] controlDrivenRetype, [[C26]] opArgDistinct
+// [[C38]] sinkRunButtonOnly, [[D10]] onePrunePath, [[E11]] controlDrivenRetype, [[C26]] opArgDistinct
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { WriteFileNode as WriteFileNodeType, WriteObsidianNode as WriteObsidianNodeType, WriteTasksNode as WriteTasksNodeType, WriteFormat } from "../rete-nodes";
 import { isDesktop, listVaultFolders, listVaultMarkdownFiles, openExternal } from "../fileBridge";

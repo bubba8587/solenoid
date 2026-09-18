@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { marked } from "marked";
 import "./Markdown.css";
 

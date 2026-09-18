@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { BLEND_MODE_META } from "../rete-nodes";
 import type { ColorBlendNode as ColorBlendNodeType, BlendMode } from "../rete-nodes";
 import { isSolError } from "../errorValue";

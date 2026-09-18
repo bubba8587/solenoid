@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[B14]] oneDesignSystem (DESIGN.md § Icon-only buttons)
+// [[B14]] oneDesignSystem (DESIGN.md § Icon-only buttons)
 // Small Lucide (ISC) glyphs shared by menus and buttons, drawn as SVG so they center on
 // their box; a font glyph's ink isn't centered on its em (CloseIcon.tsx has the close).
 import type { CSSProperties } from "react";

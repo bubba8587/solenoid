@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C26]] opArgDistinct
+// [[C26]] opArgDistinct
 import "./SegToggle.css";
 import { stopDragStart } from "../coarse";
 

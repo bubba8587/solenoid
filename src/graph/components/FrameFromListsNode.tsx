@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { FrameFromListsNode as FrameFromListsNodeType } from "../rete-nodes";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { PairedExtensibleInputs } from "./PairedExtensibleInputs";

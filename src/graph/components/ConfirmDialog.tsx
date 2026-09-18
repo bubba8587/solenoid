@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { confirmStore, answerConfirm } from "../confirmStore";
 import { useFocusTrap } from "./useFocusTrap";

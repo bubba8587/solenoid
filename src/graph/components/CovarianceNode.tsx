@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { CovarianceNode as CovarianceNodeType, CovarianceOp } from "../rete-nodes";
 import { COVARIANCE_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { IsInNode as IsInNodeType, TallyNode as TallyNodeType } from "../rete-nodes";
 import { makeNodeComponent } from "./standardNode";
 

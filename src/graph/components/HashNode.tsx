@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { HASH_ALGORITHM_META } from "../rete-nodes";
 import type { HashNode as HashNodeType, HashAlgorithm } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

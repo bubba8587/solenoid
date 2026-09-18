@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { CubeInputNode as CubeInputNodeType } from "../rete-nodes";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { CubeDisplay } from "./CubeDisplay";

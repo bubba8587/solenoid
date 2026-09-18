@@ -1,4 +1,4 @@
-// [[C34]] classNameIsType, [[D50]] everyFieldClassified, [[C76]] formulaPackDefault, [[D40]] unitOnValue
+// [[C76]] formulaPackDefault, [[D40]] unitOnValue
 // CODATA 2018 values (several exact by the 2019 SI redefinition); SI units in every label.
 
 import { ClassicPreset } from "rete";

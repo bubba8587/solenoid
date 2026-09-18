@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { useSyncExternalStore } from "react";
 import type { MergePlotsNode as MergePlotsNodeType } from "../rete-nodes";
 import { NodeShell, type NodeProps } from "./nodeKit";

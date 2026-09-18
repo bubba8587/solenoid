@@ -1,4 +1,4 @@
-// [[C34]] classNameIsType, [[D50]] everyFieldClassified, [[C76]] formulaPackDefault, [[C17]] shareImpl, [[C15]] matricesInFormulas
+// [[C76]] formulaPackDefault, [[C17]] shareImpl, [[C15]] matricesInFormulas
 // Training-zone table: Karvonen (heart-rate reserve) bands with a resting HR, plain %-of-max without one.
 
 import { ClassicPreset } from "rete";

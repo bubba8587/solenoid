@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C95]] commitOnEnter, [[B2]] webTryDesktopFull
+// [[C95]] commitOnEnter, [[B2]] webTryDesktopFull
 import { useEffect, useRef, useState } from "react";
 import type { FileLinkNode as FileLinkNodeType } from "../rete-nodes";
 import { scheduleAutosave } from "../persistence";

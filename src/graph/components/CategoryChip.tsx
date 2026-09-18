@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[B14]] oneDesignSystem (DESIGN.md § Quiet Accent)
+// [[B14]] oneDesignSystem (DESIGN.md § Quiet Accent)
 import { useSeriesColors } from "./chartCore";
 import "./CategoryChip.css";
 

@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[E11]] controlDrivenRetype, [[D16]] retypeReconciles, [[C26]] opArgDistinct
+// [[E11]] controlDrivenRetype, [[D16]] retypeReconciles, [[C26]] opArgDistinct
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SetsNode as SetNodeType, SetOpAll } from "../rete-nodes";
 import { SET_META, isSetRelationOp, adoptiveListOut, logicalOut } from "../rete-nodes";

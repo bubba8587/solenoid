@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { useState } from "react";
 import { DATE_TRUNC_UNIT_META } from "../rete-nodes";
 import type { DateTruncNode as DateTruncNodeType, DateTruncUnit } from "../rete-nodes";

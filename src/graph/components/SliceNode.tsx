@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { SliceNode } from "../rete-nodes";
 import { makeNodeComponent } from "./standardNode";
 

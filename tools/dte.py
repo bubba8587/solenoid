@@ -54,6 +54,8 @@ CITE_RE = re.compile(r"\bdte:([A-Z]\d+(?:\s*,\s*[A-Z]\d+)*)")
 LINK_RE = re.compile(r"\[\[([A-Z]\d+)(?:\|[^\]]*)?\]\]")
 
 
+COVERS_RE = re.compile(r"^\s*(?:<!--|//|/\*).*?\bcovers:\s*([^>\n]+)")   # only in a comment line (a markdown heading starts with #)
+
 def cited_ids(line):
     """Every id cited on a line, in order, from both forms."""
     found = []
@@ -366,6 +368,7 @@ class Tree:
         self.children = defaultdict(list)
         self.citations = []
         self.scanned_files = []
+        self.spec_covers = {}   # spec rel -> covers: globs (a spec is the scope of the files built to it)
         self._leaf_ids = set()
         self._validated = False
         self._load()
@@ -799,6 +802,15 @@ class Tree:
     LAYER_LABEL = {"tests": "enforced by", "specs": "specified by", "agents": "instructs",
                    "docs": "described by", "code": "implemented by"}
 
+    def covered_by(self, rel):
+        """The spec files whose `covers:` globs match this artifact.  dte:B22"""
+        return [spec for spec, globs in self.spec_covers.items() if self._ignored(rel, globs)]
+
+    def covered_files(self, spec):
+        """Every scanned artifact a spec's `covers:` globs match, the spec itself excepted."""
+        globs = self.spec_covers.get(spec, [])
+        return [f for f in self.scanned_files if f != spec and self._ignored(f, globs)] if globs else []
+
     def layer_of(self, rel):
         """Which layer below the tree a citing artifact belongs to, by the dte.cfg globs.  dte:B37,C24"""
         for layer in self.LAYERS:
@@ -807,11 +819,16 @@ class Tree:
         return "code"
 
     def cited_by(self, i):
-        """{layer: {rel: [lines]}} every artifact citing i, grouped by layer."""
+        """{layer: {rel: [lines]}} every artifact citing i, grouped by layer. A file a citing spec
+        `covers:` counts as implementing i through that spec (its "line" names the spec)."""
         out = defaultdict(lambda: defaultdict(list))
         for rel, ln, cid, r in self.citations:
             if r == i:
                 out[self.layer_of(rel)][rel].append(ln)
+        for spec in list(out.get("specs", {})):
+            for f in self.covered_files(spec):
+                if f not in out.get(self.layer_of(f), {}):
+                    out[self.layer_of(f)][f].append("via " + spec)
         return out
 
     def body_changes(self):
@@ -889,6 +906,9 @@ class Tree:
         one that cites anyway simply counts. A glob matching no scanned file at all is stale.  dte:B22"""
         self.scan()
         cited = {r for r, _, _, _ in self.citations}
+        for spec in self.spec_covers:
+            if spec in cited:
+                cited |= set(self.covered_files(spec))
         out, stale = {}, []
         for why, globs in self.coverage_exclusions():
             for g in globs:
@@ -933,6 +953,12 @@ class Tree:
                 for ln, line in enumerate(lines, 1):
                     for cid in cited_ids(line):
                         self.citations.append((rel, ln, cid, self.resolve(cid)))
+                if self.layer_of(rel) == "specs":
+                    for line in lines[:30]:
+                        m = COVERS_RE.search(line)
+                        if m:
+                            self.spec_covers[rel] = [g.strip(" -") for g in m.group(1).split(",") if g.strip(" -")]
+                            break
 
     # -- queries
     def descendants(self, i):
@@ -1214,6 +1240,12 @@ def cmd_blast(tree, args):
         print("  none")
     for rel in sorted(hits):
         print("  %s  %s" % (rel, ", ".join("%s@%d" % (c, ln) for ln, c in sorted(hits[rel]))))
+    for spec in sorted(hits):
+        covered = tree.covered_files(spec) if spec in tree.spec_covers else []
+        if covered:
+            print("\nBuilt to %s (covers: %s), %d files:" % (spec, ", ".join(tree.spec_covers[spec]), len(covered)))
+            for f in covered:
+                print("  " + f)
     if node.supersedes:
         print("\nCurrently superseded by %s (candidates to return if %s is reverted):" % (target, target))
         for s in node.supersedes:
@@ -1292,11 +1324,16 @@ def cmd_coverage(tree, args):
     """dte:B22"""
     tree.scan()
     cited = {r for r, _, _, _ in tree.citations}
+    for spec in tree.spec_covers:
+        if spec in cited:
+            cited |= set(tree.covered_files(spec))
     try:
         excluded, stale = tree.excluded_from_coverage()
     except ValueError as e:
         print(e)
         return 2
+    stale += ["%s covers: %s" % (spec, g) for spec, globs in tree.spec_covers.items()
+              for g in globs if not any(tree._ignored(f, [g]) for f in tree.scanned_files if f != spec)]
     scoped = [f for f in tree.scanned_files if f not in excluded]
     missing = [f for f in scoped if f not in cited]
     total = len(scoped)
@@ -1309,8 +1346,11 @@ def cmd_coverage(tree, args):
         line += "; %d excluded under %d reason%s (%s)" % (
             len(excluded), len(reasons), "" if len(reasons) == 1 else "s", COVERAGE_FILE)
     print(line + "\n")
+    if tree.spec_covers:
+        n_cov = len({f for spec in tree.spec_covers if spec in cited for f in tree.covered_files(spec)})
+        print("Covered through a spec's `covers:` glob: %d files (%s)\n" % (n_cov, ", ".join(sorted(tree.spec_covers))))
     if stale:
-        print("Stale exclusions in %s (match nothing; delete them):" % COVERAGE_FILE)
+        print("Stale exclusions in %s or spec covers: globs (match nothing; delete them):" % COVERAGE_FILE)
         for g in stale:
             print("  " + g)
         print()

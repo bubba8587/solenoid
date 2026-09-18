@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { requestRecalc } from "../process";
 import "./nodeCard.css";
 import { stopDragStart } from "../coarse";

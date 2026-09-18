@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { useId } from "react";
 import { COLOR_PALETTE, resolveColor, NEUTRAL_HEX, NEUTRAL_WHITE, NEUTRAL_DARK, isNeutralShade, nextNeutral } from "../palette";
 import "./SwatchGrid.css";

@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { ComplexBinaryNode as ComplexBinaryNodeType, ComplexBinaryOp } from "../rete-nodes";
 import { COMPLEX_BINARY_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

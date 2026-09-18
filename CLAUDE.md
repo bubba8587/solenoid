@@ -58,6 +58,9 @@ invented vocabulary + the author's names for the on-screen chrome).
   **Session start: `python tools/dte.py outbox`** and process every item (docs/dte.md § Outbox) — the
   author edits the tree from Obsidian and those edits reach you only this way ([[C82]] vaultOutbox).
 - **`specs/` — the mechanics, one spec per subsystem** (`docs/subsystem-invariants.md` is the index).
+  Three FLOOR specs carry a `covers:` glob and govern whole classes of files: every component is built
+  to `specs/components.md`, every node class and op module to `specs/node-classes.md`, every store to
+  `specs/stores.md`; a file cites only what is specific to it.
   Read the spec IN FULL before touching its subsystem: **React Flow surface contract** (anything on the canvas — what RF owns, groups
   as sub-flows, cables, sockets, overlays, boundaries), Pointer gestures (with
   `docs/touch-gestures.md` as the gesture inventory), Cable routing, Group expand push, Group

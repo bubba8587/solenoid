@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { ConcatListsNode as ConcatListsNodeType } from "../rete-nodes";
 import { NodeShell, ValueDisplay, type NodeProps } from "./nodeKit";
 import { ExtensibleInputs } from "./ExtensibleInputs";

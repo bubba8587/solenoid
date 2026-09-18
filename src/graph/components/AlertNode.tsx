@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[D10]] onePrunePath
+// [[D10]] onePrunePath
 import { useSyncExternalStore } from "react";
 import type { AlertNode as AlertNodeType, AlertMode } from "../rete-nodes";
 import { ALERT_MODE_KEYS } from "../rete-nodes";

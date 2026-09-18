@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { useSyncExternalStore } from "react";
 import { isolateStore } from "../isolateStore";
 import "./isolatePill.css";

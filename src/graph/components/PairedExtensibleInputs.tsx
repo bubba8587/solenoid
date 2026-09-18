@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C95]] commitOnEnter, [[D10]] onePrunePath, [[C12]] socketRows, [[C28]] literalsIffEditable
+// [[C95]] commitOnEnter, [[D10]] onePrunePath, [[C12]] socketRows, [[C28]] literalsIffEditable
 import type { Emit } from "./nodeKit";
 import { useSyncExternalStore } from "react";
 import type { ClassicPreset } from "rete";

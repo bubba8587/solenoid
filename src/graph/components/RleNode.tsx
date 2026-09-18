@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { RleNode } from "../rete-nodes";
 import { nodeOutputElemFamily } from "./valueDisplayFormat";
 import { NodeShell, type NodeProps } from "./nodeKit";

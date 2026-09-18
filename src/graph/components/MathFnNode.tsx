@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { MathFXNode as MathFXNodeType, MathFnOp, AngleMode } from "../rete-nodes";
 import { MATH_FN_OP_META, isTrigOp } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

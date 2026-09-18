@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { MermaidNode as MermaidNodeType } from "../rete-nodes";
 import { LazySelect } from "./LazySelect";

@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { FrequencyNode } from "../rete-nodes";
 import { makeNodeComponent } from "./standardNode";
 

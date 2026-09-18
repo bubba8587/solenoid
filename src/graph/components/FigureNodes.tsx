@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { useState, useSyncExternalStore } from "react";
 import type { ReactNode } from "react";
 import type { ClassicPreset } from "rete";

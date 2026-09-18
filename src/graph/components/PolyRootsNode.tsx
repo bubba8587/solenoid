@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { PolyRootsNode as PolyRootsNodeType } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";

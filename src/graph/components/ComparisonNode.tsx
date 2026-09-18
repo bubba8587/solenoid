@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { ComparisonNode as ComparisonNodeType, ComparisonOp } from "../rete-nodes";
 import { COMPARISON_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

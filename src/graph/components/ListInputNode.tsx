@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[D16]] retypeReconciles, [[E11]] controlDrivenRetype, [[C26]] opArgDistinct (the type toggle is an argument)
+// [[D16]] retypeReconciles, [[E11]] controlDrivenRetype, [[C26]] opArgDistinct (the type toggle is an argument)
 import { useEffect, useState } from "react";
 import type { ListInputNode as ListInputNodeType, ListElemType } from "../rete-nodes";
 import { processGraph } from "../process";

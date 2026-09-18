@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 // Result-type selector for the value-polymorphic producers (Expression, MAP,
 // BYROW/BYCOL, REDUCE, MAKEARRAY) — an in-place socket retype, so it must reconcile.
 import { useEffect, useState } from "react";

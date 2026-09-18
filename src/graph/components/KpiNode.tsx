@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { KpiNode as KpiNodeType } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, type NodeProps } from "./nodeKit";

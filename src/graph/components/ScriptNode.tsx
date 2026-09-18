@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C66]] scriptNode, [[C95]] commitOnEnter
+// [[C66]] scriptNode, [[C95]] commitOnEnter
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ScriptNode as ScriptNodeType } from "../rete-nodes";
 import type { SolError } from "../errorValue";

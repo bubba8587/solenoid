@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C93]] gestureByPointerType
+// [[C93]] gestureByPointerType
 import { type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import { getActiveView } from "../activeGraph";
 

@@ -57,7 +57,12 @@ On `develop`, pushed.
 - **The B ring grew its two missing parents** (author's ask): [[B16]] oneFormulaSurface under A5 (the parity families:
   C14, C15, C17, C18, C20–C23, C45, C46, C50, C51) and [[B17]] typedValueModel under A6 (C10, C24, C25, C44, C54, C66,
   C100, C102); C64 moved under B11. 21 ring-skip findings gone; C80 is the author's to move. `move` cannot re-parent
-  within a ring (feedback 17); the C27-everywhere question is feedback 16 (a scope declaration on class-wide leaves). Every spec-named source file and every
+  within a ring (feedback 17).
+- **The scope of a class-wide rule is its spec** (author's ruling on "everything cites C27"): three floor specs
+  (`../specs/components.md`, `../specs/node-classes.md`, `../specs/stores.md`) carry a `covers:` glob; the tool reads it for coverage,
+  `show` ("via" the spec) and `blast` ("Built to"). The 283 class-wide header tokens are gone (198 files now carry
+  no header at all and are covered through their spec); 501 files are covered this way. Feedback 16 records the
+  question, the answer and the patch. Every spec-named source file and every
   value-semantics leaf's implementing file now cites its leaf; 428 bare leaf-name mentions in comments and test
   titles became wikilinks; the 43 `*Where:*` pointers are gone bar the two author-held nodes (B7, C80).
   `subsystem-invariants.md` and the README routing table point at spec + leaf and no longer restate a spec's

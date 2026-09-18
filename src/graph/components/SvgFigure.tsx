@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { useLayoutEffect, useRef } from "react";
 import type { SvgValue } from "../svgValue";
 import { elementName } from "../svgLayer";

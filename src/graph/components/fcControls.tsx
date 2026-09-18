@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C94]] formatFamilyGates, [[D41]] formatFlowsDownstream, [[C25]] firstClassUnits, [[C79]] packActivationIsPresentation
+// [[C94]] formatFamilyGates, [[D41]] formatFlowsDownstream, [[C25]] firstClassUnits, [[C79]] packActivationIsPresentation
 // The FC's format/unit dropdowns, shared with other surfaces so the option data can't drift.
 // Plain controlled selects — none of the FC node's value-mutating behavior lives here.
 

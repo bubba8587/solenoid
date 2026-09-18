@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { ComplexUnpackNode as ComplexUnpackNodeType } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";
 import { NodeShell, InlineOutputRows, type NodeProps } from "./nodeKit";

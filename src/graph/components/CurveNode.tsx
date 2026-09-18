@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C95]] commitOnEnter
+// [[C95]] commitOnEnter
 import { useMemo, useRef, useState, type CSSProperties } from "react";
 import type { CurveNode as CurveNodeType } from "../rete-nodes";
 import { curvePoints, pointsToText, monotoneCubic, sampleCurve, curveToFrame } from "../nodes/control";

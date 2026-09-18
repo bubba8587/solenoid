@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { useSyncExternalStore } from "react";
 import type { SankeyNode as SankeyNodeType } from "../rete-nodes";
 import { NodeShell, type NodeProps } from "./nodeKit";

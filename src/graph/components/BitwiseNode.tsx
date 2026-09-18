@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { BitwiseNode as BitwiseNodeType, BitwiseOp } from "../rete-nodes";
 import { BITWISE_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

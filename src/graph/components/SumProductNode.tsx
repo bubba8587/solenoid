@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { SUM_PRODUCT_OP_META } from "../rete-nodes";
 import type { SumProductNode as SumProductNodeType, SumProductOp } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

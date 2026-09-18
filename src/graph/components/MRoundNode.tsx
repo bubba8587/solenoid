@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { MRoundNode, MRoundOp } from "../rete-nodes";
 import { MROUND_OP_META } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

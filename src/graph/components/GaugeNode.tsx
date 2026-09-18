@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[D10]] onePrunePath, [[E11]] controlDrivenRetype, [[C26]] opArgDistinct (`mode` is an argument), [[C100]] chartIsAValue
+// [[D10]] onePrunePath, [[E11]] controlDrivenRetype, [[C26]] opArgDistinct (`mode` is an argument), [[C100]] chartIsAValue
 import { useState, useSyncExternalStore } from "react";
 import type { GaugeNode as GaugeNodeType, GaugeStyle } from "../rete-nodes";
 import { GAUGE_STYLE_OPTIONS } from "../rete-nodes";

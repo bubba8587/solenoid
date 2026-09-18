@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import {
   Children, isValidElement, useLayoutEffect, useRef, useState,
   type ReactNode, type SelectHTMLAttributes,

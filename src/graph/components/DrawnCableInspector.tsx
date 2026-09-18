@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 // The panel for ONE selected drawn cable, in the cable inspector's corner and chrome.
 // The wired-cable CableInspector is untouched; selections are mutually exclusive.
 import { useSyncExternalStore } from "react";

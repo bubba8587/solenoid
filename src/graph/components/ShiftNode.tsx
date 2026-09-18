@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { ShiftNode } from "../rete-nodes";
 import { makeToggleNodeComponent } from "./standardNode";
 

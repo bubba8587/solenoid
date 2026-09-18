@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { ARITHMETIC_OP_META } from "../rete-nodes";
 import type { ArithmeticNode as ArithmeticNodeType, ArithmeticOp } from "../rete-nodes";
 import { InlineInputs } from "./inlineInput";

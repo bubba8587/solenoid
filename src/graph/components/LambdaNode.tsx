@@ -1,4 +1,4 @@
-// [[C27]] noDataInComponents, [[C50]] lambdaBindsByName, [[C95]] commitOnEnter
+// [[C50]] lambdaBindsByName, [[C95]] commitOnEnter
 import { useState, useEffect } from "react";
 import type { LambdaNode as LambdaNodeType } from "../rete-nodes";
 import { formatLambda } from "../nodes/lambda";

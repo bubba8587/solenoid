@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useFocusTrap } from "./useFocusTrap";
 import { useEscapeToClose } from "./useEscapeToClose";

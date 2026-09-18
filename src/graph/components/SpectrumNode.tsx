@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { SpectrumNode } from "../rete-nodes";
 import { NodeShell, type NodeProps } from "./nodeKit";
 import { InlineInputs } from "./inlineInput";

@@ -1,4 +1,3 @@
-// [[C27]] noDataInComponents
 import type { BetweenNode } from "../rete-nodes";
 import { makeNodeComponent } from "./standardNode";
 
