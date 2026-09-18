@@ -122,8 +122,6 @@ Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feed
   `dte place scope-boundary A --by <name>` first, then the categories become B nodes and the doc goes.
 - [ ] **Two author-held `*Where:*` lines remain** (B7, C80; the other 41 went 2026-09-18 once their files cited
   back). The author deletes them or rules they stay.
-- [ ] **Unenforced MUSTs written this session** ([[D64]] oneSizeRead, [[C95]] commitOnEnter, [[C97]] rechartsLazyChunk):
-  each names the test that would enforce it; write them or leave the label.
 - [ ] **20 SKIPPED RING findings under A5 / A6** are the owner's placement (`dte scope`); either B nodes are
   missing under Excel parity / divergence, or the finding is noise (feedback 4). The author decides.
 - [ ] **Optional:** `python tools/dte.py hook` (pre-commit validate) — not installed (touches the

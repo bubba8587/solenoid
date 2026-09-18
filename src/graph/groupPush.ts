@@ -88,6 +88,7 @@ function buildWorld(editor: Editor, view: View, expandedIds: Set<string>): World
     if (n instanceof GroupNode) {
       const m = expandedIds.has(n.id) ? null : measuredSize(view, n.id);
       const el = view.nodeElement(n.id);
+      // [[D64]] exception: an expanding group is read at its STORED size mid-render.
       const w = expandedIds.has(n.id) ? n.width : m?.w ?? (el?.offsetWidth || n.width);
       const h = expandedIds.has(n.id) ? n.height : m?.h ?? (el?.offsetHeight || n.height);
       boxes.set(n.id, { id: n.id, x: p.x, y: p.y, w, h });
@@ -199,6 +200,7 @@ function collapsedCardSize(view: View, g: GroupNode): { w: number; h: number } {
   const m = measuredSize(view, g.id);
   if (m) return m;
   const el = view.nodeElement(g.id);
+  // [[D64]] exception: the last tier is the collapsed-card layout formula, not a default.
   if (el && el.offsetWidth > 0) return { w: el.offsetWidth, h: el.offsetHeight };
   const rows = Math.max(
     groupCollapseStore.retainedFor(g.id).length,

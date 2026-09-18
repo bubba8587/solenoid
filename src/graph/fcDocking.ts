@@ -63,6 +63,7 @@ export function dockedRenderedDims(
   fallbackH: number,
 ): { w: number; h: number } {
   const el = view.nodeElement(nodeId);
+  // [[D64]] exception: the caller supplies the fallback (the FC's declared size).
   return { w: el?.offsetWidth || fallbackW, h: el?.offsetHeight || fallbackH };
 }
 

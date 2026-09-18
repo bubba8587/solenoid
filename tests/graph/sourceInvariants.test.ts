@@ -1,4 +1,4 @@
-// [[C11]], [[C13]], [[C26]], [[C27]], [[C30]], [[C34]], [[C36]], [[C38]], [[C39]], [[C40]], [[D10]], [[D16]], [[D42]], [[D46]]
+// [[C11]], [[C13]], [[C26]], [[C27]], [[C30]], [[C34]], [[C36]], [[C38]], [[C39]], [[C40]], [[D10]], [[D16]], [[D42]], [[D46]], [[D64]], [[C95]], [[C97]]
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -859,5 +859,63 @@ describe("heroChipRow: hero-box chips use the shared --chip row, never an inline
       });
     }
     expect(missing, "a chip row without the --chip modifier (heroChipRow)").toEqual([]);
+  });
+});
+
+describe("[[D64]] oneSizeRead — the movement stack reads sizes through measuredBox", () => {
+  // Every module that moves or fits nodes. A direct DOM size read here is either a
+  // leftover ad-hoc ladder or a sanctioned exception carrying its reason on the line
+  // above ([[C5]] exceptionsUnderRule); the node lists the four that stand.
+  const STACK = ["tidyArrange.ts", "groupPush.ts", "groupPushCore.ts", "groupLogic.ts", "groupCollapse.ts",
+    "standoffs.ts", "standoffSolver.ts", "flyToNode.ts", "fcDocking.ts", "canvasActions.ts", "OutlinePanel.tsx"];
+  it("no unsanctioned offsetWidth/offsetHeight read outside nodeSize.ts", () => {
+    const bad: string[] = [];
+    for (const f of STACK) {
+      const raw = fs.readFileSync(path.join(SRC, f), "utf8").split("\n");
+      raw.forEach((line, i) => {
+        const code = line.replace(/\/\/.*$/, "");
+        if (!/offset(Width|Height)\b/.test(code)) return;
+        if (/void el\.offsetWidth/.test(code)) return; // the reflow kick, not a size read
+        if (/\[\[D64\]\] exception:/.test((raw[i - 1] ?? "") + (raw[i - 2] ?? ""))) return; // a two-line read shares one marker
+        bad.push(`${f}:${i + 1}`);
+      });
+    }
+    expect(bad, "read the size through measuredBox (nodeSize.ts), or sanction the line with `// [[D64]] exception: <reason>`").toEqual([]);
+  });
+});
+
+describe("[[C95]] commitOnEnter — no raw text field commits per keystroke", () => {
+  // A raw <input>/<textarea> whose onChange recomputes the graph commits every
+  // character. Discrete controls (checkbox, radio, range, color, <select>) apply
+  // immediately by the same rule, and the draft-commit fields expose onChange as the
+  // COMMIT callback, so only the raw text elements are scanned.
+  it("no <input> or <textarea> onChange calls processGraph", () => {
+    const bad: string[] = [];
+    for (const file of walk(SRC).filter((p) => p.endsWith(".tsx"))) {
+      const lines = fs.readFileSync(file, "utf8").split("\n");
+      lines.forEach((line, i) => {
+        if (!/onChange=/.test(line) || !/processGraph/.test(line)) return;
+        // The element this handler belongs to: the nearest opening tag above.
+        let tag = "";
+        for (let j = i; j >= Math.max(0, i - 12); j--) {
+          const m = lines[j].match(/<([A-Za-z][\w.]*)\b/);
+          if (m) { tag = m[1]; break; }
+        }
+        if (tag !== "input" && tag !== "textarea") return;
+        const open = lines.slice(Math.max(0, i - 12), i + 1).join(" ");
+        if (tag === "input" && /type=["'](checkbox|radio|range|color|file|date)/.test(open)) return;
+        bad.push(`${rel(file)}:${i + 1}`);
+      });
+    }
+    expect(bad, "route the edit through useDraftCommit; onChange must not recompute the graph").toEqual([]);
+  });
+});
+
+describe("[[C97]] rechartsLazyChunk — recharts is imported statically by exactly one module", () => {
+  it("only components/chartRender.tsx imports recharts", () => {
+    const importers = walk(SRC)
+      .filter((f) => /from\s+["']recharts["']/.test(fs.readFileSync(f, "utf8")))
+      .map(rel);
+    expect(importers).toEqual(["components/chartRender.tsx"]);
   });
 });

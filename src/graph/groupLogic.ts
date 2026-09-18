@@ -193,6 +193,7 @@ export function moveGroupMembers(
 // so its stored width/height would absorb nodes dropped where the box merely would be.
 function groupRenderedSize(view: View, g: GroupNode): { w: number; h: number } {
   const el = view.nodeElement(g.id);
+  // [[D64]] exception: containment wants the RENDERED box, falling back to the stored one.
   return { w: el?.offsetWidth || g.width, h: el?.offsetHeight || g.height };
 }
 
