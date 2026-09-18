@@ -69,7 +69,7 @@ broadcast fallthrough for them; drop the ~68 undeclared names from `FX_FUNCTION_
 autocomplete stops advertising them. **The bulk of the work is the AUDIT**, which needs the
 author's per-name calls: each of the ~68 is either (a) a real Excel function we WANT →
 declare its `EXCEL_IMPL_META` (and any `registerInternal` divergence per
-`formulajs-divergences.md`), or (b) unwanted → let it fall to `#NAME?`. This cannot be done
+`../../specs/formulajs-divergences.md`), or (b) unwanted → let it fall to `#NAME?`. This cannot be done
 mechanically — declaring a name is a product decision about the surface.
 
 **Recommendation (A2):** do **Option A now** (it removes the user-visible footgun and is

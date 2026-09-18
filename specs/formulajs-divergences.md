@@ -1,6 +1,8 @@
-# Formula.js divergences — why Solenoid owns each overridden name
+<!-- [[D28]] tripwireVendorDrift -->
 
-LIVE reference, routed from `excelFunctions.ts` (docs/README.md). Read before
+# Spec: Formula.js divergences — the evidence behind each overridden name
+
+Serves [[D28]] tripwireVendorDrift. Routed from `excelFunctions.ts` (docs/README.md). Read before
 deleting an override, widening the Formula.js fallthrough, or "simplifying" a
 registration away: each entry is the evidence that the library's answer is wrong
 for us. A divergence is owned and tripwired ([[D28]] tripwireVendorDrift), never absorbed.

@@ -462,7 +462,6 @@ rationale, point-in-time research, the dev-notes history) is indexed in
 | `subsystem-invariants.md` | living | the "don't break this" deep-dives — cable routing, group push, standoffs, tidy, error values, unit flow, addressable model, autosave, drill-in |
 | `layout-chrome.md` | living | on-screen chrome map — bar/overlay geometry, offset sync map, z-index ladder; read before adding/moving chrome |
 | `touch-gestures.md` | living | the pointer/touch gesture inventory per device config |
-| `code-comments.md` | living | the commentMinimalism comment policy — cut rules, blast-radius test |
 | `dev-notes.md` | living log | open problems + the latest session digests only (history in `archive/dev-notes-history.md`) |
 | `backlog.md` | living | OPEN items only — the 1.3 polish/patch queue (landed items are deleted) |
 | `deferrals.md` | living | the deferred/parked/author-gated set, incl. Pushed-to-1.4/2.0 |
@@ -477,7 +476,7 @@ rationale, point-in-time research, the dev-notes history) is indexed in
 | `pack-composite-plans.md` | plans (parked) | queued composite-shaped pack nodes |
 | `out-of-scope.md` | policy | the standing NO list |
 | `grid-system.md` | future spec | soft-snap grid; unimplemented |
-| `agent-coordination.md` | parallel-session board | claim/coordinate when several agents work in parallel |
+| `agent-coordination.md` | parallel-session board | the live claim list; the protocol is its node |
 | `archive/` | index | everything finished/inactive — see `archive/README.md` |
 
 ---

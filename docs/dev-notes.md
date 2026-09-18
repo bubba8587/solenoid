@@ -21,7 +21,10 @@ On `develop`, pushed.
 - **The mechanics docs ARE the spec layer** (author's rule: every system-describing doc is a node or a spec; on-ramps,
   proposals and history stay). `subsystem-invariants.md` is split into `specs/` (27 files, each serving a named node)
   and is the index now; the other mechanics docs are declared in the `specs` glob. `specs/socket-lattice.md` was the
-  pilot (12 numbered requirements, each naming its node); `sockets.ts` / `trueAnyAdopt.ts` cite their nodes and their WHY/HOW comments moved
+  pilot (12 numbered requirements, each naming its node); the rationale docs followed: the comment policy is [[C57]]
+  commentMinimalism's Consequences now, `agent-coordination.md` is [[C83]] parallelAgents (new) plus a bare claim board,
+  the divergences doc is `../specs/formulajs-divergences.md` under [[D28]] tripwireVendorDrift. `out-of-scope.md` waits on the author placing
+  `inbox/scope-boundary`; its categories are that node's children; `sockets.ts` / `trueAnyAdopt.ts` cite their nodes and their WHY/HOW comments moved
   into the node / the spec; `fcReconcile.ts`, `conduitTrace.ts`, `unitLattice.ts` cite. The pattern for the other
   ring-C roots is in the backlog.
 - **`docs/dte-feedback.md`** is the feedback channel now (ten items from this session; item 10 is the one that

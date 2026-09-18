@@ -67,7 +67,7 @@ invented vocabulary + the author's names for the on-screen chrome).
 - **`docs/layout-chrome.md`** — read before adding/moving any bar or floating overlay.
 - Reference: `docs/socket-reference.md` (every socket variant), `docs/format-model.md` (FC
   controls), `docs/value-semantics.md` ("Reading an input" — before writing a `data()`),
-  `docs/formulajs-divergences.md` (before touching a `registerInternal` override),
+  `specs/formulajs-divergences.md` (before touching a `registerInternal` override),
   `docs/node-coverage.md` (node inventory + the node-design rules), `docs/architecture.md` (file
   map), `docs/pack-architecture.md`, `docs/out-of-scope.md`.
 - Queue: `docs/backlog.md` (OPEN items only), the release plan
@@ -75,8 +75,9 @@ invented vocabulary + the author's names for the on-screen chrome).
   (parked, no plan), `docs/dev-notes.md` (open
   problems + latest digests). Finished docs: `docs/archive/` (nothing live is parked there —
   `docsPointers.test.ts`).
-- **`docs/code-comments.md`** — comments are the LAST-RESORT home; the default outcome for an
-  existing comment is deletion ([[C57]] commentMinimalism). Read before writing comment prose.
+- **Comments are the LAST-RESORT home**; the default outcome for an existing comment is deletion.
+  The policy is the node: `python tools/dte.py show C57` ([[C57]] commentMinimalism). Read it before
+  writing comment prose.
 - Adding a node: the `add-node` skill / `scripts/new-node.mjs`; `nodeCatalog.ts` is the source
   of truth (Add menu + Function Reference generate from it).
 

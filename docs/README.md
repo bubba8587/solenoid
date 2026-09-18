@@ -54,7 +54,7 @@ is parked there.
 - **`knap-upstream.md`** — the `knap` bugs (with repros) and API asks found
   integrating it, each with the workaround it would retire, re-verified on every
   bump. The list to file upstream.
-- **`formulajs-divergences.md`** — why Solenoid owns each `registerInternal`
+- **`../specs/formulajs-divergences.md`** — why Solenoid owns each `registerInternal`
   override instead of falling through to Formula.js. Read before deleting an
   override or widening the fallthrough; the library being wrong is the whole
   reason the override exists.
@@ -75,9 +75,7 @@ is parked there.
   `python tools/dte.py validate` must print `OK` before you finish.
 - **`dte-feedback.md`** — difficulties met with the DTE tool itself, numbered, for the author to
   carry upstream; delete an item once it is processed there.
-- **`code-comments.md`** — the comment policy (commentMinimalism): comments are the last-resort
-  home for knowledge; the cut rules, compression rules, the blast-radius test, and
-  the homes hierarchy. Read before writing (or reviewing) comment prose.
+
 - **`google-style/`** — fetched text of the Google developer style guide (2026-08-18),
   the ARBITER for the UI-copy register experiment; overrides DESIGN.md §7 for that
   work by author ruling. `word-list.txt` is the dictionary; see its README.
@@ -115,7 +113,7 @@ is parked there.
 
 ## Process
 
-- **`agent-coordination.md`** — parallel-agent scratchpad (dormant in solo sessions).
+- **`agent-coordination.md`** — the live claim board for parallel sessions; the protocol is the node it cites.
 
 ---
 
@@ -144,7 +142,7 @@ results get retried and settled rulings relapse.
 | `flyToNode.ts`, any camera `zoomAt` caller | `subsystem-invariants.md` § Group collapse (camera targets) |
 | `activeGraph.ts` | `subsystem-invariants.md` § Composite drill-in (canvas-substitution seam) |
 | `mathUtils.ts` `fillBorderedGrid` | `subsystem-invariants.md` § Bordered-grid fill |
-| `excelFunctions.ts` overrides / dispatch walk | `formulajs-divergences.md` (why each override exists) |
+| `excelFunctions.ts` overrides / dispatch walk | `../specs/formulajs-divergences.md` (why each override exists) |
 | `applyOp` scalar operators (`excelFormula.ts`) | `value-semantics.md` § Scalar operators (P6) |
 | `stringOrder.ts` | [[C59]] byteStringOrder (byte order, not locale) |
 | `nodes/matrix.ts` Table Input parse, `TablePopup.tsx` | [[C58]] tableInputRawText (raw text is the stored truth) |
@@ -167,7 +165,7 @@ results get retried and settled rulings relapse.
 | `nodes/cube.ts` | `subsystem-invariants.md` § Socket lattice (the Cube is the recursive lattice supremum) |
 | `knapTemplate.ts`, `nodes/report.ts`, `nodes/annotation.ts` NoteNode.data, `components/useKnapRender.ts` | `node-coverage.md` § Annotation (Note and Report bodies are Knap templates: what mints an input, what a bare `{{ name }}` embeds); [[C68]] knapIsTheDocumentSyntax; `knap-upstream.md` (which workarounds are upstream bugs) |
 | `nodes/script.ts`, `nodes/scriptRun.ts`, `nodes/scriptCoerce.ts`, `scriptWorker.ts`, `scriptExecutor.ts`, `jsSyntax.ts`, `components/JsEditor.tsx`, `components/ScriptPopup.tsx` | [[C66]] scriptNode; `out-of-scope.md` §4 (the bounded form); `subsystem-invariants.md` § Script sandbox |
-| `excelFunctions.ts`, `excelFormula.ts`, Expression/LAMBDA | `formulajs-divergences.md`; the formula-surface nodes (`python tools/dte.py tree --under B5`); [[C22]] rowFormulaRefs |
+| `excelFunctions.ts`, `excelFormula.ts`, Expression/LAMBDA | `../specs/formulajs-divergences.md`; the formula-surface nodes (`python tools/dte.py tree --under B5`); [[C22]] rowFormulaRefs |
 | `nodes/listOps.ts`, `textOps.ts`, `financeOps.ts`, `matrixOps.ts`, `indexAccess.ts`, `dateSerial.ts`, `convertUnits.ts` — and ANY new shared node↔formula module | [[C17]] shareImpl (one impl, two surfaces), [[D19]] implReteFree (rete-free; what not to extract) |
 | `computedColumnCore.ts` | [[C22]] rowFormulaRefs, [[C54]] noPerCellFormulas; [[C22]] rowFormulaRefs |
 | `scheduleCpm.ts`, `ganttPayload.ts`, `planImport.ts`, `nodes/schedule.ts`, `nodes/gantt.ts`, `packages/*` | `node-coverage.md` § Schedule and § Gantt (what stands); `v2.0/25-gantt.md` § 4.1 (the one rule), § 6 (the cube contract, the figure payload, the figure never writes); [[C69]] ganttPackages, [[C70]] oneScheduleRule, [[C71]] noBarEditing |

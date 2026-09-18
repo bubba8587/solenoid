@@ -112,11 +112,14 @@ Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feed
 - [ ] **Apply the WHY-comment→citation practice** ([[C57]] commentMinimalism): migrate rationale
   comments into the node's `## Why`, leave a `[[<ID>]] name` citation. `dte scope --comments` lists the start.
 - [ ] **Docs triage (author's rule 2026-09-18: every system-describing doc is a node or a spec; on-ramps,
-  proposals and history keep their homes).** Done: `subsystem-invariants.md` split into `specs/` (27, each citing its
-  node) and the mechanics docs declared in the `specs` glob. Next: lift the rationale docs into nodes and delete them:
-  `out-of-scope.md`, `deferrals.md`, `formulajs-divergences.md`, `upstream-formulajs.md`, `code-comments.md`,
-  `agent-coordination.md`; then cite each spec's sections from the nodes' subtrees and prune each spec's WHY into the
-  node. Per subsystem afterwards: cite the files (`dte coverage`), `scope --comments` (WHY → node, HOW → spec, WHAT stays).
+  proposals and history keep their homes).** Done: `subsystem-invariants.md` → `specs/` (27) + the mechanics docs
+  declared as the spec layer; the comment policy → [[C57]] commentMinimalism; `agent-coordination.md` reduced to the claim board, its protocol → [[C83]]
+  parallelAgents (the file is the live claim board); the Formula.js divergences → `../specs/formulajs-divergences.md`. Exempt as queues:
+  `deferrals.md`, `upstream-formulajs.md` (a few rulings inside deferrals are node candidates when touched).
+  **Blocked on the author:** `out-of-scope.md` is the draft of `inbox/scope-boundary` (the four tests + the mirror
+  test) and its 13 categories are that node's children; nothing can hang off an unplaced node, so
+  `dte place scope-boundary A --by <name>` first, then the categories become B nodes and the doc goes.
+  Then per subsystem: cite the files (`dte coverage`), `scope --comments` (WHY → node, HOW → spec, WHAT stays).
 - [ ] **`*Where:*` lines are the last downward pointers** (A8 threeLayers upstream: a node stores nothing from below).
   Delete each only after the named file cites the node back, so `dte show` still derives "implemented by";
   the Enforced-by column went this way 2026-09-18.
