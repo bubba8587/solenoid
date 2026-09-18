@@ -45,7 +45,15 @@ On `develop`, pushed.
   tests). Then the bulk pass by blast radius (a MUST over a class of files is cited by every file it constrains; tests
   cite the leaves of the sources they import, MUSTs only where already enforced) took it to 100% (1230 artifacts,
   301 excluded under seven reasons), pinned by `rules.test.ts` running `coverage --check` and `validate`. New
-  leaf on the way: [[C103]] untrustedContentSeams (CSV escaping, SVG sanitizing, external links at one seam each). Every spec-named source file and every
+  leaf on the way: [[C103]] untrustedContentSeams (CSV escaping, SVG sanitizing, external links at one seam each).
+- **Five agents made the thin citations specific** (206 files with only class-wide citations: components, node
+  ops/classes, packages, core modules; disjoint lists, no agent ran tests, one full run at the end). Net ~470 comment
+  lines gone, ~150 turned into pointers at a leaf or spec. Their candidate lists yielded ten leaves: [[C104]]
+  foreignDocNetworkGate (the stale "C2 gate" comments), [[C105]] apiKeysStayLocal, [[C106]] noNativeDialogs, [[D65]]
+  serialsNeverDate, [[D66]] daysMinutesModes, [[D67]] grammarOnlyAtBorder, [[D68]] importUnsupportedIsNamed, [[D69]]
+  convertBadPickIsNA, [[D70]] nullNotEnoughData, [[D71]] zoomLatticeDiscreteOnly; the rest were spec content or
+  consequences (C70, C100). Six relapses they found are a backlog item for the author; the Lambda tooltip that
+  contradicted [[C50]] is fixed. Every spec-named source file and every
   value-semantics leaf's implementing file now cites its leaf; 428 bare leaf-name mentions in comments and test
   titles became wikilinks; the 43 `*Where:*` pointers are gone bar the two author-held nodes (B7, C80).
   `subsystem-invariants.md` and the README routing table point at spec + leaf and no longer restate a spec's

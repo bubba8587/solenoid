@@ -1,9 +1,7 @@
-// [[C2]] realCanvasScenes
-// Shared chrome for the marketing site (the /?landing, /obsidian, /download and
-// /examples routes). Every page renders the same header, nav and footer from here, so
-// the site reads as one place and a new page is a route entry plus a page file. Each
-// route is a plain pathname; navigation is ordinary anchors (a full reload, the way the
-// pages already cross-link), which Vercel rewrites back to index.html.
+// [[C2]] realCanvasScenes, [[B3]] sameNodeEverywhere (the marketing chrome)
+// Shared header, nav and footer for the marketing routes; a new page is a route entry
+// plus a page file. Routes are plain pathnames and navigation is ordinary anchors (a
+// full reload), which Vercel rewrites back to index.html.
 import { useSyncExternalStore, type ReactNode } from "react";
 import { appThemeStore } from "../appTheme";
 import wordmark from "../../logo/solenoidwordmark.svg";

@@ -1,9 +1,7 @@
-// [[B10]], [[C43]]
-// THE canvas-view seam: what the model-side code (layout, docking, keyboard,
-// persistence, process.ts) may ask of the React Flow view. flow/flowView.ts is the
-// one implementation (main canvas, drill-in, static stages all build one).
-// Positions here are ABSOLUTE canvas coordinates — the model's frame, never React
-// Flow's parent-relative one (that conversion lives in flowModel).
+// [[B10]] reactFlowView, [[C43]] oneFlowSurface, [[C87]] groupsAreSubflows
+// THE canvas-view seam (specs/react-flow-surface-contract.md § the View seam);
+// flow/flowView.ts is the one implementation. Positions are ABSOLUTE canvas
+// coordinates, never React Flow's parent-relative ones.
 
 export type View = {
   /** Whether this view's editor holds the node — the "belongs to this surface" test. */

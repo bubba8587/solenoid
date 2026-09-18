@@ -1,6 +1,5 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit)
-// Used instead of window.confirm, which is unreliable in the Tauri desktop WebView.
-// Usage:  if (await requestConfirm("Do the thing?")) { ... }
+// [[B10]] reactFlowView (module-singleton store, storeKit), [[C106]] noNativeDialogs
+// Replaces window.confirm, which is unreliable in the Tauri desktop WebView.
 
 import { createNotifier } from "./storeKit";
 

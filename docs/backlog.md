@@ -114,7 +114,21 @@ Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feed
   classNameIsType + [[D50]] everyFieldClassified, every store [[B10]], every op module [[D19]] + [[C17]], tests the
   leaves of the sources they import, MUSTs only where another test already enforces them). Those are true but
   thin: the comment sweep ([[C57]]: WHY → node, HOW → spec) still owes each file its SPECIFIC leaf where one
-  exists; `dte scope --comments` lists the comment-heavy ones.
+  exists; `dte scope --comments` lists the comment-heavy ones. The 2026-09-18 agent sweep did the 206 thinnest
+  (components, nodes, packages, core modules); what is left is line-granular.
+- [ ] **Relapses the sweep found, each a code change the author should rule on first:** (a) `nodes/conduit.ts`
+  upgrades a saved bare "Conduit" label to "Conduit N" on load, a migration shim [[B7]] preAlphaBreakFreely forbids;
+  (b) `DateNodes.tsx` (and any op handler calling `setLabel(OP_META[next].label)`) syncs a label on op change against
+  [[D22]] oneNamePerCard's "the ONE derivation is nodeDisplayName"; (c) `ConnectionNodes.tsx` LocalFile says
+  "desktop only" off-desktop while [[D2]] demoCsvSeam says it reads a demo CSV on web; (d) `PacksPage.tsx` /
+  `ExamplesPage.tsx` hand-copy pack descriptions and seed labels ("keep in step") against [[C8]] declareOnce;
+  (e) `SliderInputNode.tsx` writes `literals.speed` per keystroke (no recompute, so the [[C95]] sweep passes, but
+  it is the pattern); (f) pack kernels (`hrZonesMatrix`, `standardAtmosphere`, `emSpectrum`) are consumed by the
+  formula path through `rete-nodes.ts`, so pack formulas pull rete: either [[D19]] implReteFree names the exception
+  or the kernels move to rete-free siblings.
+- [ ] **`docs/v2.0/25-gantt.md` § 6 is the schedule/Gantt spec** (the packages' headers point into it) but lives in
+  the proposals folder, excluded from coverage. Lift § 6.1–6.5 into `specs/schedule-and-gantt.md` serving [[C70]]
+  oneScheduleRule / [[C69]] ganttPackages and leave the survey (§ 1–5, 7–8) where it is.
 - [ ] **Docs triage (author's rule 2026-09-18: every system-describing doc is a node or a spec; on-ramps,
   proposals and history keep their homes).** Done: `subsystem-invariants.md` → `specs/` (27) + the mechanics docs
   declared as the spec layer; the comment policy → [[C57]] commentMinimalism; `agent-coordination.md` reduced to the claim board, its protocol → [[C83]]

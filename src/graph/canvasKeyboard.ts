@@ -1,5 +1,5 @@
-// [[C43]] oneFlowSurface (installed by the surface, once). Canvas keyboard shortcuts,
-// skipped while focus is in an editable form element.
+// [[C43]] oneFlowSurface (installed by the surface, once), [[C52]] visibleSelection
+// Canvas keyboard shortcuts, skipped while focus is in an editable form element.
 import type { View } from "./view";
 import type { MutableRefObject } from "react";
 import type { NodeEditor } from "rete";
@@ -282,8 +282,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
         if (editor) {
           unselectAllNodesFromProcess();
           cableSelectionStore.set(null);
-          // "All" = only what the user can SEE and act on (the lasso's rule):
-          // collapsed-group members and isolate's receded nodes are skipped.
+          // "All" = only what the user can SEE ([[C52]] visibleSelection).
           const selectable = editor.getNodes().filter(
             (n) => !groupCollapseStore.isNodeHidden(n.id) && isolateStore.isVisible(n.id),
           );
@@ -309,8 +308,7 @@ export function installCanvasKeyboard(deps: CanvasKeyboardDeps): () => void {
       }
       const history = historyRef.current;
       if (!history) return;
-      // One undo can restore MANY cables, each otherwise firing the per-cable settle
-      // → O(cables × nodes); withGraphRebuild settles once instead.
+      // withGraphRebuild settles once instead of once per restored cable.
       if (e.code === "KeyZ" && !e.shiftKey) { void withGraphRebuild(() => history.undo()); e.preventDefault(); return; }
       if (e.code === "KeyZ" &&  e.shiftKey) { void withGraphRebuild(() => history.redo()); e.preventDefault(); return; }
       if (e.code === "KeyY")                { void withGraphRebuild(() => history.redo()); e.preventDefault(); return; }

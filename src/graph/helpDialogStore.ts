@@ -4,8 +4,7 @@ import { createValueStore } from "./storeKit";
 
 export type HelpDialog = "about" | "whatsnew";
 
-// The What's New CONTENT version — bump when the slides change. Deliberately
-// separate from package.json's app version, which only moves at a tagged release.
+// The What's New CONTENT version (bump when the slides change), not the app version.
 export const WHATS_NEW_VERSION = "1.4";
 const SEEN_KEY = "solenoid.whatsNewSeen";
 

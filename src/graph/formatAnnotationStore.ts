@@ -1,5 +1,5 @@
-// Format Controller annotations: nodeId::socketKey → { format, unit }
-// Module-level singleton, readable from any React root.
+// [[C94]] formatFamilyGates, [[C25]] firstClassUnits, [[D41]] formatFlowsDownstream, [[D47]] noMixCurrencies, [[C44]] dateSerials, [[C79]] packActivationIsPresentation, [[C40]] storesRegisterForget
+// Format Controller annotations: nodeId::socketKey → { format, unit } (docs/format-model.md).
 
 import { formatDateSerial, DEFAULT_DATE_FORMAT } from "./nodes/date";
 import { extremeSci } from "./components/format";
@@ -17,7 +17,7 @@ export type FormatStyle =
   | "fraction"     // 1/3
   | "fraction_adv" // π/2, 3π/2, e/4 … (rational multiples of constants)
   | "scientific"   // 1.23e+4
-  // currency is NOT a format — it's a UNIT ($, €, … in UNIT_ANNOTATIONS).
+  // currency is a UNIT, not a format ([[D47]] noMixCurrencies).
   | "custom"
   // Date styles — applied to a date serial via formatDateSerial.
   | "date_dmy"     // 03-Jun-2026 (the app default)
@@ -96,8 +96,7 @@ export function dateAnnotationPattern(ann: FormatAnnotation): string | null {
 
 export type DecimalMode = "places" | "sigfigs";
 
-// The ONE precision resolver (format-model.md) — no style case may carry private digit
-// logic. Clamps: places 0–20, sig figs 1–21.
+// The ONE precision resolver ([[C94]] formatFamilyGates). Clamps: places 0–20, sig figs 1–21.
 function formatPrecise(n: number, decimalDigits: number, decimalMode: DecimalMode, useGrouping = true): string {
   if (decimalMode === "sigfigs") {
     const s = Math.max(1, Math.min(21, Math.round(decimalDigits) || 1));
@@ -301,7 +300,7 @@ export const UNIT_ANNOTATIONS: UnitAnnotation[] = [
   { id: "mb",    label: " MB",   group: "data" },
   { id: "gb",    label: " GB",   group: "data" },
   { id: "tb",    label: " TB",   group: "data" },
-  // Currency is a UNIT ($ ≠ € at the exchange rate), not a number format.
+  // Currency ([[D47]] noMixCurrencies: the display code is the identity)
   { id: "usd",   label: "$", group: "currency", prefix: true },
   { id: "eur",   label: "€", group: "currency", prefix: true },
   { id: "gbp",   label: "£", group: "currency", prefix: true },
@@ -325,8 +324,8 @@ export const UNIT_GROUP_LABELS: Record<UnitGroup, string> = {
   custom:      "Custom",
 };
 
-// Pack units/formats are registered for EVERY known pack (active or not) so a saved graph
-// still renders when the pack is deactivated; active-only filtering is in fcExtensions.ts.
+// Pack units/formats register for EVERY known pack ([[C79]] packActivationIsPresentation);
+// active-only filtering is in fcExtensions.ts.
 
 export interface PackUnit {
   id: string;
@@ -580,9 +579,8 @@ export const formatMismatchStore = {
   subscribe: mismatchNotifier.subscribe,
 };
 
-/** The format-model pipeline: scale-divide → style (precision + grouping) → scale
- *  suffix → unit affix → negative wrap. Parens wrap OUTSIDE the unit, Excel accounting
- *  style: ($1.2K); red negatives are a render-layer color on top. */
+/** The format-model pipeline (docs/format-model.md): scale-divide → style → scale suffix
+ *  → unit affix → negative wrap. Parens wrap OUTSIDE the unit: ($1.2K). */
 export function formatNumberWithAnnotation(n: number, ann: FormatAnnotation): string {
   if (!Number.isFinite(n)) return String(n);
   // Date styles render the value as a date serial; units don't apply.
@@ -639,6 +637,5 @@ export function formatWithAnnotation(
   return formatNumberWithAnnotation(n, ann);
 }
 
-// Registered like every node-keyed store (nodeStoreRegistry / [[C40]] storesRegisterForget).
 registerNodeForget((nodeId) => formatAnnotationStore.removeForNode(nodeId));
 registerNodeForgetAll(() => formatAnnotationStore.clearNodes());

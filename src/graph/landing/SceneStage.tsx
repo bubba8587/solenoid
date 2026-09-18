@@ -1,4 +1,4 @@
-// [[C2]]
+// [[C2]] realCanvasScenes, [[B3]] sameNodeEverywhere, [[D64]] oneSizeRead
 import { useEffect, useId, useMemo, useState } from "react";
 import { NodeEditor } from "rete";
 import { DataflowEngine } from "rete-engine";
@@ -19,11 +19,9 @@ import { computeStack } from "./landingCompute";
 // ELK is loaded once, shared by every scene card (makeEnsureElk caches the instance).
 const ensureElk = makeEnsureElk(() => false);
 
-// A locked, self-contained real canvas for a landing feature card: the actual node
-// components (so they can never drift from the app), over a LOCAL stack, computed
-// ONCE at build. It never claims the process.ts globals for interaction — the hero
-// canvas owns those — so this card is view-only (locked). The build fn adds the
-// scene's nodes/cables through the stack's editor/view, exactly like any surface.
+// A locked scene card ([[C2]] realCanvasScenes): a LOCAL stack, computed ONCE at build.
+// The build fn adds the scene's nodes/cables through the stack's editor/view, exactly
+// like any surface.
 
 function makeSceneStack(): SurfaceStack {
   const editor = new NodeEditor<Schemes>();

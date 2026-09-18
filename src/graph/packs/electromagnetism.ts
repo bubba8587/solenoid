@@ -1,4 +1,4 @@
-// [[B15]] leanCore, [[C79]] packActivationIsPresentation
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C76]] formulaPackDefault, [[C51]] formulaNaming, [[C17]] shareImpl
 // Constants are baked into each formula at CODATA 2018 precision. SI units throughout;
 // angles in radians (core Trigonometry convention).
 

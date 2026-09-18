@@ -1,5 +1,5 @@
-// [[C43]] oneFlowSurface
-// The traversal is deliberately asymmetric and depth-limited:
+// [[C43]] oneFlowSurface, [[D17]] relaysTransparent
+// The traversal is asymmetric and depth-limited:
 //   hover origin      → all its cables + their destinations.
 //   hover destination → that cable + the origin only.
 //   a Conduit lane is transparent (one logical wire), followed through ONCE.

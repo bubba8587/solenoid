@@ -1,4 +1,4 @@
-// [[C92]] pinchUnvetoable: two fingers zoom no matter what is under them. Wrapper
+// [[C92]] pinchUnvetoable: two fingers zoom no matter what is under them. Wrapper, [[D71]] zoomLatticeDiscreteOnly
 // CAPTURE, TOUCH events. Mechanics: specs/pointer-gestures.md.
 import { boundZoom } from "../viewPresets";
 

@@ -1,17 +1,15 @@
-// [[C2]] realCanvasScenes
+// [[C2]] realCanvasScenes, [[B14]] oneDesignSystem (DESIGN.md § Voice)
 import { useEffect } from "react";
 import { SiteHeader, SiteFooter } from "./siteNav";
 import { Reveal, useRevealAnim } from "./LandingScenes";
 import "./LandingPage.css";
 import "./SitePages.css";
 
-// The /examples route: a gallery of the graphs that ship in the app under the New from
-// example menu. Group heads and item names are the seeds' own labels (seeds.ts), so the
-// page and the in-app menu read the same. Each tile deep-links /?seed=<id>, which opens
-// the template as a new document (FlowCanvas boot). Static DOM; chrome comes from siteNav.
+// The /examples route: each tile deep-links /?seed=<id>, which FlowCanvas opens as a new
+// document. Static DOM; chrome comes from siteNav.
 
-// Curated from the seed library (src/graph/seedGraphs); the id is the JSON file's stem.
-// Internal seeds (Getting started, Scratch, Script tour) are left out.
+// Group heads and labels must match the seeds' own (seeds.ts); the id is the JSON
+// file's stem. Internal seeds (Getting started, Scratch, Script tour) are left out.
 const GALLERY: { head: string; items: { id: string; label: string }[] }[] = [
   {
     head: "Obsidian",
@@ -85,7 +83,6 @@ export default function ExamplesPage() {
                 <h1>Examples</h1>
               </Reveal>
               <Reveal delay={110}>
-                {/* NEW COPY. */}
                 <p>
                   Every graph below ships in the app. Open one to load it on your canvas and take
                   it apart. Your own documents stay where they are.
@@ -119,7 +116,6 @@ export default function ExamplesPage() {
 
           <section className="sol-landing__strip">
             <Reveal className="sol-landing__strip-in">
-              {/* NEW COPY. */}
               <p>Open any of these from New from example, or start from a blank canvas.</p>
               <div className="sol-landing__actions">
                 <a className="sol-landing__cta sol-landing__cta--primary" href="/">Open Solenoid</a>

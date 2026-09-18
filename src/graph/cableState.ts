@@ -1,6 +1,6 @@
-// [[C43]] oneFlowSurface
+// [[C43]] oneFlowSurface, [[C40]] storesRegisterForget
 // Cable state that lives OUTSIDE rete's editor: cable selection, socket highlight, and
-// ghost cables (the dashed stub left after splicing a node out of a chain).
+// the two ghost-cable stores (specs/react-flow-surface-contract.md § ghost cables).
 
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
 
@@ -162,12 +162,8 @@ export const cableGhostStore = {
   },
 };
 
-// PENDING-RECONNECT ghosts (Option B). When an Input Switch's output RETYPE (One↔Many)
-// drops a downstream cable the new type can't feed (`retypeOutputCables`), the real rete
-// connection is gone — so this store remembers it as a NON-connection ghost keyed by
-// source·output·target·input, drawn by its own layer, and `cablePendingReconnect.ts`
-// re-materialises the real cable when the output type fits that socket again (same key,
-// else same label). Persist NOTHING: cleared on load and when either node is removed.
+// Pending-reconnect ghosts (Option B in the spec): a NON-connection ghost keyed by
+// source·output·target·input, re-materialised by `cablePendingReconnect.ts`. Persist NOTHING.
 export interface PendingReconnect {
   /** Stable id from the four endpoint fields, so a re-mark of the same drop is idempotent. */
   id: string;
@@ -207,8 +203,5 @@ export const cablePendingStore = {
   },
 };
 
-// A ghost dies when either end goes (noderemoved) and on every load (rebuildGraph) —
-// persist nothing. The store-registry pattern (alertStore / cableValueStore), so no
-// cleanup threads into the canvas.
 registerNodeForget((nodeId) => cablePendingStore.dropForNode(nodeId));
 registerNodeForgetAll(() => cablePendingStore.clear());

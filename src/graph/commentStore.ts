@@ -1,6 +1,6 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget
-// Node-anchored comment threads, shaped like pinStore (module store + an additive optional
-// SavedGraph field). No identity/permissions infra — a local author-name string is all of it.
+// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget, [[C30]] saveViaTextForm
+// Node-anchored comment threads (an optional SavedGraph field). No identity or
+// permissions: a local author-name string is all of it.
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
@@ -89,7 +89,7 @@ export const commentAuthorStore = {
   version: authorNotifier.version,
 };
 
-// Lifted like problemsPanelUi, so a right-click "Add comment" can force the panel open.
+// Panel open state, lifted so a right-click "Add comment" can force the panel open.
 let _panelOpen = false;
 let _focusNodeId: string | null = null;
 const panelNotifier = createNotifier();

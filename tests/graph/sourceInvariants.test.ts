@@ -867,7 +867,7 @@ describe("[[D64]] oneSizeRead — the movement stack reads sizes through measure
   // leftover ad-hoc ladder or a sanctioned exception carrying its reason on the line
   // above ([[C5]] exceptionsUnderRule); the node lists the four that stand.
   const STACK = ["tidyArrange.ts", "groupPush.ts", "groupPushCore.ts", "groupLogic.ts", "groupCollapse.ts",
-    "standoffs.ts", "standoffSolver.ts", "flyToNode.ts", "fcDocking.ts", "canvasActions.ts", "OutlinePanel.tsx"];
+    "standoffs.ts", "standoffSolver.ts", "flyToNode.ts", "fcDocking.ts", "canvasActions.ts", "OutlinePanel.tsx", "zoomAt.ts"];
   it("no unsanctioned offsetWidth/offsetHeight read outside nodeSize.ts", () => {
     const bad: string[] = [];
     for (const f of STACK) {

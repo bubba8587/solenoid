@@ -1,13 +1,11 @@
-// [[C2]] realCanvasScenes
+// [[C2]] realCanvasScenes, [[B2]] webTryDesktopFull, [[B14]] oneDesignSystem (DESIGN.md § Voice)
 import { useEffect } from "react";
 import { GITHUB_URL, SiteHeader, SiteFooter } from "./siteNav";
 import { Reveal, useRevealAnim } from "./LandingScenes";
 import "./LandingPage.css";
 import "./SitePages.css";
 
-// The /download route: where to get Solenoid. Two builds, one page. The web build runs
-// anywhere; the Windows desktop build adds the native engine and local file access.
-// Static DOM only; header, nav and footer come from siteNav.
+// The /download route: static DOM only; chrome comes from siteNav.
 
 const RELEASES_URL = `${GITHUB_URL}/releases/latest`;
 
@@ -29,7 +27,6 @@ export default function DownloadPage() {
                 <h1>Get Solenoid</h1>
               </Reveal>
               <Reveal delay={110}>
-                {/* NEW COPY — reuses the landing strip line. */}
                 <p>Free and open source. Runs in the browser, or as a Windows desktop app.</p>
               </Reveal>
             </div>
@@ -39,7 +36,6 @@ export default function DownloadPage() {
             <div className="sol-get__grid">
               <Reveal className="sol-get__card">
                 <h2>In your browser</h2>
-                {/* NEW COPY — from the README "Try it" section. */}
                 <p>Runs in your browser, on desktop and mobile. Nothing to install.</p>
                 <div className="sol-landing__actions">
                   <a className="sol-landing__cta sol-landing__cta--primary" href="/">Open Solenoid</a>
@@ -48,7 +44,6 @@ export default function DownloadPage() {
 
               <Reveal className="sol-get__card" delay={90}>
                 <h2>Windows desktop</h2>
-                {/* NEW COPY — from the README "Desktop" section. */}
                 <p>
                   The desktop app runs the relational verbs on a native Rust (Polars) engine for
                   memory-heavy tables. The web build uses an identical in-process JS engine.
@@ -67,7 +62,6 @@ export default function DownloadPage() {
               <h2>What the desktop build adds</h2>
             </Reveal>
             <Reveal delay={90}>
-              {/* NEW COPY — each line drawn from the README. */}
               <ul className="sol-get__list">
                 <li>
                   <strong>The native engine.</strong> Relational verbs run on Rust and Polars, for
@@ -90,7 +84,6 @@ export default function DownloadPage() {
               <h2>Build from source</h2>
             </Reveal>
             <Reveal delay={90}>
-              {/* NEW COPY — from the README "From source" section. */}
               <p className="sol-landing__lede">
                 The web build needs only Node 20 and up. The desktop build additionally needs the
                 Rust toolchain and Tauri&apos;s platform prerequisites. Desktop is Windows-only for now.
@@ -105,7 +98,6 @@ export default function DownloadPage() {
 
           <section className="sol-landing__strip">
             <Reveal className="sol-landing__strip-in">
-              {/* NEW COPY. */}
               <p>MIT licensed. No accounts, no cloud, no telemetry.</p>
               <div className="sol-landing__actions">
                 <a className="sol-landing__cta sol-landing__cta--primary" href="/">Open Solenoid</a>

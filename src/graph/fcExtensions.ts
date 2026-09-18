@@ -1,7 +1,6 @@
-// [[B15]]
-// EVERY known pack's units/formats register for resolution, so a saved graph still renders
-// a deactivated pack's unit; only ACTIVE packs' entries reach the dropdowns. The one module
-// that knows both packs and the FC store, keeping each side agnostic of the other.
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation
+// The one module that knows both packs and the FC store: every pack's units/formats
+// register for resolution; only ACTIVE packs' entries reach the dropdowns.
 
 import { allPacks, packsStore } from "./packs";
 import {

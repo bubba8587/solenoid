@@ -1,6 +1,5 @@
-// [[B15]] leanCore, [[C79]] packActivationIsPresentation
-// Electricity & Circuits pack. SI units throughout: volts, amps, ohms, farads,
-// henries, hertz, seconds.
+// [[B15]] leanCore, [[C79]] packActivationIsPresentation, [[C76]] formulaPackDefault, [[C51]] formulaNaming, [[C17]] shareImpl
+// SI units throughout: volts, amps, ohms, farads, henries, hertz, seconds.
 
 import {
   ParallelCombineNode, ESeriesNode, AwgNode, ResistorCodeNode,
@@ -109,8 +108,7 @@ function toSiPrefix(n: number): string {
   return `${Number((n / 1e-12).toPrecision(3))}p`;
 }
 
-// Each impl delegates to the same exported core its node calls, so the node and
-// formula surfaces cannot drift.
+// Each impl delegates to the core its node calls ([[C17]] shareImpl).
 const ELECTRICITY_PACK_FORMULAS: PackFormula[] = [
   {
     name: "PARALLELCOMBINE",

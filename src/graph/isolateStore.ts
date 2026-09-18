@@ -1,4 +1,4 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget
+// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget, [[C52]] visibleSelection
 // A focus set of node ids; non-members recede but are NOT removed. Pure VIEW state —
 // not persisted, not in undo. `null` = not isolating.
 
@@ -37,8 +37,6 @@ export const isolateStore = {
   version,
 };
 
-// A load must EXIT isolate: the focus set holds the OLD graph's ids, so every
-// regenerated id would be a non-member and the whole new graph would dim.
 registerNodeForget((id) => {
   if (_focus?.has(id)) {
     _focus.delete(id);
@@ -48,8 +46,7 @@ registerNodeForget((id) => {
 });
 registerNodeForgetAll(() => isolateStore.exit());
 
-// A store, not component state, so the terminals join the ONE selection system and
-// stay mutually exclusive with node/cable/standoff selection.
+// Endpoint selection is mutually exclusive with node/cable/standoff selection.
 let _selectedEndpoint: string | null = null;
 const epNotifier = createNotifier();
 export const isoEndpointSelect = {

@@ -1,4 +1,4 @@
-// [[C2]]
+// [[C2]] realCanvasScenes, [[B3]] sameNodeEverywhere, [[B14]] oneDesignSystem (DESIGN.md § Voice)
 import { LandingGraph } from "./LandingGraph";
 import { SocketLegendRows } from "../components/SocketLegend";
 import { TablePopup } from "../components/TablePopup";
@@ -19,8 +19,8 @@ import {
 import "./LandingPage.css";
 
 // A standalone route App.tsx swaps the whole app for under ?landing. The hero is the
-// ONE live rete stage; motion is gated on a `--anim` class set after mount, so content
-// never depends on a transition firing. Header, nav and footer come from siteNav.
+// ONE live stage; motion is gated on a `--anim` class set after mount, so content
+// never depends on a transition firing. Chrome comes from siteNav.
 
 export default function LandingPage() {
   const anim = useRevealAnim();

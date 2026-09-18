@@ -1,6 +1,6 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget
-// Log of tagged SolErrors + fuzz findings. Module-level so both React roots read it;
-// the error sink fires per relay node, so entries are origin-filtered and edge-detected.
+// [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget, [[C39]] effectsEdgeTriggered
+// Log of tagged SolErrors + fuzz findings; the error sink fires per relay node, so
+// entries are origin-filtered and edge-detected.
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";
@@ -32,8 +32,7 @@ export const problemsStore = {
   /** Logs only at the error's TRUE ORIGIN — the sink fires for every relay node, so
    *  one failure wired to N downstream nodes would otherwise log N rows. */
   reportLive(nodeId: string, err: SolError): void {
-    // A bulk/synthetic rebuild (fuzz, Tornado, load) computes on values that aren't real
-    // graph state; logging it would leave stale rows. The post-load settle runs outside it.
+    // Suppressed during a rebuild ([[C39]] effectsEdgeTriggered); the post-load settle runs outside it.
     if (isGraphRebuilding()) return;
     if (err.origin && err.origin.nodeId !== nodeId) return;
     if (_lastLiveCode.get(nodeId) === err.code) return; // same failure, already logged
@@ -87,8 +86,7 @@ registerErrorSink((nodeId, err) => {
 registerNodeForget((nodeId) => problemsStore.removeForNode(nodeId));
 registerNodeForgetAll(() => problemsStore.clear());
 
-// Panel open state lives here, not in the component, so the StatusBar badge can force
-// the panel open without prop-drilling.
+// Panel open state, lifted so the StatusBar badge can force the panel open.
 let _panelOpen = false;
 const panelNotifier = createNotifier();
 export const problemsPanelUi = {

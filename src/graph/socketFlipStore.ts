@@ -1,9 +1,6 @@
 // [[B10]] reactFlowView (module-singleton store, storeKit), [[C40]] storesRegisterForget
-// Per-node "sockets flipped" state: inputs render on the RIGHT and outputs on the
-// LEFT (the mirror of the default). A module-level store so it's readable from the
-// separate RF/rete React roots, keyed by node id. Node-agnostic — any node opts in
-// by rendering the flip control (NodeCard `flippable`); cables re-route themselves
-// because FlowCableEdge reads the flip to pick each endpoint's exit/entry side.
+// Per-node "sockets flipped" state; the flip mechanics (who reads it, what stays
+// semantic) are in specs/react-flow-surface-contract.md.
 
 import { createNotifier } from "./storeKit";
 import { registerNodeForget, registerNodeForgetAll } from "./nodeStoreRegistry";

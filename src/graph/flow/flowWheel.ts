@@ -1,4 +1,4 @@
-// [[C92]] pinchUnvetoable (same capture-on-wrapper position). The Solenoid wheel curve
+// [[C92]] pinchUnvetoable (same capture-on-wrapper position). The Solenoid wheel curve, [[D71]] zoomLatticeDiscreteOnly
 // (viewPresets.wheelZoomDelta, tuned for trackpads) replaces RF's d3-zoom wheel;
 // zoomOnScroll stays off so there is exactly one wheel path.
 import { clampZoom, wheelZoomDelta, MIN_ZOOM, MAX_ZOOM } from "../viewPresets";

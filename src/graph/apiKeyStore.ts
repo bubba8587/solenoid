@@ -1,12 +1,11 @@
-// [[B10]] reactFlowView (module-singleton store, storeKit)
-// Per-provider API keys. Device-local by rule: never bundled, never written into a
-// saved graph, never sent anywhere but the provider's own API.
+// [[B10]] reactFlowView (module-singleton store, storeKit), [[B13]] aiInScope, [[C105]] apiKeysStayLocal
+// Per-provider API keys. Device-local: never bundled, never written into a saved
+// graph, never sent anywhere but the provider's own API.
 import { createNotifier } from "./storeKit";
 
 const LS_KEY = "solenoid.apiKeys";
 
-// Every localStorage access is guarded: it is absent in the node test env and in
-// private mode, where the store must degrade to in-memory rather than throw.
+// No localStorage (node env, private mode) degrades to in-memory, never a throw.
 function load(): Record<string, string> {
   try {
     const raw = localStorage.getItem(LS_KEY);

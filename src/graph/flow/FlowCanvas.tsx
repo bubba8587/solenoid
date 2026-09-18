@@ -1,8 +1,8 @@
-// [[B10]], [[C43]]
+// [[B10]] reactFlowView, [[C43]] oneFlowSurface, [[C33]] saveBindsMain, [[C40]] storesRegisterForget, [[C89]] standoffsSolveLast, [[D63]] lockedGroupIsObstacle, [[D64]] oneSizeRead
 // THE app canvas: one editor/engine/view stack lives for the app's lifetime;
 // documents load through the REAL persistence/documentStore path; chrome talks
-// to it through the process.ts slots. The surface itself (RF element, gestures,
-// menus, keyboard) is FlowSurface, shared with the composite drill-in.
+// to it through the process.ts slots. The surface itself is FlowSurface, shared
+// with the composite drill-in.
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import { NodeEditor } from "rete";
@@ -79,13 +79,8 @@ function getStack(): Stack {
     setViewport: (v) => handlers.setViewport(v),
     getContainer: () => handlers.getContainer(),
   });
-  // Topology changes from ANY writer (loadGraph, components' own drops,
-  // canvas verbs) reach RF state through one coalesced editor watch. A REBUILD
-  // (load, undo) yields the microtask queue between every addNode, so a
-  // per-microtask sync would commit the whole canvas once PER NODE — O(n²)
-  // React work (measured: 113s for one undo on a 241-node doc). While the
-  // rebuild gate is held the queued sync just re-arms until the gate drops,
-  // so a load settles in ONE commit.
+  // The topology pipe coalesces a rebuild into ONE commit
+  // (specs/graph-load-teardown-performance.md).
   let queued = false;
   const trySync = () => {
     if (isGraphRebuilding()) {
@@ -156,11 +151,8 @@ function FlowCanvasInner() {
       }
       s.handlers.syncSelection();
     });
-    // The single delete verb (RF's own deleteKeyCode is off so there is exactly one
-    // path): deleteSelection gates the removal — ungated per-cable removes fire
-    // un-awaited targeted passes that were still fetching a node the engine had just
-    // dropped ("node is not initialized" on Host → FC → FC, delete the middle) — and
-    // splices the ghost cable / Conduit lanes.
+    // The single delete verb (RF's own deleteKeyCode is off): deleteSelection gates
+    // the removal and splices the ghost cable / Conduit lanes.
     setDeleteSelected(async () => {
       const doomed = s.editor.getNodes().some((n) => (n as { selected?: boolean }).selected);
       if (!doomed && cableSelectionStore.ids().length === 0 && !standoffStore.selected()) return;
@@ -175,8 +167,7 @@ function FlowCanvasInner() {
       repositionDockedFor(s.editor, s.view, s.handlers.getContainer(), hostId);
     setRepositionDocked(repositionDockedTo);
 
-    // Tidy + Cleanup; the auto-arrange plugin resolves view/editor through the
-    // adapter's scope shims (see flowView.ts).
+    // Tidy + Cleanup over this surface's editor/view.
     const ensureElk = makeEnsureElk(() => false);
     const arrangeFn = makeArrangeFn({
       editor: s.editor,
@@ -224,8 +215,8 @@ function FlowCanvasInner() {
       syncGroupCollapse(s.editor, s.view);
     });
 
-    // Standoff network: the pure solver applied through the adapter. Registered
-    // as the settle slot (keyboard rotate, canvasActions) and driven on drags.
+    // Standoff network: the pure solver, registered as the settle slot and driven
+    // on drags ([[C89]] standoffsSolveLast).
     let standoffSolving = false;
     const settleStandoffNetwork = (pinned: Set<string> = new Set(), opts?: SettleOpts) => {
       if (standoffSolving || standoffStore.isEmpty()) return;
@@ -237,7 +228,7 @@ function FlowCanvasInner() {
           if (b) boxes.set(end.nodeId, { x: b.x, y: b.y, w: b.w, h: b.h });
         }
       }
-      // A position-locked group holds against the band too — pin it in the solve.
+      // A position-locked group is pinned in the solve ([[D63]] lockedGroupIsObstacle).
       const disp = solveStandoffs(boxes, standoffStore.all(), withLockedGroupsPinned(s.editor, pinned), opts);
       if (disp.size === 0) return;
       standoffSolving = true;
@@ -258,9 +249,9 @@ function FlowCanvasInner() {
       s.editor.addPipe((ctx) => {
         const t = (ctx as { type?: string }).type;
         if (t === "noderemoved" && !isGraphRebuilding()) {
-          // Live deletion: per-node store state must go (a rebuild runs
-          // forgetAllNodes once instead), membership/collapse re-derive, and
-          // deleting an expanded group settles the pushes it caused.
+          // Live deletion ([[C40]] storesRegisterForget; a rebuild runs forgetAllNodes
+          // once instead): membership/collapse re-derive, and deleting an expanded
+          // group settles the pushes it caused.
           const n = (ctx as unknown as { data: SolenoidNode }).data;
           forgetNode(n.id);
           rebuildGroupMembership(s.editor);

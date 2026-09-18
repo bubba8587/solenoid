@@ -1,9 +1,8 @@
-// [[C34]] classNameIsType
+// [[C34]] classNameIsType, [[D4]] noManualList
 import { ClassicPreset } from "rete";
 import { FLAT_CATALOG } from "./catalogUtils";
 
-// Name→Ctor map DERIVED by calling every catalog factory once, so no ~150-class list has to
-// be hand-maintained; built lazily and cached.
+// Name→Ctor map DERIVED by calling every catalog factory once; built lazily and cached.
 
 export type NodeCtor = new (init?: Record<string, unknown>) => ClassicPreset.Node;
 

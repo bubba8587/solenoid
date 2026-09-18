@@ -1,7 +1,6 @@
-// [[C43]] oneFlowSurface, [[B10]] reactFlowView
-// React Flow port (C0) — crude value previews for the generic card. THROWAWAY:
-// real node components (C2) bring the real display pipeline; this only proves
-// the compute spine feeds the view.
+// [[C43]] oneFlowSurface, [[B10]] reactFlowView, [[D45]] maxRankMatrix
+// Crude value previews for the generic fallback card (SolFlowNode); the real
+// display pipeline lives in the node components.
 import { isSolError } from "../errorValue";
 import { isFrameRef } from "../frameBackend";
 

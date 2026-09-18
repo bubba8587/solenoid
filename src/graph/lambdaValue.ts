@@ -1,11 +1,9 @@
-// Must stay RETE-FREE ([[D19]] implReteFree): the formula path constructs and consumes lambdas
-// without loading the editor.
+// [[D19]] implReteFree (rete-free: the formula path constructs and consumes lambdas), [[C50]] lambdaBindsByName, [[D44]] tagSpecialScalars
 
 export interface LambdaValue {
   __lambda: true;
   params: string[];
-  // Value-polymorphic: a lambda body may return text or a date serial, not just
-  // a number.
+  // Value-polymorphic: a body may return text or a date serial, not just a number.
   fn: (...args: unknown[]) => unknown;
   /** The source body, carried so a consumer can RENDER the formula; empty for a
    *  bare lambda. */
