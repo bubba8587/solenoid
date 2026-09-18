@@ -1,4 +1,4 @@
-// [[C43]] oneFlowSurface, [[C97]] rechartsLazyChunk (this module stays recharts-FREE).
+// [[C43]] oneFlowSurface, [[C97]] rechartsLazyChunk (this module stays recharts-FREE)., [[C100]] chartIsAValue
 // Mechanics: specs/react-flow-surface-contract.md.
 import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import type { ChartShape } from "./chartCore";

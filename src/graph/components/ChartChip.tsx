@@ -1,3 +1,4 @@
+// [[C100]] chartIsAValue
 import { chartPopup } from "../chartPopupStore";
 import { useHostNodeId } from "./nodeContext";
 import { readChipPopupStyle } from "./chipStyle";

@@ -1,3 +1,4 @@
+// [[C100]] chartIsAValue
 import { describe, it, expect } from "vitest";
 import { chartValueOps, isChartValue, type ChartValue } from "../../src/graph/chartValue";
 import { valueChipFor } from "../../src/graph/components/ValueChip";

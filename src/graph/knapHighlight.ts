@@ -1,3 +1,4 @@
+// [[C68]] knapIsTheDocumentSyntax
 // Syntax highlight for a Report's source pane: Markdown structure (headings, list
 // markers, quotes, fences, emphasis, inline code, links) and, inside every `{{ … }}`
 // and `{% … %}` tag, Knap's own tokens on the formula surface's `.fx-tokens` classes

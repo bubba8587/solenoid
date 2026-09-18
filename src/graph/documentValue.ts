@@ -1,3 +1,4 @@
+// [[C68]] knapIsTheDocumentSyntax
 // DocumentValue — a Note/Report's renderable content on a cable. Markdown
 // serialization is deliberately NOT done here: the consumer (Write node) resolves
 // each ref by kind, deferring the DOM-dependent chart render to where it belongs.

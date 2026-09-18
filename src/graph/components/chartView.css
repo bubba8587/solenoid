@@ -1,3 +1,4 @@
+/* [[C100]] chartIsAValue */
 /* recharts renders <text> (axis ticks, labels) and <rect>/<path> marks as
    selectable SVG content, so a click-drag over a chart produces several partial
    text-selection highlights — the "7 different selectable boxes" that read as one

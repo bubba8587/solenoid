@@ -1,3 +1,4 @@
+// [[C8]] declareOnce (generated from nodeCatalog, never hand-kept), [[C51]] formulaNaming
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { frStore } from "../frStore";
 import { buildFunctionReference, fnRefGroups, type FnRefRow , libraryTags, LIBRARY_TAGS, type LibraryTag } from "../functionReference";

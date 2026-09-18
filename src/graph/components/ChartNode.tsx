@@ -1,3 +1,4 @@
+// [[C100]] chartIsAValue
 import { useCallback, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ChartNode as ChartNodeType, ChartOp } from "../rete-nodes";
 import { CHART_OP_META } from "../rete-nodes";

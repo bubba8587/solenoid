@@ -1,3 +1,4 @@
+// [[C68]] knapIsTheDocumentSyntax
 // The INTERNAL ref span. Nobody types it: a Report's Knap render rewrites a bare
 // `{{ name }}` to `` `=name` `` (knapTemplate.ts embedBareVariables) and the span then
 // resolves by kind — inlineRefDisplay.tsx on screen, obsidianMarkdown.ts at write,

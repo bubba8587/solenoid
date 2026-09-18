@@ -1,3 +1,4 @@
+// [[C100]] chartIsAValue
 // FC lambda view-as / chart text-scale: the annotation must reach a downstream
 // Display through the REAL resolution chain (the exact wiring DisplayNode uses:
 // getForNode → inAnnotation → downstreamAnnotation), with real node classes —

@@ -1,3 +1,4 @@
+// [[C100]] chartIsAValue
 import { type ChartOp, CHART_OP_META } from "./nodes/visual";
 import type { ChartOptions } from "./nodes/chartOptions";
 import type { GanttPayload } from "@solenoid/gantt-layout";

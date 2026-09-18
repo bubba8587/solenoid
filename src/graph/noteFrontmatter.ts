@@ -1,3 +1,4 @@
+// [[B1]] obsidianBet (any spelling Obsidian emits parses)
 import { parseDocument, isMap, isSeq, isScalar, isPair, Scalar, type Node, type Pair } from "yaml";
 import { parseDateToSerial } from "./nodes/dateSerial";
 
