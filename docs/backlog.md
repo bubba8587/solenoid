@@ -109,8 +109,9 @@ Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feed
   unratified list; `ratify <ID>... --by`, and the same change adds the ID to `OWNER_RATIFIED` in
   `rules.test.ts` ([[C7]] authorRuled).
 - [ ] **Author places `decisions/inbox/scope-boundary.md`** (proposed ring A): `dte place scope-boundary A --by <name>`.
-- [ ] **Apply the WHY-comment→citation practice** ([[C57]] commentMinimalism): migrate rationale
-  comments into the node's `## Why`, leave a `[[<ID>]] name` citation. `dte scope --comments` lists the start.
+- [ ] **Cite-and-prune sweep, remaining files** ([[C57]] commentMinimalism): the layout, input, unit, error and
+  format clusters are done; `dte scope --comments` lists what is left (chart renderers, Note/Report internals,
+  the mobile/theme CSS, `scripts/`). Per file: header cites the leaf, WHY → node, HOW → spec, WHAT stays.
 - [ ] **Docs triage (author's rule 2026-09-18: every system-describing doc is a node or a spec; on-ramps,
   proposals and history keep their homes).** Done: `subsystem-invariants.md` → `specs/` (27) + the mechanics docs
   declared as the spec layer; the comment policy → [[C57]] commentMinimalism; `agent-coordination.md` reduced to the claim board, its protocol → [[C83]]
@@ -119,10 +120,10 @@ Every rule and settled decision is a node (2026-09-15). Tool findings: `dte-feed
   **Blocked on the author:** `out-of-scope.md` is the draft of `inbox/scope-boundary` (the four tests + the mirror
   test) and its 13 categories are that node's children; nothing can hang off an unplaced node, so
   `dte place scope-boundary A --by <name>` first, then the categories become B nodes and the doc goes.
-  Then per subsystem: cite the files (`dte coverage`), `scope --comments` (WHY → node, HOW → spec, WHAT stays).
-- [ ] **`*Where:*` lines are the last downward pointers** (A8 threeLayers upstream: a node stores nothing from below).
-  Delete each only after the named file cites the node back, so `dte show` still derives "implemented by";
-  the Enforced-by column went this way 2026-09-18.
+- [ ] **Two author-held `*Where:*` lines remain** (B7, C80; the other 41 went 2026-09-18 once their files cited
+  back). The author deletes them or rules they stay.
+- [ ] **Unenforced MUSTs written this session** ([[D64]] oneSizeRead, [[C95]] commitOnEnter, [[C97]] rechartsLazyChunk):
+  each names the test that would enforce it; write them or leave the label.
 - [ ] **20 SKIPPED RING findings under A5 / A6** are the owner's placement (`dte scope`); either B nodes are
   missing under Excel parity / divergence, or the finding is noise (feedback 4). The author decides.
 - [ ] **Optional:** `python tools/dte.py hook` (pre-commit validate) — not installed (touches the

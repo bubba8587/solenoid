@@ -27,8 +27,21 @@ On `develop`, pushed.
   `inbox/scope-boundary`; its categories are that node's children; `sockets.ts` / `trueAnyAdopt.ts` cite their nodes and their WHY/HOW comments moved
   into the node / the spec; `fcReconcile.ts`, `conduitTrace.ts`, `unitLattice.ts` cite. The pattern for the other
   ring-C roots is in the backlog.
-- **`docs/dte-feedback.md`** is the feedback channel now (ten items from this session; item 10 is the one that
-  matters: nothing in the package tells an adopter that a new A-ring node means a migration sweep).
+- **`docs/dte-feedback.md`** is the feedback channel now (13 items; item 10 is the one that
+  matters: nothing in the package tells an adopter that a new A-ring node means a migration sweep; item 13: a
+  Decision must state a call, not describe a feature, after the author caught three of eight).
+- **The cite-and-prune sweep, second half of the day.** Sixteen leaves lifted out of specs and docs that had only a
+  nearest-ancestor governor: the layout cluster under B10 ([[C84]] tidyTranslatesOnly, [[C85]] groupPushDeterministic,
+  [[C86]] membershipByGesture, [[C87]] groupsAreSubflows, [[C88]] collapseIsVisual, [[C89]] standoffsSolveLast,
+  [[C90]] drawnCablesAnnotate, [[C91]] cableWalkRouter, with [[D63]] lockedGroupIsObstacle and [[D64]] oneSizeRead),
+  the input model ([[C92]] pinchUnvetoable, [[C93]] gestureByPointerType; C42 was the wrong governor), and the
+  UI-model rulings that lived in DESIGN.md / format-model.md / layout-chrome.md / file headers ([[C94]]
+  formatFamilyGates, [[C95]] commitOnEnter, [[C96]] chartOptionsAreMatplotlib, [[C97]] rechartsLazyChunk,
+  [[C98]] paletteMirrorsMenubar, [[C99]] chromeEnvelopeVars). Every spec-named source file and every
+  value-semantics leaf's implementing file now cites its leaf; 428 bare leaf-name mentions in comments and test
+  titles became wikilinks; the 43 `*Where:*` pointers are gone bar the two author-held nodes (B7, C80).
+  `subsystem-invariants.md` and the README routing table point at spec + leaf and no longer restate a spec's
+  governor. Coverage 19% → 29%.
 
 ### SESSION DIGEST (2026-09-17 — Obsidian round-trip; author present)
 
